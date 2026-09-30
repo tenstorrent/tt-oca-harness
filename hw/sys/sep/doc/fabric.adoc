@@ -78,12 +78,12 @@ closely coupled memory (ICCM) and data closely coupled memory (DCCM).
 |DMA CSR |DMA control and status registers.
 |WDT |Watchdog timer.
 |Reset Ctrl |SEP software reset controller.
-|Crypto Periph |Cryptographic accelerator and entropy-source register paths.
+|Crypto Periph |Cryptographic accelerators (AES, HMAC, KMAC, OTBN), entropy-source registers, eFuse controller, lifecycle controller, Key Manager mailbox, and external TRNG window.
 |System Periph |System-peripheral routing, remapping, mailboxes and system registers.
 |IO Periph |Local input/output peripheral path, including SPI boot-flash access.
 |Entropy Pool |Read-only aperture for entropy supplied by the entropy distribution
 network (EDN).
-|AXI Extension |Outbound AXI4 port for resources outside the local crossbar.
+|AXI Extension |Outbound AXI4 port for resources outside the local crossbar; the eFuse shim CSR window is diverted by `u_efuse_shim_demux` to the eFuse wrapper.
 |System Interface |Filtered inbound path from the System Management Network (SMN).
 |Boot ROM |Read-only boot memory on the dedicated CPU fetch/load path.
 |===
@@ -318,6 +318,7 @@ endif::backend-html5[]
 ifdef::backend-pdf[]
 <<sep-memory-map,Memory Map>>; {axi-traffic-filter-ref}.
 endif::backend-pdf[]
+
 === Detailed Register Map
 
 See the owning register references linked above.

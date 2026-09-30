@@ -55,8 +55,7 @@ second generation; it is not implemented in the first generation.
 
 The open generic ROM model has a 64-bit data path and no ECC or integrity-error
 sideband. Technology-specific integrity behavior is therefore outside this
-integration's visible hardware contract. The first-generation SEP has no ROM
-patching facility.
+integration's visible hardware contract.
 
 ifdef::backend-html5[]
 ++++

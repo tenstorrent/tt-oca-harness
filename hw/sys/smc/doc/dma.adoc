@@ -17,7 +17,7 @@ SMC instantiates one control interface, one stream and one DMA master.
 |===
 |Item |SMC configuration
 |Control aperture |`0xC003_8000–0xC003_81FF` (512 bytes, SMC-local view).
-|Control path |AXI, 9-bit local address and 64-bit data, converted internally
+|Control path |AXI, 9-bit local address and 64-bit data, 8-bit ID, converted internally
 to 32-bit register accesses. This is not an AXI4-Lite-only wrapper.
 |Data path |56-bit addresses, 64-bit data; 3-bit ID at the DMA wrapper and
 4-bit ID after the shared DMA/zeroer mux. Backend internal IDs are 2 bits.
@@ -28,7 +28,6 @@ program addresses permitted by that integration.
 == Architecture and Configuration
 
 ifdef::backend-html5[]
-// Stable links to consolidated material.
 ++++
 <span id="architecture-overview"></span>
 <span id="configuration-parameters"></span>
@@ -89,6 +88,13 @@ wrapper default is 3. It is not a reorder-buffer entry count.
 |`CG_HYSTERESIS_W` |6 |Width of the runtime clock-gating hysteresis input.
 |===
 
+ifdef::backend-html5[]
+The parameters of `idma_wrapper` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/idma_wrapper/idma_wrapper.adoc[idma_wrapper].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters of `idma_wrapper` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
+
 The frontend has a bus-aware clock gate; the request manager and backend use a
 separate activity/hysteresis gate. `cg_enable_i=0` keeps them awake, and test
 mode overrides gating. Clock gating does not abort transfers or isolate the bus.
@@ -96,7 +102,6 @@ mode overrides gating. Clock gating does not abort transfers or isolate the bus.
 == Transfer Configuration
 
 ifdef::backend-html5[]
-// Stable links to consolidated material.
 ++++
 <span id="dma-configuration-and-control"></span>
 <span id="type-definitions"></span>
@@ -107,7 +112,6 @@ endif::backend-html5[]
 === Stream and Register Ownership
 
 ifdef::backend-html5[]
-// Stable links to consolidated material.
 ++++
 <span id="control-interface"></span>
 <span id="dma-frontend"></span>
@@ -132,7 +136,7 @@ halves; do not assume the two halves are updated atomically by the register path
 |===
 |Field |CSR storage |Effective width |Use
 |`SRC_ADDRESS_LO/HI`, `DST_ADDRESS_LO/HI` |64 bits each |56 bits each |Byte addresses.
-|`LENGTH_LO/HI` |64 bits |56 bits |Bytes per linear copy or per 2D row.
+|`LENGTH_LO/HI` |64 bits |56 bits |Bytes per linear copy or per 2D row. Zero-length transfers are rejected.
 |`SRC_STRIDE_LO/HI`, `DST_STRIDE_LO/HI` |64 bits each |56 bits each |Address increment
 between consecutive row starts; source and destination increments are independent.
 |`NUM_REPETITIONS_LO/HI` |64 bits |32 bits |Number of rows, including the first.
@@ -146,7 +150,6 @@ range. Address stepping uses the effective address width.
 === Linear and Two-Dimensional Copies
 
 ifdef::backend-html5[]
-// Stable links to consolidated material.
 ++++
 <span id="smc-dma-transfer-capabilities-table"></span>
 <span id="transfer-descriptor-support"></span>
@@ -176,7 +179,6 @@ do not grant permission to access a filtered or otherwise invalid address.
 == Submission and Completion
 
 ifdef::backend-html5[]
-// Stable links to consolidated material.
 ++++
 <span id="command-processing"></span>
 <span id="response-path"></span>
@@ -206,7 +208,7 @@ endif::backend-html5[]
 |Indication |Meaning
 |`STATUS_0[7:0]` |Eight copies of frontend request readiness: `0xFF` means
 room to accept a command. These are not per-channel backend busy bits.
-|`STATUS_0[8]` / `[9]` |Bit 8 is zero; bit 9 is the midend activity indication.
+|`STATUS_0[8]` / `[9]` |Bit 8 is the midend activity indication; bit 9 is zero.
 |`DONE_0` |Most recently retired transfer ID. No byte-progress or classified
 software error-status register is provided.
 |DMA interrupt |One-cycle pulse on a falling edge of combined frontend/backend

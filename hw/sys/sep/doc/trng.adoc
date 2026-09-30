@@ -139,9 +139,9 @@ qualification must justify the source and its operating configuration separately
 == Reset and Recovery Boundaries
 
 `SEP_RESET_CTRL.SW_RESET_N.TRNG_SW_RST_N` controls one internal reset domain:
-ESRC, CSRNG, EDN and the DRBG endpoint queues. The coordinator first drains and
-isolates their three converted AXI4-Lite CSR paths. This protects register
-transactions; it does not wait for entropy consumers to become idle.
+ESRC, CSRNG, EDN and the DRBG endpoint queues. The TRNG sequencer isolates
+all three host paths to drain and safely reset their converted AXI4-Lite CSR
+transactions. This protects register transactions; it does not wait for entropy consumers to become idle.
 
 [[sep-entropy-reset-boundaries]]
 .TRNG reset effects outside the internal domain

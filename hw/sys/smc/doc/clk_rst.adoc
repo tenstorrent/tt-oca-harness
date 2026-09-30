@@ -14,7 +14,6 @@ isolation and reset-retention controls require support in the receiving subsyste
 == Clock Architecture
 
 ifdef::backend-html5[]
-// Stable links to consolidated material.
 ++++
 <span id="the-reference-clock-domain"></span>
 <span id="the-smc-clock-domain"></span>
@@ -77,17 +76,19 @@ reset is `rst_telemetry_ni`.
 * The CPU debug module uses a gated CPU-wrapper clock, enabled by debug
   activation with a test override. JTAG TCK clocks the scan interface separately.
 
+[[smc-peripheral-timing-requirements]]
 === Peripheral Timing Requirements
 
 ifdef::backend-html5[]
-// Stable links to consolidated material.
 ++++
 <span id="the-peripheral-clock-domain"></span>
 ++++
 endif::backend-html5[]
 
 The integrator supplies `clk_periph_i` at a frequency satisfying every enabled
-peripheral. A general 100 MHz minimum is insufficient for I3C target operation.
+peripheral. A minimum frequency of 100 MHz applies; the upper limit is not fixed
+and is set by the integrator according to timing closure, peripheral IP limits,
+and system power and performance goals.
 
 The I3C target's worst-case internal SCL-to-SDA turnaround is four core-clock
 cycles. Meeting the 12 ns target turnaround limit therefore requires a clock
@@ -97,8 +98,6 @@ timing budget and select a higher frequency where needed. See the
 https://chipsalliance.github.io/i3c-core/phy.html#i3c-timing-configuration[CHIPS
 Alliance I3C PHY timing requirements]. This is a target-mode requirement;
 controller-mode timing configuration does not establish target compliance.
-The upper frequency limit remains subject to implementation timing closure
-and the limits of every peripheral sharing the clock.
 
 == Reset Architecture
 
@@ -176,7 +175,6 @@ normal functional equations below assume these overrides and scan mode are inact
 === Primary and Warm Reset
 
 ifdef::backend-html5[]
-// Stable links to consolidated material.
 ++++
 <span id="primary-reset-activation-sources-table"></span>
 <span id="primary-reset-rst_primary_no"></span>
@@ -205,7 +203,6 @@ warm-reset input. See the CPU chapter for its isolation/reset interlock.
 === Reset Synchronization
 
 ifdef::backend-html5[]
-// Stable links to consolidated material.
 ++++
 <span id="reset-synchronization-and-timing-integrity"></span>
 ++++
@@ -239,7 +236,6 @@ The separate telemetry input reset belongs to its integration domain.
 == Function Level Reset and Isolation
 
 ifdef::backend-html5[]
-// Stable links to consolidated material.
 ++++
 <span id="clock-domain-crossing-and-synchronization"></span>
 <span id="function-level-reset-flr"></span>
@@ -255,7 +251,6 @@ chosen to accommodate the system's isolation requirements.
 === Isolation Controls
 
 ifdef::backend-html5[]
-// Stable links to consolidated material.
 ++++
 <span id="isolation-control-architecture"></span>
 ++++
@@ -284,7 +279,6 @@ Do not assume an uninitialized pin-enable mask becomes known while that pin is h
 === Timing and Recovery
 
 ifdef::backend-html5[]
-// Stable links to consolidated material.
 ++++
 <span id="memory-test-bypass"></span>
 <span id="programmable-reset-timing"></span>
@@ -378,7 +372,6 @@ image::smc-flr-isolation-gpio.svg[alt="The FLR isolation drawing with step 1, th
 == Subsystem Controls and Clock Gating
 
 ifdef::backend-html5[]
-// Stable links to consolidated material.
 ++++
 <span id="advanced-reset-features-table"></span>
 <span id="advanced-subsystem-reset-capabilities"></span>
@@ -403,7 +396,6 @@ quiescence requirements before reset, isolation or clock changes.
 == Memory Map and Register Reference
 
 ifdef::backend-html5[]
-// Stable links to consolidated material.
 ++++
 <span id="register-interface"></span>
 ++++

@@ -92,7 +92,9 @@ test protections.
 
 == Clocks and Resets
 
-SEP has separate system, CPU and cryptographic clock branches. Clocks and
+SEP uses one system clock (`clk_i`) that clocks the CPU, interconnect and all cryptographic
+subsystems. Additional clock roots supply reference counter (`clk_ref_i`), watchdog timer (`clk_wdt_i`),
+entropy sampler (`entropy_rosc_sample_clk_i`) and CPU debug (`jtag_tck_i`). Clocks and
 Resets describes their distribution and links to software reset sequencing.
 
 == CPU

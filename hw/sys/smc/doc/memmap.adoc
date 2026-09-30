@@ -190,6 +190,8 @@ include::../dv/models/regs/gen/adoc/pvt_wrap.adoc[leveloffset=+2]
 include::../regs/gen/adoc/blocks/straps.adoc[leveloffset=+2]
 endif::backend-pdf[]
 
+== Spare SMC Register Blocks
+
 The following shows the detailed register map of a set of
 programmer-visible spare SMC blocks. They are spare but essential: for
 example, the scratch block provides general-purpose registers, and the

@@ -13,15 +13,14 @@ endif::backend-html5[]
 === Memory Map
 
 ifdef::backend-html5[]
-// Preserve incoming links to the consolidated sections.
 ++++
 <span id="address-space"></span>
 ++++
 endif::backend-html5[]
 
 With the default `MAILBOX_SIZE=0x800`, each directional aperture occupies
-2 KiB and each pair occupies 4 KiB. The supplied 32-pair maps span `0x20000`
-bytes; the generic unit's span is `2 * MAILBOX_SIZE * NUM_MAILBOXES`.
+2 KiB and each pair occupies 4 KiB. The SMC 32-pair map spans `0x20000`
+bytes, and the SEP 8-pair map spans `0x8000` bytes; the generic unit's span is `2 * MAILBOX_SIZE * NUM_MAILBOXES`.
 The SMC and SEP wrapper layouts are generated from
 their SystemRDL compositions:
 

@@ -20,8 +20,8 @@ image::i3c_core_block_diagram.png[alt="CHIPS Alliance i3c-core reference archite
 
 When target mode is used, budget four core-clock cycles for the internal
 SCL-to-SDA response. A 12 ns turnaround limit requires approximately 333.3 MHz
-or faster before pad and routing allowance; see the SMC peripheral-clock
-requirements and the
+or faster before pad and routing allowance; see the
+<<smc-peripheral-timing-requirements,Peripheral Timing Requirements>> section and the
 https://chipsalliance.github.io/i3c-core/phy.html#i3c-timing-configuration[upstream
 PHY timing requirements]. Controller-mode timing examples at lower frequencies
 do not demonstrate compliance with this target-mode limit.

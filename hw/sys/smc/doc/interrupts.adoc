@@ -17,7 +17,6 @@ This chapter distinguishes raw SMC vector bits from software-visible PLIC IDs.
 === Controller Addresses
 
 ifdef::backend-html5[]
-// Stable links to consolidated material.
 ++++
 <span id="interrupt-controllers-mmio"></span>
 ++++
@@ -31,8 +30,8 @@ per-core watchdog and BEU apertures.
 .SMC interrupt-controller addresses
 |===================================================================
 |Block |Base Addr |Size |Interface
-|CPU Control Regs |0xC001_0000 |8 KB |AXI4-Lite
-|PLIC |0xC400_0000 |4 MB |AXI4-Lite
+|CPU Control Regs |0xC003_9000 |4 KB |AXI4-Lite
+|PLIC |0xC400_0000 |64 MB |AXI4-Lite
 |CLINT |0xC800_0000 |64 KB |AXI4-Lite
 |Watchdog Timers (N) |0xC000_0000 + (N * 0x400) |1 KB x4 |APB4
 |Bus Error Units (N) |0xC801_0000 + (N * 0x1000) |4 KB x4 |AXI4-Lite
@@ -43,7 +42,6 @@ per-core watchdog and BEU apertures.
 === PLIC Sources and Contexts
 
 ifdef::backend-html5[]
-// Stable links to consolidated material.
 ++++
 <span id="advanced-plic-management-and-adaptive-priority-control"></span>
 <span id="multi-context-architecture-and-privilege-level-integration"></span>
@@ -89,7 +87,6 @@ It does not count repeated pulses while one request is in flight.
 === CLINT
 
 ifdef::backend-html5[]
-// Stable links to consolidated material.
 ++++
 <span id="risc-v-clint-and-precise-system-management-timing"></span>
 ++++
@@ -104,7 +101,6 @@ periodic tick; see the Clocks and Resets chapter for its clock relationship.
 === Bus Error Units
 
 ifdef::backend-html5[]
-// Stable links to consolidated material.
 ++++
 <span id="bus-error-unit-interrupts"></span>
 ++++
@@ -128,7 +124,6 @@ The BEU also has a separate output selected by `PLIC_ENABLE`.
 === Raw Vector and PLIC Numbering
 
 ifdef::backend-html5[]
-// Stable links to consolidated material.
 ++++
 <span id="smc-interrupt-vector-cpu_interrupts_o"></span>
 ++++
@@ -456,7 +451,6 @@ endif::backend-html5[]
 ==== Routing Notes
 
 ifdef::backend-html5[]
-// Stable links to consolidated material.
 ++++
 <span id="trace-notes"></span>
 ++++
@@ -478,7 +472,6 @@ DMA and zeroer completion indications are busy-falling pulses, not counted queue
 === Initialization and Core Assignment
 
 ifdef::backend-html5[]
-// Stable links to consolidated material.
 ++++
 <span id="multi-core-interrupt-distribution-and-load-management"></span>
 <span id="multi-tier-interrupt-classification-and-response-strategy"></span>
@@ -515,7 +508,6 @@ short or repeated pulses lossless. In particular, track DMA retirement using
 === Local Interrupts and Fault Handling
 
 ifdef::backend-html5[]
-// Stable links to consolidated material.
 ++++
 <span id="fault-detection-and-recovery-architecture"></span>
 <span id="precision-timer-management-and-inter-core-coordination"></span>
@@ -546,7 +538,6 @@ endif::backend-pdf[]
 == Memory Map and Register Reference
 
 ifdef::backend-html5[]
-// Stable links to consolidated material.
 ++++
 <span id="register-interfaces"></span>
 ++++

@@ -141,7 +141,6 @@ integrity limitations and BL0-to-BL1 boot sequence.
 
 {sep-rom-reference}.
 
-// Preserve old cpu.html boot-section bookmarks after moving the content to ROM.
 // These page-local anchors are excluded from the combined PDF.
 ifdef::backend-html5[]
 [[boot-rom]]

@@ -7,7 +7,6 @@
 == Overview
 
 ifdef::backend-html5[]
-// Preserve incoming links to the consolidated sections.
 ++++
 <span id="description-and-features"></span>
 ++++
@@ -19,8 +18,8 @@ the peer, and reading `READ_DATA` consumes one word sent by the peer. A single
 AXI4-Lite slave port serves all pairs.
 
 `NUM_MAILBOXES` counts bidirectional pairs, each with two directional apertures
-and two interrupt outputs. The supplied SMC and SEP maps provide 32 pairs
-(64 apertures). Aperture names describe intended use; both ends remain reachable
+and two interrupt outputs. The SMC instance provides 32 pairs (64 apertures);
+the SEP instance provides 8 pairs (16 apertures). Aperture names describe intended use; both ends remain reachable
 through the same slave port. Access isolation is the subsystem's responsibility,
 not a property conferred by naming an aperture inbound or outbound.
 

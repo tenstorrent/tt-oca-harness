@@ -5,7 +5,6 @@
 
 [[sep-dma]]
 
-// Preserve the old page fragment; new references use sep-dma.
 ifdef::backend-html5[]
 ++++
 <span id="direct-memory-access-controller-dma-direct-memory-access-controller-dma"></span>
@@ -55,10 +54,9 @@ port), with both high address registers zero. The upstream SoC control and
 system ports are tied off in this wrapper; their ASIDs do not provide
 additional SEP routes. Reachability is governed by the SEP fabric and filters.
 
-Only handshake input 0 is connected, to the OpenTitan SPI peripheral's LSIO
-trigger. All remaining trigger inputs are tied low: the upstream UART or I3C
-handshake examples do not describe wired SEP trigger paths. This does not
-prevent software-initiated accesses to reachable peripheral registers.
+Only handshake input 0 is connected, to the SPI host's LSIO trigger.
+All other trigger inputs are tied low; SEP does not wire UART or I3C handshake paths.
+This does not prevent software-initiated accesses to reachable peripheral registers.
 
 [[sep-dma-programming]]
 === Programming a Copy

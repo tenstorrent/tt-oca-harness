@@ -110,19 +110,19 @@ The address tables above identify each aperture. Detailed registers are
 published with the owning block:
 
 ifdef::backend-html5[]
-* xref:cpu.adoc[Cpu] — sep_cpu_ctrl.
+* xref:cpu.adoc[CPU] — sep_cpu_ctrl.
 * xref:interrupts.adoc[Interrupts] — el2_pic.
-* xref:reset_controller.adoc[Reset Controller] — sep_reset_ctrl.
-* xref:lifecycle_controller.adoc[Lifecycle Controller] — sep_lifecycle_ctrl.
-* xref:otp_fuse_controller.adoc[Otp Fuse Controller] — sep_efuse_map.
-* xref:watchdog.adoc[Watchdog] — aon_timer.
-* xref:aes.adoc[Aes] — aes.
-* xref:hmac.adoc[Hmac] — hmac.
-* xref:kmac.adoc[Kmac] — kmac.
-* xref:otbn.adoc[Otbn] — otbn.
-* xref:trng.adoc[Trng] — csrng, edn.
-* xref:dma.adoc[Dma] — secure_dma.
-* xref:spi.adoc[Spi] — spi_controller.
+* xref:reset_controller.adoc[SEP Reset Controller] — sep_reset_ctrl.
+* xref:lifecycle_controller.adoc[Life Cycle Controller (LCC)] — sep_lifecycle_ctrl.
+* xref:otp_fuse_controller.adoc[OTP Fuse Controller] — sep_efuse_map.
+* xref:watchdog.adoc[Watchdog Timer (WDT)] — aon_timer.
+* xref:aes.adoc[AES Cipher] — aes.
+* xref:hmac.adoc[HMAC-SHA2] — hmac.
+* xref:kmac.adoc[KMAC-SHA3] — kmac.
+* xref:otbn.adoc[OTBN PKA Public Key Accelerator] — otbn.
+* xref:trng.adoc[TRNG and DRBG] — csrng, edn.
+* xref:dma.adoc[Direct Memory Access (DMA)] — secure_dma.
+* xref:spi.adoc[Serial Peripheral Interface (SPI)] — spi_controller.
 * xref:cpu.adoc#dual-scratch-register-banks[CPU scratch banks] — sep_scratch.
 * xref:ip:entropy_source/doc/index.adoc[Entropy Source].
 * xref:ip:key_manager/doc/index.adoc[Key Manager] — controller, KPV, sampler, mailboxes and key wrappers.
@@ -130,9 +130,10 @@ ifdef::backend-html5[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-See the register references in the CPU, Interrupts, Reset Controller, Lifecycle
-Controller, OTP Fuse Controller, Watchdog, Cryptographic Subsystem, DMA and SPI
-chapters. The shared eFuse IP chapter owns the eFuse MMR reference.
+See the register references in the CPU, Interrupts, SEP Reset Controller, Life Cycle
+Controller, OTP Fuse Controller, Watchdog Timer, Cryptographic Subsystem (including AES Cipher,
+HMAC-SHA2, KMAC-SHA3, OTBN and TRNG and DRBG), DMA, Serial Peripheral Interface,
+Key Manager and Entropy Source chapters. The shared eFuse IP chapter owns the eFuse MMR reference.
 endif::backend-pdf[]
 
 === External Window Reference Model

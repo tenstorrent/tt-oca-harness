@@ -178,6 +178,9 @@ endif::backend-html5[]
 === Memory Map
 
 Register offsets are relative to the block base in the subsystem memory map.
+ifdef::ocah-trm[]
+See xref:sep:memory_map.adoc[SEP Memory Map] for the entropy source base address and aperture.
+endif::ocah-trm[]
 The detailed map below defines each register and its fields.
 
 === Detailed Register Map
