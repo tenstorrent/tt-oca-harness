@@ -1183,10 +1183,18 @@ the stages drive `verilator`, `vcs` and `xcelium` only: a tool under another
 name is selectable but fails at `hdl_compile`, so the list adds one of those
 three to a view that lists fewer. `--list` marks a licensed one `(licensed)`
 from its `license_env`. A formal view takes its tools from its formal config.
+
+|`[duts.<dut>]` `exclude_files = ["<pattern>", ...]`
+|appends
+|Filelist drops added to that DUT's `[build].exclude_files`, after the DUT's
+own, so a site removes sources its layered bender graph adds that the checked-in
+graph never carries -- vendor simulation collateral a checkout cannot compile,
+say. Each is a substring matched against the generated bender filelist, like a
+config-owned drop, and applies to every target. A formal view is unaffected.
 |===
 
 Any other key fails validation, as does a `[duts.<dut>]` table that sets none
-of the three, or a checked-in registry that carries `launcher`, `extra_env`,
+of the four, or a checked-in registry that carries `launcher`, `extra_env`,
 or `setup_hook`. Inside one command the stage's own
 variables (`PYTHONPATH`, `RANDOM_SEED`, the coverage and wave knobs) keep
 their values; below them the `setup_hook` exports win over `extra_env`,

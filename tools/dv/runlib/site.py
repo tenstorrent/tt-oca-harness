@@ -73,7 +73,7 @@ SITE_TOP_KEYS = {"schema_version", "description", "simulators", "executors", "du
 SITE_TOOL_KEYS = {"binary", "launcher", "argv", "license_env", "extra_env", "setup_hook"}
 # Every data key of an executor table; `kind` stays with the registry.
 SITE_EXECUTOR_KEYS = (CLUSTER_EXECUTOR_KEYS | CLUSTER_EXECUTOR_V1_KEYS) - {"kind"}
-SITE_DUT_KEYS = {"formal_cfg", "sim_cfg", "tools"}
+SITE_DUT_KEYS = {"formal_cfg", "sim_cfg", "tools", "exclude_files"}
 SETUP_HOOK_TIMEOUT_SEC = 120
 # Shell bookkeeping a sourced hook changes without exporting anything.
 _HOOK_NOISE_VARS = {"_", "SHLVL", "PWD", "OLDPWD"}
@@ -120,6 +120,10 @@ class SiteLayer:
     def dut_tools(self, names: Iterable[str]) -> list[str]:
         """The tools the site adds to the first DUT name in ``names`` that lists any."""
         return list(self._dut_value(names, "tools") or [])
+
+    def dut_exclude_files(self, names: Iterable[str]) -> list[str]:
+        """The filelist drops the site adds for the first DUT name in ``names`` that lists any."""
+        return list(self._dut_value(names, "exclude_files") or [])
 
 
 @dataclass(frozen=True)
@@ -244,6 +248,12 @@ def load_site_layer(root: Path, environ: Mapping[str, str] | None = None) -> Sit
             tools = as_str_list(entry["tools"], f"{entry_where}.tools")
             if not tools or not all(tools):
                 raise ConfigError(f"{entry_where}.tools must be a non-empty list of tool names")
+        if "exclude_files" in entry:
+            excludes = as_str_list(entry["exclude_files"], f"{entry_where}.exclude_files")
+            if not excludes or not all(excludes):
+                raise ConfigError(
+                    f"{entry_where}.exclude_files must be a non-empty list of filelist patterns"
+                )
     return SiteLayer(path=path, label=label, simulators=simulators, executors=executors, duts=duts)
 
 
