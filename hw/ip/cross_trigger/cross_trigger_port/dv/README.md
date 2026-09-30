@@ -45,7 +45,8 @@ Tests
 -----
 
 * `ctp_sanity_test` — reset defaults, CONFIG/STRETCH_MULT write/read law,
-  STATUS read-only law, and a single-pulse wire-OR smoke.
+  STATUS read-only law (writes complete OKAY and change nothing), and a
+  single-pulse wire-OR smoke.
 * `ctp_wire_or_test` — pad enable matrix and resting data levels for both
   INVERT senses, stretched transmit window (`STRETCH_MULT+1` cycles) over
   deterministic corners and randomized values, back-to-back restart, and

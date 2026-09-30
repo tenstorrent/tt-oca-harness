@@ -43,6 +43,7 @@ module dtp_jtag2axi_ctrl_props #(
   input logic [1:0]        sticky_status_i,        // sticky_axi_status_tclk
   input logic              sticky_full_i,          // sticky_axi_status_full_tclk
   input logic              ctrl_reset_bit_i,       // update_register_q_tclk[AXISERIESCTRL_RESET_HIGH]
+  input logic [1:0]        ctrl_op_i,              // update_register_q_tclk AXISeriesCtrl op field
   input logic [1:0]        current_op_i,           // current_op_tclk
   input logic              single_tx_i,            // current_tx_is_from_single_buffer_tclk
   input logic              single_valid_i,         // single_tx_req_valid_tclk
@@ -52,6 +53,9 @@ module dtp_jtag2axi_ctrl_props #(
   input logic [CNT_W-1:0]  reads_pushed_i,         // series_reads_pushed_tclk
   input logic [CNT_W-1:0]  plain_reads_pending_i,  // plain_reads_pending_tclk
   input logic [PD_W-1:0]   pipeline_depth_i,       // series_ctrl_pipeline_depth_tclk_r
+  input logic [1:0]        series_op_mode_i,       // series_ctrl_op_mode_tclk_r
+  input logic              req_fifo_push_i,        // series_request_fifo_push_tclk
+  input logic [1:0]        req_fifo_push_op_i,     // series_request_fifo_din_tclk.op
   input logic [SR_LEN-1:0] update_register_i,      // update_register_q_tclk
   input logic [1:0]        write_outstanding_i,    // write_outstanding_q
   input logic [1:0]        read_outstanding_i,     // read_outstanding_q
@@ -71,6 +75,7 @@ module dtp_jtag2axi_ctrl_props #(
 
   localparam logic [1:0] OP_READ = 2'b01;
   localparam logic [1:0] OP_WRITE = 2'b10;
+  localparam logic [1:0] OP_RESERVED = 2'b11;
 
   localparam logic [1:0] STATUS_SUCCESS = 2'b00;
   localparam logic [1:0] STATUS_SLVERR = 2'b01;
@@ -102,6 +107,10 @@ module dtp_jtag2axi_ctrl_props #(
   assign series_status_base = ctrl_reset_write ? STATUS_SUCCESS : sticky_status_i;
   assign series_status_next = (series_done && series_status_base == STATUS_SUCCESS) ?
                               next_status_i : series_status_base;
+
+  logic ctrl_reserved_write;
+  assign ctrl_reserved_write = update_en_i && !security_disable_i && select_AXISeriesCtrl_i &&
+                               ctrl_op_i == OP_RESERVED;
 
   logic [CNT_W-1:0] admit_limit;
   assign admit_limit = CNT_W'(pipeline_depth_i) + CNT_W'(1);
@@ -172,6 +181,10 @@ module dtp_jtag2axi_ctrl_props #(
                   reads_pushed_i <= admit_limit &&
                   rsp_fifo_count_i <= CNT_W'(FIFO_DEPTH + 1),
                   tck_i, trst_ni)
+  `OCAH_FV_ASSERT(ast_j2a_series_ops_are_axi,
+                  series_op_mode_i != OP_RESERVED &&
+                  `OCAH_FV_IMPLIES(req_fifo_push_i, req_fifo_push_op_i inside {OP_READ, OP_WRITE}),
+                  tck_i, trst_ni)
 
   // ---- ACLK side: the outstanding counters hold the CDC pop at their saturation value --------
   `OCAH_FV_ASSERT(ast_j2a_outstanding_saturates,
@@ -228,6 +241,7 @@ module dtp_jtag2axi_ctrl_props #(
   `OCAH_FV_COVER(cov_j2a_series_error_held,
                  $past(series_done) && $past(next_status_i) == STATUS_SUCCESS &&
                  sticky_status_i != STATUS_SUCCESS, tck_i, trst_ni)
+  `OCAH_FV_COVER(cov_j2a_series_ctrl_reserved, ctrl_reserved_write, tck_i, trst_ni)
   for (genvar s = 1; s <= 6; s++) begin : gen_disable_in_state
     `OCAH_FV_COVER(cov_j2a_disable_in_state, security_disable_i && state_i == 3'(s),
                    tck_i, trst_ni)

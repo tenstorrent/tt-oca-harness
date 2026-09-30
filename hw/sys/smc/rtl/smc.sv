@@ -247,8 +247,8 @@ module smc #(
 
   input logic clk_telemetry_i,          // Telemetry clock for the ATB inputs, gated by the
                                         // telemetry clock-gate enable.
-  input logic rst_telemetry_ni,         // Telemetry-domain reset, active-low, passed to the
-                                        // telemetry receivers without synchronization.
+  input logic rst_telemetry_ni,         // Telemetry-domain reset, active-low, for the
+                                        // telemetry receivers' ATB FIFOs.
 
   input  telemetry_receiver_pkg::telemetry_data_t [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0] telemetry_atdata_i,  // ATB telemetry data,
                                                                                                                      // one word per

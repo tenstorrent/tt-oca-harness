@@ -20,6 +20,9 @@
 //   which region had an attempted write while locked.
 // - Requests are held off for two cycles after reset release.
 // - PicoRV32 look-ahead prefetch support for pipelined SRAM.
+//
+// The SRAM must return rvalid at least one cycle after accepting a read: the response is
+// descrambled and parity-checked with the address and strobes captured at the accept.
 
 module km_sram_interface
   import km_intf_pkg::*;
@@ -158,12 +161,7 @@ module km_sram_interface
       read_pending_q <= 1'b0;
       req_squelch_q <= '0;
     end else begin
-      // If complete and accept happen together:
-      // - pending=1: prior read completed and a new read accepted -> keep pending=1
-      // - pending=0: immediate response for just-accepted read -> keep pending=0
-      if (read_accept && read_complete) begin
-        read_pending_q <= read_pending_q;
-      end else if (read_accept) begin
+      if (read_accept) begin
         read_pending_q <= 1'b1;
       end else if (read_complete) begin
         read_pending_q <= 1'b0;
@@ -332,8 +330,8 @@ module km_sram_interface
   `OCAH_OT_ASSERT(MemReadyOnlyWhenValid_A, mem_ready_o |-> mem_valid_i, clk_i, !rst_ni)
 
   // SRAM reads only complete after a matching read request has been accepted.
-  `OCAH_OT_ASSERT(ReadCompletesAfterAccept_A,
-                  sram_mem_rsp_i.rvalid |-> read_pending_q || read_accept, clk_i, !rst_ni)
+  `OCAH_OT_ASSERT(ReadCompletesAfterAccept_A, sram_mem_rsp_i.rvalid |-> read_pending_q, clk_i,
+                  !rst_ni)
 
 endmodule : km_sram_interface
 

@@ -179,6 +179,9 @@ lockup is enabled only for the I/O STAP that crosses between chiplets.
 
 The scan output lockup latch is optional and controlled by the `SCAN_OUT_LOCKUP`
 parameter (default = 0). This latch is implemented within the
-`prim_jtag_sib_mux_pre` module and adds a register stage to the client scan
-output path. This is typically enabled only on the final STAP in an extended
-chain to provide additional output timing margin.
+`prim_jtag_sib_mux_pre` module and retimes the client scan output on the falling
+edge of TCK. Enable it where the client scan output feeds a rising-edge stage
+clocked by a later TCK branch. Leave it disabled where the output reaches a
+falling-edge stage, such as the PTAP TDO retimer: two falling-edge stages in
+series add one TCK of scan latency. The DTP integration leaves it disabled on
+every STAP.

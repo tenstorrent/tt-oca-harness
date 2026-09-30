@@ -62,15 +62,22 @@ configuration and physical role.
 |4
 |Extra STAPs [N-1:0]
 |0
-|i == N-1 ? 1 : 0
-|Local debug ports (scan output lockup on last STAP only)
+|0
+|Local debug ports
 |===
 
 The I/O STAP enables TDI lockup to handle the longer propagation delays across
 die boundaries. On-chip STAPs (SMC Debug, SEP Debug) disable TDI lockup since
-signal routing is local to the chiplet. The final extra STAP in the chain
-enables scan output lockup when `NUM_EXTRA_STAPS > 0`, providing additional
-output timing margin before the scan path returns to the PTAP.
+signal routing is local to the chiplet.
+
+No STAP in the chain enables scan output lockup. The chain return reaches the
+PTAP's falling-edge TDO retimer, and a lockup ahead of that retimer would add
+one TCK of latency to every scan through the STAP chain. The last STAP's scan
+output also drives `stap_host_scan_out_o`, which launches on the rising edge of
+TCK like the host scan outputs of the iJTAG SIBs.
+
+`stap_host_scan_out_o` carries the scan bit of the last STAP's SIB. That bit
+resets to 0 on TRST and in Test-Logic-Reset, so the port reads 0 from reset.
 
 ==== Debug Disable Synchronization
 
@@ -129,6 +136,9 @@ disable field.
 
 The iJTAG network is organized into three cascaded Segment Insertion Bit (SIB)
 chains. Each SIB is gated by the corresponding synchronized debug-disable field.
+Each SIB's scan bit and control bit reset to 0 on TRST and in Test-Logic-Reset,
+so `dft_secure_host_scan_out_o`, `dft_host_scan_out_o` and `dfd_host_scan_out_o`
+read 0 from reset, whether or not the SIB is disabled.
 
 ==== DFT Secure Chain
 

@@ -415,6 +415,14 @@ class DtpJtag2AxiTargetCfg:
         """AxSIZE of a full-width beat."""
         return self.data_size
 
+    def axsize(self, size: int) -> int:
+        """Transfer size the bridge uses for a scanned ``size`` field.
+
+        A size above ``data_size`` transfers one full beat
+        (``hw/ip/jtag/jtag_ptap/doc/architecture.adoc``, "*_AXI_SINGLE_OP").
+        """
+        return min(size, self.data_size)
+
     @property
     def size_bits(self) -> int:
         return size_field_bits(self.data_width)
@@ -504,14 +512,21 @@ def get_jtag2axi_target(target: str | DtpJtag2AxiTargetCfg) -> DtpJtag2AxiTarget
     return JTAG2AXI_TARGETS[target]
 
 
-def series_data_len(size: int, *, with_status: bool = False) -> int:
-    """Return the series data TDR width for one transfer size.
+def series_data_len(
+    size: int,
+    *,
+    with_status: bool = False,
+    target: str | DtpJtag2AxiTargetCfg = "smc_axi",
+) -> int:
+    """Return the series data TDR width for one scanned size on a target.
 
-    `*_AXI_SERIES_DATA_INCR` / `_NO_INCR` are n = 8*(2**size) bits and
-    `*_AXI_SERIES_DATA_WITH_ERROR_STATUS` is n+1 bits with the increment/status
-    bit at n (`hw/ip/jtag/jtag_ptap/doc/architecture.adoc`, "JTAG2AXI Support").
+    `*_AXI_SERIES_DATA_INCR` / `_NO_INCR` are n = 8*(2**E) bits, where E is
+    the effective size (the smaller of ``size`` and the target's
+    ``data_size``), and `*_AXI_SERIES_DATA_WITH_ERROR_STATUS` is n+1 bits with
+    the increment/status bit at n (`hw/ip/jtag/jtag_ptap/doc/architecture.adoc`,
+    "JTAG2AXI Support").
     """
-    payload_bits = 8 * (1 << size)
+    payload_bits = 8 * (1 << get_jtag2axi_target(target).axsize(size))
     return payload_bits + (1 if with_status else 0)
 
 
@@ -626,18 +641,30 @@ def unpack_series_ctrl(
     return reset, addr, pipeline_depth, size, status
 
 
-def pack_series_data(data: int, size: int, *, increment: int | None = None) -> tuple[int, int]:
+def pack_series_data(
+    data: int,
+    size: int,
+    *,
+    increment: int | None = None,
+    target: str | DtpJtag2AxiTargetCfg = "smc_axi",
+) -> tuple[int, int]:
     """Pack a series-data TDR value and return (value, width)."""
-    payload_bits = series_data_len(size)
+    payload_bits = series_data_len(size, target=target)
     value = data & ((1 << payload_bits) - 1)
     if increment is not None:
         value |= (increment & 0x1) << payload_bits
     return value, payload_bits + (1 if increment is not None else 0)
 
 
-def unpack_series_data(value: int, size: int, *, with_status: bool = False) -> tuple[int, int]:
+def unpack_series_data(
+    value: int,
+    size: int,
+    *,
+    with_status: bool = False,
+    target: str | DtpJtag2AxiTargetCfg = "smc_axi",
+) -> tuple[int, int]:
     """Return (data, status_bit) from a captured series-data TDR value."""
-    payload_bits = series_data_len(size)
+    payload_bits = series_data_len(size, target=target)
     data = value & ((1 << payload_bits) - 1)
     status = (value >> payload_bits) & 0x1 if with_status else 0
     return data, status

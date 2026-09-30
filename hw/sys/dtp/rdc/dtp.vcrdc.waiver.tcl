@@ -18,7 +18,7 @@
 # reset pin through a single-gate combinational cell (prim_or2, prim_and2, or prim_inv).
 #
 # Group 1 -- 3DCR scan register update flops (5 violations: PTAP + 4 STAPs):
-#   u_*stap*/u_3dcr_scan_reg/gen_rst_n_reset.u_update_flop reset pin is driven by
+#   u_*stap*/u_3dcr_scan_reg/u_update_flop reset pin is driven by
 #   u_rst_n_or (prim_or2) combining:
 #     - u_config_hold_sticky_flop/q_o  (TCK-domain flop: "3DCR config-hold sticky" bit)
 #     - u_*_rst_n_and/out_o            (the locally-gated TRST_N combined reset)
@@ -28,7 +28,7 @@
 #   because config_hold_sticky only toggles synchronously to TCK.
 #
 # Group 2 -- IC Reset enable-control scan register update flop (1 violation):
-#   u_reset_enable_control_scan_reg/gen_rst_n_reset.u_update_flop reset pin is driven
+#   u_reset_enable_control_scan_reg/u_update_flop reset pin is driven
 #   by u_rst_n_or (prim_or2) combining:
 #     - u_reset_hold_inv/out_o     (prim_inv of u_reset_hold_scan_reg, TCK-domain)
 #     - scan_ctrl_i.rst_n          (TAP !test_logic_reset, TCK-domain TLR)
@@ -118,57 +118,10 @@ waive_violation -add {ocah_dtp_rdc_SETUP_RESET_OVERLAP_tlr_reset_to_siblings} \
     -app { rdc } -tag { SETUP_RESET_OVERLAP } -user { bmelton } -timestamp { 17-05-2026 17:30:00 }
 
 #=======================================================================================================================
-# RDC_CORRUPT_OBSERVED : JTAG scan chain data registers with no async reset (Groups A-C)
-#=======================================================================================================================
-# JTAG scan chain registers (prim_jtag_scan_reg, jtag_stap SIB mux, jtag_intf_unit scan data)
-# follow IEEE 1149.1 conventions:
-#
-#   u_update_flop: Has async reset (cleared on TRST_N / TLR). Its output drives the
-#                  shift-register chain as the last-updated value.
-#   scan_data:     Does NOT have async reset by design. Scan chain data represents the
-#                  last JTAG-programmed value; resetting it would discard valid content.
-#                  The JTAG protocol (not the hardware reset) initializes scan_data.
-#
-# When TRST_N or TLR asserts asynchronously:
-#   - u_update_flop is immediately cleared (async reset)
-#   - On the next TCK rising edge, scan_data captures the cleared value
-#   - This is exactly IEEE 1149.1 behavior: all JTAG registers initialize to their
-#     default values on TRST_N via the scan update protocol, not via async reset pins
-#
-# The RDC tool flags this because it sees a reset propagating from u_update_flop to
-# scan_data without a blocking synchronizer, but the propagation is intentional and
-# bounded to one TCK clock cycle. Both source and destination are in the same TCK
-# clock domain; the "corruption" concern only applies across clock domain boundaries.
-#
-# Group A: prim_jtag_scan_reg internal (V2: RDC:1678, V3: RDC:1689, V8: RDC:1866, V10: RDC:1914)
-# Group B: jtag_stap 3DCR update flop → SIB mux scan_data (V9: RDC:1883, V11: RDC:1919)
-# Group C: jtag_intf_unit flops → scan_data (V5: RDC:1833, V6: RDC:1861, V7: RDC:1863)
-#=======================================================================================================================
-waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_jtag_scan_reg_update_to_scan_data} \
-    -comment {prim_jtag_scan_reg: u_update_flop (has async reset) drives scan_data (no reset) within the same TCK clock domain. IEEE 1149.1 JTAG scan chain design: scan_data holds the last JTAG-programmed value and is not reset asynchronously; on TRST/TLR the update_flop is cleared and the reset value propagates to scan_data on the next TCK edge. Both flops are in the same clock domain; RDC corruption concern requires a cross-domain boundary, which is absent here.} \
-    -filter {(Tag == "RDC_CORRUPT_OBSERVED") AND (Module == "prim_jtag_scan_reg") AND (DestObject =~ "*scan_data*")} \
-    -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { bmelton } -timestamp { 15-05-2026 12:00:00 }
-
-waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_jtag_stap_scan_data} \
-    -comment {jtag_stap: 3DCR scan register update_flop output (stap_*_rst reset) drives sib_mux_pre scan_data (no reset) within the same JTAG_TCK clock domain. By IEEE 1149.1 convention, scan_data in the SIB mux has no async reset; the JTAG update protocol initializes it. Reset assertion clears the update_flop, and scan_data takes the cleared value on the next TCK cycle -- intentional single-domain behavior, not a real cross-domain corruption path.} \
-    -filter {(Tag == "RDC_CORRUPT_OBSERVED") AND (Module == "jtag_stap") AND (DestObject =~ "*scan_data*")} \
-    -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { bmelton } -timestamp { 15-05-2026 12:00:00 }
-
-waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_jtag_intf_unit_scan_data} \
-    -comment {jtag_intf_unit: Three intra-TCK-domain paths where a JTAG control flop (dbg_disable_sync output, shift_dr_flop, or dfd_sib update_flop -- all reset by JTAG resets) drives a downstream scan_data register (no reset). All source and destination flops share JTAG_TCK. Scan_data registers in JTAG scan chains intentionally have no async reset per IEEE 1149.1; they are initialized by JTAG scan protocol. No cross-domain boundary is involved.} \
-    -filter {(Tag == "RDC_CORRUPT_OBSERVED") AND (Module == "jtag_intf_unit") AND (DestObject =~ "*scan_data*")} \
-    -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { bmelton } -timestamp { 15-05-2026 12:00:00 }
-
-waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_jtag_ptap_scan_data} \
-    -comment {jtag_ptap: TAP controller state flop (u_current_state_flop, trst_n_combined reset) drives the debug_ctrl scan register scan_data (no reset) within the same JTAG_TCK domain. Same IEEE 1149.1 scan chain pattern as prim_jtag_scan_reg Group A: scan_data intentionally has no async reset; the TAP state drives scan_data via normal shift/update protocol. No cross-domain boundary.} \
-    -filter {(Tag == "RDC_CORRUPT_OBSERVED") AND (Module == "jtag_ptap") AND (DestObject =~ "*scan_data*")} \
-    -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { bmelton } -timestamp { 15-05-2026 12:00:00 }
-
-#=======================================================================================================================
 # RDC_CORRUPT_OBSERVED : debug_ctrl scan reg → clock-stop synchronizer (dtp, cross-domain)
 #=======================================================================================================================
 # RDC:1644 — Module: dtp
-#   Source : u_debug_ctrl_scan_reg/gen_rst_n_reset.u_update_flop/q_o/Q[3]
+#   Source : u_debug_ctrl_scan_reg/u_update_flop/q_o/Q[3]
 #            (JTAG_TCK domain, reset by JTAG reset hierarchy)
 #   Dest   : u_cross_trigger_network/u_clock_stop_ctrl/u_clk_stop_sync/u_sync_1/q_o/Q[0]
 #            (DTPCLK domain, rst_n_i only)

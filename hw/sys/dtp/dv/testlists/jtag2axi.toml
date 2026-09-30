@@ -550,6 +550,14 @@ tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
+name = "dtp_jtag2axi_smc_otp_axi_series_write_read_incr_oversize_test"
+module = { cocotb = "dtp_jtag2axi_smc_otp_axi_series_write_read_incr_oversize_test", uvm = "dtp_jtag2axi_smc_otp_axi_series_write_read_incr_oversize_test" }
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
 name = "dtp_jtag2axi_smc_otp_axi_series_write_read_no_incr_test"
 module = { cocotb = "dtp_jtag2axi_smc_otp_axi_series_write_read_no_incr_test", uvm = "dtp_jtag2axi_smc_otp_axi_series_write_read_no_incr_test" }
 seed = 1

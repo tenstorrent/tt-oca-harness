@@ -1272,8 +1272,18 @@ The ROM ISR is itself inaccessible after lockout, so the host cannot rely on a
 vector before enabling interrupts.
 
 The enable and lockout state cannot be cleared by software. Warm or cold reset
-restores ROM access and restarts ROM at its entry point. The DV-only VROM at
-`0x1000_0000` is exempt and does not exist in production silicon.
+restores ROM access and restarts ROM at its entry point.
+
+The virtual ROM (VROM, `0x1000_0000`) is exempt only in a simulation build that
+defines `OCAH_KM_VROM`, and carries no security requirement. Without the define
+the window is an unmapped address, so a fetch from it pulses `EXEC_VIOLATION`
+like any other fetch outside the whitelist. See
+ifdef::backend-html5[]
+xref:ocah-integrator-guide:ROOT:defines.adoc#sep-defines-km[Key manager defines in the Integrator Guide].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-integrator-guide/latest/defines.html#sep-defines-km[Key manager defines in the Integrator Guide].
+endif::backend-pdf[]
 
 [[km-rom-stack-budget]]
 === ROM Stack Budget and the Static Load Ceiling

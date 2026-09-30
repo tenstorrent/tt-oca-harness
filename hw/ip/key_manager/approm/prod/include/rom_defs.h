@@ -92,7 +92,8 @@ extern const uint8_t __km_fw_load_limit[];
  *
  * Crossbar master port 8 decodes this 4 KB window. key_manager.sv replaces
  * addr[31:12] with OTP_EFUSE_REMAP_BASE[31:12] before driving efuse_req_o, so the shared SEP
- * efuse_interface_controller (at OTP_EFUSE_REMAP_BASE) is reached.
+ * efuse_interface_controller (at OTP_EFUSE_REMAP_BASE) is reached. Only the MAP, CTRL and
+ * MMR register maps are forwarded; any other offset in the window answers SLVERR.
  * Generated key_manager_addr.h also provides per-sub-region constants:
  *   KEY_MANAGER_OTP_EFUSE_MAP_BASE_ADDR  (0x00011000) — MAP / OTP shadow
  *   KEY_MANAGER_OTP_EFUSE_CTRL_BASE_ADDR (0x00011400) — eFuse Interface CTRL

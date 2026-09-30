@@ -79,6 +79,7 @@ import dtp_seq_lib_pkg::*;
 `include "dtp_jtag2axi_smc_otp_axi_random_ops_test.svh"
 `include "dtp_jtag2axi_smc_otp_axi_write_security_gating_test.svh"
 `include "dtp_jtag2axi_smc_otp_axi_series_write_read_incr_test.svh"
+`include "dtp_jtag2axi_smc_otp_axi_series_write_read_incr_oversize_test.svh"
 `include "dtp_jtag2axi_smc_otp_axi_series_write_read_no_incr_test.svh"
 `include "dtp_jtag2axi_smc_otp_axi_series_write_read_incr_with_error_test.svh"
 `include "dtp_jtag2axi_smc_otp_axi_read_random_ops_test.svh"
