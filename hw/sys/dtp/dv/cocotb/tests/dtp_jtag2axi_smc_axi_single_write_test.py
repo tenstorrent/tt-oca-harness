@@ -21,7 +21,9 @@ class dtp_jtag2axi_smc_axi_single_write_test(dtp_base_test):
         "CHK-AXI-RESP",
         "CHK-AXI-STRB",
         "CHK-AXI-COMPLETION",
+        "CHK-AXI-CREDITS",
         "CHK-AXI-STREAM-MIN",
+        "CHK-J2A-BUS-REQ",
     )
     axi_checker_stream_minimums = {"smc_axi": 2}
 

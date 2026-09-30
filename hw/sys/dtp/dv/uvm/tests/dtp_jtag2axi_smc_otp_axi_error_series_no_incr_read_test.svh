@@ -2,12 +2,12 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // dtp_jtag2axi_smc_otp_axi_error_series_no_incr_read_test — 3-beat
-// fixed-address series read with the fault armed on the first beat. The
-// injected response must be classified as EXPECTED (CHK-AXI-ERR-INJ), good
-// beats return the preloaded fixed-address reference through the passive
-// model compare (CHK-AXI-RDATA), the fault beat's capture is the data the
-// errored beat carried (CHK-J2A-ERR-RDATA), and the recovery read completes
-// with OKAY.
+// fixed-address series read with the fault on the middle beat, armed after the
+// first beat is published. The injected response must be classified as EXPECTED
+// (CHK-AXI-ERR-INJ), good beats return the preloaded fixed-address reference
+// through the passive model compare (CHK-AXI-RDATA), the fault beat's capture
+// is the data the errored beat carried (CHK-J2A-ERR-RDATA), and the recovery
+// read completes with OKAY.
 
 class dtp_jtag2axi_smc_otp_axi_error_series_no_incr_read_test extends dtp_base_test;
   `uvm_component_utils(dtp_jtag2axi_smc_otp_axi_error_series_no_incr_read_test)
@@ -27,7 +27,10 @@ class dtp_jtag2axi_smc_otp_axi_error_series_no_incr_read_test extends dtp_base_t
                             "CHK-AXI-RDATA",
                             "CHK-AXI-COMPLETION",
                             "CHK-AXI-NONVAC",
-                            "CHK-J2A-ERR-RDATA"
+                            "CHK-J2A-BUS-REQ",
+                            "CHK-J2A-ERR-RDATA",
+                            "CHK-J2A-FAULT-STATUS",
+                            "CHK-J2A-SERIES-ADDR"
                         });
   endfunction
 
@@ -56,7 +59,6 @@ class dtp_jtag2axi_smc_otp_axi_error_series_no_incr_read_test extends dtp_base_t
     t_seq.axi_cfg       = m_env.m_smc_otp_axi_cfg;
     t_seq.axi_evidence  = m_env.m_smc_otp_axi_env.m_checker;
     t_seq.axi_ref_model = m_env.m_smc_otp_axi_env.m_ref_model;
-    t_seq.axi_reads     = m_env.m_axi_read_history["smc_otp"];
   endfunction
 
 endclass : dtp_jtag2axi_smc_otp_axi_error_series_no_incr_read_test

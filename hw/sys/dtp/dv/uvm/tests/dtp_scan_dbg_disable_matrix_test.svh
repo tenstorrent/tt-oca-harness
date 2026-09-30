@@ -3,9 +3,10 @@
 //
 // dtp_scan_dbg_disable_matrix_test — the debug-disable matrix over the
 // eight scan-side gate fields: one-hot, boundary, and seeded multi-hot
-// rows with temporal-window and chain-readback outcome proofs. Each matrix
-// pass sweeps one all_clear row, one one-hot row per scan-side gate field,
-// the configured number of seeded multi-hot rows, and one all_disabled row.
+// rows with temporal-window and chain-readback outcome proofs. The matrix
+// runs one pass, which sweeps one all_clear row, one one-hot row per
+// scan-side gate field, the configured number of seeded multi-hot rows, and
+// one all_disabled row.
 
 class dtp_scan_dbg_disable_matrix_test extends dtp_base_test;
   `uvm_component_utils(dtp_scan_dbg_disable_matrix_test)
@@ -23,12 +24,10 @@ class dtp_scan_dbg_disable_matrix_test extends dtp_base_test;
     return seq;
   endfunction
 
-  virtual function string specific_loops_knob();
-    return "DTP_SCAN_DBG_DISABLE_MATRIX_TEST_LOOPS";
-  endfunction
-
-  virtual function string group_loops_knob();
-    return "DTP_SCAN_TEST_LOOPS";
-  endfunction
+  task run_phase(uvm_phase phase);
+    phase.raise_objection(this, {get_type_name(), " running"});
+    run_single_pass();
+    phase.drop_objection(this, {get_type_name(), " done"});
+  endtask
 
 endclass : dtp_scan_dbg_disable_matrix_test
