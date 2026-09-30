@@ -321,7 +321,7 @@ usage-constraint identity checks ([S23]).
 |`DFX_CTRL_STATUS_SMU` |`0xF800` |Memory-repair/MBIST completion gate (<<sec:smc_sync>>).
 |SMC SRAM |`0x60000` |1 MiB shared memory: status ring buffer; manifest/payload staging for
 recovery and secondary boot.
-|SMC `CPU_CTRL_RESET_CTRL` |`0x0020` |Written only on invalid LC state to hold all SMC cores
+|SMC `CPU_CTRL_RESET_CTRL` |`0x39020` |Written only on invalid LC state to hold all SMC cores
 in reset (<<sec:fuses>>).
 |===
 
@@ -1041,10 +1041,10 @@ locked out (<<sec:demotion>>).
 
 [[req-SEP-ROM-FUSE-020]]*[SEP-ROM-FUSE-020]* The ROM shall validate the sensed LC state
 against the closed set above. On an invalid value the ROM shall (a) hold all SMC cores in
-reset (write `0xF` to the core reset bits of SMC `CPU_CTRL_RESET_CTRL`), rendering the SMU
-inoperative, and (b) fail fatally (`ROM_ERR_LIFECYCLE_INVALID`, `0xA002`). An invalid LC
-state may indicate a fuse attack or hardware fault; the system shall not run in an unknown
-lifecycle state.
+reset (clear the active-low core reset bits `[3:0]` of SMC `CPU_CTRL_RESET_CTRL`, preserving
+the rest of the register), rendering the SMU inoperative, and (b) fail fatally
+(`ROM_ERR_LIFECYCLE_INVALID`, `0xA002`). An invalid LC state may indicate a fuse attack or
+hardware fault; the system shall not run in an unknown lifecycle state.
 
 [[req-SEP-ROM-FUSE-030]]*[SEP-ROM-FUSE-030]* The validated LC state shall be recorded in
 `bl0_state.lc_state` for consumption by later stages and by BL1, and shall be reported on the

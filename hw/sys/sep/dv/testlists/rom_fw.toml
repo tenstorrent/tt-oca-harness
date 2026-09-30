@@ -2380,3 +2380,27 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
 ]
+
+[[tests]]
+# An invalid LC_STATE holds the SMC cores in reset and halts (SEP-ROM-FUSE-020).
+#
+# Raw 0x9 is outside every encoding the lifecycle controller decodes. The test
+# seeds SMC CPU_CTRL.RESET_CTRL and requires the ROM to clear exactly the four
+# active-low core resets at that register's address, with the testbench's SMC
+# address-decode counter still at zero.
+#
+# [S11] halts before boot-mode selection, so no SPI transport or entropy plusarg
+# is needed. Budget matches sep_firmware_sboot_dis_rsvd_terminal_test, which
+# halts later.
+name = "sep_rom_lc_state_invalid_test"
+module = "rom_fw.sep_rom_lc_state_invalid_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "rom", "efuse", "lifecycle", "error", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_invalid_0x9.toml",
+]
