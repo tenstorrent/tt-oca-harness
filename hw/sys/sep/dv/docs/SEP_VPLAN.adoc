@@ -1239,7 +1239,7 @@ recipes: link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_
 
 *Test Coverage*: Key Manager instruction ROM and data SRAM reachability; SRAM scrambler read-back of consecutive reads of different words; the stored representation of a scrambled store; SRAM read-response latency (measured, not graded).
 
-*Why the latency is logged, not graded*: `km_sram_interface` descrambles a read response with the address it captures on the accepting edge. That is correct only while the SRAM answers one cycle after the accept; a response in the accept cycle would be descrambled with the previous read's address. No specification states the KM SRAM read latency, so the test does not grade it. The `KM-SRAM-RD-LAT` log line records the accept, one-cycle-later and mismatch counts as the measured precondition. The verdict on the read path is the data round trip in CHK-KM-SRAM-SCR-RT: a response descrambled with the wrong address fails that compare.
+*Why the latency is logged, not graded*: `km_sram_interface` descrambles a read response with the address it captures on the accepting edge. That is correct only while the SRAM answers at least one cycle after the accept; a response in the accept cycle would be descrambled with the previous read's address. The integrator guide (`doc/integrator/src/smu-sep.adoc`) states that requirement, and the `km_sram_interface` assertion `ReadCompletesAfterAccept_A` fails a response in the accept cycle. `prim_assert.sv` withholds `OCAH_OT_INC_ASSERT` when `VERILATOR` is defined, so the assertion exists only in the VCS build. The test does not grade the latency itself. The `KM-SRAM-RD-LAT` log line records the accept, one-cycle-later and mismatch counts as the measured precondition. The verdict on the read path is the data round trip in CHK-KM-SRAM-SCR-RT: a response descrambled with the wrong address fails that compare.
 
 *Test Procedure*:
 
@@ -1267,7 +1267,7 @@ The `KM-SRAM-RD-LAT` log line is a measurement, not a checker: the count of KM S
 
 *Evidence*: `CHK-KM-MEM`, `CHK-KM-SRAM-SCR-RT` and `CHK-KM-SRAM-SCR-STORED` are each their own record (`cocotb/tests/km/sep_km_mem_smoke_test.py`); `KM-SRAM-RD-LAT` is a logged measurement. The latency counters are the tb_top KM SRAM read-timing monitor (`km_sram_rd_*_count_o`, `km_sram_scr_rd_count_o`), and the scrambled-store rows come from the scrambled-write monitor (`km_sram_scr_wr_*_o`): observation-only reads of the wrapper `km_sram_mem_req` / `km_sram_mem_rsp` nets, the KM scrambler enable and the macro array.
 
-*Not claimed*: a KM SRAM read latency. No specification states it; the test logs the measured value. The descramble address under back-to-back reads of different words: this image produces none. A ciphertext value or a physical row: both come from the scrambler key and are logged, not compared against a golden. The scrambler key is not locked here, so the lock path stays with the `rom_main` leaves.
+*Not claimed*: a KM SRAM read latency. The requirement is at least one cycle, which `ReadCompletesAfterAccept_A` checks in the VCS build; the test logs the measured value. The descramble address under back-to-back reads of different words: this image produces none. A ciphertext value or a physical row: both come from the scrambler key and are logged, not compared against a golden. The scrambler key is not locked here, so the lock path stays with the `rom_main` leaves.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
