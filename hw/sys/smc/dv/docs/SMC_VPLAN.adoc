@@ -8271,7 +8271,7 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 
 *Test Coverage*:
 
-* A 64-byte payload -- the FIFO depth -- moved one byte per controller write from I2C_0 to I2C_1 while the target drains its ACQ FIFO concurrently; the length and every byte compared, entries classified by ACQ signal so a NACKed byte cannot pass as payload. Those compares are the firmware's.
+* A 64-byte payload -- the FIFO depth -- moved from I2C_0 to I2C_1 as one write frame fed to the FMT FIFO one entry at a time, the firmware draining the target's ACQ FIFO between entries; the length and every byte compared, entries classified by ACQ signal so a NACKed byte cannot pass as payload. Those compares are the firmware's.
 * The wire, graded by the bench as on card 169: acknowledged write frames to 0x10 carrying at least 64 data bytes in total. Floors, not exact counts, since the driver may split the transfer.
 
 *Test Procedure*:
