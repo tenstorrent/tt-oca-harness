@@ -164,8 +164,8 @@ package km_intf_pkg;
   // key_manager.sv replaces addr[31:12] with OTP_EFUSE_REMAP_BASE[31:12] before driving
   // efuse_req_o, so the shared SEP efuse_interface_controller is reached correctly.
   // Accessible sub-regions: MAP/shadow (offset 0x000-0x3FF), CTRL (offset 0x400-0x41B),
-  // MMR (offset 0x500-0x56F). This rule is a full 4 KB page: the remap keeps addr[11:0]
-  // and the sub-regions run to 0x56F.
+  // MMR (offset 0x500-0x573). This rule is a full 4 KB page: the remap keeps addr[11:0]
+  // and the sub-regions run to 0x573.
   localparam km_addr_t OTP_BASE_ADDR = 32'h0001_1000;  // OTP/eFuse KM-local window base
   localparam km_addr_t OTP_END_ADDR = 32'h0001_1FFF;  // OTP/eFuse KM-local window end
 
