@@ -1185,7 +1185,11 @@ local resources are accessed and which address translation is applied.</p>
 <p>The output remap registers control privilege-controlled address
 remapping for outbound transactions. The fabric provides separate remap
 regions for Machine-mode (highest privilege) and Xvisor/Hypervisor
-(intermediate privilege) operations.</p>
+(intermediate privilege) operations. Each region carries a
+<code>REGION_ATTRS.valid</code> bit (reset 0): when set, accesses selecting the
+region are remapped through its offset; when clear, they pass through
+with their address unchanged, so an unprogrammed entry acts as an
+identity mapping rather than forcing every access to offset 0.</p>
 </div>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
@@ -1206,7 +1210,8 @@ regions for Machine-mode (highest privilege) and Xvisor/Hypervisor
 <h3 id="region_attrs">region_attrs</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:56</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>63</td><td>valid</td><td>RW</td><td>0x0</td><td>If set, accesses to this region are remapped by offset; if clear, they pass through with their address unchanged</td></tr>
+<tr><td>62:56</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>55:0</td><td>offset</td><td>RW</td><td>0x0</td><td>Address translation for remap region. RTL will use the number of bits appropriate for region granulaity.<br>e.g. SMC: 8 * 1MB regions --&gt; 20 bits of address space per region, 36 MSBs from this register used<br>SEP: 16 * 512KB regions --&gt; 19 bits of address space per region, 37 MSBs from this register used</td></tr>
 </table>
 </div>
