@@ -419,11 +419,11 @@ never when it was written.
 |`sep_fabric_inbound_filter_rule_matrix_test`
 |no_cpu, real PROD fuse sense
 |ocah_axi_vip
-|Brings the lifecycle controller up in PROD so the inbound filter is genuinely active (`sep_debug=0`, value-checked against the lifecycle golden), then walks entries 0 and 7, two address windows, and `{rw, read-only, write-only}` at `src_id=0` (match-all), plus entry 0 / window 0 × `{rw, r, w}` at `src_id=0x5` with a matching AXI `user[3:0]` and one src-mismatch cell — 16 cells in one invocation — then the same-page `allow_burst=1` granule, page-bound, and `FILTER_CONFIG.locked` on entry 15.
+|Brings the lifecycle controller up in PROD so the inbound filter is genuinely active (`sep_debug=0`, value-checked against the lifecycle golden), then walks entries 0 and 7, two address windows, and `{rw, read-only, write-only}` at `src_id=0` (match-all), plus entry 0 / window 0 × `{rw, r, w}` at `src_id=0x5` with a matching AXI `user[3:0]` and one src-mismatch cell — 16 cells in one invocation — then the same-page `allow_burst=1` granule, page-bound, and `FILTER_CONFIG.locked` on entry 15. Red on the current RTL; see <<known-limitations>>.
 |`sep_fabric_remap_filter_csr_bank_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|R/W, 64-bit, RO, valid, and write-once-set across the alias/AP/STEE remap and inbound/outbound filter CSR banks, plus per-entry storage independence across all 64 filter and alias entries.
+|R/W, 64-bit, RO, valid, and write-once-set across the alias/AP/STEE remap and inbound/outbound filter CSR banks, plus per-entry storage independence across all 64 filter and alias entries. Red on the current RTL; see <<known-limitations>>.
 |`sep_fabric_output_remap_datapath_proxy_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -4026,6 +4026,8 @@ recovery attempt.
 
 *BFM / Model*: ocah_axi_vip
 
+*Tracking*: #2603
+
 *Randomization*: RAND-REP — entries 0 and 7 × two windows × `{rw, r, w}` at match-all, plus entry 0 / window 0 source-ID match and mismatch, run every seed. Seed varies the window data, the entry-15 granule window, and the bound-probe registers.
 
 *Objective*: Brings the lifecycle controller up in PROD so the inbound filter is genuinely active (`sep_debug=0`, value-checked against the lifecycle golden), then walks entries 0 and 7, two address windows, and `{rw, read-only, write-only}` at `src_id=0` (match-all), plus entry 0 / window 0 x `{rw, r, w}` at `src_id=0x5` with a matching AXI `user[3:0]` and one src-mismatch cell — 16 cells in one invocation — then the same-page `allow_burst=1` granule, page-bound, and `FILTER_CONFIG.locked` on entry 15.
@@ -4086,6 +4088,8 @@ recovery attempt.
 |===
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
+*Current status*: red on the current RTL. `CHK-CONFIG-LOCK` fails on the response code of the locked writes, before its 2-beat `allow_burst` probe runs, and every other named checker PASSes. See <<known-limitations>>.
+
 *Scope*: the walk is inbound-filter entries 0 and 7, two address
 windows (`SEP_SW_DEBUG` and scratch-cold[0]), `{rw, read-only, write-only}` at
 `src_id=0`, plus the source-ID product on entry 0 / window 0, then the
@@ -4109,6 +4113,8 @@ filter only ever sees `tx_len==0`.
 *Source Module*: `sep_fabric_remap_filter_csr_bank_test`
 
 *BFM / Model*: ocah_axi_vip
+
+*Tracking*: #2603
 
 *Objective*: R/W, 64-bit, RO, valid, and write-once-set across the alias/AP/STEE remap and inbound/outbound filter CSR banks, and that every entry of each bank holds its own value. Each filter entry and remap region is an independent rule with its own storage, so a decode that aliased two entries, or a bank that implemented fewer entries than the map declares, would be invisible to a sweep that walks one entry per group.
 
@@ -4144,6 +4150,8 @@ filter only ever sees `tx_len==0`.
 |The write-once-set `FILTER_CONFIG.locked` bit holds, and while it is set every write to that entry's `FILTER_CONFIG`, `START_ADDR` and `END_ADDR` completes DECERR and leaves the word unchanged, on the inbound and the outbound bank. Source: `hw/ip/axi_filter/regs/filter_ctrl.rdl` (`locked`) and `hw/ip/axi_filter/doc/index.adoc` ("Locking a Filter Entry"). Every code is logged before it is graded.
 |===
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Current status*: red on the current RTL. `CHK-WOSET` fails on the response code of the locked writes, and every other named checker PASSes. See <<known-limitations>>.
 
 *Scope limit*: one region or entry per bank per seed. Cross-region isolation —
 that writing region *k* leaves region *j* untouched — is not checked beyond the
@@ -7969,6 +7977,9 @@ constraint is not an open defect.
 
 |KM CPU bus responses outside the RDL (hardware)
 |Three KM CPU addresses answer differently from `hw/ip/key_manager/regs/key_manager.rdl`, and each has a leaf that fails on its own checker until the RTL or the RDL changes. A store to KM ROM completes with no error response and sets only `IRQ_STATUS.ROM_WRITE_ERR`, where the RDL says it returns SLVERR (`sep_km_rom_write_slverr_test`). A load or store past the `OTP_EFUSE_MMR` aperture reaches the eFuse shim register, which the RDL excludes from the KM path (`sep_km_otp_shim_unreachable_test`). A load from the VROM base never completes: the KM CPU wrapper routes that range to a testbench-only port whose ready the RTL ties to 0, and the RDL memory-map summary does not list the window and maps it to DECERR (`sep_km_vrom_decerr_test`). The KM CPU has no bus-error input, so it observes an error response only as the sticky `IRQ_STATUS.AXI_SLVERR` / `AXI_DECERR` bits; `sep_km_key_policy_vault_test` CHK-EXTENT and CHK-LOCKUSE show those bits set on an erroring store and load while the image runs on.
+
+|Locked filter entry write response (hardware)
+|`hw/ip/axi_filter/regs/filter_ctrl.rdl` (`FILTER_CONFIG.locked`) and `hw/ip/axi_filter/doc/index.adoc` ("Locking a Filter Entry") say that a write to a locked entry's `FILTER_CONFIG`, `START_ADDR` or `END_ADDR` goes to the AXI error subordinate and completes DECERR. On SEP the write completes SLVERR, on the inbound and the outbound bank, and the word keeps its value. `CHK-WOSET` in `sep_fabric_remap_filter_csr_bank_test` and `CHK-CONFIG-LOCK` in `sep_fabric_inbound_filter_rule_matrix_test` grade DECERR and fail until the RTL or the specification changes. `CHK-CONFIG-LOCK` stops at the response code, so its 2-beat `allow_burst` probe does not run on the current RTL.
 
 |KM mailbox outbound flush
 |`sep_km_mailbox_protocol_rand_test` holds the Key Manager in software reset so fill, overflow and underflow are deterministic. Only the KM CPU pushes into the outbound FIFO, so that FIFO is empty when `CTRL.FLUSH` runs, and CHK-FLUSH proves the inbound flush only. A flush of a non-empty outbound FIFO needs the KM running and is not claimed.
