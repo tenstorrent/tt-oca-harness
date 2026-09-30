@@ -37,7 +37,8 @@ using OCAH:
 ## Documentation
 
 Full documentation is published at
-**[tenstorrent.github.io/tt-oca-harness](https://tenstorrent.github.io/tt-oca-harness/)**:
+**[tenstorrent.github.io/tt-oca-harness](https://tenstorrent.github.io/tt-oca-harness/)**,
+which comprises:
 
 - **[Getting Started Guide](https://tenstorrent.github.io/tt-oca-harness/ocah-starting/latest/index.html)** — setup, workflows, and contribution.
 - **[Technical Reference Manual](https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/index.html)** — architecture and register reference.
@@ -46,7 +47,9 @@ Full documentation is published at
 - **[Application Notes](https://tenstorrent.github.io/tt-oca-harness/ocah-appnotes/latest/index.html)** — task-focused how-to notes.
 - **[Verification Dashboard](https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/dashboard.html)** — single entry point for the DV status of every OCAH IP and subsystem.
 - Per-subsystem datasheets (PDF): [SMC](https://tenstorrent.github.io/tt-oca-harness/downloads/ocah-smc-datasheet.pdf), [SEP](https://tenstorrent.github.io/tt-oca-harness/downloads/ocah-sep-datasheet.pdf), [SMU](https://tenstorrent.github.io/tt-oca-harness/downloads/ocah-smu-datasheet.pdf), [DTP](https://tenstorrent.github.io/tt-oca-harness/downloads/ocah-dtp-datasheet.pdf), and [AoU](https://tenstorrent.github.io/tt-oca-harness/downloads/ocah-aou-datasheet.pdf).
-- Integrator-facing register and timing collateral is indexed under [`integration/`](integration/).
+
+Integrator-facing register and timing collateral is indexed under
+[`integration/`](integration/) in this repository.
 
 ## What's inside this repository
 
