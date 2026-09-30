@@ -9,7 +9,7 @@ ports) may change between minor versions.
 
 ## [0.5.0] - 2026-10-05 (Beta)
 
-First public release of the Open Chiplet Atlas Harness (OCAH).
+First public release of the Open Chiplet Atlas (OCA) Harness.
 
 ### Added
 
