@@ -5,9 +5,10 @@
 Boots hw/sys/sep/dv/fw/tests/sep_smu_spi, which drives a minimal command /
 address / receive sequence on the SEP's OpenTitan `spi_controller` and reads the
 received word back out of RXDATA. The image is written for exactly this
-configuration: it needs no external flash model and programs no pad mux, because
-the open DUT has neither, so the received word is the bench's undriven MISO
-level (0), not device content.
+configuration: it needs no external flash model, and it programs no pad path,
+because the OT SPI host reaches the pads only on the SMC LSIO primary plane and
+no select steers it. The received word is the bench's undriven MISO level (0),
+not device content.
 
 The SEP's third-party SPI host wrapper and the SPI flash device models are
 excluded from the build (smu_sim_cfg.toml `exclude_files`), so nothing routed

@@ -7,9 +7,9 @@
  *   Run a minimal OpenTitan SPI command sequence in SMU SEP_RTL mode without
  *   requiring an external flash model, read the received word back out of the
  *   RX FIFO, then park the CPU in explicit pass/fail loops so the cocotb test
- *   can classify the result by SEP PC. The open DUT has no SPI pad mux, so
- *   this image does not program one. A companion wrapper mux belongs with
- *   that wrapper's firmware.
+ *   can classify the result by SEP PC. The OT SPI host reaches the pads only
+ *   on the SMC LSIO primary plane and no select steers it, so this image
+ *   programs no pad path.
  */
 
 #include <stdint.h>

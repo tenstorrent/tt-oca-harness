@@ -30,11 +30,13 @@
 
 #define AXI_EXT_XIP_OFF 0x4000
 #define AXI_EXT_XIP_WORD 0xA1B2C3D4
+/* AXI extension slave index of the SPI_MUX_CTRL page and of the XIP window. */
 #define AXI_EXT_SEL_SPI_MUX 0
 #define AXI_EXT_SEL_XIP 2
 
 #define AXI_EXT_S0_FAIL 0x00720FA1
 #define AXI_EXT_BRINGUP_OK 0x00720000
+/* Stage token: the SPI_MUX_CTRL MMIO write and readback completed. */
 #define AXI_EXT_MUX_DONE 0x00720001
 #define AXI_EXT_GPIO_OVRD_OK 0x00720010
 #define AXI_EXT_XIP_OK 0x00720002

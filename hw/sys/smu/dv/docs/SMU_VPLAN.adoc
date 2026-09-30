@@ -3731,8 +3731,8 @@ Two things are worth reading before the entries:
 
 *Test Coverage*:
 
-* The image is written for exactly this configuration: it needs no external flash model and programs no pad mux, because the open DUT has neither.
-* This is the SPI path that survives into OSS. The Cadence xSPI wrapper and the SPI flash device models are excluded from the build, so anything routed through those cannot run here -- but `spi_controller` itself is present and this image exercises it.
+* The image is written for exactly this configuration: it needs no external flash model, and it programs no pad path, because the OT SPI host reaches the pads only on the SMC LSIO primary plane and no select steers it.
+* This is the SPI path of the open build. Excluded for OSS hygiene: proprietary IPs in nonfree. Anything routed through the second-plane SPI or an SPI flash device model cannot run here -- but `spi_controller` itself is present and this image exercises it.
 * The image parks in one of six per-stage fail loops mirroring its `SPI_ERR_*` codes, so a failure names the point in the transfer that stalled.
 * A seventh catch-all fail loop exists for an `rc` outside the enumerated codes; the compiler can prove it unreachable and drop it, in which case it is reported as a path not covered.
 

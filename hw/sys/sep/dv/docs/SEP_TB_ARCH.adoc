@@ -44,7 +44,7 @@ link:SEP_VPLAN.adoc[SEP_VPLAN.adoc].
 |SEP Interface |Preferred VIP |Modeling Approach |Notes
 |CPU-LSU AXI (no_cpu) |`ocah_axi_vip` via `SepAxiAgent` (`s_axi`) |Unified OCAH BFM |Primary stimulus; no inbound filter on this path
 |SMN-inbound AXI |Second `SepAxiAgent` (`m_axi`) |Unified OCAH BFM |Real DUT inbound port; traverses inbound filter (block-by-default)
-|SPI flash pads |`ocah_spi_vip` `OcahSpiFlash` |Unified OCAH BFM |Pads are scalar ports on `tb_top`; no pad mux in the open build
+|SPI flash pads |`ocah_spi_vip` `OcahSpiFlash` |Unified OCAH BFM |Pads are scalar ports on `tb_top`; no select steers the OT SPI host
 |JTAG (eFuse mux path) |`ocah_axi_vip` AXI-Lite master on the OTP JTAG2AXIL port (`j_axi_*`) |Unified OCAH BFM |eFuse JTAG–AXI-Lite coexistence tests
 |Entropy raw noise |`esrc_noise_ext_i` + Python goldens |DUT-local |Deterministic noise shared with the decorrelator golden
 |eFuse / OTP |Generic OSS eFuse bank model |Shared OSS model |No foundry OTP macros; staged via `+sep_efuse_hex`
@@ -349,8 +349,8 @@ with `+sep_efuse_prog_fail_count`, `+sep_efuse_prog_fail_percent`, and
 Internal to the wrapper; its pads come out as scalar cocotb ports in `tb_top.sv`
 so tests can attach the Apache-2.0 `OcahSpiFlash` Python BFM.
 
-There is no SPI pad mux in this build — the pads are driven straight off the
-wrapper's struct port, so flash tests need no mux step.
+No select steers the OT SPI host: the pads are driven straight off the
+wrapper's struct port, so flash tests need no select step.
 
 ==== TB shims
 

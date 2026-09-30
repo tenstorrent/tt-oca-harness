@@ -428,7 +428,7 @@ args = [
 # SEP OpenTitan spi_controller command sequence. The licensed SPI controller
 # wrapper and the flash device models are excluded from the build, but
 # spi_controller itself is present, and this image is written for exactly
-# that -- no external flash model, no pad mux. Six per-stage fail loops, so a
+# that -- no external flash model, no pad select. Six per-stage fail loops, so a
 # failure names where the transfer stalled.
 [[tests]]
 name = "smu_sep_spi_test"
