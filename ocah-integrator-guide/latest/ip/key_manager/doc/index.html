@@ -330,7 +330,9 @@ scan reset in <code>u_reset_conditioner</code> and drives the test inputs of <co
 <p>The Key Manager is configured through its ROM and SRAM sizes, the mailbox FIFO depth,
 the read-data behaviour of its memories, and the address of the eFuse controller.
 The main KM SRAM is 32 KB (8192 × 32-bit words), implemented with the scrambler macro
-<code>scrambler_8192x32</code>.</p>
+<code>scrambler_8192x32</code>. The SRAM macro must return read data (<code>rvalid</code>) at least one cycle
+after the cycle in which it grants the read, because the SRAM interface descrambles and
+parity-checks each response with the address and byte strobes it captures at the grant.</p>
 </div>
 <div class="paragraph">
 <p>The parameters of <code>key_manager</code> are listed in <a href="../../../../../ocah-docs/latest/rtl-modules-reference/ip/key_manager/key_manager.html" class="xref page">key_manager</a>.</p>

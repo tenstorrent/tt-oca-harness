@@ -634,7 +634,7 @@
 </aside>
 <article class="doc">
 <h1 class="page">jtag2axi</h1>
-<p>Generate single-beat AXI4 transactions from JTAG scan-chain inputs.</p><p>All scan chains share one shift register, captured and shifted on rising TCK, and one update latch loaded on falling TCK; series reads and writes pipeline. AXISeriesCtrl.pipeline_depth programs 0..FIFO_DEPTH, larger values saturate, and the effective depth is pipeline_depth + 1. Every transaction carries ID 0, user 0, one INCR beat, AxCACHE 0b0010 and AxPROT 0b000.</p><p>The following logic lives in the TCK domain:</p><ul><li>TAP scan</li><li>command dispatch</li><li>AXI master FSM</li><li>series request/response FIFOs</li><li>sticky status</li></ul><p>The AXI master crosses into ACLK through one axi_cdc_clearable instance that tolerates independent warm resets on trst_ni and arst_ni via cdc_fifo_gray_clearable reset coupling. An ACLK-domain output stage buffers AW, W and AR, issues AW and W only as a pair, bounds outstanding transactions, and drains responses to requests issued before a CDC clear.</p><p>Parameter constraints:</p><ul><li>Address and data widths are parametrizable; DATA_WIDTH must be a power of 2 and a multiple of 8.</li><li>ATOP_WIDTH must be 6 to match the PULP AXI channel typedef layout.</li><li>ADDR_WIDTH must cover the byte offset within one data beat.</li></ul>
+<p>Generate single-beat AXI4 transactions from JTAG scan-chain inputs.</p><p>All scan chains share one shift register, captured and shifted on rising TCK, and one update latch loaded on falling TCK; series reads and writes pipeline. AXISeriesCtrl.pipeline_depth programs 0..FIFO_DEPTH, larger values saturate, and the effective depth is pipeline_depth + 1. Every transaction carries ID 0, user 0, one INCR beat, AxCACHE 0b0010 and AxPROT 0b000. A scanned size wider than the bus is taken as one full beat: AxSIZE, the series write strobes, the series address step and the series data length all use the bus width.</p><p>The following logic lives in the TCK domain:</p><ul><li>TAP scan</li><li>command dispatch</li><li>AXI master FSM</li><li>series request/response FIFOs</li><li>sticky status</li></ul><p>The AXI master crosses into ACLK through one axi_cdc_clearable instance that tolerates independent warm resets on trst_ni and arst_ni via cdc_fifo_gray_clearable reset coupling. An ACLK-domain output stage buffers AW, W and AR, issues AW and W only as a pair, bounds outstanding transactions, and drains responses to requests issued before a CDC clear.</p><p>Parameter constraints:</p><ul><li>Address and data widths are parametrizable; DATA_WIDTH must be a power of 2 and a multiple of 8.</li><li>ATOP_WIDTH must be 6 to match the PULP AXI channel typedef layout.</li><li>ADDR_WIDTH must cover the byte offset within one data beat.</li></ul>
 <div class="ocah-reg-html">
 <h2>Parameters</h2>
 <table id="trm-table-1">
@@ -668,7 +668,7 @@
 <tr><td><code>awid_o</code></td><td>output</td><td><code>logic [ID_WIDTH-1:0]</code></td><td>Write-address ID, always zero.</td></tr>
 <tr><td><code>awaddr_o</code></td><td>output</td><td><code>logic [ADDR_WIDTH-1:0]</code></td><td>Write address.</td></tr>
 <tr><td><code>awlen_o</code></td><td>output</td><td><code>logic [7:0]</code></td><td>Write burst length, always zero for a single beat.</td></tr>
-<tr><td><code>awsize_o</code></td><td>output</td><td><code>logic [2:0]</code></td><td>Write beat size from the scanned size field.</td></tr>
+<tr><td><code>awsize_o</code></td><td>output</td><td><code>logic [2:0]</code></td><td>Write beat size: the scanned size, at most the bus width.</td></tr>
 <tr><td><code>awburst_o</code></td><td>output</td><td><code>logic [1:0]</code></td><td>Write burst type, always INCR.</td></tr>
 <tr><td><code>awlock_o</code></td><td>output</td><td><code>logic</code></td><td>Write lock, always zero.</td></tr>
 <tr><td><code>awcache_o</code></td><td>output</td><td><code>logic [3:0]</code></td><td>Write cache attributes, always 0b0010.</td></tr>
@@ -693,7 +693,7 @@
 <tr><td><code>arid_o</code></td><td>output</td><td><code>logic [ID_WIDTH-1:0]</code></td><td>Read-address ID, always zero.</td></tr>
 <tr><td><code>araddr_o</code></td><td>output</td><td><code>logic [ADDR_WIDTH-1:0]</code></td><td>Read address.</td></tr>
 <tr><td><code>arlen_o</code></td><td>output</td><td><code>logic [7:0]</code></td><td>Read burst length, always zero for a single beat.</td></tr>
-<tr><td><code>arsize_o</code></td><td>output</td><td><code>logic [2:0]</code></td><td>Read beat size from the scanned size field.</td></tr>
+<tr><td><code>arsize_o</code></td><td>output</td><td><code>logic [2:0]</code></td><td>Read beat size: the scanned size, at most the bus width.</td></tr>
 <tr><td><code>arburst_o</code></td><td>output</td><td><code>logic [1:0]</code></td><td>Read burst type, always INCR.</td></tr>
 <tr><td><code>arlock_o</code></td><td>output</td><td><code>logic</code></td><td>Read lock, always zero.</td></tr>
 <tr><td><code>arcache_o</code></td><td>output</td><td><code>logic [3:0]</code></td><td>Read cache attributes, always 0b0010.</td></tr>

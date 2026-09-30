@@ -313,7 +313,8 @@ interface provides the BL0 ROM containing the first-stage bootloader.</p>
 <code>sep_crypto_pka_imem_sram</code> and <code>sep_crypto_pka_dmem_sram</code> connect to the OTBN
 public key accelerator instruction and data memories respectively.
 <code>km_rom_mem</code> and <code>km_sram_mem</code> connect to the Key Manager&#8217;s dedicated ROM and
-SRAM macros.</p>
+SRAM macros. The KM SRAM must assert <code>rvalid</code> at least one cycle after the cycle
+in which it grants a read; a registered-read macro meets this.</p>
 </div>
 <div class="paragraph">
 <p><code>abr_mem</code> connects the Adams Bridge working SRAM. On an idle cycle (<code>re</code> low),

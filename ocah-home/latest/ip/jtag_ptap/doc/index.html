@@ -1319,6 +1319,13 @@ otherwise. The single-operation TDR has <code>2 + S + D/8 + D + A</code> bits.
 For <code>D=64</code> and <code>A=51</code>, it has 127 bits.</p>
 </div>
 <div class="paragraph">
+<p>The size field requests a transfer of <code>2**size</code> bytes. The AXI protocol does not
+allow a transfer wider than the data bus, so the bridge uses the effective size
+<code>E = min(size, data_size)</code>, where <code>data_size = log2(D/8)</code> is the capability field of
+the same name. A size above <code>data_size</code> transfers one full <code>D</code>-bit beat: for
+<code>D=32</code>, the 2-bit size field admits 3, and the bridge transfers 4 bytes.</p>
+</div>
+<div class="paragraph">
 <p><a href="#jtag2axi-single-operation-layout-figure">JTAG2AXI single-operation layout</a> shows the single-operation TDR for a 64-bit
 data bus and a 51-bit address bus. In this and the following layout figures the most
 significant bit is on the left, nearest TDI, and bit 0 on the right shifts out to TDO
@@ -1380,7 +1387,7 @@ and operation fields.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">size</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The number of bytes to read/write. This field is used as AxSIZE for the transaction. 0: 1 byte (8 bits) 1: 2 bytes (16 bits) 2: 4 bytes (32 bits) 3: 8 bytes (64 bits) 4: 16 bytes (128 bits) 5: 32 bytes (256 bits) 6: 64 bytes (512 bits) 7: 128 bytes (1024 bits)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The requested transfer size in powers-of-2 bytes. The effective size <code>E</code>, the smaller of this field and <code>data_size</code>, is used as AxSIZE for the transaction. 0: 1 byte (8 bits) 1: 2 bytes (16 bits) 2: 4 bytes (32 bits) 3: 8 bytes (64 bits) 4: 16 bytes (128 bits) 5: 32 bytes (256 bits) 6: 64 bytes (512 bits) 7: 128 bytes (1024 bits)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1:0</p></td>
@@ -1477,7 +1484,7 @@ manage a series of AXI accesses.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">size</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The number of bytes to read/write. This field is used as AxSIZE for the transaction. 0: 1 byte (8 bits) 1: 2 bytes (16 bits) 2: 4 bytes (32 bits) 3: 8 bytes (64 bits) 4: 16 bytes (128 bits) 5: 32 bytes (256 bits) 6: 64 bytes (512 bits) 7: 128 bytes (1024 bits)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The requested transfer size in powers-of-2 bytes. The effective size <code>E</code>, the smaller of this field and <code>data_size</code>, is used as AxSIZE for the transaction. 0: 1 byte (8 bits) 1: 2 bytes (16 bits) 2: 4 bytes (32 bits) 3: 8 bytes (64 bits) 4: 16 bytes (128 bits) 5: 32 bytes (256 bits) 6: 64 bytes (512 bits) 7: 128 bytes (1024 bits)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1:0</p></td>
@@ -1500,18 +1507,18 @@ previously specified.</p>
 which was previously loaded by AXI_SERIES_CTRL, is incremented as follows:</p>
 </div>
 <div class="paragraph">
-<p>AXI_SERIES_CTRL.address += 2**AXI_SERIES_CTRL.size</p>
+<p>AXI_SERIES_CTRL.address += 2**E</p>
 </div>
 <div class="paragraph">
 <p>This allows the debugger to load or dump contiguous regions of address space.</p>
 </div>
 <div class="paragraph">
 <p>Note that this is a variable-length data register. The length is n bits where
-n = 8*(2**AXI_SERIES_CTRL.size).</p>
+n = 8*(2**E).</p>
 </div>
 <div class="paragraph">
 <p>The data field is the logical transfer payload. The bridge places that payload
-on the AXI byte lanes selected by the current address and <code>AXI_SERIES_CTRL.size</code>,
+on the AXI byte lanes selected by the current address and the effective size <code>E</code>,
 and Capture-DR returns the payload from those lanes.</p>
 </div>
 <div class="paragraph">
@@ -1594,11 +1601,11 @@ This is useful for repeated polling or triggering.</p>
 </div>
 <div class="paragraph">
 <p>Note that this is a variable-length data register. The length is n bits where
-n = 8*(2**AXI_SERIES_CTRL.size).</p>
+n = 8*(2**E).</p>
 </div>
 <div class="paragraph">
 <p>The data field is the logical transfer payload. The bridge places that payload
-on the AXI byte lanes selected by the current address and <code>AXI_SERIES_CTRL.size</code>,
+on the AXI byte lanes selected by the current address and the effective size <code>E</code>,
 and Capture-DR returns the payload from those lanes.</p>
 </div>
 <div class="paragraph">
@@ -1680,11 +1687,11 @@ during a block operation.</p>
 </div>
 <div class="paragraph">
 <p>Note that this is a variable-length data register. The length is n+1 bits where
-n = 8*(2**AXI_SERIES_CTRL.size).</p>
+n = 8*(2**E).</p>
 </div>
 <div class="paragraph">
 <p>The data field is the logical transfer payload. The bridge places that payload
-on the AXI byte lanes selected by the current address and <code>AXI_SERIES_CTRL.size</code>,
+on the AXI byte lanes selected by the current address and the effective size <code>E</code>,
 and Capture-DR returns the payload from those lanes.</p>
 </div>
 <div class="paragraph">
