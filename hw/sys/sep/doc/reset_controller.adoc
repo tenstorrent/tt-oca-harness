@@ -5,7 +5,7 @@
 :description: SEP software reset requests, AXI isolation, and Key Manager and TRNG reset sequencing.
 
 ifdef::backend-html5[]
-:dtp-ic-reset-overrides-ref: xref:dtp:jtag.adoc#dtp-ic-reset-overrides[IC_RESET Overrides]
+:dtp-ic-reset-overrides-ref: xref:dtp:clk_rst.adoc#dtp-ic-reset-overrides[IC_RESET Overrides]
 :sep-crypto-reset-diagram-ref: xref:sep:crypto.adoc#sep-crypto-reset-diagram[SEP cryptographic subsystem resets]
 endif::backend-html5[]
 ifndef::backend-html5[]

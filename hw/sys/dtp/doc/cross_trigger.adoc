@@ -12,7 +12,7 @@ provide wire-OR or point-to-point signaling at the chiplet boundary.
 == Event Routing
 
 The CTN combines Cross-Trigger Matrices (CTMs) and Cross-Trigger Ports (CTPs).
-Configure the matrix routes and port modes for the required event path before
+Configure the port modes, then the matrix routes, for the required event path before
 enabling the participating debug sources.
 
 == Clock Stop

@@ -5,7 +5,6 @@
 :description: System fabric access to and from the SMU.
 :page-aliases: smn.placeholder.adoc
 
-// The page alias preserves the former URL and its fragment links.
 [[system-management-network]]
 
 The System Management Network (SMN) is the system fabric outside the SMU.

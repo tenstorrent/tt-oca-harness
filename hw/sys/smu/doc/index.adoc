@@ -46,7 +46,7 @@ ifdef::backend-html5[]
 xref:ROOT:clock_domains.adoc[Clock Domains] chapter.
 endif::backend-html5[]
 ifdef::backend-pdf[]
-<<ocah-clock-domains,OCAH Architecture>> chapter.
+<<ocah-clock-domains,Clock Domains>> chapter.
 endif::backend-pdf[]
 
 [[smu-composition-diagram]]

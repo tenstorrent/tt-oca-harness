@@ -29,7 +29,15 @@ STAP state machines, and scan registers. Asynchronous to `clk_i`.
 
 The combined JTAG and CLA clock-stop request crosses into `clk_i` through
 two synchronizer stages in `ctn_clock_stop_ctrl`, followed by an output
-register. The CTP handshake crossings are described in the port reference.
+register. The CLA clock-stop status also crosses into TCK through the DEBUG_CONTROL
+TDR's two-flop `u_cla_clock_stop_sync` synchronizer before bit 4 captures it.
+The CTP handshake crossings are described in the
+ifdef::backend-html5[]
+xref:ip:cross_trigger_port/doc/index.adoc#ctp-interface[port reference].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+CTP interface.
+endif::backend-pdf[]
 
 [[reset-architecture]]
 == Reset Architecture
@@ -58,8 +66,14 @@ to Test-Logic-Reset regardless of the TCK or TMS state.
 All registers reset to safe states. The JTAG TAP returns to Test-Logic-Reset
 on either TRST_n or power-on reset.
 
-[[ic_reset-overrides]]
+[[dtp-ic-reset-overrides]]
 == IC_RESET Overrides
+
+ifdef::backend-html5[]
+++++
+<span id="ic_reset-overrides"></span>
+++++
+endif::backend-html5[]
 
 The primary TAP exposes a reset-selection test data register (TDR) through
 `IC_RESET`. IEEE 1149.1-2013 defines the instruction in Clause 8.21 and the
@@ -92,12 +106,13 @@ from the SMU type parameter `ic_reset_ext_t`. The Integrator Guide records the
 SMU-composed port map.
 
 [[dtp-clock-stop]]
+== Clock Stop
 
 The DTP combines JTAG DEBUG_CONTROL and CLA clock-stop request sources into
 one functional chiplet halt path, while keeping the CLA-only status separate
 for debugger readback.
 
-== Halt Path Architecture
+=== Halt Path Architecture
 
 <<dtp-clock-stop-diagram>> shows how JTAG and CLA requests contribute to the chiplet
 halt path, with the DTP as the SMU instantiates it. The DEBUG_CONTROL TDR is drawn
@@ -132,7 +147,7 @@ combinational, so the DEBUG_CONTROL TDR passes it through a two-flop TCK
 synchronizer before bit 4 captures it in Capture-DR. A debugger reads it there to
 observe whether any CLA clock-stop source is active.
 
-== Signal Flow
+=== Signal Flow
 
 . The JTAG Interface Unit captures DEBUG_CONTROL bits in the TCK domain.
   The `jtag_clock_stop` bit is routed to the CTN clock-stop controller;

@@ -108,8 +108,11 @@ See xref:clk_rst.adoc#dtp-clocks-and-resets[Clock Domains].
 [[reset-architecture]]
 See xref:clk_rst.adoc#reset-architecture[Reset Architecture].
 
-[[ic-reset-overrides]]
-See xref:clk_rst.adoc#ic_reset-overrides[IC_RESET Overrides].
+[[dtp-ic-reset-overrides]]
+++++
+<span id="ic_reset-overrides"></span>
+++++
+See xref:clk_rst.adoc#dtp-ic-reset-overrides[IC_RESET Overrides].
 
 endif::backend-html5[]
 == Debug Disable
