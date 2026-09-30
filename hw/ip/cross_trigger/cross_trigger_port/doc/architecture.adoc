@@ -23,7 +23,8 @@ wire-OR mode, when `mode_wire_or_i` is high because `CONFIG.MODE` is 0; input 0,
 drawn lower, passes in point-to-point mode. Italic names are nets driven by
 `u_reg` from the named CSR fields. Every pad control and both core-side outputs, `ct_dst_o` and `busy_o`,
 leave the port through a register on `clk_i`. Each pad input passes through two
-synchroniser registers and an XOR with `invert_i` before any logic uses it. The
+synchroniser registers and an XOR with `invert_i` and, on the handshake inputs, an
+AND with `p2p_din_valid` before any logic uses it. The
 `STATUS` read-back from the core to `u_reg` is not drawn.
 
 === Submodule Hierarchy
