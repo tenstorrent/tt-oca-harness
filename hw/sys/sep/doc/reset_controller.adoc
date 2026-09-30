@@ -6,9 +6,11 @@
 
 ifdef::backend-html5[]
 :dtp-ic-reset-overrides-ref: xref:dtp:jtag.adoc#dtp-ic-reset-overrides[IC_RESET Overrides]
+:sep-crypto-reset-diagram-ref: xref:sep:crypto.adoc#sep-crypto-reset-diagram[SEP cryptographic subsystem resets]
 endif::backend-html5[]
 ifndef::backend-html5[]
 :dtp-ic-reset-overrides-ref: <<dtp-ic-reset-overrides>>
+:sep-crypto-reset-diagram-ref: <<sep-crypto-reset-diagram>>
 endif::backend-html5[]
 
 [[sep-reset-controller,SEP Reset Controller]]
@@ -24,15 +26,20 @@ image::sep-reset-distribution.svg[alt="SEP reset distribution from the boundary 
 
 Boundary reset inputs enter on the left and the generated resets run in the
 channel on the right, each net in its own colour, with the port it drives named
-at the instance edge. The cream boxes are the reset logic inside
-`u_sep_efuse_wrapper` and `u_sep_reset_ctrl`. The stacked row inside
-`u_sep_reset_ctrl` repeats once for each `SW_RESET_N` bit. Inside the other
-instances the figure shows which sub-instances each reset reaches.
+at the instance edge. Inside each instance the figure shows which sub-instances
+each reset reaches. <<sep-reset-ctrl-logic-diagram>> shows the logic inside
+`u_sep_efuse_wrapper` and `u_sep_reset_ctrl`, and
+{sep-crypto-reset-diagram-ref} shows the resets inside `u_sep_crypto`.
 
 `u_sep_efuse_wrapper`, part of `u_sep_crypto`, ANDs `rst_ni`,
 `ext_boot_seq_done_i` and fuse-sense done and synchronizes the result into
 `sep_intermediate_reset_n`. The Reset Controller builds its three outputs from
-it:
+it, as <<sep-reset-ctrl-logic-diagram>> shows. The stacked row repeats once for
+each `SW_RESET_N` bit.
+
+[[sep-reset-ctrl-logic-diagram]]
+.SEP Reset Controller reset logic
+image::sep-reset-ctrl-logic.svg[alt="Gates, muxes and synchronizers in the eFuse wrapper and the SEP Reset Controller that build sep_reset_no, sep_cpu_reset_no and sep_crypto_gated_rst_no",width=100%,pdfwidth=100%]
 
 * `sep_reset_no`: the JTAG `sep_reset_n` override mux (`u_sep_reset_ovrd_mux`)
   selects `sep_intermediate_reset_n` or the JTAG value, and the 2-flop
@@ -61,7 +68,8 @@ watchdog synchronizes `rst_ni` into `clk_wdt_i` for its counter, and its bite
 leaves the SEP on `wdt_timer_rst_req_o`. `dbg_rstb_i` resets the EL2 debug
 module and `u_mpc_reset_run_req_sync`, and `jtag_trst_ni` resets the EL2 JTAG
 TAP. While `test_en_i` is high, `scan_rst_ni` replaces the outputs of
-`u_sep_reset_sync` and of each scan bypass.
+`u_sep_reset_sync`, each scan bypass mux, `u_rst_wdt_sync` and both Key Manager
+reset conditioner paths.
 
 == Software Reset Register
 
