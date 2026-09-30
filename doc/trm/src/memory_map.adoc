@@ -69,6 +69,9 @@ each unit, how a 32-bit access that no register or memory backs is answered.
 A cell reads _read response, read data / write response_, for example
 `DECERR, 0xBADCAB1E / SLVERR`. `OKAY`, `SLVERR` and `DECERR` are the AXI
 response codes returned on `RRESP` and `BRESP`.
+The read data is the word a 32-bit read returns in either half of a 64-bit
+data bus. Where the two halves differ, a note on the cell gives the word
+returned when address bit 2 is set.
 
 * The _Hole in Extent_ column covers an unbacked offset inside the unit's
   decoded extent. Where the space between a wrapper's sub-blocks, or the

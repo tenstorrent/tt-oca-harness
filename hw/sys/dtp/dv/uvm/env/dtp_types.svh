@@ -346,6 +346,12 @@ function automatic int unsigned dtp_j2a_data_size(dtp_j2a_target_t t);
   return $clog2(t.data_width / 8);
 endfunction
 
+// The transfer size the bridge uses for a scanned size field: a size above
+// data_size transfers one full beat (PTAP document, "*_AXI_SINGLE_OP").
+function automatic int unsigned dtp_j2a_axsize(dtp_j2a_target_t t, int unsigned size);
+  return (size > dtp_j2a_data_size(t)) ? dtp_j2a_data_size(t) : size;
+endfunction
+
 // Width of the SINGLE_OP and SERIES_CTRL size field: the smallest width that
 // encodes every AxSIZE up to a full beat, and at least one bit; the PTAP
 // document's "*_AXI_SINGLE_OP" table names this width $bits(size).

@@ -320,6 +320,8 @@ hw/sys/dtp/rtl/dtp.sv
 
 hw/sys/dtp/dv/tb/dtp_dv_cfg_pkg.sv
 hw/sys/dtp/dv/tb/dtp_j2a_state_flags.sv
+hw/sys/dtp/dv/tb/dtp_stap_host_sva.sv
+hw/sys/dtp/dv/tb/dtp_axi_data_known_sva.sv
 hw/common/dv/vip/ocah_jtag_vip/interface/ocah_jtag_if.sv
 hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_if.sv
 hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv

@@ -51,6 +51,13 @@ interface dtp_scan_if;
   logic jtag_stap_host_capture_en;
   logic jtag_stap_host_update_en;
 
+  // Host scan outputs of the iJTAG SIBs and the extended STAP chain (driven
+  // by tb_top from the DUT's *_host_scan_out_o), four-state as driven.
+  logic jtag_dft_secure_host_scan_out;
+  logic jtag_dft_host_scan_out;
+  logic jtag_dfd_host_scan_out;
+  logic jtag_stap_host_scan_out;
+
   // Forwarded STAP TAP pins per host port (driven by tb_top from the DUT's
   // per-port tap_ctrl struct and TDO enable).
   logic jtag_stap_io_tms;

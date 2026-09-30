@@ -291,6 +291,21 @@ class dtp_scan_base_test_seq extends dtp_jtag_base_test_seq;
     check_scan_window(quiet, none, {context_s, ".window"});
   endtask
 
+  // Before any scan captures into them, every iJTAG SIB and the extended STAP
+  // chain drive a resolved 0 on their host scan output (CHK-SCAN-RESET).
+  function void check_host_scan_out_reset(string context_s);
+    string names[$];
+    for (int unsigned sib = 0; sib < DtpIjtagSibCount; sib++) begin
+      names.push_back({ijtag_prefix(sib), "_host_scan_out"});
+    end
+    names.push_back("jtag_stap_host_scan_out");
+    foreach (names[i]) begin
+      logic sampled = scan_window.sample_scan_signal(names[i]);
+      family_check("CHK-SCAN-RESET", names[i], $isunknown(sampled) ? '1 : 64'(sampled), '0,
+                   $sformatf("%s sampled=%b", context_s, sampled));
+    end
+  endfunction
+
   // --- STAP / 3DCR -------------------------------------------------------------
   // The extended STAP host scan controls on dtp_scan_if.
   static function void stap_host_scan_controls(ref string signals[$]);
@@ -396,11 +411,9 @@ class dtp_scan_base_test_seq extends dtp_jtag_base_test_seq;
 
   // Reset the scan network and load TAP_3DCR over a zeroed chain. TRST
   // clears the PTAP 3DCR and every STAP SIB and 3DCR (a held config_hold
-  // included) and parks the downstream TAPs on IDCODE. The PTAP shifts
-  // every IR and DR scan through the STAP chain, so the plain TAP_3DCR load
-  // that follows can reopen SIBs with the IR capture bits; the over-length
-  // zero scan closes them again and zeroes every field it reaches, leaving
-  // the chain in the model's flushed state.
+  // included) and parks the downstream TAPs on IDCODE. With the PTAP select
+  // clear the chain holds through the TAP_3DCR load and the over-length zero
+  // scan, which leaves the PTAP 3DCR cleared.
   task stap_chain_flush(string context_s, sep_lifecycle_ctrl_pkg::dbg_disable_t d = '0);
     bit [63:0] unused;
     `uvm_info(get_type_name(), $sformatf("%s reset and flush the TAP_3DCR configuration chain",
@@ -421,7 +434,9 @@ class dtp_scan_base_test_seq extends dtp_jtag_base_test_seq;
   // the pre-scan chain state; new_ds_values writes a spliced downstream
   // TAP's selected (writable) register and new_host_segment the host segment
   // while it is in the chain. `marker` rides in the leading bits that pass
-  // through the chain.
+  // through the chain. The chain moves only while the PTAP select is
+  // already set, so a call that sets the select and writes chain fields
+  // first sets the select in a scan of its own.
   task stap_chain_write_ds(
       input sep_lifecycle_ctrl_pkg::dbg_disable_t d, input int new_ptap_select,
       input int new_ptap_config_hold, input int new_sib_en[int],
@@ -432,6 +447,18 @@ class dtp_scan_base_test_seq extends dtp_jtag_base_test_seq;
     bit [63:0] value;
     if (kind != DTP_SCAN_DR && (new_ptap_select >= 0 || new_ptap_config_hold >= 0))
       `uvm_fatal(get_type_name(), $sformatf("a %s scan does not reach the PTAP 3DCR", kind.name()))
+    if (new_ptap_select > 0 && !stap_model.ptap_select &&
+        (new_sib_en.size() != 0 || new_payloads.size() != 0 || new_ds_values.size() != 0 ||
+         new_host_segment >= 0)) begin
+      int no_sib[int];
+      dtp_stap_3dcr_state_t no_pl[int];
+      bit [63:0] no_ds[int];
+      string select_ctx = {context_s, ".ptap_select"};
+      stap_chain_write_ds(d, new_ptap_select, new_ptap_config_hold, no_sib, no_pl, no_ds,
+                          select_ctx, captured);
+      new_ptap_select      = -1;
+      new_ptap_config_hold = -1;
+    end
     value = stap_model.compose_scan_ds(
         StapChainScanWidth,
         d,
@@ -469,7 +496,8 @@ class dtp_scan_base_test_seq extends dtp_jtag_base_test_seq;
   // 3DCR select set the IR shift-out feeds the STAP chain, so the scan
   // carries the PTAP instruction, every SIB/3DCR field (maintained unless
   // given), and each spliced downstream TAP's IR (new_ds_ir names new
-  // instructions; others keep the active one).
+  // instructions; others keep the active one). With the select clear the
+  // scan carries the PTAP instruction alone.
   task stap_chain_ir_write(input sep_lifecycle_ctrl_pkg::dbg_disable_t d,
                            input bit [63:0] ptap_instr, input bit [63:0] new_ds_ir[int],
                            input int new_sib_en[int], input dtp_stap_3dcr_state_t new_payloads[int],

@@ -286,11 +286,11 @@ args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_kpv_scrambler.parhex"]
 
 [[tests]]
 # KM CPU store to KM ROM: the ROM word is unchanged, IRQ_STATUS.ROM_WRITE_ERR
-# sets, and the store must return SLVERR (IRQ_STATUS.AXI_SLVERR), as
-# key_manager.rdl states for a ROM write attempt. Dedicated KM ROM shared with
-# the two leaves below; the host holds every verdict. no_cpu; +skip_fuse_sense.
-name = "sep_km_rom_write_slverr_test"
-module = "km.sep_km_rom_write_slverr_test"
+# sets, and IRQ_STATUS.AXI_SLVERR / AXI_DECERR stay clear, as key_manager.rdl
+# states for a ROM write attempt. Dedicated KM ROM shared with the two leaves
+# below; the host holds every verdict. no_cpu; +skip_fuse_sense.
+name = "sep_km_rom_write_err_test"
+module = "km.sep_km_rom_write_err_test"
 firmware = { name = "km_rom_bus_err", mode = "km_rom_blob" }
 seed = 1
 timeout_sec = 1800
@@ -300,7 +300,7 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_bus_err.parhex"]
 
 [[tests]]
-# KM CPU load and store past the OTP_EFUSE_MMR aperture must be refused and must
+# KM CPU load and store past the OTP_EFUSE_MMR register map must be refused and must
 # not reach the eFuse shim register, which key_manager.rdl excludes from the KM
 # path. The host programs and reads the shim register on its SEP-side window.
 # RANDCFG: the host shim value from the run seed. no_cpu; +skip_fuse_sense.
@@ -319,8 +319,8 @@ args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_bus_err.parhex"]
 [[tests]]
 # KM CPU load from the VROM base must complete with DECERR: the key_manager.rdl
 # memory-map summary does not list VROM and maps every other address to DECERR.
-# The KM CPU wrapper routes the range to a testbench-only port with ready tied
-# to 0. The image marks the point before the load, so a load that never
+# The KM CPU wrapper decodes the range only under OCAH_KM_VROM, which SEP DV
+# does not set. The image marks the point before the load, so a load that never
 # completes is graded against a live image. no_cpu; +skip_fuse_sense.
 name = "sep_km_vrom_decerr_test"
 module = "km.sep_km_vrom_decerr_test"

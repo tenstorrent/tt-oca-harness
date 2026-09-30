@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 // Generic two-input combinational mux suitable for reset/test selection.
 // Technology-specific flows may replace this module with an equivalent cell.
 module generic_clkmux2 (

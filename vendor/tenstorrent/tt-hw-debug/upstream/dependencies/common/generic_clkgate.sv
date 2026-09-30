@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 // Generic clock gating cell that infers a technology-specific clock gate during synthesis
 module generic_clkgate (

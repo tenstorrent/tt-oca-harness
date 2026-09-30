@@ -12,21 +12,79 @@ management, traffic filtering, and security enforcement mechanisms.
 [[smc-fabric-topology]]
 == Fabric Topology
 
-The SMC input, local, and output fabrics are shown in <<smc-input-fabric-diagram>>,
-<<smc-local-fabric-diagram>>, and <<smc-output-fabric-diagram>>, respectively.
+The input fabric merges the SMC's own initiators, filters the system AXI input
+and splits traffic between the SMC window and the rest of the system. The local
+fabric connects the traffic for the SMC window to the CPU front port and the
+SMC register islands, and the output fabric remaps and filters the traffic that
+leaves the SMC.
+
+The input paths are shown in <<smc-input-fabric-diagram>>, the local resource
+connections in <<smc-local-fabric-diagram>>, and the outbound path in
+<<smc-output-fabric-diagram>>. The three figures share the notation of the SEP
+fabric figures. Crossbars are rectangles, muxes and demuxes are trapezoids with
+the wide side towards the many ports, address remaps and rebases are hexagons
+and traffic filters are octagons. Green boxes are converters: address-width,
+data-width, ID-width and protocol conversion. Thick lines are AXI4 and thin
+lines AXI-Lite; every AXI data path is 64 bits wide unless a converter narrows
+it. The labels give the address and ID widths where they change, and the port
+badges mark where a path crosses the module boundary.
 
 [[smc-input-fabric-diagram]]
 .SMC input fabric topology and routing
-image::SMC_InputFabric_FIG004.png[alt="SMC input fabric topology and routing",width=100%,pdfwidth=100%]
+image::smc-input-fabric.svg[alt="SMC input fabric: ID converters and alias remaps on the CPU MMIO, JTAG, log and data accelerator paths, the input mux and local/global demux, and the filtered system and unfiltered SEP inputs with their region demuxes",width=100%,pdfwidth=100%]
+
+<<smc-input-fabric-diagram>> has the six inputs of `smc_input_fabric` along
+the top and its four outputs along the bottom. The CPU MMIO and JTAG ports have
+their IDs widened to 4 bits and the log engine's AXI-Lite port is converted to
+AXI4. Each of the four SMC-internal initiators then passes its own alias remap;
+the four remaps share one table of eight regions with a 4 KiB granule. The
+input mux merges them, widens the ID to 6 bits and registers every channel. The
+demux behind it sends addresses inside the SMC window, at either the local or
+the global base and `REGION_SIZE` long, to the `local_in` initiator of the local
+fabric with the address truncated to 32 bits, and every other address to the
+output fabric. The system AXI input passes the inbound traffic filter, whose
+clock can be gated while the port is idle. The system and SEP inputs then each pass
+a region demux: the SMC window continues to the local fabric, truncated to 32
+bits, and every other address receives DECERR. The SEP input is not filtered.
 
 [[smc-local-fabric-diagram]]
 .SMC local fabric and peripheral islands
-image::SMC_LocalFabric_FIG005.png[alt="SMC local fabric and peripheral islands",width=100%,pdfwidth=100%]
+image::smc-local-fabric.svg[alt="SMC local fabric: three rebased initiators into the 3 by 5 local crossbar, which serves the CPU front port, the data accelerator control port, the internal CSR crossbar, the CLA over APB and the 12-target peripheral crossbar",width=100%,pdfwidth=100%]
+
+<<smc-local-fabric-diagram>> shows `smc_local_fabric` in the upper left, the
+`smc_internal_regs` island on the right and the `smc_peripherals` island along
+the bottom. The three initiators arrive from the input fabric. Each is rebased
+onto the local base: the offset within `REGION_SIZE` is kept and the upper
+address bits are replaced by those of `LOCAL_BASE`, so a request for the global
+window reaches the same register as one for the local window. The local
+crossbar `u_smc_local_xbar` connects every initiator to every target, widens the
+ID to 8 bits, registers every port and answers unmapped addresses with DECERR,
+as do the internal CSR and peripheral crossbars. Its targets, in port order, are
+the CPU cluster front port, the data accelerator control port, the internal CSR
+crossbar, the peripheral crossbar and the CLA register window of the DFD block,
+which is reached over APB. The converters in front of the last three belong to
+`smc_local_xbar`. In the peripheral island, the AVSBus, I2C, UART and I3C
+register ports cross to the peripheral clock, the DTP CSR window is rebased to
+zero, and the eFuse registers have a second AXI-Lite port for JTAG access. The
+last peripheral crossbar target leaves the SMC as the AXI-Lite extension port.
 
 [[smc-output-fabric-diagram]]
 .SMC output fabric and remapping paths
-image::SMC_OutputFabric_FIG006.png[alt="SMC output fabric and remapping paths",width=100%,pdfwidth=100%]
+image::smc-output-fabric.svg[alt="SMC output fabric: route demux to the M-mode and Xvisor output remaps and the direct path, output mux, and outbound traffic filter",width=100%,pdfwidth=100%]
 
+<<smc-output-fabric-diagram>> follows a request from the input fabric to the
+system AXI output. The route demux selects by address. The 8 MiB M-mode window
+at `0x0100_0000` and the 8 MiB Xvisor window at `0x0180_0000`, each above either
+the local or the global SMC base, go through their output remaps; every other
+address goes straight through. Each output remap divides its window into eight
+1 MiB regions and replaces address bits [55:20] with the region's offset. Each
+path also sets the AxUSER source ID
+(<<smc-source-id-by-traffic-path-table>>). The output mux merges the three paths
+and widens the ID to 8 bits. The dashed outline marks the stage that the
+`NO_ADDR_REMAP` parameter removes: `smc_config_pkg` clears it, so the remap
+stage is present, and setting it leaves only an ID converter from 6 to 8 bits,
+without the source ID override. The outbound traffic filter passes traffic that
+matches no entry.
 
 == Configuration Parameters
 
@@ -225,10 +283,9 @@ the AXI4-Lite network for reliable, deterministic access.
 
 == Address Remapping
 
-The SMC fabric implements two complementary address remapping mechanisms
-in
-`smc_fabric/smc_fabric_misc/: alias remapping and privilege-controlled
-remapping.
+The SMC fabric implements two complementary address remapping mechanisms:
+alias remapping in the input fabric and privilege-controlled remapping in the
+output fabric.
 
 == Alias Remapping
 
@@ -254,10 +311,11 @@ firmware.
 
 == Privilege-Controlled Remapping
 
-Privilege-controlled address remapping enables programmable, privilege-aware
-translation of outbound SMC transactions. It enforces access boundaries based on
-the originating master's privilege level, supporting secure memory
-compartmentalization and reducing privilege escalation risks.
+Privilege-controlled address remapping enables programmable translation of
+outbound SMC transactions for software running at different privilege levels.
+The output fabric selects a remap by the address window a request targets, not
+by the initiator's AxPROT privilege bit, and each remap sets its own source
+ID.
 
 The fabric provides separate remap regions for Machine-mode (highest privilege)
 and Xvisor/Hypervisor (intermediate privilege) operations. When accessing shared
@@ -265,7 +323,7 @@ resources like shared memory, SMC traffic passes through the appropriate
 privilege-controlled remap stage to ensure proper address translation and
 privilege enforcement.
 
-.. rubric:: Traffic Filtering
+== Traffic Filtering
 
 The filtering system (`filter_ctrl.rdl`) provides security control for
 both inbound and outbound traffic, examining transaction attributes to
@@ -291,11 +349,29 @@ outbound filter permits it.
 
 == Inbound Filtering
 
-<<smc-traffic-filter-diagram>> shows the inbound and outbound filter placement.
+<<smc-traffic-filter-diagram>> shows the decode that both filters implement.
+Their places in the fabric are in <<smc-input-fabric-diagram>> and
+<<smc-output-fabric-diagram>>.
 
 [[smc-traffic-filter-diagram]]
-.SMC inbound and outbound traffic-filter architecture
-image::SMC_InboundOutboundFilter_FIG008.png[alt="SMC inbound and outbound traffic-filter architecture",width=100%,pdfwidth=100%]
+.SMC inbound and outbound traffic-filter mechanism
+image::smc-traffic-filters.svg[alt="Traffic filter decode: per-entry match conditions and permission bit, then the lowest-hit priority encoder, the pass-select and block muxes, and the demux to the filtered output or a DECERR responder",width=100%,pdfwidth=100%]
+
+The figure draws primitive logic with gate symbols and keeps labelled boxes
+for comparisons and larger blocks. The upper part of
+<<smc-traffic-filter-diagram>> is one `traffic_filter`, instantiated for every
+entry on each of the AW and AR channels. The entry hits when all five
+conditions on the left hold, which the AND gate with the extended input bar
+combines; the source ID and burst conditions are each an OR of two terms. Its
+permission bit, ANDed with the channel's valid, is evaluated separately. The
+lower part is one channel of `axi_filter_wrap`. A priority encoder picks the
+lowest-numbered entry that hits, a 16:1 mux selects that entry's permission
+bit, and the inverted bit requests a block. When no entry hits, the next mux
+takes `BlockByDefault` instead. The last mux forces the block bit to 0 when
+`filter_skip_i` is set; `filter_skip_i` is tied low in both SMC instances.
+Group ID matching is not built into either instance. The block bit steers the
+transaction through a demux either to the filtered output or to an error
+responder that returns DECERR.
 
 Inbound filtering protects SMC resources from unauthorized external
 access by evaluating three dimensions of each transaction:

@@ -8,6 +8,8 @@
 // AXISeriesCtrl.pipeline_depth programs 0..FIFO_DEPTH, larger values saturate, and the
 // effective depth is pipeline_depth + 1.
 // Every transaction carries ID 0, user 0, one INCR beat, AxCACHE 0b0010 and AxPROT 0b000.
+// A scanned size wider than the bus is taken as one full beat: AxSIZE, the series write
+// strobes, the series address step and the series data length all use the bus width.
 //
 // The following logic lives in the TCK domain:
 //
@@ -65,11 +67,13 @@ module jtag2axi #(
   input  logic        aclk_i,           // AXI Clock.
   input  logic        arst_ni,          // AXI Reset (active low), for the CDC destination side and
                                         // the ACLK output stage.
+  input  logic        test_en_i,        // DFT test-mode enable, active-high, for the ACLK output
+                                        // stage fall-through registers.
 
   output logic [ID_WIDTH-1:0]     awid_o,  // Write-address ID, always zero.
   output logic [ADDR_WIDTH-1:0]   awaddr_o,  // Write address.
   output logic [7:0]              awlen_o,  // Write burst length, always zero for a single beat.
-  output logic [2:0]              awsize_o,  // Write beat size from the scanned size field.
+  output logic [2:0]              awsize_o,  // Write beat size: the scanned size, at most the bus width.
   output logic [1:0]              awburst_o,  // Write burst type, always INCR.
   output logic                    awlock_o,  // Write lock, always zero.
   output logic [3:0]              awcache_o,  // Write cache attributes, always 0b0010.
@@ -97,7 +101,7 @@ module jtag2axi #(
   output logic [ID_WIDTH-1:0]     arid_o,  // Read-address ID, always zero.
   output logic [ADDR_WIDTH-1:0]   araddr_o,  // Read address.
   output logic [7:0]              arlen_o,  // Read burst length, always zero for a single beat.
-  output logic [2:0]              arsize_o,  // Read beat size from the scanned size field.
+  output logic [2:0]              arsize_o,  // Read beat size: the scanned size, at most the bus width.
   output logic [1:0]              arburst_o,  // Read burst type, always INCR.
   output logic                    arlock_o,  // Read lock, always zero.
   output logic [3:0]              arcache_o,  // Read cache attributes, always 0b0010.
@@ -210,6 +214,11 @@ module jtag2axi #(
     return 1 << size_val;  // 2^size_val
   endfunction
 
+  // READ and WRITE are the only op codes that issue an AXI transfer.
+  function automatic logic is_axi_op(input logic [1:0] op);
+    return (op == JTAG_OP_READ) || (op == JTAG_OP_WRITE);
+  endfunction
+
   localparam int SHARED_SR_LEN = max4(
       AXISINGLEOP_LEN,
       AXISERIESCTRL_LEN,
@@ -220,6 +229,7 @@ module jtag2axi #(
   localparam int CDC_LOG_DEPTH = (FIFO_DEPTH + 2 <= 2) ? 1 : $clog2(FIFO_DEPTH + 2);
   localparam int unsigned BEAT_BYTES = DATA_WIDTH / 8;
   localparam int unsigned BYTE_OFFSET_BITS = (BEAT_BYTES <= 1) ? 0 : $clog2(BEAT_BYTES);
+  localparam logic [2:0] MAX_AXSIZE = 3'(BYTE_OFFSET_BITS);
 
   //--------------------------------------------------------------------------
   // AXI Channel and Request/Response Typedefs (PULP AXI)
@@ -460,12 +470,14 @@ module jtag2axi #(
   //   replaced). Its AXI response must complete normally on the bus but
   //   must not be pushed into the freshly flushed series-rsp FIFO.
   logic                            current_tx_stale_tclk;
-  // Combinational pulse asserted on a CTRL Update-DR with a non-NOP op.
-  // A new CTRL programming flushes all queued series request/response
+  // Combinational pulse asserted on a CTRL Update-DR with a READ or WRITE
+  // op. A new CTRL programming flushes all queued series request/response
   // state from any prior programming.
   logic                            ctrl_flush_pulse_tclk;
+  logic [1:0]                      series_ctrl_update_op_tclk;
+  logic                            series_mode_is_axi_tclk;
   // `series_reads_pushed_tclk`: total series read requests enqueued via
-  //   JTAG Update-DR since the last non-NOP CTRL programming. Bounded at
+  //   JTAG Update-DR since the last READ or WRITE CTRL programming. Bounded at
   //   `pipeline_depth + 1` so that a host that issues more SeriesData
   //   scans than the configured pipeline depth (e.g. the standard
   //   "1 issue + N readback" pattern) does not over-queue requests and
@@ -660,7 +672,7 @@ module jtag2axi #(
     .clk_i      (aclk_i),
     .rst_ni     (arst_ni),
     .clr_i       (write_pair_flush),
-    .testmode_i(1'b0),
+    .testmode_i (test_en_i),
     .valid_i    (aw_input_valid),
     .ready_o    (aw_buf_ready),
     .data_i     (dst_req.aw),
@@ -675,7 +687,7 @@ module jtag2axi #(
     .clk_i      (aclk_i),
     .rst_ni     (arst_ni),
     .clr_i       (write_pair_flush),
-    .testmode_i(1'b0),
+    .testmode_i (test_en_i),
     .valid_i    (w_input_valid),
     .ready_o    (w_buf_ready),
     .data_i     (dst_req.w),
@@ -710,7 +722,7 @@ module jtag2axi #(
     .clk_i      (aclk_i),
     .rst_ni     (arst_ni),
     .clr_i       (1'b0),
-    .testmode_i(1'b0),
+    .testmode_i (test_en_i),
     .valid_i    (ar_input_valid),
     .ready_o    (ar_buf_ready),
     .data_i     (dst_req.ar),
@@ -895,9 +907,11 @@ module jtag2axi #(
   //--------------------------------------------------------------------------
   // Series Request FIFO Storage (TCK)
   //--------------------------------------------------------------------------
+  assign series_ctrl_update_op_tclk =
+        update_register_q_tclk[AXISERIESCTRL_OP_HIGH:AXISERIESCTRL_OP_LOW];
+  assign series_mode_is_axi_tclk = is_axi_op(series_ctrl_op_mode_tclk_r);
   assign ctrl_flush_pulse_tclk = update_en_i && !security_disable_i &&
-        select_AXISeriesCtrl_i &&
-        (update_register_q_tclk[AXISERIESCTRL_OP_HIGH:AXISERIESCTRL_OP_LOW] != JTAG_OP_NOP);
+        select_AXISeriesCtrl_i && is_axi_op(series_ctrl_update_op_tclk);
 
   localparam int unsigned ReqFifoDepth = FIFO_DEPTH + 1;
   localparam int unsigned ReqFifoWidth = $bits(series_request_fifo_entry_t);
@@ -1220,32 +1234,13 @@ module jtag2axi #(
     src_req.ar.user   = USER_WIDTH'(0);
   end
 
-  // Derive current_axi_axsize from the scanned jtag size field
-  generate
-    if (SCAN_CHAIN_SIZE_FIELD_WIDTH == 1) begin : gen_axsize_1bit
-      always_comb begin
-        current_axi_axsize_tclk = {2'b00, current_jtag_size_tclk[0]};
-      end
-    end else if (SCAN_CHAIN_SIZE_FIELD_WIDTH == 2) begin : gen_axsize_2bit
-      always_comb begin
-        current_axi_axsize_tclk = {1'b0, current_jtag_size_tclk[1:0]};
-      end
-    end else if (SCAN_CHAIN_SIZE_FIELD_WIDTH == 3) begin : gen_axsize_3bit
-      always_comb begin
-        logic [2:0] temp_axsize_val;
-        temp_axsize_val = current_jtag_size_tclk[2:0];
-        if (temp_axsize_val[2]) begin
-          current_axi_axsize_tclk = 3'b011;
-        end else begin
-          current_axi_axsize_tclk = temp_axsize_val;
-        end
-      end
-    end else begin : gen_axsize_default
-      always_comb begin
-        current_axi_axsize_tclk = 3'b000;
-      end
+  // AxSIZE must not exceed the bus width (IHI 0022 A3.4.1).
+  always_comb begin
+    current_axi_axsize_tclk = 3'(current_jtag_size_tclk);
+    if (current_axi_axsize_tclk > MAX_AXSIZE) begin
+      current_axi_axsize_tclk = MAX_AXSIZE;
     end
-  endgenerate
+  end
 
   // current_wstrb: custom mask for single-buffer writes, lane-aligned
   // generated mask for series writes.
@@ -1282,6 +1277,7 @@ module jtag2axi #(
   logic                  last_single_op_was_read_tclk_d;
   logic [1:0]            sticky_axi_status_tclk_d;
   logic                  sticky_axi_status_full_tclk_d;
+  logic                  series_status_takes_completion;
 
   logic [PIPELINE_DEPTH_FIELD_BITS-1:0] series_read_preload_count_tclk_d;
   logic [$clog2(FIFO_DEPTH+2)-1:0]      plain_reads_pending_tclk_d;
@@ -1386,12 +1382,12 @@ module jtag2axi #(
                          FIFO_DEPTH[PIPELINE_DEPTH_FIELD_BITS-1:0] :
                          update_register_q_tclk[AXISERIESCTRL_PD_HIGH:AXISERIESCTRL_PD_LOW];
 
-        // Only reprogram series CTRL state (including the read
-        // preload counter) on a real op. A NO_OP update (issued by
-        // CTRL TDR read-backs) must not clobber preload/address/
-        // pipeline-depth state accumulated by the in-flight series
-        // operation.
-        if (op_val != JTAG_OP_NOP) begin
+        // Only a READ or WRITE op reprograms series CTRL state
+        // (including the read preload counter). A NOP or reserved
+        // update, which CTRL TDR read-backs issue, leaves the
+        // preload/address/pipeline-depth state accumulated by the
+        // in-flight series operation intact.
+        if (is_axi_op(op_val)) begin
           series_ctrl_size_tclk_r_d           = update_register_q_tclk[AXISERIESCTRL_SIZE_HIGH:AXISERIESCTRL_SIZE_LOW];
           series_ctrl_pipeline_depth_tclk_r_d = pd_val;
           series_ctrl_address_tclk_r_d        = update_register_q_tclk[AXISERIESCTRL_ADDR_HIGH:AXISERIESCTRL_ADDR_LOW];
@@ -1409,8 +1405,8 @@ module jtag2axi #(
           sticky_axi_status_tclk_d      = CAPTURE_STATUS_SUCCESS;
           sticky_axi_status_full_tclk_d = 1'b0;
         end
-      end else if (select_AXISeriesDataIncr_i || select_AXISeriesDataNoIncr_i ||
-                         select_AXISeriesDataWithErrorStatus_i) begin
+      end else if ((select_AXISeriesDataIncr_i || select_AXISeriesDataNoIncr_i ||
+                          select_AXISeriesDataWithErrorStatus_i) && series_mode_is_axi_tclk) begin
         automatic logic [$clog2(SHARED_SR_LEN+1)-1:0] current_mapped_data_len_local;
         automatic int num_bytes_to_copy;
         automatic logic [DATA_WIDTH-1:0] data_val;
@@ -1539,9 +1535,18 @@ module jtag2axi #(
       end
     end
 
+    // The series status holds the first series error until
+    // AXI_SERIES_CTRL.reset, which the SERIES_CTRL update above has already
+    // applied to sticky_axi_status_tclk_d. SINGLE_OP completions report only
+    // through the SINGLE_OP status.
+    series_status_takes_completion = !current_tx_is_from_single_buffer_tclk &&
+                                     (sticky_axi_status_tclk_d == CAPTURE_STATUS_SUCCESS);
+
     // FSM completion status updates (write response path).
     if (fsm_updates_bresp_status_tclk_comb) begin
-      sticky_axi_status_tclk_d = next_status_tclk_comb;
+      if (series_status_takes_completion) begin
+        sticky_axi_status_tclk_d = next_status_tclk_comb;
+      end
       if (current_tx_is_from_single_buffer_tclk ||
                 current_is_series_data_with_error_status_op_tclk) begin
         last_single_op_status_tclk_d = next_status_tclk_comb;
@@ -1556,7 +1561,9 @@ module jtag2axi #(
 
     // FSM completion status updates (read response path).
     if (fsm_updates_rdata_status_tclk_comb) begin
-      sticky_axi_status_tclk_d = next_status_tclk_comb;
+      if (series_status_takes_completion) begin
+        sticky_axi_status_tclk_d = next_status_tclk_comb;
+      end
       if ((current_tx_is_from_single_buffer_tclk && !current_tx_is_series_read_tclk) ||
                 current_is_series_data_with_error_status_op_tclk) begin
         last_single_op_status_tclk_d = next_status_tclk_comb;
@@ -1728,7 +1735,7 @@ module jtag2axi #(
       automatic logic [$clog2(SHARED_SR_LEN+1)-1:0] mapped_data_bits_cap_local;
       automatic int num_bytes_to_copy;
       automatic logic[DATA_WIDTH-1:0] capture_value_data_local;
-      logic [1:0] captured_op_status_local;
+      automatic logic [1:0] captured_op_status_local;
 
       mapped_data_bits_cap_local = size_to_bits(3'(latched_series_size_for_len_tclk));
       if (mapped_data_bits_cap_local > DATA_WIDTH) mapped_data_bits_cap_local = DATA_WIDTH;

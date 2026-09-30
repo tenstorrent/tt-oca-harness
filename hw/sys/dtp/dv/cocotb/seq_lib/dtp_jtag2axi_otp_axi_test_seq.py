@@ -382,9 +382,12 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
         self.operation_count += 3
         self.log.info("single_wr_rd target=%s rdata=0x%08x", self.target, rdata)
 
-    async def _series_write_values(self, base: int, values: list[int], *, increment: bool) -> None:
+    async def _series_write_values(
+        self, base: int, values: list[int], *, increment: bool, size: int | None = None
+    ) -> None:
         cfg = self.target_cfg(self.target)
-        size = cfg.default_size
+        if size is None:
+            size = cfg.default_size
         await self.jtag2axi_series_ctrl(DtpJtag2AxiOp.WRITE, base, size=size, target=self.target)
         for idx, data in enumerate(values):
             await self.series_write_beat(
@@ -422,6 +425,37 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
         # one stride past the last beat.
         self.status = await self.check_series_addr(
             self.target, addr + stride, size=size, context="series_wr_rd_incr.final"
+        )
+
+    async def run_series_write_read_incr_oversize(self) -> None:
+        self.log_banner(f"{self.target} Series Write-Read With An Oversized Size Field")
+        await self.reset_tap()
+        rng = self.rng(f"{self.target}.series_read_incr_oversize")
+        cfg = self.target_cfg(self.target)
+        size = (1 << cfg.size_bits) - 1
+        if size <= cfg.data_size:
+            raise ValueError(f"{self.target} size field cannot exceed the bus width")
+        eff = cfg.axsize(size)
+        stride = cfg.beat_bytes
+        beats = max(2, min(self.random_count, 6))
+        base = self.random_series_base(self.target, rng, span=beats * stride, straddle=True)
+        values = [rng.getrandbits(cfg.data_width) & self.data_mask(eff) for _ in range(beats)]
+        await self._series_write_values(base, values, increment=True, size=size)
+        for idx, exp in enumerate(values):
+            addr = base + idx * stride
+            obs = await self.series_read_beat(
+                self.target,
+                addr=addr,
+                size=size,
+                increment=True,
+                context=f"series_wr_rd_incr_oversize.read#{idx}",
+            )
+            self.assert_equal(
+                f"series_wr_rd_incr_oversize.rdata#{idx}", obs, exp, f"addr=0x{addr:x}"
+            )
+            self.operation_count += 1
+        self.status = await self.check_series_addr(
+            self.target, addr + stride, size=size, context="series_wr_rd_incr_oversize.final"
         )
 
     async def run_series_write_read_no_incr(self) -> None:
@@ -624,6 +658,7 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
             "write_security_gating": self.run_write_security_gating,
             "single_write_read": self.run_single_write_read,
             "series_write_read_incr": self.run_series_write_read_incr,
+            "series_write_read_incr_oversize": self.run_series_write_read_incr_oversize,
             "series_write_read_no_incr": self.run_series_write_read_no_incr,
             "series_write_read_incr_with_error": self.run_series_write_read_incr_with_error,
             "read_random_ops": self.run_read_random_ops,

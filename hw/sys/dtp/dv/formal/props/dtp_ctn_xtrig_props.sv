@@ -126,9 +126,7 @@ module dtp_ctn_xtrig_props #(
                                    !hs_ack_out_i),
                   clk_i, rst_ni)
   `OCAH_FV_ASSERT(ast_hs_dst_is_one_pulse,
-                  `OCAH_FV_IMPLIES($past(rst_ni) && hs_dst_i && $past(hs_dst_i),
-                                   $past(receiver_state_i) == R_ACK_ASSERTED &&
-                                   !$past(req_in_sync_i)) &&
+                  !($past(rst_ni) && hs_dst_i && $past(hs_dst_i)) &&
                   `OCAH_FV_IMPLIES($past(rst_ni) && `OCAH_FV_ROSE(hs_dst_i),
                                    $past(receiver_state_i) == R_IDLE && $past(req_in_sync_i)),
                   clk_i, rst_ni)
@@ -189,10 +187,11 @@ module dtp_ctn_xtrig_props #(
   `OCAH_FV_ASSERT(ast_ctp_status_reflects_pins,
                   status_req_in_i == req_in_sync_i && status_ack_in_i == ack_in_sync_i &&
                   status_req_out_i == (invert_i ? !req_out_dout_i : req_out_dout_i) &&
-                  status_ack_out_i == (invert_i ? !ack_out_dout_i : ack_out_dout_i) &&
+                  status_ack_out_i == (!mode_wire_or_i &&
+                                       (invert_i ? !ack_out_dout_i : ack_out_dout_i)) &&
                   `OCAH_FV_IMPLIES($past(rst_ni) && $past(mode_wire_or_i) &&
                                    invert_i == $past(invert_i),
-                                   !status_req_out_i && status_ack_out_i == invert_i),
+                                   !status_req_out_i),
                   clk_i, rst_ni)
 
   // ---- Covers -------------------------------------------------------------------------------

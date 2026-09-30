@@ -200,8 +200,8 @@ class dtp_scan_window_monitor extends ocah_subscriber #(ocah_jtag_event);
   endfunction
 
   // Named scan observable (boundary-scan controls, iJTAG SIB controls, STAP
-  // forwarding pins and their TMS mismatch flags, STAP host scan controls),
-  // four-state as sampled.
+  // forwarding pins and their TMS mismatch flags, STAP host scan controls,
+  // iJTAG and STAP host scan outputs), four-state as sampled.
   function logic sample_scan_signal(string name);
     case (name)
       "jtag_bsr_select":            return scan_vif.jtag_bsr_select;
@@ -247,6 +247,10 @@ class dtp_scan_window_monitor extends ocah_subscriber #(ocah_jtag_event);
       "jtag_stap_host_shift_en":    return scan_vif.jtag_stap_host_shift_en;
       "jtag_stap_host_capture_en":  return scan_vif.jtag_stap_host_capture_en;
       "jtag_stap_host_update_en":   return scan_vif.jtag_stap_host_update_en;
+      "jtag_dft_secure_host_scan_out": return scan_vif.jtag_dft_secure_host_scan_out;
+      "jtag_dft_host_scan_out":        return scan_vif.jtag_dft_host_scan_out;
+      "jtag_dfd_host_scan_out":        return scan_vif.jtag_dfd_host_scan_out;
+      "jtag_stap_host_scan_out":       return scan_vif.jtag_stap_host_scan_out;
       default: begin
         `uvm_fatal(get_type_name(), $sformatf("unknown scan observable '%s'", name))
         return 1'b0;

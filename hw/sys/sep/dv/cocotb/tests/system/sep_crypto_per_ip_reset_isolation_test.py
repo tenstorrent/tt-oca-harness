@@ -52,15 +52,19 @@ Isolation proof (both directions, then the remaining isolated bits):
                     starts at 0 when the request is issued. The Key Manager
                     path is already isolated while the Key Manager is held at
                     its reset default, so the graded order is the host term.
-  * CHK-HOST-DRAIN  host reads issued before the isolate closes resolve OKAY
-                    or SLVERR, never DECERR and never a hang. The exact events
-                    still unretired as the isolate closes are recorded, and at
-                    least one of those events must drain OKAY -- so an earlier
-                    completed read cannot satisfy the verdict.
-  * CHK-DRAIN-ARRIVAL  a further read issued WHILE isolation is draining also
-                    resolves; it may drain or terminate, but it
-                    may not hang. That the path is not left wedged is the
-                    existing CHK-ISOLATE-REOPEN beat after release.
+  * CHK-HOST-DRAIN  host reads issued in the same cycle as the reset request
+                    resolve OKAY or SLVERR, never DECERR and never a hang. The
+                    exact events still unretired when the isolate request rises
+                    are recorded, and at least one of those events must drain
+                    OKAY -- so an earlier completed read cannot satisfy the
+                    verdict.
+  * CHK-DRAIN-ARRIVAL  a further read is issued on the first cycle the isolate
+                    request is seen, with an empty AR queue and its own AXI ID.
+                    Its AR handshake on s_axi must fall while the request is up
+                    and the gated reset is still released, and it must resolve;
+                    it may drain or terminate, but it may not hang. That the
+                    path is not left wedged is the existing CHK-ISOLATE-REOPEN
+                    beat after release.
   * CHK-ABR-DRAIN-ORDER  the Adams Bridge reset does not assert until BOTH
                     paths its domain depends on report isolated: the full-AXI
                     SEP host path and the shared Key Manager path. The host
@@ -68,12 +72,15 @@ Isolation proof (both directions, then the remaining isolated bits):
                     shared Key Manager path is already isolated while the Key
                     Manager is held at its reset default, so the graded order
                     is the host term.
-  * CHK-ABR-HOST-DRAIN  host reads issued before the ABR reset request resolve
-                    OKAY or SLVERR, never DECERR and never a hang. The exact
-                    events still unretired when isolation closes are recorded,
-                    and at least one of those events must drain OKAY.
-  * CHK-ABR-DRAIN-ARRIVAL  a read issued WHILE the ABR isolate drains resolves
-                    too; it may drain or terminate, but it may not hang.
+  * CHK-ABR-HOST-DRAIN  host reads issued in the same cycle as the ABR reset
+                    request resolve OKAY or SLVERR, never DECERR and never a
+                    hang. The exact events still unretired when the isolate
+                    request rises are recorded, and at least one of those
+                    events must drain OKAY.
+  * CHK-ABR-DRAIN-ARRIVAL  the CHK-DRAIN-ARRIVAL contract on the ABR full-AXI
+                    isolate: the arrival AR is accepted on s_axi while the
+                    request is up and the gated reset is released, and it
+                    resolves.
   * CHK-ABR-JTAG-OVERRIDE  the JTAG IC_RESET override holds the Adams Bridge
                     domain in reset while SW_RESET_N still reports it released,
                     and releasing the override lets the domain come back. The
@@ -137,6 +144,7 @@ import hashlib
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge, with_timeout
+from cocotb.utils import get_sim_time
 from env.sep_aes_golden import aes256_ecb_encrypt_words
 from env.sep_kmac_golden import kmac_family_words
 from ocah_axi_vip import worst_resp
@@ -154,6 +162,7 @@ from seq_lib.sep_crypto_reset_iso_seq import (
     RESP_SLVERR,
     RST_ABR,
     RST_HMAC,
+    SW_RESET_N,
     SW_RESET_N_DEFAULT,
     SepCryptoResetIso,
 )
@@ -189,6 +198,17 @@ OTBN_DMEM_MARK = 0xD3E00D3E
 KMAC_STATUS_RESET = KMAC.reset32("STATUS")
 
 _ZERO_DIGEST = [0] * 8
+# s_axi ARIDs for the drain-window legs. Neither is ID 0, which the background
+# entropy FIFO drain uses: the fabric holds a read back while reads with the
+# same ID are outstanding to another target, and a background read held that
+# way at the head of the AR channel would hold the arrival read back with it.
+# The arrival read has its own ID so its AR handshake is found on the bus.
+_DRAIN_ARID = 1
+_ARRIVAL_ARID = 5
+# Reads issued in the same cycle as the reset request, so the isolate has
+# accepted traffic to drain. Few enough that the arrival read is not queued
+# behind them.
+_DRAIN_READS = 2
 # crypto_edn_req/ack client index. AES, KMAC, OTBN RND, OTBN URND.
 _EDN_AES = 0
 _EDN_KMAC = 1
@@ -362,85 +382,179 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             km_iso,
         )
 
+    async def _request_reset_direct(self, rst_bit: int) -> None:
+        """Write SW_RESET_N on the AXI master itself, not through the sequencer.
+
+        The drain reads must go out in the same cycle as the reset request. A
+        sequencer write can wait behind a background sequence read (the
+        entropy FIFO drain) for an unknown number of cycles. The value is the
+        same one ``SepCryptoResetIso.assert_reset`` writes, and the B response
+        is checked here.
+        """
+        value = SW_RESET_N_DEFAULT & ~(1 << rst_bit) & 0xFFFF_FFFF
+        ev = self.env.axi_agent.driver.axi.init_write(
+            address=SW_RESET_N, data=value.to_bytes(4, "little"), size=2
+        )
+        await with_timeout(ev.wait(), 10_000, "ns")
+        code = worst_resp(getattr(ev.data, "resp", None))
+        assert code == RESP_OKAY, (
+            f"SW_RESET_N write of 0x{value:08x} returned resp={code}, expected OKAY"
+        )
+
+    async def _drain_with_arrival(
+        self, *, name: str, addr: int, start_reset, req, host, km, rst, n_drain: int
+    ) -> dict:
+        """Put reads in flight across the isolate request, then time one inside it.
+
+        The sequencer asserts the gated reset one clock after every path
+        reports isolated, so the drain window is a few cycles long, and a beat
+        queued behind other traffic lands after the reset (a read made during
+        reset, not mid-drain). So only ``n_drain`` reads go out, in the same
+        cycle as the reset request, which the fabric accepts at once and which
+        are still in flight when the isolate request rises. The arrival read
+        goes out on the first cycle the isolate request is seen, with an empty
+        AR queue and its own AXI ID, so its AR handshake is found on the bus
+        and timed against the reset edge.
+
+        Every value the checks grade is sampled at the same clock edge in this
+        one loop: the s_axi AR handshake, the isolate request, both isolate
+        completion bits and the gated reset.
+        """
+        axi = self.env.axi_agent.driver.axi
+        top = cocotb.top
+
+        def ar_ids_this_edge() -> list[int]:
+            v, r = top.s_axi_arvalid.value, top.s_axi_arready.value
+            if not (v.is_resolvable and r.is_resolvable) or not (int(v) and int(r)):
+                return []
+            return [int(top.s_axi_arid.value)]
+
+        self._require_open_isolate_terms(host=host, km=km, rst=rst, name=name)
+        reset_task = cocotb.start_soon(start_reset())
+        drain = [
+            axi.init_read(address=addr, length=4, size=2, arid=_DRAIN_ARID) for _ in range(n_drain)
+        ]
+
+        arrival = None
+        arrival_hs = None
+        outstanding: set[int] = set()
+        reset_edge = None
+        for _ in range(2_000):
+            await RisingEdge(top.clk_i)
+            now = get_sim_time("ns")
+            sample = {
+                "req": self.rd_known(req),
+                "host": self.rd_known(host),
+                "km": self.rd_known(km),
+                "rst": self.rd_known(rst),
+            }
+            if arrival is not None and arrival_hs is None:
+                if _ARRIVAL_ARID in ar_ids_this_edge():
+                    arrival_hs = dict(sample, t=now)
+            if sample["rst"] == 0:
+                reset_edge = dict(sample, t=now)
+                break
+            if arrival is None and sample["req"] == 1:
+                outstanding = {id(e) for e in drain if not e.is_set()}
+                arrival = axi.init_read(address=addr, length=4, size=2, arid=_ARRIVAL_ARID)
+                self.logger.info(
+                    "%s drain window open at %.2f ns (req=%d host_iso=%d km_iso=%d "
+                    "gated=%d); %d of %d drain reads unretired; arrival read "
+                    "issued with ARID %d",
+                    name,
+                    now,
+                    sample["req"],
+                    sample["host"],
+                    sample["km"],
+                    sample["rst"],
+                    len(outstanding),
+                    n_drain,
+                    _ARRIVAL_ARID,
+                )
+        else:
+            raise AssertionError(f"{name} gated reset never asserted after the reset request")
+        await reset_task
+        return {
+            "drain": drain,
+            "outstanding": outstanding,
+            "arrival": arrival,
+            "hs": arrival_hs,
+            "reset": reset_edge,
+        }
+
+    def _check_arrival_in_window(self, rec: dict, *, name: str, chk: str) -> None:
+        """The arrival AR was accepted while the isolate was up and reset released."""
+        hs, edge = rec["hs"], rec["reset"]
+        assert rec["arrival"] is not None, (
+            f"{name}: the isolate request was never seen with the gated reset "
+            f"released, so {chk} has no beat to grade"
+        )
+        hs_at = "never seen" if hs is None else f"at {hs['t']:.2f} ns"
+        assert hs is not None and hs["t"] < edge["t"], (
+            f"{name}: the arrival read's AR was not accepted on s_axi before the "
+            f"gated reset asserted at {edge['t']:.2f} ns (handshake {hs_at}), so "
+            f"{chk} would grade a read made during reset, not one made mid-drain"
+        )
+        assert hs["req"] == 1 and hs["rst"] == 1, (
+            f"{name}: at the arrival AR handshake ({hs['t']:.2f} ns) req={hs['req']} "
+            f"gated={hs['rst']}; the beat must enter while isolation is requested "
+            "and the domain reset is still released"
+        )
+
     async def _drain_kmac(self) -> None:
         """Assert the KMAC reset and grade its drain window.
 
         Two properties: the gated reset may not assert until both AXI-Lite
-        paths report isolated, and a beat arriving inside the host-path drain
-        window resolves rather than hanging.
-
-        Accepted-traffic drain is not claimed here. Pre-request reads retire
-        before the host path isolates on this domain -- measured at 0 of 16
-        still in flight at isolate close -- so there is no accepted traffic for
-        the isolate to complete, and a checker asserting only that those reads
-        resolved would pass without the reset having done anything. The Adams
-        Bridge leg does carry that property, on a full-AXI isolate.
+        paths report isolated, and a beat accepted inside the drain window
+        resolves rather than hanging. The drain reads that go out with the
+        request only give the isolate traffic to work through; accepted-traffic
+        drain is not claimed on this domain. The Adams Bridge and HMAC legs
+        carry that property.
         """
-        axi_driver = self.env.axi_agent.driver
-        self._require_open_isolate_terms(
+        rec = await self._drain_with_arrival(
+            name="KMAC",
+            addr=KMAC_STATUS,
+            start_reset=lambda: self._request_reset_direct(ENG_KMAC.rst_bit),
+            req=cocotb.top.kmac_host_isolate_req_probe_o,
             host=cocotb.top.kmac_host_isolated_probe_o,
             km=cocotb.top.kmac_km_isolated_probe_o,
             rst=cocotb.top.kmac_gated_rst_n_probe_o,
-            name="KMAC",
+            n_drain=_DRAIN_READS,
         )
-        reset_task = cocotb.start_soon(self.rst.assert_reset(ENG_KMAC.rst_bit))
-
-        arrival_read = None
-        arrival_iso = None
-        for _ in range(1_000):
-            host_iso = self.rd_known(cocotb.top.kmac_host_isolated_probe_o)
-            km_iso = self.rd_known(cocotb.top.kmac_km_isolated_probe_o)
-            if self.rd_known(cocotb.top.kmac_gated_rst_n_probe_o) == 0:
-                assert host_iso == 1 and km_iso == 1, (
-                    "KMAC reset asserted before its AXI-Lite paths isolated: "
-                    f"host_kmac={host_iso} km_kmac={km_iso}"
-                )
-                self.logger.info(
-                    "CHK-KMAC-DRAIN-ORDER PASS: KMAC reset asserted only after the "
-                    "host and Key Manager paths both reported isolated (sampled in "
-                    "the same cycle as the observed assert edge)"
-                )
-                break
-            # The arrival beat travels the HOST path, so the window that matters
-            # for it is the one where host_kmac has isolated. km_kmac isolates
-            # first on this domain, and a beat issued on that edge exercises a
-            # path that is still live -- which is a weaker property than the
-            # checker names.
-            if arrival_read is None and host_iso == 1:
-                arrival_read = axi_driver.axi.init_read(address=KMAC_STATUS, length=4, size=2)
-                arrival_iso = (host_iso, km_iso)
-                self.logger.info(
-                    "KMAC drain window open (host_kmac=%d km_kmac=%d, gated reset "
-                    "still released): arrival read issued here",
-                    host_iso,
-                    km_iso,
-                )
-            await ClockCycles(cocotb.top.clk_i, 1)
-        else:
-            raise AssertionError("KMAC gated reset never asserted after the reset request")
-
-        await reset_task
-
-        assert arrival_read is not None, (
-            "no KMAC host-path drain window was ever observed: the gated reset "
-            "asserted without any cycle in which host_kmac was isolated and the "
-            "reset was still released, so CHK-KMAC-DRAIN-ARRIVAL has nothing to "
-            "grade on the path the arrival beat travels"
+        edge = rec["reset"]
+        assert edge["host"] == 1 and edge["km"] == 1, (
+            "KMAC reset asserted before its AXI-Lite paths isolated: "
+            f"host_kmac={edge['host']} km_kmac={edge['km']}"
         )
-        await with_timeout(arrival_read.wait(), 10_000, "ns")
-        arrival_code = worst_resp(getattr(arrival_read.data, "resp", None))
+        self.logger.info(
+            "CHK-KMAC-DRAIN-ORDER PASS: KMAC reset asserted at %.2f ns only after "
+            "the host and Key Manager paths both reported isolated (sampled in the "
+            "same cycle as the observed assert edge)",
+            edge["t"],
+        )
+        for event in rec["drain"]:
+            await with_timeout(event.wait(), 10_000, "ns")
+
+        self._check_arrival_in_window(rec, name="KMAC", chk="CHK-KMAC-DRAIN-ARRIVAL")
+        await with_timeout(rec["arrival"].wait(), 10_000, "ns")
+        arrival_code = worst_resp(getattr(rec["arrival"].data, "resp", None))
         assert arrival_code in (RESP_OKAY, RESP_SLVERR), (
             f"read arriving during the KMAC isolate drain returned "
             f"resp={arrival_code}, expected OKAY (drained) or SLVERR (terminated), "
             f"never DECERR or a hang"
         )
+        hs = rec["hs"]
         self.logger.info(
-            "CHK-KMAC-DRAIN-ARRIVAL PASS: a read issued inside the host-path "
-            "drain window (host_kmac=%d km_kmac=%d at issue, gated reset still "
-            "released) "
-            "resolved resp=%d, no hang",
-            arrival_iso[0],
-            arrival_iso[1],
+            "CHK-KMAC-DRAIN-ARRIVAL PASS: arrival AR accepted on s_axi at %.2f ns "
+            "(req=%d host_iso=%d km_iso=%d gated=%d), %.2f ns before the gated "
+            "reset asserted at %.2f ns; resolved resp=%d, no hang",
+            hs["t"],
+            hs["req"],
+            hs["host"],
+            hs["km"],
+            hs["rst"],
+            edge["t"] - hs["t"],
+            edge["t"],
             arrival_code,
         )
 
@@ -1433,119 +1547,79 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         )
 
         # ---- Drain-before-reset (the in-window arrival case) -------------
-        # Queue host reads that the fabric can accept BEFORE the reset request,
-        # so the isolate coordinator has real traffic to drain. Accepted beats
-        # must complete; anything not yet accepted is terminated. None may hang.
-        axi_driver = self.env.axi_agent.driver
-        self._require_open_isolate_terms(
+        # Host reads go out with the reset request, so the isolate has accepted
+        # traffic to drain. A read issued once the isolate request is up is then
+        # timed on the bus against the reset edge.
+        rec = await self._drain_with_arrival(
+            name="HMAC",
+            addr=HMAC_DIGEST_0,
+            start_reset=lambda: self._request_reset_direct(ENG_HMAC.rst_bit),
+            req=cocotb.top.hmac_host_isolate_req_probe_o,
             host=cocotb.top.hmac_host_isolated_probe_o,
             km=cocotb.top.hmac_km_isolated_probe_o,
             rst=cocotb.top.hmac_gated_rst_n_probe_o,
-            name="HMAC",
+            n_drain=_DRAIN_READS,
         )
-        reset_task = cocotb.start_soon(self.rst.assert_reset(ENG_HMAC.rst_bit))
-        # A host read issued on each cycle until the host path isolates. HMAC
-        # answers in a few cycles, so only a read issued on a late cycle is
-        # still unretired at that edge. That beat is what the isolate drains.
-        drain_reads = []
-
-        # The arrival beat travels the HOST path. The window that matters for
-        # it is the first cycle host_hmac is 1 while the gated reset is still
-        # released. The host isolate bit was 0 when the request went out.
-        arrival_read = None
-        host_outstanding = 0
-        host_outstanding_events: set[int] = set()
-        arrival_iso = None
-        for _ in range(1_000):
-            host_iso = self.rd_known(cocotb.top.hmac_host_isolated_probe_o)
-            km_iso = self.rd_known(cocotb.top.hmac_km_isolated_probe_o)
-            if self.rd_known(cocotb.top.hmac_gated_rst_n_probe_o) == 0:
-                assert host_iso == 1 and km_iso == 1, (
-                    "HMAC reset asserted before its AXI-Lite paths isolated: "
-                    f"host_hmac={host_iso} km_hmac={km_iso}"
-                )
-                self.logger.info(
-                    "CHK-DRAIN-ORDER PASS: HMAC reset asserted only after the host "
-                    "and Key Manager paths both reported isolated (sampled in the "
-                    "same cycle as the observed assert edge)"
-                )
-                break
-            if host_iso == 0:
-                drain_reads.append(
-                    axi_driver.axi.init_read(address=HMAC_DIGEST_0, length=4, size=2)
-                )
-            if arrival_read is None and host_iso == 1:
-                # Beats still unretired as the isolate closes. Without this the
-                # drain check below would pass on traffic that had already
-                # completed before the reset request went out -- the reads and
-                # the SW_RESET_N write share one master, so ordering alone does
-                # not put them in the window. This is the guard whose absence
-                # made the KMAC drain leg vacuous.
-                host_outstanding_events = {id(e) for e in drain_reads if not e.is_set()}
-                host_outstanding = len(host_outstanding_events)
-                arrival_read = axi_driver.axi.init_read(address=HMAC_DIGEST_0, length=4, size=2)
-                arrival_iso = (host_iso, km_iso)
-                self.logger.info(
-                    "drain window open (host_hmac=%d km_hmac=%d, gated reset still "
-                    "released): arrival read issued here",
-                    host_iso,
-                    km_iso,
-                )
-            await ClockCycles(cocotb.top.clk_i, 1)
-        else:
-            raise AssertionError("HMAC gated reset never asserted after the reset request")
-
-        await reset_task
+        edge = rec["reset"]
+        assert edge["host"] == 1 and edge["km"] == 1, (
+            "HMAC reset asserted before its AXI-Lite paths isolated: "
+            f"host_hmac={edge['host']} km_hmac={edge['km']}"
+        )
+        self.logger.info(
+            "CHK-DRAIN-ORDER PASS: HMAC reset asserted at %.2f ns only after the "
+            "host and Key Manager paths both reported isolated (sampled in the "
+            "same cycle as the observed assert edge)",
+            edge["t"],
+        )
 
         drain_results = []
-        for event in drain_reads:
+        for event in rec["drain"]:
             await with_timeout(event.wait(), 10_000, "ns")
             drain_results.append((id(event), worst_resp(getattr(event.data, "resp", None))))
         drain_codes = [code for _event_id, code in drain_results]
         host_outstanding_codes = [
-            code for event_id, code in drain_results if event_id in host_outstanding_events
+            code for event_id, code in drain_results if event_id in rec["outstanding"]
         ]
         assert all(code in (RESP_OKAY, RESP_SLVERR) for code in drain_codes), (
             f"in-flight HMAC host reads returned unexpected responses {drain_codes}"
         )
-        assert RESP_OKAY in host_outstanding_codes, (
-            "no HMAC host read that was still outstanding when isolation closed "
-            "drained with OKAY; "
-            f"outstanding responses were {host_outstanding_codes}"
+        assert rec["outstanding"], (
+            f"0 of the {len(rec['drain'])} HMAC drain reads were unretired when the "
+            "isolate request arrived, so this leg grades no traffic that the "
+            "isolate had to drain"
         )
-        assert host_outstanding, (
-            f"0 of the {len(drain_reads)} pre-request HMAC reads were still "
-            "unretired when the isolate closed, so every one of them had already "
-            "completed and this leg grades no traffic that the isolate had to "
-            "drain"
+        assert RESP_OKAY in host_outstanding_codes, (
+            "no HMAC host read that was outstanding when the isolate request "
+            f"arrived drained with OKAY; outstanding responses were {host_outstanding_codes}"
         )
         self.logger.info(
-            "CHK-HOST-DRAIN PASS: %d of %d in-flight HMAC host reads were still "
-            "unretired as the isolate closed and all resolved %s (no hang, no "
-            "DECERR); at least one drained OKAY",
-            host_outstanding,
-            len(drain_reads),
+            "CHK-HOST-DRAIN PASS: %d of %d HMAC host reads were unretired when the "
+            "isolate request arrived and all resolved %s (no hang, no DECERR); at "
+            "least one drained OKAY",
+            len(rec["outstanding"]),
+            len(rec["drain"]),
             host_outstanding_codes,
         )
 
-        assert arrival_read is not None, (
-            "no drain window was ever observed: the HMAC gated reset asserted "
-            "without any cycle in which an isolate bit was set and the reset was "
-            "still released, so the arrival-during-drain case has no beat and "
-            "CHK-DRAIN-ARRIVAL has nothing to grade"
-        )
-        await with_timeout(arrival_read.wait(), 10_000, "ns")
-        arrival_code = worst_resp(getattr(arrival_read.data, "resp", None))
+        self._check_arrival_in_window(rec, name="HMAC", chk="CHK-DRAIN-ARRIVAL")
+        await with_timeout(rec["arrival"].wait(), 10_000, "ns")
+        arrival_code = worst_resp(getattr(rec["arrival"].data, "resp", None))
         assert arrival_code in (RESP_OKAY, RESP_SLVERR), (
             f"read arriving during the isolate drain returned resp={arrival_code}, "
             "expected OKAY (drained) or SLVERR (terminated), never DECERR or a hang"
         )
+        hs = rec["hs"]
         self.logger.info(
-            "CHK-DRAIN-ARRIVAL PASS: a read issued inside the drain window "
-            "(host_hmac=%d km_hmac=%d at issue, gated reset still released) "
-            "resolved resp=%d, no hang",
-            arrival_iso[0],
-            arrival_iso[1],
+            "CHK-DRAIN-ARRIVAL PASS: arrival AR accepted on s_axi at %.2f ns "
+            "(req=%d host_iso=%d km_iso=%d gated=%d), %.2f ns before the gated "
+            "reset asserted at %.2f ns; resolved resp=%d, no hang",
+            hs["t"],
+            hs["req"],
+            hs["host"],
+            hs["km"],
+            hs["rst"],
+            edge["t"] - hs["t"],
+            edge["t"],
             arrival_code,
         )
 
@@ -1746,114 +1820,82 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         # sampled state would be the settled one in which both bits are high
         # anyway and the order could not fail.
         abr_rst = SepCryptoResetIso(self)
-        # Queue host reads the fabric can accept BEFORE the request, so the
-        # full-AXI isolate has real traffic to drain. This is the only full-AXI
-        # host isolate in the design; every other accelerator path is AXI-Lite,
-        # so TerminateTransaction and NumPending are exercised nowhere else.
-        abr_axi = self.env.axi_agent.driver
-        abr_drain_reads = [
-            abr_axi.axi.init_read(address=MLKEM_STATUS, length=4, size=2) for _ in range(16)
-        ]
-        self._require_open_isolate_terms(
+        # Host reads go out with the reset request, so the full-AXI isolate has
+        # accepted traffic to drain. This is the only full-AXI host isolate in the
+        # design; every other accelerator path is AXI-Lite, so
+        # TerminateTransaction and NumPending are exercised nowhere else.
+        rec = await self._drain_with_arrival(
+            name="ABR",
+            addr=MLKEM_STATUS,
+            start_reset=lambda: self._request_reset_direct(RST_ABR),
+            req=cocotb.top.abr_host_isolate_req_probe_o,
             host=cocotb.top.abr_host_isolated_probe_o,
             km=cocotb.top.abr_km_isolated_probe_o,
             rst=cocotb.top.abr_gated_rst_n_probe_o,
-            name="ABR",
+            n_drain=_DRAIN_READS,
         )
-        abr_task = cocotb.start_soon(abr_rst.assert_reset(RST_ABR))
-        abr_arrival = None
-        abr_outstanding = None
-        abr_outstanding_events: set[int] = set()
-        abr_saw_window = False
-        for _ in range(1_000):
-            host_iso = self.rd_known(cocotb.top.abr_host_isolated_probe_o)
-            km_iso = self.rd_known(cocotb.top.abr_km_isolated_probe_o)
-            if self.rd_known(cocotb.top.abr_gated_rst_n_probe_o) == 0:
-                assert host_iso == 1 and km_iso == 1, (
-                    "ABR reset asserted before its AXI paths isolated: "
-                    f"host_abr={host_iso} km_abr={km_iso}"
-                )
-                self.logger.info(
-                    "CHK-ABR-DRAIN-ORDER PASS: ABR reset asserted only after the "
-                    "full-AXI host path and the shared Key Manager path both "
-                    "reported isolated (sampled in the same cycle as the observed "
-                    "assert edge)"
-                )
-                break
-            if not abr_saw_window and host_iso == 1:
-                abr_saw_window = True
-                # Beats still unretired as the isolate closes. Without this the
-                # drain check below would pass on traffic that had already
-                # completed before the reset request went out -- the reads and
-                # the SW_RESET_N write share one master, so ordering alone does
-                # not put them in the window.
-                abr_outstanding_events = {id(e) for e in abr_drain_reads if not e.is_set()}
-                abr_outstanding = len(abr_outstanding_events)
-                abr_arrival = abr_axi.axi.init_read(address=MLKEM_STATUS, length=4, size=2)
-                self.logger.info(
-                    "ABR drain window open (host_abr=%d km_abr=%d, gated reset still released)",
-                    host_iso,
-                    km_iso,
-                )
-            await ClockCycles(cocotb.top.clk_i, 1)
-        else:
-            raise AssertionError(
-                "ABR gated reset never asserted after the reset request: the "
-                "sequencer is still waiting for host_abr and km_abr to isolate"
-            )
-        await abr_task
+        edge = rec["reset"]
+        assert edge["host"] == 1 and edge["km"] == 1, (
+            "ABR reset asserted before its AXI paths isolated: "
+            f"host_abr={edge['host']} km_abr={edge['km']}"
+        )
+        self.logger.info(
+            "CHK-ABR-DRAIN-ORDER PASS: ABR reset asserted at %.2f ns only after the "
+            "full-AXI host path and the shared Key Manager path both reported "
+            "isolated (sampled in the same cycle as the observed assert edge)",
+            edge["t"],
+        )
 
         abr_results = []
-        for event in abr_drain_reads:
+        for event in rec["drain"]:
             await with_timeout(event.wait(), 10_000, "ns")
             abr_results.append((id(event), worst_resp(getattr(event.data, "resp", None))))
         abr_codes = [code for _event_id, code in abr_results]
         abr_outstanding_codes = [
-            code for event_id, code in abr_results if event_id in abr_outstanding_events
+            code for event_id, code in abr_results if event_id in rec["outstanding"]
         ]
         assert all(code in (RESP_OKAY, RESP_SLVERR) for code in abr_codes), (
             f"in-flight ABR host reads returned unexpected responses {abr_codes}"
         )
-        assert RESP_OKAY in abr_outstanding_codes, (
-            "no ABR host read that was still outstanding when isolation closed "
-            "drained with OKAY; "
-            f"outstanding responses were {abr_outstanding_codes}"
+        assert rec["outstanding"], (
+            f"0 of the {len(rec['drain'])} ABR drain reads were unretired when the "
+            "isolate request arrived, so this leg grades no traffic that the "
+            "isolate had to drain"
         )
-        assert abr_outstanding, (
-            f"{abr_outstanding} of the {len(abr_drain_reads)} pre-request ABR reads "
-            "were still unretired when the isolate closed, so every one of them had "
-            "already completed and this leg grades no traffic that the isolate had "
-            "to drain"
+        assert RESP_OKAY in abr_outstanding_codes, (
+            "no ABR host read that was outstanding when the isolate request "
+            f"arrived drained with OKAY; outstanding responses were {abr_outstanding_codes}"
         )
         self.logger.info(
-            "CHK-ABR-HOST-DRAIN PASS: %d of %d ABR host reads were still unretired "
-            "when the full-AXI isolate closed, and all resolved %s (no hang, no "
-            "DECERR); at least one drained OKAY",
-            abr_outstanding,
-            len(abr_drain_reads),
+            "CHK-ABR-HOST-DRAIN PASS: %d of %d ABR host reads were unretired when "
+            "the isolate request arrived and all resolved %s (no hang, no DECERR); "
+            "at least one drained OKAY",
+            len(rec["outstanding"]),
+            len(rec["drain"]),
             abr_outstanding_codes,
         )
 
-        assert abr_arrival is not None, (
-            "no ABR drain window was observed, so the arrival-during-drain case has "
-            "no beat and CHK-ABR-DRAIN-ARRIVAL has nothing to grade"
-        )
-        await with_timeout(abr_arrival.wait(), 10_000, "ns")
-        abr_arrival_code = worst_resp(getattr(abr_arrival.data, "resp", None))
+        self._check_arrival_in_window(rec, name="ABR", chk="CHK-ABR-DRAIN-ARRIVAL")
+        await with_timeout(rec["arrival"].wait(), 10_000, "ns")
+        abr_arrival_code = worst_resp(getattr(rec["arrival"].data, "resp", None))
         assert abr_arrival_code in (RESP_OKAY, RESP_SLVERR), (
-            "an ABR host read issued INSIDE the drain window returned "
+            "an ABR host read accepted INSIDE the drain window returned "
             f"{abr_arrival_code}; it may drain or terminate, but it may not hang or "
             "DECERR"
         )
+        hs = rec["hs"]
         self.logger.info(
-            "CHK-ABR-DRAIN-ARRIVAL PASS: a read issued inside the ABR drain window "
-            "resolved %d rather than hanging",
+            "CHK-ABR-DRAIN-ARRIVAL PASS: arrival AR accepted on s_axi at %.2f ns "
+            "(req=%d host_iso=%d km_iso=%d gated=%d), %.2f ns before the gated "
+            "reset asserted at %.2f ns; resolved resp=%d, no hang",
+            hs["t"],
+            hs["req"],
+            hs["host"],
+            hs["km"],
+            hs["rst"],
+            edge["t"] - hs["t"],
+            edge["t"],
             abr_arrival_code,
-        )
-
-        assert abr_saw_window, (
-            "no ABR drain window was observed: the gated reset asserted with no "
-            "cycle in which an isolate bit was set and the reset still released"
         )
         await abr_rst.release_resets()
 

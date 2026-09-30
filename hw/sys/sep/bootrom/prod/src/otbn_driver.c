@@ -116,12 +116,27 @@ void otbn_dmem_read(uint32_t byte_offset, uint32_t *data, uint32_t word_count) {
 }
 
 int otbn_execute(void) {
+    // INTR_STATE.done is the only signal that separates "finished" from "never
+    // started": a command the block never accepted leaves OTBN in exactly the
+    // idle state otbn_wait_idle() waits for, and ERR_BITS reads 0 because
+    // nothing ran. Clear it first (write-one-to-clear) so the bit read after
+    // the command belongs to this execution.
+    otbn__INTR_STATE_t clear = {.f.done = 1};
+    mmio_write32(SEP_TOP_OTBN_INTR_STATE_BASE_ADDR, clear.w);
+
     // Send execute command.
     mmio_write32(SEP_TOP_OTBN_CMD_BASE_ADDR, OTBN_CMD_EXECUTE);
 
     // Wait for completion.
     int rc = otbn_wait_idle();
     if (rc != OTBN_OK) return rc;
+
+    otbn__INTR_STATE_t intr;
+    intr.w = mmio_read32(SEP_TOP_OTBN_INTR_STATE_BASE_ADDR);
+    if (!intr.f.done) {
+        simputs("OTBN_NOT_STARTED\n");
+        return OTBN_ERR_NOT_STARTED;
+    }
 
     // Check error bits.
     uint32_t err = mmio_read32(SEP_TOP_OTBN_ERR_BITS_BASE_ADDR);
