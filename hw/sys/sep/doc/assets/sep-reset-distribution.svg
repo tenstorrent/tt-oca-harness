@@ -88,45 +88,53 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="bs" x="272" y="44" text-anchor="start">u_sep_crypto.u_sep_efuse_wrapper</text>
 <rect class="core" x="290" y="104" width="80" height="20" rx="4"/>
 <text class="s" x="330" y="119" text-anchor="middle">fuse sense</text>
-<rect class="fabric" x="400" y="56" width="40" height="68" rx="4"/>
-<text class="s" x="420" y="95" text-anchor="middle">AND</text>
-<rect class="fabric" x="460" y="78" width="60" height="22" rx="4"/>
-<text class="s" x="490" y="94" text-anchor="middle">sync</text>
-<path class="a-slate" d="M370,114 L396,114"/>
-<path class="a-slate" d="M440,89 L456,89"/>
-<text class="s" x="14" y="86" text-anchor="start">ext_boot_seq_done_i</text>
-<path class="sigo" d="M17,92 L396,92"/>
+<path class="fabric" d="M404,56 L427.8,56 A34.0,34.0 0 0 1 427.8,124 L404,124 Z"/>
+<rect class="fabric" x="468" y="78" width="58" height="22" rx="4"/>
+<text class="s" x="497" y="94" text-anchor="middle">sync</text>
+<path class="a-slate" d="M370,114 L400,114"/>
+<path class="a-slate" d="M461.8,90.0 L464,90.0"/>
+<text class="s" x="14" y="84" text-anchor="start">ext_boot_seq_done_i</text>
+<path class="sigo" d="M17,90 L400,90"/>
 <text class="s" x="14" y="60" text-anchor="start">rst_ni</text>
-<path class="a-smu" d="M17,66 L396,66"/>
+<path class="a-smu" d="M17,66 L400,66"/>
 <circle cx="240" cy="66" r="4" fill="#103525"/>
 <rect class="core" x="262" y="146" width="538" height="336" rx="6"/>
 <text class="bs" x="272" y="166" text-anchor="start">u_sep_reset_ctrl</text>
-<rect class="fabric" x="560" y="184" width="90" height="32" rx="4"/>
-<text class="s" x="605" y="205" text-anchor="middle">JTAG ovrd</text>
-<rect class="fabric" x="668" y="184" width="118" height="32" rx="4"/>
-<text class="s" x="727" y="205" text-anchor="middle">u_sep_reset_sync</text>
-<path class="n-wdt" d="M520,89 L545,89 L545,192"/>
-<path class="a-wdt" d="M545,192 L556,192"/>
-<path class="a-ref" d="M650,200 L664,200"/>
-<path class="n-ref" d="M786,200 L875,200"/>
-<text class="s" x="14" y="202" text-anchor="start">jtag_sep_reset_ctrl_i</text>
-<path class="a-jtag" d="M17,208 L556,208"/>
-<circle cx="270" cy="208" r="3.5" fill="#42759b"/>
-<circle cx="793" cy="200" r="4" fill="#2f7f79"/>
-<path class="n-ref" d="M793,200 L793,229 L544,229"/>
-<path class="n-ref" d="M544,229 L544,253 M544,263 L544,312"/>
-<path class="n-ref" d="M544,312 L578,312"/>
-<path class="a-ref" d="M578,229 L578,240"/>
-<circle cx="578" cy="229" r="4" fill="#2f7f79"/>
-<path class="a-ref" d="M578,312 L578,322"/>
-<rect class="fabric" x="556" y="244" width="44" height="28" rx="4"/>
-<text class="s" x="578" y="263" text-anchor="middle">AND</text>
-<rect class="fabric" x="698" y="244" width="92" height="28" rx="4"/>
-<text class="s" x="744" y="263" text-anchor="middle">Scan bypass</text>
-<path class="a-per" d="M600,258 L694,258"/>
-<path class="n-per" d="M790,258 L850,258"/>
-<text class="s" x="14" y="252" text-anchor="start">wdt_rst_ni</text>
-<path class="a-tel" d="M17,258 L552,258"/>
+<path class="fabric" d="M600,178 L626,186 L626,214 L600,222 Z"/>
+<text class="s" x="608" y="193" text-anchor="middle">0</text>
+<text class="s" x="608" y="217" text-anchor="middle">1</text>
+<rect class="fabric" x="660" y="184" width="118" height="32" rx="4"/>
+<text class="s" x="719" y="205" text-anchor="middle">u_sep_reset_sync</text>
+<path class="n-wdt" d="M526,89 L545,89 L545,188"/>
+<path class="a-wdt" d="M545,188 L596,188"/>
+<path class="a-ref" d="M626,200 L656,200"/>
+<path class="n-ref" d="M778,200 L875,200"/>
+<text class="s" x="14" y="206" text-anchor="start">jtag_sep_reset_ctrl_i</text>
+<path class="a-jtag" d="M17,212 L596,212"/>
+<text class="s" x="594" y="207" text-anchor="end">.val</text>
+<circle cx="270" cy="212" r="3.5" fill="#42759b"/>
+<circle cx="566" cy="212" r="3.5" fill="#42759b"/>
+<path class="n-jtag" d="M566,212 L566,230 L613.0,230"/>
+<path class="a-jtag" d="M613.0,230 L613.0,222"/>
+<text class="s" x="619" y="240" text-anchor="start">.ovrd</text>
+<circle cx="785" cy="200" r="4" fill="#2f7f79"/>
+<path class="n-ref" d="M785,200 L785,244 L544,244"/>
+<path class="n-ref" d="M544,244 L544,264 M544,274 L544,339"/>
+<circle cx="544" cy="255" r="4" fill="#2f7f79"/>
+<path class="a-ref" d="M544,255 L556,255"/>
+<path class="a-ref" d="M544,339 L556,339"/>
+<path class="fabric" d="M560,248 L569.8,248 A14.0,14.0 0 0 1 569.8,276 L560,276 Z"/>
+<path class="fabric" d="M730,252 L756,260 L756,284 L730,292 Z"/>
+<text class="s" x="738" y="267" text-anchor="middle">0</text>
+<text class="s" x="738" y="287" text-anchor="middle">1</text>
+<path class="a-per" d="M583.8,262.0 L726,262.0"/>
+<path class="n-per" d="M756,272.0 L850,272.0"/>
+<text class="s" x="14" y="263" text-anchor="start">wdt_rst_ni</text>
+<path class="a-tel" d="M17,269 L556,269"/>
+<path class="a-slate" d="M704,282 L726,282"/>
+<text class="s" x="700" y="287" text-anchor="end">scan_rst_ni</text>
+<path class="a-dash" d="M743.0,304 L743.0,292"/>
+<text class="s" x="737" y="306" text-anchor="end">test_en_i</text>
 <text class="s" x="282" y="312" text-anchor="start">×7, one per SW_RESET_N bit</text>
 <rect class="core" x="280" y="328" width="100" height="36" rx="4"/>
 <text class="s" x="330" y="343.5" text-anchor="middle">u_reg</text>
@@ -135,38 +143,44 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <rect class="fabric" x="395" y="329" width="138" height="28" rx="4"/>
 <rect class="fabric" x="392" y="332" width="138" height="28" rx="4"/>
 <text class="s" x="461" y="351" text-anchor="middle">u_&lt;blk&gt;_isolate_seq</text>
-<rect class="fabric" x="562" y="326" width="44" height="28" rx="4"/>
-<rect class="fabric" x="559" y="329" width="44" height="28" rx="4"/>
-<rect class="fabric" x="556" y="332" width="44" height="28" rx="4"/>
-<text class="s" x="578" y="351" text-anchor="middle">AND</text>
-<rect class="fabric" x="620" y="326" width="70" height="28" rx="4"/>
-<rect class="fabric" x="617" y="329" width="70" height="28" rx="4"/>
-<rect class="fabric" x="614" y="332" width="70" height="28" rx="4"/>
-<text class="s" x="649" y="351" text-anchor="middle">JTAG ovrd</text>
-<rect class="fabric" x="704" y="326" width="92" height="28" rx="4"/>
-<rect class="fabric" x="701" y="329" width="92" height="28" rx="4"/>
-<rect class="fabric" x="698" y="332" width="92" height="28" rx="4"/>
-<text class="s" x="744" y="351" text-anchor="middle">Scan bypass</text>
+<path class="fabric" d="M566,326 L575.8,326 A14.0,14.0 0 0 1 575.8,354 L566,354 Z"/>
+<path class="fabric" d="M563,329 L572.8,329 A14.0,14.0 0 0 1 572.8,357 L563,357 Z"/>
+<path class="fabric" d="M560,332 L569.8,332 A14.0,14.0 0 0 1 569.8,360 L560,360 Z"/>
+<path class="fabric" d="M620,330 L646,338 L646,362 L620,370 Z"/>
+<path class="fabric" d="M617,333 L643,341 L643,365 L617,373 Z"/>
+<path class="fabric" d="M614,336 L640,344 L640,368 L614,376 Z"/>
+<text class="s" x="622" y="351" text-anchor="middle">0</text>
+<text class="s" x="622" y="371" text-anchor="middle">1</text>
+<path class="fabric" d="M736,340 L762,348 L762,372 L736,380 Z"/>
+<path class="fabric" d="M733,343 L759,351 L759,375 L733,383 Z"/>
+<path class="fabric" d="M730,346 L756,354 L756,378 L730,386 Z"/>
+<text class="s" x="738" y="361" text-anchor="middle">0</text>
+<text class="s" x="738" y="381" text-anchor="middle">1</text>
 <path class="a-slate" d="M380,346 L388,346"/>
-<path class="a-slate" d="M530,346 L552,346"/>
-<path class="a-slate" d="M600,346 L610,346"/>
-<path class="a-slate" d="M684,346 L694,346"/>
-<path class="n-bus" d="M790,346 L825,346"/>
-<rect class="fabric" x="594" y="384" width="110" height="26" rx="4"/>
-<text class="s" x="649" y="402" text-anchor="middle">JTAG IP sync</text>
-<path class="a-jtag" d="M649,384 L649,364"/>
-<path class="n-jtag" d="M270,208 L270,253 M270,263 L270,397"/>
-<path class="a-jtag" d="M270,397 L590,397"/>
-<path class="a-smu" d="M240,426 L649,426 L649,414"/>
-<circle cx="240" cy="426" r="4" fill="#103525"/>
-<circle cx="461" cy="426" r="4" fill="#103525"/>
-<path class="n-smu" d="M461,426 L461,402"/>
-<path class="a-smu" d="M461,392 L461,364"/>
+<path class="a-slate" d="M530,353 L556,353"/>
+<path class="a-slate" d="M583.8,346.0 L610,346.0"/>
+<path class="a-slate" d="M640,356.0 L726,356.0"/>
+<path class="a-slate" d="M708,376 L726,376"/>
+<path class="a-dash" d="M743.0,396 L743.0,386"/>
+<path class="n-bus" d="M756,366.0 L825,366.0"/>
+<rect class="fabric" x="572" y="390" width="110" height="24" rx="4"/>
+<text class="s" x="627" y="407" text-anchor="middle">JTAG IP sync</text>
+<path class="a-jtag" d="M596,390 L596,366 L610,366"/>
+<path class="a-jtag" d="M627.0,390 L627.0,376"/>
+<text class="s" x="600" y="385" text-anchor="start">.val</text>
+<text class="s" x="633" y="385" text-anchor="start">.ovrd</text>
+<path class="n-jtag" d="M270,212 L270,264 M270,274 L270,402"/>
+<path class="a-jtag" d="M270,402 L568,402"/>
+<path class="a-smu" d="M240,430 L627,430 L627,418"/>
+<circle cx="240" cy="430" r="4" fill="#103525"/>
+<circle cx="461" cy="430" r="4" fill="#103525"/>
+<path class="n-smu" d="M461,430 L461,407"/>
+<path class="a-smu" d="M461,397 L461,364"/>
 <text class="s" x="14" y="440" text-anchor="start">scan_rst_ni</text>
 <path class="a-slate" d="M17,446 L256,446"/>
 <text class="s" x="14" y="464" text-anchor="start">test_en_i</text>
 <path class="a-dash" d="M17,470 L256,470"/>
-<text class="s" x="272" y="462" text-anchor="start">Test mode: scan_rst_ni replaces the u_sep_reset_sync and scan bypass outputs</text>
+<text class="s" x="272" y="462" text-anchor="start">Test mode: scan_rst_ni replaces the u_sep_reset_sync and scan bypass mux outputs</text>
 <rect class="core" x="290" y="502" width="510" height="326" rx="6"/>
 <text class="bs" x="300" y="522" text-anchor="start">u_sep_crypto</text>
 <rect class="core" x="310" y="536" width="478" height="86" rx="4"/>
@@ -194,7 +208,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="s" x="602" y="789" text-anchor="end">warm_rst_ni</text>
 <text class="s" x="602" y="811" text-anchor="end">cold_rst_ni</text>
 <text class="s" x="792" y="643" text-anchor="end">gated_rst_ni[6:0]</text>
-<path class="n-bus" d="M825,346 L825,649 L636,649 L636,784"/>
+<path class="n-bus" d="M825,366 L825,649 L636,649 L636,784"/>
 <path class="a-bus" d="M636,649 L616,649"/>
 <circle cx="636" cy="649" r="4.5" fill="#b2566c"/>
 <path class="a-bus" d="M636,697 L616,697"/>
@@ -250,9 +264,9 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="bs" x="300" y="1298" text-anchor="start">u_sep_local_axi_xbar_wrapper,</text>
 <text class="bs" x="300" y="1316" text-anchor="start">u_efuse_shim_demux, u_entropy_fifo</text>
 <path class="a-smu" d="M240,1301 L284,1301"/>
-<path class="n-smu" d="M240,66 L240,87 M240,97 L240,203 M240,213 L240,253 M240,263 L240,441 M240,451 L240,465 M240,475 L240,930 M240,940 L240,966 M240,976 L240,1301"/>
+<path class="n-smu" d="M240,66 L240,85 M240,95 L240,207 M240,217 L240,264 M240,274 L240,441 M240,451 L240,465 M240,475 L240,930 M240,940 L240,966 M240,976 L240,1301"/>
 <path class="n-ref" d="M875,200 L875,1155"/>
-<path class="n-per" d="M850,258 L850,801 M850,811 L850,1057"/>
+<path class="n-per" d="M850,272 L850,801 M850,811 L850,1057"/>
 <path class="n-smu" d="M14,1370 L48,1370"/>
 <text class="s" x="56" y="1375" text-anchor="start">rst_ni</text>
 <path class="n-wdt" d="M124,1370 L158,1370"/>
