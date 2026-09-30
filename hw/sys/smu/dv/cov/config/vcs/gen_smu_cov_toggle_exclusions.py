@@ -196,7 +196,7 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
         re.compile(rf"^{MEM_IF}\."),
         "address, request, enable, write-enable, mode and handshake fields of the SMC "
         "and SEP RAM, ROM and TCM interfaces. smu.sv connects each interface whole "
-        "between u_smc or u_sep and its own port (smu.sv 867-920, 1000-1041), "
+        "between u_smc or u_sep and its own port (smu.sv 865-918, 998-1039), "
         "smu_wrapper.sv carries it whole to the macros in hw/top/smc_ip_integration.sv "
         "and hw/top/sep_ip_integration.sv, and no SMU logic reads or drives a field: the "
         "fields that toggle already prove every connection, and the rest record which "
@@ -243,7 +243,7 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
         "the SEP half, bits [383:0], of the external debug bus. sep.sv (1186-1275) "
         "packs SEP-internal status into 24 sixteen-bit lanes -- CPU trace, ECC and "
         "performance-counter strobes, interrupt and reset status, eFuse, token, remap "
-        "and filter-hit debug, and reserved zero fields -- and smu.sv (1382-1385) "
+        "and filter-hit debug, and reserved zero fields -- and smu.sv (1380-1383) "
         "only concatenates it under the "
         "adopter's bits and hands it to the SMC debug mux; the SEP bench grades each "
         "source.",
@@ -338,10 +338,10 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
     (
         "SEP-OWNED",
         re.compile(
-            r"^(sep_io_spi_req_o|sep_cpu_trace_o|sep_lockstep_ctrl_i|"
+            r"^(sep_cpu_trace_o|sep_lockstep_ctrl_i|"
             r"sep_lockstep_status_o|sep_ext_interrupts_i|entropy_rosc_sample_clk_i)(\.|\[|$)"
         ),
-        "SEP passthroughs smu.sv only routes: the SEP SPI host and CPU trace need SEP "
+        "SEP passthroughs smu.sv only routes: the SEP CPU trace needs SEP "
         "firmware, the lockstep pair is inert without RV_LOCKSTEP_ENABLE, and the SEP "
         "external interrupts and entropy sample clock terminate inside the SEP. The "
         "SEP bench grades each of them.",
@@ -580,8 +580,8 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
             r"^(sep_smn_inbound_axi_(req|resp)|smc_sys_axi_in_(req|resp))\.(aw|ar|b|r)\.id$"
         ),
         "ID bits [5:4] on the SEP and SMC inbound ports past the crossbar's ID width "
-        "converters. Each converter is built for 16 unique slave-port IDs (smu.sv 1127, "
-        "1151), so it remaps through axi_id_remap, which drives the 4-bit table index "
+        "converters. Each converter is built for 16 unique slave-port IDs (smu.sv 1125, "
+        "1149), so it remaps through axi_id_remap, which drives the 4-bit table index "
         "zero-extended to the 6-bit port (axi_id_remap.sv 131, 198-200).",
         "a converter built for more than 16 unique IDs",
         ("smu",),
