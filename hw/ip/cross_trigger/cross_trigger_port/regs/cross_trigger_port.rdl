@@ -33,7 +33,7 @@ addrmap cross_trigger_port {
     };
 
     reg STATUS {
-        desc = "Cross Trigger Port Status";
+        desc = "Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.";
         field {
             sw = r;
             hw = w;

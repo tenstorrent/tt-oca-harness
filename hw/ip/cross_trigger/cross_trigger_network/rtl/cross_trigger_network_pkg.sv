@@ -27,8 +27,9 @@ package cross_trigger_network_pkg;
   localparam int unsigned MAX_NUM_INT_CT = 32;
 
   // Address space configuration
-  // CTM gets 512 bytes (0x200) - enough for up to 64 CT_SRC register pairs (64 * 8 bytes)
-  // Each CT_SRC uses 8 bytes (CONFIG_0 + CONFIG_1) to support up to 64 CT_DST ports
+  // CTM gets 512 bytes (0x200) - enough for up to 64 CT_SRC ports (64 * 8 bytes)
+  // Each CT_SRC uses one 8-byte CONFIG_0 slot, 32 bits wide for up to 32 CT_DST ports
+  // and 64 bits wide for up to 64
   // Each CTP gets 16 bytes (0x10) - enough for 3 registers (CONFIG, STATUS, STRETCH_MULT)
   // verilog_format: off  // verible explodes this qualified call's argument list
   localparam int unsigned CSR_ADDR_CTM_SIZE =
@@ -58,7 +59,7 @@ package cross_trigger_network_pkg;
 
   // Function to calculate the total number of CTM ports
   // NUM_CTP external + NUM_INT_CT internal
-  // cast to 32 bits to avoid lint issues since integer tytpe is 32 bits (32bits + 32bits requires 33rd bit to prevent overflow, not realistic here)
+  // cast to 32 bits to avoid lint issues since integer type is 32 bits (32bits + 32bits requires 33rd bit to prevent overflow, not realistic here)
   function automatic int unsigned calc_num_ctm_ports(int unsigned num_ctp, int unsigned num_int_ct);
     return 32'(num_ctp + num_int_ct);
   endfunction
