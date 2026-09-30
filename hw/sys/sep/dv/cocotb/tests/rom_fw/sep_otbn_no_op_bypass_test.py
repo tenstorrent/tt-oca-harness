@@ -264,9 +264,7 @@ class sep_otbn_no_op_bypass_test(sep_base_test):
             f"ROM never printed {_RSA_EXEC_FAIL}: the failed execution did not "
             f"propagate out of rsa_3072_verify(). Console: {console}"
         )
-        self.logger.info(
-            "CHK-OTBN-NOT-STARTED PASS: %s then %s", _OTBN_NOT_STARTED, _RSA_EXEC_FAIL
-        )
+        self.logger.info("CHK-OTBN-NOT-STARTED PASS: %s then %s", _OTBN_NOT_STARTED, _RSA_EXEC_FAIL)
 
         # CHK-OTBN-NO-BYPASS: the whole point. A forged PKCS#1 block sat in the
         # shared inout buffer and the ROM did not report it as a verified
