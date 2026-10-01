@@ -53,10 +53,11 @@
 // The largest transfer dma_transfer() accepts is SMC SRAM's 1 MiB, 256 Ki beats
 // of 4 bytes. A STATUS read is at least one bus round trip, taken here as no
 // less than 4 core cycles, so DMA_POLLS_PER_BEAT allows over 1000 core cycles
-// per beat: slower than any on-chip copy, and than an XIP source read one lane
-// wide at an SCK no slower than core/32. DMA_POLLS_SETUP covers the engine
-// starting and the last write response, a few bus transactions each, with at
-// least 40000 core cycles. The largest budget, ~67 M reads, fits uint32_t.
+// per beat, far slower than a copy between on-chip memories. The budget assumes
+// an on-chip source; it is not sized for a serial-flash XIP source, which can
+// take longer than that per beat. DMA_POLLS_SETUP covers the engine starting
+// and the last write response, a few bus transactions each, with at least 40000
+// core cycles. The largest budget, ~67 M reads, fits uint32_t.
 #define DMA_POLLS_SETUP 10000u
 #define DMA_POLLS_PER_BEAT 256u
 
