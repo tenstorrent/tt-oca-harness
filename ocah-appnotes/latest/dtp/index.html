@@ -221,130 +221,66 @@ independently.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="reading-route"><a class="anchor" href="#reading-route"></a><a class="link" href="#reading-route">2. Reading Route</a></h2>
+<h2 id="reading-order"><a class="anchor" href="#reading-order"></a><a class="link" href="#reading-order">2. Reading Order</a></h2>
 <div class="sectionbody">
-<div class="paragraph">
-<p>Follow this order to understand the DTP:</p>
-</div>
-<div class="olist arabic">
-<ol class="arabic">
+<div class="ulist">
+<ul>
 <li>
-<p><a href="overview.html" class="xref page">Architecture and Access Paths</a> — how the JIU and CTN
-connect internally and how debug access reaches them through the SMU.</p>
+<p><a href="overview.html" class="xref page">Overview</a></p>
 </li>
 <li>
-<p><a href="jtag.html" class="xref page">JTAG Operation</a> — DTP-level topology, scan chain ordering,
-clock domains, reset hierarchy and lifecycle feature control, before the
-per-component reference pages below.</p>
+<p><a href="clk_rst.html" class="xref page">Clocks and Resets</a></p>
 </li>
 <li>
-<p>JTAG reference — <a href="../ip/jtag_intf_unit/doc/index.html" class="xref page">JTAG Interface Unit</a>,
-<a href="../ip/jtag_ptap/doc/index.html" class="xref page">JTAG PTAP</a>,
-<a href="../ip/jtag_stap/doc/index.html" class="xref page">JTAG STAP</a>.</p>
+<p><a href="jtag.html" class="xref page">JTAG Operation</a></p>
 </li>
 <li>
-<p>Cross-trigger reference — <a href="../ip/cross_trigger_network/doc/index.html" class="xref page">Cross-Trigger Network</a>
-(includes unified register map),
-<a href="../ip/cross_trigger_port/doc/index.html" class="xref page">Cross-Trigger Port</a>,
-<a href="../ip/cross_trigger_matrix/doc/index.html" class="xref page">Cross-Trigger Matrix</a>.</p>
+<p><a href="cross_trigger.html" class="xref page">Cross-Trigger Operation</a></p>
 </li>
 <li>
-<p><a href="clock_stop.html" class="xref page">Clock Stop / Reset</a> — architecture of the combined JTAG
-and CLA halt path.</p>
+<p><a href="ip_reference.html" class="xref page">IP Reference</a></p>
+<div class="ulist">
+<ul>
+<li>
+<p>JTAG: <a href="../ip/jtag_intf_unit/doc/index.html" class="xref page">JTAG Interface Unit</a>, <a href="../ip/jtag_ptap/doc/index.html" class="xref page">PTAP</a>, <a href="../ip/jtag_stap/doc/index.html" class="xref page">STAP</a>.</p>
 </li>
 <li>
-<p><a href="reference.html" class="xref page">Configuration and Reference</a> — port table and parameter
-summary.</p>
+<p>Cross-Trigger: <a href="../ip/cross_trigger_network/doc/index.html" class="xref page">Network</a>, <a href="../ip/cross_trigger_port/doc/index.html" class="xref page">Port</a>, <a href="../ip/cross_trigger_matrix/doc/index.html" class="xref page">Matrix</a>.</p>
 </li>
-</ol>
+</ul>
 </div>
+</li>
+<li>
+<p><a href="reference.html" class="xref page">Configuration and Reference</a></p>
+</li>
+</ul>
 </div>
-</div>
-<div class="sect1">
-<h2 id="dtp-topic-pages"><a class="anchor" href="#dtp-topic-pages"></a><a class="link" href="#dtp-topic-pages">3. DTP Topic Pages</a></h2>
-<div class="sectionbody">
-<table class="tableblock frame-none grid-none stretch">
-<colgroup>
-<col style="width: 50%;">
-<col style="width: 50%;">
-</colgroup>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a id="dtp-overview"></a> <a href="overview.html#dtp-overview" class="xref page">Architecture and Access Paths</a></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">How the JIU and CTN connect internally and how debug access reaches them through the SMU.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a id="dtp-jtag-integration"></a> <a href="jtag.html#dtp-jtag-integration" class="xref page">JTAG Operation</a></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DTP-level JTAG topology, scan chain ordering, clock domains, reset hierarchy and lifecycle feature control.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a id="dtp-clock-stop"></a> <a href="clock_stop.html#dtp-clock-stop" class="xref page">Clock Stop / Reset</a></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Architecture of the combined JTAG DEBUG_CONTROL and CLA halt path.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a id="dtp-reference"></a> <a href="reference.html" class="xref page">Configuration and Reference</a></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Port table and parameter summary.</p></td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
-<div class="sect1">
-<h2 id="ip-component-reference"><a class="anchor" href="#ip-component-reference"></a><a class="link" href="#ip-component-reference">4. IP Component Reference</a></h2>
-<div class="sectionbody">
-<table class="tableblock frame-none grid-none stretch">
-<colgroup>
-<col style="width: 33.3333%;">
-<col style="width: 33.3333%;">
-<col style="width: 33.3334%;">
-</colgroup>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>JTAG</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a id="jtag-interface-unit"></a> <a href="../ip/jtag_intf_unit/doc/index.html#jtag-interface-unit" class="xref page">JTAG Interface Unit</a>
-(<a id="jtag-intf-unit-architecture"></a> <a href="../ip/jtag_intf_unit/doc/index.html#jtag-intf-unit-architecture" class="xref page">architecture</a>,
-<a id="jtag-intf-unit-interface"></a> <a href="../ip/jtag_intf_unit/doc/index.html#jtag-intf-unit-interface" class="xref page">interface</a>)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">IEEE 1149.1 primary and secondary TAP controller.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a id="jtag-ptap"></a> <a href="../ip/jtag_ptap/doc/index.html#jtag-ptap" class="xref page">JTAG PTAP</a>
-(<a id="ptap-architecture"></a> <a href="../ip/jtag_ptap/doc/index.html#ptap-architecture" class="xref page">architecture</a>,
-<a id="ptap-interface"></a> <a href="../ip/jtag_ptap/doc/index.html#ptap-interface" class="xref page">interface</a>)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Primary TAP implementation and instruction decoder.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a id="jtag-stap"></a> <a href="../ip/jtag_stap/doc/index.html#jtag-stap" class="xref page">JTAG STAP</a>
-(<a id="stap-architecture"></a> <a href="../ip/jtag_stap/doc/index.html#stap-architecture" class="xref page">architecture</a>,
-<a id="stap-interface"></a> <a href="../ip/jtag_stap/doc/index.html#stap-interface" class="xref page">interface</a>)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Secondary TAP for hierarchical multi-chiplet connectivity.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Cross-trigger</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a id="cross-trigger-network"></a> <a href="../ip/cross_trigger_network/doc/index.html#cross-trigger-network" class="xref page">Cross-Trigger Network</a>
-(<a id="cross-trigger-network-architecture"></a> <a href="../ip/cross_trigger_network/doc/index.html#cross-trigger-network-architecture" class="xref page">architecture</a>,
-<a id="cross-trigger-network-interface"></a> <a href="../ip/cross_trigger_network/doc/index.html#cross-trigger-network-interface" class="xref page">interface</a>,
-<a id="ctn-programming"></a> <a href="../ip/cross_trigger_network/doc/index.html#ctn-programming" class="xref page">programming</a>,
-<a id="ctn-memory-map"></a> <a href="../ip/cross_trigger_network/doc/index.html#ctn-memory-map" class="xref page">register map</a>)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">CTN hub integrating CTMs and CTPs; owns the unified register map.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a id="cross-trigger-port"></a> <a href="../ip/cross_trigger_port/doc/index.html#cross-trigger-port" class="xref page">Cross-Trigger Port</a>
-(<a id="ctp-architecture"></a> <a href="../ip/cross_trigger_port/doc/index.html#ctp-architecture" class="xref page">architecture</a>,
-<a id="ctp-interface"></a> <a href="../ip/cross_trigger_port/doc/index.html#ctp-interface" class="xref page">interface</a>)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">External pad-ring interface for OCCT cross-chiplet triggering.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a id="cross-trigger-matrix"></a> <a href="../ip/cross_trigger_matrix/doc/index.html#cross-trigger-matrix" class="xref page">Cross-Trigger Matrix</a>
-(<a id="ctm-architecture"></a> <a href="../ip/cross_trigger_matrix/doc/index.html#ctm-architecture" class="xref page">architecture</a>,
-<a id="ctm-interface"></a> <a href="../ip/cross_trigger_matrix/doc/index.html#ctm-interface" class="xref page">interface</a>)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Configurable N×M routing matrix for internal cross triggers.</p></td>
-</tr>
-</tbody>
-</table>
+<span id="dtp-overview"></span>
+<span id="dtp-jtag-integration"></span>
+<span id="dtp-clock-stop"></span>
+<span id="dtp-reference"></span>
+<span id="jtag-interface-unit"></span>
+<span id="jtag-intf-unit-architecture"></span>
+<span id="jtag-intf-unit-interface"></span>
+<span id="jtag-ptap"></span>
+<span id="ptap-architecture"></span>
+<span id="ptap-interface"></span>
+<span id="jtag-stap"></span>
+<span id="stap-architecture"></span>
+<span id="stap-interface"></span>
+<span id="cross-trigger-network"></span>
+<span id="cross-trigger-network-architecture"></span>
+<span id="cross-trigger-network-interface"></span>
+<span id="ctn-memory-map"></span>
+<span id="cross-trigger-port"></span>
+<span id="ctp-architecture"></span>
+<span id="ctp-interface"></span>
+<span id="cross-trigger-matrix"></span>
+<span id="ctm-architecture"></span>
+<span id="ctm-interface"></span>
+<span id="reading-route"></span>
+<span id="dtp-topic-pages"></span>
+<span id="ip-component-reference"></span>
 </div>
 </div>
 </article>

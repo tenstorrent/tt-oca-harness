@@ -229,6 +229,95 @@ management for each chiplet. Its documentation is organized into focused topic
 pages covering the subsystem architecture, hardware services, and programming
 interfaces.</p>
 </div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="reading-order"><a class="anchor" href="#reading-order"></a><a class="link" href="#reading-order">1. Reading Order</a></h2>
+<div class="sectionbody">
+<div class="ulist">
+<ul>
+<li>
+<p><a href="overview.html" class="xref page">Overview</a></p>
+</li>
+<li>
+<p><a href="clk_rst.html" class="xref page">Clocks and Resets</a></p>
+</li>
+<li>
+<p><a href="cpu.html" class="xref page">CPU</a></p>
+</li>
+<li>
+<p><a href="rom.html" class="xref page">Boot ROM</a></p>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="../smc-bootrom-prod/index.html" class="xref page">Production ROM Manual</a></p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><a href="fabric.html" class="xref page">Interconnect</a></p>
+</li>
+<li>
+<p><a href="interrupts.html" class="xref page">Interrupts</a></p>
+</li>
+<li>
+<p><a href="periphs.html" class="xref page">Peripherals</a></p>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="dma.html" class="xref page">Direct Memory Access Engine</a></p>
+</li>
+<li>
+<p><a href="zeroer.html" class="xref page">Zeroer</a></p>
+</li>
+<li>
+<p><a href="watchdog.html" class="xref page">Watchdog Timer (WDT)</a></p>
+</li>
+<li>
+<p><a href="../ip/axi_lite_mailbox_unit/doc/index.html" class="xref page">Mailboxes</a></p>
+</li>
+<li>
+<p><a href="../ip/system_timer_octs/doc/index.html" class="xref page">System Timer OCTS</a></p>
+</li>
+<li>
+<p><a href="../ip/efuse/doc/index.html" class="xref page">eFuse</a></p>
+</li>
+<li>
+<p><a href="../ip/uart_16550/doc/index.html" class="xref page">UART 16550</a></p>
+</li>
+<li>
+<p><a href="../ip/log_engine/doc/index.html" class="xref page">Log Engine</a></p>
+</li>
+<li>
+<p><a href="../ip/i2c/doc/index.html" class="xref page">I2C</a></p>
+</li>
+<li>
+<p><a href="../ip/i3ccore_wrap/doc/index.html" class="xref page">I3C</a></p>
+</li>
+<li>
+<p><a href="../ip/avsbus_controller/doc/index.html" class="xref page">AVSBus Controller</a></p>
+</li>
+<li>
+<p><a href="../ip/gpio/doc/index.html" class="xref page">GPIO</a></p>
+</li>
+<li>
+<p><a href="../ip/telemetry_receiver/doc/index.html" class="xref page">Telemetry Receiver</a></p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><a href="dfd.html" class="xref page">Design-for-Debug and CLA</a></p>
+</li>
+<li>
+<p><a href="scan_protection.html" class="xref page">eFuse Scan Protection</a></p>
+</li>
+<li>
+<p><a href="memmap.html" class="xref page">Memory Map and Register Reference</a></p>
+</li>
+</ul>
+</div>
 <span id="overview"></span>
 <span id="clock-and-reset-management"></span>
 <span id="cpu-memory-system"></span>
@@ -241,77 +330,9 @@ interfaces.</p>
 <span id="smc-dfd-cla"></span>
 <span id="smc-scan-protection"></span>
 <span id="smc-memory-map"></span>
-</div>
-</div>
-<div class="sect1">
-<h2 id="architecture-and-processing"><a class="anchor" href="#architecture-and-processing"></a><a class="link" href="#architecture-and-processing">1. Architecture and Processing</a></h2>
-<div class="sectionbody">
-<div class="ulist">
-<ul>
-<li>
-<p><a href="overview.html#overview" class="xref page">Overview</a>&#8201;&#8212;&#8201;responsibilities, structure, and the
-top-level block diagram.</p>
-</li>
-<li>
-<p><a href="clk_rst.html#clock-and-reset-management" class="xref page">Clock and Reset Management</a>&#8201;&#8212;&#8201;clock domains, reset sequencing, and power-management integration.</p>
-</li>
-<li>
-<p><a href="cpu.html#cpu-memory-system" class="xref page">CPU and Memory System</a>&#8201;&#8212;&#8201;processor cluster,
-caches, local memory, isolation, and debug.</p>
-</li>
-<li>
-<p><a href="fabric.html#fabric" class="xref page">Fabric</a>&#8201;&#8212;&#8201;internal networks, remapping, filtering,
-protection, and routing.</p>
-</li>
-</ul>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="services-and-peripherals"><a class="anchor" href="#services-and-peripherals"></a><a class="link" href="#services-and-peripherals">2. Services and Peripherals</a></h2>
-<div class="sectionbody">
-<div class="ulist">
-<ul>
-<li>
-<p><a href="periphs.html#peripherals" class="xref page">Peripherals</a>&#8201;&#8212;&#8201;communication, telemetry, timer,
-fuse, and GPIO blocks.</p>
-</li>
-<li>
-<p><a href="interrupts.html#interrupts" class="xref page">Interrupts</a>&#8201;&#8212;&#8201;interrupt routing, PLIC, CLINT,
-and error delivery.</p>
-</li>
-<li>
-<p><a href="rom.html#rom" class="xref page">Boot ROM</a>&#8201;&#8212;&#8201;ROM architecture, firmware, and operation.</p>
-</li>
-<li>
-<p><a href="dma.html#direct-memory-access-dma-engine" class="xref page">Direct Memory Access Engine</a>&#8201;&#8212;&#8201;data-movement architecture, control, and integration.</p>
-</li>
-<li>
-<p><a href="zeroer.html#memory-zeroer" class="xref page">Zeroer</a>&#8201;&#8212;&#8201;hardware-assisted memory clearing.</p>
-</li>
-</ul>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="debug-protection-and-reference"><a class="anchor" href="#debug-protection-and-reference"></a><a class="link" href="#debug-protection-and-reference">3. Debug, Protection, and Reference</a></h2>
-<div class="sectionbody">
-<div class="ulist">
-<ul>
-<li>
-<p><a href="dfd.html#smc-dfd-cla" class="xref page">Design-for-Debug and Core Logic Analyzer</a>&#8201;&#8212;&#8201;event
-observation, triggering, and trace capture.</p>
-</li>
-<li>
-<p><a href="scan_protection.html#smc-scan-protection" class="xref page">eFuse Shadow Register Scan
-Protection</a>&#8201;&#8212;&#8201;scan policy for access-control assets.</p>
-</li>
-<li>
-<p><a href="memmap.html#smc-memory-map" class="xref page">Memory Map</a>&#8201;&#8212;&#8201;address-space organization,
-access controls, and register documentation.</p>
-</li>
-</ul>
-</div>
+<span id="architecture-and-processing"></span>
+<span id="services-and-peripherals"></span>
+<span id="debug-protection-and-reference"></span>
 </div>
 </div>
 </article>

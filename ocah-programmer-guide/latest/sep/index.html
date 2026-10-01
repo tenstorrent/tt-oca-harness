@@ -210,95 +210,132 @@ interfaces, and generated register details can be read independently.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="start-here"><a class="anchor" href="#start-here"></a><a class="link" href="#start-here">1. Start Here</a></h2>
+<h2 id="reading-order"><a class="anchor" href="#reading-order"></a><a class="link" href="#reading-order">1. Reading Order</a></h2>
 <div class="sectionbody">
 <div class="ulist">
 <ul>
 <li>
-<p><a href="introduction.html" class="xref page">Introduction</a>&#8201;&#8212;&#8201;SEP responsibilities and services.</p>
+<p><a href="overview.html" class="xref page">Overview</a></p>
 </li>
 <li>
-<p><a href="threat_model.html" class="xref page">Threat Model</a>&#8201;&#8212;&#8201;attacks considered by the design.</p>
+<p><a href="threat_model.html" class="xref page">Threat Model</a></p>
 </li>
 <li>
-<p><a href="attack_countermeasures.html" class="xref page">Attack Countermeasures</a>&#8201;&#8212;&#8201;architectural,
-debug, and DFT protections.</p>
+<p><a href="attack_countermeasures.html" class="xref page">Attack Countermeasures</a></p>
 </li>
 <li>
-<p><a href="overview.html" class="xref page">Hardware Overview</a>&#8201;&#8212;&#8201;major SEP blocks and their
-relationships.</p>
-</li>
-</ul>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="architecture-and-interfaces"><a class="anchor" href="#architecture-and-interfaces"></a><a class="link" href="#architecture-and-interfaces">2. Architecture and Interfaces</a></h2>
-<div class="sectionbody">
+<p><a href="clk_rst.html" class="xref page">Clocks and Resets</a></p>
 <div class="ulist">
 <ul>
 <li>
-<p><a href="fabric.html" class="xref page">SEP Interconnect</a>&#8201;&#8212;&#8201;internal and external transaction paths.</p>
-</li>
-<li>
-<p><a href="../ip/axi_filter/doc/index.html#axi-traffic-filter" class="xref page">AXI Traffic Filter</a>&#8201;&#8212;&#8201;shared SEP and SMC filter decode.</p>
-</li>
-<li>
-<p><a href="cpu.html" class="xref page">CPU Subsystem</a>&#8201;&#8212;&#8201;VeeR EL2 configuration, boot, DMA, and alarms.</p>
-</li>
-<li>
-<p><a href="rom.html" class="xref page">Boot ROM</a>&#8201;&#8212;&#8201;immutable boot firmware and ROM architecture.</p>
-</li>
-<li>
-<p><a href="interrupts.html" class="xref page">Interrupts</a>&#8201;&#8212;&#8201;PIC assignments and non-PIC interrupt paths.</p>
-</li>
-<li>
-<p><a href="crypto.html" class="xref page">Cryptographic Subsystem</a>&#8201;&#8212;&#8201;cryptographic accelerators,
-entropy, and key management.</p>
-</li>
-<li>
-<p><a href="periphs.html" class="xref page">Fuse Controller and Lifecycle Controller</a>&#8201;&#8212;&#8201;OTP, lifecycle
-and security control, SPI, watchdog, and reset control.</p>
+<p><a href="reset_controller.html" class="xref page">SEP Reset Controller</a></p>
 </li>
 </ul>
 </div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="security-control"><a class="anchor" href="#security-control"></a><a class="link" href="#security-control">3. Security Control</a></h2>
-<div class="sectionbody">
+</li>
+<li>
+<p><a href="cpu.html" class="xref page">CPU</a></p>
+</li>
+<li>
+<p><a href="rom.html" class="xref page">Boot ROM</a></p>
 <div class="ulist">
 <ul>
 <li>
-<p><a href="token_processing.html" class="xref page">Token Processing</a>&#8201;&#8212;&#8201;token generation, matching,
-and fault handling.</p>
-</li>
-<li>
-<p><a href="security_disable.html" class="xref page">Security Disable</a>&#8201;&#8212;&#8201;emergency security-disable
-behavior.</p>
-</li>
-<li>
-<p><a href="lifecycle_controller.html" class="xref page">Life Cycle Controller</a>&#8201;&#8212;&#8201;lifecycle states,
-demotion, and feature control.</p>
-</li>
-<li>
-<p><a href="test_mode.html" class="xref page">Test Mode Entry</a>&#8201;&#8212;&#8201;secure test-mode qualification.</p>
+<p><a href="../sep-bootrom-prod/index.html" class="xref page">Production ROM Manual</a></p>
 </li>
 </ul>
 </div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="register-reference"><a class="anchor" href="#register-reference"></a><a class="link" href="#register-reference">4. Register Reference</a></h2>
-<div class="sectionbody">
+</li>
+<li>
+<p><a href="fabric.html" class="xref page">Interconnect</a></p>
+</li>
+<li>
+<p><a href="interrupts.html" class="xref page">Interrupts</a></p>
+</li>
+<li>
+<p><a href="periphs.html" class="xref page">Peripherals</a></p>
 <div class="ulist">
 <ul>
 <li>
-<p><a href="memory_map.html" class="xref page">Memory Map and Register Reference</a>&#8201;&#8212;&#8201;address regions and
-generated register tables.</p>
+<p><a href="dma.html" class="xref page">Direct Memory Access (DMA)</a></p>
+</li>
+<li>
+<p><a href="mailbox.html" class="xref page">Mailboxes</a></p>
+</li>
+<li>
+<p><a href="peripheral_subsystem.html" class="xref page">Peripheral Subsystem</a></p>
+</li>
+<li>
+<p><a href="spi.html" class="xref page">Serial Peripheral Interface (SPI)</a></p>
+</li>
+<li>
+<p><a href="watchdog.html" class="xref page">Watchdog Timer (WDT)</a></p>
 </li>
 </ul>
 </div>
+</li>
+<li>
+<p><a href="security.html" class="xref page">Security and Lifecycle</a></p>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="otp_fuse_controller.html" class="xref page">OTP Fuse Controller</a></p>
+</li>
+<li>
+<p><a href="token_processing.html" class="xref page">Token Processing</a></p>
+</li>
+<li>
+<p><a href="security_disable.html" class="xref page">Security Disable</a></p>
+</li>
+<li>
+<p><a href="lifecycle_controller.html" class="xref page">Lifecycle Controller</a></p>
+</li>
+<li>
+<p><a href="test_mode.html" class="xref page">Test Mode Entry</a></p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><a href="crypto.html" class="xref page">Cryptographic Subsystem</a></p>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="trng.html" class="xref page">TRNG and DRBG</a></p>
+</li>
+<li>
+<p><a href="../ip/entropy_source/doc/index.html" class="xref page">Entropy Source</a></p>
+</li>
+<li>
+<p><a href="aes.html" class="xref page">AES Cipher</a></p>
+</li>
+<li>
+<p><a href="hmac.html" class="xref page">HMAC-SHA2</a></p>
+</li>
+<li>
+<p><a href="kmac.html" class="xref page">KMAC-SHA3</a></p>
+</li>
+<li>
+<p><a href="adams_bridge.html" class="xref page">Adams Bridge (ABR)</a></p>
+</li>
+<li>
+<p><a href="otbn.html" class="xref page">OTBN PKA Public Key Accelerator</a></p>
+</li>
+<li>
+<p><a href="../ip/key_manager/doc/index.html" class="xref page">Key Manager</a></p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><a href="memory_map.html" class="xref page">Memory Map and Register Reference</a></p>
+</li>
+</ul>
+</div>
+<span id="start-here"></span>
+<span id="architecture-and-interfaces"></span>
+<span id="security-control"></span>
+<span id="register-reference"></span>
 </div>
 </div>
 </article>

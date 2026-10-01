@@ -4,9 +4,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>JTAG Operation :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
-    <link rel="prev" href="overview.html">
-    <link rel="next" href="../ip/jtag_intf_unit/doc/index.html">
-    <meta name="description" content="DTP-level JTAG topology, scan chain ordering, clock domains, reset and lifecycle feature control.">
+    <link rel="prev" href="clk_rst.html">
+    <link rel="next" href="cross_trigger.html">
+    <meta name="description" content="DTP-level JTAG topology, scan chain ordering, lifecycle feature control.">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../_/css/site.css">
     <link rel="stylesheet" href="../../../_/css/extra.css">
@@ -138,44 +138,92 @@
     <a class="nav-link" href="../sep/index.html">Security Processor (SEP)</a>
 <ul class="nav-list">
   <li class="nav-item" data-depth="4">
-    <button class="nav-item-toggle"></button>
-    <a class="nav-link" href="../sep/introduction.html">Introduction</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
     <a class="nav-link" href="../sep/threat_model.html">Threat Model</a>
   </li>
-  <li class="nav-item" data-depth="5">
+  <li class="nav-item" data-depth="4">
     <a class="nav-link" href="../sep/attack_countermeasures.html">Attack Countermeasures</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../sep/clk_rst.html">Clocks and Resets</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/reset_controller.html">SEP Reset Controller</a>
   </li>
 </ul>
   </li>
   <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../sep/overview.html">Hardware Overview</a>
+    <a class="nav-link" href="../sep/cpu.html">CPU</a>
   </li>
   <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../sep/fabric.html">SEP Interconnect</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../sep/cpu.html">CPU Subsystem</a>
-  </li>
-  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../sep/rom.html">Boot ROM</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep-bootrom-prod/index.html">Production ROM Manual</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../sep/fabric.html">Interconnect</a>
   </li>
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="../sep/interrupts.html">Interrupts</a>
   </li>
   <li class="nav-item" data-depth="4">
     <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../sep/periphs.html">Peripherals</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/dma.html">Direct Memory Access (DMA)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/mailbox.html">Mailboxes</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/peripheral_subsystem.html">Peripheral Subsystem</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/spi.html">Serial Peripheral Interface (SPI)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/watchdog.html">Watchdog Timer (WDT)</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../sep/security.html">Security and Lifecycle</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/otp_fuse_controller.html">OTP Fuse Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/token_processing.html">Token Processing</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/security_disable.html">Security Disable</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/lifecycle_controller.html">Lifecycle Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/test_mode.html">Test Mode Entry</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../sep/crypto.html">Cryptographic Subsystem</a>
 <ul class="nav-list">
   <li class="nav-item" data-depth="5">
-    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../sep/trng.html">TRNG and DRBG</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="6">
-    <a class="nav-link" href="../ip/entropy_source/doc/index.html">Entropy Source</a>
   </li>
-</ul>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/entropy_source/doc/index.html">Entropy Source</a>
   </li>
   <li class="nav-item" data-depth="5">
     <a class="nav-link" href="../sep/aes.html">AES Cipher</a>
@@ -207,40 +255,7 @@
 </ul>
   </li>
   <li class="nav-item" data-depth="4">
-    <button class="nav-item-toggle"></button>
-    <a class="nav-link" href="../sep/periphs.html">Fuse Controller and Lifecycle Controller</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../sep/otp_fuse_controller.html">OTP Fuse Controller</a>
-  </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../sep/peripheral_subsystem.html">Peripheral Subsystem</a>
-  </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../sep/spi.html">Serial Peripheral Interface (SPI)</a>
-  </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../sep/watchdog.html">Watchdog Timer (WDT)</a>
-  </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../sep/reset_controller.html">SEP Reset Controller</a>
-  </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../sep/token_processing.html">Token Processing</a>
-  </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../sep/security_disable.html">Security Disable</a>
-  </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../sep/lifecycle_controller.html">Life Cycle Controller</a>
-  </li>
-</ul>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../sep/test_mode.html">Test Mode Entry</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../sep/memory_map.html">Memory Map and Registers</a>
+    <a class="nav-link" href="../sep/memory_map.html">Memory Map and Register Reference</a>
   </li>
 </ul>
   </li>
@@ -252,14 +267,41 @@
     <a class="nav-link" href="../smc/overview.html">Overview</a>
   </li>
   <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../smc/clk_rst.html">Clock and Reset Management</a>
+    <a class="nav-link" href="../smc/clk_rst.html">Clocks and Resets</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/cpu.html">CPU</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../smc/rom.html">Boot ROM</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../smc-bootrom-prod/index.html">Production ROM Manual</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/fabric.html">Interconnect</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/interrupts.html">Interrupts</a>
   </li>
   <li class="nav-item" data-depth="4">
     <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../smc/periphs.html">Peripherals</a>
 <ul class="nav-list">
   <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../ip/axi_lite_mailbox_unit/doc/index.html">Mailbox</a>
+    <a class="nav-link" href="../smc/dma.html">Direct Memory Access Engine</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../smc/zeroer.html">Zeroer</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../smc/watchdog.html">Watchdog Timer (WDT)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/axi_lite_mailbox_unit/doc/index.html">Mailboxes</a>
   </li>
   <li class="nav-item" data-depth="5">
     <a class="nav-link" href="../ip/system_timer_octs/doc/index.html">System Timer OCTS</a>
@@ -291,31 +333,13 @@
 </ul>
   </li>
   <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../smc/cpu.html">CPU and Memory System</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../smc/interrupts.html">Interrupts</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../smc/rom.html">Boot ROM</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../smc/fabric.html">Fabric</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../smc/dma.html">Direct Memory Access Engine</a>
-  </li>
-  <li class="nav-item" data-depth="4">
     <a class="nav-link" href="../smc/dfd.html">Design-for-Debug and CLA</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../smc/zeroer.html">Zeroer</a>
   </li>
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="../smc/scan_protection.html">eFuse Scan Protection</a>
   </li>
   <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../smc/memmap.html">Memory Map</a>
+    <a class="nav-link" href="../smc/memmap.html">Memory Map and Register Reference</a>
   </li>
 </ul>
   </li>
@@ -324,37 +348,58 @@
     <a class="nav-link" href="index.html">Debug &amp; Test Ports (DTP)</a>
 <ul class="nav-list">
   <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="overview.html">Architecture and Access Paths</a>
+    <a class="nav-link" href="overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="clk_rst.html">Clocks and Resets</a>
   </li>
   <li class="nav-item is-current-page" data-depth="4">
     <a class="nav-link" href="jtag.html">JTAG Operation</a>
   </li>
   <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../ip/jtag_intf_unit/doc/index.html">JTAG Interface Unit</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../ip/jtag_ptap/doc/index.html">JTAG PTAP</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../ip/jtag_stap/doc/index.html">JTAG STAP</a>
+    <a class="nav-link" href="cross_trigger.html">Cross-Trigger Operation</a>
   </li>
   <li class="nav-item" data-depth="4">
     <button class="nav-item-toggle"></button>
-    <a class="nav-link" href="../ip/cross_trigger_network/doc/index.html">Cross-Trigger Network</a>
+    <a class="nav-link" href="ip_reference.html">IP Reference</a>
 <ul class="nav-list">
   <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">JTAG</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/jtag_intf_unit/doc/index.html">JTAG Interface Unit</a>
+  </li>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/jtag_ptap/doc/index.html">JTAG PTAP</a>
+  </li>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/jtag_stap/doc/index.html">JTAG STAP</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Cross-Trigger</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../ip/cross_trigger_network/doc/index.html">Cross-Trigger Network</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="7">
     <a class="nav-link" href="../ip/cross_trigger_network/doc/index.html#ctn-programming">Programming</a>
   </li>
 </ul>
   </li>
-  <li class="nav-item" data-depth="4">
+  <li class="nav-item" data-depth="6">
     <a class="nav-link" href="../ip/cross_trigger_port/doc/index.html">Cross-Trigger Port</a>
   </li>
-  <li class="nav-item" data-depth="4">
+  <li class="nav-item" data-depth="6">
     <a class="nav-link" href="../ip/cross_trigger_matrix/doc/index.html">Cross-Trigger Matrix</a>
   </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="clock_stop.html">Clock Stop / Reset</a>
+</ul>
+  </li>
+</ul>
   </li>
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="reference.html">Configuration and Reference</a>
@@ -364,7 +409,7 @@
 </ul>
   </li>
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../smn.placeholder.html">System Management Network (SMN)</a>
+    <a class="nav-link" href="../smn.html">System Management Network (SMN)</a>
   </li>
   <li class="nav-item" data-depth="2">
     <button class="nav-item-toggle"></button>
@@ -644,9 +689,8 @@
 <div class="sectionbody">
 <div id="dtp-jtag-integration" class="paragraph">
 <p>This page describes how the DTP integrates its JTAG components at the
-subsystem level: topology, scan chain ordering, clock domains, reset hierarchy
-and lifecycle feature control. For the detailed implementation of each
-component, see the JTAG reference pages that follow this one.</p>
+subsystem level: topology, scan chain ordering, lifecycle feature control. Clock domains and reset overrides are described in
+Clocks and Resets; IP Reference contains the individual JTAG components.</p>
 </div>
 </div>
 </div>
@@ -707,7 +751,6 @@ to the chain; opening the SIB inserts the STAP&#8217;s 3-bit 3DCR, and setting t
 STAP-select bit splices in its secondary TAP. Each iJTAG SIB inserts its external
 segment after its SIB bit while that bit is set.</p>
 </div>
-<p class="block-references">Figures and tables: <a href="#dtp-jtag-scan-chain-figure">Figure 1</a>.</p>
 </div>
 </div>
 <div class="sect1">
@@ -803,132 +846,20 @@ Each bridge reports its configuration in its <code>*_JTAG2AXI_CAPS</code> regist
 </tr>
 </tbody>
 </table>
-<p class="block-references">Figures and tables: <a href="#dtp-jtag2axi-bridges-table">Table 1</a>.</p>
+<div id="clock-domains" class="paragraph">
+<p>See <a href="clk_rst.html#dtp-clocks-and-resets" class="xref page">Clock Domains</a>.</p>
 </div>
+<div id="reset-architecture" class="paragraph">
+<p>See <a href="clk_rst.html#reset-architecture" class="xref page">Reset Architecture</a>.</p>
 </div>
-<div class="sect1">
-<h2 id="clock-domains"><a class="anchor" href="#clock-domains"></a><a class="link" href="#clock-domains">4. Clock Domains</a></h2>
-<div class="sectionbody">
+<span id="ic_reset-overrides"></span>
 <div class="paragraph">
-<p>The DTP operates in two clock domains (<a href="#dtp-clock-domains-table">Table 2</a>).</p>
-</div>
-<table id="dtp-clock-domains-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 2. DTP clock domains</caption>
-<colgroup>
-<col style="width: 25%;">
-<col style="width: 25%;">
-<col style="width: 50%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Domain</th>
-<th class="tableblock halign-left valign-top">Signal</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">System clock</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Main clock for cross-trigger logic and AXI interfaces. All CTN and CSR
-logic runs in this domain.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">JTAG clock</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">TCK</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">JTAG test clock for all TAP controller and scan logic. Clocks the PTAP,
-STAP state machines, and scan registers. Asynchronous to <code>clk_i</code>.</p></td>
-</tr>
-</tbody>
-</table>
-<div class="paragraph">
-<p>All cross-trigger signals crossing from TCK to <code>clk_i</code> are synchronised
-within the CTPs using two-flip-flop synchroniser chains.</p>
-</div>
-<p class="block-references">Figures and tables: <a href="#dtp-clock-domains-table">Table 2</a>.</p>
-</div>
-</div>
-<div class="sect1">
-<h2 id="reset-architecture"><a class="anchor" href="#reset-architecture"></a><a class="link" href="#reset-architecture">5. Reset Architecture</a></h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p><a href="#dtp-reset-signals-table">Table 3</a> identifies the reset inputs and the logic they reset.</p>
-</div>
-<table id="dtp-reset-signals-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 3. DTP reset signals</caption>
-<colgroup>
-<col style="width: 30%;">
-<col style="width: 70%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Signal</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_n_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Active-low asynchronous reset for cross-trigger logic and AXI interfaces.
-Resets all CTN and CSR state; clock-stop output resets to 0 (clocks running).</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>pwr_on_rst_ni</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Active-low asynchronous power-on reset for JTAG logic. Combined internally
-with TRST_n; resets the PTAP to Test-Logic-Reset state and clears all TDRs.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">TRST_n (JTAG pin)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Optional external active-low TAP reset. When asserted, drives the PTAP
-to Test-Logic-Reset regardless of the TCK or TMS state.</p></td>
-</tr>
-</tbody>
-</table>
-<div class="paragraph">
-<p>All registers reset to safe states. The JTAG TAP returns to Test-Logic-Reset
-on either TRST_n or power-on reset.</p>
-</div>
-<p class="block-references">Figures and tables: <a href="#dtp-reset-signals-table">Table 3</a>.</p>
-</div>
-</div>
-<div class="sect1">
-<h2 id="dtp-ic-reset-overrides"><a class="anchor" href="#dtp-ic-reset-overrides"></a><a class="link" href="#dtp-ic-reset-overrides">6. IC_RESET Overrides</a></h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>The primary TAP implements the IEEE 1149.1-2013 §17 IC_RESET TDR. Per reset
-port it holds <code>reset_control</code>, the active-low reset value to drive, and
-<code>reset_enable</code>, which selects it. One <code>reset_hold</code> bit sits nearest TDO.</p>
-</div>
-<div class="paragraph">
-<p><code>reset_enable</code> is active low despite the name: it resets to 1, leaving the
-port&#8217;s functional reset connected, and writing 0 hands the port over to
-<code>reset_control</code>. The overrides leave the DTP on
-<code>jtag_ic_reset_{smc,sep,ext}_o</code>, whose <code>.ovrd</code> member is active high and whose
-<code>.val</code> carries <code>reset_control</code>.</p>
-</div>
-<div class="paragraph">
-<p><code>reset_hold</code> also resets to 1, which lets Test-Logic-Reset clear the
-enable/control bits. Write 0 to keep an override asserted across TLR; only TRST
-clears <code>reset_hold</code> itself.</p>
-</div>
-<div class="paragraph">
-<p>Consumers select between the two sources with a hazard-free multiplexer, which
-holds its output while the select alone moves. Write <code>reset_control</code> first and
-clear <code>reset_enable</code> in a second Update-DR: moving both in one update changes
-the select and a data input together, which can pulse a reset on a port that
-neither source is resetting.</p>
-</div>
-<div class="paragraph">
-<p>At the SMU the TDR concatenates three slices from TDI to TDO: SMC, SEP, then
-the external slice, followed by <code>reset_hold</code>. The SMC and SEP port lists are
-OCAH-defined. The external slice is adopter-defined: its width and fields come
-from the SMU type parameter <code>ic_reset_ext_t</code>. The Integrator Guide records the
-SMU-composed port map.</p>
+<p>See <a href="clk_rst.html#dtp-ic-reset-overrides" class="xref page">IC_RESET Overrides</a>.</p>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="debug-disable"><a class="anchor" href="#debug-disable"></a><a class="link" href="#debug-disable">7. Debug Disable</a></h2>
+<h2 id="debug-disable"><a class="anchor" href="#debug-disable"></a><a class="link" href="#debug-disable">4. Debug Disable</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p><code>dbg_disable_i</code> (<code>sep_lifecycle_ctrl_pkg::dbg_disable_t</code>) is a per-path
@@ -937,10 +868,10 @@ JTAG interface unit synchronizes the vector into the TCK domain and applies
 each field to the named path.</p>
 </div>
 <div class="paragraph">
-<p><a href="#dtp-debug-disable-paths-table">Table 4</a> maps each debug path to its active-high disable field.</p>
+<p><a href="#dtp-debug-disable-paths-table">Table 2</a> maps each debug path to its active-high disable field.</p>
 </div>
 <table id="dtp-debug-disable-paths-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 4. DTP debug-disable paths</caption>
+<caption class="title">Table 2. DTP debug-disable paths</caption>
 <colgroup>
 <col style="width: 40%;">
 <col style="width: 60%;">
@@ -1001,20 +932,19 @@ each field to the named path.</p>
 <div class="paragraph">
 <p>A disabled path remains observable only where required for control and
 readback. For a JTAG2AXI bridge, disabling means TDR update registers are not
-latched, buffered requests are dropped and the AXI state machine is held in
-idle — no AXI traffic can be generated. For a STAP, the host-visible scan
+latched. The disable gates the idle state: an active AXI transaction
+continues to completion, and buffered requests are flushed when idle is reached. For a STAP, the host-visible scan
 access is clamped so the disabled path cannot reach downstream secure logic.</p>
 </div>
 <div class="paragraph">
 <p>The STAP and iJTAG fields are applied in <code>jtag_intf_unit</code>; the three JTAG2AXI
 fields are applied in <code>jtag_ptap</code>.</p>
 </div>
-<p class="block-references">Figures and tables: <a href="#dtp-debug-disable-paths-table">Table 4</a>.</p>
 </div>
 </div>
 <nav class="pagination">
-  <span class="prev"><a href="overview.html">Architecture and Access Paths</a></span>
-  <span class="next"><a href="../ip/jtag_intf_unit/doc/index.html">JTAG Interface Unit</a></span>
+  <span class="prev"><a href="clk_rst.html">Clocks and Resets</a></span>
+  <span class="next"><a href="cross_trigger.html">Cross-Trigger Operation</a></span>
 </nav>
 </article>
   </div>

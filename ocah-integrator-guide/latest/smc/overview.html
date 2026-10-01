@@ -221,6 +221,8 @@
 </aside>
 <article class="doc">
 <h1 class="page">Overview</h1>
+<div id="preamble">
+<div class="sectionbody">
 <div id="overview" class="paragraph">
 <p>The System Management Controller (SMC) is a subsystem in a chiplet that
 takes on the system management tasks, including managing
@@ -242,42 +244,6 @@ chiplets.</p>
 various purposes. At high level, SMC&#8217;s main control logic is implemented in the
 firmware running on the micro-controller. Hardware facilitative components are
 added only when certain tasks cannot be implemented by firmware.</p>
-</div>
-<div class="paragraph">
-<p>The SMC architecture is organized around a RISC-V CPU cluster that executes
-firmware-based control logic. The CPU operates within the primary SMC clock
-domain and includes associated cache hierarchies for efficient instruction and
-data access. The system employs a multi-domain clocking architecture with a
-high-speed SMC clock domain for computational components, a stable reference
-clock domain for timing-sensitive operations, and a peripheral clock domain
-for external interfaces.</p>
-</div>
-<div class="paragraph">
-<p>The interconnect fabric provides AXI4 and AXI4-Lite bus infrastructure
-connecting the CPU to various system components. This fabric includes address
-remapping engines for security and virtualization support, traffic filtering
-mechanisms for access control, and crossbar switches for efficient data routing.</p>
-</div>
-<div class="paragraph">
-<p>Memory resources include read-only memory (ROM) for firmware storage and
-scratchpad memory for runtime data. The memory system is complemented by a DMA
-controller for efficient bulk data transfers and a memory zeroer for secure data
-clearing operations.</p>
-</div>
-<div class="paragraph">
-<p>Peripheral interfaces enable communication and control of external systems.
-These include GPIO controllers for general-purpose I/O, I2C and UART
-interfaces for serial communication, AVSBus controller for adaptive voltage
-scaling, and PVT (Process, Voltage, Temperature) sensors for environmental
-monitoring. A telemetry receiver collects system performance data, while the
-system timer OCTS provides multi-chiplet time synchronization.</p>
-</div>
-<div class="paragraph">
-<p>System management functions include clock and reset controllers for power and
-reset sequencing, an interrupt controller (PLIC) for handling system events, and
-core-local interruptors (CLINT) for timer and software interrupt management.
-Debug infrastructure provides JTAG access and RISC-V debug module support for
-development and troubleshooting.</p>
 </div>
 <div class="paragraph">
 <p><a href="#smc-top-level-block-diagram-figure">SMC top-level microarchitecture</a> shows the SMC microarchitectural diagram.</p>
@@ -334,6 +300,94 @@ shims, and the PLL, PVT and strap register models behind <code>smc_external</cod
 microarchitectural implementation of SMC&#8217;s components in OCAH. A
 consolidated description of OCAH use cases is available in
 <a href="../../../ocah-home/latest/use-cases.html" class="xref page">Use Cases</a>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="clocks-and-resets"><a class="anchor" href="#clocks-and-resets"></a><a class="link" href="#clocks-and-resets">1. Clocks and Resets</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>SMC coordinates clock, voltage and reset control. Its processing, reference
+timing and peripheral interfaces use distinct clock branches. Clocks and
+Resets describes the domains and reset sequencing.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="cpu"><a class="anchor" href="#cpu"></a><a class="link" href="#cpu">2. CPU</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The RISC-V CPU cluster executes management firmware using its caches and local
+memories. The CPU chapter describes its configuration, interfaces, isolation,
+error reporting and debug support.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="boot-rom"><a class="anchor" href="#boot-rom"></a><a class="link" href="#boot-rom">3. Boot ROM</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Boot ROM contains the startup firmware. Scratchpad memory provides runtime
+storage. The Boot ROM chapter describes the hardware and links to the
+production firmware manual.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="interconnect"><a class="anchor" href="#interconnect"></a><a class="link" href="#interconnect">4. Interconnect</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>AXI4 and AXI4-Lite connect the CPU and management blocks. Remapping, traffic
+filters and crossbars provide address translation, access control and routing.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="interrupts"><a class="anchor" href="#interrupts"></a><a class="link" href="#interrupts">5. Interrupts</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The PLIC routes system events; CLINT supplies core-local timer and software
+interrupts. The interrupt chapter describes their integration and handling.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="peripherals"><a class="anchor" href="#peripherals"></a><a class="link" href="#peripherals">6. Peripherals</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>DMA performs bulk transfers and Zeroer clears memory. Communication and
+control services include mailboxes, GPIO, I2C, I3C, UART and AVSBus. Telemetry
+receivers collect performance data; OCTS supports multi-chiplet timekeeping.
+PVT sensors provide environmental monitoring through adopter integration.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="design-for-debug-and-cla"><a class="anchor" href="#design-for-debug-and-cla"></a><a class="link" href="#design-for-debug-and-cla">7. Design-for-Debug and CLA</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>JTAG, the RISC-V debug module and the Core Logic Analyzer support observation,
+triggering and trace capture.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="efuse-scan-protection"><a class="anchor" href="#efuse-scan-protection"></a><a class="link" href="#efuse-scan-protection">8. eFuse Scan Protection</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Scan protection controls access to eFuse shadow-register assets. Its dedicated
+chapter describes the asset classes and access restrictions.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">9. Memory Map</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The memory map summarizes the address space and points to the block pages for
+register details.</p>
+</div>
+</div>
 </div>
 </article>
   </div>

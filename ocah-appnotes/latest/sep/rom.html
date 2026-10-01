@@ -177,10 +177,11 @@
 the base of this region, so a cold boot begins in the BL0 Root-of-Trust
 firmware.</p>
 </div>
+<span id="rom-architecture"></span>
 </div>
 </div>
 <div class="sect1">
-<h2 id="rom-architecture"><a class="anchor" href="#rom-architecture"></a><a class="link" href="#rom-architecture">1. ROM architecture</a></h2>
+<h2 id="sep-rom-rom-architecture"><a class="anchor" href="#sep-rom-rom-architecture"></a><a class="link" href="#sep-rom-rom-architecture">1. ROM Architecture</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>The CPU instruction-fetch and load/store interfaces reach the Boot ROM over a
@@ -211,21 +212,26 @@ BL0-to-BL1 state block at the top of the memory.</p>
 The CPU load/store unit cannot access ICCM, so BL0 cannot populate it with an
 ordinary software copy.</p>
 </div>
+<span id="integrity-features"></span>
 </div>
 </div>
 <div class="sect1">
-<h2 id="integrity-features"><a class="anchor" href="#integrity-features"></a><a class="link" href="#integrity-features">2. Integrity features</a></h2>
+<h2 id="sep-rom-integrity-features"><a class="anchor" href="#sep-rom-integrity-features"></a><a class="link" href="#sep-rom-integrity-features">2. Hardware Configuration and Integrity</a></h2>
 <div class="sectionbody">
+<div class="paragraph">
+<p>A future ROM patching facility using OTP backup storage is planned for the
+second generation; it is not implemented in the first generation.</p>
+</div>
 <div class="paragraph">
 <p>The open generic ROM model has a 64-bit data path and no ECC or integrity-error
 sideband. Technology-specific integrity behavior is therefore outside this
-integration&#8217;s visible hardware contract. The first-generation SEP has no ROM
-patching facility.</p>
+integration&#8217;s visible hardware contract.</p>
 </div>
+<span id="firmware-behavior"></span>
 </div>
 </div>
 <div class="sect1">
-<h2 id="firmware-behavior"><a class="anchor" href="#firmware-behavior"></a><a class="link" href="#firmware-behavior">3. Firmware behavior</a></h2>
+<h2 id="sep-rom-firmware-behavior"><a class="anchor" href="#sep-rom-firmware-behavior"></a><a class="link" href="#sep-rom-firmware-behavior">3. Boot Flow</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>The production BL0 firmware selects SPI flash or an SMC-staged image from the
@@ -234,6 +240,65 @@ secure-boot policy, checks the payload, locks sensitive fuse reads, and
 transfers control to BL1. The production ROM firmware documentation under
 <code>hw/sys/sep/bootrom/prod/doc/</code> describes that behavior and its build artifacts
 in detail.</p>
+</div>
+<div class="sect2">
+<h3 id="bl0-secure-boot-and-bl1-execution-unlock"><a class="anchor" href="#bl0-secure-boot-and-bl1-execution-unlock"></a><a class="link" href="#bl0-secure-boot-and-bl1-execution-unlock">3.1. BL0 Secure Boot and BL1 Execution Unlock</a></h3>
+<div class="paragraph">
+<p>The SEP CPU Boot ROM firmware AKA BL0 is responsible for bringing the
+SEP system into a runnable state after power on reset (PoR) and running
+the first stage of external firmware AKA BL1.</p>
+</div>
+<div class="paragraph">
+<p>The complete boot flow is specified by the production ROM documentation under
+<code>hw/sys/sep/bootrom/prod/doc/</code>. It covers CPU initialization, PMP fencing,
+fuse and lifecycle evaluation, SMC synchronization, boot-source selection,
+manifest and payload validation, secure boot, demotion, attestation and
+hand-off, with requirement identifiers and an implementation-status matrix.
+The summary below places the ROM in the context of this chapter, the definitive
+description is in  the production ROM documentation</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>SEP initialization&#8201;&#8212;&#8201;read configuration straps, determine boot options</p>
+</li>
+<li>
+<p>Configure CPU CSRs, PMP among them, and peripherals (SPI host, OTP, DMA, HMAC-SHA256)</p>
+</li>
+<li>
+<p>Load a boot manifest, from SPI flash or SMC SRAM, into SEP memory</p>
+</li>
+<li>
+<p>Validate it. Under secure boot this means authorizing the root key
+against a trust anchor the device holds&#8201;&#8212;&#8201;a ROM-embedded digest or an
+OTP hash bank&#8201;&#8212;&#8201;before any public-key operation, then checking
+revocation and anti-rollback, then verifying an RSA-3072 signature on
+OTBN</p>
+</li>
+<li>
+<p>Load the payload it describes, decrypting it when the manifest says so,
+and verify its hashes&#8201;&#8212;&#8201;over the ciphertext before decryption and the
+plaintext after</p>
+</li>
+<li>
+<p>Select BL1 from the payload table of contents, unlock execution in the
+CPU PMP, and jump</p>
+</li>
+<li>
+<p>Failure of any check ends the boot. A failure the backup manifest slot
+recovers from is a warning; exhausting every slot is an error, after
+which the processor enters a fail loop requiring a reset to exit</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="firmware-reference"><a class="anchor" href="#firmware-reference"></a><a class="link" href="#firmware-reference">4. Firmware Reference</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><a href="../sep-bootrom-prod/index.html" class="xref page">Production ROM Manual</a></p>
 </div>
 </div>
 </div>

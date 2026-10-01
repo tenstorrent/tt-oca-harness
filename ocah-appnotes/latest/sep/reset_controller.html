@@ -314,7 +314,7 @@ values.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">trng_sw_rst_n</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Shared ESRC + CSRNG + EDN reset request (0=assert, 1=release)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Shared entropy-source (ESRC), CSRNG, EDN and internal DRBG endpoint reset request (0=assert, 1=release); excludes the KM sampler</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">6</p></td>
@@ -431,7 +431,7 @@ domain; the mailbox&#8217;s SEP-facing side is in the Key Manager&#8217;s cold d
 <p>The sequenced resets are ANDed with <code>sep_reset_n</code>, which holds every IP in reset
 until eFuse sensing completes during boot. JTAG can drive <code>sep_reset_n</code> in
 place of the eFuse reset through the SEP slice of the IC_RESET TDR (see
-<a href="../dtp/jtag.html#dtp-ic-reset-overrides" class="xref page">IC_RESET Overrides</a> in the DTP chapter), which releases it on a part
+<a href="../dtp/clk_rst.html#dtp-ic-reset-overrides" class="xref page">IC_RESET Overrides</a> in the DTP chapter), which releases it on a part
 whose fuse sensing does not complete. The per-IP JTAG override muxes are
 applied last, allowing debug to force reset without waiting for isolation.</p>
 </div>
@@ -488,9 +488,54 @@ before asserting the TRNG reset. Holding KM in software reset is sufficient;
 hardware does not enforce the ordering.</p>
 </div>
 <div class="paragraph">
-<p>Following reset release, software reprograms ESRC, waits for startup health
+<p>Following reset release, software reprograms the entropy source, waits for startup health
 testing, locks the certified configuration, instantiates CSRNG, and enables EDN.
 Consumers are released only after fresh endpoint/pool progress is observed.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="memory-map-and-register-reference"><a class="anchor" href="#memory-map-and-register-reference"></a><a class="link" href="#memory-map-and-register-reference">5. Memory Map and Register Reference</a></h2>
+<div class="sectionbody">
+<span id="register-reference"></span>
+<div class="sect2">
+<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">5.1. Memory Map</a></h3>
+<div class="paragraph">
+<p>Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">5.2. Detailed Register Map</a></h3>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-sep_reset_ctrl">SEP Reset Control Address Map</h2>
+<p>Software resets for KM, OTBN, AES, HMAC, KMAC, the internal TRNG, and Adams Bridge.</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#sep_reset_ctrl-SW_RESET_N">SW_RESET_N</a></td><td>RW</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="SW_RESET_N"></span><h3 id="sep_reset_ctrl-SW_RESET_N" data-register-alias="SW_RESET_N">SW_RESET_N</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:7</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>6</td><td>abr_sw_rst_n</td><td>RW</td><td>0x1</td><td>Adams Bridge reset (0=assert, 1=release)</td></tr>
+<tr><td>5</td><td>trng_sw_rst_n</td><td>RW</td><td>0x1</td><td>Internal TRNG reset request (0=assert, 1=release). Hardware drains and isolates the entropy-source, CSRNG, and EDN AXI ports before asserting the shared TRNG reset.</td></tr>
+<tr><td>4</td><td>kmac_sw_rst_n</td><td>RW</td><td>0x1</td><td>KMAC reset (0=assert, 1=release)</td></tr>
+<tr><td>3</td><td>hmac_sw_rst_n</td><td>RW</td><td>0x1</td><td>HMAC reset (0=assert, 1=release)</td></tr>
+<tr><td>2</td><td>aes_sw_rst_n</td><td>RW</td><td>0x1</td><td>AES reset (0=assert, 1=release)</td></tr>
+<tr><td>1</td><td>otbn_sw_rst_n</td><td>RW</td><td>0x1</td><td>OTBN reset (0=assert, 1=release)</td></tr>
+<tr><td>0</td><td>km_sw_rst_n</td><td>RW</td><td>0x0</td><td>KM reset (0=assert, 1=release)</td></tr>
+</table>
+</div>
 </div>
 </div>
 </div>

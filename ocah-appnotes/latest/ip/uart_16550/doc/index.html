@@ -172,46 +172,20 @@
 <div class="sect1">
 <h2 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">1. Overview</a></h2>
 <div class="sectionbody">
+<span id="description-and-features"></span>
 <div class="paragraph">
-<p>This document specifies the UART 16550 hardware Component functionality.
-The UART 16550 implements the National Semiconductor UART 16550 standard
-with additional enhancements including independently-configurable
-Transmitter and Receiver FIFO depths and FIFO data and pointer parity
-protection. It provides a full-featured serial communication interface
-compatible with industry-standard UART protocols.</p>
+<p>The UART provides a 16550-style programming interface over 32-bit AXI4-Lite.
+It transmits and receives serial characters, buffers them in independently
+sized FIFOs, and reports line, modem and FIFO-integrity events. Extensions
+include larger FIFO depths, FIFO data/pointer parity protection, extended
+receive thresholds and a FIFO-error interrupt.</p>
 </div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="description-and-features"><a class="anchor" href="#description-and-features"></a><a class="link" href="#description-and-features">2. Description and Features</a></h2>
-<div class="sectionbody">
-<div class="ulist">
-<ul>
-<li>
-<p>Full UART 16550 compatibility and functionality</p>
-</li>
-<li>
-<p>32-bit AXI4-Lite register interface</p>
-</li>
-<li>
-<p>Independently-configurable Transmitter and Receiver FIFO depths (4 to
-4096 entries)</p>
-</li>
-<li>
-<p>FIFO parity protection for data and pointers with error reporting</p>
-</li>
-<li>
-<p>Comprehensive interrupt support with 6 priority levels</p>
-</li>
-<li>
-<p>Direct Memory Access (DMA) signaling with immediate and hysteresis
-modes</p>
-</li>
-<li>
-<p>Modem control interface (CTS, DSR, RI, DCD, RTS, DTR, OUT1, OUT2) with
-change detection and interrupt; flow control is performed by software</p>
-</li>
-</ul>
+<div class="paragraph">
+<p>The TX and RX FIFOs default to 16 entries each. Software selects FIFO or
+single-character operation, frame format, baud divisor and interrupt enables.
+Modem signals provide status and software-controlled outputs; CTS does not
+stop transmission and RTS does not automatically throttle reception.
+DMA-ready outputs indicate service conditions but do not themselves move data.</p>
 </div>
 <div id="uart-wrapper-diagram" class="imageblock">
 <div class="content">
@@ -249,211 +223,183 @@ instance are ORed into one interrupt, peripheral interrupts 18 to 21.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="uart-16550-architecture"><a class="anchor" href="#uart-16550-architecture"></a><a class="link" href="#uart-16550-architecture">3. Architecture</a></h2>
+<h2 id="uart-16550-architecture"><a class="anchor" href="#uart-16550-architecture"></a><a class="link" href="#uart-16550-architecture">2. Architecture</a></h2>
 <div class="sectionbody">
-<div class="sect2">
-<h3 id="overview-2"><a class="anchor" href="#overview-2"></a><a class="link" href="#overview-2">3.1. Overview</a></h3>
 <div class="paragraph">
-<p>The UART 16550 IP uses a hierarchical architecture with three main
-layers: a top-level wrapper handling the register interface, the core
-UART logic with FIFO management, and the transmit/receive engines. This
-separation allows for clear division between interface, data flow, and
-serial processing.</p>
-</div>
+<p><code>uart_16550</code> selects the register view; <code>uart_core</code> manages buffering, baud
+timing, modem state and interrupts; <code>uart_tx</code> and <code>uart_rx</code> serialize and
+sample characters. All core logic uses <code>clk_i</code>.</p>
 </div>
 <div class="sect2">
-<h3 id="hierarchical-structure"><a class="anchor" href="#hierarchical-structure"></a><a class="link" href="#hierarchical-structure">3.2. Hierarchical Structure</a></h3>
+<h3 id="transmit-and-receive-paths"><a class="anchor" href="#transmit-and-receive-paths"></a><a class="link" href="#transmit-and-receive-paths">2.1. Transmit and Receive Paths</a></h3>
+<span id="overview-2"></span>
+<span id="hierarchical-structure"></span>
+<span id="data-flow-architecture"></span>
+<span id="transmit-data-flow"></span>
+<span id="receive-data-flow"></span>
 <div class="paragraph">
-<p><strong>Top Level</strong> (uart_16550)</p>
+<p>With <code>LCR.DLAB=0</code>, a write to <code>THR</code> supplies a transmit byte and a read of <code>RBR</code>
+consumes a received byte. FIFO mode queues characters; non-FIFO mode uses one
+holding register per direction. Changing <code>FCR.FIFO_ENABLE</code> clears both FIFOs
+and the single-character holding state, so changing mode can discard data.</p>
 </div>
 <div class="paragraph">
-<p>The <code>uart_16550</code> top-level module acts as an interface wrapper. It
-manages AXI4-Lite transactions and register map routing, ensuring
-protocol compliance and reliable integration.</p>
+<p>The transmitter runs whenever enabled and data is available, independently of
+CTS. <code>LSR.THRE</code> means the TX FIFO/holding register is empty; <code>LSR.TEMT</code> also
+requires the serializer to be idle. Use TEMT when the final character must have
+left the transmitter before reconfiguration.</p>
 </div>
 <div class="paragraph">
-<p><strong>UART Core</strong> (uart_core)</p>
-</div>
-<div class="paragraph">
-<p>The <code>uart_core</code> module handles the main UART functions. It manages
-transmit and receive FIFOs with configurable depths from 4 to 4096
-entries, supporting diverse use cases from low-latency to
-high-throughput. Baud rate generation uses 16x oversampling with a
-programmable divisor for timing precision.</p>
-</div>
-<div class="paragraph">
-<p>The interrupt controller handles six prioritized interrupt sources, and
-modem control supports all standard modem signals. The modem interface is
-status and control only - the inputs are synchronized and reported in the
-<code>MSR</code> register with change detection and an interrupt, and the outputs are
-driven directly from the <code>MCR</code> register. No modem signal gates the
-transmit or receive datapath, so hardware flow control, if needed, is
-implemented by software on top of these registers. DMA is supported in
-both immediate and hysteresis modes for efficient data transfers. Both
-internal and external loopback modes are supported for testing and
-diagnostics.</p>
-</div>
-<div class="paragraph">
-<p>The core works together with the transmit engine (serialization),
-receive engine (deserialization), FIFO controllers for buffering, and
-timeout detection logic, providing a balance of performance and
-reliability.</p>
-</div>
-<div class="paragraph">
-<p><strong>Transmit Engine</strong> (uart_tx)</p>
-</div>
-<div class="paragraph">
-<p>The <code>uart_tx</code> module serializes parallel data for transmission,
-maintaining timing accuracy and signal integrity. It generates frames
-with selectable start, parity, and stop bits to match protocol
-requirements and legacy compatibility. Baud rate alignment uses 16x
-oversampling for precise timing. It also supports break signal generation
-for protocol control or device reset. The engine has no modem inputs and
-transmits whenever the TX FIFO is non-empty; it does not stall on CTS.</p>
-</div>
-<div class="paragraph">
-<p><strong>Receive Engine</strong> (uart_rx)</p>
-</div>
-<div class="paragraph">
-<p>The <code>uart_rx</code> module deserializes incoming data, maintaining integrity
-and providing error detection. It detects start bits, validates stop
-bits, and checks parity where enabled, reporting errors for diagnostic
-use. Error detection covers framing errors, parity errors, and break
-conditions. Sampling uses 16x oversampling with majority voting for
-noise immunity. Timeout detection flags when reception exceeds 4
-character periods.</p>
+<p>The receiver synchronizes <code>rx_i</code> and uses a three-sample majority decision at
+16-times-baud sampling. Received parity, framing and break indications accompany
+characters; software reads line status before consuming their data. In FIFO
+mode, an overrun drops the newly received character; in non-FIFO mode an unread
+character can be overwritten in RBR. Frame format supports 5–8 data bits, selectable parity
+and stop-bit configuration. <code>LCR.SET_BREAK</code> forces the transmit line low.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="data-flow-architecture"><a class="anchor" href="#data-flow-architecture"></a><a class="link" href="#data-flow-architecture">3.3. Data Flow Architecture</a></h3>
-
-</div>
-<div class="sect2">
-<h3 id="transmit-data-flow"><a class="anchor" href="#transmit-data-flow"></a><a class="link" href="#transmit-data-flow">3.4. Transmit Data Flow</a></h3>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p><strong>CPU Write</strong>: Software writes data to THR or FIFO</p>
-</li>
-<li>
-<p><strong>FIFO Buffering</strong>: Data goes into transmit FIFO</p>
-</li>
-<li>
-<p><strong>Serialization</strong>: Transmit engine converts to serial</p>
-</li>
-<li>
-<p><strong>Output</strong>: Data is sent via <code>tx_o</code></p>
-</li>
-</ol>
+<h3 id="baud-timing-and-register-views"><a class="anchor" href="#baud-timing-and-register-views"></a><a class="link" href="#baud-timing-and-register-views">2.2. Baud Timing and Register Views</a></h3>
+<span id="divisor-latch-access-mode"></span>
+<span id="serial-interface-timing"></span>
+<div class="paragraph">
+<p><code>LCR.DLAB</code> selects DLL/DLM at offsets <code>0x00</code> and <code>0x04</code> for divisor programming.
+With DLAB clear, these offsets select RBR/THR and IER. Other offsets retain their
+normal meaning. Serial operation is disabled when the combined divisor is zero;
+otherwise baud rate is <code>clk_i_frequency / (16 * (divisor + 1))</code>.
+The smallest usable divisor, 1, gives a maximum baud rate of <code>clk_i_frequency/32</code>.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="receive-data-flow"><a class="anchor" href="#receive-data-flow"></a><a class="link" href="#receive-data-flow">3.5. Receive Data Flow</a></h3>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p><strong>Input Sampling</strong>: Receive engine samples <code>rx_i</code> at 16x baud rate</p>
-</li>
-<li>
-<p><strong>Frame Processing</strong>: Detects start bit, extracts data, checks parity
-and stop bit</p>
-</li>
-<li>
-<p><strong>FIFO Storage</strong>: Stores valid data in receive FIFO with error flags</p>
-</li>
-<li>
-<p><strong>CPU Read</strong>: Software reads data from RBR or FIFO</p>
-</li>
-</ol>
-</div>
+<h3 id="fifo-protection-and-line-errors"><a class="anchor" href="#fifo-protection-and-line-errors"></a><a class="link" href="#fifo-protection-and-line-errors">2.3. FIFO Protection and Line Errors</a></h3>
+<span id="error-handling-architecture"></span>
+<span id="fifo-parity-protection"></span>
+<span id="serial-communication-errors"></span>
+<span id="error-interface"></span>
+<span id="uart-error-interface-signals-table"></span>
 <div class="paragraph">
-<p>When DLAB (Divisor Latch Access Bit) = 0: - Address 0x0: RBR (read), THR
-(write) - Address 0x4: IER - Standard UART 16550 register layout is
-active</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="divisor-latch-access-mode"><a class="anchor" href="#divisor-latch-access-mode"></a><a class="link" href="#divisor-latch-access-mode">3.6. Divisor Latch Access Mode</a></h3>
-<div class="paragraph">
-<p>When DLAB = 1: - Address 0x0: DLL (Divisor Latch Low) - Address 0x4: DLM
-(Divisor Latch High) - Used for baud rate divisor programming</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="clock-domain-considerations"><a class="anchor" href="#clock-domain-considerations"></a><a class="link" href="#clock-domain-considerations">3.7. Clock Domain Considerations</a></h3>
-<div class="paragraph">
-<p>UART 16550 operates in a single system clock domain (<code>clk_i</code>), with all
-external asynchronous inputs synchronized to prevent metastability. This
-simplifies integration and maintains reliable timing.</p>
-</div>
-<div class="paragraph">
-<p>Modem control inputs (CTS, DSR, RI, DCD) are synchronized to avoid
-errors. Serial input sampling uses 16x oversampling and majority voting,
-which also helps with synchronization. Reset is asserted asynchronously
-for immediate response but deasserts synchronously for safe recovery and
-predictable operation.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="error-handling-architecture"><a class="anchor" href="#error-handling-architecture"></a><a class="link" href="#error-handling-architecture">3.8. Error Handling Architecture</a></h3>
-<div class="paragraph">
-<p>The design includes thorough error detection and reporting:</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="fifo-parity-protection"><a class="anchor" href="#fifo-parity-protection"></a><a class="link" href="#fifo-parity-protection">3.9. FIFO Parity Protection</a></h3>
-<div class="paragraph">
-<p>FIFO parity protection covers stored data and pointers, detecting
-single-bit errors and maintaining integrity in FIFO control structures.
-Errors generate interrupts and error outputs for quick response by
-system software.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="serial-communication-errors"><a class="anchor" href="#serial-communication-errors"></a><a class="link" href="#serial-communication-errors">3.10. Serial Communication Errors</a></h3>
-<div class="paragraph">
-<p><a href="#uart-serial-communication-errors-table">UART Serial Communication Errors</a> lists the serial errors detected by the UART.</p>
+<p>FIFO/holding-register data and FIFO pointers have parity protection. An internal
+parity failure drives <code>err_o</code> and can raise the separately enabled FIFO-error
+interrupt. This is different from parity in a received serial frame.</p>
 </div>
 <table id="uart-serial-communication-errors-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 1. UART Serial Communication Errors</caption>
+<caption class="title">Table 1. UART serial errors</caption>
 <colgroup>
-<col style="width: 50%;">
-<col style="width: 50%;">
+<col style="width: 25%;">
+<col style="width: 75%;">
 </colgroup>
 <thead>
 <tr>
-<th class="tableblock halign-left valign-top">Error Type</th>
-<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">LSR field</th>
+<th class="tableblock halign-left valign-top">Meaning</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Framing Errors</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Detection of invalid stop bits</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Receive FIFO overrun: a character arrived while the receive FIFO was full.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Parity Errors</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Validation of received parity bits (when enabled)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>PE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Parity error on the character exposed at the receive head.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Overrun Errors</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Detection of FIFO overflow conditions</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>FE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Invalid stop bit on that character.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Break Detection</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Recognition of extended low periods indicating break
-signals</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>BI</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Break: the received frame remained low.</p></td>
 </tr>
 </tbody>
 </table>
+<div class="paragraph">
+<p>In the current RTL, overwriting an unread non-FIFO RBR does not set OE.
+These error fields clear on an LSR read. Capture the status once for the
+character being serviced; repeated diagnostic reads can consume error evidence.
+The generated map specifies the status fields and their access side effects.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="interrupt-priority-and-service"><a class="anchor" href="#interrupt-priority-and-service"></a><a class="link" href="#interrupt-priority-and-service">2.4. Interrupt Priority and Service</a></h3>
+<span id="interrupt-interface"></span>
+<span id="uart-interrupt-interface-signals-table"></span>
+<div class="paragraph">
+<p><code>irq_o</code> reports the OR of the interrupt requests. <code>IIR.INTERRUPT_PENDING=0</code>
+means a request is pending; <code>IIR.INTERRUPT_ID</code> identifies the highest-priority
+source. The following table is ordered highest first; IDs are the three-bit
+field values, not the full IIR register value.</p>
+</div>
+<table id="uart-interrupt-service-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. UART interrupt priority and service</caption>
+<colgroup>
+<col style="width: 16.6666%;">
+<col style="width: 33.3333%;">
+<col style="width: 50.0001%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">ID</th>
+<th class="tableblock halign-left valign-top">Source</th>
+<th class="tableblock halign-left valign-top">Service / control</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">7</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FIFO integrity error</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Investigate <code>err_o</code>; <code>IER.EFEI</code> masks this source.
+An IIR read does not repair or acknowledge an underlying parity failure.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Receiver line status</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Capture LSR error fields, then service receive data;
+controlled by <code>IER.ELSI</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">6</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Receive timeout</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Read RBR to clear the latched timeout. It is generated in
+FIFO mode after roughly four character times without receive-FIFO occupancy
+change. In the current RTL this request is not gated by IER.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Received data ready</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Drain RBR below the selected FIFO trigger, or consume
+the non-FIFO character; controlled by <code>IER.ERBFI</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Transmit holding register empty</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Write THR, or read IIR while this is the
+selected source, to clear its latch. A subsequent transition back to empty
+re-arms it; controlled by <code>IER.ETBEI</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Modem status</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Read MSR once to capture levels and clear delta bits;
+controlled by <code>IER.EDSSI</code>.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><code>MCR.OUT2</code> does not gate <code>irq_o</code>; its modem and loopback uses are described
+in the programming section. The ITR
+extension can force interrupt sources for testing. Clear test settings after
+use. Do not rely on clearing IER alone to silence the unmasked timeout source;
+use the subsystem interrupt controller when masking all delivery is required.</p>
+</div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="uart-16550-interface"><a class="anchor" href="#uart-16550-interface"></a><a class="link" href="#uart-16550-interface">4. Interface</a></h2>
+<h2 id="uart-16550-interface"><a class="anchor" href="#uart-16550-interface"></a><a class="link" href="#uart-16550-interface">3. Interface</a></h2>
 <div class="sectionbody">
 <div class="sect2">
-<h3 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">4.1. Configuration Parameters</a></h3>
+<h3 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">3.1. Configuration Parameters</a></h3>
 <div class="paragraph">
 <p>The UART 16550 module provides configurable parameters to customize FIFO
 sizes according to system requirements.</p>
@@ -463,7 +409,7 @@ sizes according to system requirements.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="modem-control-interface"><a class="anchor" href="#modem-control-interface"></a><a class="link" href="#modem-control-interface">4.2. Modem Control Interface</a></h3>
+<h3 id="modem-control-interface"><a class="anchor" href="#modem-control-interface"></a><a class="link" href="#modem-control-interface">3.2. Modem Control Interface</a></h3>
 <div class="paragraph">
 <p>The modem control interface provides full RS-232 modem signaling
 compatibility. All modem signals are active low at the pins, matching the
@@ -479,18 +425,20 @@ interrupt to throttle traffic. See the Programming section.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="dma-interface"><a class="anchor" href="#dma-interface"></a><a class="link" href="#dma-interface">4.3. DMA Interface</a></h3>
+<h3 id="dma-interface"><a class="anchor" href="#dma-interface"></a><a class="link" href="#dma-interface">3.3. DMA Interface</a></h3>
 <div class="paragraph">
 <p>The DMA interface provides signals for Direct Memory Access controllers
-to manage data transfers automatically.</p>
+to manage data transfers automatically. The <code>rxrdy_o</code> and <code>txrdy_o</code> signals
+indicate when DMA operations can proceed, with behavior configurable through
+FIFO control modes.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="interface-timing-considerations"><a class="anchor" href="#interface-timing-considerations"></a><a class="link" href="#interface-timing-considerations">4.4. Interface Timing Considerations</a></h3>
+<h3 id="interface-timing-considerations"><a class="anchor" href="#interface-timing-considerations"></a><a class="link" href="#interface-timing-considerations">3.4. Interface Timing Considerations</a></h3>
 
 </div>
 <div class="sect2">
-<h3 id="clock-domain"><a class="anchor" href="#clock-domain"></a><a class="link" href="#clock-domain">4.5. Clock Domain</a></h3>
+<h3 id="clock-domain"><a class="anchor" href="#clock-domain"></a><a class="link" href="#clock-domain">3.5. Clock Domain</a></h3>
 <div class="paragraph">
 <p>All interface signals operate in a single clock domain referenced to
 <code>clk_i</code>. The following timing considerations apply:</p>
@@ -514,7 +462,7 @@ deasserted synchronously relative to <code>clk_i</code></p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="serial-interface-timing"><a class="anchor" href="#serial-interface-timing"></a><a class="link" href="#serial-interface-timing">4.6. Serial Interface Timing</a></h3>
+<h3 id="serial-interface-timing"><a class="anchor" href="#serial-interface-timing"></a><a class="link" href="#serial-interface-timing">3.6. Serial Interface Timing</a></h3>
 <div class="ulist">
 <ul>
 <li>
@@ -534,7 +482,7 @@ optional parity bit, 1-2 stop bits</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="protocol-support"><a class="anchor" href="#protocol-support"></a><a class="link" href="#protocol-support">4.7. Protocol Support</a></h3>
+<h3 id="protocol-support"><a class="anchor" href="#protocol-support"></a><a class="link" href="#protocol-support">3.7. Protocol Support</a></h3>
 <div class="paragraph">
 <p>The interface supports standard UART communication protocols:</p>
 </div>
@@ -565,307 +513,86 @@ flexibility needed for diverse embedded system applications.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="uart-16550-memory-map"><a class="anchor" href="#uart-16550-memory-map"></a><a class="link" href="#uart-16550-memory-map">5. Memory Map</a></h2>
+<h2 id="uart-16550-programming"><a class="anchor" href="#uart-16550-programming"></a><a class="link" href="#uart-16550-programming">4. Programming</a></h2>
 <div class="sectionbody">
 <div class="sect2">
-<h3 id="overview-3"><a class="anchor" href="#overview-3"></a><a class="link" href="#overview-3">5.1. Overview</a></h3>
-<div class="paragraph">
-<p>The UART 16550 register map follows the industry-standard 16550 UART
-layout with additional extended registers. The register space spans 64
-bytes (6-bit address) with 32-bit aligned registers. Register access
-behavior depends on the DLAB (Divisor Latch Access Bit) setting in the
-Line Control Register (LCR).</p>
-</div>
-<div class="paragraph">
-<p>The register map uses a dynamic addressing scheme where certain register
-addresses map to different registers based on the DLAB bit setting,
-maintaining compatibility with the original 16550 UART while providing
-access to baud rate configuration registers.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">5.2. Detailed Register Map</a></h3>
-<div class="paragraph">
-<p>The first two register views apply when <code>LCR.DLAB=0</code>; read-only and write-only
-aliases at the same offset are shown separately. The divisor-latch view applies
-when <code>LCR.DLAB=1</code>.</p>
-</div>
-<!-- SPDX-License-Identifier: Apache-2.0 -->
-<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
-<div class="ocah-reg-html">
-<style>
-.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
-.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
-.ocah-reg-html th{background:#81BCE5;text-align:left}
-</style>
-<h2 id="regmap-uart_16550_main">UART 16550 Main Address Map</h2>
-<p>Contains the mode-independent registers and the read-only registers accessible only<br>when `DLAB = 0`.</p>
-<p><strong>Register List:</strong></p>
-<table>
-<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0</td><td><a href="#RBR">RBR</a></td><td>R</td><td>Receiver Buffer Register</td></tr>
-<tr><td>0x4</td><td><a href="#IER">IER</a></td><td>RW</td><td>Interrupt Enable Register</td></tr>
-<tr><td>0x8</td><td><a href="#IIR">IIR</a></td><td>R</td><td>Interrupt Identification Register</td></tr>
-<tr><td>0xC</td><td><a href="#LCR">LCR</a></td><td>RW</td><td>Line Control Register</td></tr>
-<tr><td>0x10</td><td><a href="#MCR">MCR</a></td><td>RW</td><td>Modem Control Register</td></tr>
-<tr><td>0x14</td><td><a href="#LSR">LSR</a></td><td>R</td><td>Line Status Register</td></tr>
-<tr><td>0x18</td><td><a href="#MSR">MSR</a></td><td>R</td><td>Modem Status Register</td></tr>
-<tr><td>0x1C</td><td><a href="#SCR">SCR</a></td><td>RW</td><td>Scratch Register</td></tr>
-<tr><td>0x20</td><td><a href="#ECR">ECR</a></td><td>RW</td><td>Extended Control Register</td></tr>
-<tr><td>0x24</td><td><a href="#ITR">ITR</a></td><td>RW</td><td>Interrupt Test Register</td></tr>
-</table>
-<p><strong>Register Details:</strong></p>
-<h3 id="RBR">RBR</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7:0</td><td>DATA</td><td>R RMOD</td><td>0x0</td><td>Received Data. Contains a received character. If FIFOs are enabled, this field<br>points to the bottom of the RX FIFO. Otherwise, this field points to a single-<br>byte Receiver Buffer Register.</td></tr>
-</table>
-<h3 id="IER">IER</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>4</td><td>EFEI</td><td>RW</td><td>0x0</td><td>Enable FIFO Error Interrupt.</td></tr>
-<tr><td>3</td><td>EDSSI</td><td>RW</td><td>0x0</td><td>Enable (Delta Status of) Modem Status Interrupt.</td></tr>
-<tr><td>2</td><td>ELSI</td><td>RW</td><td>0x0</td><td>Enable (Receiver) Line Status Interrupt.</td></tr>
-<tr><td>1</td><td>ETBEI</td><td>RW</td><td>0x0</td><td>Enable Transmitter Buffer Empty (Transmitter Holding Register Empty)<br>Interrupt.</td></tr>
-<tr><td>0</td><td>ERBFI</td><td>RW</td><td>0x0</td><td>Enable Receiver Buffer Full (Received Data Ready) Interrupt.</td></tr>
-</table>
-<h3 id="IIR">IIR</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7:6</td><td>FIFOS_ENABLED</td><td>R</td><td>0x0</td><td>FIFOs Enabled:<br>* `0x0` - FIFOs are disabled<br>* `0x3` - FIFOs are enabled</td></tr>
-<tr><td>5:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>3:1</td><td>INTERRUPT_ID</td><td>R</td><td>0x0</td><td>Interrupt ID:<br>* `0x7` - FIFO Error Interrupt                         (priority 0)<br>* `0x3` - Receiver Line Status Interrupt               (priority 1)<br>* `0x6` - Reception Timeout Interrupt                  (priority 2)<br>* `0x2` - Received Data Ready Interrupt                (priority 3)<br>* `0x1` - Transmitter Holding Register Empty Interrupt (priority 4)<br>* `0x0` - Modem Status Interrupt                       (priority 5)</td></tr>
-<tr><td>0</td><td>INTERRUPT_PENDING</td><td>R</td><td>0x1</td><td>Interrupt Pending. Active-low.</td></tr>
-</table>
-<h3 id="LCR">LCR</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7</td><td>DLAB</td><td>RW</td><td>0x0</td><td>Divisor Latch Access Bit. If set, allows access to the `DLL` and `DLM` registers<br>when accessing addresses `0x0` and `0x4`, respectively. If unset, allows access<br>to the `THR`, `RBR`, and `IIR` registers.</td></tr>
-<tr><td>6</td><td>SET_BREAK</td><td>RW</td><td>0x0</td><td>Set Break. If set, forces the `tx_o` output to `0` to cause a break condition<br>on the receiving UART.</td></tr>
-<tr><td>5</td><td>STICK_PARITY</td><td>RW</td><td>0x0</td><td>Stick Parity. If set, forces the transmit and received parity bits to be `0` if<br>even parity is selected and `1` if odd parity is selected.</td></tr>
-<tr><td>4</td><td>EPS</td><td>RW</td><td>0x0</td><td>Even Parity Select:<br>* `1` - even parity<br>* `0` - odd parity</td></tr>
-<tr><td>3</td><td>PEN</td><td>RW</td><td>0x0</td><td>Parity Enable.</td></tr>
-<tr><td>2</td><td>STB</td><td>RW</td><td>0x0</td><td>Stop Bits:<br>* `0` - 1 stop bit.<br>* `1` - 2 stop bits (or 1.5 stop bits if word length is set to 5 bits)</td></tr>
-<tr><td>1:0</td><td>WLS</td><td>RW</td><td>0x0</td><td>Word Length Select:<br>* `0x0` - 5 bits per character<br>* `0x1` - 6 bits per character<br>* `0x2` - 7 bits per character<br>* `0x3` - 8 bits per character</td></tr>
-</table>
-<h3 id="MCR">MCR</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>5</td><td>LINE_LOOPBACK</td><td>RW</td><td>0x0</td><td>Line Loopback. If set, the `rx_i` input is internally connected to the<br>`tx_o` output.</td></tr>
-<tr><td>4</td><td>LOOP</td><td>RW</td><td>0x0</td><td>System Loopback. If set, the transmitter is internally connected to the<br>receiver. The `tx_o` output is set to `1`.</td></tr>
-<tr><td>3</td><td>OUT2</td><td>RW</td><td>0x0</td><td>User Output 2. Writing to this bit drives the `out2_no` in the opposite<br>polarity.</td></tr>
-<tr><td>2</td><td>OUT1</td><td>RW</td><td>0x0</td><td>User Output 1. Writing to this bit drives the `out1_no` in the opposite<br>polarity.</td></tr>
-<tr><td>1</td><td>RTS</td><td>RW</td><td>0x0</td><td>Request to Send. Writing to this bit drives the `rts_no` output in the opposite<br>polarity.</td></tr>
-<tr><td>0</td><td>DTR</td><td>RW</td><td>0x0</td><td>Data Terminal Ready. Writing to this bit drives the `dtr_no` output in the<br>opposite polarity.</td></tr>
-</table>
-<h3 id="LSR">LSR</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7</td><td>ERROR_IN_RCVR_FIFO</td><td>R</td><td>0x0</td><td>Error in Receiver FIFO. When set, indicates that the receiver FIFO or (RBR in<br>non-FIFO mode) has the parity, framing, or break error. In other words, at<br>least one of the PE, FE, and BI bits is set.</td></tr>
-<tr><td>6</td><td>TEMT</td><td>R</td><td>0x1</td><td>Transmitter Empty. When set, indicates that the transmitter shift register and<br>the transmitter FIFO (or THR in non-FIFO mode) are empty.</td></tr>
-<tr><td>5</td><td>THRE</td><td>R</td><td>0x1</td><td>Transmitter Holding Register Empty. When set, indicates that the TX FIFO (or<br>THR in non-FIFO mode) is empty. Clearing the Transmitter Holding Register Empty<br>Interrupt does NOT clear this bit.</td></tr>
-<tr><td>4</td><td>BI</td><td>R RC</td><td>0x0</td><td>Break Interrupt. When set, indicates that the `rx_i` input is `0` for an entire<br>frame&#x27;s time (start + data + parity + stop bits). In FIFO mode, this bit set<br>when the character reaches the top of the receiver FIFO. In non-FIFO mode, this<br>bit is set when the character enters the RBR. This bit triggers the Receiver<br>Line Status Interrupt.</td></tr>
-<tr><td>3</td><td>FE</td><td>R RC</td><td>0x0</td><td>Framing Error. When set, indicates that the received character is missing a<br>stop bit. In FIFO mode, this bit is set when the character reaches the top of<br>the FIFO. In non-FIFO mode, this bit is set when the character enters the RBR.<br>This bit triggers the Receiver Line Status Interrupt.</td></tr>
-<tr><td>2</td><td>PE</td><td>R RC</td><td>0x0</td><td>Parity Error. When set, indicates that the character at the top of the receiver<br>FIFO (or RBR in non-FIFO mode) has a parity error. This bit triggers the<br>Receiver Line Status Interrupt.</td></tr>
-<tr><td>1</td><td>OE</td><td>R RC</td><td>0x0</td><td>Overrun Error. When set, indicates that the RX FIFO (or Receiver Buffer<br>Register in Non-FIFO Mode) is full when new character is received. In FIFO Mode, the new character<br>is dropped. In non-FIFO mode, the existing character in the RBR is overwritten.<br>This bit triggers the Receiver Line Status Interrupt.</td></tr>
-<tr><td>0</td><td>DR</td><td>R</td><td>0x0</td><td>Data Ready. When set, indicates that the RX FIFO (or RBR in non-FIFO<br>mode) contains data.</td></tr>
-</table>
-<h3 id="MSR">MSR</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7</td><td>DCD</td><td>R</td><td>0x0</td><td>Data Carrier Detect. This bit reflects the `dcd_ni` input in the opposite<br>polarity, so it reads `1` while a carrier is detected.</td></tr>
-<tr><td>6</td><td>RI</td><td>R</td><td>0x0</td><td>Ring Indicator. This bit reflects the `ri_ni` input in the opposite polarity, so<br>it reads `1` while the remote modem signals an incoming call.</td></tr>
-<tr><td>5</td><td>DSR</td><td>R</td><td>0x0</td><td>Data Set Ready. This bit reflects the `dsr_ni` input in the opposite polarity,<br>so it reads `1` while the remote modem is connected and ready.</td></tr>
-<tr><td>4</td><td>CTS</td><td>R</td><td>0x0</td><td>Clear to Send. This bit reflects the `cts_ni` input in the opposite polarity, so<br>it reads `1` while the remote device is ready to receive data.</td></tr>
-<tr><td>3</td><td>DDCD</td><td>R RC</td><td>0x0</td><td>Delta Data Carrier Detect. When set, indicates that the `DCD` bit has changed<br>since the last time this register was read. This bit triggers the Modem Status<br>Interrupt.</td></tr>
-<tr><td>2</td><td>TERI</td><td>R RC</td><td>0x0</td><td>Trailing Edge Ring Indicator. When set, indicates that the `RI` bit has changed<br>from a `1` to a `0`. This bit triggers the Modem Status Interrupt.</td></tr>
-<tr><td>1</td><td>DDSR</td><td>R RC</td><td>0x0</td><td>Delta Data Set Ready. When set, indicates that the `DSR` bit has changed since<br>the last time this register was read. This bit triggers the Modem Status<br>Interrupt.</td></tr>
-<tr><td>0</td><td>DCTS</td><td>R RC</td><td>0x0</td><td>Delta Clear to Send. When set, indicates that the `CTS` bit has changed since<br>the last time this register was read. This bit triggers the Modem Status<br>Interrupt.</td></tr>
-</table>
-<h3 id="SCR">SCR</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7:0</td><td>SCR</td><td>RW</td><td>0x0</td><td>Scratch. Holds user data.</td></tr>
-</table>
-<h3 id="ECR">ECR</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1:0</td><td>RCVR_TRIGGER_MS2B</td><td>RW</td><td>0x0</td><td>Receiver FIFO Trigger Level Most Significant 2 Bits. To configure the least<br>significant 2 bits, use the `FCR.RCVR_TRIGGER` register field. The<br>configurations for the trigger levels are:<br>* `0x0` -    1 character<br>* `0x1` -    4 characters<br>* `0x2` -    8 characters<br>* `0x3` -   14 characters<br>* `0x4` -   32 characters<br>* `0x5` -   64 characters<br>* `0x6` -  128 characters<br>* `0x7` -  256 characters<br>* `0x8` -  512 characters<br>* `0x9` - 1024 characters<br>* `0xA` - 2048 characters<br>* `0xB` - 4096 characters</td></tr>
-</table>
-<h3 id="ITR">ITR</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>5</td><td>TRTI</td><td>RW</td><td>0x0</td><td>Test Reception Timeout Interrupt. Writing a `1` forces the interrupt and<br>writing `0` releases it.</td></tr>
-<tr><td>4</td><td>TFEI</td><td>RW</td><td>0x0</td><td>Test FIFO Error Interrupt. Writing `1` forces the interrupt and writing `0`<br>releases it.</td></tr>
-<tr><td>3</td><td>TDSSI</td><td>RW</td><td>0x0</td><td>Test (Delta Status of) Modem Status Interrupt. Writing `1` forces the<br>interrupt and writing `0` releases it.</td></tr>
-<tr><td>2</td><td>TLSI</td><td>RW</td><td>0x0</td><td>Test (Receiver) Line Status Interrupt. Writing `1` forces the interrupt and<br>writing `0` releases it.</td></tr>
-<tr><td>1</td><td>TTBEI</td><td>RW</td><td>0x0</td><td>Test Transmitter Buffer Empty (Transmitter Holding Register Empty) Interrupt.<br>Writing `1` forces the interrupt and writing `0` releases it.</td></tr>
-<tr><td>0</td><td>TRBFI</td><td>RW</td><td>0x0</td><td>Test Receiver Buffer Full (Received Data Ready) Interrupt. Writing `1` forces<br>the interrupt and writing `0` releases it.</td></tr>
-</table>
-</div>
-<!-- SPDX-License-Identifier: Apache-2.0 -->
-<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
-<div class="ocah-reg-html">
-<style>
-.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
-.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
-.ocah-reg-html th{background:#81BCE5;text-align:left}
-</style>
-<h2 id="regmap-uart_16550_main_wo">UART 16550 Main Write-Only Address Map</h2>
-<p>Contains the write-only registers accessible only when `LCR.DLAB = 0`.</p>
-<p><strong>Register List:</strong></p>
-<table>
-<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0</td><td><a href="#THR">THR</a></td><td>W</td><td>Transmitter Holding Register</td></tr>
-<tr><td>0x8</td><td><a href="#FCR">FCR</a></td><td>W</td><td>FIFO Control Register</td></tr>
-</table>
-<p><strong>Register Details:</strong></p>
-<h3 id="THR">THR</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7:0</td><td>DATA</td><td>W WMOD</td><td>0x0</td><td>Transmit Data. Holds a character to be transmitted. If FIFOs are enabled, this<br>field points to the top of the TX FIFO. Otherwise, this field points to a<br>single-byte Transmitter Holding Register.</td></tr>
-</table>
-<h3 id="FCR">FCR</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7:6</td><td>RCVR_TRIGGER</td><td>W</td><td>0x0</td><td>Receiver FIFO Trigger Level (Least Significant 2 Bits). To configure the most<br>significant 2 bits, use the `CTRL.RCVR_TRIGGER_MS2B` register field. The<br>configurations for the trigger levels are:<br>* `0x0` -    1 character<br>* `0x1` -    4 characters<br>* `0x2` -    8 characters<br>* `0x3` -   14 characters<br>* `0x4` -   32 characters<br>* `0x5` -   64 characters<br>* `0x6` -  128 characters<br>* `0x7` -  256 characters<br>* `0x8` -  512 characters<br>* `0x9` - 1024 characters<br>* `0xA` - 2048 characters<br>* `0xB` - 4096 characters</td></tr>
-<tr><td>5:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>3</td><td>DMA_MODE_SELECT</td><td>W</td><td>0x0</td><td>DMA mode select:<br>* `0` - DMA Mode 0<br>* `1` - DMA Mode 1</td></tr>
-<tr><td>2</td><td>XMIT_FIFO_RESET</td><td>W 1P</td><td>0x0</td><td>Transmitter FIFO Reset. Writing `1` clears the TX FIFO.</td></tr>
-<tr><td>1</td><td>RCVR_FIFO_RESET</td><td>W 1P</td><td>0x0</td><td>Receiver FIFO Reset. Writing `1` clears the RX FIFO.</td></tr>
-<tr><td>0</td><td>FIFO_ENABLE</td><td>W</td><td>0x0</td><td>FIFO Enable. When set, enables the TX and RX FIFOs (FIFO Mode). When unset,<br>disables the FIFOs (Non-FIFO Mode).</td></tr>
-</table>
-</div>
-<!-- SPDX-License-Identifier: Apache-2.0 -->
-<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
-<div class="ocah-reg-html">
-<style>
-.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
-.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
-.ocah-reg-html th{background:#81BCE5;text-align:left}
-</style>
-<h2 id="regmap-uart_16550_dl">UART 16550 Divisor Latch Address Map</h2>
-<p>Contains the registers accessible only when `LCR.DLAB = 1`.</p>
-<p><strong>Register List:</strong></p>
-<table>
-<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0</td><td><a href="#DLL">DLL</a></td><td>RW</td><td>Divisor Latch Least Significant Byte Register</td></tr>
-<tr><td>0x4</td><td><a href="#DLM">DLM</a></td><td>RW</td><td>Divisor Latch Most Significant Byte Register</td></tr>
-</table>
-<p><strong>Register Details:</strong></p>
-<h3 id="DLL">DLL</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7:0</td><td>DLL</td><td>RW</td><td>0x0</td><td>Divisor Latch Least Significant Byte. Baud rate is calculated as<br>`baud_rate = system_clock_frequency / (16 * (divisor + 1))`. When the divisor is set<br>to `0`, the transmitter and receiver logic are disabled.</td></tr>
-</table>
-<h3 id="DLM">DLM</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7:0</td><td>DLM</td><td>RW</td><td>0x0</td><td>Divisor Latch Most Significant Byte. Baud rate is calculated as<br>`baud_rate = system_clock_frequency / (16 * (divisor + 1))`. When the divisor is set<br>to `0`, the transmitter and receiver logic are disabled.</td></tr>
-</table>
-</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="uart-16550-programming"><a class="anchor" href="#uart-16550-programming"></a><a class="link" href="#uart-16550-programming">6. Programming</a></h2>
-<div class="sectionbody">
-<div class="sect2">
-<h3 id="baud-rate-configuration"><a class="anchor" href="#baud-rate-configuration"></a><a class="link" href="#baud-rate-configuration">6.1. Baud Rate Configuration</a></h3>
-<div class="paragraph">
-<p>To configure the baud rate:</p>
-</div>
+<h3 id="baud-rate-and-frame-configuration"><a class="anchor" href="#baud-rate-and-frame-configuration"></a><a class="link" href="#baud-rate-and-frame-configuration">4.1. Baud Rate and Frame Configuration</a></h3>
+<span id="baud-rate-configuration"></span>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
-<p>Set DLAB=1 in LCR register (0x0C)</p>
+<p>Quiesce the data path before reconfiguration; wait for <code>LSR.TEMT</code> if queued
+transmit data must finish. Serialize accesses so another context cannot use
+THR/RBR/IER while DLAB selects the divisor view.</p>
 </li>
 <li>
-<p>Calculate divisor:
-<code>divisor = round(clock_frequency / (16 * desired_baud_rate)) - 1</code></p>
+<p>Choose a supported frame format in LCR. Compute
+<code>divisor = round(clock_frequency / (16 * desired_baud_rate)) - 1</code> and check
+that it is in the usable 16-bit range 1–65535.</p>
 </li>
 <li>
-<p>Write low byte of divisor to DLL (0x00)</p>
+<p>Set <code>LCR.DLAB=1</code> (<code>LCR</code> is at <code>0x0C</code>), preserving the selected frame format.</p>
 </li>
 <li>
-<p>Write high byte of divisor to DLM (0x04)</p>
-</li>
-<li>
-<p>Clear DLAB=0 in LCR register to resume normal operation</p>
+<p>Write DLL at <code>0x00</code> and DLM at <code>0x04</code>, then clear DLAB before normal data/IER
+accesses. The two divisor writes are not an atomic update.</p>
 </li>
 </ol>
 </div>
 <div class="paragraph">
-<p>The baud rate generator reloads with <code>divisor</code> and ticks at zero, so the
-resulting rate is <code>clock_frequency / (16 * (divisor + 1))</code>. A divisor of <code>0</code>
-disables the transmitter and receiver.</p>
-</div>
-<div class="paragraph">
-<p>Example for 115200 baud with 50MHz clock:
-<code>divisor = round(50000000 / (16 * 115200)) - 1 = 26 (0x001A)</code> - Write 0x1A to
-DLL - Write 0x00 to DLM</p>
+<p>At 50 MHz, a requested 115200 baud gives divisor 26 (<code>0x001A</code>). The actual baud
+rate is <code>50000000 / (16 * 27)</code>, approximately 115741 baud. Divisor zero disables
+both transmitter and receiver; it is not the highest-speed setting.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="fifo-configuration"><a class="anchor" href="#fifo-configuration"></a><a class="link" href="#fifo-configuration">6.2. FIFO Configuration</a></h3>
+<h3 id="fifo-configuration"><a class="anchor" href="#fifo-configuration"></a><a class="link" href="#fifo-configuration">4.2. FIFO Configuration</a></h3>
 <div class="paragraph">
-<p>To enable and configure FIFOs:</p>
+<p><code>FCR</code> is write-only at <code>0x08</code>, sharing its address with the read-only IIR.
+Maintain a software copy of the persistent FCR settings rather than attempting
+a read-modify-write through that address.</p>
 </div>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
-<p>Write to FCR register (0x08): Set FIFOEN=1</p>
+<p>Set <code>FCR.FIFO_ENABLE</code> for FIFO operation; changing it discards buffered data.</p>
 </li>
 <li>
-<p>Configure receive trigger level in RXTRIG field</p>
+<p>Set <code>FCR.RCVR_TRIGGER</code> and <code>ECR.RCVR_TRIGGER_MS2B</code> for the receive threshold.
+Codes 0–3 mean 1, 4, 8 and 14 characters; codes 4–11 mean 32, 64, 128, 256,
+512, 1024, 2048 and 4096. Choose a threshold supported by <code>RX_FIFO_DEPTH</code>;
+unsupported selections do not assert the receive watermark.</p>
 </li>
 <li>
-<p>Reset FIFOs if needed using RFIFORST and TFIFORST bits</p>
+<p>Set <code>FCR.DMA_MODE_SELECT</code> if using mode-1 DMA service indications.</p>
 </li>
 <li>
-<p>Select DMA mode if using DMA transfers</p>
+<p>When discarding data intentionally, pulse <code>FCR.RCVR_FIFO_RESET</code> or
+<code>FCR.XMIT_FIFO_RESET</code>, preserving FIFO enable, DMA mode and trigger settings.</p>
 </li>
 </ol>
 </div>
-</div>
-<div class="sect2">
-<h3 id="interrupt-configuration"><a class="anchor" href="#interrupt-configuration"></a><a class="link" href="#interrupt-configuration">6.3. Interrupt Configuration</a></h3>
 <div class="paragraph">
-<p>To configure interrupts:</p>
-</div>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>Enable desired interrupt sources in IER register (0x04)</p>
-</li>
-<li>
-<p>Configure OUT2 in MCR register if needed for interrupt enable</p>
-</li>
-<li>
-<p>Read IIR register (0x08) to identify pending interrupts</p>
-</li>
-<li>
-<p>Service interrupts by reading appropriate status/data registers</p>
-</li>
-</ol>
+<p>For conservative polled transmission, wait for <code>LSR.THRE</code>, then write no more
+than the configured FIFO capacity (one byte when FIFO mode is disabled).
+For reception, check <code>LSR.DR</code>, capture line errors and read RBR. Do not treat
+an AXI write acknowledgement as a guarantee that a full transmit buffer accepted
+a character.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="modem-status-and-flow-control"><a class="anchor" href="#modem-status-and-flow-control"></a><a class="link" href="#modem-status-and-flow-control">6.4. Modem Status and Flow Control</a></h3>
+<h3 id="interrupt-configuration"><a class="anchor" href="#interrupt-configuration"></a><a class="link" href="#interrupt-configuration">4.3. Interrupt Configuration</a></h3>
+<div class="paragraph">
+<p>Program the required IER enables with DLAB clear. Read IIR and service its
+highest-priority source according to <a href="#uart-interrupt-service-table">UART interrupt priority and service</a>, then
+repeat until <code>INTERRUPT_PENDING</code> reads one. Take care with read-to-clear LSR/MSR
+fields and the THRE acknowledgement side effect of IIR reads. OUT2 is not an
+interrupt enable in this implementation; the receive-timeout source is not
+masked by IER.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="modem-status-and-flow-control"><a class="anchor" href="#modem-status-and-flow-control"></a><a class="link" href="#modem-status-and-flow-control">4.4. Modem Status and Flow Control</a></h3>
 <div class="paragraph">
 <p>The component does not implement automatic flow control. The <code>cts_ni</code>,
 <code>dsr_ni</code>, <code>ri_ni</code> and <code>dcd_ni</code> inputs are synchronized and reported in the
@@ -898,7 +625,8 @@ Modem Status Interrupt reports it back at <code>1</code></p>
 <div class="paragraph">
 <p>The four delta bits (DCTS, DDSR, TERI, DDCD) are sticky and are cleared by
 any read of MSR, including a read that only intended to sample one of them.
-A single read must therefore be used to capture the state of every modem
+TERI records only the trailing edge of ring indication; the other delta bits
+record either transition. A single read must therefore be used to capture the state of every modem
 input. Because they are sticky, a change is still reported even if the input
 returns to its previous level before software gets to the read - the delta
 bit records that something moved, while the level bits only show where the
@@ -920,12 +648,217 @@ differently: the modem outputs follow line loopback, while MSR follows system
 loopback. Delta bits and the Modem Status Interrupt track whatever values are
 substituted.</p>
 </div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="uart-16550-memory-map"><a class="anchor" href="#uart-16550-memory-map"></a><a class="link" href="#uart-16550-memory-map">5. Memory Map and Register Reference</a></h2>
+<div class="sectionbody">
+<span id="overview-3"></span>
+<div class="sect2">
+<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">5.1. Memory Map</a></h3>
 <div class="paragraph">
-<p>The memory map provides comprehensive control over all UART 16550
-functions while maintaining backward compatibility with the original
-16550 standard. The dynamic register mapping through DLAB provides
-efficient access to both normal operation and baud rate configuration
-registers.</p>
+<p>The core decodes a 64-byte register space with 32-bit registers on four-byte
+boundaries. Offsets <code>0x00</code> and <code>0x04</code> change meaning with <code>LCR.DLAB</code>; offset
+<code>0x08</code> reads IIR and writes FCR. See Programming for safe divisor and FIFO
+configuration. The generated views below retain all field definitions, including
+ECR extended trigger selection and ITR interrupt tests.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">5.2. Detailed Register Map</a></h3>
+<div class="paragraph">
+<p>The first two register views apply when <code>LCR.DLAB=0</code>; read-only and write-only
+aliases at the same offset are shown separately. The divisor-latch view applies
+when <code>LCR.DLAB=1</code>.</p>
+</div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-uart_16550_main">UART 16550 Main Address Map</h2>
+<p>Contains the mode-independent registers and the read-only registers accessible only<br>when `DLAB = 0`.</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#uart_16550_main-RBR">RBR</a></td><td>R</td><td>Receiver Buffer Register</td></tr>
+<tr><td>0x4</td><td><a href="#uart_16550_main-IER">IER</a></td><td>RW</td><td>Interrupt Enable Register</td></tr>
+<tr><td>0x8</td><td><a href="#uart_16550_main-IIR">IIR</a></td><td>R</td><td>Interrupt Identification Register</td></tr>
+<tr><td>0xC</td><td><a href="#uart_16550_main-LCR">LCR</a></td><td>RW</td><td>Line Control Register</td></tr>
+<tr><td>0x10</td><td><a href="#uart_16550_main-MCR">MCR</a></td><td>RW</td><td>Modem Control Register</td></tr>
+<tr><td>0x14</td><td><a href="#uart_16550_main-LSR">LSR</a></td><td>R</td><td>Line Status Register</td></tr>
+<tr><td>0x18</td><td><a href="#uart_16550_main-MSR">MSR</a></td><td>R</td><td>Modem Status Register</td></tr>
+<tr><td>0x1C</td><td><a href="#uart_16550_main-SCR">SCR</a></td><td>RW</td><td>Scratch Register</td></tr>
+<tr><td>0x20</td><td><a href="#uart_16550_main-ECR">ECR</a></td><td>RW</td><td>Extended Control Register</td></tr>
+<tr><td>0x24</td><td><a href="#uart_16550_main-ITR">ITR</a></td><td>RW</td><td>Interrupt Test Register</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="RBR"></span><h3 id="uart_16550_main-RBR" data-register-alias="RBR">RBR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>DATA</td><td>R RMOD</td><td>0x0</td><td>Received Data. Contains a received character. If FIFOs are enabled, this field<br>points to the bottom of the RX FIFO. Otherwise, this field points to a single-<br>byte Receiver Buffer Register.</td></tr>
+</table>
+<span id="IER"></span><h3 id="uart_16550_main-IER" data-register-alias="IER">IER</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>EFEI</td><td>RW</td><td>0x0</td><td>Enable FIFO Error Interrupt.</td></tr>
+<tr><td>3</td><td>EDSSI</td><td>RW</td><td>0x0</td><td>Enable (Delta Status of) Modem Status Interrupt.</td></tr>
+<tr><td>2</td><td>ELSI</td><td>RW</td><td>0x0</td><td>Enable (Receiver) Line Status Interrupt.</td></tr>
+<tr><td>1</td><td>ETBEI</td><td>RW</td><td>0x0</td><td>Enable Transmitter Buffer Empty (Transmitter Holding Register Empty)<br>Interrupt.</td></tr>
+<tr><td>0</td><td>ERBFI</td><td>RW</td><td>0x0</td><td>Enable Receiver Buffer Full (Received Data Ready) Interrupt.</td></tr>
+</table>
+<span id="IIR"></span><h3 id="uart_16550_main-IIR" data-register-alias="IIR">IIR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:6</td><td>FIFOS_ENABLED</td><td>R</td><td>0x0</td><td>FIFOs Enabled:<br>* `0x0` - FIFOs are disabled<br>* `0x3` - FIFOs are enabled</td></tr>
+<tr><td>5:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3:1</td><td>INTERRUPT_ID</td><td>R</td><td>0x0</td><td>Interrupt ID:<br>* `0x7` - FIFO Error Interrupt                         (priority 0)<br>* `0x3` - Receiver Line Status Interrupt               (priority 1)<br>* `0x6` - Reception Timeout Interrupt                  (priority 2)<br>* `0x2` - Received Data Ready Interrupt                (priority 3)<br>* `0x1` - Transmitter Holding Register Empty Interrupt (priority 4)<br>* `0x0` - Modem Status Interrupt                       (priority 5)</td></tr>
+<tr><td>0</td><td>INTERRUPT_PENDING</td><td>R</td><td>0x1</td><td>Interrupt Pending. Active-low.</td></tr>
+</table>
+<span id="LCR"></span><h3 id="uart_16550_main-LCR" data-register-alias="LCR">LCR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>DLAB</td><td>RW</td><td>0x0</td><td>Divisor Latch Access Bit. If set, allows access to the `DLL` and `DLM` registers<br>when accessing addresses `0x0` and `0x4`, respectively. If unset, allows access<br>to the `THR`, `RBR`, and `IIR` registers.</td></tr>
+<tr><td>6</td><td>SET_BREAK</td><td>RW</td><td>0x0</td><td>Set Break. If set, forces the `tx_o` output to `0` to cause a break condition<br>on the receiving UART.</td></tr>
+<tr><td>5</td><td>STICK_PARITY</td><td>RW</td><td>0x0</td><td>Stick Parity. If set, forces the transmit and received parity bits to be `0` if<br>even parity is selected and `1` if odd parity is selected.</td></tr>
+<tr><td>4</td><td>EPS</td><td>RW</td><td>0x0</td><td>Even Parity Select:<br>* `1` - even parity<br>* `0` - odd parity</td></tr>
+<tr><td>3</td><td>PEN</td><td>RW</td><td>0x0</td><td>Parity Enable.</td></tr>
+<tr><td>2</td><td>STB</td><td>RW</td><td>0x0</td><td>Stop Bits:<br>* `0` - 1 stop bit.<br>* `1` - 2 stop bits (or 1.5 stop bits if word length is set to 5 bits)</td></tr>
+<tr><td>1:0</td><td>WLS</td><td>RW</td><td>0x0</td><td>Word Length Select:<br>* `0x0` - 5 bits per character<br>* `0x1` - 6 bits per character<br>* `0x2` - 7 bits per character<br>* `0x3` - 8 bits per character</td></tr>
+</table>
+<span id="MCR"></span><h3 id="uart_16550_main-MCR" data-register-alias="MCR">MCR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>5</td><td>LINE_LOOPBACK</td><td>RW</td><td>0x0</td><td>Line Loopback. If set, the `rx_i` input is internally connected to the<br>`tx_o` output.</td></tr>
+<tr><td>4</td><td>LOOP</td><td>RW</td><td>0x0</td><td>System Loopback. If set, the transmitter is internally connected to the<br>receiver. The `tx_o` output is set to `1`.</td></tr>
+<tr><td>3</td><td>OUT2</td><td>RW</td><td>0x0</td><td>User Output 2. Writing to this bit drives the `out2_no` in the opposite<br>polarity.</td></tr>
+<tr><td>2</td><td>OUT1</td><td>RW</td><td>0x0</td><td>User Output 1. Writing to this bit drives the `out1_no` in the opposite<br>polarity.</td></tr>
+<tr><td>1</td><td>RTS</td><td>RW</td><td>0x0</td><td>Request to Send. Writing to this bit drives the `rts_no` output in the opposite<br>polarity.</td></tr>
+<tr><td>0</td><td>DTR</td><td>RW</td><td>0x0</td><td>Data Terminal Ready. Writing to this bit drives the `dtr_no` output in the<br>opposite polarity.</td></tr>
+</table>
+<span id="LSR"></span><h3 id="uart_16550_main-LSR" data-register-alias="LSR">LSR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>ERROR_IN_RCVR_FIFO</td><td>R</td><td>0x0</td><td>Error in Receiver FIFO. When set, indicates that the receiver FIFO or (RBR in<br>non-FIFO mode) has the parity, framing, or break error. In other words, at<br>least one of the PE, FE, and BI bits is set.</td></tr>
+<tr><td>6</td><td>TEMT</td><td>R</td><td>0x1</td><td>Transmitter Empty. When set, indicates that the transmitter shift register and<br>the transmitter FIFO (or THR in non-FIFO mode) are empty.</td></tr>
+<tr><td>5</td><td>THRE</td><td>R</td><td>0x1</td><td>Transmitter Holding Register Empty. When set, indicates that the TX FIFO (or<br>THR in non-FIFO mode) is empty. Clearing the Transmitter Holding Register Empty<br>Interrupt does NOT clear this bit.</td></tr>
+<tr><td>4</td><td>BI</td><td>R RC</td><td>0x0</td><td>Break Interrupt. When set, indicates that the `rx_i` input is `0` for an entire<br>frame&#x27;s time (start + data + parity + stop bits). In FIFO mode, this bit set<br>when the character reaches the top of the receiver FIFO. In non-FIFO mode, this<br>bit is set when the character enters the RBR. This bit triggers the Receiver<br>Line Status Interrupt.</td></tr>
+<tr><td>3</td><td>FE</td><td>R RC</td><td>0x0</td><td>Framing Error. When set, indicates that the received character is missing a<br>stop bit. In FIFO mode, this bit is set when the character reaches the top of<br>the FIFO. In non-FIFO mode, this bit is set when the character enters the RBR.<br>This bit triggers the Receiver Line Status Interrupt.</td></tr>
+<tr><td>2</td><td>PE</td><td>R RC</td><td>0x0</td><td>Parity Error. When set, indicates that the character at the top of the receiver<br>FIFO (or RBR in non-FIFO mode) has a parity error. This bit triggers the<br>Receiver Line Status Interrupt.</td></tr>
+<tr><td>1</td><td>OE</td><td>R RC</td><td>0x0</td><td>Overrun Error. When set, indicates that the RX FIFO (or Receiver Buffer<br>Register in Non-FIFO Mode) is full when new character is received. In FIFO Mode, the new character<br>is dropped. In non-FIFO mode, the existing character in the RBR is overwritten.<br>This bit triggers the Receiver Line Status Interrupt.</td></tr>
+<tr><td>0</td><td>DR</td><td>R</td><td>0x0</td><td>Data Ready. When set, indicates that the RX FIFO (or RBR in non-FIFO<br>mode) contains data.</td></tr>
+</table>
+<span id="MSR"></span><h3 id="uart_16550_main-MSR" data-register-alias="MSR">MSR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>DCD</td><td>R</td><td>0x0</td><td>Data Carrier Detect. This bit reflects the `dcd_ni` input in the opposite<br>polarity, so it reads `1` while a carrier is detected.</td></tr>
+<tr><td>6</td><td>RI</td><td>R</td><td>0x0</td><td>Ring Indicator. This bit reflects the `ri_ni` input in the opposite polarity, so<br>it reads `1` while the remote modem signals an incoming call.</td></tr>
+<tr><td>5</td><td>DSR</td><td>R</td><td>0x0</td><td>Data Set Ready. This bit reflects the `dsr_ni` input in the opposite polarity,<br>so it reads `1` while the remote modem is connected and ready.</td></tr>
+<tr><td>4</td><td>CTS</td><td>R</td><td>0x0</td><td>Clear to Send. This bit reflects the `cts_ni` input in the opposite polarity, so<br>it reads `1` while the remote device is ready to receive data.</td></tr>
+<tr><td>3</td><td>DDCD</td><td>R RC</td><td>0x0</td><td>Delta Data Carrier Detect. When set, indicates that the `DCD` bit has changed<br>since the last time this register was read. This bit triggers the Modem Status<br>Interrupt.</td></tr>
+<tr><td>2</td><td>TERI</td><td>R RC</td><td>0x0</td><td>Trailing Edge Ring Indicator. When set, indicates that the `RI` bit has changed<br>from a `1` to a `0`. This bit triggers the Modem Status Interrupt.</td></tr>
+<tr><td>1</td><td>DDSR</td><td>R RC</td><td>0x0</td><td>Delta Data Set Ready. When set, indicates that the `DSR` bit has changed since<br>the last time this register was read. This bit triggers the Modem Status<br>Interrupt.</td></tr>
+<tr><td>0</td><td>DCTS</td><td>R RC</td><td>0x0</td><td>Delta Clear to Send. When set, indicates that the `CTS` bit has changed since<br>the last time this register was read. This bit triggers the Modem Status<br>Interrupt.</td></tr>
+</table>
+<span id="SCR"></span><h3 id="uart_16550_main-SCR" data-register-alias="SCR">SCR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>SCR</td><td>RW</td><td>0x0</td><td>Scratch. Holds user data.</td></tr>
+</table>
+<span id="ECR"></span><h3 id="uart_16550_main-ECR" data-register-alias="ECR">ECR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1:0</td><td>RCVR_TRIGGER_MS2B</td><td>RW</td><td>0x0</td><td>Receiver FIFO Trigger Level Most Significant 2 Bits. To configure the least<br>significant 2 bits, use the `FCR.RCVR_TRIGGER` register field. The<br>configurations for the trigger levels are:<br>* `0x0` -    1 character<br>* `0x1` -    4 characters<br>* `0x2` -    8 characters<br>* `0x3` -   14 characters<br>* `0x4` -   32 characters<br>* `0x5` -   64 characters<br>* `0x6` -  128 characters<br>* `0x7` -  256 characters<br>* `0x8` -  512 characters<br>* `0x9` - 1024 characters<br>* `0xA` - 2048 characters<br>* `0xB` - 4096 characters</td></tr>
+</table>
+<span id="ITR"></span><h3 id="uart_16550_main-ITR" data-register-alias="ITR">ITR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>5</td><td>TRTI</td><td>RW</td><td>0x0</td><td>Test Reception Timeout Interrupt. Writing a `1` forces the interrupt and<br>writing `0` releases it.</td></tr>
+<tr><td>4</td><td>TFEI</td><td>RW</td><td>0x0</td><td>Test FIFO Error Interrupt. Writing `1` forces the interrupt and writing `0`<br>releases it.</td></tr>
+<tr><td>3</td><td>TDSSI</td><td>RW</td><td>0x0</td><td>Test (Delta Status of) Modem Status Interrupt. Writing `1` forces the<br>interrupt and writing `0` releases it.</td></tr>
+<tr><td>2</td><td>TLSI</td><td>RW</td><td>0x0</td><td>Test (Receiver) Line Status Interrupt. Writing `1` forces the interrupt and<br>writing `0` releases it.</td></tr>
+<tr><td>1</td><td>TTBEI</td><td>RW</td><td>0x0</td><td>Test Transmitter Buffer Empty (Transmitter Holding Register Empty) Interrupt.<br>Writing `1` forces the interrupt and writing `0` releases it.</td></tr>
+<tr><td>0</td><td>TRBFI</td><td>RW</td><td>0x0</td><td>Test Receiver Buffer Full (Received Data Ready) Interrupt. Writing `1` forces<br>the interrupt and writing `0` releases it.</td></tr>
+</table>
+</div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-uart_16550_main_wo">UART 16550 Main Write-Only Address Map</h2>
+<p>Contains the write-only registers accessible only when `LCR.DLAB = 0`.</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#uart_16550_main_wo-THR">THR</a></td><td>W</td><td>Transmitter Holding Register</td></tr>
+<tr><td>0x8</td><td><a href="#uart_16550_main_wo-FCR">FCR</a></td><td>W</td><td>FIFO Control Register</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="THR"></span><h3 id="uart_16550_main_wo-THR" data-register-alias="THR">THR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>DATA</td><td>W WMOD</td><td>0x0</td><td>Transmit Data. Holds a character to be transmitted. If FIFOs are enabled, this<br>field points to the top of the TX FIFO. Otherwise, this field points to a<br>single-byte Transmitter Holding Register.</td></tr>
+</table>
+<span id="FCR"></span><h3 id="uart_16550_main_wo-FCR" data-register-alias="FCR">FCR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:6</td><td>RCVR_TRIGGER</td><td>W</td><td>0x0</td><td>Receiver FIFO Trigger Level (Least Significant 2 Bits). To configure the most<br>significant 2 bits, use the `CTRL.RCVR_TRIGGER_MS2B` register field. The<br>configurations for the trigger levels are:<br>* `0x0` -    1 character<br>* `0x1` -    4 characters<br>* `0x2` -    8 characters<br>* `0x3` -   14 characters<br>* `0x4` -   32 characters<br>* `0x5` -   64 characters<br>* `0x6` -  128 characters<br>* `0x7` -  256 characters<br>* `0x8` -  512 characters<br>* `0x9` - 1024 characters<br>* `0xA` - 2048 characters<br>* `0xB` - 4096 characters</td></tr>
+<tr><td>5:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3</td><td>DMA_MODE_SELECT</td><td>W</td><td>0x0</td><td>DMA mode select:<br>* `0` - DMA Mode 0<br>* `1` - DMA Mode 1</td></tr>
+<tr><td>2</td><td>XMIT_FIFO_RESET</td><td>W 1P</td><td>0x0</td><td>Transmitter FIFO Reset. Writing `1` clears the TX FIFO.</td></tr>
+<tr><td>1</td><td>RCVR_FIFO_RESET</td><td>W 1P</td><td>0x0</td><td>Receiver FIFO Reset. Writing `1` clears the RX FIFO.</td></tr>
+<tr><td>0</td><td>FIFO_ENABLE</td><td>W</td><td>0x0</td><td>FIFO Enable. When set, enables the TX and RX FIFOs (FIFO Mode). When unset,<br>disables the FIFOs (Non-FIFO Mode).</td></tr>
+</table>
+</div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-uart_16550_dl">UART 16550 Divisor Latch Address Map</h2>
+<p>Contains the registers accessible only when `LCR.DLAB = 1`.</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#uart_16550_dl-DLL">DLL</a></td><td>RW</td><td>Divisor Latch Least Significant Byte Register</td></tr>
+<tr><td>0x4</td><td><a href="#uart_16550_dl-DLM">DLM</a></td><td>RW</td><td>Divisor Latch Most Significant Byte Register</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="DLL"></span><h3 id="uart_16550_dl-DLL" data-register-alias="DLL">DLL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>DLL</td><td>RW</td><td>0x0</td><td>Divisor Latch Least Significant Byte. Baud rate is calculated as<br>`baud_rate = system_clock_frequency / (16 * (divisor + 1))`. When the divisor is set<br>to `0`, the transmitter and receiver logic are disabled.</td></tr>
+</table>
+<span id="DLM"></span><h3 id="uart_16550_dl-DLM" data-register-alias="DLM">DLM</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>DLM</td><td>RW</td><td>0x0</td><td>Divisor Latch Most Significant Byte. Baud rate is calculated as<br>`baud_rate = system_clock_frequency / (16 * (divisor + 1))`. When the divisor is set<br>to `0`, the transmitter and receiver logic are disabled.</td></tr>
+</table>
 </div>
 </div>
 </div>

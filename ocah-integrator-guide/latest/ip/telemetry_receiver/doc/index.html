@@ -223,10 +223,19 @@
 <div class="sect1">
 <h2 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">1. Overview</a></h2>
 <div class="sectionbody">
+<span id="description-and-features"></span>
 <div class="paragraph">
-<p>The Telemetry Receiver decodes, buffers, and processes telemetry data from
-telemetry transmitters. It implements a receiver for a probe-ID and
-multi-counter message format.</p>
+<p>The receiver assembles an 8-bit ATB stream into probe-ID and counter messages.
+Software reads completed messages through a 32-bit AXI4-Lite register interface
+and explicitly pops each message. The core defaults to eight queued messages
+and four counters per message; these are elaboration parameters, not software
+settings. Threshold and missing-last-packet interrupts report service needs.</p>
+</div>
+<div class="paragraph">
+<p>Reception does not stop when the message queue fills: a new message replaces
+the oldest one. Software must account for this when reading a message through
+several registers. The receiver does not use <code>atid_i</code> to maintain separate
+source contexts; producers sharing a receiver must serialize complete messages.</p>
 </div>
 <div class="sect2">
 <h3 id="telemetry-receiver-message-format"><a class="anchor" href="#telemetry-receiver-message-format"></a><a class="link" href="#telemetry-receiver-message-format">1.1. Message Format</a></h3>
@@ -282,87 +291,34 @@ counters per message is parameterized (default 4); the field layout is fixed.</p
 </div>
 </div>
 <div class="sect1">
-<h2 id="description-and-features"><a class="anchor" href="#description-and-features"></a><a class="link" href="#description-and-features">2. Description and Features</a></h2>
-<div class="sectionbody">
-<div class="ulist">
-<ul>
-<li>
-<p><strong>32-bit APB4 or AXI4-Lite Register Interface</strong>: Standard bus interfaces
-for system integration and configuration access</p>
-</li>
-<li>
-<p><strong>8-bit ATB Telemetry Interface</strong>: High-speed telemetry data reception
-with ATB protocol compliance</p>
-</li>
-<li>
-<p><strong>Configurable Circular Buffer</strong>: Programmable buffer depth (default 8
-entries) with threshold-based monitoring</p>
-</li>
-<li>
-<p><strong>Multi-Counter Message Support</strong>: Decodes messages with probe ID and up
-to 4 counter values per message</p>
-</li>
-<li>
-<p><strong>Comprehensive Interrupt System</strong>: Event-driven notifications for
-buffer thresholds and error conditions</p>
-</li>
-</ul>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="telemetry-receiver-architecture"><a class="anchor" href="#telemetry-receiver-architecture"></a><a class="link" href="#telemetry-receiver-architecture">3. Architecture</a></h2>
+<h2 id="telemetry-receiver-architecture"><a class="anchor" href="#telemetry-receiver-architecture"></a><a class="link" href="#telemetry-receiver-architecture">2. Architecture</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>The Telemetry Receiver leverages a dual-buffer design for robust and
-continuous telemetry data capture from an Advanced Trace Bus (ATB) source.
-Its architecture brings together configurable register interfaces, full
-ATB compliance, intelligent buffering, and efficient message
-processing—balancing narrative clarity with compact organization.</p>
+<p>The receiver has two stores: a byte assembly buffer for the incoming message
+and a queue of decoded messages for software. Neither is a second independently
+configurable telemetry channel.</p>
 </div>
 <div class="sect2">
-<h3 id="functional-blocks"><a class="anchor" href="#functional-blocks"></a><a class="link" href="#functional-blocks">3.1. Functional Blocks</a></h3>
-
-</div>
-<div class="sect2">
-<h3 id="register-interface-block"><a class="anchor" href="#register-interface-block"></a><a class="link" href="#register-interface-block">3.2. Register Interface Block</a></h3>
+<h3 id="assembly-and-decode"><a class="anchor" href="#assembly-and-decode"></a><a class="link" href="#assembly-and-decode">2.1. Assembly and Decode</a></h3>
+<span id="functional-blocks"></span>
+<span id="atb-interface-block"></span>
+<span id="assembly-buffer"></span>
+<span id="message-decoder"></span>
+<span id="data-flow"></span>
 <div class="paragraph">
-<p>The register interface uses an AXI4-Lite bus for access to control,
-status, and data registers. Control registers handle buffer thresholds
-and interrupt enables for system optimization. Status registers provide
-real-time buffer occupancy and error flags. Data registers make probe ID
-and counter details accessible, while interrupt registers support
-selective and responsive event handling for seamless system integration.</p>
+<p>An accepted beat (<code>atvalid_i &amp;&amp; atready_o</code>) writes one assembly byte. Eight
+beats form a packet, least-significant byte first. Bit 63 marks the last packet;
+the first packet carries the probe ID at bits <code>[60:56]</code>. Counter decoding starts
+at block 1 of the first packet, continues across packet boundaries, and assembles
+each counter most-significant byte first. All four block-valid bits must be set
+for a counter to be valid; otherwise its decoded value is zero.</p>
 </div>
-</div>
-<div class="sect2">
-<h3 id="atb-interface-block"><a class="anchor" href="#atb-interface-block"></a><a class="link" href="#atb-interface-block">3.3. ATB Interface Block</a></h3>
 <div class="paragraph">
-<p>The ATB interface guarantees protocol-compliant 8-bit telemetry data
-reception using handshaked ready/valid flows, supporting industrial
-trace infrastructures. It manages per-source ID tracking for
-multi-source collection and delivers reliable operation under variable
-load, with flush signaling to mark stream boundaries and maintain
-session integrity.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="assembly-buffer"><a class="anchor" href="#assembly-buffer"></a><a class="link" href="#assembly-buffer">3.4. Assembly Buffer</a></h3>
-<div class="paragraph">
-<p>This buffer assembles streams of 8-bit ATB data into 64-bit packets. It
-ensures data ordering, detects packet boundaries, and supports
-little-endian (LSB-first) byte alignment. Temporary storage enables
-storage of successive packets. A last-packet flag or receiver flush resets the
-assembly write pointer but does not clear the stored bytes.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="message-decoder"><a class="anchor" href="#message-decoder"></a><a class="link" href="#message-decoder">3.5. Message Decoder</a></h3>
-<div class="paragraph">
-<p>Assembled packets are parsed for the probe ID and counters in the fixed
-layout in <a href="#telemetry-receiver-message-format">Message Format</a>. Each 9-bit block is
-checked for validity, and last-packet boundaries mark the end of a
-message.</p>
+<p>The assembly capacity is derived from <code>MAX_NUM_COUNTERS_PER_MESSAGE</code>. Reaching
+that capacity without a last-packet marker raises <code>MISSING_LAST</code> and resets the
+write pointer. A last-packet marker also resets the pointer and queues the
+decoded message. The core accepts beats except during a receiver-flush pulse;
+message-queue fullness does not apply backpressure.</p>
 </div>
 <div class="admonitionblock important">
 <table>
@@ -371,98 +327,105 @@ message.</p>
 <i class="fa icon-important" title="Important"></i>
 </td>
 <td class="content">
-The decoder examines all configured counter positions, including
-positions beyond the last packet received. After a shorter message follows a
-longer one, trailing counter values and validity bits can therefore come from
-the earlier message. <code>CTRL.TELEMETRY_RX_FLUSH</code> does not remove this stale data.
-To avoid relying on those positions, producers must overwrite the complete
-configured message footprint and mark unused counter blocks invalid. Only
-reset clears the assembly storage.
+Every configured counter position is decoded, including positions
+beyond the last packet received. A short message following a longer one can
+therefore inherit trailing values and validity bits. Producers must overwrite
+the complete configured message footprint and mark unused counter blocks
+invalid. Receiver flush resets the pointer but leaves assembly bytes intact;
+only reset clears that storage.
 </td>
 </tr>
 </table>
 </div>
 </div>
 <div class="sect2">
-<h3 id="message-buffer"><a class="anchor" href="#message-buffer"></a><a class="link" href="#message-buffer">3.6. Message Buffer</a></h3>
+<h3 id="message-queue-and-readout"><a class="anchor" href="#message-queue-and-readout"></a><a class="link" href="#message-queue-and-readout">2.2. Message Queue and Readout</a></h3>
+<span id="register-interface-block"></span>
+<span id="message-buffer"></span>
+<span id="control-path"></span>
 <div class="paragraph">
-<p>A circular message buffer persistently holds decoded messages. It offers
-configurable depth (2–N entries), FIFO access, threshold monitoring with
-interrupt generation, and full status reporting (occupancy, empty/full).</p>
+<p>The queue exposes its oldest message in <code>TELEMETRY_PROBE_ID</code>,
+<code>TELEMETRY_COUNTER_VLDS</code> and <code>TELEMETRY_COUNTER[0..31]</code>. Reads do not consume data;
+<code>CTRL.BUFFER_POP</code> advances the queue only when it is nonempty. Empty-queue reads
+return zero. Counter registers beyond the configured counter count also return
+zero and have cleared validity bits.</p>
+</div>
+<div class="paragraph">
+<p>On arrival while full, hardware drops the oldest message and advances the read
+pointer. There is no snapshot across the separate software reads: overflow can
+change the visible message mid-read. Arrange sufficient buffering/service rate,
+or quiesce the producer, when a coherent software snapshot is required. <code>STATUS</code>
+reports empty/full, not a numeric occupancy count or an overflow interrupt.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="data-flow"><a class="anchor" href="#data-flow"></a><a class="link" href="#data-flow">3.7. Data Flow</a></h3>
+<h3 id="interrupts"><a class="anchor" href="#interrupts"></a><a class="link" href="#interrupts">2.3. Interrupts</a></h3>
 <div class="paragraph">
-<p><strong>Reception Phase</strong> The ATB interface receives telemetry in 8-bit beats,
-accumulated into 64-bit packets in the assembly buffer, then validated
-for structure.</p>
+<p><code>irq_o</code> is the OR of the two status sources masked by their corresponding
+<code>INTR_ENABLE</code> bits. Masking an interrupt does not acknowledge its source.</p>
 </div>
-<div class="paragraph">
-<p><strong>Decoding Phase</strong> Packets are parsed for headers (probe ID), broken into
-9-bit blocks, counters are extracted and checked, and validity flags
-assigned.</p>
-</div>
-<div class="paragraph">
-<p><strong>Buffering Phase</strong> Decoded messages are stored FIFO-style; pointers,
-counters, and flags update atomically. Threshold or error interrupts are
-generated as needed.</p>
-</div>
-<div class="paragraph">
-<p><strong>Readout Phase</strong> Telemetry is accessed by software via register reads.
-Reads expose the oldest queued message without consuming it. Read the probe ID,
-validity bitmap, and required counters, then write <code>CTRL.BUFFER_POP = 1</code> to
-advance to the next message. A pop while empty has no effect. When a new message
-arrives while the buffer is full, hardware drops the oldest entry and advances
-the read pointer; software must drain the buffer fast enough to avoid loss or a
-change of the visible message during a multi-register read.</p>
-</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. Telemetry interrupt conditions</caption>
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Source</th>
+<th class="tableblock halign-left valign-top">Condition and clearing</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MISSING_LAST</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Sticky status when assembly capacity is reached without the
+last-packet marker. It latches even while disabled. Write one to the status bit
+to clear it; <code>INTR_TEST.MISSING_LAST</code> supplies a test pulse.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>BUFFER_THRESHOLD</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Read-only live status while occupancy is strictly greater
+than the effective threshold, or <code>INTR_TEST.BUFFER_THRESHOLD</code> is set. Drain to
+at most the threshold, raise the threshold, or clear the test bit as appropriate.
+Writing the status bit does not clear this source.</p></td>
+</tr>
+</tbody>
+</table>
 </div>
 <div class="sect2">
-<h3 id="control-path"><a class="anchor" href="#control-path"></a><a class="link" href="#control-path">3.8. Control Path</a></h3>
+<h3 id="reset-and-flush"><a class="anchor" href="#reset-and-flush"></a><a class="link" href="#reset-and-flush">2.4. Reset and Flush</a></h3>
+<span id="clocking-and-reset"></span>
+<span id="reset-behavior"></span>
 <div class="paragraph">
-<p><strong>Configuration Control</strong> Software configures buffer thresholds, enables
-interrupts, and clears errors, permitting runtime adaptation and robust
-error handling.</p>
+<p>Reset clears assembly bytes, queue pointers and control/interrupt registers.
+Queue payload storage is not reset, but empty-queue reads return zero. Supply
+<code>rst_ni</code> with asynchronous assertion and deassertion synchronized to <code>clk_i</code>.</p>
 </div>
 <div class="paragraph">
-<p><strong>Status Reporting</strong> Occupancy, availability, and error flags are
-accessible, providing up-to-date telemetry collection health.</p>
+<p><code>CTRL.TELEMETRY_RX_FLUSH</code> is a pulse that discards queued messages and resets
+the assembly pointer. It does not erase either payload store or purge the
+wrapper&#8217;s upstream ATB crossing FIFO. Quiesce traffic when an empty receiver
+must remain empty after the pulse.</p>
 </div>
 <div class="paragraph">
-<p><strong>Interrupt Handling</strong> Interrupts are generated for buffer threshold
-conditions and a missing last-packet flag. <code>INTR_STATUS.MISSING_LAST</code> is sticky
-and write-one-to-clear. <code>INTR_STATUS.BUFFER_THRESHOLD</code> is read-only and reflects
-occupancy strictly greater than <code>CTRL.BUFFER_THRESHOLD</code> (or an asserted threshold
-test bit). Drain the buffer, raise the threshold, or clear the test condition to
-remove that source; writing the status bit does not acknowledge it.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="clocking-and-reset"><a class="anchor" href="#clocking-and-reset"></a><a class="link" href="#clocking-and-reset">3.9. Clocking and Reset</a></h3>
-<div class="paragraph">
-<p><strong>Clock Domain</strong> The design operates fully synchronous on <code>clk_i</code>,
-avoiding clock crossing complexity and easing verification.</p>
-</div>
-<div class="paragraph">
-<p><strong>Reset Architecture</strong> An asynchronous reset (<code>rst_ni</code>), synchronously
-deasserted, clears the assembly storage and resets the buffer pointers. The
-message-buffer payload storage is not cleared; empty-buffer reads return zero.
-<code>CTRL.TELEMETRY_RX_FLUSH</code> discards queued messages and resets the assembly write
-pointer without clearing either payload store. It is not a data-erasure operation.</p>
+<p><code>CTRL.TELEMETRY_TX_FLUSH</code> requests a flush from the upstream transmitter through
+<code>afvalid_o</code>. Hardware clears the request after <code>afvalid_o &amp;&amp; afready_i</code>.
+Completion depends on the producer&#8217;s acknowledgement; this is separate from a
+local receiver flush.</p>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="telemetry-receiver-interface"><a class="anchor" href="#telemetry-receiver-interface"></a><a class="link" href="#telemetry-receiver-interface">4. Interface</a></h2>
+<h2 id="telemetry-receiver-interface"><a class="anchor" href="#telemetry-receiver-interface"></a><a class="link" href="#telemetry-receiver-interface">3. Interface</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>The Telemetry Receiver component provides AXI4-Lite register access and
 Advanced Trace Bus (ATB) telemetry data reception interfaces.</p>
 </div>
 <div class="sect2">
-<h3 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">4.1. Configuration Parameters</a></h3>
+<h3 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">3.1. Configuration Parameters</a></h3>
 <div class="paragraph">
 <p>The parameters and ports of <code>telemetry_receiver</code> are listed in <a href="../../../../../ocah-docs/latest/rtl-modules-reference/ip/telemetry_receiver/telemetry_receiver.html" class="xref page">telemetry_receiver</a>.</p>
 </div>
@@ -473,20 +436,25 @@ buffer), <code>ATB_DATA_WIDTH</code> (default 8 bits), <code>PACKET_WIDTH</code>
 bits), <code>ADDR_WIDTH</code> (default 32-bit register address) and <code>DATA_WIDTH</code>
 (default 32-bit data bus).</p>
 </div>
+<div class="paragraph">
+<p>The ATB beat width (8 bits), packet width (64 bits), counter width (32 bits)
+and ATB ID width (7 bits) are package constants.
+The core register port has an 8-bit address and 32-bit data path.</p>
+</div>
 </div>
 <div class="sect2">
-<h3 id="signal-interfaces"><a class="anchor" href="#signal-interfaces"></a><a class="link" href="#signal-interfaces">4.2. Signal Interfaces</a></h3>
+<h3 id="signal-interfaces"><a class="anchor" href="#signal-interfaces"></a><a class="link" href="#signal-interfaces">3.2. Signal Interfaces</a></h3>
 
 </div>
 <div class="sect2">
-<h3 id="global-interface"><a class="anchor" href="#global-interface"></a><a class="link" href="#global-interface">4.3. Global Interface</a></h3>
+<h3 id="global-interface"><a class="anchor" href="#global-interface"></a><a class="link" href="#global-interface">3.3. Global Interface</a></h3>
 <div class="paragraph">
 <p>The global interface provides fundamental clock and reset signals
 required for basic operation.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="clock-and-reset-specifications"><a class="anchor" href="#clock-and-reset-specifications"></a><a class="link" href="#clock-and-reset-specifications">4.4. Clock and Reset Specifications</a></h3>
+<h3 id="clock-and-reset-specifications"><a class="anchor" href="#clock-and-reset-specifications"></a><a class="link" href="#clock-and-reset-specifications">3.4. Clock and Reset Specifications</a></h3>
 <div class="ulist">
 <ul>
 <li>
@@ -507,14 +475,14 @@ reset deassertion</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="atb-telemetry-interface"><a class="anchor" href="#atb-telemetry-interface"></a><a class="link" href="#atb-telemetry-interface">4.5. ATB Telemetry Interface</a></h3>
+<h3 id="atb-telemetry-interface"><a class="anchor" href="#atb-telemetry-interface"></a><a class="link" href="#atb-telemetry-interface">3.5. ATB Telemetry Interface</a></h3>
 <div class="paragraph">
 <p>The ATB (Advanced Trace Bus) interface receives telemetry data using standard
 ATB protocol.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="atb-protocol-specifications"><a class="anchor" href="#atb-protocol-specifications"></a><a class="link" href="#atb-protocol-specifications">4.6. ATB Protocol Specifications</a></h3>
+<h3 id="atb-protocol-specifications"><a class="anchor" href="#atb-protocol-specifications"></a><a class="link" href="#atb-protocol-specifications">3.6. ATB Protocol Specifications</a></h3>
 <div class="ulist">
 <ul>
 <li>
@@ -541,14 +509,14 @@ back-pressure</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="interrupt-interface"><a class="anchor" href="#interrupt-interface"></a><a class="link" href="#interrupt-interface">4.7. Interrupt Interface</a></h3>
+<h3 id="interrupt-interface"><a class="anchor" href="#interrupt-interface"></a><a class="link" href="#interrupt-interface">3.7. Interrupt Interface</a></h3>
 <div class="paragraph">
 <p>The interrupt interface provides a single interrupt output for event
 notification.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="interrupt-specifications"><a class="anchor" href="#interrupt-specifications"></a><a class="link" href="#interrupt-specifications">4.8. Interrupt Specifications</a></h3>
+<h3 id="interrupt-specifications"><a class="anchor" href="#interrupt-specifications"></a><a class="link" href="#interrupt-specifications">3.8. Interrupt Specifications</a></h3>
 <div class="ulist">
 <ul>
 <li>
@@ -572,66 +540,119 @@ condition</p>
 </ul>
 </div>
 </div>
+<div class="sect2">
+<h3 id="subsystem-wrapper"><a class="anchor" href="#subsystem-wrapper"></a><a class="link" href="#subsystem-wrapper">3.9. Subsystem Wrapper</a></h3>
+<div class="paragraph">
+<p><code>telemetry_receiver_wrap</code> defaults to three receivers. It configures their queue
+depth with <code>TELEMETRY_RECEIVER_BUFFER_DEPTH</code> (default 8) and counter counts with
+<code>TELEMETRY_RECEIVER_MAX_NUM_COUNTERS_PER_MESSAGE</code> (default 4 per receiver).
+Actual subsystem values and aperture assignments come from the integration.</p>
+</div>
+<div class="paragraph">
+<p>The wrapper receives ATB traffic on <code>clk_telemetry_i</code> / <code>rst_telemetry_ni</code> and
+crosses it into <code>clk_i</code> / <code>rst_ni</code> through an eight-entry asynchronous FIFO per
+receiver. Its external ready signal reflects crossing-FIFO capacity. This does
+not turn the core&#8217;s decoded-message queue into a lossless backpressured queue.
+The wrapper also contains flush-handshake synchronizers and returns a decode
+error for register addresses outside its configured receiver apertures.</p>
+</div>
+<div class="paragraph">
+<p>Clock frequency, jitter, reset duration and physical timing constraints must
+come from the integration timing specification.</p>
+</div>
+</div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="telemetry-receiver-memory-map"><a class="anchor" href="#telemetry-receiver-memory-map"></a><a class="link" href="#telemetry-receiver-memory-map">5. Memory Map</a></h2>
+<h2 id="telemetry-receiver-programming"><a class="anchor" href="#telemetry-receiver-programming"></a><a class="link" href="#telemetry-receiver-programming">4. Programming</a></h2>
 <div class="sectionbody">
+<div class="sect2">
+<h3 id="buffer-management"><a class="anchor" href="#buffer-management"></a><a class="link" href="#buffer-management">4.1. Buffer Management</a></h3>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Check <code>STATUS.BUFFER_EMPTY</code> before reading.</p>
+</li>
+<li>
+<p>Read <code>TELEMETRY_PROBE_ID</code> and <code>TELEMETRY_COUNTER_VLDS</code>, then the required valid
+counter registers. Unused or invalid counter positions read as zero.</p>
+</li>
+<li>
+<p>Write a one to <code>CTRL.BUFFER_POP</code> after consuming the message.</p>
+</li>
+<li>
+<p>Repeat while the queue is nonempty.</p>
+</li>
+</ol>
+</div>
 <div class="paragraph">
-<p>The Telemetry Receiver provides a comprehensive register interface for
-configuration, status monitoring, and telemetry data access. All
-registers are accessed through a 32-bit AXI4-Lite interface with 4-byte
-address alignment.</p>
+<p>Only one software consumer should own this sequence. Incoming traffic can
+replace the head while the queue is full, so these reads are not an atomic
+snapshot; follow the producer/buffering constraints in the architecture section.</p>
+</div>
+<div class="paragraph">
+<p>Preserve <code>CTRL.BUFFER_THRESHOLD</code> and any outstanding TX-flush request when
+issuing a pop or RX-flush pulse. These fields share one register; a full-word
+write containing only the pulse bit would overwrite the other writable fields.
+Serialize control-register updates between software contexts.</p>
+</div>
+<div class="paragraph">
+<p>For notification on any queued message, set the threshold to zero and enable
+<code>INTR_ENABLE.BUFFER_THRESHOLD</code>. The CSR field is 12 bits, but the core casts it
+to <code>$clog2(BUFFER_DEPTH)+1</code> bits before comparing occupancy. Use values within
+the configured queue depth rather than treating all values 0–4095 as distinct
+thresholds. With the default depth 8, only the low four bits participate.</p>
+</div>
 </div>
 <div class="sect2">
-<h3 id="address-space-overview"><a class="anchor" href="#address-space-overview"></a><a class="link" href="#address-space-overview">5.1. Address Space Overview</a></h3>
-<div class="paragraph">
-<p>The component uses a 256-byte address space (8-bit address width) with
-the following organization:</p>
-</div>
+<h3 id="flush-operations"><a class="anchor" href="#flush-operations"></a><a class="link" href="#flush-operations">4.2. Flush Operations</a></h3>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Control and Status</strong>: 0x00 - 0x1F (Configuration, status, probe ID, and counter validity registers)</p>
+<p><strong>Local discard:</strong> pulse <code>CTRL.TELEMETRY_RX_FLUSH</code>. This discards queued messages
+and resets assembly position, without erasing stored bytes or flushing the
+wrapper crossing FIFO. New traffic can make the queue nonempty again.</p>
 </li>
 <li>
-<p><strong>Counter Array</strong>: 0x80 - 0xFF (32 × 32-bit counter value registers)</p>
-</li>
-</ul>
-</div>
-</div>
-<div class="sect2">
-<h3 id="reset-behavior"><a class="anchor" href="#reset-behavior"></a><a class="link" href="#reset-behavior">5.2. Reset Behavior</a></h3>
-<div class="paragraph">
-<p>Upon system reset (rst_ni assertion):</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>All registers reset to their default values as specified</p>
-</li>
-<li>
-<p>Message buffer is cleared and marked empty (STATUS.BUFFER_EMPTY = 1)</p>
-</li>
-<li>
-<p>All interrupts are cleared and disabled</p>
-</li>
-<li>
-<p>Telemetry data registers reset to zero</p>
-</li>
-<li>
-<p>Component enters idle state ready for telemetry reception</p>
+<p><strong>Upstream flush:</strong> set <code>CTRL.TELEMETRY_TX_FLUSH</code> and poll until hardware clears
+it after acknowledgement. Choose a firmware timeout appropriate to the producer;
+the core provides no fixed completion deadline.</p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
-<p>The reset operation is asynchronous for assertion and synchronous for
-deassertion, ensuring clean startup behavior and proper synchronization
-with the system clock domain.</p>
+<p>Neither operation makes stale trailing blocks safe: producers must still
+write the full configured message footprint and invalidate unused counters.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">5.3. Detailed Register Map</a></h3>
+<h3 id="interrupt-handling"><a class="anchor" href="#interrupt-handling"></a><a class="link" href="#interrupt-handling">4.3. Interrupt Handling</a></h3>
+<div class="paragraph">
+<p>Read <code>INTR_STATUS</code> and service the enabled sources. For <code>BUFFER_THRESHOLD</code>,
+drain until occupancy is at most the threshold; clear the threshold test bit
+if software asserted it. For <code>MISSING_LAST</code>, investigate the producer&#8217;s framing
+and write one to that status bit after handling the event. A receiver flush
+alone does not acknowledge this sticky interrupt.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="telemetry-receiver-memory-map"><a class="anchor" href="#telemetry-receiver-memory-map"></a><a class="link" href="#telemetry-receiver-memory-map">5. Memory Map and Register Reference</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">5.1. Memory Map</a></h3>
+<span id="address-space-overview"></span>
+<div class="paragraph">
+<p>Each core occupies 256 bytes with 32-bit registers at four-byte offsets.
+Control, status, interrupt and message-header registers occupy <code>0x00</code>–<code>0x18</code>;
+32 counter registers occupy <code>0x80</code>–<code>0xFC</code>. The wrapper map places each receiver
+in its integration-defined aperture. Reset values and field access types are
+specified below; reset and flush storage behavior is described in Architecture.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">5.2. Detailed Register Map</a></h3>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
@@ -649,17 +670,17 @@ with the system clock domain.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0</td><td><a href="#CTRL">CTRL</a></td><td>RW</td><td>Control Register</td></tr>
-<tr><td>0x4</td><td><a href="#STATUS">STATUS</a></td><td>R</td><td>Status Register</td></tr>
-<tr><td>0x8</td><td><a href="#INTR_STATUS">INTR_STATUS</a></td><td>RW</td><td>Interrupt Status Register</td></tr>
-<tr><td>0xC</td><td><a href="#INTR_ENABLE">INTR_ENABLE</a></td><td>RW</td><td>Interrupt Enable Register</td></tr>
-<tr><td>0x10</td><td><a href="#INTR_TEST">INTR_TEST</a></td><td>RW</td><td>Interrupt Test Register</td></tr>
-<tr><td>0x14</td><td><a href="#TELEMETRY_PROBE_ID">TELEMETRY_PROBE_ID</a></td><td>R</td><td>Telemetry Probe ID Register</td></tr>
-<tr><td>0x18</td><td><a href="#TELEMETRY_COUNTER_VLDS">TELEMETRY_COUNTER_VLDS</a></td><td>R</td><td>Telemetry Counter Valid Bits Register</td></tr>
-<tr><td>0x80 - 0xFC</td><td><a href="#TELEMETRY_COUNTER_32_">TELEMETRY_COUNTER[32]</a></td><td>R</td><td>Telemetry Counter Register</td></tr>
+<tr><td>0x0</td><td><a href="#telemetry_receiver-CTRL">CTRL</a></td><td>RW</td><td>Control Register</td></tr>
+<tr><td>0x4</td><td><a href="#telemetry_receiver-STATUS">STATUS</a></td><td>R</td><td>Status Register</td></tr>
+<tr><td>0x8</td><td><a href="#telemetry_receiver-INTR_STATUS">INTR_STATUS</a></td><td>RW</td><td>Interrupt Status Register</td></tr>
+<tr><td>0xC</td><td><a href="#telemetry_receiver-INTR_ENABLE">INTR_ENABLE</a></td><td>RW</td><td>Interrupt Enable Register</td></tr>
+<tr><td>0x10</td><td><a href="#telemetry_receiver-INTR_TEST">INTR_TEST</a></td><td>RW</td><td>Interrupt Test Register</td></tr>
+<tr><td>0x14</td><td><a href="#telemetry_receiver-TELEMETRY_PROBE_ID">TELEMETRY_PROBE_ID</a></td><td>R</td><td>Telemetry Probe ID Register</td></tr>
+<tr><td>0x18</td><td><a href="#telemetry_receiver-TELEMETRY_COUNTER_VLDS">TELEMETRY_COUNTER_VLDS</a></td><td>R</td><td>Telemetry Counter Valid Bits Register</td></tr>
+<tr><td>0x80 - 0xFC</td><td><a href="#telemetry_receiver-TELEMETRY_COUNTER_32_">TELEMETRY_COUNTER[32]</a></td><td>R</td><td>Telemetry Counter Register</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
-<h3 id="CTRL">CTRL</h3>
+<span id="CTRL"></span><h3 id="telemetry_receiver-CTRL" data-register-alias="CTRL">CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -671,7 +692,7 @@ with the system clock domain.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUFFER_POP</td><td>W 1P</td><td>0x0</td><td>Telemetry Message Buffer Pop. Effective only if `STATUS.BUFFER_EMPTY = 0`.<br>Writing `1` pops the buffer and thus updates the data in the<br>`TELEMETRY_PROBE_ID`, `TELEMETRY_COUNTER_VLDS`, and `TELEMETRY_COUNTER[32]`<br>registers.</td></tr>
 </table>
-<h3 id="STATUS">STATUS</h3>
+<span id="STATUS"></span><h3 id="telemetry_receiver-STATUS" data-register-alias="STATUS">STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -679,7 +700,7 @@ with the system clock domain.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUFFER_EMPTY</td><td>R</td><td>0x1</td><td>Telemetry Message Buffer Empty.</td></tr>
 </table>
-<h3 id="INTR_STATUS">INTR_STATUS</h3>
+<span id="INTR_STATUS"></span><h3 id="telemetry_receiver-INTR_STATUS" data-register-alias="INTR_STATUS">INTR_STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -687,7 +708,7 @@ with the system clock domain.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>MISSING_LAST</td><td>RW1C</td><td>0x0</td><td>Last Packet Missing Interrupt. Asserted when the Telemetry Receiver has not<br>received a Last Packet flag when the maximum number of packets a message can<br>consist of has been received.</td></tr>
 </table>
-<h3 id="INTR_ENABLE">INTR_ENABLE</h3>
+<span id="INTR_ENABLE"></span><h3 id="telemetry_receiver-INTR_ENABLE" data-register-alias="INTR_ENABLE">INTR_ENABLE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -695,7 +716,7 @@ with the system clock domain.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>MISSING_LAST</td><td>RW</td><td>0x0</td><td>Last Packet Missing Interrupt Enable.</td></tr>
 </table>
-<h3 id="INTR_TEST">INTR_TEST</h3>
+<span id="INTR_TEST"></span><h3 id="telemetry_receiver-INTR_TEST" data-register-alias="INTR_TEST">INTR_TEST</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -703,18 +724,18 @@ with the system clock domain.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>MISSING_LAST</td><td>W 1P</td><td>0x0</td><td>Last Packet Missing Interrupt Test. Writing `1` forces the interrupt.</td></tr>
 </table>
-<h3 id="TELEMETRY_PROBE_ID">TELEMETRY_PROBE_ID</h3>
+<span id="TELEMETRY_PROBE_ID"></span><h3 id="telemetry_receiver-TELEMETRY_PROBE_ID" data-register-alias="TELEMETRY_PROBE_ID">TELEMETRY_PROBE_ID</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>4:0</td><td>PROBE_ID</td><td>R</td><td>0x0</td><td>Probe ID. Contains the Probe ID field of the telemetry message at the bottom of<br>the Telemetry Message Buffer.</td></tr>
 </table>
-<h3 id="TELEMETRY_COUNTER_VLDS">TELEMETRY_COUNTER_VLDS</h3>
+<span id="TELEMETRY_COUNTER_VLDS"></span><h3 id="telemetry_receiver-TELEMETRY_COUNTER_VLDS" data-register-alias="TELEMETRY_COUNTER_VLDS">TELEMETRY_COUNTER_VLDS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>COUNTER_VLDS</td><td>R</td><td>0x0</td><td>Counter Valid Bits. Indicates which of the counter values in the telemetry<br>message at the bottom of the Telemetry Message Buffer are valid. Bit `i` is for<br>the `i`-th counter.</td></tr>
 </table>
-<h3 id="TELEMETRY_COUNTER_32_">TELEMETRY_COUNTER[32]</h3>
+<span id="TELEMETRY_COUNTER_32_"></span><h3 id="telemetry_receiver-TELEMETRY_COUNTER_32_" data-register-alias="TELEMETRY_COUNTER_32_">TELEMETRY_COUNTER[32]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>COUNTER</td><td>R</td><td>0x0</td><td>Counter Value. Contains one of the 32 counter values in the telemetry message<br>at the bottom of the Telemetry Message Buffer.</td></tr>
@@ -739,33 +760,33 @@ with the system clock domain.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0</td><td><a href="#telemetry_receiver_0_.CTRL">telemetry_receiver[0].CTRL</a></td><td>RW</td><td>Control Register</td></tr>
-<tr><td>0x4</td><td><a href="#telemetry_receiver_0_.STATUS">telemetry_receiver[0].STATUS</a></td><td>R</td><td>Status Register</td></tr>
-<tr><td>0x8</td><td><a href="#telemetry_receiver_0_.INTR_STATUS">telemetry_receiver[0].INTR_STATUS</a></td><td>RW</td><td>Interrupt Status Register</td></tr>
-<tr><td>0xC</td><td><a href="#telemetry_receiver_0_.INTR_ENABLE">telemetry_receiver[0].INTR_ENABLE</a></td><td>RW</td><td>Interrupt Enable Register</td></tr>
-<tr><td>0x10</td><td><a href="#telemetry_receiver_0_.INTR_TEST">telemetry_receiver[0].INTR_TEST</a></td><td>RW</td><td>Interrupt Test Register</td></tr>
-<tr><td>0x14</td><td><a href="#telemetry_receiver_0_.TELEMETRY_PROBE_ID">telemetry_receiver[0].TELEMETRY_PROBE_ID</a></td><td>R</td><td>Telemetry Probe ID Register</td></tr>
-<tr><td>0x18</td><td><a href="#telemetry_receiver_0_.TELEMETRY_COUNTER_VLDS">telemetry_receiver[0].TELEMETRY_COUNTER_VLDS</a></td><td>R</td><td>Telemetry Counter Valid Bits Register</td></tr>
-<tr><td>0x80 - 0xFC</td><td><a href="#telemetry_receiver_0_.TELEMETRY_COUNTER_32_">telemetry_receiver[0].TELEMETRY_COUNTER[32]</a></td><td>R</td><td>Telemetry Counter Register</td></tr>
-<tr><td>0x100</td><td><a href="#telemetry_receiver_1_.CTRL">telemetry_receiver[1].CTRL</a></td><td>RW</td><td>Control Register</td></tr>
-<tr><td>0x104</td><td><a href="#telemetry_receiver_1_.STATUS">telemetry_receiver[1].STATUS</a></td><td>R</td><td>Status Register</td></tr>
-<tr><td>0x108</td><td><a href="#telemetry_receiver_1_.INTR_STATUS">telemetry_receiver[1].INTR_STATUS</a></td><td>RW</td><td>Interrupt Status Register</td></tr>
-<tr><td>0x10C</td><td><a href="#telemetry_receiver_1_.INTR_ENABLE">telemetry_receiver[1].INTR_ENABLE</a></td><td>RW</td><td>Interrupt Enable Register</td></tr>
-<tr><td>0x110</td><td><a href="#telemetry_receiver_1_.INTR_TEST">telemetry_receiver[1].INTR_TEST</a></td><td>RW</td><td>Interrupt Test Register</td></tr>
-<tr><td>0x114</td><td><a href="#telemetry_receiver_1_.TELEMETRY_PROBE_ID">telemetry_receiver[1].TELEMETRY_PROBE_ID</a></td><td>R</td><td>Telemetry Probe ID Register</td></tr>
-<tr><td>0x118</td><td><a href="#telemetry_receiver_1_.TELEMETRY_COUNTER_VLDS">telemetry_receiver[1].TELEMETRY_COUNTER_VLDS</a></td><td>R</td><td>Telemetry Counter Valid Bits Register</td></tr>
-<tr><td>0x180 - 0x1FC</td><td><a href="#telemetry_receiver_1_.TELEMETRY_COUNTER_32_">telemetry_receiver[1].TELEMETRY_COUNTER[32]</a></td><td>R</td><td>Telemetry Counter Register</td></tr>
-<tr><td>0x200</td><td><a href="#telemetry_receiver_2_.CTRL">telemetry_receiver[2].CTRL</a></td><td>RW</td><td>Control Register</td></tr>
-<tr><td>0x204</td><td><a href="#telemetry_receiver_2_.STATUS">telemetry_receiver[2].STATUS</a></td><td>R</td><td>Status Register</td></tr>
-<tr><td>0x208</td><td><a href="#telemetry_receiver_2_.INTR_STATUS">telemetry_receiver[2].INTR_STATUS</a></td><td>RW</td><td>Interrupt Status Register</td></tr>
-<tr><td>0x20C</td><td><a href="#telemetry_receiver_2_.INTR_ENABLE">telemetry_receiver[2].INTR_ENABLE</a></td><td>RW</td><td>Interrupt Enable Register</td></tr>
-<tr><td>0x210</td><td><a href="#telemetry_receiver_2_.INTR_TEST">telemetry_receiver[2].INTR_TEST</a></td><td>RW</td><td>Interrupt Test Register</td></tr>
-<tr><td>0x214</td><td><a href="#telemetry_receiver_2_.TELEMETRY_PROBE_ID">telemetry_receiver[2].TELEMETRY_PROBE_ID</a></td><td>R</td><td>Telemetry Probe ID Register</td></tr>
-<tr><td>0x218</td><td><a href="#telemetry_receiver_2_.TELEMETRY_COUNTER_VLDS">telemetry_receiver[2].TELEMETRY_COUNTER_VLDS</a></td><td>R</td><td>Telemetry Counter Valid Bits Register</td></tr>
-<tr><td>0x280 - 0x2FC</td><td><a href="#telemetry_receiver_2_.TELEMETRY_COUNTER_32_">telemetry_receiver[2].TELEMETRY_COUNTER[32]</a></td><td>R</td><td>Telemetry Counter Register</td></tr>
+<tr><td>0x0</td><td><a href="#telemetry_receiver_wrap-telemetry_receiver_0_.CTRL">telemetry_receiver[0].CTRL</a></td><td>RW</td><td>Control Register</td></tr>
+<tr><td>0x4</td><td><a href="#telemetry_receiver_wrap-telemetry_receiver_0_.STATUS">telemetry_receiver[0].STATUS</a></td><td>R</td><td>Status Register</td></tr>
+<tr><td>0x8</td><td><a href="#telemetry_receiver_wrap-telemetry_receiver_0_.INTR_STATUS">telemetry_receiver[0].INTR_STATUS</a></td><td>RW</td><td>Interrupt Status Register</td></tr>
+<tr><td>0xC</td><td><a href="#telemetry_receiver_wrap-telemetry_receiver_0_.INTR_ENABLE">telemetry_receiver[0].INTR_ENABLE</a></td><td>RW</td><td>Interrupt Enable Register</td></tr>
+<tr><td>0x10</td><td><a href="#telemetry_receiver_wrap-telemetry_receiver_0_.INTR_TEST">telemetry_receiver[0].INTR_TEST</a></td><td>RW</td><td>Interrupt Test Register</td></tr>
+<tr><td>0x14</td><td><a href="#telemetry_receiver_wrap-telemetry_receiver_0_.TELEMETRY_PROBE_ID">telemetry_receiver[0].TELEMETRY_PROBE_ID</a></td><td>R</td><td>Telemetry Probe ID Register</td></tr>
+<tr><td>0x18</td><td><a href="#telemetry_receiver_wrap-telemetry_receiver_0_.TELEMETRY_COUNTER_VLDS">telemetry_receiver[0].TELEMETRY_COUNTER_VLDS</a></td><td>R</td><td>Telemetry Counter Valid Bits Register</td></tr>
+<tr><td>0x80 - 0xFC</td><td><a href="#telemetry_receiver_wrap-telemetry_receiver_0_.TELEMETRY_COUNTER_32_">telemetry_receiver[0].TELEMETRY_COUNTER[32]</a></td><td>R</td><td>Telemetry Counter Register</td></tr>
+<tr><td>0x100</td><td><a href="#telemetry_receiver_wrap-telemetry_receiver_1_.CTRL">telemetry_receiver[1].CTRL</a></td><td>RW</td><td>Control Register</td></tr>
+<tr><td>0x104</td><td><a href="#telemetry_receiver_wrap-telemetry_receiver_1_.STATUS">telemetry_receiver[1].STATUS</a></td><td>R</td><td>Status Register</td></tr>
+<tr><td>0x108</td><td><a href="#telemetry_receiver_wrap-telemetry_receiver_1_.INTR_STATUS">telemetry_receiver[1].INTR_STATUS</a></td><td>RW</td><td>Interrupt Status Register</td></tr>
+<tr><td>0x10C</td><td><a href="#telemetry_receiver_wrap-telemetry_receiver_1_.INTR_ENABLE">telemetry_receiver[1].INTR_ENABLE</a></td><td>RW</td><td>Interrupt Enable Register</td></tr>
+<tr><td>0x110</td><td><a href="#telemetry_receiver_wrap-telemetry_receiver_1_.INTR_TEST">telemetry_receiver[1].INTR_TEST</a></td><td>RW</td><td>Interrupt Test Register</td></tr>
+<tr><td>0x114</td><td><a href="#telemetry_receiver_wrap-telemetry_receiver_1_.TELEMETRY_PROBE_ID">telemetry_receiver[1].TELEMETRY_PROBE_ID</a></td><td>R</td><td>Telemetry Probe ID Register</td></tr>
+<tr><td>0x118</td><td><a href="#telemetry_receiver_wrap-telemetry_receiver_1_.TELEMETRY_COUNTER_VLDS">telemetry_receiver[1].TELEMETRY_COUNTER_VLDS</a></td><td>R</td><td>Telemetry Counter Valid Bits Register</td></tr>
+<tr><td>0x180 - 0x1FC</td><td><a href="#telemetry_receiver_wrap-telemetry_receiver_1_.TELEMETRY_COUNTER_32_">telemetry_receiver[1].TELEMETRY_COUNTER[32]</a></td><td>R</td><td>Telemetry Counter Register</td></tr>
+<tr><td>0x200</td><td><a href="#telemetry_receiver_wrap-telemetry_receiver_2_.CTRL">telemetry_receiver[2].CTRL</a></td><td>RW</td><td>Control Register</td></tr>
+<tr><td>0x204</td><td><a href="#telemetry_receiver_wrap-telemetry_receiver_2_.STATUS">telemetry_receiver[2].STATUS</a></td><td>R</td><td>Status Register</td></tr>
+<tr><td>0x208</td><td><a href="#telemetry_receiver_wrap-telemetry_receiver_2_.INTR_STATUS">telemetry_receiver[2].INTR_STATUS</a></td><td>RW</td><td>Interrupt Status Register</td></tr>
+<tr><td>0x20C</td><td><a href="#telemetry_receiver_wrap-telemetry_receiver_2_.INTR_ENABLE">telemetry_receiver[2].INTR_ENABLE</a></td><td>RW</td><td>Interrupt Enable Register</td></tr>
+<tr><td>0x210</td><td><a href="#telemetry_receiver_wrap-telemetry_receiver_2_.INTR_TEST">telemetry_receiver[2].INTR_TEST</a></td><td>RW</td><td>Interrupt Test Register</td></tr>
+<tr><td>0x214</td><td><a href="#telemetry_receiver_wrap-telemetry_receiver_2_.TELEMETRY_PROBE_ID">telemetry_receiver[2].TELEMETRY_PROBE_ID</a></td><td>R</td><td>Telemetry Probe ID Register</td></tr>
+<tr><td>0x218</td><td><a href="#telemetry_receiver_wrap-telemetry_receiver_2_.TELEMETRY_COUNTER_VLDS">telemetry_receiver[2].TELEMETRY_COUNTER_VLDS</a></td><td>R</td><td>Telemetry Counter Valid Bits Register</td></tr>
+<tr><td>0x280 - 0x2FC</td><td><a href="#telemetry_receiver_wrap-telemetry_receiver_2_.TELEMETRY_COUNTER_32_">telemetry_receiver[2].TELEMETRY_COUNTER[32]</a></td><td>R</td><td>Telemetry Counter Register</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
-<h3 id="telemetry_receiver_0_.CTRL">telemetry_receiver[0].CTRL</h3>
+<span id="telemetry_receiver_0_.CTRL"></span><h3 id="telemetry_receiver_wrap-telemetry_receiver_0_.CTRL" data-register-alias="telemetry_receiver_0_.CTRL">telemetry_receiver[0].CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -777,7 +798,7 @@ with the system clock domain.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUFFER_POP</td><td>W 1P</td><td>0x0</td><td>Telemetry Message Buffer Pop. Effective only if `STATUS.BUFFER_EMPTY = 0`.<br>Writing `1` pops the buffer and thus updates the data in the<br>`TELEMETRY_PROBE_ID`, `TELEMETRY_COUNTER_VLDS`, and `TELEMETRY_COUNTER[32]`<br>registers.</td></tr>
 </table>
-<h3 id="telemetry_receiver_0_.STATUS">telemetry_receiver[0].STATUS</h3>
+<span id="telemetry_receiver_0_.STATUS"></span><h3 id="telemetry_receiver_wrap-telemetry_receiver_0_.STATUS" data-register-alias="telemetry_receiver_0_.STATUS">telemetry_receiver[0].STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -785,7 +806,7 @@ with the system clock domain.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUFFER_EMPTY</td><td>R</td><td>0x1</td><td>Telemetry Message Buffer Empty.</td></tr>
 </table>
-<h3 id="telemetry_receiver_0_.INTR_STATUS">telemetry_receiver[0].INTR_STATUS</h3>
+<span id="telemetry_receiver_0_.INTR_STATUS"></span><h3 id="telemetry_receiver_wrap-telemetry_receiver_0_.INTR_STATUS" data-register-alias="telemetry_receiver_0_.INTR_STATUS">telemetry_receiver[0].INTR_STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -793,7 +814,7 @@ with the system clock domain.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>MISSING_LAST</td><td>RW1C</td><td>0x0</td><td>Last Packet Missing Interrupt. Asserted when the Telemetry Receiver has not<br>received a Last Packet flag when the maximum number of packets a message can<br>consist of has been received.</td></tr>
 </table>
-<h3 id="telemetry_receiver_0_.INTR_ENABLE">telemetry_receiver[0].INTR_ENABLE</h3>
+<span id="telemetry_receiver_0_.INTR_ENABLE"></span><h3 id="telemetry_receiver_wrap-telemetry_receiver_0_.INTR_ENABLE" data-register-alias="telemetry_receiver_0_.INTR_ENABLE">telemetry_receiver[0].INTR_ENABLE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -801,7 +822,7 @@ with the system clock domain.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>MISSING_LAST</td><td>RW</td><td>0x0</td><td>Last Packet Missing Interrupt Enable.</td></tr>
 </table>
-<h3 id="telemetry_receiver_0_.INTR_TEST">telemetry_receiver[0].INTR_TEST</h3>
+<span id="telemetry_receiver_0_.INTR_TEST"></span><h3 id="telemetry_receiver_wrap-telemetry_receiver_0_.INTR_TEST" data-register-alias="telemetry_receiver_0_.INTR_TEST">telemetry_receiver[0].INTR_TEST</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -809,23 +830,23 @@ with the system clock domain.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>MISSING_LAST</td><td>W 1P</td><td>0x0</td><td>Last Packet Missing Interrupt Test. Writing `1` forces the interrupt.</td></tr>
 </table>
-<h3 id="telemetry_receiver_0_.TELEMETRY_PROBE_ID">telemetry_receiver[0].TELEMETRY_PROBE_ID</h3>
+<span id="telemetry_receiver_0_.TELEMETRY_PROBE_ID"></span><h3 id="telemetry_receiver_wrap-telemetry_receiver_0_.TELEMETRY_PROBE_ID" data-register-alias="telemetry_receiver_0_.TELEMETRY_PROBE_ID">telemetry_receiver[0].TELEMETRY_PROBE_ID</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>4:0</td><td>PROBE_ID</td><td>R</td><td>0x0</td><td>Probe ID. Contains the Probe ID field of the telemetry message at the bottom of<br>the Telemetry Message Buffer.</td></tr>
 </table>
-<h3 id="telemetry_receiver_0_.TELEMETRY_COUNTER_VLDS">telemetry_receiver[0].TELEMETRY_COUNTER_VLDS</h3>
+<span id="telemetry_receiver_0_.TELEMETRY_COUNTER_VLDS"></span><h3 id="telemetry_receiver_wrap-telemetry_receiver_0_.TELEMETRY_COUNTER_VLDS" data-register-alias="telemetry_receiver_0_.TELEMETRY_COUNTER_VLDS">telemetry_receiver[0].TELEMETRY_COUNTER_VLDS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>COUNTER_VLDS</td><td>R</td><td>0x0</td><td>Counter Valid Bits. Indicates which of the counter values in the telemetry<br>message at the bottom of the Telemetry Message Buffer are valid. Bit `i` is for<br>the `i`-th counter.</td></tr>
 </table>
-<h3 id="telemetry_receiver_0_.TELEMETRY_COUNTER_32_">telemetry_receiver[0].TELEMETRY_COUNTER[32]</h3>
+<span id="telemetry_receiver_0_.TELEMETRY_COUNTER_32_"></span><h3 id="telemetry_receiver_wrap-telemetry_receiver_0_.TELEMETRY_COUNTER_32_" data-register-alias="telemetry_receiver_0_.TELEMETRY_COUNTER_32_">telemetry_receiver[0].TELEMETRY_COUNTER[32]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>COUNTER</td><td>R</td><td>0x0</td><td>Counter Value. Contains one of the 32 counter values in the telemetry message<br>at the bottom of the Telemetry Message Buffer.</td></tr>
 </table>
-<h3 id="telemetry_receiver_1_.CTRL">telemetry_receiver[1].CTRL</h3>
+<span id="telemetry_receiver_1_.CTRL"></span><h3 id="telemetry_receiver_wrap-telemetry_receiver_1_.CTRL" data-register-alias="telemetry_receiver_1_.CTRL">telemetry_receiver[1].CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -837,7 +858,7 @@ with the system clock domain.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUFFER_POP</td><td>W 1P</td><td>0x0</td><td>Telemetry Message Buffer Pop. Effective only if `STATUS.BUFFER_EMPTY = 0`.<br>Writing `1` pops the buffer and thus updates the data in the<br>`TELEMETRY_PROBE_ID`, `TELEMETRY_COUNTER_VLDS`, and `TELEMETRY_COUNTER[32]`<br>registers.</td></tr>
 </table>
-<h3 id="telemetry_receiver_1_.STATUS">telemetry_receiver[1].STATUS</h3>
+<span id="telemetry_receiver_1_.STATUS"></span><h3 id="telemetry_receiver_wrap-telemetry_receiver_1_.STATUS" data-register-alias="telemetry_receiver_1_.STATUS">telemetry_receiver[1].STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -845,7 +866,7 @@ with the system clock domain.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUFFER_EMPTY</td><td>R</td><td>0x1</td><td>Telemetry Message Buffer Empty.</td></tr>
 </table>
-<h3 id="telemetry_receiver_1_.INTR_STATUS">telemetry_receiver[1].INTR_STATUS</h3>
+<span id="telemetry_receiver_1_.INTR_STATUS"></span><h3 id="telemetry_receiver_wrap-telemetry_receiver_1_.INTR_STATUS" data-register-alias="telemetry_receiver_1_.INTR_STATUS">telemetry_receiver[1].INTR_STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -853,7 +874,7 @@ with the system clock domain.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>MISSING_LAST</td><td>RW1C</td><td>0x0</td><td>Last Packet Missing Interrupt. Asserted when the Telemetry Receiver has not<br>received a Last Packet flag when the maximum number of packets a message can<br>consist of has been received.</td></tr>
 </table>
-<h3 id="telemetry_receiver_1_.INTR_ENABLE">telemetry_receiver[1].INTR_ENABLE</h3>
+<span id="telemetry_receiver_1_.INTR_ENABLE"></span><h3 id="telemetry_receiver_wrap-telemetry_receiver_1_.INTR_ENABLE" data-register-alias="telemetry_receiver_1_.INTR_ENABLE">telemetry_receiver[1].INTR_ENABLE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -861,7 +882,7 @@ with the system clock domain.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>MISSING_LAST</td><td>RW</td><td>0x0</td><td>Last Packet Missing Interrupt Enable.</td></tr>
 </table>
-<h3 id="telemetry_receiver_1_.INTR_TEST">telemetry_receiver[1].INTR_TEST</h3>
+<span id="telemetry_receiver_1_.INTR_TEST"></span><h3 id="telemetry_receiver_wrap-telemetry_receiver_1_.INTR_TEST" data-register-alias="telemetry_receiver_1_.INTR_TEST">telemetry_receiver[1].INTR_TEST</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -869,23 +890,23 @@ with the system clock domain.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>MISSING_LAST</td><td>W 1P</td><td>0x0</td><td>Last Packet Missing Interrupt Test. Writing `1` forces the interrupt.</td></tr>
 </table>
-<h3 id="telemetry_receiver_1_.TELEMETRY_PROBE_ID">telemetry_receiver[1].TELEMETRY_PROBE_ID</h3>
+<span id="telemetry_receiver_1_.TELEMETRY_PROBE_ID"></span><h3 id="telemetry_receiver_wrap-telemetry_receiver_1_.TELEMETRY_PROBE_ID" data-register-alias="telemetry_receiver_1_.TELEMETRY_PROBE_ID">telemetry_receiver[1].TELEMETRY_PROBE_ID</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>4:0</td><td>PROBE_ID</td><td>R</td><td>0x0</td><td>Probe ID. Contains the Probe ID field of the telemetry message at the bottom of<br>the Telemetry Message Buffer.</td></tr>
 </table>
-<h3 id="telemetry_receiver_1_.TELEMETRY_COUNTER_VLDS">telemetry_receiver[1].TELEMETRY_COUNTER_VLDS</h3>
+<span id="telemetry_receiver_1_.TELEMETRY_COUNTER_VLDS"></span><h3 id="telemetry_receiver_wrap-telemetry_receiver_1_.TELEMETRY_COUNTER_VLDS" data-register-alias="telemetry_receiver_1_.TELEMETRY_COUNTER_VLDS">telemetry_receiver[1].TELEMETRY_COUNTER_VLDS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>COUNTER_VLDS</td><td>R</td><td>0x0</td><td>Counter Valid Bits. Indicates which of the counter values in the telemetry<br>message at the bottom of the Telemetry Message Buffer are valid. Bit `i` is for<br>the `i`-th counter.</td></tr>
 </table>
-<h3 id="telemetry_receiver_1_.TELEMETRY_COUNTER_32_">telemetry_receiver[1].TELEMETRY_COUNTER[32]</h3>
+<span id="telemetry_receiver_1_.TELEMETRY_COUNTER_32_"></span><h3 id="telemetry_receiver_wrap-telemetry_receiver_1_.TELEMETRY_COUNTER_32_" data-register-alias="telemetry_receiver_1_.TELEMETRY_COUNTER_32_">telemetry_receiver[1].TELEMETRY_COUNTER[32]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>COUNTER</td><td>R</td><td>0x0</td><td>Counter Value. Contains one of the 32 counter values in the telemetry message<br>at the bottom of the Telemetry Message Buffer.</td></tr>
 </table>
-<h3 id="telemetry_receiver_2_.CTRL">telemetry_receiver[2].CTRL</h3>
+<span id="telemetry_receiver_2_.CTRL"></span><h3 id="telemetry_receiver_wrap-telemetry_receiver_2_.CTRL" data-register-alias="telemetry_receiver_2_.CTRL">telemetry_receiver[2].CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -897,7 +918,7 @@ with the system clock domain.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUFFER_POP</td><td>W 1P</td><td>0x0</td><td>Telemetry Message Buffer Pop. Effective only if `STATUS.BUFFER_EMPTY = 0`.<br>Writing `1` pops the buffer and thus updates the data in the<br>`TELEMETRY_PROBE_ID`, `TELEMETRY_COUNTER_VLDS`, and `TELEMETRY_COUNTER[32]`<br>registers.</td></tr>
 </table>
-<h3 id="telemetry_receiver_2_.STATUS">telemetry_receiver[2].STATUS</h3>
+<span id="telemetry_receiver_2_.STATUS"></span><h3 id="telemetry_receiver_wrap-telemetry_receiver_2_.STATUS" data-register-alias="telemetry_receiver_2_.STATUS">telemetry_receiver[2].STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -905,7 +926,7 @@ with the system clock domain.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUFFER_EMPTY</td><td>R</td><td>0x1</td><td>Telemetry Message Buffer Empty.</td></tr>
 </table>
-<h3 id="telemetry_receiver_2_.INTR_STATUS">telemetry_receiver[2].INTR_STATUS</h3>
+<span id="telemetry_receiver_2_.INTR_STATUS"></span><h3 id="telemetry_receiver_wrap-telemetry_receiver_2_.INTR_STATUS" data-register-alias="telemetry_receiver_2_.INTR_STATUS">telemetry_receiver[2].INTR_STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -913,7 +934,7 @@ with the system clock domain.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>MISSING_LAST</td><td>RW1C</td><td>0x0</td><td>Last Packet Missing Interrupt. Asserted when the Telemetry Receiver has not<br>received a Last Packet flag when the maximum number of packets a message can<br>consist of has been received.</td></tr>
 </table>
-<h3 id="telemetry_receiver_2_.INTR_ENABLE">telemetry_receiver[2].INTR_ENABLE</h3>
+<span id="telemetry_receiver_2_.INTR_ENABLE"></span><h3 id="telemetry_receiver_wrap-telemetry_receiver_2_.INTR_ENABLE" data-register-alias="telemetry_receiver_2_.INTR_ENABLE">telemetry_receiver[2].INTR_ENABLE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -921,7 +942,7 @@ with the system clock domain.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>MISSING_LAST</td><td>RW</td><td>0x0</td><td>Last Packet Missing Interrupt Enable.</td></tr>
 </table>
-<h3 id="telemetry_receiver_2_.INTR_TEST">telemetry_receiver[2].INTR_TEST</h3>
+<span id="telemetry_receiver_2_.INTR_TEST"></span><h3 id="telemetry_receiver_wrap-telemetry_receiver_2_.INTR_TEST" data-register-alias="telemetry_receiver_2_.INTR_TEST">telemetry_receiver[2].INTR_TEST</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -929,18 +950,18 @@ with the system clock domain.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>MISSING_LAST</td><td>W 1P</td><td>0x0</td><td>Last Packet Missing Interrupt Test. Writing `1` forces the interrupt.</td></tr>
 </table>
-<h3 id="telemetry_receiver_2_.TELEMETRY_PROBE_ID">telemetry_receiver[2].TELEMETRY_PROBE_ID</h3>
+<span id="telemetry_receiver_2_.TELEMETRY_PROBE_ID"></span><h3 id="telemetry_receiver_wrap-telemetry_receiver_2_.TELEMETRY_PROBE_ID" data-register-alias="telemetry_receiver_2_.TELEMETRY_PROBE_ID">telemetry_receiver[2].TELEMETRY_PROBE_ID</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>4:0</td><td>PROBE_ID</td><td>R</td><td>0x0</td><td>Probe ID. Contains the Probe ID field of the telemetry message at the bottom of<br>the Telemetry Message Buffer.</td></tr>
 </table>
-<h3 id="telemetry_receiver_2_.TELEMETRY_COUNTER_VLDS">telemetry_receiver[2].TELEMETRY_COUNTER_VLDS</h3>
+<span id="telemetry_receiver_2_.TELEMETRY_COUNTER_VLDS"></span><h3 id="telemetry_receiver_wrap-telemetry_receiver_2_.TELEMETRY_COUNTER_VLDS" data-register-alias="telemetry_receiver_2_.TELEMETRY_COUNTER_VLDS">telemetry_receiver[2].TELEMETRY_COUNTER_VLDS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>COUNTER_VLDS</td><td>R</td><td>0x0</td><td>Counter Valid Bits. Indicates which of the counter values in the telemetry<br>message at the bottom of the Telemetry Message Buffer are valid. Bit `i` is for<br>the `i`-th counter.</td></tr>
 </table>
-<h3 id="telemetry_receiver_2_.TELEMETRY_COUNTER_32_">telemetry_receiver[2].TELEMETRY_COUNTER[32]</h3>
+<span id="telemetry_receiver_2_.TELEMETRY_COUNTER_32_"></span><h3 id="telemetry_receiver_wrap-telemetry_receiver_2_.TELEMETRY_COUNTER_32_" data-register-alias="telemetry_receiver_2_.TELEMETRY_COUNTER_32_">telemetry_receiver[2].TELEMETRY_COUNTER[32]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>COUNTER</td><td>R</td><td>0x0</td><td>Counter Value. Contains one of the 32 counter values in the telemetry message<br>at the bottom of the Telemetry Message Buffer.</td></tr>

@@ -3,10 +3,9 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Fuse Controller and Lifecycle Controller :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
-    <link rel="prev" href="../ip/key_manager/doc/index.html">
-    <link rel="next" href="otp_fuse_controller.html">
-    <meta name="description" content="SEP OTP, lifecycle and security control, SPI, watchdog, and reset-control peripherals.">
+    <title>Peripherals :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <link rel="prev" href="interrupts.html">
+    <link rel="next" href="dma.html">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../_/css/site.css">
     <link rel="stylesheet" href="../../../_/css/extra.css">
@@ -138,44 +137,92 @@
     <a class="nav-link" href="index.html">Security Processor (SEP)</a>
 <ul class="nav-list">
   <li class="nav-item" data-depth="4">
-    <button class="nav-item-toggle"></button>
-    <a class="nav-link" href="introduction.html">Introduction</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
     <a class="nav-link" href="threat_model.html">Threat Model</a>
   </li>
-  <li class="nav-item" data-depth="5">
+  <li class="nav-item" data-depth="4">
     <a class="nav-link" href="attack_countermeasures.html">Attack Countermeasures</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="clk_rst.html">Clocks and Resets</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="reset_controller.html">SEP Reset Controller</a>
   </li>
 </ul>
   </li>
   <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="overview.html">Hardware Overview</a>
+    <a class="nav-link" href="cpu.html">CPU</a>
   </li>
   <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="fabric.html">SEP Interconnect</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="cpu.html">CPU Subsystem</a>
-  </li>
-  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="rom.html">Boot ROM</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep-bootrom-prod/index.html">Production ROM Manual</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="fabric.html">Interconnect</a>
   </li>
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="interrupts.html">Interrupts</a>
+  </li>
+  <li class="nav-item is-current-page" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="periphs.html">Peripherals</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="dma.html">Direct Memory Access (DMA)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="mailbox.html">Mailboxes</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="peripheral_subsystem.html">Peripheral Subsystem</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="spi.html">Serial Peripheral Interface (SPI)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="watchdog.html">Watchdog Timer (WDT)</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="security.html">Security and Lifecycle</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="otp_fuse_controller.html">OTP Fuse Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="token_processing.html">Token Processing</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="security_disable.html">Security Disable</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="lifecycle_controller.html">Lifecycle Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="test_mode.html">Test Mode Entry</a>
+  </li>
+</ul>
   </li>
   <li class="nav-item" data-depth="4">
     <button class="nav-item-toggle"></button>
     <a class="nav-link" href="crypto.html">Cryptographic Subsystem</a>
 <ul class="nav-list">
   <li class="nav-item" data-depth="5">
-    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="trng.html">TRNG and DRBG</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="6">
-    <a class="nav-link" href="../ip/entropy_source/doc/index.html">Entropy Source</a>
   </li>
-</ul>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/entropy_source/doc/index.html">Entropy Source</a>
   </li>
   <li class="nav-item" data-depth="5">
     <a class="nav-link" href="aes.html">AES Cipher</a>
@@ -206,41 +253,8 @@
   </li>
 </ul>
   </li>
-  <li class="nav-item is-current-page" data-depth="4">
-    <button class="nav-item-toggle"></button>
-    <a class="nav-link" href="periphs.html">Fuse Controller and Lifecycle Controller</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="otp_fuse_controller.html">OTP Fuse Controller</a>
-  </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="peripheral_subsystem.html">Peripheral Subsystem</a>
-  </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="spi.html">Serial Peripheral Interface (SPI)</a>
-  </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="watchdog.html">Watchdog Timer (WDT)</a>
-  </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="reset_controller.html">SEP Reset Controller</a>
-  </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="token_processing.html">Token Processing</a>
-  </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="security_disable.html">Security Disable</a>
-  </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="lifecycle_controller.html">Life Cycle Controller</a>
-  </li>
-</ul>
-  </li>
   <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="test_mode.html">Test Mode Entry</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="memory_map.html">Memory Map and Registers</a>
+    <a class="nav-link" href="memory_map.html">Memory Map and Register Reference</a>
   </li>
 </ul>
   </li>
@@ -252,14 +266,41 @@
     <a class="nav-link" href="../smc/overview.html">Overview</a>
   </li>
   <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../smc/clk_rst.html">Clock and Reset Management</a>
+    <a class="nav-link" href="../smc/clk_rst.html">Clocks and Resets</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/cpu.html">CPU</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../smc/rom.html">Boot ROM</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../smc-bootrom-prod/index.html">Production ROM Manual</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/fabric.html">Interconnect</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/interrupts.html">Interrupts</a>
   </li>
   <li class="nav-item" data-depth="4">
     <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../smc/periphs.html">Peripherals</a>
 <ul class="nav-list">
   <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../ip/axi_lite_mailbox_unit/doc/index.html">Mailbox</a>
+    <a class="nav-link" href="../smc/dma.html">Direct Memory Access Engine</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../smc/zeroer.html">Zeroer</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../smc/watchdog.html">Watchdog Timer (WDT)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/axi_lite_mailbox_unit/doc/index.html">Mailboxes</a>
   </li>
   <li class="nav-item" data-depth="5">
     <a class="nav-link" href="../ip/system_timer_octs/doc/index.html">System Timer OCTS</a>
@@ -291,31 +332,13 @@
 </ul>
   </li>
   <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../smc/cpu.html">CPU and Memory System</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../smc/interrupts.html">Interrupts</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../smc/rom.html">Boot ROM</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../smc/fabric.html">Fabric</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../smc/dma.html">Direct Memory Access Engine</a>
-  </li>
-  <li class="nav-item" data-depth="4">
     <a class="nav-link" href="../smc/dfd.html">Design-for-Debug and CLA</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../smc/zeroer.html">Zeroer</a>
   </li>
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="../smc/scan_protection.html">eFuse Scan Protection</a>
   </li>
   <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../smc/memmap.html">Memory Map</a>
+    <a class="nav-link" href="../smc/memmap.html">Memory Map and Register Reference</a>
   </li>
 </ul>
   </li>
@@ -324,37 +347,58 @@
     <a class="nav-link" href="../dtp/index.html">Debug &amp; Test Ports (DTP)</a>
 <ul class="nav-list">
   <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../dtp/overview.html">Architecture and Access Paths</a>
+    <a class="nav-link" href="../dtp/overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../dtp/clk_rst.html">Clocks and Resets</a>
   </li>
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="../dtp/jtag.html">JTAG Operation</a>
   </li>
   <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../ip/jtag_intf_unit/doc/index.html">JTAG Interface Unit</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../ip/jtag_ptap/doc/index.html">JTAG PTAP</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../ip/jtag_stap/doc/index.html">JTAG STAP</a>
+    <a class="nav-link" href="../dtp/cross_trigger.html">Cross-Trigger Operation</a>
   </li>
   <li class="nav-item" data-depth="4">
     <button class="nav-item-toggle"></button>
-    <a class="nav-link" href="../ip/cross_trigger_network/doc/index.html">Cross-Trigger Network</a>
+    <a class="nav-link" href="../dtp/ip_reference.html">IP Reference</a>
 <ul class="nav-list">
   <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">JTAG</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/jtag_intf_unit/doc/index.html">JTAG Interface Unit</a>
+  </li>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/jtag_ptap/doc/index.html">JTAG PTAP</a>
+  </li>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/jtag_stap/doc/index.html">JTAG STAP</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Cross-Trigger</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../ip/cross_trigger_network/doc/index.html">Cross-Trigger Network</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="7">
     <a class="nav-link" href="../ip/cross_trigger_network/doc/index.html#ctn-programming">Programming</a>
   </li>
 </ul>
   </li>
-  <li class="nav-item" data-depth="4">
+  <li class="nav-item" data-depth="6">
     <a class="nav-link" href="../ip/cross_trigger_port/doc/index.html">Cross-Trigger Port</a>
   </li>
-  <li class="nav-item" data-depth="4">
+  <li class="nav-item" data-depth="6">
     <a class="nav-link" href="../ip/cross_trigger_matrix/doc/index.html">Cross-Trigger Matrix</a>
   </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../dtp/clock_stop.html">Clock Stop / Reset</a>
+</ul>
+  </li>
+</ul>
   </li>
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="../dtp/reference.html">Configuration and Reference</a>
@@ -364,7 +408,7 @@
 </ul>
   </li>
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../smn.placeholder.html">System Management Network (SMN)</a>
+    <a class="nav-link" href="../smn.html">System Management Network (SMN)</a>
   </li>
   <li class="nav-item" data-depth="2">
     <button class="nav-item-toggle"></button>
@@ -630,7 +674,7 @@
     <li>OCAH Platform Components</li>
     <li><a href="../smu/index.html">System Management Unit (SMU)</a></li>
     <li><a href="index.html">Security Processor (SEP)</a></li>
-    <li><a href="periphs.html">Fuse Controller and Lifecycle Controller</a></li>
+    <li><a href="periphs.html">Peripherals</a></li>
   </ul>
 </nav>
 </div>
@@ -639,69 +683,49 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<h1 class="page">Fuse Controller and Lifecycle Controller</h1>
-<div class="paragraph">
-<p>The SEP integrates an OTP fuse controller, a peripheral subsystem, a SPI host,
-a watchdog timer, and software-controlled reset domains.</p>
+<h1 class="page">Peripherals</h1>
+<div id="sep-peripherals" class="paragraph">
+<p>SEP peripherals provide data movement, mailboxes, external I/O and watchdog services.
+Reset control is described in Clocks and Resets; OTP and lifecycle controls
+are described in Security and Lifecycle.</p>
 </div>
-<span id="fuse-controller-otp-fuse-controller-otp"></span>
-<span id="fuse-fields"></span>
-<span id="anti-rollback-counter-arbc-anti-rollback-counter-arbc"></span>
-<span id="rtl-integration"></span>
 <div class="ulist">
 <ul>
 <li>
-<p><a href="otp_fuse_controller.html" class="xref page">OTP Fuse Controller</a></p>
+<p><a href="dma.html" class="xref page">Direct Memory Access (DMA)</a></p>
 </li>
-</ul>
-</div>
-<span id="peripheral-subsystem"></span>
-<div class="ulist">
-<ul>
+<li>
+<p><a href="mailbox.html" class="xref page">Mailboxes</a></p>
+</li>
 <li>
 <p><a href="peripheral_subsystem.html" class="xref page">Peripheral Subsystem</a></p>
 </li>
-</ul>
-</div>
-<span id="serial-peripheral-interface-spi-serial-peripheral-interface-spi"></span>
-<span id="spi-use-cases"></span>
-<span id="features"></span>
-<div class="ulist">
-<ul>
 <li>
 <p><a href="spi.html" class="xref page">Serial Peripheral Interface (SPI)</a></p>
 </li>
-</ul>
-</div>
-<span id="watchdog-timer-wdt-watchdog-timer-wdt"></span>
-<div class="ulist">
-<ul>
 <li>
 <p><a href="watchdog.html" class="xref page">Watchdog Timer (WDT)</a></p>
 </li>
 </ul>
 </div>
+<span id="fuse-controller-otp-fuse-controller-otp"></span>
+<span id="fuse-fields"></span>
+<span id="anti-rollback-counter-arbc-anti-rollback-counter-arbc"></span>
+<span id="rtl-integration"></span>
+<span id="peripheral-subsystem"></span>
+<span id="serial-peripheral-interface-spi-serial-peripheral-interface-spi"></span>
+<span id="spi-use-cases"></span>
+<span id="features"></span>
+<span id="watchdog-timer-wdt-watchdog-timer-wdt"></span>
 <span id="sep-reset-controller"></span>
 <span id="sep-trng-reset"></span>
-<div class="ulist">
-<ul>
-<li>
-<p><a href="reset_controller.html" class="xref page">SEP Reset Controller</a></p>
-</li>
-<li>
-<p><a href="token_processing.html" class="xref page">Token Processing</a></p>
-</li>
-<li>
-<p><a href="security_disable.html" class="xref page">Security Disable</a></p>
-</li>
-<li>
-<p><a href="lifecycle_controller.html" class="xref page">Life Cycle Controller</a></p>
-</li>
-</ul>
+<div class="paragraph">
+<p>For related controls, see <a href="security.html" class="xref page">Security and Lifecycle</a> and
+<a href="clk_rst.html" class="xref page">Clocks and Resets</a>.</p>
 </div>
 <nav class="pagination">
-  <span class="prev"><a href="../ip/key_manager/doc/index.html">Key Manager</a></span>
-  <span class="next"><a href="otp_fuse_controller.html">OTP Fuse Controller</a></span>
+  <span class="prev"><a href="interrupts.html">Interrupts</a></span>
+  <span class="next"><a href="dma.html">Direct Memory Access (DMA)</a></span>
 </nav>
 </article>
   </div>

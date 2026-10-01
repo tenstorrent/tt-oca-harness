@@ -3,9 +3,9 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Fabric :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
-    <link rel="prev" href="rom.html">
-    <link rel="next" href="dma.html">
+    <title>Interconnect :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <link rel="prev" href="../smc-bootrom-prod/index.html">
+    <link rel="next" href="interrupts.html">
     <meta name="description" content="SMC networks, address remapping, traffic filtering, protection, and routing.">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../_/css/site.css">
@@ -138,44 +138,92 @@
     <a class="nav-link" href="../sep/index.html">Security Processor (SEP)</a>
 <ul class="nav-list">
   <li class="nav-item" data-depth="4">
-    <button class="nav-item-toggle"></button>
-    <a class="nav-link" href="../sep/introduction.html">Introduction</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
     <a class="nav-link" href="../sep/threat_model.html">Threat Model</a>
   </li>
-  <li class="nav-item" data-depth="5">
+  <li class="nav-item" data-depth="4">
     <a class="nav-link" href="../sep/attack_countermeasures.html">Attack Countermeasures</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../sep/clk_rst.html">Clocks and Resets</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/reset_controller.html">SEP Reset Controller</a>
   </li>
 </ul>
   </li>
   <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../sep/overview.html">Hardware Overview</a>
+    <a class="nav-link" href="../sep/cpu.html">CPU</a>
   </li>
   <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../sep/fabric.html">SEP Interconnect</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../sep/cpu.html">CPU Subsystem</a>
-  </li>
-  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../sep/rom.html">Boot ROM</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep-bootrom-prod/index.html">Production ROM Manual</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../sep/fabric.html">Interconnect</a>
   </li>
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="../sep/interrupts.html">Interrupts</a>
   </li>
   <li class="nav-item" data-depth="4">
     <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../sep/periphs.html">Peripherals</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/dma.html">Direct Memory Access (DMA)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/mailbox.html">Mailboxes</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/peripheral_subsystem.html">Peripheral Subsystem</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/spi.html">Serial Peripheral Interface (SPI)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/watchdog.html">Watchdog Timer (WDT)</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../sep/security.html">Security and Lifecycle</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/otp_fuse_controller.html">OTP Fuse Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/token_processing.html">Token Processing</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/security_disable.html">Security Disable</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/lifecycle_controller.html">Lifecycle Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/test_mode.html">Test Mode Entry</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../sep/crypto.html">Cryptographic Subsystem</a>
 <ul class="nav-list">
   <li class="nav-item" data-depth="5">
-    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../sep/trng.html">TRNG and DRBG</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="6">
-    <a class="nav-link" href="../ip/entropy_source/doc/index.html">Entropy Source</a>
   </li>
-</ul>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/entropy_source/doc/index.html">Entropy Source</a>
   </li>
   <li class="nav-item" data-depth="5">
     <a class="nav-link" href="../sep/aes.html">AES Cipher</a>
@@ -207,40 +255,7 @@
 </ul>
   </li>
   <li class="nav-item" data-depth="4">
-    <button class="nav-item-toggle"></button>
-    <a class="nav-link" href="../sep/periphs.html">Fuse Controller and Lifecycle Controller</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../sep/otp_fuse_controller.html">OTP Fuse Controller</a>
-  </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../sep/peripheral_subsystem.html">Peripheral Subsystem</a>
-  </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../sep/spi.html">Serial Peripheral Interface (SPI)</a>
-  </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../sep/watchdog.html">Watchdog Timer (WDT)</a>
-  </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../sep/reset_controller.html">SEP Reset Controller</a>
-  </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../sep/token_processing.html">Token Processing</a>
-  </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../sep/security_disable.html">Security Disable</a>
-  </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../sep/lifecycle_controller.html">Life Cycle Controller</a>
-  </li>
-</ul>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../sep/test_mode.html">Test Mode Entry</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../sep/memory_map.html">Memory Map and Registers</a>
+    <a class="nav-link" href="../sep/memory_map.html">Memory Map and Register Reference</a>
   </li>
 </ul>
   </li>
@@ -252,14 +267,41 @@
     <a class="nav-link" href="overview.html">Overview</a>
   </li>
   <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="clk_rst.html">Clock and Reset Management</a>
+    <a class="nav-link" href="clk_rst.html">Clocks and Resets</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="cpu.html">CPU</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="rom.html">Boot ROM</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../smc-bootrom-prod/index.html">Production ROM Manual</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-current-page" data-depth="4">
+    <a class="nav-link" href="fabric.html">Interconnect</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="interrupts.html">Interrupts</a>
   </li>
   <li class="nav-item" data-depth="4">
     <button class="nav-item-toggle"></button>
     <a class="nav-link" href="periphs.html">Peripherals</a>
 <ul class="nav-list">
   <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../ip/axi_lite_mailbox_unit/doc/index.html">Mailbox</a>
+    <a class="nav-link" href="dma.html">Direct Memory Access Engine</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="zeroer.html">Zeroer</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="watchdog.html">Watchdog Timer (WDT)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/axi_lite_mailbox_unit/doc/index.html">Mailboxes</a>
   </li>
   <li class="nav-item" data-depth="5">
     <a class="nav-link" href="../ip/system_timer_octs/doc/index.html">System Timer OCTS</a>
@@ -291,31 +333,13 @@
 </ul>
   </li>
   <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="cpu.html">CPU and Memory System</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="interrupts.html">Interrupts</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="rom.html">Boot ROM</a>
-  </li>
-  <li class="nav-item is-current-page" data-depth="4">
-    <a class="nav-link" href="fabric.html">Fabric</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="dma.html">Direct Memory Access Engine</a>
-  </li>
-  <li class="nav-item" data-depth="4">
     <a class="nav-link" href="dfd.html">Design-for-Debug and CLA</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="zeroer.html">Zeroer</a>
   </li>
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="scan_protection.html">eFuse Scan Protection</a>
   </li>
   <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="memmap.html">Memory Map</a>
+    <a class="nav-link" href="memmap.html">Memory Map and Register Reference</a>
   </li>
 </ul>
   </li>
@@ -324,37 +348,58 @@
     <a class="nav-link" href="../dtp/index.html">Debug &amp; Test Ports (DTP)</a>
 <ul class="nav-list">
   <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../dtp/overview.html">Architecture and Access Paths</a>
+    <a class="nav-link" href="../dtp/overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../dtp/clk_rst.html">Clocks and Resets</a>
   </li>
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="../dtp/jtag.html">JTAG Operation</a>
   </li>
   <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../ip/jtag_intf_unit/doc/index.html">JTAG Interface Unit</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../ip/jtag_ptap/doc/index.html">JTAG PTAP</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../ip/jtag_stap/doc/index.html">JTAG STAP</a>
+    <a class="nav-link" href="../dtp/cross_trigger.html">Cross-Trigger Operation</a>
   </li>
   <li class="nav-item" data-depth="4">
     <button class="nav-item-toggle"></button>
-    <a class="nav-link" href="../ip/cross_trigger_network/doc/index.html">Cross-Trigger Network</a>
+    <a class="nav-link" href="../dtp/ip_reference.html">IP Reference</a>
 <ul class="nav-list">
   <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">JTAG</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/jtag_intf_unit/doc/index.html">JTAG Interface Unit</a>
+  </li>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/jtag_ptap/doc/index.html">JTAG PTAP</a>
+  </li>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/jtag_stap/doc/index.html">JTAG STAP</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Cross-Trigger</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../ip/cross_trigger_network/doc/index.html">Cross-Trigger Network</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="7">
     <a class="nav-link" href="../ip/cross_trigger_network/doc/index.html#ctn-programming">Programming</a>
   </li>
 </ul>
   </li>
-  <li class="nav-item" data-depth="4">
+  <li class="nav-item" data-depth="6">
     <a class="nav-link" href="../ip/cross_trigger_port/doc/index.html">Cross-Trigger Port</a>
   </li>
-  <li class="nav-item" data-depth="4">
+  <li class="nav-item" data-depth="6">
     <a class="nav-link" href="../ip/cross_trigger_matrix/doc/index.html">Cross-Trigger Matrix</a>
   </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../dtp/clock_stop.html">Clock Stop / Reset</a>
+</ul>
+  </li>
+</ul>
   </li>
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="../dtp/reference.html">Configuration and Reference</a>
@@ -364,7 +409,7 @@
 </ul>
   </li>
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../smn.placeholder.html">System Management Network (SMN)</a>
+    <a class="nav-link" href="../smn.html">System Management Network (SMN)</a>
   </li>
   <li class="nav-item" data-depth="2">
     <button class="nav-item-toggle"></button>
@@ -630,7 +675,7 @@
     <li>OCAH Platform Components</li>
     <li><a href="../smu/index.html">System Management Unit (SMU)</a></li>
     <li><a href="index.html">System Management Controller (SMC)</a></li>
-    <li><a href="fabric.html">Fabric</a></li>
+    <li><a href="fabric.html">Interconnect</a></li>
   </ul>
 </nav>
 </div>
@@ -639,7 +684,7 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<h1 class="page">Fabric</h1>
+<h1 class="page">Interconnect</h1>
 <div id="preamble">
 <div class="sectionbody">
 <div id="fabric" class="paragraph">
@@ -649,8 +694,10 @@ management, traffic filtering, and security enforcement mechanisms.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="smc-fabric-topology"><a class="anchor" href="#smc-fabric-topology"></a><a class="link" href="#smc-fabric-topology">1. Fabric Topology</a></h2>
+<h2 id="topology"><a class="anchor" href="#topology"></a><a class="link" href="#topology">1. Topology</a></h2>
 <div class="sectionbody">
+<div class="sect2">
+<h3 id="smc-fabric-topology"><a class="anchor" href="#smc-fabric-topology"></a><a class="link" href="#smc-fabric-topology">1.1. Fabric Topology</a></h3>
 <div class="paragraph">
 <p>The input fabric merges the SMC&#8217;s own initiators, filters the system AXI input
 and splits traffic between the SMC window and the rest of the system. The local
@@ -736,12 +783,10 @@ stage is present, and setting it leaves only an ID converter from 6 to 8 bits,
 without the source ID override. The outbound traffic filter passes traffic that
 matches no entry.</p>
 </div>
-<p class="block-references">Figures and tables: <a href="#smc-input-fabric-diagram">Figure 1</a>; <a href="#smc-local-fabric-diagram">Figure 2</a>; <a href="#smc-output-fabric-diagram">Figure 3</a>.</p>
+<span id="configuration-parameters"></span>
 </div>
-</div>
-<div class="sect1">
-<h2 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">2. Configuration Parameters</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="smc-fabric-configuration-parameters"><a class="anchor" href="#smc-fabric-configuration-parameters"></a><a class="link" href="#smc-fabric-configuration-parameters">1.2. Configuration Parameters</a></h3>
 <div class="paragraph">
 <p>The fabric modules take parameters for the number of inbound and outbound
 filter entries, filter pipelining, the outstanding-transaction limit of the
@@ -816,12 +861,10 @@ AXI4-Lite crossbar can have in flight</p></td>
 the outstanding high-performance traffic, while the AXI4-Lite limits bound
 outstanding transactions to peripherals and configuration registers.</p>
 </div>
-<p class="block-references">Figures and tables: <a href="#smc-fabric-configuration-parameters-table">Table 1</a>.</p>
+<span id="dual-network-architecture"></span>
 </div>
-</div>
-<div class="sect1">
-<h2 id="dual-network-architecture"><a class="anchor" href="#dual-network-architecture"></a><a class="link" href="#dual-network-architecture">3. Dual-Network Architecture</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="smc-fabric-dual-network-architecture"><a class="anchor" href="#smc-fabric-dual-network-architecture"></a><a class="link" href="#smc-fabric-dual-network-architecture">1.3. Dual-Network Architecture</a></h3>
 <div class="paragraph">
 <p>The SMC fabric implements two separate networks optimized for different
 traffic types (<a href="#smc-network-characteristics-table">Table 2</a>).</p>
@@ -861,12 +904,15 @@ traffic types (<a href="#smc-network-characteristics-table">Table 2</a>).</p>
 <p>Both networks use 64-bit data bus width for consistent data handling.
 The CPU cluster connects to the fabric through AXI4 (high-bandwidth data path) and AXI4-Lite (MMIO) interfaces; internally, the cluster uses a TileLink bus that is protocol-bridged at the cluster boundary.</p>
 </div>
-<p class="block-references">Figures and tables: <a href="#smc-network-characteristics-table">Table 2</a>.</p>
+</div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="axi-interface-widths"><a class="anchor" href="#axi-interface-widths"></a><a class="link" href="#axi-interface-widths">4. AXI Interface Widths</a></h2>
+<h2 id="interfaces"><a class="anchor" href="#interfaces"></a><a class="link" href="#interfaces">2. Interfaces</a></h2>
 <div class="sectionbody">
+<span id="axi-interface-widths"></span>
+<div class="sect2">
+<h3 id="smc-fabric-axi-interface-widths"><a class="anchor" href="#smc-fabric-axi-interface-widths"></a><a class="link" href="#smc-fabric-axi-interface-widths">2.1. AXI Interface Widths</a></h3>
 <div class="paragraph">
 <p><a href="#fabric-axi-widths">Table 3</a> lists the common AXI signal widths shared across all AXI4 fabric interfaces.</p>
 </div>
@@ -976,19 +1022,18 @@ The CPU cluster connects to the fabric through AXI4 (high-bandwidth data path) a
 <div class="paragraph">
 <p>Some internal paths also use a 32-bit data width for AXI4-Lite peripheral access, with corresponding STRB_WIDTH of 4 bits.</p>
 </div>
-<p class="block-references">Figures and tables: <a href="#fabric-axi-widths">Table 3</a>; <a href="#fabric-axi-id-widths">Table 4</a>.</p>
+<span id="traffic-managers-and-subordinates"></span>
 </div>
-</div>
-<div class="sect1">
-<h2 id="traffic-managers-and-subordinates"><a class="anchor" href="#traffic-managers-and-subordinates"></a><a class="link" href="#traffic-managers-and-subordinates">5. Traffic Managers and Subordinates</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="smc-fabric-traffic-managers-and-subordinates"><a class="anchor" href="#smc-fabric-traffic-managers-and-subordinates"></a><a class="link" href="#smc-fabric-traffic-managers-and-subordinates">2.2. Traffic Managers and Subordinates</a></h3>
 <div class="paragraph">
 <p>The SMC fabric supports multiple traffic sources (managers) and
 destinations (subordinates), providing flexible routing with security
 enforcement.</p>
 </div>
-<div class="sect2">
-<h3 id="traffic-managers"><a class="anchor" href="#traffic-managers"></a><a class="link" href="#traffic-managers">5.1. Traffic Managers</a></h3>
+<span id="traffic-managers"></span>
+<div class="sect3">
+<h4 id="smc-fabric-traffic-managers"><a class="anchor" href="#smc-fabric-traffic-managers"></a><a class="link" href="#smc-fabric-traffic-managers">2.2.1. Traffic Managers</a></h4>
 <div class="paragraph">
 <p>Traffic managers initiate transactions on the fabric, accessing both
 local and remote resources through the dual-network architecture.</p>
@@ -1056,10 +1101,10 @@ for cache-coherent high-bandwidth operations.</p>
 through alias remap logic before reaching their destination, enabling
 flexible address management between local and global address spaces.</p>
 </div>
-<p class="block-references">Figures and tables: <a href="#smc-fabric-traffic-managers-table">Table 5</a>.</p>
+<span id="traffic-subordinates"></span>
 </div>
-<div class="sect2">
-<h3 id="traffic-subordinates"><a class="anchor" href="#traffic-subordinates"></a><a class="link" href="#traffic-subordinates">5.2. Traffic Subordinates</a></h3>
+<div class="sect3">
+<h4 id="smc-fabric-traffic-subordinates"><a class="anchor" href="#smc-fabric-traffic-subordinates"></a><a class="link" href="#smc-fabric-traffic-subordinates">2.2.2. Traffic Subordinates</a></h4>
 <div class="paragraph">
 <p>Traffic subordinates respond to transactions initiated by the managers,
 organized by network type and function.</p>
@@ -1154,23 +1199,22 @@ AXI4 network for maximum bandwidth and minimal latency, while
 low-performance subordinates (peripherals, configuration registers) use
 the AXI4-Lite network for reliable, deterministic access.</p>
 </div>
-<p class="block-references">Figures and tables: <a href="#smc-fabric-traffic-subordinates-table">Table 6</a>.</p>
+<span id="address-remapping"></span>
+</div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="address-remapping"><a class="anchor" href="#address-remapping"></a><a class="link" href="#address-remapping">6. Address Remapping</a></h2>
+<h2 id="smc-fabric-address-remapping"><a class="anchor" href="#smc-fabric-address-remapping"></a><a class="link" href="#smc-fabric-address-remapping">3. Address Remapping</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>The SMC fabric implements two complementary address remapping mechanisms:
 alias remapping in the input fabric and privilege-controlled remapping in the
 output fabric.</p>
 </div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="alias-remapping"><a class="anchor" href="#alias-remapping"></a><a class="link" href="#alias-remapping">7. Alias Remapping</a></h2>
-<div class="sectionbody">
+<span id="alias-remapping"></span>
+<div class="sect2">
+<h3 id="smc-fabric-alias-remapping"><a class="anchor" href="#smc-fabric-alias-remapping"></a><a class="link" href="#smc-fabric-alias-remapping">3.1. Alias Remapping</a></h3>
 <div class="paragraph">
 <p>Alias remapping translates local SMC addresses to global system addresses,
 decoupling software-visible addresses from physical assignments. This simplifies
@@ -1203,11 +1247,10 @@ performance</p>
 local alias base address (0xC000_0000) for local resources until programmed by
 firmware.</p>
 </div>
+<span id="privilege-controlled-remapping"></span>
 </div>
-</div>
-<div class="sect1">
-<h2 id="privilege-controlled-remapping"><a class="anchor" href="#privilege-controlled-remapping"></a><a class="link" href="#privilege-controlled-remapping">8. Privilege-Controlled Remapping</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="smc-fabric-privilege-controlled-remapping"><a class="anchor" href="#smc-fabric-privilege-controlled-remapping"></a><a class="link" href="#smc-fabric-privilege-controlled-remapping">3.2. Privilege-Controlled Remapping</a></h3>
 <div class="paragraph">
 <p>Privilege-controlled address remapping enables programmable translation of
 outbound SMC transactions for software running at different privilege levels.
@@ -1224,8 +1267,9 @@ privilege enforcement.</p>
 </div>
 </div>
 </div>
+</div>
 <div class="sect1">
-<h2 id="traffic-filtering"><a class="anchor" href="#traffic-filtering"></a><a class="link" href="#traffic-filtering">9. Traffic Filtering</a></h2>
+<h2 id="filtering-and-protection"><a class="anchor" href="#filtering-and-protection"></a><a class="link" href="#filtering-and-protection">4. Filtering and Protection</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>The filtering system (<code>filter_ctrl.rdl</code>) provides security control for
@@ -1248,11 +1292,9 @@ bus, and enable NS and source ID matching. They differ in how they treat
 traffic that matches no entry: the inbound filter blocks it, and the
 outbound filter permits it.</p>
 </div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="inbound-filtering"><a class="anchor" href="#inbound-filtering"></a><a class="link" href="#inbound-filtering">10. Inbound Filtering</a></h2>
-<div class="sectionbody">
+<span id="inbound-filtering"></span>
+<div class="sect2">
+<h3 id="smc-fabric-inbound-filtering"><a class="anchor" href="#smc-fabric-inbound-filtering"></a><a class="link" href="#smc-fabric-inbound-filtering">4.1. Inbound Filtering</a></h3>
 <div class="paragraph">
 <p><a href="#smc-traffic-filter-diagram">Figure 4</a> shows the decode that both filters implement.
 Their places in the fabric are in <a href="#smc-input-fabric-diagram">Figure 1</a> and
@@ -1314,12 +1356,10 @@ firmware to explicitly configure access policies during cold boot.</p>
 each configurable with its own address ranges, source ID matching, and
 protection attribute policies.</p>
 </div>
-<p class="block-references">Figures and tables: <a href="#smc-traffic-filter-diagram">Figure 4</a>.</p>
+<span id="outbound-filtering"></span>
 </div>
-</div>
-<div class="sect1">
-<h2 id="outbound-filtering"><a class="anchor" href="#outbound-filtering"></a><a class="link" href="#outbound-filtering">11. Outbound Filtering</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="smc-fabric-outbound-filtering"><a class="anchor" href="#smc-fabric-outbound-filtering"></a><a class="link" href="#smc-fabric-outbound-filtering">4.2. Outbound Filtering</a></h3>
 <div class="paragraph">
 <p>The outbound filter uses explicit matching entries to allow or block
 SMC-initiated requests. Unmatched requests pass because this instance uses
@@ -1336,18 +1376,18 @@ is subject to outbound filtering enforcement based on address, security
 attributes (NS), and source ID. The outbound filters use the same
 register structure as inbound filters.</p>
 </div>
+<span id="protection-requirements"></span>
 </div>
-</div>
-<div class="sect1">
-<h2 id="protection-requirements"><a class="anchor" href="#protection-requirements"></a><a class="link" href="#protection-requirements">12. Protection Requirements</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="smc-fabric-protection-requirements"><a class="anchor" href="#smc-fabric-protection-requirements"></a><a class="link" href="#smc-fabric-protection-requirements">4.3. Protection Requirements</a></h3>
 <div class="paragraph">
 <p>The SMC fabric implements two types of protection-based filtering
 mechanisms to enforce security policies based on AXI protection
 attributes:</p>
 </div>
-<div class="sect2">
-<h3 id="axi-protection-bit-encoding"><a class="anchor" href="#axi-protection-bit-encoding"></a><a class="link" href="#axi-protection-bit-encoding">12.1. AXI Protection Bit Encoding</a></h3>
+<span id="axi-protection-bit-encoding"></span>
+<div class="sect3">
+<h4 id="smc-fabric-axi-protection-bit-encoding"><a class="anchor" href="#smc-fabric-axi-protection-bit-encoding"></a><a class="link" href="#smc-fabric-axi-protection-bit-encoding">4.3.1. AXI Protection Bit Encoding</a></h4>
 <div class="paragraph">
 <p>AXI protection bits (<code>aw.prot</code> and <code>ar.prot</code>) are 3-bit fields that
 encode transaction security and privilege attributes (<a href="#smc-axi-protection-bit-encoding-table">Table 7</a>).</p>
@@ -1429,10 +1469,10 @@ encode transaction security and privilege attributes (<a href="#smc-axi-protecti
 </tr>
 </tbody>
 </table>
-<p class="block-references">Figures and tables: <a href="#smc-axi-protection-bit-encoding-table">Table 7</a>.</p>
+<span id="non-secure-bit-filtering-axi4-filters"></span>
 </div>
-<div class="sect2">
-<h3 id="non-secure-bit-filtering-axi4-filters"><a class="anchor" href="#non-secure-bit-filtering-axi4-filters"></a><a class="link" href="#non-secure-bit-filtering-axi4-filters">12.2. Non-Secure Bit Filtering (AXI4 Filters)</a></h3>
+<div class="sect3">
+<h4 id="smc-fabric-non-secure-bit-filtering-axi4-filters"><a class="anchor" href="#smc-fabric-non-secure-bit-filtering-axi4-filters"></a><a class="link" href="#smc-fabric-non-secure-bit-filtering-axi4-filters">4.3.2. Non-Secure Bit Filtering (AXI4 Filters)</a></h4>
 <div class="paragraph">
 <p>The primary protection filtering mechanism for AXI4 full interfaces
 examines the Non-Secure (NS) bit (<code>prot[1]</code>) to control secure vs.
@@ -1470,9 +1510,10 @@ filter&#8217;s <code>allow_ns</code> configuration. A matching deny entry routes
 a decode error. With no matching entry, the inbound instance blocks the
 transaction and the outbound instance passes it.</p>
 </div>
+<span id="full-3-bit-protection-matching-axi-lite"></span>
 </div>
-<div class="sect2">
-<h3 id="full-3-bit-protection-matching-axi-lite"><a class="anchor" href="#full-3-bit-protection-matching-axi-lite"></a><a class="link" href="#full-3-bit-protection-matching-axi-lite">12.3. Full 3-Bit Protection Matching (AXI-Lite)</a></h3>
+<div class="sect3">
+<h4 id="smc-fabric-full-3-bit-protection-matching-axi-lite"><a class="anchor" href="#smc-fabric-full-3-bit-protection-matching-axi-lite"></a><a class="link" href="#smc-fabric-full-3-bit-protection-matching-axi-lite">4.3.3. Full 3-Bit Protection Matching (AXI-Lite)</a></h4>
 <div class="paragraph">
 <p>For AXI4-Lite interfaces, the fabric supports exact matching on all
 three protection bits. This is implemented in the <code>prim_axil_prot_filter</code>
@@ -1506,9 +1547,10 @@ transactions</p>
 values are allowed through. All other transactions receive an error
 response.</p>
 </div>
+<span id="protection-bit-pass-through"></span>
 </div>
-<div class="sect2">
-<h3 id="protection-bit-pass-through"><a class="anchor" href="#protection-bit-pass-through"></a><a class="link" href="#protection-bit-pass-through">12.4. Protection Bit Pass-Through</a></h3>
+<div class="sect3">
+<h4 id="smc-fabric-protection-bit-pass-through"><a class="anchor" href="#smc-fabric-protection-bit-pass-through"></a><a class="link" href="#smc-fabric-protection-bit-pass-through">4.3.4. Protection Bit Pass-Through</a></h4>
 <div class="paragraph">
 <p>All protection bits are passed through the fabric without modification.
 The filters only block or allow transactions based on their protection
@@ -1516,9 +1558,10 @@ attributes; they do not alter the protection bits themselves. This ensures
 that downstream slaves receive the original protection attributes from
 the originating master.</p>
 </div>
+<span id="configuration-examples"></span>
 </div>
-<div class="sect2">
-<h3 id="configuration-examples"><a class="anchor" href="#configuration-examples"></a><a class="link" href="#configuration-examples">12.5. Configuration Examples</a></h3>
+<div class="sect3">
+<h4 id="smc-fabric-configuration-examples"><a class="anchor" href="#smc-fabric-configuration-examples"></a><a class="link" href="#smc-fabric-configuration-examples">4.3.5. Configuration Examples</a></h4>
 <div class="paragraph">
 <p><strong>Example 1: Secure-only inbound access to a peripheral</strong></p>
 </div>
@@ -1549,14 +1592,17 @@ the non-secure traffic to be blocked, accounting for entry priority.</p>
 Result: Only transactions with all three PROT bits equal to 0x1 are allowed</pre>
 </div>
 </div>
+<span id="traffic-routing-and-flow"></span>
+</div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="traffic-routing-and-flow"><a class="anchor" href="#traffic-routing-and-flow"></a><a class="link" href="#traffic-routing-and-flow">13. Traffic Routing and Flow</a></h2>
+<h2 id="smc-fabric-traffic-routing-and-flow"><a class="anchor" href="#smc-fabric-traffic-routing-and-flow"></a><a class="link" href="#smc-fabric-traffic-routing-and-flow">5. Routing</a></h2>
 <div class="sectionbody">
+<span id="local-and-remote-resource-access"></span>
 <div class="sect2">
-<h3 id="local-and-remote-resource-access"><a class="anchor" href="#local-and-remote-resource-access"></a><a class="link" href="#local-and-remote-resource-access">13.1. Local and Remote Resource Access</a></h3>
+<h3 id="smc-fabric-local-and-remote-resource-access"><a class="anchor" href="#smc-fabric-local-and-remote-resource-access"></a><a class="link" href="#smc-fabric-local-and-remote-resource-access">5.1. Local and Remote Resource Access</a></h3>
 <div class="paragraph">
 <p>The SMC fabric routing logic determines how transactions reach their
 intended destinations, supporting both local SMC resources and remote
@@ -1583,9 +1629,10 @@ for accesses that leave the local SMC view. Global address derivation
 requires the chiplet-global aperture base, which firmware reads from the
 <code>GLOBAL_BASE</code> CSR described above.</p>
 </div>
+<span id="outbound-traffic-flow"></span>
 </div>
 <div class="sect2">
-<h3 id="outbound-traffic-flow"><a class="anchor" href="#outbound-traffic-flow"></a><a class="link" href="#outbound-traffic-flow">13.2. Outbound Traffic Flow</a></h3>
+<h3 id="smc-fabric-outbound-traffic-flow"><a class="anchor" href="#smc-fabric-outbound-traffic-flow"></a><a class="link" href="#smc-fabric-outbound-traffic-flow">5.2. Outbound Traffic Flow</a></h3>
 <div class="paragraph">
 <p>SMC outbound traffic serves dual purposes: accessing shared system
 services and extending the SMC&#8217;s private domain across the system.</p>
@@ -1630,15 +1677,25 @@ configuration (<a href="#smc-source-id-by-traffic-path-table">Table 8</a>).</p>
 </tr>
 </tbody>
 </table>
-<p class="block-references">Figures and tables: <a href="#smc-source-id-by-traffic-path-table">Table 8</a>.</p>
+<span id="detailed-register-maps"></span>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="detailed-register-maps"><a class="anchor" href="#detailed-register-maps"></a><a class="link" href="#detailed-register-maps">14. Detailed Register Maps</a></h2>
+<h2 id="smc-fabric-detailed-register-maps"><a class="anchor" href="#smc-fabric-detailed-register-maps"></a><a class="link" href="#smc-fabric-detailed-register-maps">6. Memory Map and Register Reference</a></h2>
 <div class="sectionbody">
 <div class="sect2">
-<h3 id="alias-remap-registers"><a class="anchor" href="#alias-remap-registers"></a><a class="link" href="#alias-remap-registers">14.1. Alias Remap Registers</a></h3>
+<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">6.1. Memory Map</a></h3>
+<div class="paragraph">
+<p>Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">6.2. Detailed Register Map</a></h3>
+<span id="alias-remap-registers"></span>
+<div class="sect3">
+<h4 id="smc-fabric-alias-remap-registers"><a class="anchor" href="#smc-fabric-alias-remap-registers"></a><a class="link" href="#smc-fabric-alias-remap-registers">6.2.1. Alias Remap Registers</a></h4>
 <div class="paragraph">
 <p>The alias remap registers control local address aliasing and attribute
 mapping for SMC-initiated transactions. These registers configure how
@@ -1658,12 +1715,12 @@ local resources are accessed and which address translation is applied.</p>
 <table id="trm-table-9">
 <caption class="title"><a href="#trm-table-9">Table 9</a>. AXI Alias Remap Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0</td><td><a href="#region_start">region_start</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x8</td><td><a href="#region_end">region_end</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x10</td><td><a href="#region_attrs">region_attrs</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x0</td><td><a href="#alias_remap-region_start">region_start</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#alias_remap-region_end">region_end</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#alias_remap-region_attrs">region_attrs</a></td><td>RW</td><td>-</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
-<h3 id="region_start">region_start</h3>
+<span id="region_start"></span><h3 id="alias_remap-region_start" data-register-alias="region_start">region_start</h3>
 <table id="trm-table-10">
 <caption class="title"><a href="#trm-table-10">Table 10</a>. alias_remap.region_start fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -1671,7 +1728,7 @@ local resources are accessed and which address translation is applied.</p>
 <tr><td>55:12</td><td>start_addr</td><td>RW</td><td>0x0</td><td>Start of remap region</td></tr>
 <tr><td>11:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 </table>
-<h3 id="region_end">region_end</h3>
+<span id="region_end"></span><h3 id="alias_remap-region_end" data-register-alias="region_end">region_end</h3>
 <table id="trm-table-11">
 <caption class="title"><a href="#trm-table-11">Table 11</a>. alias_remap.region_end fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -1679,7 +1736,7 @@ local resources are accessed and which address translation is applied.</p>
 <tr><td>55:12</td><td>end_addr</td><td>RW</td><td>0x0</td><td>End of remap region (non-inclusive).</td></tr>
 <tr><td>11:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 </table>
-<h3 id="region_attrs">region_attrs</h3>
+<span id="region_attrs"></span><h3 id="alias_remap-region_attrs" data-register-alias="region_attrs">region_attrs</h3>
 <table id="trm-table-12">
 <caption class="title"><a href="#trm-table-12">Table 12</a>. alias_remap.region_attrs fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -1690,9 +1747,10 @@ local resources are accessed and which address translation is applied.</p>
 <tr><td>11:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 </table>
 </div>
+<span id="output-remap-registers"></span>
 </div>
-<div class="sect2">
-<h3 id="output-remap-registers"><a class="anchor" href="#output-remap-registers"></a><a class="link" href="#output-remap-registers">14.2. Output Remap Registers</a></h3>
+<div class="sect3">
+<h4 id="smc-fabric-output-remap-registers"><a class="anchor" href="#smc-fabric-output-remap-registers"></a><a class="link" href="#smc-fabric-output-remap-registers">6.2.2. Output Remap Registers</a></h4>
 <div class="paragraph">
 <p>The output remap registers control privilege-controlled address
 remapping for outbound transactions. The fabric provides separate remap
@@ -1717,10 +1775,10 @@ identity mapping rather than forcing every access to offset 0.</p>
 <table id="trm-table-13">
 <caption class="title"><a href="#trm-table-13">Table 13</a>. Output Remap Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0</td><td><a href="#region_attrs">region_attrs</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x0</td><td><a href="#output_remap-region_attrs">region_attrs</a></td><td>RW</td><td>-</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
-<h3 id="region_attrs">region_attrs</h3>
+<h3 id="output_remap-region_attrs" data-register-alias="region_attrs">region_attrs</h3>
 <table id="trm-table-14">
 <caption class="title"><a href="#trm-table-14">Table 14</a>. output_remap.region_attrs fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -1729,9 +1787,10 @@ identity mapping rather than forcing every access to offset 0.</p>
 <tr><td>55:0</td><td>offset</td><td>RW</td><td>0x0</td><td>Address translation for remap region. RTL will use the number of bits appropriate for region granulaity.<br>e.g. SMC: 8 * 1MB regions --&gt; 20 bits of address space per region, 36 MSBs from this register used<br>SEP: 16 * 512KB regions --&gt; 19 bits of address space per region, 37 MSBs from this register used</td></tr>
 </table>
 </div>
+<span id="inbound-traffic-filter-control-registers"></span>
 </div>
-<div class="sect2">
-<h3 id="inbound-traffic-filter-control-registers"><a class="anchor" href="#inbound-traffic-filter-control-registers"></a><a class="link" href="#inbound-traffic-filter-control-registers">14.3. Inbound Traffic Filter Control Registers</a></h3>
+<div class="sect3">
+<h4 id="smc-fabric-inbound-traffic-filter-control-registers"><a class="anchor" href="#smc-fabric-inbound-traffic-filter-control-registers"></a><a class="link" href="#smc-fabric-inbound-traffic-filter-control-registers">6.2.3. Inbound Traffic Filter Control Registers</a></h4>
 <div class="paragraph">
 <p>The inbound filter control registers protect SMC resources from
 unauthorized external access. Each of the 16 independent filter
@@ -1752,12 +1811,12 @@ protection attribute policies to control inbound traffic.</p>
 <table id="trm-table-15">
 <caption class="title"><a href="#trm-table-15">Table 15</a>. AXI Filter Control Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0</td><td><a href="#FILTER_CONFIG">FILTER_CONFIG</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x8</td><td><a href="#START_ADDR">START_ADDR</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x10</td><td><a href="#END_ADDR">END_ADDR</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x0</td><td><a href="#filter_ctrl-FILTER_CONFIG">FILTER_CONFIG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#filter_ctrl-START_ADDR">START_ADDR</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#filter_ctrl-END_ADDR">END_ADDR</a></td><td>RW</td><td>-</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
-<h3 id="FILTER_CONFIG">FILTER_CONFIG</h3>
+<span id="FILTER_CONFIG"></span><h3 id="filter_ctrl-FILTER_CONFIG" data-register-alias="FILTER_CONFIG">FILTER_CONFIG</h3>
 <table id="trm-table-16">
 <caption class="title"><a href="#trm-table-16">Table 16</a>. filter_ctrl.FILTER_CONFIG fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -1776,14 +1835,14 @@ protection attribute policies to control inbound traffic.</p>
 <tr><td>1</td><td>write_allowed</td><td>RW</td><td>0x0</td><td>Upon match of transaction to filter fields, whether the transaction has write permissions</td></tr>
 <tr><td>0</td><td>read_allowed</td><td>RW</td><td>0x0</td><td>Upon match of transaction to filter fields, whether the transaction has read permissions</td></tr>
 </table>
-<h3 id="START_ADDR">START_ADDR</h3>
+<span id="START_ADDR"></span><h3 id="filter_ctrl-START_ADDR" data-register-alias="START_ADDR">START_ADDR</h3>
 <table id="trm-table-17">
 <caption class="title"><a href="#trm-table-17">Table 17</a>. filter_ctrl.START_ADDR fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:56</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>55:0</td><td>start_addr</td><td>RW</td><td>0x0</td><td>Start of the allowable address range, rounded down to the base of its granule.<br>The granule is 4KB when allow_burst is 1, and 2^data_bus_width bytes when allow_burst is 0.<br>Address matching ignores the address bits below the granule, so the accepted range always<br>spans whole granules and is never narrower than one: a range shorter than the granule,<br>start_addr == end_addr included, still admits the whole granule, and two granules if it<br>straddles a granule boundary.<br>Hardware writes the rounded start_addr and end_addr back into these fields only when both<br>land in the same granule; otherwise readback returns the programmed values even though<br>matching is still granule-aligned.</td></tr>
 </table>
-<h3 id="END_ADDR">END_ADDR</h3>
+<span id="END_ADDR"></span><h3 id="filter_ctrl-END_ADDR" data-register-alias="END_ADDR">END_ADDR</h3>
 <table id="trm-table-18">
 <caption class="title"><a href="#trm-table-18">Table 18</a>. filter_ctrl.END_ADDR fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -1791,9 +1850,10 @@ protection attribute policies to control inbound traffic.</p>
 <tr><td>55:0</td><td>end_addr</td><td>RW</td><td>0x7</td><td>End of the allowable address range, rounded up to the top of its granule.<br>The granule and the write-back behaviour are described under start_addr.<br>Defaults to 7 on reset to match the 8B granule that applies while bursts are disabled.</td></tr>
 </table>
 </div>
+<span id="outbound-traffic-filter-control-registers"></span>
 </div>
-<div class="sect2">
-<h3 id="outbound-traffic-filter-control-registers"><a class="anchor" href="#outbound-traffic-filter-control-registers"></a><a class="link" href="#outbound-traffic-filter-control-registers">14.4. Outbound Traffic Filter Control Registers</a></h3>
+<div class="sect3">
+<h4 id="smc-fabric-outbound-traffic-filter-control-registers"><a class="anchor" href="#smc-fabric-outbound-traffic-filter-control-registers"></a><a class="link" href="#smc-fabric-outbound-traffic-filter-control-registers">6.2.4. Outbound Traffic Filter Control Registers</a></h4>
 <div class="paragraph">
 <p>The outbound filter control registers determine which external resources
 the SMC can access, restricting SMC-initiated requests to defined system
@@ -1806,9 +1866,10 @@ filters use the same register structure as the inbound filters
 </div>
 </div>
 </div>
+</div>
 <nav class="pagination">
-  <span class="prev"><a href="rom.html">Boot ROM</a></span>
-  <span class="next"><a href="dma.html">Direct Memory Access Engine</a></span>
+  <span class="prev"><a href="../smc-bootrom-prod/index.html">Production ROM Manual</a></span>
+  <span class="next"><a href="interrupts.html">Interrupts</a></span>
 </nav>
 </article>
   </div>

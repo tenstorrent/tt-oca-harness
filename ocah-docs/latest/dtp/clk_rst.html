@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Clocks and Resets :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <link rel="prev" href="overview.html">
+    <link rel="next" href="jtag.html">
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links
+
+                 All five books now build as ONE Antora site
+                 (antora-playbook.yml), so ../../.. already
+                 resolves directly to the one shared root. -->
+            <a class="navbar-item" href="../../../ocah-starting/latest/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../ocah-appnotes/latest/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (SMU)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (DTP)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-sep-datasheet.pdf">Security Processor (SEP)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (SMC)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (AoU)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-docs" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../index.html">Documentation Overview</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../list-of-figures.html">List of Figures</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../list-of-tables.html">List of Tables</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../architecture.html">OCAH Architecture &amp; Design</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../overview.html">Platform Overview</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../memory_map.html">OCAH Memory Map</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../power_domains.html">Power Domains</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../clock_domains.html">Clock Domains</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../reset.html">Reset</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../architecture.html#ocah-rtl-assertions">RTL Assertions</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">OCAH Platform Components</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../smu/index.html">System Management Unit (SMU)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../sep/index.html">Security Processor (SEP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../sep/overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../sep/threat_model.html">Threat Model</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../sep/attack_countermeasures.html">Attack Countermeasures</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../sep/clk_rst.html">Clocks and Resets</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/reset_controller.html">SEP Reset Controller</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../sep/cpu.html">CPU</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../sep/rom.html">Boot ROM</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep-bootrom-prod/index.html">Production ROM Manual</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../sep/fabric.html">Interconnect</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../sep/interrupts.html">Interrupts</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../sep/periphs.html">Peripherals</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/dma.html">Direct Memory Access (DMA)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/mailbox.html">Mailboxes</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/peripheral_subsystem.html">Peripheral Subsystem</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/spi.html">Serial Peripheral Interface (SPI)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/watchdog.html">Watchdog Timer (WDT)</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../sep/security.html">Security and Lifecycle</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/otp_fuse_controller.html">OTP Fuse Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/token_processing.html">Token Processing</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/security_disable.html">Security Disable</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/lifecycle_controller.html">Lifecycle Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/test_mode.html">Test Mode Entry</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../sep/crypto.html">Cryptographic Subsystem</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/trng.html">TRNG and DRBG</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/entropy_source/doc/index.html">Entropy Source</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/aes.html">AES Cipher</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/hmac.html">HMAC-SHA2</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/kmac.html">KMAC-SHA3</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/adams_bridge.html">Adams Bridge (ABR)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/otbn.html">OTBN PKA Public Key Accelerator</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../ip/key_manager/doc/index.html">Key Manager</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/key_manager/doc/index.html#key-manager-architecture">Architecture</a>
+  </li>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/key_manager/doc/index.html#key-manager-km-firmware">Firmware</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../sep/memory_map.html">Memory Map and Register Reference</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../smc/index.html">System Management Controller (SMC)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/clk_rst.html">Clocks and Resets</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/cpu.html">CPU</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../smc/rom.html">Boot ROM</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../smc-bootrom-prod/index.html">Production ROM Manual</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/fabric.html">Interconnect</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/interrupts.html">Interrupts</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../smc/periphs.html">Peripherals</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../smc/dma.html">Direct Memory Access Engine</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../smc/zeroer.html">Zeroer</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../smc/watchdog.html">Watchdog Timer (WDT)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/axi_lite_mailbox_unit/doc/index.html">Mailboxes</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/system_timer_octs/doc/index.html">System Timer OCTS</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/efuse/doc/index.html">eFuse</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/uart_16550/doc/index.html">UART 16550</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/log_engine/doc/index.html">Log Engine</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/i2c/doc/index.html">I2C</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/i3ccore_wrap/doc/index.html">I3C</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/avsbus_controller/doc/index.html">AVSBus Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/gpio/doc/index.html">GPIO</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/telemetry_receiver/doc/index.html">Telemetry Receiver</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/dfd.html">Design-for-Debug and CLA</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/scan_protection.html">eFuse Scan Protection</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/memmap.html">Memory Map and Register Reference</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="index.html">Debug &amp; Test Ports (DTP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="overview.html">Overview</a>
+  </li>
+  <li class="nav-item is-current-page" data-depth="4">
+    <a class="nav-link" href="clk_rst.html">Clocks and Resets</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="jtag.html">JTAG Operation</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="cross_trigger.html">Cross-Trigger Operation</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="ip_reference.html">IP Reference</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">JTAG</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/jtag_intf_unit/doc/index.html">JTAG Interface Unit</a>
+  </li>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/jtag_ptap/doc/index.html">JTAG PTAP</a>
+  </li>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/jtag_stap/doc/index.html">JTAG STAP</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Cross-Trigger</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../ip/cross_trigger_network/doc/index.html">Cross-Trigger Network</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="7">
+    <a class="nav-link" href="../ip/cross_trigger_network/doc/index.html#ctn-programming">Programming</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/cross_trigger_port/doc/index.html">Cross-Trigger Port</a>
+  </li>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/cross_trigger_matrix/doc/index.html">Cross-Trigger Matrix</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="reference.html">Configuration and Reference</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../smn.html">System Management Network (SMN)</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../aou.html">AXI-over-UCIe Bridge (AoU)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../aou-overview.html">Overview and Features</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../aou-architecture.html">Architecture</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../aou-interrupts-errors.html">Interrupts and Errors</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../aou-ppa-appendices.html">PPA</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../aou-appendices.html">Appendices</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../aou-referenced-documents.html">Appendix B. Referenced Documents</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../aou-software-operation.html">Appendix C. Software Operation</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../rtl-modules-reference.html">RTL Modules Reference</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../rtl-modules-reference.html#ip">IP</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/avsbus_controller.html">AVSBus Controller</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/axi_alias_remap.html">AXI Alias Remap</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/axi_filter.html">AXI Filter</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/axi_hang_detector.html">AXI Hang Detector</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/axi_lite_mailbox_unit.html">AXI-Lite Mailbox</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/axi_window_remap.html">AXI Window Remap</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/drbg.html">DRBG</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/efuse.html">eFuse</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/entropy_source.html">Entropy Source</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/gpio.html">GPIO</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/i2c.html">I2C</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/i3ccore_wrap.html">I3C</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/idma_wrapper.html">iDMA</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/key_manager.html">Key Manager</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/memory_interface.html">Memory Interface</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/output_remap.html">Output Remap</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/scrambler.html">Scrambler</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/system_timer_octs.html">System Timer</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/telemetry_receiver.html">Telemetry Receiver</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/zeroer.html">Zeroer</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/cross_trigger_matrix.html">Cross-Trigger Matrix</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/cross_trigger_network.html">Cross-Trigger Network</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/cross_trigger_port.html">Cross-Trigger Port</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/jtag2axi.html">JTAG to AXI</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/jtag_intf_unit.html">JTAG Interface Unit</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/jtag_ptap.html">JTAG PTAP</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/jtag_stap.html">JTAG STAP</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/log_engine.html">Log Engine</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/uart_16550.html">UART 16550</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/uart_log_engine_wrap.html">UART Log Engine Wrapper</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/ip/uart_wrap.html">UART Wrapper</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../rtl-modules-reference.html#subsystems">Subsystems</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/sys/sep.html">SEP</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/sys/smc.html">SMC</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/sys/dtp.html">DTP</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/sys/smu.html">SMU</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/sys/aou.html">AXI-over-UCIe</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../rtl-modules-reference.html#common">Common</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/common/ocah_prim.html">ocah_prim</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/common/ocah_prim_generic.html">ocah_prim_generic</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../rtl-modules-reference/common/tlul.html">TL-UL</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../ip-reference.html">IP Reference</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../dashboard.html">Verification Dashboard</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Appendices</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../register-field-access.html">Register Field Access Notation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../referenced-documents.html">Referenced Documents</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Technical Reference Manual latest — switch documentation">
+    <span class="version">latest</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-starting/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-integrator-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-programmer-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../ocah-home/latest/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></li>
+    <li>OCAH Platform Components</li>
+    <li><a href="../smu/index.html">System Management Unit (SMU)</a></li>
+    <li><a href="index.html">Debug &amp; Test Ports (DTP)</a></li>
+    <li><a href="clk_rst.html">Clocks and Resets</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="5">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Clocks and Resets</h1>
+<div class="sect1">
+<h2 id="dtp-clocks-and-resets"><a class="anchor" href="#dtp-clocks-and-resets"></a><a class="link" href="#dtp-clocks-and-resets">1. Clock Domains</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The DTP operates in two clock domains (<a href="#dtp-clock-domains-table">Table 1</a>).</p>
+</div>
+<table id="dtp-clock-domains-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. DTP clock domains</caption>
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Domain</th>
+<th class="tableblock halign-left valign-top">Signal</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System clock</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Main clock for cross-trigger logic and AXI interfaces. All CTN and CSR
+logic runs in this domain.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JTAG clock</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TCK</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JTAG test clock for all TAP controller and scan logic. Clocks the PTAP,
+STAP state machines, and scan registers. Asynchronous to <code>clk_i</code>.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The combined JTAG and CLA clock-stop request crosses into <code>clk_i</code> through
+two synchronizer stages in <code>ctn_clock_stop_ctrl</code>, followed by an output
+register. The CLA clock-stop status also crosses into TCK through the DEBUG_CONTROL
+TDR&#8217;s two-flop <code>u_cla_clock_stop_sync</code> synchronizer before bit 4 captures it.
+The CTP handshake crossings are described in the
+<a href="../ip/cross_trigger_port/doc/index.html#ctp-interface" class="xref page">port reference</a>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="reset-architecture"><a class="anchor" href="#reset-architecture"></a><a class="link" href="#reset-architecture">2. Reset Architecture</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><a href="#dtp-reset-signals-table">Table 2</a> identifies the reset inputs and the logic they reset.</p>
+</div>
+<table id="dtp-reset-signals-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. DTP reset signals</caption>
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Signal</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_n_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Active-low asynchronous reset for cross-trigger logic and AXI interfaces.
+Resets all CTN and CSR state; clock-stop output resets to 0 (clocks running).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>pwr_on_rst_ni</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Active-low asynchronous power-on reset for JTAG logic. Combined internally
+with TRST_n; resets the PTAP to Test-Logic-Reset state and clears all TDRs.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TRST_n (JTAG pin)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Optional external active-low TAP reset. When asserted, drives the PTAP
+to Test-Logic-Reset regardless of the TCK or TMS state.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>All registers reset to safe states. The JTAG TAP returns to Test-Logic-Reset
+on either TRST_n or power-on reset.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="dtp-ic-reset-overrides"><a class="anchor" href="#dtp-ic-reset-overrides"></a><a class="link" href="#dtp-ic-reset-overrides">3. IC_RESET Overrides</a></h2>
+<div class="sectionbody">
+<span id="ic_reset-overrides"></span>
+<div class="paragraph">
+<p>The primary TAP exposes a reset-selection test data register (TDR) through
+<code>IC_RESET</code>. IEEE 1149.1-2013 defines the instruction in Clause 8.21 and the
+reset-selection register in Clause 17. The
+<a href="https://grouper.ieee.org/groups/1149/1/ieee-1149-1-2013-changes.pdf">IEEE working-group summary of the 2013 changes</a>
+identifies both clauses. In this implementation, per reset
+port it holds <code>reset_control</code>, the active-low reset value to drive, and
+<code>reset_enable</code>, which selects it. One <code>reset_hold</code> bit sits nearest TDO.</p>
+</div>
+<div class="paragraph">
+<p><code>reset_enable</code> is active low despite the name: it resets to 1, leaving the
+port&#8217;s functional reset connected, and writing 0 hands the port over to
+<code>reset_control</code>. The overrides leave the DTP on
+<code>jtag_ic_reset_{smc,sep,ext}_o</code>, whose <code>.ovrd</code> member is active high and whose
+<code>.val</code> carries <code>reset_control</code>.</p>
+</div>
+<div class="paragraph">
+<p><code>reset_hold</code> also resets to 1, which lets Test-Logic-Reset clear the
+enable/control bits. Write 0 to keep an override asserted across TLR; only TRST
+clears <code>reset_hold</code> itself.</p>
+</div>
+<div class="paragraph">
+<p>Consumers select between the two sources with a hazard-free multiplexer, which
+holds its output while the select alone moves. Write <code>reset_control</code> first and
+clear <code>reset_enable</code> in a second Update-DR: moving both in one update changes
+the select and a data input together, which can pulse a reset on a port that
+neither source is resetting.</p>
+</div>
+<div class="paragraph">
+<p>At the SMU the TDR concatenates three slices from TDI to TDO: SMC, SEP, then
+the external slice, followed by <code>reset_hold</code>. The SMC and SEP port lists are
+OCAH-defined. The external slice is adopter-defined: its width and fields come
+from the SMU type parameter <code>ic_reset_ext_t</code>. The Integrator Guide records the
+SMU-composed port map.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="dtp-clock-stop"><a class="anchor" href="#dtp-clock-stop"></a><a class="link" href="#dtp-clock-stop">4. Clock Stop</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The DTP combines JTAG DEBUG_CONTROL and CLA clock-stop request sources into
+one functional chiplet halt path, while keeping the CLA-only status separate
+for debugger readback.</p>
+</div>
+<div class="sect2">
+<h3 id="halt-path-architecture"><a class="anchor" href="#halt-path-architecture"></a><a class="link" href="#halt-path-architecture">4.1. Halt Path Architecture</a></h3>
+<div class="paragraph">
+<p><a href="#dtp-clock-stop-diagram">Figure 1</a> shows how JTAG and CLA requests contribute to the chiplet
+halt path, with the DTP as the SMU instantiates it. The DEBUG_CONTROL TDR is drawn
+as its five bits, with bit 0 nearest TDO. The grey box below the DTP is the part of
+the SMC DFD block (<code>smc_dfd_wrap</code>) that produces the SMC&#8217;s clock-stop request and
+exchanges cross-triggers with the DTP. Gate and flop symbols draw the logic of the
+path, and CDC badges mark the two-flop synchronizers where a signal enters the TCK or
+<code>clk_i</code> domain.</p>
+</div>
+<div id="dtp-clock-stop-diagram" class="imageblock">
+<div class="content">
+<img src="_images/dtp-clock-stop.svg" alt="DTP clock-stop path: the DEBUG_CONTROL TDR in the primary TAP, the clock-stop controller in the cross-trigger network, and the SMC DFD lane that drives xtrig_clk_stop_req_i[0] under cla_clock_stop_en_o" width="100%">
+</div>
+<div class="title">Figure 1. DTP JTAG and CLA clock-stop aggregation</div>
+</div>
+<div class="paragraph">
+<p>Three distinct signals participate in clock stop:</p>
+</div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1"><strong><code>jtag_clock_stop</code></strong> (JTAG DEBUG_CONTROL bit 3)</dt>
+<dd>
+<p>Written through the DEBUG_CONTROL TDR (IR 0x18) in the primary TAP and routed to
+the CTN clock-stop controller. OR-combined with CLA requests to form the registered
+<code>stop_clks_o</code> output that connects to chiplet functional clock gating. The bit
+resets on TRST, on power-on reset and whenever the TAP enters Test-Logic-Reset.</p>
+</dd>
+<dt class="hdlist1"><strong><code>cla_clock_stop_en</code></strong> (JTAG DEBUG_CONTROL bit 2)</dt>
+<dd>
+<p>Exported at the DTP top level as <code>cla_clock_stop_en_o</code>. It is not part of the
+<code>stop_clks_o</code> aggregation inside the CTN. In the SMU it drives the SMC DFD&#8217;s
+<code>tdr_dbg_ctrl_clock_stop_en_i</code>, which gates the SMC CLA&#8217;s clock-stop request on
+<code>xtrig_clk_stop_req_i[0]</code>, so it decides whether the SMC CLA can halt the chiplet.</p>
+</dd>
+<dt class="hdlist1"><strong>CLA clock-stop indication</strong></dt>
+<dd>
+<p>The CTN OR-reduces <code>xtrig_clk_stop_req_i</code> (CLA sources only, not
+<code>jtag_clock_stop</code>) to form the <code>cla_clock_stop</code> readback status. The OR is
+combinational, so the DEBUG_CONTROL TDR passes it through a two-flop TCK
+synchronizer before bit 4 captures it in Capture-DR. A debugger reads it there to
+observe whether any CLA clock-stop source is active.</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect2">
+<h3 id="signal-flow"><a class="anchor" href="#signal-flow"></a><a class="link" href="#signal-flow">4.2. Signal Flow</a></h3>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>The JTAG Interface Unit captures DEBUG_CONTROL bits in the TCK domain.
+The <code>jtag_clock_stop</code> bit is routed to the CTN clock-stop controller;
+<code>cla_clock_stop_en</code> is exported at the DTP boundary.</p>
+</li>
+<li>
+<p>The CTN OR-reduces <code>xtrig_clk_stop_req_i</code> to produce <code>cla_clock_stop</code>
+status, then OR-combines that aggregate with <code>jtag_clock_stop</code>. The result
+passes a two-flop <code>clk_i</code> synchronizer and an output flop to produce
+<code>stop_clks_o</code>, which follows the requests three <code>clk_i</code> cycles later and is
+low while <code>rst_n_i</code> is asserted.</p>
+</li>
+<li>
+<p>The <code>cla_clock_stop</code> status is fed back into the DEBUG_CONTROL readback path
+so a debugger can observe CLA clock-stop source activity independently of its
+own direct-stop assertion.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>This architecture keeps CLA observability distinct from the JTAG direct-stop
+path, while either source can assert the functional chiplet halt through
+<code>stop_clks_o</code>.</p>
+</div>
+<div class="paragraph">
+<p>In the SMU, lane 0 of the <code>XTRIG_NUM_CLK_STOP_REQ</code> <code>xtrig_clk_stop_req_i</code> lanes
+carries the SMC DFD&#8217;s clocks-stopped output. That output is the CLA halt-clock
+action, masked by bit 0 of <code>xtrig_clk_halt_mask</code> in the SMC DFX CSRs and ANDed
+with <code>cla_clock_stop_en_o</code>; it also raises an SMC CPU interrupt. The remaining lanes,
+<code>xtrig_clk_stop_req_i[XTRIG_NUM_CLK_STOP_REQ-1:1]</code>, come from the SMU&#8217;s own
+<code>xtrig_clk_stop_req_i</code> ports. The same mask gates the CLA cross-trigger outputs,
+which reach the cross-trigger matrix through internal lanes 1 and 0
+(<code>xtrig_ctm_dst_req_i[1:0]</code>); <code>xtrig_ctm_src_req_o[1:0]</code> returns to the CLA. The
+SMU runs both SMC lanes in pulse-synchronization mode and ties their
+acknowledges low, and exports internal lanes 9 to 2.</p>
+</div>
+<div class="paragraph">
+<p>For the CTN clock-stop controller implementation and the <code>xtrig_clk_stop_req_i</code>
+input indexing, see
+<a href="../ip/cross_trigger_network/doc/index.html#cross-trigger-network" class="xref page">Cross-Trigger Network</a>.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="dtp-clock-distribution"><a class="anchor" href="#dtp-clock-distribution"></a><a class="link" href="#dtp-clock-distribution">5. Clock Distribution</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><a href="#dtp-clock-tree">Figure 2</a> shows which DTP blocks use the system clock and which use TCK.
+The DTP has two clocks and no clock gates. <code>clk_i</code>, the system clock (<code>clk_smu_i</code>
+in the SMU), clocks the whole cross-trigger network and the AXI side of the three
+JTAG2AXI bridges. TCK, from <code>jtag_ptap_client_tap_ctrl_i.tck</code>, clocks the rest of
+the JTAG interface unit. Each block is tinted by the clock that runs it, and each
+clock has one arrow into each hierarchy it reaches. CDC badges mark the blocks that
+synchronize a signal from another domain: the cross-trigger port input
+synchronizers, the clock-stop controller, the <code>dbg_disable_i</code> synchronizers, the
+DEBUG_CONTROL <code>cla_clock_stop</code> synchronizer and the JTAG2AXI bridges' <code>u_axi_cdc</code>.
+TCK leaves the DTP unchanged on the host TAP control of every STAP and on the host
+scan control of the boundary-scan, extended STAP, DFT and DFD ports.</p>
+</div>
+<div id="dtp-clock-tree" class="imageblock">
+<div class="content">
+<img src="_images/dtp-clock-distribution.svg" alt="DTP clock distribution: clk_i to the cross-trigger network and the JTAG2AXI AXI side, TCK to the TAP, TDRs, STAPs and SIBs and out on every host TAP and scan port" width="100%">
+</div>
+<div class="title">Figure 2. DTP system-clock and JTAG-clock distribution</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="dtp-reset-distribution"><a class="anchor" href="#dtp-reset-distribution"></a><a class="link" href="#dtp-reset-distribution">6. Reset Distribution</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><a href="#dtp-reset-tree">Figure 3</a> shows the reset distribution for DTP system logic and the JTAG scan
+paths. Each reset has its own colour, and the input names below the DTP ports are
+the SMU nets that drive them. Gate and flop symbols show where resets are combined,
+and a reset ends on the bottom edge of the flop it resets.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>rst_n_i</code> (<code>rst_primary_smc_clk_no</code> in the SMU) resets the cross-trigger network
+and the AXI side of the JTAG2AXI bridges.</p>
+</li>
+<li>
+<p><code>pwr_on_rst_ni</code> (<code>powergood_stable</code> in the SMU) sets the <code>dbg_disable_i</code>
+synchronizers to 1, disabling every debug path until the lifecycle value arrives.
+<code>u_trst_n_and</code> ANDs it with the TRST pin to form the combined TRST.</p>
+</li>
+<li>
+<p>The combined TRST resets the TAP controller, including its Test-Logic-Reset flop,
+the TMP controller and the TDO retiming flop. It also resets the hold flops of the
+3DCR and IC_RESET TDRs, the 3DCR scan register and the STAPs, and leaves unchanged
+on the host TAP control of every STAP.</p>
+</li>
+<li>
+<p>The TAP controller derives the scan reset <code>rst_n</code>, which is low in
+Test-Logic-Reset, and the scan channel reset <code>chrst_n</code>, which the TMP persistence
+mode holds released through Test-Logic-Reset. <code>rst_n</code> resets the instruction
+register, most TDRs, the TCK side of the JTAG2AXI bridges, the STAPs and the SIBs.
+The 3DCR TDR takes it only while its hold bit is clear, and the IC_RESET TDR only
+while its <code>reset_hold</code> bit is set. <code>chrst_n</code> is not used inside the DTP; both
+leave on the host scan control of the boundary-scan, extended STAP, DFT and DFD
+ports.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The two-flop <code>cla_clock_stop</code> synchronizer in the DEBUG_CONTROL TDR has no reset.
+<code>test_en_i</code> drives the test mode of the cross-trigger network and the JTAG2AXI
+bridges. <code>scan_rst_ni</code> is not connected inside the DTP, which has no reset
+synchronizer, so <code>rst_n_i</code> must arrive scan-controlled. A STAP whose enable
+parameter is 0 drives its host TRST low.</p>
+</div>
+<div id="dtp-reset-tree" class="imageblock">
+<div class="content">
+<img src="_images/dtp-reset-distribution.svg" alt="DTP reset distribution: rst_n_i to the cross-trigger network and JTAG2AXI AXI side, power-on reset ANDed with TRST into the TAP controller, which derives the scan resets for the TDRs, STAPs, SIBs and host scan ports" width="100%">
+</div>
+<div class="title">Figure 3. DTP system and JTAG reset distribution</div>
+</div>
+</div>
+</div>
+<nav class="pagination">
+  <span class="prev"><a href="overview.html">Overview</a></span>
+  <span class="next"><a href="jtag.html">JTAG Operation</a></span>
+</nav>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
+<script src="../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>

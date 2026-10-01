@@ -199,68 +199,37 @@
 </aside>
 <article class="doc">
 <h1 class="page">GPIO Peripheral</h1>
+<div id="preamble">
+<div class="sectionbody">
+<span id="description-and-features"></span>
+</div>
+</div>
 <div class="sect1">
 <h2 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">1. Overview</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>The GPIO (General Purpose Input/Output) peripheral provides programmable
-digital I/O capabilities for the OCAH system. It serves as a flexible
-interface for configuration straps, general-purpose signaling, and
-bit-banging protocols. The peripheral features dual-mode operation
-supporting both register-driven control and LSIO (Low Speed
-Input/Output) interface control with comprehensive access filtering and
-interrupt generation capabilities.</p>
+<p>GPIO connects software and low-speed I/O (LSIO) peripherals to individual
+pads. Software can drive or sample a pad, select an interrupt trigger, and
+read its boot strap. Hardware LSIO requests take priority over software
+control unless software explicitly disables LSIO.</p>
 </div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="description-and-features"><a class="anchor" href="#description-and-features"></a><a class="link" href="#description-and-features">2. Description and Features</a></h2>
-<div class="sectionbody">
-<div class="ulist">
-<ul>
-<li>
-<p><strong>Dual Control Modes</strong>: Register-driven control or LSIO interface
-selection with programmable direction control</p>
-</li>
-<li>
-<p><strong>Flexible I/O Configuration</strong>: Bidirectional data path with independent
-RX/TX enable controls</p>
-</li>
-<li>
-<p><strong>Security &amp; Access Control</strong>: Advanced register access filtering with
-AXI protection level requirements</p>
-</li>
-<li>
-<p><strong>Configuration Strap Support</strong>: Hardware strap capture during system
-reset for boot-time configuration</p>
-</li>
-<li>
-<p><strong>Comprehensive Interrupt System</strong>: Configurable interrupt generation
-with multiple trigger modes</p>
-</li>
-<li>
-<p><strong>Programmable Electrical Characteristics</strong>: Software-configurable drive
-strength and pull resistors</p>
-</li>
-<li>
-<p><strong>Standard Bus Interfaces</strong>: Support for both APB4 and AXI4-Lite
-register interfaces</p>
-</li>
-</ul>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="gpio-architecture"><a class="anchor" href="#gpio-architecture"></a><a class="link" href="#gpio-architecture">3. Architecture</a></h2>
-<div class="sectionbody">
 <div class="paragraph">
-<p>At the heart of the OCAH system’s digital I/O lies the GPIO peripheral, a
-controller designed for both versatility and robust security. Its
-dual-mode operation allows it to seamlessly switch between
-register-driven control and direct hardware guidance via the LSIO
-interface, all while maintaining strict access governance and flexible
-interrupt handling throughout.</p>
+<p>Each pad uses two blocks: <code>gpio</code> selects data and direction; <code>gpio_shim</code>
+selects electrical settings and captures the strap. Each has its own
+32-bit AXI4-Lite register interface. The surrounding padring instantiates
+these blocks for its pads and supplies the address mapping and LSIO wiring.</p>
 </div>
+<div class="paragraph">
+<p>The sections below explain ownership and reset behavior, list the interfaces,
+and give programming sequences. The register maps follow those sequences.</p>
+</div>
+<span id="functional-blocks"></span>
+<span id="data-flow-architecture"></span>
+</div>
+</div>
+<div class="sect1">
+<h2 id="gpio-architecture"><a class="anchor" href="#gpio-architecture"></a><a class="link" href="#gpio-architecture">2. Operation</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p><a href="#gpio-interface-diagram">GPIO controller, interface shim, LSIO mux and strap-capture path</a> shows the two blocks that serve one pad: the <code>gpio</code> controller
 in the SMC pad ring, and the <code>gpio_shim</code> that the adopter&#8217;s pad integration places in front
@@ -279,59 +248,81 @@ their inputs on the wide side; the dashed strap latch is present only when
 </div>
 <div class="title">Figure 1. GPIO controller, interface shim, LSIO mux and strap-capture path</div>
 </div>
+<span id="control-path-and-mode-selection"></span>
+<span id="lsio-protocol-specifications"></span>
 <div class="sect2">
-<h3 id="functional-blocks"><a class="anchor" href="#functional-blocks"></a><a class="link" href="#functional-blocks">3.1. Functional Blocks</a></h3>
+<h3 id="gpio-ownership"><a class="anchor" href="#gpio-ownership"></a><a class="link" href="#gpio-ownership">2.1. Data and Direction Ownership</a></h3>
 <div class="paragraph">
-<p>The top-level GPIO controller (gpio.sv) sits at the center of the
-architecture, orchestrating the actions of all internal components. It
-elegantly arbitrates incoming bus transactions, mediates between
-register and LSIO modes, fuses interrupt sources into a unified signal,
-and ensures strap values are captured properly when the system starts.
-Address spaces are kept distinct and the transition between control
-modes is smooth and automatic.</p>
+<p>After cold reset, the controller selects output data, transmit enable and
+receive enable independently. For each field, the first applicable row wins:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. GPIO data and direction selection</caption>
+<colgroup>
+<col style="width: 16.6666%;">
+<col style="width: 33.3333%;">
+<col style="width: 50.0001%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Priority</th>
+<th class="tableblock halign-left valign-top">Condition</th>
+<th class="tableblock halign-left valign-top">Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lsio_interface_select_i = 1</code> and <code>DATA_CTRL.lsio_disable = 0</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Hardware LSIO data and direction inputs.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DATA_CTRL.interface_enable = 1</code>, or the corresponding
+<code>DATA_CTRL_ENABLE.use_reg_*</code> bit is set</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DATA_CTRL.core2pad</code>, <code>enable_rx_tx[0]</code> (TX), or <code>enable_rx_tx[1]</code> (RX).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DATA_CTRL.lsio_select = 1</code> and <code>DATA_CTRL.lsio_disable = 0</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Software-forced LSIO, using the same LSIO inputs.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No preceding condition applies</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output data 0, TX disabled, RX set by <code>INPUT_BY_DEFAULT</code>.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The per-field overrides are <code>use_reg_core2pad</code>, <code>use_reg_tx</code> and <code>use_reg_rx</code>.
+They allow different sources for data and direction. A hardware LSIO request
+outranks all three overrides; software-forced LSIO does not.
+<code>lsio_disable</code> gates both forms of LSIO selection.</p>
 </div>
 <div class="paragraph">
-<p>Security is enforced by the Access Control Filter (gpio_filter.sv). True
-to its name, it inspects every AXI read and write transaction,
-confirming the proper permission levels before allowing access. The
-protection requirements are software-programmable, allowing enforcement
-policies to adapt to changing system needs on the fly.</p>
-</div>
-<div class="paragraph">
-<p>The filter implements full 3-bit AXI protection matching, comparing the
-transaction&#8217;s protection bits (<code>aw.prot[2:0]</code> for writes,
-<code>ar.prot[2:0]</code> for reads) against configurable requirement values. The
-protection bits encode privilege level (bit 0), security domain (bit 1),
-and transaction type (bit 2). When protection filtering is enabled, only
-transactions with matching protection attributes are allowed through;
-unauthorized attempts are blocked and receive an immediate error response,
-all while keeping performance unaffected for legitimate accesses.</p>
-</div>
-<div class="paragraph">
-<p>Protection filtering is configured via the <code>ACCESS_FILTER</code> register
-fields: <code>awprot_requirement</code> and <code>arprot_requirement</code> specify the
-required protection values, while <code>write_filter_enable</code> and
-<code>read_filter_enable</code> control whether filtering is active. See the
-Programming section for configuration details.</p>
-</div>
-<div class="paragraph">
-<p>Between the hardware and software is the GPIO Shim (gpio_shim.sv). This
-block translates software-side register programming into model-specific
-control signals, maintaining a consistent state across the register
-interface and the underlying physical I/O. The shim also abstracts
-model-specific details so different pad implementations can coexist
-under a unified interface.</p>
-</div>
-<div class="paragraph">
-<p>Finally, the GPIO Model (gpio_model/) is where electrical attributes and
-physical pad behavior live. It offers programmable drive strengths,
-pull-up and pull-down configuration, signal conditioning to guard
-against glitches, and fully independent TX/RX enables, making true
-bidirectional I/O possible.</p>
+<p><code>DATA_CTRL.lsio_enable</code> reports the hardware request after the disable gate:
+<code>lsio_interface_select_i &amp;&amp; !lsio_disable</code>. It does not report a
+software-forced selection and is not a general pad-owner indicator.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="smc-pad-ring"><a class="anchor" href="#smc-pad-ring"></a><a class="link" href="#smc-pad-ring">3.2. SMC Pad Ring</a></h3>
+<h3 id="input-readback"><a class="anchor" href="#input-readback"></a><a class="link" href="#input-readback">2.2. Input Readback</a></h3>
+<div class="paragraph">
+<p><code>DATA_CTRL.pad2core</code> returns the synchronized input when
+<code>interface_enable</code> or <code>use_reg_rx</code> selects register readback; otherwise it
+returns zero. The pad receiver must also be enabled by the selected owner.</p>
+</div>
+<div class="paragraph">
+<p>The LSIO return path uses the unsynchronized pad input while either LSIO
+request is active. This return path is independent of the data/direction
+priority: a software LSIO request can enable readback even when registers
+own an output field. During cold reset, the LSIO return path also carries
+the pad input.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="smc-pad-ring"><a class="anchor" href="#smc-pad-ring"></a><a class="link" href="#smc-pad-ring">2.3. SMC Pad Ring</a></h3>
 <div class="paragraph">
 <p>The SMC instantiates one <code>gpio</code> controller per pad in <code>u_smc_padring</code>, 65 in all.
 <a href="#gpio-padring-diagram">SMC pad ring GPIO interfaces and adopter pad shims</a> shows how the controllers are reached and where the shims sit.
@@ -357,102 +348,127 @@ range of the <code>smc_external</code> window with DECERR.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="data-flow-architecture"><a class="anchor" href="#data-flow-architecture"></a><a class="link" href="#data-flow-architecture">3.3. Data Flow Architecture</a></h3>
+<h3 id="gpio-electrical-control"><a class="anchor" href="#gpio-electrical-control"></a><a class="link" href="#gpio-electrical-control">2.4. Pad Settings and Secondary Function</a></h3>
 <div class="paragraph">
-<p>In typical register-driven mode, the data path forms a tight,
-predictable loop: software writes an output value into a DATA_CTRL
-register, the mode selector switches to software control, and the
-register’s value flows to the model, driving the I/O pad. Input values
-are always readable via a separate field, ensuring software insight into
-pad state.</p>
+<p>The shim selects drive strength, pull settings and input conditioning in
+this order: hardware LSIO request, <code>CONTROL.config_enable</code>, software-forced
+LSIO, then parameter defaults. The LSIO requests use the same disable gate
+as the controller. In register mode, <code>CONTROL</code> supplies <code>drive_strength</code>,
+<code>pull_enable_n0_scan</code>, <code>pull_select</code> and <code>schmitt_select</code>.</p>
 </div>
 <div class="paragraph">
-<p>When LSIO mode is engaged, control shifts: the LSIO hardware asserts its
-selection input, and from this moment, it directly governs the pad’s
-output and enable signals. The regular register pathway is bypassed, and
-the status of LSIO is reflected back to software for monitoring
-purposes. Thanks to the clear priority scheme, LSIO always wins control
-if contention arises.</p>
+<p>A separate mux selects a secondary hardware function when
+<code>CONTROL.hw2_ovrd = 1</code> and <code>force_primary_i = 0</code>. It overrides the primary
+data and direction path. <code>force_primary_i</code> restores the primary path
+regardless of the register setting. The integrator must coordinate switching
+with both hardware functions.</p>
+</div>
+<div class="paragraph">
+<p>Electrical effects depend on the connected pad implementation. The supplied
+<code>gpio_model</code> models output drive and receive enable; it does not model drive
+strength, pull resistors or input conditioning. Do not interpret the
+<code>drive_strength</code> encoding as a portable current rating.</p>
+</div>
+<span id="interrupts-flexible-and-responsive"></span>
+<span id="interrupt-specifications"></span>
+</div>
+<div class="sect2">
+<h3 id="gpio-interrupt-operation"><a class="anchor" href="#gpio-interrupt-operation"></a><a class="link" href="#gpio-interrupt-operation">2.5. Interrupts</a></h3>
+<div class="paragraph">
+<p>The input passes through a three-stage synchronizer before interrupt
+detection. The selected condition is registered on <code>clk_i</code> and gated by
+<code>DATA_CTRL.interrupt_enable</code> at <code>interrupt_o</code>.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. GPIO interrupt modes</caption>
+<colgroup>
+<col style="width: 16.6666%;">
+<col style="width: 33.3333%;">
+<col style="width: 50.0001%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top"><code>interrupt_type</code></th>
+<th class="tableblock halign-left valign-top">Condition</th>
+<th class="tableblock halign-left valign-top">Output while enabled</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>00</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input high</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Level follows the registered condition.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>01</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input low</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Level follows the registered condition.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>10</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Rising edge</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">One clock-cycle pulse per detected edge.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>11</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Falling edge</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">One clock-cycle pulse per detected edge.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>There is no sticky interrupt status or acknowledge register in this block.
+A level condition must cease, or the interrupt must be disabled, to remove
+the request. Edge pulses are not stretched; the receiving interrupt
+controller must capture them. Detection uses the synchronized input,
+independently of whether register readback is selected.</p>
+</div>
+<span id="clocking-and-reset-safe-and-predictable"></span>
+</div>
+<div class="sect2">
+<h3 id="gpio-reset-straps"><a class="anchor" href="#gpio-reset-straps"></a><a class="link" href="#gpio-reset-straps">2.6. Reset and Strap Capture</a></h3>
+<div class="paragraph">
+<p><code>rst_primary_ni</code> asynchronously resets interface/control registers, the
+input synchronizer and interrupt state. <code>rst_cold_ni</code> separately forces
+controller outputs to data 0, TX disabled and RX=<code>INPUT_BY_DEFAULT</code>, and
+forces the shim&#8217;s electrical settings to their parameter defaults.
+The integration supplies reset timing; these modules do not synchronize
+reset deassertion internally.</p>
+</div>
+<div class="paragraph">
+<p>With <code>INPUT_BY_DEFAULT = 1</code>, the shim&#8217;s strap latch follows the pad while
+cold reset is asserted and holds the level when cold reset is released.
+This is a level-sensitive latch, not a sample taken on a <code>clk_i</code> edge.
+With the parameter clear, the captured value is zero.</p>
+</div>
+<div class="paragraph">
+<p><code>CONTROL.strap_value</code> and <code>captured_strap_o</code> report that captured level.
+<code>CONTROL.strap_valid</code> reflects <code>INPUT_BY_DEFAULT</code>; it is not a capture-done
+flag. Read the strap after the system has released cold reset. Primary
+reset alone does not recapture it.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="control-path-and-mode-selection"><a class="anchor" href="#control-path-and-mode-selection"></a><a class="link" href="#control-path-and-mode-selection">3.4. Control Path and Mode Selection</a></h3>
+<h3 id="gpio-access-control"><a class="anchor" href="#gpio-access-control"></a><a class="link" href="#gpio-access-control">2.7. Register Access Filtering</a></h3>
 <div class="paragraph">
-<p>Configuration sources follow a strict ranking: LSIO commands always take
-the highest precedence, overriding any register settings when active. If
-LSIO is not in control, the system defers to register-directed
-configuration. If neither is in play, safe hardware defaults ensure the
-pad remains in a benign state.</p>
-</div>
-<div class="paragraph">
-<p>The logic for this selection is straightforward but decisive:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">if (lsio_interface_select_i &amp;&amp; !lsio_disable) {
-    // LSIO mode: the hardware request takes the pad, regardless of
-    // interface_enable. lsio_disable is software's only way to refuse it.
-    pad_control_source = LSIO;
-} else if (interface_enable || use_reg_*) {
-    // Register mode: software control
-    pad_control_source = REGISTERS;
-} else if (lsio_select &amp;&amp; !lsio_disable) {
-    // Software-forced LSIO. Ranked below the register interface, unlike the
-    // hardware select line above.
-    pad_control_source = LSIO;
-} else {
-    // Defaults: pad is idle and safe
-    pad_control_source = DEFAULTS;
-}</code></pre>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="interrupts-flexible-and-responsive"><a class="anchor" href="#interrupts-flexible-and-responsive"></a><a class="link" href="#interrupts-flexible-and-responsive">3.5. Interrupts: Flexible and Responsive</a></h3>
-<div class="paragraph">
-<p>The GPIO’s interrupt subsystem is engineered for flexibility. It
-supports both level and edge detection, allowing software to choose
-between active-high/low levels or rising/falling edges. Interrupts can
-be enabled or masked at runtime, and the state is always visible to
-software.</p>
+<p>The interface-bank filter compares all three AXI <code>PROT</code> bits against the
+configured read or write requirement. Each direction has its own enable.
+A mismatch is sent to an error responder and completes with <code>DECERR</code>;
+disabling a filter permits that direction regardless of <code>PROT</code>.</p>
 </div>
 <div class="paragraph">
-<p>Here’s a look at the internal decision logic:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">interrupt_trigger = case (interrupt_type)
-    2'b00: pad2core;              // Active-high level
-    2'b01: !pad2core;             // Active-low level
-    2'b10: pad2core_rising_edge;  // Rising edge
-    2'b11: pad2core_falling_edge; // Falling edge
-endcase
-
-interrupt_o = interrupt_enable &amp;&amp; interrupt_trigger;</code></pre>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="clocking-and-reset-safe-and-predictable"><a class="anchor" href="#clocking-and-reset-safe-and-predictable"></a><a class="link" href="#clocking-and-reset-safe-and-predictable">3.6. Clocking and Reset: Safe and Predictable</a></h3>
-<div class="paragraph">
-<p>All GPIO logic is synchronized to a single system clock (clk_i). There
-are no internal clock domains or generated clocks to complicate timing—
-everything operates in lockstep, rising edge after rising edge.</p>
-</div>
-<div class="paragraph">
-<p>Reset is provided as a synchronous active-low input (rst_ni). When
-asserted, every flip-flop in the design is immediately reset to a known
-baseline. During the reset period, the pad value is continuously
-monitored; once reset is released (on a clock edge), the final pad state
-is latched as a configuration strap. Only after this carefully ordered
-process does the GPIO begin normal operation, fully configured and
-secure.</p>
+<p>Filtering resets disabled. The stored read and write requirements reset to
+<code>3&#8217;b001</code> (secure, privileged data), but apply only when enabled. <code>PROT</code>
+expresses transaction attributes, not initiator identity: this filter alone
+does not establish SEP-only access. It protects the interface bank, not the
+shim&#8217;s separate control bank. See <a href="#gpio-filter-programming">Configuring Access Filtering</a> for setup and
+readback requirements.</p>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="gpio-interface"><a class="anchor" href="#gpio-interface"></a><a class="link" href="#gpio-interface">4. Interface</a></h2>
+<h2 id="gpio-interface"><a class="anchor" href="#gpio-interface"></a><a class="link" href="#gpio-interface">3. Interface</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>The GPIO peripheral provides bus interfaces for register access, LSIO
@@ -466,14 +482,14 @@ unbonded.</p>
 <p>The parameters and ports of <code>gpio</code> are listed in <a href="../../../../../ocah-docs/latest/rtl-modules-reference/ip/gpio/gpio.html" class="xref page">gpio</a>.</p>
 </div>
 <div class="sect2">
-<h3 id="lsio-interface"><a class="anchor" href="#lsio-interface"></a><a class="link" href="#lsio-interface">4.1. LSIO Interface</a></h3>
+<h3 id="lsio-interface"><a class="anchor" href="#lsio-interface"></a><a class="link" href="#lsio-interface">3.1. LSIO Interface</a></h3>
 <div class="paragraph">
 <p>The LSIO (Low Speed Input/Output) interface enables hardware-controlled
 GPIO operation for protocol processing.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="lsio-protocol-specifications"><a class="anchor" href="#lsio-protocol-specifications"></a><a class="link" href="#lsio-protocol-specifications">4.2. LSIO Protocol Specifications</a></h3>
+<h3 id="lsio-protocol-specifications"><a class="anchor" href="#lsio-protocol-specifications"></a><a class="link" href="#lsio-protocol-specifications">3.2. LSIO Protocol Specifications</a></h3>
 <div class="ulist">
 <ul>
 <li>
@@ -501,14 +517,14 @@ gated by lsio_disable, so it reads 0 during a software-forced LSIO</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="gpio-pad-interface"><a class="anchor" href="#gpio-pad-interface"></a><a class="link" href="#gpio-pad-interface">4.3. GPIO Pad Interface</a></h3>
+<h3 id="gpio-pad-interface"><a class="anchor" href="#gpio-pad-interface"></a><a class="link" href="#gpio-pad-interface">3.3. GPIO Pad Interface</a></h3>
 <div class="paragraph">
 <p>The GPIO pad interface provides direct connection to external pads with
 bidirectional capabilities.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="interrupt-interface"><a class="anchor" href="#interrupt-interface"></a><a class="link" href="#interrupt-interface">4.4. Interrupt Interface</a></h3>
+<h3 id="interrupt-interface"><a class="anchor" href="#interrupt-interface"></a><a class="link" href="#interrupt-interface">3.4. Interrupt Interface</a></h3>
 <div class="paragraph">
 <p>The interrupt interface provides event notification capabilities with
 configurable trigger modes.</p>
@@ -519,7 +535,7 @@ holds the pad value captured when the cold reset is released.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="interrupt-specifications"><a class="anchor" href="#interrupt-specifications"></a><a class="link" href="#interrupt-specifications">4.5. Interrupt Specifications</a></h3>
+<h3 id="interrupt-specifications"><a class="anchor" href="#interrupt-specifications"></a><a class="link" href="#interrupt-specifications">3.5. Interrupt Specifications</a></h3>
 <div class="ulist">
 <ul>
 <li>
@@ -545,64 +561,219 @@ event</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="gpio-memory-map"><a class="anchor" href="#gpio-memory-map"></a><a class="link" href="#gpio-memory-map">5. Memory Map</a></h2>
+<h2 id="gpio-programming"><a class="anchor" href="#gpio-programming"></a><a class="link" href="#gpio-programming">4. Programming</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>The GPIO peripheral provides two separate register banks for
-comprehensive I/O control: the Interface Register Bank (gpio_intf_reg)
-for high-level GPIO functionality and the Control Register Bank
-(gpio_ctrl_reg) for physical layer characteristics. Both banks are
-accessed through 32-bit AXI4-Lite interfaces with independent address
-spaces.</p>
+<p>The sequences below use register names relative to one pad&#8217;s interface and
+control banks. Preserve unrelated fields when updating a register.</p>
 </div>
+<span id="basic-gpio-configuration"></span>
+<span id="bidirectional-operation"></span>
 <div class="sect2">
-<h3 id="address-space-organization"><a class="anchor" href="#address-space-organization"></a><a class="link" href="#address-space-organization">5.1. Address Space Organization</a></h3>
-<div class="paragraph">
-<p>The GPIO peripheral uses a dual-bank register architecture:</p>
-</div>
-<div class="ulist">
-<ul>
+<h3 id="gpio-output-programming"><a class="anchor" href="#gpio-output-programming"></a><a class="link" href="#gpio-output-programming">4.1. Register-Controlled Input and Output</a></h3>
+<div class="olist arabic">
+<ol class="arabic">
 <li>
-<p><strong>Interface Register Bank</strong>: High-level GPIO control, data path, and
-security filtering</p>
+<p>Confirm that the shim&#8217;s secondary-function override is inactive, or arrange
+a controlled handover with that function.</p>
 </li>
 <li>
-<p><strong>Control Register Bank</strong>: Physical layer configuration, drive strength,
-and termination</p>
+<p>Set <code>DATA_CTRL.lsio_disable = 1</code> to prevent an LSIO request from taking
+the primary data/direction path.</p>
 </li>
-</ul>
+<li>
+<p>With TX disabled, program the intended output value and any required
+electrical settings. <code>CONTROL.config_enable = 1</code> selects register-based
+electrical settings once hardware LSIO is disabled.</p>
+</li>
+<li>
+<p>Set <code>DATA_CTRL.interface_enable = 1</code> and select <code>enable_rx_tx</code>:
+<code>00</code> disables both paths, <code>01</code> enables TX, <code>10</code> enables RX, and <code>11</code> enables both.</p>
+</li>
+<li>
+<p>Read <code>DATA_CTRL.pad2core</code> with RX enabled to obtain the synchronized input.</p>
+</li>
+</ol>
 </div>
 <div class="paragraph">
-<p>Each bank operates independently with separate AXI4-Lite interfaces to
-enable concurrent access and modular functionality.</p>
+<p>For bidirectional use, coordinate external-driver release before enabling
+TX. Input-only mode disables TX; enabling both paths allows readback while
+driving. The pad implementation determines electrical behavior and settling
+requirements.</p>
+</div>
+<span id="configuration-strap-capture"></span>
+</div>
+<div class="sect2">
+<h3 id="reading-configuration-straps"><a class="anchor" href="#reading-configuration-straps"></a><a class="link" href="#reading-configuration-straps">4.2. Reading Configuration Straps</a></h3>
+<div class="paragraph">
+<p>After cold reset is released, read <code>CONTROL.strap_valid</code> and
+<code>CONTROL.strap_value</code> from the control bank. A set <code>strap_valid</code> means the
+pad was configured for input by default and strap capture is supported;
+it does not indicate that reset has completed. See <a href="#gpio-reset-straps">Reset and Strap Capture</a>.</p>
+</div>
+<span id="interrupt-configuration"></span>
+</div>
+<div class="sect2">
+<h3 id="enabling-interrupts"><a class="anchor" href="#enabling-interrupts"></a><a class="link" href="#enabling-interrupts">4.3. Enabling Interrupts</a></h3>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Clear <code>DATA_CTRL.interrupt_enable</code> while configuring the input.</p>
+</li>
+<li>
+<p>Ensure the selected owner enables the pad receiver. For register control,
+use <code>interface_enable = 1</code> and <code>enable_rx_tx = 10</code>.</p>
+</li>
+<li>
+<p>Set <code>DATA_CTRL.interrupt_type</code> using the mode table in <a href="#gpio-interrupt-operation">Interrupts</a>.</p>
+</li>
+<li>
+<p>Configure the receiving interrupt controller for the GPIO request and
+set <code>DATA_CTRL.interrupt_enable = 1</code>.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>A level interrupt can assert as soon as it is enabled if the selected level
+is already present. This block has no pending-event queue or software-clear
+bit; handle or mask the condition at its source.</p>
+</div>
+<span id="lsio-interface-operation"></span>
+</div>
+<div class="sect2">
+<h3 id="gpio-lsio-programming"><a class="anchor" href="#gpio-lsio-programming"></a><a class="link" href="#gpio-lsio-programming">4.4. Selecting LSIO</a></h3>
+<div class="paragraph">
+<p>For hardware selection, clear <code>DATA_CTRL.lsio_disable</code>. When the peripheral
+asserts <code>lsio_interface_select_i</code>, its data and direction take priority over
+<code>interface_enable</code> and the per-field overrides. <code>DATA_CTRL.lsio_enable</code>
+reports this gated hardware request.</p>
+</div>
+<div class="paragraph">
+<p>For software-forced selection, clear <code>interface_enable</code> and all
+<code>DATA_CTRL_ENABLE.use_reg_*</code> bits, then set <code>lsio_select = 1</code> with
+<code>lsio_disable = 0</code>. Clear <code>CONTROL.config_enable</code> as well if LSIO should
+supply the electrical settings. Software-forced LSIO ranks below register
+control and does not set <code>lsio_enable</code>.</p>
+</div>
+<div class="paragraph">
+<p>To reclaim the primary path, set <code>lsio_disable = 1</code>, then program register
+data and direction. Setting <code>interface_enable</code> alone cannot reclaim a pad
+whose hardware request remains asserted. In SMC, this includes pads with
+permanently selected hardware functions: the I3C pads, and the isolate-request, boot-stall
+and cool-reset-out signals.</p>
+</div>
+<span id="security-configuration"></span>
+<span id="protection-bit-encoding"></span>
+<span id="filter-configuration"></span>
+<span id="filter-behavior"></span>
+</div>
+<div class="sect2">
+<h3 id="gpio-filter-programming"><a class="anchor" href="#gpio-filter-programming"></a><a class="link" href="#gpio-filter-programming">4.5. Configuring Access Filtering</a></h3>
+<div class="paragraph">
+<p>Each filter compares the complete three-bit protection value:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. AXI protection encoding</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 40%;">
+<col style="width: 40%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Bit</th>
+<th class="tableblock halign-left valign-top">0</th>
+<th class="tableblock halign-left valign-top">1</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Unprivileged</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Privileged</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Non-secure</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Data</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Instruction</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Thus <code>0x0</code> means secure unprivileged data, <code>0x1</code> secure privileged data,
+<code>0x2</code> non-secure unprivileged data, and <code>0x3</code> non-secure privileged data.</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Choose <code>ACCESS_FILTER.awprot_requirement</code> and <code>arprot_requirement</code> for
+the intended writers and readers. Both reset to <code>0x1</code>.</p>
+</li>
+<li>
+<p>Set <code>write_filter_enable</code> and/or <code>read_filter_enable</code> to enforce those
+requirements. The current transaction must satisfy any filter already enabled.</p>
+</li>
+<li>
+<p>Read back <code>ACCESS_FILTER</code> after writing it, using a read transaction that
+satisfies the resulting policy. The register definition requires this readback
+before relying on the new filter settings for subsequent accesses.</p>
+</li>
+<li>
+<p>Check that permitted accesses succeed and rejected accesses return <code>DECERR</code>.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>The enables reset clear, so the reset requirements do not restrict access
+until enabled. Changing the write requirement can exclude the software
+agent making the change. Plan the resulting read and write policy before
+applying it; <code>PROT</code> does not identify a particular initiator.</p>
+</div>
+<span id="address-space-organization"></span>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="gpio-memory-map"><a class="anchor" href="#gpio-memory-map"></a><a class="link" href="#gpio-memory-map">5. Memory Map and Register Reference</a></h2>
+<div class="sectionbody">
+<span id="register-maps"></span>
+<div class="sect2">
+<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">5.1. Memory Map</a></h3>
+<div class="paragraph">
+<p>The controller&#8217;s interface bank contains <code>DATA_CTRL</code>, <code>DATA_CTRL_ENABLE</code>
+and <code>ACCESS_FILTER</code>; the shim&#8217;s control bank contains <code>CONTROL</code>.
+The generated <code>gpio_intf</code> and <code>gpio_ctrl</code> maps in
+<a href="#gpio-detailed-register-map">Detailed Register Map</a> define their register offsets, and <code>gpio_wrap</code>
+defines the bank placement within the composite aperture. The enclosing
+padring determines their system addresses.</p>
+</div>
+<span id="reset-behavior"></span>
+<div class="sect3">
+<h4 id="reset-values"><a class="anchor" href="#reset-values"></a><a class="link" href="#reset-values">5.1.1. Reset Values</a></h4>
+<div class="paragraph">
+<p><code>ACCESS_FILTER</code> resets to <code>0x00010100</code>: read and write filters are disabled,
+with each stored protection requirement set to <code>3&#8217;b001</code>. <code>DATA_CTRL</code> and
+<code>DATA_CTRL_ENABLE</code> software controls reset to zero. Default pad direction
+and post-reset LSIO ownership are described in <a href="#gpio-ownership">Data and Direction Ownership</a> and
+<a href="#gpio-reset-straps">Reset and Strap Capture</a>; zeroed software controls do not imply that every
+pad path is disabled.</p>
+</div>
+<div class="paragraph">
+<p><code>CONTROL</code> resets its drive-strength field to <code>3&#8217;b010</code> and its software
+pull, conditioning, configuration-enable and secondary-override controls
+to zero. The read-only strap fields reflect <code>INPUT_BY_DEFAULT</code> and the
+captured input, so the complete value is not a single fixed reset word.</p>
+</div>
+<span id="detailed-register-map"></span>
 </div>
 </div>
 <div class="sect2">
-<h3 id="reset-behavior"><a class="anchor" href="#reset-behavior"></a><a class="link" href="#reset-behavior">5.2. Reset Behavior</a></h3>
-<div class="paragraph">
-<p><code>ACCESS_FILTER</code> resets to <code>0x00010100</code>. Both filter-enable bits are zero,
-so reads and writes are initially allowed regardless of AXI <code>PROT</code>. The stored
-read and write requirements are each <code>3&#8217;b001</code>; they apply only after software
-enables the corresponding filter. The filter compares transaction protection
-attributes, not initiator identity, and cannot by itself guarantee SEP-only access.</p>
-</div>
-<div class="paragraph">
-<p><code>DATA_CTRL</code> resets its software controls to zero, leaving register overrides
-disabled. This does not disable every pad path: with the default
-<code>INPUT_BY_DEFAULT = 1</code>, receive is enabled and transmit disabled while cold reset
-is asserted and when no interface owns the pad. After cold reset, a hardware
-LSIO request can select the pad without software enabling the register interface.
-Its direction signals then control transmit and receive.</p>
-</div>
-<div class="paragraph">
-<p>The control bank&#8217;s <code>strap_valid</code> reflects <code>INPUT_BY_DEFAULT</code>, not the sampled
-pad level. <code>strap_value</code> reports the captured strap level. The visible <code>CONTROL</code>
-value therefore depends on the parameter and captured input as well as the
-reset values of its software-controlled pad settings.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">5.3. Detailed Register Map</a></h3>
+<h3 id="gpio-detailed-register-map"><a class="anchor" href="#gpio-detailed-register-map"></a><a class="link" href="#gpio-detailed-register-map">5.2. Detailed Register Map</a></h3>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
@@ -616,12 +787,12 @@ reset values of its software-controlled pad settings.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0</td><td><a href="#DATA_CTRL">DATA_CTRL</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x4</td><td><a href="#DATA_CTRL_ENABLE">DATA_CTRL_ENABLE</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x8</td><td><a href="#ACCESS_FILTER">ACCESS_FILTER</a></td><td>RW</td><td>GPIO Access Filter Register. WARNING: please read back this register to ensure the filter was written correctly. If you do not do so<br>the filter may not update before your next transaction, causing unexpected behavior.</td></tr>
+<tr><td>0x0</td><td><a href="#gpio_intf-DATA_CTRL">DATA_CTRL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x4</td><td><a href="#gpio_intf-DATA_CTRL_ENABLE">DATA_CTRL_ENABLE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#gpio_intf-ACCESS_FILTER">ACCESS_FILTER</a></td><td>RW</td><td>GPIO Access Filter Register. WARNING: please read back this register to ensure the filter was written correctly. If you do not do so<br>the filter may not update before your next transaction, causing unexpected behavior.</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
-<h3 id="DATA_CTRL">DATA_CTRL</h3>
+<span id="DATA_CTRL"></span><h3 id="gpio_intf-DATA_CTRL" data-register-alias="DATA_CTRL">DATA_CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31</td><td>pad2core</td><td>R</td><td>0x0</td><td>PAD2SOC Value</td></tr>
@@ -638,7 +809,7 @@ reset values of its software-controlled pad settings.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>core2pad</td><td>RW</td><td>0x0</td><td>Register-driven data to send to the pad.</td></tr>
 </table>
-<h3 id="DATA_CTRL_ENABLE">DATA_CTRL_ENABLE</h3>
+<span id="DATA_CTRL_ENABLE"></span><h3 id="gpio_intf-DATA_CTRL_ENABLE" data-register-alias="DATA_CTRL_ENABLE">DATA_CTRL_ENABLE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -647,7 +818,7 @@ reset values of its software-controlled pad settings.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>use_reg_core2pad</td><td>RW</td><td>0x0</td><td>Per-field register override. When set, core2pad is register-driven. OR&#x27;d with interface_enable.</td></tr>
 </table>
-<h3 id="ACCESS_FILTER">ACCESS_FILTER</h3>
+<span id="ACCESS_FILTER"></span><h3 id="gpio_intf-ACCESS_FILTER" data-register-alias="ACCESS_FILTER">ACCESS_FILTER</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:19</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -672,10 +843,10 @@ reset values of its software-controlled pad settings.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0</td><td><a href="#CONTROL">CONTROL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x0</td><td><a href="#gpio_ctrl-CONTROL">CONTROL</a></td><td>RW</td><td>-</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
-<h3 id="CONTROL">CONTROL</h3>
+<span id="CONTROL"></span><h3 id="gpio_ctrl-CONTROL" data-register-alias="CONTROL">CONTROL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:25</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -706,13 +877,13 @@ reset values of its software-controlled pad settings.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0</td><td><a href="#DATA_CTRL">DATA_CTRL</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x4</td><td><a href="#DATA_CTRL_ENABLE">DATA_CTRL_ENABLE</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x8</td><td><a href="#ACCESS_FILTER">ACCESS_FILTER</a></td><td>RW</td><td>GPIO Access Filter Register. WARNING: please read back this register to ensure the filter was written correctly. If you do not do so<br>the filter may not update before your next transaction, causing unexpected behavior.</td></tr>
-<tr><td>0x10</td><td><a href="#CONTROL">CONTROL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x0</td><td><a href="#gpio_wrap-DATA_CTRL">DATA_CTRL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x4</td><td><a href="#gpio_wrap-DATA_CTRL_ENABLE">DATA_CTRL_ENABLE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#gpio_wrap-ACCESS_FILTER">ACCESS_FILTER</a></td><td>RW</td><td>GPIO Access Filter Register. WARNING: please read back this register to ensure the filter was written correctly. If you do not do so<br>the filter may not update before your next transaction, causing unexpected behavior.</td></tr>
+<tr><td>0x10</td><td><a href="#gpio_wrap-CONTROL">CONTROL</a></td><td>RW</td><td>-</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
-<h3 id="DATA_CTRL">DATA_CTRL</h3>
+<h3 id="gpio_wrap-DATA_CTRL" data-register-alias="DATA_CTRL">DATA_CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31</td><td>pad2core</td><td>R</td><td>0x0</td><td>PAD2SOC Value</td></tr>
@@ -729,7 +900,7 @@ reset values of its software-controlled pad settings.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>core2pad</td><td>RW</td><td>0x0</td><td>Register-driven data to send to the pad.</td></tr>
 </table>
-<h3 id="DATA_CTRL_ENABLE">DATA_CTRL_ENABLE</h3>
+<h3 id="gpio_wrap-DATA_CTRL_ENABLE" data-register-alias="DATA_CTRL_ENABLE">DATA_CTRL_ENABLE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -738,7 +909,7 @@ reset values of its software-controlled pad settings.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>use_reg_core2pad</td><td>RW</td><td>0x0</td><td>Per-field register override. When set, core2pad is register-driven. OR&#x27;d with interface_enable.</td></tr>
 </table>
-<h3 id="ACCESS_FILTER">ACCESS_FILTER</h3>
+<h3 id="gpio_wrap-ACCESS_FILTER" data-register-alias="ACCESS_FILTER">ACCESS_FILTER</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:19</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -749,7 +920,7 @@ reset values of its software-controlled pad settings.</p>
 <tr><td>1</td><td>read_filter_enable</td><td>RW</td><td>0x0</td><td>Read Filter Enable. When set, reads require an exact match between AXI ARPROT and arprot_requirement. When clear, reads are unfiltered. PROT does not identify the initiator.<br>WARNING: please read back this register to ensure the filter was written correctly. If you do not do so<br>the filter may not update before your next transaction, causing unexpected behavior.</td></tr>
 <tr><td>0</td><td>write_filter_enable</td><td>RW</td><td>0x0</td><td>Write Filter Enable. When set, writes require an exact match between AXI AWPROT and awprot_requirement. When clear, writes are unfiltered. PROT does not identify the initiator.<br>WARNING: please read back this register to ensure the filter was written correctly. If you do not do so<br>the filter may not update before your next transaction, causing unexpected behavior.</td></tr>
 </table>
-<h3 id="CONTROL">CONTROL</h3>
+<h3 id="gpio_wrap-CONTROL" data-register-alias="CONTROL">CONTROL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:25</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -766,250 +937,6 @@ reset values of its software-controlled pad settings.</p>
 <tr><td>7:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>2:0</td><td>drive_strength</td><td>RW</td><td>0x2</td><td>Register-driven drive-strength.</td></tr>
 </table>
-</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="gpio-programming"><a class="anchor" href="#gpio-programming"></a><a class="link" href="#gpio-programming">6. Programming</a></h2>
-<div class="sectionbody">
-<div class="sect2">
-<h3 id="basic-gpio-configuration"><a class="anchor" href="#basic-gpio-configuration"></a><a class="link" href="#basic-gpio-configuration">6.1. Basic GPIO Configuration</a></h3>
-<div class="paragraph">
-<p>Setting up GPIO for simple output operation:</p>
-</div>
-<div class="literalblock">
-<div class="content">
-<pre>1. Configure physical characteristics in CONTROL register:
-   - Set drive_strength to desired value (default 010 = 6mA)
-   - Configure pull resistors if needed
-   - Enable config_enable = 1
-
-2. Configure interface in DATA_CTRL register:
-   - Set interface_enable = 1 for register control
-   - Set enable_rx_tx = 01 for output operation
-   - Set core2pad to desired output value
-
-3. Monitor operation:
-   - Check lsio_enable status for interface conflicts
-   - Read pad2core for input feedback</pre>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="configuration-strap-capture"><a class="anchor" href="#configuration-strap-capture"></a><a class="link" href="#configuration-strap-capture">6.2. Configuration Strap Capture</a></h3>
-<div class="paragraph">
-<p>Reading configuration straps captured during reset:</p>
-</div>
-<div class="literalblock">
-<div class="content">
-<pre>1. Wait for system initialization to complete
-2. Read DATA_CTRL.strap_valid to verify strap capture
-3. If valid, read DATA_CTRL.strap_value for configuration data
-4. Use strap value for system configuration decisions</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Note: Strap capture only occurs if GPIO is configured as input by
-default (INPUT_BY_DEFAULT parameter = 1).</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="interrupt-configuration"><a class="anchor" href="#interrupt-configuration"></a><a class="link" href="#interrupt-configuration">6.3. Interrupt Configuration</a></h3>
-<div class="paragraph">
-<p>Setting up GPIO interrupt generation:</p>
-</div>
-<div class="literalblock">
-<div class="content">
-<pre>1. Configure interrupt type in DATA_CTRL.interrupt_type:
-   - 00: Active-high level interrupt
-   - 01: Active-low level interrupt
-   - 10: Rising-edge interrupt
-   - 11: Falling-edge interrupt
-
-2. Enable interrupts:
-   - Set DATA_CTRL.interrupt_enable = 1
-
-3. Configure GPIO for input:
-   - Set DATA_CTRL.enable_rx_tx = 10 (RX enabled)
-   - Set DATA_CTRL.interface_enable = 1
-
-4. Handle interrupts in software interrupt service routine</pre>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="lsio-interface-operation"><a class="anchor" href="#lsio-interface-operation"></a><a class="link" href="#lsio-interface-operation">6.4. LSIO Interface Operation</a></h3>
-<div class="paragraph">
-<p>Configuring GPIO for LSIO hardware control:</p>
-</div>
-<div class="paragraph">
-<p>Pad ownership is ranked in three levels. Software does not need to give the
-pad up for a hardware LSIO peripheral to take it:</p>
-</div>
-<div class="literalblock">
-<div class="content">
-<pre>1. Hardware LSIO (lsio_interface_select_i asserted, lsio_disable = 0)
-2. Register interface (interface_enable, or a DATA_CTRL_ENABLE.use_reg_* override)
-3. Software-forced LSIO (DATA_CTRL.lsio_select)</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Letting a hardware LSIO peripheral drive the pad:</p>
-</div>
-<div class="literalblock">
-<div class="content">
-<pre>1. Ensure DATA_CTRL.lsio_disable = 0
-
-2. Nothing else is required. Once the peripheral asserts its select line it
-   takes the pad, whatever DATA_CTRL.interface_enable is set to.
-
-3. Monitor LSIO operation:
-   - Check DATA_CTRL.lsio_enable for LSIO request status
-   - Note this field reports the hardware select line, not which plane
-     currently owns the pad; the two differ when lsio_disable = 1</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Forcing LSIO from software, with no hardware request on the pad:</p>
-</div>
-<div class="literalblock">
-<div class="content">
-<pre>1. Disable register interface:
-   - Set DATA_CTRL.interface_enable = 0
-   - Clear any DATA_CTRL_ENABLE.use_reg_* overrides
-
-2. Set DATA_CTRL.lsio_select = 1 and ensure DATA_CTRL.lsio_disable = 0
-
-Unlike the hardware select line, this bit ranks *below* interface_enable, so
-the register interface must be off for it to take effect.</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Reclaiming a pad from LSIO:</p>
-</div>
-<div class="literalblock">
-<div class="content">
-<pre>1. Set DATA_CTRL.lsio_disable = 1
-   This gates both the hardware select line and lsio_select.
-
-2. Set DATA_CTRL.interface_enable = 1 and program core2pad / enable_rx_tx</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Some pads have their select line tied permanently asserted in the integration
-(the I3C pads, and the isolate-request, boot-stall and cool-reset-out pads).
-On those, step 1 above is mandatory: interface_enable alone will not take the
-pad, because the hardware request outranks it.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="security-configuration"><a class="anchor" href="#security-configuration"></a><a class="link" href="#security-configuration">6.5. Security Configuration</a></h3>
-<div class="paragraph">
-<p>The GPIO controller implements protection-based access filtering to
-enforce security policies. The filter examines AXI protection bits
-(<code>aw.prot</code> for writes, <code>ar.prot</code> for reads) and compares them against
-configurable requirement values.</p>
-</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="protection-bit-encoding"><a class="anchor" href="#protection-bit-encoding"></a><a class="link" href="#protection-bit-encoding">7. Protection Bit Encoding</a></h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>AXI protection bits are 3-bit fields encoding transaction attributes:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p><strong>Bit [0]</strong>: Privilege level (0=User, 1=Privileged)</p>
-</li>
-<li>
-<p><strong>Bit [1]</strong>: Security domain (0=Secure, 1=Non-Secure)</p>
-</li>
-<li>
-<p><strong>Bit [2]</strong>: Transaction type (0=Data, 1=Instruction)</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>Common protection values:
-* <code>0x0</code> (000): Data, Secure, User
-* <code>0x1</code> (001): Data, Secure, Privileged (default for GPIO)
-* <code>0x2</code> (010): Data, Non-Secure, User
-* <code>0x3</code> (011): Data, Non-Secure, Privileged</p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="filter-configuration"><a class="anchor" href="#filter-configuration"></a><a class="link" href="#filter-configuration">8. Filter Configuration</a></h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>Setting up access control filtering:</p>
-</div>
-<div class="literalblock">
-<div class="content">
-<pre>1. Determine required protection levels:
-   - Normal data: PROT = 0x0 (000)
-   - Privileged data: PROT = 0x1 (001) - recommended default
-   - Secure privileged: PROT = 0x1 (001)
-   - Non-secure privileged: PROT = 0x3 (011)
-
-2. Configure protection requirements:
-   - Set ACCESS_FILTER.awprot_requirement[2:0] for writes
-   - Set ACCESS_FILTER.arprot_requirement[2:0] for reads
-   - Default value is 0x1 (Data, Secure, Privileged)
-
-3. Enable filtering:
-   - Set ACCESS_FILTER.write_filter_enable = 1
-   - Set ACCESS_FILTER.read_filter_enable = 1
-
-4. Test access with different protection levels to verify operation:
-   - Transactions with matching protection: allowed
-   - Transactions with non-matching protection: blocked (DECERR)</pre>
-</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="filter-behavior"><a class="anchor" href="#filter-behavior"></a><a class="link" href="#filter-behavior">9. Filter Behavior</a></h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>When protection filtering is enabled:
-* Transactions with protection bits matching the requirement are allowed
-* Transactions with non-matching protection bits are blocked and receive
-  a decode error (DECERR) response
-* When filtering is disabled, all transactions are allowed regardless of
-  protection bits</p>
-</div>
-<div class="paragraph">
-<p>The filter operates on every transaction, providing real-time security
-enforcement without impacting performance for legitimate accesses.</p>
-</div>
-<div class="sect2">
-<h3 id="bidirectional-operation"><a class="anchor" href="#bidirectional-operation"></a><a class="link" href="#bidirectional-operation">9.1. Bidirectional Operation</a></h3>
-<div class="paragraph">
-<p>Configuring GPIO for bidirectional communication:</p>
-</div>
-<div class="literalblock">
-<div class="content">
-<pre>1. Set initial direction:
-   - For output: enable_rx_tx = 01
-   - For input: enable_rx_tx = 10
-
-2. Dynamic direction switching:
-   - Write new enable_rx_tx value to change direction
-   - Direction change takes effect immediately
-
-3. Monitor operation:
-   - Always read pad2core for current pad state
-   - Write core2pad when in output mode
-
-4. Handle contention:
-   - Ensure external drivers are tristated before switching to output
-   - Use pull resistors to define idle state</pre>
-</div>
 </div>
 </div>
 </div>

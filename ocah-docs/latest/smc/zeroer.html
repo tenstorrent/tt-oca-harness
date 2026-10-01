@@ -4,8 +4,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Zeroer :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
-    <link rel="prev" href="dfd.html">
-    <link rel="next" href="scan_protection.html">
+    <link rel="prev" href="dma.html">
+    <link rel="next" href="watchdog.html">
     <meta name="description" content="SMC hardware-assisted memory clearing architecture and operation.">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../_/css/site.css">
@@ -138,44 +138,92 @@
     <a class="nav-link" href="../sep/index.html">Security Processor (SEP)</a>
 <ul class="nav-list">
   <li class="nav-item" data-depth="4">
-    <button class="nav-item-toggle"></button>
-    <a class="nav-link" href="../sep/introduction.html">Introduction</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
     <a class="nav-link" href="../sep/threat_model.html">Threat Model</a>
   </li>
-  <li class="nav-item" data-depth="5">
+  <li class="nav-item" data-depth="4">
     <a class="nav-link" href="../sep/attack_countermeasures.html">Attack Countermeasures</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../sep/clk_rst.html">Clocks and Resets</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/reset_controller.html">SEP Reset Controller</a>
   </li>
 </ul>
   </li>
   <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../sep/overview.html">Hardware Overview</a>
+    <a class="nav-link" href="../sep/cpu.html">CPU</a>
   </li>
   <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../sep/fabric.html">SEP Interconnect</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../sep/cpu.html">CPU Subsystem</a>
-  </li>
-  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../sep/rom.html">Boot ROM</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep-bootrom-prod/index.html">Production ROM Manual</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../sep/fabric.html">Interconnect</a>
   </li>
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="../sep/interrupts.html">Interrupts</a>
   </li>
   <li class="nav-item" data-depth="4">
     <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../sep/periphs.html">Peripherals</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/dma.html">Direct Memory Access (DMA)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/mailbox.html">Mailboxes</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/peripheral_subsystem.html">Peripheral Subsystem</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/spi.html">Serial Peripheral Interface (SPI)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/watchdog.html">Watchdog Timer (WDT)</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../sep/security.html">Security and Lifecycle</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/otp_fuse_controller.html">OTP Fuse Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/token_processing.html">Token Processing</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/security_disable.html">Security Disable</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/lifecycle_controller.html">Lifecycle Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/test_mode.html">Test Mode Entry</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../sep/crypto.html">Cryptographic Subsystem</a>
 <ul class="nav-list">
   <li class="nav-item" data-depth="5">
-    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../sep/trng.html">TRNG and DRBG</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="6">
-    <a class="nav-link" href="../ip/entropy_source/doc/index.html">Entropy Source</a>
   </li>
-</ul>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/entropy_source/doc/index.html">Entropy Source</a>
   </li>
   <li class="nav-item" data-depth="5">
     <a class="nav-link" href="../sep/aes.html">AES Cipher</a>
@@ -207,40 +255,7 @@
 </ul>
   </li>
   <li class="nav-item" data-depth="4">
-    <button class="nav-item-toggle"></button>
-    <a class="nav-link" href="../sep/periphs.html">Fuse Controller and Lifecycle Controller</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../sep/otp_fuse_controller.html">OTP Fuse Controller</a>
-  </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../sep/peripheral_subsystem.html">Peripheral Subsystem</a>
-  </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../sep/spi.html">Serial Peripheral Interface (SPI)</a>
-  </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../sep/watchdog.html">Watchdog Timer (WDT)</a>
-  </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../sep/reset_controller.html">SEP Reset Controller</a>
-  </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../sep/token_processing.html">Token Processing</a>
-  </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../sep/security_disable.html">Security Disable</a>
-  </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../sep/lifecycle_controller.html">Life Cycle Controller</a>
-  </li>
-</ul>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../sep/test_mode.html">Test Mode Entry</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../sep/memory_map.html">Memory Map and Registers</a>
+    <a class="nav-link" href="../sep/memory_map.html">Memory Map and Register Reference</a>
   </li>
 </ul>
   </li>
@@ -252,14 +267,41 @@
     <a class="nav-link" href="overview.html">Overview</a>
   </li>
   <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="clk_rst.html">Clock and Reset Management</a>
+    <a class="nav-link" href="clk_rst.html">Clocks and Resets</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="cpu.html">CPU</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="rom.html">Boot ROM</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../smc-bootrom-prod/index.html">Production ROM Manual</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="fabric.html">Interconnect</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="interrupts.html">Interrupts</a>
   </li>
   <li class="nav-item" data-depth="4">
     <button class="nav-item-toggle"></button>
     <a class="nav-link" href="periphs.html">Peripherals</a>
 <ul class="nav-list">
   <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../ip/axi_lite_mailbox_unit/doc/index.html">Mailbox</a>
+    <a class="nav-link" href="dma.html">Direct Memory Access Engine</a>
+  </li>
+  <li class="nav-item is-current-page" data-depth="5">
+    <a class="nav-link" href="zeroer.html">Zeroer</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="watchdog.html">Watchdog Timer (WDT)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/axi_lite_mailbox_unit/doc/index.html">Mailboxes</a>
   </li>
   <li class="nav-item" data-depth="5">
     <a class="nav-link" href="../ip/system_timer_octs/doc/index.html">System Timer OCTS</a>
@@ -291,31 +333,13 @@
 </ul>
   </li>
   <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="cpu.html">CPU and Memory System</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="interrupts.html">Interrupts</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="rom.html">Boot ROM</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="fabric.html">Fabric</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="dma.html">Direct Memory Access Engine</a>
-  </li>
-  <li class="nav-item" data-depth="4">
     <a class="nav-link" href="dfd.html">Design-for-Debug and CLA</a>
-  </li>
-  <li class="nav-item is-current-page" data-depth="4">
-    <a class="nav-link" href="zeroer.html">Zeroer</a>
   </li>
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="scan_protection.html">eFuse Scan Protection</a>
   </li>
   <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="memmap.html">Memory Map</a>
+    <a class="nav-link" href="memmap.html">Memory Map and Register Reference</a>
   </li>
 </ul>
   </li>
@@ -324,37 +348,58 @@
     <a class="nav-link" href="../dtp/index.html">Debug &amp; Test Ports (DTP)</a>
 <ul class="nav-list">
   <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../dtp/overview.html">Architecture and Access Paths</a>
+    <a class="nav-link" href="../dtp/overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../dtp/clk_rst.html">Clocks and Resets</a>
   </li>
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="../dtp/jtag.html">JTAG Operation</a>
   </li>
   <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../ip/jtag_intf_unit/doc/index.html">JTAG Interface Unit</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../ip/jtag_ptap/doc/index.html">JTAG PTAP</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../ip/jtag_stap/doc/index.html">JTAG STAP</a>
+    <a class="nav-link" href="../dtp/cross_trigger.html">Cross-Trigger Operation</a>
   </li>
   <li class="nav-item" data-depth="4">
     <button class="nav-item-toggle"></button>
-    <a class="nav-link" href="../ip/cross_trigger_network/doc/index.html">Cross-Trigger Network</a>
+    <a class="nav-link" href="../dtp/ip_reference.html">IP Reference</a>
 <ul class="nav-list">
   <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">JTAG</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/jtag_intf_unit/doc/index.html">JTAG Interface Unit</a>
+  </li>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/jtag_ptap/doc/index.html">JTAG PTAP</a>
+  </li>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/jtag_stap/doc/index.html">JTAG STAP</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Cross-Trigger</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../ip/cross_trigger_network/doc/index.html">Cross-Trigger Network</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="7">
     <a class="nav-link" href="../ip/cross_trigger_network/doc/index.html#ctn-programming">Programming</a>
   </li>
 </ul>
   </li>
-  <li class="nav-item" data-depth="4">
+  <li class="nav-item" data-depth="6">
     <a class="nav-link" href="../ip/cross_trigger_port/doc/index.html">Cross-Trigger Port</a>
   </li>
-  <li class="nav-item" data-depth="4">
+  <li class="nav-item" data-depth="6">
     <a class="nav-link" href="../ip/cross_trigger_matrix/doc/index.html">Cross-Trigger Matrix</a>
   </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../dtp/clock_stop.html">Clock Stop / Reset</a>
+</ul>
+  </li>
+</ul>
   </li>
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="../dtp/reference.html">Configuration and Reference</a>
@@ -364,7 +409,7 @@
 </ul>
   </li>
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../smn.placeholder.html">System Management Network (SMN)</a>
+    <a class="nav-link" href="../smn.html">System Management Network (SMN)</a>
   </li>
   <li class="nav-item" data-depth="2">
     <button class="nav-item-toggle"></button>
@@ -630,6 +675,7 @@
     <li>OCAH Platform Components</li>
     <li><a href="../smu/index.html">System Management Unit (SMU)</a></li>
     <li><a href="index.html">System Management Controller (SMC)</a></li>
+    <li><a href="periphs.html">Peripherals</a></li>
     <li><a href="zeroer.html">Zeroer</a></li>
   </ul>
 </nav>
@@ -690,7 +736,6 @@ issuance limit or counter-based back-pressure</p></td>
 </table>
 </div>
 </div>
-<p class="block-references">Figures and tables: <a href="#smc-memory-zeroer-integration-table">Table 1</a>.</p>
 <div class="sect1">
 <h2 id="use-cases"><a class="anchor" href="#use-cases"></a><a class="link" href="#use-cases">1. Use Cases</a></h2>
 <div class="sectionbody">
@@ -776,7 +821,6 @@ once no bytes remain. <code>ST_ERROR</code> is entered only from an illegal stat
 is left only by reset. The write-response channel is always ready and its response code
 is not checked; the outstanding-request count decides when the zeroer stops being busy.</p>
 </div>
-<p class="block-references">Figures and tables: <a href="#smc-zeroer-state-machine-table">Table 2</a>; <a href="#smc-memory-zeroer-diagram">Figure 1</a>.</p>
 </div>
 <div class="sect2">
 <h3 id="operation-flow"><a class="anchor" href="#operation-flow"></a><a class="link" href="#operation-flow">2.2. Operation Flow</a></h3>
@@ -857,7 +901,6 @@ interface.</p>
 </tr>
 </tbody>
 </table>
-<p class="block-references">Figures and tables: <a href="#smc-zeroer-axi4-master-characteristics-table">Table 3</a>.</p>
 </div>
 <div class="sect2">
 <h3 id="outstanding-transaction-management"><a class="anchor" href="#outstanding-transaction-management"></a><a class="link" href="#outstanding-transaction-management">2.4. Outstanding Transaction Management</a></h3>
@@ -912,7 +955,6 @@ independent of AXI activity</p></td>
 </tr>
 </tbody>
 </table>
-<p class="block-references">Figures and tables: <a href="#smc-zeroer-clock-domain-characteristics-table">Table 4</a>.</p>
 </div>
 <div class="sect2">
 <h3 id="clock-gating"><a class="anchor" href="#clock-gating"></a><a class="link" href="#clock-gating">2.7. Clock Gating</a></h3>
@@ -955,7 +997,6 @@ domain.</p>
 </tr>
 </tbody>
 </table>
-<p class="block-references">Figures and tables: <a href="#smc-zeroer-clock-gating-control-table">Table 5</a>.</p>
 </div>
 <div class="sect2">
 <h3 id="control-and-status"><a class="anchor" href="#control-and-status"></a><a class="link" href="#control-and-status">2.8. Control and Status</a></h3>
@@ -1001,7 +1042,6 @@ address arithmetic before starting</p></td>
 </tr>
 </tbody>
 </table>
-<p class="block-references">Figures and tables: <a href="#smc-zeroer-configuration-and-control-table">Table 6</a>.</p>
 </div>
 <div class="sect3">
 <h4 id="status-features"><a class="anchor" href="#status-features"></a><a class="link" href="#status-features">2.8.2. Status Features</a></h4>
@@ -1075,12 +1115,20 @@ outstanding writes</p></td>
 </tr>
 </tbody>
 </table>
-<p class="block-references">Figures and tables: <a href="#smc-zeroer-data-generation-and-control-table">Table 7</a>.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">4. Detailed Register Map</a></h2>
+<h2 id="memory-map-and-register-reference"><a class="anchor" href="#memory-map-and-register-reference"></a><a class="link" href="#memory-map-and-register-reference">4. Memory Map and Register Reference</a></h2>
 <div class="sectionbody">
+<div class="sect2">
+<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">4.1. Memory Map</a></h3>
+<div class="paragraph">
+<p>Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">4.2. Detailed Register Map</a></h3>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
@@ -1095,24 +1143,24 @@ outstanding writes</p></td>
 <table id="trm-table-8">
 <caption class="title"><a href="#trm-table-8">Table 8</a>. Zeroer Control Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0</td><td><a href="#DEST_ADDR">DEST_ADDR</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x8</td><td><a href="#SIZE">SIZE</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x10</td><td><a href="#CTRL_STATUS">CTRL_STATUS</a></td><td>RW</td><td>Writing this register will trigger start of zeroer. The write is ignored while SIZE is 0.</td></tr>
+<tr><td>0x0</td><td><a href="#zeroer_ctrl-DEST_ADDR">DEST_ADDR</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#zeroer_ctrl-SIZE">SIZE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#zeroer_ctrl-CTRL_STATUS">CTRL_STATUS</a></td><td>RW</td><td>Writing this register will trigger start of zeroer. The write is ignored while SIZE is 0.</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
-<h3 id="DEST_ADDR">DEST_ADDR</h3>
+<span id="DEST_ADDR"></span><h3 id="zeroer_ctrl-DEST_ADDR" data-register-alias="DEST_ADDR">DEST_ADDR</h3>
 <table id="trm-table-9">
 <caption class="title"><a href="#trm-table-9">Table 9</a>. zeroer_ctrl.DEST_ADDR fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:0</td><td>DEST_ADDR</td><td>RW</td><td>0x0</td><td>Byte address to write zeros to</td></tr>
 </table>
-<h3 id="SIZE">SIZE</h3>
+<span id="SIZE"></span><h3 id="zeroer_ctrl-SIZE" data-register-alias="SIZE">SIZE</h3>
 <table id="trm-table-10">
 <caption class="title"><a href="#trm-table-10">Table 10</a>. zeroer_ctrl.SIZE fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:0</td><td>SIZE</td><td>RW</td><td>0x0</td><td>Size in bytes of zeros to write</td></tr>
 </table>
-<h3 id="CTRL_STATUS">CTRL_STATUS</h3>
+<span id="CTRL_STATUS"></span><h3 id="zeroer_ctrl-CTRL_STATUS" data-register-alias="CTRL_STATUS">CTRL_STATUS</h3>
 <table id="trm-table-11">
 <caption class="title"><a href="#trm-table-11">Table 11</a>. zeroer_ctrl.CTRL_STATUS fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -1124,9 +1172,10 @@ outstanding writes</p></td>
 </div>
 </div>
 </div>
+</div>
 <nav class="pagination">
-  <span class="prev"><a href="dfd.html">Design-for-Debug and CLA</a></span>
-  <span class="next"><a href="scan_protection.html">eFuse Scan Protection</a></span>
+  <span class="prev"><a href="dma.html">Direct Memory Access Engine</a></span>
+  <span class="next"><a href="watchdog.html">Watchdog Timer (WDT)</a></span>
 </nav>
 </article>
   </div>

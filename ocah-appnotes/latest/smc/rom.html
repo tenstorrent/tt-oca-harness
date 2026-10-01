@@ -176,10 +176,11 @@
 <p>The SMC maps a 128 KiB read-only region at <code>0xC004_0000</code> through
 <code>0xC005_FFFF</code>. The cold-reset CPU vector is <code>0xC004_0000</code>.</p>
 </div>
+<span id="rom-architecture"></span>
 </div>
 </div>
 <div class="sect1">
-<h2 id="rom-architecture"><a class="anchor" href="#rom-architecture"></a><a class="link" href="#rom-architecture">1. ROM Architecture</a></h2>
+<h2 id="smc-rom-rom-architecture"><a class="anchor" href="#smc-rom-rom-architecture"></a><a class="link" href="#smc-rom-rom-architecture">1. ROM Architecture</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>In the current four-core implementation, the CPU reaches the ROM over its
@@ -190,18 +191,11 @@ read mode. Responses return one 64-bit word. The ROM macro boundary is not an
 AXI-Lite interface and is separate from the CPU MMIO AXI and SMC peripheral
 AXI-Lite paths.</p>
 </div>
-<div class="paragraph">
-<p>The production ROM linker script,
-<code>hw/sys/smc/bootrom/prod/linker/smc/smc_rom.ld</code>, matches the 128 KiB hardware
-region. It places <code>.init</code>, <code>.fini</code>, constructor arrays, <code>.rodata</code>, <code>.text</code>, and
-ROM padding in that region. <code>.data</code>, <code>.tdata</code>, <code>.itim</code>, and <code>.lim</code> have runtime
-addresses in the SRAM region at <code>0xC006_0000</code> and load images in ROM. <code>.tbss</code>,
-<code>.bss</code>, the stack, and the heap occupy only SRAM.</p>
-</div>
+<span id="rom-hardware-configuration"></span>
 </div>
 </div>
 <div class="sect1">
-<h2 id="rom-hardware-configuration"><a class="anchor" href="#rom-hardware-configuration"></a><a class="link" href="#rom-hardware-configuration">2. ROM Hardware Configuration</a></h2>
+<h2 id="smc-rom-rom-hardware-configuration"><a class="anchor" href="#smc-rom-rom-hardware-configuration"></a><a class="link" href="#smc-rom-rom-hardware-configuration">2. Hardware Configuration and Integrity</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p><code>OCAH4CORECluster_mems</code> passes the 11-bit <code>rom_cfg_i</code> value unchanged to the
@@ -215,6 +209,33 @@ zero.</p>
 the eight bytes in each 64-bit ROM word; deasserted passes the word through
 unchanged. In <code>smc.sv</code>, this control comes from the ROM endianness bit in the
 eFuse shadow-register output.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="boot-flow"><a class="anchor" href="#boot-flow"></a><a class="link" href="#boot-flow">3. Boot Flow</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The production ROM initializes SRAM and the C runtime, then services OCCP
+requests over target-mode I2C and I3C. The production manual describes the
+startup checks, lifecycle policy and boot-handoff commands.</p>
+</div>
+<div class="paragraph">
+<p>The production ROM linker script,
+<code>hw/sys/smc/bootrom/prod/linker/smc/smc_rom.ld</code>, matches the 128 KiB hardware
+region. It places <code>.init</code>, <code>.fini</code>, constructor arrays, <code>.rodata</code>, <code>.text</code>, and
+ROM padding in that region. <code>.data</code>, <code>.tdata</code>, <code>.itim</code>, and <code>.lim</code> have runtime
+addresses in the SRAM region at <code>0xC006_0000</code> and load images in ROM. <code>.tbss</code>,
+<code>.bss</code>, the stack, and the heap occupy only SRAM.</p>
+</div>
+<span id="firmware-reference"></span>
+</div>
+</div>
+<div class="sect1">
+<h2 id="smc-rom-firmware-reference"><a class="anchor" href="#smc-rom-firmware-reference"></a><a class="link" href="#smc-rom-firmware-reference">4. Firmware Reference</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><a href="../smc-bootrom-prod/index.html" class="xref page">Production ROM Manual</a></p>
 </div>
 </div>
 </div>

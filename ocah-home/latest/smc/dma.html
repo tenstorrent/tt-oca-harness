@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Direct Memory Access (DMA) Engine :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
-    <meta name="description" content="SMC DMA architecture, control, data paths, and system integration.">
+    <meta name="description" content="SMC DMA configuration, submission, completion and register reference.">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../_/css/site.css">
     <link rel="stylesheet" href="../../../_/css/extra.css">
@@ -188,61 +188,67 @@
 <div id="preamble">
 <div class="sectionbody">
 <div id="direct-memory-access-dma-engine" class="paragraph">
-<p>The SMC DMA controller provides data movement services for telemetry
-collection, security data processing, and inter-component communication
-without CPU intervention. The controller uses a frontend-backend
-architecture based on the PULP
-<a href="https://github.com/pulp-platform/iDMA">iDMA</a> engine, supporting
-register-programmed linear and 2D transfers, and integration with SMC
-fabric filtering. SMC enables one control stream.</p>
-</div>
-<div class="paragraph">
-<p><a href="#smc-dma-controller-integration-table">SMC DMA Controller Integration</a> summarises the DMA control aperture and fabric
-integration.</p>
+<p>The SMC DMA copies data through an AXI master using register-programmed linear
+or two-dimensional transfers. Software supplies one shared configuration and
+submits it by reading <code>NEXT_ID_0</code>. The engine does not fetch descriptor lists.
+SMC instantiates one control interface, one stream and one DMA master.</p>
 </div>
 <table id="smc-dma-controller-integration-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 1. SMC DMA Controller Integration</caption>
+<caption class="title">Table 1. SMC DMA integration</caption>
 <colgroup>
-<col style="width: 30%;">
-<col style="width: 70%;">
+<col style="width: 25%;">
+<col style="width: 75%;">
 </colgroup>
 <thead>
 <tr>
-<th class="tableblock halign-left valign-top">Parameter</th>
-<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Item</th>
+<th class="tableblock halign-left valign-top">SMC configuration</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Address Range</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0xC003_8000 - 0xC003_81FF (512 bytes)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Control aperture</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xC003_8000–0xC003_81FF</code> (512 bytes, SMC-local view).</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Control Interface</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4 (9-bit address, 64-bit data, 8-bit ID), converted to 32-bit register accesses</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Control path</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI, 9-bit local address and 64-bit data, 8-bit ID, converted internally
+to 32-bit register accesses. This is not an AXI4-Lite-only wrapper.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Data Interface</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4 Master (56-bit address, 64-bit data, 4-bit ID)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Data path</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">56-bit addresses, 64-bit data; 3-bit ID at the DMA wrapper and
+4-bit ID after the shared DMA/zeroer mux. Backend internal IDs are 2 bits.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Stream Support</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Register map exposes 16 stream banks; SMC instantiates 1</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Security</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Integration with SMC fabric filtering mechanisms</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Access policy</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Transfers pass through SMC fabric remapping/filtering;
+program addresses permitted by that integration.</p></td>
 </tr>
 </tbody>
 </table>
 </div>
 </div>
 <div class="sect1">
-<h2 id="architecture-overview"><a class="anchor" href="#architecture-overview"></a><a class="link" href="#architecture-overview">Architecture Overview</a></h2>
+<h2 id="architecture-and-configuration"><a class="anchor" href="#architecture-and-configuration"></a><a class="link" href="#architecture-and-configuration">Architecture and Configuration</a></h2>
 <div class="sectionbody">
+<span id="architecture-overview"></span>
+<span id="configuration-parameters"></span>
+<span id="dma-backend"></span>
+<span id="dma-request-manager"></span>
+<span id="performance-optimization-and-power-management"></span>
+<span id="request-arbitration"></span>
+<span id="request-path"></span>
+<span id="request-tracking"></span>
+<span id="response-routing"></span>
+<span id="smc-dma-axi4-master-characteristics-table"></span>
+<span id="smc-dma-clock-gating-configuration-table"></span>
+<span id="smc-dma-performance-features-table"></span>
+<span id="system-integration"></span>
 <div class="paragraph">
-<p><a href="#smc-dma-zeroer-diagram">SMC DMA frontend, backend and shared fabric path</a> shows the DMA frontend and backend and the fabric path the
-DMA shares with the memory zeroer.</p>
+<p>The frontend captures register state into a request FIFO. The 2D midend expands
+each command into linear transfers, and the backend performs the AXI reads and
+writes. The DMA and zeroer share the outgoing fabric path shown below.</p>
 </div>
 <div id="smc-dma-zeroer-diagram" class="imageblock">
 <div class="content">
@@ -260,572 +266,275 @@ bus, and grey lines are iDMA requests and responses, gated clocks and status out
 The dashed box is the manager-to-backend FIFO, which is absent because SMC sets
 <code>M2B_FIFO_DEPTH</code> to 0. With one control interface and one master interface, the
 request manager is a passthrough, so the arbitration described under
-<a href="#smc-dma-request-arbitration">Request Arbitration</a> is not instantiated.</p>
+<a href="#smc-dma-request-arbitration">[smc-dma-request-arbitration]</a> is not instantiated.</p>
 </div>
-<div class="paragraph">
-<p>The DMA controller implements a frontend-backend architecture with the
-following modules:</p>
+<div id="smc-dma-request-arbitration" class="paragraph">
+<p>The generic request manager can arbitrate multiple control/master interfaces
+with round-robin selection, per-master origin tracking and buffered response
+routing. In the instantiated one-control/one-master SMC configuration it is a
+passthrough; these generic arbitration features add no extra SMC streams.</p>
 </div>
-<div class="ulist">
-<ul>
-<li>
-<p><strong>Frontend</strong> (idma_frontend_wrapper): Register interface, command processing,
-transfer descriptor management, and configuration control</p>
-</li>
-<li>
-<p><strong>Backend</strong> (idma_backend_wrapper): High-performance data movement engine with
-AXI master interface based on iDMA</p>
-</li>
-<li>
-<p><strong>Request Manager</strong> (idma_request_manager_wrapper): Round-robin arbitration to
-distribute requests across multiple master interfaces</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>This separation enables independent optimization and power management of
-control plane and data plane operations.</p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">Configuration Parameters</a></h2>
-<div class="sectionbody">
+<table id="smc-dma-configuration-parameters-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. SMC DMA elaboration settings</caption>
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 16.6666%;">
+<col style="width: 50.0001%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Parameter</th>
+<th class="tableblock halign-left valign-top">SMC value</th>
+<th class="tableblock halign-left valign-top">Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>NUM_CTRL_INTERFACES</code>, <code>NUM_CTRL_STREAMS</code>, <code>NUM_MST_INTERFACES</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 each</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">One shared configuration, one functional stream and one DMA master.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DMA_MST_MAX_TXNS</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Backend in-flight AXI limit, from <code>FABRIC_MAX_TRANS</code>.
+The generic DMA wrapper default is 16.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>F2M_FIFO_DEPTH</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Request FIFO between frontend and 2D midend.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>M2B_FIFO_DEPTH</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Midend-to-backend FIFO bypassed.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>BUFFER_DEPTH</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Backend realignment buffer depth in beats; the generic
+wrapper default is 3. It is not a reorder-buffer entry count.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>EN_R_AW_COUPLING</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Backend read/write address coupling enabled.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>BYPASS_DMA_CTRL_FLOPS</code>, <code>BYPASS_DMA_MST_FLOPS</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0 each</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Interface cuts retained.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>CG_HYSTERESIS_W</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">6</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Width of the runtime clock-gating hysteresis input.</p></td>
+</tr>
+</tbody>
+</table>
 <div class="paragraph">
 <p>The parameters of <code>idma_wrapper</code> are listed in <a href="../../../ocah-docs/latest/rtl-modules-reference/ip/idma_wrapper/idma_wrapper.html" class="xref page">idma_wrapper</a>.</p>
 </div>
 <div class="paragraph">
-<p>SMC instantiates <code>idma_wrapper</code> with one control port, one stream (see
-<a href="#dma-stream-support">Stream Support</a>), and one master port, up to 32 outstanding master
-transactions, a 4-entry frontend-to-midend FIFO, no manager-to-backend FIFO, a
-16-beat realignment buffer, R-AW coupling enabled, both register slices kept, and
-a 6-bit clock-gating hysteresis.</p>
+<p>The frontend has a bus-aware clock gate; the request manager and backend use a
+separate activity/hysteresis gate. <code>cg_enable_i=0</code> keeps them awake, and test
+mode overrides gating. Clock gating does not abort transfers or isolate the bus.</p>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="dma-frontend"><a class="anchor" href="#dma-frontend"></a><a class="link" href="#dma-frontend">DMA Frontend</a></h2>
+<h2 id="transfer-configuration"><a class="anchor" href="#transfer-configuration"></a><a class="link" href="#transfer-configuration">Transfer Configuration</a></h2>
 <div class="sectionbody">
-<div class="paragraph">
-<p>The frontend (idma_frontend_wrapper) manages register interface, command
-processing, and transfer descriptor handling.</p>
-</div>
+<span id="dma-configuration-and-control"></span>
+<span id="type-definitions"></span>
 <div class="sect2">
-<h3 id="control-interface"><a class="anchor" href="#control-interface"></a><a class="link" href="#control-interface">Control Interface</a></h3>
+<h3 id="dma-stream-support"><a class="anchor" href="#dma-stream-support"></a><a class="link" href="#dma-stream-support">Stream and Register Ownership</a></h3>
+<span id="control-interface"></span>
+<span id="dma-frontend"></span>
+<span id="smc-dma-frontend-control-interface-table"></span>
 <div class="paragraph">
-<p><a href="#smc-dma-frontend-control-interface-table">SMC DMA Frontend Control Interface</a> describes the frontend control interface.</p>
-</div>
-<table id="smc-dma-frontend-control-interface-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 2. SMC DMA Frontend Control Interface</caption>
-<colgroup>
-<col style="width: 30%;">
-<col style="width: 70%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Feature</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Register Interface</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4 (9-bit address, 64-bit data), converted to 32-bit register accesses</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Control Interfaces</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Multiple configurable control interfaces for
-independent DMA access</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Atomic Operations</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Atomic command submission and status reading</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Error Reporting</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">No classified software error-status register in this
-control aperture</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Configuration Lock</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">No configuration-lock register; software serializes
-updates to the shared transfer configuration</p></td>
-</tr>
-</tbody>
-</table>
-</div>
-<div class="sect2">
-<h3 id="dma-stream-support"><a class="anchor" href="#dma-stream-support"></a><a class="link" href="#dma-stream-support">Stream Support</a></h3>
-<div class="paragraph">
-<p>A stream is an independent transfer-ID and status-tracking context in the
-frontend. The <code>dma_ctrl</code> register map reserves banks for 16 streams:
-<code>NEXT_ID_0</code> through <code>NEXT_ID_15</code>, <code>STATUS_0</code> through <code>STATUS_15</code>, and
-<code>DONE_0</code> through <code>DONE_15</code>. Streams do not have private transfer
-descriptors. There is a single set of <code>SRC_ADDRESS</code>, <code>DST_ADDRESS</code>,
-<code>LENGTH</code>, stride, and repetition registers shared by every stream;
-reading <code>NEXT_ID_n</code> launches a transfer built from those shared registers
-and tags it with stream index n.</p>
+<p>The generated map contains <code>NEXT_ID</code>, <code>STATUS</code> and <code>DONE</code> banks for 16 streams,
+but only bank 0 is functional in SMC. Reads of <code>NEXT_ID_1..15</code> complete with zero
+and launch nothing; their <code>STATUS</code> and <code>DONE</code> registers also read zero. Treat
+these banks as reserved. A read of <code>NEXT_ID_0</code> is a command, not a harmless
+status read; exclude it from diagnostic register dumps.</p>
 </div>
 <div class="paragraph">
-<p>SMC instantiates the DMA with <code>NUM_CTRL_STREAMS = 1</code>, so only stream 0 is
-functional. Streams 1 through 15 cannot be used.</p>
-</div>
-<div class="paragraph">
-<p><code>NUM_CTRL_STREAMS</code> does not size the register file. The register file is
-always generated with all 16 stream banks, and every bank decodes
-normally regardless of the parameter. The parameter gates only the logic
-behind the banks, so with <code>NUM_CTRL_STREAMS = 1</code> the effect is:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>Reading <code>NEXT_ID_1</code> through <code>NEXT_ID_15</code> does <strong>not</strong> start a transfer.
-The access completes with no bus error and returns 0, which is the same
-value <code>NEXT_ID</code> returns for a command that was not set up correctly.
-Software cannot distinguish a dropped request from a rejected one by the
-returned value.</p>
-</li>
-<li>
-<p><code>STATUS_1</code> through <code>STATUS_15</code> and <code>DONE_1</code> through <code>DONE_15</code> are tied
-to 0 and never update.</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>Software must use <code>NEXT_ID_0</code>, <code>STATUS_0</code>, and <code>DONE_0</code> exclusively and
-treat the remaining banks as reserved.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="transfer-descriptor-support"><a class="anchor" href="#transfer-descriptor-support"></a><a class="link" href="#transfer-descriptor-support">Transfer Descriptor Support</a></h3>
-<div class="paragraph">
-<p><a href="#smc-dma-transfer-capabilities-table">SMC DMA Transfer Capabilities</a> describes the transfer descriptor support.</p>
-</div>
-<table id="smc-dma-transfer-capabilities-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 3. SMC DMA Transfer Capabilities</caption>
-<colgroup>
-<col style="width: 30%;">
-<col style="width: 70%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Transfer Type</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Linear Transfers</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">One <code>LENGTH</code>-byte copy; program <code>REPS_2</code> = 1</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2D Transfers</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Rectangular data blocks with configurable
-source/destination stride</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Repeat Patterns</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Configurable repeat count for repetitive operations</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Scatter-Gather</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Strided only: independent source and destination
-strides gather or scatter evenly spaced blocks. No descriptor-list fetcher</p></td>
-</tr>
-</tbody>
-</table>
-</div>
-<div class="sect2">
-<h3 id="command-processing"><a class="anchor" href="#command-processing"></a><a class="link" href="#command-processing">Command Processing</a></h3>
-<div class="paragraph">
-<p>Software programs the shared source, destination, length, stride, and
-repetition registers. Reading <code>NEXT_ID_0</code> submits that configuration to the
-2D midend, which expands the repetitions into linear backend requests.
-No memory-resident descriptor chain is fetched or interpreted.</p>
-</div>
-<div class="paragraph">
-<p>Every transfer, linear included, needs <code>CONF.ENABLE_ND</code> = 1 and <code>REPS_2</code> &gt;= 1.
-Otherwise the midend issues no request and completes the command with an
-error.</p>
-</div>
-<div class="paragraph">
-<p>FIFO buffering between the frontend and midend ensures pipelined
-operation, while back-pressure handling absorbs system overloads without
-losing commands.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="dma-request-manager"><a class="anchor" href="#dma-request-manager"></a><a class="link" href="#dma-request-manager">DMA Request Manager</a></h3>
-<div class="paragraph">
-<p>The request manager (idma_request_manager_wrapper) sits between the frontend and
-backend, providing flexible request routing when multiple control
-interfaces or master interfaces are configured. In the simplest case
-(single control interface and single master interface), the module
-operates as a passthrough with no arbitration overhead.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="smc-dma-request-arbitration"><a class="anchor" href="#smc-dma-request-arbitration"></a><a class="link" href="#smc-dma-request-arbitration">Request Arbitration</a></h3>
-<div class="paragraph">
-<p>When multiple control or master interfaces are present, the request
-manager employs round-robin arbitration to fairly distribute requests.
-Each master interface has its own round-robin arbiter that selects among
-pending control interface requests. To prevent duplicate execution, once
-a master accepts a request, that request is masked from other masters
-until completion.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="request-tracking"><a class="anchor" href="#request-tracking"></a><a class="link" href="#request-tracking">Request Tracking</a></h3>
-<div class="paragraph">
-<p>The manager maintains a tracking FIFO (depth 4) for each master
-interface to record which control interface originated each request.
-When a request is accepted by a master, the control interface ID is
-pushed into the tracking FIFO. When the master completes the transfer
-and returns a response, the ID is popped to route the response back to
-the correct control interface.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="response-routing"><a class="anchor" href="#response-routing"></a><a class="link" href="#response-routing">Response Routing</a></h3>
-<div class="paragraph">
-<p>Responses flow from masters back through tracking FIFOs to identify
-their originating control interfaces. A single-entry response buffer
-decouples timing dependencies between master and control interfaces.
-When multiple masters attempt to respond to the same control interface
-simultaneously, a second level of round-robin arbitration ensures fair
-and deadlock-free response delivery.</p>
-</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="dma-backend"><a class="anchor" href="#dma-backend"></a><a class="link" href="#dma-backend">DMA Backend</a></h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>The backend (idma_backend_wrapper) implements the data movement engine based on
-iDMA.</p>
-</div>
-<div class="paragraph">
-<p><a href="#smc-dma-axi4-master-characteristics-table">SMC DMA AXI4 Master Characteristics</a> describes the AXI master interface.</p>
-</div>
-<table id="smc-dma-axi4-master-characteristics-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 4. SMC DMA AXI4 Master Characteristics</caption>
-<colgroup>
-<col style="width: 30%;">
-<col style="width: 70%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Parameter</th>
-<th class="tableblock halign-left valign-top">Specification</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Address Width</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">56-bit addressing for large system integration</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Data Width</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit data path</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ID Width</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">4-bit on the SMC fabric. The DMA master port is 3-bit, and the
-SMC mux that merges the DMA and the zeroer adds 1 bit. The backend&#8217;s separate
-read and write managers use 2-bit IDs</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Outstanding Transactions</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Up to 32 (SMC sets DMA_MST_MAX_TXNS to 32)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Buffer Depth</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">16-beat realignment buffer</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">R/AW Coupling</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Optional read/write address coupling (default enabled)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Burst Support</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Full AXI burst support with automatic length
-optimization</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Address Alignment</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Intelligent alignment handling for optimal memory
-access</p></td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
-<div class="sect1">
-<h2 id="dma-configuration-and-control"><a class="anchor" href="#dma-configuration-and-control"></a><a class="link" href="#dma-configuration-and-control">DMA Configuration and Control</a></h2>
-<div class="sectionbody">
-<div class="sect2">
-<h3 id="transfer-configuration"><a class="anchor" href="#transfer-configuration"></a><a class="link" href="#transfer-configuration">Transfer Configuration</a></h3>
-<div class="paragraph">
-<p><a href="#smc-dma-transfer-parameters-table">SMC DMA Transfer Parameters</a> describes the transfer configuration parameters of the
-DMA backend.</p>
+<p>Source, destination, length, strides, repetitions and <code>CONFIG</code> are shared registers.
+Serialize their writes and the submission read between software contexts. There
+is no configuration-lock register. The 64-bit fields use low/high 32-bit register
+halves; do not assume the two halves are updated atomically by the register path.</p>
 </div>
 <table id="smc-dma-transfer-parameters-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 5. SMC DMA Transfer Parameters</caption>
+<caption class="title">Table 3. DMA register storage and effective field widths</caption>
 <colgroup>
-<col style="width: 30%;">
-<col style="width: 70%;">
+<col style="width: 28.5714%;">
+<col style="width: 14.2857%;">
+<col style="width: 14.2857%;">
+<col style="width: 42.8572%;">
 </colgroup>
 <thead>
 <tr>
-<th class="tableblock halign-left valign-top">Parameter</th>
-<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Field</th>
+<th class="tableblock halign-left valign-top">CSR storage</th>
+<th class="tableblock halign-left valign-top">Effective width</th>
+<th class="tableblock halign-left valign-top">Use</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Source Address</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Byte address in a 64-bit register pair; the DMA uses the
-low 56 bits</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SRC_ADDRESS_LO/HI</code>, <code>DST_ADDRESS_LO/HI</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64 bits each</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">56 bits each</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Byte addresses.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Destination Address</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Byte address in a 64-bit register pair; the DMA uses
-the low 56 bits</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>LENGTH_LO/HI</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64 bits</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">56 bits</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bytes per linear copy or per 2D row. Zero-length transfers are rejected.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Transfer Size</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Length in bytes in a 64-bit register pair; the DMA uses the
-low 56 bits. Zero-length transfers are rejected</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SRC_STRIDE_LO/HI</code>, <code>DST_STRIDE_LO/HI</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64 bits each</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">56 bits each</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address increment
+between consecutive row starts; source and destination increments are independent.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Alignment Handling</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Automatic handling of unaligned transfers</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Source Stride</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Source stride for 2D transfer patterns in a 64-bit register
-pair; the DMA uses the low 56 bits</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Destination Stride</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Destination stride for 2D transfer patterns in a 64-bit
-register pair; the DMA uses the low 56 bits</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Repeat Count</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Repetition count in a 64-bit register pair; the DMA uses the
-low 32 bits</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>NUM_REPETITIONS_LO/HI</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64 bits</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 bits</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Number of rows, including the first.</p></td>
 </tr>
 </tbody>
 </table>
+<div class="paragraph">
+<p>The frontend casts register values to these effective widths: upper bits are
+discarded, not validated as an out-of-range access. Program unused upper bits
+as zero and ensure all row addresses and lengths fit the permitted address
+range. Address stepping uses the effective address width.</p>
+</div>
 </div>
 <div class="sect2">
-<h3 id="status-and-control"><a class="anchor" href="#status-and-control"></a><a class="link" href="#status-and-control">Status and Control</a></h3>
+<h3 id="linear-and-two-dimensional-copies"><a class="anchor" href="#linear-and-two-dimensional-copies"></a><a class="link" href="#linear-and-two-dimensional-copies">Linear and Two-Dimensional Copies</a></h3>
+<span id="smc-dma-transfer-capabilities-table"></span>
+<span id="transfer-descriptor-support"></span>
 <div class="paragraph">
-<p><a href="#smc-dma-status-monitoring-and-control-table">SMC DMA Status Monitoring and Control</a> describes the status and control features of the DMA
-backend.</p>
+<p>For a linear copy, set <code>CONFIG.ENABLED_ND=1</code> and <code>NUM_REPETITIONS_LO=1</code> and <code>NUM_REPETITIONS_HI=0</code>. For a 2D copy, also
+program source/destination strides and the required repetition count. Strides
+can gather or scatter evenly spaced rows; there is no linked-list walker.</p>
+</div>
+<div class="paragraph">
+<p>Set the combined length nonzero and <code>NUM_REPETITIONS_LO/HI</code> at least one. Clearing <code>CONFIG.ENABLED_ND</code> forces the
+midend repetition count to zero. A zero-repetition command produces an internal
+midend error response without data movement; that response still retires a
+transfer ID. The control aperture does not expose the error payload, so a
+retired ID alone is not proof that valid data was copied.</p>
+</div>
+<div class="paragraph">
+<p>The names above follow the published register map. The RTL frontend calls the
+configuration <code>conf</code>, the ND-enable field <code>enable_nd</code>, and the repetition pair
+<code>reps_2_low/high</code>; these refer to the same fields. Some generated CONFIG field
+descriptions say "Not used", but the frontend forwards the options described here.</p>
+</div>
+<div class="paragraph">
+<p>The frontend requests incrementing AXI bursts and sets the cache attribute to
+modifiable. <code>CONFIG</code> supplies decoupling, maximum burst-length and length-reduction
+options. The backend handles alignment and burst splitting; these mechanisms
+do not grant permission to access a filtered or otherwise invalid address.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="submission-and-completion"><a class="anchor" href="#submission-and-completion"></a><a class="link" href="#submission-and-completion">Submission and Completion</a></h2>
+<div class="sectionbody">
+<span id="command-processing"></span>
+<span id="response-path"></span>
+<span id="status-and-control"></span>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Establish exclusive ownership of the shared configuration. Prepare the source
+data and destination ownership according to the platform&#8217;s memory-ordering
+and cache-maintenance requirements.</p>
+</li>
+<li>
+<p>Program <code>CONFIG</code>, both address halves, length, strides and repetition count.
+Check effective widths and address bounds before submission.</p>
+</li>
+<li>
+<p>Ensure configuration writes are visible, then read <code>NEXT_ID_0</code> exactly once
+to submit and record its returned transfer ID. This read can be backpressured
+until the frontend accepts the request.</p>
+</li>
+<li>
+<p>Use <code>DONE_0</code> to track retirement. For a single outstanding command, wait for
+its ID; with multiple outstanding commands, maintain an ordered software
+record so a later retirement does not make an earlier equality test wait forever.</p>
+</li>
+<li>
+<p>Apply the platform&#8217;s completion-ordering/cache rules before consuming the
+destination. Handle a firmware timeout as a recovery decision; there is no
+software abort register or state-preserving abort guarantee.</p>
+</li>
+</ol>
 </div>
 <table id="smc-dma-status-monitoring-and-control-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 6. SMC DMA Status Monitoring and Control</caption>
+<caption class="title">Table 4. DMA status and notification</caption>
 <colgroup>
-<col style="width: 30%;">
-<col style="width: 70%;">
+<col style="width: 25%;">
+<col style="width: 75%;">
 </colgroup>
 <thead>
 <tr>
-<th class="tableblock halign-left valign-top">Feature</th>
-<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Indication</th>
+<th class="tableblock halign-left valign-top">Meaning</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Status</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>STATUS_0[7:0]</code> repeats frontend command readiness; bit 8 is zero
-and bit 9 reports midend activity. These are not backend busy bits</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>STATUS_0[7:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Eight copies of frontend request readiness: <code>0xFF</code> means
+room to accept a command. These are not per-channel backend busy bits.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Completion Tracking</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Transfer completion ID tracking</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>STATUS_0[8]</code> / <code>[9]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bit 8 is the midend activity indication; bit 9 is zero.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Progress and Error Reporting</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Use the submitted transfer ID and <code>DONE_0</code>; no
-byte-progress or classified error-status register is exposed</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DONE_0</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Most recently retired transfer ID. No byte-progress or classified
+software error-status register is provided.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Transfer Initiation</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Atomic transfer start with ID allocation</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Abort Capability</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">No software abort register or state-preserving abort guarantee</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Configuration Lock</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">No software configuration lock</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Interrupt Control</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Unconditional one-cycle pulse when the wrapper busy
-output falls. No DMA-local interrupt enable, mask, or pending register</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA interrupt</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">One-cycle pulse on a falling edge of combined frontend/backend
+busy, routed to raw CPU vector bit 322 (PLIC ID 323). No local enable, mask or
+pending register; this is not one interrupt per submitted descriptor.</p></td>
 </tr>
 </tbody>
 </table>
 <div class="paragraph">
-<p>An idle frontend with room for another command can report <code>STATUS_0[7:0]</code>
-as <code>0xFF</code>. Conversely, zero in those bits does not establish that the last
-write has completed. Use <code>DONE_0</code> to track retired transfer IDs; the register
-name <code>BUSY</code> must not be interpreted as per-channel backend activity.</p>
+<p>Do not infer completion from frontend readiness or from a zero <code>STATUS</code> value.
+The transfer-ID generator resets <code>NEXT_ID</code> to 2 and <code>DONE</code> to 1 and skips zero
+on wrap. Use wrap-aware tracking for long-running queues; ordinary unsigned
+comparison is insufficient across rollover.</p>
 </div>
-</div>
-<div class="sect2">
-<h3 id="performance-optimization-and-power-management"><a class="anchor" href="#performance-optimization-and-power-management"></a><a class="link" href="#performance-optimization-and-power-management">Performance Optimization and Power Management</a></h3>
 <div class="paragraph">
-<p><a href="#smc-dma-performance-features-table">SMC DMA Performance Features</a> summarises the backend&#8217;s burst and data-movement
-optimizations.</p>
-</div>
-<table id="smc-dma-performance-features-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 7. SMC DMA Performance Features</caption>
-<colgroup>
-<col style="width: 30%;">
-<col style="width: 70%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Feature</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Automatic Burst Sizing</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">iDMA backend calculates optimal burst lengths</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Page Boundary Handling</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Automatic burst fragmentation at page
-boundaries</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Outstanding Transactions</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Up to 32 concurrent AXI transactions
-(DMA_MST_MAX_TXNS)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Pipeline Efficiency</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Overlapped command processing and data movement</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Request Manager</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Round-robin arbitration distributes requests across
-multiple master interfaces</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">FIFO Buffering</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Frontend-to-midend FIFO (F2M_FIFO_DEPTH=4); the optional
-manager-to-backend FIFO is absent in SMC (M2B_FIFO_DEPTH=0)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">R/AW Coupling</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Optional read/write address coupling for memory
-controller optimization</p></td>
-</tr>
-</tbody>
-</table>
-<div class="paragraph">
-<p><a href="#smc-dma-clock-gating-configuration-table">SMC DMA Clock Gating Configuration</a> describes the clock-gating implementation
-and controls.</p>
-</div>
-<table id="smc-dma-clock-gating-configuration-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 8. SMC DMA Clock Gating Configuration</caption>
-<colgroup>
-<col style="width: 30%;">
-<col style="width: 70%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Feature</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Clock Gating Implementation</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Two gated clocks: an AXI-snooping gate
-(axi_cg_snoop) clocks the frontend, and a prim_clk_gater_hysteresis clocks
-the request manager and backend</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Hysteresis Width</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">6-bit configurable hysteresis (CG_HYSTERESIS_W=6)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Activity Detection</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The request manager and backend clock runs while the
-frontend or backend is busy. The frontend clock also runs while the control
-port has an AXI transaction outstanding</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Gating Control</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">cg_enable_i input enables/disables clock gating</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Test Mode</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Clock gating bypassed during test mode</p></td>
-</tr>
-</tbody>
-</table>
+<p>The busy-falling pulse is a service hint. Use <code>DONE_0</code> to establish retirement
+and provide polling/timeout handling: PLIC gateway behavior does not turn
+successive completion pulses into a counted queue.</p>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="system-integration"><a class="anchor" href="#system-integration"></a><a class="link" href="#system-integration">System Integration</a></h2>
+<h2 id="memory-map-and-register-reference"><a class="anchor" href="#memory-map-and-register-reference"></a><a class="link" href="#memory-map-and-register-reference">Memory Map and Register Reference</a></h2>
 <div class="sectionbody">
-<div class="paragraph">
-<p>The DMA wrapper (idma_wrapper) integrates the frontend, backend, request
-manager, and clock gating into a complete DMA subsystem. The
-architecture orchestrates a clear data flow from software configuration
-through hardware execution.</p>
-</div>
 <div class="sect2">
-<h3 id="request-path"><a class="anchor" href="#request-path"></a><a class="link" href="#request-path">Request Path</a></h3>
-<div class="paragraph">
-<p>Transfer requests enter through AXI4 control interfaces, where the
-frontend receives configuration and commands from software. The frontend
-processes these N-dimensional transfer descriptors, converting complex
-2D patterns into linear iDMA requests. The request manager sits between
-the frontend and backend, using round-robin arbitration to distribute
-requests from M control interfaces across N master interfaces. Finally,
-independent iDMA backends execute the transfers on separate AXI4 master
-interfaces, enabling parallel data movement.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="response-path"><a class="anchor" href="#response-path"></a><a class="link" href="#response-path">Response Path</a></h3>
-<div class="paragraph">
-<p>As backends complete transfers, responses flow back through the request
-manager to the appropriate frontend, which updates completed transfer IDs. The wrapper generates its interrupt
-when the combined busy indication falls, so the pulse is not a per-descriptor
-interrupt queue. This completes the transfer loop and notifies
-software of completion.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="type-definitions"><a class="anchor" href="#type-definitions"></a><a class="link" href="#type-definitions">Type Definitions</a></h3>
-<div class="paragraph">
-<p>The wrapper configures iDMA for 2D transfer support with 56-bit transfer
-length and stride widths (matching the address width) and 32-bit
-repetition counts. This enables efficient handling of both linear and 2D
-data movement patterns.</p>
-</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">Detailed Register Map</a></h2>
-<div class="sectionbody">
+<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">Memory Map</a></h3>
 <div class="admonitionblock note">
 <table>
 <tr>
@@ -836,11 +545,14 @@ data movement patterns.</p>
 The register map below covers all 16 stream banks because the
 register file is generated at the maximum stream count. With
 <code>NUM_CTRL_STREAMS = 1</code>, only the <code>_0</code> bank of <code>NEXT_ID</code>, <code>STATUS</code>, and
-<code>DONE</code> has any effect; see <a href="#dma-stream-support">Stream Support</a>.
+<code>DONE</code> has any effect; see <a href="#dma-stream-support">Stream and Register Ownership</a>.
 </td>
 </tr>
 </table>
 </div>
+</div>
+<div class="sect2">
+<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">Detailed Register Map</a></h3>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
@@ -854,70 +566,70 @@ register file is generated at the maximum stream count. With
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0</td><td><a href="#CONFIG">CONFIG</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x4</td><td><a href="#STATUS_0">STATUS_0</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x8</td><td><a href="#STATUS_1">STATUS_1</a></td><td>R</td><td>-</td></tr>
-<tr><td>0xC</td><td><a href="#STATUS_2">STATUS_2</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x10</td><td><a href="#STATUS_3">STATUS_3</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x14</td><td><a href="#STATUS_4">STATUS_4</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x18</td><td><a href="#STATUS_5">STATUS_5</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x1C</td><td><a href="#STATUS_6">STATUS_6</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x20</td><td><a href="#STATUS_7">STATUS_7</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x24</td><td><a href="#STATUS_8">STATUS_8</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x28</td><td><a href="#STATUS_9">STATUS_9</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x2C</td><td><a href="#STATUS_10">STATUS_10</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x30</td><td><a href="#STATUS_11">STATUS_11</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x34</td><td><a href="#STATUS_12">STATUS_12</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x38</td><td><a href="#STATUS_13">STATUS_13</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x3C</td><td><a href="#STATUS_14">STATUS_14</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x40</td><td><a href="#STATUS_15">STATUS_15</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x48</td><td><a href="#NEXT_ID_0">NEXT_ID_0</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x50</td><td><a href="#NEXT_ID_1">NEXT_ID_1</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x58</td><td><a href="#NEXT_ID_2">NEXT_ID_2</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x60</td><td><a href="#NEXT_ID_3">NEXT_ID_3</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x68</td><td><a href="#NEXT_ID_4">NEXT_ID_4</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x70</td><td><a href="#NEXT_ID_5">NEXT_ID_5</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x78</td><td><a href="#NEXT_ID_6">NEXT_ID_6</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x80</td><td><a href="#NEXT_ID_7">NEXT_ID_7</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x88</td><td><a href="#NEXT_ID_8">NEXT_ID_8</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x90</td><td><a href="#NEXT_ID_9">NEXT_ID_9</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x98</td><td><a href="#NEXT_ID_10">NEXT_ID_10</a></td><td>R</td><td>-</td></tr>
-<tr><td>0xA0</td><td><a href="#NEXT_ID_11">NEXT_ID_11</a></td><td>R</td><td>-</td></tr>
-<tr><td>0xA8</td><td><a href="#NEXT_ID_12">NEXT_ID_12</a></td><td>R</td><td>-</td></tr>
-<tr><td>0xB0</td><td><a href="#NEXT_ID_13">NEXT_ID_13</a></td><td>R</td><td>-</td></tr>
-<tr><td>0xB8</td><td><a href="#NEXT_ID_14">NEXT_ID_14</a></td><td>R</td><td>-</td></tr>
-<tr><td>0xC0</td><td><a href="#NEXT_ID_15">NEXT_ID_15</a></td><td>R</td><td>-</td></tr>
-<tr><td>0xC8</td><td><a href="#DONE_0">DONE_0</a></td><td>R</td><td>-</td></tr>
-<tr><td>0xCC</td><td><a href="#DONE_1">DONE_1</a></td><td>R</td><td>-</td></tr>
-<tr><td>0xD0</td><td><a href="#DONE_2">DONE_2</a></td><td>R</td><td>-</td></tr>
-<tr><td>0xD4</td><td><a href="#DONE_3">DONE_3</a></td><td>R</td><td>-</td></tr>
-<tr><td>0xD8</td><td><a href="#DONE_4">DONE_4</a></td><td>R</td><td>-</td></tr>
-<tr><td>0xDC</td><td><a href="#DONE_5">DONE_5</a></td><td>R</td><td>-</td></tr>
-<tr><td>0xE0</td><td><a href="#DONE_6">DONE_6</a></td><td>R</td><td>-</td></tr>
-<tr><td>0xE4</td><td><a href="#DONE_7">DONE_7</a></td><td>R</td><td>-</td></tr>
-<tr><td>0xE8</td><td><a href="#DONE_8">DONE_8</a></td><td>R</td><td>-</td></tr>
-<tr><td>0xEC</td><td><a href="#DONE_9">DONE_9</a></td><td>R</td><td>-</td></tr>
-<tr><td>0xF0</td><td><a href="#DONE_10">DONE_10</a></td><td>R</td><td>-</td></tr>
-<tr><td>0xF4</td><td><a href="#DONE_11">DONE_11</a></td><td>R</td><td>-</td></tr>
-<tr><td>0xF8</td><td><a href="#DONE_12">DONE_12</a></td><td>R</td><td>-</td></tr>
-<tr><td>0xFC</td><td><a href="#DONE_13">DONE_13</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x100</td><td><a href="#DONE_14">DONE_14</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x104</td><td><a href="#DONE_15">DONE_15</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x108</td><td><a href="#DST_ADDRESS_LO">DST_ADDRESS_LO</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x10C</td><td><a href="#DST_ADDRESS_HI">DST_ADDRESS_HI</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x110</td><td><a href="#SRC_ADDRESS_LO">SRC_ADDRESS_LO</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x114</td><td><a href="#SRC_ADDRESS_HI">SRC_ADDRESS_HI</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x118</td><td><a href="#LENGTH_LO">LENGTH_LO</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x11C</td><td><a href="#LENGTH_HI">LENGTH_HI</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x120</td><td><a href="#DST_STRIDE_LO">DST_STRIDE_LO</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x124</td><td><a href="#DST_STRIDE_HI">DST_STRIDE_HI</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x128</td><td><a href="#SRC_STRIDE_LO">SRC_STRIDE_LO</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x12C</td><td><a href="#SRC_STRIDE_HI">SRC_STRIDE_HI</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x130</td><td><a href="#NUM_REPETITIONS_LO">NUM_REPETITIONS_LO</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x134</td><td><a href="#NUM_REPETITIONS_HI">NUM_REPETITIONS_HI</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x0</td><td><a href="#dma_ctrl-CONFIG">CONFIG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x4</td><td><a href="#dma_ctrl-STATUS_0">STATUS_0</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#dma_ctrl-STATUS_1">STATUS_1</a></td><td>R</td><td>-</td></tr>
+<tr><td>0xC</td><td><a href="#dma_ctrl-STATUS_2">STATUS_2</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#dma_ctrl-STATUS_3">STATUS_3</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x14</td><td><a href="#dma_ctrl-STATUS_4">STATUS_4</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x18</td><td><a href="#dma_ctrl-STATUS_5">STATUS_5</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x1C</td><td><a href="#dma_ctrl-STATUS_6">STATUS_6</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x20</td><td><a href="#dma_ctrl-STATUS_7">STATUS_7</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x24</td><td><a href="#dma_ctrl-STATUS_8">STATUS_8</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x28</td><td><a href="#dma_ctrl-STATUS_9">STATUS_9</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x2C</td><td><a href="#dma_ctrl-STATUS_10">STATUS_10</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x30</td><td><a href="#dma_ctrl-STATUS_11">STATUS_11</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x34</td><td><a href="#dma_ctrl-STATUS_12">STATUS_12</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x38</td><td><a href="#dma_ctrl-STATUS_13">STATUS_13</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x3C</td><td><a href="#dma_ctrl-STATUS_14">STATUS_14</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x40</td><td><a href="#dma_ctrl-STATUS_15">STATUS_15</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x48</td><td><a href="#dma_ctrl-NEXT_ID_0">NEXT_ID_0</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x50</td><td><a href="#dma_ctrl-NEXT_ID_1">NEXT_ID_1</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x58</td><td><a href="#dma_ctrl-NEXT_ID_2">NEXT_ID_2</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x60</td><td><a href="#dma_ctrl-NEXT_ID_3">NEXT_ID_3</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x68</td><td><a href="#dma_ctrl-NEXT_ID_4">NEXT_ID_4</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x70</td><td><a href="#dma_ctrl-NEXT_ID_5">NEXT_ID_5</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x78</td><td><a href="#dma_ctrl-NEXT_ID_6">NEXT_ID_6</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x80</td><td><a href="#dma_ctrl-NEXT_ID_7">NEXT_ID_7</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x88</td><td><a href="#dma_ctrl-NEXT_ID_8">NEXT_ID_8</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x90</td><td><a href="#dma_ctrl-NEXT_ID_9">NEXT_ID_9</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x98</td><td><a href="#dma_ctrl-NEXT_ID_10">NEXT_ID_10</a></td><td>R</td><td>-</td></tr>
+<tr><td>0xA0</td><td><a href="#dma_ctrl-NEXT_ID_11">NEXT_ID_11</a></td><td>R</td><td>-</td></tr>
+<tr><td>0xA8</td><td><a href="#dma_ctrl-NEXT_ID_12">NEXT_ID_12</a></td><td>R</td><td>-</td></tr>
+<tr><td>0xB0</td><td><a href="#dma_ctrl-NEXT_ID_13">NEXT_ID_13</a></td><td>R</td><td>-</td></tr>
+<tr><td>0xB8</td><td><a href="#dma_ctrl-NEXT_ID_14">NEXT_ID_14</a></td><td>R</td><td>-</td></tr>
+<tr><td>0xC0</td><td><a href="#dma_ctrl-NEXT_ID_15">NEXT_ID_15</a></td><td>R</td><td>-</td></tr>
+<tr><td>0xC8</td><td><a href="#dma_ctrl-DONE_0">DONE_0</a></td><td>R</td><td>-</td></tr>
+<tr><td>0xCC</td><td><a href="#dma_ctrl-DONE_1">DONE_1</a></td><td>R</td><td>-</td></tr>
+<tr><td>0xD0</td><td><a href="#dma_ctrl-DONE_2">DONE_2</a></td><td>R</td><td>-</td></tr>
+<tr><td>0xD4</td><td><a href="#dma_ctrl-DONE_3">DONE_3</a></td><td>R</td><td>-</td></tr>
+<tr><td>0xD8</td><td><a href="#dma_ctrl-DONE_4">DONE_4</a></td><td>R</td><td>-</td></tr>
+<tr><td>0xDC</td><td><a href="#dma_ctrl-DONE_5">DONE_5</a></td><td>R</td><td>-</td></tr>
+<tr><td>0xE0</td><td><a href="#dma_ctrl-DONE_6">DONE_6</a></td><td>R</td><td>-</td></tr>
+<tr><td>0xE4</td><td><a href="#dma_ctrl-DONE_7">DONE_7</a></td><td>R</td><td>-</td></tr>
+<tr><td>0xE8</td><td><a href="#dma_ctrl-DONE_8">DONE_8</a></td><td>R</td><td>-</td></tr>
+<tr><td>0xEC</td><td><a href="#dma_ctrl-DONE_9">DONE_9</a></td><td>R</td><td>-</td></tr>
+<tr><td>0xF0</td><td><a href="#dma_ctrl-DONE_10">DONE_10</a></td><td>R</td><td>-</td></tr>
+<tr><td>0xF4</td><td><a href="#dma_ctrl-DONE_11">DONE_11</a></td><td>R</td><td>-</td></tr>
+<tr><td>0xF8</td><td><a href="#dma_ctrl-DONE_12">DONE_12</a></td><td>R</td><td>-</td></tr>
+<tr><td>0xFC</td><td><a href="#dma_ctrl-DONE_13">DONE_13</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x100</td><td><a href="#dma_ctrl-DONE_14">DONE_14</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x104</td><td><a href="#dma_ctrl-DONE_15">DONE_15</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x108</td><td><a href="#dma_ctrl-DST_ADDRESS_LO">DST_ADDRESS_LO</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x10C</td><td><a href="#dma_ctrl-DST_ADDRESS_HI">DST_ADDRESS_HI</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x110</td><td><a href="#dma_ctrl-SRC_ADDRESS_LO">SRC_ADDRESS_LO</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x114</td><td><a href="#dma_ctrl-SRC_ADDRESS_HI">SRC_ADDRESS_HI</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x118</td><td><a href="#dma_ctrl-LENGTH_LO">LENGTH_LO</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x11C</td><td><a href="#dma_ctrl-LENGTH_HI">LENGTH_HI</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x120</td><td><a href="#dma_ctrl-DST_STRIDE_LO">DST_STRIDE_LO</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x124</td><td><a href="#dma_ctrl-DST_STRIDE_HI">DST_STRIDE_HI</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x128</td><td><a href="#dma_ctrl-SRC_STRIDE_LO">SRC_STRIDE_LO</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x12C</td><td><a href="#dma_ctrl-SRC_STRIDE_HI">SRC_STRIDE_HI</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x130</td><td><a href="#dma_ctrl-NUM_REPETITIONS_LO">NUM_REPETITIONS_LO</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x134</td><td><a href="#dma_ctrl-NUM_REPETITIONS_HI">NUM_REPETITIONS_HI</a></td><td>RW</td><td>-</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
-<h3 id="CONFIG">CONFIG</h3>
+<span id="CONFIG"></span><h3 id="dma_ctrl-CONFIG" data-register-alias="CONFIG">CONFIG</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -929,322 +641,323 @@ register file is generated at the maximum stream count. With
 <tr><td>1</td><td>DECOUPLE_RW</td><td>RW</td><td>0x0</td><td>Not used</td></tr>
 <tr><td>0</td><td>DECOUPLE_AW</td><td>RW</td><td>0x0</td><td>Not used</td></tr>
 </table>
-<h3 id="STATUS_0">STATUS_0</h3>
+<span id="STATUS_0"></span><h3 id="dma_ctrl-STATUS_0" data-register-alias="STATUS_0">STATUS_0</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
-<h3 id="STATUS_1">STATUS_1</h3>
+<span id="STATUS_1"></span><h3 id="dma_ctrl-STATUS_1" data-register-alias="STATUS_1">STATUS_1</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
-<h3 id="STATUS_2">STATUS_2</h3>
+<span id="STATUS_2"></span><h3 id="dma_ctrl-STATUS_2" data-register-alias="STATUS_2">STATUS_2</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
-<h3 id="STATUS_3">STATUS_3</h3>
+<span id="STATUS_3"></span><h3 id="dma_ctrl-STATUS_3" data-register-alias="STATUS_3">STATUS_3</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
-<h3 id="STATUS_4">STATUS_4</h3>
+<span id="STATUS_4"></span><h3 id="dma_ctrl-STATUS_4" data-register-alias="STATUS_4">STATUS_4</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
-<h3 id="STATUS_5">STATUS_5</h3>
+<span id="STATUS_5"></span><h3 id="dma_ctrl-STATUS_5" data-register-alias="STATUS_5">STATUS_5</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
-<h3 id="STATUS_6">STATUS_6</h3>
+<span id="STATUS_6"></span><h3 id="dma_ctrl-STATUS_6" data-register-alias="STATUS_6">STATUS_6</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
-<h3 id="STATUS_7">STATUS_7</h3>
+<span id="STATUS_7"></span><h3 id="dma_ctrl-STATUS_7" data-register-alias="STATUS_7">STATUS_7</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
-<h3 id="STATUS_8">STATUS_8</h3>
+<span id="STATUS_8"></span><h3 id="dma_ctrl-STATUS_8" data-register-alias="STATUS_8">STATUS_8</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
-<h3 id="STATUS_9">STATUS_9</h3>
+<span id="STATUS_9"></span><h3 id="dma_ctrl-STATUS_9" data-register-alias="STATUS_9">STATUS_9</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
-<h3 id="STATUS_10">STATUS_10</h3>
+<span id="STATUS_10"></span><h3 id="dma_ctrl-STATUS_10" data-register-alias="STATUS_10">STATUS_10</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
-<h3 id="STATUS_11">STATUS_11</h3>
+<span id="STATUS_11"></span><h3 id="dma_ctrl-STATUS_11" data-register-alias="STATUS_11">STATUS_11</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
-<h3 id="STATUS_12">STATUS_12</h3>
+<span id="STATUS_12"></span><h3 id="dma_ctrl-STATUS_12" data-register-alias="STATUS_12">STATUS_12</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
-<h3 id="STATUS_13">STATUS_13</h3>
+<span id="STATUS_13"></span><h3 id="dma_ctrl-STATUS_13" data-register-alias="STATUS_13">STATUS_13</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
-<h3 id="STATUS_14">STATUS_14</h3>
+<span id="STATUS_14"></span><h3 id="dma_ctrl-STATUS_14" data-register-alias="STATUS_14">STATUS_14</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
-<h3 id="STATUS_15">STATUS_15</h3>
+<span id="STATUS_15"></span><h3 id="dma_ctrl-STATUS_15" data-register-alias="STATUS_15">STATUS_15</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
-<h3 id="NEXT_ID_0">NEXT_ID_0</h3>
+<span id="NEXT_ID_0"></span><h3 id="dma_ctrl-NEXT_ID_0" data-register-alias="NEXT_ID_0">NEXT_ID_0</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>R</td><td>0x0</td><td>Reading this register starts the DMA transfer. Returns an ID value for the cumulative number of transfers. Returns 0 if command was not set up correctly</td></tr>
 </table>
-<h3 id="NEXT_ID_1">NEXT_ID_1</h3>
+<span id="NEXT_ID_1"></span><h3 id="dma_ctrl-NEXT_ID_1" data-register-alias="NEXT_ID_1">NEXT_ID_1</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>R</td><td>0x0</td><td>Reading this register starts the DMA transfer. Returns an ID value for the cumulative number of transfers. Returns 0 if command was not set up correctly</td></tr>
 </table>
-<h3 id="NEXT_ID_2">NEXT_ID_2</h3>
+<span id="NEXT_ID_2"></span><h3 id="dma_ctrl-NEXT_ID_2" data-register-alias="NEXT_ID_2">NEXT_ID_2</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>R</td><td>0x0</td><td>Reading this register starts the DMA transfer. Returns an ID value for the cumulative number of transfers. Returns 0 if command was not set up correctly</td></tr>
 </table>
-<h3 id="NEXT_ID_3">NEXT_ID_3</h3>
+<span id="NEXT_ID_3"></span><h3 id="dma_ctrl-NEXT_ID_3" data-register-alias="NEXT_ID_3">NEXT_ID_3</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>R</td><td>0x0</td><td>Reading this register starts the DMA transfer. Returns an ID value for the cumulative number of transfers. Returns 0 if command was not set up correctly</td></tr>
 </table>
-<h3 id="NEXT_ID_4">NEXT_ID_4</h3>
+<span id="NEXT_ID_4"></span><h3 id="dma_ctrl-NEXT_ID_4" data-register-alias="NEXT_ID_4">NEXT_ID_4</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>R</td><td>0x0</td><td>Reading this register starts the DMA transfer. Returns an ID value for the cumulative number of transfers. Returns 0 if command was not set up correctly</td></tr>
 </table>
-<h3 id="NEXT_ID_5">NEXT_ID_5</h3>
+<span id="NEXT_ID_5"></span><h3 id="dma_ctrl-NEXT_ID_5" data-register-alias="NEXT_ID_5">NEXT_ID_5</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>R</td><td>0x0</td><td>Reading this register starts the DMA transfer. Returns an ID value for the cumulative number of transfers. Returns 0 if command was not set up correctly</td></tr>
 </table>
-<h3 id="NEXT_ID_6">NEXT_ID_6</h3>
+<span id="NEXT_ID_6"></span><h3 id="dma_ctrl-NEXT_ID_6" data-register-alias="NEXT_ID_6">NEXT_ID_6</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>R</td><td>0x0</td><td>Reading this register starts the DMA transfer. Returns an ID value for the cumulative number of transfers. Returns 0 if command was not set up correctly</td></tr>
 </table>
-<h3 id="NEXT_ID_7">NEXT_ID_7</h3>
+<span id="NEXT_ID_7"></span><h3 id="dma_ctrl-NEXT_ID_7" data-register-alias="NEXT_ID_7">NEXT_ID_7</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>R</td><td>0x0</td><td>Reading this register starts the DMA transfer. Returns an ID value for the cumulative number of transfers. Returns 0 if command was not set up correctly</td></tr>
 </table>
-<h3 id="NEXT_ID_8">NEXT_ID_8</h3>
+<span id="NEXT_ID_8"></span><h3 id="dma_ctrl-NEXT_ID_8" data-register-alias="NEXT_ID_8">NEXT_ID_8</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>R</td><td>0x0</td><td>Reading this register starts the DMA transfer. Returns an ID value for the cumulative number of transfers. Returns 0 if command was not set up correctly</td></tr>
 </table>
-<h3 id="NEXT_ID_9">NEXT_ID_9</h3>
+<span id="NEXT_ID_9"></span><h3 id="dma_ctrl-NEXT_ID_9" data-register-alias="NEXT_ID_9">NEXT_ID_9</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>R</td><td>0x0</td><td>Reading this register starts the DMA transfer. Returns an ID value for the cumulative number of transfers. Returns 0 if command was not set up correctly</td></tr>
 </table>
-<h3 id="NEXT_ID_10">NEXT_ID_10</h3>
+<span id="NEXT_ID_10"></span><h3 id="dma_ctrl-NEXT_ID_10" data-register-alias="NEXT_ID_10">NEXT_ID_10</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>R</td><td>0x0</td><td>Reading this register starts the DMA transfer. Returns an ID value for the cumulative number of transfers. Returns 0 if command was not set up correctly</td></tr>
 </table>
-<h3 id="NEXT_ID_11">NEXT_ID_11</h3>
+<span id="NEXT_ID_11"></span><h3 id="dma_ctrl-NEXT_ID_11" data-register-alias="NEXT_ID_11">NEXT_ID_11</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>R</td><td>0x0</td><td>Reading this register starts the DMA transfer. Returns an ID value for the cumulative number of transfers. Returns 0 if command was not set up correctly</td></tr>
 </table>
-<h3 id="NEXT_ID_12">NEXT_ID_12</h3>
+<span id="NEXT_ID_12"></span><h3 id="dma_ctrl-NEXT_ID_12" data-register-alias="NEXT_ID_12">NEXT_ID_12</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>R</td><td>0x0</td><td>Reading this register starts the DMA transfer. Returns an ID value for the cumulative number of transfers. Returns 0 if command was not set up correctly</td></tr>
 </table>
-<h3 id="NEXT_ID_13">NEXT_ID_13</h3>
+<span id="NEXT_ID_13"></span><h3 id="dma_ctrl-NEXT_ID_13" data-register-alias="NEXT_ID_13">NEXT_ID_13</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>R</td><td>0x0</td><td>Reading this register starts the DMA transfer. Returns an ID value for the cumulative number of transfers. Returns 0 if command was not set up correctly</td></tr>
 </table>
-<h3 id="NEXT_ID_14">NEXT_ID_14</h3>
+<span id="NEXT_ID_14"></span><h3 id="dma_ctrl-NEXT_ID_14" data-register-alias="NEXT_ID_14">NEXT_ID_14</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>R</td><td>0x0</td><td>Reading this register starts the DMA transfer. Returns an ID value for the cumulative number of transfers. Returns 0 if command was not set up correctly</td></tr>
 </table>
-<h3 id="NEXT_ID_15">NEXT_ID_15</h3>
+<span id="NEXT_ID_15"></span><h3 id="dma_ctrl-NEXT_ID_15" data-register-alias="NEXT_ID_15">NEXT_ID_15</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>R</td><td>0x0</td><td>Reading this register starts the DMA transfer. Returns an ID value for the cumulative number of transfers. Returns 0 if command was not set up correctly</td></tr>
 </table>
-<h3 id="DONE_0">DONE_0</h3>
+<span id="DONE_0"></span><h3 id="dma_ctrl-DONE_0" data-register-alias="DONE_0">DONE_0</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>R</td><td>0x0</td><td>Holds the cumulative number of completed transfers. Only accumulates when response is seen</td></tr>
 </table>
-<h3 id="DONE_1">DONE_1</h3>
+<span id="DONE_1"></span><h3 id="dma_ctrl-DONE_1" data-register-alias="DONE_1">DONE_1</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>R</td><td>0x0</td><td>Holds the cumulative number of completed transfers. Only accumulates when response is seen</td></tr>
 </table>
-<h3 id="DONE_2">DONE_2</h3>
+<span id="DONE_2"></span><h3 id="dma_ctrl-DONE_2" data-register-alias="DONE_2">DONE_2</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>R</td><td>0x0</td><td>Holds the cumulative number of completed transfers. Only accumulates when response is seen</td></tr>
 </table>
-<h3 id="DONE_3">DONE_3</h3>
+<span id="DONE_3"></span><h3 id="dma_ctrl-DONE_3" data-register-alias="DONE_3">DONE_3</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>R</td><td>0x0</td><td>Holds the cumulative number of completed transfers. Only accumulates when response is seen</td></tr>
 </table>
-<h3 id="DONE_4">DONE_4</h3>
+<span id="DONE_4"></span><h3 id="dma_ctrl-DONE_4" data-register-alias="DONE_4">DONE_4</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>R</td><td>0x0</td><td>Holds the cumulative number of completed transfers. Only accumulates when response is seen</td></tr>
 </table>
-<h3 id="DONE_5">DONE_5</h3>
+<span id="DONE_5"></span><h3 id="dma_ctrl-DONE_5" data-register-alias="DONE_5">DONE_5</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>R</td><td>0x0</td><td>Holds the cumulative number of completed transfers. Only accumulates when response is seen</td></tr>
 </table>
-<h3 id="DONE_6">DONE_6</h3>
+<span id="DONE_6"></span><h3 id="dma_ctrl-DONE_6" data-register-alias="DONE_6">DONE_6</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>R</td><td>0x0</td><td>Holds the cumulative number of completed transfers. Only accumulates when response is seen</td></tr>
 </table>
-<h3 id="DONE_7">DONE_7</h3>
+<span id="DONE_7"></span><h3 id="dma_ctrl-DONE_7" data-register-alias="DONE_7">DONE_7</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>R</td><td>0x0</td><td>Holds the cumulative number of completed transfers. Only accumulates when response is seen</td></tr>
 </table>
-<h3 id="DONE_8">DONE_8</h3>
+<span id="DONE_8"></span><h3 id="dma_ctrl-DONE_8" data-register-alias="DONE_8">DONE_8</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>R</td><td>0x0</td><td>Holds the cumulative number of completed transfers. Only accumulates when response is seen</td></tr>
 </table>
-<h3 id="DONE_9">DONE_9</h3>
+<span id="DONE_9"></span><h3 id="dma_ctrl-DONE_9" data-register-alias="DONE_9">DONE_9</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>R</td><td>0x0</td><td>Holds the cumulative number of completed transfers. Only accumulates when response is seen</td></tr>
 </table>
-<h3 id="DONE_10">DONE_10</h3>
+<span id="DONE_10"></span><h3 id="dma_ctrl-DONE_10" data-register-alias="DONE_10">DONE_10</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>R</td><td>0x0</td><td>Holds the cumulative number of completed transfers. Only accumulates when response is seen</td></tr>
 </table>
-<h3 id="DONE_11">DONE_11</h3>
+<span id="DONE_11"></span><h3 id="dma_ctrl-DONE_11" data-register-alias="DONE_11">DONE_11</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>R</td><td>0x0</td><td>Holds the cumulative number of completed transfers. Only accumulates when response is seen</td></tr>
 </table>
-<h3 id="DONE_12">DONE_12</h3>
+<span id="DONE_12"></span><h3 id="dma_ctrl-DONE_12" data-register-alias="DONE_12">DONE_12</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>R</td><td>0x0</td><td>Holds the cumulative number of completed transfers. Only accumulates when response is seen</td></tr>
 </table>
-<h3 id="DONE_13">DONE_13</h3>
+<span id="DONE_13"></span><h3 id="dma_ctrl-DONE_13" data-register-alias="DONE_13">DONE_13</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>R</td><td>0x0</td><td>Holds the cumulative number of completed transfers. Only accumulates when response is seen</td></tr>
 </table>
-<h3 id="DONE_14">DONE_14</h3>
+<span id="DONE_14"></span><h3 id="dma_ctrl-DONE_14" data-register-alias="DONE_14">DONE_14</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>R</td><td>0x0</td><td>Holds the cumulative number of completed transfers. Only accumulates when response is seen</td></tr>
 </table>
-<h3 id="DONE_15">DONE_15</h3>
+<span id="DONE_15"></span><h3 id="dma_ctrl-DONE_15" data-register-alias="DONE_15">DONE_15</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>R</td><td>0x0</td><td>Holds the cumulative number of completed transfers. Only accumulates when response is seen</td></tr>
 </table>
-<h3 id="DST_ADDRESS_LO">DST_ADDRESS_LO</h3>
+<span id="DST_ADDRESS_LO"></span><h3 id="dma_ctrl-DST_ADDRESS_LO" data-register-alias="DST_ADDRESS_LO">DST_ADDRESS_LO</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>RW</td><td>0x0</td><td>Destination address for DMA to write to, lower 32 bits</td></tr>
 </table>
-<h3 id="DST_ADDRESS_HI">DST_ADDRESS_HI</h3>
+<span id="DST_ADDRESS_HI"></span><h3 id="dma_ctrl-DST_ADDRESS_HI" data-register-alias="DST_ADDRESS_HI">DST_ADDRESS_HI</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>RW</td><td>0x0</td><td>Destination address for DMA to write to, upper 32 bits</td></tr>
 </table>
-<h3 id="SRC_ADDRESS_LO">SRC_ADDRESS_LO</h3>
+<span id="SRC_ADDRESS_LO"></span><h3 id="dma_ctrl-SRC_ADDRESS_LO" data-register-alias="SRC_ADDRESS_LO">SRC_ADDRESS_LO</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>RW</td><td>0x0</td><td>Source address for DMA to read from, lower 32 bits.</td></tr>
 </table>
-<h3 id="SRC_ADDRESS_HI">SRC_ADDRESS_HI</h3>
+<span id="SRC_ADDRESS_HI"></span><h3 id="dma_ctrl-SRC_ADDRESS_HI" data-register-alias="SRC_ADDRESS_HI">SRC_ADDRESS_HI</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>RW</td><td>0x0</td><td>Source address for DMA to read from, upper 32 bits.</td></tr>
 </table>
-<h3 id="LENGTH_LO">LENGTH_LO</h3>
+<span id="LENGTH_LO"></span><h3 id="dma_ctrl-LENGTH_LO" data-register-alias="LENGTH_LO">LENGTH_LO</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>RW</td><td>0x0</td><td>Number of bytes to move, lower 32 bits.</td></tr>
 </table>
-<h3 id="LENGTH_HI">LENGTH_HI</h3>
+<span id="LENGTH_HI"></span><h3 id="dma_ctrl-LENGTH_HI" data-register-alias="LENGTH_HI">LENGTH_HI</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>RW</td><td>0x0</td><td>Number of bytes to move, upper 32 bits.</td></tr>
 </table>
-<h3 id="DST_STRIDE_LO">DST_STRIDE_LO</h3>
+<span id="DST_STRIDE_LO"></span><h3 id="dma_ctrl-DST_STRIDE_LO" data-register-alias="DST_STRIDE_LO">DST_STRIDE_LO</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>RW</td><td>0x0</td><td>Stride amount on destination address side, lower 32 bits</td></tr>
 </table>
-<h3 id="DST_STRIDE_HI">DST_STRIDE_HI</h3>
+<span id="DST_STRIDE_HI"></span><h3 id="dma_ctrl-DST_STRIDE_HI" data-register-alias="DST_STRIDE_HI">DST_STRIDE_HI</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>RW</td><td>0x0</td><td>Stride amount on destination address side, upper 32 bits</td></tr>
 </table>
-<h3 id="SRC_STRIDE_LO">SRC_STRIDE_LO</h3>
+<span id="SRC_STRIDE_LO"></span><h3 id="dma_ctrl-SRC_STRIDE_LO" data-register-alias="SRC_STRIDE_LO">SRC_STRIDE_LO</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>RW</td><td>0x0</td><td>Stride amount on source address side, lower 32 bits</td></tr>
 </table>
-<h3 id="SRC_STRIDE_HI">SRC_STRIDE_HI</h3>
+<span id="SRC_STRIDE_HI"></span><h3 id="dma_ctrl-SRC_STRIDE_HI" data-register-alias="SRC_STRIDE_HI">SRC_STRIDE_HI</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>RW</td><td>0x0</td><td>Stride amount on source address side, upper 32 bits</td></tr>
 </table>
-<h3 id="NUM_REPETITIONS_LO">NUM_REPETITIONS_LO</h3>
+<span id="NUM_REPETITIONS_LO"></span><h3 id="dma_ctrl-NUM_REPETITIONS_LO" data-register-alias="NUM_REPETITIONS_LO">NUM_REPETITIONS_LO</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>RW</td><td>0x0</td><td>Number of times transfer should be repeated, lower 32 bits. If stride is set, stride will be added to address after every repetition</td></tr>
 </table>
-<h3 id="NUM_REPETITIONS_HI">NUM_REPETITIONS_HI</h3>
+<span id="NUM_REPETITIONS_HI"></span><h3 id="dma_ctrl-NUM_REPETITIONS_HI" data-register-alias="NUM_REPETITIONS_HI">NUM_REPETITIONS_HI</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>DATA</td><td>RW</td><td>0x0</td><td>Number of times transfer should be repeated, upper 32 bits. If stride is set, stride will be added to address after every repetition</td></tr>
 </table>
+</div>
 </div>
 </div>
 </div>

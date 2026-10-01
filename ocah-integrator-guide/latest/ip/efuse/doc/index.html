@@ -1053,10 +1053,11 @@ used only by the guard, which derives the RMA SiP and chiplet token bit addresse
 </div>
 </div>
 <div class="sect1">
-<h2 id="efuse-memory-map"><a class="anchor" href="#efuse-memory-map"></a><a class="link" href="#efuse-memory-map">5. Memory Map</a></h2>
+<h2 id="efuse-memory-map"><a class="anchor" href="#efuse-memory-map"></a><a class="link" href="#efuse-memory-map">5. Memory Map and Register Reference</a></h2>
 <div class="sectionbody">
+<span id="overview-2"></span>
 <div class="sect2">
-<h3 id="overview-2"><a class="anchor" href="#overview-2"></a><a class="link" href="#overview-2">5.1. Overview</a></h3>
+<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">5.1. Memory Map</a></h3>
 <div class="paragraph">
 <p>eFuse is not one universally placed address space. SEP, SMC, and the Key
 Manager pass-through expose different subsets and placements. The generated
@@ -1200,7 +1201,9 @@ state (<code>HAS_LC_STATE=1</code>).</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="shadow-registers"><a class="anchor" href="#shadow-registers"></a><a class="link" href="#shadow-registers">5.2. Shadow Registers</a></h3>
+<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">5.2. Detailed Register Map</a></h3>
+<div class="sect3">
+<h4 id="shadow-registers"><a class="anchor" href="#shadow-registers"></a><a class="link" href="#shadow-registers">5.2.1. Shadow Registers</a></h4>
 <div class="paragraph">
 <p>The shadow registers provide cached read access to eFuse contents, loaded
 automatically from the physical eFuse array during boot. The field layout is
@@ -1226,15 +1229,15 @@ instance documented in this section.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0</td><td><a href="#LOCKS">LOCKS</a></td><td>RW</td><td>Lock controls for each fuse field. When write locked, the corresponding field is not<br>programmable. When read locked, the shadow register is not readable.</td></tr>
-<tr><td>0x8</td><td><a href="#JTAG_PUBLIC_IDENTITY">JTAG_PUBLIC_IDENTITY</a></td><td>RW</td><td>JTAG-public exception window. In PROD and RMA_SiP, JTAG reads of this range<br>are admitted while JTAG access to every other fuse field is blocked. Encoding<br>is adopter-defined; the harness does not interpret or consume the value. The<br>slot-0 read lock still hides the bits when set.</td></tr>
-<tr><td>0x28 - 0x68</td><td><a href="#I2C_I3C_ID_9_">I2C_I3C_ID[9]</a></td><td>RW</td><td>I2C/I3C interface ID</td></tr>
-<tr><td>0x70</td><td><a href="#SMC_CONFIG">SMC_CONFIG</a></td><td>RW</td><td>SMC boot and configuration controls sourced from fuse. Only the low word carries<br>assigned bits, so firmware reads it as a single 32-bit access.</td></tr>
-<tr><td>0x78</td><td><a href="#OCCP_TRANSPORT_TIMEOUT">OCCP_TRANSPORT_TIMEOUT</a></td><td>RW</td><td>OCCP transport timeout in the low word; upper word reserved.</td></tr>
-<tr><td>0x80 - 0x3E0</td><td><a href="#SPARE_28_">SPARE[28]</a></td><td>RW</td><td>Individually lockable 256-bit spare region, reserved for fields assigned after the<br>RTL is frozen. Each element has its own write/read lock pair in LOCKS.</td></tr>
+<tr><td>0x0</td><td><a href="#smc_efuse_map-LOCKS">LOCKS</a></td><td>RW</td><td>Lock controls for each fuse field. When write locked, the corresponding field is not<br>programmable. When read locked, the shadow register is not readable.</td></tr>
+<tr><td>0x8</td><td><a href="#smc_efuse_map-JTAG_PUBLIC_IDENTITY">JTAG_PUBLIC_IDENTITY</a></td><td>RW</td><td>JTAG-public exception window. In PROD and RMA_SiP, JTAG reads of this range<br>are admitted while JTAG access to every other fuse field is blocked. Encoding<br>is adopter-defined; the harness does not interpret or consume the value. The<br>slot-0 read lock still hides the bits when set.</td></tr>
+<tr><td>0x28 - 0x68</td><td><a href="#smc_efuse_map-I2C_I3C_ID_9_">I2C_I3C_ID[9]</a></td><td>RW</td><td>I2C/I3C interface ID</td></tr>
+<tr><td>0x70</td><td><a href="#smc_efuse_map-SMC_CONFIG">SMC_CONFIG</a></td><td>RW</td><td>SMC boot and configuration controls sourced from fuse. Only the low word carries<br>assigned bits, so firmware reads it as a single 32-bit access.</td></tr>
+<tr><td>0x78</td><td><a href="#smc_efuse_map-OCCP_TRANSPORT_TIMEOUT">OCCP_TRANSPORT_TIMEOUT</a></td><td>RW</td><td>OCCP transport timeout in the low word; upper word reserved.</td></tr>
+<tr><td>0x80 - 0x3E0</td><td><a href="#smc_efuse_map-SPARE_28_">SPARE[28]</a></td><td>RW</td><td>Individually lockable 256-bit spare region, reserved for fields assigned after the<br>RTL is frozen. Each element has its own write/read lock pair in LOCKS.</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
-<h3 id="LOCKS">LOCKS</h3>
+<span id="LOCKS"></span><h3 id="smc_efuse_map-LOCKS" data-register-alias="LOCKS">LOCKS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63</td><td>spare27_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 27 read lock (slot 31). When set, SPARE[27] is not readable.</td></tr>
@@ -1302,17 +1305,17 @@ instance documented in this section.</p>
 <tr><td>1</td><td>jtag_public_identity_read_lock</td><td>RW1S</td><td>0x0</td><td>JTAG public identity read lock (slot 0). When set, JTAG_PUBLIC_IDENTITY is not readable.</td></tr>
 <tr><td>0</td><td>jtag_public_identity_write_lock</td><td>RW1S</td><td>0x0</td><td>JTAG public identity write lock (slot 0). When set, JTAG_PUBLIC_IDENTITY is not writable.</td></tr>
 </table>
-<h3 id="JTAG_PUBLIC_IDENTITY">JTAG_PUBLIC_IDENTITY</h3>
+<span id="JTAG_PUBLIC_IDENTITY"></span><h3 id="smc_efuse_map-JTAG_PUBLIC_IDENTITY" data-register-alias="JTAG_PUBLIC_IDENTITY">JTAG_PUBLIC_IDENTITY</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>255:0</td><td>value</td><td>RW</td><td>0x0</td><td>Opaque payload. Encoding is adopter-defined; the harness does not interpret<br>it.</td></tr>
 </table>
-<h3 id="I2C_I3C_ID_9_">I2C_I3C_ID[9]</h3>
+<span id="I2C_I3C_ID_9_"></span><h3 id="smc_efuse_map-I2C_I3C_ID_9_" data-register-alias="I2C_I3C_ID_9_">I2C_I3C_ID[9]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:0</td><td>interface_id</td><td>RW</td><td>0x0</td><td>I2C or I3C ID configuration:<br>* Static ID mode: [6:0] contains ID, [63:7] reserved<br>* Provisional ID mode: [63:0] full ID</td></tr>
 </table>
-<h3 id="SMC_CONFIG">SMC_CONFIG</h3>
+<span id="SMC_CONFIG"></span><h3 id="smc_efuse_map-SMC_CONFIG" data-register-alias="SMC_CONFIG">SMC_CONFIG</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:16</td><td>config_rsvd_high</td><td>RW</td><td>0x0</td><td>Reserved for future configuration bits.</td></tr>
@@ -1322,21 +1325,21 @@ instance documented in this section.</p>
 <tr><td>6:1</td><td>config_rsvd_low</td><td>RW</td><td>0x0</td><td>Reserved for future configuration bits.</td></tr>
 <tr><td>0</td><td>rom_flip_endianness</td><td>RW</td><td>0x0</td><td>When set, the ROM interface swaps byte order on instruction fetch.</td></tr>
 </table>
-<h3 id="OCCP_TRANSPORT_TIMEOUT">OCCP_TRANSPORT_TIMEOUT</h3>
+<span id="OCCP_TRANSPORT_TIMEOUT"></span><h3 id="smc_efuse_map-OCCP_TRANSPORT_TIMEOUT" data-register-alias="OCCP_TRANSPORT_TIMEOUT">OCCP_TRANSPORT_TIMEOUT</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:32</td><td>timeout_rsvd</td><td>RW</td><td>0x0</td><td>Reserved for extension of the timeout encoding.</td></tr>
 <tr><td>31:0</td><td>timeout</td><td>RW</td><td>0x0</td><td>Transport timeout value consumed by the boot ROM OCCP driver.</td></tr>
 </table>
-<h3 id="SPARE_28_">SPARE[28]</h3>
+<span id="SPARE_28_"></span><h3 id="smc_efuse_map-SPARE_28_" data-register-alias="SPARE_28_">SPARE[28]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>255:0</td><td>rsvd</td><td>RW</td><td>0x0</td><td>Spare fuse bits for future use.</td></tr>
 </table>
 </div>
 </div>
-<div class="sect2">
-<h3 id="mmr-registers"><a class="anchor" href="#mmr-registers"></a><a class="link" href="#mmr-registers">5.3. MMR Registers</a></h3>
+<div class="sect3">
+<h4 id="mmr-registers"><a class="anchor" href="#mmr-registers"></a><a class="link" href="#mmr-registers">5.2.2. MMR Registers</a></h4>
 <div class="paragraph">
 <p>The MMR (Memory Mapped Register) space provides access to security tokens for
 authentication, including RMA tokens and security disable tokens.</p>
@@ -1360,32 +1363,32 @@ authentication, including RMA tokens and security disable tokens.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0 - 0x1C</td><td><a href="#RMA_SIP_TOKEN_I_8_">RMA_SIP_TOKEN_I[8]</a></td><td>RW</td><td>Software-writeable RMA token word. The assembled token is hashed and compared against the fused value to authorize lifecycle (LC) state transitions.</td></tr>
-<tr><td>0x20 - 0x3C</td><td><a href="#RMA_CHIPLET_TOKEN_I_8_">RMA_CHIPLET_TOKEN_I[8]</a></td><td>RW</td><td>Software-writeable RMA token word. The assembled token is hashed and compared against the fused value to authorize lifecycle (LC) state transitions.</td></tr>
-<tr><td>0x40 - 0x5C</td><td><a href="#SEC_DISABLE_TOKEN_I_8_">SEC_DISABLE_TOKEN_I[8]</a></td><td>RW</td><td>Software-writeable security-disable token word. The assembled token is hashed and compared against the post-silicon injected value to authorize security_disable.</td></tr>
-<tr><td>0x60</td><td><a href="#TOKEN_EOP">TOKEN_EOP</a></td><td>W</td><td>Token end-of-packet control. Writing the per-token go bit signals that all token words have been written and triggers a pulse to begin token hashing.</td></tr>
-<tr><td>0x64</td><td><a href="#RMA_SIP_TOKEN_MATCH">RMA_SIP_TOKEN_MATCH</a></td><td>R</td><td>Token match status. Reports the result of the token hash comparison (match, mismatch, or error).</td></tr>
-<tr><td>0x68</td><td><a href="#RMA_CHIPLET_TOKEN_MATCH">RMA_CHIPLET_TOKEN_MATCH</a></td><td>R</td><td>Token match status. Reports the result of the token hash comparison (match, mismatch, or error).</td></tr>
-<tr><td>0x6C</td><td><a href="#SEC_DISABLE_TOKEN_MATCH">SEC_DISABLE_TOKEN_MATCH</a></td><td>R</td><td>Token match status. Reports the result of the token hash comparison (match, mismatch, or error).</td></tr>
-<tr><td>0x70</td><td><a href="#TOKEN_MATCH_FAULT">TOKEN_MATCH_FAULT</a></td><td>R</td><td>Token comparator redundancy fault status. The token match logic is triple redundant and is not a majority vote: all three comparators must agree and each must drive a legal differential pair. A bit sets when the comparators for that token disagree, which may indicate a fault injection or FIB attack. The corresponding token_match_status then reads the error code 6&#x27;b111111 and an interrupt is raised to the SEP CPU. Bits are sticky until reset.</td></tr>
+<tr><td>0x0 - 0x1C</td><td><a href="#efuse_mmr-RMA_SIP_TOKEN_I_8_">RMA_SIP_TOKEN_I[8]</a></td><td>RW</td><td>Software-writeable RMA token word. The assembled token is hashed and compared against the fused value to authorize lifecycle (LC) state transitions.</td></tr>
+<tr><td>0x20 - 0x3C</td><td><a href="#efuse_mmr-RMA_CHIPLET_TOKEN_I_8_">RMA_CHIPLET_TOKEN_I[8]</a></td><td>RW</td><td>Software-writeable RMA token word. The assembled token is hashed and compared against the fused value to authorize lifecycle (LC) state transitions.</td></tr>
+<tr><td>0x40 - 0x5C</td><td><a href="#efuse_mmr-SEC_DISABLE_TOKEN_I_8_">SEC_DISABLE_TOKEN_I[8]</a></td><td>RW</td><td>Software-writeable security-disable token word. The assembled token is hashed and compared against the post-silicon injected value to authorize security_disable.</td></tr>
+<tr><td>0x60</td><td><a href="#efuse_mmr-TOKEN_EOP">TOKEN_EOP</a></td><td>W</td><td>Token end-of-packet control. Writing the per-token go bit signals that all token words have been written and triggers a pulse to begin token hashing.</td></tr>
+<tr><td>0x64</td><td><a href="#efuse_mmr-RMA_SIP_TOKEN_MATCH">RMA_SIP_TOKEN_MATCH</a></td><td>R</td><td>Token match status. Reports the result of the token hash comparison (match, mismatch, or error).</td></tr>
+<tr><td>0x68</td><td><a href="#efuse_mmr-RMA_CHIPLET_TOKEN_MATCH">RMA_CHIPLET_TOKEN_MATCH</a></td><td>R</td><td>Token match status. Reports the result of the token hash comparison (match, mismatch, or error).</td></tr>
+<tr><td>0x6C</td><td><a href="#efuse_mmr-SEC_DISABLE_TOKEN_MATCH">SEC_DISABLE_TOKEN_MATCH</a></td><td>R</td><td>Token match status. Reports the result of the token hash comparison (match, mismatch, or error).</td></tr>
+<tr><td>0x70</td><td><a href="#efuse_mmr-TOKEN_MATCH_FAULT">TOKEN_MATCH_FAULT</a></td><td>R</td><td>Token comparator redundancy fault status. The token match logic is triple redundant and is not a majority vote: all three comparators must agree and each must drive a legal differential pair. A bit sets when the comparators for that token disagree, which may indicate a fault injection or FIB attack. The corresponding token_match_status then reads the error code 6&#x27;b111111 and an interrupt is raised to the SEP CPU. Bits are sticky until reset.</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
-<h3 id="RMA_SIP_TOKEN_I_8_">RMA_SIP_TOKEN_I[8]</h3>
+<span id="RMA_SIP_TOKEN_I_8_"></span><h3 id="efuse_mmr-RMA_SIP_TOKEN_I_8_" data-register-alias="RMA_SIP_TOKEN_I_8_">RMA_SIP_TOKEN_I[8]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>token</td><td>RW</td><td>-</td><td>Portion of writeable version of RMA_*_TOKEN, hashed, and compared with fused value to allow LC to change states.</td></tr>
 </table>
-<h3 id="RMA_CHIPLET_TOKEN_I_8_">RMA_CHIPLET_TOKEN_I[8]</h3>
+<span id="RMA_CHIPLET_TOKEN_I_8_"></span><h3 id="efuse_mmr-RMA_CHIPLET_TOKEN_I_8_" data-register-alias="RMA_CHIPLET_TOKEN_I_8_">RMA_CHIPLET_TOKEN_I[8]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>token</td><td>RW</td><td>-</td><td>Portion of writeable version of RMA_*_TOKEN, hashed, and compared with fused value to allow LC to change states.</td></tr>
 </table>
-<h3 id="SEC_DISABLE_TOKEN_I_8_">SEC_DISABLE_TOKEN_I[8]</h3>
+<span id="SEC_DISABLE_TOKEN_I_8_"></span><h3 id="efuse_mmr-SEC_DISABLE_TOKEN_I_8_" data-register-alias="SEC_DISABLE_TOKEN_I_8_">SEC_DISABLE_TOKEN_I[8]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>token</td><td>RW</td><td>-</td><td>Portion of writeable version of SEC_DISABLE_TOKEN, hashed, and compared with the post silicon injected values to allow security_disable.</td></tr>
 </table>
-<h3 id="TOKEN_EOP">TOKEN_EOP</h3>
+<span id="TOKEN_EOP"></span><h3 id="efuse_mmr-TOKEN_EOP" data-register-alias="TOKEN_EOP">TOKEN_EOP</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:17</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1395,25 +1398,25 @@ authentication, including RMA tokens and security disable tokens.</p>
 <tr><td>7:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>rma_sip_token_go</td><td>W 1P</td><td>0x0</td><td>Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.</td></tr>
 </table>
-<h3 id="RMA_SIP_TOKEN_MATCH">RMA_SIP_TOKEN_MATCH</h3>
+<span id="RMA_SIP_TOKEN_MATCH"></span><h3 id="efuse_mmr-RMA_SIP_TOKEN_MATCH" data-register-alias="RMA_SIP_TOKEN_MATCH">RMA_SIP_TOKEN_MATCH</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>5:0</td><td>token_match_status</td><td>R</td><td>0x0</td><td>Store the status of the token match.  Match = 6&#x27;b010101, Mismatch = 6&#x27;b101010, Error = 6&#x27;b111111</td></tr>
 </table>
-<h3 id="RMA_CHIPLET_TOKEN_MATCH">RMA_CHIPLET_TOKEN_MATCH</h3>
+<span id="RMA_CHIPLET_TOKEN_MATCH"></span><h3 id="efuse_mmr-RMA_CHIPLET_TOKEN_MATCH" data-register-alias="RMA_CHIPLET_TOKEN_MATCH">RMA_CHIPLET_TOKEN_MATCH</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>5:0</td><td>token_match_status</td><td>R</td><td>0x0</td><td>Store the status of the token match.  Match = 6&#x27;b010101, Mismatch = 6&#x27;b101010, Error = 6&#x27;b111111</td></tr>
 </table>
-<h3 id="SEC_DISABLE_TOKEN_MATCH">SEC_DISABLE_TOKEN_MATCH</h3>
+<span id="SEC_DISABLE_TOKEN_MATCH"></span><h3 id="efuse_mmr-SEC_DISABLE_TOKEN_MATCH" data-register-alias="SEC_DISABLE_TOKEN_MATCH">SEC_DISABLE_TOKEN_MATCH</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>5:0</td><td>token_match_status</td><td>R</td><td>0x0</td><td>Store the status of the token match.  Match = 6&#x27;b010101, Mismatch = 6&#x27;b101010, Error = 6&#x27;b111111</td></tr>
 </table>
-<h3 id="TOKEN_MATCH_FAULT">TOKEN_MATCH_FAULT</h3>
+<span id="TOKEN_MATCH_FAULT"></span><h3 id="efuse_mmr-TOKEN_MATCH_FAULT" data-register-alias="TOKEN_MATCH_FAULT">TOKEN_MATCH_FAULT</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:17</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1425,8 +1428,8 @@ authentication, including RMA tokens and security disable tokens.</p>
 </table>
 </div>
 </div>
-<div class="sect2">
-<h3 id="efuse-control-registers"><a class="anchor" href="#efuse-control-registers"></a><a class="link" href="#efuse-control-registers">5.4. eFuse Control Registers</a></h3>
+<div class="sect3">
+<h4 id="efuse-control-registers"><a class="anchor" href="#efuse-control-registers"></a><a class="link" href="#efuse-control-registers">5.2.3. eFuse Control Registers</a></h4>
 <div class="paragraph">
 <p>The eFuse Control CSR provides command and status registers for read, write,
 and verification operations on the eFuse array. <code>program_enable</code> and
@@ -1447,16 +1450,16 @@ after <code>PROGRAM_DONE</code> before issuing a read. See
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0</td><td><a href="#EFUSE_INTERFACE_CTRL_STATUS">EFUSE_INTERFACE_CTRL_STATUS</a></td><td>RW</td><td>eFuse interface status and error-clear register. Reports the sense-done flag and request/address error conditions, and provides write-1 strobes to clear those errors.</td></tr>
-<tr><td>0x4</td><td><a href="#EFUSE_PROGRAM_CTRL">EFUSE_PROGRAM_CTRL</a></td><td>RW</td><td>eFuse program control and status. Configures the program address and data, triggers a program (optionally with read-back), and reports program progress and completion status.</td></tr>
-<tr><td>0x8</td><td><a href="#EFUSE_READ_CTRL">EFUSE_READ_CTRL</a></td><td>RW</td><td>eFuse read control and status. Configures the read address, triggers a read, and reports read progress and completion status.</td></tr>
-<tr><td>0xC</td><td><a href="#EFUSE_PROGRAM_INTERFACE_READ_DATA">EFUSE_PROGRAM_INTERFACE_READ_DATA</a></td><td>R</td><td>Read data captured through the program interface. Hardware debug only; valid only while the program interface state machine is in its capture-data state.</td></tr>
-<tr><td>0x10</td><td><a href="#EFUSE_READ_INTERFACE_READ_DATA">EFUSE_READ_INTERFACE_READ_DATA</a></td><td>R</td><td>Read data returned through the eFuse read interface.</td></tr>
-<tr><td>0x14</td><td><a href="#EFUSE_READ_REQ_TIMEOUT">EFUSE_READ_REQ_TIMEOUT</a></td><td>RW</td><td>Read interface timeout configuration. Sets the number of cycles the read interface waits for a SHIM response and enables the read timeout.</td></tr>
-<tr><td>0x18</td><td><a href="#EFUSE_PROGRAM_REQ_TIMEOUT">EFUSE_PROGRAM_REQ_TIMEOUT</a></td><td>RW</td><td>Program interface timeout configuration. Sets the number of cycles the program interface waits for a SHIM response and enables the program timeout.</td></tr>
+<tr><td>0x0</td><td><a href="#efuse_interface_ctrl-EFUSE_INTERFACE_CTRL_STATUS">EFUSE_INTERFACE_CTRL_STATUS</a></td><td>RW</td><td>eFuse interface status and error-clear register. Reports the sense-done flag and request/address error conditions, and provides write-1 strobes to clear those errors.</td></tr>
+<tr><td>0x4</td><td><a href="#efuse_interface_ctrl-EFUSE_PROGRAM_CTRL">EFUSE_PROGRAM_CTRL</a></td><td>RW</td><td>eFuse program control and status. Configures the program address and data, triggers a program (optionally with read-back), and reports program progress and completion status.</td></tr>
+<tr><td>0x8</td><td><a href="#efuse_interface_ctrl-EFUSE_READ_CTRL">EFUSE_READ_CTRL</a></td><td>RW</td><td>eFuse read control and status. Configures the read address, triggers a read, and reports read progress and completion status.</td></tr>
+<tr><td>0xC</td><td><a href="#efuse_interface_ctrl-EFUSE_PROGRAM_INTERFACE_READ_DATA">EFUSE_PROGRAM_INTERFACE_READ_DATA</a></td><td>R</td><td>Read data captured through the program interface. Hardware debug only; valid only while the program interface state machine is in its capture-data state.</td></tr>
+<tr><td>0x10</td><td><a href="#efuse_interface_ctrl-EFUSE_READ_INTERFACE_READ_DATA">EFUSE_READ_INTERFACE_READ_DATA</a></td><td>R</td><td>Read data returned through the eFuse read interface.</td></tr>
+<tr><td>0x14</td><td><a href="#efuse_interface_ctrl-EFUSE_READ_REQ_TIMEOUT">EFUSE_READ_REQ_TIMEOUT</a></td><td>RW</td><td>Read interface timeout configuration. Sets the number of cycles the read interface waits for a SHIM response and enables the read timeout.</td></tr>
+<tr><td>0x18</td><td><a href="#efuse_interface_ctrl-EFUSE_PROGRAM_REQ_TIMEOUT">EFUSE_PROGRAM_REQ_TIMEOUT</a></td><td>RW</td><td>Program interface timeout configuration. Sets the number of cycles the program interface waits for a SHIM response and enables the program timeout.</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
-<h3 id="EFUSE_INTERFACE_CTRL_STATUS">EFUSE_INTERFACE_CTRL_STATUS</h3>
+<span id="EFUSE_INTERFACE_CTRL_STATUS"></span><h3 id="efuse_interface_ctrl-EFUSE_INTERFACE_CTRL_STATUS" data-register-alias="EFUSE_INTERFACE_CTRL_STATUS">EFUSE_INTERFACE_CTRL_STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1470,7 +1473,7 @@ after <code>PROGRAM_DONE</code> before issuing a read. See
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>efuse_sense_done</td><td>R</td><td>-</td><td>Indicates if the eFuse state machine has completed</td></tr>
 </table>
-<h3 id="EFUSE_PROGRAM_CTRL">EFUSE_PROGRAM_CTRL</h3>
+<span id="EFUSE_PROGRAM_CTRL"></span><h3 id="efuse_interface_ctrl-EFUSE_PROGRAM_CTRL" data-register-alias="EFUSE_PROGRAM_CTRL">EFUSE_PROGRAM_CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:28</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1484,7 +1487,7 @@ after <code>PROGRAM_DONE</code> before issuing a read. See
 <tr><td>16</td><td>efuse_data</td><td>RW</td><td>0x0</td><td>Data to program to eFuse.  If this bit is 0, the program request will be ignored</td></tr>
 <tr><td>15:0</td><td>efuse_addr</td><td>RW</td><td>0x0</td><td>Bit address to program</td></tr>
 </table>
-<h3 id="EFUSE_READ_CTRL">EFUSE_READ_CTRL</h3>
+<span id="EFUSE_READ_CTRL"></span><h3 id="efuse_interface_ctrl-EFUSE_READ_CTRL" data-register-alias="EFUSE_READ_CTRL">EFUSE_READ_CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:29</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1497,24 +1500,24 @@ after <code>PROGRAM_DONE</code> before issuing a read. See
 <tr><td>16</td><td>efuse_read_go</td><td>RW 1P</td><td>0x0</td><td>When set, triggers a read to efuse.</td></tr>
 <tr><td>15:0</td><td>efuse_addr</td><td>RW</td><td>0x0</td><td>Bit address to read</td></tr>
 </table>
-<h3 id="EFUSE_PROGRAM_INTERFACE_READ_DATA">EFUSE_PROGRAM_INTERFACE_READ_DATA</h3>
+<span id="EFUSE_PROGRAM_INTERFACE_READ_DATA"></span><h3 id="efuse_interface_ctrl-EFUSE_PROGRAM_INTERFACE_READ_DATA" data-register-alias="EFUSE_PROGRAM_INTERFACE_READ_DATA">EFUSE_PROGRAM_INTERFACE_READ_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>dout</td><td>R</td><td>0x0</td><td>Read Data from eFuse through program interface. This field is only valid when the efuse programming interface is utilized to burn the efuse IP and only when the state machine is during ST_CAPTUER_DATA state. Hardware debug only</td></tr>
 </table>
-<h3 id="EFUSE_READ_INTERFACE_READ_DATA">EFUSE_READ_INTERFACE_READ_DATA</h3>
+<span id="EFUSE_READ_INTERFACE_READ_DATA"></span><h3 id="efuse_interface_ctrl-EFUSE_READ_INTERFACE_READ_DATA" data-register-alias="EFUSE_READ_INTERFACE_READ_DATA">EFUSE_READ_INTERFACE_READ_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>dout</td><td>R</td><td>0x0</td><td>Read Data from eFuse through READ interface.</td></tr>
 </table>
-<h3 id="EFUSE_READ_REQ_TIMEOUT">EFUSE_READ_REQ_TIMEOUT</h3>
+<span id="EFUSE_READ_REQ_TIMEOUT"></span><h3 id="efuse_interface_ctrl-EFUSE_READ_REQ_TIMEOUT" data-register-alias="EFUSE_READ_REQ_TIMEOUT">EFUSE_READ_REQ_TIMEOUT</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:29</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>28</td><td>read_req_timout_enable</td><td>RW</td><td>0x0</td><td>Enable timeout on read interface</td></tr>
 <tr><td>27:0</td><td>read_req_timeout_cycles</td><td>RW</td><td>0x800000</td><td>Number of cycles the read interface will wait for a response from the shim. At 100MHz this can count ~= 2.5 seconds.</td></tr>
 </table>
-<h3 id="EFUSE_PROGRAM_REQ_TIMEOUT">EFUSE_PROGRAM_REQ_TIMEOUT</h3>
+<span id="EFUSE_PROGRAM_REQ_TIMEOUT"></span><h3 id="efuse_interface_ctrl-EFUSE_PROGRAM_REQ_TIMEOUT" data-register-alias="EFUSE_PROGRAM_REQ_TIMEOUT">EFUSE_PROGRAM_REQ_TIMEOUT</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:29</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1523,8 +1526,8 @@ after <code>PROGRAM_DONE</code> before issuing a read. See
 </table>
 </div>
 </div>
-<div class="sect2">
-<h3 id="shim-control-registers"><a class="anchor" href="#shim-control-registers"></a><a class="link" href="#shim-control-registers">5.5. SHIM Control Registers</a></h3>
+<div class="sect3">
+<h4 id="shim-control-registers"><a class="anchor" href="#shim-control-registers"></a><a class="link" href="#shim-control-registers">5.2.4. SHIM Control Registers</a></h4>
 <div class="paragraph">
 <p>The SHIM Control CSR provides foundry-specific configuration registers for
 timing adaptation and eFuse bank initialization. Its placement is
@@ -1544,14 +1547,15 @@ does not appear at a fixed address in the generated OCAH map.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0</td><td><a href="#EFUSE_BANK_INIT_TIME">EFUSE_BANK_INIT_TIME</a></td><td>RW</td><td>eFuse bank initialization time. Number of cycles to wait for the OTP macro to initialize before sensing can begin.</td></tr>
+<tr><td>0x0</td><td><a href="#efuse_shim_ctrl-EFUSE_BANK_INIT_TIME">EFUSE_BANK_INIT_TIME</a></td><td>RW</td><td>eFuse bank initialization time. Number of cycles to wait for the OTP macro to initialize before sensing can begin.</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
-<h3 id="EFUSE_BANK_INIT_TIME">EFUSE_BANK_INIT_TIME</h3>
+<span id="EFUSE_BANK_INIT_TIME"></span><h3 id="efuse_shim_ctrl-EFUSE_BANK_INIT_TIME" data-register-alias="EFUSE_BANK_INIT_TIME">EFUSE_BANK_INIT_TIME</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>init_time</td><td>RW</td><td>0x20</td><td>Most OTP have a initialization time before sensing can be done</td></tr>
 </table>
+</div>
 </div>
 </div>
 </div>

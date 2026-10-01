@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Memory Map :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>Memory Map and Register Reference :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
     <meta name="description" content="SMC address-space organization, access control, and register reference.">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../_/css/site.css">
@@ -160,7 +160,7 @@
 <nav class="breadcrumbs" aria-label="breadcrumbs">
   <ul>
     <li><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></li>
-    <li><a href="memmap.html">Memory Map</a></li>
+    <li><a href="memmap.html">Memory Map and Register Reference</a></li>
   </ul>
 </nav>
 </div>
@@ -169,10 +169,11 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<h1 class="page">Memory Map</h1>
-<div id="preamble">
+<h1 class="page">Memory Map and Register Reference</h1>
+<div class="sect1">
+<h2 id="smc-memory-map"><a class="anchor" href="#smc-memory-map"></a><a class="link" href="#smc-memory-map">1. Memory Map</a></h2>
 <div class="sectionbody">
-<div id="smc-memory-map" class="paragraph">
+<div class="paragraph">
 <p>This section provides a comprehensive overview of the SMC memory map.
 The SMC address space is organized to provide access to various
 functional units including CPU control, peripheral interfaces, system
@@ -195,11 +196,8 @@ refer to the
 SMC Address Map Integration
 section of the Integration Guide.</p>
 </div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="address-space-organization"><a class="anchor" href="#address-space-organization"></a><a class="link" href="#address-space-organization">1. Address Space Organization</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="address-space-organization"><a class="anchor" href="#address-space-organization"></a><a class="link" href="#address-space-organization">1.1. Address Space Organization</a></h3>
 <div class="paragraph">
 <p>The generated component map reports each allocated aperture separately from
 the extent occupied by registers.</p>
@@ -814,19 +812,8 @@ to reads and writes. The M-mode and Xvisor remap regions forward accesses from
 SMC initiators only; an access to them from the inbound port answers <code>DECERR</code>.</p>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="detailed-address-map"><a class="anchor" href="#detailed-address-map"></a><a class="link" href="#detailed-address-map">2. Detailed Address Map</a></h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>The component-level assignments are generated in the preceding table. This
-avoids a second list of addresses drifting from the implemented decode.</p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="axi-lite-external-window"><a class="anchor" href="#axi-lite-external-window"></a><a class="link" href="#axi-lite-external-window">3. AXI-Lite External Window</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="axi-lite-external-window"><a class="anchor" href="#axi-lite-external-window"></a><a class="link" href="#axi-lite-external-window">1.2. AXI-Lite External Window</a></h3>
 <div class="paragraph">
 <p>The <code>smc_external</code> window at <code>BASE + 0x040_0000</code> is the adopter extension
 window. OCAH exposes this AXI-Lite bus so an adopter can attach their own
@@ -879,102 +866,9 @@ unclaimed accesses in this region with a DECERR response via the
 <code>prim_axi_lite_err_slv</code> helper; this is one integration choice, not a
 requirement.</p>
 </div>
+</div>
 <div class="sect2">
-<h3 id="external-window-reference-maps"><a class="anchor" href="#external-window-reference-maps"></a><a class="link" href="#external-window-reference-maps">3.1. External Window Reference Maps</a></h3>
-<div class="paragraph">
-<p>The PLL and PVT maps below describe placeholder memory footprints used by the
-open verification models. Their memory words do not specify the control
-registers of an adopter&#8217;s clock or sensor implementation. The straps map
-describes captured GPIO values. Placement of these blocks within the external
-window is integration-specific.</p>
-</div>
-<!-- SPDX-License-Identifier: Apache-2.0 -->
-<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
-<div class="ocah-reg-html">
-<style>
-.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
-.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
-.ocah-reg-html th{background:#81BCE5;text-align:left}
-</style>
-<h2 id="regmap-pll_wrap">PLL Wrapper Placeholder Address Map</h2>
-<p>Adopter clock-control placeholder reserving the PLL map slot; no CSRs are modeled.</p>
-<p><strong>Register Arrays:</strong></p>
-<ul>
-<li><strong>mem_array[954]</strong>: 954 registers, base 0x0, stride 0x4</li>
-</ul>
-<p><strong>Register List:</strong></p>
-<table>
-<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0 - 0xEE4</td><td><a href="#mem_array_954_">mem_array[954]</a></td><td>R</td><td>-</td></tr>
-</table>
-<p><strong>Register Details:</strong></p>
-<h3 id="mem_array_954_">mem_array[954]</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>data</td><td>R</td><td>-</td><td>-</td></tr>
-</table>
-</div>
-<!-- SPDX-License-Identifier: Apache-2.0 -->
-<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
-<div class="ocah-reg-html">
-<style>
-.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
-.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
-.ocah-reg-html th{background:#81BCE5;text-align:left}
-</style>
-<h2 id="regmap-pvt_wrap">PVT Wrapper Placeholder Address Map</h2>
-<p>Adopter PVT and monitor placeholder reserving the map slot; no CSRs are modeled.</p>
-<p><strong>Register Arrays:</strong></p>
-<ul>
-<li><strong>mem_array[594]</strong>: 594 registers, base 0x0, stride 0x4</li>
-</ul>
-<p><strong>Register List:</strong></p>
-<table>
-<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0 - 0x944</td><td><a href="#mem_array_594_">mem_array[594]</a></td><td>R</td><td>-</td></tr>
-</table>
-<p><strong>Register Details:</strong></p>
-<h3 id="mem_array_594_">mem_array[594]</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>data</td><td>R</td><td>-</td><td>-</td></tr>
-</table>
-</div>
-<!-- SPDX-License-Identifier: Apache-2.0 -->
-<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
-<div class="ocah-reg-html">
-<style>
-.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
-.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
-.ocah-reg-html th{background:#81BCE5;text-align:left}
-</style>
-<h2 id="regmap-straps">Straps Address Map</h2>
-<p>Captured GPIO strap values (adopter padring capture)</p>
-<p><strong>Register List:</strong></p>
-<table>
-<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0</td><td><a href="#STRAPS_LO">STRAPS_LO</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x4</td><td><a href="#STRAPS_HI">STRAPS_HI</a></td><td>R</td><td>-</td></tr>
-</table>
-<p><strong>Register Details:</strong></p>
-<h3 id="STRAPS_LO">STRAPS_LO</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>straps</td><td>R</td><td>0x0</td><td>Strap value from GPIOs 0 - 31. Bit N holds the value latched on GPIO N.<br>Bits 0 - 10, 16, 17, 24 and 27 - 31 have no strap assigned. Those GPIOs still<br>latch their pad value here, but no strap function consumes it.<br>Strap assignments in this range:<br>* bit 11: CHIP_ID[3] - CHIP_ID is the I2C/I3C static address strap<br>* bit 12: CHIP_ID[2] - CHIP_ID is the I2C/I3C static address strap<br>* bit 13: BYPASS_SRAM_REPAIR - Bypass the memory repair process<br>* bit 14: TEST_EN - Enable DFT test mode<br>* bit 15: CHIP_ID[1] - CHIP_ID is the I2C/I3C static address strap<br>* bit 18: BOOT_I2C - Default alternate boot channel is I3C0 and can be reconfigured to use I2C0<br>* bit 19: BOOT_RECOVERY - Use I3C0 for BL1 boot image loading instead of the SPI channel<br>* bit 20: BL0_PLLCLK - Use the PLL generated clock by default in BL0, and override to use the reference clock when this strap is asserted<br>* bit 21: STATUS_RPT_DISABLE - Disable BL0 status reporting. It is on by default<br>* bit 22: SPI_USE_FUSED_CONFIG - Use the SPI configuration values stored in the fuse field<br>* bit 23: CHIP_ID[0] - CHIP_ID is the I2C/I3C static address strap<br>* bit 25: PRIMARY_CHIPLET - The primary chiplet has this strap bonded out to identify it as the boot master<br>* bit 26: SRAM_AUTO_ZERO_DISABLE - Disable auto zero of the SMC SRAM when asserted</td></tr>
-</table>
-<h3 id="STRAPS_HI">STRAPS_HI</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:29</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>28:0</td><td>straps</td><td>R</td><td>0x0</td><td>Strap value from GPIOs 32 - 60. Bit N holds the value latched on GPIO N+32.<br>All bits other than those listed below have no strap assigned. Those GPIOs<br>still latch their pad value here, but no strap function consumes it.<br>GPIOs 61 - 64 cannot be strapped: they are unbonded (not packaged out) and lie<br>outside this register, which ends at GPIO 60 (smc_pkg::NUM_BONDED_GPIO-1).<br>Strap assignments in this range:<br>* bit 22 (GPIO 54): MBIST_BYPASS - Ignore results of Power-On MBIST for boot<br>* bit 26 (GPIO 58): ROTATE_UPDATE - Swaps primary and backup image in SEP BL0 ROM</td></tr>
-</table>
-</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="register-interface-standards"><a class="anchor" href="#register-interface-standards"></a><a class="link" href="#register-interface-standards">4. Register Interface Standards</a></h2>
-<div class="sectionbody">
+<h3 id="register-interface-standards"><a class="anchor" href="#register-interface-standards"></a><a class="link" href="#register-interface-standards">1.3. Register Interface Standards</a></h3>
 <div class="paragraph">
 <p>All SMC components use standard AMBA interfaces. We summarize the
 interfaces in <a href="#smc-register-interface-standards-table">SMC Register Interface Standards</a>:</p>
@@ -1022,10 +916,8 @@ interfaces in <a href="#smc-register-interface-standards-table">SMC Register Int
 </table>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="access-control-and-security"><a class="anchor" href="#access-control-and-security"></a><a class="link" href="#access-control-and-security">5. Access Control and Security</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="access-control-and-security"><a class="anchor" href="#access-control-and-security"></a><a class="link" href="#access-control-and-security">1.4. Access Control and Security</a></h3>
 <div class="paragraph">
 <p><a href="#smc-access-control-mechanisms-table">SMC Access Control Mechanisms</a> summarises the SMC access-control mechanisms.</p>
 </div>
@@ -1064,9 +956,110 @@ reporting</p></td>
 </table>
 </div>
 </div>
+</div>
 <div class="sect1">
-<h2 id="spare-smc-register-blocks"><a class="anchor" href="#spare-smc-register-blocks"></a><a class="link" href="#spare-smc-register-blocks">6. Spare SMC Register Blocks</a></h2>
+<h2 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">2. Detailed Register Map</a></h2>
 <div class="sectionbody">
+<span id="preamble"></span>
+<span id="detailed-address-map"></span>
+<span id="component-specific-register-documentation"></span>
+<div class="sect2">
+<h3 id="external-window-reference-maps"><a class="anchor" href="#external-window-reference-maps"></a><a class="link" href="#external-window-reference-maps">2.1. External Window Reference Maps</a></h3>
+<div class="paragraph">
+<p>The PLL and PVT maps below describe placeholder memory footprints used by the
+open verification models. Their memory words do not specify the control
+registers of an adopter&#8217;s clock or sensor implementation. The straps map
+describes captured GPIO values. Placement of these blocks within the external
+window is integration-specific.</p>
+</div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-pll_wrap">PLL Wrapper Placeholder Address Map</h2>
+<p>Adopter clock-control placeholder reserving the PLL map slot; no CSRs are modeled.</p>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>mem_array[954]</strong>: 954 registers, base 0x0, stride 0x4</li>
+</ul>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0 - 0xEE4</td><td><a href="#pll_wrap-mem_array_954_">mem_array[954]</a></td><td>R</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="mem_array_954_"></span><h3 id="pll_wrap-mem_array_954_" data-register-alias="mem_array_954_">mem_array[954]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>R</td><td>-</td><td>-</td></tr>
+</table>
+</div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-pvt_wrap">PVT Wrapper Placeholder Address Map</h2>
+<p>Adopter PVT and monitor placeholder reserving the map slot; no CSRs are modeled.</p>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>mem_array[594]</strong>: 594 registers, base 0x0, stride 0x4</li>
+</ul>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0 - 0x944</td><td><a href="#pvt_wrap-mem_array_594_">mem_array[594]</a></td><td>R</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="mem_array_594_"></span><h3 id="pvt_wrap-mem_array_594_" data-register-alias="mem_array_594_">mem_array[594]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>R</td><td>-</td><td>-</td></tr>
+</table>
+</div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-straps">Straps Address Map</h2>
+<p>Captured GPIO strap values (adopter padring capture)</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#straps-STRAPS_LO">STRAPS_LO</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x4</td><td><a href="#straps-STRAPS_HI">STRAPS_HI</a></td><td>R</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="STRAPS_LO"></span><h3 id="straps-STRAPS_LO" data-register-alias="STRAPS_LO">STRAPS_LO</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>straps</td><td>R</td><td>0x0</td><td>Strap value from GPIOs 0 - 31. Bit N holds the value latched on GPIO N.<br>Bits 0 - 10, 16, 17, 24 and 27 - 31 have no strap assigned. Those GPIOs still<br>latch their pad value here, but no strap function consumes it.<br>Strap assignments in this range:<br>* bit 11: CHIP_ID[3] - CHIP_ID is the I2C/I3C static address strap<br>* bit 12: CHIP_ID[2] - CHIP_ID is the I2C/I3C static address strap<br>* bit 13: BYPASS_SRAM_REPAIR - Bypass the memory repair process<br>* bit 14: TEST_EN - Enable DFT test mode<br>* bit 15: CHIP_ID[1] - CHIP_ID is the I2C/I3C static address strap<br>* bit 18: BOOT_I2C - Default alternate boot channel is I3C0 and can be reconfigured to use I2C0<br>* bit 19: BOOT_RECOVERY - Use I3C0 for BL1 boot image loading instead of the SPI channel<br>* bit 20: BL0_PLLCLK - Use the PLL generated clock by default in BL0, and override to use the reference clock when this strap is asserted<br>* bit 21: STATUS_RPT_DISABLE - Disable BL0 status reporting. It is on by default<br>* bit 22: SPI_USE_FUSED_CONFIG - Use the SPI configuration values stored in the fuse field<br>* bit 23: CHIP_ID[0] - CHIP_ID is the I2C/I3C static address strap<br>* bit 25: PRIMARY_CHIPLET - The primary chiplet has this strap bonded out to identify it as the boot master<br>* bit 26: SRAM_AUTO_ZERO_DISABLE - Disable auto zero of the SMC SRAM when asserted</td></tr>
+</table>
+<span id="STRAPS_HI"></span><h3 id="straps-STRAPS_HI" data-register-alias="STRAPS_HI">STRAPS_HI</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:29</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>28:0</td><td>straps</td><td>R</td><td>0x0</td><td>Strap value from GPIOs 32 - 60. Bit N holds the value latched on GPIO N+32.<br>All bits other than those listed below have no strap assigned. Those GPIOs<br>still latch their pad value here, but no strap function consumes it.<br>GPIOs 61 - 64 cannot be strapped: they are unbonded (not packaged out) and lie<br>outside this register, which ends at GPIO 60 (smc_pkg::NUM_BONDED_GPIO-1).<br>Strap assignments in this range:<br>* bit 22 (GPIO 54): MBIST_BYPASS - Ignore results of Power-On MBIST for boot<br>* bit 26 (GPIO 58): ROTATE_UPDATE - Swaps primary and backup image in SEP BL0 ROM</td></tr>
+</table>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="spare-smc-register-blocks"><a class="anchor" href="#spare-smc-register-blocks"></a><a class="link" href="#spare-smc-register-blocks">3. Spare SMC Register Blocks</a></h2>
+<div class="sectionbody">
+<span id="spare-smc-register-blocks"></span>
 <div class="paragraph">
 <p>The following shows the detailed register map of a set of
 programmer-visible spare SMC blocks. They are spare but essential: for
@@ -1075,7 +1068,7 @@ chip-config and NDM-reset blocks hold system-level configuration and
 reset control.</p>
 </div>
 <div class="sect2">
-<h3 id="smc-ndm-reset-block"><a class="anchor" href="#smc-ndm-reset-block"></a><a class="link" href="#smc-ndm-reset-block">6.1. Chip Config, Scratch, NDM Reset, and Misc Wrap</a></h3>
+<h3 id="smc-ndm-reset-block"><a class="anchor" href="#smc-ndm-reset-block"></a><a class="link" href="#smc-ndm-reset-block">3.1. Chip Config, Scratch, NDM Reset, and Misc Wrap</a></h3>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
@@ -1089,28 +1082,28 @@ reset control.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0</td><td><a href="#VERSION_LO">VERSION_LO</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x4</td><td><a href="#VERSION_HI">VERSION_HI</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x8</td><td><a href="#CHIP_ID">CHIP_ID</a></td><td>R</td><td>-</td></tr>
-<tr><td>0xC</td><td><a href="#LC_STATE">LC_STATE</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x0</td><td><a href="#chip_config-VERSION_LO">VERSION_LO</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x4</td><td><a href="#chip_config-VERSION_HI">VERSION_HI</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#chip_config-CHIP_ID">CHIP_ID</a></td><td>R</td><td>-</td></tr>
+<tr><td>0xC</td><td><a href="#chip_config-LC_STATE">LC_STATE</a></td><td>R</td><td>-</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
-<h3 id="VERSION_LO">VERSION_LO</h3>
+<span id="VERSION_LO"></span><h3 id="chip_config-VERSION_LO" data-register-alias="VERSION_LO">VERSION_LO</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>version_lo</td><td>R</td><td>0x100A0</td><td>SMC version, lower 32 bits</td></tr>
 </table>
-<h3 id="VERSION_HI">VERSION_HI</h3>
+<span id="VERSION_HI"></span><h3 id="chip_config-VERSION_HI" data-register-alias="VERSION_HI">VERSION_HI</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>version_hi</td><td>R</td><td>0x0</td><td>SMC version, upper 32 bits</td></tr>
 </table>
-<h3 id="CHIP_ID">CHIP_ID</h3>
+<span id="CHIP_ID"></span><h3 id="chip_config-CHIP_ID" data-register-alias="CHIP_ID">CHIP_ID</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>chip_id</td><td>R</td><td>0x0</td><td>Chip ID (e.g. 0 = Memory, 1 = CPU, 2 = AI Compute, 3 = Ethernet)</td></tr>
 </table>
-<h3 id="LC_STATE">LC_STATE</h3>
+<span id="LC_STATE"></span><h3 id="chip_config-LC_STATE" data-register-alias="LC_STATE">LC_STATE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1134,10 +1127,10 @@ reset control.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0 - 0x1C</td><td><a href="#SCRATCH_8_">SCRATCH[8]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x0 - 0x1C</td><td><a href="#scratch-SCRATCH_8_">SCRATCH[8]</a></td><td>RW</td><td>-</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
-<h3 id="SCRATCH_8_">SCRATCH[8]</h3>
+<span id="SCRATCH_8_"></span><h3 id="scratch-SCRATCH_8_" data-register-alias="SCRATCH_8_">SCRATCH[8]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>data</td><td>RW</td><td>0x0</td><td>Scratch register</td></tr>
@@ -1156,22 +1149,22 @@ reset control.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0</td><td><a href="#NDMRESET_REQUEST">NDMRESET_REQUEST</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x4</td><td><a href="#NDMRESET_PROCESS">NDMRESET_PROCESS</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x8</td><td><a href="#NDMRESET_CLUSTER_COUNT">NDMRESET_CLUSTER_COUNT</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x0</td><td><a href="#ndm_reset-NDMRESET_REQUEST">NDMRESET_REQUEST</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x4</td><td><a href="#ndm_reset-NDMRESET_PROCESS">NDMRESET_PROCESS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#ndm_reset-NDMRESET_CLUSTER_COUNT">NDMRESET_CLUSTER_COUNT</a></td><td>R</td><td>-</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
-<h3 id="NDMRESET_REQUEST">NDMRESET_REQUEST</h3>
+<span id="NDMRESET_REQUEST"></span><h3 id="ndm_reset-NDMRESET_REQUEST" data-register-alias="NDMRESET_REQUEST">NDMRESET_REQUEST</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>ndmreset_request</td><td>R</td><td>0x0</td><td>Bit i is the NDM reset request from external CPU cluster i.<br>Bits below ndmreset_cluster_count follow the request input.<br>Bits at and above that count read as 0. The field holds up to 32 clusters.</td></tr>
 </table>
-<h3 id="NDMRESET_PROCESS">NDMRESET_PROCESS</h3>
+<span id="NDMRESET_PROCESS"></span><h3 id="ndm_reset-NDMRESET_PROCESS" data-register-alias="NDMRESET_PROCESS">NDMRESET_PROCESS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>ndmreset_process</td><td>RW</td><td>0x0</td><td>Bit i is the firmware response to the NDM reset request from external CPU cluster i.<br>Bits below ndmreset_cluster_count are driven on the process output.<br>Bits at and above that count are stored and are not driven. The field holds up to 32 clusters.</td></tr>
 </table>
-<h3 id="NDMRESET_CLUSTER_COUNT">NDMRESET_CLUSTER_COUNT</h3>
+<span id="NDMRESET_CLUSTER_COUNT"></span><h3 id="ndm_reset-NDMRESET_CLUSTER_COUNT" data-register-alias="NDMRESET_CLUSTER_COUNT">NDMRESET_CLUSTER_COUNT</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1196,59 +1189,59 @@ reset control.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0 - 0x1C</td><td><a href="#scratch_cold.SCRATCH_8_">scratch_cold.SCRATCH[8]</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x80 - 0x9C</td><td><a href="#scratch_cold_warm.SCRATCH_8_">scratch_cold_warm.SCRATCH[8]</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x100</td><td><a href="#VERSION_LO">VERSION_LO</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x104</td><td><a href="#VERSION_HI">VERSION_HI</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x108</td><td><a href="#CHIP_ID">CHIP_ID</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x10C</td><td><a href="#LC_STATE">LC_STATE</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x200</td><td><a href="#NDMRESET_REQUEST">NDMRESET_REQUEST</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x204</td><td><a href="#NDMRESET_PROCESS">NDMRESET_PROCESS</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x208</td><td><a href="#NDMRESET_CLUSTER_COUNT">NDMRESET_CLUSTER_COUNT</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x0 - 0x1C</td><td><a href="#misc_wrap-scratch_cold.SCRATCH_8_">scratch_cold.SCRATCH[8]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x80 - 0x9C</td><td><a href="#misc_wrap-scratch_cold_warm.SCRATCH_8_">scratch_cold_warm.SCRATCH[8]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x100</td><td><a href="#misc_wrap-VERSION_LO">VERSION_LO</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x104</td><td><a href="#misc_wrap-VERSION_HI">VERSION_HI</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x108</td><td><a href="#misc_wrap-CHIP_ID">CHIP_ID</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x10C</td><td><a href="#misc_wrap-LC_STATE">LC_STATE</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x200</td><td><a href="#misc_wrap-NDMRESET_REQUEST">NDMRESET_REQUEST</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x204</td><td><a href="#misc_wrap-NDMRESET_PROCESS">NDMRESET_PROCESS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x208</td><td><a href="#misc_wrap-NDMRESET_CLUSTER_COUNT">NDMRESET_CLUSTER_COUNT</a></td><td>R</td><td>-</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
-<h3 id="scratch_cold.SCRATCH_8_">scratch_cold.SCRATCH[8]</h3>
+<span id="scratch_cold.SCRATCH_8_"></span><h3 id="misc_wrap-scratch_cold.SCRATCH_8_" data-register-alias="scratch_cold.SCRATCH_8_">scratch_cold.SCRATCH[8]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>data</td><td>RW</td><td>0x0</td><td>Scratch register</td></tr>
 </table>
-<h3 id="scratch_cold_warm.SCRATCH_8_">scratch_cold_warm.SCRATCH[8]</h3>
+<span id="scratch_cold_warm.SCRATCH_8_"></span><h3 id="misc_wrap-scratch_cold_warm.SCRATCH_8_" data-register-alias="scratch_cold_warm.SCRATCH_8_">scratch_cold_warm.SCRATCH[8]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>data</td><td>RW</td><td>0x0</td><td>Scratch register</td></tr>
 </table>
-<h3 id="VERSION_LO">VERSION_LO</h3>
+<h3 id="misc_wrap-VERSION_LO" data-register-alias="VERSION_LO">VERSION_LO</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>version_lo</td><td>R</td><td>0x100A0</td><td>SMC version, lower 32 bits</td></tr>
 </table>
-<h3 id="VERSION_HI">VERSION_HI</h3>
+<h3 id="misc_wrap-VERSION_HI" data-register-alias="VERSION_HI">VERSION_HI</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>version_hi</td><td>R</td><td>0x0</td><td>SMC version, upper 32 bits</td></tr>
 </table>
-<h3 id="CHIP_ID">CHIP_ID</h3>
+<h3 id="misc_wrap-CHIP_ID" data-register-alias="CHIP_ID">CHIP_ID</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>chip_id</td><td>R</td><td>0x0</td><td>Chip ID (e.g. 0 = Memory, 1 = CPU, 2 = AI Compute, 3 = Ethernet)</td></tr>
 </table>
-<h3 id="LC_STATE">LC_STATE</h3>
+<h3 id="misc_wrap-LC_STATE" data-register-alias="LC_STATE">LC_STATE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>7:0</td><td>lc_state</td><td>R</td><td>0xF</td><td>Lifecycle state value from SEP. Default to invalid state</td></tr>
 </table>
-<h3 id="NDMRESET_REQUEST">NDMRESET_REQUEST</h3>
+<h3 id="misc_wrap-NDMRESET_REQUEST" data-register-alias="NDMRESET_REQUEST">NDMRESET_REQUEST</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>ndmreset_request</td><td>R</td><td>0x0</td><td>Bit i is the NDM reset request from external CPU cluster i.<br>Bits below ndmreset_cluster_count follow the request input.<br>Bits at and above that count read as 0. The field holds up to 32 clusters.</td></tr>
 </table>
-<h3 id="NDMRESET_PROCESS">NDMRESET_PROCESS</h3>
+<h3 id="misc_wrap-NDMRESET_PROCESS" data-register-alias="NDMRESET_PROCESS">NDMRESET_PROCESS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>ndmreset_process</td><td>RW</td><td>0x0</td><td>Bit i is the firmware response to the NDM reset request from external CPU cluster i.<br>Bits below ndmreset_cluster_count are driven on the process output.<br>Bits at and above that count are stored and are not driven. The field holds up to 32 clusters.</td></tr>
 </table>
-<h3 id="NDMRESET_CLUSTER_COUNT">NDMRESET_CLUSTER_COUNT</h3>
+<h3 id="misc_wrap-NDMRESET_CLUSTER_COUNT" data-register-alias="NDMRESET_CLUSTER_COUNT">NDMRESET_CLUSTER_COUNT</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1257,7 +1250,7 @@ reset control.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="base-config-dfx-status-and-gpio-pocpbias"><a class="anchor" href="#base-config-dfx-status-and-gpio-pocpbias"></a><a class="link" href="#base-config-dfx-status-and-gpio-pocpbias">6.2. Base Config, DFX Status, and GPIO POC/PBias</a></h3>
+<h3 id="base-config-dfx-status-and-gpio-pocpbias"><a class="anchor" href="#base-config-dfx-status-and-gpio-pocpbias"></a><a class="link" href="#base-config-dfx-status-and-gpio-pocpbias">3.2. Base Config, DFX Status, and GPIO POC/PBias</a></h3>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
@@ -1271,37 +1264,37 @@ reset control.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0</td><td><a href="#GLOBAL_BASE">GLOBAL_BASE</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x8</td><td><a href="#LOCAL_BASE">LOCAL_BASE</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x10</td><td><a href="#REGION_SIZE">REGION_SIZE</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x18</td><td><a href="#CLOCK_GATE_CONTROL">CLOCK_GATE_CONTROL</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x20</td><td><a href="#HANG_DET_SYS_AXI_CTRL">HANG_DET_SYS_AXI_CTRL</a></td><td>RW</td><td>AXI hang detector control.</td></tr>
-<tr><td>0x28</td><td><a href="#HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD">HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD</a></td><td>RW</td><td>Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires.</td></tr>
-<tr><td>0x30</td><td><a href="#HANG_DET_SEP_AXI_CTRL">HANG_DET_SEP_AXI_CTRL</a></td><td>RW</td><td>AXI hang detector control.</td></tr>
-<tr><td>0x38</td><td><a href="#HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD">HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD</a></td><td>RW</td><td>Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires.</td></tr>
-<tr><td>0x40</td><td><a href="#HANG_DET_DATA_ACCEL_CTRL">HANG_DET_DATA_ACCEL_CTRL</a></td><td>RW</td><td>AXI hang detector control.</td></tr>
-<tr><td>0x48</td><td><a href="#HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD">HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD</a></td><td>RW</td><td>Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires.</td></tr>
+<tr><td>0x0</td><td><a href="#smc_base_config-GLOBAL_BASE">GLOBAL_BASE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#smc_base_config-LOCAL_BASE">LOCAL_BASE</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#smc_base_config-REGION_SIZE">REGION_SIZE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x18</td><td><a href="#smc_base_config-CLOCK_GATE_CONTROL">CLOCK_GATE_CONTROL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x20</td><td><a href="#smc_base_config-HANG_DET_SYS_AXI_CTRL">HANG_DET_SYS_AXI_CTRL</a></td><td>RW</td><td>AXI hang detector control.</td></tr>
+<tr><td>0x28</td><td><a href="#smc_base_config-HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD">HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD</a></td><td>RW</td><td>Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires.</td></tr>
+<tr><td>0x30</td><td><a href="#smc_base_config-HANG_DET_SEP_AXI_CTRL">HANG_DET_SEP_AXI_CTRL</a></td><td>RW</td><td>AXI hang detector control.</td></tr>
+<tr><td>0x38</td><td><a href="#smc_base_config-HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD">HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD</a></td><td>RW</td><td>Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires.</td></tr>
+<tr><td>0x40</td><td><a href="#smc_base_config-HANG_DET_DATA_ACCEL_CTRL">HANG_DET_DATA_ACCEL_CTRL</a></td><td>RW</td><td>AXI hang detector control.</td></tr>
+<tr><td>0x48</td><td><a href="#smc_base_config-HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD">HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD</a></td><td>RW</td><td>Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires.</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
-<h3 id="GLOBAL_BASE">GLOBAL_BASE</h3>
+<span id="GLOBAL_BASE"></span><h3 id="smc_base_config-GLOBAL_BASE" data-register-alias="GLOBAL_BASE">GLOBAL_BASE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:56</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>55:0</td><td>base</td><td>RW</td><td>0x40000000</td><td>Global base address for the CPU</td></tr>
 </table>
-<h3 id="LOCAL_BASE">LOCAL_BASE</h3>
+<span id="LOCAL_BASE"></span><h3 id="smc_base_config-LOCAL_BASE" data-register-alias="LOCAL_BASE">LOCAL_BASE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:56</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>55:0</td><td>base</td><td>R</td><td>0xC0000000</td><td>Local base address for the CPU</td></tr>
 </table>
-<h3 id="REGION_SIZE">REGION_SIZE</h3>
+<span id="REGION_SIZE"></span><h3 id="smc_base_config-REGION_SIZE" data-register-alias="REGION_SIZE">REGION_SIZE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:32</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>31:0</td><td>size</td><td>RW</td><td>0x1000000</td><td>Region size for SMC resources, sizing both the local alias window and the global aperture. Must be a non-zero power of two: the fabric derives its local-alias address mask as (size - 1), so any other value produces a discontiguous mask and misroutes accesses. Zero leaves no reachable local aperture. GLOBAL_BASE and LOCAL_BASE must be aligned to this size. Defaults to 16MB (0x100_0000); FW reprograms per chiplet spec.</td></tr>
 </table>
-<h3 id="CLOCK_GATE_CONTROL">CLOCK_GATE_CONTROL</h3>
+<span id="CLOCK_GATE_CONTROL"></span><h3 id="smc_base_config-CLOCK_GATE_CONTROL" data-register-alias="CLOCK_GATE_CONTROL">CLOCK_GATE_CONTROL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:30</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1322,7 +1315,7 @@ reset control.</p>
 <tr><td>1</td><td>mailbox_cg_en</td><td>RW</td><td>0x0</td><td>Clockgate enable for the mailbox</td></tr>
 <tr><td>0</td><td>dma_cg_en</td><td>RW</td><td>0x0</td><td>Clockgate enable for the DMA</td></tr>
 </table>
-<h3 id="HANG_DET_SYS_AXI_CTRL">HANG_DET_SYS_AXI_CTRL</h3>
+<span id="HANG_DET_SYS_AXI_CTRL"></span><h3 id="smc_base_config-HANG_DET_SYS_AXI_CTRL" data-register-alias="HANG_DET_SYS_AXI_CTRL">HANG_DET_SYS_AXI_CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1332,13 +1325,13 @@ reset control.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>enable</td><td>RW</td><td>0x0</td><td>When 1, the timeout counter runs. When 0, it is held at 0 and irq_o is forced low.</td></tr>
 </table>
-<h3 id="HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD">HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD</h3>
+<span id="HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD"></span><h3 id="smc_base_config-HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD" data-register-alias="HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD">HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>19:0</td><td>value</td><td>RW</td><td>0x1000</td><td>Threshold in clock cycles. Default 0x1000. 20 bits =&gt; up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never asserts irq_o, though irq_test still asserts it. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.</td></tr>
 </table>
-<h3 id="HANG_DET_SEP_AXI_CTRL">HANG_DET_SEP_AXI_CTRL</h3>
+<span id="HANG_DET_SEP_AXI_CTRL"></span><h3 id="smc_base_config-HANG_DET_SEP_AXI_CTRL" data-register-alias="HANG_DET_SEP_AXI_CTRL">HANG_DET_SEP_AXI_CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1348,13 +1341,13 @@ reset control.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>enable</td><td>RW</td><td>0x0</td><td>When 1, the timeout counter runs. When 0, it is held at 0 and irq_o is forced low.</td></tr>
 </table>
-<h3 id="HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD">HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD</h3>
+<span id="HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD"></span><h3 id="smc_base_config-HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD" data-register-alias="HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD">HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>19:0</td><td>value</td><td>RW</td><td>0x1000</td><td>Threshold in clock cycles. Default 0x1000. 20 bits =&gt; up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never asserts irq_o, though irq_test still asserts it. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.</td></tr>
 </table>
-<h3 id="HANG_DET_DATA_ACCEL_CTRL">HANG_DET_DATA_ACCEL_CTRL</h3>
+<span id="HANG_DET_DATA_ACCEL_CTRL"></span><h3 id="smc_base_config-HANG_DET_DATA_ACCEL_CTRL" data-register-alias="HANG_DET_DATA_ACCEL_CTRL">HANG_DET_DATA_ACCEL_CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1364,7 +1357,7 @@ reset control.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>enable</td><td>RW</td><td>0x0</td><td>When 1, the timeout counter runs. When 0, it is held at 0 and irq_o is forced low.</td></tr>
 </table>
-<h3 id="HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD">HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD</h3>
+<span id="HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD"></span><h3 id="smc_base_config-HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD" data-register-alias="HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD">HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1384,12 +1377,12 @@ reset control.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0</td><td><a href="#STATUS_SMU">STATUS_SMU</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x8</td><td><a href="#DEBUG_CTRL">DEBUG_CTRL</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x10</td><td><a href="#DEBUG_BUS_MUX">DEBUG_BUS_MUX</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x0</td><td><a href="#dfx_ctrl_status-STATUS_SMU">STATUS_SMU</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#dfx_ctrl_status-DEBUG_CTRL">DEBUG_CTRL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#dfx_ctrl_status-DEBUG_BUS_MUX">DEBUG_BUS_MUX</a></td><td>RW</td><td>-</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
-<h3 id="STATUS_SMU">STATUS_SMU</h3>
+<span id="STATUS_SMU"></span><h3 id="dfx_ctrl_status-STATUS_SMU" data-register-alias="STATUS_SMU">STATUS_SMU</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:13</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1403,7 +1396,7 @@ reset control.</p>
 <tr><td>1</td><td>mem_repair_success</td><td>R</td><td>0x0</td><td>One bit indicator from DFT logic to say if mem repair was successful<br>This register is sticky 1 and will hold the value until reset</td></tr>
 <tr><td>0</td><td>mem_repair_done</td><td>R</td><td>0x0</td><td>One bit indicator from DFT logic to say when mem repair is completed.<br>This register is sticky 1 and will hold the value until reset</td></tr>
 </table>
-<h3 id="DEBUG_CTRL">DEBUG_CTRL</h3>
+<span id="DEBUG_CTRL"></span><h3 id="dfx_ctrl_status-DEBUG_CTRL" data-register-alias="DEBUG_CTRL">DEBUG_CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1416,7 +1409,7 @@ reset control.</p>
 <tr><td>2</td><td>gpio_en</td><td>RW</td><td>0x0</td><td>GPIO en</td></tr>
 <tr><td>1:0</td><td>chiplet_enable</td><td>RW</td><td>0x0</td><td>Chiplet Enable Used for Triggering</td></tr>
 </table>
-<h3 id="DEBUG_BUS_MUX">DEBUG_BUS_MUX</h3>
+<span id="DEBUG_BUS_MUX"></span><h3 id="dfx_ctrl_status-DEBUG_BUS_MUX" data-register-alias="DEBUG_BUS_MUX">DEBUG_BUS_MUX</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:58</td><td>Muxselseg7</td><td>RW</td><td>0x0</td><td>-</td></tr>
@@ -1445,18 +1438,18 @@ reset control.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0</td><td><a href="#CONTROL">CONTROL</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x8</td><td><a href="#ACCESS_FILTER">ACCESS_FILTER</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x0</td><td><a href="#gpio_poc_pbias_ctrl-CONTROL">CONTROL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#gpio_poc_pbias_ctrl-ACCESS_FILTER">ACCESS_FILTER</a></td><td>RW</td><td>-</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
-<h3 id="CONTROL">CONTROL</h3>
+<span id="CONTROL"></span><h3 id="gpio_poc_pbias_ctrl-CONTROL" data-register-alias="CONTROL">CONTROL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>1</td><td>retention_en</td><td>RW</td><td>0x0</td><td>Retention enable control. Set to 0 by default which disables retention.</td></tr>
 <tr><td>0</td><td>pwr_supply_sel</td><td>RW</td><td>0x0</td><td>Power supply voltage level selection.<br>PSW=0 at 1.8V I/O supply<br>PSW=1 at 1.2V I/O supply</td></tr>
 </table>
-<h3 id="ACCESS_FILTER">ACCESS_FILTER</h3>
+<span id="ACCESS_FILTER"></span><h3 id="gpio_poc_pbias_ctrl-ACCESS_FILTER" data-register-alias="ACCESS_FILTER">ACCESS_FILTER</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:19</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1469,11 +1462,8 @@ reset control.</p>
 </table>
 </div>
 </div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="component-specific-register-documentation"><a class="anchor" href="#component-specific-register-documentation"></a><a class="link" href="#component-specific-register-documentation">7. Component-Specific Register Documentation</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="component-register-references"><a class="anchor" href="#component-register-references"></a><a class="link" href="#component-register-references">3.3. Component Register References</a></h3>
 <div class="paragraph">
 <p>For detailed register-level documentation of each SMC component, refer
 to the individual component documentation (<a href="#smc-component-documentation-table">SMC Component Documentation</a>).</p>
@@ -1544,6 +1534,7 @@ Engine, I2C, I3C, AVSBus, GPIO, and Telemetry Receiver</p></td>
 </tr>
 </tbody>
 </table>
+</div>
 </div>
 </div>
 </article>

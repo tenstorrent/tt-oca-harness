@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>CPU &amp; Memory System :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>CPU :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
     <meta name="description" content="SMC processor cluster, caches, local memory, isolation, interrupts, and debug.">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../_/css/site.css">
@@ -175,7 +175,7 @@
 <nav class="breadcrumbs" aria-label="breadcrumbs">
   <ul>
     <li><a href="../index.html">Open Chiplet Atlas (OCA) Harness</a></li>
-    <li><a href="cpu.html">CPU &amp; Memory System</a></li>
+    <li><a href="cpu.html">CPU</a></li>
   </ul>
 </nav>
 </div>
@@ -184,7 +184,7 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<h1 class="page">CPU &amp; Memory System</h1>
+<h1 class="page">CPU</h1>
 <div id="preamble">
 <div class="sectionbody">
 <div id="cpu-memory-system" class="paragraph">
@@ -250,7 +250,7 @@ the figure does not draw.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="processor-core-overview"><a class="anchor" href="#processor-core-overview"></a><a class="link" href="#processor-core-overview">Processor Core Overview</a></h2>
+<h2 id="processor-core-overview"><a class="anchor" href="#processor-core-overview"></a><a class="link" href="#processor-core-overview">Processor Core</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p><a href="#smc-processor-core-features-table">SMC processor core features</a> summarizes the key features of the Rocket CPU core, and
@@ -298,7 +298,7 @@ its cache hierarchy</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="cache-and-memory-hierarchy"><a class="anchor" href="#cache-and-memory-hierarchy"></a><a class="link" href="#cache-and-memory-hierarchy">Cache and Memory Hierarchy</a></h2>
+<h2 id="cache-and-memory-hierarchy"><a class="anchor" href="#cache-and-memory-hierarchy"></a><a class="link" href="#cache-and-memory-hierarchy">Local Memory</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p><a href="#smc-cache-and-memory-hierarchy-table">SMC cache and memory hierarchy</a> lists the default memory sizes and their
@@ -364,8 +364,9 @@ At the cluster boundary, TileLink is bridged to AXI4 for the MMIO manager port, 
 </div>
 </div>
 <div class="sect1">
-<h2 id="smc-per-core-reset"><a class="anchor" href="#smc-per-core-reset"></a><a class="link" href="#smc-per-core-reset">Reset, Boot, and Initialization</a></h2>
+<h2 id="smc-per-core-reset"><a class="anchor" href="#smc-per-core-reset"></a><a class="link" href="#smc-per-core-reset">Reset and Boot</a></h2>
 <div class="sectionbody">
+<span id="reset-boot-and-initialization"></span>
 <div class="paragraph">
 <p>Each CPU core supports an independent reset mechanism and a programmable
 reset vector, configured via rst_core_N_ni and reset_vector_N_i signals
@@ -645,7 +646,7 @@ synchronous and crosses no domains.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="interrupt-and-control-integration"><a class="anchor" href="#interrupt-and-control-integration"></a><a class="link" href="#interrupt-and-control-integration">Interrupt and Control Integration</a></h2>
+<h2 id="interrupt-and-control-integration"><a class="anchor" href="#interrupt-and-control-integration"></a><a class="link" href="#interrupt-and-control-integration">Interrupt Integration</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>All interrupt wiring—MMIO bases for PLIC, CLINT, watchdog, and bus-error
@@ -656,24 +657,14 @@ documentation; and BEU direct interrupt delivery—is documented in
 </div>
 </div>
 <div class="sect1">
-<h2 id="watchdog-timer-system"><a class="anchor" href="#watchdog-timer-system"></a><a class="link" href="#watchdog-timer-system">Watchdog Timer System</a></h2>
+<h2 id="watchdog-interface"><a class="anchor" href="#watchdog-interface"></a><a class="link" href="#watchdog-interface">Watchdog Interface</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Each CPU core includes a dedicated watchdog timer (at 0xC000_0000 + N *
-0x400), enabling per-core fault detection and recovery without impacting
-other cores. Base addresses and interrupt-related context for the WDT are
-summarized in
-<a href="interrupts.html#interrupts" class="xref page">Interrupts</a>.</p>
+<p>Each core has a watchdog. See
+<a href="watchdog.html" class="xref page">Watchdog Timers</a>
+for operation and the register reference.</p>
 </div>
-<div class="paragraph">
-<p>Timeouts are configurable to suit different workloads, and staged
-warnings (followed by reset) allow software intervention before hardware
-reset is triggered.</p>
-</div>
-<div class="paragraph">
-<p>Watchdog monitoring can be disabled during debugging to prevent false
-triggers, supporting uninterrupted development and troubleshooting.</p>
-</div>
+<span id="watchdog-timer-system"></span>
 </div>
 </div>
 <div class="sect1">
@@ -715,8 +706,17 @@ firmware development and diagnostics.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">Detailed Register Map</a></h2>
+<h2 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">Memory Map and Register Reference</a></h2>
 <div class="sectionbody">
+<div class="sect2">
+<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">Memory Map</a></h3>
+<div class="paragraph">
+<p>Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="detailed-register-map-2"><a class="anchor" href="#detailed-register-map-2"></a><a class="link" href="#detailed-register-map-2">Detailed Register Map</a></h3>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
@@ -742,36 +742,36 @@ firmware development and diagnostics.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0 - 0x18</td><td><a href="#RESET_VECTOR_4_">RESET_VECTOR[4]</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x20</td><td><a href="#RESET_CTRL">RESET_CTRL</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x28</td><td><a href="#CORE_RESET_PULSE_COUNT">CORE_RESET_PULSE_COUNT</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x30</td><td><a href="#RESET_TIMEOUT">RESET_TIMEOUT</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x40</td><td><a href="#REFERENCE_COUNTER">REFERENCE_COUNTER</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x50</td><td><a href="#WDT_TIMEOUT">WDT_TIMEOUT</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x58</td><td><a href="#WDT_TIMEOUT_RESET">WDT_TIMEOUT_RESET</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x60</td><td><a href="#TEST_CTRL">TEST_CTRL</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x80 - 0xF8</td><td><a href="#SCRATCH_16_">SCRATCH[16]</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x100 - 0x138</td><td><a href="#WB_PC_CORE0_8_">WB_PC_CORE0[8]</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x140 - 0x178</td><td><a href="#WB_PC_CORE1_8_">WB_PC_CORE1[8]</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x180 - 0x1B8</td><td><a href="#WB_PC_CORE2_8_">WB_PC_CORE2[8]</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x1C0 - 0x1F8</td><td><a href="#WB_PC_CORE3_8_">WB_PC_CORE3[8]</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x200</td><td><a href="#SMC_ATTRIBUTES">SMC_ATTRIBUTES</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x240 - 0x258</td><td><a href="#MUTEX_4_">MUTEX[4]</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x260 - 0x278</td><td><a href="#SEMA_4_">SEMA[4]</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x280</td><td><a href="#DUMMY_ROM_0">DUMMY_ROM_0</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x288</td><td><a href="#DUMMY_ROM_1">DUMMY_ROM_1</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x290</td><td><a href="#DUMMY_ROM_2">DUMMY_ROM_2</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x298</td><td><a href="#DUMMY_ROM_3">DUMMY_ROM_3</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x2A0 - 0x2B8</td><td><a href="#DUMMY_ROM_NULL_4_">DUMMY_ROM_NULL[4]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x0 - 0x18</td><td><a href="#cpu_ctrl-RESET_VECTOR_4_">RESET_VECTOR[4]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x20</td><td><a href="#cpu_ctrl-RESET_CTRL">RESET_CTRL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x28</td><td><a href="#cpu_ctrl-CORE_RESET_PULSE_COUNT">CORE_RESET_PULSE_COUNT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x30</td><td><a href="#cpu_ctrl-RESET_TIMEOUT">RESET_TIMEOUT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x40</td><td><a href="#cpu_ctrl-REFERENCE_COUNTER">REFERENCE_COUNTER</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x50</td><td><a href="#cpu_ctrl-WDT_TIMEOUT">WDT_TIMEOUT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x58</td><td><a href="#cpu_ctrl-WDT_TIMEOUT_RESET">WDT_TIMEOUT_RESET</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x60</td><td><a href="#cpu_ctrl-TEST_CTRL">TEST_CTRL</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x80 - 0xF8</td><td><a href="#cpu_ctrl-SCRATCH_16_">SCRATCH[16]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x100 - 0x138</td><td><a href="#cpu_ctrl-WB_PC_CORE0_8_">WB_PC_CORE0[8]</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x140 - 0x178</td><td><a href="#cpu_ctrl-WB_PC_CORE1_8_">WB_PC_CORE1[8]</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x180 - 0x1B8</td><td><a href="#cpu_ctrl-WB_PC_CORE2_8_">WB_PC_CORE2[8]</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x1C0 - 0x1F8</td><td><a href="#cpu_ctrl-WB_PC_CORE3_8_">WB_PC_CORE3[8]</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x200</td><td><a href="#cpu_ctrl-SMC_ATTRIBUTES">SMC_ATTRIBUTES</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x240 - 0x258</td><td><a href="#cpu_ctrl-MUTEX_4_">MUTEX[4]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x260 - 0x278</td><td><a href="#cpu_ctrl-SEMA_4_">SEMA[4]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x280</td><td><a href="#cpu_ctrl-DUMMY_ROM_0">DUMMY_ROM_0</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x288</td><td><a href="#cpu_ctrl-DUMMY_ROM_1">DUMMY_ROM_1</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x290</td><td><a href="#cpu_ctrl-DUMMY_ROM_2">DUMMY_ROM_2</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x298</td><td><a href="#cpu_ctrl-DUMMY_ROM_3">DUMMY_ROM_3</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x2A0 - 0x2B8</td><td><a href="#cpu_ctrl-DUMMY_ROM_NULL_4_">DUMMY_ROM_NULL[4]</a></td><td>RW</td><td>-</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
-<h3 id="RESET_VECTOR_4_">RESET_VECTOR[4]</h3>
+<span id="RESET_VECTOR_4_"></span><h3 id="cpu_ctrl-RESET_VECTOR_4_" data-register-alias="RESET_VECTOR_4_">RESET_VECTOR[4]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:56</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>55:0</td><td>vector</td><td>RW</td><td>0xC0040000</td><td>-</td></tr>
 </table>
-<h3 id="RESET_CTRL">RESET_CTRL</h3>
+<span id="RESET_CTRL"></span><h3 id="cpu_ctrl-RESET_CTRL" data-register-alias="RESET_CTRL">RESET_CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:25</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -787,7 +787,7 @@ firmware development and diagnostics.</p>
 <tr><td>1</td><td>core1_reset_n_n0_scan</td><td>RW</td><td>0x1</td><td>Reset control for the CPU, active low.</td></tr>
 <tr><td>0</td><td>core0_reset_n_n0_scan</td><td>RW</td><td>0x1</td><td>Reset control for the CPU, active low.</td></tr>
 </table>
-<h3 id="CORE_RESET_PULSE_COUNT">CORE_RESET_PULSE_COUNT</h3>
+<span id="CORE_RESET_PULSE_COUNT"></span><h3 id="cpu_ctrl-CORE_RESET_PULSE_COUNT" data-register-alias="CORE_RESET_PULSE_COUNT">CORE_RESET_PULSE_COUNT</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:36</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -795,7 +795,7 @@ firmware development and diagnostics.</p>
 <tr><td>31:16</td><td>post_reset_count</td><td>RW</td><td>0x10</td><td>Core reset pulse count post-reset. The duration of the pulse is the set value + 1.</td></tr>
 <tr><td>15:0</td><td>pre_reset_count</td><td>RW</td><td>0x8</td><td>Core reset pulse count pre-reset. The duration of the pulse is the set value + 1.</td></tr>
 </table>
-<h3 id="RESET_TIMEOUT">RESET_TIMEOUT</h3>
+<span id="RESET_TIMEOUT"></span><h3 id="cpu_ctrl-RESET_TIMEOUT" data-register-alias="RESET_TIMEOUT">RESET_TIMEOUT</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:37</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -806,17 +806,17 @@ firmware development and diagnostics.</p>
 <tr><td>16</td><td>timeout_mode</td><td>RW</td><td>0x0</td><td>Timeout mode: 0 = give up and report error (stay withheld, do not apply);<br>1 = force the reset on timeout.</td></tr>
 <tr><td>15:0</td><td>timeout_value</td><td>RW</td><td>0x0</td><td>Cycles (clk_smc) a software reset may stay pending (withheld, waiting<br>for drain) before timeout. 0 = disabled, wait indefinitely.</td></tr>
 </table>
-<h3 id="REFERENCE_COUNTER">REFERENCE_COUNTER</h3>
+<span id="REFERENCE_COUNTER"></span><h3 id="cpu_ctrl-REFERENCE_COUNTER" data-register-alias="REFERENCE_COUNTER">REFERENCE_COUNTER</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:0</td><td>rc</td><td>RW</td><td>0x0</td><td>Reference counter for the CPU</td></tr>
 </table>
-<h3 id="WDT_TIMEOUT">WDT_TIMEOUT</h3>
+<span id="WDT_TIMEOUT"></span><h3 id="cpu_ctrl-WDT_TIMEOUT" data-register-alias="WDT_TIMEOUT">WDT_TIMEOUT</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>data</td><td>RW</td><td>0x4000</td><td>Cycle count value that 2nd stage watchdog timer timeout should occur at. Defaults to 16384 cycles</td></tr>
 </table>
-<h3 id="WDT_TIMEOUT_RESET">WDT_TIMEOUT_RESET</h3>
+<span id="WDT_TIMEOUT_RESET"></span><h3 id="cpu_ctrl-WDT_TIMEOUT_RESET" data-register-alias="WDT_TIMEOUT_RESET">WDT_TIMEOUT_RESET</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -825,43 +825,43 @@ firmware development and diagnostics.</p>
 <tr><td>1</td><td>reset_cycle_count_1</td><td>RW 1P</td><td>0x0</td><td>Reset current cycle count value in 2nd stage watchdog timer</td></tr>
 <tr><td>0</td><td>reset_cycle_count_0</td><td>RW 1P</td><td>0x0</td><td>Reset current cycle count value in 2nd stage watchdog timer</td></tr>
 </table>
-<h3 id="TEST_CTRL">TEST_CTRL</h3>
+<span id="TEST_CTRL"></span><h3 id="cpu_ctrl-TEST_CTRL" data-register-alias="TEST_CTRL">TEST_CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:32</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>31:0</td><td>data</td><td>R</td><td>0x0</td><td>Test control register for the CPU</td></tr>
 </table>
-<h3 id="SCRATCH_16_">SCRATCH[16]</h3>
+<span id="SCRATCH_16_"></span><h3 id="cpu_ctrl-SCRATCH_16_" data-register-alias="SCRATCH_16_">SCRATCH[16]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:32</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>31:0</td><td>data</td><td>RW</td><td>0x0</td><td>Scratch register for the CPU</td></tr>
 </table>
-<h3 id="WB_PC_CORE0_8_">WB_PC_CORE0[8]</h3>
+<span id="WB_PC_CORE0_8_"></span><h3 id="cpu_ctrl-WB_PC_CORE0_8_" data-register-alias="WB_PC_CORE0_8_">WB_PC_CORE0[8]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:58</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>57:0</td><td>pc</td><td>R</td><td>0x0</td><td>Writeback PC value</td></tr>
 </table>
-<h3 id="WB_PC_CORE1_8_">WB_PC_CORE1[8]</h3>
+<span id="WB_PC_CORE1_8_"></span><h3 id="cpu_ctrl-WB_PC_CORE1_8_" data-register-alias="WB_PC_CORE1_8_">WB_PC_CORE1[8]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:58</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>57:0</td><td>pc</td><td>R</td><td>0x0</td><td>Writeback PC value</td></tr>
 </table>
-<h3 id="WB_PC_CORE2_8_">WB_PC_CORE2[8]</h3>
+<span id="WB_PC_CORE2_8_"></span><h3 id="cpu_ctrl-WB_PC_CORE2_8_" data-register-alias="WB_PC_CORE2_8_">WB_PC_CORE2[8]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:58</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>57:0</td><td>pc</td><td>R</td><td>0x0</td><td>Writeback PC value</td></tr>
 </table>
-<h3 id="WB_PC_CORE3_8_">WB_PC_CORE3[8]</h3>
+<span id="WB_PC_CORE3_8_"></span><h3 id="cpu_ctrl-WB_PC_CORE3_8_" data-register-alias="WB_PC_CORE3_8_">WB_PC_CORE3[8]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:58</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>57:0</td><td>pc</td><td>R</td><td>0x0</td><td>Writeback PC value</td></tr>
 </table>
-<h3 id="SMC_ATTRIBUTES">SMC_ATTRIBUTES</h3>
+<span id="SMC_ATTRIBUTES"></span><h3 id="cpu_ctrl-SMC_ATTRIBUTES" data-register-alias="SMC_ATTRIBUTES">SMC_ATTRIBUTES</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:46</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -875,39 +875,39 @@ firmware development and diagnostics.</p>
 <tr><td>7:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>chiplet_is_primary</td><td>R</td><td>-</td><td>Indicates if this chiplet is primary (1) or secondary (0). Driven by strap.</td></tr>
 </table>
-<h3 id="MUTEX_4_">MUTEX[4]</h3>
+<span id="MUTEX_4_"></span><h3 id="cpu_ctrl-MUTEX_4_" data-register-alias="MUTEX_4_">MUTEX[4]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>mutex</td><td>RW</td><td>0x1</td><td>HW mutex. Reads will attempt to acquire mutex, 1 on success. If the mutex is already acquired, the read will return 0. To release the mutex, write any value to the register.</td></tr>
 </table>
-<h3 id="SEMA_4_">SEMA[4]</h3>
+<span id="SEMA_4_"></span><h3 id="cpu_ctrl-SEMA_4_" data-register-alias="SEMA_4_">SEMA[4]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>15:0</td><td>sema</td><td>RW</td><td>0x0</td><td>16-bit semaphore value to inc/dec. Writing to this register will inc/dec the semaphore value.<br>The written value is treated as a signed number using 2s compliment.</td></tr>
 </table>
-<h3 id="DUMMY_ROM_0">DUMMY_ROM_0</h3>
+<span id="DUMMY_ROM_0"></span><h3 id="cpu_ctrl-DUMMY_ROM_0" data-register-alias="DUMMY_ROM_0">DUMMY_ROM_0</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:0</td><td>dummy_rom_word_0</td><td>RW</td><td>0x145051300000517</td><td>Word 0 of WFI loop</td></tr>
 </table>
-<h3 id="DUMMY_ROM_1">DUMMY_ROM_1</h3>
+<span id="DUMMY_ROM_1"></span><h3 id="cpu_ctrl-DUMMY_ROM_1" data-register-alias="DUMMY_ROM_1">DUMMY_ROM_1</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:0</td><td>dummy_rom_word_1</td><td>RW</td><td>0xFFF0069330551073</td><td>Word 1 of WFI loop</td></tr>
 </table>
-<h3 id="DUMMY_ROM_2">DUMMY_ROM_2</h3>
+<span id="DUMMY_ROM_2"></span><h3 id="cpu_ctrl-DUMMY_ROM_2" data-register-alias="DUMMY_ROM_2">DUMMY_ROM_2</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:0</td><td>dummy_rom_word_2</td><td>RW</td><td>0x105000733046B073</td><td>Word 2 of WFI loop</td></tr>
 </table>
-<h3 id="DUMMY_ROM_3">DUMMY_ROM_3</h3>
+<span id="DUMMY_ROM_3"></span><h3 id="cpu_ctrl-DUMMY_ROM_3" data-register-alias="DUMMY_ROM_3">DUMMY_ROM_3</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:0</td><td>dummy_rom_word_3</td><td>RW</td><td>0xFFDFF06F</td><td>Word 3 of WFI loop</td></tr>
 </table>
-<h3 id="DUMMY_ROM_NULL_4_">DUMMY_ROM_NULL[4]</h3>
+<span id="DUMMY_ROM_NULL_4_"></span><h3 id="cpu_ctrl-DUMMY_ROM_NULL_4_" data-register-alias="DUMMY_ROM_NULL_4_">DUMMY_ROM_NULL[4]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:0</td><td>dummy_rom_null</td><td>RW</td><td>0x0</td><td>Cache line size is 64 bytes so want to ensure no random data is read when reading dummy rom</td></tr>
@@ -931,23 +931,23 @@ firmware development and diagnostics.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0 - 0xC</td><td><a href="#MSIP_4_">MSIP[4]</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x4000 - 0x4018</td><td><a href="#MTIMECMP_4_">MTIMECMP[4]</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0xBFF8</td><td><a href="#MTIME">MTIME</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x0 - 0xC</td><td><a href="#clint-MSIP_4_">MSIP[4]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x4000 - 0x4018</td><td><a href="#clint-MTIMECMP_4_">MTIMECMP[4]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xBFF8</td><td><a href="#clint-MTIME">MTIME</a></td><td>RW</td><td>-</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
-<h3 id="MSIP_4_">MSIP[4]</h3>
+<span id="MSIP_4_"></span><h3 id="clint-MSIP_4_" data-register-alias="MSIP_4_">MSIP[4]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>rsvd0</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
 <tr><td>0</td><td>value</td><td>RW</td><td>0x0</td><td>MSIP bit for core</td></tr>
 </table>
-<h3 id="MTIMECMP_4_">MTIMECMP[4]</h3>
+<span id="MTIMECMP_4_"></span><h3 id="clint-MTIMECMP_4_" data-register-alias="MTIMECMP_4_">MTIMECMP[4]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:0</td><td>count</td><td>RW</td><td>-</td><td>Cycle count value to be used for comparison, triggers interrupt once count value matches this</td></tr>
 </table>
-<h3 id="MTIME">MTIME</h3>
+<span id="MTIME"></span><h3 id="clint-MTIME" data-register-alias="MTIME">MTIME</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:0</td><td>count</td><td>RW</td><td>-</td><td>Cycle count (time) value</td></tr>
@@ -973,69 +973,69 @@ firmware development and diagnostics.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x100</td><td><a href="#HALTED">HALTED</a></td><td>W</td><td>-</td></tr>
-<tr><td>0x104</td><td><a href="#GOING">GOING</a></td><td>W</td><td>-</td></tr>
-<tr><td>0x108</td><td><a href="#RESUMING">RESUMING</a></td><td>W</td><td>-</td></tr>
-<tr><td>0x10C</td><td><a href="#EXCEPTION">EXCEPTION</a></td><td>W</td><td>-</td></tr>
-<tr><td>0x300</td><td><a href="#WHERETO">WHERETO</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x328 - 0x338</td><td><a href="#ABSTRACT_5_">ABSTRACT[5]</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x33C - 0x378</td><td><a href="#PROGBUF_16_">PROGBUF[16]</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x37C</td><td><a href="#IMPEBREAK">IMPEBREAK</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x380 - 0x38C</td><td><a href="#DATA_4_">DATA[4]</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x400</td><td><a href="#FLAGS">FLAGS</a></td><td>R</td><td>One flag byte per hart, at byte offset equal to the hart ID. Bit 0 is go (execute the command at WHERETO); bit 1 is resume (leave Debug Mode). Bits 7:2 read as 0.</td></tr>
-<tr><td>0x800 - 0x864</td><td><a href="#ROM_26_">ROM[26]</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x100</td><td><a href="#debug_module-HALTED">HALTED</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x104</td><td><a href="#debug_module-GOING">GOING</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x108</td><td><a href="#debug_module-RESUMING">RESUMING</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x10C</td><td><a href="#debug_module-EXCEPTION">EXCEPTION</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x300</td><td><a href="#debug_module-WHERETO">WHERETO</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x328 - 0x338</td><td><a href="#debug_module-ABSTRACT_5_">ABSTRACT[5]</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x33C - 0x378</td><td><a href="#debug_module-PROGBUF_16_">PROGBUF[16]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x37C</td><td><a href="#debug_module-IMPEBREAK">IMPEBREAK</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x380 - 0x38C</td><td><a href="#debug_module-DATA_4_">DATA[4]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x400</td><td><a href="#debug_module-FLAGS">FLAGS</a></td><td>R</td><td>One flag byte per hart, at byte offset equal to the hart ID. Bit 0 is go (execute the command at WHERETO); bit 1 is resume (leave Debug Mode). Bits 7:2 read as 0.</td></tr>
+<tr><td>0x800 - 0x864</td><td><a href="#debug_module-ROM_26_">ROM[26]</a></td><td>R</td><td>-</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
-<h3 id="HALTED">HALTED</h3>
+<span id="HALTED"></span><h3 id="debug_module-HALTED" data-register-alias="HALTED">HALTED</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>9:0</td><td>hartid</td><td>W</td><td>-</td><td>Debug ROM causes the hart to write its hart ID here when it is in Debug Mode.</td></tr>
 </table>
-<h3 id="GOING">GOING</h3>
+<span id="GOING"></span><h3 id="debug_module-GOING" data-register-alias="GOING">GOING</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>9:0</td><td>hartid</td><td>W</td><td>-</td><td>Debug ROM causes the hart to write 0 here when it begins executing Debug Mode instructions.</td></tr>
 </table>
-<h3 id="RESUMING">RESUMING</h3>
+<span id="RESUMING"></span><h3 id="debug_module-RESUMING" data-register-alias="RESUMING">RESUMING</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>9:0</td><td>hartid</td><td>W</td><td>-</td><td>Debug ROM causes the hart to write its hart ID here when it leaves Debug Mode.</td></tr>
 </table>
-<h3 id="EXCEPTION">EXCEPTION</h3>
+<span id="EXCEPTION"></span><h3 id="debug_module-EXCEPTION" data-register-alias="EXCEPTION">EXCEPTION</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>9:0</td><td>hartid</td><td>W</td><td>-</td><td>Debug ROM causes the hart to write 0 here if it takes an exception in Debug Mode.</td></tr>
 </table>
-<h3 id="WHERETO">WHERETO</h3>
+<span id="WHERETO"></span><h3 id="debug_module-WHERETO" data-register-alias="WHERETO">WHERETO</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>instr</td><td>R</td><td>-</td><td>Jump instruction filled in by the Debug Module to direct the hart in Debug Mode.</td></tr>
 </table>
-<h3 id="ABSTRACT_5_">ABSTRACT[5]</h3>
+<span id="ABSTRACT_5_"></span><h3 id="debug_module-ABSTRACT_5_" data-register-alias="ABSTRACT_5_">ABSTRACT[5]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>instr</td><td>R</td><td>-</td><td>Instruction generated by the Debug Module for the current abstract command.</td></tr>
 </table>
-<h3 id="PROGBUF_16_">PROGBUF[16]</h3>
+<span id="PROGBUF_16_"></span><h3 id="debug_module-PROGBUF_16_" data-register-alias="PROGBUF_16_">PROGBUF[16]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>data</td><td>RW</td><td>0x0</td><td>Program buffer word shared with the debugger. Byte accesses are supported.</td></tr>
 </table>
-<h3 id="IMPEBREAK">IMPEBREAK</h3>
+<span id="IMPEBREAK"></span><h3 id="debug_module-IMPEBREAK" data-register-alias="IMPEBREAK">IMPEBREAK</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>instr</td><td>R</td><td>0x100073</td><td>Implicit EBREAK instruction following the program buffer.</td></tr>
 </table>
-<h3 id="DATA_4_">DATA[4]</h3>
+<span id="DATA_4_"></span><h3 id="debug_module-DATA_4_" data-register-alias="DATA_4_">DATA[4]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>data</td><td>RW</td><td>0x0</td><td>Abstract command data word shared with the debugger. Byte accesses are supported.</td></tr>
 </table>
-<h3 id="FLAGS">FLAGS</h3>
+<span id="FLAGS"></span><h3 id="debug_module-FLAGS" data-register-alias="FLAGS">FLAGS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:24</td><td>flags_3</td><td>R</td><td>-</td><td>Hart 3 go/resume flags.</td></tr>
@@ -1043,7 +1043,7 @@ firmware development and diagnostics.</p>
 <tr><td>15:8</td><td>flags_1</td><td>R</td><td>-</td><td>Hart 1 go/resume flags.</td></tr>
 <tr><td>7:0</td><td>flags_0</td><td>R</td><td>-</td><td>Hart 0 go/resume flags.</td></tr>
 </table>
-<h3 id="ROM_26_">ROM[26]</h3>
+<span id="ROM_26_"></span><h3 id="debug_module-ROM_26_" data-register-alias="ROM_26_">ROM[26]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>data</td><td>R</td><td>-</td><td>Debug ROM word. Holds the fixed Debug Mode entry, exception and resume handlers.</td></tr>
@@ -1062,27 +1062,27 @@ firmware development and diagnostics.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0</td><td><a href="#CAUSE">CAUSE</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x8</td><td><a href="#PHYS_ADDR">PHYS_ADDR</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x10</td><td><a href="#ENABLE">ENABLE</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x18</td><td><a href="#PLIC_ENABLE">PLIC_ENABLE</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x20</td><td><a href="#ACCRUED_ENABLE">ACCRUED_ENABLE</a></td><td>RW</td><td>Sticky accrued error status. The legacy name ACCRUED_ENABLE does not denote an enable mask. Error events set these bits independently of ENABLE. Ordinary software writes replace the bits (write zero to clear) and take priority over simultaneous events. PLIC_ENABLE and LOCAL_ENABLE mask this status for interrupt delivery.</td></tr>
-<tr><td>0x28</td><td><a href="#LOCAL_ENABLE">LOCAL_ENABLE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x0</td><td><a href="#bus_error_unit-CAUSE">CAUSE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#bus_error_unit-PHYS_ADDR">PHYS_ADDR</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#bus_error_unit-ENABLE">ENABLE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x18</td><td><a href="#bus_error_unit-PLIC_ENABLE">PLIC_ENABLE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x20</td><td><a href="#bus_error_unit-ACCRUED_ENABLE">ACCRUED_ENABLE</a></td><td>RW</td><td>Sticky accrued error status. The legacy name ACCRUED_ENABLE does not denote an enable mask. Error events set these bits independently of ENABLE. Ordinary software writes replace the bits (write zero to clear) and take priority over simultaneous events. PLIC_ENABLE and LOCAL_ENABLE mask this status for interrupt delivery.</td></tr>
+<tr><td>0x28</td><td><a href="#bus_error_unit-LOCAL_ENABLE">LOCAL_ENABLE</a></td><td>RW</td><td>-</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
-<h3 id="CAUSE">CAUSE</h3>
+<span id="CAUSE"></span><h3 id="bus_error_unit-CAUSE" data-register-alias="CAUSE">CAUSE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>2:0</td><td>data</td><td>RW</td><td>0x0</td><td>Cause register. Enumerates different kinds of errors</td></tr>
 </table>
-<h3 id="PHYS_ADDR">PHYS_ADDR</h3>
+<span id="PHYS_ADDR"></span><h3 id="bus_error_unit-PHYS_ADDR" data-register-alias="PHYS_ADDR">PHYS_ADDR</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:56</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>55:0</td><td>value</td><td>RW</td><td>-</td><td>Physical address captured with CAUSE when an enabled error arrives and CAUSE is zero. Software may overwrite the value; writes take priority over capture. No reset value</td></tr>
 </table>
-<h3 id="ENABLE">ENABLE</h3>
+<span id="ENABLE"></span><h3 id="bus_error_unit-ENABLE" data-register-alias="ENABLE">ENABLE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1095,7 +1095,7 @@ firmware development and diagnostics.</p>
 <tr><td>1</td><td>icache_tlbus</td><td>RW</td><td>0x1</td><td>Enable recording error information for ICache Tilelink bus error. Enabled on reset.</td></tr>
 <tr><td>0</td><td>rsvd0</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
 </table>
-<h3 id="PLIC_ENABLE">PLIC_ENABLE</h3>
+<span id="PLIC_ENABLE"></span><h3 id="bus_error_unit-PLIC_ENABLE" data-register-alias="PLIC_ENABLE">PLIC_ENABLE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1108,7 +1108,7 @@ firmware development and diagnostics.</p>
 <tr><td>1</td><td>icache_tlbus</td><td>RW</td><td>0x0</td><td>PLIC interrupt enable mask for ICache Tilelink bus error.</td></tr>
 <tr><td>0</td><td>rsvd0</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
 </table>
-<h3 id="ACCRUED_ENABLE">ACCRUED_ENABLE</h3>
+<span id="ACCRUED_ENABLE"></span><h3 id="bus_error_unit-ACCRUED_ENABLE" data-register-alias="ACCRUED_ENABLE">ACCRUED_ENABLE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1121,7 +1121,7 @@ firmware development and diagnostics.</p>
 <tr><td>1</td><td>icache_tlbus</td><td>RW</td><td>0x0</td><td>Sticky accrued status for ICache Tilelink bus error.</td></tr>
 <tr><td>0</td><td>rsvd0</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
 </table>
-<h3 id="LOCAL_ENABLE">LOCAL_ENABLE</h3>
+<span id="LOCAL_ENABLE"></span><h3 id="bus_error_unit-LOCAL_ENABLE" data-register-alias="LOCAL_ENABLE">LOCAL_ENABLE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1135,69 +1135,6 @@ firmware development and diagnostics.</p>
 <tr><td>0</td><td>rsvd0</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
 </table>
 </div>
-<!-- SPDX-License-Identifier: Apache-2.0 -->
-<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
-<div class="ocah-reg-html">
-<style>
-.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
-.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
-.ocah-reg-html th{background:#81BCE5;text-align:left}
-</style>
-<h2 id="regmap-wdt">Watchdog Timer Address Map</h2>
-<p>Watchdog timer configuration, counter, compare, and feed and key registers.</p>
-<p><strong>Register List:</strong></p>
-<table>
-<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0</td><td><a href="#CTRL">CTRL</a></td><td>RW</td><td>KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</td></tr>
-<tr><td>0x8</td><td><a href="#COUNT">COUNT</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x10</td><td><a href="#SCALED_COUNT">SCALED_COUNT</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x18</td><td><a href="#FEED">FEED</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x1C</td><td><a href="#KEY">KEY</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x20</td><td><a href="#CMP">CMP</a></td><td>RW</td><td>-</td></tr>
-</table>
-<p><strong>Register Details:</strong></p>
-<h3 id="CTRL">CTRL</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:29</td><td>rsvd3</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
-<tr><td>28</td><td>wdogip0</td><td>RW</td><td>0x0</td><td>Pending interrupt</td></tr>
-<tr><td>27:14</td><td>rsvd2</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
-<tr><td>13</td><td>wdogcoreawake</td><td>RW</td><td>0x0</td><td>Enable WDT to only count when the core is not in reset</td></tr>
-<tr><td>12</td><td>wdogenalways</td><td>RW</td><td>0x0</td><td>Enable WDT to always count. This has priority over wdogcoreawake</td></tr>
-<tr><td>11:10</td><td>rsvd1</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
-<tr><td>9</td><td>wdogzerocmp</td><td>RW</td><td>0x0</td><td>Enable cycle counter to be reset to 0 when compare value has been reached</td></tr>
-<tr><td>8</td><td>wdogrsten</td><td>RW</td><td>0x0</td><td>Enables a sticky reset signal to outputted to top level, can be used for a second stage wdt</td></tr>
-<tr><td>7:4</td><td>rsvd0</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
-<tr><td>3:0</td><td>wdogscale</td><td>RW</td><td>0x0</td><td>WDT counter scale value. Scales the current cycle count (time) by count / 2 ^ wdogscale value</td></tr>
-</table>
-<h3 id="COUNT">COUNT</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>30:0</td><td>wdogcount</td><td>RW</td><td>0x0</td><td>31 bit wdt counter registers. On write, the counter will be set to the written value, then continue counting up.<br>KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</td></tr>
-</table>
-<h3 id="SCALED_COUNT">SCALED_COUNT</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>15:0</td><td>wdogs</td><td>RW</td><td>0x0</td><td>Scaled value of wdt counter. (i.e. count &gt;&gt; wdogscale). Writing to this reg has no effect, but will lock the WDT (meaning KEY must be written to KEY reg to unlock it again).<br>KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</td></tr>
-</table>
-<h3 id="FEED">FEED</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>wdogfeed</td><td>RW</td><td>0x0</td><td>Feed register. Writing 0xD09F00D will reset the counter value back to 0.<br>KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</td></tr>
-</table>
-<h3 id="KEY">KEY</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>wdogkey</td><td>RW</td><td>0x0</td><td>Key register. Magic key (0x51F15E) must be written to this register before a write to any other register in this addrmap. Must be written every time. Reading this reg returns 1 if key has been written to it and it<br>is unlocked, 0 otherwise.</td></tr>
-</table>
-<h3 id="CMP">CMP</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>15:0</td><td>wdogcmp0</td><td>RW</td><td>0x1000</td><td>Compare register. Value that gets compared to wdogs.<br>KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</td></tr>
-</table>
 </div>
 </div>
 </div>

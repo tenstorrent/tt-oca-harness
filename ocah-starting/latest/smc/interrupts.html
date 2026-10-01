@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Interrupts :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
-    <meta name="description" content="SMC interrupt routing, CPU vector map, PLIC, CLINT, and error delivery.">
+    <meta name="description" content="SMC interrupt routing, PLIC source IDs, local interrupts and software handling.">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../_/css/site.css">
     <link rel="stylesheet" href="../../../_/css/extra.css">
@@ -212,32 +212,23 @@
 <div id="preamble">
 <div class="sectionbody">
 <div id="interrupts" class="paragraph">
-<p>The SMC can handle interrupt sources across diverse system management
-functions. The architecture centers around the Platform-Level
-Interrupt Controller (PLIC) and Core Local Interruptor (CLINT), with
-interrupt routing and priority handling.</p>
-</div>
-<div class="paragraph">
-<p>This chapter is the single place for interrupt <strong>address maps</strong>, the
-<strong><code>cpu_interrupts_o</code> vector</strong>, <strong>PLIC/CLINT register</strong> includes, and <strong>bus
-error</strong> behavior.</p>
+<p>SMC external interrupts pass through the Platform-Level Interrupt Controller
+(PLIC). CLINT supplies per-core timer and software interrupts. Each bus error
+unit (BEU) has both a direct core output and a separately selected PLIC output.
+This chapter distinguishes raw SMC vector bits from software-visible PLIC IDs.</p>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="interrupt-controllers-mmio"><a class="anchor" href="#interrupt-controllers-mmio"></a><a class="link" href="#interrupt-controllers-mmio">1. Interrupt controllers (MMIO)</a></h2>
+<h2 id="controllers"><a class="anchor" href="#controllers"></a><a class="link" href="#controllers">1. Controllers</a></h2>
 <div class="sectionbody">
+<div class="sect2">
+<h3 id="smc-interrupts-interrupt-controllers-mmio"><a class="anchor" href="#smc-interrupts-interrupt-controllers-mmio"></a><a class="link" href="#smc-interrupts-interrupt-controllers-mmio">1.1. Controller Addresses</a></h3>
+<span id="interrupt-controllers-mmio"></span>
 <div class="paragraph">
-<p>The CPU cluster integrates with system interrupt controllers via
-standardized interfaces. PLIC (AXI4-Lite) and CLINT (AXI4-Lite) are used
-for external and timer/software interrupts, respectively. Base addresses
-and interfaces (SMC-local view):</p>
+<p>These addresses use the SMC-local view. N ranges from 0 through 3 for the
+per-core watchdog and BEU apertures.</p>
 </div>
-<div class="paragraph">
-<p><a href="#smc-interrupt-controller-addresses-table">SMC interrupt-controller addresses</a> lists the interrupt-related MMIO blocks and
-their address ranges.</p>
-</div>
-<div class="smc-interrupt-table-scroll" role="region" aria-label="Interrupt controller address map" tabindex="0">
 <table id="smc-interrupt-controller-addresses-table" class="tableblock frame-all grid-all stretch smc-interrupt-table">
 <caption class="title">Table 1. SMC interrupt-controller addresses</caption>
 <colgroup>
@@ -257,14 +248,14 @@ their address ranges.</p>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CPU Control Regs</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0xC001_0000</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">8 KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0xC003_9000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PLIC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0xC400_0000</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">4 MB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64 MB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite</p></td>
 </tr>
 <tr>
@@ -288,20 +279,86 @@ their address ranges.</p>
 </tbody>
 </table>
 </div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="smc-interrupt-vector-cpu_interrupts_o"><a class="anchor" href="#smc-interrupt-vector-cpu_interrupts_o"></a><a class="link" href="#smc-interrupt-vector-cpu_interrupts_o">2. SMC interrupt vector (<code>cpu_interrupts_o</code>)</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="smc-interrupts-risc-v-plic"><a class="anchor" href="#smc-interrupts-risc-v-plic"></a><a class="link" href="#smc-interrupts-risc-v-plic">1.2. PLIC Sources and Contexts</a></h3>
+<span id="advanced-plic-management-and-adaptive-priority-control"></span>
+<span id="multi-context-architecture-and-privilege-level-integration"></span>
+<span id="risc-v-plic"></span>
+<span id="smc-interrupt-sources-table"></span>
+<span id="smc-interrupts-advanced-plic-management-and-adaptive-priority-control"></span>
+<span id="smc-interrupts-multi-context-architecture-and-privilege-level-integration"></span>
+<span id="smc-interrupts-system-management-interrupt-source-integration"></span>
+<span id="system-management-interrupt-source-integration"></span>
 <div class="paragraph">
-<p>The PLIC exposes 332 global interrupt sources (indices 0–331). Most
-indices are driven from the SMC <code>cpu_interrupts_o</code> assembly documented below;
-additional globals (for example per-core Chipyard watchdog timers at indices
-328–331) are bound inside the CPU cluster and do not appear on the raw
-<code>cpu_interrupts_o</code> bus.</p>
+<p>The four-core implementation has 336 PLIC inputs with source IDs 1–336.
+ID 0 means no interrupt. The inputs comprise:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. PLIC input groups</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Input group</th>
+<th class="tableblock halign-left valign-top">PLIC IDs</th>
+<th class="tableblock halign-left valign-top">Origin</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Raw SMC vector bits 0–327</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1–328</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>cpu_interrupts_o</code>; detailed below.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cluster watchdogs 0–3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">329–332</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Added by the cluster interrupt crossbar.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Core BEU PLIC outputs 0–3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">333–336</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Added within the PLIC clock domain.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Reserved raw-vector positions remain reserved PLIC IDs. The 256 external input
+meanings come from the enclosing SoC integration; an input count is not a promise
+that every position is an active source.</p>
+</div>
+<div class="paragraph">
+<p>There are eight delivery contexts: machine contexts for cores 0–3, then
+supervisor contexts for cores 0–3. Priorities are shared per source; enable masks,
+thresholds and claim/complete registers are per context. A priority must exceed
+the context threshold to raise its external-interrupt output. Priority zero
+suppresses a source. See the generated map for context offsets and priority range.
+These settings route interrupts; they do not themselves enforce MMIO access policy.</p>
+</div>
+<div class="paragraph">
+<p>The gateways are active-high and level-sensitive, with no selectable edge mode.
+External SMC pins pass through <code>prim_sync3</code> before the raw vector. A short pulse
+can be missed if it is not sampled; stretch it or hold the request until serviced.
+A gateway admits one request and waits for completion before accepting another.
+It does not count repeated pulses while one request is in flight.</p>
+</div>
 </div>
 <div class="sect2">
-<h3 id="bus-error-unit-interrupts"><a class="anchor" href="#bus-error-unit-interrupts"></a><a class="link" href="#bus-error-unit-interrupts">2.1. Bus Error Unit interrupts</a></h3>
+<h3 id="smc-interrupts-risc-v-clint-and-precise-system-management-timing"><a class="anchor" href="#smc-interrupts-risc-v-clint-and-precise-system-management-timing"></a><a class="link" href="#smc-interrupts-risc-v-clint-and-precise-system-management-timing">1.3. CLINT</a></h3>
+<span id="risc-v-clint-and-precise-system-management-timing"></span>
+<div class="paragraph">
+<p>CLINT provides a shared 64-bit timer, per-core compare registers and per-core
+software-interrupt state. Timer and software interrupts go directly to the cores
+rather than through PLIC claim/complete. The timer advances on the cluster&#8217;s
+periodic tick; see the Clocks and Resets chapter for its clock relationship.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="smc-interrupts-bus-error-unit-interrupts"><a class="anchor" href="#smc-interrupts-bus-error-unit-interrupts"></a><a class="link" href="#smc-interrupts-bus-error-unit-interrupts">1.4. Bus Error Units</a></h3>
+<span id="bus-error-unit-interrupts"></span>
 <div class="paragraph">
 <p>A Bus Error Unit (BEU) accumulates error events for one core. The register
 named <code>ACCRUED_ENABLE</code> is sticky status, not an enable mask: events set its bits
@@ -316,17 +373,23 @@ non-maskable interrupt: in machine mode, <code>mstatus.MIE = 0</code> suppresses
 The machine interrupt is enabled while executing in lower privilege modes.
 The BEU also has a separate output selected by <code>PLIC_ENABLE</code>.</p>
 </div>
-<div class="paragraph">
-<p>For the raw <code>cpu_interrupts_o</code> bit map traced back to the SMC RTL,
-including the distinction between raw vector bits and PLIC source IDs,
-see the following section.</p>
-</div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="cpu-interrupt-vector-map"><a class="anchor" href="#cpu-interrupt-vector-map"></a><a class="link" href="#cpu-interrupt-vector-map">3. SMC CPU Interrupt Vector Map</a></h2>
+<h2 id="sources-and-routing"><a class="anchor" href="#sources-and-routing"></a><a class="link" href="#sources-and-routing">2. Sources and Routing</a></h2>
 <div class="sectionbody">
+<div class="sect2">
+<h3 id="smc-interrupts-smc-interrupt-vector-cpu_interrupts_o"><a class="anchor" href="#smc-interrupts-smc-interrupt-vector-cpu_interrupts_o"></a><a class="link" href="#smc-interrupts-smc-interrupt-vector-cpu_interrupts_o">2.1. Raw Vector and PLIC Numbering</a></h3>
+<span id="smc-interrupt-vector-cpu_interrupts_o"></span>
+<div class="paragraph">
+<p>Raw bit N maps to PLIC source ID N+1. For example, DMA completion is raw bit 322
+and PLIC ID 323. Watchdog IDs 329–332 and BEU IDs 333–336 are not additional bits
+on the 328-bit raw SMC vector.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="cpu-interrupt-vector-map"><a class="anchor" href="#cpu-interrupt-vector-map"></a><a class="link" href="#cpu-interrupt-vector-map">2.2. SMC CPU Interrupt Vector Map</a></h3>
 <div class="paragraph">
 <p>This section documents the raw <code>cpu_interrupts_o</code> vector assembled in
 <code>hw/sys/smc/rtl/smc_base.sv</code>. The vector is built from four sources:</p>
@@ -369,8 +432,9 @@ cpu_interrupts_o[(NUM_EXT_INTERRUPTS+64)+3]     = zeroer_intp;</code></pre>
 <div class="paragraph">
 <p><code>NUM_EXT_INTERRUPTS = 256</code> and <code>NUM_CPU_INTERRUPTS = 328</code>.</p>
 </div>
-<div class="sect2">
-<h3 id="exact-indexed-map"><a class="anchor" href="#exact-indexed-map"></a><a class="link" href="#exact-indexed-map">3.1. Exact Indexed Map</a></h3>
+<span id="exact-indexed-map"></span>
+<div class="sect3">
+<h4 id="smc-interrupts-exact-indexed-map"><a class="anchor" href="#smc-interrupts-exact-indexed-map"></a><a class="link" href="#smc-interrupts-exact-indexed-map">2.2.1. Exact Indexed Map</a></h4>
 <div class="paragraph">
 <p><a href="#smc-indexed-interrupt-map-table">SMC indexed interrupt map</a> shows the exact raw <code>cpu_interrupts_o</code> indexing. The
 <code>Source</code> column is intentionally human-readable; implementation signal
@@ -378,7 +442,7 @@ names are called out in the <code>RTL trace</code> column instead.</p>
 </div>
 <div class="smc-interrupt-table-scroll" role="region" aria-label="SMC CPU interrupt vector map" tabindex="0">
 <table id="smc-indexed-interrupt-map-table" class="tableblock frame-all grid-all stretch smc-interrupt-table smc-interrupt-table-wide">
-<caption class="title">Table 2. SMC indexed interrupt map</caption>
+<caption class="title">Table 3. SMC indexed interrupt map</caption>
 <colgroup>
 <col style="width: 12%;">
 <col style="width: 20%;">
@@ -492,42 +556,42 @@ telemetry_irq[2]</code>.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I3C interrupt 0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I3C controller instance 0 interrupt</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[12] =
-i3c_irqs_smc_clk[0]</code>; <code>i3c_irqs_periph_clk</code> is currently tied to <code>'0</code>.</p></td>
+i3c_irqs_smc_clk[0]</code>; sourced from the I3C wrapper through the peripheral CDC block.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>269</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I3C interrupt 1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I3C controller instance 1 interrupt</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[13] =
-i3c_irqs_smc_clk[1]</code>; <code>i3c_irqs_periph_clk</code> is currently tied to <code>'0</code>.</p></td>
+i3c_irqs_smc_clk[1]</code>; sourced from the I3C wrapper through the peripheral CDC block.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>270</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I3C interrupt 2</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I3C controller instance 2 interrupt</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[14] =
-i3c_irqs_smc_clk[2]</code>; <code>i3c_irqs_periph_clk</code> is currently tied to <code>'0</code>.</p></td>
+i3c_irqs_smc_clk[2]</code>; sourced from the I3C wrapper through the peripheral CDC block.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>271</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I3C interrupt 3</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I3C controller instance 3 interrupt</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[15] =
-i3c_irqs_smc_clk[3]</code>; <code>i3c_irqs_periph_clk</code> is currently tied to <code>'0</code>.</p></td>
+i3c_irqs_smc_clk[3]</code>; sourced from the I3C wrapper through the peripheral CDC block.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>272</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I3C interrupt 4</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I3C controller instance 4 interrupt</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[16] =
-i3c_irqs_smc_clk[4]</code>; <code>i3c_irqs_periph_clk</code> is currently tied to <code>'0</code>.</p></td>
+i3c_irqs_smc_clk[4]</code>; sourced from the I3C wrapper through the peripheral CDC block.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>273</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I3C interrupt 5</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I3C controller instance 5 interrupt</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[17] =
-i3c_irqs_smc_clk[5]</code>; <code>i3c_irqs_periph_clk</code> is currently tied to <code>'0</code>.</p></td>
+i3c_irqs_smc_clk[5]</code>; sourced from the I3C wrapper through the peripheral CDC block.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>274</code></p></td>
@@ -566,7 +630,7 @@ uart_irq_combined_smc_clk[3]</code>; the combined signal is formed in
 <td class="tableblock halign-left valign-top"><p class="tableblock">AVSBus interrupt</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Adaptive voltage scaling interrupt</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[22] =
-avsbus_irq_flopped</code>.</p></td>
+avsbus_irq_smc_clk</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>279</code></p></td>
@@ -593,8 +657,9 @@ i2c_irqs_smc_clk[2]</code>.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>282</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP watchdog reset</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">External watchdog reset indication from SEP path</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[26] =
-~rst_ext_wdt_ni</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> synchronizes <code>~rst_ext_wdt_ni</code> through
+<code>u_rst_ext_wdt_irq_sync</code> and drives <code>peripheral_interrupts_o[26] =
+rst_ext_wdt_smc_clk</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>283</code></p></td>
@@ -687,278 +752,114 @@ tail bits in <code>smc_base.sv</code>.</p></td>
 </table>
 </div>
 </div>
+<div class="sect3">
+<h4 id="smc-interrupts-trace-notes"><a class="anchor" href="#smc-interrupts-trace-notes"></a><a class="link" href="#smc-interrupts-trace-notes">2.2.2. Routing Notes</a></h4>
+<span id="trace-notes"></span>
+<div class="paragraph">
+<p><code>smc_base.sv</code> assembles the raw vector; <code>smc_peripherals.sv</code> assembles its
+32-bit peripheral slice. The AXI hang-detector OR enters peripheral bit 30
+(raw bit 286), while bit 31 is reserved. The table preserves the individual
+sources behind combined GPIO, UART/log-engine and hang-detector indications;
+software must inspect their local status to identify and service the cause.</p>
+</div>
+<div class="paragraph">
+<p>The six I3C entries are connected through the peripheral CDC block. The AVSBus
+and external-watchdog indications are also synchronized into the SMC domain.
+Do not infer pulse-capture guarantees merely from the presence of a synchronizer.
+DMA and zeroer completion indications are busy-falling pulses, not counted queues.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="software-handling"><a class="anchor" href="#software-handling"></a><a class="link" href="#software-handling">3. Software Handling</a></h2>
+<div class="sectionbody">
 <div class="sect2">
-<h3 id="trace-notes"><a class="anchor" href="#trace-notes"></a><a class="link" href="#trace-notes">3.2. Trace Notes</a></h3>
-<div class="ulist">
-<ul>
+<h3 id="initialization-and-core-assignment"><a class="anchor" href="#initialization-and-core-assignment"></a><a class="link" href="#initialization-and-core-assignment">3.1. Initialization and Core Assignment</a></h3>
+<span id="multi-core-interrupt-distribution-and-load-management"></span>
+<span id="multi-tier-interrupt-classification-and-response-strategy"></span>
+<span id="smc-interrupts-multi-core-interrupt-distribution-and-load-management"></span>
+<span id="smc-interrupts-multi-tier-interrupt-classification-and-response-strategy"></span>
+<div class="paragraph">
+<p>Initialize PLIC priority, enable and threshold registers before enabling delivery;
+the implementation does not hardware-reset these configuration registers.
+Initialize the CPU <code>mie</code> CSR as well before setting individual enables and
+<code>mstatus.MIE</code>. Source ownership and core assignment are firmware decisions, not
+fixed low-latency or throughput roles imposed by the hardware.</p>
+</div>
+<div class="paragraph">
+<p>Enable each source in the intended machine or supervisor context and choose a
+priority above that context&#8217;s threshold. Changing a shared source priority affects
+all contexts that enable it; per-context configuration is not complete independence.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="plic-service-sequence"><a class="anchor" href="#plic-service-sequence"></a><a class="link" href="#plic-service-sequence">3.2. PLIC Service Sequence</a></h3>
+<div class="olist arabic">
+<ol class="arabic">
 <li>
-<p>Peripheral interrupt construction is defined in
-<code>hw/sys/smc/rtl/smc_peripherals/rtl/smc_peripherals.sv</code>. Bit 31 is the one
-peripheral source that originates outside that module: the AXI hang detectors
-live in <code>hw/sys/smc/rtl/smc_base.sv</code> and their OR is routed back in through
-<code>smc.sv</code> so the whole peripheral vector still has a single assembly point.</p>
+<p>Read the handling context&#8217;s claim register. A nonzero return claims one source
+and clears its PLIC pending state; zero means no source was claimed.</p>
 </li>
 <li>
-<p>Mailbox interrupt construction is defined in <code>hw/ip/mailbox/rtl/mailbox.sv</code>
-and is routed into <code>cpu_interrupts_o</code> by <code>hw/sys/smc/rtl/smc_base.sv</code>.</p>
+<p>Service the peripheral or fault source. For an OR-combined source, inspect every
+contributing local cause that can keep the line asserted.</p>
 </li>
 <li>
-<p>Internal interrupt construction is defined by <code>hw/sys/smc/rtl/smc_base.sv</code>,
-with the DFD CLA signals sourced through
-<code>hw/sys/smc/rtl/smc_internal_regs.sv</code>, the DMA completion pulse sourced by
-<code>hw/ip/idma_wrapper/rtl/idma_wrapper.sv</code>, and the Zeroer completion pulse
-sourced by <code>hw/ip/zeroer/rtl/zeroer.sv</code>.</p>
+<p>Write the claimed ID back to that context&#8217;s completion register after the source
+is serviced. Completion releases the gateway; a still-asserted source can pend again.</p>
 </li>
 <li>
-<p>The raw vector documents SMC-generated sources only. The meaning of each
-external interrupt bit is defined by the enclosing SoC integration.</p>
+<p>Repeat as required by the firmware&#8217;s scheduling policy. Preserve context/source
+ownership while a claim is outstanding.</p>
 </li>
-</ul>
-</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="risc-v-plic"><a class="anchor" href="#risc-v-plic"></a><a class="link" href="#risc-v-plic">4. RISC-V PLIC</a></h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>The SMC uses a standards-compliant Platform-Level Interrupt
-Controller (PLIC) at 0xC400_0000–0xC43F_FFFF (4MB) to manage 332
-interrupt sources (327 active, 5 reserved) with multi-core delivery.
-The PLIC provides hardware prioritization,
-per-core routing, and configurable thresholds for efficient, parallel
-interrupt handling. The SMC-driven contribution to global interrupt
-indices is given in <a href="#cpu-interrupt-vector-map">SMC CPU Interrupt Vector Map</a> above.</p>
+</ol>
 </div>
 <div class="paragraph">
-<p>The PLIC gateways are active-high and level-sensitive. There is no
-per-source edge or pulse configuration. A source may be a held level, or
-a pulse that remains high long enough to be sampled on <code>clk_smc</code>.
-External inputs on <code>ext_interrupts_i</code> pass through a three-flop
-synchronizer (<code>prim_sync3</code>). A pulse that is not high at a <code>clk_smc</code>
-sampling edge of the first flop does not reach the PLIC; stretch a short
-or asynchronous pulse, or convert it to a held level, before the pin.</p>
+<p>Claim/complete does not clear a peripheral&#8217;s own sticky status and does not make
+short or repeated pulses lossless. In particular, track DMA retirement using
+<code>DONE_0</code>, not the number of observed completion interrupts.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="local-interrupts-and-fault-handling"><a class="anchor" href="#local-interrupts-and-fault-handling"></a><a class="link" href="#local-interrupts-and-fault-handling">3.3. Local Interrupts and Fault Handling</a></h3>
+<span id="fault-detection-and-recovery-architecture"></span>
+<span id="precision-timer-management-and-inter-core-coordination"></span>
+<span id="smc-interrupts-fault-detection-and-recovery-architecture"></span>
+<span id="smc-interrupts-precision-timer-management-and-inter-core-coordination"></span>
+<div class="paragraph">
+<p>For CLINT timer service, update the core&#8217;s compare value so the timer condition
+is no longer asserted. For a software interrupt, clear the relevant software
+interrupt state after handling the request. Neither uses a PLIC completion write.</p>
 </div>
 <div class="paragraph">
-<p>Software must initialize PLIC priority and enable registers to known values
-(typically priority 0 and disabled) before enabling external interrupts; these
-registers have no hardware reset, and undefined values can block setting
-<code>mstatus.MIE</code>.</p>
+<p>For BEU service, capture the cause/address and accrued status before clearing
+or rearming capture. The direct and PLIC enable paths select from the same accrued
+errors, so clearing status affects both. Watchdog recovery and CPU reset/isolation
+ordering are described in the Watchdog Timers and CPU chapters; this routing map
+does not prescribe a system recovery policy.</p>
 </div>
 <div class="paragraph">
-<p>The <code>mie</code> CSR also has no reset value. Clear and initialize it before setting
-individual enable bits and <code>mstatus.MIE</code>.</p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="system-management-interrupt-source-integration"><a class="anchor" href="#system-management-interrupt-source-integration"></a><a class="link" href="#system-management-interrupt-source-integration">5. System Management Interrupt Source Integration</a></h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>The SMC interrupt system brings together a broad set of interrupt
-sources that support reliable and responsive system monitoring and
-control, summarized in <a href="#smc-interrupt-sources-table">SMC interrupt sources</a>.</p>
-</div>
-<div class="smc-interrupt-table-scroll" role="region" aria-label="SMC interrupt source integration" tabindex="0">
-<table id="smc-interrupt-sources-table" class="tableblock frame-all grid-all stretch smc-interrupt-table">
-<caption class="title">Table 3. SMC interrupt sources</caption>
-<colgroup>
-<col style="width: 24%;">
-<col style="width: 28%;">
-<col style="width: 25%;">
-<col style="width: 23%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Interrupt Component</th>
-<th class="tableblock halign-left valign-top">Address Range &amp; Configuration</th>
-<th class="tableblock halign-left valign-top">System Management
-Function</th>
-<th class="tableblock halign-left valign-top">Response Characteristics</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Platform-Level Interrupt Controller (PLIC)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0xC400_0000 - 0xC43F_FFFF
-(4MB), 332 sources (326 active), multi-core delivery</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Standards-compliant interrupt
-management with system management optimization</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Prioritized, multi-level
-response with adaptive thresholds</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Core Local Interruptor (CLINT)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0xC800_0000 - 0xC800_FFFF, per-core
-timer/software interrupts</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Core-local timing, inter-core coordination,
-periodic operations</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Deterministic timing, low-latency inter-core
-communication</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Watchdog Timer (WDT)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0xC000_0000 + (N × 0x400), 4 per-core
-instances with escalation</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">System reliability monitoring, fault
-detection, automated recovery</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Escalating response: warning → reset →
-external intervention</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Bus Error Detection Units</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0xC801_0000 + (N × 0x1000), 4 per-core AXI
-monitoring instances, direct to cores (not PLIC)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Bus infrastructure integrity monitoring and fault
-isolation</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Direct core delivery, subject to machine-mode global interrupt masking</p></td>
-</tr>
-</tbody>
-</table>
-</div>
-<div class="paragraph">
-<p>For CPU cluster context (caches, TileLink attachment), see
+<p>For CPU cluster context, see
 <a href="cpu.html#cpu-memory-system" class="xref page">CPU and Memory System</a>.</p>
 </div>
 </div>
 </div>
-<div class="sect1">
-<h2 id="multi-tier-interrupt-classification-and-response-strategy"><a class="anchor" href="#multi-tier-interrupt-classification-and-response-strategy"></a><a class="link" href="#multi-tier-interrupt-classification-and-response-strategy">6. Multi-Tier Interrupt Classification and Response Strategy</a></h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>The SMC interrupt architecture classifies interrupt sources by system
-management function and response needs. System-wide events are delivered
-via the SMC_CPU_INTERRUPT_WIDTH interface, which supports flexible
-routing for multi-core systems.</p>
-</div>
-<div class="paragraph">
-<p>CLINT-generated local interrupts provide core-specific timing and
-coordination, while software interrupts allow efficient inter-core
-communication. Dedicated interrupts for watchdog timeouts and bus errors
-ensure system management can respond quickly to faults or infrastructure
-issues with appropriate, targeted actions.</p>
-</div>
-</div>
 </div>
 <div class="sect1">
-<h2 id="multi-core-interrupt-distribution-and-load-management"><a class="anchor" href="#multi-core-interrupt-distribution-and-load-management"></a><a class="link" href="#multi-core-interrupt-distribution-and-load-management">7. Multi-Core Interrupt Distribution and Load Management</a></h2>
+<h2 id="smc-interrupts-register-interfaces"><a class="anchor" href="#smc-interrupts-register-interfaces"></a><a class="link" href="#smc-interrupts-register-interfaces">4. Memory Map and Register Reference</a></h2>
 <div class="sectionbody">
+<span id="register-interfaces"></span>
+<div class="sect2">
+<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">4.1. Memory Map</a></h3>
 <div class="paragraph">
-<p>The SMC supports independent interrupt delivery to each CPU core,
-enabling distribution of interrupt handling and specialized core roles.
-Critical and real-time events can be routed to low-latency cores, while
-high-volume interrupts like telemetry are handled by throughput-oriented
-cores.</p>
-</div>
-<div class="paragraph">
-<p>Hardware-managed priorities allow efficient resolution of competing
-interrupts without software overhead. Per-core interrupt masking gives
-software precise control, so interrupt delivery can be dynamically tuned
-to operational needs and system management policies.</p>
+<p>Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.</p>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="risc-v-clint-and-precise-system-management-timing"><a class="anchor" href="#risc-v-clint-and-precise-system-management-timing"></a><a class="link" href="#risc-v-clint-and-precise-system-management-timing">8. RISC-V CLINT and Precise System Management Timing</a></h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>The Core Local Interruptor (CLINT) in the SMC provides per-core timer
-and software interrupt functionality for precise, deterministic timing
-and inter-core coordination.</p>
-</div>
-<div class="paragraph">
-<p>The CLINT occupies 64KiB of address space (0xC800_0000–0xC800_FFFF). It
-enables each core to schedule time-critical operations and issue
-low-latency software interrupts directly, bypassing the PLIC. This
-supports both accurate RTOS scheduling and fast inter-processor
-communication essential to reliable multi-core system management.</p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="fault-detection-and-recovery-architecture"><a class="anchor" href="#fault-detection-and-recovery-architecture"></a><a class="link" href="#fault-detection-and-recovery-architecture">9. Fault Detection and Recovery Architecture</a></h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>The SMC provides fault detection and recovery through per-core watchdog
-timers and bus error monitoring, enabling both local fault recovery and
-coordination with broader system reliability mechanisms. They are
-described in the following sections.</p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="advanced-plic-management-and-adaptive-priority-control"><a class="anchor" href="#advanced-plic-management-and-adaptive-priority-control"></a><a class="link" href="#advanced-plic-management-and-adaptive-priority-control">10. Advanced PLIC Management and Adaptive Priority Control</a></h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>In the PLIC, each interrupt source has a configurable priority, letting
-software focus on critical events without overloading the system.</p>
-</div>
-<div class="paragraph">
-<p>Per-core and per-context enables let cores handle only select subsets of
-interrupts, so real-time events go to low-latency cores and bulk tasks
-go to high-throughput cores.</p>
-</div>
-<div class="paragraph">
-<p>Threshold control allows filtering interrupts based on system conditions
-or load. The software can adjust thresholds dynamically, keeping the
-right balance of responsiveness and system overhead.</p>
-</div>
-<div class="paragraph">
-<p>The atomic claim and completion system ensures reliable, efficient
-interrupt handling with low software cost. It prevents lost or
-duplicated interrupts and smoothly handles high interrupt rates.</p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="multi-context-architecture-and-privilege-level-integration"><a class="anchor" href="#multi-context-architecture-and-privilege-level-integration"></a><a class="link" href="#multi-context-architecture-and-privilege-level-integration">11. Multi-Context Architecture and Privilege Level Integration</a></h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>The multi-context architecture supports security boundaries and
-privilege separation in interrupt handling. Machine-mode and
-supervisor-mode contexts allow software components to use different
-system access levels for interrupts.</p>
-</div>
-<div class="paragraph">
-<p>Per-core independence means each core’s interrupt configuration does not
-affect others, allowing specialized functionality while keeping system
-behavior consistent.</p>
-</div>
-<div class="paragraph">
-<p>Context isolation with separate enable and threshold settings per
-privilege level enforces security so that privilege escalation cannot
-compromise interrupt handling, while still allowing flexible processing
-at different privilege levels.</p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="precision-timer-management-and-inter-core-coordination"><a class="anchor" href="#precision-timer-management-and-inter-core-coordination"></a><a class="link" href="#precision-timer-management-and-inter-core-coordination">12. Precision Timer Management and Inter-Core Coordination</a></h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>The CLINT timer system delivers precise timing for managing both
-individual cores and coordinated multi-core operations, using a 64-bit
-timer for a wide range of real-time or long-duration tasks.</p>
-</div>
-<div class="paragraph">
-<p>Per-core timer compare allows each core to run its own timing routines,
-enabling high-frequency interrupts for critical tasks and
-lower-frequency ones for routine maintenance with minimal overhead.</p>
-</div>
-<div class="paragraph">
-<p>A shared timer counter provides a unified time reference for multi-core
-coordination, allowing easy synchronization across cores without complex
-software logic.</p>
-</div>
-<div class="paragraph">
-<p>Software interrupts enable fast communication between cores, supporting
-efficient and responsive multi-core management.</p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="register-interfaces"><a class="anchor" href="#register-interfaces"></a><a class="link" href="#register-interfaces">13. Register Interfaces</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">4.2. Detailed Register Map</a></h3>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
@@ -985,173 +886,174 @@ efficient and responsive multi-core management.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0 - 0x540</td><td><a href="#PRIORITY_337_">PRIORITY[337]</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x1000 - 0x1028</td><td><a href="#PENDING_11_">PENDING[11]</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x2000 - 0x2028</td><td><a href="#CORE0_MEIP_ENABLE_11_">CORE0_MEIP_ENABLE[11]</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x2080 - 0x20A8</td><td><a href="#CORE1_MEIP_ENABLE_11_">CORE1_MEIP_ENABLE[11]</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x2100 - 0x2128</td><td><a href="#CORE2_MEIP_ENABLE_11_">CORE2_MEIP_ENABLE[11]</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x2180 - 0x21A8</td><td><a href="#CORE3_MEIP_ENABLE_11_">CORE3_MEIP_ENABLE[11]</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x2200 - 0x2228</td><td><a href="#CORE0_SEIP_ENABLE_11_">CORE0_SEIP_ENABLE[11]</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x2280 - 0x22A8</td><td><a href="#CORE1_SEIP_ENABLE_11_">CORE1_SEIP_ENABLE[11]</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x2300 - 0x2328</td><td><a href="#CORE2_SEIP_ENABLE_11_">CORE2_SEIP_ENABLE[11]</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x2380 - 0x23A8</td><td><a href="#CORE3_SEIP_ENABLE_11_">CORE3_SEIP_ENABLE[11]</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x200000</td><td><a href="#CORE0_MEIP_THRESHOLD">CORE0_MEIP_THRESHOLD</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x200004</td><td><a href="#CORE0_MEIP_CLAIM_COMPLETE">CORE0_MEIP_CLAIM_COMPLETE</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x201000</td><td><a href="#CORE1_MEIP_THRESHOLD">CORE1_MEIP_THRESHOLD</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x201004</td><td><a href="#CORE1_MEIP_CLAIM_COMPLETE">CORE1_MEIP_CLAIM_COMPLETE</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x202000</td><td><a href="#CORE2_MEIP_THRESHOLD">CORE2_MEIP_THRESHOLD</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x202004</td><td><a href="#CORE2_MEIP_CLAIM_COMPLETE">CORE2_MEIP_CLAIM_COMPLETE</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x203000</td><td><a href="#CORE3_MEIP_THRESHOLD">CORE3_MEIP_THRESHOLD</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x203004</td><td><a href="#CORE3_MEIP_CLAIM_COMPLETE">CORE3_MEIP_CLAIM_COMPLETE</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x204000</td><td><a href="#CORE0_SEIP_THRESHOLD">CORE0_SEIP_THRESHOLD</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x204004</td><td><a href="#CORE0_SEIP_CLAIM_COMPLETE">CORE0_SEIP_CLAIM_COMPLETE</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x205000</td><td><a href="#CORE1_SEIP_THRESHOLD">CORE1_SEIP_THRESHOLD</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x205004</td><td><a href="#CORE1_SEIP_CLAIM_COMPLETE">CORE1_SEIP_CLAIM_COMPLETE</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x206000</td><td><a href="#CORE2_SEIP_THRESHOLD">CORE2_SEIP_THRESHOLD</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x206004</td><td><a href="#CORE2_SEIP_CLAIM_COMPLETE">CORE2_SEIP_CLAIM_COMPLETE</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x207000</td><td><a href="#CORE3_SEIP_THRESHOLD">CORE3_SEIP_THRESHOLD</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x207004</td><td><a href="#CORE3_SEIP_CLAIM_COMPLETE">CORE3_SEIP_CLAIM_COMPLETE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x0 - 0x540</td><td><a href="#plic-PRIORITY_337_">PRIORITY[337]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x1000 - 0x1028</td><td><a href="#plic-PENDING_11_">PENDING[11]</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x2000 - 0x2028</td><td><a href="#plic-CORE0_MEIP_ENABLE_11_">CORE0_MEIP_ENABLE[11]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x2080 - 0x20A8</td><td><a href="#plic-CORE1_MEIP_ENABLE_11_">CORE1_MEIP_ENABLE[11]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x2100 - 0x2128</td><td><a href="#plic-CORE2_MEIP_ENABLE_11_">CORE2_MEIP_ENABLE[11]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x2180 - 0x21A8</td><td><a href="#plic-CORE3_MEIP_ENABLE_11_">CORE3_MEIP_ENABLE[11]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x2200 - 0x2228</td><td><a href="#plic-CORE0_SEIP_ENABLE_11_">CORE0_SEIP_ENABLE[11]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x2280 - 0x22A8</td><td><a href="#plic-CORE1_SEIP_ENABLE_11_">CORE1_SEIP_ENABLE[11]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x2300 - 0x2328</td><td><a href="#plic-CORE2_SEIP_ENABLE_11_">CORE2_SEIP_ENABLE[11]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x2380 - 0x23A8</td><td><a href="#plic-CORE3_SEIP_ENABLE_11_">CORE3_SEIP_ENABLE[11]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x200000</td><td><a href="#plic-CORE0_MEIP_THRESHOLD">CORE0_MEIP_THRESHOLD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x200004</td><td><a href="#plic-CORE0_MEIP_CLAIM_COMPLETE">CORE0_MEIP_CLAIM_COMPLETE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x201000</td><td><a href="#plic-CORE1_MEIP_THRESHOLD">CORE1_MEIP_THRESHOLD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x201004</td><td><a href="#plic-CORE1_MEIP_CLAIM_COMPLETE">CORE1_MEIP_CLAIM_COMPLETE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x202000</td><td><a href="#plic-CORE2_MEIP_THRESHOLD">CORE2_MEIP_THRESHOLD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x202004</td><td><a href="#plic-CORE2_MEIP_CLAIM_COMPLETE">CORE2_MEIP_CLAIM_COMPLETE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x203000</td><td><a href="#plic-CORE3_MEIP_THRESHOLD">CORE3_MEIP_THRESHOLD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x203004</td><td><a href="#plic-CORE3_MEIP_CLAIM_COMPLETE">CORE3_MEIP_CLAIM_COMPLETE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x204000</td><td><a href="#plic-CORE0_SEIP_THRESHOLD">CORE0_SEIP_THRESHOLD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x204004</td><td><a href="#plic-CORE0_SEIP_CLAIM_COMPLETE">CORE0_SEIP_CLAIM_COMPLETE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x205000</td><td><a href="#plic-CORE1_SEIP_THRESHOLD">CORE1_SEIP_THRESHOLD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x205004</td><td><a href="#plic-CORE1_SEIP_CLAIM_COMPLETE">CORE1_SEIP_CLAIM_COMPLETE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x206000</td><td><a href="#plic-CORE2_SEIP_THRESHOLD">CORE2_SEIP_THRESHOLD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x206004</td><td><a href="#plic-CORE2_SEIP_CLAIM_COMPLETE">CORE2_SEIP_CLAIM_COMPLETE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x207000</td><td><a href="#plic-CORE3_SEIP_THRESHOLD">CORE3_SEIP_THRESHOLD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x207004</td><td><a href="#plic-CORE3_SEIP_CLAIM_COMPLETE">CORE3_SEIP_CLAIM_COMPLETE</a></td><td>RW</td><td>-</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
-<h3 id="PRIORITY_337_">PRIORITY[337]</h3>
+<span id="PRIORITY_337_"></span><h3 id="plic-PRIORITY_337_" data-register-alias="PRIORITY_337_">PRIORITY[337]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Priority of interrupt. The higher the set value, the higher the priority.<br>For interrupts with the same priority, the tie is broken by interrupt ID; interrupts with the lowest ID has highest effective priority.<br>Interrupts start counting at 1.</td></tr>
 </table>
-<h3 id="PENDING_11_">PENDING[11]</h3>
+<span id="PENDING_11_"></span><h3 id="plic-PENDING_11_" data-register-alias="PENDING_11_">PENDING[11]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>value</td><td>R</td><td>0x0</td><td>Set to 1 if interrupt source 1 is pending, regardless of its enable or priority setting.<br>Interrupts start counting at 1.</td></tr>
 </table>
-<h3 id="CORE0_MEIP_ENABLE_11_">CORE0_MEIP_ENABLE[11]</h3>
+<span id="CORE0_MEIP_ENABLE_11_"></span><h3 id="plic-CORE0_MEIP_ENABLE_11_" data-register-alias="CORE0_MEIP_ENABLE_11_">CORE0_MEIP_ENABLE[11]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Set bits to 1 if interrupt should be enabled.<br>Interrupts start counting at 1.</td></tr>
 </table>
-<h3 id="CORE1_MEIP_ENABLE_11_">CORE1_MEIP_ENABLE[11]</h3>
+<span id="CORE1_MEIP_ENABLE_11_"></span><h3 id="plic-CORE1_MEIP_ENABLE_11_" data-register-alias="CORE1_MEIP_ENABLE_11_">CORE1_MEIP_ENABLE[11]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Set bits to 1 if interrupt should be enabled.<br>Interrupts start counting at 1.</td></tr>
 </table>
-<h3 id="CORE2_MEIP_ENABLE_11_">CORE2_MEIP_ENABLE[11]</h3>
+<span id="CORE2_MEIP_ENABLE_11_"></span><h3 id="plic-CORE2_MEIP_ENABLE_11_" data-register-alias="CORE2_MEIP_ENABLE_11_">CORE2_MEIP_ENABLE[11]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Set bits to 1 if interrupt should be enabled.<br>Interrupts start counting at 1.</td></tr>
 </table>
-<h3 id="CORE3_MEIP_ENABLE_11_">CORE3_MEIP_ENABLE[11]</h3>
+<span id="CORE3_MEIP_ENABLE_11_"></span><h3 id="plic-CORE3_MEIP_ENABLE_11_" data-register-alias="CORE3_MEIP_ENABLE_11_">CORE3_MEIP_ENABLE[11]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Set bits to 1 if interrupt should be enabled.<br>Interrupts start counting at 1.</td></tr>
 </table>
-<h3 id="CORE0_SEIP_ENABLE_11_">CORE0_SEIP_ENABLE[11]</h3>
+<span id="CORE0_SEIP_ENABLE_11_"></span><h3 id="plic-CORE0_SEIP_ENABLE_11_" data-register-alias="CORE0_SEIP_ENABLE_11_">CORE0_SEIP_ENABLE[11]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Set bits to 1 if interrupt should be enabled.<br>Interrupts start counting at 1.</td></tr>
 </table>
-<h3 id="CORE1_SEIP_ENABLE_11_">CORE1_SEIP_ENABLE[11]</h3>
+<span id="CORE1_SEIP_ENABLE_11_"></span><h3 id="plic-CORE1_SEIP_ENABLE_11_" data-register-alias="CORE1_SEIP_ENABLE_11_">CORE1_SEIP_ENABLE[11]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Set bits to 1 if interrupt should be enabled.<br>Interrupts start counting at 1.</td></tr>
 </table>
-<h3 id="CORE2_SEIP_ENABLE_11_">CORE2_SEIP_ENABLE[11]</h3>
+<span id="CORE2_SEIP_ENABLE_11_"></span><h3 id="plic-CORE2_SEIP_ENABLE_11_" data-register-alias="CORE2_SEIP_ENABLE_11_">CORE2_SEIP_ENABLE[11]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Set bits to 1 if interrupt should be enabled.<br>Interrupts start counting at 1.</td></tr>
 </table>
-<h3 id="CORE3_SEIP_ENABLE_11_">CORE3_SEIP_ENABLE[11]</h3>
+<span id="CORE3_SEIP_ENABLE_11_"></span><h3 id="plic-CORE3_SEIP_ENABLE_11_" data-register-alias="CORE3_SEIP_ENABLE_11_">CORE3_SEIP_ENABLE[11]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Set bits to 1 if interrupt should be enabled.<br>Interrupts start counting at 1.</td></tr>
 </table>
-<h3 id="CORE0_MEIP_THRESHOLD">CORE0_MEIP_THRESHOLD</h3>
+<span id="CORE0_MEIP_THRESHOLD"></span><h3 id="plic-CORE0_MEIP_THRESHOLD" data-register-alias="CORE0_MEIP_THRESHOLD">CORE0_MEIP_THRESHOLD</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt &amp; claim threshold. Maximum value is 7.<br>Any interrupt with a priority less than the threshold cannot interrupt the cpu</td></tr>
 </table>
-<h3 id="CORE0_MEIP_CLAIM_COMPLETE">CORE0_MEIP_CLAIM_COMPLETE</h3>
+<span id="CORE0_MEIP_CLAIM_COMPLETE"></span><h3 id="plic-CORE0_MEIP_CLAIM_COMPLETE" data-register-alias="CORE0_MEIP_CLAIM_COMPLETE">CORE0_MEIP_CLAIM_COMPLETE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Claim/Complete register.<br>Reading this register returns the claimed interrupt number and makes it no longer pending.<br>Writing the interrupt number back completes the interrupt.</td></tr>
 </table>
-<h3 id="CORE1_MEIP_THRESHOLD">CORE1_MEIP_THRESHOLD</h3>
+<span id="CORE1_MEIP_THRESHOLD"></span><h3 id="plic-CORE1_MEIP_THRESHOLD" data-register-alias="CORE1_MEIP_THRESHOLD">CORE1_MEIP_THRESHOLD</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt &amp; claim threshold. Maximum value is 7.<br>Any interrupt with a priority less than the threshold cannot interrupt the cpu</td></tr>
 </table>
-<h3 id="CORE1_MEIP_CLAIM_COMPLETE">CORE1_MEIP_CLAIM_COMPLETE</h3>
+<span id="CORE1_MEIP_CLAIM_COMPLETE"></span><h3 id="plic-CORE1_MEIP_CLAIM_COMPLETE" data-register-alias="CORE1_MEIP_CLAIM_COMPLETE">CORE1_MEIP_CLAIM_COMPLETE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Claim/Complete register.<br>Reading this register returns the claimed interrupt number and makes it no longer pending.<br>Writing the interrupt number back completes the interrupt.</td></tr>
 </table>
-<h3 id="CORE2_MEIP_THRESHOLD">CORE2_MEIP_THRESHOLD</h3>
+<span id="CORE2_MEIP_THRESHOLD"></span><h3 id="plic-CORE2_MEIP_THRESHOLD" data-register-alias="CORE2_MEIP_THRESHOLD">CORE2_MEIP_THRESHOLD</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt &amp; claim threshold. Maximum value is 7.<br>Any interrupt with a priority less than the threshold cannot interrupt the cpu</td></tr>
 </table>
-<h3 id="CORE2_MEIP_CLAIM_COMPLETE">CORE2_MEIP_CLAIM_COMPLETE</h3>
+<span id="CORE2_MEIP_CLAIM_COMPLETE"></span><h3 id="plic-CORE2_MEIP_CLAIM_COMPLETE" data-register-alias="CORE2_MEIP_CLAIM_COMPLETE">CORE2_MEIP_CLAIM_COMPLETE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Claim/Complete register.<br>Reading this register returns the claimed interrupt number and makes it no longer pending.<br>Writing the interrupt number back completes the interrupt.</td></tr>
 </table>
-<h3 id="CORE3_MEIP_THRESHOLD">CORE3_MEIP_THRESHOLD</h3>
+<span id="CORE3_MEIP_THRESHOLD"></span><h3 id="plic-CORE3_MEIP_THRESHOLD" data-register-alias="CORE3_MEIP_THRESHOLD">CORE3_MEIP_THRESHOLD</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt &amp; claim threshold. Maximum value is 7.<br>Any interrupt with a priority less than the threshold cannot interrupt the cpu</td></tr>
 </table>
-<h3 id="CORE3_MEIP_CLAIM_COMPLETE">CORE3_MEIP_CLAIM_COMPLETE</h3>
+<span id="CORE3_MEIP_CLAIM_COMPLETE"></span><h3 id="plic-CORE3_MEIP_CLAIM_COMPLETE" data-register-alias="CORE3_MEIP_CLAIM_COMPLETE">CORE3_MEIP_CLAIM_COMPLETE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Claim/Complete register.<br>Reading this register returns the claimed interrupt number and makes it no longer pending.<br>Writing the interrupt number back completes the interrupt.</td></tr>
 </table>
-<h3 id="CORE0_SEIP_THRESHOLD">CORE0_SEIP_THRESHOLD</h3>
+<span id="CORE0_SEIP_THRESHOLD"></span><h3 id="plic-CORE0_SEIP_THRESHOLD" data-register-alias="CORE0_SEIP_THRESHOLD">CORE0_SEIP_THRESHOLD</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt &amp; claim threshold. Maximum value is 7.<br>Any interrupt with a priority less than the threshold cannot interrupt the cpu</td></tr>
 </table>
-<h3 id="CORE0_SEIP_CLAIM_COMPLETE">CORE0_SEIP_CLAIM_COMPLETE</h3>
+<span id="CORE0_SEIP_CLAIM_COMPLETE"></span><h3 id="plic-CORE0_SEIP_CLAIM_COMPLETE" data-register-alias="CORE0_SEIP_CLAIM_COMPLETE">CORE0_SEIP_CLAIM_COMPLETE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Claim/Complete register.<br>Reading this register returns the claimed interrupt number and makes it no longer pending.<br>Writing the interrupt number back completes the interrupt.</td></tr>
 </table>
-<h3 id="CORE1_SEIP_THRESHOLD">CORE1_SEIP_THRESHOLD</h3>
+<span id="CORE1_SEIP_THRESHOLD"></span><h3 id="plic-CORE1_SEIP_THRESHOLD" data-register-alias="CORE1_SEIP_THRESHOLD">CORE1_SEIP_THRESHOLD</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt &amp; claim threshold. Maximum value is 7.<br>Any interrupt with a priority less than the threshold cannot interrupt the cpu</td></tr>
 </table>
-<h3 id="CORE1_SEIP_CLAIM_COMPLETE">CORE1_SEIP_CLAIM_COMPLETE</h3>
+<span id="CORE1_SEIP_CLAIM_COMPLETE"></span><h3 id="plic-CORE1_SEIP_CLAIM_COMPLETE" data-register-alias="CORE1_SEIP_CLAIM_COMPLETE">CORE1_SEIP_CLAIM_COMPLETE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Claim/Complete register.<br>Reading this register returns the claimed interrupt number and makes it no longer pending.<br>Writing the interrupt number back completes the interrupt.</td></tr>
 </table>
-<h3 id="CORE2_SEIP_THRESHOLD">CORE2_SEIP_THRESHOLD</h3>
+<span id="CORE2_SEIP_THRESHOLD"></span><h3 id="plic-CORE2_SEIP_THRESHOLD" data-register-alias="CORE2_SEIP_THRESHOLD">CORE2_SEIP_THRESHOLD</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt &amp; claim threshold. Maximum value is 7.<br>Any interrupt with a priority less than the threshold cannot interrupt the cpu</td></tr>
 </table>
-<h3 id="CORE2_SEIP_CLAIM_COMPLETE">CORE2_SEIP_CLAIM_COMPLETE</h3>
+<span id="CORE2_SEIP_CLAIM_COMPLETE"></span><h3 id="plic-CORE2_SEIP_CLAIM_COMPLETE" data-register-alias="CORE2_SEIP_CLAIM_COMPLETE">CORE2_SEIP_CLAIM_COMPLETE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Claim/Complete register.<br>Reading this register returns the claimed interrupt number and makes it no longer pending.<br>Writing the interrupt number back completes the interrupt.</td></tr>
 </table>
-<h3 id="CORE3_SEIP_THRESHOLD">CORE3_SEIP_THRESHOLD</h3>
+<span id="CORE3_SEIP_THRESHOLD"></span><h3 id="plic-CORE3_SEIP_THRESHOLD" data-register-alias="CORE3_SEIP_THRESHOLD">CORE3_SEIP_THRESHOLD</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt &amp; claim threshold. Maximum value is 7.<br>Any interrupt with a priority less than the threshold cannot interrupt the cpu</td></tr>
 </table>
-<h3 id="CORE3_SEIP_CLAIM_COMPLETE">CORE3_SEIP_CLAIM_COMPLETE</h3>
+<span id="CORE3_SEIP_CLAIM_COMPLETE"></span><h3 id="plic-CORE3_SEIP_CLAIM_COMPLETE" data-register-alias="CORE3_SEIP_CLAIM_COMPLETE">CORE3_SEIP_CLAIM_COMPLETE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>value</td><td>RW</td><td>-</td><td>Claim/Complete register.<br>Reading this register returns the claimed interrupt number and makes it no longer pending.<br>Writing the interrupt number back completes the interrupt.</td></tr>
 </table>
+</div>
 </div>
 </div>
 </div>

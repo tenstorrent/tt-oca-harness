@@ -641,8 +641,17 @@ outstanding writes</p></td>
 </div>
 </div>
 <div class="sect1">
-<h2 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">4. Detailed Register Map</a></h2>
+<h2 id="memory-map-and-register-reference"><a class="anchor" href="#memory-map-and-register-reference"></a><a class="link" href="#memory-map-and-register-reference">4. Memory Map and Register Reference</a></h2>
 <div class="sectionbody">
+<div class="sect2">
+<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">4.1. Memory Map</a></h3>
+<div class="paragraph">
+<p>Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">4.2. Detailed Register Map</a></h3>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
@@ -656,22 +665,22 @@ outstanding writes</p></td>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0</td><td><a href="#DEST_ADDR">DEST_ADDR</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x8</td><td><a href="#SIZE">SIZE</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x10</td><td><a href="#CTRL_STATUS">CTRL_STATUS</a></td><td>RW</td><td>Writing this register will trigger start of zeroer. The write is ignored while SIZE is 0.</td></tr>
+<tr><td>0x0</td><td><a href="#zeroer_ctrl-DEST_ADDR">DEST_ADDR</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#zeroer_ctrl-SIZE">SIZE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#zeroer_ctrl-CTRL_STATUS">CTRL_STATUS</a></td><td>RW</td><td>Writing this register will trigger start of zeroer. The write is ignored while SIZE is 0.</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
-<h3 id="DEST_ADDR">DEST_ADDR</h3>
+<span id="DEST_ADDR"></span><h3 id="zeroer_ctrl-DEST_ADDR" data-register-alias="DEST_ADDR">DEST_ADDR</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:0</td><td>DEST_ADDR</td><td>RW</td><td>0x0</td><td>Byte address to write zeros to</td></tr>
 </table>
-<h3 id="SIZE">SIZE</h3>
+<span id="SIZE"></span><h3 id="zeroer_ctrl-SIZE" data-register-alias="SIZE">SIZE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:0</td><td>SIZE</td><td>RW</td><td>0x0</td><td>Size in bytes of zeros to write</td></tr>
 </table>
-<h3 id="CTRL_STATUS">CTRL_STATUS</h3>
+<span id="CTRL_STATUS"></span><h3 id="zeroer_ctrl-CTRL_STATUS" data-register-alias="CTRL_STATUS">CTRL_STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:33</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -679,6 +688,7 @@ outstanding writes</p></td>
 <tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>INT_EN</td><td>RW</td><td>0x0</td><td>If enabled, an interrupt will be outputted once zeroer completes.</td></tr>
 </table>
+</div>
 </div>
 </div>
 </div>

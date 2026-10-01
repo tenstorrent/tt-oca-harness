@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>JTAG Operation :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
-    <meta name="description" content="DTP-level JTAG topology, scan chain ordering, clock domains, reset and lifecycle feature control.">
+    <meta name="description" content="DTP-level JTAG topology, scan chain ordering, lifecycle feature control.">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../_/css/site.css">
     <link rel="stylesheet" href="../../../_/css/extra.css">
@@ -225,9 +225,8 @@
 <div class="sectionbody">
 <div id="dtp-jtag-integration" class="paragraph">
 <p>This page describes how the DTP integrates its JTAG components at the
-subsystem level: topology, scan chain ordering, clock domains, reset hierarchy
-and lifecycle feature control. For the detailed implementation of each
-component, see the JTAG reference pages that follow this one.</p>
+subsystem level: topology, scan chain ordering, lifecycle feature control. Clock domains and reset overrides are described in
+Clocks and Resets; IP Reference contains the individual JTAG components.</p>
 </div>
 </div>
 </div>
@@ -383,129 +382,20 @@ Each bridge reports its configuration in its <code>*_JTAG2AXI_CAPS</code> regist
 </tr>
 </tbody>
 </table>
+<div id="clock-domains" class="paragraph">
+<p>See <a href="clk_rst.html#dtp-clocks-and-resets" class="xref page">Clock Domains</a>.</p>
 </div>
+<div id="reset-architecture" class="paragraph">
+<p>See <a href="clk_rst.html#reset-architecture" class="xref page">Reset Architecture</a>.</p>
 </div>
-<div class="sect1">
-<h2 id="clock-domains"><a class="anchor" href="#clock-domains"></a><a class="link" href="#clock-domains">4. Clock Domains</a></h2>
-<div class="sectionbody">
+<span id="ic_reset-overrides"></span>
 <div class="paragraph">
-<p>The DTP operates in two clock domains (<a href="#dtp-clock-domains-table">DTP clock domains</a>).</p>
-</div>
-<table id="dtp-clock-domains-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 2. DTP clock domains</caption>
-<colgroup>
-<col style="width: 25%;">
-<col style="width: 25%;">
-<col style="width: 50%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Domain</th>
-<th class="tableblock halign-left valign-top">Signal</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">System clock</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Main clock for cross-trigger logic and AXI interfaces. All CTN and CSR
-logic runs in this domain.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">JTAG clock</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">TCK</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">JTAG test clock for all TAP controller and scan logic. Clocks the PTAP,
-STAP state machines, and scan registers. Asynchronous to <code>clk_i</code>.</p></td>
-</tr>
-</tbody>
-</table>
-<div class="paragraph">
-<p>All cross-trigger signals crossing from TCK to <code>clk_i</code> are synchronised
-within the CTPs using two-flip-flop synchroniser chains.</p>
+<p>See <a href="clk_rst.html#dtp-ic-reset-overrides" class="xref page">IC_RESET Overrides</a>.</p>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="reset-architecture"><a class="anchor" href="#reset-architecture"></a><a class="link" href="#reset-architecture">5. Reset Architecture</a></h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p><a href="#dtp-reset-signals-table">DTP reset signals</a> identifies the reset inputs and the logic they reset.</p>
-</div>
-<table id="dtp-reset-signals-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 3. DTP reset signals</caption>
-<colgroup>
-<col style="width: 30%;">
-<col style="width: 70%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Signal</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_n_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Active-low asynchronous reset for cross-trigger logic and AXI interfaces.
-Resets all CTN and CSR state; clock-stop output resets to 0 (clocks running).</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>pwr_on_rst_ni</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Active-low asynchronous power-on reset for JTAG logic. Combined internally
-with TRST_n; resets the PTAP to Test-Logic-Reset state and clears all TDRs.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">TRST_n (JTAG pin)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Optional external active-low TAP reset. When asserted, drives the PTAP
-to Test-Logic-Reset regardless of the TCK or TMS state.</p></td>
-</tr>
-</tbody>
-</table>
-<div class="paragraph">
-<p>All registers reset to safe states. The JTAG TAP returns to Test-Logic-Reset
-on either TRST_n or power-on reset.</p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="dtp-ic-reset-overrides"><a class="anchor" href="#dtp-ic-reset-overrides"></a><a class="link" href="#dtp-ic-reset-overrides">6. IC_RESET Overrides</a></h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>The primary TAP implements the IEEE 1149.1-2013 §17 IC_RESET TDR. Per reset
-port it holds <code>reset_control</code>, the active-low reset value to drive, and
-<code>reset_enable</code>, which selects it. One <code>reset_hold</code> bit sits nearest TDO.</p>
-</div>
-<div class="paragraph">
-<p><code>reset_enable</code> is active low despite the name: it resets to 1, leaving the
-port&#8217;s functional reset connected, and writing 0 hands the port over to
-<code>reset_control</code>. The overrides leave the DTP on
-<code>jtag_ic_reset_{smc,sep,ext}_o</code>, whose <code>.ovrd</code> member is active high and whose
-<code>.val</code> carries <code>reset_control</code>.</p>
-</div>
-<div class="paragraph">
-<p><code>reset_hold</code> also resets to 1, which lets Test-Logic-Reset clear the
-enable/control bits. Write 0 to keep an override asserted across TLR; only TRST
-clears <code>reset_hold</code> itself.</p>
-</div>
-<div class="paragraph">
-<p>Consumers select between the two sources with a hazard-free multiplexer, which
-holds its output while the select alone moves. Write <code>reset_control</code> first and
-clear <code>reset_enable</code> in a second Update-DR: moving both in one update changes
-the select and a data input together, which can pulse a reset on a port that
-neither source is resetting.</p>
-</div>
-<div class="paragraph">
-<p>At the SMU the TDR concatenates three slices from TDI to TDO: SMC, SEP, then
-the external slice, followed by <code>reset_hold</code>. The SMC and SEP port lists are
-OCAH-defined. The external slice is adopter-defined: its width and fields come
-from the SMU type parameter <code>ic_reset_ext_t</code>. The Integrator Guide records the
-SMU-composed port map.</p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="debug-disable"><a class="anchor" href="#debug-disable"></a><a class="link" href="#debug-disable">7. Debug Disable</a></h2>
+<h2 id="debug-disable"><a class="anchor" href="#debug-disable"></a><a class="link" href="#debug-disable">4. Debug Disable</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p><code>dbg_disable_i</code> (<code>sep_lifecycle_ctrl_pkg::dbg_disable_t</code>) is a per-path
@@ -517,7 +407,7 @@ each field to the named path.</p>
 <p><a href="#dtp-debug-disable-paths-table">DTP debug-disable paths</a> maps each debug path to its active-high disable field.</p>
 </div>
 <table id="dtp-debug-disable-paths-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 4. DTP debug-disable paths</caption>
+<caption class="title">Table 2. DTP debug-disable paths</caption>
 <colgroup>
 <col style="width: 40%;">
 <col style="width: 60%;">
@@ -578,8 +468,8 @@ each field to the named path.</p>
 <div class="paragraph">
 <p>A disabled path remains observable only where required for control and
 readback. For a JTAG2AXI bridge, disabling means TDR update registers are not
-latched, buffered requests are dropped and the AXI state machine is held in
-idle — no AXI traffic can be generated. For a STAP, the host-visible scan
+latched. The disable gates the idle state: an active AXI transaction
+continues to completion, and buffered requests are flushed when idle is reached. For a STAP, the host-visible scan
 access is clamped so the disabled path cannot reach downstream secure logic.</p>
 </div>
 <div class="paragraph">

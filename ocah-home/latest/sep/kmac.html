@@ -243,7 +243,196 @@ error instead of producing a digest; OTBN also reports an invalid key error.</p>
 <p>Consult the
 <a href="https://opentitan.org/book/hw/ip/kmac/index.html">OpenTitan KMAC
 documentation</a> for the authoritative core functionality of the IP. The
-register map is reported in the <a href="memory_map.html#sep-detailed-register-map" class="xref page">Detailed Register Map</a>.</p>
+register map follows below.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="memory-map-and-register-reference"><a class="anchor" href="#memory-map-and-register-reference"></a><a class="link" href="#memory-map-and-register-reference">Memory Map and Register Reference</a></h2>
+<div class="sectionbody">
+<span id="register-reference"></span>
+<div class="sect2">
+<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">Memory Map</a></h3>
+<div class="paragraph">
+<p>Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">Detailed Register Map</a></h3>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-kmac">KMAC Accelerator</h2>
+<p>Accelerator for Keccak-based keyed hash message authentication code and SHA-3 hash functions; with SCA and FI countermeasures</p>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>KEY_SHARE0[16]</strong>: 16 registers, base 0x30, stride 0x4</li>
+<li><strong>KEY_SHARE1[16]</strong>: 16 registers, base 0x70, stride 0x4</li>
+<li><strong>PREFIX[11]</strong>: 11 registers, base 0xB4, stride 0x4</li>
+</ul>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#kmac-INTR_STATE">INTR_STATE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x4</td><td><a href="#kmac-INTR_ENABLE">INTR_ENABLE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#kmac-INTR_TEST">INTR_TEST</a></td><td>W</td><td>-</td></tr>
+<tr><td>0xC</td><td><a href="#kmac-ALERT_TEST">ALERT_TEST</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#kmac-CFG_REGWEN">CFG_REGWEN</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x14</td><td><a href="#kmac-CFG_SHADOWED">CFG_SHADOWED</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x18</td><td><a href="#kmac-CMD">CMD</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x1C</td><td><a href="#kmac-STATUS">STATUS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x20</td><td><a href="#kmac-ENTROPY_PERIOD">ENTROPY_PERIOD</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x24</td><td><a href="#kmac-ENTROPY_REFRESH_HASH_CNT">ENTROPY_REFRESH_HASH_CNT</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x28</td><td><a href="#kmac-ENTROPY_REFRESH_THRESHOLD_SHADOWED">ENTROPY_REFRESH_THRESHOLD_SHADOWED</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x2C</td><td><a href="#kmac-ENTROPY_SEED">ENTROPY_SEED</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x30 - 0x6C</td><td><a href="#kmac-KEY_SHARE0_16_">KEY_SHARE0[16]</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x70 - 0xAC</td><td><a href="#kmac-KEY_SHARE1_16_">KEY_SHARE1[16]</a></td><td>W</td><td>-</td></tr>
+<tr><td>0xB0</td><td><a href="#kmac-KEY_LEN">KEY_LEN</a></td><td>W</td><td>-</td></tr>
+<tr><td>0xB4 - 0xDC</td><td><a href="#kmac-PREFIX_11_">PREFIX[11]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xE0</td><td><a href="#kmac-ERR_CODE">ERR_CODE</a></td><td>R</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="INTR_STATE"></span><h3 id="kmac-INTR_STATE" data-register-alias="INTR_STATE">INTR_STATE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>kmac_err</td><td>RW1C</td><td>0x0</td><td>KMAC/SHA3 error occurred. ERR_CODE register shows the details</td></tr>
+<tr><td>1</td><td>fifo_empty</td><td>R</td><td>0x0</td><td>The message FIFO is empty.<br>This interrupt is raised only if the message FIFO is actually writable by software, i.e., if all of the following conditions are met:<br>i) The KMAC block is not exercised by a hardware application interface.<br>ii) The SHA3 block is in the Absorb state.<br>iii) Software has not yet written the Process command to finish the absorption process.<br>For the interrupt to be raised, the message FIFO must also have been full previously.<br>Otherwise, the hardware empties the FIFO faster than software can fill it and there is no point in interrupting the software to inform it about the message FIFO being empty.</td></tr>
+<tr><td>0</td><td>kmac_done</td><td>RW1C</td><td>0x0</td><td>KMAC/SHA3 absorbing has been completed</td></tr>
+</table>
+<span id="INTR_ENABLE"></span><h3 id="kmac-INTR_ENABLE" data-register-alias="INTR_ENABLE">INTR_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>kmac_err</td><td>RW</td><td>0x0</td><td>Enable interrupt when !!INTR_STATE.kmac_err is set.</td></tr>
+<tr><td>1</td><td>fifo_empty</td><td>RW</td><td>0x0</td><td>Enable interrupt when !!INTR_STATE.fifo_empty is set.</td></tr>
+<tr><td>0</td><td>kmac_done</td><td>RW</td><td>0x0</td><td>Enable interrupt when !!INTR_STATE.kmac_done is set.</td></tr>
+</table>
+<span id="INTR_TEST"></span><h3 id="kmac-INTR_TEST" data-register-alias="INTR_TEST">INTR_TEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>kmac_err</td><td>W</td><td>0x0</td><td>Write 1 to force !!INTR_STATE.kmac_err to 1.</td></tr>
+<tr><td>1</td><td>fifo_empty</td><td>W</td><td>0x0</td><td>Write 1 to force !!INTR_STATE.fifo_empty to 1.</td></tr>
+<tr><td>0</td><td>kmac_done</td><td>W</td><td>0x0</td><td>Write 1 to force !!INTR_STATE.kmac_done to 1.</td></tr>
+</table>
+<span id="ALERT_TEST"></span><h3 id="kmac-ALERT_TEST" data-register-alias="ALERT_TEST">ALERT_TEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>fatal_fault_err</td><td>W</td><td>0x0</td><td>Write 1 to trigger one alert event of this kind.</td></tr>
+<tr><td>0</td><td>recov_operation_err</td><td>W</td><td>0x0</td><td>Write 1 to trigger one alert event of this kind.</td></tr>
+</table>
+<span id="CFG_REGWEN"></span><h3 id="kmac-CFG_REGWEN" data-register-alias="CFG_REGWEN">CFG_REGWEN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>en</td><td>R</td><td>0x1</td><td>Configuration enable.</td></tr>
+</table>
+<span id="CFG_SHADOWED"></span><h3 id="kmac-CFG_SHADOWED" data-register-alias="CFG_SHADOWED">CFG_SHADOWED</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:27</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>26</td><td>en_unsupported_modestrength</td><td>RW</td><td>0x0</td><td>Enable Unsupported Mode and Strength configs.<br><br>SW may set this field for KMAC to move forward with unsupported<br>Keccak Mode and Strength configurations, such as cSHAKE512.<br><br>If not set, KMAC won&#x27;t propagate the SW command (CmdStart) to the<br>rest of the blocks (AppIntf, KMAC Core, SHA3).</td></tr>
+<tr><td>25</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>24</td><td>entropy_ready</td><td>RW</td><td>0x0</td><td>Entropy Ready status.<br><br>Software sets this field to allow the entropy generator in KMAC to<br>fetch the entropy and run.</td></tr>
+<tr><td>23:21</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>20</td><td>msg_mask</td><td>RW</td><td>0x0</td><td>Message Masking with PRNG.<br><br>If 1, KMAC applies PRNG to the input messages to the Keccak module<br>when KMAC mode is on.</td></tr>
+<tr><td>19</td><td>entropy_fast_process</td><td>RW</td><td>0x0</td><td>Entropy Fast process mode.<br><br>If 1, entropy logic uses garbage data while not processing the KMAC<br>key block. It will re-use previous entropy value and will not<br>expand the entropy when it is consumed. Only it refreshes the<br>entropy while processing the secret key block. This process should<br>not be used if SCA resistance is required because it may cause side<br>channel leakage.</td></tr>
+<tr><td>18</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>17:16</td><td>entropy_mode</td><td>RW</td><td>0x0</td><td>Entropy Mode<br><br>Using this field, software can configure mode of operation of the internal pseudo-random number generator (PRNG).<br><br>Note that once software has configured a value different from `idle_mode` after reset, and set the !!CFG_SHADOWED.entropy_ready bit afterwards, the PRNG configuration cannot be changed anymore (unless an EDN request timeout occurs when running in EDN mode).<br>Further writes to this field will change the value received upon reading the register, but they will be ignored by the internal hardware.</td></tr>
+<tr><td>15:13</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>12</td><td>sideload</td><td>RW</td><td>0x1</td><td>Sideloaded Key. Deprecated: defaults to 1 (sideload). Set to 0 for DV testing with SW key path only.<br><br>If 1, KMAC uses KeyMgr sideloaded key for SW initiated KMAC<br>operation. KMAC uses the sideloaded key regardless of this<br>configuration when KeyMgr initiates the KMAC operation for<br>Key Derivation Function (KDF).</td></tr>
+<tr><td>11:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>9</td><td>state_endianness</td><td>RW</td><td>0x0</td><td>State Endianness.<br><br>If 1 then each individual word in the !!STATE output register<br>is converted to big-endian byte order.<br>The order of the words in relation to one another is not<br>changed.<br>This setting does not affect how the state is interpreted<br>during computation.</td></tr>
+<tr><td>8</td><td>msg_endianness</td><td>RW</td><td>0x0</td><td>Message Endianness.<br><br>If 1 then each individual multi-byte value, regardless of its<br>alignment, written to !!MSG_FIFO will be added to the message<br>in big-endian byte order.<br>If 0, each value will be added to the message in little-endian<br>byte order.<br>A message written to !!MSG_FIFO one byte at a time will not be<br>affected by this setting.<br>From a hardware perspective byte swaps are performed on a TL-UL<br>word granularity.</td></tr>
+<tr><td>7:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>5:4</td><td>mode</td><td>RW</td><td>0x0</td><td>Keccak hashing mode.<br><br>This module supports SHA3 main hashing algorithm and the part<br>of its derived functions, SHAKE and cSHAKE with limitations.<br>This field is to select the mode.</td></tr>
+<tr><td>3:1</td><td>kstrength</td><td>RW</td><td>0x0</td><td>Hashing Strength<br><br>3 bit field to select the security strength of SHA3 hashing<br>engine. If mode field is set to SHAKE or cSHAKE, only 128 and<br>256 strength can be selected. Other value will result error<br>when hashing starts.</td></tr>
+<tr><td>0</td><td>kmac_en</td><td>RW</td><td>0x0</td><td>KMAC datapath enable.<br><br>If this bit is 1, the KMAC mode is active and the secret key is prepended to the incoming message.</td></tr>
+</table>
+<span id="CMD"></span><h3 id="kmac-CMD" data-register-alias="CMD">CMD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>10</td><td>err_processed</td><td>W1C</td><td>-</td><td>When error occurs and one of the state machine stays at<br>Error handling state, SW may process the error based on<br>ERR_CODE, then let FSM back to the reset state</td></tr>
+<tr><td>9</td><td>hash_cnt_clr</td><td>W1C</td><td>-</td><td>Software can set this bit to 1 to manually clear !!ENTROPY_REFRESH_HASH_CNT.</td></tr>
+<tr><td>8</td><td>entropy_req</td><td>W1C</td><td>-</td><td>Software can set this bit to 1 to manually trigger the reseeding of the internal PRNG when running in EDN mode.<br>This will also clear !!ENTROPY_REFRESH_HASH_CNT.<br><br>Note that the hardware may miss the trigger pulse if the module is not idle, or if the module is currently performing a reseed operation.</td></tr>
+<tr><td>7:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>5:0</td><td>cmd</td><td>W1C</td><td>-</td><td>Issue a command to the KMAC/SHA3 IP. The command is sparse<br>encoded. To prevent sw from writing multiple commands at once,<br>the field is defined as enum.</td></tr>
+</table>
+<span id="STATUS"></span><h3 id="kmac-STATUS" data-register-alias="STATUS">STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:18</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>17</td><td>ALERT_RECOV_CTRL_UPDATE_ERR</td><td>R</td><td>0x0</td><td>An update error has not occurred (0) or has occurred (1) in the shadowed Control Register.<br>KMAC operation needs to be restarted by re-writing the Control Register.</td></tr>
+<tr><td>16</td><td>ALERT_FATAL_FAULT</td><td>R</td><td>0x0</td><td>No fatal fault has occurred inside the KMAC unit (0).<br>A fatal fault has occurred and the KMAC unit needs to be reset (1),<br>Examples for such faults include<br>i) TL-UL bus integrity fault<br>ii) storage errors in the shadow registers<br>iii) errors in the message, round, or key counter<br>iv) any internal FSM entering an invalid state<br>v) an error in the redundant lfsr</td></tr>
+<tr><td>15</td><td>fifo_full</td><td>R</td><td>-</td><td>Message FIFO Full indicator</td></tr>
+<tr><td>14</td><td>fifo_empty</td><td>R</td><td>0x1</td><td>Message FIFO Empty indicator.<br><br>The FIFO&#x27;s `Pass` parameter is set to `1&#x27;b 1`. So, by default, if<br>the SHA engine is ready, the write data to FIFO just passes<br>through.<br><br>In this case, `fifo_depth` remains **0**. `fifo_empty`, however,<br>lowers the value to **0** for a cycle, then goes back to the empty<br>state, **1**.<br><br>See the &quot;Message FIFO&quot; section in the spec for the reason.</td></tr>
+<tr><td>13</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>12:8</td><td>fifo_depth</td><td>R</td><td>-</td><td>Count of occupied entries in the message FIFO.</td></tr>
+<tr><td>7:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>sha3_squeeze</td><td>R</td><td>-</td><td>If 1, SHA3 completes sponge absorbing stage.<br>In this stage, SW can manually run the hashing engine.</td></tr>
+<tr><td>1</td><td>sha3_absorb</td><td>R</td><td>-</td><td>If 1, SHA3 is receiving message stream and processing it</td></tr>
+<tr><td>0</td><td>sha3_idle</td><td>R</td><td>0x1</td><td>If 1, SHA3 hashing engine is in idle state.</td></tr>
+</table>
+<span id="ENTROPY_PERIOD"></span><h3 id="kmac-ENTROPY_PERIOD" data-register-alias="ENTROPY_PERIOD">ENTROPY_PERIOD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>wait_timer</td><td>RW</td><td>0x0</td><td>EDN request wait timer.<br><br>The entropy module in KMAC waits up to this field in the timer pulse<br>after it sends request to EDN module. If the timer expires, the<br>entropy module moves to an error state and notifies to the system.<br><br>If there is a pending EDN request during wait timer update, then this update is delayed until the EDN request is complete.<br><br>If 0, the entropy module waits the EDN response always. If EDN does<br>not respond in this configuration, the software shall reset the IP.</td></tr>
+<tr><td>15:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>9:0</td><td>prescaler</td><td>RW</td><td>0x0</td><td>EDN Wait timer prescaler.<br><br>EDN Wait timer has 16 bit value. The timer value is increased when the timer pulse is generated. Timer pulse is raises when the number of the clock cycles hit this prescaler value.<br><br>The exact period of the timer pulse is unknown as the KMAC input clock may contain jitters.</td></tr>
+</table>
+<span id="ENTROPY_REFRESH_HASH_CNT"></span><h3 id="kmac-ENTROPY_REFRESH_HASH_CNT" data-register-alias="ENTROPY_REFRESH_HASH_CNT">ENTROPY_REFRESH_HASH_CNT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>9:0</td><td>hash_cnt</td><td>R</td><td>0x0</td><td>Hash (KMAC) counter</td></tr>
+</table>
+<span id="ENTROPY_REFRESH_THRESHOLD_SHADOWED"></span><h3 id="kmac-ENTROPY_REFRESH_THRESHOLD_SHADOWED" data-register-alias="ENTROPY_REFRESH_THRESHOLD_SHADOWED">ENTROPY_REFRESH_THRESHOLD_SHADOWED</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>9:0</td><td>threshold</td><td>RW</td><td>0x0</td><td>Hash Threshold</td></tr>
+</table>
+<span id="ENTROPY_SEED"></span><h3 id="kmac-ENTROPY_SEED" data-register-alias="ENTROPY_SEED">ENTROPY_SEED</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>seed</td><td>W</td><td>-</td><td>32-bit chunk of the entropy generator seed</td></tr>
+</table>
+<span id="KEY_SHARE0_16_"></span><h3 id="kmac-KEY_SHARE0_16_" data-register-alias="KEY_SHARE0_16_">KEY_SHARE0[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>key_0</td><td>W</td><td>-</td><td>32-bit chunk of up-to 512-bit Secret Key</td></tr>
+</table>
+<span id="KEY_SHARE1_16_"></span><h3 id="kmac-KEY_SHARE1_16_" data-register-alias="KEY_SHARE1_16_">KEY_SHARE1[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>key_0</td><td>W</td><td>-</td><td>32-bit chunk of up-to 512-bit Secret Key</td></tr>
+</table>
+<span id="KEY_LEN"></span><h3 id="kmac-KEY_LEN" data-register-alias="KEY_LEN">KEY_LEN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2:0</td><td>len</td><td>W</td><td>0x0</td><td>Key length choice</td></tr>
+</table>
+<span id="PREFIX_11_"></span><h3 id="kmac-PREFIX_11_" data-register-alias="PREFIX_11_">PREFIX[11]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>prefix_0</td><td>RW</td><td>0x0</td><td>32-bit chunk of Encoded NS Prefix</td></tr>
+</table>
+<span id="ERR_CODE"></span><h3 id="kmac-ERR_CODE" data-register-alias="ERR_CODE">ERR_CODE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>err_code</td><td>R</td><td>0x0</td><td>If the `kmac_err` interrupt occurs, this register has information on the error cause.<br>Bits 31:24 contain the error code (please refer to `err_code_e` in `hw/ip/kmac/rtl/kmac_pkg.sv`) for the encoding, and bits 23:0 contain additional debug information.<br>This register does *not* get cleared when the `kmac_err` interrupt state gets cleared.</td></tr>
+</table>
+</div>
 </div>
 </div>
 </div>

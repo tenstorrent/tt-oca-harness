@@ -184,35 +184,26 @@
 </aside>
 <article class="doc">
 <h1 class="page">Log Engine</h1>
+<div id="preamble">
+<div class="sectionbody">
+<span id="description-and-features"></span>
+</div>
+</div>
 <div class="sect1">
 <h2 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">Overview</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>The OCA Log Engine is a DMA-based logging system that efficiently
-transfers log messages from a configured memory region to a UART
-interface. It provides a scalable solution for system-level logging with
-hardware acceleration, reducing CPU overhead for log transmission. The
-engine supports up to 16 independent log entries with fair round-robin
-arbitration, making it suitable for multi-threaded or multi-core logging
-scenarios.</p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="description-and-features"><a class="anchor" href="#description-and-features"></a><a class="link" href="#description-and-features">Description and Features</a></h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>The Log Engine features a multi-interface architecture, combining a
-32-bit AXI4-Lite register interface with both 64-bit log fetch and
-32-bit log write AXI4-Lite interfaces for efficient data movement. Its
-design scales to manage up to 16 independent log entries, each with
-flexible, configurable memory regions and 64-bit addressing.</p>
+<p>The Log Engine sends memory-resident messages to a UART without a CPU
+copying each byte. Software supplies one memory region, divided into 16
+slots, and submits each message by writing its slot&#8217;s length. The engine
+selects pending slots in round-robin order and completes one message before
+moving to the next.</p>
 </div>
 <div class="paragraph">
-<p>Round-robin arbitration ensures fair scheduling among logs, and hardware
-integration with the UART transmitter—including flow control—streamlines
-log data output. Error conditions in log fetch or write operations are
-tracked via a comprehensive interrupt system for robust monitoring.</p>
+<p>A 64-bit AXI4-Lite read path fetches message data into a FIFO. A separate
+32-bit AXI4-Lite write path sends one character at a time to a fixed UART
+address, paced by <code>uart_tx_ready_i</code>. The register interface is also
+32-bit AXI4-Lite. Fetch addresses are 56 bits; UART addresses are 32 bits.</p>
 </div>
 <div id="log-engine-wrapper-diagram" class="imageblock">
 <div class="content">
@@ -261,195 +252,110 @@ AXI4-Lite port. It waits for <code>uart_txrdy_o</code> before each write.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="log-engine-architecture"><a class="anchor" href="#log-engine-architecture"></a><a class="link" href="#log-engine-architecture">Architecture</a></h2>
+<h2 id="log-engine-architecture"><a class="anchor" href="#log-engine-architecture"></a><a class="link" href="#log-engine-architecture">Operation</a></h2>
 <div class="sectionbody">
+<span id="overview-2"></span>
+<span id="functional-blocks"></span>
+<span id="control-and-status-registers-csrs"></span>
 <div class="sect2">
-<h3 id="overview-2"><a class="anchor" href="#overview-2"></a><a class="link" href="#overview-2">Overview</a></h3>
+<h3 id="log-engine-slots"><a class="anchor" href="#log-engine-slots"></a><a class="link" href="#log-engine-slots">Memory Slots and Lengths</a></h3>
 <div class="paragraph">
-<p>The OCA Log Engine is a DMA-powered logging system that transfers log
-messages from memory to a UART interface. It supports up to 16 log
-entries with fair round-robin arbitration for efficient multi-source
-logging.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="functional-blocks"><a class="anchor" href="#functional-blocks"></a><a class="link" href="#functional-blocks">Functional Blocks</a></h3>
-
-</div>
-<div class="sect2">
-<h3 id="control-and-status-registers-csrs"><a class="anchor" href="#control-and-status-registers-csrs"></a><a class="link" href="#control-and-status-registers-csrs">Control and Status Registers (CSRs)</a></h3>
-<div class="paragraph">
-<p>CSRs, accessed via AXI4-Lite, configure the engine and report status.
-Key registers control global enable/disable (CTRL), region
-size/alignment (LOG_REGION_SIZE), 56-bit base address (LOG_REGION_ADDR),
-UART target (LOG_WRITE_ADDR), and per-log-entry control and length
-(LOG_CTRL[0:15]). Interrupt registers (INTR_STATUS/ENABLE/TEST) enable
-robust error detection and error recovery.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="round-robin-arbiter"><a class="anchor" href="#round-robin-arbiter"></a><a class="link" href="#round-robin-arbiter">Round Robin Arbiter</a></h3>
-<div class="paragraph">
-<p>A <code>prim_arbiter_tree</code>-based round robin arbiter ensures fair,
-starvation-free access to DMA for all 16 log entries. It systematically
-selects among entries with non-zero lengths, preventing monopolization
-and balancing throughput regardless of data rates across logs. Tight
-integration with the fetch FSM ensures smooth flow.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="log-fetch-fsm"><a class="anchor" href="#log-fetch-fsm"></a><a class="link" href="#log-fetch-fsm">Log Fetch FSM</a></h3>
-<div class="paragraph">
-<p>The fetch FSM coordinates DMA reads based on arbitration results and
-FIFO space. It cycles through idle, request, and wait states: checking
-for ready entries and FIFO space, issuing AXI4-Lite read requests, and
-handling responses with word counters. Addresses are computed as
-<code>log_region_addr + (log_region_size/16) * log_index + word_offset</code>,
-supporting efficient, aligned memory access. Progress tracking and FIFO
-handoff ensure reliable completion and seamless operation.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="rdata-fifo"><a class="anchor" href="#rdata-fifo"></a><a class="link" href="#rdata-fifo">RDATA FIFO</a></h3>
-<div class="paragraph">
-<p>A configurable-depth (default 4), synchronous 64-bit FIFO decouples
-memory reads from UART writes, smoothing timing mismatches. All-zero
-outputs when empty help security. Ready/valid handshakes on both sides
-ensure safe, lossless transfer through variable system conditions.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="log-write-fsm"><a class="anchor" href="#log-write-fsm"></a><a class="link" href="#log-write-fsm">Log Write FSM</a></h3>
-<div class="paragraph">
-<p>This FSM manages conversion from 64-bit log words to 8-bit UART writes.
-It only advances when UART is ready and FIFO data is available,
-sequencing through idle, request, and wait states. Byte pointers extract
-one byte at a time; FIFO is accessed every eight bytes. A completion
-signal updates registers, enabling accurate monitoring and coordination.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="data-flow-and-control-path"><a class="anchor" href="#data-flow-and-control-path"></a><a class="link" href="#data-flow-and-control-path">Data Flow and Control Path</a></h3>
-
-</div>
-<div class="sect2">
-<h3 id="data-flow"><a class="anchor" href="#data-flow"></a><a class="link" href="#data-flow">Data Flow</a></h3>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>Software configures memory region, UART address, and enables engine.</p>
-</li>
-<li>
-<p>Non-zero LOG_CTRL[i] length triggers log transfer.</p>
-</li>
-<li>
-<p>Arbiter selects a log entry.</p>
-</li>
-<li>
-<p>Fetch FSM performs memory reads.</p>
-</li>
-<li>
-<p>Data is buffered in RDATA FIFO.</p>
-</li>
-<li>
-<p>Write FSM sends bytes to UART.</p>
-</li>
-<li>
-<p>Transfer completion clears the length register.</p>
-</li>
-</ol>
-</div>
-</div>
-<div class="sect2">
-<h3 id="control-path"><a class="anchor" href="#control-path"></a><a class="link" href="#control-path">Control Path</a></h3>
-<div class="ulist">
-<ul>
-<li>
-<p>Global enable gates operation.</p>
-</li>
-<li>
-<p>Fetch/write FSMs are coordinated via FIFO ready/valid signals.</p>
-</li>
-<li>
-<p>AXI4-Lite errors trigger interrupts.</p>
-</li>
-<li>
-<p>Completion updates registers and advances arbitration.</p>
-</li>
-</ul>
-</div>
-</div>
-<div class="sect2">
-<h3 id="clocking-and-reset-methodology"><a class="anchor" href="#clocking-and-reset-methodology"></a><a class="link" href="#clocking-and-reset-methodology">Clocking and Reset Methodology</a></h3>
-<div class="paragraph">
-<p>The engine runs in one clock domain (<code>clk_i</code>) shared by all logic and
-AXI4-Lite interfaces.</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>Reset (<code>rst_ni</code>) is active-low async, sync deassertion.</p>
-</li>
-<li>
-<p>Global reset clears FSMs, counters, and logic.</p>
-</li>
-<li>
-<p>FIFO can be cleared independently when the engine is disabled.</p>
-</li>
-<li>
-<p>On reset: FSMs idle, counters zeroed, FIFO flushed, registers
-preserved (except control fields).</p>
-</li>
-</ul>
-</div>
-</div>
-<div class="sect2">
-<h3 id="memory-interface-protocol"><a class="anchor" href="#memory-interface-protocol"></a><a class="link" href="#memory-interface-protocol">Memory Interface Protocol</a></h3>
-<div class="paragraph">
-<p><strong>Log Fetch</strong>: 64-bit AXI4-Lite read, single-beat transfers, errors
-signaled via LOG_FETCH_ERR.</p>
+<p><code>LOG_REGION_ADDR</code> specifies the start of a shared region. <code>LOG_REGION_SIZE</code>
+specifies its total size in bytes. Use an 8-byte-aligned base and a nonzero
+size aligned to 128 bytes, up to 512 KiB. The region is divided equally
+among 16 slots; it does not provide independently sized buffers.</p>
 </div>
 <div class="paragraph">
-<p><strong>Log Write</strong>: 32-bit AXI4-Lite write carrying one byte in bits [7:0], with
-all four strobes set, errors signaled via LOG_WRITE_ERR.</p>
+<p>For supported settings, slot <code>i</code> starts at:</p>
 </div>
+<div class="listingblock">
+<div class="content">
+<pre>LOG_REGION_ADDR + (LOG_REGION_SIZE / 16) * i</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A nonzero <code>LOG_CTRL[i].LOG_LEN</code> makes that slot pending. The length is in
+bytes and remains the submitted value until hardware clears it on completion;
+it is not a bytes-remaining counter. Keep the buffer and its configuration
+unchanged until completion.</p>
+</div>
+<div class="paragraph">
+<p>For oversized regions, hardware clamps the effective size to 512 KiB.
+For a size not aligned to 128 bytes, it divides the effective size by 16
+and rounds each slot&#8217;s transferable capacity down to a multiple of eight.
+Requested lengths above that capacity are clamped. A zero-capacity slot
+completes without a transfer. Software should validate size and length
+instead of relying on truncation.</p>
+</div>
+<span id="round-robin-arbiter"></span>
+<span id="log-fetch-fsm"></span>
+<span id="rdata-fifo"></span>
+<span id="log-write-fsm"></span>
+<span id="data-flow-and-control-path"></span>
+<span id="data-flow"></span>
+<span id="control-path"></span>
+<span id="memory-interface-protocol"></span>
+<span id="performance-characteristics"></span>
+<span id="design-trade-offs"></span>
 </div>
 <div class="sect2">
-<h3 id="performance-characteristics"><a class="anchor" href="#performance-characteristics"></a><a class="link" href="#performance-characteristics">Performance Characteristics</a></h3>
-<div class="ulist">
-<ul>
-<li>
-<p><strong>Fetch Bandwidth</strong>: Limited by AXI4-Lite single transfers.</p>
-</li>
-<li>
-<p><strong>Write Throughput</strong>: Determined by UART ready signal.</p>
-</li>
-<li>
-<p><strong>Latency</strong>: Minimal, due to light buffering.</p>
-</li>
-<li>
-<p><strong>Fairness</strong>: Maintained by round-robin selection.</p>
-</li>
-</ul>
+<h3 id="log-engine-transfer"><a class="anchor" href="#log-engine-transfer"></a><a class="link" href="#log-engine-transfer">Arbitration and Data Transfer</a></h3>
+<div class="paragraph">
+<p>The arbiter selects among nonzero lengths and advances when the selected
+message completes. Scheduling is per message, not per byte. A stalled UART
+or bus response holds up that message and all later entries; round-robin
+selection does not impose a completion-time bound.</p>
 </div>
+<div class="paragraph">
+<p>The fetch FSM issues single-beat 64-bit reads and waits for each response.
+A <code>FIFO_DEPTH</code>-entry FIFO buffers the returned words. The final read still
+fetches a full eight-byte word when the message length is not a multiple of
+eight, so the whole fetched word must be readable within the slot.</p>
+</div>
+<div class="paragraph">
+<p>The write FSM sends bytes in increasing address order, least-significant
+byte first within each fetched word. It waits for FIFO data and
+<code>uart_tx_ready_i</code>, writes the character in data bits <code>[7:0]</code> to
+<code>LOG_WRITE_ADDR</code>, then waits for the response. The current implementation
+sets all four write strobes; the UART target must accept that access.</p>
+</div>
+<div class="paragraph">
+<p>Completion clears the selected length and advances arbitration. It means
+the write responses have returned, not that the UART has finished shifting
+the final character onto its serial output.</p>
+</div>
+<span id="interrupt-sources"></span>
 </div>
 <div class="sect2">
-<h3 id="design-trade-offs"><a class="anchor" href="#design-trade-offs"></a><a class="link" href="#design-trade-offs">Design Trade-offs</a></h3>
-<div class="ulist">
-<ul>
-<li>
-<p><em>Memory Simplicity vs. Efficiency</em>: Fixed equal partitioning eases
-logic at expense of flexibility.</p>
-</li>
-<li>
-<p><em>Throughput vs. Area</em>: Single-beat transfers are simple but limit
-bandwidth; FIFO depth is tunable.</p>
-</li>
-<li>
-<p><em>Robustness vs. Complexity</em>: Comprehensive error checking improves
-reliability at increased logic cost.</p>
-</li>
-</ul>
+<h3 id="log-engine-errors"><a class="anchor" href="#log-engine-errors"></a><a class="link" href="#log-engine-errors">Errors and Interrupts</a></h3>
+<div class="paragraph">
+<p><code>INTR_STATUS.LOG_FETCH_ERR</code> (bit 0) and <code>LOG_WRITE_ERR</code> (bit 4) latch bus
+response errors whether or not their interrupts are enabled.
+<code>INTR_ENABLE</code> masks the corresponding contributions to <code>irq_o</code>.
+Write 1 to a status bit to clear it; <code>INTR_TEST</code> can force either condition.</p>
+</div>
+<div class="paragraph">
+<p>The FSMs advance on error responses as well as successful responses. There
+is no automatic retry or per-slot success flag, and a cleared length alone
+does not prove successful delivery. Software must inspect error status and
+choose recovery appropriate to its logging requirements.</p>
+</div>
+<span id="clocking-and-reset-methodology"></span>
+</div>
+<div class="sect2">
+<h3 id="log-engine-reset"><a class="anchor" href="#log-engine-reset"></a><a class="link" href="#log-engine-reset">Reset and Disable</a></h3>
+<div class="paragraph">
+<p>All logic uses <code>clk_i</code>. Active-low <code>rst_ni</code> asynchronously resets the
+registers, state machines, counters and FIFO. Reset release timing is the
+integrator&#8217;s responsibility; the module does not synchronize it internally.</p>
+</div>
+<div class="paragraph">
+<p>Clearing <code>CTRL.EN</code> returns the fetch/write FSMs and counters to idle and
+clears the FIFO. It does not clear configuration or pending lengths, and
+it does not reset the AXI adapters. Disabling an active transfer is not a
+guaranteed drain or clean cancellation. Configure while idle; following an
+aborted transfer, reconcile outstanding bus traffic before reusing buffers
+or restarting the engine.</p>
 </div>
 </div>
 </div>
@@ -458,79 +364,238 @@ reliability at increased logic cost.</p>
 <h2 id="log-engine-interface"><a class="anchor" href="#log-engine-interface"></a><a class="link" href="#log-engine-interface">Interface</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>The OCA Log Engine provides multiple AXI4-Lite interfaces for register
-access, memory fetching, and UART communication.</p>
-</div>
-<div class="paragraph">
-<p>The engine serves 16 independent log entries, set by <code>NUM_LOG_ENTRIES</code> in <code>log_engine_pkg</code>.</p>
-</div>
-<div class="paragraph">
 <p>The parameters and ports of <code>log_engine</code> are listed in <a href="../../../../../ocah-docs/latest/rtl-modules-reference/ip/log_engine/log_engine.html" class="xref page">log_engine</a>.</p>
 </div>
-<div class="sect2">
-<h3 id="dma-interface"><a class="anchor" href="#dma-interface"></a><a class="link" href="#dma-interface">DMA Interface</a></h3>
+<span id="configuration-parameters"></span>
+<table id="log-engine-configuration-parameters-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. Log-engine configuration</caption>
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 16.6666%;">
+<col style="width: 50.0001%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Setting</th>
+<th class="tableblock halign-left valign-top">Value</th>
+<th class="tableblock halign-left valign-top">Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>FIFO_DEPTH</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 by default</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Module parameter: buffered 64-bit words.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>NUM_LOG_ENTRIES</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Package constant and generated register inventory.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Maximum region</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Package constant <code>MAX_LOG_REGION_SIZE</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fetch address/data</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">56/64 bits</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Package types.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Write address/data</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32/32 bits</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Package types.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CSR data</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 bits</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Register interface; address width comes from the generated map.</p></td>
+</tr>
+</tbody>
+</table>
+<span id="signal-interfaces"></span>
+<span id="global-interface"></span>
 <div class="paragraph">
-<p>The DMA interface provides flow control coordination with the UART
-transmitter.</p>
+<p>A shared <code>clk_i</code> and active-low asynchronous <code>rst_ni</code> drive all interfaces and
+internal logic. The CSR AXI4-Lite slave (<code>csr_axil_req_i</code> / <code>csr_axil_resp_o</code>)
+carries register traffic; two AXI4-Lite initiators carry memory reads
+(<code>log_fetch_axil_req_o</code> / <code>log_fetch_axil_resp_i</code>) and UART writes
+(<code>log_write_axil_req_o</code> / <code>log_write_axil_resp_i</code>). Both initiator adapters use
+<code>PROT = 3&#8217;b010</code> (non-secure, unprivileged data) and allow one outstanding
+request each. They issue no bursts.</p>
 </div>
-</div>
-<div class="sect2">
-<h3 id="flow-control-operation"><a class="anchor" href="#flow-control-operation"></a><a class="link" href="#flow-control-operation">Flow Control Operation:</a></h3>
-<div class="ulist">
-<ul>
-<li>
-<p>The log write FSM waits for <code>uart_tx_ready_i</code> assertion before
-initiating write transfers</p>
-</li>
-<li>
-<p>This prevents overwhelming the UART transmitter and maintains data
-integrity</p>
-</li>
-<li>
-<p>Ready signal typically indicates UART FIFO has space for additional
-characters</p>
-</li>
-</ul>
-</div>
-</div>
-<div class="sect2">
-<h3 id="interrupt-interface"><a class="anchor" href="#interrupt-interface"></a><a class="link" href="#interrupt-interface">Interrupt Interface</a></h3>
+<span id="dma-interface"></span>
+<span id="flow-control-operation"></span>
 <div class="paragraph">
-<p>The interrupt interface provides error signaling to the system.</p>
+<p><code>uart_tx_ready_i</code> permits the write FSM to request the next character transfer.
+The UART integration supplies readiness in the engine&#8217;s clock domain and
+must account for writes already accepted by the bus. See <a href="#log-engine-transfer">Arbitration and Data Transfer</a>
+for the write data and strobe behavior.</p>
 </div>
-</div>
-<div class="sect2">
-<h3 id="interrupt-sources"><a class="anchor" href="#interrupt-sources"></a><a class="link" href="#interrupt-sources">Interrupt Sources:</a></h3>
-<div class="ulist">
-<ul>
-<li>
-<p><strong>LOG_FETCH_ERR</strong>: AXI4-Lite log fetch bus returned error response</p>
-</li>
-<li>
-<p><strong>LOG_WRITE_ERR</strong>: AXI4-Lite log write bus returned error response</p>
-</li>
-</ul>
-</div>
+<span id="interrupt-interface"></span>
 <div class="paragraph">
-<p><strong>Interrupt Control:</strong> * Individual enable bits in INTR_ENABLE register *
-Status bits in INTR_STATUS register (write-1-to-clear) * Test capability
-via INTR_TEST register</p>
-</div>
+<p><code>irq_o</code> is the active-high OR of enabled, latched fetch and write error status.</p>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="log-engine-memory-map"><a class="anchor" href="#log-engine-memory-map"></a><a class="link" href="#log-engine-memory-map">Memory Map</a></h2>
+<h2 id="log-engine-programming"><a class="anchor" href="#log-engine-programming"></a><a class="link" href="#log-engine-programming">Programming</a></h2>
 <div class="sectionbody">
+<span id="simple-log-transfer"></span>
 <div class="sect2">
-<h3 id="overview-3"><a class="anchor" href="#overview-3"></a><a class="link" href="#overview-3">Overview</a></h3>
-<div class="paragraph">
-<p>The Log Engine provides a comprehensive register interface for
-configuration, control, and status monitoring. All registers are
-accessible via a 32-bit AXI4-Lite interface and follow standard
-read/write access patterns. The register map is organized into logical
-groups for ease of use and programming.</p>
+<h3 id="log-engine-setup"><a class="anchor" href="#log-engine-setup"></a><a class="link" href="#log-engine-setup">Configure the Engine</a></h3>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Start from reset or an idle engine with all pending lengths clear.
+Clear <code>CTRL.EN</code> before changing shared configuration.</p>
+</li>
+<li>
+<p>Allocate a readable region with an 8-byte-aligned base and a size that
+is a multiple of 128 bytes, no larger than 512 KiB.</p>
+</li>
+<li>
+<p>Write <code>LOG_REGION_SIZE</code> and both halves of <code>LOG_REGION_ADDR</code>. Only address
+bits <code>[55:0]</code> are implemented; bits <code>[63:56]</code> are reserved zero.</p>
+</li>
+<li>
+<p>Set <code>LOG_WRITE_ADDR</code> to the UART transmit register and configure the UART
+and its readiness path.</p>
+</li>
+<li>
+<p>Clear stale error status by writing <code>0x11</code> to <code>INTR_STATUS</code>. If required,
+write <code>0x11</code> to <code>INTR_ENABLE</code> and configure the receiving interrupt controller.</p>
+</li>
+<li>
+<p>Set <code>CTRL.EN = 1</code>.</p>
+</li>
+</ol>
 </div>
+<div class="paragraph">
+<p>For a 4 KiB region, each of the 16 slots has 256 bytes. Slot 0 begins at
+the region base, slot 1 at base+256, and so on. Use the system memory map
+for actual memory, engine and UART addresses.</p>
+</div>
+<span id="multiple-entry-management"></span>
+</div>
+<div class="sect2">
+<h3 id="log-engine-submit"><a class="anchor" href="#log-engine-submit"></a><a class="link" href="#log-engine-submit">Submit and Complete a Message</a></h3>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Wait for <code>LOG_CTRL[i].LOG_LEN</code> to become zero before reusing slot <code>i</code>.</p>
+</li>
+<li>
+<p>Write the message into that slot. Keep its length within the slot capacity,
+and make the complete final fetch word readable.</p>
+</li>
+<li>
+<p>Make the data visible to the engine using the platform&#8217;s cache-maintenance
+and memory-ordering rules, then write the byte length to <code>LOG_CTRL[i]</code>.</p>
+</li>
+<li>
+<p>Leave the buffer and length unchanged while pending. Poll for zero with a
+timeout appropriate to UART speed and other pending messages, or use a
+software scheduling mechanism that checks completion later.</p>
+</li>
+<li>
+<p>Inspect error status before treating completion as successful. A slot
+reaching zero does not mean the UART serial transmitter is empty.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Several slots can be pending at once. Assign slots to producers or serialize
+access in software; writing a new length to an active slot is not a queueing
+operation. A zero length submits no message.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="log-engine-recovery"><a class="anchor" href="#log-engine-recovery"></a><a class="link" href="#log-engine-recovery">Handle an Error or Timeout</a></h3>
+<div class="paragraph">
+<p>Read <code>INTR_STATUS</code> to distinguish fetch and write errors, diagnose the
+memory or UART path, then clear the handled bits with write-one-to-clear.
+There is no automatic retransmission. Because status is shared, it does not
+identify which pending slot encountered the error.</p>
+</div>
+<div class="paragraph">
+<p>If progress stops, check UART readiness and outstanding bus responses.
+Do not free pending buffers solely because <code>CTRL.EN</code> was cleared;
+<a href="#log-engine-reset">Reset and Disable</a> describes the disable behavior. Recovery must account
+for any characters already sent, since restarting may duplicate output.</p>
+</div>
+<span id="overview-3"></span>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="log-engine-memory-map"><a class="anchor" href="#log-engine-memory-map"></a><a class="link" href="#log-engine-memory-map">Memory Map and Register Reference</a></h2>
+<div class="sectionbody">
+<span id="register-map"></span>
+<div class="sect2">
+<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">Memory Map</a></h3>
+<div class="paragraph">
+<p>Offsets below are relative to the Log Engine register bank. All registers
+reset to zero. The generated map gives field access and side effects.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. Log-engine register summary</caption>
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 16.6666%;">
+<col style="width: 50.0001%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Register</th>
+<th class="tableblock halign-left valign-top">Offset</th>
+<th class="tableblock halign-left valign-top">Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>CTRL</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x00</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Engine enable.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>LOG_REGION_SIZE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x04</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Total region size in bytes.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>LOG_REGION_ADDR</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x08/0x0C</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Low/high halves of the 56-bit fetch base.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>LOG_WRITE_ADDR</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x10</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UART write address.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>INTR_STATUS</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x14</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Latched fetch/write errors; write 1 to clear.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>INTR_ENABLE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x18</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Error interrupt enables.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>INTR_TEST</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x1C</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Force error status for interrupt testing.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>LOG_CTRL[i]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x40 + 4*i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Submitted byte length for slot 0–15; cleared on completion.</p></td>
+</tr>
+</tbody>
+</table>
 </div>
 <div class="sect2">
 <h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">Detailed Register Map</a></h3>
@@ -551,41 +616,41 @@ groups for ease of use and programming.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0</td><td><a href="#CTRL">CTRL</a></td><td>RW</td><td>Control Register</td></tr>
-<tr><td>0x4</td><td><a href="#LOG_REGION_SIZE">LOG_REGION_SIZE</a></td><td>RW</td><td>Log Region Size Register</td></tr>
-<tr><td>0x8</td><td><a href="#LOG_REGION_ADDR">LOG_REGION_ADDR</a></td><td>RW</td><td>Log Region Address Register</td></tr>
-<tr><td>0x10</td><td><a href="#LOG_WRITE_ADDR">LOG_WRITE_ADDR</a></td><td>RW</td><td>Log Write Address Register</td></tr>
-<tr><td>0x14</td><td><a href="#INTR_STATUS">INTR_STATUS</a></td><td>RW</td><td>Interrupt Status Register</td></tr>
-<tr><td>0x18</td><td><a href="#INTR_ENABLE">INTR_ENABLE</a></td><td>RW</td><td>Interrupt Enable Register</td></tr>
-<tr><td>0x1C</td><td><a href="#INTR_TEST">INTR_TEST</a></td><td>W</td><td>Interrupt Test Register</td></tr>
-<tr><td>0x40 - 0x7C</td><td><a href="#LOG_CTRL_16_">LOG_CTRL[16]</a></td><td>RW</td><td>Log Control Register</td></tr>
+<tr><td>0x0</td><td><a href="#log_engine-CTRL">CTRL</a></td><td>RW</td><td>Control Register</td></tr>
+<tr><td>0x4</td><td><a href="#log_engine-LOG_REGION_SIZE">LOG_REGION_SIZE</a></td><td>RW</td><td>Log Region Size Register</td></tr>
+<tr><td>0x8</td><td><a href="#log_engine-LOG_REGION_ADDR">LOG_REGION_ADDR</a></td><td>RW</td><td>Log Region Address Register</td></tr>
+<tr><td>0x10</td><td><a href="#log_engine-LOG_WRITE_ADDR">LOG_WRITE_ADDR</a></td><td>RW</td><td>Log Write Address Register</td></tr>
+<tr><td>0x14</td><td><a href="#log_engine-INTR_STATUS">INTR_STATUS</a></td><td>RW</td><td>Interrupt Status Register</td></tr>
+<tr><td>0x18</td><td><a href="#log_engine-INTR_ENABLE">INTR_ENABLE</a></td><td>RW</td><td>Interrupt Enable Register</td></tr>
+<tr><td>0x1C</td><td><a href="#log_engine-INTR_TEST">INTR_TEST</a></td><td>W</td><td>Interrupt Test Register</td></tr>
+<tr><td>0x40 - 0x7C</td><td><a href="#log_engine-LOG_CTRL_16_">LOG_CTRL[16]</a></td><td>RW</td><td>Log Control Register</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
-<h3 id="CTRL">CTRL</h3>
+<span id="CTRL"></span><h3 id="log_engine-CTRL" data-register-alias="CTRL">CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>EN</td><td>RW</td><td>0x0</td><td>Log Engine Enable. When set, enables the Log Engine. When unset, disables the<br>Log Engine and resets all FSMs, flops, and FIFOs.</td></tr>
 </table>
-<h3 id="LOG_REGION_SIZE">LOG_REGION_SIZE</h3>
+<span id="LOG_REGION_SIZE"></span><h3 id="log_engine-LOG_REGION_SIZE" data-register-alias="LOG_REGION_SIZE">LOG_REGION_SIZE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>19:0</td><td>LOG_REGION_SIZE</td><td>RW</td><td>0x0</td><td>Log region size in bytes. Supported values are at most 512 KiB and aligned<br>to 128 bytes (16 slots times the 8-byte fetch beat). If software programs a<br>larger value, RTL clamps the effective region to 512 KiB. For a value that is<br>not 128-byte aligned, RTL divides the effective region among the 16 slots and<br>rounds each slot&#x27;s transferable capacity down to complete 8-byte fetch beats.<br>A requested LOG_LEN above that capacity is clamped to the capacity.</td></tr>
 </table>
-<h3 id="LOG_REGION_ADDR">LOG_REGION_ADDR</h3>
+<span id="LOG_REGION_ADDR"></span><h3 id="log_engine-LOG_REGION_ADDR" data-register-alias="LOG_REGION_ADDR">LOG_REGION_ADDR</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:56</td><td>RESERVED</td><td>R</td><td>0x0</td><td>Reserved. Reads as zero; writes are ignored.</td></tr>
 <tr><td>55:32</td><td>LOG_REGION_ADDR_HI</td><td>RW</td><td>0x0</td><td>Log Region Start Address High. Contains fabric address bits [55:32].</td></tr>
 <tr><td>31:0</td><td>LOG_REGION_ADDR_LO</td><td>RW</td><td>0x0</td><td>Log Region Start Address Low.</td></tr>
 </table>
-<h3 id="LOG_WRITE_ADDR">LOG_WRITE_ADDR</h3>
+<span id="LOG_WRITE_ADDR"></span><h3 id="log_engine-LOG_WRITE_ADDR" data-register-alias="LOG_WRITE_ADDR">LOG_WRITE_ADDR</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>LOG_WRITE_ADDR</td><td>RW</td><td>0x0</td><td>Log Write Address. This is the address where the log data is written to.</td></tr>
 </table>
-<h3 id="INTR_STATUS">INTR_STATUS</h3>
+<span id="INTR_STATUS"></span><h3 id="log_engine-INTR_STATUS" data-register-alias="INTR_STATUS">INTR_STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -593,7 +658,7 @@ groups for ease of use and programming.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>LOG_FETCH_ERR</td><td>RW1C</td><td>0x0</td><td>Log Fetch Error Interrupt. Asserted when the bus for fetching log data returns<br>an error.</td></tr>
 </table>
-<h3 id="INTR_ENABLE">INTR_ENABLE</h3>
+<span id="INTR_ENABLE"></span><h3 id="log_engine-INTR_ENABLE" data-register-alias="INTR_ENABLE">INTR_ENABLE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -601,7 +666,7 @@ groups for ease of use and programming.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>LOG_FETCH_ERR</td><td>RW</td><td>0x0</td><td>Log Fetch Error Interrupt Enable.</td></tr>
 </table>
-<h3 id="INTR_TEST">INTR_TEST</h3>
+<span id="INTR_TEST"></span><h3 id="log_engine-INTR_TEST" data-register-alias="INTR_TEST">INTR_TEST</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -609,67 +674,12 @@ groups for ease of use and programming.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>LOG_FETCH_ERR</td><td>W 1P</td><td>0x0</td><td>Log Fetch Error Interrupt Test. Writing `1` forces the interrupt.</td></tr>
 </table>
-<h3 id="LOG_CTRL_16_">LOG_CTRL[16]</h3>
+<span id="LOG_CTRL_16_"></span><h3 id="log_engine-LOG_CTRL_16_" data-register-alias="LOG_CTRL_16_">LOG_CTRL[16]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>15:0</td><td>LOG_LEN</td><td>RW</td><td>0x0</td><td>Log Length. Writing a nonzero value representing the log length in bytes to this field<br>starts the log transfer process. There are 16 copies of this register, each representing<br>a log entry. The log entries go through round robin arbitration.</td></tr>
 </table>
-</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="log-engine-programming"><a class="anchor" href="#log-engine-programming"></a><a class="link" href="#log-engine-programming">Programming</a></h2>
-<div class="sectionbody">
-<div class="sect2">
-<h3 id="simple-log-transfer"><a class="anchor" href="#simple-log-transfer"></a><a class="link" href="#simple-log-transfer">Simple Log Transfer</a></h3>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Initialize log engine for 4KB region at 0x10000000
-// UART at 0x40001000
-
-#define LOG_ENGINE_BASE 0x50000000
-#define LOG_REGION_ADDR 0x10000000
-#define LOG_REGION_SIZE 0x1000
-#define UART_TX_ADDR    0x40001000
-
-// Disable and configure
-write32(LOG_ENGINE_BASE + 0x00, 0);          // Disable
-write32(LOG_ENGINE_BASE + 0x04, LOG_REGION_SIZE);
-write32(LOG_ENGINE_BASE + 0x08, LOG_REGION_ADDR);
-write32(LOG_ENGINE_BASE + 0x0C, 0);          // High address
-write32(LOG_ENGINE_BASE + 0x10, UART_TX_ADDR);
-write32(LOG_ENGINE_BASE + 0x18, 0x11);       // Enable error interrupts
-write32(LOG_ENGINE_BASE + 0x00, 1);          // Enable
-
-// Send 100-byte log via entry 0
-write32(LOG_ENGINE_BASE + 0x40, 100);
-
-// Wait for completion
-while (read32(LOG_ENGINE_BASE + 0x40) != 0);</code></pre>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="multiple-entry-management"><a class="anchor" href="#multiple-entry-management"></a><a class="link" href="#multiple-entry-management">Multiple Entry Management</a></h3>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Send logs via multiple entries simultaneously
-write32(LOG_ENGINE_BASE + 0x40, 50);   // Entry 0: 50 bytes
-write32(LOG_ENGINE_BASE + 0x44, 75);   // Entry 1: 75 bytes
-write32(LOG_ENGINE_BASE + 0x48, 120);  // Entry 2: 120 bytes
-
-// Check completion status
-for (int i = 0; i &lt; 3; i++) {
-    uint32_t len = read32(LOG_ENGINE_BASE + 0x40 + (i * 4));
-    if (len == 0) {
-        printf("Entry %d completed\n", i);
-    } else {
-        printf("Entry %d: %d bytes remaining\n", i, len);
-    }
-}</code></pre>
-</div>
 </div>
 </div>
 </div>

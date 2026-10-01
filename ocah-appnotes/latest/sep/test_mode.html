@@ -170,44 +170,123 @@
 </aside>
 <article class="doc">
 <h1 class="page">Test Mode Entry</h1>
+<div id="preamble">
+<div class="sectionbody">
 <div id="test-mode-entry" class="paragraph">
-<p>Chiplets shall implement a strap TEST_EN for test mode entry. TEST_EN is
-latched when SEP fuse sensing is done if SEC_DIS is not asserted.
-TEST_EN is latched on chiplet cold reset release if SEC_DIS is asserted.</p>
+<p><code>SECURE_TM</code> selects the protected configuration required for secure scan tests.
+It does not authenticate a JTAG owner or enable debug access. Lifecycle state,
+<code>SIP_DIS</code>, <code>SYS_DIS</code> and the <code>SEC_DIS</code> override determine the debug and function
+bits of <code>feat_ctrl_o</code>; <code>SECURE_TM</code> does not qualify those bits.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="entry-and-exit"><a class="anchor" href="#entry-and-exit"></a><a class="link" href="#entry-and-exit">1. Entry and Exit</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Connect the chiplet&#8217;s <code>TEST_EN</code> strap to the SEP wrapper&#8217;s
+<code>secure_tm_req_i</code>. Hold it stable through reset release, fuse sensing and the
+test session. The entry contract requires the sampled <code>SECURE_TM</code> value to
+remain asserted until chiplet cold reset ends the session; software has no
+clear operation.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. Secure test-mode sampling in the SEP wrapper</caption>
+<colgroup>
+<col style="width: 40%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Condition</th>
+<th class="tableblock halign-left valign-top">Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cold reset asserted</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Clear <code>SECURE_TM</code> to 0.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEC_DIS</code> asserted at the early capture point</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Sample the strap on the second rising clock edge after wrapper cold-reset release.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fuse-sense completion rises</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Sample the strap, including when <code>SEC_DIS</code> is asserted.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Neither sampling event</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Retain the sampled value.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The early capture counter saturates after that opportunity: asserting <code>SEC_DIS</code>
+later does not itself sample the strap. A subsequent fuse-sense completion can
+sample it again. The current wrapper loads the strap value at each sampling
+event; it is not a set-only latch. If the strap changes from 1 to 0 between
+captures, the later capture can clear <code>SECURE_TM</code> without reset. The stable-strap
+requirement is therefore necessary to meet the reset-only exit contract; that
+contract is not an unconditional hardware guarantee for a changing strap.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="protection-while-active"><a class="anchor" href="#protection-while-active"></a><a class="link" href="#protection-while-active">2. Protection While Active</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The secure-test configuration must enforce all four protections below. The
+adopter&#8217;s DFT integration remains responsible for secure-chain separation and
+command admission.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. Required secure-test protections</caption>
+<colgroup>
+<col style="width: 40%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Protected resource</th>
+<th class="tableblock halign-left valign-top">Requirement while <code>SECURE_TM=1</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Dedicated secure scan chain</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Admit test commands only through an open, feature-gated scan path. Never admit
+ dump commands. At <code>SECURE_TM=0</code>, admit no command on this chain.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Protection shadows</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Block all updates to <code>LOCKS</code>, <code>LOCKS_SPARE</code>, <code>LC_STATE</code>, <code>SIP_DIS</code> and <code>SYS_DIS</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OTP programming path</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Hold the fuse macro&#8217;s write-enable inputs inactive.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secret outputs</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Disconnect <code>CHIPLET_UID</code>, <code>SIP_UID</code>, <code>SYS_UID</code> and <code>CLASS_KEY</code> from downstream consumers.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The eFuse controller implements request blocking and masks the designated
+secret shadow outputs to zero. Masking does not erase the stored fuse or
+shadow values, and register reads retain their normal access controls. It must
+not be treated as proof that every downstream consumer has been cleared.
+These protections allow testing without exposing persistent secrets that
+cannot be erased before RMA.</p>
 </div>
 <div class="paragraph">
-<p>The latched value becomes the internal signal SECURE_TM, which can be
-cleared only by chip reset.</p>
+<p>General scan chains follow their ordinary debug gates; the dedicated secure
+chain has the additional command restrictions above. For the normative scan
+classes and access rules, see
+<a href="lifecycle_controller.html#secure-tm-vs-scandump" class="xref page"><code>secure_tm</code> and the Secure Scan Chain</a>.</p>
 </div>
-<div class="paragraph">
-<p>SECURE_TM is not an authorization signal, and no feature control bit is
-qualified by it: the debug and function groups of <code>feat_ctrl_o</code> are
-determined solely by the LC state, the DIS vectors, and the SEC_DIS
-override. SECURE_TM is instead a coercion&#8201;&#8212;&#8201;it forces the part into a
-configuration in which no secret is present and no fuse can be
-programmed. It has four uses, defined normatively in the Life Cycle
-Controller chapter, <a href="lifecycle_controller.html#secure-tm-vs-scandump" class="xref page"><code>secure_tm</code> and the Secure Scan Chain</a>:</p>
 </div>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>On the dedicated secure scan chain, a <strong>test</strong> command is admitted only
-while SECURE_TM = 1. At SECURE_TM = 0 no command is admitted on that
-chain, and a <strong>dump</strong> command is never admitted at either value.</p>
-</li>
-<li>
-<p>The shadow registers of LOCK (both the LOCKS and LOCKS_SPARE windows),
-LC_STATE, SIP_DIS, and SYS_DIS are blocked from any update.</p>
-</li>
-<li>
-<p>The fuse write-enable inputs to the fuse IP block are tied inactive.</p>
-</li>
-<li>
-<p>The secret sources (the UIDs and CLASS_KEY) are disconnected from
-downstream logic. This is what protects the secrets that cannot be
-erased before entering RMA modes.</p>
-</li>
-</ol>
 </div>
 </article>
   </div>

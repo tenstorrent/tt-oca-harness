@@ -236,7 +236,7 @@ Life Cycle Controller chapter.</p>
 <p>A match does not release the SEP reset, which stays held until fuse sensing
 completes. To boot a part whose fuse sensing does not complete, override
 <code>sep_reset_n</code> through the SEP slice of the IC_RESET TDR (see
-<a href="../dtp/jtag.html#dtp-ic-reset-overrides" class="xref page">IC_RESET Overrides</a> in the DTP chapter). The override and the token
+<a href="../dtp/clk_rst.html#dtp-ic-reset-overrides" class="xref page">IC_RESET Overrides</a> in the DTP chapter). The override and the token
 match are independent JTAG steps: the override alone releases the reset but
 leaves the life-cycle control closed, so recovering such a part for debug
 takes both.</p>

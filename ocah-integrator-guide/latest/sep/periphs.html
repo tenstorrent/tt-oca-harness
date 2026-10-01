@@ -3,8 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Fuse Controller and Lifecycle Controller :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
-    <meta name="description" content="SEP OTP, lifecycle and security control, SPI, watchdog, and reset-control peripherals.">
+    <title>Peripherals :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../_/css/site.css">
     <link rel="stylesheet" href="../../../_/css/extra.css">
@@ -211,7 +210,7 @@
 <nav class="breadcrumbs" aria-label="breadcrumbs">
   <ul>
     <li><a href="../index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></li>
-    <li><a href="periphs.html">Fuse Controller and Lifecycle Controller</a></li>
+    <li><a href="periphs.html">Peripherals</a></li>
   </ul>
 </nav>
 </div>
@@ -220,65 +219,45 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<h1 class="page">Fuse Controller and Lifecycle Controller</h1>
-<div class="paragraph">
-<p>The SEP integrates an OTP fuse controller, a peripheral subsystem, a SPI host,
-a watchdog timer, and software-controlled reset domains.</p>
+<h1 class="page">Peripherals</h1>
+<div id="sep-peripherals" class="paragraph">
+<p>SEP peripherals provide data movement, mailboxes, external I/O and watchdog services.
+Reset control is described in Clocks and Resets; OTP and lifecycle controls
+are described in Security and Lifecycle.</p>
 </div>
-<span id="fuse-controller-otp-fuse-controller-otp"></span>
-<span id="fuse-fields"></span>
-<span id="anti-rollback-counter-arbc-anti-rollback-counter-arbc"></span>
-<span id="rtl-integration"></span>
 <div class="ulist">
 <ul>
 <li>
-<p><a href="otp_fuse_controller.html" class="xref page">OTP Fuse Controller</a></p>
+<p><a href="dma.html" class="xref page">Direct Memory Access (DMA)</a></p>
 </li>
-</ul>
-</div>
-<span id="peripheral-subsystem"></span>
-<div class="ulist">
-<ul>
+<li>
+<p><a href="mailbox.html" class="xref page">Mailboxes</a></p>
+</li>
 <li>
 <p><a href="peripheral_subsystem.html" class="xref page">Peripheral Subsystem</a></p>
 </li>
-</ul>
-</div>
-<span id="serial-peripheral-interface-spi-serial-peripheral-interface-spi"></span>
-<span id="spi-use-cases"></span>
-<span id="features"></span>
-<div class="ulist">
-<ul>
 <li>
 <p><a href="spi.html" class="xref page">Serial Peripheral Interface (SPI)</a></p>
 </li>
-</ul>
-</div>
-<span id="watchdog-timer-wdt-watchdog-timer-wdt"></span>
-<div class="ulist">
-<ul>
 <li>
 <p><a href="watchdog.html" class="xref page">Watchdog Timer (WDT)</a></p>
 </li>
 </ul>
 </div>
+<span id="fuse-controller-otp-fuse-controller-otp"></span>
+<span id="fuse-fields"></span>
+<span id="anti-rollback-counter-arbc-anti-rollback-counter-arbc"></span>
+<span id="rtl-integration"></span>
+<span id="peripheral-subsystem"></span>
+<span id="serial-peripheral-interface-spi-serial-peripheral-interface-spi"></span>
+<span id="spi-use-cases"></span>
+<span id="features"></span>
+<span id="watchdog-timer-wdt-watchdog-timer-wdt"></span>
 <span id="sep-reset-controller"></span>
 <span id="sep-trng-reset"></span>
-<div class="ulist">
-<ul>
-<li>
-<p><a href="reset_controller.html" class="xref page">SEP Reset Controller</a></p>
-</li>
-<li>
-<p><a href="token_processing.html" class="xref page">Token Processing</a></p>
-</li>
-<li>
-<p><a href="security_disable.html" class="xref page">Security Disable</a></p>
-</li>
-<li>
-<p><a href="lifecycle_controller.html" class="xref page">Life Cycle Controller</a></p>
-</li>
-</ul>
+<div class="paragraph">
+<p>For related controls, see <a href="security.html" class="xref page">Security and Lifecycle</a> and
+<a href="clk_rst.html" class="xref page">Clocks and Resets</a>.</p>
 </div>
 </article>
   </div>

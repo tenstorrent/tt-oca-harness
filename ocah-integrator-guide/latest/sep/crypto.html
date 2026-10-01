@@ -224,51 +224,30 @@
 <div id="preamble">
 <div class="sectionbody">
 <div id="cryptographic-subsystem" class="paragraph">
-<p>The cryptographic subsystem is composed of hardware and software. The
-hardware subsystem has a number of accelerators interconnected by two
-distinct buses:</p>
+<p>The cryptographic accelerators use separate paths for data and secret keys:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p>AXI4 data and CSR bus</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Mastered by the SEP system fabric</p>
-</li>
-</ul>
-</div>
+<p>The SEP system fabric drives the AXI4 data and CSR bus.</p>
 </li>
 <li>
-<p>AXI4-lite secret key buses</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Mastered by Key Manager</p>
-</li>
-</ul>
-</div>
+<p>Key Manager drives the AXI4-Lite secret-key buses.</p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
-<p>Apart from the Adams Bridge, a Post-Quantum Cryptography (PQC) accelerator vendored
-from Caliptra, the subsystem’s hardware components are modified versions
-of the OpenTitan components, and the firmware is also based on the
+<p>The accelerators are derived from OpenTitan, except for the Adams Bridge
+post-quantum accelerator from Caliptra. The firmware is based on the
 <a href="https://opentitan.org/book/doc/security/cryptolib/cryptolib_api.html">OpenTitan
-cryptographic library</a>. Generated PeakRDL maps for the Key Manager,
-entropy source, and the other crypto CSRs are included in
-the <a href="memory_map.html#sep-detailed-register-map" class="xref page">Detailed Register Map</a>.</p>
+cryptographic library</a>. Each block&#8217;s reference page includes its available
+register maps; the <a href="memory_map.html#sep-detailed-register-map" class="xref page">Detailed Register Map</a> links to those pages.</p>
 </div>
 <div class="paragraph">
-<p>The primary modifications to the hardware is the separation of the key
-and data bus interfaces and the switch from TL-UL interface protocol to
-AXI4-lite. In OpenTitan, keys are transferred from the Key Manager to
-the Cryptographic accelerators via dedicated ``side loading''
-interfaces. While this does physically separate key and data transport
-it is not scalable and requires modifications to the Key Manager
-whenever a new accelerator is added to the subsystem.</p>
+<p>OCAH adds bus adapters and separate key-delivery paths to the accelerator
+wrappers. Key Manager writes keys through AXI4-Lite interfaces; the wrappers
+connect them to the accelerators' key inputs. The following sections describe
+the shared integration rules and accelerator-specific differences.</p>
 </div>
 <div class="paragraph">
 <p>Adams Bridge requires 13 SRAM macros with masking enabled (default), or 9

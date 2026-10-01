@@ -71,10 +71,9 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <path class="jtagb" d="M17,292 L97,292"/>
 <text class="t" x="14" y="282" text-anchor="start">JTAG</text>
 <rect class="core opt" x="214" y="232" width="222" height="160" rx="6"/>
-<text class="b" x="344.0" y="288" text-anchor="middle">SEP</text>
-<text class="t" x="344.0" y="308" text-anchor="middle">Security processor</text>
-<text class="s" x="344.0" y="330" text-anchor="middle">1× RV32 CPU, 1× RV32IMC</text>
-<text class="s" x="344.0" y="347" text-anchor="middle">640 KiB SRAM</text>
+<text class="b" x="344.0" y="302" text-anchor="middle">SEP</text>
+<text class="t" x="344.0" y="322" text-anchor="middle">Security processor</text>
+<text class="s" x="344.0" y="347" text-anchor="middle">1× RV32 CPU, 640 KiB SRAM</text>
 <text class="si" x="344.0" y="368" text-anchor="middle">(optional)</text>
 <rect class="core" x="502" y="232" width="278" height="160" rx="6"/>
 <text class="b" x="641.0" y="322" text-anchor="middle">SMC</text>

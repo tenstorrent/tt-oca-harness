@@ -1080,7 +1080,10 @@ asserted keeps <code>STATUS.BUSY</code> at 1 until it releases the request.</p>
 <div class="sect1">
 <h2 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">6. Memory Map</a></h2>
 <div class="sectionbody">
-<div id="ctn-memory-map" class="paragraph">
+<span id="memory-map"></span>
+<div class="sect2">
+<h3 id="ctn-memory-map"><a class="anchor" href="#ctn-memory-map"></a><a class="link" href="#ctn-memory-map">6.1. Memory Map</a></h3>
+<div class="paragraph">
 <p>The Cross Trigger Network combines the Cross Trigger Matrix (CTM) and Cross
 Trigger Port (CTP) registers into a unified address space. Its generated map
 keeps the CTP instance count and stride with the allocated apertures:</p>
@@ -1152,8 +1155,11 @@ register backs, as seen at its AXI-Lite CSR port, and
 defines them and their codes. An address above <code>0x2FF</code> matches no block and
 answers <code>DECERR</code>, with read data <code>0xBADCAB1E</code>.</p>
 </div>
+</div>
 <div class="sect2">
-<h3 id="cross-trigger-matrix-registers"><a class="anchor" href="#cross-trigger-matrix-registers"></a><a class="link" href="#cross-trigger-matrix-registers">6.1. Cross Trigger Matrix Registers</a></h3>
+<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">6.2. Detailed Register Map</a></h3>
+<div class="sect3">
+<h4 id="cross-trigger-matrix-registers"><a class="anchor" href="#cross-trigger-matrix-registers"></a><a class="link" href="#cross-trigger-matrix-registers">6.2.1. Cross Trigger Matrix Registers</a></h4>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
@@ -1171,10 +1177,10 @@ answers <code>DECERR</code>, with read data <code>0xBADCAB1E</code>.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0 - 0xC8</td><td><a href="#CT_SRC_26_.CONFIG_0">CT_SRC[26].CONFIG_0</a></td><td>RW</td><td>Cross Trigger Source Configuration - CT_Dst select mask</td></tr>
+<tr><td>0x0 - 0xC8</td><td><a href="#cross_trigger_matrix-CT_SRC_26_.CONFIG_0">CT_SRC[26].CONFIG_0</a></td><td>RW</td><td>Cross Trigger Source Configuration - CT_Dst select mask</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
-<h3 id="CT_SRC_26_.CONFIG_0">CT_SRC[26].CONFIG_0</h3>
+<span id="CT_SRC_26_.CONFIG_0"></span><h3 id="cross_trigger_matrix-CT_SRC_26_.CONFIG_0" data-register-alias="CT_SRC_26_.CONFIG_0">CT_SRC[26].CONFIG_0</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:26</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1182,8 +1188,8 @@ answers <code>DECERR</code>, with read data <code>0xBADCAB1E</code>.</p>
 </table>
 </div>
 </div>
-<div class="sect2">
-<h3 id="cross-trigger-port-registers"><a class="anchor" href="#cross-trigger-port-registers"></a><a class="link" href="#cross-trigger-port-registers">6.2. Cross Trigger Port Registers</a></h3>
+<div class="sect3">
+<h4 id="cross-trigger-port-registers"><a class="anchor" href="#cross-trigger-port-registers"></a><a class="link" href="#cross-trigger-port-registers">6.2.2. Cross Trigger Port Registers</a></h4>
 <div class="paragraph">
 <p>Each CTP window repeats the following register layout.</p>
 </div>
@@ -1200,12 +1206,12 @@ answers <code>DECERR</code>, with read data <code>0xBADCAB1E</code>.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0</td><td><a href="#CONFIG">CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
-<tr><td>0x4</td><td><a href="#STATUS">STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
-<tr><td>0x8</td><td><a href="#STRETCH_MULT">STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
+<tr><td>0x0</td><td><a href="#cross_trigger_port-CONFIG">CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
+<tr><td>0x4</td><td><a href="#cross_trigger_port-STATUS">STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
+<tr><td>0x8</td><td><a href="#cross_trigger_port-STRETCH_MULT">STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
-<h3 id="CONFIG">CONFIG</h3>
+<span id="CONFIG"></span><h3 id="cross_trigger_port-CONFIG" data-register-alias="CONFIG">CONFIG</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1213,7 +1219,7 @@ answers <code>DECERR</code>, with read data <code>0xBADCAB1E</code>.</p>
 <tr><td>1</td><td>INVERT</td><td>RW</td><td>0x0</td><td>Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling. Write it in the same access as MODE.</td></tr>
 <tr><td>0</td><td>MODE</td><td>RW</td><td>0x0</td><td>Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point. Program it once, in the same write as INVERT, from the package&#x27;s cross trigger topology, before any cross trigger matrix route selects or targets this port. While wire-OR is selected the point-to-point handshake is held idle with its request deasserted; after point-to-point is selected, the handshake ignores the CT_Req_in and CT_Ack_in pads until their synchronized levels are valid.</td></tr>
 </table>
-<h3 id="STATUS">STATUS</h3>
+<span id="STATUS"></span><h3 id="cross_trigger_port-STATUS" data-register-alias="STATUS">STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1224,7 +1230,7 @@ answers <code>DECERR</code>, with read data <code>0xBADCAB1E</code>.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
 </table>
-<h3 id="STRETCH_MULT">STRETCH_MULT</h3>
+<span id="STRETCH_MULT"></span><h3 id="cross_trigger_port-STRETCH_MULT" data-register-alias="STRETCH_MULT">STRETCH_MULT</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1232,8 +1238,8 @@ answers <code>DECERR</code>, with read data <code>0xBADCAB1E</code>.</p>
 </table>
 </div>
 </div>
-<div class="sect2">
-<h3 id="composite-network-registers"><a class="anchor" href="#composite-network-registers"></a><a class="link" href="#composite-network-registers">6.3. Composite Network Registers</a></h3>
+<div class="sect3">
+<h4 id="composite-network-registers"><a class="anchor" href="#composite-network-registers"></a><a class="link" href="#composite-network-registers">6.2.3. Composite Network Registers</a></h4>
 <div class="paragraph">
 <p>This map gives the CTM and CTP register offsets within the generated CTN
 composition. The individual block maps above give offsets within each block.</p>
@@ -1255,64 +1261,64 @@ composition. The individual block maps above give offsets within each block.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0 - 0xC8</td><td><a href="#CT_SRC_26_.CONFIG_0">CT_SRC[26].CONFIG_0</a></td><td>RW</td><td>Cross Trigger Source Configuration - CT_Dst select mask</td></tr>
-<tr><td>0x200</td><td><a href="#ctp_0_.CONFIG">ctp[0].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
-<tr><td>0x204</td><td><a href="#ctp_0_.STATUS">ctp[0].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
-<tr><td>0x208</td><td><a href="#ctp_0_.STRETCH_MULT">ctp[0].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
-<tr><td>0x210</td><td><a href="#ctp_1_.CONFIG">ctp[1].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
-<tr><td>0x214</td><td><a href="#ctp_1_.STATUS">ctp[1].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
-<tr><td>0x218</td><td><a href="#ctp_1_.STRETCH_MULT">ctp[1].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
-<tr><td>0x220</td><td><a href="#ctp_2_.CONFIG">ctp[2].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
-<tr><td>0x224</td><td><a href="#ctp_2_.STATUS">ctp[2].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
-<tr><td>0x228</td><td><a href="#ctp_2_.STRETCH_MULT">ctp[2].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
-<tr><td>0x230</td><td><a href="#ctp_3_.CONFIG">ctp[3].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
-<tr><td>0x234</td><td><a href="#ctp_3_.STATUS">ctp[3].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
-<tr><td>0x238</td><td><a href="#ctp_3_.STRETCH_MULT">ctp[3].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
-<tr><td>0x240</td><td><a href="#ctp_4_.CONFIG">ctp[4].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
-<tr><td>0x244</td><td><a href="#ctp_4_.STATUS">ctp[4].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
-<tr><td>0x248</td><td><a href="#ctp_4_.STRETCH_MULT">ctp[4].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
-<tr><td>0x250</td><td><a href="#ctp_5_.CONFIG">ctp[5].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
-<tr><td>0x254</td><td><a href="#ctp_5_.STATUS">ctp[5].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
-<tr><td>0x258</td><td><a href="#ctp_5_.STRETCH_MULT">ctp[5].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
-<tr><td>0x260</td><td><a href="#ctp_6_.CONFIG">ctp[6].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
-<tr><td>0x264</td><td><a href="#ctp_6_.STATUS">ctp[6].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
-<tr><td>0x268</td><td><a href="#ctp_6_.STRETCH_MULT">ctp[6].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
-<tr><td>0x270</td><td><a href="#ctp_7_.CONFIG">ctp[7].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
-<tr><td>0x274</td><td><a href="#ctp_7_.STATUS">ctp[7].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
-<tr><td>0x278</td><td><a href="#ctp_7_.STRETCH_MULT">ctp[7].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
-<tr><td>0x280</td><td><a href="#ctp_8_.CONFIG">ctp[8].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
-<tr><td>0x284</td><td><a href="#ctp_8_.STATUS">ctp[8].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
-<tr><td>0x288</td><td><a href="#ctp_8_.STRETCH_MULT">ctp[8].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
-<tr><td>0x290</td><td><a href="#ctp_9_.CONFIG">ctp[9].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
-<tr><td>0x294</td><td><a href="#ctp_9_.STATUS">ctp[9].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
-<tr><td>0x298</td><td><a href="#ctp_9_.STRETCH_MULT">ctp[9].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
-<tr><td>0x2A0</td><td><a href="#ctp_10_.CONFIG">ctp[10].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
-<tr><td>0x2A4</td><td><a href="#ctp_10_.STATUS">ctp[10].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
-<tr><td>0x2A8</td><td><a href="#ctp_10_.STRETCH_MULT">ctp[10].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
-<tr><td>0x2B0</td><td><a href="#ctp_11_.CONFIG">ctp[11].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
-<tr><td>0x2B4</td><td><a href="#ctp_11_.STATUS">ctp[11].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
-<tr><td>0x2B8</td><td><a href="#ctp_11_.STRETCH_MULT">ctp[11].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
-<tr><td>0x2C0</td><td><a href="#ctp_12_.CONFIG">ctp[12].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
-<tr><td>0x2C4</td><td><a href="#ctp_12_.STATUS">ctp[12].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
-<tr><td>0x2C8</td><td><a href="#ctp_12_.STRETCH_MULT">ctp[12].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
-<tr><td>0x2D0</td><td><a href="#ctp_13_.CONFIG">ctp[13].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
-<tr><td>0x2D4</td><td><a href="#ctp_13_.STATUS">ctp[13].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
-<tr><td>0x2D8</td><td><a href="#ctp_13_.STRETCH_MULT">ctp[13].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
-<tr><td>0x2E0</td><td><a href="#ctp_14_.CONFIG">ctp[14].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
-<tr><td>0x2E4</td><td><a href="#ctp_14_.STATUS">ctp[14].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
-<tr><td>0x2E8</td><td><a href="#ctp_14_.STRETCH_MULT">ctp[14].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
-<tr><td>0x2F0</td><td><a href="#ctp_15_.CONFIG">ctp[15].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
-<tr><td>0x2F4</td><td><a href="#ctp_15_.STATUS">ctp[15].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
-<tr><td>0x2F8</td><td><a href="#ctp_15_.STRETCH_MULT">ctp[15].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
+<tr><td>0x0 - 0xC8</td><td><a href="#cross_trigger_network-CT_SRC_26_.CONFIG_0">CT_SRC[26].CONFIG_0</a></td><td>RW</td><td>Cross Trigger Source Configuration - CT_Dst select mask</td></tr>
+<tr><td>0x200</td><td><a href="#cross_trigger_network-ctp_0_.CONFIG">ctp[0].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
+<tr><td>0x204</td><td><a href="#cross_trigger_network-ctp_0_.STATUS">ctp[0].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
+<tr><td>0x208</td><td><a href="#cross_trigger_network-ctp_0_.STRETCH_MULT">ctp[0].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
+<tr><td>0x210</td><td><a href="#cross_trigger_network-ctp_1_.CONFIG">ctp[1].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
+<tr><td>0x214</td><td><a href="#cross_trigger_network-ctp_1_.STATUS">ctp[1].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
+<tr><td>0x218</td><td><a href="#cross_trigger_network-ctp_1_.STRETCH_MULT">ctp[1].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
+<tr><td>0x220</td><td><a href="#cross_trigger_network-ctp_2_.CONFIG">ctp[2].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
+<tr><td>0x224</td><td><a href="#cross_trigger_network-ctp_2_.STATUS">ctp[2].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
+<tr><td>0x228</td><td><a href="#cross_trigger_network-ctp_2_.STRETCH_MULT">ctp[2].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
+<tr><td>0x230</td><td><a href="#cross_trigger_network-ctp_3_.CONFIG">ctp[3].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
+<tr><td>0x234</td><td><a href="#cross_trigger_network-ctp_3_.STATUS">ctp[3].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
+<tr><td>0x238</td><td><a href="#cross_trigger_network-ctp_3_.STRETCH_MULT">ctp[3].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
+<tr><td>0x240</td><td><a href="#cross_trigger_network-ctp_4_.CONFIG">ctp[4].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
+<tr><td>0x244</td><td><a href="#cross_trigger_network-ctp_4_.STATUS">ctp[4].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
+<tr><td>0x248</td><td><a href="#cross_trigger_network-ctp_4_.STRETCH_MULT">ctp[4].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
+<tr><td>0x250</td><td><a href="#cross_trigger_network-ctp_5_.CONFIG">ctp[5].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
+<tr><td>0x254</td><td><a href="#cross_trigger_network-ctp_5_.STATUS">ctp[5].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
+<tr><td>0x258</td><td><a href="#cross_trigger_network-ctp_5_.STRETCH_MULT">ctp[5].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
+<tr><td>0x260</td><td><a href="#cross_trigger_network-ctp_6_.CONFIG">ctp[6].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
+<tr><td>0x264</td><td><a href="#cross_trigger_network-ctp_6_.STATUS">ctp[6].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
+<tr><td>0x268</td><td><a href="#cross_trigger_network-ctp_6_.STRETCH_MULT">ctp[6].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
+<tr><td>0x270</td><td><a href="#cross_trigger_network-ctp_7_.CONFIG">ctp[7].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
+<tr><td>0x274</td><td><a href="#cross_trigger_network-ctp_7_.STATUS">ctp[7].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
+<tr><td>0x278</td><td><a href="#cross_trigger_network-ctp_7_.STRETCH_MULT">ctp[7].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
+<tr><td>0x280</td><td><a href="#cross_trigger_network-ctp_8_.CONFIG">ctp[8].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
+<tr><td>0x284</td><td><a href="#cross_trigger_network-ctp_8_.STATUS">ctp[8].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
+<tr><td>0x288</td><td><a href="#cross_trigger_network-ctp_8_.STRETCH_MULT">ctp[8].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
+<tr><td>0x290</td><td><a href="#cross_trigger_network-ctp_9_.CONFIG">ctp[9].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
+<tr><td>0x294</td><td><a href="#cross_trigger_network-ctp_9_.STATUS">ctp[9].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
+<tr><td>0x298</td><td><a href="#cross_trigger_network-ctp_9_.STRETCH_MULT">ctp[9].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
+<tr><td>0x2A0</td><td><a href="#cross_trigger_network-ctp_10_.CONFIG">ctp[10].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
+<tr><td>0x2A4</td><td><a href="#cross_trigger_network-ctp_10_.STATUS">ctp[10].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
+<tr><td>0x2A8</td><td><a href="#cross_trigger_network-ctp_10_.STRETCH_MULT">ctp[10].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
+<tr><td>0x2B0</td><td><a href="#cross_trigger_network-ctp_11_.CONFIG">ctp[11].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
+<tr><td>0x2B4</td><td><a href="#cross_trigger_network-ctp_11_.STATUS">ctp[11].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
+<tr><td>0x2B8</td><td><a href="#cross_trigger_network-ctp_11_.STRETCH_MULT">ctp[11].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
+<tr><td>0x2C0</td><td><a href="#cross_trigger_network-ctp_12_.CONFIG">ctp[12].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
+<tr><td>0x2C4</td><td><a href="#cross_trigger_network-ctp_12_.STATUS">ctp[12].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
+<tr><td>0x2C8</td><td><a href="#cross_trigger_network-ctp_12_.STRETCH_MULT">ctp[12].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
+<tr><td>0x2D0</td><td><a href="#cross_trigger_network-ctp_13_.CONFIG">ctp[13].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
+<tr><td>0x2D4</td><td><a href="#cross_trigger_network-ctp_13_.STATUS">ctp[13].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
+<tr><td>0x2D8</td><td><a href="#cross_trigger_network-ctp_13_.STRETCH_MULT">ctp[13].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
+<tr><td>0x2E0</td><td><a href="#cross_trigger_network-ctp_14_.CONFIG">ctp[14].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
+<tr><td>0x2E4</td><td><a href="#cross_trigger_network-ctp_14_.STATUS">ctp[14].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
+<tr><td>0x2E8</td><td><a href="#cross_trigger_network-ctp_14_.STRETCH_MULT">ctp[14].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
+<tr><td>0x2F0</td><td><a href="#cross_trigger_network-ctp_15_.CONFIG">ctp[15].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
+<tr><td>0x2F4</td><td><a href="#cross_trigger_network-ctp_15_.STATUS">ctp[15].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
+<tr><td>0x2F8</td><td><a href="#cross_trigger_network-ctp_15_.STRETCH_MULT">ctp[15].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
-<h3 id="CT_SRC_26_.CONFIG_0">CT_SRC[26].CONFIG_0</h3>
+<h3 id="cross_trigger_network-CT_SRC_26_.CONFIG_0" data-register-alias="CT_SRC_26_.CONFIG_0">CT_SRC[26].CONFIG_0</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:26</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>25:0</td><td>CT_DST_SELECT</td><td>RW</td><td>0x0</td><td>Selects the CT_Dst port(s) to forward on the CT_Src output<br>at this array index. Each bit corresponds to one CT_Dst<br>port, from CT_Dst[0] at bit 0 upwards. Multiple ports may<br>be selected as a trigger source. All selected source ports<br>are then OR&#x27;d together to produce the CT_Src output. Set<br>this register to all-zero to disable that output.</td></tr>
 </table>
-<h3 id="ctp_0_.CONFIG">ctp[0].CONFIG</h3>
+<span id="ctp_0_.CONFIG"></span><h3 id="cross_trigger_network-ctp_0_.CONFIG" data-register-alias="ctp_0_.CONFIG">ctp[0].CONFIG</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1320,7 +1326,7 @@ composition. The individual block maps above give offsets within each block.</p>
 <tr><td>1</td><td>INVERT</td><td>RW</td><td>0x0</td><td>Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling. Write it in the same access as MODE.</td></tr>
 <tr><td>0</td><td>MODE</td><td>RW</td><td>0x0</td><td>Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point. Program it once, in the same write as INVERT, from the package&#x27;s cross trigger topology, before any cross trigger matrix route selects or targets this port. While wire-OR is selected the point-to-point handshake is held idle with its request deasserted; after point-to-point is selected, the handshake ignores the CT_Req_in and CT_Ack_in pads until their synchronized levels are valid.</td></tr>
 </table>
-<h3 id="ctp_0_.STATUS">ctp[0].STATUS</h3>
+<span id="ctp_0_.STATUS"></span><h3 id="cross_trigger_network-ctp_0_.STATUS" data-register-alias="ctp_0_.STATUS">ctp[0].STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1331,13 +1337,13 @@ composition. The individual block maps above give offsets within each block.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
 </table>
-<h3 id="ctp_0_.STRETCH_MULT">ctp[0].STRETCH_MULT</h3>
+<span id="ctp_0_.STRETCH_MULT"></span><h3 id="cross_trigger_network-ctp_0_.STRETCH_MULT" data-register-alias="ctp_0_.STRETCH_MULT">ctp[0].STRETCH_MULT</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>15:0</td><td>STRETCH_MULT</td><td>RW</td><td>0x0</td><td>The number of clock cycles a core-side cross trigger pulse is stretched on the GPIO pin when in wire-OR mode. Whenever a core-side pulse is received, the generated GPIO pulse has a width of (STRETCH_MULT+1) clock cycles.</td></tr>
 </table>
-<h3 id="ctp_1_.CONFIG">ctp[1].CONFIG</h3>
+<span id="ctp_1_.CONFIG"></span><h3 id="cross_trigger_network-ctp_1_.CONFIG" data-register-alias="ctp_1_.CONFIG">ctp[1].CONFIG</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1345,7 +1351,7 @@ composition. The individual block maps above give offsets within each block.</p>
 <tr><td>1</td><td>INVERT</td><td>RW</td><td>0x0</td><td>Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling. Write it in the same access as MODE.</td></tr>
 <tr><td>0</td><td>MODE</td><td>RW</td><td>0x0</td><td>Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point. Program it once, in the same write as INVERT, from the package&#x27;s cross trigger topology, before any cross trigger matrix route selects or targets this port. While wire-OR is selected the point-to-point handshake is held idle with its request deasserted; after point-to-point is selected, the handshake ignores the CT_Req_in and CT_Ack_in pads until their synchronized levels are valid.</td></tr>
 </table>
-<h3 id="ctp_1_.STATUS">ctp[1].STATUS</h3>
+<span id="ctp_1_.STATUS"></span><h3 id="cross_trigger_network-ctp_1_.STATUS" data-register-alias="ctp_1_.STATUS">ctp[1].STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1356,13 +1362,13 @@ composition. The individual block maps above give offsets within each block.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
 </table>
-<h3 id="ctp_1_.STRETCH_MULT">ctp[1].STRETCH_MULT</h3>
+<span id="ctp_1_.STRETCH_MULT"></span><h3 id="cross_trigger_network-ctp_1_.STRETCH_MULT" data-register-alias="ctp_1_.STRETCH_MULT">ctp[1].STRETCH_MULT</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>15:0</td><td>STRETCH_MULT</td><td>RW</td><td>0x0</td><td>The number of clock cycles a core-side cross trigger pulse is stretched on the GPIO pin when in wire-OR mode. Whenever a core-side pulse is received, the generated GPIO pulse has a width of (STRETCH_MULT+1) clock cycles.</td></tr>
 </table>
-<h3 id="ctp_2_.CONFIG">ctp[2].CONFIG</h3>
+<span id="ctp_2_.CONFIG"></span><h3 id="cross_trigger_network-ctp_2_.CONFIG" data-register-alias="ctp_2_.CONFIG">ctp[2].CONFIG</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1370,7 +1376,7 @@ composition. The individual block maps above give offsets within each block.</p>
 <tr><td>1</td><td>INVERT</td><td>RW</td><td>0x0</td><td>Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling. Write it in the same access as MODE.</td></tr>
 <tr><td>0</td><td>MODE</td><td>RW</td><td>0x0</td><td>Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point. Program it once, in the same write as INVERT, from the package&#x27;s cross trigger topology, before any cross trigger matrix route selects or targets this port. While wire-OR is selected the point-to-point handshake is held idle with its request deasserted; after point-to-point is selected, the handshake ignores the CT_Req_in and CT_Ack_in pads until their synchronized levels are valid.</td></tr>
 </table>
-<h3 id="ctp_2_.STATUS">ctp[2].STATUS</h3>
+<span id="ctp_2_.STATUS"></span><h3 id="cross_trigger_network-ctp_2_.STATUS" data-register-alias="ctp_2_.STATUS">ctp[2].STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1381,13 +1387,13 @@ composition. The individual block maps above give offsets within each block.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
 </table>
-<h3 id="ctp_2_.STRETCH_MULT">ctp[2].STRETCH_MULT</h3>
+<span id="ctp_2_.STRETCH_MULT"></span><h3 id="cross_trigger_network-ctp_2_.STRETCH_MULT" data-register-alias="ctp_2_.STRETCH_MULT">ctp[2].STRETCH_MULT</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>15:0</td><td>STRETCH_MULT</td><td>RW</td><td>0x0</td><td>The number of clock cycles a core-side cross trigger pulse is stretched on the GPIO pin when in wire-OR mode. Whenever a core-side pulse is received, the generated GPIO pulse has a width of (STRETCH_MULT+1) clock cycles.</td></tr>
 </table>
-<h3 id="ctp_3_.CONFIG">ctp[3].CONFIG</h3>
+<span id="ctp_3_.CONFIG"></span><h3 id="cross_trigger_network-ctp_3_.CONFIG" data-register-alias="ctp_3_.CONFIG">ctp[3].CONFIG</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1395,7 +1401,7 @@ composition. The individual block maps above give offsets within each block.</p>
 <tr><td>1</td><td>INVERT</td><td>RW</td><td>0x0</td><td>Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling. Write it in the same access as MODE.</td></tr>
 <tr><td>0</td><td>MODE</td><td>RW</td><td>0x0</td><td>Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point. Program it once, in the same write as INVERT, from the package&#x27;s cross trigger topology, before any cross trigger matrix route selects or targets this port. While wire-OR is selected the point-to-point handshake is held idle with its request deasserted; after point-to-point is selected, the handshake ignores the CT_Req_in and CT_Ack_in pads until their synchronized levels are valid.</td></tr>
 </table>
-<h3 id="ctp_3_.STATUS">ctp[3].STATUS</h3>
+<span id="ctp_3_.STATUS"></span><h3 id="cross_trigger_network-ctp_3_.STATUS" data-register-alias="ctp_3_.STATUS">ctp[3].STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1406,13 +1412,13 @@ composition. The individual block maps above give offsets within each block.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
 </table>
-<h3 id="ctp_3_.STRETCH_MULT">ctp[3].STRETCH_MULT</h3>
+<span id="ctp_3_.STRETCH_MULT"></span><h3 id="cross_trigger_network-ctp_3_.STRETCH_MULT" data-register-alias="ctp_3_.STRETCH_MULT">ctp[3].STRETCH_MULT</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>15:0</td><td>STRETCH_MULT</td><td>RW</td><td>0x0</td><td>The number of clock cycles a core-side cross trigger pulse is stretched on the GPIO pin when in wire-OR mode. Whenever a core-side pulse is received, the generated GPIO pulse has a width of (STRETCH_MULT+1) clock cycles.</td></tr>
 </table>
-<h3 id="ctp_4_.CONFIG">ctp[4].CONFIG</h3>
+<span id="ctp_4_.CONFIG"></span><h3 id="cross_trigger_network-ctp_4_.CONFIG" data-register-alias="ctp_4_.CONFIG">ctp[4].CONFIG</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1420,7 +1426,7 @@ composition. The individual block maps above give offsets within each block.</p>
 <tr><td>1</td><td>INVERT</td><td>RW</td><td>0x0</td><td>Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling. Write it in the same access as MODE.</td></tr>
 <tr><td>0</td><td>MODE</td><td>RW</td><td>0x0</td><td>Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point. Program it once, in the same write as INVERT, from the package&#x27;s cross trigger topology, before any cross trigger matrix route selects or targets this port. While wire-OR is selected the point-to-point handshake is held idle with its request deasserted; after point-to-point is selected, the handshake ignores the CT_Req_in and CT_Ack_in pads until their synchronized levels are valid.</td></tr>
 </table>
-<h3 id="ctp_4_.STATUS">ctp[4].STATUS</h3>
+<span id="ctp_4_.STATUS"></span><h3 id="cross_trigger_network-ctp_4_.STATUS" data-register-alias="ctp_4_.STATUS">ctp[4].STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1431,13 +1437,13 @@ composition. The individual block maps above give offsets within each block.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
 </table>
-<h3 id="ctp_4_.STRETCH_MULT">ctp[4].STRETCH_MULT</h3>
+<span id="ctp_4_.STRETCH_MULT"></span><h3 id="cross_trigger_network-ctp_4_.STRETCH_MULT" data-register-alias="ctp_4_.STRETCH_MULT">ctp[4].STRETCH_MULT</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>15:0</td><td>STRETCH_MULT</td><td>RW</td><td>0x0</td><td>The number of clock cycles a core-side cross trigger pulse is stretched on the GPIO pin when in wire-OR mode. Whenever a core-side pulse is received, the generated GPIO pulse has a width of (STRETCH_MULT+1) clock cycles.</td></tr>
 </table>
-<h3 id="ctp_5_.CONFIG">ctp[5].CONFIG</h3>
+<span id="ctp_5_.CONFIG"></span><h3 id="cross_trigger_network-ctp_5_.CONFIG" data-register-alias="ctp_5_.CONFIG">ctp[5].CONFIG</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1445,7 +1451,7 @@ composition. The individual block maps above give offsets within each block.</p>
 <tr><td>1</td><td>INVERT</td><td>RW</td><td>0x0</td><td>Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling. Write it in the same access as MODE.</td></tr>
 <tr><td>0</td><td>MODE</td><td>RW</td><td>0x0</td><td>Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point. Program it once, in the same write as INVERT, from the package&#x27;s cross trigger topology, before any cross trigger matrix route selects or targets this port. While wire-OR is selected the point-to-point handshake is held idle with its request deasserted; after point-to-point is selected, the handshake ignores the CT_Req_in and CT_Ack_in pads until their synchronized levels are valid.</td></tr>
 </table>
-<h3 id="ctp_5_.STATUS">ctp[5].STATUS</h3>
+<span id="ctp_5_.STATUS"></span><h3 id="cross_trigger_network-ctp_5_.STATUS" data-register-alias="ctp_5_.STATUS">ctp[5].STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1456,13 +1462,13 @@ composition. The individual block maps above give offsets within each block.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
 </table>
-<h3 id="ctp_5_.STRETCH_MULT">ctp[5].STRETCH_MULT</h3>
+<span id="ctp_5_.STRETCH_MULT"></span><h3 id="cross_trigger_network-ctp_5_.STRETCH_MULT" data-register-alias="ctp_5_.STRETCH_MULT">ctp[5].STRETCH_MULT</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>15:0</td><td>STRETCH_MULT</td><td>RW</td><td>0x0</td><td>The number of clock cycles a core-side cross trigger pulse is stretched on the GPIO pin when in wire-OR mode. Whenever a core-side pulse is received, the generated GPIO pulse has a width of (STRETCH_MULT+1) clock cycles.</td></tr>
 </table>
-<h3 id="ctp_6_.CONFIG">ctp[6].CONFIG</h3>
+<span id="ctp_6_.CONFIG"></span><h3 id="cross_trigger_network-ctp_6_.CONFIG" data-register-alias="ctp_6_.CONFIG">ctp[6].CONFIG</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1470,7 +1476,7 @@ composition. The individual block maps above give offsets within each block.</p>
 <tr><td>1</td><td>INVERT</td><td>RW</td><td>0x0</td><td>Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling. Write it in the same access as MODE.</td></tr>
 <tr><td>0</td><td>MODE</td><td>RW</td><td>0x0</td><td>Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point. Program it once, in the same write as INVERT, from the package&#x27;s cross trigger topology, before any cross trigger matrix route selects or targets this port. While wire-OR is selected the point-to-point handshake is held idle with its request deasserted; after point-to-point is selected, the handshake ignores the CT_Req_in and CT_Ack_in pads until their synchronized levels are valid.</td></tr>
 </table>
-<h3 id="ctp_6_.STATUS">ctp[6].STATUS</h3>
+<span id="ctp_6_.STATUS"></span><h3 id="cross_trigger_network-ctp_6_.STATUS" data-register-alias="ctp_6_.STATUS">ctp[6].STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1481,13 +1487,13 @@ composition. The individual block maps above give offsets within each block.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
 </table>
-<h3 id="ctp_6_.STRETCH_MULT">ctp[6].STRETCH_MULT</h3>
+<span id="ctp_6_.STRETCH_MULT"></span><h3 id="cross_trigger_network-ctp_6_.STRETCH_MULT" data-register-alias="ctp_6_.STRETCH_MULT">ctp[6].STRETCH_MULT</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>15:0</td><td>STRETCH_MULT</td><td>RW</td><td>0x0</td><td>The number of clock cycles a core-side cross trigger pulse is stretched on the GPIO pin when in wire-OR mode. Whenever a core-side pulse is received, the generated GPIO pulse has a width of (STRETCH_MULT+1) clock cycles.</td></tr>
 </table>
-<h3 id="ctp_7_.CONFIG">ctp[7].CONFIG</h3>
+<span id="ctp_7_.CONFIG"></span><h3 id="cross_trigger_network-ctp_7_.CONFIG" data-register-alias="ctp_7_.CONFIG">ctp[7].CONFIG</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1495,7 +1501,7 @@ composition. The individual block maps above give offsets within each block.</p>
 <tr><td>1</td><td>INVERT</td><td>RW</td><td>0x0</td><td>Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling. Write it in the same access as MODE.</td></tr>
 <tr><td>0</td><td>MODE</td><td>RW</td><td>0x0</td><td>Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point. Program it once, in the same write as INVERT, from the package&#x27;s cross trigger topology, before any cross trigger matrix route selects or targets this port. While wire-OR is selected the point-to-point handshake is held idle with its request deasserted; after point-to-point is selected, the handshake ignores the CT_Req_in and CT_Ack_in pads until their synchronized levels are valid.</td></tr>
 </table>
-<h3 id="ctp_7_.STATUS">ctp[7].STATUS</h3>
+<span id="ctp_7_.STATUS"></span><h3 id="cross_trigger_network-ctp_7_.STATUS" data-register-alias="ctp_7_.STATUS">ctp[7].STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1506,13 +1512,13 @@ composition. The individual block maps above give offsets within each block.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
 </table>
-<h3 id="ctp_7_.STRETCH_MULT">ctp[7].STRETCH_MULT</h3>
+<span id="ctp_7_.STRETCH_MULT"></span><h3 id="cross_trigger_network-ctp_7_.STRETCH_MULT" data-register-alias="ctp_7_.STRETCH_MULT">ctp[7].STRETCH_MULT</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>15:0</td><td>STRETCH_MULT</td><td>RW</td><td>0x0</td><td>The number of clock cycles a core-side cross trigger pulse is stretched on the GPIO pin when in wire-OR mode. Whenever a core-side pulse is received, the generated GPIO pulse has a width of (STRETCH_MULT+1) clock cycles.</td></tr>
 </table>
-<h3 id="ctp_8_.CONFIG">ctp[8].CONFIG</h3>
+<span id="ctp_8_.CONFIG"></span><h3 id="cross_trigger_network-ctp_8_.CONFIG" data-register-alias="ctp_8_.CONFIG">ctp[8].CONFIG</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1520,7 +1526,7 @@ composition. The individual block maps above give offsets within each block.</p>
 <tr><td>1</td><td>INVERT</td><td>RW</td><td>0x0</td><td>Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling. Write it in the same access as MODE.</td></tr>
 <tr><td>0</td><td>MODE</td><td>RW</td><td>0x0</td><td>Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point. Program it once, in the same write as INVERT, from the package&#x27;s cross trigger topology, before any cross trigger matrix route selects or targets this port. While wire-OR is selected the point-to-point handshake is held idle with its request deasserted; after point-to-point is selected, the handshake ignores the CT_Req_in and CT_Ack_in pads until their synchronized levels are valid.</td></tr>
 </table>
-<h3 id="ctp_8_.STATUS">ctp[8].STATUS</h3>
+<span id="ctp_8_.STATUS"></span><h3 id="cross_trigger_network-ctp_8_.STATUS" data-register-alias="ctp_8_.STATUS">ctp[8].STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1531,13 +1537,13 @@ composition. The individual block maps above give offsets within each block.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
 </table>
-<h3 id="ctp_8_.STRETCH_MULT">ctp[8].STRETCH_MULT</h3>
+<span id="ctp_8_.STRETCH_MULT"></span><h3 id="cross_trigger_network-ctp_8_.STRETCH_MULT" data-register-alias="ctp_8_.STRETCH_MULT">ctp[8].STRETCH_MULT</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>15:0</td><td>STRETCH_MULT</td><td>RW</td><td>0x0</td><td>The number of clock cycles a core-side cross trigger pulse is stretched on the GPIO pin when in wire-OR mode. Whenever a core-side pulse is received, the generated GPIO pulse has a width of (STRETCH_MULT+1) clock cycles.</td></tr>
 </table>
-<h3 id="ctp_9_.CONFIG">ctp[9].CONFIG</h3>
+<span id="ctp_9_.CONFIG"></span><h3 id="cross_trigger_network-ctp_9_.CONFIG" data-register-alias="ctp_9_.CONFIG">ctp[9].CONFIG</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1545,7 +1551,7 @@ composition. The individual block maps above give offsets within each block.</p>
 <tr><td>1</td><td>INVERT</td><td>RW</td><td>0x0</td><td>Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling. Write it in the same access as MODE.</td></tr>
 <tr><td>0</td><td>MODE</td><td>RW</td><td>0x0</td><td>Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point. Program it once, in the same write as INVERT, from the package&#x27;s cross trigger topology, before any cross trigger matrix route selects or targets this port. While wire-OR is selected the point-to-point handshake is held idle with its request deasserted; after point-to-point is selected, the handshake ignores the CT_Req_in and CT_Ack_in pads until their synchronized levels are valid.</td></tr>
 </table>
-<h3 id="ctp_9_.STATUS">ctp[9].STATUS</h3>
+<span id="ctp_9_.STATUS"></span><h3 id="cross_trigger_network-ctp_9_.STATUS" data-register-alias="ctp_9_.STATUS">ctp[9].STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1556,13 +1562,13 @@ composition. The individual block maps above give offsets within each block.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
 </table>
-<h3 id="ctp_9_.STRETCH_MULT">ctp[9].STRETCH_MULT</h3>
+<span id="ctp_9_.STRETCH_MULT"></span><h3 id="cross_trigger_network-ctp_9_.STRETCH_MULT" data-register-alias="ctp_9_.STRETCH_MULT">ctp[9].STRETCH_MULT</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>15:0</td><td>STRETCH_MULT</td><td>RW</td><td>0x0</td><td>The number of clock cycles a core-side cross trigger pulse is stretched on the GPIO pin when in wire-OR mode. Whenever a core-side pulse is received, the generated GPIO pulse has a width of (STRETCH_MULT+1) clock cycles.</td></tr>
 </table>
-<h3 id="ctp_10_.CONFIG">ctp[10].CONFIG</h3>
+<span id="ctp_10_.CONFIG"></span><h3 id="cross_trigger_network-ctp_10_.CONFIG" data-register-alias="ctp_10_.CONFIG">ctp[10].CONFIG</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1570,7 +1576,7 @@ composition. The individual block maps above give offsets within each block.</p>
 <tr><td>1</td><td>INVERT</td><td>RW</td><td>0x0</td><td>Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling. Write it in the same access as MODE.</td></tr>
 <tr><td>0</td><td>MODE</td><td>RW</td><td>0x0</td><td>Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point. Program it once, in the same write as INVERT, from the package&#x27;s cross trigger topology, before any cross trigger matrix route selects or targets this port. While wire-OR is selected the point-to-point handshake is held idle with its request deasserted; after point-to-point is selected, the handshake ignores the CT_Req_in and CT_Ack_in pads until their synchronized levels are valid.</td></tr>
 </table>
-<h3 id="ctp_10_.STATUS">ctp[10].STATUS</h3>
+<span id="ctp_10_.STATUS"></span><h3 id="cross_trigger_network-ctp_10_.STATUS" data-register-alias="ctp_10_.STATUS">ctp[10].STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1581,13 +1587,13 @@ composition. The individual block maps above give offsets within each block.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
 </table>
-<h3 id="ctp_10_.STRETCH_MULT">ctp[10].STRETCH_MULT</h3>
+<span id="ctp_10_.STRETCH_MULT"></span><h3 id="cross_trigger_network-ctp_10_.STRETCH_MULT" data-register-alias="ctp_10_.STRETCH_MULT">ctp[10].STRETCH_MULT</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>15:0</td><td>STRETCH_MULT</td><td>RW</td><td>0x0</td><td>The number of clock cycles a core-side cross trigger pulse is stretched on the GPIO pin when in wire-OR mode. Whenever a core-side pulse is received, the generated GPIO pulse has a width of (STRETCH_MULT+1) clock cycles.</td></tr>
 </table>
-<h3 id="ctp_11_.CONFIG">ctp[11].CONFIG</h3>
+<span id="ctp_11_.CONFIG"></span><h3 id="cross_trigger_network-ctp_11_.CONFIG" data-register-alias="ctp_11_.CONFIG">ctp[11].CONFIG</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1595,7 +1601,7 @@ composition. The individual block maps above give offsets within each block.</p>
 <tr><td>1</td><td>INVERT</td><td>RW</td><td>0x0</td><td>Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling. Write it in the same access as MODE.</td></tr>
 <tr><td>0</td><td>MODE</td><td>RW</td><td>0x0</td><td>Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point. Program it once, in the same write as INVERT, from the package&#x27;s cross trigger topology, before any cross trigger matrix route selects or targets this port. While wire-OR is selected the point-to-point handshake is held idle with its request deasserted; after point-to-point is selected, the handshake ignores the CT_Req_in and CT_Ack_in pads until their synchronized levels are valid.</td></tr>
 </table>
-<h3 id="ctp_11_.STATUS">ctp[11].STATUS</h3>
+<span id="ctp_11_.STATUS"></span><h3 id="cross_trigger_network-ctp_11_.STATUS" data-register-alias="ctp_11_.STATUS">ctp[11].STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1606,13 +1612,13 @@ composition. The individual block maps above give offsets within each block.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
 </table>
-<h3 id="ctp_11_.STRETCH_MULT">ctp[11].STRETCH_MULT</h3>
+<span id="ctp_11_.STRETCH_MULT"></span><h3 id="cross_trigger_network-ctp_11_.STRETCH_MULT" data-register-alias="ctp_11_.STRETCH_MULT">ctp[11].STRETCH_MULT</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>15:0</td><td>STRETCH_MULT</td><td>RW</td><td>0x0</td><td>The number of clock cycles a core-side cross trigger pulse is stretched on the GPIO pin when in wire-OR mode. Whenever a core-side pulse is received, the generated GPIO pulse has a width of (STRETCH_MULT+1) clock cycles.</td></tr>
 </table>
-<h3 id="ctp_12_.CONFIG">ctp[12].CONFIG</h3>
+<span id="ctp_12_.CONFIG"></span><h3 id="cross_trigger_network-ctp_12_.CONFIG" data-register-alias="ctp_12_.CONFIG">ctp[12].CONFIG</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1620,7 +1626,7 @@ composition. The individual block maps above give offsets within each block.</p>
 <tr><td>1</td><td>INVERT</td><td>RW</td><td>0x0</td><td>Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling. Write it in the same access as MODE.</td></tr>
 <tr><td>0</td><td>MODE</td><td>RW</td><td>0x0</td><td>Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point. Program it once, in the same write as INVERT, from the package&#x27;s cross trigger topology, before any cross trigger matrix route selects or targets this port. While wire-OR is selected the point-to-point handshake is held idle with its request deasserted; after point-to-point is selected, the handshake ignores the CT_Req_in and CT_Ack_in pads until their synchronized levels are valid.</td></tr>
 </table>
-<h3 id="ctp_12_.STATUS">ctp[12].STATUS</h3>
+<span id="ctp_12_.STATUS"></span><h3 id="cross_trigger_network-ctp_12_.STATUS" data-register-alias="ctp_12_.STATUS">ctp[12].STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1631,13 +1637,13 @@ composition. The individual block maps above give offsets within each block.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
 </table>
-<h3 id="ctp_12_.STRETCH_MULT">ctp[12].STRETCH_MULT</h3>
+<span id="ctp_12_.STRETCH_MULT"></span><h3 id="cross_trigger_network-ctp_12_.STRETCH_MULT" data-register-alias="ctp_12_.STRETCH_MULT">ctp[12].STRETCH_MULT</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>15:0</td><td>STRETCH_MULT</td><td>RW</td><td>0x0</td><td>The number of clock cycles a core-side cross trigger pulse is stretched on the GPIO pin when in wire-OR mode. Whenever a core-side pulse is received, the generated GPIO pulse has a width of (STRETCH_MULT+1) clock cycles.</td></tr>
 </table>
-<h3 id="ctp_13_.CONFIG">ctp[13].CONFIG</h3>
+<span id="ctp_13_.CONFIG"></span><h3 id="cross_trigger_network-ctp_13_.CONFIG" data-register-alias="ctp_13_.CONFIG">ctp[13].CONFIG</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1645,7 +1651,7 @@ composition. The individual block maps above give offsets within each block.</p>
 <tr><td>1</td><td>INVERT</td><td>RW</td><td>0x0</td><td>Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling. Write it in the same access as MODE.</td></tr>
 <tr><td>0</td><td>MODE</td><td>RW</td><td>0x0</td><td>Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point. Program it once, in the same write as INVERT, from the package&#x27;s cross trigger topology, before any cross trigger matrix route selects or targets this port. While wire-OR is selected the point-to-point handshake is held idle with its request deasserted; after point-to-point is selected, the handshake ignores the CT_Req_in and CT_Ack_in pads until their synchronized levels are valid.</td></tr>
 </table>
-<h3 id="ctp_13_.STATUS">ctp[13].STATUS</h3>
+<span id="ctp_13_.STATUS"></span><h3 id="cross_trigger_network-ctp_13_.STATUS" data-register-alias="ctp_13_.STATUS">ctp[13].STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1656,13 +1662,13 @@ composition. The individual block maps above give offsets within each block.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
 </table>
-<h3 id="ctp_13_.STRETCH_MULT">ctp[13].STRETCH_MULT</h3>
+<span id="ctp_13_.STRETCH_MULT"></span><h3 id="cross_trigger_network-ctp_13_.STRETCH_MULT" data-register-alias="ctp_13_.STRETCH_MULT">ctp[13].STRETCH_MULT</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>15:0</td><td>STRETCH_MULT</td><td>RW</td><td>0x0</td><td>The number of clock cycles a core-side cross trigger pulse is stretched on the GPIO pin when in wire-OR mode. Whenever a core-side pulse is received, the generated GPIO pulse has a width of (STRETCH_MULT+1) clock cycles.</td></tr>
 </table>
-<h3 id="ctp_14_.CONFIG">ctp[14].CONFIG</h3>
+<span id="ctp_14_.CONFIG"></span><h3 id="cross_trigger_network-ctp_14_.CONFIG" data-register-alias="ctp_14_.CONFIG">ctp[14].CONFIG</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1670,7 +1676,7 @@ composition. The individual block maps above give offsets within each block.</p>
 <tr><td>1</td><td>INVERT</td><td>RW</td><td>0x0</td><td>Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling. Write it in the same access as MODE.</td></tr>
 <tr><td>0</td><td>MODE</td><td>RW</td><td>0x0</td><td>Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point. Program it once, in the same write as INVERT, from the package&#x27;s cross trigger topology, before any cross trigger matrix route selects or targets this port. While wire-OR is selected the point-to-point handshake is held idle with its request deasserted; after point-to-point is selected, the handshake ignores the CT_Req_in and CT_Ack_in pads until their synchronized levels are valid.</td></tr>
 </table>
-<h3 id="ctp_14_.STATUS">ctp[14].STATUS</h3>
+<span id="ctp_14_.STATUS"></span><h3 id="cross_trigger_network-ctp_14_.STATUS" data-register-alias="ctp_14_.STATUS">ctp[14].STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1681,13 +1687,13 @@ composition. The individual block maps above give offsets within each block.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
 </table>
-<h3 id="ctp_14_.STRETCH_MULT">ctp[14].STRETCH_MULT</h3>
+<span id="ctp_14_.STRETCH_MULT"></span><h3 id="cross_trigger_network-ctp_14_.STRETCH_MULT" data-register-alias="ctp_14_.STRETCH_MULT">ctp[14].STRETCH_MULT</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>15:0</td><td>STRETCH_MULT</td><td>RW</td><td>0x0</td><td>The number of clock cycles a core-side cross trigger pulse is stretched on the GPIO pin when in wire-OR mode. Whenever a core-side pulse is received, the generated GPIO pulse has a width of (STRETCH_MULT+1) clock cycles.</td></tr>
 </table>
-<h3 id="ctp_15_.CONFIG">ctp[15].CONFIG</h3>
+<span id="ctp_15_.CONFIG"></span><h3 id="cross_trigger_network-ctp_15_.CONFIG" data-register-alias="ctp_15_.CONFIG">ctp[15].CONFIG</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1695,7 +1701,7 @@ composition. The individual block maps above give offsets within each block.</p>
 <tr><td>1</td><td>INVERT</td><td>RW</td><td>0x0</td><td>Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling. Write it in the same access as MODE.</td></tr>
 <tr><td>0</td><td>MODE</td><td>RW</td><td>0x0</td><td>Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point. Program it once, in the same write as INVERT, from the package&#x27;s cross trigger topology, before any cross trigger matrix route selects or targets this port. While wire-OR is selected the point-to-point handshake is held idle with its request deasserted; after point-to-point is selected, the handshake ignores the CT_Req_in and CT_Ack_in pads until their synchronized levels are valid.</td></tr>
 </table>
-<h3 id="ctp_15_.STATUS">ctp[15].STATUS</h3>
+<span id="ctp_15_.STATUS"></span><h3 id="cross_trigger_network-ctp_15_.STATUS" data-register-alias="ctp_15_.STATUS">ctp[15].STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1706,12 +1712,13 @@ composition. The individual block maps above give offsets within each block.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
 </table>
-<h3 id="ctp_15_.STRETCH_MULT">ctp[15].STRETCH_MULT</h3>
+<span id="ctp_15_.STRETCH_MULT"></span><h3 id="cross_trigger_network-ctp_15_.STRETCH_MULT" data-register-alias="ctp_15_.STRETCH_MULT">ctp[15].STRETCH_MULT</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>15:0</td><td>STRETCH_MULT</td><td>RW</td><td>0x0</td><td>The number of clock cycles a core-side cross trigger pulse is stretched on the GPIO pin when in wire-OR mode. Whenever a core-side pulse is received, the generated GPIO pulse has a width of (STRETCH_MULT+1) clock cycles.</td></tr>
 </table>
+</div>
 </div>
 </div>
 </div>

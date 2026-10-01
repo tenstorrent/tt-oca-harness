@@ -170,9 +170,10 @@
 </aside>
 <article class="doc">
 <h1 class="page">Interrupts</h1>
-<div id="preamble">
+<div class="sect1">
+<h2 id="sep-interrupts"><a class="anchor" href="#sep-interrupts"></a><a class="link" href="#sep-interrupts">1. Controllers</a></h2>
 <div class="sectionbody">
-<div id="sep-interrupts" class="paragraph">
+<div class="paragraph">
 <p>The SEP integrates a VeeR EL2 core with a built-in
 <strong>Programmable Interrupt Controller (PIC)</strong>. All maskable external interrupt
 sources feed a single <code>extintsrc_req</code> bus; the memory-mapped <code>meipl</code>, <code>meie</code>,
@@ -183,15 +184,11 @@ source.</p>
 <p>The PIC base address is <code>0xC008_0000</code>; its register layout is described in the
 <a href="#sep-pic-registers">Register Interfaces</a> section below.</p>
 </div>
-<div class="paragraph">
-<p>Interrupt source IDs are <strong>1-based</strong> inside the PIC. Source 0 is permanently
-tied to zero inside the core. Firmware programs source <code>N</code> through the
-per-source arrays, each indexed at an offset of <code>N * 4</code> from its region base:
-<code>meipl</code> at PIC base <code>+0x0000</code>, <code>meie</code> at <code>+0x2000</code>, <code>meigwctrl</code> at <code>+0x4000</code>
-and <code>meigwclr</code> at <code>+0x5000</code>. Pending status is the exception&#8201;&#8212;&#8201;<code>meip</code> at
-<code>+0x1000</code> is a bitmap rather than a per-source array, so source <code>N</code> is bit
-<code>N % 32</code> of <code>meip[N / 32]</code>.</p>
 </div>
+</div>
+<div class="sect1">
+<h2 id="sources-and-routing"><a class="anchor" href="#sources-and-routing"></a><a class="link" href="#sources-and-routing">2. Sources and Routing</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The vector driven to the core, <code>sep_internal_interrupts</code>, is indexed from 0.
 Bit <code>i</code> of that vector is PIC source <code>i + 1</code>. The core&#8217;s <code>extintsrc_req</code> port
@@ -200,34 +197,8 @@ driven vector is the first programmable source. The comment directly above
 <code>NUM_INTERNAL_IRQS</code> in <code>sep_pkg.sv</code> numbers sources by that vector index, one
 less than the PIC source in <a href="#sep-pic-source-assignments-table">SEP PIC source assignments</a>.</p>
 </div>
-<div class="paragraph">
-<p>Each per-source array carries an entry 0, so that the array index is the source
-ID and no off-by-one applies: <code>meipl[7]</code> is source 7. That entry is reserved and
-has no hardware behind it&#8201;&#8212;&#8201;the PIC decodes the address but ties the register
-off, so <code>+0x0000</code>, <code>+0x2000</code>, <code>+0x4000</code> and <code>+0x5000</code> read as zero and discard
-writes. It appears in the RDL, the generated headers and the UVM RAL only to
-preserve the indexing; firmware must never program it.</p>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-Register tests that walk the whole PIC map must skip index 0 of <code>meipl</code>,
-<code>meie</code>, <code>meigwctrl</code> and <code>meigwclr</code>. The register model declares those entries
-read-write like every other element, but the hardware treats them as reserved,
-so a read-write check on them fails.
-</td>
-</tr>
-</table>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="sep-cpu-interrupt-vector-map"><a class="anchor" href="#sep-cpu-interrupt-vector-map"></a><a class="link" href="#sep-cpu-interrupt-vector-map">1. SEP CPU Interrupt Vector Map</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="sep-cpu-interrupt-vector-map"><a class="anchor" href="#sep-cpu-interrupt-vector-map"></a><a class="link" href="#sep-cpu-interrupt-vector-map">2.1. SEP CPU Interrupt Vector Map</a></h3>
 <div class="paragraph">
 <p>The PIC supports 255 external sources. Slots 1–43 are individually assigned to
 specific peripherals and subsystems connected to the SEP, including both
@@ -503,17 +474,16 @@ fault. See
 </tbody>
 </table>
 </div>
-</div>
-<div class="sect1">
-<h2 id="sep-non-pic-paths"><a class="anchor" href="#sep-non-pic-paths"></a><a class="link" href="#sep-non-pic-paths">2. Non-PIC Interrupt Paths</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="sep-non-pic-paths"><a class="anchor" href="#sep-non-pic-paths"></a><a class="link" href="#sep-non-pic-paths">2.2. Non-PIC Interrupt Paths</a></h3>
 <div class="paragraph">
 <p>Three CPU interrupt pins bypass the EL2 PIC entirely. The core also reports its
 own memory errors through a path that is neither a pin nor a PIC source; see
 <a href="#sep-memory-error-reporting">Memory ECC Errors</a>.</p>
 </div>
-<div class="sect2">
-<h3 id="nmi-watchdog-timer-bark"><a class="anchor" href="#nmi-watchdog-timer-bark"></a><a class="link" href="#nmi-watchdog-timer-bark">2.1. NMI — Watchdog Timer Bark</a></h3>
+<span id="nmi-watchdog-timer-bark"></span>
+<div class="sect3">
+<h4 id="sep-interrupts-nmi-watchdog-timer-bark"><a class="anchor" href="#sep-interrupts-nmi-watchdog-timer-bark"></a><a class="link" href="#sep-interrupts-nmi-watchdog-timer-bark">2.2.1. NMI — Watchdog Timer Bark</a></h4>
 <div class="paragraph">
 <p>The VeeR EL2 <code>nmi_int</code> pin is wired to the watchdog timer bark signal from
 <code>sep_wdt_wrap</code>. When the bark fires, the CPU jumps to the NMI vector address
@@ -524,9 +494,10 @@ runtime modification of the vector once locked.</p>
 <p>The NMI is non-maskable: it cannot be suppressed by <code>mstatus.MIE</code> or any PIC
 configuration register.</p>
 </div>
+<span id="timer-and-software-interrupts"></span>
 </div>
-<div class="sect2">
-<h3 id="timer-and-software-interrupts"><a class="anchor" href="#timer-and-software-interrupts"></a><a class="link" href="#timer-and-software-interrupts">2.2. Timer and Software Interrupts</a></h3>
+<div class="sect3">
+<h4 id="sep-interrupts-timer-and-software-interrupts"><a class="anchor" href="#sep-interrupts-timer-and-software-interrupts"></a><a class="link" href="#sep-interrupts-timer-and-software-interrupts">2.2.2. Timer and Software Interrupts</a></h4>
 <div class="paragraph">
 <p>The <code>timer_int</code> and <code>soft_int</code> pins of the VeeR EL2 core are tied to zero at
 the SMU integration boundary. There is no external CLINT-style delivery path.
@@ -542,8 +513,8 @@ bit set in <code>mcause</code>). Enabling <code>mie.MTIE</code> or <code>mie.MSI
 internal timers.</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="sep-memory-error-reporting"><a class="anchor" href="#sep-memory-error-reporting"></a><a class="link" href="#sep-memory-error-reporting">2.3. Memory ECC Errors</a></h3>
+<div class="sect3">
+<h4 id="sep-memory-error-reporting"><a class="anchor" href="#sep-memory-error-reporting"></a><a class="link" href="#sep-memory-error-reporting">2.2.3. Memory ECC Errors</a></h4>
 <div class="paragraph">
 <p>The ICCM and DCCM are SECDED-protected. Neither reaches the PIC: the core
 reports these errors itself, correctable ones as a local interrupt and
@@ -555,8 +526,9 @@ there is no PIC source to enable or mask.</p>
 <code>MICECT</code> (<code>0x7F0</code>) never increments. Only the two tightly-coupled-memory
 counters below are live.</p>
 </div>
-<div class="sect3">
-<h4 id="correctable-single-bit-errors"><a class="anchor" href="#correctable-single-bit-errors"></a><a class="link" href="#correctable-single-bit-errors">2.3.1. Correctable (single-bit) errors</a></h4>
+<span id="correctable-single-bit-errors"></span>
+<div class="sect4">
+<h5 id="sep-interrupts-correctable-single-bit-errors"><a class="anchor" href="#sep-interrupts-correctable-single-bit-errors"></a><a class="link" href="#sep-interrupts-correctable-single-bit-errors">Correctable (single-bit) errors</a></h5>
 <div class="paragraph">
 <p>Hardware corrects the data and the access is retried, so no data is lost and no
 trap is taken. Each protected memory has a counter CSR (<a href="#sep-correctable-error-counters-table">SEP correctable-error counters</a>).</p>
@@ -625,9 +597,10 @@ immediately. To clear the count while keeping threshold <code>N</code>, write <c
 reports a degrading SRAM early at the cost of an interrupt per error; a high one
 lets transient flips accumulate before firmware is told.</p>
 </div>
+<span id="uncorrectable-double-bit-errors"></span>
 </div>
-<div class="sect3">
-<h4 id="uncorrectable-double-bit-errors"><a class="anchor" href="#uncorrectable-double-bit-errors"></a><a class="link" href="#uncorrectable-double-bit-errors">2.3.2. Uncorrectable (double-bit) errors</a></h4>
+<div class="sect4">
+<h5 id="sep-interrupts-uncorrectable-double-bit-errors"><a class="anchor" href="#sep-interrupts-uncorrectable-double-bit-errors"></a><a class="link" href="#sep-interrupts-uncorrectable-double-bit-errors">Uncorrectable (double-bit) errors</a></h5>
 <div class="paragraph">
 <p>These cannot be masked and have no enable bit. The access returned no valid
 data, so the core traps on the instruction that hit the error (<a href="#sep-uncorrectable-error-traps-table">SEP uncorrectable-error traps</a>).</p>
@@ -671,9 +644,9 @@ data, so the core traps on the instruction that hit the error (<a href="#sep-unc
 </table>
 <div class="paragraph">
 <p><code>mcause</code> alone does not identify these as memory failures&#8201;&#8212;&#8201;a bad pointer and a
-failing SRAM both raise a load access fault. <code>MSCAUSE</code> (<code>0x7FF</code>) is what
+failing SRAM both raise a load access fault. <code>mscause</code> (<code>0x7FF</code>) is what
 separates them: on an access fault, <code>mscause</code> = <code>1</code> means uncorrectable ECC.
-A handler that does not read <code>MSCAUSE</code> cannot distinguish a software bug from
+A handler that does not read <code>mscause</code> cannot distinguish a software bug from
 failing hardware.</p>
 </div>
 <div class="paragraph">
@@ -687,9 +660,10 @@ quarantine the affected memory rather than attempting recovery in place.</p>
 is not a CPU trap at all. It is returned as an error response on that
 transaction, and the initiator is responsible for reporting it.</p>
 </div>
+<span id="debug-bus-mirror"></span>
 </div>
-<div class="sect3">
-<h4 id="debug-bus-mirror"><a class="anchor" href="#debug-bus-mirror"></a><a class="link" href="#debug-bus-mirror">2.3.3. Debug bus mirror</a></h4>
+<div class="sect4">
+<h5 id="sep-interrupts-debug-bus-mirror"><a class="anchor" href="#sep-interrupts-debug-bus-mirror"></a><a class="link" href="#sep-interrupts-debug-bus-mirror">Debug bus mirror</a></h5>
 <div class="paragraph">
 <p>The ICCM and DCCM single- and double-bit error signals are also mirrored onto
 <code>ext_debug_bus_o[367:364]</code>, most significant first: ICCM single, ICCM double,
@@ -701,18 +675,128 @@ a delivery path, so software must not rely on sampling them; use the CSRs above.
 </div>
 </div>
 </div>
+</div>
 <div class="sect1">
-<h2 id="sep-pic-registers"><a class="anchor" href="#sep-pic-registers"></a><a class="link" href="#sep-pic-registers">3. Register Interfaces</a></h2>
+<h2 id="software-handling"><a class="anchor" href="#software-handling"></a><a class="link" href="#software-handling">3. Software Handling</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
+<p>Interrupt source IDs are <strong>1-based</strong> inside the PIC. Source 0 is permanently
+tied to zero inside the core. Firmware programs source <code>N</code> through the
+per-source arrays, each indexed at an offset of <code>N * 4</code> from its region base:
+<code>meipl</code> at PIC base <code>+0x0000</code>, <code>meie</code> at <code>+0x2000</code>, <code>meigwctrl</code> at <code>+0x4000</code>
+and <code>meigwclr</code> at <code>+0x5000</code>. Pending status is the exception&#8201;&#8212;&#8201;<code>meip</code> at
+<code>+0x1000</code> is a bitmap rather than a per-source array, so source <code>N</code> is bit
+<code>N % 32</code> of <code>meip[N / 32]</code>.</p>
+</div>
+<div class="paragraph">
+<p>Each per-source array carries an entry 0, so that the array index is the source
+ID and no off-by-one applies: <code>meipl[7]</code> is source 7. That entry is reserved and
+has no hardware behind it&#8201;&#8212;&#8201;the PIC decodes the address but ties the register
+off, so <code>+0x0000</code>, <code>+0x2000</code>, <code>+0x4000</code> and <code>+0x5000</code> read as zero and discard
+writes. It appears in the RDL, the generated headers and the UVM RAL only to
+preserve the indexing; firmware must never program it.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Register tests that walk the whole PIC map must skip index 0 of <code>meipl</code>,
+<code>meie</code>, <code>meigwctrl</code> and <code>meigwclr</code>. The register model declares those entries
+read-write like every other element, but the hardware treats them as reserved,
+so a read-write check on them fails.
+</td>
+</tr>
+</table>
+</div>
+<span id="register-reference"></span>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sep-pic-registers"><a class="anchor" href="#sep-pic-registers"></a><a class="link" href="#sep-pic-registers">4. Memory Map and Register Reference</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">4.1. Memory Map</a></h3>
+<div class="paragraph">
 <p>The EL2 PIC register block (<code>meipl</code>, <code>meie</code>, <code>meigwctrl</code>, <code>meigwclr</code>, and
-related registers) is documented with the full SEP address map in
-<a href="memory_map.html#sep-detailed-register-map" class="xref page">Memory Map — Detailed Register Map</a>.</p>
+related registers) is documented in the register reference below.</p>
 </div>
 <div class="paragraph">
 <p>The per-source arrays in that table are listed from index 0. Index 0 is the
 reserved entry described in <a href="#sep-interrupts">Interrupts</a>: it exists so the array index
 equals the interrupt source ID, and the first programmable source is index 1.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">4.2. Detailed Register Map</a></h3>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-el2_pic">EL2_PIC</h2>
+<p>VeeR EL2 Programmable Interrupt Controller (PIC) memory-mapped registers.<br>Supports up to PIC_TOTAL_INT external interrupt sources with 15 priority levels.</p>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>meipl[256]</strong>: 256 registers, base 0x0, stride 0x4</li>
+<li><strong>meip[8]</strong>: 8 registers, base 0x1000, stride 0x4</li>
+<li><strong>meie[256]</strong>: 256 registers, base 0x2000, stride 0x4</li>
+<li><strong>meigwctrl[256]</strong>: 256 registers, base 0x4000, stride 0x4</li>
+<li><strong>meigwclr[256]</strong>: 256 registers, base 0x5000, stride 0x4</li>
+</ul>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0 - 0x3FC</td><td><a href="#el2_pic-meipl_256_">meipl[256]</a></td><td>RW</td><td>External Interrupt Priority Level Register. Sets the priority level for an interrupt source.</td></tr>
+<tr><td>0x1000 - 0x101C</td><td><a href="#el2_pic-meip_8_">meip[8]</a></td><td>R</td><td>External Interrupt Pending Register. Reports pending status of up to 32 interrupt sources.</td></tr>
+<tr><td>0x2000 - 0x23FC</td><td><a href="#el2_pic-meie_256_">meie[256]</a></td><td>RW</td><td>External Interrupt Enable Register. Controls interrupt enable for a single source.</td></tr>
+<tr><td>0x3000</td><td><a href="#el2_pic-mpiccfg">mpiccfg</a></td><td>RW</td><td>PIC Configuration Register. Used to select the operational parameters of the PIC.</td></tr>
+<tr><td>0x4000 - 0x43FC</td><td><a href="#el2_pic-meigwctrl_256_">meigwctrl[256]</a></td><td>RW</td><td>External Interrupt Gateway Configuration Register. Controls interrupt type and polarity.</td></tr>
+<tr><td>0x5000 - 0x53FC</td><td><a href="#el2_pic-meigwclr_256_">meigwclr[256]</a></td><td>W</td><td>External Interrupt Gateway Clear Register. Writing any value clears the gateway&#x27;s<br>interrupt pending (IP) bit for edge-triggered interrupts.</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="meipl_256_"></span><h3 id="el2_pic-meipl_256_" data-register-alias="meipl_256_">meipl[256]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3:0</td><td>intpriority</td><td>RW</td><td>0x0</td><td>External interrupt priority level:<br>RISC-V standard order: 0=Never interrupt, 1..15=Priority (1 lowest, 15 highest)<br>Reverse order: 15=Never interrupt, 14..0=Priority (14 lowest, 0 highest)</td></tr>
+</table>
+<span id="meip_8_"></span><h3 id="el2_pic-meip_8_" data-register-alias="meip_8_">meip[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>intpend</td><td>R</td><td>0x0</td><td>External interrupt pending bits. Bit Y indicates pending status for source X*32+Y.<br>0: Interrupt not pending<br>1: Interrupt pending</td></tr>
+</table>
+<span id="meie_256_"></span><h3 id="el2_pic-meie_256_" data-register-alias="meie_256_">meie[256]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>inten</td><td>RW</td><td>0x0</td><td>External interrupt enable:<br>0: Interrupt disabled<br>1: Interrupt enabled</td></tr>
+</table>
+<span id="mpiccfg"></span><h3 id="el2_pic-mpiccfg" data-register-alias="mpiccfg">mpiccfg</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>priord</td><td>RW</td><td>0x0</td><td>Priority order:<br>0: RISC-V standard compliant priority order (0=lowest to 15=highest)<br>1: Reverse priority order (15=lowest to 0=highest)</td></tr>
+</table>
+<span id="meigwctrl_256_"></span><h3 id="el2_pic-meigwctrl_256_" data-register-alias="meigwctrl_256_">meigwctrl[256]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>irq_type</td><td>RW</td><td>0x0</td><td>External interrupt type:<br>0: Level-triggered interrupt<br>1: Edge-triggered interrupt</td></tr>
+<tr><td>0</td><td>polarity</td><td>RW</td><td>0x0</td><td>External interrupt polarity:<br>0: Active-high interrupt<br>1: Active-low interrupt</td></tr>
+</table>
+<span id="meigwclr_256_"></span><h3 id="el2_pic-meigwclr_256_" data-register-alias="meigwclr_256_">meigwclr[256]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>clear</td><td>W</td><td>0x0</td><td>Write any value to clear the interrupt pending bit in the gateway.<br>This register is write-only; reads return 0.</td></tr>
+</table>
+</div>
 </div>
 </div>
 </div>

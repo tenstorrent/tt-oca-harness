@@ -410,23 +410,63 @@ infrastructure.</p>
 <div class="sectionbody">
 <div class="paragraph">
 <p>GPIO pad integration requires careful attention to function assignment and pull
-requirements. The GPIO table below lists each signal, bump location, function,
-recommended pull, and integration notes. Default input/output direction is
-defined by <code>smc_padring_pkg::DefaultDirectionMap</code>, not by the table.</p>
+requirements. The GPIO table below lists each pad&#8217;s index, function, recommended
+pull, and integration notes. Default input/output direction is defined by
+<code>smc_padring_pkg::DefaultDirectionMap</code>, not by the table.</p>
 </div>
 <div class="paragraph">
 <p>The public <code>hw/top/smc_wrapper.sv</code> and <code>hw/top/smc_ip_integration.sv</code> examples
-show the pad connections. For bidirectional pins, implement proper tri-state
+show the pad connections. For bi-directional pins, implement proper tri-state
 buffers controlled by the <code>core2pad_en_o</code> signals. Connect multiplexed UART,
 I2C, I3C, and SPI pins to external devices according to the function assignments
 in the GPIO table.</p>
 </div>
 <div class="paragraph">
-<p>Configuration straps are captured separately from the GPIO table. Establish
-them before cold reset deassertion and keep them stable during capture. The
+<p>The SMC padring drives one GPIO pad per <code>u_gpio_interface</code> instance, so the
+adopter must integrate <code>smc_pkg::NUM_GPIO_WRAPS</code> pads:
+<code>smc_pkg::NUM_BONDED_GPIO</code> bonded pads plus <code>smc_pkg::NUM_UNBONDED_GPIO</code>
+unbonded pads. If the adopter chooses to capture configuration straps from GPIO
+pads, this can only be done from the bonded pads. The pads for the SDA and SCL
+lines of I3C[1] must be unbonded for security when transmitting OCCP traffic.
+The pads for Cool Reset In/Out must also be unbonded as they are meant only to
+interface with other chiplets within a package. All of these pads must be
+bi-directional, except for Cool Reset In which must use an input-only pad.</p>
+</div>
+<div class="paragraph">
+<p>The adopter must instantiate 10 additional pads to support the JTAG PTAP and
+STAP. This consists of two groups of TCK, TRSTN, TDI, TDO, and TMS&#8201;&#8212;&#8201;one group
+for the PTAP and one for the STAP. The TDO for both the PTAP and STAP must use
+tri-state capable bi-directional pads. The TDI for both the STAP and PTAP must
+use input-only pads. The remaining PTAP pads must be capable of input, and the
+remaining STAP pads must be capable of output.</p>
+</div>
+<div class="paragraph">
+<p>The adopter must connect every cross trigger port (CTP) that <code>smu</code> exposes. A
+CTP that leaves the chiplet must instantiate a group of 4 pads (request out,
+request in, acknowledge in, acknowledge out). The two inputs must use input-only
+pads and the two outputs must use bi-directional pads capable of open-drain
+drive to conform with the cross-trigger methodology described in
+<a href="../../ocah-docs/latest/ip/cross_trigger_port/doc/index.html" class="xref page">Cross-Trigger Port</a>.</p>
+</div>
+<div class="paragraph">
+<p>See <a href="#xtrig-ctp-gpio-interface">[xtrig-ctp-gpio-interface]</a> for the SMU-level ports.</p>
+</div>
+<div class="paragraph">
+<p>OCAH also requires a reference clock, a cold reset, and a powergood indication
+(<code>clk_ref_i</code>, <code>rst_cold_ni</code>, and <code>powergood_i</code> on <code>smu</code>). These must be driven,
+but not necessarily from pads. The adopter may source them from dedicated pads
+as the GPIO table shows, or from another stable source.</p>
+</div>
+<div class="paragraph">
+<p>The adopter may choose to instantiate additional pads (with or without
+supporting instances of the OCAH <code>gpio</code> module) to support custom features.</p>
+</div>
+<div class="paragraph">
+<p>Configuration straps are captured separately from the GPIO table. Establish them
+before cold reset deassertion and keep them stable during capture. The
 <code>STRAPS_LO</code> and <code>STRAPS_HI</code> registers in the adopter peripheral window (see
-<a href="#smc-external-supplementary">Supplementary Region</a>) define the decoded bit assignments, including <code>BYPASS_SRAM_REPAIR</code> at
-<code>STRAPS_LO[13]</code> and <code>TEST_EN</code> at <code>STRAPS_LO[14]</code>.</p>
+<a href="#smc-external-supplementary">Supplementary Region</a>) define the decoded bit assignments, including
+<code>BYPASS_SRAM_REPAIR</code> at <code>STRAPS_LO[13]</code> and <code>TEST_EN</code> at <code>STRAPS_LO[14]</code>.</p>
 </div>
 </div>
 </div>
@@ -2020,8 +2060,8 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <div class="sectionbody">
 <div class="paragraph">
 <p>The SMC provides GPIO functionality with multiplexed peripheral functions and
-test interfaces. The following table lists the signal and bump location,
-assigned function, recommended pull, and GPIO-specific notes. It does not define
+test interfaces. The following table lists each pad&#8217;s index, assigned
+function, recommended pull, and GPIO-specific notes. It does not define
 default direction or decode configuration straps; use
 <code>smc_padring_pkg::DefaultDirectionMap</code> and the <code>STRAPS_LO</code> and <code>STRAPS_HI</code>
 register descriptions (see <a href="#smc-external-supplementary">Supplementary Region</a>) for those.</p>
@@ -2033,14 +2073,10 @@ register descriptions (see <a href="#smc-external-supplementary">Supplementary R
 <col>
 <col>
 <col>
-<col>
-<col>
 </colgroup>
 <thead>
 <tr>
 <th class="tableblock halign-left valign-top">Index</th>
-<th class="tableblock halign-left valign-top">Signal</th>
-<th class="tableblock halign-left valign-top">Bump Loc</th>
 <th class="tableblock halign-left valign-top">Function</th>
 <th class="tableblock halign-left valign-top">Recommended Pull</th>
 <th class="tableblock halign-left valign-top">GPIO Notes</th>
@@ -2049,723 +2085,471 @@ register descriptions (see <a href="#smc-external-supplementary">Supplementary R
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[0]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SPI.DATA[0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[1]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SPI.DATA[1]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[2]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SPI.DATA[2]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[3]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SPI.DATA[3]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[4]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SPI.DATA[4]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">5</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[5]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SPI.DATA[5]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">6</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[6]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SPI.DATA[6]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">7</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[7]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SPI.DATA[7]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[8]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SPI.CS</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">9</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[9]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SPI.CLK</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">10</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[10]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SPI.DQS</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">11</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[11]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">UART[0].RX</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">12</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[12]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">UART[0].TX</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">13</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[13]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">UART[0].RTS</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">14</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[14]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">UART[0].CTS</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">15</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[15]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">UART[1].RX</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">16</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[16]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">UART[1].TX</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">17</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[17]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">UART[1].RTS</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">18</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[18]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">UART[1].CTS</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">19</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[19]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">UART[2].RX</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">20</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[20]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">UART[2].TX</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">21</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[21]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">UART[2].RTS</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">22</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[22]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">UART[2].CTS</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">23</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[23]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">UART[3].RX</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">24</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[24]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">UART[3].TX</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">25</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[25]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">UART[3].RTS</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">26</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[26]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">UART[3].CTS</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">27</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[27]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I3C[0] SCL</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">28</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[28]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I3C[0] SDA</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">29</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[29]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I3C[2] SCL</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">30</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[30]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I3C[2] SDA</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">31</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[31]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I3C[3] SCL</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[32]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I3C[3] SDA</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">33</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[33]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I3C[4] SCL</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">34</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[34]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I3C[4] SDA</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">35</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[35]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I3C[5] SCL</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">36</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[36]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I3C[5] SDA</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">37</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[37]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I2C[0] SCL</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Every I2C can be programmed to act as I2C, SMBus or PMBus</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">38</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[38]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I2C[0] SDA</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">39</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[39]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I2C[0] SMB_A</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMBus Alert</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">40</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[40]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I2C[0] SMB_D</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMBus Suspend</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">41</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[41]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I2C[1] SCL</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">42</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[42]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I2C[1] SDA</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">43</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[43]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I2C[1] SMB_A</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMBus Alert</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">44</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[44]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I2C[1] SMB_D</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMBus Suspend</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">45</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[45]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I2C[2] SCL</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">46</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[46]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I2C[2] SDA</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">47</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[47]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I2C[2] SMB_A</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMBus Alert</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">48</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[48]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I2C[2] SMB_D</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMBus Suspend</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">49</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[49]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">AVS.CLOCK</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">50</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[50]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">AVS.MDATA</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">51</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[51]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">AVS.SDATA</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">52</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[52]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Thermal Emergency N</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">53</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[53]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Isolate Request</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">54</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[54]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SPI DQS Loopback</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">55</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[55]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">System Timer Sync Load</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">56</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[56]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">System Timer Credit Count</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">57</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[57]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Boot Stall</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Stall after fuse sensing to override shadow register values. Boot will resume when this GPIO is released. This value can be overridden by the value specified over JTAG using the boot_stall_jtag_ovrd and boot_stall_jtag_val signals from DTP.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">58</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[58]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">OCCP Interface</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">59</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[59]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">60</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[60]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">61</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.UNBONDED_GPIO[61]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Cool Reset In</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Not packaged out</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">62</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.UNBONDED_GPIO[62]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Cool Reset Out</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Not packaged out</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">63</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.UNBONDED_GPIO[63]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I3C[1] SCL</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Not packaged out</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">64</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.UNBONDED_GPIO[64]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I3C[1] SDA</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Not packaged out</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">65</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.PAD_JTAG_IN_TCK</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">?</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PTAP TCK</p></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No dedicated interface in harness</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">66</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.PAD_JTAG_IN_TRSTN</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">?</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PTAP TRST</p></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No dedicated interface in harness</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">67</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.PAD_JTAG_IN_TDI</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">?</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PTAP TDI</p></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No dedicated interface in harness</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">68</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.PAD_JTAG_IN_TMS</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">?</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PTAP TMS</p></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No dedicated interface in harness</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">69</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.PAD_JTAG_IN_TDO</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">?</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PTAP TDO</p></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No dedicated interface in harness</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">70</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.PAD_JTAG_OUT_TCK</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">?</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">STAP TCK</p></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No dedicated interface in harness</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">71</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.PAD_JTAG_OUT_TRSTN</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">?</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">STAP TRST</p></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No dedicated interface in harness</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">72</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.PAD_JTAG_OUT_TDI</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">?</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">STAP TDI</p></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No dedicated interface in harness</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">73</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.PAD_JTAG_OUT_TMS</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">?</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">STAP TMS</p></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No dedicated interface in harness</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">74</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.PAD_JTAG_OUT_TDO</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">?</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">STAP TDO</p></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No dedicated interface in harness</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">75</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.PAD_REFCLK</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BP_REFCLK_VDD_SYS</p></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No dedicated interface in harness</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">76</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.PAD_PRSTN</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BP_RESETN</p></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No dedicated interface in harness</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">77</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.PAD_POWERGOOD</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BP_POWERGOOD</p></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">78</p></td>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SEP</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">OTP[0]</p></td>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">79</p></td>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SEP</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">OTP[1]</p></td>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">80</p></td>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SEP</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">OTP[2]</p></td>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">81</p></td>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SEP</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">OTP[3]</p></td>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">82</p></td>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SEP</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">OTP[4]</p></td>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">83</p></td>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SEP</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">OTP[5]</p></td>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">84</p></td>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PVT[0]</p></td>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">85</p></td>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PVT[1]</p></td>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">86</p></td>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">VDDIO</p></td>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">87</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.PLL_CLK_OBS_PAD</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PLL clock OBS</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PLL clock observation pin</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">88</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.PVT_CLK_OBS_PAD</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PVT RO</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Process sensor RO output</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">89</p></td>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No dedicated interface in harness</p></td>
 </tr>
 </tbody>
 </table>

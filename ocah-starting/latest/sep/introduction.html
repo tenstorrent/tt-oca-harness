@@ -4,7 +4,6 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Introduction :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
-    <meta name="description" content="SEP responsibilities and security services.">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../_/css/site.css">
     <link rel="stylesheet" href="../../../_/css/extra.css">
@@ -210,68 +209,9 @@
 <article class="doc">
 <h1 class="page">Introduction</h1>
 <div id="sep-introduction" class="paragraph">
-<p>SEP is the Root of Trust (RoT) of the chiplet with the highest security
-privilege. SEP provides a physically isolated execution environment for
-highly sensitive security services. The following are some examples:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p><strong>Secure boot</strong>: The SEP ROM BL0 image uses non-volatile public keys to
-conduct authentication verification on the loaded BL1 software images.</p>
-</li>
-<li>
-<p><strong>Secure lifecycle control</strong>: SEP implements a secure lifecycle
-controller to manage function, debug and test access to the chiplet according to
-fuse configuration, in-field demotion, and secret token inputs.</p>
-</li>
-<li>
-<p><strong>Device attestation</strong>: SEP offers support to device attestation by
-recording the boot process and device configuration followed attestation
-using public key infrastructure.</p>
-</li>
-<li>
-<p><strong>Cryptography service</strong>: SEP offers secure key services to the rest of
-the system together with cryptography acceleration. SEP also implements
-True Random Number Generator (TRNG) to provide random numbers for SEP
-itself and the rest of the system.</p>
-</li>
-<li>
-<p><strong>User authentication</strong>: Similar to secure boot, user authentication is
-another authentication service SEP offers. Besides feature control that
-can be tied to the authentication result, SEP software can also tie the
-authentication result to the secret key derivation to ensure that bypass
-of the user authentication leads to a useless system.</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>The SEP is responsible for ensuring that the chiplet and overall
-packaged system composed of multiple chiplets remains secure from
-adversaries. This means that SEP ensures the system</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>Runs correctly with the intended firmware and data protected by
-digital signatures</p>
-</li>
-<li>
-<p>Guards against malicious data input to SEP, SMC and the debug/test
-infrastructure</p>
-</li>
-<li>
-<p>Prevents exfiltration of private or secret data on all exits,
-including side channels</p>
-</li>
-<li>
-<p>Prevents privilege escalation which would enable illegal operations</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>A consolidated description of OCAH use cases is available in
-<a href="../../../ocah-home/latest/use-cases.html" class="xref page">Use Cases</a>.</p>
+<p>The SEP responsibilities and services are described in
+<a href="overview.html#sep-introduction" class="xref page">Overview</a>
+.</p>
 </div>
 </article>
   </div>

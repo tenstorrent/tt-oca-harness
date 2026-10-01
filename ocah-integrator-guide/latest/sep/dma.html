@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Direct Memory Access (DMA) :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links
+
+                 All five books now build as ONE Antora site
+                 (antora-playbook.yml), so ../../.. already
+                 resolves directly to the one shared root. -->
+            <a class="navbar-item" href="../../../ocah-starting/latest/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../ocah-appnotes/latest/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (SMU)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (DTP)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-sep-datasheet.pdf">Security Processor (SEP)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (SMC)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (AoU)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-integrator-guide" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../index.html">Integrator Guide</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../checklist.html">SoC Integration Checklist</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../smu.html">SMU Top-Level Integration</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../smu-filelists.html">RTL Filelists</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../smu-address-map.html">Address Map Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../smu-rom-fw.html">Immutable ROM FW Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../smu-smc.html">System Management Controller (SMC) Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../smu-dtp.html">Debug &amp; Test Ports (DTP) Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../smu-sep.html">Security Processor (SEP) Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../smu-composition.html">SMU Composition and Internal Wiring</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../smn.html">SMN Integration</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../aou.html">AXI-over-UCIe Bridge (AoU) Integration</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../defines.html">Project Defines</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../prim.html">Prim Cell Replacement and Don&#8217;t-Touch Constraints</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../cdc.html">CDC Timing Constraints</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../revision.html">Revision History</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Integrator Guide latest — switch documentation">
+    <span class="version">latest</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-starting/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-programmer-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-docs/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../ocah-home/latest/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></li>
+    <li><a href="dma.html">Direct Memory Access (DMA)</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Direct Memory Access (DMA)</h1>
+<div id="preamble">
+<div class="sectionbody">
+<span id="direct-memory-access-controller-dma-direct-memory-access-controller-dma"></span>
+<div class="paragraph">
+<p>The SEP DMA copies data between addressable memories and peripheral registers,
+with optional inline SHA-256, SHA-384 or SHA-512 hashing. It uses the
+<a href="https://opentitan.org/book/hw/ip/dma/index.html">OpenTitan DMA Controller</a>
+inside an AXI wrapper. The integration below defines which upstream ports
+and hardware triggers are available in SEP.</p>
+</div>
+<div class="paragraph">
+<p>Source and destination addresses independently support incrementing, fixed
+address and wrap-at-chunk-boundary operation. Use incrementing addresses for
+memory and a fixed address for a peripheral FIFO. Transfers use 1-, 2- or
+4-byte accesses; inline hashing requires 4-byte transfers. The core issues
+individual TL-UL transactions, so the AXI wrapper does not turn a copy into
+a burst transfer. Hash results are read from the DMA digest registers.</p>
+</div>
+<div id="sep-dma-reference-diagram" class="imageblock">
+<div class="content">
+<img src="_images/opentitan_dma.svg" alt="OpenTitan DMA core and inline hashing reference architecture" width="100%">
+</div>
+<div class="title">Figure 1. OpenTitan DMA core and inline hashing reference architecture</div>
+</div>
+<div class="paragraph">
+<p><a href="#sep-dma-reference-diagram">OpenTitan DMA core and inline hashing reference architecture</a> shows the upstream DMA core. SEP adapts the host register interface
+to its AXI fabric as described below.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="och-modifications"><a class="anchor" href="#och-modifications"></a><a class="link" href="#och-modifications">1. OCAH Modifications</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><a href="#sep-dma-integration-figure">SEP secure DMA integration</a> shows how <code>sep_dma_wrap</code> connects the DMA core
+to the SEP local crossbar. The register path runs left to right along the top
+and the host path right to left along the bottom; green boxes are converters,
+and the dashed ports are tied off.</p>
+</div>
+<div id="sep-dma-integration-figure" class="imageblock">
+<div class="content">
+<img src="_images/sep-dma.svg" alt="sep_dma_wrap with the secure_dma core, its register-path and host-path converters, the local alias remap and the tied-off CTN and SYS ports" width="100%">
+</div>
+<div class="title">Figure 2. SEP secure DMA integration</div>
+</div>
+<div class="paragraph">
+<p>The wrapper exposes separate AXI4 register-slave and DMA-master interfaces,
+both with 32-bit addresses and 64-bit data. Internally, the register path
+converts AXI4 to 32-bit AXI4-Lite and then TL-UL; the data path converts the
+core&#8217;s TL-UL host port back to AXI4. A local-alias remapper precedes the SEP
+crossbar and leaves the CPU TCM backdoor range available to DMA.</p>
+</div>
+<div class="paragraph">
+<p>Use source and destination address-space ID <code>0x7</code> (the core&#8217;s internal host
+port), with both high address registers zero. The upstream SoC control and
+system ports are tied off in this wrapper; their ASIDs do not provide
+additional SEP routes. Reachability is governed by the SEP fabric and filters.</p>
+</div>
+<div class="paragraph">
+<p>Only handshake input 0 is connected, to the SPI host&#8217;s LSIO trigger.
+All other trigger inputs are tied low; SEP does not wire UART or I3C handshake paths.
+This does not prevent software-initiated accesses to reachable peripheral registers.</p>
+</div>
+<div class="sect2">
+<h3 id="sep-dma-programming"><a class="anchor" href="#sep-dma-programming"></a><a class="link" href="#sep-dma-programming">1.1. Programming a Copy</a></h3>
+<div class="paragraph">
+<p>For one contiguous memory-to-memory copy:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Wait until the previous operation has finished and configuration is writable
+(<code>CFG_REGWEN</code>). Configure a valid enabled-memory base/limit pair and set
+<code>RANGE_VALID</code> before starting; observe <code>RANGE_REGWEN</code> if firmware has locked
+that configuration.</p>
+</li>
+<li>
+<p>Write <code>SRC_ADDR_LO</code> and <code>DST_ADDR_LO</code>, clear both high address registers,
+and select <code>0x7</code> for both fields in <code>ADDR_SPACE_ID</code> (<code>0x77</code> combined).</p>
+</li>
+<li>
+<p>Set <code>TRANSFER_WIDTH</code> to 0, 1 or 2 for 1, 2 or 4 bytes respectively. Align
+both addresses to that width. Enable <code>INCREMENT</code> and clear <code>WRAP</code> in both
+<code>SRC_CONFIG</code> and <code>DST_CONFIG</code>.</p>
+</li>
+<li>
+<p>Set <code>CHUNK_DATA_SIZE</code> and <code>TOTAL_DATA_SIZE</code> to the same nonzero byte count.</p>
+</li>
+<li>
+<p>Write <code>CONTROL</code> with <code>OPCODE=0</code> (copy), <code>HARDWARE_HANDSHAKE_ENABLE=0</code>,
+<code>INITIAL_TRANSFER=1</code> and <code>GO=1</code>.</p>
+</li>
+<li>
+<p>Check <code>STATUS.ERROR</code> and <code>ERROR_CODE</code> while waiting for <code>STATUS.DONE</code>.
+Use a bounded wait in firmware. For interrupt-driven operation, enable
+the required completion/error sources and acknowledge <code>INTR_STATE</code>.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>The core reports transaction completion, chunk completion and error separately.
+Chunk completion applies to multi-chunk transfers without hardware handshake;
+it is not a per-trigger interrupt in handshake mode. Status completion/error
+bits are write-one-to-clear; the detailed register map defines each bit.</p>
+</div>
+<div class="paragraph">
+<p>For hashing, select opcode 1, 2 or 3 for SHA-256, SHA-384 or SHA-512 and use
+4-byte transfers. Set <code>INITIAL_TRANSFER</code> on the first transfer of the message;
+read the digest only when <code>STATUS.SHA2_DIGEST_VALID</code> is set. <code>DIGEST_SWAP</code>
+controls byte order within each digest register, not register order.</p>
+</div>
+<div class="paragraph">
+<p>For SPI handshake operation, select trigger 0 in <code>HANDSHAKE_INTR_ENABLE</code>,
+configure the peripheral FIFO and chunk size, and enable hardware handshake.
+A chunk consumes the configured number of bytes per service operation.
+Firmware must clear <code>GO</code> when stopping handshake operation. To abort an active
+operation, request <code>CONTROL.ABORT</code> and wait for <code>STATUS.ABORTED</code> before reusing
+its buffers or configuration. For a peripheral requiring an explicit trigger-clear
+write, configure <code>CLEAR_INTR_SRC</code>, <code>CLEAR_INTR_BUS</code>, <code>INTR_SRC_ADDR</code> and
+<code>INTR_SRC_WR_VAL</code> for the connected host port (<code>CLEAR_INTR_BUS</code> bit 0 = 1);
+otherwise leave that source
+unselected in <code>CLEAR_INTR_SRC</code>.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="future-enhancements"><a class="anchor" href="#future-enhancements"></a><a class="link" href="#future-enhancements">2. Future Enhancements</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The following are proposals, not capabilities of the current SEP integration:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Inline AES encryption or decryption (with/without inline hashing)</p>
+</li>
+<li>
+<p>Inline hashing with only digest written to target slave</p>
+</li>
+<li>
+<p>Optimize implementation by using cryptographic resources (AES,
+HMAC-SHA2) engines inside the cryptographic subsystem and adding
+streaming interfaces</p>
+</li>
+<li>
+<p>Replace the FSM controller with a microsequencer or simple CPU, potentially
+shared with the Key Manager</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="memory-map-and-register-reference"><a class="anchor" href="#memory-map-and-register-reference"></a><a class="link" href="#memory-map-and-register-reference">3. Memory Map and Register Reference</a></h2>
+<div class="sectionbody">
+<span id="register-reference"></span>
+<div class="sect2">
+<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">3.1. Memory Map</a></h3>
+<div class="paragraph">
+<p>Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">3.2. Detailed Register Map</a></h3>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-secure_dma">DMA Controller</h2>
+<p>DMA Controller for the integrated OpenTitan.</p>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>SHA2_DIGEST_0[16]</strong>: 16 registers, base 0x58, stride 0x4</li>
+<li><strong>INTR_SRC_ADDR_0[11]</strong>: 11 registers, base 0xA4, stride 0x4</li>
+<li><strong>INTR_SRC_WR_VAL_0[11]</strong>: 11 registers, base 0x124, stride 0x4</li>
+</ul>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#secure_dma-INTR_STATE">INTR_STATE</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x4</td><td><a href="#secure_dma-INTR_ENABLE">INTR_ENABLE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#secure_dma-INTR_TEST">INTR_TEST</a></td><td>W</td><td>-</td></tr>
+<tr><td>0xC</td><td><a href="#secure_dma-ALERT_TEST">ALERT_TEST</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#secure_dma-SRC_ADDR_LO">SRC_ADDR_LO</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x14</td><td><a href="#secure_dma-SRC_ADDR_HI">SRC_ADDR_HI</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x18</td><td><a href="#secure_dma-DST_ADDR_LO">DST_ADDR_LO</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x1C</td><td><a href="#secure_dma-DST_ADDR_HI">DST_ADDR_HI</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x20</td><td><a href="#secure_dma-ADDR_SPACE_ID">ADDR_SPACE_ID</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x24</td><td><a href="#secure_dma-ENABLED_MEMORY_RANGE_BASE">ENABLED_MEMORY_RANGE_BASE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x28</td><td><a href="#secure_dma-ENABLED_MEMORY_RANGE_LIMIT">ENABLED_MEMORY_RANGE_LIMIT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x2C</td><td><a href="#secure_dma-RANGE_VALID">RANGE_VALID</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x30</td><td><a href="#secure_dma-RANGE_REGWEN">RANGE_REGWEN</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x34</td><td><a href="#secure_dma-CFG_REGWEN">CFG_REGWEN</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x38</td><td><a href="#secure_dma-TOTAL_DATA_SIZE">TOTAL_DATA_SIZE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x3C</td><td><a href="#secure_dma-CHUNK_DATA_SIZE">CHUNK_DATA_SIZE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x40</td><td><a href="#secure_dma-TRANSFER_WIDTH">TRANSFER_WIDTH</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x44</td><td><a href="#secure_dma-CONTROL">CONTROL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x48</td><td><a href="#secure_dma-SRC_CONFIG">SRC_CONFIG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x4C</td><td><a href="#secure_dma-DST_CONFIG">DST_CONFIG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x50</td><td><a href="#secure_dma-STATUS">STATUS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x54</td><td><a href="#secure_dma-ERROR_CODE">ERROR_CODE</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x58 - 0x94</td><td><a href="#secure_dma-SHA2_DIGEST_0_16_">SHA2_DIGEST_0[16]</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x98</td><td><a href="#secure_dma-HANDSHAKE_INTR_ENABLE">HANDSHAKE_INTR_ENABLE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x9C</td><td><a href="#secure_dma-CLEAR_INTR_SRC">CLEAR_INTR_SRC</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xA0</td><td><a href="#secure_dma-CLEAR_INTR_BUS">CLEAR_INTR_BUS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xA4 - 0xCC</td><td><a href="#secure_dma-INTR_SRC_ADDR_0_11_">INTR_SRC_ADDR_0[11]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x124 - 0x14C</td><td><a href="#secure_dma-INTR_SRC_WR_VAL_0_11_">INTR_SRC_WR_VAL_0[11]</a></td><td>RW</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<span id="INTR_STATE"></span><h3 id="secure_dma-INTR_STATE" data-register-alias="INTR_STATE">INTR_STATE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>DMA_ERROR</td><td>R</td><td>0x0</td><td>DMA error has occurred. DMA_STATUS.error_code register shows the details.</td></tr>
+<tr><td>1</td><td>DMA_CHUNK_DONE</td><td>R</td><td>0x0</td><td>Indicates the transfer of a single chunk has been completed.</td></tr>
+<tr><td>0</td><td>DMA_DONE</td><td>R</td><td>0x0</td><td>DMA operation has been completed.</td></tr>
+</table>
+<span id="INTR_ENABLE"></span><h3 id="secure_dma-INTR_ENABLE" data-register-alias="INTR_ENABLE">INTR_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>DMA_ERROR</td><td>RW</td><td>0x0</td><td>Enable interrupt when !!INTR_STATE.dma_error is set.</td></tr>
+<tr><td>1</td><td>DMA_CHUNK_DONE</td><td>RW</td><td>0x0</td><td>Enable interrupt when !!INTR_STATE.dma_chunk_done is set.</td></tr>
+<tr><td>0</td><td>DMA_DONE</td><td>RW</td><td>0x0</td><td>Enable interrupt when !!INTR_STATE.dma_done is set.</td></tr>
+</table>
+<span id="INTR_TEST"></span><h3 id="secure_dma-INTR_TEST" data-register-alias="INTR_TEST">INTR_TEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>DMA_ERROR</td><td>W</td><td>0x0</td><td>Write 1 to force !!INTR_STATE.dma_error to 1.</td></tr>
+<tr><td>1</td><td>DMA_CHUNK_DONE</td><td>W</td><td>0x0</td><td>Write 1 to force !!INTR_STATE.dma_chunk_done to 1.</td></tr>
+<tr><td>0</td><td>DMA_DONE</td><td>W</td><td>0x0</td><td>Write 1 to force !!INTR_STATE.dma_done to 1.</td></tr>
+</table>
+<span id="ALERT_TEST"></span><h3 id="secure_dma-ALERT_TEST" data-register-alias="ALERT_TEST">ALERT_TEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>FATAL_FAULT</td><td>W</td><td>0x0</td><td>Write 1 to trigger one alert event of this kind.</td></tr>
+</table>
+<span id="SRC_ADDR_LO"></span><h3 id="secure_dma-SRC_ADDR_LO" data-register-alias="SRC_ADDR_LO">SRC_ADDR_LO</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>SRC_ADDR_LO</td><td>RW</td><td>0x0</td><td>Lower 32 bits of the source address.<br>Must be aligned to the transfer width.</td></tr>
+</table>
+<span id="SRC_ADDR_HI"></span><h3 id="secure_dma-SRC_ADDR_HI" data-register-alias="SRC_ADDR_HI">SRC_ADDR_HI</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>SRC_ADDR_HI</td><td>RW</td><td>0x0</td><td>Upper 32 bits of the physical or virtual address of memory location within SoC memory address map or physical address within OT non-secure memory space.<br>Must be aligned to the transfer width.<br>Source and destination address must have the same alignment.</td></tr>
+</table>
+<span id="DST_ADDR_LO"></span><h3 id="secure_dma-DST_ADDR_LO" data-register-alias="DST_ADDR_LO">DST_ADDR_LO</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>DST_ADDR_LO</td><td>RW</td><td>0x0</td><td>Lower 32 bits of the destination address.<br>Must be aligned to the transfer width.<br>Source and destination address must have the same alignment.</td></tr>
+</table>
+<span id="DST_ADDR_HI"></span><h3 id="secure_dma-DST_ADDR_HI" data-register-alias="DST_ADDR_HI">DST_ADDR_HI</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>DST_ADDR_HI</td><td>RW</td><td>0x0</td><td>Upper 32 bits of the physical or virtual address of memory location within SoC memory address map or physical address within OT non-secure memory space.<br>Must be aligned to the transfer width.<br>Source and destination address must have the same alignment.</td></tr>
+</table>
+<span id="ADDR_SPACE_ID"></span><h3 id="secure_dma-ADDR_SPACE_ID" data-register-alias="ADDR_SPACE_ID">ADDR_SPACE_ID</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:4</td><td>DST_ASID</td><td>RW</td><td>0x7</td><td>Target address space that the destination address pointer refers to.</td></tr>
+<tr><td>3:0</td><td>SRC_ASID</td><td>RW</td><td>0x7</td><td>Target address space that the source address pointer refers to.</td></tr>
+</table>
+<span id="ENABLED_MEMORY_RANGE_BASE"></span><h3 id="secure_dma-ENABLED_MEMORY_RANGE_BASE" data-register-alias="ENABLED_MEMORY_RANGE_BASE">ENABLED_MEMORY_RANGE_BASE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>BASE</td><td>RW</td><td>0x0</td><td>Base Address to mark the start of the DMA enabled memory range within the OT internal memory space.</td></tr>
+</table>
+<span id="ENABLED_MEMORY_RANGE_LIMIT"></span><h3 id="secure_dma-ENABLED_MEMORY_RANGE_LIMIT" data-register-alias="ENABLED_MEMORY_RANGE_LIMIT">ENABLED_MEMORY_RANGE_LIMIT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>LIMIT</td><td>RW</td><td>0x0</td><td>Limit Address to mark the end of the DMA enabled memory range within the OT internal memory space; inclusive.</td></tr>
+</table>
+<span id="RANGE_VALID"></span><h3 id="secure_dma-RANGE_VALID" data-register-alias="RANGE_VALID">RANGE_VALID</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>RANGE_VALID</td><td>RW</td><td>0x0</td><td>Once set the enabled memory base and limit registers are valid.</td></tr>
+</table>
+<span id="RANGE_REGWEN"></span><h3 id="secure_dma-RANGE_REGWEN" data-register-alias="RANGE_REGWEN">RANGE_REGWEN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3:0</td><td>REGWEN</td><td>RW0C</td><td>0x6</td><td>Used by firmware to lock the DMA enabled memory range configuration registers from further modification.<br>Once this register is set to kMultiBitBool4False, it can only be set to kMultiBitBool4True through a reset event.<br><br>Default Value = kMultiBitBool4True -&gt; Unlocked at reset.</td></tr>
+</table>
+<span id="CFG_REGWEN"></span><h3 id="secure_dma-CFG_REGWEN" data-register-alias="CFG_REGWEN">CFG_REGWEN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3:0</td><td>REGWEN</td><td>R</td><td>0x6</td><td>Used by hardware to lock the DMA configuration registers.<br>This register is purely managed by hardware and only software readable.</td></tr>
+</table>
+<span id="TOTAL_DATA_SIZE"></span><h3 id="secure_dma-TOTAL_DATA_SIZE" data-register-alias="TOTAL_DATA_SIZE">TOTAL_DATA_SIZE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>DATA_SIZE</td><td>RW</td><td>0x0</td><td>Total size (in bytes) of the data to be transferred. The complete transfer operation<br>may consist of multiple chunks of data as specified by the CHUNK_DATA_SIZE register.<br><br>Minimum: 1 byte.<br>Maximum: May be restricted to a maximum pre-defined size based on OT DMA enabled memory space allocation.<br>Works in conjunction with the TRANSFER_WIDTH register.</td></tr>
+</table>
+<span id="CHUNK_DATA_SIZE"></span><h3 id="secure_dma-CHUNK_DATA_SIZE" data-register-alias="CHUNK_DATA_SIZE">CHUNK_DATA_SIZE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>DATA_SIZE</td><td>RW</td><td>0x0</td><td>Size (in bytes) for a single DMA transfer.<br>In hardware handshake mode, the DMA reads in chunks of CHUNK_DATA_SIZE from the peripheral.<br>For a single memory transfer CHUNK_DATA_SIZE and TOTAL_DATA_SIZE are set to the same value.<br><br>Minimum: 1 byte.<br>Maximum: May be restricted to a maximum pre-defined size based on OT DMA enabled memory space allocation.<br>Works in conjunction with the TRANSFER_WIDTH register.</td></tr>
+</table>
+<span id="TRANSFER_WIDTH"></span><h3 id="secure_dma-TRANSFER_WIDTH" data-register-alias="TRANSFER_WIDTH">TRANSFER_WIDTH</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1:0</td><td>TRANSACTION_WIDTH</td><td>RW</td><td>0x2</td><td>Denotes the width of each transaction that the DMA shall issue during the data movement.<br><br>Multiple transactions of this width will be issued until TOTAL_DATA_SIZE bytes have been transferred.<br>Note that firmware may need to set a different value if a receiving IP supports a read / write transaction width that is less than 1 DWORD.<br>This does not affect the wrap-around mechanism.<br>Note that the value 3 for this register represents an invalid configuration that leads to an error.</td></tr>
+</table>
+<span id="CONTROL"></span><h3 id="secure_dma-CONTROL" data-register-alias="CONTROL">CONTROL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31</td><td>GO</td><td>RW</td><td>0x0</td><td>Setting this bit triggers the DMA operation.<br>For normal operation, the DMA engine clears the `go` bit automatically after the configured operation is complete.<br>For Hardware handshake operation, DMA engine does not auto clear the Go bit.<br>Firmware shall clear the Go bit when it intends to stop the hardware handshake operation.</td></tr>
+<tr><td>30:28</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>27</td><td>ABORT</td><td>W</td><td>0x0</td><td>Aborts the DMA operation if this bit is set.<br>Sets the corresponding bit in the status register once abort operation is complete.<br>Any OpenTitan-internal transactions are guaranteed to complete, but there are no guarantees on the SoC interface.</td></tr>
+<tr><td>26:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>INITIAL_TRANSFER</td><td>RW</td><td>0x0</td><td>Marks the initial transfer to initialize the DMA and SHA engine for one transfer that can span over multiple single DMA transfers.<br>Used for hardware handshake and ordinary transfers, in which multiple transfers contribute to a final digest.<br>Note, for non-handshake transfers with inline hashing mode enabled, this bit must be set to also mark the first transfer.</td></tr>
+<tr><td>7:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>5</td><td>DIGEST_SWAP</td><td>RW</td><td>0x0</td><td>Digest register byte swap.<br><br>If 1 the value in each digest output register is converted to big-endian byte order.<br>This setting does not affect the order of the digest output registers, !!SHA2_DIGEST_0 still contains the first 4 bytes of the digest.</td></tr>
+<tr><td>4</td><td>HARDWARE_HANDSHAKE_ENABLE</td><td>RW</td><td>0x0</td><td>Enable hardware handshake mode.<br>Used to clear FIFOs from low speed IO peripherals receiving data, e.g., I3C receive buffer.<br>Listen to an input trigger signal.<br>Read data from source address location.<br>Copy to destination address.<br>Number of bytes specified in size register.<br>Note assumption is the peripheral lowers input once FIFO is cleared.<br>No explicit clearing necessary.</td></tr>
+<tr><td>3:0</td><td>OPCODE</td><td>RW</td><td>0x0</td><td>Defines the type of DMA operations.</td></tr>
+</table>
+<span id="SRC_CONFIG"></span><h3 id="secure_dma-SRC_CONFIG" data-register-alias="SRC_CONFIG">SRC_CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>WRAP</td><td>RW</td><td>0x0</td><td>When 0: Chunks occupy contiguous ascending addresses.<br>When 1: Source address wraps back to the starting address when finishing a chunk.</td></tr>
+<tr><td>0</td><td>INCREMENT</td><td>RW</td><td>0x0</td><td>Defines the increment behavior after every DMA read.<br>When 0: Source address is not changed.<br>All reads are done from the same address.<br>When 1: Source address is incremented by transfer_width after each read.</td></tr>
+</table>
+<span id="DST_CONFIG"></span><h3 id="secure_dma-DST_CONFIG" data-register-alias="DST_CONFIG">DST_CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>WRAP</td><td>RW</td><td>0x0</td><td>When 0: Chunks occupy contiguous ascending addresses.<br>When 1: Destination address wraps back to the starting address when finishing a chunk.</td></tr>
+<tr><td>0</td><td>INCREMENT</td><td>RW</td><td>0x0</td><td>Defines the increment behavior after every DMA write.<br>When 0: Destination address is not changed.<br>All writes are done to the same address.<br>When 1: Destination address is incremented by transfer_width after each write.</td></tr>
+</table>
+<span id="STATUS"></span><h3 id="secure_dma-STATUS" data-register-alias="STATUS">STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>5</td><td>CHUNK_DONE</td><td>RW1C</td><td>0x0</td><td>Transfer of a single chunk is complete.<br>Only raised for multi-chunk memory-to-memory transfers.<br>Cleared automatically by the hardware when starting the transfer of a new chunk.</td></tr>
+<tr><td>4</td><td>SHA2_DIGEST_VALID</td><td>R</td><td>0x0</td><td>Indicates whether the SHA2_DIGEST register contains a valid digest.<br>This value is cleared on the initial transfer and set when the digest is written.</td></tr>
+<tr><td>3</td><td>ERROR</td><td>RW1C</td><td>0x0</td><td>Error occurred during the operation.<br>ERROR_CODE register denotes the source of the error.</td></tr>
+<tr><td>2</td><td>ABORTED</td><td>RW1C</td><td>0x0</td><td>Set once aborted operation drains.</td></tr>
+<tr><td>1</td><td>DONE</td><td>RW1C</td><td>0x0</td><td>Configured DMA operation is complete.<br>Cleared automatically by the hardware when starting a new transfer.</td></tr>
+<tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>DMA operation is active if this bit is set.<br>DMA engine clears this bit when operation is complete.<br>This bit may be set as long as hardware handshake mode is active and triggered.</td></tr>
+</table>
+<span id="ERROR_CODE"></span><h3 id="secure_dma-ERROR_CODE" data-register-alias="ERROR_CODE">ERROR_CODE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>ASID_ERROR</td><td>R</td><td>0x0</td><td>The source or destination ASID contains an invalid value.</td></tr>
+<tr><td>6</td><td>RANGE_VALID_ERROR</td><td>R</td><td>0x0</td><td>The DMA enabled memory range is not configured.</td></tr>
+<tr><td>5</td><td>BASE_LIMIT_ERROR</td><td>R</td><td>0x0</td><td>The base and limit addresses contain an invalid value.</td></tr>
+<tr><td>4</td><td>BUS_ERROR</td><td>R</td><td>0x0</td><td>The bus transfer returned an error.</td></tr>
+<tr><td>3</td><td>SIZE_ERROR</td><td>R</td><td>0x0</td><td>TRANSFER_WIDTH encodes an invalid value, TOTAL_DATA_SIZE or CHUNK_SIZE are zero, or inline hashing is not using 32-bit transfer width</td></tr>
+<tr><td>2</td><td>OPCODE_ERROR</td><td>R</td><td>0x0</td><td>Opcode is invalid.</td></tr>
+<tr><td>1</td><td>DST_ADDR_ERROR</td><td>R</td><td>0x0</td><td>Destination address is invalid.</td></tr>
+<tr><td>0</td><td>SRC_ADDR_ERROR</td><td>R</td><td>0x0</td><td>Source address is invalid.</td></tr>
+</table>
+<span id="SHA2_DIGEST_0_16_"></span><h3 id="secure_dma-SHA2_DIGEST_0_16_" data-register-alias="SHA2_DIGEST_0_16_">SHA2_DIGEST_0[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>DATA_0</td><td>R</td><td>0x0</td><td>SHA2 digest data</td></tr>
+</table>
+<span id="HANDSHAKE_INTR_ENABLE"></span><h3 id="secure_dma-HANDSHAKE_INTR_ENABLE" data-register-alias="HANDSHAKE_INTR_ENABLE">HANDSHAKE_INTR_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>10:0</td><td>MASK</td><td>RW</td><td>0x7FF</td><td>Enable bits for incoming handshake interrupt wires.</td></tr>
+</table>
+<span id="CLEAR_INTR_SRC"></span><h3 id="secure_dma-CLEAR_INTR_SRC" data-register-alias="CLEAR_INTR_SRC">CLEAR_INTR_SRC</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>10:0</td><td>SOURCE</td><td>RW</td><td>0x0</td><td>Source N needs interrupt cleared</td></tr>
+</table>
+<span id="CLEAR_INTR_BUS"></span><h3 id="secure_dma-CLEAR_INTR_BUS" data-register-alias="CLEAR_INTR_BUS">CLEAR_INTR_BUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>10:0</td><td>BUS</td><td>RW</td><td>0x0</td><td>Bus selection bit for source N.</td></tr>
+</table>
+<span id="INTR_SRC_ADDR_0_11_"></span><h3 id="secure_dma-INTR_SRC_ADDR_0_11_" data-register-alias="INTR_SRC_ADDR_0_11_">INTR_SRC_ADDR_0[11]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>ADDR_0</td><td>RW</td><td>0x0</td><td>Destination address for interrupt source clearing write.</td></tr>
+</table>
+<span id="INTR_SRC_WR_VAL_0_11_"></span><h3 id="secure_dma-INTR_SRC_WR_VAL_0_11_" data-register-alias="INTR_SRC_WR_VAL_0_11_">INTR_SRC_WR_VAL_0[11]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>WR_VAL_0</td><td>RW</td><td>0x0</td><td>Write value for interrupt clearing write.</td></tr>
+</table>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
+<script src="../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>

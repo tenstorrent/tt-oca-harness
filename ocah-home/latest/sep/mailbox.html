@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Mailboxes :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links
+
+                 All five books now build as ONE Antora site
+                 (antora-playbook.yml), so ../../.. already
+                 resolves directly to the one shared root. -->
+            <a class="navbar-item" href="../../../ocah-starting/latest/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../ocah-appnotes/latest/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (SMU)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (DTP)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-sep-datasheet.pdf">Security Processor (SEP)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (SMC)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (AoU)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-home" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas (OCA) Harness</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../index.html">Home</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../features.html">Feature Overview</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../motivation.html">Motivation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../use-cases.html">Use Cases</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../license.html">License</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness latest — switch documentation">
+    <span class="version">latest</span>
+  </button>
+  <ul class="components">
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-starting/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-integrator-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-programmer-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-docs/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../index.html">Open Chiplet Atlas (OCA) Harness</a></li>
+    <li><a href="mailbox.html">Mailboxes</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Mailboxes</h1>
+<div id="mailboxes" class="paragraph">
+<p><a href="#sep-mailbox-diagram">SEP host mailbox architecture and interrupt routing</a> shows the host mailbox connections and interrupt routing.</p>
+</div>
+<div id="sep-mailbox-diagram" class="imageblock">
+<div class="content">
+<img src="_images/sep-host-mailbox.svg" alt="Mailbox unit with its AXI-Lite demux, mailboxes 0 and 7 with their outbound and inbound ports and FIFOs, and the interrupt routing to the SMC and the SEP CPU PIC" width="100%">
+</div>
+<div class="title">Figure 1. SEP host mailbox architecture and interrupt routing</div>
+</div>
+<div class="paragraph">
+<p>The mailbox unit takes one AXI-Lite port from the peripheral crossbar, and its
+demux selects one of sixteen 2 kB port apertures from address bits 14 to 11.
+Mailbox <em>m</em> occupies the 4 kB at <code>0x10A0_0000</code> + <em>m</em> × <code>0x1000</code>, with its
+outbound port at offset <code>0x000</code> and its inbound port at offset <code>0x800</code>. The
+figure draws mailboxes 0 and 7; mailboxes 1 to 6 are identical. Each mailbox
+holds two FIFOs of eight 64-bit entries, and <code>WRITE_DATA</code> in one port pushes the
+FIFO that <code>READ_DATA</code> in the other port pops. Every port has its own
+level-sensitive, active-high interrupt. The eight inbound-port interrupts are
+SEP CPU PIC sources 1 to 8. The eight outbound-port interrupts leave SEP on
+<code>smc_mailbox_interrupt_o</code> and reach the SMC as its peripheral interrupts 7 to 0.</p>
+</div>
+<div class="paragraph">
+<p>SEP uses mailboxes to exchange service requests with system clients, such as
+software running on application-processor (AP) cores. A client is the requester
+whose communication context software wants to keep separate; it need not be
+an entire processor. The system&#8217;s firmware policy assigns mailbox apertures
+to clients and configures the inbound traffic filter to control their access.
+The hardware does not establish a fixed one-client-per-core allocation.</p>
+</div>
+<div class="paragraph">
+<p>Each mailbox occupies a 4 KiB aperture and has an inbox/outbox pair.
+Its privacy depends on the programmed access policy, not on a distinct
+hardware mailbox type. When the inbox is
+written, an interrupt is sent to the SEP CPU to notify it of an incoming
+service request. Similarly, when the outbox is written by the SEP, an
+interrupt is sent to the SMC. The outbox is only used for communication with AP cores. For
+all other resources we only use inboxes on both ends of the transaction.</p>
+</div>
+<div class="paragraph">
+<p>The SEP mailboxes have 64-bit data registers while SEP is a 32-bit system.
+Registers sit on an 8-byte stride and are decoded by which 8-byte slot the
+address falls in, so a register&#8217;s low and high halves alias to the same
+register. The SEP CPU is RV32 and can reach only one half per instruction,
+which makes every half-word access a full-register access at the mailbox:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>A read of <code>READ_DATA</code> at either half pops one FIFO entry. The mailbox drives
+the whole entry; the CPU keeps the half selected by address bit 2 and discards
+the other. Reading both halves consumes two entries.</p>
+</li>
+<li>
+<p>A write of <code>WRITE_DATA</code> at either half pushes one entry, with bytes outside
+the write strobe pushed as zero. A 32-bit store to the low half enqueues
+<code>{32&#8217;h0, data}</code>.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>SEP can use either half, but never both halves of one entry, so a SEP-visible
+payload is 32 bits per entry and both ends must agree on which half carries
+it. SEP firmware uses the low half at the register base offset.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+This depends on the mailbox aperture staying side-effect in <code>mrac</code>.
+Clearing side-effect enables the core&#8217;s load-to-load forwarding and
+speculative accesses, both of which pop entries unpredictably.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Mailbox type is a configuration, not a hardware variant. Every mailbox is an
+identical instance of the same block; what makes one an ISS mailbox and
+another an STEE or Regular mailbox is the inbound traffic filter entry that
+covers its 4 kB aperture. The filter blocks by default, so a mailbox with no
+enabled entry over its aperture is unreachable from the fabric, and
+reprogramming an entry retypes that mailbox at run time. An entry pairs an
+address range with the qualification criteria below, plus separate read and
+write permissions and a write-once lock bit. See <a href="fabric.html#sep-traffic-filter-decode" class="xref page">Filtering and Protection</a>
+for the SEP filter instances and <a href="../ip/axi_filter/doc/index.html#axi-traffic-filter" class="xref page">AXI Traffic Filter</a> for the entry
+registers and the decode algorithm used to program them.</p>
+</div>
+<div class="paragraph">
+<p><a href="#sep-mailbox-qualification-table">SEP mailbox qualification</a> describes the traffic qualifications used to
+distinguish mailbox types.</p>
+</div>
+<table id="sep-mailbox-qualification-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. SEP mailbox qualification</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 80%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Mailbox Type</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ISS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uses fabric source ID to qualify incoming transactions. Legal
+source ID is programmable, lockable and reset by SEP reset.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">STEE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Relies on STEE indicator in the transactions (NS bit) to qualify
+incoming transactions.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DTEE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved. Would rely on the DTEE indicator in the transactions
+(confidential bit) to qualify incoming transactions. TODO: Confidential
+bit will be defined in future revisions, right now there is no hardware
+to qualify this.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Regular</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Relies on PMA/PMP or page table for protection. No special
+action required by SEP.</p></td>
+</tr>
+</tbody>
+</table>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
+<script src="../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>
