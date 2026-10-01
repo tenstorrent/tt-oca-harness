@@ -54,8 +54,10 @@ from seq_lib.sep_outbound_remap_seq import (
     REMAP_VALID,
 )
 
-ADDR_W = 56
+# filter_ctrl.rdl start_addr / end_addr width; the hi word holds bits ADDR_W-1:32.
+ADDR_W = INBOUND_FILTER_CTRL_0.field_width("START_ADDR", "start_addr")
 ADDR_MASK = (1 << ADDR_W) - 1
+HI_MASK = ADDR_MASK >> 32
 GRAN_MASK = GRANULE_BYTES - 1
 # filter_ctrl.rdl START_ADDR / END_ADDR resets (upper words reset to zero).
 START_RESET = INBOUND_FILTER_CTRL_0.reset32("START_ADDR")
@@ -89,7 +91,7 @@ class SepFilterBoundsModel:
     def write_half(self, field: str, hi: bool, word: int) -> None:
         cur = self.start if field == "START" else self.end
         if hi:
-            cur = (cur & 0xFFFF_FFFF) | ((word & 0x00FF_FFFF) << 32)
+            cur = (cur & 0xFFFF_FFFF) | ((word & HI_MASK) << 32)
         else:
             cur = (cur & ~0xFFFF_FFFF) | (word & 0xFFFF_FFFF)
         if field == "START":
@@ -125,7 +127,7 @@ class SepFilterEntryWalker(SepAxiRegDriver):
         ):
             await self._wr(base + off, val & 0xFFFF_FFFF)
             model.write_half(field, False, val)
-            await self._wr(base + off + 4, (val >> 32) & 0x00FF_FFFF)
+            await self._wr(base + off + 4, (val >> 32) & HI_MASK)
             model.write_half(field, True, val >> 32)
         return model.start, model.end
 
@@ -199,38 +201,57 @@ def exact_window(x: int) -> tuple[int, int]:
     return x & ~GRAN_MASK & ADDR_MASK, x | GRAN_MASK
 
 
-def bit_legs(x: int):
+FIELDS = ("START", "END")
+BIT_RANGE = range(GRAN_MASK.bit_length(), ADDR_W)
+
+
+def _allows(field: str, bound: int, x: int) -> bool:
+    if field == "START":
+        return granule(bound) <= granule(x)
+    return granule(bound) >= granule(x)
+
+
+def _leg(field: str, k: int, x: int) -> tuple[tuple[int, int], bool] | None:
+    """One window where bound bit k alone decides whether x is inside, or None.
+
+    See ``bit_legs`` for the window shape. The leg counts only when flipping
+    bit k of the bound flips the answer for x.
+    """
+    high = (x >> (k + 1)) << (k + 1)
+    if (x >> k) & 1:
+        bound = high | ((1 << k) - 1)
+    else:
+        bound = high | (1 << k)
+    allow = _allows(field, bound, x)
+    if allow == _allows(field, bound ^ (1 << k), x):
+        return None
+    win = (bound, ADDR_MASK) if field == "START" else (0, bound)
+    return win, allow
+
+
+def bit_legs(xs: list[int]):
     """Per-bit windows where one START or END bit alone decides the response.
 
-    For each address bit k above the granule, two windows relative to target x:
-      * x[k] == 0: START = x[55:k+1] | 1<<k | 0  -> deny (START > x);
-                   END   = x[55:k+1] | 1<<k | 0  -> allow (END > x).
-      * x[k] == 1: START = x[55:k+1] | 0 | ones  -> allow (START < x);
-                   END   = x[55:k+1] | 0 | ones  -> deny (END < x).
-    The other bound is 0 or all-ones, so it cannot decide. A comparator that
-    ignores START or END bit k sees that bound with bit k flipped, which moves
-    it to the other side of x, so the response flips. Yields
-    ``(k, field, (start, end), expect_allow)``; legs whose flipped bound would
-    still land in x's granule are skipped, because there the bit cannot decide.
+    For every address bit k above the granule and for each bound, pick the first
+    probe address x in ``xs`` where a window exists whose deciding bound has x's
+    bits above k, bit k set (x[k]=0) or cleared with all-ones below (x[k]=1),
+    and whose other bound is 0 or all-ones -- and where flipping bound bit k
+    moves x across that bound. A compare that ignores bit k of that bound then
+    gives the opposite answer. Yields ``(k, field, (start, end), allow, i)`` with
+    i the index of the chosen probe. Raises when some (k, bound) has no probe,
+    so a caller cannot claim a bit it did not test.
     """
-    g = GRAN_MASK.bit_length()
-    for k in range(g, ADDR_W):
-        high = (x >> (k + 1)) << (k + 1)
-        low_ones = (1 << k) - 1
-        if not (x >> k) & 1:
-            bound = high | (1 << k)
-            flipped = high
-            if granule(flipped) == granule(x):
-                continue
-            yield k, "START", (bound, ADDR_MASK), False
-            yield k, "END", (0, bound), True
-        else:
-            bound = high | low_ones
-            flipped = bound | (1 << k)
-            if granule(flipped) == granule(x):
-                continue
-            yield k, "START", (bound, ADDR_MASK), True
-            yield k, "END", (0, bound), False
+    for k in BIT_RANGE:
+        for field in FIELDS:
+            for i, x in enumerate(xs):
+                leg = _leg(field, k, x)
+                if leg is not None:
+                    yield k, field, leg[0], leg[1], i
+                    break
+            else:
+                raise RuntimeError(
+                    f"no probe in {[hex(v) for v in xs]} lets {field} bit {k} decide alone"
+                )
 
 
 def _selftest() -> None:
@@ -246,8 +267,14 @@ def _selftest() -> None:
     m.write_half("END", True, 0xFF_FFFF)
     assert (m.start, m.end) == (0x10, 0xFF_FFFF_0000_0020)
     assert exact_window(0x1234_5678_9ABC) == (0x1234_5678_9AB8, 0x1234_5678_9ABF)
-    for x in (0x10A3_0178, 0x89F0_A9A7_3D30_90, ADDR_MASK & ~GRAN_MASK, GRANULE_BYTES):
-        for k, field, (st, en), allow in bit_legs(x):
+    for xs in (
+        [0x10A3_0178, 0x1080_2000, 0x1080_2008, 0x1080_2010],
+        [0x89F0_A9A7_3D30_90, 0x89F0_A9A7_3D30_98],
+    ):
+        legs = list(bit_legs(xs))
+        assert len(legs) == 2 * len(BIT_RANGE)
+        for k, field, (st, en), allow, i in legs:
+            x = xs[i]
             assert st <= en
             assert (granule(st) <= granule(x) <= granule(en)) == allow, (hex(x), k, field)
             # The same window with bit k of the deciding bound flipped flips the answer.

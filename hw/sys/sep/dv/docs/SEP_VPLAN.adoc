@@ -5633,7 +5633,7 @@ behaviour and the JTAG read are graded on
 . Narrow the window to the one granule at X1: OKAY at X1, DECERR at the next granule of the same region.
 . Set START to the inverse of the first window's START (above X1): DECERR.
 . Program offset O2 = ~O1, so X2 is at or above 2^55. A window holding X2 answers OKAY; a window ending at the inverse of that END (below X2) answers DECERR; the granule at X2 answers OKAY.
-. For every address bit k above the granule, program a window where START bit k alone decides the response at X2, then one where END bit k alone decides it.
+. For every address bit k above the granule, program a window where START bit k alone decides the response for a phase-2 beat of the region, then one where END bit k alone decides it.
 . Clear valid: the granule at X2 answers DECERR and the granule at the beat's own local address answers OKAY.
 . Restore the entry and the region to reset.
 
@@ -5643,7 +5643,7 @@ behaviour and the JTAG read are graded on
 |===
 |Checker |Contract
 |CHK-WALK-READBACK
-|Every START/END (56 bits), FILTER_CONFIG and remap ATTRS write reads back as the readback model says (`filter_ctrl.rdl` start_addr: rounded write-back only when START and END share a granule).
+|Every START/END (56 bits), FILTER_CONFIG and remap ATTRS write, bit-leg windows included, reads back as the readback model says (`filter_ctrl.rdl` start_addr: rounded write-back only when START and END share a granule).
 |CHK-WALK-ALLOW
 |A window that holds the remapped beat answers OKAY. The filter blocks by default and only this entry is enabled, so the OKAY places the 56-bit remapped address inside the window.
 |CHK-WALK-EXACT
@@ -5653,7 +5653,7 @@ behaviour and the JTAG read are graded on
 |CHK-WALK-BELOW
 |A window whose END is below the beat answers DECERR.
 |CHK-WALK-BIT
-|For each address bit k above the granule, two windows whose other bound is 0 or all-ones, so START bit k or END bit k alone puts X2 inside or outside: one answers OKAY and one DECERR. A compare that ignores bit k of either bound flips one of them.
+|For every address bit k above the granule, and for START and for END, one window whose other bound is 0 or all-ones, so that bound's bit k alone puts a phase-2 beat of the region inside (OKAY) or outside (DECERR). The beat is chosen per bit among beats of the region whose offsets differ in one bit; the selector raises when a (bit, bound) has no such beat. A compare that ignores bit k of either bound flips the answer. Every window is read back.
 |CHK-WALK-PASSTHRU
 |With valid clear the beat passes through with its address unchanged (`output_remap.rdl` valid: "if clear, they pass through with their address unchanged"): the one granule at the beat's own local address answers OKAY, and the granule at the translated address answers DECERR.
 |===
@@ -5686,7 +5686,7 @@ behaviour and the JTAG read are graded on
 [arabic]
 . Bring up PROD with the inbound filter active. Disable every entry and stage a value in the target CSR from the CPU-LSU master.
 . For each entry, enable only that entry and program: a window [S, E] holding the target, then [S, ~E] (both END values at or above the target); START S_B and ~S_B (both above the target); a window ending below the target; the one granule at the target.
-. For every address bit k above the granule, program a window where START bit k alone decides the response, then one where END bit k alone decides it (for k >= 32 these are the one-hot bounds 1<<k, since the target's upper bits are zero).
+. Stage the cold scratch words as extra probes. For every address bit k above the granule, program a window where START bit k alone decides the response for one probe, then one where END bit k alone decides it (for k >= 32 the deciding bound is the one-hot 1<<k).
 . After each, the external master reads the target (and, for the granule, the next granule).
 . Restore the entry to reset.
 
@@ -5696,7 +5696,7 @@ behaviour and the JTAG read are graded on
 |===
 |Checker |Contract
 |CHK-WALK-READBACK
-|Every START/END (56 bits) and FILTER_CONFIG write reads back as the readback model says.
+|Every START/END (56 bits) and FILTER_CONFIG write to the entry under test, bit-leg windows included, reads back as the readback model says. The setup disable of every entry before the walk is not graded.
 |CHK-WALK-ALLOW
 |A window holding the target answers OKAY with the staged value (the read reached the CSR).
 |CHK-WALK-EXACT
@@ -5706,7 +5706,7 @@ behaviour and the JTAG read are graded on
 |CHK-WALK-BELOW
 |A window ending below the target answers DECERR and does not return the staged value.
 |CHK-WALK-BIT
-|For each address bit k above the granule, two windows whose other bound is 0 or all-ones, so START bit k or END bit k alone puts the target inside (OKAY with the staged value) or outside (DECERR without it). A compare that ignores bit k of either bound flips one of them.
+|For every address bit k above the granule, and for START and for END, one window whose other bound is 0 or all-ones, so that bound's bit k alone puts a staged probe word inside (OKAY with its value) or outside (DECERR without it). The probe is the target or one of the cold scratch words, chosen per bit; the selector raises when a (bit, bound) has no probe. A compare that ignores bit k of either bound flips the answer. Every window is read back.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.

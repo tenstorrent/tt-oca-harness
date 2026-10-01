@@ -29,10 +29,12 @@ Checkers:
                      neighbour beat (next granule, same region) answers DECERR.
   CHK-WALK-ABOVE     START = ~start of the ALLOW window (> X) answers DECERR.
   CHK-WALK-BELOW     END = ~end of the ALLOW window (< X) answers DECERR.
-  CHK-WALK-BIT       for every address bit k above the granule, a window
-                     where START bit k alone, and one where END bit k alone,
-                     decides the response at X2: a compare that ignores bit k
-                     of either bound flips one of them.
+  CHK-WALK-BIT       for every address bit k above the granule and for each
+                     bound, a window where that bound's bit k alone decides
+                     the response for a phase-2 beat of the region (the beat
+                     is chosen per bit among the region's beats): a compare
+                     that ignores bit k of either bound flips the answer.
+                     Every such window is read back (CHK-WALK-READBACK).
   CHK-WALK-PASSTHRU  with valid cleared, the exact granule at the beat's own
                      (untranslated) address answers OKAY, and the granule at
                      the translated address answers DECERR: the beat passes
@@ -47,6 +49,7 @@ from sep_base_test import sep_base_test
 from seq_lib.sep_fabric_csr_bank_seq import AP_BASE, OUTFILT_BASE, STEE_BASE
 from seq_lib.sep_fabric_entry_walk_seq import (
     ADDR_MASK,
+    ADDR_W,
     GRANULE_BYTES,
     SepFilterEntryWalker,
     SepRemapRegionDriver,
@@ -69,7 +72,7 @@ from seq_lib.sep_outbound_remap_seq import (
 )
 
 _REGION_SPAN = 1 << IDX_START
-BIT55 = 1 << 55
+TOP_BIT = 1 << (ADDR_W - 1)
 if OUTFILT_N_ENTRIES < 2 * N_REGIONS:
     raise RuntimeError(
         f"{OUTFILT_N_ENTRIES} outbound entries cannot pair with 2 x {N_REGIONS} remap regions"
@@ -89,12 +92,27 @@ class _Pair:
         self.intra = rng.randrange(0, _REGION_SPAN - GRANULE_BYTES, GRANULE_BYTES)
         self.access = remap_access_addr(region_base, region, self.intra)
         self.neighbour = remap_access_addr(region_base, region, self.intra + GRANULE_BYTES)
-        self.o1 = rng.getrandbits(56) & ~BIT55 & ADDR_MASK
+        self.o1 = rng.getrandbits(ADDR_W) & ~TOP_BIT & ADDR_MASK
         self.o2 = ~self.o1 & ADDR_MASK
+        self.region_base = region_base
+        # Beats of the same region whose intra offset differs in one bit, so
+        # bit_legs can pick, per address bit, a beat where that bit decides.
+        self.probe_intras = [self.intra] + [
+            self.intra ^ (1 << b)
+            for b in range(GRANULE_BYTES.bit_length() - 1, IDX_START)
+            if (self.intra ^ (1 << b)) < _REGION_SPAN
+        ]
         self.rng = rng
 
     def target(self, offset: int) -> int:
         return remapped_addr(offset, self.intra)
+
+    def probes(self, offset: int) -> list[tuple[int, int]]:
+        """(local access address, remapped target) for every probe beat."""
+        return [
+            (remap_access_addr(self.region_base, self.region, i), remapped_addr(offset, i))
+            for i in self.probe_intras
+        ]
 
     def tag(self) -> str:
         return f"{self.bank} r{self.region}/entry {self.entry}"
@@ -136,7 +154,7 @@ class sep_fabric_outbound_remap_filter_walk_test(sep_base_test):
             e = p.entry
             # Phase 1: offset O1 (bit 55 clear), so X1 < 2^55.
             x1 = p.target(p.o1)
-            assert x1 < BIT55, f"{p.tag()} X1 0x{x1:014x} is not below 2^55"
+            assert x1 < TOP_BIT, f"{p.tag()} X1 0x{x1:014x} is not below the top address bit"
             await remap.program(p.csr_base, p.region, p.o1, True)
             allow = containing_window(p.rng, x1)
             await filt.program_window(e, *allow)
@@ -161,7 +179,7 @@ class sep_fabric_outbound_remap_filter_walk_test(sep_base_test):
 
             # Phase 2: offset O2 = ~O1 (bit 55 set), so X2 >= 2^55.
             x2 = p.target(p.o2)
-            assert x2 >= BIT55, f"{p.tag()} X2 0x{x2:014x} is not at or above 2^55"
+            assert x2 >= TOP_BIT, f"{p.tag()} X2 0x{x2:014x} is not at or above the top address bit"
             await remap.program(p.csr_base, p.region, p.o2, True)
             allow2 = containing_window(p.rng, x2)
             await filt.program_window(e, *allow2)
@@ -180,10 +198,13 @@ class sep_fabric_outbound_remap_filter_walk_test(sep_base_test):
             win = await filt.check_window(e, "exact-2")
             await self._expect("CHK-WALK-EXACT", p, p.access, x2, win, deny=False)
 
-            for k, field, bwin, bit_allow in bit_legs(x2):
+            probes = p.probes(p.o2)
+            for k, field, bwin, bit_allow, i in bit_legs([x for _, x in probes]):
+                acc, x = probes[i]
                 await filt.program_window(e, *bwin)
+                bwin = await filt.check_window(e, f"bit{k}-{field}")
                 await self._expect(
-                    f"CHK-WALK-BIT k={k} {field}", p, p.access, x2, bwin, deny=not bit_allow
+                    f"CHK-WALK-BIT k={k} {field}", p, acc, x, bwin, deny=not bit_allow
                 )
                 counts["BIT"] += 1
 
@@ -244,8 +265,11 @@ class sep_fabric_outbound_remap_filter_walk_test(sep_base_test):
             "CHK-WALK-BELOW PASS: %d windows with END below X answered DECERR", counts["BELOW"]
         )
         self.logger.info(
-            "CHK-WALK-BIT PASS: %d single-bit START/END windows decided the response at X2",
+            "CHK-WALK-BIT PASS: %d single-bit windows (bits %d..%d of START and END on every "
+            "entry) decided the response",
             counts["BIT"],
+            GRANULE_BYTES.bit_length() - 1,
+            ADDR_W - 1,
         )
         self.logger.info(
             "CHK-WALK-PASSTHRU PASS: %d reads with valid clear (OKAY at the untranslated "

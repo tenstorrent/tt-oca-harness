@@ -18,8 +18,10 @@ the upper bits [55:32] decide the response of a read whose own upper bits are
 zero.
 
 Checkers:
-  CHK-WALK-READBACK  each programmed START/END (56 bits) and FILTER_CONFIG
-                     reads back as the readback model says.
+  CHK-WALK-READBACK  every START/END (56 bits) and FILTER_CONFIG write to the
+                     entry under test, bit-leg windows included, reads back
+                     as the readback model says. The setup disable of every
+                     entry before the walk is not graded.
   CHK-WALK-ALLOW     windows [S, E] and [S, ~E] with S <= X <= E, ~E answer
                      OKAY with the staged value.
   CHK-WALK-EXACT     the one granule that holds X answers OKAY with the
@@ -28,11 +30,13 @@ Checkers:
                      DECERR without the staged value.
   CHK-WALK-BELOW     a window ending below X answers DECERR without the
                      staged value.
-  CHK-WALK-BIT       for every address bit k above the granule, a window
-                     where START bit k alone, and one where END bit k alone,
-                     decides the response: a compare that ignores bit k of
-                     either bound flips one of them. For k >= 32 these are the
-                     one-hot bounds 1<<k, since X has zero upper bits.
+  CHK-WALK-BIT       for every address bit k above the granule and for each
+                     bound, a window where that bound's bit k alone decides
+                     the response for one staged probe word (X or one of the
+                     cold scratch words, chosen per bit): a compare that
+                     ignores bit k of either bound flips the answer. For
+                     k >= 32 the deciding bound is the one-hot 1<<k. Every
+                     such window is read back (CHK-WALK-READBACK).
 """
 
 from __future__ import annotations
@@ -60,12 +64,17 @@ from seq_lib.sep_inbound_filter_rule_seq import (
     ext_read_seq,
 )
 from seq_lib.sep_lcc_inbound_filter_gating_seq import SepLccFeatCtrlCheckSeq
+from seq_lib.sep_scratch_reset_seq import SCRATCH_COLD_0, SCRATCH_N, SCRATCH_STRIDE
 
 _MAX_SENSE_CYCLES = 20_000
 # Distinct non-zero disable vectors so the decoded FEAT_CTRL is non-vacuous.
 _SIP_DIS = 0x0F0F_0F0F_0F0F_0F0F
 _SYS_DIS = 0x00FF_00FF_00FF_00FF
 X = TARGET_ADDR
+# Bit-leg probes: X and the cold scratch words, which the external master reaches
+# through the inbound filter and which differ from X and each other in bits [5:3].
+PROBE_ADDRS = [X] + [SCRATCH_COLD_0 + j * SCRATCH_STRIDE for j in range(SCRATCH_N)]
+BIT_LEGS = list(bit_legs(PROBE_ADDRS))
 if granule(X) == 0 or X > (ADDR_MASK >> 1):
     raise RuntimeError(f"target 0x{X:x} leaves no room below or above it")
 
@@ -140,9 +149,11 @@ class sep_fabric_inbound_filter_window_walk_test(sep_base_test):
         await self._bring_up_prod_filter_active()
         drv = SepInboundFilter(self)
         await drv.disable_all()
-        await drv.stage_target(X, staged)
-        got = await drv.read_cpu(X)
-        assert got == staged, f"staged target 0x{X:08x}=0x{got:08x} != 0x{staged:08x}"
+        probe_vals = [staged] + [rng.getrandbits(32) | 0x1 for _ in PROBE_ADDRS[1:]]
+        for addr, val in zip(PROBE_ADDRS, probe_vals):
+            await drv.stage_target(addr, val)
+            got = await drv.read_cpu(addr)
+            assert got == val, f"staged probe 0x{addr:08x}=0x{got:08x} != 0x{val:08x}"
         filt = SepFilterEntryWalker(
             self, bank_base=INFILT_BASE, bank="INFILT", n_entries=INFILT_N_ENTRIES
         )
@@ -175,13 +186,14 @@ class sep_fabric_inbound_filter_window_walk_test(sep_base_test):
             await self._expect_allow("CHK-WALK-EXACT", e, X, win, staged)
             await self._expect_deny("CHK-WALK-EXACT", e, X + GRANULE_BYTES, win, staged)
 
-            for k, field, bwin, bit_allow in bit_legs(X):
+            for k, field, bwin, bit_allow, i in BIT_LEGS:
                 await filt.program_window(e, *bwin)
+                bwin = await filt.check_window(e, f"bit{k}-{field}")
                 chk = f"CHK-WALK-BIT k={k} {field}"
                 if bit_allow:
-                    await self._expect_allow(chk, e, X, bwin, staged)
+                    await self._expect_allow(chk, e, PROBE_ADDRS[i], bwin, probe_vals[i])
                 else:
-                    await self._expect_deny(chk, e, X, bwin, staged)
+                    await self._expect_deny(chk, e, PROBE_ADDRS[i], bwin, probe_vals[i])
                 counts["BIT"] += 1
 
             await filt.restore(e)
@@ -219,6 +231,7 @@ class sep_fabric_inbound_filter_window_walk_test(sep_base_test):
             "CHK-WALK-BELOW PASS: %d windows ending below X answered DECERR", counts["BELOW"]
         )
         self.logger.info(
-            "CHK-WALK-BIT PASS: %d single-bit START/END windows decided the response",
+            "CHK-WALK-BIT PASS: %d single-bit windows (every bit above the granule, START "
+            "and END, on every entry) decided the response",
             counts["BIT"],
         )
