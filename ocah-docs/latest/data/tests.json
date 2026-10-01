@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-01T11:29:58+00:00",
+  "generated_at": "2026-10-01T12:09:43+00:00",
   "results": [
     {
       "flow": "aou",
@@ -7,7 +7,7 @@
       "tests": [
         {
           "category": "p0",
-          "duration_sec": 29.0,
+          "duration_sec": 209.0,
           "name": "ucie_axi_fdi_aou_flits_test",
           "seed": null,
           "stage": "sim",
@@ -23,7 +23,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 10.0,
+          "duration_sec": 15.0,
           "name": "aou_zero_wreq_credit_test",
           "seed": null,
           "stage": "sim",
@@ -31,7 +31,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 9.0,
+          "duration_sec": 12.0,
           "name": "aou_zero_rreq_credit_test",
           "seed": null,
           "stage": "sim",
@@ -39,7 +39,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 11.0,
+          "duration_sec": 14.0,
           "name": "aou_zero_wdata_credit_test",
           "seed": null,
           "stage": "sim",
@@ -47,7 +47,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 13.0,
+          "duration_sec": 17.0,
           "name": "aou_zero_rdata_credit_test",
           "seed": null,
           "stage": "sim",
@@ -55,7 +55,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 11.0,
+          "duration_sec": 28.0,
           "name": "aou_zero_wresp_credit_test",
           "seed": null,
           "stage": "sim",
@@ -63,7 +63,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 23.0,
+          "duration_sec": 27.0,
           "name": "ucie_axi_fdi_aou_wr1b_test",
           "seed": null,
           "stage": "sim",
@@ -71,7 +71,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 12.0,
+          "duration_sec": 13.0,
           "name": "aou_write_4b_test",
           "seed": null,
           "stage": "sim",
@@ -79,7 +79,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 12.0,
+          "duration_sec": 31.0,
           "name": "aou_write_8b_test",
           "seed": null,
           "stage": "sim",
@@ -95,7 +95,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 11.0,
+          "duration_sec": 18.0,
           "name": "aou_write_32b_test",
           "seed": null,
           "stage": "sim",
@@ -119,7 +119,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 12.0,
+          "duration_sec": 17.0,
           "name": "aou_burst_write_2_test",
           "seed": null,
           "stage": "sim",
@@ -135,7 +135,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 16.0,
+          "duration_sec": 24.0,
           "name": "aou_burst_write_8_test",
           "seed": null,
           "stage": "sim",
@@ -143,7 +143,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 19.0,
+          "duration_sec": 20.0,
           "name": "aou_burst_write_16_test",
           "seed": null,
           "stage": "sim",
@@ -151,7 +151,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 49.0,
+          "duration_sec": 55.0,
           "name": "ucie_axi_fdi_aou_wrrd_long_test",
           "seed": null,
           "stage": "sim",
@@ -159,7 +159,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 27.0,
+          "duration_sec": 28.0,
           "name": "aou_wstrb_all_ones_test",
           "seed": null,
           "stage": "sim",
@@ -167,7 +167,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 41.0,
+          "duration_sec": 47.0,
           "name": "aou_wstrb_partial_test",
           "seed": null,
           "stage": "sim",
@@ -175,7 +175,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 26.0,
+          "duration_sec": 38.0,
           "name": "aou_bresp_okay_test",
           "seed": null,
           "stage": "sim",
@@ -183,7 +183,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 24.0,
+          "duration_sec": 25.0,
           "name": "ucie_axi_fdi_aou_rd1b_test",
           "seed": null,
           "stage": "sim",
@@ -191,7 +191,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 12.0,
+          "duration_sec": 13.0,
           "name": "aou_read_2b_test",
           "seed": null,
           "stage": "sim",
@@ -199,7 +199,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 12.0,
+          "duration_sec": 16.0,
           "name": "aou_read_4b_test",
           "seed": null,
           "stage": "sim",
@@ -207,7 +207,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 12.0,
+          "duration_sec": 13.0,
           "name": "aou_read_8b_test",
           "seed": null,
           "stage": "sim",
@@ -215,7 +215,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 13.0,
+          "duration_sec": 17.0,
           "name": "aou_read_16b_test",
           "seed": null,
           "stage": "sim",
@@ -231,7 +231,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 13.0,
+          "duration_sec": 15.0,
           "name": "aou_burst_read_2_test",
           "seed": null,
           "stage": "sim",
@@ -239,7 +239,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 13.0,
+          "duration_sec": 16.0,
           "name": "aou_burst_read_4_test",
           "seed": null,
           "stage": "sim",
@@ -247,7 +247,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 16.0,
+          "duration_sec": 15.0,
           "name": "aou_burst_read_8_test",
           "seed": null,
           "stage": "sim",
@@ -255,7 +255,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 20.0,
+          "duration_sec": 22.0,
           "name": "aou_burst_read_16_test",
           "seed": null,
           "stage": "sim",
@@ -263,7 +263,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 23.0,
+          "duration_sec": 25.0,
           "name": "aou_rlast_single_test",
           "seed": null,
           "stage": "sim",
@@ -271,7 +271,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 23.0,
+          "duration_sec": 25.0,
           "name": "aou_rlast_burst_test",
           "seed": null,
           "stage": "sim",
@@ -279,7 +279,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 25.0,
+          "duration_sec": 28.0,
           "name": "aou_rresp_okay_test",
           "seed": null,
           "stage": "sim",
@@ -287,7 +287,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 23.0,
+          "duration_sec": 28.0,
           "name": "aou_multi_wresp_flit_test",
           "seed": null,
           "stage": "sim",
@@ -295,7 +295,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 238.0,
+          "duration_sec": 246.0,
           "name": "aou_rx_crossflit_test",
           "seed": null,
           "stage": "sim",
@@ -303,7 +303,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 369.0,
+          "duration_sec": 370.0,
           "name": "ucie_axi_fdi_aou_random_test",
           "seed": null,
           "stage": "sim",
@@ -319,7 +319,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 275.0,
+          "duration_sec": 265.0,
           "name": "aou_loopback_256b_test",
           "seed": null,
           "stage": "sim",
@@ -327,7 +327,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 365.0,
+          "duration_sec": 367.0,
           "name": "aou_loopback_1024b_test",
           "seed": null,
           "stage": "sim",
@@ -343,7 +343,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 85.0,
+          "duration_sec": 84.0,
           "name": "aou_outstanding_2wr_test",
           "seed": null,
           "stage": "sim",
@@ -351,7 +351,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 87.0,
+          "duration_sec": 92.0,
           "name": "aou_outstanding_2rd_test",
           "seed": null,
           "stage": "sim",
@@ -359,7 +359,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 92.0,
+          "duration_sec": 93.0,
           "name": "aou_mixed_outstanding_2w2r_test",
           "seed": null,
           "stage": "sim",
@@ -367,7 +367,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 35.0,
+          "duration_sec": 36.0,
           "name": "aou_three_granule_test",
           "seed": null,
           "stage": "sim",
@@ -375,7 +375,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 100.0,
+          "duration_sec": 105.0,
           "name": "aou_eight_granule_test",
           "seed": null,
           "stage": "sim",
@@ -383,7 +383,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 127.0,
+          "duration_sec": 129.0,
           "name": "aou_zero_len_burst_test",
           "seed": null,
           "stage": "sim",
@@ -391,7 +391,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 32.0,
+          "duration_sec": 33.0,
           "name": "aou_bypass_512_test",
           "seed": null,
           "stage": "sim",
@@ -399,7 +399,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 157.0,
+          "duration_sec": 156.0,
           "name": "aou_split_bypass_test",
           "seed": null,
           "stage": "sim",
@@ -407,7 +407,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 29.0,
+          "duration_sec": 36.0,
           "name": "aou_early_bresp_disabled_test",
           "seed": null,
           "stage": "sim",
@@ -415,7 +415,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 75.0,
+          "duration_sec": 77.0,
           "name": "aou_agg_disabled_test",
           "seed": null,
           "stage": "sim",
@@ -423,7 +423,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 12.0,
+          "duration_sec": 11.0,
           "name": "aou_int_w1c_test",
           "seed": null,
           "stage": "sim",
@@ -431,7 +431,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 6.0,
+          "duration_sec": 8.0,
           "name": "aou_reg_ip_version_test",
           "seed": null,
           "stage": "sim",
@@ -439,7 +439,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 6.0,
+          "duration_sec": 7.0,
           "name": "aou_reg_con0_test",
           "seed": null,
           "stage": "sim",
@@ -447,7 +447,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 7.0,
+          "duration_sec": 8.0,
           "name": "aou_reg_init_test",
           "seed": null,
           "stage": "sim",
@@ -455,7 +455,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 6.0,
+          "duration_sec": 10.0,
           "name": "aou_reg_int_mask_test",
           "seed": null,
           "stage": "sim",
@@ -463,7 +463,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 6.0,
+          "duration_sec": 7.0,
           "name": "aou_reg_lp_linkreset_test",
           "seed": null,
           "stage": "sim",
@@ -471,7 +471,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 6.0,
+          "duration_sec": 8.0,
           "name": "aou_reg_dest_rp_test",
           "seed": null,
           "stage": "sim",
@@ -479,7 +479,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 6.0,
+          "duration_sec": 7.0,
           "name": "aou_reg_prior_rp_axi_test",
           "seed": null,
           "stage": "sim",
@@ -495,7 +495,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 6.0,
+          "duration_sec": 8.0,
           "name": "aou_reg_axi_split_tr_test",
           "seed": null,
           "stage": "sim",
@@ -503,7 +503,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 6.0,
+          "duration_sec": 7.0,
           "name": "aou_reg_error_info_test",
           "seed": null,
           "stage": "sim",
@@ -519,7 +519,7 @@
         },
         {
           "category": "p0",
-          "duration_sec": 6.0,
+          "duration_sec": 7.0,
           "name": "aou_reg_reset_values_test",
           "seed": null,
           "stage": "sim",
@@ -535,8 +535,24 @@
         },
         {
           "category": "p0",
-          "duration_sec": 3965.0,
+          "duration_sec": 3959.0,
           "name": "ucie_axi_fdi_aou_random_bidir_test",
+          "seed": null,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "p0",
+          "duration_sec": 11.0,
+          "name": "ucie_axi_fdi_invalid_msgs_test",
+          "seed": null,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "p0",
+          "duration_sec": 8.0,
+          "name": "ucie_axi_fdi_invalid_msgs_en2dis_test",
           "seed": null,
           "stage": "sim",
           "status": "PASS"
