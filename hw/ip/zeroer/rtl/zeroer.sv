@@ -158,9 +158,9 @@ module zeroer #(
   );
 
   axi_cg_snoop #(
-    .OutstandingTx(1),
-    .DenyDelay(1),
-    .HystWidth(CG_HYSTERESIS_W)
+    .OUTSTANDING_TX(1),
+    .DENY_DELAY(1),
+    .HYST_WIDTH(CG_HYSTERESIS_W)
   ) u_zeroer_cg (
     .clk_i (clk_i),
     .rst_ni(rst_ni),

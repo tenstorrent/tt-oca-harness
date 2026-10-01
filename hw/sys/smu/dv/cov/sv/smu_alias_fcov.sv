@@ -30,7 +30,7 @@ module smu_alias_fcov #(
   // dedicated SEP-to-SMC port and the crossbar SEP initiator port --
   // exists only in smu.sv's gen_sep branch, so the whole point set is
   // dropped rather than carried unhittable.
-  parameter bit SepPresent = 1'b1
+  parameter bit SEP_PRESENT = 1'b1
 ) (
   input wire clk_smu_i,
   input wire rst_primary_smc_clk_ni,
@@ -61,7 +61,7 @@ module smu_alias_fcov #(
   input wire [55:0] xbar_sep_out_araddr_i
 );
 
-  if (SepPresent) begin : g_sep
+  if (SEP_PRESENT) begin : g_sep
     localparam logic [7:0] IdleWindow = 8'd63;
 
     // One bit wider than the address so a window ending at the top of the

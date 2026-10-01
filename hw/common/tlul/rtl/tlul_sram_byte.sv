@@ -4,7 +4,7 @@
 
 // Handle TL-UL byte writes with integrity-aware read-modify-write.
 //
-// When a write with a partial mask arrives and EnableIntg is set, read the full word
+// When a write with a partial mask arrives and ENABLE_INTG is set, read the full word
 // first, merge the written bytes, regenerate data integrity, and write the full word back.
 // When RMW is not required, mux the incoming transaction straight through.
 // compound_txn_in_progress_o is high while this module drives its own RMW write or
@@ -14,17 +14,17 @@
 // the transaction through and allow the system to error back, and feed the error
 // indication through on error_o.
 //
-// EnableReadback enables readback checks on all transactions while readback_en_i is
-// MuBi4True, and requires EnableIntg == 1. alert_o reports readback mismatches and invalid
-// FSM states. When EnableIntg is clear, every signal passes straight through and alert_o
+// ENABLE_READBACK enables readback checks on all transactions while readback_en_i is
+// MuBi4True, and requires ENABLE_INTG == 1. alert_o reports readback mismatches and invalid
+// FSM states. When ENABLE_INTG is clear, every signal passes straight through and alert_o
 // and compound_txn_in_progress_o are 0.
 
 module tlul_sram_byte
   import tlul_pkg::*;
 #(
-  parameter bit EnableIntg     = 0,  // Handle partial-mask writes with integrity RMW.
-  parameter int Outstanding    = 1,  // Maximum outstanding transactions tracked.
-  parameter bit EnableReadback = 0   // Readback-check transactions; needs EnableIntg.
+  parameter bit ENABLE_INTG     = 0,  // Handle partial-mask writes with integrity RMW.
+  parameter int OUTSTANDING     = 1,  // Maximum outstanding transactions tracked.
+  parameter bit ENABLE_READBACK = 0   // Readback-check transactions; needs ENABLE_INTG.
 ) (
   input clk_i,                                          // System clock.
   input rst_ni,                                         // Active-low reset.
@@ -97,7 +97,7 @@ module tlul_sram_byte
     StByteWrReadBackDWait   = 8'b11111111
   } state_e;
 
-  if (EnableIntg) begin : gen_integ_handling
+  if (ENABLE_INTG) begin : gen_integ_handling
     // state and selection
     logic stall_host;
     logic wait_phase;
@@ -127,7 +127,7 @@ module tlul_sram_byte
     logic byte_req_ack;
     logic hold_tx_data;
 
-    localparam int unsigned PendingTxnCntW = prim_util_pkg::vbits(Outstanding + 1);
+    localparam int unsigned PendingTxnCntW = prim_util_pkg::vbits(OUTSTANDING + 1);
     logic [PendingTxnCntW-1:0] pending_txn_cnt;
 
     // prim fifo for capturing info
@@ -156,9 +156,9 @@ module tlul_sram_byte
     mubi4_t rdback_check_q, rdback_check_d;
     mubi4_t rdback_en_q, rdback_en_d;
     logic [31:0] rdback_data_exp_q, rdback_data_exp_d;
-    logic [DataIntgWidth-1:0] rdback_data_exp_intg_q, rdback_data_exp_intg_d;
+    logic [DATA_INTG_WIDTH-1:0] rdback_data_exp_intg_q, rdback_data_exp_intg_d;
 
-    if (EnableReadback) begin : gen_readback_logic
+    if (ENABLE_READBACK) begin : gen_readback_logic
       logic rdback_chk_ok_unbuf;
 
       assign rdback_chk_ok_unbuf = (rdback_data_exp_q == tl_sram_i.d_data);
@@ -204,7 +204,7 @@ module tlul_sram_byte
       );
 
       prim_flop #(
-        .Width(DataIntgWidth),
+        .Width(DATA_INTG_WIDTH),
         .ResetValue(0)
       ) u_rdback_data_exp_intg (
         .clk_i,
@@ -327,7 +327,7 @@ module tlul_sram_byte
         StWrReadBackInit: begin
           // Perform readback after full write. To avoid that we read the holding register
           // in the readback, wait until the write was processed by the memory module.
-          if (EnableReadback == 0) begin : gen_inv_state_StWrReadBackInit
+          if (ENABLE_READBACK == 0) begin : gen_inv_state_StWrReadBackInit
             // If readback is disabled, we shouldn't be in this state.
             alert_o = 1'b1;
           end
@@ -357,7 +357,7 @@ module tlul_sram_byte
 
         StWrReadBack: begin
           // Perform readback and check response in StPassThru.
-          if (EnableReadback == 0) begin : gen_inv_state_StWrReadBack
+          if (ENABLE_READBACK == 0) begin : gen_inv_state_StWrReadBack
             // If readback is disabled, we shouldn't be in this state.
             alert_o = 1'b1;
           end
@@ -372,7 +372,7 @@ module tlul_sram_byte
         StWrReadBackDWait: begin
           // We have not received the d_valid response of the initial write. Wait
           // for the valid signal.
-          if (EnableReadback == 0) begin : gen_inv_state_StWrReadBackDWait
+          if (ENABLE_READBACK == 0) begin : gen_inv_state_StWrReadBackDWait
             // If readback is disabled, we shouldn't be in this state.
             alert_o = 1'b1;
           end
@@ -392,7 +392,7 @@ module tlul_sram_byte
         StByteWrReadBackInit: begin
           // Perform readback after partial write. To avoid that we read the holding register
           // in the readback, do the actual readback check in the next FSM state.
-          if (EnableReadback == 0) begin : gen_inv_state_StByteWrReadBackInit
+          if (ENABLE_READBACK == 0) begin : gen_inv_state_StByteWrReadBackInit
             // If readback is disabled, we shouldn't be in this state.
             alert_o = 1'b1;
           end
@@ -421,7 +421,7 @@ module tlul_sram_byte
         StByteWrReadBack: begin
           // Wait until the memory module has completed the partial write.
           // Perform readback and check response in StPassThru.
-          if (EnableReadback == 0) begin : gen_inv_state_StByteWrReadBack
+          if (ENABLE_READBACK == 0) begin : gen_inv_state_StByteWrReadBack
             // If readback is disabled, we shouldn't be in this state.
             alert_o = 1'b1;
           end
@@ -434,7 +434,7 @@ module tlul_sram_byte
         end
 
         StByteWrReadBackDWait: begin
-          if (EnableReadback == 0) begin : gen_inv_state_StByteWrReadBackDWait
+          if (ENABLE_READBACK == 0) begin : gen_inv_state_StByteWrReadBackDWait
             // If readback is disabled, we shouldn't be in this state.
             alert_o = 1'b1;
           end
@@ -452,7 +452,7 @@ module tlul_sram_byte
         end
 
         StRdReadBack: begin
-          if (EnableReadback == 0) begin : gen_inv_state_StRdReadBack
+          if (ENABLE_READBACK == 0) begin : gen_inv_state_StRdReadBack
             // If readback is disabled, we shouldn't be in this state.
             alert_o = 1'b1;
           end
@@ -480,7 +480,7 @@ module tlul_sram_byte
         end
 
         StRdReadBackDWait: begin
-          if (EnableReadback == 0) begin : gen_inv_state_StRdReadBackDWait
+          if (ENABLE_READBACK == 0) begin : gen_inv_state_StRdReadBackDWait
             // If readback is disabled, we shouldn't be in this state.
             alert_o = 1'b1;
           end
@@ -566,7 +566,7 @@ module tlul_sram_byte
     // Compute updated integrity bits for the data.
     // Note that the CMD integrity does not have to be correct, since it is not consumed nor
     // checked further downstream.
-    logic [tlul_pkg::DataIntgWidth-1:0] data_intg;
+    logic [tlul_pkg::DATA_INTG_WIDTH-1:0] data_intg;
 
     tlul_data_integ_enc u_tlul_data_integ_enc (
       .data_i(combined_data),
@@ -643,7 +643,7 @@ module tlul_sram_byte
     prim_fifo_sync #(
       .Width(top_pkg::TL_SZW),
       .Pass(1'b0),
-      .Depth(Outstanding),
+      .Depth(OUTSTANDING),
       .OutputZeroIfEmpty(1'b1),
       .NeverClears(1'b1)
     ) u_sync_fifo_a_size (
@@ -733,9 +733,9 @@ module tlul_sram_byte
   assign unused_write_pending = write_pending_i;
   assign unused_wr_collision = wr_collision_i;
 
-  // EnableReadback requires that EnableIntg is on.
-  // EnableIntg can be used without EnableReadback.
+  // ENABLE_READBACK requires that ENABLE_INTG is on.
+  // ENABLE_INTG can be used without ENABLE_READBACK.
   `OCAH_OT_ASSERT_INIT(
       SramReadbackAndIntg,
-      (EnableReadback && EnableIntg) || (!EnableReadback && (EnableIntg || !EnableIntg)))
+      (ENABLE_READBACK && ENABLE_INTG) || (!ENABLE_READBACK && (ENABLE_INTG || !ENABLE_INTG)))
 endmodule  // tlul_adapter_sram

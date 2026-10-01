@@ -3,15 +3,15 @@
 
 // Wrap a single-port SRAM with optional ECC or parity, pipelines, and tiled external RAM ports.
 //
-// InstDepth smaller than Depth tiles into ceil(Depth/InstDepth) external RAM instances,
-// each InstDepth deep.
+// INST_DEPTH smaller than DEPTH tiles into ceil(DEPTH/INST_DEPTH) external RAM instances,
+// each INST_DEPTH deep.
 //
-// EnableECC and EnableParity select per-word ECC or per-byte parity. HammingECC switches
-// from HSIAO to Hamming; HSIAO is more compact and faster. ECC supports Width of 16 or 32
-// and whole-word writes only; parity is odd per byte and needs DataBitsPerMask of 8.
+// ENABLE_ECC and ENABLE_PARITY select per-word ECC or per-byte parity. HAMMING_ECC switches
+// from HSIAO to Hamming; HSIAO is more compact and faster. ECC supports WIDTH of 16 or 32
+// and whole-word writes only; parity is odd per byte and needs DATA_BITS_PER_MASK of 8.
 //
-// Read data returns one cycle after the request; EnableInputPipeline and
-// EnableOutputPipeline each add one cycle of read latency.
+// Read data returns one cycle after the request; ENABLE_INPUT_PIPELINE and
+// ENABLE_OUTPUT_PIPELINE each add one cycle of read latency.
 //
 // alert_o rises on an invalid multi-bit (MuBi4) encoding of the internal request, write or
 // read-valid controls. rerror_o bit1 is uncorrectable and bit0 is correctable; parity errors
@@ -23,30 +23,30 @@ module prim_ram_1p_adv_ext
   `include "prim_assert.sv"
   import prim_ram_1p_adv_ext_pkg::*;
 #(
-  parameter  int Depth                = 512,  // Logical memory depth.
-  parameter  int InstDepth            = Depth,  // Per-tile depth; smaller than Depth tiles into
-                                                // ceil(Depth/InstDepth) external RAM ports, each
-                                                // InstDepth deep.
-  parameter  int Width                = 32,  // Data width.
-  parameter  int DataBitsPerMask      = 1,  // Data bits covered by each write-mask bit; only
-                                            // checked to be 8 when EnableParity is set.
-  parameter      MemInitFile          = "",  // Declared but unused; the external RAM owns
-                                             // initialization.
+  parameter  int DEPTH                  = 512,  // Logical memory depth.
+  parameter  int INST_DEPTH             = DEPTH,  // Per-tile depth; smaller than DEPTH tiles into
+                                                  // ceil(DEPTH/INST_DEPTH) external RAM ports, each
+                                                  // INST_DEPTH deep.
+  parameter  int WIDTH                  = 32,  // Data width.
+  parameter  int DATA_BITS_PER_MASK     = 1,  // Data bits covered by each write-mask bit; only
+                                              // checked to be 8 when ENABLE_PARITY is set.
+  parameter      MEM_INIT_FILE          = "",  // Declared but unused; the external RAM owns
+                                               // initialization.
 
-  parameter  bit EnableECC            = 0,  // Enables per-word ECC.
-  parameter  bit EnableParity         = 0,  // Enables per-byte parity.
-  parameter  bit EnableInputPipeline  = 0,  // Adds an input register; read latency +1.
-  parameter  bit EnableOutputPipeline = 0,  // Adds an output register; read latency +1.
+  parameter  bit ENABLE_ECC             = 0,  // Enables per-word ECC.
+  parameter  bit ENABLE_PARITY          = 0,  // Enables per-byte parity.
+  parameter  bit ENABLE_INPUT_PIPELINE  = 0,  // Adds an input register; read latency +1.
+  parameter  bit ENABLE_OUTPUT_PIPELINE = 0,  // Adds an output register; read latency +1.
 
-  parameter bit HammingECC            = 0,  // Selects Hamming ECC instead of HSIAO;
-                                            // HSIAO is more compact and faster.
+  parameter bit HAMMING_ECC             = 0,  // Selects Hamming ECC instead of HSIAO;
+                                              // HSIAO is more compact and faster.
 
-  parameter type ram_req_t            = prim_ram_1p_adv_ext_req_t,  // External RAM request struct; may override the package default.
-  parameter type ram_rsp_t            = prim_ram_1p_adv_ext_rsp_t,  // External RAM response struct; may override the package default.
+  parameter type ram_req_t              = prim_ram_1p_adv_ext_req_t,  // External RAM request struct; may override the package default.
+  parameter type ram_rsp_t              = prim_ram_1p_adv_ext_rsp_t,  // External RAM response struct; may override the package default.
 
-  localparam int Aw                   = prim_util_pkg::vbits(Depth),  // Logical address width.
-  localparam int NumRamInst           = prim_util_pkg::ceil_div(Depth, InstDepth),  // Number of tiled RAM instances.
-  localparam int InstAw               = prim_util_pkg::vbits(InstDepth)  // Per-instance address width.
+  localparam int Aw                     = prim_util_pkg::vbits(DEPTH),  // Logical address width.
+  localparam int NumRamInst             = prim_util_pkg::ceil_div(DEPTH, INST_DEPTH),  // Number of tiled RAM instances.
+  localparam int InstAw                 = prim_util_pkg::vbits(INST_DEPTH)  // Per-instance address width.
 ) (
   input clk_i,  // Memory clock.
   input rst_ni,  // Async reset, active-low.
@@ -54,9 +54,9 @@ module prim_ram_1p_adv_ext
   input                               req_i,  // Access request.
   input                               write_i,  // Write when high, read when low.
   input        [Aw-1:0]               addr_i,  // Logical word address.
-  input        [Width-1:0]            wdata_i,  // Write data.
-  input        [Width-1:0]            wmask_i,  // Per-bit write mask; must be all ones with ECC.
-  output logic [Width-1:0]            rdata_o,  // Read data.
+  input        [WIDTH-1:0]            wdata_i,  // Write data.
+  input        [WIDTH-1:0]            wmask_i,  // Per-bit write mask; must be all ones with ECC.
+  output logic [WIDTH-1:0]            rdata_o,  // Read data.
   output logic                        rvalid_o,  // Read response (rdata_o) is valid.
   output logic [1:0]                  rerror_o,  // Bit1 uncorrectable, bit0 correctable; 0 unless
                                                  // rvalid_o.
@@ -79,24 +79,24 @@ module prim_ram_1p_adv_ext
   import prim_mubi_pkg::MuBi4False;
   import prim_mubi_pkg::MuBi4Width;
 
-  `OCAH_OT_ASSERT_INIT(CannotHaveEccAndParity_A, !(EnableParity && EnableECC))
+  `OCAH_OT_ASSERT_INIT(CannotHaveEccAndParity_A, !(ENABLE_PARITY && ENABLE_ECC))
 
   // Calculate ECC width
-  localparam int ParWidth  = (EnableParity) ? Width/8 :
-                             (!EnableECC)   ? 0 :
-                             (Width <=   4) ? 4 :
-                             (Width <=  11) ? 5 :
-                             (Width <=  26) ? 6 :
-                             (Width <=  57) ? 7 :
-                             (Width <= 120) ? 8 : 8 ;
-  localparam int TotalWidth = Width + ParWidth;
+  localparam int ParWidth  = (ENABLE_PARITY) ? WIDTH/8 :
+                             (!ENABLE_ECC)  ? 0 :
+                             (WIDTH <=   4) ? 4 :
+                             (WIDTH <=  11) ? 5 :
+                             (WIDTH <=  26) ? 6 :
+                             (WIDTH <=  57) ? 7 :
+                             (WIDTH <= 120) ? 8 : 8 ;
+  localparam int TotalWidth = WIDTH + ParWidth;
 
   // If byte parity is enabled, the write enable bits are used to write memory columns
   // with 8 + 1 = 9 bit width (data plus corresponding parity bit).
-  // If ECC is enabled, the DataBitsPerMask is ignored.
-  localparam int LocalDataBitsPerMask = (EnableParity) ? 9          :
-                                        (EnableECC)    ? TotalWidth :
-                                                         DataBitsPerMask;
+  // If ECC is enabled, the DATA_BITS_PER_MASK is ignored.
+  localparam int LocalDataBitsPerMask = (ENABLE_PARITY) ? 9         :
+                                        (ENABLE_ECC)   ? TotalWidth :
+                                                         DATA_BITS_PER_MASK;
 
   /////////////////////////////
   // RAM Primitive Interface //
@@ -112,7 +112,7 @@ module prim_ram_1p_adv_ext
   logic [TotalWidth-1:0]   wdata_q,   wdata_d ;
   logic [TotalWidth-1:0]   wmask_q,   wmask_d ;
   mubi4_t                  rvalid_q,  rvalid_d, rvalid_sram_q, rvalid_sram_d ;
-  logic [Width-1:0]        rdata_q,   rdata_d ;
+  logic [WIDTH-1:0]        rdata_q,   rdata_d ;
   logic [TotalWidth-1:0]   rdata_sram ;
   logic [1:0]              rerror_q,  rerror_d ;
 
@@ -121,7 +121,7 @@ module prim_ram_1p_adv_ext
 
   logic [NumRamInst-1:0] inst_req_d, inst_req_q, rvalid_inst;
   logic [InstAw-1:0] inst_addr;
-  logic [NumRamInst-1:0] [Width-1:0] inst_rdata;
+  logic [NumRamInst-1:0] [WIDTH-1:0] inst_rdata;
 
   // The lower InstAw bits of the address are used to address within one RAM primitive
   assign inst_addr = addr_q[InstAw-1:0];
@@ -232,28 +232,28 @@ module prim_ram_1p_adv_ext
   // ECC / Parity Generation //
   /////////////////////////////
 
-  if (EnableParity == 0 && EnableECC) begin : gen_secded
+  if (ENABLE_PARITY == 0 && ENABLE_ECC) begin : gen_secded
     logic unused_wmask;
     assign unused_wmask = ^wmask_i;
 
     // check supported widths
-    `OCAH_OT_ASSERT_INIT(SecDecWidth_A, Width inside {16, 32})
+    `OCAH_OT_ASSERT_INIT(SecDecWidth_A, WIDTH inside {16, 32})
 
     // the wmask is constantly set to 1 in this case
     `OCAH_OT_ASSERT(OnlyWordWritePossibleWithEccPortA_A, req_i |->
-          wmask_i == {Width{1'b1}})
+          wmask_i == {WIDTH{1'b1}})
 
     assign wmask_d = {TotalWidth{1'b1}};
 
-    if (Width == 16) begin : gen_secded_22_16
-      if (HammingECC) begin : gen_hamming
+    if (WIDTH == 16) begin : gen_secded_22_16
+      if (HAMMING_ECC) begin : gen_hamming
         prim_secded_inv_hamming_22_16_enc u_enc (
           .data_i(wdata_i),
           .data_o(wdata_d)
         );
         prim_secded_inv_hamming_22_16_dec u_dec (
           .data_i     (rdata_sram),
-          .data_o     (rdata_d[0+:Width]),
+          .data_o     (rdata_d[0+:WIDTH]),
           .syndrome_o ( ),
           .err_o      (rerror_d)
         );
@@ -264,20 +264,20 @@ module prim_ram_1p_adv_ext
         );
         prim_secded_inv_22_16_dec u_dec (
           .data_i     (rdata_sram),
-          .data_o     (rdata_d[0+:Width]),
+          .data_o     (rdata_d[0+:WIDTH]),
           .syndrome_o ( ),
           .err_o      (rerror_d)
         );
       end
-    end else if (Width == 32) begin : gen_secded_39_32
-      if (HammingECC) begin : gen_hamming
+    end else if (WIDTH == 32) begin : gen_secded_39_32
+      if (HAMMING_ECC) begin : gen_hamming
         prim_secded_inv_hamming_39_32_enc u_enc (
           .data_i(wdata_i),
           .data_o(wdata_d)
         );
         prim_secded_inv_hamming_39_32_dec u_dec (
           .data_i     (rdata_sram),
-          .data_o     (rdata_d[0+:Width]),
+          .data_o     (rdata_d[0+:WIDTH]),
           .syndrome_o ( ),
           .err_o      (rerror_d)
         );
@@ -288,21 +288,21 @@ module prim_ram_1p_adv_ext
         );
         prim_secded_inv_39_32_dec u_dec (
           .data_i     (rdata_sram),
-          .data_o     (rdata_d[0+:Width]),
+          .data_o     (rdata_d[0+:WIDTH]),
           .syndrome_o ( ),
           .err_o      (rerror_d)
         );
       end
     end
 
-  end else if (EnableParity) begin : gen_byte_parity
+  end else if (ENABLE_PARITY) begin : gen_byte_parity
 
-    `OCAH_OT_ASSERT_INIT(WidthNeedsToBeByteAligned_A, Width % 8 == 0)
-    `OCAH_OT_ASSERT_INIT(ParityNeedsByteWriteMask_A, DataBitsPerMask == 8)
+    `OCAH_OT_ASSERT_INIT(WidthNeedsToBeByteAligned_A, WIDTH % 8 == 0)
+    `OCAH_OT_ASSERT_INIT(ParityNeedsByteWriteMask_A, DATA_BITS_PER_MASK == 8)
 
     always_comb begin : p_parity
       rerror_d = '0;
-      for (int i = 0; i < Width/8; i ++) begin
+      for (int i = 0; i < WIDTH/8; i ++) begin
         // Data mapping. We have to make 8+1 = 9 bit groups
         // that have the same write enable such that FPGA tools
         // can map this correctly to BRAM resources.
@@ -321,7 +321,7 @@ module prim_ram_1p_adv_ext
     assign wmask_d = wmask_i;
     assign wdata_d = wdata_i;
 
-    assign rdata_d  = rdata_sram[0+:Width];
+    assign rdata_d  = rdata_sram[0+:WIDTH];
     assign rerror_d = '0;
   end
 
@@ -331,12 +331,12 @@ module prim_ram_1p_adv_ext
   // Input/Output Pipeline Registers //
   /////////////////////////////////////
 
-  if (EnableInputPipeline) begin : gen_regslice_input
+  if (ENABLE_INPUT_PIPELINE) begin : gen_regslice_input
     // Put the register slices between ECC encoding to SRAM port
 
     // If no ECC or parity is used, do not use prim_flop to allow synthesis
     // tool to optimize the registers.
-    if (EnableECC || EnableParity) begin : gen_prim_flop
+    if (ENABLE_ECC || ENABLE_PARITY) begin : gen_prim_flop
       prim_flop #(
         .Width(MuBi4Width),
         .ResetValue(MuBi4Width'(MuBi4False))
@@ -387,12 +387,12 @@ module prim_ram_1p_adv_ext
     assign wmask_q = wmask_d;
   end
 
-  if (EnableOutputPipeline) begin : gen_regslice_output
+  if (ENABLE_OUTPUT_PIPELINE) begin : gen_regslice_output
     // Put the register slices between ECC decoding to output
 
     // If no ECC or parity is used, do not use prim_flop to allow synthesis
     // tool to optimize the registers.
-    if (EnableECC || EnableParity) begin : gen_prim_rvalid_flop
+    if (ENABLE_ECC || ENABLE_PARITY) begin : gen_prim_rvalid_flop
       prim_flop #(
         .Width(MuBi4Width),
         .ResetValue(MuBi4Width'(MuBi4False))

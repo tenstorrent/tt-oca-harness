@@ -15,7 +15,7 @@ module secure_dma
   parameter int unsigned                    AlertSkewCycles           = 1,
   parameter bit                             EnableDataIntgGen         = 1'b1,
   parameter bit                             EnableRspDataIntgCheck    = 1'b1,
-  parameter logic [RsvdWidth-1:0]           TlUserRsvd                = '0,
+  parameter logic [RSVD_WIDTH-1:0]          TlUserRsvd                = '0,
   parameter top_racl_pkg::racl_role_t       SysRaclRole               = '0,
   parameter int unsigned                    OtAgentId                 = 0,
   parameter bit                             EnableRacl                = 1'b0,
@@ -217,8 +217,8 @@ module secure_dma
   // Adapter from the DMA to Host
   tlul_adapter_host #(
     .MAX_REQS(NUM_MAX_OUTSTANDING_REQS),
-    .EnableDataIntgGen(EnableDataIntgGen),
-    .EnableRspDataIntgCheck(EnableRspDataIntgCheck)
+    .ENABLE_DATA_INTG_GEN(EnableDataIntgGen),
+    .ENABLE_RSP_DATA_INTG_CHECK(EnableRspDataIntgCheck)
   ) u_dma_host_tlul_host (
     .clk_i          ( gated_clk                        ),
     .rst_ni         ( rst_ni                           ),
@@ -244,8 +244,8 @@ module secure_dma
   // Adapter from the DMA to the CTN
   tlul_adapter_host #(
     .MAX_REQS(NUM_MAX_OUTSTANDING_REQS),
-    .EnableDataIntgGen(EnableDataIntgGen),
-    .EnableRspDataIntgCheck(EnableRspDataIntgCheck)
+    .ENABLE_DATA_INTG_GEN(EnableDataIntgGen),
+    .ENABLE_RSP_DATA_INTG_CHECK(EnableRspDataIntgCheck)
   ) u_dma_ctn_tlul_host (
     .clk_i          ( gated_clk                        ),
     .rst_ni         ( rst_ni                           ),

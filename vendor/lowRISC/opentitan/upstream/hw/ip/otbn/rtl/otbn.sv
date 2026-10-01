@@ -361,13 +361,13 @@ module otbn
   // SEC_CM: MEM.SCRAMBLE
   // OCH patch: use _ext variant to expose SRAM interface
   prim_ram_1p_scr_ext #(
-    .Width          (39),
-    .Depth          (ImemSizeWords),
-    .InstDepth      (ImemSizeWords),
-    .DataBitsPerMask(39),
-    .EnableParity   (0),
-    .ram_req_t      (sep_crypto_pka_imem_sram_req_t),
-    .ram_rsp_t      (sep_crypto_pka_imem_sram_rsp_t)
+    .WIDTH             (39),
+    .DEPTH             (ImemSizeWords),
+    .INST_DEPTH        (ImemSizeWords),
+    .DATA_BITS_PER_MASK(39),
+    .ENABLE_PARITY     (0),
+    .ram_req_t         (sep_crypto_pka_imem_sram_req_t),
+    .ram_rsp_t         (sep_crypto_pka_imem_sram_rsp_t)
   ) u_imem (
     .clk_i,
     .rst_ni(rst_n),
@@ -407,13 +407,13 @@ module otbn
   assign imem_gnt_bus = imem_req_bus;
 
   tlul_adapter_sram #(
-    .SramAw          (ImemIndexWidth),
-    .SramDw          (32),
-    .Outstanding     (1),
-    .ByteAccess      (0),
-    .ErrOnRead       (0),
-    .EnableDataIntgPt(1),
-    .SecFifoPtr      (1)  // SEC_CM: TLUL_FIFO.CTR.REDUN
+    .SRAM_AW            (ImemIndexWidth),
+    .SRAM_DW            (32),
+    .OUTSTANDING        (1),
+    .BYTE_ACCESS        (0),
+    .ERR_ON_READ        (0),
+    .ENABLE_DATA_INTG_PT(1),
+    .SEC_FIFO_PTR       (1)  // SEC_CM: TLUL_FIFO.CTR.REDUN
   ) u_tlul_adapter_sram_imem (
     .clk_i,
     .rst_ni                     (rst_n),
@@ -581,14 +581,14 @@ module otbn
   // SEC_CM: MEM.SCRAMBLE
   // OCH patch: use _ext variant to expose SRAM interface
   prim_ram_1p_scr_ext #(
-    .Width             (ExtWLEN),
-    .Depth             (DmemSizeWords),
-    .InstDepth         (DmemSizeWords),
-    .DataBitsPerMask   (39),
-    .EnableParity      (0),
-    .ReplicateKeyStream(1),
-    .ram_req_t         (sep_crypto_pka_dmem_sram_req_t),
-    .ram_rsp_t         (sep_crypto_pka_dmem_sram_rsp_t)
+    .WIDTH               (ExtWLEN),
+    .DEPTH               (DmemSizeWords),
+    .INST_DEPTH          (DmemSizeWords),
+    .DATA_BITS_PER_MASK  (39),
+    .ENABLE_PARITY       (0),
+    .REPLICATE_KEY_STREAM(1),
+    .ram_req_t           (sep_crypto_pka_dmem_sram_req_t),
+    .ram_rsp_t           (sep_crypto_pka_dmem_sram_rsp_t)
   ) u_dmem (
     .clk_i,
     .rst_ni(rst_n),
@@ -664,13 +664,13 @@ module otbn
   assign dmem_gnt_bus = dmem_req_bus;
 
   tlul_adapter_sram #(
-    .SramAw          (DmemBusIndexWidth),
-    .SramDw          (WLEN),
-    .Outstanding     (1),
-    .ByteAccess      (0),
-    .ErrOnRead       (0),
-    .EnableDataIntgPt(1),
-    .SecFifoPtr      (1)  // SEC_CM: TLUL_FIFO.CTR.REDUN
+    .SRAM_AW            (DmemBusIndexWidth),
+    .SRAM_DW            (WLEN),
+    .OUTSTANDING        (1),
+    .BYTE_ACCESS        (0),
+    .ERR_ON_READ        (0),
+    .ENABLE_DATA_INTG_PT(1),
+    .SEC_FIFO_PTR       (1)  // SEC_CM: TLUL_FIFO.CTR.REDUN
   ) u_tlul_adapter_sram_dmem (
     .clk_i,
     .rst_ni                     (rst_n),

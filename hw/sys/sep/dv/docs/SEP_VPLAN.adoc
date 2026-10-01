@@ -3955,7 +3955,7 @@ a waiting write, and two masters writing the same register.
 . The block is a 64 KB crossbar target at `entropy_fifo.main` (`0x1095_0000`).
 . Write STATUS, IRQ_CAUSE, DATA and one unmapped offset with AW and W in the same cycle; require SLVERR and unchanged occupancy. Drive the shared write refusal two more ways at STATUS: AW leading and W leading, by arming an `AxiTimingProfile` on the master.
   Fill waits on the live `pool_low` flag, not on an occupancy watermark.
-  `StallThresh` is the wait bound for the fill-stall flag.
+  `STALL_THRESH` is the wait bound for the fill-stall flag.
 . It fills from the native EDN endpoint after the shared entropy bring-up.
 
 
@@ -3975,7 +3975,7 @@ a waiting write, and two masters writing the same register.
 |CHK-IRQ-CAUSE-IDLE
 |`0x08` traverses `0x1 -> 0x0` after fill, not a copy of status.
 |CHK-STALL-DURATION
-|Holding the same stall three times past `StallThresh` leaves `[37]` asserted and the irq-cause code still reading the fill-stall value. The counter saturates and the flag clears only on forward progress, so a counter that wrapped or a flag that self-cleared on saturation would drop the fault while the outage continued.
+|Holding the same stall three times past `STALL_THRESH` leaves `[37]` asserted and the irq-cause code still reading the fill-stall value. The counter saturates and the flag clears only on forward progress, so a counter that wrapped or a flag that self-cleared on saturation would drop the fault while the outage continued.
 |CHK-WRITE-ORDER
 |A write whose AW leads W, and one whose W leads AW, each answer a single BRESP=SLVERR and leave `fifo_level` unchanged. AW and W carry no ordering requirement between them (AMBA IHI 0022 A3.3). The backend presents both in the same cycle, so the split-arrival arms of that handshake need the master armed with an `AxiTimingProfile`; the profile is only a request, so each arm is credited from the order the `s_axi` monitor observed (first AWVALID and WVALID cycle), and the background FIFO drain on the same master is paused while the profile is armed. A slave that assumed same-cycle arrival would wedge or answer twice.
 |CHK-WRITE-SLVERR
@@ -3983,7 +3983,7 @@ a waiting write, and two masters writing the same register.
 |CHK-UNMAPPED
 |Every high-bit mirror of a live register, plus all three unique-dead offsets, returns SLVERR with RDATA=0. All three are walked every seed: `0x18` is the unused `[4:3]=11` code and catches a decode class the other two do not, so a seeded pick of one could miss it.
 |CHK-STALL-ASSERT
-|`[37]` high after `StallThresh` with the pool not full.
+|`[37]` high after `STALL_THRESH` with the pool not full.
 |CHK-IRQ-CAUSE-STALL
 |`0x08=0x2` at stall (`fill_stall`, `pool_low` still clear after the fill). Must not copy the raw status word.
 |CHK-STALL-CLEAR
@@ -4008,12 +4008,12 @@ a waiting write, and two masters writing the same register.
 *Anti-vacuity*: fill is observed as `pool_low` clear and `fifo_level` greater than 0 before any refusal is
 scored. An accepted pop happens before the empty-pop SLVERR. `[36]` is seen
 high, then low, then high. `[37]` is the first fill-stall after the fill path is
-starved for `StallThresh` with the pool not full. At least one popped word is
+starved for `STALL_THRESH` with the pool not full. At least one popped word is
 nonzero and two popped words differ.
 
 *RTL fact that arms `[37]`*: ESRC CTRL `MODULE_ENABLE=0` does not drop AUTO-mode
 EDN acks while CSRNG still has a seed, and after that disable the pool runs to
-full (level 32). `fill_stall` needs `req_pending && !edn_ack` for `StallThresh`,
+full (level 32). `fill_stall` needs `req_pending && !edn_ack` for `STALL_THRESH`,
 and a full pool holds `req_pending` low. The stall wait therefore also writes
 EDN_CTRL `EDN_ENABLE=False` (legal mubi4, other fields unchanged) and pops
 leftover words until the pool has room and acks have stopped.
@@ -5647,7 +5647,7 @@ behaviour and the JTAG read are graded on
 |CHK-WALK-ALLOW
 |A window that holds the remapped beat answers OKAY. The filter blocks by default and only this entry is enabled, so the OKAY places the 56-bit remapped address inside the window.
 |CHK-WALK-EXACT
-|The one granule at the predicted address `{offset[55:IdxStart], adjusted[IdxStart-1:0]}` (`output_remap.rdl` offset, region granularity; `hw/sys/sep/doc/fabric.adoc`: the output remap replaces the address with the region offset) answers OKAY and the next granule answers DECERR, so the remap produced exactly the predicted address.
+|The one granule at the predicted address `{offset[55:IDX_START], adjusted[IDX_START-1:0]}` (`output_remap.rdl` offset, region granularity; `hw/sys/sep/doc/fabric.adoc`: the output remap replaces the address with the region offset) answers OKAY and the next granule answers DECERR, so the remap produced exactly the predicted address.
 |CHK-WALK-ABOVE
 |A window whose START is above the beat answers DECERR.
 |CHK-WALK-BELOW

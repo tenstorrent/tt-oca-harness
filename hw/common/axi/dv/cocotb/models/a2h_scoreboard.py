@@ -52,8 +52,8 @@ class ConverterCfg:
     def describe(self) -> str:
         return (
             f"cfg {self.name.upper()} (AHB_DATA_WIDTH={self.ahb_data_width}, "
-            f"AllowSubWordWrite={int(self.allow_sub_word_write)}, "
-            f"AckZeroStrobeWrite={int(self.ack_zero_strobe_write)})"
+            f"ALLOW_SUB_WORD_WRITE={int(self.allow_sub_word_write)}, "
+            f"ACK_ZERO_STROBE_WRITE={int(self.ack_zero_strobe_write)})"
         )
 
 

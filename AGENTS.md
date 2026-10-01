@@ -715,7 +715,8 @@ not hide findings from lint. Generated output and `vendor/<org>/<repo>/upstream/
 never patch upstream code for a style-only finding. Fix formatter-safe whitespace and wrapping
 after reviewing the diff, but treat types, range direction, assignment semantics, task
 lifetime, case completeness and hierarchy labels as manual changes requiring owner review.
-Parameter naming remains deferred to issue #1051 and is disabled in this pass.
+`parameter-name-style` requires ALL_CAPS parameter names; localparam naming is deferred to
+issue #1051.
 
 Fix actionable findings rather than hiding them. Owner-local waivers belong under the source
 owner's `lint/` directory: `*.verible.waiver`, `*.verilator.vlt`, and synthesis-only

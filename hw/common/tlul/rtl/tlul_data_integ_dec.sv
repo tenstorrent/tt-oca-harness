@@ -10,8 +10,8 @@
 module tlul_data_integ_dec
   import tlul_pkg::*;
 (
-  input        [DataMaxWidth+DataIntgWidth-1:0] data_intg_i,  // Data word with integrity bits.
-  output logic                                  data_err_o    // High when data integrity fails.
+  input        [DATA_MAX_WIDTH+DATA_INTG_WIDTH-1:0] data_intg_i,  // Data word with integrity bits.
+  output logic                                      data_err_o    // High when data integrity fails.
 );
   logic [1:0] data_err;
   prim_secded_inv_39_32_dec u_data_chk (

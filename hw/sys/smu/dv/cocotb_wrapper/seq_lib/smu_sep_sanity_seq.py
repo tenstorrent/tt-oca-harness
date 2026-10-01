@@ -20,7 +20,7 @@ that dies mid-run reports where rather than just timing out:
     4  KMAC done
 
 All five are required. Beacon 0 follows sep_outbound_filter_init(): a store
-ahead of it faults against the BlockByDefault=1 outbound filter and kills the
+ahead of it faults against the BLOCK_BY_DEFAULT=1 outbound filter and kills the
 image before it can open the window, so the beacon's absence is a real failure.
 """
 

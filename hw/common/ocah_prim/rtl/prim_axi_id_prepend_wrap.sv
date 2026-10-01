@@ -1,20 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Zero-extend AW and AR IDs from AxiInIdWidth to AxiOutIdWidth on struct AXI ports.
+// Zero-extend AW and AR IDs from AXI_IN_ID_WIDTH to AXI_OUT_ID_WIDTH on struct AXI ports.
 //
 // Truncate response IDs back to the upstream width.
 // Pass every non-ID channel field through unchanged; the module is purely combinational.
-// AxiOutIdWidth must be at least AxiInIdWidth, checked by a simulation assertion at time zero.
+// AXI_OUT_ID_WIDTH must be at least AXI_IN_ID_WIDTH, checked by a simulation assertion at time
+// zero.
 
 module prim_axi_id_prepend_wrap #(
-  parameter int unsigned AxiInIdWidth  = 6,  // Upstream AXI ID width.
-  parameter int unsigned AxiOutIdWidth = 8,  // Downstream AXI ID width after prepend.
-  parameter int unsigned AxiDataWidth  = 32,  // Data-channel width of both ports; declared but not
-                                              // used.
-  parameter int unsigned AxiAddrWidth  = 32,  // Address width of both ports; declared but not used.
-  parameter int unsigned AxiUserWidth  = 8,  // User-signal width of both ports; declared but not
-                                             // used.
+  parameter int unsigned AXI_IN_ID_WIDTH  = 6,  // Upstream AXI ID width.
+  parameter int unsigned AXI_OUT_ID_WIDTH = 8,  // Downstream AXI ID width after prepend.
+  parameter int unsigned AXI_DATA_WIDTH   = 32,  // Data-channel width of both ports; declared but
+                                                 // not used.
+  parameter int unsigned AXI_ADDR_WIDTH   = 32,  // Address width of both ports; declared but not
+                                                 // used.
+  parameter int unsigned AXI_USER_WIDTH   = 8,  // User-signal width of both ports; declared but not
+                                                // used.
 
   parameter type axi_in_req_t   = logic,  // Upstream request struct.
   parameter type axi_in_resp_t  = logic,  // Upstream response struct.
@@ -29,7 +31,7 @@ module prim_axi_id_prepend_wrap #(
 
   `include "ocah_assert.svh"
 
-  localparam int unsigned IdBuffWidth = AxiOutIdWidth - AxiInIdWidth;
+  localparam int unsigned IdBuffWidth = AXI_OUT_ID_WIDTH - AXI_IN_ID_WIDTH;
 
   assign axi_out_req_o.aw_valid   = axi_in_req_i.aw_valid;
   assign axi_out_req_o.aw.id     = {{IdBuffWidth{1'b0}}, axi_in_req_i.aw.id};
@@ -67,17 +69,17 @@ module prim_axi_id_prepend_wrap #(
   assign axi_in_resp_o.aw_ready   = axi_out_resp_i.aw_ready;
   assign axi_in_resp_o.w_ready    = axi_out_resp_i.w_ready;
   assign axi_in_resp_o.b_valid    = axi_out_resp_i.b_valid;
-  assign axi_in_resp_o.b.id      = axi_out_resp_i.b.id[AxiInIdWidth-1:0];
+  assign axi_in_resp_o.b.id      = axi_out_resp_i.b.id[AXI_IN_ID_WIDTH-1:0];
   assign axi_in_resp_o.b.resp    = axi_out_resp_i.b.resp;
   assign axi_in_resp_o.b.user    = axi_out_resp_i.b.user;
   assign axi_in_resp_o.ar_ready   = axi_out_resp_i.ar_ready;
   assign axi_in_resp_o.r_valid    = axi_out_resp_i.r_valid;
-  assign axi_in_resp_o.r.id      = axi_out_resp_i.r.id[AxiInIdWidth-1:0];
+  assign axi_in_resp_o.r.id      = axi_out_resp_i.r.id[AXI_IN_ID_WIDTH-1:0];
   assign axi_in_resp_o.r.data    = axi_out_resp_i.r.data;
   assign axi_in_resp_o.r.resp    = axi_out_resp_i.r.resp;
   assign axi_in_resp_o.r.user    = axi_out_resp_i.r.user;
   assign axi_in_resp_o.r.last    = axi_out_resp_i.r.last;
 
-  `OCAH_ASSERT_INIT(OutputIDWidthLessThanInputIDWidth, (AxiOutIdWidth >= AxiInIdWidth))
+  `OCAH_ASSERT_INIT(OutputIDWidthLessThanInputIDWidth, (AXI_OUT_ID_WIDTH >= AXI_IN_ID_WIDTH))
 
 endmodule

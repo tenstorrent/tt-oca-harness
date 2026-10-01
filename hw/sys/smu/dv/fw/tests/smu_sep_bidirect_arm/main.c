@@ -24,7 +24,7 @@
 // Addresses: SMC scratch is at 0xC003_9080 locally (stride 8) and appears to the
 // SEP at 0x4003_9080 through the SMC aperture; SEP cold scratch0 is 0x1080_2020,
 // inside the aperture the SEP programs for itself. The SMC output fabric is
-// BlockByDefault=0, so this side needs no filter programming of its own.
+// BLOCK_BY_DEFAULT=0, so this side needs no filter programming of its own.
 
 #include <stdint.h>
 

@@ -1107,16 +1107,16 @@ NUM_EXT_DEMUX_PORTS
 
   sep_dma_wrap #(
     .SECURE_DMA_REG_MAP_BASE_ADDR (32'(sep_top_addrmap_pkg::SEP_TOP_SECURE_DMA_BASE_ADDR)),
-    .AlertAsyncOn           ({secure_dma_reg_pkg::NumAlerts{1'b0}}),
-    .AlertSkewCycles        (1'b0),
-    .EnableDataIntgGen      (1'b1),  // ENABLE integrity generation (was 1'b0)
-    .EnableRspDataIntgCheck (1'b1),  // ENABLE integrity checking (was 1'b0)
-    .TlUserRsvd             ('0),
-    .SysRaclRole            ('0),
-    .OtAgentId              ('0),
-    .EnableRacl             (1'b0),
-    .RaclErrorRsp           (1'b0),
-    .RaclPolicySelVec       ('{secure_dma_reg_pkg::NumRegs{0}})
+    .ALERT_ASYNC_ON             ({secure_dma_reg_pkg::NumAlerts{1'b0}}),
+    .ALERT_SKEW_CYCLES          (1'b0),
+    .ENABLE_DATA_INTG_GEN       (1'b1),  // ENABLE integrity generation (was 1'b0)
+    .ENABLE_RSP_DATA_INTG_CHECK (1'b1),  // ENABLE integrity checking (was 1'b0)
+    .TL_USER_RSVD               ('0),
+    .SYS_RACL_ROLE              ('0),
+    .OT_AGENT_ID                ('0),
+    .ENABLE_RACL                (1'b0),
+    .RACL_ERROR_RSP             (1'b0),
+    .RACL_POLICY_SEL_VEC        ('{secure_dma_reg_pkg::NumRegs{0}})
   ) u_sep_dma_wrap (
     .clk_i,
     .rst_ni                 (sep_reset_n),

@@ -13,19 +13,19 @@
 // DECERR; reads of a locked filter still complete.
 
 module smc_internal_regs #(
-  parameter int unsigned NumOutboundFilters = 16,  // Number of outbound filter register blocks;
-                                                   // sizes the outbound filter CSR arrays and the
-                                                   // AXI-Lite demux that selects one block per
-                                                   // 32-byte address window.
-  parameter int unsigned NumInboundFilters  = 16,  // Number of inbound filter register blocks;
-                                                   // sizes the inbound filter CSR arrays and the
-                                                   // AXI-Lite demux that selects one block per
-                                                   // 32-byte address window.
+  parameter int unsigned NUM_OUTBOUND_FILTERS = 16,  // Number of outbound filter register blocks;
+                                                     // sizes the outbound filter CSR arrays and the
+                                                     // AXI-Lite demux that selects one block per
+                                                     // 32-byte address window.
+  parameter int unsigned NUM_INBOUND_FILTERS  = 16,  // Number of inbound filter register blocks;
+                                                     // sizes the inbound filter CSR arrays and the
+                                                     // AXI-Lite demux that selects one block per
+                                                     // 32-byte address window.
 
-  localparam type outbound_select_t = logic [$clog2(NumOutboundFilters)-1:0],  // Index that selects one outbound filter
+  localparam type outbound_select_t = logic [$clog2(NUM_OUTBOUND_FILTERS)-1:0],  // Index that selects one outbound filter
+                                                                                 // register block from the AXI-Lite address.
+  localparam type inbound_select_t  = logic [$clog2(NUM_INBOUND_FILTERS)-1:0]  // Index that selects one inbound filter
                                                                                // register block from the AXI-Lite address.
-  localparam type inbound_select_t  = logic [$clog2(NumInboundFilters)-1:0]  // Index that selects one inbound filter
-                                                                             // register block from the AXI-Lite address.
 ) (
   input  logic clk_ref_i,               // Reference clock, used only by the DFD block for the CLA
                                         // time tick.
@@ -35,20 +35,20 @@ module smc_internal_regs #(
   input  logic rst_primary_smc_clk_ni,  // Primary reset, active-low, synchronized to the SMC core
                                         // clock; resets every CSR block in this module.
 
-  input  filter_ctrl_reg_pkg::filter_ctrl__in_t  outbound_filter_status_i [NumOutboundFilters-1:0],  // Hardware status of
-                                                                                                     // each outbound filter
-                                                                                                     // entry, from the output
+  input  filter_ctrl_reg_pkg::filter_ctrl__in_t  outbound_filter_status_i [NUM_OUTBOUND_FILTERS-1:0],  // Hardware status of
+                                                                                                       // each outbound filter
+                                                                                                       // entry, from the output
+                                                                                                       // fabric.
+  output filter_ctrl_reg_pkg::filter_ctrl__out_t outbound_filter_ctrl_o [NUM_OUTBOUND_FILTERS-1:0],  // Register
+                                                                                                     // configuration of each
+                                                                                                     // outbound filter entry.
+  input  filter_ctrl_reg_pkg::filter_ctrl__in_t  inbound_filter_status_i [NUM_INBOUND_FILTERS-1:0],  // Hardware status of
+                                                                                                     // each inbound filter
+                                                                                                     // entry, from the input
                                                                                                      // fabric.
-  output filter_ctrl_reg_pkg::filter_ctrl__out_t outbound_filter_ctrl_o [NumOutboundFilters-1:0],  // Register
+  output filter_ctrl_reg_pkg::filter_ctrl__out_t inbound_filter_ctrl_o [NUM_INBOUND_FILTERS-1:0],  // Register
                                                                                                    // configuration of each
-                                                                                                   // outbound filter entry.
-  input  filter_ctrl_reg_pkg::filter_ctrl__in_t  inbound_filter_status_i [NumInboundFilters-1:0],  // Hardware status of
-                                                                                                   // each inbound filter
-                                                                                                   // entry, from the input
-                                                                                                   // fabric.
-  output filter_ctrl_reg_pkg::filter_ctrl__out_t inbound_filter_ctrl_o [NumInboundFilters-1:0],  // Register
-                                                                                                 // configuration of each
-                                                                                                 // inbound filter entry.
+                                                                                                   // inbound filter entry.
 
   output output_remap_reg_pkg::output_remap__out_t mR_ctrl_o [smc_pkg::NUM_MMODE_OUTPUT_REMAP_REGIONS-1:0],  // Register
                                                                                                              // configuration of each
@@ -281,9 +281,9 @@ module smc_internal_regs #(
   logic mailbox_clk;
 
   axi_cg_snoop #(
-    .OutstandingTx(AXIL_OUTSTANDING_TX), // all in-flight txns this AXI-Lite port admits
-    .DenyDelay(),
-    .HystWidth(smc_pkg::CG_HYSTERESIS_W)
+    .OUTSTANDING_TX(AXIL_OUTSTANDING_TX), // all in-flight txns this AXI-Lite port admits
+    .DENY_DELAY(),
+    .HYST_WIDTH(smc_pkg::CG_HYSTERESIS_W)
   ) u_mailbox_cg (
     .clk_i           (clk_smc_i),
     .rst_ni          (rst_primary_smc_clk_ni),
@@ -342,15 +342,15 @@ module smc_internal_regs #(
   outbound_select_t outbound_axil_aw_select;
   outbound_select_t outbound_axil_ar_select;
 
-  smc_pkg::smc_axil_32_64_req_t  [NumOutboundFilters-1:0] outbound_filter_axi_lite_reqs;
-  smc_pkg::smc_axil_32_64_resp_t [NumOutboundFilters-1:0] outbound_filter_axi_lite_resps;
+  smc_pkg::smc_axil_32_64_req_t  [NUM_OUTBOUND_FILTERS-1:0] outbound_filter_axi_lite_reqs;
+  smc_pkg::smc_axil_32_64_resp_t [NUM_OUTBOUND_FILTERS-1:0] outbound_filter_axi_lite_resps;
 
   logic outbound_filter_clk;
 
   axi_cg_snoop #(
-    .OutstandingTx(AXIL_OUTSTANDING_TX), // all in-flight txns this AXI-Lite port admits
-    .DenyDelay(1),
-    .HystWidth(smc_pkg::CG_HYSTERESIS_W)
+    .OUTSTANDING_TX(AXIL_OUTSTANDING_TX), // all in-flight txns this AXI-Lite port admits
+    .DENY_DELAY(1),
+    .HYST_WIDTH(smc_pkg::CG_HYSTERESIS_W)
   ) u_outbound_filter_reg_cg (
     .clk_i           (clk_smc_i),
     .rst_ni          (rst_primary_smc_clk_ni),
@@ -376,8 +376,8 @@ module smc_internal_regs #(
   );
 
   always_comb begin
-    outbound_axil_aw_select = axil_outbound_filter_ctrl_req_i.aw.addr[5+:$clog2(NumOutboundFilters)];
-    outbound_axil_ar_select = axil_outbound_filter_ctrl_req_i.ar.addr[5+:$clog2(NumOutboundFilters)];
+    outbound_axil_aw_select = axil_outbound_filter_ctrl_req_i.aw.addr[5+:$clog2(NUM_OUTBOUND_FILTERS)];
+    outbound_axil_ar_select = axil_outbound_filter_ctrl_req_i.ar.addr[5+:$clog2(NUM_OUTBOUND_FILTERS)];
   end
 
   axi_lite_demux #(
@@ -390,7 +390,7 @@ module smc_internal_regs #(
     .axi_req_t   (smc_pkg::smc_axil_32_64_req_t),
     .axi_resp_t  (smc_pkg::smc_axil_32_64_resp_t),
 
-    .NoMstPorts  (NumOutboundFilters),
+    .NoMstPorts  (NUM_OUTBOUND_FILTERS),
     .MaxTrans    (1),
     .FallThrough (1'b0),
     .SpillAw     (1'b1),
@@ -413,7 +413,7 @@ module smc_internal_regs #(
   );
 
   generate
-    for (genvar f = 0; f < NumOutboundFilters; f = f + 1) begin : gen_outbound_filter_config
+    for (genvar f = 0; f < NUM_OUTBOUND_FILTERS; f = f + 1) begin : gen_outbound_filter_config
 
       // Intermediate signals for conditional connection based on locked status
       smc_pkg::smc_axil_32_64_req_t filter_reg_req, locked_reg_req;
@@ -508,20 +508,20 @@ module smc_internal_regs #(
   inbound_select_t inbound_axil_aw_select;
   inbound_select_t inbound_axil_ar_select;
 
-  smc_pkg::smc_axil_32_64_req_t  [NumInboundFilters-1:0] inbound_filter_axi_lite_reqs;
-  smc_pkg::smc_axil_32_64_resp_t [NumInboundFilters-1:0] inbound_filter_axi_lite_resps;
+  smc_pkg::smc_axil_32_64_req_t  [NUM_INBOUND_FILTERS-1:0] inbound_filter_axi_lite_reqs;
+  smc_pkg::smc_axil_32_64_resp_t [NUM_INBOUND_FILTERS-1:0] inbound_filter_axi_lite_resps;
 
   always_comb begin
-    inbound_axil_aw_select = axil_inbound_filter_ctrl_req_i.aw.addr[5+:$clog2(NumInboundFilters)];
-    inbound_axil_ar_select = axil_inbound_filter_ctrl_req_i.ar.addr[5+:$clog2(NumInboundFilters)];
+    inbound_axil_aw_select = axil_inbound_filter_ctrl_req_i.aw.addr[5+:$clog2(NUM_INBOUND_FILTERS)];
+    inbound_axil_ar_select = axil_inbound_filter_ctrl_req_i.ar.addr[5+:$clog2(NUM_INBOUND_FILTERS)];
   end
 
   logic inbound_filter_clk;
 
   axi_cg_snoop #(
-    .OutstandingTx(AXIL_OUTSTANDING_TX), // all in-flight txns this AXI-Lite port admits
-    .DenyDelay(1),
-    .HystWidth(smc_pkg::CG_HYSTERESIS_W)
+    .OUTSTANDING_TX(AXIL_OUTSTANDING_TX), // all in-flight txns this AXI-Lite port admits
+    .DENY_DELAY(1),
+    .HYST_WIDTH(smc_pkg::CG_HYSTERESIS_W)
   ) u_inbound_filter_reg_cg (
     .clk_i           (clk_smc_i),
     .rst_ni          (rst_primary_smc_clk_ni),
@@ -556,7 +556,7 @@ module smc_internal_regs #(
     .axi_req_t   (smc_pkg::smc_axil_32_64_req_t),
     .axi_resp_t  (smc_pkg::smc_axil_32_64_resp_t),
 
-    .NoMstPorts  (NumInboundFilters),
+    .NoMstPorts  (NUM_INBOUND_FILTERS),
     .MaxTrans    (1),
     .FallThrough (1'b0),
     .SpillAw     (1'b1),
@@ -579,7 +579,7 @@ module smc_internal_regs #(
   );
 
   generate
-    for (genvar f = 0; f < NumInboundFilters; f = f + 1) begin : gen_inbound_filter_config
+    for (genvar f = 0; f < NUM_INBOUND_FILTERS; f = f + 1) begin : gen_inbound_filter_config
 
       // Intermediate signals for conditional connection based on locked status
       smc_pkg::smc_axil_32_64_req_t filter_reg_req, locked_reg_req;
@@ -674,9 +674,9 @@ module smc_internal_regs #(
   logic mR_local_clk;
 
   axi_cg_snoop #(
-    .OutstandingTx(AXIL_OUTSTANDING_TX), // all in-flight txns this AXI-Lite port admits
-    .DenyDelay(1),
-    .HystWidth(smc_pkg::CG_HYSTERESIS_W)
+    .OUTSTANDING_TX(AXIL_OUTSTANDING_TX), // all in-flight txns this AXI-Lite port admits
+    .DENY_DELAY(1),
+    .HYST_WIDTH(smc_pkg::CG_HYSTERESIS_W)
   ) u_mmode_remap_cg (
     .clk_i           (clk_smc_i),
     .rst_ni          (rst_primary_smc_clk_ni),
@@ -775,9 +775,9 @@ module smc_internal_regs #(
   logic xR_local_clk;
 
   axi_cg_snoop #(
-    .OutstandingTx(AXIL_OUTSTANDING_TX), // all in-flight txns this AXI-Lite port admits
-    .DenyDelay(1),
-    .HystWidth(smc_pkg::CG_HYSTERESIS_W)
+    .OUTSTANDING_TX(AXIL_OUTSTANDING_TX), // all in-flight txns this AXI-Lite port admits
+    .DENY_DELAY(1),
+    .HYST_WIDTH(smc_pkg::CG_HYSTERESIS_W)
   ) u_xvisor_remap_cg (
     .clk_i           (clk_smc_i),
     .rst_ni          (rst_primary_smc_clk_ni),
@@ -878,9 +878,9 @@ module smc_internal_regs #(
   logic aR_local_clk;
 
   axi_cg_snoop #(
-    .OutstandingTx(AXIL_OUTSTANDING_TX), // all in-flight txns this AXI-Lite port admits
-    .DenyDelay(1),
-    .HystWidth(smc_pkg::CG_HYSTERESIS_W)
+    .OUTSTANDING_TX(AXIL_OUTSTANDING_TX), // all in-flight txns this AXI-Lite port admits
+    .DENY_DELAY(1),
+    .HYST_WIDTH(smc_pkg::CG_HYSTERESIS_W)
   ) u_alias_remap_cg (
     .clk_i           (clk_smc_i),
     .rst_ni          (rst_primary_smc_clk_ni),

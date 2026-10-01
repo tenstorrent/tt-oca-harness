@@ -28,10 +28,10 @@ module idma_frontend_wrapper #(
   parameter bit BYPASS_DMA_CTRL_FLOPS = 1'b0,               // When set, the control-port axi_cut is
                                                             // a pass-through with no registers.
 
-  parameter int unsigned NumDim = 2,                        // Transfer dimension count of the
+  parameter int unsigned NUM_DIM = 2,                       // Transfer dimension count of the
                                                             // midend; the 2-D register frontend and
                                                             // two-entry RepWidths match only 2.
-  parameter int unsigned RepWidth = 32,                     // Width of each midend repetition
+  parameter int unsigned REP_WIDTH = 32,                    // Width of each midend repetition
                                                             // counter.
 
   parameter type idma_req_t = logic,                        // 1-D iDMA request type emitted by the
@@ -261,12 +261,12 @@ module idma_frontend_wrapper #(
       );
 
       idma_nd_midend #(
-        .NumDim       (NumDim),
+        .NumDim       (NUM_DIM),
         .addr_t       (dma_mst_addr_t),
         .idma_req_t   (idma_req_t),
         .idma_rsp_t   (idma_resp_t),
         .idma_nd_req_t(idma_nd_req_t),
-        .RepWidths    ({RepWidth, RepWidth})
+        .RepWidths    ({REP_WIDTH, REP_WIDTH})
       ) u_iDMA_2d_midend (
         .clk_i (clk_i),
         .rst_ni(rst_ni),

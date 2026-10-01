@@ -163,7 +163,7 @@ endif::backend-pdf[]
 == SMU Default Parameters
 
 The DTP JTAG features, identification, cross trigger, and pipeline depths are
-fields of the `Cfg` parameter, of type `smu_pkg::smu_cfg_t` with default
+fields of the `CFG` parameter, of type `smu_pkg::smu_cfg_t` with default
 `smu_pkg::DefaultCfg`.
 
 ifdef::backend-html5[]
@@ -304,9 +304,9 @@ Type parameters are set internally based on SMC package types.
 |===
 |Parameter |SMU Default |DTP Internal |Pass-through |Notes
 
-|`XTRIG_NUM_CTP` |16 |Cfg |Yes |External CTP count
-|`XTRIG_NUM_INT_CT` |8 |Cfg + `XTRIG_SMC_INT_CT_LANES` |Yes |SMU-exposed count; DTP adds the SMC-reserved lanes
-|`XTRIG_NUM_CLK_STOP_REQ` |8 |Cfg + `XTRIG_SMC_CLK_STOP_LANES` |Yes |SMU-exposed count; DTP adds the SMC-reserved lane
+|`XTRIG_NUM_CTP` |16 |CFG |Yes |External CTP count
+|`XTRIG_NUM_INT_CT` |8 |CFG + `XTRIG_SMC_INT_CT_LANES` |Yes |SMU-exposed count; DTP adds the SMC-reserved lanes
+|`XTRIG_NUM_CLK_STOP_REQ` |8 |CFG + `XTRIG_SMC_CLK_STOP_LANES` |Yes |SMU-exposed count; DTP adds the SMC-reserved lane
 |`XTRIG_INT_CT_MODE` |32 bits, low 8 consumed |DTP width |Yes |SMC-reserved DTP mode bits are 0 (pulse-sync)
 |===
 
@@ -599,7 +599,7 @@ DTP lanes, so the SMU `XTRIG_NUM_CLK_STOP_REQ` field is
 CTP signals from DTP are ported through the SMU and are direct
 `smu_wrapper` external ports (connected through the `.*` SMU instantiation).
 The adopter must connect them to GPIO pad logic; no tie-off or dangling is
-present in the wrapper itself. Widths follow `Cfg.XTRIG_NUM_CTP` (default 16).
+present in the wrapper itself. Widths follow `CFG.XTRIG_NUM_CTP` (default 16).
 
 [cols="<30%,<10%,<15%,<45%",options="header"]
 |===

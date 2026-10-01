@@ -458,7 +458,7 @@ row's EXPECT sentence is worth, read the check.
 *Test Coverage*:
 
 * OSS SMU Tier A: inbound allow_ns admit/block via JTAG2AXI + s_axi.
-* Honest SEP=1 scope (no sep_in_master, no Force): S1 allow_ns=0 — secure prot OKAY, nonsecure DECERR on VERSION_LO window S2 dual-slot — inst0 secure + inst1 NS overlap admits both prot[1] S3 clear — BlockByDefault DECERR for both Commercial FAB_SMC_026 outbound/S4/S5 matrix remains deferred (needs peer master).
+* Honest SEP=1 scope (no sep_in_master, no Force): S1 allow_ns=0 — secure prot OKAY, nonsecure DECERR on VERSION_LO window S2 dual-slot — inst0 secure + inst1 NS overlap admits both prot[1] S3 clear — BLOCK_BY_DEFAULT DECERR for both Commercial FAB_SMC_026 outbound/S4/S5 matrix remains deferred (needs peer master).
 
 *Test Procedure*:
 
@@ -496,7 +496,7 @@ row's EXPECT sentence is worth, read the check.
 *Test Coverage*:
 
 * OSS SMU Tier A: inbound filter instance independence (FAB_SMC_023 subset).
-* SEP=1 honest scope (no sep_in / no Force): S4 post-reset BlockByDefault DECERR on VERSION_LO (captured before CSR writes) S1 J2A program+readback on instances 0/1/7/14/15 (DECODE independence) S2 pairwise isolation: inst0 WDT page vs inst1 VERSION page + src_id S3 address AND src_id AND prot on inst3 CPU_SCRATCH page S5 clear then configure admission on VERSION_LO Commercial SPM/global-aperture windows replaced by local-alias CSR pages.
+* SEP=1 honest scope (no sep_in / no Force): S4 post-reset BLOCK_BY_DEFAULT DECERR on VERSION_LO (captured before CSR writes) S1 J2A program+readback on instances 0/1/7/14/15 (DECODE independence) S2 pairwise isolation: inst0 WDT page vs inst1 VERSION page + src_id S3 address AND src_id AND prot on inst3 CPU_SCRATCH page S5 clear then configure admission on VERSION_LO Commercial SPM/global-aperture windows replaced by local-alias CSR pages.
 
 *Test Procedure*:
 
@@ -752,7 +752,7 @@ row's EXPECT sentence is worth, read the check.
 
 *BFM / Model*: `ocah_axi_vip`, `ocah_jtag_vip`
 
-*Objective*: Wide -> shrink -> clear restores selective / BlockByDefault deny.
+*Objective*: Wide -> shrink -> clear restores selective / BLOCK_BY_DEFAULT deny.
 
 *Test Coverage*:
 
@@ -797,7 +797,7 @@ row's EXPECT sentence is worth, read the check.
 *Test Coverage*:
 
 * SYS_IN inbound0: page interior OKAY, and the adjacent page each side DECERR.
-* With `ALLOW_BURST` set, `traffic_filter.sv` compares `tx_addr[AddrWidth-1:12]`, so one filter page is the finest bound this configuration resolves.
+* With `ALLOW_BURST` set, `traffic_filter.sv` compares `tx_addr[ADDR_WIDTH-1:12]`, so one filter page is the finest bound this configuration resolves.
 * The below-page probe re-reads an address that answered OKAY earlier in the same run, so its DECERR cannot be a dead bus or an unmapped hole.
 
 *Test Procedure*:
@@ -1856,8 +1856,8 @@ TAP resets it observes, and the always-on scoreboard pairs the two.
 *Test Coverage*:
 
 * The goldens are specification values. `doc/integrator/src/smu.adoc` "SMU Default Parameters" and "Cross Trigger Parameters": 16 external CTPs, 8 exposed internal CT lanes and 8 exposed clock-stop requests, with the DTP carrying 10 and 9 once the SMC reservation is added ("Debug & Test Ports (DTP) Integration"); `SMC_OTP_*_PL_DEPTH` `2'h3`; `JTAG_NUM_EXTRA_STAPS` 1 with the port array as wide as the parameter. "Pipeline Depth Parameters": `SEP_OTP_*_PL_DEPTH` fixed to `2'h3`. `hw/sys/smc/doc/port_table.adoc`: 256 external interrupts. `hw/sys/sep/doc/security_disable.adoc`: the 256-bit token. `+xtrig_int_ct_mode` is the bench's declared elaboration input; the DTP is required to present it above zeroed SMC-reserved bits ("SMC-reserved DTP mode bits are 0 (pulse-sync)").
-* Plumbing compares read one parameter at the wrapper and at the instance that consumes it: `Cfg` at the wrapper and at `smu`; the token at the wrapper, at `smu` and at the SEP eFuse controller.
-* The token the wrapper carries is compared against the SHA-256 of the all-zero 32-byte token, computed in the sequence, which is the value the bench binds in place of the metal digest; the product default is not what this composition elaborates. No specification in this tree states the packed layout of the build configuration struct. The per-field `Cfg` decode compares are untokened drift checks; `SEP_KM_LATCHED_MEM_RDATA` has no specified default and is decoded and logged only. No checker row rests on these.
+* Plumbing compares read one parameter at the wrapper and at the instance that consumes it: `CFG` at the wrapper and at `smu`; the token at the wrapper, at `smu` and at the SEP eFuse controller.
+* The token the wrapper carries is compared against the SHA-256 of the all-zero 32-byte token, computed in the sequence, which is the value the bench binds in place of the metal digest; the product default is not what this composition elaborates. No specification in this tree states the packed layout of the build configuration struct. The per-field `CFG` decode compares are untokened drift checks; `SEP_KM_LATCHED_MEM_RDATA` has no specified default and is decoded and logged only. No checker row rests on these.
 * The security_disable net is constant zero while no token is written, so this leaf only records it at the SEP eFuse controller that drives it, the `smu` wire and the SMC input, untokened. `smu_sep_sba_peripheral_test` S6 carries the claim: it reads the same three nodes at 0 before the token and at 1 after the matching token (`CHK-SEP-SECURITY-DISABLE`).
 
 *Test Procedure*:
@@ -1865,7 +1865,7 @@ TAP resets it observes, and the always-on scoreboard pairs the two.
 [arabic]
 . Read SEP_SEC_DISABLE_TOKEN at the wrapper, at `smu` and at the SEP consumer; require the specified 256-bit width at each and one value at all three.
 . Read the DTP SEP OTP pipeline depth parameters at the instance and compare against the specified fixed depth.
-. Require the wrapper's `Cfg` to reach `smu` unchanged; decode it field by field as untokened drift.
+. Require the wrapper's `CFG` to reach `smu` unchanged; decode it field by field as untokened drift.
 . Read each consumer parameter (`u_dtp.XTRIG_NUM_CTP`, `XTRIG_NUM_INT_CT`, `XTRIG_NUM_CLK_STOP_REQ`, `XTRIG_INT_CT_MODE` and its width, `SMC_OTP_*_PL_DEPTH`; the `smc_ext_interrupts_i` and `jtag_stap_extra_host_tdi_i` port widths) and compare against the specified value.
 . Record security_disable at the SEP eFuse controller's output, the `smu` wire and the SMC input.
 
@@ -1876,7 +1876,7 @@ TAP resets it observes, and the always-on scoreboard pairs the two.
 |Checker |Description
 |`CHK-SMU-SEC-TOKEN-S2` |SEP_SEC_DISABLE_TOKEN is 256 bits at the wrapper and at smu and reaches smu unchanged
 |`CHK-SMU-OTPAXI-SEP-S3` |DTP SEP OTP pipeline depths are the specified fixed 3
-|`CHK-SMU-NOSEP-S4` |Cfg reaches smu unchanged and each consumer parameter is its specified default, plus the SMC reservation where the specification adds one
+|`CHK-SMU-NOSEP-S4` |CFG reaches smu unchanged and each consumer parameter is its specified default, plus the SMC reservation where the specification adds one
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`.
@@ -2803,7 +2803,7 @@ with the completion the bus returned.
 *Test Coverage*:
 
 * `doc/integrator/src/smu.adoc` ("Cross Trigger Parameters", "Debug & Test Ports (DTP) Integration") states the lane geometry: 8 SMU-exposed internal CT lanes, 10 at the DTP, the low 2 reserved for the SMC with their mode bits at zero ("SMC-reserved DTP mode bits are 0 (pulse-sync)"). Those counts are the golden of the S1 mask compare and the set of lanes the live leg walks.
-* Reading the DTP's mode vector back against the elaborated `Cfg` field or the `+xtrig_int_ct_mode` plusarg, the `Cfg` decode itself, and the DTP mode vector width are drift checks and carry no evidence token; no specification in this tree states the struct layout.
+* Reading the DTP's mode vector back against the elaborated `CFG` field or the `+xtrig_int_ct_mode` plusarg, the `CFG` decode itself, and the DTP mode vector width are drift checks and carry no evidence token; no specification in this tree states the struct layout.
 * What the tokens rest on is the live leg: `port_table.adoc` states that the CTM ack ports are "Unused in pulse-sync mode (mode bit = 0)", and each of the 8 external CTM lanes is requested in turn so that a lane whose mode bit is set acknowledges and holds while a pulse-sync lane does not; the observed acknowledging-lane count must equal the mode popcount.
 
 *Test Procedure*:
@@ -3441,7 +3441,7 @@ Two things are worth reading before the entries:
 * The firmware programs its own SEP outbound filter, runs both KATs, then reports `TEST_MAGIC0 -> TEST_MAGIC_PASS` per `hw/sys/sep/dv/fw/include/tb.h`.
 * The verdict is the firmware's, not the testbench's: a PASS means the SEP compared both digests against the NIST vectors on-chip. The TB only observes.
 * Five `STAGE_BEACON` words (`0xB1B0B0B_<id>`) give stage-level progress -- main entered, filter programmed, HMAC entered, HMAC done / KMAC entered, KMAC done -- and all five are required.
-* Beacon 0 follows `sep_outbound_filter_init()`: a store ahead of it faults against the `BlockByDefault=1` outbound filter and kills the image, so the beacon's absence is a real failure, not a missing print.
+* Beacon 0 follows `sep_outbound_filter_init()`: a store ahead of it faults against the `BLOCK_BY_DEFAULT=1` outbound filter and kills the image, so the beacon's absence is a real failure, not a missing print.
 
 *Test Procedure*:
 
