@@ -383,6 +383,12 @@ privilege enforcement.
 
 == Filtering and Protection
 
+ifdef::backend-html5[]
+++++
+<span id="traffic-filtering"></span>
+++++
+endif::backend-html5[]
+
 The filtering system (`filter_ctrl.rdl`) provides security control for
 both inbound and outbound traffic, examining transaction attributes to
 enforce access policies.

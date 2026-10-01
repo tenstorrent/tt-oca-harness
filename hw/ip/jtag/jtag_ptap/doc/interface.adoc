@@ -5,6 +5,13 @@
 
 === Instruction Encodings
 
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="ptap-signal-interface-table"></span>
+++++
+endif::backend-html5[]
+
 The PTAP uses 6-bit instruction encodings. During the capture phase, the least
 significant bit (closest to TDO) of the instruction register always presents a 1
 to the scan chain, and the next least significant bit presents a 0 as specified
