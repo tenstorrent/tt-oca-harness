@@ -162,8 +162,9 @@ jobs:
               --print-out-paths)
             # docker-archive reads the gzip archive; skopeo relays its compressed
             # layers to the registry without unpacking them to disk. --digestfile
-            # records the digest of the manifest it actually pushed.
-            skopeo copy --insecure-policy --digestfile=digest.txt \
+            # records the digest of the manifest it actually pushed. A dropped
+            # blob upload is retried, since failing here discards the whole build.
+            skopeo copy --insecure-policy --retry-times 3 --digestfile=digest.txt \
               "docker-archive:${archive}" "docker://${registry_ref}"
             digest=$(cat digest.txt)
           fi
