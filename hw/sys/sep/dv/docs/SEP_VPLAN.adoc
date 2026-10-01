@@ -1287,7 +1287,7 @@ The `KM-SRAM-RD-LAT` log line is a measurement, not a checker: the count of KM S
 
 [arabic]
 . Bring up in `no_cpu` mode.
-. Read OTBN `STATUS` and require it to be neither `LOCKED` nor a memory-wipe state.
+. Read OTBN `STATUS` and require it to be neither `LOCKED` nor executing.
 . Write a known word to the OTBN instruction memory base; read it back.
 . Write a known word to the OTBN data memory base; read it back.
 . Read the instruction and data memory request and write counters.
