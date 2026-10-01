@@ -3,7 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1040" height="671" viewBox="0 0 1040 671" role="img" aria-labelledby="title desc">
 <title id="title">SEP cryptographic subsystem resets</title>
-<desc id="desc">Resets inside u_sep_crypto. rst_ni resets the interconnect, life cycle controller, eFuse shim mux, alert receivers and encoders. In u_sep_trng, rst_ni is the power-on reset of a 2-flop synchroniser that samples the inverted gated TRNG reset and drives trng_reset_active, which clears both EDN AXIS adapters and, as trng_entropy_clear_o, the entropy pool. The adapters take rst_ni, and the crypto adapter's endpoint resets come from the gated OTBN, AES and KMAC resets. The gated resets reset OTBN, AES, HMAC, KMAC and Adams Bridge. In the Key Manager reset conditioner, sep_reset_n feeds u_cold_rst_sync for the cold domain; a NAND of the gated Key Manager reset and soft_rst_n triggers a hold counter, reset by the cold output, that holds the warm domain in reset for at least 10 cycles.</desc>
+<desc id="desc">Resets inside u_sep_crypto. rst_ni resets the interconnect, life cycle controller, eFuse shim mux, alert receivers and encoders. In u_sep_trng, rst_ni is the power-on reset of a 2-flop synchroniser that samples the inverted gated TRNG reset and drives trng_reset_active, which clears both EDN AXIS adapters and, as trng_entropy_clear_o, the entropy pool. The adapters take rst_ni. The gated resets reset OTBN, AES, HMAC, KMAC and Adams Bridge. In the Key Manager reset conditioner, sep_reset_n feeds u_cold_rst_sync for the cold domain; a NAND of the gated Key Manager reset and soft_rst_n triggers a hold counter, reset by the cold output, that holds the warm domain in reset for at least 10 cycles.</desc>
 <defs>
 <marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
 <marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
@@ -114,7 +114,6 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="s" x="320" y="763" text-anchor="start">u_axis_edn_pool_s3c_scan</text>
 <text class="s" x="320" y="785" text-anchor="start">u_axis_edn_crypto_s3c_scan</text>
 <text class="s" x="526" y="761" text-anchor="start">clear_i</text>
-<text class="s" x="602" y="785" text-anchor="end">endpoint_rst_ni</text>
 <path class="a-smu" d="M240,769 L306,769"/>
 <circle cx="240" cy="769" r="4" fill="#103525"/>
 <rect class="core" x="310" y="807" width="300" height="42" rx="4"/>
@@ -152,8 +151,6 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="s" x="792" y="628" text-anchor="end">gated_rst_ni[6:0]</text>
 <path class="n-bus" d="M636,634 L636,969"/>
 <path class="a-bus" d="M636,634 L616,634"/>
-<path class="a-bus" d="M636,780 L616,780"/>
-<text class="s" x="644" y="785" text-anchor="start">.otbn .aes .kmac</text>
 <path class="a-bus" d="M636,828 L616,828"/>
 <text class="s" x="644" y="833" text-anchor="start">.otbn .aes .hmac .kmac</text>
 <path class="a-bus" d="M636,876 L616,876"/>
@@ -161,7 +158,6 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <path class="a-bus" d="M636,969 L616,969"/>
 <text class="s" x="644" y="974" text-anchor="start">.km</text>
 <circle cx="636" cy="634" r="4.5" fill="#b2566c"/>
-<circle cx="636" cy="780" r="4.5" fill="#b2566c"/>
 <circle cx="636" cy="828" r="4.5" fill="#b2566c"/>
 <circle cx="636" cy="876" r="4.5" fill="#b2566c"/>
 <text class="s" x="792" y="942" text-anchor="end">sep_reset_ni</text>

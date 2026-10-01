@@ -461,7 +461,7 @@ state. Its AXI responder remains accessible; this is not a reset of that respond
 <td class="tableblock halign-left valign-top"><p class="tableblock">AES, KMAC and OTBN</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Not reset by the TRNG coordinator. Native requests receive
 no acknowledgement during adapter clear and can resume after fresh data arrives.
-Their own resets cancel the corresponding adapter endpoints; OTBN owns RND and URND.</p></td>
+Their software resets cancel the corresponding adapter endpoints; OTBN owns RND and URND.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager sampler</p></td>
