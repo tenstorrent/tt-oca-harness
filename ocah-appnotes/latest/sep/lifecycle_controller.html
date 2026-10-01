@@ -396,6 +396,18 @@ in <a href="#non-primary-chiplets">Non-Primary Chiplets</a>.</p>
 <div class="title">Figure 3. SEP security domains</div>
 </div>
 <div class="paragraph">
+<p>In <a href="#sep-security-domains-figure">SEP security domains</a>, each chiplet with a SEP gates the debug
+path from its PTAP downwards: SIP_DBG opens the Case 1 targets, CHIPLET_DBG adds
+the Case 2 targets and SEP_DBG adds the Case 3 targets, each listed to the right
+of its gate. The targets are the debug paths that <code>sep_lifecycle_ctrl</code> disables
+through <code>dbg_disable_o</code> and the two fuse DFT disables, as given in
+<a href="#dtp-path-gating">Debug and Test Port Path Gating</a>; the fuse DFT paths also need their own SEP_FUSE_DBG or
+SMC_FUSE_DBG bit. The green gate belongs to the SiP-owner domain and is a DBG_2
+bit, opened in the field by Demotion 2. The cream gates belong to the
+chiplet-owner domain and are DBG_1 bits, opened by Demotion 1. The I/O STAP
+forwards the chain to the next chiplet&#8217;s PTAP.</p>
+</div>
+<div class="paragraph">
 <p>In <a href="#sep-security-domains-figure">SEP security domains</a>, chiplet 1 is primary, chiplet 2 has no SEP,
 and chiplet 3 has its own LCC:</p>
 </div>

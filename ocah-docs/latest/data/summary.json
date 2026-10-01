@@ -41,10 +41,10 @@
       "tool": "vcs"
     },
     {
-      "coverage_total_percent": 83.93,
+      "coverage_total_percent": 83.52,
       "flow": "smc",
       "framework": "cocotb",
-      "pass_rate": 97.99,
+      "pass_rate": 98.33,
       "tests_total": 299,
       "tool": "vcs"
     },
@@ -57,7 +57,7 @@
       "tool": "vcs"
     }
   ],
-  "generated_at": "2026-10-01T14:01:22+00:00",
+  "generated_at": "2026-10-01T15:29:14+00:00",
   "results": [
     {
       "coverage": {
@@ -144,12 +144,12 @@
       "coverage": {
         "effective_metrics": {
           "assertion": 96.44,
-          "branch": 86.54,
-          "condition": 82.39,
-          "fsm_state": 89.66,
-          "functional": 100.0,
-          "line": 95.48,
-          "toggle": 36.98,
+          "branch": 86.53,
+          "condition": 82.32,
+          "fsm_state": 89.43,
+          "functional": 97.68,
+          "line": 95.47,
+          "toggle": 36.75,
           "user": 99.7988
         }
       },

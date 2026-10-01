@@ -254,7 +254,9 @@ entropy sampling and JTAG debug.</p>
 </tbody>
 </table>
 <div class="paragraph">
-<p><a href="#sep-clock-tree">SEP clock tree and clock domains</a> shows these inputs, local gating and generated clocks.
+<p><a href="#sep-clock-tree">SEP clock tree and clock domains</a> overlays these clock domains on the SEP top-level diagram.
+The CPU TAP runs on <code>jtag_tck_i</code>; local clock gating and derived clocks are
+described below.
 The CPU has a free-running branch and a pipeline branch gated according to
 halt/pause state, flush activity and clock override. SPI generates its serial
 clock locally. Entropy-source oscillators and sample clocks are distinct from
@@ -263,7 +265,7 @@ frequencies and timing constraints belong to the platform integration.</p>
 </div>
 <div id="sep-clock-tree" class="imageblock">
 <div class="content">
-<img src="_images/sep-clock-domains.svg" alt="SEP clock tree and clock domains" width="100%">
+<img src="_images/sep-clock-domains.svg" alt="SEP clock domains overlaid on the top-level diagram" width="100%">
 </div>
 <div class="title">Figure 1. SEP clock tree and clock domains</div>
 </div>

@@ -246,7 +246,8 @@ every other address to an error slave that answers DECERR with read data
 <div class="paragraph">
 <p>Each instance, <code>gen_uart_log_engine_wraps[i].u_uart_log_engine_wrap</code>, holds
 one UART 16550 and, when bit <code>i</code> of <code>GEN_LOG_ENGINES</code> is set, a log engine;
-<a href="#log-engine-wrapper-diagram">[log-engine-wrapper-diagram]</a> shows its contents. The mux
+<a href="../../log_engine/doc/index.html#log-engine-wrapper-diagram" class="xref page">Log-engine wrapper diagram</a>
+shows its contents. The mux
 <code>u_log_fetch_axi_lite_mux</code> merges the instances' log-fetch manager ports
 onto the single log-fetch port, with 56-bit address and 64-bit data. The SMC
 instantiates four UARTs, each with a log engine and 32-entry TX and RX FIFOs.</p>

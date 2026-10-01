@@ -291,6 +291,7 @@ scan reset in <code>u_reset_conditioner</code> and drives the test inputs of <co
 </div>
 <div class="sect2">
 <h3 id="parameters"><a class="anchor" href="#parameters"></a><a class="link" href="#parameters">1.1. Parameters</a></h3>
+<span id="key-manager-parameters-table"></span>
 <div class="paragraph">
 <p>The Key Manager is configured through its ROM and SRAM sizes, the mailbox FIFO depth,
 the read-data behaviour of its memories, and the address of the eFuse controller.
@@ -559,8 +560,8 @@ generated secret material is not returned through a direct host read path.
 The generated <a href="#key-manager-memory-map">Memory Map</a> defines the KM&#8217;s allocated windows.</p>
 </div>
 <div class="paragraph">
-<p><a href="#key-manager-accelerator-key-path-figure">Key Manager accelerator key path</a> marks secret-bearing storage in red
-and separates accelerator key delivery from the host-accessible data path.
+<p><a href="#key-manager-accelerator-key-path-figure">Key Manager accelerator key path</a> separates the key-delivery path
+on the top row from the host-accessible data path on the bottom row.
 This separation does not establish resistance to physical fault injection or
 side-channel attacks. Firmware&#8217;s key-data CRC detects corruption; it is not
 a substitute for access control or a physical-attack guarantee.</p>

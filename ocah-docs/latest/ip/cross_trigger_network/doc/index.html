@@ -730,6 +730,7 @@ produce the registered <code>stop_clks_o</code> output.</p>
 <div class="sect1">
 <h2 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">2. Configuration Parameters</a></h2>
 <div class="sectionbody">
+<span id="ctn-configuration-parameters-table"></span>
 <div class="paragraph">
 <p>The CTN is configured through its external and internal port counts, the number of
 clock-stop request inputs, and the protocol of each internal CTP.</p>
@@ -836,6 +837,7 @@ twice, the second copy one wire-OR round trip after the first.</p>
 </div>
 <div class="sect2">
 <h3 id="cross-trigger-port-ctp"><a class="anchor" href="#cross-trigger-port-ctp"></a><a class="link" href="#cross-trigger-port-ctp">3.1. Cross Trigger Port (CTP)</a></h3>
+<span id="ctn-cross-trigger-port-structure-figure"></span>
 <div class="paragraph">
 <p>OCAH supports a configurable number of CTPs, from 0 to 8, for a total number of
 up to 32 required GPIOs. These ports support both point-to-point and wire-OR
@@ -895,6 +897,8 @@ in the Cross-Trigger Port architecture.</p>
 </div>
 <div class="sect3">
 <h4 id="wire-or-mode"><a class="anchor" href="#wire-or-mode"></a><a class="link" href="#wire-or-mode">3.1.1. Wire-OR Mode</a></h4>
+<span id="ctn-wire-or-port-behavior-figure"></span>
+<span id="ctn-wire-or-chiplet-connections-figure"></span>
 <div class="paragraph">
 <p>Wire-OR mode is a 1-wire cross trigger signaling scheme compatible with many
 existing cross triggering implementations. This scheme is very resource
@@ -929,6 +933,9 @@ in the same architecture section.</p>
 </div>
 <div class="sect3">
 <h4 id="point-to-point-mode"><a class="anchor" href="#point-to-point-mode"></a><a class="link" href="#point-to-point-mode">3.1.2. Point-to-Point Mode</a></h4>
+<span id="ctn-point-to-point-port-behavior-figure"></span>
+<span id="ctn-point-to-point-chiplet-connections-figure"></span>
+<span id="ctn-request-acknowledge-timing-figure"></span>
 <div class="paragraph">
 <p>Point-to-point mode utilizes a four-phase handshaking scheme to synchronize a
 cross trigger quickly and reliably between two chiplets without pulse
@@ -965,6 +972,7 @@ in the Cross-Trigger Port architecture.</p>
 </div>
 <div class="sect2">
 <h3 id="cross-trigger-matrix-ctm"><a class="anchor" href="#cross-trigger-matrix-ctm"></a><a class="link" href="#cross-trigger-matrix-ctm">3.2. Cross Trigger Matrix (CTM)</a></h3>
+<span id="ctn-cross-trigger-matrix-figure"></span>
 <div class="paragraph">
 <p>The CTM is a crossbar that aggregates and statically routes cross trigger pulses
 between various sources and sinks. Typical connections to the CTM include Core
@@ -1249,6 +1257,7 @@ cross-trigger network.</p>
 </div>
 <div class="sect2">
 <h3 id="clock-stop-control"><a class="anchor" href="#clock-stop-control"></a><a class="link" href="#clock-stop-control">3.6. Clock Stop Control</a></h3>
+<span id="ctn-clock-stop-signals-table"></span>
 <div class="paragraph">
 <p>The <code>ctn_clock_stop_ctrl</code> module aggregates clock stop requests from multiple
 sources using a two-stage OR-tree architecture. The module separates CLA-only
@@ -1327,6 +1336,7 @@ ct_src_o port assignment and CTM routing configuration registers.</p>
 <div class="sectionbody">
 <div class="sect2">
 <h3 id="cross-trigger-network-interface"><a class="anchor" href="#cross-trigger-network-interface"></a><a class="link" href="#cross-trigger-network-interface">4.1. Cross Trigger Port (CTP)</a></h3>
+<span id="ctn-cross-trigger-signal-interface-table"></span>
 <div class="paragraph">
 <p>For the module diagram and signalling modes, see
 <a href="#cross-trigger-network-architecture">CTN Architecture</a>.</p>

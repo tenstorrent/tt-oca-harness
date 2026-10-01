@@ -261,7 +261,7 @@ procedures; it does not require the plaintext token in the RTL database.</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEC_DIS_TOKEN</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Emergency lifecycle-control and fuse-sense bypass</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Emergency debug access without waiting for fuse sensing</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Hardware constant, independent of OTP</p></td>
 </tr>
 </tbody>
@@ -284,7 +284,9 @@ and expected digest must not enter scannable storage.</p>
 <p>RMA comparisons require both a valid computed digest and completed fuse sensing,
 because their expected values come from OTP shadows. SEC_DIS requires only a
 valid digest: its expected value is implemented in gates. This allows recovery
-when fuse sensing fails. SEC_DIS follows the feature-control rules in the
+when fuse sensing fails. This unlocks token comparison and feature control;
+SEP reset still waits for fuse sensing or the IC_RESET <code>sep_reset_n</code> override.
+SEC_DIS follows the feature-control rules in the
 Lifecycle Controller chapter, with the metal-programmable enable also required.
 The design requirement is A0-only use and permanent removal by a metal-mask ECO
 in later A1/B0 revisions; this is not a software-disable mechanism. See
@@ -445,6 +447,17 @@ SEC_DIS has a separate bypass output qualified by the revision enable.</p>
 <img src="_images/sep-token-processing.svg" alt="efuse_token_processing: three token lanes, each with its token array, SHA-256 engine and triple-redundant comparator, followed by the match flops, the sticky fault bits, the security-disable logic and the shadow map gate" width="100%">
 </div>
 <div class="title">Figure 1. SEP token processing</div>
+</div>
+<div class="paragraph">
+<p>Each of the three rows in <a href="#sep-token-processing-figure">SEP token processing</a> is one token lane,
+from its token array and go bit in <code>efuse_mmr_reg</code>, through its SHA-256 engine,
+to its comparator. The expected digests and <code>fuse_sense_done_i</code> are named at
+their point of use; both come from the eFuse shadow registers at the lower
+left. <code>fuse_sense_done_i</code> gates only the two RMA comparators. The comparators'
+match codes and the sticky fault bits are also readable in the
+<code>*_TOKEN_MATCH</code> and <code>TOKEN_MATCH_FAULT</code> status registers. The RMA_CHIPLET match
+line crosses the RMA_SIP fault line without connecting; the gap marks the
+crossing.</p>
 </div>
 </div>
 </div>

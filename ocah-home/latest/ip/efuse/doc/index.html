@@ -926,6 +926,12 @@ where sensitive RMA tokens must be protected during manufacturing test flows.</p
 <div class="sectionbody">
 <div class="sect2">
 <h3 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">Configuration Parameters</a></h3>
+<span id="efuse-configuration-parameters-table"></span>
+<span id="signal-interfaces"></span>
+<span id="clock-and-reset"></span>
+<span id="efuse-clock-and-reset-signals-table"></span>
+<span id="debug-and-status-signals"></span>
+<span id="efuse-debug-and-status-signals-table"></span>
 <div class="paragraph">
 <p>The OTP has a total storage capacity of 1 KB, organized as 256 words of 32 bits.</p>
 </div>
@@ -935,6 +941,10 @@ where sensitive RMA tokens must be protected during manufacturing test flows.</p
 </div>
 <div class="sect2">
 <h3 id="main-axi4-lite-interfaces"><a class="anchor" href="#main-axi4-lite-interfaces"></a><a class="link" href="#main-axi4-lite-interfaces">Main AXI4-Lite Interfaces</a></h3>
+<span id="smc-interface-functional-access"></span>
+<span id="efuse-functional-access-interface-table"></span>
+<span id="jtag-interface-debug-access"></span>
+<span id="efuse-jtag-access-interface-table"></span>
 <div class="paragraph">
 <p>The eFuse controller provides two AXI4-Lite interfaces for register access: functional
 access from the SMC and debug access from JTAG.</p>
@@ -942,6 +952,7 @@ access from the SMC and debug access from JTAG.</p>
 </div>
 <div class="sect2">
 <h3 id="fuse-bank-control-interface"><a class="anchor" href="#fuse-bank-control-interface"></a><a class="link" href="#fuse-bank-control-interface">Fuse Bank Control Interface</a></h3>
+<span id="efuse-bank-control-interface-table"></span>
 <div class="paragraph">
 <p>AXI4-Lite interface to the fuse bank control registers in the SHIM, carried on
 <code>fuse_bank_ctrl_req_o</code> and <code>fuse_bank_ctrl_resp_i</code> of types <code>efuse_axil_req_t</code> and
@@ -951,12 +962,14 @@ this interface.</p>
 </div>
 <div class="sect2">
 <h3 id="fuse-command-interface"><a class="anchor" href="#fuse-command-interface"></a><a class="link" href="#fuse-command-interface">Fuse Command Interface</a></h3>
+<span id="efuse-command-interface-table"></span>
 <div class="paragraph">
 <p>Custom interface for SHIM state machine communication.</p>
 </div>
 </div>
 <div class="sect2">
 <h3 id="security-and-control-signals"><a class="anchor" href="#security-and-control-signals"></a><a class="link" href="#security-and-control-signals">Security and Control Signals</a></h3>
+<span id="efuse-security-and-control-signals-table"></span>
 <div class="paragraph">
 <p>The controller has no lifecycle-state input port. When <code>HAS_LC_STATE</code> is set, it takes the
 lifecycle state from the fuses: during fuse sensing it loads the low <code>LC_STATE_WIDTH</code> bits

@@ -243,6 +243,12 @@ system ports are tied off in this wrapper; their ASIDs do not provide
 additional SEP routes. Reachability is governed by the SEP fabric and filters.</p>
 </div>
 <div class="paragraph">
+<p>The master path leaves AxUSER at zero. The register and host bridges latch
+faults on <code>dma_reg_bus_err_o</code> and <code>dma_host_intg_err_o</code>, cleared through
+<code>DMA_BUS_ERR_CLEAR</code>; local alert receivers aggregate the core alerts into
+<code>dma_alert_o</code>. Selecting the tied-off CTN or SYS address space does not complete.</p>
+</div>
+<div class="paragraph">
 <p>Only handshake input 0 is connected, to the SPI host&#8217;s LSIO trigger.
 All other trigger inputs are tied low; SEP does not wire UART or I3C handshake paths.
 This does not prevent software-initiated accesses to reachable peripheral registers.</p>

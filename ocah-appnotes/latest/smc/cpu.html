@@ -485,6 +485,7 @@ system bus access through the front bus</p></td>
 <div class="sect1">
 <h2 id="cpu-axi-isolation"><a class="anchor" href="#cpu-axi-isolation"></a><a class="link" href="#cpu-axi-isolation">6. CPU AXI Isolation</a></h2>
 <div class="sectionbody">
+<span id="cluster-boundary-isolation"></span>
 <div class="paragraph">
 <p>The cluster is reset independently of the surrounding SMC fabric.
 If the cluster were reset while a transaction on one of its AXI ports
@@ -680,6 +681,64 @@ coordination.</p>
 <div class="sect1">
 <h2 id="debug"><a class="anchor" href="#debug"></a><a class="link" href="#debug">10. Debug</a></h2>
 <div class="sectionbody">
+<span id="abstractdata_12_"></span>
+<span id="debug_module-abstractdata_12_"></span>
+<span id="dmcontrol"></span>
+<span id="debug_module-dmcontrol"></span>
+<span id="dmstatus"></span>
+<span id="debug_module-dmstatus"></span>
+<span id="hartinfo"></span>
+<span id="debug_module-hartinfo"></span>
+<span id="haltsum1"></span>
+<span id="debug_module-haltsum1"></span>
+<span id="hawindowsel"></span>
+<span id="debug_module-hawindowsel"></span>
+<span id="hawindow"></span>
+<span id="debug_module-hawindow"></span>
+<span id="abstractcs"></span>
+<span id="debug_module-abstractcs"></span>
+<span id="command"></span>
+<span id="debug_module-command"></span>
+<span id="abstractauto"></span>
+<span id="debug_module-abstractauto"></span>
+<span id="confstrptr_3_"></span>
+<span id="debug_module-confstrptr_3_"></span>
+<span id="nextdm"></span>
+<span id="debug_module-nextdm"></span>
+<span id="progbuf_16_"></span>
+<span id="debug_module-progbuf_16_"></span>
+<span id="authdata"></span>
+<span id="debug_module-authdata"></span>
+<span id="haltsum2"></span>
+<span id="debug_module-haltsum2"></span>
+<span id="haltsum3"></span>
+<span id="debug_module-haltsum3"></span>
+<span id="sbaddress3"></span>
+<span id="debug_module-sbaddress3"></span>
+<span id="sbcs"></span>
+<span id="debug_module-sbcs"></span>
+<span id="sbaddress0"></span>
+<span id="debug_module-sbaddress0"></span>
+<span id="sbaddress1"></span>
+<span id="debug_module-sbaddress1"></span>
+<span id="sbaddress2"></span>
+<span id="debug_module-sbaddress2"></span>
+<span id="sbdata0"></span>
+<span id="debug_module-sbdata0"></span>
+<span id="sbdata1"></span>
+<span id="debug_module-sbdata1"></span>
+<span id="sbdata2"></span>
+<span id="debug_module-sbdata2"></span>
+<span id="sbdata3"></span>
+<span id="debug_module-sbdata3"></span>
+<span id="haltsum0"></span>
+<span id="debug_module-haltsum0"></span>
+<div class="paragraph">
+<p>The generated memory map below describes the hart-facing Debug Module memory
+region. Debugger-facing registers such as <code>dmcontrol</code>, <code>dmstatus</code>, <code>abstractcs</code>
+and <code>sbcs</code> are accessed through the Debug Module Interface (DMI), not through
+that memory region.</p>
+</div>
 <div class="paragraph">
 <p>Debugging is facilitated by JTAG, through the cluster&#8217;s debug transport module and
 debug module, enabling

@@ -274,7 +274,7 @@ after POR and configured by SEP firmware.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CPU load/store unit; initiates data reads and writes.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">CPU DBG</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU debug (<code>dbg</code>)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CPU debug access path.</p></td>
 </tr>
 <tr>
@@ -287,44 +287,44 @@ after POR and configured by SEP firmware.</p>
 closely coupled memory (ICCM) and data closely coupled memory (DCCM).</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Scratch SRAM</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SRAM (<code>sram</code>)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Static random-access memory used for SEP working storage.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DMA CSR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA registers (<code>dma_csr</code>)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DMA control and status registers.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">WDT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Watchdog (<code>sep_wdt</code>)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Watchdog timer.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Reset Ctrl</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reset controller (<code>sep_reset_ctrl</code>)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP software reset controller.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Crypto Periph</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Crypto (<code>sep_crypto</code>)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Cryptographic accelerators (AES, HMAC, KMAC, OTBN), entropy-source registers, eFuse controller, lifecycle controller, Key Manager mailbox, and external TRNG window.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">System Periph</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System peripherals (<code>sep_system_peripherals</code>)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">System-peripheral routing, remapping, mailboxes and system registers.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">IO Periph</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SPI host (<code>sep_io</code>)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Local input/output peripheral path, including SPI boot-flash access.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Entropy Pool</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Entropy pool (<code>entropy_fifo</code>)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Read-only aperture for entropy supplied by the entropy distribution
 network (EDN).</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI Extension</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Extension, eFuse shim (<code>sep_external</code>)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Outbound AXI4 port for resources outside the local crossbar; the eFuse shim CSR window is diverted by <code>u_efuse_shim_demux</code> to the eFuse wrapper.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">System Interface</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMN inbound (<code>ext</code>)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Filtered inbound path from the System Management Network (SMN).</p></td>
 </tr>
 <tr>
@@ -348,10 +348,10 @@ system-peripheral decode. The local fabric connects SEP initiators to local
 resources, while the output fabric selects remapped or direct outbound paths.</p>
 </div>
 <div class="paragraph">
-<p>In the fabric diagrams, mux/demux labels <code>ID a/b</code> give the input and output
+<p>In the fabric diagrams, labels such as <code>ID 3 to 4</code> give the input and output
 AXI transaction-ID widths in bits; they do not count ports or data bits.
 The wider side of the symbol indicates the side with multiple ports.
-Bus tags give address/data/ID/user widths, in that order. The filter wrapper
+Bus labels identify address and ID widths where they change. The filter wrapper
 checks reads and writes independently, forwards permitted requests, and routes
 rejected requests to an AXI error responder.</p>
 </div>
@@ -553,8 +553,13 @@ documented once with the IP in <a href="../ip/axi_filter/doc/index.html#axi-traf
 </div>
 <div class="paragraph">
 <p><a href="#sep-system-peripheral-traffic-management-figure">SEP system-peripheral traffic management</a> illustrates the AXI4 traffic management performed by
-the Systems Peripheral block. The AXI4 slave port is driven by one of
-the local masters from the SEP i.e. the CPU or the DMA controller.
+the system peripherals block. Its left edge faces the SEP local crossbar and
+its right edge the SMU; the upper lane is the outbound path and the lower lane
+the inbound path, drawn in the notation of <a href="#sep-fabric-topology">Fabric Topology</a>. The figure
+is an overview: <a href="#sep-output-fabric-diagram">SEP output fabric</a> and <a href="#sep-input-fabric-diagram">SEP input fabric</a>
+give every element with its instance name and address window. The AXI4
+subordinate port on the left is driven by the local masters that the local
+crossbar connects to it: the CPU LSU, the CPU debug master and the secure DMA.
 Traffic may be local to the SEP or outbound to external resources either
 within the SMU or beyond the SMU. Traffic beyond the SMU to the rest of
 the chiplet or remote chiplets will bridge to the system NOC also known
@@ -590,20 +595,18 @@ Inbound filter policy must restrict the STEE remapper to STEE access.</p>
 </ul>
 </div>
 <div class="paragraph">
-<p>SEP’s outbound traffic carries a source ID. Traffic destined to the SMN
-uses SEP’s unique source ID. Traffic that traverses through the AP
-controlled remapper uses the regular source ID termed "others".
-Traffic then traverses the outbound filter after traversing the
-remapper. SEP works with M-mode software to program the outbound filters
-so that traffic with source ID "others" cannot access M-mode assets.
-The outbound filter enables filtering based on address, NS and source
-ID.</p>
+<p>SEP outbound traffic carries a source ID in AxUSER. Both AP- and STEE-controlled
+remappers replace it with <code>OTHERS</code>. Other traffic retains the initiator&#8217;s ID:
+the CPU masters drive SEP&#8217;s ID, while the secure DMA master leaves AxUSER at
+zero (<code>OTHERS</code>). AxPROT, including NS, passes unchanged. The outbound filter
+checks address, NS and source ID after remapping; firmware must restrict
+<code>OTHERS</code> traffic from M-mode assets.</p>
 </div>
 <div class="paragraph">
-<p>The SEP’s inbound traffic filter is configured by default to block all
-traffic from entering the SEP. Only the SEP CPU can program these
-filters; their matching rules are described in
-<a href="#sep-traffic-filter-decode">Filtering and Protection</a>.</p>
+<p>The inbound filter blocks traffic by default. Its entries reside in the system
+CSRs, reached directly by local masters and by external masters only through
+an enabled inbound filter entry (or the stated SEP debug bypass). Matching
+rules are in <a href="#sep-traffic-filter-decode">Filtering and Protection</a>.</p>
 </div>
 <div id="mailboxes" class="paragraph">
 <p>See <a href="mailbox.html" class="xref page">Mailboxes</a> under Peripherals for host mailbox operation.</p>
