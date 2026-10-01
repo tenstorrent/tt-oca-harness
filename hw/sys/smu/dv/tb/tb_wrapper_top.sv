@@ -1358,11 +1358,12 @@ module smu_wrapper_uvm_top
 
 `ifndef UVM
   // cocotb toggles the model oscillators through the clock inputs, with
-  // +pll_osc_bench keeping pll_wrap's own generators off: under Verilator,
-  // cocotb observes the pre-edge state only on a clock its own write toggles.
-  assign u_dut.u_smc_ip_integration.u_pll_wrap.osc_ref    = clk_ref_i;
-  assign u_dut.u_smc_ip_integration.u_pll_wrap.osc_sys    = clk_smu_i;
-  assign u_dut.u_smc_ip_integration.u_pll_wrap.osc_periph = clk_periph_i;
+  // +pll_osc_bench selecting these nets over pll_wrap's own generators:
+  // under Verilator, cocotb observes the pre-edge state only on a clock its
+  // own write toggles.
+  assign u_dut.u_smc_ip_integration.u_pll_wrap.osc_ref_bench    = clk_ref_i;
+  assign u_dut.u_smc_ip_integration.u_pll_wrap.osc_sys_bench    = clk_smu_i;
+  assign u_dut.u_smc_ip_integration.u_pll_wrap.osc_periph_bench = clk_periph_i;
 `endif
 
   // ------------------------------------------------------------------
