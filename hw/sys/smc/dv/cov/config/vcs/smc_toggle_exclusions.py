@@ -143,6 +143,17 @@ EXT_IRQ_NETS: frozenset[tuple[str, str]] = frozenset(
         ("smc_4core_cpu", "interrupts_i"),
     }
 )
+# ERR-SLV-CONST: the nets that carry an axi_err_slv response unchanged
+# (`axi_filter_wrap.sv:287-299`, `smc_input_fabric.sv:506-518`, `:566-578`); the
+# error slave itself is a library cell the scope drops.
+ERR_SLV_RESPONSES: frozenset[tuple[str, str]] = frozenset(
+    {
+        ("axi_filter_wrap", "err_slv_resp"),
+        ("smc_input_fabric", "sys_err_slv_resp"),
+        ("smc_input_fabric", "sep_err_slv_resp"),
+    }
+)
+ERR_SLV_MEMBERS = ("b.user", "r.user", "r.data")
 CLOCK_RESET = re.compile(r"^(?:clk|rst)\w*$")
 EXT_IRQ_SYNC = re.compile(r"\.u_smc_base\.u_ext_interrupts_sync3\.u_sync3\[(\d+)\]$")
 
@@ -252,6 +263,20 @@ CLASSES: dict[str, ToggleClass] = {
             "stay graded. Reviewer: DE + DV peer.",
             "a leaf that drives those values, or the vector becoming fully covered",
         ),
+        ToggleClass(
+            "ERR-SLV-CONST",
+            "design",
+            "whole signal",
+            "an axi_err_slv response carries a zero user and a constant read data",
+            "axi_err_slv.sv:143-146 and :194-202 assign err_resp.b and err_resp.r '0 and then set "
+            "only id, resp, data (the RespData parameter, 64'hCA11AB1EBADCAB1E by default, which "
+            "no SMC instance overrides), last and valid, so b.user and r.user are zero and r.data "
+            "is a constant on every net that carries the response unchanged: err_slv_resp in "
+            "axi_filter_wrap (axi_filter_wrap.sv:287-299) and sys_err_slv_resp and "
+            "sep_err_slv_resp in smc_input_fabric (smc_input_fabric.sv:506-518, :566-578). id, "
+            "resp, last and valid stay graded. Reviewer: DE.",
+            "an error slave that passes user or data through, or a RespData chosen per transaction",
+        ),
     )
 }
 
@@ -292,6 +317,7 @@ FACT_ORDER = (
     "VERSION-ID-CONST",
     "ATOP-ZERO",
     "EXT-IRQ-TIED",
+    "ERR-SLV-CONST",
 )
 
 COPYRIGHT = re.compile(r"^\s*//\s*Copyright.*?(lowRISC|OpenTitan).*$", re.I | re.M)
@@ -530,6 +556,11 @@ class Planner:
             for signal in sc.signals:
                 if ATOP.search(signal):
                     plan.add("MODULE", scope, signal, "ATOP-ZERO")
+        for scope, sc in self.modules():
+            for m, net in ERR_SLV_RESPONSES:
+                if m == sc.module:
+                    for member in ERR_SLV_MEMBERS:
+                        plan.add("MODULE", scope, f"{net}.{member}", "ERR-SLV-CONST")
         tied = window(EXT_IRQ_FIRST, EXT_IRQ_LAST)
         for scope, sc in self.modules():
             for m, signal in EXT_IRQ_NETS:

@@ -8,8 +8,8 @@ a module, smc_toggle_instance_exclusions.el the rows that hold for one
 instance. smc_toggle_exclusions.py plans both and README.md states every class,
 its fact and its granularity: T1 OPENTITAN-PORTS-ONLY and the ports-only units
 T2 to T12 of smc_reviewed_exclusions.toml, UNION-ALIAS, EFUSE-IMAGE-COPY,
-EFUSE-FIELD-MAP-CONST, VERSION-ID-CONST, ATOP-ZERO, EXT-IRQ-TIED and
-PARTIAL-VECTOR.
+EFUSE-FIELD-MAP-CONST, VERSION-ID-CONST, ATOP-ZERO, EXT-IRQ-TIED,
+ERR-SLV-CONST and PARTIAL-VECTOR.
 
 Every checksum and signature comes from urg's templates; the run's raw report
 gives the unit roots' port lists and the bit-directions the run leaves

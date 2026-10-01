@@ -126,6 +126,15 @@
 // sources 2 to 16, which have a bench pin, stay graded. Retired by bench pins on external
 // interrupt sources 17 and up.
 //
+// ERR-SLV-CONST (design, whole signal): axi_err_slv.sv:143-146 and :194-202 assign err_resp.b and
+// err_resp.r '0 and then set only id, resp, data (the RespData parameter, 64'hCA11AB1EBADCAB1E by
+// default, which no SMC instance overrides), last and valid, so b.user and r.user are zero and
+// r.data is a constant on every net that carries the response unchanged: err_slv_resp in
+// axi_filter_wrap (axi_filter_wrap.sv:287-299) and sys_err_slv_resp and sep_err_slv_resp in
+// smc_input_fabric (smc_input_fabric.sv:506-518, :566-578). id, resp, last and valid stay graded.
+// Reviewer: DE. Retired by an error slave that passes user or data through, or a RespData chosen
+// per transaction.
+//
 // PARTIAL-VECTOR (bench, per bit, report-gated): bench and stimulus scope: at least one bit-
 // direction of this multi-bit payload vector toggles in the graded run, which shows the net is
 // driven and observed on this bench; its remaining bit-directions depend on the address, data or
@@ -18745,6 +18754,13 @@ Toggle sys_axi_in_region_req.aw.atop "logic sys_axi_in_region_req.aw.atop[5:0]"
 Toggle sys_err_slv_req.aw.atop "logic sys_err_slv_req.aw.atop[5:0]"
 Toggle sep_axi_in_region_req.aw.atop "logic sep_axi_in_region_req.aw.atop[5:0]"
 Toggle sep_err_slv_req.aw.atop "logic sep_err_slv_req.aw.atop[5:0]"
+ANNOTATION: "SMC-ERR-SLV-CONST: an axi_err_slv response carries a zero user and a constant read data. Retired by an error slave that passes user or data through, or a RespData chosen per transaction."
+Toggle sys_err_slv_resp.r.user "logic sys_err_slv_resp.r.user[11:0]"
+Toggle sys_err_slv_resp.r.data "logic sys_err_slv_resp.r.data[63:0]"
+Toggle sys_err_slv_resp.b.user "logic sys_err_slv_resp.b.user[11:0]"
+Toggle sep_err_slv_resp.r.user "logic sep_err_slv_resp.r.user[11:0]"
+Toggle sep_err_slv_resp.r.data "logic sep_err_slv_resp.r.data[63:0]"
+Toggle sep_err_slv_resp.b.user "logic sep_err_slv_resp.b.user[11:0]"
 ANNOTATION: "SMC-PARTIAL-VECTOR: bench scope: the vector toggles on this bench; its untoggled bits wait on data values no enrolled leaf drives. Retired by a leaf that drives those values, or the vector becoming fully covered."
 Toggle axi_mmio_port_req_prepend_id.ar.addr [55:32] "logic axi_mmio_port_req_prepend_id.ar.addr[55:0]"
 Toggle axi_mmio_port_req_prepend_id.ar.addr [29:18] "logic axi_mmio_port_req_prepend_id.ar.addr[55:0]"

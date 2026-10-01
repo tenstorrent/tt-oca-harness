@@ -372,7 +372,8 @@ category, `smc_regblock_exclusions.el` for A12 and
 it, in the order of the table, and a per-bit class leaves alone every bit a
 whole-signal or bit-window class takes. UNION-ALIAS, EFUSE-IMAGE-COPY,
 EFUSE-FIELD-MAP-CONST and VERSION-ID-CONST are design facts and ATOP-ZERO and
-EXT-IRQ-TIED the bench's, as is PARTIAL-VECTOR; T1 to T12 grade a unit on its ports.
+EXT-IRQ-TIED the bench's, as is PARTIAL-VECTOR, and ERR-SLV-CONST a
+design fact; T1 to T12 grade a unit on its ports.
 
 `gen_smc_toggle_exclusions.py` writes the two scope files from the plan
 `smc_toggle_exclusions.py` makes and the run's raw report, which gives the unit
@@ -385,8 +386,8 @@ The counts are bit-direction points per instance, as urg scores them, for the
 graded run the files were generated from; the second count is how many of
 those that run's raw report marks covered, zero for every class by the rule
 above. With every file applied that run
-scores toggle 862,227 / 1,014,975 = 84.95 %. The module file holds 27,987
-rows and the instance file 19,849; the per-bit classes hold 13,367.
+scores toggle 862,227 / 1,014,271 = 85.01 %. The module file holds 27,993
+rows and the instance file 19,855; the per-bit classes hold 13,367.
 
 | Class | Scope (file) | Pattern granularity | Fact | Retired by | Half-toggles excluded | Of those covered |
 | --- | --- | --- | --- | --- | ---: | ---: |
@@ -408,6 +409,7 @@ rows and the instance file 19,849; the per-bit classes hold 13,367.
 | VERSION-ID-CONST | module | whole signal | `smc_version_id_wrap.sv` builds the version identifier from `prim_rev_cell` instances whose sources are tied to 1'b0 and 1'b1 (`prim_rev_cell.sv:13-17`), and `smc_misc_wrap.sv:180-219` copies it into the chip_config block's hardware inputs; the scope drops `prim_rev_cell`, so the constant is not pruned | a version identifier driven from anything other than tied revision cells | 768 | 0 |
 | ATOP-ZERO | module; instance for a module elaborated per parameter set | whole signal | **bench scope for the inbound ports.** No initiator of this bench issues an atomic: `hw/sys/smc/dv/tb/tb_top.sv` ties AWATOP to zero on the SEP, system and JTAG ports (`:858`, `:911`, `:964`), the CPU MMIO port ties it (`smc_4core_cpu.sv:517`), the iDMA legalizer (`idma_generated.sv:4025`), the zeroer (`zeroer.sv:454`) and the log engine's `axi_lite_to_axi` (`axi_lite_to_axi.sv:40-47`) issue none, and the fabrics are built without ATOP support (`smc_local_xbar.sv:179`, `smc_input_fabric.sv:317`, `smc_output_fabric.sv:233`). Every `aw.atop` field outside the ports-only units | an initiator that issues atomics, or a bench port that drives AWATOP | 1,620 | 0 |
 | EXT-IRQ-TIED | module (bit window); instance for the synchronizer cells | bit window [255:17]; whole data nets of the cells | **bench scope.** `hw/sys/smc/dv/tb/tb_top.sv:1294` drives `smc_ext_interrupts_i[255:17]` with `{(NUM_EXT_INTERRUPTS-17){1'b0}}`; `smc_base.sv:351-364` synchronizes the bus cell by cell into `cpu_interrupts_o`, which reaches the CPU unchanged. Bits [255:17] of those nets and the data nets of the cells `u_sync3[17]` to `u_sync3[255]` are excluded; the cells' clocks, and sources 2 to 16, which have a bench pin, stay graded | bench pins on external interrupt sources 17 and up | 4,780 | 0 |
+| ERR-SLV-CONST | module; instance for a module elaborated per parameter set | whole signal | `axi_err_slv.sv:143-146` and `:194-202` assign `err_resp.b` and `err_resp.r` to `'0` and then set only id, resp, data (the `RespData` parameter, `64'hCA11AB1EBADCAB1E` by default, which no SMC instance overrides), last and valid, so `b.user` and `r.user` are zero and `r.data` is a constant on every net that carries the response unchanged: `err_slv_resp` in `axi_filter_wrap` (`axi_filter_wrap.sv:287-299`) and `sys_err_slv_resp` and `sep_err_slv_resp` in `smc_input_fabric` (`smc_input_fabric.sv:506-518`, `:566-578`); the error slave itself is a library cell the scope drops. id, resp, last and valid stay graded. Reviewer: DE | an error slave that passes user or data through, or a `RespData` chosen per transaction | 704 | 0 |
 | A12-REGBLOCK-FIELDS-REVIEWED | `smc_regblock_exclusions.el` | per bit, report-gated | design engineering reviewed the point as not exercised by this bench (the review section) | an enrolled leaf that covers the point, or design engineering withdrawing the review | 32,159 | 0 |
 | R1-EFUSE-FIELDS | `smc_reviewed_field_exclusions.el` | per bit, report-gated | design engineering reviewed the point as not exercised by this bench (the review section) | an enrolled leaf that covers the point, or design engineering withdrawing the review | 17,391 | 0 |
 | R2-FABRIC-WINDOWS | `smc_reviewed_field_exclusions.el` | per bit, report-gated | design engineering reviewed the point as not exercised by this bench (the review section) | an enrolled leaf that covers the point, or design engineering withdrawing the review | 104,224 | 0 |
@@ -419,7 +421,7 @@ rows and the instance file 19,849; the per-bit classes hold 13,367.
 | R8-SYNC-CELLS | `smc_reviewed_field_exclusions.el` | per bit, report-gated | design engineering reviewed the point as not exercised by this bench (the review section) | an enrolled leaf that covers the point, or design engineering withdrawing the review | 0 | 0 |
 | R9-PERIPHERAL-FIELDS | `smc_reviewed_field_exclusions.el` | per bit, report-gated | design engineering reviewed the point as not exercised by this bench (the review section) | an enrolled leaf that covers the point, or design engineering withdrawing the review | 22,699 | 0 |
 | PARTIAL-VECTOR | module and instance | per bit, report-gated | **bench and stimulus scope.** A multi-bit payload vector with at least one bit-direction covered in the graded run: the toggled bits show the net is driven and observed on this bench, and the untoggled ones depend on the address, data or user values the enrolled leaves happen to drive, so they are a stimulus-value gap, not a connectivity or logic gap. Takes the vector's remaining uncovered bit-directions that no class above takes. Single-bit nets, vectors with no covered bit-direction, the eFuse image and vectors whose leaf name says bit identity carries meaning stay graded (below). Reviewer: DE + DV peer | a leaf that drives those values, or the vector becoming fully covered | 130,702 | 0 |
-| **total** | | | | | **1,309,679** | **0** |
+| **total** | | | | | **1,310,383** | **0** |
 
 PARTIAL-VECTOR leaves a vector graded when its last member name, after a
 PeakRDL `next`, `value`, `d` or `q`, contains one of these tokens, because
