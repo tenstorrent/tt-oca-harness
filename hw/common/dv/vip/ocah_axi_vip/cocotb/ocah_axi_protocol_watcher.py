@@ -138,8 +138,9 @@ class _BaseProtocolWatcher:
         self._rule_totals: dict[str, int] = {}
         self._task = None
         self._running = False
-        # Per-channel previous-cycle shadow: (valid, ready, payload tuple)
-        self._shadow: dict[str, tuple[int, int, tuple[int, ...]]] = {}
+        # Per-channel previous-cycle shadow: (valid, ready, payload tuple); the
+        # payload is None on a cycle that sampled none.
+        self._shadow: dict[str, tuple[int, int, tuple[int, ...] | None]] = {}
         # Burst tracking (AXI4 only)
         self._aw_lengths: deque[int] = deque()
         self._early_wburst_lens: deque[int] = deque()
@@ -273,9 +274,16 @@ class _BaseProtocolWatcher:
             for channel, obj in channels.items():
                 valid = _sig_int(obj, valid_names[channel])
                 ready = _sig_int(obj, ready_names[channel])
-                payload = _payload_tuple(obj, self._payload_map[channel])
-
                 previous = self._shadow.get(channel)
+                stalled = previous is not None and bool(previous[0]) and not previous[1]
+                # STABLE compares payloads only across a stall, so a beat is
+                # sampled only while it stalls or was stalled the cycle before.
+                payload = (
+                    _payload_tuple(obj, self._payload_map[channel])
+                    if valid and (stalled or not ready)
+                    else None
+                )
+
                 if previous is not None:
                     prev_valid, prev_ready, prev_payload = previous
                     if prev_valid and not prev_ready:
