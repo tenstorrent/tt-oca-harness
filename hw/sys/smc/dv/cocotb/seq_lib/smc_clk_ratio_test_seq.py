@@ -155,7 +155,7 @@ class smc_clk_ratio_test_seq(SmcDecodeProbeSeq):
         )
         self.assert_all_reachable(EXPECTED_ACCESSES, "CLK_RATIO")
         cocotb.log.info(
-            "CHK-CLK-RATIO-CSR: at %d / %d / %d ns ref / smc / periph, %d SEP_IN accesses into "
+            "CHK-CLK-RATIO-CSR: at %s / %s / %s ns ref / smc / periph, %d SEP_IN accesses into "
             "the SMC and peripheral clock domains returned their generated resets and %d "
             "co-resident UART scratch and I2C target-address patterns (%d exact compares)",
             self.cfg.ref_clk_period_ns,

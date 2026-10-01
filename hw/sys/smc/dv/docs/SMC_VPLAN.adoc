@@ -335,6 +335,7 @@ feature rows.
 |`smc_cg_test_mode_bypass_test` |LIVE test_en_i DFT bypass.
 |`smc_cg_zeroer_activity_bringup_test` |LIVE Zeroer axi_clk + reg_clk activity-driven gate/ungate, single zero operation.
 |`smc_clk_multi_window_test` |LIVE hysteresis-window scaling.
+|`smc_clk_periph_slower_than_ref_test` |Register traffic into the SMC and peripheral clock domains with the peripheral clock slower than the reference clock.
 |`smc_clk_running_test` |P0 bring-up LIVE CG enable / idle gate / DMA ungate.
 |`smc_clk_smc_equal_ref_test` |Register traffic into the SMC and peripheral clock domains with all three input clocks at one period.
 |`smc_clk_smc_slower_than_ref_test` |Register traffic into the SMC and peripheral clock domains with the SMC clock slower than the reference clock.
@@ -3428,6 +3429,37 @@ Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below i
 |===
 |Checker |Description
 |`CHK-CLK-RATIO-PERIODS` |Each input clock measured its pinned period. A configuration check: it fails on a bench that did not apply the pinned periods, not on the DUT
+|`CHK-CLK-RATIO-CSR` |Every reset read returned its generated value and every co-resident pattern read back exactly, with the scoreboard booking at least `EXPECTED_VALUE_CHECKS` exact compares and the leaf issuing exactly `EXPECTED_ACCESSES` accesses
+|===
+
+*Pass Criteria*: both checkers hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
+'''''
+
+[[sec-306-smc_clk_periph_slower_than_ref_test]]
+===== 306 `smc_clk_periph_slower_than_ref_test`
+
+*Source Module*: `smc_clk_periph_slower_than_ref_test`
+
+*BFM / Model*: SEP_IN AXI driver (no external VIP); the leaf's own period measurement on the three input clocks
+
+*Objective*: SEP_IN register traffic into the SMC and peripheral clock domains completes with the expected words while the peripheral clock runs slower than the reference clock.
+
+*Test Coverage*:
+
+* `clk_rst.adoc` constrains one input clock: `clk_periph_i` runs at 100 MHz or faster. It states no frequency for `clk_ref_i` and no relation between the input clocks, so a reference clock faster than a 100 MHz peripheral clock is legal. The bench drives the `pll_wrap` oscillators at ref 10 ns and periph 5 ns by default, so this relation never runs otherwise.
+* The leaf pins ref / periph to 8 / 10 ns (125 / 100 MHz) after the base test resolves its periods, leaves `clk_smc_i` at the bench's sys period (1.25 ns unless `+pll_sys_period_ns` says otherwise), and measures each clock's period over 64 of its own rising edges before any traffic. Each must equal its configured period, so the run is known to have the relation it is named for.
+* Register traffic crosses into both domains: the generated resets of `GLOBAL_BASE`, core 0 watchdog `CMP`, `AVS_CFG_0` and every UART `LSR`, then distinct patterns written to every UART `SCR` and every I2C `TARGET_ID` before any is read back, each restored and read back.
+
+*Test Procedure*:
+
+Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below is a named compare the DUT or the configuration can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CLK-RATIO-PERIODS` |Each input clock measured its configured period. A configuration check: it fails on a bench that did not apply the pinned periods, not on the DUT
 |`CHK-CLK-RATIO-CSR` |Every reset read returned its generated value and every co-resident pattern read back exactly, with the scoreboard booking at least `EXPECTED_VALUE_CHECKS` exact compares and the leaf issuing exactly `EXPECTED_ACCESSES` accesses
 |===
 
