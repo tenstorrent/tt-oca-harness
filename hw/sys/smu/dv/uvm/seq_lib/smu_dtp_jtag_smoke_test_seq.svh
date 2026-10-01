@@ -9,8 +9,7 @@
 // leg by leg, then on random_count seeded patterns (CHK-DTP-JTAG-PTAP-S2;
 // +SMU_RANDOM_COUNT, default 5); S4 TRST and power-on reset from Shift-DR
 // back to Test-Logic-Reset (CHK-DTP-JTAG-PTAP-S3); S5 bounded-wait inventory
-// (CHK-TIMEOUT-PATHS) and the ordered step fence S1<S2<S3<S4<S5<PASS
-// (CHK-NONVAC). Each run_* task below carries its step's detail.
+// (CHK-TIMEOUT-PATHS). Each run_* task below carries its step's detail.
 // Independently, the embedded DTP reference models predict every IDCODE and
 // BYPASS DR scan and the decoded instruction of every IR load, paired by
 // the always-on scoreboard; +SMU_PTAP_IDCODE_NEGATIVE corrupts the expected
