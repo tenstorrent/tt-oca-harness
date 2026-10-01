@@ -243,17 +243,23 @@ and give programming sequences. The register maps follow those sequences.</p>
 <p><a href="#gpio-interface-diagram">GPIO controller, interface shim, LSIO mux and strap-capture path</a> shows the two blocks that serve one pad: the <code>gpio</code> controller
 in the SMC pad ring, and the <code>gpio_shim</code> that the adopter&#8217;s pad integration places in front
 of the technology pad macro. Each block receives its own AXI-Lite register slot. In <code>gpio</code>,
-the LSIO mux chooses the pad data and enables from the LSIO plane or from <code>DATA_CTRL</code>, and
-the synchronized pad input feeds both the <code>DATA_CTRL.pad2core</code> readback and the interrupt
-detector. In <code>gpio_shim</code>, the 2nd-HW override mux can replace the primary plane, the
-electrical mux chooses the drive, pull and glitch-filter settings, and the strap latch
-captures the pad input at the end of cold reset. Trapezoids are muxes and demuxes, with
-their inputs on the wide side; the dashed strap latch is present only when
+the access filter takes its enables and requirements from the <code>ACCESS_FILTER</code> fields of
+<code>u_gpio_intf_reg</code> (<code>write_filter_enable</code>, <code>read_filter_enable</code>, <code>awprot_requirement</code> and
+<code>arprot_requirement</code>), the LSIO mux chooses the pad data and enables from the LSIO plane or
+from <code>DATA_CTRL</code>, and the synchronized pad input feeds both the <code>DATA_CTRL.pad2core</code>
+readback and the interrupt detector. In <code>gpio_shim</code>, the 2nd-HW override mux can replace
+the primary plane with the <code>*_ovrd_i</code> inputs. While it does, it also returns the pad input
+on <code>pad2core_ovrd_o</code>, which is low otherwise; <code>pad2core_o</code> carries the pad input in either
+case. The electrical mux chooses the drive, pull and glitch-filter settings, and the strap
+latch captures the pad input at the end of cold reset and presents it both as
+<code>CONTROL.strap_value</code> and on the <code>captured_strap_o</code> output. Trapezoids are muxes and
+demuxes, with their selectable ports on the wide side, so the pad input enters the 2nd-HW
+override mux on its narrow side; the dashed strap latch is present only when
 <code>INPUT_BY_DEFAULT</code> is set.</p>
 </div>
 <div id="gpio-interface-diagram" class="imageblock">
 <div class="content">
-<img src="../../_images/gpio-interface-and-shim.svg" alt="GPIO controller with access filter, interface registers, LSIO mux, input synchronizer and interrupt detector, above the gpio_shim with its control registers, strap latch, electrical mux and 2nd-HW override mux in front of the pad macro" width="100%">
+<img src="../../_images/gpio-interface-and-shim.svg" alt="GPIO controller with access filter configured from the interface registers, LSIO mux, input synchronizer and interrupt detector, above the gpio_shim with its control registers, strap latch with its captured_strap_o output, electrical mux and 2nd-HW override mux, which also returns the pad input as pad2core_ovrd_o, in front of the pad macro" width="100%">
 </div>
 <div class="title">Figure 1. GPIO controller, interface shim, LSIO mux and strap-capture path</div>
 </div>
@@ -335,18 +341,22 @@ the pad input.</p>
 <div class="paragraph">
 <p>The SMC instantiates one <code>gpio</code> controller per pad in <code>u_smc_padring</code>, 65 in all.
 <a href="#gpio-padring-diagram">SMC pad ring GPIO interfaces and adopter pad shims</a> shows how the controllers are reached and where the shims sit.
-The peripheral crossbar sends the GPIO interface window to <code>u_gpio_intf_demux</code>, which
+<code>u_smc_padring</code> sits in <code>u_smc_peripherals</code> beside the peripheral crossbar
+<code>u_smc_periph_axi_lite_xbar</code>, which receives the peripheral window from the local crossbar
+<code>u_smc_local_xbar</code> in <code>u_smc_base</code>. The peripheral crossbar sends the GPIO interface
+window to <code>u_gpio_intf_demux</code>, which
 decodes one 16-byte slot per pad and answers any other address with DECERR. The LSIO pad
 map assigns the SPI, UART, I3C, I2C, AVSBus, system-timer, isolate-request, boot-stall and
 cool-reset functions to fixed pads, and drives the LSIO plane of each controller. The
 controllers' pad wires leave the SMC; outside it, the adopter&#8217;s pad integration places a
 <code>gpio_shim</code> and a pad macro on each pad, and decodes the <code>smc_external</code> window to give
-each shim its <code>gpio_ctrl</code> slot. The figure draws pads 0, 1 and 64; the ellipses stand for
+each shim its <code>gpio_ctrl</code> slot; the rest of that window reaches adopter-specific targets.
+The figure draws pads 0, 1 and 64; the ellipses stand for
 the pads between them.</p>
 </div>
 <div id="gpio-padring-diagram" class="imageblock">
 <div class="content">
-<img src="../../_images/gpio-padring.svg" alt="Peripheral crossbar feeding u_smc_padring, whose demux reaches 65 gpio controllers and a DECERR responder, with the LSIO pad map on a shared bus; the controllers' pad wires reach per-pad gpio_shim and pad macro instances in the adopter pad integration, which decodes the smc_external window" width="100%">
+<img src="../../_images/gpio-padring.svg" alt="Local crossbar in u_smc_base feeding the peripheral crossbar in u_smc_peripherals, which feeds u_smc_padring, whose demux reaches 65 gpio controllers and a DECERR responder, with the LSIO pad map on a shared bus; the controllers' pad wires reach per-pad gpio_shim and pad macro instances in the adopter pad integration, which decodes the smc_external window for the shims and adopter-specific targets" width="100%">
 </div>
 <div class="title">Figure 2. SMC pad ring GPIO interfaces and adopter pad shims</div>
 </div>

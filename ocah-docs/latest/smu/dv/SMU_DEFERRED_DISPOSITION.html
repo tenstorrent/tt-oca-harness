@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>SMU deferred and OUT disposition :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../../_/css/site.css">
     <link rel="stylesheet" href="../../../../_/css/extra.css">
@@ -667,6 +667,10 @@
 <button class="nav-toggle"></button>
   <a href="../../../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../../index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></li>
+    <li><a href="SMU_DEFERRED_DISPOSITION.html">SMU deferred and OUT disposition</a></li>
+  </ul>
 </nav>
 </div>
   <div class="content">
@@ -674,13 +678,13 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<div class="sect1">
-<h2 id="smu-deferred-disposition"><a class="anchor" href="#smu-deferred-disposition"></a><a class="link" href="#smu-deferred-disposition">1. SMU deferred and OUT disposition</a></h2>
+<h1 class="page">SMU deferred and OUT disposition</h1>
+<div id="preamble">
 <div class="sectionbody">
 <div class="paragraph">
 <p>This chapter has two parts. The table below is the catalog of every SMU test
 name classified deferred or OUT, and none of those names is in the hosted
-credit set <code>hosted</code>; <a href="#smu-bench-standins">Section 1.1</a> is the record of every
+credit set <code>hosted</code>; <a href="#smu-bench-standins">Section 1</a> is the record of every
 stand-in, force, skip and waiver on a proof path of an enrolled test. The
 table first. Three kinds of name are in it. Fifteen have a test body and are
 enrolled in <code>testlists/all.toml</code>; their bucket says which group holds them
@@ -1442,8 +1446,11 @@ elaboration leaves — are not in this table: each is carded in
 </tr>
 </tbody>
 </table>
-<div class="sect2">
-<h3 id="smu-bench-standins"><a class="anchor" href="#smu-bench-standins"></a><a class="link" href="#smu-bench-standins">1.1. Bench stand-ins and exceptions</a></h3>
+</div>
+</div>
+<div class="sect1">
+<h2 id="smu-bench-standins"><a class="anchor" href="#smu-bench-standins"></a><a class="link" href="#smu-bench-standins">1. Bench stand-ins and exceptions</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>A stand-in is anything that answers in place of the mechanism a claim is
 about: a testbench force, a simulation-only path selected by a plusarg, a
@@ -1459,7 +1466,7 @@ if the stand-in were undeclared. <code>pending</code> in those fields means exac
 Each entry describes the tree at this branch&#8217;s head, not an older revision:
 the stand-ins and the entries that declare them move in the same commits, so a
 hash written into this file is stale the moment the file is edited. What makes
-an entry checkable instead is the command in <a href="#smu-standin-recheck">Section 1.1.1</a>&#8201;&#8212;&#8201;one per
+an entry checkable instead is the command in <a href="#smu-standin-recheck">Section 1.1</a>&#8201;&#8212;&#8201;one per
 entry, each naming a string a reader can see for themselves. An approver fills
 the <code>Date, revision</code> field with the revision they checked and the command they
 ran.</p>
@@ -1526,8 +1533,8 @@ ran.</p>
 </tr>
 </tbody>
 </table>
-<div class="sect3">
-<h4 id="smu-standin-recheck"><a class="anchor" href="#smu-standin-recheck"></a><a class="link" href="#smu-standin-recheck">1.1.1. Re-confirming a stand-in</a></h4>
+<div class="sect2">
+<h3 id="smu-standin-recheck"><a class="anchor" href="#smu-standin-recheck"></a><a class="link" href="#smu-standin-recheck">1.1. Re-confirming a stand-in</a></h3>
 <div class="paragraph">
 <p>Each row names one command and the string it prints when the entry above is
 still true of the tree in front of you. None of them needs a stored run: the
@@ -1598,8 +1605,8 @@ stale, and the entry&#8201;&#8212;&#8201;not the run&#8201;&#8212;&#8201;is what
 </tbody>
 </table>
 </div>
-<div class="sect3">
-<h4 id="esrc_noise_force"><a class="anchor" href="#esrc_noise_force"></a><a class="link" href="#esrc_noise_force">1.1.2. <code>+esrc_noise_force</code></a></h4>
+<div class="sect2">
+<h3 id="esrc_noise_force"><a class="anchor" href="#esrc_noise_force"></a><a class="link" href="#esrc_noise_force">1.2. <code>+esrc_noise_force</code></a></h3>
 <table id="trm-table-4" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 4. &lt;code&gt;+esrc_noise_force&lt;/code&gt;</caption>
 <colgroup>
@@ -1634,8 +1641,8 @@ stale, and the entry&#8201;&#8212;&#8201;not the run&#8201;&#8212;&#8201;is what
 </tbody>
 </table>
 </div>
-<div class="sect3">
-<h4 id="skip_fuse_sense-with-the-shadow-preload"><a class="anchor" href="#skip_fuse_sense-with-the-shadow-preload"></a><a class="link" href="#skip_fuse_sense-with-the-shadow-preload">1.1.3. <code>+skip_fuse_sense</code> with the shadow preload</a></h4>
+<div class="sect2">
+<h3 id="skip_fuse_sense-with-the-shadow-preload"><a class="anchor" href="#skip_fuse_sense-with-the-shadow-preload"></a><a class="link" href="#skip_fuse_sense-with-the-shadow-preload">1.3. <code>+skip_fuse_sense</code> with the shadow preload</a></h3>
 <table id="trm-table-5" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 5. &lt;code&gt;+skip_fuse_sense&lt;/code&gt; with the shadow preload</caption>
 <colgroup>
@@ -1670,8 +1677,8 @@ stale, and the entry&#8201;&#8212;&#8201;not the run&#8201;&#8212;&#8201;is what
 </tbody>
 </table>
 </div>
-<div class="sect3">
-<h4 id="abr_reg-sv-external-ack-waiver"><a class="anchor" href="#abr_reg-sv-external-ack-waiver"></a><a class="link" href="#abr_reg-sv-external-ack-waiver">1.1.4. <code>abr_reg.sv</code> external-ack waiver</a></h4>
+<div class="sect2">
+<h3 id="abr_reg-sv-external-ack-waiver"><a class="anchor" href="#abr_reg-sv-external-ack-waiver"></a><a class="link" href="#abr_reg-sv-external-ack-waiver">1.4. <code>abr_reg.sv</code> external-ack waiver</a></h3>
 <table id="trm-table-6" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 6. &lt;code&gt;abr_reg.sv&lt;/code&gt; external-ack waiver</caption>
 <colgroup>
@@ -1706,8 +1713,8 @@ stale, and the entry&#8201;&#8212;&#8201;not the run&#8201;&#8212;&#8201;is what
 </tbody>
 </table>
 </div>
-<div class="sect3">
-<h4 id="sep-assertion-ignore-patterns"><a class="anchor" href="#sep-assertion-ignore-patterns"></a><a class="link" href="#sep-assertion-ignore-patterns">1.1.5. SEP assertion-ignore patterns</a></h4>
+<div class="sect2">
+<h3 id="sep-assertion-ignore-patterns"><a class="anchor" href="#sep-assertion-ignore-patterns"></a><a class="link" href="#sep-assertion-ignore-patterns">1.5. SEP assertion-ignore patterns</a></h3>
 <table id="trm-table-7" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 7. SEP assertion-ignore patterns</caption>
 <colgroup>
@@ -1742,8 +1749,8 @@ stale, and the entry&#8201;&#8212;&#8201;not the run&#8201;&#8212;&#8201;is what
 </tbody>
 </table>
 </div>
-<div class="sect3">
-<h4 id="defineasserts_off"><a class="anchor" href="#defineasserts_off"></a><a class="link" href="#defineasserts_off">1.1.6. <code>+define+ASSERTS_OFF</code></a></h4>
+<div class="sect2">
+<h3 id="defineasserts_off"><a class="anchor" href="#defineasserts_off"></a><a class="link" href="#defineasserts_off">1.6. <code>+define+ASSERTS_OFF</code></a></h3>
 <table id="trm-table-8" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 8. &lt;code&gt;+define+ASSERTS_OFF&lt;/code&gt;</caption>
 <colgroup>
@@ -1778,8 +1785,8 @@ stale, and the entry&#8201;&#8212;&#8201;not the run&#8201;&#8212;&#8201;is what
 </tbody>
 </table>
 </div>
-<div class="sect3">
-<h4 id="scan-chain-loopbacks"><a class="anchor" href="#scan-chain-loopbacks"></a><a class="link" href="#scan-chain-loopbacks">1.1.7. Scan-chain loopbacks</a></h4>
+<div class="sect2">
+<h3 id="scan-chain-loopbacks"><a class="anchor" href="#scan-chain-loopbacks"></a><a class="link" href="#scan-chain-loopbacks">1.7. Scan-chain loopbacks</a></h3>
 <table id="trm-table-9" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 9. Scan-chain loopbacks</caption>
 <colgroup>
@@ -1814,8 +1821,8 @@ stale, and the entry&#8201;&#8212;&#8201;not the run&#8201;&#8212;&#8201;is what
 </tbody>
 </table>
 </div>
-<div class="sect3">
-<h4 id="ctp-data-input-tie-offs"><a class="anchor" href="#ctp-data-input-tie-offs"></a><a class="link" href="#ctp-data-input-tie-offs">1.1.8. CTP data-input tie-offs</a></h4>
+<div class="sect2">
+<h3 id="ctp-data-input-tie-offs"><a class="anchor" href="#ctp-data-input-tie-offs"></a><a class="link" href="#ctp-data-input-tie-offs">1.8. CTP data-input tie-offs</a></h3>
 <table id="trm-table-10" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 10. CTP data-input tie-offs</caption>
 <colgroup>
@@ -1850,8 +1857,8 @@ stale, and the entry&#8201;&#8212;&#8201;not the run&#8201;&#8212;&#8201;is what
 </tbody>
 </table>
 </div>
-<div class="sect3">
-<h4 id="prim_sync2-prim_sync3-stand-ins"><a class="anchor" href="#prim_sync2-prim_sync3-stand-ins"></a><a class="link" href="#prim_sync2-prim_sync3-stand-ins">1.1.9. <code>prim_sync2</code> / <code>prim_sync3</code> stand-ins</a></h4>
+<div class="sect2">
+<h3 id="prim_sync2-prim_sync3-stand-ins"><a class="anchor" href="#prim_sync2-prim_sync3-stand-ins"></a><a class="link" href="#prim_sync2-prim_sync3-stand-ins">1.9. <code>prim_sync2</code> / <code>prim_sync3</code> stand-ins</a></h3>
 <table id="trm-table-11" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 11. &lt;code&gt;prim_sync2&lt;/code&gt; / &lt;code&gt;prim_sync3&lt;/code&gt; stand-ins</caption>
 <colgroup>
@@ -1886,8 +1893,8 @@ stale, and the entry&#8201;&#8212;&#8201;not the run&#8201;&#8212;&#8201;is what
 </tbody>
 </table>
 </div>
-<div class="sect3">
-<h4 id="efuse-models-in-the-product-composition"><a class="anchor" href="#efuse-models-in-the-product-composition"></a><a class="link" href="#efuse-models-in-the-product-composition">1.1.10. eFuse models in the product composition</a></h4>
+<div class="sect2">
+<h3 id="efuse-models-in-the-product-composition"><a class="anchor" href="#efuse-models-in-the-product-composition"></a><a class="link" href="#efuse-models-in-the-product-composition">1.10. eFuse models in the product composition</a></h3>
 <table id="trm-table-12" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 12. eFuse models in the product composition</caption>
 <colgroup>
@@ -1921,7 +1928,6 @@ stale, and the entry&#8201;&#8212;&#8201;not the run&#8201;&#8212;&#8201;is what
 </tr>
 </tbody>
 </table>
-</div>
 </div>
 </div>
 </div>

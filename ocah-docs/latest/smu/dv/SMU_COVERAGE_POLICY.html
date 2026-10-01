@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>SMU coverage targets and closure policy :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../../_/css/site.css">
     <link rel="stylesheet" href="../../../../_/css/extra.css">
@@ -667,6 +667,10 @@
 <button class="nav-toggle"></button>
   <a href="../../../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../../index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></li>
+    <li><a href="SMU_COVERAGE_POLICY.html">SMU coverage targets and closure policy</a></li>
+  </ul>
 </nav>
 </div>
   <div class="content">
@@ -674,8 +678,8 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<div class="sect1">
-<h2 id="smu-coverage-policy"><a class="anchor" href="#smu-coverage-policy"></a><a class="link" href="#smu-coverage-policy">1. SMU coverage targets and closure policy</a></h2>
+<h1 class="page">SMU coverage targets and closure policy</h1>
+<div id="preamble">
 <div class="sectionbody">
 <div class="paragraph">
 <p>This chapter defines <strong>what</strong> the SMU release group is graded on and <strong>how</strong>
@@ -824,8 +828,11 @@ boundary</p></td>
 </tr>
 </tbody>
 </table>
-<div class="sect2">
-<h3 id="smu-cov-paths"><a class="anchor" href="#smu-cov-paths"></a><a class="link" href="#smu-cov-paths">1.1. Public versus commercial evidence</a></h3>
+</div>
+</div>
+<div class="sect1">
+<h2 id="smu-cov-paths"><a class="anchor" href="#smu-cov-paths"></a><a class="link" href="#smu-cov-paths">1. Public versus commercial evidence</a></h2>
+<div class="sectionbody">
 <table id="trm-table-3" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 3. Public versus commercial evidence</caption>
 <colgroup>
@@ -891,8 +898,10 @@ in them states its fact and what would retire it. A Python <code>smu_fcov.py</co
 not the release metric and is not a gate.</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="smu-cov-out"><a class="anchor" href="#smu-cov-out"></a><a class="link" href="#smu-cov-out">1.2. Structural OUT versus a waiver hole</a></h3>
+</div>
+<div class="sect1">
+<h2 id="smu-cov-out"><a class="anchor" href="#smu-cov-out"></a><a class="link" href="#smu-cov-out">2. Structural OUT versus a waiver hole</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>Three mechanisms. Do not mix them.</p>
 </div>
@@ -942,8 +951,10 @@ fields below</p></td>
 ConfigError on the first run.</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="smu-cov-waiver"><a class="anchor" href="#smu-cov-waiver"></a><a class="link" href="#smu-cov-waiver">1.3. Waiver fields</a></h3>
+</div>
+<div class="sect1">
+<h2 id="smu-cov-waiver"><a class="anchor" href="#smu-cov-waiver"></a><a class="link" href="#smu-cov-waiver">3. Waiver fields</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>Every <code><a id="holes"></a></code> row must carry:</p>
 </div>
@@ -981,7 +992,6 @@ place. A dispatch of <code>dashboard.yml</code> with a regress run id does the s
 for that run&#8217;s published record when it carries a coverage grade; the
 scheduled weekly carries none. Both are described on the runner and
 dashboard pages under <code>tools/dv/doc/</code>.</p>
-</div>
 </div>
 </div>
 </div>

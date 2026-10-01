@@ -703,40 +703,66 @@ isolation and reset-retention controls require support in the receiving subsyste
 <span id="the-telemetry-clock-domain"></span>
 <div id="smc-clock-tree" class="imageblock">
 <div class="content">
-<img src="_images/smc-clock-distribution.svg" alt="SMC clock inputs, clock gates, the AVSBus clock chain and the logic each clock runs, by instance" width="100%">
+<img src="_images/smc-clock-distribution.svg" alt="Clock gates in u_smc_base and the instances each gated clock reaches, by RTL instance name" width="100%">
 </div>
-<div class="title">Figure 1. SMC clock tree and clock domains</div>
+<div class="title">Figure 1. SMC clock tree and clock domains in u_smc_base</div>
+</div>
+<div id="smc-clock-tree-cpu-periph" class="imageblock">
+<div class="content">
+<img src="_images/smc-clock-distribution-cpu-periph.svg" alt="Clock inputs of u_smc_cpu_wrapper and u_smc_peripherals, their clock gates and gated instances, the synchronisers of u_smc_peripherals_cdc and the AVSBus clock chain" width="100%">
+</div>
+<div class="title">Figure 2. SMC clock tree and clock domains in u_smc_cpu_wrapper and u_smc_peripherals</div>
 </div>
 <div class="paragraph">
-<p>Each clock input enters on the left in its own colour. <code>clk_smc_i</code> and
-<code>clk_ref_i</code> run down trunks with one arrow into each of <code>u_smc_base</code>,
-<code>u_smc_cpu_wrapper</code> and <code>u_smc_peripherals</code>; an arrow into an instance
-means the clock reaches the logic inside it. Each logic block is tinted
-with the colour of the clock that runs it, and a block split into bands
-runs on several clocks. A clock gate is drawn as a CG tab coloured by the
-clock it gates, with the gate&#8217;s instance name in italics beneath the logic
-it clocks. Dashed lines are gated or derived clocks.</p>
+<p>The two figures split the SMC clock tree at its subsystem instances. Each
+clock input enters on the left in its own colour, with one arrow into each
+of <code>u_smc_base</code>, <code>u_smc_cpu_wrapper</code> and <code>u_smc_peripherals</code> that it
+reaches; an arrow into an instance means the clock reaches the logic inside
+it. Each box is an RTL instance, tinted with the colour of the clock that
+runs it, and a box split into bands runs on several clocks. A clock gate is
+drawn as a CG tab coloured by the clock it gates, with the gate&#8217;s instance
+name in italics. A dashed arrow runs from the gate to every instance its
+gated clock reaches, branching at a junction dot. A count such as ×16 is the
+number of instances a generate loop creates. A box that no gate arrow
+reaches runs on the ungated clock.</p>
 </div>
 <div class="paragraph">
 <p>Most gates in <code>u_smc_base</code> are activity-based: each watches the AXI or
 AXI-Lite port of the logic it clocks and stops the clock once the port has
-been idle for the programmed hysteresis. <code>u_fabric_cg</code> and the output
-demux and mux it clocks exist only when <code>NO_ADDR_REMAP</code> is 0, the default
-in <code>smc_config_pkg</code>. <code>u_debug_clock_gate</code> runs the debug module clock
-while the debugger holds <code>dmactive</code>. The I2C, UART, I3C, AVSBus and
-telemetry gates are controlled by <code>CLOCK_GATE_CONTROL</code> in <code>u_smc_base</code>;
-<code>u_smc_peripherals_cdc</code> synchronises each enable into the clock it gates.</p>
+been idle for the programmed hysteresis. Each filter and remap register gate
+clocks the AXI-Lite demux in front of its register set as well as the
+registers, and each filter gate also clocks the error slave that answers
+writes to a locked filter. <code>u_fabric_cg</code> and the instances inside the dashed
+outline exist only when <code>NO_ADDR_REMAP</code> is 0, the default in
+<code>smc_config_pkg</code>. <code>u_dfd_clk_gate</code> clocks the debug bus muxes, <code>u_dfd_top</code>
+and <code>u_ref_cnt_sync</code>, which receives the Gray-coded count of the reference
+counter beside <code>u_ref_rst_sync</code> and forms the CLA time tick. <code>u_axi_clk_gater</code>
+clocks logic written directly in <code>u_zeroer</code> rather than an instance.</p>
+</div>
+<div class="paragraph">
+<p><code>u_debug_clock_gate</code> runs the debug module clock, the <code>debug_clock</code> port of
+<code>u_digital_top</code>, while the debugger holds <code>dmactive</code>. The I2C, UART, I3C,
+AVSBus and telemetry gates are controlled by <code>CLOCK_GATE_CONTROL</code> in
+<code>u_smc_base</code>. <code>u_smc_peripherals_cdc</code> is drawn as one row per synchroniser or
+CDC instance, or per group of instances that cross the same way, with the
+source clock on the left half and the destination clock on the right half.
+The clock-gate enable synchronisers carry each enable into the ungated clock
+of the gate it controls. <code>u_ndmreset_request_sync</code> has no source clock:
+<code>ndmreset_request_i</code> is asynchronous.</p>
 </div>
 <div class="paragraph">
 <p>The AVSBus clock starts at <code>u_avs_clk_ref_gater</code> and
-<code>u_avs_clk_periph_gater</code>. Inside <code>u_avsbus_controller</code>, <code>u_refclk_clkgate</code>
-and <code>u_apbclk_clkgate</code> feed the glitch-free mux <code>u_refclk_apbclk_mux</code>,
-selected by <code>avs_clock_select[1]</code>; <code>u_test_clkmux2_0</code> substitutes
-<code>clk_periph_i</code> in test mode; the divider <code>u_clk_div</code>, used while
-<code>avs_clock_select[0]</code> is set, divides by a programmable value, 4 after
-reset; and <code>u_avs_bus_clkgate</code> stops the result on idle. The output,
-<code>avs_clock</code>, leaves through <code>u_smc_padring</code> on GPIO 49. <code>spi_clk_i</code>
-reaches only the SPI pad datapath in <code>u_smc_padring</code>.</p>
+<code>u_avs_clk_periph_gater</code>, which drive the <code>clk_ref_i</code> and <code>clk_reg_i</code> ports of
+<code>u_avsbus_controller</code>. Inside it, <code>u_refclk_clkgate</code> and <code>u_apbclk_clkgate</code>
+feed the glitch-free mux <code>u_refclk_apbclk_mux</code>, selected by
+<code>avs_clock_select[1]</code>. The test mux <code>u_test_clkmux2_0</code> takes that output on
+<code>clk0_i</code> and the test clock input <code>clk_test_i</code> on <code>clk1_i</code>, and selects the
+test clock in test mode; <code>u_smc_peripherals</code> connects <code>clk_test_i</code> to
+<code>clk_periph_i</code>. The divider <code>u_clk_div</code>, used while <code>avs_clock_select[0]</code> is
+set, divides by a programmable value, 4 after reset, and <code>u_avs_bus_clkgate</code>
+stops the result on idle. The output, <code>avs_clock</code>, leaves through
+<code>u_smc_padring</code> on GPIO 49. <code>spi_clk_i</code> reaches only the SPI pad datapath in
+<code>u_smc_padring</code>.</p>
 </div>
 <table id="trm-table-1" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 1. SMC clock-domain responsibilities</caption>
@@ -821,7 +847,7 @@ controller-mode timing configuration does not establish target compliance.</p>
 <div class="content">
 <img src="_images/smc-reset-unit.svg" alt="SMC reset unit: reset controller with its AND gates, synchronisers, cool-reset and isolation logic with its AND and OR gates, JTAG override muxes, registers and subsystem resets" width="100%">
 </div>
-<div class="title">Figure 2. SMC reset unit architecture</div>
+<div class="title">Figure 3. SMC reset unit architecture</div>
 </div>
 <div class="paragraph">
 <p>Reset inputs enter on the left and the unit&#8217;s outputs leave on the right.
@@ -1105,7 +1131,7 @@ this request bypasses memory repair/MBIST; it is not a general SRAM-retention gu
 <div class="sect2">
 <h3 id="isolation-connections"><a class="anchor" href="#isolation-connections"></a><a class="link" href="#isolation-connections">3.3. Isolation Connections</a></h3>
 <div class="paragraph">
-<p><a href="#smc-flr-isolation-diagram">Figure 3</a> shows cool-reset and isolation connections between primary
+<p><a href="#smc-flr-isolation-diagram">Figure 4</a> shows cool-reset and isolation connections between primary
 and secondary chiplets. The next three figures repeat the same drawing
 and highlight the path that each kind of request activates, so they can
 be compared directly.</p>
@@ -1114,7 +1140,7 @@ be compared directly.</p>
 <div class="content">
 <img src="_images/smc-flr-isolation.svg" alt="Primary and secondary chiplet SMCs with their FLR counters, isolation OR gate, primary reset AND gate, BP_COOL_RESET_N_I pins and cool-reset pads, and the board connections between them" width="100%">
 </div>
-<div class="title">Figure 3. SMC FLR isolation connections between chiplets</div>
+<div class="title">Figure 4. SMC FLR isolation connections between chiplets</div>
 </div>
 <div class="paragraph">
 <p>Each chiplet&#8217;s SMC takes its cold reset from the board <code>BP_RESET_N</code> and
@@ -1134,10 +1160,10 @@ secondary chiplet ties its <code>ISOLATE_REQ</code> and <code>cfg_flr_pf_active_
 leaves its <code>isolate_req_o</code> unconnected. The labels REG, PINEN and SMCEN
 on the isolation OR&#8217;s inputs name the registers that qualify each source.
 The drawing leaves out the de-glitchers and synchronisers shown in
-<a href="#smc-reset-distribution-figure">Figure 2</a>.</p>
+<a href="#smc-reset-distribution-figure">Figure 3</a>.</p>
 </div>
 <div class="paragraph">
-<p><a href="#smc-flr-software-diagram">Figure 4</a> shows isolation propagation for an SMC software request.
+<p><a href="#smc-flr-software-diagram">Figure 5</a> shows isolation propagation for an SMC software request.
 Software sets bits of <code>ISOLATE_REQ_REG</code>, which reach <code>isolate_req_o</code> directly.
 Software cannot start the FLR counters, so this request isolates tiles without
 a cool reset.</p>
@@ -1146,10 +1172,10 @@ a cool reset.</p>
 <div class="content">
 <img src="_images/smc-flr-isolation-smc-driven.svg" alt="The FLR isolation drawing with the path from the primary SMC CPU through ISOLATE_REQ_REG and the isolation OR to the chiplet tiles highlighted" width="100%">
 </div>
-<div class="title">Figure 4. SMC-driven FLR isolation</div>
+<div class="title">Figure 5. SMC-driven FLR isolation</div>
 </div>
 <div class="paragraph">
-<p><a href="#smc-flr-tile-diagram">Figure 5</a> shows isolation propagation for a tile request.
+<p><a href="#smc-flr-tile-diagram">Figure 6</a> shows isolation propagation for a tile request.
 A tile such as the PCIe controller raises <code>cfg_flr_pf_active_i</code>. Its
 synchronised rising edge sets <code>ISOLATE_REQ_SMC</code>, which isolates the
 subsystems enabled in <code>ISOLATE_REQ_SMCEN_REG</code>, and starts the FLR
@@ -1161,10 +1187,10 @@ chiplet.</p>
 <div class="content">
 <img src="_images/smc-flr-isolation-tile-request.svg" alt="The FLR isolation drawing with the paths from the tile&#8217;s cfg_flr_pf_active_i through the FLR counters to the primary chiplet&#8217;s primary reset and, through BP_COOL_RESET_N_O and the secondary chiplet&#8217;s BP_COOL_RESET_N_I pin, to the secondary chiplet&#8217;s primary reset, and through the isolation OR to the chiplet tiles, highlighted" width="100%">
 </div>
-<div class="title">Figure 5. Tile-request-driven FLR isolation</div>
+<div class="title">Figure 6. Tile-request-driven FLR isolation</div>
 </div>
 <div class="paragraph">
-<p><a href="#smc-flr-gpio-diagram">Figure 6</a> shows isolation propagation for a GPIO request, in two
+<p><a href="#smc-flr-gpio-diagram">Figure 7</a> shows isolation propagation for a GPIO request, in two
 numbered steps. First the board raises <code>ISOLATE_REQ</code>, which isolates the
 subsystems enabled in <code>ISOLATE_REQ_PINEN_REG</code>; then it asserts <code>BP_RESET_N</code>,
 which cold-resets both chiplets. <code>ISOLATE_REQ_PINEN_REG</code> is not reset by the
@@ -1174,7 +1200,7 @@ cold reset while the pin is high, so the isolation holds across it.</p>
 <div class="content">
 <img src="_images/smc-flr-isolation-gpio.svg" alt="The FLR isolation drawing with step 1, the board ISOLATE_REQ through GPIO 53 and the isolation OR to the chiplet tiles, and step 2, the board BP_RESET_N into both primary resets, highlighted" width="100%">
 </div>
-<div class="title">Figure 6. GPIO-driven FLR isolation</div>
+<div class="title">Figure 7. GPIO-driven FLR isolation</div>
 </div>
 </div>
 </div>

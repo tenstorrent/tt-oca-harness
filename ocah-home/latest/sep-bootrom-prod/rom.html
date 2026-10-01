@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>SEP ROM Boot Architecture :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../_/css/site.css">
     <link rel="stylesheet" href="../../../_/css/extra.css">
@@ -172,6 +172,10 @@
 <button class="nav-toggle"></button>
   <a href="../index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../index.html">Open Chiplet Atlas (OCA) Harness</a></li>
+    <li><a href="rom.html">SEP ROM Boot Architecture</a></li>
+  </ul>
 </nav>
 </div>
   <div class="content">
@@ -179,8 +183,182 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<div class="sect2">
-<h3 id="sep-rom-boot-arch"><a class="anchor" href="#sep-rom-boot-arch"></a><a class="link" href="#sep-rom-boot-arch">SEP ROM Boot Architecture</a></h3>
+<h1 class="page">SEP ROM Boot Architecture</h1>
+<div id="toc" class="toc">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel1">
+<li><a href="#sec:scope">1. Scope and Conventions</a>
+<ul class="sectlevel2">
+<li><a href="#normative-language">1.1. Normative Language</a></li>
+<li><a href="#requirement-identifiers">1.2. Requirement Identifiers</a></li>
+<li><a href="#sec:conv_stages">1.3. Boot Stage Labels</a></li>
+<li><a href="#sec:conv_provisional">1.4. Provisional Material</a></li>
+<li><a href="#sec:conv_gap">1.5. Implementation Gaps</a></li>
+<li><a href="#sources-of-truth">1.6. Sources of Truth</a></li>
+</ul>
+</li>
+<li><a href="#sec:terminology">2. Terminology and References</a>
+<ul class="sectlevel2">
+<li><a href="#terminology">2.1. Terminology</a></li>
+<li><a href="#references">2.2. References</a></li>
+</ul>
+</li>
+<li><a href="#sec:architecture">3. SEP System Architecture</a>
+<ul class="sectlevel2">
+<li><a href="#role-in-the-ocah-system">3.1. Role in the OCAH System</a></li>
+<li><a href="#processor-core">3.2. Processor Core</a></li>
+<li><a href="#security-and-peripheral-ip-used-by-the-rom">3.3. Security and Peripheral IP Used by the ROM</a></li>
+</ul>
+</li>
+<li><a href="#sec:memory_map">4. Memory Map</a>
+<ul class="sectlevel2">
+<li><a href="#sep-address-space">4.1. SEP Address Space</a></li>
+<li><a href="#smc-window-layout">4.2. SMC Window Layout</a></li>
+<li><a href="#sep-scratch-registers">4.3. SEP Scratch Registers</a></li>
+</ul>
+</li>
+<li><a href="#sec:overview">5. Boot Flow Overview</a>
+<ul class="sectlevel2">
+<li><a href="#ordering-invariants">5.1. Ordering Invariants</a></li>
+</ul>
+</li>
+<li><a href="#sec:cpu_init">6. CPU Initialization</a>
+<ul class="sectlevel2">
+<li><a href="#reset-entry">6.1. Reset Entry</a></li>
+<li><a href="#cold-boot-environment-setup">6.2. Cold Boot Environment Setup</a></li>
+<li><a href="#trap-handling">6.3. Trap Handling</a></li>
+<li><a href="#watchdog-posture">6.4. Watchdog Posture</a></li>
+<li><a href="#early-platform-initialization-s04s20">6.5. Early Platform Initialization ([S04]–[S20])</a></li>
+</ul>
+</li>
+<li><a href="#sec:warm_reset">7. Warm-Reset Resume Path</a>
+<ul class="sectlevel2">
+<li><a href="#protocol">7.1. Protocol</a></li>
+</ul>
+</li>
+<li><a href="#sec:pmp">8. Physical Memory Protection and Execution Fencing</a>
+<ul class="sectlevel2">
+<li><a href="#fence-policy-normative">8.1. Fence Policy (Normative)</a></li>
+<li><a href="#sec:pmp_mechanism">8.2. Fence Binding and Release Mechanism (Smepmp)</a>
+<ul class="sectlevel3">
+<li><a href="#cold-boot-programming-sequence">8.2.1. Cold-Boot Programming Sequence</a></li>
+<li><a href="#release-at-hand-off">8.2.2. Release at Hand-off</a></li>
+</ul>
+</li>
+<li><a href="#reference-region-set">8.3. Reference Region Set</a></li>
+</ul>
+</li>
+<li><a href="#sec:fuses">9. Fuse and System State</a>
+<ul class="sectlevel2">
+<li><a href="#fuse-sense-readiness">9.1. Fuse-Sense Readiness</a></li>
+<li><a href="#lifecycle-state-s11">9.2. Lifecycle State ([S11])</a></li>
+<li><a href="#secure-boot-chicken-bit-s18">9.3. Secure-Boot Chicken Bit ([S18])</a></li>
+<li><a href="#sec:fuse_chiplet_dbg">9.4. Chiplet Debug Lock ([S18])</a></li>
+<li><a href="#fuse-fields-touched-by-the-rom">9.5. Fuse Fields Touched by the ROM</a></li>
+</ul>
+</li>
+<li><a href="#sec:smc_sync">10. SMC Synchronization</a>
+<ul class="sectlevel2">
+<li><a href="#scratch-register-protocol">10.1. Scratch-Register Protocol</a></li>
+<li><a href="#smc-access-sanity-check">10.2. SMC Access Sanity Check</a></li>
+<li><a href="#memory-repair-dft-gate-s03">10.3. Memory-Repair / DFT Gate ([S03])</a></li>
+<li><a href="#status-ring-buffer">10.4. Status Ring Buffer</a></li>
+<li><a href="#chip-identification-s12">10.5. Chip Identification ([S12])</a></li>
+<li><a href="#manifest-staging-hand-shake-recovery-secondary">10.6. Manifest Staging Hand-shake (Recovery / Secondary)</a></li>
+</ul>
+</li>
+<li><a href="#sec:straps">11. Primary / Secondary Strap Handling</a>
+<ul class="sectlevel2">
+<li><a href="#boot-mode-selection-s21">11.1. Boot-Mode Selection ([S21])</a></li>
+</ul>
+</li>
+<li><a href="#sec:spi">12. SPI Initialization and Manifest Transfer</a>
+<ul class="sectlevel2">
+<li><a href="#flash-layout">12.1. Flash Layout</a></li>
+<li><a href="#transfer-hardening">12.2. Transfer Hardening</a></li>
+<li><a href="#opentitan-spi-host-path">12.3. OpenTitan SPI Host Path</a></li>
+<li><a href="#cadence-xspi-path">12.4. Cadence xSPI Path</a></li>
+</ul>
+</li>
+<li><a href="#sec:manifest">13. OCA Manifest Format and Parsing</a>
+<ul class="sectlevel2">
+<li><a href="#format-summary">13.1. Format Summary</a></li>
+<li><a href="#rom-relevant-field-layout">13.2. ROM-Relevant Field Layout</a></li>
+<li><a href="#validation-library-integration">13.3. Validation Library Integration</a></li>
+<li><a href="#structural-and-constraint-checks">13.4. Structural and Constraint Checks</a></li>
+<li><a href="#payload-staging-and-image-placement">13.5. Payload Staging and Image Placement</a></li>
+</ul>
+</li>
+<li><a href="#sec:entropy">14. Entropy Chain Bring-Up</a>
+<ul class="sectlevel2">
+<li><a href="#sequence">14.1. Sequence</a></li>
+<li><a href="#configuration-locks">14.2. Configuration Locks</a></li>
+<li><a href="#external-trng-seam">14.3. External TRNG Seam</a></li>
+</ul>
+</li>
+<li><a href="#sec:secure_boot">15. Secure Boot Decision and Signature Verification</a>
+<ul class="sectlevel2">
+<li><a href="#secure-boot-decision">15.1. Secure-Boot Decision</a></li>
+<li><a href="#root-key-model">15.2. Root Key Model</a></li>
+<li><a href="#key-revocation">15.3. Key Revocation</a></li>
+<li><a href="#anti-rollback">15.4. Anti-Rollback</a></li>
+<li><a href="#signature-verification">15.5. Signature Verification</a></li>
+</ul>
+</li>
+<li><a href="#sec:demotion">16. Demotion Handling</a>
+<ul class="sectlevel2">
+<li><a href="#manifest-directive">16.1. Manifest Directive</a></li>
+<li><a href="#rom-behavior-s25">16.2. ROM Behavior ([S25])</a></li>
+</ul>
+</li>
+<li><a href="#sec:payload">17. Payload Loading, Decryption and Verification</a>
+<ul class="sectlevel2">
+<li><a href="#payload-toc">17.1. Payload TOC</a></li>
+<li><a href="#check-order">17.2. Check Order</a></li>
+<li><a href="#payload-decryption">17.3. Payload Decryption</a></li>
+</ul>
+</li>
+<li><a href="#sec:boot_measurement">18. Boot Measurement</a>
+<ul class="sectlevel2">
+<li><a href="#target-architecture-the-pcrv">18.1. Target Architecture: the PCRV</a></li>
+<li><a href="#soft-measurement-enrollment">18.2. Soft Measurement Enrollment</a></li>
+<li><a href="#slot-0-verified-rom-self-hash">18.3. Slot 0: Verified ROM Self-Hash</a></li>
+<li><a href="#slot-1-boot-state-measurement">18.4. Slot 1: Boot-State Measurement</a></li>
+</ul>
+</li>
+<li><a href="#sec:handoff">19. Hand-off to BL1</a>
+<ul class="sectlevel2">
+<li><a href="#stack-integrity-s19s28">19.1. Stack Integrity ([S19]/[S28])</a></li>
+<li><a href="#fuse-secret-locking-s25s26">19.2. Fuse-Secret Locking ([S25]/[S26])</a></li>
+<li><a href="#pre-hand-off-self-check-gate-ledger">19.3. Pre-Hand-off Self-Check (Gate Ledger)</a></li>
+<li><a href="#bl0_state-hand-off-block">19.4. <code>bl0_state</code> Hand-off Block</a></li>
+<li><a href="#release-and-jump-s29">19.5. Release and Jump ([S29])</a></li>
+</ul>
+</li>
+<li><a href="#sec:retry">20. Retry and Backup Bank</a>
+<ul class="sectlevel2">
+<li><a href="#slot-selection">20.1. Slot Selection</a></li>
+<li><a href="#retry-scope">20.2. Retry Scope</a></li>
+<li><a href="#failure-convergence-s30">20.3. Failure Convergence ([S30])</a></li>
+</ul>
+</li>
+<li><a href="#sec:status">21. Status and POST Codes</a>
+<ul class="sectlevel2">
+<li><a href="#encoding">21.1. Encoding</a></li>
+<li><a href="#channels">21.2. Channels</a></li>
+<li><a href="#ring-buffer-semantics">21.3. Ring-Buffer Semantics</a></li>
+<li><a href="#sec:status_registry">21.4. Code Registry</a></li>
+<li><a href="#fatal-rom-error-codes">21.5. Fatal ROM Error Codes</a></li>
+</ul>
+</li>
+<li><a href="#sec:stage_trace">Appendix A: Boot-Stage to Status-Code Traceability</a></li>
+<li><a href="#sec:security_inventory">Appendix B: Security-Check Inventory</a></li>
+<li><a href="#sec:impl_matrix">Appendix C: Implementation-Status Matrix</a></li>
+<li><a href="#sec:req_index">Appendix D: Requirement Index</a></li>
+</ul>
+</div>
+<div id="preamble">
+<div class="sectionbody">
 <div class="paragraph">
 <p>The Security Processor (SEP) is the Root of Trust (RoT) of the Open Chiplet Atlas Harness
 (OCAH) system. The SEP boot ROM (BL0) is the first code executed by the SEP RISC-V core after
@@ -191,8 +369,11 @@ completed. This chapter specifies the complete boot flow&#8201;&#8212;&#8201;CPU
 protection fencing, fuse and lifecycle state evaluation, SMC synchronization, boot-source
 selection, manifest and payload validation, secure boot, demotion, boot measurement, and hand-off&#8201;&#8212;&#8201;precisely enough to serve as the basis for verification of the completed boot ROM.</p>
 </div>
-<div class="sect3">
-<h4 id="sec:scope"><a class="anchor" href="#sec:scope"></a><a class="link" href="#sec:scope">Scope and Conventions</a></h4>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sec:scope"><a class="anchor" href="#sec:scope"></a><a class="link" href="#sec:scope">1. Scope and Conventions</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>This specification covers the SEP boot ROM (BL0) exclusively: every action the ROM takes from
 the release of the SEP core reset until control transfers to the first stage bootloader (BL1),
@@ -206,8 +387,8 @@ is written to serve as the basis for design verification. Where the current
 boot ROM implementation diverges from this specification, the divergence is called out
 explicitly (see <a href="#sec:conv_gap">Implementation Gaps</a>) rather than silently adopted.</p>
 </div>
-<div class="sect4">
-<h5 id="normative-language"><a class="anchor" href="#normative-language"></a><a class="link" href="#normative-language">Normative Language</a></h5>
+<div class="sect2">
+<h3 id="normative-language"><a class="anchor" href="#normative-language"></a><a class="link" href="#normative-language">1.1. Normative Language</a></h3>
 <div class="paragraph">
 <p>The key words <strong>shall</strong>, <strong>shall not</strong>, <strong>should</strong>, and <strong>may</strong> are interpreted as in RFC 2119:</p>
 </div>
@@ -229,8 +410,8 @@ verification target.</p>
 <p>Descriptive text without these keywords is informative.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="requirement-identifiers"><a class="anchor" href="#requirement-identifiers"></a><a class="link" href="#requirement-identifiers">Requirement Identifiers</a></h5>
+<div class="sect2">
+<h3 id="requirement-identifiers"><a class="anchor" href="#requirement-identifiers"></a><a class="link" href="#requirement-identifiers">1.2. Requirement Identifiers</a></h3>
 <div class="paragraph">
 <p>Verifiable requirements are tagged inline with identifiers of the form
 <code>[SEP-ROM-&lt;AREA&gt;-&lt;NNN&gt;]</code>, where <code>&lt;AREA&gt;</code> is one of: <code>CPU</code>, <code>PMP</code>, <code>FUSE</code>, <code>SMC</code>, <code>STRAP</code>,
@@ -246,8 +427,8 @@ the boot from completing. Sequencing detail that follows from an identified requ
 diagnostic output, and build-time knobs are described without identifiers.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="sec:conv_stages"><a class="anchor" href="#sec:conv_stages"></a><a class="link" href="#sec:conv_stages">Boot Stage Labels</a></h5>
+<div class="sect2">
+<h3 id="sec:conv_stages"><a class="anchor" href="#sec:conv_stages"></a><a class="link" href="#sec:conv_stages">1.3. Boot Stage Labels</a></h3>
 <div class="paragraph">
 <p>Boot stages are tagged <code>[SNN]</code>, numbered in execution order from reset entry to the BL1
 hand-off, one label per stage. The full sequence is in <a href="#sec:overview">Boot Flow Overview</a>. A stage that
@@ -256,8 +437,8 @@ re-checked at [S28]&#8201;&#8212;&#8201;carries a label for each, because the or
 exists to express.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="sec:conv_provisional"><a class="anchor" href="#sec:conv_provisional"></a><a class="link" href="#sec:conv_provisional">Provisional Material</a></h5>
+<div class="sect2">
+<h3 id="sec:conv_provisional"><a class="anchor" href="#sec:conv_provisional"></a><a class="link" href="#sec:conv_provisional">1.4. Provisional Material</a></h3>
 <div class="paragraph">
 <p>Some mechanisms are specified while their final definition is still under development.
 These are marked with a <code>CAUTION</code> admonition whose first line is <strong>PROVISIONAL — subject to
@@ -265,8 +446,8 @@ change</strong>. Verification collateral shall not hard-code provisional details
 them should be written so the provisional element is replaceable.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="sec:conv_gap"><a class="anchor" href="#sec:conv_gap"></a><a class="link" href="#sec:conv_gap">Implementation Gaps</a></h5>
+<div class="sect2">
+<h3 id="sec:conv_gap"><a class="anchor" href="#sec:conv_gap"></a><a class="link" href="#sec:conv_gap">1.5. Implementation Gaps</a></h3>
 <div class="paragraph">
 <p>Where this specification prescribes behavior that the boot ROM does not yet provide (or provides differently), the affected section carries a
 <code>WARNING</code> admonition whose first line is <strong>IMPLEMENTATION GAP</strong>, stating what this specification
@@ -274,8 +455,8 @@ requires, what the code currently does, and where the gap is tracked. The full l
 summarized in <a href="#sec:impl_matrix">Implementation-Status Matrix</a>.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="sources-of-truth"><a class="anchor" href="#sources-of-truth"></a><a class="link" href="#sources-of-truth">Sources of Truth</a></h5>
+<div class="sect2">
+<h3 id="sources-of-truth"><a class="anchor" href="#sources-of-truth"></a><a class="link" href="#sources-of-truth">1.6. Sources of Truth</a></h3>
 <div class="paragraph">
 <p>Numeric constants in this document are transcribed from the following authoritative sources
 and are re-verified against them at each revision:</p>
@@ -310,10 +491,12 @@ SMC Boot ROM chapter (<code>hw/sys/smc/doc/rom.adoc</code>).</p>
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="sec:terminology"><a class="anchor" href="#sec:terminology"></a><a class="link" href="#sec:terminology">Terminology and References</a></h4>
-<div class="sect4">
-<h5 id="terminology"><a class="anchor" href="#terminology"></a><a class="link" href="#terminology">Terminology</a></h5>
+</div>
+<div class="sect1">
+<h2 id="sec:terminology"><a class="anchor" href="#sec:terminology"></a><a class="link" href="#sec:terminology">2. Terminology and References</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="terminology"><a class="anchor" href="#terminology"></a><a class="link" href="#terminology">2.1. Terminology</a></h3>
 <table id="tbl:terminology" class="tableblock frame-ends grid-rows stretch">
 <caption class="title">Table 1. Terminology</caption>
 <colgroup>
@@ -426,8 +609,8 @@ contents and the warm scratch registers.</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect4">
-<h5 id="references"><a class="anchor" href="#references"></a><a class="link" href="#references">References</a></h5>
+<div class="sect2">
+<h3 id="references"><a class="anchor" href="#references"></a><a class="link" href="#references">2.2. References</a></h3>
 <table id="tbl:references" class="tableblock frame-ends grid-rows stretch">
 <caption class="title">Table 2. References</caption>
 <colgroup>
@@ -479,10 +662,12 @@ PMP CSRs, <code>mtvec</code>).</p></td>
 </table>
 </div>
 </div>
-<div class="sect3">
-<h4 id="sec:architecture"><a class="anchor" href="#sec:architecture"></a><a class="link" href="#sec:architecture">SEP System Architecture</a></h4>
-<div class="sect4">
-<h5 id="role-in-the-ocah-system"><a class="anchor" href="#role-in-the-ocah-system"></a><a class="link" href="#role-in-the-ocah-system">Role in the OCAH System</a></h5>
+</div>
+<div class="sect1">
+<h2 id="sec:architecture"><a class="anchor" href="#sec:architecture"></a><a class="link" href="#sec:architecture">3. SEP System Architecture</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="role-in-the-ocah-system"><a class="anchor" href="#role-in-the-ocah-system"></a><a class="link" href="#role-in-the-ocah-system">3.1. Role in the OCAH System</a></h3>
 <div class="paragraph">
 <p>The SEP is the Root of Trust of an OCAH chiplet. It is the first agent to evaluate the
 device&#8217;s security state (lifecycle fuses), the only agent that can authenticate mutable
@@ -492,8 +677,8 @@ through scratch registers (<a href="#sec:smc_sync">SMC Synchronization</a>), but
 to the SMC.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="processor-core"><a class="anchor" href="#processor-core"></a><a class="link" href="#processor-core">Processor Core</a></h5>
+<div class="sect2">
+<h3 id="processor-core"><a class="anchor" href="#processor-core"></a><a class="link" href="#processor-core">3.2. Processor Core</a></h3>
 <div class="paragraph">
 <p>The SEP CPU is a RISC-V VeeR EL2 core:</p>
 </div>
@@ -522,8 +707,8 @@ and through an LSU→ROM demux for in-place read-only data access.</p>
 </ul>
 </div>
 </div>
-<div class="sect4">
-<h5 id="security-and-peripheral-ip-used-by-the-rom"><a class="anchor" href="#security-and-peripheral-ip-used-by-the-rom"></a><a class="link" href="#security-and-peripheral-ip-used-by-the-rom">Security and Peripheral IP Used by the ROM</a></h5>
+<div class="sect2">
+<h3 id="security-and-peripheral-ip-used-by-the-rom"><a class="anchor" href="#security-and-peripheral-ip-used-by-the-rom"></a><a class="link" href="#security-and-peripheral-ip-used-by-the-rom">3.3. Security and Peripheral IP Used by the ROM</a></h3>
 <table id="tbl:ip_inventory" class="tableblock frame-ends grid-rows stretch">
 <caption class="title">Table 3. SEP IP blocks exercised by the boot ROM</caption>
 <colgroup>
@@ -617,10 +802,12 @@ the STDOUT mailbox used for DV PASS/FAIL signalling is at <code>0x80000000</code
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="sec:memory_map"><a class="anchor" href="#sec:memory_map"></a><a class="link" href="#sec:memory_map">Memory Map</a></h4>
-<div class="sect4">
-<h5 id="sep-address-space"><a class="anchor" href="#sep-address-space"></a><a class="link" href="#sep-address-space">SEP Address Space</a></h5>
+</div>
+<div class="sect1">
+<h2 id="sec:memory_map"><a class="anchor" href="#sec:memory_map"></a><a class="link" href="#sec:memory_map">4. Memory Map</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="sep-address-space"><a class="anchor" href="#sep-address-space"></a><a class="link" href="#sep-address-space">4.1. SEP Address Space</a></h3>
 <div class="paragraph">
 <p><a href="#tbl:memory_map">SEP memory map (boot-relevant regions)</a> lists the regions of the SEP-local address space that participate in the
 boot flow. Addresses are as seen by the SEP CPU.</p>
@@ -814,8 +1001,8 @@ base (<code>0x40000000 + 0x60000</code> on the SEP side).</p>
 </table>
 </div>
 </div>
-<div class="sect4">
-<h5 id="smc-window-layout"><a class="anchor" href="#smc-window-layout"></a><a class="link" href="#smc-window-layout">SMC Window Layout</a></h5>
+<div class="sect2">
+<h3 id="smc-window-layout"><a class="anchor" href="#smc-window-layout"></a><a class="link" href="#smc-window-layout">4.2. SMC Window Layout</a></h3>
 <div class="paragraph">
 <p>Offsets below are relative to <code>SEP_SMC_GLOBAL_BASE</code> (<code>0x40000000</code>) and form part of the
 SEP↔SMC interface contract (<code>sep_smc_interface.h</code>).</p>
@@ -883,8 +1070,8 @@ in reset (<a href="#sec:fuses">Fuse and System State</a>).</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect4">
-<h5 id="sep-scratch-registers"><a class="anchor" href="#sep-scratch-registers"></a><a class="link" href="#sep-scratch-registers">SEP Scratch Registers</a></h5>
+<div class="sect2">
+<h3 id="sep-scratch-registers"><a class="anchor" href="#sep-scratch-registers"></a><a class="link" href="#sep-scratch-registers">4.3. SEP Scratch Registers</a></h3>
 <table id="tbl:scratch_regs" class="tableblock frame-ends grid-rows stretch">
 <caption class="title">Table 6. SEP scratch register assignments</caption>
 <colgroup>
@@ -936,8 +1123,10 @@ dispatches from (<a href="#sec:warm_reset">Warm-Reset Resume Path</a>).</p></td>
 </table>
 </div>
 </div>
-<div class="sect3">
-<h4 id="sec:overview"><a class="anchor" href="#sec:overview"></a><a class="link" href="#sec:overview">Boot Flow Overview</a></h4>
+</div>
+<div class="sect1">
+<h2 id="sec:overview"><a class="anchor" href="#sec:overview"></a><a class="link" href="#sec:overview">5. Boot Flow Overview</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The boot flow is a strictly ordered sequence of stages, tagged <code>[S01]</code> through <code>[S30]</code> in
 execution order (<a href="#sec:conv_stages">Boot Stage Labels</a>). The implementation carries the same tags, so a stage
@@ -1176,8 +1365,8 @@ in <code>bl0_state</code></p></td>
 </tr>
 </tbody>
 </table>
-<div class="sect4">
-<h5 id="ordering-invariants"><a class="anchor" href="#ordering-invariants"></a><a class="link" href="#ordering-invariants">Ordering Invariants</a></h5>
+<div class="sect2">
+<h3 id="ordering-invariants"><a class="anchor" href="#ordering-invariants"></a><a class="link" href="#ordering-invariants">5.1. Ordering Invariants</a></h3>
 <div class="paragraph">
 <p>Three structural rules shape the flow; they exist to bound the effect of any single failure
 and shall be preserved by any reordering of the stages:</p>
@@ -1202,15 +1391,17 @@ once, only after a manifest+payload pair has fully validated. They are never ret
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="sec:cpu_init"><a class="anchor" href="#sec:cpu_init"></a><a class="link" href="#sec:cpu_init">CPU Initialization</a></h4>
+</div>
+<div class="sect1">
+<h2 id="sec:cpu_init"><a class="anchor" href="#sec:cpu_init"></a><a class="link" href="#sec:cpu_init">6. CPU Initialization</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>This chapter covers everything from the release of the SEP core reset to the point where the
 boot flow is ready to select a boot source: the assembly reset stub (<code>src/vector.S</code>), and the
 early platform-initialization stages of <code>rom_main()</code> ([S04]–[S20]).</p>
 </div>
-<div class="sect4">
-<h5 id="reset-entry"><a class="anchor" href="#reset-entry"></a><a class="link" href="#reset-entry">Reset Entry</a></h5>
+<div class="sect2">
+<h3 id="reset-entry"><a class="anchor" href="#reset-entry"></a><a class="link" href="#reset-entry">6.1. Reset Entry</a></h3>
 <div class="paragraph">
 <p>The core enters at <code>_start</code> in the Boot ROM. <strong>Hart 0</strong> is the hart whose <code>mhartid</code> CSR reads
 zero. The fitted VeeR EL2 core is single-hart, so hart 0 is the only hart that exists; the gate
@@ -1244,8 +1435,8 @@ state that must not be disturbed.</p>
 </ol>
 </div>
 </div>
-<div class="sect4">
-<h5 id="cold-boot-environment-setup"><a class="anchor" href="#cold-boot-environment-setup"></a><a class="link" href="#cold-boot-environment-setup">Cold Boot Environment Setup</a></h5>
+<div class="sect2">
+<h3 id="cold-boot-environment-setup"><a class="anchor" href="#cold-boot-environment-setup"></a><a class="link" href="#cold-boot-environment-setup">6.2. Cold Boot Environment Setup</a></h3>
 <div class="paragraph">
 <p>On the cold-boot path (<code>cold_scratch[7]</code> = 0), the stub then establishes the C execution
 environment:</p>
@@ -1315,8 +1506,8 @@ initialization actually occurred — a known non-zero pattern in <code>.data</co
 fatal error (<code>ROM_ERR_RUNTIME_INIT_FAILED</code>, <code>0xB001</code>).</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="trap-handling"><a class="anchor" href="#trap-handling"></a><a class="link" href="#trap-handling">Trap Handling</a></h5>
+<div class="sect2">
+<h3 id="trap-handling"><a class="anchor" href="#trap-handling"></a><a class="link" href="#trap-handling">6.3. Trap Handling</a></h3>
 <div class="paragraph">
 <p><a id="req-SEP-ROM-CPU-070"></a><strong>[SEP-ROM-CPU-070]</strong> Any trap taken during ROM execution is fatal: the
 trap vector shall capture <code>mcause</code>/<code>mepc</code>/<code>mtval</code>/<code>mstatus</code>, report them through the debug
@@ -1324,8 +1515,8 @@ console, signal FAIL through the STDOUT mailbox (magic <code>0xA5A55A5A</code> f
 and hang in <code>wfi</code>. The ROM shall never attempt to resume from a trap.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="watchdog-posture"><a class="anchor" href="#watchdog-posture"></a><a class="link" href="#watchdog-posture">Watchdog Posture</a></h5>
+<div class="sect2">
+<h3 id="watchdog-posture"><a class="anchor" href="#watchdog-posture"></a><a class="link" href="#watchdog-posture">6.4. Watchdog Posture</a></h3>
 <div class="paragraph">
 <p><a id="req-SEP-ROM-CPU-080"></a><strong>[SEP-ROM-CPU-080]</strong> The ROM shall not arm the watchdog timer. WDT
 ownership belongs to BL1; the ROM&#8217;s only WDT-related obligation is the warm-reset re-entry
@@ -1341,8 +1532,8 @@ stops draining fails the hash. Either becomes a failed manifest attempt or a ter
 rather than a hang.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="early-platform-initialization-s04s20"><a class="anchor" href="#early-platform-initialization-s04s20"></a><a class="link" href="#early-platform-initialization-s04s20">Early Platform Initialization ([S04]–[S20])</a></h5>
+<div class="sect2">
+<h3 id="early-platform-initialization-s04s20"><a class="anchor" href="#early-platform-initialization-s04s20"></a><a class="link" href="#early-platform-initialization-s04s20">6.5. Early Platform Initialization ([S04]–[S20])</a></h3>
 <div class="paragraph">
 <p>After the entry checks, <code>rom_main()</code> performs the following platform bring-up, in order:</p>
 </div>
@@ -1473,8 +1664,10 @@ a placeholder in both this document and the code.</p>
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="sec:warm_reset"><a class="anchor" href="#sec:warm_reset"></a><a class="link" href="#sec:warm_reset">Warm-Reset Resume Path</a></h4>
+</div>
+<div class="sect1">
+<h2 id="sec:warm_reset"><a class="anchor" href="#sec:warm_reset"></a><a class="link" href="#sec:warm_reset">7. Warm-Reset Resume Path</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>A watchdog-initiated warm reset resets the SEP CPU (all CSRs return to reset values) but
 preserves ICCM, DCCM, SEP SRAM, and the warm scratch registers. Since BL1 arms the WDT and
@@ -1482,8 +1675,8 @@ runs from its TOC-selected region, a WDT bark lands the core back at the ROM&#82
 BL1&#8217;s state is
 still resident. The warm-reset path returns control to BL1 with minimal disturbance.</p>
 </div>
-<div class="sect4">
-<h5 id="protocol"><a class="anchor" href="#protocol"></a><a class="link" href="#protocol">Protocol</a></h5>
+<div class="sect2">
+<h3 id="protocol"><a class="anchor" href="#protocol"></a><a class="link" href="#protocol">7.1. Protocol</a></h3>
 <div class="paragraph">
 <p><strong>BL1 side (contract):</strong> before arming the WDT, BL1 writes the address of its warm-reset
 handler to <code>cold_scratch[7]</code>. The handler must lie in a permitted BL1 execution region&#8201;&#8212;&#8201;the same set <code>BL1_SRAM_EXEC_ENABLE</code> governs, because accepting a warm handler where the
@@ -1552,8 +1745,10 @@ and (c) <code>warm_scratch[]</code> being reset on any cold (full) reset.</p>
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="sec:pmp"><a class="anchor" href="#sec:pmp"></a><a class="link" href="#sec:pmp">Physical Memory Protection and Execution Fencing</a></h4>
+</div>
+<div class="sect1">
+<h2 id="sec:pmp"><a class="anchor" href="#sec:pmp"></a><a class="link" href="#sec:pmp">8. Physical Memory Protection and Execution Fencing</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The PMP is the ROM&#8217;s execution fence: from the moment the C environment exists until the
 hand-off self-check has passed, the only executable bytes in the SEP address space shall be
@@ -1561,8 +1756,8 @@ the Boot ROM itself. This bounds the blast radius of every downstream stage — 
 manifest, payload, or DMA transfer can place bytes in SRAM/ICCM, but cannot cause them to
 execute before validation completes.</p>
 </div>
-<div class="sect4">
-<h5 id="fence-policy-normative"><a class="anchor" href="#fence-policy-normative"></a><a class="link" href="#fence-policy-normative">Fence Policy (Normative)</a></h5>
+<div class="sect2">
+<h3 id="fence-policy-normative"><a class="anchor" href="#fence-policy-normative"></a><a class="link" href="#fence-policy-normative">8.1. Fence Policy (Normative)</a></h3>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
@@ -1606,8 +1801,8 @@ every check enumerated in the hand-off self-check (<a href="#sec:handoff">Hand-o
 <div class="title">Figure 6. PMP fence lifecycle (Smepmp)</div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="sec:pmp_mechanism"><a class="anchor" href="#sec:pmp_mechanism"></a><a class="link" href="#sec:pmp_mechanism">Fence Binding and Release Mechanism (Smepmp)</a></h5>
+<div class="sect2">
+<h3 id="sec:pmp_mechanism"><a class="anchor" href="#sec:pmp_mechanism"></a><a class="link" href="#sec:pmp_mechanism">8.2. Fence Binding and Release Mechanism (Smepmp)</a></h3>
 <div class="paragraph">
 <p>The fences are bound to machine mode and released using the
 <strong>Smepmp</strong> extension — locked rules plus <code>mseccfg</code> (<code>MMWP</code> default-deny, <code>RLB</code> rule-locking
@@ -1635,8 +1830,8 @@ every post-ROM stage to maintaining complete PMP coverage of everything it acces
 </li>
 </ul>
 </div>
-<div class="sect5">
-<h6 id="cold-boot-programming-sequence"><a class="anchor" href="#cold-boot-programming-sequence"></a><a class="link" href="#cold-boot-programming-sequence">Cold-Boot Programming Sequence</a></h6>
+<div class="sect3">
+<h4 id="cold-boot-programming-sequence"><a class="anchor" href="#cold-boot-programming-sequence"></a><a class="link" href="#cold-boot-programming-sequence">8.2.1. Cold-Boot Programming Sequence</a></h4>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
@@ -1658,8 +1853,8 @@ SEP SRAM and ICCM <code>RW-</code> (no execute) until hand-off.</p>
 </ol>
 </div>
 </div>
-<div class="sect5">
-<h6 id="release-at-hand-off"><a class="anchor" href="#release-at-hand-off"></a><a class="link" href="#release-at-hand-off">Release at Hand-off</a></h6>
+<div class="sect3">
+<h4 id="release-at-hand-off"><a class="anchor" href="#release-at-hand-off"></a><a class="link" href="#release-at-hand-off">8.2.2. Release at Hand-off</a></h4>
 <div class="paragraph">
 <p><a id="req-SEP-ROM-PMP-080"></a><strong>[SEP-ROM-PMP-080]</strong> The hand-off release (SEP-ROM-HOFF-060) shall be
 implemented as a single rewrite of the locked BL1-region rule from <code>RW-</code> to executable —
@@ -1697,8 +1892,8 @@ no additional protection against that attacker.</p>
 </div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="reference-region-set"><a class="anchor" href="#reference-region-set"></a><a class="link" href="#reference-region-set">Reference Region Set</a></h5>
+<div class="sect2">
+<h3 id="reference-region-set"><a class="anchor" href="#reference-region-set"></a><a class="link" href="#reference-region-set">8.3. Reference Region Set</a></h3>
 <div class="paragraph">
 <p><a href="#tbl:pmp_regions">Reference PMP region set (as currently programmed)</a> lists the NAPOT region set programmed by the reference implementation
 (<code>vector.S</code>, <code>PMP_ENABLE=1</code>). All entries are NAPOT-encoded; <code>pmpaddr</code> values are the
@@ -1842,16 +2037,18 @@ the PMP release step it gates is not yet implemented.</p>
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="sec:fuses"><a class="anchor" href="#sec:fuses"></a><a class="link" href="#sec:fuses">Fuse and System State</a></h4>
+</div>
+<div class="sect1">
+<h2 id="sec:fuses"><a class="anchor" href="#sec:fuses"></a><a class="link" href="#sec:fuses">9. Fuse and System State</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The device&#8217;s security posture is rooted in OTP fuses. Fuse sensing is performed by hardware;
 the ROM consumes <strong>shadow registers</strong> in the SEP efuse map (<code>0x1093_0000</code>). Differential
 decoding and signal-integrity checking of sensed values are done in RTL
 (<code>prim_diff_decode_multi</code>) before the shadow registers are populated.</p>
 </div>
-<div class="sect4">
-<h5 id="fuse-sense-readiness"><a class="anchor" href="#fuse-sense-readiness"></a><a class="link" href="#fuse-sense-readiness">Fuse-Sense Readiness</a></h5>
+<div class="sect2">
+<h3 id="fuse-sense-readiness"><a class="anchor" href="#fuse-sense-readiness"></a><a class="link" href="#fuse-sense-readiness">9.1. Fuse-Sense Readiness</a></h3>
 <div class="paragraph">
 <p><a id="req-SEP-ROM-FUSE-010"></a><strong>[SEP-ROM-FUSE-010]</strong> The ROM shall not consume any fuse shadow value
 before fuse sensing has completed. Completion is indicated by
@@ -1873,8 +2070,8 @@ vectors leave chiplet debug open, so secure boot is optional — so an early lif
 fail open.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="lifecycle-state-s11"><a class="anchor" href="#lifecycle-state-s11"></a><a class="link" href="#lifecycle-state-s11">Lifecycle State ([S11])</a></h5>
+<div class="sect2">
+<h3 id="lifecycle-state-s11"><a class="anchor" href="#lifecycle-state-s11"></a><a class="link" href="#lifecycle-state-s11">9.2. Lifecycle State ([S11])</a></h3>
 <div class="paragraph">
 <p>The 4-bit lifecycle state is read from the low nibble of <code>SEP_EFUSE_MAP_LC_STATE</code>
 (<code>0x1093_0008</code>).</p>
@@ -1955,8 +2152,8 @@ status channel.</p>
 <code>bl0_state.feat_ctrl_lo/hi</code> at the same stage.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="secure-boot-chicken-bit-s18"><a class="anchor" href="#secure-boot-chicken-bit-s18"></a><a class="link" href="#secure-boot-chicken-bit-s18">Secure-Boot Chicken Bit ([S18])</a></h5>
+<div class="sect2">
+<h3 id="secure-boot-chicken-bit-s18"><a class="anchor" href="#secure-boot-chicken-bit-s18"></a><a class="link" href="#secure-boot-chicken-bit-s18">9.3. Secure-Boot Chicken Bit ([S18])</a></h3>
 <div class="paragraph">
 <p><code>SEP_EFUSE_MAP_SBOOT_DIS</code> (<code>0x1093_0010</code>) bit 0 (<code>disable_secure_boot</code>) is the secure-boot
 chicken bit. It is read once, recorded in <code>bl0_state.sboot_dis</code>, and consumed by the
@@ -1978,8 +2175,8 @@ bit means the array is not what the ROM believes it to be; [S18] stops there wit
 <code>ROM_ERR_SBOOT_DIS_RSVD_SET</code> rather than interpreting the rest of the word.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="sec:fuse_chiplet_dbg"><a class="anchor" href="#sec:fuse_chiplet_dbg"></a><a class="link" href="#sec:fuse_chiplet_dbg">Chiplet Debug Lock ([S18])</a></h5>
+<div class="sect2">
+<h3 id="sec:fuse_chiplet_dbg"><a class="anchor" href="#sec:fuse_chiplet_dbg"></a><a class="link" href="#sec:fuse_chiplet_dbg">9.4. Chiplet Debug Lock ([S18])</a></h3>
 <div class="paragraph">
 <p><code>CHIPLET_DBG</code> is bit 1 of the <code>SIP_DIS</code> (<code>0x1093_0018</code>) and <code>SYS_DIS</code> (<code>0x1093_0020</code>)
 disable vectors. Set in either, it closes external debug access to the chiplet and to the SEP,
@@ -2002,8 +2199,8 @@ enabled on a part whose fuses disable it.</p>
 <code>SBOOT_DIS</code> overrides the lock.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="fuse-fields-touched-by-the-rom"><a class="anchor" href="#fuse-fields-touched-by-the-rom"></a><a class="link" href="#fuse-fields-touched-by-the-rom">Fuse Fields Touched by the ROM</a></h5>
+<div class="sect2">
+<h3 id="fuse-fields-touched-by-the-rom"><a class="anchor" href="#fuse-fields-touched-by-the-rom"></a><a class="link" href="#fuse-fields-touched-by-the-rom">9.5. Fuse Fields Touched by the ROM</a></h3>
 <table id="tbl:fuse_fields" class="tableblock frame-ends grid-rows stretch">
 <caption class="title">Table 10. SEP efuse map fields touched by BL0</caption>
 <colgroup>
@@ -2146,8 +2343,10 @@ lock set where applicable (<a href="#sec:handoff">Hand-off to BL1</a>).</p>
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="sec:smc_sync"><a class="anchor" href="#sec:smc_sync"></a><a class="link" href="#sec:smc_sync">SMC Synchronization</a></h4>
+</div>
+<div class="sect1">
+<h2 id="sec:smc_sync"><a class="anchor" href="#sec:smc_sync"></a><a class="link" href="#sec:smc_sync">10. SMC Synchronization</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The SMC and SEP ROMs boot in parallel and coordinate exclusively through (a) the SMC CPU_CTRL
 scratch registers and (b) shared buffers in SMC SRAM. There is no interrupt or mailbox
@@ -2160,8 +2359,8 @@ chapter defines the SEP-side contract.</p>
 SRAM shall be exchanged as <strong>offsets</strong> into SMC SRAM, never absolute addresses (the two sides
 map SMC SRAM at different addresses).</p>
 </div>
-<div class="sect4">
-<h5 id="scratch-register-protocol"><a class="anchor" href="#scratch-register-protocol"></a><a class="link" href="#scratch-register-protocol">Scratch-Register Protocol</a></h5>
+<div class="sect2">
+<h3 id="scratch-register-protocol"><a class="anchor" href="#scratch-register-protocol"></a><a class="link" href="#scratch-register-protocol">10.1. Scratch-Register Protocol</a></h3>
 <table id="tbl:smc_scratch" class="tableblock frame-ends grid-rows stretch">
 <caption class="title">Table 11. SMC scratch registers used in the SEP↔SMC protocol (offset <code>0x10100 + 8·index</code> in the SMC window)</caption>
 <colgroup>
@@ -2254,8 +2453,8 @@ bypassed.</p></td>
 <div class="title">Figure 7. SEP↔SMC synchronization (cold boot)</div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="smc-access-sanity-check"><a class="anchor" href="#smc-access-sanity-check"></a><a class="link" href="#smc-access-sanity-check">SMC Access Sanity Check</a></h5>
+<div class="sect2">
+<h3 id="smc-access-sanity-check"><a class="anchor" href="#smc-access-sanity-check"></a><a class="link" href="#smc-access-sanity-check">10.2. SMC Access Sanity Check</a></h3>
 <div class="paragraph">
 <p>Before any protocol decision depends on the SMC, the ROM proves the outbound path works:
 four patterns (<code>0xA5A55A5A</code>, <code>0x12345678</code>, <code>0x00000000</code>, <code>0xFFFFFFFF</code>) are written to
@@ -2263,8 +2462,8 @@ scratch[7] and read back. <a id="req-SEP-ROM-SMC-020"></a><strong>[SEP-ROM-SMC-0
 fatal (<code>0xA001</code>); the register shall be restored to zero on success.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="memory-repair-dft-gate-s03"><a class="anchor" href="#memory-repair-dft-gate-s03"></a><a class="link" href="#memory-repair-dft-gate-s03">Memory-Repair / DFT Gate ([S03])</a></h5>
+<div class="sect2">
+<h3 id="memory-repair-dft-gate-s03"><a class="anchor" href="#memory-repair-dft-gate-s03"></a><a class="link" href="#memory-repair-dft-gate-s03">10.3. Memory-Repair / DFT Gate ([S03])</a></h3>
 <div class="paragraph">
 <p><a id="req-SEP-ROM-SMC-030"></a><strong>[SEP-ROM-SMC-030]</strong> The ROM shall not proceed past [S03] unless memory
 repair completed successfully: <code>DFX_CTRL_STATUS_SMU</code> (SMC window offset <code>0xF800</code>) bit 1
@@ -2274,8 +2473,8 @@ the <code>mem_repair_bypass</code> strap (<code>STRAPS_LO[13]</code>) is set, in
 warning recorded.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="status-ring-buffer"><a class="anchor" href="#status-ring-buffer"></a><a class="link" href="#status-ring-buffer">Status Ring Buffer</a></h5>
+<div class="sect2">
+<h3 id="status-ring-buffer"><a class="anchor" href="#status-ring-buffer"></a><a class="link" href="#status-ring-buffer">10.4. Status Ring Buffer</a></h3>
 <div class="paragraph">
 <p>When status reporting is enabled (<a href="#sec:straps">Primary / Secondary Strap Handling</a>), the ROM initializes a produce-only ring
 buffer in SMC SRAM at the offset published in scratch[11] and thereafter mirrors every
@@ -2284,8 +2483,8 @@ entries to the platform (OCCP). Ring initialization waits for the SMC&#8217;s
 <code>SRAM_INIT</code>/<code>BUFFER_READY</code> indications.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="chip-identification-s12"><a class="anchor" href="#chip-identification-s12"></a><a class="link" href="#chip-identification-s12">Chip Identification ([S12])</a></h5>
+<div class="sect2">
+<h3 id="chip-identification-s12"><a class="anchor" href="#chip-identification-s12"></a><a class="link" href="#chip-identification-s12">10.5. Chip Identification ([S12])</a></h3>
 <div class="paragraph">
 <p><code>CHIP_CONFIG_CHIP_ID</code> (SMC window offset <code>0x2908</code>) is read once and reported on the status
 channel (low 16 bits as an <code>INFO_EXT</code> status word). The read is diagnostic: it gives DV and a
@@ -2300,8 +2499,8 @@ the read-locks cover the secrets, including the separate UID seeds
 (<a href="#req-SEP-ROM-HOFF-030">SEP-ROM-HOFF-030</a>).</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="manifest-staging-hand-shake-recovery-secondary"><a class="anchor" href="#manifest-staging-hand-shake-recovery-secondary"></a><a class="link" href="#manifest-staging-hand-shake-recovery-secondary">Manifest Staging Hand-shake (Recovery / Secondary)</a></h5>
+<div class="sect2">
+<h3 id="manifest-staging-hand-shake-recovery-secondary"><a class="anchor" href="#manifest-staging-hand-shake-recovery-secondary"></a><a class="link" href="#manifest-staging-hand-shake-recovery-secondary">10.6. Manifest Staging Hand-shake (Recovery / Secondary)</a></h3>
 <div class="paragraph">
 <p>For the recovery and secondary boot modes, the manifest+payload arrive via the SMC (delivered
 over I3C by the platform, per the SMC ROM specification):</p>
@@ -2326,8 +2525,10 @@ from then on follows the same validation path as a SPI-loaded manifest
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="sec:straps"><a class="anchor" href="#sec:straps"></a><a class="link" href="#sec:straps">Primary / Secondary Strap Handling</a></h4>
+</div>
+<div class="sect1">
+<h2 id="sec:straps"><a class="anchor" href="#sec:straps"></a><a class="link" href="#sec:straps">11. Primary / Secondary Strap Handling</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>An OCAH chiplet is either <strong>primary</strong> or <strong>secondary</strong>, selected by a hardware strap. Straps are
 latched at cold reset and exposed in the supplementary region of the SMC adopter external
@@ -2388,8 +2589,8 @@ for this boot (<a href="#sec:retry">Retry and Backup Bank</a>).</p></td>
 </tr>
 </tbody>
 </table>
-<div class="sect4">
-<h5 id="boot-mode-selection-s21"><a class="anchor" href="#boot-mode-selection-s21"></a><a class="link" href="#boot-mode-selection-s21">Boot-Mode Selection ([S21])</a></h5>
+<div class="sect2">
+<h3 id="boot-mode-selection-s21"><a class="anchor" href="#boot-mode-selection-s21"></a><a class="link" href="#boot-mode-selection-s21">11.1. Boot-Mode Selection ([S21])</a></h3>
 <div class="paragraph">
 <p><a id="req-SEP-ROM-STRAP-010"></a><strong>[SEP-ROM-STRAP-010]</strong> The ROM shall select exactly one boot mode
 from the strap combination, record it in <code>bl0_state.boot_mode</code>, and report it on the status
@@ -2466,8 +2667,10 @@ manifest+payload.</p>
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="sec:spi"><a class="anchor" href="#sec:spi"></a><a class="link" href="#sec:spi">SPI Initialization and Manifest Transfer</a></h4>
+</div>
+<div class="sect1">
+<h2 id="sec:spi"><a class="anchor" href="#sec:spi"></a><a class="link" href="#sec:spi">12. SPI Initialization and Manifest Transfer</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>On a primary chiplet, mutable software is read from SPI NOR flash at fixed offsets. OCAH fits
 one of two SPI controllers; the ROM supports both behind a single transport abstraction, and
@@ -2480,8 +2683,8 @@ through the transport shim (<code>boot_flash.h</code>): <code>boot_flash_init()<
 flash_off, len)</code>, <code>boot_flash_reinit()</code>, <code>boot_flash_bounds_ok()</code>. Boot logic shall not
 depend on which controller is fitted.</p>
 </div>
-<div class="sect4">
-<h5 id="flash-layout"><a class="anchor" href="#flash-layout"></a><a class="link" href="#flash-layout">Flash Layout</a></h5>
+<div class="sect2">
+<h3 id="flash-layout"><a class="anchor" href="#flash-layout"></a><a class="link" href="#flash-layout">12.1. Flash Layout</a></h3>
 <table id="tbl:flash_layout" class="tableblock frame-ends grid-rows stretch">
 <caption class="title">Table 14. Boot flash layout</caption>
 <colgroup>
@@ -2546,8 +2749,8 @@ above, and backup-slot rotation is exercised in simulation. The offsets in
 <a href="#tbl:flash_layout">Boot flash layout</a> remain normative for any producer.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="transfer-hardening"><a class="anchor" href="#transfer-hardening"></a><a class="link" href="#transfer-hardening">Transfer Hardening</a></h5>
+<div class="sect2">
+<h3 id="transfer-hardening"><a class="anchor" href="#transfer-hardening"></a><a class="link" href="#transfer-hardening">12.2. Transfer Hardening</a></h3>
 <div class="paragraph">
 <p><a id="req-SEP-ROM-SPI-020"></a><strong>[SEP-ROM-SPI-020]</strong> Every flash read issued by the boot path shall be
 bounds-validated before the transport is touched: the flash range must lie entirely within
@@ -2563,8 +2766,8 @@ that still fails is handled by slot fallback (<a href="#sec:retry">Retry and Bac
 data.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="opentitan-spi-host-path"><a class="anchor" href="#opentitan-spi-host-path"></a><a class="link" href="#opentitan-spi-host-path">OpenTitan SPI Host Path</a></h5>
+<div class="sect2">
+<h3 id="opentitan-spi-host-path"><a class="anchor" href="#opentitan-spi-host-path"></a><a class="link" href="#opentitan-spi-host-path">12.3. OpenTitan SPI Host Path</a></h3>
 <div class="paragraph">
 <p>The OpenTitan controller has no memory-mapped window; flash is reached through command/FIFO
 transactions:</p>
@@ -2601,8 +2804,8 @@ added before that evaluation concludes.</p>
 the OpenTitan SPI Bootcode Driver spec (<code>specs/001-ot-spi-bootcode-driver/</code>).</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="cadence-xspi-path"><a class="anchor" href="#cadence-xspi-path"></a><a class="link" href="#cadence-xspi-path">Cadence xSPI Path</a></h5>
+<div class="sect2">
+<h3 id="cadence-xspi-path"><a class="anchor" href="#cadence-xspi-path"></a><a class="link" href="#cadence-xspi-path">12.4. Cadence xSPI Path</a></h3>
 <div class="paragraph">
 <p>The Cadence controller exposes flash as a memory-mapped XIP window at <code>0x3000_0000</code>
 (<code>SEP_SPI_BASE</code>); a "read" is a secure-DMA copy from <code>SEP_SPI_BASE + offset</code> into SRAM.
@@ -2620,8 +2823,10 @@ backup TLV.</p>
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="sec:manifest"><a class="anchor" href="#sec:manifest"></a><a class="link" href="#sec:manifest">OCA Manifest Format and Parsing</a></h4>
+</div>
+<div class="sect1">
+<h2 id="sec:manifest"><a class="anchor" href="#sec:manifest"></a><a class="link" href="#sec:manifest">13. OCA Manifest Format and Parsing</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>OCAH mutable software is delivered as <strong>manifest + payload</strong> artifacts. The manifest is the
 metadata layer carrying every security control; the payload is the collection of binary
@@ -2641,8 +2846,8 @@ library. An image whose magic matches no OCA variant fails at the magic check.
 </tr>
 </table>
 </div>
-<div class="sect4">
-<h5 id="format-summary"><a class="anchor" href="#format-summary"></a><a class="link" href="#format-summary">Format Summary</a></h5>
+<div class="sect2">
+<h3 id="format-summary"><a class="anchor" href="#format-summary"></a><a class="link" href="#format-summary">13.1. Format Summary</a></h3>
 <div class="ulist">
 <ul>
 <li>
@@ -2670,8 +2875,8 @@ secure-boot decision or any manifest control bit. It is the minimum integrity ba
 consuming any manifest field.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="rom-relevant-field-layout"><a class="anchor" href="#rom-relevant-field-layout"></a><a class="link" href="#rom-relevant-field-layout">ROM-Relevant Field Layout</a></h5>
+<div class="sect2">
+<h3 id="rom-relevant-field-layout"><a class="anchor" href="#rom-relevant-field-layout"></a><a class="link" href="#rom-relevant-field-layout">13.2. ROM-Relevant Field Layout</a></h3>
 <div class="paragraph">
 <p><a href="#tbl:manifest_fields">OCA CLASSIC manifest — fields consumed by the SEP ROM</a> lists the fields the ROM consumes. Authoritative source:
 <code>oca_layout_classic.h</code> / <code>oca_layout.h</code> (<code>tt-oca-manifest</code>); reserved fields not listed here
@@ -2952,8 +3157,8 @@ right-zero-padded.</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect4">
-<h5 id="validation-library-integration"><a class="anchor" href="#validation-library-integration"></a><a class="link" href="#validation-library-integration">Validation Library Integration</a></h5>
+<div class="sect2">
+<h3 id="validation-library-integration"><a class="anchor" href="#validation-library-integration"></a><a class="link" href="#validation-library-integration">13.3. Validation Library Integration</a></h3>
 <div class="paragraph">
 <p><a id="req-SEP-ROM-MAN-020"></a><strong>[SEP-ROM-MAN-020]</strong> The ROM shall validate manifests with the
 freestanding OCA validation library (<code>validators/oca/lib/</code>, <code>oca_validator.h</code>),
@@ -2978,8 +3183,8 @@ call (<a href="#sec:secure_boot">Secure Boot Decision and Signature Verification
 tabulated in <a href="#sec:security_inventory">Security-Check Inventory</a>.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="structural-and-constraint-checks"><a class="anchor" href="#structural-and-constraint-checks"></a><a class="link" href="#structural-and-constraint-checks">Structural and Constraint Checks</a></h5>
+<div class="sect2">
+<h3 id="structural-and-constraint-checks"><a class="anchor" href="#structural-and-constraint-checks"></a><a class="link" href="#structural-and-constraint-checks">13.4. Structural and Constraint Checks</a></h3>
 <div class="ulist">
 <ul>
 <li>
@@ -3001,8 +3206,8 @@ silent pass.</p>
 </ul>
 </div>
 </div>
-<div class="sect4">
-<h5 id="payload-staging-and-image-placement"><a class="anchor" href="#payload-staging-and-image-placement"></a><a class="link" href="#payload-staging-and-image-placement">Payload Staging and Image Placement</a></h5>
+<div class="sect2">
+<h3 id="payload-staging-and-image-placement"><a class="anchor" href="#payload-staging-and-image-placement"></a><a class="link" href="#payload-staging-and-image-placement">13.5. Payload Staging and Image Placement</a></h3>
 <div class="paragraph">
 <p>The manifest body is loaded to the base of SEP SRAM; the payload is staged at
 <code>payload_offset</code> from it, preserving the manifest-relative layout. Staging reads are bounded
@@ -3084,8 +3289,10 @@ region" is the check that matters.</p>
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="sec:entropy"><a class="anchor" href="#sec:entropy"></a><a class="link" href="#sec:entropy">Entropy Chain Bring-Up</a></h4>
+</div>
+<div class="sect1">
+<h2 id="sec:entropy"><a class="anchor" href="#sec:entropy"></a><a class="link" href="#sec:entropy">14. Entropy Chain Bring-Up</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The crypto blocks the ROM drives do not operate without a live entropy stream, and <strong>nothing
 brings that stream up automatically</strong>. Every stage of the internal chain — entropy source
@@ -3115,8 +3322,8 @@ manifest slot carries the identical requirement and rotating to it cannot help, 
 allowing the failure to surface downstream would report it as a signature or decryption
 error and name the wrong cause.</p>
 </div>
-<div class="sect4">
-<h5 id="sequence"><a class="anchor" href="#sequence"></a><a class="link" href="#sequence">Sequence</a></h5>
+<div class="sect2">
+<h3 id="sequence"><a class="anchor" href="#sequence"></a><a class="link" href="#sequence">14.1. Sequence</a></h3>
 <div class="paragraph">
 <p>The chain is brought up in three ordered phases, preceded by a pulse of the shared TRNG
 software reset (<code>SEP_RESET_CTRL.SW_RESET_N.TRNG_SW_RST_N</code>, cleared then set under
@@ -3163,8 +3370,8 @@ source has produced a seed, leaves the chain in a state from which it does not r
 without a reset.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="configuration-locks"><a class="anchor" href="#configuration-locks"></a><a class="link" href="#configuration-locks">Configuration Locks</a></h5>
+<div class="sect2">
+<h3 id="configuration-locks"><a class="anchor" href="#configuration-locks"></a><a class="link" href="#configuration-locks">14.2. Configuration Locks</a></h3>
 <div class="paragraph">
 <p><a id="req-SEP-ROM-ENT-030"></a><strong>[SEP-ROM-ENT-030]</strong> The ROM shall lock the ESRC configuration
 (<code>FIPS_LOCK</code>) after the startup health test passes and <strong>before</strong> any entropy reaches a
@@ -3182,8 +3389,8 @@ switch (<code>SEP_ENTROPY_DEFER_FIPS_LOCK</code>, <code>SEP_ENTROPY_DEFER_SRC_SE
 intend BL1 to own the configuration; a production build shall leave both locks enabled.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="external-trng-seam"><a class="anchor" href="#external-trng-seam"></a><a class="link" href="#external-trng-seam">External TRNG Seam</a></h5>
+<div class="sect2">
+<h3 id="external-trng-seam"><a class="anchor" href="#external-trng-seam"></a><a class="link" href="#external-trng-seam">14.3. External TRNG Seam</a></h3>
 <div class="paragraph">
 <p><code>EXT_TRNG_SRC_SEL</code> <strong>resets to the external source</strong>. This chapter specifies the internal
 chain because that is what this design carries, but an adopter is expected to substitute a
@@ -3219,10 +3426,12 @@ shortcut than the whole-chain EDN grant it replaces.
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="sec:secure_boot"><a class="anchor" href="#sec:secure_boot"></a><a class="link" href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a></h4>
-<div class="sect4">
-<h5 id="secure-boot-decision"><a class="anchor" href="#secure-boot-decision"></a><a class="link" href="#secure-boot-decision">Secure-Boot Decision</a></h5>
+</div>
+<div class="sect1">
+<h2 id="sec:secure_boot"><a class="anchor" href="#sec:secure_boot"></a><a class="link" href="#sec:secure_boot">15. Secure Boot Decision and Signature Verification</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="secure-boot-decision"><a class="anchor" href="#secure-boot-decision"></a><a class="link" href="#secure-boot-decision">15.1. Secure-Boot Decision</a></h3>
 <div class="paragraph">
 <p>Secure boot — the requirement that the manifest carry a valid signature from an authorized
 root key — is decided from five inputs: the lifecycle state, the chiplet debug lock
@@ -3410,8 +3619,8 @@ verification of any individual image via the escalation flag (SEP-ROM-SB-020/-03
 <div class="title">Figure 11. Secure-boot decision</div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="root-key-model"><a class="anchor" href="#root-key-model"></a><a class="link" href="#root-key-model">Root Key Model</a></h5>
+<div class="sect2">
+<h3 id="root-key-model"><a class="anchor" href="#root-key-model"></a><a class="link" href="#root-key-model">15.2. Root Key Model</a></h3>
 <div class="paragraph">
 <p>Eleven classical root-key slots are resolvable by this ROM generation&#8201;&#8212;&#8201;six embedded in
 the ROM image and five held in eFuse&#8201;&#8212;&#8201;addressed through the manifest&#8217;s
@@ -3514,8 +3723,8 @@ the key is used for signature verification. A presented key matching no authoriz
 shall be rejected.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="key-revocation"><a class="anchor" href="#key-revocation"></a><a class="link" href="#key-revocation">Key Revocation</a></h5>
+<div class="sect2">
+<h3 id="key-revocation"><a class="anchor" href="#key-revocation"></a><a class="link" href="#key-revocation">15.3. Key Revocation</a></h3>
 <div class="paragraph">
 <p><a id="req-SEP-ROM-SB-060"></a><strong>[SEP-ROM-SB-060]</strong> The effective revocation set shall be the bitwise
 OR of the manifest&#8217;s <code>public_key_classic_revoke</code> bitmap and the device-stored revocation
@@ -3590,8 +3799,8 @@ bit map is defined once, in <code>CHIPLET_PUBK_REVOKE&#8217;s field description
 </table>
 </div>
 </div>
-<div class="sect4">
-<h5 id="anti-rollback"><a class="anchor" href="#anti-rollback"></a><a class="link" href="#anti-rollback">Anti-Rollback</a></h5>
+<div class="sect2">
+<h3 id="anti-rollback"><a class="anchor" href="#anti-rollback"></a><a class="link" href="#anti-rollback">15.4. Anti-Rollback</a></h3>
 <div class="paragraph">
 <p><a id="req-SEP-ROM-SB-070"></a><strong>[SEP-ROM-SB-070]</strong> Under secure boot, <code>manifest_security_version</code>
 (offset 2042; 128 independent posture flags — <strong>not</strong> a counter) shall be a bit-superset of
@@ -3612,8 +3821,8 @@ the fuse programming. BL0 therefore has no fuse-programming path by design, and 
 not be added to it.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="signature-verification"><a class="anchor" href="#signature-verification"></a><a class="link" href="#signature-verification">Signature Verification</a></h5>
+<div class="sect2">
+<h3 id="signature-verification"><a class="anchor" href="#signature-verification"></a><a class="link" href="#signature-verification">15.5. Signature Verification</a></h3>
 <div class="paragraph">
 <p><a id="req-SEP-ROM-SB-090"></a><strong>[SEP-ROM-SB-090]</strong> The only signature type this ROM shall accept is
 <code>0x01</code> — RSASSA-PKCS1-v1_5, RSA-3072, SHA-256 — over the signed region <code>[0, 3172)</code>. ECDSA
@@ -3687,8 +3896,10 @@ before and after signature verification, and the OTP hash-bank addresses of
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="sec:demotion"><a class="anchor" href="#sec:demotion"></a><a class="link" href="#sec:demotion">Demotion Handling</a></h4>
+</div>
+<div class="sect1">
+<h2 id="sec:demotion"><a class="anchor" href="#sec:demotion"></a><a class="link" href="#sec:demotion">16. Demotion Handling</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>Lifecycle demotion lowers the device&#8217;s effective security posture (e.g. re-enabling debug
 visibility) under manifest control. The lifecycle controller exposes two demotion registers —
@@ -3696,8 +3907,8 @@ visibility) under manifest control. The lifecycle controller exposes two demotio
 <code>lock</code> bit — consumed by hardware; once a register&#8217;s <code>lock</code> bit is set, its <code>demote</code> value is
 frozen until the next cold reset.</p>
 </div>
-<div class="sect4">
-<h5 id="manifest-directive"><a class="anchor" href="#manifest-directive"></a><a class="link" href="#manifest-directive">Manifest Directive</a></h5>
+<div class="sect2">
+<h3 id="manifest-directive"><a class="anchor" href="#manifest-directive"></a><a class="link" href="#manifest-directive">16.1. Manifest Directive</a></h3>
 <div class="paragraph">
 <p>The manifest&#8217;s <code>demotion_control</code> field (offset 172, u16) carries the directive in its lower
 four bits, as two <strong>(enable, state)</strong> pairs:</p>
@@ -3746,8 +3957,8 @@ decision.</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect4">
-<h5 id="rom-behavior-s25"><a class="anchor" href="#rom-behavior-s25"></a><a class="link" href="#rom-behavior-s25">ROM Behavior ([S25])</a></h5>
+<div class="sect2">
+<h3 id="rom-behavior-s25"><a class="anchor" href="#rom-behavior-s25"></a><a class="link" href="#rom-behavior-s25">16.2. ROM Behavior ([S25])</a></h3>
 <div class="paragraph">
 <p>Demotion is a one-shot, post-validation action (ordering invariant 3, <a href="#sec:overview">Boot Flow Overview</a>): it
 executes exactly once, only after the manifest has fully validated, and is never retried.</p>
@@ -3842,8 +4053,10 @@ two-bit field in the hand-off block. The pair semantics above are normative.</p>
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="sec:payload"><a class="anchor" href="#sec:payload"></a><a class="link" href="#sec:payload">Payload Loading, Decryption and Verification</a></h4>
+</div>
+<div class="sect1">
+<h2 id="sec:payload"><a class="anchor" href="#sec:payload"></a><a class="link" href="#sec:payload">17. Payload Loading, Decryption and Verification</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The payload is the <code>PTOC</code>-prefixed table of contents plus the concatenated image bytes that
 follow the manifest. On a primary chiplet the ROM copies the payload region (located by
@@ -3851,8 +4064,8 @@ follow the manifest. On a primary chiplet the ROM copies the payload region (loc
 recovery/secondary boots the pair is already staged in SMC SRAM and is copied across under
 the same bounds checks. All staging obeys SEP-ROM-SPI-020 / SEP-ROM-SMC-050.</p>
 </div>
-<div class="sect4">
-<h5 id="payload-toc"><a class="anchor" href="#payload-toc"></a><a class="link" href="#payload-toc">Payload TOC</a></h5>
+<div class="sect2">
+<h3 id="payload-toc"><a class="anchor" href="#payload-toc"></a><a class="link" href="#payload-toc">17.1. Payload TOC</a></h3>
 <table id="tbl:toc_layout" class="tableblock frame-ends grid-rows stretch">
 <caption class="title">Table 20. Payload TOC header (OCA spec v0.8 Table 5)</caption>
 <colgroup>
@@ -4014,8 +4227,8 @@ overflow-checked (<code>OCA_FAIL_PAYLOAD_TOC</code>).</p>
 <code>SEP_BL1</code>; a payload without one shall fail the slot attempt.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="check-order"><a class="anchor" href="#check-order"></a><a class="link" href="#check-order">Check Order</a></h5>
+<div class="sect2">
+<h3 id="check-order"><a class="anchor" href="#check-order"></a><a class="link" href="#check-order">17.2. Check Order</a></h3>
 <div class="paragraph">
 <p><a id="req-SEP-ROM-PL-030"></a><strong>[SEP-ROM-PL-030]</strong> For an <strong>encrypted</strong> payload
 (<code>payload_encryption_control</code> bit 0):</p>
@@ -4077,8 +4290,8 @@ survive into the BL1 environment (legacy-ROM precedent; not yet implemented —
 <a href="#sec:impl_matrix">Implementation-Status Matrix</a>).</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="payload-decryption"><a class="anchor" href="#payload-decryption"></a><a class="link" href="#payload-decryption">Payload Decryption</a></h5>
+<div class="sect2">
+<h3 id="payload-decryption"><a class="anchor" href="#payload-decryption"></a><a class="link" href="#payload-decryption">17.3. Payload Decryption</a></h3>
 <div class="paragraph">
 <p>Decryption is AES-256-CBC, in place, using the OpenTitan AES block:</p>
 </div>
@@ -4140,14 +4353,16 @@ plaintext.</p>
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="sec:boot_measurement"><a class="anchor" href="#sec:boot_measurement"></a><a class="link" href="#sec:boot_measurement">Boot Measurement</a></h4>
+</div>
+<div class="sect1">
+<h2 id="sec:boot_measurement"><a class="anchor" href="#sec:boot_measurement"></a><a class="link" href="#sec:boot_measurement">18. Boot Measurement</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>To support TPM-style attestation services in later boot stages, BL0 enrolls two software
 measurements and leaves them (with their raw inputs) where BL1 can register them onward.</p>
 </div>
-<div class="sect4">
-<h5 id="target-architecture-the-pcrv"><a class="anchor" href="#target-architecture-the-pcrv"></a><a class="link" href="#target-architecture-the-pcrv">Target Architecture: the PCRV</a></h5>
+<div class="sect2">
+<h3 id="target-architecture-the-pcrv"><a class="anchor" href="#target-architecture-the-pcrv"></a><a class="link" href="#target-architecture-the-pcrv">18.1. Target Architecture: the PCRV</a></h3>
 <div class="paragraph">
 <p>The OCAH roadmap adds a <strong>PCR Vault (PCRV)</strong> to the Key Manager
 IP. Its measurement model: software <strong>registers</strong> measurement records; the PCRV hashes them
@@ -4180,8 +4395,8 @@ configuration".</p>
 </ul>
 </div>
 </div>
-<div class="sect4">
-<h5 id="soft-measurement-enrollment"><a class="anchor" href="#soft-measurement-enrollment"></a><a class="link" href="#soft-measurement-enrollment">Soft Measurement Enrollment</a></h5>
+<div class="sect2">
+<h3 id="soft-measurement-enrollment"><a class="anchor" href="#soft-measurement-enrollment"></a><a class="link" href="#soft-measurement-enrollment">18.2. Soft Measurement Enrollment</a></h3>
 <div class="paragraph">
 <p>The enrollment primitive (<code>src/measurement.c</code>) mirrors the intended PCRV extend behavior:</p>
 </div>
@@ -4212,8 +4427,8 @@ formula.</p>
 </table>
 </div>
 </div>
-<div class="sect4">
-<h5 id="slot-0-verified-rom-self-hash"><a class="anchor" href="#slot-0-verified-rom-self-hash"></a><a class="link" href="#slot-0-verified-rom-self-hash">Slot 0: Verified ROM Self-Hash</a></h5>
+<div class="sect2">
+<h3 id="slot-0-verified-rom-self-hash"><a class="anchor" href="#slot-0-verified-rom-self-hash"></a><a class="link" href="#slot-0-verified-rom-self-hash">18.3. Slot 0: Verified ROM Self-Hash</a></h3>
 <div class="paragraph">
 <p><a id="req-SEP-ROM-ATT-010"></a><strong>[SEP-ROM-ATT-010]</strong> The ROM image shall embed the SHA-256 hash of its
 own code region, computed and inserted at build time (<code>tools/insert-rom-sha256.py</code>; the hash
@@ -4235,8 +4450,8 @@ verified hash is enrolled into slot 0 and recorded raw in <code>bl0_state.rom_ha
 after the crypto self-test ([S14]) and <code>bl0_state</code> initialization ([S10]).</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="slot-1-boot-state-measurement"><a class="anchor" href="#slot-1-boot-state-measurement"></a><a class="link" href="#slot-1-boot-state-measurement">Slot 1: Boot-State Measurement</a></h5>
+<div class="sect2">
+<h3 id="slot-1-boot-state-measurement"><a class="anchor" href="#slot-1-boot-state-measurement"></a><a class="link" href="#slot-1-boot-state-measurement">18.4. Slot 1: Boot-State Measurement</a></h3>
 <div class="paragraph">
 <p><a id="req-SEP-ROM-ATT-030"></a><strong>[SEP-ROM-ATT-030]</strong> After the manifest has fully validated and the
 demotion decision has been applied — and before the fuse-secret locks and hand-off — the ROM
@@ -4313,16 +4528,18 @@ the slot index.</p>
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="sec:handoff"><a class="anchor" href="#sec:handoff"></a><a class="link" href="#sec:handoff">Hand-off to BL1</a></h4>
+</div>
+<div class="sect1">
+<h2 id="sec:handoff"><a class="anchor" href="#sec:handoff"></a><a class="link" href="#sec:handoff">19. Hand-off to BL1</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>Hand-off is the point of no return: the ROM transfers control to mutable software and its
 fences come down. Everything in this chapter exists to make that transition happen only when
 every security decision has demonstrably completed — and to make skipping any single check
 unprofitable for a fault-injection attacker.</p>
 </div>
-<div class="sect4">
-<h5 id="stack-integrity-s19s28"><a class="anchor" href="#stack-integrity-s19s28"></a><a class="link" href="#stack-integrity-s19s28">Stack Integrity ([S19]/[S28])</a></h5>
+<div class="sect2">
+<h3 id="stack-integrity-s19s28"><a class="anchor" href="#stack-integrity-s19s28"></a><a class="link" href="#stack-integrity-s19s28">19.1. Stack Integrity ([S19]/[S28])</a></h3>
 <div class="paragraph">
 <p><a id="req-SEP-ROM-HOFF-010"></a><strong>[SEP-ROM-HOFF-010]</strong> Early in the boot ([S19], immediately after
 <code>bl0_state</code> initialization) the ROM shall write the stack canary <code>0xDEAD5741</code> at
@@ -4337,8 +4554,8 @@ top-of-stack established at cold boot (legacy-ROM precedent: frame address equal
 stack top). A mismatch is fatal.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="fuse-secret-locking-s25s26"><a class="anchor" href="#fuse-secret-locking-s25s26"></a><a class="link" href="#fuse-secret-locking-s25s26">Fuse-Secret Locking ([S25]/[S26])</a></h5>
+<div class="sect2">
+<h3 id="fuse-secret-locking-s25s26"><a class="anchor" href="#fuse-secret-locking-s25s26"></a><a class="link" href="#fuse-secret-locking-s25s26">19.2. Fuse-Secret Locking ([S25]/[S26])</a></h3>
 <div class="paragraph">
 <p><a id="req-SEP-ROM-HOFF-030"></a><strong>[SEP-ROM-HOFF-030]</strong> Before hand-off the ROM shall set the SET-only
 read-locks in <code>SEP_EFUSE_MAP_LOCKS</code> for all six protected fuse fields — <code>CLASS_KEY</code>,
@@ -4362,8 +4579,8 @@ on reset and is re-established by the ROM on every boot. It constrains post-ROM 
 within the boot that set it — it is not a permanent device state.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="pre-hand-off-self-check-gate-ledger"><a class="anchor" href="#pre-hand-off-self-check-gate-ledger"></a><a class="link" href="#pre-hand-off-self-check-gate-ledger">Pre-Hand-off Self-Check (Gate Ledger)</a></h5>
+<div class="sect2">
+<h3 id="pre-hand-off-self-check-gate-ledger"><a class="anchor" href="#pre-hand-off-self-check-gate-ledger"></a><a class="link" href="#pre-hand-off-self-check-gate-ledger">19.3. Pre-Hand-off Self-Check (Gate Ledger)</a></h3>
 <div class="paragraph">
 <p>The accept-then-hand-off decision is hardened against single-glitch fault injection with a
 lockstep gate ledger (specified here; not yet implemented):</p>
@@ -4399,8 +4616,8 @@ false accept.</p>
 </ul>
 </div>
 </div>
-<div class="sect4">
-<h5 id="bl0_state-hand-off-block"><a class="anchor" href="#bl0_state-hand-off-block"></a><a class="link" href="#bl0_state-hand-off-block"><code>bl0_state</code> Hand-off Block</a></h5>
+<div class="sect2">
+<h3 id="bl0_state-hand-off-block"><a class="anchor" href="#bl0_state-hand-off-block"></a><a class="link" href="#bl0_state-hand-off-block">19.4. <code>bl0_state</code> Hand-off Block</a></h3>
 <div class="paragraph">
 <p><code>bl0_state</code> is the ROM→BL1 interface, placed at the very top of DCCM
 (<code>0xC0040000 + 0x20000 − sizeof</code>) so BL1 can discover it by magic and size from the DCCM end.</p>
@@ -4495,8 +4712,8 @@ integrity-checks the block via these.</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect4">
-<h5 id="release-and-jump-s29"><a class="anchor" href="#release-and-jump-s29"></a><a class="link" href="#release-and-jump-s29">Release and Jump ([S29])</a></h5>
+<div class="sect2">
+<h3 id="release-and-jump-s29"><a class="anchor" href="#release-and-jump-s29"></a><a class="link" href="#release-and-jump-s29">19.5. Release and Jump ([S29])</a></h3>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
@@ -4555,15 +4772,17 @@ before <code>rom_handoff_bl1()</code>, which satisfies SEP-ROM-HOFF-010.</p>
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="sec:retry"><a class="anchor" href="#sec:retry"></a><a class="link" href="#sec:retry">Retry and Backup Bank</a></h4>
+</div>
+<div class="sect1">
+<h2 id="sec:retry"><a class="anchor" href="#sec:retry"></a><a class="link" href="#sec:retry">20. Retry and Backup Bank</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>Boot flash carries two complete, independent manifest+payload pairs (<a href="#tbl:flash_layout">Boot flash layout</a>).
 If anything in the load/validation chain fails against one slot, the ROM retries the entire
 chain against the other before declaring the boot failed.</p>
 </div>
-<div class="sect4">
-<h5 id="slot-selection"><a class="anchor" href="#slot-selection"></a><a class="link" href="#slot-selection">Slot Selection</a></h5>
+<div class="sect2">
+<h3 id="slot-selection"><a class="anchor" href="#slot-selection"></a><a class="link" href="#slot-selection">20.1. Slot Selection</a></h3>
 <div class="paragraph">
 <p><a id="req-SEP-ROM-RETRY-010"></a><strong>[SEP-ROM-RETRY-010]</strong> In <code>BOOT_MODE_SPI</code> the ROM shall attempt at
 most two slots, indexed <code>slot = attempt XOR rotate_update</code>: with the strap clear, primary
@@ -4578,8 +4797,8 @@ not the ROM, owns retry there).</p>
 for the fallback attempt.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="retry-scope"><a class="anchor" href="#retry-scope"></a><a class="link" href="#retry-scope">Retry Scope</a></h5>
+<div class="sect2">
+<h3 id="retry-scope"><a class="anchor" href="#retry-scope"></a><a class="link" href="#retry-scope">20.2. Retry Scope</a></h3>
 <div class="paragraph">
 <p><a id="req-SEP-ROM-RETRY-030"></a><strong>[SEP-ROM-RETRY-030]</strong> The retry unit shall be the <strong>entire</strong>
 per-slot validation chain: transport read, structural validation, manifest hash, usage
@@ -4612,8 +4831,8 @@ never leave a half-applied device-state change behind.</p>
 <div class="title">Figure 17. Slot retry state machine (<code>BOOT_MODE_SPI</code>)</div>
 </div>
 </div>
-<div class="sect4">
-<h5 id="failure-convergence-s30"><a class="anchor" href="#failure-convergence-s30"></a><a class="link" href="#failure-convergence-s30">Failure Convergence ([S30])</a></h5>
+<div class="sect2">
+<h3 id="failure-convergence-s30"><a class="anchor" href="#failure-convergence-s30"></a><a class="link" href="#failure-convergence-s30">20.3. Failure Convergence ([S30])</a></h3>
 <div class="paragraph">
 <p><a id="req-SEP-ROM-RETRY-050"></a><strong>[SEP-ROM-RETRY-050]</strong> Every fatal path in the ROM shall converge in
 a single failure routine (<code>rom_err_fail</code>) that (a) records the error code in
@@ -4630,16 +4849,18 @@ bank like any other slot failure, per SEP-ROM-RETRY-030.</p>
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="sec:status"><a class="anchor" href="#sec:status"></a><a class="link" href="#sec:status">Status and POST Codes</a></h4>
+</div>
+<div class="sect1">
+<h2 id="sec:status"><a class="anchor" href="#sec:status"></a><a class="link" href="#sec:status">21. Status and POST Codes</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>Every boot stage announces itself through a machine-readable status channel. This is the
 primary observability contract for DV, debug, and the platform: a hung or failed boot is
 diagnosed from the last status word, not from console text (debug text exists only in debug
 builds).</p>
 </div>
-<div class="sect4">
-<h5 id="encoding"><a class="anchor" href="#encoding"></a><a class="link" href="#encoding">Encoding</a></h5>
+<div class="sect2">
+<h3 id="encoding"><a class="anchor" href="#encoding"></a><a class="link" href="#encoding">21.1. Encoding</a></h3>
 <div class="paragraph">
 <p>Status words are 32 bits:</p>
 </div>
@@ -4698,8 +4919,8 @@ hash prefixes).</p></td>
 implementation-specific.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="channels"><a class="anchor" href="#channels"></a><a class="link" href="#channels">Channels</a></h5>
+<div class="sect2">
+<h3 id="channels"><a class="anchor" href="#channels"></a><a class="link" href="#channels">21.2. Channels</a></h3>
 <table id="tbl:status_channels" class="tableblock frame-ends grid-rows stretch">
 <caption class="title">Table 25. Status output channels</caption>
 <colgroup>
@@ -4747,8 +4968,8 @@ monitor).</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect4">
-<h5 id="ring-buffer-semantics"><a class="anchor" href="#ring-buffer-semantics"></a><a class="link" href="#ring-buffer-semantics">Ring-Buffer Semantics</a></h5>
+<div class="sect2">
+<h3 id="ring-buffer-semantics"><a class="anchor" href="#ring-buffer-semantics"></a><a class="link" href="#ring-buffer-semantics">21.3. Ring-Buffer Semantics</a></h3>
 <div class="paragraph">
 <p>The ring lives in SMC SRAM (<code>head</code> owned by SEP, <code>tail</code> by SMC, lock-free).
 <a id="req-SEP-ROM-STAT-010"></a><strong>[SEP-ROM-STAT-010]</strong> The producer shall bounds-check the ring
@@ -4763,8 +4984,8 @@ error can always be recorded: <code>INFO</code>-class inserts require 3 free slo
 <code>ERROR</code> inserts down to the last free slot.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="sec:status_registry"><a class="anchor" href="#sec:status_registry"></a><a class="link" href="#sec:status_registry">Code Registry</a></h5>
+<div class="sect2">
+<h3 id="sec:status_registry"><a class="anchor" href="#sec:status_registry"></a><a class="link" href="#sec:status_registry">21.4. Code Registry</a></h3>
 <div class="paragraph">
 <p><a id="req-SEP-ROM-STAT-030"></a><strong>[SEP-ROM-STAT-030]</strong> All <code>SEP_MSG_*</code> status codes shall be
 single-sourced from <code>hw/sys/sep/bootrom/prod/include/status_values.h</code> (values <code>0x01</code>–<code>0x1FF</code> are aligned with
@@ -5392,8 +5613,8 @@ anywhere, including here.</p>
 </tbody>
 </table>
 </div>
-<div class="sect4">
-<h5 id="fatal-rom-error-codes"><a class="anchor" href="#fatal-rom-error-codes"></a><a class="link" href="#fatal-rom-error-codes">Fatal ROM Error Codes</a></h5>
+<div class="sect2">
+<h3 id="fatal-rom-error-codes"><a class="anchor" href="#fatal-rom-error-codes"></a><a class="link" href="#fatal-rom-error-codes">21.5. Fatal ROM Error Codes</a></h3>
 <div class="paragraph">
 <p>Fatal errors reported through <code>rom_err_fail()</code> (mailbox + <code>bl0_state.error_code</code>) use a
 separate 32-bit namespace:</p>
@@ -5503,8 +5724,10 @@ authoritative mapping is <a href="#sec:security_inventory">Security-Check Invent
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="sec:stage_trace"><a class="anchor" href="#sec:stage_trace"></a><a class="link" href="#sec:stage_trace">Appendix A: Boot-Stage to Status-Code Traceability</a></h4>
+</div>
+<div class="sect1">
+<h2 id="sec:stage_trace"><a class="anchor" href="#sec:stage_trace"></a><a class="link" href="#sec:stage_trace">Appendix A: Boot-Stage to Status-Code Traceability</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p><a href="#tbl:stage_trace">Boot stage → status code traceability</a> maps every boot stage to the status codes it emits, in emission order —
 the DV entry point for stage-by-stage checkers. Code <strong>names</strong> are authoritative here; their
@@ -5698,8 +5921,10 @@ return, so BL0 has no post-handoff path; in DV <code>bl1_pass_test</code> writes
 </tbody>
 </table>
 </div>
-<div class="sect3">
-<h4 id="sec:security_inventory"><a class="anchor" href="#sec:security_inventory"></a><a class="link" href="#sec:security_inventory">Appendix B: Security-Check Inventory</a></h4>
+</div>
+<div class="sect1">
+<h2 id="sec:security_inventory"><a class="anchor" href="#sec:security_inventory"></a><a class="link" href="#sec:security_inventory">Appendix B: Security-Check Inventory</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>Every security decision the ROM makes, as one row each: what is checked, against what, what
 failing looks like, and the ordering constraints a verification environment must assert.
@@ -5932,8 +6157,10 @@ HOFF-040/-050</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect3">
-<h4 id="sec:impl_matrix"><a class="anchor" href="#sec:impl_matrix"></a><a class="link" href="#sec:impl_matrix">Appendix C: Implementation-Status Matrix</a></h4>
+</div>
+<div class="sect1">
+<h2 id="sec:impl_matrix"><a class="anchor" href="#sec:impl_matrix"></a><a class="link" href="#sec:impl_matrix">Appendix C: Implementation-Status Matrix</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>Consolidated view of every divergence between this specification and the boot ROM at
 <code>hw/sys/sep/bootrom/prod</code> (plus toolchain issues that block end-to-end flows). Each row
@@ -6256,8 +6483,10 @@ evaluation (research R13); boot never depends on programmed fuses.</p></td>
 </tbody>
 </table>
 </div>
-<div class="sect3">
-<h4 id="sec:req_index"><a class="anchor" href="#sec:req_index"></a><a class="link" href="#sec:req_index">Appendix D: Requirement Index</a></h4>
+</div>
+<div class="sect1">
+<h2 id="sec:req_index"><a class="anchor" href="#sec:req_index"></a><a class="link" href="#sec:req_index">Appendix D: Requirement Index</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>All 95 tagged requirements. Each ID links to its definition.</p>
 </div>
