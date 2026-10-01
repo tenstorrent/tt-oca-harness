@@ -986,7 +986,7 @@ that follow a validated manifest.</p>
 </div>
 <div id="fig:sep_boot_flow_reset" class="imageblock kroki">
 <div class="content">
-<img src="_images/sep-rom-boot-flow-1-init-1f8bc1fd4b12950130974c4a2fe572e92e319ca3.svg" alt="Boot flow, 1 of 3: reset entry and platform initialization ([S01]-[S20])">
+<img src="_images/sep-rom-boot-flow-1-init-7b24489e0a80800c76b74d9c66d6b60a0bbc2df9.svg" alt="Boot flow, 1 of 3: reset entry and platform initialization ([S01]-[S20])">
 </div>
 <div class="title">Figure 1. Boot flow, 1 of 3: reset entry and platform initialization ([S01]-[S20])</div>
 </div>
@@ -1128,8 +1128,9 @@ read in the flow</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S18]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SBOOT_DIS fuse</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Secure-boot chicken bit read into <code>bl0_state</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure-boot posture fuses</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SBOOT_DIS</code> chicken bit read into <code>bl0_state</code>; chiplet
+debug lock latched</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:fuses">Fuse and System State</a></p></td>
 </tr>
 <tr>
@@ -1368,6 +1369,13 @@ protocol (<a href="#sec:warm_reset">Warm-Reset Resume Path</a>). Consequently ev
 lock, SMC hand-shake spins) hangs the boot rather than triggering a retry — this is the
 accepted failure mode for BL0, observable through the status channel (<a href="#sec:status">Status and POST Codes</a>).</p>
 </div>
+<div class="paragraph">
+<p>Waits on the secure-DMA engine and the HMAC message FIFO are outside that list and are
+bounded. A DMA transfer that neither completes nor errors within a budget scaled to its
+length is aborted and returns the DMA error its caller handles; a message FIFO that
+stops draining fails the hash. Either becomes a failed manifest attempt or a terminal error
+rather than a hang.</p>
+</div>
 </div>
 <div class="sect4">
 <h5 id="early-platform-initialization-s04s20"><a class="anchor" href="#early-platform-initialization-s04s20"></a><a class="link" href="#early-platform-initialization-s04s20">Early Platform Initialization ([S04]–[S20])</a></h5>
@@ -1458,8 +1466,9 @@ passed its known-answer self-test ([S14]) and <code>bl0_state</code> exists to r
 ([S10]).</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[S18] SBOOT_DIS</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Secure-boot chicken bit read (<a href="#sec:fuses">Fuse and System State</a>).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[S18] SBOOT_DIS, CHIPLET_DBG</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure-boot chicken bit and chiplet debug lock read
+(<a href="#sec:fuses">Fuse and System State</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S19] canary</p></td>
@@ -1887,15 +1896,17 @@ timeout (the accepted BL0 hang failure mode, SEP-ROM-CPU-080).</p>
 </div>
 <div class="paragraph">
 <p>The poll is a discrete stage ([S08]) that runs unconditionally, ahead of every fuse consumer:
-the <code>smu_pll_sysclk</code> read in [S09], the lifecycle state in [S11], <code>SBOOT_DIS</code> in [S18], and the
+the <code>smu_pll_sysclk</code> read in [S09], the lifecycle state in [S11], <code>SBOOT_DIS</code> and the disable
+vectors in [S18], and the
 key digests, revocation bits, security version and identity fields read during manifest
 validation. The ROM does not rely on sensing having completed before the SEP core reset
 released.</p>
 </div>
 <div class="paragraph">
 <p>A shadow read taken before sensing completes returns zero, and zero is a legal encoding for
-the fields that gate security — <code>LC_STATE</code> zero decodes as <code>TEST_DEV</code>, where secure boot is
-optional — so an early lifecycle read would fail open.</p>
+the fields that gate security — <code>LC_STATE</code> zero decodes as <code>TEST_DEV</code>, and zero disable
+vectors leave chiplet debug open, so secure boot is optional — so an early lifecycle read would
+fail open.</p>
 </div>
 </div>
 <div class="sect4">
@@ -1925,7 +1936,8 @@ optional — so an early lifecycle read would fail open.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>TEST_DEV</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Development / test. Security optional (see <a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a>).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Development / test. Security optional unless chiplet debug is
+disabled (see <a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>PROD</code></p></td>
@@ -1941,7 +1953,7 @@ optional — so an early lifecycle read would fail open.</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>RMA_CHIPLET</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x4</code>–<code>0x7</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x6</code>–<code>0x7</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Return-material state, chiplet scope.</p></td>
 </tr>
@@ -1954,7 +1966,7 @@ locked out (<a href="#sec:demotion">Demotion Handling</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">any other</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x9</code>–<code>0xF</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x4</code>–<code>0x5</code>, <code>0x9</code>–<code>0xF</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Invalid</strong> — see below.</p></td>
 </tr>
@@ -1962,11 +1974,12 @@ locked out (<a href="#sec:demotion">Demotion Handling</a>).</p></td>
 </table>
 <div class="paragraph">
 <p><a id="req-SEP-ROM-FUSE-020"></a><strong>[SEP-ROM-FUSE-020]</strong> The ROM shall validate the sensed LC state
-against the closed set above. On an invalid value the ROM shall (a) hold all SMC cores in
-reset (clear the active-low core reset bits <code>[3:0]</code> of SMC <code>CPU_CTRL_RESET_CTRL</code>, preserving
-the rest of the register), rendering the SMU inoperative, and (b) fail fatally
-(<code>ROM_ERR_LIFECYCLE_INVALID</code>, <code>0xA002</code>). An invalid LC state may indicate a fuse attack or
-hardware fault; the system shall not run in an unknown lifecycle state.</p>
+against the closed set above, which is the set the lifecycle controller decodes: any value it
+treats as INVALID, the ROM shall treat as invalid. On an invalid value the ROM shall (a) hold
+all SMC cores in reset (clear the active-low core reset bits <code>[3:0]</code> of SMC
+<code>CPU_CTRL_RESET_CTRL</code>, preserving the rest of the register), rendering the SMU inoperative,
+and (b) fail fatally (<code>ROM_ERR_LIFECYCLE_INVALID</code>, <code>0xA002</code>). An invalid LC state may indicate
+a fuse attack or hardware fault; the system shall not run in an unknown lifecycle state.</p>
 </div>
 <div class="paragraph">
 <p><a id="req-SEP-ROM-FUSE-030"></a><strong>[SEP-ROM-FUSE-030]</strong> The validated LC state shall be recorded in
@@ -2002,6 +2015,30 @@ bit means the array is not what the ROM believes it to be; [S18] stops there wit
 </div>
 </div>
 <div class="sect4">
+<h5 id="sec:fuse_chiplet_dbg"><a class="anchor" href="#sec:fuse_chiplet_dbg"></a><a class="link" href="#sec:fuse_chiplet_dbg">Chiplet Debug Lock ([S18])</a></h5>
+<div class="paragraph">
+<p><code>CHIPLET_DBG</code> is bit 1 of the <code>SIP_DIS</code> (<code>0x1093_0018</code>) and <code>SYS_DIS</code> (<code>0x1093_0020</code>)
+disable vectors. Set in either, it closes external debug access to the chiplet and to the SEP,
+and on a <code>TEST_DEV</code> part it makes secure boot enforced (SEP-ROM-SB-025).</p>
+</div>
+<div class="paragraph">
+<p>[S18] reads the <code>SIP_DIS_READ_LOCK</code> / <code>SYS_DIS_READ_LOCK</code> bits of <code>LOCKS</code> and, when neither is
+set, both vectors, once, after the <code>SBOOT_DIS</code> read, and latches the result for the library&#8217;s
+<code>is_secure_boot_active()</code> callback. A read-locked field returns a sentinel instead of its
+value, so a lock on either vector counts as debug disabled.</p>
+</div>
+<div class="paragraph">
+<p>The ROM reads the fuse shadows rather than <code>FEAT_CTRL</code>. <code>SEC_DIS</code> forces every <code>FEAT_CTRL</code>
+bit to 1, and <code>TEST_DEV</code> demotion forces the <code>DBG_1</code> group to 1, so either would report debug
+enabled on a part whose fuses disable it.</p>
+</div>
+<div class="paragraph">
+<p>When the lock is what makes a <code>TEST_DEV</code> part enforce secure boot, [S18] reports
+<code>SBOOT_DBG_LOCK</code>. It is not reported in <code>PROD</code> or <code>PROD_END</code>, which enforce regardless, or when
+<code>SBOOT_DIS</code> overrides the lock.</p>
+</div>
+</div>
+<div class="sect4">
 <h5 id="fuse-fields-touched-by-the-rom"><a class="anchor" href="#fuse-fields-touched-by-the-rom"></a><a class="link" href="#fuse-fields-touched-by-the-rom">Fuse Fields Touched by the ROM</a></h5>
 <table id="tbl:fuse_fields" class="tableblock frame-ends grid-rows stretch">
 <caption class="title">Table 10. SEP efuse map fields touched by BL0</caption>
@@ -2025,7 +2062,8 @@ bit means the array is not what the ROM believes it to be; [S18] stops there wit
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x10930000</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">32 b</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Read-lock control for the six protected fields; SET-only, and
-cleared by reset. Written + verified at [S25]/[S26] (<a href="#sec:handoff">Hand-off to BL1</a>).</p></td>
+cleared by reset. Written + verified at [S25]/[S26] (<a href="#sec:handoff">Hand-off to BL1</a>). The <code>SIP_DIS</code> /
+<code>SYS_DIS</code> read-lock bits are read at [S18].</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>LC_STATE</code></p></td>
@@ -2038,6 +2076,13 @@ cleared by reset. Written + verified at [S25]/[S26] (<a href="#sec:handoff">Hand
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x10930010</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 b</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Secure-boot chicken bit.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SIP_DIS</code> / <code>SYS_DIS</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x10930018</code> / <code>0x10930020</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64 b each</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Disable vectors; the ROM
+reads <code>CHIPLET_DBG</code> (bit 1) of each at [S18] (<a href="#sec:fuse_chiplet_dbg">Chiplet Debug Lock ([S18])</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>CLASS_KEY</code></p></td>
@@ -3216,7 +3261,8 @@ shortcut than the whole-chain EDN grant it replaces.
 <h5 id="secure-boot-decision"><a class="anchor" href="#secure-boot-decision"></a><a class="link" href="#secure-boot-decision">Secure-Boot Decision</a></h5>
 <div class="paragraph">
 <p>Secure boot — the requirement that the manifest carry a valid signature from an authorized
-root key — is decided from four inputs: the lifecycle state, the <code>SBOOT_DIS</code> fuse, the signed
+root key — is decided from five inputs: the lifecycle state, the chiplet debug lock
+(<code>CHIPLET_DBG</code> in <code>SIP_DIS</code> / <code>SYS_DIS</code>), the <code>SBOOT_DIS</code> fuse, the signed
 <code>secure_boot_control</code> field, and the unauthenticated escalation flag. The decision is made
 once per manifest attempt, recorded in <code>bl0_state.secure_boot</code>, and feeds the validation
 gating, the boot measurement, and the hand-off self-check.</p>
@@ -3228,8 +3274,9 @@ gating, the boot measurement, and the hand-off self-check.</p>
 enforced. No manifest content shall be able to disable it.</p>
 </li>
 <li>
-<p><a id="req-SEP-ROM-SB-020"></a><strong>[SEP-ROM-SB-020]</strong> In <code>TEST_DEV</code> and the RMA states, secure boot
-shall be enabled when <strong>either</strong> trigger is set, and disabled otherwise:</p>
+<p><a id="req-SEP-ROM-SB-020"></a><strong>[SEP-ROM-SB-020]</strong> In <code>TEST_DEV</code> with chiplet debug enabled, and in
+the RMA states, secure boot shall be enabled when <strong>either</strong> trigger is set, and disabled
+otherwise:</p>
 <div class="ulist">
 <ul>
 <li>
@@ -3245,6 +3292,17 @@ it.</p>
 </div>
 </li>
 <li>
+<p><a id="req-SEP-ROM-SB-025"></a><strong>[SEP-ROM-SB-025]</strong> In <code>TEST_DEV</code>, secure boot shall be enforced when
+chiplet-scope debug is disabled: <code>CHIPLET_DBG</code> set in <code>SIP_DIS</code> or <code>SYS_DIS</code>, or either
+vector read-locked. No manifest content shall be able to disable it.</p>
+<div class="paragraph">
+<p>A locked debug posture is only a guarantee if unsigned code cannot be loaded in its place, so
+a debug-locked <code>TEST_DEV</code> part is treated as <code>PROD</code> is. The ROM reads the raw fuse shadows once
+at [S18] (<a href="#sec:fuse_chiplet_dbg">Chiplet Debug Lock ([S18])</a>). The RMA states are unaffected: <code>RMA_CHIPLET</code> ignores both
+vectors and <code>RMA_SiP</code> ignores <code>SYS_DIS</code>, and both stay manifest-optional.</p>
+</div>
+</li>
+<li>
 <p><a id="req-SEP-ROM-SB-030"></a><strong>[SEP-ROM-SB-030]</strong> The escalation flag shall be strictly
 escalation-only: it can turn secure boot <strong>on</strong>, never off. (It lives in the unsigned tail
 and is never authenticated; an attacker flipping it can only subject themselves to more
@@ -3253,8 +3311,10 @@ verification.)</p>
 <li>
 <p><a id="req-SEP-ROM-SB-040"></a><strong>[SEP-ROM-SB-040]</strong> The <code>SBOOT_DIS</code> fuse (chicken bit) set shall
 disable secure boot <strong>unless the signed</strong> <code>secure_boot_control</code> bit 0 is set. It is a fused,
-manufacturing-time escape hatch over the device&#8217;s own inputs — the lifecycle state and the
-fuse itself — and the <strong>unauthenticated</strong> escalation flag shall not override it.</p>
+manufacturing-time escape hatch over the device&#8217;s own inputs — the lifecycle state, the
+chiplet debug lock and the fuse itself — and the <strong>unauthenticated</strong> escalation flag shall
+not override it. An owner relying on SEP-ROM-SB-010 or SEP-ROM-SB-025 must leave
+<code>SBOOT_DIS</code> unburned and write-lock it.</p>
 <div class="paragraph">
 <p>An image that asks to be verified is verified. The precedence is
 <code>secure_boot_control</code> first, then the device&#8217;s disable, then the device&#8217;s enforcement view,
@@ -3300,56 +3360,56 @@ keeps the decision and the attestation of that decision the same fact.</p>
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PROD / PROD_END</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PROD / PROD_END / TEST_DEV (debug locked)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>enforced</strong></p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PROD / PROD_END</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PROD / PROD_END / TEST_DEV (debug locked)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>on</strong> (manifest outranks the fuse)</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PROD / PROD_END</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PROD / PROD_END / TEST_DEV (debug locked)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">off (chicken bit)</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV / RMA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV (debug open) / RMA</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>on</strong> (manifest-declared)</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV / RMA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV (debug open) / RMA</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>on</strong> (forced by escalation flag)</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV / RMA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV (debug open) / RMA</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">off</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV / RMA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV (debug open) / RMA</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>on</strong> (manifest outranks the fuse)</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV / RMA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV (debug open) / RMA</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
@@ -3357,6 +3417,10 @@ keeps the decision and the attestation of that decision the same fact.</p>
 </tr>
 </tbody>
 </table>
+<div class="paragraph">
+<p><em>Debug locked</em> means <code>CHIPLET_DBG</code> is set in <code>SIP_DIS</code> or <code>SYS_DIS</code>, or either vector is
+read-locked (SEP-ROM-SB-025).</p>
+</div>
 <div class="admonitionblock note">
 <table>
 <tr>
@@ -3377,7 +3441,7 @@ verification of any individual image via the escalation flag (SEP-ROM-SB-020/-03
 </div>
 <div id="fig:secure_boot_decision" class="imageblock kroki">
 <div class="content">
-<img src="_images/secure-boot-decision-19a8c399a78de4d5257298fb9ad0df7b63754491.svg" alt="Secure-boot decision">
+<img src="_images/secure-boot-decision-3cb59b19ecae159da1e0672494215f70c31f1ab4.svg" alt="Secure-boot decision">
 </div>
 <div class="title">Figure 11. Secure-boot decision</div>
 </div>
@@ -5592,6 +5656,12 @@ denotes a following 16-bit payload word.</p>
 <code>ROM_ERR_SBOOT_DIS_RSVD_SET</code></p></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[S18] CHIPLET_DBG</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SBOOT_DBG_LOCK</code> when the debug lock is what makes a <code>TEST_DEV</code> part
+enforce secure boot</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S20] DMA</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>DMA_INIT_CHECK</code> (DEBUG)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
@@ -6475,7 +6545,13 @@ validation only</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-SB-020">SEP-ROM-SB-020</a></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV/RMA: either trigger enables</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV (debug open)/RMA: either trigger enables</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-SB-025">SEP-ROM-SB-025</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV with CHIPLET_DBG disabled or its vector
+read-locked enforces secure boot</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a></p></td>
 </tr>
 <tr>

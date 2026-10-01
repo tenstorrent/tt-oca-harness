@@ -725,8 +725,10 @@ terminal error, and stop.</p>
 </div>
 <div class="paragraph">
 <p><code>SBOOT_DIS</code> is an eFuse override that disables secure boot. When it is clear,
-PROD and PROD_END enforce secure boot regardless of the manifest request.
-TEST_DEV and RMA enable secure boot when the manifest requests it. An encrypted
+PROD and PROD_END enforce secure boot regardless of the manifest request, and
+so does TEST_DEV when <code>CHIPLET_DBG</code> is set in <code>SIP_DIS</code> or <code>SYS_DIS</code> (or
+either vector is read-locked). Otherwise TEST_DEV and RMA enable secure boot
+when the manifest requests it. An encrypted
 payload is rejected when secure boot is not active.</p>
 </div>
 </div>

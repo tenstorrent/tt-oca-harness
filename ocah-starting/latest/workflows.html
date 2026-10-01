@@ -791,7 +791,154 @@ different program, the program suggested may be overridden with <code>--wave-vie
 </div>
 </div>
 <div class="sect1">
-<h2 id="synthesis"><a class="anchor" href="#synthesis"></a><a class="link" href="#synthesis">5. Synthesis</a></h2>
+<h2 id="virtual-platform"><a class="anchor" href="#virtual-platform"></a><a class="link" href="#virtual-platform">5. Virtual Platform</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The OCA Harness Virtual Platform (VP) is a SystemC-based simulation environment for testing chiplets, provided by the <code>tt-oca-harness-model</code> submodule under <code>virtual_platform/</code>. It runs firmware (including production boot ROMs) faster than RTL simulation. The VP includes three executables:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>sep-vp</code> — the SEP subsystem (default).</p>
+</li>
+<li>
+<p><code>smc-vp</code> — the SMC subsystem (requires Whisper ISS).</p>
+</li>
+<li>
+<p><code>smu-vp</code> — the SMC and SEP subsystems in one process (for cross-subsystem testing).</p>
+</li>
+</ul>
+</div>
+<div class="sect2">
+<h3 id="prerequisites"><a class="anchor" href="#prerequisites"></a><a class="link" href="#prerequisites">5.1. Prerequisites</a></h3>
+<div class="ulist">
+<ul>
+<li>
+<p>A C&#43;&#43;20 compiler (e.g., <code>g&#43;&#43;-12</code>).</p>
+</li>
+<li>
+<p>SystemC, CCI, Boost and OpenSSL, built into <code>virtual_platform/local/</code> when the host does not provide them.</p>
+</li>
+<li>
+<p>The Whisper ISS, for <code>smc-vp</code> and <code>smu-vp</code> only; it is built on first use.</p>
+</li>
+<li>
+<p>A RISC-V toolchain with picolibc for the SEP boot ROM and firmware tests; without one those builds fall back to the container.</p>
+</li>
+<li>
+<p><code>uv</code> for the Python environment.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>With <code>VP_CONTAINER=1</code> the container provides all of these.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="initialising-the-virtual-platform"><a class="anchor" href="#initialising-the-virtual-platform"></a><a class="link" href="#initialising-the-virtual-platform">5.2. Initialising the Virtual Platform</a></h3>
+<div class="paragraph">
+<p>To use the container to build and run the VP, set <code>VP_CONTAINER=1</code></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash"># Initialize the model submodule
+make ocah-vp-init
+
+# Build dependencies (if not provided by host)
+make ocah-vp-deps</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="running-tests-on-the-virtual-platform"><a class="anchor" href="#running-tests-on-the-virtual-platform"></a><a class="link" href="#running-tests-on-the-virtual-platform">5.3. Running Tests on the Virtual Platform</a></h3>
+<div class="sect3">
+<h4 id="sep-virtual-platform"><a class="anchor" href="#sep-virtual-platform"></a><a class="link" href="#sep-virtual-platform">5.3.1. SEP Virtual Platform</a></h4>
+<div class="paragraph">
+<p>The SEP Virtual Platform is integrated with multiple different test suites:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash"># Build
+make -C virtual_platform vp
+
+# Run the SEP test suite
+make -C virtual_platform vp-test # pass extra arguments with PYTEST_ARGS='&lt;args&gt;'
+
+# Run a software test
+make -C virtual_platform smoke SW_TEST='&lt;test&gt;' # See virtual_platform/tt-oca-harness-model/sw/sep-vp-tests
+
+# Run a fw test
+make -C virtual_platform fw-run FW_TEST='&lt;test&gt;' # See hw/sys/sep/dv/fw
+
+# Build and run the SEP BOOT ROM
+make -C virtual_platform boot-build
+make -C virtual_platform boot-run # Configure with BOOT_ARGS='&lt;args&gt;'</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="smc-and-smu-virtual-platforms"><a class="anchor" href="#smc-and-smu-virtual-platforms"></a><a class="link" href="#smc-and-smu-virtual-platforms">5.3.2. SMC and SMU Virtual Platforms</a></h4>
+<div class="paragraph">
+<p>The SMC Virtual Platform provides a single test suite, while the SMU integrates the SMC and SEP, to provide a combined test environment and suite.</p>
+</div>
+<div class="paragraph">
+<p>For the SMC:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash"># build smc-vp (requires Whisper ISS)
+make -C virtual_platform smc-vp
+
+# Run test suite
+make -C virtual_platform smc-test
+
+# Run single test, see virtual_platform/tt-oca-harness-model/sw/smc-vp-tests
+make -C virtual_platform smc-test SMC_ARGS='&lt;test-name&gt;'</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>For the SMU:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash"># build smu-vp (requires Whisper ISS)
+make -C virtual_platform smu-vp
+
+# Run test suite
+make -C virtual_platform smu-test
+
+# Run single test, see virtual_platform/tt-oca-harness-model/sw/smu-vp-tests
+make -C virtual_platform smu-test SMU_ARGS='&lt;test-name&gt;'</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="further-reading"><a class="anchor" href="#further-reading"></a><a class="link" href="#further-reading">5.4. Further Reading</a></h3>
+<div class="ulist">
+<ul>
+<li>
+<p><code>virtual_platform/Makefile</code> for detailed build options (<code>make -C virtual_platform help</code>).</p>
+</li>
+<li>
+<p><code>virtual_platform/README.md</code> for the three executables, dependency resolution and the containerized flow.</p>
+</li>
+<li>
+<p><code>virtual_platform/BUILDING_NATIVELY.md</code> for building and running the VP on your own host.</p>
+</li>
+<li>
+<p><code>virtual_platform/sepvp/README.md</code> for the <code>sepvp</code> runner: boot straps, fuse maps and status channels.</p>
+</li>
+<li>
+<p><code>virtual_platform/RUNNING_THE_SMC_BOOT_ROM.md</code> for guidance on running the SMC Boot ROM on the Virtual Platform.</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="synthesis"><a class="anchor" href="#synthesis"></a><a class="link" href="#synthesis">6. Synthesis</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>OCAH is designed around open-source workflows. For this reason, we have chosen to
@@ -842,7 +989,7 @@ in <a href="https://github.com/tenstorrent/tt-oca-harness/blob/main/flows/synth/
 </div>
 </div>
 <div class="sect1">
-<h2 id="linting"><a class="anchor" href="#linting"></a><a class="link" href="#linting">6. Linting</a></h2>
+<h2 id="linting"><a class="anchor" href="#linting"></a><a class="link" href="#linting">7. Linting</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>We use linters within the development of OCAH to perform static analysis
@@ -875,9 +1022,9 @@ make lint-verilator-all BLOCK=smu VERILATOR_LINT_PATH=hw/ip/gpio</code></pre>
 </div>
 </div>
 <div class="sect2">
-<h3 id="verilog"><a class="anchor" href="#verilog"></a><a class="link" href="#verilog">6.1. Verilog</a></h3>
+<h3 id="verilog"><a class="anchor" href="#verilog"></a><a class="link" href="#verilog">7.1. Verilog</a></h3>
 <div class="sect3">
-<h4 id="style-and-lint-checking-with-verible"><a class="anchor" href="#style-and-lint-checking-with-verible"></a><a class="link" href="#style-and-lint-checking-with-verible">6.1.1. Style and Lint checking with Verible</a></h4>
+<h4 id="style-and-lint-checking-with-verible"><a class="anchor" href="#style-and-lint-checking-with-verible"></a><a class="link" href="#style-and-lint-checking-with-verible">7.1.1. Style and Lint checking with Verible</a></h4>
 <div class="paragraph">
 <p>To run the verible linter on all SystemVerilog files, use the following command:</p>
 </div>
@@ -904,7 +1051,7 @@ respectively, for each rule.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="linting-with-verilator"><a class="anchor" href="#linting-with-verilator"></a><a class="link" href="#linting-with-verilator">6.1.2. Linting with Verilator</a></h4>
+<h4 id="linting-with-verilator"><a class="anchor" href="#linting-with-verilator"></a><a class="link" href="#linting-with-verilator">7.1.2. Linting with Verilator</a></h4>
 <div class="paragraph">
 <p>Verilator structurally lints each discovered hardware block as its own top:</p>
 </div>
@@ -942,7 +1089,7 @@ names a <code>field_combo</code> or <code>field_storage</code> aggregate, while 
 </div>
 </div>
 <div class="sect3">
-<h4 id="style-and-lint-checking-with-slang"><a class="anchor" href="#style-and-lint-checking-with-slang"></a><a class="link" href="#style-and-lint-checking-with-slang">6.1.3. Style and Lint checking with Slang</a></h4>
+<h4 id="style-and-lint-checking-with-slang"><a class="anchor" href="#style-and-lint-checking-with-slang"></a><a class="link" href="#style-and-lint-checking-with-slang">7.1.3. Style and Lint checking with Slang</a></h4>
 <div class="paragraph">
 <p>To run the slang linter on each <code>flow.mk</code> top, use the following command:</p>
 </div>
@@ -958,9 +1105,9 @@ further constrain the printed warnings, also use <code>SLANG_LINT_PATH</code>.</
 </div>
 </div>
 <div class="sect2">
-<h3 id="cc"><a class="anchor" href="#cc"></a><a class="link" href="#cc">6.2. C/C++</a></h3>
+<h3 id="cc"><a class="anchor" href="#cc"></a><a class="link" href="#cc">7.2. C/C++</a></h3>
 <div class="sect3">
-<h4 id="style-and-format-with-clang-format"><a class="anchor" href="#style-and-format-with-clang-format"></a><a class="link" href="#style-and-format-with-clang-format">6.2.1. Style and Format with Clang-Format</a></h4>
+<h4 id="style-and-format-with-clang-format"><a class="anchor" href="#style-and-format-with-clang-format"></a><a class="link" href="#style-and-format-with-clang-format">7.2.1. Style and Format with Clang-Format</a></h4>
 <div class="paragraph">
 <p>The C/C++ Firmware files included in each component are checked and formatted with
 <code>clang-format</code>. This may be managed by <code>uv</code>, or <code>OCAH_CLANG_FORMAT_SKIP_UV=1</code>
@@ -981,9 +1128,9 @@ path for files to check and format may be alternatively constrained with <code>F
 </div>
 </div>
 <div class="sect2">
-<h3 id="python"><a class="anchor" href="#python"></a><a class="link" href="#python">6.3. Python</a></h3>
+<h3 id="python"><a class="anchor" href="#python"></a><a class="link" href="#python">7.3. Python</a></h3>
 <div class="sect3">
-<h4 id="lint-and-format-with-ruff"><a class="anchor" href="#lint-and-format-with-ruff"></a><a class="link" href="#lint-and-format-with-ruff">6.3.1. Lint and Format with <code>ruff</code></a></h4>
+<h4 id="lint-and-format-with-ruff"><a class="anchor" href="#lint-and-format-with-ruff"></a><a class="link" href="#lint-and-format-with-ruff">7.3.1. Lint and Format with <code>ruff</code></a></h4>
 <div class="paragraph">
 <p>Ruff checks first-party Python under tools/, scripts/, hw/, and .github/. Generated register models, vendored sources, submodules, nonfree/, and build output are excluded.</p>
 </div>
@@ -1010,7 +1157,7 @@ make format-python</code></pre>
 </div>
 </div>
 <div class="sect3">
-<h4 id="lint-with-mypy"><a class="anchor" href="#lint-with-mypy"></a><a class="link" href="#lint-with-mypy">6.3.2. Lint with <code>mypy</code></a></h4>
+<h4 id="lint-with-mypy"><a class="anchor" href="#lint-with-mypy"></a><a class="link" href="#lint-with-mypy">7.3.2. Lint with <code>mypy</code></a></h4>
 <div class="paragraph">
 <p>MyPy also lints first-party Python while excluding generated register
 models, vendored sources, submodules, <code>nonfree/</code>, and build output. It starts
@@ -1028,9 +1175,9 @@ across the tree.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="build-system-and-helper-scripts"><a class="anchor" href="#build-system-and-helper-scripts"></a><a class="link" href="#build-system-and-helper-scripts">6.4. Build System and Helper Scripts</a></h3>
+<h3 id="build-system-and-helper-scripts"><a class="anchor" href="#build-system-and-helper-scripts"></a><a class="link" href="#build-system-and-helper-scripts">7.4. Build System and Helper Scripts</a></h3>
 <div class="sect3">
-<h4 id="makefile-lint-with-checkmake"><a class="anchor" href="#makefile-lint-with-checkmake"></a><a class="link" href="#makefile-lint-with-checkmake">6.4.1. Makefile Lint with <code>checkmake</code></a></h4>
+<h4 id="makefile-lint-with-checkmake"><a class="anchor" href="#makefile-lint-with-checkmake"></a><a class="link" href="#makefile-lint-with-checkmake">7.4.1. Makefile Lint with <code>checkmake</code></a></h4>
 <div class="paragraph">
 <p>To lint all <code>Makefile</code> and <code>.mk</code> files used within OCAH, run</p>
 </div>
@@ -1062,7 +1209,7 @@ legitimate pattern-rule/<code>ifeq</code> target overloads)&#8201;&#8212;&#8201;
 </div>
 </div>
 <div class="sect3">
-<h4 id="shell-script-lint-and-format-with-shellcheck"><a class="anchor" href="#shell-script-lint-and-format-with-shellcheck"></a><a class="link" href="#shell-script-lint-and-format-with-shellcheck">6.4.2. Shell Script Lint and Format with <code>shellcheck</code></a></h4>
+<h4 id="shell-script-lint-and-format-with-shellcheck"><a class="anchor" href="#shell-script-lint-and-format-with-shellcheck"></a><a class="link" href="#shell-script-lint-and-format-with-shellcheck">7.4.2. Shell Script Lint and Format with <code>shellcheck</code></a></h4>
 <div class="paragraph">
 <p>To lint all shell scripts used within OCAH, run</p>
 </div>
@@ -1087,7 +1234,7 @@ make format-shell-check</code></pre>
 </div>
 </div>
 <div class="sect3">
-<h4 id="format-nix-with-nix-fmt"><a class="anchor" href="#format-nix-with-nix-fmt"></a><a class="link" href="#format-nix-with-nix-fmt">6.4.3. Format Nix with <code>nix fmt</code></a></h4>
+<h4 id="format-nix-with-nix-fmt"><a class="anchor" href="#format-nix-with-nix-fmt"></a><a class="link" href="#format-nix-with-nix-fmt">7.4.3. Format Nix with <code>nix fmt</code></a></h4>
 <div class="paragraph">
 <p>Nix files (<code>*.nix</code>) are formatted with <a href="https://github.com/kamadorueda/alejandra">alejandra</a>.
 To check formatting without modifying files:</p>
@@ -1117,9 +1264,9 @@ inline diff annotations through reviewdog.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="configuration-files"><a class="anchor" href="#configuration-files"></a><a class="link" href="#configuration-files">6.5. Configuration Files</a></h3>
+<h3 id="configuration-files"><a class="anchor" href="#configuration-files"></a><a class="link" href="#configuration-files">7.5. Configuration Files</a></h3>
 <div class="sect3">
-<h4 id="toml-file-lint-with-tomllint"><a class="anchor" href="#toml-file-lint-with-tomllint"></a><a class="link" href="#toml-file-lint-with-tomllint">6.5.1. TOML file Lint with <code>tomllint</code></a></h4>
+<h4 id="toml-file-lint-with-tomllint"><a class="anchor" href="#toml-file-lint-with-tomllint"></a><a class="link" href="#toml-file-lint-with-tomllint">7.5.1. TOML file Lint with <code>tomllint</code></a></h4>
 <div class="paragraph">
 <p>TOML File syntax may be checked by running</p>
 </div>
@@ -1150,7 +1297,7 @@ file before the runner that reads it fails with a less legible error.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="yaml-file-lint-with-yamllint"><a class="anchor" href="#yaml-file-lint-with-yamllint"></a><a class="link" href="#yaml-file-lint-with-yamllint">6.5.2. YAML file Lint with <code>yamllint</code></a></h4>
+<h4 id="yaml-file-lint-with-yamllint"><a class="anchor" href="#yaml-file-lint-with-yamllint"></a><a class="link" href="#yaml-file-lint-with-yamllint">7.5.2. YAML file Lint with <code>yamllint</code></a></h4>
 <div class="paragraph">
 <p>YAML File syntax may be checked by running</p>
 </div>
@@ -1165,7 +1312,7 @@ file before the runner that reads it fails with a less legible error.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="documentation-files"><a class="anchor" href="#documentation-files"></a><a class="link" href="#documentation-files">6.6. Documentation Files</a></h3>
+<h3 id="documentation-files"><a class="anchor" href="#documentation-files"></a><a class="link" href="#documentation-files">7.6. Documentation Files</a></h3>
 <div class="admonitionblock note">
 <table>
 <tr>
@@ -1185,7 +1332,7 @@ math notation or bit-range syntax that only looks like Markdown.</p>
 </table>
 </div>
 <div class="sect3">
-<h4 id="markdown-lint-with-markdownlint"><a class="anchor" href="#markdown-lint-with-markdownlint"></a><a class="link" href="#markdown-lint-with-markdownlint">6.6.1. Markdown Lint with <code>markdownlint</code></a></h4>
+<h4 id="markdown-lint-with-markdownlint"><a class="anchor" href="#markdown-lint-with-markdownlint"></a><a class="link" href="#markdown-lint-with-markdownlint">7.6.1. Markdown Lint with <code>markdownlint</code></a></h4>
 <div class="paragraph">
 <p>To check the markdown files within the OCAH Directories, run</p>
 </div>
@@ -1207,7 +1354,7 @@ math notation or bit-range syntax that only looks like Markdown.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="spell-checking-with-codespell"><a class="anchor" href="#spell-checking-with-codespell"></a><a class="link" href="#spell-checking-with-codespell">6.6.2. Spell-Checking with Codespell</a></h4>
+<h4 id="spell-checking-with-codespell"><a class="anchor" href="#spell-checking-with-codespell"></a><a class="link" href="#spell-checking-with-codespell">7.6.2. Spell-Checking with Codespell</a></h4>
 <div class="paragraph">
 <p>To check the spelling of all documentation files, run the following</p>
 </div>
@@ -1230,9 +1377,9 @@ math notation or bit-range syntax that only looks like Markdown.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="synthesis-scripts"><a class="anchor" href="#synthesis-scripts"></a><a class="link" href="#synthesis-scripts">6.7. Synthesis Scripts</a></h3>
+<h3 id="synthesis-scripts"><a class="anchor" href="#synthesis-scripts"></a><a class="link" href="#synthesis-scripts">7.7. Synthesis Scripts</a></h3>
 <div class="sect3">
-<h4 id="tcl-script-style-lint-and-format-with-tclint"><a class="anchor" href="#tcl-script-style-lint-and-format-with-tclint"></a><a class="link" href="#tcl-script-style-lint-and-format-with-tclint">6.7.1. TCL Script Style, Lint and Format with Tclint</a></h4>
+<h4 id="tcl-script-style-lint-and-format-with-tclint"><a class="anchor" href="#tcl-script-style-lint-and-format-with-tclint"></a><a class="link" href="#tcl-script-style-lint-and-format-with-tclint">7.7.1. TCL Script Style, Lint and Format with Tclint</a></h4>
 <div class="paragraph">
 <p>To lint the TCL scripts (used to automate the synthesis workflow) in the repository,
 we use the package <code>tclint</code>. This may be managed by <code>uv</code> - run <code>uv sync</code> to install,
@@ -1262,7 +1409,7 @@ be checked with <code>make format-tcl-check</code>:</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="optional-pre-commit-checks"><a class="anchor" href="#optional-pre-commit-checks"></a><a class="link" href="#optional-pre-commit-checks">6.8. Optional Pre-Commit Checks</a></h3>
+<h3 id="optional-pre-commit-checks"><a class="anchor" href="#optional-pre-commit-checks"></a><a class="link" href="#optional-pre-commit-checks">7.8. Optional Pre-Commit Checks</a></h3>
 <div class="paragraph">
 <p>The repository provides optional, check-only hooks for staged Python, C/C++,
 Tcl, YAML, TOML, and shell files, plus a repo-wide spelling check. They run
@@ -1290,7 +1437,7 @@ contributor enables the hook.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="linting-and-ci"><a class="anchor" href="#linting-and-ci"></a><a class="link" href="#linting-and-ci">6.9. Linting and CI</a></h3>
+<h3 id="linting-and-ci"><a class="anchor" href="#linting-and-ci"></a><a class="link" href="#linting-and-ci">7.9. Linting and CI</a></h3>
 <div class="paragraph">
 <p><code>.github/workflows/lint.yml</code> runs <code>lint-sv-slang</code>, <code>lint-sv-verilator</code>,
 <code>lint-python</code>, <code>lint-python-mypy</code>, <code>format-c</code>, <code>lint-tcl</code>, <code>lint-spelling</code>,
@@ -1436,7 +1583,7 @@ git status --porcelain   # expect only intended vendor/ changes</code></pre>
 </div>
 </div>
 <div class="sect3">
-<h4 id="references-2"><a class="anchor" href="#references-2"></a><a class="link" href="#references-2">6.9.1. References</a></h4>
+<h4 id="references-2"><a class="anchor" href="#references-2"></a><a class="link" href="#references-2">7.9.1. References</a></h4>
 <div class="ulist">
 <ul>
 <li>

@@ -492,9 +492,10 @@ terminal. Otherwise, LC_STATE[2:1] cannot be updated.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Disables secure boot when
-set to 1, in any lifecycle state (global override, including the
-otherwise-mandatory enforcement in PROD and PROD_END); see Secure-Boot
-Enforcement in the Life Cycle Controller section.</p></td>
+set to 1, in any lifecycle state. It overrides lifecycle enforcement in PROD
+and PROD_END and the TEST_DEV debug-lock rule, but not a signed manifest&#8217;s
+request for verification; see Secure-Boot Enforcement in the Life Cycle
+Controller section.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">TRANSIENT_RMA_EN</p></td>

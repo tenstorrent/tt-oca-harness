@@ -993,7 +993,7 @@ and is controlled by Demotion 2. Function bits occupy <code>[63:48]</code>.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">debug (DBG_1)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CHIPLET_DBG</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Coarse-grained debug enable for the <strong>chiplet</strong> scope. <code>1&#8217;b1</code>: chiplet-scope debug / scan-dump access disabled. <code>1&#8217;b0</code>: enabled. Never acts alone: an external debugger reaches chiplet-internal resources only when <code>SIP_DBG</code> is open as well (Case 2 of <a href="#dtp-path-gating">Section 5.4</a>). Contributes to the reachability of the crypto / KM secure chain but never authorizes a dump from it: that chain admits only test commands, and only while <code>secure_tm = 1</code>. This bit does not change the production ROM secure-boot policy; see <a href="#secure-boot-enforcement">Section 8.1</a>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Coarse-grained debug enable for the <strong>chiplet</strong> scope. <code>1&#8217;b1</code>: chiplet-scope debug / scan-dump access disabled. <code>1&#8217;b0</code>: enabled. Never acts alone: an external debugger reaches chiplet-internal resources only when <code>SIP_DBG</code> is open as well (Case 2 of <a href="#dtp-path-gating">Section 5.4</a>). Contributes to the reachability of the crypto / KM secure chain but never authorizes a dump from it: that chain admits only test commands, and only while <code>secure_tm = 1</code>. In <code>TEST_DEV</code>, this bit set in <code>SIP_DIS</code> or <code>SYS_DIS</code> makes the production ROM enforce secure boot; see <a href="#secure-boot-enforcement">Section 8.1</a>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
@@ -1920,19 +1920,23 @@ including when <code>SBOOT_DIS</code> is set.</p>
 </li>
 <li>
 <p>Otherwise, the lifecycle policy requires secure boot in <code>PROD</code> and
-<code>PROD_END</code>, and does not require it in <code>TEST_DEV</code> or the RMA states.</p>
+<code>PROD_END</code>, and in <code>TEST_DEV</code> when chiplet-scope debug is disabled
+(<code>CHIPLET_DBG</code> set in <code>SIP_DIS</code> or <code>SYS_DIS</code>, or either vector read-locked).
+It does not require it in <code>TEST_DEV</code> with chiplet debug enabled, or in the
+RMA states.</p>
 </li>
 </ol>
 </div>
 <div class="paragraph">
-<p><code>CHIPLET_DBG</code>, <code>SIP_DIS</code>, and <code>SYS_DIS</code> do not participate in this firmware
-decision. Disabling debug in <code>TEST_DEV</code> therefore does not prevent an unsigned
-image whose manifest leaves enforcement clear from booting. Provisioning must
-not treat a locked debug path as a secure-boot guarantee.</p>
+<p>The <code>TEST_DEV</code> rule means a locked-down debug posture cannot be bypassed by
+loading unsigned code. The ROM reads <code>CHIPLET_DBG</code> from the <code>SIP_DIS</code> and
+<code>SYS_DIS</code> fuse shadows rather than from <code>FEAT_CTRL</code>, which <code>SEC_DIS</code> and
+demotion can force open on a part whose fuses disable debug.</p>
 </div>
 <div class="paragraph">
-<p>An owner relying on lifecycle-enforced secure boot must leave <code>SBOOT_DIS</code>
-unburned and write-lock it via the LOCK field. <code>SBOOT_DIS</code> does not override
+<p>An owner relying on lifecycle-enforced secure boot, or on the <code>TEST_DEV</code>
+debug-lock rule, must leave <code>SBOOT_DIS</code> unburned and write-lock it via the
+LOCK field. <code>SBOOT_DIS</code> does not override
 a manifest&#8217;s own requirement for verification.</p>
 </div>
 </div>
