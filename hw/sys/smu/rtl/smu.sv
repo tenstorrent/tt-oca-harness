@@ -20,7 +20,7 @@ module smu #(
                                                      // block carved off the base of the SMC
                                                      // smc_external window; forwarded to the SMC
                                                      // EFUSE_SHIM_SIZE.
-  parameter smu_pkg::smu_cfg_t Cfg = smu_pkg::DefaultCfg,  // SMU feature configuration. Each JTAG_*
+  parameter smu_pkg::smu_cfg_t CFG = smu_pkg::DefaultCfg,  // SMU feature configuration. Each JTAG_*
                                                            // field is forwarded to the DTP
                                                            // parameter of the same name, except
                                                            // JTAG_IC_RESET_ENABLE, which drives the
@@ -121,17 +121,17 @@ module smu #(
                                                                            // packed struct with .ovrd and .val halves
                                                                            // of equal width.
 
-  localparam int unsigned  XTRIG_NUM_CTP          = Cfg.XTRIG_NUM_CTP,  // External cross-trigger port count from Cfg,
+  localparam int unsigned  XTRIG_NUM_CTP          = CFG.XTRIG_NUM_CTP,  // External cross-trigger port count from CFG,
                                                                         // forwarded to the DTP XTRIG_NUM_CTP.
-  localparam int unsigned  XTRIG_NUM_INT_CT       = Cfg.XTRIG_NUM_INT_CT,  // SMU-exposed internal CT lane count from Cfg.
-  localparam int unsigned  XTRIG_NUM_CLK_STOP_REQ = Cfg.XTRIG_NUM_CLK_STOP_REQ,  // SMU-exposed clock-stop request count from Cfg.
+  localparam int unsigned  XTRIG_NUM_INT_CT       = CFG.XTRIG_NUM_INT_CT,  // SMU-exposed internal CT lane count from CFG.
+  localparam int unsigned  XTRIG_NUM_CLK_STOP_REQ = CFG.XTRIG_NUM_CLK_STOP_REQ,  // SMU-exposed clock-stop request count from CFG.
   localparam int unsigned  DTP_XTRIG_NUM_INT_CT =  // Internal CT count including SMC-reserved lanes, forwarded to the DTP XTRIG_NUM_INT_CT.
-      Cfg.XTRIG_NUM_INT_CT + smu_pkg::XTRIG_SMC_INT_CT_LANES,
+      CFG.XTRIG_NUM_INT_CT + smu_pkg::XTRIG_SMC_INT_CT_LANES,
   localparam int unsigned  DTP_XTRIG_NUM_CLK_STOP_REQ =  // Clock-stop count including SMC-reserved lanes, forwarded to the DTP XTRIG_NUM_CLK_STOP_REQ.
-      Cfg.XTRIG_NUM_CLK_STOP_REQ + smu_pkg::XTRIG_SMC_CLK_STOP_LANES,
-  localparam int unsigned  JTAG_NUM_EXTRA_STAP_PORTS = (Cfg.JTAG_NUM_EXTRA_STAPS > 0) ? Cfg.JTAG_NUM_EXTRA_STAPS : 1,  // Extra STAP port count; at least one for tie-off.
+      CFG.XTRIG_NUM_CLK_STOP_REQ + smu_pkg::XTRIG_SMC_CLK_STOP_LANES,
+  localparam int unsigned  JTAG_NUM_EXTRA_STAP_PORTS = (CFG.JTAG_NUM_EXTRA_STAPS > 0) ? CFG.JTAG_NUM_EXTRA_STAPS : 1,  // Extra STAP port count; at least one for tie-off.
   localparam logic [DTP_XTRIG_NUM_INT_CT-1:0]  DTP_XTRIG_INT_CT_MODE =  // Per-lane CTM mode vector with SMC lanes forced to 0, forwarded to the DTP XTRIG_INT_CT_MODE.
-      {Cfg.XTRIG_INT_CT_MODE[XTRIG_NUM_INT_CT-1:0], {smu_pkg::XTRIG_SMC_INT_CT_LANES{1'b0}}}
+      {CFG.XTRIG_INT_CT_MODE[XTRIG_NUM_INT_CT-1:0], {smu_pkg::XTRIG_SMC_INT_CT_LANES{1'b0}}}
 ) (
   input  logic  clk_smu_i,                      // SMU clock; clocks the SMC core, the SEP, the DTP
                                                 // and the SMU AXI crossbar.
@@ -303,7 +303,7 @@ module smu #(
                                                                                        // the SMU crossbar uses its low 32 bits.
                                                                                        // Tied to 0 when SEP is 0.
 
-  input  logic [Cfg.NUM_INT_TO_SMC-1:0]  smc_ext_interrupts_i,  // External interrupts into the SMC,
+  input  logic [CFG.NUM_INT_TO_SMC-1:0]  smc_ext_interrupts_i,  // External interrupts into the SMC,
                                                                 // zero-extended to the SMC's
                                                                 // NUM_EXT_INTERRUPTS inputs.
 
@@ -627,28 +627,28 @@ module smu #(
   //--------------------------------------------------------------------------
 
   dtp #(
-    .JTAG_BSR_ENABLE          (Cfg.JTAG_BSR_ENABLE),
-    .JTAG_EXTEST_TRAIN_ENABLE (Cfg.JTAG_EXTEST_TRAIN_ENABLE),
-    .JTAG_EXTEST_PULSE_ENABLE (Cfg.JTAG_EXTEST_PULSE_ENABLE),
-    .JTAG_INTEST_ENABLE       (Cfg.JTAG_INTEST_ENABLE),
-    .JTAG_CLAMP_ENABLE        (Cfg.JTAG_CLAMP_ENABLE),
-    .JTAG_HIGHZ_ENABLE        (Cfg.JTAG_HIGHZ_ENABLE),
-    .JTAG_RUNBIST_ENABLE      (Cfg.JTAG_RUNBIST_ENABLE),
-    .JTAG_TMP_ENABLE          (Cfg.JTAG_TMP_ENABLE),
+    .JTAG_BSR_ENABLE          (CFG.JTAG_BSR_ENABLE),
+    .JTAG_EXTEST_TRAIN_ENABLE (CFG.JTAG_EXTEST_TRAIN_ENABLE),
+    .JTAG_EXTEST_PULSE_ENABLE (CFG.JTAG_EXTEST_PULSE_ENABLE),
+    .JTAG_INTEST_ENABLE       (CFG.JTAG_INTEST_ENABLE),
+    .JTAG_CLAMP_ENABLE        (CFG.JTAG_CLAMP_ENABLE),
+    .JTAG_HIGHZ_ENABLE        (CFG.JTAG_HIGHZ_ENABLE),
+    .JTAG_RUNBIST_ENABLE      (CFG.JTAG_RUNBIST_ENABLE),
+    .JTAG_TMP_ENABLE          (CFG.JTAG_TMP_ENABLE),
     // The SMC / SEP IC_RESET slices are always enabled; the external slice follows the SMU
-    // `JTAG_IC_RESET_ENABLE` Cfg bit.
+    // `JTAG_IC_RESET_ENABLE` CFG bit.
     .JTAG_IC_RESET_SMC_ENABLE (1'b1),
     .JTAG_IC_RESET_SEP_ENABLE (SEP),
-    .JTAG_IC_RESET_EXT_ENABLE (Cfg.JTAG_IC_RESET_ENABLE),
-    .JTAG_SMC_DBG_ENABLE      (Cfg.JTAG_SMC_DBG_ENABLE),
+    .JTAG_IC_RESET_EXT_ENABLE (CFG.JTAG_IC_RESET_ENABLE),
+    .JTAG_SMC_DBG_ENABLE      (CFG.JTAG_SMC_DBG_ENABLE),
     .JTAG_SEP_DBG_ENABLE      (SEP),
-    .JTAG_STAP_IO_ENABLE      (Cfg.JTAG_STAP_IO_ENABLE),
-    .JTAG_NUM_EXTRA_STAPS      (Cfg.JTAG_NUM_EXTRA_STAPS),
-    .JTAG_IDCODE_MFR_ID        (Cfg.JTAG_IDCODE_MFR_ID),
-    .JTAG_IDCODE_PART_NUM      (Cfg.JTAG_IDCODE_PART_NUM),
-    .JTAG_IDCODE_SI_REV        (Cfg.JTAG_IDCODE_SI_REV),
-    .JTAG_OCH_VER              (Cfg.JTAG_OCH_VER),
-    .XTRIG_NUM_CTP             (Cfg.XTRIG_NUM_CTP),
+    .JTAG_STAP_IO_ENABLE      (CFG.JTAG_STAP_IO_ENABLE),
+    .JTAG_NUM_EXTRA_STAPS      (CFG.JTAG_NUM_EXTRA_STAPS),
+    .JTAG_IDCODE_MFR_ID        (CFG.JTAG_IDCODE_MFR_ID),
+    .JTAG_IDCODE_PART_NUM      (CFG.JTAG_IDCODE_PART_NUM),
+    .JTAG_IDCODE_SI_REV        (CFG.JTAG_IDCODE_SI_REV),
+    .JTAG_OCH_VER              (CFG.JTAG_OCH_VER),
+    .XTRIG_NUM_CTP             (CFG.XTRIG_NUM_CTP),
     .XTRIG_NUM_INT_CT          (DTP_XTRIG_NUM_INT_CT),
     .XTRIG_NUM_CLK_STOP_REQ    (DTP_XTRIG_NUM_CLK_STOP_REQ),
     .XTRIG_INT_CT_MODE         (DTP_XTRIG_INT_CT_MODE),
@@ -663,12 +663,12 @@ module smu #(
     .smc_otp_axil_resp_t       (smc_pkg::smc_axil_32_32_resp_t),
     .sep_otp_axil_req_t        (smc_pkg::smc_axil_32_32_req_t),
     .sep_otp_axil_resp_t       (smc_pkg::smc_axil_32_32_resp_t),
-    .SMC_OTP_RD_PL_DEPTH       (Cfg.SMC_OTP_RD_PL_DEPTH),
-    .SMC_OTP_WR_PL_DEPTH       (Cfg.SMC_OTP_WR_PL_DEPTH),
+    .SMC_OTP_RD_PL_DEPTH       (CFG.SMC_OTP_RD_PL_DEPTH),
+    .SMC_OTP_WR_PL_DEPTH       (CFG.SMC_OTP_WR_PL_DEPTH),
     .SEP_OTP_RD_PL_DEPTH       (2'h3),
     .SEP_OTP_WR_PL_DEPTH       (2'h3),
-    .SMC_RD_PL_DEPTH           (Cfg.SMC_RD_PL_DEPTH),
-    .SMC_WR_PL_DEPTH           (Cfg.SMC_WR_PL_DEPTH),
+    .SMC_RD_PL_DEPTH           (CFG.SMC_RD_PL_DEPTH),
+    .SMC_WR_PL_DEPTH           (CFG.SMC_WR_PL_DEPTH),
     .xtrig_axil_req_t          (smc_pkg::smc_axil_32_32_req_t),
     .xtrig_axil_resp_t         (smc_pkg::smc_axil_32_32_resp_t)
   ) u_dtp (
@@ -910,9 +910,9 @@ module smu #(
     .smc_cpu_jtag_TDI_i              (dtp_smc_stap_tdo),
     .smc_cpu_jtag_TDO_data_o         (smc_stap_tdo_to_dtp),
     .smc_cpu_jtag_reset_i            (~dtp_smc_stap_tap_ctrl.trst_n),
-    .smc_cpu_jtag_mfr_id_i           (Cfg.JTAG_IDCODE_MFR_ID),
-    .smc_cpu_jtag_part_number_i      (Cfg.JTAG_IDCODE_PART_NUM),
-    .smc_cpu_jtag_version_i          (Cfg.JTAG_IDCODE_SI_REV),
+    .smc_cpu_jtag_mfr_id_i           (CFG.JTAG_IDCODE_MFR_ID),
+    .smc_cpu_jtag_part_number_i      (CFG.JTAG_IDCODE_PART_NUM),
+    .smc_cpu_jtag_version_i          (CFG.JTAG_IDCODE_SI_REV),
 
     // I3C DAT/DCT memory interfaces
     .i3c_dat_mem_src_i               (i3c_dat_mem_src_i),
@@ -938,9 +938,9 @@ module smu #(
     // ==================================================================
 
     sep #(
-      .KM_LATCHED_MEM_RDATA  (Cfg.SEP_KM_LATCHED_MEM_RDATA),
-      .ABR_MASKING_EN         (Cfg.SEP_ABR_MASKING_EN),
-      .ABR_SRAM_LATENCY       (Cfg.SEP_ABR_SRAM_LATENCY),
+      .KM_LATCHED_MEM_RDATA  (CFG.SEP_KM_LATCHED_MEM_RDATA),
+      .ABR_MASKING_EN         (CFG.SEP_ABR_MASKING_EN),
+      .ABR_SRAM_LATENCY       (CFG.SEP_ABR_SRAM_LATENCY),
       .SEP_SEC_DISABLE_TOKEN  (SEP_SEC_DISABLE_TOKEN),
       .EXT_TRNG_NUM_AXIS      (EXT_TRNG_NUM_AXIS),
       .EFUSE_SHIM_SIZE        (SEP_EFUSE_SHIM_SIZE)
@@ -994,7 +994,7 @@ module smu #(
       .lockstep_ctrl_i               (sep_lockstep_ctrl_i),
       .lockstep_status_o             (sep_lockstep_status_o),
 
-      .jtag_id_i                     ({Cfg.JTAG_IDCODE_SI_REV, Cfg.JTAG_IDCODE_PART_NUM, Cfg.JTAG_IDCODE_MFR_ID}),
+      .jtag_id_i                     ({CFG.JTAG_IDCODE_SI_REV, CFG.JTAG_IDCODE_PART_NUM, CFG.JTAG_IDCODE_MFR_ID}),
 
       // No external CLINT; EL2 internal timers drive mip.MTIP / mip.MSIP
       .timer_int_i                   (1'b0),

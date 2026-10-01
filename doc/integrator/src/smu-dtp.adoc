@@ -13,7 +13,7 @@ and clock-stop counts). The generated Cross Trigger Matrix register map must
 have one `CT_Src` and one `CT_Dst` for every DTP port
 (`XTRIG_NUM_CTP + XTRIG_NUM_INT_CT` at the DTP, which is the SMU-exposed
 internal-CT count plus `smu_pkg::XTRIG_SMC_INT_CT_LANES`). Resizing is two
-steps: set the `Cfg` counts, and regenerate the CTM with matching PeakRDL
+steps: set the `CFG` counts, and regenerate the CTM with matching PeakRDL
 overrides:
 
 [source,make]
@@ -22,7 +22,7 @@ make ocah-regen-regs TARGET=cross_trigger_matrix \
     OCAH_REG_RDL_PARAMS_cross_trigger_matrix="NUM_CT_SRC=<n> NUM_CT_DST=<n>"
 ----
 
-`<n>` is the DTP total (`Cfg.XTRIG_NUM_CTP + Cfg.XTRIG_NUM_INT_CT +
+`<n>` is the DTP total (`CFG.XTRIG_NUM_CTP + CFG.XTRIG_NUM_INT_CT +
 smu_pkg::XTRIG_SMC_INT_CT_LANES`). `cross_trigger_network` fails elaboration if
 the parameterized total disagrees with the generated map. Defaults remain 16
 external CTPs, 10 internal CTs (8 exposed), and 9 clock-stop requests (8

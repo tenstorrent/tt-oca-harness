@@ -441,12 +441,12 @@ module i2c_core
   assign unhandled_unexp_nak = reg_out_i.CONTROLLER_EVENTS.NACK.value;
 
   prim_fifo_sync_parity #(
-    .Width             (CONTROLLER_TX_FIFO_WIDTH),
-    .Pass              (1'b1),
-    .Depth             (CONTROLLER_TX_FIFO_DEPTH),
-    .OutputZeroIfEmpty (1'b1),
-    .NeverClears       (1'b0),
-    .Secure            (1'b1)
+    .WIDTH                (CONTROLLER_TX_FIFO_WIDTH),
+    .PASS                 (1'b1),
+    .DEPTH                (CONTROLLER_TX_FIFO_DEPTH),
+    .OUTPUT_ZERO_IF_EMPTY (1'b1),
+    .NEVER_CLEARS         (1'b0),
+    .SECURE               (1'b1)
   ) u_controller_tx_fifo (
     .clk_i,
     .rst_ni,
@@ -463,12 +463,12 @@ module i2c_core
   );
 
   prim_fifo_sync_parity #(
-    .Width             (CONTROLLER_RX_FIFO_WIDTH),
-    .Pass              (1'b1),
-    .Depth             (CONTROLLER_RX_FIFO_DEPTH),
-    .OutputZeroIfEmpty (1'b1),
-    .NeverClears       (1'b0),
-    .Secure            (1'b1)
+    .WIDTH                (CONTROLLER_RX_FIFO_WIDTH),
+    .PASS                 (1'b1),
+    .DEPTH                (CONTROLLER_RX_FIFO_DEPTH),
+    .OUTPUT_ZERO_IF_EMPTY (1'b1),
+    .NEVER_CLEARS         (1'b0),
+    .SECURE               (1'b1)
   ) u_controller_rx_fifo (
     .clk_i,
     .rst_ni,
@@ -485,12 +485,12 @@ module i2c_core
   );
 
   prim_fifo_sync_parity #(
-    .Width             (TARGET_TX_FIFO_WIDTH),
-    .Pass              (1'b1),
-    .Depth             (TARGET_TX_FIFO_DEPTH),
-    .OutputZeroIfEmpty (1'b1),
-    .NeverClears       (1'b0),
-    .Secure            (1'b1)
+    .WIDTH                (TARGET_TX_FIFO_WIDTH),
+    .PASS                 (1'b1),
+    .DEPTH                (TARGET_TX_FIFO_DEPTH),
+    .OUTPUT_ZERO_IF_EMPTY (1'b1),
+    .NEVER_CLEARS         (1'b0),
+    .SECURE               (1'b1)
   ) u_target_tx_fifo (
     .clk_i,
     .rst_ni,
@@ -507,12 +507,12 @@ module i2c_core
   );
 
   prim_fifo_sync_parity #(
-    .Width             (TARGET_RX_FIFO_WIDTH),
-    .Pass              (1'b1),
-    .Depth             (TARGET_RX_FIFO_DEPTH),
-    .OutputZeroIfEmpty (1'b1),
-    .NeverClears       (1'b0),
-    .Secure            (1'b1)
+    .WIDTH                (TARGET_RX_FIFO_WIDTH),
+    .PASS                 (1'b1),
+    .DEPTH                (TARGET_RX_FIFO_DEPTH),
+    .OUTPUT_ZERO_IF_EMPTY (1'b1),
+    .NEVER_CLEARS         (1'b0),
+    .SECURE               (1'b1)
   ) u_target_rx_fifo (
     .clk_i,
     .rst_ni,

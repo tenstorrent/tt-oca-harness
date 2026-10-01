@@ -30,7 +30,7 @@ the wrap same-page widen does not fire there.
 
 SepInboundFilterWidenCfg covers the widen itself: with allow_burst=1 and
 START/END in one 4 KB page, axi_filter_wrap.sv rewrites the window to that
-whole page and traffic_filter.sv compares only addr[AddrWidth-1:12], so the
+whole page and traffic_filter.sv compares only addr[ADDR_WIDTH-1:12], so the
 grant is the page, not the programmed range. FILTER_CONFIG.locked (bit 63)
 is write-once, so the field must not change once set, and every later write to
 the entry's FILTER_CONFIG, START_ADDR and END_ADDR completes DECERR
@@ -115,7 +115,7 @@ BURST_ALLOW_SPAN = 0x2000
 # --- same-page 4 KB widen -----------------------------------------------------
 # axi_filter_wrap.sv rewrites an allow_burst=1 window whose START and END share a
 # 4 KB page to that whole page, and traffic_filter.sv then compares only
-# addr[AddrWidth-1:12]. memory_map.adoc packs distinct blocks of the SEP System
+# addr[ADDR_WIDTH-1:12]. memory_map.adoc packs distinct blocks of the SEP System
 # aperture at that same 4 KB pitch -- DMA CSR 0x1080_0000, WDT 0x1080_1000, the
 # dual scratch banks 0x1080_2000 -- so a grant that crossed the page edge would
 # reach a neighbouring block.

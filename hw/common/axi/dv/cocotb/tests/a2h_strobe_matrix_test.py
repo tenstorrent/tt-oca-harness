@@ -22,12 +22,12 @@ from models.axil_agents import RESP_NAMES, RESP_OKAY, RESP_SLVERR
 # WSTRB -> (BRESP, HSIZE, HADDR[1:0]); HSIZE None means no AHB transfer.
 # Every strobe not listed completes with SLVERR and issues no transfer.
 MATRIX = {
-    # AHB_DATA_WIDTH=64, AllowSubWordWrite=0, AckZeroStrobeWrite=1
+    # AHB_DATA_WIDTH=64, ALLOW_SUB_WORD_WRITE=0, ACK_ZERO_STROBE_WRITE=1
     "a": {
         0b0000: (RESP_OKAY, None, None),
         0b1111: (RESP_OKAY, 2, 0),
     },
-    # AHB_DATA_WIDTH=32, AllowSubWordWrite=1, AckZeroStrobeWrite=0
+    # AHB_DATA_WIDTH=32, ALLOW_SUB_WORD_WRITE=1, ACK_ZERO_STROBE_WRITE=0
     "b": {
         0b0000: (RESP_SLVERR, None, None),
         0b0001: (RESP_OKAY, 0, 0),
@@ -39,7 +39,7 @@ MATRIX = {
         0b1111: (RESP_OKAY, 2, 0),
     },
 }
-# AHB_DATA_WIDTH=64, AllowSubWordWrite=1, AckZeroStrobeWrite=0
+# AHB_DATA_WIDTH=64, ALLOW_SUB_WORD_WRITE=1, ACK_ZERO_STROBE_WRITE=0
 MATRIX["c"] = MATRIX["b"]
 
 BASE = {"a": 0x0000_3000, "b": 0x0000_4000, "c": 0x0000_5000}

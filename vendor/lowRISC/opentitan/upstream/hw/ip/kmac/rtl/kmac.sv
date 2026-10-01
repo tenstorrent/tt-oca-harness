@@ -1001,11 +1001,11 @@ module kmac
 
   // TL Adapter
   tlul_adapter_sram #(
-    .SramAw ($clog2(MsgWindowDepth)),
-    .SramDw (MsgWindowWidth),
-    .Outstanding (1),
-    .ByteAccess  (1),
-    .ErrOnRead   (1)
+    .SRAM_AW ($clog2(MsgWindowDepth)),
+    .SRAM_DW (MsgWindowWidth),
+    .OUTSTANDING (1),
+    .BYTE_ACCESS (1),
+    .ERR_ON_READ (1)
   ) u_tlul_adapter_msgfifo (
     .clk_i,
     .rst_ni,

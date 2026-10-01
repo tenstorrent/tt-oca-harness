@@ -8,7 +8,7 @@
 // host, debug, or an external agent) drains the pool through a 64-bit read-only AXI-Lite
 // aperture on sep_local_axi_xbar.
 // Datapath: EDN handshake adapter (req_pending_q) into prim_packer_fifo (InW=32, OutW=64,
-// ClearOnRead=0), then prim_fifo_sync (Width=64, Depth=FifoDepth). AXI-Lite decode of the
+// ClearOnRead=0), then prim_fifo_sync (Width=64, Depth=FIFO_DEPTH). AXI-Lite decode of the
 // 16-bit offset is 0x00 status, 0x08 irq-cause, 0x10 data pop; a pop of an empty pool and
 // any other offset return SLVERR with zero data. One read is outstanding at a time.
 // The pool FIFO has no hardened pointers, so pool_err_o is always 0.
@@ -16,7 +16,7 @@
 // mask direction, so AW/W/B arrive whenever any master has read access. Every write
 // terminates in place with BRESP=SLVERR and no state change; that SLVERR is the read-only
 // enforcement because entropy enters only via the native EDN bus.
-// FifoDepth defaults to 32 packed 64-bit entries. LowWatermark defaults to 8. StallThresh
+// FIFO_DEPTH defaults to 32 packed 64-bit entries. LOW_WATERMARK defaults to 8. STALL_THRESH
 // defaults to 4096 cycles (~20 us at 200 MHz) with a request outstanding and no EDN
 // acknowledge, and clears on the next ack; the stall detector arms on the first acknowledge
 // after reset or entropy_clear_i.
@@ -26,13 +26,13 @@
 module sep_entropy_fifo
   import edn_pkg::*;
 #(
-  parameter int unsigned FifoDepth    = 32,   // Pool depth in packed 64-bit entries (default 32);
+  parameter int unsigned FIFO_DEPTH    = 32,  // Pool depth in packed 64-bit entries (default 32);
                                               // at most 63 to fit the status occupancy field.
-  parameter int unsigned LowWatermark = 8,    // Occupancy below which pool_low_o asserts (default
+  parameter int unsigned LOW_WATERMARK = 8,   // Occupancy below which pool_low_o asserts (default
                                               // 8).
-  parameter int unsigned StallThresh  = 4096,  // Outstanding EDN cycles before fill_stall_o
-                                               // (default 4096, ~20 us at 200 MHz); clears on next
-                                               // ack.
+  parameter int unsigned STALL_THRESH  = 4096,  // Outstanding EDN cycles before fill_stall_o
+                                                // (default 4096, ~20 us at 200 MHz); clears on next
+                                                // ack.
   parameter type axi_req_t   = sep_pkg::sep_32_64_6_12_axi_req_t,  // Full AXI4 slave request type
                                                                    // from sep_local_axi_xbar.
   parameter type axi_resp_t  = sep_pkg::sep_32_64_6_12_axi_resp_t,  // Full AXI4 slave response type to sep_local_axi_xbar.
@@ -62,22 +62,22 @@ module sep_entropy_fifo
                                               // change.
   output axi_resp_t  entropy_fifo_axi_resp_o,  // Full AXI4 drain response to sep_local_axi_xbar.
 
-  output logic       pool_low_o,              // Occupancy below LowWatermark, and high during
+  output logic       pool_low_o,              // Occupancy below LOW_WATERMARK, and high during
                                               // entropy_clear_i; routed to the SEP PIC.
-  output logic       fill_stall_o,            // EDN not acknowledging for more than StallThresh
+  output logic       fill_stall_o,            // EDN not acknowledging for more than STALL_THRESH
                                               // cycles; fault to the SEP PIC.
   output logic       pool_err_o,              // Pool pointer-integrity fault; always 0 because the
                                               // pool FIFO has no hardened pointers.
-  output logic [$clog2(FifoDepth+1)-1:0] fifo_level_o  // Current occupancy in packed 64-bit
-                                                       // entries; 0 during entropy_clear_i.
+  output logic [$clog2(FIFO_DEPTH+1)-1:0] fifo_level_o  // Current occupancy in packed 64-bit
+                                                        // entries; 0 during entropy_clear_i.
 );
 
   // The status-word occupancy field is a fixed 6-bit slot (status_word[5:0]);
-  // FifoDepth must be representable in it.
+  // FIFO_DEPTH must be representable in it.
   initial begin
-    assert (FifoDepth <= 63)
+    assert (FIFO_DEPTH <= 63)
     else
-      $fatal(1, "sep_entropy_fifo: FifoDepth=%0d exceeds the 6-bit status[5:0] field", FifoDepth);
+      $fatal(1, "sep_entropy_fifo: FIFO_DEPTH=%0d exceeds the 6-bit status[5:0] field", FIFO_DEPTH);
   end
 
   // -------------------------------------------------------------------------
@@ -132,7 +132,7 @@ module sep_entropy_fifo
   logic                              pool_rready;
   logic [63:0]                       pool_rdata;
   logic                              pool_full;
-  logic [$clog2(FifoDepth+1)-1:0]    pool_depth;
+  logic [$clog2(FIFO_DEPTH+1)-1:0]   pool_depth;
   logic                              pool_err;
 
   // -------------------------------------------------------------------------
@@ -190,7 +190,7 @@ module sep_entropy_fifo
 
   prim_fifo_sync #(
     .Width            (64),
-    .Depth            (FifoDepth),
+    .Depth            (FIFO_DEPTH),
     .Pass             (1'b0),
     .OutputZeroIfEmpty(1'b1),
     .NeverClears      (1'b0),
@@ -213,7 +213,7 @@ module sep_entropy_fifo
   assign pool_err_o   = pool_err;
   assign fifo_level_o = entropy_clear_i ? '0 : pool_depth;
   assign pool_low_o   = entropy_clear_i ||
-                          (pool_depth < LowWatermark[$clog2(FifoDepth+1)-1:0]);
+                          (pool_depth < LOW_WATERMARK[$clog2(FIFO_DEPTH+1)-1:0]);
 
   // -------------------------------------------------------------------------
   // fill_stall_o -- active fault when EDN stops acknowledging
@@ -224,7 +224,7 @@ module sep_entropy_fifo
   // progress) so the flag tracks the live stall state rather than latching.
   // The flag and counter both reset to zero on rst_ni.
 
-  localparam int unsigned StallCntW = $clog2(StallThresh + 1);
+  localparam int unsigned StallCntW = $clog2(STALL_THRESH + 1);
   logic [StallCntW-1:0] stall_cnt_q;
   logic                 fill_stall_q;
   logic                 edn_armed_q;
@@ -246,10 +246,10 @@ module sep_entropy_fifo
       stall_cnt_q  <= '0;
       fill_stall_q <= 1'b0;                        // forward progress clears the fault
     end else begin
-      if (stall_cnt_q != StallThresh[StallCntW-1:0]) begin
+      if (stall_cnt_q != STALL_THRESH[StallCntW-1:0]) begin
         stall_cnt_q <= stall_cnt_q + 1'b1;  // saturating
       end
-      if (stall_cnt_q >= StallThresh[StallCntW-1:0]) begin
+      if (stall_cnt_q >= STALL_THRESH[StallCntW-1:0]) begin
         fill_stall_q <= 1'b1;
       end
     end

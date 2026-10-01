@@ -23,7 +23,7 @@
 `include "ocah_fcov_macros.svh"
 
 module smu_lc_fcov #(
-  parameter bit SepPresent = 1'b1
+  parameter bit SEP_PRESENT = 1'b1
 ) (
   input wire clk_smu_i,
   input wire rst_cold_ni,
@@ -69,7 +69,7 @@ module smu_lc_fcov #(
   // its SEP-absent value, every SEP-facing output at its tie-off value when the
   // primary domain comes up, and the two configuration presets differing in
   // nothing but the SEP parameter.
-  if (!SepPresent) begin : g_nosep
+  if (!SEP_PRESENT) begin : g_nosep
     wire lc_state_sep0_is_f0_e = primary_rose_e && (lc_state_i === LcStateSep0);
     wire sep_outputs_tied_off = (sep_global_base_i === '0) && (sep_region_size_i === '0)
         && (lcc_demote_state_1_i === 2'b00) && (lcc_demote_state_2_i === 2'b00)
@@ -98,7 +98,7 @@ module smu_lc_fcov #(
     cp_lc_state: coverpoint lc_state {
       bins sep0 = {LcStateSep0};
       bins other = default;
-      ignore_bins sep_present = {LcStateSep0} with (SepPresent);
+      ignore_bins sep_present = {LcStateSep0} with (SEP_PRESENT);
     }
     // Each demote output is a differential code: 2'b10 not demoted, 2'b01
     // demoted. 2'b00 and 2'b11 are not codes, and the demote register is

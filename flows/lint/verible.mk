@@ -19,7 +19,8 @@ LINT_PATH ?= $(OCAH_VERIBLE_PATHS)
 FORMAT_PATH ?= $(OCAH_VERIBLE_PATHS)
 endif
 
-# parameter-name-style is deferred to issue #1051. line-length is disabled
+# parameter-name-style checks parameter names only; localparam naming is
+# deferred to issue #1051. line-length is disabled
 # outright: the port/parameter/net alignment mode below (preserve) never
 # wraps an aligned declaration regardless of its width, and Verible never
 # reflows comment text, so most violations are structurally unfixable; the
@@ -36,7 +37,7 @@ endif
 # sep_no_tcm_preload, ...), which is exactly what $test$plusargs is for -
 # none of them extract a value, so the rule's suggested $value$plusargs
 # would be wrong for all of them.
-OCAH_LINT_VERIBLE_RULES ?= -parameter-name-style,-line-length,-unpacked-dimensions-range-ordering,-plusarg-assignment
+OCAH_LINT_VERIBLE_RULES ?= parameter-name-style=parameter_style:ALL_CAPS;localparam_style:,-line-length,-unpacked-dimensions-range-ordering,-plusarg-assignment
 OCAH_VERIBLE_EMPTY :=
 OCAH_VERIBLE_SPACE := $(OCAH_VERIBLE_EMPTY) $(OCAH_VERIBLE_EMPTY)
 OCAH_VERIBLE_COMMA := ,
@@ -139,8 +140,8 @@ ocah_verible_check_files = @$(call ocah_verible_find,$(1),$(2)) -print -quit 2>/
 ## Lint SystemVerilog style with verible-verilog-lint (no autofix; hand-fix
 ## reported violations). Requires `verible-verilog-lint` on PATH; otherwise
 ## install it or run via `./scripts/docker-run.sh run-here make lint-sv-verible`.
-## parameter-name-style is deferred to issue #1051; line-length is disabled
-## outright (see OCAH_LINT_VERIBLE_RULES above).
+## parameter-name-style leaves localparam naming to issue #1051; line-length
+## is disabled outright (see OCAH_LINT_VERIBLE_RULES above).
 ## @param LINT_PATH=hw/sys/smu Optional path(s) to scope the lint; default hw vendor
 ## @param BLOCK=smu Shorthand for the above (LINT_PATH?=hw/sys/BLOCK if set)
 .PHONY: ocah-lint-sv-verible

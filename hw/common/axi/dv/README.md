@@ -18,7 +18,7 @@ Layout
   elaborates the converter three times so one build covers the parameter
   sets:
 
-  | Instance  | Pins      | AHB_DATA_WIDTH | AllowSubWordWrite | AckZeroStrobeWrite |
+  | Instance  | Pins      | AHB_DATA_WIDTH | ALLOW_SUB_WORD_WRITE | ACK_ZERO_STROBE_WRITE |
   |-----------|-----------|----------------|-------------------|--------------------|
   | `u_dut_a` | `a_*`     | 64             | 0                 | 1                  |
   | `u_dut_b` | `b_*`     | 32             | 1                 | 0                  |

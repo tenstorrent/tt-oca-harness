@@ -186,7 +186,7 @@ _Static_assert(EXTAXI_SEP_COLD7_GLOBAL ==
 
 /* ---- Filter config words (axi_filter FILTER_CONFIG; only bits 0/1/4/8/24 used) ----
  * read_allowed[0] | write_allowed[1] | entry_enabled[4] | allow_ns[8] | allow_burst[24].
- * allow_ns is an EXACT match on AxPROT[1] gated by EnNsFilter (traffic_filter.sv:54)
+ * allow_ns is an EXACT match on AxPROT[1] gated by EN_NS_FILTER (traffic_filter.sv:54)
  * -> program a SECURE rule (allow_ns=0) AND an NS rule (allow_ns=1) over the same
  * range so the leg passes regardless of the initiator's security level.  src_id and
  * group_id are left 0 (ignored: !(|cfg) passes any initiator). */

@@ -11,7 +11,7 @@ of one parameter read at the wrapper and at the instance that consumes it.
 
 No specification in this tree states the packed layout of the build
 configuration struct or the token parameter's default value. The per-field
-`Cfg` decode compares and the token-is-zero compare are drift checks on the
+`CFG` decode compares and the token-is-zero compare are drift checks on the
 elaboration and carry no evidence token.
 
 On the `--dut smu` production wrapper (compile_smu_chiplet, +expected_sep=1):
@@ -35,7 +35,7 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_composition_parameter_test(smu_base_test):
-    """Token, OTP depth, security_disable and Cfg plumbing on the wrapper profile."""
+    """Token, OTP depth, security_disable and CFG plumbing on the wrapper profile."""
 
     use_shared_env = True
 

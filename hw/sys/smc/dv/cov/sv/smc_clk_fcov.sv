@@ -21,7 +21,7 @@
 
 module smc_clk_fcov #(
   // Ref-clock cycles per measurement window for the domain-ratio points.
-  parameter int unsigned WindowCycles = 1024
+  parameter int unsigned WINDOW_CYCLES = 1024
 ) (
   input wire clk_ref_i,
   input wire clk_smc_i,
@@ -69,8 +69,8 @@ module smc_clk_fcov #(
   // so a read landing on an increment only shifts a ratio by one count.
   // ------------------------------------------------------------------
   localparam int unsigned CntWidth = 32;
-  localparam int unsigned WinWidth = $clog2(WindowCycles);
-  localparam logic [WinWidth-1:0] WindowLast = WinWidth'(WindowCycles - 1);
+  localparam int unsigned WinWidth = $clog2(WINDOW_CYCLES);
+  localparam logic [WinWidth-1:0] WindowLast = WinWidth'(WINDOW_CYCLES - 1);
 
   // Every register here carries a reset branch. Without one a 4-state
   // simulator holds the counters at X for the whole run, the window never
@@ -95,7 +95,7 @@ module smc_clk_fcov #(
   end
 
   // The deltas are registered at the closing edge against the base captured
-  // when the window opened, so they span WindowCycles ref edges. Reading
+  // when the window opened, so they span WINDOW_CYCLES ref edges. Reading
   // live counters against a base loaded on the same edge would measure a
   // single cycle instead.
   logic [WinWidth-1:0] win_cnt_q;
@@ -406,12 +406,15 @@ module smc_clk_fcov #(
       logic [31:0] ref_edges, logic [31:0] smc_edges, logic [31:0] periph_edges
   );
     option.per_instance = 1;
-    // The base test draws ref 8/10/12 ns, smc 4/5/6 ns and periph 8/10 ns, so
-    // the SMC core clock runs between 1.3 and 3 times the reference and the
-    // peripheral clock between 0.8 and 1.5 times it. The two clock-ratio
-    // leaves pin an SMC clock no faster than the reference; the flat
-    // c_clk_ratio_* points record those. A clock that stops within a window is
-    // the clock-gate groups' subject.
+    // The bench drives ref / smc / periph at 10 / 1.25 / 5 ns, or a 10 ns SMC
+    // clock under +pll_sys_period_ns=10, so the default run lands in the SMC
+    // much_faster by periph faster cell. The smc_clk_* ratio leaves in
+    // testlists/clock.toml pin the other periods, one leaf per cell of the
+    // cross below, so every slower, same, faster and much_faster bin of both
+    // coverpoints and every cell of their cross has a driver and is graded.
+    // The stalled bins are out: clk_rst.adoc defines no mode in which an input
+    // clock stops (the stalled-window cover points are Phase 2), and a clock
+    // the clock gates stop is the cg_clk_gate group's subject.
     cp_smc_bucket: coverpoint (smc_edges * 4) / (ref_edges == 0 ? 1 : ref_edges) {
       bins stalled = {0};
       bins slower = {[1 : 3]};
@@ -419,7 +422,7 @@ module smc_clk_fcov #(
       bins faster = {[5 : 8]};
       bins much_faster = {[9 : 32]};
       bins beyond = default;
-      ignore_bins core_not_faster_than_ref = {[0 : 4]};
+      ignore_bins smc_stalled = {0};
     }
     cp_periph_bucket: coverpoint (periph_edges * 4) / (ref_edges == 0 ? 1 : ref_edges) {
       bins stalled = {0};
@@ -429,15 +432,8 @@ module smc_clk_fcov #(
       bins much_faster = {[9 : 32]};
       bins beyond = default;
       ignore_bins periph_stalled = {0};
-      ignore_bins periph_beyond_1p5x_ref = {[9 : 32]};
     }
-    // The peripheral clock is slower than the reference only against the
-    // 8 ns reference, where the fastest SMC clock (4 ns) is twice the
-    // reference, faster but not much faster.
-    x_smc_periph: cross cp_smc_bucket, cp_periph_bucket{
-      ignore_bins periph_slower_only_at_8ns_ref = binsof (cp_smc_bucket.much_faster) &&
-          binsof (cp_periph_bucket.slower);
-    }
+    x_smc_periph: cross cp_smc_bucket, cp_periph_bucket;
   endgroup
 
   covergroup cg_clk_gate with function sample (logic cg_en, logic busy, logic clk_toggling);

@@ -1,0 +1,45 @@
+diff --git a/src/abr_prim/rtl/abr_prim_buf.sv b/src/abr_prim/rtl/abr_prim_buf.sv
+index 72e0e68..d04ae4e 100755
+--- a/src/abr_prim/rtl/abr_prim_buf.sv
++++ b/src/abr_prim/rtl/abr_prim_buf.sv
+@@ -32,7 +32,7 @@ if (Impl == abr_prim_pkg::ImplXilinx) begin : gen_xilinx
+     );
+ end else begin : gen_generic
+     abr_prim_generic_buf #(
+-      .Width(Width)
++      .WIDTH(Width)
+     ) u_impl_generic (
+       .*
+     );
+diff --git a/src/abr_prim/rtl/abr_prim_flop.sv b/src/abr_prim/rtl/abr_prim_flop.sv
+index e88cc3d..508222b 100755
+--- a/src/abr_prim/rtl/abr_prim_flop.sv
++++ b/src/abr_prim/rtl/abr_prim_flop.sv
+@@ -38,8 +38,8 @@ if (Impl == abr_prim_pkg::ImplXilinx) begin : gen_xilinx
+     );
+ end else begin : gen_generic
+     abr_prim_generic_flop #(
+-      .ResetValue(ResetValue),
+-      .Width(Width)
++      .RESET_VALUE(ResetValue),
++      .WIDTH(Width)
+     ) u_impl_generic (
+       .*
+     );
+diff --git a/src/abr_prim/rtl/abr_prim_flop_en.sv b/src/abr_prim/rtl/abr_prim_flop_en.sv
+index 655ab0f..9751702 100644
+--- a/src/abr_prim/rtl/abr_prim_flop_en.sv
++++ b/src/abr_prim/rtl/abr_prim_flop_en.sv
+@@ -41,9 +41,9 @@ if (Impl == abr_prim_pkg::ImplXilinx) begin : gen_xilinx
+     );
+ end else begin : gen_generic
+     abr_prim_generic_flop_en #(
+-      .EnSecBuf(EnSecBuf),
+-      .ResetValue(ResetValue),
+-      .Width(Width)
++      .EN_SEC_BUF(EnSecBuf),
++      .RESET_VALUE(ResetValue),
++      .WIDTH(Width)
+     ) u_impl_generic (
+       .*
+     );

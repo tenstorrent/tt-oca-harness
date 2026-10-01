@@ -5,7 +5,7 @@
 // SMC IP Integration -- 3rd party IP, macros, and shims
 //
 // Open-source reference models for the technology-specific IP SMC exposes
-// at this boundary: the shared eFuse bank/shim model (IsSmcInstance=1), the
+// at this boundary: the shared eFuse bank/shim model (IS_SMC_INSTANCE=1), the
 // PLL/PVT AXI-Lite models (pll_wrap.sv / pvt_wrap.sv). pll_wrap is the
 // clock source the wrappers fan out to smc.sv / smu.sv. Also modeled here:
 // the I3C DAT/DCT/RLT table memories, and one prim_pad_shim.sv instance per
@@ -152,10 +152,10 @@ module smc_ip_integration (
     );
 
     efuse_bank_model #(
-        .NumFuseByteWidth (smc_efuse_pkg::NumFuseByteWidth),
-        .IsSmcInstance    (1'b1),
-        .efuse_apb_req_t  (smc_pkg::smc_efuse_apb_req_t),
-        .efuse_apb_resp_t (smc_pkg::smc_efuse_apb_resp_t)
+        .NUM_FUSE_BYTE_WIDTH (smc_efuse_pkg::NumFuseByteWidth),
+        .IS_SMC_INSTANCE     (1'b1),
+        .efuse_apb_req_t     (smc_pkg::smc_efuse_apb_req_t),
+        .efuse_apb_resp_t    (smc_pkg::smc_efuse_apb_resp_t)
     ) u_efuse_bank_model (
         .clk_i  (clk_sys),
         .rst_ni (rst_primary_smc_clk_ni),
@@ -426,7 +426,7 @@ module smc_ip_integration (
 
     for (genvar i = 0; i < smc_pkg::NUM_GPIO_WRAPS; i++) begin : gen_gpio_pad
         prim_pad_shim #(
-            .InputOnly (1'b0)
+            .INPUT_ONLY (1'b0)
         ) u_prim_pad_shim (
             .core2pad_i          (core2pad_i[i]),
             .core2pad_en_i       (core2pad_en_i[i]),

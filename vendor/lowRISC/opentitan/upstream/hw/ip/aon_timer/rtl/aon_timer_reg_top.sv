@@ -92,8 +92,8 @@ module aon_timer_reg_top
   // outgoing integrity generation
   tlul_pkg::tl_d2h_t tl_o_pre;
   tlul_rsp_intg_gen #(
-    .EnableRspIntgGen(1),
-    .EnableDataIntgGen(1)
+    .ENABLE_RSP_INTG_GEN(1),
+    .ENABLE_DATA_INTG_GEN(1)
   ) u_rsp_intg_gen (
     .tl_i(tl_o_pre),
     .tl_o(tl_o)
@@ -103,9 +103,9 @@ module aon_timer_reg_top
   assign tl_o_pre   = tl_reg_d2h;
 
   tlul_adapter_reg #(
-    .RegAw(AW),
-    .RegDw(DW),
-    .EnableDataIntgGen(0)
+    .REG_AW(AW),
+    .REG_DW(DW),
+    .ENABLE_DATA_INTG_GEN(0)
   ) u_reg_if (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),

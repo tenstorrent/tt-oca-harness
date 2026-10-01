@@ -7,8 +7,8 @@
 //-----------------------------------------------------------------------------
 
 module efuse_bank_model #(
-  parameter int unsigned NumFuseByteWidth = 12,
-  parameter bit IsSmcInstance = 1'b0,
+  parameter int unsigned NUM_FUSE_BYTE_WIDTH = 12,
+  parameter bit IS_SMC_INSTANCE = 1'b0,
   parameter type efuse_apb_req_t = logic,
   parameter type efuse_apb_resp_t = logic
 ) (
@@ -56,7 +56,7 @@ module efuse_bank_model #(
   initial begin
     string pfx;
     logic  seed_given;
-    pfx = IsSmcInstance ? "smc_" : "sep_";
+    pfx = IS_SMC_INSTANCE ? "smc_" : "sep_";
     prog_fail_count_cfg = 0;
     prog_fail_percent   = 0;
     prog_fail_seed      = 32'h1bad_f00d;
@@ -66,7 +66,7 @@ module efuse_bank_model #(
     if (prog_fail_percent > 100) prog_fail_percent = 100;
     if ((prog_fail_count_cfg != 0) || (prog_fail_percent != 0)) begin
       $display("[efuse_bank_model:%s] program fail injection count=%0d percent=%0d seed=0x%08x%s",
-               IsSmcInstance ? "SMC" : "SEP", prog_fail_count_cfg, prog_fail_percent,
+               IS_SMC_INSTANCE ? "SMC" : "SEP", prog_fail_count_cfg, prog_fail_percent,
                prog_fail_seed, seed_given ? " (plusarg)" : " (default)");
     end
   end
@@ -99,7 +99,7 @@ module efuse_bank_model #(
       end
       if (prog_fail_now) begin
         $display("[efuse_bank_model:%s] injected program failure at paddr 0x%0h",
-                 IsSmcInstance ? "SMC" : "SEP", apb_req_i.paddr);
+                 IS_SMC_INSTANCE ? "SMC" : "SEP", apb_req_i.paddr);
       end
     end
   end
@@ -116,7 +116,7 @@ module efuse_bank_model #(
     .s_apb_penable(apb_req_i.penable),
     .s_apb_pwrite(apb_req_i.pwrite),
     .s_apb_pprot(apb_req_i.pprot),
-    .s_apb_paddr(apb_req_i.paddr[NumFuseByteWidth-1:0]),
+    .s_apb_paddr(apb_req_i.paddr[NUM_FUSE_BYTE_WIDTH-1:0]),
     .s_apb_pwdata(prog_fail_act ? 32'h0 : apb_req_i.pwdata),
     .s_apb_pstrb(apb_req_i.pstrb),
     .s_apb_pready(apb_resp_o.pready),
@@ -138,7 +138,7 @@ module efuse_bank_model #(
     string img;
     logic [31:0] otp_preload_mem [1024];
     for (int unsigned i = 0; i < 1024; i++) otp_preload_mem[i] = '0;
-    if (IsSmcInstance) begin
+    if (IS_SMC_INSTANCE) begin
       if ($value$plusargs("smc_efuse_hex=%s", img)) begin
         wait (rst_ni);
         $readmemh(img, otp_preload_mem);

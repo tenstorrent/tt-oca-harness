@@ -141,7 +141,10 @@ class sep_fabric_outbound_remap_filter_walk_test(sep_base_test):
         rng = SepSeededRng(self.random_seed())
         pairs = [_Pair(rng, b, r) for b in ("AP", "STEE") for r in range(N_REGIONS)]
         self.logger.info(
-            "outbound walk: %d pairs, IdxStart=%d, granule=%d", len(pairs), IDX_START, GRANULE_BYTES
+            "outbound walk: %d pairs, IDX_START=%d, granule=%d",
+            len(pairs),
+            IDX_START,
+            GRANULE_BYTES,
         )
         await self.bring_up_no_cpu()
         filt = SepFilterEntryWalker(

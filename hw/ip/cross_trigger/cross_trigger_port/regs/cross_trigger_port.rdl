@@ -42,22 +42,22 @@ addrmap cross_trigger_port {
         field {
             sw = r;
             hw = w;
-            desc = "Readout of the current CT_Req_out signal value. Reads 0 in wire-OR mode.";
+            desc = "Readout of the current CT_Req_out level with CONFIG.INVERT undone, so 1 means the request is asserted whatever the pad polarity. Reads 0 in wire-OR mode.";
         } REQ_OUT[4:4] = 0x0;
         field {
             sw = r;
             hw = w;
-            desc = "Readout of the current synchronized CT_Ack_in signal value.";
+            desc = "Readout of the current synchronized CT_Ack_in level with CONFIG.INVERT undone, so 1 means the acknowledge is asserted whatever the pad polarity.";
         } ACK_IN[5:5] = 0x0;
         field {
             sw = r;
             hw = w;
-            desc = "Readout of the current synchronized CT_Req_in signal value.";
+            desc = "Readout of the current synchronized CT_Req_in level with CONFIG.INVERT undone, so 1 means the request is asserted whatever the pad polarity.";
         } REQ_IN[6:6] = 0x0;
         field {
             sw = r;
             hw = w;
-            desc = "Readout of the current CT_Ack_out signal value. Reads 0 in wire-OR mode.";
+            desc = "Readout of the current CT_Ack_out level with CONFIG.INVERT undone, so 1 means the acknowledge is asserted whatever the pad polarity. Reads 0 in wire-OR mode.";
         } ACK_OUT[7:7] = 0x0;
     };
 

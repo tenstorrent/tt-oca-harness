@@ -208,12 +208,12 @@ module uart_core
   end
 
   prim_fifo_sync_parity #(
-    .Width             (8),
-    .Pass              (1'b0),
-    .Depth             (TX_FIFO_DEPTH),
-    .OutputZeroIfEmpty (1'b1),
-    .NeverClears       (1'b0),
-    .Secure            (1'b1)  // Pointer and data error checking
+    .WIDTH                (8),
+    .PASS                 (1'b0),
+    .DEPTH                (TX_FIFO_DEPTH),
+    .OUTPUT_ZERO_IF_EMPTY (1'b1),
+    .NEVER_CLEARS         (1'b0),
+    .SECURE               (1'b1)  // Pointer and data error checking
   ) u_uart_txfifo (
     .clk_i,
     .rst_ni,
@@ -416,12 +416,12 @@ module uart_core
   end
 
   prim_fifo_sync_parity #(
-    .Width             ($bits(rx_fifo_rbr_entry_t)),
-    .Pass              (1'b0),
-    .Depth             (RX_FIFO_DEPTH),
-    .OutputZeroIfEmpty (1'b1),
-    .NeverClears       (1'b0),
-    .Secure            (1'b1)  // Error checking
+    .WIDTH                ($bits(rx_fifo_rbr_entry_t)),
+    .PASS                 (1'b0),
+    .DEPTH                (RX_FIFO_DEPTH),
+    .OUTPUT_ZERO_IF_EMPTY (1'b1),
+    .NEVER_CLEARS         (1'b0),
+    .SECURE               (1'b1)  // Error checking
   ) u_uart_rxfifo (
     .clk_i,
     .rst_ni,

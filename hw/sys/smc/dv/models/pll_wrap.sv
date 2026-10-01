@@ -28,7 +28,7 @@
 // behavioral model the PLL is always considered locked, so sel is hardwired 1.
 //
 // prim_ag_clk_mux (anti-glitch mux): clk0 is ref (safe fallback on reset,
-// SelectOnReset=0) and clk1 is the post-mux2 PLL path.  sel=1 permanently
+// SELECT_ON_RESET=0) and clk1 is the post-mux2 PLL path.  sel=1 permanently
 // selects clk1 in the behavioral model.
 //
 // clk_ref passes straight through — it is the reference and needs no mux.
@@ -130,7 +130,7 @@ module pll_wrap
   );
 
   prim_ag_clk_mux #(
-    .SelectOnReset(1'b0)
+    .SELECT_ON_RESET(1'b0)
   ) u_sys_ag_mux (
     .clk0_i     (osc_ref),
     .clk1_i     (clk_sys_mux2),
@@ -158,7 +158,7 @@ module pll_wrap
   );
 
   prim_ag_clk_mux #(
-    .SelectOnReset(1'b0)
+    .SELECT_ON_RESET(1'b0)
   ) u_periph_ag_mux (
     .clk0_i     (osc_ref),
     .clk1_i     (clk_periph_mux2),

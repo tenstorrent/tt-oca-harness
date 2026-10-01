@@ -19,7 +19,7 @@
 `include "prim_assert.sv"
 
 module axi_hang_detector #(
-  parameter int unsigned OutstandingTx = 6  // Max outstanding tracked by the snoop.
+  parameter int unsigned OUTSTANDING_TX = 6  // Max outstanding tracked by the snoop.
 ) (
   input  logic           clk_i,                             // System clock.
   input  logic           rst_ni,                            // Async reset, active-low.
@@ -61,14 +61,14 @@ module axi_hang_detector #(
   /////////////////////////////
 
   // Counter width derived the same way prim_axi_snoop derives it
-  localparam int unsigned ReqCountW = (OutstandingTx > 1) ? $clog2(OutstandingTx) + 2 : 2;
+  localparam int unsigned ReqCountW = (OUTSTANDING_TX > 1) ? $clog2(OUTSTANDING_TX) + 2 : 2;
 
   logic complete_aw, complete_ar, any_completion;
   logic [ReqCountW-1:0]       req_count_q;
   logic                       req_count_nonzero;
 
   prim_axi_snoop #(
-    .OutstandingTx(OutstandingTx)
+    .OUTSTANDING_TX(OUTSTANDING_TX)
   ) u_prim_axi_snoop (
     .clk_i           (clk_i),
     .rst_ni          (rst_ni),
@@ -147,6 +147,6 @@ module axi_hang_detector #(
 
   `OCAH_OT_ASSERT_KNOWN(IrqKnownO_A, irq_o)
   `OCAH_OT_ASSERT_KNOWN(BusActiveKnownO_A, bus_active_o)
-  `OCAH_OT_ASSERT_INIT(ParamOutstandingTx_A, OutstandingTx >= 1)
+  `OCAH_OT_ASSERT_INIT(ParamOutstandingTx_A, OUTSTANDING_TX >= 1)
 
 endmodule

@@ -89,7 +89,7 @@ module cross_trigger_port_tb_top
   // Shared wire: driver 0 is the DUT pad, drivers 1 and 2 the external
   // chiplets, which pull towards the level opposite the pull.
   ocah_open_drain_bus #(
-    .NumDrivers(3)
+    .NUM_DRIVERS(3)
   ) u_wire_or_bus (
     .pull_i     (wire_or_pull),
     .dout_i     ({{2{~wire_or_pull}}, ct_req_out_dout}),
