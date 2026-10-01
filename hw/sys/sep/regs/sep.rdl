@@ -192,7 +192,7 @@ addrmap sep_top #(
     external remapped_region       stee_region      @BASE_ADDR + 0x1180_0000;
 
     // =========================================================================
-    // SEP External Region (adopter/vendor window: Cadence SPI et al)
+    // SEP External Region (adopter-defined window, e.g. a memory-mapped flash controller)
     // Base: 0x2000_0000, Size: 512 MB (0x2000_0000)
     // =========================================================================
     // Open-source builds reserve the region; an adopter overlay may override

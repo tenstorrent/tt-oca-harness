@@ -29,7 +29,7 @@
 #define BIT(n) (1u << (n))
 #endif
 
-// Cadence xSPI direct flash access / XIP window (OCAH address map):
+// XIP window for direct (memory-mapped) flash access (OCAH address map):
 //   0x3000_0000 - 0x3FFF_FFFF (256 MiB).
 #ifndef SEP_SPI_BASE
 #define SEP_SPI_BASE ((uint32_t)SEP_TOP_SEP_EXTERNAL_XIP_REGION_BASE_ADDR)

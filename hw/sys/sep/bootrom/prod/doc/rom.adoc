@@ -224,8 +224,8 @@ CHIPLET_PUBK_REVOKE, BL1_VERSION, fuse-key digests, and the LOCKS read-lock regi
 `DEMOTE_2` demotion registers (write + lock).
 |OpenTitan SPI host |`0x10B00000` |Boot-flash transport option A: command/FIFO reads (PIO or
 secure-DMA drain), no XIP (<<sec:spi>>).
-|Cadence xSPI |ctrl `0x20002000` region, XIP window `0x30000000` |Boot-flash transport option
-B: memory-mapped XIP reads (<<sec:spi>>).
+|XIP flash controller |ctrl in SEP external region `0x20000000`, XIP window `0x30000000`
+|Boot-flash transport option B: memory-mapped XIP reads (<<sec:spi>>).
 |SEP scratch registers |cold `0x10802000`, warm `0x10802080` |Status reporting channel,
 virtual console, warm-reset re-entry pointer (<<sec:memory_map>>).
 |Outbound AXI filter |`0x10A20000` region |Egress gate for SEP-mastered AXI transactions;
@@ -284,10 +284,10 @@ program.
 boot decisions.
 |Outbound AXI filter |`0x10A20000` |— |Egress filter windows (`OUTBOUND_FILTER_CTRL_n`).
 |OpenTitan SPI host |`0x10B00000` |— |Boot-flash transport option A.
-|Cadence xSPI controller |`0x20002000` region |— |Boot-flash transport option B (controller +
-PHY registers).
-|xSPI XIP window |`0x30000000` |flash-size |`SEP_SPI_BASE` — memory-mapped view of boot flash
-(Cadence path); DMA source for manifest/payload loads.
+|XIP flash controller |SEP external region `0x20000000` |— |Boot-flash transport option B
+(adopter-defined controller registers).
+|XIP window |`0x30000000` |flash-size |`SEP_SPI_BASE` — memory-mapped view of boot flash
+(XIP path); DMA source for manifest/payload loads.
 |SMC window |`0x40000000` |— |SEP view of the SMC (`SEP_SMC_GLOBAL_BASE`); the crossbar routes
 `[0x4000_0000, 0xC000_0000)` outbound. See <<tbl:smc_window>>.
 |STDOUT mailbox |`0x80000000` |4 B |DV PASS/FAIL magic words and mailbox character output.
@@ -885,7 +885,7 @@ execute before validation completes.
 4. [[req-SEP-ROM-PMP-040]]*[SEP-ROM-PMP-040]* Data windows shall be limited to the regions
    the ROM demonstrably needs: DCCM (`RW`), the STDOUT mailbox, the SEP peripheral block
    (`0x1080_0000`–`0x10BF_FFFF`: DMA, scratch, crypto, lifecycle, efuse, SPI hosts), the
-   Cadence xSPI controller and XIP windows (when fitted), the SMC window (`0x4000_0000`),
+   XIP flash controller registers and XIP window (when fitted), the SMC window (`0x4000_0000`),
    SEP SRAM and ICCM (`RW`, for staging). Everything else shall have no PMP grant.
 5. [[req-SEP-ROM-PMP-050]]*[SEP-ROM-PMP-050]* The hand-off release shall be the *last*
    security-relevant action of the ROM: no execute permission beyond ROM may exist until
@@ -954,8 +954,8 @@ Three RTL behaviors shape the programming sequence (`el2_dec_pmp_ctl.sv`,
    matching no rule faults. No catch-all entry is used; a window the rule set fails to grant
    shall manifest as a precise trap (fatal per SEP-ROM-CPU-070), never as silent access.
 3. The locked rule set implements <<tbl:pmp_regions>> as amended by the fence policy: ROM
-   `R-X`; DCCM, mailbox, peripheral block, SMC window, xSPI controller/XIP windows `RW-`;
-   SEP SRAM and ICCM `RW-` (no execute) until hand-off.
+   `R-X`; DCCM, mailbox, peripheral block, SMC window, XIP controller registers and XIP
+   window `RW-`; SEP SRAM and ICCM `RW-` (no execute) until hand-off.
 
 ==== Release at Hand-off
 
@@ -1025,7 +1025,7 @@ policy:
   ratified Smepmp sequence (<<sec:pmp_mechanism>>: RLB → locked rules → MMWP, release by
   rule rewrite) is not yet implemented; `mseccfg` is never written.
 * Entry 6's covered range (`0xC000_0000`–`0xCFFF_FFFF`) does not match the actual SMC window
-  at `0x4000_0000`; the Cadence XIP window (`0x3000_0000`) and SMC window have no entry. This
+  at `0x4000_0000`; the XIP window (`0x3000_0000`) and SMC window have no entry. This
   is currently masked by the entries being unlocked (M-mode unconstrained), but must be fixed
   before the fences can bind (SEP-ROM-PMP-040).
 
@@ -1399,9 +1399,10 @@ manifest+payload.
 [[sec:spi]]
 == SPI Initialization and Manifest Transfer
 
-On a primary chiplet, mutable software is read from SPI NOR flash at fixed offsets. OCAH fits
-one of two SPI controllers; the ROM supports both behind a single transport abstraction, and
-the choice is made at build time (`BOOT_SPI_CONTROLLER_OT`). The manifest loader is
+On a primary chiplet, mutable software is read from SPI NOR flash at fixed offsets. The ROM
+supports two SPI controller types behind a single transport abstraction, chosen at build time
+(`BOOT_SPI_CONTROLLER_OT`). The open SEP fits the OpenTitan SPI host; a memory-mapped (XIP)
+controller is fitted only by a build that supplies its driver. The manifest loader is
 controller-agnostic: it speaks in *flash byte offsets* only.
 
 [[req-SEP-ROM-SPI-010]]*[SEP-ROM-SPI-010]* All flash access from the boot path shall go
@@ -1418,12 +1419,12 @@ depend on which controller is fitted.
 [frame=ends]
 |===
 |*Offset* |*Content* |*Notes*
-|`0x0000` |Primary SPI configuration TLV |Cadence path only: PHY tuning parameters read
+|`0x0000` |Primary SPI configuration TLV |XIP path only: driver-defined parameters read
 during controller bring-up.
 |`0x1000` |*Primary manifest* (4096 B) |`PRIMARY_MANIFEST_OFFSET`.
 |`0x1000` + `payload_offset` |Primary payload |Located by the manifest's `payload_offset`
 field (payload TOC + images).
-|`0x40000` |Backup SPI configuration TLV |Cadence path only.
+|`0x40000` |Backup SPI configuration TLV |XIP path only.
 |`0x41000` |*Backup manifest* (4096 B) |`BACKUP_MANIFEST_OFFSET` — a complete, independent
 manifest+payload pair (<<sec:retry>>).
 |`0x41000` + `payload_offset` |Backup payload |
@@ -1478,15 +1479,16 @@ transactions:
 Driver internals (register sequencing, watermark handling, error recovery) are specified in
 the OpenTitan SPI Bootcode Driver spec (`specs/001-ot-spi-bootcode-driver/`).
 
-=== Cadence xSPI Path
+=== Memory-Mapped (XIP) Path
 
-The Cadence controller exposes flash as a memory-mapped XIP window at `0x3000_0000`
+An XIP controller exposes flash as a memory-mapped window at `0x3000_0000`
 (`SEP_SPI_BASE`); a "read" is a secure-DMA copy from `SEP_SPI_BASE + offset` into SRAM.
-Bring-up is a multi-phase sequence: a sweep over candidate PHY parameter sets (fuse-adjustable)
-until the flash device answers, application of the slot's configuration TLV, and optional DLL
-margining that re-reads the TLV at low/high timing margins to confirm the operating point.
-Slot rotation (`rotate_update` strap) and backup-bank fallback re-run bring-up against the
-backup TLV.
+Bring-up belongs to the controller's driver. The open ROM links only the weak stubs in
+`src/sep_spi.c`, whose `spi_init()` reports that no controller is fitted; a build that fits one
+supplies a driver that overrides them and applies the slot's configuration TLV. The
+`rotate_update` strap reaches the driver through `spi_set_rotate()` before `spi_init()`. After a
+failed slot, backup-slot fallback re-runs bring-up against the backup TLV through `spi_reinit()`
+(`boot_flash_reinit()`).
 
 [[fig:spi_transfer]]
 .Manifest transfer through the transport shim
@@ -1500,10 +1502,9 @@ start
 if (controller ?) then (OpenTitan)
   :select profile [BOOT_OT_SPI_PROFILE];
   :CTRL/CFG/CSID bring-up;
-else (Cadence xSPI)
-  :PHY parameter sweep;
+else (XIP)
+  :driver bring-up;
   :read + apply slot TLV;
-  :optional DLL margining;
 endif
 :boot_flash_bounds_ok(off, len, dst, dst_len);
 note right
@@ -1515,7 +1516,7 @@ if (in bounds ?) then (yes)
     :segmented CMD reads (<=512 B),
     RX FIFO drain via secure DMA or PIO,
     <=3 transport retries;
-  else (Cadence)
+  else (XIP)
     :secure DMA copy from
     XIP window 0x30000000 + off;
   endif
@@ -2823,7 +2824,7 @@ hand-off — those mutate state, the check does not.
 
 [[req-SEP-ROM-RETRY-040]]*[SEP-ROM-RETRY-040]* Between attempts the ROM shall return to a
 clean state: the staged SRAM region is zeroed (no partially validated bytes survive into the
-next attempt) and the flash transport is re-initialized against the backup bank (Cadence:
+next attempt) and the flash transport is re-initialized against the backup bank (XIP:
 backup configuration TLV; OpenTitan: controller re-bring-up).
 
 The one-shot, state-mutating stages (demotion, fuse locks, measurement, hand-off) sit

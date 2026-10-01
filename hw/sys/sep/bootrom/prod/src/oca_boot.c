@@ -100,7 +100,7 @@ uint32_t rom_oca_demotion_control(void) {
 
 // For the OpenTitan controller the flash is not memory-mapped, so `src` is a
 // flash byte offset read through the SPI host; otherwise `src` is an absolute
-// address (Cadence XIP window or SMC SRAM) copied by the secure DMA.
+// address (XIP window or SMC SRAM) copied by the secure DMA.
 static uint32_t manifest_src_read(uint32_t dst, uint32_t src, uint32_t len, bool from_spi) {
     // Every storage read on the boot path goes through the transport shim's
     // bounds gate first (SEP-ROM-SPI-010). It is the only check that the SOURCE
@@ -111,7 +111,7 @@ static uint32_t manifest_src_read(uint32_t dst, uint32_t src, uint32_t len, bool
     // and defaults to reject.
     //
     // It speaks flash byte offsets on both controllers. The OpenTitan path
-    // already carries one; the Cadence path carries an absolute XIP address, so
+    // already carries one; the XIP path carries an absolute window address, so
     // the base the caller added is taken back off here. A source below the
     // window has no offset representation at all, so it is refused rather than
     // wrapped. Non-SPI sources (a manifest the SMC staged in its SRAM) are not
