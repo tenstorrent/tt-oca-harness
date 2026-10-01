@@ -1388,7 +1388,7 @@ demotion, PCR, and so on). Inclusion is selected per signing operation; only
 inclusion in the signed hash cryptographically attests the configuration.
 
 [[remote-attestation-support-in-kpv-and-pcrv]]
-=== Remote Attestation Support in KPV and PCRV (Design Target)
+=== Remote Attestation Support in KPV and PCRV -- Design Target
 
 Attestation provisioning and public-key generation below are proposals, not
 implemented ROM command services. PCRV is absent from this integration.

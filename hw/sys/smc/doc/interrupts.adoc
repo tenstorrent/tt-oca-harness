@@ -7,8 +7,8 @@
 [[interrupts]]
 
 SMC external interrupts pass through the Platform-Level Interrupt Controller
-(PLIC). CLINT supplies per-core timer and software interrupts. Each Bus Error
-Unit (BEU) has both a direct core output and a separately selected PLIC output.
+(PLIC). CLINT supplies per-core timer and software interrupts. Each bus error
+unit (BEU) has both a direct core output and a separately selected PLIC output.
 This chapter distinguishes raw SMC vector bits from software-visible PLIC IDs.
 
 == Controllers

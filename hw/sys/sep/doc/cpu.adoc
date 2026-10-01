@@ -67,7 +67,7 @@ not be assumed to be present merely because the core supports them.
 |Memory attributes
 |`mrac` independently selects cacheability and side-effect attributes for sixteen fixed 256 MiB regions. These attributes do not grant read, write or execute permission.
 |Interrupts and timers
-|Integrated Programmable Interrupt Controller (PIC), configured for 255 external sources, plus two internal timers that can operate independently or be linked. The timers use VeeR-specific `mip.MITIP0` and `mip.MITIP1` interrupts.
+|Programmable Interrupt Controller (PIC), configured for 255 external sources, plus two internal timers that can operate independently or be linked. The timers use VeeR-specific `mip.MITIP0` and `mip.MITIP1` interrupts.
 |Debug
 |JTAG debug interface and an AXI4 debug master connected to the SEP fabric.
 |Dual Core Lock Step (DCLS)
