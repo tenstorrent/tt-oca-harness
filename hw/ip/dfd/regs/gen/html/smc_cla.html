@@ -146,8 +146,8 @@
 <tr><td>0x3004</td><td><a href="#Trdstimpl">Trdstimpl</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x3008</td><td><a href="#Trdstinstfeatures">Trdstinstfeatures</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x31A0</td><td><a href="#CDbgDebugTraceCfg">CDbgDebugTraceCfg</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x3FF8</td><td><a href="#dst_0_.ScratchLo">dst[0].ScratchLo</a></td><td>RW</td><td>Scratch register (low) for DV and potential ECO usage</td></tr>
-<tr><td>0x3FFC</td><td><a href="#dst_0_.ScratchHi">dst[0].ScratchHi</a></td><td>RW</td><td>Scratch register (high) for DV and potential ECO usage</td></tr>
+<tr><td>0x3FF8</td><td><a href="#dst.ScratchLo">dst.ScratchLo</a></td><td>RW</td><td>Scratch register (low) for DV and potential ECO usage</td></tr>
+<tr><td>0x3FFC</td><td><a href="#dst.ScratchHi">dst.ScratchHi</a></td><td>RW</td><td>Scratch register (high) for DV and potential ECO usage</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
 <h3 id="Trdstramcontrol">Trdstramcontrol</h3>
@@ -1208,12 +1208,12 @@
 <tr><td>11:4</td><td>TraceFrameFillByte</td><td>RW</td><td>0x81</td><td>Use &quot;Filler Packet&quot; to align a stream of trace packets within a frame boundary.</td></tr>
 <tr><td>3:0</td><td>TraceSourceId</td><td>RW</td><td>0x0</td><td>Trace Source ID</td></tr>
 </table>
-<h3 id="dst_0_.ScratchLo">dst[0].ScratchLo</h3>
+<h3 id="dst.ScratchLo">dst.ScratchLo</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>Data</td><td>RW</td><td>0x0</td><td>-</td></tr>
 </table>
-<h3 id="dst_0_.ScratchHi">dst[0].ScratchHi</h3>
+<h3 id="dst.ScratchHi">dst.ScratchHi</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>Data</td><td>RW</td><td>0x0</td><td>-</td></tr>

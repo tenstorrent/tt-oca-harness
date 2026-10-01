@@ -42,12 +42,12 @@ DMA Controller for the integrated OpenTitan.
 | 0x4C | <<reg-{regmap-instance}-secure_dma-DST_CONFIG,DST_CONFIG>> | RW a| -
 | 0x50 | <<reg-{regmap-instance}-secure_dma-STATUS,STATUS>> | RW a| -
 | 0x54 | <<reg-{regmap-instance}-secure_dma-ERROR_CODE,ERROR_CODE>> | R a| -
-| 0x58 - 0x94 | <<reg-{regmap-instance}-secure_dma-SHA2_DIGEST_0-0-,SHA2_DIGEST_0[16]>> | R a| -
+| 0x58 - 0x94 | <<reg-{regmap-instance}-secure_dma-SHA2_DIGEST_0-,SHA2_DIGEST_0[16]>> | R a| -
 | 0x98 | <<reg-{regmap-instance}-secure_dma-HANDSHAKE_INTR_ENABLE,HANDSHAKE_INTR_ENABLE>> | RW a| -
 | 0x9C | <<reg-{regmap-instance}-secure_dma-CLEAR_INTR_SRC,CLEAR_INTR_SRC>> | RW a| -
 | 0xA0 | <<reg-{regmap-instance}-secure_dma-CLEAR_INTR_BUS,CLEAR_INTR_BUS>> | RW a| -
-| 0xA4 - 0xCC | <<reg-{regmap-instance}-secure_dma-INTR_SRC_ADDR_0-0-,INTR_SRC_ADDR_0[11]>> | RW a| -
-| 0x124 - 0x14C | <<reg-{regmap-instance}-secure_dma-INTR_SRC_WR_VAL_0-0-,INTR_SRC_WR_VAL_0[11]>> | RW a| -
+| 0xA4 - 0xCC | <<reg-{regmap-instance}-secure_dma-INTR_SRC_ADDR_0-,INTR_SRC_ADDR_0[11]>> | RW a| -
+| 0x124 - 0x14C | <<reg-{regmap-instance}-secure_dma-INTR_SRC_WR_VAL_0-,INTR_SRC_WR_VAL_0[11]>> | RW a| -
 |===
 
 [#reg-{regmap-instance}-secure_dma-INTR_STATE]
@@ -349,7 +349,7 @@ This bit may be set as long as hardware handshake mode is active and triggered.
 | 0 | `SRC_ADDR_ERROR` | R | 0x0 a| Source address is invalid.
 |===
 
-[#reg-{regmap-instance}-secure_dma-SHA2_DIGEST_0-0-]
+[#reg-{regmap-instance}-secure_dma-SHA2_DIGEST_0-]
 === SHA2_DIGEST_0[16]
 
 [cols="1,3,1,1,6", options="header"]
@@ -388,7 +388,7 @@ This bit may be set as long as hardware handshake mode is active and triggered.
 | 10:0 | `BUS` | RW | 0x0 a| Bus selection bit for source N.
 |===
 
-[#reg-{regmap-instance}-secure_dma-INTR_SRC_ADDR_0-0-]
+[#reg-{regmap-instance}-secure_dma-INTR_SRC_ADDR_0-]
 === INTR_SRC_ADDR_0[11]
 
 [cols="1,3,1,1,6", options="header"]
@@ -397,7 +397,7 @@ This bit may be set as long as hardware handshake mode is active and triggered.
 | 31:0 | `ADDR_0` | RW | 0x0 a| Destination address for interrupt source clearing write.
 |===
 
-[#reg-{regmap-instance}-secure_dma-INTR_SRC_WR_VAL_0-0-]
+[#reg-{regmap-instance}-secure_dma-INTR_SRC_WR_VAL_0-]
 === INTR_SRC_WR_VAL_0[11]
 
 [cols="1,3,1,1,6", options="header"]
