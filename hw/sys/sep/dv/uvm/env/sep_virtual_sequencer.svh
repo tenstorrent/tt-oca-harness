@@ -6,13 +6,19 @@
 // (sep_base_test_seq family) run on it and start reusable operation
 // sequences on the handle each step needs: CPU-LSU CSR accesses on
 // m_lsu_seqr. Further initiators (the SMN-inbound external master, the
-// SEP-OTP JTAG AXI-Lite master) add a handle here with their agents.
+// SEP-OTP JTAG AXI-Lite master) add a handle here with their agents. The
+// scoreboard handle is read-only: scenarios read its per-feature compare
+// count for their non-vacuity evidence and never push items into it.
+
+typedef class sep_scoreboard;
 
 class sep_virtual_sequencer extends ocah_sequencer;
   `uvm_component_utils(sep_virtual_sequencer)
 
   // CPU-LSU AXI4 initiator (VIP typedef: uvm_sequencer over ocah_axi_item).
   ocah_axi_master_sequencer m_lsu_seqr;
+  // Always-on scoreboard (compare counts only).
+  sep_scoreboard            m_scoreboard;
 
   function new(string name = "sep_virtual_sequencer", uvm_component parent = null);
     super.new(name, parent);
