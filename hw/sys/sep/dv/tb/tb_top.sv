@@ -303,6 +303,23 @@ module sep_uvm_top
             .u_arbiter.ReqStaysHighUntilGranted0_M);
         $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_pool_s3c_scan
             .u_arbiter.LockArbDecision_A);
+        // A JTAG reset override skips isolation, so an engine can drop an
+        // ungranted EDN request with no cancel; no word is lost or misrouted.
+        if ($test$plusargs("sep_edn_jtag_reset_waive")) begin
+            $display("[tb] crypto EDN request-hold checks off (+sep_edn_jtag_reset_waive)");
+            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+                .u_arbiter.ReqStaysHighUntilGranted0_M);
+            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+                .u_arbiter.LockArbDecision_A);
+            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+                .gen_ep[0].AxisEdnReqStableUnlessEndpointCancelled_A);
+            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+                .gen_ep[1].AxisEdnReqStableUnlessEndpointCancelled_A);
+            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+                .gen_ep[2].AxisEdnReqStableUnlessEndpointCancelled_A);
+            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+                .gen_ep[3].AxisEdnReqStableUnlessEndpointCancelled_A);
+        end
         // entropy_source.sv:1348 FipsWindowFloor_A -- fips_lock |-> window >= 1024.
         // sep_drbg_esrc_fips_lock_test writes FIPS_LOCK.LOCK, so a locked
         // out-of-spec window must fail rather than be swept up by the line above.

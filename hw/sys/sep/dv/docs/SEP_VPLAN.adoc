@@ -6692,7 +6692,7 @@ error path works.
 
 *Bucket*: eFuse, lifecycle, SEC_DIS, locked-field
 
-*Run mode*: `no_cpu`; omit `+skip_fuse_sense`
+*Run mode*: `no_cpu`; omit `+skip_fuse_sense`; `+sep_edn_jtag_reset_waive`. The JTAG `sep_reset_n` override resets the crypto engines without isolation, so an engine can drop an ungranted EDN request with no endpoint cancel; `tb_top` turns off the crypto EDN arbiter and adapter request-hold assertions for this leaf.
 
 *Source Module*: `sep_sec_dis_override_test`
 
@@ -6758,7 +6758,7 @@ error path works.
 
 *Bucket*: eFuse, lifecycle, SEC_DIS, locked-field
 
-*Run mode*: `no_cpu`; omit `+skip_fuse_sense`
+*Run mode*: `no_cpu`; omit `+skip_fuse_sense`; `+sep_edn_jtag_reset_waive`. The JTAG `sep_reset_n` override resets the crypto engines without isolation, so an engine can drop an ungranted EDN request with no endpoint cancel; `tb_top` turns off the crypto EDN arbiter and adapter request-hold assertions for this leaf.
 
 *Source Module*: `sep_sec_dis_reset_reach_test`
 
