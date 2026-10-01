@@ -703,7 +703,9 @@ NUM_EXT_DEMUX_PORTS
 
 
   localparam int unsigned NUM_SRAM_DEMUX_PORTS = 2;
-  typedef enum logic [$clog2(NUM_SRAM_DEMUX_PORTS)-1:0] {
+  typedef enum logic [$clog2(
+NUM_SRAM_DEMUX_PORTS
+)-1:0] {
     SRAM_DEMUX_MEM     = 1'd0,
     SRAM_DEMUX_ERR_SLV = 1'd1
   } sram_demux_target_e;
