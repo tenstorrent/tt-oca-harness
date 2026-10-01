@@ -1007,6 +1007,12 @@ instruction is active. A designer may also utilize the decoded INST_SELECT
 signal to trigger the BIST logic for any instructions that they have enabled.</p>
 </div>
 <div class="paragraph">
+<p>The PTAP adds no Segment Insertion Bit (SIB) or other scan cell to the iJTAG
+path. TDI is forwarded unchanged to the iJTAG network, and the network&#8217;s return
+is the RUNBIST TDR, so the length and contents of the RUNBIST DR are defined
+entirely by the iJTAG network attached to the PTAP.</p>
+</div>
+<div class="paragraph">
 <p>To execute BIST and access the BIST TDR:</p>
 </div>
 <div class="olist arabic">
@@ -1016,20 +1022,25 @@ signal to trigger the BIST logic for any instructions that they have enabled.</p
 sequence.</p>
 </li>
 <li>
-<p>Shift 2&#8217;b01 into TDI using the DR-Scan sequence to enable the SIB for the
-external iJTAG interface, starting with the least significant bit.</p>
+<p>Shift the configuration vector that the attached iJTAG network defines for
+reaching the BIST TDR into TDI using the DR-Scan sequence, starting with the
+least significant bit. A hierarchical network requires one DR scan for each
+level of SIBs that must be opened on the way to the BIST TDR.</p>
 </li>
 <li>
-<p>Shift {2&#8217;b01, BIST_TDR} into TDI using the DR-Scan sequence to access the
-BIST TDR, starting with the least significant bit. The BIST_TDR sequence is
-defined by the user&#8217;s implementation of the extended iJTAG network. Multiple
-sequences may be required to configure the external iJTAG network to access
-the BIST TDR.</p>
+<p>Shift the BIST TDR contents, together with the bits of every SIB and register
+that remains on the scan path, into TDI using the DR-Scan sequence, starting
+with the least significant bit.</p>
 </li>
 <li>
-<p>The contents of the BIST_TDR will shift out on TDO as {2&#8217;b01, BIST_TDR}.</p>
+<p>The captured contents of the same scan path shift out on TDO.</p>
 </li>
 </ol>
+</div>
+<div class="paragraph">
+<p>In the JTAG Interface Unit, the iJTAG network begins with three SIBs; their bit
+map and the integrated scan sequence are given in
+<a href="../../jtag_intf_unit/doc/index.html#jiu-ijtag-network" class="xref page">iJTAG Network</a>.</p>
 </div>
 </div>
 <div class="sect2">

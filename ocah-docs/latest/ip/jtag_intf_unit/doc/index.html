@@ -926,13 +926,98 @@ disable field.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="ijtag-network"><a class="anchor" href="#ijtag-network"></a><a class="link" href="#ijtag-network">3.2. iJTAG Network</a></h3>
+<h3 id="jiu-ijtag-network"><a class="anchor" href="#jiu-ijtag-network"></a><a class="link" href="#jiu-ijtag-network">3.2. iJTAG Network</a></h3>
 <div class="paragraph">
 <p>The iJTAG network is organized into three cascaded Segment Insertion Bit (SIB)
 chains. Each SIB is gated by the corresponding synchronized debug-disable field.
 Each SIB&#8217;s scan bit and control bit reset to 0 on TRST and in Test-Logic-Reset,
 so <code>dft_secure_host_scan_out_o</code>, <code>dft_host_scan_out_o</code> and <code>dfd_host_scan_out_o</code>
 read 0 from reset, whether or not the SIB is disabled.</p>
+</div>
+<div class="paragraph">
+<p>The PTAP selects the iJTAG network as its DR under SELECT_IJTAG and, when
+<code>RUNBIST_ENABLE</code> is set, under RUNBIST. From TDI the scan path passes through the
+DFT Secure SIB, the DFT Non-Secure SIB and the DFD SIB, and the DFD SIB&#8217;s output
+returns to the PTAP. Each SIB is one bit long. While a SIB is open, its segment
+is inserted on the TDO side of its bit: the SIB bit drives the segment&#8217;s scan
+input, and the segment&#8217;s return continues to the next SIB. With every SIB closed
+the iJTAG DR is three bits long, laid out as in <a href="#jiu-ijtag-sib-bit-map-table">Table 3</a>.</p>
+</div>
+<table id="jiu-ijtag-sib-bit-map-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. JIU iJTAG DR with every SIB closed</caption>
+<colgroup>
+<col style="width: 12%;">
+<col style="width: 28%;">
+<col style="width: 30%;">
+<col style="width: 30%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">DR Bit</th>
+<th class="tableblock halign-left valign-top">SIB</th>
+<th class="tableblock halign-left valign-top">Segment Ports</th>
+<th class="tableblock halign-left valign-top">Disable Field</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFD</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dfd_host_scan_*</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.dfd</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFT Non-Secure</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dft_host_scan_*</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.dft_nonsecure</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFT Secure</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dft_secure_host_scan_*</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.dft_secure</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Bit 0 is nearest TDO and is the first bit shifted in. A SIB bit shifted in as 1
+opens that SIB at Update-DR, and its segment is on the scan path from the next DR
+scan. Each SIB captures its own open state. A SIB whose disable field is set
+stays closed and remains a one-bit stage that captures 0, whatever is shifted
+into it.</p>
+</div>
+<div class="paragraph">
+<p>To reach a segment through the iJTAG network:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Shift SELECT_IJTAG, or RUNBIST to run BIST, into the instruction register
+using the IR-Scan sequence.</p>
+</li>
+<li>
+<p>Shift three bits into TDI using the DR-Scan sequence, starting with the least
+significant bit, to open the target SIB: 3&#8217;b100 for DFT Secure, 3&#8217;b010 for
+DFT Non-Secure or 3&#8217;b001 for DFD. The target SIB&#8217;s disable field must be
+clear.</p>
+</li>
+<li>
+<p>Shift the lengthened DR into TDI using the DR-Scan sequence, starting with
+the least significant bit, with the target SIB&#8217;s bit held at 1. With the DFT
+Non-Secure SIB open and an N-bit segment, the DR is N + 3 bits long: bit 0 is
+the DFD SIB, bits N to 1 are the segment with the bit nearest its scan output
+at bit 1, bit N + 1 is the DFT Non-Secure SIB and bit N + 2 is the DFT Secure
+SIB. The contents and length of each segment are defined by the network
+attached to its ports.</p>
+</li>
+<li>
+<p>The captured contents of the same scan path shift out on TDO.</p>
+</li>
+<li>
+<p>To close the SIB, shift the same DR with the target SIB&#8217;s bit at 0.</p>
+</li>
+</ol>
 </div>
 <div class="sect3">
 <h4 id="dft-secure-chain"><a class="anchor" href="#dft-secure-chain"></a><a class="link" href="#dft-secure-chain">3.2.1. DFT Secure Chain</a></h4>
@@ -951,32 +1036,18 @@ control is attached to this port.</p>
 <div class="sect3">
 <h4 id="dfd-chain"><a class="anchor" href="#dfd-chain"></a><a class="link" href="#dfd-chain">3.2.3. DFD Chain</a></h4>
 <div class="paragraph">
-<p>The Design-for-Debug (DFD) chain is gated by <code>dbg_disable_i.dfd</code>. The
-resources reached through it are gated again inside the PTAP, where each
-JTAG2AXI bridge is gated by its own disable input. This chain grants access to:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>SMC AXI4 system fabric via JTAG2AXI bridge</p>
-</li>
-<li>
-<p>SMC OTP controller via AXI-Lite-to-APB bridge</p>
-</li>
-<li>
-<p>SEP OTP controller via AXI-Lite-to-APB bridge</p>
-</li>
-<li>
-<p>Extension port for integrator-defined debug instruments</p>
-</li>
-</ul>
+<p>The Design-for-Debug (DFD) chain is gated by <code>dbg_disable_i.dfd</code>.
+Integrator-defined debug instruments are attached to this port.</p>
 </div>
 </div>
 </div>
 <div class="sect2">
 <h3 id="jtag2axi-interfaces"><a class="anchor" href="#jtag2axi-interfaces"></a><a class="link" href="#jtag2axi-interfaces">3.3. JTAG2AXI Interfaces</a></h3>
 <div class="paragraph">
-<p>The interface unit instantiates multiple JTAG2AXI bridges:</p>
+<p>The interface unit instantiates multiple JTAG2AXI bridges. Each bridge is a set
+of PTAP TDRs selected by its own instructions and gated by its own
+<code>dbg_disable_i</code> field (<a href="#jiu-debug-disable-fields-table">Table 2</a>); no bridge is reached
+through the iJTAG network.</p>
 </div>
 <div class="ulist">
 <ul>
@@ -1005,10 +1076,10 @@ fuse controller CSRs through an AXI4-lite-to-APB bridge.</p>
 <div class="sect2">
 <h3 id="jtag-intf-unit-interface"><a class="anchor" href="#jtag-intf-unit-interface"></a><a class="link" href="#jtag-intf-unit-interface">4.1. Instruction Encodings</a></h3>
 <div class="paragraph">
-<p>The JTAG interface unit uses 6-bit instruction encodings (<a href="#jiu-instruction-encodings-table">Table 3</a>).</p>
+<p>The JTAG interface unit uses 6-bit instruction encodings (<a href="#jiu-instruction-encodings-table">Table 4</a>).</p>
 </div>
 <table id="jiu-instruction-encodings-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 3. JIU instruction encodings</caption>
+<caption class="title">Table 4. JIU instruction encodings</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 25%;">

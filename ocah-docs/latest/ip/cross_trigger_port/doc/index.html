@@ -1189,9 +1189,14 @@ conditions, and output actions.</p>
 </div>
 <div class="paragraph">
 <p>The <code>ct_dst</code> output pulse is generated for a single clock cycle when the
-receiver state machine transitions from IDLE to ACK_ASSERTED. The busy signal is
-asserted whenever either state machine is not in its IDLE state, indicating an
-active cross-trigger transfer.</p>
+receiver state machine transitions from IDLE to ACK_ASSERTED. The busy signal
+indicates an active cross-trigger transfer: it reflects either state machine
+being outside its IDLE state. It is registered once in <code>ctp_handshake_ctrl</code> and
+again in <code>cross_trigger_port_core</code>, so <code>busy_o</code> and <code>STATUS.BUSY</code> rise two
+<code>clk_i</code> cycles after a state machine leaves IDLE and fall two <code>clk_i</code> cycles
+after both state machines return to IDLE. Logic that samples <code>busy_o</code> within two
+cycles of a trigger on <code>ct_src_i</code>, or of the end of a handshake, sees the
+previous value.</p>
 </div>
 </div>
 </div>
