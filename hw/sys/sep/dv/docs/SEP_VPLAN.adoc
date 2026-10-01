@@ -7995,6 +7995,14 @@ driver, not a bus monitor. Adds a fuse-sense-done check (CHK-FUSE-SENSE-DONE),
 an OKAY check on each status read (CHK-CSR-RESP), and, at the end of each pass,
 a clear through `PERIPH_BUS_ERR_CLEAR.hmac` and `DMA_BUS_ERR_CLEAR.clr` with
 both registers read back as 0 (CHK-MISALIGN-CLEAR).
+|<<sep_clock_uvm_wdt_rst_input_reset_path_test,`sep_clock_uvm_wdt_rst_input_reset_path_test`>>
+|Same as the cocotb procedure, over sixteen seeded passes by default
+(`+SEP_TEST_LOOPS`, `+SEP_SYSTEM_TEST_LOOPS`,
+`+SEP_CLOCK_UVM_WDT_RST_INPUT_RESET_PATH_TEST_LOOPS`). Adds CHK-FUSE-SENSE-DONE
+before the baseline, and a second CHK-ASSERT read after a seeded extra hold of
+0 to 15 system clocks. Each pass releases the main reset after the
+CHK-ISOLATION control, and the next pass's CHK-BASELINE proves both resets
+recovered.
 |===
 
 === Regression Groups

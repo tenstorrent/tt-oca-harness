@@ -43,5 +43,6 @@ package sep_seq_lib_pkg;
   `include "sep_sram_smoke_test_seq.svh"
   `include "sep_address_map_test_seq.svh"
   `include "sep_periph_bus_err_misaligned_test_seq.svh"
+  `include "sep_clock_uvm_wdt_rst_input_reset_path_test_seq.svh"
 
 endpackage : sep_seq_lib_pkg
