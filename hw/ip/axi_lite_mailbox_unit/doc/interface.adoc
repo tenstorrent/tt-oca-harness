@@ -16,16 +16,17 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
-[cols="2,3",options="header"]
-.Mailbox port groups
-|===
-|Ports |Contract
-|`mailbox_axi_req_i`, `mailbox_axi_resp_o` |One AXI4-Lite slave for all apertures;
-address/data widths and channel/aggregate struct types are elaboration parameters.
-|`inbound_interrupt_o`, `outbound_interrupt_o` |`NUM_MAILBOXES` active-high level
-interrupts in each vector, one per aperture.
-|`clk_i`, `rst_ni`, `test_en_i` |Clock, active-low asynchronous reset and test input.
-|===
+A single AXI4-Lite slave (`mailbox_axi_req_i` / `mailbox_axi_resp_o`) serves all
+apertures; its address/data widths and channel/aggregate struct types are
+elaboration parameters. The `inbound_interrupt_o` and `outbound_interrupt_o`
+vectors each carry `NUM_MAILBOXES` active-high level interrupts, one per aperture.
+
+ifdef::backend-html5[]
+The full parameter and port list of `axi_lite_mailbox_unit` is in xref:ocah-docs:ROOT:rtl-modules-reference/ip/axi_lite_mailbox_unit/axi_lite_mailbox_unit.adoc[axi_lite_mailbox_unit].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The full parameter and port list of `axi_lite_mailbox_unit` is in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
 
 The per-aperture B and R responses pass through spill registers. Request
 arbitration, arrival of both write channels, and response backpressure also

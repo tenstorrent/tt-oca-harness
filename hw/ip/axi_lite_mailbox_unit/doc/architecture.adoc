@@ -11,21 +11,6 @@ ifndef::backend-html5[]
 The parameters and ports of `axi_lite_mailbox_unit` are listed in the HTML edition of this manual, under RTL Modules Reference.
 endif::backend-html5[]
 
-=== Configuration Parameters
-
-[[mailbox-configuration-parameters-table]]
-[cols="2,1,3",options="header"]
-.Mailbox configuration parameters
-|===
-|Parameter |Default |Meaning
-|`NUM_MAILBOXES` |2 |Bidirectional pairs; two apertures and two FIFOs per pair.
-|`MAILBOX_DEPTH` |8 |Entries in each FIFO; selected at elaboration.
-|`MAX_TRANS` |32 |Transaction limit passed to the AXI4-Lite demultiplexer.
-|`MAILBOX_BASE_ADDR` |0 |Base subtracted for aperture selection.
-|`MAILBOX_SIZE` |`0x800` |Bytes per aperture; the address bits above `$clog2(MAILBOX_SIZE)` select the aperture.
-|`ADDR_WIDTH` / `DATA_WIDTH` |32 / 64 |Slave address and data widths.
-|===
-
 === Paired FIFOs
 
 ifdef::backend-html5[]
