@@ -65,6 +65,12 @@ scan reset in `u_reset_conditioner` and drives the test inputs of `u_xbar` and
 
 == Parameters
 
+ifdef::backend-html5[]
+++++
+<span id="key-manager-parameters-table"></span>
+++++
+endif::backend-html5[]
+
 The Key Manager is configured through its ROM and SRAM sizes, the mailbox FIFO depth,
 the read-data behaviour of its memories, and the address of the eFuse controller.
 The main KM SRAM is 32 KB (8192 × 32-bit words), implemented with the scrambler macro
@@ -243,8 +249,8 @@ KM-mastered key path. Host-supplied material enters through mailbox commands;
 generated secret material is not returned through a direct host read path.
 The generated <<key-manager-memory-map>> defines the KM's allocated windows.
 
-<<key-manager-accelerator-key-path-figure>> marks secret-bearing storage in red
-and separates accelerator key delivery from the host-accessible data path.
+<<key-manager-accelerator-key-path-figure>> separates the key-delivery path
+on the top row from the host-accessible data path on the bottom row.
 This separation does not establish resistance to physical fault injection or
 side-channel attacks. Firmware's key-data CRC detects corruption; it is not
 a substitute for access control or a physical-attack guarantee.

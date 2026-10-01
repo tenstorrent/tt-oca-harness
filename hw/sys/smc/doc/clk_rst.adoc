@@ -235,6 +235,13 @@ The separate telemetry input reset belongs to its integration domain.
 [[smc-function-level-reset]]
 == Function Level Reset and Isolation
 
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="function-level-reset-and-isolation"></span>
+++++
+endif::backend-html5[]
+
 ifdef::backend-html5[]
 ++++
 <span id="clock-domain-crossing-and-synchronization"></span>

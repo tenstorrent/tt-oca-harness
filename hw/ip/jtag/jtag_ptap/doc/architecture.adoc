@@ -548,6 +548,13 @@ iJTAG network and the network return drives TDO.
 [[ptap-jtag2axi-support]]
 === JTAG2AXI Support
 
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="jtag2axi-support"></span>
+++++
+endif::backend-html5[]
+
 ==== *_JTAG2AXI_CAPS
 
 This is a private instruction that accesses a read-only TDR reporting the

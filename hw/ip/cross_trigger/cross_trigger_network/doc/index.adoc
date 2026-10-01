@@ -28,6 +28,13 @@ The CTN serves four purposes:
 
 == Configuration Parameters
 
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="ctn-configuration-parameters-table"></span>
+++++
+endif::backend-html5[]
+
 The CTN is configured through its external and internal port counts, the number of
 clock-stop request inputs, and the protocol of each internal CTP.
 

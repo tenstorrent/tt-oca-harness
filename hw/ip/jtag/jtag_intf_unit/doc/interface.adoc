@@ -5,6 +5,13 @@
 
 === Instruction Encodings
 
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="jiu-signal-interface-table"></span>
+++++
+endif::backend-html5[]
+
 The JTAG interface unit uses 6-bit instruction encodings (<<jiu-instruction-encodings-table>>).
 
 [[jiu-instruction-encodings-table]]
