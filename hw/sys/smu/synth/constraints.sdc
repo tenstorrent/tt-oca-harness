@@ -461,14 +461,6 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_cloc
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {sep_global_base_o*}] -add_delay
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {sep_region_size_o*}] -add_delay
 
-# telemetry
-# telemetry_afvalid_o is launched by the SMC system clock (SMCCLK in the SMC block run,
-# which maps to SMUCLK here). Anchoring the output to SMUCLK gives it a defined launch
-# domain instead of defaulting to ck_feedthru -- this is how SMC signs it off
-# (smc.clock_defines.tcl set_output_delay -clock SMCCLK), retiring the SMU
-# CDC_UNSYNC_NOSCHEME telemetry_afvalid_o waiver rather than waiving it.
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {telemetry_afvalid_o*}] -add_delay
-
 # GPIO Data Signals
 # Full hierarchy (synth): protocol-accurate I/O delays come from the GPIO
 # Interface section below, which stamps SMCCLK / SPICLK_GPIO / PERIPHERALCLK
@@ -494,12 +486,10 @@ set_input_delay  [expr $clock_periods(TELEMETRYCLK_PERIOD)*0.5] -clock [get_cloc
 set_input_delay  [expr $clock_periods(TELEMETRYCLK_PERIOD)*0.5] -clock [get_clock TELEMETRYCLK] [get_ports {telemetry_atid_i*}] -add_delay
 set_output_delay [expr $clock_periods(TELEMETRYCLK_PERIOD)*0.5] -clock [get_clock TELEMETRYCLK] [get_ports {telemetry_atready_o*}] -add_delay
 set_input_delay  [expr $clock_periods(TELEMETRYCLK_PERIOD)*0.5] -clock [get_clock TELEMETRYCLK] [get_ports {telemetry_atvalid_i*}] -add_delay
-# NOTE: telemetry_afvalid_o is intentionally NOT stamped with a TELEMETRYCLK output_delay
-# here. It is launched by the SMC system clock and is already anchored to SMUCLK above
-# (see the dedicated set_output_delay -clock SMUCLK). Adding TELEMETRYCLK with -add_delay
-# would leave the port double-clocked (SMUCLK + TELEMETRYCLK) and reintroduce the
-# CDC_UNSYNC_NOSCHEME SMUCLK->TELEMETRYCLK crossing. SMC signs it off SMCCLK-only
-# (smc.clock_defines.tcl set_output_delay -clock SMCCLK telemetry_afvalid_o*).
+# afvalid_o leaves telemetry_receiver_wrap through a synchronizer clocked by
+# clk_telemetry_i, so the whole ATB interface is TELEMETRYCLK. Stamped once, here
+# only, to keep the port single-clocked.
+set_output_delay [expr $clock_periods(TELEMETRYCLK_PERIOD)*0.5] -clock [get_clock TELEMETRYCLK] [get_ports {telemetry_afvalid_o*}] -add_delay
 set_input_delay  [expr $clock_periods(TELEMETRYCLK_PERIOD)*0.5] -clock [get_clock TELEMETRYCLK] [get_ports {telemetry_afready_i*}] -add_delay
 
 # WDT
@@ -779,6 +769,18 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_cloc
 # input feeding `u_sep` directly; modeled the same as the other
 # ck_feedthru-domain inputs above.
 set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {sep_ext_interrupts_i*}] -add_delay
+
+# SEP Adams-Bridge crypto memory interface, 1:1 passthroughs of the `u_sep`
+# ports; SEP stamps them on SEPCLK, which is SMUCLK here.
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.1]       -clock [get_clock SMUCLK] [filter_collection [get_ports {abr_mem_req_o*}] {full_name !~ ".*clk.*"}] -add_delay
+set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {abr_mem_rsp_i*}] -add_delay
+
+# External TRNG interface, likewise SEPCLK at the SEP boundary.
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {ext_trng_axil_req_o*}] -add_delay
+set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {ext_trng_axil_resp_i*}] -add_delay
+set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {ext_trng_axis_req_i*}] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {ext_trng_axis_rsp_o*}] -add_delay
+set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports ext_trng_irq_i] -add_delay
 
 # LCC Demote States
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {lcc_demote_state_1_o*}] -add_delay

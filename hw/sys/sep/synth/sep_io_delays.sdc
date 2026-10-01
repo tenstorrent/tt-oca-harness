@@ -103,6 +103,10 @@ set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.7]       -clock [get_cloc
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.1]       -clock [get_clock SEPCLK] [get_ports {km_sram_mem_req_o*}] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SEPCLK] [get_ports {km_sram_mem_rsp_i*}] -add_delay
 
+# Adams-Bridge crypto memory interface (request out to macros, response data back)
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.1]       -clock [get_clock SEPCLK] [filter_collection [get_ports {abr_mem_req*}] {full_name !~ ".*clk.*"}] -add_delay
+set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SEPCLK] [get_ports {abr_mem_rsp*}] -add_delay
+
 # Crypto PKA memory interfaces
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.1]       -clock [get_clock SEPCLK] [filter_collection [get_ports {sep_crypto_pka_imem_sram_req_o*}] {full_name !~ ".*clk.*"}] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SEPCLK] [get_ports {sep_crypto_pka_imem_sram_rsp_i*}] -add_delay
