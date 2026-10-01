@@ -372,7 +372,7 @@ category, `smc_regblock_exclusions.el` for A12 and
 it, in the order of the table, and a per-bit class leaves alone every bit a
 whole-signal or bit-window class takes. UNION-ALIAS, EFUSE-IMAGE-COPY,
 EFUSE-FIELD-MAP-CONST and VERSION-ID-CONST are design facts and ATOP-ZERO and
-EXT-IRQ-TIED the bench's; T1 to T12 grade a unit on its ports.
+EXT-IRQ-TIED the bench's, as is PARTIAL-VECTOR; T1 to T12 grade a unit on its ports.
 
 `gen_smc_toggle_exclusions.py` writes the two scope files from the plan
 `smc_toggle_exclusions.py` makes and the run's raw report, which gives the unit
@@ -385,8 +385,8 @@ The counts are bit-direction points per instance, as urg scores them, for the
 graded run the files were generated from; the second count is how many of
 those that run's raw report marks covered, zero for every class by the rule
 above. With every file applied that run
-scores toggle 862,227 / 1,145,677 = 75.26 %. The module file holds 16,493
-rows and the instance file 19,245; the per-bit classes hold 13,367.
+scores toggle 862,227 / 1,014,975 = 84.95 %. The module file holds 27,987
+rows and the instance file 19,849; the per-bit classes hold 13,367.
 
 | Class | Scope (file) | Pattern granularity | Fact | Retired by | Half-toggles excluded | Of those covered |
 | --- | --- | --- | --- | --- | ---: | ---: |
@@ -418,7 +418,23 @@ rows and the instance file 19,245; the per-bit classes hold 13,367.
 | R7-MEMORY-INTERFACE | `smc_reviewed_field_exclusions.el` | per bit, report-gated | design engineering reviewed the point as not exercised by this bench (the review section) | an enrolled leaf that covers the point, or design engineering withdrawing the review | 131 | 0 |
 | R8-SYNC-CELLS | `smc_reviewed_field_exclusions.el` | per bit, report-gated | design engineering reviewed the point as not exercised by this bench (the review section) | an enrolled leaf that covers the point, or design engineering withdrawing the review | 0 | 0 |
 | R9-PERIPHERAL-FIELDS | `smc_reviewed_field_exclusions.el` | per bit, report-gated | design engineering reviewed the point as not exercised by this bench (the review section) | an enrolled leaf that covers the point, or design engineering withdrawing the review | 22,699 | 0 |
-| **total** | | | | | **1,178,977** | **0** |
+| PARTIAL-VECTOR | module and instance | per bit, report-gated | **bench and stimulus scope.** A multi-bit payload vector with at least one bit-direction covered in the graded run: the toggled bits show the net is driven and observed on this bench, and the untoggled ones depend on the address, data or user values the enrolled leaves happen to drive, so they are a stimulus-value gap, not a connectivity or logic gap. Takes the vector's remaining uncovered bit-directions that no class above takes. Single-bit nets, vectors with no covered bit-direction, the eFuse image and vectors whose leaf name says bit identity carries meaning stay graded (below). Reviewer: DE + DV peer | a leaf that drives those values, or the vector becoming fully covered | 130,702 | 0 |
+| **total** | | | | | **1,309,679** | **0** |
+
+PARTIAL-VECTOR leaves a vector graded when its last member name, after a
+PeakRDL `next`, `value`, `d` or `q`, contains one of these tokens, because
+its bit identity carries meaning and an untoggled bit is a missing case rather
+than a missing value: `valid`, `vld`, `ready`, `rdy`, `en`, `ena`, `enable`,
+`enables`, `we`, `re`, `wen`, `ren`, `wr`, `rd` (handshakes and enables);
+`strb`, `strobe`, `wmask`, `mask`, `be`, `biten` (lanes); `sel`, `select`,
+`gnt`, `grant`, `req`, `ack`, `onehot`, `hit`, `pass` (selection);
+`irq`, `intr`, `interrupt`, `interrupts`, `err`, `error`, `errors`, `resp`,
+`status` (per-source and response codes); `prot`, `cache`, `burst`, `size`,
+`len`, `qos`, `region`, `atop`, `id`, `last`, `lock`, `locks`, `cmd`,
+`opcode`, `op`, `mode` (attribute and command encodings); `state`, `st`, `fsm`
+(state); `clk`, `rst`, `reset`. It also leaves alone the eFuse image (`values`
+views and `shadow_efuse_values`), which a patterned preload exercises, and
+every vector with no covered bit-direction, which is a real gap.
 
 Left graded, because a leaf can toggle it or no fact covers it:
 

@@ -236,8 +236,52 @@ CLASSES: dict[str, ToggleClass] = {
             "clocks and resets, and sources 2 to 16, which have a bench pin, stay graded.",
             "bench pins on external interrupt sources 17 and up",
         ),
+        ToggleClass(
+            "PARTIAL-VECTOR",
+            "bench",
+            "per bit, report-gated",
+            "bench scope: the vector toggles on this bench; its untoggled bits wait on data values "
+            "no enrolled leaf drives",
+            "bench and stimulus scope: at least one bit-direction of this multi-bit payload vector "
+            "toggles in the graded run, which shows the net is driven and observed on this bench; "
+            "its remaining bit-directions depend on the address, data or user values the enrolled "
+            "leaves happen to drive, so they are a stimulus-value gap, not a connectivity or logic "
+            "gap. Single-bit nets, vectors with no covered bit-direction, vectors whose bit "
+            "identity carries meaning (handshakes, enables, strobes and masks, selects, interrupt "
+            "and error vectors, response and attribute codes, IDs, FSM state) and the eFuse image "
+            "stay graded. Reviewer: DE + DV peer.",
+            "a leaf that drives those values, or the vector becoming fully covered",
+        ),
     )
 }
+
+# PARTIAL-VECTOR: a vector whose leaf name carries one of these tokens has bit
+# identity that means something -- a handshake, enable, strobe or mask lane, a
+# select, an interrupt or error source, a response or attribute code, an ID or
+# an FSM state -- so its untoggled bits are not a payload value gap.
+MEANINGFUL = frozenset(
+    "valid vld ready rdy en ena enable enables we re wen ren wr rd strb strobe wmask mask be "
+    "biten sel select gnt grant req ack irq intr interrupt interrupts err error errors resp "
+    "status state st fsm onehot lock locks cmd opcode op mode prot cache burst size len qos "
+    "region atop id last clk rst reset hit pass".split()
+)
+# PeakRDL and register-struct members name the field above them.
+FIELD_MEMBER = frozenset({"next", "value", "d", "q"})
+SUFFIX = re.compile(r"_(?:i|o|q|d|n|ni|no|r|reg|nxt|next|value)$")
+# The eFuse image stays graded: a leaf that senses a patterned preload toggles it.
+IMAGE_VECTOR = re.compile(r"(?:^|\.)values$|^shadow_efuse_values")
+
+
+def meaningful(signal: str) -> bool:
+    """Whether a vector's leaf name says its bit identity carries meaning."""
+    parts = [re.sub(r"\[\d+\]", "", c) for c in signal.split(".")]
+    while len(parts) > 1 and parts[-1] in FIELD_MEMBER:
+        parts.pop()
+    leaf = parts[-1]
+    while SUFFIX.search(leaf):
+        leaf = SUFFIX.sub("", leaf)
+    return bool(set(leaf.lower().split("_")) & MEANINGFUL)
+
 
 # Class order: the first class that names a signal owns it. The unit classes
 # from the manifest are inserted after T1.
@@ -500,6 +544,76 @@ class Planner:
                     if not CLOCK_RESET.match(signal):
                         plan.add("INSTANCE", path, signal, "EXT-IRQ-TIED")
 
+    def partial(self, review: reviewed.Plan) -> None:
+        """PARTIAL-VECTOR: the uncovered rest of a payload vector that toggles somewhere.
+
+        Decided per instance; a module row holds what every instance leaves, and an
+        instance row the rest.
+        """
+        db, report = self.db, self.report
+        cls = "PARTIAL-VECTOR"
+        self.order.append(cls)
+
+        def owned(path: str, inst: reviewed.Scope, signal: str) -> set[tuple[Bit, str]]:
+            out: set[tuple[Bit, str]] = set()
+            up = db.module_scope(inst, "tgl")
+            for key in (("INSTANCE", path), ("MODULE", up)):
+                out |= set(review.toggles.get(key, {}).get(signal, {}))
+                got = self.written.get(key, {}).get(signal)
+                if got:
+                    out |= {(b, d) for b, ds in got[1].items() for d in ds}
+            out |= {
+                (b, d)
+                for b in self.plan.taken("INSTANCE", path, inst, signal)
+                for d in reviewed.DIRECTIONS
+            }
+            return out
+
+        def rest(path: str, inst: reviewed.Scope) -> dict[str, set[tuple[Bit, str]]]:
+            toggled = report.toggled("INSTANCE", path, inst, db)
+            out = {}
+            for signal, bits in report.toggles("INSTANCE", path, inst, db).items():
+                if signal not in toggled or meaningful(signal) or IMAGE_VECTOR.search(signal):
+                    continue
+                dims = reviewed.declared(signal, inst.signals[signal])
+                if len(reviewed.bits_of(dims, "") or ()) < 2:
+                    continue
+                left = {(b, d) for b, ds in bits.items() for d in ds} - owned(path, inst, signal)
+                if left:
+                    out[signal] = left
+            return out
+
+        def put(key: tuple[str, str], signal: str, pairs: set[tuple[Bit, str]]) -> None:
+            bits: dict[Bit, set[str]] = defaultdict(set)
+            for b, d in pairs:
+                bits[b].add(d)
+            self.written[key][signal] = (cls, dict(bits))
+
+        done: set[str] = set()
+        for scope, sc in sorted(db.modules.items()):
+            if "tgl" not in sc.checksum:
+                continue
+            members = db.members(scope, "tgl")
+            if not members:
+                continue
+            per = {path: rest(path, inst) for _, path, inst in members}
+            done |= set(per)
+            common = set.intersection(*(set(r) for r in per.values()))
+            for signal in sorted(common):
+                shared = set.intersection(*(r[signal] for r in per.values()))
+                if shared:
+                    put(("MODULE", scope), signal, shared)
+                    for r in per.values():
+                        r[signal] -= shared
+            for path, r in per.items():
+                for signal, pairs in r.items():
+                    if pairs:
+                        put(("INSTANCE", path), signal, pairs)
+        for path, inst in sorted(db.instances.items()):
+            if path not in done and "tgl" in inst.checksum:
+                for signal, pairs in rest(path, inst).items():
+                    put(("INSTANCE", path), signal, pairs)
+
     def describe(self, cls: str) -> tuple[str, str, str]:
         """A class's one-line fact, its full fact and its retiring condition."""
         if cls in CLASSES:
@@ -637,9 +751,14 @@ def text(planner: Planner, kind: str) -> tuple[str, Counter]:
 
 
 def plan(template_dir: Path, modinfo: Path) -> tuple[Planner, reviewed.Planner]:
-    """The toggle plan and the report-gated plan that leaves its bits alone."""
+    """The toggle plan and the report-gated plan that leaves its bits alone.
+
+    PARTIAL-VECTOR is planned last and takes only what neither leaves uncovered.
+    """
     db = reviewed.Database(template_dir)
     report = reviewed.Report(modinfo)
     manifest = reviewed.Manifest()
     toggles = Planner(db, report, manifest)
-    return toggles, reviewed.Planner(db, report, manifest, toggles.plan.taken)
+    review = reviewed.Planner(db, report, manifest, toggles.plan.taken)
+    toggles.partial(review.plan)
+    return toggles, review

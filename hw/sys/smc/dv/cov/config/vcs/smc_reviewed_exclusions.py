@@ -308,11 +308,17 @@ class Report:
                     self.owner[(key[0], path.strip())] = key[2]
         self._toggles: dict[tuple[str, str], dict[str, dict[Bit, set[str]]]] = {}
         self._ports: dict[tuple[str, str], set[str]] = {}
+        self._covered: dict[tuple[str, str], set[str]] = {}
 
     def ports(self, kind: str, scope: str, sc: Scope, db: Database) -> set[str]:
         """The signals the report lists under Port Details for one scope."""
         self.toggles(kind, scope, sc, db)
         return self._ports.get((kind, scope), set())
+
+    def toggled(self, kind: str, scope: str, sc: Scope, db: Database) -> set[str]:
+        """The signals of one scope with at least one bit-direction the report marks covered."""
+        self.toggles(kind, scope, sc, db)
+        return self._covered.get((kind, scope), set())
 
     def lines(self, metric: str, kind: str, scope: str, sc: Scope, db: Database) -> list[str]:
         """The report section of one scope; an only instance reads its module's."""
@@ -360,6 +366,9 @@ class Report:
                 if in_ports:
                     ports.add(base)
         self._ports[(kind, scope)] = ports
+        self._covered[(kind, scope)] = {
+            n for n, es in rows.items() if any("Yes" in (t10, t01) for _, t10, t01 in es)
+        }
         out: dict[str, dict[Bit, set[str]]] = {}
         for name, entries in rows.items():
             dims = declared(name, sc.signals[name])

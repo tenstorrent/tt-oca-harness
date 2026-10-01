@@ -110,7 +110,9 @@ args = ["-elfile", "{path}"]
 # instance of a module, smc_toggle_instance_exclusions.el those true of one
 # instance. T1 OPENTITAN-PORTS-ONLY and T2 to T12 grade a unit on its ports;
 # UNION-ALIAS, EFUSE-IMAGE-COPY, EFUSE-FIELD-MAP-CONST and VERSION-ID-CONST are
-# design facts; ATOP-ZERO and EXT-IRQ-TIED are the bench's. Only the
+# design facts; ATOP-ZERO and EXT-IRQ-TIED are the bench's, and
+# PARTIAL-VECTOR, the uncovered rest of a payload vector that toggles, is the
+# bench's stimulus-value gap. Only the
 # bit-directions the graded run leaves uncovered are written, so
 # gen_smc_toggle_exclusions.py regenerates both files from each graded run;
 # README.md gives each class's fact and granularity.
