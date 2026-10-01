@@ -8,7 +8,7 @@ schema_version = 1
 
 [[tests]]
 name = "sep_otbn_mem_smoke_test"
-module = "otbn.sep_otbn_mem_smoke_test"
+module = { cocotb = "otbn.sep_otbn_mem_smoke_test", uvm = "sep_otbn_mem_smoke_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["smoke", "otbn", "crypto", "memory"]
