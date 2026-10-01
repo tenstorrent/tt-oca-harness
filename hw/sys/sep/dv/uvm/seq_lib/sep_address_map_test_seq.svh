@@ -39,12 +39,12 @@ class sep_address_map_test_seq extends sep_base_test_seq;
 
   // Software access class of one sep_cpu_ctrl sweep row.
   typedef enum {
-    ReadCheck,      // sw=r or sw=rw with a value set only by reset: compare to reset
-    ReadOnly,       // value set by hardware: response check only
-    RefCounter,     // free-running counter: must advance between two reads
-    BaseAddrRw,     // SEP base/size register: write, readback, restore, readback
-    WriteReadback,  // pure sw=rw storage: write, masked readback, restore, readback
-    WriteOnly       // sw=w: write only; a read is not part of the contract
+    READ_CHECK,      // sw=r or sw=rw with a value set only by reset: compare to reset
+    READ_ONLY,       // value set by hardware: response check only
+    REF_COUNTER,     // free-running counter: must advance between two reads
+    BASE_ADDR_RW,    // SEP base/size register: write, readback, restore, readback
+    WRITE_READBACK,  // pure sw=rw storage: write, masked readback, restore, readback
+    WRITE_ONLY       // sw=w: write only; a read is not part of the contract
   } access_class_e;
 
   typedef struct {
@@ -88,22 +88,22 @@ class sep_address_map_test_seq extends sep_base_test_seq;
   // of each row is transcribed from the field `sw` access property in
   // hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl, with the registers
   // the cocotb sep_address_map_seq sweeps:
-  //   ReadCheck     sw=rw or sw=r with a fixed reset: CLOCK_GATE_CTRL,
-  //                 TIMEOUT_INTERRUPT (sw=r), PKA_CTRL, the TIMEOUT_COUNT_*
-  //                 slots not written below, the SEP and SMU base/size
-  //                 registers, SEP_NMI_VEC, both woset LOCK registers (never
-  //                 written: a set latches until reset), EXT_TRNG_SRC_SEL and
-  //                 SEP_VERSION_ID (sw=r, hw=na).
-  //   ReadOnly      sw=r, hw=w: SEP_TEST_CTRL, SEP_FUSE_SENSE_STATUS,
-  //                 SMC_FUSE_SENSE_STATUS; and REFERENCE_COUNTER (hw=rw).
-  //                 Hardware sets the value, so the RDL reset is not what
-  //                 the DUT presents.
-  //   RefCounter    REFERENCE_COUNTER (rc[63:0], hw=rw, counts on clk_ref_i).
-  //   BaseAddrRw    SEP_GLOBAL_BASE_ADDR, SEP_LOCAL_BASE_ADDR, SEP_REGION_SIZE
-  //                 (sw=rw). The SMU registers stay reset compares only.
-  //   WriteReadback sw=rw, hw=r storage with no side effect: SEP_SW_DEBUG,
-  //                 TIMEOUT_COUNT_DMA, TIMEOUT_COUNT_SYS_IN, TIMEOUT_ENABLE.
-  //   WriteOnly     sw=w: TIMEOUT_CLEAR, TIMEOUT_MODE.
+  //   READ_CHECK     sw=rw or sw=r with a fixed reset: CLOCK_GATE_CTRL,
+  //                  TIMEOUT_INTERRUPT (sw=r), PKA_CTRL, the TIMEOUT_COUNT_*
+  //                  slots not written below, the SEP and SMU base/size
+  //                  registers, SEP_NMI_VEC, both woset LOCK registers (never
+  //                  written: a set latches until reset), EXT_TRNG_SRC_SEL and
+  //                  SEP_VERSION_ID (sw=r, hw=na).
+  //   READ_ONLY      sw=r, hw=w: SEP_TEST_CTRL, SEP_FUSE_SENSE_STATUS,
+  //                  SMC_FUSE_SENSE_STATUS; and REFERENCE_COUNTER (hw=rw).
+  //                  Hardware sets the value, so the RDL reset is not what
+  //                  the DUT presents.
+  //   REF_COUNTER    REFERENCE_COUNTER (rc[63:0], hw=rw, counts on clk_ref_i).
+  //   BASE_ADDR_RW   SEP_GLOBAL_BASE_ADDR, SEP_LOCAL_BASE_ADDR, SEP_REGION_SIZE
+  //                  (sw=rw). The SMU registers stay reset compares only.
+  //   WRITE_READBACK sw=rw, hw=r storage with no side effect: SEP_SW_DEBUG,
+  //                  TIMEOUT_COUNT_DMA, TIMEOUT_COUNT_SYS_IN, TIMEOUT_ENABLE.
+  //   WRITE_ONLY     sw=w: TIMEOUT_CLEAR, TIMEOUT_MODE.
   // Every field of these registers declares a reset value in the RDL, so each
   // reset compare is defined on a 4-state simulator. Address, reset value and
   // field masks come from sep_reg.svh symbols. The write patterns are the
@@ -113,115 +113,116 @@ class sep_address_map_test_seq extends sep_base_test_seq;
   // ------------------------------------------------------------------
   function void cpu_ctrl_rows(ref cpu_ctrl_row_t rows[$]);
     rows.delete();
-    // ReadCheck.
+    // READ_CHECK.
     rows.push_back('{"CLOCK_GATE_CTRL", 64'(SEP_CPU_CTRL_CLOCK_GATE_CTRL_REG_ADDR),
                    32'(SEP_CPU_CTRL_CLOCK_GATE_CTRL_REG_DEFAULT),
-                   32'(SEP_CPU_CTRL_CLOCK_GATE_CTRL_PKA_CG_ENABLE_MASK), ReadCheck, 32'h0});
+                   32'(SEP_CPU_CTRL_CLOCK_GATE_CTRL_PKA_CG_ENABLE_MASK), READ_CHECK, 32'h0});
     rows.push_back('{"TIMEOUT_INTERRUPT", 64'(SEP_CPU_CTRL_TIMEOUT_INTERRUPT_REG_ADDR),
                    32'(SEP_CPU_CTRL_TIMEOUT_INTERRUPT_REG_DEFAULT),
-                   32'(SEP_CPU_CTRL_TIMEOUT_INTERRUPT_RESERVED_MASK), ReadCheck, 32'h0});
+                   32'(SEP_CPU_CTRL_TIMEOUT_INTERRUPT_RESERVED_MASK), READ_CHECK, 32'h0});
     rows.push_back('{"PKA_CTRL", 64'(SEP_CPU_CTRL_PKA_CTRL_REG_ADDR),
-                   32'(SEP_CPU_CTRL_PKA_CTRL_REG_DEFAULT), SepPkaCtrlMask, ReadCheck, 32'h0});
+                   32'(SEP_CPU_CTRL_PKA_CTRL_REG_DEFAULT), SepPkaCtrlMask, READ_CHECK, 32'h0});
     rows.push_back('{"TIMEOUT_COUNT_MAILBOX_INBOUND",
                    64'(SEP_CPU_CTRL_TIMEOUT_COUNT_MAILBOX_INBOUND_REG_ADDR),
                    32'(SEP_CPU_CTRL_TIMEOUT_COUNT_REG_DEFAULT),
-                   32'(SEP_CPU_CTRL_TIMEOUT_COUNT_RESERVED_MASK), ReadCheck, 32'h0});
+                   32'(SEP_CPU_CTRL_TIMEOUT_COUNT_RESERVED_MASK), READ_CHECK, 32'h0});
     rows.push_back('{"TIMEOUT_COUNT_MAILBOX_OUTBOUND",
                    64'(SEP_CPU_CTRL_TIMEOUT_COUNT_MAILBOX_OUTBOUND_REG_ADDR),
                    32'(SEP_CPU_CTRL_TIMEOUT_COUNT_REG_DEFAULT),
-                   32'(SEP_CPU_CTRL_TIMEOUT_COUNT_RESERVED_MASK), ReadCheck, 32'h0});
+                   32'(SEP_CPU_CTRL_TIMEOUT_COUNT_RESERVED_MASK), READ_CHECK, 32'h0});
     rows.push_back('{"TIMEOUT_COUNT_ENTROPY_WRITE",
                    64'(SEP_CPU_CTRL_TIMEOUT_COUNT_ENTROPY_WRITE_REG_ADDR),
                    32'(SEP_CPU_CTRL_TIMEOUT_COUNT_REG_DEFAULT),
-                   32'(SEP_CPU_CTRL_TIMEOUT_COUNT_RESERVED_MASK), ReadCheck, 32'h0});
+                   32'(SEP_CPU_CTRL_TIMEOUT_COUNT_RESERVED_MASK), READ_CHECK, 32'h0});
     rows.push_back('{"TIMEOUT_COUNT_ENTROPY_READ",
                    64'(SEP_CPU_CTRL_TIMEOUT_COUNT_ENTROPY_READ_REG_ADDR),
                    32'(SEP_CPU_CTRL_TIMEOUT_COUNT_REG_DEFAULT),
-                   32'(SEP_CPU_CTRL_TIMEOUT_COUNT_RESERVED_MASK), ReadCheck, 32'h0});
+                   32'(SEP_CPU_CTRL_TIMEOUT_COUNT_RESERVED_MASK), READ_CHECK, 32'h0});
     rows.push_back('{"TIMEOUT_COUNT_FILTER_OUT",
                    64'(SEP_CPU_CTRL_TIMEOUT_COUNT_FILTER_OUT_REG_ADDR),
                    32'(SEP_CPU_CTRL_TIMEOUT_COUNT_REG_DEFAULT),
-                   32'(SEP_CPU_CTRL_TIMEOUT_COUNT_RESERVED_MASK), ReadCheck, 32'h0});
+                   32'(SEP_CPU_CTRL_TIMEOUT_COUNT_RESERVED_MASK), READ_CHECK, 32'h0});
     rows.push_back('{"TIMEOUT_COUNT_ALIAS_REMAP",
                    64'(SEP_CPU_CTRL_TIMEOUT_COUNT_ALIAS_REMAP_REG_ADDR),
                    32'(SEP_CPU_CTRL_TIMEOUT_COUNT_REG_DEFAULT),
-                   32'(SEP_CPU_CTRL_TIMEOUT_COUNT_RESERVED_MASK), ReadCheck, 32'h0});
+                   32'(SEP_CPU_CTRL_TIMEOUT_COUNT_RESERVED_MASK), READ_CHECK, 32'h0});
     rows.push_back('{"SEP_GLOBAL_BASE_ADDR", 64'(SEP_CPU_CTRL_SEP_GLOBAL_BASE_ADDR_REG_ADDR),
                    32'(SEP_CPU_CTRL_SEP_GLOBAL_BASE_ADDR_REG_DEFAULT),
-                   32'(SEP_CPU_CTRL_SEP_GLOBAL_BASE_ADDR_ADDR_MASK), ReadCheck, 32'h0});
+                   32'(SEP_CPU_CTRL_SEP_GLOBAL_BASE_ADDR_ADDR_MASK), READ_CHECK, 32'h0});
     rows.push_back('{"SEP_LOCAL_BASE_ADDR", 64'(SEP_CPU_CTRL_SEP_LOCAL_BASE_ADDR_REG_ADDR),
                    32'(SEP_CPU_CTRL_SEP_LOCAL_BASE_ADDR_REG_DEFAULT),
-                   32'(SEP_CPU_CTRL_SEP_LOCAL_BASE_ADDR_ADDR_MASK), ReadCheck, 32'h0});
+                   32'(SEP_CPU_CTRL_SEP_LOCAL_BASE_ADDR_ADDR_MASK), READ_CHECK, 32'h0});
     rows.push_back('{"SEP_REGION_SIZE", 64'(SEP_CPU_CTRL_SEP_REGION_SIZE_REG_ADDR),
                    32'(SEP_CPU_CTRL_SEP_REGION_SIZE_REG_DEFAULT),
-                   32'(SEP_CPU_CTRL_SEP_REGION_SIZE_SIZE_MASK), ReadCheck, 32'h0});
+                   32'(SEP_CPU_CTRL_SEP_REGION_SIZE_SIZE_MASK), READ_CHECK, 32'h0});
     rows.push_back('{"SMU_GLOBAL_BASE_ADDR", 64'(SEP_CPU_CTRL_SMU_GLOBAL_BASE_ADDR_REG_ADDR),
                    32'(SEP_CPU_CTRL_SMU_GLOBAL_BASE_ADDR_REG_DEFAULT),
-                   32'(SEP_CPU_CTRL_SMU_GLOBAL_BASE_ADDR_ADDR_MASK), ReadCheck, 32'h0});
+                   32'(SEP_CPU_CTRL_SMU_GLOBAL_BASE_ADDR_ADDR_MASK), READ_CHECK, 32'h0});
     rows.push_back('{"SMU_REGION_SIZE", 64'(SEP_CPU_CTRL_SMU_REGION_SIZE_REG_ADDR),
                    32'(SEP_CPU_CTRL_SMU_REGION_SIZE_REG_DEFAULT),
-                   32'(SEP_CPU_CTRL_SMU_REGION_SIZE_SIZE_MASK), ReadCheck, 32'h0});
+                   32'(SEP_CPU_CTRL_SMU_REGION_SIZE_SIZE_MASK), READ_CHECK, 32'h0});
     rows.push_back('{"SEP_NMI_VEC", 64'(SEP_CPU_CTRL_SEP_NMI_VEC_REG_ADDR),
                    32'(SEP_CPU_CTRL_SEP_NMI_VEC_REG_DEFAULT),
                    32'(SEP_CPU_CTRL_SEP_NMI_VEC_NMI_VEC_MASK | SEP_CPU_CTRL_SEP_NMI_VEC_RSVD_MASK),
-                   ReadCheck, 32'h0});
+                   READ_CHECK, 32'h0});
     rows.push_back('{"SEP_NMI_VEC_LOCK", 64'(SEP_CPU_CTRL_SEP_NMI_VEC_LOCK_REG_ADDR),
                    32'(SEP_CPU_CTRL_SEP_NMI_VEC_LOCK_REG_DEFAULT),
-                   32'(SEP_CPU_CTRL_SEP_NMI_VEC_LOCK_LOCK_MASK), ReadCheck, 32'h0});
+                   32'(SEP_CPU_CTRL_SEP_NMI_VEC_LOCK_LOCK_MASK), READ_CHECK, 32'h0});
     rows.push_back('{"EXT_TRNG_SRC_SEL", 64'(SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_REG_ADDR),
                    32'(SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_REG_DEFAULT),
-                   32'(SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_SEL_MASK), ReadCheck, 32'h0});
+                   32'(SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_SEL_MASK), READ_CHECK, 32'h0});
     rows.push_back('{"EXT_TRNG_SRC_SEL_LOCK", 64'(SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_LOCK_REG_ADDR),
                    32'(SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_LOCK_REG_DEFAULT),
-                   32'(SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_LOCK_LOCK_MASK), ReadCheck, 32'h0});
+                   32'(SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_LOCK_LOCK_MASK), READ_CHECK, 32'h0});
     rows.push_back('{"SEP_VERSION_ID", 64'(SEP_CPU_CTRL_SEP_VERSION_ID_REG_ADDR),
                    32'(SEP_CPU_CTRL_SEP_VERSION_ID_REG_DEFAULT),
-                   32'(SEP_CPU_CTRL_SEP_VERSION_ID_VERSION_ID_MASK), ReadCheck, 32'h0});
-    // ReadOnly.
+                   32'(SEP_CPU_CTRL_SEP_VERSION_ID_VERSION_ID_MASK), READ_CHECK, 32'h0});
+    // READ_ONLY.
     rows.push_back('{"REFERENCE_COUNTER", 64'(SEP_CPU_CTRL_REFERENCE_COUNTER_REG_ADDR),
                    32'(SEP_CPU_CTRL_REFERENCE_COUNTER_REG_DEFAULT),
-                   32'(SEP_CPU_CTRL_REFERENCE_COUNTER_RC_MASK), ReadOnly, 32'h0});
+                   32'(SEP_CPU_CTRL_REFERENCE_COUNTER_RC_MASK), READ_ONLY, 32'h0});
     rows.push_back('{"SEP_TEST_CTRL", 64'(SEP_CPU_CTRL_SEP_TEST_CTRL_REG_ADDR),
-                   32'(SEP_CPU_CTRL_SEP_TEST_CTRL_REG_DEFAULT), 32'h0, ReadOnly, 32'h0});
+                   32'(SEP_CPU_CTRL_SEP_TEST_CTRL_REG_DEFAULT), 32'h0, READ_ONLY, 32'h0});
     rows.push_back('{"SEP_FUSE_SENSE_STATUS", 64'(SEP_CPU_CTRL_SEP_FUSE_SENSE_STATUS_REG_ADDR),
-                   32'(SEP_CPU_CTRL_SEP_FUSE_SENSE_STATUS_REG_DEFAULT), 32'h0, ReadOnly, 32'h0});
+                   32'(SEP_CPU_CTRL_SEP_FUSE_SENSE_STATUS_REG_DEFAULT), 32'h0, READ_ONLY, 32'h0});
     rows.push_back('{"SMC_FUSE_SENSE_STATUS", 64'(SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_REG_ADDR),
-                   32'(SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_REG_DEFAULT), 32'h0, ReadOnly, 32'h0});
-    // RefCounter.
+                   32'(SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_REG_DEFAULT), 32'h0, READ_ONLY, 32'h0});
+    // REF_COUNTER.
     rows.push_back('{"REFERENCE_COUNTER", 64'(SEP_CPU_CTRL_REFERENCE_COUNTER_REG_ADDR),
                    32'(SEP_CPU_CTRL_REFERENCE_COUNTER_REG_DEFAULT),
-                   32'(SEP_CPU_CTRL_REFERENCE_COUNTER_RC_MASK), RefCounter, 32'h0});
-    // BaseAddrRw.
+                   32'(SEP_CPU_CTRL_REFERENCE_COUNTER_RC_MASK), REF_COUNTER, 32'h0});
+    // BASE_ADDR_RW.
     rows.push_back('{"SEP_GLOBAL_BASE_ADDR", 64'(SEP_CPU_CTRL_SEP_GLOBAL_BASE_ADDR_REG_ADDR),
                    32'(SEP_CPU_CTRL_SEP_GLOBAL_BASE_ADDR_REG_DEFAULT),
-                   32'(SEP_CPU_CTRL_SEP_GLOBAL_BASE_ADDR_ADDR_MASK), BaseAddrRw, 32'h1234_0000});
+                   32'(SEP_CPU_CTRL_SEP_GLOBAL_BASE_ADDR_ADDR_MASK), BASE_ADDR_RW, 32'h1234_0000});
     rows.push_back('{"SEP_LOCAL_BASE_ADDR", 64'(SEP_CPU_CTRL_SEP_LOCAL_BASE_ADDR_REG_ADDR),
                    32'(SEP_CPU_CTRL_SEP_LOCAL_BASE_ADDR_REG_DEFAULT),
-                   32'(SEP_CPU_CTRL_SEP_LOCAL_BASE_ADDR_ADDR_MASK), BaseAddrRw, 32'hE000_0000});
+                   32'(SEP_CPU_CTRL_SEP_LOCAL_BASE_ADDR_ADDR_MASK), BASE_ADDR_RW, 32'hE000_0000});
     rows.push_back('{"SEP_REGION_SIZE", 64'(SEP_CPU_CTRL_SEP_REGION_SIZE_REG_ADDR),
                    32'(SEP_CPU_CTRL_SEP_REGION_SIZE_REG_DEFAULT),
-                   32'(SEP_CPU_CTRL_SEP_REGION_SIZE_SIZE_MASK), BaseAddrRw, 32'h2000_0000});
-    // WriteReadback.
+                   32'(SEP_CPU_CTRL_SEP_REGION_SIZE_SIZE_MASK), BASE_ADDR_RW, 32'h2000_0000});
+    // WRITE_READBACK.
     rows.push_back('{"SEP_SW_DEBUG", 64'(SEP_CPU_CTRL_SEP_SW_DEBUG_REG_ADDR),
                    32'(SEP_CPU_CTRL_SEP_SW_DEBUG_REG_DEFAULT),
-                   32'(SEP_CPU_CTRL_SEP_SW_DEBUG_SEP_SW_DEBUG_MASK), WriteReadback, 32'hDEAD_BEEF});
+                   32'(SEP_CPU_CTRL_SEP_SW_DEBUG_SEP_SW_DEBUG_MASK), WRITE_READBACK, 32'hDEAD_BEEF
+                   });
     rows.push_back('{"TIMEOUT_COUNT_DMA", 64'(SEP_CPU_CTRL_TIMEOUT_COUNT_DMA_REG_ADDR),
                    32'(SEP_CPU_CTRL_TIMEOUT_COUNT_REG_DEFAULT),
-                   32'(SEP_CPU_CTRL_TIMEOUT_COUNT_RESERVED_MASK), WriteReadback, 32'h0BAD_C0DF});
+                   32'(SEP_CPU_CTRL_TIMEOUT_COUNT_RESERVED_MASK), WRITE_READBACK, 32'h0BAD_C0DF});
     rows.push_back('{"TIMEOUT_COUNT_SYS_IN", 64'(SEP_CPU_CTRL_TIMEOUT_COUNT_SYS_IN_REG_ADDR),
                    32'(SEP_CPU_CTRL_TIMEOUT_COUNT_REG_DEFAULT),
-                   32'(SEP_CPU_CTRL_TIMEOUT_COUNT_RESERVED_MASK), WriteReadback, 32'hCAFE_F00D});
+                   32'(SEP_CPU_CTRL_TIMEOUT_COUNT_RESERVED_MASK), WRITE_READBACK, 32'hCAFE_F00D});
     rows.push_back('{"TIMEOUT_ENABLE", 64'(SEP_CPU_CTRL_TIMEOUT_ENABLE_REG_ADDR),
                    32'(SEP_CPU_CTRL_TIMEOUT_ENABLE_REG_DEFAULT),
-                   32'(SEP_CPU_CTRL_TIMEOUT_ENABLE_RESERVED_MASK), WriteReadback, 32'h0000_00FF});
-    // WriteOnly: a zero write is inert (TIMEOUT_CLEAR is a write-1 pulse and
+                   32'(SEP_CPU_CTRL_TIMEOUT_ENABLE_RESERVED_MASK), WRITE_READBACK, 32'h0000_00FF});
+    // WRITE_ONLY: a zero write is inert (TIMEOUT_CLEAR is a write-1 pulse and
     // TIMEOUT_MODE has no consumer while TIMEOUT_ENABLE is at reset).
     rows.push_back('{"TIMEOUT_CLEAR", 64'(SEP_CPU_CTRL_TIMEOUT_CLEAR_REG_ADDR),
                    32'(SEP_CPU_CTRL_TIMEOUT_CLEAR_REG_DEFAULT),
-                   32'(SEP_CPU_CTRL_TIMEOUT_CLEAR_RESERVED_MASK), WriteOnly, 32'h0});
+                   32'(SEP_CPU_CTRL_TIMEOUT_CLEAR_RESERVED_MASK), WRITE_ONLY, 32'h0});
     rows.push_back('{"TIMEOUT_MODE", 64'(SEP_CPU_CTRL_TIMEOUT_MODE_REG_ADDR),
                    32'(SEP_CPU_CTRL_TIMEOUT_MODE_REG_DEFAULT),
-                   32'(SEP_CPU_CTRL_TIMEOUT_MODE_RESERVED_MASK), WriteOnly, 32'h0});
+                   32'(SEP_CPU_CTRL_TIMEOUT_MODE_RESERVED_MASK), WRITE_ONLY, 32'h0});
   endfunction
 
   // ------------------------------------------------------------------
@@ -343,12 +344,12 @@ class sep_address_map_test_seq extends sep_base_test_seq;
     bit [31:0] data;
     foreach (rows[i]) begin
       case (rows[i].cls)
-        ReadCheck:
+        READ_CHECK:
         csr_read_check(ChkAddrmap, rows[i].addr, rows[i].reset_value, {rows[i].name, ".reset"});
-        ReadOnly: csr_read(rows[i].addr, data, {rows[i].name, ".read"});
-        RefCounter: reference_counter(rows[i]);
-        BaseAddrRw: write_readback_restore(ChkBaseAddrRw, rows[i], rows[i].pattern, "directed");
-        WriteReadback: begin
+        READ_ONLY: csr_read(rows[i].addr, data, {rows[i].name, ".read"});
+        REF_COUNTER: reference_counter(rows[i]);
+        BASE_ADDR_RW: write_readback_restore(ChkBaseAddrRw, rows[i], rows[i].pattern, "directed");
+        WRITE_READBACK: begin
           write_readback_restore(ChkRwReadback, rows[i], rows[i].pattern, "directed");
           // Seeded random patterns on top of the directed one. The SEP base
           // and size registers stay directed: a random SEP_LOCAL_BASE_ADDR
@@ -362,7 +363,7 @@ class sep_address_map_test_seq extends sep_base_test_seq;
             write_readback_restore(ChkRwReadback, rows[i], pattern, $sformatf("random%0d", r));
           end
         end
-        WriteOnly: csr_write(rows[i].addr, rows[i].pattern, {rows[i].name, ".write"});
+        WRITE_ONLY: csr_write(rows[i].addr, rows[i].pattern, {rows[i].name, ".write"});
         default: `uvm_fatal(get_type_name(), $sformatf("unhandled access class %s",
                                                        rows[i].cls.name()))
       endcase

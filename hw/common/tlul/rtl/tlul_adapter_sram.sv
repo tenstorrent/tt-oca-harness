@@ -156,7 +156,7 @@ module tlul_adapter_sram
   // wr_attr_error is true if this is a PUT with an unsupported request size or mask. This is only
   // possible if BYTE_ACCESS is not allowed.
   assign wr_attr_error = (BYTE_ACCESS == 0) &&
-                         (tl_i.a_opcode == PutFullData || tl_i.a_opcode == PutPartialData) &&
+                         (tl_i.a_opcode == PUT_FULL_DATA || tl_i.a_opcode == PUT_PARTIAL_DATA) &&
                          (tl_i.a_mask != '1 || tl_i.a_size != 2'h2);
 
   // An instruction type transaction is only valid if en_ifetch is enabled
@@ -166,13 +166,13 @@ module tlul_adapter_sram
                         prim_mubi_pkg::mubi4_test_false_loose(en_ifetch_i));
 
   if (ERR_ON_WRITE == 1) begin : gen_no_writes
-    assign wr_vld_error = tl_i.a_opcode != Get;
+    assign wr_vld_error = tl_i.a_opcode != GET;
   end else begin : gen_writes_allowed
     assign wr_vld_error = 1'b0;
   end
 
   if (ERR_ON_READ == 1) begin: gen_no_reads
-    assign rd_vld_error = tl_i.a_opcode == Get;
+    assign rd_vld_error = tl_i.a_opcode == GET;
   end else begin : gen_reads_allowed
     assign rd_vld_error = 1'b0;
   end
@@ -388,7 +388,7 @@ module tlul_adapter_sram
 
   assign tl_o_int = '{
       d_valid  : d_valid ,
-      d_opcode : (d_valid && !reqfifo_rdata.is_read) ? AccessAck : AccessAckData,
+      d_opcode : (d_valid && !reqfifo_rdata.is_read) ? ACCESS_ACK : ACCESS_ACK_DATA,
       d_param  : '0,
       d_size   : (d_valid) ? reqfifo_rdata.size : '0,
       d_source : (d_valid) ? reqfifo_rdata.source : '0,
@@ -408,7 +408,8 @@ module tlul_adapter_sram
   //    In this case, it is assumed the request is granted (may cause ordering issue later?)
   assign req_o       = tl_i_int.a_valid & reqfifo_wready & ~error_internal;
   assign req_type_o  = tl_i_int.a_user.instr_type;
-  assign we_o        = tl_i_int.a_valid & (tl_i_int.a_opcode inside {PutFullData, PutPartialData});
+  assign we_o        = tl_i_int.a_valid &
+                       (tl_i_int.a_opcode inside {PUT_FULL_DATA, PUT_PARTIAL_DATA});
   assign addr_o      = (tl_i_int.a_valid) ? tl_i_int.a_address[DataBitWidth+:SRAM_AW] : '0;
   assign user_rsvd_o = (tl_i_int.a_valid) ? tl_i_int.a_user.rsvd : '0;
 
@@ -479,7 +480,7 @@ module tlul_adapter_sram
 
   assign reqfifo_wvalid = a_ack ; // Push to FIFO only when granted
   assign reqfifo_wdata  = '{
-    is_read: tl_i_int.a_opcode == Get,
+    is_read: tl_i_int.a_opcode == GET,
     error:  error_internal,
     instr_type: tl_i_int.a_user.instr_type,
     size:   tl_i_int.a_size,
