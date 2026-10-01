@@ -434,12 +434,19 @@ module smc_clk_fcov #(
       ignore_bins periph_stalled = {0};
       ignore_bins periph_beyond_1p5x_ref = {[9 : 32]};
     }
-    // The peripheral clock is slower than the reference only in
-    // smc_clk_periph_slower_than_ref_test, where the SMC clock is 6.4 times
-    // the reference and falls in much_faster, so the bin this ignores is
-    // reached there and not graded.
+    // Bench scope. Under +pll_osc_bench the bench drives the default periods
+    // (ref / smc / periph 10 / 1.25 or 10 / 5 ns) and the sets the three ratio
+    // leaves pin: smc_clk_smc_slower_than_ref_test 10 / 12 / 8 ns,
+    // smc_clk_smc_equal_ref_test 10 / 10 / 10 ns and
+    // smc_clk_periph_slower_than_ref_test 8 / 1.25 / 10 ns. The peripheral
+    // clock is slower than the reference only in the last, where the SMC
+    // clock is 6.4 times the reference (much_faster), and that cell is
+    // graded. A slower peripheral clock with the SMC clock between one and two
+    // times the reference has no driver on this bench; the SMC slower and
+    // same buckets are already out of the cross through cp_smc_bucket's own
+    // ignore. A leaf pinning that ratio retires this bin.
     x_smc_periph: cross cp_smc_bucket, cp_periph_bucket{
-      ignore_bins periph_slower_only_at_8ns_ref = binsof (cp_smc_bucket.much_faster) &&
+      ignore_bins bench_no_periph_slower_smc_faster = binsof (cp_smc_bucket.faster) &&
           binsof (cp_periph_bucket.slower);
     }
   endgroup

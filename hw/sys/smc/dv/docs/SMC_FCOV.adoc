@@ -323,9 +323,13 @@ serve the DMA, JTAG2AXI, log engine and CPU external-path managers
 |`smc_iso_fcov::cg_isolate_terms` |Software term set, nothing isolated |Each
 subsystem's isolation is the OR of the software, pin and FLR terms
 (`clk_rst.adoc`, Isolation Control Architecture)
-|`smc_clk_fcov::cg_clk_ratio` |SMC much faster, peripheral slower |The
-peripheral clock is slower than the reference only against the 8 ns
-reference, where the fastest SMC clock is twice the reference
+|`smc_clk_fcov::cg_clk_ratio` |SMC faster, peripheral slower |Bench scope.
+Under `+pll_osc_bench` the bench drives the default periods and the sets the
+three ratio leaves pin; the peripheral clock is slower than the reference only
+in `smc_clk_periph_slower_than_ref_test`, where the SMC clock is 6.4 times the
+reference (the graded SMC much faster, peripheral slower cell). No leaf pins a
+slower peripheral clock with the SMC clock between one and two times the
+reference; a leaf pinning that ratio retires the bin
 |`smc_clk_fcov::cg_clk_gate` |Clock held with the gate bypassed or the block
 busy |`cg_enable_i` low bypasses the gate and a busy block keeps its clock
 (`dma.adoc`, `zeroer.adoc`, Clock Gating)
