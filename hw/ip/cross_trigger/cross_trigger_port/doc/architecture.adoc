@@ -330,6 +330,11 @@ ifdef::backend-html5[]
 endif::backend-html5[]
 
 The `ct_dst` output pulse is generated for a single clock cycle when the
-receiver state machine transitions from IDLE to ACK_ASSERTED. The busy signal is
-asserted whenever either state machine is not in its IDLE state, indicating an
-active cross-trigger transfer.
+receiver state machine transitions from IDLE to ACK_ASSERTED. The busy signal
+indicates an active cross-trigger transfer: it reflects either state machine
+being outside its IDLE state. It is registered once in `ctp_handshake_ctrl` and
+again in `cross_trigger_port_core`, so `busy_o` and `STATUS.BUSY` rise two
+`clk_i` cycles after a state machine leaves IDLE and fall two `clk_i` cycles
+after both state machines return to IDLE. Logic that samples `busy_o` within two
+cycles of a trigger on `ct_src_i`, or of the end of a handshake, sees the
+previous value.
