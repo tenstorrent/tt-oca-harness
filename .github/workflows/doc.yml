@@ -95,12 +95,18 @@ jobs:
           make ocah-doc-combined-html OCAH_DOC_SITE_URL=/tt-oca-harness
 
       - name: Build PDF documentation
+        # Each PDF product builds independently: one product's build failure must
+        # not skip the others (a single `set -e` block would abort on the first
+        # failure). A missing PDF degrades gracefully at the staging step, so a
+        # failed build is a warning here, not a deploy failure.
         run: |
-          make ocah-doc-trm-pdf
-          make ocah-doc-integrator-pdf
-          make ocah-doc-programmer-pdf
-          make ocah-doc-datasheets-pdf
-        continue-on-error: true
+          for product in trm integrator programmer appnotes datasheets; do
+            echo "::group::make ocah-doc-$product-pdf"
+            if ! make "ocah-doc-$product-pdf"; then
+              echo "::warning title=PDF build failed::ocah-doc-$product-pdf did not complete; its Downloads link will 404 until fixed"
+            fi
+            echo "::endgroup::"
+          done
 
       # A push to main, a dispatch on main, or a successful dashboard run
       # deploys.
