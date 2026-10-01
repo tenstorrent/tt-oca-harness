@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[smu-coverage-policy]]
-== SMU coverage targets and closure policy
+= SMU coverage targets and closure policy
 
 This chapter defines *what* the SMU release group is graded on and *how*
 a hole is waived. It does not install a CI fail-on-hole gate; that gate
@@ -73,7 +73,7 @@ boundary
 |===
 
 [[smu-cov-paths]]
-=== Public versus commercial evidence
+== Public versus commercial evidence
 
 [cols="2,3,3",options="header",]
 |===
@@ -119,7 +119,7 @@ in them states its fact and what would retire it. A Python `smu_fcov.py` sampler
 not the release metric and is not a gate.
 
 [[smu-cov-out]]
-=== Structural OUT versus a waiver hole
+== Structural OUT versus a waiver hole
 
 Three mechanisms. Do not mix them.
 
@@ -145,7 +145,7 @@ A vendor site that `coverage_off` cannot name (hierarchy under `.u_smc`
 ConfigError on the first run.
 
 [[smu-cov-waiver]]
-=== Waiver fields
+== Waiver fields
 
 Every `[[holes]]` row must carry:
 

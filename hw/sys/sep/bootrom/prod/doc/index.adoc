@@ -50,6 +50,9 @@ Successful BL0 execution does not return and does not report a BL0 pass.
 verdict. A terminal BL0 error records its status and parks the hart in `wfi`
 until reset.
 
+xref:rom.adoc[SEP ROM Boot Architecture] specifies the complete boot flow
+and its requirements.
+
 include::boot-flow.adoc[]
 
 include::hardware-initialization.adoc[]

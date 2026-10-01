@@ -7,10 +7,12 @@
 ifdef::backend-html5[]
 :feature-control-vector-ref: xref:sep:lifecycle_controller.adoc#feature-control-vector-definition[Disable Vector Format (SIP_DIS / SYS_DIS)]
 :axi-traffic-filter-ref: xref:ip:axi_filter/doc/index.adoc#axi-traffic-filter[AXI Traffic Filter]
+:sep-register-single-beat-ref: xref:sep:memory_map.adoc#sep-register-single-beat[Single-Beat Register Access]
 endif::backend-html5[]
 ifndef::backend-html5[]
 :feature-control-vector-ref: <<feature-control-vector-definition>>
 :axi-traffic-filter-ref: <<axi-traffic-filter>>
+:sep-register-single-beat-ref: <<sep-register-single-beat>>
 endif::backend-html5[]
 
 [[sep-interconnect]]
@@ -18,7 +20,8 @@ endif::backend-html5[]
 SEP uses a hierarchical AXI4 crossbar fabric. Masters initiate transactions;
 slaves connect directly or through bridges for AXI4-Lite and OpenTitan TL-UL
 interfaces. The `axi_to_axi_lite` bridge splits bursts into individual
-transactions and retains the AXI IDs needed for responses. Write strobes
+transactions and retains the AXI IDs needed for responses; register regions
+accept single beats only ({sep-register-single-beat-ref}). Write strobes
 remain available on AXI4-Lite; `axi_lite_to_tlul` translates them into TL-UL
 byte masks. Each peripheral's register definition determines which writes
 are permitted.
@@ -32,7 +35,8 @@ xref:sep-axi-connectivity[xrefstyle=short] shows the crossbar connectivity imple
 `hw/sys/sep/rtl/crossbars/sep_local_axi_xbar.sv`, along with the dedicated
 Boot ROM path that lies outside the crossbar. The crossbar has five
 initiators (CPU IFU, CPU LSU, CPU DBG, DMA, and the System Interface)
-and ten targets.
+and ten targets. The CPU masters and the DMA issue single-beat transactions
+only; the System Interface may issue bursts.
 
 A few access paths are intentionally outside this crossbar:
 
@@ -53,6 +57,12 @@ The *Entropy Pool* target is `sep_entropy_fifo` (0x1095_0000): a 64-bit
 read-only entropy drain aperture, filled autonomously by a native EDN
 endpoint on a separate hardware path (not this crossbar). Writes to it
 terminate with `BRESP=SLVERR`.
+
+[[sep-sram-target]]
+The *SRAM* target serves INCR bursts of every length and single-beat
+bursts of every type. A multi-beat FIXED or WRAP burst is refused before it
+reaches the memory: the write terminates with `BRESP=SLVERR` and leaves
+SRAM unchanged, and every beat of the read returns `RRESP=SLVERR`.
 
 The *System Interface* initiator is the external inbound master. It does
 not attach to this crossbar directly; it enters SEP through the dedicated
@@ -230,6 +240,9 @@ The inbound filter is bypassed in its entirety, admitting all inbound
 traffic, while SEP-scope debug is enabled; see
 {feature-control-vector-ref} for the `SEP_DBG` control. The
 outbound filter has no bypass and is always in effect.
+
+Firmware must not set `allow_burst` on an inbound entry that covers a
+register region ({sep-register-single-beat-ref}).
 
 The decode algorithm -- entry priority, the match conditions, the
 address range granule and its widening direction, and the response
