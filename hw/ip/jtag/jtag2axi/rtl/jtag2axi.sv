@@ -19,11 +19,15 @@
 // - series request/response FIFOs
 // - sticky status
 //
-// The AXI master crosses into ACLK through one axi_cdc_clearable instance that tolerates
-// independent warm resets on trst_ni and arst_ni via cdc_fifo_gray_clearable reset
-// coupling.
+// The AXI master crosses into ACLK through one axi_cdc_clearable instance. A reset on either
+// trst_ni or arst_ni runs its isolate-and-clear sequence on both sides.
 // An ACLK-domain output stage buffers AW, W and AR, issues AW and W only as a pair, bounds
 // outstanding transactions, and drains responses to requests issued before a CDC clear.
+// When the clear reaches the TCK side, the bridge aborts every operation in flight or queued:
+// the FSM returns to idle and holds there until the clear completes, the series FIFOs and
+// pipeline accounting are flushed, and the status that reports an aborted operation reads
+// DECERR. The sticky series status takes DECERR only while it holds no earlier error. Every
+// other status, and the SERIES_CTRL configuration, is kept.
 //
 // Parameter constraints:
 //
@@ -592,6 +596,12 @@ module jtag2axi #(
   logic dst_clear_pending_q;
   logic dst_clear_start;
 
+  logic src_clear_pending_tclk;
+  logic src_clear_pending_q_tclk;
+  logic cdc_clear_abort_tclk;
+  logic single_op_aborted_tclk;
+  logic series_aborted_tclk;
+
   logic write_discard_rsp_q;
   logic read_discard_rsp_q;
 
@@ -631,7 +641,7 @@ module jtag2axi #(
     .src_clk_i           (tck_i),
     .src_rst_ni          (trst_ni),
     .src_clear_i         (1'b0),
-    .src_clear_pending_o (/* unused */),
+    .src_clear_pending_o (src_clear_pending_tclk),
     .src_req_i           (src_req),
     .src_resp_o          (src_resp),
     .dst_clk_i           (aclk_i),
@@ -641,6 +651,30 @@ module jtag2axi #(
     .dst_req_o           (dst_req),
     .dst_resp_i          (dst_resp)
   );
+
+  //--------------------------------------------------------------------------
+  // CDC clear abort (TCK)
+  //--------------------------------------------------------------------------
+  // The CDC isolates the TCK side before clearing it, so no B or R beat
+  // reaches the FSM while src_clear_pending_tclk is high. A request that was
+  // already pushed into the CDC is dropped by the clear and never completes.
+  always_ff @(posedge tck_i or negedge trst_ni) begin
+    if (!trst_ni) begin
+      src_clear_pending_q_tclk <= 1'b0;
+    end else begin
+      src_clear_pending_q_tclk <= src_clear_pending_tclk;
+    end
+  end
+
+  assign cdc_clear_abort_tclk = src_clear_pending_tclk && !src_clear_pending_q_tclk;
+
+  assign single_op_aborted_tclk = single_op_pending_tclk || series_errstat_pending_tclk;
+  assign series_aborted_tclk =
+        series_errstat_pending_tclk ||
+        ((axi_state_q_tclk != AXI_IDLE) && (axi_state_q_tclk != AXI_UPDATE_STATUS) &&
+         !current_tx_is_from_single_buffer_tclk) ||
+        !series_request_fifo_empty_tclk || series_request_fifo_push_tclk ||
+        !series_rsp_fifo_empty_tclk;
 
   //--------------------------------------------------------------------------
   // ACLK-domain TLR-safe AXI output stage
@@ -902,6 +936,8 @@ module jtag2axi #(
                   aclk_i, !arst_ni)
   `OCAH_OT_ASSERT(AwHasWriteData_A, awvalid_o |-> w_buf_valid, aclk_i, !arst_ni)
   `OCAH_OT_ASSERT(WaHasWriteAddress_A, wvalid_o |-> aw_buf_valid, aclk_i, !arst_ni)
+  `OCAH_OT_ASSERT(ClearPendingHoldsIdle_A, src_clear_pending_tclk |=> axi_state_q_tclk == AXI_IDLE,
+                  tck_i, !trst_ni)
 `endif
 
   //--------------------------------------------------------------------------
@@ -921,7 +957,7 @@ module jtag2axi #(
 
   assign req_fifo_clr_tclk =
         (security_disable_i && (axi_state_q_tclk == AXI_IDLE)) ||
-        ctrl_flush_pulse_tclk;
+        ctrl_flush_pulse_tclk || cdc_clear_abort_tclk;
 
   prim_fifo_sync #(
     .Width            (ReqFifoWidth),
@@ -974,7 +1010,7 @@ module jtag2axi #(
 
   assign rsp_fifo_clr_tclk =
         (security_disable_i && (axi_state_q_tclk == AXI_IDLE)) ||
-        ctrl_flush_pulse_tclk;
+        ctrl_flush_pulse_tclk || cdc_clear_abort_tclk;
 
   prim_fifo_sync #(
     .Width            (RspFifoWidth),
@@ -1192,6 +1228,18 @@ module jtag2axi #(
 
       default: axi_state_d_tclk = AXI_IDLE;
     endcase
+
+    if (src_clear_pending_tclk) begin
+      axi_state_d_tclk                   = AXI_IDLE;
+      series_request_fifo_pop_tclk       = 1'b0;
+      src_req.aw_valid                   = 1'b0;
+      src_req.w_valid                    = 1'b0;
+      src_req.b_ready                    = 1'b0;
+      src_req.ar_valid                   = 1'b0;
+      src_req.r_ready                    = 1'b0;
+      fsm_updates_bresp_status_tclk_comb = 1'b0;
+      fsm_updates_rdata_status_tclk_comb = 1'b0;
+    end
   end
 
   //--------------------------------------------------------------------------
@@ -1321,6 +1369,25 @@ module jtag2axi #(
       plain_reads_pending_tclk_d    = '0;
       series_reads_in_flight_tclk_d = '0;
       series_reads_pushed_tclk_d    = '0;
+    end
+
+    // An Update-DR in the same cycle is dispatched below against the
+    // pre-abort busy state.
+    if (cdc_clear_abort_tclk) begin
+      single_tx_req_valid_tclk_d       = 1'b0;
+      single_op_pending_tclk_d         = 1'b0;
+      series_errstat_pending_tclk_d    = 1'b0;
+      series_read_preload_count_tclk_d = '0;
+      plain_reads_pending_tclk_d       = '0;
+      series_reads_in_flight_tclk_d    = '0;
+      series_reads_pushed_tclk_d       = '0;
+      if (single_op_aborted_tclk) begin
+        last_single_op_status_tclk_d = CAPTURE_STATUS_DECERR;
+        last_read_data_tclk_d        = '0;
+      end
+      if (series_aborted_tclk && (sticky_axi_status_tclk_d == CAPTURE_STATUS_SUCCESS)) begin
+        sticky_axi_status_tclk_d = CAPTURE_STATUS_DECERR;
+      end
     end
 
     // `single_tx_req_valid_tclk` is only cleared by security-disable, not by
@@ -1479,8 +1546,8 @@ module jtag2axi #(
           series_request_fifo_din_tclk_d.increment_addr                  = incr_addr_bit;
 
           if (is_plain_read) begin
-            plain_reads_pending_tclk_d = plain_reads_pending_tclk + 1'b1;
-            series_reads_pushed_tclk_d = series_reads_pushed_tclk + 1'b1;
+            plain_reads_pending_tclk_d = plain_reads_pending_tclk_d + 1'b1;
+            series_reads_pushed_tclk_d = series_reads_pushed_tclk_d + 1'b1;
           end
 
           if (select_AXISeriesDataWithErrorStatus_i) begin
