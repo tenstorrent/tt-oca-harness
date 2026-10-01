@@ -3,7 +3,7 @@
 /*
  * smu_sep_axi_extension_decode_test  -- shared protocol.
  *
- * The page at 0x2000_0000 is the eFuse shim; SPI_MUX_CTRL is the generated
+ * The page at 0x2000_0000 is the eFuse shim; EXT_SPI_CTRL is the generated
  * 0x20001000 (sep_addr.h / sep_addrmap_pkg.sv). Firmware and the monitor use
  * the generated base.
  * XIP physical word is generated XIP base + 0x4000 (0x30004000).
@@ -30,13 +30,13 @@
 
 #define AXI_EXT_XIP_OFF 0x4000
 #define AXI_EXT_XIP_WORD 0xA1B2C3D4
-/* AXI extension slave index of the SPI_MUX_CTRL page and of the XIP window. */
+/* AXI extension slave index of the EXT_SPI_CTRL page and of the XIP window. */
 #define AXI_EXT_SEL_SPI_MUX 0
 #define AXI_EXT_SEL_XIP 2
 
 #define AXI_EXT_S0_FAIL 0x00720FA1
 #define AXI_EXT_BRINGUP_OK 0x00720000
-/* Stage token: the SPI_MUX_CTRL MMIO write and readback completed. */
+/* Stage token: the EXT_SPI_CTRL MMIO write and readback completed. */
 #define AXI_EXT_MUX_DONE 0x00720001
 #define AXI_EXT_GPIO_OVRD_OK 0x00720010
 #define AXI_EXT_XIP_OK 0x00720002

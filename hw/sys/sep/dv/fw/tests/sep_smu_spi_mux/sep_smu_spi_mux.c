@@ -3,7 +3,7 @@
 
 /*
  * sep_smu_spi_mux — excluded from the OSS firmware compile
- * (`FW_TEST_EXCLUDE_NAMES`). The image of this name programs SPI_MUX_CTRL,
+ * (`FW_TEST_EXCLUDE_NAMES`). The image of this name programs EXT_SPI_CTRL,
  * a register in a companion wrapper outside the OCAH hierarchy, so that image
  * lives with the wrapper. No SPI select exists: the OT SPI host reaches the
  * pads only on the SMC LSIO primary plane.
