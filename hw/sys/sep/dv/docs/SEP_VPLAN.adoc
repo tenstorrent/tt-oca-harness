@@ -387,7 +387,7 @@ never when it was written.
 |ocah_axi_vip
 |Seeded interleaved reads and writes from both TB masters at once, several outstanding on each and both response channels throttled, graded by a scoreboard that bounds each read by its register owner's write window and checks each register's final value.
 |`sep_abr_absent_decerr_test`
-|no_cpu, +skip_fuse_sense, `lsu_stub_abr_absent` model
+|no_cpu, +skip_fuse_sense, `lsu_stub_abr_absent` model, Verilator only
 |ocah_axi_vip, KM CPU image
 |The build without Adams Bridge (`SEP_ABR_EN` not defined): host reads and writes of the ABR aperture answer DECERR, and KM CPU stores and loads of the ABR wrapper key aperture set AXI_DECERR, with HMAC controls on both paths answering clean.
 |`sep_entropy_pool_aperture_test`
@@ -3863,7 +3863,7 @@ a waiting write, and two masters writing the same register.
 
 *Bucket*: Crypto and entropy
 
-*Run mode*: `no_cpu`, `+skip_fuse_sense`, `+km_rom_hex=km_rom_abr_absent.parhex`, target `lsu_stub_abr_absent`
+*Run mode*: `no_cpu`, `+skip_fuse_sense`, `+km_rom_hex=km_rom_abr_absent.parhex`, target `lsu_stub_abr_absent`. Verilator only (`tools = ["verilator"]` in `testlists/crypto.toml`): VCS coverage runs elaborate the single `default` target, which keeps Adams Bridge.
 
 *Source Module*: `sep_abr_absent_decerr_test`
 
