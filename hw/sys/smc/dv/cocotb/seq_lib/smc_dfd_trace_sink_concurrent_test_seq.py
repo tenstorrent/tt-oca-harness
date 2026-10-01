@@ -25,10 +25,11 @@ Three things are interleaved inside one live trace:
   with traffic in flight rather than on an idle sink.
 
 The witnesses are the ones the other sink leaves use: the RAM data port reads
-zero before any trace has run, the write pointer leaves the value it was given,
-and the data port returns non-zero words. What makes this leaf different is
-that the write-pointer movement and the read-side activity are required to
-happen in the *same* phase. The trace first runs until the sink's wrap flag
+zero and the write pointer reads 0 with its wrap flag clear before any trace
+has run, and the data port returns non-zero words. What makes this leaf
+different is that the write-pointer movement and the read-side activity are
+required to happen in the *same* phase: the pointer field, wrap flag masked, is
+read at every read-side step and has to change between two consecutive steps. The trace first runs until the sink's wrap flag
 reports one full pass of the window, so every position the read pointer is
 sent to holds a word the trace wrote.
 
@@ -378,8 +379,10 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
         wp = sink_register("Trdstramwplow")
         rp = sink_register("Trdstramrplow")
         data = sink_register("Trdstramdata")
+        pointer = reg_field(wp, "Trdstramwplow")
         span = 1 << action.width
         step = span // len(_READ_POSITIONS)
+        self.wp_samples = []
         for value in range(span):
             await self._write(
                 eap,
@@ -395,7 +398,7 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
                 self.words_read += 1
                 if word:
                     self.nonzero_words += 1
-                self.wp_samples.append(await self._read(wp, f"wp{offset:x}"))
+                self.wp_samples.append(await self._read(wp, f"wp{offset:x}") & pointer.mask)
         await self._write(eap, eap.reset_word, "quiet")
 
     # -- odd write offsets --------------------------------------------------
@@ -1026,11 +1029,17 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
             f"before any trace has been captured; an empty sink RAM reads 0, so a non-zero "
             f"word during the live phase would not be evidence of captured trace"
         )
-        self.value_checks += 1
+        assert self.baseline_wp == 0, (
+            f"DST_SINK Trdstramwplow @ 0x{wp.addr:08x} reads 0x{self.baseline_wp:08x} with "
+            f"the sink armed and no trace yet captured: the arm wrote the pointer field 0, "
+            f"so a non-zero pointer or a set wrap flag means the sink moved before any trace"
+        )
+        self.value_checks += 2
         cocotb.log.info(
             "CHK-DST-CONCURRENT-IDLE: the sink RAM data port reads 0x%08x and the write "
-            "pointer 0x%08x with the sink armed and no trace yet captured, so what the "
-            "live phase below reads is the trace it is producing",
+            "pointer register 0x%08x (pointer 0, wrap flag clear) with the sink armed and no "
+            "trace yet captured, so what the live phase below reads is the trace it is "
+            "producing",
             self.baseline_data,
             self.baseline_wp,
         )
@@ -1053,26 +1062,29 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
             f"were zero, the same as the baseline before it started, so nothing the trace "
             f"was writing was readable while it ran"
         )
-        moved = [w for w in self.wp_samples if w != self.baseline_wp]
-        assert moved, (
-            f"the sink write pointer stayed at 0x{self.baseline_wp:08x} for all "
-            f"{len(self.wp_samples)} samples taken during the live phase, so the trace was "
-            f"not writing while the read side was being driven and this leaf proves nothing "
-            f"the readout leaf does not"
+        moves = sum(1 for a, b in zip(self.wp_samples, self.wp_samples[1:]) if a != b)
+        assert moves, (
+            f"the sink write-pointer field read "
+            f"{', '.join(hex(w) for w in self.wp_samples)} at the {len(self.wp_samples)} "
+            f"read-side steps, never changing between two of them, so the trace was not "
+            f"writing while the read side was being driven and this leaf proves nothing the "
+            f"readout leaf does not"
         )
         self.value_checks += 3
         cocotb.log.info(
             "CHK-DST-CONCURRENT-DRAIN: inside one live trace the read pointer was driven to "
             "%d positions across the 0x%x-byte window, the RAM data port returned %d "
             "non-zero words of the %d it was read for against a zero baseline, and the "
-            "write pointer was sampled away from its starting value on %d of %d samples, so "
-            "the sink was reading and writing at the same time",
+            "write-pointer field, wrap flag masked, changed between %d of the %d consecutive "
+            "pairs of its samples taken at those steps (%s), so the sink was reading and "
+            "writing at the same time",
             self.positions_driven,
             _SINK_WINDOW_BYTES,
             self.nonzero_words,
             self.words_read,
-            len(moved),
-            len(self.wp_samples),
+            moves,
+            len(self.wp_samples) - 1,
+            ", ".join(hex(w) for w in self.wp_samples),
         )
 
         # The destination mode again, this time with the trace still armed.
