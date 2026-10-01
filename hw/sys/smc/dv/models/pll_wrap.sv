@@ -69,8 +69,7 @@ module pll_wrap
   // drivers depend on. Without it the generators below drive osc_*_gen and the
   // mux chains are exercised. Each net has one driver, as VCS requires of a
   // variable a continuous assign drives.
-  logic osc_bench;
-  initial osc_bench = $test$plusargs("pll_osc_bench");
+  logic osc_bench = $test$plusargs("pll_osc_bench");
 
   logic osc_ref_bench, osc_sys_bench, osc_periph_bench;
   logic osc_ref_gen, osc_sys_gen, osc_periph_gen;

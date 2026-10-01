@@ -2863,12 +2863,12 @@ module smc_uvm_top
 
     // Both instances' model oscillators follow the bench clock inputs (see the
     // single-instance half); the two run in lockstep, as one clock tree.
-    assign u_dut.u_smc_wrapper.u_smc_ip_integration.u_pll_wrap.osc_ref    = clk_ref_i;
-    assign u_dut.u_smc_wrapper.u_smc_ip_integration.u_pll_wrap.osc_sys    = clk_smc_i;
-    assign u_dut.u_smc_wrapper.u_smc_ip_integration.u_pll_wrap.osc_periph = clk_periph_i;
-    assign u_bfm.u_smc_wrapper.u_smc_ip_integration.u_pll_wrap.osc_ref    = clk_ref_i;
-    assign u_bfm.u_smc_wrapper.u_smc_ip_integration.u_pll_wrap.osc_sys    = clk_smc_i;
-    assign u_bfm.u_smc_wrapper.u_smc_ip_integration.u_pll_wrap.osc_periph = clk_periph_i;
+    assign u_dut.u_smc_wrapper.u_smc_ip_integration.u_pll_wrap.osc_ref_bench    = clk_ref_i;
+    assign u_dut.u_smc_wrapper.u_smc_ip_integration.u_pll_wrap.osc_sys_bench    = clk_smc_i;
+    assign u_dut.u_smc_wrapper.u_smc_ip_integration.u_pll_wrap.osc_periph_bench = clk_periph_i;
+    assign u_bfm.u_smc_wrapper.u_smc_ip_integration.u_pll_wrap.osc_ref_bench    = clk_ref_i;
+    assign u_bfm.u_smc_wrapper.u_smc_ip_integration.u_pll_wrap.osc_sys_bench    = clk_smc_i;
+    assign u_bfm.u_smc_wrapper.u_smc_ip_integration.u_pll_wrap.osc_periph_bench = clk_periph_i;
 
     // ------------------------------------------------------------------
     // Firmware observability (scratch 0/1 and retired PC per instance).
