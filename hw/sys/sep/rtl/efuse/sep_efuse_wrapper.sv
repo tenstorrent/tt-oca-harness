@@ -392,15 +392,15 @@ module sep_efuse_wrapper #(
     .fuse_command_resp_i        (efuse_shim_command_resp_i),
 
     .secure_tm_i                (secure_tm_n0_scan),
-    .security_disable_i         (1'b0), // in SEP we use internal security disable and tie off the input to efuse_interface
+    .security_disable_i         (security_disable), // Driven by this controller's own security_disable_o
     .efuse_field_map_i          (sep_efuse_pkg::EfuseFieldMap),
 
     .reset_n_o                  (sep_intermediate_reset_no),
     .fuse_sense_done_o          (fuse_sense_done),
-    .security_disable_o         (security_disable), // Used for LC control, and secure_tm latch logic
+    .security_disable_o         (security_disable),
     .shadow_regs_o              (shadow_regs_o),
 
-    .ext_boot_seq_done_i        (ext_boot_seq_done_i), // Integration-defined boot-sequence-done indication (e.g. memory repair done and straps from SMC)
+    .ext_boot_seq_done_i        (ext_boot_seq_done_i), // Integration-defined boot-sequence-done indication
 
     // Debug signals
     .is_write_locked_shadow_regs_o      (sep_efuse_debug_o[0]),

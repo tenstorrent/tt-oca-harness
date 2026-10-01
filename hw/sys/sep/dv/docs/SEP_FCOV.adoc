@@ -764,7 +764,8 @@ recorded by its AXI response.
 
 `sep_sec_dis_override_test` owns `cp_hold`, the match while the reset stays
 held, and `cp_map_resp`, the `LC_STATE` response in that window. `okay` fills
-when that read returns AXI OKAY. The same leaf walks `cp_release`, `cp_rehold`,
+when that read returns AXI OKAY. The leaf also reads that word after a
+`rst_ni` pulse with the token kept, while SEC_DIS is still active. The same leaf walks `cp_release`, `cp_rehold`,
 and `cp_alone` from the override pins. `sep_sec_dis_reset_reach_test` walks
 those three from the IC_RESET TDR and fills `cp_reach`. Both probes of the
 reset pair stay on the checker; this group samples `sep_cpu_reset_n` only.

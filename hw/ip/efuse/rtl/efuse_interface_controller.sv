@@ -481,7 +481,6 @@ module efuse_interface_controller #(
         .shadow_regs_o              (shadow_regs_o)
       );
 
-
     end else begin : gen_stub_mmr_apb_target
       assign apb_endpoint_resps[efuse_pkg::EFUSE_MMR_REG_MAP].pready = 1'b1;
       assign apb_endpoint_resps[efuse_pkg::EFUSE_MMR_REG_MAP].prdata = data_t'('hbadcab1e);
