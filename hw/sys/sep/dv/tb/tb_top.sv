@@ -2372,6 +2372,28 @@ module sep_uvm_top
     always @(negedge rst_ni) rst_assert_count <= rst_assert_count + 32'd1;
     assign u_tb_if.rst_assert_count = rst_assert_count;
 
+    // Observation probes the sequences read through sep_tb_if.
+    assign u_tb_if.sep_internal_interrupts   = sep_internal_interrupts_probe_o;
+    assign u_tb_if.efuse_shadow              = efuse_shadow_probe_o;
+    assign u_tb_if.otbn_imem_req_count       = otbn_imem_req_count_o;
+    assign u_tb_if.otbn_imem_write_count     = otbn_imem_write_count_o;
+    assign u_tb_if.otbn_dmem_req_count       = otbn_dmem_req_count_o;
+    assign u_tb_if.otbn_dmem_write_count     = otbn_dmem_write_count_o;
+    assign u_tb_if.km_rom_req_count          = km_rom_req_count_o;
+    assign u_tb_if.km_sram_probe             = km_sram_probe_o;
+    assign u_tb_if.km_sram_rd_accept_count   = km_sram_rd_accept_count_o;
+    assign u_tb_if.km_sram_rd_b2b_diff_count = km_sram_rd_b2b_diff_count_o;
+    assign u_tb_if.km_sram_rd_lat1_count     = km_sram_rd_lat1_count_o;
+    assign u_tb_if.km_sram_rd_lat_err_count  = km_sram_rd_lat_err_count_o;
+    assign u_tb_if.km_sram_req_count         = km_sram_req_count_o;
+    assign u_tb_if.km_sram_scr_rd_count      = km_sram_scr_rd_count_o;
+    assign u_tb_if.km_sram_scr_wr_addr       = km_sram_scr_wr_addr_o;
+    assign u_tb_if.km_sram_scr_wr_cell       = km_sram_scr_wr_cell_o;
+    assign u_tb_if.km_sram_scr_wr_count      = km_sram_scr_wr_count_o;
+    assign u_tb_if.km_sram_scr_wr_data       = km_sram_scr_wr_data_o;
+    assign u_tb_if.km_sram_word0             = km_sram_word0_o;
+    assign u_tb_if.km_sram_write_count       = km_sram_write_count_o;
+
     // CPU-LSU initiator: the shared ocah_axi_vip UVM master agent drives the
     // s_axi_* request side (the agent's driver procedurally drives the
     // request payloads and valids plus bready/rready on the master

@@ -19,7 +19,7 @@ args = ["+skip_fuse_sense"]
 
 [[tests]]
 name = "sep_address_map_test"
-module = "system.sep_address_map_test"
+module = { cocotb = "system.sep_address_map_test", uvm = "sep_address_map_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["smoke", "system"]
@@ -227,7 +227,7 @@ args = ["+skip_fuse_sense"]
 
 [[tests]]
 name = "sep_clock_uvm_wdt_rst_input_reset_path_test"
-module = "system.sep_clock_uvm_wdt_rst_input_reset_path_test"
+module = { cocotb = "system.sep_clock_uvm_wdt_rst_input_reset_path_test", uvm = "sep_clock_uvm_wdt_rst_input_reset_path_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["clock", "reset", "wdt", "system", "subsystem"]
@@ -247,7 +247,7 @@ args = ["+skip_fuse_sense"]
 # host_path_err / bit 41.
 # no_cpu (host drives AXI); +skip_fuse_sense (INTR_TEST is independent of OTP/entropy).
 name = "sep_irq_ip_to_aggregator_test"
-module = "system.sep_irq_ip_to_aggregator_test"
+module = { cocotb = "system.sep_irq_ip_to_aggregator_test", uvm = "sep_irq_ip_to_aggregator_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["interrupt", "aggregator", "csrng", "edn", "system", "subsystem"]
@@ -261,7 +261,7 @@ args = ["+skip_fuse_sense"]
 # PERIPH_BUS_ERR_STATUS or DMA_BUS_ERR_STATUS bit. The VPLAN card owns the
 # checker contract.
 name = "sep_periph_bus_err_misaligned_test"
-module = "system.sep_periph_bus_err_misaligned_test"
+module = { cocotb = "system.sep_periph_bus_err_misaligned_test", uvm = "sep_periph_bus_err_misaligned_test" }
 seed = 1
 timeout_sec = 600
 tags = ["interrupt", "aggregator", "system", "subsystem"]
