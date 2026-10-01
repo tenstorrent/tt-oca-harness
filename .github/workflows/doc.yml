@@ -57,12 +57,16 @@ jobs:
           git submodule update --init --recursive
 
       - name: Setup system dependencies
+        # default-jre-headless runs the PlantUML jar that asciidoctor-diagram
+        # bundles, which the programmer guide's PDF build uses to render its
+        # PlantUML diagram.
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             texlive-latex-recommended \
             texlive-fonts-recommended \
-            texlive-latex-extra
+            texlive-latex-extra \
+            default-jre-headless
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -77,8 +81,10 @@ jobs:
           rubygems: '3.3.26'
 
       - name: Install Asciidoctor
+        # asciidoctor-diagram renders the PlantUML diagrams in the integrator and
+        # programmer guides during their PDF builds.
         run: |
-          gem install asciidoctor:2.0.26 asciidoctor-pdf:2.3.9
+          gem install asciidoctor:2.0.26 asciidoctor-pdf:2.3.9 asciidoctor-diagram:2.3.1
 
       - name: Install uv
         uses: astral-sh/setup-uv@v6
