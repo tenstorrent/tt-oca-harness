@@ -791,8 +791,8 @@ localparam bit [63:0] DtpStapDsIrCapture = 64'h1;
 
 // Composed-scan kind: TAP_3DCR data scan (PTAP 3DCR first), instruction
 // scan (PTAP IR first, PTAP 3DCR absent), or a data scan under
-// ZERO_LENGTH_BYPASS (no PTAP flop) or BYPASS (the PTAP bypass register
-// first).
+// ZERO_LENGTH_BYPASS or BYPASS (the PTAP bypass register first; under
+// ZERO_LENGTH_BYPASS only while the PTAP select is set).
 typedef enum int unsigned {
   DTP_SCAN_DR     = 0,
   DTP_SCAN_IR     = 1,

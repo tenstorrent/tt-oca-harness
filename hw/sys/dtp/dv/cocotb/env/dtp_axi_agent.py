@@ -83,13 +83,25 @@ class DtpAxiAgent(uvm_agent):
         assert scoreboard is not None, "DtpAxiScoreboard did not publish a scoreboard"
         monitors = {
             "smc_axi": OcahAxiMonitor(
-                tb.axi_bus("smc_axi", passive=True), tb.clk, name="dtp_smc_axi_monitor"
+                tb.axi_bus("smc_axi", passive=True),
+                tb.clk,
+                reset=tb.sys_rst_n,
+                reset_active_level=False,
+                name="dtp_smc_axi_monitor",
             ),
             "smc_otp": OcahAxiLiteMonitor(
-                tb.axi_bus("smc_otp", passive=True), tb.clk, name="dtp_smc_otp_monitor"
+                tb.axi_bus("smc_otp", passive=True),
+                tb.clk,
+                reset=tb.sys_rst_n,
+                reset_active_level=False,
+                name="dtp_smc_otp_monitor",
             ),
             "sep_otp": OcahAxiLiteMonitor(
-                tb.axi_bus("sep_otp", passive=True), tb.clk, name="dtp_sep_otp_monitor"
+                tb.axi_bus("sep_otp", passive=True),
+                tb.clk,
+                reset=tb.sys_rst_n,
+                reset_active_level=False,
+                name="dtp_sep_otp_monitor",
             ),
         }
         watchers = {

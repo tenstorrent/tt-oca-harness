@@ -1945,8 +1945,8 @@ rebuilds the model on the next run.
   text, a digest of every source the filelist reaches through its `-f`
   includes, a digest of every file a build argument names, the rendered build
   arguments, the selected `[targets.<name>]` table, the Verilator
-  public-scope list, the wave format, whether coverage is on, and the strings
-  in `cache_key_extra`.
+  public-scope list, the VCS cocotb access list, the wave format, whether
+  coverage is on, and the strings in `cache_key_extra`.
 * `rebuild = true`, or `--rebuild`, forces a clean build of the selected
   directory through the cocotb runner on every simulator, and removes a
   firmware template's declared outputs before `c_compile` runs so an
@@ -1959,6 +1959,13 @@ rebuilds the model on the next run.
 
 The shared profile leaves `cache_enabled` off, so one directory per target
 and tool is rebuilt in place when its inputs change.
+
+cocotb's VCS runner compiles every cocotb model with `-debug_access+all
++acc+3`, which keeps every object in the design visible and writable and stops
+VCS from optimizing the DUT. A DUT whose cocotb bench needs less sets
+`[build.vcs].cocotb_access`, for example `["-debug_access+r+w"]`, and the
+runner compiles with that list instead. A run that dumps waves keeps cocotb's
+access.
 
 [[runner-dry-run-plan]]
 === Reading a dry-run plan
@@ -2465,8 +2472,10 @@ record the requested range and set `range_supported` to false.
 The standalone UVM/VCS flow gains dump access by elaborating with
 `-debug_access+all` when waves are requested. A waves run that skips
 elaboration (`--stage sim` against a simv built without waves) cannot dump;
-rerun with the elaborate stage included or `--rebuild`. cocotb's VCS runner
-always compiles with `-debug_access+all`, so its cached build needs no rebuild.
+rerun with the elaborate stage included or `--rebuild`. A cocotb VCS build
+dumps from any model compiled with cocotb's `-debug_access+all`; a DUT that
+sets `[build.vcs].cocotb_access` gets that model rebuilt for a waves run and
+its narrower model back on the next run without waves.
 If a wave-enabled simulation produces no wave file, the runner prints a
 warning and records it in the run's wave metadata.
 ====

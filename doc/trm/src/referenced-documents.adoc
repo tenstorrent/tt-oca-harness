@@ -155,7 +155,8 @@ documentation used by the subsystem chapters.
 |SEP KMAC-SHA3 accelerator and programming model.
 
 |https://opentitan.org/book/hw/ip/keymgr/index.html[OpenTitan Key Manager]
-|Key Manager architecture and firmware interface.
+|Background on a comparable key manager design. The OCAH Key Manager firmware
+interface is defined by its own firmware chapter, not by this document.
 
 |https://opentitan.org/book/hw/ip/csrng/[OpenTitan CSRNG] and
 https://opentitan.org/book/hw/ip/edn/[EDN]

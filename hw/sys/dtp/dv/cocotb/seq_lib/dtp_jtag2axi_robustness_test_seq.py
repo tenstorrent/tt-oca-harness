@@ -368,13 +368,16 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
         addr_idx: int,
         recovery_xor: int,
         context: str,
+        second_reset_cycles: int = 0,
     ) -> bool:
         """System reset while the bridge is observed mid-flight on a held write.
 
-        With the AXI scoreboard attached every judgement is recorded rather
-        than raised, so all three bridges leave evidence; without it the
-        first failing judgement raises. Returns True when the bridge's status
-        left BUSY_OR_FULL afterwards and the recovery write ran.
+        A non-zero ``second_reset_cycles`` pulses the reset again once the
+        first clear has completed, before the status is polled. With the AXI
+        scoreboard attached every judgement is recorded rather than raised, so
+        all three bridges leave evidence; without it the first failing
+        judgement raises. Returns True when the bridge reported the discarded
+        write as DECERR afterwards and the recovery write ran.
         """
         tb_if = self.cfg.tb_if
         size = self.target_cfg(target).default_size
@@ -410,7 +413,9 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
         tb_if.set_cdc_clear_seen_clear(0)
         await self.pulse_system_reset(cycles=reset_cycles)
         self.clear_target_backpressure(target)
-        recovered = await self._judge_abort_aftermath(target, addr, before, context=context)
+        recovered = await self._judge_abort_aftermath(
+            target, addr, before, context=context, second_reset_cycles=second_reset_cycles
+        )
         if recovered:
             self.status = await self.verify_target_recovery(
                 target, addr=addr + 0x200, data=data ^ recovery_xor, read=False, context=context
@@ -429,8 +434,35 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
         self.operation_count += 1
         return recovered
 
+    async def _second_reset(self, target: str, cycles: int, *, context: str) -> None:
+        """Pulse the system reset again on an idle bridge whose first clear has
+        completed, and record its CDC clear."""
+        tb_if = self.cfg.tb_if
+        for _ in range(ABORT_SETTLE_TCK):
+            await self.tms_step(0)
+        tb_if.set_cdc_clear_seen_clear(1)
+        await self.wait_sys_cycles(1)
+        tb_if.set_cdc_clear_seen_clear(0)
+        await self.pulse_system_reset(cycles=cycles)
+        for _ in range(ABORT_CDC_CLEAR_TCK):
+            await self.tms_step(0)
+        self._record_abort_check(
+            target,
+            CDC_CLEAR_CHECK_ID,
+            f"{context}.second_cdc_clear",
+            tb_if.cdc_clear_seen(target),
+            1,
+            "tck-side isolate-and-clear after the second reset",
+        )
+
     async def _judge_abort_aftermath(
-        self, target: str, addr: int, before: int, *, context: str
+        self,
+        target: str,
+        addr: int,
+        before: int,
+        *,
+        context: str,
+        second_reset_cycles: int = 0,
     ) -> bool:
         """Record the idle, CDC-clear, escape, and recovery judgements after the reset."""
         tb_if = self.cfg.tb_if
@@ -455,6 +487,8 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
             before,
             f"addr=0x{addr:x}",
         )
+        if second_reset_cycles:
+            await self._second_reset(target, second_reset_cycles, context=context)
         status, captures = await self._poll_status_bounded(target, ABORT_RECOVERY_POLLS)
         self.scoreboard_expect_completion(
             target, status, context=f"{context}.recovery", polls=ABORT_RECOVERY_POLLS
@@ -463,8 +497,8 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
             target,
             ABORT_RECOVERY_CHECK_ID,
             f"{context}.recovery_status",
-            int(status != DtpJtag2AxiStatus.BUSY_OR_FULL),
-            1,
+            status,
+            DtpJtag2AxiStatus.DECERR,
             f"status={DtpJtag2AxiStatus(status).name} "
             f"captures={captures}/{ABORT_RECOVERY_POLLS} after the mid-flight reset",
         )
@@ -479,6 +513,7 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
         reset_cycles_hi: int,
         recovery_xor: int,
         addr_offset: int,
+        second_reset: bool = False,
     ) -> None:
         """Abort a held write on every bridge, then judge the pass on the collected evidence."""
         await self.reset_tap()
@@ -500,12 +535,14 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
                 addr_idx=idx + addr_offset,
                 recovery_xor=recovery_xor,
                 context=f"{label}.{target}",
+                second_reset_cycles=rng.randint(1, reset_cycles_hi) if second_reset else 0,
             )
             if not recovered:
                 stuck.append(target)
         if stuck:
             raise AssertionError(
-                f"{label}: {', '.join(stuck)} stayed BUSY_OR_FULL after the mid-flight reset"
+                f"{label}: {', '.join(stuck)} did not report the discarded write as DECERR "
+                "after the mid-flight reset"
             )
 
     async def run_backpressure_abort_at_data_w(self) -> None:
@@ -526,6 +563,7 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
             reset_cycles_hi=1,
             recovery_xor=0x2222,
             addr_offset=8,
+            second_reset=True,
         )
 
     async def run_cdc_clear_abort_back_to_back_reset(self) -> None:
@@ -539,6 +577,16 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
             # different back-to-back reset spacing.
             data = rng.getrandbits(64) & self.target_data_mask(target)
             self.log_iteration(idx, len(ROBUST_TARGETS), "target=%s back-to-back reset", target)
+            expected = self.configure_target_error(
+                target, addr + 0x100, AXI_RESP_SLVERR, read=False, write=True
+            )
+            await self.write_target_single_expect_status(
+                target,
+                addr + 0x100,
+                data ^ 0x5A5A,
+                expected,
+                context=f"back_to_back_reset.{target}.prime",
+            )
             tb_if.set_cdc_clear_seen_clear(1)
             await self.wait_sys_cycles(1)
             tb_if.set_cdc_clear_seen_clear(0)
@@ -554,6 +602,16 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
                 tb_if.cdc_clear_seen(target),
                 1,
                 "tck-side isolate-and-clear after two resets",
+            )
+            status, captures = await self._poll_status_bounded(target, ABORT_RECOVERY_POLLS)
+            self._record_abort_check(
+                target,
+                ABORT_RECOVERY_CHECK_ID,
+                f"back_to_back_reset.{target}.status_kept",
+                status,
+                DtpJtag2AxiStatus.SLVERR,
+                f"status={DtpJtag2AxiStatus(status).name} "
+                f"captures={captures}/{ABORT_RECOVERY_POLLS} after two idle resets",
             )
             await self.verify_target_recovery(
                 target,
