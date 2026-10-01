@@ -592,6 +592,7 @@ Clock-stop request lane 0 is reserved for SMC. The SMU exposes the remaining
 DTP lanes, so the SMU `XTRIG_NUM_CLK_STOP_REQ` field is
 `smu_pkg::XTRIG_SMC_CLK_STOP_LANES` less than DTP's.
 
+[[xtrig-ctp-gpio-interface]]
 === Cross Trigger Port GPIO Interface
 
 CTP signals from DTP are ported through the SMU and are direct
