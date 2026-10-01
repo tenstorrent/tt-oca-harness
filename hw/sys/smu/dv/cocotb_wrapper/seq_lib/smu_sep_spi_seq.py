@@ -148,7 +148,7 @@ SPEC_GAPS = (
 )
 
 # The transfer run_spi_txrx_sequence() in sep_smu_spi.c issues, in order:
-# (bytes, COMMAND.CSAAT, direction). A segment moves LEN+1 bytes (OT :443-452);
+# (bytes, COMMAND.CSAAT, direction). A segment moves LEN+1 bytes (OT :443-453);
 # CSAAT=0 raises CS# at the end of the segment, CSAAT=1 holds it low (OT
 # :470-476). Every segment is standard speed (COMMAND.SPEED=0), so a byte is 8
 # SCK periods on one lane, and with CONFIGOPTS.CPOL=0 SCK idles low and emits
