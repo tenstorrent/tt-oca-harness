@@ -320,7 +320,8 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
         "RTL-CONSTANT",
         re.compile(r"^lsio_interface_select_o$"),
         "an output smu.sv drives from a constant in this composition: the LSIO interface "
-        "select follows the SPI enable, which smu.sv assigns 1 when SEP is present.",
+        "select follows the SPI enable, which smu.sv takes from "
+        "sep_io_pkg::ot_spi_pad_map, which sets it to 1 when SEP is present.",
         "the SPI enable becoming programmable",
         None,
         None,

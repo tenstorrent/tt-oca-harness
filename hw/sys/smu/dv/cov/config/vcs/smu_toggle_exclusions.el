@@ -978,7 +978,7 @@ Toggle 1to0 xbar_to_smc_resp.r.data [42] "logic xbar_to_smc_resp.r.data[63:0]"
 Toggle 1to0 xbar_to_smc_resp.r.data [55] "logic xbar_to_smc_resp.r.data[63:0]"
 Toggle gen_sep.smc_out_xbar_req.w.data [40] "logic gen_sep.smc_out_xbar_req.w.data[63:0]"
 
-ANNOTATION: "SMU-TGL-RTL-CONSTANT: an output smu.sv drives from a constant in this composition: the LSIO interface select follows the SPI enable, which smu.sv assigns 1 when SEP is present. Retired by the SPI enable becoming programmable."
+ANNOTATION: "SMU-TGL-RTL-CONSTANT: an output smu.sv drives from a constant in this composition: the LSIO interface select follows the SPI enable, which smu.sv takes from sep_io_pkg::ot_spi_pad_map, which sets it to 1 when SEP is present. Retired by the SPI enable becoming programmable."
 Toggle lsio_interface_select_o "logic lsio_interface_select_o[64:0]"
 
 ANNOTATION: "SMU-TGL-SEP-OWNED: SEP passthroughs smu.sv only routes: the SEP CPU trace needs SEP firmware, the lockstep pair is inert without RV_LOCKSTEP_ENABLE, and the SEP external interrupts and entropy sample clock terminate inside the SEP. The SEP bench grades each of them. Retired by SMU logic consuming one of these nets."
