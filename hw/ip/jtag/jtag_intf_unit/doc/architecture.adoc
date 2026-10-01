@@ -13,8 +13,11 @@ input is the select value that picks it, and italic labels in the STAPs and SIBs
 name the `dbg_disable_i` field that closes each one. Dashed blocks exist only when
 their enable parameter is set; `NUM_EXTRA_STAPS` sets the number of `u_stap_extra`
 instances. TDO is retimed on the falling edge of TCK except during a
-`ZERO_LENGTH_BYPASS` DR scan, when the last mux takes the TDO mux output ahead of
-the retimer and TDI reaches TDO combinationally.
+`ZERO_LENGTH_BYPASS` DR scan with the `TAP_3DCR` STAP-select bit clear, when the
+last mux takes the TDO mux output ahead of the retimer and TDI reaches TDO
+combinationally. While the bit is set, `ZERO_LENGTH_BYPASS` behaves exactly as
+`BYPASS`: the PTAP bypass register leads the STAP chain and the chain's return
+is retimed, because the chain launches its last bit on the rising TCK edge.
 
 [[jtag-interface-unit-scan-chain-figure]]
 .JTAG Interface Unit scan chain

@@ -7,10 +7,11 @@
 // (CHK-ZLB-PASSTHROUGH) across directed + seeded random patterns against
 // one plain BYPASS delay reference point (CHK-BYPASS-DELAY). The chain leg
 // selects a seeded STAP with a downstream TAP behind it and scans the same
-// chain under ZERO_LENGTH_BYPASS and then under BYPASS: the marker leaves
-// TDO right after the STAP chain alone, then one TCK later, behind the
-// bypass register's captured 0 (CHK-ZLB-CHAIN-ALIGN), and the captured
-// chain matches the reference model (CHK-SCAN-CHAIN).
+// chain under ZERO_LENGTH_BYPASS and then under BYPASS. With the PTAP 3DCR
+// select set, ZERO_LENGTH_BYPASS is BYPASS: under both, the bit after the
+// STAP chain is the bypass register's captured 0 and the marker follows it
+// (CHK-ZLB-CHAIN-ALIGN), and the captured chain matches the reference model
+// (CHK-SCAN-CHAIN).
 
 class dtp_jtag_zero_length_bypass_test_seq extends dtp_scan_base_test_seq;
   `uvm_object_utils(dtp_jtag_zero_length_bypass_test_seq)
@@ -44,15 +45,11 @@ class dtp_jtag_zero_length_bypass_test_seq extends dtp_scan_base_test_seq;
   // PTAP 3DCR select set, a seeded STAP selected, and its downstream TAP on
   // DS_TDR, a ZERO_LENGTH_BYPASS scan writes a seeded DS_TDR value and a
   // maintain scan reads the chain back (CHK-SCAN-CHAIN); under BYPASS the
-  // same chain reads back with the bypass register ahead of it. Every scan
-  // carries a marker whose position proves how many bits the PTAP adds
+  // same chain reads back the same way. Every scan carries a marker whose
+  // position proves the PTAP adds its one bypass bit under both
   // (CHK-ZLB-CHAIN-ALIGN).
   protected task check_zero_length_bypass_chain();
-    // The chain leg splices only the STAPs after the I/O STAP: under
-    // ZERO_LENGTH_BYPASS the I/O STAP's host TDO lockup samples TDI itself on
-    // the falling TCK edge, so the length of its splice depends on when the
-    // master changes TDI.
-    int unsigned stap = $urandom_range(int'(ST_EXTRA0), int'(ST_SMC));
+    int unsigned stap = $urandom_range(int'(ST_EXTRA0), int'(ST_IO));
     string ctx = {"zlb_chain.", stap_name(stap)};
     int sib_en[int];
     int no_sib[int];
@@ -95,7 +92,7 @@ class dtp_jtag_zero_length_bypass_test_seq extends dtp_scan_base_test_seq;
     check_stap_chain_readback(captured, '0, {ctx, ".zlb_read"}, DTP_SCAN_ZLB);
     check_zlb_chain_align(captured, marker, DTP_SCAN_ZLB, {ctx, ".zlb_read"});
 
-    log_step("4", "BYPASS: the same chain reads back behind the bypass register");
+    log_step("4", "BYPASS: the same chain reads back behind the same bypass register");
     stap_chain_ir_write('0, 6'(BYPASS_INSTR), no_ir, no_sib, no_pl, {ctx, ".load_bypass"}, unused);
     stap_chain_maintain('0, {ctx, ".bypass_read"}, captured, marker, DTP_SCAN_BYPASS);
     check_stap_chain_readback(captured, '0, {ctx, ".bypass_read"}, DTP_SCAN_BYPASS);
@@ -104,27 +101,28 @@ class dtp_jtag_zero_length_bypass_test_seq extends dtp_scan_base_test_seq;
     stap_chain_flush({ctx, ".cleanup"});
   endtask
 
-  // CHK-ZLB-CHAIN-ALIGN: under ZERO_LENGTH_BYPASS the marker leaves TDO
-  // right after the STAP chain; under BYPASS the bit after the chain is the
-  // bypass register's captured 0 and the marker follows it. Valid after a
-  // scan that leaves the chain layout as it found it, such as a maintain
-  // scan or a downstream register write.
+  // CHK-ZLB-CHAIN-ALIGN: with the PTAP 3DCR select set, the bit after the
+  // STAP chain is the bypass register's captured 0 and the marker follows
+  // it, under ZERO_LENGTH_BYPASS and BYPASS alike. The STAP chain length
+  // comes from the TAP_3DCR layout less the PTAP 3DCR, which holds no PTAP
+  // bypass bit. Valid after a scan that leaves the chain layout as it found
+  // it, such as a maintain scan or a downstream register write.
   protected function void check_zlb_chain_align(bit [63:0] captured, bit [63:0] marker,
                                                 dtp_scan_kind_e kind, string context_s);
     dtp_stap_3dcr_model::layout_entry_t layout[$];
-    int unsigned ptap_bits = (kind == DTP_SCAN_BYPASS) ? 1 : 0;
-    string name = ptap_bits ? "BYPASS: captured 0, then the marker"
-                            : "ZERO_LENGTH_BYPASS: marker right after the STAP chain";
+    string name = (kind == DTP_SCAN_ZLB) ? "ZERO_LENGTH_BYPASS: captured 0, then the marker"
+                                         : "BYPASS: captured 0, then the marker";
     int latency = msb_index(captured) + 1 - int'(DtpScanMarkerWidth);
+    int unsigned chain_len;
     bit [63:0] observed;
     if (kind != DTP_SCAN_ZLB && kind != DTP_SCAN_BYPASS)
       `uvm_fatal(get_type_name(), $sformatf("no alignment rule for a %s scan", kind.name()))
-    stap_model.chain_layout('0, layout, DTP_SCAN_ZLB);
-    observed = (captured >> layout.size()) & bit_mask(DtpScanMarkerWidth + ptap_bits);
+    stap_model.chain_layout('0, layout, DTP_SCAN_DR);
+    chain_len = layout.size() - Ptap3dcrWidth;
+    observed  = (captured >> chain_len) & bit_mask(DtpScanMarkerWidth + 1);
     family_check(
-        "CHK-ZLB-CHAIN-ALIGN", name, observed, marker << ptap_bits, $sformatf(
-        "%s chain_len=%0d latency=%0d captured=0x%0h", context_s, layout.size(), latency, captured
-        ));
+        "CHK-ZLB-CHAIN-ALIGN", name, observed, marker << 1, $sformatf(
+        "%s chain_len=%0d latency=%0d captured=0x%0h", context_s, chain_len, latency, captured));
   endfunction
 
 endclass : dtp_jtag_zero_length_bypass_test_seq
