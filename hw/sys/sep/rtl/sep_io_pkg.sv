@@ -53,9 +53,9 @@ package sep_io_pkg;
 
   //=========================================================================
   // Pad-facing SPI signals
-  // smu.sv and the SEP standalone bench both map sep_io_spi_req_t onto these
-  // same signals, the bench without smu.sv in the hierarchy, so the mapping
-  // lives here rather than in either of them.
+  // ot_spi_pad_map maps the OT SPI host request (sep_io_spi_req_t) onto the
+  // SPI signals of the SMC LSIO primary plane (GPIO 0-10 and 54). smu.sv
+  // drives the SEP SPI pad signals it passes to the SMC from this function.
   //=========================================================================
 
   typedef struct packed {
