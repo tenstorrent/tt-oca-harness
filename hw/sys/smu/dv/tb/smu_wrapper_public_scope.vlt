@@ -29,3 +29,7 @@ public_flat_rw -module "smc_efuse_wrapper" -var "*"
 public_flat_rw -module "efuse_interface_controller" -var "*"
 public_flat_rw -module "smc_cpu_wrapper" -var "*"
 public_flat_rw -module "smc_4core_cpu" -var "*"
+// The SEP SPI host's pad-facing ports and its RX FIFO read port: the host side
+// that smu_sep_spi_test compares against the SMC pads.
+public_flat_rw -module "sep_ot_spi_wrap" -var "spi_*"
+public_flat_rw -module "spi_host" -var "rx_*"
