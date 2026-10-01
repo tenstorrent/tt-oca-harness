@@ -113,6 +113,102 @@ timeout_sec = 1800
 tags = ["clock"]
 run_modes = ["smoke"]
 
+[[tests]]
+name = "smc_clk_smc_slower_periph_slower_test"
+module = "smc_clk_smc_slower_periph_slower_test"
+seed = 1
+timeout_sec = 1800
+tags = ["clock"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_clk_smc_slower_periph_equal_test"
+module = "smc_clk_smc_slower_periph_equal_test"
+seed = 1
+timeout_sec = 1800
+tags = ["clock"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_clk_smc_slower_periph_much_faster_test"
+module = "smc_clk_smc_slower_periph_much_faster_test"
+seed = 1
+timeout_sec = 1800
+tags = ["clock"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_clk_smc_equal_periph_slower_test"
+module = "smc_clk_smc_equal_periph_slower_test"
+seed = 1
+timeout_sec = 1800
+tags = ["clock"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_clk_smc_equal_periph_faster_test"
+module = "smc_clk_smc_equal_periph_faster_test"
+seed = 1
+timeout_sec = 1800
+tags = ["clock"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_clk_smc_equal_periph_much_faster_test"
+module = "smc_clk_smc_equal_periph_much_faster_test"
+seed = 1
+timeout_sec = 1800
+tags = ["clock"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_clk_smc_faster_periph_slower_test"
+module = "smc_clk_smc_faster_periph_slower_test"
+seed = 1
+timeout_sec = 1800
+tags = ["clock"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_clk_smc_faster_periph_equal_test"
+module = "smc_clk_smc_faster_periph_equal_test"
+seed = 1
+timeout_sec = 1800
+tags = ["clock"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_clk_smc_faster_periph_faster_test"
+module = "smc_clk_smc_faster_periph_faster_test"
+seed = 1
+timeout_sec = 1800
+tags = ["clock"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_clk_smc_faster_periph_much_faster_test"
+module = "smc_clk_smc_faster_periph_much_faster_test"
+seed = 1
+timeout_sec = 1800
+tags = ["clock"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_clk_smc_much_faster_periph_equal_test"
+module = "smc_clk_smc_much_faster_periph_equal_test"
+seed = 1
+timeout_sec = 1800
+tags = ["clock"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_clk_smc_much_faster_periph_much_faster_test"
+module = "smc_clk_smc_much_faster_periph_much_faster_test"
+seed = 1
+timeout_sec = 1800
+tags = ["clock"]
+run_modes = ["smoke"]
+
 [[groups]]
 name = "clock"
 tests = [
@@ -121,6 +217,18 @@ tests = [
     "smc_clk_smc_slower_than_ref_test",
     "smc_clk_smc_equal_ref_test",
     "smc_clk_periph_slower_than_ref_test",
+    "smc_clk_smc_slower_periph_slower_test",
+    "smc_clk_smc_slower_periph_equal_test",
+    "smc_clk_smc_slower_periph_much_faster_test",
+    "smc_clk_smc_equal_periph_slower_test",
+    "smc_clk_smc_equal_periph_faster_test",
+    "smc_clk_smc_equal_periph_much_faster_test",
+    "smc_clk_smc_faster_periph_slower_test",
+    "smc_clk_smc_faster_periph_equal_test",
+    "smc_clk_smc_faster_periph_faster_test",
+    "smc_clk_smc_faster_periph_much_faster_test",
+    "smc_clk_smc_much_faster_periph_equal_test",
+    "smc_clk_smc_much_faster_periph_much_faster_test",
     "smc_dma_cg_activity_test",
     "smc_static_cg_sanity_test",
     "smc_zeroer_axiclk_cg_test",

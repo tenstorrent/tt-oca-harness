@@ -5,10 +5,11 @@
 The SMC clock runs slower than the reference clock, and the peripheral clock
 faster than both. `clk_rst.adoc` constrains `clk_periph_i` to 100 MHz or
 faster and states no other relation between the three input clocks, so this is
-a legal configuration the base test's period draw never produces. The leaf pins the
-periods to 10 / 12 / 8 ns (ref / smc / periph), confirms the
-relation by measuring each period, and drives register traffic into both sides of the
-peripheral clock-domain crossing.
+a legal configuration that the bench's default periods (ref / smc / periph
+10 / 1.25 / 5 ns) never produce. The leaf pins the periods to 10 / 12 / 8 ns
+(ref / smc / periph), confirms the relation by measuring each period and
+counting edges across one ratio-collector window, and drives register traffic
+into both sides of the peripheral clock-domain crossing.
 
 Run:
     CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smc \\

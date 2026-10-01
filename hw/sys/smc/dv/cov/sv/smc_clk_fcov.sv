@@ -406,15 +406,15 @@ module smc_clk_fcov #(
       logic [31:0] ref_edges, logic [31:0] smc_edges, logic [31:0] periph_edges
   );
     option.per_instance = 1;
-    // The bench drives ref 10 ns, periph 5 ns and the SMC clock at 1.25 ns, or
-    // 10 ns under +pll_sys_period_ns=10, so the SMC clock runs at eight times
-    // or one times the reference and the peripheral clock at twice it. Leaves
-    // that pin other periods: smc_clk_smc_slower_than_ref_test (ref / smc /
-    // periph 10 / 12 / 8 ns), smc_clk_smc_equal_ref_test (10 / 10 / 10 ns) and
-    // smc_clk_periph_slower_than_ref_test (8 / 1.25 / 10 ns). The flat
-    // c_clk_ratio_* points record the relations the ignore bins below leave
-    // out. A clock that stops within a window is the clock-gate groups'
-    // subject.
+    // The bench drives ref / smc / periph at 10 / 1.25 / 5 ns, or a 10 ns SMC
+    // clock under +pll_sys_period_ns=10, so the default run lands in the SMC
+    // much_faster by periph faster cell. The smc_clk_* ratio leaves in
+    // testlists/clock.toml pin the other periods, one leaf per cell of the
+    // cross below, so every slower, same, faster and much_faster bin of both
+    // coverpoints and every cell of their cross has a driver and is graded.
+    // The stalled bins are out: clk_rst.adoc defines no mode in which an input
+    // clock stops (the stalled-window cover points are Phase 2), and a clock
+    // the clock gates stop is the cg_clk_gate group's subject.
     cp_smc_bucket: coverpoint (smc_edges * 4) / (ref_edges == 0 ? 1 : ref_edges) {
       bins stalled = {0};
       bins slower = {[1 : 3]};
@@ -422,7 +422,7 @@ module smc_clk_fcov #(
       bins faster = {[5 : 8]};
       bins much_faster = {[9 : 32]};
       bins beyond = default;
-      ignore_bins core_not_faster_than_ref = {[0 : 4]};
+      ignore_bins smc_stalled = {0};
     }
     cp_periph_bucket: coverpoint (periph_edges * 4) / (ref_edges == 0 ? 1 : ref_edges) {
       bins stalled = {0};
@@ -432,23 +432,8 @@ module smc_clk_fcov #(
       bins much_faster = {[9 : 32]};
       bins beyond = default;
       ignore_bins periph_stalled = {0};
-      ignore_bins periph_beyond_1p5x_ref = {[9 : 32]};
     }
-    // Bench scope. Under +pll_osc_bench the bench drives the default periods
-    // (ref / smc / periph 10 / 1.25 or 10 / 5 ns) and the sets the three ratio
-    // leaves pin: smc_clk_smc_slower_than_ref_test 10 / 12 / 8 ns,
-    // smc_clk_smc_equal_ref_test 10 / 10 / 10 ns and
-    // smc_clk_periph_slower_than_ref_test 8 / 1.25 / 10 ns. The peripheral
-    // clock is slower than the reference only in the last, where the SMC
-    // clock is 6.4 times the reference (much_faster), and that cell is
-    // graded. A slower peripheral clock with the SMC clock between one and two
-    // times the reference has no driver on this bench; the SMC slower and
-    // same buckets are already out of the cross through cp_smc_bucket's own
-    // ignore. A leaf pinning that ratio retires this bin.
-    x_smc_periph: cross cp_smc_bucket, cp_periph_bucket{
-      ignore_bins bench_no_periph_slower_smc_faster = binsof (cp_smc_bucket.faster) &&
-          binsof (cp_periph_bucket.slower);
-    }
+    x_smc_periph: cross cp_smc_bucket, cp_periph_bucket;
   endgroup
 
   covergroup cg_clk_gate with function sample (logic cg_en, logic busy, logic clk_toggling);

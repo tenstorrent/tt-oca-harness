@@ -7,16 +7,18 @@
 ``clk_ref_i``, nor between ``clk_smc_i`` and ``clk_periph_i``, so every ratio
 between them is a legal configuration. The bench drives ref / periph at
 10 / 5 ns and the SMC clock at the ``+pll_sys_period_ns`` period (1.25 ns by
-default), so the SMC clock is the fastest and the peripheral clock twice the
-reference. The leaves that drive this sequence pin relations those periods
-never produce: ``smc_clk_smc_slower_than_ref_test`` 10 / 12 / 8 ns,
-``smc_clk_smc_equal_ref_test`` 10 / 10 / 10 ns and
-``smc_clk_periph_slower_than_ref_test`` 8 ns ref against a 10 ns periph
-(ref / smc / periph).
+default), so the SMC clock runs more than twice the reference and the
+peripheral clock twice it. The leaves that drive this sequence pin the other
+relations, one leaf per cell of ``smc_clk_fcov``'s ``cg_clk_ratio`` cross: the
+SMC clock slower than, equal to, up to twice or more than twice the
+reference, against the peripheral clock slower than, equal to, up to twice or
+more than twice it. Each leaf states its ref / smc / periph periods.
 
 The sequence first measures each clock's period over its own rising edges
-and requires the configured value, so the leaf is known to run at the
-relation its name states. It then drives SEP_IN register traffic
+and requires the configured value, then counts the SMC and peripheral edges
+together across one ratio-collector window of reference edges and requires
+the counts the periods give, so the leaf is known to run at the relation its
+name states. It then drives SEP_IN register traffic
 into blocks on both sides of the peripheral clock-domain crossing: exact
 compares of non-zero generated resets, and distinct patterns written to every
 UART scratch register and every I2C target address before any is read back,
@@ -30,7 +32,7 @@ import sys
 from pathlib import Path
 
 import cocotb
-from cocotb.triggers import RisingEdge
+from cocotb.triggers import ClockCycles, RisingEdge
 from cocotb.utils import get_sim_time
 
 from .smc_addr_map import GLOBAL_BASE_RESET, smc_addr, smc_indexed_addr
@@ -51,6 +53,10 @@ from smc_reg import (  # noqa: E402
 
 # Rising edges of each clock over which its period is measured.
 RATIO_WINDOW_EDGES = 64
+# Reference-clock edges over which the SMC and peripheral edges are counted
+# together: smc_clk_fcov's WindowCycles, so the run spans at least one closed
+# window of the ratio collector at the relation it pins.
+RELATION_WINDOW_REF_EDGES = 1024
 
 GLOBAL_BASE = smc_addr("SMC_TOP_SMC_BASE_CONFIG_GLOBAL_BASE_BASE_ADDR")
 WDT0_CMP = smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_CMP_BASE_ADDR")
@@ -81,6 +87,7 @@ class smc_clk_ratio_test_seq(SmcDecodeProbeSeq):
     def __init__(self, name: str = "smc_clk_ratio_test_seq") -> None:
         super().__init__(name)
         self.periods_ps: dict[str, float] = {}
+        self.relation_edges: dict[str, int] = {}
 
     async def _measure_periods(self) -> None:
         """Mean period of each input clock over RATIO_WINDOW_EDGES of its own rising edges."""
@@ -96,6 +103,25 @@ class smc_clk_ratio_test_seq(SmcDecodeProbeSeq):
                 await RisingEdge(clk)
             self.periods_ps[name] = (get_sim_time("ps") - start) / RATIO_WINDOW_EDGES
 
+    async def _count_relation(self) -> None:
+        """Count SMC and peripheral rising edges across RELATION_WINDOW_REF_EDGES ref edges."""
+        dut = cocotb.top
+        self.relation_edges = {"smc": 0, "periph": 0}
+
+        async def count(name: str, clk) -> None:
+            while True:
+                await RisingEdge(clk)
+                self.relation_edges[name] += 1
+
+        await RisingEdge(dut.clk_ref_i)
+        tasks = [
+            cocotb.start_soon(count("smc", dut.clk_smc_i)),
+            cocotb.start_soon(count("periph", dut.clk_periph_i)),
+        ]
+        await ClockCycles(dut.clk_ref_i, RELATION_WINDOW_REF_EDGES)
+        for task in tasks:
+            task.cancel()
+
     def _check_ratio(self) -> None:
         cfg = self.cfg
         want = {
@@ -109,18 +135,37 @@ class smc_clk_ratio_test_seq(SmcDecodeProbeSeq):
                 f"clk_{name}_i measured {got:.1f} ps per cycle over {RATIO_WINDOW_EDGES} "
                 f"rising edges; the leaf pinned {period_ns} ns"
             )
+        span_ps = RELATION_WINDOW_REF_EDGES * cfg.ref_clk_period_ns * 1000
+        expected = {
+            "smc": span_ps / (cfg.smc_clk_period_ns * 1000),
+            "periph": span_ps / (cfg.periph_clk_period_ns * 1000),
+        }
+        for name, want_edges in expected.items():
+            got = self.relation_edges[name]
+            assert abs(got - want_edges) <= 1, (
+                f"clk_{name}_i made {got} rising edges across {RELATION_WINDOW_REF_EDGES} "
+                f"clk_ref_i edges; the pinned periods give {want_edges:g}"
+            )
         cocotb.log.info(
             "CHK-CLK-RATIO-PERIODS: over %d rising edges each, clk_ref_i / clk_smc_i / "
-            "clk_periph_i measured %d / %d / %d ps per cycle, the pinned periods",
+            "clk_periph_i measured %d / %d / %d ps per cycle, the pinned periods; across %d "
+            "clk_ref_i edges clk_smc_i made %d and clk_periph_i %d rising edges (%g and %g "
+            "from the pinned periods)",
             RATIO_WINDOW_EDGES,
             self.periods_ps["ref"],
             self.periods_ps["smc"],
             self.periods_ps["periph"],
+            RELATION_WINDOW_REF_EDGES,
+            self.relation_edges["smc"],
+            self.relation_edges["periph"],
+            expected["smc"],
+            expected["periph"],
         )
 
     async def body(self) -> None:
         await self.wait_fuse_sense_done()
         await self._measure_periods()
+        await self._count_relation()
         self._check_ratio()
 
         value_checks_before = self.env.scoreboard.sys_axi_value_checks_seen
