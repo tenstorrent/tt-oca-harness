@@ -40,10 +40,11 @@ to POST_IDLE_CYCLES after the firmware verdict is sampled, and:
 * IDLE: no graded pad net moves on a cycle where the host outputs do not move,
   the windows before and after the transfer have no pad change, and the SCK,
   CS# and transmit pins move as data and as output enable inside the transfer.
-
-X/Z is not graded as a check: Verilator, the simulator this bench builds with,
-is two-state. A sample the monitor cannot read as 0/1 still fails the run,
-because the checks above cannot grade that cycle.
+* XZ: on a four-state simulator, every probed pad bit and host net holds 0 or 1
+  on every sampled cycle of the window. Verilator is two-state, so there the
+  check is not run and the leaf logs that. On either simulator a sample the
+  monitor cannot read as 0/1 fails the run, because the checks above cannot
+  grade that cycle.
 
 Every probe is resolved by its full path before the run starts; a path that
 does not resolve fails the test. The image parks in one of eight per-stage fail
@@ -169,6 +170,11 @@ MIN_PRE_IDLE_CYCLES = 200
 RSP_SALT = 0x5E9_5B1
 
 
+def _four_state() -> bool:
+    """True when the simulator can hold X and Z; Verilator is two-state."""
+    return "verilator" not in cocotb.SIM_NAME.lower()
+
+
 def _edge_plan() -> tuple[list[str], list[int]]:
     """Direction of each SCK rise, and the rises in each chip-select window."""
     directions: list[str] = []
@@ -277,9 +283,14 @@ class SmuSepSpiSeq(SepTerminalLoopSeq):
         "SEP_SPI_PAD_RSP_OK",
         "SEP_SPI_PAD_IDLE_OK",
     )
+    #: Emitted only on a four-state simulator, after the X/Z check holds.
+    XZ_EVIDENCE = "SEP_SPI_PAD_XZ_OK"
 
     def __init__(self, test) -> None:
         super().__init__(test)
+        self._four_state = _four_state()
+        if self._four_state:
+            self.PAD_EVIDENCE = (*self.PAD_EVIDENCE, self.XZ_EVIDENCE)
         test.declare_evidence(*self.PAD_EVIDENCE)
         self._stop_cycle: int | None = None
         self._cycle = 0
@@ -479,14 +490,36 @@ class SmuSepSpiSeq(SepTerminalLoopSeq):
             return ["the SEP never fetched from ICCM, so no window is graded"]
         span = f"cycles {st['start']}..{st['end']}"
 
-        # Unreadable samples: the checks below cannot grade those cycles.
-        if st["xz"]:
+        # Unreadable samples: the checks below cannot grade those cycles. On a
+        # four-state simulator they are the XZ check's failures.
+        sampled = st["end"] - st["start"] + 1
+        if self._four_state and st["xz"]:
             c, bad = st["xz"][0]
             errors.append(
-                f"SAMPLE: {len(st['xz'])} sampled cycles carry X/Z on a probed net, so "
-                f"the checks cannot grade them; first at cycle {c}: {bad[:6]}"
+                f"XZ: X/Z on a probed pad bit or host net on {len(st['xz'])} of {sampled} "
+                f"sampled cycles ({cocotb.SIM_NAME}), so the checks cannot grade them; "
+                f"first at cycle {c}: {bad[:6]}"
             )
-        log("%s: four-state X/Z check not run: Verilator is two-state", self.NAME)
+        elif self._four_state:
+            log(
+                "CHK-SEP-SPI-PAD-XZ: PASS (%s: the %d probed bits of each of the %d pad "
+                "vectors, the %d host nets and the RX FIFO handshake hold 0/1 on all %d "
+                "sampled cycles, %s)",
+                cocotb.SIM_NAME,
+                len(SPI_PADS),
+                len(self._pad_h),
+                len(self._host_h),
+                sampled,
+                span,
+            )
+        else:
+            if st["xz"]:
+                c, bad = st["xz"][0]
+                errors.append(
+                    f"SAMPLE: {len(st['xz'])} sampled cycles carry X/Z on a probed net, so "
+                    f"the checks cannot grade them; first at cycle {c}: {bad[:6]}"
+                )
+            log("%s: four-state X/Z check not run: Verilator is two-state", self.NAME)
 
         # MAP
         untoggled = [f for f, vals in st["toggles"].items() if vals != {0, 1}]
