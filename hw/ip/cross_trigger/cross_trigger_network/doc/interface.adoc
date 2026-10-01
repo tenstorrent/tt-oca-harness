@@ -5,6 +5,13 @@
 
 === Cross Trigger Port (CTP)
 
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="ctn-cross-trigger-signal-interface-table"></span>
+++++
+endif::backend-html5[]
+
 For the module diagram and signalling modes, see
 <<cross-trigger-network-architecture,CTN Architecture>>.
 
