@@ -27,7 +27,9 @@ Input is the template urg writes for the merged database::
     urg -dir <run dir>/cov/merged.vdb -dump full_exclusions tgl -report <dir>
 
 which leaves fullexclude_module.tgl in the working directory. Every checksum
-and entry text below comes from it.
+and entry text below comes from it. A listed unit the database does not hold,
+because the build did not elaborate it, contributes nothing and is named on
+stderr as skipped.
 
     python3 gen_smc_opentitan_toggle_exclusions.py <template dir>
     python3 gen_smc_opentitan_toggle_exclusions.py <template dir> --check
@@ -152,7 +154,10 @@ def parse(template: Path) -> dict[str, tuple[str, list[tuple[str, str]]]]:
     return out
 
 
-def render(template: dict[str, tuple[str, list[tuple[str, str]]]]) -> tuple[str, int]:
+def render(
+    template: dict[str, tuple[str, list[tuple[str, str]]]],
+) -> tuple[str, int, list[str]]:
+    """The file text, its entry count and the listed units the database lacks."""
     out = [
         "// SPDX-License-Identifier: Apache-2.0",
         "// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.",
@@ -168,11 +173,13 @@ def render(template: dict[str, tuple[str, list[tuple[str, str]]]]) -> tuple[str,
         "//==================================================",
     ]
     count = 0
+    absent: list[str] = []
     for module, relative in UNITS:
         source = ROOT / relative
         section = template.get(module)
         if section is None:
-            raise SystemExit(f"the template has no MODULE {module}: dump it from this run")
+            absent.append(module)
+            continue
         checksum, entries = section
         ports = module_ports(source, module)
         inner = [entry for signal, entry in entries if not is_port_bit(signal, ports)]
@@ -187,7 +194,7 @@ def render(template: dict[str, tuple[str, list[tuple[str, str]]]]) -> tuple[str,
         ]
         out += inner
         count += len(inner)
-    return "\n".join(out) + "\n", count
+    return "\n".join(out) + "\n", count, absent
 
 
 def main() -> int:
@@ -195,14 +202,16 @@ def main() -> int:
     ap.add_argument("template_dir", type=Path, help="holds fullexclude_module.tgl")
     ap.add_argument("--check", action="store_true", help="fail if the committed file is stale")
     args = ap.parse_args()
-    text, n = render(parse(args.template_dir / "fullexclude_module.tgl"))
+    text, n, absent = render(parse(args.template_dir / "fullexclude_module.tgl"))
+    for module in absent:
+        print(f"skipped {module}: the database has no MODULE {module}", file=sys.stderr)
     if args.check:
         if not OUT.is_file() or OUT.read_text() != text:
             print(f"{OUT} is stale; rerun without --check", file=sys.stderr)
             return 1
         return 0
     OUT.write_text(text)
-    print(f"wrote {OUT.name}: {n} toggle points across {len(UNITS)} units")
+    print(f"wrote {OUT.name}: {n} toggle points across {len(UNITS) - len(absent)} units")
     return 0
 
 

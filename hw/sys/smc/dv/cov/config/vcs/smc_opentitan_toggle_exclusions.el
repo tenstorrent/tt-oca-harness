@@ -11,7 +11,7 @@
 // graded. README.md states the rule and lists the units.
 //==================================================
 
-CHECKSUM: "681611889 3193930190"
+CHECKSUM: "4194998322 3193930190"
 ANNOTATION: "SMC-TOGGLE-T1-OPENTITAN-PORTS-ONLY: this unit comes from OpenTitan, whose own verification covers its internals, so the package grades it on its ports and excludes the nets it declares inside. Every unit that is not from OpenTitan keeps all of its nets in the toggle score. The source's copyright line is quoted in the block above."
 ANNOTATION: "i2c: Copyright lowRISC contributors (OpenTitan project)."
 MODULE: i2c
@@ -213,7 +213,7 @@ Toggle reg_out.INTR_STATE.SDA_INTERFERENCE.value "logic reg_out.INTR_STATE.SDA_I
 Toggle reg_out.INTR_STATE.SCL_INTERFERENCE.value "logic reg_out.INTR_STATE.SCL_INTERFERENCE.value"
 Toggle reg_out.INTR_STATE.RX_OVERFLOW.value "logic reg_out.INTR_STATE.RX_OVERFLOW.value"
 
-CHECKSUM: "3754834557 2942663494"
+CHECKSUM: "1206752896 2942663494"
 ANNOTATION: "SMC-TOGGLE-T1-OPENTITAN-PORTS-ONLY: this unit comes from OpenTitan, whose own verification covers its internals, so the package grades it on its ports and excludes the nets it declares inside. Every unit that is not from OpenTitan keeps all of its nets in the toggle score. The source's copyright line is quoted in the block above."
 ANNOTATION: "i2c_core: Copyright lowRISC contributors (OpenTitan project)."
 MODULE: i2c_core
@@ -391,7 +391,7 @@ Toggle target_dma_rx_fsm_state "logic target_dma_rx_fsm_state[0:0]"
 Toggle target_dma_rx_fsm_state_next "logic target_dma_rx_fsm_state_next[0:0]"
 Toggle any_error_event "logic any_error_event"
 
-CHECKSUM: "287342404 4097614446"
+CHECKSUM: "1322761447 4097614446"
 ANNOTATION: "SMC-TOGGLE-T1-OPENTITAN-PORTS-ONLY: this unit comes from OpenTitan, whose own verification covers its internals, so the package grades it on its ports and excludes the nets it declares inside. Every unit that is not from OpenTitan keeps all of its nets in the toggle score. The source's copyright line is quoted in the block above."
 ANNOTATION: "i2c_controller_fsm: Copyright lowRISC contributors (OpenTitan project)."
 MODULE: i2c_controller_fsm
@@ -431,7 +431,7 @@ Toggle unhandled_nak_cnt_expired "logic unhandled_nak_cnt_expired"
 Toggle state_q "logic state_q[4:0]"
 Toggle state_d "logic state_d[4:0]"
 
-CHECKSUM: "66702530 3077082318"
+CHECKSUM: "395370686 3077082318"
 ANNOTATION: "SMC-TOGGLE-T1-OPENTITAN-PORTS-ONLY: this unit comes from OpenTitan, whose own verification covers its internals, so the package grades it on its ports and excludes the nets it declares inside. Every unit that is not from OpenTitan keeps all of its nets in the toggle score. The source's copyright line is quoted in the block above."
 ANNOTATION: "i2c_target_fsm: Copyright lowRISC contributors (OpenTitan project)."
 MODULE: i2c_target_fsm
@@ -479,7 +479,7 @@ Toggle tx_fifo_rdata "logic tx_fifo_rdata[7:0]"
 Toggle target_idle "logic target_idle"
 Toggle unused_acq_rdata "logic unused_acq_rdata"
 
-CHECKSUM: "2582788748 2808765953"
+CHECKSUM: "376348732 2808765953"
 ANNOTATION: "SMC-TOGGLE-T1-OPENTITAN-PORTS-ONLY: this unit comes from OpenTitan, whose own verification covers its internals, so the package grades it on its ports and excludes the nets it declares inside. Every unit that is not from OpenTitan keeps all of its nets in the toggle score. The source's copyright line is quoted in the block above."
 ANNOTATION: "i2c_bus_monitor: Copyright lowRISC contributors (OpenTitan project)."
 MODULE: i2c_bus_monitor
@@ -506,7 +506,7 @@ Toggle bus_active_timeout_det_q "logic bus_active_timeout_det_q"
 Toggle state_q "logic state_q[1:0]"
 Toggle state_d "logic state_d[1:0]"
 
-CHECKSUM: "1479781835 4092204272"
+CHECKSUM: "3766568554 4092204272"
 ANNOTATION: "SMC-TOGGLE-T1-OPENTITAN-PORTS-ONLY: this unit comes from OpenTitan, whose own verification covers its internals, so the package grades it on its ports and excludes the nets it declares inside. Every unit that is not from OpenTitan keeps all of its nets in the toggle score. The source's copyright line is quoted in the block above."
 ANNOTATION: "uart_16550: Copyright lowRISC contributors."
 MODULE: uart_16550

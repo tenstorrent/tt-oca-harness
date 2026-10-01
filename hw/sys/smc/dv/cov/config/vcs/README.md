@@ -51,9 +51,12 @@ Verilator 5.050 leaves some vendored files instrumented that its scope names
 
     -tree smc_uvm_top 1        TB top's own body, children kept
     // bench                   units compiled from hw/sys/smc/dv/tb,
-                               hw/sys/smc/dv/models and the dv/ trees of the
+                               hw/sys/smc/dv/models, the dv/ trees of the
                                hw/ip blocks (the eFuse bank model and its
-                               register block), as SEP drops efuse_bank_model
+                               register block) and the shared VIP under
+                               hw/common/dv (the AXI interface and struct
+                               bridge the SYS_OUT responder binds), as SEP
+                               drops efuse_bank_model
     // cpu subtree             the chipyard-generated CPU cluster, the same
                                argument SEP uses to drop sep_cpu
     // library cells           vendor/pulp-platform/common_cells, the OpenTitan
@@ -359,7 +362,8 @@ of its nets.
 | **total** | | | **510** | **798** |
 
 `prim_clock_mux2` declares nothing but its ports, so it contributes no entry;
-it is listed because the rule reaches it. The scope drops `hw/common/ocah_prim/`
+it is listed because the rule reaches it. A listed unit the database does not
+hold contributes nothing either, and the generator names it as skipped. The scope drops `hw/common/ocah_prim/`
 but not `ocah_prim_generic/`, which is why this one is graded at all.
 
     urg -dir <run dir>/cov/merged.vdb -dump full_exclusions tgl -report <dir>
