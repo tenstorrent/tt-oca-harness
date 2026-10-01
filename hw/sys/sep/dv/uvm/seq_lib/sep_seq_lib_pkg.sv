@@ -40,5 +40,6 @@ package sep_seq_lib_pkg;
   // Scenario layer: the base virtual sequence, then the scenarios.
   `include "sep_base_test_seq.svh"
   `include "sep_axi_smoke_test_seq.svh"
+  `include "sep_sram_smoke_test_seq.svh"
 
 endpackage : sep_seq_lib_pkg

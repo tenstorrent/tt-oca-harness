@@ -23,6 +23,9 @@ import sep_seq_lib_pkg::*;
 // CSR scenarios on the CPU-LSU AXI4 splice.
 `include "sep_axi_smoke_test.svh"
 
+// Memory scenarios on the CPU-LSU AXI4 splice.
+`include "sep_sram_smoke_test.svh"
+
 // Adopter overlay hook: an external (non-OSS) build may append vendor-
 // specific test classes -- e.g. a commercial-VIP overlay -- by defining
 // SEP_OVERLAY_TESTS to the quoted name of an include file on its own

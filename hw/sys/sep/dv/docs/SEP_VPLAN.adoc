@@ -7967,6 +7967,17 @@ CHK-CSR-RESET-VALUE, CHK-CSR-READBACK and CHK-CSR-RESP. The scoreboard check is
 CHK-SB-CPU-CTRL-CSR, and CHK-NONVAC requires the scoreboard compares of a pass
 to equal the predicted reads it issued. `+SEP_CSR_SCOREBOARD_NEGATIVE` corrupts
 the prediction, and the run must FAIL.
+
+|<<sep_sram_smoke_test,`sep_sram_smoke_test`>>
+|Same as the cocotb procedure, over sixteen seeded passes by default
+(`+SEP_TEST_LOOPS`, `+SEP_MEMORY_TEST_LOOPS`, `+SEP_SRAM_SMOKE_TEST_LOOPS`), each
+on its own SRAM word so every read before a write sees the zero fill. Adds a
+fuse-sense-done check (CHK-FUSE-SENSE-DONE) and `+SEP_RANDOM_COUNT` seeded random
+rounds per pass (five by default): a 64-bit write and readback, then a 4-byte
+beat to a seeded half and a full-word readback (CHK-RANDOM-STORE,
+CHK-RANDOM-LANE). CHK-RESP is the sequence's own check: every access returns
+`OKAY` and every read returns one beat. There is no aggregate CHK-SRAM-SMOKE
+record; each checker is its own record.
 |===
 
 === Regression Groups
