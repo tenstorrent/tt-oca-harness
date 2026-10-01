@@ -1,85 +1,106 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Adapted from i3c-core/src/i3c_wrapper.sv — maintained in-tree (full-AXI4 core, open-drain SCL)
+// Wrap one I3C core with AXI-Lite CSRs and exported DAT/DCT/RLT memories.
+//
+// Adapted from i3c-core/src/i3c_wrapper.sv and maintained in-tree for the full-AXI4 core
+// with open-drain SCL.
+// Each AXI-Lite access reaches the core as a single-beat AXI4 burst with ID and user zero.
+// SCL is open-drain: scl_o is tied low and scl_oe_o pulls the line; SDA drives through
+// sda_oe_o in push-pull mode or when low.
+// DummyParam exists only for trailing-comma handling in the parameter list.
+// The DAT, DCT, and RLT memory ports require the CONTROLLER_SUPPORT macro, since the core
+// declares them only when it is defined.
 
 module i3c_wrapper #(
-  parameter int unsigned AxiLiteDataWidth = 32,
-  parameter int unsigned AxiLiteAddrWidth = 32,
-  parameter int unsigned DatAw = i3c_pkg::DatAw,
-  parameter int unsigned DctAw = i3c_pkg::DctAw,
+  parameter int unsigned AxiLiteDataWidth = 32,             // Data width of the AXI-Lite CSR port;
+                                                            // also sets the beat size given to the
+                                                            // core.
+  parameter int unsigned AxiLiteAddrWidth = 32,             // AXI-Lite address width.
+  parameter int unsigned DatAw = i3c_pkg::DatAw,            // DAT memory address width.
+  parameter int unsigned DctAw = i3c_pkg::DctAw,            // DCT memory address width.
 
-  parameter int unsigned CsrAddrWidth = I3CCSR_pkg::I3CCSR_MIN_ADDR_WIDTH,
-  parameter int unsigned CsrDataWidth = I3CCSR_pkg::I3CCSR_DATA_WIDTH,
+  parameter int unsigned CsrAddrWidth = I3CCSR_pkg::I3CCSR_MIN_ADDR_WIDTH, // CSR address width.
+  parameter int unsigned CsrDataWidth = I3CCSR_pkg::I3CCSR_DATA_WIDTH, // Data width of the I3C core's internal CSR interface.
 
-  // Dummy parameter for trailing comma handling
-  parameter int unsigned DummyParam = 0
+  parameter int unsigned DummyParam = 0                     // Trailing-comma placeholder.
 ) (
-  input clk_i,  // clock
-  input rst_ni, // active low reset
+  input clk_i,                                              // System clock.
+  input rst_ni,                                             // Async reset, active-low.
 
-  // AXI4-Lite Interface
-  // Write Address Channel
-  input  logic                           awvalid_i,
-  output logic                           awready_o,
-  input  logic [AxiLiteAddrWidth-1:0]    awaddr_i,
-  input  logic [2:0]                     awprot_i,
+  input  logic                           awvalid_i,         // Write-address valid.
+  output logic                           awready_o,         // Write-address ready.
+  input  logic [AxiLiteAddrWidth-1:0]    awaddr_i,          // Write byte address into the I3C
+                                                            // core's CSR space.
+  input  logic [2:0]                     awprot_i,          // Write-address protection; not used.
 
-  // Write Data Channel
-  input  logic                           wvalid_i,
-  output logic                           wready_o,
-  input  logic [AxiLiteDataWidth-1:0]    wdata_i,
-  input  logic [AxiLiteDataWidth/8-1:0]  wstrb_i,
+  input  logic                           wvalid_i,          // Write-data valid.
+  output logic                           wready_o,          // Write-data ready.
+  input  logic [AxiLiteDataWidth-1:0]    wdata_i,           // Write data.
+  input  logic [AxiLiteDataWidth/8-1:0]  wstrb_i,           // Write strobe.
 
-  // Write Response Channel
-  output logic                           bvalid_o,
-  input  logic                           bready_i,
-  output logic [1:0]                     bresp_o,
+  output logic                           bvalid_o,          // Write-response valid.
+  input  logic                           bready_i,          // Write-response ready.
+  output logic [1:0]                     bresp_o,           // Write response.
 
-  // Read Address Channel
-  input  logic                           arvalid_i,
-  output logic                           arready_o,
-  input  logic [AxiLiteAddrWidth-1:0]    araddr_i,
-  input  logic [2:0]                     arprot_i,
+  input  logic                           arvalid_i,         // Read-address valid.
+  output logic                           arready_o,         // Read-address ready.
+  input  logic [AxiLiteAddrWidth-1:0]    araddr_i,          // Read address.
+  input  logic [2:0]                     arprot_i,          // Read-address protection; not used.
 
-  // Read Data Channel
-  output logic                           rvalid_o,
-  input  logic                           rready_i,
-  output logic [AxiLiteDataWidth-1:0]    rdata_o,
-  output logic [1:0]                     rresp_o,
+  output logic                           rvalid_o,          // Read-data valid.
+  input  logic                           rready_i,          // Read-data ready.
+  output logic [AxiLiteDataWidth-1:0]    rdata_o,           // Read data.
+  output logic [1:0]                     rresp_o,           // Read response.
 
+  input  logic scl_i,                                       // SCL pad input, passed straight to the
+                                                            // core.
+  input  logic sda_i,                                       // SDA pad input, passed straight to the
+                                                            // core.
+  output logic scl_o,                                       // SCL pad output, tied low; scl_oe_o
+                                                            // controls the line.
+  output logic sda_o,                                       // SDA bus level from the core; the pad
+                                                            // drives it while sda_oe_o is high.
+  output logic scl_oe_o,                                    // SCL output enable, high while the
+                                                            // core pulls SCL low.
+  output logic sda_oe_o,                                    // SDA output enable, high in push-pull
+                                                            // mode or while sda_o is low.
 
-  // I3C bus driver signals
-  input  logic scl_i,
-  input  logic sda_i,
-  output logic scl_o,
-  output logic sda_o,
-  output logic scl_oe,
-  output logic sda_oe,
+  output logic sel_od_pp_o,                                 // Driver mode from the core: 0
+                                                            // open-drain, 1 push-pull.
 
-  output logic sel_od_pp_o,
+  output logic recovery_payload_available_o,                // High when the recovery handler has a
+                                                            // payload available for the recovery
+                                                            // agent.
+  output logic recovery_image_activated_o,                  // High while
+                                                            // RECOVERY_CTRL.ACTIVATE_REC_IMG holds
+                                                            // the activate-image value 0x0F.
 
-  // Recovery interface signals
-  output logic recovery_payload_available_o,
-  output logic recovery_image_activated_o,
+  output logic peripheral_reset_o,                          // Set on a target reset pattern
+                                                            // selecting peripheral reset; cleared
+                                                            // by peripheral_reset_done_i.
+  input  logic peripheral_reset_done_i,                     // Acknowledges peripheral_reset_o and
+                                                            // clears it.
+  output logic escalated_reset_o,                           // Set on an escalated target reset
+                                                            // pattern; stays high until rst_ni.
 
-  output logic peripheral_reset_o,
-  input  logic peripheral_reset_done_i,
-  output logic escalated_reset_o,
+  output irq_o,                                             // OR of the core's controller, target
+                                                            // transaction and recovery interrupts.
 
-  output irq_o,
+  input  i3c_pkg::dat_mem_src_t  dat_mem_src_i,             // DAT memory read data; requires
+                                                            // CONTROLLER_SUPPORT.
+  output i3c_pkg::dat_mem_sink_t dat_mem_sink_o,            // DAT memory request; requires
+                                                            // CONTROLLER_SUPPORT.
 
-  // DAT memory export interface (active when CONTROLLER_SUPPORT=1)
-  input  i3c_pkg::dat_mem_src_t  dat_mem_src_i,
-  output i3c_pkg::dat_mem_sink_t dat_mem_sink_o,
+  input  i3c_pkg::dct_mem_src_t  dct_mem_src_i,             // DCT memory read data; requires
+                                                            // CONTROLLER_SUPPORT.
+  output i3c_pkg::dct_mem_sink_t dct_mem_sink_o,            // DCT memory request; requires
+                                                            // CONTROLLER_SUPPORT.
 
-  // DCT memory export interface (active when CONTROLLER_SUPPORT=1)
-  input  i3c_pkg::dct_mem_src_t  dct_mem_src_i,
-  output i3c_pkg::dct_mem_sink_t dct_mem_sink_o,
-
-  // RLT (reverse-lookup table) memory export interface (active when CONTROLLER_SUPPORT=1)
-  input  i3c_pkg::rlt_mem_src_t  rlt_mem_src_i,
-  output i3c_pkg::rlt_mem_sink_t rlt_mem_sink_o
+  input  i3c_pkg::rlt_mem_src_t  rlt_mem_src_i,             // Reverse-lookup table memory read
+                                                            // data; requires CONTROLLER_SUPPORT.
+  output i3c_pkg::rlt_mem_sink_t rlt_mem_sink_o             // Reverse-lookup table memory request;
+                                                            // requires CONTROLLER_SUPPORT.
 );
 
   logic core_scl_o;   // core SCL output is the bus level (1=release), not a pad OE
@@ -95,7 +116,7 @@ module i3c_wrapper #(
     .CsrAddrWidth(CsrAddrWidth),
     .DatAw(DatAw),
     .DctAw(DctAw)
-  ) i3c (
+  ) u_i3c (
     .clk_i,
     .rst_ni,
 
@@ -173,8 +194,8 @@ module i3c_wrapper #(
 
   // Open-drain pad OE derived here (core gives bus levels, not OE, in controller mode):
   // drive low only; push-pull (sel_od_pp_o) drives both.
-  assign scl_o  = 1'b0;
-  assign scl_oe = ~core_scl_o;
-  assign sda_oe = sel_od_pp_o | ~sda_o;
+  assign scl_o    = 1'b0;
+  assign scl_oe_o = ~core_scl_o;
+  assign sda_oe_o = sel_od_pp_o | ~sda_o;
 
 endmodule

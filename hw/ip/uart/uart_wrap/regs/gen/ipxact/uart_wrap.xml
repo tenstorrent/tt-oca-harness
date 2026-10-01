@@ -12,16 +12,22 @@
       <ipxact:name>uart_wrap_mmap</ipxact:name>
       <ipxact:addressBlock>
         <ipxact:name>uart_wrap</ipxact:name>
+        <ipxact:displayName>UART Wrapper Address Map</ipxact:displayName>
+        <ipxact:description>Wrapper address map instantiating the per-UART log-engine blocks.</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
         <ipxact:range>'h1000</ipxact:range>
         <ipxact:width>64</ipxact:width>
         <ipxact:registerFile>
           <ipxact:name>uart_log_engine_wrap</ipxact:name>
+          <ipxact:displayName>UART Log Engine Wrapper Address Map</ipxact:displayName>
+          <ipxact:description>Composes the UART 16550 core, log engine, and their control registers for one UART instance.</ipxact:description>
           <ipxact:dim>4</ipxact:dim>
           <ipxact:addressOffset>'h0</ipxact:addressOffset>
           <ipxact:range>'h400</ipxact:range>
           <ipxact:registerFile>
             <ipxact:name>uart_log_engine_ctrl</ipxact:name>
+            <ipxact:displayName>UART Log Engine Control Address Map</ipxact:displayName>
+            <ipxact:description>Top-level enable register for the UART log-engine block.</ipxact:description>
             <ipxact:addressOffset>'h0</ipxact:addressOffset>
             <ipxact:range>'h4</ipxact:range>
             <ipxact:register>
@@ -773,7 +779,8 @@ writing `0` releases it.</ipxact:description>
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>log_engine</ipxact:name>
-            <ipxact:description>Log Engine</ipxact:description>
+            <ipxact:displayName>Log Engine Address Map</ipxact:displayName>
+            <ipxact:description>Configuration and status registers for the UART log engine, including the log region and write pointers.</ipxact:description>
             <ipxact:addressOffset>'h200</ipxact:addressOffset>
             <ipxact:range>'h80</ipxact:range>
             <ipxact:register>

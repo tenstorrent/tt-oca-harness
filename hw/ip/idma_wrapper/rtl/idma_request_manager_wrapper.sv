@@ -1,37 +1,51 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// DMA Request Manager
+// Route frontend DMA requests onto one or more backend master ports.
 //
-//-----------------------------------------------------------------------------
+// NUM_CTRL_INTERFACES and NUM_MST_INTERFACES must be >= 1. With one of each the module is a
+// combinational pass-through. Otherwise each master port round-robin arbitrates ctrl_req_*
+// onto mst_req_*, a request already granted to a lower-numbered master is hidden from the
+// others, and a 4-entry fifo_v3 per master records the originating control interface of each
+// accepted request. Each mst_resp_* passes through a 1-entry buffer and returns, in request
+// order, to the recorded control interface, where a round-robin arbiter picks between
+// masters. A master receives no request while its tracking FIFO is full.
 
 module idma_request_manager_wrapper #(
-  parameter int unsigned NUM_CTRL_INTERFACES = 1,  // must be >= 1
-  parameter int unsigned NUM_MST_INTERFACES = 1,  // must be >= 1
+  parameter int unsigned NUM_CTRL_INTERFACES = 1,           // Frontend request port count; must be
+                                                            // >= 1.
+  parameter int unsigned NUM_MST_INTERFACES = 1,            // Backend master count; must be >= 1.
 
-  parameter type req_t = logic,
-  parameter type resp_t = logic
+  parameter type req_t = logic,                             // 1-D iDMA request payload type.
+  parameter type resp_t = logic                             // iDMA response payload type.
 ) (
-  input  logic clk_i,
-  input  logic rst_ni,
-  input  logic test_en_i,
+  input  logic clk_i,                                       // Module clock; the gated backend clock
+                                                            // in idma_wrapper.
+  input  logic rst_ni,                                      // Async reset, active-low.
+  input  logic test_en_i,                                   // Test mode, driven to the FIFO
+                                                            // testmode inputs; unused in the
+                                                            // pass-through configuration.
 
-  input  req_t  [NUM_CTRL_INTERFACES-1:0] ctrl_req_i,
-  input  logic  [NUM_CTRL_INTERFACES-1:0] ctrl_req_valid_i,
-  output logic  [NUM_CTRL_INTERFACES-1:0] ctrl_req_ready_o,
+  input  req_t  [NUM_CTRL_INTERFACES-1:0] ctrl_req_i,       // Frontend request payload.
+  input  logic  [NUM_CTRL_INTERFACES-1:0] ctrl_req_valid_i, // Frontend request valid.
+  output logic  [NUM_CTRL_INTERFACES-1:0] ctrl_req_ready_o, // Frontend request ready; when
+                                                            // arbitrating, high only for the
+                                                            // request a master accepts.
 
-  output resp_t [NUM_CTRL_INTERFACES-1:0] ctrl_resp_o,
-  output logic  [NUM_CTRL_INTERFACES-1:0] ctrl_resp_valid_o,
-  input  logic  [NUM_CTRL_INTERFACES-1:0] ctrl_resp_ready_i,
+  output resp_t [NUM_CTRL_INTERFACES-1:0] ctrl_resp_o,      // Frontend response payload.
+  output logic  [NUM_CTRL_INTERFACES-1:0] ctrl_resp_valid_o, // Frontend response valid.
+  input  logic  [NUM_CTRL_INTERFACES-1:0] ctrl_resp_ready_i, // Frontend response ready.
 
-  output req_t  [NUM_MST_INTERFACES-1:0] mst_req_o,
-  output logic  [NUM_MST_INTERFACES-1:0] mst_req_valid_o,
-  input  logic  [NUM_MST_INTERFACES-1:0] mst_req_ready_i,
+  output req_t  [NUM_MST_INTERFACES-1:0] mst_req_o,         // Backend request payload.
+  output logic  [NUM_MST_INTERFACES-1:0] mst_req_valid_o,   // Backend request valid; held low while
+                                                            // that master's tracking FIFO is full.
+  input  logic  [NUM_MST_INTERFACES-1:0] mst_req_ready_i,   // Backend request ready.
 
-  input  resp_t [NUM_MST_INTERFACES-1:0] mst_resp_i,
-  input  logic  [NUM_MST_INTERFACES-1:0] mst_resp_valid_i,
-  output logic  [NUM_MST_INTERFACES-1:0] mst_resp_ready_o
+  input  resp_t [NUM_MST_INTERFACES-1:0] mst_resp_i,        // Backend response payload.
+  input  logic  [NUM_MST_INTERFACES-1:0] mst_resp_valid_i,  // Backend response valid.
+  output logic  [NUM_MST_INTERFACES-1:0] mst_resp_ready_o   // Backend response ready; when
+                                                            // arbitrating, high while that master's
+                                                            // response buffer is empty.
 );
 
   if ((NUM_CTRL_INTERFACES == 1) && (NUM_MST_INTERFACES == 1)) begin : gen_passthrough
@@ -71,7 +85,7 @@ module idma_request_manager_wrapper #(
         .ExtPrio  (0),
         .AxiVldRdy(1),
         .LockIn   (0)   // don't lock in so in case mst is not ready, req can try a different req
-      ) i_rr_arb_tree (
+      ) u_rr_arb_tree (
         .clk_i  (clk_i),
         .rst_ni (rst_ni),
         .flush_i(1'b0),
@@ -107,7 +121,7 @@ module idma_request_manager_wrapper #(
         .FALL_THROUGH(1'b0),
         .DATA_WIDTH  ($clog2(NUM_CTRL_INTERFACES)),
         .DEPTH       (4)
-      ) req_tracking_fifo (
+      ) u_req_tracking_fifo (
         .clk_i     (clk_i),
         .rst_ni    (rst_ni),
         .flush_i   (1'b0),
@@ -129,7 +143,7 @@ module idma_request_manager_wrapper #(
         .FALL_THROUGH(1'b0),
         .DATA_WIDTH  ($bits(resp_t)),
         .DEPTH       (1)
-      ) resp_buffer (
+      ) u_resp_buffer (
         .clk_i     (clk_i),
         .rst_ni    (rst_ni),
         .flush_i   (1'b0),
@@ -163,7 +177,7 @@ module idma_request_manager_wrapper #(
         .ExtPrio  (0),
         .AxiVldRdy(1),
         .LockIn   (1)
-      ) i_rr_arb_tree (
+      ) u_rr_arb_tree (
         .clk_i  (clk_i),
         .rst_ni (rst_ni),
         .flush_i(1'b0),

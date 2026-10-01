@@ -66,9 +66,6 @@ class dtp_jtag2axi_robustness_base_test extends dtp_base_test;
     rob_seq.target_ref_models = '{m_env.m_smc_axi_env.m_ref_model,
                                       m_env.m_smc_otp_axi_env.m_ref_model,
                                       m_env.m_sep_otp_axi_env.m_ref_model};
-    rob_seq.target_read_history = '{m_env.m_axi_read_history["smc_axi"],
-                                        m_env.m_axi_read_history["smc_otp"],
-                                        m_env.m_axi_read_history["sep_otp"]};
   endfunction
 
 endclass : dtp_jtag2axi_robustness_base_test

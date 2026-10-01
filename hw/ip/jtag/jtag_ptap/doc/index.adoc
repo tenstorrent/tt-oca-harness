@@ -26,52 +26,23 @@ The PTAP provides:
 
 == Configuration Parameters
 
-[width="100%",cols="<28%,<12%,<12%,<48%",options="header"]
-|===
-|Parameter |Type |Default |Description
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="ptap-configuration-parameters-table"></span>
+++++
+endif::backend-html5[]
 
-4+^|*Feature enable parameters*
-|`BSR_ENABLE` |bit |1 |Enable all mandatory IEEE 1149.1 boundary scan instructions.
-|`EXTEST_TRAIN_ENABLE` |bit |1 |Enable optional EXTEST_TRAIN instruction.
-|`EXTEST_PULSE_ENABLE` |bit |1 |Enable optional EXTEST_PULSE instruction.
-|`INTEST_ENABLE` |bit |1 |Enable optional INTEST instruction.
-|`CLAMP_ENABLE` |bit |1 |Enable optional CLAMP instruction.
-|`HIGHZ_ENABLE` |bit |1 |Enable optional HIGHZ instruction.
-|`RUNBIST_ENABLE` |bit |1 |Enable optional RUNBIST instruction.
-|`TMP_ENABLE` |bit |1 |Enable TMP controller and associated instructions.
-|`IC_RESET_SMC_ENABLE` |bit |0 |Enable SMC slice of the IC_RESET TDR.
-|`IC_RESET_SEP_ENABLE` |bit |0 |Enable SEP slice of the IC_RESET TDR.
-|`IC_RESET_EXT_ENABLE` |bit |0 |Enable external slice of the IC_RESET TDR.
-|`SMC_DBG_ENABLE` |bit |1 |Enable JTAG2AXI ports for SMC debug.
-|`SEP_DBG_ENABLE` |bit |1 |Enable STAP for SEP debug.
-|`STAP_IO_ENABLE` |bit |1 |Enable STAP for chiplet-to-chiplet connectivity.
+The PTAP is configured through feature enables for the optional instructions, TMP,
+IC_RESET slices and debug bridges, the IC_RESET slice types, the IDCODE and JTAG_CAPS
+values, and the JTAG2AXI pipeline depths.
 
-4+^|*IC_RESET struct type parameters*
-|`ic_reset_smc_t` |type |`logic` |Packed struct for the SMC IC_RESET slice. Must contain `.ovrd` and `.val` sub-structs of identical width.
-|`ic_reset_sep_t` |type |`logic` |Packed struct for the SEP IC_RESET slice.
-|`ic_reset_ext_t` |type |`logic` |Packed struct for the external IC_RESET slice.
-
-4+^|*Size parameters*
-|`NUM_EXTRA_STAPS` |int |0 |Number of additional STAPs for local connectivity.
-|`NUM_XTRIG_CTP` |int |8 |Number of cross-trigger ports.
-|`NUM_XTRIG_INT_CT` |int |1 |Number of internal cross triggers.
-
-4+^|*IDCODE parameters*
-|`IDCODE_MFR_ID` |logic[10:0] |`11'h000` |JEDEC manufacturer ID.
-|`IDCODE_PART_NUM` |logic[15:0] |`16'h0000` |Chiplet model ID.
-|`IDCODE_SI_REV` |logic[3:0] |`4'h0` |Silicon revision.
-
-4+^|*Version parameter*
-|`OCH_VER` |logic[7:0] |`8'h00` |DTP IP major version number, reflected in JTAG_CAPS.
-
-4+^|*AXI pipeline depth parameters*
-|`SMC_OTP_RD_PL_DEPTH` |logic[1:0] |`2'h3` |SMC OTP read pipeline depth (0 = single outstanding).
-|`SMC_OTP_WR_PL_DEPTH` |logic[1:0] |`2'h3` |SMC OTP write pipeline depth.
-|`SEP_OTP_RD_PL_DEPTH` |logic[1:0] |`2'h3` |SEP OTP read pipeline depth.
-|`SEP_OTP_WR_PL_DEPTH` |logic[1:0] |`2'h3` |SEP OTP write pipeline depth.
-|`SMC_RD_PL_DEPTH` |logic[1:0] |`2'h3` |SMC fabric read pipeline depth.
-|`SMC_WR_PL_DEPTH` |logic[1:0] |`2'h3` |SMC fabric write pipeline depth.
-|===
+ifdef::backend-html5[]
+The parameters of `jtag_ptap` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/jtag_ptap/jtag_ptap.adoc[jtag_ptap].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters of `jtag_ptap` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
 
 ifdef::backend-pdf[]
 :imagesdir: assets

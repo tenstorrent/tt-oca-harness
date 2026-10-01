@@ -64,6 +64,12 @@ declares no Xcelium target of its own -- only the shared
 `hw/common/dv/configs/profiles/native.toml` defaults, which no SMU group
 selects.
 
+**Frameworks.** cocotb/PyUVM is the default framework and the one every
+enrolled group runs. Five scenarios also carry a SystemVerilog UVM
+implementation of the same name, selected with `--framework uvm` on VCS
+(see "SystemVerilog UVM framework" below); the SV-UVM view shares the sim
+config, the testlist and the testbench top with the cocotb flow.
+
 ## Tools
 
 Versions are the repository's pins; the second column says where each comes
@@ -162,6 +168,67 @@ Results land under `build/runs/<timestamp>__<tool>__<label>/` with a per-test
 `result.json` and `results.xml`. `--seed` applies to a single item; a
 multi-item regression draws its own seeds and reports them per test.
 
+## SystemVerilog UVM framework (`--framework uvm`)
+
+The SV-UVM view shares this DV root, sim config, testlist and testbench top
+with the cocotb flow: `smu_sim_cfg.toml` declares it as the `[frameworks.uvm]`
+overlay (same Bender RTL recipe), and `--dut smu --framework uvm` selects it.
+A testlist scenario carries both implementations in its `module` binding map
+(`module = { cocotb = "...", uvm = "..." }`), so the same `--items` name
+selects the same VPLAN scenario in either framework; the UVM class name is
+the `uvm` entry (`+UVM_TESTNAME`). A group runs its UVM-implemented subset;
+naming a scenario with no `uvm` entry errors.
+VCS only: Verilator has no SV-UVM support. The bench architecture is in
+`docs/SMU_TB_ARCH.adoc` ("SystemVerilog UVM Realization"); the framework
+conventions it follows are in `hw/common/dv/docs/uvm-framework.adoc`.
+
+Five scenarios are bound, each covering a different class of SMU behaviour,
+and each judged by an always-on scoreboard feature whose reference model is
+independent of the sequence that drove the stimulus:
+
+| Scenario | Aspect | Scoreboard feature | Negative plusarg |
+|---|---|---|---|
+| `smu_dtp_jtag_smoke_test` | primary TAP: IDCODE, BYPASS latency, TRST and power-on reset back to Test-Logic-Reset | the embedded DTP's `ir_decode`, `idcode`, `bypass` | `+SMU_PTAP_IDCODE_NEGATIVE` |
+| `smu_jtag_reset_override_test` | IC_RESET TDR: the external and SMC cold-reset slices overridden one at a time, readback of the 155-bit register | `ic_reset_tdr` | `+SMU_IC_RESET_SCOREBOARD_NEGATIVE` |
+| `smu_smc_dtp_jtag2axi_smoke_test` | SMC-fabric JTAG2AXI: CAPS, SINGLE_OP 32- and 64-bit write/readback, series INCR write/readback | the embedded DTP's `jtag2axi_req` (passive monitor on the DTP's SMC debug port) and `jtag2axi_status` | `+SMU_J2A_SCOREBOARD_NEGATIVE` |
+| `smu_boot_stall_jtag_cold_reset_matrix_test` | DEBUG_CONTROL boot stall across cold reset, TRST and the GPIO pad, on the real eFuse sense | `debug_control_tdr`, `boot_gate` | `+SMU_DEBUG_CONTROL_SCOREBOARD_NEGATIVE`, `+SMU_BOOT_GATE_SCOREBOARD_NEGATIVE` |
+| `smu_ext_boot_seq_gate_test` | the external boot-sequence gate on the SMC fuse-reset release | `boot_gate` | `+SMU_BOOT_GATE_SCOREBOARD_NEGATIVE` |
+
+Every scenario runs at least 16 seeded passes in one simulation
+(`ocah_test.MinDefaultLoops`) and hands the DUT back as it found it. The
+SV-UVM loop knobs (`SMU_TEST_LOOPS`, `SMU_<TEST>_LOOPS`, `SMU_RANDOM_COUNT`)
+are **plusargs**, not environment variables.
+
+```bash
+# SV-UVM build only (VCS)
+python3 tools/dv/run_dv.py --dut smu --framework uvm --build-only
+
+# PyUVM (cocotb) and SV-UVM, same logical scenario name
+python3 tools/dv/run_dv.py --dut smu --items smu_dtp_jtag_smoke_test --tool verilator
+python3 tools/dv/run_dv.py --dut smu --framework uvm --items smu_dtp_jtag_smoke_test --seed 1
+
+# Smoke group, UVM-implemented subset
+python3 tools/dv/run_dv.py --dut smu --framework uvm --items smoke
+
+# Scoreboard negative validation: a corrupted prediction must FAIL the run
+python3 tools/dv/run_dv.py --dut smu --framework uvm --items smu_jtag_reset_override_test \
+  --plusarg +SMU_IC_RESET_SCOREBOARD_NEGATIVE
+
+# Loop-count knobs, resolved specific-first (per test, per group, suite-wide)
+python3 tools/dv/run_dv.py --dut smu --framework uvm --items smu_ext_boot_seq_gate_test \
+  --plusarg +SMU_EXT_BOOT_SEQ_GATE_TEST_LOOPS=4
+```
+
+To port another cocotb scenario: add `uvm/seq_lib/<name>_seq.svh` on
+`smu_base_test_seq` (TAP operations, TDR and JTAG2AXI accesses, bounded pin
+waits and named evidence through `attach_evidence` / `check_evidence` /
+`finalize_evidence`), add `uvm/tests/<name>.svh` on `smu_base_test`
+(override `create_scenario_seq()`, the loop-knob hooks, and
+`configure_test_cfg()` for the scoreboard features it requires), add both
+`include`s to `smu_seq_lib_pkg.sv` and `smu_tests.sv`, and give the
+testlist entry a `uvm` binding. A scenario whose claim no existing feature
+judges adds a reference model and a feature to `smu_scoreboard` first.
+
 ## Layout
 
 Every directory and top-level file under `dv/` is listed here.
@@ -172,16 +239,17 @@ Every directory and top-level file under `dv/` is listed here.
 | `assets/` | the five SEP eFuse shadow preload images: `default_sep_efuse_shadow_reg.preload` and `sep_efuse_shadow_lc_{test_dev,prod,prod_end,rma_chiplet}.preload`, which set the diff-encoded lifecycle state word. Each carries its SPDX header as `//` comment lines, which the preload readers skip |
 | `cocotb/{env,seq_lib}/` | the shared half of the PyUVM environment: `env/` holds `SmuEnv`, `SmuScoreboard`, the evidence map and `smu_fcov.py`; `seq_lib/` the sequences and helpers written against the SMU's own interfaces (address map, lifecycle table, AXI, JTAG and filter helpers, the PTAP smoke sequence) |
 | `cocotb_wrapper/{env,seq_lib,tests}/` | the `--dut smu` framework tree: `tests/` holds every test body and the base test; `env/` the wrapper env pieces (`smu_boot_scoreboard.py`, `smu_sep_cpu_trace_monitor.py`, `smu_env_cfg.py`); `seq_lib/` the wrapper sequences. `env` and `seq_lib` are namespace packages spanning this tree and `cocotb/`, so an import resolves in either |
-| `cov/` | coverage collateral: `config/verilator/smu_wrapper_cov_scope.vlt` and `smu_wrapper_coverage_policy.toml`, `config/vcs/smu_wrapper_cov_scope.hier` (its README explains the mirror), and `sv/` with the ten cover-property modules; intent in `docs/SMU_FCOV.adoc` |
+| `cov/` | coverage collateral: `config/verilator/smu_wrapper_cov_scope.vlt` and `smu_wrapper_coverage_policy.toml`, `config/vcs/smu_wrapper_cov_scope.hier` (written by `gen_smu_cov_scope.py`; its README states the rule and how it differs from the Verilator scope), and `sv/` with the ten cover-property modules; intent in `docs/SMU_FCOV.adoc` |
 | `docs/` | `index.adoc` and the three chapters: `SMU_TB_ARCH.adoc`, `SMU_VPLAN.adoc`, `SMU_FCOV.adoc` |
 | `fw/` | this root's own firmware: `build_firmware.py`, `common/` (SMC and SEP start-up and linker files), `tests/` (the SMC smoke, the SEP smoke and the two SEP arm images). The `sep_real_fw` images come from `hw/sys/sep/dv/fw/` instead |
-| `tb/` | `tb_wrapper_top.sv` (the HDL top, `smu_wrapper_uvm_top`) and `smu_wrapper_public_scope.vlt` (the Verilator public-signal scope `smu_sim_cfg.toml` `[build.verilator].public_scope` names) |
+| `tb/` | `tb_wrapper_top.sv` (the HDL top, `smu_wrapper_uvm_top`, one module in two shapes: the cocotb port list and the SV-UVM harness), `smu_tb_signal_list.svh` (the single declaration of its TB signals, expanded as ports or as internal signals), `smu_tb_if.sv` (the SMU-local TB interface of the SV-UVM shape) and `smu_wrapper_public_scope.vlt` (the Verilator public-signal scope `smu_sim_cfg.toml` `[build.verilator].public_scope` names) |
+| `uvm/{env,seq_lib,tests}/` | the SV-UVM realization (`--framework uvm`, VCS): `env/` holds the bench constants, the two cfg levels, the virtual sequencer, the SMU-level reference models, the reset-release monitor, `smu_scoreboard` and `smu_env`; `seq_lib/` the JTAG and JTAG2AXI operation sequences, `smu_base_test_seq` and one scenario sequence per bound test; `tests/` `smu_base_test`, one thin test class per scenario and the `smu_tests.sv` manifest the top includes |
 | `testlists/` | `all.toml`, the SMU regression and the one root `smu_sim_cfg.toml` selects |
 | `tools/` | `smu_wrapper_tb_readiness_test.py`, the static readiness gates below |
 | `smu_sim_cfg.toml` | the `--dut smu` launch config: Bender targets, the single compile profile, run modes, `c_build` stages, the coverage scope and policy files |
 | `build/` | generated: models, firmware, `build/runs/`; gitignored |
 
-`assets/`, `cocotb_wrapper/`, `fw/` and `tools/` are additional to the shared
+`assets/`, `cocotb_wrapper/`, `fw/`, `tools/` and `uvm/` are additional to the shared
 DV directory set (`cocotb/`, `cov/`, `docs/`, `tb/`, `testlists/`); each is
 held here because:
 
@@ -197,6 +265,9 @@ held here because:
   them into `build/firmware/`.
 * `tools/` -- the readiness gates check the wrapper TB against its source and
   its filelist without a simulation, and are not tests.
+* `uvm/` -- the SystemVerilog UVM realization of the scenarios that carry
+  one, the same layout the DTP, SEP and SMC benches use for theirs
+  (`hw/common/dv/docs/uvm-framework.adoc`).
 
 ## Compile profile and images (`--dut smu`)
 

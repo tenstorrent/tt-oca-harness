@@ -1,15 +1,23 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-gpio_ctrl]
+== GPIO Control Address Map
+
+Per-pin GPIO pad control registers: drive strength, pull configuration, and strap capture.
+
 [cols="1,4,1,6", options="header"]
-.Register Map
 |===
 | Address | Name | Access | Description
-| 0x0 | CONTROL | RW a| -
+| 0x0 | <<reg-{regmap-instance}-gpio_ctrl-CONTROL,CONTROL>> | RW a| -
 |===
 
+[#reg-{regmap-instance}-gpio_ctrl-CONTROL]
+=== CONTROL
+
 [cols="1,3,1,1,6", options="header"]
-.CONTROL Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:25 | `Reserved` | - | - a| Reserved

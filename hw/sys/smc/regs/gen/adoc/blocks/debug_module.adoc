@@ -1,296 +1,141 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-debug_module]
+== Debug Module Hart Interface
+
+Memory region through which a hart in Debug Mode exchanges state with the Debug Module: handshake mailboxes, generated instructions, program buffer, data registers, per-hart flags and the debug ROM. The debugger-facing Debug Module registers (dmcontrol, dmstatus, abstractcs, sbcs, ...) are reached over the Debug Module Interface and do not appear in this map.
+
 [NOTE]
 ======
-*Register Arrays:* This register map contains the following register arrays:
+*Register Arrays:*
 
-* *abstractdata[12]*: 12 registers
-  ** Base Address: 0x10
-  ** Address Increment: 0x4 per register
-
-* *confstrptr[3]*: 3 registers
-  ** Base Address: 0x64
-  ** Address Increment: 0x4 per register
-
-* *progbuf[16]*: 16 registers
-  ** Base Address: 0x80
-  ** Address Increment: 0x4 per register
-
+* *ABSTRACT[5]*: 5 registers, base 0x328, stride 0x4
+* *PROGBUF[16]*: 16 registers, base 0x33C, stride 0x4
+* *DATA[4]*: 4 registers, base 0x380, stride 0x4
+* *ROM[26]*: 26 registers, base 0x800, stride 0x4
 ======
 
 [cols="1,4,1,6", options="header"]
-.Register Map
 |===
 | Address | Name | Access | Description
-| 0x10 - 0x3C | abstractdata[12] | RW a| Abstract Data Register. Used for arguments/return values of abstract commands.
-| 0x40 | dmcontrol | RW a| Controls the overall Debug Module and selected harts. Writes to action bits (haltreq, resumereq, etc.) apply to the new value of hartsel and hasel.
-| 0x44 | dmstatus | R a| Reports status for the Debug Module and currently selected harts. This entire register is read-only.
-| 0x48 | hartinfo | R a| Information about the hart currently selected by hartsel. Optional; reads all-zero if not present. Entire register is read-only.
-| 0x4C | haltsum1 | R a| Read-only. Each bit indicates if any hart in a group of 32 is halted. May not be present in systems with fewer than 33 harts. Unavailable/nonexistent harts are not considered halted.
-| 0x50 | hawindowsel | RW a| Selects which 32-bit portion of the hart array mask register is accessible in hawindow.
-| 0x54 | hawindow | RW a| R/W access to a 32-bit portion of the hart array mask register, selected by hawindowsel.
-| 0x58 | abstractcs | RW a| Controls and status for abstract commands. Writing this register while an abstract command is executing (busy=1) sets cmderr to 1 (busy) if cmderr was 0.
-| 0x5C | command | RW a| Writes cause corresponding abstract command to execute. Writing while busy sets cmderr=1 (if cmderr=0). Ignored if cmderr is non-zero.
-| 0x60 | abstractauto | RW a| Optional. Allows more efficient burst accesses. Writing while busy sets cmderr=1 (if cmderr=0). Detect support by R/W test.
-| 0x64 - 0x6C | confstrptr[3] | R a| Part of configuration string pointer address (if dmstatus.confstrptrvalid=1) or unspecified identifier information. Read-only.
-| 0x74 | nextdm | R a| If multiple DMs on DMI, this holds base address of the next DM. 0 if this is the last. Read-only.
-| 0x80 - 0xBC | progbuf[16] | RW a| Program Buffer word. For debugger to write small programs.
-| 0xC0 | authdata | RW a| 32-bit serial port to/from authentication module. Use when dmstatus.authbusy is clear.
-| 0xD0 | haltsum2 | R a| Read-only. Each bit indicates if any hart in a group of 1024 is halted. May not be present if < 1025 harts.
-| 0xD4 | haltsum3 | R a| Read-only. Each bit indicates if any hart in a group of 32768 is halted. May not be present if < 32769 harts.
-| 0xDC | sbaddress3 | RW a| Bits 127:96 of the physical system bus address for System Bus Access. Not present if sbcs.sbasize < 97. Writes while sbcs.sbbusy=1 set sbcs.sbbusyerror.
-| 0xE0 | sbcs | RW a| Controls and status for the System Bus Access master. Writes while sbbusy=1 result in undefined behavior.
-| 0xE4 | sbaddress0 | RW a| Bits 31:0 of the physical system bus address. Not present if sbcs.sbasize=0. Writes while sbcs.sbbusy=1 set sbcs.sbbusyerror. If sbcs.sberror=0, sbcs.sbbusyerror=0, and sbcs.sbreadonaddr=1, write triggers read sequence.
-| 0xE8 | sbaddress1 | RW a| Bits 63:32 of the physical system bus address. Not present if sbcs.sbasize < 33. Writes while sbcs.sbbusy=1 set sbcs.sbbusyerror.
-| 0xEC | sbaddress2 | RW a| Bits 95:64 of the physical system bus address. Not present if sbcs.sbasize < 65. Writes while sbcs.sbbusy=1 set sbcs.sbbusyerror.
-| 0xF0 | sbdata0 | RW a| Bits 31:0 of system bus data. Not present if all sbcs.sbaccess* flags are 0. Accesses do nothing if sbcs.sberror or sbcs.sbbusyerror are non-zero. Accesses while sbcs.sbbusy=1 set sbcs.sbbusyerror. Write triggers bus write sequence. Read triggers read sequence including conditional next read if sbcs.sbreadondata=1.
-| 0xF4 | sbdata1 | RW a| Bits 63:32 of system bus data. Not present if sbcs.sbaccess64 and sbcs.sbaccess128 are 0. Accesses while sbcs.sbbusy=1 set sbcs.sbbusyerror.
-| 0xF8 | sbdata2 | RW a| Bits 95:64 of system bus data. Only exists if sbcs.sbaccess128=1. Accesses while sbcs.sbbusy=1 set sbcs.sbbusyerror.
-| 0xFC | sbdata3 | RW a| Bits 127:96 of system bus data. Only exists if sbcs.sbaccess128=1. Accesses while sbcs.sbbusy=1 set sbcs.sbbusyerror.
-| 0x100 | haltsum0 | R a| Read-only. Each bit indicates whether one specific hart is halted. Unavailable/nonexistent harts are not considered halted. LSB for hart {hartsel[19:5],5'h0}, MSB for hart {hartsel[19:5],5'h1f}.
+| 0x100 | <<reg-{regmap-instance}-debug_module-HALTED,HALTED>> | W a| -
+| 0x104 | <<reg-{regmap-instance}-debug_module-GOING,GOING>> | W a| -
+| 0x108 | <<reg-{regmap-instance}-debug_module-RESUMING,RESUMING>> | W a| -
+| 0x10C | <<reg-{regmap-instance}-debug_module-EXCEPTION,EXCEPTION>> | W a| -
+| 0x300 | <<reg-{regmap-instance}-debug_module-WHERETO,WHERETO>> | R a| -
+| 0x328 - 0x338 | <<reg-{regmap-instance}-debug_module-ABSTRACT-,ABSTRACT[5]>> | R a| -
+| 0x33C - 0x378 | <<reg-{regmap-instance}-debug_module-PROGBUF-,PROGBUF[16]>> | RW a| -
+| 0x37C | <<reg-{regmap-instance}-debug_module-IMPEBREAK,IMPEBREAK>> | R a| -
+| 0x380 - 0x38C | <<reg-{regmap-instance}-debug_module-DATA-,DATA[4]>> | RW a| -
+| 0x400 | <<reg-{regmap-instance}-debug_module-FLAGS,FLAGS>> | R a| One flag byte per hart, at byte offset equal to the hart ID. Bit 0 is go (execute the command at WHERETO); bit 1 is resume (leave Debug Mode). Bits 7:2 read as 0.
+| 0x800 - 0x864 | <<reg-{regmap-instance}-debug_module-ROM-,ROM[26]>> | R a| -
 |===
 
-[cols="1,3,1,1,6", options="header"]
-.abstractdata[12] Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:0 | `data` | RW | 0x0 a| Data value for abstract commands.
-|===
+[#reg-{regmap-instance}-debug_module-HALTED]
+=== HALTED
 
 [cols="1,3,1,1,6", options="header"]
-.dmcontrol Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31 | `haltreq` | RW | 0x0 a| Halt request for currently selected harts. Write 0 to clear, 1 to set.
-| 30 | `resumereq` | RW | 0x0 a| Resume request for currently selected harts. Writing 1 causes halted harts to resume and clears their resume ack bit. Ignored if haltreq is set.
-| 29 | `hartreset` | RW | 0x0 a| Optional. Hart reset for currently selected harts. Write 1, then 0 to deassert. Debugger must not change selection while this is 1. If not implemented, reads as 0.
-| 28 | `ackhavereset` | RW | 0x0 a| Writing 1 clears havereset for any selected harts.
-| 27 | `_reserved_27` | R | 0x0 a| Reserved.
-| 26 | `hasel` | RW | 0x0 a| Selects definition of currently selected harts. 0: single hart by hartsel. 1: hart by hartsel plus those by hart array mask. Tied to 0 if hart array mask not implemented.
-| 25:16 | `hartsello` | RW | 0x0 a| Low 10 bits of hartsel: DM-specific index of the hart to select.
-| 15:6 | `hartselhi` | RW | 0x0 a| High 10 bits of hartsel: DM-specific index of the hart to select.
-| 5:4 | `_reserved_5_4` | R | 0x0 a| Reserved.
-| 3 | `setresethaltreq` | RW | 0x0 a| Optional (if dmstatus.hasresethaltreq=1). Writing 1 sets halt-on-reset request bit for selected harts (unless clrresethaltreq is also 1).
-| 2 | `clrresethaltreq` | RW | 0x0 a| Optional (if dmstatus.hasresethaltreq=1). Writing 1 clears halt-on-reset request bit for selected harts.
-| 1 | `ndmreset` | RW | 0x0 a| Controls reset signal from DM to system (ndmreset). Write 1, then 0 to deassert.
-| 0 | `dmactive` | RW | 0x0 a| Debug Module active and reset. 0: DM takes reset values (except this bit). 1: DM functions normally.
+| 31:10 | `Reserved` | - | - a| Reserved
+| 9:0 | `hartid` | W | - a| Debug ROM causes the hart to write its hart ID here when it is in Debug Mode.
 |===
 
-[cols="1,3,1,1,6", options="header"]
-.dmstatus Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:23 | `_reserved_31_23` | R | 0x0 a| Reserved.
-| 22 | `impebreak` | R | 0x0 a| 1: Implicit ebreak after Program Buffer. Must be 1 if abstractcs.progbufsize is 1.
-| 21:20 | `_reserved_21_20` | R | 0x0 a| Reserved.
-| 19 | `allhavereset` | R | 0x0 a| 1: All currently selected harts have been reset and not acknowledged.
-| 18 | `anyhavereset` | R | 0x0 a| 1: At least one currently selected hart has been reset and not acknowledged.
-| 17 | `allresumeack` | R | 0x0 a| 1: All currently selected harts have acknowledged their last resume request.
-| 16 | `anyresumeack` | R | 0x0 a| 1: Any currently selected hart has acknowledged its last resume request.
-| 15 | `allnonexistent` | R | 0x0 a| 1: All currently selected harts do not exist in this platform.
-| 14 | `anynonexistent` | R | 0x0 a| 1: Any currently selected hart does not exist in this platform.
-| 13 | `allunavail` | R | 0x0 a| 1: All currently selected harts are unavailable.
-| 12 | `anyunavail` | R | 0x0 a| 1: Any currently selected hart is unavailable.
-| 11 | `allrunning` | R | 0x0 a| 1: All currently selected harts are running.
-| 10 | `anyrunning` | R | 0x0 a| 1: Any currently selected hart is running.
-| 9 | `allhalted` | R | 0x0 a| 1: All currently selected harts are halted.
-| 8 | `anyhalted` | R | 0x0 a| 1: Any currently selected hart is halted.
-| 7 | `authenticated` | R | 0x0 a| 0: Authentication required. 1: Authentication passed. Preset to 1 if no authentication implemented.
-| 6 | `authbusy` | R | 0x0 a| 0: Authentication module ready. 1: Authentication module busy.
-| 5 | `hasresethaltreq` | R | 0x0 a| 1: DM supports halt-on-reset functionality (setresethaltreq/clrresethaltreq bits in dmcontrol).
-| 4 | `confstrptrvalid` | R | 0x0 a| 0: confstrptr0-3 are not relevant to config string. 1: confstrptr0-3 hold config string address.
-| 3:0 | `version` | R | 0x2 a| Debug Module version. 0=No DM, 1=v0.11, 2=v0.13, 15=Non-conformant.
-|===
+[#reg-{regmap-instance}-debug_module-GOING]
+=== GOING
 
 [cols="1,3,1,1,6", options="header"]
-.hartinfo Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:24 | `_reserved_31_24` | R | 0x0 a| Reserved.
-| 23:20 | `nscratch` | R | 0x0 a| Number of dscratch registers available for debugger use during program buffer execution (dscratch0 upwards).
-| 19:17 | `_reserved_19_17` | R | 0x0 a| Reserved.
-| 16 | `dataaccess` | R | 0x0 a| 0: Data registers (dataN) are shadowed by CSRs. 1: Data registers are shadowed in hart's memory map.
-| 15:12 | `datasize` | R | 0x0 a| If dataaccess=0: Number of CSRs for dataN. If dataaccess=1: Number of 32-bit words in memory map for dataN. Max value 12.
-| 11:0 | `dataaddr` | R | 0x0 a| If dataaccess=0: Number of first CSR for dataN. If dataaccess=1: Signed address of RAM where dataN are shadowed (relative to zero).
+| 31:10 | `Reserved` | - | - a| Reserved
+| 9:0 | `hartid` | W | - a| Debug ROM causes the hart to write 0 here when it begins executing Debug Mode instructions.
 |===
 
-[cols="1,3,1,1,6", options="header"]
-.haltsum1 Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:0 | `haltsum1` | R | 0x0 a| Halt status summary. LSB for harts {hartsel[19:10],10'h0}-{hartsel[19:10],10'h1f}, MSB for harts {hartsel[19:10],10'h3e0}-{hartsel[19:10],10'h3ff}.
-|===
+[#reg-{regmap-instance}-debug_module-RESUMING]
+=== RESUMING
 
 [cols="1,3,1,1,6", options="header"]
-.hawindowsel Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:15 | `_reserved_31_15` | R | 0x0 a| Reserved. High bits may be tied to 0 depending on hart array mask size.
-| 14:0 | `hawindowsel` | RW | 0x0 a| Window select for hart array mask register. E.g., on a system with 48 harts, only bit 0 may be writable.
+| 31:10 | `Reserved` | - | - a| Reserved
+| 9:0 | `hartid` | W | - a| Debug ROM causes the hart to write its hart ID here when it leaves Debug Mode.
 |===
 
-[cols="1,3,1,1,6", options="header"]
-.hawindow Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:0 | `maskdata` | RW | 0x0 a| 32-bit window into the hart array mask register. Some bits may be constant 0, depending on hawindowsel and implemented harts.
-|===
+[#reg-{regmap-instance}-debug_module-EXCEPTION]
+=== EXCEPTION
 
 [cols="1,3,1,1,6", options="header"]
-.abstractcs Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:29 | `_reserved_31_29` | R | 0x0 a| Reserved.
-| 28:24 | `progbufsize` | R | 0x0 a| Size of the Program Buffer, in 32-bit words. Valid sizes are 0-16.
-| 23:13 | `_reserved_23_13` | R | 0x0 a| Reserved.
-| 12 | `busy` | R | 0x0 a| 1: An abstract command is currently being executed. Set when 'command' is written, cleared on completion.
-| 11 | `_reserved_11` | R | 0x0 a| Reserved.
-| 10:8 | `cmderr` | RW | 0x0 a| Abstract command error status. Remains set until cleared. Valid if busy=0. 0=none, 1=busy, 2=not_supported, 3=exception, 4=halt/resume, 5=bus, 7=other.
-| 7:4 | `_reserved_7_4` | R | 0x0 a| Reserved.
-| 3:0 | `datacount` | R | 0x0 a| Number of data registers (dataN) implemented. Valid sizes are 1-12.
+| 31:10 | `Reserved` | - | - a| Reserved
+| 9:0 | `hartid` | W | - a| Debug ROM causes the hart to write 0 here if it takes an exception in Debug Mode.
 |===
 
-[cols="1,3,1,1,6", options="header"]
-.command Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:24 | `cmdtype` | RW | 0x0 a| Type of abstract command (e.g., 0 for Access Register, 1 for Quick Access, 2 for Access Memory).
-| 23:0 | `control` | RW | 0x0 a| Command-specific control field.
-|===
+[#reg-{regmap-instance}-debug_module-WHERETO]
+=== WHERETO
 
 [cols="1,3,1,1,6", options="header"]
-.abstractauto Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:16 | `autoexecprogbuf` | RW | 0x0 a| Bitmask (16 bits). If bit N=1, R/W to progbufN re-executes command in 'command' register.
-| 15:12 | `_reserved_15_12` | R | 0x0 a| Reserved.
-| 11:0 | `autoexecdata` | RW | 0x0 a| Bitmask (12 bits). If bit N=1, R/W to dataN re-executes command in 'command' register.
+| 31:0 | `instr` | R | - a| Jump instruction filled in by the Debug Module to direct the hart in Debug Mode.
 |===
 
-[cols="1,3,1,1,6", options="header"]
-.confstrptr[3] Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:0 | `addr` | R | 0x0 a| Bits of configuration string pointer or identifier information.
-|===
+[#reg-{regmap-instance}-debug_module-ABSTRACT-]
+=== ABSTRACT[5]
 
 [cols="1,3,1,1,6", options="header"]
-.nextdm Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `addr` | R | 0x0 a| Base address of the next Debug Module or 0.
+| 31:0 | `instr` | R | - a| Instruction generated by the Debug Module for the current abstract command.
 |===
 
-[cols="1,3,1,1,6", options="header"]
-.progbuf[16] Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:0 | `data` | RW | 0x0 a| Program instruction word.
-|===
+[#reg-{regmap-instance}-debug_module-PROGBUF-]
+=== PROGBUF[16]
 
 [cols="1,3,1,1,6", options="header"]
-.authdata Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `data` | RW | 0x0 a| Data for authentication mechanism.
+| 31:0 | `data` | RW | 0x0 a| Program buffer word shared with the debugger. Byte accesses are supported.
 |===
 
-[cols="1,3,1,1,6", options="header"]
-.haltsum2 Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:0 | `haltsum2` | R | 0x0 a| Halt status summary. LSB for harts {hartsel[19:15],15'h0}-{hartsel[19:15],15'h3ff}, etc.
-|===
+[#reg-{regmap-instance}-debug_module-IMPEBREAK]
+=== IMPEBREAK
 
 [cols="1,3,1,1,6", options="header"]
-.haltsum3 Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `haltsum3` | R | 0x0 a| Halt status summary. LSB for harts 20'h0-20'h7fff, etc.
+| 31:0 | `instr` | R | 0x100073 a| Implicit EBREAK instruction following the program buffer.
 |===
 
-[cols="1,3,1,1,6", options="header"]
-.sbaddress3 Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:0 | `address` | RW | 0x0 a| Address bits 127:96 for system bus access.
-|===
+[#reg-{regmap-instance}-debug_module-DATA-]
+=== DATA[4]
 
 [cols="1,3,1,1,6", options="header"]
-.sbcs Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:29 | `sbversion` | R | 0x1 a| System Bus interface version. 0=pre-2018 drafts, 1=this version (0.13).
-| 28:23 | `_reserved_28_23` | R | 0x0 a| Reserved.
-| 22 | `sbbusyerror` | RW | 0x0 a| System bus busy error. Set if access attempted while busy or read while read in progress. No new access if set.
-| 21 | `sbbusy` | R | 0x0 a| 1: System bus master is busy. Goes high on access request, low on completion.
-| 20 | `sbreadonaddr` | RW | 0x0 a| 1: Every write to sbaddress0 automatically triggers a system bus read at the new address.
-| 19:17 | `sbaccess` | RW | 0x2 a| Access size for system bus accesses: 0=8-bit, 1=16-bit, 2=32-bit, 3=64-bit, 4=128-bit. If unsupported, access fails, sberror=4.
-| 16 | `sbautoincrement` | RW | 0x0 a| 1: sbaddress is incremented by access size (from sbaccess) after every system bus access.
-| 15 | `sbreadondata` | RW | 0x0 a| 1: Every read from sbdata0 automatically triggers a system bus read at (possibly auto-incremented) address.
-| 14:12 | `_reserved_14_12` | R | 0x0 a| Reserved.
-| 11:9 | `sberror` | RW | 0x0 a| System bus master error flags. No new access if non-zero. 0=none, 1=timeout, 2=bad_address, 3=alignment, 4=unsupported_size, 7=other.
-| 8:5 | `sbasize` | R | 0x0 a| Width of system bus addresses in bits (e.g., 32 for 32-bit addresses). 0 indicates no bus access support. NOTE: This field is 4 bits wide ([8:5]), which is insufficient to directly store typical bus widths like 32 or 64. This implies the value is an encoding or there is a spec issue. The text implies it stores values like 32, 64, etc (e.g. 'if sbasize < 33').
-| 4 | `sbaccess128` | R | 0x0 a| 1: 128-bit system bus accesses are supported.
-| 3 | `sbaccess64` | R | 0x0 a| 1: 64-bit system bus accesses are supported.
-| 2 | `sbaccess32` | R | 0x0 a| 1: 32-bit system bus accesses are supported.
-| 1 | `sbaccess16` | R | 0x0 a| 1: 16-bit system bus accesses are supported.
-| 0 | `sbaccess8` | R | 0x0 a| 1: 8-bit system bus accesses are supported.
+| 31:0 | `data` | RW | 0x0 a| Abstract command data word shared with the debugger. Byte accesses are supported.
 |===
 
-[cols="1,3,1,1,6", options="header"]
-.sbaddress0 Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:0 | `address` | RW | 0x0 a| Address bits 31:0.
-|===
+[#reg-{regmap-instance}-debug_module-FLAGS]
+=== FLAGS
 
 [cols="1,3,1,1,6", options="header"]
-.sbaddress1 Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `address` | RW | 0x0 a| Address bits 63:32.
+| 31:24 | `flags_3` | R | - a| Hart 3 go/resume flags.
+| 23:16 | `flags_2` | R | - a| Hart 2 go/resume flags.
+| 15:8 | `flags_1` | R | - a| Hart 1 go/resume flags.
+| 7:0 | `flags_0` | R | - a| Hart 0 go/resume flags.
 |===
 
-[cols="1,3,1,1,6", options="header"]
-.sbaddress2 Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:0 | `address` | RW | 0x0 a| Address bits 95:64.
-|===
+[#reg-{regmap-instance}-debug_module-ROM-]
+=== ROM[26]
 
 [cols="1,3,1,1,6", options="header"]
-.sbdata0 Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `data` | RW | 0x0 a| Data bits 31:0.
-|===
-
-[cols="1,3,1,1,6", options="header"]
-.sbdata1 Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:0 | `data` | RW | 0x0 a| Data bits 63:32.
-|===
-
-[cols="1,3,1,1,6", options="header"]
-.sbdata2 Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:0 | `data` | RW | 0x0 a| Data bits 95:64.
-|===
-
-[cols="1,3,1,1,6", options="header"]
-.sbdata3 Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:0 | `data` | RW | 0x0 a| Data bits 127:96.
-|===
-
-[cols="1,3,1,1,6", options="header"]
-.haltsum0 Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:0 | `haltsum0` | R | 0x0 a| Halt status for 32 harts based on hartsel[19:5].
+| 31:0 | `data` | R | - a| Debug ROM word. Holds the fixed Debug Mode entry, exception and resume handlers.
 |===

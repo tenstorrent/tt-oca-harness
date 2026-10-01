@@ -5,8 +5,9 @@
 `define ZEROER_REG_RDL
 
 addrmap zeroer_ctrl {
-    desc = "AXI zeroer control register";
-
+    name = "Zeroer Control Address Map";
+    desc = "Control and status registers for the AXI memory-zeroing engine.";
+    
     ////////////////////////////////////////////////////////////////////////////
     // Register Definitions
     ////////////////////////////////////////////////////////////////////////////
@@ -35,7 +36,7 @@ addrmap zeroer_ctrl {
         regwidth = 64;
         accesswidth = 64;
 
-        desc = "Writing this register will trigger start of zeroer";
+        desc = "Writing this register will trigger start of zeroer. The write is ignored while SIZE is 0.";
 
         field {
             sw = rw;

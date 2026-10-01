@@ -10,6 +10,9 @@ contiguous partial strobes).
 
 from __future__ import annotations
 
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass
+
 import cocotb
 from cocotb.triggers import ClockCycles, NextTimeStep, ReadOnly
 from ocah_axi_vip import OcahAxiLiteMasterAgent
@@ -30,26 +33,47 @@ def _int(signal) -> int:
     return int(signal.value)
 
 
+@dataclass(frozen=True)
+class DtpXtrigPulse:
+    """The width of the first masked pulse a measurement saw and the rises it counted."""
+
+    width: int
+    pulses: int
+
+
 class DtpXtrigActivityWindow:
     """Per-cycle OR and AND of named observables from ``start`` until ``stop``.
 
     Sampling happens in the read-only phase of every clock cycle, so a
     one-cycle pulse anywhere in the window lands in ``activity`` (OR of all
     samples) and a one-cycle drop lands in ``hold`` (AND of all samples), which
-    is how an active-low request is seen. ``stop`` cancels the sampler and
-    returns activity, hold, and the last sample.
+    is how an active-low request is seen. ``first_seen`` holds the window
+    cycle at which each bit first rose and ``rises`` how many times it rose.
+    Each ``derived`` observable is a function of one sample of ``names``,
+    evaluated every cycle and kept with the same records, a value of 0 before
+    the window starting it. ``stop`` cancels the sampler and returns activity,
+    hold, and the last sample.
     """
 
     ALL_ONES = (1 << 32) - 1
 
-    def __init__(self, bfm: DtpXtrigBfm, names: tuple[str, ...]) -> None:
+    def __init__(
+        self,
+        bfm: DtpXtrigBfm,
+        names: tuple[str, ...],
+        derived: Mapping[str, Callable[[dict[str, int]], int]] | None = None,
+    ) -> None:
         self._bfm = bfm
         self.names = names
-        self.activity = {name: 0 for name in names}
-        self.hold = {name: self.ALL_ONES for name in names}
-        self.last = {name: 0 for name in names}
+        self._derived = dict(derived or {})
+        tracked = (*names, *self._derived)
+        self.activity = {name: 0 for name in tracked}
+        self.hold = {name: self.ALL_ONES for name in tracked}
+        self.last = {name: 0 for name in tracked}
         # Cycle offset (from start) at which each bit of each signal first rose.
-        self.first_seen: dict[str, dict[int, int]] = {name: {} for name in names}
+        self.first_seen: dict[str, dict[int, int]] = {name: {} for name in tracked}
+        # Number of rises of each bit of each signal.
+        self.rises: dict[str, dict[int, int]] = {name: {} for name in tracked}
         self.cycles = 0
         self._task: cocotb.Task | None = None
 
@@ -66,16 +90,25 @@ class DtpXtrigActivityWindow:
 
     def _record(self) -> None:
         for name in self.names:
-            value = self._bfm.tb_if.sample(name)
-            new_bits = value & ~self.activity[name]
-            while new_bits:
-                bit = (new_bits & -new_bits).bit_length() - 1
-                self.first_seen[name][bit] = self.cycles
-                new_bits &= new_bits - 1
-            self.activity[name] |= value
-            self.hold[name] &= value
-            self.last[name] = value
+            self._track(name, self._bfm.tb_if.sample(name))
+        for name, derive in self._derived.items():
+            self._track(name, derive(self.last))
         self.cycles += 1
+
+    def _track(self, name: str, value: int) -> None:
+        new_bits = value & ~self.activity[name]
+        while new_bits:
+            bit = (new_bits & -new_bits).bit_length() - 1
+            self.first_seen[name][bit] = self.cycles
+            new_bits &= new_bits - 1
+        rose = value & ~self.last[name]
+        while rose:
+            bit = (rose & -rose).bit_length() - 1
+            self.rises[name][bit] = self.rises[name].get(bit, 0) + 1
+            rose &= rose - 1
+        self.activity[name] |= value
+        self.hold[name] &= value
+        self.last[name] = value
 
     def first_seen_text(self, names: tuple[str, ...] | None = None) -> str:
         """``signal:bit@cycle`` list of every bit that rose, for the log."""
@@ -104,10 +137,11 @@ class DtpXtrigBfm:
         self.clk = tb_if.clk
 
     def init_signals(self) -> None:
+        """Quiesce every stimulus vector; the wire pulls and the group describe the board and stay."""
         for name in (
             "xtrig_ctm_src_ack",
             "xtrig_ctm_dst_req",
-            "xtrig_ctp_req_out_din",
+            "xtrig_ctp_wire_ext_assert",
             "xtrig_ctp_req_in_din",
             "xtrig_ctp_ack_in_din",
             "xtrig_ctp_ack_out_din",
@@ -125,6 +159,12 @@ class DtpXtrigBfm:
             "xtrig_ctp_req_out_dout_en",
             "xtrig_ctp_req_out_din",
             "xtrig_ctp_req_out_din_en",
+            "xtrig_ctp_wire_ext_assert",
+            "xtrig_ctp_wire_pull",
+            "xtrig_ctp_wire_group",
+            "xtrig_ctp_wire_mismatch",
+            "xtrig_ctp_ct_dst",
+            "xtrig_int_ct_dst",
             "xtrig_ctp_req_in_dout",
             "xtrig_ctp_req_in_dout_en",
             "xtrig_ctp_req_in_din",
@@ -142,6 +182,11 @@ class DtpXtrigBfm:
             "xtrig_axil_arvalid_count",
             "xtrig_axil_aw_stall_count",
             "xtrig_axil_ar_stall_count",
+            "xtrig_axil_w_stall_count",
+            "xtrig_axil_aw_open_stall_count",
+            "xtrig_axil_aw_open_accept_count",
+            "xtrig_axil_ar_open_stall_count",
+            "xtrig_axil_ar_open_accept_count",
             "xtrig_demux_aw_lock",
             "xtrig_demux_w_pending",
             "xtrig_ctp_busy",
@@ -150,27 +195,37 @@ class DtpXtrigBfm:
         await NextTimeStep()
         return sample
 
-    async def pulse_input_mask(
-        self, ctp_mask: int, int_mask: int, *, ctp_invert: int = 0, cycles: int = 2
-    ) -> None:
-        """Pulse CTP request-out pads and internal CT requests in the same cycles.
+    async def pulse_input_mask(self, ctp_mask: int, int_mask: int, *, cycles: int = 2) -> None:
+        """Pull the shared wires of ``ctp_mask`` and request the internal CTs of ``int_mask``.
 
-        A pad of ``ctp_invert`` pulses low from its high idle level; every
-        other pad pulses high from low. Bits outside the masks keep their
-        levels.
+        The chiplet on each selected wire pulls it to the asserted level of
+        its sense for ``cycles`` clocks; the internal requests rise for the
+        same cycles. Bits outside the masks keep their state.
         """
         ctp_mask &= (1 << XTRIG_NUM_CTP) - 1
         int_mask &= (1 << XTRIG_NUM_INT_CT) - 1
-        ctp_rest = _int(self.pins.xtrig_ctp_req_out_din) & ~ctp_mask
-        self.pins.xtrig_ctp_req_out_din.value = ctp_rest | (ctp_mask & ~ctp_invert)
+        self.pins.xtrig_ctp_wire_ext_assert.value = (
+            _int(self.pins.xtrig_ctp_wire_ext_assert) | ctp_mask
+        )
         self.pins.xtrig_ctm_dst_req.value = _int(self.pins.xtrig_ctm_dst_req) | int_mask
         await ClockCycles(self.clk, cycles)
-        self.pins.xtrig_ctp_req_out_din.value = ctp_rest | (ctp_mask & ctp_invert)
+        self.pins.xtrig_ctp_wire_ext_assert.value = (
+            _int(self.pins.xtrig_ctp_wire_ext_assert) & ~ctp_mask
+        )
         self.pins.xtrig_ctm_dst_req.value = _int(self.pins.xtrig_ctm_dst_req) & ~int_mask
 
-    def set_ctp_req_out_din(self, mask: int) -> None:
-        """Drive the CTP request-out pad inputs to ``mask``."""
-        self.pins.xtrig_ctp_req_out_din.value = mask & ((1 << XTRIG_NUM_CTP) - 1)
+    def set_ctp_wire_pull(self, mask: int) -> None:
+        """Rest each CTP's private wire at the level of its bit in ``mask``."""
+        self.pins.xtrig_ctp_wire_pull.value = mask & ((1 << XTRIG_NUM_CTP) - 1)
+
+    def set_ctp_wire_ext_assert(self, mask: int) -> None:
+        """The chiplets on the wires of ``mask`` pull them; the others release."""
+        self.pins.xtrig_ctp_wire_ext_assert.value = mask & ((1 << XTRIG_NUM_CTP) - 1)
+
+    def set_ctp_wire_group(self, mask: int, *, pull: int) -> None:
+        """Put the CTPs of ``mask`` on one shared wire resting at ``pull``."""
+        self.pins.xtrig_ctp_wire_group.value = mask & ((1 << XTRIG_NUM_CTP) - 1)
+        self.pins.xtrig_ctp_wire_group_pull.value = pull & 1
 
     def set_ctp_req_in_din(self, mask: int) -> None:
         """Drive the CTP request-in pad inputs to ``mask``."""
@@ -186,11 +241,9 @@ class DtpXtrigBfm:
         await ClockCycles(self.clk, cycles)
         self.pins.xtrig_ctm_dst_req.value = _int(self.pins.xtrig_ctm_dst_req) & ~mask
 
-    async def drive_ctp_req_out_din_pulse(self, ctp_idx: int, cycles: int = 2) -> None:
-        mask = 1 << ctp_idx
-        self.pins.xtrig_ctp_req_out_din.value = _int(self.pins.xtrig_ctp_req_out_din) | mask
-        await ClockCycles(self.clk, cycles)
-        self.pins.xtrig_ctp_req_out_din.value = _int(self.pins.xtrig_ctp_req_out_din) & ~mask
+    async def pull_ctp_wire(self, ctp_idx: int, cycles: int = 2) -> None:
+        """The chiplet on CTP ``ctp_idx``'s wire pulls it for ``cycles`` clocks."""
+        await self.pulse_input_mask(1 << ctp_idx, 0, cycles=cycles)
 
     async def drive_ctp_p2p_req_in(self, ctp_idx: int, value: int) -> None:
         mask = 1 << ctp_idx
@@ -209,9 +262,13 @@ class DtpXtrigBfm:
         await ClockCycles(self.clk, cycles)
         self.pins.xtrig_ctm_dst_req.value = 0
 
-    def activity_window(self, names: tuple[str, ...]) -> DtpXtrigActivityWindow:
-        """Window sampler over ``names``; the caller starts and stops it."""
-        return DtpXtrigActivityWindow(self, names)
+    def activity_window(
+        self,
+        names: tuple[str, ...],
+        derived: Mapping[str, Callable[[dict[str, int]], int]] | None = None,
+    ) -> DtpXtrigActivityWindow:
+        """Window sampler over ``names`` and the ``derived`` observables; the caller starts and stops it."""
+        return DtpXtrigActivityWindow(self, names, derived)
 
     def sample_signal(self, name: str) -> int:
         """Integer value of one cross-trigger observable or counter by its flat name."""
@@ -229,21 +286,34 @@ class DtpXtrigBfm:
         self.init_signals()
         await ClockCycles(self.clk, 1)
 
-    async def measure_mask_width(self, name: str, mask: int, *, timeout_cycles: int = 80) -> int:
-        """Return the consecutive-cycle width of the first observed masked pulse."""
+    async def measure_mask_width(
+        self, name: str, mask: int, *, timeout_cycles: int = 80, tail_cycles: int = 6
+    ) -> DtpXtrigPulse:
+        """Consecutive-cycle width of the first masked pulse, and the rises counted until ``tail_cycles`` after it ends.
+
+        A masked value already nonzero at the first sample counts as a rise;
+        the measurement ends at ``timeout_cycles`` samples in any case.
+        """
         width = 0
-        started = False
-        for _ in range(timeout_cycles):
+        pulses = 0
+        was_active = False
+        ended_at: int | None = None
+        for cycle in range(timeout_cycles):
             await ReadOnly()
             active = bool(self.tb_if.sample(name) & mask)
             await NextTimeStep()
-            if active:
-                width += 1
-                started = True
-            elif started:
-                return width
+            if active and not was_active:
+                pulses += 1
+            if ended_at is None:
+                if active:
+                    width += 1
+                elif pulses:
+                    ended_at = cycle
+            was_active = active
+            if ended_at is not None and cycle - ended_at >= tail_cycles:
+                break
             await ClockCycles(self.clk, 1)
-        return width
+        return DtpXtrigPulse(width=width, pulses=pulses)
 
     async def assert_quiet(self, names: tuple[str, ...], *, cycles: int = 4) -> dict[str, int]:
         """Sample selected signal groups for a quiet window and return ORed activity."""
@@ -255,14 +325,6 @@ class DtpXtrigBfm:
             await NextTimeStep()
             await ClockCycles(self.clk, 1)
         return activity
-
-    async def pulse_reset(self, cycles: int = 3) -> None:
-        """Pulse system reset while keeping cocotb-driven XTRIG inputs idle."""
-        self.init_signals()
-        self.tb_if.sys_rst_n.value = 0
-        await ClockCycles(self.clk, cycles)
-        self.tb_if.sys_rst_n.value = 1
-        await ClockCycles(self.clk, cycles + 2)
 
     @staticmethod
     def decode_status(status: int) -> dict[str, int]:

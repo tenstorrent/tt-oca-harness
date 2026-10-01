@@ -1,25 +1,35 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-km_drbg_sampler]
+== DRBG Sampler
+
+DRBG random data interface and configuration/status registers
+
 [cols="1,4,1,6", options="header"]
-.Register Map
 |===
 | Address | Name | Access | Description
-| 0x0 | DATA | R a| One word of random data. Read triggers request or returns prefetch. Writes return SLVERR. No reset.
-| 0x4 | CFG | RW a| Configuration: PREFETCH enable, TIMEOUT cycles for active CPU read.
-| 0x8 | STATUS | RW a| Status: DRBG_READY, PREFETCHED, TIMEOUT_ERR (W1C), STREAM_ERR (W1C), COUNT_BAD, COUNT_GOOD.
-| 0xC | PREFETCH_DATA | R a| Prefetched word (read-only, for debugging). Cleared when PREFETCH=0. No reset; power-up undefined.
+| 0x0 | <<reg-{regmap-instance}-km_drbg_sampler-DATA,DATA>> | R a| One word of random data. Read triggers request or returns prefetch. Writes return SLVERR. No reset.
+| 0x4 | <<reg-{regmap-instance}-km_drbg_sampler-CFG,CFG>> | RW a| Configuration: PREFETCH enable, TIMEOUT cycles for active CPU read.
+| 0x8 | <<reg-{regmap-instance}-km_drbg_sampler-STATUS,STATUS>> | RW a| Status: DRBG_READY, PREFETCHED, TIMEOUT_ERR (W1C), STREAM_ERR (W1C), COUNT_BAD, COUNT_GOOD.
+| 0xC | <<reg-{regmap-instance}-km_drbg_sampler-PREFETCH_DATA,PREFETCH_DATA>> | R a| Prefetched word (read-only, for debugging). Cleared when PREFETCH=0. No reset; power-up undefined.
 |===
 
+[#reg-{regmap-instance}-km_drbg_sampler-DATA]
+=== DATA
+
 [cols="1,3,1,1,6", options="header"]
-.DATA Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `data` | R | - a| 32-bit random data from DRBG. No reset for security; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_drbg_sampler-CFG]
+=== CFG
+
 [cols="1,3,1,1,6", options="header"]
-.CFG Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:16 | `timeout` | RW | 0x100 a| Cycles to wait for DRBG on active CPU read; 0 = disable. Default 256.
@@ -27,21 +37,25 @@
 | 0 | `prefetch` | RW | 0x0 a| Enable prefetch. When 0, prefetch data register is cleared.
 |===
 
+[#reg-{regmap-instance}-km_drbg_sampler-STATUS]
+=== STATUS
+
 [cols="1,3,1,1,6", options="header"]
-.STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:16 | `count_good` | RW | 0x0 a| Successful words transferred to CPU. Saturates at 0xFFFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.
+| 31:16 | `count_good` | RW | 0x0 a| Counts only reads completed through StRespond, excluding prefetched words. Saturates at 0xFFFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.
 | 15:8 | `count_bad` | RW | 0x0 a| Failed transactions (timeout or error). Saturates at 0xFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.
 | 7:4 | `rsvd` | R | 0x0 a| Reserved
-| 3 | `stream_err` | RW | 0x0 a| Set when there is an error on the DRBG AXI-Stream interface (e.g. TVALID deasserted before TREADY). Write 1 to clear.
-| 2 | `timeout_err` | RW | 0x0 a| Set when a DRBG read from the KM CPU times out. Write 1 to clear.
+| 3 | `stream_err` | RW1C | 0x0 a| Set when there is an error on the DRBG AXI-Stream interface (e.g. TVALID deasserted before TREADY). Write 1 to clear.
+| 2 | `timeout_err` | RW1C | 0x0 a| Set when a DRBG read from the KM CPU times out. Write 1 to clear.
 | 1 | `prefetched` | R | 0x0 a| Prefetched data available
 | 0 | `drbg_ready` | R | 0x0 a| TVALID asserted from DRBG
 |===
 
+[#reg-{regmap-instance}-km_drbg_sampler-PREFETCH_DATA]
+=== PREFETCH_DATA
+
 [cols="1,3,1,1,6", options="header"]
-.PREFETCH_DATA Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `data` | R | - a| Prefetched 32-bit random data. No reset for security; power-up value undefined.

@@ -10,6 +10,8 @@
   <ipxact:memoryMaps>
     <ipxact:memoryMap>
       <ipxact:name>pvt_wrap</ipxact:name>
+      <ipxact:displayName>PVT Wrapper Placeholder Address Map</ipxact:displayName>
+      <ipxact:description>Adopter PVT and monitor placeholder reserving the map slot; no CSRs are modeled.</ipxact:description>
       <ipxact:addressBlock>
         <ipxact:name>footprint</ipxact:name>
         <ipxact:description>Placeholder footprint (adopter PVT/monitor block; no CSRs modeled)</ipxact:description>

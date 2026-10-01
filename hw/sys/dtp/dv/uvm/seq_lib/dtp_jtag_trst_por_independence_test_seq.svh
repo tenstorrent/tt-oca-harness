@@ -5,10 +5,12 @@
 // reset while TRST_N stays deasserted (the SV port of the cocotb
 // dtp_jtag_trst_por_independence_test_seq):
 //   * navigate to a seeded start state (Run-Test/Idle, Shift-IR, Shift-DR,
-//     Pause-IR, or Pause-DR) with a seeded BYPASS/IDCODE instruction loaded;
+//     Pause-IR, or Pause-DR) with a seeded instruction other than IDCODE
+//     loaded (BYPASS 0x00, BYPASS 0x3F, or SAMPLE/PRELOAD);
 //   * hold power-on reset for a seeded 2..8 TCK periods with TRST untouched
-//     and TCK idle, and prove the TAP is in Test-Logic-Reset with TRST_N
-//     high during the pulse and after release (CHK-TAP-POR-TLR);
+//     and TCK idle (pulse_por), and prove the TAP is in Test-Logic-Reset
+//     with TRST_N high during the pulse (CHK-TAP-POR-TLR) and that the
+//     tb_top assertion counter advanced (CHK-RESET-COUNT);
 //   * step TLR -> RTI by TMS alone and prove a DR scan with no IR load and
 //     no TRST activity reads the device-identification register the reset
 //     reloaded (CHK-IDCODE-RECOVERY).
@@ -35,7 +37,8 @@ class dtp_jtag_trst_por_independence_test_seq extends dtp_jtag_base_test_seq;
     ocah_jtag_tap_state_e state_choices[5];
     ocah_jtag_tap_state_e target;
     int unsigned por_cycles;
-    logic [31:0] por_before;
+    bit [15:0] state_under_por;
+    bit trst_n_under_por;
     bit [63:0] idcode;
     bit [IrWidth-1:0] instr;
     string ctx;
@@ -52,7 +55,7 @@ class dtp_jtag_trst_por_independence_test_seq extends dtp_jtag_base_test_seq;
     state_choices[3] = OCAH_JTAG_PAUSE_IR;
     state_choices[4] = OCAH_JTAG_PAUSE_DR;
     target     = state_choices[$urandom_range(4)];
-    instr      = $urandom_range(1) ? IDCODE_INSTR : BYPASS_INSTR;
+    instr      = random_non_idcode_preload();
     por_cycles = $urandom_range(8, 2);
     ctx        = $sformatf("start_state=%s por_cycles=%0d", target.name(), por_cycles);
     `uvm_info(get_type_name(), $sformatf("POR independence: %s ir=0x%02h", ctx, instr), UVM_LOW)
@@ -70,20 +73,11 @@ class dtp_jtag_trst_por_independence_test_seq extends dtp_jtag_base_test_seq;
     `uvm_info(get_type_name(), $sformatf(
                                    "Step 2: Hold power-on reset for %0d TCK periods with TCK idle",
                                    por_cycles), UVM_LOW)
-    por_before = tb_vif.por_assert_count;
-    tb_vif.por_rst_n <= 1'b0;
-    wait_tck_periods(por_cycles);
-    family_check(PorCheckId, "TAP state during POR", 64'(tb_vif.tap_state), 64'(TEST_LOGIC_RESET),
+    pulse_por(por_cycles, state_under_por, trst_n_under_por);
+    family_check(PorCheckId, "TAP state during POR", 64'(state_under_por), 64'(TEST_LOGIC_RESET),
                  ctx);
-    family_check(PorCheckId, "TRST_N deasserted during POR", 64'(jtag_vif.trst_n), 64'd1, ctx);
-    check_state(TEST_LOGIC_RESET, "jtag_por_chk", $sformatf(
-                "during POR from %s, TRST deasserted", target.name()));
-    tb_vif.por_rst_n <= 1'b1;
-    wait_tck_periods(1);
-    check_reset_counted("por_assert_count", por_before, tb_vif.por_assert_count, ctx);
+    family_check(PorCheckId, "TRST_N deasserted during POR", 64'(trst_n_under_por), 64'd1, ctx);
     check_state(TEST_LOGIC_RESET, "jtag_por_chk", "after POR release, before any TCK edge");
-    // Re-align sequence-side TAP tracking with the asynchronous reset.
-    sync_model(OCAH_JTAG_TEST_LOGIC_RESET);
 
     `uvm_info(get_type_name(),
               "Step 3: TLR -> RTI by TMS, then a DR scan with no IR load reads IDCODE", UVM_LOW)

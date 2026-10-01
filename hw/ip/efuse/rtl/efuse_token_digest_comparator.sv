@@ -1,34 +1,26 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
+// Compare two 256-bit token digests with hard-cell differential equal and not-equal trees.
 //
-// Token Digest Comparator (single instance) — radix-4 reduction tree
-//
-// Computes a fully-differential equal / not-equal result for two 256-bit
-// token digests using hard-cell primitives so synthesis cannot merge or
-// optimize away the compare logic.
-//
-// Equal path (match_p_o): per-bit XNOR, then radix-4 NAND/NOR reduction.
-//
-// Not-equal path (match_n_o): per-bit XOR, then radix-4 OR4 reduction.
-//
-// Gate count per instance: 256 XNOR + 85 NAND/NOR (eq) + 256 XOR + 85 OR4 (neq)
-//                         = ~682 hard cells.
-//
-//-----------------------------------------------------------------------------
+// Equal path (match_p_o): per-bit XNOR then radix-4 NAND/NOR reduction.
+// Not-equal path (match_n_o): per-bit XOR then radix-4 OR4 reduction.
+// Hard cells prevent synthesis from merging or optimizing away the compare logic (~682
+// cells per instance).
 
 module efuse_token_digest_comparator #(
-  localparam int unsigned TokenWidth = 256,
-  localparam int unsigned L0Width    = TokenWidth / 4,
-  localparam int unsigned L1Width    = L0Width / 4,
-  localparam int unsigned L2Width    = L1Width / 4
+  localparam int unsigned TokenWidth = 256,  // Token digest width in bits.
+  localparam int unsigned L0Width    = TokenWidth / 4,  // Width of reduction level L0, one bit per
+                                                        // four digest bits.
+  localparam int unsigned L1Width    = L0Width / 4,  // Width of reduction level L1.
+  localparam int unsigned L2Width    = L1Width / 4  // Width of reduction level L2, which feeds the
+                                                    // final four-input gate.
 ) (
-  input  logic [TokenWidth-1:0] token_digest_i,
-  input  logic [TokenWidth-1:0] token_expected_i,
+  input  logic [TokenWidth-1:0] token_digest_i,  // Computed 256-bit token digest.
+  input  logic [TokenWidth-1:0] token_expected_i,  // Expected 256-bit token digest.
 
-  output logic                  match_p_o,  // 1 = equal
-  output logic                  match_n_o   // 1 = not equal
+  output logic                  match_p_o,  // 1 = equal.
+  output logic                  match_n_o  // 1 = not equal.
 );
 
   //-------------------------------------------------------------------------

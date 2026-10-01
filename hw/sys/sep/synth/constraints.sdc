@@ -21,11 +21,11 @@
 # flows/synth/yosys/README.md for the rationale.
 #
 # Known limitations, called out explicitly:
-#   - The entropy clock tree (sep_entropy_clocks.sdc) targets post-synthesis
-#     standard-cell instances by hierarchical path and by cell reference name.
-#     None of those lookups resolve pre-synthesis, and `entropy_source` inside
-#     `sep_crypto` is currently blackboxed, so that file documents the intended
-#     clock topology rather than constraining this repo's RTL or PDK today.
+#   - The entropy ripple-divider clocks below are created from the RTL
+#     hierarchy when `entropy_source` is elaborated. The section is skipped
+#     when the shared ring-oscillator pin is absent (the block is
+#     blackboxed). When that pin is present, a short tap count is an error:
+#     every divided flop must carry a generated clock.
 #   - CDC crossings are bounded in two layers, both included from this file.
 #     sep_clock_groups.sdc declares the asynchronous groups with `-allow_paths`
 #     and applies a loose default max_delay per inter-group clock pair;

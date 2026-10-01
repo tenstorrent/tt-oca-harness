@@ -6,20 +6,21 @@
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: kmac_wrapper_key</h2>
+<h2 id="regmap-kmac_wrapper_key">KMAC Wrapper Key Registers</h2>
+<p>Key storage registers for the KMAC sideload interface.<br>Written by Key Manager CPU, drives keymgr_key_i on the OT KMAC core.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
 <li><strong>KEY_SHARE0[8]</strong>: 8 registers, base 0x0, stride 0x4</li>
 <li><strong>KEY_SHARE1[8]</strong>: 8 registers, base 0x20, stride 0x4</li>
 </ul>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0 - 0x1C</td><td><a href="#KEY_SHARE0_8_">KEY_SHARE0[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
 <tr><td>0x20 - 0x3C</td><td><a href="#KEY_SHARE1_8_">KEY_SHARE1[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
 <tr><td>0x40</td><td><a href="#KEY_CTRL">KEY_CTRL</a></td><td>RW</td><td>Key control register. Writing KEY_VALID=1 asserts the sideload<br>valid signal to the KMAC core.</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="KEY_SHARE0_8_">KEY_SHARE0[8]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>

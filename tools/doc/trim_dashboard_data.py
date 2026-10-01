@@ -5,14 +5,22 @@
 """
 Trim the published dashboard data down to what the web pages render.
 
-The ``summary`` subcommand reads ``latest/summary.json`` from the
-``dv-dashboard-data`` branch and keeps only the following:
+A series is one block as run by one framework on one simulator, named by
+``flow``, ``framework`` and ``tool`` together. Every entry below carries all
+three, so the page can tell one series from another.
+
+The ``combine`` subcommand collects what several publishers published into the
+one file the rest of the pipeline reads, concatenating ``dut_status``,
+``results`` and ``points`` and keeping the newest ``generated_at``.
+
+The ``summary`` subcommand reads a published summary and keeps only:
 
     {
       "generated_at": str,
-      "dut_status":   [{"flow": str, "tests_total": int,
-                        "pass_rate": float}],
-      "results":      [{"flow": str,
+      "dut_status":   [{"flow": str, "framework": str, "tool": str,
+                        "tests_total": int, "pass_rate": float,
+                        "coverage_total_percent": float}],
+      "results":      [{"flow": str, "framework": str, "tool": str,
                         "coverage": {"effective_metrics": {...}}}]
     }
 
@@ -20,20 +28,21 @@ With ``--tests-out``, a second file for the block pages:
 
     {
       "generated_at": str,
-      "flows": {
-        "<flow>": [{"name": str, "status": str, "category": str,
-                    "seed": int, "duration_sec": float, "stage": str}]
-      }
+      "results": [{"flow": str, "framework": str, "tool": str,
+                   "tests": [{"name": str, "status": str, "category": str,
+                              "seed": int, "duration_sec": float,
+                              "stage": str}]}]
     }
 
-The ``history`` subcommand reads the published ``data/history.json`` and writes
-the series for the trends page:
+The ``history`` subcommand reads a published history and writes the series for
+the trends page:
 
     {
       "points": [{"generated_at": str, "test_pass_rate": float,
                   "flow_pass_rate": float, "failed_tests": int,
                   "flaky_tests": int,
-                  "per_dut": [{"flow": str, "coverage_status": str,
+                  "per_dut": [{"flow": str, "framework": str, "tool": str,
+                               "coverage_status": str,
                                "effective_metrics": {...}}]}]
     }
 """
@@ -44,17 +53,26 @@ import argparse
 import json
 import sys
 from collections.abc import Callable
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 # Every tuple below is exactly what dashboard.adoc reads. Adding a column to
 # the page means adding its field here too, or the cell renders as n/a.
 SUMMARY_KEYS: tuple[str, ...] = ("generated_at",)
-DUT_KEYS: tuple[str, ...] = ("flow", "tests_total", "pass_rate")
+
+# The fields that together name one series.
+IDENTITY_KEYS: tuple[str, ...] = ("flow", "framework", "tool")
+
+DUT_KEYS: tuple[str, ...] = IDENTITY_KEYS + (
+    "tests_total",
+    "pass_rate",
+    "coverage_total_percent",
+)
 
 # dut_status[] flattens coverage to a single total_percent, so the per-metric
 # breakdown (line/toggle/assertion/functional) only exists on results[].
-RESULT_KEYS: tuple[str, ...] = ("flow",)
+RESULT_KEYS: tuple[str, ...] = IDENTITY_KEYS
 COVERAGE_KEYS: tuple[str, ...] = ("effective_metrics",)
 
 # Per-test fields for the block pages, written to a separate file.
@@ -68,7 +86,7 @@ HISTORY_POINT_KEYS: tuple[str, ...] = (
     "failed_tests",
     "flaky_tests",
 )
-HISTORY_DUT_KEYS: tuple[str, ...] = ("flow", "coverage_status", "effective_metrics")
+HISTORY_DUT_KEYS: tuple[str, ...] = IDENTITY_KEYS + ("coverage_status", "effective_metrics")
 
 
 def trim_test(test: dict[str, Any]) -> dict[str, Any]:
@@ -123,6 +141,29 @@ def trim_result(result: dict[str, Any]) -> dict[str, Any]:
     if isinstance(coverage, dict):
         trimmed["coverage"] = {key: coverage[key] for key in COVERAGE_KEYS if key in coverage}
     return trimmed
+
+
+def moment(raw: Any) -> datetime:
+    """
+    Read a published timestamp.
+
+    Publishers need not agree on a UTC offset, so the values are compared as
+    moments rather than as the strings they arrive in.
+
+    Args:
+        raw: The published value, of any type
+
+    Returns:
+        The timestamp, or the earliest representable one where it is absent or
+        unreadable, so a usable timestamp always wins
+    """
+    if isinstance(raw, str) and raw:
+        try:
+            parsed = datetime.fromisoformat(raw)
+        except ValueError:
+            return datetime.min.replace(tzinfo=timezone.utc)
+        return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+    return datetime.min.replace(tzinfo=timezone.utc)
 
 
 def read_json(source: Path) -> Any:
@@ -193,18 +234,19 @@ def trim_summary(args: argparse.Namespace) -> int:
     write_json(args.output, trimmed)
 
     if args.tests_out:
-        by_flow: dict[str, list[dict[str, Any]]] = {}
+        detailed: list[dict[str, Any]] = []
         for result in summary.get("results") or []:
             if not isinstance(result, dict) or not result.get("flow"):
                 continue
             tests = result.get("tests_detail")
-            if isinstance(tests, list):
-                by_flow[result["flow"]] = [
-                    trim_test(test) for test in tests if isinstance(test, dict)
-                ]
+            if not isinstance(tests, list):
+                continue
+            entry = {key: result[key] for key in IDENTITY_KEYS if key in result}
+            entry["tests"] = [trim_test(test) for test in tests if isinstance(test, dict)]
+            detailed.append(entry)
         detail: dict[str, Any] = {
             "generated_at": summary.get("generated_at"),
-            "flows": by_flow,
+            "results": detailed,
         }
         write_json(args.tests_out, detail)
 
@@ -234,6 +276,48 @@ def trim_history(args: argparse.Namespace) -> int:
     return 0
 
 
+def combine_published(args: argparse.Namespace) -> int:
+    """
+    Collect what several publishers published into one document.
+
+    Each publisher keeps its own directory on the data branch and reports one
+    series, so the page reads one file holding all of them. Every entry carries
+    the flow, framework and tool naming it, so no entry is altered or folded
+    into another.
+
+    Args:
+        args: Parsed arguments carrying sources and output
+
+    Returns:
+        0 on success, 1 when a source is unreadable or is not a JSON object
+    """
+    collected: dict[str, Any] = {}
+    for source in args.sources:
+        document = read_json(source)
+        if document is None:
+            return 1
+        if not isinstance(document, dict):
+            print(f"error: {source} is not a JSON object", file=sys.stderr)
+            return 1
+        # Each list simply grows by what this publisher reported.
+        for key in ("dut_status", "results", "points"):
+            entries = document.get(key)
+            if isinstance(entries, list):
+                collected.setdefault(key, []).extend(entries)
+        # The whole file is as recent as its most recent publisher.
+        stamp = moment(document.get("generated_at"))
+        if stamp > moment(collected.get("generated_at")):
+            collected["generated_at"] = document["generated_at"]
+
+    # The trends page plots points in order, whichever publisher they came from.
+    points = collected.get("points")
+    if isinstance(points, list):
+        points.sort(key=lambda point: moment(point.get("generated_at")))
+
+    write_json(args.output, collected)
+    return 0
+
+
 def main() -> int:
     """
     Parse arguments and dispatch to the selected subcommand.
@@ -260,9 +344,16 @@ def main() -> int:
     history.add_argument("source", type=Path, help="published history.json")
     history.add_argument("output", type=Path, help="trend series to write")
 
+    combine = subcommands.add_parser(
+        "combine", help="collect what several publishers published into one file"
+    )
+    combine.add_argument("output", type=Path, help="collected file to write")
+    combine.add_argument("sources", type=Path, nargs="+", help="published files to collect")
+
     handlers: dict[str, Callable[[argparse.Namespace], int]] = {
         "summary": trim_summary,
         "history": trim_history,
+        "combine": combine_published,
     }
 
     args = parser.parse_args()

@@ -4,10 +4,11 @@
 // Cross-trigger functional coverage (ctp_cg, ctm_cg).
 //
 // One instance in the shared tb_top serves both flows. Every bin derives
-// from the flattened cross-trigger pins and the XTRIG CSR AXI-Lite write
-// channel in the system-clock domain: CTP mode/inversion/stretch classes
-// decode the CSR writes, the P2P phases and the CTM source/destination
-// index bins follow the GPIO and matrix handshake pins.
+// from the flattened cross-trigger pins, the XTRIG CSR AXI-Lite write
+// channel, and each CTP's CONFIG.INVERT field in the system-clock domain:
+// CTP mode/inversion/stretch classes decode the CSR writes, the P2P phases
+// and the CTM source/destination index bins follow the GPIO and matrix
+// handshake pins.
 //
 // CONVENTION (see dtp_fcov.sv): every cover-property body and disable-iff
 // argument is a single continuous-assign wire; no declaration initializers
@@ -24,6 +25,7 @@ module dtp_xtrig_fcov (
   input wire        axil_awvalid_i,
   input wire        axil_awready_i,
   input wire [31:0] axil_wdata_i,
+  input wire [3:0]  axil_wstrb_i,
   input wire        axil_wvalid_i,
   input wire        axil_wready_i,
 
@@ -32,15 +34,29 @@ module dtp_xtrig_fcov (
   input wire [9:0]  ctm_dst_req_i,
   input wire [15:0] ctp_req_out_dout_i,
   input wire [15:0] ctp_req_out_dout_en_i,
-  input wire [15:0] ctp_req_in_din_i,
-  input wire [15:0] ctp_ack_in_din_i
+  input wire [15:0] ctp_req_out_din_en_i,
+  input wire [15:0] ctp_ct_dst_i,
+  input wire [15:0] ctp_ack_in_din_i,
+
+  // CONFIG.INVERT of each CTP, from its register field
+  input wire [15:0] ctp_invert_i
 );
 
-  // CSR windows of the cross-trigger network (cross_trigger_network_pkg).
-  localparam logic [31:0] CtpBase = 32'(cross_trigger_network_pkg::CSR_ADDR_CTM_SIZE);
-  localparam int unsigned CtpStride = cross_trigger_network_pkg::CSR_ADDR_CTP_SIZE;
-  localparam int unsigned NumCtp = 16;
+  import cross_trigger_network_addrmap_pkg::*;
+
+  // CSR windows of the cross-trigger network (generated address map).
+  localparam logic [31:0] CtpBase = 32'(CROSS_TRIGGER_NETWORK_CTP_BASE_ADDR(0));
+  localparam int unsigned CtpStride = int'(CROSS_TRIGGER_NETWORK_CTP_STRIDE);
+  localparam int unsigned NumCtp = int'(CROSS_TRIGGER_NETWORK_CTP_NUM);
   localparam logic [31:0] CtpEnd = CtpBase + 32'(NumCtp * CtpStride);
+  // CONFIG and STRETCH_MULT offsets inside a CTP window. Verible explodes the
+  // argument list of a call in a wrapped declaration.
+  // verilog_format: off
+  localparam logic [31:0] CtpConfigOff =
+      32'(CROSS_TRIGGER_NETWORK_CTP_CONFIG_BASE_ADDR(0)) - CtpBase;
+  localparam logic [31:0] CtpStretchOff =
+      32'(CROSS_TRIGGER_NETWORK_CTP_STRETCH_MULT_BASE_ADDR(0)) - CtpBase;
+  // verilog_format: on
 
   wire in_reset = (rst_ni !== 1'b1);
 
@@ -61,22 +77,39 @@ module dtp_xtrig_fcov (
   end
   wire ctp_csr_write = w_hs && aw_seen_q && (awaddr_q >= CtpBase)
       && (awaddr_q < CtpEnd);
-  wire [3:0] ctp_csr_off = awaddr_q[3:0];
-  wire ctp_config_write = ctp_csr_write && (ctp_csr_off == 4'h0);
-  wire ctp_stretch_write = ctp_csr_write && (ctp_csr_off == 4'h8);
+  wire [31:0] ctp_csr_off = (awaddr_q - CtpBase) % CtpStride;
+  wire ctp_config_write = ctp_csr_write && (ctp_csr_off == CtpConfigOff);
+  wire ctp_stretch_write = ctp_csr_write && (ctp_csr_off == CtpStretchOff);
+  // CONFIG.MODE, INVERT, and RESET sit in byte 0 and STRETCH_MULT in bytes 0
+  // and 1 (cross_trigger_port.rdl), so a field is written only under the
+  // strobes of its bytes.
+  wire ctp_config_fields_write = ctp_config_write && axil_wstrb_i[0];
+  wire ctp_stretch_field_write = ctp_stretch_write && (&axil_wstrb_i[1:0]);
+
+  // CONFIG.INVERT per CTP one clock behind the field, the clock at which the
+  // port core's registered pad outputs apply it.
+  logic [NumCtp-1:0] ctp_invert_q;
+  always_ff @(posedge clk_i) ctp_invert_q <= ctp_invert_i[NumCtp-1:0];
+
+  // A CTP asserting its CT_Req_out (CONFIG.INVERT, cross_trigger_port.rdl): in
+  // wire-OR mode, where the pad input is enabled, the port drives its wire only
+  // while asserting; in point-to-point mode it drives the request level, high
+  // unless inverted.
+  wire [15:0] ctp_out_asserted = (ctp_req_out_din_en_i & ctp_req_out_dout_en_i)
+      | (~ctp_req_out_din_en_i & ctp_req_out_dout_en_i & (ctp_req_out_dout_i ^ ctp_invert_q));
 
   // ------------------------------------------------------------------
   // ctp_cg — mode, inversion, stretch classes, and P2P phases.
   // ------------------------------------------------------------------
-  wire ctp_mode_wire_or_e = ctp_config_write && !axil_wdata_i[0];
-  wire ctp_mode_p2p_e = ctp_config_write && axil_wdata_i[0];
-  wire ctp_inversion_normal_e = ctp_config_write && !axil_wdata_i[1];
-  wire ctp_inversion_inverted_e = ctp_config_write && axil_wdata_i[1];
-  wire ctp_csr_reset_e = ctp_config_write && axil_wdata_i[2];
+  wire ctp_mode_wire_or_e = ctp_config_fields_write && !axil_wdata_i[0];
+  wire ctp_mode_p2p_e = ctp_config_fields_write && axil_wdata_i[0];
+  wire ctp_inversion_normal_e = ctp_config_fields_write && !axil_wdata_i[1];
+  wire ctp_inversion_inverted_e = ctp_config_fields_write && axil_wdata_i[1];
+  wire ctp_csr_reset_e = ctp_config_fields_write && axil_wdata_i[2];
   wire [15:0] stretch_val = axil_wdata_i[15:0];
-  wire ctp_stretch_min_e = ctp_stretch_write && (stretch_val == 16'd0);
-  wire ctp_stretch_max_e = ctp_stretch_write && (stretch_val >= 16'd15);
-  wire ctp_stretch_mid_e = ctp_stretch_write && (stretch_val != 16'd0)
+  wire ctp_stretch_min_e = ctp_stretch_field_write && (stretch_val == 16'd0);
+  wire ctp_stretch_max_e = ctp_stretch_field_write && (stretch_val >= 16'd15);
+  wire ctp_stretch_mid_e = ctp_stretch_field_write && (stretch_val != 16'd0)
       && (stretch_val < 16'd15);
   `OCAH_FCOV_COVER(c_ctp_mode_wire_or, ctp_mode_wire_or_e, clk_i, in_reset)
   `OCAH_FCOV_COVER(c_ctp_mode_p2p, ctp_mode_p2p_e, clk_i, in_reset)
@@ -86,41 +119,62 @@ module dtp_xtrig_fcov (
   `OCAH_FCOV_COVER(c_ctp_stretch_mid, ctp_stretch_mid_e, clk_i, in_reset)
   `OCAH_FCOV_COVER(c_ctp_stretch_max, ctp_stretch_max_e, clk_i, in_reset)
 
-  wire [15:0] ctp_req_out_active = ctp_req_out_dout_i & ctp_req_out_dout_en_i;
-  wire any_req_out = |ctp_req_out_active;
-  wire any_ack_in = |ctp_ack_in_din_i;
+  // Point-to-point request and acknowledge per CTP (pad input disabled), each
+  // at the port's CONFIG.INVERT polarity.
+  wire [15:0] ctp_p2p_req_out = ctp_out_asserted & ~ctp_req_out_din_en_i;
+  wire [15:0] ctp_p2p_ack_in = (ctp_ack_in_din_i ^ ctp_invert_q) & ~ctp_req_out_din_en_i;
+  wire any_req_out = |ctp_p2p_req_out;
+  wire any_ack_in = |ctp_p2p_ack_in;
+  logic [15:0] ctp_p2p_req_out_q;
+  wire any_req_out_rise = |(ctp_p2p_req_out & ~ctp_p2p_req_out_q);
   logic had_req_out_q, csr_reset_pending_q;
   always_ff @(posedge clk_i) begin
+    ctp_p2p_req_out_q <= ctp_p2p_req_out;
     if (any_req_out) had_req_out_q <= 1'b1;
     if (ctp_csr_reset_e) csr_reset_pending_q <= 1'b1;
-    else if (any_req_out) csr_reset_pending_q <= 1'b0;
+    else if (any_req_out_rise) csr_reset_pending_q <= 1'b0;
   end
   wire ctp_p2p_request_e = any_req_out;
-  wire ctp_p2p_ack_e = any_ack_in && any_req_out;
+  wire ctp_p2p_ack_e = |(ctp_p2p_req_out & ctp_p2p_ack_in);
   wire ctp_p2p_idle_e = !any_req_out && !any_ack_in && had_req_out_q;
-  wire ctp_p2p_reset_recovery_e = any_req_out && csr_reset_pending_q;
+  // Recovery is a request rising after a CONFIG.RESET write: a request held
+  // on the pad when the reset is written is the one the reset clears.
+  wire ctp_p2p_reset_recovery_e = any_req_out_rise && csr_reset_pending_q;
   `OCAH_FCOV_COVER(c_ctp_p2p_state_request_phase, ctp_p2p_request_e, clk_i, in_reset)
   `OCAH_FCOV_COVER(c_ctp_p2p_state_acknowledge_phase, ctp_p2p_ack_e, clk_i, in_reset)
   `OCAH_FCOV_COVER(c_ctp_p2p_state_idle, ctp_p2p_idle_e, clk_i, in_reset)
   `OCAH_FCOV_COVER(c_ctp_p2p_state_reset_recovery, ctp_p2p_reset_recovery_e, clk_i, in_reset)
 
+  // Wire-OR receive: a port in wire-OR mode (pad input enabled) delivers a
+  // trigger. Its pad data rests at the asserted level of its sense, so the
+  // data pin tells the sense apart: 0 for INVERT=0, 1 for INVERT=1. Two or
+  // more ports delivering in one cycle heard the same shared wire.
+  logic [15:0] ctp_ct_dst_q;
+  always_ff @(posedge clk_i) ctp_ct_dst_q <= ctp_ct_dst_i;
+  wire [15:0] ctp_wire_or_rx_rise = ctp_ct_dst_i & ~ctp_ct_dst_q & ctp_req_out_din_en_i;
+  wire ctp_wire_or_rx_normal_e = |(ctp_wire_or_rx_rise & ~ctp_req_out_dout_i);
+  wire ctp_wire_or_rx_inverted_e = |(ctp_wire_or_rx_rise & ctp_req_out_dout_i);
+  wire ctp_wire_or_rx_shared_e = $countones(ctp_wire_or_rx_rise) >= 2;
+  `OCAH_FCOV_COVER(c_ctp_wire_or_rx_normal, ctp_wire_or_rx_normal_e, clk_i, in_reset)
+  `OCAH_FCOV_COVER(c_ctp_wire_or_rx_inverted, ctp_wire_or_rx_inverted_e, clk_i, in_reset)
+  `OCAH_FCOV_COVER(c_ctp_wire_or_rx_shared, ctp_wire_or_rx_shared_e, clk_i, in_reset)
+
   // ------------------------------------------------------------------
   // ctm_cg — source/destination types, fanout classes, and the per-port
-  // index bins. Source events: an external CTP request arriving
-  // (ctp_req_in_din rise) or an internal CT request (ctm_dst_req rise).
-  // Destination events: the matrix driving a CTP output (req_out rise) or
-  // an internal CT (ctm_src_req rise).
+  // index bins. Source events: a CTP delivering a trigger into the matrix
+  // (ct_dst rise, either mode) or an internal CT request (ctm_dst_req rise).
+  // Destination events: a CTP starting to assert its CT_Req_out or an
+  // internal CT request from the matrix (ctm_src_req rise).
   // ------------------------------------------------------------------
-  logic [15:0] ctp_req_in_q, ctp_req_out_q;
+  logic [15:0] ctp_out_asserted_q;
   logic [9:0] ctm_dst_req_q, ctm_src_req_q;
   always_ff @(posedge clk_i) begin
-    ctp_req_in_q <= ctp_req_in_din_i;
-    ctp_req_out_q <= ctp_req_out_active;
+    ctp_out_asserted_q <= ctp_out_asserted;
     ctm_dst_req_q <= ctm_dst_req_i;
     ctm_src_req_q <= ctm_src_req_i;
   end
-  wire [15:0] ctp_src_rise = ctp_req_in_din_i & ~ctp_req_in_q;
-  wire [15:0] ctp_dst_rise = ctp_req_out_active & ~ctp_req_out_q;
+  wire [15:0] ctp_src_rise = ctp_ct_dst_i & ~ctp_ct_dst_q;
+  wire [15:0] ctp_dst_rise = ctp_out_asserted & ~ctp_out_asserted_q;
   wire [9:0] int_src_rise = ctm_dst_req_i & ~ctm_dst_req_q;
   wire [9:0] int_dst_rise = ctm_src_req_i & ~ctm_src_req_q;
 
@@ -136,7 +190,7 @@ module dtp_xtrig_fcov (
   // Fanout classes: destinations active simultaneously; "none" is a source
   // event whose window closes with no destination response.
   wire [5:0] dest_active_count =
-      6'($countones(ctp_req_out_active)) + 6'($countones(ctm_src_req_i));
+      6'($countones(ctp_out_asserted)) + 6'($countones(ctm_src_req_i));
   logic [6:0] src_window_q;
   logic dest_seen_q;
   wire any_source_rise = ctm_source_ctp_e || ctm_source_internal_e;
@@ -273,15 +327,29 @@ module dtp_xtrig_fcov (
   // cover properties.
   localparam int unsigned IntPortBase = 16;
 
+  // The mode and inversion bins sample a CONFIG write that strobes byte 0,
+  // the stretch bins a STRETCH_MULT write that strobes both field bytes.
   covergroup cg_ctp with function sample (
-      logic mode_p2p, logic inverted, logic [1:0] stretch_class
+      logic config_write,
+      logic mode_p2p,
+      logic inverted,
+      logic stretch_write,
+      logic [1:0] stretch_class
   );
     option.per_instance = 1;
-    cp_mode: coverpoint mode_p2p;
-    cp_inversion: coverpoint inverted;
-    cp_stretch: coverpoint stretch_class {
+    cp_mode: coverpoint mode_p2p iff (config_write);
+    cp_inversion: coverpoint inverted iff (config_write);
+    cp_stretch: coverpoint stretch_class iff (stretch_write) {
       bins stretch_min = {2'd0}; bins stretch_mid = {2'd1}; bins stretch_max = {2'd2};
     }
+  endgroup
+
+  // Wire-OR receive events: the sense of the wire the trigger came from and
+  // how many ports delivered it in the same cycle.
+  covergroup cg_ctp_wire_or_rx with function sample (logic inverted, logic shared);
+    option.per_instance = 1;
+    cp_sense: coverpoint inverted {bins normal = {1'b0}; bins inverted = {1'b1};}
+    cp_listeners: coverpoint shared {bins one = {1'b0}; bins shared_wire = {1'b1};}
   endgroup
 
   covergroup cg_ctm with function sample (
@@ -303,15 +371,85 @@ module dtp_xtrig_fcov (
     }
   endgroup
 
-  cg_ctp u_cg_ctp = new();
-  cg_ctm u_cg_ctm = new();
+  // Routes the matrix carried: a destination rise credited to the one source
+  // that rose within RouteWindowCycles and that the destination's
+  // CT_SRC[destination] CONFIG_0 CT_DST_SELECT mask, shadowed from the CSR
+  // writes under their byte strobes, selects; a rise with two such sources
+  // credits no route. The crosses cover CLA-to-CTP and CTP-to-CLA routes.
+  covergroup cg_ctm_route with function sample (logic [4:0] src_idx, logic [4:0] dst_idx);
+    option.per_instance = 1;
+    cp_cla_src: coverpoint src_idx iff (src_idx >= IntPortBase) {
+      bins cla[] = {[IntPortBase : IntPortBase + 9]};
+    }
+    cp_ctp_src: coverpoint src_idx iff (src_idx < IntPortBase) {bins ctp[] = {[0 : 15]};}
+    cp_cla_dst: coverpoint dst_idx iff (dst_idx >= IntPortBase) {
+      bins cla[] = {[IntPortBase : IntPortBase + 9]};
+    }
+    cp_ctp_dst: coverpoint dst_idx iff (dst_idx < IntPortBase) {bins ctp[] = {[0 : 15]};}
+    x_cla_to_ctp: cross cp_cla_src, cp_ctp_dst;
+    x_ctp_to_cla: cross cp_ctp_src, cp_cla_dst;
+  endgroup
+
+  localparam int unsigned CtmPorts = int'(CROSS_TRIGGER_NETWORK_CTM_CT_SRC_NUM);
+  localparam int unsigned CtmStride = int'(CROSS_TRIGGER_NETWORK_CTM_CT_SRC_STRIDE);
+  localparam logic [31:0] CtmBase = 32'(CROSS_TRIGGER_NETWORK_CTM_BASE_ADDR);
+  localparam int unsigned RouteWindowCycles = 32;
+
+  wire [31:0] ctm_csr_off = awaddr_q - CtmBase;
+  wire ctm_select_write = w_hs && aw_seen_q && (ctm_csr_off < 32'(CtmPorts * CtmStride))
+      && ((ctm_csr_off % CtmStride) == 0);
+  wire [31:0] axil_wbiten = {{8{axil_wstrb_i[3]}}, {8{axil_wstrb_i[2]}}, {8{axil_wstrb_i[1]}},
+                             {8{axil_wstrb_i[0]}}};
+  wire [CtmPorts-1:0] route_src_rise = {int_src_rise, ctp_src_rise};
+  wire [CtmPorts-1:0] route_dst_rise = {int_dst_rise, ctp_dst_rise};
+  logic [CtmPorts-1:0] ctm_select_q[CtmPorts];
+  logic [5:0] route_src_age_q[CtmPorts];
 
   always_ff @(posedge clk_i) begin
-    if (ctp_config_write) begin
-      u_cg_ctp.sample(axil_wdata_i[0], axil_wdata_i[1], 2'd1);
+    for (int s = 0; s < CtmPorts; s++) begin
+      if (in_reset) begin
+        ctm_select_q[s] <= '0;
+        route_src_age_q[s] <= '0;
+      end else begin
+        if (ctm_select_write && (ctm_csr_off / CtmStride == s))
+          ctm_select_q[s] <= (ctm_select_q[s] & ~axil_wbiten[CtmPorts-1:0])
+              | (axil_wdata_i[CtmPorts-1:0] & axil_wbiten[CtmPorts-1:0]);
+        if (route_src_rise[s]) route_src_age_q[s] <= 6'(RouteWindowCycles);
+        else if (route_src_age_q[s] != 6'd0) route_src_age_q[s] <= route_src_age_q[s] - 6'd1;
+      end
     end
-    if (ctp_stretch_write) begin
-      u_cg_ctp.sample(1'b0, 1'b0,
+  end
+
+  // The one recent source destination `d` selects, or -1 for none or several.
+  function automatic int route_source(int d);
+    int src = -1;
+    for (int s = 0; s < CtmPorts; s++) begin
+      if ((route_src_age_q[s] != 6'd0) && ctm_select_q[d][s]) begin
+        if (src >= 0) return -1;
+        src = s;
+      end
+    end
+    return src;
+  endfunction
+
+  cg_ctp u_cg_ctp = new();
+  cg_ctp_wire_or_rx u_cg_ctp_wire_or_rx = new();
+  cg_ctm u_cg_ctm = new();
+  cg_ctm_route u_cg_ctm_route = new();
+
+  always_ff @(posedge clk_i) begin
+    if (ctp_config_fields_write) begin
+      u_cg_ctp.sample(1'b1, axil_wdata_i[0], axil_wdata_i[1], 1'b0, 2'd0);
+    end
+    if (!in_reset) begin
+      for (int i = 0; i < 16; i++) begin
+        if (ctp_wire_or_rx_rise[i]) begin
+          u_cg_ctp_wire_or_rx.sample(ctp_req_out_dout_i[i], ctp_wire_or_rx_shared_e);
+        end
+      end
+    end
+    if (ctp_stretch_field_write) begin
+      u_cg_ctp.sample(1'b0, 1'b0, 1'b0, 1'b1,
                       (stretch_val == 16'd0) ? 2'd0 : ((stretch_val >= 16'd15) ? 2'd2 : 2'd1));
     end
     // A destination rises one or more clocks after its source: the matrix
@@ -328,6 +466,11 @@ module dtp_xtrig_fcov (
         end
         if (int_dst_rise[i]) begin
           u_cg_ctm.sample(1'b0, 1'b0, 5'd0, 1'b1, 1'b0, 5'(IntPortBase + i));
+        end
+      end
+      for (int d = 0; d < CtmPorts; d++) begin
+        if (route_dst_rise[d] && (route_source(d) >= 0)) begin
+          u_cg_ctm_route.sample(5'(route_source(d)), 5'(d));
         end
       end
     end

@@ -6,7 +6,7 @@
 
 OCAH separates protocol-neutral behavior from DUT integration policy. This
 boundary keeps test intent stable when a backend, simulator, signal naming
-scheme, or commercial VIP changes.
+scheme, or optional backend changes.
 
 [[shared-vip-layering]]
 === Layering Model
@@ -25,7 +25,7 @@ ocah_<protocol>_vip
   |
   | backend adaptation
   v
-cocotbext-* / OCAH-native BFM / commercial VIP adapter
+cocotbext-* / OCAH-native BFM / optional backend adapter
   |
   v
 SystemVerilog interface or flattened DUT signals
@@ -51,7 +51,7 @@ and protocol-checker APIs.
 
 |Backend adapter
 |Translate stable OCAH calls to cocotb extensions, native Python BFMs, or
-commercial simulator VIP.
+an optional simulator backend.
 
 |HDL boundary
 |Provide shared interfaces or DUT-local flattened-signal adapters without
@@ -155,9 +155,10 @@ handshake stability, and protocol coverage.
 |Reusable signal-level properties whose meaning is protocol-neutral and whose
 binding does not depend on DUT hierarchy. Protocol-specific SVA lives with its
 protocol VIP instead, for example
-`ocah_axi_vip/sva/ocah_axi_sva.sv` (clean-room AXI4/AXI4-Lite
-rules) and, beside it, `ocah_axi_fv.sv`, the same rules in the boolean subset
-a formal environment binds with one side asserted and the other assumed.
+`ocah_axi_vip/sva/ocah_axi_sva.sv` (AXI4/AXI4-Lite rules derived from
+ARM IHI 0022) and, beside it, `ocah_axi_fv.sv`, the same rules in the
+boolean subset a formal environment binds with one side asserted and the
+other assumed.
 
 |DUT `cocotb/assertions/` or local SVA
 |Hierarchy, address, reset, lifecycle, security, and integration invariants.
@@ -172,7 +173,7 @@ policy, and finalization.
 |===
 
 Functional coverage hooks under a package `cov/` are plain SystemVerilog
-covergroups/binds without UVM phasing. A cocotb commercial-simulator flow may
+covergroups/binds without UVM phasing. A cocotb four-state-simulator flow may
 compile them directly; an SV-UVM flow binds the same model. Coverage is not a
 substitute for checking and cannot turn a failed transaction into PASS.
 
@@ -182,7 +183,7 @@ Verilator line and branch coverage against the package's
 `dv/cov/config/verilator/coverage_policy.toml`, which holds one threshold per
 metric family (98 % of the points that remain after accepted waivers, failing
 closed on an unclassified point, plus a raw floor) and one hole entry per
-uncovered point with its category, rationale, owner, reviewer, and expiry;
+uncovered point with its category, rationale, owner and reviewer;
 the SV-UVM harness shape samples the `cov/` covergroups and the SVA cover
 properties on a four-state simulator. Python components have no simulator
 metric; their record is the `CHK-*` matrix of the selftests. A hole with
@@ -190,19 +191,19 @@ reachable stimulus is covered by a selftest rather than waived, and
 capabilities a package lists as out of scope earn no credit.
 
 [[shared-vip-frameworks]]
-=== Cocotb, SystemVerilog UVM, and Commercial VIP
+=== Cocotb, SystemVerilog UVM, and Optional Backends
 
 The cocotb layer is the public, license-free baseline. Where a SystemVerilog UVM
 agent exists, its item and event surfaces follow the same protocol contract.
 DUT environments instantiate the OCAH VIP-level environment rather than a
 backend-specific agent.
 
-Commercial VIP integration is an adopter-owned adapter behind the hooks the
+Optional backend integration is an adopter-owned adapter behind the hooks the
 open tree ships (the opaque `vendor_cfg` extension, the `en_monitor` knob,
 the guarded vendor-interface nest, the factory-overridable environments).
 The normative contract — hook by hook, with the placement policy — is the
 *Template Contract* section of `hw/common/dv/vip/ocah_jtag_vip/README.md`;
-deployment-side guidance is <<shared-vip-commercial-deployment>>.
+deployment-side guidance is <<shared-vip-backend-deployment>>.
 
 Tests, VPLAN evidence, and DUT scoreboards stay independent of the selected
 backend.

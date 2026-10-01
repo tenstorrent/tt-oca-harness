@@ -16,6 +16,8 @@
 // NUM_ENTRIES * 4 bytes = 0x40_0000, the full window between smc_external and
 // ecam_region in smc_top. Growing it overlaps ecam_region.
 addrmap smc_external {
+    name = "SMC External Window Address Map";
+    desc = "Stubbed adopter extension window reserving the region as opaque external memory.";
 
     external ext_memory #(.NUM_ENTRIES(1048576), .WIDTH(32)) region @0x0000;
 

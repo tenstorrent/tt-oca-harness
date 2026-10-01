@@ -84,13 +84,14 @@
 /* Poll bounds, in loop iterations.
  *
  * Sized from measured cost, not guessed. A single-register poll iteration costs
- * 0.44-1.15 us of simulation in this testbench (the measurement recorded on
- * I2C_TIMEOUT_DEFAULT in i2c_opentitan.h:88-105). Standard mode off a 10 ns core
+ * 0.44-1.15 us of simulation at a 5 ns core clock (the measurement recorded on
+ * I2C_TIMEOUT_DEFAULT in i2c_opentitan.h:88-105), so 0.11-0.29 us at the
+ * 1.25 ns core clock the bench runs. Standard mode off the 5 ns peripheral
  * clock puts SCL at 100 kHz, i.e. ~10 us per bit and ~90 us per byte, so the
  * longest wait below -- an 8-byte transfer plus its address and STOP -- is
  * ~0.9 ms.
  *
- * 4000 iterations is ~1.8-4.6 ms: 2-5x that worst case, and it expires well
+ * 16000 iterations is ~1.8-4.6 ms: 2-5x that worst case, and it expires well
  * inside the testbench's 20 ms completion bound
  * (tb_wrap_cocotb/tests/smc_i2c_fifo_full.py:97), so the diagnostics behind
  * these bounds are reachable instead of being preempted by the harness.
@@ -99,8 +100,8 @@
  * (~90-230 ms), an order of magnitude past the harness bound, so a failure
  * branch guarded by it can never print.
  */
-#define XFER_POLL_BOUND 4000u
-#define IDLE_POLL_BOUND 4000u
+#define XFER_POLL_BOUND 16000u
+#define IDLE_POLL_BOUND 16000u
 
 /**
  * @brief Enable I2C Wrapper Control (LEVEL 1)
@@ -823,7 +824,7 @@ int main(void) {
 
     // Compute timing parameters
     i2c_timing_physical_t physical_params = {.speed = I2C_SPEED_STANDARD,
-                                             .clock_period_nanos = 10,
+                                             .clock_period_nanos = 5,
                                              .sda_rise_nanos = 300,
                                              .sda_fall_nanos = 100,
                                              .scl_period_nanos = 0};

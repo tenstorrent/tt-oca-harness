@@ -49,12 +49,15 @@ package dtp_seq_lib_pkg;
   `include "dtp_axi_csr_write_seq.svh"
   `include "dtp_axi_csr_read_seq.svh"
 
-  // Scenario layer: base virtual sequence, the basic-JTAG family, and the
-  // debug-TDR family; the reset-family and undefined-instruction scenarios
-  // read the debug-TDR pins through the latter.
+  // Scenario layer: base virtual sequence, the basic-JTAG family, the
+  // debug-TDR family, and the scan-network family; the reset-family and
+  // undefined-instruction scenarios read the debug-TDR pins through the
+  // debug-TDR family, and the zero-length-bypass scenario builds its STAP
+  // chain on the scan-network family.
   `include "dtp_base_test_seq.svh"
   `include "dtp_jtag_base_test_seq.svh"
   `include "dtp_debug_tdr_base_test_seq.svh"
+  `include "dtp_scan_base_test_seq.svh"
 
   // Basic-JTAG instruction-family scenarios.
   `include "dtp_jtag_bypass_test_seq.svh"
@@ -80,7 +83,6 @@ package dtp_seq_lib_pkg;
 
   // JTAG2AXI bridge scenarios.
   `include "dtp_jtag2axi_base_test_seq.svh"
-  `include "dtp_jtag2axi_single_write_read_test_seq.svh"
   `include "dtp_jtag2axi_smc_axi_wr_test_seq.svh"
   `include "dtp_jtag2axi_smc_axi_rd_test_seq.svh"
   `include "dtp_jtag2axi_error_test_seq.svh"
@@ -102,7 +104,6 @@ package dtp_seq_lib_pkg;
   `include "dtp_dbg_sep_otp_jtag2axi_caps_test_seq.svh"
 
   // Scan-network scenarios (iJTAG SIBs / STAP 3DCR / dbg_disable matrices).
-  `include "dtp_scan_base_test_seq.svh"
   `include "dtp_ijtag_scan_test_seq.svh"
   `include "dtp_stap_scan_test_seq.svh"
   `include "dtp_dbg_disable_scan_matrix_test_seq.svh"

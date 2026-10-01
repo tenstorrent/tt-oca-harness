@@ -10,7 +10,10 @@
 
 This document tracks internal revisions and updates to the OCAH documentation.
 
-.Internal Revision History
+<<internal-revision-history-table>> tracks the internal documentation revisions.
+
+[[internal-revision-history-table]]
+.Internal revision history
 [width="100%",cols="15%,15%,15%,55%",options="header",]
 |=======================================================================
 |Version |Date |Author |Description
@@ -193,4 +196,14 @@ the SEP interrupt controller, so software reads INTR_STATE to tell them apart;
 the access-control and SPI pass-through interfaces are unused and tied off. The
 SPI busy output is withdrawn from the SEP interface, since the OpenTitan host
 reports activity only through STATUS.ACTIVE.
+|0.5.35 |2026-09-25 |Nils Wistoff |Stated in the SMC, SEP, Key Manager and
+cross-trigger network address maps how each unit answers an access that no
+register or memory backs, inside its decoded extent and past it, and how an
+address between unit apertures answers.
+|0.5.36 |2026-09-29 |Noah Betik |Reworked `ocah_gpio_table.adoc` to key each
+row by pad index instead of harness signal name, and marked the PTAP/STAP JTAG,
+reference clock, reset and powergood rows as having no dedicated interface in
+the harness. Added GPIO pad integration guidance on the bonded and unbonded pad
+counts, the pad types for the JTAG PTAP/STAP, cross trigger ports and the
+clock/reset/powergood inputs.
 |=======================================================================

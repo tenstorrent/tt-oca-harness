@@ -11,7 +11,9 @@
 // whatever the SIB state and the dft_nonsecure disable (CHK-DFT-RUNBIST);
 // that disable holds the DFT SIB closed and silences its host scan controls
 // (CHK-DFT-SIB-SELECT, CHK-DFT-SCAN-CTRL) without touching the instruction
-// decode. Mirrors the cocotb dtp_jtag_runbist_test_seq.
+// decode, and the gated SIB ignores the Update-DR of a scan that shifts 0
+// into it, so the stored open state is effective again once the disable
+// clears. Mirrors the cocotb dtp_jtag_runbist_test_seq.
 
 class dtp_jtag_runbist_test_seq extends dtp_jtag_base_test_seq;
   `uvm_object_utils(dtp_jtag_runbist_test_seq)
@@ -104,6 +106,20 @@ class dtp_jtag_runbist_test_seq extends dtp_jtag_base_test_seq;
     return value;
   endfunction
 
+  // RUNBIST scan value that shifts 0 into every SIB flop and randomizes the
+  // bits that fall through the chain.
+  protected function bit [63:0] dft_gated_pattern();
+    bit bits[DtpIjtagSibCount];
+    bit [63:0] inst[int];
+    bit [63:0] value;
+    int unsigned free = RunbistScanWidth - m_sib_model.chain_len(m_dbg_disable);
+    foreach (bits[i]) bits[i] = 1'b0;
+    value = m_sib_model.compose_scan(RunbistScanWidth, m_dbg_disable,
+                                     int'(dtp_ijtag_sib_model::pattern_value(bits)), inst);
+    if (free > 0) value |= random_pattern(free);
+    return value;
+  endfunction
+
   // Program the SIB chain through SELECT_IJTAG so only the DFT SIB is open.
   protected task open_dft_sib();
     bit bits[DtpIjtagSibCount];
@@ -182,11 +198,10 @@ class dtp_jtag_runbist_test_seq extends dtp_jtag_base_test_seq;
     `uvm_info(get_type_name(),
               "Step 4: dft_nonsecure disable gates the DFT SIB, not the RUNBIST instruction",
               UVM_LOW)
-    m_dbg_disable = '0;
-    m_dbg_disable.dft_nonsecure = 1'b1;
+    m_dbg_disable = dtp_dbg_disable_only(DTP_DBG_PATH_DFT_NONSECURE);
     set_dbg_disable(m_dbg_disable);
     load_runbist("RUNBIST under the dft_nonsecure disable");
-    runbist_scan_windowed(dft_open_pattern(), DTP_SCAN_CTRL_GATED, "dft disabled");
+    runbist_scan_windowed(dft_gated_pattern(), DTP_SCAN_CTRL_GATED, "dft disabled");
 
     `uvm_info(get_type_name(),
               "Step 5: Clearing the disable restores the stored DFT SIB open state", UVM_LOW)

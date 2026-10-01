@@ -12,7 +12,8 @@
       <ipxact:name>output_remap_mmap</ipxact:name>
       <ipxact:addressBlock>
         <ipxact:name>output_remap</ipxact:name>
-        <ipxact:description>TLB Registers for address remapping and attribute tagging</ipxact:description>
+        <ipxact:displayName>Output Remap Address Map</ipxact:displayName>
+        <ipxact:description>Address-translation registers that remap outbound transactions and tag their attributes.</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
         <ipxact:range>'h8</ipxact:range>
         <ipxact:width>64</ipxact:width>
@@ -36,6 +37,18 @@ e.g. SMC: 8 * 1MB regions --&gt; 20 bits of address space per region, 36 MSBs fr
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>56</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>valid</ipxact:name>
+              <ipxact:description>If set, accesses to this region are remapped by offset; if clear, they pass through with their address unchanged</ipxact:description>
+              <ipxact:bitOffset>63</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
           </ipxact:register>

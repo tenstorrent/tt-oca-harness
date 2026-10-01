@@ -24,20 +24,22 @@
 # corrupting the path. Only the length rule is disabled; the rest still apply.
 # tclint-disable line-length
 
-# ---- prim_sync2r (1 instances) ----
-set_cdc_max_delay_prim_sync2 sep_cpu/u_mpc_reset_run_req_sync SEPCLK
+# ---- prim_sync2r (3 instances) ----
+set_cdc_max_delay_prim_sync2 u_sep_cpu/u_mpc_reset_run_req_sync SEPCLK
+set_cdc_max_delay_prim_sync2 u_sep_reset_ctrl/u_jtag_ip_ovrd_sync SEPCLK
+set_cdc_max_delay_prim_sync2 u_sep_reset_ctrl/u_jtag_ip_val_sync SEPCLK
 
 # ---- prim_sync3 (2 instances) ----
-set_cdc_max_delay_prim_sync3 sep_system_peripherals/u_sep_system_csr/reference_counter_counter/sync_cnt_en_count REFCLK
-set_cdc_max_delay_prim_sync3 sep_system_peripherals/u_sep_system_csr/reference_counter_counter/sync_ref_count SEPCLK
+set_cdc_max_delay_prim_sync3 u_sep_system_peripherals/u_sep_system_csr/u_reference_counter_counter/u_sync_cnt_en_count REFCLK
+set_cdc_max_delay_prim_sync3 u_sep_system_peripherals/u_sep_system_csr/u_reference_counter_counter/u_sync_ref_count SEPCLK
 
 # ---- prim_sync_reset (3 instances) ----
-set_cdc_max_delay_prim_sync_reset sep_system_peripherals/u_sep_system_csr/reference_counter_counter/prst_rd_clk_domain_sync REFCLK
-set_cdc_max_delay_prim_sync_reset sep_system_peripherals/u_sep_system_csr/reference_counter_counter/prst_wr_clk_domain_sync SEPCLK
+set_cdc_max_delay_prim_sync_reset u_sep_system_peripherals/u_sep_system_csr/u_reference_counter_counter/u_prst_rd_clk_domain_sync REFCLK
+set_cdc_max_delay_prim_sync_reset u_sep_system_peripherals/u_sep_system_csr/u_reference_counter_counter/u_prst_wr_clk_domain_sync SEPCLK
 set_cdc_max_delay_prim_sync_reset u_sep_wdt_wrap/u_rst_wdt_sync WDTCLK
 
 # ---- prim_fifo_async (1 instances) ----
-set_cdc_max_delay_prim_fifo_async sep_system_peripherals/u_sep_system_csr/reference_counter_counter/cnt_update_async_fifo SEPCLK REFCLK
+set_cdc_max_delay_prim_fifo_async u_sep_system_peripherals/u_sep_system_csr/u_reference_counter_counter/u_cnt_update_async_fifo SEPCLK REFCLK
 
 # ---- prim_reg_cdc (10 instances) ----
 set_cdc_max_delay_prim_reg_cdc u_sep_wdt_wrap/u_wdt_aon_timer/u_reg/u_wdog_bark_thold_cdc SEPCLK WDTCLK
@@ -52,11 +54,11 @@ set_cdc_max_delay_prim_reg_cdc u_sep_wdt_wrap/u_wdt_aon_timer/u_reg/u_wkup_thold
 set_cdc_max_delay_prim_reg_cdc u_sep_wdt_wrap/u_wdt_aon_timer/u_reg/u_wkup_thold_lo_cdc SEPCLK WDTCLK
 
 # ---- prim_sync_reqack_data (5 instances) ----
-# SAME CLOCK, not a crossing: set_cdc_max_delay_prim_sync_reqack_data sep_crypto/aes_wrapper_s3c_scan/tt_aes/u_prim_sync_reqack_data SEPCLK SEPCLK
-# SAME CLOCK, not a crossing: set_cdc_max_delay_prim_sync_reqack_data sep_crypto/kmac_wrapper_s3c_scan/tt_kmac/gen_entropy.u_prim_sync_reqack_data SEPCLK SEPCLK
-# SAME CLOCK, not a crossing: set_cdc_max_delay_prim_sync_reqack_data sep_crypto/sep_crypto_otbn_wrapper_s3c_scan/u_otbn/u_otbn_scramble_ctrl/u_otp_key_req_sync SEPCLK SEPCLK
-# SAME CLOCK, not a crossing: set_cdc_max_delay_prim_sync_reqack_data sep_crypto/sep_crypto_otbn_wrapper_s3c_scan/u_otbn/u_prim_edn_rnd_req/u_prim_sync_reqack_data SEPCLK SEPCLK
-# SAME CLOCK, not a crossing: set_cdc_max_delay_prim_sync_reqack_data sep_crypto/sep_crypto_otbn_wrapper_s3c_scan/u_otbn/u_prim_edn_urnd_req/u_prim_sync_reqack_data SEPCLK SEPCLK
+# SAME CLOCK, not a crossing: set_cdc_max_delay_prim_sync_reqack_data u_sep_crypto/u_aes_wrapper_s3c_scan/u_tt_aes/u_prim_sync_reqack_data SEPCLK SEPCLK
+# SAME CLOCK, not a crossing: set_cdc_max_delay_prim_sync_reqack_data u_sep_crypto/u_kmac_wrapper_s3c_scan/u_tt_kmac/gen_entropy.u_prim_sync_reqack_data SEPCLK SEPCLK
+# SAME CLOCK, not a crossing: set_cdc_max_delay_prim_sync_reqack_data u_sep_crypto/u_sep_crypto_otbn_wrapper_s3c_scan/u_otbn/u_otbn_scramble_ctrl/u_otp_key_req_sync SEPCLK SEPCLK
+# SAME CLOCK, not a crossing: set_cdc_max_delay_prim_sync_reqack_data u_sep_crypto/u_sep_crypto_otbn_wrapper_s3c_scan/u_otbn/u_prim_edn_rnd_req/u_prim_sync_reqack_data SEPCLK SEPCLK
+# SAME CLOCK, not a crossing: set_cdc_max_delay_prim_sync_reqack_data u_sep_crypto/u_sep_crypto_otbn_wrapper_s3c_scan/u_otbn/u_prim_edn_urnd_req/u_prim_sync_reqack_data SEPCLK SEPCLK
 
 # ---- dmi_wrapper (1 instances) ----
-set_cdc_max_delay_dmi_wrapper sep_cpu/el2_veer_wrapper/dmi_wrapper SEPCLK
+set_cdc_max_delay_dmi_wrapper u_sep_cpu/u_el2_veer_wrapper/dmi_wrapper SEPCLK

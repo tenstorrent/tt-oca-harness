@@ -51,7 +51,7 @@ DTP_NUM_CLK_STOP_REQ = XTRIG_NUM_CLK_STOP_REQ + XTRIG_SMC_CLK_STOP_LANES
 NUM_INT_TO_SMC = 256
 # hw/sys/smu/doc/port_table.adoc `lc_state_o` (`[2*LC_STATE_WIDTH-1:0]`, tie
 # value `8'hf0`); hw/sys/smc/doc/port_table.adoc `lc_state_i` "(8 bits)";
-# hw/sys/sep/doc/periphs.adoc gives the life-cycle state width as 4.
+# hw/sys/sep/doc/otp_fuse_controller.adoc gives the life-cycle state width as 4.
 LC_STATE_O_WIDTH = 8
 # hw/sys/smu/doc/port_table.adoc `lcc_demote_state_1_o` / `_2_o`: `[1:0]`.
 LCC_DEMOTE_WIDTH = 2
@@ -300,12 +300,16 @@ def bit_width(handle: Any, name: str) -> int:
         raise AssertionError(f"{name} has no width: {exc}") from exc
 
 
-async def count_transitions(signals: dict[str, Any], window_ns: int, step_ns: int = 1) -> dict:
-    """Count level changes on each signal over ``window_ns`` at ``step_ns`` resolution."""
+async def count_transitions(signals: dict[str, Any], window_ns: int, step_ps: int = 250) -> dict:
+    """Count level changes on each signal over ``window_ns`` at ``step_ps`` resolution.
+
+    The step has to be shorter than half the shortest period counted; the
+    800 MHz sys clock has a 625 ps half period.
+    """
     last = {name: sample(sig, name) for name, sig in signals.items()}
     counts = {name: 0 for name in signals}
-    for _ in range(window_ns // step_ns):
-        await Timer(step_ns, unit="ns")
+    for _ in range(window_ns * 1000 // step_ps):
+        await Timer(step_ps, unit="ps")
         for name, sig in signals.items():
             now = sample(sig, name)
             if now != last[name]:

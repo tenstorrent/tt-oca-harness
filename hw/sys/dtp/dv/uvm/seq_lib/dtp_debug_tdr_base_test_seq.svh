@@ -17,14 +17,15 @@
 //   * JTAG_CAPS[59:0] / *_JTAG2AXI_CAPS[13:0]: read-only capability TDRs
 //     compared against the bench's declared DTP configuration (dtp_types);
 //   * pin observables through dtp_tb_if (stop_clks, cla_clock_stop_en,
-//     boot-stall pair, flattened IC_RESET slices) with a bounded poll —
-//     stop_clks passes through a 2-flop synchronizer and an output flop,
-//     so clock-stop checks poll instead of assuming an immediate value —
-//     and the CLA clock-stop request vector drive.
+//     boot-stall pair, flattened IC_RESET slices) with a bounded poll
+//     (stop_clks is a clk_i register, so clock-stop checks poll until it
+//     settles), the CLA clock-stop request vector drive, and the tb_top
+//     stop_clks change counters.
 //
 // All comparisons land named family evidence (CHK-DBG-TDR / CHK-DBG-PIN /
-// CHK-CAPS / CHK-CAPS-RO plus the shared TMP ids), so the group honors the
-// +DTP_JTAG_FAMILY_CHECKER_NEGATIVE falsifiability hook.
+// CHK-DBG-STOP-EDGE / CHK-CAPS / CHK-CAPS-RO plus the shared TMP ids and
+// CHK-TMP-CHRST), so the group honors the +DTP_JTAG_FAMILY_CHECKER_NEGATIVE
+// falsifiability hook.
 
 class dtp_debug_tdr_base_test_seq extends dtp_jtag_base_test_seq;
   `uvm_object_utils(dtp_debug_tdr_base_test_seq)
@@ -76,6 +77,25 @@ class dtp_debug_tdr_base_test_seq extends dtp_jtag_base_test_seq;
   // --- TMP_STATUS (read helper lives in the command library) --------------
   task write_tmp_status(bit [1:0] value);
     write_tdr64(6'(TMP_STATUS_INSTR), TmpStatusLen, 64'(value));
+  endtask
+
+  // Read TMP_STATUS once and record both bits (CHK-TMP-PERSIST,
+  // CHK-TMP-ESCAPE).
+  task check_tmp_status(input bit persistence, input bit bypass_escape,
+                        input bit [1:0] shift_value = 2'b00, input string context_s = "");
+    bit observed_persistence, observed_escape;
+    read_tmp_status(observed_persistence, observed_escape, shift_value);
+    family_check("CHK-TMP-PERSIST", "TMP_STATUS.persistence", 64'(observed_persistence),
+                 64'(persistence), context_s);
+    family_check("CHK-TMP-ESCAPE", "TMP_STATUS.bypass_escape", 64'(observed_escape),
+                 64'(bypass_escape), context_s);
+  endtask
+
+  // CHK-DBG-TDR: an IDCODE read returns the configured identification in
+  // all 32 bits.
+  task check_idcode_value(output bit [63:0] idcode, input string context_s = "");
+    read_idcode(idcode);
+    family_check("CHK-DBG-TDR", "IDCODE", idcode & 64'hFFFF_FFFF, 64'(DtpDefaultIdcode), context_s);
   endtask
 
   // --- DEBUG_CONTROL --------------------------------------------------------
@@ -161,10 +181,9 @@ class dtp_debug_tdr_base_test_seq extends dtp_jtag_base_test_seq;
     | 64'(DtpOchVer);  // och_ver
   endfunction
 
-  static function bit [63:0] expected_jtag2axi_caps(bit bus_type, int unsigned addr_width,
-                                                    int unsigned data_width_bits,
-                                                    int unsigned rd_pl_depth = DtpJ2aPipelineDepth,
-                                                    int unsigned wr_pl_depth = DtpJ2aPipelineDepth);
+  static function bit [63:0] expected_jtag2axi_caps(
+      bit bus_type, int unsigned addr_width, int unsigned data_width_bits, int unsigned rd_pl_depth,
+      int unsigned wr_pl_depth);
     int unsigned size_enc = $clog2(data_width_bits / 8);
     return (64'(rd_pl_depth) << 12)
              | (64'(wr_pl_depth) << 10)
@@ -228,7 +247,8 @@ class dtp_debug_tdr_base_test_seq extends dtp_jtag_base_test_seq;
     bit bus_type = t.bus_type;
     int unsigned addr_width = t.addr_width;
     int unsigned data_width_bits = t.data_width;
-    bit [63:0] expected = expected_jtag2axi_caps(bus_type, addr_width, data_width_bits);
+    bit [63:0] expected = expected_jtag2axi_caps(bus_type, addr_width, data_width_bits,
+                                                 t.rd_pl_depth, t.wr_pl_depth);
     bit [63:0] value, reread;
     read_caps_tdr(instr, Jtag2AxiCapsLen, value);
     `uvm_info(
@@ -240,8 +260,8 @@ class dtp_debug_tdr_base_test_seq extends dtp_jtag_base_test_seq;
     family_check("CHK-CAPS", {label, ".addr_width"}, 64'(value[6:1]), 64'(addr_width & 'h3F));
     family_check("CHK-CAPS", {label, ".data_size"}, 64'(value[9:7]), 64'($clog2(data_width_bits / 8
                  )));
-    family_check("CHK-CAPS", {label, ".wr_pl_depth"}, 64'(value[11:10]), 64'(DtpJ2aPipelineDepth));
-    family_check("CHK-CAPS", {label, ".rd_pl_depth"}, 64'(value[13:12]), 64'(DtpJ2aPipelineDepth));
+    family_check("CHK-CAPS", {label, ".wr_pl_depth"}, 64'(value[11:10]), 64'(t.wr_pl_depth));
+    family_check("CHK-CAPS", {label, ".rd_pl_depth"}, 64'(value[13:12]), 64'(t.rd_pl_depth));
     check_caps_multi_read(instr, Jtag2AxiCapsLen, value, label);
     check_caps_read_only_patterns(instr, Jtag2AxiCapsLen, value, label);
     // Instruction switches must not disturb the stored capability value.
@@ -327,11 +347,10 @@ class dtp_debug_tdr_base_test_seq extends dtp_jtag_base_test_seq;
     family_check(check_id, name, observed[name], expected[name], context_s);
   endfunction
 
-  // Bounded observable poll: stop_clks passes through a 2-flop
-  // synchronizer and an output flop, so clock-stop checks poll across
-  // system cycles instead of assuming a fixed immediate value. The final
-  // sample lands the evidence either way (a mismatch after the budget
-  // records a FAIL).
+  // Bounded observable poll: stop_clks is a clk_i register, so clock-stop
+  // checks poll across system cycles until it settles instead of assuming a
+  // fixed latency. The final sample lands the evidence either way (a
+  // mismatch after the budget records a FAIL).
   task wait_for_signal_value(string name, bit expected, input int unsigned cycles = 6,
                              input string context_s = "");
     bit [63:0] last;
@@ -348,6 +367,61 @@ class dtp_debug_tdr_base_test_seq extends dtp_jtag_base_test_seq;
     tb_vif.xtrig_clk_stop_req <= value;
     wait_sys_cycles(cycles);
     `uvm_info(get_type_name(), $sformatf("xtrig_clk_stop_req=0x%03h", value), UVM_MEDIUM)
+  endtask
+
+  // The tb_top counts of stop_clks changes and of those off a clk_i rising
+  // edge.
+  function int unsigned stop_clks_change_count();
+    return int'(tb_vif.stop_clks_change_count);
+  endfunction
+
+  function int unsigned stop_clks_off_edge_count();
+    return int'(tb_vif.stop_clks_off_edge_count);
+  endfunction
+
+  // CHK-DBG-STOP-EDGE: no stop_clks change off a clk_i rising edge since
+  // the off-edge count was `off_edge_start`.
+  function void check_stop_clks_off_edge(int unsigned off_edge_start, string context_s);
+    family_check("CHK-DBG-STOP-EDGE", "stop_clks changes off a clk_i rising edge",
+                 64'(stop_clks_off_edge_count() - off_edge_start), 64'd0, context_s);
+  endfunction
+
+  // CHK-DBG-STOP-EDGE: from no request and jtag_clock_stop = 0, a seeded walk
+  // of request vectors (a nonzero mask, zero, one line, zero, two different
+  // nonzero masks, zero) holds each vector until stop_clks settles. The
+  // tb_top change count across the walk equals the number of changes of the
+  // request OR, so the step between the two nonzero masks adds none.
+  task check_stop_clks_walk();
+    bit [NumClkStopReq-1:0] walk[7];
+    bit prev_level = 1'b0;
+    int unsigned expected = 0;
+    int unsigned changes_start;
+    string walk_s = "walk=";
+    walk[0] = NumClkStopReq'($urandom_range((1 << NumClkStopReq) - 1, 1));
+    walk[1] = '0;
+    walk[2] = NumClkStopReq'(1) << $urandom_range(NumClkStopReq - 1);
+    walk[3] = '0;
+    walk[4] = NumClkStopReq'($urandom_range((1 << NumClkStopReq) - 1, 1));
+    do
+      walk[5] = NumClkStopReq'($urandom_range((1 << NumClkStopReq) - 1, 1));
+    while (walk[5] == walk[4]);
+    walk[6] = '0;
+    foreach (walk[i]) begin
+      if ((|walk[i]) != prev_level) expected++;
+      prev_level = |walk[i];
+      if (i > 0) walk_s = {walk_s, ","};
+      walk_s = {walk_s, $sformatf("0x%03h", walk[i])};
+    end
+    set_clk_stop_requests('0);
+    wait_for_signal_value("stop_clks", 1'b0, .context_s("walk baseline"));
+    changes_start = stop_clks_change_count();
+    foreach (walk[i]) begin
+      set_clk_stop_requests(walk[i]);
+      wait_for_signal_value("stop_clks", |walk[i],
+                            .context_s($sformatf("walk#%0d req=0x%03h", i + 1, walk[i])));
+    end
+    family_check("CHK-DBG-STOP-EDGE", "stop_clks changes across the request walk",
+                 64'(stop_clks_change_count() - changes_start), 64'(expected), walk_s);
   endtask
 
 endclass : dtp_debug_tdr_base_test_seq

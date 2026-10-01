@@ -70,7 +70,7 @@ from seq_lib.sep_lcc_stitch_check_seq import sep_lcc_stitch_check_seq
 
 _MAX_SENSE_CYCLES = 20_000
 
-# KM-secret fields named in periphs.adoc (Key Manager subset). The
+# KM-secret fields named in otp_fuse_controller.adoc (Key Manager subset). The
 # SECURE_TM block list is LOCK / LC_STATE / SIP_DIS / SYS_DIS; these four
 # are the secrets the stitch grades for disconnect.
 _SECRET_FIELDS = spec_secret_regs()
@@ -104,7 +104,7 @@ _TOKEN_MATCH_STATUS = EFUSE_MMR.field_mask("TOKEN_MATCH", "token_match_status")
 
 _RMA_SIP_TOKEN_DIGEST = sym("SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_REG_ADDR")
 _RMA_CHIPLET_TOKEN_DIGEST = sym("SEP_EFUSE_MAP_RMA_CHIPLET_TOKEN_DIGEST_REG_ADDR")
-# periphs.adoc: LC_STATE starts at bit 96. efuse_guard gates program addresses BASE+1
+# otp_fuse_controller.adoc: LC_STATE starts at bit 96. efuse_guard gates program addresses BASE+1
 # (RMA_SIP token) and BASE+2 (RMA_CHIPLET token) on a token match.
 # LC_WORD_IDX * 32 so the program address tracks the generated LC_STATE word.
 _LC_STATE_BIT_BASE = LC_WORD_IDX * 32
@@ -347,7 +347,10 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
             sec_dis=0,
             sigint_err=sigint_err,
         )
+        mark = self.sb_mark()
         await self.start_seq(seq)
+        tag = f"{lc_state_name(raw)} tm={secure_tm} sigint={sigint_err}"
+        self.assert_sb_judged(mark, f"CHK-GOLDEN {tag}")
         assert seq.observed_feat is not None, "sequence did not publish AXI FEAT_CTRL"
         feat = seq.observed_feat
         self._last_observed_feat = feat
@@ -355,6 +358,7 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
             self._feat_by_state[raw] = feat
 
         if raw == LC_TEST_DEV and not sigint_err:
+            self._test_dev_feat_by_tm[secure_tm] = feat
             if secure_tm:
                 self.logger.info(
                     "CHK-SECURE-TM-ON PASS: secure_tm_o=1, FEAT_CTRL=0x%016x "
@@ -423,6 +427,7 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
         self._total_program_retries = 0
         self._secure_tm_prog_blocked = False
         self._feat_by_state: dict[int, int] = {}
+        self._test_dev_feat_by_tm: dict[int, int] = {}
         prev_raw: int | None = None
 
         for i, raw in enumerate(_LC_CHAIN):
@@ -464,7 +469,7 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
                     prev_raw=prev_raw,
                 )
                 # Second half: the same image, every KM-secret field, strap high.
-                # periphs.adoc names the four fields and the TEST_EN disconnect
+                # otp_fuse_controller.adoc names the four fields and the TEST_EN disconnect
                 # of fuse-bank outputs; it does not require a zero readback.
                 for name in _SECRET_FIELDS:
                     blanked = self._sensed_secret(image, name)
@@ -590,7 +595,20 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
             "CHK-NONVAC PASS: four FEAT_CTRL words are mutually distinct (%s)",
             ", ".join(f"{lc_state_name(r)}=0x{self._feat_by_state[r]:016x}" for r in _LC_CHAIN),
         )
-        self.logger.info("CHK-SECURE-TM PASS: TEST_DEV FEAT_CTRL identical at secure_tm=0 and 1")
+        assert set(self._test_dev_feat_by_tm) == {0, 1}, (
+            "CHK-SECURE-TM FAIL: TEST_DEV FEAT_CTRL was not observed at both secure_tm "
+            f"values (seen {sorted(self._test_dev_feat_by_tm)})"
+        )
+        feat_tm0 = self._test_dev_feat_by_tm[0]
+        feat_tm1 = self._test_dev_feat_by_tm[1]
+        assert feat_tm0 == feat_tm1, (
+            f"CHK-SECURE-TM FAIL: TEST_DEV FEAT_CTRL 0x{feat_tm0:016x} at secure_tm=0 "
+            f"!= 0x{feat_tm1:016x} at secure_tm=1"
+        )
+        self.logger.info(
+            "CHK-SECURE-TM PASS: TEST_DEV FEAT_CTRL 0x%016x identical at secure_tm=0 and 1",
+            feat_tm0,
+        )
         self.logger.info(
             "LCC stitch: walked %d states (%s); FEAT_CTRL matched golden at each; "
             "secure_tm off/on and lc_sigint inject proven; "

@@ -462,8 +462,9 @@ def dbg_disable_expected(feat_ctrl: int) -> dict[str, int]:
         "smc_jtag2axi": 1 - case2,
         "dft_secure": 1 - case3,
         "stap_sep": 1 - case3,
-        # The fuse controller enforces OTP JTAG2AXIL access through LOCKS, so
-        # the lifecycle controller ties both bridges open in every LC state.
+        # hw/sys/sep/doc/lifecycle_controller.adoc ("DTP path feature gates"): the
+        # SEP and SMC OTP JTAG2AXIL paths are "Ungated" -- no feature control
+        # bit gates them; LOCKS and the wrapper access policy enforce access.
         "smc_otp_jtag2axi": 0,
         "sep_otp_jtag2axi": 0,
     }

@@ -21,6 +21,7 @@ from typing import Any
 from ocah_axi_vip import OcahAxiBus, OcahAxiConfig, OcahAxiProtocol
 
 from .dtp_dbg_disable import DBG_DISABLE_FIELDS, full_dbg_disable, validate_dbg_disable
+from .dtp_dv_cfg import DTP_NUM_CLK_STOP_REQ, DV_CFG_PARITY
 from .dtp_scan_ref_model import STAP_ORDER
 
 __all__ = ["DtpTbIf"]
@@ -147,10 +148,30 @@ class DtpTbIf:
             raise ValueError(f"unknown dbg_disable field {name!r}")
         return getattr(self.ctrl, _DBG_DISABLE_PREFIX + name)
 
+    # --- bench configuration -----------------------------------------------------
+    def check_dv_cfg(self) -> None:
+        """Compare the configuration ``tb_top`` elaborated with this realization's copy."""
+        mismatches: dict[str, tuple[int, int]] = {}
+        for name, expected in DV_CFG_PARITY.items():
+            observed = self.sample(name)
+            if observed != expected:
+                mismatches[name] = (observed, expected)
+        width = len(self.ctrl.xtrig_clk_stop_req)
+        if width != DTP_NUM_CLK_STOP_REQ:
+            mismatches["xtrig_clk_stop_req width"] = (width, DTP_NUM_CLK_STOP_REQ)
+        if mismatches:
+            raise RuntimeError(
+                f"dtp_dv_cfg.py disagrees with dtp_dv_cfg_pkg.sv (observed, expected): {mismatches}"
+            )
+
     # --- JTAG2AXI bridge state --------------------------------------------------
-    def bridge_fsm_state(self, target: str) -> int:
-        """AXI FSM state of one bridge (``DtpJtag2AxiFsmState`` encoding)."""
-        return self.sample(f"{target}_fsm_state")
+    def bridge_fsm_idle(self, target: str) -> int:
+        """1 while the bridge's AXI state machine is idle."""
+        return self.sample(f"{target}_fsm_idle")
+
+    def bridge_fsm_on_path(self, target: str, *, read: bool) -> int:
+        """1 while the bridge's AXI state machine is on the read or the write path."""
+        return self.sample(f"{target}_fsm_{'read' if read else 'write'}_path")
 
     def bridge_op_pending(self, target: str) -> int:
         """1 while the bridge holds a launched SINGLE_OP."""
@@ -163,6 +184,10 @@ class DtpTbIf:
     def set_cdc_clear_seen_clear(self, value: int) -> None:
         """Hold ``cdc_clear_seen_clear``: 1 clears every bridge's sticky clear-seen flag."""
         self.handle("cdc_clear_seen_clear").value = value
+
+    def set_error_rdata(self, prefix: str, value: int) -> None:
+        """Drive the errored-beat read word of the bridge port whose activity prefix is ``prefix``."""
+        self.handle(f"{prefix}_err_rdata").value = value
 
     # --- shared AXI VIP binding -----------------------------------------------
     def axi_bus(self, target: str, *, passive: bool = False) -> OcahAxiBus:

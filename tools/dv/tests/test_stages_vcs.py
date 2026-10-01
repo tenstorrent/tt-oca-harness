@@ -17,11 +17,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from runlib.stages import (  # noqa: E402
     COCOTB_RUNNER_TOOLS,
+    COCOTB_VCS_DEFAULT_ACCESS,
     _build_jobs_arg,
     _cocotb_build_args,
     _last_plusarg_wins,
     _uvm_testname_override,
+    _vcs_cocotb_access,
     _vcs_uvm_precompile_cmd,
+    cocotb_vcs_access,
     expand_ocah_vendor_define_aliases,
 )
 
@@ -214,6 +217,17 @@ class OcahVendorDefineAliases(unittest.TestCase):
             ["+define+VERILATOR", "-Wno-fatal", "+define+TARGET_VERILATOR"],
         )
 
+    def test_emulation_gains_pulp_assert_override(self):
+        self.assertEqual(
+            expand_ocah_vendor_define_aliases(["+define+EMULATION", "+define+SYNTHESIS"]),
+            [
+                "+define+EMULATION",
+                "+define+SYNTHESIS",
+                "+define+TARGET_SYNTHESIS",
+                "+define+ASSERTS_OVERRIDE_ON",
+            ],
+        )
+
     def test_unrelated_defines_are_unchanged(self):
         self.assertEqual(expand_ocah_vendor_define_aliases(["A=1", "B"]), ["A=1", "B"])
 
@@ -250,3 +264,34 @@ class OcahVendorDefineAliases(unittest.TestCase):
         self.assertIn("+define+ABR_SIMULATION", argv)
         self.assertIn("+define+TARGET_VERILATOR", argv)
         self.assertNotIn("-FI", argv)
+
+
+class CocotbVcsAccess(unittest.TestCase):
+    """`[build.vcs].cocotb_access` replaces the debug access cocotb's Vcs runner grants."""
+
+    def test_unset_key_or_a_waves_run_keeps_cocotb_access(self):
+        build = {"vcs": {"cocotb_access": ["-debug_access+r+w"]}}
+        self.assertEqual(_vcs_cocotb_access({}, False), [])
+        self.assertEqual(_vcs_cocotb_access(build, True), [])
+        self.assertEqual(_vcs_cocotb_access(build, False), ["-debug_access+r+w"])
+
+    def test_build_opts_carry_the_configured_access_and_are_restored(self):
+        try:
+            from cocotb_tools import runner as cocotb_runner
+        except ImportError:  # pragma: no cover - the dv dependency group supplies cocotb
+            self.skipTest("cocotb_tools is not installed")
+        original = cocotb_runner.Vcs.__dict__["_build_opts"]
+        runner = cocotb_runner.Vcs.__new__(cocotb_runner.Vcs)
+        runner.verbose = False
+        default = runner._build_opts
+        self.assertTrue(set(COCOTB_VCS_DEFAULT_ACCESS) <= set(default))
+        with cocotb_vcs_access(["-debug_access+r+w"]):
+            narrowed = runner._build_opts
+        self.assertEqual(
+            narrowed,
+            [opt for opt in default if opt not in COCOTB_VCS_DEFAULT_ACCESS]
+            + ["-debug_access+r+w"],
+        )
+        self.assertIs(cocotb_runner.Vcs.__dict__["_build_opts"], original)
+        with cocotb_vcs_access([]):
+            self.assertIs(cocotb_runner.Vcs.__dict__["_build_opts"], original)

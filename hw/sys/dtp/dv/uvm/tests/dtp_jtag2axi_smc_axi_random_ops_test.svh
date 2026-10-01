@@ -22,7 +22,9 @@ class dtp_jtag2axi_smc_axi_random_ops_test extends dtp_base_test;
                             "CHK-AXI-WADDR",
                             "CHK-AXI-WDATA",
                             "CHK-AXI-COMPLETION",
-                            "CHK-AXI-NONVAC"
+                            "CHK-AXI-NONVAC",
+                            "CHK-J2A-BUS-REQ",
+                            "CHK-J2A-MEM-IMAGE"
                         });
   endfunction
 

@@ -46,7 +46,7 @@
 #     `jtag_ic_reset_ext_o*`, and `sep_ext_interrupts_i`.
 #   - The `AVS_DIV_CLK_Q_FROM_*` generated clocks below target the `div_clk`
 #     register inside `prim_prog_clk_div_posedge` (reached via
-#     `u_smc/u_smc_peripherals/avsbus_controller/...`) by name. In this RTL
+#     `u_smc/u_smc_peripherals/u_avsbus_controller/...`) by name. In this RTL
 #     that register is a plain `always_ff`-inferred flop (no discrete
 #     primitive instance called `div_clk`), so the pin only resolves
 #     post-synthesis once technology mapping assigns it a cell name; it will
@@ -246,7 +246,7 @@ if {$smu_full_hier} {
 # AVS Clock Constraints
 ############################
 # Note: For STA you need to care about the divided value (it is a programmable clock divider), but for CDC setup the fact its a divided value is all that matters
-set avs_hier u_smc/u_smc_peripherals/avsbus_controller
+set avs_hier u_smc/u_smc_peripherals/u_avsbus_controller
 
 # Refclk and periph clock both fed into a clock mux
 # I will create a generated clock on the output of the clockmux for both possible sources
@@ -276,17 +276,17 @@ create_generated_clock -add -name AVS_CLK_FROM_REFCLK \
     -master_clock REFCLK \
     -divide_by 2 \
     -source [get_ports "clk_ref_i"] \
-    [get_pins "${avs_hier}/u_clk_div/div_clk_stdbuf/y_o"]
+    [get_pins "${avs_hier}/u_clk_div/u_div_clk_buf/clk_o"]
 
 # AVS clock when sourced from PERIPHERALCLK (modes 00/01)
 create_generated_clock -add -name AVS_CLK_FROM_PERIPHERALCLK \
     -master_clock PERIPHERALCLK \
     -divide_by 4 \
     -source [get_ports "clk_periph_i"] \
-    [get_pins "${avs_hier}/u_clk_div/div_clk_stdbuf/y_o"]
+    [get_pins "${avs_hier}/u_clk_div/u_div_clk_buf/clk_o"]
 
 # Same divided-clock intent on `u_clk_div/clk_o` (`pre_testmux_avs_clk`) so downstream
-# STA does not flag an undeclared setup clock when propagation from div_clk_stdbuf/y_o
+# STA does not flag an undeclared setup clock when propagation from u_div_clk_buf/clk_o
 # alone does not reach the module output pin (prim_prog_clk_div_posedge).
 create_generated_clock -add -name AVS_CLK_DIV_CLK_O_FROM_REFCLK \
     -master_clock REFCLK \
@@ -300,22 +300,22 @@ create_generated_clock -add -name AVS_CLK_DIV_CLK_O_FROM_PERIPHERALCLK \
     -source [get_ports "clk_periph_i"] \
     [get_pins "${avs_hier}/u_clk_div/clk_o"]
 
-# Internal `div_clk` net (flop -> prim_stdbuf a_i): stamped so downstream STA can
+# Internal `div_clk` net (flop -> prim_clock_buf clk_i): stamped so downstream STA can
 # resolve the setup clock looking for a PotentialRoot at `div_clk`, matching the
 # energy already modeled at y_o.
 create_generated_clock -add -name AVS_DIV_TOGGLE_FROM_REFCLK \
     -master_clock REFCLK \
     -divide_by 2 \
     -source [get_ports "clk_ref_i"] \
-    [get_pins "${avs_hier}/u_clk_div/div_clk_stdbuf/a_i"]
+    [get_pins "${avs_hier}/u_clk_div/u_div_clk_buf/clk_i"]
 
 create_generated_clock -add -name AVS_DIV_TOGGLE_FROM_PERIPHERALCLK \
     -master_clock PERIPHERALCLK \
     -divide_by 4 \
     -source [get_ports "clk_periph_i"] \
-    [get_pins "${avs_hier}/u_clk_div/div_clk_stdbuf/a_i"]
+    [get_pins "${avs_hier}/u_clk_div/u_div_clk_buf/clk_i"]
 
-# Toggle flop output (feeds div_clk_stdbuf and postdiv_mux clk1_i). See the
+# Toggle flop output (feeds u_div_clk_buf and u_postdiv_mux clk1_i). See the
 # `div_clk/Q` caveat in the file header: this pin only exists post-synthesis,
 # once technology mapping has assigned a concrete cell/pin name to the
 # `always_ff`-inferred `div_clk` register in prim_prog_clk_div_posedge.
@@ -341,7 +341,7 @@ create_generated_clock -add -name AVS_CLKMUX_OUTPUT_FROM_REFCLK_GPIO \
 create_generated_clock -add -name AVS_CLK_FROM_REFCLK_GPIO \
     -master_clock AVS_CLK_FROM_REFCLK \
     -divide_by 1 \
-    -source [get_pins "${avs_hier}/u_clk_div/div_clk_stdbuf/y_o"] \
+    -source [get_pins "${avs_hier}/u_clk_div/u_div_clk_buf/clk_o"] \
     [get_ports {core2pad_o[49]}]
 
 create_generated_clock -add -name AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK_GPIO \
@@ -353,14 +353,14 @@ create_generated_clock -add -name AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK_GPIO \
 create_generated_clock -add -name AVS_CLK_FROM_PERIPHERALCLK_GPIO \
     -master_clock AVS_CLK_FROM_PERIPHERALCLK \
     -divide_by 1 \
-    -source [get_pins "${avs_hier}/u_clk_div/div_clk_stdbuf/y_o"] \
+    -source [get_pins "${avs_hier}/u_clk_div/u_div_clk_buf/clk_o"] \
     [get_ports {core2pad_o[49]}]
 
 # Downstream AVS flops should resolve against `AVS_CLK_FROM_REFCLK` /
 # `AVS_CLK_FROM_PERIPHERALCLK` families, which are `-logically_exclusive` below
 # (only one premux source mode is active at a time).
 set_clock_sense -stop_propagation \
-    [get_pins "${avs_hier}/u_clk_div/postdiv_mux/clk_o"] \
+    [get_pins "${avs_hier}/u_clk_div/u_postdiv_mux/clk_o"] \
     -clocks {AVS_CLKMUX_OUTPUT_FROM_REFCLK AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK}
 
 # These two can never be active simultaneously (muxed sources)
@@ -620,58 +620,65 @@ if {[sizeof_collection $i3c_dctmem_sink_ports] > 0} {
 # JTAG Interface Constraints (SMU-specific)
 ########################################################
 
+# Each input delay follows the TCK edge that launches the signal and each output
+# delay precedes the rising edge that captures it. TDI, TMS, TRST and a
+# downstream TAP's TDO change on the falling edge (-clock_fall); host scan-chain
+# returns change on the rising edge. `.tck` fields carry generated clocks and
+# take no data delay. The budget matches the DTP block constraints.
+set jtag_io_ext [expr $clock_periods(JTAG_TCK_PERIOD)*0.2]
+
 # Primary JTAG TAP Interface
-set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports {jtag_ptap_client_tap_ctrl_i*}] -add_delay
-set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports jtag_ptap_client_tdi_i] -add_delay
-set_output_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports jtag_ptap_client_tdo_o] -add_delay
-set_output_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports jtag_ptap_client_tdo_oen_o] -add_delay
+set_input_delay  $jtag_io_ext -clock [get_clock JTAG_TCK] -clock_fall [filter_collection [get_ports {jtag_ptap_client_tap_ctrl_i*}] {name !~ "*tck*"}] -add_delay
+set_input_delay  $jtag_io_ext -clock [get_clock JTAG_TCK] -clock_fall [get_ports jtag_ptap_client_tdi_i] -add_delay
+set_output_delay $jtag_io_ext -clock [get_clock JTAG_TCK] [get_ports jtag_ptap_client_tdo_o] -add_delay
+set_output_delay $jtag_io_ext -clock [get_clock JTAG_TCK] [get_ports jtag_ptap_client_tdo_oen_o] -add_delay
 
-# Boundary Scan Interface (exclude tck - now has generated clock)
-set_output_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_BSR_TCK] [filter_collection [get_ports {jtag_bsr_host_scan_ctrl_o*}] {name !~ "*tck*"}] -add_delay
-set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_BSR_TCK] [get_ports jtag_bsr_host_scan_in_i] -add_delay
-set_output_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_BSR_TCK] [get_ports jtag_bsr_host_scan_out_o] -add_delay
+# Boundary Scan Interface
+set_output_delay $jtag_io_ext -clock [get_clock JTAG_TCK] [filter_collection [get_ports {jtag_bsr_host_scan_ctrl_o*}] {name !~ "*tck*"}] -add_delay
+set_input_delay  $jtag_io_ext -clock [get_clock JTAG_TCK] [get_ports jtag_bsr_host_scan_in_i] -add_delay
+set_output_delay $jtag_io_ext -clock [get_clock JTAG_TCK] [get_ports jtag_bsr_host_scan_out_o] -add_delay
 
-# I/O STAP Interface (exclude tck - now has generated clock)
-set_output_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_STAP_IO_TCK] [filter_collection [get_ports {jtag_stap_io_host_tap_ctrl_o*}] {name !~ "*tck*"}] -add_delay
-set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_STAP_IO_TCK] [get_ports jtag_stap_io_host_tdi_i] -add_delay
-set_output_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_STAP_IO_TCK] [get_ports jtag_stap_io_host_tdo_o] -add_delay
-set_output_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_STAP_IO_TCK] [get_ports jtag_stap_io_host_tdo_oen_o] -add_delay
+# I/O STAP Interface
+set_output_delay $jtag_io_ext -clock [get_clock JTAG_TCK] [filter_collection [get_ports {jtag_stap_io_host_tap_ctrl_o*}] {name !~ "*tck*"}] -add_delay
+set_input_delay  $jtag_io_ext -clock [get_clock JTAG_TCK] -clock_fall [get_ports jtag_stap_io_host_tdi_i] -add_delay
+set_output_delay $jtag_io_ext -clock [get_clock JTAG_TCK] [get_ports jtag_stap_io_host_tdo_o] -add_delay
+set_output_delay $jtag_io_ext -clock [get_clock JTAG_TCK] [get_ports jtag_stap_io_host_tdo_oen_o] -add_delay
 
-# Extra STAP Interfaces (exclude tck - now has generated clock)
-set_output_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_STAP_EXTRA_TCK] [filter_collection [get_ports {jtag_stap_extra_host_tap_ctrl_o*}] {name !~ "*tck*"}] -add_delay
-set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_STAP_EXTRA_TCK] [get_ports {jtag_stap_extra_host_tdi_i*}] -add_delay
-set_output_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_STAP_EXTRA_TCK] [get_ports {jtag_stap_extra_host_tdo_o*}] -add_delay
-set_output_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_STAP_EXTRA_TCK] [get_ports {jtag_stap_extra_host_tdo_oen_o*}] -add_delay
+# Extra STAP Interfaces
+set_output_delay $jtag_io_ext -clock [get_clock JTAG_TCK] [filter_collection [get_ports {jtag_stap_extra_host_tap_ctrl_o*}] {name !~ "*tck*"}] -add_delay
+set_input_delay  $jtag_io_ext -clock [get_clock JTAG_TCK] -clock_fall [get_ports {jtag_stap_extra_host_tdi_i*}] -add_delay
+set_output_delay $jtag_io_ext -clock [get_clock JTAG_TCK] [get_ports {jtag_stap_extra_host_tdo_o*}] -add_delay
+set_output_delay $jtag_io_ext -clock [get_clock JTAG_TCK] [get_ports {jtag_stap_extra_host_tdo_oen_o*}] -add_delay
 
-# Extended STAP Scan Interface (exclude tck - now has generated clock)
-set_output_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_STAP_SCAN_TCK] [filter_collection [get_ports {jtag_stap_host_scan_ctrl_o*}] {name !~ "*tck*"}] -add_delay
-set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_STAP_SCAN_TCK] [get_ports jtag_stap_host_scan_in_i] -add_delay
-set_output_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_STAP_SCAN_TCK] [get_ports jtag_stap_host_scan_out_o] -add_delay
+# Extended STAP Scan Interface
+set_output_delay $jtag_io_ext -clock [get_clock JTAG_TCK] [filter_collection [get_ports {jtag_stap_host_scan_ctrl_o*}] {name !~ "*tck*"}] -add_delay
+set_input_delay  $jtag_io_ext -clock [get_clock JTAG_TCK] [get_ports jtag_stap_host_scan_in_i] -add_delay
+set_output_delay $jtag_io_ext -clock [get_clock JTAG_TCK] [get_ports jtag_stap_host_scan_out_o] -add_delay
 
-# DFD iJTAG Interface (exclude tck - now has generated clock)
-set_output_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_DFD_TCK] [filter_collection [get_ports {jtag_dfd_host_scan_ctrl_o*}] {name !~ "*tck*"}] -add_delay
-set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_DFD_TCK] [get_ports jtag_dfd_host_scan_in_i] -add_delay
-set_output_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_DFD_TCK] [get_ports jtag_dfd_host_scan_out_o] -add_delay
+# DFD iJTAG Interface
+set_output_delay $jtag_io_ext -clock [get_clock JTAG_TCK] [filter_collection [get_ports {jtag_dfd_host_scan_ctrl_o*}] {name !~ "*tck*"}] -add_delay
+set_input_delay  $jtag_io_ext -clock [get_clock JTAG_TCK] [get_ports jtag_dfd_host_scan_in_i] -add_delay
+set_output_delay $jtag_io_ext -clock [get_clock JTAG_TCK] [get_ports jtag_dfd_host_scan_out_o] -add_delay
 
-# Secure DFT iJTAG Interface (exclude tck - now has generated clock)
-set_output_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_DFT_SECURE_TCK] [filter_collection [get_ports {jtag_dft_secure_host_scan_ctrl_o*}] {name !~ "*tck*"}] -add_delay
-set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_DFT_SECURE_TCK] [get_ports jtag_dft_secure_host_scan_in_i] -add_delay
-set_output_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_DFT_SECURE_TCK] [get_ports jtag_dft_secure_host_scan_out_o] -add_delay
+# Secure DFT iJTAG Interface
+set_output_delay $jtag_io_ext -clock [get_clock JTAG_TCK] [filter_collection [get_ports {jtag_dft_secure_host_scan_ctrl_o*}] {name !~ "*tck*"}] -add_delay
+set_input_delay  $jtag_io_ext -clock [get_clock JTAG_TCK] [get_ports jtag_dft_secure_host_scan_in_i] -add_delay
+set_output_delay $jtag_io_ext -clock [get_clock JTAG_TCK] [get_ports jtag_dft_secure_host_scan_out_o] -add_delay
 
-# DFT iJTAG Interface (exclude tck - now has generated clock)
-set_output_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_DFT_TCK] [filter_collection [get_ports {jtag_dft_host_scan_ctrl_o*}] {name !~ "*tck*"}] -add_delay
-set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_DFT_TCK] [get_ports jtag_dft_host_scan_in_i] -add_delay
-set_output_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_DFT_TCK] [get_ports jtag_dft_host_scan_out_o] -add_delay
+# DFT iJTAG Interface
+set_output_delay $jtag_io_ext -clock [get_clock JTAG_TCK] [filter_collection [get_ports {jtag_dft_host_scan_ctrl_o*}] {name !~ "*tck*"}] -add_delay
+set_input_delay  $jtag_io_ext -clock [get_clock JTAG_TCK] [get_ports jtag_dft_host_scan_in_i] -add_delay
+set_output_delay $jtag_io_ext -clock [get_clock JTAG_TCK] [get_ports jtag_dft_host_scan_out_o] -add_delay
 
 # JTAG State Outputs
-set_output_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports {jtag_ptap_state_o*}] -add_delay
-set_output_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports {jtag_ptap_inst_decoded_o*}] -add_delay
+set_output_delay $jtag_io_ext -clock [get_clock JTAG_TCK] [get_ports {jtag_ptap_state_o*}] -add_delay
+set_output_delay $jtag_io_ext -clock [get_clock JTAG_TCK] [get_ports {jtag_ptap_inst_decoded_o*}] -add_delay
 
 # `jtag_ic_reset_ext_o` is a real `smu` top-level output (the external slice
 # of DTP's IC_RESET TDR), modeled the same as the other JTAG_TCK-domain state
 # outputs above. Width follows `ic_reset_ext_t`; the integrator carries the SEP
 # xSPI reset overrides here, so the wildcard must stay a wildcard.
-set_output_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports {jtag_ic_reset_ext_o*}] -add_delay
+set_output_delay $jtag_io_ext -clock [get_clock JTAG_TCK] [get_ports {jtag_ic_reset_ext_o*}] -add_delay
 
 # DTP Clock Stop Output
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports dtp_stop_clks_o] -add_delay

@@ -6,8 +6,9 @@
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: sep_cpu_ctrl</h2>
-<h2>Register List:</h2>
+<h2 id="regmap-sep_cpu_ctrl">SEP CPU Control Address Map</h2>
+<p>SEP CPU control and status registers: PKA and crypto configuration, boot and fast-memory enables, fuse-sense status, and interrupt controls.</p>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x8</td><td><a href="#CLOCK_GATE_CTRL">CLOCK_GATE_CTRL</a></td><td>RW</td><td>TODO: clock-gate control - placeholder fields, not yet implemented.</td></tr>
@@ -41,11 +42,11 @@
 <tr><td>0x1A0</td><td><a href="#KM_WIPE_CTRL">KM_WIPE_CTRL</a></td><td>RW</td><td>Key Manager emergency wipe control.</td></tr>
 <tr><td>0x1A8</td><td><a href="#DMA_BUS_ERR_STATUS">DMA_BUS_ERR_STATUS</a></td><td>R</td><td>Secure DMA bridge fault status. Each bit is latched in hardware and held<br>until the corresponding DMA_BUS_ERR_CLEAR write. These bits also drive<br>dedicated PIC sources.<br><br>Neither bit is cleared by a CPU-only reset (the WDT resets the CPU without<br>resetting the DMA), so a bit read as set immediately after boot may describe<br>a fault from before that reset rather than a new one.</td></tr>
 <tr><td>0x1B0</td><td><a href="#DMA_BUS_ERR_CLEAR">DMA_BUS_ERR_CLEAR</a></td><td>W</td><td>Clear the DMA_BUS_ERR_STATUS bits. Writing 1 emits a single-cycle clear pulse<br>to both latches. A fault arriving in the same cycle as the clear still<br>latches, so acknowledging cannot drop a concurrent fault.</td></tr>
-<tr><td>0x1B8</td><td><a href="#PERIPH_BUS_ERR_STATUS">PERIPH_BUS_ERR_STATUS</a></td><td>R</td><td>Peripheral register-bridge fault status, one bit per block. Each bit latches<br>when a CPU access to that block&#x27;s registers returned a TL-UL error response<br>(unmapped or misaligned offset, or a RACL denial), and is held until the<br>matching PERIPH_BUS_ERR_CLEAR bit is written. The faulting access also<br>received SLVERR synchronously.<br><br>All bits OR together into a single PIC source, so read this register to<br>identify which block faulted.<br><br>No bit is cleared by a CPU-only reset (the WDT resets the CPU without<br>resetting the peripherals), so a bit read as set immediately after boot may<br>describe a fault from before that reset rather than a new one.</td></tr>
+<tr><td>0x1B8</td><td><a href="#PERIPH_BUS_ERR_STATUS">PERIPH_BUS_ERR_STATUS</a></td><td>R</td><td>Peripheral register-bridge fault status, one bit per block. Each bit latches<br>when a CPU access to that block&#x27;s registers returned a TL-UL error response<br>(unmapped or misaligned offset), and is held until the matching<br>PERIPH_BUS_ERR_CLEAR bit is written. The faulting access also received<br>SLVERR synchronously.<br><br>All bits OR together into a single PIC source, so read this register to<br>identify which block faulted.<br><br>No bit is cleared by a CPU-only reset (the WDT resets the CPU without<br>resetting the peripherals), so a bit read as set immediately after boot may<br>describe a fault from before that reset rather than a new one.</td></tr>
 <tr><td>0x1C0</td><td><a href="#PERIPH_BUS_ERR_CLEAR">PERIPH_BUS_ERR_CLEAR</a></td><td>W</td><td>Clear PERIPH_BUS_ERR_STATUS bits. Writing 1 to a bit emits a single-cycle<br>clear pulse to that block&#x27;s latch; bit order matches<br>PERIPH_BUS_ERR_STATUS. Clears are per-block so acknowledging one block<br>cannot discard a fault another block raised between the status read and<br>this write. A fault arriving in the same cycle as its own clear still<br>latches.</td></tr>
 <tr><td>0x1000</td><td><a href="#SEP_VERSION_ID">SEP_VERSION_ID</a></td><td>R</td><td>-</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="CLOCK_GATE_CTRL">CLOCK_GATE_CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -129,7 +130,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>reserved</td><td>W</td><td>0x0</td><td>Reserved - timeout monitors not yet implemented.</td></tr>
+<tr><td>0</td><td>reserved</td><td>W 1P</td><td>0x0</td><td>Reserved - timeout monitors not yet implemented.</td></tr>
 </table>
 <h3 id="TIMEOUT_MODE">TIMEOUT_MODE</h3>
 <table>
@@ -207,7 +208,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>lock</td><td>RW</td><td>0x0</td><td>Lock the NMI vector address. Once locked, the NMI vector address cannot be changed.<br>The NMI interrupt is used for the WDT Bark interrupt.</td></tr>
+<tr><td>0</td><td>lock</td><td>RW1S</td><td>0x0</td><td>Lock the NMI vector address. Once locked, the NMI vector address cannot be changed.<br>The NMI interrupt is used for the WDT Bark interrupt.</td></tr>
 </table>
 <h3 id="EXT_TRNG_SRC_SEL">EXT_TRNG_SRC_SEL</h3>
 <table>
@@ -219,7 +220,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>lock</td><td>RW</td><td>0x0</td><td>Lock TRNG source selection. Once set, cannot be cleared by software.</td></tr>
+<tr><td>0</td><td>lock</td><td>RW1S</td><td>0x0</td><td>Lock TRNG source selection. Once set, cannot be cleared by software.</td></tr>
 </table>
 <h3 id="KM_WIPE_CTRL">KM_WIPE_CTRL</h3>
 <table>
@@ -232,13 +233,13 @@
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>1</td><td>host_path_err</td><td>R</td><td>0x0</td><td>DMA-master-path fault: either the fabric returned a non-OKAY AXI response<br>to a DMA transfer, or a TL-UL command-integrity check failed on a command<br>issued by the DMA. The latter is a fault-detection event with no other<br>reporting path.</td></tr>
-<tr><td>0</td><td>reg_path_err</td><td>R</td><td>0x0</td><td>Register-path bus error: a CPU access to a Secure DMA register returned<br>a TL-UL error response (unmapped or misaligned offset, or a RACL denial).<br>The faulting access also received SLVERR synchronously.</td></tr>
+<tr><td>0</td><td>reg_path_err</td><td>R</td><td>0x0</td><td>Register-path bus error: a CPU access to a Secure DMA register returned<br>a TL-UL error response (unmapped or misaligned offset). The faulting<br>access also received SLVERR synchronously.</td></tr>
 </table>
 <h3 id="DMA_BUS_ERR_CLEAR">DMA_BUS_ERR_CLEAR</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>clr</td><td>W</td><td>0x0</td><td>Write 1 to clear both DMA_BUS_ERR_STATUS bits. Always reads 0.</td></tr>
+<tr><td>0</td><td>clr</td><td>W 1P</td><td>0x0</td><td>Write 1 to clear both DMA_BUS_ERR_STATUS bits. Always reads 0.</td></tr>
 </table>
 <h3 id="PERIPH_BUS_ERR_STATUS">PERIPH_BUS_ERR_STATUS</h3>
 <table>
@@ -256,13 +257,13 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:7</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>6</td><td>wdt</td><td>W</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.wdt. Always reads 0.</td></tr>
-<tr><td>5</td><td>edn</td><td>W</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.edn. Always reads 0.</td></tr>
-<tr><td>4</td><td>csrng</td><td>W</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.csrng. Always reads 0.</td></tr>
-<tr><td>3</td><td>otbn</td><td>W</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.otbn. Always reads 0.</td></tr>
-<tr><td>2</td><td>kmac</td><td>W</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.kmac. Always reads 0.</td></tr>
-<tr><td>1</td><td>hmac</td><td>W</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.hmac. Always reads 0.</td></tr>
-<tr><td>0</td><td>aes</td><td>W</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.aes. Always reads 0.</td></tr>
+<tr><td>6</td><td>wdt</td><td>W 1P</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.wdt. Always reads 0.</td></tr>
+<tr><td>5</td><td>edn</td><td>W 1P</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.edn. Always reads 0.</td></tr>
+<tr><td>4</td><td>csrng</td><td>W 1P</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.csrng. Always reads 0.</td></tr>
+<tr><td>3</td><td>otbn</td><td>W 1P</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.otbn. Always reads 0.</td></tr>
+<tr><td>2</td><td>kmac</td><td>W 1P</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.kmac. Always reads 0.</td></tr>
+<tr><td>1</td><td>hmac</td><td>W 1P</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.hmac. Always reads 0.</td></tr>
+<tr><td>0</td><td>aes</td><td>W 1P</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.aes. Always reads 0.</td></tr>
 </table>
 <h3 id="SEP_VERSION_ID">SEP_VERSION_ID</h3>
 <table>

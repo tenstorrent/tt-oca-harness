@@ -6,9 +6,11 @@ The DTP instantiates one JTAG Interface Unit as its primary debug access point
 (`hw/sys/dtp/doc/jtag.adoc`, "DTP JTAG Topology"). The instruction, TAP-state and
 JTAG2AXI tables below are transcriptions of that unit's and its PTAP's
 documentation; each names the document and section it copies. The three
-JTAG2AXI bridge geometries are the values each bridge publishes in its
-`*_JTAG2AXI_CAPS` TDR, compared with the DUT every pass by the geometry gate,
-and every TDR field width derives from them.
+JTAG2AXI bridge geometries are part of the bench configuration `tb_top`
+elaborates the DUT with: `dtp_dv_cfg` republishes them for the parity check
+against the SystemVerilog package, the geometry gate compares each bridge's
+`*_JTAG2AXI_CAPS` publication with them every pass, and every TDR field width
+derives from them.
 """
 
 from __future__ import annotations
@@ -286,18 +288,6 @@ class DtpJtag2AxiStatus(IntEnum):
     BUSY_OR_FULL = 3
 
 
-class DtpJtag2AxiFsmState(IntEnum):
-    """Bridge AXI FSM state as the TB interface samples it (``jtag2axi.sv`` ``axi_state_e``)."""
-
-    IDLE = 0
-    SEND_ADDR_W = 1
-    SEND_DATA_W = 2
-    WAIT_BRESP = 3
-    SEND_ADDR_R = 4
-    WAIT_RDATA = 5
-    UPDATE_STATUS = 6
-
-
 class DtpScanCtrlExpect(Enum):
     """What a window over one host chain's scan controls shows across a DR scan.
 
@@ -312,6 +302,8 @@ class DtpScanCtrlExpect(Enum):
     GATED = "gated"
 
 
+# A reset the sequence drove advanced its tb_top assertion counter by one.
+RESET_COUNT_CHECK_ID = "CHK-RESET-COUNT"
 # Reset-abort scenario evidence: the bridge observed mid-flight before the
 # reset, its FSM back in IDLE after it, the CDC's TCK-side clear seen, no
 # escaped write, and a recovered status.
@@ -324,6 +316,49 @@ ABORT_RECOVERY_CHECK_ID = "CHK-J2A-ABORT-RECOVERY"
 # stalled path and the first status poll reads BUSY_OR_FULL.
 STALL_FSM_CHECK_ID = "CHK-J2A-STALL-FSM"
 STALL_BUSY_CHECK_ID = "CHK-J2A-STALL-BUSY"
+# The READY stall observed on the bridge port: the tb_top stall counter of each
+# channel the operation stalls advanced across it, and a channel of the
+# operation the stall leaves alone counted no stall cycle.
+STALL_HOLD_CHECK_ID = "CHK-J2A-STALL-HOLD"
+# A gated bridge's SINGLE_OP register stays in the scan path and latches no
+# update: every capture while gated equals the NOP capture taken before the
+# disable, field by field.
+GATE_TDR_CHECK_ID = "CHK-J2A-GATE-TDR"
+# The op-status or SERIES_CTRL status carries the injected error code, and the
+# WITH_ERROR_STATUS bit follows the faulted beat.
+FAULT_STATUS_CHECK_ID = "CHK-J2A-FAULT-STATUS"
+# Random-ops end state: every byte lane a stream wrote holds its last word and
+# every untouched lane of a touched word holds its prior value.
+MEM_IMAGE_CHECK_ID = "CHK-J2A-MEM-IMAGE"
+
+
+def ic_reset_after_tlr(reset_hold: int, written: int, reset_image: int) -> int:
+    """IC_RESET after a Test-Logic-Reset (PTAP document, "PTAP IC_RESET fields").
+
+    With ``reset_hold`` 0 a TLR keeps every reset_enable and reset_control bit,
+    and reset_hold with them; with ``reset_hold`` 1 a TLR restores the reset
+    image. TRST and POR restore every bit.
+    """
+    return reset_image if reset_hold else written
+
+
+# JTAG2AXI bridge geometry. The SMC fabric bridge drives SMC
+# `jtag_axi_in_req_i`, whose row in the SMC port table states a 56-bit address
+# and 64-bit data. The OTP bridges' AXI-Lite widths and every bridge's read and
+# write pipeline depth are the bench's choice, published by each bridge through
+# its `*_JTAG2AXI_CAPS` TDR ("PTAP JTAG2AXI capability fields" table). The
+# depths differ per bridge and per direction, so a CAPS field wired to the
+# wrong parameter reads back a value the bench does not expect.
+DTP_SMC_AXI_ADDR_WIDTH = 56
+DTP_SMC_AXI_DATA_WIDTH = 64
+DTP_OTP_AXIL_ADDR_WIDTH = 32
+DTP_OTP_AXIL_DATA_WIDTH = 32
+DTP_SMC_OTP_RD_PL_DEPTH = 2
+DTP_SMC_OTP_WR_PL_DEPTH = 1
+DTP_SEP_OTP_RD_PL_DEPTH = 3
+DTP_SEP_OTP_WR_PL_DEPTH = 2
+DTP_SMC_RD_PL_DEPTH = 3
+DTP_SMC_WR_PL_DEPTH = 0
 
 
 def size_field_bits(data_width: int) -> int:
@@ -341,18 +376,21 @@ def size_field_bits(data_width: int) -> int:
 class DtpJtag2AxiTargetCfg:
     """Geometry and TDR register names for one DTP JTAG2AXI bridge target.
 
-    ``bus_type`` (0 AXI4, 1 AXI4-Lite), ``addr_width``, and ``data_width`` are
-    the values the bridge publishes in its ``*_JTAG2AXI_CAPS`` TDR
-    (``hw/ip/jtag/jtag_ptap/doc/architecture.adoc``, "*_JTAG2AXI_CAPS"); the
-    geometry gate compares them with the DUT every pass. Every other width
-    derives from them by the ``*_AXI_SINGLE_OP`` and ``*_AXI_SERIES_CTRL``
-    tables in the same document.
+    ``bus_type`` (0 AXI4, 1 AXI4-Lite), ``addr_width``, ``data_width``, and the
+    two pipeline depths come from the bench configuration ``tb_top`` elaborates
+    the DUT with (``dtp_dv_cfg``); the geometry gate compares the bridge's
+    ``*_JTAG2AXI_CAPS`` publication (``hw/ip/jtag/jtag_ptap/doc/architecture.adoc``,
+    "*_JTAG2AXI_CAPS") with them every pass. Every other width derives from
+    them by the ``*_AXI_SINGLE_OP`` and ``*_AXI_SERIES_CTRL`` tables in the same
+    document.
     """
 
     name: str
     bus_type: int
     addr_width: int
     data_width: int
+    rd_pl_depth: int
+    wr_pl_depth: int
     caps_reg: str
     single_op_reg: str
     series_ctrl_reg: str
@@ -376,6 +414,14 @@ class DtpJtag2AxiTargetCfg:
     def default_size(self) -> int:
         """AxSIZE of a full-width beat."""
         return self.data_size
+
+    def axsize(self, size: int) -> int:
+        """Transfer size the bridge uses for a scanned ``size`` field.
+
+        A size above ``data_size`` transfers one full beat
+        (``hw/ip/jtag/jtag_ptap/doc/architecture.adoc``, "*_AXI_SINGLE_OP").
+        """
+        return min(size, self.data_size)
 
     @property
     def size_bits(self) -> int:
@@ -403,8 +449,10 @@ JTAG2AXI_TARGETS: dict[str, DtpJtag2AxiTargetCfg] = {
     "smc_axi": DtpJtag2AxiTargetCfg(
         name="smc_axi",
         bus_type=0,
-        addr_width=56,
-        data_width=64,
+        addr_width=DTP_SMC_AXI_ADDR_WIDTH,
+        data_width=DTP_SMC_AXI_DATA_WIDTH,
+        rd_pl_depth=DTP_SMC_RD_PL_DEPTH,
+        wr_pl_depth=DTP_SMC_WR_PL_DEPTH,
         caps_reg="SMC_JTAG2AXI_CAPS",
         single_op_reg="SMC_AXI_SINGLE_OP",
         series_ctrl_reg="SMC_AXI_SERIES_CTRL",
@@ -418,8 +466,10 @@ JTAG2AXI_TARGETS: dict[str, DtpJtag2AxiTargetCfg] = {
     "smc_otp": DtpJtag2AxiTargetCfg(
         name="smc_otp",
         bus_type=1,
-        addr_width=32,
-        data_width=32,
+        addr_width=DTP_OTP_AXIL_ADDR_WIDTH,
+        data_width=DTP_OTP_AXIL_DATA_WIDTH,
+        rd_pl_depth=DTP_SMC_OTP_RD_PL_DEPTH,
+        wr_pl_depth=DTP_SMC_OTP_WR_PL_DEPTH,
         caps_reg="SMC_OTP_JTAG2AXI_CAPS",
         single_op_reg="SMC_OTP_AXI_SINGLE_OP",
         series_ctrl_reg="SMC_OTP_AXI_SERIES_CTRL",
@@ -433,8 +483,10 @@ JTAG2AXI_TARGETS: dict[str, DtpJtag2AxiTargetCfg] = {
     "sep_otp": DtpJtag2AxiTargetCfg(
         name="sep_otp",
         bus_type=1,
-        addr_width=32,
-        data_width=32,
+        addr_width=DTP_OTP_AXIL_ADDR_WIDTH,
+        data_width=DTP_OTP_AXIL_DATA_WIDTH,
+        rd_pl_depth=DTP_SEP_OTP_RD_PL_DEPTH,
+        wr_pl_depth=DTP_SEP_OTP_WR_PL_DEPTH,
         caps_reg="SEP_OTP_JTAG2AXI_CAPS",
         single_op_reg="SEP_OTP_AXI_SINGLE_OP",
         series_ctrl_reg="SEP_OTP_AXI_SERIES_CTRL",
@@ -460,14 +512,21 @@ def get_jtag2axi_target(target: str | DtpJtag2AxiTargetCfg) -> DtpJtag2AxiTarget
     return JTAG2AXI_TARGETS[target]
 
 
-def series_data_len(size: int, *, with_status: bool = False) -> int:
-    """Return the series data TDR width for one transfer size.
+def series_data_len(
+    size: int,
+    *,
+    with_status: bool = False,
+    target: str | DtpJtag2AxiTargetCfg = "smc_axi",
+) -> int:
+    """Return the series data TDR width for one scanned size on a target.
 
-    `*_AXI_SERIES_DATA_INCR` / `_NO_INCR` are n = 8*(2**size) bits and
-    `*_AXI_SERIES_DATA_WITH_ERROR_STATUS` is n+1 bits with the increment/status
-    bit at n (`hw/ip/jtag/jtag_ptap/doc/architecture.adoc`, "JTAG2AXI Support").
+    `*_AXI_SERIES_DATA_INCR` / `_NO_INCR` are n = 8*(2**E) bits, where E is
+    the effective size (the smaller of ``size`` and the target's
+    ``data_size``), and `*_AXI_SERIES_DATA_WITH_ERROR_STATUS` is n+1 bits with
+    the increment/status bit at n (`hw/ip/jtag/jtag_ptap/doc/architecture.adoc`,
+    "JTAG2AXI Support").
     """
-    payload_bits = 8 * (1 << size)
+    payload_bits = 8 * (1 << get_jtag2axi_target(target).axsize(size))
     return payload_bits + (1 if with_status else 0)
 
 
@@ -510,6 +569,29 @@ def unpack_single_op(
     status = value & 0x3
     rdata = (value >> data_off) & ((1 << cfg.data_width) - 1)
     return status, rdata
+
+
+def unpack_single_op_fields(
+    value: int,
+    *,
+    target: str | DtpJtag2AxiTargetCfg = "smc_axi",
+) -> tuple[int, int, int, int, int]:
+    """Return (op, size, wstrb, data, addr) of a target SINGLE_OP DR value.
+
+    The field order of ``pack_single_op``; on a capture ``op`` is the status.
+    """
+    cfg = get_jtag2axi_target(target)
+    size_off = 2
+    wstrb_off = size_off + cfg.size_bits
+    data_off = wstrb_off + cfg.wstrb_bits
+    addr_off = data_off + cfg.data_width
+    return (
+        value & 0x3,
+        (value >> size_off) & ((1 << cfg.size_bits) - 1),
+        (value >> wstrb_off) & ((1 << cfg.wstrb_bits) - 1),
+        (value >> data_off) & ((1 << cfg.data_width) - 1),
+        (value >> addr_off) & ((1 << cfg.addr_width) - 1),
+    )
 
 
 def pack_series_ctrl(
@@ -559,18 +641,30 @@ def unpack_series_ctrl(
     return reset, addr, pipeline_depth, size, status
 
 
-def pack_series_data(data: int, size: int, *, increment: int | None = None) -> tuple[int, int]:
+def pack_series_data(
+    data: int,
+    size: int,
+    *,
+    increment: int | None = None,
+    target: str | DtpJtag2AxiTargetCfg = "smc_axi",
+) -> tuple[int, int]:
     """Pack a series-data TDR value and return (value, width)."""
-    payload_bits = series_data_len(size)
+    payload_bits = series_data_len(size, target=target)
     value = data & ((1 << payload_bits) - 1)
     if increment is not None:
         value |= (increment & 0x1) << payload_bits
     return value, payload_bits + (1 if increment is not None else 0)
 
 
-def unpack_series_data(value: int, size: int, *, with_status: bool = False) -> tuple[int, int]:
+def unpack_series_data(
+    value: int,
+    size: int,
+    *,
+    with_status: bool = False,
+    target: str | DtpJtag2AxiTargetCfg = "smc_axi",
+) -> tuple[int, int]:
     """Return (data, status_bit) from a captured series-data TDR value."""
-    payload_bits = series_data_len(size)
+    payload_bits = series_data_len(size, target=target)
     data = value & ((1 << payload_bits) - 1)
     status = (value >> payload_bits) & 0x1 if with_status else 0
     return data, status

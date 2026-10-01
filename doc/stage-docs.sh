@@ -30,7 +30,7 @@ COMMON_ASSETS="$DOC/trm/assets"
 AOU_DOC="$ROOT/vendor/tenstorrent/aou/upstream/DOC/MAS"
 AOU_INTEGRATION_GUIDE="$ROOT/vendor/tenstorrent/aou/upstream/DOC/integration_guide"
 
-SUBSYSTEMS="smc sep dtp"
+SUBSYSTEMS="smc sep dtp smc/bootrom/prod sep/bootrom/prod"
 # The SMU chapter links into the TRM's ROOT module. Other products retain
 # their existing subsystem pages and the independent ROOT SMU port partial.
 if [ "${OCAH_DOC_PRODUCT_INCLUDE_SMU:-0}" = "1" ]; then
@@ -77,6 +77,8 @@ stage_gen_adoc() {
 
 # Copy generated single-file HTML register docs if present. These are intended
 # for Antora backend-html5 includes and are not the native PeakRDL mini-site.
+# Fragment ids are namespaced at build time by tools/doc/block-captions.js, so
+# the fragments are staged verbatim.
 stage_gen_html() {
   local src="$1" dst="$2"
   [ -d "$src" ] || return 0
@@ -99,6 +101,9 @@ strip_drawio_switch_fallback() {
   local dir="$1"
   [ -d "$dir" ] || return 0
   find "$dir" -name '*.svg' -type f -print0 | while IFS= read -r -d '' svg; do
+    # The rewrite joins lines, so leave SVGs without the fallback untouched;
+    # some are tracked sources rather than staged copies.
+    grep -q 'drawio\.com/doc/faq/svg-export-text-problems' "$svg" || continue
     local tmp
     tmp="$(mktemp)"
     tr '\n' ' ' <"$svg" |
@@ -109,7 +114,8 @@ strip_drawio_switch_fallback() {
 
 # --- module skeleton ---
 for m in $MODULES; do
-  mkdir -p "$MOD/$m/pages" "$MOD/$m/partials" "$MOD/$m/assets/images"
+  mt=$(echo $m | tr / -)
+  mkdir -p "$MOD/$mt/pages" "$MOD/$mt/partials" "$MOD/$mt/assets/images"
 done
 
 # --- ROOT: product pages + meta tables ---
@@ -117,7 +123,7 @@ for f in "$SRC"/*.adoc; do
   [ -f "$f" ] && cp -f "$f" "$MOD/ROOT/pages/"
 done
 if [ "${OCAH_DOC_PRODUCT_INCLUDE_REVISION:-1}" != "1" ]; then
-  rm -f "$MOD/ROOT/pages/revision.adoc"
+  rm -f "$MOD/ROOT/pages/revision.adoc" "$MOD/ROOT/pages/aou-records-of-changes.adoc"
 fi
 mkdir -p "$MOD/ROOT/pages/meta"
 for f in "$META"/*.adoc; do
@@ -135,11 +141,12 @@ done
 
 # --- subsystems: pages + register partials ---
 for s in $SUBSYSTEMS; do
-  stage_adoc_tree "$ROOT/hw/sys/$s/doc" "$MOD/$s/pages"
-  stage_gen_adoc "$ROOT/hw/sys/$s/regs/gen/adoc" "$MOD/$s/partials/$s/regs/gen/adoc"
-  stage_gen_html "$ROOT/hw/sys/$s/regs/gen/html" "$MOD/$s/partials/$s/regs/gen/html"
-  stage_gen_adoc "$ROOT/hw/sys/$s/dv/models/regs/gen/adoc" "$MOD/$s/partials/$s/dv/models/regs/gen/adoc"
-  stage_gen_html "$ROOT/hw/sys/$s/dv/models/regs/gen/html" "$MOD/$s/partials/$s/dv/models/regs/gen/html"
+  m=$(echo $s | tr / -)
+  stage_adoc_tree "$ROOT/hw/sys/$s/doc" "$MOD/$m/pages"
+  stage_gen_adoc "$ROOT/hw/sys/$s/regs/gen/adoc" "$MOD/$m/partials/$m/regs/gen/adoc"
+  stage_gen_html "$ROOT/hw/sys/$s/regs/gen/html" "$MOD/$m/partials/$m/regs/gen/html"
+  stage_gen_adoc "$ROOT/hw/sys/$s/dv/models/regs/gen/adoc" "$MOD/$m/partials/$m/dv/models/regs/gen/adoc"
+  stage_gen_html "$ROOT/hw/sys/$s/dv/models/regs/gen/html" "$MOD/$m/partials/$m/dv/models/regs/gen/html"
 done
 # DTP and SMU port tables are private ROOT partials included by their owning pages.
 rm -f "$MOD/dtp/pages/port_table.adoc" "$MOD/smu/pages/port_table.adoc"
@@ -149,23 +156,37 @@ rm -rf "$MOD/aou"
 mkdir -p "$MOD/aou/pages" "$MOD/aou/partials" "$MOD/aou/assets/images"
 case "$(basename "$PRODUCT")" in
 trm)
-  aou_pages="overview architecture interrupts-errors ppa-appendices"
+  mkdir -p "$MOD/aou/partials/pdf"
+  for page in overview architecture interrupts-errors ppa-appendices software-operation; do
+    sed -E 's/(xref:(figure|table)-[0-9]+)\[(Figure|Table) [0-9]+\]/\1[]/g' "$AOU_DOC/$page.adoc" \
+      >"$MOD/aou/partials/$page.adoc"
+    # The PDF inherits book numbering instead of the standalone specification's numbers.
+    sed -E 's/^(={2,6}) [0-9]+(\.[0-9]+)*\. /\1 /; s/(xref:(figure|table)-[0-9]+)\[(Figure|Table) [0-9]+\]/\1[]/g' "$AOU_DOC/$page.adoc" \
+      >"$MOD/aou/partials/pdf/$page.adoc"
+  done
+  # The web appendices have separate pages; the PDF keeps the complete section.
+  sed '/^ifndef::release\[\]/,$d' "$AOU_DOC/ppa-appendices.adoc" \
+    >"$MOD/aou/partials/ppa-appendices.adoc"
+  sed -n '/^ifndef::release\[\]/,/^endif::release\[\]/p' "$AOU_DOC/ppa-appendices.adoc" \
+    >"$MOD/aou/partials/records-of-changes.adoc"
+  sed -n '/^\[\[appendix-b-referenced-documents\]\]/,$p' "$AOU_DOC/ppa-appendices.adoc" \
+    >"$MOD/aou/partials/referenced-documents.adoc"
+  aou_pages="overview architecture interrupts-errors ppa-appendices records-of-changes referenced-documents software-operation"
   for page in $aou_pages; do
-    cp -f "$AOU_DOC/$page.adoc" "$MOD/aou/partials/"
     # Published fragments land beside the link to their owning topic page.
     {
       echo '++++'
-      sed -nE 's/^\[\[([^],]+)\]\]$/<span id="\1"><\/span>/p' "$AOU_DOC/$page.adoc"
+      sed -nE 's/^\[\[([^],]+)\]\]$/<span id="\1"><\/span>/p' "$MOD/aou/partials/$page.adoc"
       echo '++++'
     } >"$MOD/aou/partials/$page-anchors.adoc"
   done
-  # Antora topics need page-qualified links; the PDF uses the upstream include tree.
+  # Antora topics need page-qualified links; PDF partials retain same-book links.
   sed -i -f <(
     for page in $aou_pages; do
       sed -nE "s/^\[\[([^],]+)\]\]$/s@xref:\1\\\\[@xref:ROOT:aou-$page.adoc#\1[@g/p" \
-        "$AOU_DOC/$page.adoc"
+        "$MOD/aou/partials/$page.adoc"
     done
-  ) "$MOD"/aou/partials/{overview,architecture,interrupts-errors,ppa-appendices}.adoc
+  ) "$MOD"/aou/partials/{overview,architecture,interrupts-errors,ppa-appendices,records-of-changes,referenced-documents}.adoc
   ;;
 integrator)
   cp -f "$AOU_INTEGRATION_GUIDE/integrator.adoc" "$MOD/aou/partials/"
@@ -174,9 +195,6 @@ programmer)
   cp -f "$AOU_DOC/software-operation.adoc" "$MOD/aou/partials/"
   ;;
 esac
-
-# DTP: exclude defines.adoc (DV content, not for publication).
-rm -f "$MOD/dtp/pages/defines.adoc"
 
 # --- ip: collapse every hw/ip/<ip>/doc under <ip>/doc, partials per IP. Register
 #     partials are staged for every IP (even register-only IPs with no doc/ dir,
@@ -195,7 +213,7 @@ for ipdir in "$ROOT"/hw/ip/*/ "$ROOT"/hw/ip/*/*/; do
   stage_gen_html "$ipdir/dv/models/regs/gen/html" "$MOD/ip/partials/$ip/dv/models/regs/gen/html"
 done
 
-# --- ip: every IP in IP_PAGE_OWNERS publishes exactly one page (doc/index.adoc);
+# --- ip: index pages include their topic fragments. For IP_PAGE_OWNERS,
 #     the topic fragments listed in IP_FRAGMENTS move out of pages/ and into
 #     partials/ so they are private (no standalone URL). The owning index page
 #     includes them via the partial$ prefix for HTML or a relative path for PDF.
@@ -216,6 +234,12 @@ for ip in $IP_PAGE_OWNERS; do
     fi
   done
 done
+
+# The TRM's combined TRNG/DRBG page alias and a standalone DRBG page cannot
+# own the same URL. The DRBG architecture remains a reusable partial.
+if [ "$(basename "$PRODUCT")" = "trm" ]; then
+  rm -f "$MOD/ip/pages/drbg/doc/index.adoc"
+fi
 
 # --- opentitan overlay: vendored OpenTitan IPs (e.g. csrng, edn) whose register
 #     collateral is generated into the lowRISC overlay rather than hw/ip, because

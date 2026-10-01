@@ -5,9 +5,10 @@
 `define EXAMPLE_ROM_MACRO_CSR_RDL_DEFINED
 
 addrmap example_rom_macro_csr {
+    name = "Example ROM Macro CSR Address Map";
+    desc = "Control and status registers for the example ROM macro.";
 
-   desc = "Example ROM Macro CSRs";
-
+   
    ////////////////////////////////////////////////////////////////////////////
    // Register Definitions
    ////////////////////////////////////////////////////////////////////////////

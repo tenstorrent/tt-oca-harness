@@ -135,8 +135,8 @@ class smc_i2c_p0_stretch_test_seq(SmcCsrSeq):
         returns only after it has polled STATUS and then read RDATA, and the host
         completes its STOP during those two CSR accesses, so whether the window
         is still visible depends on where the 5 us RX poll grid lands relative to
-        a transaction whose duration scales with ``cfg.periph_clk_period_ns``
-        (randomised by ``SmcEnvCfg.randomize_timing``). That the host executed
+        a transaction whose duration scales with ``cfg.periph_clk_period_ns``.
+        That the host executed
         the read on the bus is established by ``body``, which compares the byte
         ``_wait_rx_byte`` returns against ``_READ0``. This wait establishes the
         settled state as an exact expectation over the bits this scenario

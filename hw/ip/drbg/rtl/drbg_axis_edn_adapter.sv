@@ -1,56 +1,58 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
-//----------------------------------------------------------
 // Copyright 2026 Tenstorrent Inc.
-// drbg_axis_edn_adapter
-//
-// Generic 32b AXI-Stream to multi-client native EDN fan-out.
-//----------------------------------------------------------
 
-/**
- * @file drbg_axis_edn_adapter.sv
- * @brief Converts a single 32-bit AXI-Stream source into `NUM_ENDPOINTS`
- *        native `edn_pkg` client ports.
- *
- * @details Pipeline is:
- *            axis (32b) -> prim_fifo_sync (32b staging)
- *                       -> prim_arbiter_ppc (N requesters)
- *                       -> per-endpoint 1-deep holding FIFO
- *                       -> edn_ack_sm drives edn_ack / edn_bus
- *
- *          `edn_fips` is forwarded from the AXI-Stream `tuser` sideband
- *          (carried per-beat through both FIFO stages), so a FIPS-aware
- *          client such as OTBN RND — which raises `rnd_fips_chk_fail` on an
- *          ack with `edn_fips == 0` — sees the correct provenance of the
- *          bits. Upstream producers are responsible for driving `tuser`:
- *          the DRBG native-EDN-to-AXIS adapter forwards `edn_fips` from
- *          `u_edn`, while externally provided entropy streams should drive
- *          it from the producer's own FIPS policy (commonly tied low when
- *          the source is not NIST SP 800-90A approved).
- *
- *          `clear_i` synchronously flushes staged entropy and returns each
- *          endpoint handshake FSM to its disabled/startup sequence. While
- *          asserted, the adapter accepts no AXI-Stream or native-EDN transfer.
- *
- * @param NUM_ENDPOINTS Number of native EDN clients (e.g. AES, KMAC, OTBN RND/URND).
- */
+// Fan a 32-bit AXI-Stream entropy source out to native EDN client ports.
+//
+// Entropy passes through these pipeline stages in order:
+//
+// - axis (32b) into a 4-entry prim_fifo_sync staging FIFO.
+// - prim_arbiter_ppc round-robin arbitration across N requesters.
+// - A per-endpoint 1-deep holding FIFO.
+// - edn_ack_sm driving edn_ack / edn_bus.
+//
+// edn_fips is forwarded from the AXI-Stream tuser sideband through both FIFO stages so a
+// FIPS-aware client such as OTBN RND sees correct provenance. Upstream producers drive
+// tuser:
+//
+// - The DRBG native-EDN-to-AXIS adapter forwards edn_fips from u_edn.
+// - External streams should drive it from the producer's FIPS policy, commonly tied low
+//   when the source is not NIST SP 800-90A approved.
+//
+// clear_i synchronously flushes staged entropy and every endpoint. endpoint_cancel_i
+// synchronously cancels only the corresponding endpoint and does not disturb another client's
+// in-flight response. It must assert before the client's reset asserts and hold until that
+// reset deasserts.
 module drbg_axis_edn_adapter
   import drbg_pkg::*;
 #(
-  parameter int unsigned NUM_ENDPOINTS = 4
+  parameter int unsigned NUM_ENDPOINTS = 4                  // Number of native EDN clients (e.g.
+                                                            // AES, KMAC, OTBN RND/URND).
 ) (
-  input  wire logic clk_i,
-  input  wire logic rst_ni,
-  input  wire logic clear_i,
+  input  wire logic clk_i,                                  // System clock.
+  input  wire logic rst_ni,                                 // Async reset, active-low.
+  input  wire logic [NUM_ENDPOINTS-1:0] endpoint_cancel_i,  // Per-client synchronous cancel.
+                                                            // Must assert before its reset and
+                                                            // hold until the reset deasserts;
+                                                            // does not disturb other clients.
+  input  wire logic clear_i,                                // Synchronous flush of staged entropy
+                                                            // and every endpoint, active-high.
 
-  // 32b AXI-Stream sink (producer drives valid/data/strb; adapter drives tready)
-  input  wire drbg_axis_req_t axis_req_i,
-  output drbg_axis_rsp_t axis_rsp_o,
+  input  wire drbg_axis_req_t axis_req_i,                   // 32b AXI-Stream sink from the producer
+                                                            // (valid/data/strb/tuser). Adapter
+                                                            // drives tready; only beats with every
+                                                            // tstrb bit set are accepted, and tuser
+                                                            // is forwarded as edn_fips.
+  output drbg_axis_rsp_t axis_rsp_o,                        // AXI-Stream ready toward the producer;
+                                                            // high while the 4-entry staging FIFO
+                                                            // has space, all tstrb bits are set and
+                                                            // clear_i is low.
 
-  // Native EDN toward clients (clients drive req; adapter drives rsp)
-  input  wire edn_pkg::edn_req_t [NUM_ENDPOINTS-1:0] edn_req_i,
-  output edn_pkg::edn_rsp_t [NUM_ENDPOINTS-1:0] edn_rsp_o
+  input  wire edn_pkg::edn_req_t [NUM_ENDPOINTS-1:0] edn_req_i, // Native EDN requests from clients.
+  output edn_pkg::edn_rsp_t [NUM_ENDPOINTS-1:0] edn_rsp_o   // Native EDN responses to clients; ack,
+                                                            // bus and fips are forced to zero
+                                                            // during clear_i or that endpoint's
+                                                            // reset.
 );
 
   `include "prim_assert.sv"
@@ -107,6 +109,11 @@ module drbg_axis_edn_adapter
   // -------------------------------------------------------------------------
   logic [NUM_ENDPOINTS-1:0] arb_req;
   logic [NUM_ENDPOINTS-1:0] arb_gnt;
+  logic                     arb_req_chk;
+  logic [NUM_ENDPOINTS-1:0] ep_flush;
+  logic [NUM_ENDPOINTS-1:0] ep_flush_q;
+  logic [NUM_ENDPOINTS-1:0] ep_live;
+  logic [NUM_ENDPOINTS-1:0] ep_flush_start;
   logic                     arb_valid;
   logic                     arb_ready;
   logic [0:0]               arb_data_i [NUM_ENDPOINTS];
@@ -116,6 +123,10 @@ module drbg_axis_edn_adapter
     assign arb_data_i[k] = 1'b0;
   end
 
+  // A flush withdraws an ungranted request on its first cycle. Waive the
+  // arbiter's request checks only then, so sibling requests remain checked.
+  assign arb_req_chk = !(|ep_flush_start);
+
   prim_arbiter_ppc #(
     .N          (NUM_ENDPOINTS),
     .DW         (1),
@@ -123,7 +134,7 @@ module drbg_axis_edn_adapter
   ) u_arbiter (
     .clk_i     (clk_i),
     .rst_ni    (rst_ni),
-    .req_chk_i (1'b1),
+    .req_chk_i (arb_req_chk),
     .req_i     (arb_req),
     .data_i    (arb_data_i),
     .gnt_o     (arb_gnt),
@@ -151,11 +162,30 @@ module drbg_axis_edn_adapter
   logic [NUM_ENDPOINTS-1:0] ack_sm_err;
 
   for (genvar i = 0; i < NUM_ENDPOINTS; i++) begin : gen_ep
+    // Global clear or this endpoint's cancel flushes the endpoint.
+    assign ep_flush[i] = clear_i || endpoint_cancel_i[i];
+
+    // edn_ack_sm clears the holding FIFO on the first cycle after a flush ends,
+    // so the endpoint rejoins arbitration a cycle later to keep a granted word
+    // from being cleared.
+    always_ff @(posedge clk_i or negedge rst_ni) begin
+      if (!rst_ni) begin
+        ep_flush_q[i] <= 1'b1;
+      end else begin
+        ep_flush_q[i] <= ep_flush[i];
+      end
+    end
+
+    // Every use of edn_req_i is gated by ep_live, so a client reset that
+    // follows its cancel cannot reach a flop in this rst_ni domain.
+    assign ep_live[i]        = !ep_flush[i] && !ep_flush_q[i];
+    assign ep_flush_start[i] = ep_flush[i] && !ep_flush_q[i];
+
     // Only request when the client asks and we don't already hold a word.
-    assign arb_req[i] = !clear_i && edn_req_i[i].edn_req && !ep_rvalid[i];
+    assign arb_req[i] = ep_live[i] && edn_req_i[i].edn_req && !ep_rvalid[i];
 
     // Push the staged word into the winning endpoint's holding FIFO.
-    assign ep_push[i] = !clear_i && stage_rready && arb_gnt[i];
+    assign ep_push[i] = ep_live[i] && stage_rready && arb_gnt[i];
 
     prim_fifo_sync #(
       .Width             (StageWidth),
@@ -165,7 +195,7 @@ module drbg_axis_edn_adapter
     ) u_ep_fifo (
       .clk_i    (clk_i),
       .rst_ni   (rst_ni),
-      .clr_i    (ep_clr[i] | clear_i),
+      .clr_i    (ep_clr[i] | ep_flush[i]),
       .wvalid_i (ep_push[i]),
       .wready_o (ep_wready[i]),
       .wdata_i  ({stage_rfips, stage_rdata}),
@@ -180,8 +210,8 @@ module drbg_axis_edn_adapter
     edn_ack_sm u_edn_ack_sm (
       .clk_i            (clk_i),
       .rst_ni           (rst_ni),
-      .enable_i         (!clear_i),
-      .req_i            (edn_req_i[i].edn_req),
+      .enable_i         (!ep_flush[i]),
+      .req_i            (edn_req_i[i].edn_req && ep_live[i]),
       .ack_o            (ep_ack[i]),
       .fifo_not_empty_i (ep_rvalid[i]),
       .fifo_pop_o       (ep_pop[i]),
@@ -190,12 +220,16 @@ module drbg_axis_edn_adapter
       .ack_sm_err_o     (ack_sm_err[i])
     );
 
-    assign edn_rsp_o[i].edn_ack  = ep_ack[i] & ~clear_i;
-    assign edn_rsp_o[i].edn_bus  = clear_i ? '0 : ep_rdata_raw[i][DataWidth-1:0];
+    assign edn_rsp_o[i].edn_ack = ep_ack[i] & ~ep_flush[i];
+    assign edn_rsp_o[i].edn_bus = ep_flush[i] ? '0 : ep_rdata_raw[i][DataWidth-1:0];
     // FIPS forwarded per-beat from the AXI-Stream tuser sideband.
-    assign edn_rsp_o[i].edn_fips = clear_i ? 1'b0 : ep_rdata_raw[i][DataWidth];
+    assign edn_rsp_o[i].edn_fips = ep_flush[i] ? 1'b0 : ep_rdata_raw[i][DataWidth];
 
     `OCAH_OT_ASSERT(AxisEdnNoAckDuringClear_A, clear_i |-> !edn_rsp_o[i].edn_ack)
+    `OCAH_OT_ASSERT(AxisEdnCancelledEndpointIdle_A,
+                    endpoint_cancel_i[i] |-> !arb_req[i] && !ep_push[i] && !edn_rsp_o[i].edn_ack)
+    `OCAH_OT_ASSERT(AxisEdnReqStableUnlessEndpointCancelled_A,
+                    arb_req[i] && !arb_gnt[i] |=> arb_req[i] || ep_flush[i])
   end
 
   logic unused_ep_wready;

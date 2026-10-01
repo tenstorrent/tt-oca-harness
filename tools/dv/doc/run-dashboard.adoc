@@ -16,9 +16,8 @@ or serve the generated pages.
 [NOTE]
 ====
 Repository CI publishes normalized weekly data for every DUT of the weekly
-regression. The documentation site renders its verification dashboard from
-that data in the browser, through the staging script under `tools/doc`; the
-dashboard workflow itself renders no HTML.
+regression. <<dashboard-site>> is how the documentation site stages that
+data. The dashboard workflow itself renders no HTML.
 ====
 
 == Architecture
@@ -632,8 +631,9 @@ regressions it is not wall-clock elapsed time.
 schema. The initial failing count is calculated as `total - passing`.
 
 |Test detail
-|Regression `jobs` are converted to `tests_detail`; retries can therefore
-produce several attempt records for one final test.
+|Regression `jobs` are converted to `tests_detail`, one entry per
+`(test, seed)` leaf carrying its final attempt. `collect --all-attempts`
+keeps one entry per attempt instead.
 
 |Coverage
 |The dashboard keeps the coverage fields it reads: status, total and
@@ -934,8 +934,12 @@ recorded identity rather than the selected download path.
 native run's Git metadata).
 
 Each `tests_detail` entry carries: `name`, `category`, `seed`, `attempt`,
-`stage`, `status` (may be `SKIP`), `duration_sec`, and `reason`. Retried
-leaves appear once per `(name, seed, attempt)` combination.
+`stage`, `status` (may be `SKIP`), `duration_sec`, and `reason`. A retried
+leaf appears once, as its highest `attempt`, which decides its status; the
+retry itself stays visible in `regression.failed_tests` and
+`regression.flaky_tests` through `attempt_count`. With `collect
+--all-attempts`, a retried leaf appears once per `(name, seed, attempt)`
+combination.
 
 === Aggregate summary: `summary.json` (schema `"0.2"`)
 
@@ -1079,6 +1083,12 @@ collected result records a different framework.
 |`--output PATH`
 |Default: `<repo>/reports/latest/<dut>.result.json`
 |Normalized dashboard result destination.
+
+|`--all-attempts`
+|Default: final attempt only
+|Keep every attempt of a retried leaf in `tests_detail`. Every consumer of
+the record, the per-category counts and the test-history page included,
+then counts each attempt as a separate entry.
 |===
 
 === `report`
@@ -1186,11 +1196,10 @@ publishes (see <<Continuous integration>>).
 The `dashboard` GitHub workflow (`.github/workflows/dashboard.yml`) publishes
 the weekly regression results as **data only**: one normalized record per
 weekly DUT, their aggregate, the trend history, and the failure
-classification. The workflow renders and hosts no HTML. The documentation
-site in this repository renders its verification dashboard from the
-published branch through `tools/doc/stage_dashboard_data.sh`, and the
-documentation workflow runs after each publication; any external consumer
-reads the same files.
+classification. The workflow renders and hosts no HTML. <<dashboard-site>>
+stages the published branch into the documentation site. The documentation
+workflow runs after each publication; any external consumer reads the same
+files.
 
 . The `regress` workflow's weekly tier uploads each row's native run tree as
   the artifact `dv-run-<dut>-<tool>-weekly` (see the CI section in
@@ -1267,8 +1276,8 @@ Operational rules:
   computed from the native leaf records, per DUT under `duts.<dut>` and
   summed at the top level, because the normalized dashboard schema collapses
   those statuses into `FAIL`.
-* The workflow writes nothing to `gh-pages`; the documentation workflow
-  copies the trimmed data into the built site.
+* The workflow writes nothing to `gh-pages`. <<dashboard-site>> is the step
+  that stages data into the built site.
 * An email digest is sent per weekly publication through the
   `OCAH_MAIL_USERNAME`, `OCAH_MAIL_PASSWORD`, and `OCAH_MAIL_TO` secrets; the
   step is skipped while `OCAH_MAIL_TO` is empty and fails the run when it is
@@ -1281,6 +1290,303 @@ Operational rules:
 * Every dispatch adds a trend point: the point identity includes the
   dashboard checkout revision, so a re-dispatched weekly does not replace its
   earlier point.
+
+[[dashboard-site]]
+== Documentation site
+
+`tools/doc/stage_dashboard_data.sh` reads each publisher directory on the
+published branch and writes the files the documentation pages plot.
+`doc/doc.mk` runs it as `make ocah-doc-dashboard-data` to fetch only, and as
+`ocah_stage_dashboard_data` from the HTML build targets to stage into a site
+root. Each publisher directory has the layout in <<dashboard-ci>>.
+`OCAH_DASHBOARD_PUBLISHERS` selects the parent directory; the default is
+`vcs`.
+
+On the pages, one series is the `(flow, framework, tool)` already carried on
+each `dut_status` row and history `per_dut` entry. A row is labelled
+`name (framework, tool)`, or `name (tool)` when `framework` is empty.
+`name` comes from `BLOCK_NAMES` in `doc/ui-supplemental/js/dashboard.js`,
+such as `DTP` or `AoU`, and is the `flow` for a block it does not list;
+query parameters and links always use the `flow`. A series with an empty
+`framework` and a non-zero `tests_total` stands for the whole block on its
+tool: the overview shows it in place of that block's other series on the
+same tool, and its block page lists all of them.
+
+[source,text]
+----
+stage_dashboard_data.sh
+  trim_dashboard_data.py combine    one summary and one history
+  trim_dashboard_data.py summary    summary.json, tests.json
+  trim_dashboard_data.py history    history.json
+  aggregate_test_history.py         test-history.json
+  render_badges.py                  badge-<flow>-<framework>-<tool>-<kind>.svg
+----
+
+Staged files land in `<site-root>/ocah-docs/latest/data/`.
+
+=== Running it
+
+[source,bash]
+----
+tools/doc/stage_dashboard_data.sh              # fetch only, into OCAH_DASHBOARD_DATA_DIR
+tools/doc/stage_dashboard_data.sh <site-root>  # fetch if needed, then stage
+----
+
+A fetch runs only when `OCAH_DASHBOARD_DATA_DIR` holds no `summary.json`.
+Delete that directory to pick up a newer publication. When the publisher
+listing cannot be read and a summary is already cached, the script keeps
+that cache, skips `test-history.json`, and warns.
+
+The script calls three programs. Each also runs on its own.
+
+[source,text]
+----
+trim_dashboard_data.py combine  <output> <source>...
+trim_dashboard_data.py summary  <source> <output> [--tests-out FILE]
+trim_dashboard_data.py history  <source> <output>
+----
+
+[cols="<2,<4,<4",options="header"]
+|===
+|Subcommand |Reads |Writes
+
+|`combine`
+|one published file per publisher
+|those sources collected into one file
+
+|`summary`
+|a combined summary
+|`summary.json`, and `tests.json` with `--tests-out`
+
+|`history`
+|a combined history
+|`history.json`
+|===
+
+[source,text]
+----
+aggregate_test_history.py <output> [--ref REF] [--runs-dir DIR]... [--limit N]
+----
+
+[cols="<2,<3,<5",options="header"]
+|===
+|Option |Default |Purpose
+
+|`--ref`
+|`origin/dv-dashboard-data`
+|Git ref to read archives from
+
+|`--runs-dir`
+|`data/runs/`
+|Directory of archives within the ref, repeated once per publisher
+
+|`--limit`
+|`0` (all)
+|Newest N archives from each runs directory
+|===
+
+[source,text]
+----
+render_badges.py <source> <outdir>
+----
+
+`render_badges.py` reads a combined summary and writes one badge per series
+per metric into `<outdir>`, removing badges for series the summary no longer
+carries.
+
+=== Configuration
+
+The staging script reads these variables. Each is also an overridable Make
+variable in `doc/doc.mk`.
+
+[cols="<4,<4,<5",options="header"]
+|===
+|Variable |Default |Purpose
+
+|`OCAH_ROOT`
+|the script's repository
+|Repository root
+
+|`OCAH_DASHBOARD_DATA_DIR`
+|`doc/_build/dashboard-data`
+|Where the fetched data is kept between builds
+
+|`OCAH_DASHBOARD_DATA_REF`
+|`origin/dv-dashboard-data`
+|Git ref carrying the data branch
+
+|`OCAH_DASHBOARD_PUBLISHERS`
+|`vcs`
+|Directory within that ref holding one subdirectory per publisher
+
+|`OCAH_DASHBOARD_RUNS_LIMIT`
+|`0` (all)
+|Newest N archives to aggregate, per publisher
+|===
+
+=== Pages
+
+`doc/ui-supplemental/js/dashboard.js` selects a renderer from the element
+IDs the page declares.
+
+[cols="<4,<4,<3",options="header"]
+|===
+|Page |Selected by |Reads
+
+|`doc/trm/src/dashboard.adoc`
+|`dashboard-chip-rows` and `dashboard-block-rows`
+|`summary.json`
+
+|`doc/trm/src/dashboard-block.adoc`
+|`dashboard-block-row`
+|`summary.json`, `tests.json`
+
+|`doc/trm/src/dashboard-trends.adoc`
+|`dashboard-trends` and `dashboard-window-select`
+|`history.json`
+
+|`doc/trm/src/dashboard-test-history.adoc`
+|`dashboard-history-chart`
+|`test-history.json`
+
+|`doc/trm/src/dashboard-test-detail.adoc`
+|`dashboard-detail-rows`
+|`test-history.json`
+|===
+
+Every page but the overview takes `flow`, `framework`, and `tool` query
+parameters. The detail page also takes `test`. Each parameter narrows the
+page: `?flow=dtp` covers every series of that block, and
+`?flow=dtp&framework=uvm&tool=vcs` covers one.
+
+=== Staged files
+
+`summary.json` and `history.json` keep a subset of
+<<dashboard-json-reference>>. The key tuples in
+`tools/doc/trim_dashboard_data.py` name that subset: `DUT_KEYS`,
+`RESULT_KEYS`, `COVERAGE_KEYS`, `TEST_KEYS`, `HISTORY_POINT_KEYS`, and
+`HISTORY_DUT_KEYS`. Which of those keys the site may depend on is the trim
+contract in xref:interfaces.adoc[DV Infrastructure Interfaces].
+`tests.json` and `test-history.json` are produced for the pages and are not
+published files.
+
+[source,text]
+----
+summary.json       generated_at
+                   dut_status[]  flow, framework, tool, tests_total,
+                                 pass_rate, coverage_total_percent
+                   results[]     flow, framework, tool,
+                                 coverage.effective_metrics
+
+tests.json         generated_at
+                   results[]     flow, framework, tool
+                                 tests[] name, status, category, seed,
+                                         duration_sec, stage
+
+history.json       points[]      generated_at, test_pass_rate,
+                                 flow_pass_rate, failed_tests, flaky_tests
+                                 per_dut[] flow, framework, tool,
+                                           coverage_status, effective_metrics
+
+test-history.json  series[]      flow, framework, tool
+                   runs[]        date, id
+                   tests{name}   one cell per run, in run order
+                   cell          pass, total, seeds[] seed, reason
+----
+
+`aggregate_test_history.py` builds `test-history.json` from the per-run
+archives. A `null` cell is a test that did not run in that archive, and it
+keeps the test's list the same length as that series' `runs`. A seed that
+did not pass carries its `reason`. `id` is the CI run the archive came from,
+and is empty when the publisher recorded none.
+
+The overview shows `coverage_total_percent`. The block page shows
+`results[].coverage.effective_metrics`.
+
+=== Charts
+
+Charts are drawn with https://echarts.apache.org[Apache ECharts], vendored
+at `doc/ui-supplemental/js/vendor/echarts/`. The trends page draws a line
+chart per metric for the selected series. The test-history page draws a
+heatmap per series, and its test names link to the detail page.
+
+=== Badges
+
+`render_badges.py` fetches one badge per series per metric from shields.io
+and stores it next to the staged data. The file name is
+`badge-<flow>-<framework>-<tool>-<kind>.svg`, and `kind` is `status`,
+`tests`, or `coverage`. The label includes the framework and tool. A fetch
+that fails leaves the previous file in place. A series whose `tests_total`
+is zero reports `no data` on its status badge, whatever `status` the record
+carries. `hw/sys/dtp/doc/index.adoc` embeds the three DTP badges.
+
+=== When data is missing
+
+Missing data does not fail the documentation build.
+
+[cols="<4,<5",options="header"]
+|===
+|Missing |The page shows
+
+|`summary.json`
+|`Dashboard data unavailable`, with the reason
+
+|a block absent from `dut_status`
+|its row, with every metric `n/a`
+
+|a metric the run did not measure
+|`n/a` in that column, uncoloured
+
+|`tests.json`
+|the block page's summary row, and no test table
+
+|a test absent from a run
+|a grey "did not run" cell
+
+|a badge file
+|the image link, with no fallback
+
+|no archives
+|an empty grid and `no test results`
+|===
+
+=== Adding a row or a column
+
+`CHIP_ROWS` and `BLOCK_ROWS` in `dashboard.js` name the overview rows. A
+published block that is not listed there does not appear. A listed block
+with no `dut_status` row still appears, with every metric `n/a`.
+
+A column the pages draw has to be added to the matching key tuple in
+`trim_dashboard_data.py` before the staged file carries it.
+
+=== Iterating locally
+
+Stage into a site that is already built:
+
+[source,bash]
+----
+tools/doc/stage_dashboard_data.sh doc/_build/html_antora
+----
+
+Read a different branch:
+
+[source,bash]
+----
+OCAH_DASHBOARD_DATA_REF=origin/my-branch \
+  tools/doc/stage_dashboard_data.sh doc/_build/html_antora
+----
+
+Render from a directory that already holds a `summary.json` and a
+`history.json`:
+
+[source,bash]
+----
+OCAH_DASHBOARD_DATA_DIR="$PWD/doc/_build/my-data" \
+  tools/doc/stage_dashboard_data.sh doc/_build/html_antora
+----
+
+Staging reuses a directory that already holds data, so editing those files
+and restaging is enough to iterate.
 
 == Troubleshooting
 

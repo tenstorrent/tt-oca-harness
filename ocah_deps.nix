@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 {
   inputs,
   pkgs,
@@ -7,9 +9,15 @@
   # load-uv-env.nix returns a function; apply it to pkgs to get the pythonSet and venv.
   uv_loader = import ./nix/load-uv-env.nix {inherit inputs;};
   uv_loaded = uv_loader pkgs;
+  # VeeR-ISS includes <zlib.h> and links -lz/-lbz2/-llzma/-lzstd bare, with no find_package
+  # hook to point at a prefix. The container has no system /usr/include or /usr/lib.
+  vp_system_libs = with pkgs; [zlib bzip2 xz zstd];
 in {
   ocah_env =
     rec {
+      # Needed to allow dashboard to fetch badges
+      SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
+
       # Bypass NPX for MDlint
       OCAH_MARKDOWNLINT = "${pkgs.markdownlint-cli}/bin/markdownlint";
       # Documentation Variables - bypass NPX
@@ -20,6 +28,7 @@ in {
       OCAH_NO_INSTALL_NPM_DEPS = "1";
       # Run Synth Natively, rather than (nesting) container
       OCAH_EDA_SKIP_CONTAINERS = "1";
+      OCAH_YOSYS_BUNDLED_SLANG = "1";
       # SMC Bootrom
       RISCV_TOOLCHAIN = "${pkgs.riscv-unknown-elf-toolchain}/bin";
       # VP Env Variables
@@ -28,7 +37,9 @@ in {
       BOOST_DIR = "${pkgs.boost-merged}";
       BOOST_ROOT = BOOST_DIR;
       OPENSSL_ROOT = "${pkgs.openssl-merged}";
-      WHISPER_HOME = "${pkgs.whisper}";
+      WHISPER_HOME = "${pkgs.whisper}/whisper";
+      CPATH = pkgs.lib.makeSearchPathOutput "dev" "include" vp_system_libs;
+      LIBRARY_PATH = pkgs.lib.makeLibraryPath vp_system_libs;
       CMAKE_CXX_STANDARD = "20";
       # Nix compilers enforce no -mtune native for reproducibility by default, overridden here
       NIX_ENFORCE_NO_NATIVE = "0";
@@ -60,6 +71,9 @@ in {
         OCAH_REG_SKIP_UV_SYNC = "1";
         # OTBN
         OTBN_PYTHON = PYTHON;
+        VP_PYTHON = PYTHON;
+        # SEP ROM builds
+        MANIFEST_PYTHON = PYTHON;
       }
       else {}
     );
@@ -93,6 +107,8 @@ in {
       # Synthesis
       pdk-ciel
       yosys
+      # Formal DV
+      sby
       # Libraries
       lz4
       zlib

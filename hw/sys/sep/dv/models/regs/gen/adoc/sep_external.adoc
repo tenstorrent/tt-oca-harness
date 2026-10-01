@@ -1,15 +1,23 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-sep_external]
+== SEP External
+
+SEP external address map (eFuse SHIM control and execute-in-place window).
+
 [cols="1,4,1,6", options="header"]
-.Register Map
 |===
 | Address | Name | Access | Description
-| 0x0 | EFUSE_BANK_INIT_TIME | RW a| eFuse bank initialization time. Number of cycles to wait for the OTP macro to initialize before sensing can begin.
+| 0x0 | <<reg-{regmap-instance}-sep_external-efuse_shim_ctrl-EFUSE_BANK_INIT_TIME,EFUSE_BANK_INIT_TIME>> | RW a| eFuse bank initialization time. Number of cycles to wait for the OTP macro to initialize before sensing can begin.
 |===
 
+[#reg-{regmap-instance}-sep_external-efuse_shim_ctrl-EFUSE_BANK_INIT_TIME]
+=== EFUSE_BANK_INIT_TIME
+
 [cols="1,3,1,1,6", options="header"]
-.EFUSE_BANK_INIT_TIME Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `init_time` | RW | 0x20 a| Most OTP have a initialization time before sensing can be done

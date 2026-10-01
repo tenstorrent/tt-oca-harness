@@ -1,42 +1,66 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-uart_wrap]
+== UART Wrapper Address Map
+
+Wrapper address map instantiating the per-UART log-engine blocks.
+
 [NOTE]
 ======
-*Register Arrays:* This register map contains the following register arrays:
+*Register Arrays:*
 
-* *LOG_CTRL[16]*: 16 registers
-  ** Base Address: 0x240
-  ** Address Increment: 0x4 per register
-
+* *uart_log_engine_wrap[4].uart_log_engine_ctrl.CTRL*: 4 registers, base 0x0, stride 0x400
+* *uart_log_engine_wrap[4].uart.RBR*: 4 registers, base 0x100, stride 0x400
+* *uart_log_engine_wrap[4].uart.IER*: 4 registers, base 0x104, stride 0x400
+* *uart_log_engine_wrap[4].uart.IIR*: 4 registers, base 0x108, stride 0x400
+* *uart_log_engine_wrap[4].uart.LCR*: 4 registers, base 0x10C, stride 0x400
+* *uart_log_engine_wrap[4].uart.MCR*: 4 registers, base 0x110, stride 0x400
+* *uart_log_engine_wrap[4].uart.LSR*: 4 registers, base 0x114, stride 0x400
+* *uart_log_engine_wrap[4].uart.MSR*: 4 registers, base 0x118, stride 0x400
+* *uart_log_engine_wrap[4].uart.SCR*: 4 registers, base 0x11C, stride 0x400
+* *uart_log_engine_wrap[4].uart.ECR*: 4 registers, base 0x120, stride 0x400
+* *uart_log_engine_wrap[4].uart.ITR*: 4 registers, base 0x124, stride 0x400
+* *uart_log_engine_wrap[4].log_engine.CTRL*: 4 registers, base 0x200, stride 0x400
+* *uart_log_engine_wrap[4].log_engine.LOG_REGION_SIZE*: 4 registers, base 0x204, stride 0x400
+* *uart_log_engine_wrap[4].log_engine.LOG_REGION_ADDR*: 4 registers, base 0x208, stride 0x400
+* *uart_log_engine_wrap[4].log_engine.LOG_WRITE_ADDR*: 4 registers, base 0x210, stride 0x400
+* *uart_log_engine_wrap[4].log_engine.INTR_STATUS*: 4 registers, base 0x214, stride 0x400
+* *uart_log_engine_wrap[4].log_engine.INTR_ENABLE*: 4 registers, base 0x218, stride 0x400
+* *uart_log_engine_wrap[4].log_engine.INTR_TEST*: 4 registers, base 0x21C, stride 0x400
+* *uart_log_engine_wrap[4].log_engine.LOG_CTRL[16]*: 64 registers, base 0x240 (uart_log_engine_wrap x4 stride 0x400, LOG_CTRL x16 stride 0x4)
 ======
 
 [cols="1,4,1,6", options="header"]
-.Register Map
 |===
 | Address | Name | Access | Description
-| 0x0 | CTRL | RW a| Control Register
-| 0x100 | RBR | R a| Receiver Buffer Register
-| 0x104 | IER | RW a| Interrupt Enable Register
-| 0x108 | IIR | R a| Interrupt Identification Register
-| 0x10C | LCR | RW a| Line Control Register
-| 0x110 | MCR | RW a| Modem Control Register
-| 0x114 | LSR | R a| Line Status Register
-| 0x118 | MSR | R a| Modem Status Register
-| 0x11C | SCR | RW a| Scratch Register
-| 0x120 | ECR | RW a| Extended Control Register
-| 0x124 | ITR | RW a| Interrupt Test Register
-| 0x204 | LOG_REGION_SIZE | RW a| Log Region Size Register
-| 0x208 | LOG_REGION_ADDR | RW a| Log Region Address Register
-| 0x210 | LOG_WRITE_ADDR | RW a| Log Write Address Register
-| 0x214 | INTR_STATUS | RW a| Interrupt Status Register
-| 0x218 | INTR_ENABLE | RW a| Interrupt Enable Register
-| 0x21C | INTR_TEST | W a| Interrupt Test Register
-| 0x240 - 0x27C | LOG_CTRL[16] | RW a| Log Control Register
+| 0x0 - 0xC00 | <<reg-{regmap-instance}-uart_wrap-uart_log_engine_wrap-uart_log_engine_ctrl-CTRL,uart_log_engine_wrap[4].uart_log_engine_ctrl.CTRL>> | RW a| Control Register
+| 0x100 - 0xD00 | <<reg-{regmap-instance}-uart_wrap-uart_log_engine_wrap-uart-RBR,uart_log_engine_wrap[4].uart.RBR>> | R a| Receiver Buffer Register
+| 0x104 - 0xD04 | <<reg-{regmap-instance}-uart_wrap-uart_log_engine_wrap-uart-IER,uart_log_engine_wrap[4].uart.IER>> | RW a| Interrupt Enable Register
+| 0x108 - 0xD08 | <<reg-{regmap-instance}-uart_wrap-uart_log_engine_wrap-uart-IIR,uart_log_engine_wrap[4].uart.IIR>> | R a| Interrupt Identification Register
+| 0x10C - 0xD0C | <<reg-{regmap-instance}-uart_wrap-uart_log_engine_wrap-uart-LCR,uart_log_engine_wrap[4].uart.LCR>> | RW a| Line Control Register
+| 0x110 - 0xD10 | <<reg-{regmap-instance}-uart_wrap-uart_log_engine_wrap-uart-MCR,uart_log_engine_wrap[4].uart.MCR>> | RW a| Modem Control Register
+| 0x114 - 0xD14 | <<reg-{regmap-instance}-uart_wrap-uart_log_engine_wrap-uart-LSR,uart_log_engine_wrap[4].uart.LSR>> | R a| Line Status Register
+| 0x118 - 0xD18 | <<reg-{regmap-instance}-uart_wrap-uart_log_engine_wrap-uart-MSR,uart_log_engine_wrap[4].uart.MSR>> | R a| Modem Status Register
+| 0x11C - 0xD1C | <<reg-{regmap-instance}-uart_wrap-uart_log_engine_wrap-uart-SCR,uart_log_engine_wrap[4].uart.SCR>> | RW a| Scratch Register
+| 0x120 - 0xD20 | <<reg-{regmap-instance}-uart_wrap-uart_log_engine_wrap-uart-ECR,uart_log_engine_wrap[4].uart.ECR>> | RW a| Extended Control Register
+| 0x124 - 0xD24 | <<reg-{regmap-instance}-uart_wrap-uart_log_engine_wrap-uart-ITR,uart_log_engine_wrap[4].uart.ITR>> | RW a| Interrupt Test Register
+| 0x200 - 0xE00 | <<reg-{regmap-instance}-uart_wrap-uart_log_engine_wrap-log_engine-CTRL,uart_log_engine_wrap[4].log_engine.CTRL>> | RW a| Control Register
+| 0x204 - 0xE04 | <<reg-{regmap-instance}-uart_wrap-uart_log_engine_wrap-log_engine-LOG_REGION_SIZE,uart_log_engine_wrap[4].log_engine.LOG_REGION_SIZE>> | RW a| Log Region Size Register
+| 0x208 - 0xE08 | <<reg-{regmap-instance}-uart_wrap-uart_log_engine_wrap-log_engine-LOG_REGION_ADDR,uart_log_engine_wrap[4].log_engine.LOG_REGION_ADDR>> | RW a| Log Region Address Register
+| 0x210 - 0xE10 | <<reg-{regmap-instance}-uart_wrap-uart_log_engine_wrap-log_engine-LOG_WRITE_ADDR,uart_log_engine_wrap[4].log_engine.LOG_WRITE_ADDR>> | RW a| Log Write Address Register
+| 0x214 - 0xE14 | <<reg-{regmap-instance}-uart_wrap-uart_log_engine_wrap-log_engine-INTR_STATUS,uart_log_engine_wrap[4].log_engine.INTR_STATUS>> | RW a| Interrupt Status Register
+| 0x218 - 0xE18 | <<reg-{regmap-instance}-uart_wrap-uart_log_engine_wrap-log_engine-INTR_ENABLE,uart_log_engine_wrap[4].log_engine.INTR_ENABLE>> | RW a| Interrupt Enable Register
+| 0x21C - 0xE1C | <<reg-{regmap-instance}-uart_wrap-uart_log_engine_wrap-log_engine-INTR_TEST,uart_log_engine_wrap[4].log_engine.INTR_TEST>> | W a| Interrupt Test Register
+| 0x240 - 0xE7C | <<reg-{regmap-instance}-uart_wrap-uart_log_engine_wrap-log_engine-LOG_CTRL-,uart_log_engine_wrap[4].log_engine.LOG_CTRL[16]>> | RW a| Log Control Register
 |===
 
+[#reg-{regmap-instance}-uart_wrap-uart_log_engine_wrap-uart_log_engine_ctrl-CTRL]
+=== uart_log_engine_wrap[4].uart_log_engine_ctrl.CTRL
+
 [cols="1,3,1,1,6", options="header"]
-.CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `Reserved` | - | - a| Reserved
@@ -44,18 +68,22 @@
 traffic.
 |===
 
+[#reg-{regmap-instance}-uart_wrap-uart_log_engine_wrap-uart-RBR]
+=== uart_log_engine_wrap[4].uart.RBR
+
 [cols="1,3,1,1,6", options="header"]
-.RBR Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `DATA` | R | 0x0 a| Received Data. Contains a received character. If FIFOs are enabled, this field
+| 7:0 | `DATA` | R RMOD | 0x0 a| Received Data. Contains a received character. If FIFOs are enabled, this field
 points to the bottom of the RX FIFO. Otherwise, this field points to a single-
 byte Receiver Buffer Register.
 |===
 
+[#reg-{regmap-instance}-uart_wrap-uart_log_engine_wrap-uart-IER]
+=== uart_log_engine_wrap[4].uart.IER
+
 [cols="1,3,1,1,6", options="header"]
-.IER Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:5 | `Reserved` | - | - a| Reserved
@@ -67,8 +95,10 @@ Interrupt.
 | 0 | `ERBFI` | RW | 0x0 a| Enable Receiver Buffer Full (Received Data Ready) Interrupt.
 |===
 
+[#reg-{regmap-instance}-uart_wrap-uart_log_engine_wrap-uart-IIR]
+=== uart_log_engine_wrap[4].uart.IIR
+
 [cols="1,3,1,1,6", options="header"]
-.IIR Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
@@ -86,8 +116,10 @@ Interrupt.
 | 0 | `INTERRUPT_PENDING` | R | 0x1 a| Interrupt Pending. Active-low.
 |===
 
+[#reg-{regmap-instance}-uart_wrap-uart_log_engine_wrap-uart-LCR]
+=== uart_log_engine_wrap[4].uart.LCR
+
 [cols="1,3,1,1,6", options="header"]
-.LCR Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
@@ -112,8 +144,10 @@ even parity is selected and `1` if odd parity is selected.
 * `0x3` - 8 bits per character
 |===
 
+[#reg-{regmap-instance}-uart_wrap-uart_log_engine_wrap-uart-MCR]
+=== uart_log_engine_wrap[4].uart.MCR
+
 [cols="1,3,1,1,6", options="header"]
-.MCR Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:6 | `Reserved` | - | - a| Reserved
@@ -131,8 +165,10 @@ polarity.
 opposite polarity.
 |===
 
+[#reg-{regmap-instance}-uart_wrap-uart_log_engine_wrap-uart-LSR]
+=== uart_log_engine_wrap[4].uart.LSR
+
 [cols="1,3,1,1,6", options="header"]
-.LSR Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
@@ -144,19 +180,19 @@ the transmitter FIFO (or THR in non-FIFO mode) are empty.
 | 5 | `THRE` | R | 0x1 a| Transmitter Holding Register Empty. When set, indicates that the TX FIFO (or
 THR in non-FIFO mode) is empty. Clearing the Transmitter Holding Register Empty
 Interrupt does NOT clear this bit.
-| 4 | `BI` | R | 0x0 a| Break Interrupt. When set, indicates that the `rx_i` input is `0` for an entire
+| 4 | `BI` | R RC | 0x0 a| Break Interrupt. When set, indicates that the `rx_i` input is `0` for an entire
 frame's time (start + data + parity + stop bits). In FIFO mode, this bit set
 when the character reaches the top of the receiver FIFO. In non-FIFO mode, this
 bit is set when the character enters the RBR. This bit triggers the Receiver
 Line Status Interrupt.
-| 3 | `FE` | R | 0x0 a| Framing Error. When set, indicates that the received character is missing a
+| 3 | `FE` | R RC | 0x0 a| Framing Error. When set, indicates that the received character is missing a
 stop bit. In FIFO mode, this bit is set when the character reaches the top of
 the FIFO. In non-FIFO mode, this bit is set when the character enters the RBR.
 This bit triggers the Receiver Line Status Interrupt.
-| 2 | `PE` | R | 0x0 a| Parity Error. When set, indicates that the character at the top of the receiver
+| 2 | `PE` | R RC | 0x0 a| Parity Error. When set, indicates that the character at the top of the receiver
 FIFO (or RBR in non-FIFO mode) has a parity error. This bit triggers the
 Receiver Line Status Interrupt.
-| 1 | `OE` | R | 0x0 a| Overrun Error. When set, indicates that the RX FIFO (or Receiver Buffer
+| 1 | `OE` | R RC | 0x0 a| Overrun Error. When set, indicates that the RX FIFO (or Receiver Buffer
 Register in Non-FIFO Mode) is full when new character is received. In FIFO Mode, the new character
 is dropped. In non-FIFO mode, the existing character in the RBR is overwritten.
 This bit triggers the Receiver Line Status Interrupt.
@@ -164,8 +200,10 @@ This bit triggers the Receiver Line Status Interrupt.
 mode) contains data.
 |===
 
+[#reg-{regmap-instance}-uart_wrap-uart_log_engine_wrap-uart-MSR]
+=== uart_log_engine_wrap[4].uart.MSR
+
 [cols="1,3,1,1,6", options="header"]
-.MSR Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
@@ -177,29 +215,33 @@ it reads `1` while the remote modem signals an incoming call.
 so it reads `1` while the remote modem is connected and ready.
 | 4 | `CTS` | R | 0x0 a| Clear to Send. This bit reflects the `cts_ni` input in the opposite polarity, so
 it reads `1` while the remote device is ready to receive data.
-| 3 | `DDCD` | R | 0x0 a| Delta Data Carrier Detect. When set, indicates that the `DCD` bit has changed
+| 3 | `DDCD` | R RC | 0x0 a| Delta Data Carrier Detect. When set, indicates that the `DCD` bit has changed
 since the last time this register was read. This bit triggers the Modem Status
 Interrupt.
-| 2 | `TERI` | R | 0x0 a| Trailing Edge Ring Indicator. When set, indicates that the `RI` bit has changed
+| 2 | `TERI` | R RC | 0x0 a| Trailing Edge Ring Indicator. When set, indicates that the `RI` bit has changed
 from a `1` to a `0`. This bit triggers the Modem Status Interrupt.
-| 1 | `DDSR` | R | 0x0 a| Delta Data Set Ready. When set, indicates that the `DSR` bit has changed since
+| 1 | `DDSR` | R RC | 0x0 a| Delta Data Set Ready. When set, indicates that the `DSR` bit has changed since
 the last time this register was read. This bit triggers the Modem Status
 Interrupt.
-| 0 | `DCTS` | R | 0x0 a| Delta Clear to Send. When set, indicates that the `CTS` bit has changed since
+| 0 | `DCTS` | R RC | 0x0 a| Delta Clear to Send. When set, indicates that the `CTS` bit has changed since
 the last time this register was read. This bit triggers the Modem Status
 Interrupt.
 |===
 
+[#reg-{regmap-instance}-uart_wrap-uart_log_engine_wrap-uart-SCR]
+=== uart_log_engine_wrap[4].uart.SCR
+
 [cols="1,3,1,1,6", options="header"]
-.SCR Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
 | 7:0 | `SCR` | RW | 0x0 a| Scratch. Holds user data.
 |===
 
+[#reg-{regmap-instance}-uart_wrap-uart_log_engine_wrap-uart-ECR]
+=== uart_log_engine_wrap[4].uart.ECR
+
 [cols="1,3,1,1,6", options="header"]
-.ECR Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:2 | `Reserved` | - | - a| Reserved
@@ -220,8 +262,10 @@ configurations for the trigger levels are:
 * `0xB` - 4096 characters
 |===
 
+[#reg-{regmap-instance}-uart_wrap-uart_log_engine_wrap-uart-ITR]
+=== uart_log_engine_wrap[4].uart.ITR
+
 [cols="1,3,1,1,6", options="header"]
-.ITR Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:6 | `Reserved` | - | - a| Reserved
@@ -239,8 +283,21 @@ Writing `1` forces the interrupt and writing `0` releases it.
 the interrupt and writing `0` releases it.
 |===
 
+[#reg-{regmap-instance}-uart_wrap-uart_log_engine_wrap-log_engine-CTRL]
+=== uart_log_engine_wrap[4].log_engine.CTRL
+
 [cols="1,3,1,1,6", options="header"]
-.LOG_REGION_SIZE Register
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `Reserved` | - | - a| Reserved
+| 0 | `EN` | RW | 0x0 a| Log Engine Enable. When set, enables the Log Engine. When unset, disables the
+Log Engine and resets all FSMs, flops, and FIFOs.
+|===
+
+[#reg-{regmap-instance}-uart_wrap-uart_log_engine_wrap-log_engine-LOG_REGION_SIZE]
+=== uart_log_engine_wrap[4].log_engine.LOG_REGION_SIZE
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:20 | `Reserved` | - | - a| Reserved
@@ -252,8 +309,10 @@ rounds each slot's transferable capacity down to complete 8-byte fetch beats.
 A requested LOG_LEN above that capacity is clamped to the capacity.
 |===
 
+[#reg-{regmap-instance}-uart_wrap-uart_log_engine_wrap-log_engine-LOG_REGION_ADDR]
+=== uart_log_engine_wrap[4].log_engine.LOG_REGION_ADDR
+
 [cols="1,3,1,1,6", options="header"]
-.LOG_REGION_ADDR Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:56 | `RESERVED` | R | 0x0 a| Reserved. Reads as zero; writes are ignored.
@@ -261,27 +320,33 @@ A requested LOG_LEN above that capacity is clamped to the capacity.
 | 31:0 | `LOG_REGION_ADDR_LO` | RW | 0x0 a| Log Region Start Address Low.
 |===
 
+[#reg-{regmap-instance}-uart_wrap-uart_log_engine_wrap-log_engine-LOG_WRITE_ADDR]
+=== uart_log_engine_wrap[4].log_engine.LOG_WRITE_ADDR
+
 [cols="1,3,1,1,6", options="header"]
-.LOG_WRITE_ADDR Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `LOG_WRITE_ADDR` | RW | 0x0 a| Log Write Address. This is the address where the log data is written to.
 |===
 
+[#reg-{regmap-instance}-uart_wrap-uart_log_engine_wrap-log_engine-INTR_STATUS]
+=== uart_log_engine_wrap[4].log_engine.INTR_STATUS
+
 [cols="1,3,1,1,6", options="header"]
-.INTR_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:5 | `Reserved` | - | - a| Reserved
-| 4 | `LOG_WRITE_ERR` | RW | 0x0 a| Log Write Error Interrupt. Asserted when the bus for writing log data returns
+| 4 | `LOG_WRITE_ERR` | RW1C | 0x0 a| Log Write Error Interrupt. Asserted when the bus for writing log data returns
 an error.
 | 3:1 | `Reserved` | - | - a| Reserved
-| 0 | `LOG_FETCH_ERR` | RW | 0x0 a| Log Fetch Error Interrupt. Asserted when the bus for fetching log data returns
+| 0 | `LOG_FETCH_ERR` | RW1C | 0x0 a| Log Fetch Error Interrupt. Asserted when the bus for fetching log data returns
 an error.
 |===
 
+[#reg-{regmap-instance}-uart_wrap-uart_log_engine_wrap-log_engine-INTR_ENABLE]
+=== uart_log_engine_wrap[4].log_engine.INTR_ENABLE
+
 [cols="1,3,1,1,6", options="header"]
-.INTR_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:5 | `Reserved` | - | - a| Reserved
@@ -290,18 +355,22 @@ an error.
 | 0 | `LOG_FETCH_ERR` | RW | 0x0 a| Log Fetch Error Interrupt Enable.
 |===
 
+[#reg-{regmap-instance}-uart_wrap-uart_log_engine_wrap-log_engine-INTR_TEST]
+=== uart_log_engine_wrap[4].log_engine.INTR_TEST
+
 [cols="1,3,1,1,6", options="header"]
-.INTR_TEST Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:5 | `Reserved` | - | - a| Reserved
-| 4 | `LOG_WRITE_ERR` | W | 0x0 a| Log Write Error Interrupt Test. Writing `1` forces the interrupt.
+| 4 | `LOG_WRITE_ERR` | W 1P | 0x0 a| Log Write Error Interrupt Test. Writing `1` forces the interrupt.
 | 3:1 | `Reserved` | - | - a| Reserved
-| 0 | `LOG_FETCH_ERR` | W | 0x0 a| Log Fetch Error Interrupt Test. Writing `1` forces the interrupt.
+| 0 | `LOG_FETCH_ERR` | W 1P | 0x0 a| Log Fetch Error Interrupt Test. Writing `1` forces the interrupt.
 |===
 
+[#reg-{regmap-instance}-uart_wrap-uart_log_engine_wrap-log_engine-LOG_CTRL-]
+=== uart_log_engine_wrap[4].log_engine.LOG_CTRL[16]
+
 [cols="1,3,1,1,6", options="header"]
-.LOG_CTRL[16] Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:16 | `Reserved` | - | - a| Reserved

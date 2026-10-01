@@ -48,6 +48,7 @@ ENGINE_DIRS = {
 TARGETS = (
     "preloads",
     "smu_smc_smoke",
+    "smu_smc_fabric",
     "smu_sep_arm",
     "smu_sep_smoke",
     "smu_sep_bidirect",
@@ -157,7 +158,9 @@ def _compile(
     )
 
 
-def build_smc_rom(toolchain: Toolchain, test_name: str) -> Path:
+def build_smc_rom(
+    toolchain: Toolchain, test_name: str, start: Path = COMMON / "smc_start.S"
+) -> Path:
     test_dir = TESTS / test_name
     output_dir = BUILD_ROOT / test_name
     elf = output_dir / f"{test_name}.elf"
@@ -168,7 +171,7 @@ def build_smc_rom(toolchain: Toolchain, test_name: str) -> Path:
         arch="rv64imac_zicsr_zifencei",
         abi="lp64",
         linker=COMMON / "smc_rom.ld",
-        sources=[COMMON / "smc_start.S", test_dir / "main.c"],
+        sources=[start, test_dir / "main.c"],
         output=elf,
     )
     _run([toolchain.tool("objcopy"), "-O", "binary", str(elf), str(binary)])
@@ -277,8 +280,14 @@ def run_in_container(args: argparse.Namespace) -> int:
     """Re-run this invocation inside the OCAH toolchain container.
 
     docker-run.sh does not forward the caller's environment, but its bwrap
-    backend does, so RISCV_TOOLCHAIN/RISCV_PREFIX are dropped here: the
-    container path resolves the image's own tools from PATH.
+    backend does. RISCV_TOOLCHAIN and RISCV_PREFIX are dropped so the
+    container path resolves the image's own tools from PATH. UV and
+    VIRTUAL_ENV are dropped for the same reason: ``uv run`` exports UV as the
+    host binary, preamble.mk keeps that value, and the sandbox does not bind
+    it. With UV unset, ``uv`` resolves on PATH to the binary mounted at
+    /run/ocah/uv. The project environment, cache and managed interpreters stay
+    under local/ so ``uv run --locked`` does not replace the host .venv or
+    store interpreters under the shared /tmp the sandbox uses as HOME.
     """
     if not os.access(DOCKER_RUN, os.X_OK):
         print(
@@ -304,8 +313,20 @@ def run_in_container(args: argparse.Namespace) -> int:
     env = {
         key: value
         for key, value in os.environ.items()
-        if key not in {"RISCV_TOOLCHAIN", "RISCV_PREFIX", "MAKEFLAGS", "MFLAGS"}
+        if key
+        not in {
+            "RISCV_TOOLCHAIN",
+            "RISCV_PREFIX",
+            "MAKEFLAGS",
+            "MFLAGS",
+            "UV",
+            "VIRTUAL_ENV",
+        }
     }
+    sandbox = REPO_ROOT / "local"
+    env["UV_PROJECT_ENVIRONMENT"] = str(sandbox / "bwrap-venv")
+    env["UV_CACHE_DIR"] = str(sandbox / "bwrap-uv-cache")
+    env["UV_PYTHON_INSTALL_DIR"] = str(sandbox / "bwrap-uv-python")
     print("+", " ".join(argv), flush=True)
     return subprocess.run(argv, cwd=REPO_ROOT, env=env, check=False).returncode
 
@@ -361,6 +382,9 @@ def main() -> int:
 
     if args.target in ("smu_smc_smoke", "all"):
         build_smc_rom(toolchain, "smu_smc_smoke")
+    if args.target in ("smu_smc_fabric", "all"):
+        # Runs on every hart, so it takes the entry that gives each its own stack.
+        build_smc_rom(toolchain, "smu_smc_fabric", COMMON / "smc_mp_start.S")
     if args.target in ("smu_sep_arm", "smu_sep_smoke", "all"):
         build_smc_rom(toolchain, "smu_sep_arm")
     if args.target in ("smu_sep_smoke", "all"):

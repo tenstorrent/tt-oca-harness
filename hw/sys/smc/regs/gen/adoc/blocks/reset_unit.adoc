@@ -1,154 +1,194 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-reset_unit]
+== Reset Unit Address Map
+
+Subsystem reset control, hold and isolation controls, and reset-sequencing status registers.
+
 [cols="1,4,1,6", options="header"]
-.Register Map
 |===
 | Address | Name | Access | Description
-| 0x20 | SS_CONFIG | RW a| -
-| 0x24 | SS_CONFIG_LOCK | RW a| -
-| 0x40 | SS_COLD_RESET_N | RW a| -
-| 0x44 | SS_WARM_RESET_N | RW a| -
-| 0x48 | SS_CONFIG_HOLD | RW a| -
-| 0x4C | SS_SRAM_HOLD | RW a| -
-| 0x50 | SS_CRITICAL_HOLD | RW a| -
-| 0x54 | SS_DEBUG_HOLD | RW a| -
-| 0x60 | SS_RESET_COMPLETE | R a| -
-| 0x70 | SS_COLD_RESET_LOCK | RW a| -
-| 0x80 | SS_FORCE_TO_REF_CLK | RW a| -
-| 0xA8 | SYNC_REG | RW a| -
-| 0xB0 | ISOLATE_REQ_REG | RW a| -
-| 0xB4 | ISOLATE_REQ_PINEN_REG | RW a| -
-| 0xB8 | ISOLATE_REQ_SMC_REG | RW a| -
-| 0xBC | ISOLATE_REQ_SMCEN_REG | RW a| -
-| 0xC0 | ISOLATE_REQ_VIS | R a| -
-| 0xC4 | ISOLATE_REQ_FLR_COUNTER_VALUE | RW a| -
-| 0xC8 | ISOLATE_REQ_FLR_RESET_COUNTER_VALUE | RW a| -
+| 0x20 | <<reg-{regmap-instance}-reset_unit-SS_CONFIG,SS_CONFIG>> | RW a| -
+| 0x24 | <<reg-{regmap-instance}-reset_unit-SS_CONFIG_LOCK,SS_CONFIG_LOCK>> | RW a| -
+| 0x40 | <<reg-{regmap-instance}-reset_unit-SS_COLD_RESET_N,SS_COLD_RESET_N>> | RW a| -
+| 0x44 | <<reg-{regmap-instance}-reset_unit-SS_WARM_RESET_N,SS_WARM_RESET_N>> | RW a| -
+| 0x48 | <<reg-{regmap-instance}-reset_unit-SS_CONFIG_HOLD,SS_CONFIG_HOLD>> | RW a| -
+| 0x4C | <<reg-{regmap-instance}-reset_unit-SS_SRAM_HOLD,SS_SRAM_HOLD>> | RW a| -
+| 0x50 | <<reg-{regmap-instance}-reset_unit-SS_CRITICAL_HOLD,SS_CRITICAL_HOLD>> | RW a| -
+| 0x54 | <<reg-{regmap-instance}-reset_unit-SS_DEBUG_HOLD,SS_DEBUG_HOLD>> | RW a| -
+| 0x60 | <<reg-{regmap-instance}-reset_unit-SS_RESET_COMPLETE,SS_RESET_COMPLETE>> | R a| -
+| 0x70 | <<reg-{regmap-instance}-reset_unit-SS_COLD_RESET_LOCK,SS_COLD_RESET_LOCK>> | RW a| -
+| 0x80 | <<reg-{regmap-instance}-reset_unit-SS_FORCE_TO_REF_CLK,SS_FORCE_TO_REF_CLK>> | RW a| -
+| 0xA8 | <<reg-{regmap-instance}-reset_unit-SYNC_REG,SYNC_REG>> | RW a| -
+| 0xB0 | <<reg-{regmap-instance}-reset_unit-ISOLATE_REQ_REG,ISOLATE_REQ_REG>> | RW a| -
+| 0xB4 | <<reg-{regmap-instance}-reset_unit-ISOLATE_REQ_PINEN_REG,ISOLATE_REQ_PINEN_REG>> | RW a| -
+| 0xB8 | <<reg-{regmap-instance}-reset_unit-ISOLATE_REQ_SMC_REG,ISOLATE_REQ_SMC_REG>> | RW a| -
+| 0xBC | <<reg-{regmap-instance}-reset_unit-ISOLATE_REQ_SMCEN_REG,ISOLATE_REQ_SMCEN_REG>> | RW a| -
+| 0xC0 | <<reg-{regmap-instance}-reset_unit-ISOLATE_REQ_VIS,ISOLATE_REQ_VIS>> | R a| -
+| 0xC4 | <<reg-{regmap-instance}-reset_unit-ISOLATE_REQ_FLR_COUNTER_VALUE,ISOLATE_REQ_FLR_COUNTER_VALUE>> | RW a| -
+| 0xC8 | <<reg-{regmap-instance}-reset_unit-ISOLATE_REQ_FLR_RESET_COUNTER_VALUE,ISOLATE_REQ_FLR_RESET_COUNTER_VALUE>> | RW a| -
 |===
 
+[#reg-{regmap-instance}-reset_unit-SS_CONFIG]
+=== SS_CONFIG
+
 [cols="1,3,1,1,6", options="header"]
-.SS_CONFIG Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `ss_config` | RW | 0x0 a| Configuration registers to setup system configuration.
 Usage is integration-specific; see the adopter chiplet specification.
 |===
 
+[#reg-{regmap-instance}-reset_unit-SS_CONFIG_LOCK]
+=== SS_CONFIG_LOCK
+
 [cols="1,3,1,1,6", options="header"]
-.SS_CONFIG_LOCK Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `config_lock` | RW | 0x0 a| Written to lock down SS config. If bit 0 is written, then bit 0 of other SS config
+| 31:0 | `config_lock` | RW1S | 0x0 a| Written to lock down SS config. If bit 0 is written, then bit 0 of other SS config
 cannot be written to again
 |===
 
+[#reg-{regmap-instance}-reset_unit-SS_COLD_RESET_N]
+=== SS_COLD_RESET_N
+
 [cols="1,3,1,1,6", options="header"]
-.SS_COLD_RESET_N Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `reset_n_n0_scan` | RW | 0x0 a| Subsystem active low cold resets
 |===
 
+[#reg-{regmap-instance}-reset_unit-SS_WARM_RESET_N]
+=== SS_WARM_RESET_N
+
 [cols="1,3,1,1,6", options="header"]
-.SS_WARM_RESET_N Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `reset_n_n0_scan` | RW | 0xFFFFFFFF a| Subsystem active low warm resets
 |===
 
+[#reg-{regmap-instance}-reset_unit-SS_CONFIG_HOLD]
+=== SS_CONFIG_HOLD
+
 [cols="1,3,1,1,6", options="header"]
-.SS_CONFIG_HOLD Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `configuration_state_hold` | RW | 0x0 a| Used with warm_reset_n. Asserting ensures all registers configured during boot, including fuse values for
 export compliance, SRAM repair, other fuse values, etc. are preserved
 |===
 
+[#reg-{regmap-instance}-reset_unit-SS_SRAM_HOLD]
+=== SS_SRAM_HOLD
+
 [cols="1,3,1,1,6", options="header"]
-.SS_SRAM_HOLD Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `sram_hold` | RW | 0x0 a| Used with warm_reset_n. Asserting ensures SRAMs, latch arrays and anything else that MBIST is
 used to test and initialize during cold reset are preserved
 |===
 
+[#reg-{regmap-instance}-reset_unit-SS_CRITICAL_HOLD]
+=== SS_CRITICAL_HOLD
+
 [cols="1,3,1,1,6", options="header"]
-.SS_CRITICAL_HOLD Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `critical_signal_hold` | RW | 0x0 a| Used with warm_reset_n. Asserting ensures security, RAS, NMIs, perf counters, debug/trace and other
 subsystem specific registers are preserved
 |===
 
+[#reg-{regmap-instance}-reset_unit-SS_DEBUG_HOLD]
+=== SS_DEBUG_HOLD
+
 [cols="1,3,1,1,6", options="header"]
-.SS_DEBUG_HOLD Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `debug_hold` | RW | 0x0 a| Used with warm_reset_n. Debug hold signal to ensure any debug registers are preserved
 |===
 
+[#reg-{regmap-instance}-reset_unit-SS_RESET_COMPLETE]
+=== SS_RESET_COMPLETE
+
 [cols="1,3,1,1,6", options="header"]
-.SS_RESET_COMPLETE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `reset_complete` | R | 0x0 a| Response signal from subsystem to indicate reset (or some other critical step) has completed.
 Bitwise write 1 to clear
 |===
 
+[#reg-{regmap-instance}-reset_unit-SS_COLD_RESET_LOCK]
+=== SS_COLD_RESET_LOCK
+
 [cols="1,3,1,1,6", options="header"]
-.SS_COLD_RESET_LOCK Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `cold_reset_lock` | RW | 0x0 a| Written to lock down SS cold reset. If bit 0 is written, then bit 0 of other SS cold reset
+| 31:0 | `cold_reset_lock` | RW1S | 0x0 a| Written to lock down SS cold reset. If bit 0 is written, then bit 0 of other SS cold reset
 cannot be written to again
 |===
 
+[#reg-{regmap-instance}-reset_unit-SS_FORCE_TO_REF_CLK]
+=== SS_FORCE_TO_REF_CLK
+
 [cols="1,3,1,1,6", options="header"]
-.SS_FORCE_TO_REF_CLK Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `force_ss_to_ref_clk_n` | RW | 0x0 a| Forces clock to be ref clk. The ensures reset reaches all FFs within a subsystem in same clock cycle
 |===
 
+[#reg-{regmap-instance}-reset_unit-SYNC_REG]
+=== SYNC_REG
+
 [cols="1,3,1,1,6", options="header"]
-.SYNC_REG Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `Reserved` | - | - a| Reserved
 | 0 | `sync` | RW | 0x0 a| Set to assert global sync bit
 |===
 
+[#reg-{regmap-instance}-reset_unit-ISOLATE_REQ_REG]
+=== ISOLATE_REQ_REG
+
 [cols="1,3,1,1,6", options="header"]
-.ISOLATE_REQ_REG Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `isolate_req_reg` | RW | 0x0 a| Isolate request. This prevents reset from being propagated to SS, keeping them alive in case of a cold reset
 |===
 
+[#reg-{regmap-instance}-reset_unit-ISOLATE_REQ_PINEN_REG]
+=== ISOLATE_REQ_PINEN_REG
+
 [cols="1,3,1,1,6", options="header"]
-.ISOLATE_REQ_PINEN_REG Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `isolate_req_pinen_reg` | RW | 0x0 a| Isolate request pin enable. This enables the external isolate request pin to have an effect on ss isolate requests
 |===
 
+[#reg-{regmap-instance}-reset_unit-ISOLATE_REQ_SMC_REG]
+=== ISOLATE_REQ_SMC_REG
+
 [cols="1,3,1,1,6", options="header"]
-.ISOLATE_REQ_SMC_REG Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `Reserved` | - | - a| Reserved
 | 0 | `isolate_req_smc_reg` | RW | 0x0 a| Isolate request smc. Asserted once cfg_flr_pf_active is asserted, de-asserted by sw
 |===
 
+[#reg-{regmap-instance}-reset_unit-ISOLATE_REQ_SMCEN_REG]
+=== ISOLATE_REQ_SMCEN_REG
+
 [cols="1,3,1,1,6", options="header"]
-.ISOLATE_REQ_SMCEN_REG Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `isolate_req_smcen_reg` | RW | 0x0 a| Isolate request smc enable. This enables the FLR lock to have an effect on ss isolate requests
 |===
 
+[#reg-{regmap-instance}-reset_unit-ISOLATE_REQ_VIS]
+=== ISOLATE_REQ_VIS
+
 [cols="1,3,1,1,6", options="header"]
-.ISOLATE_REQ_VIS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:9 | `Reserved` | - | - a| Reserved
@@ -159,15 +199,19 @@ cannot be written to again
 | 0 | `isolate_req_pin` | R | 0x1 a| Visibility bit for isolate request pin
 |===
 
+[#reg-{regmap-instance}-reset_unit-ISOLATE_REQ_FLR_COUNTER_VALUE]
+=== ISOLATE_REQ_FLR_COUNTER_VALUE
+
 [cols="1,3,1,1,6", options="header"]
-.ISOLATE_REQ_FLR_COUNTER_VALUE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `isolate_req_flr_counter_value` | RW | 0x0 a| Number of cycles post cfg_flr_pf_active assertion is waited until cool_reset_n is asserted
 |===
 
+[#reg-{regmap-instance}-reset_unit-ISOLATE_REQ_FLR_RESET_COUNTER_VALUE]
+=== ISOLATE_REQ_FLR_RESET_COUNTER_VALUE
+
 [cols="1,3,1,1,6", options="header"]
-.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `isolate_req_flr_reset_counter_value` | RW | 0x0 a| Number of cycles cool_reset_n is asserted for. NOTE: The cool reset flow requires this value to be greater than 0; a value of 0 will prevent initiation, regardless of ISOLATE_REQ_FLR_COUNTER_VALUE's value

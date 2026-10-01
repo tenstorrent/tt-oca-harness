@@ -3,17 +3,18 @@
 """Sequence for dtp_jtag_trst_por_independence_test.
 
 Power-on reset alone, with TRST_N held high and TCK idle, forces the TAP into
-Test-Logic-Reset and reloads the device-identification register. After the
-pulse a single TMS-low step reaches Run-Test/Idle and a DR scan with no
-instruction load and no TRST activity reads IDCODE.
+Test-Logic-Reset and reloads the device-identification register over the
+instruction loaded before it, and the tb_top assertion counter records the
+pulse. After the pulse a single TMS-low step reaches Run-Test/Idle and a DR
+scan with no instruction load and no TRST activity reads IDCODE.
 """
 
 from __future__ import annotations
 
 from env.dtp_tap_device import DTP_DEFAULT_IDCODE
-from env.dtp_types import DtpJtagInstr, DtpTapState
+from env.dtp_types import RESET_COUNT_CHECK_ID, DtpTapState
 
-from .dtp_jtag_base_test_seq import dtp_jtag_base_test_seq
+from .dtp_jtag_base_test_seq import NON_IDCODE_PRELOADS, dtp_jtag_base_test_seq
 
 IDCODE_MASK = 0xFFFF_FFFF
 POR_CHECK_ID = "CHK-TAP-POR-TLR"
@@ -24,7 +25,13 @@ class dtp_jtag_trst_por_independence_test_seq(dtp_jtag_base_test_seq):
 
     async def body(self) -> None:
         checker = await self.attach_family_checker(
-            {"CHK-TAP-RESET-TLR", POR_CHECK_ID, "CHK-IDCODE-RECOVERY"},
+            {
+                "CHK-TAP-RESET-TLR",
+                "CHK-TAP-STATE",
+                POR_CHECK_ID,
+                "CHK-IDCODE-RECOVERY",
+                RESET_COUNT_CHECK_ID,
+            },
             # Navigating into the Pause states crosses Shift -> Exit1 and
             # publishes partial scans the sequence cannot count, so the
             # pin-level scan monitor stays off.
@@ -46,7 +53,7 @@ class dtp_jtag_trst_por_independence_test_seq(dtp_jtag_base_test_seq):
         self.log_step(1, "Park the TAP in %s with TRST_N released", state.name)
         await self.reset_to_tlr()
         await self.deassert_trst(cycles=1)
-        await self.load_ir(rng.choice([DtpJtagInstr.BYPASS_3F, DtpJtagInstr.IDCODE]))
+        await self.load_ir(rng.choice(NON_IDCODE_PRELOADS))
         await self.goto_tap_state(state)
 
         self.log_step(2, "Hold power-on reset for %d TCK periods with TCK idle", cycles)

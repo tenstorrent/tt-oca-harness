@@ -4,8 +4,9 @@
 // DTP control-domain TB interface, shared by the cocotb and SV-UVM flows:
 // the system clock and its period, the test-sequenced resets and their
 // assertion counters, the lifecycle debug disables, the TAP-state and
-// debug-TDR observables the checkers read, the request-activity pulse
-// counters tb_top derives from the bus pins, and the SVA enables.
+// debug-TDR observables the checkers read, the stop_clks change counters,
+// the request-activity pulse counters and READY-stall counters tb_top
+// derives from the bus pins, and the SVA enables.
 // The scan-network observables live in dtp_scan_if and the cross-trigger
 // pins in dtp_xtrig_if; the primary TAP pins are on the shared ocah_jtag_if.
 //
@@ -28,9 +29,9 @@ interface dtp_tb_if;
   logic por_rst_n;
   logic sys_rst_n;
 
-  // DFT controls of the DUT: test_en_i (scan-enable for the clock gaters)
-  // and scan_rst_ni (reset-synchronizer bypass, active-low), both idle in
-  // functional mode; a DFT-mode scenario drives them here.
+  // DFT controls of the DUT: test_en_i (test-mode enable for the JTAG2AXI
+  // bridges and the CTN CSR crossbar) and scan_rst_ni (unused by the DUT),
+  // both idle in functional mode; a DFT-mode scenario drives them here.
   logic test_en    = 1'b0;
   logic scan_rst_n = 1'b1;
 
@@ -118,10 +119,32 @@ interface dtp_tb_if;
   logic [31:0] xtrig_axil_awvalid_count;
   logic [31:0] xtrig_axil_wvalid_count;
   logic [31:0] xtrig_axil_arvalid_count;
-  // XTRIG CSR port stall counters (driven by tb_top): cycles with AWVALID
-  // and ARVALID held while the crossbar keeps the matching READY low.
+  // XTRIG CSR port stall counters (driven by tb_top): cycles with AWVALID,
+  // ARVALID, and WVALID held while the crossbar keeps the matching READY low.
   logic [31:0] xtrig_axil_aw_stall_count;
   logic [31:0] xtrig_axil_ar_stall_count;
+  logic [31:0] xtrig_axil_w_stall_count;
+  // XTRIG CSR port occupancy counters (driven by tb_top): AW stall cycles and
+  // AW acceptances while an earlier accepted AW awaits its W beat, and AR
+  // stall cycles and AR acceptances while an earlier accepted AR awaits its R
+  // beat. An acceptance in the cycle whose beat retires the last open request
+  // does not count.
+  logic [31:0] xtrig_axil_aw_open_stall_count;
+  logic [31:0] xtrig_axil_aw_open_accept_count;
+  logic [31:0] xtrig_axil_ar_open_stall_count;
+  logic [31:0] xtrig_axil_ar_open_accept_count;
+  // JTAG2AXI bridge-port stall counters (driven by tb_top): cycles with a
+  // request VALID held while the responder keeps the matching READY low and
+  // axi_sva_en is set.
+  logic [31:0] smc_axi_aw_stall_count;
+  logic [31:0] smc_axi_w_stall_count;
+  logic [31:0] smc_axi_ar_stall_count;
+  logic [31:0] smc_otp_axil_aw_stall_count;
+  logic [31:0] smc_otp_axil_w_stall_count;
+  logic [31:0] smc_otp_axil_ar_stall_count;
+  logic [31:0] sep_otp_axil_aw_stall_count;
+  logic [31:0] sep_otp_axil_w_stall_count;
+  logic [31:0] sep_otp_axil_ar_stall_count;
 
   // XTRIG crossbar demux state behind the CSR port (driven by tb_top from
   // the AXI-Lite demux of the cross-trigger network): the AW lock flag,
@@ -133,25 +156,38 @@ interface dtp_tb_if;
 
   // Registered BUSY of every external cross-trigger port (driven by tb_top
   // from the CTP busy outputs); STATUS.BUSY reads the same flop.
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] xtrig_ctp_busy;
+  logic [dtp_dv_cfg_pkg::NumCtp-1:0] xtrig_ctp_busy;
 
-  // JTAG2AXI bridge state per target for the reset-abort scenarios, sampled
-  // by tb_top from the bridges' TCK-domain registers: the AXI FSM state
-  // (jtag2axi.sv axi_state_e: 0 IDLE, 1 SEND_ADDR_W, 2 SEND_DATA_W,
-  // 3 WAIT_BRESP, 4 SEND_ADDR_R, 5 WAIT_RDATA, 6 UPDATE_STATUS), the
+  // JTAG2AXI bridge state per target for the stall and reset-abort
+  // scenarios, decoded by tb_top from each bridge's TCK-domain AXI state
+  // machine by state name: idle; on the write path (address, data, or
+  // response wait); on the read path (address or data wait). Beside them the
   // single-op pending flag, and a sticky flag set once the bridge's CDC has
   // run its TCK-side isolate-and-clear; cdc_clear_seen_clear = 1 clears the
   // sticky flags.
-  logic [2:0] smc_axi_fsm_state;
-  logic       smc_axi_op_pending;
-  logic       smc_axi_cdc_clear_seen;
-  logic [2:0] smc_otp_fsm_state;
-  logic       smc_otp_op_pending;
-  logic       smc_otp_cdc_clear_seen;
-  logic [2:0] sep_otp_fsm_state;
-  logic       sep_otp_op_pending;
-  logic       sep_otp_cdc_clear_seen;
-  logic       cdc_clear_seen_clear = 1'b0;
+  logic smc_axi_fsm_idle;
+  logic smc_axi_fsm_write_path;
+  logic smc_axi_fsm_read_path;
+  logic smc_axi_op_pending;
+  logic smc_axi_cdc_clear_seen;
+  logic smc_otp_fsm_idle;
+  logic smc_otp_fsm_write_path;
+  logic smc_otp_fsm_read_path;
+  logic smc_otp_op_pending;
+  logic smc_otp_cdc_clear_seen;
+  logic sep_otp_fsm_idle;
+  logic sep_otp_fsm_write_path;
+  logic sep_otp_fsm_read_path;
+  logic sep_otp_op_pending;
+  logic sep_otp_cdc_clear_seen;
+  logic cdc_clear_seen_clear = 1'b0;
+
+  // Errored-beat read word per JTAG2AXI bridge port (driven by the JTAG2AXI
+  // sequences): tb_top drives it onto the DUT-facing RDATA of every R beat
+  // the port's responder answers with SLVERR or DECERR.
+  logic [dtp_dv_cfg_pkg::SmcAxiDataWidth-1:0]  smc_axi_err_rdata = '0;
+  logic [dtp_dv_cfg_pkg::OtpAxilDataWidth-1:0] smc_otp_axil_err_rdata = '0;
+  logic [dtp_dv_cfg_pkg::OtpAxilDataWidth-1:0] sep_otp_axil_err_rdata = '0;
 
   // Debug-TDR observables (driven by tb_top): DEBUG_CONTROL clock-stop /
   // boot-stall outputs and the flattened IC_RESET slice outputs.
@@ -166,8 +202,39 @@ interface dtp_tb_if;
   logic jtag_ic_reset_ext_ovrd;
   logic jtag_ic_reset_ext_ctrl_n;
 
+  // stop_clks change counters (driven by tb_top) while rst_n_i is high:
+  // every change, and the changes outside a clk_i rising edge.
+  logic [31:0] stop_clks_change_count;
+  logic [31:0] stop_clks_off_edge_count;
+
   // CLA clock-stop request vector (driven by debug-TDR sequences; init
   // quiescent so unrelated tests see no requests).
-  logic [dtp_pkg::DEFAULT_NUM_CLK_STOP_REQ-1:0] xtrig_clk_stop_req = '0;
+  logic [dtp_dv_cfg_pkg::NumClkStopReq-1:0] xtrig_clk_stop_req = '0;
+
+  // The bench configuration (dtp_dv_cfg_pkg) the cocotb bring-up compares
+  // with its own copy of the table.
+  logic [7:0]  cfg_num_ctp          = 8'(dtp_dv_cfg_pkg::NumCtp);
+  logic [7:0]  cfg_num_int_ct       = 8'(dtp_dv_cfg_pkg::NumIntCt);
+  logic [7:0]  cfg_num_clk_stop_req = 8'(dtp_dv_cfg_pkg::NumClkStopReq);
+  logic [31:0] cfg_int_ct_mode      = 32'(dtp_dv_cfg_pkg::IntCtMode);
+  logic [7:0]  cfg_num_extra_staps  = 8'(dtp_dv_cfg_pkg::NumExtraStaps);
+  logic [7:0]  cfg_num_smc_ic_reset = 8'(dtp_dv_cfg_pkg::NumSmcIcReset);
+  logic [7:0]  cfg_num_sep_ic_reset = 8'(dtp_dv_cfg_pkg::NumSepIcReset);
+  logic [7:0]  cfg_num_ext_ic_reset = 8'(dtp_dv_cfg_pkg::NumExtIcReset);
+  logic [7:0]  cfg_och_ver          = dtp_dv_cfg_pkg::OchVer;
+  logic [31:0] cfg_idcode           = dtp_dv_cfg_pkg::Idcode;
+  logic [7:0]  cfg_wire_or_pull     = 8'(dtp_dv_cfg_pkg::WireOrPull);
+  logic [7:0]  cfg_wire_or_assert   = 8'(dtp_dv_cfg_pkg::WireOrAssert);
+  logic [7:0]  cfg_ct_dst_latency   = 8'(dtp_dv_cfg_pkg::CtDstLatency);
+  logic [7:0]  cfg_smc_axi_addr_width  = 8'(dtp_dv_cfg_pkg::SmcAxiAddrWidth);
+  logic [7:0]  cfg_smc_axi_data_width  = 8'(dtp_dv_cfg_pkg::SmcAxiDataWidth);
+  logic [7:0]  cfg_otp_axil_addr_width = 8'(dtp_dv_cfg_pkg::OtpAxilAddrWidth);
+  logic [7:0]  cfg_otp_axil_data_width = 8'(dtp_dv_cfg_pkg::OtpAxilDataWidth);
+  logic [7:0]  cfg_smc_otp_rd_pl_depth = 8'(dtp_dv_cfg_pkg::SmcOtpRdPlDepth);
+  logic [7:0]  cfg_smc_otp_wr_pl_depth = 8'(dtp_dv_cfg_pkg::SmcOtpWrPlDepth);
+  logic [7:0]  cfg_sep_otp_rd_pl_depth = 8'(dtp_dv_cfg_pkg::SepOtpRdPlDepth);
+  logic [7:0]  cfg_sep_otp_wr_pl_depth = 8'(dtp_dv_cfg_pkg::SepOtpWrPlDepth);
+  logic [7:0]  cfg_smc_rd_pl_depth     = 8'(dtp_dv_cfg_pkg::SmcRdPlDepth);
+  logic [7:0]  cfg_smc_wr_pl_depth     = 8'(dtp_dv_cfg_pkg::SmcWrPlDepth);
 
 endinterface : dtp_tb_if

@@ -17,8 +17,16 @@ class dtp_jtag2axi_backpressure_aw_before_w_test(dtp_base_test):
     use_axi_scoreboard = True
     axi_checker_required_ids = (
         "CHK-AXI-RESP",
+        "CHK-AXI-STRB",
+        "CHK-AXI-WMEM",
         "CHK-AXI-COMPLETION",
+        "CHK-AXI-CREDITS",
         "CHK-AXI-STREAM-MIN",
+    )
+    axi_checker_target_required_ids = (
+        "CHK-J2A-STALL-FSM",
+        "CHK-J2A-STALL-BUSY",
+        "CHK-J2A-STALL-HOLD",
     )
     axi_checker_stream_minimums = {"smc_axi": 2, "smc_otp": 2, "sep_otp": 2}
 

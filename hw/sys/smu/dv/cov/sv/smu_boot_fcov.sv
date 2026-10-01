@@ -179,16 +179,23 @@ module smu_boot_fcov #(
   wire lc_state_changed_e = lc_state_changed_q;
   `OCAH_FCOV_COVER(c_lc_state_changed, lc_state_changed_e, clk_smu_i, not_powered)
 
-  // The lifecycle signal-integrity error, each demote lane away from its 2'b00
-  // idle encoding, and both lanes at once. Only elaborated with SEP present:
-  // all of them are lifecycle-controller outputs and are tied to constants
-  // without it.
+  // Each demote lane at its demoted code, and both lanes at once. Each lane is
+  // a differential code: 2'b10 not demoted, 2'b01 demoted. Only elaborated
+  // with SEP present: the lanes are lifecycle-controller outputs and are tied
+  // to constants without it.
+  //
+  // lc_sigint_err rises only when the exported LC_STATE pair disagrees with
+  // itself, which takes a fault injected inside the SEP; that point is Phase 2
+  // (SMU_FCOV.adoc).
   if (SepPresent) begin : g_sep
-    wire lc_sigint_err_e = (lc_sigint_err_i === 1'b1);
-    wire lcc_demote_1_e = (lcc_demote_state_1_i !== 2'b00);
-    wire lcc_demote_2_e = (lcc_demote_state_2_i !== 2'b00);
+    localparam logic [1:0] DemoteOn = 2'b01;
+    wire lcc_demote_1_e = (lcc_demote_state_1_i === DemoteOn);
+    wire lcc_demote_2_e = (lcc_demote_state_2_i === DemoteOn);
     wire lcc_demote_both_e = lcc_demote_1_e && lcc_demote_2_e;
+`ifdef SMU_FCOV_PHASE2
+    wire lc_sigint_err_e = (lc_sigint_err_i === 1'b1);
     `OCAH_FCOV_COVER(c_lc_sigint_err, lc_sigint_err_e, clk_smu_i, not_powered)
+`endif
     `OCAH_FCOV_COVER(c_lcc_demote_state_1, lcc_demote_1_e, clk_smu_i, not_powered)
     `OCAH_FCOV_COVER(c_lcc_demote_state_2, lcc_demote_2_e, clk_smu_i, not_powered)
     `OCAH_FCOV_COVER(c_lcc_demote_both, lcc_demote_both_e, clk_smu_i, not_powered)
@@ -207,13 +214,30 @@ module smu_boot_fcov #(
     x_sources: cross cp_jtag_ovrd, cp_gpio_drive;
   endgroup
 
+  // lc_state is the differential pair {~state, state} of the 4-bit lifecycle
+  // state (prim_diff_decode_multi), so of its 256 codes only the seven
+  // efuse_pkg::lc_state_raw_e encodings are states; every other code is an
+  // integrity error and falls in the default bin ungraded.
   covergroup cg_lifecycle with function sample (
       logic [7:0] lc_state, logic [1:0] demote1, logic [1:0] demote2
   );
     option.per_instance = 1;
-    cp_lc_state: coverpoint lc_state;
-    cp_demote1: coverpoint demote1;
-    cp_demote2: coverpoint demote2;
+    cp_lc_state: coverpoint lc_state {
+      bins test_dev = {8'hF0};  // LC_TEST_DEV   4'b0000
+      bins prod = {8'hE1};  // LC_PROD       4'b0001
+      bins rma_sip_0 = {8'hD2};  // LC_RMA_SIP_0  4'b0010
+      bins rma_sip_1 = {8'hC3};  // LC_RMA_SIP_1  4'b0011
+      bins rma_chip_0 = {8'h96};  // LC_RMA_CHIP_0 4'b0110
+      bins rma_chip_1 = {8'h87};  // LC_RMA_CHIP_1 4'b0111
+      bins prod_end = {8'h78};  // LC_PROD_END   4'b1000
+      bins invalid = default;
+    }
+    // Each demote lane is a differential code, 2'b10 or 2'b01; 2'b00 and 2'b11
+    // are not codes.
+    cp_demote1: coverpoint demote1 {
+      ignore_bins not_a_code = {2'b00, 2'b11};
+    }
+    cp_demote2: coverpoint demote2 {ignore_bins not_a_code = {2'b00, 2'b11};}
     x_demote: cross cp_demote1, cp_demote2;
   endgroup
 

@@ -27,7 +27,7 @@ from collections import Counter
 import cocotb
 from cocotb.triggers import RisingEdge
 
-from seq_lib.sep_fw_common import format_pc_profile, load_syms
+from seq_lib.sep_fw_common import format_pc_profile, load_syms, sep_boot_order_from_hw
 
 SEP_BOOT_ROM_BASE = 0x1004_0000
 SEP_BOOT_ROM_END = 0x1005_0000
@@ -67,8 +67,7 @@ class SmuSepSmcNotifySeq:
         pre_out = self._rd(self.dut.smu_axi_out_write_count_o, "axi_out")
         assert pre_smn == 0, f"SEP already issued {pre_smn} outbound AW before the run"
 
-        boot_rom_seen = False
-        iccm_seen = False
+        _, boot_rom_seen, iccm_seen = sep_boot_order_from_hw(self.dut, self._rd)
         done = False
         passed = False
         traces = 0

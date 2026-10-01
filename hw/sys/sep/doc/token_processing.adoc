@@ -6,180 +6,180 @@
 
 [[token-processing]]
 
-Maintaining a known, measurable state of the SEP system is a core
-requirement to ensure trust and security. Consequently, changing the
-security state of SEP is a very high security operation that must be
-protected. Tokens are high security password strings which are used to
-alter the security state of SEP. They are used to initiate RMA LC state
-transitions as well as disable security features. Tokens are:
-
-* Security Disable (SEC_DIS) bypasses fuse sensing
-* Package RMA (RMA_SIP) used in LC state machine
-* Chiplet RMA (RMA_CHIPLET) used in LC state machine
-
-The tokens directly affect the life cycle state machine processing and
-fuse sensing. so token processing is naturally done in the OTP
-Controller. Tokens are entered via the JTAG port into a dedicated
-eight-word register array per token, held in the eFuse MMR block, for
-match processing described in the next section. Those arrays have the
-following important properties:
-
-* Non-scannable
-* Non-resetable
+SEP uses 256-bit tokens to authorize RMA lifecycle transitions and emergency
+security disable. The OTP controller hashes each submitted token with SHA-256
+and compares the digest with the expected value. Plaintext tokens are held in
+three separate, non-scannable eight-word arrays in the eFuse MMR block. These
+arrays have no reset; reset is not a token-erasure operation.
 
 [[token-generation-storage-and-provisioning]]
 == Token Generation, Storage and Provisioning
 
-All token processing besides final provisioning takes place within the
-confines of an HSM, a very high security environment. RTL constant
-tokens are embedded into the design database very late in the
-development process to ensure minimal exposure while OTP fuse tokens are
-provisioned at manufacturing test time. All tokens are under tight
-security control.
+Generate and retain plaintext tokens within a hardware security module (HSM),
+using its secure random-generation and derivation facilities. Keep token
+processing inside the HSM except for final provisioning, and protect transfer
+to the manufacturing tester. Provision the RMA token digests, not plaintext
+tokens, into OTP at manufacturing test. Provisioning policy may use a common
+token or a distinct token per device; the matching mechanism supports either.
 
-Token values are initially generated within the HSM using a secure TRNG,
-KDF and other facilities. Values to keep track of are the token itself
-and any encoded value such as the SHA256 hash value of it for example.
-
-All token values are securely stored in the HSM and securely transmitted
-to the remote tester which programs any OTP fuse values. In the case of
-SEP tokens, we provision the 256-bit hash digest values into the OTP
-fuse bank. Values could be global or unique per device. Examples of
-unique values are the UID, private ECDSA signing keys, and special
-purpose tokens, granting special TBD privileges on a per device basis.
-Processing at the device level can handle each scenario.
+Track each token and its SHA-256 digest separately. Token confidentiality and
+entropy protect authorization; expected-digest integrity prevents substitution
+of a digest for a token an attacker knows. The hardware-embedded SEC_DIS digest
+is common to devices using that design. Bind it under controlled implementation
+procedures; it does not require the plaintext token in the RTL database.
 
 [[token-matching-mechanism-and-attack-countermeasures]]
 == Token Matching Mechanism and Attack Countermeasures
 
-The tokens are 256-bit values which are processed in an analogous manner
-as passwords. We have tokens:
+[cols="1,2,2",options="header"]
+.Token roles and expected digests
+|===
+|Token |Purpose |Expected digest
+|RMA_SIP_TOKEN |Authorize SiP RMA transitions |`RMA_SIP_TOKEN_DIGEST` in OTP
+|RMA_CHIPLET_TOKEN |Authorize chiplet RMA transitions |`RMA_CHIPLET_TOKEN_DIGEST` in OTP
+|SEC_DIS_TOKEN |Emergency debug access without waiting for fuse sensing
+|Hardware constant, independent of OTP
+|===
 
-* RMA_SIP_TOKEN
-** LC state
-** Digest RMA_SIP_TOKEN_DIGEST in OTP
-* RMA_CHIPLET_TOKEN
-** LC state
-** Digest RMA_CHIPLET_TOKEN_DIGEST in OTP
-* SEC_DIS_TOKEN
-** Security disable
-** Digest SEC_DIS_TOKEN_DIGEST in hardware gates (global)
+Each token has a dedicated SHA-256 engine and three redundant digest comparators:
 
-The separate security disable token SEC_DIS_TOKEN overrides the entire
-LC control mechanism; the resulting feature control follows the SEC_DIS
-rules in the Lifecycle Controller chapter. This feature is an
-_emergency fallback_ intended to enable A0 silicon debugging and shall
-be permanently disabled in subsequent A1/B0 revisions via metal mask
-only ECO.
+[source,text]
+----
+match = (SHA256(token[255:0]) == expected_digest[255:0])
+----
 
-The tokens are not directly compared with an internal value stored in
-OTP but instead first hashed using the SHA2-256 cryptographic hash
-algorithm. OTP holds the hash value, also known as the TOKEN_DIGEST. The
-OTP controller has a local, dedicated SHA256 hardware accelerator unit
-per token to perform the hashing of the input token.
+Hashing is sequential; the digest comparison is combinational. The computed
+digest and its valid bit survive reset. A new start clears validity; hash
+completion replaces the digest. Test enable freezes those retained latches. The presented token
+and expected digest must not enter scannable storage.
 
-token_match = (SHA256(token[255:0]) == <NAME>_TOKEN_DIGEST[255:0])
-
-The comparison itself is purely combinational, and neither the presented
-token nor the expected digest is ever stored in a scannable register.
-The SHA256 engine ahead of it is sequential and holds the computed digest
-until the next hash is started; see <<token-match-sequence>>.
-
-The stored secrets are very security sensitive so special care must be
-taken when provisioning them in the chiplet. OTP_secret[255:0] is a
-SHA256[token] which is stored in the OTP. The SEC_DIS token is handled
-differently with its SHA256[token] value stored in hardware gates. (aka
-RTL secret) rather than in OTP. It is global to all devices by its
-nature. In both cases, the hash preimage attack to deduce the input
-token value is considered practically infeasible so even if the secret
-digest is extracted from OTP or gates, the token will remain unknown to
-the attacker.
-
-As just stated, the _SEC_DIS secret is stored_ only in gates, not in
-OTP. The reason for this is that SEC_DIS is an emergency feature used to
-unlock the chip when the OTP fuse sensing logic is non-functional but we
-still need to unlock the chip. If we were to rely on the non-functioning
-OTP, we would be unable to unlock the chip.
+RMA comparisons require both a valid computed digest and completed fuse sensing,
+because their expected values come from OTP shadows. SEC_DIS requires only a
+valid digest: its expected value is implemented in gates. This allows recovery
+when fuse sensing fails. This unlocks token comparison and feature control;
+SEP reset still waits for fuse sensing or the IC_RESET `sep_reset_n` override.
+SEC_DIS follows the feature-control rules in the
+Lifecycle Controller chapter, with the metal-programmable enable also required.
+The design requirement is A0-only use and permanent removal by a metal-mask ECO
+in later A1/B0 revisions; this is not a software-disable mechanism. See
+ifdef::backend-html5[]
+xref:sep:security_disable.adoc#security-disable-sec_dis[Security Disable (SEC_DIS)].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<security-disable-sec_dis,Security Disable (SEC_DIS)>>.
+endif::backend-pdf[]
 
 [[token-match-sequence]]
 == Token Match Sequence
 
-Each token has its own eight-word array in the eFuse MMR block, its own
-SHA256 engine and its own set of comparators. JTAG:
+SEP software or JTAG submits tokens through the eFuse MMR interface, subject to
+its access policy. Register names and start bits are:
 
-. writes the 256-bit token as eight 32-bit words to `RMA_SIP_TOKEN_I`,
-`RMA_CHIPLET_TOKEN_I` or `SEC_DISABLE_TOKEN_I`
-. writes the matching go bit in `TOKEN_EOP`, which pulses the hash start
-. polls `RMA_SIP_TOKEN_MATCH`, `RMA_CHIPLET_TOKEN_MATCH` or
-`SEC_DISABLE_TOKEN_MATCH` for the 6-bit result
+[cols="2,1,2",options="header"]
+.Token submission registers
+|===
+|Eight-word input array |`TOKEN_EOP` bit |Result register
+|`RMA_SIP_TOKEN_I` |0 |`RMA_SIP_TOKEN_MATCH`
+|`RMA_CHIPLET_TOKEN_I` |8 |`RMA_CHIPLET_TOKEN_MATCH`
+|`SEC_DISABLE_TOKEN_I` |16 |`SEC_DISABLE_TOKEN_MATCH`
+|===
 
-Starting a hash clears that token's digest-valid bit, so the comparators
-report idle rather than a stale result while a digest is in flight.
+. Write all eight 32-bit words of the selected input array. Index 0 holds
+  `token[31:0]`; index 7 holds `token[255:224]`. The hash engine consumes
+  index 7 first, down to index 0, without a byte swap.
+. After all writes complete, write 1 to the corresponding `TOKEN_EOP` bit.
+  This generates a start pulse. Keep the array unchanged until hashing finishes;
+  the engine streams the array rather than taking a complete snapshot at start.
+. Poll the selected result with a bounded timeout. Only `0x15` authorizes the
+  operation; idle is not success. RMA remains idle until fuse sensing completes.
+  Check `TOKEN_MATCH_FAULT` as well as the current result before proceeding.
 
-The two RMA comparisons additionally wait for fuse sensing to complete,
-because their expected digests come from the OTP shadow registers. The
-SEC_DIS comparison does not, because its expected digest comes from
-gates. That is what lets SEC_DIS unlock a part whose fuse sensing is
-broken.
+Do not issue a second start while the same engine is hashing. There is no
+submission queue: the feeder accepts a new operation only while idle. Starting
+a hash clears retained digest validity, so comparison returns idle while the
+new digest is unavailable. The result register follows the comparator through
+a clocked output stage; writing the token words alone does not invalidate the
+previous result or launch a comparison.
+
+[cols="1,1,3",options="header"]
+.Token result encodings
+|===
+|Result |Six-bit value |Meaning
+|Idle |`0x00` (`000000`) |No valid comparison; hashing or fuse sensing may be pending
+|Match |`0x15` (`010101`) |All three comparators report equal digests
+|Mismatch |`0x2a` (`101010`) |All three comparators report unequal digests
+|Error |`0x3f` (`111111`) |A differential-pair or comparator-agreement fault is present
+|===
+
+Reset clears the registered result and sticky fault flags, but does not erase
+the input arrays, retained digest or digest-valid state. A retained digest can
+therefore produce a result again after reset once its comparison prerequisites
+hold. Reset alone must not be treated as revoking a prior token authorization.
 
 [[token-matching-countermeasures]]
 == Matching Logic Countermeasures
 
-The actual matching logic is a vulnerable attack point via FIB or fault
-injection. We protect this by using triple-redundant matching logic on
-fully differential signals resulting in a 6-bit output as illustrated
-below.
+The three comparators provide differential outputs. When comparison is valid,
+each pair must contain opposite values and all three instances must agree.
+A collapsed pair or disagreement raises a redundancy fault and forces the
+current comparator result to `0x3f`, which does not satisfy a match check.
+This is not majority voting: two matching instances cannot overrule a third.
 
-This is not a majority vote scheme. While a comparison is in flight two
-invariants must both hold: every comparator must drive a genuine
-differential pair, and all three comparators must agree with each other.
-Together these admit only the match and mismatch codes, so a fault
-manifests as one of two conditions:
-
-* a comparator whose differential pair collapsed, both rails at the same
-value
-* comparators that disagree with each other, which is the case a majority
-vote would wave through as a match
-
-Either one raises a redundancy fault, which may indicate a tampering
-attack. The fault forces the error code onto all six output bits, so
-every downstream feature gate fails closed, and it sets the sticky bit
-for that token in the `TOKEN_MATCH_FAULT` register. The three sticky bits are
-combined into a single interrupt to the SEP CPU on PIC source 40; see
+Each fault also sets a software-read-only flag in `TOKEN_MATCH_FAULT`: bit 0
+for SiP RMA, bit 8 for chiplet RMA and bit 16 for SEC_DIS. These flags remain
+set until reset and combine into SEP CPU PIC source 40. Firmware reads them
+to identify the affected token and masks source 40 after handling the fault;
+there is no write-one-to-clear operation to deassert the source. An unmasked
+handler will re-enter. See
 ifdef::backend-html5[]
-xref:sep:interrupts.adoc#sep-cpu-interrupt-vector-map[SEP CPU Interrupt Vector Map]
+xref:sep:interrupts.adoc#sep-cpu-interrupt-vector-map[SEP CPU Interrupt Vector Map].
 endif::backend-html5[]
 ifdef::backend-pdf[]
-<<sep-cpu-interrupt-vector-map>>
+<<sep-cpu-interrupt-vector-map,SEP CPU Interrupt Vector Map>>.
 endif::backend-pdf[]
-for the full slot map. Firmware reads the register to identify which
-comparators faulted. The fault bits are software-read-only and clear only on
-reset, so a fault cannot be hidden by retrying with a valid token and the PIC
-source stays asserted. Firmware must mask PIC source 40 after it has observed
-the fault; there is no write-one-to-clear that drops the line, and an unmasked
-handler re-enters.
 
-The detector does not catch a common-mode fault. If all three comparators flip
-the same way they still agree and each still drives a legal differential pair,
-so the output is a legal match or mismatch code and no sticky bit is set.
-Invert of a match is a legal mismatch; invert of a mismatch is a legal match
-(fail-open). "Any deviation" here means a collapsed pair or a disagreement
-between instances, not full coverage of every possible fault.
+The sticky flag records fault history; it does not latch the comparator into
+an error state. A later valid comparison can report match or mismatch while
+the fault flag and interrupt remain asserted. Firmware must not treat a
+successful retry as clearing the fault or establishing that operation is safe.
 
-image::SEP_Token_Processing.png[SEP_Token_Processing,scaledwidth=90.0%]
+The detector does not cover common-mode faults. If all three instances flip
+in the same way while retaining legal differential pairs, they still agree.
+Inverting a mismatch can therefore produce an undetected match (fail-open);
+inverting a match produces a mismatch. The countermeasure detects collapsed
+pairs and disagreement, not every possible fault-injection outcome.
 
-The 6-bit matching signal is distributed as is to each individual point
-of use i.e. logic where individual features are enabled or disabled.
-Distributing the final enable logic to each feature diversifies the gate
-keeping and helps prevent global unlocking.
+<<sep-token-processing-figure>> shows the processing path. The six-bit RMA
+match codes are checked by the lifecycle and fuse-programming consumers.
+SEC_DIS has a separate bypass output qualified by the revision enable.
 
-Match = token_match[5:0] = 6’b010101
-Mismatch = 6’b101010
-Error = 6’b111111
+[[sep-token-processing-figure]]
+.SEP token processing
+image::sep-token-processing.svg[alt="efuse_token_processing: three token lanes, each with its token array, SHA-256 engine and triple-redundant comparator, followed by the match flops, the sticky fault bits, the security-disable logic and the shadow map gate",width=100%,pdfwidth=100%]
+
+Each of the three rows in <<sep-token-processing-figure>> is one token lane,
+from its token array and go bit in `efuse_mmr_reg`, through its SHA-256 engine,
+to its comparator. The expected digests and `fuse_sense_done_i` are named at
+their point of use; both come from the eFuse shadow registers at the lower
+left. `fuse_sense_done_i` gates only the two RMA comparators. The comparators'
+match codes and the sticky fault bits are also readable in the
+`*_TOKEN_MATCH` and `TOKEN_MATCH_FAULT` status registers. The RMA_CHIPLET match
+line crosses the RMA_SIP fault line without connecting; the gap marks the
+crossing.
 
 [[post-token-matching-handling]]
 == Post Token Matching Handling
 
-A token match does not by itself change the life cycle state. It
-authorizes a change, and the state is then updated by one of two paths
-described in _OTP fuse controller_ in this chapter.
+An RMA match authorizes a lifecycle change; it does not itself burn a fuse.
+The controller gates RMA fuse programming with the corresponding token match.
+For shadow-state transitions, software can request an explicit update, or
+`TRANSIENT_RMA_EN` can enable automatic updates. The chiplet-RMA shadow
+transition also requires RMA_SIP to be established first. See
+ifdef::backend-html5[]
+xref:sep:otp_fuse_controller.adoc#fuse-controller-otp-fuse-controller-otp[OTP Fuse Controller]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<fuse-controller-otp-fuse-controller-otp,OTP Fuse Controller>>
+endif::backend-pdf[]
+for lock exceptions and transition rules. SEC_DIS instead activates the
+emergency bypass while its match and revision-enable conditions hold.

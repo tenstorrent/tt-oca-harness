@@ -84,6 +84,166 @@ tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_dfd_cla_mmr_sweep_test"
+module = "smc_dfd_cla_mmr_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_cla_node_eap_sweep_test"
+module = "smc_dfd_cla_node_eap_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_trace_accumulator_fill_test"
+module = "smc_dfd_trace_accumulator_fill_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_trace_format_sweep_test"
+module = "smc_dfd_trace_format_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_trace_xor_format_test"
+module = "smc_dfd_trace_xor_format_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_trace_vlt_format_test"
+module = "smc_dfd_trace_vlt_format_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_cla_counter_edge_test"
+module = "smc_dfd_cla_counter_edge_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_cla_event_type_sweep_test"
+module = "smc_dfd_cla_event_type_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_cla_snapshot_capture_test"
+module = "smc_dfd_cla_snapshot_capture_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_trace_sink_window_test"
+module = "smc_dfd_trace_sink_window_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_trace_sink_readout_test"
+module = "smc_dfd_trace_sink_readout_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_sink_mmr_sweep_test"
+module = "smc_dfd_sink_mmr_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_ro_mmr_write_test"
+module = "smc_dfd_ro_mmr_write_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_mmr_lane_test"
+module = "smc_dfd_mmr_lane_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_cla_live_bus_test"
+module = "smc_dfd_cla_live_bus_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_trace_flush_corner_test"
+module = "smc_dfd_trace_flush_corner_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_trace_reset_test"
+module = "smc_dfd_trace_reset_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_trace_writeout_phase_test"
+module = "smc_dfd_trace_writeout_phase_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_dbm_mode_lock_test"
+module = "smc_dfd_dbm_mode_lock_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_trace_sink_concurrent_test"
+module = "smc_dfd_trace_sink_concurrent_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_cpu_ecc_lint_pint_depth_test"
 module = "smc_cpu_ecc_lint_pint_depth_test"
 seed = 1
@@ -186,6 +346,11 @@ seed = 1
 timeout_sec = 1800
 tags = ["cpu", "isolate_flush", "pyuvm"]
 run_modes = ["smoke"]
+# The force-mode reset withdraws the R beat the CPU is presenting without
+# `ready` (README_cpu_isolate_flush.md); the front-port R arbiter's
+# request-stability assertions report that withdrawal, and this leaf alone asks
+# tb_top to hold off that one arbiter instance's checks.
+args = ["+smc_front_port_r_arb_assertoff"]
 
 [[tests]]
 name = "smc_cpu_l2_write_wedge_test"

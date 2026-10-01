@@ -90,8 +90,8 @@ from .coverage_policy import (
     native_policy_manifest,
 )
 from .formal import grade_formal_stage
-from .junit import ensure_leaf_junit
-from .logparse import parse_stage_result, xunit_failure_messages
+from .junit import discard_generated_junit, ensure_leaf_junit, results_xml_path
+from .logparse import observed_failure_messages, parse_stage_result
 from .models import ConfigError, Flow, StageResult, StageTimeoutError, TestCatalog, TestEntry
 from .paths import repo_path, repo_rel
 from .site import ToolLaunch, launch_argv, launch_env, tool_launch
@@ -139,6 +139,7 @@ OCAH_VENDOR_DEFINE_ALIASES: dict[str, tuple[str, ...]] = {
     "SIMULATION": ("ABR_SIMULATION",),
     "VERILATOR": ("TARGET_VERILATOR",),
     "XSIM": ("TARGET_XSIM",),
+    "EMULATION": ("ASSERTS_OVERRIDE_ON",),
 }
 
 
@@ -414,6 +415,17 @@ def _write_build_record(
     write_text_file(record_path, json.dumps(payload, indent=2) + "\n", dry_run)
 
 
+def _vcs_cocotb_access(build: dict[str, Any], waves: bool) -> list[str]:
+    """Return ``[build.vcs].cocotb_access``, the VCS debug access of a cocotb build.
+
+    An empty list keeps the access cocotb's Vcs runner grants itself, which a
+    build that dumps waves always keeps.
+    """
+    if waves:
+        return []
+    return as_str_list(build_vcs_cfg(build).get("cocotb_access"), "build.vcs.cocotb_access")
+
+
 def _verilator_public_scope_fingerprint(root: Path, build: dict[str, Any]) -> list[str]:
     scope = str(build_verilator_cfg(build).get("public_scope") or "").strip()
     if not scope:
@@ -439,6 +451,11 @@ def _is_cocotb_prebuilt(args: argparse.Namespace, target_name: str) -> bool:
     return target_name in _prebuilt_targets(args)
 
 
+# The expected-failure record keeps at most this many failure messages, each cut to this width.
+FAILURE_MESSAGE_LIMIT = 8
+FAILURE_MESSAGE_WIDTH = 400
+
+
 def grade_expected_fail(
     status: str,
     reason: str,
@@ -453,7 +470,9 @@ def grade_expected_fail(
     An observed FAIL is the recorded outcome and grades PASS -- unless the entry also carries
     `expect_fail_match` and no observed failure message matches it, in which case the leaf
     failed for a reason other than the recorded one and grades FAIL in the
-    `expected_fail_mismatch` bucket. An observed PASS means the defect the entry records is
+    `expected_fail_mismatch` bucket. The regex is tried on every message given; the record
+    keeps the first `FAILURE_MESSAGE_LIMIT` of them and the one that matched, each cut to
+    `FAILURE_MESSAGE_WIDTH`. An observed PASS means the defect the entry records is
     no longer there, and grades FAIL so the entry cannot outlive its reason. ERROR, TIMEOUT
     and UNKNOWN are not the recorded failure -- the leaf proved nothing either way -- and
     keep their status. The returned record goes into the leaf metadata under `expected_fail`
@@ -464,7 +483,9 @@ def grade_expected_fail(
         "reason": expect_fail,
         "observed_status": status,
         "observed_reason": reason,
-        "observed_failures": failures,
+        "observed_failures": [
+            message[:FAILURE_MESSAGE_WIDTH] for message in failures[:FAILURE_MESSAGE_LIMIT]
+        ],
         "observed_buckets": [
             {"kind": bucket.get("kind"), "signature": bucket.get("signature")}
             for bucket in buckets or []
@@ -473,10 +494,17 @@ def grade_expected_fail(
     if expect_fail_match is not None:
         record["match"] = expect_fail_match
     if status == "FAIL":
-        if expect_fail_match is not None and not any(
-            re.search(expect_fail_match, message) for message in failures
-        ):
-            first = failures[0] if failures else "no failure message recorded"
+        matched = (
+            next((message for message in failures if re.search(expect_fail_match, message)), None)
+            if expect_fail_match is not None
+            else None
+        )
+        if matched is not None:
+            record["matched_failure"] = matched[:FAILURE_MESSAGE_WIDTH]
+        elif expect_fail_match is not None:
+            first = (
+                failures[0][:FAILURE_MESSAGE_WIDTH] if failures else "no failure message recorded"
+            )
             graded_reason = (
                 f"expected to fail ({expect_fail}) but failed for another reason: {first}"
             )
@@ -1190,6 +1218,9 @@ def stage_tool_launch(args: argparse.Namespace, tool: str) -> ToolLaunch:
 # The executable cocotb's Python runner probes on PATH per tool, and the runner class.
 COCOTB_DEFAULT_BINARY = {"verilator": "verilator", "xcelium": "xrun", "vcs": "vcs"}
 COCOTB_RUNNER_CLASS = {"verilator": "Verilator", "xcelium": "Xcelium", "vcs": "Vcs"}
+# The debug access cocotb's Vcs runner adds to every build; `[build.vcs].cocotb_access`
+# replaces it.
+COCOTB_VCS_DEFAULT_ACCESS = ("-debug_access+all", "+acc+3")
 
 
 def reject_cocotb_launcher(launch: ToolLaunch) -> None:
@@ -1364,6 +1395,40 @@ def cocotb_public_scope(vlt_path: str):
     finally:
         for cls, original in patched:
             cls._build_command = original
+
+
+@contextmanager
+def cocotb_vcs_access(access: list[str]):
+    """Replace the debug access cocotb's Vcs runner grants with ``access``.
+
+    cocotb's Vcs runner adds ``-debug_access+all +acc+3`` to every build, which
+    keeps every object in the design visible and writable and stops VCS from
+    optimizing the DUT. A DUT whose bench needs less states its access in
+    ``[build.vcs].cocotb_access``. This wraps the runner's ``_build_opts`` at
+    runtime rather than editing the installed ``cocotb_tools/runner.py``, which
+    ``uv sync`` recreates.
+    """
+    if not access:
+        yield
+        return
+    module = importlib.import_module("cocotb_tools.runner")
+    cls = getattr(module, "Vcs", None)
+    original = cls.__dict__.get("_build_opts") if cls is not None else None
+    if not isinstance(original, property) or original.fget is None:
+        raise ConfigError(
+            "configured [build.vcs].cocotb_access but cocotb's Vcs runner has no _build_opts"
+        )
+    getter = original.fget
+
+    def _build_opts(self: Any) -> list[str]:
+        opts = [opt for opt in getter(self) if opt not in COCOTB_VCS_DEFAULT_ACCESS]
+        return [*opts, *access]
+
+    cls._build_opts = property(_build_opts)
+    try:
+        yield
+    finally:
+        cls._build_opts = original
 
 
 def generate_filelist(
@@ -1984,6 +2049,8 @@ def _cocotb_build_info(
     public_scope_extra = (
         _verilator_public_scope_fingerprint(root, build) if tool == "verilator" else []
     )
+    vcs_access = _vcs_cocotb_access(build, bool(wave_format)) if tool == "vcs" else []
+    vcs_access_extra = [f"vcs_cocotb_access={' '.join(vcs_access)}"] if vcs_access else []
     fingerprint = build_fingerprint(
         build_args=build_args,
         top_module=top_module,
@@ -1993,6 +2060,7 @@ def _cocotb_build_info(
             *cache_key_extra(options),
             *_target_fingerprint_extra(target_name, run_target),
             *public_scope_extra,
+            *vcs_access_extra,
             *_filelist_sources_fingerprint(root, filelist),
             *_file_args_fingerprint(root, build_args),
             f"waves={wave_format}",
@@ -2072,6 +2140,9 @@ def cocotb_build(
         if _scope_rel:
             public_scope_vlt = str(repo_path(root, _scope_rel))
             console.artifact("public_scope", public_scope_vlt)
+    vcs_access = _vcs_cocotb_access(build, bool(info["wave_format"])) if tool == "vcs" else []
+    if vcs_access:
+        console.artifact("cocotb_access", " ".join(vcs_access))
     rebuild_note = f"rebuild={info['rebuild']}"
     if info["rebuild_reason"]:
         rebuild_note += f" reason={info['rebuild_reason']}"
@@ -2099,6 +2170,7 @@ def cocotb_build(
                     scoped_environ(env),
                     cocotb_make_jobs(_build_jobs),
                     cocotb_public_scope(public_scope_vlt),
+                    cocotb_vcs_access(vcs_access),
                     cocotb_tool_binary(tool, launch.binary),
                 ):
                     runner.build(
@@ -2287,6 +2359,7 @@ def cocotb_sim(
         _scope_rel = str(build_verilator_cfg(build).get("public_scope") or "").strip()
         if _scope_rel:
             public_scope_vlt = str(repo_path(root, _scope_rel))
+    vcs_access = _vcs_cocotb_access(build, bool(wave_format)) if tool == "vcs" else []
 
     console = console_from_args(args)
     console.artifact("xml", results_xml)
@@ -2344,6 +2417,8 @@ def cocotb_sim(
         "tool_version": str(info["tool_version"]),
         "python_paths": [str(path) for path in python_paths if str(path)],
         "public_scope_vlt": public_scope_vlt,
+        "vcs_access": vcs_access,
+        "vcs_default_access": list(COCOTB_VCS_DEFAULT_ACCESS),
         "binary": launch.binary,
         "default_binary": COCOTB_DEFAULT_BINARY.get(tool, tool),
         "runner_class": COCOTB_RUNNER_CLASS.get(tool, ""),
@@ -2463,6 +2538,27 @@ def scoped_verilator_wave_format(tool, wave_format):
             cls._test_command = original_test
 
 @contextmanager
+def scoped_vcs_access(tool, access, default_access):
+    if tool != "vcs" or not access:
+        yield
+        return
+    import importlib
+    cls = getattr(importlib.import_module("cocotb_tools.runner"), "Vcs", None)
+    original = cls.__dict__.get("_build_opts") if cls is not None else None
+    if not isinstance(original, property) or original.fget is None:
+        raise RuntimeError("configured [build.vcs].cocotb_access but cocotb's Vcs runner has no _build_opts")
+    getter = original.fget
+
+    def _build_opts(self):
+        return [opt for opt in getter(self) if opt not in default_access] + list(access)
+
+    cls._build_opts = property(_build_opts)
+    try:
+        yield
+    finally:
+        cls._build_opts = original
+
+@contextmanager
 def scoped_tool_binary(tool, runner_class, default, binary):
     if not runner_class or binary == default:
         yield
@@ -2510,7 +2606,7 @@ def scoped_tool_binary(tool, runner_class, default, binary):
 
 print(f"# cocotb {{payload['tool']}} runner", flush=True)
 runner = get_runner(payload["tool"])
-with scoped_public_scope(payload["public_scope_vlt"]), scoped_verilator_wave_format(payload["tool"], payload["wave_format"]), scoped_tool_binary(payload["tool"], payload["runner_class"], payload["default_binary"], payload["binary"]):
+with scoped_public_scope(payload["public_scope_vlt"]), scoped_vcs_access(payload["tool"], payload["vcs_access"], payload["vcs_default_access"]), scoped_verilator_wave_format(payload["tool"], payload["wave_format"]), scoped_tool_binary(payload["tool"], payload["runner_class"], payload["default_binary"], payload["binary"]):
     if payload["do_build"]:
         print(f"# cocotb {{payload['tool']}} build model", flush=True)
         runner.build(
@@ -3910,7 +4006,10 @@ def run_stage(
         metadata["debug_only"] = bool(getattr(args, "_wave_debug_rerun", False))
     if stage_name in {"flist", "hdl_compile", "elaborate", "sim", "regress"}:
         metadata["target"] = target_name
+    observed_failures: list[str] = []
     try:
+        if stage_name in {"sim", "regress"} and item is not None and not args.dry_run:
+            discard_generated_junit(results_xml_path(stage_dir))
         if kind == "noop":
             note = str(stage.get("note", "no operation"))
             console.event("note", note)
@@ -4361,6 +4460,16 @@ def run_stage(
                     if rel_log and rel_log not in examples:
                         examples.append(rel_log)
             parser = decision.parser
+            entry = catalog.tests.get(item) if item is not None else None
+            if status == "FAIL" and entry is not None and entry.expect_fail:
+                observed_failures = observed_failure_messages(
+                    flow=flow,
+                    tool=tool,
+                    policies=policies,
+                    simulators=simulators,
+                    log_path=log_path,
+                    results_dir=stage_dir / "results",
+                )
     except StageTimeoutError as exc:
         rc = 124
         status = "TIMEOUT"
@@ -4411,7 +4520,7 @@ def run_stage(
             reason,
             buckets,
             expect_fail,
-            observed_failures=xunit_failure_messages(stage_dir / "results" / "results.xml"),
+            observed_failures=observed_failures,
             expect_fail_match=catalog.tests[item].expect_fail_match,
         )
         for bucket in buckets or []:

@@ -19,7 +19,6 @@ confidence = "high"
 rationale = "Fires only when the system reset falls with a write or read request valid before its AXI handshake. The two reset-abort scenarios are the only stimulus that drives the system reset while a bridge is mid-flight, and the point does not fire under them. Point: reset lands with the request stalled on the bus."
 owner = "dtp-dv"
 reviewer = "dtp-design"
-date = "2026-08-29"
 issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330", "https://github.com/tenstorrent/tt-oca-harness/issues/1953"]
 [[holes.native]]
 tool = "verilator"
@@ -36,7 +35,6 @@ confidence = "high"
 rationale = "Fires only when the system reset falls after both write handshakes with the response outstanding, or with a read outstanding. The two reset-abort scenarios are the only stimulus that drives the system reset while a bridge is mid-flight, and the point does not fire under them. Point: reset lands while awaiting the response."
 owner = "dtp-dv"
 reviewer = "dtp-design"
-date = "2026-08-29"
 issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330", "https://github.com/tenstorrent/tt-oca-harness/issues/1953"]
 [[holes.native]]
 tool = "verilator"
@@ -53,7 +51,6 @@ confidence = "high"
 rationale = "Shares its event with the request-issued point: a system reset falling with a request valid before its handshake. The two reset-abort scenarios are the only stimulus that drives the system reset while a bridge is mid-flight, and the point does not fire under them. Point: CDC clear after a mid-flight request abort."
 owner = "dtp-dv"
 reviewer = "dtp-design"
-date = "2026-08-29"
 issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330", "https://github.com/tenstorrent/tt-oca-harness/issues/1953"]
 [[holes.native]]
 tool = "verilator"
@@ -70,7 +67,6 @@ confidence = "high"
 rationale = "Fires only when the system reset falls with a write or read request valid before its AXI handshake. The two reset-abort scenarios are the only stimulus that drives the system reset while a bridge is mid-flight, and the point does not fire under them. Point: reset lands with the request stalled on the bus."
 owner = "dtp-dv"
 reviewer = "dtp-design"
-date = "2026-08-29"
 issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330", "https://github.com/tenstorrent/tt-oca-harness/issues/1953"]
 [[holes.native]]
 tool = "verilator"
@@ -87,7 +83,6 @@ confidence = "high"
 rationale = "Fires only when the system reset falls after both write handshakes with the response outstanding, or with a read outstanding. The two reset-abort scenarios are the only stimulus that drives the system reset while a bridge is mid-flight, and the point does not fire under them. Point: reset lands while awaiting the response."
 owner = "dtp-dv"
 reviewer = "dtp-design"
-date = "2026-08-29"
 issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330", "https://github.com/tenstorrent/tt-oca-harness/issues/1953"]
 [[holes.native]]
 tool = "verilator"
@@ -104,7 +99,6 @@ confidence = "high"
 rationale = "Shares its event with the request-issued point: a system reset falling with a request valid before its handshake. The two reset-abort scenarios are the only stimulus that drives the system reset while a bridge is mid-flight, and the point does not fire under them. Point: CDC clear after a mid-flight request abort."
 owner = "dtp-dv"
 reviewer = "dtp-design"
-date = "2026-08-29"
 issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330", "https://github.com/tenstorrent/tt-oca-harness/issues/1953"]
 [[holes.native]]
 tool = "verilator"
@@ -121,7 +115,6 @@ confidence = "high"
 rationale = "Fires only when the system reset falls with a write or read request valid before its AXI handshake. The two reset-abort scenarios are the only stimulus that drives the system reset while a bridge is mid-flight, and the point does not fire under them. Point: reset lands with the request stalled on the bus."
 owner = "dtp-dv"
 reviewer = "dtp-design"
-date = "2026-08-29"
 issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330", "https://github.com/tenstorrent/tt-oca-harness/issues/1953"]
 [[holes.native]]
 tool = "verilator"
@@ -138,7 +131,6 @@ confidence = "high"
 rationale = "Fires only when the system reset falls after both write handshakes with the response outstanding, or with a read outstanding. The two reset-abort scenarios are the only stimulus that drives the system reset while a bridge is mid-flight, and the point does not fire under them. Point: reset lands while awaiting the response."
 owner = "dtp-dv"
 reviewer = "dtp-design"
-date = "2026-08-29"
 issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330", "https://github.com/tenstorrent/tt-oca-harness/issues/1953"]
 [[holes.native]]
 tool = "verilator"
@@ -155,7 +147,6 @@ confidence = "high"
 rationale = "Shares its event with the request-issued point: a system reset falling with a request valid before its handshake. The two reset-abort scenarios are the only stimulus that drives the system reset while a bridge is mid-flight, and the point does not fire under them. Point: CDC clear after a mid-flight request abort."
 owner = "dtp-dv"
 reviewer = "dtp-design"
-date = "2026-08-29"
 issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330", "https://github.com/tenstorrent/tt-oca-harness/issues/1953"]
 [[holes.native]]
 tool = "verilator"

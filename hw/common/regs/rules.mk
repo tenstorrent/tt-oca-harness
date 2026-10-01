@@ -29,12 +29,10 @@ ocah_reg_stamp_after = $(if $(filter 1,$(OCAH_REG_DEFER_STAMP)),, && $(OCAH_REG_
 ocah_reg_run_cheader  = "$(OCAH_REG_PEAKRDL)" c-header $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(2)" -o "$(3)" --bitfields $(4) --type-style lexical $(call ocah_reg_rdl_params,$(1)) 2>&1 | tee "$(5)"
 ocah_reg_run_regblock = "$(OCAH_REG_PEAKRDL)" regblock $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(2)"$(if $(strip $(6)), --rename "$(strip $(6))") -o "$(3)" --cpuif "$(call ocah_reg_cpu_if,$(1))" $(call ocah_reg_regblock_opts,$(1)) --default-reset "$(OCAH_REG_DEFAULT_RESET)" --module-name "$(4)_reg" --package-name "$(4)_reg_pkg" $(call ocah_reg_rdl_params,$(1)) 2>&1 | tee "$(5)"
 # AsciiDoc register docs are emitted directly from RDL by a custom generator that
-# produces a compact summary table + per-register field tables (table captions,
-# no per-register headings). This replaces the old peakrdl-markdown -> pandoc
-# path, which created a heading/TOC entry per register and exploded the PDF page
-# count. $(2) = input RDL, $(3) = output adoc, $(4) = log.
+# produces a linked summary table and per-register headings with field tables.
+# $(2) = input RDL, $(3) = output adoc, $(4) = log.
 ocah_reg_run_adoc     = "$(OCAH_REG_PYTHON)" "$(OCAH_ROOT)/tools/regs/rdladoc.py" -u "$(OCAH_REGBLOCK_UDP)" $(call ocah_reg_incdirs,$(1)) $(call ocah_reg_rdl_params,$(1)) "$(2)" "$(3)" 2>&1 | tee "$(4)"
-ocah_reg_run_memory_map = "$(OCAH_REG_PYTHON)" "$(OCAH_ROOT)/tools/regs/rdlmap.py" -u "$(OCAH_REGBLOCK_UDP)" $(call ocah_reg_incdirs,$(1)) $(call ocah_reg_rdl_params,$(1)) --repo-root "$(OCAH_ROOT)" --config "$(call ocah_reg_memory_map_config,$(1))" "$(call ocah_reg_rdl,$(1))" "$(call ocah_reg_memory_map_output,$(1))" 2>&1 | tee "$(call ocah_reg_build,$(1))/memory_map.log"
+ocah_reg_run_memory_map = "$(OCAH_REG_PYTHON)" "$(OCAH_ROOT)/tools/regs/rdlmap.py" -u "$(OCAH_REGBLOCK_UDP)" $(call ocah_reg_incdirs,$(1)) $(call ocah_reg_rdl_params,$(1)) --repo-root "$(OCAH_ROOT)" --err-check-blocks "$(OCAH_REG_ERR_CHECK_BLOCKS)" --no-rtl-blocks "$(OCAH_REG_NO_RTL_BLOCKS)" --config "$(call ocah_reg_memory_map_config,$(1))" --format $(2) "$(call ocah_reg_rdl,$(1))" "$(3)" 2>&1 | tee "$(call ocah_reg_build,$(1))/memory_map_$(2).log"
 ocah_reg_run_html     = "$(OCAH_REG_PYTHON)" "$(OCAH_ROOT)/tools/regs/rdlhtml.py" -u "$(OCAH_REGBLOCK_UDP)" $(call ocah_reg_incdirs,$(1)) $(call ocah_reg_rdl_params,$(1)) "$(2)" "$(3)" 2>&1 | tee "$(4)"
 ocah_reg_run_svh      = "$(OCAH_REG_PYTHON)" "$(OCAH_ROOT)/tools/regs/rdlsvh.py" -u "$(OCAH_REGBLOCK_UDP)" $(subst -I ,-i ,$(call ocah_reg_incdirs,$(1))) $(call ocah_reg_rdl_params,$(1)) "$(2)" "$(3)" 2>&1 | tee "$(4)"
 # $(4) = bitfields policy (none|ltoh), $(5) = log.
@@ -90,12 +88,12 @@ $(call ocah_reg_svpkg_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UD
 	@echo "Regenerating SystemVerilog address package for $(1)"
 	@$(ocah_sh) '"$(OCAH_REG_PEAKRDL)" raw-header $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(call ocah_reg_rdl,$(1))" --format svpkg --template "$(OCAH_SVPKG_TEMPLATE)" -o "$(call ocah_reg_svpkg_output,$(1))" $(call ocah_reg_rdl_params,$(1)) 2>&1 | tee "$(call ocah_reg_build,$(1))/raw_svpkg.log"$(call ocah_reg_stamp_after,"$(call ocah_reg_svpkg_output,$(1))")'
 
-$(call ocah_reg_py_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdlpyhdr.py $(OCAH_ROOT)/tools/regs/common/regcollect.py | $(OCAH_REG_UV_PREREQ)
+$(call ocah_reg_py_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdlpyhdr.py $(OCAH_ROOT)/tools/regs/common/regcollect.py $(OCAH_ROOT)/tools/regs/common/fieldprops.py | $(OCAH_REG_UV_PREREQ)
 	@mkdir -p "$(call ocah_reg_gen,$(1))/py" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating Python register header for $(1)"
 	@$(ocah_sh) '$(call ocah_reg_run_py,$(1),$(call ocah_reg_rdl,$(1)),$(call ocah_reg_py_output,$(1)),$(call ocah_reg_py_bitfields,$(1)),$(call ocah_reg_build,$(1))/py.log)$(call ocah_reg_stamp_after,"$(call ocah_reg_py_output,$(1))")'
 
-$(call ocah_reg_svh_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdlsvh.py $(OCAH_ROOT)/tools/regs/common/regcollect.py | $(OCAH_REG_UV_PREREQ)
+$(call ocah_reg_svh_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdlsvh.py $(OCAH_ROOT)/tools/regs/common/regcollect.py $(OCAH_ROOT)/tools/regs/common/fieldprops.py | $(OCAH_REG_UV_PREREQ)
 	@mkdir -p "$(call ocah_reg_gen,$(1))/svh" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating flattened SV header for $(1)"
 	@$(ocah_sh) '$(call ocah_reg_run_svh,$(1),$(call ocah_reg_rdl,$(1)),$(call ocah_reg_svh_output,$(1)),$(call ocah_reg_build,$(1))/svh.log)$(call ocah_reg_stamp_after,"$(call ocah_reg_svh_output,$(1))")'
@@ -140,12 +138,12 @@ $(call ocah_reg_c_block_dir,$(1))/%.h: $(call ocah_reg_root,$(1))/regs/blocks/$$
 	@echo "Regenerating firmware C header for $(1) sub-block $$*"
 	@$(ocah_sh) '$(call ocah_reg_run_cheader,$(1),$$<,$$@,$$(if $$(filter $$*,$(OCAH_REG_NO_BITFIELDS)),none,ltoh),$(1)/regs/build/c_header_$$*.log)$(call ocah_reg_stamp_after,"$$@")'
 
-$(call ocah_reg_adoc_block_dir,$(1))/%.adoc: $(call ocah_reg_root,$(1))/regs/blocks/$$$$*/$$$$*.rdl $(OCAH_REGBLOCK_UDP) tools/regs/rdladoc.py tools/regs/common/rdlview.py | $(OCAH_REG_UV_PREREQ)
+$(call ocah_reg_adoc_block_dir,$(1))/%.adoc: $(call ocah_reg_root,$(1))/regs/blocks/$$$$*/$$$$*.rdl $(OCAH_REGBLOCK_UDP) tools/regs/rdladoc.py tools/regs/common/rdlview.py tools/regs/common/fieldprops.py | $(OCAH_REG_UV_PREREQ)
 	@mkdir -p "$$(@D)" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating AsciiDoc register docs for $(1) sub-block $$*"
 	@$(ocah_sh) '$(call ocah_reg_run_adoc,$(1),$$<,$$@,$(1)/regs/build/adoc_$$*.log)$(call ocah_reg_stamp_after,"$$@")'
 
-$(call ocah_reg_html_block_dir,$(1))/%.html: $(call ocah_reg_root,$(1))/regs/blocks/$$$$*/$$$$*.rdl $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdlhtml.py $(OCAH_ROOT)/tools/regs/common/rdlview.py | $(OCAH_REG_UV_PREREQ)
+$(call ocah_reg_html_block_dir,$(1))/%.html: $(call ocah_reg_root,$(1))/regs/blocks/$$$$*/$$$$*.rdl $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdlhtml.py $(OCAH_ROOT)/tools/regs/common/rdlview.py $(OCAH_ROOT)/tools/regs/common/fieldprops.py | $(OCAH_REG_UV_PREREQ)
 	@mkdir -p "$$(@D)" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating HTML register docs for $(1) sub-block $$*"
 	@$(ocah_sh) '$(call ocah_reg_run_html,$(1),$$<,$$@,$(1)/regs/build/html_$$*.log)$(call ocah_reg_stamp_after,"$$@")'
@@ -167,12 +165,12 @@ endef
 
 # Plain-leaf docs: RDL -> compact AsciiDoc (custom generator), plus a peakrdl html site.
 define ocah_reg_doc_plain_rule
-$(call ocah_reg_adoc_output,$(1)): $(call ocah_reg_rdl,$(1)) $(call ocah_reg_doc_overrides,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdladoc.py $(OCAH_ROOT)/tools/regs/common/rdlview.py | $(OCAH_REG_UV_PREREQ)
+$(call ocah_reg_adoc_output,$(1)): $(call ocah_reg_rdl,$(1)) $(call ocah_reg_doc_overrides,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdladoc.py $(OCAH_ROOT)/tools/regs/common/rdlview.py $(OCAH_ROOT)/tools/regs/common/fieldprops.py | $(OCAH_REG_UV_PREREQ)
 	@mkdir -p "$(call ocah_reg_gen,$(1))/adoc" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating AsciiDoc register docs for $(1)"
 	@$(ocah_sh) '$(call ocah_reg_run_adoc,$(1),$(call ocah_reg_rdl,$(1)),$(call ocah_reg_adoc_output,$(1)),$(call ocah_reg_build,$(1))/adoc.log)$(call ocah_reg_stamp_after,"$(call ocah_reg_adoc_output,$(1))")'
 
-$(call ocah_reg_html_output,$(1)): $(call ocah_reg_rdl,$(1)) $(call ocah_reg_doc_overrides,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdlhtml.py $(OCAH_ROOT)/tools/regs/common/rdlview.py | $(OCAH_REG_UV_PREREQ)
+$(call ocah_reg_html_output,$(1)): $(call ocah_reg_rdl,$(1)) $(call ocah_reg_doc_overrides,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdlhtml.py $(OCAH_ROOT)/tools/regs/common/rdlview.py $(OCAH_ROOT)/tools/regs/common/fieldprops.py | $(OCAH_REG_UV_PREREQ)
 	@mkdir -p "$$(@D)" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating HTML register docs for $(1)"
 	@$(ocah_sh) '$(call ocah_reg_run_html,$(1),$(call ocah_reg_rdl,$(1)),$$@,$(call ocah_reg_build,$(1))/html.log)$(call ocah_reg_stamp_after,"$$@")'
@@ -184,12 +182,17 @@ define ocah_reg_memory_map_rule
 $(call ocah_reg_memory_map_output,$(1)): $(call ocah_reg_rdl,$(1)) $(call ocah_reg_memory_map_config,$(1)) $(call ocah_reg_memory_map_deps,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdlmap.py $(OCAH_ROOT)/tools/regs/common/memorymap.py | $(OCAH_REG_UV_PREREQ)
 	@mkdir -p "$$(@D)" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating memory-map documentation for $(1)"
-	@$(ocah_sh) '$(call ocah_reg_run_memory_map,$(1))'
+	@$(ocah_sh) '$(call ocah_reg_run_memory_map,$(1),adoc,$$@)'
+
+$(call ocah_reg_memory_map_py_output,$(1)): $(call ocah_reg_rdl,$(1)) $(call ocah_reg_memory_map_config,$(1)) $(call ocah_reg_memory_map_deps,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdlmap.py $(OCAH_ROOT)/tools/regs/common/memorymap.py | $(OCAH_REG_UV_PREREQ)
+	@mkdir -p "$$(@D)" "$(call ocah_reg_build,$(1))"
+	@echo "Regenerating memory-map Python data for $(1)"
+	@$(ocah_sh) '$(call ocah_reg_run_memory_map,$(1),py,$$@)'
 endef
 
 # JSON register model for a whole top (composite or leaf), opt-in list only.
 define ocah_reg_json_rule
-$(call ocah_reg_json_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdljson.py | $(OCAH_REG_UV_PREREQ)
+$(call ocah_reg_json_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdljson.py $(OCAH_ROOT)/tools/regs/common/rdlview.py $(OCAH_ROOT)/tools/regs/common/fieldprops.py | $(OCAH_REG_UV_PREREQ)
 	@mkdir -p "$$(@D)" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating JSON register model for $(1)"
 	@$(ocah_sh) '$(call ocah_reg_run_json,$(1),$(call ocah_reg_rdl,$(1)),$$@,$(call ocah_reg_build,$(1))/json.log)$(call ocah_reg_stamp_after,"$$@")'

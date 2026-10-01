@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1055" viewBox="0 0 1000 1055" role="img" aria-labelledby="title desc">
+  <title id="title">eFuse controller to Interface SHIM contract</title>
+  <desc id="desc">The OCAH eFuse controller, instantiated once in SMC and once in SEP, exposes two interfaces to the adopter. The efuse_bank_ctrl AXI-Lite window is passed straight through to the Interface SHIM control registers. The efuse_shim_command request and response structs carry read, program and program-read-back commands from the controller's command arbiter and eFuse guard to the SHIM. The adopter-implemented SHIM decodes the commands into read and program state machines that drive the foundry-specific eFuse macro.</desc>
+  <defs>
+    <marker id="gray-end" markerWidth="7" markerHeight="7" refX="7" refY="3.5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L7,3.5 L0,7 z" fill="#374151"/>
+    </marker>
+    <marker id="gray-start" markerWidth="7" markerHeight="7" refX="0" refY="3.5" orient="auto" markerUnits="strokeWidth">
+      <path d="M7,0 L0,3.5 L7,7 z" fill="#374151"/>
+    </marker>
+    <marker id="req-end" markerWidth="5" markerHeight="5" refX="5" refY="2.5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L5,2.5 L0,5 z" fill="#1d4ed8"/>
+    </marker>
+    <marker id="resp-end" markerWidth="5" markerHeight="5" refX="5" refY="2.5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L5,2.5 L0,5 z" fill="#b45309"/>
+    </marker>
+    <marker id="tech-end" markerWidth="7" markerHeight="7" refX="7" refY="3.5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L7,3.5 L0,7 z" fill="#287a45"/>
+    </marker>
+    <style>
+      text { font-family: Arial, sans-serif; fill: #1f2937; }
+      .heading { font-weight: bold; font-size: 20px; }
+      .label { font-weight: bold; font-size: 15px; }
+      .small { font-size: 12px; }
+      .note { font-size: 12px; fill: #4b5563; }
+      .mono { font-family: "Courier New", monospace; font-size: 12px; }
+      .mono-h { font-family: "Courier New", monospace; font-size: 14px; font-weight: bold; }
+      .warn { font-size: 12px; font-weight: bold; fill: #b91c1c; }
+      .tech-label { font-size: 12px; fill: #287a45; }
+      .ocah { fill: #e8f0ff; stroke: #315b9a; stroke-width: 1.5; }
+      .adopter { fill: #e9f8ee; stroke: #287a45; stroke-width: 1.5; }
+      .block { fill: #ffffff; stroke: #6b7280; stroke-width: 1; }
+      .macro { fill: #f3f4f6; stroke: #374151; stroke-width: 1.5; }
+      .req-card { fill: #ffffff; stroke: #1d4ed8; stroke-width: 2; }
+      .resp-card { fill: #ffffff; stroke: #b45309; stroke-width: 2; }
+      .divider { stroke: #d1d5db; stroke-width: 1; }
+      .boundary { stroke: #6b7280; stroke-width: 1.5; stroke-dasharray: 8 5; fill: none; }
+      .line { fill: none; stroke: #374151; stroke-width: 1.5; }
+      .link { fill: none; stroke: #374151; stroke-width: 1.5; marker-end: url(#gray-end); }
+      .both { fill: none; stroke: #374151; stroke-width: 1.5; marker-start: url(#gray-start); marker-end: url(#gray-end); }
+      .axil { fill: none; stroke: #374151; stroke-width: 2.5; marker-start: url(#gray-start); marker-end: url(#gray-end); }
+      .req { fill: none; stroke: #1d4ed8; stroke-width: 3; marker-end: url(#req-end); }
+      .resp { fill: none; stroke: #b45309; stroke-width: 3; marker-end: url(#resp-end); }
+      .tech { fill: none; stroke: #287a45; stroke-width: 1.5; marker-end: url(#tech-end); }
+    </style>
+  </defs>
+
+  <rect x="20" y="40" width="960" height="390" rx="10" class="ocah"/>
+  <rect x="20" y="705" width="960" height="250" rx="10" class="adopter"/>
+
+  <!-- OCAH eFuse controller -->
+  <text x="165" y="28" class="small">AXI-Lite from SMC/SEP fabric and JTAG</text>
+  <path d="M155 10 V80" class="link"/>
+
+  <text x="960" y="64" text-anchor="end" class="heading">OCAH eFuse controller</text>
+  <text x="960" y="82" text-anchor="end" class="note">one per SMC and SEP</text>
+
+  <rect x="35" y="80" width="240" height="45" rx="5" class="block"/>
+  <text x="155" y="107" text-anchor="middle" class="label">AXI-Lite mux + decode</text>
+
+  <path d="M275 102 H330" class="link"/>
+  <rect x="330" y="80" width="170" height="45" rx="5" class="block"/>
+  <text x="415" y="107" text-anchor="middle" class="label">AXI-Lite to APB</text>
+
+  <path d="M415 125 V150" class="line"/>
+  <path d="M400 150 H840" class="line"/>
+  <path d="M400 150 V170" class="link"/>
+  <path d="M610 150 V170" class="link"/>
+  <path d="M840 150 V170" class="link"/>
+
+  <rect x="300" y="170" width="200" height="55" rx="5" class="block"/>
+  <text x="400" y="193" text-anchor="middle" class="label">Sense FSM</text>
+  <text x="400" y="212" text-anchor="middle" class="small">shadow registers</text>
+
+  <rect x="530" y="170" width="160" height="55" rx="5" class="block"/>
+  <text x="610" y="193" text-anchor="middle" class="label">MMR</text>
+  <text x="610" y="212" text-anchor="middle" class="small">SEP only</text>
+
+  <rect x="720" y="170" width="240" height="50" rx="5" class="block"/>
+  <text x="840" y="200" text-anchor="middle" class="label">Fuse interface CSRs</text>
+
+  <path d="M777 220 V240" class="link"/>
+  <path d="M902 220 V240" class="link"/>
+  <rect x="720" y="240" width="115" height="38" rx="5" class="block"/>
+  <text x="777" y="264" text-anchor="middle" class="label">Program</text>
+  <rect x="845" y="240" width="115" height="38" rx="5" class="block"/>
+  <text x="902" y="264" text-anchor="middle" class="label">Read</text>
+
+  <path d="M400 225 V325 H520" class="both"/>
+  <path d="M777 278 V305" class="both"/>
+  <path d="M902 278 V325 H820" class="both"/>
+
+  <rect x="520" y="305" width="300" height="43" rx="5" class="block"/>
+  <text x="670" y="323" text-anchor="middle" class="label">Command arbiter</text>
+  <text x="670" y="340" text-anchor="middle" class="small">sense until done, then program, then read</text>
+
+  <path d="M670 348 V370" class="both"/>
+  <rect x="520" y="370" width="300" height="40" rx="5" class="block"/>
+  <text x="670" y="387" text-anchor="middle" class="label">eFuse guard</text>
+  <text x="670" y="403" text-anchor="middle" class="small">field locks, secure test mode</text>
+
+  <!-- Integration boundary -->
+  <path d="M0 455 H1000" class="boundary"/>
+  <text x="990" y="450" text-anchor="end" class="note">OCAH</text>
+  <text x="990" y="470" text-anchor="end" class="note">Adopter</text>
+
+  <!-- Bank control window -->
+  <path d="M45 125 V790" class="axil"/>
+  <text x="55" y="500" class="mono" font-weight="bold">efuse_bank_ctrl_*</text>
+  <text x="55" y="518" class="small">AXI-Lite, 32-bit</text>
+  <text x="55" y="534" class="small">SHIM CSR window,</text>
+  <text x="55" y="550" class="small">passed through</text>
+
+  <!-- Command request / response -->
+  <path d="M600 410 V745" class="req"/>
+  <path d="M640 745 V410" class="resp"/>
+
+  <rect x="195" y="480" width="390" height="205" rx="6" class="req-card"/>
+  <text x="207" y="502" class="mono-h" fill="#1d4ed8">efuse_shim_command_req_o</text>
+  <text x="207" y="520" class="note">fuse_command_req_t, OCAH to SHIM</text>
+  <path d="M207 530 H573" class="divider"/>
+  <text x="207" y="552" class="mono">address</text>
+  <text x="357" y="552" class="small">first bit address</text>
+  <text x="207" y="574" class="mono">program_data</text>
+  <text x="357" y="574" class="small">bit to program (always 1)</text>
+  <text x="207" y="596" class="mono">access_length_words</text>
+  <text x="357" y="596" class="small">words to return</text>
+  <text x="207" y="618" class="mono">command</text>
+  <text x="357" y="618" class="small">READ, PROGRAM or read-back</text>
+  <text x="207" y="640" class="mono">valid</text>
+  <text x="357" y="640" class="warn">level: held until response</text>
+
+  <rect x="655" y="480" width="325" height="205" rx="6" class="resp-card"/>
+  <text x="667" y="502" class="mono-h" fill="#b45309">efuse_shim_command_resp_i</text>
+  <text x="667" y="520" class="note">fuse_command_resp_t, SHIM to OCAH</text>
+  <path d="M667 530 H968" class="divider"/>
+  <text x="667" y="552" class="mono">data</text>
+  <text x="729" y="552" class="small">one WORD_WIDTH word</text>
+  <text x="667" y="574" class="mono">status</text>
+  <text x="729" y="574" class="small">1 = error, ends read/program</text>
+  <text x="667" y="596" class="mono">valid</text>
+  <text x="729" y="596" class="warn">exactly 1 cycle per word</text>
+  <path d="M667 610 H968" class="divider"/>
+  <text x="667" y="630" class="small">Reads return access_length_words</text>
+  <text x="667" y="646" class="small">strobes in address order. Sensing is</text>
+  <text x="667" y="662" class="small">one READ of the whole bank; PROGRAM</text>
+  <text x="667" y="678" class="small">returns one strobe per bit.</text>
+
+  <!-- Adopter Interface SHIM -->
+  <text x="65" y="732" class="heading">Interface SHIM</text>
+  <text x="65" y="751" class="note">adopter-implemented</text>
+
+  <rect x="380" y="745" width="420" height="30" rx="5" class="block"/>
+  <text x="590" y="765" text-anchor="middle" class="label">Command decode / response select</text>
+
+  <rect x="35" y="790" width="220" height="65" rx="5" class="block"/>
+  <text x="145" y="816" text-anchor="middle" class="label">Fuse bank ctrl CSRs</text>
+  <text x="145" y="835" text-anchor="middle" class="small">init delay, bank timing</text>
+
+  <path d="M480 775 V800" class="both"/>
+  <path d="M700 775 V800" class="both"/>
+  <rect x="380" y="800" width="200" height="55" rx="5" class="block"/>
+  <text x="480" y="823" text-anchor="middle" class="label">Read FSM</text>
+  <text x="480" y="842" text-anchor="middle" class="small">one access per word</text>
+  <rect x="600" y="800" width="200" height="55" rx="5" class="block"/>
+  <text x="700" y="823" text-anchor="middle" class="label">Program FSM</text>
+  <text x="700" y="842" text-anchor="middle" class="small">optional read-back check</text>
+
+  <path d="M255 828 H380" class="tech"/>
+  <text x="317" y="820" text-anchor="middle" class="tech-label">timing</text>
+
+  <path d="M300 880 H700 L660 920 H340 Z" class="block"/>
+  <text x="500" y="905" text-anchor="middle" class="label">Macro-side mux</text>
+  <path d="M145 855 V900 H320" class="tech"/>
+  <path d="M480 855 V880" class="tech"/>
+  <path d="M680 855 V880" class="tech"/>
+
+  <text x="965" y="945" text-anchor="end" class="note">Reference: hw/ip/efuse/rtl/efuse_interface_shim.sv</text>
+
+  <!-- Macro -->
+  <path d="M500 920 V985" class="tech"/>
+  <text x="512" y="972" class="tech-label">foundry-specific macro signals</text>
+  <rect x="360" y="985" width="280" height="60" rx="6" class="macro"/>
+  <text x="500" y="1010" text-anchor="middle" class="label">OTP / eFuse macro</text>
+  <text x="500" y="1030" text-anchor="middle" class="small">foundry IP</text>
+</svg>

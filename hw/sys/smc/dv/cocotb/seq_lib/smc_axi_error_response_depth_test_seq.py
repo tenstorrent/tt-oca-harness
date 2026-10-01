@@ -8,10 +8,10 @@ import cocotb
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from .smc_addr_map import (
+    GLOBAL_BASE_RESET,
     LOCAL_BASE_RESET,
-    LOCAL_FABRIC_KEEP_MASK,
+    REGION_SIZE_RESET,
     external_gpio_ctrl_addr,
-    local_fabric_masked_addr,
     smc_addr,
 )
 from .smc_csr_seq_utils import SmcCsrSeq
@@ -25,38 +25,27 @@ ALIVE_SENTINEL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
 # each address built from generated symbols rather than a hand-computed offset
 # ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
 #
-# Neither probe is an address-decode hole. `smc.rdl` declares three
+# The first probe is not an address-decode hole: `smc.rdl` declares three
 # `external remapped_region` blocks of 0x80_0000 each -- ecam_region,
 # mmode_region, xvisor_region -- and `smc_addr.h` resolves them to
-# 0xC080_0000, 0xC100_0000 and 0xC180_0000. What the two probes demonstrate is
-# that an `external` region with no implementation behind it on this bench
-# answers DECERR with the err_slv signature, once reached at its own address
-# and once through the local-alias fold. Genuinely unmapped offsets are
+# 0xC080_0000, 0xC100_0000 and 0xC180_0000. An `external` region with no
+# implementation behind it on this bench answers DECERR with the err_slv
+# signature. Genuinely unmapped offsets inside the aperture are
 # `smc_deadspace_decode_test`'s subject, not this one's.
 #
-# Last page of ecam_region at its own address. It lies inside the local-alias
-# aperture (LOCAL_BASE .. LOCAL_BASE + REGION_SIZE at the generated resets), so
-# the fold is the identity and the request arrives where it was written.
+# Last page of ecam_region, inside the local aperture (LOCAL_BASE ..
+# LOCAL_BASE + REGION_SIZE at the generated resets).
 _UNIMPL_ECAM = (
     smc_addr("SMC_TOP_ECAM_REGION_BASE_ADDR") + smc_addr("SMC_TOP_ECAM_REGION_SIZE") - 0x1000
 )
-# The same page reached only THROUGH the fold: the address on the wire carries
-# an out-of-aperture prefix, so it differs from the one the decoder sees.
-# mmode_region and xvisor_region lie above the reset aperture, so no SEP_IN
-# wire address reaches them; the fold target has to be a page inside it. The
-# two asserts fail if the generated map moves the region or resizes the
-# aperture such that the probe stops demonstrating the fold.
-_OUT_OF_APERTURE_PREFIX = LOCAL_BASE_RESET + 14 * (LOCAL_FABRIC_KEEP_MASK + 1)
-_UNIMPL_ECAM_VIA_FOLD = _OUT_OF_APERTURE_PREFIX | (_UNIMPL_ECAM & LOCAL_FABRIC_KEEP_MASK)
-assert _UNIMPL_ECAM_VIA_FOLD != _UNIMPL_ECAM, (
-    "the high probe must be written OUTSIDE the local aperture so it reaches "
-    "ecam_region only through the local-alias fold"
-)
-assert local_fabric_masked_addr(_UNIMPL_ECAM_VIA_FOLD) == _UNIMPL_ECAM, (
-    f"0x{_UNIMPL_ECAM_VIA_FOLD:08x} folds to "
-    f"0x{local_fabric_masked_addr(_UNIMPL_ECAM_VIA_FOLD):08x}, not to the "
-    f"ecam_region top page 0x{_UNIMPL_ECAM:08x}"
-)
+# The same page offset fourteen apertures above LOCAL_BASE: outside both the
+# local and the global aperture at the generated resets, so the input fabric's
+# window check answers it with DECERR before it reaches any region.
+_ABOVE_APERTURE = LOCAL_BASE_RESET + 14 * REGION_SIZE_RESET + (_UNIMPL_ECAM - LOCAL_BASE_RESET)
+for _base in (LOCAL_BASE_RESET, GLOBAL_BASE_RESET):
+    assert not _base <= _ABOVE_APERTURE < _base + REGION_SIZE_RESET, (
+        f"0x{_ABOVE_APERTURE:08x} lies inside the aperture at 0x{_base:08x}"
+    )
 
 # EXTERNAL_MANDATORY GPIO_CTRL is a DECERR probe: the OSS tree carries no GPIO
 # pad block behind that window (memmap.adoc lists it as technology-specific).
@@ -65,7 +54,7 @@ _GPIO_CTRL0 = external_gpio_ctrl_addr(0)
 
 # Data expected alongside the error response. ``ERR_SLAVE_SIGNATURE`` is the
 # word the eFuse architecture document states for a blocked request, applied to
-# the two remap-region probes under the DV-owned assumption ``SmcCsrSeq``
+# the ecam_region and above-aperture probes under the DV-owned assumption ``SmcCsrSeq``
 # declares; the GPIO_CTRL probe expects the all-zero word
 # ``csr_read_decerr_zero`` also expects, a DV-owned expectation that the
 # terminator returns no payload.
@@ -75,7 +64,7 @@ _GPIO_CTRL_ERR_DATA = 0x0
 # (name, addr, expected AXI resp, expected rdata)
 ERROR_PROBES: list[tuple[str, int, int, int]] = [
     ("UNIMPL_ECAM_REGION", _UNIMPL_ECAM, AXI_RESP_DECERR, ERR_SLAVE_SIGNATURE),
-    ("UNIMPL_ECAM_REGION_VIA_FOLD", _UNIMPL_ECAM_VIA_FOLD, AXI_RESP_DECERR, ERR_SLAVE_SIGNATURE),
+    ("ABOVE_APERTURE_WINDOW_CHECK", _ABOVE_APERTURE, AXI_RESP_DECERR, ERR_SLAVE_SIGNATURE),
     ("GPIO_CTRL_ERR_SLAVE", _GPIO_CTRL0, AXI_RESP_DECERR, _GPIO_CTRL_ERR_DATA),
 ]
 

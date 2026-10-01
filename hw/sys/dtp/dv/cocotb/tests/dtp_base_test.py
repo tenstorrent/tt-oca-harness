@@ -42,12 +42,21 @@ class dtp_base_test(OcahTest):
     use_axi_scoreboard = False
     axi_checker_required_ids: tuple[str, ...] = ()
     axi_checker_stream_minimums: dict[str, int] | None = None
+    # Scenario IDs each of the three JTAG2AXI bridges must record on its own
+    # checker, which then takes that bridge's judgements instead of the shared
+    # scoreboard.
+    axi_checker_target_required_ids: tuple[str, ...] = ()
 
     # Downstream STAP TAPs: the STAP host ports (env.dtp_scan_ref_model
     # STAP_ORDER names) that get a reactive ocah_jtag_vip slave device spliced
     # behind them for this test. Default empty keeps every port's wire
-    # loopback; the STAP-selection scenarios attach all four.
+    # loopback; the STAP-selection and zero-length-bypass scenarios attach
+    # all four.
     stap_ds_attach: tuple[str, ...] = ()
+    # Extended STAP host segment: True places the tb_top host segment behind
+    # the extended STAP host scan interface for this test. Default False
+    # keeps the host scan loopback; the extended-STAP scenario sets it.
+    stap_host_segment = False
 
     # Knob names of the DTP loop policy; the library resolves the per-test
     # knob, then the group knob, then these.
@@ -68,11 +77,18 @@ class dtp_base_test(OcahTest):
         )
         self.cfg.axi_scoreboard_enabled = self.use_axi_scoreboard
         self.cfg.axi_checker_required_ids = set(self.axi_checker_required_ids)
+        self.cfg.axi_checker_target_required_ids = set(self.axi_checker_target_required_ids)
+        both = self.cfg.axi_checker_required_ids & self.cfg.axi_checker_target_required_ids
+        if both:
+            raise ValueError(
+                f"per-bridge ID(s) also required on the shared scoreboard: {sorted(both)}"
+            )
         self.cfg.axi_checker_stream_minimums = dict(self.axi_checker_stream_minimums or {})
         unknown = set(self.stap_ds_attach) - set(STAP_ORDER)
         if unknown:
             raise ValueError(f"unknown STAP name(s) in stap_ds_attach: {sorted(unknown)}")
         self.cfg.stap_ds_attach = set(self.stap_ds_attach)
+        self.cfg.stap_host_segment = self.stap_host_segment
         self.tb_if = DtpTbIf(cocotb.top)
         self.cfg.tb_if = self.tb_if
         ConfigDB().set(None, "*", "tb_if", self.tb_if)
@@ -100,9 +116,11 @@ class dtp_base_test(OcahTest):
         tb.sys_rst_n.value = 0
         tb.ctrl.xtrig_clk_stop_req.value = 0
         # Downstream STAP TAP ports: each port's attach mux follows the test's
-        # stap_ds_attach selection (0 = wire loopback) for the whole run.
+        # stap_ds_attach selection (0 = wire loopback) for the whole run, and
+        # the extended STAP host scan mux its stap_host_segment.
         for stap in STAP_ORDER:
             getattr(tb.scan, f"stap_{stap}_ds_en").value = int(stap in self.cfg.stap_ds_attach)
+        tb.scan.stap_host_seg_en.value = int(self.cfg.stap_host_segment)
         # Startup vector, driven while POR is still asserted: all eleven
         # active-high disables cleared so tests begin with full debug access
         # and assert the disables they gate explicitly. The DUT itself is
@@ -113,6 +131,7 @@ class dtp_base_test(OcahTest):
         self.logger.info("dbg_disable startup vector: %s", format_dbg_disable(startup))
         cocotb.start_soon(Clock(tb.clk, self.cfg.sys_clk_period_ns, units="ns").start())
         await ClockCycles(tb.clk, 5)
+        tb.check_dv_cfg()
         tb.por_rst_n.value = 1
         await ClockCycles(tb.clk, 5)
         tb.sys_rst_n.value = 1

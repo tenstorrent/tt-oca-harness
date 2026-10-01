@@ -70,17 +70,19 @@
 
 /* Bounded-wait budget, in poll iterations.
  *
- * Sized *below* the enclosing cocotb budget rather than above it. A poll
- * iteration costs 0.44-1.15 us of simulation (i2c_opentitan.h, the
- * I2C_TIMEOUT_DEFAULT rationale), so 4000 iterations is 1.8-4.6 ms. The longest
- * legitimate wait on this proof path is the 5-byte standard-mode transfer
- * (START+addr, length header, three data bytes) at roughly 0.5 ms, i.e. about
- * 450-1150 iterations, so this is a 3-8x margin over the real need and still
- * expires inside the harness window. smc_i2c_sanity.py documents the other half
- * of that arithmetic. A bound of I2C_TIMEOUT_DEFAULT (200000 iterations,
- * ~90-230 ms) would be ~46x the harness budget and make every fail-on-expiry
- * leg below dead code, because the cocotb SimTimeoutError fires first. */
-#define I2C_WAIT_BOUND 4000u
+ * Sized *below* the enclosing cocotb budget rather than above it, at the
+ * corner the bench can draw: a 4 ns core clock makes a poll iteration cost
+ * 0.23 us (measured in i2c_fifo_full), and a 12 ns peripheral clock stretches
+ * every transfer 1.5x against the 8 ns figure. The longest legitimate wait on
+ * this proof path is the 5-byte standard-mode transfer (START+addr, length
+ * header, three data bytes), roughly 0.5-0.75 ms, i.e. up to ~3300 iterations
+ * at the fastest core clock. 12000 iterations is ~2.7-4.1 ms, a 3.6x margin
+ * over the real need at the worst corner, and still expires inside the harness
+ * window. smc_i2c_sanity.py documents the other half of that arithmetic. A
+ * bound of I2C_TIMEOUT_DEFAULT (200000 iterations, ~46-68 ms) would be past the
+ * harness budget and make every fail-on-expiry leg below dead code, because
+ * the cocotb SimTimeoutError fires first. */
+#define I2C_WAIT_BOUND 12000u
 
 /* Deliberate-expiry control (S5). Long enough that a genuinely pending
  * CMD_COMPLETE would be seen, short enough to cost ~0.1-0.2 ms. */
@@ -784,7 +786,7 @@ static void step_s6_controller_halt_control(void) {
 
 int main(void) {
     i2c_timing_physical_t physical_params = {.speed = I2C_SPEED_STANDARD,
-                                             .clock_period_nanos = 10,
+                                             .clock_period_nanos = 5,
                                              .sda_rise_nanos = 300,
                                              .sda_fall_nanos = 100,
                                              .scl_period_nanos = 0};

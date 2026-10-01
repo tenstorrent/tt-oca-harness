@@ -1,28 +1,48 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SMC Miscellaneous Wrapper
-// Consolidates scratch registers and chip config
+// Wrap SMC miscellaneous register targets on the misc AXI-Lite map.
+//
+// Demultiplexes the misc map onto cold scratch registers, cold-and-warm scratch
+// registers, the chip_config registers (version ID, chip ID and lifecycle state) and the
+// NDM reset registers. Addresses outside those windows reach an error slave that returns
+// DECERR with read data 0xBADCAB1E.
 
 module smc_misc_wrap #(
-  parameter int unsigned CHIP_ID        = 0,
-  parameter int unsigned LC_STATE_WIDTH = 8
+  parameter int unsigned CHIP_ID        = 0,  // Chip identifier reported by the chip_config CHIP_ID
+                                              // register.
+  parameter int unsigned LC_STATE_WIDTH = 8  // Width of lc_state_i, which the chip_config LC_STATE
+                                             // register reports.
 ) (
-  input  logic clk_i,
-  input  logic rst_ni,
-  input  logic rst_warm_ni,
-  input  logic test_en_i,
+  input  logic clk_i,                   // SMC core clock.
+  input  logic rst_ni,                  // Primary reset, active-low, synchronized to the SMC core
+                                        // clock; resets the demux, the cold scratch registers,
+                                        // chip_config, and the NDM reset registers.
+  input  logic rst_warm_ni,             // Warm reset, active-low, synchronized to the SMC core
+                                        // clock; resets the cold-and-warm scratch registers.
+  input  logic test_en_i,               // Scan test mode enable, forwarded to the test input of the
+                                        // AXI-Lite demux.
 
-  // AXI-Lite Register Interface
-  input  smc_pkg::smc_axil_32_32_req_t  reg_axi_lite_req_i,
-  output smc_pkg::smc_axil_32_32_resp_t reg_axi_lite_resp_o,
+  input  smc_pkg::smc_axil_32_32_req_t  reg_axi_lite_req_i,  // Request from the peripheral
+                                                             // crossbar for the misc map.
+  output smc_pkg::smc_axil_32_32_resp_t reg_axi_lite_resp_o,  // Response to the peripheral
+                                                              // crossbar.
 
-  // Lifecycle state
-  input  logic [LC_STATE_WIDTH-1:0] lc_state_i,
+  input  logic [LC_STATE_WIDTH-1:0] lc_state_i,  // Lifecycle state, reported through the
+                                                 // chip_config LC_STATE register.
 
-  // NDM Reset signals (connected to SMU)
-  input  logic [smc_config_pkg::CPU_CLUSTER_COUNT-1:0] ndmreset_request_i,
-  output logic [smc_config_pkg::CPU_CLUSTER_COUNT-1:0] ndmreset_process_o
+  input  logic [smc_config_pkg::CPU_CLUSTER_COUNT-1:0] ndmreset_request_i,  // NDM reset request
+                                                                            // per CPU cluster,
+                                                                            // synchronized to the
+                                                                            // SMC core clock and
+                                                                            // readable in the
+                                                                            // NDMRESET_REQUEST
+                                                                            // register.
+  output logic [smc_config_pkg::CPU_CLUSTER_COUNT-1:0] ndmreset_process_o  // Firmware response to
+                                                                           // each cluster's NDM
+                                                                           // reset request, from
+                                                                           // the NDMRESET_PROCESS
+                                                                           // register.
 );
 
   ////////////////////
@@ -80,7 +100,7 @@ module smc_misc_wrap #(
     .SpillB      (1'b0),
     .SpillAr     (1'b1),
     .SpillR      (1'b0)
-  ) axi_lite_demux (
+  ) u_axi_lite_demux (
     .clk_i            (clk_i),
     .rst_ni           (rst_ni),
     .test_i           (test_en_i),
@@ -100,7 +120,7 @@ module smc_misc_wrap #(
   //////////////////////////
 
   // 8 scratch registers that are reset by cold reset
-  scratch_reg smc_scratch_reg_cold (
+  scratch_reg u_smc_scratch_reg_cold (
     .clk            (clk_i),
     .arst_n         (rst_ni),
 
@@ -127,9 +147,9 @@ module smc_misc_wrap #(
   );
 
   // 8 scratch registers that are reset by cold and warm reset
-  scratch_reg smc_scratch_reg_cold_warm (
+  scratch_reg u_smc_scratch_reg_cold_warm (
     .clk            (clk_i),
-    .arst_n         (rst_ni && rst_warm_ni),
+    .arst_n         (rst_warm_ni),
 
     .s_axil_awvalid (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD_WARM].aw_valid),
     .s_axil_awaddr  (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD_WARM].aw.addr[scratch_reg_pkg::SCRATCH_REG_MIN_ADDR_WIDTH-1:0]),
@@ -159,7 +179,7 @@ module smc_misc_wrap #(
 
   logic [63:0] version_id;
 
-  smc_version_id_wrap smc_version_id_wrap (.version_id_o(version_id));
+  smc_version_id_wrap u_smc_version_id_wrap (.version_id_o(version_id));
 
   ///////////////////////////
   // Chip Config Registers //
@@ -167,7 +187,7 @@ module smc_misc_wrap #(
 
   chip_config_reg_pkg::chip_config__in_t hwif_in;
 
-  chip_config_reg smc_chip_config_reg (
+  chip_config_reg u_smc_chip_config_reg (
     .clk(clk_i),
     .arst_n(rst_ni),
 
@@ -207,7 +227,7 @@ module smc_misc_wrap #(
   ndm_reset_reg_pkg::ndm_reset__in_t  ndm_hwif_in;
   ndm_reset_reg_pkg::ndm_reset__out_t ndm_hwif_out;
 
-  ndm_reset_reg smc_ndm_reset_reg (
+  ndm_reset_reg u_smc_ndm_reset_reg (
     .clk(clk_i),
     .arst_n(rst_ni),
 
@@ -254,7 +274,7 @@ module smc_misc_wrap #(
     .RESP           (axi_pkg::RESP_DECERR),
     .RESP_WIDTH     (32),
     .RESP_DATA      (32'hBADCAB1E)
-  ) prim_axi_lite_err_slv (
+  ) u_prim_axi_lite_err_slv (
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
     .axil_req_i (from_demux_reg_axi_lite_req[smc_misc_pkg::ERR_SLV]),

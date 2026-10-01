@@ -5,9 +5,10 @@
 `define EXAMPLE_SRAM_MACRO_CSR_RDL_DEFINED
 
 addrmap example_sram_macro_csr {
+    name = "Example SRAM Macro CSR Address Map";
+    desc = "Control and status registers for the example SRAM macro.";
 
-   desc = "Example SRAM Macro CSRs";
-
+   
    ////////////////////////////////////////////////////////////////////////////
    // Register Definitions
    ////////////////////////////////////////////////////////////////////////////

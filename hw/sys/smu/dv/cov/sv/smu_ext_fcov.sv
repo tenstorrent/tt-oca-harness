@@ -170,8 +170,13 @@ module smu_ext_fcov #(
   covergroup cg_smn_ids with function sample (logic [7:0] in_id, logic [9:0] out_id);
     option.per_instance = 1;
     cp_in_id: coverpoint in_id {bins zero = {8'h00}; bins max = {8'hff}; bins other = default;}
+    // The crossbar prefixes each outbound ID with its 2-bit slave-port index.
+    // ext_out is reachable from sep_out (index 0) and smc_out (index 1) only,
+    // so an outbound ID above 10'h1ff never appears on this port.
     cp_out_id: coverpoint out_id {
-      bins zero = {10'h000}; bins max = {10'h3ff}; bins other = default;
+      bins from_sep = {[10'h000 : 10'h0ff]};
+      bins from_smc = {[10'h100 : 10'h1ff]};
+      ignore_bins unrouted_ports = {[10'h200 : 10'h3ff]};
     }
   endgroup
 

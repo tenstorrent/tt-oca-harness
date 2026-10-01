@@ -53,8 +53,9 @@ DTP, SMC, and SMU are consumers.
 |OCAH-native cocotb model
 |NOR flash responder, Mode-0 controller engine, passive monitor, and flash
 checker with a wire-rebuilt reference model. Quad/octal personalities use
-single-bit data timing; DDR, vendor timing, and vendor commands are out of
-scope and earn no checker credit. SEP and SMC are consumers.
+single-bit data timing; DDR, device-specific timing, and device-specific
+commands are out of scope and earn no checker credit. SEP and SMC are
+consumers.
 
 |`ocah_uart_vip`
 |Promoted for asynchronous serial console links
@@ -89,7 +90,7 @@ Primary classes:
 
 SystemVerilog layer (compiled by explicit sim-cfg sources; a cocotb/Verilator
 build lists the interface and the `sva/` checker too):
-`interface/ocah_axi_if.sv`, the clean-room
+`interface/ocah_axi_if.sv`, the
 `sva/ocah_axi_sva.sv` (`OCAH_AXI_*` rules from IHI 0022 rule
 descriptions) and `sva/ocah_axi_fv.sv` (the handshake rules in the boolean
 subset a formal environment binds, each side asserted or assumed by
@@ -168,13 +169,13 @@ controller side for benches without an SPI host IP.
 records `CHK-SPI-*` evidence for identifier, status, write-enable ordering,
 readback, host readback, opcode order, memory golden, source-image compare,
 and non-vacuity; an out-of-scope opcode is counted and never credited.
-`OcahSepSpiFlash` is the subclass mapped to the SEP xSPI pad bundle; the SMC SPI
-pad test binds the same class to its lifted pads.
+`OcahSepSpiFlash` is the subclass mapped to the SEP octal-SPI pad bundle; the
+SMC SPI pad test binds the same class to its lifted pads.
 
 The `--dut ocah_spi_vip` wire-harness selftests prove the four components
 against each other, each with an in-band must-fail probe. The personality is
-single-SPI Mode 0. True QSPI/OSPI lane turnaround, DDR, vendor-accurate BUSY
-timing, and vendor-specific commands are out of scope.
+single-SPI Mode 0. True QSPI/OSPI lane turnaround, DDR, device-specific BUSY
+timing, and device-specific commands are out of scope.
 
 [[shared-vip-i2c]]
 === I2C

@@ -2,10 +2,11 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Cores, fabric and peripherals are all held while rst_primary_no is asserted.
 
-``clk_rst.adoc`` (Primary Reset) scopes the primary reset over "CPU cores and
-cache hierarchies, fabric infrastructure, peripheral controllers and
-interfaces, and SMC control and configuration registers", and lists the cool
-reset as one of its activation sources. Each consumer is put into a state a
+``clk_rst.adoc`` ("Primary and Warm Reset") makes the de-glitched cool reset a
+term of ``rst_primary_n``, says "Primary reset covers the main SMC functional
+fabric, peripheral control and configuration paths", and gives the warm reset
+that drives CPU core/uncore reset control ``rst_primary_n`` as a term. Each
+consumer is put into a state a
 reset would visibly end, the cool pin is asserted, and the consumer is
 observed held for a whole window rather than at one instant:
 
@@ -48,7 +49,7 @@ import sys
 from pathlib import Path
 
 import cocotb
-from cocotb.triggers import ClockCycles, RisingEdge
+from cocotb.triggers import ClockCycles, RisingEdge, Timer
 from env.smc_reset_item import SmcResetItem, SmcResetOp
 
 from .smc_addr_map import CLOCK_GATE_CONTROL, UART_CG_EN, smc_indexed_addr
@@ -88,7 +89,9 @@ UART_TX_BYTE = 0x00
 
 FILTER_END_PATTERN = 0x0000_0000_00AB_CDE8
 # Window over which the cores must be seen fetching before the reset.
-FETCH_WINDOW_SMC_CYCLES = 4000
+# Time the cores get to resume fetching after the primary reset releases.
+FETCH_RESUME_BOUND_NS = 20_000
+FETCH_RESUME_POLL_NS = 250
 # Held window sampled every clk_smc_i edge once the primary reset is asserted.
 HOLD_WINDOW_REF_CYCLES = 96
 # Samples at the head of the window during which the peripheral-domain reset
@@ -114,7 +117,8 @@ class smc_primary_reset_scope_test_seq(SmcResetSeqBase, SmcCsrSeq):
     def __init__(self, name: str = "smc_primary_reset_scope_test_seq") -> None:
         super().__init__(name)
         self.dispatch_reset = None
-        self.fetch_delta_before: int | None = None
+        self.fetch_before: int | None = None
+        self.fetch_delta_after: int | None = None
         self.hold_samples = 0
         self.core_reset_low_samples = 0
         self.rvalid_high_samples = 0
@@ -149,14 +153,29 @@ class smc_primary_reset_scope_test_seq(SmcResetSeqBase, SmcCsrSeq):
         assert self._bit(dut.tb_cpu_core_reset_n, "tb_cpu_core_reset_n") == 1, (
             "core 0 is still in reset after bring-up; the held-state claim needs a running core"
         )
+        # The counter clears on cold reset, so a non-zero value is the boot
+        # fetch of this bring-up; whether the cores fetch again once released
+        # is checked after the held window, where it separates 'held' from
+        # 'idle'.
+        self.fetch_before = int(dut.tb_cpu_rom_read_count.value)
+        assert self.fetch_before > 0, (
+            "tb_cpu_rom_read_count is 0 after bring-up; the cores fetched nothing from ROM, so "
+            "'held' could not be told from 'idle'"
+        )
+
+    async def _prove_fetch_resumes(self) -> None:
+        dut = cocotb.top
         rom0 = int(dut.tb_cpu_rom_read_count.value)
-        await ClockCycles(dut.clk_smc_i, FETCH_WINDOW_SMC_CYCLES)
-        rom1 = int(dut.tb_cpu_rom_read_count.value)
-        self.fetch_delta_before = rom1 - rom0
-        assert self.fetch_delta_before > 0, (
-            f"tb_cpu_rom_read_count did not advance over {FETCH_WINDOW_SMC_CYCLES} clk_smc_i "
-            f"cycles ({rom0} -> {rom1}); the cores are not fetching, so 'held' could not be told "
-            f"from 'idle'"
+        for _ in range(FETCH_RESUME_BOUND_NS // FETCH_RESUME_POLL_NS):
+            rom1 = int(dut.tb_cpu_rom_read_count.value)
+            if rom1 > rom0:
+                self.fetch_delta_after = rom1 - rom0
+                return
+            await Timer(FETCH_RESUME_POLL_NS, unit="ns")
+        raise AssertionError(
+            f"tb_cpu_rom_read_count did not advance within {FETCH_RESUME_BOUND_NS} ns of the "
+            f"primary reset release ({rom0}); the cores did not resume fetching, so the held "
+            f"window could not be told from 'idle'"
         )
 
     async def _arm_uart_mid_frame(self) -> None:
@@ -168,9 +187,9 @@ class smc_primary_reset_scope_test_seq(SmcResetSeqBase, SmcCsrSeq):
         await self.csr_write("UART0_DLL", UART0_THR, UART_DIVISOR & 0xFF)
         await self.csr_write("UART0_DLM", UART0_IER, (UART_DIVISOR >> 8) & 0xFF)
         await self.csr_write("UART0_LCR_8N1", UART0_LCR, LCR_8N1)
-        bit_smc_cycles = (
-            16 * (UART_DIVISOR + 1) * self.cfg.periph_clk_period_ns
-        ) // self.cfg.smc_clk_period_ns
+        bit_smc_cycles = int(
+            16 * (UART_DIVISOR + 1) * self.cfg.periph_clk_period_ns / self.cfg.smc_clk_period_ns
+        )
         # Divisor reload settle, as smc_uart_loopback_test_seq does before THR.
         await ClockCycles(dut.clk_smc_i, max(64, UART_DIVISOR * 16))
         assert self._bit(dut.tb_uart0_tx_from_dut, "tb_uart0_tx_from_dut") == 1, (
@@ -245,7 +264,7 @@ class smc_primary_reset_scope_test_seq(SmcResetSeqBase, SmcCsrSeq):
         # by a core that was not held.
         if self.rom_count_frozen_from is not None:
             assert self.rom_count_frozen_from <= PAD_SETTLE_REF_CYCLES * (
-                self.cfg.ref_clk_period_ns // self.cfg.smc_clk_period_ns + 1
+                int(self.cfg.ref_clk_period_ns / self.cfg.smc_clk_period_ns) + 1
             ), (
                 f"tb_cpu_rom_read_count advanced at sample {self.rom_count_frozen_from} of the held "
                 f"window (rom {rom_at_start} -> {rom_end}): a core fetched ROM while "
@@ -285,6 +304,7 @@ class smc_primary_reset_scope_test_seq(SmcResetSeqBase, SmcCsrSeq):
         core_cycles = await self._await_bit(
             dut.tb_cpu_core_reset_n, "tb_cpu_core_reset_n", 1, CORE_RELEASE_BOUND_SMC_CYCLES
         )
+        await self._prove_fetch_resumes()
         await self.csr_read(
             "OUTBOUND0_END_AFTER_RESET",
             OUTBOUND0_END,
@@ -302,12 +322,12 @@ class smc_primary_reset_scope_test_seq(SmcResetSeqBase, SmcCsrSeq):
         self.assert_all_reachable(EXPECTED_ACCESSES, "PRIMARY_RESET_SCOPE")
 
         cocotb.log.info(
-            "CHK-PRIMARY-RESET-CORES-HELD: cores fetched %d ROM words in %d cycles before the reset; "
-            "tb_cpu_core_reset_n read 0 at all %d clk_smc_i samples of the %d-clk_ref_i held window "
-            "and the ROM read counter stopped advancing (%s); core 0 released %d cycles after "
-            "rst_cool_ni=1 (assert handshake matched after %d ref cycles)",
-            self.fetch_delta_before,
-            FETCH_WINDOW_SMC_CYCLES,
+            "CHK-PRIMARY-RESET-CORES-HELD: cores fetched %d ROM words since the cold reset and %d "
+            "more once released; tb_cpu_core_reset_n read 0 at all %d clk_smc_i samples of the "
+            "%d-clk_ref_i held window and the ROM read counter stopped advancing (%s); core 0 "
+            "released %d cycles after rst_cool_ni=1 (assert handshake matched after %d ref cycles)",
+            self.fetch_before,
+            self.fetch_delta_after,
             self.hold_samples,
             HOLD_WINDOW_REF_CYCLES,
             "no fetch inside the window"

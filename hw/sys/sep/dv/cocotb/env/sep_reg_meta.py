@@ -42,6 +42,7 @@ import re
 import sys
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 
 # The generated header is not a package and is not on `python_paths`, so resolve it
@@ -138,15 +139,16 @@ class RegBlock:
             alias = f"{self.block}_{_TYPE_ALIAS[name]}"
             if hasattr(sep_reg, f"{alias}_REG_DEFAULT"):
                 return alias
+        # Suffix match. A hit is accepted only when it also carries one of this
+        # block's own name tokens -- a single hit included -- so an instance
+        # can never take the reset of an unrelated block's type that merely
+        # shares a register name. "SEP" is on every block and says nothing.
         norm = _normalize_inst_name(name)
         hits = [key for key in _default_type_keys() if key.endswith("_" + norm) or key == norm]
-        if len(hits) == 1:
-            return hits[0]
-        if len(hits) > 1:
-            tokens = [t for t in self.block.split("_") if t and not t.isdigit()]
-            scored = [h for h in hits if any(tok in h for tok in tokens)]
-            if len(scored) == 1:
-                return scored[0]
+        tokens = [t for t in self.block.split("_") if t and not t.isdigit() and t != "SEP"]
+        scored = [h for h in hits if any(tok in h for tok in tokens)]
+        if len(scored) == 1:
+            return scored[0]
         return None
 
     def _sym(self, name: str, suffix: str, *, alias_ok: bool):
@@ -435,6 +437,38 @@ class RegAccess:
         return self.access == frozenset({"read-only"}) and not self.declared_reset
 
 
+def _iter_ipxact_registers():
+    """Yield ``(address, width_bits, field_nodes)`` for every register element.
+
+    An array (``dim``) yields one tuple per element, at its absolute address.
+    """
+
+    def text(node: ET.Element, child: str) -> str | None:
+        found = node.find(_IPXACT_NS + child)
+        return None if found is None else found.text
+
+    def walk(node: ET.Element, base: int):
+        for child in node:
+            kind = child.tag.split("}")[-1]
+            if kind == "registerFile":
+                offset = _ipxact_num(text(child, "addressOffset")) or 0
+                stride = _ipxact_num(text(child, "range")) or 0
+                for index in range(_ipxact_num(text(child, "dim")) or 1):
+                    yield from walk(child, base + offset + index * stride)
+            elif kind == "register":
+                offset = _ipxact_num(text(child, "addressOffset")) or 0
+                width = _ipxact_num(text(child, "size")) or 32
+                fields = child.findall(_IPXACT_NS + "field")
+                for index in range(_ipxact_num(text(child, "dim")) or 1):
+                    yield base + offset + index * (width // 8), width, fields
+            elif kind == "addressBlock":
+                yield from walk(child, base + (_ipxact_num(text(child, "baseAddress")) or 0))
+            else:
+                yield from walk(child, base)
+
+    yield from walk(ET.parse(_GEN_IPXACT).getroot(), 0)
+
+
 def _ipxact_access() -> dict[int, RegAccess]:
     """Absolute address -> access shape, from the generated IP-XACT.
 
@@ -444,41 +478,55 @@ def _ipxact_access() -> dict[int, RegAccess]:
     on, so the join cannot be broken by a naming convention change.
     """
     out: dict[int, RegAccess] = {}
-
-    def text(node: ET.Element, child: str) -> str | None:
-        found = node.find(_IPXACT_NS + child)
-        return None if found is None else found.text
-
-    def walk(node: ET.Element, base: int) -> None:
-        for child in node:
-            kind = child.tag.split("}")[-1]
-            if kind == "registerFile":
-                offset = _ipxact_num(text(child, "addressOffset")) or 0
-                stride = _ipxact_num(text(child, "range")) or 0
-                for index in range(_ipxact_num(text(child, "dim")) or 1):
-                    walk(child, base + offset + index * stride)
-            elif kind == "register":
-                offset = _ipxact_num(text(child, "addressOffset")) or 0
-                width = _ipxact_num(text(child, "size")) or 32
-                fields = child.findall(_IPXACT_NS + "field")
-                shape = RegAccess(
-                    frozenset(text(one, "access") or "read-write" for one in fields),
-                    any(one.find(_IPXACT_NS + "resets") is not None for one in fields),
-                )
-                for index in range(_ipxact_num(text(child, "dim")) or 1):
-                    out[base + offset + index * (width // 8)] = shape
-            elif kind == "addressBlock":
-                walk(child, base + (_ipxact_num(text(child, "baseAddress")) or 0))
-            else:
-                walk(child, base)
-
-    walk(ET.parse(_GEN_IPXACT).getroot(), 0)
+    for addr, _width, fields in _iter_ipxact_registers():
+        out[addr] = RegAccess(
+            frozenset((one.findtext(_IPXACT_NS + "access") or "read-write") for one in fields),
+            any(one.find(_IPXACT_NS + "resets") is not None for one in fields),
+        )
     if not out:
         raise RuntimeError(
             f"{_GEN_IPXACT} yielded no registers; the IP-XACT schema changed and "
             "every access-shaped exclusion would silently exclude nothing"
         )
     return out
+
+
+@lru_cache(maxsize=1)
+def _ipxact_unreset_words() -> dict[int, bool]:
+    """32-bit word address -> whether a field in that word has no RDL reset.
+
+    PeakRDL IP-XACT emits a ``resets`` element exactly for a field that the RDL
+    gives a reset value. The generated ``_REG_DEFAULT`` reads 0 for a field with
+    none (``tools/regs/common/regcollect.py``), so it cannot answer this.
+    """
+    out: dict[int, bool] = {}
+    for addr, width, fields in _iter_ipxact_registers():
+        spans = []
+        for one in fields:
+            lsb = _ipxact_num(one.findtext(_IPXACT_NS + "bitOffset")) or 0
+            width_f = _ipxact_num(one.findtext(_IPXACT_NS + "bitWidth")) or 1
+            spans.append((lsb, lsb + width_f, one.find(_IPXACT_NS + "resets") is None))
+        for word in range(max(width // 32, 1)):
+            lo = word * 32
+            out[addr + 4 * word] = any(
+                unreset for lsb, msb, unreset in spans if lsb < lo + 32 and msb > lo
+            )
+    if not out:
+        raise RuntimeError(f"{_GEN_IPXACT} yielded no registers")
+    return out
+
+
+def word_has_unreset_field(addr: int) -> bool:
+    """Whether a field in the 32-bit word at ``addr`` has no RDL reset value.
+
+    Such a word has no defined value before its first write, so a read before
+    that write grades nothing and reads X on a 4-state simulator. Raises
+    ``KeyError`` for an address the IP-XACT gives no register.
+    """
+    words = _ipxact_unreset_words()
+    if addr not in words:
+        raise KeyError(f"0x{addr:08x} is not a register word in {_GEN_IPXACT.name}")
+    return words[addr]
 
 
 # The shape of ordinary read-write storage, and the default for a hand-built
@@ -569,6 +617,22 @@ def block_size(block: str) -> int:
             f"{key} not found in the generated register header "
             f"({_GEN_PY}/sep_reg.py); regenerate it or check the block name"
         ) from exc
+
+
+_SEP_ADDR_H = _GEN_PY.parent / "c" / "sep_addr.h"
+
+
+def sep_addr_define(name: str) -> int:
+    """Integer value of ``#define <name>`` in the generated ``sep_addr.h``.
+
+    The C address header carries the RDL array geometry (``_NUM``, ``_STRIDE``,
+    ``_TOTAL_SIZE``) that the Python export does not.
+    """
+    for line in _SEP_ADDR_H.read_text(encoding="utf-8").splitlines():
+        parts = line.split()
+        if len(parts) >= 3 and parts[0] == "#define" and parts[1] == name:
+            return int(parts[2], 0)
+    raise KeyError(f"{name} not found in {_SEP_ADDR_H}; regenerate it or check the symbol name")
 
 
 def _load_py_module(path: Path, name: str):

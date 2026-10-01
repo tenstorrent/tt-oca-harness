@@ -6,8 +6,9 @@
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: efuse_interface_ctrl</h2>
-<h2>Register List:</h2>
+<h2 id="regmap-efuse_interface_ctrl">eFuse Interface Control Address Map</h2>
+<p>Program and read command, address, data, status, and timeout registers for the eFuse interface.</p>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#EFUSE_INTERFACE_CTRL_STATUS">EFUSE_INTERFACE_CTRL_STATUS</a></td><td>RW</td><td>eFuse interface status and error-clear register. Reports the sense-done flag and request/address error conditions, and provides write-1 strobes to clear those errors.</td></tr>
@@ -18,14 +19,14 @@
 <tr><td>0x14</td><td><a href="#EFUSE_READ_REQ_TIMEOUT">EFUSE_READ_REQ_TIMEOUT</a></td><td>RW</td><td>Read interface timeout configuration. Sets the number of cycles the read interface waits for a SHIM response and enables the read timeout.</td></tr>
 <tr><td>0x18</td><td><a href="#EFUSE_PROGRAM_REQ_TIMEOUT">EFUSE_PROGRAM_REQ_TIMEOUT</a></td><td>RW</td><td>Program interface timeout configuration. Sets the number of cycles the program interface waits for a SHIM response and enables the program timeout.</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="EFUSE_INTERFACE_CTRL_STATUS">EFUSE_INTERFACE_CTRL_STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>10</td><td>efuse_read_addr_error_clear</td><td>W</td><td>0x0</td><td>Clears the read out of bounds error bit (efuse_read_addr_error) in efuse_ctrl_status</td></tr>
-<tr><td>9</td><td>efuse_program_addr_error_clear</td><td>W</td><td>0x0</td><td>Clears the program out of bounds error bit (efuse_program_addr_error) in efuse_ctrl_status</td></tr>
-<tr><td>8</td><td>efuse_req_error_clear</td><td>W</td><td>0x0</td><td>Clears the blocked request error bit in efuse_ctrl_status</td></tr>
+<tr><td>10</td><td>efuse_read_addr_error_clear</td><td>W 1P</td><td>0x0</td><td>Clears the read out of bounds error bit (efuse_read_addr_error) in efuse_ctrl_status</td></tr>
+<tr><td>9</td><td>efuse_program_addr_error_clear</td><td>W 1P</td><td>0x0</td><td>Clears the program out of bounds error bit (efuse_program_addr_error) in efuse_ctrl_status</td></tr>
+<tr><td>8</td><td>efuse_req_error_clear</td><td>W 1P</td><td>0x0</td><td>Clears the blocked request error bit in efuse_ctrl_status</td></tr>
 <tr><td>7</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>6</td><td>efuse_read_addr_error</td><td>R</td><td>0x0</td><td>Indicates that an invalid eFuse read address was used (address exceeds the implemented eFuse size). The error must be cleared by writing 1 to efuse_read_addr_error_clear.</td></tr>
 <tr><td>5</td><td>efuse_program_addr_error</td><td>R</td><td>0x0</td><td>Indicates that an invalid eFuse program address was used (address exceeds the implemented eFuse size). The error must be cleared by writing 1 to efuse_program_addr_error_clear.</td></tr>
@@ -43,7 +44,7 @@
 <tr><td>24</td><td>program_busy</td><td>R</td><td>0x0</td><td>When set, the program is in progress</td></tr>
 <tr><td>23:19</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>18</td><td>efuse_program_read_back</td><td>RW</td><td>0x0</td><td>When set, trigger a read back after a program</td></tr>
-<tr><td>17</td><td>efuse_program_go</td><td>RW</td><td>0x0</td><td>When set, triggers a program to the eFuse.  This will be ignored if the lock bit is set</td></tr>
+<tr><td>17</td><td>efuse_program_go</td><td>RW 1P</td><td>0x0</td><td>When set, triggers a program to the eFuse.  This will be ignored if the lock bit is set</td></tr>
 <tr><td>16</td><td>efuse_data</td><td>RW</td><td>0x0</td><td>Data to program to eFuse.  If this bit is 0, the program request will be ignored</td></tr>
 <tr><td>15:0</td><td>efuse_addr</td><td>RW</td><td>0x0</td><td>Bit address to program</td></tr>
 </table>
@@ -57,7 +58,7 @@
 <tr><td>25</td><td>read_done</td><td>R</td><td>0x0</td><td>When set, the read has completed, the status of which is in read_status</td></tr>
 <tr><td>24</td><td>read_busy</td><td>R</td><td>0x0</td><td>When set, the read is in progress</td></tr>
 <tr><td>23:17</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>16</td><td>efuse_read_go</td><td>RW</td><td>0x0</td><td>When set, triggers a read to efuse.</td></tr>
+<tr><td>16</td><td>efuse_read_go</td><td>RW 1P</td><td>0x0</td><td>When set, triggers a read to efuse.</td></tr>
 <tr><td>15:0</td><td>efuse_addr</td><td>RW</td><td>0x0</td><td>Bit address to read</td></tr>
 </table>
 <h3 id="EFUSE_PROGRAM_INTERFACE_READ_DATA">EFUSE_PROGRAM_INTERFACE_READ_DATA</h3>

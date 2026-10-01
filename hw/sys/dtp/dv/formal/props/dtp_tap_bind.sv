@@ -9,7 +9,6 @@ bind jtag_tap_ctrlr dtp_tap_props u_dtp_tap_props (
   .trst_ni            (client_tap_ctrl_i.trst_n),
   .tms_i              (client_tap_ctrl_i.tms),
   .state_i            (current_state_o),
-  .tms_high_count_i   (tms_reset_counter_q),
   .tdo_oen_i          (tdo_oen_o),
   .dr_select_i        (host_dr_scan_ctrl_o.select),
   .dr_update_en_i     (host_dr_scan_ctrl_o.update_en),

@@ -3,7 +3,7 @@
 """DV-owned eFuse field map.
 
 Write-policy and ``SECURE_TM`` membership come from ``_FIELD_ROWS``
-(``hw/sys/sep/doc/periphs.adoc`` fuse-field table). Offsets and widths
+(``hw/sys/sep/doc/otp_fuse_controller.adoc`` fuse-field table). Offsets and widths
 come from the generated RDL header. The set-only, lock, and writable
 walks together cover every row except ``LC_STATE``. ``LOCK`` is walked
 only when both RDL windows (``LOCKS`` and ``LOCKS_SPARE``) are written.
@@ -43,7 +43,7 @@ class SpecField:
         return (1 << n) - 1
 
 
-# From hw/sys/sep/doc/periphs.adoc [[fuse-fields]].
+# From hw/sys/sep/doc/otp_fuse_controller.adoc [[fuse-fields]].
 # (spec_name, reg_name, index, width_bits, used_bits, set_only)
 _FIELD_ROWS = (
     ("LOCK", "LOCKS", 0, 96, 96, True),
@@ -150,7 +150,7 @@ def spec_lock_walk() -> tuple[tuple[str, int, int, int, int], ...]:
 
 
 def spec_writable_shadow_walk() -> tuple[tuple[str, int], ...]:
-    """Every ``periphs.adoc`` SW-writable ``true`` row (not set-only)."""
+    """Every ``otp_fuse_controller.adoc`` SW-writable ``true`` row (not set-only)."""
     return tuple(
         (field.reg_name, field.word_used_mask) for field in spec_fields() if not field.set_only
     )

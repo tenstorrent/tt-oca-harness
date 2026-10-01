@@ -16,4 +16,7 @@ class dtp_ctm_rand_ctp_to_cla_test(dtp_base_test):
             scenario="ctm_rand_ctp_to_cla",
             specific_knob="DTP_CTM_RAND_CTP_TO_CLA_TEST_LOOPS",
             group_knob="DTP_XTRIG_TEST_LOOPS",
+            total_passes=self.loop_count(
+                "DTP_CTM_RAND_CTP_TO_CLA_TEST_LOOPS", "DTP_XTRIG_TEST_LOOPS"
+            ),
         )

@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+// Define typedefs for SEP lifecycle debug-disable control.
+//
+// dbg_disable_t packs the per-feature debug disable bits consumed by DTP.
+
 package sep_lifecycle_ctrl_pkg;
 
   // Active-high: 1 = interface disabled.

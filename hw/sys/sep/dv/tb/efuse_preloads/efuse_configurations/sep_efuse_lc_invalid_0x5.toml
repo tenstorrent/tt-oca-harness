@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# LC_STATE raw 0x5: INVALID to the lifecycle controller, which decodes
+# RMA_CHIPLET as 4'b011? (0x6 and 0x7 only).
+#
+# The ROM must treat it as invalid too (SEP-ROM-FUSE-020) rather than as
+# RMA_CHIPLET, which would boot with secure boot optional on a part the hardware
+# considers dead.
+#
+# Used by sep_rom_lc_state_invalid_0x5_test.
+
+[LC_STATE]
+  # Differentially encoded {~raw[3:0], raw[3:0]}: raw 0x5 stores as 0xA5. The
+  # pair is complementary, so the LCC's signal-integrity check passes and the
+  # state reaches its INVALID decode rather than a fault.
+  [LC_STATE.fields.lc_state]
+  value = 0xA5

@@ -1,16 +1,200 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Key Manager component documentation
+= Key Manager (KM)
+:description: Key Manager hardware architecture and firmware reference.
+
+[[key-manager-km-key-manager-km]]
+
+The Key Manager provides isolated key storage, random key generation, explicit
+revocation, and delivery to the cryptographic accelerators. The following
+sections describe its hardware architecture and firmware interface.
+
+The immutable ROM firmware first initializes the Key Manager, then remains
+active to process SEP mailbox commands and service interrupts. It is both
+startup firmware and the resident runtime; "boot ROM" names the memory, not
+its only function. On an explicit firmware-load/execute command, ROM can hand
+control to mutable firmware in SRAM. See <<key-manager-km-firmware>> for the
+implemented services, command protocol and handover rules.
+
 ifdef::backend-html5[]
-include::partial$key_manager/doc/architecture.adoc[]
+include::partial$key_manager/doc/architecture.adoc[leveloffset=+1]
+include::partial$key_manager/doc/firmware.adoc[leveloffset=+1]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-include::architecture.adoc[]
+include::architecture.adoc[leveloffset=+1]
+include::firmware.adoc[leveloffset=+1]
 endif::backend-pdf[]
+
+[[km-memory-register-reference]]
+== Memory Map and Register Reference
+
+[[key-manager-memory-map]]
+=== Memory Map
+
+The KM CPU addresses its internal peripherals through a flat 32-bit address space. The AXI4-Lite crossbar decodes the address and routes transactions to the corresponding slave port.
+
+Every window except OTP/eFuse spans exactly the address bits its register block decodes, so no register is reachable from a second address. The last two columns of the map state how the crossbar and the register blocks answer an access that no register or memory backs, and
 ifdef::backend-html5[]
-include::partial$key_manager/doc/firmware.adoc[]
+xref:ocah-docs:ROOT:memory_map.adoc#ocah-decode-response-codes[Decode Response Codes]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-include::firmware.adoc[]
+<<ocah-decode-response-codes,Decode Response Codes>>
+endif::backend-pdf[]
+defines them and their codes. The KM CPU does not see these responses: an error sets `AXI_SLVERR` or `AXI_DECERR` in the KMCSR `IRQ_STATUS` register.
+
+The OTP/eFuse window is the exception: hardware preserves its lower 12 address
+bits and replaces the upper bits with the integration parameter
+`OTP_EFUSE_REMAP_BASE` before forwarding the transaction to SEP. Only the
+MAP, CTRL and MMR register maps are forwarded. The Key Manager answers any
+other offset in the window with SLVERR, so the KM CPU cannot reach the eFuse
+shim control registers.
+
+ifdef::backend-html5[]
+include::partial$key_manager/regs/gen/adoc/memory_map.adoc[]
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/memory_map.adoc[]
+endif::backend-pdf[]
+
+=== Detailed Register Map
+
+==== Address Summary Registers
+
+ifdef::backend-html5[]
+++++
+include::ip:partial$key_manager/regs/gen/html/key_manager.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/key_manager.adoc[leveloffset=+3]
+endif::backend-pdf[]
+
+[[km-control-register-reference]]
+==== Control and Status Registers
+
+ifdef::backend-html5[]
+++++
+<span id="control-and-status-registers"></span>
+++++
+endif::backend-html5[]
+
+ifdef::backend-html5[]
+++++
+include::ip:partial$key_manager/regs/gen/html/km_csr.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/km_csr.adoc[leveloffset=+3]
+endif::backend-pdf[]
+
+==== Key and Policy Vault Registers
+
+ifdef::backend-html5[]
+++++
+include::ip:partial$key_manager/regs/gen/html/km_kpv.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/km_kpv.adoc[leveloffset=+3]
+endif::backend-pdf[]
+
+==== DRBG Sampler Registers
+
+ifdef::backend-html5[]
+++++
+include::ip:partial$key_manager/regs/gen/html/km_drbg_sampler.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/km_drbg_sampler.adoc[leveloffset=+3]
+endif::backend-pdf[]
+
+==== KM Mailbox Registers
+
+ifdef::backend-html5[]
+++++
+include::ip:partial$key_manager/regs/gen/html/km_mailbox_km.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/km_mailbox_km.adoc[leveloffset=+3]
+endif::backend-pdf[]
+
+==== SEP Mailbox Registers
+
+ifdef::backend-html5[]
+++++
+include::ip:partial$key_manager/regs/gen/html/km_mailbox_sep.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/km_mailbox_sep.adoc[leveloffset=+3]
+endif::backend-pdf[]
+
+==== Adams Bridge Key Interface Registers
+
+ifdef::backend-html5[]
+++++
+include::ip:partial$key_manager/regs/gen/html/abr_wrapper_key.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/abr_wrapper_key.adoc[leveloffset=+3]
+endif::backend-pdf[]
+
+==== AES Key Interface Registers
+
+ifdef::backend-html5[]
+++++
+include::ip:partial$key_manager/regs/gen/html/aes_wrapper_key.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/aes_wrapper_key.adoc[leveloffset=+3]
+endif::backend-pdf[]
+
+==== HMAC Key Interface Registers
+
+ifdef::backend-html5[]
+++++
+include::ip:partial$key_manager/regs/gen/html/hmac_wrapper_key.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/hmac_wrapper_key.adoc[leveloffset=+3]
+endif::backend-pdf[]
+
+==== KMAC Key Interface Registers
+
+ifdef::backend-html5[]
+++++
+include::ip:partial$key_manager/regs/gen/html/kmac_wrapper_key.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/kmac_wrapper_key.adoc[leveloffset=+3]
+endif::backend-pdf[]
+
+==== OTBN Key Interface Registers
+
+ifdef::backend-html5[]
+++++
+include::ip:partial$key_manager/regs/gen/html/otbn_wrapper_key.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/otbn_wrapper_key.adoc[leveloffset=+3]
 endif::backend-pdf[]

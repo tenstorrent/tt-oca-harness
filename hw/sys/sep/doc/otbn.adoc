@@ -1,0 +1,129 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= OTBN PKA Public Key Accelerator
+:description: SEP OTBN integration, entropy interface, and Key Manager key delivery.
+
+[[otbn-pka-public-key-accelerator]]
+
+The module is based on the
+https://opentitan.org/book/hw/ip/otbn/doc/otbn_intro.html[OpenTitan
+OTBN] design.
+
+Features:
+
+* Fully programmable big integer processor
+** 256-bit data path with 32 entry register file
+** 32-bit control path with 32 entry register file
+** Complex flow control: conditional branching, loops, call/return with
+optimized hardware for performance
+** Dual status control bits to assist in big integer computation
+** Optimized modular arithmetic on big integers
+* Access to entropy noise stream from the TRNG
+
+The OTBN is programmed in assembly and its runtime driver library
+currently supports the following algorithms:
+
+* ECDSA P256, P384
+* ECDH P256, P384
+* Ed25519
+* X25519
+* RSA 2k, 3k, 4k
+** Key generation, signature generation and signature verification
+* SHA256, SHA-512
+
+Since the OTBN is programmable, more algorithms can easily be developed
+at a later time. The microcode is loaded into SRAM based instruction
+memory allowing firmware updates to be made in the field.
+
+[[sep-otbn-reference-diagram]]
+.OpenTitan OTBN core reference architecture
+image::opentitan_otbn.svg[alt="OpenTitan OTBN core reference architecture",width=100%,pdfwidth=100%]
+
+<<sep-otbn-reference-diagram>> shows the upstream core. The OCAH bus, key-delivery, and entropy
+connections are described in the integration details below.
+
+[[och-modifications-1]]
+== OCAH Modifications
+
+* AXI4-lite key bus slave interface replaces side loading interface
+* AXI4-lite control/status bus slave interface
+
+The OTBN host path is the most complex OpenTitan path. The crypto interconnect
+applies a `CACHE_MODIFIABLE` bit fix before the `axi_dw_converter`, because the
+VeeR CPU may emit non-modifiable cache attributes for MMIO accesses that would
+be rejected by the AXI-to-AXI-Lite converter. After data-width conversion and
+AXI-Lite isolation, `sep_crypto_otbn_wrapper` bridges the request to TL-UL and
+drives the standard `otbn` core configured with `Stub = 0` and
+`RegFile = RegFileFF`.
+
+OTBN's instruction and data memories are external SRAM macros; the IMEM and
+DMEM `prim_ram_1p_scr` ports are brought out of the wrapper to the `sep_crypto`
+top level. The two random-number request ports (`edn_rnd`, `edn_urnd`) are
+served over native-protocol EDN by the shared
+`drbg_axis_edn_adapter` instance `u_axis_edn_crypto_s3c_scan` in `sep_crypto`,
+which converts the post-CSRNG DRBG AXI-Stream feed assigned to the crypto sink
+domain into per-client EDN responses. The adapter forwards the per-beat FIPS
+tag through a generic AXI-Stream `tuser` sideband. The CSRNG seed tag and
+external entropy mux tag are tied high by the integration's provisional
+policy. A high tag prevents a FIPS-tag failure for that response but does not
+prove that the entropy is FIPS compliant. The OTP scramble key
+handshake is tied to fixed values. Life-cycle escalation and RMA request
+signals are tied to their inactive state. OTBN occupies alert indices `[2:1]`
+ifdef::backend-html5[]
+in xref:sep:crypto.adoc#sep-crypto-alert-policy[OpenTitan Alert Termination] and exports a single `intr_done_o` interrupt.
+endif::backend-html5[]
+ifdef::backend-pdf[]
+in <<sep-crypto-alert-policy>> and exports a single `intr_done_o` interrupt.
+endif::backend-pdf[]
+
+The Key Manager delivers a 384-bit OTBN key as twelve words per share, the
+ifdef::backend-html5[]
+widest delivery in the subsystem, in the format given in xref:sep:crypto.adoc#km-key-delivery[Key Manager Key Delivery].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+widest delivery in the subsystem, in the format given in <<km-key-delivery>>.
+endif::backend-pdf[]
+OTBN is the only accelerator that does not combine the shares in hardware. The
+shares are exposed to the executing program through the `KEY_S0_L` /
+`KEY_S0_H` and `KEY_S1_L` / `KEY_S1_H` special registers, each share split into
+a 256-bit low and a 128-bit high half, and the program is responsible for
+reconstructing the key as the XOR of the two shares. Each share is qualified
+independently: reading a share whose key is not valid sets
+`ERR_BITS.KEY_INVALID` and stops the program rather than returning key
+material.
+
+Consult the
+https://opentitan.org/book/hw/ip/otbn/doc/otbn_intro.html[OpenTitan OTBN
+documentation] for the authoritative core functionality of the IP. The
+ifdef::backend-html5[]
+register map follows below.
+endif::backend-html5[]
+ifdef::backend-pdf[]
+register map follows below.
+endif::backend-pdf[]
+
+== Memory Map and Register Reference
+
+ifdef::backend-html5[]
+++++
+<span id="register-reference"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
+
+Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.
+
+=== Detailed Register Map
+
+ifdef::backend-html5[]
+++++
+include::ip:partial$otbn/regs/gen/html/otbn.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/otbn/regs/gen/adoc/otbn.adoc[leveloffset=+2]
+endif::backend-pdf[]

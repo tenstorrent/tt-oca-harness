@@ -1,0 +1,783 @@
+tt-hw-debug: complete SPDX header coverage for upstream/
+
+0003 converted the sources carrying the "// *" line-comment confidentiality
+legend, but the trace/ block-comment sources and a number of files that never
+had any header were left uncovered, so the tree could not be brought under the
+SPDX license check. Finish the job so every upstream/ file carries a valid
+identifier without changing RTL behavior:
+
+  - Replace the remaining "/* ... */" confidentiality banners (trace/) with the
+    repository's canonical Apache-2.0 SPDX header.
+  - Add the Apache-2.0 SPDX header to the header-less Tenstorrent-authored
+    generics, generated MMR RTL, package lists, and MMR spec YAMLs.
+  - trace_axi_master.sv is third-party (ETH Zurich / University of Bologna): tag
+    it with its own SPDX-License-Identifier: SHL-0.51 and leave the upstream
+    copyright and Solderpad license text intact. No TT copyright is asserted.
+
+diff --git a/dependencies/common/generic_axilitetommr.sv b/dependencies/common/generic_axilitetommr.sv
+index c31996d44d..31fc165303 100644
+--- a/dependencies/common/generic_axilitetommr.sv
++++ b/dependencies/common/generic_axilitetommr.sv
+@@ -1,3 +1,5 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ `include "generic_macro_assertion.vh"
+ 
+ // AXI to MMR Coverter :: It Can Handle Single beat and 4/8B Byte aligned AXI Xfers on 8B/4B AXI Bus
+diff --git a/dependencies/common/generic_ccg.sv b/dependencies/common/generic_ccg.sv
+index 5896a42201..bdb6ab235e 100644
+--- a/dependencies/common/generic_ccg.sv
++++ b/dependencies/common/generic_ccg.sv
+@@ -1,3 +1,5 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ 
+ // Generic, non-proprietary clock gating cell (scrubbed version)
+ // Functionally equivalent to a typical clock gate: o_clk is i_clk when enabled, otherwise held low.
+diff --git a/dependencies/common/generic_clkgate.sv b/dependencies/common/generic_clkgate.sv
+index e93cc01422..2a3c43c824 100644
+--- a/dependencies/common/generic_clkgate.sv
++++ b/dependencies/common/generic_clkgate.sv
+@@ -1,3 +1,5 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ 
+ // Generic clock gating cell that infers a technology-specific clock gate during synthesis
+ module generic_clkgate (
+diff --git a/dependencies/common/generic_clkmux2.sv b/dependencies/common/generic_clkmux2.sv
+index 78daf0bf28..71be0de9e0 100644
+--- a/dependencies/common/generic_clkmux2.sv
++++ b/dependencies/common/generic_clkmux2.sv
+@@ -1,3 +1,5 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ // Generic two-input combinational mux suitable for reset/test selection.
+ // Technology-specific flows may replace this module with an equivalent cell.
+ module generic_clkmux2 (
+diff --git a/dependencies/common/generic_decoded_mux.sv b/dependencies/common/generic_decoded_mux.sv
+index d7db67cb2c..19ec845a16 100644
+--- a/dependencies/common/generic_decoded_mux.sv
++++ b/dependencies/common/generic_decoded_mux.sv
+@@ -1,3 +1,5 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ module generic_decoded_mux #(
+     parameter DISABLE_ASSERTIONS = 0,
+     parameter VALUE_WIDTH = 32,
+diff --git a/dependencies/common/generic_dff.sv b/dependencies/common/generic_dff.sv
+index cd7e2ecb92..ea6812e640 100644
+--- a/dependencies/common/generic_dff.sv
++++ b/dependencies/common/generic_dff.sv
+@@ -1,3 +1,5 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ module generic_dff #(parameter WIDTH=8,
+                     parameter RESET_VALUE=0,
+                     parameter BYPASS=0)
+diff --git a/dependencies/common/generic_dff_clr.sv b/dependencies/common/generic_dff_clr.sv
+index a36a2f1f92..327ca39fdd 100644
+--- a/dependencies/common/generic_dff_clr.sv
++++ b/dependencies/common/generic_dff_clr.sv
+@@ -1,3 +1,5 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ module generic_dff_clr #(parameter WIDTH=8,
+                     parameter RESET_VALUE=0)
+ (
+diff --git a/dependencies/common/generic_dff_staging.sv b/dependencies/common/generic_dff_staging.sv
+index f2613ea1cd..43df8bedb8 100644
+--- a/dependencies/common/generic_dff_staging.sv
++++ b/dependencies/common/generic_dff_staging.sv
+@@ -1,3 +1,5 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ module generic_dff_staging #(parameter WIDTH=8,
+                 parameter DEPTH=2,
+                 parameter RESET_VALUE=0)
+diff --git a/dependencies/common/generic_ffs_N.sv b/dependencies/common/generic_ffs_N.sv
+index ac38fd493d..a0fc46437d 100644
+--- a/dependencies/common/generic_ffs_N.sv
++++ b/dependencies/common/generic_ffs_N.sv
+@@ -1,3 +1,5 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ module generic_ffs_N#(parameter DIR_L2H    = 1,              //Direction of Priority
+                 parameter WIDTH      = 8,              //Number of inputs.
+                 parameter SIZE       = ($clog2(WIDTH) > 1 ? $clog2(WIDTH) : 1), //Log2 Number of inputs
+diff --git a/dependencies/common/generic_ffs_fast.sv b/dependencies/common/generic_ffs_fast.sv
+index 98ec241701..a9e1858109 100644
+--- a/dependencies/common/generic_ffs_fast.sv
++++ b/dependencies/common/generic_ffs_fast.sv
+@@ -1,3 +1,5 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ 
+ // Generic fast find-first-set (priority encoder) with thermometer output
+ // Optimized parallel logic implementation suitable for open-source use
+diff --git a/dependencies/common/generic_fifoMN.sv b/dependencies/common/generic_fifoMN.sv
+index 6f9e79a5ed..664d0b2769 100644
+--- a/dependencies/common/generic_fifoMN.sv
++++ b/dependencies/common/generic_fifoMN.sv
+@@ -1,3 +1,5 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ module generic_fifoMN #(
+     parameter integer DATA_WIDTH  = 4,
+     parameter integer ENTRIES     = 8,
+diff --git a/dependencies/common/generic_ipx_clk_rst_ctrl.sv b/dependencies/common/generic_ipx_clk_rst_ctrl.sv
+index d08f2c1309..4a557e5b24 100644
+--- a/dependencies/common/generic_ipx_clk_rst_ctrl.sv
++++ b/dependencies/common/generic_ipx_clk_rst_ctrl.sv
+@@ -1,3 +1,5 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ /*
+  * generic_ipx_clk_rst_ctrl:
+  *
+diff --git a/dependencies/common/generic_macro_assertion.vh b/dependencies/common/generic_macro_assertion.vh
+index 49cba600a3..ed73a9add2 100644
+--- a/dependencies/common/generic_macro_assertion.vh
++++ b/dependencies/common/generic_macro_assertion.vh
+@@ -1,3 +1,5 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ `ifndef GENERIC_MACRO_ASSERTION_VH
+ `define GENERIC_MACRO_ASSERTION_VH
+ 
+diff --git a/dependencies/common/generic_mem_model.sv b/dependencies/common/generic_mem_model.sv
+index 44a9298d6e..a3437d8568 100644
+--- a/dependencies/common/generic_mem_model.sv
++++ b/dependencies/common/generic_mem_model.sv
+@@ -1,3 +1,5 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ /*************************************************************************
+  *
+  *  Generic DFD memory model (simplified)
+diff --git a/dependencies/common/generic_vidtopid.sv b/dependencies/common/generic_vidtopid.sv
+index a00a9211b9..7920ec2ff5 100644
+--- a/dependencies/common/generic_vidtopid.sv
++++ b/dependencies/common/generic_vidtopid.sv
+@@ -1,3 +1,5 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ module generic_vidtopid #(
+     parameter int NumHarts = 8,
+     parameter int NumHartsIdx = (NumHarts == 1) ? 1 : $clog2(NumHarts)
+diff --git a/rtl/cla_wrapper.sv b/rtl/cla_wrapper.sv
+index 6a6094b114..816beafd57 100644
+--- a/rtl/cla_wrapper.sv
++++ b/rtl/cla_wrapper.sv
+@@ -1,3 +1,5 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ module cla_wrapper
+     import cla_mmr_pkg::*;
+     import cla_pkg::*;
+diff --git a/rtl/dst_wrapper.sv b/rtl/dst_wrapper.sv
+index f12479be54..3f40ee5d48 100644
+--- a/rtl/dst_wrapper.sv
++++ b/rtl/dst_wrapper.sv
+@@ -1,3 +1,5 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ module dst_wrapper
+     import dst_pkg::*;
+     import dst_mmr_pkg::*;
+diff --git a/rtl/mmr/cla_mmr.sv b/rtl/mmr/cla_mmr.sv
+index ee484927b1..93d2ee9f3a 100644
+--- a/rtl/mmr/cla_mmr.sv
++++ b/rtl/mmr/cla_mmr.sv
+@@ -1,3 +1,5 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ /*******************************************************************************
+  * Registers
+  *
+diff --git a/rtl/mmr/cla_mmr_pkg.svh b/rtl/mmr/cla_mmr_pkg.svh
+index 8f32f363e2..d2c1dde044 100644
+--- a/rtl/mmr/cla_mmr_pkg.svh
++++ b/rtl/mmr/cla_mmr_pkg.svh
+@@ -1,3 +1,5 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ /*******************************************************************************
+  * Header file for register addresses
+  *
+diff --git a/rtl/mmr/cla_mmr_pkg_list.svh b/rtl/mmr/cla_mmr_pkg_list.svh
+index 3e32bbe680..c88b9147d7 100644
+--- a/rtl/mmr/cla_mmr_pkg_list.svh
++++ b/rtl/mmr/cla_mmr_pkg_list.svh
+@@ -1 +1,3 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ //Include packages below
+diff --git a/rtl/mmr/dst_mmr.sv b/rtl/mmr/dst_mmr.sv
+index fe4b801ad6..0b866d78bb 100644
+--- a/rtl/mmr/dst_mmr.sv
++++ b/rtl/mmr/dst_mmr.sv
+@@ -1,3 +1,5 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ /*******************************************************************************
+  * Registers
+  *
+diff --git a/rtl/mmr/dst_mmr_pkg.svh b/rtl/mmr/dst_mmr_pkg.svh
+index 5e6384afc9..57272b7ee0 100644
+--- a/rtl/mmr/dst_mmr_pkg.svh
++++ b/rtl/mmr/dst_mmr_pkg.svh
+@@ -1,3 +1,5 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ /*******************************************************************************
+  * Header file for register addresses
+  *
+diff --git a/rtl/mmr/dst_mmr_pkg_list.svh b/rtl/mmr/dst_mmr_pkg_list.svh
+index 3e32bbe680..c88b9147d7 100644
+--- a/rtl/mmr/dst_mmr_pkg_list.svh
++++ b/rtl/mmr/dst_mmr_pkg_list.svh
+@@ -1 +1,3 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ //Include packages below
+diff --git a/rtl/mmr/dst_sink_mmr.sv b/rtl/mmr/dst_sink_mmr.sv
+index 469eeb12be..246db0d7f6 100644
+--- a/rtl/mmr/dst_sink_mmr.sv
++++ b/rtl/mmr/dst_sink_mmr.sv
+@@ -1,3 +1,5 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ /*******************************************************************************
+  * Registers
+  *
+diff --git a/rtl/mmr/dst_sink_mmr_pkg.svh b/rtl/mmr/dst_sink_mmr_pkg.svh
+index 0379f02b4f..f53273901d 100644
+--- a/rtl/mmr/dst_sink_mmr_pkg.svh
++++ b/rtl/mmr/dst_sink_mmr_pkg.svh
+@@ -1,3 +1,5 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ /*******************************************************************************
+  * Header file for register addresses
+  *
+diff --git a/rtl/mmr/dst_sink_mmr_pkg_list.svh b/rtl/mmr/dst_sink_mmr_pkg_list.svh
+index 3e32bbe680..c88b9147d7 100644
+--- a/rtl/mmr/dst_sink_mmr_pkg_list.svh
++++ b/rtl/mmr/dst_sink_mmr_pkg_list.svh
+@@ -1 +1,3 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ //Include packages below
+diff --git a/rtl/mmr/funnel_mmr.sv b/rtl/mmr/funnel_mmr.sv
+index e782ff30a6..f068563979 100644
+--- a/rtl/mmr/funnel_mmr.sv
++++ b/rtl/mmr/funnel_mmr.sv
+@@ -1,3 +1,5 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ /*******************************************************************************
+  * Registers
+  *
+diff --git a/rtl/mmr/funnel_mmr_pkg.svh b/rtl/mmr/funnel_mmr_pkg.svh
+index c9acdda7c6..1f0ccb3b8f 100644
+--- a/rtl/mmr/funnel_mmr_pkg.svh
++++ b/rtl/mmr/funnel_mmr_pkg.svh
+@@ -1,3 +1,5 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ /*******************************************************************************
+  * Header file for register addresses
+  *
+diff --git a/rtl/mmr/funnel_mmr_pkg_list.svh b/rtl/mmr/funnel_mmr_pkg_list.svh
+index 3e32bbe680..c88b9147d7 100644
+--- a/rtl/mmr/funnel_mmr_pkg_list.svh
++++ b/rtl/mmr/funnel_mmr_pkg_list.svh
+@@ -1 +1,3 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ //Include packages below
+diff --git a/rtl/mmr/ntr_mmr.sv b/rtl/mmr/ntr_mmr.sv
+index b0eb3a7fc0..b5752ea59c 100644
+--- a/rtl/mmr/ntr_mmr.sv
++++ b/rtl/mmr/ntr_mmr.sv
+@@ -1,3 +1,5 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ /*******************************************************************************
+  * Registers
+  *
+diff --git a/rtl/mmr/ntr_mmr_pkg.svh b/rtl/mmr/ntr_mmr_pkg.svh
+index 38e3981391..2323893358 100644
+--- a/rtl/mmr/ntr_mmr_pkg.svh
++++ b/rtl/mmr/ntr_mmr_pkg.svh
+@@ -1,3 +1,5 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ /*******************************************************************************
+  * Header file for register addresses
+  *
+diff --git a/rtl/mmr/ntr_mmr_pkg_list.svh b/rtl/mmr/ntr_mmr_pkg_list.svh
+index 3e32bbe680..c88b9147d7 100644
+--- a/rtl/mmr/ntr_mmr_pkg_list.svh
++++ b/rtl/mmr/ntr_mmr_pkg_list.svh
+@@ -1 +1,3 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ //Include packages below
+diff --git a/rtl/mmr/ntr_sink_mmr.sv b/rtl/mmr/ntr_sink_mmr.sv
+index e6845e80b1..68738c4e05 100644
+--- a/rtl/mmr/ntr_sink_mmr.sv
++++ b/rtl/mmr/ntr_sink_mmr.sv
+@@ -1,3 +1,5 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ /*******************************************************************************
+  * Registers
+  *
+diff --git a/rtl/mmr/ntr_sink_mmr_pkg.svh b/rtl/mmr/ntr_sink_mmr_pkg.svh
+index 8459512a13..0f1b40fcf8 100644
+--- a/rtl/mmr/ntr_sink_mmr_pkg.svh
++++ b/rtl/mmr/ntr_sink_mmr_pkg.svh
+@@ -1,3 +1,5 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ /*******************************************************************************
+  * Header file for register addresses
+  *
+diff --git a/rtl/mmr/ntr_sink_mmr_pkg_list.svh b/rtl/mmr/ntr_sink_mmr_pkg_list.svh
+index 3e32bbe680..c88b9147d7 100644
+--- a/rtl/mmr/ntr_sink_mmr_pkg_list.svh
++++ b/rtl/mmr/ntr_sink_mmr_pkg_list.svh
+@@ -1 +1,3 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ //Include packages below
+diff --git a/rtl/mmr/spec/cla_mmrs.yml b/rtl/mmr/spec/cla_mmrs.yml
+index e692943ce2..775561204e 100644
+--- a/rtl/mmr/spec/cla_mmrs.yml
++++ b/rtl/mmr/spec/cla_mmrs.yml
+@@ -1,3 +1,5 @@
++# SPDX-License-Identifier: Apache-2.0
++# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ # Default values: {'ALIAS_OF': '', 'MASKED_BY': '', 'MASK_WRITES_ONLY?': '', 'SPEC_COPIES': '', 'CL_MMR_SIZE': '64', 'HW_READ': '', 'HW_WRITE': '', 'SW_READ': '', 'SW_WRITE': ''}
+ # List of all register info fields:
+ #['NAME', 'ALIAS_OF', 'MASKED_BY', 'MASK_WRITES_ONLY?', 'SPEC_COPIES', 'VISIBILITY', 'TYPE', 'SUB_CATEGORY', 'ADDRESS', 'CL_MMR_SIZE', 'FIELDS_NAME', 'FIELDS_WIDTH', 'FIELDS_RANGE', 'RESET_VALUE', 'RESET_PORT', 'LEGAL_VALUE', 'SW_TYPE', 'SW_READ', 'SW_WRITE', 'HW_READ', 'HW_WRITE', 'DESCRIPTION']
+diff --git a/rtl/mmr/spec/dst_mmrs.yml b/rtl/mmr/spec/dst_mmrs.yml
+index f3fbc6cb1b..fe1eef2420 100644
+--- a/rtl/mmr/spec/dst_mmrs.yml
++++ b/rtl/mmr/spec/dst_mmrs.yml
+@@ -1,3 +1,5 @@
++# SPDX-License-Identifier: Apache-2.0
++# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ # Default values: {'ALIAS_OF': '', 'MASKED_BY': '', 'MASK_WRITES_ONLY?': '', 'SPEC_COPIES': '', 'DST_MMR_SIZE': '64', 'HW_READ': '', 'HW_WRITE': '', 'SW_READ': '', 'SW_WRITE': ''}
+ # List of all register info fields:
+ #['NAME', 'ALIAS_OF', 'MASKED_BY', 'MASK_WRITES_ONLY?', 'SPEC_COPIES', 'VISIBILITY', 'TYPE', 'SUB_CATEGORY', 'ADDRESS', 'DST_MMR_SIZE', 'FIELDS_NAME', 'FIELDS_WIDTH', 'FIELDS_RANGE', 'RESET_VALUE', 'RESET_PORT', 'LEGAL_VALUE', 'SW_TYPE', 'SW_READ', 'SW_WRITE', 'HW_READ', 'HW_WRITE', 'DESCRIPTION']
+diff --git a/rtl/mmr/spec/dst_sink_mmrs.yml b/rtl/mmr/spec/dst_sink_mmrs.yml
+index c2997abb6f..7968c05a27 100644
+--- a/rtl/mmr/spec/dst_sink_mmrs.yml
++++ b/rtl/mmr/spec/dst_sink_mmrs.yml
+@@ -1,3 +1,5 @@
++# SPDX-License-Identifier: Apache-2.0
++# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ trDstRamControl:
+   common_data:
+     VISIBILITY: Internal
+diff --git a/rtl/mmr/spec/funnel_mmrs.yml b/rtl/mmr/spec/funnel_mmrs.yml
+index 720becbf08..e095b60732 100644
+--- a/rtl/mmr/spec/funnel_mmrs.yml
++++ b/rtl/mmr/spec/funnel_mmrs.yml
+@@ -1,3 +1,5 @@
++# SPDX-License-Identifier: Apache-2.0
++# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ trFunnelControl:
+   common_data:
+     VISIBILITY: External
+diff --git a/rtl/mmr/spec/ntr_mmrs.yml b/rtl/mmr/spec/ntr_mmrs.yml
+index 954e3a46b8..df67ea8d88 100644
+--- a/rtl/mmr/spec/ntr_mmrs.yml
++++ b/rtl/mmr/spec/ntr_mmrs.yml
+@@ -1,3 +1,5 @@
++# SPDX-License-Identifier: Apache-2.0
++# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ # Default values: {'ALIAS_OF': '', 'MASKED_BY': '', 'MASK_WRITES_ONLY?': '', 'SPEC_COPIES': '', 'NTR_MMR_SIZE': '64', 'HW_READ': '', 'HW_WRITE': '', 'SW_READ': '', 'SW_WRITE': ''}
+ # List of all register info fields:
+ #['NAME', 'ALIAS_OF', 'MASKED_BY', 'MASK_WRITES_ONLY?', 'SPEC_COPIES', 'VISIBILITY', 'TYPE', 'SUB_CATEGORY', 'ADDRESS', 'NTR_MMR_SIZE', 'FIELDS_NAME', 'FIELDS_WIDTH', 'FIELDS_RANGE', 'RESET_VALUE', 'RESET_PORT', 'LEGAL_VALUE', 'SW_TYPE', 'SW_READ', 'SW_WRITE', 'HW_READ', 'HW_WRITE', 'DESCRIPTION']
+diff --git a/rtl/mmr/spec/ntr_sink_mmrs.yml b/rtl/mmr/spec/ntr_sink_mmrs.yml
+index d535f348df..06100a3bf7 100644
+--- a/rtl/mmr/spec/ntr_sink_mmrs.yml
++++ b/rtl/mmr/spec/ntr_sink_mmrs.yml
+@@ -1,3 +1,5 @@
++# SPDX-License-Identifier: Apache-2.0
++# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ trRamControl:
+   common_data:
+     VISIBILITY: External
+diff --git a/rtl/mmr_req_ctrl.sv b/rtl/mmr_req_ctrl.sv
+index 86a8b29167..865ed7fbd4 100644
+--- a/rtl/mmr_req_ctrl.sv
++++ b/rtl/mmr_req_ctrl.sv
+@@ -1,3 +1,5 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ module mmr_req_ctrl #(
+     parameter int unsigned NUM_MMR_BLOCKS     = 1,
+     parameter int unsigned MMR_PIPE_LAT       = 2,
+diff --git a/rtl/mux_sel.sv b/rtl/mux_sel.sv
+index 6f5d08de4a..e4f6f93dcc 100644
+--- a/rtl/mux_sel.sv
++++ b/rtl/mux_sel.sv
+@@ -1,3 +1,5 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ module mux_sel
+ import dst_pkg::*;
+ import tt_dbm_pkg::*;
+diff --git a/rtl/tnif_wrapper.sv b/rtl/tnif_wrapper.sv
+index 3e239bc613..642ff27534 100644
+--- a/rtl/tnif_wrapper.sv
++++ b/rtl/tnif_wrapper.sv
+@@ -1,3 +1,5 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ module tnif_wrapper
+     import tn_pkg::*;
+ #(
+diff --git a/rtl/top/dfd_top_cla_dst_apb.sv b/rtl/top/dfd_top_cla_dst_apb.sv
+index b2983bc249..8d4a371884 100644
+--- a/rtl/top/dfd_top_cla_dst_apb.sv
++++ b/rtl/top/dfd_top_cla_dst_apb.sv
+@@ -1,3 +1,5 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ // Top level design for module:
+ //  name: dfd_top_cla_dst_apb
+ //  vendor: vendor
+diff --git a/rtl/trace/te_pkg.svh b/rtl/trace/te_pkg.svh
+index 360c4b599a..540b90c2a0 100644
+--- a/rtl/trace/te_pkg.svh
++++ b/rtl/trace/te_pkg.svh
+@@ -1,21 +1,5 @@
+-/*************************************************************************
+- *
+- * Tenstorrent CONFIDENTIAL
+- *__________________
+- *
+- *  Tenstorrent Inc.
+- *  All Rights Reserved.
+- *
+- * NOTICE:  All information contained herein is, and remains
+- * the property of Tenstorrent Inc.  The intellectual
+- * and technical concepts contained
+- * herein are proprietary to Tenstorrent Inc.
+- * and may be covered by U.S., Canadian and Foreign Patents,
+- * patents in process, and are protected by trade secret or copyright law.
+- * Dissemination of this information or reproduction of this material
+- * is strictly forbidden unless prior written permission is obtained
+- * from Tenstorrent Inc.
+- */
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ 
+ `ifndef TE_PKG_SVH
+ `define TE_PKG_SVH
+diff --git a/rtl/trace/tn_pkg.svh b/rtl/trace/tn_pkg.svh
+index acd1ede4f1..8b174c9228 100644
+--- a/rtl/trace/tn_pkg.svh
++++ b/rtl/trace/tn_pkg.svh
+@@ -1,21 +1,5 @@
+-/*************************************************************************
+- *
+- * Tenstorrent CONFIDENTIAL
+- *__________________
+- *
+- *  Tenstorrent Inc.
+- *  All Rights Reserved.
+- *
+- * NOTICE:  All information contained herein is, and remains
+- * the property of Tenstorrent Inc.  The intellectual
+- * and technical concepts contained
+- * herein are proprietary to Tenstorrent Inc.
+- * and may be covered by U.S., Canadian and Foreign Patents,
+- * patents in process, and are protected by trade secret or copyright law.
+- * Dissemination of this information or reproduction of this material
+- * is strictly forbidden unless prior written permission is obtained
+- * from Tenstorrent Inc.
+- */
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ 
+ `ifndef TN_PKG_SVH
+ `define TN_PKG_SVH
+diff --git a/rtl/trace/tnif.sv b/rtl/trace/tnif.sv
+index 48e3753840..f5635218cd 100644
+--- a/rtl/trace/tnif.sv
++++ b/rtl/trace/tnif.sv
+@@ -1,22 +1,6 @@
+ `include "generic_macro_assertion.vh"
+-/*************************************************************************
+- *
+- * Tenstorrent CONFIDENTIAL
+- *__________________
+- *
+- *  Tenstorrent Inc.
+- *  All Rights Reserved.
+- *
+- * NOTICE:  All information contained herein is, and remains
+- * the property of Tenstorrent Inc.  The intellectual
+- * and technical concepts contained
+- * herein are proprietary to Tenstorrent Inc.
+- * and may be covered by U.S., Canadian and Foreign Patents,
+- * patents in process, and are protected by trade secret or copyright law.
+- * Dissemination of this information or reproduction of this material
+- * is strictly forbidden unless prior written permission is obtained
+- * from Tenstorrent Inc.
+- */
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+  // Trace Network Interface - Block that connects the Packet source to the Trace Network
+ 
+ module tnif import tn_pkg::*; # (
+diff --git a/rtl/trace/trace_axi_master.sv b/rtl/trace/trace_axi_master.sv
+index 6fffdaa0fd..d9de1c6e6a 100644
+--- a/rtl/trace/trace_axi_master.sv
++++ b/rtl/trace/trace_axi_master.sv
+@@ -1,3 +1,4 @@
++// SPDX-License-Identifier: SHL-0.51
+ // Copyright 2018 ETH Zurich and University of Bologna.
+ // Copyright and related rights are licensed under the Solderpad Hardware
+ // License, Version 0.51 (the “License”); you may not use this file except in
+diff --git a/rtl/trace/trace_funnel.sv b/rtl/trace/trace_funnel.sv
+index 419c8c87d0..0f885e1da7 100644
+--- a/rtl/trace/trace_funnel.sv
++++ b/rtl/trace/trace_funnel.sv
+@@ -1,21 +1,5 @@
+-/*************************************************************************
+- *
+- * Tenstorrent CONFIDENTIAL
+- *__________________
+- *
+- *  Tenstorrent Inc.
+- *  All Rights Reserved.
+- *
+- * NOTICE:  All information contained herein is, and remains
+- * the property of Tenstorrent Inc.  The intellectual
+- * and technical concepts contained
+- * herein are proprietary to Tenstorrent Inc.
+- * and may be covered by U.S., Canadian and Foreign Patents,
+- * patents in process, and are protected by trade secret or copyright law.
+- * Dissemination of this information or reproduction of this material
+- * is strictly forbidden unless prior written permission is obtained
+- * from Tenstorrent Inc.
+- */
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ // Trace Funnel - Gets the data from the trace hop and sinks it to Trace RAM or Memory
+ 
+ module trace_funnel
+diff --git a/rtl/trace/trace_hop.sv b/rtl/trace/trace_hop.sv
+index 4666c6b3b3..a668833a0b 100644
+--- a/rtl/trace/trace_hop.sv
++++ b/rtl/trace/trace_hop.sv
+@@ -1,21 +1,5 @@
+-/*************************************************************************
+- *
+- * Tenstorrent CONFIDENTIAL
+- *__________________
+- *
+- *  Tenstorrent Inc.
+- *  All Rights Reserved.
+- *
+- * NOTICE:  All information contained herein is, and remains
+- * the property of Tenstorrent Inc.  The intellectual
+- * and technical concepts contained
+- * herein are proprietary to Tenstorrent Inc.
+- * and may be covered by U.S., Canadian and Foreign Patents,
+- * patents in process, and are protected by trade secret or copyright law.
+- * Dissemination of this information or reproduction of this material
+- * is strictly forbidden unless prior written permission is obtained
+- * from Tenstorrent Inc.
+- */
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ // Trace Hop - Block that connects the TNIF to the Trace funnel
+ 
+ module trace_hop
+diff --git a/rtl/trace/trace_mem.sv b/rtl/trace/trace_mem.sv
+index 743934debe..7777c38172 100644
+--- a/rtl/trace/trace_mem.sv
++++ b/rtl/trace/trace_mem.sv
+@@ -1,21 +1,5 @@
+-/*************************************************************************
+- *
+- * Tenstorrent CONFIDENTIAL
+- * __________________
+- *
+- *  Tenstorrent Inc.
+- *  All Rights Reserved.
+- *
+- * NOTICE:  All information contained herein is, and remains
+- * the property of Tenstorrent Inc.  The intellectual
+- * and technical concepts contained
+- * herein are proprietary to Tenstorrent Inc.
+- * and may be covered by U.S., Canadian and Foreign Patents,
+- * patents in process, and are protected by trade secret or copyright law.
+- * Dissemination of this information or reproduction of this material
+- * is strictly forbidden unless prior written permission is obtained
+- * from Tenstorrent Inc.
+- */
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ 
+ module trace_mem
+ import tn_pkg::*;
+diff --git a/rtl/trace/trace_mem_pkg.svh b/rtl/trace/trace_mem_pkg.svh
+index 484731af29..c3b470cc83 100644
+--- a/rtl/trace/trace_mem_pkg.svh
++++ b/rtl/trace/trace_mem_pkg.svh
+@@ -1,3 +1,5 @@
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ `ifndef TRACE_MEM_PKG_SVH
+ `define TRACE_MEM_PKG_SVH
+ 
+diff --git a/rtl/trace/trace_mem_sink.sv b/rtl/trace/trace_mem_sink.sv
+index e1c1836869..1df7562a8b 100644
+--- a/rtl/trace/trace_mem_sink.sv
++++ b/rtl/trace/trace_mem_sink.sv
+@@ -1,21 +1,5 @@
+-/*************************************************************************
+- *
+- * Tenstorrent CONFIDENTIAL
+- * __________________
+- *
+- *  Tenstorrent Inc.
+- *  All Rights Reserved.
+- *
+- * NOTICE:  All information contained herein is, and remains
+- * the property of Tenstorrent Inc.  The intellectual
+- * and technical concepts contained
+- * herein are proprietary to Tenstorrent Inc.
+- * and may be covered by U.S., Canadian and Foreign Patents,
+- * patents in process, and are protected by trade secret or copyright law.
+- * Dissemination of this information or reproduction of this material
+- * is strictly forbidden unless prior written permission is obtained
+- * from Tenstorrent Inc.
+- */
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ 
+ module trace_mem_sink
+ import tn_pkg::*;
+diff --git a/rtl/trace/trace_network.sv b/rtl/trace/trace_network.sv
+index 3201def510..d3a433cfe8 100644
+--- a/rtl/trace/trace_network.sv
++++ b/rtl/trace/trace_network.sv
+@@ -1,21 +1,5 @@
+-/*************************************************************************
+- *
+- * Tenstorrent CONFIDENTIAL
+- *__________________
+- *
+- *  Tenstorrent Inc.
+- *  All Rights Reserved.
+- *
+- * NOTICE:  All information contained herein is, and remains
+- * the property of Tenstorrent Inc.  The intellectual
+- * and technical concepts contained
+- * herein are proprietary to Tenstorrent Inc.
+- * and may be covered by U.S., Canadian and Foreign Patents,
+- * patents in process, and are protected by trade secret or copyright law.
+- * Dissemination of this information or reproduction of this material
+- * is strictly forbidden unless prior written permission is obtained
+- * from Tenstorrent Inc.
+- */
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ // Trace Network - Connects all the trace hops as per the Cluster Organization
+ 
+ module trace_network
+diff --git a/rtl/trace/trace_sink.sv b/rtl/trace/trace_sink.sv
+index 66934a2e32..996d7d2613 100644
+--- a/rtl/trace/trace_sink.sv
++++ b/rtl/trace/trace_sink.sv
+@@ -1,22 +1,6 @@
+ `include "generic_macro_assertion.vh"
+-/*************************************************************************
+- *
+- * Tenstorrent CONFIDENTIAL
+- *__________________
+- *
+- *  Tenstorrent Inc.
+- *  All Rights Reserved.
+- *
+- * NOTICE:  All information contained herein is, and remains
+- * the property of Tenstorrent Inc.  The intellectual
+- * and technical concepts contained
+- * herein are proprietary to Tenstorrent Inc.
+- * and may be covered by U.S., Canadian and Foreign Patents,
+- * patents in process, and are protected by trade secret or copyright law.
+- * Dissemination of this information or reproduction of this material
+- * is strictly forbidden unless prior written permission is obtained
+- * from Tenstorrent Inc.
+- */
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+  // Trace Sink: Implements the Trace SRAM for the two trace sink modes
+ module trace_sink
+   import tn_pkg::*;
+diff --git a/rtl/trace/trace_top.sv b/rtl/trace/trace_top.sv
+index c6de7d2ac0..d60fe7fd10 100644
+--- a/rtl/trace/trace_top.sv
++++ b/rtl/trace/trace_top.sv
+@@ -1,21 +1,5 @@
+-/*************************************************************************
+- *
+- * Tenstorrent CONFIDENTIAL
+- *__________________
+- *
+- *  Tenstorrent Inc.
+- *  All Rights Reserved.
+- *
+- * NOTICE:  All information contained herein is, and remains
+- * the property of Tenstorrent Inc.  The intellectual
+- * and technical concepts contained
+- * herein are proprietary to Tenstorrent Inc.
+- * and may be covered by U.S., Canadian and Foreign Patents,
+- * patents in process, and are protected by trade secret or copyright law.
+- * Dissemination of this information or reproduction of this material
+- * is strictly forbidden unless prior written permission is obtained
+- * from Tenstorrent Inc.
+- */
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ // Trace: Holds trace_network and trace_funnel. Instantiated by trace_top,
+ // which retains clock gating, reset derivation, functional clamps and trace_mem.
+ 
+diff --git a/rtl/trace/trace_wrapper.sv b/rtl/trace/trace_wrapper.sv
+index c46de7f13e..9d516d595b 100644
+--- a/rtl/trace/trace_wrapper.sv
++++ b/rtl/trace/trace_wrapper.sv
+@@ -1,21 +1,5 @@
+-/*************************************************************************
+- *
+- * Tenstorrent CONFIDENTIAL
+- *__________________
+- *
+- *  Tenstorrent Inc.
+- *  All Rights Reserved.
+- *
+- * NOTICE:  All information contained herein is, and remains
+- * the property of Tenstorrent Inc.  The intellectual
+- * and technical concepts contained
+- * herein are proprietary to Tenstorrent Inc.
+- * and may be covered by U.S., Canadian and Foreign Patents,
+- * patents in process, and are protected by trade secret or copyright law.
+- * Dissemination of this information or reproduction of this material
+- * is strictly forbidden unless prior written permission is obtained
+- * from Tenstorrent Inc.
+- */
++// SPDX-License-Identifier: Apache-2.0
++// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+  // Trace Top: Top Trace File - Holds trace_network, trace_funnel, and trace_mem
+ 
+ `include "axi/typedef.svh"

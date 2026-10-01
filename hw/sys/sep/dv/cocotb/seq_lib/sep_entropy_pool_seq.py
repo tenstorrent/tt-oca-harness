@@ -13,7 +13,7 @@ from __future__ import annotations
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_spec_tables import agg_from_pic, window
-from sep_reg_meta import ENTROPY_SOURCE, sym
+from sep_reg_meta import EDN, ENTROPY_SOURCE, RegBlock, sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
@@ -41,6 +41,27 @@ STALL_THRESH = 4096
 RESP_OKAY = 0
 RESP_SLVERR = 2
 
+# STATUS and IRQ_CAUSE field geometry from the SEP_ENTROPY_POOL RDL export.
+_POOL = RegBlock("SEP_ENTROPY_POOL")
+ST_LEVEL_MASK = _POOL.field_mask("STATUS", "fifo_level")
+ST_LEVEL_LSB = _POOL.field_lsb("STATUS", "fifo_level")
+ST_POOL_LOW = _POOL.field_mask("STATUS", "pool_low")
+ST_FILL_STALL = _POOL.field_mask("STATUS", "fill_stall")
+ST_POOL_ERROR = _POOL.field_mask("STATUS", "pool_error")
+CAUSE_POOL_LOW = _POOL.field_mask("IRQ_CAUSE", "pool_low")
+CAUSE_FILL_STALL = _POOL.field_mask("IRQ_CAUSE", "fill_stall")
+
+
+def pool_level(status: int) -> int:
+    """STATUS.fifo_level of a pool STATUS read."""
+    return (status & ST_LEVEL_MASK) >> ST_LEVEL_LSB
+
+
+def pool_flag(status: int, mask: int) -> int:
+    """One single-bit STATUS field as 0/1."""
+    return 1 if status & mask else 0
+
+
 IRQ_POOL_LOW = agg_from_pic("Entropy pool low")
 IRQ_FILL_STALL = agg_from_pic("Entropy pool fill stall")
 
@@ -55,6 +76,15 @@ _ALIAS_UNMAPPED = (
     0x1000,  # -> status  0x00 if [11:0] only
     0x8000,  # -> status  0x00 if [14:0] only
 )
+# Upper 32-bit word of each live register.
+# hw/sys/sep/regs/include/sep_entropy_pool.rdl declares every register
+# `regwidth = 64; accesswidth = 64;`, so a 32-bit beat at +4 is not a legal
+# access to that register and must be refused without a side effect.
+HALF_UPPER = (
+    ("status", POOL_STATUS + 4),
+    ("irq-cause", POOL_IRQ_CAUSE + 4),
+    ("data", POOL_POP + 4),
+)
 # Unique-dead extras: SLVERR even under a 2-bit [4:3] decode. All three are
 # walked every seed -- 0x18 is the unused [4:3]=11 code and catches a class the
 # other two do not, so a seeded pick of one could miss it.
@@ -63,18 +93,22 @@ _UNIQUE_DEAD = (0x18, 0x40, 0x80)
 # Legal disable: MODULE_ENABLE=0, every other CTRL field at its reset (including
 # SHA256_WHITENING_ENABLE=1). A hand-cleared multi-bit field is an alert.
 ESRC_CTRL_DISABLE = ENTROPY_SOURCE.value("CTRL", MODULE_ENABLE=0)
-# EDN_CTRL mubi4: True=0x6, False=0x9. AUTO bring-up is 0x9666 (ENABLE=T).
-# MODULE_ENABLE=0 does not drop AUTO-mode EDN acks while CSRNG still has a
-# seed, so fill-stall needs EDN_ENABLE=False to leave the pool request
-# outstanding without ack.
-EDN_CTRL_DISABLE = (EDN_CTRL_AUTO & ~0xF) | 0x9
+# EDN_CTRL.EDN_ENABLE is mubi4 and resets to mubi-false. MODULE_ENABLE=0 does
+# not drop AUTO-mode EDN acks while CSRNG still has a seed, so fill-stall
+# needs EDN_ENABLE=False to leave the pool request outstanding without ack.
+# Every other field keeps its AUTO bring-up value.
+_EDN_ENABLE = EDN.fields("CTRL")["EDN_ENABLE"]
+EDN_CTRL_DISABLE = (EDN_CTRL_AUTO & ~_EDN_ENABLE["bm"]) | (
+    (_EDN_ENABLE["reset"] << _EDN_ENABLE["bp"]) & _EDN_ENABLE["bm"]
+)
 
 
 class SepEntropyPoolCfg:
-    """RANDCFG: extra accepted pops, plus one unique-dead offset.
+    """RANDCFG: extra accepted pops.
 
     Every seed walks ``alias_offs`` (high-bit mirrors of the live
-    registers). The seed only picks the extra unique-dead offset.
+    registers) and all three unique-dead offsets (``unmapped_offs``). The
+    seed only picks the extra pop count.
     """
 
     def __init__(self, seed: int) -> None:
@@ -94,7 +128,10 @@ class SepEntropyPoolCfg:
 
 
 class SepEntropyPool(SepAxiRegDriver):
-    """64-bit beats on the pool aperture; ESRC_CTRL writes stay 32-bit."""
+    """64-bit beats on the pool aperture; ESRC_CTRL writes stay 32-bit.
+
+    ``nbytes=4`` issues one 32-bit beat (AxSIZE=2) at ``addr`` instead.
+    """
 
     _DRIVER_TAG = "POOL"
 
@@ -105,14 +142,17 @@ class SepEntropyPool(SepAxiRegDriver):
         write: bool = False,
         wdata: int = 0,
         expect_error: bool = False,
+        nbytes: int = 8,
     ) -> SepAxiAccessSeq:
+        if nbytes not in (4, 8):
+            raise ValueError(f"pool access is 4 or 8 bytes, not {nbytes}")
         seq = SepAxiAccessSeq(
-            f"pool_{'wr' if write else 'rd'}_0x{addr:08x}",
+            f"pool_{'wr' if write else 'rd'}{'' if nbytes == 8 else '32'}_0x{addr:08x}",
             op=SepAxiOp.WRITE if write else SepAxiOp.READ,
             addr=addr,
             wdata=wdata,
-            length=8,
-            size=None,
+            length=nbytes,
+            size=None if nbytes == 8 else 2,
             expect_error=expect_error,
         )
         await self.test.start_seq(seq)

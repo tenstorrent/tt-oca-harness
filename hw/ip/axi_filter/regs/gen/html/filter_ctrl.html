@@ -6,19 +6,20 @@
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: filter_ctrl</h2>
-<h2>Register List:</h2>
+<h2 id="regmap-filter_ctrl">AXI Filter Control Address Map</h2>
+<p>Per-filter access-control registers defining permitted address ranges and transaction attributes.</p>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#FILTER_CONFIG">FILTER_CONFIG</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x8</td><td><a href="#START_ADDR">START_ADDR</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x10</td><td><a href="#END_ADDR">END_ADDR</a></td><td>RW</td><td>-</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="FILTER_CONFIG">FILTER_CONFIG</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63</td><td>locked</td><td>RW</td><td>0x0</td><td>Lock filter configurations. Write once register</td></tr>
+<tr><td>63</td><td>locked</td><td>RW1S</td><td>0x0</td><td>Lock filter configurations. Write once register.<br>Once set, this bit cannot be cleared, and every subsequent write to this<br>filter entry&#x27;s FILTER_CONFIG, START_ADDR and END_ADDR registers is steered<br>to the AXI error subordinate and terminates with a DECERR response; reads<br>still return the locked configuration.</td></tr>
 <tr><td>62:25</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>24</td><td>allow_burst</td><td>RW</td><td>0x0</td><td>Filter entry will match if this field is 1 or if this field is 0 and the burst len AxLEN is 0.<br>This field also selects the granule of the address range: 4KB when it is 1,<br>2^data_bus_width bytes when it is 0. See start_addr and end_addr for how the range is widened<br>to that granule.</td></tr>
 <tr><td>23:20</td><td>group_id</td><td>RW</td><td>0x0</td><td>Group ID field to match. Filter entry will match if the transactions group_id matches the value in this field.<br>Note the corner case is the opposite of src_id: the bypass keys off the transaction, not this field.<br>A transaction whose group_id is 0 matches regardless of this field, and a value of 0 here is not a wildcard.<br>Unused for SEP/SMC, where group_id filtering is disabled at build time and this field has no effect</td></tr>

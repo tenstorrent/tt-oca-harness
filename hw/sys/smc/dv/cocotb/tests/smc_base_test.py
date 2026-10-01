@@ -34,7 +34,12 @@ for _path in (_COCOTB_ROOT, _OSS_HW_ROOT / "common" / "dv" / "vip"):
         sys.path.insert(0, _path_str)
 
 from env.smc_env import SmcEnv
-from env.smc_env_cfg import SYS_OUT_AXI_GEOMETRY, SYS_OUT_MEM_SIZE, SmcEnvCfg
+from env.smc_env_cfg import (
+    SYS_OUT_AXI_GEOMETRY,
+    SYS_OUT_MEM_SIZE,
+    SmcEnvCfg,
+    check_pll_clock_periods,
+)
 from env.smc_probe_liveness import reset_probe_ledger, watch_probe_liveness
 from env.smc_protocol_vip_item import SmcProtocolVipItem, SmcProtocolVipKind
 from env.smc_virt_console import VirtConsole
@@ -1139,9 +1144,9 @@ class smc_base_test(uvm_test):
         self._evidence = _EvidenceRecorder()
         self._evidence.install()
         self.cfg = SmcEnvCfg("cfg")
-        self.cfg.randomize_timing(self.random_seed())
+        self.cfg.resolve_timing()
         self.logger.info(
-            "SMC timing: ref=%dns smc=%dns periph=%dns (seed=%d)",
+            "SMC timing (pll_wrap): ref=%sns smc=%sns periph=%sns (seed=%d)",
             self.cfg.ref_clk_period_ns,
             self.cfg.smc_clk_period_ns,
             self.cfg.periph_clk_period_ns,
@@ -1460,6 +1465,14 @@ class smc_base_test(uvm_test):
         remaining = self.cfg.post_reset_settle_cycles - released_at
         if remaining > 0:
             await ClockCycles(dut.clk_ref_i, remaining)
+        await check_pll_clock_periods(
+            self.logger,
+            {
+                "clk_ref_o": (dut.clk_ref_o, self.cfg.ref_clk_period_ns),
+                "clk_smc_o": (dut.clk_smc_o, self.cfg.smc_clk_period_ns),
+                "clk_periph_o": (dut.clk_periph_o, self.cfg.periph_clk_period_ns),
+            },
+        )
         self.cfg.reset_done.set()
 
     # Top-level reset observables whose release ends cold bring-up.
@@ -1527,6 +1540,10 @@ class smc_base_test(uvm_test):
         try:
             await self.run_probe_positive_controls()
             await self.run_scenario()
+            # A cover property samples a handshake at one clock and records it at
+            # the next; a scenario whose last access completes in its final cycle
+            # loses that record if the run ends in the same time step.
+            await ClockCycles(cocotb.top.clk_smc_i, 2)
         except Exception:  # noqa: BLE001 -- re-raised once the CPU state is in the log
             self.virt_console.flush()
             self.env.cpu_trace_mon.dump_diagnostics(logging.ERROR)

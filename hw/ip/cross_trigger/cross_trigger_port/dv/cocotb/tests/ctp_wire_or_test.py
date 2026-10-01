@@ -5,21 +5,27 @@
 Scenarios:
 
 1. Pad enable matrix — wire-OR listens on the shared CT_Req_out wire only
-   (interface spec table), and the pad data output idles at the static level
-   for the configured INVERT sense.
+   (interface spec table), and the pad data output rests at the asserted
+   level of the configured INVERT sense, ready to pull the wire when the
+   enable opens.
 2. Stretched transmit window — deterministic corners plus randomized
    STRETCH_MULT values; every core-side pulse yields a CT_Req_out enable
-   window of exactly STRETCH_MULT+1 cycles with BUSY mirroring it.
+   window of exactly STRETCH_MULT+1 cycles with BUSY mirroring it, and the
+   port hears its own pull on the shared wire as one trigger at the
+   assertion edge.
 3. Back-to-back restart — a second pulse inside the window reloads the
-   stretcher, extending the window past a single pulse's length.
-4. Receive — a wire excursion produces exactly one single-cycle ct_dst
-   pulse at the LOGICAL rising edge (raw ^ INVERT), for both INVERT senses
-   and both idle levels.
+   stretcher, extending the window past a single pulse's length; the wire
+   stays asserted throughout, so the port hears one trigger.
+4. Receive — an external chiplet pulls the shared wire; the port delivers
+   exactly one single-cycle ct_dst pulse CT_DST_LATENCY cycles after the
+   assertion edge and nothing at the release, for both INVERT senses on the
+   matching board pull, down to a single-cycle pull.
 
 The stretched-window width (STRETCH_MULT+1) and the pad enable/static-data
-levels come from the architecture/interface spec; the INVERT sense of the
-inputs and outputs comes from the CONFIG.INVERT field description in
-cross_trigger_port.rdl.
+levels come from the architecture/interface spec; the wire polarity of each
+INVERT sense comes from the CONFIG.INVERT field description in
+cross_trigger_port.rdl. Every ct_dst pulse is compared cycle for cycle with
+the wire-OR receive model in ctp_base_test.
 """
 
 from __future__ import annotations
@@ -27,14 +33,14 @@ from __future__ import annotations
 import random
 
 import cocotb
-from cocotb.triggers import ClockCycles, FallingEdge, RisingEdge
+from cocotb.triggers import ClockCycles, FallingEdge
 from ctp_base_test import (
-    GPIO_SYNC_LATENCY,
+    WIRE_OR_POLARITY,
     CtpTb,
     random_seed,
 )
 
-# Randomized-iteration floor for the stretch and restart sweeps.
+# Randomized-iteration floor for the stretch, restart, and receive sweeps.
 N_RAND_ITER = 16
 
 
@@ -60,35 +66,41 @@ async def _measure_window(tb, what: str) -> int:
 
 @cocotb.test()
 async def ctp_wire_or_test(dut) -> None:
+    """Wire-OR pad matrix, stretched transmit, restart, and receive on the shared wire."""
     tb = CtpTb(dut, name="ctp_wire_or_test")
     seed = random_seed()
-    random.seed(seed)
+    rng = random.Random(seed)
     tb.log.info("seed=%d", seed)
 
     await tb.start()
     tb.start_ct_dst_watcher()
+    tb.receive.start()
 
     # ------------------------------------------------------------------
     tb.log.info("=" * 70)
-    tb.log.info("TEST 1: pad enable matrix and static data output, both INVERT senses")
+    tb.log.info("TEST 1: pad enable matrix and resting data output, both INVERT senses")
     tb.log.info("=" * 70)
     for invert in (0, 1):
-        # The pad data input must sit at the logical-idle level for the new
-        # sense BEFORE the sense flips, so the receive path sees no edge.
-        dut.ct_req_out_din.value = invert
+        # The board comes first, then software sets INVERT to match it. The
+        # bench's board swap moves the wire, so each step settles against the
+        # receive model before the checks.
+        tb.set_wire_pull(invert)
+        await tb.settle()
         await tb.write_config(mode=0, invert=invert)
         await tb.settle()
         tb.check_pad_enables("wire_or")
         dout_en = int(dut.ct_req_out_dout_en.value)
         assert dout_en == 0, f"wire-OR idle: dout_en expected 0, observed {dout_en}"
-        # Spec: wire-OR holds the pad data output static-low; RDL CONFIG.INVERT
-        # inverts all pad data outputs, so INVERT=1 holds it static-high.
+        # The pad data output rests at the level the port pulls the wire to.
+        expected_dout = WIRE_OR_POLARITY[invert].assert_level
         dout = int(dut.ct_req_out_dout.value)
-        assert dout == invert, (
-            f"wire-OR static data output: INVERT={invert} expects {invert}, observed {dout}"
+        assert dout == expected_dout, (
+            f"wire-OR data output: INVERT={invert} expects the asserted level "
+            f"{expected_dout}, observed {dout}"
         )
-        tb.log.info("INVERT=%d: enables and static dout=%d match the spec", invert, dout)
-    dut.ct_req_out_din.value = 0
+        tb.log.info("INVERT=%d: enables and resting dout=%d match the spec", invert, dout)
+    tb.set_wire_pull(0)
+    await tb.settle()
     await tb.write_config(mode=0, invert=0)
     await tb.settle()
 
@@ -96,7 +108,7 @@ async def ctp_wire_or_test(dut) -> None:
     tb.log.info("=" * 70)
     tb.log.info("TEST 2: stretched transmit window (corners + %d randomized)", N_RAND_ITER)
     tb.log.info("=" * 70)
-    stretch_values = [0, 1, 2, 100] + [random.randrange(0, 301) for _ in range(N_RAND_ITER)]
+    stretch_values = [0, 1, 2, 100] + [rng.randrange(0, 301) for _ in range(N_RAND_ITER)]
     for index, stretch in enumerate(stretch_values):
         await tb.write_stretch_mult(stretch)
         tb.log.info("iter %d: pulse ct_src, expect a %d-cycle window", index, stretch + 1)
@@ -117,16 +129,16 @@ async def ctp_wire_or_test(dut) -> None:
             assert status["busy"] == 1, (
                 f"stretch iter {index}: STATUS.BUSY read mid-window expected 1"
             )
-    pulses = tb.ct_dst_pulses()
-    assert pulses == 0, f"transmit-only traffic must not pulse ct_dst (observed {pulses})"
+        # The port's own pull is one assertion of the shared wire.
+        await tb.receive.expect(f"stretch iter {index}: own pull heard", expected_count=1)
 
     # ------------------------------------------------------------------
     tb.log.info("=" * 70)
     tb.log.info("TEST 3: back-to-back restart (%d randomized iterations)", N_RAND_ITER)
     tb.log.info("=" * 70)
     for index in range(N_RAND_ITER):
-        stretch = random.randrange(8, 41)
-        delay = random.randrange(2, stretch - 2)
+        stretch = rng.randrange(8, 41)
+        delay = rng.randrange(2, stretch - 2)
         await tb.write_stretch_mult(stretch)
         tb.log.info(
             "iter %d: STRETCH_MULT=%d, second pulse after %d cycles inside the window",
@@ -169,62 +181,39 @@ async def ctp_wire_or_test(dut) -> None:
             f"restart iter {index}: window {window} outside expected {low}..{high} "
             f"(STRETCH_MULT={stretch}, second pulse at {delay})"
         )
+        # One continuous pull of the wire, whatever the number of source pulses.
+        await tb.receive.expect(f"restart iter {index}: one wire assertion", expected_count=1)
 
     # ------------------------------------------------------------------
     tb.log.info("=" * 70)
-    tb.log.info("TEST 4: receive — one ct_dst pulse per wire excursion, all senses")
+    tb.log.info("TEST 4: receive — one ct_dst per wire assertion, at the assertion edge")
     tb.log.info("=" * 70)
-    n_excursions = 6
+    await tb.write_stretch_mult(0)
     for invert in (0, 1):
-        for idle_logical in (0, 1):
-            # Raw pad level for a given logical level under this sense.
-            idle_raw = idle_logical ^ invert
-            active_raw = idle_raw ^ 1
-            # Park the wire at the new idle, then flip the sense, then let the
-            # synchronizers flush; settle() clears any transition pulses.
-            dut.ct_req_out_din.value = idle_raw
-            await tb.write_config(mode=0, invert=invert)
-            await tb.settle()
-            tb.log.info(
-                "INVERT=%d idle_logical=%d: %d excursions, ct_dst expected at the "
-                "logical rising edge (%s edge of the raw wire)",
-                invert,
-                idle_logical,
-                n_excursions,
-                "assert" if idle_logical == 0 else "deassert",
+        tb.set_wire_pull(invert)
+        await tb.settle()
+        await tb.write_config(mode=0, invert=invert)
+        await tb.settle()
+        polarity = WIRE_OR_POLARITY[invert]
+        widths = [1, 2, 3] + [rng.randrange(1, 11) for _ in range(N_RAND_ITER)]
+        tb.log.info(
+            "INVERT=%d: wire rests at %d, an external chiplet pulls it to %d for %s cycles",
+            invert,
+            polarity.pull,
+            polarity.assert_level,
+            widths,
+        )
+        for index, width in enumerate(widths):
+            gap = rng.randrange(1, 12)
+            before = tb.ct_dst_pulses()
+            start = await tb.ext_pulse(0, width)
+            await tb.expect_ct_dst_at(
+                start, before, f"receive INVERT={invert} pull {index} (width {width})"
             )
-            for excursion in range(n_excursions):
-                width = random.randrange(3, 11)
-                gap = random.randrange(3, 16)
-                before = tb.ct_dst_pulses()
-                await RisingEdge(dut.clk)
-                dut.ct_req_out_din.value = active_raw
-                if idle_logical == 0:
-                    # Logical rising edge at the assert edge.
-                    await tb.wait_level(
-                        dut.ct_dst,
-                        1,
-                        GPIO_SYNC_LATENCY,
-                        f"receive INVERT={invert} idle={idle_logical} exc {excursion}",
-                    )
-                await ClockCycles(dut.clk, width)
-                dut.ct_req_out_din.value = idle_raw
-                if idle_logical == 1:
-                    # Logical rising edge at the deassert (return-to-idle) edge.
-                    await tb.wait_level(
-                        dut.ct_dst,
-                        1,
-                        GPIO_SYNC_LATENCY,
-                        f"receive INVERT={invert} idle={idle_logical} exc {excursion}",
-                    )
-                await ClockCycles(dut.clk, gap + GPIO_SYNC_LATENCY)
-                observed = tb.ct_dst_pulses() - before
-                assert observed == 1, (
-                    f"receive INVERT={invert} idle_logical={idle_logical} excursion "
-                    f"{excursion} (width={width}): expected exactly 1 ct_dst pulse, "
-                    f"observed {observed}"
-                )
-    dut.ct_req_out_din.value = 0
+            await ClockCycles(dut.clk, gap)
+        await tb.receive.expect(f"receive INVERT={invert}", expected_count=len(widths))
+    tb.set_wire_pull(0)
+    await tb.settle()
     await tb.write_config(mode=0, invert=0)
     await tb.settle()
 

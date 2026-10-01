@@ -10,11 +10,11 @@
 //   1. build sep_test_cfg: seed and random volume from the library
 //      accessors, the knob-derived controls, then the test's
 //      configure_test_cfg() hook (required scoreboard features);
-//      srandom(seed) + randomize() draws the system clock period;
+//      the clock periods are the fixed 800 MHz / 100 MHz pair;
 //   2. derive sep_env_cfg from it and publish both through uvm_config_db;
 //      build sep_env;
 //   3. bring_up(): the cocotb sep_base_test.release_no_cpu_reset ladder
-//      through sep_tb_if in system-clock cycles of the randomized period;
+//      through sep_tb_if in system-clock cycles of the 1.25 ns period;
 //      run_looped_scenario() (ocah_test) then starts create_scenario_seq()
 //      on m_env.m_vseqr once per pass with scenario_seed = seed + pass.
 //
@@ -27,12 +27,14 @@
 class sep_base_test extends ocah_test;
   `uvm_component_utils(sep_base_test)
 
-  // Time from zero to the reset assertion. Shorter than half of the fastest
-  // clock period (the 3 ns entropy sample clock), so the falling edge on
-  // rst_n precedes the first clock edge of the run (cocotb
+  // Time from zero to the reset assertion, as a fraction of the system clock
+  // period. The tb_top clocks run from time zero and the system clock is the
+  // fastest of them (first edge at half its period), so a quarter period puts
+  // the falling edge on rst_n ahead of every clock edge of the run (cocotb
   // assert_cold_reset parity: every async-reset flop loads its reset value
-  // from the edge, not from a clock).
-  localparam int unsigned ResetAssertDelayNs = 1;
+  // from the edge, not from a clock, and no clocked assertion samples the
+  // pre-reset X state).
+  localparam real ResetAssertSysClkFraction = 0.25;
 
   sep_test_cfg test_cfg;
   sep_env_cfg  env_cfg;
@@ -49,9 +51,9 @@ class sep_base_test extends ocah_test;
     test_cfg.random_count = random_count();
     test_cfg.read_knobs();
     configure_test_cfg(test_cfg);
-    // The one draw before run_phase: the bench-level dimension (the system
-    // clock period) comes from the runner seed through srandom(), so a run
-    // replays from the seed alone.
+    // The one draw before run_phase. sep_test_cfg declares no rand field
+    // (the clock periods are fixed), so this draws nothing; seeding from the
+    // runner seed keeps any rand field replayable from the seed alone.
     test_cfg.srandom(test_cfg.seed);
     if (!test_cfg.randomize()) `uvm_fatal(get_type_name(), "sep_test_cfg randomize() failed")
     `uvm_info(get_type_name(), {"test cfg: ", test_cfg.convert2string()}, UVM_LOW)
@@ -101,9 +103,9 @@ class sep_base_test extends ocah_test;
   // asserted with a real falling edge before the first clock edge, held for
   // reset_hold_cycles system clocks, and released; the pass starts
   // post_reset_cycles later. The ladder holds the only wall-clock waits in
-  // test code, derived from the randomized system-clock period.
+  // test code, derived from the system-clock period.
   virtual task bring_up();
-    #(ResetAssertDelayNs * 1ns);
+    #(ResetAssertSysClkFraction * env_cfg.sys_clk_period_ns * 1ns);
     `uvm_info(get_type_name(), "asserting rst_n (CPU held off)", UVM_LOW)
     m_env.tb_vif.rst_n <= 1'b0;
     wait_sys_cycles(test_cfg.reset_hold_cycles);
@@ -113,7 +115,7 @@ class sep_base_test extends ocah_test;
   endtask
 
   protected task wait_sys_cycles(int unsigned cycles);
-    #(cycles * env_cfg.clk_period_ns * 1ns);
+    #(cycles * env_cfg.sys_clk_period_ns * 1ns);
   endtask
 
 endclass : sep_base_test

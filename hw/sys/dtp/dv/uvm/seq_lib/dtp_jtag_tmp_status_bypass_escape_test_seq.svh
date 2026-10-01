@@ -2,11 +2,12 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // TMP BYPASS_ESCAPE scenario: CLAMP_HOLD drives Persistence-On, writing
-// TMP_STATUS bit 0 arms the escape (retained across readbacks), selecting
-// BYPASS twice triggers the escape transition (the TMP controller samples
-// bypass_selected during Update-IR), and the recovered BYPASS path shifts
-// a seeded pattern with the 1-TCK latency contract. Mirrors the cocotb
-// dtp_jtag_tmp_status_bypass_escape_test_seq.
+// TMP_STATUS bit 0 arms the escape (retained across readbacks that also
+// read persistence 1), selecting BYPASS twice triggers the escape
+// transition (the TMP controller samples bypass_selected during Update-IR),
+// and the recovered BYPASS path shifts a seeded pattern with the 1-TCK
+// latency contract. An arm write followed by a TAP reset then reads back
+// 0b00. Mirrors the cocotb dtp_jtag_tmp_status_bypass_escape_test_seq.
 
 class dtp_jtag_tmp_status_bypass_escape_test_seq extends dtp_debug_tdr_base_test_seq;
   `uvm_object_utils(dtp_jtag_tmp_status_bypass_escape_test_seq)
@@ -31,13 +32,15 @@ class dtp_jtag_tmp_status_bypass_escape_test_seq extends dtp_debug_tdr_base_test
                  "after CLAMP_HOLD");
 
     write_tmp_status(2'b01);
+    // Both preserve values keep bit 0 armed; the seeded per-pass order
+    // varies which one the BYPASS loads follow.
+    if ($urandom_range(1)) armed_shifts = '{2'b11, 2'b01};
     foreach (armed_shifts[idx]) begin
       `uvm_info(get_type_name(), $sformatf(
                 "Iteration %0d/2: armed readback shift_value=0b%02b", idx + 1, armed_shifts[idx]),
                 UVM_LOW)
-      read_tmp_status(persistence, bypass_escape, armed_shifts[idx]);
-      family_check("CHK-TMP-ESCAPE", "TMP_STATUS.bypass_escape", 64'(bypass_escape), 64'd1,
-                   $sformatf("shift_value=0b%02b", armed_shifts[idx]));
+      check_tmp_status(1'b1, 1'b1, armed_shifts[idx], $sformatf(
+                       "armed shift_value=0b%02b", armed_shifts[idx]));
     end
 
     // The TMP controller samples bypass_selected during Update-IR: load
@@ -52,6 +55,12 @@ class dtp_jtag_tmp_status_bypass_escape_test_seq extends dtp_debug_tdr_base_test
     // Seeded per-pass pattern through the recovered BYPASS path.
     bypass_pattern = 64'($urandom) & bit_mask(16);
     check_bypass_delay(6'(BYPASS_INSTR), bypass_pattern, 16);
+
+    // With persistence off the arm has no effect. Capture-DR returns the reset
+    // register, 0b00, not the 0b01 last shifted in.
+    write_tmp_status(2'b01);
+    reset_to_tlr();
+    check_tmp_status(1'b0, 1'b0, 2'b00, "after TAP reset, armed before the reset");
 
     finalize_family_checker();
   endtask

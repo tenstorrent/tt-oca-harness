@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// dtp_jtag2axi_smc_axi_error_series_incr_write_test — VPLAN 4.5: 3-beat
-// incrementing series write with the fault armed on the middle beat. The
-// injected response must be classified as EXPECTED (CHK-AXI-ERR-INJ), good
-// beats commit at correctly-incremented addresses, and the recovery write
-// proves no stuck state (CHK-AXI-WMEM against the stimulus intent).
+// dtp_jtag2axi_smc_axi_error_series_incr_write_test — 3-beat incrementing
+// series write with the fault armed on the middle beat. The injected response
+// must be classified as EXPECTED (CHK-AXI-ERR-INJ), good beats commit at
+// correctly-incremented addresses, and the recovery write proves no stuck
+// state (CHK-AXI-WMEM against the stimulus intent).
 
 class dtp_jtag2axi_smc_axi_error_series_incr_write_test extends dtp_base_test;
   `uvm_component_utils(dtp_jtag2axi_smc_axi_error_series_incr_write_test)
@@ -26,7 +26,10 @@ class dtp_jtag2axi_smc_axi_error_series_incr_write_test extends dtp_base_test;
                             "CHK-AXI-WDATA",
                             "CHK-AXI-WMEM",
                             "CHK-AXI-COMPLETION",
-                            "CHK-AXI-NONVAC"
+                            "CHK-AXI-NONVAC",
+                            "CHK-J2A-BUS-REQ",
+                            "CHK-J2A-FAULT-STATUS",
+                            "CHK-J2A-SERIES-ADDR"
                         });
   endfunction
 

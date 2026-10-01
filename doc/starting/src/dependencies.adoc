@@ -7,9 +7,6 @@
 [WARNING]
 ====
 This document is currently under development.
-
-- Check license requirements of external IPs
-- Add Dependencies of `tt-oca-harness-model`
 ====
 
 This section outlines the system requirements and dependencies for the
@@ -31,7 +28,12 @@ you will need to handle package installation yourself.
 The project uses the following documentation tools. See xref:setup.adoc[Environment Setup] for
 installation/setup options.
 
-* *Asciidoctor*: AsciiDoc documentation processing and PDF generation - Requires `asciidoctor-pdf` Version 2.3.24+
+* *Asciidoctor*: AsciiDoc documentation processing and PDF generation
+** `asciidoctor-pdf` Version 2.3.24+
+** `asciidoctor-diagram` — renders diagrams during the PDF builds; the Integrator
+and Programmer guides require it. PlantUML diagrams are drawn by its bundled jar,
+so a Java runtime is also needed. The HTML builds instead render diagrams through
+the `asciidoctor-kroki` Antora extension and need no Java.
 * *Antora*: Multi-repository documentation site generator for AsciiDoc - Version 3.1.10+
 * *Python packages*: Managed by the repo-level `pyproject.toml` and `uv.lock`;
 run `make uv-sync` or `uv sync` from the repository root.
@@ -47,7 +49,7 @@ run `make uv-sync` or `uv sync` from the repository root.
 * *GnuMake*: Version 4.4.1
 * *Bender*: Version 0.32.0 - Used to manage Vendor RTL and code
 * *Slang*: Version 9.1+
-* *Yosys*: Version 0.60+
+* *Yosys*: Version 0.68+
 ** *SV-Elab*: Version 2026-08-30+ (formerly yosys-slang)
 * *GCC*: Version 15.3.0+ recommended
 * *CCache*: Version 4.12.3+
@@ -65,5 +67,5 @@ dependencies, but installs and manages them itself unless configured otherwise:
 * *Open Source Tools*: No additional licenses required
 * *Commercial Tools*: Valid licenses for VCS, Design Compiler,
 etc are optional, these may be used for alternate workflows.
-* *Dependencies*: Some external IPs may have specific license
-requirements
+* *Dependencies*: All External IPs used within the project are distributed
+under open-source licenses (Mostly Apache/MIT).

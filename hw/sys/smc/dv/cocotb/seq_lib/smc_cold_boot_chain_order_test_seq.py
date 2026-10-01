@@ -6,7 +6,7 @@
 power-on reset deasserts and eFuse sensing begins, ``smc_fuse_sense_done_o``
 triggers repair, MBIST follows, and "the CPU cluster reset releases after both
 repair and MBIST complete"; ``rom.adoc`` pins the cold-reset CPU vector at
-``0xC004_0000``; ``cpu.adoc`` (Cluster Boundary Isolation) states the boundary
+``0xC004_0000``; ``cpu.adoc`` (CPU AXI Isolation) states the boundary
 "self-isolates on cold boot, releasing only once SRAM initialization completes
 and the cores and uncore are out of reset".
 
@@ -17,8 +17,13 @@ observable reaches its boot level:
 
 * ``powergood_stable_o`` = 1, ``smc_fuse_sense_done_o`` = 1, ``smc_init_mem_done_o`` = 1,
   core 0 ``tb_cpu_core_reset_n`` = 1, cluster ``tb_cpu_cluster_isolate`` = 0,
-  and the first retired hart-0 instruction (``tb_cpu_trace_valid``) with its
-  PC.
+  and the first retired hart-0 instruction with its PC, taken from
+  ``tb_cpu_trace_valid_unmasked`` / ``tb_cpu_trace_pc_unmasked``: the retire
+  record without the core-reset mask the other trace probes carry, so a retire
+  stamped while the core reset is still asserted is seen and fails the
+  ordering compare instead of being hidden by the probe. On a four-state
+  simulator the unmasked record is X until the core has run; an unresolvable
+  sample is not a retire.
 
 Every observable is first required at its reset level, so each recorded rise
 is a bring-up event of this reset and not a stale level. The ordering asserts
@@ -81,6 +86,12 @@ class smc_cold_boot_chain_order_test_seq(SmcResetSeqBase):
         assert value.is_resolvable, f"{name} is not resolvable: {value}"
         return int(value)
 
+    @staticmethod
+    def _retire_seen(dut) -> bool:
+        """Unmasked retire valid; X (a four-state run before the core has run) is not a retire."""
+        value = dut.tb_cpu_trace_valid_unmasked.value
+        return bool(value.is_resolvable and int(value))
+
     async def _await_reset_levels(self, dut) -> None:
         """Every boot observable must first sit at its reset level."""
         for _ in range(RESET_LEVEL_BOUND_SMC_CYCLES):
@@ -101,9 +112,9 @@ class smc_cold_boot_chain_order_test_seq(SmcResetSeqBase):
             for name, (sig, level) in _BOOT_EVENTS.items():
                 if name not in self.stamps and self._bit(dut, sig) == level:
                     self.stamps[name] = self.cycle
-            if self.first_fetch_cycle is None and self._bit(dut, "tb_cpu_trace_valid"):
+            if self.first_fetch_cycle is None and self._retire_seen(dut):
                 self.first_fetch_cycle = self.cycle
-                self.first_fetch_pc = int(dut.tb_cpu_trace_pc.value)
+                self.first_fetch_pc = int(dut.tb_cpu_trace_pc_unmasked.value)
 
     async def body(self) -> None:
         dut = cocotb.top
@@ -153,6 +164,8 @@ class smc_cold_boot_chain_order_test_seq(SmcResetSeqBase):
             f"core reset released (cycle {s['core_reset_release']}) before fuse sense completed "
             f"(cycle {s['fuse_sense_done']})"
         )
+        # The retire stamp comes from the unmasked trace probe, so this compare
+        # is between two independently sampled events and can fail.
         assert s["core_reset_release"] <= self.first_fetch_cycle, (
             f"hart 0 retired an instruction (cycle {self.first_fetch_cycle}) before its reset was "
             f"released (cycle {s['core_reset_release']})"

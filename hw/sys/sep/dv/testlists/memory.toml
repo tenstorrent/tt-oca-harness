@@ -20,7 +20,7 @@ args = ["+skip_fuse_sense"]
 
 [[tests]]
 name = "sep_sram_smoke_test"
-module = "sram.sep_sram_smoke_test"
+module = { cocotb = "sram.sep_sram_smoke_test", uvm = "sep_sram_smoke_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["smoke", "sram", "memory"]
@@ -39,6 +39,20 @@ module = "sram.sep_sram_datapath_breadth_test"
 seed = 1
 timeout_sec = 1800
 tags = ["sram", "memory", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# FIXED and WRAP bursts into SEP SRAM (fabric.adoc: AXI4 fabric). A burst
+# type the slave does not implement must be refused with SRAM unchanged, or
+# performed at the beat addresses AXI4 gives it. OKAY with INCR beat
+# addresses fails. Do not XFAIL. no_cpu; +skip_fuse_sense.
+name = "sep_sram_burst_type_test"
+module = "sram.sep_sram_burst_type_test"
+seed = 1
+timeout_sec = 1800
+tags = ["sram", "memory", "negative", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]

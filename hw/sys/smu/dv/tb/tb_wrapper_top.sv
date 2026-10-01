@@ -1,413 +1,54 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// OSS smu_wrapper harness for the native cocotb/PyUVM flow.
+// OSS smu_wrapper harness, shared by the native cocotb/PyUVM flow and the
+// SystemVerilog UVM flow. ONE module, two shapes:
+//
+//   * default (cocotb, `--dut smu`): the ANSI port list of
+//     smu_tb_signal_list.svh; cocotb drives the stimulus pins and samples
+//     the observables.
+//   * `UVM` (SV-UVM, `--dut smu --framework uvm`): the port list is replaced
+//     by internal TB signals of the same names, and the harness block at the
+//     end of this module adds the clocks, the shared JTAG VIP interface, the
+//     SMU-local and embedded-DTP TB interfaces, a passive AXI interface on
+//     the DTP's SMC-fabric JTAG2AXI port, quiescent tie-offs, uvm_config_db
+//     publication, and run_test(). Test classes are compiled via
+//     `include "smu_tests.sv".
+//
 // Instantiates hw/top/smu_wrapper.sv (logical ports); the CPU and I3C table
 // memory macros come with smc_ip_integration inside it, following the same OSS
 // composition pattern as smc_wrapper / sep_wrapper.
 
 `timescale 1ps / 1fs
 
-module smu_wrapper_uvm_top (
-  input  wire logic clk_smu_i,
-  // Primary JTAG TAP, driven from cocotb through the pad-level TCK/TMS/TDI/TDO.
-  input  wire logic jtag_tck,
-  input  wire logic jtag_tms,
-  input  wire logic jtag_trst,   // active-low
-  input  wire logic jtag_tdi,
-  // ESRC raw noise, driven from cocotb. Mirrors hw/sys/sep/dv/tb/tb_top.sv.
-  input  wire logic [11:0] esrc_noise_ext_i,
-  output logic [11:0]      esrc_noise_o,        // the driven 12-lane stimulus
-  output logic             esrc_noise_active_o, // lane-0 actual dcor.noise_i
-  // Entropy datapath observation taps. Read-only, never driven -- the same
-  // nets hw/sys/sep/dv/tb/tb_top.sv watches. These are how a test tells
-  // "the stack was programmed" from "entropy actually flowed".
-  output logic             drbg_seed_valid_o,
-  output logic             drbg_es_ack_o,
-  output logic             drbg_genbits_vld_o,
-  // Sticky versions. These are pulses; latching them in hardware means a test
-  // can poll every few thousand cycles instead of sampling every edge from
-  // Python, which is both far faster and cannot miss a one-cycle event.
-  output logic             drbg_seed_valid_seen_o,
-  output logic             drbg_es_ack_seen_o,
-  output logic             drbg_genbits_seen_o,
-  output logic             esrc_noise_took_o,
-  output logic      jtag_tdo,
-  output logic      jtag_tdo_oen,
-  // IC_RESET override bits as the SMC and SEP reset controllers see them.
-  // Every wrapper test depends on these being clear: an asserted override
-  // holds cold/fuse reset and the SEP never fetches.
-  output logic [67:0] ic_reset_smc_ovrd_o,
-  output logic        ic_reset_sep_ovrd_any_o,
-  // SEP lifecycle-controller fan-out. The LCC decides the chiplet's posture
-  // and three consumers act on it; lc_state_o alone shows the SMU boundary.
-  // These expose the DTP and SMC legs so a test can prove the posture reaches
-  // them rather than merely existing on a port.
-  output logic [1:0]  lcc_demote_state_1_o,
-  output logic [1:0]  lcc_demote_state_2_o,
-  output logic [63:0] lcc_feat_ctrl_o,
-  output logic [15:0] lcc_dbg_disable_o,     // to DTP
-  // The one dbg_disable path field the DTP specification ties to the SMC
-  // fabric JTAG2AXI bridge, read by its spec name rather than by bit position.
-  output logic        lcc_dbg_disable_smc_jtag2axi_o,
-  output logic [7:0]  smc_lc_state_in_o,     // as SMC receives it
-  // DTP JTAG2AXI traffic into the SMC. dbg_disable.smc_jtag2axi stops the
-  // bridge from launching a transaction at all (jtag2axi.sv: the update is
-  // gated by `!security_disable_i`), so counting AW/AR here is how a test
-  // tells "debug is gated" from "the signal merely says so".
-  output logic [31:0] dtp_smc_dbg_aw_count_o,
-  output logic [31:0] dtp_smc_dbg_ar_count_o,
-  output logic [31:0] dtp_smc_dbg_b_count_o,
-  input  wire logic clk_ref_i,
-  input  wire logic clk_periph_i,
-  input  wire logic clk_sep_wdt_i,
-  // ESRC ring-oscillator sample clock. A separate, faster clock than clk_smu:
-  // the entropy source samples its noise lanes on this one, so with it static
-  // the ESRC produces nothing no matter how the stack is programmed. The SEP
-  // DV testbench drives it at 3 ns.
-  input  wire logic entropy_rosc_sample_clk_i,
-  input  wire logic rst_cold_ni,
-  input  wire logic powergood_i,
-  output logic        dut_present_o,
-  output logic        sep_enabled_o,
-  output logic        rst_cold_n_o,
-  output logic        powergood_o,
-  output logic        smc_fuse_sense_done_o,
-  output logic        smc_fuse_reset_n_delayed_o,
-  output logic        rst_primary_smc_clk_n_o,
-  output logic        smc_init_mem_done_o,
-  output logic        sep_fuse_sense_done_o,
-  // State of the SEP efuse shadow-register sim_skip_fuse_sense flag, i.e.
-  // whether the SEP fuse-sense sequence is replaced by the shadow preload in
-  // this run. A checker that reads fuse-sense completion needs this to know
-  // whether the completion is DUT-earned.
-  output logic        sep_fuse_sense_skipped_o,
-  output logic        sep_reset_n_o,
-  output logic [31:0] smc_scratch_0_o,
-  output logic        smc_test_pass_o,
-  output logic        smc_test_fail_o,
-  output logic [31:0] smc_rom_read_count_o,
-  // From the bound smc_cpu_mem_dv: whether the SMC core is actually fetching
-  // and writing scratch RAM. Separates "the ROM never handed over" from
-  // "control reached the scratch image and it faulted".
-  // SMC CPU_CTRL scratch6/7/10: the ext_axi protocol's SMC-side READY, GO and
-  // PASS. Reading them here is diagnosis only -- the master reads the same
-  // registers through the aperture, which is the path under test.
-  output logic [31:0] smc_scratch_6_o,
-  output logic [31:0] smc_scratch_7_o,
-  output logic [31:0] smc_scratch_10_o,
-  output logic [31:0] smc_scratch_read_count_o,
-  output logic [31:0] smc_scratch_write_count_dv_o,
-  output logic [31:0] smc_scratch_write_count_o,
-  output logic        sep_trace_valid_o,
-  output logic [31:0] sep_pc_o,
-  // Remaining fields of the EL2 retirement record (el2_trace_pkt_t), for the
-  // cocotb processor-state monitor.
-  output logic [31:0] sep_trace_insn_o,
-  output logic        sep_trace_exc_o,
-  output logic [4:0]  sep_trace_ecause_o,
-  output logic        sep_trace_interrupt_o,
-  output logic [31:0] sep_trace_tval_o,
-  output logic [31:0] sep_inst_count_o,
-  output logic [31:0] sep_iccm_write_count_o,
-  output logic [31:0] sep_dccm_write_count_o,
-  output logic        sep_boot_rom_fetch_seen_o,
-  output logic        sep_iccm_fetch_seen_o,
-  output logic        sep_first_pc_valid_o,
-  output logic [31:0] sep_first_pc_o,
-  output logic        fw_done_o,
-  output logic        fw_pass_o,
-  output logic [7:0]  fw_char_o,
-  output logic        fw_char_valid_o,
-  // Sticky per-stage bitmap of the SEP DV firmware STAGE_BEACON words
-  // (0xB1B0B0B_<stage>) seen on the STDOUT mailbox. Bit N = stage N reached.
-  output logic [15:0] fw_beacon_mask_o,
-  output logic [31:0] fw_last_word_o,
-  // SEP outbound (SMN) path observation. Separates "the SEP never issued the
-  // write" from "the SMU crossbar did not route it to ext_out", which are the
-  // two ways a firmware mailbox handshake goes silent.
-  output logic [31:0] sep_smn_out_aw_count_o,
-  output logic [55:0] sep_xbar_global_base_o,
-  output logic [31:0] sep_xbar_region_size_o,
-  // Crossbar -> SEP inbound AW. Separates "the crossbar never routed the
-  // transaction to the SEP" from "it arrived and the SEP inbound filter
-  // dropped it", which look identical from the firmware's side.
-  output logic [31:0] sep_xbar_in_aw_count_o,
-  // AWUSER of the last crossbar->SEP write. The SEP inbound filter matches
-  // src_id/group_id out of this field (axi_filter_wrap.sv:159), so a window
-  // that looks correctly programmed still drops traffic whose user field
-  // carries a different source id.
-  output logic [11:0] sep_xbar_in_aw_user_o,
-  output logic [55:0] sep_xbar_in_aw_addr_o,
-  // SEP AP / STEE output-remap region-0 offsets, as the remap datapath sees
-  // them. sep_smu_remap programs these write-only and cannot read them back,
-  // so the golden comparison has to happen here.
-  output logic [55:0] sep_ap_remap_offset0_o,
-  output logic [55:0] sep_stee_remap_offset0_o,
-  // AP output-remap CSR path, split at the two stages unique to this branch:
-  // the second-level 16-way demux inside sep_system_csr, and the generated
-  // register block behind it. Everything upstream is shared with the filter
-  // and scratch CSRs, which are known good.
-  output logic [31:0] sep_ap_csr_aw_count_o,   // reaches the AP_OUTPUT_REMAP demux
-  output logic [31:0] sep_ap_reg0_aw_count_o,  // reaches region 0's register block
-  output logic [31:0] sep_csr_aw_count_o,      // reaches sep_system_csr at all
-  output logic [55:0] sep_csr_last_aw_addr_o,  // ...and with what address
-  output logic [31:0] sep_csr_errslv_aw_count_o, // ...or was classified ERR_SLV
-  output logic [31:0] smu_axi_out_write_count_o,
-  output logic [31:0] smu_axi_out_read_count_o,
-  // Outbound-boundary handshake split: write_count only moves on B, so it
-  // cannot separate a stalled write from one the crossbar never routed here.
-  // aw_valid says the beat was presented at the boundary; aw_ready says the
-  // boundary slave accepted it.
-  // ext_in AXI master pins, named for cocotbext.axi AxiBus.from_prefix
-  // (prefix "ext_in"). Driven by the cocotb master; see the assigns below.
-  input  wire logic        ext_in_awvalid,
-  output logic             ext_in_awready,
-  input  wire logic [7:0]  ext_in_awid,
-  input  wire logic [55:0] ext_in_awaddr,
-  input  wire logic [7:0]  ext_in_awlen,
-  input  wire logic [2:0]  ext_in_awsize,
-  input  wire logic [1:0]  ext_in_awburst,
-  input  wire logic [11:0] ext_in_awuser,
-  // AXI4 qualifiers. axi_56_64_aw_chan_t carries all of these; they are real
-  // ports so the wrapper can verify AxPROT and the other qualifiers.
-  input  wire logic        ext_in_awlock,
-  input  wire logic [3:0]  ext_in_awcache,
-  input  wire logic [2:0]  ext_in_awprot,
-  input  wire logic [3:0]  ext_in_awqos,
-  input  wire logic [3:0]  ext_in_awregion,
-  input  wire logic [11:0] ext_in_wuser,
-  output logic [11:0]      ext_in_buser,
-  input  wire logic        ext_in_wvalid,
-  output logic             ext_in_wready,
-  input  wire logic [63:0] ext_in_wdata,
-  input  wire logic [7:0]  ext_in_wstrb,
-  input  wire logic        ext_in_wlast,
-  output logic             ext_in_bvalid,
-  input  wire logic        ext_in_bready,
-  output logic [7:0]       ext_in_bid,
-  output logic [1:0]       ext_in_bresp,
-  input  wire logic        ext_in_arvalid,
-  output logic             ext_in_arready,
-  input  wire logic [7:0]  ext_in_arid,
-  input  wire logic [55:0] ext_in_araddr,
-  input  wire logic [7:0]  ext_in_arlen,
-  input  wire logic [2:0]  ext_in_arsize,
-  input  wire logic [1:0]  ext_in_arburst,
-  input  wire logic [11:0] ext_in_aruser,
-  input  wire logic        ext_in_arlock,
-  input  wire logic [3:0]  ext_in_arcache,
-  input  wire logic [2:0]  ext_in_arprot,
-  input  wire logic [3:0]  ext_in_arqos,
-  input  wire logic [3:0]  ext_in_arregion,
-  output logic [11:0]      ext_in_ruser,
-  // Observables the shared seq_lib reads by name, matching tb/tb_top.sv.
-  output jtag_tap_pkg::tap_state_e                      jtag_ptap_state,
-  output jtag_inst_reg_pkg::jtag_instruction_decoded_e  jtag_ptap_inst_decoded,
-  output logic [55:0]                                   sep_global_base_o,
-  output logic [55:0]                                   sep_region_size_o,
-  output logic [55:0]                                   smc_global_base_o,
-  output logic [31:0]                                   smc_region_size_o,
-  output logic                                          rst_primary_ref_clk_no,
-  output logic                                          rst_primary_periph_clk_no,
-  output logic                                          rst_cold_stable_ref_clk_no,
-  output logic                                          lc_sigint_err_o,
-  // PTAP security-disable taps, reached hierarchically exactly as the bare TB
-  // does -- one level deeper here, since u_dut is the wrapper.
-  output logic                                          tb_smc_jtag2axi_security_disable,
-  output logic                                          tb_otp_jtag2axi_security_disable,
-  input  wire logic                                     ext_boot_seq_done_i,
-  output logic [63:0]                                   tb_timer_count,
-  output logic                                          tb_bsr_select,
-  // DTP boot-stall / IC-reset / cross-trigger surface, matching tb_top.sv.
-  output logic                                          jtag_boot_stall,
-  output logic                                          jtag_boot_stall_ovrd,
-  output logic                                          jtag_ic_reset_ext_ovrd,
-  output logic                                          jtag_ic_reset_ext_ctrl_n,
-  output logic                                          jtag_ic_reset_smc_ovrd,
-  output logic                                          jtag_ic_reset_smc_ctrl_n,
-  input  wire logic                                     gpio_boot_stall_drive_i,
-  input  wire logic [dtp_pkg::DEFAULT_NUM_INT_CT-3:0]   xtrig_ctm_dst_req,
-  input  wire logic [dtp_pkg::DEFAULT_NUM_INT_CT-3:0]   xtrig_ctm_src_ack,
-  input  wire logic                                     xtrig_clk_stop_req,
-  output logic [dtp_pkg::DEFAULT_NUM_INT_CT-3:0]        xtrig_ctm_dst_ack,
-  output logic [dtp_pkg::DEFAULT_NUM_INT_CT-3:0]        xtrig_ctm_src_req,
-  // DTP clock-stop grant, as tb/tb_top.sv exposes it. Sampled by
-  // smu_clock_stop_coordination_test.
-  output logic                                          dtp_stop_clks_o,
-  // The CLA's own clock-stop enable, one level inside smu. Paired with
-  // dtp_stop_clks_o above: the test proves the aggregate grant follows the
-  // per-source enable, so both have to be visible.
-  output logic                                          dtp_cla_clock_stop_en,
-  // SMC eFuse shadow map. seq_lib.smu_jtag_helpers.shadow_map_word32 reads
-  // this by name to cross-check an OTP write against the shadow copy the SMC
-  // actually sees; the OTP leaves cannot score without it.
-  output smc_efuse_pkg::efuse_map_t                     smc_shadow_regs,
-  output logic                                          tb_stap_io_tck,
-  output logic                                          tb_stap_smc_tck,
-  output logic                                          tb_stap_smc_tms,
-  output logic                                          tb_stap_smc_trst_n,
-  output logic                                          tb_stap_smc_tdi,
-  output logic                                          tb_stap_smc_tdo_oen,
-  output logic             ext_in_rvalid,
-  input  wire logic        ext_in_rready,
-  output logic [7:0]       ext_in_rid,
-  output logic [63:0]      ext_in_rdata,
-  output logic [1:0]       ext_in_rresp,
-  output logic             ext_in_rlast,
-  output logic        smu_axi_out_aw_valid_seen_o,
-  output logic        smu_axi_out_aw_fired_seen_o,
-  output logic [55:0] smu_axi_out_first_aw_addr_o,
-  output logic        smu_axi_out_w_valid_seen_o,
-  output logic        smu_axi_out_w_fired_seen_o,
-  output logic        smu_axi_out_w_last_seen_o,
-  output logic        smu_axi_out_b_valid_seen_o,
-  // First AW's control fields, latched. A beat whose length or size is X is
-  // accepted on the address channel and then stalls, which the B counter
-  // alone cannot tell apart from a beat that never arrived.
-  output logic [7:0]  smu_axi_out_first_aw_len_o,
-  output logic [2:0]  smu_axi_out_first_aw_size_o,
-  output logic [1:0]  smu_axi_out_first_aw_burst_o,
-  output logic [9:0]  smu_axi_out_first_aw_id_o,
-  output logic        smu_axi_out_first_aw_ctrl_x_o,
-  output logic [15:0] smu_axi_out_aw_valid_cycles_o,
-  output logic [15:0] smu_axi_out_aw_ready_cycles_o,
-  output logic [15:0] smu_axi_out_w_valid_cycles_o,
-  output logic [15:0] smu_axi_out_w_ready_cycles_o,
-  output logic [smc_pkg::NUM_MAILBOXES-1:0] ext_mailbox_interrupts_o,
-  // SEP run-gate / IFU bring-up probes (keep nets visible under VCS)
-  output logic [15:0] sep_cla_custom_o,
-  output logic        sep_mpc_reset_run_o,
-  output logic        sep_mpc_debug_run_o,
-  output logic        sep_cpu_run_req_o,
-  output logic        sep_halt_status_o,
-  output logic        sep_debug_mode_o,
-  output logic [31:0] sep_boot_rom_req_count_o,
-  output logic        sep_cpu_rst_ni_o,
-  output logic        sep_dbg_rstb_o,
-  output logic        sep_mod_rst_ni_o,
-  output logic [31:0] sep_cpu_clk_count_o,
-  output logic        sep_rungate_at_release_valid_o,
-  output logic        sep_mpc_reset_run_at_release_o,
-  output logic        sep_mpc_xz_at_release_o,
-  output logic [15:0] sep_cla_at_release_o,
-  // SMU_ALL_001 compose / clk-domain / lifecycle observe surface
-  output logic [7:0]  lc_state_o,
-  // Hierarchical SEP lifecycle source (for lc_state=from_sep identity). This
-  // bench elaborates SEP, so the tap is live. No target of this package
-  // elaborates SEP=0.
-  output logic [7:0]  obs_sep_lc_state_o,
-  // Compile-time present flags, diagnostic only: SMU_ALL_001 proves presence
-  // from the hierarchical clk/rst identity observes below.
-  output logic        obs_compose_smc_present_o,
-  output logic        obs_compose_sep_present_o,
-  output logic        obs_compose_dtp_present_o,
-  output logic        obs_compose_xbar_present_o,
-  output logic        obs_dtp_clk_o,
-  output logic        obs_smc_clk_o,
-  output logic        obs_sep_clk_o,
-  output logic        obs_xbar_clk_o,
-  output logic        obs_dtp_rst_n_o,
-  output logic        obs_smc_rst_n_o,
-  output logic        obs_sep_rst_n_o,
-  output logic        obs_xbar_rst_n_o,
-  output logic        obs_smc_tel_clk_o,
-  output logic        obs_sep_wdt_clk_o,
-  // SMC reset-controller power-good synchronizer output, and a sticky record of
-  // it having been observed deasserted. Both come from inside u_dut; powergood_o
-  // below is the input pin echoed back.
-  output logic        obs_powergood_stable_o,
-  output logic        obs_powergood_stable_low_seen_o,
-  output logic        obs_jtag_tdo_o,
-  output logic        obs_smu_axi_awready_o,
-  output logic        obs_xtrig_src_req0_o,
-  // Secondary-TAP and iJTAG scan-chain hosts. smu_wrapper is the scan master
-  // on all of them, so the bench has to supply the client side; tb_top.sv
-  // closes each chain with scan_in <- scan_out and this does the same, so a
-  // shift through the primary TAP leaves the wrapper at its boundary pins and
-  // re-enters there. The select and TDO-enable taps are what separates
-  // "the chain shifted" from "the host was never selected".
-  output logic        tb_dfd_select,
-  output logic        tb_dft_select,
-  output logic        tb_dft_secure_select,
-  output logic        tb_stap_host_select,
-  output logic        tb_stap_io_tms,
-  output logic        tb_stap_io_tdo,
-  output logic        tb_stap_io_tdo_oen,
-  output logic        tb_stap_extra0_tms,
-  output logic        tb_stap_extra0_tdo,
-  output logic        tb_stap_extra0_tdo_oen,
-  // ATB telemetry source for receiver 0. Receivers 1 and 2 stay idle.
-  input  wire  logic [7:0] tb_telemetry_atdata,
-  input  wire  logic [6:0] tb_telemetry_atid,
-  input  wire  logic       tb_telemetry_atvalid,
-  input  wire  logic       tb_telemetry_afready,
-  output logic             tb_telemetry_atready,
-  output logic             tb_telemetry_afvalid,
-  // SMC boundary inputs, and the outputs they and the SMC CSRs drive.
-  input  wire  logic [smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS-1:0] tb_smc_ext_interrupts,
-  input  wire  logic [3:0]  tb_smc_ndmreset_request,
-  input  wire  logic        tb_cfg_flr_pf_active,
-  input  wire  logic        tb_mem_repair_abort,
-  input  wire  logic        tb_mbist_abort,
-  // Active-high holds on the boundary straps the wrapper otherwise sees
-  // asserted: each drives the DUT input low while it is 1, so an undriven
-  // pin leaves the strap at its boot value.
-  input  wire  logic        tb_mem_repair_hold,
-  input  wire  logic        tb_mbist_hold,
-  input  wire  logic [31:0] tb_ss_reset_incomplete,
-  input  wire  logic        tb_chiplet_secondary,
-  input  wire  logic        tb_cool_reset_pin,
-  output logic [3:0]        tb_smc_ndmreset_process,
-  output logic [31:0]       tb_isolate_req,
-  output logic [31:0]       tb_ss_config,
-  // One 32-bit word per `reset_ctrl_t` field of `ss_reset_ctrl_o`. Lane i of
-  // each word is subsystem i's field, so a word lines up with the reset-unit
-  // register that owns the field.
-  output logic [31:0]       tb_ss_cold_reset_n,
-  output logic [31:0]       tb_ss_warm_reset_n,
-  output logic [31:0]       tb_ss_config_state_hold,
-  output logic [31:0]       tb_ss_sram_hold,
-  output logic [31:0]       tb_ss_critical_signal_hold,
-  output logic [31:0]       tb_ss_debug_hold,
-  output logic [31:0]       tb_ss_force_to_ref_clk_n,
-  output logic              tb_sync_irq,
-  output logic              tb_skip_mem_repair,
-  output logic              tb_smc_cluster_ded,
-  output logic              tb_smc_wdt_first_timeout,
-  output logic              tb_smc_wdt_second_timeout,
-  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0]  tb_gpio_interrupt,
-  output logic [smc_config_pkg::NUM_UART-1:0] tb_uart_interrupt,
-  // GPIO pin 0 pad drive, weak so a core output still wins, matching the
-  // boot-stall strap drive on pin 57 below.
-  input  wire  logic tb_gpio0_drive_en,
-  input  wire  logic tb_gpio0_drive_val,
-  // Per-pad drive for the whole GPIO bus, on the same weak terms as pin 0.
-  input  wire  logic [smc_pkg::NUM_GPIO_WRAPS-1:0] tb_gpio_drive_en,
-  input  wire  logic [smc_pkg::NUM_GPIO_WRAPS-1:0] tb_gpio_drive_val,
-  // SEP secure test-mode request strap. The SEP eFuse wrapper samples it on
-  // the rising edge of its fuse-sense-done, so a leaf drives it across a cold
-  // reset rather than at an arbitrary time.
-  input  wire  logic tb_secure_tm_req,
-  output logic       tb_secure_tm,
-  // Cross-trigger port pads. The DTP is the pad controller on all four
-  // groups, so the bench is the padring on the data inputs and watches the
-  // data and enable outputs.
-  input  wire  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_req_out_din,
-  input  wire  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_req_in_din,
-  input  wire  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_ack_in_din,
-  output logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_req_out_dout,
-  output logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_req_out_dout_en,
-  output logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_req_out_din_en,
-  output logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_req_in_dout,
-  output logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_req_in_dout_en,
-  output logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_req_in_din_en,
-  output logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_ack_in_dout,
-  output logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_ack_in_dout_en,
-  output logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_ack_in_din_en,
-  output logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_ack_out_dout,
-  output logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_ack_out_dout_en,
-  output logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_ack_out_din_en
+// Shape selection for smu_tb_signal_list.svh: the same list expands as the
+// ANSI port list (cocotb) or as internal TB signals (`UVM`). The macros live
+// only from here to the `undef block after the module header.
+`ifndef UVM
+  // cocotb shape: every entry is a pin-level ANSI port.
+  `define SMU_TB_IN_FIRST(dtype, name) input  wire dtype name
+  `define SMU_TB_IN(dtype, name)     , input  wire dtype name
+  `define SMU_TB_OUT(dtype, name)    , output dtype name
+`else
+  // SV-UVM shape: every entry is an internal TB signal for the harness
+  // block at the end of this module.
+  `define SMU_TB_IN_FIRST(dtype, name) dtype name;
+  `define SMU_TB_IN(dtype, name) dtype name;
+  `define SMU_TB_OUT(dtype, name) dtype name;
+`endif
+
+module smu_wrapper_uvm_top
+`ifndef UVM
+(
+  `include "smu_tb_signal_list.svh"
 );
+`else
+;
+  `include "smu_tb_signal_list.svh"
+`endif
+
+`undef SMU_TB_IN_FIRST
+`undef SMU_TB_IN
+`undef SMU_TB_OUT
 
   localparam int unsigned SEP_ENABLED = 1;
   localparam bit SEP_PRESENT = 1'b1;
@@ -436,6 +77,8 @@ module smu_wrapper_uvm_top (
   // TB glue: clocks / JTAG / AXI / GPIO / CPU mem / observability
   // ------------------------------------------------------------------
 
+  logic clk_smu, clk_ref, clk_periph;
+
   prim_jtag_pkg::jtag_tap_ctrl_t jtag_ptap_client_tap_ctrl;
   logic jtag_ptap_tdi;
   logic jtag_ptap_tdo;
@@ -452,13 +95,13 @@ module smu_wrapper_uvm_top (
         tck: jtag_tck
     };
   assign jtag_ptap_tdi = jtag_tdi;
-  assign lcc_feat_ctrl_o = 64'(u_dut.u_smu.gen_sep.u_sep.sep_crypto
+  assign lcc_feat_ctrl_o = 64'(u_dut.u_smu.gen_sep.u_sep.u_sep_crypto
         .u_sep_lifecycle_ctrl.feat_ctrl_o);
   assign lcc_dbg_disable_o    = 16'(u_dut.u_smu.sep_dbg_disable);
   assign lcc_dbg_disable_smc_jtag2axi_o = u_dut.u_smu.sep_dbg_disable.smc_jtag2axi;
   assign smc_lc_state_in_o    = 8'(u_dut.u_smu.sep_lc_state);
 
-  always_ff @(posedge clk_smu_i or negedge rst_cold_ni) begin
+  always_ff @(posedge clk_smu or negedge rst_cold_ni) begin
     if (!rst_cold_ni) begin
       dtp_smc_dbg_aw_count_o <= '0;
       dtp_smc_dbg_ar_count_o <= '0;
@@ -503,7 +146,7 @@ module smu_wrapper_uvm_top (
   // Lane 0's ACTUAL noise_i. With the force active this tracks the driven bit;
   // without it, it is whatever the RTL leaves there. A test compares the two so
   // "entropy flowed" cannot pass on a force that silently failed to take.
-  assign esrc_noise_active_o = u_dut.u_smu.gen_sep.u_sep.sep_crypto.u_sep_trng
+  assign esrc_noise_active_o = u_dut.u_smu.gen_sep.u_sep.u_sep_crypto.u_sep_trng
         .u_entropy_source_s3c_scan.u_generator_complex.gen_ecmplx[0].u_generator
         .u_decorrelator.noise_i;
 
@@ -512,11 +155,11 @@ module smu_wrapper_uvm_top (
   // at t=0 under Verilator and would hold that stale value. Explicit per-lane
   // indices because a genvar-indexed cross-hierarchy force is not allowed.
   `define SMU_ESRC_NOISE_FORCE(i)                                                \
-    force u_dut.u_smu.gen_sep.u_sep.sep_crypto.u_sep_trng                      \
+    force u_dut.u_smu.gen_sep.u_sep.u_sep_crypto.u_sep_trng                      \
         .u_entropy_source_s3c_scan.u_generator_complex.gen_ecmplx[i]             \
         .u_generator.u_decorrelator.noise_i = esrc_noise_d[i]
 
-  always @(posedge clk_smu_i) begin
+  always @(posedge clk_smu) begin
     if ($test$plusargs("esrc_noise_force")) begin
       `SMU_ESRC_NOISE_FORCE(0);
       `SMU_ESRC_NOISE_FORCE(1);
@@ -534,15 +177,15 @@ module smu_wrapper_uvm_top (
   end
   `undef SMU_ESRC_NOISE_FORCE
 
-  assign drbg_seed_valid_o = u_dut.u_smu.gen_sep.u_sep.sep_crypto.u_sep_trng
+  assign drbg_seed_valid_o = u_dut.u_smu.gen_sep.u_sep.u_sep_crypto.u_sep_trng
         .u_drbg_s3c_scan.u_csrng_seed_adapter.seed_queue_valid_o;
-  assign drbg_es_ack_o = u_dut.u_smu.gen_sep.u_sep.sep_crypto.u_sep_trng
+  assign drbg_es_ack_o = u_dut.u_smu.gen_sep.u_sep.u_sep_crypto.u_sep_trng
         .u_drbg_s3c_scan.u_csrng.entropy_src_hw_if_i.es_ack;
-  assign drbg_genbits_vld_o = u_dut.u_smu.gen_sep.u_sep.sep_crypto.u_sep_trng
+  assign drbg_genbits_vld_o = u_dut.u_smu.gen_sep.u_sep.u_sep_crypto.u_sep_trng
         .u_drbg_s3c_scan.u_csrng.u_csrng_core.u_csrng_ctr_drbg.bits_vld_o;
   // Sticky capture. esrc_noise_took requires a driven 1 that the DUT node
   // actually shows: a match on 0 would also hold with the force absent.
-  always_ff @(posedge clk_smu_i or negedge rst_cold_ni) begin
+  always_ff @(posedge clk_smu or negedge rst_cold_ni) begin
     if (!rst_cold_ni) begin
       drbg_seed_valid_seen_o <= 1'b0;
       drbg_es_ack_seen_o     <= 1'b0;
@@ -573,11 +216,15 @@ module smu_wrapper_uvm_top (
   // +smc_scratch_ram_hex load, so an image placed there does not survive to
   // first fetch. Hold the FSM off whenever a test supplies such an image;
   // hw/sys/smc/dv holds it off unconditionally.
-  logic smc_disable_sram_auto_init = 1'b0;
+  // tb_smc_sram_auto_init_restore returns the input low, so a later cold reset
+  // runs the zeroing sweep over the image.
+  logic smc_scratch_preloaded = 1'b0;
+  logic smc_disable_sram_auto_init;
   initial begin : smc_scratch_preload_gates_auto_init
     string scratch_hex_path;
-    smc_disable_sram_auto_init = $value$plusargs("smc_scratch_ram_hex=%s", scratch_hex_path);
+    smc_scratch_preloaded = $value$plusargs("smc_scratch_ram_hex=%s", scratch_hex_path);
   end
+  assign smc_disable_sram_auto_init = smc_scratch_preloaded & ~tb_smc_sram_auto_init_restore;
 
   // CPU memory macros live inside smc_ip_integration, so the ROM request is
   // observed hierarchically.
@@ -597,7 +244,7 @@ module smu_wrapper_uvm_top (
   // they name that module's own signals, not anything here. ECC injection is
   // tied off: no test in this environment drives it.
   bind smc_ip_integration smc_cpu_mem_dv u_smc_cpu_mem_dv (
-    .clk_i                (clk_smc_i),
+    .clk_i                (clk_sys_o),
     .rst_ni               (rst_primary_smc_clk_ni),
     .rom_req_i            (rom_intf_req),
     .scratch_ram_req_i    (scratch_ram_intf_req),
@@ -632,6 +279,12 @@ module smu_wrapper_uvm_top (
   logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] ctp_req_in_dout_en_w, ctp_req_in_din_en_w;
   logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] ctp_ack_in_dout_en_w, ctp_ack_in_din_en_w;
   logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] ctp_ack_out_dout_en_w, ctp_ack_out_din_en_w;
+  // CT_Req_out shared-wire model: the wire each pad's DUT input sees, a
+  // private ocah_open_drain_bus per pad and one shared by the pads in
+  // tb_xtrig_ctp_wire_group.
+  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] ctp_req_out_din_w;
+  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] ctp_wire_private_w, ctp_wire_private_mismatch_w;
+  logic ctp_wire_group_wire_w, ctp_wire_group_mismatch_w;
   logic [31:0] jtag_ptap_state_w;
   logic [31:0] smu_axi_in_awvalid_count, smu_axi_out_awvalid_count;
   logic tb_axil_external_active;
@@ -660,25 +313,22 @@ module smu_wrapper_uvm_top (
   assign tb_stap_extra0_tdo     = stap_extra_tdo_w[0];
   assign tb_stap_extra0_tdo_oen = stap_extra_tdo_oen_w[0];
 
-  // ATB telemetry: the bench is the source for receiver 0 only.
+  // ATB telemetry: the bench is the source for every receiver.
   localparam int unsigned NUM_TEL = smc_config_pkg::NUM_TELEMETRY_RECEIVERS;
   telemetry_receiver_pkg::telemetry_data_t [NUM_TEL-1:0] tel_atdata_w;
   telemetry_receiver_pkg::atb_id_t         [NUM_TEL-1:0] tel_atid_w;
   logic [NUM_TEL-1:0] tel_atvalid_w, tel_afready_w, tel_atready_w, tel_afvalid_w;
 
   always_comb begin
-    tel_atdata_w     = '0;
-    tel_atid_w       = '0;
-    tel_atvalid_w    = '0;
-    tel_afready_w    = '0;
-    tel_atdata_w[0]  = tb_telemetry_atdata;
-    tel_atid_w[0]    = tb_telemetry_atid;
-    tel_atvalid_w[0] = tb_telemetry_atvalid;
-    tel_afready_w[0] = tb_telemetry_afready;
+    for (int r = 0; r < NUM_TEL; r++) begin
+      tel_atdata_w[r] = tb_telemetry_atdata[r];
+      tel_atid_w[r]   = tb_telemetry_atid[r];
+    end
   end
-
-  assign tb_telemetry_atready = tel_atready_w[0];
-  assign tb_telemetry_afvalid = tel_afvalid_w[0];
+  assign tel_atvalid_w        = tb_telemetry_atvalid;
+  assign tel_afready_w        = tb_telemetry_afready;
+  assign tb_telemetry_atready = tel_atready_w;
+  assign tb_telemetry_afvalid = tel_afvalid_w;
 
   // SMC boundary: the external interrupt vector is NUM_INT_TO_SMC wide and the
   // bench drives its low 32 lanes.
@@ -721,6 +371,42 @@ module smu_wrapper_uvm_top (
   assign tb_xtrig_ctp_req_out_dout    = ctp_req_out_dout_w;
   assign tb_xtrig_ctp_req_out_dout_en = ctp_req_out_dout_en_w;
   assign tb_xtrig_ctp_req_out_din_en  = ctp_req_out_din_en_w;
+
+  // CT_Req_out shared wires. A chiplet driver pulls towards the level
+  // opposite its wire's pull; a pad in the group leaves its private wire.
+  for (genvar ctp = 0; ctp < dtp_pkg::DEFAULT_NUM_CTP; ctp++) begin : gen_xtrig_ctp_wire
+    ocah_open_drain_bus #(
+      .NumDrivers(2)
+    ) u_wire (
+      .pull_i     (tb_xtrig_ctp_wire_pull[ctp]),
+      .dout_i     ({~tb_xtrig_ctp_wire_pull[ctp], ctp_req_out_dout_w[ctp]}),
+      .dout_en_i  ({tb_xtrig_ctp_wire_ext_assert[ctp], ctp_req_out_dout_en_w[ctp]}
+                   & {2{~tb_xtrig_ctp_wire_group[ctp]}}),
+      .wire_o     (ctp_wire_private_w[ctp]),
+      .mismatch_o (ctp_wire_private_mismatch_w[ctp])
+    );
+    assign ctp_req_out_din_w[ctp] = tb_xtrig_ctp_wire_group[ctp]
+        ? ctp_wire_group_wire_w : ctp_wire_private_w[ctp];
+    assign tb_xtrig_ctp_wire_mismatch[ctp] = tb_xtrig_ctp_wire_group[ctp]
+        ? ctp_wire_group_mismatch_w : ctp_wire_private_mismatch_w[ctp];
+    assign tb_xtrig_ctp_ct_dst[ctp] =
+        u_dut.u_smu.u_dtp.u_cross_trigger_network.gen_ext_ctp[ctp].u_ctp.ct_dst_o;
+  end
+
+  ocah_open_drain_bus #(
+    .NumDrivers(2 * dtp_pkg::DEFAULT_NUM_CTP)
+  ) u_xtrig_ctp_group_wire (
+    .pull_i     (tb_xtrig_ctp_wire_group_pull),
+    .dout_i     ({{dtp_pkg::DEFAULT_NUM_CTP{~tb_xtrig_ctp_wire_group_pull}},
+                  ctp_req_out_dout_w}),
+    .dout_en_i  ({tb_xtrig_ctp_wire_ext_assert & tb_xtrig_ctp_wire_group,
+                  ctp_req_out_dout_en_w & tb_xtrig_ctp_wire_group}),
+    .wire_o     (ctp_wire_group_wire_w),
+    .mismatch_o (ctp_wire_group_mismatch_w)
+  );
+
+  assign tb_xtrig_ctp_req_out_din = ctp_req_out_din_w;
+
   assign tb_xtrig_ctp_req_in_dout     = ctp_req_in_dout_w;
   assign tb_xtrig_ctp_req_in_dout_en  = ctp_req_in_dout_en_w;
   assign tb_xtrig_ctp_req_in_din_en   = ctp_req_in_din_en_w;
@@ -812,12 +498,12 @@ module smu_wrapper_uvm_top (
   // known req_i, then re-arm them so a later X still fails.
 `ifndef VERILATOR
   initial begin
-    $assertoff(0, u_dut.u_smc_ip_integration.u_mems.rom_mem.mem.noXOnCsI);
+    $assertoff(0, u_dut.u_smc_ip_integration.u_mems.u_rom_mem.u_mem.noXOnCsI);
     $assertoff(0, u_dut.u_sep_ip_integration.u_sep_boot_rom.noXOnCsI);
     $assertoff(0, u_dut.u_sep_ip_integration.u_km_rom.noXOnCsI);
     wait (rst_primary_smc_clk_n === 1'b1);
-    @(posedge clk_smu_i);
-    $asserton(0, u_dut.u_smc_ip_integration.u_mems.rom_mem.mem.noXOnCsI);
+    @(posedge clk_smu);
+    $asserton(0, u_dut.u_smc_ip_integration.u_mems.u_rom_mem.u_mem.noXOnCsI);
     $asserton(0, u_dut.u_sep_ip_integration.u_sep_boot_rom.noXOnCsI);
     $asserton(0, u_dut.u_sep_ip_integration.u_km_rom.noXOnCsI);
   end
@@ -832,7 +518,7 @@ module smu_wrapper_uvm_top (
   // error on VCS).
   assign obs_powergood_stable_o = u_dut.u_smu.powergood_stable;
   logic obs_powergood_stable_low_seen_q = 1'b0;
-  always @(posedge clk_ref_i) begin
+  always @(posedge clk_ref) begin
     if (!obs_powergood_stable_o) begin
       obs_powergood_stable_low_seen_q <= 1'b1;
     end
@@ -869,7 +555,7 @@ module smu_wrapper_uvm_top (
   // +skip_fuse_sense replaces the fuse-sense sequence with the shadow preload,
   // 0 whenever the sense runs -- including a build without the SIMULATION
   // define, where the plusarg has no effect at all.
-  assign sep_fuse_sense_skipped_o = u_dut.u_smu.gen_sep.u_sep.sep_crypto
+  assign sep_fuse_sense_skipped_o = u_dut.u_smu.gen_sep.u_sep.u_sep_crypto
         .u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs
         .sim_skip_fuse_sense;
 
@@ -916,13 +602,13 @@ module smu_wrapper_uvm_top (
   assign sep_debug_mode_o =
         u_dut.u_smu.gen_sep.u_sep.debug_mode_status_o;
   assign sep_cpu_rst_ni_o =
-        u_dut.u_smu.gen_sep.u_sep.sep_cpu.rst_ni;
+        u_dut.u_smu.gen_sep.u_sep.u_sep_cpu.rst_ni;
   assign sep_dbg_rstb_o =
         u_dut.u_smu.gen_sep.u_sep.dbg_rstb_i;
   assign sep_mod_rst_ni_o =
         u_dut.u_smu.gen_sep.u_sep.rst_ni;
 
-  always_ff @(posedge clk_smu_i or negedge rst_cold_ni) begin
+  always_ff @(posedge clk_smu or negedge rst_cold_ni) begin
     if (!rst_cold_ni) begin
       sep_boot_rom_req_count_o <= '0;
     end else if (u_dut.sep_boot_rom_req.req) begin
@@ -930,7 +616,7 @@ module smu_wrapper_uvm_top (
     end
   end
 
-  always_ff @(posedge u_dut.u_smu.gen_sep.u_sep.sep_cpu.clk_i or negedge rst_cold_ni) begin
+  always_ff @(posedge u_dut.u_smu.gen_sep.u_sep.u_sep_cpu.clk_i or negedge rst_cold_ni) begin
     if (!rst_cold_ni) begin
       sep_cpu_clk_count_o <= '0;
     end else begin
@@ -940,7 +626,7 @@ module smu_wrapper_uvm_top (
 
   // Capture run-gate at the SEP CPU reset 0->1 edge (EL2 samples then).
   logic sep_cpu_rst_ni_q;
-  always_ff @(posedge clk_smu_i or negedge rst_cold_ni) begin
+  always_ff @(posedge clk_smu or negedge rst_cold_ni) begin
     if (!rst_cold_ni) begin
       sep_cpu_rst_ni_q               <= 1'b0;
       sep_rungate_at_release_valid_o <= 1'b0;
@@ -958,7 +644,7 @@ module smu_wrapper_uvm_top (
     end
   end
 
-  always_ff @(posedge clk_smu_i or negedge rst_cold_ni) begin
+  always_ff @(posedge clk_smu or negedge rst_cold_ni) begin
     if (!rst_cold_ni) begin
       smc_rom_read_count_o      <= '0;
       smc_scratch_write_count_o <= '0;
@@ -983,7 +669,7 @@ module smu_wrapper_uvm_top (
   // while the Python sequence is still inside the bring-up settling wait —
   // so the fetch-window evidence must be collected in hardware from the
   // first cycle, not by polling from the sequence loop.
-  always_ff @(posedge clk_smu_i or negedge rst_cold_ni) begin
+  always_ff @(posedge clk_smu or negedge rst_cold_ni) begin
     if (!rst_cold_ni) begin
       sep_boot_rom_fetch_seen_o <= 1'b0;
       sep_iccm_fetch_seen_o     <= 1'b0;
@@ -1012,7 +698,7 @@ module smu_wrapper_uvm_top (
   // macros have no init-file hook, so the firmware images named by
   // +sep_itcm_hex / +sep_dtcm_hex are loaded here at time zero — the same
   // backdoor pattern the SEP DV TB uses (hw/sys/sep/dv/tb/tb_top.sv
-  // `BD_ICCM/`BD_DCCM), against the same `ram.ram_core` arrays.
+  // `BD_ICCM/`BD_DCCM), against the same `u_ram.ram_core` arrays.
   //
   // Geometry is fixed by the SEP EL2 config and matches fw/common/sep_tcm.ld:
   //   ICCM 256 KiB @ 0xC000_0000 = 4 banks x 16384 rows x 39b
@@ -1025,9 +711,9 @@ module smu_wrapper_uvm_top (
   localparam int unsigned SEP_DCCM_BYTES = 131072;  // 128 KiB
 
   `define SEP_BD_ICCM(b) \
-    u_dut.u_sep_ip_integration.u_sep_tcm_wrapper.gen_iccm.gen_bank[b].gen_iccm_ram.ram.ram_core
+    u_dut.u_sep_ip_integration.u_sep_tcm_wrapper.gen_iccm.gen_bank[b].gen_iccm_ram.u_ram.ram_core
   `define SEP_BD_DCCM(b) \
-    u_dut.u_sep_ip_integration.u_sep_tcm_wrapper.gen_dccm.gen_bank[b].gen_dccm_ram.ram.ram_core
+    u_dut.u_sep_ip_integration.u_sep_tcm_wrapper.gen_dccm.gen_bank[b].gen_dccm_ram.u_ram.ram_core
 
   logic [7:0] sep_itcm_buf [SEP_ICCM_BYTES];
   logic [7:0] sep_dtcm_buf [SEP_DCCM_BYTES];
@@ -1157,7 +843,7 @@ module smu_wrapper_uvm_top (
   // whatever the SEP/SMC aperture rules do not claim (smu_axi_xbar.sv:90) --
   // so the apertures are what decide whether an outbound firmware mailbox
   // write leaves the SMU or is swallowed back into sep_in.
-  always_ff @(posedge clk_smu_i or negedge rst_cold_ni) begin
+  always_ff @(posedge clk_smu or negedge rst_cold_ni) begin
     if (!rst_cold_ni) begin
       sep_ap_csr_aw_count_o  <= '0;
       sep_ap_reg0_aw_count_o <= '0;
@@ -1165,22 +851,22 @@ module smu_wrapper_uvm_top (
       sep_csr_last_aw_addr_o <= '0;
       sep_csr_errslv_aw_count_o <= '0;
     end else begin
-      if (u_dut.u_smu.gen_sep.u_sep.sep_system_peripherals.u_sep_system_csr
+      if (u_dut.u_smu.gen_sep.u_sep.u_sep_system_peripherals.u_sep_system_csr
                     .sep_system_csr_axil_reqs[sep_pkg::AP_OUTPUT_REMAP].aw_valid) begin
         sep_ap_csr_aw_count_o <= sep_ap_csr_aw_count_o + 32'd1;
       end
-      if (u_dut.u_smu.gen_sep.u_sep.sep_system_peripherals.u_sep_system_csr
+      if (u_dut.u_smu.gen_sep.u_sep.u_sep_system_peripherals.u_sep_system_csr
                     .ap_output_remap_reqs[0].aw_valid) begin
         sep_ap_reg0_aw_count_o <= sep_ap_reg0_aw_count_o + 32'd1;
       end
-      if (u_dut.u_smu.gen_sep.u_sep.sep_system_peripherals.u_sep_system_csr
+      if (u_dut.u_smu.gen_sep.u_sep.u_sep_system_peripherals.u_sep_system_csr
                     .sep_system_csr_axil_req_i.aw_valid) begin
         sep_csr_aw_count_o     <= sep_csr_aw_count_o + 32'd1;
         sep_csr_last_aw_addr_o <= 56'(u_dut.u_smu.gen_sep.u_sep
-                    .sep_system_peripherals.u_sep_system_csr
+                    .u_sep_system_peripherals.u_sep_system_csr
                     .sep_system_csr_axil_req_i.aw.addr);
       end
-      if (u_dut.u_smu.gen_sep.u_sep.sep_system_peripherals.u_sep_system_csr
+      if (u_dut.u_smu.gen_sep.u_sep.u_sep_system_peripherals.u_sep_system_csr
                     .sep_system_csr_axil_reqs[sep_pkg::ERR_SLV].aw_valid) begin
         sep_csr_errslv_aw_count_o <= sep_csr_errslv_aw_count_o + 32'd1;
       end
@@ -1188,20 +874,28 @@ module smu_wrapper_uvm_top (
   end
 
   assign sep_ap_remap_offset0_o =
-        u_dut.u_smu.gen_sep.u_sep.sep_system_peripherals.u_ap_remap.remap_table[0].offset;
+        u_dut.u_smu.gen_sep.u_sep.u_sep_system_peripherals.u_ap_remap.remap_table[0].offset;
   assign sep_stee_remap_offset0_o =
-        u_dut.u_smu.gen_sep.u_sep.sep_system_peripherals.u_stee_remap.remap_table[0].offset;
+        u_dut.u_smu.gen_sep.u_sep.u_sep_system_peripherals.u_stee_remap.remap_table[0].offset;
 
   assign sep_xbar_global_base_o = u_dut.u_smu.sep_global_base_o;
   assign sep_xbar_region_size_o = u_dut.u_smu.sep_region_size_o[31:0];
 
-  always_ff @(posedge clk_smu_i or negedge rst_cold_ni) begin
+  always_ff @(posedge clk_smu or negedge rst_cold_ni) begin
     if (!rst_cold_ni) begin
       sep_smn_out_aw_count_o <= '0;
       sep_xbar_in_aw_count_o <= '0;
       sep_xbar_in_aw_user_o  <= '0;
       sep_xbar_in_aw_addr_o  <= '0;
+      smc_xbar_in_ar_count_o <= '0;
+      smc_xbar_in_aw_count_o <= '0;
     end else begin
+      if (u_dut.u_smu.xbar_to_smc_req.ar_valid && u_dut.u_smu.xbar_to_smc_resp.ar_ready) begin
+        smc_xbar_in_ar_count_o <= smc_xbar_in_ar_count_o + 32'd1;
+      end
+      if (u_dut.u_smu.xbar_to_smc_req.aw_valid && u_dut.u_smu.xbar_to_smc_resp.aw_ready) begin
+        smc_xbar_in_aw_count_o <= smc_xbar_in_aw_count_o + 32'd1;
+      end
       if (u_dut.u_smu.gen_sep.sep_out_xbar_req.aw_valid &&
                 u_dut.u_smu.gen_sep.sep_out_xbar_resp.aw_ready) begin
         sep_smn_out_aw_count_o <= sep_smn_out_aw_count_o + 32'd1;
@@ -1255,18 +949,25 @@ module smu_wrapper_uvm_top (
   assign tb_stap_smc_trst_n  = u_dut.u_smu.dtp_smc_stap_tap_ctrl.trst_n;
   assign tb_stap_smc_tdi     = u_dut.u_smu.u_smc.smc_cpu_jtag_TDI_i;
   assign tb_stap_smc_tdo_oen = u_dut.u_smu.u_dtp.jtag_stap_smc_host_tdo_oen_o;
+  assign tb_stap_sep_tck     = u_dut.u_smu.dtp_sep_stap_tap_ctrl.tck;
+  assign tb_stap_sep_tms     = u_dut.u_smu.dtp_sep_stap_tap_ctrl.tms;
   // smu_wrapper brings out a real bidirectional pad bus -- smc_ip_integration
   // puts a prim_pad_shim on every pin -- so TB stimulus goes onto the wire
   // itself. A weak pull-down on every pad gives an idle pin a defined 0 on a
-  // four-state simulator without contending with a core output; Verilator
-  // ignores the primitive and reads an undriven pad as 0, so both simulators
-  // see the same idle bus. A pull-up would stall boot: pad 57 is the
+  // four-state simulator without contending with a core output, which the
+  // pad drives at pull strength at its default drive setting. Verilator
+  // accepts no strength on the primitive, ignores it and reads an undriven
+  // pad as 0, so both simulators see the same idle bus. A pull-up would stall boot: pad 57 is the
   // active-high boot-stall input (smc_padring: boot_stall_o =
   // lsio_pad2core_data[57]).
   for (
       genvar gpio_idx = 0; gpio_idx < smc_pkg::NUM_GPIO_WRAPS; gpio_idx++
   ) begin : gen_gpio_pad_pull
+`ifdef VERILATOR
     pulldown u_pad_pulldown (gpio_pad_io[gpio_idx]);
+`else
+    pulldown (weak0) u_pad_pulldown (gpio_pad_io[gpio_idx]);
+`endif
   end
 
   // One testbench driver per pad: the pin-0 and boot-stall straps merge into
@@ -1325,7 +1026,7 @@ module smu_wrapper_uvm_top (
     .axi_req_t  (smu_axi_xbar_pkg::axi_out_req_t),
     .axi_resp_t (smu_axi_xbar_pkg::axi_out_resp_t)
   ) u_axi_out_cut (
-    .clk_i      (clk_smu_i),
+    .clk_i      (clk_smu),
     .rst_ni     (rst_cold_n_o),
     .slv_req_i  (smu_axi_out_req),
     .slv_resp_o (smu_axi_out_resp),
@@ -1334,7 +1035,7 @@ module smu_wrapper_uvm_top (
   );
 
   ocah_axi_if u_axi_out_if (
-    .aclk    (clk_smu_i),
+    .aclk    (clk_smu),
     .aresetn (rst_cold_n_o)
   );
 
@@ -1369,7 +1070,7 @@ module smu_wrapper_uvm_top (
             ? smu_axi_out_req.w.data[63:32]
             : smu_axi_out_req.w.data[31:0];
 
-  always_ff @(posedge clk_smu_i or negedge rst_cold_n_o) begin
+  always_ff @(posedge clk_smu or negedge rst_cold_n_o) begin
     if (!rst_cold_n_o) begin
       axi_out_aw_addr_q         <= '0;
       smu_axi_out_aw_valid_seen_o  <= 1'b0;
@@ -1484,13 +1185,17 @@ module smu_wrapper_uvm_top (
   sep_pkg::sep_lockstep_ctrl_t   sep_lockstep_ctrl_i = '0;
   sep_pkg::sep_lockstep_status_t sep_lockstep_status_o;
 
+  // SEP_SEC_DISABLE_TOKEN is the metal expected digest. Product RTL defaults it
+  // to 0, which no SHA-256 output matches; the SHA-256 of the all-zero 32-byte
+  // token stands in for the metal value so a frontdoor token can take the match.
+  localparam bit [255:0] SEC_DIS_TB_DIGEST =
+      256'h66687aad_f862bd77_6c8fc18b_8e9f8e20_08971485_6ee233b3_902a591d_0d5f2925;
+
   smu_wrapper #(
-    .Cfg (SMU_CFG),
-    .SEP (SEP_ENABLED[0])
+    .Cfg                   (SMU_CFG),
+    .SEP                   (SEP_ENABLED[0]),
+    .SEP_SEC_DISABLE_TOKEN (SEC_DIS_TB_DIGEST)
   ) u_dut (
-    .clk_smu_i,
-    .clk_ref_i,
-    .clk_periph_i,
     .entropy_rosc_sample_clk_i,
     .rst_cold_ni,
     .rst_cold_stable_ref_clk_no (rst_cold_stable_ref_clk_n),
@@ -1544,7 +1249,7 @@ module smu_wrapper_uvm_top (
 
     .xtrig_ctp_req_out_dout_o (ctp_req_out_dout_w),
     .xtrig_ctp_req_out_dout_en_o (ctp_req_out_dout_en_w),
-    .xtrig_ctp_req_out_din_i (tb_xtrig_ctp_req_out_din),
+    .xtrig_ctp_req_out_din_i (ctp_req_out_din_w),
     .xtrig_ctp_req_out_din_en_o (ctp_req_out_din_en_w),
     .xtrig_ctp_req_in_dout_o (ctp_req_in_dout_w),
     .xtrig_ctp_req_in_dout_en_o (ctp_req_in_dout_en_w),
@@ -1572,7 +1277,7 @@ module smu_wrapper_uvm_top (
     .gpio_pad_io (gpio_pad_io),
     .rst_cool_n_from_pin_i (~tb_cool_reset_pin),
 
-    .clk_telemetry_i (clk_ref_i),
+    .clk_telemetry_i (clk_ref),
     .rst_telemetry_ni (rst_cold_ni),
     .telemetry_atdata_i (tel_atdata_w),
     .telemetry_atid_i (tel_atid_w),
@@ -1647,6 +1352,20 @@ module smu_wrapper_uvm_top (
     .sep_lockstep_status_o (sep_lockstep_status_o)
   );
 
+  assign clk_smu    = u_dut.clk_sys;
+  assign clk_ref    = u_dut.clk_ref;
+  assign clk_periph = u_dut.clk_periph;
+
+`ifndef UVM
+  // cocotb toggles the model oscillators through the clock inputs, with
+  // +pll_osc_bench selecting these nets over pll_wrap's own generators:
+  // under Verilator, cocotb observes the pre-edge state only on a clock its
+  // own write toggles.
+  assign u_dut.u_smc_ip_integration.u_pll_wrap.osc_ref_bench    = clk_ref_i;
+  assign u_dut.u_smc_ip_integration.u_pll_wrap.osc_sys_bench    = clk_smu_i;
+  assign u_dut.u_smc_ip_integration.u_pll_wrap.osc_periph_bench = clk_periph_i;
+`endif
+
   // ------------------------------------------------------------------
   // Functional coverage (cov/sv/): the same modules tb_top.sv carries, on
   // this bench's names, plus smu_clk_fcov, which needs the hierarchical
@@ -1655,8 +1374,9 @@ module smu_wrapper_uvm_top (
   // reads a window smu_wrapper keeps inside itself.
   // ------------------------------------------------------------------
   assign jtag_ptap_state_w = 32'(jtag_ptap_state);
+  assign tb_ptap_inst_decoded = jtag_ptap_inst_decoded;
 
-  always_ff @(posedge clk_smu_i or negedge rst_cold_ni) begin
+  always_ff @(posedge clk_smu or negedge rst_cold_ni) begin
     if (!rst_cold_ni) begin
       smu_axi_in_awvalid_count  <= '0;
       smu_axi_out_awvalid_count <= '0;
@@ -1674,8 +1394,8 @@ module smu_wrapper_uvm_top (
   smu_boot_fcov #(
     .SepPresent(SEP_PRESENT)
   ) u_smu_boot_fcov (
-    .clk_ref_i                   (clk_ref_i),
-    .clk_smu_i                   (clk_smu_i),
+    .clk_ref_i                   (clk_ref),
+    .clk_smu_i                   (clk_smu),
     .powergood_i                 (powergood_i),
     .rst_cold_ni                 (rst_cold_ni),
     .ext_boot_seq_done_i         (ext_boot_seq_done_i),
@@ -1706,7 +1426,7 @@ module smu_wrapper_uvm_top (
   smu_xbar_fcov #(
     .SepPresent(SEP_PRESENT)
   ) u_smu_xbar_fcov (
-    .clk_smu_i                (clk_smu_i),
+    .clk_smu_i                (clk_smu),
     .rst_cold_ni              (rst_cold_ni),
     .sep_global_base_i        (sep_global_base_o),
     .sep_region_size_i        (sep_region_size_o),
@@ -1735,9 +1455,9 @@ module smu_wrapper_uvm_top (
   smu_rst_fcov #(
     .SepPresent(SEP_PRESENT)
   ) u_smu_rst_fcov (
-    .clk_ref_i                   (clk_ref_i),
-    .clk_smu_i                   (clk_smu_i),
-    .clk_periph_i                (clk_periph_i),
+    .clk_ref_i                   (clk_ref),
+    .clk_smu_i                   (clk_smu),
+    .clk_periph_i                (clk_periph),
     .powergood_i                 (powergood_i),
     .rst_cold_ni                 (rst_cold_ni),
     .ext_boot_seq_done_i         (ext_boot_seq_done_i),
@@ -1762,7 +1482,7 @@ module smu_wrapper_uvm_top (
   smu_clk_fcov #(
     .SepPresent(SEP_PRESENT)
   ) u_smu_clk_fcov (
-    .clk_smu_i               (clk_smu_i),
+    .clk_smu_i               (clk_smu),
     .rst_primary_smc_clk_ni  (rst_primary_smc_clk_n_o),
     .smc_clk_i               (obs_smc_clk_o),
     .dtp_clk_i               (obs_dtp_clk_o),
@@ -1779,7 +1499,7 @@ module smu_wrapper_uvm_top (
   smu_lc_fcov #(
     .SepPresent(SEP_PRESENT)
   ) u_smu_lc_fcov (
-    .clk_smu_i                (clk_smu_i),
+    .clk_smu_i                (clk_smu),
     .rst_cold_ni              (rst_cold_ni),
     .rst_primary_smc_clk_ni   (rst_primary_smc_clk_n_o),
     .lc_state_i               (lc_state_o),
@@ -1791,7 +1511,7 @@ module smu_wrapper_uvm_top (
   );
 
   smu_dtp_fcov u_smu_dtp_fcov (
-    .clk_smu_i                  (clk_smu_i),
+    .clk_smu_i                  (clk_smu),
     .rst_cold_ni                (rst_cold_ni),
     .rst_primary_smc_clk_ni     (rst_primary_smc_clk_n_o),
     .jtag_ic_reset_ext_ovrd_i   (jtag_ic_reset_ext_ovrd),
@@ -1806,7 +1526,7 @@ module smu_wrapper_uvm_top (
   smu_ext_fcov #(
     .SepPresent(SEP_PRESENT)
   ) u_smu_ext_fcov (
-    .clk_smu_i                (clk_smu_i),
+    .clk_smu_i                (clk_smu),
     .rst_cold_ni              (rst_cold_ni),
     .rst_primary_smc_clk_ni   (rst_primary_smc_clk_n_o),
     .fuse_sense_done_i        (smc_fuse_sense_done_o),
@@ -1840,7 +1560,7 @@ module smu_wrapper_uvm_top (
   // cov/sv modules take plain wires.
   // ------------------------------------------------------------------
   smu_clkstop_fcov u_smu_clkstop_fcov (
-    .clk_smu_i               (clk_smu_i),
+    .clk_smu_i               (clk_smu),
     .rst_primary_smc_clk_ni  (rst_primary_smc_clk_n_o),
     .dtp_clk_stop_req_ext_i  (u_dut.u_smu.dtp_xtrig_clk_stop_req[8:1]),
     .jtag_clock_stop_i       (u_dut.u_smu.u_dtp.jtag_clock_stop),
@@ -1851,7 +1571,7 @@ module smu_wrapper_uvm_top (
   smu_dbg_fcov #(
     .SepPresent(SEP_PRESENT)
   ) u_smu_dbg_fcov (
-    .clk_smu_i                   (clk_smu_i),
+    .clk_smu_i                   (clk_smu),
     .rst_primary_smc_clk_ni      (rst_primary_smc_clk_n_o),
     .smc_dbg_awvalid_i           (u_dut.u_smu.dtp_axi_smc_dbg_req.aw_valid),
     .smc_dbg_arvalid_i           (u_dut.u_smu.dtp_axi_smc_dbg_req.ar_valid),
@@ -1879,13 +1599,12 @@ module smu_wrapper_uvm_top (
     .dbg_disable_sep_otp_i       (u_dut.u_smu.sep_dbg_disable.sep_otp_jtag2axi)
   );
 
-  // The SEP-to-SMC alias remap port and the crossbar SEP initiator port are
+  // The SEP-to-SMC dedicated port and the crossbar SEP initiator port are
   // inside the SEP=1 generate branch, so the no-SEP profile ties the alias
   // observation nets off and the points stay unhit there.
   logic alias_awvalid_w, alias_awready_w, alias_arvalid_w, alias_arready_w;
   logic alias_bvalid_w, alias_bready_w, alias_rvalid_w, alias_rready_w, alias_rlast_w;
   logic [55:0] alias_awaddr_w, alias_araddr_w;
-  logic [55:0] alias_remapped_awaddr_w, alias_remapped_araddr_w;
   logic xbar_sep_out_awvalid_w, xbar_sep_out_awready_w;
   logic xbar_sep_out_arvalid_w, xbar_sep_out_arready_w;
   logic [55:0] xbar_sep_out_awaddr_w, xbar_sep_out_araddr_w;
@@ -1901,8 +1620,6 @@ module smu_wrapper_uvm_top (
   assign alias_rvalid_w = u_dut.u_smu.sep_ext_to_smc_axi_resp.r_valid;
   assign alias_rready_w = u_dut.u_smu.sep_ext_to_smc_axi_req.r_ready;
   assign alias_rlast_w = u_dut.u_smu.sep_ext_to_smc_axi_resp.r.last;
-  assign alias_remapped_awaddr_w = 56'(u_dut.u_smu.sep_ext_to_smc_axi_req_local.aw.addr);
-  assign alias_remapped_araddr_w = 56'(u_dut.u_smu.sep_ext_to_smc_axi_req_local.ar.addr);
   assign xbar_sep_out_awvalid_w = u_dut.u_smu.gen_sep.sep_out_xbar_req.aw_valid;
   assign xbar_sep_out_awready_w = u_dut.u_smu.gen_sep.sep_out_xbar_resp.aw_ready;
   assign xbar_sep_out_awaddr_w = 56'(u_dut.u_smu.gen_sep.sep_out_xbar_req.aw.addr);
@@ -1914,8 +1631,10 @@ module smu_wrapper_uvm_top (
   smu_alias_fcov #(
     .SepPresent(SEP_PRESENT)
   ) u_smu_alias_fcov (
-    .clk_smu_i                 (clk_smu_i),
+    .clk_smu_i                 (clk_smu),
     .rst_primary_smc_clk_ni    (rst_primary_smc_clk_n_o),
+    .smc_global_base_i         (56'(u_dut.u_smu.smc_global_base_o)),
+    .smc_region_size_i         (u_dut.u_smu.smc_region_size_o),
     .alias_awvalid_i           (alias_awvalid_w),
     .alias_awready_i           (alias_awready_w),
     .alias_awaddr_i            (alias_awaddr_w),
@@ -1927,8 +1646,6 @@ module smu_wrapper_uvm_top (
     .alias_rvalid_i            (alias_rvalid_w),
     .alias_rready_i            (alias_rready_w),
     .alias_rlast_i             (alias_rlast_w),
-    .alias_remapped_awaddr_i   (alias_remapped_awaddr_w),
-    .alias_remapped_araddr_i   (alias_remapped_araddr_w),
     .xbar_sep_out_awvalid_i    (xbar_sep_out_awvalid_w),
     .xbar_sep_out_awready_i    (xbar_sep_out_awready_w),
     .xbar_sep_out_awaddr_i     (xbar_sep_out_awaddr_w),
@@ -1936,5 +1653,305 @@ module smu_wrapper_uvm_top (
     .xbar_sep_out_arready_i    (xbar_sep_out_arready_w),
     .xbar_sep_out_araddr_i     (xbar_sep_out_araddr_w)
   );
+
+
+`ifdef UVM
+  // ------------------------------------------------------------------
+  // SV-UVM harness (`--dut smu --framework uvm`): clocks, the shared JTAG
+  // VIP interface on the primary TAP pins, the SMU-local TB interface, the
+  // embedded DTP's TB interface (so the DTP bench's reference models and
+  // checkers attach unchanged), a passive AXI interface mirroring the DTP's
+  // SMC-fabric JTAG2AXI port, the JTAG protocol SVA, quiescent tie-offs for
+  // every other cocotb-driven stimulus pin, uvm_config_db publication of the
+  // virtual interfaces (u_axi_out_if lives above, in both shapes), and
+  // run_test(). Compiled only when the native uvm flow defines UVM; the
+  // cocotb flow sees only the ported module above.
+  // ------------------------------------------------------------------
+  import uvm_pkg::*;
+
+  smu_tb_if u_tb_if ();
+  dtp_tb_if u_dtp_tb_if ();
+  ocah_jtag_if u_jtag_if ();
+
+  // The model free-runs under SV-UVM (+pll_sys_period_ns selects the sys
+  // period; the test cfg reads the same plusarg); the bench-side clock nets
+  // mirror it. The SEP watchdog clock keeps the period the env publishes on
+  // smu_tb_if; TCK is bit-banged by the VIP driver. The ESRC sample clock
+  // stays static: no SV-UVM scenario drives the entropy stack.
+  assign clk_smu_i    = clk_smu;
+  assign clk_ref_i    = clk_ref;
+  assign clk_periph_i = clk_periph;
+  initial begin
+    clk_sep_wdt_i             = 1'b0;
+    entropy_rosc_sample_clk_i = 1'b0;
+  end
+  always #(u_tb_if.sep_wdt_clk_period_ns * 0.5ns) clk_sep_wdt_i = ~clk_sep_wdt_i;
+  assign u_tb_if.clk_smu = clk_smu_i;
+  assign u_tb_if.clk_ref = clk_ref_i;
+
+  // Power-good, cold reset, the boot-sequence gate and the GPIO boot-stall
+  // pad are test-sequenced through smu_tb_if; the reset-unit, fuse-sense,
+  // lifecycle and DTP debug-control observables are mirrored back for the
+  // sequences, the monitors and the reference models.
+  assign powergood_i             = u_tb_if.powergood;
+  assign rst_cold_ni             = u_tb_if.rst_cold_n;
+  assign ext_boot_seq_done_i     = u_tb_if.ext_boot_seq_done;
+  assign gpio_boot_stall_drive_i = u_tb_if.gpio_boot_stall_drive;
+  assign u_tb_if.rst_cold_stable_ref_clk_n    = rst_cold_stable_ref_clk_no;
+  assign u_tb_if.rst_primary_ref_clk_n        = rst_primary_ref_clk_no;
+  assign u_tb_if.rst_primary_smc_clk_n        = rst_primary_smc_clk_n_o;
+  assign u_tb_if.rst_primary_periph_clk_n     = rst_primary_periph_clk_no;
+  assign u_tb_if.fuse_sense_done              = smc_fuse_sense_done_o;
+  assign u_tb_if.fuse_reset_n_delayed         = smc_fuse_reset_n_delayed_o;
+  assign u_tb_if.lc_state                     = lc_state_o;
+  assign u_tb_if.jtag_boot_stall              = jtag_boot_stall;
+  assign u_tb_if.jtag_boot_stall_ovrd         = jtag_boot_stall_ovrd;
+  assign u_tb_if.jtag_ic_reset_ext_ovrd       = jtag_ic_reset_ext_ovrd;
+  assign u_tb_if.jtag_ic_reset_ext_ctrl_n     = jtag_ic_reset_ext_ctrl_n;
+  assign u_tb_if.jtag_ic_reset_smc_ovrd       = jtag_ic_reset_smc_ovrd;
+  assign u_tb_if.jtag_ic_reset_smc_ctrl_n     = jtag_ic_reset_smc_ctrl_n;
+  assign u_tb_if.smc_reset_ctrl_ovrd          = u_dut.u_smu.jtag_smc_reset_ctrl.ovrd;
+  assign u_tb_if.smc_reset_ctrl_val           = u_dut.u_smu.jtag_smc_reset_ctrl.val;
+  assign u_tb_if.smc_jtag2axi_security_disable = tb_smc_jtag2axi_security_disable;
+  assign u_tb_if.dtp_stop_clks                = dtp_stop_clks_o;
+
+  // Cold-reset assertion counter (reference models re-baseline on it).
+  logic [31:0] cold_rst_assert_count = '0;
+  always @(negedge rst_cold_ni) cold_rst_assert_count <= cold_rst_assert_count + 32'd1;
+  assign u_tb_if.cold_rst_assert_count = cold_rst_assert_count;
+
+  // Primary JTAG TAP: TB drives tck/tms/trst_n/tdi, DUT drives tdo/tdo_oen.
+  assign jtag_tck  = u_jtag_if.tck;
+  assign jtag_tms  = u_jtag_if.tms;
+  assign jtag_trst = u_jtag_if.trst_n;
+  assign jtag_tdi  = u_jtag_if.tdi;
+  assign u_jtag_if.tdo     = jtag_tdo;
+  assign u_jtag_if.tdo_oen = jtag_tdo_oen;
+
+  // Embedded DTP through its own TB interface, wired the way the DTP bench
+  // wires its top: the one-hot TAP state and decoded instruction the DUT
+  // exports, the assertion counters of the DTP's system and power-on
+  // resets observed on the DTP instance pins (pwr_on_rst_ni is the SMC
+  // reset unit's powergood_stable; rst_n_i is the primary smc-clock reset),
+  // and the debug-disable vector the SEP lifecycle controller hands the DTP,
+  // which gates the JTAG2AXI bridges the reference models predict.
+  logic [31:0] dtp_sys_rst_assert_count = '0;
+  logic [31:0] dtp_por_assert_count     = '0;
+  always @(negedge u_dut.u_smu.u_dtp.rst_n_i)
+    dtp_sys_rst_assert_count <= dtp_sys_rst_assert_count + 32'd1;
+  always @(negedge u_dut.u_smu.u_dtp.pwr_on_rst_ni)
+    dtp_por_assert_count <= dtp_por_assert_count + 32'd1;
+  assign u_dtp_tb_if.tap_state            = 16'(jtag_ptap_state);
+  assign u_dtp_tb_if.inst_decoded         = jtag_ptap_inst_decoded;
+  assign u_dtp_tb_if.sys_rst_assert_count = dtp_sys_rst_assert_count;
+  assign u_dtp_tb_if.por_assert_count     = dtp_por_assert_count;
+  always @* u_dtp_tb_if.drive_dbg_disable(u_dut.u_smu.sep_dbg_disable);
+
+  // Clean-room JTAG protocol SVA checker (ocah_jtag_vip/sva) on the primary
+  // TAP pins + the exported one-hot TAP state, enabled via smu_tb_if.
+  ocah_jtag_sva #(
+    .EN_STATE_RULES(1'b1)
+  ) u_jtag_ptap_sva (
+    .tck         (jtag_tck),
+    .tms         (jtag_tms),
+    .tdi         (jtag_tdi),
+    .trst_n      (jtag_trst),
+    .tdo         (jtag_tdo),
+    .tdo_oen     (jtag_tdo_oen),
+    .en_i        (u_tb_if.jtag_sva_en),
+    .tap_state_i (16'(jtag_ptap_state))
+  );
+
+  // The DTP's SMC-fabric JTAG2AXI port (smu.dtp_axi_smc_dbg_req/resp, an
+  // internal struct link), mirrored onto a shared-VIP interface the env
+  // observes with a passive monitor; nothing drives it from here. The
+  // interface keeps its default maximum widths; the env config carries the
+  // port geometry.
+  ocah_axi_if u_dtp_smc_dbg_if (
+    .aclk    (clk_smu_i),
+    .aresetn (rst_primary_smc_clk_n_o)
+  );
+  assign u_dtp_smc_dbg_if.awid     = 16'(u_dut.u_smu.dtp_axi_smc_dbg_req.aw.id);
+  assign u_dtp_smc_dbg_if.awaddr   = 64'(u_dut.u_smu.dtp_axi_smc_dbg_req.aw.addr);
+  assign u_dtp_smc_dbg_if.awlen    = u_dut.u_smu.dtp_axi_smc_dbg_req.aw.len;
+  assign u_dtp_smc_dbg_if.awsize   = u_dut.u_smu.dtp_axi_smc_dbg_req.aw.size;
+  assign u_dtp_smc_dbg_if.awburst  = u_dut.u_smu.dtp_axi_smc_dbg_req.aw.burst;
+  assign u_dtp_smc_dbg_if.awlock   = u_dut.u_smu.dtp_axi_smc_dbg_req.aw.lock;
+  assign u_dtp_smc_dbg_if.awcache  = u_dut.u_smu.dtp_axi_smc_dbg_req.aw.cache;
+  assign u_dtp_smc_dbg_if.awprot   = u_dut.u_smu.dtp_axi_smc_dbg_req.aw.prot;
+  assign u_dtp_smc_dbg_if.awqos    = u_dut.u_smu.dtp_axi_smc_dbg_req.aw.qos;
+  assign u_dtp_smc_dbg_if.awregion = u_dut.u_smu.dtp_axi_smc_dbg_req.aw.region;
+  assign u_dtp_smc_dbg_if.awuser   = 16'(u_dut.u_smu.dtp_axi_smc_dbg_req.aw.user);
+  assign u_dtp_smc_dbg_if.awvalid  = u_dut.u_smu.dtp_axi_smc_dbg_req.aw_valid;
+  assign u_dtp_smc_dbg_if.awready  = u_dut.u_smu.dtp_axi_smc_dbg_resp.aw_ready;
+  assign u_dtp_smc_dbg_if.wdata    = u_dut.u_smu.dtp_axi_smc_dbg_req.w.data;
+  assign u_dtp_smc_dbg_if.wstrb    = u_dut.u_smu.dtp_axi_smc_dbg_req.w.strb;
+  assign u_dtp_smc_dbg_if.wlast    = u_dut.u_smu.dtp_axi_smc_dbg_req.w.last;
+  assign u_dtp_smc_dbg_if.wuser    = 16'(u_dut.u_smu.dtp_axi_smc_dbg_req.w.user);
+  assign u_dtp_smc_dbg_if.wvalid   = u_dut.u_smu.dtp_axi_smc_dbg_req.w_valid;
+  assign u_dtp_smc_dbg_if.wready   = u_dut.u_smu.dtp_axi_smc_dbg_resp.w_ready;
+  assign u_dtp_smc_dbg_if.bid      = 16'(u_dut.u_smu.dtp_axi_smc_dbg_resp.b.id);
+  assign u_dtp_smc_dbg_if.bresp    = u_dut.u_smu.dtp_axi_smc_dbg_resp.b.resp;
+  assign u_dtp_smc_dbg_if.buser    = 16'(u_dut.u_smu.dtp_axi_smc_dbg_resp.b.user);
+  assign u_dtp_smc_dbg_if.bvalid   = u_dut.u_smu.dtp_axi_smc_dbg_resp.b_valid;
+  assign u_dtp_smc_dbg_if.bready   = u_dut.u_smu.dtp_axi_smc_dbg_req.b_ready;
+  assign u_dtp_smc_dbg_if.arid     = 16'(u_dut.u_smu.dtp_axi_smc_dbg_req.ar.id);
+  assign u_dtp_smc_dbg_if.araddr   = 64'(u_dut.u_smu.dtp_axi_smc_dbg_req.ar.addr);
+  assign u_dtp_smc_dbg_if.arlen    = u_dut.u_smu.dtp_axi_smc_dbg_req.ar.len;
+  assign u_dtp_smc_dbg_if.arsize   = u_dut.u_smu.dtp_axi_smc_dbg_req.ar.size;
+  assign u_dtp_smc_dbg_if.arburst  = u_dut.u_smu.dtp_axi_smc_dbg_req.ar.burst;
+  assign u_dtp_smc_dbg_if.arlock   = u_dut.u_smu.dtp_axi_smc_dbg_req.ar.lock;
+  assign u_dtp_smc_dbg_if.arcache  = u_dut.u_smu.dtp_axi_smc_dbg_req.ar.cache;
+  assign u_dtp_smc_dbg_if.arprot   = u_dut.u_smu.dtp_axi_smc_dbg_req.ar.prot;
+  assign u_dtp_smc_dbg_if.arqos    = u_dut.u_smu.dtp_axi_smc_dbg_req.ar.qos;
+  assign u_dtp_smc_dbg_if.arregion = u_dut.u_smu.dtp_axi_smc_dbg_req.ar.region;
+  assign u_dtp_smc_dbg_if.aruser   = 16'(u_dut.u_smu.dtp_axi_smc_dbg_req.ar.user);
+  assign u_dtp_smc_dbg_if.arvalid  = u_dut.u_smu.dtp_axi_smc_dbg_req.ar_valid;
+  assign u_dtp_smc_dbg_if.arready  = u_dut.u_smu.dtp_axi_smc_dbg_resp.ar_ready;
+  assign u_dtp_smc_dbg_if.rid      = 16'(u_dut.u_smu.dtp_axi_smc_dbg_resp.r.id);
+  assign u_dtp_smc_dbg_if.rdata    = u_dut.u_smu.dtp_axi_smc_dbg_resp.r.data;
+  assign u_dtp_smc_dbg_if.rresp    = u_dut.u_smu.dtp_axi_smc_dbg_resp.r.resp;
+  assign u_dtp_smc_dbg_if.rlast    = u_dut.u_smu.dtp_axi_smc_dbg_resp.r.last;
+  assign u_dtp_smc_dbg_if.ruser    = 16'(u_dut.u_smu.dtp_axi_smc_dbg_resp.r.user);
+  assign u_dtp_smc_dbg_if.rvalid   = u_dut.u_smu.dtp_axi_smc_dbg_resp.r_valid;
+  assign u_dtp_smc_dbg_if.rready   = u_dut.u_smu.dtp_axi_smc_dbg_req.r_ready;
+
+  // ------------------------------------------------------------------
+  // Quiescent tie-offs: every other cocotb-driven stimulus pin at the idle
+  // value the cocotb smu_base_test bring-up sets (drive_idle_inputs). A
+  // scenario that needs one of these pins promotes it into smu_tb_if;
+  // nothing here is driven from class code.
+  // ------------------------------------------------------------------
+
+  // ESRC raw noise quiet (no entropy scenario in this shape).
+  assign esrc_noise_ext_i = '0;
+
+  // External SMN AXI4 ingress: no initiator attached, request side idle
+  // (single-beat INCR shape, no valids, no readies).
+  assign ext_in_awvalid  = 1'b0;
+  assign ext_in_awid     = '0;
+  assign ext_in_awaddr   = '0;
+  assign ext_in_awlen    = '0;
+  assign ext_in_awsize   = 3'd3;
+  assign ext_in_awburst  = 2'b01;
+  assign ext_in_awuser   = '0;
+  assign ext_in_awlock   = 1'b0;
+  assign ext_in_awcache  = '0;
+  assign ext_in_awprot   = '0;
+  assign ext_in_awqos    = '0;
+  assign ext_in_awregion = '0;
+  assign ext_in_wuser    = '0;
+  assign ext_in_wvalid   = 1'b0;
+  assign ext_in_wdata    = '0;
+  assign ext_in_wstrb    = '0;
+  assign ext_in_wlast    = 1'b1;
+  assign ext_in_bready   = 1'b0;
+  assign ext_in_arvalid  = 1'b0;
+  assign ext_in_arid     = '0;
+  assign ext_in_araddr   = '0;
+  assign ext_in_arlen    = '0;
+  assign ext_in_arsize   = 3'd3;
+  assign ext_in_arburst  = 2'b01;
+  assign ext_in_aruser   = '0;
+  assign ext_in_arlock   = 1'b0;
+  assign ext_in_arcache  = '0;
+  assign ext_in_arprot   = '0;
+  assign ext_in_arqos    = '0;
+  assign ext_in_arregion = '0;
+  assign ext_in_rready   = 1'b0;
+
+  // Cross-trigger CTM loopback and clock-stop requests idle.
+  assign xtrig_ctm_dst_req  = '0;
+  assign xtrig_ctm_src_ack  = '0;
+  assign xtrig_clk_stop_req = 1'b0;
+
+  // Telemetry ATB channel 0 idle.
+  assign tb_telemetry_atdata  = '0;
+  assign tb_telemetry_atid    = '0;
+  assign tb_telemetry_atvalid = '0;
+  assign tb_telemetry_afready = '0;
+
+  // SMC boundary controls idle.
+  assign tb_smc_ext_interrupts   = '0;
+  assign tb_smc_ndmreset_request = '0;
+  assign tb_cfg_flr_pf_active    = 1'b0;
+  assign tb_mem_repair_abort     = 1'b0;
+  assign tb_mbist_abort          = 1'b0;
+  assign tb_mem_repair_hold      = 1'b0;
+  assign tb_mbist_hold           = 1'b0;
+  assign tb_ss_reset_incomplete  = '0;
+  assign tb_chiplet_secondary    = 1'b0;
+  assign tb_cool_reset_pin       = 1'b0;
+  assign tb_secure_tm_req        = 1'b0;
+  assign tb_smc_sram_auto_init_restore = 1'b0;
+
+  // GPIO pads undriven by the bench (the boot-stall pad follows smu_tb_if).
+  assign tb_gpio0_drive_en  = 1'b0;
+  assign tb_gpio0_drive_val = 1'b0;
+  assign tb_gpio_drive_en   = '0;
+  assign tb_gpio_drive_val  = '0;
+
+  // CT_Req_out wire-OR board: every private wire and the group wire rest
+  // at the pull-up of the reset-default INVERT=0, no chiplet pulling.
+  assign tb_xtrig_ctp_wire_pull       = '1;
+  assign tb_xtrig_ctp_wire_ext_assert = '0;
+  assign tb_xtrig_ctp_wire_group      = '0;
+  assign tb_xtrig_ctp_wire_group_pull = 1'b1;
+  assign tb_xtrig_ctp_req_in_din      = '0;
+  assign tb_xtrig_ctp_ack_in_din      = '0;
+
+  // Under UVM the simulator reports an assertion failure through the UVM
+  // report server, where it counts as an error of the run, so the SEP checks
+  // the cocotb flow ignores through [pass_fail] in smu_sim_cfg.toml are held
+  // off here by the same names: the entropy source and the EDN endpoints, the
+  // key manager, the secure DMA and its alert receivers (blocks the wrapper
+  // leaves never program), the SPI host for the first microsecond of X before
+  // its reset completes, the ValidDigestModeFlag_A of the SHA-256-only
+  // prim_sha2_32 instances of the eFuse token processing, and otbn_rnd's
+  // UrndNoReseedOnReset_A. Every other SEP assertion fails the run.
+  `define SMU_TB_SEP u_dut.u_smu.gen_sep.u_sep
+  `define SMU_TB_SEP_TOKEN_SHA(inst) \
+    `SMU_TB_SEP.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller \
+    .gen_mmr_reg.u_efuse_token_processing.inst.u_prim_sha2_32.gen_sha256_logic.u_prim_sha2_256
+  initial begin
+    $assertoff(0, `SMU_TB_SEP.u_sep_crypto.u_sep_trng);
+    $assertoff(0, `SMU_TB_SEP.u_sep_crypto.u_axis_edn_crypto_s3c_scan);
+    $assertoff(0, `SMU_TB_SEP.u_sep_crypto.u_axis_edn_pool_s3c_scan);
+    $assertoff(0, `SMU_TB_SEP.u_sep_crypto.u_key_manager_s3c_scan);
+    $assertoff(0, `SMU_TB_SEP.u_sep_dma_wrap.u_secure_dma);
+    $assertoff(0, `SMU_TB_SEP_TOKEN_SHA(u_sha256_rma_sip_token).ValidDigestModeFlag_A);
+    $assertoff(0, `SMU_TB_SEP_TOKEN_SHA(u_sha256_rma_sip_token).u_pad.ValidDigestModeFlag_A);
+    $assertoff(0, `SMU_TB_SEP_TOKEN_SHA(u_sha256_rma_chiplet_token).ValidDigestModeFlag_A);
+    $assertoff(0, `SMU_TB_SEP_TOKEN_SHA(u_sha256_rma_chiplet_token).u_pad.ValidDigestModeFlag_A);
+    $assertoff(0, `SMU_TB_SEP_TOKEN_SHA(u_sha256_sec_disable_token).ValidDigestModeFlag_A);
+    $assertoff(0, `SMU_TB_SEP_TOKEN_SHA(u_sha256_sec_disable_token).u_pad.ValidDigestModeFlag_A);
+    $assertoff(0, `SMU_TB_SEP.u_sep_crypto.u_sep_crypto_otbn_wrapper_s3c_scan.u_otbn.u_otbn_core
+                  .u_otbn_rnd.UrndNoReseedOnReset_A);
+    $assertoff(0, `SMU_TB_SEP.u_sep_io.u_sep_ot_spi_wrap.u_spi_host);
+    #1us;
+    $asserton(0, `SMU_TB_SEP.u_sep_io.u_sep_ot_spi_wrap.u_spi_host);
+  end
+  for (genvar i = 0; i < secure_dma_reg_pkg::NumAlerts; i++) begin : gen_sep_dma_alert_off
+    initial $assertoff(0, `SMU_TB_SEP.u_sep_dma_wrap.gen_alert_receivers[i].u_alert_receiver);
+  end
+  `undef SMU_TB_SEP_TOKEN_SHA
+  `undef SMU_TB_SEP
+
+  // Test classes (one per scenario) and the base test.
+  `include "smu_tests.sv"
+
+  initial begin
+    uvm_config_db#(virtual smu_tb_if)::set(null, "*", "tb_vif", u_tb_if);
+    uvm_config_db#(virtual dtp_tb_if)::set(null, "*", "dtp_tb_vif", u_dtp_tb_if);
+    uvm_config_db#(virtual ocah_jtag_if)::set(null, "*", "jtag_vif", u_jtag_if);
+    uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "axi_out_vif", u_axi_out_if);
+    uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "dtp_smc_dbg_vif", u_dtp_smc_dbg_if);
+    run_test();
+  end
+`endif
+
+  assign clk_smu_o    = clk_smu;
+  assign clk_ref_o    = clk_ref;
+  assign clk_periph_o = clk_periph;
 
 endmodule : smu_wrapper_uvm_top

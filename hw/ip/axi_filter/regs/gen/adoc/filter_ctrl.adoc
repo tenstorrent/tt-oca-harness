@@ -1,20 +1,32 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-filter_ctrl]
+== AXI Filter Control Address Map
+
+Per-filter access-control registers defining permitted address ranges and transaction attributes.
+
 [cols="1,4,1,6", options="header"]
-.Register Map
 |===
 | Address | Name | Access | Description
-| 0x0 | FILTER_CONFIG | RW a| -
-| 0x8 | START_ADDR | RW a| -
-| 0x10 | END_ADDR | RW a| -
+| 0x0 | <<reg-{regmap-instance}-filter_ctrl-FILTER_CONFIG,FILTER_CONFIG>> | RW a| -
+| 0x8 | <<reg-{regmap-instance}-filter_ctrl-START_ADDR,START_ADDR>> | RW a| -
+| 0x10 | <<reg-{regmap-instance}-filter_ctrl-END_ADDR,END_ADDR>> | RW a| -
 |===
 
+[#reg-{regmap-instance}-filter_ctrl-FILTER_CONFIG]
+=== FILTER_CONFIG
+
 [cols="1,3,1,1,6", options="header"]
-.FILTER_CONFIG Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63 | `locked` | RW | 0x0 a| Lock filter configurations. Write once register
+| 63 | `locked` | RW1S | 0x0 a| Lock filter configurations. Write once register.
+Once set, this bit cannot be cleared, and every subsequent write to this
+filter entry's FILTER_CONFIG, START_ADDR and END_ADDR registers is steered
+to the AXI error subordinate and terminates with a DECERR response; reads
+still return the locked configuration.
 | 62:25 | `Reserved` | - | - a| Reserved
 | 24 | `allow_burst` | RW | 0x0 a| Filter entry will match if this field is 1 or if this field is 0 and the burst len AxLEN is 0.
 This field also selects the granule of the address range: 4KB when it is 1,
@@ -39,8 +51,10 @@ Filter entry will match if AxPROT[1] matches the value in this field
 | 0 | `read_allowed` | RW | 0x0 a| Upon match of transaction to filter fields, whether the transaction has read permissions
 |===
 
+[#reg-{regmap-instance}-filter_ctrl-START_ADDR]
+=== START_ADDR
+
 [cols="1,3,1,1,6", options="header"]
-.START_ADDR Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:56 | `Reserved` | - | - a| Reserved
@@ -55,8 +69,10 @@ land in the same granule; otherwise readback returns the programmed values even 
 matching is still granule-aligned.
 |===
 
+[#reg-{regmap-instance}-filter_ctrl-END_ADDR]
+=== END_ADDR
+
 [cols="1,3,1,1,6", options="header"]
-.END_ADDR Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:56 | `Reserved` | - | - a| Reserved

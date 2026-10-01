@@ -2,9 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * Basic Read/Write Test Module
- *
- * Tests for basic READ/WRITE operations with different data sizes
+ * Writes and reads back 8-, 4- and 1-byte values over OCCP and compares the data.
  */
 
 #include "occp_test_common.h"
@@ -15,7 +13,6 @@ bool run_basic_rw_tests(test_context_t *ctx) {
 
     simputs("=== Basic READ/WRITE Tests ===\n");
 
-    // Test 5a: 8-byte aligned write/read
     uint64_t data64 = 0xdeadbeefcafeb0ba;
     uint64_t recv_data64 = 0;
     simputs("Test 5a: 8-byte aligned write/read\n");
@@ -34,7 +31,6 @@ bool run_basic_rw_tests(test_context_t *ctx) {
         simputshex64("Received: ", recv_data64);
     }
 
-    // Test 5b: 4-byte write/read
     uint32_t data32 = 0x12345678;
     uint32_t recv_data32 = 0;
     const uint64_t test_addr32 = ctx->test_base_addr + 0x100;
@@ -54,7 +50,6 @@ bool run_basic_rw_tests(test_context_t *ctx) {
         simputshex32("Received: ", recv_data32);
     }
 
-    // Test 5c: Single byte write/read
     uint8_t data8 = 0xAB;
     uint8_t recv_data8 = 0;
     const uint64_t test_addr8 = ctx->test_base_addr + 0x200;

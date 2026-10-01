@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 {
   stdenv,
   fetchFromGitHub,
@@ -63,13 +65,14 @@ in
 
     installPhase = ''
       runHook preInstall
-      mkdir -p $out
+      mkdir -p $out/whisper $out/bin
       for f in $(find build-Linux virtual_memory iommu aplic imsic pci trace-reader third_party -name '*.a' 2>/dev/null); do
-        install -Dm644 "$f" "$out/$f"
+        install -Dm644 "$f" "$out/whisper/$f"
       done
       for f in $(find . -name '*.hpp' 2>/dev/null); do
-        install -Dm644 "$f" "$out/$f"
+        install -Dm644 "$f" "$out/whisper/$f"
       done
+      install -Dm755 build-Linux/whisper $out/bin/whisper
       runHook postInstall
     '';
   }

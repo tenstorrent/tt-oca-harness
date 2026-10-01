@@ -3,10 +3,10 @@
 
 # SMC DV firmware toolchain settings.
 #
-# Target CPU: Rocket (RV64GC + Zb*/Zihpm), lp64d ABI, medany code model.
+# Target CPU: Rocket (RV64GC + Zba/Zbb/Zbs/Zihpm), lp64d ABI, medany code model.
 # picolibc via --specs=picolibc.specs (Docker toolchain). Uses the SiFive Freedom
 # Metal HAL + generated BSP (copied in-tree).
-FW_ARCH ?= rv64imafdczicsr_zba_zbb_zbc_zbs_zifencei_zihpm
+FW_ARCH ?= rv64imafdczicsr_zba_zbb_zbs_zifencei_zihpm
 FW_ABI  ?= lp64d
 FW_TUNE ?= -mtune=rocket
 # FW_PICOLIBC_SPECS defaults to picolibc.specs in the shared engine (compile.mk).

@@ -4,13 +4,18 @@
 
 from __future__ import annotations
 
-from env.dtp_tap_device import DTP_NUM_CLK_STOP_REQ
+from env.dtp_dv_cfg import DTP_NUM_CLK_STOP_REQ
 
 from .dtp_debug_tdr_base_test_seq import dtp_debug_tdr_base_test_seq
 
 
 class dtp_dbg_ctrl_clk_stop_random_clock_stop_test_seq(dtp_debug_tdr_base_test_seq):
-    """Check directed and randomized DEBUG_CONTROL clock-stop combinations."""
+    """Check directed and randomized DEBUG_CONTROL clock-stop combinations.
+
+    A seeded request walk first counts one ``stop_clks`` change per change of
+    the request OR, and across the pass no ``stop_clks`` change falls off a
+    clk_i rising edge (``CHK-DBG-STOP-EDGE``).
+    """
 
     async def check_combo(
         self,
@@ -57,14 +62,18 @@ class dtp_dbg_ctrl_clk_stop_random_clock_stop_test_seq(dtp_debug_tdr_base_test_s
     async def body(self) -> None:
         self.log_banner("DEBUG_CONTROL Random Clock Stop")
         await self.attach_family_checker(
-            {"CHK-TAP-RESET-TLR", "CHK-DBG-TDR", "CHK-DBG-PIN"}, use_monitor=False
+            {"CHK-TAP-RESET-TLR", "CHK-DBG-TDR", "CHK-DBG-PIN", "CHK-DBG-STOP-EDGE"},
         )
+        _, off_edge_start = self.stop_clks_counts()
 
         self.log_step(1, "Reset TAP and create deterministic RNG")
         await self.reset_to_tlr()
         rng = self.rng("dbg_ctrl_random_clock_stop")
 
-        self.log_step(2, "Run deterministic per-request and all-control sweep")
+        self.log_step(2, "Walk seeded request vectors with DEBUG_CONTROL cleared")
+        await self.check_stop_clks_walk(self.rng("stop_clks_walk"))
+
+        self.log_step(3, "Run deterministic per-request and all-control sweep")
         directed_req_values = [0]
         directed_req_values += [1 << idx for idx in range(DTP_NUM_CLK_STOP_REQ)]
         directed_req_values += [
@@ -94,7 +103,7 @@ class dtp_dbg_ctrl_clk_stop_random_clock_stop_test_seq(dtp_debug_tdr_base_test_s
                         context=f"directed#{iteration}",
                     )
 
-        self.log_step(3, "Run seeded random clock-stop combinations")
+        self.log_step(4, "Run seeded random clock-stop combinations")
         for idx in range(1, self.random_count + 1):
             jtag_clock_stop = rng.randint(0, 1)
             cla_clock_stop_en = rng.randint(0, 1)
@@ -114,11 +123,12 @@ class dtp_dbg_ctrl_clk_stop_random_clock_stop_test_seq(dtp_debug_tdr_base_test_s
                 context=f"random#{idx}",
             )
 
-        self.log_step(4, "Cleanup clock-stop request and DEBUG_CONTROL")
+        self.log_step(5, "Cleanup clock-stop request and DEBUG_CONTROL")
         await self.set_clk_stop_requests(0)
         await self.write_debug_control(0)
         await self.wait_sys_cycles()
         await self.wait_for_signal_value("stop_clks", 0, context="cleanup")
+        self.check_stop_clks_off_edge(off_edge_start, context="whole pass")
         self.log_summary(
             "Random clock-stop complete",
             directed_iterations=total_directed,

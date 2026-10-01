@@ -24,6 +24,7 @@ class dtp_ijtag_scan_test_seq(dtp_scan_base_test_seq):
     REQUIRED_IDS = frozenset(
         {"CHK-TAP-RESET-TLR", "CHK-SCAN-WIN", "CHK-SCAN-LEN", "CHK-SCAN-CHAIN"}
     )
+    SCENARIO_REQUIRED_IDS = {"sib_all_on": frozenset({"CHK-SCAN-RESET"})}
 
     async def check_stored_sib_across_gate(
         self, sib: str, open_pattern: int, *, context: str
@@ -33,11 +34,14 @@ class dtp_ijtag_scan_test_seq(dtp_scan_base_test_seq):
         disable_field = IJTAG_SIB_DISABLE[sib]
         # Baseline: everything enabled, all SIBs closed.
         await self.check_pattern(0b000, context=f"{context}.baseline")
-        # Attempt to open the target SIB while its disable is asserted.
-        await self.set_dbg_disable_vector({disable_field: 1})
-        await self.program_ijtag_sibs(
+        # Attempt to open the target SIB while its disable is asserted: its
+        # four scan controls stay quiet across the whole attempt.
+        gate = {disable_field: 1}
+        await self.set_dbg_disable_vector(gate)
+        await self.program_ijtag_sibs_quiet(
             open_pattern,
-            dbg_disable={disable_field: 1},
+            dbg_disable=gate,
+            quiet=self.ijtag_gated_controls(gate),
             context=f"{context}.gated_open_attempt",
         )
         # Release the disable without any reset: the gated open attempt must
@@ -54,7 +58,8 @@ class dtp_ijtag_scan_test_seq(dtp_scan_base_test_seq):
 
     async def body(self) -> None:
         # Scenario-owned Shift-x exits: skip the scan-count cross-check.
-        await self.attach_family_checker(set(self.REQUIRED_IDS), use_monitor=False)
+        required = set(self.REQUIRED_IDS) | self.SCENARIO_REQUIRED_IDS.get(self.scenario, set())
+        await self.attach_family_checker(required, use_monitor=False)
         await self.enable_all_debug()
         await self.reset_to_tlr()
         await self.enable_all_debug()
@@ -109,16 +114,20 @@ class dtp_ijtag_scan_test_seq(dtp_scan_base_test_seq):
 
     async def run_sib_all_on(self) -> None:
         self.log_banner("iJTAG SIB all-on")
+        self.check_host_scan_out_reset(context="all_on.reset")
         await self.check_pattern(0b111, context="all_on.nominal")
         gate_vectors = [
             ("secure", 0b111, {"dft_secure": 1}),
             ("nonsecure", 0b111, {"dft_nonsecure": 1}),
             ("dfd", 0b111, {"dfd": 1}),
+            ("all", 0b111, {"dft_secure": 1, "dft_nonsecure": 1, "dfd": 1}),
         ]
         # Seeded per-pass order: each loop exercises a different gate sequence.
         self.rng("ijtag_all_on_order").shuffle(gate_vectors)
         for label, pattern, dbg in gate_vectors:
             await self.check_pattern(pattern, dbg_disable=dbg, context=f"all_on.gated.{label}")
+        # Full chain and scan controls again once every disable is clear.
+        await self.check_pattern(0b111, context="all_on.restore")
         self.log_summary("iJTAG all-on", gate_vectors=len(gate_vectors))
 
     async def run_sib_random(self) -> None:
@@ -143,6 +152,7 @@ class dtp_ijtag_scan_test_seq(dtp_scan_base_test_seq):
         self.log_banner("iJTAG DFT secure/non-secure access")
         await self.check_pattern(0b010, context="dft.nonsecure_only")
         await self.check_pattern(0b100, context="dft.secure_only")
+        await self.check_pattern(0b110, context="dft.parallel")
         gate_cases = [
             ("secure_gated", 0b100, {"dft_secure": 1}),
             ("nonsecure_gated", 0b010, {"dft_nonsecure": 1}),

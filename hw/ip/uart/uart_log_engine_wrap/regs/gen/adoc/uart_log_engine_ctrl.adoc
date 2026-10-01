@@ -1,15 +1,23 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-uart_log_engine_ctrl]
+== UART Log Engine Control Address Map
+
+Top-level enable register for the UART log-engine block.
+
 [cols="1,4,1,6", options="header"]
-.Register Map
 |===
 | Address | Name | Access | Description
-| 0x0 | CTRL | RW a| Control Register
+| 0x0 | <<reg-{regmap-instance}-uart_log_engine_ctrl-CTRL,CTRL>> | RW a| Control Register
 |===
 
+[#reg-{regmap-instance}-uart_log_engine_ctrl-CTRL]
+=== CTRL
+
 [cols="1,3,1,1,6", options="header"]
-.CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `Reserved` | - | - a| Reserved

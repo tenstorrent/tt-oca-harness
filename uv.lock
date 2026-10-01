@@ -747,6 +747,18 @@ wheels = [
 ]
 
 [[package]]
+name = "pexpect"
+version = "4.9.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "ptyprocess" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/42/92/cc564bf6381ff43ce1f4d06852fc19a2f11d180f23dc32d9588bee2f149d/pexpect-4.9.0.tar.gz", hash = "sha256:ee7d41123f3c9911050ea2c2dac107568dc43b2d3b0c7557a33212c398ead30f", size = 166450, upload-time = "2023-11-25T09:07:26.339Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9e/c3/059298687310d527a58bb01f3b1965787ee3b40dce76752eda8b44e9a2c5/pexpect-4.9.0-py2.py3-none-any.whl", hash = "sha256:7236d1e080e4936be2dc3e326cec0af72acf9212a7e1d060210e70a47e253523", size = 63772, upload-time = "2023-11-25T06:56:14.81Z" },
+]
+
+[[package]]
 name = "platformdirs"
 version = "4.11.5"
 source = { registry = "https://pypi.org/simple" }
@@ -790,6 +802,15 @@ wheels = [
 ]
 
 [[package]]
+name = "ptyprocess"
+version = "0.7.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/20/e5/16ff212c1e452235a90aeb09066144d0c5a6a8c0834397e03f5224495c4e/ptyprocess-0.7.0.tar.gz", hash = "sha256:5c5d0a3b48ceee0b48485e0c26037c0acd7d29765ca3fbb5cb3831d347423220", size = 70762, upload-time = "2020-12-28T15:15:30.155Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/22/a6/858897256d0deac81a172289110f31629fc4cee19b6f01283303e18c8db3/ptyprocess-0.7.0-py2.py3-none-any.whl", hash = "sha256:4b41f3967fce3af57cc7e94b888626c18bf37a083e3651ca8feeb66d492fef35", size = 13993, upload-time = "2020-12-28T15:15:28.35Z" },
+]
+
+[[package]]
 name = "py-markdown-table"
 version = "1.3.0"
 source = { registry = "https://pypi.org/simple" }
@@ -823,6 +844,29 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/49/2e/ced460408999b33da6b31b0021b0f37d329e202d4169aeb164493778f25b/pygments-2.21.0.tar.gz", hash = "sha256:610ca751c9bc2492b38eb9a38a7fbc93edbbb2d7182edaf34e66ae493dee5c8c", size = 5005329, upload-time = "2026-08-17T08:02:48.824Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/71/46/17f022dd3e953bf20a04a028a21ec746d942f8d2af30fa0f124fa0e6a684/pygments-2.21.0-py3-none-any.whl", hash = "sha256:2363c69b61c4a97c838da3b130dcd6468f4848992b21a82f2a63ec34377137d9", size = 1250147, upload-time = "2026-08-17T08:02:44.912Z" },
+]
+
+[[package]]
+name = "pyslang"
+version = "11.0.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/36/8d/65400aa82cea1e48de2b9992b0470a30ea9626956b196fa45d4cf5cdce5e/pyslang-11.0.0.tar.gz", hash = "sha256:9736e6faa048a3d06c5c9cd795b540ee24a6053d337428a66a62194b3256829d", size = 1909069, upload-time = "2026-05-15T14:56:55.703Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c8/26/0a05a90ba416630cf3f7e35fb1b609ad6ddb94ef81ea8d6e61accd8f97e9/pyslang-11.0.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:cb606836aa2803467efa5a2986cdc43f32c15d93315cf79d76eb3fb21eb64913", size = 4615607, upload-time = "2026-05-15T14:55:50.904Z" },
+    { url = "https://files.pythonhosted.org/packages/2c/b9/16fbf7e9146c1c715f6196c54a3ca3d403eec7c3fadd8118c8f535ee1f24/pyslang-11.0.0-cp311-cp311-macosx_11_0_universal2.whl", hash = "sha256:7661017eac6ff745e7e78d223d89f75b78c388e8fd5be76e217c6f3daed873b1", size = 9405896, upload-time = "2026-05-15T14:55:53.282Z" },
+    { url = "https://files.pythonhosted.org/packages/a5/2b/4eec4b539dcbc65ba2847036135a1bc034dadad42007fc2d04ed58f4228d/pyslang-11.0.0-cp311-cp311-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:9c1df12ec9d2988d138ccf6a40f99ef8e6f3c44e79e64487f3a06deb7e4ca55a", size = 5830374, upload-time = "2026-05-15T14:55:55.414Z" },
+    { url = "https://files.pythonhosted.org/packages/ac/bc/a8830bdbbe30ac04b8a545c5e630707c99da3bed348ea8a96d2591e7e79d/pyslang-11.0.0-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:b0ddf4fa29b72e0386d43863c4e7b5d53a4b0e5db6f7038c0f47f2e3e97a88bc", size = 6530751, upload-time = "2026-05-15T14:55:57.234Z" },
+    { url = "https://files.pythonhosted.org/packages/39/6e/b3ad1b30f430613b4a52aae236c38f293384a505401d7823aaa438fe32bb/pyslang-11.0.0-cp311-cp311-win_amd64.whl", hash = "sha256:308271e5fb1879a948d57048b212d46e5ac30a6aeaf7be57e1677553985d01ea", size = 3514203, upload-time = "2026-05-15T14:56:04.483Z" },
+    { url = "https://files.pythonhosted.org/packages/c3/ca/72c9a1274b011877b4f3ff21b826ff7ccdb13d5c00cba9ae4aaaa9487397/pyslang-11.0.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:2b00884371a212389c8563718fb9cf842ce7afd8f1cd41562f4ea5ef9f1bfb78", size = 4639310, upload-time = "2026-05-15T14:56:06.065Z" },
+    { url = "https://files.pythonhosted.org/packages/b4/70/63afac025096726d10e18ceb19e8cc1234389e84490842183a39db6c1c3f/pyslang-11.0.0-cp312-cp312-macosx_11_0_universal2.whl", hash = "sha256:fc2698f975f20cac92ae1ade73ee42db22118f4478df989b5443804412e0b623", size = 9492684, upload-time = "2026-05-15T14:56:07.728Z" },
+    { url = "https://files.pythonhosted.org/packages/7a/30/ae64437946a95e0d8fdb8ab0643b8466a72c82ac375ccf154623448c98bd/pyslang-11.0.0-cp312-cp312-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:0b20de10b0a38b7a6907b7cbe3a0b3f9a2dadb0594bc22d44bbc06f2f4900a02", size = 5834395, upload-time = "2026-05-15T14:56:09.749Z" },
+    { url = "https://files.pythonhosted.org/packages/77/29/c677c2b3f7b3b8dfe19341849afb8fda288f7a984df1a8bd4ad04d58560f/pyslang-11.0.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:a964ac225b5f3e92a57459673c17634884184ae3091a76f8cf5e0b9e2aeca8b2", size = 6545053, upload-time = "2026-05-15T14:56:12.028Z" },
+    { url = "https://files.pythonhosted.org/packages/48/43/9795b07e4722d50d199df88e01b1a3c41c8ca4a853493e77bc285d67d208/pyslang-11.0.0-cp312-cp312-win_amd64.whl", hash = "sha256:62200e8766d16e1583ae2dea1994a524ee0e6afa16786a2e73063d335a2c39a8", size = 3522100, upload-time = "2026-05-15T14:56:13.98Z" },
+    { url = "https://files.pythonhosted.org/packages/2b/61/94c0de6dba22b1bdf52d4b62e593cb305275a008bf1ad75635252cb793d9/pyslang-11.0.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:f9d6c1a20b6d9b3db9ef45411f13aacf85d4fb984f56c719195afce91b2e93e7", size = 4638815, upload-time = "2026-05-15T14:56:15.611Z" },
+    { url = "https://files.pythonhosted.org/packages/bb/44/2daaecee70cca93f89375165f9cd23ecad71a865a42a3f98f7373e4f0c46/pyslang-11.0.0-cp313-cp313-macosx_11_0_universal2.whl", hash = "sha256:84e6e7217336bccc6b66ca912ddbaa6abc79d507681840fcd451ad403bb5249c", size = 9492422, upload-time = "2026-05-15T14:56:17.607Z" },
+    { url = "https://files.pythonhosted.org/packages/c7/c7/6ce0a6ea26692c31f137746d3fab3523c83c7a4f5d5717555b4b678e47c0/pyslang-11.0.0-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:35e45f80dde9e90a34788601f931329bbac849f2fa3706cf94ed44bff6addf3d", size = 5834337, upload-time = "2026-05-15T14:56:19.885Z" },
+    { url = "https://files.pythonhosted.org/packages/23/cc/4277ce5f936c892daa6924bd5e89dd25d46385d757d9a1b313f67c833e8f/pyslang-11.0.0-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:3557e20a45b5535e24ed2481ab07d2ea136ec6e17e448f846eff38c8bf2dde22", size = 6544393, upload-time = "2026-05-15T14:56:22.058Z" },
+    { url = "https://files.pythonhosted.org/packages/62/e1/b525b2db646585526035908f10bb02b6435e4a78b5847eac604cc18efb14/pyslang-11.0.0-cp313-cp313-win_amd64.whl", hash = "sha256:b9cae2cc3d856bf7e52620a74cf9e2bb687c280ecccf70fbb63e49e690e77a47", size = 3521891, upload-time = "2026-05-15T14:56:24.079Z" },
 ]
 
 [[package]]
@@ -1060,6 +1104,18 @@ wheels = [
 ]
 
 [[package]]
+name = "svdoc"
+version = "0.3.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pyslang" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/57/1f/520d07c8b740ea6c4458764181e46e024c7dcbc90ab1960794082239e388/svdoc-0.3.0.tar.gz", hash = "sha256:4283348c427c41f9b507f2fa6c53b6430e73b75fc225ec7b5593e4b473dd3771", size = 20010, upload-time = "2026-07-12T08:01:27.142Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/47/25/1e73858421a920d2f263244b61911ba25349e75f6082dcb1e23f7683ba84/svdoc-0.3.0-py3-none-any.whl", hash = "sha256:c3e8d7ecd13dfc54c289f42ce59bb4acf77f4f5209d5a8f2517f76613e3dc605", size = 22353, upload-time = "2026-07-12T08:01:26.281Z" },
+]
+
+[[package]]
 name = "systemrdl-compiler"
 version = "1.32.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1096,6 +1152,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c0/88/1c7a191cd487f73ead49f447ec7963866ef093e47382d51cc54b60e89c6d/tclint-0.4.2.tar.gz", hash = "sha256:27dc43f6804a560f0813bd0bca3b617369f9909e9db8d609906660b367ef1583", size = 70559, upload-time = "2024-10-08T02:45:28.603Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/cc/b5/51832e9a286e65a17a4846ab4d634a6eee44692874cf298bf82c807e5495/tclint-0.4.2-py3-none-any.whl", hash = "sha256:9be008df348ad9558e07f21bc02e3b385be4444c448f4aed982ef6be40698309", size = 52481, upload-time = "2024-10-08T02:45:27.508Z" },
+]
+
+[[package]]
+name = "toml"
+version = "0.10.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/be/ba/1f744cdc819428fc6b5084ec34d9b30660f6f9daaf70eead706e3203ec3c/toml-0.10.2.tar.gz", hash = "sha256:b3bda1d108d5dd99f4a20d24d9c348e91c4db7ab1b749200bded2f839ccbe68f", size = 22253, upload-time = "2020-11-01T01:40:22.204Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/44/6f/7120676b6d73228c96e17f1f794d8ab046fc910d781c8d151120c3f1569e/toml-0.10.2-py2.py3-none-any.whl", hash = "sha256:806143ae5bfb6a3c6e736a764057db0e6a0e05e338b5630894a5f779cabb4f9b", size = 16588, upload-time = "2020-11-01T01:40:20.672Z" },
 ]
 
 [[package]]
@@ -1205,6 +1270,7 @@ dependencies = [
     { name = "semantic-version" },
     { name = "shellcheck-py" },
     { name = "shfmt-py" },
+    { name = "svdoc" },
     { name = "systemrdl-compiler" },
     { name = "tclint" },
     { name = "tomllint" },
@@ -1218,6 +1284,14 @@ dv = [
 ]
 manifest = [
     { name = "tt-oca-manifest" },
+]
+vp = [
+    { name = "cryptography" },
+    { name = "pexpect" },
+    { name = "pyelftools" },
+    { name = "pytest" },
+    { name = "pyyaml" },
+    { name = "toml" },
 ]
 
 [package.metadata]
@@ -1243,6 +1317,7 @@ requires-dist = [
     { name = "semantic-version", specifier = ">=2.10.0" },
     { name = "shellcheck-py", specifier = "==0.11.0.1" },
     { name = "shfmt-py", specifier = "==4.1.0" },
+    { name = "svdoc", specifier = "==0.3.0" },
     { name = "systemrdl-compiler", specifier = ">=1.32.2" },
     { name = "tclint", specifier = "==0.4.2" },
     { name = "tomllint", specifier = "==0.3.6" },
@@ -1253,6 +1328,14 @@ requires-dist = [
 [package.metadata.requires-dev]
 dv = [{ name = "ocah-dv", editable = "hw/common/dv" }]
 manifest = [{ name = "tt-oca-manifest", editable = "hw/sys/sep/bootrom/prod/tools/tt-oca-manifest" }]
+vp = [
+    { name = "cryptography", specifier = ">=41.0" },
+    { name = "pexpect", specifier = ">=4.8" },
+    { name = "pyelftools", specifier = ">=0.29" },
+    { name = "pytest", specifier = ">=7.0" },
+    { name = "pyyaml", specifier = ">=6.0" },
+    { name = "toml", specifier = ">=0.10" },
+]
 
 [[package]]
 name = "types-pyyaml"

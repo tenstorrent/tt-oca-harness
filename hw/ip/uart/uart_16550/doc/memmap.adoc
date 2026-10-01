@@ -2,20 +2,21 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[uart-16550-memory-map]]
-== Memory Map
+== Memory Map and Register Reference
 
-=== Overview
+ifdef::backend-html5[]
+++++
+<span id="overview-3"></span>
+++++
+endif::backend-html5[]
 
-The UART 16550 register map follows the industry-standard 16550 UART
-layout with additional extended registers. The register space spans 64
-bytes (6-bit address) with 32-bit aligned registers. Register access
-behavior depends on the DLAB (Divisor Latch Access Bit) setting in the
-Line Control Register (LCR).
+=== Memory Map
 
-The register map uses a dynamic addressing scheme where certain register
-addresses map to different registers based on the DLAB bit setting,
-maintaining compatibility with the original 16550 UART while providing
-access to baud rate configuration registers.
+The core decodes a 64-byte register space with 32-bit registers on four-byte
+boundaries. Offsets `0x00` and `0x04` change meaning with `LCR.DLAB`; offset
+`0x08` reads IIR and writes FCR. See Programming for safe divisor and FIFO
+configuration. The generated views below retain all field definitions, including
+ECR extended trigger selection and ITR interrupt tests.
 
 === Detailed Register Map
 
@@ -32,7 +33,7 @@ include::partial$uart_16550/regs/gen/html/uart_16550_dl.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/uart_16550_main.adoc[]
-include::../regs/gen/adoc/uart_16550_main_wo.adoc[]
-include::../regs/gen/adoc/uart_16550_dl.adoc[]
+include::../regs/gen/adoc/uart_16550_main.adoc[leveloffset=+2]
+include::../regs/gen/adoc/uart_16550_main_wo.adoc[leveloffset=+2]
+include::../regs/gen/adoc/uart_16550_dl.adoc[leveloffset=+2]
 endif::backend-pdf[]

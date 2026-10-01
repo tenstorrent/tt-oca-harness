@@ -1,15 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// dtp_ext_stap_scan_test — the extended STAP host scan interface follows the PTAP 3DCR select,
-// stays quiet under the stap_host disable, and recovers without reset
-// (looped runner with per-pass family evidence, 16-pass floor).
+// dtp_ext_stap_scan_test — the extended STAP host scan interface, with the
+// tb_top host segment behind it, follows the PTAP 3DCR select: its controls
+// pulse and the segment returns the chain; under the stap_host disable the
+// controls stay quiet and the last STAP's scan-out returns instead; both
+// recover without reset (looped runner with per-pass family evidence,
+// 16-pass floor).
 
 class dtp_ext_stap_scan_test extends dtp_base_test;
   `uvm_component_utils(dtp_ext_stap_scan_test)
 
   function new(string name = "dtp_ext_stap_scan_test", uvm_component parent = null);
     super.new(name, parent);
+  endfunction
+
+  virtual function bit stap_host_segment_attach();
+    return 1'b1;
   endfunction
 
   virtual function ocah_sequence create_scenario_seq();

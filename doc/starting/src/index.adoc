@@ -38,13 +38,13 @@ The OCAH repository is organised as below
 [width="100%",options="header"]
 |====================
 | Path | Contents
-| `hw/common/` | Shared RTL: primitives (`och_prim`, `och_prim_generic`), TL-UL, AXI network/monitor elements, register-flow makefiles.
+| `hw/common/` | Shared RTL: primitives (`ocah_prim`, `ocah_prim_generic`), TL-UL, AXI network/monitor elements, register-flow makefiles.
 | `hw/ip/` | Reusable IP blocks, grouped by family where applicable (e.g. `jtag/`, `uart/`, `cross_trigger/`).
 | `hw/sys/` | Subsystems (`smc`, `sep`, `smu`, `dtp`) that integrate the IP blocks.
 | `hw/top/` | Top-level integration.
 | `doc/` | Documentation products (TRM, Integrator Guide, …)
 | `vendor/` | Third-party IP vendored via Bender
-| `tools/`, `scripts/` | Register-flow, documentation, and container helpers.
+| `tools/`, `scripts/`, `nix/` | Register-flow, documentation, and container helpers.
 |====================
 
 

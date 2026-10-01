@@ -1,36 +1,46 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-aon_timer]
+== Always-On Timer
+
+Wakeup and watchdog timers running on a low-power, always-on clock
+
 [cols="1,4,1,6", options="header"]
-.Register Map
 |===
 | Address | Name | Access | Description
-| 0x0 | ALERT_TEST | W a| -
-| 0x4 | WKUP_CTRL | RW a| -
-| 0x8 | WKUP_THOLD_HI | RW a| -
-| 0xC | WKUP_THOLD_LO | RW a| -
-| 0x10 | WKUP_COUNT_HI | RW a| -
-| 0x14 | WKUP_COUNT_LO | RW a| -
-| 0x18 | WDOG_REGWEN | RW a| -
-| 0x1C | WDOG_CTRL | RW a| -
-| 0x20 | WDOG_BARK_THOLD | RW a| -
-| 0x24 | WDOG_BITE_THOLD | RW a| -
-| 0x28 | WDOG_COUNT | RW a| -
-| 0x2C | INTR_STATE | RW a| -
-| 0x30 | INTR_TEST | W a| -
-| 0x34 | WKUP_CAUSE | RW a| -
+| 0x0 | <<reg-{regmap-instance}-aon_timer-ALERT_TEST,ALERT_TEST>> | W a| -
+| 0x4 | <<reg-{regmap-instance}-aon_timer-WKUP_CTRL,WKUP_CTRL>> | RW a| -
+| 0x8 | <<reg-{regmap-instance}-aon_timer-WKUP_THOLD_HI,WKUP_THOLD_HI>> | RW a| -
+| 0xC | <<reg-{regmap-instance}-aon_timer-WKUP_THOLD_LO,WKUP_THOLD_LO>> | RW a| -
+| 0x10 | <<reg-{regmap-instance}-aon_timer-WKUP_COUNT_HI,WKUP_COUNT_HI>> | RW a| -
+| 0x14 | <<reg-{regmap-instance}-aon_timer-WKUP_COUNT_LO,WKUP_COUNT_LO>> | RW a| -
+| 0x18 | <<reg-{regmap-instance}-aon_timer-WDOG_REGWEN,WDOG_REGWEN>> | RW a| -
+| 0x1C | <<reg-{regmap-instance}-aon_timer-WDOG_CTRL,WDOG_CTRL>> | RW a| -
+| 0x20 | <<reg-{regmap-instance}-aon_timer-WDOG_BARK_THOLD,WDOG_BARK_THOLD>> | RW a| -
+| 0x24 | <<reg-{regmap-instance}-aon_timer-WDOG_BITE_THOLD,WDOG_BITE_THOLD>> | RW a| -
+| 0x28 | <<reg-{regmap-instance}-aon_timer-WDOG_COUNT,WDOG_COUNT>> | RW a| -
+| 0x2C | <<reg-{regmap-instance}-aon_timer-INTR_STATE,INTR_STATE>> | RW a| -
+| 0x30 | <<reg-{regmap-instance}-aon_timer-INTR_TEST,INTR_TEST>> | W a| -
+| 0x34 | <<reg-{regmap-instance}-aon_timer-WKUP_CAUSE,WKUP_CAUSE>> | RW a| -
 |===
 
+[#reg-{regmap-instance}-aon_timer-ALERT_TEST]
+=== ALERT_TEST
+
 [cols="1,3,1,1,6", options="header"]
-.ALERT_TEST Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `Reserved` | - | - a| Reserved
 | 0 | `fatal_fault` | W | 0x0 a| Write 1 to trigger one alert event of this kind.
 |===
 
+[#reg-{regmap-instance}-aon_timer-WKUP_CTRL]
+=== WKUP_CTRL
+
 [cols="1,3,1,1,6", options="header"]
-.WKUP_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:13 | `Reserved` | - | - a| Reserved
@@ -38,44 +48,56 @@
 | 0 | `enable` | RW | 0x0 a| When set to 1, the wakeup timer will count
 |===
 
+[#reg-{regmap-instance}-aon_timer-WKUP_THOLD_HI]
+=== WKUP_THOLD_HI
+
 [cols="1,3,1,1,6", options="header"]
-.WKUP_THOLD_HI Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `threshold_hi` | RW | 0x0 a| The count at which a wakeup interrupt should be generated, top 32 bits.
 |===
 
+[#reg-{regmap-instance}-aon_timer-WKUP_THOLD_LO]
+=== WKUP_THOLD_LO
+
 [cols="1,3,1,1,6", options="header"]
-.WKUP_THOLD_LO Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `threshold_lo` | RW | 0x0 a| The count at which a wakeup interrupt should be generated, bottom 32 bits.
 |===
 
+[#reg-{regmap-instance}-aon_timer-WKUP_COUNT_HI]
+=== WKUP_COUNT_HI
+
 [cols="1,3,1,1,6", options="header"]
-.WKUP_COUNT_HI Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `count_hi` | RW | 0x0 a| The current wakeup counter value, top 32 bits.
 |===
 
+[#reg-{regmap-instance}-aon_timer-WKUP_COUNT_LO]
+=== WKUP_COUNT_LO
+
 [cols="1,3,1,1,6", options="header"]
-.WKUP_COUNT_LO Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `count_lo` | RW | 0x0 a| The current wakeup counter value, bottom 32 bits.
 |===
 
+[#reg-{regmap-instance}-aon_timer-WDOG_REGWEN]
+=== WDOG_REGWEN
+
 [cols="1,3,1,1,6", options="header"]
-.WDOG_REGWEN Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `Reserved` | - | - a| Reserved
-| 0 | `regwen` | RW | 0x1 a| Once cleared, the watchdog configuration will be locked until the next reset.
+| 0 | `regwen` | RW0C | 0x1 a| Once cleared, the watchdog configuration will be locked until the next reset.
 |===
 
+[#reg-{regmap-instance}-aon_timer-WDOG_CTRL]
+=== WDOG_CTRL
+
 [cols="1,3,1,1,6", options="header"]
-.WDOG_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:2 | `Reserved` | - | - a| Reserved
@@ -83,38 +105,48 @@
 | 0 | `enable` | RW | 0x0 a| When set to 1, the watchdog timer will count.
 |===
 
+[#reg-{regmap-instance}-aon_timer-WDOG_BARK_THOLD]
+=== WDOG_BARK_THOLD
+
 [cols="1,3,1,1,6", options="header"]
-.WDOG_BARK_THOLD Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `threshold` | RW | 0x0 a| The count at which a watchdog bark interrupt should be generated.
 |===
 
+[#reg-{regmap-instance}-aon_timer-WDOG_BITE_THOLD]
+=== WDOG_BITE_THOLD
+
 [cols="1,3,1,1,6", options="header"]
-.WDOG_BITE_THOLD Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `threshold` | RW | 0x0 a| The count at which a watchdog bite reset should be generated.
 |===
 
+[#reg-{regmap-instance}-aon_timer-WDOG_COUNT]
+=== WDOG_COUNT
+
 [cols="1,3,1,1,6", options="header"]
-.WDOG_COUNT Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `count` | RW | 0x0 a| The current watchdog counter value.
 |===
 
+[#reg-{regmap-instance}-aon_timer-INTR_STATE]
+=== INTR_STATE
+
 [cols="1,3,1,1,6", options="header"]
-.INTR_STATE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:2 | `Reserved` | - | - a| Reserved
-| 1 | `wdog_timer_bark` | RW | 0x0 a| Raised if the watchdog timer has hit the bark threshold.
-| 0 | `wkup_timer_expired` | RW | 0x0 a| Raised if the wakeup timer has hit the specified threshold.
+| 1 | `wdog_timer_bark` | RW1C | 0x0 a| Raised if the watchdog timer has hit the bark threshold.
+| 0 | `wkup_timer_expired` | RW1C | 0x0 a| Raised if the wakeup timer has hit the specified threshold.
 |===
 
+[#reg-{regmap-instance}-aon_timer-INTR_TEST]
+=== INTR_TEST
+
 [cols="1,3,1,1,6", options="header"]
-.INTR_TEST Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:2 | `Reserved` | - | - a| Reserved
@@ -122,10 +154,12 @@
 | 0 | `wkup_timer_expired` | W | - a| Write 1 to force wkup_timer_expired interrupt.
 |===
 
+[#reg-{regmap-instance}-aon_timer-WKUP_CAUSE]
+=== WKUP_CAUSE
+
 [cols="1,3,1,1,6", options="header"]
-.WKUP_CAUSE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `Reserved` | - | - a| Reserved
-| 0 | `cause` | RW | 0x0 a| AON timer requested wakeup, write 0 to clear.
+| 0 | `cause` | RW0C | 0x0 a| AON timer requested wakeup, write 0 to clear.
 |===

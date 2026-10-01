@@ -1,27 +1,30 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// JTAG TAP 3DCR Register
+// Implement the IEEE 1838 3DCR TDR that selects the secondary TAP chain.
 //
-//-----------------------------------------------------------------------------
+// Shifts a 2-bit register, {stap_sel, config_hold} with config_hold nearest TDO, on the DR
+// scan path between scan_in_i and scan_out_o under scan_ctrl_i.
+// stap_sel_o is the STAP select after Update-DR.
+// While config_hold is set, the scan-control reset no longer clears the register; only
+// tap_ctrl_i.trst_n does. The other tap_ctrl_i members are unused.
 
 module jtag_3dcr_reg
   import prim_jtag_pkg::*;
 (
   /* verilator lint_off UNUSEDSIGNAL */
-  // JTAG DR scan control interface
-  input  jtag_scan_ctrl_t  scan_ctrl_i,
+  input  jtag_scan_ctrl_t  scan_ctrl_i,  // JTAG DR/IR scan control.
   /* verilator lint_on UNUSEDSIGNAL */
-  input  logic             scan_in_i,
-  output logic             scan_out_o,
+  input  logic             scan_in_i,   // Scan data in (TDI).
+  output logic             scan_out_o,  // Scan data out (TDO).
 
   /* verilator lint_off UNUSEDSIGNAL */
-  input  jtag_tap_ctrl_t  tap_ctrl_i,
+  input  jtag_tap_ctrl_t  tap_ctrl_i,   // JTAG TAP control; only trst_n is used, as the reset that
+                                        // config_hold does not block.
   /* verilator lint_on UNUSEDSIGNAL */
 
-  // STAP control output (IEEE 1838)
-  output logic  stap_sel_o
+  output logic  stap_sel_o              // STAP select (IEEE 1838), bit 1 of the update register;
+                                        // resets low.
 );
   logic unused_tap_ctrl;
   assign unused_tap_ctrl = tap_ctrl_i.tms;

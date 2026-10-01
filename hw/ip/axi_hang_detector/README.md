@@ -41,3 +41,12 @@ To disable a detector, clear `CTRL.enable`; that takes effect at once and silenc
 `irq_test` too. `TIMEOUT_THRESHOLD.value = 0` is not equivalent: it takes effect at
 the next stall count restart and leaves `CTRL.irq_test` able to assert `irq_o`. Use
 `CTRL.irq_test = 1` only to verify the interrupt path during bring-up.
+
+## Verification
+
+Block-level bench on the unified DV flow: `dv/README.md`
+(`python3 tools/dv/run_dv.py --dut axi_hang_detector`).
+
+The SMC integration — the three detectors' `cpu_ctrl` configuration, real bus
+stalls, the OR into the safety-island fault line, and the PLIC route — is covered
+by the `smc_hang_detector_*` tests in `hw/sys/smc/dv/testlists/irq.toml`.
