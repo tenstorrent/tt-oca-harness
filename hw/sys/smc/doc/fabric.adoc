@@ -381,7 +381,7 @@ resources like shared memory, SMC traffic passes through the appropriate
 privilege-controlled remap stage to ensure proper address translation and
 privilege enforcement.
 
-== Traffic Filtering
+== Filtering and Protection
 
 The filtering system (`filter_ctrl.rdl`) provides security control for
 both inbound and outbound traffic, examining transaction attributes to
@@ -404,8 +404,6 @@ Both SMC filters have 16 entries, carry 56-bit addresses on a 64-bit data
 bus, and enable NS and source ID matching. They differ in how they treat
 traffic that matches no entry: the inbound filter blocks it, and the
 outbound filter permits it.
-
-== Filtering and Protection
 
 ifdef::backend-html5[]
 ++++
