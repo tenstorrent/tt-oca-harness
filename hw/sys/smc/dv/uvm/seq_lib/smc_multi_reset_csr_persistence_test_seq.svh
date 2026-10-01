@@ -17,13 +17,15 @@
 //      de-glitch window and would prove nothing about whether anything
 //      downstream reset at all.
 //   2. Both scratch windows lose their contents to it. This is the reset
-//      TOPOLOGY, established from the RTL rather than from the register
-//      names: smc_peripherals.sv:1077 wires smc_misc_wrap.rst_ni to
-//      rst_primary_smc_clk_no, and smc_misc_wrap resets SCRATCH_COLD on
-//      rst_ni alone (:106-108) and SCRATCH_COLD_WARM on
-//      rst_ni && rst_warm_ni (:133). A cool reset drops rst_primary, so BOTH
-//      clear -- the "COLD" in SCRATCH_COLD names the reset it is reset BY,
-//      not a reset it survives.
+//      TOPOLOGY the specification states, not a reading of the register
+//      names: clk_rst.adoc lists the cool reset as a Primary Reset activation
+//      source ("Primary Reset with isolation"; Primary Reset Activation
+//      Sources), Primary Reset covers the "SMC control and configuration
+//      registers" (Primary Reset), and the warm reset is "cascaded from" the
+//      primary reset (Warm Reset Activation Sources). Both scratch windows are
+//      such registers (misc_wrap.rdl:20-21), so a cool reset clears BOTH --
+//      the "COLD" in SCRATCH_COLD names a reset it is reset BY, not a reset
+//      it survives.
 //   3. The CSR path recovers with real content, not merely with OKAY
 //      responses: a static register whose generated default is NON-ZERO
 //      (CHIP_CONFIG.VERSION_LO = 0x000100A0) reads that default again, and a

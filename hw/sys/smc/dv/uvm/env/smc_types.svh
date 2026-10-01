@@ -119,14 +119,13 @@ endfunction
 
 // ---------------------------------------------------------------------------
 // CSR reset epoch: the value every CSR reference model re-baselines its
-// shadow on. Both the cold reset and a de-glitched cool reset drop
-// rst_primary_smc_clk_n, and that is the reset of every CSR block reached
-// over SEP_IN -- smc_peripherals.sv:1077 wires smc_misc_wrap.rst_ni to it
-// (so BOTH scratch windows clear: smc_misc_wrap.sv:106-108 resets
-// SCRATCH_COLD on rst_ni alone and :133 resets SCRATCH_COLD_WARM on
-// rst_ni && rst_warm_ni), and smc_subsystem_resets.sv clocks its external
-// registers on it. A model that watched only the cold counter would keep
-// predicting pre-cool-reset values.
+// shadow on. Both the cold reset and a de-glitched cool reset activate the
+// Primary Reset (clk_rst.adoc, Primary Reset Activation Sources), and Primary
+// Reset covers the "SMC control and configuration registers" (clk_rst.adoc,
+// Primary Reset) -- every CSR block reached over SEP_IN, both scratch windows
+// included (misc_wrap.rdl:20-21; the warm reset is cascaded from the primary
+// one). A model that watched only the cold counter would keep predicting
+// pre-cool-reset values.
 //
 // SPM memory is deliberately NOT on this epoch: it is an SRAM, and nothing
 // in this bench establishes that a reset clears its contents.
@@ -248,7 +247,7 @@ function automatic void smc_default_reg_catalog(ref smc_default_reg_entry_t entr
 
   // --- reset_unit.rdl ---
   // SS_WARM_RESET_N is a plain PeakRDL-internal `sw=rw; hw=r` register
-  // (smc_subsystem_resets.sv:58 only reads hwif_out_i), so a write lands
+  // that no lock description in reset_unit.rdl names, so a write lands
   // unfiltered and the shadow rule above describes it. Its default is all
   // ones, the second non-zero expectation in this catalogue.
   entries.push_back('{"RESET_UNIT_SS_WARM_RESET_N",
@@ -257,8 +256,8 @@ function automatic void smc_default_reg_catalog(ref smc_default_reg_entry_t entr
                     "reset_unit.rdl:44-49 sw=rw hw=r, default 0xFFFFFFFF (non-zero)"});
   // SS_CONFIG, SS_CONFIG_LOCK and SS_COLD_RESET_N belong to the lock_csr
   // feature, not here: the two locks are `onwrite=woset` (a written 0 is
-  // inert) and the two guarded registers take lock-filtered write bit-enables
-  // (smc_subsystem_resets.sv:81, :100), so the plain shadow rule of this
+  // inert) and a locked bit of either guarded register "cannot be written to
+  // again" (reset_unit.rdl:20-27, :89-96), so the plain shadow rule of this
   // catalogue would mispredict them the moment anything wrote them. Their
   // reset values are 0, so they would add no discriminating power here
   // either. One feature owns one set of semantics.
@@ -290,18 +289,15 @@ endfunction
 // ---------------------------------------------------------------------------
 // lock_csr: the reset unit's two write-once lock registers and the register
 // each one guards. Both locks are declared `sw=rw; hw=r; onwrite=woset;` with
-// reset 0 and one bit per subsystem (reset_unit.rdl:18-26 and :87-95), and
-// both guarded registers are PeakRDL EXTERNAL registers whose storage and
-// read data live in smc_subsystem_resets.sv: the lock filters the write
-// bit-enables before they reach the flop
-//
-//   config_filtered_wr_mask    = (~ss_config_lock)     & ss_config_wr_mask       (:81)
-//   cold_reset_filtered_wr_mask = (~ss_cold_reset_lock) & ss_cold_reset_n_wr_mask (:100)
-//   ss_config_o <= (wr_data & filtered) | (ss_config_o & ~filtered)              (:88)
-//
-// so a locked bit keeps its value on read-back, and that is the property the
-// lock_csr feature predicts. Both guarded flops reset to '0 on rst_primary_ni,
-// which is also the reset value the generated *_REG_DEFAULT declares.
+// reset 0 and one bit per subsystem, and each lock's RDL description names
+// its guarded register and the per-bit rule: SS_CONFIG_LOCK "lock[s] down SS
+// config. If bit 0 is written, then bit 0 of other SS config cannot be
+// written to again" (reset_unit.rdl:20-27); SS_COLD_RESET_LOCK the same for
+// SS cold reset (reset_unit.rdl:89-96). So a write to the guarded register
+// lands only on the bits that are strobed and unlocked, and a locked bit
+// keeps its value on read-back: that is the property the lock_csr feature
+// predicts. Both guarded registers reset to 0, the value the generated
+// *_REG_DEFAULT declares.
 // ---------------------------------------------------------------------------
 
 typedef struct {
@@ -316,10 +312,10 @@ function automatic void smc_lock_pairs(ref smc_lock_pair_t pairs[$]);
   pairs.push_back('{"COLD_RESET",
                   64'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_SS_COLD_RESET_N_BASE_ADDR),
                   64'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_SS_COLD_RESET_LOCK_BASE_ADDR),
-                  "reset_unit.rdl:87-95, smc_subsystem_resets.sv:100"});
+                  "reset_unit.rdl:89-96 (SS_COLD_RESET_LOCK guards SS cold reset)"});
   pairs.push_back('{"CONFIG", 64'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_SS_CONFIG_BASE_ADDR),
                   64'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_SS_CONFIG_LOCK_BASE_ADDR),
-                  "reset_unit.rdl:18-26, smc_subsystem_resets.sv:81"});
+                  "reset_unit.rdl:20-27 (SS_CONFIG_LOCK guards SS config)"});
 endfunction
 
 // Locate `word_addr` in the lock-pair table; `is_lock` tells the two roles

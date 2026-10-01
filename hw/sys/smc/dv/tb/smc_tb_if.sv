@@ -40,10 +40,9 @@ interface smc_tb_if;
 
   // Reset assertion counters (driven by tb_top). The CSR reference models
   // re-baseline their shadows on either, because both the cold reset and a
-  // de-glitched cool reset drop rst_primary_smc_clk_n, which is the reset of
-  // every CSR block reached over SEP_IN (smc_peripherals.sv:1077 wires
-  // smc_misc_wrap.rst_ni to it, and smc_subsystem_resets.sv clocks its
-  // external registers on it).
+  // de-glitched cool reset activate the Primary Reset, which covers the SMC
+  // control and configuration registers (clk_rst.adoc, Primary Reset and its
+  // activation sources) -- every CSR block reached over SEP_IN.
   logic [31:0] cold_rst_assert_count;
   logic [31:0] cool_rst_assert_count;
 
