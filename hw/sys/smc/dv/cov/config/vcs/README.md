@@ -108,8 +108,10 @@ the `OCAH_FCOV_COVER` points that populate the `user` metric family.
 
 ## Exclusion files
 
-`coverage_policy.toml` beside this file names six `-elfile` files the report
+`coverage_policy.toml` beside this file names seven `-elfile` files the report
 applies, the form `hw/sys/sep/dv/cov/config/vcs/coverage_policy.toml` uses.
+The seventh, `smc_legacy_exclusions.el`, carries a provenance rather than a
+fact and has its own section below.
 The first four are written by `gen_smc_cov_exclusions.py` from urg's exclusion
 templates and the run's raw report (`cov/report_raw`, written without the
 exclusion files). Every entry lists a point that report marks uncovered, rows,
@@ -368,3 +370,32 @@ but not `ocah_prim_generic/`, which is why this one is graded at all.
 
     urg -dir <run dir>/cov/merged.vdb -dump full_exclusions tgl -report <dir>
     python3 hw/sys/smc/dv/cov/config/vcs/gen_smc_opentitan_toggle_exclusions.py <dir>
+
+## Exclusions carried from tt-oca-hw
+
+`smc_legacy_exclusions.el` carries the SMC exclusions of the archived
+tt-oca-hw repository onto this bench. Design engineering reviewed those files
+in that repository, and the class rests on that review: it states where an
+object comes from, not why it cannot be reached.
+
+| File | Class | Scope | Fact | Retired by | Reviewer |
+| --- | --- | --- | --- | --- | --- |
+| `smc_legacy_exclusions.el` | L1 LEGACY-DE-APPROVED | the objects of the archived bench's exclusion files that this database still holds, at the scope the legacy file gave them | provenance: tt-oca-hw excluded the object in one of the eleven files of `dv/smc/tb/tb_uvm/exclusion_files/` at commit `cb678bff` that `gen_smc_legacy_exclusions.py` lists, and design engineering reviewed those files there; the ANNOTATION before each group names the file | an enrolled leaf that covers the object, or design engineering withdrawing the approval | design engineering + DV peer |
+
+The legacy files are not in this repository. The generator reads them from a
+directory given on the command line and records only the repository, commit
+and file names. It maps each Toggle, Block, Fsm state or transition and
+Condition object onto this hierarchy, `u_smc_wrapper` read as `u_dut`, and an
+instance path compared without the `u_` or `i_` prefix and without unindexed
+generate blocks where this tree renamed them, and writes an object only where
+urg's templates hold it, with the template's checksum and text. Its docstring
+gives every rule. An object is written whether or not a run covers it, so the
+file does not move from seed to seed; where a legacy object is covered, the
+class lowers that metric's figure rather than raising it. Most legacy objects
+belong to units the scope now drops at compile time or to blocks this build no
+longer has, and are not written. A legacy INSTANCE line with no object under
+it excludes a whole instance and states no object, so it is not carried;
+`--stats` counts those and every object that does not map, by reason.
+
+    cd <dir> && urg -dir <run dir>/cov/merged.vdb -dump full_exclusions tgl+line+fsm+cond -report rep
+    python3 hw/sys/smc/dv/cov/config/vcs/gen_smc_legacy_exclusions.py <legacy dir> <dir> [--check]
