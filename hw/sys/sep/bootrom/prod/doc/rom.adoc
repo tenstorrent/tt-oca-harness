@@ -1935,6 +1935,12 @@ escalation flag (SEP-ROM-SB-020/-030), or of every `RMA_SiP` image by burning `C
 before RMA entry.
 ====
 
+<<fig:secure_boot_decision>> is the whole decision as the ROM implements it: the lifecycle
+and fuse reads latched once per boot at [S11] and [S18], then the precedence applied to each
+manifest slot. The first input that settles the question decides it. Outside `PROD` /
+`PROD_END`, secure boot is left off by `SBOOT_DIS`, by `RMA_CHIPLET`, or by an open debug
+posture in `TEST_DEV` / `RMA_SiP`.
+
 [[fig:secure_boot_decision]]
 .Secure-boot decision
 [plantuml,secure-boot-decision,svg]
@@ -1942,31 +1948,82 @@ before RMA entry.
 @startuml
 skinparam ActivityBackgroundColor #f0f8e6
 skinparam ActivityDiamondBackgroundColor #fdf6e3
+skinparam NoteBackgroundColor #fffbe6
 start
-if (signed secure_boot_control[0] ?) then (yes)
-  :secure boot ON;<<#e6f0f8>>
-  detach
-else (no)
-  if (SBOOT_DIS fuse set ?) then (yes)
-    :secure boot OFF;<<#ffe0e0>>
+group Once per boot
+  :[S11] read LC_STATE;
+  if (LC_STATE is TEST_DEV, PROD, PROD_END,\nRMA_SiP 0x2..0x3 or RMA_CHIPLET 0x6..0x7 ?) then (no)
+    #ffe0e0:hold SMC in reset
+    ROM_ERR_LIFECYCLE_INVALID;
+    detach
+  else (yes)
+  endif
+  :[S18] read SBOOT_DIS once;
+  if (SBOOT_DIS rsvd[31:1] non-zero ?) then (yes)
+    #ffe0e0:ROM_ERR_SBOOT_DIS_RSVD_SET;
     detach
   else (no)
-    if (LC in {PROD, PROD_END}, or\nTEST_DEV / RMA with chiplet debug locked ?) then (yes)
-      :secure boot ENFORCED;<<#e6f0f8>>
-      detach
-    else (no: TEST_DEV / RMA, debug open)
-      if (unauth escalation bit ?) then (yes)
-        :secure boot ON;<<#e6f0f8>>
-        detach
-      else (no)
-        :secure boot OFF
-        (manifest hash + payload
-        hashes still checked);
-        detach
-      endif
+  endif
+  :latch SBOOT_DIS = disable_secure_boot (bit 0);
+  :[S18] read LOCKS;
+  if (SIP_DIS or SYS_DIS\nread-locked ?) then (yes)
+    :debug locked
+    (value cannot be read: fail closed);
+  else (no)
+    if (CHIPLET_DBG, bit 1, set in\nSIP_DIS or SYS_DIS ?) then (yes)
+      :debug locked;
+    else (no)
+      :debug open;
     endif
   endif
-endif
+  :latch debug lock;
+end group
+group Each manifest slot
+  if (1. signed secure_boot_control[0]\nsecure_boot_enforced set ?) then (yes)
+    #e6f0f8:secure boot ENFORCED
+    (manifest request outranks
+    every device input, SB-040);
+    detach
+  else (no)
+  endif
+  if (2. latched SBOOT_DIS = 1 ?) then (yes)
+    #ffe0e0:secure boot OFF
+    (chicken bit), SBOOT_OFF at [S24];
+    detach
+  else (no)
+  endif
+  if (3. LC = PROD or PROD_END ?) then (yes)
+    #e6f0f8:secure boot ENFORCED
+    (lifecycle, SB-010);
+    detach
+  else (no: TEST_DEV, RMA_SiP, RMA_CHIPLET)
+  endif
+  if (4. LC = RMA_CHIPLET ?) then (yes)
+    #ffe0e0:secure boot OFF
+    (manifest-optional; debug lock
+    not consulted, SB-025)
+    SBOOT_OFF at [S24];
+    detach
+  else (no: TEST_DEV, RMA_SiP)
+  endif
+  if (5. latched debug lock ?) then (locked)
+    #e6f0f8:secure boot ENFORCED
+    (debug lock, SB-025)
+    SBOOT_DBG_LOCK reported at [S18];
+    detach
+  else (open)
+    #ffe0e0:secure boot OFF
+    (manifest-optional, SB-020)
+    SBOOT_OFF at [S24];
+    note right
+      SB-020's unauthenticated escalation
+      flag would force ENFORCED here.
+      It is not implemented yet
+      (see the gap table).
+    end note
+    detach
+  endif
+end group
 @enduml
 ----
 
