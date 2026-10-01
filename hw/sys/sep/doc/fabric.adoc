@@ -54,6 +54,12 @@ read-only entropy drain aperture, filled autonomously by a native EDN
 endpoint on a separate hardware path (not this crossbar). Writes to it
 terminate with `BRESP=SLVERR`.
 
+[[sep-sram-target]]
+The *SRAM* target serves INCR bursts of every length and single-beat
+bursts of every type. A multi-beat FIXED or WRAP burst is refused before it
+reaches the memory: the write terminates with `BRESP=SLVERR` and leaves
+SRAM unchanged, and every beat of the read returns `RRESP=SLVERR`.
+
 The *System Interface* initiator is the external inbound master. It does
 not attach to this crossbar directly; it enters SEP through the dedicated
 `smn_inbound` port and the inbound traffic filter (block-by-default), then

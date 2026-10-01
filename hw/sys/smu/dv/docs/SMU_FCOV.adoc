@@ -373,15 +373,6 @@ bins of `cg_lifecycle`, `cg_lc_at_release`, `cg_block_release`,
 design, the routing or the bench clocks cannot present, each stated beside
 its coverpoint in `cov/sv/`.
 
-WRAP and FIXED bursts into SEP SRAM are Phase 2 stimulus. No specification
-states how the SEP fabric or the SEP SRAM port answers a non-incrementing
-burst, and the SRAM port's AXI-to-memory adapter asserts that such bursts are
-not supported, while the fabric in front of it forwards them.
-`smu_axi_in_sep_aperture_test` sends them only to the SEP external aperture,
-where the fabric refuses them. They come back when the SEP fabric or SEP SRAM
-chapter states whether the fabric refuses non-incrementing bursts or the SRAM
-port serves them.
-
 The claim that inbound writes to the SEP TRNG window are refused with DECERR
 is Phase 2. `doc/integrator/src/smu.adoc` ("External TRNG") terminates an
 unconnected `ext_trng_axil` with a DECERR slave, and `hw/sys/sep/doc/memory_map.adoc`
