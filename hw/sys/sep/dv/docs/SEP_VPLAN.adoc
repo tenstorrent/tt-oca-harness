@@ -8019,6 +8019,19 @@ random words per memory (five by default) after the directed word, each written
 and read back at the memory base. CHK-IMEM, CHK-DMEM and CHK-ARRIVED are
 recorded under CHK-OTBN-MEM, together with the read responses; the counters are
 graded as the increments of each pass. The STATUS read response is CHK-CSR-RESP.
+|<<sep_efuse_sense_test,`sep_efuse_sense_test`>>
+|Same as the cocotb procedure, over sixteen passes by default
+(`+SEP_TEST_LOOPS`, `+SEP_EFUSE_LCC_TEST_LOOPS`, `+SEP_EFUSE_SENSE_TEST_LOOPS`);
+the sense runs once at bring-up and each pass compares the held shadow again.
+The staged image is the committed default preload (`+sep_efuse_hex`).
+CHK-SENSE-DONE is named CHK-FUSE-SENSE-DONE. CHK-SENSE compares the whole
+shadow probe with the committed expected shadow
+`tb/efuse_preloads/sep_efuse_default.shadow.hex` (`+sep_efuse_shadow_hex`),
+written by `cocotb/env/sep_efuse_default_shadow.py` and kept current by
+`cocotb/env/run_golden_selftests.py`. The word count is asserted against the
+256-word fuse map of `hw/sys/sep/doc/otp_fuse_controller.adoc`: the probe is
+8192 bits wide, and the file holds one data line of 2048 hex digits that loads
+with no X and at least one non-zero word.
 |===
 
 === Regression Groups

@@ -46,5 +46,6 @@ package sep_seq_lib_pkg;
   `include "sep_clock_uvm_wdt_rst_input_reset_path_test_seq.svh"
   `include "sep_irq_ip_to_aggregator_test_seq.svh"
   `include "sep_otbn_mem_smoke_test_seq.svh"
+  `include "sep_efuse_sense_test_seq.svh"
 
 endpackage : sep_seq_lib_pkg

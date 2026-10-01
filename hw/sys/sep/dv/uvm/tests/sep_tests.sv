@@ -32,6 +32,7 @@ import sep_seq_lib_pkg::*;
 `include "sep_clock_uvm_wdt_rst_input_reset_path_test.svh"
 `include "sep_irq_ip_to_aggregator_test.svh"
 `include "sep_otbn_mem_smoke_test.svh"
+`include "sep_efuse_sense_test.svh"
 
 // Adopter overlay hook: an external (non-OSS) build may append vendor-
 // specific test classes -- e.g. a commercial-VIP overlay -- by defining
