@@ -1304,10 +1304,13 @@ root. Each publisher directory has the layout in <<dashboard-ci>>.
 
 On the pages, one series is the `(flow, framework, tool)` already carried on
 each `dut_status` row and history `per_dut` entry. A row is labelled
-`flow (framework, tool)`, or `flow (tool)` when `framework` is empty. A
-series with an empty `framework` and a non-zero `tests_total` stands for the
-whole block on its tool: the overview shows it in place of that block's other
-series on the same tool, and its block page lists all of them.
+`name (framework, tool)`, or `name (tool)` when `framework` is empty.
+`name` comes from `BLOCK_NAMES` in `doc/ui-supplemental/js/dashboard.js`,
+such as `DTP` or `AoU`, and is the `flow` for a block it does not list;
+query parameters and links always use the `flow`. A series with an empty
+`framework` and a non-zero `tests_total` stands for the whole block on its
+tool: the overview shows it in place of that block's other series on the
+same tool, and its block page lists all of them.
 
 [source,text]
 ----

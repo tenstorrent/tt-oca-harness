@@ -46,6 +46,10 @@
   var BLOCK_ROWS = ['dtp', 'sep', 'smc', 'smu', 'aou'];
   var LINKABLE_ROWS = CHIP_ROWS.concat(BLOCK_ROWS);
 
+  // The name a block is shown under, where it differs from its flow. Queries,
+  // links and the published data keep the flow.
+  var BLOCK_NAMES = { dtp: 'DTP', sep: 'SEP', smc: 'SMC', smu: 'SMU', aou: 'AoU' };
+
   /**
    * Read a value from the page theme.
    * @param {string} name CSS custom property, e.g. "--oca-text".
@@ -154,7 +158,16 @@
   }
 
   /**
-   * Name one series for a heading, e.g. "dtp (uvm, vcs)".
+   * The name a block is shown under.
+   * @param {string} flow The block as the publisher names it.
+   * @return {string} Its BLOCK_NAMES entry, or the flow itself when it has none.
+   */
+  function blockName(flow) {
+    return Object.prototype.hasOwnProperty.call(BLOCK_NAMES, flow) ? BLOCK_NAMES[flow] : flow;
+  }
+
+  /**
+   * Name one series for a heading, e.g. "DTP (uvm, vcs)".
    *
    * Where the framework and simulator are absent, the block name stands alone.
    * @param {!Object} entry Any entry carrying the identity fields.
@@ -168,7 +181,7 @@
       .map(function (field) {
         return entry[field];
       });
-    return entry.flow + (ran.length ? ' (' + ran.join(', ') + ')' : '');
+    return blockName(entry.flow) + (ran.length ? ' (' + ran.join(', ') + ')' : '');
   }
 
   /**
@@ -255,7 +268,8 @@
   /**
    * Build one row of an overview table, naming the series and linking to its
    * block page.
-   * @param {string} name Block name, used when nothing was published for it.
+   * @param {string} name The block's flow as its table declares it, shown
+   *     through blockName() when nothing was published for it.
    * @param {?Object} dut The series' dut_status entry, or null when the block
    *     published none; every measurement then reads n/a.
    * @return {!HTMLTableRowElement} The populated row.
@@ -274,7 +288,7 @@
       link.textContent = seriesLabel(dut);
       td.appendChild(link);
     } else {
-      td.textContent = dut ? seriesLabel(dut) : name;
+      td.textContent = dut ? seriesLabel(dut) : blockName(name);
     }
     row.appendChild(td);
 
