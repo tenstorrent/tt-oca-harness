@@ -848,7 +848,7 @@ contributor enables the hook.
 
 `.github/workflows/lint.yml` runs `lint-sv-slang`, `lint-sv-verilator`,
 `lint-python`, `lint-python-mypy`, `format-c`, `lint-tcl`, `lint-spelling`,
-`lint-sv-comments`, `lint-sv-enum-members`, `lint-yaml`, `lint-toml`, `lint-markdown`,
+`lint-sv-comments`, `lint-sv-enums`, `lint-yaml`, `lint-toml`, `lint-markdown`,
 `lint-make`, `lint-shell`,
 `regen-regs`, and `vendor-diff` on pull requests and pushes to `main`
 (`lint-sv-verible` is temporarily disabled). Setup jobs share `bender`,
@@ -908,9 +908,9 @@ Scheduled and manually dispatched pipelines always run in full.
 | `lint-sv-comments`
 | `make ocah-lint-sv-comments`
 
-| `lint-sv-enum-members`
-| `lint-sv-enum-members`
-| `make ocah-lint-sv-enum-members`
+| `lint-sv-enums`
+| `lint-sv-enums`
+| `make ocah-lint-sv-enums`
 
 | `lint-yaml`
 | `lint-yaml`

@@ -20,7 +20,8 @@ FORMAT_PATH ?= $(OCAH_VERIBLE_PATHS)
 endif
 
 # parameter-name-style checks parameter names only; localparam naming is
-# deferred to issue #1051. line-length is disabled
+# deferred to issue #1051. enum-name-style accepts the _e suffix alone, as
+# lint-sv-enums does. line-length is disabled
 # outright: the port/parameter/net alignment mode below (preserve) never
 # wraps an aligned declaration regardless of its width, and Verible never
 # reflows comment text, so most violations are structurally unfixable; the
@@ -37,7 +38,7 @@ endif
 # sep_no_tcm_preload, ...), which is exactly what $test$plusargs is for -
 # none of them extract a value, so the rule's suggested $value$plusargs
 # would be wrong for all of them.
-OCAH_LINT_VERIBLE_RULES ?= parameter-name-style=parameter_style:ALL_CAPS;localparam_style:,-line-length,-unpacked-dimensions-range-ordering,-plusarg-assignment
+OCAH_LINT_VERIBLE_RULES ?= parameter-name-style=parameter_style:ALL_CAPS;localparam_style:,enum-name-style=style_regex:[a-z_0-9]+_e,-line-length,-unpacked-dimensions-range-ordering,-plusarg-assignment
 OCAH_VERIBLE_EMPTY :=
 OCAH_VERIBLE_SPACE := $(OCAH_VERIBLE_EMPTY) $(OCAH_VERIBLE_EMPTY)
 OCAH_VERIBLE_COMMA := ,
