@@ -7987,6 +7987,14 @@ response of each sweep access. Adds CHK-FUSE-SENSE-DONE, `+SEP_RANDOM_COUNT`
 seeded random patterns per storage register, a readback after each restore,
 and a read of `0x10A3_0170` after the hole write that must return zero. The
 scoreboard check CHK-SB-CPU-CTRL-CSR is required.
+|<<sep_periph_bus_err_misaligned_test,`sep_periph_bus_err_misaligned_test`>>
+|Same as the cocotb procedure, over sixteen seeded passes by default
+(`+SEP_TEST_LOOPS`, `+SEP_SYSTEM_TEST_LOOPS`,
+`+SEP_PERIPH_BUS_ERR_MISALIGNED_TEST_LOOPS`). The R beats come from the master
+driver, not a bus monitor. Adds a fuse-sense-done check (CHK-FUSE-SENSE-DONE),
+an OKAY check on each status read (CHK-CSR-RESP), and, at the end of each pass,
+a clear through `PERIPH_BUS_ERR_CLEAR.hmac` and `DMA_BUS_ERR_CLEAR.clr` with
+both registers read back as 0 (CHK-MISALIGN-CLEAR).
 |===
 
 === Regression Groups

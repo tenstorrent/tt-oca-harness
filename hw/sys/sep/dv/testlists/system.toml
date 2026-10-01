@@ -261,7 +261,7 @@ args = ["+skip_fuse_sense"]
 # PERIPH_BUS_ERR_STATUS or DMA_BUS_ERR_STATUS bit. The VPLAN card owns the
 # checker contract.
 name = "sep_periph_bus_err_misaligned_test"
-module = "system.sep_periph_bus_err_misaligned_test"
+module = { cocotb = "system.sep_periph_bus_err_misaligned_test", uvm = "sep_periph_bus_err_misaligned_test" }
 seed = 1
 timeout_sec = 600
 tags = ["interrupt", "aggregator", "system", "subsystem"]
