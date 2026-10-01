@@ -61,9 +61,9 @@ module efuse_read_interface #(
   output logic is_read_timeout_debug_o  // One-cycle pulse when a read operation times out.
 );
 
-  localparam fuse_command_req_t FUSE_COMMAND_REQ_DEFAULT = '0;
-  localparam fuse_command_resp_t FUSE_COMMAND_RESP_DEFAULT = '0;
-  localparam efuse_data_t EFUSE_READ_ERROR_DATA = efuse_data_t'('hbadcab1e);
+  localparam fuse_command_req_t FuseCommandReqDefault = '0;
+  localparam fuse_command_resp_t FuseCommandRespDefault = '0;
+  localparam efuse_data_t EfuseReadErrorData = efuse_data_t'('hbadcab1e);
 
   // Timeout logic
   logic [27:0] timeout_count_q, timeout_count_d;
@@ -110,7 +110,7 @@ module efuse_read_interface #(
     read_done_d = read_done_q;
     read_busy_d = read_busy_q;
     read_back_data_d = read_back_data_q_n0_scan;
-    fuse_command_req_d = FUSE_COMMAND_REQ_DEFAULT;
+    fuse_command_req_d = FuseCommandReqDefault;
 
     read_timeout_event = 1'b0;
     read_addr_error_d = 1'b0;  // Default: no address error
@@ -154,14 +154,14 @@ module efuse_read_interface #(
           read_busy_d = 1'b0;
           read_err_d = 1'b1;
           read_back_data_d = efuse_data_t'(0);
-          fuse_command_req_d = FUSE_COMMAND_REQ_DEFAULT;
+          fuse_command_req_d = FuseCommandReqDefault;
           read_state_d = ST_READ_IDLE;
         end else if (fuse_command_resp_i.valid) begin
           read_done_d = 1'b1;
           read_busy_d = 1'b0;
           read_err_d = 1'b0;  // EFUSE_READ_OK
           read_back_data_d = fuse_command_resp_i.data;
-          fuse_command_req_d = FUSE_COMMAND_REQ_DEFAULT;
+          fuse_command_req_d = FuseCommandReqDefault;
           read_state_d = ST_READ_IDLE;
         end else begin
           read_done_d = 1'b0;
@@ -174,7 +174,7 @@ module efuse_read_interface #(
             read_busy_d = 1'b0;
             read_err_d = 1'b1;
             read_back_data_d = efuse_data_t'(0);
-            fuse_command_req_d = FUSE_COMMAND_REQ_DEFAULT;
+            fuse_command_req_d = FuseCommandReqDefault;
             read_state_d = ST_READ_IDLE;
 
             read_timeout_event = 1'b1;
@@ -190,8 +190,8 @@ module efuse_read_interface #(
         read_busy_d = 1'b0;
         read_done_d = 1'b1;
         read_err_d = 1'b1;
-        fuse_command_req_d = FUSE_COMMAND_REQ_DEFAULT;
-        read_back_data_d = EFUSE_READ_ERROR_DATA;
+        fuse_command_req_d = FuseCommandReqDefault;
+        read_back_data_d = EfuseReadErrorData;
       end
 
     endcase
@@ -201,7 +201,7 @@ module efuse_read_interface #(
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       read_state_q <= ST_READ_IDLE;
-      fuse_command_req_q <= FUSE_COMMAND_REQ_DEFAULT;
+      fuse_command_req_q <= FuseCommandReqDefault;
       read_err_q <= 1'b0;
       read_done_q <= 1'b0;
       read_busy_q <= 1'b0;
@@ -239,7 +239,7 @@ module efuse_read_interface #(
   assign is_read_timeout_debug_o = read_timeout_event;
 
   always_comb begin
-    fuse_command_req_o = FUSE_COMMAND_REQ_DEFAULT;
+    fuse_command_req_o = FuseCommandReqDefault;
     if (read_state_q == ST_WAIT_RESP) begin
       fuse_command_req_o = fuse_command_req_q;
     end
@@ -268,7 +268,7 @@ module efuse_read_interface #(
       clk_i, !rst_ni)
   `OCAH_OT_ASSERT(
       IllegalReadStateFailsClosed_A,
-      ($isunknown(read_state_q) || !(read_state_q inside {ST_READ_IDLE, ST_WAIT_RESP})) |=> read_state_q == ST_READ_IDLE && !read_busy_o && read_done_o && read_error_o && !fuse_command_req_o.valid && read_back_data_o == EFUSE_READ_ERROR_DATA,
+      ($isunknown(read_state_q) || !(read_state_q inside {ST_READ_IDLE, ST_WAIT_RESP})) |=> read_state_q == ST_READ_IDLE && !read_busy_o && read_done_o && read_error_o && !fuse_command_req_o.valid && read_back_data_o == EfuseReadErrorData,
       clk_i, !rst_ni)
   // verilog_format: on
 

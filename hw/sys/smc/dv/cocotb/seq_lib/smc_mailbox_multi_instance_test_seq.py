@@ -5,7 +5,7 @@
 The generated map (``smc_addr.h``) exports one ``*_MAILBOX_<n>_BASE_ADDR``
 symbol per instance and direction; the instance count is derived from those
 symbols and required to equal the SMC integration value ``periphs.adoc`` gives
-for ``NUM_MAILBOXES`` (32, against an IP default of 2). The instances sit at:
+for ``NumMailboxes`` (32, against an IP default of 2). The instances sit at:
 
   * SMC_MAILBOX_OUTBOUND_MAILBOX_N (smc_addr("SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR") + N * 0x1000)
   * SMC_MAILBOX_INBOUND_MAILBOX_N  (smc_addr("SMC_TOP_SMC_MAILBOX_INBOUND_MAILBOX_0_BASE_ADDR") + N * 0x1000)
@@ -43,7 +43,7 @@ _MAILBOX_STRIDE = 0x1000
 _STATUS_OFFSET = 0x010
 
 # Instance count from the generated map, one symbol per instance and direction.
-# `periphs.adoc` ("Peripheral parameter overrides") gives NUM_MAILBOXES = 32 at
+# `periphs.adoc` ("Peripheral parameter overrides") gives NumMailboxes = 32 at
 # the SMC level, and the two directions must agree with each other and with it.
 _SPEC_NUM_MAILBOXES = 32
 _OUTBOUND_SYMBOLS = smc_addr_symbols(r"SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_\d+_BASE_ADDR")
@@ -53,7 +53,7 @@ if _MAILBOX_COUNT != _SPEC_NUM_MAILBOXES or len(_INBOUND_SYMBOLS) != _SPEC_NUM_M
     raise AssertionError(
         f"generated map exports {len(_OUTBOUND_SYMBOLS)} outbound and "
         f"{len(_INBOUND_SYMBOLS)} inbound mailbox instances; periphs.adoc gives "
-        f"NUM_MAILBOXES = {_SPEC_NUM_MAILBOXES}"
+        f"NumMailboxes = {_SPEC_NUM_MAILBOXES}"
     )
 # IRQEN is the ONE mailbox register in this block that a CSR test can genuinely
 # prove: the RDL (`axil_mailbox.rdl`) declares its three fields `sw = rw;

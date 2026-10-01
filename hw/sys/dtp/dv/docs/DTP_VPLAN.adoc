@@ -6828,7 +6828,7 @@ fixed access policy. Data movement is out (<<dtp-formal-exclusions>>).
 [cols="3,4",options="header",]
 |===
 |Logic |Reason and where the credit lives
-|JTAG2AXI data path: the 132-bit shared shift register with a variable active length, the byte-lane shifts by `addr mod BEAT_BYTES`, the 56-bit series address increment and its wrap, the `DEADBEEF` pending-read capture |Wide arithmetic and per-bit loops; a bounded proof over them is a data check the F4.1 and F4.2 scenarios make with data verification. The bridge target proves control only.
+|JTAG2AXI data path: the 132-bit shared shift register with a variable active length, the byte-lane shifts by `addr mod BeatBytes`, the 56-bit series address increment and its wrap, the `DEADBEEF` pending-read capture |Wide arithmetic and per-bit loops; a bounded proof over them is a data check the F4.1 and F4.2 scenarios make with data verification. The bridge target proves control only.
 |The five gray-coded clearable CDC FIFOs with three-stage synchronizers and the coupled reset controller inside `axi_cdc_clearable` |Third-party IP with its own correctness argument; the open path takes the AXI side as free inputs. A reset that lands mid-transaction leaves the request machine waiting with no recovery other than Test-Logic-Reset; that path is a licensed reset and X-propagation check, not an open-path property.
 |Boundary-scan data and the external iJTAG instrument chains |Loopbacks in `tb_top`; the design carries selection and gating only, which T2 and T5 cover.
 |`ctp_pulse_stretcher` at large `STRETCH_MULT` |A 16-bit down counter, up to 65 536 cycles. End-to-end proofs assume `STRETCH_MULT <= 4`; the counter's reload and terminal behaviour is one inductive property of its own.
@@ -6918,7 +6918,7 @@ state.
 * `stop_clks_o` is the OR of the requests through a two-flop synchronizer
   and an output flop, three `clk_i` cycles (`ast_clkstop_or_after_three`).
 * `INT_CT_MODE[i] = 0` is the wire-OR pulse mode,
-  `MODE_WIRE_OR = ~INT_CT_MODE[i]` (`ast_ctp_mode_enables_exclusive`, checked
+  `ModeWireOr = ~INT_CT_MODE[i]` (`ast_ctp_mode_enables_exclusive`, checked
   per internal port).
 * `CONFIG.RESET` returns only the sender machine to IDLE; the receiver has no
   reset arc (`ast_hs_reset_recovers_sender`).
@@ -6943,7 +6943,7 @@ The proofs and cover traces add three points the chapters do not state.
   and covers that half of the instruction space; the zero-length bypass, the
   upper capability registers and the SEP and SMC bridge instructions have no
   open-path cover. The instruction package's own enum values use the shift
-  form `DECODED_IR_WIDTH'(1'b1) << opcode`, which every frontend sizes alike
+  form `DecodedIrWidth'(1'b1) << opcode`, which every frontend sizes alike
   (`formal-property-style.adoc`, Accepted constructs).
 
 Two reset paths are checks for the licensed X-propagation app

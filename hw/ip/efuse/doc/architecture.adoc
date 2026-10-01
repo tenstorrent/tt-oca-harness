@@ -215,7 +215,7 @@ range with a 4-bit `lock` permission field:
 [source,sourceCode,systemverilog]
 ----
 typedef struct packed {
-    logic [EFUSE_FIELD_MAP_IDX_WIDTH-1:0] idx;        // Field index
+    logic [EfuseFieldMapIdxWidth-1:0] idx;        // Field index
     logic [3:0]                           lock;       // Permission bits
     logic [31:0]                          start_addr; // Field start address
     logic [31:0]                          end_addr;   // Field end address

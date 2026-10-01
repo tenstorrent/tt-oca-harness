@@ -31,14 +31,14 @@ module smc_misc_wrap #(
   input  logic [LC_STATE_WIDTH-1:0] lc_state_i,  // Lifecycle state, reported through the
                                                  // chip_config LC_STATE register.
 
-  input  logic [smc_config_pkg::CPU_CLUSTER_COUNT-1:0] ndmreset_request_i,  // NDM reset request
+  input  logic [smc_config_pkg::CpuClusterCount-1:0] ndmreset_request_i,    // NDM reset request
                                                                             // per CPU cluster,
                                                                             // synchronized to the
                                                                             // SMC core clock and
                                                                             // readable in the
                                                                             // NDMRESET_REQUEST
                                                                             // register.
-  output logic [smc_config_pkg::CPU_CLUSTER_COUNT-1:0] ndmreset_process_o  // Firmware response to
+  output logic [smc_config_pkg::CpuClusterCount-1:0] ndmreset_process_o    // Firmware response to
                                                                            // each cluster's NDM
                                                                            // reset request, from
                                                                            // the NDMRESET_PROCESS
@@ -257,10 +257,10 @@ module smc_misc_wrap #(
   );
 
   assign ndm_hwif_in.NDMRESET_REQUEST.ndmreset_request.next = ndm_reset_reg_pkg::NDM_RESET_REG_DATA_WIDTH'(ndmreset_request_i);
-  assign ndm_hwif_in.NDMRESET_CLUSTER_COUNT.ndmreset_cluster_count.next = smc_config_pkg::CPU_CLUSTER_COUNT;
+  assign ndm_hwif_in.NDMRESET_CLUSTER_COUNT.ndmreset_cluster_count.next = smc_config_pkg::CpuClusterCount;
 
   // Output: ndmreset_process goes to reset control logic (via SMU)
-  assign ndmreset_process_o = ndm_hwif_out.NDMRESET_PROCESS.ndmreset_process.value[smc_config_pkg::CPU_CLUSTER_COUNT - 1:0];
+  assign ndmreset_process_o = ndm_hwif_out.NDMRESET_PROCESS.ndmreset_process.value[smc_config_pkg::CpuClusterCount - 1:0];
 
   //////////////////////////
   // AXI-Lite Error Slave //

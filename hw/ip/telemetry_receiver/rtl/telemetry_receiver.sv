@@ -23,26 +23,26 @@ module telemetry_receiver
   parameter int unsigned BUFFER_DEPTH                 = 8,  // Completed-message FIFO depth; must be
                                                             // a power of two and >= 2.
   parameter int unsigned MAX_NUM_COUNTERS_PER_MESSAGE = 4,  // Counters allowed per message; only
-                                                            // the first NUM_COUNTER_REGS are
+                                                            // the first NumCounterRegs are
                                                             // readable.
 
-  localparam int unsigned MAX_NUM_BLOCKS_PER_MESSAGE =      // Packet blocks spanning one message: one header block plus one block per counter byte.
-        1 + (TELEMETRY_COUNTER_WIDTH / TELEMETRY_DATA_WIDTH) * MAX_NUM_COUNTERS_PER_MESSAGE,
-  localparam int unsigned MAX_NUM_PACKETS_PER_MESSAGE =     // ATB packets spanning one message.
-        MAX_NUM_BLOCKS_PER_MESSAGE % NUM_BLOCKS_PER_PACKET == 0 ?
-        MAX_NUM_BLOCKS_PER_MESSAGE / NUM_BLOCKS_PER_PACKET :
-        MAX_NUM_BLOCKS_PER_MESSAGE / NUM_BLOCKS_PER_PACKET + 1,
+  localparam int unsigned MaxNumBlocksPerMessage =      // Packet blocks spanning one message: one header block plus one block per counter byte.
+        1 + (TelemetryCounterWidth / TelemetryDataWidth) * MAX_NUM_COUNTERS_PER_MESSAGE,
+  localparam int unsigned MaxNumPacketsPerMessage =     // ATB packets spanning one message.
+        MaxNumBlocksPerMessage % NumBlocksPerPacket == 0 ?
+        MaxNumBlocksPerMessage / NumBlocksPerPacket :
+        MaxNumBlocksPerMessage / NumBlocksPerPacket + 1,
 
-  localparam int unsigned PACKET_INDEX_WIDTH = $clog2(MAX_NUM_PACKETS_PER_MESSAGE), // Packet-index counter width.
-  localparam int unsigned BLOCK_INDEX_WIDTH  = $clog2(NUM_BLOCKS_PER_PACKET), // Block-index counter width.
+  localparam int unsigned PacketIndexWidth = $clog2(MaxNumPacketsPerMessage), // Packet-index counter width.
+  localparam int unsigned BlockIndexWidth  = $clog2(NumBlocksPerPacket), // Block-index counter width.
 
-  localparam int unsigned ASSEMBLY_BUFFER_DEPTH =           // Assembly-buffer depth in beats.
-        (TELEMETRY_PACKET_WIDTH / TELEMETRY_DATA_WIDTH) * MAX_NUM_PACKETS_PER_MESSAGE,
-  localparam int unsigned ASSEMBLY_BUFFER_PTR_WIDTH = $clog2(ASSEMBLY_BUFFER_DEPTH), // Assembly-buffer pointer width.
-  localparam type assembly_buffer_ptr_t = logic [ASSEMBLY_BUFFER_PTR_WIDTH-1:0], // Assembly-buffer pointer type.
+  localparam int unsigned AssemblyBufferDepth =           // Assembly-buffer depth in beats.
+        (TelemetryPacketWidth / TelemetryDataWidth) * MaxNumPacketsPerMessage,
+  localparam int unsigned AssemblyBufferPtrWidth = $clog2(AssemblyBufferDepth), // Assembly-buffer pointer width.
+  localparam type assembly_buffer_ptr_t = logic [AssemblyBufferPtrWidth-1:0], // Assembly-buffer pointer type.
 
-  localparam int unsigned MESSAGE_BUFFER_PTR_WIDTH = $clog2(BUFFER_DEPTH) + 1, // Message-FIFO pointer width.
-  localparam type message_buffer_ptr_t = logic [MESSAGE_BUFFER_PTR_WIDTH-1:0] // Message-FIFO pointer type.
+  localparam int unsigned MessageBufferPtrWidth = $clog2(BUFFER_DEPTH) + 1, // Message-FIFO pointer width.
+  localparam type message_buffer_ptr_t = logic [MessageBufferPtrWidth-1:0] // Message-FIFO pointer type.
 ) (
   input  logic            clk_i,                            // System clock.
                                                             // All synchronous logic uses the rising
@@ -100,7 +100,7 @@ module telemetry_receiver
   } telemetry_message_t;
 
   function automatic telemetry_probe_id_t get_telemetry_probe_id(
-      telemetry_packet_t [MAX_NUM_PACKETS_PER_MESSAGE-1:0] telemetry_packets);
+      telemetry_packet_t [MaxNumPacketsPerMessage-1:0] telemetry_packets);
     return telemetry_packets[0][60:56];
   endfunction
 
@@ -113,7 +113,7 @@ module telemetry_receiver
 
   logic last_packet_received;
 
-  telemetry_packet_t [MAX_NUM_PACKETS_PER_MESSAGE-1:0] received_telemetry_packets;
+  telemetry_packet_t [MaxNumPacketsPerMessage-1:0]     received_telemetry_packets;
   telemetry_message_t                                  received_telemetry_message;
 
   logic message_buffer_pop;
@@ -144,24 +144,24 @@ module telemetry_receiver
   assembly_buffer_ptr_t
       assembly_buffer_wr_ptr_q, assembly_buffer_wr_ptr, assembly_buffer_wr_ptr_next;
 
-  telemetry_data_t [ASSEMBLY_BUFFER_DEPTH-1:0] assembly_buffer, assembly_buffer_next;
+  telemetry_data_t [AssemblyBufferDepth-1:0] assembly_buffer, assembly_buffer_next;
 
   logic assembly_buffer_full, assembly_buffer_full_q;
 
   assign assembly_buffer_full =
-        assembly_buffer_wr_ptr == assembly_buffer_ptr_t'(ASSEMBLY_BUFFER_DEPTH - 1) &&
+        assembly_buffer_wr_ptr == assembly_buffer_ptr_t'(AssemblyBufferDepth - 1) &&
         telemetry_beat_received;
 
   assign received_telemetry_packets = assembly_buffer;
 
   logic end_of_packet, end_of_packet_q;
 
-  assign end_of_packet = &assembly_buffer_wr_ptr[$clog2(NUM_BEATS_PER_PACKET)-1:0] &&
+  assign end_of_packet = &assembly_buffer_wr_ptr[$clog2(NumBeatsPerPacket)-1:0] &&
                            telemetry_beat_received;
 
   assign last_packet_received =
         end_of_packet_q &&
-        received_telemetry_packets[(assembly_buffer_wr_ptr_q) / NUM_BEATS_PER_PACKET].last_packet;
+        received_telemetry_packets[(assembly_buffer_wr_ptr_q) / NumBeatsPerPacket].last_packet;
 
   assign missing_last_event = assembly_buffer_full_q && !last_packet_received;
 
@@ -206,8 +206,8 @@ module telemetry_receiver
 
   assign received_telemetry_message.probe_id = get_telemetry_probe_id(received_telemetry_packets);
 
-  logic [PACKET_INDEX_WIDTH-1:0] packet_index;
-  logic [BLOCK_INDEX_WIDTH-1:0]  block_index;
+  logic [PacketIndexWidth-1:0] packet_index;
+  logic [BlockIndexWidth-1:0]  block_index;
 
   always_comb begin
     packet_index = 0;
@@ -217,7 +217,7 @@ module telemetry_receiver
       received_telemetry_message.counters[i].vld = 1'b1;
 
       // Counter data is stored MSB first
-      for (int j = TELEMETRY_COUNTER_WIDTH / 8 - 1; j >= 0; j--) begin
+      for (int j = TelemetryCounterWidth / 8 - 1; j >= 0; j--) begin
         received_telemetry_message.counters[i].vld &=
                 received_telemetry_packets[packet_index]
                     .blocks[block_index]
@@ -227,7 +227,7 @@ module telemetry_receiver
                     .blocks[block_index]
                     .counter_val_partial;
 
-        if (block_index == NUM_BLOCKS_PER_PACKET - 1) begin
+        if (block_index == NumBlocksPerPacket - 1) begin
           packet_index++;
           block_index = 0;
         end else begin
@@ -259,10 +259,10 @@ module telemetry_receiver
   assign message_buffer_push = last_packet_received;
 
   assign message_buffer_full  =
-        message_buffer_wr_ptr[MESSAGE_BUFFER_PTR_WIDTH-2:0] ==
-        message_buffer_rd_ptr[MESSAGE_BUFFER_PTR_WIDTH-2:0] &&
-        message_buffer_wr_ptr[MESSAGE_BUFFER_PTR_WIDTH-1] !=
-        message_buffer_rd_ptr[MESSAGE_BUFFER_PTR_WIDTH-1];
+        message_buffer_wr_ptr[MessageBufferPtrWidth-2:0] ==
+        message_buffer_rd_ptr[MessageBufferPtrWidth-2:0] &&
+        message_buffer_wr_ptr[MessageBufferPtrWidth-1] !=
+        message_buffer_rd_ptr[MessageBufferPtrWidth-1];
   assign message_buffer_empty = message_buffer_wr_ptr == message_buffer_rd_ptr;
 
   assign message_buffer_fill_level = message_buffer_ptr_t'(message_buffer_wr_ptr - message_buffer_rd_ptr);
@@ -270,7 +270,7 @@ module telemetry_receiver
   assign message_buffer_rd_data =
         message_buffer_empty ?
         telemetry_message_t'(0) :
-        message_buffer[message_buffer_rd_ptr[MESSAGE_BUFFER_PTR_WIDTH-2:0]];
+        message_buffer[message_buffer_rd_ptr[MessageBufferPtrWidth-2:0]];
 
   always_comb begin
     message_buffer_wr_ptr_next = message_buffer_wr_ptr;
@@ -282,7 +282,7 @@ module telemetry_receiver
       message_buffer_rd_ptr_next = message_buffer_ptr_t'(0);
     end else begin
       if (message_buffer_push) begin  // Write
-        message_buffer_next[message_buffer_wr_ptr[MESSAGE_BUFFER_PTR_WIDTH-2:0]] =
+        message_buffer_next[message_buffer_wr_ptr[MessageBufferPtrWidth-2:0]] =
                     received_telemetry_message;
         message_buffer_wr_ptr_next = message_buffer_wr_ptr + message_buffer_ptr_t'(1);
       end
@@ -324,11 +324,11 @@ module telemetry_receiver
   // CSRs //
   //////////
 
-  logic                   [NUM_COUNTER_REGS-1:0] counter_reg_vlds;
-  telemetry_counter_val_t [NUM_COUNTER_REGS-1:0] counter_reg_vals;
+  logic                   [NumCounterRegs-1:0] counter_reg_vlds;
+  telemetry_counter_val_t [NumCounterRegs-1:0] counter_reg_vals;
 
   always_comb begin
-    for (int i = 0; i < NUM_COUNTER_REGS; i++) begin
+    for (int i = 0; i < NumCounterRegs; i++) begin
       if (i < MAX_NUM_COUNTERS_PER_MESSAGE) begin
         counter_reg_vlds[i] = message_buffer_rd_data.counters[i].vld;
         counter_reg_vals[i] = message_buffer_rd_data.counters[i].value;
@@ -400,7 +400,7 @@ module telemetry_receiver
 
   // TELEMETRY_COUNTER Registers
   always_comb begin
-    for (int i = 0; i < NUM_COUNTER_REGS; i++) begin
+    for (int i = 0; i < NumCounterRegs; i++) begin
       reg_in.TELEMETRY_COUNTER[i].COUNTER.next = counter_reg_vals[i];
     end
   end

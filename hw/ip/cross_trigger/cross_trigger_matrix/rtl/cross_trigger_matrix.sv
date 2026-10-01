@@ -4,7 +4,7 @@
 
 // Route cross-trigger pulses from CT_Dst inputs onto CT_Src outputs through programmable OR masks.
 //
-// NUM_CT_SRC and NUM_CT_DST are localparams from the RDL package so the map addresses
+// NumCtSrc and NumCtDst are localparams from the RDL package so the map addresses
 // every select bit; they are not module parameters.
 // Past 32 destinations the RDL widens the select field across both register words; decode
 // still sees one value.
@@ -25,10 +25,10 @@ module cross_trigger_matrix
                                                // register map spans are decoded.
   output axil_resp_t              axil_resp_o,  // AXI-Lite CSR response.
 
-  input  logic [NUM_CT_DST-1:0]   ct_dst_i,  // Cross-trigger pulses into the routing matrix, one
+  input  logic [NumCtDst-1:0]   ct_dst_i,    // Cross-trigger pulses into the routing matrix, one
                                              // bit per CT_Dst port.
 
-  output logic [NUM_CT_SRC-1:0]   ct_src_o  // Routed cross-trigger pulses, one registered bit per
+  output logic [NumCtSrc-1:0]   ct_src_o    // Routed cross-trigger pulses, one registered bit per
                                             // CT_Src port.
 );
 
@@ -37,15 +37,13 @@ module cross_trigger_matrix
   // Register interface (no hwif_in needed - all registers are write-only from software)
   cross_trigger_matrix_reg_pkg::cross_trigger_matrix__out_t reg_out;
 
-  // NUM_CT_DST comes from the register map's own parameter; check it against the
+  // NumCtDst comes from the register map's own parameter; check it against the
   // width the map actually generated for the select field.
-  localparam int unsigned CT_DST_SELECT_WIDTH = $bits(
-      reg_out.CT_SRC[0].CONFIG_0.CT_DST_SELECT.value
-  );
+  localparam int unsigned CtDstSelectWidth = $bits(reg_out.CT_SRC[0].CONFIG_0.CT_DST_SELECT.value);
 
-  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(NumCtDstMatchesField_A, NUM_CT_DST == CT_DST_SELECT_WIDTH)
+  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(NumCtDstMatchesField_A, NumCtDst == CtDstSelectWidth)
 
-  localparam int unsigned REG_ADDR_WIDTH =
+  localparam int unsigned RegAddrWidth =
       cross_trigger_matrix_reg_pkg::CROSS_TRIGGER_MATRIX_REG_MIN_ADDR_WIDTH;
 
   // Register module instantiation - wire AXI-Lite structs directly
@@ -56,7 +54,7 @@ module cross_trigger_matrix
     // Write address channel
     .s_axil_awready (axil_resp_o.aw_ready),
     .s_axil_awvalid (axil_req_i.aw_valid),
-    .s_axil_awaddr  (axil_req_i.aw.addr[REG_ADDR_WIDTH-1:0]),
+    .s_axil_awaddr  (axil_req_i.aw.addr[RegAddrWidth-1:0]),
     .s_axil_awprot  (axil_req_i.aw.prot),
 
     // Write data channel
@@ -73,7 +71,7 @@ module cross_trigger_matrix
     // Read address channel
     .s_axil_arready (axil_resp_o.ar_ready),
     .s_axil_arvalid (axil_req_i.ar_valid),
-    .s_axil_araddr  (axil_req_i.ar.addr[REG_ADDR_WIDTH-1:0]),
+    .s_axil_araddr  (axil_req_i.ar.addr[RegAddrWidth-1:0]),
     .s_axil_arprot  (axil_req_i.ar.prot),
 
     // Read data channel
@@ -86,15 +84,15 @@ module cross_trigger_matrix
   );
 
   // Generate selector modules for each CT_Src port
-  for (genvar i = 0; i < NUM_CT_SRC; i++) begin : gen_src_selectors
+  for (genvar i = 0; i < NumCtSrc; i++) begin : gen_src_selectors
     // Select mask for this CT_Src, one config register per port
-    logic [NUM_CT_DST-1:0] select_mask;
+    logic [NumCtDst-1:0] select_mask;
 
     assign select_mask = reg_out.CT_SRC[i].CONFIG_0.CT_DST_SELECT.value;
 
     // Instantiate selector module for this CT_Src
     ctm_src_selector #(
-      .NUM_CT_DST(NUM_CT_DST)
+      .NUM_CT_DST(NumCtDst)
     ) u_src_selector (
       .clk_i      (clk_i),
       .rst_ni     (rst_ni),

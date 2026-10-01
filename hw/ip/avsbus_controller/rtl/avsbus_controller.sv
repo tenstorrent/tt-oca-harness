@@ -354,8 +354,8 @@ module avsbus_controller #(
   avsbus_controller_pkg::rule_t [0:0] addr_map;
   assign addr_map[0] = '{
           idx: 0,
-          start_addr: avsbus_controller_pkg::ADDR_WIDTH'(32'h0000_0000),
-          end_addr: avsbus_controller_pkg::ADDR_WIDTH'(32'hFFFF_FFFF)
+          start_addr: avsbus_controller_pkg::AddrWidth'(32'h0000_0000),
+          end_addr: avsbus_controller_pkg::AddrWidth'(32'hFFFF_FFFF)
       };
 
 
@@ -366,8 +366,8 @@ module avsbus_controller #(
   axi_lite_to_apb #(
     .NoApbSlaves(1),
     .NoRules(1),
-    .AddrWidth(avsbus_controller_pkg::ADDR_WIDTH),
-    .DataWidth(avsbus_controller_pkg::DATA_WIDTH),
+    .AddrWidth(avsbus_controller_pkg::AddrWidth),
+    .DataWidth(avsbus_controller_pkg::DataWidth),
     .PipelineRequest(1'b0),
     .PipelineResponse(1'b0),
     .axi_lite_req_t(avsbus_controller_pkg::avsbus_axil_req_t),

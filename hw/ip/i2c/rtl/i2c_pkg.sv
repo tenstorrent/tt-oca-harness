@@ -15,13 +15,13 @@ package i2c_pkg;
   // Register Interface Definitions //
   ////////////////////////////////////
 
-  localparam int unsigned REG_ADDR_WIDTH = i2c_reg_pkg::I2C_REG_MIN_ADDR_WIDTH;
-  localparam int unsigned REG_DATA_WIDTH = 32;
-  localparam int unsigned REG_STRB_WIDTH = REG_DATA_WIDTH / 8;
+  localparam int unsigned RegAddrWidth = i2c_reg_pkg::I2C_REG_MIN_ADDR_WIDTH;
+  localparam int unsigned RegDataWidth = 32;
+  localparam int unsigned RegStrbWidth = RegDataWidth / 8;
 
-  typedef logic [REG_ADDR_WIDTH-1:0] reg_addr_t;
-  typedef logic [REG_DATA_WIDTH-1:0] reg_data_t;
-  typedef logic [REG_STRB_WIDTH-1:0] reg_strb_t;
+  typedef logic [RegAddrWidth-1:0] reg_addr_t;
+  typedef logic [RegDataWidth-1:0] reg_data_t;
+  typedef logic [RegStrbWidth-1:0] reg_strb_t;
 
   `AXI_LITE_TYPEDEF_ALL(axil, reg_addr_t, reg_data_t, reg_strb_t)
 

@@ -46,7 +46,7 @@ interface dtp_tb_if;
   // Driven by the DUT top: decoded-IR one-hot observable for CHK-IR-DECODE,
   // 64 bits wide. cocotb reads an enum-typed interface member as a 32-bit
   // integer over VPI, so the member is a packed vector.
-  logic [jtag_inst_reg_pkg::DECODED_IR_WIDTH-1:0] inst_decoded;
+  logic [jtag_inst_reg_pkg::DecodedIrWidth-1:0] inst_decoded;
 
   // Lifecycle debug disables, one named member per dbg_disable_i path
   // (active-high: 1 = path disabled). Init 1 = fail-closed, matching the

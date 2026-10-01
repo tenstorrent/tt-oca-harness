@@ -5,7 +5,7 @@
 // strap pattern latched when the primary reset releases, and the default
 // direction map on the per-pad input-buffer enable.
 //
-// smc_periph_fcov carries the pad-bus activity and BOOT_STALL_PAD points.
+// smc_periph_fcov carries the pad-bus activity and BootStallPad points.
 //
 // One instance in the shared tb_top serves both flows. Every port is a
 // smc_tb_signal_list.svh signal or the smc_wrapper pad bus.

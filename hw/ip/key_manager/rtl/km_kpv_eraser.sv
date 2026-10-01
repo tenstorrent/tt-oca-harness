@@ -47,9 +47,9 @@ module km_kpv_eraser #(
                                             // regfile write port.
 );
 
-  localparam int unsigned SLOT_W = $clog2(NUM_SLOTS);
-  localparam int unsigned WORD_W = $clog2(WORDS_PER_SLOT);
-  localparam logic [WORD_W-1:0] LAST_WORD = WORD_W'(WORDS_PER_SLOT - 1);
+  localparam int unsigned SlotW = $clog2(NUM_SLOTS);
+  localparam int unsigned WordW = $clog2(WORDS_PER_SLOT);
+  localparam logic [WordW-1:0] LastWord = WordW'(WORDS_PER_SLOT - 1);
 
   // =========================================================================
   // Pseudo-random source: maximal-length Galois LFSR, one bit per data bit.
@@ -82,19 +82,19 @@ module km_kpv_eraser #(
   } erase_state_e;
 
   erase_state_e state_q, state_d;
-  logic [SLOT_W-1:0] slot_q, slot_d;
-  logic [WORD_W-1:0] word_q, word_d;
+  logic [SlotW-1:0] slot_q, slot_d;
+  logic [WordW-1:0] word_q, word_d;
 
   // Lowest-index pending erase request (priority encoder)
   logic              req_pending;
-  logic [SLOT_W-1:0] req_slot;
+  logic [SlotW-1:0]  req_slot;
   always_comb begin
     req_pending = 1'b0;
     req_slot    = '0;
     for (int i = NUM_SLOTS - 1; i >= 0; i--) begin
       if (erase_req_i[i]) begin
         req_pending = 1'b1;
-        req_slot    = SLOT_W'(i);
+        req_slot    = SlotW'(i);
       end
     end
   end
@@ -126,11 +126,11 @@ module km_kpv_eraser #(
         // advance the LFSR so the next word gets fresh random data.
         wr_en_o = 1'b1;
         lfsr_en = 1'b1;
-        if (word_q == LAST_WORD) begin
+        if (word_q == LastWord) begin
           erase_done_o[slot_q] = 1'b1;
           state_d              = IDLE;
         end else begin
-          word_d = word_q + WORD_W'(1);
+          word_d = word_q + WordW'(1);
         end
       end
 

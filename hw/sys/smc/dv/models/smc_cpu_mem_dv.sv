@@ -37,8 +37,8 @@ module smc_cpu_mem_dv
   // Bound into smc_ip_integration: these connect to that module's own
   // memory interfaces, which the bind port list resolves in its scope.
   input rom_req_t            rom_req_i,
-  input scratch_ram_req_t    scratch_ram_req_i    [NUM_SRAM_BANKS-1:0],
-  input l1_dcache_data_req_t l1_dcache_data_req_i [NUM_DCACHE_DATA_BANKS-1:0],
+  input scratch_ram_req_t    scratch_ram_req_i    [NumSramBanks-1:0],
+  input l1_dcache_data_req_t l1_dcache_data_req_i [NumDcacheDataBanks-1:0],
 
   input logic ecc_inject_sbe_i,
   input logic ecc_inject_dbe_i,
@@ -52,27 +52,27 @@ module smc_cpu_mem_dv
   input logic [1:0]  ecc_poke_mask_i
 );
 
-  localparam logic [31:0] FW_MAGIC = 32'hACAF_ACA1;
+  localparam logic [31:0] FwMagic = 32'hACAF_ACA1;
 
-  localparam int unsigned SCRATCH_WORDS = 1 << SMC_4CORE_SCRATCH_RAM_ADDR_WIDTH;
+  localparam int unsigned ScratchWords = 1 << Smc4coreScratchRamAddrWidth;
   // Bank/entry decode: smc_scratch_map_pkg, whose header names the RDL and
   // architecture-document sources of the geometry and the DV-owned interleave
   // assumptions. Imported rather than restated so the loader and the tb_top
   // peeks cannot drift apart.
-  localparam int unsigned BANK_STRIPE_BYTES = smc_scratch_map_pkg::SCRATCH_BANK_STRIPE_BYTES;
-  localparam int unsigned BYTES_PER_ENTRY = smc_scratch_map_pkg::SCRATCH_BYTES_PER_ENTRY;
-  localparam int unsigned BANKS_PER_GROUP = smc_scratch_map_pkg::SCRATCH_BANKS_PER_GROUP;
-  localparam int unsigned GROUP_BYTES = smc_scratch_map_pkg::SCRATCH_GROUP_BYTES;
+  localparam int unsigned BankStripeBytes = smc_scratch_map_pkg::ScratchBankStripeBytes;
+  localparam int unsigned BytesPerEntry = smc_scratch_map_pkg::ScratchBytesPerEntry;
+  localparam int unsigned BanksPerGroup = smc_scratch_map_pkg::ScratchBanksPerGroup;
+  localparam int unsigned GroupBytes = smc_scratch_map_pkg::ScratchGroupBytes;
   // Staging depth for the +smc_scratch_ram_hex backdoor, in 64-bit words.
   //
   // Anything past the end of this array is dropped by $readmemh, and a
   // truncated image boots into whatever the tail of it happened to be, so the
   // cap has to sit well above the largest firmware image in this tree rather
   // than near it. 32768 words is 256 KB, a quarter of the 1 MB scratch
-  // (NUM_SRAM_BANKS * SCRATCH_WORDS * BYTES_PER_ENTRY), and the array is
-  // per-bank so raising it further costs NUM_SRAM_BANKS times as much
+  // (NumSramBanks * ScratchWords * BytesPerEntry), and the array is
+  // per-bank so raising it further costs NumSramBanks times as much
   // simulator memory. Over-length is reported below rather than left silent.
-  localparam int unsigned MAX_LINEAR_WORDS = 32768;
+  localparam int unsigned MaxLinearWords = 32768;
 
   logic        magic_hit_scratch;
   logic        magic_hit_dcache;
@@ -85,7 +85,7 @@ module smc_cpu_mem_dv
   // Per-bank read counters: which of the 32 scratch banks the CPU actually
   // fetched from, so a caller can check an image's bank residency rather than
   // only that some scratch read happened.
-  logic [NUM_SRAM_BANKS-1:0][31:0] scratch_ram_bank_read_count_q;
+  logic [NumSramBanks-1:0][31:0] scratch_ram_bank_read_count_q;
   logic        scratch0_inject_fire_q;
 
   // Counts scratch bank0 reads taken while an inject pin is asserted. No data
@@ -133,7 +133,7 @@ module smc_cpu_mem_dv
       if (rom_req_i.en && !rom_req_i.wmode) begin
         rom_read_count_q <= rom_read_count_q + 32'd1;
       end
-      for (int unsigned bank = 0; bank < NUM_SRAM_BANKS; bank++) begin
+      for (int unsigned bank = 0; bank < NumSramBanks; bank++) begin
         if (scratch_ram_req_i[bank].en && scratch_ram_req_i[bank].wmode) begin
           scratch_ram_write_count_q <= scratch_ram_write_count_q + 32'd1;
         end else if (scratch_ram_req_i[bank].en) begin
@@ -141,13 +141,13 @@ module smc_cpu_mem_dv
           scratch_ram_bank_read_count_q[bank] <= scratch_ram_bank_read_count_q[bank] + 32'd1;
         end
       end
-      for (int unsigned bank = 0; bank < NUM_DCACHE_DATA_BANKS; bank++) begin
+      for (int unsigned bank = 0; bank < NumDcacheDataBanks; bank++) begin
         if (l1_dcache_data_req_i[bank].en && l1_dcache_data_req_i[bank].wmode) begin
           dcache_data_write_count_q <= dcache_data_write_count_q + 32'd1;
         end
       end
       if (magic_hit_scratch || magic_hit_dcache) begin
-        fw_mailbox_q <= FW_MAGIC;
+        fw_mailbox_q <= FwMagic;
         fw_mailbox_valid_q <= 1'b1;
       end
     end
@@ -155,9 +155,9 @@ module smc_cpu_mem_dv
 
   always_comb begin
     magic_hit_scratch = 1'b0;
-    for (int unsigned bank = 0; bank < NUM_SRAM_BANKS; bank++) begin
+    for (int unsigned bank = 0; bank < NumSramBanks; bank++) begin
       if (scratch_ram_req_i[bank].en && scratch_ram_req_i[bank].wmode &&
-                    scratch_ram_req_i[bank].wdata[31:0] == FW_MAGIC) begin
+                    scratch_ram_req_i[bank].wdata[31:0] == FwMagic) begin
         magic_hit_scratch = 1'b1;
       end
     end
@@ -165,10 +165,10 @@ module smc_cpu_mem_dv
 
   always_comb begin
     magic_hit_dcache = 1'b0;
-    for (int unsigned bank = 0; bank < NUM_DCACHE_DATA_BANKS; bank++) begin
+    for (int unsigned bank = 0; bank < NumDcacheDataBanks; bank++) begin
       if (l1_dcache_data_req_i[bank].en && l1_dcache_data_req_i[bank].wmode) begin
         for (int unsigned bit_base = 0; bit_base + 32 <= 144; bit_base += 8) begin
-          if (l1_dcache_data_req_i[bank].wdata[bit_base+:32] == FW_MAGIC) begin
+          if (l1_dcache_data_req_i[bank].wdata[bit_base+:32] == FwMagic) begin
             magic_hit_dcache = 1'b1;
           end
         end
@@ -203,7 +203,7 @@ module smc_cpu_mem_dv
     end
   end
 
-  for (genvar bank = 0; bank < NUM_SRAM_BANKS; bank++) begin : gen_scratch_load
+  for (genvar bank = 0; bank < NumSramBanks; bank++) begin : gen_scratch_load
     initial begin : backdoor_scratch_load
       string scratch_path;
       int    scratch_fd;
@@ -213,15 +213,15 @@ module smc_cpu_mem_dv
       int    entry_i;
       int    loaded_words;
       int    file_words;
-      logic [SMC_4CORE_SCRATCH_RAM_DATA_WIDTH-1:0] scan_word;
-      logic [SMC_4CORE_SCRATCH_RAM_DATA_WIDTH-1:0] linear_mem [0:MAX_LINEAR_WORDS-1];
+      logic [Smc4coreScratchRamDataWidth-1:0] scan_word;
+      logic [Smc4coreScratchRamDataWidth-1:0] linear_mem [0:MaxLinearWords-1];
 
       // A four-state simulator leaves every entry X until something writes
       // it, and a sub-word store merges that X into the codeword, so a reader
       // of the entry sees X where Verilator's randomised array gives it a
       // value. The all-zero word is a valid codeword; every entry starts as
       // one, including the three quarters above the image staging cap.
-      for (int unsigned e = 0; e < SCRATCH_WORDS; e++) begin
+      for (int unsigned e = 0; e < ScratchWords; e++) begin
         u_mems.gen_scratch_rams[bank].u_mem.u_mem.mem[e] = '0;
       end
 
@@ -230,16 +230,16 @@ module smc_cpu_mem_dv
         scratch_fd = $fopen(scratch_path, "r");
         if (scratch_fd != 0) begin
           $fclose(scratch_fd);
-          for (int unsigned i = 0; i < MAX_LINEAR_WORDS; i++) begin
+          for (int unsigned i = 0; i < MaxLinearWords; i++) begin
             linear_mem[i] = '0;
           end
           $readmemh(scratch_path, linear_mem);
           loaded_words = 0;
-          for (word_i = 0; word_i < int'(MAX_LINEAR_WORDS); word_i++) begin
-            offset_i = word_i * int'(BYTES_PER_ENTRY);
+          for (word_i = 0; word_i < int'(MaxLinearWords); word_i++) begin
+            offset_i = word_i * int'(BytesPerEntry);
             bank_i   = int'(smc_scratch_map_pkg::smc_scratch_bank(unsigned'(offset_i)));
             entry_i  = int'(smc_scratch_map_pkg::smc_scratch_entry(unsigned'(offset_i)));
-            if (bank_i == bank && entry_i < int'(SCRATCH_WORDS) && linear_mem[word_i] !== 'x) begin
+            if (bank_i == bank && entry_i < int'(ScratchWords) && linear_mem[word_i] !== 'x) begin
               u_mems.gen_scratch_rams[bank].u_mem.u_mem.mem[entry_i] = linear_mem[word_i];
               if (linear_mem[word_i] != '0) begin
                 loaded_words++;
@@ -270,16 +270,16 @@ module smc_cpu_mem_dv
               end
             end
             $fclose(scratch_fd);
-            if (file_words > int'(MAX_LINEAR_WORDS)) begin
+            if (file_words > int'(MaxLinearWords)) begin
               $error({"[smc_cpu_mem_dv] scratch image %s holds %0d words but the ",
                       "backdoor stages only %0d -- the image is TRUNCATED and the CPU will ",
-                      "fetch whatever the cut left behind. Raise MAX_LINEAR_WORDS."}, scratch_path,
-                       file_words, MAX_LINEAR_WORDS);
+                      "fetch whatever the cut left behind. Raise MaxLinearWords."}, scratch_path,
+                       file_words, MaxLinearWords);
             end
-            $display({"[smc_cpu_mem_dv] stripe params BANK_STRIPE_BYTES=%0d ",
-                      "BYTES_PER_ENTRY=%0d BANKS_PER_GROUP=%0d GROUP_BYTES=%0d ",
-                      "NUM_SRAM_BANKS=%0d SCRATCH_WORDS=%0d"}, BANK_STRIPE_BYTES, BYTES_PER_ENTRY,
-                       BANKS_PER_GROUP, GROUP_BYTES, NUM_SRAM_BANKS, SCRATCH_WORDS);
+            $display({"[smc_cpu_mem_dv] stripe params BankStripeBytes=%0d ",
+                      "BytesPerEntry=%0d BanksPerGroup=%0d GroupBytes=%0d ",
+                      "NumSramBanks=%0d ScratchWords=%0d"}, BankStripeBytes, BytesPerEntry,
+                       BanksPerGroup, GroupBytes, NumSramBanks, ScratchWords);
             $display(
                 "[smc_cpu_mem_dv] stripe-loaded scratch %s (%0d words in file, bank0 nonzero=%0d)",
                 scratch_path, file_words, loaded_words);
