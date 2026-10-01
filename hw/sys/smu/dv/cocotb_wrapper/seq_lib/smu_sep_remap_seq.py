@@ -22,7 +22,12 @@ from collections import Counter
 import cocotb
 from cocotb.triggers import RisingEdge
 
-from seq_lib.sep_fw_common import addr_of, format_pc_profile, load_syms
+from seq_lib.sep_fw_common import (
+    addr_of,
+    format_pc_profile,
+    load_syms,
+    sep_boot_order_from_hw,
+)
 
 # Goldens are the firmware's own constants (sep_smu_remap.c).
 AP_REGION0_OFFSET = 0x00ABC00000
@@ -86,8 +91,7 @@ class SmuSepRemapSeq:
         )
 
         parked = False
-        boot_rom_seen = False
-        iccm_seen = False
+        _, boot_rom_seen, iccm_seen = sep_boot_order_from_hw(self.dut, self._rd)
         traces = 0
         pc_hist: Counter[int] = Counter()
 

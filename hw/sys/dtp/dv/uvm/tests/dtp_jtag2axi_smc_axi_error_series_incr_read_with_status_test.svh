@@ -25,7 +25,10 @@ class dtp_jtag2axi_smc_axi_error_series_incr_read_with_status_test extends dtp_b
                             "CHK-AXI-RADDR",
                             "CHK-AXI-RDATA",
                             "CHK-AXI-COMPLETION",
-                            "CHK-AXI-NONVAC"
+                            "CHK-AXI-NONVAC",
+                            "CHK-J2A-BUS-REQ",
+                            "CHK-J2A-FAULT-STATUS",
+                            "CHK-J2A-STATUS-BIT"
                         });
   endfunction
 

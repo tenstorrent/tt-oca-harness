@@ -7,7 +7,7 @@ nothing. The word layout below is the one the image writes. The IRQ_STATUS
 field masks come from the generated ``km_csr.h``.
 
 Three leaves boot the same image and each grades its own rows:
-``sep_km_rom_write_slverr_test``, ``sep_km_otp_shim_unreachable_test`` and
+``sep_km_rom_write_err_test``, ``sep_km_otp_shim_unreachable_test`` and
 ``sep_km_vrom_decerr_test``. The virtual ROM load is the last access, so a
 leaf that grades an earlier row does not depend on it.
 """

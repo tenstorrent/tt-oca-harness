@@ -27,6 +27,9 @@ mem spm_rom_memory #(
     // the entire memory is an array of memory words
     mem_word mem_array[NUM_ENTRIES];
 
+`ifdef OCAH_DOC_MEMORY_MAP
+    ocah_hole_note = "A write answers SLVERR and leaves the ROM unchanged.";
+`endif
 };
 
 `endif

@@ -157,7 +157,7 @@ module sep_system_csr (
         ) && sep_system_csr_axil_req_i.aw.addr <
             sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_BASE_ADDR(
             15
-        ) + sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_SIZE) begin
+        ) + sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_STRIDE) begin
       system_csr_demux_select_aw = sep_pkg::LOCAL_MASTER_ALIAS_REMAP;
     end else if (sep_system_csr_axil_req_i.aw.addr >= sep_top_addrmap_pkg::SEP_TOP_AP_OUTPUT_REMAP_CTRL_BASE_ADDR(
             0
@@ -178,14 +178,14 @@ module sep_system_csr (
         ) && sep_system_csr_axil_req_i.aw.addr <
             sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_BASE_ADDR(
             31
-        ) + sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_SIZE) begin
+        ) + sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_STRIDE) begin
       system_csr_demux_select_aw = sep_pkg::OUTBOUND_FILTER;
     end else if (sep_system_csr_axil_req_i.aw.addr >= sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(
             0
         ) && sep_system_csr_axil_req_i.aw.addr <
             sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(
             15
-        ) + sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_SIZE) begin
+        ) + sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_STRIDE) begin
       system_csr_demux_select_aw = sep_pkg::INBOUND_FILTER;
     end else if (sep_system_csr_axil_req_i.aw.addr >= sep_top_addrmap_pkg::SEP_TOP_SEP_CPU_CTRL_BASE_ADDR && sep_system_csr_axil_req_i.aw.addr < sep_top_addrmap_pkg::SEP_TOP_SEP_CPU_CTRL_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_SEP_CPU_CTRL_SIZE) begin
       system_csr_demux_select_aw = sep_pkg::SEP_CPU_CTRL;
@@ -202,7 +202,7 @@ module sep_system_csr (
         ) && sep_system_csr_axil_req_i.ar.addr <
             sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_BASE_ADDR(
             15
-        ) + sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_SIZE) begin
+        ) + sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_STRIDE) begin
       system_csr_demux_select_ar = sep_pkg::LOCAL_MASTER_ALIAS_REMAP;
     end else if (sep_system_csr_axil_req_i.ar.addr >= sep_top_addrmap_pkg::SEP_TOP_AP_OUTPUT_REMAP_CTRL_BASE_ADDR(
             0
@@ -223,14 +223,14 @@ module sep_system_csr (
         ) && sep_system_csr_axil_req_i.ar.addr <
             sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_BASE_ADDR(
             31
-        ) + sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_SIZE) begin
+        ) + sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_STRIDE) begin
       system_csr_demux_select_ar = sep_pkg::OUTBOUND_FILTER;
     end else if (sep_system_csr_axil_req_i.ar.addr >= sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(
             0
         ) && sep_system_csr_axil_req_i.ar.addr <
             sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(
             15
-        ) + sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_SIZE) begin
+        ) + sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_STRIDE) begin
       system_csr_demux_select_ar = sep_pkg::INBOUND_FILTER;
     end else if (sep_system_csr_axil_req_i.ar.addr >= sep_top_addrmap_pkg::SEP_TOP_SEP_CPU_CTRL_BASE_ADDR && sep_system_csr_axil_req_i.ar.addr < sep_top_addrmap_pkg::SEP_TOP_SEP_CPU_CTRL_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_SEP_CPU_CTRL_SIZE) begin
       system_csr_demux_select_ar = sep_pkg::SEP_CPU_CTRL;

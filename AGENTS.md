@@ -40,6 +40,8 @@ partial read costs far more time than a full one.
 | `scripts/docker.md` | Container subcommands, all environment variables, bubblewrap backend, GID fixup |
 | `nix/nix-infrastructure.md` | Nix flake structure, dev shell and container variants, adding packages, reproducibility |
 | `nix/glossary.md` | Plain-English definitions of Nix concepts (flake, derivation, overlay, dev shell) |
+| `flake.nix`, `ocah_deps.nix`, `nix/` | The nix-built container and dev shell: which packages and environment variables the image carries, including the VP's SystemC, CCI, Boost, OpenSSL and Whisper |
+| `virtual_platform/README.md` | Virtual platform: the three VP executables and which need Whisper, dependency resolution, the `sepvp` runner and pytest harness, container vs ambient build |
 | A testbench's own `README` — `hw/<ip\|sys>/<block>/dv/<tb dir>/README.md` or `.adoc` | Testbench usage, regression mechanics, log file locations |
 | `hw/common/dv/fw/` | Shared firmware build engine (`compile.mk`), link modes, toolchain checks |
 | `nonfree/setup_env.sh` | Environment setup — *proprietary companion, only present with access* |
@@ -252,14 +254,70 @@ companion's `OCAH_DOCKER_CACHE_DIR` set, it next checks the shared tarball cache
 builds locally from the flake. `scripts/docker.md` is authoritative for the source selection
 controls.
 
+> **Any container command can start a full image build.** `run`, `run-here`, `shell`, `verify`
+> and the doc subcommands all go through that same selection, so a routine `make regen-regs`,
+> doc build or lint run falls back to building the image from source when no image with the
+> tree's tag is loaded, pullable or cached. The fallback announces itself with:
+>
+> ```
+> docker-run: <image>:<tag> (hash <tag>) absent locally and in cache; building
+> ```
+>
+> The build occupies many cores for a long time, and nothing serialises it: every worktree or
+> agent on the host that hits the fallback starts its own. The tag is a hash of the image
+> inputs, so a change to them on `main` leaves every checkout based on it without an image until
+> CI publishes the new tag. An agent that sees this message stops the command and asks the user
+> rather than letting the build run. Interrupting `docker-run.sh` does not necessarily stop the
+> build container, so check `podman ps` (or `docker ps`) afterwards. Once one pull or build has
+> loaded a tag, every checkout at that tag using the same engine reuses it. The bubblewrap
+> backend below never builds.
+
+That one image also carries the OCAH virtual platform's toolchain, so
+`make -C virtual_platform vp VP_CONTAINER=1` builds and runs `sep-vp` in it. `ocah_deps.nix`
+provides SystemC, CCI, Boost, OpenSSL and Whisper and exports `SYSTEMC_HOME`, `CCI_HOME`,
+`BOOST_ROOT`, `OPENSSL_ROOT` and `WHISPER_HOME`, so inside the container the VP resolves
+every dependency as explicit and builds none of them. Outside it, `virtual_platform/Makefile`
+still resolves or builds each one -- see `virtual_platform/README.md`.
+
+The model builds three VP executables and the harness builds all three. `sep-vp` is the
+default; `smc-vp` and `smu-vp` (the SMC+SEP integration, which runs both subsystems in
+one process) are **opt-in**, because asking for either first builds the Whisper ISS into
+`local/` — `make vp` never does, and needs no Whisper. They share a second build tree,
+`vp/build_smc`, since `WHISPER_HOME` is read at configure time and decides whether those
+platforms are generated at all. Their tests delegate to the model's own
+`sw/{smc,smu}-vp-tests` runners rather than the SEP-specific `sepvp` package. The image
+needs no extra packages for them.
+
+```bash
+make -C virtual_platform smc-vp smu-vp VP_CONTAINER=1
+make -C virtual_platform smc-test VP_CONTAINER=1   # SMC_ARGS=<one-test>
+make -C virtual_platform smu-test VP_CONTAINER=1   # SMU_ARGS=<one-test>
+```
+
+`smu-vp` has a companion artifact, `libsmc_cluster_smu.so`, built beside the target
+rather than into `bin/`. `smu-vp` bakes that build-tree path into its RUNPATH, so it runs
+in place — but a copy made without the `.so` binds silently to the build tree and then
+fails once that tree is gone. Carry both, or source the generated
+`setup_environment*.sh`, which puts its directory on `LD_LIBRARY_PATH`.
+
+```bash
+./scripts/docker-run.sh run-here sh -c 'g++ --version; cmake --version'  # the VP side
+```
+
+On a host with both podman and docker installed, `OCAH_ENGINE=docker` (or `podman`) pins
+which one `docker-run.sh` uses instead of taking whichever it finds first.
+
 A testbench that builds firmware as part of its own flow dispatches those builds through
 `scripts/docker-run.sh run-here`, so the container is used automatically while the simulator
 runs natively on the host. Not every testbench does this — check its Makefile rather than
 assuming.
 
 When `OCAH_TOOLCHAIN_ROOTFS` points at an extracted toolchain rootfs and `bwrap` is
-installed, `docker-run.sh` uses bubblewrap instead of a container engine. It is an opt-in
-either way: the companion sets it for you, and anyone can set it by hand. That path fails
+installed, `docker-run.sh` uses bubblewrap instead of a container engine. The rootfs must
+come from the merged image: both `usr/bin/riscv64-unknown-elf-gcc` and `usr/bin/g++` are
+probed, and a rootfs missing either is rejected up front with a warning and an automatic
+fall back to the container engine. It is an opt-in either way: the companion sets it for
+you, and anyone can set it by hand. That path fails
 when the checkout sits on a filesystem whose mountpoint bwrap cannot create inside its
 read-only rootfs, typically a networked or site-specific mount:
 
@@ -377,6 +435,7 @@ Whatever the testbench, these hold:
 | `doc/` | AsciiDoc products: `trm`, `integrator`, `programmer`, `user`, `appnotes`, `starting` |
 | `integration/` | Generated, grouped symlink indexes for integrator-facing RDL, IP-XACT and timing constraints |
 | `flows/` | Lint, format and synthesis flow makefiles |
+| `virtual_platform/` | SystemC virtual platform: the `tt-oca-harness-model` submodule that provides `sep-vp`, `smc-vp` and `smu-vp`, the `sepvp` Python runner and its pytest suite, and the Makefile that builds them and their dependencies |
 | `vendor/` | Vendored packages as `<Org>/<Repo>/upstream/`; never hand-edit those. Modify upstream files through the sibling `patches/`, and keep TT-owned additions in `overlay/`, which `bender vendor init` leaves alone. GitHub CI runs `bender vendor diff --err_on_diff` so committed `upstream/` trees match the pinned remotes plus patches |
 | `tools/` | Register, doc, DV and container tooling |
 | `scripts/` | `docker-run.sh` container front door, CI helpers |
@@ -465,6 +524,24 @@ issues (see `SECURITY.md`).
 
 Read `.github/ISSUE_TEMPLATE/` and `.github/PULL_REQUEST_TEMPLATE.md` rather than
 restating them. Allowed taxonomy values live in `.github/issue-taxonomy.yml`.
+
+### Answer questions about the tree from current `main`
+
+Whether an issue is still open work, whether a bug still exists, or what an audit finds
+are questions about the shared tree, not about your checkout. The working branch — and a
+`nonfree/` clone, which has its own branch — can be many commits behind, so findings made
+there can describe code `main` has already changed. Fetch both repositories and inspect
+`origin/main` of each:
+
+```bash
+git -C <repo> fetch origin && git -C <repo>/nonfree fetch origin
+git -C <repo> grep -n <pattern> origin/main -- <paths>
+git -C <repo>/nonfree grep -n <pattern> origin/main -- <paths>
+```
+
+Pass paths explicitly (`git -C`) rather than relying on the shell's current directory:
+inside `nonfree/`, a bare `git` command operates on the companion repository. State the
+commit each finding was made against.
 
 ### Issues
 
@@ -638,7 +715,8 @@ not hide findings from lint. Generated output and `vendor/<org>/<repo>/upstream/
 never patch upstream code for a style-only finding. Fix formatter-safe whitespace and wrapping
 after reviewing the diff, but treat types, range direction, assignment semantics, task
 lifetime, case completeness and hierarchy labels as manual changes requiring owner review.
-Parameter naming remains deferred to issue #1051 and is disabled in this pass.
+`parameter-name-style` requires ALL_CAPS parameter names; localparam naming is deferred to
+issue #1051.
 
 Fix actionable findings rather than hiding them. Owner-local waivers belong under the source
 owner's `lint/` directory: `*.verible.waiver`, `*.verilator.vlt`, and synthesis-only

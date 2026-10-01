@@ -27,9 +27,12 @@ package dtp_env_pkg;
   import ocah_lib_pkg::*;  // shared framework bases, knobs, rng
   import ocah_jtag_uvm_pkg::*;
   import ocah_axi_uvm_pkg::*;
+  // Generated cross-trigger network address map: the CSR windows behind the
+  // XTRIG constants in dtp_types.svh.
+  import cross_trigger_network_addrmap_pkg::*;
 
-  // Generated register headers of the cross-trigger IP: field masks and
-  // shifts behind the XTRIG CSR constants in dtp_types.svh.
+  // Generated register headers of the cross-trigger IP: field masks, shifts,
+  // and reset values behind the XTRIG CSR constants in dtp_types.svh.
   `include "cross_trigger_port_reg.svh"
   `include "cross_trigger_matrix_reg.svh"
   `include "dtp_types.svh"
@@ -65,7 +68,7 @@ package dtp_env_pkg;
   `include "dtp_tap_fsm_checker.svh"
   `include "dtp_jtag_scan_builder.svh"
   `include "dtp_scan_window_monitor.svh"
-  `include "dtp_axi_read_history.svh"
+  `include "dtp_axi_port_history.svh"
   `include "dtp_scoreboard.svh"
   `include "dtp_env.svh"
 

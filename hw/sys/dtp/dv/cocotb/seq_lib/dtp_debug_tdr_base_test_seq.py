@@ -6,15 +6,17 @@ Every TDR readback, pin observable, and capability comparison records named
 family evidence: ``CHK-DBG-TDR`` is a decoded TDR field or a whole TDR,
 ``CHK-DBG-PIN`` a pin observable sampled through the driver, ``CHK-CAPS`` and
 ``CHK-CAPS-RO`` a capability value and its readback after a write attempt,
-``CHK-TMP-PERSIST`` and ``CHK-TMP-ESCAPE`` the two TMP_STATUS bits. The
-TDR accesses are driver-level read and write operations the sequence cannot
-count, so scenarios attach the family checker with ``use_monitor=False``.
-The SV-UVM twin is ``uvm/seq_lib/dtp_debug_tdr_base_test_seq.svh``.
+``CHK-TMP-PERSIST`` and ``CHK-TMP-ESCAPE`` the two TMP_STATUS bits,
+``CHK-TMP-CHRST`` the TMP conditional reset on the boundary-scan host control,
+and ``CHK-DBG-STOP-EDGE`` the ``tb_top`` counts of ``stop_clks`` changes. The
+SV-UVM twin is ``uvm/seq_lib/dtp_debug_tdr_base_test_seq.svh``.
 """
 
 from __future__ import annotations
 
-from env.dtp_dv_cfg import DTP_NUM_CLK_STOP_REQ
+import random
+
+from env.dtp_dv_cfg import DTP_DEFAULT_IDCODE, DTP_NUM_CLK_STOP_REQ
 from env.dtp_tap_device import (
     DTP_DEBUG_CONTROL_LEN,
     DTP_EXPECTED_JTAG2AXI_CAPS,
@@ -25,17 +27,19 @@ from env.dtp_tap_device import (
     DTP_TMP_STATUS_LEN,
     unpack_jtag2axi_caps,
 )
-from env.dtp_types import DtpJtag2AxiTargetCfg, DtpJtagInstr
+from env.dtp_types import DtpJtag2AxiTargetCfg, DtpJtagInstr, DtpTapState
 
 from .dtp_jtag_base_test_seq import dtp_jtag_base_test_seq
 
 # Evidence IDs of the debug-TDR family, shared with the SV-UVM twin.
 DBG_TDR_CHECK_ID = "CHK-DBG-TDR"
 DBG_PIN_CHECK_ID = "CHK-DBG-PIN"
+STOP_EDGE_CHECK_ID = "CHK-DBG-STOP-EDGE"
 CAPS_CHECK_ID = "CHK-CAPS"
 CAPS_RO_CHECK_ID = "CHK-CAPS-RO"
 TMP_PERSIST_CHECK_ID = "CHK-TMP-PERSIST"
 TMP_ESCAPE_CHECK_ID = "CHK-TMP-ESCAPE"
+TMP_CHRST_CHECK_ID = "CHK-TMP-CHRST"
 
 DBG_BOOT_STALL_BIT = 0
 DBG_BOOT_STALL_OVRD_BIT = 1
@@ -107,6 +111,19 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
         for name, value in expected.items():
             self.family_check(check_id, name, observed[name], value, context=context)
 
+    async def drive_tlr_without_trst(self) -> None:
+        """Enter Test-Logic-Reset with five TMS-high clocks, TRST untouched.
+
+        The TAP stays there, TCK idle, until the next operation. The DUT's
+        exported state after the fifth clock must be Test-Logic-Reset; an
+        attached checker records it as ``CHK-TAP-TLR-TMS5``.
+        """
+        for _ in range(5):
+            item = await self.tms_step(1)
+        if self.tap_checker is not None:
+            self.tap_checker.check_tms_ones_to_tlr(5, item.result)
+        self.record_tap_state(item.result, DtpTapState.TEST_LOGIC_RESET)
+
     def decode_tmp_status(self, value: int) -> dict[str, int]:
         """Decode TMP_STATUS. Bit 1 reflects TMP persistence; bit 0 arms escape."""
         return {
@@ -154,35 +171,44 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
         )
         return status
 
-    async def check_tmp_escape(
+    async def check_tmp_status(
         self,
         label: str,
-        expected: int,
         *,
+        persistence: int,
+        bypass_escape: int,
         shift_value: int = 0,
         context: str = "",
     ) -> int:
-        """Read TMP_STATUS, record its BYPASS_ESCAPE bit, and return the raw value."""
+        """Read TMP_STATUS once, record both bits, and return the raw value."""
         status = await self.read_tmp_status(shift_value=shift_value)
         decoded = self.log_tmp_status(label, status)
+        full_context = f"{label} {context}".strip()
+        self.family_check(
+            TMP_PERSIST_CHECK_ID,
+            "TMP_STATUS.persistence",
+            decoded["persistence"],
+            persistence,
+            context=full_context,
+        )
         self.family_check(
             TMP_ESCAPE_CHECK_ID,
             "TMP_STATUS.bypass_escape",
             decoded["bypass_escape"],
-            expected,
-            context=f"{label} {context}".strip(),
+            bypass_escape,
+            context=full_context,
         )
         return status
 
-    async def check_idcode_marker(self, *, context: str = "") -> int:
-        """Read IDCODE and record its LSB marker bit; a routed TDR path returns 1."""
+    async def check_idcode_value(self, *, context: str = "") -> int:
+        """Read IDCODE and record all 32 bits against the configured identification."""
         idcode = (await self.read_idcode()).result
         self.family_check(
             DBG_TDR_CHECK_ID,
-            "IDCODE.lsb",
-            idcode & 0x1,
-            1,
-            context=f"idcode=0x{idcode:08x} {context}".strip(),
+            "IDCODE",
+            idcode & 0xFFFF_FFFF,
+            DTP_DEFAULT_IDCODE,
+            context=context,
         )
         return idcode
 
@@ -277,7 +303,7 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
         for name in ("ext", "sep", "smc"):
             port = ports[name]
             self.log.info(
-                "  %s: reset_enable=%d reset_control=%d expected_ovrd=%d",
+                "  %s: reset_enable=%d reset_control=%d implied_ovrd=%d",
                 name.upper(),
                 port["reset_enable"],
                 port["reset_control"],
@@ -501,10 +527,10 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
     ) -> None:
         """Poll a sampled observable across clk_i cycles and record the last sample.
 
-        `stop_clks` passes through a 2-flop synchronizer and an output flop, so
-        clock-stop tests must poll instead of assuming a fixed immediate value.
-        The sample that ends the poll is the evidence either way; a mismatch
-        after the budget records a FAIL.
+        `stop_clks` is a clk_i register, so clock-stop tests poll until it
+        settles instead of assuming a fixed latency. The sample that ends the
+        poll is the evidence either way; a mismatch after the budget records a
+        FAIL.
         """
         last = await self.sample_dbg_signal(name)
         polled = 0
@@ -523,3 +549,60 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
         )
         self.cfg.tb_if.ctrl.xtrig_clk_stop_req.value = value
         await self.wait_sys_cycles(cycles)
+
+    def stop_clks_counts(self) -> tuple[int, int]:
+        """The ``tb_top`` counts of ``stop_clks`` changes and of those off a clk_i rising edge."""
+        tb_if = self.cfg.tb_if
+        return (
+            tb_if.sample("stop_clks_change_count"),
+            tb_if.sample("stop_clks_off_edge_count"),
+        )
+
+    def check_stop_clks_off_edge(self, off_edge_start: int, *, context: str) -> None:
+        """Record ``CHK-DBG-STOP-EDGE``: no ``stop_clks`` change off a clk_i rising edge.
+
+        ``off_edge_start`` is the off-edge count at the start of the span judged.
+        """
+        _, off_edge = self.stop_clks_counts()
+        self.family_check(
+            STOP_EDGE_CHECK_ID,
+            "stop_clks changes off a clk_i rising edge",
+            off_edge - off_edge_start,
+            0,
+            context=context,
+        )
+
+    async def check_stop_clks_walk(self, rng: random.Random) -> None:
+        """Record ``CHK-DBG-STOP-EDGE``: ``stop_clks`` changes once per change of the request OR.
+
+        From no request and ``jtag_clock_stop`` = 0, a seeded walk of request
+        vectors (a nonzero mask, zero, one line, zero, two different nonzero
+        masks, zero) holds each vector until ``stop_clks`` settles. The
+        ``tb_top`` change count across the walk equals the number of changes
+        of the OR, so the step between the two nonzero masks adds none.
+        """
+        full = (1 << DTP_NUM_CLK_STOP_REQ) - 1
+        first, second = rng.randint(1, full), rng.randint(1, full)
+        third = rng.randint(1, full)
+        while third == second:
+            third = rng.randint(1, full)
+        line = 1 << rng.randrange(DTP_NUM_CLK_STOP_REQ)
+        walk = [first, 0, line, 0, second, third, 0]
+        levels = [int(value != 0) for value in walk]
+        expected = sum(prev != cur for prev, cur in zip([0, *levels], levels))
+        await self.set_clk_stop_requests(0)
+        await self.wait_for_signal_value("stop_clks", 0, context="walk baseline")
+        changes_start, _ = self.stop_clks_counts()
+        for idx, value in enumerate(walk, start=1):
+            await self.set_clk_stop_requests(value)
+            await self.wait_for_signal_value(
+                "stop_clks", int(value != 0), context=f"walk#{idx} req=0x{value:03x}"
+            )
+        changes_end, _ = self.stop_clks_counts()
+        self.family_check(
+            STOP_EDGE_CHECK_ID,
+            "stop_clks changes across the request walk",
+            changes_end - changes_start,
+            expected,
+            context="walk=" + ",".join(f"0x{value:03x}" for value in walk),
+        )

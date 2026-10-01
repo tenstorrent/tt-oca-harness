@@ -20,13 +20,22 @@ PVT sensors, eFuse shims, memory macros, GPIO padrings, SPI controllers, and
 external TRNG -- are instantiated outside the core modules by the adopter. This
 separation keeps the OCAH deliverable technology-neutral.
 
+The figure below shows that boundary. `smu` exposes a technology integration
+interface for each of these components, and a reference integration module
+holds the shims, models and macros behind them. An adopter keeps the interfaces
+and replaces what lies below the boundary with its own technology IP.
+
+.SMU Technology Integration
+image::smu-technology-integration.svg[SMU Technology Integration,scaledwidth=100.0%]
+
 The repository provides reference wrappers that demonstrate how to bridge the
 gap between OCAH core interfaces and adopter-specific IP:
 
 * `smu_wrapper.sv` wraps `smu.sv` with pad-level signal handling for clocks,
   resets, GPIO, eFuse, and JTAG interfaces. It internally instantiates
-  `smc_ip_integration.sv` for SMC-related vendor IP and (when `SEP=1`)
-  `sep_ip_integration.sv` for SEP-related vendor IP.
+  `smc_ip_integration.sv` for SMC-related vendor IP and
+  `sep_ip_integration.sv` for SEP-related vendor IP. Each integration module
+  holds its own eFuse interface shim and eFuse bank.
 * `smc_wrapper.sv` provides an equivalent reference wrapping `smc.sv` alone,
   useful when integrating the SMC without the DTP/SEP subsystems.
 
@@ -41,7 +50,7 @@ The figure below illustrates the relationship between the OCAH core modules, the
 wrapper layer, and the IP integration modules.
 
 .SMU Integration Components
-image::smu_integration_components.png[SMU Integration Components,scaledwidth=90.0%]
+image::smu-integration-components.svg[SMU Integration Components,scaledwidth=100.0%]
 
 === IP Integration Modules
 
@@ -56,13 +65,14 @@ Key Manager ROM/SRAM), eFuse shim, external TRNG, and SPI controller selection.
 
 === Wrapper Clock Architecture
 
-The `smu_wrapper.sv` reference wrapper accepts pre-generated clocks directly:
-`clk_smu_i` (primary), `clk_ref_i` (reference), and `clk_periph_i`
-(peripheral). The `smc_wrapper.sv` uses `clk_smc_i` for the primary clock.
-Clock generation is entirely the adopter's responsibility. The `pll_wrap` model
-included in the DV environment only terminates the SMC's AXI-Lite PLL control
-interface; it does not generate functional clocks and must not be used as a
-synthesis model.
+The behavioral `pll_wrap` model is a DV/reference
+placeholder: it free-runs refclk, sys_clk, and periph_clk at 100 / 800 / 200 MHz
+(`+pll_sys_period_ns=10` runs sys_clk at 100 MHz; with `+pll_osc_bench` a bench
+toggles the oscillator nets itself), muxes sys and periph with ref
+through `prim_clock_mux2` then `prim_ag_clk_mux`, and terminates the AXI-Lite PLL
+control interface with OKAY. It is not a synthesis stand-in. An adopter who
+replaces `smc_ip_integration` supplies equivalent clocks internally; the
+bare cores still have the three clock inputs.
 
 == Clock and Reset Architecture
 
@@ -98,8 +108,9 @@ Reference Manual for connectivity and the responsibility split between
 hardware-fixed and firmware-programmable apertures.
 endif::backend-pdf[]
 
-The crossbar uses a *runtime* address map. Only the SEP and SMC
-apertures are programmable at runtime; the `ext_out` rule is static:
+The crossbar uses a *runtime* address map with two rules, the SEP and
+SMC apertures, both programmable at runtime. `ext_out` has no address
+rule. The apertures are driven as follows:
 
 * `sep_global_base_addr_i` / `sep_region_size_i` come from the
   `sep_cpu_ctrl` CSRs `SEP_GLOBAL_BASE_ADDR` / `SEP_REGION_SIZE`,
@@ -120,10 +131,14 @@ apertures are programmable at runtime; the `ext_out` rule is static:
 
 SEP, SMC, and `smu_axi_xbar` all run on `clk_smu_i`, so these
 quasi-static CSR fields need no clock-domain crossing. The crossbar's
-address arithmetic is done on 57-bit widened sums. `ext_out` is a
-catch-all port that carries any outbound SEP/SMC manager request not matched by
-the programmed apertures; it has no fixed lower-bound address. Unmatched
-inbound (`ext_in`) requests return a decode error and do not reach `ext_out`.
+address arithmetic is done on 57-bit widened sums. For where unmatched
+requests go, and which requests return `DECERR`, see
+ifdef::backend-html5[]
+xref:ocah-docs:smu:index.adoc#smu-axi-crossbar-routing-table[SMU AXI crossbar routing].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+the SMU AXI Crossbar section of the Technical Reference Manual.
+endif::backend-pdf[]
 
 [[smu-firmware-programming-order]]
 === Firmware programming order
@@ -148,7 +163,7 @@ endif::backend-pdf[]
 == SMU Default Parameters
 
 The DTP JTAG features, identification, cross trigger, and pipeline depths are
-fields of the `Cfg` parameter, of type `smu_pkg::smu_cfg_t` with default
+fields of the `CFG` parameter, of type `smu_pkg::smu_cfg_t` with default
 `smu_pkg::DefaultCfg`.
 
 ifdef::backend-html5[]
@@ -177,9 +192,10 @@ TDI → SMC slice → SEP slice → external slice → reset_hold → TDO
 The SMU enables the SMC slice unconditionally, the SEP slice when `SEP=1`
 (otherwise that slice has width 0 and is omitted), and the external slice when
 `JTAG_IC_RESET_ENABLE` is set. Each slice is a packed struct with `.ovrd` and
-`.val` halves of equal width; `jtag_ptap` sizes the slice from `$bits(type)/2`
-and interleaves the halves into the `{reset_enable, reset_control}` pair IEEE
-§17 requires per port. Declaration order within each half is the TDI-to-TDO
+`.val` halves of equal width; `jtag_ptap` sizes the slice from `$bits(type)/2`.
+Each port has the reset-enable and reset-control pair IEEE §17 requires, with
+`reset_enable` nearer TDO. `.val` carries `reset_control`, and `.ovrd` carries
+the inverse of `reset_enable`. Declaration order within each half is the TDI-to-TDO
 scan order: the first field is nearest TDI.
 
 [cols="<18%,<12%,<28%,<42%",options="header"]
@@ -288,9 +304,9 @@ Type parameters are set internally based on SMC package types.
 |===
 |Parameter |SMU Default |DTP Internal |Pass-through |Notes
 
-|`XTRIG_NUM_CTP` |16 |Cfg |Yes |External CTP count
-|`XTRIG_NUM_INT_CT` |8 |Cfg + `XTRIG_SMC_INT_CT_LANES` |Yes |SMU-exposed count; DTP adds the SMC-reserved lanes
-|`XTRIG_NUM_CLK_STOP_REQ` |8 |Cfg + `XTRIG_SMC_CLK_STOP_LANES` |Yes |SMU-exposed count; DTP adds the SMC-reserved lane
+|`XTRIG_NUM_CTP` |16 |CFG |Yes |External CTP count
+|`XTRIG_NUM_INT_CT` |8 |CFG + `XTRIG_SMC_INT_CT_LANES` |Yes |SMU-exposed count; DTP adds the SMC-reserved lanes
+|`XTRIG_NUM_CLK_STOP_REQ` |8 |CFG + `XTRIG_SMC_CLK_STOP_LANES` |Yes |SMU-exposed count; DTP adds the SMC-reserved lane
 |`XTRIG_INT_CT_MODE` |32 bits, low 8 consumed |DTP width |Yes |SMC-reserved DTP mode bits are 0 (pulse-sync)
 |===
 
@@ -577,12 +593,13 @@ Clock-stop request lane 0 is reserved for SMC. The SMU exposes the remaining
 DTP lanes, so the SMU `XTRIG_NUM_CLK_STOP_REQ` field is
 `smu_pkg::XTRIG_SMC_CLK_STOP_LANES` less than DTP's.
 
+[[xtrig-ctp-gpio-interface]]
 === Cross Trigger Port GPIO Interface
 
 CTP signals from DTP are ported through the SMU and are direct
 `smu_wrapper` external ports (connected through the `.*` SMU instantiation).
 The adopter must connect them to GPIO pad logic; no tie-off or dangling is
-present in the wrapper itself. Widths follow `Cfg.XTRIG_NUM_CTP` (default 16).
+present in the wrapper itself. Widths follow `CFG.XTRIG_NUM_CTP` (default 16).
 
 [cols="<30%,<10%,<15%,<45%",options="header"]
 |===
@@ -808,6 +825,7 @@ the SEP-to-SMC dedicated AXI connection.
 
 |`skip_mem_repair_o` |output |1 |SMU external port
 |`ext_boot_seq_done_i` |input |1 |SMU external port
+|`ext_boot_seq_done_qual_o` |output |1 |Internal: drives SEP `ext_boot_seq_done_i` when `SEP=1`
 |===
 
 [[smu-lc-state]]

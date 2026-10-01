@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="702" viewBox="0 0 1040 702" role="img" aria-labelledby="title desc">
+<title id="title">SEP CPU subsystem</title>
+<desc id="desc">sep_cpu wraps the VeeR EL2 core complex u_el2_veer_wrapper: an RV32IMC core with the Zba, Zbb, Zbc and Zbe bit-manipulation extensions and 16 PMP entries, its IFU and LSU bus interfaces, a PIC with 255 external sources, the debug module with its JTAG TAP and DMI port, the ICCM controller (256 KiB in 4 banks at 0xC000_0000), the DCCM controller (128 KiB in 2 banks at 0xC004_0000) and the DMA slave port that gives the local crossbar's cpu_tcm target backdoor access to them. The instruction cache is not configured. The ICCM and DCCM RAM macros sit outside sep_cpu, in sep_tcm_wrapper, and connect through the TCM memory interface. The IFU, LSU and debug system-bus masters are AXI4 with 64-bit data and 3-bit IDs; the debug master's 1-bit ID is zero-extended. Each passes a local alias remap that rewrites the 768 MiB window at SEP_LOCAL_BASE_ADDR to 0x1000_0000. The IFU demux sends boot ROM addresses to ifu_rom_axi_req_o, SEP SRAM addresses to ifu_sram_axi_req_o and everything else to a DECERR slave; the LSU demux sends boot ROM addresses to lsu_rom_axi_req_o and everything else to lsu_xbar_axi_req_o; the debug master leaves on dbg_axi_req_o. JTAG, the DMI enables and uncore port, the interrupt sources, NMI, timer and software interrupts and the MPC and PMU halt and run handshakes enter on the left; mpc_reset_run_req_i passes a two-flop synchronizer.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="gs" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#5b6670"/></marker>
+<marker id="je" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="js" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#42759b"/></marker>
+<marker id="m-smu" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#103525"/></marker>
+<marker id="m-ref" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#2f7f79"/></marker>
+<marker id="m-per" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#937027"/></marker>
+<marker id="m-tel" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#664488"/></marker>
+<marker id="m-wdt" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#77736b"/></marker>
+<marker id="m-rosc" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<marker id="m-jtag" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="m-spi" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-slate" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-pg" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.h { font-size: 22px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.si { font-size: 13px; font-style: italic; fill: #484848; }
+.pmt { font-size: 12px; font-weight: bold; fill: #ffffff; }
+.pst { font-size: 12px; font-weight: bold; fill: #103525; }
+.pjt { font-size: 12px; font-weight: bold; fill: #1d4b6e; }
+.pct { font-size: 12px; font-weight: bold; fill: #1f5c57; }
+.pm { fill: #103525; stroke: #103525; stroke-width: 1.2; }
+.ps { fill: #ffffff; stroke: #103525; stroke-width: 1.2; }
+.pj { fill: #e8f3ff; stroke: #42759b; stroke-width: 1.2; }
+.pc { fill: #d9f0ee; stroke: #2f7f79; stroke-width: 1.2; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.network { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.future { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.nostroke { stroke: none; }
+.fut { fill: none; stroke-dasharray: 7 5; }
+.opt { stroke-dasharray: 7 5; }
+.hatch { fill: none; stroke: #103525; stroke-opacity: 0.16; stroke-width: 1.2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
+.axio { fill: none; stroke: #103525; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#as); marker-end: url(#ae); }
+.sig { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); marker-end: url(#ge); }
+.sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+.jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
+.jtagb { fill: none; stroke: #42759b; stroke-width: 1.8; marker-start: url(#js); marker-end: url(#je); }
+.sigplain { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+.n-smu { fill: none; stroke: #103525; stroke-width: 2.5; }
+.a-smu { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#m-smu); }
+.n-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; }
+.a-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; marker-end: url(#m-ref); }
+.n-per { fill: none; stroke: #937027; stroke-width: 1.8; }
+.a-per { fill: none; stroke: #937027; stroke-width: 1.8; marker-end: url(#m-per); }
+.n-tel { fill: none; stroke: #664488; stroke-width: 1.8; }
+.a-tel { fill: none; stroke: #664488; stroke-width: 1.8; marker-end: url(#m-tel); }
+.n-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; }
+.a-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; marker-end: url(#m-wdt); }
+.n-rosc { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-rosc { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-rosc); }
+.n-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; }
+.a-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#m-jtag); }
+.n-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-spi); }
+.n-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-slate); }
+.n-pg { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-pg { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-pg); }
+.axil { fill: none; stroke: #103525; stroke-width: 1.5; marker-start: url(#as); marker-end: url(#ae); }
+.sigd { fill: none; stroke: #5b6670; stroke-width: 1.5; stroke-dasharray: 5 4; marker-end: url(#ge); }
+.axin { fill: none; stroke: #103525; stroke-width: 2.5; }
+.axis { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); }
+.axie { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#ae); }
+.axiln { fill: none; stroke: #103525; stroke-width: 1.5; }
+</style>
+</defs>
+<rect width="1040" height="702" fill="#ffffff"/>
+<rect class="smu" x="180" y="50" width="650" height="490" rx="6"/>
+<text class="b" x="194" y="528" text-anchor="start">sep_cpu</text>
+<rect class="core" x="206" y="68" width="356" height="432" rx="6"/>
+<text class="bs" x="218" y="88" text-anchor="start">u_el2_veer_wrapper (VeeR EL2)</text>
+<rect class="core" x="222" y="92" width="160" height="58" rx="6"/>
+<text class="bs" x="302" y="110" text-anchor="middle">Debug module</text>
+<text class="s" x="302" y="126" text-anchor="middle">JTAG TAP, DMI</text>
+<text class="s" x="302" y="142" text-anchor="middle">system-bus master</text>
+<rect class="core" x="222" y="166" width="160" height="46" rx="6"/>
+<text class="bs" x="302" y="186" text-anchor="middle">PIC</text>
+<text class="s" x="302" y="202" text-anchor="middle">255 external sources</text>
+<rect class="core" x="222" y="228" width="160" height="102" rx="6"/>
+<text class="bs" x="302" y="258.5" text-anchor="middle">RV32IMC core</text>
+<text class="s" x="302" y="275.5" text-anchor="middle">Zba, Zbb, Zbc, Zbe</text>
+<text class="s" x="302" y="292.5" text-anchor="middle">PMP, 16 entries</text>
+<text class="s" x="302" y="309.5" text-anchor="middle">4-stage pipeline</text>
+<rect class="core" x="400" y="216" width="146" height="40" rx="6"/>
+<text class="bs" x="473" y="241" text-anchor="middle">IFU</text>
+<rect class="core" x="400" y="286" width="146" height="40" rx="6"/>
+<text class="bs" x="473" y="311" text-anchor="middle">LSU</text>
+<path class="axiln" d="M382,236 L400,236"/>
+<path class="axiln" d="M382,306 L400,306"/>
+<rect class="core opt" x="222" y="354" width="160" height="46" rx="6"/>
+<text class="t" x="302" y="374" text-anchor="middle">I-cache</text>
+<text class="si" x="302" y="390" text-anchor="middle">not configured</text>
+<rect class="core" x="400" y="354" width="146" height="46" rx="6"/>
+<text class="bs" x="473" y="374" text-anchor="middle">DMA slave</text>
+<text class="s" x="473" y="390" text-anchor="middle">ID 6</text>
+<rect class="core" x="222" y="420" width="160" height="50" rx="6"/>
+<text class="bs" x="302" y="442" text-anchor="middle">ICCM</text>
+<text class="s" x="302" y="458" text-anchor="middle">256 KiB, 4 banks</text>
+<rect class="core" x="400" y="420" width="146" height="50" rx="6"/>
+<text class="bs" x="473" y="442" text-anchor="middle">DCCM</text>
+<text class="s" x="473" y="458" text-anchor="middle">128 KiB, 2 banks</text>
+<path class="sigo" d="M473.0,400 L473.0,420"/>
+<path class="sigo" d="M416,400 L416,410 L302.0,410 L302.0,420"/>
+<path class="sig" d="M302.0,470 L302.0,580"/>
+<path class="sig" d="M473.0,470 L473.0,580"/>
+<rect class="external" x="212" y="580" width="344" height="44" rx="6"/>
+<text class="t" x="384" y="598.5" text-anchor="middle">ICCM and DCCM RAM macros</text>
+<text class="s" x="384" y="615.5" text-anchor="middle">sep_tcm_wrapper, 32 + 7 ECC bits per bank</text>
+<text class="s" x="556" y="560" text-anchor="start">sep_cpu_tcm_req_o, sep_cpu_tcm_rsp_i</text>
+<path class="jtagb" d="M14,104 L222,104"/>
+<text class="s" x="14" y="98" text-anchor="start">JTAG</text>
+<path class="sig" d="M14,134 L222,134"/>
+<text class="s" x="14" y="128" text-anchor="start">DMI enables, uncore port</text>
+<path class="sigo" d="M14,189 L222,189"/>
+<text class="s" x="14" y="183" text-anchor="start">extintsrc_req_i, 255 sources</text>
+<path class="sigo" d="M14,244 L222,244"/>
+<text class="s" x="14" y="238" text-anchor="start">nmi_int_i, nmi_vec_i</text>
+<path class="sigo" d="M14,268 L222,268"/>
+<text class="s" x="14" y="262" text-anchor="start">timer_int_i, soft_int_i</text>
+<path class="sig" d="M14,292 L222,292"/>
+<text class="s" x="14" y="286" text-anchor="start">MPC halt, run</text>
+<path class="sig" d="M14,316 L222,316"/>
+<text class="s" x="14" y="310" text-anchor="start">PMU halt, run</text>
+<text class="s" x="572" y="22" text-anchor="middle">SEP_LOCAL_BASE_ADDR</text>
+<text class="s" x="572" y="38" text-anchor="middle">from u_sep_system_csr</text>
+<path class="sigplain" d="M572,44 L572,114"/>
+<path class="sigplain" d="M572,128 L572,229"/>
+<path class="sigplain" d="M572,243 L572,292"/>
+<path class="sigo" d="M572,222 L596,222"/>
+<path class="sigo" d="M572,292 L596,292"/>
+<circle cx="572" cy="222" r="3.5" fill="#5b6670"/>
+<circle cx="572" cy="76" r="3.5" fill="#5b6670"/>
+<path class="sigo" d="M572,76 L730.0,76 L730.0,99"/>
+<path class="axi" d="M546,236 L588,236"/>
+<path class="fabric" d="M598,214 L658,214 L668,236 L658,258 L598,258 L588,236 Z"/>
+<text class="s" x="628" y="233.5" text-anchor="middle">alias</text>
+<text class="s" x="628" y="248.5" text-anchor="middle">remap</text>
+<path class="axi" d="M668,236 L688,236"/>
+<path class="axi" d="M546,306 L588,306"/>
+<path class="fabric" d="M598,284 L658,284 L668,306 L658,328 L598,328 L588,306 Z"/>
+<text class="s" x="628" y="303.5" text-anchor="middle">alias</text>
+<text class="s" x="628" y="318.5" text-anchor="middle">remap</text>
+<path class="axi" d="M668,306 L688,306"/>
+<path class="axi" d="M382,121 L588,121"/>
+<rect class="network" x="588" y="101" width="80" height="40" rx="4"/>
+<text class="s" x="628" y="118.5" text-anchor="middle">ID 1 to 3</text>
+<text class="s" x="628" y="133.5" text-anchor="middle">zero-extend</text>
+<path class="axi" d="M668,121 L688,121"/>
+<path class="fabric" d="M698,99 L762,99 L772,121 L762,143 L698,143 L688,121 Z"/>
+<text class="s" x="730" y="118.5" text-anchor="middle">alias</text>
+<text class="s" x="730" y="133.5" text-anchor="middle">remap</text>
+<path class="fabric" d="M688,219.5 L716,203 L716,269 L688,252.5 Z"/>
+<path class="axi" d="M716,214 L740,214 L740,180 L864,180"/>
+<path class="axi" d="M716,236 L864,236"/>
+<path class="axi" d="M716,258 L744,258"/>
+<rect class="external" x="744" y="247" width="72" height="22" rx="4"/>
+<text class="s" x="780" y="263" text-anchor="middle">DECERR</text>
+<text class="s" x="734" y="196" text-anchor="end">u_ifu_axi_demux</text>
+<path class="fabric" d="M688,293 L716,280 L716,332 L688,319 Z"/>
+<path class="axi" d="M716,294 L864,294"/>
+<path class="axi" d="M716,318 L740,318 L740,340 L864,340"/>
+<text class="s" x="734" y="352" text-anchor="end">u_lsu_axi_demux</text>
+<path class="axi" d="M772,121 L864,121"/>
+<path class="axi" d="M546,377.0 L864,377.0"/>
+<text class="s" x="870" y="118" text-anchor="start">dbg_axi_req_o</text>
+<text class="si" x="870" y="134" text-anchor="start">to xbar dbg</text>
+<text class="s" x="870" y="177" text-anchor="start">ifu_rom_axi_req_o</text>
+<text class="si" x="870" y="193" text-anchor="start">to boot ROM mux</text>
+<text class="s" x="870" y="233" text-anchor="start">ifu_sram_axi_req_o</text>
+<text class="si" x="870" y="249" text-anchor="start">to xbar ifu_sram</text>
+<text class="s" x="870" y="291" text-anchor="start">lsu_rom_axi_req_o</text>
+<text class="si" x="870" y="307" text-anchor="start">to boot ROM mux</text>
+<text class="s" x="870" y="337" text-anchor="start">lsu_xbar_axi_req_o</text>
+<text class="si" x="870" y="353" text-anchor="start">to xbar lsu</text>
+<text class="s" x="870" y="374" text-anchor="start">cpu_tcm_axi_req_i</text>
+<text class="si" x="870" y="390" text-anchor="start">from xbar cpu_tcm</text>
+<path class="sigo" d="M562,480 L864,480"/>
+<text class="s" x="870" y="477" text-anchor="start">trace, ECC,</text>
+<text class="s" x="870" y="493" text-anchor="start">perf, status</text>
+<path class="fabric" d="M14,651 L36,646 L36,666 L14,661 Z"/>
+<text class="s" x="44" y="660.5" text-anchor="start">Demux</text>
+<path class="fabric" d="M111.5,647 L133.5,647 L140.5,656 L133.5,665 L111.5,665 L104.5,656 Z"/>
+<text class="s" x="148.5" y="660.5" text-anchor="start">Address remap</text>
+<rect class="network" x="264.2" y="647" width="36" height="18" rx="3"/>
+<text class="s" x="308.2" y="660.5" text-anchor="start">Converter</text>
+<rect class="core" x="396.3" y="647" width="36" height="18" rx="4"/>
+<text class="s" x="440.3" y="660.5" text-anchor="start">RTL block</text>
+<rect class="external" x="528.4" y="647" width="36" height="18" rx="4"/>
+<text class="s" x="572.4" y="660.5" text-anchor="start">Outside sep_cpu, DECERR</text>
+<text class="s" x="44" y="688.5" text-anchor="start">Subordinate port</text>
+<text class="s" x="210.4" y="688.5" text-anchor="start">Manager port</text>
+<path class="axi" d="M322.20000000000005,684 L364.20000000000005,684"/>
+<text class="s" x="375.2" y="688.5" text-anchor="start">AXI4</text>
+<path class="sig" d="M431.80000000000007,684 L473.80000000000007,684"/>
+<text class="s" x="484.8" y="688.5" text-anchor="start">Signals</text>
+<path class="jtagb" d="M562.1000000000001,684 L604.1000000000001,684"/>
+<text class="s" x="615.1" y="688.5" text-anchor="start">JTAG</text>
+<text class="s" x="714.7" y="688.5" text-anchor="start">Synchronizer</text>
+<rect class="core opt" x="828.7" y="675" width="36" height="18" rx="4"/>
+<text class="s" x="872.7" y="688.5" text-anchor="start">Not configured</text>
+<rect class="pc" x="134.6" y="283.0" width="30.8" height="18" rx="4"/>
+<text class="pct" x="150" y="296.5" text-anchor="middle">CDC</text>
+<rect class="pm" x="819.0" y="112.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="830" y="125.5" text-anchor="middle">M</text>
+<rect class="pm" x="819.0" y="171.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="830" y="184.5" text-anchor="middle">M</text>
+<rect class="pm" x="819.0" y="227.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="830" y="240.5" text-anchor="middle">M</text>
+<rect class="pm" x="819.0" y="285.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="830" y="298.5" text-anchor="middle">M</text>
+<rect class="pm" x="819.0" y="331.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="830" y="344.5" text-anchor="middle">M</text>
+<rect class="ps" x="819.0" y="368.0" width="22" height="18" rx="4"/>
+<text class="pst" x="830" y="381.5" text-anchor="middle">S</text>
+<rect class="ps" x="14.0" y="675.0" width="22" height="18" rx="4"/>
+<text class="pst" x="25" y="688.5" text-anchor="middle">S</text>
+<rect class="pm" x="180.4" y="675.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="191.4" y="688.5" text-anchor="middle">M</text>
+<rect class="pc" x="673.3" y="675.0" width="30.8" height="18" rx="4"/>
+<text class="pct" x="688.7" y="688.5" text-anchor="middle">CDC</text>
+</svg>

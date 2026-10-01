@@ -19,7 +19,7 @@ package sep_crypto_pkg;
   import prim_ram_1p_pkg::*;
 
 
-  parameter axi_pkg::xbar_rule_32_t otbn_rule = '{
+  parameter axi_pkg::xbar_rule_32_t OTBN_RULE = '{
       idx: 0,
       start_addr: sep_top_addrmap_pkg::SEP_TOP_OTBN_BASE_ADDR,
       end_addr:
@@ -28,7 +28,7 @@ package sep_crypto_pkg;
       sep_top_addrmap_pkg::SEP_TOP_OTBN_SIZE
   };
 
-  parameter axi_pkg::xbar_rule_32_t hmac_rule = '{
+  parameter axi_pkg::xbar_rule_32_t HMAC_RULE = '{
       idx: 1,
       start_addr: sep_top_addrmap_pkg::SEP_TOP_HMAC_BASE_ADDR,
       end_addr:
@@ -37,7 +37,7 @@ package sep_crypto_pkg;
       sep_top_addrmap_pkg::SEP_TOP_HMAC_SIZE
   };
 
-  parameter axi_pkg::xbar_rule_32_t aes_rule = '{
+  parameter axi_pkg::xbar_rule_32_t AES_RULE = '{
       idx: 2,
       start_addr: sep_top_addrmap_pkg::SEP_TOP_AES_BASE_ADDR,
       end_addr:
@@ -46,7 +46,7 @@ package sep_crypto_pkg;
       sep_top_addrmap_pkg::SEP_TOP_AES_SIZE  // 256 bytes for AES.
   };
 
-  parameter axi_pkg::xbar_rule_32_t kmac_rule = '{
+  parameter axi_pkg::xbar_rule_32_t KMAC_RULE = '{
       idx: 3,
       start_addr: sep_top_addrmap_pkg::SEP_TOP_KMAC_BASE_ADDR,
       end_addr:
@@ -56,7 +56,7 @@ package sep_crypto_pkg;
   };
 
   // Contiguous eFuse block: MAP -> INTERFACE CSR -> MMR.
-  parameter axi_pkg::xbar_rule_32_t fuse_rule = '{
+  parameter axi_pkg::xbar_rule_32_t FUSE_RULE = '{
       idx: 4,
       start_addr: sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR,
       end_addr:
@@ -65,7 +65,7 @@ package sep_crypto_pkg;
       sep_top_addrmap_pkg::SEP_TOP_EFUSE_MMR_SIZE
   };
 
-  parameter axi_pkg::xbar_rule_32_t lifecycle_rule = '{
+  parameter axi_pkg::xbar_rule_32_t LIFECYCLE_RULE = '{
       idx: 5,
       start_addr: sep_top_addrmap_pkg::SEP_TOP_SEP_LIFECYCLE_CTRL_BASE_ADDR,
       end_addr:
@@ -74,7 +74,7 @@ package sep_crypto_pkg;
       sep_top_addrmap_pkg::SEP_TOP_SEP_LIFECYCLE_CTRL_SIZE
   };
 
-  parameter axi_pkg::xbar_rule_32_t km_rule = '{
+  parameter axi_pkg::xbar_rule_32_t KM_RULE = '{
       idx: 6,
       start_addr: sep_top_addrmap_pkg::SEP_TOP_KM_MAILBOX_SEP_BASE_ADDR,
       end_addr:
@@ -83,7 +83,7 @@ package sep_crypto_pkg;
       sep_top_addrmap_pkg::SEP_TOP_KM_MAILBOX_SEP_SIZE
   };
 
-  parameter axi_pkg::xbar_rule_32_t csrng_rule = '{
+  parameter axi_pkg::xbar_rule_32_t CSRNG_RULE = '{
       idx: 7,
       start_addr: sep_top_addrmap_pkg::SEP_TOP_CSRNG_BASE_ADDR,
       end_addr:
@@ -92,13 +92,13 @@ package sep_crypto_pkg;
       sep_top_addrmap_pkg::SEP_TOP_CSRNG_SIZE
   };
 
-  parameter axi_pkg::xbar_rule_32_t edn_rule = '{
+  parameter axi_pkg::xbar_rule_32_t EDN_RULE = '{
       idx: 8,
       start_addr: sep_top_addrmap_pkg::SEP_TOP_EDN_BASE_ADDR,
       end_addr: sep_top_addrmap_pkg::SEP_TOP_EDN_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_EDN_SIZE
   };
 
-  parameter axi_pkg::xbar_rule_32_t entropy_source_rule = '{
+  parameter axi_pkg::xbar_rule_32_t ENTROPY_SOURCE_RULE = '{
       idx: 9,
       start_addr: sep_top_addrmap_pkg::SEP_TOP_ENTROPY_SOURCE_BASE_ADDR,
       end_addr:
@@ -111,7 +111,7 @@ package sep_crypto_pkg;
   localparam logic [31:0] TRNG_BASE_ADDR = 32'h1091_7000;
   localparam logic [31:0] TRNG_END_ADDR = 32'h1091_8000;
 
-  parameter axi_pkg::xbar_rule_32_t trng_rule = '{
+  parameter axi_pkg::xbar_rule_32_t TRNG_RULE = '{
       idx: 10,
       start_addr: TRNG_BASE_ADDR,
       end_addr: TRNG_END_ADDR
@@ -122,7 +122,7 @@ package sep_crypto_pkg;
   localparam logic [31:0] ABR_REG_MAP_BASE_ADDR = 32'h1094_0000;
   localparam logic [31:0] ABR_REG_MAP_END_ADDR = 32'h1095_0000;
 
-  parameter axi_pkg::xbar_rule_32_t abr_rule = '{
+  parameter axi_pkg::xbar_rule_32_t ABR_RULE = '{
       idx: 11,
       start_addr: ABR_REG_MAP_BASE_ADDR,
       end_addr: ABR_REG_MAP_END_ADDR

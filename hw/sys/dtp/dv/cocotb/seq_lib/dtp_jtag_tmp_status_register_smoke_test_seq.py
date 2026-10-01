@@ -14,9 +14,7 @@ class dtp_jtag_tmp_status_register_smoke_test_seq(dtp_debug_tdr_base_test_seq):
 
     async def body(self) -> None:
         self.log_banner("TMP_STATUS Register Smoke")
-        await self.attach_family_checker(
-            {"CHK-TAP-RESET-TLR", "CHK-TMP-PERSIST", "CHK-DBG-TDR"}, use_monitor=False
-        )
+        await self.attach_family_checker({"CHK-TAP-RESET-TLR", "CHK-TMP-PERSIST", "CHK-DBG-TDR"})
 
         self.log_step(1, "Reset TAP and confirm TMP starts Persistence-Off")
         await self.reset_to_tlr()
@@ -41,8 +39,8 @@ class dtp_jtag_tmp_status_register_smoke_test_seq(dtp_debug_tdr_base_test_seq):
         await self.load_ir(DtpJtagInstr.CLAMP_HOLD)
         held = await self.check_tmp_persistence("After CLAMP_HOLD", 1)
 
-        self.log_step(4, "Read IDCODE to prove TMP_STATUS access did not disturb routing")
-        idcode = await self.check_idcode_marker(context="after TMP_STATUS")
+        self.log_step(4, "Read IDCODE and expect the configured IDCODE after TMP_STATUS access")
+        idcode = await self.check_idcode_value(context="after TMP_STATUS")
 
         self.log_summary(
             "TMP_STATUS smoke complete",

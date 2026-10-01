@@ -10,7 +10,8 @@
 // (reset sequencing, dbg_disable stimulus, control-domain observables),
 // scan_vif (scan-network observables and downstream-TAP attach), xtrig_vif
 // (cross-trigger pins), and jtag_vif (the reset-family scenarios hold TRST
-// across TCK cycles), all plumbed by the base test.
+// across TCK cycles and sample it under a power-on reset), all plumbed by
+// the base test.
 //
 // The scenario layer tracks the TAP state itself (m_tap_state) and hands it
 // to every JTAG operation, since the VIP sequence's model lives inside the
@@ -46,9 +47,9 @@ class dtp_base_test_seq extends ocah_sequence;
   virtual dtp_scan_if  scan_vif;
   virtual dtp_xtrig_if xtrig_vif;
   dtp_test_cfg         test_cfg;
-  // Plumbed by the test for scenarios that hold or sequence TRST directly
-  // (reset family). Safe alongside the VIP driver, which drives trst_n only
-  // while executing a TAP_RESET item.
+  // Plumbed by the test for scenarios that hold, sequence, or sample TRST
+  // directly (reset family). Safe alongside the VIP driver, which drives
+  // trst_n only while executing a TAP_RESET item.
   virtual ocah_jtag_if jtag_vif;
   // Env-owned evidence and observation handles: the aggregate JTAG
   // recorder, the pin-level scan reconstruction with the DUT's Shift-x
@@ -63,6 +64,10 @@ class dtp_base_test_seq extends ocah_sequence;
   protected ocah_jtag_tap_state_e m_tap_state = OCAH_JTAG_TEST_LOGIC_RESET;
   // TAP state sampled by set_trst with TRST_N low and no TCK edge since.
   protected bit [15:0] m_trst_async_state;
+  // The scan builder's closed Shift-IR / Shift-DR episode counts when the
+  // current JTAG operation started.
+  protected int unsigned m_ir_episodes_at_op;
+  protected int unsigned m_dr_episodes_at_op;
 
   function new(string name = "dtp_base_test_seq");
     super.new(name);
@@ -159,10 +164,17 @@ class dtp_base_test_seq extends ocah_sequence;
   endtask
 
   // Hand the tracked state to an operation, start it on the JTAG agent
-  // sequencer, and take the landing state back.
+  // sequencer, and take the landing state back. The episode counts taken
+  // here bound the scans check_last_scan_length judges: every scan starts in
+  // Run-Test/Idle, so the previous operation's last STEP, which publishes
+  // after this point, closes no Shift episode.
   protected task run_jtag_op(dtp_jtag_op_seq op);
     if (p_sequencer.m_jtag_seqr == null)
       `uvm_fatal(get_type_name(), "dtp_virtual_sequencer.m_jtag_seqr is null")
+    if (scan_builder != null) begin
+      m_ir_episodes_at_op = scan_builder.dut_ir_episodes;
+      m_dr_episodes_at_op = scan_builder.dut_dr_episodes;
+    end
     op.entry_state = m_tap_state;
     op.start(p_sequencer.m_jtag_seqr, this);
     m_tap_state = op.current_state();
@@ -265,16 +277,25 @@ class dtp_base_test_seq extends ocah_sequence;
     return m_trst_async_state;
   endfunction
 
-  // Pulse power-on reset while TCK keeps stepping with TMS=1 (the TAP's
-  // POR independence contract is checked by the caller from tb_vif state).
-  task pulse_por(int unsigned cycles = 5);
+  // Hold power-on reset for `cycles` TCK periods with TRST_N untouched and
+  // TCK idle, sample the TAP state and TRST_N under the reset, then release
+  // it and idle as long again. The reset moves the TAP to Test-Logic-Reset
+  // without a TCK edge, so the tracked state follows it here.
+  task pulse_por(input int unsigned cycles, output bit [15:0] state_under_por,
+                 output bit trst_n_under_por);
     logic [31:0] before_count = tb_vif.por_assert_count;
+    int unsigned hold = (cycles > 0) ? cycles : 1;
+    if (jtag_vif == null)
+      `uvm_fatal(get_type_name(), "pulse_por() needs jtag_vif plumbed by the test")
     tb_vif.por_rst_n <= 1'b0;
-    repeat (cycles > 0 ? cycles : 1) step(1'b1);
+    wait_tck_periods(hold);
+    state_under_por  = tb_vif.tap_state;
+    trst_n_under_por = jtag_vif.trst_n;
     tb_vif.por_rst_n <= 1'b1;
-    wait_sys_cycles(DbgDisableSysCycles);
+    wait_tck_periods(hold);
     check_reset_counted("por_assert_count", before_count, tb_vif.por_assert_count, $sformatf(
                         "pulse_por cycles=%0d", cycles));
+    sync_model(OCAH_JTAG_TEST_LOGIC_RESET);
   endtask
 
   // IR scan from Run-Test/Idle (LSB-first), back to Run-Test/Idle.
@@ -355,28 +376,33 @@ class dtp_base_test_seq extends ocah_sequence;
   virtual function void note_scan(bit is_ir, int unsigned width);
   endfunction
 
-  // CHK-SCAN-IR-LEN / CHK-SCAN-DR-LEN: the TCK cycles the DUT's exported TAP
-  // state (jtag_ptap_state_o) spent in Shift-x for the newest scan of this
-  // kind equal the width the sequence drove. The episode closes on the
-  // Shift->Exit1 edge, cycles before the driver's back-to-RTI leg completes.
+  // CHK-SCAN-IR-LEN / CHK-SCAN-DR-LEN: the JTAG operation that just returned
+  // made exactly one new Shift-x visit of the DUT's exported TAP state
+  // (jtag_ptap_state_o) of this kind, and that visit lasted the width the
+  // sequence drove. The episode closes on the Shift->Exit1 edge, cycles
+  // before the driver's back-to-RTI leg completes.
   function void check_last_scan_length(bit is_ir, int unsigned width, string context_s);
-    int unsigned observed;
+    string check_id = is_ir ? "CHK-SCAN-IR-LEN" : "CHK-SCAN-DR-LEN";
+    string kind = is_ir ? "IR" : "DR";
+    int unsigned new_episodes;
     if (evidence == null || scan_builder == null) return;
-    if (is_ir ? scan_builder.dut_ir_shift_lens.size() == 0 :
-        scan_builder.dut_dr_shift_lens.size() == 0) begin
-      `uvm_error("sanity_scan_len_chk", $sformatf(
-                                            "the DUT TAP state showed no Shift-%s episode (%s)",
-                                            is_ir ? "IR" : "DR", context_s))
-      return;
-    end
-    observed = is_ir ? scan_builder.dut_ir_shift_lens[$] : scan_builder.dut_dr_shift_lens[$];
+    new_episodes = is_ir ? scan_builder.dut_ir_episodes - m_ir_episodes_at_op :
+        scan_builder.dut_dr_episodes - m_dr_episodes_at_op;
     void'(evidence.expect_equal(
-        is_ir ? "CHK-SCAN-IR-LEN" : "CHK-SCAN-DR-LEN",
-        64'(observed),
-        64'(width),
+        check_id,
+        64'(new_episodes),
+        64'd1,
         $sformatf(
-            "kind=%s source=jtag_ptap_state_o %s", is_ir ? "IR" : "DR", context_s)
+            "new DUT Shift-%s episodes %s", kind, context_s)
     ));
+    if (new_episodes == 1)
+      void'(evidence.expect_equal(
+          check_id,
+          64'(is_ir ? scan_builder.dut_last_ir_len : scan_builder.dut_last_dr_len),
+          64'(width),
+          $sformatf(
+              "kind=%s source=jtag_ptap_state_o %s", kind, context_s)
+      ));
   endfunction
 
   // Read the 32-bit device-identification register via IDCODE.
@@ -387,8 +413,9 @@ class dtp_base_test_seq extends ocah_sequence;
 
   // sanity_bypass_latency_chk: BYPASS (IR 0x00) => exactly 1-TCK
   // TDI-to-TDO delay: observed = {pattern[width-2:0], 1'b0} LSB-first.
-  task check_bypass_latency(bit [63:0] pattern, int unsigned width);
-    bit [63:0] observed, expected;
+  task check_bypass_latency(input bit [63:0] pattern, input int unsigned width,
+                            output bit [63:0] observed);
+    bit [63:0] expected;
     expected = ocah_jtag_checker::predict_bypass_tdo(pattern, width);
     shift_dr(pattern, width, observed);
     if (evidence != null) begin

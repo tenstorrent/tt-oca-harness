@@ -4,8 +4,8 @@
 // SMC scratch CSR reference model: the scratch_csr predictor of
 // smc_scoreboard. It subscribes to the SEP_IN monitor stream and keeps a
 // shadow of the SCRATCH_COLD and SCRATCH_COLD_WARM registers rebuilt from the
-// strobed writes it observes, cleared on every cold reset (the warm domain
-// sits inside the cold one; smc_tb_if cold_rst_assert_count). For every OKAY
+// strobed writes it observes, cleared on every cold or cool reset (both are
+// terms of the primary reset; smc_tb_if reset counters). For every OKAY
 // single-beat read of a scratch register it publishes one expected
 // ocah_axi_item on expected_ap carrying the predicted CSR value on the
 // register's byte lanes; the scoreboard pairs it with the observed read.
@@ -94,9 +94,10 @@ class smc_scratch_csr_ref_model extends ocah_ref_model #(ocah_axi_item, ocah_axi
   endfunction
 
   // A cold reset clears every scratch register, and so does a de-glitched
-  // cool reset: both drop rst_primary_smc_clk_n, which is smc_misc_wrap's
-  // rst_ni and therefore the reset of BOTH scratch windows
-  // (smc_misc_wrap.sv:106-108, :133). The shadow follows the tb_if epoch.
+  // cool reset: both are terms of the primary reset, which "covers the main
+  // SMC functional fabric, peripheral control and configuration paths"
+  // (clk_rst.adoc "Primary and Warm Reset"), and both scratch windows are
+  // such registers (misc_wrap.rdl:20-21). The shadow follows the tb_if epoch.
   protected function void sync_cold_reset();
     bit [63:0] epoch = smc_csr_reset_epoch(
         tb_vif.cold_rst_assert_count, tb_vif.cool_rst_assert_count

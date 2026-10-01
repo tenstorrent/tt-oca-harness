@@ -144,65 +144,65 @@ module sep_crypto_axi_interconnect (
   assign ar_is_burst = (|sep_crypto_axi_req_i.ar.len);
 
   always_comb begin
-    otbn_write = (sep_crypto_axi_req_i.aw.addr >= sep_crypto_pkg::otbn_rule.start_addr) &&
-            (sep_crypto_axi_req_i.aw.addr < sep_crypto_pkg::otbn_rule.end_addr);
-    otbn_read  = (sep_crypto_axi_req_i.ar.addr >= sep_crypto_pkg::otbn_rule.start_addr) &&
-            (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::otbn_rule.end_addr);
+    otbn_write = (sep_crypto_axi_req_i.aw.addr >= sep_crypto_pkg::OTBN_RULE.start_addr) &&
+            (sep_crypto_axi_req_i.aw.addr < sep_crypto_pkg::OTBN_RULE.end_addr);
+    otbn_read  = (sep_crypto_axi_req_i.ar.addr >= sep_crypto_pkg::OTBN_RULE.start_addr) &&
+            (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::OTBN_RULE.end_addr);
 
-    hmac_write = (sep_crypto_axi_req_i.aw.addr >= sep_crypto_pkg::hmac_rule.start_addr) &&
-            (sep_crypto_axi_req_i.aw.addr < sep_crypto_pkg::hmac_rule.end_addr);
-    hmac_read  = (sep_crypto_axi_req_i.ar.addr >= sep_crypto_pkg::hmac_rule.start_addr) &&
-            (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::hmac_rule.end_addr);
+    hmac_write = (sep_crypto_axi_req_i.aw.addr >= sep_crypto_pkg::HMAC_RULE.start_addr) &&
+            (sep_crypto_axi_req_i.aw.addr < sep_crypto_pkg::HMAC_RULE.end_addr);
+    hmac_read  = (sep_crypto_axi_req_i.ar.addr >= sep_crypto_pkg::HMAC_RULE.start_addr) &&
+            (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::HMAC_RULE.end_addr);
 
-    aes_write = (sep_crypto_axi_req_i.aw.addr >= sep_crypto_pkg::aes_rule.start_addr) &&
-            (sep_crypto_axi_req_i.aw.addr < sep_crypto_pkg::aes_rule.end_addr);
-    aes_read  = (sep_crypto_axi_req_i.ar.addr >= sep_crypto_pkg::aes_rule.start_addr) &&
-            (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::aes_rule.end_addr);
+    aes_write = (sep_crypto_axi_req_i.aw.addr >= sep_crypto_pkg::AES_RULE.start_addr) &&
+            (sep_crypto_axi_req_i.aw.addr < sep_crypto_pkg::AES_RULE.end_addr);
+    aes_read  = (sep_crypto_axi_req_i.ar.addr >= sep_crypto_pkg::AES_RULE.start_addr) &&
+            (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::AES_RULE.end_addr);
 
-    kmac_write = (sep_crypto_axi_req_i.aw.addr >= sep_crypto_pkg::kmac_rule.start_addr) &&
-            (sep_crypto_axi_req_i.aw.addr < sep_crypto_pkg::kmac_rule.end_addr);
-    kmac_read  = (sep_crypto_axi_req_i.ar.addr >= sep_crypto_pkg::kmac_rule.start_addr) &&
-            (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::kmac_rule.end_addr);
+    kmac_write = (sep_crypto_axi_req_i.aw.addr >= sep_crypto_pkg::KMAC_RULE.start_addr) &&
+            (sep_crypto_axi_req_i.aw.addr < sep_crypto_pkg::KMAC_RULE.end_addr);
+    kmac_read  = (sep_crypto_axi_req_i.ar.addr >= sep_crypto_pkg::KMAC_RULE.start_addr) &&
+            (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::KMAC_RULE.end_addr);
 
-    fuse_write = (sep_crypto_axi_req_i.aw.addr >= sep_crypto_pkg::fuse_rule.start_addr) &&
-            (sep_crypto_axi_req_i.aw.addr < sep_crypto_pkg::fuse_rule.end_addr);
-    fuse_read  = (sep_crypto_axi_req_i.ar.addr >= sep_crypto_pkg::fuse_rule.start_addr) &&
-            (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::fuse_rule.end_addr);
+    fuse_write = (sep_crypto_axi_req_i.aw.addr >= sep_crypto_pkg::FUSE_RULE.start_addr) &&
+            (sep_crypto_axi_req_i.aw.addr < sep_crypto_pkg::FUSE_RULE.end_addr);
+    fuse_read  = (sep_crypto_axi_req_i.ar.addr >= sep_crypto_pkg::FUSE_RULE.start_addr) &&
+            (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::FUSE_RULE.end_addr);
 
-    lifecycle_write = (sep_crypto_axi_req_i.aw.addr >= sep_crypto_pkg::lifecycle_rule.start_addr) &&
-            (sep_crypto_axi_req_i.aw.addr < sep_crypto_pkg::lifecycle_rule.end_addr);
-    lifecycle_read  = (sep_crypto_axi_req_i.ar.addr >= sep_crypto_pkg::lifecycle_rule.start_addr) &&
-            (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::lifecycle_rule.end_addr);
+    lifecycle_write = (sep_crypto_axi_req_i.aw.addr >= sep_crypto_pkg::LIFECYCLE_RULE.start_addr) &&
+            (sep_crypto_axi_req_i.aw.addr < sep_crypto_pkg::LIFECYCLE_RULE.end_addr);
+    lifecycle_read  = (sep_crypto_axi_req_i.ar.addr >= sep_crypto_pkg::LIFECYCLE_RULE.start_addr) &&
+            (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::LIFECYCLE_RULE.end_addr);
 
-    km_write = (sep_crypto_axi_req_i.aw.addr >= sep_crypto_pkg::km_rule.start_addr) &&
-            (sep_crypto_axi_req_i.aw.addr < sep_crypto_pkg::km_rule.end_addr);
-    km_read  = (sep_crypto_axi_req_i.ar.addr >= sep_crypto_pkg::km_rule.start_addr) &&
-            (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::km_rule.end_addr);
+    km_write = (sep_crypto_axi_req_i.aw.addr >= sep_crypto_pkg::KM_RULE.start_addr) &&
+            (sep_crypto_axi_req_i.aw.addr < sep_crypto_pkg::KM_RULE.end_addr);
+    km_read  = (sep_crypto_axi_req_i.ar.addr >= sep_crypto_pkg::KM_RULE.start_addr) &&
+            (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::KM_RULE.end_addr);
 
-    csrng_write = (sep_crypto_axi_req_i.aw.addr >= sep_crypto_pkg::csrng_rule.start_addr) &&
-            (sep_crypto_axi_req_i.aw.addr < sep_crypto_pkg::csrng_rule.end_addr);
-    csrng_read  = (sep_crypto_axi_req_i.ar.addr >= sep_crypto_pkg::csrng_rule.start_addr) &&
-            (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::csrng_rule.end_addr);
+    csrng_write = (sep_crypto_axi_req_i.aw.addr >= sep_crypto_pkg::CSRNG_RULE.start_addr) &&
+            (sep_crypto_axi_req_i.aw.addr < sep_crypto_pkg::CSRNG_RULE.end_addr);
+    csrng_read  = (sep_crypto_axi_req_i.ar.addr >= sep_crypto_pkg::CSRNG_RULE.start_addr) &&
+            (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::CSRNG_RULE.end_addr);
 
-    edn_write = (sep_crypto_axi_req_i.aw.addr >= sep_crypto_pkg::edn_rule.start_addr) &&
-            (sep_crypto_axi_req_i.aw.addr < sep_crypto_pkg::edn_rule.end_addr);
-    edn_read  = (sep_crypto_axi_req_i.ar.addr >= sep_crypto_pkg::edn_rule.start_addr) &&
-            (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::edn_rule.end_addr);
+    edn_write = (sep_crypto_axi_req_i.aw.addr >= sep_crypto_pkg::EDN_RULE.start_addr) &&
+            (sep_crypto_axi_req_i.aw.addr < sep_crypto_pkg::EDN_RULE.end_addr);
+    edn_read  = (sep_crypto_axi_req_i.ar.addr >= sep_crypto_pkg::EDN_RULE.start_addr) &&
+            (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::EDN_RULE.end_addr);
 
-    entropy_src_write = (sep_crypto_axi_req_i.aw.addr >= sep_crypto_pkg::entropy_source_rule.start_addr) &&
-            (sep_crypto_axi_req_i.aw.addr < sep_crypto_pkg::entropy_source_rule.end_addr);
-    entropy_src_read  = (sep_crypto_axi_req_i.ar.addr >= sep_crypto_pkg::entropy_source_rule.start_addr) &&
-            (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::entropy_source_rule.end_addr);
+    entropy_src_write = (sep_crypto_axi_req_i.aw.addr >= sep_crypto_pkg::ENTROPY_SOURCE_RULE.start_addr) &&
+            (sep_crypto_axi_req_i.aw.addr < sep_crypto_pkg::ENTROPY_SOURCE_RULE.end_addr);
+    entropy_src_read  = (sep_crypto_axi_req_i.ar.addr >= sep_crypto_pkg::ENTROPY_SOURCE_RULE.start_addr) &&
+            (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::ENTROPY_SOURCE_RULE.end_addr);
 
-    trng_write = (sep_crypto_axi_req_i.aw.addr >= sep_crypto_pkg::trng_rule.start_addr) &&
-            (sep_crypto_axi_req_i.aw.addr < sep_crypto_pkg::trng_rule.end_addr);
-    trng_read  = (sep_crypto_axi_req_i.ar.addr >= sep_crypto_pkg::trng_rule.start_addr) &&
-            (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::trng_rule.end_addr);
+    trng_write = (sep_crypto_axi_req_i.aw.addr >= sep_crypto_pkg::TRNG_RULE.start_addr) &&
+            (sep_crypto_axi_req_i.aw.addr < sep_crypto_pkg::TRNG_RULE.end_addr);
+    trng_read  = (sep_crypto_axi_req_i.ar.addr >= sep_crypto_pkg::TRNG_RULE.start_addr) &&
+            (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::TRNG_RULE.end_addr);
 
-    abr_write = (sep_crypto_axi_req_i.aw.addr >= sep_crypto_pkg::abr_rule.start_addr) &&
-            (sep_crypto_axi_req_i.aw.addr < sep_crypto_pkg::abr_rule.end_addr);
-    abr_read  = (sep_crypto_axi_req_i.ar.addr >= sep_crypto_pkg::abr_rule.start_addr) &&
-            (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::abr_rule.end_addr);
+    abr_write = (sep_crypto_axi_req_i.aw.addr >= sep_crypto_pkg::ABR_RULE.start_addr) &&
+            (sep_crypto_axi_req_i.aw.addr < sep_crypto_pkg::ABR_RULE.end_addr);
+    abr_read  = (sep_crypto_axi_req_i.ar.addr >= sep_crypto_pkg::ABR_RULE.start_addr) &&
+            (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::ABR_RULE.end_addr);
 
     if (aw_is_burst) begin
       aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiErrSlv);

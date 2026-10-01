@@ -6,9 +6,23 @@
 
 == Overview
 
-The Telemetry Receiver decodes, buffers, and processes telemetry data from
-telemetry transmitters. It implements a receiver for a probe-ID and
-multi-counter message format.
+ifdef::backend-html5[]
+// Preserve incoming links to the consolidated sections.
+++++
+<span id="description-and-features"></span>
+++++
+endif::backend-html5[]
+
+The receiver assembles an 8-bit ATB stream into probe-ID and counter messages.
+Software reads completed messages through a 32-bit AXI4-Lite register interface
+and explicitly pops each message. The core defaults to eight queued messages
+and four counters per message; these are elaboration parameters, not software
+settings. Threshold and missing-last-packet interrupts report service needs.
+
+Reception does not stop when the message queue fills: a new message replaces
+the oldest one. Software must account for this when reading a message through
+several registers. The receiver does not use `atid_i` to maintain separate
+source contexts; producers sharing a receiver must serialize complete messages.
 
 [[telemetry-receiver-message-format]]
 === Message Format
@@ -32,19 +46,6 @@ form a message that ends when `last_packet` is set.
 A counter is valid only when all four of its blocks are valid. The number of
 counters per message is parameterized (default 4); the field layout is fixed.
 
-== Description and Features
-
-* *32-bit APB4 or AXI4-Lite Register Interface*: Standard bus interfaces
-for system integration and configuration access
-* *8-bit ATB Telemetry Interface*: High-speed telemetry data reception
-with ATB protocol compliance
-* *Configurable Circular Buffer*: Programmable buffer depth (default 8
-entries) with threshold-based monitoring
-* *Multi-Counter Message Support*: Decodes messages with probe ID and up
-to 4 counter values per message
-* *Comprehensive Interrupt System*: Event-driven notifications for
-buffer thresholds and error conditions
-
 ifdef::backend-html5[]
 include::partial$telemetry_receiver/doc/architecture.adoc[]
 endif::backend-html5[]
@@ -56,6 +57,12 @@ include::partial$telemetry_receiver/doc/interface.adoc[]
 endif::backend-html5[]
 ifdef::backend-pdf[]
 include::interface.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::partial$telemetry_receiver/doc/programming.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+include::programming.adoc[]
 endif::backend-pdf[]
 ifdef::backend-html5[]
 include::partial$telemetry_receiver/doc/memmap.adoc[]

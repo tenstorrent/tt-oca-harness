@@ -19,7 +19,7 @@ args = ["+skip_fuse_sense"]
 
 [[tests]]
 name = "sep_address_map_test"
-module = "system.sep_address_map_test"
+module = { cocotb = "system.sep_address_map_test", uvm = "sep_address_map_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["smoke", "system"]
@@ -130,10 +130,11 @@ args = ["+skip_fuse_sense"]
 # clears; reverse the roles. Once URND is being acknowledged, a KMAC software
 # reset is stepped across that acknowledge period. The KMAC endpoint's edn_ack
 # and edn_bus stay 0 on every gated-reset edge, and URND may complete its own
-# beat. The software reset write outlasts one KMAC seed, so the in-request
-# sample is the JTAG leg: the same walk from the JTAG KMAC override, with
-# SW_RESET_N still showing KMAC released, including one edge taken while KMAC
-# edn_req is high. CHK-EDN-HOLD arms on an edge that still presents a URND
+# beat. CHK-EDN-LEAD software-resets KMAC, AES and OTBN while their endpoint
+# holds a word, and requires edn_ack and edn_bus at 0 on the last cycle before
+# the gated reset falls and on every asserted-reset cycle. CHK-EDN-DISCARD
+# requires that no held word is acknowledged to any client afterwards.
+# CHK-EDN-HOLD arms on a KMAC software-reset edge that still presents a URND
 # word staged with edn_ack low. An empty-FIFO gap, where the next cycle reads
 # 0, is not that arm. An edge that presents a different word fails, and so
 # does every candidate edge zeroing the word. CHK-EDN-HOLD-KEEP requires that
@@ -160,11 +161,11 @@ args = ["+skip_fuse_sense", "+esrc_noise_force"]
 # Entropy-pool 64-bit aperture at entropy_fifo.main. Empty pop SLVERR after an
 # accepted pop; status fifo_level / pool_err; irq-cause is {fill_stall,pool_low}
 # only; writes SLVERR; unmapped in-window SLVERR+RDATA=0; aggregator [36]
-# high-low-high and [37] first stall after ESRC disable for StallThresh.
+# high-low-high and [37] first stall after ESRC disable for STALL_THRESH.
 # RANDCFG: extra pops from the run seed; every seed walks the high-bit mirrors
 # of the live registers and all three unique-dead offsets. A 32-bit read of each
 # register's upper word is SLVERR+RDATA=0 and neither pops nor disturbs the FIFO.
-# [37] stays set when the stall is held past StallThresh (stall duration is
+# [37] stays set when the stall is held past STALL_THRESH (stall duration is
 # graded). Drain-under-fill is not claimed. no_cpu; +skip_fuse_sense
 # +esrc_noise_force.
 name = "sep_entropy_pool_aperture_test"
@@ -227,7 +228,7 @@ args = ["+skip_fuse_sense"]
 
 [[tests]]
 name = "sep_clock_uvm_wdt_rst_input_reset_path_test"
-module = "system.sep_clock_uvm_wdt_rst_input_reset_path_test"
+module = { cocotb = "system.sep_clock_uvm_wdt_rst_input_reset_path_test", uvm = "sep_clock_uvm_wdt_rst_input_reset_path_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["clock", "reset", "wdt", "system", "subsystem"]
@@ -247,7 +248,7 @@ args = ["+skip_fuse_sense"]
 # host_path_err / bit 41.
 # no_cpu (host drives AXI); +skip_fuse_sense (INTR_TEST is independent of OTP/entropy).
 name = "sep_irq_ip_to_aggregator_test"
-module = "system.sep_irq_ip_to_aggregator_test"
+module = { cocotb = "system.sep_irq_ip_to_aggregator_test", uvm = "sep_irq_ip_to_aggregator_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["interrupt", "aggregator", "csrng", "edn", "system", "subsystem"]
@@ -261,7 +262,7 @@ args = ["+skip_fuse_sense"]
 # PERIPH_BUS_ERR_STATUS or DMA_BUS_ERR_STATUS bit. The VPLAN card owns the
 # checker contract.
 name = "sep_periph_bus_err_misaligned_test"
-module = "system.sep_periph_bus_err_misaligned_test"
+module = { cocotb = "system.sep_periph_bus_err_misaligned_test", uvm = "sep_periph_bus_err_misaligned_test" }
 seed = 1
 timeout_sec = 600
 tags = ["interrupt", "aggregator", "system", "subsystem"]
@@ -320,6 +321,23 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
+# Every inbound-filter entry at full 56-bit START/END width, on live external
+# reads. RANDCFG: the windows and the staged value from the run seed. START
+# takes S then ~S (both above the target) and END takes E then ~E (both at or
+# above it), so every bound bit steps both ways and the upper bits [55:32]
+# decide the response. Inside: OKAY + staged value; outside: DECERR.
+# no_cpu + external SMN master; real PROD fuse sense (sep_debug=0).
+name = "sep_fabric_inbound_filter_window_walk_test"
+module = "system.sep_fabric_inbound_filter_window_walk_test"
+seed = 1
+# One seed: every walked bit steps both ways and decides a response at any
+# seed, and a second seed added 39 of 1.9M toggle bits and nothing else.
+timeout_sec = 3600
+tags = ["fabric", "inbound_filter", "security", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
 # Live AP/STEE output-remap + outbound-filter drop. RANDCFG: bank/region/entry
 # and one forbidden beat from the run seed. A programmed window translates to
 # the outbound responder; a second region is DECERR. CSR-bank R/W stays on
@@ -328,6 +346,26 @@ name = "sep_fabric_output_remap_datapath_proxy_test"
 module = "system.sep_fabric_output_remap_datapath_proxy_test"
 seed = 1
 timeout_sec = 1800
+tags = ["fabric", "remap", "filter", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Every AP/STEE output-remap region, each paired with its own outbound-filter
+# entry, at full 56-bit width. RANDCFG: offsets, windows and the in-region beat
+# from the run seed; each region runs offset O then ~O, so every offset,
+# START_ADDR and END_ADDR bit steps both ways. The block-by-default outbound
+# filter grades the remapped address: OKAY inside the window, DECERR outside,
+# and one bound bit alone decides each per-bit leg. With valid clear the beat
+# keeps its own address: OKAY in that granule, DECERR at the translated one.
+# no_cpu; +skip_fuse_sense.
+name = "sep_fabric_outbound_remap_filter_walk_test"
+module = "system.sep_fabric_outbound_remap_filter_walk_test"
+seed = 1
+# One seed: every walked bit steps both ways and decides a response at any
+# seed, and a second seed added 39 of 1.9M toggle bits and nothing else.
+timeout_sec = 3600
 tags = ["fabric", "remap", "filter", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -362,6 +400,24 @@ seed = 1
 reseed = 3
 timeout_sec = 3600
 tags = ["csr", "register", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Every local-master alias-remap region at full 56-bit START/END/offset width.
+# RANDCFG: targets, bounds and the staged word from the run seed; each region
+# runs offset O then ~O, and miss bounds S then ~S. A hit sends the CPU-LSU
+# beat to a 56-bit SMU-path target that one outbound-filter granule admits
+# (OKAY; DECERR one granule up); a miss or valid=0 returns the staged local
+# word. no_cpu; +skip_fuse_sense.
+name = "sep_fabric_local_alias_offset_walk_test"
+module = "system.sep_fabric_local_alias_offset_walk_test"
+seed = 1
+# One seed: every walked bit steps both ways and decides a response at any
+# seed, and a second seed added 39 of 1.9M toggle bits and nothing else.
+timeout_sec = 3600
+tags = ["fabric", "remap", "filter", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
@@ -415,9 +471,13 @@ args = ["+skip_fuse_sense"]
 [[tests]]
 # Unmapped points next to live registers: system-CSR holes, the reserved row
 # above SEP CPU control, the mailbox page's upper half, past each eFuse sibling
-# block, and every remap / filter array slot tail. Refused, or zero inside an
-# extent, and never aliased onto a live word. The refusal code is logged, not
-# graded. Addresses come from the generated register export.
+# block and the SPI host, and every remap / filter array slot tail. Each answers
+# the response code and read data the SEP memory map states, and none aliases
+# onto a live word. Every slot tail inside the RDL allocation (base +
+# TOTAL_SIZE), the last slot's tail included, reads zero with OKAY; where the
+# map lists that last tail past the extent, the RDL allocation grades it. A live
+# word with no RDL reset is written before it is read. Addresses come from the
+# generated register export.
 name = "sep_unmapped_access_policy_test"
 module = "system.sep_unmapped_access_policy_test"
 seed = 1

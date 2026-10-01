@@ -190,7 +190,9 @@ module efuse_interface_controller #(
 
   // Fuse Sense Released Reset
   assign fuse_sense_done_o = fuse_sense_done;
-  // External boot sequence done includes memory repair and shadow reg override being complete, the rest of SMC can now boot
+
+  // ext_boot_seq_done_i is asserted when memory repair and shadow reg override are complete, boot can proceed
+  // Note: ext_boot_seq_done_i must be synchronized and set-once qualified
   prim_and3 u_reset_release_and (
     .in0_i (fuse_sense_done),
     .in1_i (ext_boot_seq_done_i),
@@ -347,8 +349,8 @@ module efuse_interface_controller #(
 
   // AXI-Lite to APB conversion
   prim_axi_lite_to_apb_single #(
-    .PipelineRequest(1'b1),
-    .PipelineResponse(1'b1),
+    .PIPELINE_REQUEST(1'b1),
+    .PIPELINE_RESPONSE(1'b1),
     .AXI_ADDR_WIDTH(ADDR_WIDTH),
     .AXI_DATA_WIDTH(DATA_WIDTH),
     .ADDR_START(32'h0000_0000),
@@ -478,7 +480,6 @@ module efuse_interface_controller #(
         .shadow_regs_i              (shadow_regs),
         .shadow_regs_o              (shadow_regs_o)
       );
-
 
     end else begin : gen_stub_mmr_apb_target
       assign apb_endpoint_resps[efuse_pkg::EFUSE_MMR_REG_MAP].pready = 1'b1;

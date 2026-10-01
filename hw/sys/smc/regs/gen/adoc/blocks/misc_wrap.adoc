@@ -19,8 +19,8 @@ Aggregates the SMC scratch, chip-configuration, and NDM-reset register blocks.
 [cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description
-| 0x0 - 0x1C | <<reg-{regmap-instance}-misc_wrap-scratch_cold-SCRATCH-0-,scratch_cold.SCRATCH[8]>> | RW a| -
-| 0x80 - 0x9C | <<reg-{regmap-instance}-misc_wrap-scratch_cold_warm-SCRATCH-0-,scratch_cold_warm.SCRATCH[8]>> | RW a| -
+| 0x0 - 0x1C | <<reg-{regmap-instance}-misc_wrap-scratch_cold-SCRATCH-,scratch_cold.SCRATCH[8]>> | RW a| -
+| 0x80 - 0x9C | <<reg-{regmap-instance}-misc_wrap-scratch_cold_warm-SCRATCH-,scratch_cold_warm.SCRATCH[8]>> | RW a| -
 | 0x100 | <<reg-{regmap-instance}-misc_wrap-chip_config-VERSION_LO,VERSION_LO>> | R a| -
 | 0x104 | <<reg-{regmap-instance}-misc_wrap-chip_config-VERSION_HI,VERSION_HI>> | R a| -
 | 0x108 | <<reg-{regmap-instance}-misc_wrap-chip_config-CHIP_ID,CHIP_ID>> | R a| -
@@ -30,7 +30,7 @@ Aggregates the SMC scratch, chip-configuration, and NDM-reset register blocks.
 | 0x208 | <<reg-{regmap-instance}-misc_wrap-ndm_reset-NDMRESET_CLUSTER_COUNT,NDMRESET_CLUSTER_COUNT>> | R a| -
 |===
 
-[#reg-{regmap-instance}-misc_wrap-scratch_cold-SCRATCH-0-]
+[#reg-{regmap-instance}-misc_wrap-scratch_cold-SCRATCH-]
 === scratch_cold.SCRATCH[8]
 
 [cols="1,3,1,1,6", options="header"]
@@ -39,7 +39,7 @@ Aggregates the SMC scratch, chip-configuration, and NDM-reset register blocks.
 | 31:0 | `data` | RW | 0x0 a| Scratch register
 |===
 
-[#reg-{regmap-instance}-misc_wrap-scratch_cold_warm-SCRATCH-0-]
+[#reg-{regmap-instance}-misc_wrap-scratch_cold_warm-SCRATCH-]
 === scratch_cold_warm.SCRATCH[8]
 
 [cols="1,3,1,1,6", options="header"]

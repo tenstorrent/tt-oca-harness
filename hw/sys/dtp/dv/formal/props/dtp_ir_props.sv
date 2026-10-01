@@ -98,7 +98,7 @@ module dtp_ir_props
       (DECODED_IR_WIDTH'(16'hFFFF) << UNDEFINED_BYPASS_2D_INSTR);
 
   // Opcodes whose DR scan reads the bypass register at TDO; ZERO_LENGTH_BYPASS reads it there
-  // outside the shift states, where TDI takes over.
+  // outside the shift states, where TDI takes over while the 3DCR STAP-select bit is clear.
   localparam logic [DECODED_IR_WIDTH-1:0] BYPASS_USERS_MASK =
       UNDEFINED_MASK | BYPASS_INSTR_DECODED | BYPASS_ALT_INSTR_DECODED |
       CLAMP_INSTR_DECODED | HIGHZ_INSTR_DECODED | CLAMP_HOLD_INSTR_DECODED |
@@ -107,6 +107,7 @@ module dtp_ir_props
   // Opcodes whose DR scan clocks the bypass register: every bypass user except
   // ZERO_LENGTH_BYPASS, plus IDCODE, INV_BYPASS and SELECT_IJTAG, whose select term falls into
   // the same default arm as the undefined opcodes while TDO reads their own register.
+  // ZERO_LENGTH_BYPASS clocks it only while the 3DCR STAP-select bit is set.
   localparam logic [DECODED_IR_WIDTH-1:0] BYPASS_SELECT_MASK =
       (BYPASS_USERS_MASK & ~ZERO_LENGTH_BYPASS_INSTR_DECODED) | IDCODE_INSTR_DECODED |
       INV_BYPASS_INSTR_DECODED | SELECT_IJTAG_INSTR_DECODED;
@@ -180,7 +181,9 @@ module dtp_ir_props
   // Each TDR is selected exactly while the DR path is selected under its own instruction.
   logic selects_match_instruction;
   assign selects_match_instruction =
-      byp_sel_i          == (dr_select_i && |(inst_bits & BYPASS_SELECT_MASK)) &&
+      byp_sel_i          == (dr_select_i && (|(inst_bits & BYPASS_SELECT_MASK) ||
+                                             (inst_i[ZERO_LENGTH_BYPASS_INSTR] &&
+                                              stap_select_i))) &&
       inv_byp_sel_i      == (dr_select_i && inst_i[INV_BYPASS_INSTR]) &&
       idcode_sel_i       == (dr_select_i && inst_i[IDCODE_INSTR]) &&
       tap_3dcr_sel_i     == (dr_select_i && inst_i[TAP_3DCR_INSTR]) &&

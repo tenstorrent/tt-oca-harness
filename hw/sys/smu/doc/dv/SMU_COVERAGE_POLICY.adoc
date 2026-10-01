@@ -25,11 +25,11 @@ exclusion files have left the population, and
 `assertion`, where urg reads the cover properties and the one
 `smu_axi_xbar` assertion
 |Numeric target |VCS `user` 100 percent effective, `toggle` 80 percent
-effective and `assertion` 80 percent effective, the three `[[thresholds]]`
+effective and `assertion` 80 percent effective, the three `\[[thresholds]]`
 rows of `cov/config/vcs/smu_wrapper_coverage_policy.toml`; on Verilator
 `user` is reported and not gated:
 `cov/config/verilator/smu_wrapper_coverage_policy.toml` carries no
-`[[thresholds]]` row
+`\[[thresholds]]` row
 |Measured (Verilator, the `cov/sv` cover properties) |`all`, 120 leaves,
 Verilator 5.050: `user` 101 of 101 collected points hit
 (`hw/sys/smu/dv/docs/SMU_FCOV_OWNERS.adoc`, which names the commit). No
@@ -130,7 +130,7 @@ Three mechanisms. Do not mix them.
 |`coverage_off` file patterns (`hw/sys/smu/rtl`, SMC, DTP, SEP, `hw/ip`,
 `hw/common`, CPU cluster, TB, vendor trees the file pattern can reach)
 |Structural OUT, by elaboration |the point is not elaborated, so it never
-enters the database and no waiver names it |the `SepPresent` parameter and
+enters the database and no waiver names it |the `SEP_PRESENT` parameter and
 its `g_sep` generate blocks in `cov/sv/*_fcov.sv`; a point whose observable
 exists only with SEP elaborated is absent from a SEP=0 build; the wrapper's
 single target elaborates SEP, so every `g_sep` point exists there

@@ -69,7 +69,7 @@ this register to all-zero to disable that output.</ipxact:description>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>MODE</ipxact:name>
-              <ipxact:description>Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point</ipxact:description>
+              <ipxact:description>Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point. Program it once, in the same write as INVERT, from the package's cross trigger topology, before any cross trigger matrix route selects or targets this port. While wire-OR is selected the point-to-point handshake is held idle with its request deasserted; after point-to-point is selected, the handshake ignores the CT_Req_in and CT_Ack_in pads until their synchronized levels are valid.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -81,7 +81,7 @@ this register to all-zero to disable that output.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>INVERT</ipxact:name>
-              <ipxact:description>Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling.</ipxact:description>
+              <ipxact:description>Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling. Write it in the same access as MODE.</ipxact:description>
               <ipxact:bitOffset>1</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -93,7 +93,7 @@ this register to all-zero to disable that output.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>RESET</ipxact:name>
-              <ipxact:description>Forcefully clears the request output signal of the point-to-point handshake logic. Primarily for debug and recovery of handshake deadlock.</ipxact:description>
+              <ipxact:description>While set, holds the outgoing point-to-point handshake idle with CT_Req_out deasserted and discards core-side cross trigger pulses for transmission. The incoming handshake keeps running. Set and then clear it to recover a handshake deadlock.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -106,7 +106,7 @@ this register to all-zero to disable that output.</ipxact:description>
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>STATUS</ipxact:name>
-            <ipxact:description>Cross Trigger Port Status</ipxact:description>
+            <ipxact:description>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</ipxact:description>
             <ipxact:addressOffset>'h4</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
@@ -124,7 +124,7 @@ this register to all-zero to disable that output.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>REQ_OUT</ipxact:name>
-              <ipxact:description>Readout of the current CT_Req_out signal value.</ipxact:description>
+              <ipxact:description>Readout of the current CT_Req_out level with CONFIG.INVERT undone, so 1 means the request is asserted whatever the pad polarity. Reads 0 in wire-OR mode.</ipxact:description>
               <ipxact:bitOffset>4</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -137,7 +137,7 @@ this register to all-zero to disable that output.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>ACK_IN</ipxact:name>
-              <ipxact:description>Readout of the current synchronized CT_Ack_in signal value.</ipxact:description>
+              <ipxact:description>Readout of the current synchronized CT_Ack_in level with CONFIG.INVERT undone, so 1 means the acknowledge is asserted whatever the pad polarity.</ipxact:description>
               <ipxact:bitOffset>5</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -150,7 +150,7 @@ this register to all-zero to disable that output.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>REQ_IN</ipxact:name>
-              <ipxact:description>Readout of the current synchronized CT_Req_in signal value.</ipxact:description>
+              <ipxact:description>Readout of the current synchronized CT_Req_in level with CONFIG.INVERT undone, so 1 means the request is asserted whatever the pad polarity.</ipxact:description>
               <ipxact:bitOffset>6</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -163,7 +163,7 @@ this register to all-zero to disable that output.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>ACK_OUT</ipxact:name>
-              <ipxact:description>Readout of the current CT_Ack_out signal value.</ipxact:description>
+              <ipxact:description>Readout of the current CT_Ack_out level with CONFIG.INVERT undone, so 1 means the acknowledge is asserted whatever the pad polarity. Reads 0 in wire-OR mode.</ipxact:description>
               <ipxact:bitOffset>7</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>

@@ -8,7 +8,14 @@
 ignore:
   perform_check: false
   include:
-    - vendor/
+    # Third-party vendored snapshots keep their upstream license; TT does not
+    # claim copyright on them, so they stay out of the SPDX check.
+    - vendor/chipsalliance/
+    - vendor/lowRISC/
+    - vendor/pulp-platform/
+    - vendor/tenstorrent/aou/
+    - vendor/tenstorrent/tt-picorv32/
+    - vendor/tenstorrent/tt-hw-debug/patches/
     - build/
     - __pycache__/
     - .pytest_cache/

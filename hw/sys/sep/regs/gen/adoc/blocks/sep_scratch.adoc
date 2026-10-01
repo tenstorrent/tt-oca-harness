@@ -18,10 +18,10 @@ General-purpose SEP scratch register bank.
 [cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description
-| 0x0 - 0x38 | <<reg-{regmap-instance}-sep_scratch-SCRATCH-0-,SCRATCH[8]>> | RW a| -
+| 0x0 - 0x38 | <<reg-{regmap-instance}-sep_scratch-SCRATCH-,SCRATCH[8]>> | RW a| -
 |===
 
-[#reg-{regmap-instance}-sep_scratch-SCRATCH-0-]
+[#reg-{regmap-instance}-sep_scratch-SCRATCH-]
 === SCRATCH[8]
 
 [cols="1,3,1,1,6", options="header"]

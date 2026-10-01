@@ -137,9 +137,6 @@ module avsbus_controller #(
   logic [0:0] R_avs_normal_status_F_readback_fifo_full;
   logic [0:0] R_avs_normal_status_F_cmd_fifo_full;
   logic [0:0] R_avs_normal_status_F_cmd_fifo_empty;
-  logic [0:0] R_avs_normal_status_F_avs_master_is_retrying;
-  logic [0:0] R_avs_normal_status_F_avs_bus_is_idle;
-  logic [0:0] R_avs_normal_status_F_avs_slave_is_in_resync;
   logic [0:0] R_avs_interrupt_F_readback_overflow_int;
   logic [0:0] R_avs_interrupt_F_readback_underflow_int;
   logic [0:0] R_avs_interrupt_F_cmd_fifo_overflow_int;
@@ -489,7 +486,7 @@ module avsbus_controller #(
   );
 
   prim_ag_clk_mux #(
-    .SelectOnReset(1'b1)
+    .SELECT_ON_RESET(1'b1)
   ) u_refclk_apbclk_mux (
     .rst_clk0_ni(rst_reg_ni),
     .rst_clk1_ni(rst_ref_ni),
@@ -733,6 +730,38 @@ module avsbus_controller #(
     .data_o(R_avs_normal_status_F_total_retries)
   );
 
+  // Resync avs_clk-domain registers: AVS_SLAVE_STATUS, AVS_LATEST_SLAVE_SUBFRAME
+  // Share one autohs so they stay coherent with each other
+  logic [1:0]  R_avs_slave_status_F_avs_slave_ack_RS_apb_clk;
+  logic [4:0]  R_avs_slave_status_F_avs_slave_status_response_RS_apb_clk;
+  logic [31:0] R_avs_latest_slave_subframe_F_avs_slave_subframe_RS_apb_clk;
+
+  prim_sync_data_autohs #(
+    .WIDTH($size(R_avs_slave_status_F_avs_slave_ack) + $size(R_avs_slave_status_F_avs_slave_status_response)),
+    .DEPTH(3)
+  ) u_slave_status_resync (
+    .clk_src_i(avs_clk),
+    .rst_src_ni(reset_n_avs_clk_syncd),
+    .data_i({R_avs_slave_status_F_avs_slave_ack,
+               R_avs_slave_status_F_avs_slave_status_response}),
+    .clk_dst_i(clk_reg_i),
+    .rst_dst_ni(reset_n_apb_clk_syncd),
+    .data_o({R_avs_slave_status_F_avs_slave_ack_RS_apb_clk,
+               R_avs_slave_status_F_avs_slave_status_response_RS_apb_clk})
+  );
+
+  prim_sync_data_autohs #(
+    .WIDTH($size(R_avs_latest_slave_subframe_F_avs_slave_subframe)),
+    .DEPTH(3)
+  ) u_latest_subframe_resync (
+    .clk_src_i(avs_clk),
+    .rst_src_ni(reset_n_avs_clk_syncd),
+    .data_i(R_avs_latest_slave_subframe_F_avs_slave_subframe),
+    .clk_dst_i(clk_reg_i),
+    .rst_dst_ni(reset_n_apb_clk_syncd),
+    .data_o(R_avs_latest_slave_subframe_F_avs_slave_subframe_RS_apb_clk)
+  );
+
   prim_sync_data_autohs #(
     .WIDTH($size(R_avs_cfg_0_F_max_retries)),
     .DEPTH(3)
@@ -764,16 +793,12 @@ module avsbus_controller #(
     data_for_crc_calc = '0;
     data_for_crc_check = '0;
     push_avs_readback_en = 1'b0;
-    R_avs_normal_status_F_avs_master_is_retrying = 1'b0;
-    R_avs_normal_status_F_avs_bus_is_idle = 1'b0;
-    R_avs_normal_status_F_avs_slave_is_in_resync = 1'b0;
     avs_max_retries_attempted = 1'b0;
     unique case (cur_state)
       AVS_RESET: begin
         next_state = AVS_SLAVE_RESYNC;
       end
       AVS_SLAVE_RESYNC: begin
-        R_avs_normal_status_F_avs_slave_is_in_resync = 1'b1;
         if (slave_resync_counter == SlaveResyncCycles) begin
           if (fifos_ready_to_launch_frame_rb_en_b) begin
             next_state = AVS_LAUNCH_FRAME_POST_RESYNC;
@@ -785,7 +810,6 @@ module avsbus_controller #(
         end
       end
       AVS_IDLE: begin
-        R_avs_normal_status_F_avs_bus_is_idle = 1'b1;
         if (fifos_ready_to_launch_frame_rb_en_b) begin
           if (R_avs_cfg_1_F_stop_avs_clock_on_idle_RS_avs_clk) begin
             // Always do a resync after initially restarting the clock:
@@ -895,7 +919,6 @@ module avsbus_controller #(
         end
       end
       AVS_RETRY_SHIFT_XMIT_AND_RECV_SUBFRAME: begin
-        R_avs_normal_status_F_avs_master_is_retrying = 1'b1;
         if (avs_subframe_bit_index == 0) begin
           next_state = AVS_RETRY_END_XMIT_AND_RECV_SUBFRAME;
         end else begin
@@ -909,12 +932,10 @@ module avsbus_controller #(
         // can push it to the readback fifo *after* the outcome of the retries has been pushed to the readback fifo. We
         // need to do this in order to maintain the proper sequence of readback data that corresponds to the order that
         // the commands were written to the cmd fifo from APB.
-        R_avs_normal_status_F_avs_master_is_retrying = 1'b1;
         push_avs_readback_en = 1'b0;
         next_state = AVS_RETRY_SHIFT_RECV_SUBFRAME;
       end
       AVS_RETRY_SHIFT_XMIT_SUBFRAME: begin
-        R_avs_normal_status_F_avs_master_is_retrying = 1'b1;
         if (avs_subframe_bit_index == 0) begin
           next_state = AVS_RETRY_END_XMIT_SUBFRAME;
         end else begin
@@ -922,11 +943,9 @@ module avsbus_controller #(
         end
       end
       AVS_RETRY_END_XMIT_SUBFRAME: begin
-        R_avs_normal_status_F_avs_master_is_retrying = 1'b1;
         next_state = AVS_RETRY_SHIFT_RECV_SUBFRAME;
       end
       AVS_RETRY_SHIFT_RECV_SUBFRAME: begin
-        R_avs_normal_status_F_avs_master_is_retrying = 1'b1;
         if (avs_subframe_bit_index == 0) begin
           next_state = AVS_RETRY_END_RECV_SUBFRAME;
         end else begin
@@ -934,7 +953,6 @@ module avsbus_controller #(
         end
       end
       AVS_RETRY_END_RECV_SUBFRAME: begin
-        R_avs_normal_status_F_avs_master_is_retrying = 1'b1;
         data_for_crc_check = avs_sdata_capture;
         push_avs_readback_en = 1'b1;
         if (avs_retry_condition_detected && avs_retry_countdown > 0) begin
@@ -1294,7 +1312,7 @@ module avsbus_controller #(
 
   assign hwif_in.AVS_DEBUG_READBACK.AVS_SLAVE_SUBFRAME.next = R_avs_debug_readback_F_avs_slave_subframe;
 
-  assign hwif_in.AVS_LATEST_SLAVE_SUBFRAME.AVS_SLAVE_SUBFRAME.next = R_avs_latest_slave_subframe_F_avs_slave_subframe;
+  assign hwif_in.AVS_LATEST_SLAVE_SUBFRAME.AVS_SLAVE_SUBFRAME.next = R_avs_latest_slave_subframe_F_avs_slave_subframe_RS_apb_clk;
 
   assign hwif_in.AVS_INTERRUPT.MAX_RETRIES_ATTEMPTED_INT.next = R_avs_interrupt_F_max_retries_attempted_int;
   assign hwif_in.AVS_INTERRUPT.SLAVE_UNRESPONSIVE_INT.next = R_avs_interrupt_F_slave_unresponsive_int;
@@ -1303,12 +1321,21 @@ module avsbus_controller #(
   assign hwif_in.AVS_NORMAL_STATUS.READBACK_FIFO_FULL.next = R_avs_normal_status_F_readback_fifo_full;
   assign hwif_in.AVS_NORMAL_STATUS.CMD_FIFO_FULL.next = R_avs_normal_status_F_cmd_fifo_full;
   assign hwif_in.AVS_NORMAL_STATUS.CMD_FIFO_EMPTY.next = R_avs_normal_status_F_cmd_fifo_empty;
-  assign hwif_in.AVS_NORMAL_STATUS.AVS_MASTER_IS_RETRYING.next = R_avs_normal_status_F_avs_master_is_retrying;
-  assign hwif_in.AVS_NORMAL_STATUS.AVS_BUS_IS_IDLE.next = R_avs_normal_status_F_avs_bus_is_idle;
-  assign hwif_in.AVS_NORMAL_STATUS.AVS_SLAVE_IS_IN_RESYNC.next = R_avs_normal_status_F_avs_slave_is_in_resync;
+  // Decoded from the APB-domain resynchronized FSM state (u_cur_state_resync)
+  // rather than raw cur_state: these CSR fields are storageless passthrough
+  // reads, so the decode must not sample avs_clk-domain state directly.
+  assign hwif_in.AVS_NORMAL_STATUS.AVS_MASTER_IS_RETRYING.next =
+      cur_state_RS_apb_clk inside {AVS_RETRY_SHIFT_XMIT_AND_RECV_SUBFRAME,
+                                   AVS_RETRY_END_XMIT_AND_RECV_SUBFRAME,
+                                   AVS_RETRY_SHIFT_XMIT_SUBFRAME,
+                                   AVS_RETRY_END_XMIT_SUBFRAME,
+                                   AVS_RETRY_SHIFT_RECV_SUBFRAME,
+                                   AVS_RETRY_END_RECV_SUBFRAME};
+  assign hwif_in.AVS_NORMAL_STATUS.AVS_BUS_IS_IDLE.next = (cur_state_RS_apb_clk == AVS_IDLE);
+  assign hwif_in.AVS_NORMAL_STATUS.AVS_SLAVE_IS_IN_RESYNC.next = (cur_state_RS_apb_clk == AVS_SLAVE_RESYNC);
 
-  assign hwif_in.AVS_SLAVE_STATUS.AVS_SLAVE_ACK.next    = R_avs_slave_status_F_avs_slave_ack;
-  assign hwif_in.AVS_SLAVE_STATUS.AVS_SLAVE_STATUS_RESPONSE.next    = R_avs_slave_status_F_avs_slave_status_response;
+  assign hwif_in.AVS_SLAVE_STATUS.AVS_SLAVE_ACK.next    = R_avs_slave_status_F_avs_slave_ack_RS_apb_clk;
+  assign hwif_in.AVS_SLAVE_STATUS.AVS_SLAVE_STATUS_RESPONSE.next    = R_avs_slave_status_F_avs_slave_status_response_RS_apb_clk;
 
   assign hwif_in.AVS_FIFOS_STATUS.READBACK_FIFO_VACANT_SLOTS.next   = R_avs_fifos_status_F_readback_fifo_vacant_slots;
   assign hwif_in.AVS_FIFOS_STATUS.READBACK_FIFO_OCCUPIED_SLOTS.next = R_avs_fifos_status_F_readback_fifo_occupied_slots;

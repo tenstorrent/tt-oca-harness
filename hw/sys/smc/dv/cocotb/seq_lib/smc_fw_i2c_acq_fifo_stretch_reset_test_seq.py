@@ -30,7 +30,7 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import ClockCycles
 
-from .smc_fw_i2c_pair_test_seq import WireFloor, smc_fw_i2c_pair_test_seq
+from .smc_fw_i2c_pair_test_seq import smc_fw_i2c_pair_test_seq
 from .smc_fw_image_boot_seq import scratch_addr
 from .smc_fw_scratch_marker_watch import MarkerStep, smc_fw_scratch_marker_watch
 
@@ -39,16 +39,21 @@ STRETCH_MARKER = 0x31
 RELEASE_MARKER = 0x32
 TB_ACK = 0xC10A
 TARGET_ADDR = 0x10
-VERIFY_WRITE_LEN = 4
+# The verify write the image sends after the recovery, as its driver puts it on
+# the wire: a length header, then the bytes the image compares on receipt.
+VERIFY_WRITE_BYTES = (0xA5, 0x5A, 0xC3, 0x3C)
+VERIFY_WRITE_FRAME = (len(VERIFY_WRITE_BYTES), *VERIFY_WRITE_BYTES)
 
-# Standard mode off the periph clock is ~10 us per SCL period, i.e. ~2000
-# clk_smc_i at 5 ns; the window spans ~20 periods. A clock-low phase in that
-# mode is under 5 us, so a contiguous target pull of 20 us cannot be a running
-# clock, and a pull covering the whole final quarter (~50 us) cannot be the
-# tail of the byte that was in flight when the marker was published.
-WINDOW_CYCLES = 40_000
-SAMPLE_EVERY_CYCLES = 50
-MIN_STRETCH_NS = 20_000
+# Standard mode off the periph clock is ~10 us per SCL period; the window
+# spans ~20 periods. The firmware publishes the controller's programmed
+# TIMING0.TLOW in SCRATCH_6 at the stretch marker, and a contiguous target pull
+# has to outlast STRETCH_TLOW_MULTIPLE of those clock-low phases, so it cannot
+# be a running clock. A pull covering the whole final quarter (~50 us) cannot be
+# the tail of the byte that was in flight when the marker was published. The
+# window is in time, not clk_smc_i cycles, so it holds at every sys-clock period.
+WINDOW_NS = 200_000
+SAMPLE_EVERY_NS = 250
+STRETCH_TLOW_MULTIPLE = 4
 TAIL_FRACTION = 4
 
 
@@ -56,11 +61,12 @@ class smc_fw_i2c_acq_fifo_stretch_reset_test_seq(smc_fw_i2c_pair_test_seq):
     """Boot the ACQ-stretch image and observe the two SCL windows it holds open."""
 
     tag = "I2C-ACQ-STRETCH"
-    # PASS landed 5.9 ms after release in the reference run (~11,800 polls at a
-    # 5 ns clk_smc_i): the ~62-byte fill to ACQFULL, two bench windows, the
-    # recovery and the 4-byte write. 100_000 is ~8x that.
+    # PASS lands 7.6 ms after release at the 10 ns clk_smc_i the testlist runs
+    # this leaf at (~7,600 polls): the ~62-byte fill to ACQFULL, two bench
+    # windows, the recovery and the 4-byte write. 100_000 is ~13x that.
     poll_iterations = 100_000
-    floors = (WireFloor(TARGET_ADDR, False, min_frames=1, min_data_bytes=VERIFY_WRITE_LEN),)
+    # The wire is graded in after_pass against the verify frame itself.
+    floors = ()
 
     def __init__(self, name: str = "smc_fw_i2c_acq_fifo_stretch_reset_test_seq") -> None:
         super().__init__(name)
@@ -87,8 +93,9 @@ class smc_fw_i2c_acq_fifo_stretch_reset_test_seq(smc_fw_i2c_pair_test_seq):
         dut = cocotb.top
         pulled: list[int] = []
         scl: list[int] = []
-        for _ in range(WINDOW_CYCLES // SAMPLE_EVERY_CYCLES):
-            await ClockCycles(dut.clk_smc_i, SAMPLE_EVERY_CYCLES)
+        sample_cycles = max(1, round(SAMPLE_EVERY_NS / self.cfg.smc_clk_period_ns))
+        for _ in range(WINDOW_NS // SAMPLE_EVERY_NS):
+            await ClockCycles(dut.clk_smc_i, sample_cycles)
             pulled.append(int(dut.tb_i2c0_scl_dut_low.value))
             scl.append(int(dut.tb_i2c0_scl.value))
         return pulled, scl
@@ -103,30 +110,37 @@ class smc_fw_i2c_acq_fifo_stretch_reset_test_seq(smc_fw_i2c_pair_test_seq):
 
     async def _observe_stretch(self) -> None:
         acq_level = await self.csr_read("ACQ_STRETCH_LEVEL", scratch_addr(5))
+        tlow = await self.csr_read("CONTROLLER_TLOW", scratch_addr(6))
+        assert tlow > 0, f"firmware published TIMING0.TLOW {tlow} at the stretch marker"
+        min_stretch_ns = STRETCH_TLOW_MULTIPLE * tlow * self.cfg.periph_clk_period_ns
         pulled, scl = await self._sample_target_scl()
         n = len(pulled)
         tail = n // TAIL_FRACTION
-        sample_ns = SAMPLE_EVERY_CYCLES * self.cfg.smc_clk_period_ns
+        sample_ns = SAMPLE_EVERY_NS
         longest_ns = self._longest_run(pulled) * sample_ns
         tail_pulled = sum(pulled[-tail:])
         tail_high = sum(scl[-tail:])
-        assert longest_ns >= MIN_STRETCH_NS and tail_pulled == tail and tail_high == 0, (
+        assert longest_ns >= min_stretch_ns and tail_pulled == tail and tail_high == 0, (
             f"during the ACQ-full window I2C_0's longest continuous SCL pull was "
-            f"{longest_ns} ns (need >= {MIN_STRETCH_NS}); over the final {tail} samples it "
-            f"pulled in {tail_pulled} and SCL was high in {tail_high}: the target is not "
-            f"holding the clock"
+            f"{longest_ns} ns (need >= {min_stretch_ns:g}, {STRETCH_TLOW_MULTIPLE} x TLOW "
+            f"{tlow} periph cycles); over the final {tail} samples it pulled in "
+            f"{tail_pulled} and SCL was high in {tail_high}: the target is not holding the "
+            f"clock"
         )
         assert acq_level > 0, f"firmware published ACQ level {acq_level} at the stretch marker"
         self.stretch_ok = True
         cocotb.log.info(
             "CHK-FW-I2C-ACQ-STRETCH-SCL: tb_i2c0_scl_dut_low asserted in %d/%d samples over %d "
-            "clk_smc_i, longest continuous pull %d ns (>= %d), asserted with SCL low through "
-            "the final %d samples; firmware ACQ level %d: the target holds SCL",
+            "ns, longest continuous pull %d ns (>= %g, %d x the published TIMING0.TLOW of %d "
+            "periph cycles), asserted with SCL low through the final %d samples; firmware "
+            "ACQ level %d: the target holds SCL",
             sum(pulled),
             n,
-            WINDOW_CYCLES,
+            WINDOW_NS,
             longest_ns,
-            MIN_STRETCH_NS,
+            min_stretch_ns,
+            STRETCH_TLOW_MULTIPLE,
+            tlow,
             tail,
             acq_level,
         )
@@ -147,11 +161,11 @@ class smc_fw_i2c_acq_fifo_stretch_reset_test_seq(smc_fw_i2c_pair_test_seq):
         self.release_ok = True
         cocotb.log.info(
             "CHK-FW-I2C-ACQ-RELEASE-SCL: tb_i2c0_scl_dut_low released in %d/%d samples over %d "
-            "clk_smc_i (resolved SCL high in %d, the controller's own clocking); ACQ level "
+            "ns (resolved SCL high in %d, the controller's own clocking); ACQ level "
             "%d -> %d across the reset",
             samples - pulled,
             samples,
-            WINDOW_CYCLES,
+            WINDOW_NS,
             high,
             before,
             after,
@@ -166,3 +180,24 @@ class smc_fw_i2c_acq_fifo_stretch_reset_test_seq(smc_fw_i2c_pair_test_seq):
             f"0x{STRETCH_MARKER:x} and 0x{RELEASE_MARKER:x}"
         )
         await super().after_pass()
+        assert self.wire is not None
+        writes = [f for f in self.wire.frames_to(TARGET_ADDR, read=False) if f.addr_acked]
+        assert writes, (
+            f"no acknowledged write frame to 0x{TARGET_ADDR:02x} decoded on tb_i2c0_scl/sda; "
+            f"{self.wire.summary()}"
+        )
+        last = writes[-1]
+        payload = tuple(b for b, _ in last.data)
+        assert payload == VERIFY_WRITE_FRAME and all(a for _, a in last.data), (
+            f"the last acknowledged write frame to 0x{TARGET_ADDR:02x} carried {last}; the "
+            f"verify write after the recovery is "
+            f"{' '.join(f'{b:02x}' for b in VERIFY_WRITE_FRAME)}, every byte acknowledged"
+        )
+        cocotb.log.info(
+            "CHK-FW-I2C-WIRE-TRAFFIC: the last of %d acknowledged write frames to 0x%02x "
+            "decoded on tb_i2c0_scl/sda is the verify write, %s, every byte acknowledged by "
+            "the target",
+            len(writes),
+            TARGET_ADDR,
+            " ".join(f"{b:02x}" for b in payload),
+        )

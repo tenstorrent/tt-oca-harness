@@ -32,7 +32,7 @@ NARROW_END = SMC_CHIP_CONFIG_CHIP_ID
 
 
 class smu_sys_in_filter_reprogram_shrink_test_seq:
-    """Wide -> shrink -> clear restores selective / BlockByDefault deny."""
+    """Wide -> shrink -> clear restores selective / BLOCK_BY_DEFAULT deny."""
 
     def __init__(self, test) -> None:
         self.test = test
@@ -143,7 +143,7 @@ class smu_sys_in_filter_reprogram_shrink_test_seq:
         )
         self.s4_ok = True
         self._log(
-            "AXI_FILTER_OKAY shrink clear restores BlockByDefault "
+            "AXI_FILTER_OKAY shrink clear restores BLOCK_BY_DEFAULT "
             f"data=0x{int(clr_data) & 0xFFFF_FFFF:08x}"
         )
         sb.expect_eq(

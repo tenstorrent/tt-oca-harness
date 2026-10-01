@@ -114,13 +114,13 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
-<tr><td>0</td><td>key_valid</td><td>RW</td><td>0x0</td><td>1 = shared key is valid and ready for firmware consumption.<br>Hardware sets this bit on key-ready event. Write 0 to clear;<br>write 1 has no effect (software cannot set this bit).</td></tr>
+<tr><td>0</td><td>key_valid</td><td>RW0C</td><td>0x0</td><td>1 = shared key is valid and ready for firmware consumption.<br>Hardware sets this bit on key-ready event. Write 0 to clear;<br>write 1 has no effect (software cannot set this bit).</td></tr>
 </table>
 <h3 id="IRQ_STATUS">IRQ_STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
-<tr><td>0</td><td>key_valid</td><td>RW</td><td>0x0</td><td>ML-KEM shared key valid. Sticky, write 1 to clear.</td></tr>
+<tr><td>0</td><td>key_valid</td><td>RW1C</td><td>0x0</td><td>ML-KEM shared key valid. Sticky, write 1 to clear.</td></tr>
 </table>
 <h3 id="IRQ_ENABLE">IRQ_ENABLE</h3>
 <table>

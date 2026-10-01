@@ -11,6 +11,8 @@
 // Each ATB stream crosses into clk_i through an 8-entry prim_fifo_async. afready_i passes
 // through a 2-flop synchronizer clocked by clk_telemetry_i, and afvalid_o through one
 // clocked by clk_i.
+// Either reset clears both sides of every ATB FIFO; atready_o stays high while the write side
+// is in reset, so beats offered then are dropped.
 // NUM_TELEMETRY_RECEIVERS must be between 1 and MAX_NUM_TELEMETRY_RECEIVERS.
 // TELEMETRY_RECEIVER_BUFFER_DEPTH must be greater than or equal to 2.
 // NUM_REG_MAPS is NUM_TELEMETRY_RECEIVERS plus one for the error slave.
@@ -39,6 +41,10 @@ module telemetry_receiver_wrap #(
 
   input  logic clk_telemetry_i,                             // ATB-domain clock.
   input  logic rst_telemetry_ni,                            // ATB-domain async reset, active-low.
+
+  input  logic test_en_i,                                   // Scan test mode, active-high; selects
+                                                            // scan_rst_ni for the ATB FIFO resets.
+  input  logic scan_rst_ni,                                 // Scan reset, active-low.
 
   input  telemetry_receiver_wrap_pkg::axil_req_t  axil_req_i, // Shared AXI-Lite request.
   output telemetry_receiver_wrap_pkg::axil_resp_t axil_resp_o, // Shared AXI-Lite response.
@@ -134,6 +140,33 @@ module telemetry_receiver_wrap #(
   );
 
 
+  /////////////////////
+  // ATB FIFO Resets //
+  /////////////////////
+
+  logic rst_at_fifo_n;
+  logic rst_at_fifo_wr_n;
+  logic rst_at_fifo_rd_n;
+
+  assign rst_at_fifo_n = rst_ni & rst_telemetry_ni;
+
+  prim_sync_reset u_at_fifo_wr_rst_sync (
+    .clk_i       (clk_telemetry_i),
+    .rst_ni      (rst_at_fifo_n),
+    .test_mode_i (test_en_i),
+    .scan_rst_ni (scan_rst_ni),
+    .sync_rst_no (rst_at_fifo_wr_n)
+  );
+
+  prim_sync_reset u_at_fifo_rd_rst_sync (
+    .clk_i       (clk_i),
+    .rst_ni      (rst_at_fifo_n),
+    .test_mode_i (test_en_i),
+    .scan_rst_ni (scan_rst_ni),
+    .sync_rst_no (rst_at_fifo_rd_n)
+  );
+
+
   /////////////////////////
   // Telemetry Receivers //
   /////////////////////////
@@ -172,14 +205,14 @@ module telemetry_receiver_wrap #(
       .OutputZeroIfInvalid (1'b0)
     ) u_at_req_fifo_async (
       .clk_wr_i            (clk_telemetry_i),
-      .rst_wr_ni           (rst_telemetry_ni),
+      .rst_wr_ni           (rst_at_fifo_wr_n),
       .wvalid_i            (atvalid_i[i]),
       .wready_o            (atready_o[i]),
       .wdata_i             (at_req_telemetry),
       .wdepth_o            (at_fifo_wdepth),
 
       .clk_rd_i            (clk_i),
-      .rst_rd_ni           (rst_ni),
+      .rst_rd_ni           (rst_at_fifo_rd_n),
       .rvalid_o            (atvalid),
       .rready_i            (atready),
       .rdata_o             (at_req),
@@ -198,21 +231,25 @@ module telemetry_receiver_wrap #(
     // ATB AF CDC //
     ////////////////
 
+    // afready_i arrives from the telemetry clock domain but is consumed by
+    // telemetry_receiver on clk_i, so it is synchronized into clk_i.
     prim_flop_2sync #(
       .Width(1)
     ) u_afready_sync2r (
-      .clk_i                  (clk_telemetry_i),
+      .clk_i                  (clk_i),
       .d_i                    (afready_i[i]),
-      .rst_ni                 (rst_telemetry_ni),
+      .rst_ni                 (rst_ni),
       .q_o                    (afready)
     );
 
+    // afvalid is produced on clk_i and exported to the telemetry clock
+    // domain, so it is synchronized into clk_telemetry_i.
     prim_flop_2sync #(
       .Width(1)
     ) u_afvalid_sync2r (
-      .clk_i                  (clk_i),
+      .clk_i                  (clk_telemetry_i),
       .d_i                    (afvalid),
-      .rst_ni                 (rst_ni),
+      .rst_ni                 (rst_telemetry_ni),
       .q_o                    (afvalid_o[i])
     );
 

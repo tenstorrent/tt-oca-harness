@@ -6,7 +6,7 @@
 package smc_top_addrmap_pkg;
 
 localparam longint unsigned SMC_TOP_BASE_ADDR = 64'h0;
-localparam longint unsigned SMC_TOP_SIZE = 64'hC8013030;
+localparam longint unsigned SMC_TOP_SIZE = 64'hC8015000;
 
 localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR = 64'hC0000000;
 localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE0_WDT_SIZE = 64'h24;
@@ -19,6 +19,9 @@ localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE2_WDT_SIZE = 64'h24;
 
 localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE3_WDT_BASE_ADDR = 64'hC0000C00;
 localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE3_WDT_SIZE = 64'h24;
+
+localparam longint unsigned SMC_TOP_DEBUG_MODULE_BASE_ADDR = 64'hC0001000;
+localparam longint unsigned SMC_TOP_DEBUG_MODULE_SIZE = 64'h868;
 
 localparam longint unsigned SMC_TOP_SMC_RESET_UNIT_BASE_ADDR = 64'hC0002000;
 localparam longint unsigned SMC_TOP_SMC_RESET_UNIT_SIZE = 64'hCC;
@@ -553,6 +556,9 @@ localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE2_BEU_SIZE = 64'h30;
 localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE3_BEU_BASE_ADDR = 64'hC8013000;
 localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE3_BEU_SIZE = 64'h30;
 
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_ERROR_DEVICE_BASE_ADDR = 64'hC8014000;
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_ERROR_DEVICE_SIZE = 64'h1000;
+
 localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE0_WDT_CTRL_BASE_ADDR = 64'hC0000000;
 localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE0_WDT_COUNT_BASE_ADDR = 64'hC0000008;
 localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE0_WDT_SCALED_COUNT_BASE_ADDR = 64'hC0000010;
@@ -577,6 +583,29 @@ localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE3_WDT_SCALED_COUNT_BASE_ADDR
 localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE3_WDT_FEED_BASE_ADDR = 64'hC0000C18;
 localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE3_WDT_KEY_BASE_ADDR = 64'hC0000C1C;
 localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE3_WDT_CMP_BASE_ADDR = 64'hC0000C20;
+localparam longint unsigned SMC_TOP_DEBUG_MODULE_HALTED_BASE_ADDR = 64'hC0001100;
+localparam longint unsigned SMC_TOP_DEBUG_MODULE_GOING_BASE_ADDR = 64'hC0001104;
+localparam longint unsigned SMC_TOP_DEBUG_MODULE_RESUMING_BASE_ADDR = 64'hC0001108;
+localparam longint unsigned SMC_TOP_DEBUG_MODULE_EXCEPTION_BASE_ADDR = 64'hC000110C;
+localparam longint unsigned SMC_TOP_DEBUG_MODULE_WHERETO_BASE_ADDR = 64'hC0001300;
+function automatic longint unsigned SMC_TOP_DEBUG_MODULE_ABSTRACT_BASE_ADDR(input int unsigned ABSTRACT_idx);
+    return 64'hC0001328 + (ABSTRACT_idx * 64'h4);
+endfunction
+localparam longint unsigned SMC_TOP_DEBUG_MODULE_ABSTRACT_NUM = 64'h5;
+function automatic longint unsigned SMC_TOP_DEBUG_MODULE_PROGBUF_BASE_ADDR(input int unsigned PROGBUF_idx);
+    return 64'hC000133C + (PROGBUF_idx * 64'h4);
+endfunction
+localparam longint unsigned SMC_TOP_DEBUG_MODULE_PROGBUF_NUM = 64'h10;
+localparam longint unsigned SMC_TOP_DEBUG_MODULE_IMPEBREAK_BASE_ADDR = 64'hC000137C;
+function automatic longint unsigned SMC_TOP_DEBUG_MODULE_DATA_BASE_ADDR(input int unsigned DATA_idx);
+    return 64'hC0001380 + (DATA_idx * 64'h4);
+endfunction
+localparam longint unsigned SMC_TOP_DEBUG_MODULE_DATA_NUM = 64'h4;
+localparam longint unsigned SMC_TOP_DEBUG_MODULE_FLAGS_BASE_ADDR = 64'hC0001400;
+function automatic longint unsigned SMC_TOP_DEBUG_MODULE_ROM_BASE_ADDR(input int unsigned ROM_idx);
+    return 64'hC0001800 + (ROM_idx * 64'h4);
+endfunction
+localparam longint unsigned SMC_TOP_DEBUG_MODULE_ROM_NUM = 64'h1A;
 localparam longint unsigned SMC_TOP_SMC_RESET_UNIT_SS_CONFIG_BASE_ADDR = 64'hC0002020;
 localparam longint unsigned SMC_TOP_SMC_RESET_UNIT_SS_CONFIG_LOCK_BASE_ADDR = 64'hC0002024;
 localparam longint unsigned SMC_TOP_SMC_RESET_UNIT_SS_COLD_RESET_N_BASE_ADDR = 64'hC0002040;

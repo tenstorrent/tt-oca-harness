@@ -28,6 +28,7 @@ class dtp_jtag2axi_dbg_disable_matrix_test(dtp_base_test):
         "CHK-AXI-COMPLETION",
         "CHK-AXI-STREAM-MIN",
     )
+    axi_checker_target_required_ids = ("CHK-J2A-GATE-TDR",)
     axi_checker_stream_minimums = {"smc_axi": 2, "smc_otp": 2, "sep_otp": 2}
 
     async def run_scenario(self) -> None:

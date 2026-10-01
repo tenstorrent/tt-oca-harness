@@ -1,3 +1,5 @@
+<!--SPDX-License-Identifier: CC-BY-4.0-->
+<!--SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.-->
 # Nix glossary
 
 A quick reference for Nix concepts used in this repo. No prior Nix knowledge

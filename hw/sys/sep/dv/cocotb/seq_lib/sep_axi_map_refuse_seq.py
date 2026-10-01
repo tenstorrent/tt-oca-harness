@@ -3,8 +3,10 @@
 """Whole-map response expectation for sep_axi_map_refuse_test.
 
 Every probe address is classified by ``env/sep_axi_decode_map.py``. A
-reserved address must not answer OKAY. The map names no refusal flavour,
-so any refusal is accepted and the flavour is logged.
+reserved address must not answer OKAY. This walk grades refusal only: any
+refusal is accepted and the code is logged. The code ``sep.rdl`` states for a
+reserved span (``ocah_resp``) is graded by ``sep_unmapped_access_policy_test``
+at the points that test probes.
 ``sep_fabric_deadspace_decode_test`` owns the dead tail inside a window.
 This sequence owns the gaps between windows.
 
@@ -37,6 +39,9 @@ RESP_OKAY = 0
 MAPPED_CSR_ADDR = SEP_CPU_CTRL.addr("SEP_NMI_VEC")
 MAPPED_CSR_EXP = SEP_CPU_CTRL.reset32("SEP_NMI_VEC")
 ROM_ONE_PAST = sym("SEP_BOOT_ROM_MEM_BASE_ADDR") + sym("SEP_BOOT_ROM_MEM_SIZE")
+# First byte above the last OTP register block (EFUSE_MMR) in the generated
+# export. No RDL block owns the OTP window from here to 0x1093_FFFF.
+OTP_ONE_PAST = sym("EFUSE_MMR_REG_MAP_BASE_ADDR") + sym("EFUSE_MMR_REG_MAP_SIZE")
 
 # Live words a refused read must not return. A refused access never reaches a
 # unit (memory_map.adoc), so a refused read that hands back one of these values
@@ -61,12 +66,15 @@ _PROBE_EXCLUDE: dict[tuple[int, int], str] = {
     # is the testbench, so a refusal there is a TB property.
     (0x0000_0000, 0x0FFF_FFFF): "external chiplet aperture, TB-terminated",
     (0x4000_0000, 0xBFFF_FFFF): "external SMU aperture, TB-terminated",
-    # Reserved in the map; this test does not assert a refusal flavour.
-    (0x1091_4000, 0x1091_4FFF): "reserved crypto gap, refuse unnamed",
-    (0x1092_1000, 0x1092_FFFF): "reserved KM gap, refuse unnamed",
-    (0x1093_8000, 0x1093_FFFF): "reserved OTP gap, refuse unnamed",
-    (0x10A4_0000, 0x10A5_FFFF): "reserved SYS gap, refuse unnamed",
-    (0x2000_0000, 0x3FFF_FFFF): "adopter extension, refuse unnamed",
+    # Reserved in the map and excluded from this walk. The system-bus span is
+    # graded for refusal and for its sep.rdl code by
+    # sep_unmapped_access_policy_test.
+    (0x1091_4000, 0x1091_4FFF): "reserved crypto gap, excluded",
+    (0x1092_1000, 0x1092_FFFF): "reserved KM gap, excluded",
+    (0x1093_8000, 0x1093_FFFF): "reserved OTP gap, excluded",
+    (0x10A4_0000, 0x10A5_FFFF): "reserved SYS gap, excluded",
+    # SEP External: memory_map.adoc gives an adopter-defined response.
+    (0x2000_0000, 0x3FFF_FFFF): "SEP External window, adopter-defined",
 }
 
 
@@ -95,17 +103,17 @@ SHORT_ROW_LIMIT = 5
 
 # Anchors that survive the exclude list. A drop here does not move
 # short_regions, so the count is held on its own.
-ANCHOR_KEPT = 7
+ANCHOR_KEPT = 8
 
 # Reserved gaps walked on every seed: one address just past the end of a live
-# block. Four sit in unnamed-refuse spans and are dropped, so seven survive.
+# block. Three sit in excluded spans and are dropped, so eight survive.
 _ANCHORS: tuple[tuple[int, str], ...] = (
     (ROM_ONE_PAST, "r"),
     (0x1080_3008, "r"),  # first byte above the reset controller
     (0x1080_3008, "w"),
     (0x1091_4000, "r"),  # KMAC/DRBG gap
     (0x1092_1000, "r"),  # above the Key Manager window
-    (0x1093_8000, "r"),  # above the OTP window
+    (OTP_ONE_PAST, "r"),  # above the last OTP register block
     (0x1096_0000, "r"),  # above the entropy pool
     (0x10A4_0000, "r"),  # above the system-bus window
     (0x1200_0000, "r"),  # above the STEE remap region
@@ -316,7 +324,7 @@ def _selftest() -> None:
         )
         assert len(c.short_regions) <= SHORT_ROW_LIMIT, (
             f"seed {seed} left {len(c.short_regions)} reserved row(s) short of "
-            f"their quota, above the {SHORT_ROW_LIMIT} unnamed-refuse rows"
+            f"their quota, above the limit of {SHORT_ROW_LIMIT}"
         )
         n_anchor = sum(1 for p in c.probes if p.anchor)
         assert n_anchor == ANCHOR_KEPT, (

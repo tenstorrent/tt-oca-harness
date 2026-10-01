@@ -430,7 +430,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         # from this path twice over: the AXI master cannot emit a zero-strobe
         # beat (ocah_axi_master_driver.check_strb rejects any partial strobe),
         # and the wrapper's bridge answers a zero-strobe write itself rather
-        # than forwarding it (axi_lite_to_tlul AckZeroStrobeWrite). Any other
+        # than forwarding it (axi_lite_to_tlul ACK_ZERO_STROBE_WRITE). Any other
         # byte count that happens to raise the bit would be an expectation taken
         # from the device, so the condition stays unclaimed.
         self.logger.info(

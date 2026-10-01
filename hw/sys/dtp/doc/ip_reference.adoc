@@ -1,0 +1,56 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= IP Reference
+
+[[dtp-ip-reference]]
+
+The JTAG family provides scan and debug access. The cross-trigger family
+routes events and coordinates debug actions between blocks and chiplets.
+
+ifdef::backend-html5[]
+== Component Pages
+
+[cols="<,<,<",frame=none,grid=none]
+|===
+
+|*JTAG*
+|[[jtag-interface-unit]] xref:ip:jtag_intf_unit/doc/index.adoc#jtag-interface-unit[JTAG Interface Unit]
+([[jtag-intf-unit-architecture]] xref:ip:jtag_intf_unit/doc/index.adoc#jtag-intf-unit-architecture[architecture],
+[[jtag-intf-unit-interface]] xref:ip:jtag_intf_unit/doc/index.adoc#jtag-intf-unit-interface[interface])
+|IEEE 1149.1 primary and secondary TAP controller.
+
+|
+|[[jtag-ptap]] xref:ip:jtag_ptap/doc/index.adoc#jtag-ptap[JTAG PTAP]
+([[ptap-architecture]] xref:ip:jtag_ptap/doc/index.adoc#ptap-architecture[architecture],
+[[ptap-interface]] xref:ip:jtag_ptap/doc/index.adoc#ptap-interface[interface])
+|Primary TAP implementation and instruction decoder.
+
+|
+|[[jtag-stap]] xref:ip:jtag_stap/doc/index.adoc#jtag-stap[JTAG STAP]
+([[stap-architecture]] xref:ip:jtag_stap/doc/index.adoc#stap-architecture[architecture],
+[[stap-interface]] xref:ip:jtag_stap/doc/index.adoc#stap-interface[interface])
+|Secondary TAP for hierarchical multi-chiplet connectivity.
+
+|*Cross-trigger*
+|[[cross-trigger-network]] xref:ip:cross_trigger_network/doc/index.adoc#cross-trigger-network[Cross-Trigger Network]
+([[cross-trigger-network-architecture]] xref:ip:cross_trigger_network/doc/index.adoc#cross-trigger-network-architecture[architecture],
+[[cross-trigger-network-interface]] xref:ip:cross_trigger_network/doc/index.adoc#cross-trigger-network-interface[interface],
+[[ctn-memory-map]] xref:ip:cross_trigger_network/doc/index.adoc#ctn-memory-map[register map])
+|CTN hub integrating CTMs and CTPs; owns the unified register map.
+
+|
+|[[cross-trigger-port]] xref:ip:cross_trigger_port/doc/index.adoc#cross-trigger-port[Cross-Trigger Port]
+([[ctp-architecture]] xref:ip:cross_trigger_port/doc/index.adoc#ctp-architecture[architecture],
+[[ctp-interface]] xref:ip:cross_trigger_port/doc/index.adoc#ctp-interface[interface])
+|External pad-ring interface for OCCT cross-chiplet triggering.
+
+|
+|[[cross-trigger-matrix]] xref:ip:cross_trigger_matrix/doc/index.adoc#cross-trigger-matrix[Cross-Trigger Matrix]
+([[ctm-architecture]] xref:ip:cross_trigger_matrix/doc/index.adoc#ctm-architecture[architecture],
+[[ctm-interface]] xref:ip:cross_trigger_matrix/doc/index.adoc#ctm-interface[interface])
+|Configurable N×M routing matrix for internal cross triggers.
+
+|===
+
+endif::backend-html5[]

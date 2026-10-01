@@ -23,14 +23,14 @@ module tlul_cmd_intg_chk
   assign cmd = extract_h2d_cmd_intg(tl_i);
 
   prim_secded_inv_64_57_dec u_chk (
-    .data_i({tl_i.a_user.cmd_intg, H2DCmdMaxWidth'(cmd)}),
+    .data_i({tl_i.a_user.cmd_intg, H2D_CMD_MAX_WIDTH'(cmd)}),
     .data_o(),
     .syndrome_o(),
     .err_o(err)
   );
 
   tlul_data_integ_dec u_tlul_data_integ_dec (
-    .data_intg_i({tl_i.a_user.data_intg, DataMaxWidth'(tl_i.a_data)}),
+    .data_intg_i({tl_i.a_user.data_intg, DATA_MAX_WIDTH'(tl_i.a_data)}),
     .data_err_o(data_err)
   );
 
@@ -49,6 +49,6 @@ module tlul_cmd_intg_chk
   logic unused_tl;
   assign unused_tl = |tl_i;
 
-  `OCAH_OT_ASSERT_INIT(PayLoadWidthCheck, $bits(tl_h2d_cmd_intg_t) <= H2DCmdMaxWidth)
+  `OCAH_OT_ASSERT_INIT(PayLoadWidthCheck, $bits(tl_h2d_cmd_intg_t) <= H2D_CMD_MAX_WIDTH)
 
 endmodule  // tlul_payload_chk

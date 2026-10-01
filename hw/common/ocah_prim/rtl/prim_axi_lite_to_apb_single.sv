@@ -4,13 +4,13 @@
 // Bridge one AXI-Lite manager to a single APB subordinate.
 //
 // Complete addresses outside [ADDR_START, ADDR_END) with a decode error on AXI-Lite.
-// PipelineRequest and PipelineResponse insert skid registers on the request and response
+// PIPELINE_REQUEST and PIPELINE_RESPONSE insert skid registers on the request and response
 // paths.
 // Hold only one APB transfer in flight at a time.
 
 module prim_axi_lite_to_apb_single #(
-  parameter bit PipelineRequest      = 1'b0,  // Skid-registers the AXI-Lite to APB request path.
-  parameter bit PipelineResponse     = 1'b0,  // Skid-registers the APB to AXI-Lite response path.
+  parameter bit PIPELINE_REQUEST     = 1'b0,  // Skid-registers the AXI-Lite to APB request path.
+  parameter bit PIPELINE_RESPONSE    = 1'b0,  // Skid-registers the APB to AXI-Lite response path.
   parameter int unsigned AXI_DATA_WIDTH = 32,  // Shared data width.
   parameter int unsigned AXI_ADDR_WIDTH = 32,  // Shared address width.
 
@@ -81,8 +81,8 @@ module prim_axi_lite_to_apb_single #(
     .NoRules(1),
     .AddrWidth(EXTENDED_ADDR_WIDTH),
     .DataWidth(AXI_DATA_WIDTH),
-    .PipelineRequest(PipelineRequest),
-    .PipelineResponse(PipelineResponse),
+    .PipelineRequest(PIPELINE_REQUEST),
+    .PipelineResponse(PIPELINE_RESPONSE),
     .rule_t(rule_t)
   ) u_axi_lite_to_apb (
     .clk_i(clk_i),

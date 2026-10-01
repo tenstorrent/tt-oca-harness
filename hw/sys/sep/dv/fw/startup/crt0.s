@@ -41,11 +41,13 @@ _start:
     # peripherals from causing issues.
     # See documentation: https://chipsalliance.github.io/Cores-VeeR-EL2/html/main/docs_rendered/html/memory-map.html#region-access-control-register-mrac
     #
-    # Bit pattern: 0xAA2AAAAA
+    # MRAC holds two bits per region, region r in bits [2r+1:2r]: bit 2r is
+    # cacheable, bit 2r+1 is side-effect.
+    # Bit pattern: 0xA8AAAAAA
     #   - Regions 0-11, 13-15:                     0b10 = Side-effect (peripherals)
-    #   - Region 12:                               0b00 = Normal (ICCM/DCCM)
+    #   - Region 12 (0xC000_0000, bits [25:24]):   0b00 = Normal (ICCM/DCCM)
     #--------------------------------------------------------------------------
-    li      t0, 0xAA2AAAAA
+    li      t0, 0xA8AAAAAA
     csrw    CSR_MPMC, t0
 
     #--------------------------------------------------------------------------

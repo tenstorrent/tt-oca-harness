@@ -40,6 +40,21 @@ dependencies = [
 # Simulation environment for the native DV runner (tools/dv/run_dv.py). Kept out of
 # default-groups so `uv sync` for reggen/docs does not pull the simulation stack.
 dv = ["ocah-dv"]
+# SEP virtual-platform harness (virtual_platform/): pexpect drives sep-vp, pyelftools
+# backs the boot ROM's OTBN C-array generation. Sync with `uv sync --inexact --group vp`
+# (--inexact so a previously synced dv group is not stripped). Kept out of
+# default-groups like dv.
+vp = [
+    "pexpect>=4.8",
+    "pyyaml>=6.0",
+    "pytest>=7.0",
+    "toml>=0.10",
+    "pyelftools>=0.29",
+    # The boot ROM's key_digests.c is generated on the host from PEM files; the
+    # bootrom Makefile refuses to build without it, and the RISC-V toolchain
+    # sandbox carries a bare python3.
+    "cryptography>=41.0",
+]
 manifest = ["tt-oca-manifest"]
 
 [tool.uv]
@@ -65,6 +80,11 @@ extend-exclude = [
   "**/build_ot_pio",
   "**/regs/gen/py",
   "hw/sys/sep/bootrom/prod/tools/tt-oca-manifest",
+  # The VP simulator is a submodule, so it is not covered by a .gitignore the
+  # way virtual_platform/'s own downloads/ and local*/ trees are.
+  "virtual_platform/tt-oca-harness-model",
+  "virtual_platform/downloads",
+  "virtual_platform/local*",
 ]
 
 # The SMU DV `env` and `seq_lib` packages are namespace packages spanning the
@@ -114,6 +134,10 @@ exclude = '''(?x)^(
 [tool.codespell]
 # - regs/gen is generated from the .rdl sources next to it; a typo fix there
 #   is reverted by the next `regen-regs` run, so the real fix belongs upstream.
+# - tt-oca-harness-model is another repo, vendored as a submodule, so a finding
+#   in it is fixable only by a pull request there -- the same reasoning as
+#   tools/tt-oca-manifest above. virtual_platform's downloads/ and local*/ hold
+#   extracted SystemC, Boost and CCI sources, which are build output.
 # - chipyard_generated_files/crossbars/ot_pkg mirror flows/lint/verible.mk's
 #   own excludes: generated or OpenTitan-origin RTL this repo doesn't hand-edit.
 # - integration collateral is a symlink index over sources covered here or
@@ -138,6 +162,7 @@ skip = """\
 */integration/rdl/*,*/integration/ipxact/*,*/integration/constraint/*,\
 */regs/gen,*/chipyard_generated_files,*/crossbars,*/ot_pkg,\
 */doc/*/modules/*,*/_build/*,\
+*/virtual_platform/downloads/*,*/virtual_platform/local/*,*/virtual_platform/local-ctr/*,\
 \
 */tools/tt-oca-manifest,*/virtual_platform/tt-oca-harness-model/*,\
 \

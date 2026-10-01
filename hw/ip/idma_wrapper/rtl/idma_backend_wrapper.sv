@@ -29,8 +29,8 @@ module idma_backend_wrapper #(
   parameter bit BYPASS_DMA_MST_FLOPS  = 1'b0,               // Bypasses the axi_cut registers on
                                                             // each master port.
 
-  parameter int unsigned TFLenWidth = 32,                   // Transfer-length field width; the
-                                                            // maximum transfer is 2**TFLenWidth
+  parameter int unsigned TF_LEN_WIDTH = 32,                 // Transfer-length field width; the
+                                                            // maximum transfer is 2**TF_LEN_WIDTH
                                                             // bytes.
 
   parameter type idma_req_t = logic,                        // iDMA request type.
@@ -156,7 +156,7 @@ module idma_backend_wrapper #(
         .AxiIdWidth(MST_ID_WIDTH),
         .NumAxInFlight(DMA_MST_MAX_TXNS),
         .BufferDepth(BUFFER_DEPTH),
-        .TFLenWidth(TFLenWidth),
+        .TFLenWidth(TF_LEN_WIDTH),
         .MemSysDepth(32'd0),  // not attached to a memory system
         .RAWCouplingAvail(EN_R_AW_COUPLING),
         .MaskInvalidData(1'b1),  // data with no wstrb is masked to 0
@@ -259,7 +259,7 @@ module idma_backend_wrapper #(
 
   for (genvar i = 0; i < NUM_MST_INTERFACES; i++) begin : gen_mst_axi_snoop
     prim_axi_snoop #(
-      .OutstandingTx(2 * DMA_MST_MAX_TXNS)
+      .OUTSTANDING_TX(2 * DMA_MST_MAX_TXNS)
     ) u_mst_axi_snoop (
       .clk_i           (clk_i),
       .rst_ni          (rst_ni),

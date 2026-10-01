@@ -20,12 +20,15 @@ MARKDOWN_PATH ?=
 ocah_markdown_root := $(if $(MARKDOWN_PATH),$(OCAH_ROOT)/$(MARKDOWN_PATH),$(OCAH_ROOT))
 
 # .md files under MARKDOWN_PATH, excluding vendor/nonfree, the tt-oca-manifest
-# submodule (another repo's prose), build output, and
-# the local uv/node_modules caches -- none of which are hand-authored here.
+# and tt-oca-harness-model submodules (another repo's prose; the latter also
+# holds a filename with a space, which this unquoted $(shell find) list cannot
+# represent), build output, and the local uv/node_modules caches -- none of
+# which are hand-authored here.
 ocah_markdown_files = $(shell find $(ocah_markdown_root) -name '*.md' \
 	-not -path '*/vendor/*' -not -path '*/nonfree/*' \
 	-not -path '*/build/*' -not -path '*/build_ot/*' -not -path '*/build_ot_pio/*' \
 	-not -path '*/tools/tt-oca-manifest/*' \
+	-not -path '*/tt-oca-harness-model/*' \
 	-not -path '*/.venv/*' -not -path '*/node_modules/*' 2>/dev/null)
 
 ocah_markdown_check_files = @[ -n "$(strip $(ocah_markdown_files))" ] || { echo "error: no .md files under $(if $(MARKDOWN_PATH),$(MARKDOWN_PATH),repo root)" >&2; exit 1; }

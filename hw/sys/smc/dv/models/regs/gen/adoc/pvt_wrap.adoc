@@ -18,10 +18,10 @@ Adopter PVT and monitor placeholder reserving the map slot; no CSRs are modeled.
 [cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description
-| 0x0 - 0x944 | <<reg-{regmap-instance}-pvt_wrap-footprint-mem_array-0-,mem_array[594]>> | R a| -
+| 0x0 - 0x944 | <<reg-{regmap-instance}-pvt_wrap-footprint-mem_array-,mem_array[594]>> | R a| -
 |===
 
-[#reg-{regmap-instance}-pvt_wrap-footprint-mem_array-0-]
+[#reg-{regmap-instance}-pvt_wrap-footprint-mem_array-]
 === mem_array[594]
 
 [cols="1,3,1,1,6", options="header"]

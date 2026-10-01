@@ -30,10 +30,10 @@ S2: adopter window (smc_addr.h SMC_EXTERNAL, 4 MiB at 0xC040_0000):
 S3: DTP CSR window (DTP_CTRL_REG, 2 KiB at 0xC000_B000): a read and a
     zero-strobe write at the base plus 2^k for every k below 11 each arrive,
     in order, on the SMC-to-DTP CSR link at their window offset. The
-    responses are recorded: the SMC map gives the block a 2 KiB decoded
-    extent, inside which an offset that owns no register answers OKAY
-    (``hw/sys/smc/doc/memmap.adoc``), and offset 0x400 is answered with an
-    error.
+    responses are recorded: the SMC forwards the window to the DTP
+    undecoded, and the cross-trigger network answers offsets 0x100 and 0x400,
+    which fall outside its matrix registers and port windows, with an error
+    (``hw/ip/cross_trigger/cross_trigger_network/doc/memmap.adoc``).
 S4, S5: the SMC and SEP OTP bridges: a read and a zero-strobe write at 0,
     2^k for every k below 32 and 0xFFFF_FFFF each complete and arrive on the
     DTP-to-OTP link with the address issued.

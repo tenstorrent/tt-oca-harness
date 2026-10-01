@@ -47,7 +47,7 @@ DTP_NUM_INT_CT = XTRIG_NUM_INT_CT + XTRIG_SMC_INT_CT_LANES
 DTP_NUM_CLK_STOP_REQ = XTRIG_NUM_CLK_STOP_REQ + XTRIG_SMC_CLK_STOP_LANES
 # hw/sys/smc/doc/port_table.adoc `smc_ext_interrupts_i` ("Width is 256") and
 # hw/sys/smc/doc/interrupts.adoc (`NUM_EXT_INTERRUPTS = 256`): the SMC port that
-# the SMU `smc_ext_interrupts_i` row (`[Cfg.NUM_INT_TO_SMC-1:0]`) feeds.
+# the SMU `smc_ext_interrupts_i` row (`[CFG.NUM_INT_TO_SMC-1:0]`) feeds.
 NUM_INT_TO_SMC = 256
 # hw/sys/smu/doc/port_table.adoc `lc_state_o` (`[2*LC_STATE_WIDTH-1:0]`, tie
 # value `8'hf0`); hw/sys/smc/doc/port_table.adoc `lc_state_i` "(8 bits)";
@@ -132,7 +132,7 @@ def axi_resp_bits(id_width: int) -> int:
 
 # Drift table: no specification in this tree states the packed field order or
 # the field widths of the SMU build-configuration struct. Decoding an
-# elaborated `Cfg` with this layout and comparing the fields detects unintended
+# elaborated `CFG` with this layout and comparing the fields detects unintended
 # change in the elaborated build parameters and proves no requirement; no
 # compare that goes through `decode_cfg` carries an evidence token.
 CFG_LAYOUT: tuple[tuple[str, int], ...] = (
@@ -300,12 +300,16 @@ def bit_width(handle: Any, name: str) -> int:
         raise AssertionError(f"{name} has no width: {exc}") from exc
 
 
-async def count_transitions(signals: dict[str, Any], window_ns: int, step_ns: int = 1) -> dict:
-    """Count level changes on each signal over ``window_ns`` at ``step_ns`` resolution."""
+async def count_transitions(signals: dict[str, Any], window_ns: int, step_ps: int = 250) -> dict:
+    """Count level changes on each signal over ``window_ns`` at ``step_ps`` resolution.
+
+    The step has to be shorter than half the shortest period counted; the
+    800 MHz sys clock has a 625 ps half period.
+    """
     last = {name: sample(sig, name) for name, sig in signals.items()}
     counts = {name: 0 for name in signals}
-    for _ in range(window_ns // step_ns):
-        await Timer(step_ns, unit="ns")
+    for _ in range(window_ns * 1000 // step_ps):
+        await Timer(step_ps, unit="ps")
         for name, sig in signals.items():
             now = sample(sig, name)
             if now != last[name]:

@@ -86,7 +86,7 @@ class SepAxiItem(uvm_sequence_item):
         # legitimately partly unknown; the monitor then skips its lane check.
         self.allow_unknown_rdata: bool = False
         # Packed AWUSER/ARUSER. The inbound filter matches FILTER_CONFIG.src_id
-        # against user[3:0] (SrcIdUserBitStart=0, SrcIdWidth=4).
+        # against user[3:0] (SRC_ID_USER_BIT_START=0, SRC_ID_WIDTH=4).
         self.user: int = 0
         # AXI AxBURST. None lets the VIP default (INCR). Leave None everywhere
         # except the inbound-filter burst checkers, which opt in with INCR and

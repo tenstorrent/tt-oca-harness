@@ -8,4 +8,4 @@ name = "km-cpu"
 title = "Key Manager CPU Memory Map"
 include_all = true
 derive_gaps = true
-columns = ["base", "end", "size", "occupied_size", "label", "description"]
+columns = ["base", "end", "size", "occupied_size", "label", "description", "hole_resp", "past_resp"]

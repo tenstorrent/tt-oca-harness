@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# CHIPLET_PUBK_HASH0 provisioned with the SHA-256 of ROM key 0's RSA-3072 modulus.
+#
+# configs/oca_otp_key_boot_test.yaml selects public_key_select_classic bit 16,
+# which is CHIPLET_PUBK_HASH0 (see CHIPLET_PUBK_REVOKE's bit map in
+# sep_efuse_map.rdl -- select and revoke index the same key entries). The ROM
+# therefore takes its anchor from this bank instead of key_digests.c.
+#
+# The model now names this bank CHIPLET_PUBK_HASH0, matching the RDL.
+#
+# Word order matches plat_is_key_authorized()'s fuse_read_bytes(): word[0] holds
+# bits[31:0], so each word is four consecutive digest bytes read little-endian.
+# The digest is over the 384-byte MODULUS only, not the 388-byte RAW blob.
+# Regenerating tests/signing_keys/rsa_private_key.rom_key0.pem changes this digest.
+# It is the SHA-256 of that key's modulus; derive the words from
+# bootrom/prod/src/key_digests.c slot 0 rather than by hand.
+lc_state: TEST_DEV
+sboot_dis: 0
+# Deliberately WRONG: word 0 has its low bit flipped, so the anchor cannot
+# match. Isolates the comparison -- every other input is identical to the
+# passing map.
+chiplet_pubk_hash0:
+  - 0x63ca71a6
+  - 0xc2f5a837
+  - 0x94c96e1a
+  - 0xa03a7e64
+  - 0xd2a7fd9c
+  - 0xbb617d03
+  - 0x2b03dfec
+  - 0xf6508284

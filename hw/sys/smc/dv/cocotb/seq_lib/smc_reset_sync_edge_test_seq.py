@@ -150,8 +150,8 @@ class smc_reset_sync_edge_test_seq(SmcResetSeqBase):
         smc_log = _EdgeLog("clk_smc_i")
         ref_task = cocotb.start_soon(ref_log.run(dut.clk_ref_i))
         smc_task = cocotb.start_soon(smc_log.run(dut.clk_smc_i))
-        ref_ps = self.cfg.ref_clk_period_ns * 1000
-        smc_ps = self.cfg.smc_clk_period_ns * 1000
+        ref_ps = int(round(self.cfg.ref_clk_period_ns * 1000))
+        smc_ps = int(round(self.cfg.smc_clk_period_ns * 1000))
         try:
             # Entry state: every reset observable released (scoreboard verdict).
             await self._send(SmcResetOp.SAMPLE)

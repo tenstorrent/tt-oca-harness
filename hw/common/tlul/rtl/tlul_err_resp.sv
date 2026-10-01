@@ -7,12 +7,12 @@
 // Accept one A-channel request at a time and present its D-channel response from the
 // next cycle until d_ready. a_ready is low while a response is pending, so requests are
 // accepted at most every other cycle. By default return d_error set with
-// DataWhenInstrError for instruction fetches and DataWhenError otherwise. When
-// ReturnBlankResp is set, return all-zero data without setting d_error. Response and data
+// DATA_WHEN_INSTR_ERROR for instruction fetches and DATA_WHEN_ERROR otherwise. When
+// RETURN_BLANK_RESP is set, return all-zero data without setting d_error. Response and data
 // integrity are generated in either mode.
 
 module tlul_err_resp #(
-  parameter bit ReturnBlankResp = 0  // When set, return zeros without asserting d_error.
+  parameter bit RETURN_BLANK_RESP = 0  // When set, return zeros without asserting d_error.
 ) (
   input                     clk_i,   // System clock.
   input                     rst_ni,  // Active-low reset.
@@ -30,8 +30,8 @@ module tlul_err_resp #(
   tlul_pkg::tl_d2h_t                 tl_h_o_int;
 
   tlul_rsp_intg_gen #(
-    .EnableRspIntgGen(1),
-    .EnableDataIntgGen(1)
+    .ENABLE_RSP_INTG_GEN(1),
+    .ENABLE_DATA_INTG_GEN(1)
   ) u_intg_gen (
     .tl_i(tl_h_o_int),
     .tl_o(tl_h_o)
@@ -57,12 +57,12 @@ module tlul_err_resp #(
 
   assign tl_h_o_int.a_ready  = ~err_rsp_pending;
   assign tl_h_o_int.d_valid  = err_rsp_pending;
-  if (ReturnBlankResp) begin : gen_zero_resp
+  if (RETURN_BLANK_RESP) begin : gen_zero_resp
     assign tl_h_o_int.d_data = '0;
   end else begin : gen_err_resp
     assign tl_h_o_int.d_data = (mubi4_test_true_strict(
         err_instr_type
-    )) ? DataWhenInstrError : DataWhenError;
+    )) ? DATA_WHEN_INSTR_ERROR : DATA_WHEN_ERROR;
   end
   assign tl_h_o_int.d_source = err_source;
   assign tl_h_o_int.d_sink   = '0;
@@ -70,7 +70,7 @@ module tlul_err_resp #(
   assign tl_h_o_int.d_size   = err_size;
   assign tl_h_o_int.d_opcode = (err_opcode == Get) ? AccessAckData : AccessAck;
   assign tl_h_o_int.d_user   = '0;
-  assign tl_h_o_int.d_error  = ~ReturnBlankResp;
+  assign tl_h_o_int.d_error  = ~RETURN_BLANK_RESP;
 
   // Waive unused bits of tl_h_i
   logic unused_tl_h;
