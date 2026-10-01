@@ -5,32 +5,36 @@ DV-CARD: SMC_ZEROER_AXICLK_CG_TEST ANCHOR: smc_zeroer_axiclk_cg_test
 
 DV-CARD: SMC_CG_P2_002 ANCHOR: smc_zeroer_axiclk_cg_test
 
-The P2 card extends this same anchor (additive): the P1 steps/checkers above are
-UNCHANGED (their evidence tokens must keep appearing verbatim for the closed P1
-grade); the P2 extension below (_p2_extension) adds the busy-to-idle
-back-to-back trigger race, called once at the end of body(). Per SF-005
-(answered): trigger at same-cycle/after the busy falling edge MUST start and
-complete the follow-on op (scored); trigger while still busy (1-cycle-before,
-genuine overlap) is evidence-only -- no pass/fail asserted on that protocol
-outcome. That carve-out applies ONLY to CHK-ZEROER-AXICLK-COMPLETION's
-protocol-outcome verdict.
+The P2 card shares this anchor: the P1 steps and checkers run first and emit
+their evidence tokens verbatim; `_p2_extension`, called once at the end of
+body(), adds the busy-to-idle back-to-back trigger race.
 
-AMENDMENT (revision 2, supersedes revision 1, owner decision minshaoho
-standing order "approve-and-continue" amend choice (ii), approved 2026-08-05T17:25:00+08:00):
-revision 1's CHK-ZEROER-AXICLK-NOGLITCH required zero axi_clk_enable deassert
-across the WHOLE busy-to-idle boundary, including the real ~26-28 clk_smc_i
-cycle turnaround of the documented 3-write DEST_ADDR->SIZE->CTRL_STATUS
-trigger protocol -- physically unreachable via that frontdoor protocol at all
-3 swept timings (see revision-1 (B) finding, kept log run 20260805_091625,
-now STALE against this revision). Revision 2 narrows the proof: while
-zeroer_busy_o==1 for EITHER operation (op1's tail or op2's own busy span),
-axi_clk_enable must stay asserted with zero deassert -- no mid-busy glitch --
-at all 3 swept timings (still scored, still no carve-out for this half of the
-checker). A deassert gap occurring STRICTLY BETWEEN the two busy pulses
-(caused by the multi-write trigger protocol's turnaround latency) is now
-PERMITTED and must be LOGGED (start cycle, end cycle, duration) at each swept
-timing -- never scored as a failure. CHK-ZEROER-AXICLK-COMPLETION is
-unchanged (same-cycle/1-after scored; 1-before evidence-only per SF-005).
+Two verdicts are applied to the swept cells, and BOTH are applied at all three
+timings. The retained tokens carry a `*_scored` field per cell so the log states
+the verdict that actually ran:
+
+* COMPLETION -- the follow-on op must start and complete a write to its own
+  destination `P2_DEST_OP2`, at every swept timing including the
+  1-cycle-before overlap (`completion_scored=1`).
+* MID-BUSY GLITCH -- while zeroer_busy_o==1 for either operation,
+  axi_clk_enable must stay asserted, at every swept timing
+  (`mid_busy_glitch_scored=1`).
+
+The one carve-out is neither of those: a deassert gap STRICTLY BETWEEN the two
+busy pulses is permitted and logged, never scored -- see below.
+
+CHK-ZEROER-AXICLK-NOGLITCH is scoped to the busy spans, not to the whole
+busy-to-idle boundary: the 3-write DEST_ADDR->SIZE->CTRL_STATUS trigger protocol
+has a multi-cycle turnaround through this frontdoor, so a deassert gap between
+the two busy pulses is inherent at every swept timing regardless of the DUT.
+
+The scored claim is therefore: while zeroer_busy_o==1 for EITHER operation
+(op1's tail or op2's own busy span), axi_clk_enable must stay asserted with zero
+deassert -- no mid-busy glitch -- at all 3 swept timings, with no carve-out for
+this half of the checker. A deassert gap STRICTLY BETWEEN the two busy pulses,
+caused by the multi-write trigger protocol's turnaround latency, is PERMITTED
+and must be LOGGED (start cycle, end cycle, duration) at each swept timing --
+never scored as a failure.
 `_p2_race_cell` below implements this split by classifying every deasserted
 (enable==0) sample as either "mid-busy" (busy==1 at that sample -- fail_on
 scope) or "inter-busy gap" (busy==0, strictly between op1's busy-fall and
@@ -40,19 +44,14 @@ under test.
 
 from __future__ import annotations
 
-import logging
-
 import cocotb
-from cocotb.triggers import ClockCycles, RisingEdge, ReadOnly, Timer
-
+from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge, Timer
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
+from . import smc_addr_map as _addr
+from . import smc_cg_obs_utils as cg
 from ._one_shot import _OneShot
 from .smc_csr_seq_utils import SmcCsrSeq
-from . import smc_cg_obs_utils as cg
-from . import smc_addr_map as _addr
-
-_LOG = logging.getLogger(__name__)
 
 HYST = 8
 IDLE_OBSERVE = 16
@@ -81,7 +80,7 @@ OUTPUT_FABRIC_MODEL_REGION = "zeroer_axi_cg_fabric"
 OUTPUT_FABRIC_MODEL_SIZE = 0x1000
 ZEROER_POISON = bytes.fromhex("a0a1a2a3a4a5a6a7")
 
-# P2 (SMC_CG_P2_002) additions: back-to-back trigger race vs the axi_clk
+# P2 (SMC_CG_P2_002) cells: back-to-back trigger race vs the axi_clk
 # busy-to-idle boundary. Single-beat (8B) ops keep op1's own busy duration
 # small and repeatable so the 3 required relative timings can be scheduled
 # against the DUT's own observed busy_hold (never a hand literal).
@@ -107,15 +106,14 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
         super().__init__(name)
         self.fence: list[tuple[str, int]] = []
         self.chk_seen: dict[str, str] = {}
+        self._p2_calib_cycles_used = -1
 
     def _dut(self):
         return cocotb.top
 
     async def _program_cg(self, *, zeroer_en: bool, hyst: int = HYST) -> None:
         cur = await self.csr_read("CLOCK_GATE_CONTROL_RD", CLOCK_GATE_CONTROL, length=8)
-        nxt = (cur & ~ZEROER_CG_EN & ~CG_HYST_MASK) | (
-            (hyst << CG_HYST_SHIFT) & CG_HYST_MASK
-        )
+        nxt = (cur & ~ZEROER_CG_EN & ~CG_HYST_MASK) | ((hyst << CG_HYST_SHIFT) & CG_HYST_MASK)
         if zeroer_en:
             nxt |= ZEROER_CG_EN
         await self.csr_write("CLOCK_GATE_CONTROL_WR", CLOCK_GATE_CONTROL, nxt, length=8)
@@ -124,9 +122,7 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
 
     async def _program_output_fabric_pass_all(self) -> None:
         await self.csr_write("INBOUND0_START_PASS_ALL", INBOUND0_START, 0x0, length=8)
-        await self.csr_write(
-            "INBOUND0_END_PASS_ALL", INBOUND0_END, 0x00FF_FFFF_FFFF_FFFF, length=8
-        )
+        await self.csr_write("INBOUND0_END_PASS_ALL", INBOUND0_END, 0x00FF_FFFF_FFFF_FFFF, length=8)
         await self.csr_write(
             "INBOUND0_FILTER_CONFIG_PASS_ALL",
             INBOUND0_FILTER_CONFIG,
@@ -161,6 +157,18 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
         assert sig.value.is_resolvable
         return int(sig.value)
 
+    def _last_write_addr(self) -> int:
+        """AW address of the most recently B-responded output-AXI write.
+
+        `tb_top.sv:1085-1086` latches the counter and this address together on
+        the same B handshake, so pairing them attributes a counted write to the
+        destination it went to. A bare counter increment cannot: the counter is
+        shared by every write on the output port, so op1's own response
+        satisfies `count > start` even if op2 never wrote anything
+        ([EXACT-EXPECTATION]).
+        """
+        return int(self._dut().tb_output_axi_last_addr.value)
+
     async def _wait_zeroer_idle(self) -> None:
         dut = self._dut()
         for _ in range(ZEROER_WAIT_CYCLES):
@@ -173,12 +181,8 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
         await self.csr_write(
             "ZEROER_DEST_ADDR", ZEROER_CTRL_DEST_ADDR, OUTPUT_FABRIC_ADDR, length=8
         )
-        await self.csr_write(
-            "ZEROER_SIZE", ZEROER_CTRL_SIZE, len(ZEROER_POISON), length=8
-        )
-        await self.csr_write(
-            "ZEROER_CTRL_STATUS_START", ZEROER_CTRL_STATUS, 0x1, length=8
-        )
+        await self.csr_write("ZEROER_SIZE", ZEROER_CTRL_SIZE, len(ZEROER_POISON), length=8)
+        await self.csr_write("ZEROER_CTRL_STATUS_START", ZEROER_CTRL_STATUS, 0x1, length=8)
 
     async def _measure_busy_window_toggles(self) -> tuple[int, int, int]:
         """Resume delta + every-cycle enable count from resume through busy clear.
@@ -258,16 +262,33 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
         trigger a solo op1-shaped operation from idle and measure the exact
         clk_smc_i cycle span busy stays asserted, so the 3 required race
         timings can be scheduled against the DUT's own observed timing
-        (CHK-NO-TAUTOLOGY: never a hand literal)."""
+        (never a hand literal)."""
         await self._wait_zeroer_idle()
         timeline: list[int] = []
         task = cocotb.start_soon(self._p2_trigger_op(P2_DEST_CALIB, P2_OP_SIZE))
+        # Bounded: the CSR trigger writes are DUT responses (each waits for its
+        # own B-response), so this loop must expire and raise with a last-state
+        # diagnostic rather than spin until the runner's wall-clock timeout
+        # ([TIMEOUT-MUST-FAIL]).
+        trigger_wait = 0
         while not task.done():
+            trigger_wait += 1
+            if trigger_wait > P2_CALIB_TIMEOUT_SMC:
+                raise AssertionError(
+                    f"P2 calib: TIMEOUT waiting the 3-write trigger sequence to "
+                    f"complete within {P2_CALIB_TIMEOUT_SMC} smc cycles "
+                    f"(busy={cg.sample_bit(self._dut(), 'tb_zeroer_busy')} "
+                    f"axi_clk_enable="
+                    f"{int(self._dut().tb_zeroer_gated_axi_clk.value)} "
+                    f"tail={timeline[-10:]})"
+                )
             busy, _en = await self._p2_sample_cycle()
             timeline.append(busy)
         start_idx = next((i for i, b in enumerate(timeline) if b == 1), None)
         fall_idx = None
+        calib_used = 0
         for _ in range(P2_CALIB_TIMEOUT_SMC):
+            calib_used += 1
             busy, _en = await self._p2_sample_cycle()
             timeline.append(busy)
             if start_idx is None and timeline[-1] == 1:
@@ -280,13 +301,14 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
             ):
                 fall_idx = len(timeline) - 1
                 break
-        assert start_idx is not None, (
-            f"P2 calib: op1 busy never asserted (tail={timeline[-10:]})"
-        )
+        assert start_idx is not None, f"P2 calib: op1 busy never asserted (tail={timeline[-10:]})"
         assert fall_idx is not None, (
             f"P2 calib: TIMEOUT waiting op1 busy fall (tail={timeline[-10:]})"
         )
         hold = fall_idx - start_idx
+        # MEASURED margin against P2_CALIB_TIMEOUT_SMC, reported in
+        # CHK-TIMEOUT-PATHS instead of restating the bound constant.
+        self._p2_calib_cycles_used = calib_used
         assert hold > 0, f"P2 calib: non-positive busy hold measured: {hold}"
         await self._wait_zeroer_idle()
         return hold
@@ -316,10 +338,33 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
             timeline.append((busy, en))
 
         trig1 = cocotb.start_soon(self._p2_trigger_op(P2_DEST_OP1, P2_OP_SIZE))
+        # Both waits below are on DUT responses (the trigger writes' own
+        # B-responses, then zeroer_busy_o rising). Each is bounded and raises
+        # with a last-state diagnostic on expiry ([TIMEOUT-MUST-FAIL]).
+        trig1_wait = 0
         while not trig1.done():
+            trig1_wait += 1
+            if trig1_wait > P2_TRIAL_TIMEOUT_SMC:
+                raise AssertionError(
+                    f"{label}: TIMEOUT waiting op1's 3-write trigger sequence to "
+                    f"complete within {P2_TRIAL_TIMEOUT_SMC} smc cycles "
+                    f"(busy={cg.sample_bit(dut, 'tb_zeroer_busy')} "
+                    f"axi_clk_enable={int(dut.tb_zeroer_gated_axi_clk.value)} "
+                    f"tail={timeline[-10:]})"
+                )
             await _step()
         start_idx = next((i for i, (b, _e) in enumerate(timeline) if b == 1), None)
+        busy_rise_wait = 0
         while start_idx is None:
+            busy_rise_wait += 1
+            if busy_rise_wait > P2_TRIAL_TIMEOUT_SMC:
+                raise AssertionError(
+                    f"{label}: TIMEOUT waiting op1 zeroer_busy_o to assert within "
+                    f"{P2_TRIAL_TIMEOUT_SMC} smc cycles after its trigger write "
+                    f"(busy={cg.sample_bit(dut, 'tb_zeroer_busy')} "
+                    f"axi_clk_enable={int(dut.tb_zeroer_gated_axi_clk.value)} "
+                    f"tail={timeline[-10:]})"
+                )
             await _step()
             if timeline[-1][0] == 1:
                 start_idx = len(timeline) - 1
@@ -330,7 +375,9 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
         trig2 = None
         start_writes2 = None
         trigger_start_idx = None
+        trial_used = 0
         for _ in range(P2_TRIAL_TIMEOUT_SMC):
+            trial_used += 1
             await _step()
             cur_idx = len(timeline) - 1
             if trig2 is None and cur_idx >= fire_after_idx:
@@ -347,9 +394,7 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
             if timeline[i][0] == 1 and timeline[i + 1][0] == 0:
                 fall_idx = i + 1
                 break
-        assert fall_idx is not None, (
-            f"{label}: op1 busy fall not observed (tail={timeline[-10:]})"
-        )
+        assert fall_idx is not None, f"{label}: op1 busy fall not observed (tail={timeline[-10:]})"
         observed_offset = trigger_start_idx - fall_idx
         assert observed_offset == target_offset, (
             f"{label}: intended offset {target_offset} vs observed {observed_offset} "
@@ -359,7 +404,10 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
 
         completed = False
         write_addr_phase_seen = False
+        followon_used = 0
+        completion_addr = -1
         for _ in range(P2_FOLLOWON_BOUND_SMC):
+            followon_used += 1
             if timeline[-1][0] == 1:
                 write_addr_phase_seen = True
             if (
@@ -367,7 +415,10 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
                 and timeline[-1][0] == 0
                 and self._write_count() > start_writes2
             ):
-                completed = True
+                # ATTRIBUTED completion: the write that was counted must be the
+                # one op2 issued, identified by its own destination address.
+                completion_addr = self._last_write_addr()
+                completed = completion_addr == P2_DEST_OP2
                 break
             await _step()
 
@@ -380,7 +431,7 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
         )
         assert resume_idx is not None, (
             f"{label}: axi_clk_enable never resumed after op1 busy assert "
-            f"(start_idx={start_idx}, tail={timeline[start_idx:start_idx + 10]})"
+            f"(start_idx={start_idx}, tail={timeline[start_idx : start_idx + 10]})"
         )
         assert resume_idx - start_idx <= 1, (
             f"{label}: axi_clk_enable resume not within 1 cycle of op1 busy "
@@ -390,20 +441,16 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
 
         # op2's own busy-reassertion edge, if observed within this cell's
         # captured timeline -- the boundary that separates "mid-busy" (still
-        # in fail_on scope, rev2 unchanged) from "strictly between the two
-        # busy pulses" (rev2 AMENDMENT: permitted, logged, never scored).
+        # in scoring scope) from "strictly between the two busy pulses"
+        # (permitted, logged, never scored).
         op2_rise_idx = next(
             (i for i in range(fall_idx, len(timeline)) if timeline[i][0] == 1),
             None,
         )
-        # op2's own turn-on latency: the same <=1-cycle axi_clk_enable
-        # turn-on-after-busy-assert latency already established (and
-        # PROVEN) for op1 via `resume_idx` above and for P1's own
-        # `_measure_busy_window_toggles` (`delta <= 1`) applies symmetrically
-        # to op2's busy reassertion -- this is the gater's known onset
-        # latency, not a "mid-busy" deassert, so the mid-busy scan for op2
-        # starts at op2's own resume sample, exactly mirroring op1's
-        # resume_idx treatment above.
+        # op2's own turn-on latency: the gater's <=1-cycle axi_clk_enable onset
+        # after busy assert (asserted for op1 via `resume_idx` above) applies to
+        # op2's busy reassertion too, so the mid-busy scan for op2 starts at
+        # op2's own resume sample.
         op2_resume_idx = None
         if op2_rise_idx is not None:
             op2_resume_idx = next(
@@ -413,7 +460,7 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
             assert op2_resume_idx is not None, (
                 f"{label}: axi_clk_enable never resumed after op2 busy assert "
                 f"(op2_rise_idx={op2_rise_idx}, "
-                f"tail={timeline[op2_rise_idx:op2_rise_idx + 10]})"
+                f"tail={timeline[op2_rise_idx : op2_rise_idx + 10]})"
             )
             assert op2_resume_idx - op2_rise_idx <= 1, (
                 f"{label}: axi_clk_enable resume not within 1 cycle of op2 "
@@ -425,34 +472,24 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
         # (op2_resume_idx..last_busy_idx). A deassert sample here means
         # axi_clk_enable==0 WHILE zeroer_busy_o==1 (post turn-on) for one of
         # the two operations -- exactly what CHK-ZEROER-AXICLK-NOGLITCH's
-        # rev2 fail_on still forbids at every swept timing, no carve-out.
+        # scored claim forbids at every swept timing, no carve-out.
         mid_busy_ranges = [range(resume_idx, fall_idx)]
         if op2_resume_idx is not None:
             mid_busy_ranges.append(range(op2_resume_idx, last_busy_idx + 1))
-        glitches = [
-            i for rng in mid_busy_ranges for i in rng if timeline[i][1] == 0
-        ]
-        # NOTE: a real mid-busy glitch here is a DUT/RTL finding (rev2's
-        # NOGLITCH fail_on applies to the mid-busy segment at every swept
-        # timing, no carve-out -- SF-005's evidence-only carve-out is scoped
-        # to CHK-ZEROER-AXICLK-COMPLETION's protocol-outcome verdict only,
-        # per the card). Do NOT raise here: the card's own fail_on also
-        # independently fails the checker if "any of the 3 required cells
-        # [is] not observed in the retained log", so aborting mid-sweep on
-        # the first violation would trade one honest failure mode for a
-        # worse one (missing cells). Record the violation and let all 3
-        # cells run to completion so every cell's evidence reaches the kept
-        # log; _p2_extension raises a single summary failure after emitting
-        # checkers.
+        glitches = [i for rng in mid_busy_ranges for i in rng if timeline[i][1] == 0]
+        # A mid-busy glitch is recorded here and raised by `_p2_extension` after
+        # every cell has emitted its evidence: the card requires all 3 cells in
+        # the kept log, so aborting on the first violation would lose the
+        # remaining cells' evidence.
         glitch_detail = (
             f"{label}: axi_clk_enable deassert glitch WHILE zeroer_busy_o==1 "
             f"at indices {glitches} within busy span [{start_idx},{last_busy_idx}] "
-            f"(tail={timeline[max(0, glitches[0] - 3):glitches[0] + 5]})"
+            f"(tail={timeline[max(0, glitches[0] - 3) : glitches[0] + 5]})"
             if glitches
             else ""
         )
 
-        # Inter-busy deassert gap: rev2 AMENDMENT -- axi_clk_enable is
+        # Inter-busy deassert gap: axi_clk_enable is
         # PERMITTED to deassert strictly between op1's busy-fall (fall_idx)
         # and op2's busy-reassert (op2_rise_idx), for the duration of the
         # documented multi-write configure-then-trigger protocol's
@@ -469,18 +506,20 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
             elif inter_busy_gap_start is not None:
                 break
         inter_busy_gap_duration = (
-            inter_busy_gap_end - inter_busy_gap_start + 1
-            if inter_busy_gap_start is not None
-            else 0
+            inter_busy_gap_end - inter_busy_gap_start + 1 if inter_busy_gap_start is not None else 0
         )
 
-        scored = target_offset in (0, 1)
+        # The completion verdict is applied at every swept timing, including the
+        # 1-cycle-before overlap; the token's `completion_scored=1` field says
+        # so, so the retained evidence describes the verdict that ran.
         completion_detail = ""
-        if scored and not completed:
+        if not completed:
             completion_detail = (
-                f"{label}: follow-on op did not begin+complete within "
-                f"{P2_FOLLOWON_BOUND_SMC} cycles (write_addr_phase_seen="
-                f"{write_addr_phase_seen} writes_now={self._write_count()} "
+                f"{label}: follow-on op did not begin+complete a write to "
+                f"0x{P2_DEST_OP2:x} within {P2_FOLLOWON_BOUND_SMC} cycles "
+                f"(write_addr_phase_seen={write_addr_phase_seen} "
+                f"last_write_addr=0x{completion_addr:x} "
+                f"writes_now={self._write_count()} "
                 f"start_writes2={start_writes2} last_busy={timeline[-1][0]})"
             )
 
@@ -490,14 +529,19 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
             "observed_offset": observed_offset,
             "glitches": len(glitches),
             "glitch_detail": glitch_detail,
-            "inter_busy_gap_start": inter_busy_gap_start if inter_busy_gap_start is not None else -1,
+            "inter_busy_gap_start": inter_busy_gap_start
+            if inter_busy_gap_start is not None
+            else -1,
             "inter_busy_gap_end": inter_busy_gap_end if inter_busy_gap_end is not None else -1,
             "inter_busy_gap_duration": inter_busy_gap_duration,
             "write_addr_phase_seen": int(write_addr_phase_seen),
             "completed": int(completed),
+            "completion_addr": completion_addr,
             "completion_detail": completion_detail,
             "writes_delta": self._write_count() - start_writes2,
-            "scored": int(scored),
+            # MEASURED margins against the two bounded waits in this cell.
+            "trial_cycles_used": trial_used,
+            "followon_cycles_used": followon_used,
         }
 
     async def _p2_extension(self) -> None:
@@ -538,21 +582,26 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
         cg.emit_chk(
             self.chk_seen,
             "CHK-ZEROER-AXICLK-NOGLITCH",
-            "CHK-ZEROER-AXICLK-NOGLITCH: " + " ".join(
+            "CHK-ZEROER-AXICLK-NOGLITCH: "
+            + " ".join(
                 f"{label}(offset={r['observed_offset']},mid_busy_glitches={r['glitches']},"
                 f"inter_busy_gap_start={r['inter_busy_gap_start']},"
                 f"inter_busy_gap_end={r['inter_busy_gap_end']},"
-                f"inter_busy_gap_duration={r['inter_busy_gap_duration']})"
+                f"inter_busy_gap_duration={r['inter_busy_gap_duration']},"
+                f"mid_busy_glitch_scored=1)"
                 for label, r in results.items()
             ),
         )
         cg.emit_chk(
             self.chk_seen,
             "CHK-ZEROER-AXICLK-COMPLETION",
-            "CHK-ZEROER-AXICLK-COMPLETION: " + " ".join(
+            "CHK-ZEROER-AXICLK-COMPLETION: "
+            + " ".join(
                 f"{label}(write_addr_phase_seen={r['write_addr_phase_seen']},"
-                f"completed={r['completed']},writes_delta={r['writes_delta']},"
-                f"scored={r['scored']})"
+                f"completed={r['completed']},"
+                f"last_write_addr=0x{r['completion_addr']:x},"
+                f"expected_dest=0x{P2_DEST_OP2:x},"
+                f"writes_delta={r['writes_delta']},completion_scored=1)"
                 for label, r in results.items()
             ),
         )
@@ -566,38 +615,40 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
         cg.emit_chk(
             self.chk_seen,
             "CHK-TIMEOUT-PATHS",
-            "CHK-TIMEOUT-PATHS: calib_bound_smc_cycles={} trial_bound_smc_cycles={} "
-            "followon_bound_smc_cycles={} expired=0 last_busy={} "
-            "last_axi_clk_enable={}".format(
+            "CHK-TIMEOUT-PATHS: calib_cycles_used={}/{} bound; "
+            "trial_cycles_used={} max={}/{} bound; "
+            "followon_cycles_used={} max={}/{} bound; "
+            "last_busy={} last_axi_clk_enable={}".format(
+                self._p2_calib_cycles_used,
                 P2_CALIB_TIMEOUT_SMC,
+                ",".join(str(r["trial_cycles_used"]) for r in results.values()),
+                max(r["trial_cycles_used"] for r in results.values()),
                 P2_TRIAL_TIMEOUT_SMC,
+                ",".join(str(r["followon_cycles_used"]) for r in results.values()),
+                max(r["followon_cycles_used"] for r in results.values()),
                 P2_FOLLOWON_BOUND_SMC,
                 cg.sample_bit(self._dut(), "tb_zeroer_busy"),
                 int(self._dut().tb_zeroer_gated_axi_clk.value),
             ),
         )
 
-        expected_p2_pre_pass = [
-            "SETUP",
-            "FIRST-OP-BUSY",
-            "BOUNDARY-SWEEP(3-cells)",
-            "FOLLOWON-OBSERVED",
-        ]
-        p2_terms = [t for t, _ in self.fence if t in expected_p2_pre_pass]
-        assert p2_terms == expected_p2_pre_pass, f"P2 NONVAC fence order wrong: {p2_terms}"
+        # DUT-time claim over the P2 phases that bracket real simulation time.
+        # `FOLLOWON-OBSERVED` is marked at the same instant as
+        # `BOUNDARY-SWEEP(3-cells)` (the sweep is the follow-on observation), so
+        # it is outside the strictly-increasing list; its evidence is the
+        # per-cell completion/writes_delta asserted below.
+        expected_p2_timed = ["SETUP", "FIRST-OP-BUSY", "BOUNDARY-SWEEP(3-cells)"]
+        p2_fence = [(t, ts) for t, ts in self.fence if t in expected_p2_timed]
+        p2_times = cg.assert_fence_progress(p2_fence, expected_p2_timed)
+        followon = [ts for t, ts in self.fence if t == "FOLLOWON-OBSERVED"]
+        assert len(followon) == 1, f"FOLLOWON-OBSERVED marked {len(followon)} time(s)"
 
-        # All 3 required cells' evidence is now in the kept log (checkers
-        # emitted above). Fail the testcase, with a full summary, if any cell
-        # recorded a real mid-busy glitch or a missed completion -- this would
-        # be a DUT/RTL finding, not a test bug; per SMC_CG_P2_002 revision 2's
-        # approved contract, the inter-busy deassert gap (logged above in
-        # CHK-ZEROER-AXICLK-NOGLITCH's inter_busy_gap_* fields) is permitted
-        # and therefore excluded from `violations` -- only a mid-busy glitch
-        # (glitch_detail) or a missed same-cycle/1-after completion
-        # (completion_detail) can fail this testcase.
-        violations = [
-            r["glitch_detail"] for r in results.values() if r["glitch_detail"]
-        ] + [
+        # Every cell's evidence is in the kept log (checkers emitted above);
+        # fail the testcase with a full summary if any cell recorded a mid-busy
+        # glitch or a missed completion. Per SMC_CG_P2_002 the inter-busy
+        # deassert gap (logged in CHK-ZEROER-AXICLK-NOGLITCH's inter_busy_gap_*
+        # fields) is permitted and excluded from `violations`.
+        violations = [r["glitch_detail"] for r in results.values() if r["glitch_detail"]] + [
             r["completion_detail"] for r in results.values() if r["completion_detail"]
         ]
         assert not violations, (
@@ -606,14 +657,39 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
             "cells (full per-cell evidence above in CHK-ZEROER-AXICLK-NOGLITCH/"
             "-COMPLETION lines): " + " | ".join(violations)
         )
-        p2_nonvac_line = (
-            "CHK-NONVAC: SETUP < FIRST-OP-BUSY < BOUNDARY-SWEEP(3-cells) < "
-            "FOLLOWON-OBSERVED < PASS"
+        # Measured contrast carried inside the token: every swept cell must have
+        # actually observed its follow-on write-address phase and completed at
+        # least one write, and busy_hold must be a real, non-zero measurement.
+        # A vacuous sweep (no cell reaching the DUT) fails here, not silently.
+        assert busy_hold > 0, f"P2 busy_hold measured as {busy_hold} cycles"
+        cells_completed = sum(r["completed"] for r in results.values())
+        cells_writes = sum(r["writes_delta"] for r in results.values())
+        assert len(results) == len(P2_CELLS) and cells_writes > 0, (
+            f"P2 sweep vacuous: cells={len(results)}/{len(P2_CELLS)} "
+            f"writes_delta_total={cells_writes}"
         )
-        _LOG.info("%s", p2_nonvac_line)
-        self.chk_seen["CHK-NONVAC-P2"] = p2_nonvac_line
+        assert cells_completed == len(P2_CELLS), (
+            f"FOLLOWON-OBSERVED unproven: only {cells_completed}/{len(P2_CELLS)} "
+            f"swept cells completed their follow-on operation"
+        )
+        cg.emit_chk(
+            self.chk_seen,
+            "CHK-NONVAC-P2",
+            "CHK-NONVAC-P2: SETUP@{}ns < FIRST-OP-BUSY@{}ns < "
+            "BOUNDARY-SWEEP(3-cells)@{}ns (FOLLOWON-OBSERVED@{}ns) < PASS "
+            "busy_hold={} cells={} completed={} writes_delta_total={}".format(
+                p2_times[0],
+                p2_times[1],
+                p2_times[2],
+                followon[0],
+                busy_hold,
+                len(results),
+                cells_completed,
+                cells_writes,
+            ),
+        )
         cg.mark_fence(self.fence, "PASS")
-        _LOG.info("smc_zeroer_axiclk_cg_test_seq P2 extension PASS")
+        cocotb.log.info("smc_zeroer_axiclk_cg_test_seq P2 extension PASS")
 
     async def body(self) -> None:
         dut = self._dut()
@@ -640,9 +716,7 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
         await self._program_cg(zeroer_en=False)
         assert cg.sample_bit(dut, "tb_zeroer_cg_en") == 0
         await ClockCycles(dut.clk_smc_i, 4)
-        free = await cg.count_enabled_at_smc_rise(
-            dut, "tb_zeroer_gated_axi_clk", 4
-        )
+        free = await cg.count_enabled_at_smc_rise(dut, "tb_zeroer_gated_axi_clk", 4)
         assert free == 4, f"axi_clk not free-running under disable_cg: {free}"
         # Arm: measure latency from tb_zeroer_cg_en==1 (idle disable_cg=0) to gated-off.
         await self._program_cg(zeroer_en=True)
@@ -657,9 +731,10 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
         assert gate_off_lat <= 1, (
             f"axi_clk gate-off not within 1 cycle of idle: latency={gate_off_lat}"
         )
-        edges = await cg.count_enabled_at_smc_rise(
+        idle_enabled = await cg.count_enabled_at_smc_rise(
             dut, "tb_zeroer_gated_axi_clk", IDLE_OBSERVE
         )
+        edges = idle_enabled
         assert edges == 0, f"axi_clk still toggling idle: {edges}"
         within_1 = int(gate_off_lat <= 1)
         cg.emit_chk(
@@ -681,10 +756,7 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
             f"post_resume_cycles={post_resume_cycles}"
         )
         for _ in range(ZEROER_WAIT_CYCLES):
-            if (
-                self._write_count() >= start_writes + 1
-                or cg.sample_bit(dut, "tb_zeroer_busy") == 0
-            ):
+            if self._write_count() >= start_writes + 1 or cg.sample_bit(dut, "tb_zeroer_busy") == 0:
                 break
             await ClockCycles(dut.clk_smc_i, 1)
         await self._wait_zeroer_idle()
@@ -714,9 +786,10 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
         await self._program_cg(zeroer_en=False)
         assert cg.sample_bit(dut, "tb_zeroer_cg_en") == 0
         await ClockCycles(dut.clk_smc_i, 4)
-        edges = await cg.count_enabled_at_smc_rise(
+        disable_cg_enabled = await cg.count_enabled_at_smc_rise(
             dut, "tb_zeroer_gated_axi_clk", IDLE_OBSERVE
         )
+        edges = disable_cg_enabled
         assert edges == IDLE_OBSERVE, (
             f"axi_clk gated while disable_cg=1: edges={edges} window={IDLE_OBSERVE}"
         )
@@ -749,9 +822,7 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
             await RisingEdge(dut.clk_smc_i)
         else:
             raise AssertionError("TIMEOUT waiting rst_primary_smc_clk_no assert")
-        edges = await cg.count_enabled_at_smc_rise(
-            dut, "tb_zeroer_gated_axi_clk", IDLE_OBSERVE
-        )
+        edges = await cg.count_enabled_at_smc_rise(dut, "tb_zeroer_gated_axi_clk", IDLE_OBSERVE)
         assert edges == IDLE_OBSERVE, (
             f"axi_clk gated during reset: edges={edges} "
             f"rst_primary={int(dut.rst_primary_smc_clk_no.value)}"
@@ -764,31 +835,117 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
             f"edges={edges} window={IDLE_OBSERVE}",
         )
         cg.mark_fence(self.fence, "reset-override-observed")
-        # Release reset and allow bring-up to settle for subsequent VIP bookkeeping.
+        # Release reset and allow bring-up to settle for subsequent VIP
+        # bookkeeping. Bounded AND fail-on-expiry, matching the assert twin at
+        # the top of S4: a DUT that never releases the primary reset must fail
+        # at the wait that expired, not later and elsewhere
+        # ([TIMEOUT-MUST-FAIL]).
         dut.rst_cool_ni.value = 1
         for _ in range(BUSY_TIMEOUT_SMC):
             if int(dut.rst_primary_smc_clk_no.value) == 1:
                 break
             await RisingEdge(dut.clk_smc_i)
+        else:
+            raise AssertionError(
+                f"TIMEOUT waiting rst_primary_smc_clk_no deassert within "
+                f"{BUSY_TIMEOUT_SMC} smc cycles after rst_cool_ni release "
+                f"(rst_cool_ni={int(dut.rst_cool_ni.value)} "
+                f"rst_primary_smc_clk_no="
+                f"{int(dut.rst_primary_smc_clk_no.value)} "
+                f"axi_clk_enable={int(dut.tb_zeroer_gated_axi_clk.value)})"
+            )
         await ClockCycles(dut.clk_smc_i, 32)
 
-        cg.assert_fence_order(
+        # ---- S5: reset released -> the gater takes the clock back ----
+        # S5 measures whether the gater re-gates once the reset override is
+        # released: same probe, same IDLE_OBSERVE window as S4. A gater that
+        # latches the reset override reads IDLE_OBSERVE here and fails at
+        # CHK-NONVAC below. Both waits are bounded and raise on expiry.
+        await self._program_cg(zeroer_en=True)
+        assert cg.sample_bit(dut, "tb_zeroer_busy") == 0
+        post_reset_gate_off_lat = await cg.measure_gate_off_latency(
+            dut,
+            "tb_zeroer_gated_axi_clk",
+            max_smc=GATE_OFF_TIMEOUT_SMC,
+            diag_names=(
+                "tb_zeroer_busy",
+                "tb_zeroer_cg_en",
+                "rst_primary_smc_clk_no",
+            ),
+        )
+        post_reset_idle_enabled = await cg.count_enabled_at_smc_rise(
+            dut, "tb_zeroer_gated_axi_clk", IDLE_OBSERVE
+        )
+        cg.mark_fence(self.fence, "post-reset-regate-observed")
+
+        # `assert_fence_progress` requires strictly increasing simulation
+        # timestamps across the listed phases (order alone holds by
+        # construction) and returns them for the token below.
+        fence_times = cg.assert_fence_progress(
             self.fence,
             [
                 "idle-gate-off-observed",
                 "busy-enable-observed",
                 "disable-cg-observed",
                 "reset-override-observed",
+                "post-reset-regate-observed",
             ],
+        )
+        # `post_reset_idle_enabled` (S5) against `edges` (S4) on the same probe
+        # (tb_zeroer_gated_axi_clk) over the same IDLE_OBSERVE window: reset
+        # asserted -> IDLE_OBSERVE/IDLE_OBSERVE enabled, reset released and the
+        # block idle -> 0/IDLE_OBSERVE. A gater that latches its reset override,
+        # or never re-gates after a reset cycle, fails here.
+        assert post_reset_idle_enabled == 0 and edges == IDLE_OBSERVE, (
+            f"NONVAC reset-override contrast absent on tb_zeroer_gated_axi_clk: "
+            f"reset_override_enabled={edges}/{IDLE_OBSERVE} then, after reset "
+            f"release with the Zeroer idle and zeroer_cg_en=1, "
+            f"post_reset_idle_enabled={post_reset_idle_enabled}/{IDLE_OBSERVE} "
+            f"(gate-off latency after release={post_reset_gate_off_lat})"
+        )
+        # Refactor guards: `idle_enabled == 0` restates S1's assert,
+        # `disable_cg_enabled == IDLE_OBSERVE` restates S3's, and `enabled_hits
+        # == post_resume_cycles` restates S2's. They fail if a refactor drops an
+        # upstream assert, and the values they carry into the token are the
+        # evidence a reader falsifies the claim from.
+        assert idle_enabled == 0 and disable_cg_enabled == IDLE_OBSERVE, (
+            f"NONVAC contrast absent on tb_zeroer_gated_axi_clk: "
+            f"idle_enabled={idle_enabled}/{IDLE_OBSERVE} "
+            f"disable_cg_enabled={disable_cg_enabled}/{IDLE_OBSERVE}"
+        )
+        assert post_resume_cycles > 0 and enabled_hits == post_resume_cycles, (
+            f"NONVAC busy-window measurement vacuous: enabled_hits="
+            f"{enabled_hits} post_resume_cycles={post_resume_cycles}"
         )
         cg.emit_chk(
             self.chk_seen,
             "CHK-NONVAC",
-            "CHK-NONVAC: idle-gate-off-observed < busy-enable-observed < "
-            "disable-cg-observed < reset-override-observed < PASS",
+            "CHK-NONVAC: idle-gate-off-observed@{}ns < busy-enable-observed@{}ns "
+            "< disable-cg-observed@{}ns < reset-override-observed@{}ns "
+            "< post-reset-regate-observed@{}ns < PASS "
+            "idle_enabled={}/{} busy_enabled={}/{} disable_cg_enabled={}/{} "
+            "reset_override_enabled={}/{} "
+            "post_reset_gate_off_latency={} post_reset_idle_enabled={}/{}".format(
+                fence_times[0],
+                fence_times[1],
+                fence_times[2],
+                fence_times[3],
+                fence_times[4],
+                idle_enabled,
+                IDLE_OBSERVE,
+                enabled_hits,
+                post_resume_cycles,
+                disable_cg_enabled,
+                IDLE_OBSERVE,
+                edges,
+                IDLE_OBSERVE,
+                post_reset_gate_off_lat,
+                post_reset_idle_enabled,
+                IDLE_OBSERVE,
+            ),
         )
         cg.mark_fence(self.fence, "PASS")
-        _LOG.info("smc_zeroer_axiclk_cg_test_seq PASS")
+        cocotb.log.info("smc_zeroer_axiclk_cg_test_seq PASS")
 
-        # ---- P2 (SMC_CG_P2_002) extension: additive, P1 evidence above unchanged ----
+        # ---- P2 (SMC_CG_P2_002) extension ----
         await self._p2_extension()

@@ -20,19 +20,33 @@ static int rw_check32(uint32_t addr, uint32_t value) {
 }
 
 static int run_efuse_reg_sequence(void) {
-    if (rw_check32(OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_BASE_ADDR, 0x00001234u) != 0)
+    if (rw_check32(SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_BASE_ADDR, 0x00001234u) != 0)
         return -1;
-    if (rw_check32(OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR, 0x00000001u) != 0)
+    if (rw_check32(SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR, 0x00000001u) != 0)
         return -2;
-    if (rw_check32(OCH_SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_7_BASE_ADDR,
+        /*
+         * External efuse shim CSR path.
+         *
+         * EFUSE_TIMING_CTRL_7/8 exist only in register maps that generate the wide
+         * shim block; the narrow block's only register is EFUSE_BANK_INIT_TIME.
+         * Either branch proves the shim CSR path is alive and read/writable and
+         * nothing more.
+         */
+#ifdef SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_7_BASE_ADDR
+    if (rw_check32(SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_7_BASE_ADDR,
                    0x0000ABCDu) != 0)
         return -3;
-    if (rw_check32(OCH_SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_8_BASE_ADDR,
+    if (rw_check32(SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_8_BASE_ADDR,
                    0x00000020u) != 0)
         return -4;
+#else
+    if (rw_check32(SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_BASE_ADDR,
+                   0x00000020u) != 0)
+        return -3;
+#endif
 
     /* Read-only touchpoint to ensure token map access is alive. */
-    (void)READ_REG(OCH_SEP_TOP_EFUSE_MMR_TOKEN_EOP_BASE_ADDR);
+    (void)READ_REG(SEP_TOP_EFUSE_MMR_TOKEN_EOP_BASE_ADDR);
     return 0;
 }
 

@@ -1,28 +1,30 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// SEP watchdog-timer (WDT) firmware driver for the OSS tests. Header-only,
-// self-contained (register addresses are SEP fabric facts, matching
-// och_sep_top_reg / the aon_timer WDT instance @ 0x1080_1000).
+// SEP watchdog-timer (WDT) firmware driver for the OSS tests. Header-only.
+// Addresses and field masks come from generated sep_addr.h / aon_timer.h
+// (via sep.h).
 //
 // The WDT counts on clk_wdt_i. When the count reaches BARK_THOLD it raises the
-// bark interrupt (INTR_STATE bit 1), which in bare `sep` is wired to the CPU NMI
-// (sep.sv: nmi_int = intr_wdog_timer_bark). When it reaches BITE_THOLD it asserts
-// the WDT reset request (wdt_timer_rst_req_o). Writing WDOG_COUNT=0 pets it;
-// WDOG_CTRL=0 disables (freezes) it.
+// bark interrupt (INTR_STATE.wdog_timer_bark), which in bare `sep` is wired to
+// the CPU NMI (sep.sv: nmi_int = intr_wdog_timer_bark). When it reaches
+// BITE_THOLD it asserts the WDT reset request (wdt_timer_rst_req_o). Writing
+// WDOG_COUNT=0 pets it; WDOG_CTRL=0 disables (freezes) it.
 
 #ifndef SEP_WDT_H
 #define SEP_WDT_H
 
 #include <stdint.h>
 
-#define WDT_WDOG_CTRL_ADDR 0x1080101Cu // [0] = enable
-#define WDT_WDOG_BARK_THOLD_ADDR 0x10801020u
-#define WDT_WDOG_BITE_THOLD_ADDR 0x10801024u
-#define WDT_WDOG_COUNT_ADDR 0x10801028u
-#define WDT_INTR_STATE_ADDR 0x1080102Cu // [1] = wdog_timer_bark (W1C)
+#include "sep.h"
 
-#define WDT_INTR_BARK 0x2u // INTR_STATE bit 1
+#define WDT_WDOG_CTRL_ADDR SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR
+#define WDT_WDOG_BARK_THOLD_ADDR SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR
+#define WDT_WDOG_BITE_THOLD_ADDR SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR
+#define WDT_WDOG_COUNT_ADDR SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR
+#define WDT_INTR_STATE_ADDR SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR
+
+#define WDT_INTR_BARK AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm
 
 static inline void _sep_wdt_wr(uint32_t addr, uint32_t value) {
     *(volatile uint32_t *)addr = value;
@@ -46,7 +48,7 @@ static inline void wdt_set_bite(uint32_t thold) {
     _sep_wdt_wr(WDT_WDOG_BITE_THOLD_ADDR, thold);
 }
 static inline void wdt_enable(void) {
-    _sep_wdt_wr(WDT_WDOG_CTRL_ADDR, 0x1u);
+    _sep_wdt_wr(WDT_WDOG_CTRL_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm);
 }
 static inline void wdt_disable(void) {
     _sep_wdt_wr(WDT_WDOG_CTRL_ADDR, 0x0u);

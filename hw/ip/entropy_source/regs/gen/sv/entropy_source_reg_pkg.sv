@@ -90,7 +90,7 @@ package entropy_source_reg_pkg;
     } entropy_source__SHA256_STATUS__INPUT_COUNT__in_t;
 
     typedef struct {
-        logic [2:0] next;
+        logic [3:0] next;
     } entropy_source__SHA256_STATUS__OUTPUT_COUNT__in_t;
 
     typedef struct {
@@ -791,6 +791,46 @@ package entropy_source_reg_pkg;
     } entropy_source__DEBUG_CTRL__out_t;
 
     typedef struct {
+        logic value;
+    } entropy_source__INTR_STATUS__HEALTH_TEST_FAILED__out_t;
+
+    typedef struct {
+        logic value;
+    } entropy_source__INTR_STATUS__FIFO_ERROR__out_t;
+
+    typedef struct {
+        logic value;
+    } entropy_source__INTR_STATUS__FIFO_OVERFLOW__out_t;
+
+    typedef struct {
+        logic value;
+    } entropy_source__INTR_STATUS__FIFO_UNDERFLOW__out_t;
+
+    typedef struct {
+        logic value;
+    } entropy_source__INTR_STATUS__PERSISTENT_FAILURE__out_t;
+
+    typedef struct {
+        logic value;
+    } entropy_source__INTR_STATUS__AUTOTUNE_FAIL__out_t;
+
+    typedef struct {
+        logic value;
+    } entropy_source__INTR_STATUS__BIW_OBS_OVERFLOW__out_t;
+
+    typedef struct {
+        logic value;
+    } entropy_source__INTR_STATUS__NOISE_OBS_OVERFLOW__out_t;
+
+    typedef struct {
+        entropy_source__INTR_STATUS__HEALTH_TEST_FAILED__out_t HEALTH_TEST_FAILED;
+        entropy_source__INTR_STATUS__FIFO_ERROR__out_t FIFO_ERROR;
+        entropy_source__INTR_STATUS__FIFO_OVERFLOW__out_t FIFO_OVERFLOW;
+        entropy_source__INTR_STATUS__FIFO_UNDERFLOW__out_t FIFO_UNDERFLOW;
+        entropy_source__INTR_STATUS__PERSISTENT_FAILURE__out_t PERSISTENT_FAILURE;
+        entropy_source__INTR_STATUS__AUTOTUNE_FAIL__out_t AUTOTUNE_FAIL;
+        entropy_source__INTR_STATUS__BIW_OBS_OVERFLOW__out_t BIW_OBS_OVERFLOW;
+        entropy_source__INTR_STATUS__NOISE_OBS_OVERFLOW__out_t NOISE_OBS_OVERFLOW;
         logic intr;
     } entropy_source__INTR_STATUS__out_t;
 

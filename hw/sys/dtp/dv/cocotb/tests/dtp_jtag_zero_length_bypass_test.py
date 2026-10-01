@@ -3,8 +3,8 @@
 """DTP ZERO_LENGTH_BYPASS instruction test."""
 
 import pyuvm
-
 from dtp_base_test import dtp_base_test
+from env.dtp_scan_ref_model import STAP_ORDER
 from seq_lib.dtp_jtag_zero_length_bypass_test_seq import dtp_jtag_zero_length_bypass_test_seq
 
 
@@ -12,11 +12,14 @@ from seq_lib.dtp_jtag_zero_length_bypass_test_seq import dtp_jtag_zero_length_by
 class dtp_jtag_zero_length_bypass_test(dtp_base_test):
     """Run the DTP VPLAN zero-length bypass scenario."""
 
+    # The chain leg draws its STAP per pass, so every port carries a downstream TAP.
+    stap_ds_attach = STAP_ORDER
+
     async def run_scenario(self) -> None:
         await self.start_looped_seq(
             dtp_jtag_zero_length_bypass_test_seq,
             "jtag_zero_length_bypass_seq",
-            specific_env="DTP_JTAG_ZERO_LENGTH_BYPASS_TEST_LOOPS",
+            specific_knob="DTP_JTAG_ZERO_LENGTH_BYPASS_TEST_LOOPS",
             default_loops=16,
-            group_env="DTP_BASIC_JTAG_TEST_LOOPS",
+            group_knob="DTP_BASIC_JTAG_TEST_LOOPS",
         )

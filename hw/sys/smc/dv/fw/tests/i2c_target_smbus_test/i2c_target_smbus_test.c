@@ -151,9 +151,7 @@ int main(void) {
     // RESET & PLL //
     //-------------//
 
-    // Note: peripherals_out_of_reset() is no longer needed as peripherals
-    // are automatically taken out of reset by hardware
-    // peripherals_out_of_reset();
+    // Hardware releases the peripherals from reset.
 
     simputs("\n");
     simputs("################################################\n");
@@ -214,7 +212,7 @@ int main(void) {
     // Compute optimal timing parameters from physical characteristics
     i2c_timing_physical_t physical_params = {
         .speed = I2C_SPEED_STANDARD, // 100 kHz
-        .clock_period_nanos = 10,    // 100 MHz system clock (1/100MHz = 10ns)
+        .clock_period_nanos = 5,     // 200 MHz peripheral clock
         .sda_rise_nanos = 300,       // Typical for 4.7k pullup
         .sda_fall_nanos = 100,       // Typical fall time
         .scl_period_nanos = 0        // Auto (use minimum for standard mode = 10us)
@@ -310,7 +308,7 @@ int main(void) {
     for (volatile uint32_t i = 0; i < 1000; i++)
         ;
 
-    // Fail-closed: SMBUS_STATUS.SMBALERT must be observed asserted before ARA clear wait
+    // Fail-closed: SMBUS_CTRL.SMBALERT must read back asserted before the ARA clear wait
     bool alert_status = smbus_get_alert_ctrl(TARGET_IDX);
     if (!alert_status) {
         simputs("  ERROR: SMBUS_CTRL.SMBALERT not set after i2c_smbus_alert(true)\n");

@@ -1,0 +1,91 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= HMAC-SHA2
+:description: SEP HMAC-SHA2 integration, host interface, and Key Manager key delivery.
+
+[[hmac-sha2]]
+
+The HMAC component is based on the
+https://opentitan.org/book/hw/ip/hmac/index.html[OpenTitan HMAC] design.
+
+[[sep-hmac-reference-diagram]]
+.OpenTitan HMAC core reference architecture
+image::opentitan_hmac.svg[alt="OpenTitan HMAC core reference architecture",width=100%,pdfwidth=100%]
+
+<<sep-hmac-reference-diagram>> shows the upstream core. The OCAH bus, key-delivery, and entropy
+connections are described in the integration details below.
+
+[[och-modifications-4]]
+== OCAH Modifications
+
+* AXI4-lite key bus slave interface replaces side loading interface
+* AXI4-lite control/status bus slave interface
+
+The crypto interconnect narrows HMAC's host path from 64-bit AXI to 32-bit AXI,
+converts and isolates it as AXI-Lite, then `hmac_wrapper` bridges it to TL-UL
+for the `tt_hmac` core. The address path subtracts the HMAC base address and
+masks to a 13-bit window (8 KB), accommodating both the register space and the
+message FIFO window at offset `0x1000`. HMAC exposes a single fatal
+ifdef::backend-html5[]
+alert channel (index `[0]` in xref:sep:crypto.adoc#sep-crypto-alert-policy[OpenTitan Alert Termination]), three interrupts
+endif::backend-html5[]
+ifdef::backend-pdf[]
+alert channel (index `[0]` in <<sep-crypto-alert-policy>>), three interrupts
+endif::backend-pdf[]
+(`done`, `fifo_empty`, `err`), and an `idle_o` status output. Unlike the other
+crypto wrappers, HMAC has no EDN connection.
+
+The Key Manager delivers a 256-bit HMAC key as eight words per share, in the
+ifdef::backend-html5[]
+format given in xref:sep:crypto.adoc#km-key-delivery[Key Manager Key Delivery]. HMAC has no select bit: the delivered key
+endif::backend-html5[]
+ifdef::backend-pdf[]
+format given in <<km-key-delivery>>. HMAC has no select bit: the delivered key
+endif::backend-pdf[]
+is used in preference to the engine's software key registers whenever
+`KEY_CTRL.KEY_VALID` is set.
+
+The delivered key is most-significant-bit justified in the engine's 1024-bit
+key field, and the engine takes its key length from `CFG.key_length`, which the
+delivery path does not write. Software shall program `CFG.key_length` to the
+256-bit encoding to match the delivered key. An unset or unsupported length
+raises a configuration error when hashing starts. A supported length that
+disagrees with the delivered key does not raise an error: the engine takes key
+material from the top of the 1024-bit field, so the padding below the delivered
+key is mixed into the key and the resulting digest is wrong but repeatable.
+
+Consult the
+https://opentitan.org/book/hw/ip/hmac/index.html[OpenTitan HMAC
+documentation] for the authoritative core functionality of the IP. The
+ifdef::backend-html5[]
+register map follows below.
+endif::backend-html5[]
+ifdef::backend-pdf[]
+register map follows below.
+endif::backend-pdf[]
+
+== Memory Map and Register Reference
+
+ifdef::backend-html5[]
+++++
+<span id="register-reference"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
+
+Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.
+
+=== Detailed Register Map
+
+ifdef::backend-html5[]
+++++
+include::ip:partial$hmac/regs/gen/html/hmac.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc[leveloffset=+2]
+endif::backend-pdf[]

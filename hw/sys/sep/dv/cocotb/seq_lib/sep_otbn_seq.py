@@ -11,23 +11,24 @@ sep_km_otbn_sideload_kat_test_seq run mechanics.
 
 from __future__ import annotations
 
-from sep_reg_meta import sym, OTBN
-
 import cocotb
 from cocotb.triggers import ClockCycles
+from sep_reg_meta import OTBN, sym
 
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
-# OTBN SEP register map (direct AXI; OTBN RAL offsets are unreliable).
+# OTBN SEP register map (direct AXI).
 OTBN_BASE = sym("OTBN_REG_MAP_BASE_ADDR")
-OTBN_ADDR_CMD = OTBN_BASE + 0x010
-OTBN_ADDR_STATUS = OTBN_BASE + 0x018
-OTBN_ADDR_ERRBIT = OTBN_BASE + 0x01C
+OTBN_ADDR_CMD = OTBN.addr("CMD")
+OTBN_ADDR_STATUS = OTBN.addr("STATUS")
+OTBN_ADDR_ERRBIT = OTBN.addr("ERR_BITS")
 OTBN_ADDR_LOAD_CHECKSUM = OTBN.addr("LOAD_CHECKSUM")
 OTBN_LOAD_CHECKSUM_RESET = OTBN.reset32("LOAD_CHECKSUM")
 OTBN_IMEM_BASE = sym("OTBN_IMEM_MEM_BASE_ADDR")
 OTBN_DMEM_BASE = sym("OTBN_DMEM_MEM_BASE_ADDR")
 
+# CMD.cmd EXECUTE and STATUS IDLE / LOCKED from
+# vendor/lowRISC/opentitan/upstream/hw/ip/otbn/data/otbn.hjson.
 OTBN_CMD_EXECUTE = 0x0000_00D8
 OTBN_STATUS_IDLE = 0x0000_0000
 OTBN_STATUS_LOCK = 0x0000_00FF
@@ -81,6 +82,33 @@ OTBN_KEYDUMP_PROG = (
     0x00000073,  # ecall
 )
 
+# OTBN RND drain program (OTBN_RND_PROG). Each `csrrs x10, RND, x0` reads the
+# RND CSR. The OTBN ISA specification
+# (`vendor/lowRISC/opentitan/upstream/hw/ip/otbn/data/csr.yml`, `rnd`) puts RND
+# at address 0xfc0, states that the number "is sourced from the EDN via a single
+# -entry cache", and that "reads when the cache is empty will cause OTBN to be
+# stalled until a new random number is fetched from the EDN". That stall is what
+# holds `crypto_edn_req[2]` for the request checker, and the single-entry cache
+# is why each read is a new EDN fetch rather than a re-read of a latched word.
+# No RND_PREFETCH (0x7d8) is issued, so the first read stalls. Stores the four
+# words to DMEM 0x00..0x0C for the host.
+OTBN_RND_PROG = (
+    0x00000313,  # addi   x6, x0, 0        (dmem base 0x00)
+    0xFC002573,  # csrrs  x10, 0xFC0, x0   RND read 1
+    0x00A32023,  # sw     x10, 0(x6)
+    0xFC002573,  # csrrs  x10, 0xFC0, x0   RND read 2
+    0x00A32223,  # sw     x10, 4(x6)
+    0xFC002573,  # csrrs  x10, 0xFC0, x0   RND read 3
+    0x00A32423,  # sw     x10, 8(x6)
+    0xFC002573,  # csrrs  x10, 0xFC0, x0   RND read 4
+    0x00A32623,  # sw     x10, 12(x6)
+    0x00000073,  # ecall
+)
+
+# Number of RND CSR reads OTBN_RND_PROG retires, and the DMEM words it leaves.
+OTBN_RND_READS = 4
+OTBN_DMEM_RND_BASE = 0x00
+
 
 class SepOtbn(SepAxiRegDriver):
     """Direct-AXI OTBN run control. The test owns one instance.
@@ -114,8 +142,17 @@ class SepOtbn(SepAxiRegDriver):
             await self._wr(OTBN_IMEM_BASE + i * 4, word)
         self.log.info("OTBN loaded %d-word program into IMEM", len(prog))
 
-    async def execute(self) -> None:
+    async def start_execute(self) -> None:
+        """Issue EXECUTE and return without polling STATUS.
+
+        A program that blocks on an entropy CSR holds its `crypto_edn_req` bit
+        while it waits, so a caller that wants to observe that request must not
+        be sitting in wait_idle() when it happens.
+        """
         await self._wr(OTBN_ADDR_CMD, OTBN_CMD_EXECUTE)
+
+    async def execute(self) -> None:
+        await self.start_execute()
         await self.wait_idle("post-execute")
 
     async def read_errbits(self) -> int:
@@ -144,8 +181,10 @@ class SepOtbn(SepAxiRegDriver):
         the 4 upper words of result_hi (the zero pad above the 384b key)."""
         res_lo = await self.read_dmem_words(OTBN_DMEM_RESULT_LO, 8)
         res_hi = await self.read_dmem_words(OTBN_DMEM_RESULT_HI, 8)
-        share0 = (await self.read_dmem_words(OTBN_DMEM_SHARE0_LO, 8)) + \
-                 (await self.read_dmem_words(OTBN_DMEM_SHARE0_HI, 8))[:4]
-        share1 = (await self.read_dmem_words(OTBN_DMEM_SHARE1_LO, 8)) + \
-                 (await self.read_dmem_words(OTBN_DMEM_SHARE1_HI, 8))[:4]
+        share0 = (await self.read_dmem_words(OTBN_DMEM_SHARE0_LO, 8)) + (
+            await self.read_dmem_words(OTBN_DMEM_SHARE0_HI, 8)
+        )[:4]
+        share1 = (await self.read_dmem_words(OTBN_DMEM_SHARE1_LO, 8)) + (
+            await self.read_dmem_words(OTBN_DMEM_SHARE1_HI, 8)
+        )[:4]
         return res_lo + res_hi[:4], share0, share1, res_hi[4:]

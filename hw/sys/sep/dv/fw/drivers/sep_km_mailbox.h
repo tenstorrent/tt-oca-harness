@@ -2,24 +2,23 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // SEP-side (EL2) driver for the KM <-> SEP mailbox, used to coordinate the EL2
-// host CPU with the Key Manager's PicoRV32 second core. Header-only,
-// self-contained (addresses are SEP fabric facts, matching km_mailbox_sep.rdl /
-// och_sep_top_reg). The KM core uses its own KM-local aliases; this header is
-// the host/EL2 view at the SEP-local 0x1092_0000 aperture.
+// host CPU with the Key Manager's PicoRV32 second core. Header-only. Addresses
+// and STATUS bits come from generated sep_addr.h / km_mailbox_sep.h (via sep.h).
+// The KM core uses its own KM-local aliases; this header is the host/EL2 view.
 
 #ifndef SEP_KM_MAILBOX_H
 #define SEP_KM_MAILBOX_H
 
 #include <stdint.h>
 
-// KM<->SEP mailbox, host (SEP/EL2) side.
-#define SEP_KM_MBOX_WRITE_DATA 0x10920000u      // EL2 -> KM payload
-#define SEP_KM_MBOX_WRITE_SEPARATOR 0x10920004u // write 1 to frame a message
-#define SEP_KM_MBOX_READ_DATA 0x10920008u       // KM -> EL2 payload
-#define SEP_KM_MBOX_STATUS 0x1092000Cu          // SEP_STATUS
+#include "sep.h"
 
-// SEP_STATUS bits.
-#define SEP_KM_MBOX_OUTBOUND_EMPTY (1u << 2) // KM->EL2 FIFO empty when set
+#define SEP_KM_MBOX_WRITE_DATA SEP_TOP_KM_MAILBOX_SEP_SEP_WRITE_DATA_BASE_ADDR
+#define SEP_KM_MBOX_WRITE_SEPARATOR SEP_TOP_KM_MAILBOX_SEP_SEP_WRITE_SEPARATOR_BASE_ADDR
+#define SEP_KM_MBOX_READ_DATA SEP_TOP_KM_MAILBOX_SEP_SEP_READ_DATA_BASE_ADDR
+#define SEP_KM_MBOX_STATUS SEP_TOP_KM_MAILBOX_SEP_SEP_STATUS_BASE_ADDR
+
+#define SEP_KM_MBOX_OUTBOUND_EMPTY KM_MAILBOX_SEP__STATUS_REG__OUTBOUND_EMPTY_bm
 
 static inline uint32_t sep_km_mbox_rd(uint32_t addr) {
     return *(volatile uint32_t *)addr;

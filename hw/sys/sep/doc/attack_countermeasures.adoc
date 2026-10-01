@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= Attack Countermeasures
+:description: SEP architectural, debug, and DFT security protections.
+
 [[attack-countermeasures]]
-==== Attack Countermeasures
 
 Countermeasures include:
 
@@ -20,7 +22,7 @@ e.g. cryptographic keys
 * Obfuscate data stored in SRAM and OTP memories
 
 [[debug-and-dft-security-considerations]]
-==== Debug and DFT Security Considerations
+== Debug and DFT Security Considerations
 
 The debug facilities and DFT share the scan chain infrastructure for
 their respective tasks. This is a security hazard as certain secret
@@ -53,7 +55,7 @@ secret-bearing, plus the fuse program path), group 3 = Class 1 (secrets and
 integrity-critical control fields).
 
 [[debug-and-scan-dump]]
-===== Debug and Scan Dump
+=== Debug and Scan Dump
 
 Debug mode is enabled when in-field debug is granted, via demotion (DEMOTE_1 /
 DEMOTE_2) or an RMA debug state (RMA_SIP / RMA_CHIPLET). In
@@ -80,12 +82,12 @@ these consumers, so a permitted test shift moves no real secret.
 chain (never scannable):
 
 * Class 1a (confidentiality): UIDs, `CLASS_KEY`, token-plaintext input
-registers (`*_TOKEN_I`).
+registers (`*_TOKEN_I`), raw fuse read-back data.
 * Class 1b (integrity): `LOCKS`/`LOCKS_SPARE`, `LC_STATE`, `SIP_DIS`, `SYS_DIS`,
 `*_TOKEN_DIGEST` shadow registers.
 
 [[class-2-asset-manifest]]
-===== Class 2 Asset Manifest and Naming
+=== Class 2 Asset Manifest and Naming
 
 The authoritative class definitions, scan-chain policy, and gating rules are
 in the Lifecycle Controller chapter (_Asset and Scan-Chain Protection_); Key
@@ -97,17 +99,18 @@ distribution logic that retains key, seed, random, digest-working, or round-key
 state. Classifying complete instances deliberately includes their control
 flops and avoids fragile per-register marking.
 
-The current SEP implementation has exactly 10 Class 2a RTL scan roots:
+The current SEP implementation has exactly 11 Class 2a RTL scan roots:
 
-* `sep_crypto.hmac_wrapper_s3c_scan`
-* `sep_crypto.sep_crypto_otbn_wrapper_s3c_scan`
-* `sep_crypto.aes_wrapper_s3c_scan`
-* `sep_crypto.kmac_wrapper_s3c_scan`
-* `sep_crypto.u_sep_crypto_abr_wrapper_s3c_scan`
-* `sep_crypto.u_sep_trng.u_entropy_source_s3c_scan`
-* `sep_crypto.u_sep_trng.u_drbg_s3c_scan`
-* `sep_crypto.u_axis_edn_crypto_s3c_scan`
-* `sep_crypto.u_key_manager_s3c_scan`
+* `u_sep_crypto.u_hmac_wrapper_s3c_scan`
+* `u_sep_crypto.u_sep_crypto_otbn_wrapper_s3c_scan`
+* `u_sep_crypto.u_aes_wrapper_s3c_scan`
+* `u_sep_crypto.u_kmac_wrapper_s3c_scan`
+* `u_sep_crypto.u_sep_crypto_abr_wrapper_s3c_scan`
+* `u_sep_crypto.u_sep_trng.u_entropy_source_s3c_scan`
+* `u_sep_crypto.u_sep_trng.u_drbg_s3c_scan`
+* `u_sep_crypto.u_axis_edn_crypto_s3c_scan`
+* `u_sep_crypto.u_axis_edn_pool_s3c_scan`
+* `u_sep_crypto.u_key_manager_s3c_scan`
 * `u_trng_wrapper_s3c_scan`
 
 The `_s3c_scan` suffix is reserved for Class 2 instance and generate-scope
@@ -133,7 +136,7 @@ of the fuse controller stays Class 3, so the implementation must identify the
 program-path scan roots and name them accordingly.
 
 [[secure-test-mode-secure_tm-secure-test-mode-secure_tm]]
-===== Secure Test Mode (SECURE_TM)
+=== Secure Test Mode (SECURE_TM)
 
 We assert a GPIO pin strap to enable secure test mode. This generates
 the SECURE_TM signal which is consumed by

@@ -9,7 +9,6 @@ import fnmatch
 import hashlib
 import re
 from dataclasses import dataclass, field
-from datetime import date as calendar_date
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -17,7 +16,6 @@ from urllib.parse import urlparse
 from .config import load_toml
 from .coverage_model import CoverageDetails, CoverageObservation, percentage
 from .models import ConfigError
-
 
 POLICY_SCHEMA_VERSION = 1
 ALLOWED_CATEGORIES = {
@@ -54,9 +52,25 @@ SELECTOR_FIELDS = {
     "line",
     "hierarchy",
 }
+HOLE_KEYS = {
+    "id",
+    "title",
+    "category",
+    "disposition",
+    "status",
+    "confidence",
+    "rationale",
+    "owner",
+    "reviewer",
+    "issues",
+    "expected_matches",
+    "native",
+}
 GITHUB_ISSUE_RE = re.compile(
     r"^https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/issues/[1-9][0-9]*$"
 )
+NATIVE_FILE_KEYS = {"tool", "role", "path", "apply_phase", "args", "sha256"}
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
 @dataclass(frozen=True)
@@ -92,8 +106,6 @@ class HoleRule:
     rationale: str
     owner: str
     reviewer: str
-    date: str
-    expires: str | None
     issues: list[str]
     expected_matches: int
     selectors: list[dict[str, Any]]
@@ -153,9 +165,7 @@ def _string_list(value: Any, where: str) -> list[str]:
 def _validate_issue_urls(values: list[str], where: str) -> None:
     for value in values:
         if not GITHUB_ISSUE_RE.fullmatch(value):
-            raise ConfigError(
-                f"{where} must contain full GitHub issue URLs, got `{value}`"
-            )
+            raise ConfigError(f"{where} must contain full GitHub issue URLs, got `{value}`")
 
 
 def safe_issue_url(value: str) -> bool:
@@ -208,10 +218,11 @@ def _load_native_files(
     policy_path: Path,
 ) -> list[NativePolicyFile]:
     files: list[NativePolicyFile] = []
-    for index, table in enumerate(
-        _as_table_list(data.get("native_files"), "native_files")
-    ):
+    for index, table in enumerate(_as_table_list(data.get("native_files"), "native_files")):
         where = f"{policy_path} [[native_files]] #{index + 1}"
+        unknown = sorted(set(table) - NATIVE_FILE_KEYS)
+        if unknown:
+            raise ConfigError(f"{where}: unsupported key(s): {', '.join(unknown)}")
         raw_path = Path(_required_string(table, "path", where)).expanduser()
         resolved = raw_path if raw_path.is_absolute() else policy_path.parent / raw_path
         if not resolved.is_file():
@@ -222,6 +233,16 @@ def _load_native_files(
         args = _string_list(table.get("args"), f"{where}.args")
         if args and not any("{path}" in value for value in args):
             raise ConfigError(f"{where}.args must reference `{{path}}`")
+        digest = _sha256(resolved)
+        # A recorded digest pins the reviewed file: a regenerated file takes a new review.
+        pinned = _optional_string(table, "sha256", where)
+        if pinned is not None:
+            if not SHA256_RE.fullmatch(pinned):
+                raise ConfigError(f"{where}.sha256 must be 64 lowercase hexadecimal digits")
+            if pinned != digest:
+                raise ConfigError(
+                    f"{where}.sha256 does not match {resolved}: recorded {pinned}, file {digest}"
+                )
         files.append(
             NativePolicyFile(
                 tool=_required_string(table, "tool", where),
@@ -229,7 +250,7 @@ def _load_native_files(
                 path=resolved.resolve(),
                 apply_phase=phase,
                 args=args,
-                sha256=_sha256(resolved),
+                sha256=digest,
             )
         )
     return files
@@ -240,6 +261,9 @@ def _load_holes(data: dict[str, Any], path: Path) -> list[HoleRule]:
     seen: set[str] = set()
     for index, table in enumerate(_as_table_list(data.get("holes"), "holes")):
         where = f"{path} [[holes]] #{index + 1}"
+        unknown = sorted(set(table) - HOLE_KEYS)
+        if unknown:
+            raise ConfigError(f"{where}: unsupported key(s): {', '.join(unknown)}")
         hole_id = _required_string(table, "id", where)
         if hole_id in seen:
             raise ConfigError(f"{where}: duplicate hole id `{hole_id}`")
@@ -259,19 +283,6 @@ def _load_holes(data: dict[str, Any], path: Path) -> list[HoleRule]:
         rationale = _required_string(table, "rationale", where)
         owner = _required_string(table, "owner", where)
         reviewer = _required_string(table, "reviewer", where)
-        date = _required_string(table, "date", where)
-        expires = _optional_string(table, "expires", where)
-        for field_name, date_value in (("date", date), ("expires", expires)):
-            if date_value and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date_value):
-                raise ConfigError(f"{where}.{field_name} must use YYYY-MM-DD")
-        if (
-            status == "accepted"
-            and expires
-            and calendar_date.fromisoformat(expires) < calendar_date.today()
-        ):
-            raise ConfigError(
-                f"{where}: accepted waiver/exclusion expired on {expires}"
-            )
         issues = _string_list(table.get("issues"), f"{where}.issues")
         _validate_issue_urls(issues, f"{where}.issues")
         if status == "open" and disposition in ACTIONABLE_DISPOSITIONS and not issues:
@@ -291,15 +302,11 @@ def _load_holes(data: dict[str, Any], path: Path) -> list[HoleRule]:
             raise ConfigError(f"{where}.expected_matches must be a positive integer")
         selectors = _as_table_list(table.get("native"), f"{where}.native")
         if not selectors:
-            raise ConfigError(
-                f"{where}: at least one [[holes.native]] selector is required"
-            )
+            raise ConfigError(f"{where}: at least one [[holes.native]] selector is required")
         for selector in selectors:
             unknown = sorted(set(selector) - SELECTOR_FIELDS)
             if unknown:
-                raise ConfigError(
-                    f"{where}: unsupported selector key(s): {', '.join(unknown)}"
-                )
+                raise ConfigError(f"{where}: unsupported selector key(s): {', '.join(unknown)}")
             if not selector:
                 raise ConfigError(f"{where}: empty native selector is not allowed")
         holes.append(
@@ -313,8 +320,6 @@ def _load_holes(data: dict[str, Any], path: Path) -> list[HoleRule]:
                 rationale=rationale,
                 owner=owner,
                 reviewer=reviewer,
-                date=date,
-                expires=expires,
                 issues=issues,
                 expected_matches=expected,
                 selectors=selectors,
@@ -415,9 +420,7 @@ def apply_coverage_policy(
         matches = [
             observation
             for observation in details.observations
-            if any(
-                _selector_matches(observation, selector) for selector in rule.selectors
-            )
+            if any(_selector_matches(observation, selector) for selector in rule.selectors)
         ]
         if len(matches) != rule.expected_matches:
             raise ConfigError(
@@ -486,9 +489,7 @@ def evaluate_thresholds(
         ]
         if rule.scope != "*":
             if details.observations_complete and scoped_observations:
-                covered = sum(
-                    1 for observation in scoped_observations if observation.covered
-                )
+                covered = sum(1 for observation in scoped_observations if observation.covered)
                 excluded = sum(
                     1
                     for observation in scoped_observations
@@ -505,16 +506,10 @@ def evaluate_thresholds(
                 percent = None
         else:
             records = [
-                metric
-                for metric in details.metrics
-                if metric.metric_family == rule.metric_family
+                metric for metric in details.metrics if metric.metric_family == rule.metric_family
             ]
             percent_values = [
-                (
-                    metric.raw_percent
-                    if rule.population == "raw"
-                    else metric.effective_percent
-                )
+                (metric.raw_percent if rule.population == "raw" else metric.effective_percent)
                 for metric in records
             ]
             available = [value for value in percent_values if value is not None]

@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# LC_STATE raw 0x9: outside every encoding the lifecycle controller decodes, so
+# INVALID to both the LCC and the ROM (SEP-ROM-FUSE-020).
+#
+# Used by sep_rom_lc_state_invalid_test.
+
+[LC_STATE]
+  # Differentially encoded {~raw[3:0], raw[3:0]}: raw 0x9 stores as 0x69. The
+  # pair is complementary, so the LCC's signal-integrity check passes and the
+  # state reaches its INVALID decode rather than a fault.
+  [LC_STATE.fields.lc_state]
+  value = 0x69

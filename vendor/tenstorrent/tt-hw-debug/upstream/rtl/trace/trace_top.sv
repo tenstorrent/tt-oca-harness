@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 // Trace: Holds trace_network and trace_funnel. Instantiated by trace_top,
 // which retains clock gating, reset derivation, functional clamps and trace_mem.
 
@@ -6,6 +8,7 @@ import tn_pkg::*;
 import ntr_sink_mmr_pkg::*;
 import dst_sink_mmr_pkg::*;
 import funnel_mmr_pkg::*;
+
 #(
 	parameter NUM_CORES = 8,
 	parameter NUM_CORES_WIDTH = (NUM_CORES == 1) ? 1 : $clog2(NUM_CORES),

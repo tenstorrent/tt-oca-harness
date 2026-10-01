@@ -10,8 +10,12 @@
   <ipxact:memoryMaps>
     <ipxact:memoryMap>
       <ipxact:name>uart_log_engine_wrap</ipxact:name>
+      <ipxact:displayName>UART Log Engine Wrapper Address Map</ipxact:displayName>
+      <ipxact:description>Composes the UART 16550 core, log engine, and their control registers for one UART instance.</ipxact:description>
       <ipxact:addressBlock>
         <ipxact:name>uart_log_engine_ctrl</ipxact:name>
+        <ipxact:displayName>UART Log Engine Control Address Map</ipxact:displayName>
+        <ipxact:description>Top-level enable register for the UART log-engine block.</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
         <ipxact:range>'h4</ipxact:range>
         <ipxact:width>32</ipxact:width>
@@ -765,7 +769,8 @@ writing `0` releases it.</ipxact:description>
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>log_engine</ipxact:name>
-        <ipxact:description>Log Engine</ipxact:description>
+        <ipxact:displayName>Log Engine Address Map</ipxact:displayName>
+        <ipxact:description>Configuration and status registers for the UART log engine, including the log region and write pointers.</ipxact:description>
         <ipxact:baseAddress>'h200</ipxact:baseAddress>
         <ipxact:range>'h80</ipxact:range>
         <ipxact:width>64</ipxact:width>
@@ -795,7 +800,12 @@ Log Engine and resets all FSMs, flops, and FIFOs.</ipxact:description>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>LOG_REGION_SIZE</ipxact:name>
-            <ipxact:description>Log Region Size. Specified in bytes. Needs to be a multiple of 16.</ipxact:description>
+            <ipxact:description>Log region size in bytes. Supported values are at most 512 KiB and aligned
+to 128 bytes (16 slots times the 8-byte fetch beat). If software programs a
+larger value, RTL clamps the effective region to 512 KiB. For a value that is
+not 128-byte aligned, RTL divides the effective region among the 16 slots and
+rounds each slot's transferable capacity down to complete 8-byte fetch beats.
+A requested LOG_LEN above that capacity is clamped to the capacity.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -825,15 +835,28 @@ Log Engine and resets all FSMs, flops, and FIFOs.</ipxact:description>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>LOG_REGION_ADDR_HI</ipxact:name>
-            <ipxact:description>Log Region Start Address High.</ipxact:description>
+            <ipxact:description>Log Region Start Address High. Contains fabric address bits [55:32].</ipxact:description>
             <ipxact:bitOffset>32</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
                 <ipxact:value>'h0</ipxact:value>
               </ipxact:reset>
             </ipxact:resets>
-            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:bitWidth>24</ipxact:bitWidth>
             <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>RESERVED</ipxact:name>
+            <ipxact:description>Reserved. Reads as zero; writes are ignored.</ipxact:description>
+            <ipxact:bitOffset>56</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>8</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>

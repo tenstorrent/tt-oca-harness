@@ -6,8 +6,9 @@
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: dma_ctrl</h2>
-<h2>Register List:</h2>
+<h2 id="regmap-dma_ctrl">iDMA Controller Address Map</h2>
+<p>Source, destination, length, and control registers for the iDMA data-mover engine.</p>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#CONFIG">CONFIG</a></td><td>RW</td><td>-</td></tr>
@@ -72,7 +73,7 @@
 <tr><td>0x130</td><td><a href="#NUM_REPETITIONS_LO">NUM_REPETITIONS_LO</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x134</td><td><a href="#NUM_REPETITIONS_HI">NUM_REPETITIONS_HI</a></td><td>RW</td><td>-</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="CONFIG">CONFIG</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -89,97 +90,97 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
 <h3 id="STATUS_1">STATUS_1</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
 <h3 id="STATUS_2">STATUS_2</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
 <h3 id="STATUS_3">STATUS_3</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
 <h3 id="STATUS_4">STATUS_4</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
 <h3 id="STATUS_5">STATUS_5</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
 <h3 id="STATUS_6">STATUS_6</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
 <h3 id="STATUS_7">STATUS_7</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
 <h3 id="STATUS_8">STATUS_8</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
 <h3 id="STATUS_9">STATUS_9</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
 <h3 id="STATUS_10">STATUS_10</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
 <h3 id="STATUS_11">STATUS_11</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
 <h3 id="STATUS_12">STATUS_12</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
 <h3 id="STATUS_13">STATUS_13</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
 <h3 id="STATUS_14">STATUS_14</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
 <h3 id="STATUS_15">STATUS_15</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
 <h3 id="NEXT_ID_0">NEXT_ID_0</h3>
 <table>

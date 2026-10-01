@@ -18,10 +18,11 @@ import os
 import sys
 from pathlib import Path
 
-from systemrdl import RDLCompiler, RDLCompileError, RDLWalker
+from systemrdl import RDLCompileError, RDLCompiler, RDLWalker
 from systemrdl.node import AddressableNode, MemNode
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from common.rdlview import parse_rdl_params  # noqa: E402
 from common.regcollect import FieldCollector, build_struct_fields, compute_default  # noqa: E402
 
 SCRIPT_VERSION = "r2026-08-30"
@@ -52,16 +53,22 @@ class PyListener(FieldCollector):
             return
         name = node.get_path_segment()
         if self.shorten_names or node.parent == self.root:
-            def_name = node.get_path_segment(array_suffix="_{index:d}_").upper() \
-                if self.shorten_names else name.upper()
+            def_name = (
+                node.get_path_segment(array_suffix="_{index:d}_").upper()
+                if self.shorten_names
+                else name.upper()
+            )
         else:
             def_name = self.def_name(node)
 
         if node.parent == self.root:
             # Top-level addrmap base is 0 in the spec; use the lowest child address.
             base = min(
-                (c.absolute_address for c in node.children(unroll=True)
-                 if isinstance(c, AddressableNode)),
+                (
+                    c.absolute_address
+                    for c in node.children(unroll=True)
+                    if isinstance(c, AddressableNode)
+                ),
                 default=0,
             )
             size = node.size - base
@@ -74,12 +81,16 @@ class PyListener(FieldCollector):
 
     def enter_Regfile(self, node):
         if self.under_target:
-            self.addr_lines.append(self.const(self.def_name(node) + "_REG_FILE_BASE_ADDR", node.absolute_address))
+            self.addr_lines.append(
+                self.const(self.def_name(node) + "_REG_FILE_BASE_ADDR", node.absolute_address)
+            )
             self.addr_lines.append(self.const(self.def_name(node) + "_REG_FILE_SIZE", node.size))
 
     def enter_Mem(self, node):
         if self.under_target:
-            self.addr_lines.append(self.const(self.def_name(node) + "_MEM_BASE_ADDR", node.absolute_address))
+            self.addr_lines.append(
+                self.const(self.def_name(node) + "_MEM_BASE_ADDR", node.absolute_address)
+            )
             self.addr_lines.append(self.const(self.def_name(node) + "_MEM_SIZE", node.size))
 
     def enter_Reg(self, node):
@@ -186,22 +197,38 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("input_rdl_file")
     parser.add_argument("output_py_file")
-    parser.add_argument("-u", "--udp_rdl_file", required=True,
-                        help="PeakRDL UDP RDL file (./regblock_udps.rdl)")
+    parser.add_argument(
+        "-u", "--udp_rdl_file", required=True, help="PeakRDL UDP RDL file (./regblock_udps.rdl)"
+    )
     parser.add_argument("-t", "--top", help="address map to use as the top")
-    parser.add_argument("-a", "--addrmap",
-                        help="address map (instance name) for which to generate output")
-    parser.add_argument("-i", "--incdir", action="append",
-                        help="directory to search for included files")
-    parser.add_argument("-s", "--shorten_names", action="store_true",
-                        help="use shorter constant names")
+    parser.add_argument(
+        "-a", "--addrmap", help="address map (instance name) for which to generate output"
+    )
+    parser.add_argument(
+        "-i", "--incdir", action="append", help="directory to search for included files"
+    )
+    parser.add_argument(
+        "-s", "--shorten_names", action="store_true", help="use shorter constant names"
+    )
     parser.add_argument("--addr_width", default=32, help="width of address bus")
-    parser.add_argument("--bitfields", choices=["none", "ltoh"], default="ltoh",
-                        help="emit ctypes classes (ltoh) or only constants (none)")
+    parser.add_argument(
+        "--bitfields",
+        choices=["none", "ltoh"],
+        default="ltoh",
+        help="emit ctypes classes (ltoh) or only constants (none)",
+    )
     parser.add_argument(
         "--field-access",
         action="store_true",
         help="emit per-field software access and side-effect metadata",
+    )
+    parser.add_argument(
+        "-P",
+        dest="rdl_params",
+        action="append",
+        default=[],
+        metavar="NAME=VALUE",
+        help="override an addrmap parameter (repeatable)",
     )
     args = parser.parse_args()
 
@@ -209,7 +236,7 @@ def main():
     try:
         rdlc.compile_file(args.udp_rdl_file)
         rdlc.compile_file(args.input_rdl_file, incl_search_paths=args.incdir)
-        root = rdlc.elaborate(args.top)
+        root = rdlc.elaborate(args.top, parameters=parse_rdl_params(args.rdl_params) or None)
     except RDLCompileError:
         sys.exit(1)
 
@@ -231,9 +258,7 @@ def main():
         f"from {os.path.basename(args.input_rdl_file)}.",
     ]
     if args.field_access:
-        lines.append(
-            "# *_REG_FIELD_ACCESS entries are: field, sw, onwrite, onread, singlepulse."
-        )
+        lines.append("# *_REG_FIELD_ACCESS entries are: field, sw, onwrite, onread, singlepulse.")
     lines.append("")
     if used_ctypes:
         lines.append(f"from ctypes import {', '.join(sorted(used_ctypes))}")

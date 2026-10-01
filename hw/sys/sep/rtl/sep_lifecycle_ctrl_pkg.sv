@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+// Define typedefs for SEP lifecycle debug-disable control.
+//
+// dbg_disable_t packs the per-feature debug disable bits consumed by DTP.
+
 package sep_lifecycle_ctrl_pkg;
 
   // Active-high: 1 = interface disabled.
@@ -33,11 +37,14 @@ package sep_lifecycle_ctrl_pkg;
     // SMC fabric JTAG-to-AXI bridge: enables JTAG-driven AXI read/write access
     // to the SMC fabric register space.
     logic smc_jtag2axi;
-    // SMC OTP JTAG-to-AXI bridge: enables JTAG-driven access to the SMC fuse
-    // controller register interface (SMC_FUSE_TEST scope).
+    // SMC OTP JTAG-to-AXI bridge. Ungated, so this stays 0: the path reaches the
+    // whole SMC eFuse interface, and enforcement is the per-field LOCKS access
+    // control plus the wrapper's LC-state access policy. Distinct from the
+    // DFT-inserted SMC fuse path, which is gated by smc_fuse_dft_disable_o.
     logic smc_otp_jtag2axi;
-    // SEP OTP JTAG-to-AXI bridge: enables JTAG-driven access to the SEP fuse
-    // controller register interface (SEP_FUSE_TEST scope).
+    // SEP OTP JTAG-to-AXI bridge. Ungated for the same reason as the SMC one, and
+    // likewise distinct from the DFT-inserted SEP fuse path gated by
+    // sep_fuse_dft_disable_o.
     logic sep_otp_jtag2axi;
   } dbg_disable_t;
 

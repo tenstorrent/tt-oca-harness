@@ -1,25 +1,30 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-pvt_wrap]
+== PVT Wrapper Placeholder Address Map
+
+Adopter PVT and monitor placeholder reserving the map slot; no CSRs are modeled.
+
 [NOTE]
 ======
-*Register Arrays:* This register map contains the following register arrays:
+*Register Arrays:*
 
-* *mem_array[594]*: 594 registers
-  ** Base Address: 0x0
-  ** Address Increment: 0x4 per register
-
+* *mem_array[594]*: 594 registers, base 0x0, stride 0x4
 ======
 
-[cols="1,1,1,3", options="header"]
-.Register Map
+[cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description
-| 0x0 - 0x944 | mem_array[594] | R a| -
+| 0x0 - 0x944 | <<reg-{regmap-instance}-pvt_wrap-footprint-mem_array-0-,mem_array[594]>> | R a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.mem_array[594] Register
+[#reg-{regmap-instance}-pvt_wrap-footprint-mem_array-0-]
+=== mem_array[594]
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `data` | R | - a| -

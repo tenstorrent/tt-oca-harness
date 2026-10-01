@@ -2,32 +2,71 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[telemetry-receiver]]
-==== Telemetry Receiver
+= Telemetry Receiver
 
-===== Overview
+== Overview
 
-The Telemetry Receiver is a high-performance hardware component designed
-to decode, buffer, and process telemetry data from telemetry
-transmitters in multi-chiplet systems. The component implements a
-specialized receiver for Tenstorrent-specific telemetry message formats
-while maintaining modularity for adaptation to other telemetry protocols
-and message structures.
+ifdef::backend-html5[]
+// Preserve incoming links to the consolidated sections.
+++++
+<span id="description-and-features"></span>
+++++
+endif::backend-html5[]
 
-===== Description and Features
+The receiver assembles an 8-bit ATB stream into probe-ID and counter messages.
+Software reads completed messages through a 32-bit AXI4-Lite register interface
+and explicitly pops each message. The core defaults to eight queued messages
+and four counters per message; these are elaboration parameters, not software
+settings. Threshold and missing-last-packet interrupts report service needs.
 
-* *32-bit APB4 or AXI4-Lite Register Interface*: Standard bus interfaces
-for system integration and configuration access
-* *8-bit ATB Telemetry Interface*: High-speed telemetry data reception
-with ATB protocol compliance
-* *Configurable Circular Buffer*: Programmable buffer depth (default 8
-entries) with threshold-based monitoring
-* *Multi-Counter Message Support*: Decodes messages with probe ID and up
-to 4 counter values per message
-* *Flexible Message Format*: Modular design allows easy adaptation to
-different telemetry message formats
-* *Comprehensive Interrupt System*: Event-driven notifications for
-buffer thresholds and error conditions
+Reception does not stop when the message queue fills: a new message replaces
+the oldest one. Software must account for this when reading a message through
+several registers. The receiver does not use `atid_i` to maintain separate
+source contexts; producers sharing a receiver must serialize complete messages.
 
+[[telemetry-receiver-message-format]]
+=== Message Format
+
+Eight little-endian ATB beats form a 64-bit packet. One or more packets
+form a message that ends when `last_packet` is set.
+
+<<telemetry-packet-fields-table>> defines the fields carried in each telemetry packet.
+
+[[telemetry-packet-fields-table]]
+[width="100%",cols="20%,15%,65%",options="header",]
+.Telemetry packet fields
+|====================================================================================
+|Field |Width |Location
+|`last_packet` |1 bit |Bit 63 of each packet
+|`probe_id` |5 bits |Bits `[60:56]` of the first packet
+|block |9 bits |Seven per packet: 1-bit valid + 8-bit data
+|counter |32 bits |Four consecutive blocks, most-significant byte first
+|====================================================================================
+
+A counter is valid only when all four of its blocks are valid. The number of
+counters per message is parameterized (default 4); the field layout is fixed.
+
+ifdef::backend-html5[]
+include::partial$telemetry_receiver/doc/architecture.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::architecture.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::partial$telemetry_receiver/doc/interface.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::interface.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::partial$telemetry_receiver/doc/programming.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+include::programming.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::partial$telemetry_receiver/doc/memmap.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::memmap.adoc[]
+endif::backend-pdf[]

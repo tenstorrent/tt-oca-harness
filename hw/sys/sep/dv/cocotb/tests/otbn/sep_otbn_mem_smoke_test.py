@@ -5,10 +5,8 @@
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import ClockCycles
-
 import pyuvm
-
+from cocotb.triggers import ClockCycles
 from sep_base_test import sep_base_test
 from seq_lib.sep_otbn_mem_smoke_seq import sep_otbn_mem_smoke_seq
 
@@ -54,4 +52,11 @@ class sep_otbn_mem_smoke_test(sep_base_test):
         assert (dmem_reqs, dmem_writes) == (EXP_DMEM_REQS, EXP_DMEM_WRITES), (
             f"OTBN DMEM SRAM requests {dmem_reqs}/{dmem_writes} != "
             f"expected {EXP_DMEM_REQS}/{EXP_DMEM_WRITES} (req/write)"
+        )
+        self.logger.info(
+            "CHK-OTBN-MEM PASS: imem=%d/%d dmem=%d/%d",
+            imem_reqs,
+            imem_writes,
+            dmem_reqs,
+            dmem_writes,
         )

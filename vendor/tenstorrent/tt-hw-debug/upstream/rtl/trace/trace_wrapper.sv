@@ -1,4 +1,8 @@
-// Trace Top: Top Trace File - Holds trace_network, trace_funnel, and trace_mem
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ // Trace Top: Top Trace File - Holds trace_network, trace_funnel, and trace_mem
+
+`include "axi/typedef.svh"
 
 module trace_wrapper
 import tn_pkg::*;

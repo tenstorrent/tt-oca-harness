@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[efuse-architecture]]
-===== Architecture
+== Architecture
 
 The eFuse IP provides secure One-Time Programmable (OTP) memory
 management with foundry-agnostic design. The layered architecture
@@ -10,21 +10,35 @@ separates security control logic from foundry-specific implementation
 details, enabling deployment across different OTP technologies while
 maintaining consistent security characteristics and software interfaces.
 
-====== Interface Controller
+=== Interface Controller
 
 The eFuse Interface Controller (efuse_interface_controller.sv) provides
 dual-path access control with security policy enforcement.
 
-====== Access Paths
+=== Access Paths
 
 * *SMC AXI4-Lite Interface*: Functional access for normal system
 operations
 * *JTAG AXI4-Lite Interface*: Debug access for manufacturing test and
 development
 
-====== Destination Endpoints
+=== Command-path ownership
 
+After fuse sense completes, software program and read requests share one
+command path to the OTP bank. `EFUSE_PROGRAM_CTRL.program_enable` takes
+that path in preference to `EFUSE_READ_CTRL.read_enable`, so the two
+enables must be asserted exclusively. `program_enable` is a mode-ownership
+bit: after `PROGRAM_DONE`, software deasserts `program_enable`
+before any later read. The programming sequence is in
+<<smc-dv-efuse-programming>>.
+
+=== Destination Endpoints
+
+<<efuse-destination-endpoints-table>> identifies the consumers of sensed fuse data.
+
+[[efuse-destination-endpoints-table]]
 [width="100%",cols="25%,75%",options="header",]
+.eFuse destination endpoints
 |=====================================================================================
 |Endpoint |Description
 |Shadow Registers |High-performance boot-time caching for rapid access
@@ -39,24 +53,27 @@ access control
 |Interface SHIM CSR |Configuration registers for foundry-specific timing adaptation. Implemented by the adopter, but always accessed via the interface controller.
 |=====================================================================================
 
-====== Shadow Register Subsystem
+=== Shadow Register Subsystem
 
 The shadow register subsystem accelerates OTP access by caching eFuse contents at boot time. On power-up, a dedicated FSM automatically issues a bulk read command (with `access_length_words` set to cover the full eFuse bank), copying all OTP data into the shadow registers. This ensures the shadow registers are fully populated and always synchronized with the OTP state at each boot.
 
-====== Features
+=== Features
 
-The feature list for the shadow register subsystem is as follows:
+<<efuse-shadow-register-features-table>> summarises the shadow-register capacity and
+access features.
 
+[[efuse-shadow-register-features-table]]
 [width="100%",cols="25%,75%",options="header",]
+.eFuse shadow-register features
 |=====================================================================================
 |Feature |Description
-|Capacity |Configurable (default: 24576 bits / 3KB, 768 × 32-bit words), set via the `SHADOW_REG_BITS` parameter
+|Capacity |Configurable (default: 8192 bits / 1KB, 256 × 32-bit words), set via the `SHADOW_REG_BITS` parameter
 |Initialization |Automatic boot-time loading via Fuse Sense FSM
 |Access Control |Multi-tier hardware and software lock mechanisms
 |Data Consistency |Maintains synchronization with underlying OTP storage upon each power-on reset
 |=====================================================================================
 
-====== State Machine Architecture
+=== State Machine Architecture
 
 The read interface FSM (efuse_read_interface.sv) operates in a simple
 two-state sequence, transitioning from idle to waiting for a response as
@@ -72,7 +89,14 @@ reliability, integrating verification steps that check programmed values
 against intended data, and fully blocks any unauthorized overwrites to
 maintain data integrity.
 
-====== Parameterized Command Typedefs
+*Readback Capture Behavior:*
+
+When a read command completes successfully, the read interface captures data from
+the SHIM response into the read-data CSR during the ST_WAIT_RESP state. This data
+is retained and continues to be available after the FSM returns to idle, allowing
+software to retrieve the result without a re-read.
+
+=== Parameterized Command Typedefs
 
 The fuse command request/response structs exchanged between the
 controller and the SHIM are not declared with fixed types. Instead, they
@@ -82,7 +106,12 @@ each integration supplies its own address, data, access-length, and
 command types, while the macros guarantee a consistent struct layout and
 field ordering across all OTP variants.
 
+<<efuse-command-type-macros-table>> relates each command macro to its generated type and
+purpose.
+
+[[efuse-command-type-macros-table]]
 [width="100%",cols="35%,30%,35%",options="header",]
+.eFuse command type macros
 |=====================================================================================
 |Macro |Generated Type |Purpose
 |`EFUSE_COMMAND_REQ_T` |`fuse_command_req_t` |Controller-to-SHIM command request
@@ -128,10 +157,14 @@ types:
 `EFUSE_COMMAND_RESP_T(fuse_command_resp_t, data_t)
 ----
 
-====== Foundry-Specific Signals
+=== Foundry-Specific Signals
 
+<<example-hardware-interfaces-by-otp-variant-table>> compares the signals required by
+the supported OTP interface variants.
+
+[[example-hardware-interfaces-by-otp-variant-table]]
 .Example Hardware Interfaces by OTP Variant
-[width="100%",cols="20%,80%",options="header",]
+[width="100%",cols="30%,70%",options="header",]
 |=====================================================================================
 |OTP Variant |Hardware Interface Signals
 |Adopter OTP macro
@@ -140,7 +173,7 @@ types:
 |Current Example Model |APB interface with register-based control
 |=====================================================================================
 
-====== Interface SHIM Layer
+=== Interface SHIM Layer
 
 The Interface SHIM (`efuse_interface_shim.sv`) is an example, foundry-specific
 implementation of the custom fuse command interface. Its role is to translate
@@ -160,7 +193,7 @@ Foundry-specific timing and configuration (for example, program pulse widths)
 are exposed through the SHIM Control CSRs, accessed over the
 `fuse_bank_ctrl` AXI4-Lite interface.
 
-====== eFuse Bank Model
+=== eFuse Bank Model
 
 The eFuse bank model (`efuse_bank_model.sv`) is a reference, simulation-only
 stand-in for the real foundry OTP macro. It is a 3KB (768 x 32-bit word) store
@@ -169,7 +202,7 @@ real OTP so the controller and SHIM can be exercised end-to-end without
 silicon. In a production integration it is replaced by the actual foundry
 macro driven by the SHIM.
 
-====== Access Permissions and Security
+=== Access Permissions and Security
 
 Access control is layered for defense in depth: per-field permissions
 are described by `efuse_field_map_i`, lock state is enforced by the eFuse
@@ -190,22 +223,26 @@ typedef struct packed {
 ----
 
 The `lock` field encodes read, write, and secure-test-mode permissions
-for the field:
+for the field (<<efuse-lock-field-encoding-table>>).
 
-[width="100%",cols="15%,25%,60%",options="header",]
+[[efuse-lock-field-encoding-table]]
+[width="100%",cols="18%,22%,60%",options="header",]
+.eFuse lock-field encoding
 |=====================================================================================
 |Bits |Function |Encoding
 |`lock[0]` |Read |`0` = readable, `1` = read-locked
 |`lock[2:1]` |Write |`00` = unlocked, `10` = set-only (1's may be added, never cleared), `11` = write-locked
-|`lock[3]` |Secure test mode |`0` = unrestricted, `1` = access requires secure test mode
+|`lock[3]` |Secure-test write lock |`1` adds a shadow write lock while secure test mode is active; `0` adds no such lock. Other locks still apply.
 |=====================================================================================
 
-====== Hardware vs. Software Locks
+=== Hardware vs. Software Locks
 
 The same permission semantics are reached through two independent
-mechanisms, and the guard enforces whichever is more restrictive:
+mechanisms, and the guard enforces whichever is more restrictive (<<efuse-hardware-and-software-locks-table>>).
 
+[[efuse-hardware-and-software-locks-table]]
 [width="100%",cols="20%,40%,40%",options="header",]
+.eFuse hardware and software locks
 |=====================================================================================
 |Property |Hardware Lock |Software Lock
 |Source |Permission bits fused into the eFuse array (the field map reflects
@@ -231,7 +268,7 @@ the system enforces token-based security. Only by providing the correct
 Token for chiplet-specific operations, or the Security Disable Token to
 override protections, can access to these resources be granted.
 
-====== Security Disable Bypass Mechanism
+=== Security Disable Bypass Mechanism
 
 The eFuse interface controller supports a security disable bypass mechanism
 via the `security_disable_i` input signal. This mechanism is primarily used
@@ -240,7 +277,12 @@ to be bypassed.
 
 *Behavior when `security_disable_i` is asserted:*
 
+<<efuse-security-disable-behavior-table>> describes the sensing behavior when
+security_disable_i is asserted.
+
+[[efuse-security-disable-behavior-table]]
 [width="100%",cols="30%,70%",options="header",]
+.eFuse security-disable behavior
 |=====================================================================================
 |Behavior |Description
 |FSM Bypass |The automatic fuse sensing state machine is bypassed and does not
@@ -262,14 +304,19 @@ asserted, shadow registers are initialized to zero (default reset value for SMC)
 For SMC, the internal security disable signal is directly driven by the
 `security_disable_i` input port.
 
-====== Lifecycle State (LC_STATE) Effects
+=== Lifecycle State (LC_STATE) Effects
 
 The eFuse interface controller enforces access restrictions based on the
 chip's lifecycle state.
 
 *Lifecycle State Encoding:*
 
+<<efuse-lifecycle-encodings-table>> lists the lifecycle encodings used by the eFuse
+controller.
+
+[[efuse-lifecycle-encodings-table]]
 [width="100%",cols="25%,25%,50%",options="header",]
+.eFuse lifecycle encodings
 |=====================================================================================
 |State |Encoding |Description
 |TEST_DEV |0x0 |Test/Development state (default)
@@ -283,28 +330,38 @@ chip's lifecycle state.
 
 *JTAG Access Control Based on LC_STATE:*
 
-When lifecycle state is PROD (0x1) or RMA_SOP (0x2, 0x3), JTAG access
-to eFuse registers is restricted:
+JTAG access policies differ between SMC and SEP variants. The table below describes
+the SMC variant policy, which restricts JTAG access in production and RMA states.
+SEP applies a different policy: in restricted states (PROD or RMA_SIP), JTAG
+accesses to the MMR (token register) space remain allowed for token programming;
+accesses outside the MMR space are blocked with an error response.
 
-[width="100%",cols="30%,35%,35%",options="header",]
+*SMC JTAG Policy:*
+
+When lifecycle state is PROD (0x1) or RMA_SOP (0x2, 0x3), JTAG access
+to eFuse registers is restricted (<<efuse-lifecycle-based-jtag-permissions-table>>).
+
+[[efuse-lifecycle-based-jtag-permissions-table]]
+[width="100%",cols="32%,43%,25%",options="header",]
+.eFuse JTAG permissions (SMC)
 |=====================================================================================
 |Access Type |PROD/RMA_SOP State |Other States
 |JTAG Write |*Blocked* (error response) |Allowed
-|JTAG Read |*Blocked* except Chiplet ID |Allowed
-|JTAG Read Chiplet ID |Allowed |Allowed
+|JTAG Read |*Blocked* except JTAG_PUBLIC_IDENTITY |Allowed
+|JTAG Read JTAG_PUBLIC_IDENTITY |Allowed |Allowed
 |=====================================================================================
 
 The access control mechanism uses an AXI-Lite demux that routes blocked
 requests to an error slave. When a request is blocked, the error slave
 returns an error response with data value `0xbadcab1e`.
 
-*Chiplet ID Exception:*
+*SMC exception for JTAG_PUBLIC_IDENTITY:*
 
-Even in PROD or RMA_SOP states, JTAG read access to the chiplet ID and
-package ID registers is permitted. This allows identification of the chip
-for manufacturing and field returns without exposing sensitive eFuse contents.
+Even in PROD or RMA_SOP states, JTAG read access to the JTAG_PUBLIC_IDENTITY
+register is permitted. This allows identification of the chip for manufacturing
+and field returns without exposing sensitive eFuse contents.
 
-====== Secure Test Mode (secure_tm_i)
+=== Secure Test Mode (secure_tm_i)
 
 The eFuse interface controller supports a Secure Test Mode via the `secure_tm_i`
 input signal. This mode provides additional protection for sensitive security
@@ -312,7 +369,12 @@ assets during secure manufacturing test operations.
 
 *Behavior when `secure_tm_i` is asserted:*
 
+<<efuse-secure-test-behavior-table>> describes the restrictions applied when secure_tm_i
+is asserted.
+
+[[efuse-secure-test-behavior-table]]
 [width="100%",cols="30%,70%",options="header",]
+.eFuse secure-test behavior
 |=====================================================================================
 |Behavior |Description
 |Fuse Command Blocking |All fuse commands to the physical eFuse bank are blocked.

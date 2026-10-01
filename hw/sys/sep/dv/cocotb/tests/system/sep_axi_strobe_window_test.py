@@ -24,7 +24,6 @@ response code, not counted as a pass.
 from __future__ import annotations
 
 import pyuvm
-
 from sep_base_test import sep_base_test
 from seq_lib.sep_axi_strobe_window_seq import (
     SIZE_BYTES,
@@ -49,7 +48,10 @@ class sep_axi_strobe_window_test(sep_base_test):
             if miss is None:
                 self.logger.info(
                     "CHK-STROBE PASS: 0x%08x %dB at byte %d masked correctly",
-                    w.addr, SIZE_BYTES[w.size], w.byte_off)
+                    w.addr,
+                    SIZE_BYTES[w.size],
+                    w.byte_off,
+                )
             else:
                 fails.append(miss)
                 self.logger.error("CHK-STROBE FAIL: %s", miss)
@@ -62,11 +64,13 @@ class sep_axi_strobe_window_test(sep_base_test):
             elif p.name in sw.window_skipped:
                 self.logger.info(
                     "CHK-WINDOW-DATA SKIP: %s not writable here (%s)",
-                    p.name, sw.window_skipped[p.name])
+                    p.name,
+                    sw.window_skipped[p.name],
+                )
             else:
                 self.logger.info(
-                    "CHK-WINDOW-DATA PASS: %s 0x%08x read back 0x%08x",
-                    p.name, p.addr, p.value)
+                    "CHK-WINDOW-DATA PASS: %s 0x%08x read back 0x%08x", p.name, p.addr, p.value
+                )
 
         if fails:
             raise AssertionError(
@@ -77,12 +81,13 @@ class sep_axi_strobe_window_test(sep_base_test):
 
         # Positive evidence: every narrow write ran and was compared.
         assert sw.narrow_ok == len(cfg.writes), (
-            f"CHK-STROBE FAIL: {sw.narrow_ok} of {len(cfg.writes)} narrow "
-            "writes produced a compare"
+            f"CHK-STROBE FAIL: {sw.narrow_ok} of {len(cfg.writes)} narrow writes produced a compare"
         )
         self.logger.info(
             "CHK-STROBE PASS: %d narrow write(s) changed only their own byte "
-            "lanes (sizes 1B/2B/4B at every legal offset)", sw.narrow_ok)
+            "lanes (sizes 1B/2B/4B at every legal offset)",
+            sw.narrow_ok,
+        )
 
         # Windows are load-bearing evidence only when at least one was
         # writable; say which, rather than implying all three were checked.
@@ -90,14 +95,26 @@ class sep_axi_strobe_window_test(sep_base_test):
             self.logger.info(
                 "CHK-WINDOW-DATA PASS: %d of %d memory window(s) returned the "
                 "written value; %d skipped as not writable here",
-                sw.window_ok, len(cfg.windows), len(sw.window_skipped))
+                sw.window_ok,
+                len(cfg.windows),
+                len(sw.window_skipped),
+            )
         else:
             raise AssertionError(
                 "CHK-WINDOW-DATA FAIL: no memory window was writable, so the "
                 "read-mask contract has no evidence here ("
                 + ", ".join(f"{k}: {v}" for k, v in sw.window_skipped.items())
-                + ")")
+                + ")"
+            )
 
+        # Config report, not a checker. The size axis is built by iterating
+        # SIZE_BYTES, so asserting the walk covers it restates the loop rather
+        # than testing anything; the module selftest pins that shape at import.
+        # The failable strobe contract is CHK-STROBE and CHK-WINDOW-DATA above.
         self.logger.info(
-            "CHK-RANDCFG PASS: %d narrow write(s) + %d window(s) from seed %d",
-            len(cfg.writes), len(cfg.windows), cfg.seed)
+            "strobe config: %d narrow write(s) over %d window(s), sizes %s, seed %d",
+            len(cfg.writes),
+            len(cfg.windows),
+            sorted({SIZE_BYTES[w.size] for w in cfg.writes}),
+            cfg.seed,
+        )

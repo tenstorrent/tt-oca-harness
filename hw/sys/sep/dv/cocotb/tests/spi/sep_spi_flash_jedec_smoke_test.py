@@ -6,13 +6,12 @@ from __future__ import annotations
 
 import cocotb
 import pyuvm
-
-from sep_base_test import sep_base_test
 from ocah_spi_vip import OcahSpiFlash
+from sep_base_test import sep_base_test
 from seq_lib.sep_spi_flash_jedec_seq import (
-    sep_spi_flash_jedec_seq,
     SPI_JEDEC_ID,
     SPI_RX_JEDEC_WORD,
+    sep_spi_flash_jedec_seq,
 )
 
 
@@ -43,5 +42,6 @@ class sep_spi_flash_jedec_smoke_test(sep_base_test):
             assert seq.rxdata == SPI_RX_JEDEC_WORD, (
                 f"unexpected JEDEC response 0x{seq.rxdata:08x}, expected 0x{SPI_RX_JEDEC_WORD:08x}"
             )
+            self.logger.info("CHK-JEDEC PASS: opcode=0x9F rxdata=0x%08x", seq.rxdata)
         finally:
             await flash.stop()

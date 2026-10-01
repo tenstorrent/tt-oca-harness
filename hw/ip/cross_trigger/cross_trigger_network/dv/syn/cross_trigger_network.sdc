@@ -1,15 +1,16 @@
 # Cross Trigger Network Synthesis Constraints
 # Copyright 2025 Tenstorrent Inc.
 
-# Clock definition - adjust period as needed for target frequency
-# Assumes 100 MHz clock by default
+# Clock definition: clk_i at 100 MHz nominal
 create_clock -name clk -period 10.0 [get_ports clk_i]
 
 # Reset is asynchronous
 set_false_path -from [get_ports rst_ni]
 
-# Clock stop output is registered, no special constraints needed
-# The output feeds clock gates which are typically constrained at the top level
+# DFT test-mode enable is static
+set_false_path -from [get_ports test_en_i]
+
+# stop_clks_o is a registered output; the clock gates it feeds are constrained at the top level
 
 # AXI-Lite interface timing
 # Input delay for AXI-Lite request signals

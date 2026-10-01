@@ -30,8 +30,9 @@ module kmac
 
   // Accept SW message when idle and before receiving a START command. Useful for SCA only.
   parameter bit SecIdleAcceptSwMsg          = 1'b0,
-  parameter int unsigned NumAppIntf         = 3,
-  parameter app_config_t AppCfg[NumAppIntf] = '{AppCfgKeyMgr, AppCfgLcCtrl, AppCfgRomCtrl},
+  parameter int unsigned NumAppIntf         = 4,
+  parameter app_config_t AppCfg[NumAppIntf] = '{AppCfgKeyMgr, AppCfgLcCtrl,
+                                                AppCfgRomCtrl, AppCfgOtbn},
 
   parameter lfsr_perm_t RndCnstLfsrPerm = RndCnstLfsrPermDefault,
   parameter lfsr_seed_t RndCnstLfsrSeed = RndCnstLfsrSeedDefault,
@@ -154,7 +155,7 @@ module kmac
 
   // SHA3 core control signals and its response.
   // Sequence: start --> process(multiple) --> get absorbed event --> {run -->} done
-  logic sha3_start, sha3_run, unused_sha3_squeeze;
+  logic sha3_start, sha3_run, sha3_squeezing;
   prim_mubi_pkg::mubi4_t sha3_done;
   prim_mubi_pkg::mubi4_t sha3_done_d;
   prim_mubi_pkg::mubi4_t sha3_absorbed;
@@ -218,13 +219,6 @@ module kmac
   logic [kmac_pkg::MsgStrbW-1:0] msgfifo_strb        ;
   logic                          msgfifo_ready       ;
 
-  if (EnMasking) begin : gen_msgfifo_data_masked
-    // In Masked mode, the input message data is split into two shares.
-    // Only concern, however, here is the secret key. So message can be
-    // put into only one share and other is 0.
-    assign msgfifo_data[1] = '0;
-  end
-
   // TL-UL Adapter(MSG_FIFO) signals
   logic        tlram_req;
   logic        tlram_gnt;
@@ -239,15 +233,16 @@ module kmac
   logic [31:0] tlram_wmask_endian;
 
   logic                          sw_msg_valid;
-  logic [kmac_pkg::MsgWidth-1:0] sw_msg_data ;
-  logic [kmac_pkg::MsgWidth-1:0] sw_msg_mask ;
+  logic [kmac_pkg::MsgWidth-1:0] sw_msg_data;
+  logic [kmac_pkg::MsgWidth-1:0] sw_msg_strb;
   logic                          sw_msg_ready;
 
   // KeyMgr interface to MSG_FIFO
   logic                          mux2fifo_valid;
-  logic [kmac_pkg::MsgWidth-1:0] mux2fifo_data ;
-  logic [kmac_pkg::MsgWidth-1:0] mux2fifo_mask ;
+  logic [kmac_pkg::MsgWidth-1:0] mux2fifo_data[Share];
+  logic [kmac_pkg::MsgWidth-1:0] mux2fifo_strb;
   logic                          mux2fifo_ready;
+  logic                          mux2fifo_bypass;
 
   // KMAC to SHA3 core
   logic                          msg_valid       ;
@@ -307,6 +302,7 @@ module kmac
 
   logic entropy_ready;
   entropy_mode_e entropy_mode;
+  logic reg_entropy_fast_process;
   logic entropy_fast_process;
 
   prim_mubi_pkg::mubi4_t entropy_configured;
@@ -549,7 +545,7 @@ module kmac
   assign entropy_ready = reg2hw.cfg_shadowed.entropy_ready.q
                        & reg2hw.cfg_shadowed.entropy_ready.qe;
   assign entropy_mode  = entropy_mode_e'(reg2hw.cfg_shadowed.entropy_mode.q);
-  assign entropy_fast_process = reg2hw.cfg_shadowed.entropy_fast_process.q;
+  assign reg_entropy_fast_process = reg2hw.cfg_shadowed.entropy_fast_process.q;
 
   // msg_mask_en turns on the message LFSR when KMAC is enabled.
   assign cfg_msg_mask = reg2hw.cfg_shadowed.msg_mask.q;
@@ -726,10 +722,12 @@ module kmac
   logic counter_error, sha3_count_error, key_index_error;
   logic msgfifo_counter_error;
   logic kmac_entropy_hash_counter_error;
+  logic kmac_app_counter_error;
   assign counter_error = sha3_count_error
                        | kmac_entropy_hash_counter_error
                        | key_index_error
-                       | msgfifo_counter_error;
+                       | msgfifo_counter_error
+                       | kmac_app_counter_error;
 
   assign msgfifo_counter_error = msgfifo_err.valid;
 
@@ -966,7 +964,7 @@ module kmac
     .lc_escalate_en_i (lc_escalate_en[2]),
 
     .absorbed_o  (sha3_absorbed),
-    .squeezing_o (unused_sha3_squeeze),
+    .squeezing_o (sha3_squeezing),
 
     .block_processed_o (sha3_block_processed),
 
@@ -1037,10 +1035,10 @@ module kmac
   assign sw_msg_valid = tlram_req & tlram_we ;
   if (MsgWidth == MsgWindowWidth) begin : gen_sw_msg_samewidth
     assign sw_msg_data  = tlram_wdata_endian ;
-    assign sw_msg_mask  = tlram_wmask_endian ;
+    assign sw_msg_strb  = tlram_wmask_endian ;
   end else begin : gen_sw_msg_diff
     assign sw_msg_data = {{MsgWidth-MsgWindowWidth{1'b0}}, tlram_wdata_endian};
-    assign sw_msg_mask = {{MsgWidth-MsgWindowWidth{1'b0}}, tlram_wmask_endian};
+    assign sw_msg_strb = {{MsgWidth-MsgWindowWidth{1'b0}}, tlram_wmask_endian};
   end
   assign tlram_gnt    = sw_msg_ready ;
 
@@ -1069,7 +1067,7 @@ module kmac
     // data from tl_adapter
     .sw_valid_i (sw_msg_valid),
     .sw_data_i  (sw_msg_data),
-    .sw_mask_i  (sw_msg_mask),
+    .sw_strb_i  (sw_msg_strb),
     .sw_ready_o (sw_msg_ready),
 
     // KeyMgr sideloaded key interface
@@ -1085,10 +1083,11 @@ module kmac
     .key_valid_o (key_valid),
 
     // to MSG_FIFO
-    .kmac_valid_o (mux2fifo_valid),
-    .kmac_data_o  (mux2fifo_data),
-    .kmac_mask_o  (mux2fifo_mask),
-    .kmac_ready_i (mux2fifo_ready),
+    .kmac_valid_o      (mux2fifo_valid),
+    .kmac_data_o       (mux2fifo_data),
+    .kmac_strb_o       (mux2fifo_strb),
+    .kmac_ready_i      (mux2fifo_ready),
+    .kmac_bypass_fifo_o(mux2fifo_bypass),
 
     // to KMAC Core
     .kmac_en_o (app_kmac_en),
@@ -1109,10 +1108,14 @@ module kmac
     // Configuration: Sideloaded Key
     .keymgr_key_en_i      (reg2hw.cfg_shadowed.sideload.q),
 
-    .absorbed_i (sha3_absorbed), // from SHA3
-    .absorbed_o (app_absorbed),  // to SW
+    .absorbed_i (sha3_absorbed),  // from SHA3
+    .squeezing_i(sha3_squeezing), // from SHA3
+    .absorbed_o (app_absorbed),   // to SW
 
     .app_active_o(app_active),
+
+    .entropy_fast_process_i(reg_entropy_fast_process),
+    .entropy_fast_process_o(entropy_fast_process),
 
     .error_i         (sha3_err.valid),
     .err_processed_i (err_processed),
@@ -1131,8 +1134,8 @@ module kmac
 
     // Error report
     .error_o            (app_err),
-    .sparse_fsm_error_o (kmac_app_state_error)
-
+    .sparse_fsm_error_o (kmac_app_state_error),
+    .counter_error_o    (kmac_app_counter_error)
   );
 
   // Message FIFO
@@ -1146,11 +1149,12 @@ module kmac
 
     .fifo_valid_i (mux2fifo_valid),
     .fifo_data_i  (mux2fifo_data),
-    .fifo_mask_i  (mux2fifo_mask),
+    .fifo_strb_i  (mux2fifo_strb),
     .fifo_ready_o (mux2fifo_ready),
+    .fifo_bypass_i(mux2fifo_bypass),
 
     .msg_valid_o (msgfifo_valid),
-    .msg_data_o  (msgfifo_data[0]),
+    .msg_data_o  (msgfifo_data),
     .msg_strb_o  (msgfifo_strb),
     .msg_ready_i (msgfifo_ready),
 
@@ -1169,7 +1173,7 @@ module kmac
   logic [sha3_pkg::StateW-1:0] reg_state_tl [Share];
   always_comb begin
     for (int i = 0 ; i < Share; i++) begin
-      reg_state_tl[i] = reg_state_valid ? reg_state[i] : 'b0;
+      reg_state_tl[i] = reg_state_valid ? reg_state[i] : '0;
     end
   end
 
@@ -1557,6 +1561,8 @@ module kmac
   `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(RoundCountCheck_A, u_sha3.u_keccak.u_round_count,
                                          alert_tx_o[1])
   `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(KeyIndexCountCheck_A, u_kmac_core.u_key_index_count,
+                                         alert_tx_o[1])
+  `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(AppDigestCountCheck_A, u_app_intf.u_digest_part_counter,
                                          alert_tx_o[1])
 
   // Sparse FSM state error

@@ -1,276 +1,284 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SMC Miscellaneous Wrapper
-// Consolidates scratch registers and chip config
+// Wrap SMC miscellaneous register targets on the misc AXI-Lite map.
+//
+// Demultiplexes the misc map onto cold scratch registers, cold-and-warm scratch
+// registers, the chip_config registers (version ID, chip ID and lifecycle state) and the
+// NDM reset registers. Addresses outside those windows reach an error slave that returns
+// DECERR with read data 0xBADCAB1E.
 
-module smc_misc_wrap
-	#(
-		parameter int unsigned CHIP_ID = 0,
-		parameter int unsigned LC_STATE_WIDTH = 8
-	) (
-		input  logic                                   				clk_i,
-		input  logic                                   				rst_ni,
-		input  logic                                   				rst_warm_ni,
-		input  logic                                   				test_en_i,
+module smc_misc_wrap #(
+  parameter int unsigned CHIP_ID        = 0,  // Chip identifier reported by the chip_config CHIP_ID
+                                              // register.
+  parameter int unsigned LC_STATE_WIDTH = 8  // Width of lc_state_i, which the chip_config LC_STATE
+                                             // register reports.
+) (
+  input  logic clk_i,                   // SMC core clock.
+  input  logic rst_ni,                  // Primary reset, active-low, synchronized to the SMC core
+                                        // clock; resets the demux, the cold scratch registers,
+                                        // chip_config, and the NDM reset registers.
+  input  logic rst_warm_ni,             // Warm reset, active-low, synchronized to the SMC core
+                                        // clock; resets the cold-and-warm scratch registers.
+  input  logic test_en_i,               // Scan test mode enable, forwarded to the test input of the
+                                        // AXI-Lite demux.
 
-		// AXI-Lite Register Interface
-		input  smc_pkg::smc_axil_32_32_req_t           				reg_axi_lite_req_i,
-		output smc_pkg::smc_axil_32_32_resp_t          				reg_axi_lite_resp_o,
+  input  smc_pkg::smc_axil_32_32_req_t  reg_axi_lite_req_i,  // Request from the peripheral
+                                                             // crossbar for the misc map.
+  output smc_pkg::smc_axil_32_32_resp_t reg_axi_lite_resp_o,  // Response to the peripheral
+                                                              // crossbar.
 
-		// Lifecycle state
-		input  logic [LC_STATE_WIDTH-1:0]              				lc_state_i,
+  input  logic [LC_STATE_WIDTH-1:0] lc_state_i,  // Lifecycle state, reported through the
+                                                 // chip_config LC_STATE register.
 
-		// RAS bank settings
-		output logic [3:0]                             				ras_bank_chip_o,
-		output logic [3:0]                             				ras_bank_instance_o,
+  input  logic [smc_config_pkg::CPU_CLUSTER_COUNT-1:0] ndmreset_request_i,  // NDM reset request
+                                                                            // per CPU cluster,
+                                                                            // synchronized to the
+                                                                            // SMC core clock and
+                                                                            // readable in the
+                                                                            // NDMRESET_REQUEST
+                                                                            // register.
+  output logic [smc_config_pkg::CPU_CLUSTER_COUNT-1:0] ndmreset_process_o  // Firmware response to
+                                                                           // each cluster's NDM
+                                                                           // reset request, from
+                                                                           // the NDMRESET_PROCESS
+                                                                           // register.
+);
 
-		// NDM Reset signals (connected to SMU)
-		input  logic [smc_config_pkg::CPU_CLUSTER_COUNT - 1:0]      ndmreset_request_i,
-		output logic [smc_config_pkg::CPU_CLUSTER_COUNT - 1:0]      ndmreset_process_o
-	);
+  ////////////////////
+  // AXI-Lite Demux //
+  ////////////////////
 
-	////////////////////
-	// AXI-Lite Demux //
-	////////////////////
+  smc_misc_pkg::select_t reg_axi_lite_aw_select;
+  smc_misc_pkg::select_t reg_axi_lite_ar_select;
 
-	smc_misc_pkg::select_t reg_axi_lite_aw_select;
-	smc_misc_pkg::select_t reg_axi_lite_ar_select;
+  smc_pkg::smc_axil_32_32_req_t  [smc_misc_pkg::NumRegMaps-1:0] from_demux_reg_axi_lite_req;
+  smc_pkg::smc_axil_32_32_resp_t [smc_misc_pkg::NumRegMaps-1:0] from_demux_reg_axi_lite_resp;
 
-	smc_pkg::smc_axil_32_32_req_t  [smc_misc_pkg::NumRegMaps-1:0] from_demux_reg_axi_lite_req;
-	smc_pkg::smc_axil_32_32_resp_t [smc_misc_pkg::NumRegMaps-1:0] from_demux_reg_axi_lite_resp;
+  /* add new choice to connect ndm to ndm_reset. Modify below demux to accept new NDM_RESET ENUM*/
+  // Address decoding logic
+  // Uses unique if to avoid priority mux since address ranges are non-overlapping
+  always_comb begin
+    unique if (reg_axi_lite_req_i.aw.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_BASE_ADDR && reg_axi_lite_req_i.aw.addr < smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_BASE_ADDR + smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SIZE) begin
+      reg_axi_lite_aw_select = smc_misc_pkg::SCRATCH_COLD;
+    end else if (reg_axi_lite_req_i.aw.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR && reg_axi_lite_req_i.aw.addr < smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR + smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_SIZE) begin
+      reg_axi_lite_aw_select = smc_misc_pkg::SCRATCH_COLD_WARM;
+    end else if (reg_axi_lite_req_i.aw.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR && reg_axi_lite_req_i.aw.addr < smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR + smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_SIZE) begin
+      reg_axi_lite_aw_select = smc_misc_pkg::CHIP_CONFIG;
+    end else if (reg_axi_lite_req_i.aw.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_NDM_RESET_BASE_ADDR && reg_axi_lite_req_i.aw.addr < smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_NDM_RESET_BASE_ADDR + smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_NDM_RESET_SIZE) begin
+      reg_axi_lite_aw_select = smc_misc_pkg::NDM_RESET;
+    end else begin
+      reg_axi_lite_aw_select = smc_misc_pkg::ERR_SLV;
+    end
 
-	/* add new choice to connect ndm to ndm_reset. Modify below demux to accept new NDM_RESET ENUM*/
-	// Address decoding logic
-	// Uses unique if to avoid priority mux since address ranges are non-overlapping
-	always_comb begin
-		unique if (reg_axi_lite_req_i.aw.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_BASE_ADDR && reg_axi_lite_req_i.aw.addr < smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_BASE_ADDR + smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SIZE) begin
-			reg_axi_lite_aw_select = smc_misc_pkg::SCRATCH_COLD;
-		end else if (reg_axi_lite_req_i.aw.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR && reg_axi_lite_req_i.aw.addr < smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR + smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_SIZE) begin
-			reg_axi_lite_aw_select = smc_misc_pkg::SCRATCH_COLD_WARM;
-		end else if (reg_axi_lite_req_i.aw.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR && reg_axi_lite_req_i.aw.addr < smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR + smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_SIZE) begin
-			reg_axi_lite_aw_select = smc_misc_pkg::CHIP_CONFIG;
-		end else if (reg_axi_lite_req_i.aw.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_NDM_RESET_BASE_ADDR && reg_axi_lite_req_i.aw.addr < smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_NDM_RESET_BASE_ADDR + smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_NDM_RESET_SIZE) begin
-    		reg_axi_lite_aw_select = smc_misc_pkg::NDM_RESET;
-		end else begin
-			reg_axi_lite_aw_select = smc_misc_pkg::ERR_SLV;
-		end
+    unique if (reg_axi_lite_req_i.ar.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_BASE_ADDR && reg_axi_lite_req_i.ar.addr < smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_BASE_ADDR + smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SIZE) begin
+      reg_axi_lite_ar_select = smc_misc_pkg::SCRATCH_COLD;
+    end else if (reg_axi_lite_req_i.ar.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR && reg_axi_lite_req_i.ar.addr < smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR + smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_SIZE) begin
+      reg_axi_lite_ar_select = smc_misc_pkg::SCRATCH_COLD_WARM;
+    end else if (reg_axi_lite_req_i.ar.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR && reg_axi_lite_req_i.ar.addr < smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR + smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_SIZE) begin
+      reg_axi_lite_ar_select = smc_misc_pkg::CHIP_CONFIG;
+    end else if (reg_axi_lite_req_i.ar.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_NDM_RESET_BASE_ADDR && reg_axi_lite_req_i.ar.addr < smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_NDM_RESET_BASE_ADDR + smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_NDM_RESET_SIZE) begin
+      reg_axi_lite_ar_select = smc_misc_pkg::NDM_RESET;
+    end else begin
+      reg_axi_lite_ar_select = smc_misc_pkg::ERR_SLV;
+    end
+  end
 
-		unique if (reg_axi_lite_req_i.ar.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_BASE_ADDR && reg_axi_lite_req_i.ar.addr < smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_BASE_ADDR + smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SIZE) begin
-			reg_axi_lite_ar_select = smc_misc_pkg::SCRATCH_COLD;
-		end else if (reg_axi_lite_req_i.ar.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR && reg_axi_lite_req_i.ar.addr < smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR + smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_SIZE) begin
-			reg_axi_lite_ar_select = smc_misc_pkg::SCRATCH_COLD_WARM;
-		end else if (reg_axi_lite_req_i.ar.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR && reg_axi_lite_req_i.ar.addr < smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR + smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_SIZE) begin
-			reg_axi_lite_ar_select = smc_misc_pkg::CHIP_CONFIG;
-		end else if (reg_axi_lite_req_i.ar.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_NDM_RESET_BASE_ADDR && reg_axi_lite_req_i.ar.addr < smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_NDM_RESET_BASE_ADDR + smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_NDM_RESET_SIZE) begin
-    		reg_axi_lite_ar_select = smc_misc_pkg::NDM_RESET;
-		end else begin
-			reg_axi_lite_ar_select = smc_misc_pkg::ERR_SLV;
-		end
-	end
+  axi_lite_demux #(
+    .aw_chan_t   (smc_pkg::smc_axil_32_32_aw_chan_t),
+    .w_chan_t    (smc_pkg::smc_axil_32_32_w_chan_t),
+    .b_chan_t    (smc_pkg::smc_axil_32_32_b_chan_t),
+    .ar_chan_t   (smc_pkg::smc_axil_32_32_ar_chan_t),
+    .r_chan_t    (smc_pkg::smc_axil_32_32_r_chan_t),
+    .axi_req_t   (smc_pkg::smc_axil_32_32_req_t),
+    .axi_resp_t  (smc_pkg::smc_axil_32_32_resp_t),
+    .NoMstPorts  (smc_misc_pkg::NumRegMaps),
+    .MaxTrans    (1),
+    .FallThrough (1'b0),
+    .SpillAw     (1'b1),
+    .SpillW      (1'b0),
+    .SpillB      (1'b0),
+    .SpillAr     (1'b1),
+    .SpillR      (1'b0)
+  ) u_axi_lite_demux (
+    .clk_i            (clk_i),
+    .rst_ni           (rst_ni),
+    .test_i           (test_en_i),
 
-	axi_lite_demux #(
-		.aw_chan_t   (smc_pkg::smc_axil_32_32_aw_chan_t),
-		.w_chan_t    (smc_pkg::smc_axil_32_32_w_chan_t),
-		.b_chan_t    (smc_pkg::smc_axil_32_32_b_chan_t),
-		.ar_chan_t   (smc_pkg::smc_axil_32_32_ar_chan_t),
-		.r_chan_t    (smc_pkg::smc_axil_32_32_r_chan_t),
-		.axi_req_t   (smc_pkg::smc_axil_32_32_req_t),
-		.axi_resp_t  (smc_pkg::smc_axil_32_32_resp_t),
-		.NoMstPorts  (smc_misc_pkg::NumRegMaps),
-		.MaxTrans    (1),
-		.FallThrough (1'b0),
-		.SpillAw     (1'b1),
-		.SpillW      (1'b0),
-		.SpillB      (1'b0),
-		.SpillAr     (1'b1),
-		.SpillR      (1'b0)
-	) axi_lite_demux (
-		.clk_i            (clk_i),
-		.rst_ni           (rst_ni),
-		.test_i           (test_en_i),
+    .slv_req_i        (reg_axi_lite_req_i),
+    .slv_resp_o       (reg_axi_lite_resp_o),
 
-		.slv_req_i        (reg_axi_lite_req_i),
-		.slv_resp_o       (reg_axi_lite_resp_o),
+    .slv_aw_select_i  (reg_axi_lite_aw_select),
+    .slv_ar_select_i  (reg_axi_lite_ar_select),
 
-		.slv_aw_select_i  (reg_axi_lite_aw_select),
-		.slv_ar_select_i  (reg_axi_lite_ar_select),
+    .mst_reqs_o       (from_demux_reg_axi_lite_req),
+    .mst_resps_i      (from_demux_reg_axi_lite_resp)
+  );
 
-		.mst_reqs_o       (from_demux_reg_axi_lite_req),
-		.mst_resps_i      (from_demux_reg_axi_lite_resp)
-	);
+  //////////////////////////
+  // SMC Scratch Registers //
+  //////////////////////////
 
-	//////////////////////////
-	// SMC Scratch Registers //
-	//////////////////////////
+  // 8 scratch registers that are reset by cold reset
+  scratch_reg u_smc_scratch_reg_cold (
+    .clk            (clk_i),
+    .arst_n         (rst_ni),
 
-	// 8 scratch registers that are reset by cold reset
-	scratch_reg smc_scratch_reg_cold (
-		.clk            (clk_i),
-		.arst_n         (rst_ni),
+    .s_axil_awvalid (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD].aw_valid),
+    .s_axil_awaddr  (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD].aw.addr[scratch_reg_pkg::SCRATCH_REG_MIN_ADDR_WIDTH-1:0]),
+    .s_axil_awprot  (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD].aw.prot),
+    .s_axil_wvalid  (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD].w_valid),
+    .s_axil_wdata   (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD].w.data),
+    .s_axil_wstrb   (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD].w.strb),
+    .s_axil_bready  (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD].b_ready),
+    .s_axil_arvalid (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD].ar_valid),
+    .s_axil_araddr  (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD].ar.addr[scratch_reg_pkg::SCRATCH_REG_MIN_ADDR_WIDTH-1:0]),
+    .s_axil_arprot  (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD].ar.prot),
+    .s_axil_rready  (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD].r_ready),
 
-		.s_axil_awvalid (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD].aw_valid),
-		.s_axil_awaddr  (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD].aw.addr[scratch_reg_pkg::SCRATCH_REG_MIN_ADDR_WIDTH-1:0]),
-		.s_axil_awprot  (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD].aw.prot),
-		.s_axil_wvalid  (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD].w_valid),
-		.s_axil_wdata   (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD].w.data),
-		.s_axil_wstrb   (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD].w.strb),
-		.s_axil_bready  (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD].b_ready),
-		.s_axil_arvalid (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD].ar_valid),
-		.s_axil_araddr  (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD].ar.addr[scratch_reg_pkg::SCRATCH_REG_MIN_ADDR_WIDTH-1:0]),
-		.s_axil_arprot  (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD].ar.prot),
-		.s_axil_rready  (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD].r_ready),
+    .s_axil_awready (from_demux_reg_axi_lite_resp[smc_misc_pkg::SCRATCH_COLD].aw_ready),
+    .s_axil_wready  (from_demux_reg_axi_lite_resp[smc_misc_pkg::SCRATCH_COLD].w_ready),
+    .s_axil_bvalid  (from_demux_reg_axi_lite_resp[smc_misc_pkg::SCRATCH_COLD].b_valid),
+    .s_axil_bresp   (from_demux_reg_axi_lite_resp[smc_misc_pkg::SCRATCH_COLD].b.resp),
+    .s_axil_arready (from_demux_reg_axi_lite_resp[smc_misc_pkg::SCRATCH_COLD].ar_ready),
+    .s_axil_rvalid  (from_demux_reg_axi_lite_resp[smc_misc_pkg::SCRATCH_COLD].r_valid),
+    .s_axil_rdata   (from_demux_reg_axi_lite_resp[smc_misc_pkg::SCRATCH_COLD].r.data),
+    .s_axil_rresp   (from_demux_reg_axi_lite_resp[smc_misc_pkg::SCRATCH_COLD].r.resp)
+  );
 
-		.s_axil_awready (from_demux_reg_axi_lite_resp[smc_misc_pkg::SCRATCH_COLD].aw_ready),
-		.s_axil_wready  (from_demux_reg_axi_lite_resp[smc_misc_pkg::SCRATCH_COLD].w_ready),
-		.s_axil_bvalid  (from_demux_reg_axi_lite_resp[smc_misc_pkg::SCRATCH_COLD].b_valid),
-		.s_axil_bresp   (from_demux_reg_axi_lite_resp[smc_misc_pkg::SCRATCH_COLD].b.resp),
-		.s_axil_arready (from_demux_reg_axi_lite_resp[smc_misc_pkg::SCRATCH_COLD].ar_ready),
-		.s_axil_rvalid  (from_demux_reg_axi_lite_resp[smc_misc_pkg::SCRATCH_COLD].r_valid),
-		.s_axil_rdata   (from_demux_reg_axi_lite_resp[smc_misc_pkg::SCRATCH_COLD].r.data),
-		.s_axil_rresp   (from_demux_reg_axi_lite_resp[smc_misc_pkg::SCRATCH_COLD].r.resp)
-	);
+  // 8 scratch registers that are reset by cold and warm reset
+  scratch_reg u_smc_scratch_reg_cold_warm (
+    .clk            (clk_i),
+    .arst_n         (rst_warm_ni),
 
-	// 8 scratch registers that are reset by cold and warm reset
-	scratch_reg smc_scratch_reg_cold_warm (
-		.clk            (clk_i),
-		.arst_n         (rst_ni && rst_warm_ni),
+    .s_axil_awvalid (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD_WARM].aw_valid),
+    .s_axil_awaddr  (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD_WARM].aw.addr[scratch_reg_pkg::SCRATCH_REG_MIN_ADDR_WIDTH-1:0]),
+    .s_axil_awprot  (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD_WARM].aw.prot),
+    .s_axil_wvalid  (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD_WARM].w_valid),
+    .s_axil_wdata   (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD_WARM].w.data),
+    .s_axil_wstrb   (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD_WARM].w.strb),
+    .s_axil_bready  (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD_WARM].b_ready),
+    .s_axil_arvalid (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD_WARM].ar_valid),
+    .s_axil_araddr  (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD_WARM].ar.addr[scratch_reg_pkg::SCRATCH_REG_MIN_ADDR_WIDTH-1:0]),
+    .s_axil_arprot  (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD_WARM].ar.prot),
+    .s_axil_rready  (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD_WARM].r_ready),
 
-		.s_axil_awvalid (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD_WARM].aw_valid),
-		.s_axil_awaddr  (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD_WARM].aw.addr[scratch_reg_pkg::SCRATCH_REG_MIN_ADDR_WIDTH-1:0]),
-		.s_axil_awprot  (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD_WARM].aw.prot),
-		.s_axil_wvalid  (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD_WARM].w_valid),
-		.s_axil_wdata   (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD_WARM].w.data),
-		.s_axil_wstrb   (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD_WARM].w.strb),
-		.s_axil_bready  (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD_WARM].b_ready),
-		.s_axil_arvalid (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD_WARM].ar_valid),
-		.s_axil_araddr  (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD_WARM].ar.addr[scratch_reg_pkg::SCRATCH_REG_MIN_ADDR_WIDTH-1:0]),
-		.s_axil_arprot  (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD_WARM].ar.prot),
-		.s_axil_rready  (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD_WARM].r_ready),
+    .s_axil_awready (from_demux_reg_axi_lite_resp[smc_misc_pkg::SCRATCH_COLD_WARM].aw_ready),
+    .s_axil_wready  (from_demux_reg_axi_lite_resp[smc_misc_pkg::SCRATCH_COLD_WARM].w_ready),
+    .s_axil_bvalid  (from_demux_reg_axi_lite_resp[smc_misc_pkg::SCRATCH_COLD_WARM].b_valid),
+    .s_axil_bresp   (from_demux_reg_axi_lite_resp[smc_misc_pkg::SCRATCH_COLD_WARM].b.resp),
+    .s_axil_arready (from_demux_reg_axi_lite_resp[smc_misc_pkg::SCRATCH_COLD_WARM].ar_ready),
+    .s_axil_rvalid  (from_demux_reg_axi_lite_resp[smc_misc_pkg::SCRATCH_COLD_WARM].r_valid),
+    .s_axil_rdata   (from_demux_reg_axi_lite_resp[smc_misc_pkg::SCRATCH_COLD_WARM].r.data),
+    .s_axil_rresp   (from_demux_reg_axi_lite_resp[smc_misc_pkg::SCRATCH_COLD_WARM].r.resp)
+  );
 
-		.s_axil_awready (from_demux_reg_axi_lite_resp[smc_misc_pkg::SCRATCH_COLD_WARM].aw_ready),
-		.s_axil_wready  (from_demux_reg_axi_lite_resp[smc_misc_pkg::SCRATCH_COLD_WARM].w_ready),
-		.s_axil_bvalid  (from_demux_reg_axi_lite_resp[smc_misc_pkg::SCRATCH_COLD_WARM].b_valid),
-		.s_axil_bresp   (from_demux_reg_axi_lite_resp[smc_misc_pkg::SCRATCH_COLD_WARM].b.resp),
-		.s_axil_arready (from_demux_reg_axi_lite_resp[smc_misc_pkg::SCRATCH_COLD_WARM].ar_ready),
-		.s_axil_rvalid  (from_demux_reg_axi_lite_resp[smc_misc_pkg::SCRATCH_COLD_WARM].r_valid),
-		.s_axil_rdata   (from_demux_reg_axi_lite_resp[smc_misc_pkg::SCRATCH_COLD_WARM].r.data),
-		.s_axil_rresp   (from_demux_reg_axi_lite_resp[smc_misc_pkg::SCRATCH_COLD_WARM].r.resp)
-	);
+  //////////////////////////
+  // Version ID Rev Cells //
+  //////////////////////////
 
-	//////////////////////////
-	// Version ID Rev Cells //
-	//////////////////////////
+  logic [63:0] version_id;
 
-	logic [63:0] version_id;
+  smc_version_id_wrap u_smc_version_id_wrap (.version_id_o(version_id));
 
-	smc_version_id_wrap smc_version_id_wrap (
-		.version_id_o(version_id)
-	);
+  ///////////////////////////
+  // Chip Config Registers //
+  ///////////////////////////
 
-	///////////////////////////
-	// Chip Config Registers //
-	///////////////////////////
+  chip_config_reg_pkg::chip_config__in_t hwif_in;
 
-	chip_config_reg_pkg::chip_config__in_t      hwif_in;
-	chip_config_reg_pkg::chip_config__out_t     hwif_out;
+  chip_config_reg u_smc_chip_config_reg (
+    .clk(clk_i),
+    .arst_n(rst_ni),
 
-	chip_config_reg smc_chip_config_reg (
-		.clk(clk_i),
-		.arst_n(rst_ni),
+    .s_axil_awvalid (from_demux_reg_axi_lite_req[smc_misc_pkg::CHIP_CONFIG].aw_valid),
+    .s_axil_awaddr  (from_demux_reg_axi_lite_req[smc_misc_pkg::CHIP_CONFIG].aw.addr[chip_config_reg_pkg::CHIP_CONFIG_REG_MIN_ADDR_WIDTH-1:0]),
+    .s_axil_awprot  (from_demux_reg_axi_lite_req[smc_misc_pkg::CHIP_CONFIG].aw.prot),
+    .s_axil_wvalid  (from_demux_reg_axi_lite_req[smc_misc_pkg::CHIP_CONFIG].w_valid),
+    .s_axil_wdata   (from_demux_reg_axi_lite_req[smc_misc_pkg::CHIP_CONFIG].w.data),
+    .s_axil_wstrb   (from_demux_reg_axi_lite_req[smc_misc_pkg::CHIP_CONFIG].w.strb),
+    .s_axil_bready  (from_demux_reg_axi_lite_req[smc_misc_pkg::CHIP_CONFIG].b_ready),
+    .s_axil_arvalid (from_demux_reg_axi_lite_req[smc_misc_pkg::CHIP_CONFIG].ar_valid),
+    .s_axil_araddr  (from_demux_reg_axi_lite_req[smc_misc_pkg::CHIP_CONFIG].ar.addr[chip_config_reg_pkg::CHIP_CONFIG_REG_MIN_ADDR_WIDTH-1:0]),
+    .s_axil_arprot  (from_demux_reg_axi_lite_req[smc_misc_pkg::CHIP_CONFIG].ar.prot),
+    .s_axil_rready  (from_demux_reg_axi_lite_req[smc_misc_pkg::CHIP_CONFIG].r_ready),
 
-		.s_axil_awvalid (from_demux_reg_axi_lite_req[smc_misc_pkg::CHIP_CONFIG].aw_valid),
-		.s_axil_awaddr  (from_demux_reg_axi_lite_req[smc_misc_pkg::CHIP_CONFIG].aw.addr[chip_config_reg_pkg::CHIP_CONFIG_REG_MIN_ADDR_WIDTH-1:0]),
-		.s_axil_awprot  (from_demux_reg_axi_lite_req[smc_misc_pkg::CHIP_CONFIG].aw.prot),
-		.s_axil_wvalid  (from_demux_reg_axi_lite_req[smc_misc_pkg::CHIP_CONFIG].w_valid),
-		.s_axil_wdata   (from_demux_reg_axi_lite_req[smc_misc_pkg::CHIP_CONFIG].w.data),
-		.s_axil_wstrb   (from_demux_reg_axi_lite_req[smc_misc_pkg::CHIP_CONFIG].w.strb),
-		.s_axil_bready  (from_demux_reg_axi_lite_req[smc_misc_pkg::CHIP_CONFIG].b_ready),
-		.s_axil_arvalid (from_demux_reg_axi_lite_req[smc_misc_pkg::CHIP_CONFIG].ar_valid),
-		.s_axil_araddr  (from_demux_reg_axi_lite_req[smc_misc_pkg::CHIP_CONFIG].ar.addr[chip_config_reg_pkg::CHIP_CONFIG_REG_MIN_ADDR_WIDTH-1:0]),
-		.s_axil_arprot  (from_demux_reg_axi_lite_req[smc_misc_pkg::CHIP_CONFIG].ar.prot),
-		.s_axil_rready  (from_demux_reg_axi_lite_req[smc_misc_pkg::CHIP_CONFIG].r_ready),
+    .s_axil_awready (from_demux_reg_axi_lite_resp[smc_misc_pkg::CHIP_CONFIG].aw_ready),
+    .s_axil_wready  (from_demux_reg_axi_lite_resp[smc_misc_pkg::CHIP_CONFIG].w_ready),
+    .s_axil_bvalid  (from_demux_reg_axi_lite_resp[smc_misc_pkg::CHIP_CONFIG].b_valid),
+    .s_axil_bresp   (from_demux_reg_axi_lite_resp[smc_misc_pkg::CHIP_CONFIG].b.resp),
+    .s_axil_arready (from_demux_reg_axi_lite_resp[smc_misc_pkg::CHIP_CONFIG].ar_ready),
+    .s_axil_rvalid  (from_demux_reg_axi_lite_resp[smc_misc_pkg::CHIP_CONFIG].r_valid),
+    .s_axil_rdata   (from_demux_reg_axi_lite_resp[smc_misc_pkg::CHIP_CONFIG].r.data),
+    .s_axil_rresp   (from_demux_reg_axi_lite_resp[smc_misc_pkg::CHIP_CONFIG].r.resp),
 
-		.s_axil_awready (from_demux_reg_axi_lite_resp[smc_misc_pkg::CHIP_CONFIG].aw_ready),
-		.s_axil_wready  (from_demux_reg_axi_lite_resp[smc_misc_pkg::CHIP_CONFIG].w_ready),
-		.s_axil_bvalid  (from_demux_reg_axi_lite_resp[smc_misc_pkg::CHIP_CONFIG].b_valid),
-		.s_axil_bresp   (from_demux_reg_axi_lite_resp[smc_misc_pkg::CHIP_CONFIG].b.resp),
-		.s_axil_arready (from_demux_reg_axi_lite_resp[smc_misc_pkg::CHIP_CONFIG].ar_ready),
-		.s_axil_rvalid  (from_demux_reg_axi_lite_resp[smc_misc_pkg::CHIP_CONFIG].r_valid),
-		.s_axil_rdata   (from_demux_reg_axi_lite_resp[smc_misc_pkg::CHIP_CONFIG].r.data),
-		.s_axil_rresp   (from_demux_reg_axi_lite_resp[smc_misc_pkg::CHIP_CONFIG].r.resp),
+    .hwif_in(hwif_in)
+  );
 
-		.hwif_in(hwif_in),
-		.hwif_out(hwif_out)
-	);
+  assign hwif_in.VERSION_LO.version_lo.next = version_id[31:0];
+  assign hwif_in.VERSION_HI.version_hi.next = version_id[63:32];
+  assign hwif_in.CHIP_ID.chip_id.next = CHIP_ID;
+  assign hwif_in.LC_STATE.lc_state.next = lc_state_i;
 
-	assign hwif_in.VERSION_LO.version_lo.next = version_id[31:0];
-	assign hwif_in.VERSION_HI.version_hi.next = version_id[63:32];
-	assign hwif_in.CHIP_ID.chip_id.next = CHIP_ID;
-	assign hwif_in.LC_STATE.lc_state.next = lc_state_i;
+  ///////////////////////
+  // NDM Reset Control //
+  ///////////////////////
 
-	assign ras_bank_chip_o = hwif_out.RAS_BANK_INFO.bank_chip.value;
-	assign ras_bank_instance_o = hwif_out.RAS_BANK_INFO.bank_instance.value;
+  ndm_reset_reg_pkg::ndm_reset__in_t  ndm_hwif_in;
+  ndm_reset_reg_pkg::ndm_reset__out_t ndm_hwif_out;
 
-	///////////////////////
-	// NDM Reset Control //
-	///////////////////////
+  ndm_reset_reg u_smc_ndm_reset_reg (
+    .clk(clk_i),
+    .arst_n(rst_ni),
 
-	ndm_reset_reg_pkg::ndm_reset__in_t  ndm_hwif_in;
-	ndm_reset_reg_pkg::ndm_reset__out_t ndm_hwif_out;
+    .s_axil_awvalid (from_demux_reg_axi_lite_req[smc_misc_pkg::NDM_RESET].aw_valid),
+    .s_axil_awaddr  (from_demux_reg_axi_lite_req[smc_misc_pkg::NDM_RESET].aw.addr[ndm_reset_reg_pkg::NDM_RESET_REG_MIN_ADDR_WIDTH-1:0]),
+    .s_axil_awprot  (from_demux_reg_axi_lite_req[smc_misc_pkg::NDM_RESET].aw.prot),
+    .s_axil_wvalid  (from_demux_reg_axi_lite_req[smc_misc_pkg::NDM_RESET].w_valid),
+    .s_axil_wdata   (from_demux_reg_axi_lite_req[smc_misc_pkg::NDM_RESET].w.data),
+    .s_axil_wstrb   (from_demux_reg_axi_lite_req[smc_misc_pkg::NDM_RESET].w.strb),
+    .s_axil_bready  (from_demux_reg_axi_lite_req[smc_misc_pkg::NDM_RESET].b_ready),
+    .s_axil_arvalid (from_demux_reg_axi_lite_req[smc_misc_pkg::NDM_RESET].ar_valid),
+    .s_axil_araddr  (from_demux_reg_axi_lite_req[smc_misc_pkg::NDM_RESET].ar.addr[ndm_reset_reg_pkg::NDM_RESET_REG_MIN_ADDR_WIDTH-1:0]),
+    .s_axil_arprot  (from_demux_reg_axi_lite_req[smc_misc_pkg::NDM_RESET].ar.prot),
+    .s_axil_rready  (from_demux_reg_axi_lite_req[smc_misc_pkg::NDM_RESET].r_ready),
 
-	ndm_reset_reg smc_ndm_reset_reg (
-		.clk(clk_i),
-		.arst_n(rst_ni),
+    .s_axil_awready (from_demux_reg_axi_lite_resp[smc_misc_pkg::NDM_RESET].aw_ready),
+    .s_axil_wready  (from_demux_reg_axi_lite_resp[smc_misc_pkg::NDM_RESET].w_ready),
+    .s_axil_bvalid  (from_demux_reg_axi_lite_resp[smc_misc_pkg::NDM_RESET].b_valid),
+    .s_axil_bresp   (from_demux_reg_axi_lite_resp[smc_misc_pkg::NDM_RESET].b.resp),
+    .s_axil_arready (from_demux_reg_axi_lite_resp[smc_misc_pkg::NDM_RESET].ar_ready),
+    .s_axil_rvalid  (from_demux_reg_axi_lite_resp[smc_misc_pkg::NDM_RESET].r_valid),
+    .s_axil_rdata   (from_demux_reg_axi_lite_resp[smc_misc_pkg::NDM_RESET].r.data),
+    .s_axil_rresp   (from_demux_reg_axi_lite_resp[smc_misc_pkg::NDM_RESET].r.resp),
 
-		.s_axil_awvalid (from_demux_reg_axi_lite_req[smc_misc_pkg::NDM_RESET].aw_valid),
-		.s_axil_awaddr  (from_demux_reg_axi_lite_req[smc_misc_pkg::NDM_RESET].aw.addr[ndm_reset_reg_pkg::NDM_RESET_REG_MIN_ADDR_WIDTH-1:0]),
-		.s_axil_awprot  (from_demux_reg_axi_lite_req[smc_misc_pkg::NDM_RESET].aw.prot),
-		.s_axil_wvalid  (from_demux_reg_axi_lite_req[smc_misc_pkg::NDM_RESET].w_valid),
-		.s_axil_wdata   (from_demux_reg_axi_lite_req[smc_misc_pkg::NDM_RESET].w.data),
-		.s_axil_wstrb   (from_demux_reg_axi_lite_req[smc_misc_pkg::NDM_RESET].w.strb),
-		.s_axil_bready  (from_demux_reg_axi_lite_req[smc_misc_pkg::NDM_RESET].b_ready),
-		.s_axil_arvalid (from_demux_reg_axi_lite_req[smc_misc_pkg::NDM_RESET].ar_valid),
-		.s_axil_araddr  (from_demux_reg_axi_lite_req[smc_misc_pkg::NDM_RESET].ar.addr[ndm_reset_reg_pkg::NDM_RESET_REG_MIN_ADDR_WIDTH-1:0]),
-		.s_axil_arprot  (from_demux_reg_axi_lite_req[smc_misc_pkg::NDM_RESET].ar.prot),
-		.s_axil_rready  (from_demux_reg_axi_lite_req[smc_misc_pkg::NDM_RESET].r_ready),
+    .hwif_in(ndm_hwif_in),
+    .hwif_out(ndm_hwif_out)
+  );
 
-		.s_axil_awready (from_demux_reg_axi_lite_resp[smc_misc_pkg::NDM_RESET].aw_ready),
-		.s_axil_wready  (from_demux_reg_axi_lite_resp[smc_misc_pkg::NDM_RESET].w_ready),
-		.s_axil_bvalid  (from_demux_reg_axi_lite_resp[smc_misc_pkg::NDM_RESET].b_valid),
-		.s_axil_bresp   (from_demux_reg_axi_lite_resp[smc_misc_pkg::NDM_RESET].b.resp),
-		.s_axil_arready (from_demux_reg_axi_lite_resp[smc_misc_pkg::NDM_RESET].ar_ready),
-		.s_axil_rvalid  (from_demux_reg_axi_lite_resp[smc_misc_pkg::NDM_RESET].r_valid),
-		.s_axil_rdata   (from_demux_reg_axi_lite_resp[smc_misc_pkg::NDM_RESET].r.data),
-		.s_axil_rresp   (from_demux_reg_axi_lite_resp[smc_misc_pkg::NDM_RESET].r.resp),
+  assign ndm_hwif_in.NDMRESET_REQUEST.ndmreset_request.next = ndm_reset_reg_pkg::NDM_RESET_REG_DATA_WIDTH'(ndmreset_request_i);
+  assign ndm_hwif_in.NDMRESET_CLUSTER_COUNT.ndmreset_cluster_count.next = smc_config_pkg::CPU_CLUSTER_COUNT;
 
-		.hwif_in(ndm_hwif_in),
-		.hwif_out(ndm_hwif_out)
-	);
+  // Output: ndmreset_process goes to reset control logic (via SMU)
+  assign ndmreset_process_o = ndm_hwif_out.NDMRESET_PROCESS.ndmreset_process.value[smc_config_pkg::CPU_CLUSTER_COUNT - 1:0];
 
-	assign ndm_hwif_in.NDMRESET_REQUEST.ndmreset_request.next = ndm_reset_reg_pkg::NDM_RESET_REG_DATA_WIDTH'(ndmreset_request_i);
-	assign ndm_hwif_in.NDMRESET_CLUSTER_COUNT.ndmreset_cluster_count.next = smc_config_pkg::CPU_CLUSTER_COUNT;
+  //////////////////////////
+  // AXI-Lite Error Slave //
+  //////////////////////////
 
-	// Output: ndmreset_process goes to reset control logic (via SMU)
-	assign ndmreset_process_o = ndm_hwif_out.NDMRESET_PROCESS.ndmreset_process.value[smc_config_pkg::CPU_CLUSTER_COUNT - 1:0];
-
-	//////////////////////////
-	// AXI-Lite Error Slave //
-	//////////////////////////
-
-	prim_axi_lite_err_slv #(
-		.AXI_ADDR_WIDTH (32),
-		.AXI_DATA_WIDTH (32),
-		.axil_req_t     (smc_pkg::smc_axil_32_32_req_t),
-		.axil_resp_t    (smc_pkg::smc_axil_32_32_resp_t),
-		.RESP           (axi_pkg::RESP_DECERR),
-		.RESP_WIDTH     (32),
-		.RESP_DATA      (32'hBADCAB1E)
-	) prim_axi_lite_err_slv (
-		.clk_i      (clk_i),
-		.rst_ni     (rst_ni),
-		.axil_req_i (from_demux_reg_axi_lite_req[smc_misc_pkg::ERR_SLV]),
-		.axil_resp_o(from_demux_reg_axi_lite_resp[smc_misc_pkg::ERR_SLV])
-	);
+  prim_axi_lite_err_slv #(
+    .AXI_ADDR_WIDTH (32),
+    .AXI_DATA_WIDTH (32),
+    .axil_req_t     (smc_pkg::smc_axil_32_32_req_t),
+    .axil_resp_t    (smc_pkg::smc_axil_32_32_resp_t),
+    .RESP           (axi_pkg::RESP_DECERR),
+    .RESP_WIDTH     (32),
+    .RESP_DATA      (32'hBADCAB1E)
+  ) u_prim_axi_lite_err_slv (
+    .clk_i      (clk_i),
+    .rst_ni     (rst_ni),
+    .axil_req_i (from_demux_reg_axi_lite_req[smc_misc_pkg::ERR_SLV]),
+    .axil_resp_o(from_demux_reg_axi_lite_resp[smc_misc_pkg::ERR_SLV])
+  );
 
 endmodule

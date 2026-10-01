@@ -2,33 +2,26 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[ctp-interface]]
-==== Interface
 
-===== Signal Interface
+=== Signal Interface
 
-[width="100%",cols="<34%,<33%,<33%",options="header"]
-|===
-|Name |Direction |Description
-|mode |input |Indicates the operational mode of the CTP. 0 for wire-OR and 1 for peer-to-peer. The value at reset should be 0.
-|ct_src |input |Core-side cross trigger input pulse.
-|ct_dst |output |Core-side cross trigger output pulse.
-|busy |output |Optional signal indicating that an outgoing cross trigger pulse transfer is in progress.
-|reset |input |Resets the outgoing peer-to-peer handshake logic.
-|stretch_mult[N-1:0] |input |Configures the pulse duration of the pulse stretcher module for wire-OR mode.
-|ct_req_out_dout_en |output |Enables the output driver for the _CT_Req_out_ pad. In wire-OR mode this signal is enabled by a cross trigger pulse from the pulse stretcher. In peer-to-peer mode it is always enabled.
-|ct_req_out_din_en |output |Enables the input buffer for the _CT_Req_out_ pad. In wire-OR mode this signal is enabled and in peer-to-peer mode it is disabled.
-|ct_req_out_dout |output |The output data to drive on the _CT_Req_out_ pad. In peer-to-peer mode the pulse capture latch controls this signal. In wire-OR mode it is held static-low.
-|ct_req_out_din |input |The input data that is driven on the _CT_Req_out_ pad. In wire-OR mode this signal triggers a pulse on _ct_dst_ after synchronization. In peer-to-peer mode it is unused.
-|ct_req_in_din_en |output |Enables the input buffer for the _CT_Req_in_ pad. In peer-to-peer mode this signal is enabled and in wire-OR mode it is disabled.
-|ct_req_in_din |input |The input data that is driven on the _CT_Req_in_ pad. In peer-to-peer mode this signal triggers a pulse on _ct_dst_ after synchronization. In wire-OR mode it is unused.
-|ct_ack_in_din_en |output |Enables the input buffer for the _CT_Ack_in_ pad. In peer-to-peer mode this signal is enabled and in wire-OR mode it is disabled.
-|ct_ack_in_din |input |The input data that is driven on the _CT_Ack_in_ pad. This signal clears the cross trigger request output in peer-to-peer mode. In wire-OR mode it is unused.
-|ct_ack_out_dout_en |output |Enables the output driver for the _CT_Ack_out_ pad. In peer-to-peer mode this signal is enabled and in wire-OR mode it is disabled.
-|ct_ack_out_dout |output |The output data to drive on the _CT_Ack_out_ pad. In peer-to-peer mode the _ct_req_in_ pulse synchronizer controls this signal. In wire-OR mode it is unused.
-|===
+Packed control and bus types remain bundles at the `cross_trigger_port` module
+boundary; their members are not separate scalar ports.
 
-===== Dependencies
+ifdef::backend-html5[]
+The parameters and ports of `cross_trigger_port` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/cross_trigger_port/cross_trigger_port.adoc[cross_trigger_port].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters and ports of `cross_trigger_port` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
+
+`cross_trigger_port` includes the CSR interface. The register-free `cross_trigger_port_core` instead takes `mode_wire_or_i`,
+`invert_i`, `handshake_reset_i`, and `stretch_mult_i` as configuration inputs.
+At that core interface, `mode_wire_or_i = 1` selects wire-OR and `0` selects
+point-to-point; the CSR MODE field is inverted before reaching it.
+
+=== Dependencies
 
 The CTP depends on the following components:
 
-* `hw/common/och_prim` - Primitive cells (synchronizers, pulse stretcher)
+* `hw/common/ocah_prim` - Primitive cells (synchronizers, pulse stretcher)

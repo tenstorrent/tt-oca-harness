@@ -8,17 +8,17 @@
 // exercise the entropy datapath.
 
 module entropy_ring_oscillator #(
-    parameter int unsigned TOTAL_LENGTH  = 17,
-    parameter int unsigned TAPPED_LENGTH = 13
+  parameter int unsigned TOTAL_LENGTH  = 17,
+  parameter int unsigned TAPPED_LENGTH = 13
 ) (
-    input  logic enable_i,
-    input  logic detune_i,
-    output logic noise_o
+  input  logic enable_i,
+  input  logic detune_i,
+  output logic noise_o
 );
 
-    logic unused;
+  logic unused;
 
-    assign unused = enable_i ^ detune_i ^ ^TOTAL_LENGTH ^ ^TAPPED_LENGTH;
-    assign noise_o = 1'b0;
+  assign unused = enable_i ^ detune_i ^ ^TOTAL_LENGTH ^ ^TAPPED_LENGTH;
+  assign noise_o = 1'b0;
 
 endmodule

@@ -1,7 +1,29 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// JTAG Primary TAP
+// Run the primary IEEE 1149.1 TAP with instruction decode, TDRs, and optional JTAG2AXI bridges.
+//
+// Parameter enables select BSR and optional instructions, TMP, IC_RESET slices, SMC/SEP
+// debug, and STAP I/O.
+//
+// IC_RESET slice types have .ovrd (per-port override, active-high) and .val (per-port
+// reset control, active-low) of matching width; consumers use ovrd ? val :
+// upstream_reset_n. IEEE §17 reset_enable is active-low in the TDR; jtag_ic_reset_reg
+// already inverts it before .ovrd, so do not re-invert here. The aggregate TDR
+// concatenates SMC → SEP → EXT from TDI to TDO, then reset_hold nearest TDO.
+//
+// Per-bridge security_disable inputs are active-high (1 disables the bridge),
+// synchronized to TCK upstream.
+//
+// The STAP scan interface carries both IR and DR scans while the 3DCR STAP-select bit is set, and
+// TDO then comes from stap_host_scan_in_i instead of the IR or selected TDR. While the bit is
+// clear, the select, capture, shift and update strobes of the STAP scan interface stay low, so
+// the STAP chain holds its state through every scan. TDO is retimed on the
+// falling TCK edge, except during a ZERO_LENGTH_BYPASS DR shift, where TDI reaches TDO
+// combinationally.
+//
+// System clk_i/rst_n_i clock jtag2axi; pwr_on_rst_ni is ANDed with trst_n for the JTAG logic
+// and for the TRST forwarded on host_tap_ctrl_o.
 
 module jtag_ptap
     import prim_jtag_pkg::*;
@@ -11,134 +33,173 @@ module jtag_ptap
     import jtag_inst_reg_pkg::*;
 #(
     /* verilator lint_off UNUSEDPARAM */
-    parameter bit  BSR_ENABLE          = 1,  // Enables all mandatory JTAG boundary scan instructions
-                   EXTEST_TRAIN_ENABLE = 1,  // Enables optional JTAG EXTEST_TRAIN instruction
-                   EXTEST_PULSE_ENABLE = 1,  // Enables optional JTAG EXTEST_PULSE instruction
-                   INTEST_ENABLE       = 1,  // Enables optional JTAG INTEST instruction
-                   CLAMP_ENABLE        = 1,  // Enables optional JTAG CLAMP instruction
-                   HIGHZ_ENABLE        = 1,  // Enables optional JTAG HIGHZ instruction
-                   RUNBIST_ENABLE      = 1,  // Enables optional JTAG RUNBIST instruction
-                   TMP_ENABLE          = 1,  // Enables TMP controller functionality and instructions
-                   IC_RESET_SMC_ENABLE = 0,  // Enables the SMC slice of the IC_RESET TDR
-                   IC_RESET_SEP_ENABLE = 0,  // Enables the SEP slice of the IC_RESET TDR
-                   IC_RESET_EXT_ENABLE = 0,  // Enables the external slice of the IC_RESET TDR
-                   SMC_DBG_ENABLE      = 1,  // Enables optional JTAG2AXI ports for the SMC debug interface
-                   SEP_DBG_ENABLE      = 1,  // Enables optional STAP for the SEP debug interface
-                   STAP_IO_ENABLE      = 1,  // Enables the STAP for chiplet-to-chiplet connectivity
+    parameter bit  BSR_ENABLE          = 1,  // Enables all mandatory IEEE 1149.1 boundary-scan
+                                             // instructions.
+                   EXTEST_TRAIN_ENABLE = 1,  // Enables the optional EXTEST_TRAIN instruction; requires BSR_ENABLE.
+                   EXTEST_PULSE_ENABLE = 1,  // Enables the optional EXTEST_PULSE instruction; requires BSR_ENABLE.
+                   INTEST_ENABLE       = 1,  // Enables the optional INTEST instruction; requires BSR_ENABLE.
+                   CLAMP_ENABLE        = 1,  // Reports optional CLAMP support in JTAG_CAPS.
+                                             // CLAMP is decoded on inst_decoded_o regardless of this setting.
+                   HIGHZ_ENABLE        = 1,  // Reports optional HIGHZ support in JTAG_CAPS.
+                                             // HIGHZ is decoded on inst_decoded_o regardless of this setting.
+                   RUNBIST_ENABLE      = 1,  // Enables the optional RUNBIST instruction.
+                   TMP_ENABLE          = 1,  // Enables the TMP controller and its instructions.
+                   IC_RESET_SMC_ENABLE = 0,  // Enables the SMC slice of the IC_RESET TDR.
+                   IC_RESET_SEP_ENABLE = 0,  // Enables the SEP slice of the IC_RESET TDR.
+                   IC_RESET_EXT_ENABLE = 0,  // Enables the external slice of the IC_RESET TDR.
+                   SMC_DBG_ENABLE      = 1,  // Enables the JTAG2AXI bridges to the SMC fabric and the SMC OTP; reported in JTAG_CAPS.
+                   SEP_DBG_ENABLE      = 1,  // Enables the JTAG2AXI bridge to the SEP OTP and reports the SEP debug STAP in JTAG_CAPS.
+                   STAP_IO_ENABLE      = 1,  // Reports the chiplet-to-chiplet STAP in JTAG_CAPS.
+                                             // Setting this, SEP_DBG_ENABLE, SMC_DBG_ENABLE or a nonzero NUM_EXTRA_STAPS
+                                             // enables the TAP_3DCR register.
 
-    parameter int unsigned  NUM_EXTRA_STAPS = 0,  // The number of additional STAPs included in the DTP for local connectivity
+    parameter int unsigned  NUM_EXTRA_STAPS = 0,  // Number of additional STAPs in the DTP for local
+                                                  // connectivity, reported in JTAG_CAPS. At most
+                                                  // 15.
 
-    parameter logic [10:0]  IDCODE_MFR_ID   = 11'h000,   // JTAG IDCODE manufacturer ID (11 bits)
-    parameter logic [15:0]  IDCODE_PART_NUM = 16'h0000,  // JTAG IDCODE part number (16 bits)
-    parameter logic [3:0]   IDCODE_SI_REV   = 4'h0,      // JTAG IDCODE silicon revision (4 bits)
+    parameter logic [10:0]  IDCODE_MFR_ID   = 11'h000,  // JEDEC manufacturer ID reported in IDCODE.
+    parameter logic [15:0]  IDCODE_PART_NUM = 16'h0000,  // Part number reported in IDCODE,
+                                                         // identifying the chiplet model.
+    parameter logic [3:0]   IDCODE_SI_REV   = 4'h0,  // Silicon revision reported in IDCODE.
 
-    parameter int unsigned  NUM_XTRIG_CTP     = 8,    // The number of cross trigger ports
-    parameter int unsigned  NUM_XTRIG_INT_CT  = 1,    // Number of internal cross triggers
-    parameter logic [7:0]   OCH_VER           = 8'h00, // DTP IP major version number
+    parameter int unsigned  NUM_XTRIG_CTP     = 8,  // Number of cross-trigger ports reported in
+                                                    // JTAG_CAPS; at most 63.
+    parameter int unsigned  NUM_XTRIG_INT_CT  = 1,  // Number of internal cross triggers reported in
+                                                    // JTAG_CAPS; at most 63.
+    parameter logic [7:0]   OCH_VER           = 8'h00,  // DTP IP major version number reported in
+                                                        // JTAG_CAPS.
 
-    // Type parameters for IC_RESET TDR slices (packed structs with `.ovrd` and `.val` sub-structs
-    // of matching width). The stub default in `jtag_tap_pkg` exists only to let synthesis
-    // elaborate this IP standalone; real integrators override these with their own slice types.
-    parameter type  ic_reset_smc_t = jtag_tap_pkg::jtag_ic_reset_default_t,  // SMC slice packed struct type
-    parameter type  ic_reset_sep_t = jtag_tap_pkg::jtag_ic_reset_default_t,  // SEP slice packed struct type
-    parameter type  ic_reset_ext_t = jtag_tap_pkg::jtag_ic_reset_default_t,  // External slice packed struct type
+    parameter type  ic_reset_smc_t = jtag_tap_pkg::jtag_ic_reset_default_t,  // SMC IC_RESET slice packed struct type.
+                                                                             // Its .ovrd and .val members must have equal widths.
+    parameter type  ic_reset_sep_t = jtag_tap_pkg::jtag_ic_reset_default_t,  // SEP IC_RESET slice packed struct type.
+                                                                             // Its .ovrd and .val members must have equal widths.
+    parameter type  ic_reset_ext_t = jtag_tap_pkg::jtag_ic_reset_default_t,  // External IC_RESET slice packed struct type.
+                                                                             // Its .ovrd and .val members must have equal widths.
 
-    // Type parameters for AXI interfaces (from jtag_intf_unit)
-    parameter type  smc_jtag_axi_req_t = logic,  // SMC fabric debug AXI interface request type
-    parameter type  smc_jtag_axi_resp_t = logic, // SMC fabric debug AXI interface response type
-    parameter type  smc_otp_axil_req_t = logic,  // SMC OTP debug AXI-Lite interface request type
-    parameter type  smc_otp_axil_resp_t = logic, // SMC OTP debug AXI-Lite interface response type
-    parameter type  sep_otp_axil_req_t = logic,  // SEP OTP debug AXI-Lite interface request type
-    parameter type  sep_otp_axil_resp_t = logic, // SEP OTP debug AXI-Lite interface response type
+    parameter type  smc_jtag_axi_req_t = logic,  // SMC fabric debug AXI interface request type.
+    parameter type  smc_jtag_axi_resp_t = logic,  // SMC fabric debug AXI interface response type.
+    parameter type  smc_otp_axil_req_t = logic,  // SMC OTP debug AXI-Lite interface request type.
+    parameter type  smc_otp_axil_resp_t = logic,  // SMC OTP debug AXI-Lite interface response type.
+    parameter type  sep_otp_axil_req_t = logic,  // SEP OTP debug AXI-Lite interface request type.
+    parameter type  sep_otp_axil_resp_t = logic,  // SEP OTP debug AXI-Lite interface response type.
 
-    // Pipeline depth parameters for JTAG2AXI capabilities registers
-    parameter logic [1:0]  SMC_OTP_RD_PL_DEPTH = 2'h3,  // SMC OTP read pipeline depth (0 = single outstanding transaction)
-    parameter logic [1:0]  SMC_OTP_WR_PL_DEPTH = 2'h3,  // SMC OTP write pipeline depth (0 = single outstanding transaction)
-    parameter logic [1:0]  SEP_OTP_RD_PL_DEPTH = 2'h3,  // SEP OTP read pipeline depth (0 = single outstanding transaction)
-    parameter logic [1:0]  SEP_OTP_WR_PL_DEPTH = 2'h3,  // SEP OTP write pipeline depth (0 = single outstanding transaction)
-    parameter logic [1:0]  SMC_RD_PL_DEPTH     = 2'h3,  // SMC fabric read pipeline depth (0 = single outstanding transaction)
-    parameter logic [1:0]  SMC_WR_PL_DEPTH     = 2'h3   // SMC fabric write pipeline depth (0 = single outstanding transaction)
+    parameter logic [1:0]  SMC_OTP_RD_PL_DEPTH = 2'h3,  // SMC OTP read pipeline depth (0 = single
+                                                        // outstanding transaction), reported in
+                                                        // SMC_OTP_JTAG2AXI_CAPS. Also sets the
+                                                        // bridge's largest programmable series
+                                                        // pipeline depth.
+    parameter logic [1:0]  SMC_OTP_WR_PL_DEPTH = 2'h3,  // SMC OTP write pipeline depth (0 = single
+                                                        // outstanding transaction), reported in
+                                                        // SMC_OTP_JTAG2AXI_CAPS only; it does not
+                                                        // configure the bridge.
+    parameter logic [1:0]  SEP_OTP_RD_PL_DEPTH = 2'h3,  // SEP OTP read pipeline depth (0 = single
+                                                        // outstanding transaction), reported in
+                                                        // SEP_OTP_JTAG2AXI_CAPS. Also sets the
+                                                        // bridge's largest programmable series
+                                                        // pipeline depth.
+    parameter logic [1:0]  SEP_OTP_WR_PL_DEPTH = 2'h3,  // SEP OTP write pipeline depth (0 = single
+                                                        // outstanding transaction), reported in
+                                                        // SEP_OTP_JTAG2AXI_CAPS only; it does not
+                                                        // configure the bridge.
+    parameter logic [1:0]  SMC_RD_PL_DEPTH     = 2'h3,  // SMC fabric read pipeline depth (0 =
+                                                        // single outstanding transaction), reported
+                                                        // in SMC_JTAG2AXI_CAPS. Also sets the
+                                                        // bridge's largest programmable series
+                                                        // pipeline depth.
+    parameter logic [1:0]  SMC_WR_PL_DEPTH     = 2'h3  // SMC fabric write pipeline depth (0 =
+                                                       // single outstanding transaction), reported
+                                                       // in SMC_JTAG2AXI_CAPS only; it does not
+                                                       // configure the bridge.
     /* verilator lint_on UNUSEDPARAM */
 ) (
-    // Standard JTAG input interface (Primary Interface)
-    input  jtag_tap_ctrl_t  client_tap_ctrl_i,      // TAP control inputs (tms, trst_n, tck)
-    input  logic            client_tdi_i,           // Test data input
-    output logic            client_tdo_o,           // Test data output
-    output logic            client_tdo_oen_o,       // TDO output enable
+    input  jtag_tap_ctrl_t  client_tap_ctrl_i,  // Client TAP-control bundle: TCK, TMS, and
+                                                // active-low TRST.
+    input  logic            client_tdi_i,  // Client serial test data input.
+    output logic            client_tdo_o,  // Client serial test data output, retimed on the falling
+                                           // TCK edge except during a ZERO_LENGTH_BYPASS DR shift.
+    output logic            client_tdo_oen_o,  // Client TDO output enable, active-high during
+                                               // Shift-IR and Shift-DR.
 
-    // Internal JTAG interface
-    output jtag_tap_ctrl_t  host_tap_ctrl_o,        // TAP control outputs (tms, trst_n, tck)
+    output jtag_tap_ctrl_t  host_tap_ctrl_o,  // Client TCK and TMS, and client TRST ANDed with
+                                              // pwr_on_rst_ni, for the STAPs.
 
-    // Boundary scan interface
-    output jtag_scan_ctrl_t  bsr_host_scan_ctrl_o,
-    input  logic             bsr_host_scan_in_i,
-    output logic             bsr_host_scan_out_o,
+    output jtag_scan_ctrl_t  bsr_host_scan_ctrl_o,  // Boundary-scan DR control, selected under
+                                                    // EXTEST and SAMPLE/PRELOAD and, when enabled,
+                                                    // EXTEST_TRAIN, EXTEST_PULSE and INTEST.
+    input  logic             bsr_host_scan_in_i,  // Boundary-scan return, used as the TDR under
+                                                  // those instructions.
+    output logic             bsr_host_scan_out_o,  // Client TDI forwarded to the boundary-scan
+                                                   // chain.
 
-    // TDR scan interface
-    output jtag_scan_ctrl_t  ijtag_host_scan_ctrl_o,
-    input  logic             ijtag_host_scan_in_i,
-    output logic             ijtag_host_scan_out_o,
+    output jtag_scan_ctrl_t  ijtag_host_scan_ctrl_o,  // iJTAG DR control, selected under
+                                                      // SELECT_IJTAG and, when RUNBIST_ENABLE is
+                                                      // set, RUNBIST.
+    input  logic             ijtag_host_scan_in_i,  // iJTAG network return, used as the TDR under
+                                                    // SELECT_IJTAG and RUNBIST.
+    output logic             ijtag_host_scan_out_o,  // Client TDI forwarded to the iJTAG network.
 
-    // STAP (Secondary Test Access Port) scan interface
-    output jtag_scan_ctrl_t  stap_host_scan_ctrl_o,
-    input  logic             stap_host_scan_in_i,
-    output logic             stap_host_scan_out_o,
+    output jtag_scan_ctrl_t  stap_host_scan_ctrl_o,  // DR scan control with select, capture, shift
+                                                     // and update ORed with the IR scan control,
+                                                     // and held low while the 3DCR STAP-select
+                                                     // bit is clear.
+    input  logic             stap_host_scan_in_i,  // STAP chain return; drives TDO while the 3DCR
+                                                   // STAP-select bit is set.
+    output logic             stap_host_scan_out_o,  // IR or selected TDR output, or TDI under
+                                                    // ZERO_LENGTH_BYPASS, toward the STAP chain.
 
-    // Instruction decoder output
-    output jtag_instruction_decoded_e  inst_decoded_o,  // Current decoded instruction
+    output jtag_instruction_decoded_e  inst_decoded_o,  // Decoded PTAP instruction.
 
-    // Debug and status signals (pass-through from jtag_tap)
-    output tap_state_e  current_state_o,
+    output tap_state_e  current_state_o,  // Current TAP controller state.
 
-    // IC Reset control outputs (IEEE 1149.1 §17).
-    //
-    // Each typed struct has an `.ovrd` (per-port override, ACTIVE-HIGH) and a
-    // `.val` (per-port reset control, ACTIVE-LOW) sub-struct of identical
-    // width. A consumer uses them as `ovrd ? val : upstream_reset_n`.
-    //
-    // Polarity NOTE: the IEEE §17 TDR field `reset_enable` is active-LOW
-    // (default 1 ⇒ JTAG override disabled) — that inversion is handled inside
-    // `jtag_ic_reset_reg`, so by the time the signal reaches `.ovrd` here it
-    // is already the conventional active-high form. Do not re-invert.
-    //
-    // The aggregate TDR concatenates the three slices SMC → SEP → EXT from
-    // TDI to TDO, followed by the single `reset_hold` bit nearest TDO.
-    output ic_reset_smc_t  ic_reset_smc_o,  // SMC slice (highest scan indices, closest to TDI)
-    output ic_reset_sep_t  ic_reset_sep_o,  // SEP slice (middle scan indices)
-    output ic_reset_ext_t  ic_reset_ext_o,  // External slice (lowest scan indices, closest to TDO)
+    output ic_reset_smc_t  ic_reset_smc_o,  // SMC slice (highest scan indices, closest to TDI);
+                                            // zero when IC_RESET_SMC_ENABLE is 0.
+    output ic_reset_sep_t  ic_reset_sep_o,  // SEP slice (middle scan indices); zero when
+                                            // IC_RESET_SEP_ENABLE is 0.
+    output ic_reset_ext_t  ic_reset_ext_o,  // External slice (lowest scan indices, closest to TDO);
+                                            // zero when IC_RESET_EXT_ENABLE is 0.
 
-    // Debug control interface
-    input  logic                     cla_clock_stop_i,      // CLA clock stop status
-    output logic                     jtag_clock_stop_o,     // JTAG stop clock control
-    output logic                     cla_clock_stop_en_o,   // CLA clock stop enable
-    output logic                     boot_stall_ovrd_o,     // Boot stall override enable
-    output logic                     boot_stall_o,          // Boot stall control value
+    input  logic                     cla_clock_stop_i,  // CLA clock-stop status, read back through
+                                                        // DEBUG_CONTROL.
+    output logic                     jtag_clock_stop_o,  // Clock-stop request from DEBUG_CONTROL.
+    output logic                     cla_clock_stop_en_o,  // CLA clock-stop enable from
+                                                           // DEBUG_CONTROL.
+    output logic                     boot_stall_ovrd_o,  // Enable the JTAG boot-stall override,
+                                                         // active-high.
+    output logic                     boot_stall_o,  // Boot-stall value applied while
+                                                    // boot_stall_ovrd_o is high.
 
-    // System clock and reset (for jtag2axi modules)
-    input  logic                     clk_i,                 // System clock
-    input  logic                     rst_n_i,               // System reset (active low)
+    input  logic                     clk_i,  // System clock for the JTAG2AXI bridges.
+    input  logic                     rst_n_i,  // Active-low system reset for the JTAG2AXI bridges.
+    input  logic                     test_en_i,  // DFT test-mode enable, active-high, for the
+                                                 // JTAG2AXI bridges.
 
-    // Power-on reset (for JTAG logic)
-    input  logic                     pwr_on_rst_ni,         // Power-on reset (active low), combined with trst_n
+    input  logic                     pwr_on_rst_ni,  // Power-on reset (active low), ANDed with the
+                                                     // client TRST.
 
-    // Per-bridge debug-disable bits (active-high; 1 = bridge disabled).
-    // Derived in the SEP lifecycle controller, synchronized to TCK in
-    // jtag_intf_unit, and consumed here as ready-to-gate signals.
-    input  logic  smc_jtag2axi_security_disable_i,
-    input  logic  smc_otp_jtag2axi_security_disable_i,
-    input  logic  sep_otp_jtag2axi_security_disable_i,
+    input  logic  smc_jtag2axi_security_disable_i,  // Active-high disable of the SMC fabric
+                                                    // JTAG2AXI bridge; blocks its Update-DR and
+                                                    // keeps its AXI side idle.
+    input  logic  smc_otp_jtag2axi_security_disable_i,  // Active-high disable of the SMC OTP
+                                                        // JTAG2AXI bridge; blocks its Update-DR and
+                                                        // keeps its AXI side idle.
+    input  logic  sep_otp_jtag2axi_security_disable_i,  // Active-high disable of the SEP OTP
+                                                        // JTAG2AXI bridge; blocks its Update-DR and
+                                                        // keeps its AXI side idle.
 
-    // SMC fabric debug AXI manager interface
-    output smc_jtag_axi_req_t        axi_smc_dbg_req_o,
-    input  smc_jtag_axi_resp_t       axi_smc_dbg_resp_i,
+    output smc_jtag_axi_req_t        axi_smc_dbg_req_o,  // SMC fabric debug AXI request to the
+                                                         // target.
+    input  smc_jtag_axi_resp_t       axi_smc_dbg_resp_i,  // SMC fabric debug AXI response from the
+                                                          // target.
 
-    // SMC OTP debug AXI-Lite manager interface
-    output smc_otp_axil_req_t       axil_smc_otp_jtag_req_o,
-    input  smc_otp_axil_resp_t      axil_smc_otp_jtag_resp_i,
+    output smc_otp_axil_req_t       axil_smc_otp_jtag_req_o,  // SMC OTP debug AXI-Lite request to
+                                                              // the target.
+    input  smc_otp_axil_resp_t      axil_smc_otp_jtag_resp_i,  // SMC OTP debug AXI-Lite response
+                                                               // from the target.
 
-    // SEP OTP debug AXI-Lite manager interface
-    output sep_otp_axil_req_t       axil_sep_otp_jtag_req_o,
-    input  sep_otp_axil_resp_t      axil_sep_otp_jtag_resp_i
+    output sep_otp_axil_req_t       axil_sep_otp_jtag_req_o,  // SEP OTP debug AXI-Lite request to
+                                                              // the target.
+    input  sep_otp_axil_resp_t      axil_sep_otp_jtag_resp_i  // SEP OTP debug AXI-Lite response
+                                                              // from the target.
 );
     //--------------------------------------------------------------------------
     // Internal Signals
@@ -869,80 +930,81 @@ module jtag_ptap
             .ATOP_WIDTH  (6)
         ) u_smc_otp_jtag2axi (
             // JTAG Interface (TCK Domain)
-            .i_tck              (smc_otp_jtag2axi_scan_ctrl.tck),
-            .i_trstn            (smc_otp_jtag2axi_scan_ctrl.rst_n),
-            .i_scan_in          (client_tdi_i),
-            .o_scan_out         (smc_otp_jtag2axi_scan_out),
-            .i_capture_en       (smc_otp_jtag2axi_scan_ctrl.capture_en),
-            .i_shift_en         (smc_otp_jtag2axi_scan_ctrl.shift_en),
-            .i_update_en        (smc_otp_jtag2axi_scan_ctrl.update_en),
+            .tck_i              (smc_otp_jtag2axi_scan_ctrl.tck),
+            .trst_ni            (smc_otp_jtag2axi_scan_ctrl.rst_n),
+            .scan_in_i          (client_tdi_i),
+            .scan_out_o         (smc_otp_jtag2axi_scan_out),
+            .capture_en_i       (smc_otp_jtag2axi_scan_ctrl.capture_en),
+            .shift_en_i         (smc_otp_jtag2axi_scan_ctrl.shift_en),
+            .update_en_i        (smc_otp_jtag2axi_scan_ctrl.update_en),
 
             // JTAG Scan Chain Select Signals
-            .i_select_AXISingleOp                  (inst_decoded_o[SMC_OTP_AXI_SINGLE_OP_INSTR]),
-            .i_select_AXISeriesCtrl                (inst_decoded_o[SMC_OTP_AXI_SERIES_CTRL_INSTR]),
-            .i_select_AXISeriesDataIncr            (inst_decoded_o[SMC_OTP_AXI_SERIES_DATA_INCR_INSTR]),
-            .i_select_AXISeriesDataNoIncr          (inst_decoded_o[SMC_OTP_AXI_SERIES_DATA_NO_INCR_INSTR]),
-            .i_select_AXISeriesDataWithErrorStatus (inst_decoded_o[SMC_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR]),
+            .select_AXISingleOp_i                  (inst_decoded_o[SMC_OTP_AXI_SINGLE_OP_INSTR]),
+            .select_AXISeriesCtrl_i                (inst_decoded_o[SMC_OTP_AXI_SERIES_CTRL_INSTR]),
+            .select_AXISeriesDataIncr_i            (inst_decoded_o[SMC_OTP_AXI_SERIES_DATA_INCR_INSTR]),
+            .select_AXISeriesDataNoIncr_i          (inst_decoded_o[SMC_OTP_AXI_SERIES_DATA_NO_INCR_INSTR]),
+            .select_AXISeriesDataWithErrorStatus_i (inst_decoded_o[SMC_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR]),
             .security_disable_i                    (smc_otp_jtag2axi_security_disable),
 
             // AXI Interface (ACLK Domain)
-            .i_aclk    (clk_i),
-            .i_arstn   (rst_n_i),
+            .aclk_i    (clk_i),
+            .arst_ni   (rst_n_i),
+            .test_en_i (test_en_i),
 
             // AXI-Lite Write Address Channel
-            .o_awid     (/* UNUSED */),
-            .o_awaddr   (axil_smc_otp_jtag_req_o.aw.addr),
-            .o_awlen    (/* UNUSED */),
-            .o_awsize   (/* UNUSED */),
-            .o_awburst  (/* UNUSED */),
-            .o_awlock   (/* UNUSED */),
-            .o_awcache  (/* UNUSED */),
-            .o_awprot   (axil_smc_otp_jtag_req_o.aw.prot),
-            .o_awqos    (/* UNUSED */),
-            .o_awregion (/* UNUSED */),
-            .o_awuser   (/* UNUSED */),
-            .o_awatop   (/* UNUSED */),
-            .o_awvalid  (axil_smc_otp_jtag_req_o.aw_valid),
-            .i_awready  (axil_smc_otp_jtag_resp_i.aw_ready),
+            .awid_o     (/* UNUSED */),
+            .awaddr_o   (axil_smc_otp_jtag_req_o.aw.addr),
+            .awlen_o    (/* UNUSED */),
+            .awsize_o   (/* UNUSED */),
+            .awburst_o  (/* UNUSED */),
+            .awlock_o   (/* UNUSED */),
+            .awcache_o  (/* UNUSED */),
+            .awprot_o   (axil_smc_otp_jtag_req_o.aw.prot),
+            .awqos_o    (/* UNUSED */),
+            .awregion_o (/* UNUSED */),
+            .awuser_o   (/* UNUSED */),
+            .awatop_o   (/* UNUSED */),
+            .awvalid_o  (axil_smc_otp_jtag_req_o.aw_valid),
+            .awready_i  (axil_smc_otp_jtag_resp_i.aw_ready),
 
             // AXI-Lite Write Data Channel
-            .o_wdata   (axil_smc_otp_jtag_req_o.w.data),
-            .o_wstrb   (axil_smc_otp_jtag_req_o.w.strb),
-            .o_wlast   (/* UNUSED */),
-            .o_wuser   (/* UNUSED */),
-            .o_wvalid  (axil_smc_otp_jtag_req_o.w_valid),
-            .i_wready  (axil_smc_otp_jtag_resp_i.w_ready),
+            .wdata_o   (axil_smc_otp_jtag_req_o.w.data),
+            .wstrb_o   (axil_smc_otp_jtag_req_o.w.strb),
+            .wlast_o   (/* UNUSED */),
+            .wuser_o   (/* UNUSED */),
+            .wvalid_o  (axil_smc_otp_jtag_req_o.w_valid),
+            .wready_i  (axil_smc_otp_jtag_resp_i.w_ready),
 
             // AXI-Lite Write Response Channel
-            .i_bid     ('0),
-            .i_bresp   (axil_smc_otp_jtag_resp_i.b.resp),
-            .i_buser   ('0),
-            .i_bvalid  (axil_smc_otp_jtag_resp_i.b_valid),
-            .o_bready  (axil_smc_otp_jtag_req_o.b_ready),
+            .bid_i     ('0),
+            .bresp_i   (axil_smc_otp_jtag_resp_i.b.resp),
+            .buser_i   ('0),
+            .bvalid_i  (axil_smc_otp_jtag_resp_i.b_valid),
+            .bready_o  (axil_smc_otp_jtag_req_o.b_ready),
 
             // AXI-Lite Read Address Channel
-            .o_arid     (/* UNUSED */),
-            .o_araddr   (axil_smc_otp_jtag_req_o.ar.addr),
-            .o_arlen    (/* UNUSED */),
-            .o_arsize   (/* UNUSED */),
-            .o_arburst  (/* UNUSED */),
-            .o_arlock   (/* UNUSED */),
-            .o_arcache  (/* UNUSED */),
-            .o_arprot   (axil_smc_otp_jtag_req_o.ar.prot),
-            .o_arqos    (/* UNUSED */),
-            .o_arregion (/* UNUSED */),
-            .o_aruser   (/* UNUSED */),
-            .o_arvalid  (axil_smc_otp_jtag_req_o.ar_valid),
-            .i_arready  (axil_smc_otp_jtag_resp_i.ar_ready),
+            .arid_o     (/* UNUSED */),
+            .araddr_o   (axil_smc_otp_jtag_req_o.ar.addr),
+            .arlen_o    (/* UNUSED */),
+            .arsize_o   (/* UNUSED */),
+            .arburst_o  (/* UNUSED */),
+            .arlock_o   (/* UNUSED */),
+            .arcache_o  (/* UNUSED */),
+            .arprot_o   (axil_smc_otp_jtag_req_o.ar.prot),
+            .arqos_o    (/* UNUSED */),
+            .arregion_o (/* UNUSED */),
+            .aruser_o   (/* UNUSED */),
+            .arvalid_o  (axil_smc_otp_jtag_req_o.ar_valid),
+            .arready_i  (axil_smc_otp_jtag_resp_i.ar_ready),
 
             // AXI-Lite Read Data Channel
-            .i_rid     ('0),
-            .i_rdata   (axil_smc_otp_jtag_resp_i.r.data),
-            .i_rresp   (axil_smc_otp_jtag_resp_i.r.resp),
-            .i_rlast   ('1),
-            .i_ruser   ('0),
-            .i_rvalid  (axil_smc_otp_jtag_resp_i.r_valid),
-            .o_rready  (axil_smc_otp_jtag_req_o.r_ready)
+            .rid_i     ('0),
+            .rdata_i   (axil_smc_otp_jtag_resp_i.r.data),
+            .rresp_i   (axil_smc_otp_jtag_resp_i.r.resp),
+            .rlast_i   ('1),
+            .ruser_i   ('0),
+            .rvalid_i  (axil_smc_otp_jtag_resp_i.r_valid),
+            .rready_o  (axil_smc_otp_jtag_req_o.r_ready)
         );
     end else begin : gen_no_smc_otp_jtag2axi
         assign smc_otp_jtag2axi_scan_out = client_tdi_i;
@@ -960,80 +1022,81 @@ module jtag_ptap
             .ATOP_WIDTH  (6)
         ) u_sep_otp_jtag2axi (
             // JTAG Interface (TCK Domain)
-            .i_tck              (sep_otp_jtag2axi_scan_ctrl.tck),
-            .i_trstn            (sep_otp_jtag2axi_scan_ctrl.rst_n),
-            .i_scan_in          (client_tdi_i),
-            .o_scan_out         (sep_otp_jtag2axi_scan_out),
-            .i_capture_en       (sep_otp_jtag2axi_scan_ctrl.capture_en),
-            .i_shift_en         (sep_otp_jtag2axi_scan_ctrl.shift_en),
-            .i_update_en        (sep_otp_jtag2axi_scan_ctrl.update_en),
+            .tck_i              (sep_otp_jtag2axi_scan_ctrl.tck),
+            .trst_ni            (sep_otp_jtag2axi_scan_ctrl.rst_n),
+            .scan_in_i          (client_tdi_i),
+            .scan_out_o         (sep_otp_jtag2axi_scan_out),
+            .capture_en_i       (sep_otp_jtag2axi_scan_ctrl.capture_en),
+            .shift_en_i         (sep_otp_jtag2axi_scan_ctrl.shift_en),
+            .update_en_i        (sep_otp_jtag2axi_scan_ctrl.update_en),
 
             // JTAG Scan Chain Select Signals
-            .i_select_AXISingleOp                  (inst_decoded_o[SEP_OTP_AXI_SINGLE_OP_INSTR]),
-            .i_select_AXISeriesCtrl                (inst_decoded_o[SEP_OTP_AXI_SERIES_CTRL_INSTR]),
-            .i_select_AXISeriesDataIncr            (inst_decoded_o[SEP_OTP_AXI_SERIES_DATA_INCR_INSTR]),
-            .i_select_AXISeriesDataNoIncr          (inst_decoded_o[SEP_OTP_AXI_SERIES_DATA_NO_INCR_INSTR]),
-            .i_select_AXISeriesDataWithErrorStatus (inst_decoded_o[SEP_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR]),
+            .select_AXISingleOp_i                  (inst_decoded_o[SEP_OTP_AXI_SINGLE_OP_INSTR]),
+            .select_AXISeriesCtrl_i                (inst_decoded_o[SEP_OTP_AXI_SERIES_CTRL_INSTR]),
+            .select_AXISeriesDataIncr_i            (inst_decoded_o[SEP_OTP_AXI_SERIES_DATA_INCR_INSTR]),
+            .select_AXISeriesDataNoIncr_i          (inst_decoded_o[SEP_OTP_AXI_SERIES_DATA_NO_INCR_INSTR]),
+            .select_AXISeriesDataWithErrorStatus_i (inst_decoded_o[SEP_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR]),
             .security_disable_i                    (sep_otp_jtag2axi_security_disable),
 
             // AXI Interface (ACLK Domain)
-            .i_aclk    (clk_i),
-            .i_arstn   (rst_n_i),
+            .aclk_i    (clk_i),
+            .arst_ni   (rst_n_i),
+            .test_en_i (test_en_i),
 
             // AXI-Lite Write Address Channel
-            .o_awid     (/* UNUSED */),
-            .o_awaddr   (axil_sep_otp_jtag_req_o.aw.addr),
-            .o_awlen    (/* UNUSED */),
-            .o_awsize   (/* UNUSED */),
-            .o_awburst  (/* UNUSED */),
-            .o_awlock   (/* UNUSED */),
-            .o_awcache  (/* UNUSED */),
-            .o_awprot   (axil_sep_otp_jtag_req_o.aw.prot),
-            .o_awqos    (/* UNUSED */),
-            .o_awregion (/* UNUSED */),
-            .o_awuser   (/* UNUSED */),
-            .o_awatop   (/* UNUSED */),
-            .o_awvalid  (axil_sep_otp_jtag_req_o.aw_valid),
-            .i_awready  (axil_sep_otp_jtag_resp_i.aw_ready),
+            .awid_o     (/* UNUSED */),
+            .awaddr_o   (axil_sep_otp_jtag_req_o.aw.addr),
+            .awlen_o    (/* UNUSED */),
+            .awsize_o   (/* UNUSED */),
+            .awburst_o  (/* UNUSED */),
+            .awlock_o   (/* UNUSED */),
+            .awcache_o  (/* UNUSED */),
+            .awprot_o   (axil_sep_otp_jtag_req_o.aw.prot),
+            .awqos_o    (/* UNUSED */),
+            .awregion_o (/* UNUSED */),
+            .awuser_o   (/* UNUSED */),
+            .awatop_o   (/* UNUSED */),
+            .awvalid_o  (axil_sep_otp_jtag_req_o.aw_valid),
+            .awready_i  (axil_sep_otp_jtag_resp_i.aw_ready),
 
             // AXI-Lite Write Data Channel
-            .o_wdata   (axil_sep_otp_jtag_req_o.w.data),
-            .o_wstrb   (axil_sep_otp_jtag_req_o.w.strb),
-            .o_wlast   (/* UNUSED */),
-            .o_wuser   (/* UNUSED */),
-            .o_wvalid  (axil_sep_otp_jtag_req_o.w_valid),
-            .i_wready  (axil_sep_otp_jtag_resp_i.w_ready),
+            .wdata_o   (axil_sep_otp_jtag_req_o.w.data),
+            .wstrb_o   (axil_sep_otp_jtag_req_o.w.strb),
+            .wlast_o   (/* UNUSED */),
+            .wuser_o   (/* UNUSED */),
+            .wvalid_o  (axil_sep_otp_jtag_req_o.w_valid),
+            .wready_i  (axil_sep_otp_jtag_resp_i.w_ready),
 
             // AXI-Lite Write Response Channel
-            .i_bid     ('0),
-            .i_bresp   (axil_sep_otp_jtag_resp_i.b.resp),
-            .i_buser   ('0),
-            .i_bvalid  (axil_sep_otp_jtag_resp_i.b_valid),
-            .o_bready  (axil_sep_otp_jtag_req_o.b_ready),
+            .bid_i     ('0),
+            .bresp_i   (axil_sep_otp_jtag_resp_i.b.resp),
+            .buser_i   ('0),
+            .bvalid_i  (axil_sep_otp_jtag_resp_i.b_valid),
+            .bready_o  (axil_sep_otp_jtag_req_o.b_ready),
 
             // AXI-Lite Read Address Channel
-            .o_arid     (/* UNUSED */),
-            .o_araddr   (axil_sep_otp_jtag_req_o.ar.addr),
-            .o_arlen    (/* UNUSED */),
-            .o_arsize   (/* UNUSED */),
-            .o_arburst  (/* UNUSED */),
-            .o_arlock   (/* UNUSED */),
-            .o_arcache  (/* UNUSED */),
-            .o_arprot   (axil_sep_otp_jtag_req_o.ar.prot),
-            .o_arqos    (/* UNUSED */),
-            .o_arregion (/* UNUSED */),
-            .o_aruser   (/* UNUSED */),
-            .o_arvalid  (axil_sep_otp_jtag_req_o.ar_valid),
-            .i_arready  (axil_sep_otp_jtag_resp_i.ar_ready),
+            .arid_o     (/* UNUSED */),
+            .araddr_o   (axil_sep_otp_jtag_req_o.ar.addr),
+            .arlen_o    (/* UNUSED */),
+            .arsize_o   (/* UNUSED */),
+            .arburst_o  (/* UNUSED */),
+            .arlock_o   (/* UNUSED */),
+            .arcache_o  (/* UNUSED */),
+            .arprot_o   (axil_sep_otp_jtag_req_o.ar.prot),
+            .arqos_o    (/* UNUSED */),
+            .arregion_o (/* UNUSED */),
+            .aruser_o   (/* UNUSED */),
+            .arvalid_o  (axil_sep_otp_jtag_req_o.ar_valid),
+            .arready_i  (axil_sep_otp_jtag_resp_i.ar_ready),
 
             // AXI-Lite Read Data Channel
-            .i_rid     ('0),
-            .i_rdata   (axil_sep_otp_jtag_resp_i.r.data),
-            .i_rresp   (axil_sep_otp_jtag_resp_i.r.resp),
-            .i_rlast   ('1),
-            .i_ruser   ('0),
-            .i_rvalid  (axil_sep_otp_jtag_resp_i.r_valid),
-            .o_rready  (axil_sep_otp_jtag_req_o.r_ready)
+            .rid_i     ('0),
+            .rdata_i   (axil_sep_otp_jtag_resp_i.r.data),
+            .rresp_i   (axil_sep_otp_jtag_resp_i.r.resp),
+            .rlast_i   ('1),
+            .ruser_i   ('0),
+            .rvalid_i  (axil_sep_otp_jtag_resp_i.r_valid),
+            .rready_o  (axil_sep_otp_jtag_req_o.r_ready)
         );
     end else begin : gen_no_sep_otp_jtag2axi
         assign sep_otp_jtag2axi_scan_out = client_tdi_i;
@@ -1051,80 +1114,81 @@ module jtag_ptap
             .ATOP_WIDTH  (6)
         ) u_smc_jtag2axi (
             // JTAG Interface (TCK Domain)
-            .i_tck              (smc_jtag2axi_scan_ctrl.tck),
-            .i_trstn            (smc_jtag2axi_scan_ctrl.rst_n),
-            .i_scan_in          (client_tdi_i),
-            .o_scan_out         (smc_jtag2axi_scan_out),
-            .i_capture_en       (smc_jtag2axi_scan_ctrl.capture_en),
-            .i_shift_en         (smc_jtag2axi_scan_ctrl.shift_en),
-            .i_update_en        (smc_jtag2axi_scan_ctrl.update_en),
+            .tck_i              (smc_jtag2axi_scan_ctrl.tck),
+            .trst_ni            (smc_jtag2axi_scan_ctrl.rst_n),
+            .scan_in_i          (client_tdi_i),
+            .scan_out_o         (smc_jtag2axi_scan_out),
+            .capture_en_i       (smc_jtag2axi_scan_ctrl.capture_en),
+            .shift_en_i         (smc_jtag2axi_scan_ctrl.shift_en),
+            .update_en_i        (smc_jtag2axi_scan_ctrl.update_en),
 
             // JTAG Scan Chain Select Signals
-            .i_select_AXISingleOp                  (inst_decoded_o[SMC_AXI_SINGLE_OP_INSTR]),
-            .i_select_AXISeriesCtrl                (inst_decoded_o[SMC_AXI_SERIES_CTRL_INSTR]),
-            .i_select_AXISeriesDataIncr            (inst_decoded_o[SMC_AXI_SERIES_DATA_INCR_INSTR]),
-            .i_select_AXISeriesDataNoIncr          (inst_decoded_o[SMC_AXI_SERIES_DATA_NO_INCR_INSTR]),
-            .i_select_AXISeriesDataWithErrorStatus (inst_decoded_o[SMC_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR]),
+            .select_AXISingleOp_i                  (inst_decoded_o[SMC_AXI_SINGLE_OP_INSTR]),
+            .select_AXISeriesCtrl_i                (inst_decoded_o[SMC_AXI_SERIES_CTRL_INSTR]),
+            .select_AXISeriesDataIncr_i            (inst_decoded_o[SMC_AXI_SERIES_DATA_INCR_INSTR]),
+            .select_AXISeriesDataNoIncr_i          (inst_decoded_o[SMC_AXI_SERIES_DATA_NO_INCR_INSTR]),
+            .select_AXISeriesDataWithErrorStatus_i (inst_decoded_o[SMC_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR]),
             .security_disable_i                    (smc_jtag2axi_security_disable),
 
             // AXI Interface (ACLK Domain)
-            .i_aclk    (clk_i),
-            .i_arstn   (rst_n_i),
+            .aclk_i    (clk_i),
+            .arst_ni   (rst_n_i),
+            .test_en_i (test_en_i),
 
             // AXI Write Address Channel
-            .o_awid     (axi_smc_dbg_req_o.aw.id),
-            .o_awaddr   (axi_smc_dbg_req_o.aw.addr),
-            .o_awlen    (axi_smc_dbg_req_o.aw.len),
-            .o_awsize   (axi_smc_dbg_req_o.aw.size),
-            .o_awburst  (axi_smc_dbg_req_o.aw.burst),
-            .o_awlock   (axi_smc_dbg_req_o.aw.lock),
-            .o_awcache  (axi_smc_dbg_req_o.aw.cache),
-            .o_awprot   (axi_smc_dbg_req_o.aw.prot),
-            .o_awqos    (axi_smc_dbg_req_o.aw.qos),
-            .o_awregion (axi_smc_dbg_req_o.aw.region),
-            .o_awuser   (axi_smc_dbg_req_o.aw.user),
-            .o_awatop   (axi_smc_dbg_req_o.aw.atop),
-            .o_awvalid  (axi_smc_dbg_req_o.aw_valid),
-            .i_awready  (axi_smc_dbg_resp_i.aw_ready),
+            .awid_o     (axi_smc_dbg_req_o.aw.id),
+            .awaddr_o   (axi_smc_dbg_req_o.aw.addr),
+            .awlen_o    (axi_smc_dbg_req_o.aw.len),
+            .awsize_o   (axi_smc_dbg_req_o.aw.size),
+            .awburst_o  (axi_smc_dbg_req_o.aw.burst),
+            .awlock_o   (axi_smc_dbg_req_o.aw.lock),
+            .awcache_o  (axi_smc_dbg_req_o.aw.cache),
+            .awprot_o   (axi_smc_dbg_req_o.aw.prot),
+            .awqos_o    (axi_smc_dbg_req_o.aw.qos),
+            .awregion_o (axi_smc_dbg_req_o.aw.region),
+            .awuser_o   (axi_smc_dbg_req_o.aw.user),
+            .awatop_o   (axi_smc_dbg_req_o.aw.atop),
+            .awvalid_o  (axi_smc_dbg_req_o.aw_valid),
+            .awready_i  (axi_smc_dbg_resp_i.aw_ready),
 
             // AXI Write Data Channel
-            .o_wdata   (axi_smc_dbg_req_o.w.data),
-            .o_wstrb   (axi_smc_dbg_req_o.w.strb),
-            .o_wlast   (axi_smc_dbg_req_o.w.last),
-            .o_wuser   (axi_smc_dbg_req_o.w.user),
-            .o_wvalid  (axi_smc_dbg_req_o.w_valid),
-            .i_wready  (axi_smc_dbg_resp_i.w_ready),
+            .wdata_o   (axi_smc_dbg_req_o.w.data),
+            .wstrb_o   (axi_smc_dbg_req_o.w.strb),
+            .wlast_o   (axi_smc_dbg_req_o.w.last),
+            .wuser_o   (axi_smc_dbg_req_o.w.user),
+            .wvalid_o  (axi_smc_dbg_req_o.w_valid),
+            .wready_i  (axi_smc_dbg_resp_i.w_ready),
 
             // AXI Write Response Channel
-            .i_bid     (axi_smc_dbg_resp_i.b.id),
-            .i_bresp   (axi_smc_dbg_resp_i.b.resp),
-            .i_buser   (axi_smc_dbg_resp_i.b.user),
-            .i_bvalid  (axi_smc_dbg_resp_i.b_valid),
-            .o_bready  (axi_smc_dbg_req_o.b_ready),
+            .bid_i     (axi_smc_dbg_resp_i.b.id),
+            .bresp_i   (axi_smc_dbg_resp_i.b.resp),
+            .buser_i   (axi_smc_dbg_resp_i.b.user),
+            .bvalid_i  (axi_smc_dbg_resp_i.b_valid),
+            .bready_o  (axi_smc_dbg_req_o.b_ready),
 
             // AXI Read Address Channel
-            .o_arid     (axi_smc_dbg_req_o.ar.id),
-            .o_araddr   (axi_smc_dbg_req_o.ar.addr),
-            .o_arlen    (axi_smc_dbg_req_o.ar.len),
-            .o_arsize   (axi_smc_dbg_req_o.ar.size),
-            .o_arburst  (axi_smc_dbg_req_o.ar.burst),
-            .o_arlock   (axi_smc_dbg_req_o.ar.lock),
-            .o_arcache  (axi_smc_dbg_req_o.ar.cache),
-            .o_arprot   (axi_smc_dbg_req_o.ar.prot),
-            .o_arqos    (axi_smc_dbg_req_o.ar.qos),
-            .o_arregion (axi_smc_dbg_req_o.ar.region),
-            .o_aruser   (axi_smc_dbg_req_o.ar.user),
-            .o_arvalid  (axi_smc_dbg_req_o.ar_valid),
-            .i_arready  (axi_smc_dbg_resp_i.ar_ready),
+            .arid_o     (axi_smc_dbg_req_o.ar.id),
+            .araddr_o   (axi_smc_dbg_req_o.ar.addr),
+            .arlen_o    (axi_smc_dbg_req_o.ar.len),
+            .arsize_o   (axi_smc_dbg_req_o.ar.size),
+            .arburst_o  (axi_smc_dbg_req_o.ar.burst),
+            .arlock_o   (axi_smc_dbg_req_o.ar.lock),
+            .arcache_o  (axi_smc_dbg_req_o.ar.cache),
+            .arprot_o   (axi_smc_dbg_req_o.ar.prot),
+            .arqos_o    (axi_smc_dbg_req_o.ar.qos),
+            .arregion_o (axi_smc_dbg_req_o.ar.region),
+            .aruser_o   (axi_smc_dbg_req_o.ar.user),
+            .arvalid_o  (axi_smc_dbg_req_o.ar_valid),
+            .arready_i  (axi_smc_dbg_resp_i.ar_ready),
 
             // AXI Read Data Channel
-            .i_rid     (axi_smc_dbg_resp_i.r.id),
-            .i_rdata   (axi_smc_dbg_resp_i.r.data),
-            .i_rresp   (axi_smc_dbg_resp_i.r.resp),
-            .i_rlast   (axi_smc_dbg_resp_i.r.last),
-            .i_ruser   (axi_smc_dbg_resp_i.r.user),
-            .i_rvalid  (axi_smc_dbg_resp_i.r_valid),
-            .o_rready  (axi_smc_dbg_req_o.r_ready)
+            .rid_i     (axi_smc_dbg_resp_i.r.id),
+            .rdata_i   (axi_smc_dbg_resp_i.r.data),
+            .rresp_i   (axi_smc_dbg_resp_i.r.resp),
+            .rlast_i   (axi_smc_dbg_resp_i.r.last),
+            .ruser_i   (axi_smc_dbg_resp_i.r.user),
+            .rvalid_i  (axi_smc_dbg_resp_i.r_valid),
+            .rready_o  (axi_smc_dbg_req_o.r_ready)
         );
     end else begin : gen_no_smc_jtag2axi
         assign smc_jtag2axi_scan_out = client_tdi_i;
@@ -1244,31 +1308,35 @@ module jtag_ptap
 
     // First mux: Select between client_tdi_i (zero-length bypass) and tdr_mux
     prim_stdmux2 u_zlb_tdr_mux (
-        .i_I0  (tdr_mux),
-        .i_I1  (client_tdi_i),
-        .i_SEL (inst_decoded_o[ZERO_LENGTH_BYPASS_INSTR] && dr_scan_select_reg),
-        .o_Y   (zlb_tdr_mux)
+        .i0_i  (tdr_mux),
+        .i1_i  (client_tdi_i),
+        .sel_i (inst_decoded_o[ZERO_LENGTH_BYPASS_INSTR] && dr_scan_select_reg),
+        .y_o   (zlb_tdr_mux)
     );
 
     // Second mux: Select between stap_host_scan_in_i (STAP) and zlb_tdr_mux
     prim_stdmux2 u_tdo_mux (
-        .i_I0  (zlb_tdr_mux),
-        .i_I1  (stap_host_scan_in_i),
-        .i_SEL (stap_select),
-        .o_Y   (tdo_mux)
+        .i0_i  (zlb_tdr_mux),
+        .i1_i  (stap_host_scan_in_i),
+        .sel_i (stap_select),
+        .y_o   (tdo_mux)
     );
 
     //--------------------------------------------------------------------------
     // STAP Clock/Control Outputs (IEEE 1838 Section 5.4)
     //--------------------------------------------------------------------------
 
-    // STAP scan control signals (OR of IR and DR controls)
+    // STAP scan control signals (OR of IR and DR controls, gated by the 3DCR STAP-select bit)
     always_comb begin
         stap_host_scan_ctrl_o = dr_scan_ctrl;
-        stap_host_scan_ctrl_o.select     = dr_scan_ctrl.select     | ir_scan_ctrl.select;
-        stap_host_scan_ctrl_o.capture_en = dr_scan_ctrl.capture_en | ir_scan_ctrl.capture_en;
-        stap_host_scan_ctrl_o.shift_en   = dr_scan_ctrl.shift_en   | ir_scan_ctrl.shift_en;
-        stap_host_scan_ctrl_o.update_en  = dr_scan_ctrl.update_en  | ir_scan_ctrl.update_en;
+        stap_host_scan_ctrl_o.select     = stap_select &&
+                                           (dr_scan_ctrl.select     | ir_scan_ctrl.select);
+        stap_host_scan_ctrl_o.capture_en = stap_select &&
+                                           (dr_scan_ctrl.capture_en | ir_scan_ctrl.capture_en);
+        stap_host_scan_ctrl_o.shift_en   = stap_select &&
+                                           (dr_scan_ctrl.shift_en   | ir_scan_ctrl.shift_en);
+        stap_host_scan_ctrl_o.update_en  = stap_select &&
+                                           (dr_scan_ctrl.update_en  | ir_scan_ctrl.update_en);
     end
 
     // STAP scan data output (from zero-length bypass TDR multiplexer to STAP chain)
@@ -1300,10 +1368,10 @@ module jtag_ptap
     // For all other instructions: select retimed TDO
     // Use registered DR scan select to avoid glitches
     prim_stdmux2 u_tdo_bypass_mux (
-        .i_I0  (tdo_retimed),
-        .i_I1  (tdo_mux),
-        .i_SEL (inst_decoded_o[ZERO_LENGTH_BYPASS_INSTR] && dr_scan_select_reg),
-        .o_Y   (client_tdo_o)
+        .i0_i  (tdo_retimed),
+        .i1_i  (tdo_mux),
+        .sel_i (inst_decoded_o[ZERO_LENGTH_BYPASS_INSTR] && dr_scan_select_reg),
+        .y_o   (client_tdo_o)
     );
 
 endmodule : jtag_ptap

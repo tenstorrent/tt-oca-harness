@@ -46,9 +46,7 @@ def read_load_segments(elf):
     for seg in elf.iter_segments():
         if seg.header["p_type"] != "PT_LOAD":
             continue
-        segments.append(
-            (int(seg["p_vaddr"]), int(seg["p_paddr"]), int(seg["p_memsz"]))
-        )
+        segments.append((int(seg["p_vaddr"]), int(seg["p_paddr"]), int(seg["p_memsz"])))
     return segments
 
 
@@ -80,19 +78,18 @@ def read_rom_sections(elf, rom_base, rom_end, segments):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Convert ELF to 64-bit VMEM for Boot ROM preload"
-    )
+    parser = argparse.ArgumentParser(description="Convert ELF to 64-bit VMEM for Boot ROM preload")
     parser.add_argument("elf", help="Input ELF file")
     parser.add_argument("-o", "--output", required=True, help="Output VMEM file")
-    parser.add_argument("--base", required=True,
-                        help="ROM base address (hex, e.g. 0x10040000)")
-    parser.add_argument("--size", default="0x10000",
-                        help="ROM size in bytes (default: 0x10000)")
+    parser.add_argument("--base", required=True, help="ROM base address (hex, e.g. 0x10040000)")
+    parser.add_argument("--size", default="0x10000", help="ROM size in bytes (default: 0x10000)")
     # Accepted for CLI compatibility with callers that still pass it; ELF parsing
     # no longer invokes the toolchain, so the value is unused.
-    parser.add_argument("--gcc-prefix", default="riscv64-unknown-elf",
-                        help="(deprecated, unused) GCC toolchain prefix")
+    parser.add_argument(
+        "--gcc-prefix",
+        default="riscv64-unknown-elf",
+        help="(deprecated, unused) GCC toolchain prefix",
+    )
     args = parser.parse_args()
 
     rom_base = int(args.base, 0)
@@ -137,8 +134,9 @@ def main():
             f.write(f"{word:016x}\n")
 
     n_words = len(rom_data) // 8
-    print(f"Generated {args.output}: {n_words} 64-bit words "
-          f"({len(rom_data)} bytes) from {args.elf}")
+    print(
+        f"Generated {args.output}: {n_words} 64-bit words ({len(rom_data)} bytes) from {args.elf}"
+    )
 
 
 if __name__ == "__main__":

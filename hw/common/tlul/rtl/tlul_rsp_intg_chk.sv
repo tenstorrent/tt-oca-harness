@@ -2,21 +2,20 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
+// Check TL-UL D-channel response integrity.
+//
+// Recompute the response checksum over tl_i and raise err_o on mismatch. When
+// EnableRspDataIntgCheck is set, also check returned data integrity.
 
-/**
- * Tile-Link UL response integrity check
- */
-
-module tlul_rsp_intg_chk import tlul_pkg::*; #(
-  parameter bit EnableRspDataIntgCheck = 0
+module tlul_rsp_intg_chk
+  import tlul_pkg::*;
+#(
+  parameter bit EnableRspDataIntgCheck = 0  // When set, also check D-channel data integrity.
 ) (
-  // TL-UL interface
-  input  tl_d2h_t tl_i,
+  input  tl_d2h_t tl_i,  // D-channel response under check.
 
-  // error output
-  output logic err_o
+  output logic err_o     // High when response integrity fails.
 );
-
   `include "prim_assert.sv"
 
   logic [1:0] rsp_err;
@@ -52,4 +51,4 @@ module tlul_rsp_intg_chk import tlul_pkg::*; #(
 
   `OCAH_OT_ASSERT_INIT(PayLoadWidthCheck, $bits(tl_d2h_rsp_intg_t) <= D2HRspMaxWidth)
 
-endmodule // tlul_rsp_intg_chk
+endmodule  // tlul_rsp_intg_chk

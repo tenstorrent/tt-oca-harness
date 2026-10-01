@@ -1,49 +1,63 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-[cols="1,1,1,3", options="header"]
-.Register Map
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-otbn]
+== OpenTitan Big Number Accelerator
+
+Programmable coprocessor for asymmetric cryptography with SCA and FI countermeasures
+
+[cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description
-| 0x0 | INTR_STATE | RW a| -
-| 0x4 | INTR_ENABLE | RW a| -
-| 0x8 | INTR_TEST | W a| -
-| 0xC | ALERT_TEST | W a| -
-| 0x10 | CMD | W a| -
-| 0x14 | CTRL | RW a| -
-| 0x18 | STATUS | R a| -
-| 0x1C | ERR_BITS | RW a| -
-| 0x20 | FATAL_ALERT_CAUSE | R a| -
-| 0x24 | INSN_CNT | RW a| -
-| 0x28 | LOAD_CHECKSUM | RW a| -
+| 0x0 | <<reg-{regmap-instance}-otbn-INTR_STATE,INTR_STATE>> | RW a| -
+| 0x4 | <<reg-{regmap-instance}-otbn-INTR_ENABLE,INTR_ENABLE>> | RW a| -
+| 0x8 | <<reg-{regmap-instance}-otbn-INTR_TEST,INTR_TEST>> | W a| -
+| 0xC | <<reg-{regmap-instance}-otbn-ALERT_TEST,ALERT_TEST>> | W a| -
+| 0x10 | <<reg-{regmap-instance}-otbn-CMD,CMD>> | W a| -
+| 0x14 | <<reg-{regmap-instance}-otbn-CTRL,CTRL>> | RW a| -
+| 0x18 | <<reg-{regmap-instance}-otbn-STATUS,STATUS>> | R a| -
+| 0x1C | <<reg-{regmap-instance}-otbn-ERR_BITS,ERR_BITS>> | RW a| -
+| 0x20 | <<reg-{regmap-instance}-otbn-FATAL_ALERT_CAUSE,FATAL_ALERT_CAUSE>> | R a| -
+| 0x24 | <<reg-{regmap-instance}-otbn-INSN_CNT,INSN_CNT>> | RW a| -
+| 0x28 | <<reg-{regmap-instance}-otbn-LOAD_CHECKSUM,LOAD_CHECKSUM>> | RW a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.INTR_STATE Register
+[#reg-{regmap-instance}-otbn-INTR_STATE]
+=== INTR_STATE
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `Reserved` | - | - a| Reserved
-| 0 | `done` | RW | 0x0 a| OTBN has completed the operation.
+| 0 | `done` | RW1C | 0x0 a| OTBN has completed the operation.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.INTR_ENABLE Register
+[#reg-{regmap-instance}-otbn-INTR_ENABLE]
+=== INTR_ENABLE
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `Reserved` | - | - a| Reserved
 | 0 | `done` | RW | 0x0 a| Enable interrupt when !!INTR_STATE.done is set.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.INTR_TEST Register
+[#reg-{regmap-instance}-otbn-INTR_TEST]
+=== INTR_TEST
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `Reserved` | - | - a| Reserved
 | 0 | `done` | W | 0x0 a| Write 1 to force !!INTR_STATE.done to 1.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.ALERT_TEST Register
+[#reg-{regmap-instance}-otbn-ALERT_TEST]
+=== ALERT_TEST
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:2 | `Reserved` | - | - a| Reserved
@@ -51,8 +65,10 @@
 | 0 | `fatal` | W | 0x0 a| Write 1 to trigger one alert event of this kind.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.CMD Register
+[#reg-{regmap-instance}-otbn-CMD]
+=== CMD
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
@@ -65,8 +81,10 @@
 \| 0x1e  \| SEC_WIPE_IMEM \| Securely removes all contents from the instruction  memory. \|
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.CTRL Register
+[#reg-{regmap-instance}-otbn-CTRL]
+=== CTRL
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `Reserved` | - | - a| Reserved
@@ -78,8 +96,10 @@ recoverable errors.
 Writes are ignored if OTBN is not idle.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.STATUS Register
+[#reg-{regmap-instance}-otbn-STATUS]
+=== STATUS
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
@@ -98,8 +118,10 @@ All BUSY values represent an operation started by a write to the
 \| 0xFF  \| LOCKED             \| OTBN is locked as reaction to a fatal error, and must be reset to unlock it again. See also the section "Reaction to Fatal Errors". \|
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.ERR_BITS Register
+[#reg-{regmap-instance}-otbn-ERR_BITS]
+=== ERR_BITS
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:24 | `Reserved` | - | - a| Reserved
@@ -111,7 +133,8 @@ All BUSY values represent an operation started by a write to the
 | 18 | `reg_intg_violation` | RW | 0x0 a| A `REG_INTG_VIOLATION` error was observed.
 | 17 | `dmem_intg_violation` | RW | 0x0 a| A `DMEM_INTG_VIOLATION` error was observed.
 | 16 | `imem_intg_violation` | RW | 0x0 a| A `IMEM_INTG_VIOLATION` error was observed.
-| 15:8 | `Reserved` | - | - a| Reserved
+| 15:9 | `Reserved` | - | - a| Reserved
+| 8 | `mai_software_error` | RW | 0x0 a| An `MAI_SOFTWARE_ERROR` error was observed.
 | 7 | `rnd_fips_chk_fail` | RW | 0x0 a| An `RND_FIPS_CHK_FAIL` error was observed.
 | 6 | `rnd_rep_chk_fail` | RW | 0x0 a| An `RND_REP_CHK_FAIL` error was observed.
 | 5 | `key_invalid` | RW | 0x0 a| A `KEY_INVALID` error was observed.
@@ -122,8 +145,10 @@ All BUSY values represent an operation started by a write to the
 | 0 | `bad_data_addr` | RW | 0x0 a| A `BAD_DATA_ADDR` error was observed.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.FATAL_ALERT_CAUSE Register
+[#reg-{regmap-instance}-otbn-FATAL_ALERT_CAUSE]
+=== FATAL_ALERT_CAUSE
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
@@ -137,15 +162,19 @@ All BUSY values represent an operation started by a write to the
 | 0 | `imem_intg_violation` | R | 0x0 a| A `IMEM_INTG_VIOLATION` error was observed.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.INSN_CNT Register
+[#reg-{regmap-instance}-otbn-INSN_CNT]
+=== INSN_CNT
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `insn_cnt` | RW | 0x0 a| The number of executed instructions.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.LOAD_CHECKSUM Register
+[#reg-{regmap-instance}-otbn-LOAD_CHECKSUM]
+=== LOAD_CHECKSUM
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `checksum` | RW | 0x0 a| Checksum accumulator

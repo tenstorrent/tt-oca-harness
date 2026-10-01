@@ -22,6 +22,7 @@
 `include "hmac_wrapper_key.rdl"
 `include "otbn_wrapper_key.rdl"
 `include "abr_wrapper_key.rdl"
+`include "km_memory.rdl"
 // SEP eFuse register definitions — included from the shared SEP/peripheral
 // RDL trees so the KM-generated headers carry the OTP register constants at
 // the KM-local window addresses.  Hardware remaps addr[31:12] to the value
@@ -53,6 +54,7 @@ addrmap key_manager {
     // - Accessed via direct memory interface (not AXI-Lite)
     // - Includes byte-wise parity checking
     // - Size: 16KB (4096 words × 4 bytes)
+    external km_rom rom @ 0x0000_0000;
 
     // Reserved: 0x0000_4000 - 0x0000_7FFF (16KB)
     // - Unmapped; returns DECERR
@@ -63,6 +65,7 @@ addrmap key_manager {
     // - Includes byte-wise parity checking
     // - Optional address/data scrambling (controlled by KMCSR)
     // - Size: 32KB (8192 words × 4 bytes)
+    external km_sram sram @ 0x0000_8000;
 
     //=========================================================================
     // Register-Based Peripherals (AXI-Lite Access)
@@ -155,12 +158,11 @@ addrmap key_manager {
     //=========================================================================
     // Base Address: 0x0001_1000 (KM CPU view)
     // SEP target:   OTP_EFUSE_REMAP_BASE (hardware remaps addr[31:12] on efuse_req_o)
-    // Size: 4KB decode window; only MAP/CTRL/MMR sub-regions are decoded by
-    //       efuse_interface_controller (offsets 0x000-0x3FF / 0x400 / 0x500).
+    // Size: 4KB decode window. Only the MAP, CTRL and MMR register maps below are
+    //       forwarded to SEP; any other offset in the window answers SLVERR.
     //       efuse_shim_ctrl is intentionally excluded (not in the AXIL path).
     //
-    // Instantiated as 'external' — the KM crossbar forwards transactions to
-    // sep_efuse_wrapper; no KM-side register RTL is generated.
+    // Instantiated as 'external' — no KM-side register RTL is generated.
     // The generated address constants reflect the KM CPU view:
     //   OTP_EFUSE_MAP  @ 0x0001_1000  (sep_efuse_map,      64-bit regwidth)
     //   OTP_EFUSE_CTRL @ 0x0001_1400  (efuse_interface_ctrl, 32-bit)
@@ -168,6 +170,38 @@ addrmap key_manager {
     external sep_efuse_map        otp_efuse_map  @ 0x0001_1000;
     external efuse_interface_ctrl otp_efuse_ctrl @ 0x0001_1400;
     external efuse_mmr            otp_efuse_mmr  @ 0x0001_1500;
+
+`ifdef OCAH_DOC_MEMORY_MAP
+    ocah_aperture_size = 0x1D000;
+    ocah_gap_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+    mailbox_km->ocah_aperture_size = 0x20;
+    mailbox_km->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+    otp_efuse_map->desc = "SEP eFuse shadow-register pass-through.";
+    otp_efuse_map->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::FORWARD, rdata: 0x0, bresp: ocah_resp_e::FORWARD};
+    otp_efuse_ctrl->ocah_aperture_size = 0x100;
+    otp_efuse_ctrl->desc = "SEP eFuse command and status pass-through.";
+    otp_efuse_ctrl->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::FORWARD, rdata: 0x0, bresp: ocah_resp_e::FORWARD};
+    otp_efuse_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
+    otp_efuse_mmr->ocah_aperture_size = 0x100;
+    otp_efuse_mmr->desc = "SEP eFuse security-token pass-through.";
+    otp_efuse_mmr->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::FORWARD, rdata: 0x0, bresp: ocah_resp_e::FORWARD};
+    otp_efuse_mmr->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
+    otp_efuse_mmr->ocah_following_gap_note = "This range is inside the OTP/eFuse window, which answers every offset outside its register maps with SLVERR and read data 0xBADCAB1E rather than DECERR.";
+    kpv->ocah_aperture_size = 0x2000;
+    kpv->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+    kmcsr->ocah_aperture_size = 0x800;
+    kmcsr->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+    otbn_wrapper_key->ocah_aperture_size = 0x80;
+    otbn_wrapper_key->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+    aes_wrapper_key->ocah_aperture_size = 0x80;
+    aes_wrapper_key->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+    kmac_wrapper_key->ocah_aperture_size = 0x80;
+    kmac_wrapper_key->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+    hmac_wrapper_key->ocah_aperture_size = 0x80;
+    hmac_wrapper_key->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+    abr_wrapper_key->ocah_aperture_size = 0x800;
+    abr_wrapper_key->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+`endif
 
     //=========================================================================
     // Memory Map Summary
@@ -199,7 +233,8 @@ addrmap key_manager {
     //
     // Direct Memory Access (ROM/SRAM):
     // - Accessed via PicoRV32 native memory interface (not AXI-Lite)
-    // - ROM: Read-only, returns SLVERR on write attempts
+    // - ROM: Read-only. A write completes with no error response, leaves the
+    //   ROM unchanged and sets KMCSR IRQ_STATUS.ROM_WRITE_ERR
     // - SRAM: Read/write with optional scrambling (controlled by KMCSR)
     // - Both include byte-wise parity checking
     //
@@ -210,7 +245,6 @@ addrmap key_manager {
     //
     // Address Decoding:
     // - Unmapped addresses return DECERR response
-    // - ROM write attempts return SLVERR response
     // - Mailbox overflow/underflow behavior configurable via CTRL register
     //
     //=========================================================================

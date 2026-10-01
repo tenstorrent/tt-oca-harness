@@ -16,8 +16,8 @@ from __future__ import annotations
 
 import argparse
 import logging as log
-from pathlib import Path
 import sys
+from pathlib import Path
 
 
 def _repo_root() -> Path:
@@ -83,6 +83,14 @@ def main() -> int:
         help="Override the top addrmap name (e.g. export dma.hjson as 'secure_dma'). "
         "Defaults to the hjson 'name' field.",
     )
+    parser.add_argument("--uppercase-fields", action="store_true")
+    parser.add_argument("--first-replica-multiregs", action="store_true")
+    parser.add_argument("--base-multireg-fields", action="store_true")
+    parser.add_argument("--flatten-multiregs", action="store_true")
+    parser.add_argument("--arrayed-windows", action="store_true")
+    parser.add_argument("--no-metadata", action="store_true")
+    parser.add_argument("--no-guard", action="store_true")
+    parser.add_argument("--no-udp-include", action="store_true")
     parser.add_argument("-v", "--verbose", action="store_true")
     parser.add_argument("-q", "--quiet", action="store_true")
 
@@ -111,7 +119,17 @@ def main() -> int:
     if args.name:
         block.name = args.name
 
-    return SystemrdlExporter(block).export(args.outfile)
+    return SystemrdlExporter(
+        block,
+        base_multireg_names=not args.first_replica_multiregs,
+        base_multireg_field_names=args.base_multireg_fields,
+        flatten_multiregs=args.flatten_multiregs,
+        uppercase_fields=args.uppercase_fields,
+        arrayed_windows=args.arrayed_windows,
+        include_metadata=not args.no_metadata,
+        include_guard=not args.no_guard,
+        include_udp=not args.no_udp_include,
+    ).export(args.outfile)
 
 
 if __name__ == "__main__":

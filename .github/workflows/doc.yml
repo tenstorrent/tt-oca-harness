@@ -9,9 +9,11 @@ on:
     paths:
       - 'doc/**'
       - 'hw/**/*.adoc'
+      - 'hw/**/*.sv'
       - 'hw/**/*.md'
       - 'antora-playbook.yml'
       - 'antora-*-playbook.yml'
+      - 'tools/doc/**'
       - 'pyproject.toml'
       - 'uv.lock'
       - '.github/workflows/doc.yml'
@@ -20,13 +22,22 @@ on:
     paths:
       - 'doc/**'
       - 'hw/**/*.adoc'
+      - 'hw/**/*.sv'
       - 'hw/**/*.md'
       - 'antora-playbook.yml'
       - 'antora-*-playbook.yml'
+      - 'tools/doc/**'
       - 'pyproject.toml'
       - 'uv.lock'
       - '.github/workflows/doc.yml'
+  # Publishers outside this repository dispatch the workflow on main after
+  # pushing dashboard data, so the site reflects their latest run.
   workflow_dispatch:
+  # Republish after each dashboard data publication so the verification
+  # dashboard reflects the latest nightly.
+  workflow_run:
+    workflows: [dashboard]
+    types: [completed]
 
 permissions:
   contents: write
@@ -39,6 +50,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Checkout submodules
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          git submodule update --init --recursive
 
       - name: Setup system dependencies
         run: |
@@ -82,10 +98,18 @@ jobs:
         run: |
           make ocah-doc-trm-pdf
           make ocah-doc-integrator-pdf
+          make ocah-doc-programmer-pdf
+          make ocah-doc-datasheets-pdf
         continue-on-error: true
 
+      # A push to main, a dispatch on main, or a successful dashboard run
+      # deploys.
       - name: Deploy to GitHub Pages
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: >-
+          (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+          (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+          (github.event_name == 'workflow_run' &&
+           github.event.workflow_run.conclusion == 'success')
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"

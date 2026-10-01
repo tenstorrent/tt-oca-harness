@@ -2,43 +2,38 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[telemetry-receiver-interface]]
-===== Interface
+== Interface
 
 The Telemetry Receiver component provides AXI4-Lite register access and
-ARM Trace Bus (ATB) telemetry data reception interfaces.
+Advanced Trace Bus (ATB) telemetry data reception interfaces.
 
-====== Configuration Parameters
+=== Configuration Parameters
 
-[width="100%",cols="30%,20%,50%",options="header",]
-|====================================================================================
-|Parameter |Default |Description
-|NUM_BUFFERS |2 |Number of telemetry buffers (dual-buffer architecture)
-|BUFFER_DEPTH |16 |Depth of each telemetry buffer (entries)
-|ATB_DATA_WIDTH |8 |ATB interface data width (bits)
-|PACKET_WIDTH |64 |Telemetry packet width (bits)
-|ADDR_WIDTH |32 |Register address width (bits)
-|DATA_WIDTH |32 |Data bus width (bits)
-|====================================================================================
+ifdef::backend-html5[]
+The parameters and ports of `telemetry_receiver` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/telemetry_receiver/telemetry_receiver.adoc[telemetry_receiver].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters and ports of `telemetry_receiver` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
 
-====== Signal Interfaces
+The telemetry buffer dimensions are described as `NUM_BUFFERS` (default
+2, a dual-buffer architecture), `BUFFER_DEPTH` (default 16 entries per
+buffer), `ATB_DATA_WIDTH` (default 8 bits), `PACKET_WIDTH` (default 64
+bits), `ADDR_WIDTH` (default 32-bit register address) and `DATA_WIDTH`
+(default 32-bit data bus).
 
-====== Global Interface
+The ATB beat width (8 bits), packet width (64 bits), counter width (32 bits)
+and ATB ID width (7 bits) are package constants.
+The core register port has an 8-bit address and 32-bit data path.
+
+=== Signal Interfaces
+
+=== Global Interface
 
 The global interface provides fundamental clock and reset signals
 required for basic operation.
 
-.Global Interface Signals
-[width="100%",cols="15%,10%,10%,10%,55%",options="header",]
-|=====================================================================================
-|Signal Name |Width |Direction |Active |Description
-|`clk_i` |1 |Input |Rising |System clock input. All synchronous
-operations are performed on the rising edge.
-
-|`rst_ni` |1 |Input |Low |System reset input. Asynchronous assertion,
-synchronous deassertion.
-|=====================================================================================
-
-====== Clock and Reset Specifications
+=== Clock and Reset Specifications
 
 * *Clock Frequency*: The component can operate at frequencies up to 200
 MHz
@@ -47,24 +42,12 @@ MHz
 * *Reset Recovery*: Component ready for operation 2 clock cycles after
 reset deassertion
 
-====== ATB Telemetry Interface
+=== ATB Telemetry Interface
 
-The ATB (ARM Trace Bus) interface receives telemetry data using standard
+The ATB (Advanced Trace Bus) interface receives telemetry data using standard
 ATB protocol.
 
-.ATB Interface Signals
-[width="100%",cols="15%,10%,10%,65%",options="header",]
-|=================================================================================
-|Signal Name |Width |Direction |Description
-|`atdata_i` |8 |Input |Telemetry data input (8-bit data beats)
-|`atid_i` |7 |Input |ATB ID field (trace source identification)
-|`atvalid_i` |1 |Input |ATB valid signal (data valid indication)
-|`atready_o` |1 |Output |ATB ready signal (receiver ready indication)
-|`afvalid_o` |1 |Output |ATB flush valid (flush request indication)
-|`afready_i` |1 |Input |ATB flush ready (flush acknowledgment)
-|=================================================================================
-
-====== ATB Protocol Specifications
+=== ATB Protocol Specifications
 
 * *Data Width*: 8 bits per beat
 * *ID Width*: 7 bits (128 unique trace sources)
@@ -75,24 +58,35 @@ back-pressure
 * *Latency*: Zero-cycle latency when ready, immediate acceptance when
 `atready_o` is high
 
-====== Interrupt Interface
+=== Interrupt Interface
 
 The interrupt interface provides a single interrupt output for event
 notification.
 
-.Interrupt Interface Signals
-[width="100%",cols="15%,10%,10%,65%",options="header",]
-|=====================================================================
-|Signal Name |Width |Direction |Description
-|`irq_o` |1 |Output |Interrupt request output (active high)
-|=====================================================================
-
-====== Interrupt Specifications
+=== Interrupt Specifications
 
 * *Polarity*: Active high (asserted when high)
 * *Duration*: Level-sensitive, remains asserted until cleared
 * *Sources*: Buffer threshold and error condition interrupts
-* *Clearing*: Cleared by writing appropriate bits in interrupt status
-registers
+* *Clearing*: `MISSING_LAST` is write-one-to-clear. The read-only
+`BUFFER_THRESHOLD` source remains asserted while occupancy exceeds the configured
+threshold or its test bit is set; it cannot be cleared by writing status.
 * *Latency*: Interrupt assertion within 2 clock cycles of triggering
 condition
+
+=== Subsystem Wrapper
+
+`telemetry_receiver_wrap` defaults to three receivers. It configures their queue
+depth with `TELEMETRY_RECEIVER_BUFFER_DEPTH` (default 8) and counter counts with
+`TELEMETRY_RECEIVER_MAX_NUM_COUNTERS_PER_MESSAGE` (default 4 per receiver).
+Actual subsystem values and aperture assignments come from the integration.
+
+The wrapper receives ATB traffic on `clk_telemetry_i` / `rst_telemetry_ni` and
+crosses it into `clk_i` / `rst_ni` through an eight-entry asynchronous FIFO per
+receiver. Its external ready signal reflects crossing-FIFO capacity. This does
+not turn the core's decoded-message queue into a lossless backpressured queue.
+The wrapper also contains flush-handshake synchronizers and returns a decode
+error for register addresses outside its configured receiver apertures.
+
+Clock frequency, jitter, reset duration and physical timing constraints must
+come from the integration timing specification.

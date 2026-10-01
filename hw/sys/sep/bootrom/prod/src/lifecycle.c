@@ -16,25 +16,19 @@
 
 #include "bl0_state.h"
 #include "errors.h"
-#include "manifest.h"
 #include "rom_mmio.h"
 #include "rom_virt_console.h"
 #include "sep.h"
 #include "sep_smc_interface.h"
-
-// SMC CPU CTRL reset control register offset (holds SMC cores in reset).
-// Writing 1 to core*_reset_n_n0_scan bits asserts reset on each SMC core.
-#define SMC_CPU_CTRL_RESET_CTRL_OFFSET 0x0020u
 
 // ---------------------------------------------------------------------------
 // LC state read helper.
 // ---------------------------------------------------------------------------
 
 uint32_t lc_read_state(void) {
-    uint32_t reg = mmio_read32(OCH_SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR);
-    // reference suite efuse field is 8-bit (diff encoded by RTL).
-    // Extract low 4 bits = raw LC state.
-    // The low nibble carries the decoded lifecycle state.
+    uint32_t reg = mmio_read32(SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR);
+    // The eFuse field is 8 bits, differentially encoded by the RTL; the low
+    // nibble carries the decoded lifecycle state.
     return ((reg & SEP_EFUSE_MAP__LC_STATE__LC_STATE_bm) >> SEP_EFUSE_MAP__LC_STATE__LC_STATE_bp) &
            0xFu;
 }
@@ -76,29 +70,6 @@ bool lc_state_is_rma(uint32_t lc_state) {
     return (lc_state >= LC_STATE_RMA_SIP_LO && lc_state <= LC_STATE_RMA_CHIPLET_HI);
 }
 
-int lc_state_to_manifest_bit(uint32_t lc_state) {
-    // Map decoded LC state to manifest usage_constraints.life_cycle_states bit.
-    // These bit positions are defined in manifest.h (LC_STATES_BIT_*).
-    switch (lc_state) {
-    case LC_STATE_TEST_DEV:
-        return LC_STATES_BIT_TEST_DEV; // bit 0
-    case LC_STATE_PROD:
-        return LC_STATES_BIT_PROD; // bit 1
-    case LC_STATE_PROD_END:
-        return LC_STATES_BIT_PROD_END; // bit 2
-    case LC_STATE_RMA_SIP_LO:
-    case LC_STATE_RMA_SIP_HI:
-        return LC_STATES_BIT_RMA_SOP; // bit 3
-    case LC_STATE_RMA_CHIPLET_LO:
-    case 0x5u:
-    case 0x6u:
-    case LC_STATE_RMA_CHIPLET_HI:
-        return LC_STATES_BIT_RMA_CHIPLET; // bit 4
-    default:
-        return -1;
-    }
-}
-
 // ---------------------------------------------------------------------------
 // Feature control and demotion registers
 // ---------------------------------------------------------------------------
@@ -106,9 +77,9 @@ int lc_state_to_manifest_bit(uint32_t lc_state) {
 uint32_t lc_read_feat_ctrl(uint32_t *hi) {
     // FEAT_CTRL is a 64-bit read-only register.
     // Read low 32 bits, then high 32 bits.
-    uint32_t lo = mmio_read32(OCH_SEP_TOP_SEP_LIFECYCLE_CTRL_FEAT_CTRL_BASE_ADDR);
+    uint32_t lo = mmio_read32(SEP_TOP_SEP_LIFECYCLE_CTRL_FEAT_CTRL_BASE_ADDR);
     if (hi) {
-        *hi = mmio_read32(OCH_SEP_TOP_SEP_LIFECYCLE_CTRL_FEAT_CTRL_BASE_ADDR + 4u);
+        *hi = mmio_read32(SEP_TOP_SEP_LIFECYCLE_CTRL_FEAT_CTRL_BASE_ADDR + 4u);
     }
     return lo;
 }
@@ -117,18 +88,18 @@ void lc_write_demotion(bool demote, bool lock) {
     uint32_t val = 0;
     if (demote) val |= SEP_LIFECYCLE_CTRL__DEMOTE__DEMOTE_bm;
     if (lock) val |= SEP_LIFECYCLE_CTRL__DEMOTE__LOCK_bm;
-    mmio_write32(OCH_SEP_TOP_SEP_LIFECYCLE_CTRL_DEMOTE_1_BASE_ADDR, val);
+    mmio_write32(SEP_TOP_SEP_LIFECYCLE_CTRL_DEMOTE_1_BASE_ADDR, val);
 }
 
 void lc_write_demotion_2(bool demote, bool lock) {
     uint32_t val = 0;
     if (demote) val |= SEP_LIFECYCLE_CTRL__DEMOTE__DEMOTE_bm;
     if (lock) val |= SEP_LIFECYCLE_CTRL__DEMOTE__LOCK_bm;
-    mmio_write32(OCH_SEP_TOP_SEP_LIFECYCLE_CTRL_DEMOTE_2_BASE_ADDR, val);
+    mmio_write32(SEP_TOP_SEP_LIFECYCLE_CTRL_DEMOTE_2_BASE_ADDR, val);
 }
 
 // ---------------------------------------------------------------------------
-// Full lifecycle policy (Task C6)
+// Full lifecycle policy ([S11])
 // ---------------------------------------------------------------------------
 
 // Error code for lifecycle validation failure.
@@ -156,11 +127,16 @@ uint32_t rom_lifecycle_policy(void) {
         // Put SMC in reset to make the whole SMU inoperative.
         // Invalid LC_STATE may indicate fuse attack or HW fault — do not let
         // SMC continue running in an unknown state.
-        uint32_t smc_base = sep_get_smc_base();
-        uint32_t rst = mmio_read32(smc_base + SMC_CPU_CTRL_RESET_CTRL_OFFSET);
-        rst |= 0xFu; // core0~core3 reset_n bits → hold all cores in reset
-        mmio_write32(smc_base + SMC_CPU_CTRL_RESET_CTRL_OFFSET, rst);
+        uint32_t reset_ctrl = sep_get_smc_base() + SMC_CPU_CTRL_RESET_CTRL_OFFSET;
+        uint32_t rst = mmio_read32(reset_ctrl);
+        mmio_write32(reset_ctrl, rst & ~SMC_CPU_CTRL_RESET_CTRL_CORE_RESET_N_MASK);
         simputs("SMC_RESET_ON_INVALID_LC\n");
+        // Diagnostic only: the halt below happens either way. A core bit that
+        // reads back set means that core is still running.
+        rst = mmio_read32(reset_ctrl);
+        if ((rst & SMC_CPU_CTRL_RESET_CTRL_CORE_RESET_N_MASK) != 0u) {
+            simputshex32("SMC_RESET_NOT_HELD=", rst);
+        }
 
         rom_err_fail_ext(ROM_ERR_LIFECYCLE_INVALID);
     }
@@ -202,4 +178,40 @@ uint32_t rom_lifecycle_policy(void) {
 
     report_status(STATUS_TYPE_INFO, SEP_MSG_LIFECYCLE_VALID);
     return lc_state;
+}
+
+// ---------------------------------------------------------------------------
+// Secure-boot chicken bit ([S18])
+// ---------------------------------------------------------------------------
+
+// Error code for a SBOOT_DIS reserved-bit fault.
+#define ROM_ERR_SBOOT_DIS_RSVD_SET 0x0000F008u
+
+// Latched by rom_sboot_dis_policy(). Zero-initialised, and zero reports "not
+// disabled", so a caller that runs before [S18] enforces secure boot.
+static bool g_sboot_dis;
+
+bool sboot_dis_disabled(void) {
+    return g_sboot_dis;
+}
+
+void rom_sboot_dis_policy(void) {
+    uint32_t reg = mmio_read32(SEP_TOP_SEP_EFUSE_MAP_SBOOT_DIS_BASE_ADDR);
+
+    // rsvd[31:1] is hw=rw in the RDL: driven from the fuse array rather than
+    // tied off, so it can read non-zero on a real part. On a healthy one it
+    // reads zero, and anything else means the array is not what the ROM thinks
+    // it is -- a state to stop in, not to interpret.
+    if ((reg & SEP_EFUSE_MAP__SBOOT_DIS__RSVD_bm) != 0u) {
+        simputshex32("SBOOT_DIS_RSVD=", reg);
+        report_status(STATUS_TYPE_ERROR, SEP_MSG_FUSE_SBOOT_DIS_RSVD);
+        rom_err_fail_ext(ROM_ERR_SBOOT_DIS_RSVD_SET);
+    }
+
+    g_sboot_dis = (reg & SEP_EFUSE_MAP__SBOOT_DIS__DISABLE_SECURE_BOOT_bm) != 0u;
+    get_bl0_state()->sboot_dis = g_sboot_dis;
+
+    simputsdec24("FUSE: SBOOT_DIS: ", g_sboot_dis);
+    report_status(STATUS_TYPE_INFO, SEP_MSG_FUSE_SBOOT_DIS);
+    report_status(STATUS_TYPE_INFO_EXT, g_sboot_dis);
 }

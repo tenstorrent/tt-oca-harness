@@ -1,42 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= Introduction
+
+// Overview owns the content; this compatibility page stays out of nav and PDF.
 [[sep-introduction]]
-=== Introduction
 
-SEP is the Root of Trust (RoT) of the chiplet with the highest security
-privilege. SEP provides a physically isolated execution environment for
-highly sensitive security services. The following are some examples:
-
-* *Secure boot*: The SEP ROM BL0 image uses non-volatile public keys to
-conduct authentication verification on the loaded BL1 software images.
-* *Secure lifecycle control*: SEP implements a secure lifecycle
-controller to manage function, debug and test access to the chiplet according to
-fuse configuration, in-field demotion, and secret token inputs.
-* *Device attestation*: SEP offers support to device attestation by
-recording the boot process and device configuration followed attestation
-using public key infrastructure.
-* *Cryptography service*: SEP offers secure key services to the rest of
-the system together with cryptography acceleration. SEP also implements
-True Random Number Generator (TRNG) to provide random numbers for SEP
-itself and the rest of the system.
-* *User authentication*: Similar to secure boot, user authentication is
-another authentication service SEP offers. Besides feature control that
-can be tied to the authentication result, SEP software can also tie the
-authentication result to the secret key derivation to ensure that bypass
-of the user authentication leads to a useless system.
-
-The SEP is responsible for ensuring that the chiplet and overall
-packaged system composed of multiple chiplets remains secure from
-adversaries. This means that SEP ensures the system
-
-* Runs correctly with the intended firmware and data protected by
-digital signatures
-* Guards against malicious data input to SEP, SMC and the debug/test
-infrastructure
-* Prevents exfiltration of private or secret data on all exits,
-including side channels
-* Prevents privilege escalation which would enable illegal operations
-
-A consolidated description of OCAH use cases is available in the
-top-level <<use-cases>> section.
+The SEP responsibilities and services are described in
+ifdef::backend-html5[]
+xref:overview.adoc#sep-introduction[Overview]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<hardware-overview,Overview>>
+endif::backend-pdf[]
+.

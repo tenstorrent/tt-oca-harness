@@ -4,6 +4,8 @@
 `ifndef SEP_CPU_CTRL_RDL_DEFINED
 `define SEP_CPU_CTRL_RDL_DEFINED
 addrmap sep_cpu_ctrl {
+    name = "SEP CPU Control Address Map";
+    desc = "SEP CPU control and status registers: PKA and crypto configuration, boot and fast-memory enables, fuse-sense status, and interrupt controls.";
 
     reg REFERENCE_COUNTER {
         regwidth = 64;
@@ -235,34 +237,6 @@ addrmap sep_cpu_ctrl {
         } sep_fuse_sense_done[0:0] = 0x0;
     };
 
-    reg SEP_STRAPS {
-        field {
-            sw = r;
-            hw = w;
-            desc="straps for test_en -> Used to be latched by SEP and generate the secure_tm ";
-        } test_en[0:0] = 0x0;
-
-        field {
-            sw = r;
-            hw = w;
-            desc="straps for bypass_mem_repair -> Used to indicate if the memory repair should be bypassed";
-        } bypass_mem_repair[1:1] = 0x0;
-
-    };
-
-    reg RAS_BANK_INFO {
-        field {
-            sw = rw;
-            hw = r;
-            desc = "Chiplet type ID";
-        } bank_chip [3:0] = 0x0;
-
-        field {
-            sw = rw;
-            hw = r;
-            desc = "Chiplet instance ID";
-        } bank_instance [7:4] = 0x0;
-    };
 
     reg SEP_SW_DEBUG {
         regwidth = 64;
@@ -359,6 +333,170 @@ addrmap sep_cpu_ctrl {
         } wipe_state[0:0] = 0x0;
     };
 
+    reg DMA_BUS_ERR_STATUS {
+        regwidth = 64;
+        accesswidth = 64;
+        desc = "Secure DMA bridge fault status. Each bit is latched in hardware and held
+                until the corresponding DMA_BUS_ERR_CLEAR write. These bits also drive
+                dedicated PIC sources.
+
+                Neither bit is cleared by a CPU-only reset (the WDT resets the CPU without
+                resetting the DMA), so a bit read as set immediately after boot may describe
+                a fault from before that reset rather than a new one.";
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Register-path bus error: a CPU access to a Secure DMA register returned
+                    a TL-UL error response (unmapped or misaligned offset). The faulting
+                    access also received SLVERR synchronously.";
+        } reg_path_err [0:0] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "DMA-master-path fault: either the fabric returned a non-OKAY AXI response
+                    to a DMA transfer, or a TL-UL command-integrity check failed on a command
+                    issued by the DMA. The latter is a fault-detection event with no other
+                    reporting path.";
+        } host_path_err [1:1] = 0x0;
+    };
+
+    reg DMA_BUS_ERR_CLEAR {
+        regwidth = 64;
+        accesswidth = 64;
+        desc = "Clear the DMA_BUS_ERR_STATUS bits. Writing 1 emits a single-cycle clear pulse
+                to both latches. A fault arriving in the same cycle as the clear still
+                latches, so acknowledging cannot drop a concurrent fault.";
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse = true;
+            desc = "Write 1 to clear both DMA_BUS_ERR_STATUS bits. Always reads 0.";
+        } clr [0:0] = 0x0;
+    };
+
+    reg PERIPH_BUS_ERR_STATUS {
+        regwidth = 64;
+        accesswidth = 64;
+        desc = "Peripheral register-bridge fault status, one bit per block. Each bit latches
+                when a CPU access to that block's registers returned a TL-UL error response
+                (unmapped or misaligned offset), and is held until the matching
+                PERIPH_BUS_ERR_CLEAR bit is written. The faulting access also received
+                SLVERR synchronously.
+
+                All bits OR together into a single PIC source, so read this register to
+                identify which block faulted.
+
+                No bit is cleared by a CPU-only reset (the WDT resets the CPU without
+                resetting the peripherals), so a bit read as set immediately after boot may
+                describe a fault from before that reset rather than a new one.";
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "AES register bridge error.";
+        } aes [0:0] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "HMAC register bridge error.";
+        } hmac [1:1] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "KMAC register bridge error.";
+        } kmac [2:2] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "OTBN register bridge error.";
+        } otbn [3:3] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "CSRNG register bridge error (DRBG CSRNG path).";
+        } csrng [4:4] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "EDN register bridge error (DRBG EDN path).";
+        } edn [5:5] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "Watchdog timer register bridge error.";
+        } wdt [6:6] = 0x0;
+    };
+
+    reg PERIPH_BUS_ERR_CLEAR {
+        regwidth = 64;
+        accesswidth = 64;
+        desc = "Clear PERIPH_BUS_ERR_STATUS bits. Writing 1 to a bit emits a single-cycle
+                clear pulse to that block's latch; bit order matches
+                PERIPH_BUS_ERR_STATUS. Clears are per-block so acknowledging one block
+                cannot discard a fault another block raised between the status read and
+                this write. A fault arriving in the same cycle as its own clear still
+                latches.";
+
+        // One 1-bit field per block: singlepulse requires width 1.
+        field {
+            sw = w;
+            hw = r;
+            singlepulse = true;
+            desc = "Write 1 to clear PERIPH_BUS_ERR_STATUS.aes. Always reads 0.";
+        } aes [0:0] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse = true;
+            desc = "Write 1 to clear PERIPH_BUS_ERR_STATUS.hmac. Always reads 0.";
+        } hmac [1:1] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse = true;
+            desc = "Write 1 to clear PERIPH_BUS_ERR_STATUS.kmac. Always reads 0.";
+        } kmac [2:2] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse = true;
+            desc = "Write 1 to clear PERIPH_BUS_ERR_STATUS.otbn. Always reads 0.";
+        } otbn [3:3] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse = true;
+            desc = "Write 1 to clear PERIPH_BUS_ERR_STATUS.csrng. Always reads 0.";
+        } csrng [4:4] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse = true;
+            desc = "Write 1 to clear PERIPH_BUS_ERR_STATUS.edn. Always reads 0.";
+        } edn [5:5] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse = true;
+            desc = "Write 1 to clear PERIPH_BUS_ERR_STATUS.wdt. Always reads 0.";
+        } wdt [6:6] = 0x0;
+    };
+
     // ----------------------------------------------
 
     // Core Specific Address Space 0x0 - 0x0ffff
@@ -392,9 +530,7 @@ addrmap sep_cpu_ctrl {
     SMC_FUSE_SENSE_STATUS SMC_FUSE_SENSE_STATUS                  @ 0x140;
     SEP_FUSE_SENSE_STATUS SEP_FUSE_SENSE_STATUS                  @ 0x150;
 
-    SEP_STRAPS            SEP_STRAPS                              @ 0x160;
 
-    RAS_BANK_INFO         RAS_BANK_INFO                           @ 0x170;
     SEP_SW_DEBUG          SEP_SW_DEBUG                            @ 0x178;
 
     SEP_NMI_VEC           SEP_NMI_VEC                             @ 0x180;
@@ -403,6 +539,10 @@ addrmap sep_cpu_ctrl {
     EXT_TRNG_SRC_SEL      EXT_TRNG_SRC_SEL                        @ 0x190;
     EXT_TRNG_SRC_SEL_LOCK EXT_TRNG_SRC_SEL_LOCK                   @ 0x198;
     KM_WIPE_CTRL          KM_WIPE_CTRL                            @ 0x1A0;
+    DMA_BUS_ERR_STATUS    DMA_BUS_ERR_STATUS                      @ 0x1A8;
+    DMA_BUS_ERR_CLEAR     DMA_BUS_ERR_CLEAR                       @ 0x1B0;
+    PERIPH_BUS_ERR_STATUS PERIPH_BUS_ERR_STATUS                   @ 0x1B8;
+    PERIPH_BUS_ERR_CLEAR  PERIPH_BUS_ERR_CLEAR                    @ 0x1C0;
 
     // Generic Address Space 0x1000 - 0x1fff
     SEP_VERSION_ID        SEP_VERSION_ID                          @ 0x1000;

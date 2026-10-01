@@ -1,0 +1,38 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+# Log Engine IP-level scenarios.
+
+[[tests]]
+name = "log_engine_sanity_test"
+module = { cocotb = "log_engine_sanity_test" }
+seed = 1
+timeout_sec = 600
+tags = ["smoke", "ci", "log_engine"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "log_engine_transfer_test"
+module = { cocotb = "log_engine_transfer_test" }
+seed = 1
+timeout_sec = 900
+tags = ["log_engine", "transfer"]
+run_modes = ["functional"]
+
+[[tests]]
+name = "log_engine_interrupt_test"
+module = { cocotb = "log_engine_interrupt_test" }
+seed = 1
+timeout_sec = 600
+tags = ["log_engine", "interrupt"]
+run_modes = ["functional"]
+
+[[groups]]
+name = "smoke"
+tests = ["log_engine_sanity_test"]
+
+[[groups]]
+name = "all"
+tests = ["log_engine_sanity_test", "log_engine_transfer_test", "log_engine_interrupt_test"]

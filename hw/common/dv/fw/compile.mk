@@ -14,7 +14,7 @@ ocah_fw_common_mk := 1
 # includes its toolchain.mk, then includes this for the build rules + all/clean.
 #
 # Required inputs:
-#   FW_NAME          - short subsystem name (e.g. key_manager, sep, smc)
+#   FW_NAME          - short subsystem name (e.g. sep, smc)
 #   FW_DIR           - absolute path to the subsystem dv/fw directory
 #   FW_C_SRCS        - library C sources (no entry/main)
 #   FW_ASM_SRCS      - library .s/.S startup/helper sources
@@ -43,8 +43,8 @@ ocah_fw_common_mk := 1
 #   FW_TEST_ARCHIVE_LINK_<mode> - per-mode override (default: FW_TEST_ARCHIVE_LINK)
 #   FW_TEST_VARIANTS_<name>     - extra images built from <name>'s sources under
 #                           a different image name, for tests whose C source has
-#                           a compile-time switch (SEP's SPI tests build both a
-#                           Cadence and an OpenTitan image from one source)
+#                           a compile-time switch (SEP's SPI tests build one
+#                           image per SPI controller from one source)
 #   FW_TEST_IMAGE_CFLAGS_<image> - extra compile flags for one image; on a
 #                           variant these select it, on a test's own image they
 #                           are simply per-test flags
@@ -53,7 +53,7 @@ ocah_fw_common_mk := 1
 #   FW_TEST_POSTPROCESS         - macro called as
 #                           $(call ...,elf_path,image_name,mode,output_stem).
 #                           output_stem is <build>/<test>/<image>: with variants
-#                           the image no longer names its own directory, so
+#                           the image does not name its own directory, so
 #                           derive output paths from the stem, not from the name
 #   FW_TEST_POSTPROCESS_PRIMARY_SUFFIX - primary generated sidecar suffix; when
 #                           set, postprocessing is a real target instead of an
@@ -220,7 +220,7 @@ $(1)/$(notdir $(basename $(2)).o): $(2) | $(1)/.dir ocah-fw-check-toolchain
 endef
 
 # ocah_fw_image_rules TEST,IMAGE. The default image compiles into the test
-# directory as before; a variant gets its own object subdirectory, since it
+# directory; a variant gets its own object subdirectory, since it
 # compiles the same sources under different flags.
 define ocah_fw_image_rules
 FW_TEST_OBJDIR_$(2) := $(FW_TEST_BUILD_DIR)/$(1)$(if $(filter-out $(1),$(2)),/$(2))
@@ -308,7 +308,7 @@ clean:
 
 # Verify the cross compiler resolves; emit an actionable error otherwise.
 # A bare gcc on PATH is not enough: hosts often carry a distro riscv64-unknown-elf-gcc
-# built without picolibc, which only fails ~100 objects later with a spec-file error.
+# built without picolibc, which only fails much later with a spec-file error.
 .PHONY: ocah-fw-check-toolchain
 ocah-fw-check-toolchain:
 	@command -v "$(CC)" >/dev/null 2>&1 || { \

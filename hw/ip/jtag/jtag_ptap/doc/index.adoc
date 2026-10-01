@@ -1,81 +1,60 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= JTAG PTAP
+:description: Primary TAP — IEEE 1149.1-2013/1687-2014/1838-2019 implementation, configuration, architecture and interface.
+
 [[jtag-ptap]]
-=== JTAG PTAP
 
-==== Overview
+The Primary TAP (PTAP) is the main JTAG access point for the chiplet. It
+implements IEEE 1149.1-2013 with extensions for IEEE 1687-2014 (iJTAG) and
+IEEE 1838-2019 (3DIC).
 
-The Primary TAP (PTAP) provides the main JTAG access point for the chiplet,
-implementing IEEE 1149.1-2013 compliance with extensions for IEEE 1687-2014
-(iJTAG) and IEEE 1838-2019 (3DIC).
+== Overview
 
-The PTAP design includes:
+The PTAP provides:
 
-* Full IEEE 1149.1-2013 JTAG TAP controller
-* Test Data Registers (TDRs) for all defined JTAG instructions
-* Test Mode Persistence (TMP) support
-* Boundary scan support with scan ports and control signals
-* BIST support
-* 3DIC support with STAP scan ports and control signals
-* iJTAG network access
-* JTAG2AXI debug interface for memory-mapped access
+* Full IEEE 1149.1-2013 TAP controller with 16-state FSM and one-hot encoding.
+* Test Data Registers (TDRs) for all defined JTAG instructions.
+* Test Mode Persistence (TMP) support — gates JTAG clock stop and test
+  assertion across a configurable list of reset conditions.
+* Boundary scan with scan ports and control signals.
+* BIST support via the RUNBIST instruction.
+* 3DIC support (TAP_3DCR) for STAP selection over a JTAG scan chain.
+* iJTAG SIB-based network access.
+* JTAG2AXI debug bridges for SMC fabric, SMC OTP and SEP OTP.
 
-==== Configuration Parameters
+== Configuration Parameters
 
-The PTAP is highly parameterizable to support different feature sets and
-integration requirements.
+The PTAP is configured through feature enables for the optional instructions, TMP,
+IC_RESET slices and debug bridges, the IC_RESET slice types, the IDCODE and JTAG_CAPS
+values, and the JTAG2AXI pipeline depths.
 
-[width="100%",cols="<28%,<12%,<12%,<48%",options="header"]
-|===
-|Parameter |Type |Default |Description
-
-4+^|*Feature Enable Parameters*
-|BSR_ENABLE |bit |1 |Enables all mandatory JTAG boundary scan instructions
-|EXTEST_TRAIN_ENABLE |bit |1 |Enables optional EXTEST_TRAIN instruction
-|EXTEST_PULSE_ENABLE |bit |1 |Enables optional EXTEST_PULSE instruction
-|INTEST_ENABLE |bit |1 |Enables optional INTEST instruction
-|CLAMP_ENABLE |bit |1 |Enables optional CLAMP instruction
-|HIGHZ_ENABLE |bit |1 |Enables optional HIGHZ instruction
-|RUNBIST_ENABLE |bit |1 |Enables optional RUNBIST instruction
-|TMP_ENABLE |bit |1 |Enables TMP controller functionality and instructions
-|IC_RESET_SMC_ENABLE |bit |0 |Enables the SMC slice of the IC_RESET TDR (requires matching `ic_reset_smc_t`)
-|IC_RESET_SEP_ENABLE |bit |0 |Enables the SEP slice of the IC_RESET TDR (requires matching `ic_reset_sep_t`)
-|IC_RESET_EXT_ENABLE |bit |0 |Enables the external slice of the IC_RESET TDR (requires matching `ic_reset_ext_t`)
-|SMC_DBG_ENABLE |bit |1 |Enables JTAG2AXI ports for SMC debug interface
-|SEP_DBG_ENABLE |bit |1 |Enables STAP for SEP debug interface
-|STAP_IO_ENABLE |bit |1 |Enables STAP for chiplet-to-chiplet connectivity
-
-4+^|*IC_RESET Struct Type Parameters*
-|ic_reset_smc_t |type |`logic` |Packed struct type for the SMC IC_RESET slice (typically `smc_pkg::jtag_smc_reset_ctrl_t`). Must contain `.ovrd` and `.val` sub-structs of identical width.
-|ic_reset_sep_t |type |`logic` |Packed struct type for the SEP IC_RESET slice (typically `sep_pkg::jtag_sep_reset_ctrl_t`). Must contain `.ovrd` and `.val` sub-structs of identical width.
-|ic_reset_ext_t |type |`logic` |Packed struct type for the external IC_RESET slice. Must contain `.ovrd` and `.val` sub-structs of identical width.
-
-4+^|*Size Parameters*
-|NUM_EXTRA_STAPS |int |0 |Number of additional STAPs for local connectivity
-|NUM_XTRIG_CTP |int |8 |Number of cross trigger ports
-|NUM_XTRIG_INT_CT |int |1 |Number of internal cross triggers
-
-4+^|*IDCODE Parameters*
-|IDCODE_MFR_ID |logic[10:0] |11'h000 |JEDEC manufacturer ID (11 bits)
-|IDCODE_PART_NUM |logic[15:0] |16'h0000 |Chiplet model ID (16 bits)
-|IDCODE_SI_REV |logic[3:0] |4'h0 |Silicon revision (4 bits)
-
-4+^|*Version Parameter*
-|OCH_VER |logic[7:0] |8'h00 |DTP IP major version number
-
-4+^|*AXI Pipeline Depth Parameters*
-|SMC_OTP_RD_PL_DEPTH |logic[1:0] |2'h3 |SMC OTP read pipeline depth (0=single outstanding)
-|SMC_OTP_WR_PL_DEPTH |logic[1:0] |2'h3 |SMC OTP write pipeline depth
-|SEP_OTP_RD_PL_DEPTH |logic[1:0] |2'h3 |SEP OTP read pipeline depth
-|SEP_OTP_WR_PL_DEPTH |logic[1:0] |2'h3 |SEP OTP write pipeline depth
-|SMC_RD_PL_DEPTH |logic[1:0] |2'h3 |SMC fabric read pipeline depth
-|SMC_WR_PL_DEPTH |logic[1:0] |2'h3 |SMC fabric write pipeline depth
-|===
+ifdef::backend-html5[]
+The parameters of `jtag_ptap` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/jtag_ptap/jtag_ptap.adoc[jtag_ptap].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters of `jtag_ptap` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
 
 ifdef::backend-pdf[]
 :imagesdir: assets
 endif::backend-pdf[]
 
+== Architecture
+
+ifdef::backend-html5[]
+include::partial$jtag_ptap/doc/architecture.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::architecture.adoc[]
+endif::backend-pdf[]
+
+== Interface
+
+ifdef::backend-html5[]
+include::partial$jtag_ptap/doc/interface.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::interface.adoc[]
+endif::backend-pdf[]

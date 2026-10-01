@@ -92,9 +92,7 @@ class OcahJtagChecker:
         if not self.errors:
             return
         joined = "\n".join(error.message for error in self.errors)
-        raise AssertionError(
-            f"{self.name}: {len(self.errors)} JTAG checker error(s):\n{joined}"
-        )
+        raise AssertionError(f"{self.name}: {len(self.errors)} JTAG checker error(s):\n{joined}")
 
     def sync_state(self, state) -> None:
         """Re-align the TAP reference model after BFM-internal navigation."""
@@ -179,9 +177,7 @@ class OcahJtagChecker:
         context: str = "",
     ) -> bool:
         """Named check: BYPASS TDO equals TDI delayed by exactly one TCK."""
-        predicted = self.ref_model.predict_bypass_tdo(
-            pattern, width, capture_bit=capture_bit
-        )
+        predicted = self.ref_model.predict_bypass_tdo(pattern, width, capture_bit=capture_bit)
         mask = (1 << width) - 1 if width > 0 else 0
         instr_ctx = f"ir=0x{instruction:02x} " if instruction is not None else ""
         return self.expect_equal(
@@ -201,9 +197,7 @@ class OcahJtagChecker:
     ) -> bool:
         """Named check: monitor-observed scan bit count equals the driven width."""
         resolved = check_id or ("CHK-SCAN-IR-LEN" if item.is_ir else "CHK-SCAN-DR-LEN")
-        instr_ctx = (
-            f"ir=0x{item.instruction:02x} " if item.instruction is not None else ""
-        )
+        instr_ctx = f"ir=0x{item.instruction:02x} " if item.instruction is not None else ""
         return self.expect_equal(
             resolved,
             item.bit_count,
@@ -283,9 +277,7 @@ class OcahJtagChecker:
 
     def _check_width(self, item: OcahJtagScanItem) -> None:
         if item.bit_count < 0:
-            self._record(
-                f"{item.kind} scan has negative bit_count={item.bit_count}", item
-            )
+            self._record(f"{item.kind} scan has negative bit_count={item.bit_count}", item)
         if item.is_ir and self.ir_width is not None and item.bit_count != self.ir_width:
             self._record(
                 f"IR scan width {item.bit_count} does not match expected {self.ir_width}",
@@ -302,6 +294,6 @@ class OcahJtagChecker:
         if not item.is_dr or item.instruction is None or item.bit_count <= 1:
             return
         # BYPASS-like scans are often wider than the one-bit register because
-        # tests intentionally push long patterns through the one-cycle delay.
+        # tests push long patterns through the one-cycle delay.
         if item.bit_count > 0 and item.tdo_value < 0:
             self._record("DR scan returned a negative TDO value", item)

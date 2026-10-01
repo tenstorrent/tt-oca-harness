@@ -14,7 +14,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from dashboard.schema import SCHEMA_VERSION
+MANIFEST_SCHEMA_VERSION = "0.1"
 
 
 def _copy_tree(src: Path, dst: Path) -> None:
@@ -39,7 +39,9 @@ _REMOTE_DESTINATION_RE = re.compile(r"^(?:gs|s3)://[A-Za-z0-9._-]+(?:/[A-Za-z0-9
 
 
 def _sync_remote(source: Path, destination: str) -> None:
-    if not _REMOTE_DESTINATION_RE.fullmatch(destination) or {".", ".."} & set(destination.split("/")):
+    if not _REMOTE_DESTINATION_RE.fullmatch(destination) or {".", ".."} & set(
+        destination.split("/")
+    ):
         raise ValueError(f"unsupported or unsafe remote publish path: {destination}")
     if destination.startswith("gs://"):
         cmd = ["gsutil", "-m", "rsync", "-r", "-d", str(source), destination]
@@ -49,11 +51,7 @@ def _sync_remote(source: Path, destination: str) -> None:
 
 
 def _source_files(source: Path) -> list[str]:
-    return sorted(
-        str(path.relative_to(source))
-        for path in source.rglob("*")
-        if path.is_file()
-    )
+    return sorted(str(path.relative_to(source)) for path in source.rglob("*") if path.is_file())
 
 
 def _summary_result_files(source: Path) -> list[str]:
@@ -76,7 +74,7 @@ def _summary_result_files(source: Path) -> list[str]:
 
 def write_manifest(source: Path, name: str, timestamp: str) -> Path:
     manifest = {
-        "schema_version": SCHEMA_VERSION,
+        "schema_version": MANIFEST_SCHEMA_VERSION,
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "publish_name": name,
         "timestamp": timestamp,
@@ -129,7 +127,9 @@ def publish_remote(
     return history_dir, latest_dir
 
 
-def publish(source: Path, publish_root: str, name: str, timestamp: str | None = None) -> tuple[str, str]:
+def publish(
+    source: Path, publish_root: str, name: str, timestamp: str | None = None
+) -> tuple[str, str]:
     """Copy a generated report directory into timestamped and latest locations."""
     if _is_remote(publish_root):
         return publish_remote(source, publish_root, name, timestamp)
@@ -164,4 +164,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

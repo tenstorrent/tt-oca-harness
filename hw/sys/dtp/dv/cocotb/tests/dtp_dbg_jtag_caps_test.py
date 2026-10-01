@@ -3,7 +3,6 @@
 """DTP JTAG_CAPS TDR test."""
 
 import pyuvm
-
 from dtp_base_test import dtp_base_test
 from seq_lib.dtp_dbg_jtag_caps_test_seq import dtp_dbg_jtag_caps_test_seq
 
@@ -16,7 +15,7 @@ class dtp_dbg_jtag_caps_test(dtp_base_test):
         await self.start_looped_seq(
             dtp_dbg_jtag_caps_test_seq,
             "dbg_jtag_caps_test_seq",
-            specific_env="DTP_DBG_JTAG_CAPS_TEST_LOOPS",
+            specific_knob="DTP_DBG_JTAG_CAPS_TEST_LOOPS",
             default_loops=16,
-            group_env="DTP_DEBUG_TDR_TEST_LOOPS",
+            group_knob="DTP_DEBUG_TDR_TEST_LOOPS",
         )

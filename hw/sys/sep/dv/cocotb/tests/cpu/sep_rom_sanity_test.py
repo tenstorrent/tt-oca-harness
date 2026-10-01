@@ -25,16 +25,16 @@ import os
 from pathlib import Path
 
 import pyuvm
-
-from sep_base_test import sep_base_test
 from env.sep_boot_scoreboard import SepBootScoreboard
+from sep_base_test import sep_base_test
+from sep_reg_meta import sym
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
 _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "rom_sanity_test")
 _ITCM_HEX = os.path.join(_FW_DIR, "rom_sanity_test.itcm.hex")
 _DTCM_HEX = os.path.join(_FW_DIR, "rom_sanity_test.dtcm.hex")
 
-_ICCM_BASE = 0xC000_0000
+_ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
 # Seven short ROM calls + return-value checks; the run loop early-exits on
 # fw_done, so this is an upper bound.
 # Seven ROM-resident functions are called; the firmware prints one line each.
@@ -60,7 +60,9 @@ class sep_rom_sanity_test(sep_base_test):
         # build_phase, which resets it to the hello_world default).
         self.sb.expected_line = _BANNER
         await self.boot_firmware(
-            self.sb, _ITCM_HEX, _DTCM_HEX,
+            self.sb,
+            _ITCM_HEX,
+            _DTCM_HEX,
             rst_vec=_ICCM_BASE >> 1,
             max_run_cycles=_MAX_RUN_CYCLES,
             no_boot_cycles=_NO_BOOT_CYCLES,
@@ -74,11 +76,11 @@ class sep_rom_sanity_test(sep_base_test):
         console = self.sb.console_text()
         seen = console.count("[PASS] IFU")
         assert seen == _EXPECTED_IFU_CHECKS, (
-            f"expected {_EXPECTED_IFU_CHECKS} ROM IFU function checks in the console, "
-            f"saw {seen}"
+            f"expected {_EXPECTED_IFU_CHECKS} ROM IFU function checks in the console, saw {seen}"
         )
         assert "PASS: 7/7" in console, "firmware did not report the 7/7 summary"
         self.logger.info(
-            "CHK-ALL confirmed host-side: %d/%d ROM IFU function checks present in the "
-            "console", seen, _EXPECTED_IFU_CHECKS,
+            "CHK-ALL PASS: confirmed host-side, %d/%d ROM IFU function checks present in the console",
+            seen,
+            _EXPECTED_IFU_CHECKS,
         )

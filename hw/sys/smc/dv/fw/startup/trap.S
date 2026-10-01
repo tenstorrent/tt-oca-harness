@@ -7,6 +7,8 @@
 
 #define METAL_MTVEC_MODE_MASK   3
 
+#include "smc_addr.h"
+
 /* void _metal_trap(int ecode)
  *
  * Trigger a machine-mode trap with exception code ecode
@@ -44,7 +46,7 @@ _metal_trap:
 
     /*
      * Mask the mtvec MODE bits
-     * Exceptions always jump to mtvec.BASE regradless of the vectoring mode.
+     * Exceptions always jump to mtvec.BASE regardless of the vectoring mode.
      */
     andi t0, t0, METAL_MTVEC_MODE_MASK
 
@@ -53,8 +55,10 @@ _metal_trap:
 
 
 /*
- * For sanity's sake we set up an early trap vector that just does nothing.
- * If you end up here then there's a bug in the early boot code somewhere.
+ * Early trap vector. If you end up here there is a bug in the early boot code,
+ * or the image took an unexpected trap: post TEST_FAIL (0xffffffff, the same
+ * word test_fail() writes) to the trapping hart's CPU_CTRL SCRATCH word so the
+ * bench reads a failure instead of waiting out its poll, then spin.
  */
 .section .text.metal.init.trapvec
 .global early_trap_vector
@@ -65,8 +69,10 @@ early_trap_vector:
     csrr t1, mepc
     csrr t2, mtval
 
-    # Store 0xffffffff to 0xC0010100 (Embedded test fail)
-    li t5, 0xC0010100
+    csrr t3, mhartid
+    slli t3, t3, 3
+    li t5, SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR(0)
+    add t5, t5, t3
     li t6, 0xffffffff
     sw t6, 0(t5)
 

@@ -10,65 +10,40 @@ from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parents[6]
 _SMC_ADDR_H = _REPO_ROOT / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "smc_addr.h"
-_FILTER_CTRL_H = (
-    _REPO_ROOT
-    / "hw"
-    / "common"
-    / "axi"
-    / "axi_filter"
-    / "regs"
-    / "gen"
-    / "c"
-    / "filter_ctrl.h"
-)
-_CPU_CTRL_H = (
-    _REPO_ROOT / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "cpu_ctrl.h"
-)
+_FILTER_CTRL_H = _REPO_ROOT / "hw" / "ip" / "axi_filter" / "regs" / "gen" / "c" / "filter_ctrl.h"
+_CPU_CTRL_H = _REPO_ROOT / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "cpu_ctrl.h"
 _CHIP_CONFIG_H = (
     _REPO_ROOT / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "chip_config.h"
 )
 _SYSTEM_TIMER_OCTS_H = (
-    _REPO_ROOT
-    / "hw"
-    / "ip"
-    / "system_timer_octs"
-    / "regs"
-    / "gen"
-    / "c"
-    / "system_timer_octs.h"
+    _REPO_ROOT / "hw" / "ip" / "system_timer_octs" / "regs" / "gen" / "c" / "system_timer_octs.h"
 )
 _WDT_H = _REPO_ROOT / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "wdt.h"
-_RESET_UNIT_H = (
-    _REPO_ROOT / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "reset_unit.h"
-)
+_RESET_UNIT_H = _REPO_ROOT / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "reset_unit.h"
 _AXIL_MAILBOX_H = (
-    _REPO_ROOT
-    / "hw"
-    / "ip"
-    / "axi_lite_mailbox_unit"
-    / "regs"
-    / "gen"
-    / "c"
-    / "axil_mailbox.h"
+    _REPO_ROOT / "hw" / "ip" / "axi_lite_mailbox_unit" / "regs" / "gen" / "c" / "axil_mailbox.h"
+)
+_SMC_CLA_H = _REPO_ROOT / "hw" / "ip" / "dfd" / "regs" / "gen" / "c" / "smc_cla.h"
+_DFX_CTRL_STATUS_H = (
+    _REPO_ROOT / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "dfx_ctrl_status.h"
+)
+# create_reg_c_header.py output from smc.rdl for the boot ROM. It flattens the
+# blocks inside the adopter external window, which smc_addr.h keeps opaque.
+_SMC_BOOTROM_REGS_H = (
+    _REPO_ROOT / "hw" / "sys" / "smc" / "bootrom" / "prod" / "registers" / "smc_top_regs.h"
 )
 
-_DEFINE_RE = re.compile(
-    r"^\s*#define\s+(SMC_TOP_\w+)\s+(0x[0-9A-Fa-f]+|\d+)\s*$"
-)
-_ANY_DEFINE_RE = re.compile(
-    r"^\s*#define\s+(\w+)\s+(0x[0-9A-Fa-f]+|\d+)\s*$"
-)
+_DEFINE_RE = re.compile(r"^\s*#define\s+(SMC_TOP_\w+)\s+(0x[0-9A-Fa-f]+|\d+)\s*$")
+_ANY_DEFINE_RE = re.compile(r"^\s*#define\s+(\w+)\s+(0x[0-9A-Fa-f]+|\d+)\s*$")
+# Boot ROM style: #define NAME (0xC0400000)
+_PAREN_DEFINE_RE = re.compile(r"^\s*#define\s+(\w+)\s+\((0x[0-9A-Fa-f]+|\d+)\)\s*$")
 # Indexed: #define NAME(idx) (0xBASE + (idx * 0xSTRIDE))
 _INDEXED_RE = re.compile(
     r"^\s*#define\s+(SMC_TOP_\w+_BASE_ADDR)\(\w+\)\s+"
     r"\(0x([0-9A-Fa-f]+)\s+\+\s+\(\w+\s+\*\s+0x([0-9A-Fa-f]+)\)\s*\)\s*$"
 )
-_BM_RE = re.compile(
-    r"^\s*#define\s+(FILTER_CTRL__FILTER_CONFIG__\w+_bm)\s+(0x[0-9A-Fa-f]+)\s*$"
-)
-_BP_RE = re.compile(
-    r"^\s*#define\s+(FILTER_CTRL__FILTER_CONFIG__\w+_bp)\s+(\d+)\s*$"
-)
+_BM_RE = re.compile(r"^\s*#define\s+(FILTER_CTRL__FILTER_CONFIG__\w+_bm)\s+(0x[0-9A-Fa-f]+)\s*$")
+_BP_RE = re.compile(r"^\s*#define\s+(FILTER_CTRL__FILTER_CONFIG__\w+_bp)\s+(\d+)\s*$")
 _RESET_RE = re.compile(
     r"^\s*#define\s+(FILTER_CTRL__FILTER_CONFIG__\w+_reset)\s+(0x[0-9A-Fa-f]+|\d+)\s*$"
 )
@@ -190,6 +165,28 @@ def c_header_u32(path: Path, symbol: str) -> int:
         raise KeyError(f"{symbol} not in {path}") from exc
 
 
+@lru_cache(maxsize=1)
+def _smc_bootrom_table() -> dict[str, int]:
+    text = _SMC_BOOTROM_REGS_H.read_text(encoding="utf-8")
+    out: dict[str, int] = {}
+    for line in text.splitlines():
+        m = _PAREN_DEFINE_RE.match(line)
+        if m:
+            out[m.group(1)] = int(m.group(2), 0)
+    if not out:
+        raise RuntimeError(f"no parenthesized #define constants parsed from {_SMC_BOOTROM_REGS_H}")
+    return out
+
+
+def smc_bootrom_addr(symbol: str) -> int:
+    """Return a flattened ``SMC_TOP_*`` absolute from the boot ROM's ``smc_top_regs.h``."""
+    table = _smc_bootrom_table()
+    try:
+        return table[symbol]
+    except KeyError as exc:
+        raise KeyError(f"{symbol} not in {_SMC_BOOTROM_REGS_H}") from exc
+
+
 def cpu_ctrl_bm(symbol: str) -> int:
     """Return a ``CPU_CTRL__*_bm`` mask from ``cpu_ctrl.h``."""
     return c_header_u32(_CPU_CTRL_H, symbol)
@@ -220,6 +217,16 @@ def mailbox_u32(symbol: str) -> int:
     return c_header_u32(_AXIL_MAILBOX_H, symbol)
 
 
+def cla_u32(symbol: str) -> int:
+    """Return a ``DFD_CLA__*`` integer ``#define`` from ``smc_cla.h``."""
+    return c_header_u32(_SMC_CLA_H, symbol)
+
+
+def dfx_ctrl_status_u32(symbol: str) -> int:
+    """Return a ``DFX_CTRL_STATUS__*`` integer ``#define`` from ``dfx_ctrl_status.h``."""
+    return c_header_u32(_DFX_CTRL_STATUS_H, symbol)
+
+
 def smc_indexed_addr(symbol: str, idx: int = 0) -> int:
     """Return ``BASE + idx*STRIDE`` for an indexed ``SMC_TOP_*_BASE_ADDR`` macro."""
     table = _smc_indexed_table()
@@ -240,15 +247,11 @@ def smc_indexed_stride(symbol: str) -> int:
 
 
 # Canonical smoke probe: CHIP_CONFIG.VERSION_LO
-SMC_CHIP_CONFIG_VERSION_LO = smc_addr(
-    "SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_BASE_ADDR"
-)
+SMC_CHIP_CONFIG_VERSION_LO = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_BASE_ADDR")
 SMC_CHIP_CONFIG_VERSION_LO_RESET = c_header_u32(
     _CHIP_CONFIG_H, "CHIP_CONFIG__VERSION_LO__VERSION_LO_reset"
 )
-SMC_CHIP_CONFIG_CHIP_ID = smc_addr(
-    "SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_BASE_ADDR"
-)
+SMC_CHIP_CONFIG_CHIP_ID = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_BASE_ADDR")
 
 
 def smc_local_xbar_unmapped_gap() -> int:
@@ -260,8 +263,7 @@ def smc_local_xbar_unmapped_gap() -> int:
     gap = ((wdt_end + reset) // 2) & ~0xFFF
     if not (wdt_end <= gap < reset):
         raise RuntimeError(
-            f"unmapped gap 0x{gap:08x} not in [WDT end 0x{wdt_end:08x}, "
-            f"RESET_UNIT 0x{reset:08x})"
+            f"unmapped gap 0x{gap:08x} not in [WDT end 0x{wdt_end:08x}, RESET_UNIT 0x{reset:08x})"
         )
     return gap
 

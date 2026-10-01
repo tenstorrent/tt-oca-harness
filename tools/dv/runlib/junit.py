@@ -27,7 +27,7 @@ from pathlib import Path
 from .compat import UTC
 from .models import Flow, StageResult
 from .paths import repo_rel
-from .results import aggregate_status
+from .results import aggregate_status, exit_code_for_status
 
 PRODUCER = "run_dv.py junit-fallback"
 
@@ -52,6 +52,12 @@ def is_generated_junit(path: Path) -> bool:
         prop.get("name") == "producer" and prop.get("value") == PRODUCER
         for prop in root_elem.iter("property")
     )
+
+
+def discard_generated_junit(path: Path) -> None:
+    """Remove `path` when it carries the producer marker; a native file is left alone."""
+    if path.is_file() and is_generated_junit(path):
+        path.unlink()
 
 
 def _rel(root: Path, path: Path | str | None) -> str:
@@ -211,6 +217,60 @@ def ensure_leaf_junit(
     )
     _write_atomic(xml_path, suites)
     return xml_path
+
+
+def materialize_interruption_junit(
+    *,
+    flow: Flow,
+    root: Path,
+    run_dir: Path,
+    tool: str,
+    interruption: dict,
+    progress: dict,
+) -> Path | None:
+    """Run-level XML for a run that stopped before its planned leaves finished.
+
+    The leaves that did finish keep their own files; this errored testcase is what stops a
+    JUnit consumer from reading those alone as the whole run. A file without the producer
+    marker is never touched.
+    """
+    run_xml = run_dir / "results" / "results.xml"
+    if run_xml.is_file() and not is_generated_junit(run_xml):
+        return None
+    now = str(interruption.get("recorded_at") or datetime.now(UTC).isoformat())
+    reason = (
+        f"{interruption.get('reason') or 'run interrupted'}: "
+        f"{progress.get('completed_count', 0)} of {progress.get('expected_count', 0)} "
+        "planned leaves ran"
+    )
+    marker = StageResult(
+        stage="run",
+        item=None,
+        status="ERROR",
+        return_code=exit_code_for_status("ERROR"),
+        duration_sec=0.0,
+        started_at=now,
+        ended_at=now,
+        reason=reason,
+        failure_buckets=[{"kind": "interruption", "signature": reason, "count": 1}],
+    )
+    case = _testcase(
+        flow,
+        marker,
+        name="run",
+        system_out=_result_lines(root, marker, run_dir / "result.json"),
+    )
+    suites = _suites(
+        flow,
+        root,
+        run_dir,
+        tool,
+        timestamp=now,
+        cases=[case],
+        result_json=run_dir / "result.json",
+    )
+    _write_atomic(run_xml, suites)
+    return run_xml
 
 
 def _first_failing_stage(stages: list[StageResult]) -> StageResult | None:

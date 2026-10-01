@@ -1,74 +1,164 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= Interconnect
+:description: SMC networks, address remapping, traffic filtering, protection, and routing.
+
 [[fabric]]
-=== Fabric
 
 The SMC fabric provides interconnect infrastructure with address
 management, traffic filtering, and security enforcement mechanisms.
 
-==== Configuration Parameters
+== Topology
 
-The fabric supports the following configuration parameters to tune
-performance and area:
+[[smc-fabric-topology]]
+=== Fabric Topology
 
-.Fabric Configuration Parameters
+The input fabric merges the SMC's own initiators, filters the system AXI input
+and splits traffic between the SMC window and the rest of the system. The local
+fabric connects the traffic for the SMC window to the CPU front port and the
+SMC register islands, and the output fabric remaps and filters the traffic that
+leaves the SMC.
+
+The input paths are shown in <<smc-input-fabric-diagram>>, the local resource
+connections in <<smc-local-fabric-diagram>>, and the outbound path in
+<<smc-output-fabric-diagram>>. The three figures share the notation of the SEP
+fabric figures. Crossbars are rectangles, muxes and demuxes are trapezoids with
+the wide side towards the many ports, address remaps and rebases are hexagons
+and traffic filters are octagons. Green boxes are converters: address-width,
+data-width, ID-width and protocol conversion. Thick lines are AXI4 and thin
+lines AXI-Lite; every AXI data path is 64 bits wide unless a converter narrows
+it. The labels give the address and ID widths where they change, and the port
+badges mark where a path crosses the module boundary.
+
+[[smc-input-fabric-diagram]]
+.SMC input fabric topology and routing
+image::smc-input-fabric.svg[alt="SMC input fabric: ID converters and alias remaps on the CPU MMIO, JTAG, log and data accelerator paths, the input mux and local/global demux, and the filtered system and unfiltered SEP inputs with their region demuxes",width=100%,pdfwidth=100%]
+
+<<smc-input-fabric-diagram>> has the six inputs of `smc_input_fabric` along
+the top and its four outputs along the bottom. The CPU MMIO and JTAG ports have
+their IDs widened to 4 bits and the log engine's AXI-Lite port is converted to
+AXI4. Each of the four SMC-internal initiators then passes its own alias remap;
+the four remaps share one table of eight regions with a 4 KiB granule. The
+input mux merges them, widens the ID to 6 bits and registers every channel. The
+demux behind it sends addresses inside the SMC window, at either the local or
+the global base and `REGION_SIZE` long, to the `local_in` initiator of the local
+fabric with the address truncated to 32 bits, and every other address to the
+output fabric. The system AXI input passes the inbound traffic filter, whose
+clock can be gated while the port is idle. The system and SEP inputs then each pass
+a region demux: the SMC window continues to the local fabric, truncated to 32
+bits, and every other address receives DECERR. The SEP input is not filtered.
+
+[[smc-local-fabric-diagram]]
+.SMC local fabric and peripheral islands
+image::smc-local-fabric.svg[alt="SMC local fabric: three rebased initiators into the 3 by 5 local crossbar, which serves the CPU front port, the data accelerator control port, the internal CSR crossbar, the CLA over APB and the 12-target peripheral crossbar",width=100%,pdfwidth=100%]
+
+<<smc-local-fabric-diagram>> shows `smc_local_fabric` in the upper left, the
+`smc_internal_regs` island on the right and the `smc_peripherals` island along
+the bottom. The three initiators arrive from the input fabric. Each is rebased
+onto the local base: the offset within `REGION_SIZE` is kept and the upper
+address bits are replaced by those of `LOCAL_BASE`, so a request for the global
+window reaches the same register as one for the local window. The local
+crossbar `u_smc_local_xbar` connects every initiator to every target, widens the
+ID to 8 bits, registers every port and answers unmapped addresses with DECERR,
+as do the internal CSR and peripheral crossbars. Its targets, in port order, are
+the CPU cluster front port, the data accelerator control port, the internal CSR
+crossbar, the peripheral crossbar and the CLA register window of the DFD block,
+which is reached over APB. The converters in front of the last three belong to
+`smc_local_xbar`. In the peripheral island, the AVSBus, I2C, UART and I3C
+register ports cross to the peripheral clock, the DTP CSR window is rebased to
+zero, and the eFuse registers have a second AXI-Lite port for JTAG access. The
+last peripheral crossbar target leaves the SMC as the AXI-Lite extension port.
+
+[[smc-output-fabric-diagram]]
+.SMC output fabric and remapping paths
+image::smc-output-fabric.svg[alt="SMC output fabric: route demux to the M-mode and Xvisor output remaps and the direct path, output mux, and outbound traffic filter",width=100%,pdfwidth=100%]
+
+<<smc-output-fabric-diagram>> follows a request from the input fabric to the
+system AXI output. The route demux selects by address. The 8 MiB M-mode window
+at `0x0100_0000` and the 8 MiB Xvisor window at `0x0180_0000`, each above either
+the local or the global SMC base, go through their output remaps; every other
+address goes straight through. Each output remap divides its window into eight
+1 MiB regions and replaces address bits [55:20] with the region's offset. Each
+path also sets the AxUSER source ID
+(<<smc-source-id-by-traffic-path-table>>). The output mux merges the three paths
+and widens the ID to 8 bits. The dashed outline marks the stage that the
+`NO_ADDR_REMAP` parameter removes: `smc_config_pkg` clears it, so the remap
+stage is present, and setting it leaves only an ID converter from 6 to 8 bits,
+without the source ID override. The outbound traffic filter passes traffic that
+matches no entry.
+
+ifdef::backend-html5[]
+++++
+<span id="configuration-parameters"></span>
+++++
+endif::backend-html5[]
+[[smc-fabric-configuration-parameters]]
+=== Configuration Parameters
+
+The fabric modules take parameters for the number of inbound and outbound
+filter entries, filter pipelining, the outstanding-transaction limit of the
+output fabric remap path, alias address remap enablement, and the M-mode and
+Xvisor remap region bases.
+
+ifdef::backend-html5[]
+The parameters of `smc_fabric` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/sys/smc/smc_fabric.adoc[smc_fabric].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters of `smc_fabric` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
+
+ifdef::backend-html5[]
+The parameters of `smc_output_fabric` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/sys/smc/smc_output_fabric.adoc[smc_output_fabric].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters of `smc_output_fabric` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
+
+Further outstanding-transaction limits are fixed by package constants rather
+than module parameters (<<smc-fabric-configuration-parameters-table>>).
+
+[[smc-fabric-configuration-parameters-table]]
+.SMC Fabric Transaction Limits
 [width="100%",cols="30%,15%,55%",options="header",]
 |=======================================================================
-|Parameter |Default |Description
-|*AXI4 Network Parameters* | |
+|Constant |Value |Description
+|*AXI4 Network* | |
 
-|MaxTrans |32 |Maximum outstanding transactions per AXI ID in output
-fabric
+|`smc_pkg::FABRIC_MAX_TRANS` |32 |Maximum outstanding transactions per
+AXI ID bucket in the fabric demultiplexers and traffic filters
 
-|MAX_INFLIGHT_IDS |4 |Maximum number of in-flight transaction IDs for ID
-remapping
+|`smc_pkg::ERR_SLV_MAX_TRANS` |32 |Maximum outstanding transactions for
+each error subordinate, across all IDs
 
-|FABRIC_MAX_TRANS |32 |Maximum outstanding transactions per AXI ID in
-fabric crossbars
+|*AXI4-Lite Network* | |
 
-|ERR_SLV_MAX_TRANS |32 |Maximum outstanding transactions for error slave
-(across all IDs)
+|`smc_internal_axi_lite_xbar_pkg::XbarCfg.MaxMstTrans` |4 |Maximum
+outstanding transactions each manager connected to the local fabric
+AXI4-Lite crossbar can have in flight
 
-|NumFilters |16 |Number of inbound and outbound traffic filter instances
-
-|FilterReqPipelineEnable |0 |Enable request path pipelining in filters
-(timing vs. latency trade-off)
-
-|FilterRspPipelineEnable |0 |Enable response path pipelining in filters
-(timing vs. latency trade-off)
-
-|*AXI4-Lite Network Parameters* | |
-
-|AXI_MAX_WRITE_TXNS |4 |Maximum outstanding write transactions in local
-fabric crossbar
-
-|AXI_MAX_READ_TXNS |4 |Maximum outstanding read transactions in local
-fabric crossbar
-
-|*Address Remap Parameters* | |
-
-|MmodeBaseAddr |0x100_0000 |Base address for M-mode remapped region
-(relative to SMC base)
-
-|XvisorBaseAddr |0x180_0000 |Base address for Xvisor remapped region
-(relative to SMC base)
-
-|NoRemap |0 |Disable address remapping when set (reduces area)
+|`smc_internal_axi_lite_xbar_pkg::XbarCfg.MaxSlvTrans` |4 |Maximum
+outstanding transactions each subordinate connected to the local fabric
+AXI4-Lite crossbar can have in flight
 |=======================================================================
 
-These parameters control fabric throughput, buffering depth, and feature
-enablement. The AXI4 network parameters (MaxTrans, FABRIC_MAX_TRANS)
-define the pipeline depth for high-performance traffic, while AXI4-Lite
-parameters (AXI_MAX_WRITE_TXNS, AXI_MAX_READ_TXNS) control outstanding
-transactions to peripherals.
+These limits set the buffering depth of the fabric. The AXI4 limits bound
+the outstanding high-performance traffic, while the AXI4-Lite limits bound
+outstanding transactions to peripherals and configuration registers.
 
-==== Dual-Network Architecture
+ifdef::backend-html5[]
+++++
+<span id="dual-network-architecture"></span>
+++++
+endif::backend-html5[]
+[[smc-fabric-dual-network-architecture]]
+=== Dual-Network Architecture
 
 The SMC fabric implements two separate networks optimized for different
-traffic types:
+traffic types (<<smc-network-characteristics-table>>).
 
-.Network Characteristics
+[[smc-network-characteristics-table]]
+.SMC Network Characteristics
 [width="100%",cols="20%,30%,30%,20%",options="header",]
 |=======================================================================
 |Network |Connected Components |Protocol |Optimization Target
@@ -82,9 +172,17 @@ traffic types:
 Both networks use 64-bit data bus width for consistent data handling.
 The CPU cluster connects to the fabric through AXI4 (high-bandwidth data path) and AXI4-Lite (MMIO) interfaces; internally, the cluster uses a TileLink bus that is protocol-bridged at the cluster boundary.
 
-==== AXI Interface Widths
+== Interfaces
 
-The table below lists the common AXI signal widths shared across all AXI4 fabric interfaces.
+ifdef::backend-html5[]
+++++
+<span id="axi-interface-widths"></span>
+++++
+endif::backend-html5[]
+[[smc-fabric-axi-interface-widths]]
+=== AXI Interface Widths
+
+<<fabric-axi-widths>> lists the common AXI signal widths shared across all AXI4 fabric interfaces.
 
 [[fabric-axi-widths]]
 .AXI Common Signal Widths
@@ -99,7 +197,7 @@ The table below lists the common AXI signal widths shared across all AXI4 fabric
 |=======================================================================
 
 The AXI transaction ID width varies at each fabric stage because crossbars and multiplexers prepend additional bits to distinguish the originating port.
-The table below lists the ID width at each point in the fabric.
+<<fabric-axi-id-widths>> lists the ID width at each point in the fabric.
 
 [[fabric-axi-id-widths]]
 .AXI ID Widths by Fabric Stage
@@ -118,18 +216,34 @@ The table below lists the ID width at each point in the fabric.
 
 Some internal paths also use a 32-bit data width for AXI4-Lite peripheral access, with corresponding STRB_WIDTH of 4 bits.
 
-==== Traffic Managers and Subordinates
+ifdef::backend-html5[]
+++++
+<span id="traffic-managers-and-subordinates"></span>
+++++
+endif::backend-html5[]
+[[smc-fabric-traffic-managers-and-subordinates]]
+=== Traffic Managers and Subordinates
 
 The SMC fabric supports multiple traffic sources (managers) and
 destinations (subordinates), providing flexible routing with security
 enforcement.
 
-===== Traffic Managers
+ifdef::backend-html5[]
+++++
+<span id="traffic-managers"></span>
+++++
+endif::backend-html5[]
+[[smc-fabric-traffic-managers]]
+==== Traffic Managers
 
 Traffic managers initiate transactions on the fabric, accessing both
 local and remote resources through the dual-network architecture.
 
-.Fabric Traffic Managers
+<<smc-fabric-traffic-managers-table>> identifies the transaction initiators and their
+primary paths.
+
+[[smc-fabric-traffic-managers-table]]
+.SMC Fabric Traffic Managers
 [width="100%",cols="20%,15%,35%,30%",options="header",]
 |=======================================================================
 |Manager |Count |Primary Paths |Key Features
@@ -157,12 +271,22 @@ Traffic from DMA, Log Engine, JTAG2AXI, and CPU external path passes
 through alias remap logic before reaching their destination, enabling
 flexible address management between local and global address spaces.
 
-===== Traffic Subordinates
+ifdef::backend-html5[]
+++++
+<span id="traffic-subordinates"></span>
+++++
+endif::backend-html5[]
+[[smc-fabric-traffic-subordinates]]
+==== Traffic Subordinates
 
 Traffic subordinates respond to transactions initiated by the managers,
 organized by network type and function.
 
-.Fabric Traffic Subordinates
+<<smc-fabric-traffic-subordinates-table>> identifies the transaction targets and their
+network connections.
+
+[[smc-fabric-traffic-subordinates-table]]
+.SMC Fabric Traffic Subordinates
 [width="100%",cols="20%,15%,35%,30%",options="header",]
 |=======================================================================
 |Subordinate |Count |Network |Function
@@ -197,14 +321,25 @@ AXI4 network for maximum bandwidth and minimal latency, while
 low-performance subordinates (peripherals, configuration registers) use
 the AXI4-Lite network for reliable, deterministic access.
 
-==== Address Remapping
+ifdef::backend-html5[]
+++++
+<span id="address-remapping"></span>
+++++
+endif::backend-html5[]
+[[smc-fabric-address-remapping]]
+== Address Remapping
 
-The SMC fabric implements two complementary address remapping mechanisms
-in
-`smc_fabric/smc_fabric_misc/: alias remapping and privilege-controlled
-remapping.
+The SMC fabric implements two complementary address remapping mechanisms:
+alias remapping in the input fabric and privilege-controlled remapping in the
+output fabric.
 
-==== Alias Remapping
+ifdef::backend-html5[]
+++++
+<span id="alias-remapping"></span>
+++++
+endif::backend-html5[]
+[[smc-fabric-alias-remapping]]
+=== Alias Remapping
 
 Alias remapping translates local SMC addresses to global system addresses,
 decoupling software-visible addresses from physical assignments. This simplifies
@@ -212,8 +347,8 @@ integration and software portability, letting local agents access resources
 consistently across different SoC mappings.
 
 The alias remap logic organizes eight independently configurable regions, each
-specifying an input address range, a remap offset for translation, and a
-cacheable flag. This enables:
+specifying an input address range, a remap offset for translation, and an
+AxCACHE value that replaces the transaction's own on a hit. This enables:
 
 - Translation between local alias addresses (0xC000_0000 at reset) and global
   addresses, ensuring compatibility with both internal and external software
@@ -226,12 +361,19 @@ At reset, remap logic defaults to transparent mapping (no remap), using the
 local alias base address (0xC000_0000) for local resources until programmed by
 firmware.
 
-==== Privilege-Controlled Remapping
+ifdef::backend-html5[]
+++++
+<span id="privilege-controlled-remapping"></span>
+++++
+endif::backend-html5[]
+[[smc-fabric-privilege-controlled-remapping]]
+=== Privilege-Controlled Remapping
 
-Privilege-controlled address remapping enables programmable, privilege-aware
-translation of outbound SMC transactions. It enforces access boundaries based on
-the originating master's privilege level, supporting secure memory
-compartmentalization and reducing privilege escalation risks.
+Privilege-controlled address remapping enables programmable translation of
+outbound SMC transactions for software running at different privilege levels.
+The output fabric selects a remap by the address window a request targets, not
+by the initiator's AxPROT privilege bit, and each remap sets its own source
+ID.
 
 The fabric provides separate remap regions for Machine-mode (highest privilege)
 and Xvisor/Hypervisor (intermediate privilege) operations. When accessing shared
@@ -239,13 +381,61 @@ resources like shared memory, SMC traffic passes through the appropriate
 privilege-controlled remap stage to ensure proper address translation and
 privilege enforcement.
 
-.. rubric:: Traffic Filtering
+== Filtering and Protection
 
-The filtering system (filter_ctrl.rdl`) provides security control for
+The filtering system (`filter_ctrl.rdl`) provides security control for
 both inbound and outbound traffic, examining transaction attributes to
 enforce access policies.
 
-==== Inbound Filtering
+The SMC inbound and outbound filters are instances of the same
+`axi_filter_wrap` block used by SEP, and share its decode algorithm:
+entry priority, the match conditions, the address range granule and its
+widening direction, and the response returned to a blocked initiator.
+That algorithm is documented once with the IP.
+
+ifdef::backend-html5[]
+See xref:ip:axi_filter/doc/index.adoc[AXI Traffic Filter].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+See <<axi-traffic-filter>>.
+endif::backend-pdf[]
+
+Both SMC filters have 16 entries, carry 56-bit addresses on a 64-bit data
+bus, and enable NS and source ID matching. They differ in how they treat
+traffic that matches no entry: the inbound filter blocks it, and the
+outbound filter permits it.
+
+ifdef::backend-html5[]
+++++
+<span id="inbound-filtering"></span>
+++++
+endif::backend-html5[]
+[[smc-fabric-inbound-filtering]]
+=== Inbound Filtering
+
+<<smc-traffic-filter-diagram>> shows the decode that both filters implement.
+Their places in the fabric are in <<smc-input-fabric-diagram>> and
+<<smc-output-fabric-diagram>>.
+
+[[smc-traffic-filter-diagram]]
+.SMC inbound and outbound traffic-filter mechanism
+image::smc-traffic-filters.svg[alt="Traffic filter decode: per-entry match conditions and permission bit, then the lowest-hit priority encoder, the pass-select and block muxes, and the demux to the filtered output or a DECERR responder",width=100%,pdfwidth=100%]
+
+The figure draws primitive logic with gate symbols and keeps labelled boxes
+for comparisons and larger blocks. The upper part of
+<<smc-traffic-filter-diagram>> is one `traffic_filter`, instantiated for every
+entry on each of the AW and AR channels. The entry hits when all five
+conditions on the left hold, which the AND gate with the extended input bar
+combines; the source ID and burst conditions are each an OR of two terms. Its
+permission bit, ANDed with the channel's valid, is evaluated separately. The
+lower part is one channel of `axi_filter_wrap`. A priority encoder picks the
+lowest-numbered entry that hits, a 16:1 mux selects that entry's permission
+bit, and the inverted bit requests a block. When no entry hits, the next mux
+takes `BlockByDefault` instead. The last mux forces the block bit to 0 when
+`filter_skip_i` is set; `filter_skip_i` is tied low in both SMC instances.
+Group ID matching is not built into either instance. The block bit steers the
+transaction through a demux either to the filtered output or to an error
+responder that returns DECERR.
 
 Inbound filtering protects SMC resources from unauthorized external
 access by evaluating three dimensions of each transaction:
@@ -268,38 +458,52 @@ The inbound filter interface provides 16 independent filter instances,
 each configurable with its own address ranges, source ID matching, and
 protection attribute policies.
 
-==== Outbound Filtering
+ifdef::backend-html5[]
+++++
+<span id="outbound-filtering"></span>
+++++
+endif::backend-html5[]
+[[smc-fabric-outbound-filtering]]
+=== Outbound Filtering
 
-Outbound filtering manages which external resources the SMC can access,
-restricting SMC-initiated requests to defined system peripherals or
-memory regions. The filtering system:
+The outbound filter uses explicit matching entries to allow or block
+SMC-initiated requests. Unmatched requests pass because this instance uses
+`BlockByDefault = 0`. An allow entry is therefore not an allowlist: denying
+traffic requires a matching entry whose read or write permission is clear.
 
-* *Controls destinations*: Specifies allowable external resource access,
-reinforcing separation and limiting SMC influence on the rest of the SoC
-* *Adapts to privilege levels*: Dynamically adjusts policies based on
-software privilege level—higher privilege modes receive broader access
-while lower privilege software is constrained
-* *Enforces security*: Serves as a gatekeeper preventing unauthorized
-access attempts by blocking traffic that doesn't meet configured
-privilege or destination criteria
+Address, source ID, and NS matching select an entry. The filter does not
+infer software privilege or grant broader access to a higher privilege mode.
 
 All outbound traffic, after passing through any privilege remap stages,
 is subject to outbound filtering enforcement based on address, security
 attributes (NS), and source ID. The outbound filters use the same
 register structure as inbound filters.
 
-==== Protection Requirements
+ifdef::backend-html5[]
+++++
+<span id="protection-requirements"></span>
+++++
+endif::backend-html5[]
+[[smc-fabric-protection-requirements]]
+=== Protection Requirements
 
 The SMC fabric implements two types of protection-based filtering
 mechanisms to enforce security policies based on AXI protection
 attributes:
 
-===== AXI Protection Bit Encoding
+ifdef::backend-html5[]
+++++
+<span id="axi-protection-bit-encoding"></span>
+++++
+endif::backend-html5[]
+[[smc-fabric-axi-protection-bit-encoding]]
+==== AXI Protection Bit Encoding
 
 AXI protection bits (`aw.prot` and `ar.prot`) are 3-bit fields that
-encode transaction security and privilege attributes:
+encode transaction security and privilege attributes (<<smc-axi-protection-bit-encoding-table>>).
 
-.Protection Bit Encoding
+[[smc-axi-protection-bit-encoding-table]]
+.SMC AXI Protection Bit Encoding
 [width="100%",cols="15%,15%,15%,15%,40%",options="header",]
 |=======================================================================
 |Bit [2] |Bit [1] |Bit [0] |Value |Description
@@ -313,7 +517,13 @@ encode transaction security and privilege attributes:
 |1 |1 |1 |0x7 |Instruction, Non-Secure, Privileged
 |=======================================================================
 
-===== Non-Secure Bit Filtering (AXI4 Filters)
+ifdef::backend-html5[]
+++++
+<span id="non-secure-bit-filtering-axi4-filters"></span>
+++++
+endif::backend-html5[]
+[[smc-fabric-non-secure-bit-filtering-axi4-filters]]
+==== Non-Secure Bit Filtering (AXI4 Filters)
 
 The primary protection filtering mechanism for AXI4 full interfaces
 examines the Non-Secure (NS) bit (`prot[1]`) to control secure vs.
@@ -321,20 +531,33 @@ non-secure access. This filtering is implemented in both inbound and
 outbound traffic filters.
 
 Each filter entry in the 16 inbound and 16 outbound filter instances
-includes an `allow_ns` configuration field that determines whether
-non-secure accesses are permitted:
+includes an `allow_ns` configuration field. It is an equality test
+against the transaction's NS bit, not a permission grant, so an entry
+covers one security state only:
 
-* When `allow_ns = 0`: Only secure accesses (`prot[1] = 0`) are allowed
-  through the filter
-* When `allow_ns = 1`: Both secure and non-secure accesses are allowed
+* When `allow_ns = 0`: the entry matches secure transactions
+  (`prot[1] = 0`) only
+* When `allow_ns = 1`: the entry matches non-secure transactions
+  (`prot[1] = 1`) only
+
+Covering both security states over one address range therefore takes two
+entries. An entry whose `allow_ns` does not match the transaction does
+not deny it; the transaction falls through to the remaining entries, as
+described in the AXI Traffic Filter decode section referenced above.
 
 This filtering occurs in `axi_filter_wrap`, where each transaction's
-`aw.prot[1]` (write) or `ar.prot[1]` (read) is checked against the
-filter's `allow_ns` configuration. Transactions that fail the protection
-check are routed to an error slave, which returns a decode error
-response.
+`aw.prot[1]` (write) or `ar.prot[1]` (read) is compared against the
+filter's `allow_ns` configuration. A matching deny entry routes the transaction to an error slave, which returns
+a decode error. With no matching entry, the inbound instance blocks the
+transaction and the outbound instance passes it.
 
-===== Full 3-Bit Protection Matching (AXI-Lite)
+ifdef::backend-html5[]
+++++
+<span id="full-3-bit-protection-matching-axi-lite"></span>
+++++
+endif::backend-html5[]
+[[smc-fabric-full-3-bit-protection-matching-axi-lite]]
+==== Full 3-Bit Protection Matching (AXI-Lite)
 
 For AXI4-Lite interfaces, the fabric supports exact matching on all
 three protection bits. This is implemented in the `prim_axil_prot_filter`
@@ -355,7 +578,13 @@ When filtering is enabled, only transactions with matching protection
 values are allowed through. All other transactions receive an error
 response.
 
-===== Protection Bit Pass-Through
+ifdef::backend-html5[]
+++++
+<span id="protection-bit-pass-through"></span>
+++++
+endif::backend-html5[]
+[[smc-fabric-protection-bit-pass-through]]
+==== Protection Bit Pass-Through
 
 All protection bits are passed through the fabric without modification.
 The filters only block or allow transactions based on their protection
@@ -363,29 +592,52 @@ attributes; they do not alter the protection bits themselves. This ensures
 that downstream slaves receive the original protection attributes from
 the originating master.
 
-===== Configuration Examples
+ifdef::backend-html5[]
+++++
+<span id="configuration-examples"></span>
+++++
+endif::backend-html5[]
+[[smc-fabric-configuration-examples]]
+==== Configuration Examples
 
-**Example 1: Secure-only access to a peripheral**
+**Example 1: Secure-only inbound access to a peripheral**
 ....
 Configure filter with:
-- allow_ns = 0
-- Address range matching peripheral region
-Result: Only secure transactions (prot[1] = 0) are allowed
+- Enable a matching entry with allow_ns = 0 and the required read/write permissions
+- Set the address range and source ID match for the peripheral
+- Ensure no other entry permits unwanted access
+Result: Unmatched non-secure traffic is blocked by the inbound default policy
 ....
 
-**Example 2: Privileged-only register access**
+For outbound traffic, the same secure-only allow entry does not block
+non-secure requests: unmatched traffic passes. Add matching deny entries for
+the non-secure traffic to be blocked, accounting for entry priority.
+
+**Example 2: Secure privileged data access to AXI-Lite registers**
 ....
 Configure AXI-Lite filter with:
 - awprot_requirement = 0x1 (Data, Secure, Privileged)
 - arprot_requirement = 0x1
 - write_filter_enable = 1
 - read_filter_enable = 1
-Result: Only privileged transactions (prot[0] = 1) are allowed
+Result: Only transactions with all three PROT bits equal to 0x1 are allowed
 ....
 
-==== Traffic Routing and Flow
+ifdef::backend-html5[]
+++++
+<span id="traffic-routing-and-flow"></span>
+++++
+endif::backend-html5[]
+[[smc-fabric-traffic-routing-and-flow]]
+== Routing
 
-===== Local and Remote Resource Access
+ifdef::backend-html5[]
+++++
+<span id="local-and-remote-resource-access"></span>
+++++
+endif::backend-html5[]
+[[smc-fabric-local-and-remote-resource-access]]
+=== Local and Remote Resource Access
 
 The SMC fabric routing logic determines how transactions reach their
 intended destinations, supporting both local SMC resources and remote
@@ -406,10 +658,16 @@ CPU accesses to its own resources out through the output fabric.
 
 After global-aperture reconfiguration, software may use global addresses
 for accesses that leave the local SMC view. Global address derivation
-requires knowledge of the chiplet ID or chiplet BAR, both provisioned in
-fuses and available to firmware.
+requires the chiplet-global aperture base, which firmware reads from the
+`GLOBAL_BASE` CSR described above.
 
-===== Outbound Traffic Flow
+ifdef::backend-html5[]
+++++
+<span id="outbound-traffic-flow"></span>
+++++
+endif::backend-html5[]
+[[smc-fabric-outbound-traffic-flow]]
+=== Outbound Traffic Flow
 
 SMC outbound traffic serves dual purposes: accessing shared system
 services and extending the SMC's private domain across the system.
@@ -422,10 +680,11 @@ bypasses remap stages and goes directly to the system NoC, reducing
 latency.
 
 Each outbound transaction carries a Source ID identifying its privilege
-level and routing path, plus a cacheable flag from the alias remap
-configuration:
+level and routing path, plus the AxCACHE value from the alias remap
+configuration (<<smc-source-id-by-traffic-path-table>>).
 
-.Source ID by Traffic Path
+[[smc-source-id-by-traffic-path-table]]
+.SMC Source ID by Traffic Path
 [width="100%",cols="50%,50%",options="header",]
 |==============================
 |Traffic Path |Source ID
@@ -434,9 +693,28 @@ configuration:
 |Through M-mode remap |MMODE_ID
 |==============================
 
-==== Detailed Register Maps
+ifdef::backend-html5[]
+++++
+<span id="detailed-register-maps"></span>
+++++
+endif::backend-html5[]
+[[smc-fabric-detailed-register-maps]]
+== Memory Map and Register Reference
 
-===== Alias Remap Registers
+=== Memory Map
+
+Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.
+
+=== Detailed Register Map
+
+ifdef::backend-html5[]
+++++
+<span id="alias-remap-registers"></span>
+++++
+endif::backend-html5[]
+[[smc-fabric-alias-remap-registers]]
+==== Alias Remap Registers
 
 The alias remap registers control local address aliasing and attribute
 mapping for SMC-initiated transactions. These registers configure how
@@ -449,15 +727,25 @@ include::ip:partial$axi_alias_remap/regs/gen/html/alias_remap.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../../../common/axi/axi_alias_remap/regs/gen/adoc/alias_remap.adoc[]
+include::../../../ip/axi_alias_remap/regs/gen/adoc/alias_remap.adoc[leveloffset=+3]
 endif::backend-pdf[]
 
-===== Output Remap Registers
+ifdef::backend-html5[]
+++++
+<span id="output-remap-registers"></span>
+++++
+endif::backend-html5[]
+[[smc-fabric-output-remap-registers]]
+==== Output Remap Registers
 
 The output remap registers control privilege-controlled address
 remapping for outbound transactions. The fabric provides separate remap
 regions for Machine-mode (highest privilege) and Xvisor/Hypervisor
-(intermediate privilege) operations.
+(intermediate privilege) operations. Each region carries a
+`REGION_ATTRS.valid` bit (reset 0): when set, accesses selecting the
+region are remapped through its offset; when clear, they pass through
+with their address unchanged, so an unprogrammed entry acts as an
+identity mapping rather than forcing every access to offset 0.
 
 ifdef::backend-html5[]
 ++++
@@ -466,10 +754,16 @@ include::ip:partial$output_remap/regs/gen/html/output_remap.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../../../common/axi/output_remap/regs/gen/adoc/output_remap.adoc[]
+include::../../../ip/output_remap/regs/gen/adoc/output_remap.adoc[leveloffset=+3]
 endif::backend-pdf[]
 
-===== Inbound Traffic Filter Control Registers
+ifdef::backend-html5[]
+++++
+<span id="inbound-traffic-filter-control-registers"></span>
+++++
+endif::backend-html5[]
+[[smc-fabric-inbound-traffic-filter-control-registers]]
+==== Inbound Traffic Filter Control Registers
 
 The inbound filter control registers protect SMC resources from
 unauthorized external access. Each of the 16 independent filter
@@ -483,10 +777,16 @@ include::ip:partial$axi_filter/regs/gen/html/filter_ctrl.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../../../common/axi/axi_filter/regs/gen/adoc/filter_ctrl.adoc[]
+include::../../../ip/axi_filter/regs/gen/adoc/filter_ctrl.adoc[leveloffset=+3]
 endif::backend-pdf[]
 
-===== Outbound Traffic Filter Control Registers
+ifdef::backend-html5[]
+++++
+<span id="outbound-traffic-filter-control-registers"></span>
+++++
+endif::backend-html5[]
+[[smc-fabric-outbound-traffic-filter-control-registers]]
+==== Outbound Traffic Filter Control Registers
 
 The outbound filter control registers determine which external resources
 the SMC can access, restricting SMC-initiated requests to defined system

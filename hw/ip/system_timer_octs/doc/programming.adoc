@@ -2,132 +2,92 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[system-timer-octs-programming]]
-===== Programming
+== Programming
 
-====== Multi-Chiplet Deployment Example
+ifdef::backend-html5[]
+++++
+<span id="programming-sequences"></span>
+<span id="primary-timer-operation"></span>
+<span id="multi-chiplet-deployment-example"></span>
+++++
+endif::backend-html5[]
 
-[source,sourceCode,c]
+[[octs-setup]]
+=== Configure and Start
+
+. Release reset on every participating timer and establish its primary or
+  secondary role. Keep the synchronization inputs inactive during setup.
+. Program compatible `CTRL` values. Keep `CREDIT_VAL > max(PULSE_WIDTH, 1)`
+  and use a nonzero secondary `STEP`. Choose pulse widths for the receiving
+  clock domains, not just the primary clock.
+. Write both halves of each timer's preset before any load event. For a common
+  initial count, use the same preset on all timers. There is no high-word
+  commit operation; a load event samples the assembled preset.
+. Enable the GPIO LSIO path with `TIMER_GPIO_ENABLE.GPIO_ENABLE = 1` where
+  used, and establish the required pad ownership and direction.
+. Write `TIMER_START.START = 1` on the primary only. Its load pulse starts
+  the secondaries after propagation and synchronization delay.
+. Check mode and count progress with a bounded wait. Inspect `CREDIT_EXPIRED`
+  and the synchronization paths; RUNNING alone does not establish alignment.
+
+For example, `CTRL = 0x0001020A` selects STEP=1, PULSE_WIDTH=2 and
+CREDIT_VAL=10. These reset settings are an example, not a timing guarantee
+for every clock ratio. Use the subsystem memory map for each instance's base.
+
+ifdef::backend-html5[]
+++++
+<span id="high-precision-timestamping"></span>
+++++
+endif::backend-html5[]
+
+[[octs-read-count]]
+=== Read a Timestamp
+
+The count occupies two live 32-bit registers with no snapshot latch.
+For a primary counting monotonically between reads, read high, low, then
+high again; retry if the high halves differ. Do not restart it during the read.
+Use a bounded retry in software if register access can stall.
+
+[source,c]
 ----
-// System with 1 PRIMARY + 3 SECONDARY timers
-#define PRIMARY_TIMER_BASE   0x40000000
-#define SECONDARY_0_BASE     0x50000000
-#define SECONDARY_1_BASE     0x60000000
-#define SECONDARY_2_BASE     0x70000000
-
-void initialize_multi_chiplet_timing() {
-    uint32_t timer_bases[] = {
-        PRIMARY_TIMER_BASE,
-        SECONDARY_0_BASE,
-        SECONDARY_1_BASE,
-        SECONDARY_2_BASE
-    };
-
-    // Configure all timers with same parameters
-    for (int i = 0; i < 4; i++) {
-        write32(timer_bases[i] + 0x04, 0x0805); // Credit=8, Pulse=5
-        write32(timer_bases[i] + 0x0C, 0x00000000); // Preset_LO=0
-        write32(timer_bases[i] + 0x10, 0x00000000); // Preset_HI=0
-    }
-
-    // Start PRIMARY (automatically synchronizes SECONDARY timers)
-    write32(PRIMARY_TIMER_BASE + 0x00, 0x01);
-
-    // Verify all timers started
-    for (int i = 0; i < 4; i++) {
-        uint32_t status = read32(timer_bases[i] + 0x08);
-        assert(status & 0x10); // RUNNING bit
-    }
-}
-----
-
-====== High-Precision Timestamping
-
-[source,sourceCode,c]
-----
-// Get high-precision timestamp from any timer
-uint64_t get_timestamp(uint32_t timer_base) {
-    uint32_t hi1, lo, hi2;
-
-    // Double-read method for consistency
-    do {
-        hi1 = read32(timer_base + 0x18); // COUNT_HI
-        lo = read32(timer_base + 0x14);  // COUNT_LO
-        hi2 = read32(timer_base + 0x18); // COUNT_HI again
-    } while (hi1 != hi2);
-
-    return ((uint64_t)hi1 << 32) | lo;
-}
-
-// Performance measurement example
-void performance_measurement() {
-    uint64_t start_time = get_timestamp(PRIMARY_TIMER_BASE);
-
-    // Execute operation being measured
-    critical_operation();
-
-    uint64_t end_time = get_timestamp(PRIMARY_TIMER_BASE);
-    uint64_t duration = end_time - start_time;
-
-    printf("Operation took %llu cycles\n", duration);
-}
+hi1 = read32(base + 0x18);  // TIMER_COUNT_HI
+lo  = read32(base + 0x14);  // TIMER_COUNT_LO
+hi2 = read32(base + 0x18);  // TIMER_COUNT_HI
+// Accept ((uint64_t)hi1 << 32) | lo only when hi1 == hi2.
 ----
 
-====== Synchronization Health Monitoring
+A secondary can correct its count at a credit boundary, including backward
+corrections. The monotonic-counter retry rule alone does not guarantee an
+atomic secondary timestamp across such a correction. Applications needing
+that guarantee require a system-level coherent capture scheme.
 
-[source,sourceCode,c]
-----
-void monitor_synchronization_health() {
-    uint32_t secondary_bases[] = {
-        SECONDARY_0_BASE,
-        SECONDARY_1_BASE,
-        SECONDARY_2_BASE
-    };
+Counts use primary clock units, not inherently nanoseconds. Convert using
+the configured clock frequency. Sequential software reads of separate timers
+also include bus-access delay and are not simultaneous measurements.
 
-    for (int i = 0; i < 3; i++) {
-        uint32_t credit_expired = read32(secondary_bases[i] + 0x1C);
+ifdef::backend-html5[]
+++++
+<span id="secondary-timer-operation"></span>
+<span id="error-handling-and-recovery"></span>
+<span id="synchronization-health-monitoring"></span>
+<span id="dynamic-reconfiguration"></span>
+++++
+endif::backend-html5[]
 
-        if (credit_expired == 0) {
-            printf("Secondary %d: Excellent sync\n", i);
-        } else if (credit_expired < 100) {
-            printf("Secondary %d: Good sync (expired=%u)\n", i, credit_expired);
-        } else if (credit_expired < 1000) {
-            printf("Secondary %d: WARNING - sync degraded (expired=%u)\n",
-                   i, credit_expired);
-            // Reset counter
-            write32(secondary_bases[i] + 0x1C, 0);
-        } else {
-            printf("Secondary %d: CRITICAL - sync failed (expired=%u)\n",
-                   i, credit_expired);
-            // Implement recovery procedure
-            recover_synchronization();
-        }
-    }
-}
-----
+[[octs-monitor]]
+=== Monitor and Reconfigure
 
-====== Dynamic Reconfiguration
+Read `CREDIT_EXPIRED` to observe the largest interval spent waiting for
+credit since the last clear. Write any value to start a new observation
+window. Choose thresholds from the actual clocks and credit settings;
+a universal good/warning/error scale would be misleading.
 
-[source,sourceCode,c]
-----
-void adjust_synchronization_parameters() {
-    // Read current configuration
-    uint32_t ctrl = read32(PRIMARY_TIMER_BASE + 0x04);
-    uint8_t current_credit = ctrl & 0xFF;
-    uint8_t current_pulse = (ctrl >> 8) & 0xFF;
+If waiting exceeds the expected interval, check primary operation, pulse
+routing, GPIO ownership and capture width. Clearing the diagnostic does not
+resynchronize the timer. A missed pulse or incompatible presets requires
+coordinated recovery.
 
-    printf("Current: Credit=%u, Pulse=%u\n", current_credit, current_pulse);
-
-    // Adjust for tighter synchronization
-    uint8_t new_credit = 5;  // Reduce credit value
-    uint8_t new_pulse = 10;  // Increase pulse width
-
-    uint32_t new_ctrl = (new_pulse << 8) | new_credit;
-    write32(PRIMARY_TIMER_BASE + 0x04, new_ctrl);
-
-    printf("Updated: Credit=%u, Pulse=%u\n", new_credit, new_pulse);
-
-    // Monitor effect on synchronization quality
-    sleep_ms(1000);
-    monitor_synchronization_health();
-}
-----
+Do not treat START as stop/resume. For role, preset or timing changes that
+must preserve a common epoch, coordinate all consumers, reset the timers,
+then repeat <<octs-setup>>. An uncoordinated live change can disrupt pulse
+capture or move secondary timestamps backward.

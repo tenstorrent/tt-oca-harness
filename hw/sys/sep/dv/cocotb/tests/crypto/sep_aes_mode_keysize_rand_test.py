@@ -3,16 +3,15 @@
 """Standalone AES mode x key-size breadth, RAND-REP (AES mode/key-size breadth).
 
 Drives the OpenTitan AES engine directly over the CPU-LSU AXI master (no_cpu, no
-firmware, SW key) across the full standalone matrix the Phase-1 KM->AES sideload
+firmware, SW key) across the full standalone matrix the KM->AES sideload
 KAT (`sep_km_aes_sideload_kat_test`, ECB-256 via keymgr) does not reach:
 
     {ECB, CBC, CTR} x {128, 192, 256}  (9 cells).
 
-reference parity: MERGED_INTO rep of the reference suite aes mode/keylen directed set. The reference suite
-uvm_tests/aes suite is register/alert-centric with no standalone CBC/CTR/128/192
-ciphertext golden, so the independent pure-Python golden (env/sep_aes_golden.py:
-FIPS-197 ECB 128/192/256 + SP800-38A CBC/CTR self-tested) is the reference and
-this rep is stronger than the reference suite for encryption breadth. DISTINCT from
+Reference parity: the reference suite uvm_tests/aes suite is register/alert-centric
+with no standalone CBC/CTR/128/192 ciphertext golden, so the independent
+pure-Python golden (env/sep_aes_golden.py: FIPS-197 ECB 128/192/256 + SP800-38A
+CBC/CTR self-tested) is the reference here. DISTINCT from
 `sep_km_aes_sideload_kat_test` (ECB-256 via sideload) -- AES mode/key-size breadth
 is standalone SW-key across modes/sizes.
 
@@ -34,21 +33,21 @@ Checkers:
   CHK-STATUS   per cell: no AES recoverable/fatal alert across enc + round-trip
   CHK1..CHK4   bit-exact entropy golden (strict scoreboard report)
   CHK5_aes     post-adapter AES beats == AXIS1 in order (single live crypto sink)
-  CHK-RAND-REP all 9 discrete cells walked in one invocation (seed logged)
+  CHK-RAND-REP every discrete cell produced its own golden-matching ciphertext,
+               and all ciphertexts are distinct (seed logged)
 """
 
 from __future__ import annotations
 
 import pyuvm
-
-from sep_base_test import sep_base_test
 from env.sep_aes_golden import aes_encrypt_words
 from env.sep_seeded_rng import SepSeededRng
-from seq_lib.sep_aes_seq import SepAes, SepAesCfg, AES_OP_ENC, AES_OP_DEC
+from sep_base_test import sep_base_test
+from seq_lib.sep_aes_seq import AES_OP_DEC, AES_OP_ENC, SepAes, SepAesCfg
 
 MODES = ["ecb", "cbc", "ctr"]
 KEY_SIZES = [128, 192, 256]
-NUM_BLOCKS = 2   # 2 x 128-bit blocks per cell -> exercises CBC chaining / CTR increment
+NUM_BLOCKS = 2  # 2 x 128-bit blocks per cell -> exercises CBC chaining / CTR increment
 
 
 @pyuvm.test()
@@ -60,16 +59,18 @@ class sep_aes_mode_keysize_rand_test(sep_base_test):
         # Every other crypto-EDN client JTAG-held across rst_ni release, then parked in SW_RESET_N so CHK5_aes golden
         # routing is in-order (one live sink). AES stays released for the
         # masking reseed.
-        await self.bring_up_entropy(
-            strict=True, score_km=False, score_sinks={"aes": "golden"})
+        await self.bring_up_entropy(strict=True, score_km=False, score_sinks={"aes": "golden"})
+        # The default floor is one scored beat, which is far below what the
+        # per-beat routing claim needs across the whole cell walk.
+        self.drbg_sb.set_min_matches(CHK5_aes=32)
         self.start_fifo_drain()
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
 
         self.aes = SepAes(self)
         seed = self.random_seed()
         self.rng = SepSeededRng(seed)
-        self.logger.info("AES mode/key-size breadth AES mode x key-size breadth: seed=%d", seed)
-        await self.aes.trigger_prng_reseed()   # seed the masking PRNG from EDN
+        self.logger.info("AES mode x key-size breadth: seed=%d", seed)
+        await self.aes.trigger_prng_reseed()  # seed the masking PRNG from EDN
 
         # Collect each cell's DUT ciphertext, so the matrix claim rests on observed
         # output. Distinct results also show the nine cells programmed nine different
@@ -82,20 +83,25 @@ class sep_aes_mode_keysize_rand_test(sep_base_test):
 
         walked = len(results)
         expected = len(MODES) * len(KEY_SIZES)
+        # Construction guard, not a DUT contract: this compares the walk against
+        # the cell list that drove it, so only a table or keying mistake in this
+        # file can trip it. The DUT evidence is the per-cell golden compare.
         assert walked == expected, f"walked {walked} cells != {expected}"
         assert len(set(results.values())) == expected, (
             "AES cells produced duplicate ciphertexts, so they did not all run distinct "
-            "configurations: "
-            + ", ".join(f"{k}={results[k][0]:#010x}" for k in sorted(results)))
+            "configurations: " + ", ".join(f"{k}={results[k][0]:#010x}" for k in sorted(results))
+        )
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
         assert self.drbg_sb.report()
-        self.logger.info(
-            "CHK1..CHK4 bit-exact + CHK5_aes ROUTING (AES==AXIS1) PASS")
+        self.logger.info("CHK1..CHK4 bit-exact + CHK5_aes ROUTING (AES==AXIS1) PASS")
         self.logger.info(
             "CHK-RAND-REP PASS: walked all %d discrete cells ({ECB,CBC,CTR} x "
             "{128,192,256}) in one invocation (seed=%d); key/IV/plaintext "
-            "randomized per cell; entropy alerts clean", walked, seed)
+            "randomized per cell; entropy alerts clean",
+            walked,
+            seed,
+        )
 
     def _rand_words(self, n: int) -> list[int]:
         return [self.rng.getrandbits(32) for _ in range(n)]
@@ -104,43 +110,45 @@ class sep_aes_mode_keysize_rand_test(sep_base_test):
         key = self._rand_words(key_bits // 32)
         pt = self._rand_words(4 * NUM_BLOCKS)
         iv = self._rand_words(4) if mode != "ecb" else None
-        cfg = SepAesCfg(mode=mode, key_bits=key_bits, key_words=key,
-                        pt_words=pt, iv_words=iv)
+        cfg = SepAesCfg(mode=mode, key_bits=key_bits, key_words=key, pt_words=pt, iv_words=iv)
         cell = f"AES-{mode.upper()}-{key_bits}"
 
         # --- CHK-ENC: encrypt and value-check against the independent golden ---
-        await self.aes.configure(mode=cfg.mode_ctrl(), key_len=cfg.keylen_ctrl(),
-                                 operation=AES_OP_ENC)
-        await self.aes.load_key_iv(key, iv)   # spec-ordered: idle between key + IV
+        await self.aes.configure(
+            mode=cfg.mode_ctrl(), key_len=cfg.keylen_ctrl(), operation=AES_OP_ENC
+        )
+        await self.aes.load_key_iv(key, iv)  # spec-ordered: idle between key + IV
         ct = await self.aes.run_blocks(pt)
         golden = aes_encrypt_words(**cfg.golden_kwargs())
         assert ct == golden, (
             f"{cell} ciphertext != golden:\n  ct    ={[hex(w) for w in ct]}\n"
-            f"  golden={[hex(w) for w in golden]}")
+            f"  golden={[hex(w) for w in golden]}"
+        )
 
-        # No golden-vs-golden guards here. With the DUT result already pinned
-        # bit-exact against the golden above, any further comparison between that
-        # result and another golden-model output reduces to a property of the model
-        # alone -- it holds with the simulator switched off. Model sanity belongs in
-        # the golden's import-time KAT block, not in a per-cell DUT check.
-        await self.aes.check_status_clean(cell + "-enc")   # CHK-STATUS
+        await self.aes.check_status_clean(cell + "-enc")  # CHK-STATUS
 
         # --- CHK-RT: recover the plaintext -----------------------------------
         if mode in ("ecb", "cbc"):
-            await self.aes.configure(mode=cfg.mode_ctrl(), key_len=cfg.keylen_ctrl(),
-                                     operation=AES_OP_DEC)
-            await self.aes.load_key_iv(key, iv)      # CBC decrypt needs the original IV
+            await self.aes.configure(
+                mode=cfg.mode_ctrl(), key_len=cfg.keylen_ctrl(), operation=AES_OP_DEC
+            )
+            await self.aes.load_key_iv(key, iv)  # CBC decrypt needs the original IV
             rt = await self.aes.run_blocks(ct)
         else:  # CTR is a stream cipher: re-encrypting the ciphertext yields the pt
-            await self.aes.configure(mode=cfg.mode_ctrl(), key_len=cfg.keylen_ctrl(),
-                                     operation=AES_OP_ENC)
+            await self.aes.configure(
+                mode=cfg.mode_ctrl(), key_len=cfg.keylen_ctrl(), operation=AES_OP_ENC
+            )
             await self.aes.load_key_iv(key, iv)
             rt = await self.aes.run_blocks(ct)
         assert rt == pt, (
             f"{cell} round-trip != plaintext:\n  rt={[hex(w) for w in rt]}\n"
-            f"  pt={[hex(w) for w in pt]}")
+            f"  pt={[hex(w) for w in pt]}"
+        )
         await self.aes.check_status_clean(cell + "-rt")
 
-        self.logger.info("CHK-CELL PASS %s: ct==golden, round-trip==pt, no alert, "
-                         "non-vacuous (%d blocks)", cell, NUM_BLOCKS)
+        self.logger.info(
+            "CHK-CELL PASS %s: ct==golden, round-trip==pt, no alert, non-vacuous (%d blocks)",
+            cell,
+            NUM_BLOCKS,
+        )
         return tuple(ct)

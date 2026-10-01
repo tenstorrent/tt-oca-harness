@@ -6,883 +6,150 @@
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: smc_cla</h2>
-<h2>Register List:</h2>
+<h2 id="regmap-smc_cla">SMC DFD MMR Aperture Address Map</h2>
+<p>Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST blocks that smc_dfd_wrap instantiates.</p>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x198</td><td><a href="#CDbgMuxSel">CDbgMuxSel</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x1A0</td><td><a href="#CDfdCsr">CDfdCsr</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x200</td><td><a href="#Timestamp">Timestamp</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x208</td><td><a href="#TimestampSync">TimestampSync</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x210</td><td><a href="#TimeStampConfig">TimeStampConfig</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x1000</td><td><a href="#Trdstcontrol">Trdstcontrol</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x1004</td><td><a href="#Trdstimpl">Trdstimpl</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x1008</td><td><a href="#Trdstinstfeatures">Trdstinstfeatures</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x11A0</td><td><a href="#CDbgDebugTraceCfg">CDbgDebugTraceCfg</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x3100</td><td><a href="#CDbgClaCounter0Cfg">CDbgClaCounter0Cfg</a></td><td>RW</td><td>Configure CLA counter0. One of the 4 counters used for counting cycles after a event match, and trigger a action on match.</td></tr>
-<tr><td>0x3108</td><td><a href="#CDbgClaCounter1Cfg">CDbgClaCounter1Cfg</a></td><td>RW</td><td>Configure CLA counter1. One of the 4 counters used for counting cycles after a event match, and trigger a action on match.</td></tr>
-<tr><td>0x3110</td><td><a href="#CDbgClaCounter2Cfg">CDbgClaCounter2Cfg</a></td><td>RW</td><td>Configure CLA counter2. One of the 4 counters used for counting cycles after a event match, and trigger a action on match.</td></tr>
-<tr><td>0x3118</td><td><a href="#CDbgClaCounter3Cfg">CDbgClaCounter3Cfg</a></td><td>RW</td><td>Configure CLA counter3. One of the 4 counters used for counting cycles after a event match, and trigger a action on match.</td></tr>
-<tr><td>0x3120</td><td><a href="#CDbgNode0Eap0">CDbgNode0Eap0</a></td><td>RW</td><td>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (Two EAPs per Node).</td></tr>
-<tr><td>0x3128</td><td><a href="#CDbgNode0Eap1">CDbgNode0Eap1</a></td><td>RW</td><td>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (Two EAPs per Node).</td></tr>
-<tr><td>0x3130</td><td><a href="#CDbgNode1Eap0">CDbgNode1Eap0</a></td><td>RW</td><td>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (Two EAPs per Node).</td></tr>
-<tr><td>0x3138</td><td><a href="#CDbgNode1Eap1">CDbgNode1Eap1</a></td><td>RW</td><td>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (Two EAPs per Node).</td></tr>
-<tr><td>0x3140</td><td><a href="#CDbgNode2Eap0">CDbgNode2Eap0</a></td><td>RW</td><td>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (Two EAPs per Node).</td></tr>
-<tr><td>0x3148</td><td><a href="#CDbgNode2Eap1">CDbgNode2Eap1</a></td><td>RW</td><td>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (Two EAPs per Node).</td></tr>
-<tr><td>0x3150</td><td><a href="#CDbgNode3Eap0">CDbgNode3Eap0</a></td><td>RW</td><td>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (Two EAPs per Node).</td></tr>
-<tr><td>0x3158</td><td><a href="#CDbgNode3Eap1">CDbgNode3Eap1</a></td><td>RW</td><td>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (Two EAPs per Node).</td></tr>
-<tr><td>0x3160</td><td><a href="#CDbgSignalMask0">CDbgSignalMask0</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x2) is triggered when debug_bus &amp; mask = match.</td></tr>
-<tr><td>0x3168</td><td><a href="#CDbgSignalMatch0">CDbgSignalMatch0</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x2) is triggered when debug_bus &amp; mask = match.</td></tr>
-<tr><td>0x3170</td><td><a href="#CDbgSignalMask1">CDbgSignalMask1</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x4) is triggered when debug_bus &amp; mask = match.</td></tr>
-<tr><td>0x3178</td><td><a href="#CDbgSignalMatch1">CDbgSignalMatch1</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x4) is triggered when debug_bus &amp; mask = match.</td></tr>
-<tr><td>0x3180</td><td><a href="#CDbgSignalEdgeDetectCfg">CDbgSignalEdgeDetectCfg</a></td><td>RW</td><td>Register to configure debug bus for edge triggers.</td></tr>
-<tr><td>0x3188</td><td><a href="#CDbgEapStatus">CDbgEapStatus</a></td><td>RW</td><td>Register to indicate if EAP Pair was activated. Use the corresponding w2c register to reset the status. There are 2 bits for each EAP. The bit corresponds to action-0 and action-1 of the EAP. The register is used by SW to know if an action was taken (ex: NMI ISR needs to know which of the EAP triggered the NMI)</td></tr>
-<tr><td>0x3190</td><td><a href="#CDbgClaCtrlStatus">CDbgClaCtrlStatus</a></td><td>RW</td><td>Ctrl/Status register to Enable EAP after EAP programming is complete, and read the current node.</td></tr>
-<tr><td>0x3198</td><td><a href="#CDbgRsvd0">CDbgRsvd0</a></td><td>RW</td><td>Reserved Register that can be changed.</td></tr>
-<tr><td>0x31A0</td><td><a href="#CDbgRsvd1">CDbgRsvd1</a></td><td>RW</td><td>Reserved Register that can be changed.</td></tr>
-<tr><td>0x31A8</td><td><a href="#CDbgRsvd2">CDbgRsvd2</a></td><td>RW</td><td>Reserved Register that can be changed.</td></tr>
-<tr><td>0x31B0</td><td><a href="#CDbgTransitionMask">CDbgTransitionMask</a></td><td>RW</td><td>3 registers to configure &quot;transition event&quot;. This register is to select the signals of interest using a mask.</td></tr>
-<tr><td>0x31B8</td><td><a href="#CDbgTransitionFromValue">CDbgTransitionFromValue</a></td><td>RW</td><td>3 registers to configure &quot;transition event&quot;. The event is triggered on transition from Value A to Value B. This register specifies Value A.</td></tr>
-<tr><td>0x31C0</td><td><a href="#CDbgTransitionToValue">CDbgTransitionToValue</a></td><td>RW</td><td>3 registers to configure &quot;transition event&quot;. The event is triggered on transition from Value A to Value B. This register specifies Value B.</td></tr>
-<tr><td>0x31C8</td><td><a href="#CDbgOnesCountMask">CDbgOnesCountMask</a></td><td>RW</td><td>2 registers to configure &quot;ones count&quot; event. This register is to select the signals of interest using a mask.</td></tr>
-<tr><td>0x31D0</td><td><a href="#CDbgOnesCountValue">CDbgOnesCountValue</a></td><td>RW</td><td>2 registers to configure &quot;ones count&quot; event. Event triggered when the sum of the signals match the value specified in this register.</td></tr>
-<tr><td>0x31D8</td><td><a href="#CDbgAnyChange">CDbgAnyChange</a></td><td>RW</td><td>Event triggered when a subset of debug signals change. The mask is used to select the subset of the debug signals.</td></tr>
-<tr><td>0x31E0</td><td><a href="#CDbgSignalSnapshotNode0Eap0">CDbgSignalSnapshotNode0Eap0</a></td><td>R</td><td>debug Bus Value when Node0 Eap0 Trigger is met.</td></tr>
-<tr><td>0x31E8</td><td><a href="#CDbgSignalSnapshotNode0Eap1">CDbgSignalSnapshotNode0Eap1</a></td><td>R</td><td>debug Bus Value when Node0 Eap1 Trigger is met.</td></tr>
-<tr><td>0x31F0</td><td><a href="#CDbgSignalSnapshotNode1Eap0">CDbgSignalSnapshotNode1Eap0</a></td><td>R</td><td>debug Bus Value when Node1 Eap0 Trigger is met.</td></tr>
-<tr><td>0x31F8</td><td><a href="#CDbgSignalSnapshotNode1Eap1">CDbgSignalSnapshotNode1Eap1</a></td><td>R</td><td>debug Bus Value when Node1 Eap0 Trigger is met.</td></tr>
-<tr><td>0x3200</td><td><a href="#CDbgSignalSnapshotNode2Eap0">CDbgSignalSnapshotNode2Eap0</a></td><td>R</td><td>debug Bus Value when Node0 Eap0 Trigger is met.</td></tr>
-<tr><td>0x3208</td><td><a href="#CDbgSignalSnapshotNode2Eap1">CDbgSignalSnapshotNode2Eap1</a></td><td>R</td><td>debug Bus Value when Node0 Eap1 Trigger is met.</td></tr>
-<tr><td>0x3210</td><td><a href="#CDbgSignalSnapshotNode3Eap0">CDbgSignalSnapshotNode3Eap0</a></td><td>R</td><td>debug Bus Value when Node1 Eap0 Trigger is met.</td></tr>
-<tr><td>0x3218</td><td><a href="#CDbgSignalSnapshotNode3Eap1">CDbgSignalSnapshotNode3Eap1</a></td><td>R</td><td>debug Bus Value when Node1 Eap0 Trigger is met.</td></tr>
-<tr><td>0x3220</td><td><a href="#CDbgClaTimeMatch">CDbgClaTimeMatch</a></td><td>RW</td><td>This value is compared (greater than or equal to the programmed value) against the internal time register value of the core, and is used to generate a time match event for CLA. Needs to be non zero for the time match event signal to trigger. The event will only trigger an action if the EAP programming is done. Requires writing 0 to this register to stop the match event.</td></tr>
-<tr><td>0x3228</td><td><a href="#CDbgSignalMask2">CDbgSignalMask2</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x1C) is triggered when debug_bus &amp; mask = match.</td></tr>
-<tr><td>0x3230</td><td><a href="#CDbgSignalMatch2">CDbgSignalMatch2</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x1C) is triggered when debug_bus &amp; mask = match.</td></tr>
-<tr><td>0x3238</td><td><a href="#CDbgSignalMask3">CDbgSignalMask3</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x1D) is triggered when debug_bus &amp; mask = match.</td></tr>
-<tr><td>0x3240</td><td><a href="#CDbgSignalMatch3">CDbgSignalMatch3</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x1D) is triggered when debug_bus &amp; mask = match.</td></tr>
-<tr><td>0x3248</td><td><a href="#CDbgNode0Eap2">CDbgNode0Eap2</a></td><td>RW</td><td>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</td></tr>
-<tr><td>0x3250</td><td><a href="#CDbgNode0Eap3">CDbgNode0Eap3</a></td><td>RW</td><td>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</td></tr>
-<tr><td>0x3258</td><td><a href="#CDbgNode1Eap2">CDbgNode1Eap2</a></td><td>RW</td><td>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</td></tr>
-<tr><td>0x3260</td><td><a href="#CDbgNode1Eap3">CDbgNode1Eap3</a></td><td>RW</td><td>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</td></tr>
-<tr><td>0x3268</td><td><a href="#CDbgNode2Eap2">CDbgNode2Eap2</a></td><td>RW</td><td>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</td></tr>
-<tr><td>0x3270</td><td><a href="#CDbgNode2Eap3">CDbgNode2Eap3</a></td><td>RW</td><td>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</td></tr>
-<tr><td>0x3278</td><td><a href="#CDbgNode3Eap2">CDbgNode3Eap2</a></td><td>RW</td><td>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</td></tr>
-<tr><td>0x3280</td><td><a href="#CDbgNode3Eap3">CDbgNode3Eap3</a></td><td>RW</td><td>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</td></tr>
-<tr><td>0x3288</td><td><a href="#CDbgSignalSnapshotNode0Eap2">CDbgSignalSnapshotNode0Eap2</a></td><td>R</td><td>debug Bus Value when Node0 Eap2 Trigger is met.</td></tr>
-<tr><td>0x3290</td><td><a href="#CDbgSignalSnapshotNode0Eap3">CDbgSignalSnapshotNode0Eap3</a></td><td>R</td><td>debug Bus Value when Node0 Eap3 Trigger is met.</td></tr>
-<tr><td>0x3298</td><td><a href="#CDbgSignalSnapshotNode1Eap2">CDbgSignalSnapshotNode1Eap2</a></td><td>R</td><td>debug Bus Value when Node1 Eap2 Trigger is met.</td></tr>
-<tr><td>0x32A0</td><td><a href="#CDbgSignalSnapshotNode1Eap3">CDbgSignalSnapshotNode1Eap3</a></td><td>R</td><td>debug Bus Value when Node1 Eap3 Trigger is met.</td></tr>
-<tr><td>0x32A8</td><td><a href="#CDbgSignalSnapshotNode2Eap2">CDbgSignalSnapshotNode2Eap2</a></td><td>R</td><td>debug Bus Value when Node2 Eap2 Trigger is met.</td></tr>
-<tr><td>0x32B0</td><td><a href="#CDbgSignalSnapshotNode2Eap3">CDbgSignalSnapshotNode2Eap3</a></td><td>R</td><td>debug Bus Value when Node2 Eap3 Trigger is met.</td></tr>
-<tr><td>0x32B8</td><td><a href="#CDbgSignalSnapshotNode3Eap2">CDbgSignalSnapshotNode3Eap2</a></td><td>R</td><td>debug Bus Value when Node3 Eap2 Trigger is met.</td></tr>
-<tr><td>0x32C0</td><td><a href="#CDbgSignalSnapshotNode3Eap3">CDbgSignalSnapshotNode3Eap3</a></td><td>R</td><td>debug Bus Value when Node3 Eap3 Trigger is met.</td></tr>
-<tr><td>0x32C8</td><td><a href="#CDbgSignalDelayMuxSel">CDbgSignalDelayMuxSel</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x32D0</td><td><a href="#CDbgClaTimestampsync">CDbgClaTimestampsync</a></td><td>RW</td><td>This value is loaded to the finegrain timestamp counter based on a cross trigger to sync the time value across the multiple cluster&#x27;s CLA blocks</td></tr>
-<tr><td>0x32D8</td><td><a href="#CDbgClaXtriggerTimestretch">CDbgClaXtriggerTimestretch</a></td><td>RW</td><td>This value determines the time stretched pulse duration for the cross trigger. 8 bits for each of the two triggers.</td></tr>
-<tr><td>0x33F0</td><td><a href="#CrScratchpad">CrScratchpad</a></td><td>RW</td><td>Scratchpad register for DV</td></tr>
-<tr><td>0x33F8</td><td><a href="#Scratch">Scratch</a></td><td>RW</td><td>Additional scratch register for DV and potential ECO usage</td></tr>
-<tr><td>0x4000</td><td><a href="#Trfunnelcontrol">Trfunnelcontrol</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x4004</td><td><a href="#Trfunnelimpl">Trfunnelimpl</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x4008</td><td><a href="#Trfunneldisinput">Trfunneldisinput</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x5000</td><td><a href="#Trramcontrol">Trramcontrol</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x5004</td><td><a href="#Trramimpl">Trramimpl</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x5010</td><td><a href="#Trramstartlow">Trramstartlow</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x5014</td><td><a href="#Trramstarthigh">Trramstarthigh</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x5018</td><td><a href="#Trramlimitlow">Trramlimitlow</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x501C</td><td><a href="#Trramlimithigh">Trramlimithigh</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x5020</td><td><a href="#Trramwplow">Trramwplow</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x5024</td><td><a href="#Trramwphigh">Trramwphigh</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x5028</td><td><a href="#Trramrplow">Trramrplow</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x502C</td><td><a href="#Trramrphigh">Trramrphigh</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x5040</td><td><a href="#Trramdata">Trramdata</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x5E00</td><td><a href="#Trcustomramsmemlimitlow">Trcustomramsmemlimitlow</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x6000</td><td><a href="#Trdstramcontrol">Trdstramcontrol</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x6004</td><td><a href="#Trdstramimpl">Trdstramimpl</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x6010</td><td><a href="#Trdstramstartlow">Trdstramstartlow</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x6014</td><td><a href="#Trdstramstarthigh">Trdstramstarthigh</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x6018</td><td><a href="#Trdstramlimitlow">Trdstramlimitlow</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x601C</td><td><a href="#Trdstramlimithigh">Trdstramlimithigh</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x6020</td><td><a href="#Trdstramwplow">Trdstramwplow</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x6024</td><td><a href="#Trdstramwphigh">Trdstramwphigh</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x6028</td><td><a href="#Trdstramrplow">Trdstramrplow</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x602C</td><td><a href="#Trdstramrphigh">Trdstramrphigh</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x6040</td><td><a href="#Trdstramdata">Trdstramdata</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x7FF8</td><td><a href="#TrClusterFuseCfgLow">TrClusterFuseCfgLow</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x7FFC</td><td><a href="#TrClusterFuseCfgHi">TrClusterFuseCfgHi</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x8FE8</td><td><a href="#TrScratchLo">TrScratchLo</a></td><td>RW</td><td>Additional scratch register for DV and potential ECO usage</td></tr>
-<tr><td>0x8FEC</td><td><a href="#TrScratchHi">TrScratchHi</a></td><td>RW</td><td>Additional scratch register for DV and potential ECO usage</td></tr>
-<tr><td>0x8FF0</td><td><a href="#TrScratchpadLo">TrScratchpadLo</a></td><td>RW</td><td>Scratchpad register for DV</td></tr>
-<tr><td>0x8FF4</td><td><a href="#TrScratchpadHi">TrScratchpadHi</a></td><td>RW</td><td>Scratchpad register for DV</td></tr>
-</table>
-<h2>Register Details:</h2>
-<h3 id="CDbgMuxSel">CDbgMuxSel</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:58</td><td>Muxselseg7</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>57:52</td><td>Muxselseg6</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>51:46</td><td>Muxselseg5</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>45:40</td><td>Muxselseg4</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>39:34</td><td>Muxselseg3</td><td>RW</td><td>0x0</td><td>Mux Select Bits for Lane 3. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane3= Seg3, if bit[0] = 1, Lane3 = Seg4, if bit[1] =1, Lane3 = Seg5,...</td></tr>
-<tr><td>33:28</td><td>Muxselseg2</td><td>RW</td><td>0x0</td><td>Mux Select Bits for Lane 2. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane2= Seg2, if bit[0] = 1, Lane2 = Seg4, if bit[1] =1, Lane2 = Seg5,...</td></tr>
-<tr><td>27:22</td><td>Muxselseg1</td><td>RW</td><td>0x0</td><td>Mux Select Bits for Lane 1. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane1= Seg1, if bit[0] = 1, Lane1 = Seg4, if bit[1] =1, Lane1 = Seg5,...</td></tr>
-<tr><td>21:16</td><td>Muxselseg0</td><td>RW</td><td>0x0</td><td>Mux Select Bits for Lane 0. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane0 = Seg0, if bit[0] = 1, Lane0 = Seg4, if bit[1] =1, Lane0 = Seg5,...</td></tr>
-<tr><td>15:8</td><td>Rsvd158</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>7:2</td><td>Dbmid</td><td>RW</td><td>0x0</td><td>Unique DBM ID of the DBM instance</td></tr>
-<tr><td>1:0</td><td>Dbmmode</td><td>RW</td><td>0x0</td><td>Mode selection, 0: DBM off, 1: Normal debug mode, 2: DBM ID output mode, 3: Toggle Mode</td></tr>
-</table>
-<h3 id="CDfdCsr">CDfdCsr</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63</td><td>DfdEn</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>62:1</td><td>Rsvd621</td><td>R</td><td>0x0</td><td>-</td></tr>
-<tr><td>0</td><td>DfdMmrLock</td><td>RW</td><td>0x1</td><td>-</td></tr>
-</table>
-<h3 id="Timestamp">Timestamp</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>Timestamp</td><td>RW</td><td>0x0</td><td>Timestamp value</td></tr>
-</table>
-<h3 id="TimestampSync">TimestampSync</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>TimestampSync</td><td>RW</td><td>0x0</td><td>TimestampSync value</td></tr>
-</table>
-<h3 id="TimeStampConfig">TimeStampConfig</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:9</td><td>Rsvd</td><td>RW</td><td>0x0</td><td>Rsvd</td></tr>
-<tr><td>8:1</td><td>DebugMarker</td><td>RW</td><td>0x0</td><td>Debug Marker</td></tr>
-<tr><td>0</td><td>TsSync</td><td>RW</td><td>0x0</td><td>TS Sync</td></tr>
-</table>
-<h3 id="Trdstcontrol">Trdstcontrol</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:27</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>26:24</td><td>Trdstformat</td><td>RW</td><td>0x3</td><td>bit[0]: XOR Enable, bit[1]: VLT Enable. Supported values : 2&#x27;b3 (XOR+VLT Compression), 2&#x27;b1 (XOR Compresion), 2&#x27;b0 (No Compression)</td></tr>
-<tr><td>23:20</td><td>Trdstsyncmax</td><td>RW</td><td>0x0</td><td>When trDstSyncMode is set to 2&#x27;b10, timestamp will be sent for every 2^(trDstSyncMax + 4) Cluster clocks.</td></tr>
-<tr><td>19:18</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>17:16</td><td>Trdstsyncmode</td><td>RW</td><td>0x0</td><td>When the field is set tp 2&#x27;b10, sent timestamp. All other vlaues not NA.</td></tr>
-<tr><td>15</td><td>Trdstinhibitsrc</td><td>R</td><td>0x0</td><td>-</td></tr>
-<tr><td>14</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>13</td><td>Trdstinststallena</td><td>R</td><td>0x0</td><td>-</td></tr>
-<tr><td>12</td><td>Trdstinststalloroverflow</td><td>R</td><td>0x0</td><td>-</td></tr>
-<tr><td>11</td><td>Trdstinsttriggerenable</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9</td><td>Trdstcontext</td><td>R</td><td>0x0</td><td>-</td></tr>
-<tr><td>8:7</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>6:4</td><td>Trdstinstmode</td><td>R</td><td>0x6</td><td>-</td></tr>
-<tr><td>3</td><td>Trdstempty</td><td>R</td><td>0x1</td><td>-</td></tr>
-<tr><td>2</td><td>Trdstinsttracing</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>1</td><td>Trdstenable</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>0</td><td>Trdstactive</td><td>RW</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="Trdstimpl">Trdstimpl</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>30:28</td><td>Trdstvendorstreamlength</td><td>RW</td><td>0x4</td><td>Specify Stream length. A stream starts with &quot;no compressed packet&quot;. Stream length specifies number of frames before a non-compressed packet is sent.Stream Length = 32* 2^(trDstVendorStreamLength + 1)</td></tr>
-<tr><td>27:24</td><td>Trdstvendorframelength</td><td>RW</td><td>0x1</td><td>Specify frame length. Frame Length = trDstVendorFrameLength* 64 ; Frame Length should be a multiple of Bank Data Width.</td></tr>
-<tr><td>23:20</td><td>Trdstprotocolminor</td><td>R</td><td>0x0</td><td>-</td></tr>
-<tr><td>19:16</td><td>Trdstprotocolmajor</td><td>R</td><td>0x1</td><td>-</td></tr>
-<tr><td>15:12</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>11:8</td><td>Trdstcomptype</td><td>R</td><td>0x1</td><td>-</td></tr>
-<tr><td>7:4</td><td>Trdstverminor</td><td>R</td><td>0x0</td><td>-</td></tr>
-<tr><td>3:0</td><td>Trdstvermajor</td><td>R</td><td>0x1</td><td>-</td></tr>
-</table>
-<h3 id="Trdstinstfeatures">Trdstinstfeatures</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:28</td><td>Trdstsrcbits</td><td>RW</td><td>0x4</td><td>-</td></tr>
-<tr><td>27:16</td><td>Trdstsrcid</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>15:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>8</td><td>Trdstinstenrepeatedhistory</td><td>R</td><td>0x0</td><td>-</td></tr>
-<tr><td>7:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>Trdstinstnotrapaddr</td><td>R</td><td>0x0</td><td>-</td></tr>
-<tr><td>0</td><td>Trdstinstnoaddrdiff</td><td>R</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="CDbgDebugTraceCfg">CDbgDebugTraceCfg</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:22</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>21</td><td>FrameClosureMode</td><td>RW</td><td>0x1</td><td>Closure Mode: 1: Close frame with a packet no larger than max packet size  before any overflow (due to packets crossing frame boundary). 0: Close frame when packets cross boundary. Push back packet crossing frame boundary to packet generator.</td></tr>
-<tr><td>20</td><td>FrameModeEnable</td><td>RW</td><td>0x1</td><td>Enable Frame Mode (Frame Mode: Always pack &quot;frame length&quot; number of bytes for trace transmission). If flush to memory is stalled (due to silicon bug), we can have incomplete packets in memory. Frame Mode will help SW decoder to avoid reading incomplete trasnmitted packets. In Frame Mode, SW will get a memory pointer that is aligned to Frame Length. HW will ensure  there are no incomplete packets incluced in the region pointed by memory pointer.</td></tr>
-<tr><td>19:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>15:12</td><td>FrameLenghtInBytes</td><td>RW</td><td>0x2</td><td>Use trDstImpl[trDstVendorFrameLength] for Frame Length programming. Register field ZBB-ed.</td></tr>
-<tr><td>11:4</td><td>TraceFrameFillByte</td><td>RW</td><td>0x81</td><td>Use &quot;Filler Packet&quot; to align a stream of trace packets within a frame boundary.</td></tr>
-<tr><td>3:0</td><td>TraceSourceId</td><td>RW</td><td>0x0</td><td>Trace Source ID (FIXME: Base Address, Tool Issue)</td></tr>
-</table>
-<h3 id="CDbgClaCounter0Cfg">CDbgClaCounter0Cfg</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63</td><td>Rsvd</td><td>R</td><td>0x0</td><td>-</td></tr>
-<tr><td>62:48</td><td>UpperTarget</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>47:33</td><td>UpperCounter</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>32</td><td>ResetOnTarget</td><td>RW</td><td>0x0</td><td>When Counter = {upper_target,target} reset to 0.  With this bit set, counter will provide a periodic tick w/ frequency of (target +1) if the action is set to Auto Incr. The periodic tick will continue till Stop Auto Incr or Clear Counter action.</td></tr>
-<tr><td>31:16</td><td>Target</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>15:0</td><td>Counter</td><td>RW</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="CDbgClaCounter1Cfg">CDbgClaCounter1Cfg</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63</td><td>Rsvd</td><td>R</td><td>0x0</td><td>-</td></tr>
-<tr><td>62:48</td><td>UpperTarget</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>47:33</td><td>UpperCounter</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>32</td><td>ResetOnTarget</td><td>RW</td><td>0x0</td><td>When Counter = {upper_targe,target}, reset to 0.  With this bit set, counter will provide a periodic tick w/ frequency of (target +1) if the action is set to Auto Incr. The periodic tick will continue till Stop Auto Incr or Clear Counter action.</td></tr>
-<tr><td>31:16</td><td>Target</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>15:0</td><td>Counter</td><td>RW</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="CDbgClaCounter2Cfg">CDbgClaCounter2Cfg</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63</td><td>Rsvd</td><td>R</td><td>0x0</td><td>-</td></tr>
-<tr><td>62:48</td><td>UpperTarget</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>47:33</td><td>UpperCounter</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>32</td><td>ResetOnTarget</td><td>RW</td><td>0x0</td><td>When Counter = {upper_target,target}, reset to 0.  With this bit set, counter will provide a periodic tick w/ frequency of (target +1) if the action is set to Auto Incr. The periodic tick will continue till Stop Auto Incr or Clear Counter action.</td></tr>
-<tr><td>31:16</td><td>Target</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>15:0</td><td>Counter</td><td>RW</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="CDbgClaCounter3Cfg">CDbgClaCounter3Cfg</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63</td><td>Rsvd</td><td>R</td><td>0x0</td><td>-</td></tr>
-<tr><td>62:48</td><td>UpperTarget</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>47:33</td><td>UpperCounter</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>32</td><td>ResetOnTarget</td><td>RW</td><td>0x0</td><td>When Counter = {upper_target,target}, reset to 0.  With this bit set, counter will provide a periodic tick w/ frequency of (target +1) if the action is set to Auto Incr. The periodic tick will continue till Stop Auto Incr or Clear Counter action.</td></tr>
-<tr><td>31:16</td><td>Target</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>15:0</td><td>Counter</td><td>RW</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="CDbgNode0Eap0">CDbgNode0Eap0</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:52</td><td>Rsvd</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
-<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
-<tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
-<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
-<tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
-</table>
-<h3 id="CDbgNode0Eap1">CDbgNode0Eap1</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:52</td><td>Rsvd</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
-<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
-<tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
-<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
-<tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
-</table>
-<h3 id="CDbgNode1Eap0">CDbgNode1Eap0</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:52</td><td>Rsvd</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
-<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
-<tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
-<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
-<tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
-</table>
-<h3 id="CDbgNode1Eap1">CDbgNode1Eap1</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:52</td><td>Rsvd</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
-<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
-<tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
-<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
-<tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
-</table>
-<h3 id="CDbgNode2Eap0">CDbgNode2Eap0</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:52</td><td>Rsvd</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
-<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
-<tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
-<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
-<tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
-</table>
-<h3 id="CDbgNode2Eap1">CDbgNode2Eap1</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:52</td><td>Rsvd</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
-<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
-<tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
-<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
-<tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
-</table>
-<h3 id="CDbgNode3Eap0">CDbgNode3Eap0</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:52</td><td>Rsvd</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
-<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
-<tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
-<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
-<tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
-</table>
-<h3 id="CDbgNode3Eap1">CDbgNode3Eap1</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:52</td><td>Rsvd</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
-<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
-<tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
-<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
-<tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
-</table>
-<h3 id="CDbgSignalMask0">CDbgSignalMask0</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Mask to be applied to debug bus before match</td></tr>
-</table>
-<h3 id="CDbgSignalMatch0">CDbgSignalMatch0</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Value used for debug bus match.</td></tr>
-</table>
-<h3 id="CDbgSignalMask1">CDbgSignalMask1</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Mask to be applied to debug bus before match</td></tr>
-</table>
-<h3 id="CDbgSignalMatch1">CDbgSignalMatch1</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Value used for debug bus match.</td></tr>
-</table>
-<h3 id="CDbgSignalEdgeDetectCfg">CDbgSignalEdgeDetectCfg</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:14</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>13</td><td>PosEdgeSignal1</td><td>RW</td><td>0x0</td><td>Defines which edge to detect for singal from signal1_select. 1: Pos edge, 0: Neg Edge</td></tr>
-<tr><td>12:7</td><td>Signal1Select</td><td>RW</td><td>0x0</td><td>Define which signal to select for edge detection.</td></tr>
-<tr><td>6</td><td>PosEdgeSignal0</td><td>RW</td><td>0x0</td><td>Defines which edge to detect for singal from signal0_select. 1: Pos edge, 0: Neg Edge</td></tr>
-<tr><td>5:0</td><td>Signal0Select</td><td>RW</td><td>0x0</td><td>Define which signal to select for edge detection.</td></tr>
-</table>
-<h3 id="CDbgEapStatus">CDbgEapStatus</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:40</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>39</td><td>Node3Eap1W2C</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>38</td><td>Node3Eap0W2C</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>37</td><td>Node2Eap1W2C</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>36</td><td>Node2Eap0W2C</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>35</td><td>Node1Eap1W2C</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>34</td><td>Node1Eap0W2C</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>33</td><td>Node0Eap1W2C</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>32</td><td>Node0Eap0W2C</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>31:8</td><td>Rsvd318</td><td>R</td><td>0x0</td><td>-</td></tr>
-<tr><td>7</td><td>Node3Eap1</td><td>R</td><td>0x0</td><td>-</td></tr>
-<tr><td>6</td><td>Node3Eap0</td><td>R</td><td>0x0</td><td>-</td></tr>
-<tr><td>5</td><td>Node2Eap1</td><td>R</td><td>0x0</td><td>-</td></tr>
-<tr><td>4</td><td>Node2Eap0</td><td>R</td><td>0x0</td><td>-</td></tr>
-<tr><td>3</td><td>Node1Eap1</td><td>R</td><td>0x0</td><td>-</td></tr>
-<tr><td>2</td><td>Node1Eap0</td><td>R</td><td>0x0</td><td>-</td></tr>
-<tr><td>1</td><td>Node0Eap1</td><td>R</td><td>0x0</td><td>-</td></tr>
-<tr><td>0</td><td>Node0Eap0</td><td>R</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="CDbgClaCtrlStatus">CDbgClaCtrlStatus</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>15</td><td>DisableLocalClockHalt</td><td>RW</td><td>0x0</td><td>If this bit is set, clock halt action is not applied to local clocks</td></tr>
-<tr><td>14</td><td>DisableGlobalClockHalt</td><td>RW</td><td>0x0</td><td>If this bit is set, clock halt action is not applied to global clocks</td></tr>
-<tr><td>13:7</td><td>ClaChainLoopDelay</td><td>RW</td><td>0x36</td><td>Creates a window in which we don’t forward the incoming Xtrigger and Clock_Halt signal</td></tr>
-<tr><td>6</td><td>EnableCla</td><td>RW</td><td>0x0</td><td>Set this bit to 1 to enable CLA. If this bit is set, CLA is clock gated (save pwr)</td></tr>
-<tr><td>5</td><td>EnableEap</td><td>RW</td><td>0x0</td><td>Set Enable EAP to 1 after EAP programming is complete</td></tr>
-<tr><td>4:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1:0</td><td>CurrentNode</td><td>R</td><td>0x0</td><td>Read the current node.</td></tr>
-</table>
-<h3 id="CDbgRsvd0">CDbgRsvd0</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Value of reserved register.</td></tr>
-</table>
-<h3 id="CDbgRsvd1">CDbgRsvd1</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Value of reserved register.</td></tr>
-</table>
-<h3 id="CDbgRsvd2">CDbgRsvd2</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Value of reserved register.</td></tr>
-</table>
-<h3 id="CDbgTransitionMask">CDbgTransitionMask</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="CDbgTransitionFromValue">CDbgTransitionFromValue</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="CDbgTransitionToValue">CDbgTransitionToValue</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="CDbgOnesCountMask">CDbgOnesCountMask</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="CDbgOnesCountValue">CDbgOnesCountValue</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="CDbgAnyChange">CDbgAnyChange</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>Mask</td><td>RW</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="CDbgSignalSnapshotNode0Eap0">CDbgSignalSnapshotNode0Eap0</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="CDbgSignalSnapshotNode0Eap1">CDbgSignalSnapshotNode0Eap1</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="CDbgSignalSnapshotNode1Eap0">CDbgSignalSnapshotNode1Eap0</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="CDbgSignalSnapshotNode1Eap1">CDbgSignalSnapshotNode1Eap1</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="CDbgSignalSnapshotNode2Eap0">CDbgSignalSnapshotNode2Eap0</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="CDbgSignalSnapshotNode2Eap1">CDbgSignalSnapshotNode2Eap1</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="CDbgSignalSnapshotNode3Eap0">CDbgSignalSnapshotNode3Eap0</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="CDbgSignalSnapshotNode3Eap1">CDbgSignalSnapshotNode3Eap1</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="CDbgClaTimeMatch">CDbgClaTimeMatch</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>TimeMatchVal</td><td>RW</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="CDbgSignalMask2">CDbgSignalMask2</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Mask to be applied to debug bus before match</td></tr>
-</table>
-<h3 id="CDbgSignalMatch2">CDbgSignalMatch2</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Value used for debug bus match.</td></tr>
-</table>
-<h3 id="CDbgSignalMask3">CDbgSignalMask3</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Mask to be applied to debug bus before match</td></tr>
-</table>
-<h3 id="CDbgSignalMatch3">CDbgSignalMatch3</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Value used for debug bus match.</td></tr>
-</table>
-<h3 id="CDbgNode0Eap2">CDbgNode0Eap2</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:58</td><td>Action3</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>57:52</td><td>Action2</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
-<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
-<tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
-<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
-<tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
-</table>
-<h3 id="CDbgNode0Eap3">CDbgNode0Eap3</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:58</td><td>Action3</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>57:52</td><td>Action2</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
-<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
-<tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
-<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
-<tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
-</table>
-<h3 id="CDbgNode1Eap2">CDbgNode1Eap2</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:58</td><td>Action3</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>57:52</td><td>Action2</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
-<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
-<tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
-<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
-<tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
-</table>
-<h3 id="CDbgNode1Eap3">CDbgNode1Eap3</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:58</td><td>Action3</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>57:52</td><td>Action2</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
-<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
-<tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
-<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
-<tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
-</table>
-<h3 id="CDbgNode2Eap2">CDbgNode2Eap2</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:58</td><td>Action3</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>57:52</td><td>Action2</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
-<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
-<tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
-<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
-<tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
-</table>
-<h3 id="CDbgNode2Eap3">CDbgNode2Eap3</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:58</td><td>Action3</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>57:52</td><td>Action2</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
-<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
-<tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
-<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
-<tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
-</table>
-<h3 id="CDbgNode3Eap2">CDbgNode3Eap2</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:58</td><td>Action3</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>57:52</td><td>Action2</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
-<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
-<tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
-<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
-<tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
-</table>
-<h3 id="CDbgNode3Eap3">CDbgNode3Eap3</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:58</td><td>Action3</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>57:52</td><td>Action2</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
-<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
-<tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
-<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</td></tr>
-<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
-<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
-<tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
-<tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
-</table>
-<h3 id="CDbgSignalSnapshotNode0Eap2">CDbgSignalSnapshotNode0Eap2</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="CDbgSignalSnapshotNode0Eap3">CDbgSignalSnapshotNode0Eap3</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="CDbgSignalSnapshotNode1Eap2">CDbgSignalSnapshotNode1Eap2</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="CDbgSignalSnapshotNode1Eap3">CDbgSignalSnapshotNode1Eap3</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="CDbgSignalSnapshotNode2Eap2">CDbgSignalSnapshotNode2Eap2</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="CDbgSignalSnapshotNode2Eap3">CDbgSignalSnapshotNode2Eap3</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="CDbgSignalSnapshotNode3Eap2">CDbgSignalSnapshotNode3Eap2</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="CDbgSignalSnapshotNode3Eap3">CDbgSignalSnapshotNode3Eap3</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="CDbgSignalDelayMuxSel">CDbgSignalDelayMuxSel</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:16</td><td>Rsvd</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>15:14</td><td>Muxselseg7</td><td>RW</td><td>0x0</td><td>Dbg Mux Shifted signals Select Bits for Lane 7</td></tr>
-<tr><td>13:12</td><td>Muxselseg6</td><td>RW</td><td>0x0</td><td>Dbg Mux Shifted signals Select Bits for Lane 6</td></tr>
-<tr><td>11:10</td><td>Muxselseg5</td><td>RW</td><td>0x0</td><td>Dbg Mux Shifted signals Select Bits for Lane 5</td></tr>
-<tr><td>9:8</td><td>Muxselseg4</td><td>RW</td><td>0x0</td><td>Dbg Mux Shifted signals Select Bits for Lane 4</td></tr>
-<tr><td>7:6</td><td>Muxselseg3</td><td>RW</td><td>0x0</td><td>Dbg Mux Shifted signals Select Bits for Lane 3</td></tr>
-<tr><td>5:4</td><td>Muxselseg2</td><td>RW</td><td>0x0</td><td>Dbg Mux Shifted signals Select Bits for Lane 2</td></tr>
-<tr><td>3:2</td><td>Muxselseg1</td><td>RW</td><td>0x0</td><td>Dbg Mux Shifted signals Select Bits for Lane 1</td></tr>
-<tr><td>1:0</td><td>Muxselseg0</td><td>RW</td><td>0x0</td><td>Dbg Mux Shifted signals Select Bits for Lane 0</td></tr>
-</table>
-<h3 id="CDbgClaTimestampsync">CDbgClaTimestampsync</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63</td><td>Timesyncmodeenable</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>62:0</td><td>Timestamp</td><td>RW</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="CDbgClaXtriggerTimestretch">CDbgClaXtriggerTimestretch</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:16</td><td>Rsvd</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>15:8</td><td>Xtrigger1Stretch</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>7:0</td><td>Xtrigger0Stretch</td><td>RW</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="CrScratchpad">CrScratchpad</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>Data</td><td>RW</td><td>0xBFBFBFBFBFBFBFBF</td><td>-</td></tr>
-</table>
-<h3 id="Scratch">Scratch</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>Data</td><td>RW</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="Trfunnelcontrol">Trfunnelcontrol</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>3</td><td>Trfunnelempty</td><td>R</td><td>0x1</td><td>-</td></tr>
-<tr><td>2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>Trfunnelenable</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>0</td><td>Trfunnelactive</td><td>RW</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="Trfunnelimpl">Trfunnelimpl</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:12</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>11:8</td><td>Trfunnelcomptype</td><td>R</td><td>0x8</td><td>-</td></tr>
-<tr><td>7:4</td><td>Trfunnelverminor</td><td>R</td><td>0x0</td><td>e</td></tr>
-<tr><td>3:0</td><td>Trfunnelvermajor</td><td>R</td><td>0x1</td><td>-</td></tr>
-</table>
-<h3 id="Trfunneldisinput">Trfunneldisinput</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>15:0</td><td>Trfunneldisinput</td><td>RW</td><td>0x0</td><td>Bits 7:0 are reserved for N-trace srcs and 15:8 for Dst sources</td></tr>
-</table>
-<h3 id="Trramcontrol">Trramcontrol</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>8</td><td>Trramstoponwrap</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>4</td><td>Trrammode</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>3</td><td>Trramempty</td><td>R</td><td>0x1</td><td>-</td></tr>
-<tr><td>2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>Trramenable</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>0</td><td>Trramactive</td><td>RW</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="Trramimpl">Trramimpl</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:28</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>27:24</td><td>Trramvendorframelength</td><td>RW</td><td>0x1</td><td>-</td></tr>
-<tr><td>23:14</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>13</td><td>Trramhassmem</td><td>R</td><td>0x1</td><td>-</td></tr>
-<tr><td>12</td><td>Trramhassram</td><td>R</td><td>0x1</td><td>-</td></tr>
-<tr><td>11:8</td><td>Trramcomptype</td><td>R</td><td>0x9</td><td>-</td></tr>
-<tr><td>7:4</td><td>Trramverminor</td><td>R</td><td>0x0</td><td>-</td></tr>
-<tr><td>3:0</td><td>Trramvermajor</td><td>R</td><td>0x1</td><td>-</td></tr>
-</table>
-<h3 id="Trramstartlow">Trramstartlow</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:2</td><td>Trramstartlow</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>1:0</td><td>Rsvd10</td><td>R</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="Trramstarthigh">Trramstarthigh</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>Trramstarthigh</td><td>RW</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="Trramlimitlow">Trramlimitlow</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:2</td><td>Trramlimitlow</td><td>RW</td><td>0x2000</td><td>-</td></tr>
-<tr><td>1:0</td><td>Rsvd10</td><td>R</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="Trramlimithigh">Trramlimithigh</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>Trramlimithigh</td><td>RW</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="Trramwplow">Trramwplow</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:2</td><td>Trramwplow</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>Trramwrap</td><td>R</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="Trramwphigh">Trramwphigh</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>Trramwphigh</td><td>RW</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="Trramrplow">Trramrplow</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:2</td><td>Trramrplow</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>1:0</td><td>Rsvd10</td><td>R</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="Trramrphigh">Trramrphigh</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>Trramrphigh</td><td>RW</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="Trramdata">Trramdata</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>Trramdata</td><td>R</td><td>0x0</td><td>-</td></tr>
-</table>
-<h3 id="Trcustomramsmemlimitlow">Trcustomramsmemlimitlow</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:2</td><td>Trcustomramsmemlimitlow</td><td>RW</td><td>0x1000</td><td>-</td></tr>
-<tr><td>1:0</td><td>Rsvd10</td><td>R</td><td>0x0</td><td>-</td></tr>
-</table>
+<tr><td>0x0</td><td><a href="#Trdstramcontrol">Trdstramcontrol</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x4</td><td><a href="#Trdstramimpl">Trdstramimpl</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#Trdstramstartlow">Trdstramstartlow</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x14</td><td><a href="#Trdstramstarthigh">Trdstramstarthigh</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x18</td><td><a href="#Trdstramlimitlow">Trdstramlimitlow</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x1C</td><td><a href="#Trdstramlimithigh">Trdstramlimithigh</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x20</td><td><a href="#Trdstramwplow">Trdstramwplow</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x24</td><td><a href="#Trdstramwphigh">Trdstramwphigh</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x28</td><td><a href="#Trdstramrplow">Trdstramrplow</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x2C</td><td><a href="#Trdstramrphigh">Trdstramrphigh</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x40</td><td><a href="#Trdstramdata">Trdstramdata</a></td><td>R</td><td>-</td></tr>
+<tr><td>0xFF8</td><td><a href="#dst_sink.ScratchLo">dst_sink.ScratchLo</a></td><td>RW</td><td>Scratch register (low) for DV and potential ECO usage</td></tr>
+<tr><td>0xFFC</td><td><a href="#dst_sink.ScratchHi">dst_sink.ScratchHi</a></td><td>RW</td><td>Scratch register (high) for DV and potential ECO usage</td></tr>
+<tr><td>0x1000</td><td><a href="#Trfunnelcontrol">Trfunnelcontrol</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x1004</td><td><a href="#Trfunnelimpl">Trfunnelimpl</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x1008</td><td><a href="#Trfunneldisinput">Trfunneldisinput</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x1FF8</td><td><a href="#funnel.ScratchLo">funnel.ScratchLo</a></td><td>RW</td><td>Scratch register (low) for DV and potential ECO usage</td></tr>
+<tr><td>0x1FFC</td><td><a href="#funnel.ScratchHi">funnel.ScratchHi</a></td><td>RW</td><td>Scratch register (high) for DV and potential ECO usage</td></tr>
+<tr><td>0x2100</td><td><a href="#CDbgClaCounter0Cfg">CDbgClaCounter0Cfg</a></td><td>RW</td><td>Configure CLA counter0. One of the 4 counters used for counting cycles after a event match, and trigger a action on match.</td></tr>
+<tr><td>0x2108</td><td><a href="#CDbgClaCounter1Cfg">CDbgClaCounter1Cfg</a></td><td>RW</td><td>Configure CLA counter1. One of the 4 counters used for counting cycles after a event match, and trigger a action on match.</td></tr>
+<tr><td>0x2110</td><td><a href="#CDbgClaCounter2Cfg">CDbgClaCounter2Cfg</a></td><td>RW</td><td>Configure CLA counter2. One of the 4 counters used for counting cycles after a event match, and trigger a action on match.</td></tr>
+<tr><td>0x2118</td><td><a href="#CDbgClaCounter3Cfg">CDbgClaCounter3Cfg</a></td><td>RW</td><td>Configure CLA counter3. One of the 4 counters used for counting cycles after a event match, and trigger a action on match.</td></tr>
+<tr><td>0x2120</td><td><a href="#CDbgNode0Eap0">CDbgNode0Eap0</a></td><td>RW</td><td>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</td></tr>
+<tr><td>0x2128</td><td><a href="#CDbgNode0Eap1">CDbgNode0Eap1</a></td><td>RW</td><td>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</td></tr>
+<tr><td>0x2130</td><td><a href="#CDbgNode1Eap0">CDbgNode1Eap0</a></td><td>RW</td><td>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</td></tr>
+<tr><td>0x2138</td><td><a href="#CDbgNode1Eap1">CDbgNode1Eap1</a></td><td>RW</td><td>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</td></tr>
+<tr><td>0x2140</td><td><a href="#CDbgNode2Eap0">CDbgNode2Eap0</a></td><td>RW</td><td>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</td></tr>
+<tr><td>0x2148</td><td><a href="#CDbgNode2Eap1">CDbgNode2Eap1</a></td><td>RW</td><td>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</td></tr>
+<tr><td>0x2150</td><td><a href="#CDbgNode3Eap0">CDbgNode3Eap0</a></td><td>RW</td><td>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</td></tr>
+<tr><td>0x2158</td><td><a href="#CDbgNode3Eap1">CDbgNode3Eap1</a></td><td>RW</td><td>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</td></tr>
+<tr><td>0x2160</td><td><a href="#CDbgSignalMask0Lo">CDbgSignalMask0Lo</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x2) is triggered when debug_bus &amp; mask = match.</td></tr>
+<tr><td>0x2168</td><td><a href="#CDbgSignalMatch0Lo">CDbgSignalMatch0Lo</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x2) is triggered when debug_bus &amp; mask = match.</td></tr>
+<tr><td>0x2170</td><td><a href="#CDbgSignalMask1Lo">CDbgSignalMask1Lo</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x4) is triggered when debug_bus &amp; mask = match.</td></tr>
+<tr><td>0x2178</td><td><a href="#CDbgSignalMatch1Lo">CDbgSignalMatch1Lo</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x4) is triggered when debug_bus &amp; mask = match.</td></tr>
+<tr><td>0x2180</td><td><a href="#CDbgSignalEdgeDetectCfg">CDbgSignalEdgeDetectCfg</a></td><td>RW</td><td>Register to configure debug bus for edge triggers.</td></tr>
+<tr><td>0x2188</td><td><a href="#CDbgEapStatus">CDbgEapStatus</a></td><td>RW</td><td>Register to indicate if an EAP was activated. There is one status bit per EAP in bits [15:0] (Node0Eap0..Node3Eap3, 4 EAPs per Node across 4 Nodes) and one write-to-clear bit per EAP in bits [47:32] (Node0Eap0W2C..Node3Eap3W2C); write the matching w2c bit to reset a status bit. The register is used by SW to know if an action was taken (ex: NMI ISR needs to know which of the EAP triggered the NMI)</td></tr>
+<tr><td>0x2190</td><td><a href="#CDbgClaCtrlStatus">CDbgClaCtrlStatus</a></td><td>RW</td><td>Ctrl/Status register to Enable EAP after EAP programming is complete, and read the current node.</td></tr>
+<tr><td>0x2198</td><td><a href="#CDbgMuxSelLo">CDbgMuxSelLo</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x21A0</td><td><a href="#CDbgRsvd1">CDbgRsvd1</a></td><td>RW</td><td>Reserved Register that can be changed.</td></tr>
+<tr><td>0x21A8</td><td><a href="#CDbgRsvd2">CDbgRsvd2</a></td><td>RW</td><td>Reserved Register that can be changed.</td></tr>
+<tr><td>0x21B0</td><td><a href="#CDbgTransitionMaskLo">CDbgTransitionMaskLo</a></td><td>RW</td><td>3 registers to configure &quot;transition event&quot;. This register is to select the signals of interest using a mask.</td></tr>
+<tr><td>0x21B8</td><td><a href="#CDbgTransitionFromValueLo">CDbgTransitionFromValueLo</a></td><td>RW</td><td>3 registers to configure &quot;transition event&quot;. The event is triggered on transition from Value A to Value B. This register specifies Value A.</td></tr>
+<tr><td>0x21C0</td><td><a href="#CDbgTransitionToValueLo">CDbgTransitionToValueLo</a></td><td>RW</td><td>3 registers to configure &quot;transition event&quot;. The event is triggered on transition from Value A to Value B. This register specifies Value B.</td></tr>
+<tr><td>0x21C8</td><td><a href="#CDbgOnesCountMaskLo">CDbgOnesCountMaskLo</a></td><td>RW</td><td>2 registers to configure &quot;ones count&quot; event. This register is to select the signals of interest using a mask.</td></tr>
+<tr><td>0x21D0</td><td><a href="#CDbgOnesCountValue">CDbgOnesCountValue</a></td><td>RW</td><td>2 registers to configure &quot;ones count&quot; event. Event triggered when the sum of the signals match the value specified in this register.</td></tr>
+<tr><td>0x21D8</td><td><a href="#CDbgAnyChangeLo">CDbgAnyChangeLo</a></td><td>RW</td><td>Event triggered when a subset of debug signals change. The mask is used to select the subset of the debug signals.</td></tr>
+<tr><td>0x21E0</td><td><a href="#CDbgSignalSnapshotNode0Eap0Lo">CDbgSignalSnapshotNode0Eap0Lo</a></td><td>R</td><td>debug Bus Value when Node0 Eap0 Trigger is met.</td></tr>
+<tr><td>0x21E8</td><td><a href="#CDbgSignalSnapshotNode0Eap1Lo">CDbgSignalSnapshotNode0Eap1Lo</a></td><td>R</td><td>debug Bus Value when Node0 Eap1 Trigger is met.</td></tr>
+<tr><td>0x21F0</td><td><a href="#CDbgSignalSnapshotNode1Eap0Lo">CDbgSignalSnapshotNode1Eap0Lo</a></td><td>R</td><td>debug Bus Value when Node1 Eap0 Trigger is met.</td></tr>
+<tr><td>0x21F8</td><td><a href="#CDbgSignalSnapshotNode1Eap1Lo">CDbgSignalSnapshotNode1Eap1Lo</a></td><td>R</td><td>debug Bus Value when Node1 Eap0 Trigger is met.</td></tr>
+<tr><td>0x2200</td><td><a href="#CDbgSignalSnapshotNode2Eap0Lo">CDbgSignalSnapshotNode2Eap0Lo</a></td><td>R</td><td>debug Bus Value when Node0 Eap0 Trigger is met.</td></tr>
+<tr><td>0x2208</td><td><a href="#CDbgSignalSnapshotNode2Eap1Lo">CDbgSignalSnapshotNode2Eap1Lo</a></td><td>R</td><td>debug Bus Value when Node0 Eap1 Trigger is met.</td></tr>
+<tr><td>0x2210</td><td><a href="#CDbgSignalSnapshotNode3Eap0Lo">CDbgSignalSnapshotNode3Eap0Lo</a></td><td>R</td><td>debug Bus Value when Node1 Eap0 Trigger is met.</td></tr>
+<tr><td>0x2218</td><td><a href="#CDbgSignalSnapshotNode3Eap1Lo">CDbgSignalSnapshotNode3Eap1Lo</a></td><td>R</td><td>debug Bus Value when Node1 Eap0 Trigger is met.</td></tr>
+<tr><td>0x2220</td><td><a href="#CDbgClaTimeMatch">CDbgClaTimeMatch</a></td><td>RW</td><td>This value is compared (greater than or equal to the programmed value) against the internal time register value of the core, and is used to generate a time match event for CLA. Needs to be non zero for the time match event signal to trigger. The event will only trigger an action if the EAP programming is done. Requires writing 0 to this register to stop the match event.</td></tr>
+<tr><td>0x2228</td><td><a href="#CDbgSignalMask2Lo">CDbgSignalMask2Lo</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x1C) is triggered when debug_bus &amp; mask = match.</td></tr>
+<tr><td>0x2230</td><td><a href="#CDbgSignalMatch2Lo">CDbgSignalMatch2Lo</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x1C) is triggered when debug_bus &amp; mask = match.</td></tr>
+<tr><td>0x2238</td><td><a href="#CDbgSignalMask3Lo">CDbgSignalMask3Lo</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x1D) is triggered when debug_bus &amp; mask = match.</td></tr>
+<tr><td>0x2240</td><td><a href="#CDbgSignalMatch3Lo">CDbgSignalMatch3Lo</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x1D) is triggered when debug_bus &amp; mask = match.</td></tr>
+<tr><td>0x2248</td><td><a href="#CDbgNode0Eap2">CDbgNode0Eap2</a></td><td>RW</td><td>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</td></tr>
+<tr><td>0x2250</td><td><a href="#CDbgNode0Eap3">CDbgNode0Eap3</a></td><td>RW</td><td>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</td></tr>
+<tr><td>0x2258</td><td><a href="#CDbgNode1Eap2">CDbgNode1Eap2</a></td><td>RW</td><td>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</td></tr>
+<tr><td>0x2260</td><td><a href="#CDbgNode1Eap3">CDbgNode1Eap3</a></td><td>RW</td><td>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</td></tr>
+<tr><td>0x2268</td><td><a href="#CDbgNode2Eap2">CDbgNode2Eap2</a></td><td>RW</td><td>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</td></tr>
+<tr><td>0x2270</td><td><a href="#CDbgNode2Eap3">CDbgNode2Eap3</a></td><td>RW</td><td>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</td></tr>
+<tr><td>0x2278</td><td><a href="#CDbgNode3Eap2">CDbgNode3Eap2</a></td><td>RW</td><td>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</td></tr>
+<tr><td>0x2280</td><td><a href="#CDbgNode3Eap3">CDbgNode3Eap3</a></td><td>RW</td><td>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</td></tr>
+<tr><td>0x2288</td><td><a href="#CDbgSignalSnapshotNode0Eap2Lo">CDbgSignalSnapshotNode0Eap2Lo</a></td><td>R</td><td>debug Bus Value when Node0 Eap2 Trigger is met.</td></tr>
+<tr><td>0x2290</td><td><a href="#CDbgSignalSnapshotNode0Eap3Lo">CDbgSignalSnapshotNode0Eap3Lo</a></td><td>R</td><td>debug Bus Value when Node0 Eap3 Trigger is met.</td></tr>
+<tr><td>0x2298</td><td><a href="#CDbgSignalSnapshotNode1Eap2Lo">CDbgSignalSnapshotNode1Eap2Lo</a></td><td>R</td><td>debug Bus Value when Node1 Eap2 Trigger is met.</td></tr>
+<tr><td>0x22A0</td><td><a href="#CDbgSignalSnapshotNode1Eap3Lo">CDbgSignalSnapshotNode1Eap3Lo</a></td><td>R</td><td>debug Bus Value when Node1 Eap3 Trigger is met.</td></tr>
+<tr><td>0x22A8</td><td><a href="#CDbgSignalSnapshotNode2Eap2Lo">CDbgSignalSnapshotNode2Eap2Lo</a></td><td>R</td><td>debug Bus Value when Node2 Eap2 Trigger is met.</td></tr>
+<tr><td>0x22B0</td><td><a href="#CDbgSignalSnapshotNode2Eap3Lo">CDbgSignalSnapshotNode2Eap3Lo</a></td><td>R</td><td>debug Bus Value when Node2 Eap3 Trigger is met.</td></tr>
+<tr><td>0x22B8</td><td><a href="#CDbgSignalSnapshotNode3Eap2Lo">CDbgSignalSnapshotNode3Eap2Lo</a></td><td>R</td><td>debug Bus Value when Node3 Eap2 Trigger is met.</td></tr>
+<tr><td>0x22C0</td><td><a href="#CDbgSignalSnapshotNode3Eap3Lo">CDbgSignalSnapshotNode3Eap3Lo</a></td><td>R</td><td>debug Bus Value when Node3 Eap3 Trigger is met.</td></tr>
+<tr><td>0x22C8</td><td><a href="#CDbgSignalDelayMuxSel">CDbgSignalDelayMuxSel</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x22D8</td><td><a href="#CDbgClaXtriggerTimestretch">CDbgClaXtriggerTimestretch</a></td><td>RW</td><td>This value determines the time stretched pulse duration for the cross trigger. 8 bits for each of the two triggers.</td></tr>
+<tr><td>0x22F0</td><td><a href="#CDbgClaTimestamp">CDbgClaTimestamp</a></td><td>RW</td><td>64-bit timestamp counter. Increments on time_tick. Can be written directly or loaded from timestamp_sync on xtrigger when resync is enabled.</td></tr>
+<tr><td>0x22F8</td><td><a href="#CDbgClaTimestampSync">CDbgClaTimestampSync</a></td><td>RW</td><td>Timestamp sync value. This value is loaded into the timestamp register on xtrigger posedge when resync bit is enabled.</td></tr>
+<tr><td>0x2300</td><td><a href="#CDbgClaTimestampConfig">CDbgClaTimestampConfig</a></td><td>RW</td><td>Timestamp configuration register. Controls resync behavior and debug marker.</td></tr>
+<tr><td>0x2308</td><td><a href="#CDbgClaTimestampOffset">CDbgClaTimestampOffset</a></td><td>RW</td><td>Timestamp offset register. The Offset value is subtracted from the timestamp before comparing with incoming timestamp value.</td></tr>
+<tr><td>0x2400</td><td><a href="#CDbgSignalMask0Hi">CDbgSignalMask0Hi</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x2) is triggered when debug_bus &amp; mask = match.</td></tr>
+<tr><td>0x2408</td><td><a href="#CDbgSignalMatch0Hi">CDbgSignalMatch0Hi</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x2) is triggered when debug_bus &amp; mask = match.</td></tr>
+<tr><td>0x2410</td><td><a href="#CDbgSignalMask1Hi">CDbgSignalMask1Hi</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x4) is triggered when debug_bus &amp; mask = match.</td></tr>
+<tr><td>0x2418</td><td><a href="#CDbgSignalMatch1Hi">CDbgSignalMatch1Hi</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x4) is triggered when debug_bus &amp; mask = match.</td></tr>
+<tr><td>0x2420</td><td><a href="#CDbgSignalMask2Hi">CDbgSignalMask2Hi</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x1C) is triggered when debug_bus &amp; mask = match.</td></tr>
+<tr><td>0x2428</td><td><a href="#CDbgSignalMatch2Hi">CDbgSignalMatch2Hi</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x1C) is triggered when debug_bus &amp; mask = match.</td></tr>
+<tr><td>0x2430</td><td><a href="#CDbgSignalMask3Hi">CDbgSignalMask3Hi</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x1D) is triggered when debug_bus &amp; mask = match.</td></tr>
+<tr><td>0x2438</td><td><a href="#CDbgSignalMatch3Hi">CDbgSignalMatch3Hi</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x1D) is triggered when debug_bus &amp; mask = match.</td></tr>
+<tr><td>0x2440</td><td><a href="#CDbgMuxSelHi">CDbgMuxSelHi</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x2448</td><td><a href="#CDbgTransitionMaskHi">CDbgTransitionMaskHi</a></td><td>RW</td><td>3 registers to configure &quot;transition event&quot;. This register is to select the signals of interest using a mask.</td></tr>
+<tr><td>0x2450</td><td><a href="#CDbgTransitionFromValueHi">CDbgTransitionFromValueHi</a></td><td>RW</td><td>3 registers to configure &quot;transition event&quot;. The event is triggered on transition from Value A to Value B. This register specifies Value A.</td></tr>
+<tr><td>0x2458</td><td><a href="#CDbgTransitionToValueHi">CDbgTransitionToValueHi</a></td><td>RW</td><td>3 registers to configure &quot;transition event&quot;. The event is triggered on transition from Value A to Value B. This register specifies Value B.</td></tr>
+<tr><td>0x2460</td><td><a href="#CDbgOnesCountMaskHi">CDbgOnesCountMaskHi</a></td><td>RW</td><td>2 registers to configure &quot;ones count&quot; event. This register is to select the signals of interest using a mask.</td></tr>
+<tr><td>0x2468</td><td><a href="#CDbgAnyChangeHi">CDbgAnyChangeHi</a></td><td>RW</td><td>Event triggered when a subset of debug signals change. The mask is used to select the subset of the debug signals.</td></tr>
+<tr><td>0x2470</td><td><a href="#CDbgSignalSnapshotNode0Eap0Hi">CDbgSignalSnapshotNode0Eap0Hi</a></td><td>R</td><td>debug Bus Value when Node0 Eap0 Trigger is met.</td></tr>
+<tr><td>0x2478</td><td><a href="#CDbgSignalSnapshotNode0Eap1Hi">CDbgSignalSnapshotNode0Eap1Hi</a></td><td>R</td><td>debug Bus Value when Node0 Eap1 Trigger is met.</td></tr>
+<tr><td>0x2480</td><td><a href="#CDbgSignalSnapshotNode1Eap0Hi">CDbgSignalSnapshotNode1Eap0Hi</a></td><td>R</td><td>debug Bus Value when Node1 Eap0 Trigger is met.</td></tr>
+<tr><td>0x2488</td><td><a href="#CDbgSignalSnapshotNode1Eap1Hi">CDbgSignalSnapshotNode1Eap1Hi</a></td><td>R</td><td>debug Bus Value when Node1 Eap0 Trigger is met.</td></tr>
+<tr><td>0x2490</td><td><a href="#CDbgSignalSnapshotNode2Eap0Hi">CDbgSignalSnapshotNode2Eap0Hi</a></td><td>R</td><td>debug Bus Value when Node0 Eap0 Trigger is met.</td></tr>
+<tr><td>0x2498</td><td><a href="#CDbgSignalSnapshotNode2Eap1Hi">CDbgSignalSnapshotNode2Eap1Hi</a></td><td>R</td><td>debug Bus Value when Node0 Eap1 Trigger is met.</td></tr>
+<tr><td>0x24A0</td><td><a href="#CDbgSignalSnapshotNode3Eap0Hi">CDbgSignalSnapshotNode3Eap0Hi</a></td><td>R</td><td>debug Bus Value when Node1 Eap0 Trigger is met.</td></tr>
+<tr><td>0x24A8</td><td><a href="#CDbgSignalSnapshotNode3Eap1Hi">CDbgSignalSnapshotNode3Eap1Hi</a></td><td>R</td><td>debug Bus Value when Node1 Eap0 Trigger is met.</td></tr>
+<tr><td>0x24B0</td><td><a href="#CDbgSignalSnapshotNode0Eap2Hi">CDbgSignalSnapshotNode0Eap2Hi</a></td><td>R</td><td>debug Bus Value when Node0 Eap2 Trigger is met.</td></tr>
+<tr><td>0x24B8</td><td><a href="#CDbgSignalSnapshotNode0Eap3Hi">CDbgSignalSnapshotNode0Eap3Hi</a></td><td>R</td><td>debug Bus Value when Node0 Eap3 Trigger is met.</td></tr>
+<tr><td>0x24C0</td><td><a href="#CDbgSignalSnapshotNode1Eap2Hi">CDbgSignalSnapshotNode1Eap2Hi</a></td><td>R</td><td>debug Bus Value when Node1 Eap2 Trigger is met.</td></tr>
+<tr><td>0x24C8</td><td><a href="#CDbgSignalSnapshotNode1Eap3Hi">CDbgSignalSnapshotNode1Eap3Hi</a></td><td>R</td><td>debug Bus Value when Node1 Eap3 Trigger is met.</td></tr>
+<tr><td>0x24D0</td><td><a href="#CDbgSignalSnapshotNode2Eap2Hi">CDbgSignalSnapshotNode2Eap2Hi</a></td><td>R</td><td>debug Bus Value when Node2 Eap2 Trigger is met.</td></tr>
+<tr><td>0x24D8</td><td><a href="#CDbgSignalSnapshotNode2Eap3Hi">CDbgSignalSnapshotNode2Eap3Hi</a></td><td>R</td><td>debug Bus Value when Node2 Eap3 Trigger is met.</td></tr>
+<tr><td>0x24E0</td><td><a href="#CDbgSignalSnapshotNode3Eap2Hi">CDbgSignalSnapshotNode3Eap2Hi</a></td><td>R</td><td>debug Bus Value when Node3 Eap2 Trigger is met.</td></tr>
+<tr><td>0x24E8</td><td><a href="#CDbgSignalSnapshotNode3Eap3Hi">CDbgSignalSnapshotNode3Eap3Hi</a></td><td>R</td><td>debug Bus Value when Node3 Eap3 Trigger is met.</td></tr>
+<tr><td>0x24F0</td><td><a href="#CDbgLfsr">CDbgLfsr</a></td><td>RW</td><td>LFSR value.</td></tr>
+<tr><td>0x24F8</td><td><a href="#CDbgLfsrMask">CDbgLfsrMask</a></td><td>RW</td><td>LFSR programming mask.</td></tr>
+<tr><td>0x2500</td><td><a href="#CDbgTimestampCapture">CDbgTimestampCapture</a></td><td>R</td><td>Captured timestamp upper bits. When ts_capture is set in the timestamp config register, a cross trigger 0 event captures the timestamp upper bits into this register.</td></tr>
+<tr><td>0x2508</td><td><a href="#CDbgCompare0Lo">CDbgCompare0Lo</a></td><td>RW</td><td>Value for arithmetic comparison.</td></tr>
+<tr><td>0x2510</td><td><a href="#CDbgCompare0MaskLo">CDbgCompare0MaskLo</a></td><td>RW</td><td>Value to mask the arithmetic comparison.</td></tr>
+<tr><td>0x2518</td><td><a href="#CDbgCompare1Lo">CDbgCompare1Lo</a></td><td>RW</td><td>Value for arithmetic comparison.</td></tr>
+<tr><td>0x2520</td><td><a href="#CDbgCompare1MaskLo">CDbgCompare1MaskLo</a></td><td>RW</td><td>Value to mask the arithmetic comparison.</td></tr>
+<tr><td>0x2528</td><td><a href="#CDbgCompare2Lo">CDbgCompare2Lo</a></td><td>RW</td><td>Value for arithmetic comparison.</td></tr>
+<tr><td>0x2530</td><td><a href="#CDbgCompare2MaskLo">CDbgCompare2MaskLo</a></td><td>RW</td><td>Value to mask the arithmetic comparison.</td></tr>
+<tr><td>0x2538</td><td><a href="#CDbgCompare3Lo">CDbgCompare3Lo</a></td><td>RW</td><td>Value for arithmetic comparison.</td></tr>
+<tr><td>0x2540</td><td><a href="#CDbgCompare3MaskLo">CDbgCompare3MaskLo</a></td><td>RW</td><td>Value to mask the arithmetic comparison.</td></tr>
+<tr><td>0x2548</td><td><a href="#CDbgCompare0Hi">CDbgCompare0Hi</a></td><td>RW</td><td>Value for arithmetic comparison.</td></tr>
+<tr><td>0x2550</td><td><a href="#CDbgCompare0MaskHi">CDbgCompare0MaskHi</a></td><td>RW</td><td>Value to mask the arithmetic comparison.</td></tr>
+<tr><td>0x2558</td><td><a href="#CDbgCompare1Hi">CDbgCompare1Hi</a></td><td>RW</td><td>Value for arithmetic comparison.</td></tr>
+<tr><td>0x2560</td><td><a href="#CDbgCompare1MaskHi">CDbgCompare1MaskHi</a></td><td>RW</td><td>Value to mask the arithmetic comparison.</td></tr>
+<tr><td>0x2568</td><td><a href="#CDbgCompare2Hi">CDbgCompare2Hi</a></td><td>RW</td><td>Value for arithmetic comparison.</td></tr>
+<tr><td>0x2570</td><td><a href="#CDbgCompare2MaskHi">CDbgCompare2MaskHi</a></td><td>RW</td><td>Value to mask the arithmetic comparison.</td></tr>
+<tr><td>0x2578</td><td><a href="#CDbgCompare3Hi">CDbgCompare3Hi</a></td><td>RW</td><td>Value for arithmetic comparison.</td></tr>
+<tr><td>0x2580</td><td><a href="#CDbgCompare3MaskHi">CDbgCompare3MaskHi</a></td><td>RW</td><td>Value to mask the arithmetic comparison.</td></tr>
+<tr><td>0x2FF8</td><td><a href="#Scratch">Scratch</a></td><td>RW</td><td>Additional scratch register for DV and potential ECO usage</td></tr>
+<tr><td>0x3000</td><td><a href="#Trdstcontrol">Trdstcontrol</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x3004</td><td><a href="#Trdstimpl">Trdstimpl</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x3008</td><td><a href="#Trdstinstfeatures">Trdstinstfeatures</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x31A0</td><td><a href="#CDbgDebugTraceCfg">CDbgDebugTraceCfg</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x3FF8</td><td><a href="#dst_0_.ScratchLo">dst[0].ScratchLo</a></td><td>RW</td><td>Scratch register (low) for DV and potential ECO usage</td></tr>
+<tr><td>0x3FFC</td><td><a href="#dst_0_.ScratchHi">dst[0].ScratchHi</a></td><td>RW</td><td>Scratch register (high) for DV and potential ECO usage</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
 <h3 id="Trdstramcontrol">Trdstramcontrol</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -957,54 +224,998 @@
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>Trdstramdata</td><td>R</td><td>0x0</td><td>-</td></tr>
 </table>
-<h3 id="TrClusterFuseCfgLow">TrClusterFuseCfgLow</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:29</td><td>Core3Vid</td><td>RW</td><td>0x0</td><td>Physical Core3 vid</td></tr>
-<tr><td>28</td><td>Core3Enable</td><td>RW</td><td>0x0</td><td>Physical Core3 availability</td></tr>
-<tr><td>27:25</td><td>Core2Vid</td><td>RW</td><td>0x0</td><td>Physical Core2 vid</td></tr>
-<tr><td>24</td><td>Core2Enable</td><td>RW</td><td>0x0</td><td>Physical Core2 availability</td></tr>
-<tr><td>23:21</td><td>Core1Vid</td><td>RW</td><td>0x0</td><td>Physical Core1 vid</td></tr>
-<tr><td>20</td><td>Core1Enable</td><td>RW</td><td>0x0</td><td>Physical Core1 availability</td></tr>
-<tr><td>19:17</td><td>Core0Vid</td><td>RW</td><td>0x0</td><td>Physical Core0 vid</td></tr>
-<tr><td>16</td><td>Core0Enable</td><td>RW</td><td>0x0</td><td>Physical Core0 availability</td></tr>
-<tr><td>15</td><td>Lock</td><td>RW</td><td>0x0</td><td>Lock bit</td></tr>
-<tr><td>14:11</td><td>Rsvd1411</td><td>RW</td><td>0x0</td><td>Reserved for future use</td></tr>
-<tr><td>10:9</td><td>DebugEnable</td><td>RW</td><td>0x0</td><td>Debug enable. 00 - No Debug  01 - Default (JTAG based debug)  10 - AXI based debug  11 - Support both enabled at same time. Same cycle collision causes error packet</td></tr>
-<tr><td>8</td><td>TraceEnable</td><td>RW</td><td>0x0</td><td>CLA and Trace enable</td></tr>
-<tr><td>7:0</td><td>ScHarvestStrap</td><td>RW</td><td>0x0</td><td>1 bit / 4 ways (total 8 bit /32 ways possible) 1: enable 0: disabled</td></tr>
-</table>
-<h3 id="TrClusterFuseCfgHi">TrClusterFuseCfgHi</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:16</td><td>Rsvd3116</td><td>RW</td><td>0x0</td><td>Reserved for future use</td></tr>
-<tr><td>15:13</td><td>Core7Vid</td><td>RW</td><td>0x0</td><td>Physical core7 vid</td></tr>
-<tr><td>12</td><td>Core7Enable</td><td>RW</td><td>0x0</td><td>Physical core7 availability</td></tr>
-<tr><td>11:9</td><td>Core6Vid</td><td>RW</td><td>0x0</td><td>Physical Core6 vid</td></tr>
-<tr><td>8</td><td>Core6Enable</td><td>RW</td><td>0x0</td><td>Physical Core6 availability</td></tr>
-<tr><td>7:5</td><td>Core5Vid</td><td>RW</td><td>0x0</td><td>Physical Core5 vid</td></tr>
-<tr><td>4</td><td>Core5Enable</td><td>RW</td><td>0x0</td><td>Physical Core5 availability</td></tr>
-<tr><td>3:1</td><td>Core4Vid</td><td>RW</td><td>0x0</td><td>Physical Core4 vid</td></tr>
-<tr><td>0</td><td>Core4Enable</td><td>RW</td><td>0x0</td><td>Physical Core4 availability</td></tr>
-</table>
-<h3 id="TrScratchLo">TrScratchLo</h3>
+<h3 id="dst_sink.ScratchLo">dst_sink.ScratchLo</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>Data</td><td>RW</td><td>0x0</td><td>-</td></tr>
 </table>
-<h3 id="TrScratchHi">TrScratchHi</h3>
+<h3 id="dst_sink.ScratchHi">dst_sink.ScratchHi</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>Data</td><td>RW</td><td>0x0</td><td>-</td></tr>
 </table>
-<h3 id="TrScratchpadLo">TrScratchpadLo</h3>
+<h3 id="Trfunnelcontrol">Trfunnelcontrol</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>Data</td><td>RW</td><td>0xEFEFEFEF</td><td>-</td></tr>
+<tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3</td><td>Trfunnelempty</td><td>R</td><td>0x1</td><td>-</td></tr>
+<tr><td>2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>Trfunnelenable</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>0</td><td>Trfunnelactive</td><td>RW</td><td>0x0</td><td>-</td></tr>
 </table>
-<h3 id="TrScratchpadHi">TrScratchpadHi</h3>
+<h3 id="Trfunnelimpl">Trfunnelimpl</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>Data</td><td>RW</td><td>0xEFEFEFEF</td><td>-</td></tr>
+<tr><td>31:12</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>11:8</td><td>Trfunnelcomptype</td><td>R</td><td>0x8</td><td>-</td></tr>
+<tr><td>7:4</td><td>Trfunnelverminor</td><td>R</td><td>0x0</td><td>e</td></tr>
+<tr><td>3:0</td><td>Trfunnelvermajor</td><td>R</td><td>0x1</td><td>-</td></tr>
+</table>
+<h3 id="Trfunneldisinput">Trfunneldisinput</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>Trfunneldisinput</td><td>RW</td><td>0x0</td><td>Bits 7:0 are reserved for N-trace srcs and 15:8 for Dst sources</td></tr>
+</table>
+<h3 id="funnel.ScratchLo">funnel.ScratchLo</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>Data</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="funnel.ScratchHi">funnel.ScratchHi</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>Data</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgClaCounter0Cfg">CDbgClaCounter0Cfg</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63</td><td>Rsvd</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>62:48</td><td>UpperTarget</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>47:33</td><td>UpperCounter</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>32</td><td>ResetOnTarget</td><td>RW</td><td>0x0</td><td>When Counter = {upper_target,target} reset to 0.  With this bit set, counter will provide a periodic tick w/ frequency of (target +1) if the action is set to Auto Incr. The periodic tick will continue till Stop Auto Incr or Clear Counter action.</td></tr>
+<tr><td>31:16</td><td>Target</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>15:0</td><td>Counter</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgClaCounter1Cfg">CDbgClaCounter1Cfg</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63</td><td>Rsvd</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>62:48</td><td>UpperTarget</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>47:33</td><td>UpperCounter</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>32</td><td>ResetOnTarget</td><td>RW</td><td>0x0</td><td>When Counter = {upper_target,target}, reset to 0.  With this bit set, counter will provide a periodic tick w/ frequency of (target +1) if the action is set to Auto Incr. The periodic tick will continue till Stop Auto Incr or Clear Counter action.</td></tr>
+<tr><td>31:16</td><td>Target</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>15:0</td><td>Counter</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgClaCounter2Cfg">CDbgClaCounter2Cfg</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63</td><td>Rsvd</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>62:48</td><td>UpperTarget</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>47:33</td><td>UpperCounter</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>32</td><td>ResetOnTarget</td><td>RW</td><td>0x0</td><td>When Counter = {upper_target,target}, reset to 0.  With this bit set, counter will provide a periodic tick w/ frequency of (target +1) if the action is set to Auto Incr. The periodic tick will continue till Stop Auto Incr or Clear Counter action.</td></tr>
+<tr><td>31:16</td><td>Target</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>15:0</td><td>Counter</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgClaCounter3Cfg">CDbgClaCounter3Cfg</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63</td><td>Rsvd</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>62:48</td><td>UpperTarget</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>47:33</td><td>UpperCounter</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>32</td><td>ResetOnTarget</td><td>RW</td><td>0x0</td><td>When Counter = {upper_target,target}, reset to 0.  With this bit set, counter will provide a periodic tick w/ frequency of (target +1) if the action is set to Auto Incr. The periodic tick will continue till Stop Auto Incr or Clear Counter action.</td></tr>
+<tr><td>31:16</td><td>Target</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>15:0</td><td>Counter</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgNode0Eap0">CDbgNode0Eap0</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:58</td><td>Action3</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>57:52</td><td>Action2</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
+<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
+<tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
+<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
+<tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
+</table>
+<h3 id="CDbgNode0Eap1">CDbgNode0Eap1</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:58</td><td>Action3</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>57:52</td><td>Action2</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
+<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
+<tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
+<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
+<tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
+</table>
+<h3 id="CDbgNode1Eap0">CDbgNode1Eap0</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:58</td><td>Action3</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>57:52</td><td>Action2</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
+<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
+<tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
+<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
+<tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
+</table>
+<h3 id="CDbgNode1Eap1">CDbgNode1Eap1</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:58</td><td>Action3</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>57:52</td><td>Action2</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
+<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
+<tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
+<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
+<tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
+</table>
+<h3 id="CDbgNode2Eap0">CDbgNode2Eap0</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:58</td><td>Action3</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>57:52</td><td>Action2</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
+<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
+<tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
+<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
+<tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
+</table>
+<h3 id="CDbgNode2Eap1">CDbgNode2Eap1</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:58</td><td>Action3</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>57:52</td><td>Action2</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
+<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
+<tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
+<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
+<tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
+</table>
+<h3 id="CDbgNode3Eap0">CDbgNode3Eap0</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:58</td><td>Action3</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>57:52</td><td>Action2</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
+<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
+<tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
+<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
+<tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
+</table>
+<h3 id="CDbgNode3Eap1">CDbgNode3Eap1</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:58</td><td>Action3</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>57:52</td><td>Action2</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
+<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
+<tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
+<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
+<tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
+</table>
+<h3 id="CDbgSignalMask0Lo">CDbgSignalMask0Lo</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Mask to be applied to debug bus before match</td></tr>
+</table>
+<h3 id="CDbgSignalMatch0Lo">CDbgSignalMatch0Lo</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Value used for debug bus match.</td></tr>
+</table>
+<h3 id="CDbgSignalMask1Lo">CDbgSignalMask1Lo</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Mask to be applied to debug bus before match</td></tr>
+</table>
+<h3 id="CDbgSignalMatch1Lo">CDbgSignalMatch1Lo</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Value used for debug bus match.</td></tr>
+</table>
+<h3 id="CDbgSignalEdgeDetectCfg">CDbgSignalEdgeDetectCfg</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15</td><td>PosEdgeSignal1</td><td>RW</td><td>0x0</td><td>Defines which edge to detect for singal from signal1_select. 1: Pos edge, 0: Neg Edge</td></tr>
+<tr><td>14:8</td><td>Signal1Select</td><td>RW</td><td>0x0</td><td>Define which signal to select for edge detection.</td></tr>
+<tr><td>7</td><td>PosEdgeSignal0</td><td>RW</td><td>0x0</td><td>Defines which edge to detect for singal from signal0_select. 1: Pos edge, 0: Neg Edge</td></tr>
+<tr><td>6:0</td><td>Signal0Select</td><td>RW</td><td>0x0</td><td>Define which signal to select for edge detection.</td></tr>
+</table>
+<h3 id="CDbgEapStatus">CDbgEapStatus</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:48</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>47</td><td>Node3Eap3W2C</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>46</td><td>Node3Eap2W2C</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>45</td><td>Node3Eap1W2C</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>44</td><td>Node3Eap0W2C</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>43</td><td>Node2Eap3W2C</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>42</td><td>Node2Eap2W2C</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>41</td><td>Node2Eap1W2C</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>40</td><td>Node2Eap0W2C</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>39</td><td>Node1Eap3W2C</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>38</td><td>Node1Eap2W2C</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>37</td><td>Node1Eap1W2C</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>36</td><td>Node1Eap0W2C</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>35</td><td>Node0Eap3W2C</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>34</td><td>Node0Eap2W2C</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>33</td><td>Node0Eap1W2C</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>32</td><td>Node0Eap0W2C</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>31:16</td><td>Rsvd3116</td><td>R</td><td>0x0</td><td>-</td></tr>
+<tr><td>15</td><td>Node3Eap3</td><td>R</td><td>0x0</td><td>-</td></tr>
+<tr><td>14</td><td>Node3Eap2</td><td>R</td><td>0x0</td><td>-</td></tr>
+<tr><td>13</td><td>Node3Eap1</td><td>R</td><td>0x0</td><td>-</td></tr>
+<tr><td>12</td><td>Node3Eap0</td><td>R</td><td>0x0</td><td>-</td></tr>
+<tr><td>11</td><td>Node2Eap3</td><td>R</td><td>0x0</td><td>-</td></tr>
+<tr><td>10</td><td>Node2Eap2</td><td>R</td><td>0x0</td><td>-</td></tr>
+<tr><td>9</td><td>Node2Eap1</td><td>R</td><td>0x0</td><td>-</td></tr>
+<tr><td>8</td><td>Node2Eap0</td><td>R</td><td>0x0</td><td>-</td></tr>
+<tr><td>7</td><td>Node1Eap3</td><td>R</td><td>0x0</td><td>-</td></tr>
+<tr><td>6</td><td>Node1Eap2</td><td>R</td><td>0x0</td><td>-</td></tr>
+<tr><td>5</td><td>Node1Eap1</td><td>R</td><td>0x0</td><td>-</td></tr>
+<tr><td>4</td><td>Node1Eap0</td><td>R</td><td>0x0</td><td>-</td></tr>
+<tr><td>3</td><td>Node0Eap3</td><td>R</td><td>0x0</td><td>-</td></tr>
+<tr><td>2</td><td>Node0Eap2</td><td>R</td><td>0x0</td><td>-</td></tr>
+<tr><td>1</td><td>Node0Eap1</td><td>R</td><td>0x0</td><td>-</td></tr>
+<tr><td>0</td><td>Node0Eap0</td><td>R</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgClaCtrlStatus">CDbgClaCtrlStatus</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63</td><td>ClaLock</td><td>RW</td><td>0x0</td><td>If this bit is set, then CLA is locked and the enable_cla is latched forever</td></tr>
+<tr><td>62:16</td><td>Rsvd6216</td><td>RW</td><td>0x0</td><td>reserved fields</td></tr>
+<tr><td>15</td><td>DisableLocalClockHalt</td><td>RW</td><td>0x0</td><td>If this bit is set, clock halt action is not applied to local clocks</td></tr>
+<tr><td>14</td><td>DisableGlobalClockHalt</td><td>RW</td><td>0x0</td><td>If this bit is set, clock halt action is not applied to global clocks</td></tr>
+<tr><td>13:7</td><td>ClaChainLoopDelay</td><td>RW</td><td>0x36</td><td>Creates a window in which we don’t forward the incoming Xtrigger and Clock_Halt signal</td></tr>
+<tr><td>6</td><td>EnableCla</td><td>RW</td><td>0x0</td><td>Set this bit to 1 to enable the CLA functional clock; clear it to 0 to gate that clock (save pwr). The CLA register block runs on a clock whose functional enable is tied high, so this bit can still be written while the functional clock is gated</td></tr>
+<tr><td>5</td><td>EnableEap</td><td>RW</td><td>0x0</td><td>Set Enable EAP to 1 after EAP programming is complete</td></tr>
+<tr><td>4:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1:0</td><td>CurrentNode</td><td>R</td><td>0x0</td><td>Read the current node.</td></tr>
+</table>
+<h3 id="CDbgMuxSelLo">CDbgMuxSelLo</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:58</td><td>Muxselseg7</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>57:52</td><td>Muxselseg6</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>51:46</td><td>Muxselseg5</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>45:40</td><td>Muxselseg4</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>39:34</td><td>Muxselseg3</td><td>RW</td><td>0x0</td><td>Mux Select Bits for Lane 3. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane3= Seg3, if bit[0] = 1, Lane3 = Seg4, if bit[1] =1, Lane3 = Seg5,...</td></tr>
+<tr><td>33:28</td><td>Muxselseg2</td><td>RW</td><td>0x0</td><td>Mux Select Bits for Lane 2. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane2= Seg2, if bit[0] = 1, Lane2 = Seg4, if bit[1] =1, Lane2 = Seg5,...</td></tr>
+<tr><td>27:22</td><td>Muxselseg1</td><td>RW</td><td>0x0</td><td>Mux Select Bits for Lane 1. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane1= Seg1, if bit[0] = 1, Lane1 = Seg4, if bit[1] =1, Lane1 = Seg5,...</td></tr>
+<tr><td>21:16</td><td>Muxselseg0</td><td>RW</td><td>0x0</td><td>Mux Select Bits for Lane 0. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane0 = Seg0, if bit[0] = 1, Lane0 = Seg4, if bit[1] =1, Lane0 = Seg5,...</td></tr>
+<tr><td>15:9</td><td>Rsvd159</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>8</td><td>Finegraintime</td><td>RW</td><td>0x0</td><td>Fine Grain Time Enable. If this bit is set, the fine grain time is enabled.</td></tr>
+<tr><td>7:2</td><td>Dbmid</td><td>RW</td><td>0x0</td><td>Unique DBM ID of the DBM instance</td></tr>
+<tr><td>1:0</td><td>Dbmmode</td><td>RW</td><td>0x0</td><td>Mode selection, 0: DBM off, 1: Normal debug mode, 2: DBM ID output mode, 3: Toggle Mode</td></tr>
+</table>
+<h3 id="CDbgRsvd1">CDbgRsvd1</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Value of reserved register.</td></tr>
+</table>
+<h3 id="CDbgRsvd2">CDbgRsvd2</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Value of reserved register.</td></tr>
+</table>
+<h3 id="CDbgTransitionMaskLo">CDbgTransitionMaskLo</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgTransitionFromValueLo">CDbgTransitionFromValueLo</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgTransitionToValueLo">CDbgTransitionToValueLo</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgOnesCountMaskLo">CDbgOnesCountMaskLo</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgOnesCountValue">CDbgOnesCountValue</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgAnyChangeLo">CDbgAnyChangeLo</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Mask</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgSignalSnapshotNode0Eap0Lo">CDbgSignalSnapshotNode0Eap0Lo</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgSignalSnapshotNode0Eap1Lo">CDbgSignalSnapshotNode0Eap1Lo</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgSignalSnapshotNode1Eap0Lo">CDbgSignalSnapshotNode1Eap0Lo</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgSignalSnapshotNode1Eap1Lo">CDbgSignalSnapshotNode1Eap1Lo</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgSignalSnapshotNode2Eap0Lo">CDbgSignalSnapshotNode2Eap0Lo</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgSignalSnapshotNode2Eap1Lo">CDbgSignalSnapshotNode2Eap1Lo</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgSignalSnapshotNode3Eap0Lo">CDbgSignalSnapshotNode3Eap0Lo</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgSignalSnapshotNode3Eap1Lo">CDbgSignalSnapshotNode3Eap1Lo</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgClaTimeMatch">CDbgClaTimeMatch</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>TimeMatchVal</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgSignalMask2Lo">CDbgSignalMask2Lo</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Mask to be applied to debug bus before match</td></tr>
+</table>
+<h3 id="CDbgSignalMatch2Lo">CDbgSignalMatch2Lo</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Value used for debug bus match.</td></tr>
+</table>
+<h3 id="CDbgSignalMask3Lo">CDbgSignalMask3Lo</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Mask to be applied to debug bus before match</td></tr>
+</table>
+<h3 id="CDbgSignalMatch3Lo">CDbgSignalMatch3Lo</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Value used for debug bus match.</td></tr>
+</table>
+<h3 id="CDbgNode0Eap2">CDbgNode0Eap2</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:58</td><td>Action3</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>57:52</td><td>Action2</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
+<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
+<tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
+<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
+<tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
+</table>
+<h3 id="CDbgNode0Eap3">CDbgNode0Eap3</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:58</td><td>Action3</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>57:52</td><td>Action2</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
+<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
+<tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
+<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
+<tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
+</table>
+<h3 id="CDbgNode1Eap2">CDbgNode1Eap2</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:58</td><td>Action3</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>57:52</td><td>Action2</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
+<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
+<tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
+<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
+<tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
+</table>
+<h3 id="CDbgNode1Eap3">CDbgNode1Eap3</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:58</td><td>Action3</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>57:52</td><td>Action2</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
+<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
+<tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
+<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
+<tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
+</table>
+<h3 id="CDbgNode2Eap2">CDbgNode2Eap2</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:58</td><td>Action3</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>57:52</td><td>Action2</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
+<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
+<tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
+<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
+<tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
+</table>
+<h3 id="CDbgNode2Eap3">CDbgNode2Eap3</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:58</td><td>Action3</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>57:52</td><td>Action2</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
+<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
+<tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
+<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
+<tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
+</table>
+<h3 id="CDbgNode3Eap2">CDbgNode3Eap2</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:58</td><td>Action3</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>57:52</td><td>Action2</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
+<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
+<tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
+<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
+<tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
+</table>
+<h3 id="CDbgNode3Eap3">CDbgNode3Eap3</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:58</td><td>Action3</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>57:52</td><td>Action2</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>51:44</td><td>Udf</td><td>RW</td><td>0x0</td><td>User Defined Function with event type 0, 1, and 2 as arguments</td></tr>
+<tr><td>43:38</td><td>EventType2</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>37</td><td>CustomAction1Enable</td><td>RW</td><td>0x0</td><td>custom_action1 is valid only if custom_action1_enable is set</td></tr>
+<tr><td>36</td><td>CustomAction0Enable</td><td>RW</td><td>0x0</td><td>custom_action0 is valid only if custom_action0_enable is set</td></tr>
+<tr><td>35:32</td><td>CustomAction1</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>31:28</td><td>CustomAction0</td><td>RW</td><td>0x0</td><td>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</td></tr>
+<tr><td>27:22</td><td>EventType1</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>21:16</td><td>EventType0</td><td>RW</td><td>0x0</td><td>Select a trigger event</td></tr>
+<tr><td>15:14</td><td>LogicalOp</td><td>RW</td><td>0x0</td><td>Relation to be satisfied among events to activate the actions</td></tr>
+<tr><td>13:8</td><td>Action1</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>7:2</td><td>Action0</td><td>RW</td><td>0x0</td><td>Select an Action</td></tr>
+<tr><td>1:0</td><td>DestNode</td><td>RW</td><td>0x0</td><td>Select Destination Node</td></tr>
+</table>
+<h3 id="CDbgSignalSnapshotNode0Eap2Lo">CDbgSignalSnapshotNode0Eap2Lo</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgSignalSnapshotNode0Eap3Lo">CDbgSignalSnapshotNode0Eap3Lo</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgSignalSnapshotNode1Eap2Lo">CDbgSignalSnapshotNode1Eap2Lo</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgSignalSnapshotNode1Eap3Lo">CDbgSignalSnapshotNode1Eap3Lo</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgSignalSnapshotNode2Eap2Lo">CDbgSignalSnapshotNode2Eap2Lo</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgSignalSnapshotNode2Eap3Lo">CDbgSignalSnapshotNode2Eap3Lo</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgSignalSnapshotNode3Eap2Lo">CDbgSignalSnapshotNode3Eap2Lo</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgSignalSnapshotNode3Eap3Lo">CDbgSignalSnapshotNode3Eap3Lo</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgSignalDelayMuxSel">CDbgSignalDelayMuxSel</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:32</td><td>Rsvd</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>31:30</td><td>Muxselseg15</td><td>RW</td><td>0x0</td><td>Dbg Mux Shifted signals Select Bits for Lane 0</td></tr>
+<tr><td>29:28</td><td>Muxselseg14</td><td>RW</td><td>0x0</td><td>Dbg Mux Shifted signals Select Bits for Lane 0</td></tr>
+<tr><td>27:26</td><td>Muxselseg13</td><td>RW</td><td>0x0</td><td>Dbg Mux Shifted signals Select Bits for Lane 0</td></tr>
+<tr><td>25:24</td><td>Muxselseg12</td><td>RW</td><td>0x0</td><td>Dbg Mux Shifted signals Select Bits for Lane 0</td></tr>
+<tr><td>23:22</td><td>Muxselseg11</td><td>RW</td><td>0x0</td><td>Dbg Mux Shifted signals Select Bits for Lane 0</td></tr>
+<tr><td>21:20</td><td>Muxselseg10</td><td>RW</td><td>0x0</td><td>Dbg Mux Shifted signals Select Bits for Lane 0</td></tr>
+<tr><td>19:18</td><td>Muxselseg9</td><td>RW</td><td>0x0</td><td>Dbg Mux Shifted signals Select Bits for Lane 0</td></tr>
+<tr><td>17:16</td><td>Muxselseg8</td><td>RW</td><td>0x0</td><td>Dbg Mux Shifted signals Select Bits for Lane 0</td></tr>
+<tr><td>15:14</td><td>Muxselseg7</td><td>RW</td><td>0x0</td><td>Dbg Mux Shifted signals Select Bits for Lane 7</td></tr>
+<tr><td>13:12</td><td>Muxselseg6</td><td>RW</td><td>0x0</td><td>Dbg Mux Shifted signals Select Bits for Lane 6</td></tr>
+<tr><td>11:10</td><td>Muxselseg5</td><td>RW</td><td>0x0</td><td>Dbg Mux Shifted signals Select Bits for Lane 5</td></tr>
+<tr><td>9:8</td><td>Muxselseg4</td><td>RW</td><td>0x0</td><td>Dbg Mux Shifted signals Select Bits for Lane 4</td></tr>
+<tr><td>7:6</td><td>Muxselseg3</td><td>RW</td><td>0x0</td><td>Dbg Mux Shifted signals Select Bits for Lane 3</td></tr>
+<tr><td>5:4</td><td>Muxselseg2</td><td>RW</td><td>0x0</td><td>Dbg Mux Shifted signals Select Bits for Lane 2</td></tr>
+<tr><td>3:2</td><td>Muxselseg1</td><td>RW</td><td>0x0</td><td>Dbg Mux Shifted signals Select Bits for Lane 1</td></tr>
+<tr><td>1:0</td><td>Muxselseg0</td><td>RW</td><td>0x0</td><td>Dbg Mux Shifted signals Select Bits for Lane 0</td></tr>
+</table>
+<h3 id="CDbgClaXtriggerTimestretch">CDbgClaXtriggerTimestretch</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:16</td><td>Rsvd</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>15:8</td><td>Xtrigger1Stretch</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>7:0</td><td>Xtrigger0Stretch</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgClaTimestamp">CDbgClaTimestamp</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>TimestampUpper</td><td>RW</td><td>0x0</td><td>Current timestamp value (upper 56 bits)</td></tr>
+<tr><td>7:0</td><td>TimestampLower</td><td>RW</td><td>0x0</td><td>Current timestamp value (lower 8 bits)</td></tr>
+</table>
+<h3 id="CDbgClaTimestampSync">CDbgClaTimestampSync</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>TimestampSync</td><td>RW</td><td>0x0</td><td>Sync value to load into timestamp</td></tr>
+</table>
+<h3 id="CDbgClaTimestampConfig">CDbgClaTimestampConfig</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:10</td><td>Rsvd1</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>9</td><td>TsCapture</td><td>RW</td><td>0x0</td><td>When this bit is set, a cross trigger 0 event will cause the value from Timestamp register to be written into the TimestampCapture register</td></tr>
+<tr><td>8:1</td><td>DebugMarker</td><td>RW</td><td>0x0</td><td>Debug marker output value</td></tr>
+<tr><td>0</td><td>Resync</td><td>RW</td><td>0x0</td><td>When set, timestamp is loaded from timestamp_sync on xtrigger posedge. Auto-clears after load.</td></tr>
+</table>
+<h3 id="CDbgClaTimestampOffset">CDbgClaTimestampOffset</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:56</td><td>Rsvd0</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>55:0</td><td>Offset</td><td>RW</td><td>0x0</td><td>Timestamp offset value</td></tr>
+</table>
+<h3 id="CDbgSignalMask0Hi">CDbgSignalMask0Hi</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Mask to be applied to debug bus before match</td></tr>
+</table>
+<h3 id="CDbgSignalMatch0Hi">CDbgSignalMatch0Hi</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Value used for debug bus match.</td></tr>
+</table>
+<h3 id="CDbgSignalMask1Hi">CDbgSignalMask1Hi</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Mask to be applied to debug bus before match</td></tr>
+</table>
+<h3 id="CDbgSignalMatch1Hi">CDbgSignalMatch1Hi</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Value used for debug bus match.</td></tr>
+</table>
+<h3 id="CDbgSignalMask2Hi">CDbgSignalMask2Hi</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Mask to be applied to debug bus before match</td></tr>
+</table>
+<h3 id="CDbgSignalMatch2Hi">CDbgSignalMatch2Hi</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Value used for debug bus match.</td></tr>
+</table>
+<h3 id="CDbgSignalMask3Hi">CDbgSignalMask3Hi</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Mask to be applied to debug bus before match</td></tr>
+</table>
+<h3 id="CDbgSignalMatch3Hi">CDbgSignalMatch3Hi</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Value used for debug bus match.</td></tr>
+</table>
+<h3 id="CDbgMuxSelHi">CDbgMuxSelHi</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:58</td><td>Muxselseg15</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>57:52</td><td>Muxselseg14</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>51:46</td><td>Muxselseg13</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>45:40</td><td>Muxselseg12</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>39:34</td><td>Muxselseg11</td><td>RW</td><td>0x0</td><td>Mux Select Bits for Lane 3. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane3= Seg3, if bit[0] = 1, Lane3 = Seg4, if bit[1] =1, Lane3 = Seg5,...</td></tr>
+<tr><td>33:28</td><td>Muxselseg10</td><td>RW</td><td>0x0</td><td>Mux Select Bits for Lane 2. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane2= Seg2, if bit[0] = 1, Lane2 = Seg4, if bit[1] =1, Lane2 = Seg5,...</td></tr>
+<tr><td>27:22</td><td>Muxselseg9</td><td>RW</td><td>0x0</td><td>Mux Select Bits for Lane 1. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane1= Seg1, if bit[0] = 1, Lane1 = Seg4, if bit[1] =1, Lane1 = Seg5,...</td></tr>
+<tr><td>21:16</td><td>Muxselseg8</td><td>RW</td><td>0x0</td><td>Mux Select Bits for Lane 0. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane0 = Seg0, if bit[0] = 1, Lane0 = Seg4, if bit[1] =1, Lane0 = Seg5,...</td></tr>
+<tr><td>15:8</td><td>Rsvd158</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>7:2</td><td>Dbmid</td><td>RW</td><td>0x0</td><td>Unique DBM ID of the DBM instance</td></tr>
+<tr><td>1:0</td><td>Dbmmode</td><td>RW</td><td>0x0</td><td>Mode selection, 0: DBM off, 1: Normal debug mode, 2: DBM ID output mode, 3: Toggle Mode</td></tr>
+</table>
+<h3 id="CDbgTransitionMaskHi">CDbgTransitionMaskHi</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgTransitionFromValueHi">CDbgTransitionFromValueHi</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgTransitionToValueHi">CDbgTransitionToValueHi</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgOnesCountMaskHi">CDbgOnesCountMaskHi</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgAnyChangeHi">CDbgAnyChangeHi</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Mask</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgSignalSnapshotNode0Eap0Hi">CDbgSignalSnapshotNode0Eap0Hi</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgSignalSnapshotNode0Eap1Hi">CDbgSignalSnapshotNode0Eap1Hi</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgSignalSnapshotNode1Eap0Hi">CDbgSignalSnapshotNode1Eap0Hi</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgSignalSnapshotNode1Eap1Hi">CDbgSignalSnapshotNode1Eap1Hi</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgSignalSnapshotNode2Eap0Hi">CDbgSignalSnapshotNode2Eap0Hi</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgSignalSnapshotNode2Eap1Hi">CDbgSignalSnapshotNode2Eap1Hi</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgSignalSnapshotNode3Eap0Hi">CDbgSignalSnapshotNode3Eap0Hi</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgSignalSnapshotNode3Eap1Hi">CDbgSignalSnapshotNode3Eap1Hi</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgSignalSnapshotNode0Eap2Hi">CDbgSignalSnapshotNode0Eap2Hi</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgSignalSnapshotNode0Eap3Hi">CDbgSignalSnapshotNode0Eap3Hi</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgSignalSnapshotNode1Eap2Hi">CDbgSignalSnapshotNode1Eap2Hi</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgSignalSnapshotNode1Eap3Hi">CDbgSignalSnapshotNode1Eap3Hi</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgSignalSnapshotNode2Eap2Hi">CDbgSignalSnapshotNode2Eap2Hi</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgSignalSnapshotNode2Eap3Hi">CDbgSignalSnapshotNode2Eap3Hi</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgSignalSnapshotNode3Eap2Hi">CDbgSignalSnapshotNode3Eap2Hi</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgSignalSnapshotNode3Eap3Hi">CDbgSignalSnapshotNode3Eap3Hi</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>R</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgLfsr">CDbgLfsr</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:1</td><td>Lfsr</td><td>RW</td><td>0x0</td><td>Value of the LFSR register.</td></tr>
+<tr><td>0</td><td>LfsrActive</td><td>RW</td><td>0x0</td><td>Enable the LFSR register.</td></tr>
+</table>
+<h3 id="CDbgLfsrMask">CDbgLfsrMask</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:1</td><td>Mask</td><td>RW</td><td>0x0</td><td>Value to mask the LFSR register.</td></tr>
+<tr><td>0</td><td>Rsvd0</td><td>RW</td><td>0x0</td><td>Reserved.</td></tr>
+</table>
+<h3 id="CDbgTimestampCapture">CDbgTimestampCapture</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Timestamp</td><td>R</td><td>0x0</td><td>Timestamp capture value.</td></tr>
+</table>
+<h3 id="CDbgCompare0Lo">CDbgCompare0Lo</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Value for arithmetic comparison.</td></tr>
+</table>
+<h3 id="CDbgCompare0MaskLo">CDbgCompare0MaskLo</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Value to mask the arithmetic comparison.</td></tr>
+</table>
+<h3 id="CDbgCompare1Lo">CDbgCompare1Lo</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Value for arithmetic comparison.</td></tr>
+</table>
+<h3 id="CDbgCompare1MaskLo">CDbgCompare1MaskLo</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Value to mask the arithmetic comparison.</td></tr>
+</table>
+<h3 id="CDbgCompare2Lo">CDbgCompare2Lo</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Value for arithmetic comparison.</td></tr>
+</table>
+<h3 id="CDbgCompare2MaskLo">CDbgCompare2MaskLo</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Value to mask the arithmetic comparison.</td></tr>
+</table>
+<h3 id="CDbgCompare3Lo">CDbgCompare3Lo</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Value for arithmetic comparison.</td></tr>
+</table>
+<h3 id="CDbgCompare3MaskLo">CDbgCompare3MaskLo</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Value to mask the arithmetic comparison.</td></tr>
+</table>
+<h3 id="CDbgCompare0Hi">CDbgCompare0Hi</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Value for arithmetic comparison.</td></tr>
+</table>
+<h3 id="CDbgCompare0MaskHi">CDbgCompare0MaskHi</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Value to mask the arithmetic comparison.</td></tr>
+</table>
+<h3 id="CDbgCompare1Hi">CDbgCompare1Hi</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Value for arithmetic comparison.</td></tr>
+</table>
+<h3 id="CDbgCompare1MaskHi">CDbgCompare1MaskHi</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Value to mask the arithmetic comparison.</td></tr>
+</table>
+<h3 id="CDbgCompare2Hi">CDbgCompare2Hi</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Value for arithmetic comparison.</td></tr>
+</table>
+<h3 id="CDbgCompare2MaskHi">CDbgCompare2MaskHi</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Value to mask the arithmetic comparison.</td></tr>
+</table>
+<h3 id="CDbgCompare3Hi">CDbgCompare3Hi</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Value for arithmetic comparison.</td></tr>
+</table>
+<h3 id="CDbgCompare3MaskHi">CDbgCompare3MaskHi</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Value</td><td>RW</td><td>0x0</td><td>Value to mask the arithmetic comparison.</td></tr>
+</table>
+<h3 id="Scratch">Scratch</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>Data</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="Trdstcontrol">Trdstcontrol</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:27</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>26:24</td><td>Trdstformat</td><td>RW</td><td>0x3</td><td>bit[0]: XOR Enable, bit[1]: VLT Enable. Supported values : 2&#x27;b3 (XOR+VLT Compression), 2&#x27;b1 (XOR Compresion), 2&#x27;b0 (No Compression)</td></tr>
+<tr><td>23:20</td><td>Trdstsyncmax</td><td>RW</td><td>0x0</td><td>When trDstSyncMode is set to 2&#x27;b10, timestamp will be sent for every 2^(trDstSyncMax + 4) Cluster clocks.</td></tr>
+<tr><td>19:18</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>17:16</td><td>Trdstsyncmode</td><td>RW</td><td>0x0</td><td>When the field is set tp 2&#x27;b10, sent timestamp. All other vlaues not NA.</td></tr>
+<tr><td>15</td><td>Trdstinhibitsrc</td><td>R</td><td>0x0</td><td>-</td></tr>
+<tr><td>14</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>13</td><td>Trdstinststallena</td><td>R</td><td>0x0</td><td>-</td></tr>
+<tr><td>12</td><td>Trdstinststalloroverflow</td><td>R</td><td>0x0</td><td>-</td></tr>
+<tr><td>11</td><td>Trdstinsttriggerenable</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>9</td><td>Trdstcontext</td><td>R</td><td>0x0</td><td>-</td></tr>
+<tr><td>8:7</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>6:4</td><td>Trdstinstmode</td><td>R</td><td>0x6</td><td>-</td></tr>
+<tr><td>3</td><td>Trdstempty</td><td>R</td><td>0x1</td><td>-</td></tr>
+<tr><td>2</td><td>Trdstinsttracing</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>1</td><td>Trdstenable</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>0</td><td>Trdstactive</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="Trdstimpl">Trdstimpl</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31</td><td>Trdsttimestampconfig</td><td>RW</td><td>0x0</td><td>DST timestamp configuration. 0: timestamp input form external source (CoreTime). 1: timestamp from CLA timesync.</td></tr>
+<tr><td>30:28</td><td>Trdstvendorstreamlength</td><td>RW</td><td>0x4</td><td>Specify Stream length. A stream starts with &quot;no compressed packet&quot;. Stream length specifies number of frames before a non-compressed packet is sent.Stream Length = 32* 2^(trDstVendorStreamLength + 1)</td></tr>
+<tr><td>27:24</td><td>Trdstvendorframelength</td><td>RW</td><td>0x1</td><td>Specify frame length. Frame Length = trDstVendorFrameLength* 64 ; Frame Length should be a multiple of Bank Data Width.</td></tr>
+<tr><td>23:20</td><td>Trdstprotocolminor</td><td>R</td><td>0x0</td><td>-</td></tr>
+<tr><td>19:16</td><td>Trdstprotocolmajor</td><td>R</td><td>0x1</td><td>-</td></tr>
+<tr><td>15:12</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>11:8</td><td>Trdstcomptype</td><td>R</td><td>0x1</td><td>-</td></tr>
+<tr><td>7:4</td><td>Trdstverminor</td><td>R</td><td>0x0</td><td>-</td></tr>
+<tr><td>3:0</td><td>Trdstvermajor</td><td>R</td><td>0x1</td><td>-</td></tr>
+</table>
+<h3 id="Trdstinstfeatures">Trdstinstfeatures</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:28</td><td>Trdstsrcbits</td><td>RW</td><td>0x4</td><td>-</td></tr>
+<tr><td>27:16</td><td>Trdstsrcid</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>15:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>Trdstinstenrepeatedhistory</td><td>R</td><td>0x0</td><td>-</td></tr>
+<tr><td>7:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>Trdstinstnotrapaddr</td><td>R</td><td>0x0</td><td>-</td></tr>
+<tr><td>0</td><td>Trdstinstnoaddrdiff</td><td>R</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="CDbgDebugTraceCfg">CDbgDebugTraceCfg</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:22</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>21</td><td>FrameClosureMode</td><td>RW</td><td>0x0</td><td>Closure Mode: 1: Close frame with a packet no larger than max packet size  before any overflow (due to packets crossing frame boundary). 0: Close frame when packets cross boundary. Push back packet crossing frame boundary to packet generator.</td></tr>
+<tr><td>20</td><td>FrameModeEnable</td><td>RW</td><td>0x1</td><td>Enable Frame Mode (Frame Mode: Always pack &quot;frame length&quot; number of bytes for trace transmission). If flush to memory is stalled (due to silicon bug), we can have incomplete packets in memory. Frame Mode will help SW decoder to avoid reading incomplete trasnmitted packets. In Frame Mode, SW will get a memory pointer that is aligned to Frame Length. HW will ensure  there are no incomplete packets incluced in the region pointed by memory pointer.</td></tr>
+<tr><td>19:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:12</td><td>FrameLenghtInBytes</td><td>RW</td><td>0x2</td><td>Use trDstImpl[trDstVendorFrameLength] for Frame Length programming. Register field ZBB-ed.</td></tr>
+<tr><td>11:4</td><td>TraceFrameFillByte</td><td>RW</td><td>0x81</td><td>Use &quot;Filler Packet&quot; to align a stream of trace packets within a frame boundary.</td></tr>
+<tr><td>3:0</td><td>TraceSourceId</td><td>RW</td><td>0x0</td><td>Trace Source ID</td></tr>
+</table>
+<h3 id="dst_0_.ScratchLo">dst[0].ScratchLo</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>Data</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="dst_0_.ScratchHi">dst[0].ScratchHi</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>Data</td><td>RW</td><td>0x0</td><td>-</td></tr>
 </table>
 </div>

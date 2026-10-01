@@ -1,0 +1,294 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+[[tests]]
+name = "smc_i3c_private_write_test"
+module = "smc_i3c_private_write_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "i3c"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_i3c_to_fabric_test"
+module = "smc_i3c_to_fabric_test"
+seed = 1
+timeout_sec = 1800
+tags = ["i3c_decode"]
+run_modes = ["smoke"]
+
+[[tests]]
+# DAT write/read and DCT reads on all six I3C instances through the CSR window.
+name = "smc_i3c_dxt_table_test"
+module = "smc_i3c_dxt_table_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+# Outbound words through both copies of the M-mode and hypervisor remap windows.
+name = "smc_output_remap_window_test"
+module = "smc_output_remap_window_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_input_output_fabric_wr_rd_test"
+module = "smc_input_output_fabric_wr_rd_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_input_fabric_axi_wr_rd_test"
+module = "smc_input_fabric_axi_wr_rd_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_local_fabric_csr_depth_test"
+module = "smc_local_fabric_csr_depth_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_output_filter_remap_security_test"
+module = "smc_output_filter_remap_security_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_sys_out_aw_w_split_test"
+module = "smc_sys_out_aw_w_split_test"
+seed = 1
+timeout_sec = 1800
+tags = ["diag"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_filter_multi_entry_test"
+module = "smc_filter_multi_entry_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_filter_config_field_sweep_test"
+module = "smc_filter_config_field_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_filter_region_span_test"
+module = "smc_filter_region_span_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dma_decouple_rw_test"
+module = "smc_dma_decouple_rw_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_gpio_data_ctrl_field_test"
+module = "smc_gpio_data_ctrl_field_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_alias_remap_region_attrs_test"
+module = "smc_alias_remap_region_attrs_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_cpuif_handshake_test"
+module = "smc_cpuif_handshake_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_cpuif_wrong_direction_test"
+module = "smc_cpuif_wrong_direction_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_cpuif_external_stall_test"
+module = "smc_cpuif_external_stall_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_filter_field_sweep_test"
+module = "smc_filter_field_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_xvisor_remap_test"
+module = "smc_xvisor_remap_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_decode_hole_test"
+module = "smc_decode_hole_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_address_map_region_decode_test"
+module = "smc_address_map_region_decode_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_sys_axi_in_port_test"
+module = "smc_sys_axi_in_port_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_sep_in_axi_flow_control_test"
+module = "smc_sep_in_axi_flow_control_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_sep_in_axi_shape_test"
+module = "smc_sep_in_axi_shape_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_jtag_axi_shape_test"
+module = "smc_jtag_axi_shape_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dual_base_addressing_test"
+module = "smc_dual_base_addressing_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_region_size_plic_clint_beu_decode_test"
+module = "smc_region_size_plic_clint_beu_decode_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_address_window_top_decode_test"
+module = "smc_address_window_top_decode_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_alias_remap_spare_block_decode_test"
+module = "smc_alias_remap_spare_block_decode_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_remap_cla_test"
+module = "smc_remap_cla_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_axi_error_response_depth_test"
+module = "smc_axi_error_response_depth_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_output_fabric_wr_rd_responder_test"
+module = "smc_output_fabric_wr_rd_responder_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_output_fabric_slverr_inject_test"
+module = "smc_output_fabric_slverr_inject_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_deadspace_decode_test"
+module = "smc_deadspace_decode_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_peripheral_instance_decode_test"
+module = "smc_peripheral_instance_decode_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode"]
+run_modes = ["smoke"]

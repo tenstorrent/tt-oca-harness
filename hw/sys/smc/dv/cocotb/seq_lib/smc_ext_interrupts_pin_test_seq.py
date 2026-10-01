@@ -43,9 +43,7 @@ class smc_ext_interrupts_pin_test_seq(SmcCsrSeq):
         dut = cocotb.top
         await self.wait_fuse_sense_done()
         assert hasattr(dut, "tb_ext_interrupt_0_i"), "tb_ext_interrupt_0_i missing"
-        assert hasattr(dut, "tb_ext_interrupt_0_sync"), (
-            "tb_ext_interrupt_0_sync missing"
-        )
+        assert hasattr(dut, "tb_ext_interrupt_0_sync"), "tb_ext_interrupt_0_sync missing"
         dut.tb_ext_interrupt_0_i.value = 0
         await self._await_sync(dut, 0, "IDLE")
         self.idle_ok = True
@@ -60,9 +58,7 @@ class smc_ext_interrupts_pin_test_seq(SmcCsrSeq):
         await self._await_sync(dut, 0, "FALL")
         self.fall_ok = True
         cocotb.log.info("CHK-EXT-IRQ0-FALL: sync=0 pin=0")
-        got = await self.csr_read(
-            "SCRATCH_COLD_WARM_0", SCRATCH_COLD_WARM_0, expected=0
-        )
+        got = await self.csr_read("SCRATCH_COLD_WARM_0", SCRATCH_COLD_WARM_0, expected=0)
         cocotb.log.info("CHK-EXT-IRQ0-WARM: SCRATCH_COLD_WARM_0=0x%x", got)
         cocotb.log.info(
             "CHK-EXT-IRQ0-BASIC: idle=%s rise=%s fall=%s",

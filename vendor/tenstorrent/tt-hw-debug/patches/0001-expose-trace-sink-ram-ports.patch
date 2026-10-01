@@ -19,10 +19,56 @@ Upstreaming this to tt_hw_debug would drop this patch. The other seven generated
 tops need the matching .o_sink_mem_req()/.i_sink_mem_rsp('0) tie-off, but OCAH
 does not vendor them, so that part is not carried here.
 
-diff --git a/rtl/trace/trace_mem_pkg.svh b/rtl/trace/trace_mem_pkg.svh
-new file mode 100644
-index 0000000..484731a
---- /dev/null
+diff -u --new-file -r a/rtl/top/dfd_top_cla_dst_apb.sv b/rtl/top/dfd_top_cla_dst_apb.sv
+--- a/rtl/top/dfd_top_cla_dst_apb.sv
++++ b/rtl/top/dfd_top_cla_dst_apb.sv
+@@ -18,6 +18,7 @@
+   import te_pkg::*;
+   import packetizer_pkg::*;
+   import tn_pkg::*;
++  import trace_mem_pkg::*;
+  #(
+     parameter DEBUGMARKER_WIDTH = 8,
+     parameter DEBUG_SIGNAL_WIDTH = 128,
+@@ -32,6 +33,7 @@
+     parameter bit OCTS_TS_OUTPUT = 0,
+     parameter bit TIMESTAMP_SYNC_SCHEME = 1,
+     parameter bit TRACE_SINK_SUPPORT = 1,
++    parameter bit EXTERNAL_SINK_MEM = 0,
+     parameter TRC_AXI_ADDR_WIDTH = 52,
+     parameter TRC_AXI_DATA_WIDTH = 512,
+     parameter TRC_AXI_ID_WIDTH = 4,
+@@ -80,6 +82,7 @@
+     input logic [NUM_CLA_INST-1:0] [TIMESTAMP_UPPER_WIDTH_CLA_WRAPPER-1:0] i_ref_timestamp,
+     input logic i_rst_n,
+     input logic [MAX_DST_NTR_INST_DST_WRAPPER-1:0] [1:0] i_sdtrig_control,
++    input SinkMemPktOut_s [TRC_RAM_INSTANCES-1:0] i_sink_mem_rsp,
+     input logic i_test_icg_en,
+     input logic i_test_reset_en,
+     input logic i_test_reset_n,
+@@ -140,6 +143,7 @@
+     output DbgMuxSelMmr_s [NUM_CLA_INST-1:0] o_debug_mux_sel,
+     output logic [MMR_DATA_WIDTH-1:0] o_jtag_mmr_rsp_data,
+     output logic o_jtag_mmr_rsp_vld,
++    output SinkMemPktIn_s [TRC_RAM_INSTANCES-1:0] o_sink_mem_req,
+     input logic [MMR_ADDR_WIDTH-1:0] paddr,
+     input logic penable,
+     output logic [MMR_DATA_WIDTH-1:0] prdata,
+@@ -635,8 +639,11 @@
+     .TRC_BASE_ADDR(TRC_BASE_ADDR),
+     .TRC_RAM_INDEX(TRC_RAM_INDEX),
+     .TRC_SIZE_IN_KB(TRC_SIZE_IN_KB),
+-    .TSEL_CONFIGURABLE(TSEL_CONFIGURABLE)
++    .TSEL_CONFIGURABLE(TSEL_CONFIGURABLE),
++    .EXTERNAL_SINK_MEM(EXTERNAL_SINK_MEM)
+   ) trace_wrapper (
++    .o_sink_mem_req(o_sink_mem_req),
++    .i_sink_mem_rsp(i_sink_mem_rsp),
+     .NtrSinkMmrsWr(NtrSinkMmrsWr),
+     .DstSinkMmrsWr(DstSinkMmrsWr),
+     .FunnelMmrsWr(FunnelMmrsWr),
+diff -u --new-file -r a/rtl/trace/trace_mem_pkg.svh b/rtl/trace/trace_mem_pkg.svh
+--- a/rtl/trace/trace_mem_pkg.svh
 +++ b/rtl/trace/trace_mem_pkg.svh
 @@ -0,0 +1,26 @@
 +`ifndef TRACE_MEM_PKG_SVH
@@ -51,11 +97,10 @@ index 0000000..484731a
 +endpackage
 +
 +`endif
-diff --git a/rtl/trace/trace_wrapper.sv b/rtl/trace/trace_wrapper.sv
-index 2b5175a..cc4b7ea 100644
+diff -u --new-file -r a/rtl/trace/trace_wrapper.sv b/rtl/trace/trace_wrapper.sv
 --- a/rtl/trace/trace_wrapper.sv
 +++ b/rtl/trace/trace_wrapper.sv
-@@ -2,6 +2,7 @@
+@@ -22,6 +22,7 @@
  
  module trace_wrapper
  import tn_pkg::*;
@@ -63,7 +108,7 @@ index 2b5175a..cc4b7ea 100644
  import ntr_sink_mmr_pkg::*;
  import dst_sink_mmr_pkg::*;
  import funnel_mmr_pkg::*;
-@@ -25,6 +26,9 @@ import funnel_mmr_pkg::*;
+@@ -45,6 +46,9 @@
  	parameter TRC_RAM_INDEX = 512,
  	parameter TRC_SIZE_IN_KB = 32,
  	parameter TSEL_CONFIGURABLE = 0,
@@ -73,7 +118,7 @@ index 2b5175a..cc4b7ea 100644
  	localparam int DATA_WIDTH = 128,
  	localparam NUM_DST_INST_SAFE = (NUM_DST_INST > 0) ? NUM_DST_INST : 32'd1,
  	localparam NUM_NTRACE_INST_SAFE = (NUM_NTRACE_INST > 0) ? NUM_NTRACE_INST : 32'd1
-@@ -132,7 +136,11 @@ import funnel_mmr_pkg::*;
+@@ -152,7 +156,11 @@
  
  	input logic                                             trRamDataRdEn,
  	input logic                                             trdstRamDataRdEn,
@@ -86,7 +131,7 @@ index 2b5175a..cc4b7ea 100644
   );
  
  	localparam int unsigned DATA_WIDTH_IN_BYTES = DATA_WIDTH / 8;
-@@ -205,17 +213,11 @@ import funnel_mmr_pkg::*;
+@@ -225,17 +233,11 @@
    	localparam TRC_RAM_INDEX_WIDTH = $clog2(TRC_RAM_INDEX);
  	localparam TRC_SIZE = TRC_SIZE_IN_KB * 1024 * 8;
  
@@ -109,12 +154,13 @@ index 2b5175a..cc4b7ea 100644
  
  	logic [NUM_CORES-1:0]                            Core_fuse_enable_Dst, Core_fuse_enable_Ntrace;
  
-@@ -290,19 +292,25 @@ import funnel_mmr_pkg::*;
+@@ -310,19 +312,25 @@
  		.TraceRamWrEn(TraceRamWrEn)
  	);
  
 -	trace_mem #(
--
++	assign o_sink_mem_req = funnel_mem_SinkMemPktIn_ANY;
+ 
 -		.TRC_RAM_INDEX_WIDTH(TRC_RAM_INDEX_WIDTH),
 -		.TSEL_CONFIGURABLE(TSEL_CONFIGURABLE),
 -		.SinkMemPktIn_s(SinkMemPktIn_s),
@@ -126,8 +172,6 @@ index 2b5175a..cc4b7ea 100644
 -		.funnel_mem_SinkMemPktIn_ANY(funnel_mem_SinkMemPktIn_ANY),
 -		.mem_funnel_SinkMemPktOut_ANY(mem_funnel_SinkMemPktOut_ANY)
 -	);
-+	assign o_sink_mem_req = funnel_mem_SinkMemPktIn_ANY;
-+
 +	if (EXTERNAL_SINK_MEM) begin : gen_external_sink_mem
 +		assign mem_funnel_SinkMemPktOut_ANY = i_sink_mem_rsp;
 +	end else begin : gen_internal_sink_mem
@@ -148,52 +192,3 @@ index 2b5175a..cc4b7ea 100644
  
  	// =========================================================================
  	// Functional Clamps - Mux outputs to zero based on (dst_en | ntr_en)
-diff --git a/rtl/top/dfd_top_cla_dst_apb.sv b/rtl/top/dfd_top_cla_dst_apb.sv
-index 553b5f0..a88237d 100644
---- a/rtl/top/dfd_top_cla_dst_apb.sv
-+++ b/rtl/top/dfd_top_cla_dst_apb.sv
-@@ -19,6 +19,7 @@ module dfd_top_cla_dst_apb
-   import te_pkg::*;
-   import packetizer_pkg::*;
-   import tn_pkg::*;
-+  import trace_mem_pkg::*;
-  #(
-     parameter DEBUGMARKER_WIDTH = 8,
-     parameter DEBUG_SIGNAL_WIDTH = 128,
-@@ -31,6 +32,7 @@ module dfd_top_cla_dst_apb
-     parameter int unsigned NUM_DST_INST = 8,
-     parameter NUM_INPUT_LANES = 8,
-     parameter bit TRACE_SINK_SUPPORT = 1,
-+    parameter bit EXTERNAL_SINK_MEM = 0,
-     parameter TRC_AXI_ADDR_WIDTH = 52,
-     parameter TRC_AXI_DATA_WIDTH = 512,
-     parameter TRC_AXI_ID_WIDTH = 4,
-@@ -76,6 +78,7 @@ module dfd_top_cla_dst_apb
-     input logic [10:0] i_mem_tsel_settings,
-     input logic i_rst_n,
-     input logic [MAX_DST_NTR_INST_DST_WRAPPER-1:0] [1:0] i_sdtrig_control,
-+    input SinkMemPktOut_s [TRC_RAM_INSTANCES-1:0] i_sink_mem_rsp,
-     input logic i_test_icg_en,
-     input logic i_test_reset_en,
-     input logic i_test_reset_n,
-@@ -136,6 +139,7 @@ module dfd_top_cla_dst_apb
-     output DbgMuxSelMmr_s [NUM_CLA_INST-1:0] o_debug_mux_sel,
-     output logic [MMR_DATA_WIDTH-1:0] o_jtag_mmr_rsp_data,
-     output logic o_jtag_mmr_rsp_vld,
-+    output SinkMemPktIn_s [TRC_RAM_INSTANCES-1:0] o_sink_mem_req,
-     input logic [MMR_ADDR_WIDTH-1:0] paddr,
-     input logic penable,
-     output logic [MMR_DATA_WIDTH-1:0] prdata,
-@@ -545,8 +549,11 @@ module dfd_top_cla_dst_apb
-     .TRC_BASE_ADDR(TRC_BASE_ADDR),
-     .TRC_RAM_INDEX(TRC_RAM_INDEX),
-     .TRC_SIZE_IN_KB(TRC_SIZE_IN_KB),
--    .TSEL_CONFIGURABLE(TSEL_CONFIGURABLE)
-+    .TSEL_CONFIGURABLE(TSEL_CONFIGURABLE),
-+    .EXTERNAL_SINK_MEM(EXTERNAL_SINK_MEM)
-   ) trace_wrapper (
-+    .o_sink_mem_req(o_sink_mem_req),
-+    .i_sink_mem_rsp(i_sink_mem_rsp),
-     .NtrSinkMmrsWr(NtrSinkMmrsWr),
-     .FunnelMmrsWr(FunnelMmrsWr),
-     .TraceRamWrEn(TraceRamWrEn),

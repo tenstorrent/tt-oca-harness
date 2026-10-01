@@ -20,13 +20,13 @@
  *       master writes GO only after both firmware readbacks/READYs are proven).
  *   S6  after GO, emits 0x5A5AA5A5 then 0xC001CAFE to non-aperture 0x80001000 so
  *       the SMC {01,smc_id} default-master fall-through route is exercised.
- *   S10 waits (bounded) for ROUTE_DONE_SMC at scratch9, then writes SMU016_SMC_PASS
+ *   S10 waits (bounded) for ROUTE_DONE_SMC at scratch9, then writes EXTAXI_SMC_PASS
  *       to LOCAL scratch10 and parks in smu_sep_ext_axi_smc_pass_loop.
  *
- * STACKLESS BY DESIGN (smc_stackless_test.h): the SEP-driven / cocotb-backdoor
- * boot does not init the SMC SRAM stack, so main() makes NO function calls (only
- * SMC_* absolute-MMIO/poll macros) and the terminal pass/fail loops are noreturn
- * so the compiler tail-calls them -> no `add sp,sp,-N` in main (verify the .dis).
+ * STACKLESS (smc_stackless_test.h): the SEP-driven / cocotb-backdoor boot does
+ * not init the SMC SRAM stack, so main() makes no function calls (only SMC_*
+ * absolute-MMIO/poll macros) and the terminal pass/fail loops are noreturn so
+ * the compiler tail-calls them; main must contain no `add sp,sp,-N`.
  *
  * The outbound/inbound filter blocks are write-only programming interfaces (a CPU
  * read of one stalls), so only the aperture CSRs are read back in firmware; the
@@ -42,7 +42,7 @@ SMC_STACKLESS_ENTRY(smu_sep_ext_axi_smc_entry)
 #define SC6 SMC_CPU_CTRL_SCRATCH_6__REG_ADDR   /* SMC_READY (SMC -> ext_in)     */
 #define SC7 SMC_CPU_CTRL_SCRATCH_7__REG_ADDR   /* SMC_GO    (ext_in -> SMC)     */
 #define SC9 SMC_CPU_CTRL_SCRATCH_9__REG_ADDR   /* ROUTE_DONE_SMC (ext_in -> SMC) */
-#define SC10 SMC_CPU_CTRL_SCRATCH_10__REG_ADDR /* SMU016_SMC_PASS (LOCAL)      */
+#define SC10 SMC_CPU_CTRL_SCRATCH_10__REG_ADDR /* EXTAXI_SMC_PASS (LOCAL)      */
 
 /* SMC aperture CSRs (SMC_BASE_CONFIG; readable). */
 #define SMC_GLOBAL_BASE_REG SMC_TOP_SMC_BASE_CONFIG_GLOBAL_BASE_BASE_ADDR

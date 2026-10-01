@@ -2,31 +2,9 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * OCCP Boot Sequence Status Codes Test
- *
- * **SPECIFICATION COMPLIANCE TEST**
- * This test validates boot sequence status code generation specified in smc_rom.adoc:
- *
- * Specification Requirements (Section 10.3.1 - Boot Sequence Status Codes):
- * - SMC_STATUS_ROM_STARTED (0x001): ROM started
- * - SMC_STATUS_BOOT_START (0x010): Boot sequence started / Config read
- * - SMC_STATUS_RECOVERY_MODE (0x020): Recovery mode detected
- * - SMC_STATUS_PRIMARY_MODE (0x021): Primary mode detected
- * - SMC_STATUS_SECONDARY_MODE (0x022): Secondary mode detected
- * - SMC_STATUS_OCCP_INIT_FAILED (0x030): OCCP initialization failed
- * - SMC_STATUS_OCCP_READY (0x031): OCCP ready and operational
- * - SMC_STATUS_COORDINATION_ACTIVE (0x040): Coordination active
- * - SMC_STATUS_BOOT_COMPLETE (0x050): Boot sequence completed successfully
- * - SMC_STATUS_UNEXPECTED_EXIT (0x0FF): Unexpected exit from main loop
- *
- * **PRIMARY GOAL**: Find bugs/discrepancies between specification and implementation
- * per CLAUDE.md mission-critical objective.
- *
- * **TEST STRATEGY:**
- * 1. Query ROM status ring buffer for boot sequence status codes
- * 2. Verify expected status codes are present with correct timing
- * 3. Validate status code format and message structure
- * 4. FAIL if expected boot status codes are missing (detect specification gaps)
+ * Drains the ROM status ring buffer over OCCP and checks that the required boot status codes
+ * are present, carry the SMC BL0 firmware ID and the right message type, and that neither
+ * OCCP_INIT_FAILED nor UNEXPECTED_EXIT was reported.
  */
 
 #include "occp_test_common.h"
@@ -35,7 +13,6 @@
 #include <string.h>
 #include "smc_status.h"
 
-// Boot Sequence Status Codes from specification
 #define SMC_STATUS_ROM_STARTED 0x001
 #define SMC_STATUS_BOOT_START 0x010
 #define SMC_STATUS_RECOVERY_MODE 0x020
@@ -47,12 +24,6 @@
 #define SMC_STATUS_COORDINATION_ACTIVE 0x040
 #define SMC_STATUS_BOOT_COMPLETE 0x050
 #define SMC_STATUS_UNEXPECTED_EXIT 0x0FF
-
-//  // Status message format constants
-//  #define SMC_STATUS_FW_ID_SMC_BL0        0x3
-//  #define SMC_STATUS_TYPE_STATUS          0x0
-//  #define SMC_STATUS_TYPE_WARNING         0x1
-//  #define SMC_STATUS_TYPE_ERROR           0x2
 
 typedef struct {
     uint32_t status_code;
@@ -96,7 +67,6 @@ static void init_boot_status_test_context(boot_status_test_context_t *ctx,
     ctx->status_codes = expected_boot_codes;
     ctx->status_code_count = sizeof(expected_boot_codes) / sizeof(expected_boot_codes[0]);
 
-    // Reset found flags
     for (int i = 0; i < ctx->status_code_count; i++) {
         ctx->status_codes[i].found = false;
     }
@@ -136,7 +106,7 @@ static bool collect_boot_status_messages(boot_status_test_context_t *ctx) {
     int smc_messages_found = 0;
     int boot_status_found = 0;
     int consecutive_empty = 0;
-    const int max_reads = 200; // Read extensively to capture all boot messages
+    const int max_reads = 200;
 
     simputs("Querying SMC status ring buffer...\n");
 
@@ -160,13 +130,12 @@ static bool collect_boot_status_messages(boot_status_test_context_t *ctx) {
             if (is_smc_status_message(status)) {
                 smc_messages_found++;
 
-                // Check if this is a boot sequence status code
                 bool is_boot_status = false;
                 for (int j = 0; j < ctx->status_code_count; j++) {
                     uint32_t expected_code = ctx->status_codes[j].status_code;
                     bool matches = false;
 
-                    // Handle BOOT_START which may be OR'd with strap status (0x010-0x01F)
+                    // BOOT_START carries strap bits in its low nibble (0x010-0x01F).
                     if (expected_code == SMC_STATUS_BOOT_START && msg_value >= 0x010 &&
                         msg_value <= 0x01F) {
                         uint32_t base_code = msg_value & 0xFF0;
@@ -190,7 +159,6 @@ static bool collect_boot_status_messages(boot_status_test_context_t *ctx) {
                             simputs(") - ");
                             simputs(ctx->status_codes[j].description);
 
-                            // Show strap data if this is BOOT_START with strap info
                             if (expected_code == SMC_STATUS_BOOT_START &&
                                 msg_value != SMC_STATUS_BOOT_START) {
                                 uint32_t strap_data = msg_value & 0x00F;
@@ -205,7 +173,6 @@ static bool collect_boot_status_messages(boot_status_test_context_t *ctx) {
                 }
 
                 if (!is_boot_status && total_messages_read <= 20) {
-                    // Log unknown status codes for first few messages
                     simputs("UNKNOWN SMC Status: ");
                     simputshex32("fw_id=", fw_id);
                     simputs(" ");
@@ -224,8 +191,7 @@ static bool collect_boot_status_messages(boot_status_test_context_t *ctx) {
     simputshex32("Total messages read from buffer: ", total_messages_read);
     simputshex32("SMC messages found: ", smc_messages_found);
     simputshex32("Boot status codes found: ", boot_status_found);
-    simputshex32("Expected required codes: ",
-                 4); // ROM_STARTED, BOOT_START, OCCP_READY, BOOT_COMPLETE
+    simputshex32("Expected required codes: ", 4);
 
     return (total_messages_read > 0);
 }
@@ -275,7 +241,7 @@ static bool test_boot_sequence_status_coverage(boot_status_test_context_t *ctx) 
     if (required_missing > 0) {
         simputs("CRITICAL FAILURE: Essential boot status codes are missing\n");
         simputs("This indicates the ROM is not following the specification\n");
-        simputs("for boot sequence status reporting (Section 10.3.1)\n");
+        simputs("for boot sequence status reporting\n");
         test_passed = false;
     } else {
         simputs("SUCCESS: All required boot status codes are present\n");
@@ -293,7 +259,6 @@ static bool test_status_message_format_compliance(boot_status_test_context_t *ct
     int valid_format_count = 0;
     int invalid_format_count = 0;
 
-    // Re-read a few messages to test format
     for (int i = 0; i < 20; i++) {
         uint32_t status;
         int result =
@@ -306,9 +271,7 @@ static bool test_status_message_format_compliance(boot_status_test_context_t *ct
             if (is_smc_status_message(status)) {
                 bool format_valid = true;
 
-                // Handle BOOT_START OR'd with strap status (0x010-0x01F range)
                 if (msg_value >= 0x010 && msg_value <= 0x01F) {
-                    // Verify this is BOOT_START OR'd with strap status
                     uint32_t base_code = msg_value & 0xFF0;
                     uint32_t strap_data = msg_value & 0x00F;
 
@@ -319,7 +282,6 @@ static bool test_status_message_format_compliance(boot_status_test_context_t *ct
                     }
                 }
 
-                // Validate firmware ID
                 if (fw_id != SMC_STATUS_FW_ID_SMC_BL0) {
                     simputs("ERROR: Invalid firmware ID: ");
                     simputshex32("", fw_id);
@@ -327,7 +289,6 @@ static bool test_status_message_format_compliance(boot_status_test_context_t *ct
                     format_valid = false;
                 }
 
-                // Validate message type
                 if (msg_type > SMC_STATUS_TYPE_ERROR) {
                     simputs("ERROR: Invalid message type: ");
                     simputshex32("", msg_type);
@@ -335,12 +296,10 @@ static bool test_status_message_format_compliance(boot_status_test_context_t *ct
                     format_valid = false;
                 }
 
-                // Validate boot sequence status codes are of correct type
                 for (int j = 0; j < ctx->status_code_count; j++) {
                     uint32_t expected_code = ctx->status_codes[j].status_code;
                     bool matches = false;
 
-                    // Handle BOOT_START which may be OR'd with strap status
                     if (expected_code == SMC_STATUS_BOOT_START && msg_value >= 0x010 &&
                         msg_value <= 0x01F) {
                         uint32_t base_code = msg_value & 0xFF0;
@@ -352,7 +311,6 @@ static bool test_status_message_format_compliance(boot_status_test_context_t *ct
                     }
 
                     if (matches) {
-                        // Boot status codes should be STATUS type (0x0) unless they're errors
                         if (expected_code == SMC_STATUS_OCCP_INIT_FAILED ||
                             expected_code == SMC_STATUS_UNEXPECTED_EXIT) {
                             if (msg_type != SMC_STATUS_TYPE_ERROR) {
@@ -364,7 +322,6 @@ static bool test_status_message_format_compliance(boot_status_test_context_t *ct
                         } else if (expected_code == SMC_STATUS_RECOVERY_MODE) {
                             if (msg_type != SMC_STATUS_TYPE_WARNING) {
                                 simputs("WARNING: Recovery mode not marked as warning\n");
-                                // Don't fail test for this, but note it
                             }
                         } else {
                             if (msg_type != SMC_STATUS_TYPE_STATUS) {
@@ -409,20 +366,16 @@ static bool test_boot_sequence_timing_verification(boot_status_test_context_t *c
 
     bool test_passed = true;
 
-    // Check logical dependencies
-    bool rom_started = ctx->status_codes[0].found; // ROM_STARTED
-    bool boot_start = ctx->status_codes[1].found;  // BOOT_START
-    bool occp_init_failed =
-        ctx->status_codes[6].found; // CORRECTED: Was 5, OCCP_INIT_FAILED is now at index 6
-    bool occp_ready = ctx->status_codes[7].found; // CORRECTED: Was 6, OCCP_READY is now at index 7
-    bool boot_complete =
-        ctx->status_codes[9].found; // CORRECTED: Was 8, BOOT_COMPLETE is now at index 9
-    bool unexpected_exit =
-        ctx->status_codes[10].found; // CORRECTED: Was 9, UNEXPECTED_EXIT is now at index 10
+    // Indices must match the order of expected_boot_codes.
+    bool rom_started = ctx->status_codes[0].found;
+    bool boot_start = ctx->status_codes[1].found;
+    bool occp_init_failed = ctx->status_codes[6].found;
+    bool occp_ready = ctx->status_codes[7].found;
+    bool boot_complete = ctx->status_codes[9].found;
+    bool unexpected_exit = ctx->status_codes[10].found;
 
     simputs("\n**BOOT SEQUENCE LOGIC VERIFICATION**:\n");
 
-    // ROM_STARTED should be present if system boots properly
     if (!rom_started) {
         simputs("CRITICAL: ROM_STARTED status missing - ROM may not be reporting boot start\n");
         test_passed = false;
@@ -430,7 +383,6 @@ static bool test_boot_sequence_timing_verification(boot_status_test_context_t *c
         simputs(" ROM_STARTED: ROM boot initialization detected\n");
     }
 
-    // BOOT_START should follow ROM_STARTED
     if (!boot_start) {
         simputs("CRITICAL: BOOT_START status missing - Boot sequence not reported\n");
         test_passed = false;
@@ -438,7 +390,6 @@ static bool test_boot_sequence_timing_verification(boot_status_test_context_t *c
         simputs(" BOOT_START: Boot sequence initiation detected\n");
     }
 
-    // OCCP_READY should be present for OCCP functionality
     if (!occp_ready) {
         simputs("CRITICAL: OCCP_READY status missing - OCCP initialization not reported\n");
         test_passed = false;
@@ -446,16 +397,13 @@ static bool test_boot_sequence_timing_verification(boot_status_test_context_t *c
         simputs(" OCCP_READY: OCCP initialization success detected\n");
     }
 
-    // BOOT_COMPLETE should indicate successful boot
     if (!boot_complete) {
         simputs("WARNING: BOOT_COMPLETE status missing - ROM may still be in progress\n");
-        // Don't fail test for this - ROM might still be running
         simputs("  (This may be expected if ROM is still in OCCP command loop)\n");
     } else {
         simputs(" BOOT_COMPLETE: Boot sequence completion detected\n");
     }
 
-    // Check for error conditions
     if (occp_init_failed) {
         simputs("ERROR: OCCP_INIT_FAILED detected - Critical boot failure\n");
         test_passed = false;
@@ -472,12 +420,12 @@ static bool test_boot_sequence_timing_verification(boot_status_test_context_t *c
 
 static bool test_specification_compliance(boot_status_test_context_t *ctx) {
     simputs("\n=== Test 4: Specification Compliance Analysis ===\n");
-    simputs("**CRITICAL BUG DETECTION per CLAUDE.md mission**\n");
+    simputs("**SPECIFICATION COMPLIANCE ANALYSIS**\n");
 
     bool test_passed = true;
 
     simputs("ANALYZING ROM BOOT STATUS REPORTING COMPLIANCE:\n");
-    simputs("1. Specification defines 11 boot sequence status codes (Section 10.3.1)\n");
+    simputs("1. The ROM specification defines the boot sequence status codes\n");
     simputs("2. ROM should generate these at appropriate boot phases\n");
     simputs("3. Status codes provide observability into boot progression\n");
 
@@ -530,7 +478,6 @@ static bool test_active_status_generation(boot_status_test_context_t *ctx) {
 
     simputs("Testing active status code generation scenarios...\n");
 
-    // Count initial status codes before active testing
     int initial_boot_codes = 0;
     for (int i = 0; i < ctx->status_code_count; i++) {
         if (ctx->status_codes[i].found) {
@@ -540,21 +487,17 @@ static bool test_active_status_generation(boot_status_test_context_t *ctx) {
 
     simputs("Active test scenarios:\n");
 
-    // Scenario 1: Try to trigger OCCP_INIT_FAILED by disrupting interface
     simputs("1. Testing OCCP interface stress scenarios...\n");
     scenarios_tested++;
 
-    // Send rapid commands to test interface robustness
     for (int i = 0; i < 10; i++) {
         uint32_t status;
         occp_send_get_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &status);
     }
 
-    // Scenario 2: Test invalid command scenarios that might trigger CMD_FAILED status
     simputs("2. Testing command validation scenarios...\n");
     scenarios_tested++;
 
-    // Try zero-length operations that should be rejected
     uint8_t dummy_data[1] = {0};
     int result = occp_send_write_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr,
                                          OCCP_TEST_BASE_ADDR, dummy_data, 0);
@@ -562,11 +505,9 @@ static bool test_active_status_generation(boot_status_test_context_t *ctx) {
         simputs("Expected: Zero-length command rejected\n");
     }
 
-    // Scenario 3: Test memory boundary scenarios
     simputs("3. Testing memory access boundary scenarios...\n");
     scenarios_tested++;
 
-    // Try accessing ROM-protected regions (should be denied)
     uint8_t test_data[8] = {0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x11, 0x22};
     result = occp_send_write_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, 0xC0060000,
                                      test_data, sizeof(test_data));
@@ -574,11 +515,9 @@ static bool test_active_status_generation(boot_status_test_context_t *ctx) {
         simputs("Expected: ROM-protected write denied\n");
     }
 
-    // Brief pause to allow status messages to be logged
     for (volatile int delay = 0; delay < 10000; delay++)
         ;
 
-    // Re-scan for any new status codes that might have been generated
     simputs("Checking for newly generated status codes...\n");
     for (int scan = 0; scan < 20; scan++) {
         uint32_t status;
@@ -590,7 +529,6 @@ static bool test_active_status_generation(boot_status_test_context_t *ctx) {
             extract_status_message_components(status, &fw_id, &msg_type, &msg_value);
 
             if (is_smc_status_message(status)) {
-                // Check if this is a new boot status code we haven't seen
                 for (int j = 0; j < ctx->status_code_count; j++) {
                     if (!ctx->status_codes[j].found &&
                         msg_value == ctx->status_codes[j].status_code) {
@@ -606,7 +544,7 @@ static bool test_active_status_generation(boot_status_test_context_t *ctx) {
                 }
             }
         } else if (status == 0) {
-            break; // No more messages
+            break;
         }
     }
 
@@ -615,7 +553,6 @@ static bool test_active_status_generation(boot_status_test_context_t *ctx) {
     simputshex32("New status codes found: ", status_codes_triggered);
     simputshex32("Initial boot codes found: ", initial_boot_codes);
 
-    // Count final status codes
     int final_boot_codes = 0;
     for (int i = 0; i < ctx->status_code_count; i++) {
         if (ctx->status_codes[i].found) {
@@ -637,17 +574,15 @@ static bool test_active_status_generation(boot_status_test_context_t *ctx) {
 
 static void run_boot_status_test_suite(boot_status_test_context_t *ctx) {
     simputs("=== Boot Sequence Status Codes Test Suite ===\n");
-    simputs("Mission: Detect bugs/discrepancies in boot status reporting per CLAUDE.md\n");
+    simputs("Mission: Detect discrepancies in boot status reporting\n");
     simputs("Target: Verify ROM generates specified boot sequence status codes\n");
 
-    // Collect all boot status messages from ROM
     if (!collect_boot_status_messages(ctx)) {
         simputs("CRITICAL: Failed to collect status messages from ROM\n");
         ctx->overall_result = false;
         return;
     }
 
-    // Run comprehensive test suite
     test_boot_sequence_status_coverage(ctx);
     test_status_message_format_compliance(ctx);
     test_boot_sequence_timing_verification(ctx);
@@ -686,12 +621,11 @@ int main(void) {
     static test_context_t occp_ctx = {0};
     static boot_status_test_context_t test_ctx = {0};
 
-    // peripherals_out_of_reset();
     init_test(0);
 
     simputs("=== OCCP Boot Sequence Status Codes Test ===\n");
     simputs("Mission: Verify ROM generates all specified boot sequence status codes\n");
-    simputs("Coverage: All 11 boot sequence status codes from Section 10.3.1\n");
+    simputs("Coverage: all boot sequence status codes in expected_boot_codes\n");
 
     if (!initialize_interface(&occp_ctx)) {
         simputs("FAIL: Interface initialization failed\n");
@@ -699,7 +633,6 @@ int main(void) {
         return -1;
     }
 
-    // Use standard test address constants
     occp_ctx.test_base_addr = OCCP_TEST_BASE_ADDR;
     occp_ctx.test_upper_addr_bound = OCCP_TEST_UPPER_ADDR;
     occp_ctx.overall_result = true;
@@ -712,7 +645,6 @@ int main(void) {
 
     finalize_test_results(&test_ctx);
 
-    // Add detailed summary statistics like other comprehensive tests
     simputs("\n=== Final Test Results Summary ===\n");
     simputshex32("Tests passed: ", test_ctx.passed_tests);
     simputshex32("Tests non-passed: ", test_ctx.total_tests - test_ctx.passed_tests);

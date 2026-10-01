@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Ordered SV compile manifest for the shared OCAH framework library. Consumed by DUT sim
+# configs via [frameworks.uvm.build].source_lists, listed AHEAD of the protocol VIP manifests
+# so every bench and VIP class can extend the library bases. Order is load-bearing: the
+# protocol-neutral evidence base first (the library's scoreboard and subscriber compose it),
+# the library package last.
+description = "OCAH shared framework library SV-UVM compile layer (bases, cfgs, knobs, rng)"
+
+incdirs = [
+  "hw/common/dv/vip/ocah_checker/uvm",
+  "hw/common/dv/vip/ocah_lib/uvm",
+]
+
+sources = [
+  # Shared protocol-neutral evidence base. Every dependent manifest lists it;
+  # consuming several manifests together dedup-merges the entry, so it
+  # compiles exactly once, first.
+  "hw/common/dv/vip/ocah_checker/uvm/ocah_checker_uvm_pkg.sv",
+  "hw/common/dv/vip/ocah_lib/uvm/ocah_lib_pkg.sv",
+]

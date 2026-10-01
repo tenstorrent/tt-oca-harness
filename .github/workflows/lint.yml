@@ -9,17 +9,27 @@ on:
     branches: [main]
   workflow_dispatch:
 
+env:
+  VERILATOR_VERSION: v5.050
+
 jobs:
   diff-class:
     runs-on: ubuntu-latest
     outputs:
       run_hardware_ci: ${{ steps.diff-class.outputs.run_hardware_ci }}
+      run_nix_ci: ${{ steps.diff-class.outputs.run_nix_ci }}
     steps:
       - name: Checkout
         if: github.event_name == 'pull_request' || github.event_name == 'push'
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Checkout submodules
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          git submodule update --init --recursive
+
       - name: Classify the diff
         id: diff-class
         run: |
@@ -29,6 +39,7 @@ jobs:
               ;;
             *)
               echo "run_hardware_ci=true" >> "$GITHUB_OUTPUT"
+              echo "run_nix_ci=true" >> "$GITHUB_OUTPUT"
               ;;
           esac
 
@@ -36,8 +47,6 @@ jobs:
   # bender (only lint-sv-slang) and reviewdog (via the shared
   # .github/actions/reviewdog-report composite action).
   setup-tools:
-    needs: [diff-class]
-    if: needs.diff-class.outputs.run_hardware_ci == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Install bender
@@ -57,6 +66,377 @@ jobs:
         uses: actions/upload-artifact@v4
         with: { name: reviewdog-bin, path: ./reviewdog-bin/reviewdog, retention-days: 1 }
 
+  setup-verilator:
+    needs: [diff-class]
+    if: needs.diff-class.outputs.run_hardware_ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cache Verilator
+        id: cache-verilator
+        uses: actions/cache@v4
+        with:
+          path: ~/verilator
+          key: verilator-${{ env.VERILATOR_VERSION }}-${{ runner.os }}-${{ runner.arch }}
+      - name: Build Verilator
+        if: steps.cache-verilator.outputs.cache-hit != 'true'
+        timeout-minutes: 30
+        run: |
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=15 update
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=15 \
+            install -y --no-install-recommends \
+            autoconf bison flex g++ help2man libfl-dev make perl python3 zlib1g-dev
+          git clone --depth 1 --branch "$VERILATOR_VERSION" \
+            https://github.com/verilator/verilator.git "$RUNNER_TEMP/verilator-src"
+          cd "$RUNNER_TEMP/verilator-src"
+          autoconf
+          ./configure --prefix="$HOME/verilator"
+          make -j "$(nproc)"
+          make install
+      - name: Upload Verilator
+        uses: actions/upload-artifact@v4
+        with:
+          name: verilator
+          path: ~/verilator/
+          retention-days: 1
+
+  lint-sv-verilator:
+    name: lint-sv-verilator/${{ matrix.block }}
+    needs: [diff-class, setup-tools, setup-verilator]
+    if: needs.diff-class.outputs.run_hardware_ci == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions: { contents: read, checks: write, pull-requests: write }
+    strategy:
+      fail-fast: false
+      matrix:
+        block: [aou, dtp, sep, smc, smu]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: bender-bin, path: ./bin }
+      - uses: actions/download-artifact@v4
+        with: { name: verilator, path: ./verilator }
+      - name: Add tools to PATH
+        run: |
+          chmod +x ./bin/bender
+          # actions/upload-artifact zips (and download-artifact unzips) without
+          # preserving Unix permissions, so every file lands back at 644.
+          chmod +x ./verilator/bin/*
+          echo "$GITHUB_WORKSPACE/bin" >> "$GITHUB_PATH"
+          echo "$GITHUB_WORKSPACE/verilator/bin" >> "$GITHUB_PATH"
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=15 update
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=15 \
+            install -y --no-install-recommends libfl2
+      - name: Lint ${{ matrix.block }} (Verilator)
+        id: lint
+        shell: bash
+        run: |
+          set +e
+          sarif="$GITHUB_WORKSPACE/verilator_${{ matrix.block }}.sarif"
+          make ocah-lint-verilator-all \
+            BLOCK="${{ matrix.block }}" \
+            OCAH_LINT_VERILATOR_EXTRA_FLAGS="--diagnostics-sarif-output $sarif" \
+            2>&1 | tee "lint_sv_verilator_${{ matrix.block }}.log"
+          exit_code=${PIPESTATUS[0]}
+          echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
+          if [ ! -s "$sarif" ]; then
+            printf '%s\n' '{"version":"2.1.0","runs":[]}' > "$sarif"
+          fi
+          exit 0
+      # The Checks API post is advisory. Verilator's exit status, gated
+      # below, fails the job.
+      - uses: ./.github/actions/reviewdog-report
+        continue-on-error: true
+        with:
+          log-file: verilator_${{ matrix.block }}.sarif
+          format: sarif
+          name: lint-sv-verilator/${{ matrix.block }}
+      - name: Gate on Verilator exit status
+        if: always() && steps.lint.outputs.exit_code != '0'
+        run: |
+          echo "::error::Verilator exited with status ${{ steps.lint.outputs.exit_code }}"
+          exit 1
+
+  lint-python:
+    needs: [diff-class, setup-tools]
+    if: needs.diff-class.outputs.run_hardware_ci == 'true'
+    runs-on: ubuntu-latest
+    permissions: { contents: read, checks: write, pull-requests: write }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Checkout submodules
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          git submodule update --init
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.11"
+      - name: Lint Python (Ruff)
+        id: lint
+        shell: bash
+        run: |
+          set +e
+          sarif="$GITHUB_WORKSPACE/ruff.sarif"
+          make ocah-lint-python \
+            OCAH_LINT_RUFF_EXTRA_FLAGS="--output-format sarif --output-file $sarif"
+          exit_code=$?
+          echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
+          if [ ! -s "$sarif" ]; then
+            printf '%s\n' '{"version":"2.1.0","runs":[]}' > "$sarif"
+          fi
+          exit 0
+      # The Checks API post is advisory. Ruff's exit status, gated below,
+      # fails the job.
+      - uses: ./.github/actions/reviewdog-report
+        continue-on-error: true
+        with:
+          log-file: ruff.sarif
+          format: sarif
+          name: lint-python
+          reporter: ${{ github.event_name == 'pull_request' && 'github-pr-review' || 'github-check' }}
+      - name: Gate on Ruff exit status
+        if: always() && steps.lint.outputs.exit_code != '0'
+        run: |
+          echo "::error::Ruff exited with status ${{ steps.lint.outputs.exit_code }}"
+          exit 1
+      - name: Check Python formatting (Ruff)
+        if: always()
+        run: make ocah-format-python-check
+
+  # Report-only: mypy currently surfaces ~600 pre-existing findings across
+  # hw/'s Python once third-party stub noise is filtered (see
+  # flows/lint/mypy.mk); fail-level: none until that backlog is cleared.
+  lint-python-mypy:
+    needs: [diff-class, setup-tools]
+    if: needs.diff-class.outputs.run_hardware_ci == 'true'
+    runs-on: ubuntu-latest
+    permissions: { contents: read, checks: write, pull-requests: write }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Checkout submodules
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          git submodule update --init
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.11"
+      - name: Type-check Python sources (mypy)
+        run: make ocah-lint-python-mypy 2>&1 | tee lint_mypy.log || true
+      - uses: ./.github/actions/reviewdog-report
+        with:
+          log-file: lint_mypy.log
+          efm: '%f:%l: %m'
+          # warning, not error: for github-check/-pr-check reporters, `level`
+          # (not `fail-level`) is what the reviewdog check run's own PASS/FAIL
+          # status is keyed on. `error` maps to "failure" regardless of
+          # fail-level: none, which only controls reviewdog's own exit code
+          # (i.e. whether *this* Actions job fails). warning/info map to
+          # "neutral", which is what report-only actually requires here.
+          level: warning
+          name: lint-python-mypy
+          fail-level: none
+
+  lint-spelling:
+    needs: [diff-class, setup-tools]
+    if: needs.diff-class.outputs.run_hardware_ci == 'true'
+    runs-on: ubuntu-latest
+    permissions: { contents: read, checks: write, pull-requests: write }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Checkout submodules
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          git submodule update --init
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.11"
+      - name: Check spelling (codespell)
+        run: make ocah-lint-spelling 2>&1 | tee lint_spelling.log || true
+      - uses: ./.github/actions/reviewdog-report
+        with: { log-file: lint_spelling.log, efm: '%f:%l: %m', level: error, name: lint-spelling }
+
+  lint-sv-comments:
+    needs: [diff-class, setup-tools]
+    if: needs.diff-class.outputs.run_hardware_ci == 'true'
+    runs-on: ubuntu-latest
+    permissions: { contents: read, checks: write, pull-requests: write }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Check SystemVerilog comments
+        run: make ocah-lint-sv-comments 2>&1 | tee lint_sv_comments.log || true
+      - uses: ./.github/actions/reviewdog-report
+        with: { log-file: lint_sv_comments.log, efm: '%f:%l: %m', level: error, name: lint-sv-comments }
+
+  # Vale is a Go binary with no PyPI wheel; fetched here from a pinned
+  # release the same way lint-make (checkmake) does (see flows/lint/vale.mk).
+  lint-vale:
+    needs: [setup-tools]
+    runs-on: ubuntu-latest
+    permissions: { contents: read, checks: write, pull-requests: write }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Vale
+        run: |
+          curl -fsSL -o vale.tar.gz https://github.com/vale-cli/vale/releases/download/v3.15.2/vale_3.15.2_Linux_64-bit.tar.gz
+          mkdir -p ./vale-bin && tar xzf vale.tar.gz -C ./vale-bin
+          echo "$GITHUB_WORKSPACE/vale-bin" >> "$GITHUB_PATH"
+      - name: Setup Ruby
+        # Vale's native AsciiDoc parsing (styles/OCAH/Acronyms.yml applies
+        # to .adoc files) shells out to a real asciidoctor; without one on
+        # PATH it's a hard runtime error, not a skipped file. Same
+        # gem/version pin as doc.yml's build-and-deploy job.
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.1'
+          bundler-cache: false
+          rubygems: '3.3.26'
+      - name: Install Asciidoctor
+        run: gem install --no-document asciidoctor:2.0.26
+      - name: Lint documentation prose (Vale)
+        # stdout only: with OCAH_VALE_FLAGS picking the rdjsonl template,
+        # every stdout line must be a JSON object. 2>&1 would fold in any
+        # runtime-error text on stderr and break reviewdog's parse the
+        # same way an unsilenced Make recipe-echo would (see vale.mk).
+        run: make ocah-lint-vale OCAH_VALE_FLAGS="--output=$GITHUB_WORKSPACE/flows/lint/vale-rdjsonl.tmpl" > lint_vale.rdjsonl || true
+      - uses: ./.github/actions/reviewdog-report
+        # Vale's own JSON already carries real per-alert severities (all
+        # `error` right now -- see styles/OCAH/Acronyms.yml), the same
+        # reason lint-sv-slang skips the `level` input for its rdjson.
+        with: { log-file: lint_vale.rdjsonl, format: rdjsonl, name: lint-vale }
+
+  lint-yaml:
+    needs: [diff-class, setup-tools]
+    if: needs.diff-class.outputs.run_hardware_ci == 'true'
+    runs-on: ubuntu-latest
+    permissions: { contents: read, checks: write, pull-requests: write }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Checkout submodules
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          git submodule update --init
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.11"
+      - name: Lint YAML sources (yamllint)
+        run: make ocah-lint-yaml 2>&1 | tee lint_yaml.log || true
+      - uses: ./.github/actions/reviewdog-report
+        with: { log-file: lint_yaml.log, efm: '%f:%l:%c: %m', level: error, name: lint-yaml }
+
+  lint-toml:
+    needs: [diff-class, setup-tools]
+    if: needs.diff-class.outputs.run_hardware_ci == 'true'
+    runs-on: ubuntu-latest
+    permissions: { contents: read, checks: write, pull-requests: write }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Checkout submodules
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          git submodule update --init
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.11"
+      - name: Check TOML syntax (tomllint)
+        run: make ocah-lint-toml 2>&1 | tee lint_toml.log || true
+      - uses: ./.github/actions/reviewdog-report
+        with: { log-file: lint_toml.log, efm: '%f:%l:%c: %m', level: error, name: lint-toml }
+
+  lint-markdown:
+    needs: [diff-class, setup-tools]
+    if: needs.diff-class.outputs.run_hardware_ci == 'true'
+    runs-on: ubuntu-latest
+    permissions: { contents: read, checks: write, pull-requests: write }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+      - name: Lint Markdown sources (markdownlint)
+        run: make ocah-lint-markdown 2>&1 | tee lint_markdown.log || true
+      - uses: ./.github/actions/reviewdog-report
+        with:
+          log-file: lint_markdown.log
+          # Two patterns - NOT comma-joined in a single -efm value (see the
+          # efm input's description for why). Column is present for most
+          # rules but absent for a few (e.g. MD025), hence both forms.
+          efm: |
+            %f:%l:%c error %m
+            %f:%l error %m
+            %-G%.%#
+          level: error
+          name: lint-markdown
+
+  # checkmake is a Go binary with no PyPI wheel; fetched here from a pinned
+  # release the same way lint-sv-slang fetches slang (see flows/lint/checkmake.mk).
+  lint-make:
+    needs: [diff-class, setup-tools]
+    if: needs.diff-class.outputs.run_hardware_ci == 'true'
+    runs-on: ubuntu-latest
+    permissions: { contents: read, checks: write, pull-requests: write }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install checkmake
+        run: |
+          curl -fsSL -o checkmake https://github.com/checkmake/checkmake/releases/download/v0.3.2/checkmake-v0.3.2.linux.amd64
+          chmod +x checkmake
+          echo "$GITHUB_WORKSPACE" >> "$GITHUB_PATH"
+      - name: Lint Makefiles (checkmake)
+        run: make ocah-lint-make 2>&1 | tee lint_make.log || true
+      - uses: ./.github/actions/reviewdog-report
+        with:
+          log-file: lint_make.log
+          efm: '%f:%l: %m'
+          # warning, not error: see the matching comment on lint-python-mypy
+          # above -- `level` (not `fail-level`) drives this check run's own
+          # PASS/FAIL status for github-check/-pr-check reporters.
+          level: warning
+          name: lint-make
+          # Report-only: maxbodylength/phonydeclared/uniquetargets all have
+          # false-positive modes against conventions this repo relies on
+          # deliberately (see flows/lint/checkmake.mk).
+          fail-level: none
+
+  lint-shell:
+    needs: [diff-class, setup-tools]
+    if: needs.diff-class.outputs.run_hardware_ci == 'true'
+    runs-on: ubuntu-latest
+    permissions: { contents: read, checks: write, pull-requests: write }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Checkout submodules
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          git submodule update --init
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.11"
+      - name: Lint shell scripts (shellcheck)
+        run: make ocah-lint-shell OCAH_LINT_SHELLCHECK_EXTRA_FLAGS="-f gcc" 2>&1 | tee lint_shell.log || true
+      - uses: ./.github/actions/reviewdog-report
+        with: { log-file: lint_shell.log, efm: '%f:%l:%c: %m', level: warning, name: lint-shell }
+      - name: Check shell formatting (shfmt)
+        if: always()
+        run: make ocah-format-shell-check
+
   format-c:
     needs: [diff-class, setup-tools]
     if: needs.diff-class.outputs.run_hardware_ci == 'true'
@@ -65,6 +445,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Checkout submodules
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          git submodule update --init
       - name: Install uv
         uses: astral-sh/setup-uv@v6
         with:
@@ -82,6 +466,42 @@ jobs:
           level: error
           name: format-c
 
+  format-nix:
+    needs: [diff-class, setup-tools]
+    if: needs.diff-class.outputs.run_nix_ci == 'true'
+    runs-on: ubuntu-latest
+    permissions: { contents: read, checks: write, pull-requests: write }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+           fetch-depth: 0
+      - name: Checkout submodules
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          sed -i 's|git@github.com:tenstorrent/|https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/|g' $GITHUB_WORKSPACE/.gitmodules
+          git submodule update --init
+          git config --global --add safe.directory $GITHUB_WORKSPACE/hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31.11.1
+        with:
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
+      - name: Run nix-fmt
+        run: |
+          set +e
+          NIX_FMT_CHECK_NO_COLOUR=1 nix fmt -- -f check > "$GITHUB_WORKSPACE/format_nix_raw.log" 2>&1
+          nix_exit=$?
+          echo "nix fmt exit: $nix_exit" >&2
+          cat "$GITHUB_WORKSPACE/format_nix_raw.log" >&2
+          awk '/^diff --git/{found=1} found && /^(traversed |emitted |formatted [0-9]|Error: )/{exit} found{print}' \
+            "$GITHUB_WORKSPACE/format_nix_raw.log" > "$GITHUB_WORKSPACE/format_nix.log"
+      - uses: ./.github/actions/reviewdog-report
+        with:
+          log-file: ${{ github.workspace }}/format_nix.log
+          format: diff
+          name: format-nix
+
   lint-tcl:
     needs: [diff-class, setup-tools]
     if: needs.diff-class.outputs.run_hardware_ci == 'true'
@@ -90,6 +510,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Checkout submodules
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          git submodule update --init
       - name: Install uv
         uses: astral-sh/setup-uv@v6
         with:
@@ -104,23 +528,32 @@ jobs:
       - name: Check Tcl formatting (tclfmt)
         run: make ocah-format-tcl-check
 
-  # Temporarily disabled: ~25k pre-existing style findings still make the
-  # reviewdog GitHub Check fail even with fail-level: none. Re-enable once
-  # the hw/ style backlog is cleaned up.
-  # lint-sv-verible:
-  #   needs: setup-tools
-  #   runs-on: ubuntu-latest
-  #   permissions: { contents: read, checks: write, pull-requests: write }
-  #   steps:
-  #     - name: Checkout
-  #       uses: actions/checkout@v4
-  #     - name: Install Verible
-  #       uses: chipsalliance/verible-actions-common/install-verible@main
-  #       with: { verible_version: v0.0-4080-ga0a8d8eb }
-  #     - name: Lint SystemVerilog style (verible-verilog-lint)
-  #       run: make ocah-lint-sv-verible 2>&1 | tee lint_sv_verible.log || true
-  #     - uses: ./.github/actions/reviewdog-report
-  #       with: { log-file: lint_sv_verible.log, efm: '%f:%l:%c: %m', level: error, name: lint-sv-verible, fail-level: none }
+  # Report-only while the classified first-party style backlog remains.
+  lint-sv-verible:
+    needs: [diff-class, setup-tools]
+    if: needs.diff-class.outputs.run_hardware_ci == 'true'
+    runs-on: ubuntu-latest
+    permissions: { contents: read, checks: write, pull-requests: write }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Verible
+        uses: chipsalliance/verible-actions-common/install-verible@main
+        with: { verible_version: v0.0-4080-ga0a8d8eb }
+      - name: Lint SystemVerilog style (verible-verilog-lint)
+        run: make ocah-lint-sv-verible 2>&1 | tee lint_sv_verible.log || true
+      - uses: ./.github/actions/reviewdog-report
+        with:
+          log-file: lint_sv_verible.log
+          efm: |
+            %f:%l:%c-%*\d: %m
+            %f:%l:%c: %m
+            %-G%.%#
+          level: warning
+          name: lint-sv-verible
+          fail-level: none
+      - name: Check SystemVerilog formatting and declaration spacing
+        run: make ocah-format-sv-check
 
   lint-sv-slang:
     needs: [diff-class, setup-tools]
@@ -140,26 +573,92 @@ jobs:
           echo "$GITHUB_WORKSPACE/slang-bin" >> "$GITHUB_PATH"
       - name: Generate smu filelist (covers smc/sep/dtp too)
         run: make -C hw/sys/smu -f flow.mk ocah-lint-slang-flist OCAH_ROOT="$GITHUB_WORKSPACE"
-      - name: Generate aou-rtl filelist
-        run: make -C vendor/tenstorrent/aou-rtl/overlay -f flow.mk ocah-lint-slang-flist OCAH_ROOT="$GITHUB_WORKSPACE"
+      - name: Generate aou filelist
+        run: make -C vendor/tenstorrent/aou/overlay -f flow.mk ocah-lint-slang-flist OCAH_ROOT="$GITHUB_WORKSPACE"
       - name: Lint smu (slang)
         run: slang -f hw/sys/smu/build/lint/smu.f --top smu --timescale=1ns/1ps --lint-only --single-unit --compat vcs --error-limit 0 --diag-json smu_diags.json || true
       - name: Convert smu diagnostics to rdjson
         run: python3 scripts/ci/slang_to_rdjson.py smu_diags.json > smu_diags.rdjson.json
       - uses: ./.github/actions/reviewdog-report
         with: { log-file: smu_diags.rdjson.json, format: rdjson, name: lint-sv-slang/smu }
-      - name: Lint aou-rtl (slang)
-        run: slang -f vendor/tenstorrent/aou-rtl/overlay/build/lint/AOU_TOP.f --top AOU_TOP --timescale=1ns/1ps --lint-only --single-unit --compat vcs --error-limit 0 --diag-json aou_diags.json || true
-      - name: Convert aou-rtl diagnostics to rdjson
+      - name: Lint aou (slang)
+        run: slang -f vendor/tenstorrent/aou/overlay/build/lint/AOU_TOP.f --top AOU_TOP --timescale=1ns/1ps --lint-only --single-unit --compat vcs --error-limit 0 --diag-json aou_diags.json || true
+      - name: Convert aou diagnostics to rdjson
         run: python3 scripts/ci/slang_to_rdjson.py aou_diags.json > aou_diags.rdjson.json
       - uses: ./.github/actions/reviewdog-report
         with: { log-file: aou_diags.rdjson.json, format: rdjson, name: lint-sv-slang/aou }
 
-  # Regenerates every register block's collateral from the RDLs and fails if the
-  # working tree changes: the committed gen/ outputs must match a fresh run.
-  # Register regen is peakrdl-only (no bender), so this needs uv but not
-  # setup-tools. `git status --porcelain` (not `git diff --exit-code`) so new
-  # untracked gen files also fail the check.
+  # The DV runner's unit tests, including the SMC evidence checker that holds
+  # each leaf's required_evidence tuple to the SMC_VPLAN card declaring it.
+  # Scoped by its own path filter rather than by run_hardware_ci: a plan card
+  # is an .adoc, so a card-only edit classifies documentation-only while still
+  # being able to break the checker.
+  dv-unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions: { contents: read }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # diff_class.py derives the PR diff itself; a shallow checkout has no
+          # merge base to diff against. Same reason regen-regs fetches in full.
+          fetch-depth: 0
+      - name: Classify the diff
+        id: scope
+        shell: bash
+        run: |
+          run=true
+          case "${{ github.event_name }}" in
+            pull_request|push)
+              set +e
+              python3 scripts/ci/diff_class.py --is-dv-check-required
+              # 0 in scope, 1 out of scope, anything else the classifier
+              # failed: run the tests rather than skip on a broken answer.
+              [ $? -eq 1 ] && run=false
+              set -e
+              ;;
+          esac
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+      - name: Checkout submodules
+        if: steps.scope.outputs.run == 'true'
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          git submodule update --init
+      - name: Install uv
+        if: steps.scope.outputs.run == 'true'
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.11"
+      - name: Run the DV unit tests
+        if: steps.scope.outputs.run == 'true'
+        run: uv run --locked --group dv python -m unittest discover tools/dv/tests
+
+  doc-unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions: { contents: read }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+      - name: Install the converter the block catalog tests convert through
+        run: npm install -g @asciidoctor/core@3
+      - name: Run the documentation unit tests
+        run: |
+          NODE_PATH="$(npm root -g)" python3 -m unittest discover tools/doc/tests
+
+  # Deletes and regenerates every register block's collateral from the RDLs,
+  # then fails if the working tree changes. The shared checker forces every
+  # recipe, removes obsolete tracked outputs, validates Python/JSON artifacts,
+  # and uses git status so new files also fail the check.
   regen-regs:
     needs: [diff-class]
     if: needs.diff-class.outputs.run_hardware_ci == 'true'
@@ -167,17 +666,48 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # check-regen-regs.sh --skip-if-unrelated re-derives the PR diff
+          # itself (diff_class.py), the same way the diff-class job above
+          # does. A shallow, single-commit checkout has no merge base to
+          # diff against, so it always falls back to running the full
+          # check; match diff-class's fetch-depth here so the bypass has
+          # real history to work with.
+          fetch-depth: 0
+      - name: Checkout submodules
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          git submodule update --init
       - name: Install uv
         uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.11"
-      - name: Regenerate register collateral
-        run: make ocah-regen-regs ocah-regen-regs-adoc ocah-regen-regs-html
-      - name: Fail if regeneration changed the tree
+      - name: Verify regenerated register collateral
+        run: bash scripts/ci/check-regen-regs.sh --skip-if-unrelated .
+      # Here rather than in its own job so the configs are checked against the
+      # header this job just regenerated: they name OTP registers and fields, so
+      # an RDL rename silently invalidates one. stdlib-only, hence --no-project;
+      # 3.11 for tomllib.
+      - name: eFuse preload configs load against the regenerated map
         run: |
-          if [ -n "$(git status --porcelain)" ]; then
-            echo "::error::Register collateral is stale. Run 'make regen-regs regen-regs-adoc regen-regs-html' and commit the result."
-            git status --porcelain
-            git diff
-            exit 1
-          fi
+          uv run --no-project --python 3.11 \
+            hw/sys/sep/dv/cocotb/env/sep_generate_efuse_preload.py --selftest
+
+  # Re-clones every vendor_package remote, applies patches/, and fails if
+  # the committed upstream/ tree does not match. Catches a patch that no
+  # longer applies and a hand-edit that never became a patch. tt-hw-debug
+  # is not in vendor_package (its GitLab remote is not reachable here).
+  vendor-diff:
+    needs: [diff-class]
+    if: needs.diff-class.outputs.run_hardware_ci == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install bender
+        uses: pulp-platform/pulp-actions/bender-install@v2.5.1
+      - name: Verify vendored IP patches apply
+        run: bender vendor diff --git-throttle 8 --err_on_diff "Vendored upstream/ does not match the pinned remotes plus patches/. Run 'bender vendor init' and commit, or fix the patches."

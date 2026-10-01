@@ -2,7 +2,7 @@
 #
 # SEP OSS simulation config (native build/filelist manifest).
 # DUT = `sep_wrapper` (the bare `sep` core plus its IP integration); vendor-clean
-# by construction (bender_targets deliberately exclude "simulation").
+# by construction (bender_targets exclude "simulation").
 
 schema_version = 1
 
@@ -23,18 +23,48 @@ tools = ["verilator", "xcelium", "vcs"]
 path = "testlists/all.toml"
 format = "toml_list"
 
+# The vendored adams_bridge abr_reg has two immediate assertions on
+# external_wr_ack / external_rd_ack (abr_reg.sv). They fire once at t=0 fs,
+# before reset releases, because the ack strobes are still X and an X fails
+# `assert(!ack || ...)`. Benign X-init in third-party IP whose datapath OSS DV
+# does not exercise.
+#
+# They live in the POST-reset branch of an always_ff, so they are REAL runtime
+# protocol checks -- waiving them by file:line alone would also hide a genuine
+# runtime violation. Two patterns are therefore needed, and they work as a pair:
+#
+#   ignore    -- drops the "Error:" line, which VCS prints WITHOUT a timestamp.
+#   hard-fail -- the companion line DOES carry the timestamp
+#                ("...abr_reg.sv", 67: ...: started at 0fs failed at 0 fs).
+#                Matching "failed at <non-zero>" turns any post-time-0 firing of
+#                those exact assertions back into a hard failure.
+#
+# So the t=0 X-init noise is waived and nothing else is: a real runtime abr_reg
+# violation still fails the run, loudly, on the timestamped line.
+#
+# ($assertoff in the TB does not work here -- it races the always_ff's own
+# time-0 evaluation and the assertion fires first.)
+[pass_fail]
+extra_ignore_patterns = [
+  'abr_reg\.sv.*at time 0',
+  'abr_reg\.sv", (67|69):',
+]
+extra_hard_fail_patterns = [
+  'abr_reg\.sv", (67|69):.*failed at [1-9]',
+]
+
 [native.stages.clean]
 kind = "clean"
 paths = ["{run_dir}", "hw/sys/sep/dv/build"]
 
 [build]
-# Native build is driven by the Bender/filelist keys below; .core files are external-only.
+# Native build is driven by the Bender/filelist keys below.
 top_module = "sep_uvm_top"
 top_file = "hw/sys/sep/dv/tb/tb_top.sv"
 # Extra tb sources compiled alongside tb_top: the outbound mailbox console/PASS
 # monitor. The sep_wrapper DUT, its IP-integration models, and the eFuse
 # models come from the Bender closure (`sep_wrapper` plus the `any(sep, smc)`
-# groups). Excluded for OSS hygiene: proprietary IPs in nonfree. The wrapper
+# groups). The companion checkout is outside this open filelist. The wrapper
 # SPI uses struct ports; the pad-mux shim is not in this filelist.
 sources = [
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32_regs.sv",
@@ -45,25 +75,37 @@ sources = [
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32.sv",
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32_axi.sv",
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32_wb.sv",
+  # Generated SMC address map. tb_top sizes its SMC window checker from it; the
+  # `smc` Bender target that normally carries it is not in the SEP build.
+  "hw/sys/smc/regs/gen/sv/smc_addrmap_pkg.sv",
   "hw/sys/sep/dv/tb/sep_outbound_mbx.sv",
+  # FCOV covergroup sampler (VCS only; the module is `ifndef VERILATOR`).
+  "hw/sys/sep/dv/cov/sv/sep_fcov.sv",
   # Clean-room AXI4 protocol checker, instantiated on the m_axi and s_axi
-  # buses at the foot of tb_top. Assertion bodies are guarded by
-  # OCAH_INC_ASSERT, which Verilator does not define, so it elaborates to an
-  # empty module there and the rules are live only under VCS.
+  # buses at the foot of tb_top. The Verilator targets pass no --assert, so
+  # Verilator drops its two-state rules; the X-hygiene rules are gated by
+  # OCAH_INC_ASSERT, which Verilator does not define. The rules are live
+  # under VCS.
   "hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_sva.sv",
-  # After bender flist so abr_wrapper_key_reg_pkg is already declared (see exclude_files).
-  "hw/sys/sep/dv/shims/crypto/abr_wrapper_key_reg_stub.sv",
+  # IC_RESET TDR storage for the SEP slice. The TAP that selects it is not
+  # in this DUT.
+  "hw/ip/jtag/jtag_ptap/rtl/jtag_ic_reset_reg.sv",
 ]
-# PeakRDL abr_wrapper_key_reg miscompiles under Verilator 5.046 (nested-struct
-# aggregate / hwif_in tied-'0 fold -> missing __PVT__MLKEM_SHARED_KEY). Drop the
-# generated block from every target's bender flist; the stub above replaces it.
-# Package files (*_reg_pkg.sv) stay — substring match is on this exact basename.
-exclude_files = [
-  "hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_reg.sv",
-]
-# `stubs` are Verilator/VCS-compat overrides, listed ahead of
-# the bender filelist so -Wno-MODDUP "first definition wins" selects them. prim_sync2 retargets
-# the public prim_flop_2sync (it imports NO packages, so prepending it is safe).
+# `stubs` are OVERRIDE sources. Where the runner puts them is tool-dependent
+# (tools/dv/runlib/stages.py), and the one below only takes effect under Verilator:
+#   * Verilator (-Wno-MODDUP, FIRST definition wins) keeps the stub and emits it AHEAD of the
+#     bender filelist, so it shadows the real RTL.
+#   * VCS (LAST definition wins) DROPS any stub whose basename still appears in the bender
+#     filelist -- a stub that has lagged the real port list would otherwise bind silently and
+#     fail elaboration -- and emits the survivors after it. The stub below is therefore inert
+#     under VCS, which is intended: the real entropy_ring_oscillator elaborates and simulates
+#     correctly there.
+# To make a stub bind under VCS too, drop the real file via `exclude_files`, the way the
+# abr_wrapper_key_reg stub above does.
+#
+# SEP's two-stage synchronizers are OpenTitan prim_flop_2sync, which nothing stubs here. The analog entropy_ring_oscillator supplies
+# a defined idle value under Verilator, which ignores the `#1` stage delays the ring needs to
+# oscillate.
 #
 # The sep_cpu stub is NOT prepended: it imports DUT packages (sep_pkg/el2_pkg) that are declared
 # only inside the bender filelist, so a prepended copy would reference them before declaration.
@@ -72,14 +114,13 @@ exclude_files = [
 # where every DUT package is already declared. The stub is then the single sep_cpu definition (no
 # MODDUP), and the full-CPU `default` target keeps the real sep_cpu untouched.
 stubs = [
-  "hw/sys/sep/dv/shims/prim/prim_sync2.sv",
   "hw/sys/sep/dv/shims/analog/entropy_ring_oscillator.sv",
 ]
 filelist = "hw/sys/sep/dv/build/sep_dut_compile.f"
 bender_filelist = "hw/sys/sep/dv/build/sep_bender.f"
 work_dir = "hw/sys/sep/dv/build"
 # Vendor-clean target set (verify with check_no_vendor_paths.py).
-# NEVER add "simulation" — it pulls licensed I/O and a foundry padring (51 violations).
+# NEVER add "simulation" -- it pulls licensed I/O and a foundry padring.
 common_bender_targets = [
   "axi_rtl",
   "apb_rtl",
@@ -91,7 +132,13 @@ common_bender_targets = [
 # prim_ram_1p/prim_ram_1p_adv/prim_rom memory models the IP integration needs.
 bender_targets = ["sep", "sep_el2", "sep_wrapper"]
 # hw/common/assert carries ocah_assert.svh, included by the AXI protocol SVA.
-incdirs = ["hw/sys/sep/dv/tb", "hw/common/assert"]
+# hw/sys/sep/regs/gen/svh carries the generated register header sep_fcov
+# includes for CSR addresses, reset values, and field masks.
+incdirs = [
+  "hw/sys/sep/dv/tb",
+  "hw/common/assert",
+  "hw/sys/sep/regs/gen/svh",
+]
 
 [build.options]
 # SEP is a large cold build (VeeR EL2 + OTBN + full crypto). Parallelize the
@@ -109,45 +156,114 @@ cache_enabled = true
 ccache = true
 # Replace cocotb's global --public-flat-rw with a scoped Verilator public config that exposes only
 # the tb top (sep_uvm_top) to cocotb. Global public marks every signal public, which disables the
-# AXI fabric split_var pragmas (rr_arb_tree/lzc/axi_demux) -> ~951 false combinational SCCs and a
-# multi-million-entry ICO settle region that wedges Verilator. Scoping to the tb top keeps the fabric
-# optimisable (SCCs -> ~61, model runs instead of wedging). The runner integration drops the global
-# flag and injects this file; see runlib cocotb_public_scope().
+# AXI fabric split_var pragmas (rr_arb_tree/lzc/axi_demux) and leaves false combinational SCCs
+# whose ICO settle region wedges Verilator. Scoping to the tb top keeps the fabric optimisable.
+# The runner integration drops the global flag and injects this file; see runlib
+# cocotb_public_scope().
 public_scope = "hw/sys/sep/dv/sep_public_scope.vlt"
 # Disable Verilator's DFG (data-flow-graph) optimisation pass. The eFuse AXI-Lite
 # write path (efuse_interface_controller -> prim_axi_lite_to_apb_single ->
 # axi_lite_to_apb) carries a circular combinational ready/valid loop on the APB
 # response (apb_resp_i). With DFG enabled, the optimiser folds the loop signals and
 # the optimised build settles the OTP-program register write to a hung fixed point:
-# the AXI B-response for the EFUSE_PROGRAM_CTRL write never returns and the test
-# wedges (reads converge, only the write deadlocks). A --trace build keeps those
-# signals (so it cannot fold them) and runs fine, which is the tell that this is an
-# optimiser convergence artifact, not RTL: the same write completes on VCS.
-# -fno-dfg only disables an optimisation, so it can never make logic less correct;
-# it lets the write-path loop settle to the same fixed point VCS/trace reach.
+# the AXI B-response for the EFUSE_PROGRAM_CTRL write never returns (reads converge,
+# only the write deadlocks). A build that keeps those signals (--trace, or -fno-dfg)
+# settles the loop to the fixed point the RTL specifies, as VCS does.
 extra_args = ["-fno-dfg"]
 
+[coverage.vcs]
+# Restate the simulator defaults (`-cm`, `-cm_dir`) because a DUT table replaces
+# the list rather than appending to it, then add the scope file.
+#
+# VCS-only because only this table applies the compile-time scope. A `--cov`
+# run on another simulator grades an unscoped denominator. Coverage runs take
+# `--target default` (one full-CPU elaboration; no_cpu force-splices the LSU
+# VIP). Edit `sep_cov_scope.hier` then `--rebuild` -- the file is not
+# fingerprinted.
+#
+# Scope has to be applied at COMPILE time. `urg -hier` prunes the report pages
+# but still computes the headline score over the whole database, so the only way
+# to keep the testbench out of the number is to keep it out of the database:
+# `-cm_hier` limits what gets instrumented. That also shrinks the per-leaf
+# databases and the sim time.
+#
+# The per-leaf dump is the inherited `[vcs.coverage_defaults].sim_args`
+# (`-cm` + `-cm_dir {cov_dir}/simv.vdb`). Do not restate it here: an identical
+# list is a deprecated duplicate and the runner refuses the config.
+#
+# The cocotb VCS runner renders compile-time `{build_cov_dir}` at the
+# unfingerprinted coverage dir (`…/coverage/cov_build.vdb`). The default
+# design_artifact (`{build_cov_dir}`) is next to `simv` under the fingerprint,
+# so the post-compile check looks in a directory the compile does not write.
+# Point the check at the database the compile actually writes.
+design_artifact = "{build_dir}/../cov_build.vdb"
+
+# Assertion coverage is collected and scored whatever the `-cm` list says: in
+# this VCS version `-cm assert` does not gate it, and the compile-time
+# `-cm_common_hier` below is what keeps it inside the graded hierarchy. So the
+# metric is dropped HERE, at report time, which is the only place that works.
+#
+# Why it is dropped: SEP assertions are predominantly negative controls, where
+# the implication antecedent is an illegal condition. This environment drives
+# legal stimulus only, so those assertions can never record a successful
+# attempt. They are uncoverable by construction rather than by a stimulus gap,
+# and grading them reports the absence of traffic the stimulus policy forbids.
+#
+# This changes the SCORE only. Every assertion stays compiled, evaluating and
+# able to fail a test; nothing here touches checking. Restore `+assert` to the
+# metric list if SEP ever gains an illegal-stimulus environment.
+#
+# Overrides the shared [vcs] report_cmd in hw/common/dv/configs/simulators.toml
+# by adding `-metric`; the rest of the command is copied from it verbatim.
+report_cmd = [
+  "urg", "-full64",
+  "-dir", "{merged}",
+  "-report", "{report}",
+  "-format", "both",
+  "-metric", "line+cond+tgl+fsm+branch+group",
+]
+compile_args = [
+  "-cm",
+  "line+cond+tgl+fsm+branch+assert",
+  "-cm_dir",
+  "{build_cov_dir}",
+  "-cm_hier",
+  "{repo_root}/hw/sys/sep/dv/cov/config/vcs/sep_cov_scope.hier",
+  # Extends the SAME scope file from code coverage to assertion coverage.
+  # `-cm_hier` alone governs line/cond/fsm/tgl/branch only, so without this the
+  # excluded hierarchy leaves the code metrics but remains graded for
+  # assertions. `-cm_common_hier` is a Limited Customer Availability feature;
+  # VCS refuses the compile without `-lca` ("The '-cm_common_hier' flow requires
+  # a special option"), which is the opt-in switch.
+  "-lca",
+  "-cm_common_hier",
+]
+
 [coverage.verilator]
-# Instrument line/branch (--coverage-line), expression, and SVL user coverage;
-# toggle instrumentation stays off for this DUT. On this model toggle points
-# are ~95% of the coverage database (~0.5 GB per test leaf, tens of GB across
-# a reseeded regression before merge) and the costliest instrumentation at sim
-# time; without toggle the same regression's coverage stays in the low GB
-# range and fits standard CI runner disk. Replaces the simulator-default
-# `--coverage` (which enables all forms including toggle).
-build_args = ["--coverage-line", "--coverage-expr", "--coverage-user"]
+# Not the graded number. Only [coverage.vcs] applies the compile-time scope.
+# `--cov --tool verilator` fails C++ compile on 5.046 (`__PVT__MLKEM_SHARED_KEY`
+# under `VM_COVERAGE=1`); 5.050 compiles.
+# Toggle stays off: on this model it is ~95% of the database (~0.5 GB per leaf)
+# and the costliest sim instrumentation. Replaces the simulator-default
+# `--coverage`.
+# --output-groups 0 compiles the generated .cpp files one by one instead of
+# in --build-jobs groups. Verilator groups by file count, and on a
+# coverage-instrumented model one group can become a translation unit of
+# several hundred MB that a hosted runner cannot compile (measured on SMC).
+build_args = ["--coverage-line", "--coverage-expr", "--coverage-user", "--output-groups", "0"]
 
 [frameworks.cocotb]
-# Flow-first layout: cocotb env/seq_lib/tests live under cocotb/ (room for a
-# future uvm/ sibling). python_root puts env/ + seq_lib/ on the import path.
+# Flow-first layout: cocotb env/seq_lib/tests live under cocotb/, the SV-UVM
+# realization under its uvm/ sibling. python_root puts env/ + seq_lib/ on the
+# import path.
 python_root = "hw/sys/sep/dv/cocotb"
 test_dir = "hw/sys/sep/dv/cocotb/tests"
 # Shared cocotb VIP (ocah_spi_vip, ocah_axi_vip, ...) lives at hw/common/dv/vip;
 # add it to the import path so tests can `from ocah_spi_vip import OcahSpiFlash`.
 python_paths = [
   "hw/common/dv/vip",
-  # env/ on the path so env golden models can import siblings by bare name
-  # (e.g. sep_entropy_golden -> sep_noise_golden) and keep standalone self-tests.
+  "hw/ip/entropy_source/dv/cocotb",
+  # env/ on the path so SEP-only golden models can import siblings by bare name.
   "hw/sys/sep/dv/cocotb/env",
 ]
 results_dir = "{run_dir}/{item}/results"
@@ -160,38 +276,35 @@ cocotb_log = "{run_dir}/{item}/logs/{item}.log"
 # emits the gitignored .itcm/.dtcm hex images under fw/build/tests/<target>/ from
 # tracked test/driver source.
 #
-# Toolchain resolution, in order: an explicit RISCV_TOOLCHAIN/RISCV_PREFIX from the
-# environment wins; then the project container's riscv-gnu-toolchain; then a local
-# xPack riscv-none-elf install (the macOS/Verilator-only route). NOTE: argv goes
-# through str.format() for {fw_target}, and the runlib additionally REJECTS any
-# other placeholder -- including a doubled ${{...}} -- so shell brace expansion is
-# unavailable here. Concatenate with quoting instead: "$RV_PFX"gcc.
+# Toolchain: the caller's RISCV_TOOLCHAIN/RISCV_PREFIX wins when that gcc has
+# picolibc. Otherwise the stage builds through scripts/docker-run.sh run-here.
+# There is no site or home-directory probe. argv goes through str.format() for
+# {fw_target}, and the runlib rejects any other placeholder -- including a
+# doubled ${{...}} -- so shell brace expansion is unavailable here. Concatenate
+# with quoting instead: "$RV_PFX"gcc.
 #
-# RISCV_TOOLCHAIN + RISCV_PREFIX is the ONLY toolchain contract the shared engine
-# accepts (hw/common/dv/fw/compile.mk); do not invent per-tool RISCV_GCC/_NM vars.
-# When RISCV_TOOLCHAIN is given without RISCV_PREFIX we still probe the directory
-# for both tool names, because the auto-detect loop that would have picked the
-# right prefix is skipped in that case -- otherwise pointing RISCV_TOOLCHAIN at an
-# xPack install would silently fall back to the riscv64-unknown-elf- prefix.
+# RISCV_TOOLCHAIN + RISCV_PREFIX is the ONLY toolchain contract the shared
+# engine accepts (hw/common/dv/fw/compile.mk). When RISCV_TOOLCHAIN is given
+# without RISCV_PREFIX we still probe that directory for both tool names.
 #
-# PICOLIBC IS THE REAL GATE, and it is why this stage falls back to docker-run.sh.
-# compile.mk builds with --specs=picolibc.specs, and the site riscv-gnu-toolchain
-# installs have no picolibc -- so a resolved toolchain is NOT sufficient. We probe
-# for picolibc.specs and, when it is absent, re-run the same make via
-# scripts/docker-run.sh (container, or bubblewrap when OCAH_TOOLCHAIN_ROOTFS is
-# set). Use `run-here`, not `run`: `run` remaps the repo to /work, so
-# OCAH_ROOT="$PWD" does not resolve inside the container. `run-here` mounts 1:1
-# at the host path and keeps the caller's cwd, matching the bwrap backend.
-# Unset RISCV_TOOLCHAIN/RISCV_PREFIX on that fallback:
-# run.sh points them at the host gcc (no picolibc), and that path is not inside
-# the sandbox -- compile.mk must use the image gcc on PATH. A bare clone without
-# picolibc still gets a working firmware image this way; the sim itself only
-# needs the .hex.
+# PICOLIBC IS THE REAL GATE. compile.mk builds with --specs=picolibc.specs.
+# Use `run-here`, not `run`: `run` remaps the repo to /work, so
+# OCAH_ROOT="$PWD" does not resolve inside the container. Unset
+# RISCV_TOOLCHAIN/RISCV_PREFIX on the container fallback so compile.mk uses
+# the image gcc on PATH.
+#
+# bwrap forwards the caller environment. `uv run` exports UV as the host
+# binary and preamble.mk keeps it, so the rom_only post-process
+# (elf-to-vmem.py, which imports pyelftools) cannot use that path. Drop UV
+# and VIRTUAL_ENV, and keep uv's project environment, cache and interpreters
+# under local/. The container engine does not forward those variables; that
+# image has no uv, so this post-process still needs the sandbox uv on PATH
+# rather than python3.
 cwd = "."
 argv = [
   "bash",
   "-lc",
-  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_TC\" ]; then for c in /tools_soc/opensrc/riscv-gnu-toolchain/2025.01.20-rhel-8.10/bin \"$HOME\"/.local/opt/xpack-riscv-none-elf-gcc-*/bin; do if [ -x \"$c/riscv64-unknown-elf-gcc\" ]; then RV_TC=\"$c\"; RV_PFX=riscv64-unknown-elf-; break; fi; if [ -x \"$c/riscv-none-elf-gcc\" ]; then RV_TC=\"$c\"; RV_PFX=riscv-none-elf-; break; fi; done; fi; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; MK=\"dv-fw-tests TEST={fw_target}\"; if [ -n \"$RV_TC\" ] && \"$RV_TC/$RV_PFX\"gcc -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then exec make -C hw/sys/sep/dv/fw -f fw.mk $MK OCAH_ROOT=\"$PWD\" RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] host toolchain has no picolibc; building in the OCAH toolchain container\"; exec env -u RISCV_TOOLCHAIN -u RISCV_PREFIX ./scripts/docker-run.sh run-here make -C hw/sys/sep/dv/fw -f fw.mk $MK OCAH_ROOT=\"$PWD\"; else echo \"error: no picolibc-enabled RISC-V toolchain and no scripts/docker-run.sh\" >&2; exit 1; fi",
+  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; MK=\"dv-fw-tests TEST={fw_target}\"; if [ -n \"$RV_TC\" ] && \"$RV_TC/$RV_PFX\"gcc -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then exec make -C hw/sys/sep/dv/fw -f fw.mk $MK OCAH_ROOT=\"$PWD\" RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] no caller RISCV_TOOLCHAIN with picolibc; building in the OCAH toolchain container\"; exec env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u UV -u VIRTUAL_ENV UV_PROJECT_ENVIRONMENT=\"$PWD/local/bwrap-venv\" UV_CACHE_DIR=\"$PWD/local/bwrap-uv-cache\" UV_PYTHON_INSTALL_DIR=\"$PWD/local/bwrap-uv-python\" ./scripts/docker-run.sh run-here make -C hw/sys/sep/dv/fw -f fw.mk $MK OCAH_ROOT=\"$PWD\"; else echo \"error: set RISCV_TOOLCHAIN to a picolibc-enabled RISC-V toolchain, or provide scripts/docker-run.sh\" >&2; exit 1; fi",
 ]
 outputs = [
   "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.itcm.hex",
@@ -215,34 +328,40 @@ outputs = [
 #   toolchain-images  needs the RISC-V toolchain WITH picolibc (the generated
 #                     register headers close their packing checks with
 #                     static_assert, i.e. <assert.h>, which is not freestanding).
-#   pack-images       is pure Python and must run on the HOST: the packer's deps
-#                     come from the tt-boot-manifest submodule's pyproject.toml via
+#   oca-images        is pure Python and must run on the HOST: the packer's deps
+#                     come from the tt-oca-manifest submodule's pyproject.toml via
 #                     uv, and the ocah-toolchain image carries neither.
 #
-# Toolchain resolution and the picolibc probe are deliberately identical to
-# [c_build.default] above -- see that block for why the probe (not mere toolchain
-# presence) is the real gate. GCC_PREFIX differs from the engine's RISCV_PREFIX:
-# this Makefile spells `$(GCC_PREFIX)-gcc`, so the value carries no trailing dash.
+# Toolchain: an explicit $RISCV_TOOLCHAIN, or the OCAH container via
+# scripts/docker-run.sh run-here. This block does not probe site, PATH, or
+# $HOME toolchains. GCC_PREFIX differs from the engine's RISCV_PREFIX: this
+# Makefile spells `$(GCC_PREFIX)-gcc`, so the value carries no trailing dash.
 # Passing it as a full path prefix keeps PATH untouched. Make propagates
-# command-line variables to sub-makes, so the recursive OTBN-app and bl1_pass_test
-# builds inherit the same toolchain.
+# command-line variables to sub-makes, so the recursive OTBN-app and
+# bl1_pass_test builds inherit the same toolchain.
 #
 # NOTE: as in [c_build.default], argv goes through str.format() and the runlib
 # rejects every placeholder except {fw_target} -- braces of any kind, including
 # shell ${...} expansion, are unavailable here. Use "$VAR" and $(...) instead.
+# DCCM_SCRUB_BYTES is left at the product default here, as in every
+# boot_rom variant: vector.S's scrub establishes DCCM's ECC itself, which is what
+# happens on silicon, so the testbench does not stand in for it.
 cwd = "."
 argv = [
   "bash",
   "-lc",
-  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_TC\" ]; then for c in /tools_soc/opensrc/riscv-gnu-toolchain/2025.01.20-rhel-8.10/bin \"$HOME\"/.local/opt/xpack-riscv-none-elf-gcc-*/bin; do if [ -x \"$c/riscv64-unknown-elf-gcc\" ]; then RV_TC=\"$c\"; RV_PFX=riscv64-unknown-elf-; break; fi; if [ -x \"$c/riscv-none-elf-gcc\" ]; then RV_TC=\"$c\"; RV_PFX=riscv-none-elf-; break; fi; done; fi; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; ROM_DIR=hw/sys/sep/bootrom/prod; if [ -n \"$RV_TC\" ] && \"$RV_TC/$RV_PFX\"gcc -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then GCC_P=$(printf %s \"$RV_PFX\" | sed 's/-$//'); make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= toolchain-images GCC_PREFIX=\"$RV_TC/$GCC_P\" RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] host toolchain has no picolibc; building the boot ROM in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX ./scripts/docker-run.sh run-here make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= toolchain-images; else echo \"error: no picolibc-enabled RISC-V toolchain and no scripts/docker-run.sh\" >&2; exit 1; fi; make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= pack-images",
+  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; ROM_DIR=hw/sys/sep/bootrom/prod; make -C \"$ROM_DIR\" key-digests; if [ -n \"$RV_TC\" ]; then GCC_P=$(printf %s \"$RV_PFX\" | sed 's/-$//'); make -C \"$ROM_DIR\" SEP_ENTROPY_BRINGUP=1 toolchain-images-build GCC_PREFIX=\"$RV_TC/$GCC_P\" RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; building the boot ROM in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here make -C \"$ROM_DIR\" RISCV_PREFIX=riscv64-unknown-elf- GCC_PREFIX=riscv64-unknown-elf SEP_ENTROPY_BRINGUP=1 toolchain-images-build; else echo \"error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset\" >&2; exit 1; fi; make -C \"$ROM_DIR\" oca-images",
 ]
 outputs = [
   "hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "hw/sys/sep/bootrom/prod/build/boot_rom.elf",
   "hw/sys/sep/bootrom/prod/build/boot_rom.itcm.hex",
   "hw/sys/sep/bootrom/prod/build/boot_rom.dtcm.hex",
-  "hw/sys/sep/bootrom/prod/build/smc_mem.hex",
   # nm listing for the CPU trace monitor's ROM-PC symbolization.
   "hw/sys/sep/bootrom/prod/build/boot_rom.sym",
+  # The SMC-SRAM test loads this with +sep_smc_mem_hex: the OCA manifest rebased
+  # to the SMC-SRAM base.
+  "hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
 ]
 
 [c_build.boot_rom_ot]
@@ -253,41 +372,58 @@ outputs = [
 # and for the no-braces constraint on argv (str.format rejects every placeholder
 # except {fw_target}, so use "$VAR" and $(...), never shell ${...}).
 #
-# The probe/fallback logic below is identical to [c_build.boot_rom]. The same
-# toolchain probe is duplicated in five argv blocks; a fix must be applied in
-# all five.
+# The host-vs-container decision below is identical to [c_build.boot_rom]:
+# explicit $RISCV_TOOLCHAIN or docker-run.sh run-here, with no implicit probe.
 #
-# pack-images runs into build_ot/ too, so non_secure_boot.bin -- the raw image the
-# cocotb flash BFM preloads -- sits beside the ROM it is read by, and a stale
+# oca-images runs into build_ot/ too, so oca_non_secure_boot.bin -- the raw image
+# the cocotb flash BFM preloads -- sits beside the ROM it is read by, and a stale
 # default-variant image can never be picked up by mistake.
 #
-# NONFREE_ROOT= is load-bearing, not tidiness. reg_includes.mk puts the nonfree
-# register headers on the include path whenever a nonfree/ checkout exists.
-# The open-tree ROM must not compile against those headers: a workspace that
-# has both would otherwise pick up nonfree symbols the pure-open DUT does not
-# implement. Forcing NONFREE_ROOT= keeps the ROM image matched to this DUT.
+# DCCM_SCRUB_BYTES is left at the product default (0x20000, matching vector.S's
+# own #ifndef fallback). vector.S scrubs all 128KiB of DCCM before the C runtime
+# starts, and because a store writes its ECC, that scrub is what establishes
+# DCCM's ECC state -- on silicon, where DCCM powers up with random contents and
+# random ECC, and here.
 #
-# NONFREE_BOOTCODE_SOURCES= is load-bearing for the same reason, and separately:
-# the ROM Makefile takes it with ?=, so a companion-supplied value in the
-# environment survives NONFREE_ROOT= and links a driver for hardware outside this
-# DUT. The SPI pad mux is the case that bites -- its store lands in an
-# unimplemented sep_external aperture, the bus error raises NMI, and the CPU
-# leaves the boot flow through the reset NMI vector in ICCM. Clearing both keeps
-# the linked bootcode to what the open DUT implements.
+# Overriding it to 0 and letting the testbench's backdoor TCM load supply ECC
+# instead (tb_top.sv writes bd_riscv_ecc32 alongside every preloaded word) would
+# substitute the testbench for firmware on a step the firmware owns, and would
+# mask the ROM's own check: the preload would place the correct g_data_init
+# value into DCCM, which is exactly what rom_check_runtime_init_or_fail() reads
+# to prove vector.S's .data copy ran, so a broken copy loop would pass unnoticed.
+# The scrub adds a negligible fraction of a boot run's cycles.
 cwd = "."
 argv = [
   "bash",
   "-lc",
-  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_TC\" ]; then for c in /tools_soc/opensrc/riscv-gnu-toolchain/2025.01.20-rhel-8.10/bin \"$HOME\"/.local/opt/xpack-riscv-none-elf-gcc-*/bin; do if [ -x \"$c/riscv64-unknown-elf-gcc\" ]; then RV_TC=\"$c\"; RV_PFX=riscv64-unknown-elf-; break; fi; if [ -x \"$c/riscv-none-elf-gcc\" ]; then RV_TC=\"$c\"; RV_PFX=riscv-none-elf-; break; fi; done; fi; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; ROM_DIR=hw/sys/sep/bootrom/prod; if [ -n \"$RV_TC\" ] && \"$RV_TC/$RV_PFX\"gcc -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then GCC_P=$(printf %s \"$RV_PFX\" | sed 's/-$//'); make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= ot-toolchain-images GCC_PREFIX=\"$RV_TC/$GCC_P\" RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] host toolchain has no picolibc; building the OT boot ROM in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX ./scripts/docker-run.sh run-here make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= ot-toolchain-images; else echo \"error: no picolibc-enabled RISC-V toolchain and no scripts/docker-run.sh\" >&2; exit 1; fi; make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= pack-images secure_boot_spi",
+  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; ROM_DIR=hw/sys/sep/bootrom/prod; make -C \"$ROM_DIR\" BUILD_DIR=build_ot key-digests; if [ -n \"$RV_TC\" ]; then GCC_P=$(printf %s \"$RV_PFX\" | sed 's/-$//'); make -C \"$ROM_DIR\" BUILD_DIR=build_ot BOOT_SPI_CONTROLLER_OT=1 SEP_ENTROPY_BRINGUP=1 toolchain-images-build GCC_PREFIX=\"$RV_TC/$GCC_P\" RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; building the OT boot ROM in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here make -C \"$ROM_DIR\" BUILD_DIR=build_ot BOOT_SPI_CONTROLLER_OT=1 RISCV_PREFIX=riscv64-unknown-elf- GCC_PREFIX=riscv64-unknown-elf SEP_ENTROPY_BRINGUP=1 toolchain-images-build; else echo \"error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset\" >&2; exit 1; fi; make -C \"$ROM_DIR\" oca-images",
 ]
 outputs = [
   "hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "hw/sys/sep/bootrom/prod/build_ot/boot_rom.elf",
   "hw/sys/sep/bootrom/prod/build_ot/boot_rom.itcm.hex",
   "hw/sys/sep/bootrom/prod/build_ot/boot_rom.dtcm.hex",
   # nm listing for the CPU trace monitor's ROM-PC symbolization.
   "hw/sys/sep/bootrom/prod/build_ot/boot_rom.sym",
-  "hw/sys/sep/bootrom/prod/build/non_secure_boot.bin",
-  "hw/sys/sep/bootrom/prod/build/secure_boot.bin",
+  # OCA boot-manifest images -- the format the ROM parses. Listed so --stage sim
+  # fails loudly on a stale image instead of simulating one. These are the
+  # `oca-images` outputs the ROM tests actually load: the rest of what the target packs
+  # belongs to the virtual platform's suite and has no consumer under hw/sys/sep/dv, so
+  # declaring them here would gate this stage on artifacts no test in it reads.
+  "hw/sys/sep/bootrom/prod/build/oca_non_secure_boot.bin",
+  "hw/sys/sep/bootrom/prod/build/oca_secure_boot.bin",
+  "hw/sys/sep/bootrom/prod/build/oca_encrypted_boot.bin",
+  "hw/sys/sep/bootrom/prod/build/oca_otp_key_boot.bin",
+  # Per-slot signed images. The ROM-key revoke families graft one slot out of these
+  # (sep_manifest_mutate.rom_key_image / graft_slot) so the slot under test is signed by
+  # the key its selector names; a stale one would leave the graft anchored on a key
+  # key_digests.c no longer holds.
+  "hw/sys/sep/bootrom/prod/build/oca_rom_key1_boot.bin",
+  "hw/sys/sep/bootrom/prod/build/oca_rom_key2_boot.bin",
+  "hw/sys/sep/bootrom/prod/build/oca_rom_key3_boot.bin",
+  "hw/sys/sep/bootrom/prod/build/oca_rom_key4_boot.bin",
+  "hw/sys/sep/bootrom/prod/build/oca_rom_key5_boot.bin",
+  "hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
 ]
 
 [c_build.boot_rom_ot_pio]
@@ -296,63 +432,126 @@ outputs = [
 # boot_flash.h resolves the drain at compile time, so this is a genuinely separate
 # binary: build_ot_pio/boot_rom.elf does not even link ot_spi_flash_read_dma.
 #
-# Everything else -- toolchain probe, container fallback, NONFREE_ROOT= and the
-# no-braces argv constraint -- is character-for-character [c_build.boot_rom_ot].
-# See that block for why each part is the way it is.
+# Everything else -- RISCV_TOOLCHAIN-or-container and the no-braces argv
+# constraint -- matches [c_build.boot_rom_ot]. See that block for why each part
+# is the way it is.
 #
-# Only `pack-images` here, no `secure_boot_spi`: the PIO test boots the unsigned
-# image, and the signed one is the DMA variant's business. The packed bytes are
-# drain-agnostic and land in the shared build/, so this does not rebuild them.
+# `oca-images` builds every variant in one go, so the PIO test gets the unsigned
+# image it boots along with the rest. The packed bytes are drain-agnostic and land
+# in the shared build/, so this does not rebuild them per variant.
 #
-# The same toolchain probe is duplicated in five argv blocks; a fix must be
-# applied in all five. Folding it into a script under tools/dv/ would also
-# retire the no-braces constraint.
+# DCCM_SCRUB_BYTES is left at the product default, as in every boot_rom variant.
+# See [c_build.boot_rom_ot] for why the testbench does not supply DCCM's ECC
+# in place of vector.S's scrub.
 cwd = "."
 argv = [
   "bash",
   "-lc",
-  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_TC\" ]; then for c in /tools_soc/opensrc/riscv-gnu-toolchain/2025.01.20-rhel-8.10/bin \"$HOME\"/.local/opt/xpack-riscv-none-elf-gcc-*/bin; do if [ -x \"$c/riscv64-unknown-elf-gcc\" ]; then RV_TC=\"$c\"; RV_PFX=riscv64-unknown-elf-; break; fi; if [ -x \"$c/riscv-none-elf-gcc\" ]; then RV_TC=\"$c\"; RV_PFX=riscv-none-elf-; break; fi; done; fi; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; ROM_DIR=hw/sys/sep/bootrom/prod; if [ -n \"$RV_TC\" ] && \"$RV_TC/$RV_PFX\"gcc -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then GCC_P=$(printf %s \"$RV_PFX\" | sed 's/-$//'); make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= ot-pio-toolchain-images GCC_PREFIX=\"$RV_TC/$GCC_P\" RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] host toolchain has no picolibc; building the OT-PIO boot ROM in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX ./scripts/docker-run.sh run-here make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= ot-pio-toolchain-images; else echo \"error: no picolibc-enabled RISC-V toolchain and no scripts/docker-run.sh\" >&2; exit 1; fi; make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= pack-images",
+  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; ROM_DIR=hw/sys/sep/bootrom/prod; make -C \"$ROM_DIR\" BUILD_DIR=build_ot_pio key-digests; if [ -n \"$RV_TC\" ]; then GCC_P=$(printf %s \"$RV_PFX\" | sed 's/-$//'); make -C \"$ROM_DIR\" BUILD_DIR=build_ot_pio BOOT_SPI_CONTROLLER_OT=1 BOOT_OT_SPI_USE_PIO=1 SEP_ENTROPY_BRINGUP=1 toolchain-images-build GCC_PREFIX=\"$RV_TC/$GCC_P\" RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; building the OT-PIO boot ROM in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here make -C \"$ROM_DIR\" BUILD_DIR=build_ot_pio BOOT_SPI_CONTROLLER_OT=1 BOOT_OT_SPI_USE_PIO=1 RISCV_PREFIX=riscv64-unknown-elf- GCC_PREFIX=riscv64-unknown-elf SEP_ENTROPY_BRINGUP=1 toolchain-images-build; else echo \"error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset\" >&2; exit 1; fi; make -C \"$ROM_DIR\" oca-images",
 ]
 outputs = [
   "hw/sys/sep/bootrom/prod/build_ot_pio/boot_rom.vmem",
+  "hw/sys/sep/bootrom/prod/build_ot_pio/boot_rom.elf",
   "hw/sys/sep/bootrom/prod/build_ot_pio/boot_rom.itcm.hex",
   "hw/sys/sep/bootrom/prod/build_ot_pio/boot_rom.dtcm.hex",
   # nm listing for the CPU trace monitor's ROM-PC symbolization.
   "hw/sys/sep/bootrom/prod/build_ot_pio/boot_rom.sym",
-  "hw/sys/sep/bootrom/prod/build/non_secure_boot.bin",
 ]
 
 [c_build.km_rom_main]
-# Production Key Manager ROM (hw/ip/key_manager/dv/fw production/rom_main).
+# Key Manager application ROM (hw/ip/key_manager/approm/prod, entry src/rom_main.c).
 # Not [c_build.default]: that template builds SEP EL2 TCM images via
 # hw/sys/sep/dv/fw. rom_main is rv32emc KM firmware, and it must be built with
-# ROM_KM_BOOT_WIPE_DEFAULT=0 / ROM_KM_UNREC_WIPE_DEFAULT=0 -- a default KM build
-# wipes SRAM at boot and halts before RESP_KM_READY. Those defines live in
-# cocotb/tests/km_fw/Makefile (stamp-guarded so a stale rom_boot.o cannot
-# silently re-enable the wipe), so argv drives that target rather than fw.mk
+# KM_BOOT_WIPE=0 / KM_UNREC_WIPE=0 -- a default KM build wipes SRAM at boot and
+# halts before RESP_KM_READY. cocotb/tests/km_fw/Makefile passes those knobs to
+# the ROM Makefile, so argv drives that target rather than the ROM Makefile
 # directly.
 #
-# Tests select it with `firmware = { name = "rom_main", mode = "km_rom_main" }`.
-# Both keys are required: mode selects this block, and the declared output is
-# what makes `--stage sim` fail with "firmware outputs missing" instead of
-# loading an empty KM ROM. The plusarg stays `+km_rom_hex=rom_main.rom.parhex`;
-# c_compile stages the basename into the sim CWD.
+# Tests select it with `firmware = { name = "rom_main", mode = "km_rom_main" }`
+# next to `+km_rom_hex=rom_main.rom.parhex`.
 #
-# The gitignored parhex is the built artifact. Do not commit it. The C source
-# is tracked under hw/ip/key_manager/dv/fw.
+# Every c_compile builds the image from source in a directory private to this
+# run and this test: "{build_dir}/{item}", under this run's c_compile stage
+# directory. argv deletes that directory first and writes nothing outside it,
+# so no object from an earlier build or another checkout state reaches the
+# image, and no run writes a path another run reads. The km_fw Makefile builds
+# with FW_BUILD_DIR set to it and leaves the image at
+# "{build_dir}/{item}/rom_main.rom.parhex". The log then records
+# `source-sha256` (every file under the KM application ROM and KM
+# generated-header trees, build trees excluded, plus km_fw/Makefile, which
+# carries the wipe knobs) and the sha256 of that image on one
+# KM-ROM-IDENTITY line. The sim log's RUN-IDENTITY-FW line hashes the image
+# the sim loads, so the image digest joins the sim to this build and the
+# source digest.
 #
-# Toolchain: $RISCV_TOOLCHAIN if set, else a local xPack install, else the
-# OCAH container via scripts/docker-run.sh. This block does not probe a
-# site toolchain path. argv goes through str.format() and rejects every
-# placeholder except {fw_target}, so use "$VAR" and $(...), never shell ${...}.
+# `outputs` is empty on purpose. The runlib renders {build_dir} differently
+# when it stages outputs for the sim than when c_compile runs, so a declared
+# output cannot name the private image. cocotb/dv_sim_prestage.py stages it
+# instead: for a leaf with `+km_rom_hex=rom_main.rom.parhex` it copies this
+# run's image into the sim directory, and it fails the leaf when the image is
+# missing, so `--stage sim` without this run's c_compile fails loudly.
+#
+# Toolchain: $RISCV_TOOLCHAIN when that gcc has picolibc, else the OCAH
+# container via scripts/docker-run.sh run-here, which keeps host paths 1:1, so
+# the private build tree resolves inside it. No site, $HOME, or PATH probe.
+# The sandbox make sets PYTHON=python3: add_rom_parity.py is stdlib, and the
+# toolchain image has no uv. The host path keeps the locked uv default.
+# argv accepts only the runlib placeholders ({fw_target}, {build_dir}, ...),
+# so use "$VAR" and $(...), never shell ${...}.
 cwd = "."
 argv = [
   "bash",
   "-lc",
-  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_TC\" ]; then for c in \"$HOME\"/.local/opt/xpack-riscv-none-elf-gcc-*/bin; do if [ -x \"$c/riscv64-unknown-elf-gcc\" ]; then RV_TC=\"$c\"; RV_PFX=riscv64-unknown-elf-; break; fi; if [ -x \"$c/riscv-none-elf-gcc\" ]; then RV_TC=\"$c\"; RV_PFX=riscv-none-elf-; break; fi; done; fi; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; KM_FW=hw/sys/sep/dv/cocotb/tests/km_fw; if [ -n \"$RV_TC\" ] && \"$RV_TC/$RV_PFX\"gcc -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then make -C \"$KM_FW\" rom_main RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] host toolchain has no picolibc; building KM rom_main in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX ./scripts/docker-run.sh run-here make -C \"$KM_FW\" rom_main; else echo \"error: no picolibc-enabled RISC-V toolchain and no scripts/docker-run.sh\" >&2; exit 1; fi",
+  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; KM_FW=hw/sys/sep/dv/cocotb/tests/km_fw; KM_ITEM=\"{item}\"; if [ -z \"$KM_ITEM\" ]; then echo \"error: km_rom_main builds per test; no item given\" >&2; exit 1; fi; KM_BD=\"{build_dir}/$KM_ITEM\"; KM_IMG=\"$KM_BD/rom_main.rom.parhex\"; rm -rf \"$KM_BD\"; mkdir -p \"$KM_BD\"; KM_SRC_SHA=$(find hw/ip/key_manager/approm/prod hw/ip/key_manager/regs/gen/c \"$KM_FW/Makefile\" -type f ! -path \"*/build/*\" ! -path \"*/__pycache__/*\" ! -name \"*.o\" ! -name \"*.d\" -print0 | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum | cut -d\" \" -f1); if [ -n \"$RV_TC\" ] && \"$RV_TC/$RV_PFX\"gcc -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then make -C \"$KM_FW\" rom_main FW_BUILD_DIR=\"$KM_BD\" RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset or has no picolibc; building KM rom_main in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX ./scripts/docker-run.sh run-here make -C \"$KM_FW\" rom_main FW_BUILD_DIR=\"$KM_BD\" PYTHON=python3; else echo \"error: no picolibc-enabled RISC-V toolchain and no scripts/docker-run.sh\" >&2; exit 1; fi; test -s \"$KM_IMG\"; KM_IMG_SHA=$(sha256sum \"$KM_IMG\" | cut -d\" \" -f1); echo \"[c_compile] KM-ROM-IDENTITY: image=$KM_IMG sha256=$KM_IMG_SHA source-sha256=$KM_SRC_SHA (hw/ip/key_manager/approm/prod hw/ip/key_manager/regs/gen/c $KM_FW/Makefile) build-dir=$KM_BD\"",
+]
+outputs = []
+
+[c_build.km_rom_blob]
+# Committed KM ROM blobs (cocotb/tests/km_rom*.parhex), assembled from
+# cocotb/tests/km_fw/km_rom*.S. A test that boots one declares
+# `firmware = { name = "<blob basename without .parhex>", mode = "km_rom_blob" }`
+# next to its `+km_rom_hex=<blob>.parhex` plusarg.
+#
+# argv runs `make verify` for that one blob: it reassembles the .S into a
+# scratch directory and compares the result byte for byte with the committed
+# blob. A mismatch (STALE), a missing blob, or a failed assembly exits nonzero,
+# c_compile fails, and the sim stage does not run. The blob itself is never
+# rewritten here. The declared output is the committed blob, which c_compile
+# stages into the sim CWD.
+#
+# Toolchain: $RISCV_TOOLCHAIN/$RISCV_PREFIX gcc when present, else the OCAH
+# container via scripts/docker-run.sh run-here. The blobs link with -nostdlib,
+# so picolibc is not required.
+cwd = "."
+argv = [
+  "bash",
+  "-lc",
+  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; KM_FW=hw/sys/sep/dv/cocotb/tests/km_fw; if [ -n \"$RV_TC\" ] && [ -x \"$RV_TC/$RV_PFX\"gcc ]; then GCC_P=$(printf %s \"$RV_PFX\" | sed 's/-$//'); make -C \"$KM_FW\" verify ROMS={fw_target} GCC_PREFIX=\"$RV_TC/$GCC_P\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; verifying the KM ROM blob in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here make -C \"$KM_FW\" verify ROMS={fw_target} PYTHON=python3; else echo \"error: no RISC-V toolchain and no scripts/docker-run.sh\" >&2; exit 1; fi; echo \"[c_compile] KM-ROM-IDENTITY: image=hw/sys/sep/dv/cocotb/tests/{fw_target}.parhex sha256=$(sha256sum hw/sys/sep/dv/cocotb/tests/{fw_target}.parhex | cut -d\" \" -f1) matches {fw_target}.S\"",
 ]
 outputs = [
-  "hw/sys/sep/dv/cocotb/tests/rom_main.rom.parhex",
+  "hw/sys/sep/dv/cocotb/tests/{fw_target}.parhex",
+]
+
+[c_build.el2_km_rom_coexist]
+# EL2 firmware for sep_efuse_km_axil_cpu_mux_coexist_test, plus the verify
+# step of [c_build.km_rom_blob] for the km_rom_coexist.parhex blob the same
+# leaf boots on the KM CPU. A test has one firmware entry, so this mode runs
+# both: argv first runs `make verify ROMS=km_rom_coexist` (a stale, missing or
+# unassemblable blob fails c_compile before sim) and then the
+# [c_build.default] EL2 build of {fw_target}. The toolchain rules of both
+# blocks apply unchanged.
+cwd = "."
+argv = [
+  "bash",
+  "-lc",
+  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; KM_FW=hw/sys/sep/dv/cocotb/tests/km_fw; if [ -n \"$RV_TC\" ] && [ -x \"$RV_TC/$RV_PFX\"gcc ]; then GCC_P=$(printf %s \"$RV_PFX\" | sed 's/-$//'); make -C \"$KM_FW\" verify ROMS=km_rom_coexist GCC_PREFIX=\"$RV_TC/$GCC_P\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; verifying the KM ROM blob in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here make -C \"$KM_FW\" verify ROMS=km_rom_coexist PYTHON=python3; else echo \"error: no RISC-V toolchain and no scripts/docker-run.sh\" >&2; exit 1; fi; echo \"[c_compile] KM-ROM-IDENTITY: image=hw/sys/sep/dv/cocotb/tests/km_rom_coexist.parhex sha256=$(sha256sum hw/sys/sep/dv/cocotb/tests/km_rom_coexist.parhex | cut -d\" \" -f1) matches km_rom_coexist.S\"; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; MK=\"dv-fw-tests TEST={fw_target}\"; if [ -n \"$RV_TC\" ] && \"$RV_TC/$RV_PFX\"gcc -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then exec make -C hw/sys/sep/dv/fw -f fw.mk $MK OCAH_ROOT=\"$PWD\" RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] no caller RISCV_TOOLCHAIN with picolibc; building in the OCAH toolchain container\"; exec env -u RISCV_TOOLCHAIN -u RISCV_PREFIX ./scripts/docker-run.sh run-here make -C hw/sys/sep/dv/fw -f fw.mk $MK OCAH_ROOT=\"$PWD\"; else echo \"error: set RISCV_TOOLCHAIN to a picolibc-enabled RISC-V toolchain, or provide scripts/docker-run.sh\" >&2; exit 1; fi",
+]
+outputs = [
+  "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.itcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.dtcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.tcm.elf",
+  "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.tcm.sym",
+  "hw/sys/sep/dv/cocotb/tests/km_rom_coexist.parhex",
 ]
 
 [defaults]
@@ -370,16 +569,14 @@ description = "CPU firmware boot: VeeR EL2 owns its master buses and fetches fir
 timeout_sec = 3600
 args = ["+cpu_boot"]
 
-# One [targets.<name>] owns both compile and run knobs.
+# Compile and run settings for a target share one [targets.<name>] table.
 # Tool-specific flags live under [targets.<name>.tools.<tool>].
 # cocotb's runner forces a global --public-flat-rw. The runlib cocotb_public_scope() integration
-# drops it and substitutes the scoped public config in `public_scope` above, because cocotb only
-# needs the top-level sep_uvm_top ports (clocks/reset/boot controls + the flat s_axi_* bus); the
+# drops it and substitutes the scoped public config in `public_scope` above: cocotb only needs
+# the top-level sep_uvm_top ports (clocks/reset/boot controls + the flat s_axi_* bus); the
 # CPU-LSU splice is SV-side inside tb_top (the no_cpu stub drives lsu_axi_req from lsu_req_drive;
 # the LSU response is read back by hierarchical name), so no internal-signal VPI access is
-# required. Global public marks every signal
-# public, which disables the AXI fabric split_var pragmas -> ~951 false combinational SCCs + a
-# multi-million-entry ICO settle region that wedges Verilator; scoping to the tb top avoids that.
+# required. See [build.verilator] for the split_var constraint behind the scoping.
 # -Wno-MODDUP/REDEFMACRO allow the override stubs to shadow real modules.
 #
 # NOTE: the common Verilator -Wno-fatal/UNOPTFLAT/... flags come from the profile's
@@ -387,15 +584,16 @@ args = ["+cpu_boot"]
 # here -- the profile->DUT merge REPLACES that array, which would drop the profile flags.
 # Each target below therefore re-states the three SEP -Wno flags; the profile's
 # [target_defaults.default] is still inherited (selected_target uses it as the fallback
-# for every target name). +define+SYNTHESIS is re-stated there too, and is Verilator-only:
-# see [targets.default.tools.verilator].
+# for every target name).
 #
 # Compile targets keep the normal regression models explicit:
 #   * default            (cpu_all_live)     : full VeeR CPU; m_axi + j_axi live.
 #   * lsu_stub_all_live  (CPU stubbed)      : no VeeR; m_axi + j_axi live.
 #
-# Daily commit/push validation is three class regressions, not one mixed `all` run:
-#   python3 tools/dv/run_dv.py --dut sep --items no_cpu --regress \
+# Daily commit/push validation is the two class regressions, not one mixed `all`
+# run. `rom_fw` is a separate owner's class, not a member of `all`; run it only
+# when Boot ROM firmware is in scope:
+#   python3 tools/dv/run_dv.py --dut sep --items cpu_stub --regress \
 #       --tool verilator --stage flist --stage hdl_compile --stage sim
 #   python3 tools/dv/run_dv.py --dut sep --items cpu --regress \
 #       --tool verilator --stage flist --stage hdl_compile --stage sim
@@ -407,13 +605,9 @@ args = ["+cpu_boot"]
 # no_cpu, and bounds CPU firmware fanout while keeping the Verilator model
 # single-threaded by default.
 #
-# `default` is the FALLBACK target -- unassigned tests + every cpu test land here safely
-# (full CPU supports both run modes). no_cpu tests select lsu_stub_all_live for the sim
-# speedup.
-#
-# NOTE: the common Verilator -Wno-fatal/UNOPTFLAT/... flags come from the profile's
-# [target_defaults.default] (native.toml). Each target re-states the three SEP -Wno flags
-# plus Verilator-only +define+SYNTHESIS; do NOT redefine [target_defaults.default].
+# `default` is the FALLBACK target. On VCS the full CPU supports both run modes:
+# no_cpu force-splices the LSU VIP. Verilator no_cpu still selects
+# lsu_stub_all_live. Coverage runs pass `--target default`.
 [targets.default]
 description = "cpu_all_live: full VeeR EL2 CPU; m_axi + j_axi always live (fallback for all cpu tests)"
 build_dir = "hw/sys/sep/dv/build/cocotb"   # per-tool subdir appended: cocotb/<tool>
@@ -421,19 +615,8 @@ defines = [
   "SEP_SMN_INBOUND_AXI_LIVE",
   "SEP_JTAG_AXIL_LIVE",
 ]
-# abr_wrapper_key_reg stub swap is DUT-wide ([build].exclude_files + sources):
-# sep_crypto_abr_wrapper instantiates u_abr_key_csr again; Verilator still cannot
-# compile the PeakRDL-generated block (see shims/crypto/abr_wrapper_key_reg_stub.sv).
-
 [targets.default.tools.verilator]
 flags = [
-  # SYNTHESIS no-ops every `ifndef SYNTHESIS` concurrent-assertion / cover
-  # block (prim_assert.sv ASSERT/ASSUME, prim_alert_sender sequences, kmac
-  # sha3pad `##[1:$]`). Only Verilator cannot parse those, so the define is
-  # scoped to Verilator here rather than sitting in the tool-agnostic
-  # `defines` list -- there it also silenced every assertion under VCS and
-  # Xcelium, where they compile and fire correctly.
-  "+define+SYNTHESIS",
   # PeakRDL reg blocks reset their axil_resp_buffer struct-array via an NBA in a
   # for-loop (incl. the read-target sep_cpu_ctrl_reg) -> Verilator BLKLOOPINIT,
   # suppressed here (the loop-style reset is functionally correct for the read path).
@@ -442,14 +625,15 @@ flags = [
   "-Wno-UNUSEDPARAM",
 ]
 
-# rom_boot: default (full VeeR CPU) + a behavioral SMC AXI responder for the
-# real-ROM non-secure boot test. SEP_SMC_MEM_MODEL enables an axi_sim_mem on the
-# SEP->SMC AXI (sep_ext_to_smc_axi, tied off in the default TB) so the Boot ROM's
-# SMC scratch/SRAM accesses (scratch round-trip, manifest fetch) get real R/W
-# responses. Scoped to this target so the shared default/no_cpu Verilator models
-# do not compile the sim-only axi_sim_mem.
+# rom_boot: default (full VeeR CPU) + the shared AXI slave agent on the SEP->SMC
+# AXI for the real-ROM boot tests. SEP_SMC_MEM_MODEL places sep_ext_to_smc_axi
+# (tied off in the default TB) on an ocah_axi_if through the VIP struct bridge,
+# and the cocotb base test binds OcahAxiSlaveAgent to it so the Boot ROM's SMC
+# scratch/SRAM accesses (scratch round-trip, manifest fetch) get real R/W
+# responses. The interface and bridge sources are scoped to this target; the
+# default/no_cpu models carry no SEP->SMC responder.
 [targets.rom_boot]
-description = "cpu_all_live + behavioral SMC AXI responder (axi_sim_mem) for the real-ROM non-secure boot test"
+description = "cpu_all_live + shared AXI slave agent on the SEP->SMC AXI for the real-ROM boot tests"
 build_dir = "hw/sys/sep/dv/build/rom_boot/cocotb"
 defines = [
   "SEP_SMN_INBOUND_AXI_LIVE",
@@ -457,12 +641,12 @@ defines = [
   "SEP_SMC_MEM_MODEL",
 ]
 sources = [
-  "vendor/pulp-platform/axi/upstream/src/axi_sim_mem.sv",
+  "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_if.sv",
+  "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_struct_bridge.sv",
 ]
 
 [targets.rom_boot.tools.verilator]
 flags = [
-  "+define+SYNTHESIS",   # Verilator-only; see [targets.default.tools.verilator]
   "-Wno-BLKLOOPINIT",
   "-Wno-UNUSEDSIGNAL",
   "-Wno-UNUSEDPARAM",
@@ -470,7 +654,7 @@ flags = [
 
 # CPU-stub model: SEP_CPU_STUB drops the VeeR EL2 core (shims/cpu/sep_cpu_stub.sv
 # reproduces the LSU ROM/xbar demux verbatim) so the cocotb AXI driver owns the CPU-LSU
-# splice. ~1.66x faster sim; runs every no_cpu test. m_axi + j_axi are always live here
+# splice. Runs every no_cpu test. m_axi + j_axi are always live here
 # too (tb_top), so inbound-filter tests run on this model. Cannot run cpu run-mode tests.
 [targets.lsu_stub_all_live]
 description = "lsu_stub_all_live: CPU stubbed (no VeeR EL2, LSU demux preserved); m_axi + j_axi live; for no_cpu tests"
@@ -486,5 +670,86 @@ sources = [
 ]
 
 [targets.lsu_stub_all_live.tools.verilator]
-# +define+SYNTHESIS is Verilator-only; see [targets.default.tools.verilator]
-flags = ["-Wno-BLKLOOPINIT", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM", "+define+SYNTHESIS"]
+flags = ["-Wno-BLKLOOPINIT", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM"]
+
+# The lsu_stub_all_live model built without Adams Bridge. SEP_ABR_EN comes
+# from the `sep` Bender target, and `bender script flist-plus` emits it as one
+# `+define+SEP_ABR_EN` line of the generated bender filelist. `exclude_files`
+# drops every filelist line that contains a listed string, so the entry below
+# removes that one define line for this target only. CALIPTRA stays defined;
+# the vendored Adams Bridge sources still compile, and nothing instantiates
+# them. sep_crypto then terminates the ABR aperture and the Key Manager ABR key
+# bus with DECERR subordinates, and sep_ip_integration drives the ABR memory
+# response to zero (doc/integrator/src/defines.adoc, Adams Bridge defines).
+[targets.lsu_stub_abr_absent]
+description = "lsu_stub_all_live without Adams Bridge (SEP_ABR_EN not defined); for no_cpu tests of the ABR-absent build"
+build_dir = "hw/sys/sep/dv/build/cocotb"
+defines = ["SEP_CPU_STUB", "SEP_SMN_INBOUND_AXI_LIVE", "SEP_JTAG_AXIL_LIVE"]
+exclude_files = [
+  "hw/sys/sep/rtl/sep_cpu.sv",
+  "+define+SEP_ABR_EN",
+]
+sources = [
+  "hw/sys/sep/dv/shims/cpu/sep_cpu_stub.sv",
+]
+
+[targets.lsu_stub_abr_absent.tools.verilator]
+flags = ["-Wno-BLKLOOPINIT", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM"]
+
+# SystemVerilog UVM view (`--dut sep --framework uvm`, VCS): the same DUT recipe
+# (Bender targets, stubs) with the shared framework library and AXI VIP
+# manifests ahead of the DUT sources, the
+# SEP-local TB interface, and the two bench packages. A framework `[build]` list
+# replaces the DUT-level one rather than appending to it, so the TB collateral
+# both flows compile is restated here; the AXI protocol SVA comes from the VIP
+# manifest, and the picorv32 KM core is left to the Bender flist (VCS rejects
+# a module declared twice). The tool allowlist is restated because the DUT's
+# top-level `tools` list would otherwise override the profile's.
+[frameworks.uvm]
+description = "SEP SV-UVM smoke flow (VCS)"
+default_tool = "vcs"
+tools = ["vcs"]
+
+[frameworks.uvm.build]
+source_lists = [
+  "hw/common/dv/vip/ocah_lib/uvm/sources.toml",
+  "hw/common/dv/vip/ocah_axi_vip/uvm/sources.toml",
+]
+filelist = "hw/sys/sep/dv/build/uvm/sep_uvm_compile.f"
+bender_filelist = "hw/sys/sep/dv/build/uvm/sep_uvm_bender.f"
+work_dir = "hw/sys/sep/dv/build/uvm"
+# hw/sys/sep/regs/gen/svh carries the generated register header sep_env_pkg
+# includes for addresses, reset values, and field masks.
+incdirs = [
+  "hw/sys/sep/dv/tb",
+  "hw/common/assert",
+  "hw/sys/sep/regs/gen/svh",
+  "hw/sys/sep/dv/uvm/env",
+  "hw/sys/sep/dv/uvm/seq_lib",
+  "hw/sys/sep/dv/uvm/tests",
+]
+sources = [
+  # Generated SMC address map. tb_top sizes its SMC window checker from it; the
+  # `smc` Bender target that normally carries it is not in the SEP build.
+  "hw/sys/smc/regs/gen/sv/smc_addrmap_pkg.sv",
+  "hw/sys/sep/dv/tb/sep_outbound_mbx.sv",
+  "hw/sys/sep/dv/cov/sv/sep_fcov.sv",
+  "hw/sys/sep/dv/tb/sep_tb_if.sv",
+  "hw/sys/sep/dv/uvm/env/sep_env_pkg.sv",
+  "hw/sys/sep/dv/uvm/seq_lib/sep_seq_lib_pkg.sv",
+]
+
+[frameworks.uvm.sim]
+args = ["+UVM_VERBOSITY=UVM_MEDIUM"]
+
+# The no_cpu scenarios select target = "lsu_stub_all_live" (CPU stubbed, the
+# stub is the sole LSU driver); the full-CPU default target force-splices the
+# LSU request on VCS. Both share one SV-UVM build tree, partitioned by input
+# fingerprint like the cocotb targets.
+[frameworks.uvm.targets.default]
+description = "SEP SV-UVM full-CPU target"
+build_dir = "hw/sys/sep/dv/build/uvm"
+
+[frameworks.uvm.targets.lsu_stub_all_live]
+description = "SEP SV-UVM no_cpu target: CPU stubbed, LSU driven by the shared AXI VIP master"
+build_dir = "hw/sys/sep/dv/build/uvm"

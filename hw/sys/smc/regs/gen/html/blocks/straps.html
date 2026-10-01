@@ -1,0 +1,29 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-straps">Straps Address Map</h2>
+<p>Captured GPIO strap values (adopter padring capture)</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#STRAPS_LO">STRAPS_LO</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x4</td><td><a href="#STRAPS_HI">STRAPS_HI</a></td><td>R</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="STRAPS_LO">STRAPS_LO</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>straps</td><td>R</td><td>0x0</td><td>Strap value from GPIOs 0 - 31. Bit N holds the value latched on GPIO N.<br>Bits 0 - 10, 16, 17, 24 and 27 - 31 have no strap assigned. Those GPIOs still<br>latch their pad value here, but no strap function consumes it.<br>Strap assignments in this range:<br>* bit 11: CHIP_ID[3] - CHIP_ID is the I2C/I3C static address strap<br>* bit 12: CHIP_ID[2] - CHIP_ID is the I2C/I3C static address strap<br>* bit 13: BYPASS_SRAM_REPAIR - Bypass the memory repair process<br>* bit 14: TEST_EN - Enable DFT test mode<br>* bit 15: CHIP_ID[1] - CHIP_ID is the I2C/I3C static address strap<br>* bit 18: BOOT_I2C - Default alternate boot channel is I3C0 and can be reconfigured to use I2C0<br>* bit 19: BOOT_RECOVERY - Use I3C0 for BL1 boot image loading instead of the SPI channel<br>* bit 20: BL0_PLLCLK - Use the PLL generated clock by default in BL0, and override to use the reference clock when this strap is asserted<br>* bit 21: STATUS_RPT_DISABLE - Disable BL0 status reporting. It is on by default<br>* bit 22: SPI_USE_FUSED_CONFIG - Use the SPI configuration values stored in the fuse field<br>* bit 23: CHIP_ID[0] - CHIP_ID is the I2C/I3C static address strap<br>* bit 25: PRIMARY_CHIPLET - The primary chiplet has this strap bonded out to identify it as the boot master<br>* bit 26: SRAM_AUTO_ZERO_DISABLE - Disable auto zero of the SMC SRAM when asserted</td></tr>
+</table>
+<h3 id="STRAPS_HI">STRAPS_HI</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:29</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>28:0</td><td>straps</td><td>R</td><td>0x0</td><td>Strap value from GPIOs 32 - 60. Bit N holds the value latched on GPIO N+32.<br>All bits other than those listed below have no strap assigned. Those GPIOs<br>still latch their pad value here, but no strap function consumes it.<br>GPIOs 61 - 64 cannot be strapped: they are unbonded (not packaged out) and lie<br>outside this register, which ends at GPIO 60 (smc_pkg::NUM_BONDED_GPIO-1).<br>Strap assignments in this range:<br>* bit 22 (GPIO 54): MBIST_BYPASS - Ignore results of Power-On MBIST for boot<br>* bit 26 (GPIO 58): ROTATE_UPDATE - Swaps primary and backup image in SEP BL0 ROM</td></tr>
+</table>
+</div>

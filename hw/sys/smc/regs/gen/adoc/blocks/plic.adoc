@@ -1,86 +1,64 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-plic]
+== PLIC Address Map
+
+Platform-Level Interrupt Controller register interface.
+
 [NOTE]
 ======
-*Register Arrays:* This register map contains the following register arrays:
+*Register Arrays:*
 
-* *PRIORITY[337]*: 337 registers
-  ** Base Address: 0x0
-  ** Address Increment: 0x4 per register
-
-* *PENDING[11]*: 11 registers
-  ** Base Address: 0x1000
-  ** Address Increment: 0x4 per register
-
-* *CORE0_MEIP_ENABLE[11]*: 11 registers
-  ** Base Address: 0x2000
-  ** Address Increment: 0x4 per register
-
-* *CORE1_MEIP_ENABLE[11]*: 11 registers
-  ** Base Address: 0x2080
-  ** Address Increment: 0x4 per register
-
-* *CORE2_MEIP_ENABLE[11]*: 11 registers
-  ** Base Address: 0x2100
-  ** Address Increment: 0x4 per register
-
-* *CORE3_MEIP_ENABLE[11]*: 11 registers
-  ** Base Address: 0x2180
-  ** Address Increment: 0x4 per register
-
-* *CORE0_SEIP_ENABLE[11]*: 11 registers
-  ** Base Address: 0x2200
-  ** Address Increment: 0x4 per register
-
-* *CORE1_SEIP_ENABLE[11]*: 11 registers
-  ** Base Address: 0x2280
-  ** Address Increment: 0x4 per register
-
-* *CORE2_SEIP_ENABLE[11]*: 11 registers
-  ** Base Address: 0x2300
-  ** Address Increment: 0x4 per register
-
-* *CORE3_SEIP_ENABLE[11]*: 11 registers
-  ** Base Address: 0x2380
-  ** Address Increment: 0x4 per register
-
+* *PRIORITY[337]*: 337 registers, base 0x0, stride 0x4
+* *PENDING[11]*: 11 registers, base 0x1000, stride 0x4
+* *CORE0_MEIP_ENABLE[11]*: 11 registers, base 0x2000, stride 0x4
+* *CORE1_MEIP_ENABLE[11]*: 11 registers, base 0x2080, stride 0x4
+* *CORE2_MEIP_ENABLE[11]*: 11 registers, base 0x2100, stride 0x4
+* *CORE3_MEIP_ENABLE[11]*: 11 registers, base 0x2180, stride 0x4
+* *CORE0_SEIP_ENABLE[11]*: 11 registers, base 0x2200, stride 0x4
+* *CORE1_SEIP_ENABLE[11]*: 11 registers, base 0x2280, stride 0x4
+* *CORE2_SEIP_ENABLE[11]*: 11 registers, base 0x2300, stride 0x4
+* *CORE3_SEIP_ENABLE[11]*: 11 registers, base 0x2380, stride 0x4
 ======
 
-[cols="1,1,1,3", options="header"]
-.Register Map
+[cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description
-| 0x0 - 0x540 | PRIORITY[337] | RW a| -
-| 0x1000 - 0x1028 | PENDING[11] | R a| -
-| 0x2000 - 0x2028 | CORE0_MEIP_ENABLE[11] | RW a| -
-| 0x2080 - 0x20A8 | CORE1_MEIP_ENABLE[11] | RW a| -
-| 0x2100 - 0x2128 | CORE2_MEIP_ENABLE[11] | RW a| -
-| 0x2180 - 0x21A8 | CORE3_MEIP_ENABLE[11] | RW a| -
-| 0x2200 - 0x2228 | CORE0_SEIP_ENABLE[11] | RW a| -
-| 0x2280 - 0x22A8 | CORE1_SEIP_ENABLE[11] | RW a| -
-| 0x2300 - 0x2328 | CORE2_SEIP_ENABLE[11] | RW a| -
-| 0x2380 - 0x23A8 | CORE3_SEIP_ENABLE[11] | RW a| -
-| 0x200000 | CORE0_MEIP_THRESHOLD | RW a| -
-| 0x200004 | CORE0_MEIP_CLAIM_COMPLETE | RW a| -
-| 0x201000 | CORE1_MEIP_THRESHOLD | RW a| -
-| 0x201004 | CORE1_MEIP_CLAIM_COMPLETE | RW a| -
-| 0x202000 | CORE2_MEIP_THRESHOLD | RW a| -
-| 0x202004 | CORE2_MEIP_CLAIM_COMPLETE | RW a| -
-| 0x203000 | CORE3_MEIP_THRESHOLD | RW a| -
-| 0x203004 | CORE3_MEIP_CLAIM_COMPLETE | RW a| -
-| 0x204000 | CORE0_SEIP_THRESHOLD | RW a| -
-| 0x204004 | CORE0_SEIP_CLAIM_COMPLETE | RW a| -
-| 0x205000 | CORE1_SEIP_THRESHOLD | RW a| -
-| 0x205004 | CORE1_SEIP_CLAIM_COMPLETE | RW a| -
-| 0x206000 | CORE2_SEIP_THRESHOLD | RW a| -
-| 0x206004 | CORE2_SEIP_CLAIM_COMPLETE | RW a| -
-| 0x207000 | CORE3_SEIP_THRESHOLD | RW a| -
-| 0x207004 | CORE3_SEIP_CLAIM_COMPLETE | RW a| -
+| 0x0 - 0x540 | <<reg-{regmap-instance}-plic-PRIORITY-0-,PRIORITY[337]>> | RW a| -
+| 0x1000 - 0x1028 | <<reg-{regmap-instance}-plic-PENDING-0-,PENDING[11]>> | R a| -
+| 0x2000 - 0x2028 | <<reg-{regmap-instance}-plic-CORE0_MEIP_ENABLE-0-,CORE0_MEIP_ENABLE[11]>> | RW a| -
+| 0x2080 - 0x20A8 | <<reg-{regmap-instance}-plic-CORE1_MEIP_ENABLE-0-,CORE1_MEIP_ENABLE[11]>> | RW a| -
+| 0x2100 - 0x2128 | <<reg-{regmap-instance}-plic-CORE2_MEIP_ENABLE-0-,CORE2_MEIP_ENABLE[11]>> | RW a| -
+| 0x2180 - 0x21A8 | <<reg-{regmap-instance}-plic-CORE3_MEIP_ENABLE-0-,CORE3_MEIP_ENABLE[11]>> | RW a| -
+| 0x2200 - 0x2228 | <<reg-{regmap-instance}-plic-CORE0_SEIP_ENABLE-0-,CORE0_SEIP_ENABLE[11]>> | RW a| -
+| 0x2280 - 0x22A8 | <<reg-{regmap-instance}-plic-CORE1_SEIP_ENABLE-0-,CORE1_SEIP_ENABLE[11]>> | RW a| -
+| 0x2300 - 0x2328 | <<reg-{regmap-instance}-plic-CORE2_SEIP_ENABLE-0-,CORE2_SEIP_ENABLE[11]>> | RW a| -
+| 0x2380 - 0x23A8 | <<reg-{regmap-instance}-plic-CORE3_SEIP_ENABLE-0-,CORE3_SEIP_ENABLE[11]>> | RW a| -
+| 0x200000 | <<reg-{regmap-instance}-plic-CORE0_MEIP_THRESHOLD,CORE0_MEIP_THRESHOLD>> | RW a| -
+| 0x200004 | <<reg-{regmap-instance}-plic-CORE0_MEIP_CLAIM_COMPLETE,CORE0_MEIP_CLAIM_COMPLETE>> | RW a| -
+| 0x201000 | <<reg-{regmap-instance}-plic-CORE1_MEIP_THRESHOLD,CORE1_MEIP_THRESHOLD>> | RW a| -
+| 0x201004 | <<reg-{regmap-instance}-plic-CORE1_MEIP_CLAIM_COMPLETE,CORE1_MEIP_CLAIM_COMPLETE>> | RW a| -
+| 0x202000 | <<reg-{regmap-instance}-plic-CORE2_MEIP_THRESHOLD,CORE2_MEIP_THRESHOLD>> | RW a| -
+| 0x202004 | <<reg-{regmap-instance}-plic-CORE2_MEIP_CLAIM_COMPLETE,CORE2_MEIP_CLAIM_COMPLETE>> | RW a| -
+| 0x203000 | <<reg-{regmap-instance}-plic-CORE3_MEIP_THRESHOLD,CORE3_MEIP_THRESHOLD>> | RW a| -
+| 0x203004 | <<reg-{regmap-instance}-plic-CORE3_MEIP_CLAIM_COMPLETE,CORE3_MEIP_CLAIM_COMPLETE>> | RW a| -
+| 0x204000 | <<reg-{regmap-instance}-plic-CORE0_SEIP_THRESHOLD,CORE0_SEIP_THRESHOLD>> | RW a| -
+| 0x204004 | <<reg-{regmap-instance}-plic-CORE0_SEIP_CLAIM_COMPLETE,CORE0_SEIP_CLAIM_COMPLETE>> | RW a| -
+| 0x205000 | <<reg-{regmap-instance}-plic-CORE1_SEIP_THRESHOLD,CORE1_SEIP_THRESHOLD>> | RW a| -
+| 0x205004 | <<reg-{regmap-instance}-plic-CORE1_SEIP_CLAIM_COMPLETE,CORE1_SEIP_CLAIM_COMPLETE>> | RW a| -
+| 0x206000 | <<reg-{regmap-instance}-plic-CORE2_SEIP_THRESHOLD,CORE2_SEIP_THRESHOLD>> | RW a| -
+| 0x206004 | <<reg-{regmap-instance}-plic-CORE2_SEIP_CLAIM_COMPLETE,CORE2_SEIP_CLAIM_COMPLETE>> | RW a| -
+| 0x207000 | <<reg-{regmap-instance}-plic-CORE3_SEIP_THRESHOLD,CORE3_SEIP_THRESHOLD>> | RW a| -
+| 0x207004 | <<reg-{regmap-instance}-plic-CORE3_SEIP_CLAIM_COMPLETE,CORE3_SEIP_CLAIM_COMPLETE>> | RW a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.PRIORITY[337] Register
+[#reg-{regmap-instance}-plic-PRIORITY-0-]
+=== PRIORITY[337]
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:3 | `Reserved` | - | - a| Reserved
@@ -89,80 +67,100 @@ For interrupts with the same priority, the tie is broken by interrupt ID; interr
 Interrupts start counting at 1.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.PENDING[11] Register
+[#reg-{regmap-instance}-plic-PENDING-0-]
+=== PENDING[11]
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | 0x0 a| Set to 1 if interrupt source 1 is pending, regardless of its enable or priority setting.
 Interrupts start counting at 1.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.CORE0_MEIP_ENABLE[11] Register
+[#reg-{regmap-instance}-plic-CORE0_MEIP_ENABLE-0-]
+=== CORE0_MEIP_ENABLE[11]
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | RW | - a| Set bits to 1 if interrupt should be enabled.
 Interrupts start counting at 1.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.CORE1_MEIP_ENABLE[11] Register
+[#reg-{regmap-instance}-plic-CORE1_MEIP_ENABLE-0-]
+=== CORE1_MEIP_ENABLE[11]
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | RW | - a| Set bits to 1 if interrupt should be enabled.
 Interrupts start counting at 1.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.CORE2_MEIP_ENABLE[11] Register
+[#reg-{regmap-instance}-plic-CORE2_MEIP_ENABLE-0-]
+=== CORE2_MEIP_ENABLE[11]
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | RW | - a| Set bits to 1 if interrupt should be enabled.
 Interrupts start counting at 1.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.CORE3_MEIP_ENABLE[11] Register
+[#reg-{regmap-instance}-plic-CORE3_MEIP_ENABLE-0-]
+=== CORE3_MEIP_ENABLE[11]
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | RW | - a| Set bits to 1 if interrupt should be enabled.
 Interrupts start counting at 1.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.CORE0_SEIP_ENABLE[11] Register
+[#reg-{regmap-instance}-plic-CORE0_SEIP_ENABLE-0-]
+=== CORE0_SEIP_ENABLE[11]
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | RW | - a| Set bits to 1 if interrupt should be enabled.
 Interrupts start counting at 1.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.CORE1_SEIP_ENABLE[11] Register
+[#reg-{regmap-instance}-plic-CORE1_SEIP_ENABLE-0-]
+=== CORE1_SEIP_ENABLE[11]
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | RW | - a| Set bits to 1 if interrupt should be enabled.
 Interrupts start counting at 1.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.CORE2_SEIP_ENABLE[11] Register
+[#reg-{regmap-instance}-plic-CORE2_SEIP_ENABLE-0-]
+=== CORE2_SEIP_ENABLE[11]
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | RW | - a| Set bits to 1 if interrupt should be enabled.
 Interrupts start counting at 1.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.CORE3_SEIP_ENABLE[11] Register
+[#reg-{regmap-instance}-plic-CORE3_SEIP_ENABLE-0-]
+=== CORE3_SEIP_ENABLE[11]
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | RW | - a| Set bits to 1 if interrupt should be enabled.
 Interrupts start counting at 1.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.CORE0_MEIP_THRESHOLD Register
+[#reg-{regmap-instance}-plic-CORE0_MEIP_THRESHOLD]
+=== CORE0_MEIP_THRESHOLD
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:3 | `Reserved` | - | - a| Reserved
@@ -170,8 +168,10 @@ Interrupts start counting at 1.
 Any interrupt with a priority less than the threshold cannot interrupt the cpu
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.CORE0_MEIP_CLAIM_COMPLETE Register
+[#reg-{regmap-instance}-plic-CORE0_MEIP_CLAIM_COMPLETE]
+=== CORE0_MEIP_CLAIM_COMPLETE
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | RW | - a| Claim/Complete register.
@@ -179,8 +179,10 @@ Reading this register returns the claimed interrupt number and makes it no longe
 Writing the interrupt number back completes the interrupt.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.CORE1_MEIP_THRESHOLD Register
+[#reg-{regmap-instance}-plic-CORE1_MEIP_THRESHOLD]
+=== CORE1_MEIP_THRESHOLD
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:3 | `Reserved` | - | - a| Reserved
@@ -188,8 +190,10 @@ Writing the interrupt number back completes the interrupt.
 Any interrupt with a priority less than the threshold cannot interrupt the cpu
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.CORE1_MEIP_CLAIM_COMPLETE Register
+[#reg-{regmap-instance}-plic-CORE1_MEIP_CLAIM_COMPLETE]
+=== CORE1_MEIP_CLAIM_COMPLETE
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | RW | - a| Claim/Complete register.
@@ -197,8 +201,10 @@ Reading this register returns the claimed interrupt number and makes it no longe
 Writing the interrupt number back completes the interrupt.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.CORE2_MEIP_THRESHOLD Register
+[#reg-{regmap-instance}-plic-CORE2_MEIP_THRESHOLD]
+=== CORE2_MEIP_THRESHOLD
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:3 | `Reserved` | - | - a| Reserved
@@ -206,8 +212,10 @@ Writing the interrupt number back completes the interrupt.
 Any interrupt with a priority less than the threshold cannot interrupt the cpu
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.CORE2_MEIP_CLAIM_COMPLETE Register
+[#reg-{regmap-instance}-plic-CORE2_MEIP_CLAIM_COMPLETE]
+=== CORE2_MEIP_CLAIM_COMPLETE
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | RW | - a| Claim/Complete register.
@@ -215,8 +223,10 @@ Reading this register returns the claimed interrupt number and makes it no longe
 Writing the interrupt number back completes the interrupt.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.CORE3_MEIP_THRESHOLD Register
+[#reg-{regmap-instance}-plic-CORE3_MEIP_THRESHOLD]
+=== CORE3_MEIP_THRESHOLD
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:3 | `Reserved` | - | - a| Reserved
@@ -224,8 +234,10 @@ Writing the interrupt number back completes the interrupt.
 Any interrupt with a priority less than the threshold cannot interrupt the cpu
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.CORE3_MEIP_CLAIM_COMPLETE Register
+[#reg-{regmap-instance}-plic-CORE3_MEIP_CLAIM_COMPLETE]
+=== CORE3_MEIP_CLAIM_COMPLETE
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | RW | - a| Claim/Complete register.
@@ -233,8 +245,10 @@ Reading this register returns the claimed interrupt number and makes it no longe
 Writing the interrupt number back completes the interrupt.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.CORE0_SEIP_THRESHOLD Register
+[#reg-{regmap-instance}-plic-CORE0_SEIP_THRESHOLD]
+=== CORE0_SEIP_THRESHOLD
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:3 | `Reserved` | - | - a| Reserved
@@ -242,8 +256,10 @@ Writing the interrupt number back completes the interrupt.
 Any interrupt with a priority less than the threshold cannot interrupt the cpu
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.CORE0_SEIP_CLAIM_COMPLETE Register
+[#reg-{regmap-instance}-plic-CORE0_SEIP_CLAIM_COMPLETE]
+=== CORE0_SEIP_CLAIM_COMPLETE
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | RW | - a| Claim/Complete register.
@@ -251,8 +267,10 @@ Reading this register returns the claimed interrupt number and makes it no longe
 Writing the interrupt number back completes the interrupt.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.CORE1_SEIP_THRESHOLD Register
+[#reg-{regmap-instance}-plic-CORE1_SEIP_THRESHOLD]
+=== CORE1_SEIP_THRESHOLD
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:3 | `Reserved` | - | - a| Reserved
@@ -260,8 +278,10 @@ Writing the interrupt number back completes the interrupt.
 Any interrupt with a priority less than the threshold cannot interrupt the cpu
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.CORE1_SEIP_CLAIM_COMPLETE Register
+[#reg-{regmap-instance}-plic-CORE1_SEIP_CLAIM_COMPLETE]
+=== CORE1_SEIP_CLAIM_COMPLETE
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | RW | - a| Claim/Complete register.
@@ -269,8 +289,10 @@ Reading this register returns the claimed interrupt number and makes it no longe
 Writing the interrupt number back completes the interrupt.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.CORE2_SEIP_THRESHOLD Register
+[#reg-{regmap-instance}-plic-CORE2_SEIP_THRESHOLD]
+=== CORE2_SEIP_THRESHOLD
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:3 | `Reserved` | - | - a| Reserved
@@ -278,8 +300,10 @@ Writing the interrupt number back completes the interrupt.
 Any interrupt with a priority less than the threshold cannot interrupt the cpu
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.CORE2_SEIP_CLAIM_COMPLETE Register
+[#reg-{regmap-instance}-plic-CORE2_SEIP_CLAIM_COMPLETE]
+=== CORE2_SEIP_CLAIM_COMPLETE
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | RW | - a| Claim/Complete register.
@@ -287,8 +311,10 @@ Reading this register returns the claimed interrupt number and makes it no longe
 Writing the interrupt number back completes the interrupt.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.CORE3_SEIP_THRESHOLD Register
+[#reg-{regmap-instance}-plic-CORE3_SEIP_THRESHOLD]
+=== CORE3_SEIP_THRESHOLD
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:3 | `Reserved` | - | - a| Reserved
@@ -296,8 +322,10 @@ Writing the interrupt number back completes the interrupt.
 Any interrupt with a priority less than the threshold cannot interrupt the cpu
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.CORE3_SEIP_CLAIM_COMPLETE Register
+[#reg-{regmap-instance}-plic-CORE3_SEIP_CLAIM_COMPLETE]
+=== CORE3_SEIP_CLAIM_COMPLETE
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | RW | - a| Claim/Complete register.

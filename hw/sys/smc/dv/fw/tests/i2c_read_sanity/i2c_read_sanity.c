@@ -3,7 +3,7 @@
 
 /**
  * @file main.c
- * @brief I2C Read Sanity Test - Clean and Concise Version
+ * @brief I2C Read Sanity Test - controller reads pre-loaded target TX data
  *
  * =============================================================================
  * Test Architecture: Two-Level I2C Control
@@ -146,7 +146,7 @@
  * @brief Print complete FIFO status for debugging
  *
  * This function prints all relevant FIFO and status information
- * for both Controller and Target modes to help AI debug issues.
+ * for both Controller and Target modes.
  *
  * @param controller_idx Controller I2C instance index
  * @param target_idx Target I2C instance index
@@ -268,10 +268,6 @@ int main(void) {
     const uint8_t TARGET_ADDR = 0x10;  // Target address (7-bit)
     int ret;
 
-    //-------------//
-    // RESET & PLL //
-    //-------------//
-
     simputs("\n");
     simputs("################################################\n");
     simputs("##    I2C Read Sanity Test - Concise Version  ##\n");
@@ -316,7 +312,7 @@ int main(void) {
     // Using OpenTitan-inspired physical timing calculation
     i2c_timing_physical_t physical_params = {
         .speed = I2C_SPEED_STANDARD, // 100 kHz
-        .clock_period_nanos = 10,    // 100 MHz system clock (1/100MHz = 10ns)
+        .clock_period_nanos = 5,     // 200 MHz peripheral clock
         .sda_rise_nanos = 300,       // Typical for 4.7k pullup
         .sda_fall_nanos = 100,       // Typical fall time
         .scl_period_nanos = 0        // Auto (use minimum for standard mode = 10us)
@@ -477,11 +473,8 @@ int main(void) {
             drain_timeout--;
         }
 
-        // CRITICAL FIX: Wait for controller to become idle after read completes
-        // This ensures the previous transaction (including STOP) is fully completed
-        // before starting the next transaction, preventing timeout errors
-        // Reference: i2c_sanity_test uses the same approach (line 240-248)
-        // Note: i2c_controller_read does NOT wait for idle internally (unlike i2c_controller_write)
+        // i2c_controller_read() returns before the controller is idle (i2c_controller_write()
+        // waits internally); wait here so the STOP completes before the next transaction.
         ret = i2c_controller_wait_idle(CONTROLLER_IDX, I2C_TIMEOUT_DEFAULT);
         if (ret != I2C_OK) {
             simputs("  ERROR: Wait for controller idle failed at txn ");
@@ -538,7 +531,7 @@ int main(void) {
     //=========================================================================
     write_scratch(1, 0x00000090);
 
-    // NOW signal setup complete to testbench
+    // Final DONE marker for the testbench
     write_scratch(1, 0xEBEDEBE4);
     simputs("\n");
     simputs("################################################\n");

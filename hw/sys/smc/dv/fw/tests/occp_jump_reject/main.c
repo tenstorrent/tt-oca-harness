@@ -2,18 +2,16 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * OCCP Master Sanity Test - Simple Write and Readback
+ * OCCP Jump Rejection Test
  *
- * This test performs a basic OCCP write to a known address,
- * then reads back the data and checks for correctness.
- *
- * The goal is to verify basic OCCP communication and memory access.
+ * Issues JUMP commands to random in-range addresses, expects each to be rejected,
+ * and checks the SMC status buffer for JUMP_SECURITY errors.
  */
 
 #include "occp_test_common.h"
 #include "smc_defines.h"
 #include "smc_test.h"
-#include <string.h> // For memcpy
+#include <string.h>
 
 static void validate_smc_status_buffer_for_jump_reject(test_context_t *ctx) {
     simputs("=== Validating SMC status buffer for JUMP rejection ===\n");
@@ -57,13 +55,11 @@ static void run_test_suite(test_context_t *ctx) {
     int retval;
     uint32_t status_data = 0;
 
-    // Execute 10 random OCCP commands before jump
     simputs("=== Random OCCP Commands Test (10 commands before jump) ===\n");
     execute_random_commands(ctx, 10);
 
     simputs("=== Jump Rejection Test ===\n");
 
-    // re-latch to recover
     retval = occp_send_get_version_command(ctx, ctx->slave_addr, &status_data);
     if (retval != OCCP_SUCCESS) {
         simputs("FAIL: Failed to get version command\n");
@@ -71,7 +67,6 @@ static void run_test_suite(test_context_t *ctx) {
     }
     increment_cmd_count(ctx);
 
-    // jump directly to a random address (should be rejected)
     for (int i = 0; i < 4; i++) {
         uint32_t random_jump_addr =
             ctx->test_base_addr +
@@ -88,7 +83,7 @@ static void run_test_suite(test_context_t *ctx) {
         ctx->exp_response_code = OCCP_ERROR_NONE;
     }
 
-    // re-latch to recover
+    // A valid command clears the ROM's consecutive-error count; five errors unlatch it.
     retval = occp_send_get_version_command(ctx, ctx->slave_addr, &status_data);
     if (retval != OCCP_SUCCESS) {
         simputs("FAIL: Failed to get version command\n");
@@ -96,10 +91,8 @@ static void run_test_suite(test_context_t *ctx) {
     }
     increment_cmd_count(ctx);
 
-    // Validate that SMC status buffer logged the jump rejection
     validate_smc_status_buffer_for_jump_reject(ctx);
 
-    // Execute 10 random OCCP commands after jump to ensure ROM still responding
     simputs("=== Random OCCP Commands Test (10 commands after jump rejection) ===\n");
     execute_random_commands(ctx, 5);
 
@@ -133,7 +126,6 @@ int main(void) {
         return -1;
     }
 
-    // Set up test context
     test_ctx.test_base_addr = OCCP_TEST_BASE_ADDR;
     test_ctx.test_upper_addr_bound = OCCP_TEST_BUFFER_SAFE_UPPER_ADDR;
     test_ctx.overall_result = true;
@@ -141,10 +133,8 @@ int main(void) {
     test_ctx.cmd_count = 0;
     test_ctx.exp_occp_last_error = 0;
 
-    // Run the test suite
     run_test_suite(&test_ctx);
 
-    // Finalize and report results
     finalize_test_results(&test_ctx);
 
     simputs("Done\n");

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from .ocah_jtag_checker import OcahJtagChecker
 from .ocah_jtag_slave_driver import OcahJtagSlaveDriver, OcahJtagSlaveUpdate
+from .ocah_jtag_state import OcahJtagState, coerce_jtag_state
 
 __all__ = ["OcahJtagSlaveSequence"]
 
@@ -41,6 +42,56 @@ class OcahJtagSlaveSequence:
     def get_register(self, name: str) -> int:
         """Return a register's current stored value."""
         return self.responder.get_register(name)
+
+    def device_state(self) -> OcahJtagState:
+        """The device's current TAP controller state."""
+        return self.responder.device_state()
+
+    def active_instruction(self) -> int:
+        """The instruction currently selecting the device's data register."""
+        return self.responder.active_instruction()
+
+    # ------------------------------------------------------------------
+    # Device-state inspection (emit CHK-* named evidence).
+    # ------------------------------------------------------------------
+
+    def check_register(
+        self,
+        name: str,
+        expected: int,
+        *,
+        check_id: str = "CHK-SLAVE-REG",
+        context: str = "",
+    ) -> bool:
+        """Named check: a register currently holds the expected value.
+
+        Independent of the Update-DR history: proves a value survived (or
+        never changed) regardless of how many host scans ran meanwhile.
+        """
+        reg = self.responder.engine.device.reg(name)
+        return self.checker.expect_equal(
+            check_id,
+            self.responder.get_register(name),
+            int(expected) & ((1 << reg.width) - 1),
+            context=f"reg={name} width={reg.width} {context}".strip(),
+        )
+
+    def check_state(
+        self,
+        expected_state,
+        *,
+        check_id: str = "CHK-SLAVE-STATE",
+        context: str = "",
+    ) -> bool:
+        """Named check: the device's TAP controller is in the expected state."""
+        expected = coerce_jtag_state(expected_state)
+        observed = self.responder.device_state()
+        return self.checker.expect_equal(
+            check_id,
+            int(observed),
+            int(expected),
+            context=f"state={observed.name} expected={expected.name} {context}".strip(),
+        )
 
     # ------------------------------------------------------------------
     # Host-write inspection (emit CHK-* named evidence).

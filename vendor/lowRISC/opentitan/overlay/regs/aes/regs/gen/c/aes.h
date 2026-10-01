@@ -24,8 +24,8 @@ extern "C" {
 #define AES__ALERT_TEST__FATAL_FAULT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t recov_ctrl_update_err :1;
-        uint32_t fatal_fault :1;
+        uint32_t RECOV_CTRL_UPDATE_ERR :1;
+        uint32_t FATAL_FAULT :1;
         uint32_t :30;
     } f;
     uint32_t w;

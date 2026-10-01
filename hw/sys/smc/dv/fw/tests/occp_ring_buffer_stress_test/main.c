@@ -2,11 +2,8 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * OCCP Ring Buffer Stress Test
- *
- * Focus: exercise SMC status ring buffer behavior for fill, wrap-around, and
- * overflow/underflow scenarios. Formatting/decoding tests live elsewhere; this
- * suite only cares about structural behavior (head/tail movement).
+ * Stresses SMC status ring buffer head/tail movement through fill, wrap past capacity,
+ * interleaved read/write and underflow, using ROM-reported OCCP errors as the entries.
  */
 
 #include "occp_test_common.h"
@@ -23,7 +20,7 @@ typedef struct {
 } ring_buffer_stress_ctx_t;
 
 #define SMC_RING_BUFFER_SIZE 512
-/* One slot stays empty because head==tail marks empty, so hardware stores 63 entries max. */
+/* head == tail marks empty, so one slot always stays free. */
 #define SMC_RING_BUFFER_CAPACITY (SMC_RING_BUFFER_SIZE - 1)
 #define OCCP_ERROR_ACCESS_VIOLATION_CODE 0x02
 #define OCCP_ERROR_INTERFACE_ERROR_CODE 0x04
@@ -39,7 +36,6 @@ static uint32_t expected_head;
 static uint32_t expected_tail;
 static uint32_t consecutive_failures;
 
-/* Protected/accessible regions reused from earlier OCCP tests */
 #define ROM_PROTECTED_SRAM_BASE 0xC0060000ULL
 #define OCCP_ACCESSIBLE_SRAM_BASE 0xC0066000ULL
 
@@ -172,7 +168,7 @@ static bool drain_and_verify_expected(test_context_t *ctx, uint32_t expected_cou
 
 static bool issue_unaligned_write(test_context_t *ctx, uint16_t *expected_value) {
     uint8_t data[4] = {0};
-    uint64_t addr = OCCP_TEST_BASE_ADDR + 1; /* Misaligned */
+    uint64_t addr = OCCP_TEST_BASE_ADDR + 1;
     int result = occp_send_write_command(ctx, ctx->slave_addr, addr, data, sizeof(data));
 
     if (result == OCCP_SUCCESS) {
@@ -186,7 +182,7 @@ static bool issue_unaligned_write(test_context_t *ctx, uint16_t *expected_value)
 
 static bool issue_protected_write(test_context_t *ctx, uint16_t *expected_value) {
     uint8_t data[8] = {0};
-    uint64_t addr = ROM_PROTECTED_SRAM_BASE; /* ROM-owned SRAM window */
+    uint64_t addr = ROM_PROTECTED_SRAM_BASE;
     int result = occp_send_write_command(ctx, ctx->slave_addr, addr, data, sizeof(data));
 
     if (result == OCCP_SUCCESS) {
@@ -275,14 +271,12 @@ static bool generate_status_entries(test_context_t *ctx, uint32_t desired_entrie
 
         consecutive_failures++;
         if (consecutive_failures >= 4) {
-            // send valid command to relatch
+            // A valid command clears the ROM's consecutive-error count; five errors unlatch it.
             uint32_t value = 0;
             int result = occp_send_get_version_command(ctx, ctx->slave_addr, &value);
             if (result != OCCP_SUCCESS) {
                 return false;
             }
-            // Disabled in the reference too: relatching was expected to append a
-            // warning entry, which the model no longer predicts.
             consecutive_failures = 0;
         }
     }
@@ -321,7 +315,7 @@ static bool test_fill_and_drain(ring_buffer_stress_ctx_t *ctx) {
         return false;
     }
 
-    const uint32_t desired_entries = 32; /* ~64 failing commands */
+    const uint32_t desired_entries = 32;
 
     consecutive_failures = 0;
     if (!generate_status_entries(ctx->occp_ctx, desired_entries)) {
@@ -416,7 +410,6 @@ int main(void) {
     static test_context_t occp_ctx = {0};
     static ring_buffer_stress_ctx_t stress_ctx = {0};
 
-    // peripherals_out_of_reset();
     init_test(0);
 
     simputs("=== OCCP Ring Buffer Stress Test ===\n");
@@ -437,7 +430,6 @@ int main(void) {
     reset_expected_buffer();
 
     run_test_suite(&stress_ctx);
-    // finalize_test_results(&stress_ctx);
 
     if (stress_ctx.overall_result) {
         test_pass(0);

@@ -37,13 +37,21 @@ volume.
 from __future__ import annotations
 
 import logging
+import sys
 from collections import deque
+from pathlib import Path
 
 import cocotb
 from cocotb.triggers import RisingEdge
 from pyuvm import uvm_component
 
 from .sep_fw_symbols import SepFwSymbols
+
+_TOOLS_DV = Path(__file__).resolve().parents[6] / "tools" / "dv"
+if str(_TOOLS_DV) not in sys.path:
+    sys.path.insert(0, str(_TOOLS_DV))
+
+from fw_coverage.renode_trace import TRACE_NAME, RenodeTraceWriter  # noqa: E402
 
 # RISC-V link registers (RV32I calling convention): x1/ra and x5/t0 alternate
 # link. rd in the set => call; jalr/c.jr with rd=x0 through the set => return.
@@ -53,9 +61,15 @@ _MRET = 0x3020_0073
 # RISC-V mcause codes (interrupt bit clear). Enough for firmware diagnosis;
 # unknown causes print numerically.
 _MCAUSE_NAMES = {
-    0: "insn addr misaligned", 1: "insn access fault", 2: "illegal instruction",
-    3: "breakpoint", 4: "load addr misaligned", 5: "load access fault",
-    6: "store addr misaligned", 7: "store access fault", 8: "ecall (U)",
+    0: "insn addr misaligned",
+    1: "insn access fault",
+    2: "illegal instruction",
+    3: "breakpoint",
+    4: "load addr misaligned",
+    5: "load access fault",
+    6: "store addr misaligned",
+    7: "store access fault",
+    8: "ecall (U)",
     11: "ecall (M)",
 }
 
@@ -119,12 +133,17 @@ class SepCpuTraceMonitor(uvm_component):
         # or ["trap", pc, ecause, interrupt, tval]. Index 0 is outermost.
         self.stack: list[list] = []
         self.max_depth = 0
+        # Snapshot at the most recent trap push. max_depth is run-global and
+        # can be satisfied by crt0 before the chain is live.
+        self.trap_depth = 0
+        self.trap_stack: list[list] = []
         self.trap_events: list[tuple[int, int, int, int, int]] = []
         self.reset_flushes = 0
         self.resync_notes = 0
         self._fill_target = False
         self._hang_warned = False
         self._trace_file = None
+        self._coverage_trace: RenodeTraceWriter | None = None
 
     def add_symbols(self, path) -> None:
         """Merge one nm listing (missing file is a warning, not an error --
@@ -141,15 +160,17 @@ class SepCpuTraceMonitor(uvm_component):
     def _sym(self, pc: int) -> str:
         return self.symbols.lookup(pc)
 
-    def _note_retire(self, cycle: int, pc: int, insn: int,
-                     exc: int, ecause: int, interrupt: int, tval: int) -> None:
+    def _note_retire(
+        self, cycle: int, pc: int, insn: int, exc: int, ecause: int, interrupt: int, tval: int
+    ) -> None:
         self.trace_count += 1
         self.last_pc = pc
         self.pcs.add(pc)
         self.ring.append((cycle, pc, insn))
+        if self._coverage_trace is not None:
+            self._coverage_trace.log_pc(pc)
         if self._trace_file is not None:
-            self._trace_file.write(
-                f"{cycle:>10} {pc:08x} {insn:08x} {self._sym(pc)}\n")
+            self._trace_file.write(f"{cycle:>10} {pc:08x} {insn:08x} {self._sym(pc)}\n")
         if self._fill_target:
             # First retirement after a call is the callee entry.
             self.stack[-1][2] = pc
@@ -157,9 +178,16 @@ class SepCpuTraceMonitor(uvm_component):
         if exc:
             self.trap_events.append((cycle, pc, ecause, interrupt, tval))
             self._push(["trap", pc, ecause, interrupt, tval])
+            self.trap_depth = len(self.stack)
+            self.trap_stack = [list(frame) for frame in self.stack]
             self.logger.warning(
                 "trap at cycle %d: %s pc=0x%08x (%s) tval=0x%08x",
-                cycle, self._cause_str(ecause, interrupt), pc, self._sym(pc), tval)
+                cycle,
+                self._cause_str(ecause, interrupt),
+                pc,
+                self._sym(pc),
+                tval,
+            )
             return
         kind_rd = _decode_flow(insn)
         if kind_rd is None:
@@ -203,27 +231,38 @@ class SepCpuTraceMonitor(uvm_component):
         if "cpu_boot" not in cocotb.plusargs:
             return
         dut = cocotb.top
-        sig = {n: getattr(dut, n, None) for n in (
-            "cpu_trace_valid_o", "cpu_trace_addr_o", "cpu_trace_insn_o",
-            "dbg_cpu_trace_exc_o", "cpu_trace_ecause_o",
-            "cpu_trace_interrupt_o", "cpu_trace_tval_o", "sep_cpu_reset_n_o")}
+        sig = {
+            n: getattr(dut, n, None)
+            for n in (
+                "cpu_trace_valid_o",
+                "cpu_trace_addr_o",
+                "cpu_trace_insn_o",
+                "dbg_cpu_trace_exc_o",
+                "cpu_trace_ecause_o",
+                "cpu_trace_interrupt_o",
+                "cpu_trace_tval_o",
+                "sep_cpu_reset_n_o",
+            )
+        }
         if sig["cpu_trace_valid_o"] is None or sig["cpu_trace_addr_o"] is None:
             self.logger.warning("cpu trace ports not found; CPU trace monitor idle")
             return
         if "cpu_trace_log" in cocotb.plusargs:
             self._trace_file = open("cpu_trace.log", "w")
+        if "sep_rom_fw_coverage" in cocotb.plusargs:
+            self._coverage_trace = RenodeTraceWriter(TRACE_NAME)
+            self.logger.info("SEP Boot ROM coverage trace active: %s", TRACE_NAME)
         self.active = True
-        self.logger.info("CPU trace monitor active (hang watch at %d cycles)",
-                         self.hang_cycles)
+        self.logger.info("CPU trace monitor active (hang watch at %d cycles)", self.hang_cycles)
 
         def rd(name: str) -> int:
             s = sig[name]
             if s is None:
-                return 0
+                raise AssertionError(f"CPU trace signal {name} is not bound")
             try:
                 return int(s.value)
-            except Exception:
-                return 0
+            except Exception as exc:
+                raise AssertionError(f"CPU trace signal {name} is not a known 0/1 value") from exc
 
         clk = dut.clk_i
         cycle = 0
@@ -237,8 +276,10 @@ class SepCpuTraceMonitor(uvm_component):
                     # Warm CPU reset (e.g. WDT bite): the core restarts, so the
                     # in-flight call stack is dead. History/tallies survive.
                     self.logger.info(
-                        "CPU reset asserted at cycle %d; flushing shadow stack "
-                        "(depth %d)", cycle, len(self.stack))
+                        "CPU reset asserted at cycle %d; flushing shadow stack (depth %d)",
+                        cycle,
+                        len(self.stack),
+                    )
                     self.stack.clear()
                     self._fill_target = False
                     self.reset_flushes += 1
@@ -265,7 +306,10 @@ class SepCpuTraceMonitor(uvm_component):
                     self.logger.warning(
                         "no instruction retired for %d cycles (last pc 0x%08x %s); "
                         "possible hang -- diagnostic only, idle/halt is legitimate",
-                        idle, self.last_pc, self._sym(self.last_pc))
+                        idle,
+                        self.last_pc,
+                        self._sym(self.last_pc),
+                    )
                     self.dump_diagnostics(logging.WARNING)
 
     # ------------------------------------------------------------------
@@ -274,27 +318,55 @@ class SepCpuTraceMonitor(uvm_component):
     def dump_diagnostics(self, level: int = logging.INFO, ring_tail: int = 32) -> None:
         """Symbolized processor-state dump: call stack, traps, recent PCs."""
         log = self.logger.log
-        log(level, "CPU state: %d retired, %d distinct PCs, last pc 0x%08x (%s), "
-            "max call depth %d, %d trap(s), %d reset flush(es), %d resync note(s)",
-            self.trace_count, len(self.pcs), self.last_pc, self._sym(self.last_pc),
-            self.max_depth, len(self.trap_events), self.reset_flushes,
-            self.resync_notes)
+        log(
+            level,
+            "CPU state: %d retired, %d distinct PCs, last pc 0x%08x (%s), "
+            "max call depth %d, trap-live depth %d, %d trap(s), %d reset flush(es), %d resync note(s)",
+            self.trace_count,
+            len(self.pcs),
+            self.last_pc,
+            self._sym(self.last_pc),
+            self.max_depth,
+            self.trap_depth,
+            len(self.trap_events),
+            self.reset_flushes,
+            self.resync_notes,
+        )
         if self.stack:
             log(level, "firmware call stack (innermost first):")
             for i, frame in enumerate(reversed(self.stack)):
                 if frame[0] == "call":
                     _, site, target = frame
                     where = self._sym(target) if target is not None else "?"
-                    log(level, "  #%d %s <- called from 0x%08x (%s)",
-                        i, where, site, self._sym(site))
+                    log(
+                        level,
+                        "  #%d %s <- called from 0x%08x (%s)",
+                        i,
+                        where,
+                        site,
+                        self._sym(site),
+                    )
                 else:
                     _, pc, ecause, interrupt, tval = frame
-                    log(level, "  #%d [trap] %s at 0x%08x (%s) tval=0x%08x",
-                        i, self._cause_str(ecause, interrupt), pc,
-                        self._sym(pc), tval)
+                    log(
+                        level,
+                        "  #%d [trap] %s at 0x%08x (%s) tval=0x%08x",
+                        i,
+                        self._cause_str(ecause, interrupt),
+                        pc,
+                        self._sym(pc),
+                        tval,
+                    )
         for cyc, pc, ecause, interrupt, tval in self.trap_events:
-            log(level, "trap record: cycle %d %s pc=0x%08x (%s) tval=0x%08x",
-                cyc, self._cause_str(ecause, interrupt), pc, self._sym(pc), tval)
+            log(
+                level,
+                "trap record: cycle %d %s pc=0x%08x (%s) tval=0x%08x",
+                cyc,
+                self._cause_str(ecause, interrupt),
+                pc,
+                self._sym(pc),
+                tval,
+            )
         if self.ring:
             tail = list(self.ring)[-ring_tail:]
             log(level, "last %d retirements (cycle pc insn symbol):", len(tail))
@@ -305,5 +377,10 @@ class SepCpuTraceMonitor(uvm_component):
         if self._trace_file is not None:
             self._trace_file.close()
             self._trace_file = None
+        if self._coverage_trace is not None:
+            count = self._coverage_trace.count
+            self._coverage_trace.close()
+            self._coverage_trace = None
+            self.logger.info("SEP Boot ROM coverage trace closed (%d unique PCs)", count)
         if self.active:
             self.dump_diagnostics(logging.INFO)

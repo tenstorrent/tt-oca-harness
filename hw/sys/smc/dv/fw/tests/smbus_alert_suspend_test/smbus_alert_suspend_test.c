@@ -7,7 +7,7 @@
  *
  * I2C_0 Target asserts SMBALERT#; I2C_1 Controller detects, ARA-clears, then
  * asserts SMBSUS# which the Target observes on SMBUS_STATUS.
- * No external VIP / SV model. Do not override secondary_main (crt0 weak).
+ * Both I2C instances are looped back inside the DUT; secondary_main is the crt0 weak default.
  */
 
 #include <stdint.h>
@@ -117,7 +117,7 @@ int main(void) {
     write_scratch(1, 0x00000020);
 
     i2c_timing_physical_t physical = {.speed = I2C_SPEED_STANDARD,
-                                      .clock_period_nanos = 10,
+                                      .clock_period_nanos = 5,
                                       .sda_rise_nanos = 300,
                                       .sda_fall_nanos = 100,
                                       .scl_period_nanos = 0};

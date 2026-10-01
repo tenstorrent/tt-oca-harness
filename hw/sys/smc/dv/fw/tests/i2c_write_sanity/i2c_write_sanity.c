@@ -40,6 +40,13 @@
 #include "smc_test.h"
 #include "i2c_opentitan.h"
 
+/* Iteration budget for each ACQ FIFO drain loop. The FIFO is 64 entries deep
+ * and each iteration is one register read, so 100 is comfortably above any
+ * legitimate drain while still bounding the loop. Each loop gets its own
+ * copy: a counter shared with an earlier drain makes the post-reset retry a
+ * no-op whenever the first drain has already spent it. */
+#define ACQ_DRAIN_LOOP_LIMIT 100u
+
 //=============================================================================
 // Helper Functions
 //=============================================================================
@@ -86,7 +93,7 @@ static uint32_t i2c_target_check_and_clear_acq_fifo(uint32_t target_idx) {
     simputs("), draining...\n");
 
     uint32_t drain_base = i2c_get_base(target_idx);
-    uint32_t drain_timeout = 100; // Prevent infinite loop
+    uint32_t drain_timeout = ACQ_DRAIN_LOOP_LIMIT;
 
     while (drain_timeout > 0 && !i2c_target_acq_fifo_empty(target_idx)) {
         (void)read_reg(drain_base + (SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR(0) -
@@ -112,14 +119,37 @@ static uint32_t i2c_target_check_and_clear_acq_fifo(uint32_t target_idx) {
         simputs("  [ACQ FIFO] WARNING: ACQ FIFO still not empty after draining, resetting...\n");
         i2c_reset_fifos(target_idx, false, false, false, true);
 
-        // Drain again after reset if still not empty
+        // Drain again after reset if still not empty, with its own budget: a
+        // counter shared with the loop above runs zero iterations once the first
+        // drain has spent it, and the reset path becomes a silent no-op.
+        uint32_t retry_timeout = ACQ_DRAIN_LOOP_LIMIT;
         if (!i2c_target_acq_fifo_empty(target_idx)) {
-            while (!i2c_target_acq_fifo_empty(target_idx) && drain_timeout > 0) {
+            while (!i2c_target_acq_fifo_empty(target_idx) && retry_timeout > 0) {
                 (void)read_reg(drain_base + (SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR(0) -
                                              SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
-                drain_timeout--;
+                retry_timeout--;
             }
         }
+    }
+
+    /* Fail closed if the FIFO is still not empty.
+     *
+     * Every exit from the draining above was previously silent: the first
+     * loop could expire with the FIFO full, the >64 safety check could break
+     * out, and the post-reset retry could expire too -- and the function
+     * returned normally in all three cases. The caller only inspects the
+     * return value to decide whether to print a message, so the test then ran
+     * its write transaction against a target whose ACQ FIFO it believed was
+     * clean. That is precisely the condition the comment at the call site says
+     * causes SCL stretching and deadlock, so leaving it undetected turns a
+     * setup failure into either a hang or a comparison against stale data.
+     *
+     * There is no recovery left to try at this point -- the FIFO has been
+     * drained and then reset -- so the honest outcome is to stop. */
+    if (!i2c_target_acq_fifo_empty(target_idx)) {
+        simputs("  [ACQ FIFO] ERROR: ACQ FIFO not empty after drain and reset\n");
+        write_scratch(0, 0xBAD00044);
+        test_fail(0);
     }
 
     return drained_count;
@@ -175,7 +205,7 @@ int main(void) {
 
     // Configure Controller timing
     i2c_timing_physical_t physical_params = {.speed = I2C_SPEED_STANDARD,
-                                             .clock_period_nanos = 10,
+                                             .clock_period_nanos = 5,
                                              .sda_rise_nanos = 300,
                                              .sda_fall_nanos = 100,
                                              .scl_period_nanos = 0};

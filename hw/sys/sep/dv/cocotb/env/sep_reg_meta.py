@@ -3,8 +3,8 @@
 """Register metadata accessor over the generated SystemRDL Python header.
 
 Tests and sequences must NOT keep their own copies of register offsets, reset
-values, or field masks. House rule: prefer source-derived expected values over
-hardcoded literals). ``hw/sys/sep/regs/gen/py/sep_reg.py`` is the authoritative
+values, or field masks: expected values are source-derived, never hardcoded
+literals. ``hw/sys/sep/regs/gen/py/sep_reg.py`` is the authoritative
 machine-readable export of ``hw/sys/sep/regs/**/*.rdl``, so this module wraps it
 and hands out three things per register:
 
@@ -16,10 +16,10 @@ and hands out three things per register:
 
 The mask matters because a write/readback check must compare against
 ``pattern & mask``: RDL placeholder registers (``TIMEOUT_COUNT``,
-``TIMEOUT_ENABLE``, ``CLOCK_GATE_CTRL``, …) carry a single bit today, so a
+``TIMEOUT_ENABLE``, ``CLOCK_GATE_CTRL``, …) carry a single implemented bit, so a
 32-bit pattern reads back as just that bit.
 
-Two masks, deliberately distinct:
+Two masks:
   ``mask()``     — software-usable fields only; RDL ``reserved`` fields excluded.
   ``mask_all()`` — every field bit, reserved included: the STORAGE mask.
 They differ wherever a placeholder field is declared ``sw=rw`` yet named
@@ -40,7 +40,9 @@ from __future__ import annotations
 import importlib.util
 import re
 import sys
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 
 # The generated header is not a package and is not on `python_paths`, so resolve it
@@ -53,9 +55,15 @@ if _GEN_PY.is_dir() and str(_GEN_PY) not in sys.path:
 
 import sep_reg  # noqa: E402  (path bootstrap must precede the import)
 
+# The Python header carries addresses, DEFAULTs and field structs, but not the
+# `sw`/`hw` access of a field and not whether the RDL declared a reset at all.
+# Both are in the IP-XACT emitted by the same generator run, so they are read
+# from there rather than retyped into a table that an RDL edit would not update.
+_GEN_IPXACT = Path(__file__).resolve().parents[3] / "regs" / "gen" / "ipxact" / "sep.xml"
+
 # RDL reserved-field names as emitted by the generator: `rsvd`, `rsvd_<n>`,
 # `reserved`, `reserved_<n>`. Anchored so real fields that merely contain the
-# word (`test_reserved`, `spi_control_field_en_rsvd`) are NOT excluded.
+# word (`test_reserved`) are NOT excluded.
 _RESERVED_FIELD_RE = re.compile(r"^(?:rsvd|reserved)(?:_\d+)?$")
 
 # Registers whose OFFSET is emitted per instance but whose DEFAULT/struct is
@@ -71,6 +79,23 @@ _TYPE_ALIAS = {
     "TIMEOUT_COUNT_ENTROPY_READ": "TIMEOUT_COUNT",
     "TIMEOUT_COUNT_FILTER_OUT": "TIMEOUT_COUNT",
     "TIMEOUT_COUNT_ALIAS_REMAP": "TIMEOUT_COUNT",
+    # km_mailbox_sep.rdl declares SEP_STATUS with the typedef `status_reg`, so
+    # PeakRDL emits KM_MAILBOX_SEP_STATUS_REG_* and the <block>_<reg> walk misses
+    # it. The register is in the RDL and the block is in the SEP addrmap; only the
+    # generated name differs.
+    "SEP_STATUS": "STATUS_REG",
+    "SEP_IRQ_STATUS": "IRQ_STATUS_REG",
+    "SEP_IRQ_ENABLE": "IRQ_ENABLE_REG",
+    "SEP_CTRL": "CTRL_REG",
+}
+
+# PeakRDL type name when it is not ``<block>_<reg>`` and the suffix walk is
+# ambiguous (more than one ``*_REG_DEFAULT`` ends with the register name).
+_TYPE_KEY_OVERRIDE = {
+    ("AXIL_MAILBOX_OUTBOUND_MAILBOX_0", "ERROR_FLAGS"): "AXIL_MAILBOX_ERROR",
+    ("LOCAL_MASTER_ALIAS_REMAP_CTRL_0_", "REGION_REGION_ATTRS"): ("REMAP_REGION_REGION_ATTRS"),
+    ("AP_OUTPUT_REMAP_CTRL_0_", "REGION_REGION_ATTRS"): "OUTPUT_REMAP_REGION_REGION_ATTRS",
+    ("STEE_OUTPUT_REMAP_CTRL_0_", "REGION_REGION_ATTRS"): "OUTPUT_REMAP_REGION_REGION_ATTRS",
 }
 
 
@@ -78,11 +103,7 @@ def _default_type_keys() -> list[str]:
     """Type prefixes that have a generated ``_REG_DEFAULT`` (cached)."""
     keys = getattr(_default_type_keys, "_cache", None)
     if keys is None:
-        keys = [
-            n[: -len("_REG_DEFAULT")]
-            for n in vars(sep_reg)
-            if n.endswith("_REG_DEFAULT")
-        ]
+        keys = [n[: -len("_REG_DEFAULT")] for n in vars(sep_reg) if n.endswith("_REG_DEFAULT")]
         _default_type_keys._cache = keys
     return keys
 
@@ -111,22 +132,23 @@ class RegBlock:
         exact = f"{self.block}_{name}"
         if hasattr(sep_reg, f"{exact}_REG_DEFAULT"):
             return exact
+        override = _TYPE_KEY_OVERRIDE.get((self.block, name))
+        if override is not None and hasattr(sep_reg, f"{override}_REG_DEFAULT"):
+            return override
         if name in _TYPE_ALIAS:
             alias = f"{self.block}_{_TYPE_ALIAS[name]}"
             if hasattr(sep_reg, f"{alias}_REG_DEFAULT"):
                 return alias
+        # Suffix match. A hit is accepted only when it also carries one of this
+        # block's own name tokens -- a single hit included -- so an instance
+        # can never take the reset of an unrelated block's type that merely
+        # shares a register name. "SEP" is on every block and says nothing.
         norm = _normalize_inst_name(name)
-        hits = [
-            key for key in _default_type_keys()
-            if key.endswith("_" + norm) or key == norm
-        ]
-        if len(hits) == 1:
-            return hits[0]
-        if len(hits) > 1:
-            tokens = [t for t in self.block.split("_") if t and not t.isdigit()]
-            scored = [h for h in hits if any(tok in h for tok in tokens)]
-            if len(scored) == 1:
-                return scored[0]
+        hits = [key for key in _default_type_keys() if key.endswith("_" + norm) or key == norm]
+        tokens = [t for t in self.block.split("_") if t and not t.isdigit() and t != "SEP"]
+        scored = [h for h in hits if any(tok in h for tok in tokens)]
+        if len(scored) == 1:
+            return scored[0]
         return None
 
     def _sym(self, name: str, suffix: str, *, alias_ok: bool):
@@ -174,8 +196,7 @@ class RegBlock:
         correctly masks to 0, which callers must treat as "nothing to prove"
         rather than as a passing check.
 
-        Matched by exact name, not substring: `test_reserved` and
-        `spi_control_field_en_rsvd` are real, software-visible fields.
+        Matched by exact name, not substring: `test_reserved` is a real, software-visible field.
         """
         struct = self._sym(name, "reg_t", alias_ok=True)
         union = getattr(sep_reg, struct.__name__.replace("_reg_t", "_reg_u"))
@@ -196,13 +217,26 @@ class RegBlock:
         fields = {field: width for field, _ctype, width in struct._fields_}
         if field_name not in fields:
             raise KeyError(
-                f"{self.block}.{name}.{field_name} not found; "
-                f"known fields: {sorted(fields)}"
+                f"{self.block}.{name}.{field_name} not found; known fields: {sorted(fields)}"
             )
         view = union()
         view.val = 0
         setattr(view.f, field_name, (1 << fields[field_name]) - 1)
         return int(view.val)
+
+    def field_lsb(self, name: str, field_name: str) -> int:
+        """Least-significant bit of one named generated bitfield."""
+        mask = self.field_mask(name, field_name)
+        if mask == 0:
+            raise KeyError(f"{self.block}.{name}.{field_name} has an empty mask")
+        return (mask & -mask).bit_length() - 1
+
+    def field_width(self, name: str, field_name: str) -> int:
+        """Width in bits of one named generated bitfield."""
+        mask = self.field_mask(name, field_name)
+        if mask == 0:
+            raise KeyError(f"{self.block}.{name}.{field_name} has an empty mask")
+        return bin(mask).count("1")
 
     def mask_all(self, name: str) -> int:
         """Union of EVERY field bit, reserved included -- the storage mask.
@@ -268,7 +302,7 @@ class CHeaderRegBlock:
             if len(parts) < 3 or parts[0] != "#define" or not parts[1].startswith(prefix):
                 continue
             name, raw = parts[1], parts[2]
-            body = name[len(prefix):]
+            body = name[len(prefix) :]
             for suffix in self._SUFFIXES:
                 if not body.endswith("_" + suffix):
                     continue
@@ -309,8 +343,7 @@ class CHeaderRegBlock:
         unknown = set(overrides) - set(known)
         if unknown:
             raise KeyError(
-                f"unknown field(s) {sorted(unknown)} for {self.block}.{reg}; "
-                f"known: {sorted(known)}"
+                f"unknown field(s) {sorted(unknown)} for {self.block}.{reg}; known: {sorted(known)}"
             )
         total = 0
         for name, meta in known.items():
@@ -346,8 +379,160 @@ def ip_c_header(ip: str) -> Path:
     return _HW_ROOT / "ip" / ip / "regs" / "gen" / "c" / f"{ip}.h"
 
 
+def ot_c_header(ip: str) -> Path:
+    """Path to the OpenTitan overlay C header for ``ip`` (CSRNG, EDN, AES, …)."""
+    return (
+        _REPO_ROOT
+        / "vendor"
+        / "lowRISC"
+        / "opentitan"
+        / "overlay"
+        / "regs"
+        / ip
+        / "regs"
+        / "gen"
+        / "c"
+        / f"{ip}.h"
+    )
+
+
 _HW_ROOT = Path(__file__).resolve().parents[5]
 _REPO_ROOT = Path(__file__).resolve().parents[6]
+
+
+_IPXACT_NS = "{*}"
+
+
+def _ipxact_num(text: str | None) -> int | None:
+    """One IP-XACT numeric literal: ``'h1094_0000``, ``0x…``, or decimal."""
+    if text is None:
+        return None
+    text = text.strip().replace("_", "")
+    verilog = re.match(r"^'h([0-9a-fA-F]+)$", text)
+    if verilog is not None:
+        return int(verilog.group(1), 16)
+    return int(text, 0)
+
+
+@dataclass(frozen=True)
+class RegAccess:
+    """What the RDL says software may do with a register, and its reset."""
+
+    # Every distinct IP-XACT field access in the register: `read-only`,
+    # `write-only`, `read-write`. A register mixing them is neither pure shape
+    # and is left to the caller.
+    access: frozenset[str]
+    # Whether any field carries an IP-XACT reset element. A register with none
+    # has no declared POR value: the generated `_REG_DEFAULT` is the RDL field
+    # default (0 when the field omits one), and hardware drives the pins.
+    declared_reset: bool
+
+    @property
+    def write_only(self) -> bool:
+        return self.access == frozenset({"write-only"})
+
+    @property
+    def hw_driven(self) -> bool:
+        """Read-only to software with no declared reset, so hardware owns it."""
+        return self.access == frozenset({"read-only"}) and not self.declared_reset
+
+
+def _iter_ipxact_registers():
+    """Yield ``(address, width_bits, field_nodes)`` for every register element.
+
+    An array (``dim``) yields one tuple per element, at its absolute address.
+    """
+
+    def text(node: ET.Element, child: str) -> str | None:
+        found = node.find(_IPXACT_NS + child)
+        return None if found is None else found.text
+
+    def walk(node: ET.Element, base: int):
+        for child in node:
+            kind = child.tag.split("}")[-1]
+            if kind == "registerFile":
+                offset = _ipxact_num(text(child, "addressOffset")) or 0
+                stride = _ipxact_num(text(child, "range")) or 0
+                for index in range(_ipxact_num(text(child, "dim")) or 1):
+                    yield from walk(child, base + offset + index * stride)
+            elif kind == "register":
+                offset = _ipxact_num(text(child, "addressOffset")) or 0
+                width = _ipxact_num(text(child, "size")) or 32
+                fields = child.findall(_IPXACT_NS + "field")
+                for index in range(_ipxact_num(text(child, "dim")) or 1):
+                    yield base + offset + index * (width // 8), width, fields
+            elif kind == "addressBlock":
+                yield from walk(child, base + (_ipxact_num(text(child, "baseAddress")) or 0))
+            else:
+                yield from walk(child, base)
+
+    yield from walk(ET.parse(_GEN_IPXACT).getroot(), 0)
+
+
+def _ipxact_access() -> dict[int, RegAccess]:
+    """Absolute address -> access shape, from the generated IP-XACT.
+
+    Keyed by address because the IP-XACT spells an array as one ``register``
+    with a ``dim`` while the Python header spells it as one symbol per element
+    (``MLDSA_NAME`` vs ``ABR_MLDSA_NAME_0_``). The address is what both agree
+    on, so the join cannot be broken by a naming convention change.
+    """
+    out: dict[int, RegAccess] = {}
+    for addr, _width, fields in _iter_ipxact_registers():
+        out[addr] = RegAccess(
+            frozenset((one.findtext(_IPXACT_NS + "access") or "read-write") for one in fields),
+            any(one.find(_IPXACT_NS + "resets") is not None for one in fields),
+        )
+    if not out:
+        raise RuntimeError(
+            f"{_GEN_IPXACT} yielded no registers; the IP-XACT schema changed and "
+            "every access-shaped exclusion would silently exclude nothing"
+        )
+    return out
+
+
+@lru_cache(maxsize=1)
+def _ipxact_unreset_words() -> dict[int, bool]:
+    """32-bit word address -> whether a field in that word has no RDL reset.
+
+    PeakRDL IP-XACT emits a ``resets`` element exactly for a field that the RDL
+    gives a reset value. The generated ``_REG_DEFAULT`` reads 0 for a field with
+    none (``tools/regs/common/regcollect.py``), so it cannot answer this.
+    """
+    out: dict[int, bool] = {}
+    for addr, width, fields in _iter_ipxact_registers():
+        spans = []
+        for one in fields:
+            lsb = _ipxact_num(one.findtext(_IPXACT_NS + "bitOffset")) or 0
+            width_f = _ipxact_num(one.findtext(_IPXACT_NS + "bitWidth")) or 1
+            spans.append((lsb, lsb + width_f, one.find(_IPXACT_NS + "resets") is None))
+        for word in range(max(width // 32, 1)):
+            lo = word * 32
+            out[addr + 4 * word] = any(
+                unreset for lsb, msb, unreset in spans if lsb < lo + 32 and msb > lo
+            )
+    if not out:
+        raise RuntimeError(f"{_GEN_IPXACT} yielded no registers")
+    return out
+
+
+def word_has_unreset_field(addr: int) -> bool:
+    """Whether a field in the 32-bit word at ``addr`` has no RDL reset value.
+
+    Such a word has no defined value before its first write, so a read before
+    that write grades nothing and reads X on a 4-state simulator. Raises
+    ``KeyError`` for an address the IP-XACT gives no register.
+    """
+    words = _ipxact_unreset_words()
+    if addr not in words:
+        raise KeyError(f"0x{addr:08x} is not a register word in {_GEN_IPXACT.name}")
+    return words[addr]
+
+
+# The shape of ordinary read-write storage, and the default for a hand-built
+# RegInfo: the self-tests and the wrap models name registers that are exactly
+# that. Frozen and hashable, so it needs no default_factory.
+_STORAGE_ACCESS = RegAccess(frozenset({"read-write"}), True)
 
 
 @dataclass(frozen=True)
@@ -360,6 +545,8 @@ class RegInfo:
     reset: int
     mask: int
     mask_all: int
+    # Access shape from the IP-XACT; see _STORAGE_ACCESS for the default.
+    access: RegAccess = _STORAGE_ACCESS
 
     @property
     def reserved(self) -> int:
@@ -374,12 +561,50 @@ def block_names() -> list[str]:
     (``AXIL_MAILBOX`` vs ``AXIL_MAILBOX_OUTBOUND_MAILBOX_0``).
     """
     names = [
-        n[: -len("_REG_MAP_BASE_ADDR")]
-        for n in vars(sep_reg)
-        if n.endswith("_REG_MAP_BASE_ADDR")
+        n[: -len("_REG_MAP_BASE_ADDR")] for n in vars(sep_reg) if n.endswith("_REG_MAP_BASE_ADDR")
     ]
     names.sort(key=len, reverse=True)
     return names
+
+
+def indexed_block_count(prefix: str) -> int:
+    """How many ``<prefix>_<n>_`` blocks the generated header declares.
+
+    The filter banks are RDL arrays -- ``outbound_filter_ctrl[32]`` and
+    ``inbound_filter_ctrl[16]`` in ``hw/sys/sep/regs/sep.rdl`` -- so the entry
+    count belongs to the register export, not to a sequence. Two sweeps that
+    each carry their own literal will disagree the moment the array changes, and
+    the one that is short simply never reaches the tail entries: a sweep that
+    selects from 16 of 32 entries reports a clean pass over half the bank.
+
+    Indices must be contiguous from zero. A gap means the header and the RDL
+    disagree, and a sweep built on the count would silently skip the hole.
+    """
+    found = set()
+    marker = "_REG_MAP_BASE_ADDR"
+    for name in vars(sep_reg):
+        if not name.endswith(marker):
+            continue
+        stem = name[: -len(marker)]
+        if not stem.startswith(prefix + "_"):
+            continue
+        tail = stem[len(prefix) + 1 :]
+        if tail.endswith("_"):
+            tail = tail[:-1]
+        if tail.isdigit():
+            found.add(int(tail))
+    if not found:
+        raise KeyError(
+            f"no {prefix}_<n> blocks in the generated register header "
+            f"({_GEN_PY}/sep_reg.py); check the prefix or regenerate"
+        )
+    if found != set(range(len(found))):
+        missing = sorted(set(range(max(found) + 1)) - found)
+        raise KeyError(
+            f"{prefix} block indices are not contiguous from 0: "
+            f"{len(found)} found, missing {missing}"
+        )
+    return len(found)
 
 
 def block_size(block: str) -> int:
@@ -394,6 +619,22 @@ def block_size(block: str) -> int:
         ) from exc
 
 
+_SEP_ADDR_H = _GEN_PY.parent / "c" / "sep_addr.h"
+
+
+def sep_addr_define(name: str) -> int:
+    """Integer value of ``#define <name>`` in the generated ``sep_addr.h``.
+
+    The C address header carries the RDL array geometry (``_NUM``, ``_STRIDE``,
+    ``_TOTAL_SIZE``) that the Python export does not.
+    """
+    for line in _SEP_ADDR_H.read_text(encoding="utf-8").splitlines():
+        parts = line.split()
+        if len(parts) >= 3 and parts[0] == "#define" and parts[1] == name:
+            return int(parts[2], 0)
+    raise KeyError(f"{name} not found in {_SEP_ADDR_H}; regenerate it or check the symbol name")
+
+
 def _load_py_module(path: Path, name: str):
     spec = importlib.util.spec_from_file_location(name, path)
     if spec is None or spec.loader is None:
@@ -406,13 +647,19 @@ def _load_py_module(path: Path, name: str):
 def _ip_reg_path(ip: str) -> Path:
     """Generated Python register header for an OpenTitan or OCAH IP."""
     if ip == "entropy_source":
-        return (
-            _HW_ROOT / "ip" / "entropy_source" / "regs" / "gen" / "py"
-            / "entropy_source_reg.py"
-        )
+        return _HW_ROOT / "ip" / "entropy_source" / "regs" / "gen" / "py" / "entropy_source_reg.py"
     return (
-        _REPO_ROOT / "vendor" / "lowRISC" / "opentitan" / "overlay" / "regs"
-        / ip / "regs" / "gen" / "py" / f"{ip}_reg.py"
+        _REPO_ROOT
+        / "vendor"
+        / "lowRISC"
+        / "opentitan"
+        / "overlay"
+        / "regs"
+        / ip
+        / "regs"
+        / "gen"
+        / "py"
+        / f"{ip}_reg.py"
     )
 
 
@@ -499,9 +746,9 @@ class RegisterWalk:
     export: int
     # Dropped OFFSET symbols, split by cause so a change of cause is visible
     # rather than absorbed into one figure. All three are real code paths.
-    no_default: int = 0     # no _REG_DEFAULT / field struct, even after _TYPE_ALIAS
+    no_default: int = 0  # no _REG_DEFAULT / field struct, even after _TYPE_ALIAS
     unknown_block: int = 0  # the symbol stem matches no known block prefix
-    duplicate: int = 0      # a (block, register) pair already walked
+    duplicate: int = 0  # a (block, register) pair already walked
 
     @property
     def nometa(self) -> int:
@@ -522,16 +769,18 @@ def iter_register_walk() -> RegisterWalk:
 
     * ``no_default``    -- no ``_REG_DEFAULT`` or field struct, even after
       ``_TYPE_ALIAS``, so there is no source-derived reset to check.
-    * ``unknown_block`` -- the stem matches no known block prefix. Zero today;
-      a new top-level RDL that is not in ``block_names()`` would land here.
-    * ``duplicate``     -- the ``(block, register)`` pair was already walked.
-      Zero today; a generator that emits an instance twice would land here.
+    * ``unknown_block`` -- the stem matches no known block prefix: a top-level
+      RDL that is not in ``block_names()`` lands here.
+    * ``duplicate``     -- the ``(block, register)`` pair was already walked: a
+      generator that emits an instance twice lands here.
 
     Reporting one figure would let a change of cause pass unnoticed, so the
     three are kept apart and ``nometa`` sums them.
     """
     names = block_names()
+    access = _ipxact_access()
     found: list[RegInfo] = []
+    unjoined: list[str] = []
     seen: set[tuple[str, str]] = set()
     export = 0
     no_default = unknown_block = duplicate = 0
@@ -546,7 +795,7 @@ def iter_register_walk() -> RegisterWalk:
             prefix = candidate + "_"
             if stem.startswith(prefix):
                 block = candidate
-                reg = stem[len(prefix):]
+                reg = stem[len(prefix) :]
                 break
         if block is None:
             unknown_block += 1
@@ -564,7 +813,17 @@ def iter_register_walk() -> RegisterWalk:
         except KeyError:
             no_default += 1
             continue
-        found.append(RegInfo(block, reg, addr, reset, mask, mask_all))
+        shape = access.get(addr)
+        if shape is None:
+            unjoined.append(f"{block}.{reg} @{addr:#010x}")
+            continue
+        found.append(RegInfo(block, reg, addr, reset, mask, mask_all, shape))
+    if unjoined:
+        raise RuntimeError(
+            f"{len(unjoined)} inventory register(s) have no IP-XACT entry at their "
+            f"address: {unjoined[:5]}; the two exports came from different generator "
+            "runs, and an access-shaped exclusion would be decided on missing data"
+        )
     found.sort(key=lambda info: (info.addr, info.block, info.name))
     return RegisterWalk(tuple(found), export, no_default, unknown_block, duplicate)
 
@@ -619,10 +878,7 @@ def reg_write_destructive(block: str) -> frozenset[str]:
     return frozenset(
         name
         for name, fields in _reg_field_access(block).items()
-        if any(
-            onwrite in ("woclr", "woset")
-            for _field, _sw, onwrite, _onread, _pulse in fields
-        )
+        if any(onwrite in ("woclr", "woset") for _field, _sw, onwrite, _onread, _pulse in fields)
     )
 
 
@@ -652,7 +908,7 @@ def iter_addrs() -> list[tuple[str, str, int]]:
             prefix = candidate + "_"
             if stem.startswith(prefix):
                 block = candidate
-                reg = stem[len(prefix):]
+                reg = stem[len(prefix) :]
                 break
         if block is None or (block, reg) in seen:
             continue
@@ -661,14 +917,26 @@ def iter_addrs() -> list[tuple[str, str, int]]:
     found.sort(key=lambda item: (item[2], item[0], item[1]))
     return found
 
+
 SEP_CPU_CTRL = RegBlock("SEP_CPU_CTRL")
 ENTROPY_SOURCE = CHeaderRegBlock("ENTROPY_SOURCE", ip_c_header("entropy_source"))
-# Blocks the fabric walk value-checks. Others (CSRNG/EDN/AES/entropy/mailbox/…)
-# are not exported by this header and stay explicit in the sequence.
 SEP_RESET_CTRL = RegBlock("SEP_RESET_CTRL")
 OTBN = RegBlock("OTBN")
 HMAC = RegBlock("HMAC")
 KMAC = RegBlock("KMAC")
+AES = RegBlock("AES")
+WDT_TIMER = RegBlock("WDT_TIMER")
+SPI_CONTROLLER = RegBlock("SPI_CONTROLLER")
+CSRNG = CHeaderRegBlock("CSRNG", ot_c_header("csrng"))
+EDN = CHeaderRegBlock("EDN", ot_c_header("edn"))
+EFUSE_INTERFACE_CTRL = RegBlock("EFUSE_INTERFACE_CTRL")
+EFUSE_MMR = RegBlock("EFUSE_MMR")
+AXIL_MAILBOX_OUTBOUND_0 = RegBlock("AXIL_MAILBOX_OUTBOUND_MAILBOX_0")
+SEP_LIFECYCLE_CTRL = RegBlock("SEP_LIFECYCLE_CTRL")
+KM_MAILBOX_SEP = RegBlock("KM_MAILBOX_SEP")
+INBOUND_FILTER_CTRL_0 = RegBlock("INBOUND_FILTER_CTRL_0_")
+LOCAL_MASTER_ALIAS_REMAP_CTRL_0 = RegBlock("LOCAL_MASTER_ALIAS_REMAP_CTRL_0_")
+AP_OUTPUT_REMAP_CTRL_0 = RegBlock("AP_OUTPUT_REMAP_CTRL_0_")
 
 
 def _selftest() -> int:
@@ -682,17 +950,16 @@ def _selftest() -> int:
     cpu = SEP_CPU_CTRL
     checks = [
         # (register, offset, reset, mask)
-        ("CLOCK_GATE_CTRL", 0x008, 0x0, 0x1),          # pka_cg_enable[0:0], placeholder
-        ("PKA_CTRL", 0x020, 0x0, 0x7),                 # 3 x 1-bit placeholder fields
+        ("CLOCK_GATE_CTRL", 0x008, 0x0, 0x1),  # pka_cg_enable[0:0], placeholder
+        ("PKA_CTRL", 0x020, 0x0, 0x7),  # 3 x 1-bit placeholder fields
         # reserved[0:0] placeholder: real sw=rw storage, but NOT a software-usable
         # field, so the implemented mask is 0. Storage is pinned separately below.
         ("TIMEOUT_ENABLE", 0x068, 0x0, 0x0),
         ("SEP_LOCAL_BASE_ADDR", 0x0C8, 0xD000_0000, 0xFFFF_FFFF),
         ("SEP_REGION_SIZE", 0x0D0, 0x0100_0000, 0xFFFF_FFFF),
-        ("RAS_BANK_INFO", 0x170, 0x0, 0xFF),           # bank_chip[3:0] + bank_instance[7:4]
         ("SEP_NMI_VEC", 0x180, 0xC000_0100, 0xFFFF_FFFE),  # bit 0 is rsvd
-        ("EXT_TRNG_SRC_SEL", 0x190, 0x7, 0x7),         # sel[2:0] = 0x7
-        ("EXT_TRNG_SRC_SEL_LOCK", 0x198, 0x0, 0x1),    # distinct type, must NOT alias to _SEL
+        ("EXT_TRNG_SRC_SEL", 0x190, 0x7, 0x7),  # sel[2:0] = 0x7
+        ("EXT_TRNG_SRC_SEL_LOCK", 0x198, 0x0, 0x1),  # distinct type, must NOT alias to _SEL
         ("SEP_VERSION_ID", 0x1000, 0xDEAD_BEEF, 0xFFFF_FFFF),
     ]
     failures = []
@@ -700,16 +967,20 @@ def _selftest() -> int:
         got = (cpu.offset(name), cpu.reset32(name), cpu.mask32(name))
         want = (offset, reset, mask)
         if got != want:
-            failures.append(f"{name}: got {tuple(hex(v) for v in got)} want {tuple(hex(v) for v in want)}")
+            failures.append(
+                f"{name}: got {tuple(hex(v) for v in got)} want {tuple(hex(v) for v in want)}"
+            )
 
     # Every TIMEOUT_COUNT_* instance must resolve its own offset but share the
     # type's shape via _TYPE_ALIAS. Both masks are pinned, and the pair is what
-    # makes this a tripwire for the reserved-field exclusion itself rather than a
-    # re-baselined constant: the lone field is declared `sw=rw; hw=r` yet named
+    # makes this a tripwire for the reserved-field exclusion itself: the lone field
+    # is declared `sw=rw; hw=r` but named
     # `reserved` (sep_cpu_ctrl.rdl:76-80), so it is real STORAGE (mask_all 0x1)
     # that is NOT software-usable (mask 0x0). If the generator ever renames the
     # field, or the exclusion regex stops matching it, these disagree and fail.
-    for name in _TYPE_ALIAS:
+    # The alias table also carries entries for other blocks, so this walk takes
+    # the SEP_CPU_CTRL instances by their shared type rather than the whole table.
+    for name in (n for n, t in _TYPE_ALIAS.items() if t == "TIMEOUT_COUNT"):
         if cpu.mask32(name) != 0x0:
             failures.append(f"{name}: implemented mask {hex(cpu.mask32(name))} != 0x0")
         if cpu.mask32_all(name) != 0x1:
@@ -721,19 +992,27 @@ def _selftest() -> int:
     # implemented/storage masks differ by exactly the reserved bit.
     if cpu.mask32_all("TIMEOUT_ENABLE") != 0x1:
         failures.append(
-            f"TIMEOUT_ENABLE: storage mask {hex(cpu.mask32_all('TIMEOUT_ENABLE'))} != 0x1")
+            f"TIMEOUT_ENABLE: storage mask {hex(cpu.mask32_all('TIMEOUT_ENABLE'))} != 0x1"
+        )
     if cpu.mask32_all("SEP_NMI_VEC") != 0xFFFF_FFFF:
         failures.append(
-            f"SEP_NMI_VEC: storage mask {hex(cpu.mask32_all('SEP_NMI_VEC'))} != 0xffffffff")
+            f"SEP_NMI_VEC: storage mask {hex(cpu.mask32_all('SEP_NMI_VEC'))} != 0xffffffff"
+        )
     if cpu.offset("TIMEOUT_COUNT_DMA") == cpu.offset("TIMEOUT_COUNT_SYS_IN"):
         failures.append("TIMEOUT_COUNT_* instances collapsed to one offset")
 
     # Fabric-walk blocks the sequence value-checks.
     block_checks = [
-        (SEP_RESET_CTRL, "SW_RESET_N", 0x1080_3000, 0x0000_003E),
+        (SEP_RESET_CTRL, "SW_RESET_N", 0x1080_3000, 0x0000_007E),
         (OTBN, "INTR_STATE", 0x1090_0000, 0x0),
         (HMAC, "INTR_STATE", 0x1091_1000, 0x0),
         (KMAC, "INTR_STATE", 0x1091_3000, 0x0),
+        (AES, "CTRL_SHADOWED", 0x1091_0074, 0x0000_11FD),
+        (WDT_TIMER, "WKUP_CTRL", 0x1080_1004, 0x0),
+        (SPI_CONTROLLER, "CONTROL", 0x10B0_0010, 0x0000_007F),
+        (EFUSE_INTERFACE_CTRL, "EFUSE_PROGRAM_CTRL", 0x1093_0404, 0x0),
+        (AXIL_MAILBOX_OUTBOUND_0, "WRITE_DATA", 0x10A0_0000, 0x0),
+        (SEP_LIFECYCLE_CTRL, "FEAT_CTRL", 0x1091_8000, 0x0),
     ]
     for block, name, addr, reset in block_checks:
         got = (block.addr(name), block.reset32(name))
@@ -752,6 +1031,7 @@ def _selftest() -> int:
         "hmac_sw_rst_n": 0x08,
         "kmac_sw_rst_n": 0x10,
         "trng_sw_rst_n": 0x20,
+        "abr_sw_rst_n": 0x40,
     }
     for field, expected in sw_reset_field_masks.items():
         got = SEP_RESET_CTRL.field_mask("SW_RESET_N", field)
@@ -769,27 +1049,23 @@ def _selftest() -> int:
     walk = iter_register_walk()
     regs = list(walk.regs)
     # Only registers with OFFSET+ADDR+DEFAULT (and a field struct) are
-    # sweepable. Array instances without a per-index DEFAULT are skipped
-    # on purpose rather than guessed; the walk must count those drops.
+    # sweepable. Array instances without a per-index DEFAULT are skipped rather
+    # than guessed; the walk must count those drops.
     if walk.export != walk.inventory + walk.nometa:
         failures.append(
             f"iter_register_walk identity failed: export={walk.export} "
             f"inventory={walk.inventory} nometa={walk.nometa}"
         )
-    if (walk.export, walk.inventory, walk.nometa) != (1024, 865, 159):
+    if (walk.export, walk.inventory, walk.nometa) != (2126, 1952, 174):
         failures.append(
             f"iter_register_walk counts {walk.export}/{walk.inventory}/"
-            f"{walk.nometa} != 1024/865/159"
+            f"{walk.nometa} != 2126/1952/174"
         )
     if walk.inventory < 100:
-        failures.append(
-            f"iter_registers returned {walk.inventory} entries; expected 100+"
-        )
+        failures.append(f"iter_registers returned {walk.inventory} entries; expected 100+")
     esrc_ro = reg_sw_readonly("entropy_source")
     if len(esrc_ro) != 21:
-        failures.append(
-            f"entropy_source sw-readonly count {len(esrc_ro)} != 21"
-        )
+        failures.append(f"entropy_source sw-readonly count {len(esrc_ro)} != 21")
     if "HT_WATERMARK" not in esrc_ro or "HT_WATERMARK_NUM" in esrc_ro:
         failures.append(f"entropy_source sw-readonly set is wrong: {sorted(esrc_ro)}")
     by_key = {(info.block, info.name): info for info in regs}
@@ -802,6 +1078,14 @@ def _selftest() -> int:
     filt = by_key.get(("INBOUND_FILTER_CTRL_0_", "FILTER_CONFIG"))
     if filt is None or (filt.reset & 0xFFFF) != 0x3000:
         failures.append(f"iter_registers missed inbound filter config: {filt}")
+    if INBOUND_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "read_allowed") != 0x1:
+        failures.append("inbound filter read_allowed mask is not bit 0")
+    if AXIL_MAILBOX_OUTBOUND_0.field_mask("STATUS", "empty") != 0x1:
+        failures.append("mailbox STATUS.empty mask is not bit 0")
+    if AXIL_MAILBOX_OUTBOUND_0.field_mask("ERROR_FLAGS", "read_error") != 0x1:
+        failures.append("mailbox ERROR_FLAGS.read_error mask is not bit 0")
+    if LOCAL_MASTER_ALIAS_REMAP_CTRL_0.field_lsb("REGION_REGION_ATTRS", "valid") != 63:
+        failures.append("alias-remap REGION_ATTRS.valid is not bit 63")
     if block_size("KM_MAILBOX_SEP") != 0x1C:
         failures.append(f"KM_MAILBOX_SEP size {hex(block_size('KM_MAILBOX_SEP'))} != 0x1c")
     if ot_reg_map_size("csrng") != 0x60:
@@ -809,8 +1093,71 @@ def _selftest() -> int:
     if ot_reg_map_size("edn") != 0x48:
         failures.append(f"edn size {hex(ot_reg_map_size('edn'))} != 0x48")
     if ot_reg_map_size("entropy_source") != 0x17C:
+        failures.append(f"entropy_source size {hex(ot_reg_map_size('entropy_source'))} != 0x17c")
+
+    # Pin the access shapes, not just the OFFSET join. The join counts stay
+    # green if the IP-XACT renames its `access` or `resets` child: a missing
+    # access reads as read-write and a missing resets makes every read-only
+    # look hardware-driven, so a sweep filtering on either one silently
+    # filters the wrong set. Without these four the next generator change can
+    # walk those rows back into a reset compare against a DEFAULT the RDL never
+    # declared, or drop the 154 read-only rows that carry a real one.
+    shapes = iter_register_walk().regs
+    hw_driven = sorted(f"{i.block}.{i.name}" for i in shapes if i.access.hw_driven)
+    expect_hw_driven = [
+        "ABR.MLDSA_NAME_0_",
+        "ABR.MLDSA_NAME_1_",
+        "ABR.MLDSA_VERSION_0_",
+        "ABR.MLDSA_VERSION_1_",
+        "ABR.MLKEM_NAME_0_",
+        "ABR.MLKEM_NAME_1_",
+        "ABR.MLKEM_VERSION_0_",
+        "ABR.MLKEM_VERSION_1_",
+        "AXIL_MAILBOX_INBOUND_MAILBOX_0.READ_DATA",
+        "AXIL_MAILBOX_INBOUND_MAILBOX_1.READ_DATA",
+        "AXIL_MAILBOX_INBOUND_MAILBOX_2.READ_DATA",
+        "AXIL_MAILBOX_INBOUND_MAILBOX_3.READ_DATA",
+        "AXIL_MAILBOX_INBOUND_MAILBOX_4.READ_DATA",
+        "AXIL_MAILBOX_INBOUND_MAILBOX_5.READ_DATA",
+        "AXIL_MAILBOX_INBOUND_MAILBOX_6.READ_DATA",
+        "AXIL_MAILBOX_INBOUND_MAILBOX_7.READ_DATA",
+        "AXIL_MAILBOX_OUTBOUND_MAILBOX_0.READ_DATA",
+        "AXIL_MAILBOX_OUTBOUND_MAILBOX_1.READ_DATA",
+        "AXIL_MAILBOX_OUTBOUND_MAILBOX_2.READ_DATA",
+        "AXIL_MAILBOX_OUTBOUND_MAILBOX_3.READ_DATA",
+        "AXIL_MAILBOX_OUTBOUND_MAILBOX_4.READ_DATA",
+        "AXIL_MAILBOX_OUTBOUND_MAILBOX_5.READ_DATA",
+        "AXIL_MAILBOX_OUTBOUND_MAILBOX_6.READ_DATA",
+        "AXIL_MAILBOX_OUTBOUND_MAILBOX_7.READ_DATA",
+        "CSRNG.GENBITS",
+        "CSRNG.GENBITS_VLD",
+        "CSRNG.INT_STATE_VAL",
+        "ENTROPY_POOL.DATA",
+        "ENTROPY_POOL.IRQ_CAUSE",
+    ]
+    if hw_driven != expect_hw_driven:
+        extra = sorted(set(hw_driven) - set(expect_hw_driven))
+        absent = sorted(set(expect_hw_driven) - set(hw_driven))
         failures.append(
-            f"entropy_source size {hex(ot_reg_map_size('entropy_source'))} != 0x17c")
+            f"hardware-driven registers: {len(hw_driven)} found, "
+            f"{len(expect_hw_driven)} expected; {len(extra)} unexpected "
+            f"{extra[:5]}, {len(absent)} absent {absent[:5]}; the IP-XACT reset "
+            "elements moved and a reset sweep would skip or admit the wrong rows"
+        )
+    write_only = [i for i in shapes if i.access.write_only]
+    if len(write_only) != 555:
+        failures.append(f"write-only registers {len(write_only)} != 554")
+    nonzero_wo = sorted(f"{i.block}.{i.name}" for i in write_only if i.reset != 0)
+    if nonzero_wo != ["ABR.MLDSA_MSG_STROBE", "AES.TRIGGER"]:
+        failures.append(f"write-only registers with a non-zero DEFAULT {nonzero_wo}")
+    # Read-only WITH a declared reset is the shape that must stay in the reset
+    # sweep. These two are the witnesses at either end: a CPU identity register
+    # and one of the sixteen ABR verify-result words.
+    readable = {f"{i.block}.{i.name}": i.access for i in shapes}
+    for name in ("SEP_CPU_CTRL.SEP_VERSION_ID", "ABR.MLDSA_VERIFY_RES_0_"):
+        shape = readable.get(name)
+        if shape is None or shape.access != frozenset({"read-only"}) or not shape.declared_reset:
+            failures.append(f"{name} is no longer read-only with a declared reset: {shape}")
 
     if failures:
         for line in failures:

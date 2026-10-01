@@ -1,25 +1,30 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-cross_trigger_matrix]
+== Cross Trigger Matrix Address Map
+
+Configuration registers for the cross trigger matrix
+
 [NOTE]
 ======
-*Register Arrays:* This register map contains the following register arrays:
+*Register Arrays:*
 
-* *CT_SRC[26].CONFIG_0*: 26 registers
-  ** Base Address: 0x0
-  ** Address Increment: 0x8 per register
-
+* *CT_SRC[26].CONFIG_0*: 26 registers, base 0x0, stride 0x8
 ======
 
-[cols="1,1,1,3", options="header"]
-.Register Map
+[cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description
-| 0x0 - 0xC8 | CT_SRC[26].CONFIG_0 | RW a| Cross Trigger Source Configuration - CT_Dst select mask
+| 0x0 - 0xC8 | <<reg-{regmap-instance}-cross_trigger_matrix-CT_SRC-0-CONFIG_0,CT_SRC[26].CONFIG_0>> | RW a| Cross Trigger Source Configuration - CT_Dst select mask
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.CT_SRC[26].CONFIG_0 Register
+[#reg-{regmap-instance}-cross_trigger_matrix-CT_SRC-0-CONFIG_0]
+=== CT_SRC[26].CONFIG_0
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:26 | `Reserved` | - | - a| Reserved

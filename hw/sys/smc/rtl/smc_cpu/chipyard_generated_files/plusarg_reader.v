@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+// SPDX-FileCopyrightText: 2016-2017 SiFive, Inc.
 
-// See LICENSE.SiFive for license details.
+// See the repository LICENSE for license details.
 
 //VCS coverage exclude_file
 

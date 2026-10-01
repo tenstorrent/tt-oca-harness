@@ -16,7 +16,6 @@ clients are parked.
 from __future__ import annotations
 
 import pyuvm
-
 from sep_base_test import sep_base_test
 from seq_lib.sep_otbn_compute_seq import SepOtbnCompute, SepOtbnComputeCfg
 
@@ -28,7 +27,8 @@ class sep_otbn_compute_rand_test(sep_base_test):
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu(park=("aes", "hmac", "kmac"))
         await self.bring_up_entropy(
-            strict=True, score_km=False, score_sinks={"otbn_urnd": "observe"})
+            strict=True, score_km=False, score_sinks={"otbn_urnd": "observe"}
+        )
         self.start_fifo_drain()
 
         cfg = SepOtbnComputeCfg.from_seed(self.random_seed())
@@ -37,17 +37,15 @@ class sep_otbn_compute_rand_test(sep_base_test):
         await otbn.wait_idle("post-wipe", timeout=8_000)
 
         for op, a, b, expect in cfg.cells():
-            err, got = await otbn.run_cell(op, a, b)
-            assert err == 0, (
-                f"CHK-ERRBITS FAIL: OTBN {op} ERR_BITS=0x{err:08x}, expected 0"
-            )
+            err, got = await otbn.run_cell(op, a, b, expect)
+            assert err == 0, f"CHK-ERRBITS FAIL: OTBN {op} ERR_BITS=0x{err:08x}, expected 0"
             assert got == expect, (
                 f"CHK-DMEM FAIL: OTBN {op} DMEM[8]=0x{got:08x} "
                 f"!= golden 0x{expect:08x} (a=0x{a:08x} b=0x{b:08x})"
             )
             self.logger.info(
-                "CHK-CELL PASS: OTBN %s a=0x%08x b=0x%08x result=0x%08x "
-                "ERR_BITS=0", op, a, b, got)
+                "CHK-CELL PASS: OTBN %s a=0x%08x b=0x%08x result=0x%08x ERR_BITS=0", op, a, b, got
+            )
 
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
@@ -55,8 +53,9 @@ class sep_otbn_compute_rand_test(sep_base_test):
 
         self.logger.info(
             "CHK-RANDCFG PASS: walked all %d discrete ops %s (seed=%d)",
-            cfg.n_cells(), list(op for op, *_ in cfg.cells()), cfg.seed)
-        self.logger.info(
-            "CHK-ERRBITS PASS: every compute cell retired with ERR_BITS=0")
-        self.logger.info(
-            "CHK-DMEM PASS: every compute cell DMEM result matched the golden")
+            cfg.n_cells(),
+            list(op for op, *_ in cfg.cells()),
+            cfg.seed,
+        )
+        self.logger.info("CHK-ERRBITS PASS: every compute cell retired with ERR_BITS=0")
+        self.logger.info("CHK-DMEM PASS: every compute cell DMEM result matched the golden")

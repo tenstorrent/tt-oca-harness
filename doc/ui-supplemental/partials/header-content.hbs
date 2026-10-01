@@ -2,7 +2,7 @@
   <nav class="navbar">
     <div class="navbar-brand">
       <a class="navbar-item" href="{{{or site.url siteRootPath}}}">{{site.title}}</a>
-      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Documentation</div>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
       {{#if env.SITE_SEARCH_PROVIDER}}
       <div class="navbar-item search hide-for-print">
         <div id="search-field" class="field">
@@ -28,11 +28,11 @@
                  All five books now build as ONE Antora site
                  (antora-playbook.yml), so {{{siteRootPath}}} already
                  resolves directly to the one shared root. -->
+            <a class="navbar-item" href="{{{siteRootPath}}}/ocah-starting/latest/index.html">Starting with OCAH</a>
             <a class="navbar-item" href="{{{siteRootPath}}}/ocah-docs/latest/index.html">Technical Reference Manual</a>
             <a class="navbar-item" href="{{{siteRootPath}}}/ocah-integrator-guide/latest/index.html">Integrator Guide</a>
             <a class="navbar-item" href="{{{siteRootPath}}}/ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
             <a class="navbar-item" href="{{{siteRootPath}}}/ocah-appnotes/latest/index.html">Application Notes</a>
-			<a class="navbar-item" href="{{{siteRootPath}}}/ocah-contributing/latest/index.html">Starting with OCAH</a>
           </div>
         </div>
         <div class="navbar-item has-dropdown is-hoverable downloads-menu">
@@ -57,7 +57,7 @@
         </div>
 		<div class="navbar-item tt-link">
 		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
-			<img src="{{{uiRootPath}}}/img/02_tt_logo_standard_teal_black.png" alt="Tenstorrent" style="height: 24px;">
+			<img src="{{{uiRootPath}}}/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
 		  </a>
 		</div>
       </div>

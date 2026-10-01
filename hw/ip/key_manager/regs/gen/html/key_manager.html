@@ -6,21 +6,97 @@
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: key_manager</h2>
+<h2 id="regmap-key_manager">Key Manager Top-Level Address Map</h2>
+<p>Complete memory map for the Key Manager subsystem, including ROM, SRAM,<br>control/status registers, mailbox, and external crypto engine ports.<br>This address map is from the perspective of the KM CPU (PicoRV32).</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
 <li><strong>RMA_SIP_TOKEN_I[8]</strong>: 8 registers, base 0x11500, stride 0x4</li>
 <li><strong>RMA_CHIPLET_TOKEN_I[8]</strong>: 8 registers, base 0x11520, stride 0x4</li>
 <li><strong>SEC_DISABLE_TOKEN_I[8]</strong>: 8 registers, base 0x11540, stride 0x4</li>
-<li><strong>WORD[16]</strong>: 16 registers, base 0x12000, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[0].WORD[16]</strong>: 16 registers, base 0x12000, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[1].WORD[16]</strong>: 16 registers, base 0x12040, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[2].WORD[16]</strong>: 16 registers, base 0x12080, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[3].WORD[16]</strong>: 16 registers, base 0x120C0, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[4].WORD[16]</strong>: 16 registers, base 0x12100, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[5].WORD[16]</strong>: 16 registers, base 0x12140, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[6].WORD[16]</strong>: 16 registers, base 0x12180, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[7].WORD[16]</strong>: 16 registers, base 0x121C0, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[8].WORD[16]</strong>: 16 registers, base 0x12200, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[9].WORD[16]</strong>: 16 registers, base 0x12240, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[10].WORD[16]</strong>: 16 registers, base 0x12280, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[11].WORD[16]</strong>: 16 registers, base 0x122C0, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[12].WORD[16]</strong>: 16 registers, base 0x12300, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[13].WORD[16]</strong>: 16 registers, base 0x12340, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[14].WORD[16]</strong>: 16 registers, base 0x12380, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[15].WORD[16]</strong>: 16 registers, base 0x123C0, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[16].WORD[16]</strong>: 16 registers, base 0x12400, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[17].WORD[16]</strong>: 16 registers, base 0x12440, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[18].WORD[16]</strong>: 16 registers, base 0x12480, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[19].WORD[16]</strong>: 16 registers, base 0x124C0, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[20].WORD[16]</strong>: 16 registers, base 0x12500, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[21].WORD[16]</strong>: 16 registers, base 0x12540, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[22].WORD[16]</strong>: 16 registers, base 0x12580, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[23].WORD[16]</strong>: 16 registers, base 0x125C0, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[24].WORD[16]</strong>: 16 registers, base 0x12600, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[25].WORD[16]</strong>: 16 registers, base 0x12640, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[26].WORD[16]</strong>: 16 registers, base 0x12680, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[27].WORD[16]</strong>: 16 registers, base 0x126C0, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[28].WORD[16]</strong>: 16 registers, base 0x12700, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[29].WORD[16]</strong>: 16 registers, base 0x12740, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[30].WORD[16]</strong>: 16 registers, base 0x12780, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[31].WORD[16]</strong>: 16 registers, base 0x127C0, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[32].WORD[16]</strong>: 16 registers, base 0x12800, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[33].WORD[16]</strong>: 16 registers, base 0x12840, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[34].WORD[16]</strong>: 16 registers, base 0x12880, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[35].WORD[16]</strong>: 16 registers, base 0x128C0, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[36].WORD[16]</strong>: 16 registers, base 0x12900, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[37].WORD[16]</strong>: 16 registers, base 0x12940, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[38].WORD[16]</strong>: 16 registers, base 0x12980, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[39].WORD[16]</strong>: 16 registers, base 0x129C0, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[40].WORD[16]</strong>: 16 registers, base 0x12A00, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[41].WORD[16]</strong>: 16 registers, base 0x12A40, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[42].WORD[16]</strong>: 16 registers, base 0x12A80, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[43].WORD[16]</strong>: 16 registers, base 0x12AC0, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[44].WORD[16]</strong>: 16 registers, base 0x12B00, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[45].WORD[16]</strong>: 16 registers, base 0x12B40, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[46].WORD[16]</strong>: 16 registers, base 0x12B80, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[47].WORD[16]</strong>: 16 registers, base 0x12BC0, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[48].WORD[16]</strong>: 16 registers, base 0x12C00, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[49].WORD[16]</strong>: 16 registers, base 0x12C40, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[50].WORD[16]</strong>: 16 registers, base 0x12C80, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[51].WORD[16]</strong>: 16 registers, base 0x12CC0, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[52].WORD[16]</strong>: 16 registers, base 0x12D00, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[53].WORD[16]</strong>: 16 registers, base 0x12D40, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[54].WORD[16]</strong>: 16 registers, base 0x12D80, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[55].WORD[16]</strong>: 16 registers, base 0x12DC0, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[56].WORD[16]</strong>: 16 registers, base 0x12E00, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[57].WORD[16]</strong>: 16 registers, base 0x12E40, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[58].WORD[16]</strong>: 16 registers, base 0x12E80, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[59].WORD[16]</strong>: 16 registers, base 0x12EC0, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[60].WORD[16]</strong>: 16 registers, base 0x12F00, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[61].WORD[16]</strong>: 16 registers, base 0x12F40, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[62].WORD[16]</strong>: 16 registers, base 0x12F80, stride 0x4</li>
+<li><strong>kpv.KEY_ENTRY[63].WORD[16]</strong>: 16 registers, base 0x12FC0, stride 0x4</li>
 <li><strong>CTRL[64]</strong>: 64 registers, base 0x13000, stride 0x4</li>
 <li><strong>KEY_SHARE0[12]</strong>: 12 registers, base 0x18000, stride 0x4</li>
 <li><strong>KEY_SHARE1[12]</strong>: 12 registers, base 0x18030, stride 0x4</li>
-<li><strong>KEY_SHARE0[8]</strong>: 8 registers, base 0x19000, stride 0x4</li>
-<li><strong>KEY_SHARE1[8]</strong>: 8 registers, base 0x19020, stride 0x4</li>
+<li><strong>aes_wrapper_key.KEY_SHARE0[8]</strong>: 8 registers, base 0x19000, stride 0x4</li>
+<li><strong>aes_wrapper_key.KEY_SHARE1[8]</strong>: 8 registers, base 0x19020, stride 0x4</li>
+<li><strong>kmac_wrapper_key.KEY_SHARE0[8]</strong>: 8 registers, base 0x1A000, stride 0x4</li>
+<li><strong>kmac_wrapper_key.KEY_SHARE1[8]</strong>: 8 registers, base 0x1A020, stride 0x4</li>
+<li><strong>hmac_wrapper_key.KEY_SHARE0[8]</strong>: 8 registers, base 0x1B000, stride 0x4</li>
+<li><strong>hmac_wrapper_key.KEY_SHARE1[8]</strong>: 8 registers, base 0x1B020, stride 0x4</li>
+<li><strong>abr_wrapper_key.MLDSA_SEED.KEY_SHARE0[8]</strong>: 8 registers, base 0x1C000, stride 0x4</li>
+<li><strong>abr_wrapper_key.MLDSA_SEED.KEY_SHARE1[8]</strong>: 8 registers, base 0x1C020, stride 0x4</li>
+<li><strong>abr_wrapper_key.MLKEM_SEED_D.KEY_SHARE0[8]</strong>: 8 registers, base 0x1C100, stride 0x4</li>
+<li><strong>abr_wrapper_key.MLKEM_SEED_D.KEY_SHARE1[8]</strong>: 8 registers, base 0x1C120, stride 0x4</li>
+<li><strong>abr_wrapper_key.MLKEM_SEED_Z.KEY_SHARE0[8]</strong>: 8 registers, base 0x1C200, stride 0x4</li>
+<li><strong>abr_wrapper_key.MLKEM_SEED_Z.KEY_SHARE1[8]</strong>: 8 registers, base 0x1C220, stride 0x4</li>
+<li><strong>abr_wrapper_key.MLKEM_MSG.KEY_SHARE0[8]</strong>: 8 registers, base 0x1C300, stride 0x4</li>
+<li><strong>abr_wrapper_key.MLKEM_MSG.KEY_SHARE1[8]</strong>: 8 registers, base 0x1C320, stride 0x4</li>
 <li><strong>KEY[8]</strong>: 8 registers, base 0x1C400, stride 0x4</li>
 </ul>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x10000</td><td><a href="#KM_WRITE_DATA">KM_WRITE_DATA</a></td><td>W</td><td>Write data to outbound FIFO (KM→SEP messages)</td></tr>
@@ -35,8 +111,8 @@
 <tr><td>0x1100C</td><td><a href="#LC_STATE">LC_STATE</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x11010</td><td><a href="#SBOOT_DIS">SBOOT_DIS</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x11014</td><td><a href="#TRANSIENT_RMA_EN">TRANSIENT_RMA_EN</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x11018</td><td><a href="#SIP_DIS">SIP_DIS</a></td><td>RW</td><td>An owner&#x27;s (SiP or System) feature control vector. When set (1&#x27;b1), the corresponding feature is disabled. Spec: OCAH v0.5.9 disable-vector layout (lifecycle_controller.adoc §2.2).</td></tr>
-<tr><td>0x11020</td><td><a href="#SYS_DIS">SYS_DIS</a></td><td>RW</td><td>An owner&#x27;s (SiP or System) feature control vector. When set (1&#x27;b1), the corresponding feature is disabled. Spec: OCAH v0.5.9 disable-vector layout (lifecycle_controller.adoc §2.2).</td></tr>
+<tr><td>0x11018</td><td><a href="#SIP_DIS">SIP_DIS</a></td><td>RW</td><td>An owner&#x27;s feature control vector. When set (1&#x27;b1), the corresponding feature is disabled. Layout: see the Disable Vector Format section of lifecycle_controller.adoc.</td></tr>
+<tr><td>0x11020</td><td><a href="#SYS_DIS">SYS_DIS</a></td><td>RW</td><td>An owner&#x27;s feature control vector. When set (1&#x27;b1), the corresponding feature is disabled. Layout: see the Disable Vector Format section of lifecycle_controller.adoc.</td></tr>
 <tr><td>0x11028</td><td><a href="#RMA_SIP_TOKEN_DIGEST">RMA_SIP_TOKEN_DIGEST</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x11048</td><td><a href="#RMA_CHIPLET_TOKEN_DIGEST">RMA_CHIPLET_TOKEN_DIGEST</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x11068</td><td><a href="#CLASS_KEY">CLASS_KEY</a></td><td>R</td><td>-</td></tr>
@@ -50,36 +126,29 @@
 <tr><td>0x1114C</td><td><a href="#SYS_UID">SYS_UID</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x1116C</td><td><a href="#STATUS_RPT">STATUS_RPT</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x11170</td><td><a href="#ROM_CTL">ROM_CTL</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x11174</td><td><a href="#SEP_SPI_CTRL_FIELD_EN">SEP_SPI_CTRL_FIELD_EN</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x11178</td><td><a href="#SPI_DISCOVERY_CTRL">SPI_DISCOVERY_CTRL</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x1117C</td><td><a href="#SPI_PHY_DQ_TIMING">SPI_PHY_DQ_TIMING</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x11180</td><td><a href="#SPI_PHY_DQS_TIMING">SPI_PHY_DQS_TIMING</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x11184</td><td><a href="#SPI_PHY_GATE_LPBK">SPI_PHY_GATE_LPBK</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x11188</td><td><a href="#SPI_PHY_DLL_SLAVE">SPI_PHY_DLL_SLAVE</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x1118C</td><td><a href="#SPI_PHY_DLL_MASTER">SPI_PHY_DLL_MASTER</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x11190</td><td><a href="#SPI_PHY_MISC">SPI_PHY_MISC</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x11194</td><td><a href="#SPI_RB_VALID_TIME">SPI_RB_VALID_TIME</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x11198</td><td><a href="#CHIPLET_PUBK_HASH0">CHIPLET_PUBK_HASH0</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x111B8</td><td><a href="#CHIPLET_PUBK_HASH1">CHIPLET_PUBK_HASH1</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x111D8</td><td><a href="#REQUIRED_SIGNERS">REQUIRED_SIGNERS</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x111DC</td><td><a href="#REQUIRED_ALGS">REQUIRED_ALGS</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x111E0</td><td><a href="#CHIPLET_PUBK_PQC_HASH0">CHIPLET_PUBK_PQC_HASH0</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x11200</td><td><a href="#CHIPLET_PUBK_PQC_HASH1">CHIPLET_PUBK_PQC_HASH1</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x11220</td><td><a href="#SIP_PUBK_PQC_HASH0">SIP_PUBK_PQC_HASH0</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x11240</td><td><a href="#SYS_PUBK_PQC_HASH">SYS_PUBK_PQC_HASH</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x11260</td><td><a href="#SIP_PUBK_HASH1">SIP_PUBK_HASH1</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x11280</td><td><a href="#SIP_PUBK_PQC_HASH1">SIP_PUBK_PQC_HASH1</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x112A0</td><td><a href="#SEP_CHIPLET_ID">SEP_CHIPLET_ID</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x112C0</td><td><a href="#SEP_SIP_ID">SEP_SIP_ID</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x112E0</td><td><a href="#SEP_SYS_ID">SEP_SYS_ID</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x11300</td><td><a href="#spare0">spare0</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x11320</td><td><a href="#spare1">spare1</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x11340</td><td><a href="#spare2">spare2</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x11360</td><td><a href="#spare3">spare3</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x11380</td><td><a href="#spare4">spare4</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x113A0</td><td><a href="#spare5">spare5</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x113C0</td><td><a href="#spare6">spare6</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x113E0</td><td><a href="#spare7">spare7</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x11174</td><td><a href="#SYSCLK_FREQ_MHZ">SYSCLK_FREQ_MHZ</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x11178</td><td><a href="#CHIPLET_PUBK_HASH0">CHIPLET_PUBK_HASH0</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x11198</td><td><a href="#CHIPLET_PUBK_HASH1">CHIPLET_PUBK_HASH1</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x111B8</td><td><a href="#REQUIRED_SIGNERS">REQUIRED_SIGNERS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x111BC</td><td><a href="#REQUIRED_ALGS">REQUIRED_ALGS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x111C0</td><td><a href="#CHIPLET_PUBK_PQC_HASH0">CHIPLET_PUBK_PQC_HASH0</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x111E0</td><td><a href="#CHIPLET_PUBK_PQC_HASH1">CHIPLET_PUBK_PQC_HASH1</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x11200</td><td><a href="#SIP_PUBK_PQC_HASH0">SIP_PUBK_PQC_HASH0</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x11220</td><td><a href="#SYS_PUBK_PQC_HASH">SYS_PUBK_PQC_HASH</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x11240</td><td><a href="#SIP_PUBK_HASH1">SIP_PUBK_HASH1</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x11260</td><td><a href="#SIP_PUBK_PQC_HASH1">SIP_PUBK_PQC_HASH1</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x11280</td><td><a href="#SEP_CHIPLET_ID">SEP_CHIPLET_ID</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x112A0</td><td><a href="#SEP_SIP_ID">SEP_SIP_ID</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x112C0</td><td><a href="#SEP_SYS_ID">SEP_SYS_ID</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x112E0</td><td><a href="#spare0">spare0</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x11300</td><td><a href="#spare1">spare1</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x11320</td><td><a href="#spare2">spare2</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x11340</td><td><a href="#spare3">spare3</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x11360</td><td><a href="#spare4">spare4</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x11380</td><td><a href="#spare5">spare5</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x113A0</td><td><a href="#spare6">spare6</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x113C0</td><td><a href="#spare7">spare7</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x113E0</td><td><a href="#spare8">spare8</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x11400</td><td><a href="#EFUSE_INTERFACE_CTRL_STATUS">EFUSE_INTERFACE_CTRL_STATUS</a></td><td>RW</td><td>eFuse interface status and error-clear register. Reports the sense-done flag and request/address error conditions, and provides write-1 strobes to clear those errors.</td></tr>
 <tr><td>0x11404</td><td><a href="#EFUSE_PROGRAM_CTRL">EFUSE_PROGRAM_CTRL</a></td><td>RW</td><td>eFuse program control and status. Configures the program address and data, triggers a program (optionally with read-back), and reports program progress and completion status.</td></tr>
 <tr><td>0x11408</td><td><a href="#EFUSE_READ_CTRL">EFUSE_READ_CTRL</a></td><td>RW</td><td>eFuse read control and status. Configures the read address, triggers a read, and reports read progress and completion status.</td></tr>
@@ -95,15 +164,78 @@
 <tr><td>0x11568</td><td><a href="#RMA_CHIPLET_TOKEN_MATCH">RMA_CHIPLET_TOKEN_MATCH</a></td><td>R</td><td>Token match status. Reports the result of the token hash comparison (match, mismatch, or error).</td></tr>
 <tr><td>0x1156C</td><td><a href="#SEC_DISABLE_TOKEN_MATCH">SEC_DISABLE_TOKEN_MATCH</a></td><td>R</td><td>Token match status. Reports the result of the token hash comparison (match, mismatch, or error).</td></tr>
 <tr><td>0x11570</td><td><a href="#TOKEN_MATCH_FAULT">TOKEN_MATCH_FAULT</a></td><td>R</td><td>Token comparator redundancy fault status. The token match logic is triple redundant and is not a majority vote: all three comparators must agree and each must drive a legal differential pair. A bit sets when the comparators for that token disagree, which may indicate a fault injection or FIB attack. The corresponding token_match_status then reads the error code 6&#x27;b111111 and an interrupt is raised to the SEP CPU. Bits are sticky until reset.</td></tr>
-<tr><td>0x12000 - 0x1203C</td><td><a href="#WORD_16_">WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12000 - 0x1203C</td><td><a href="#kpv.KEY_ENTRY_0_.WORD_16_">kpv.KEY_ENTRY[0].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12040 - 0x1207C</td><td><a href="#kpv.KEY_ENTRY_1_.WORD_16_">kpv.KEY_ENTRY[1].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12080 - 0x120BC</td><td><a href="#kpv.KEY_ENTRY_2_.WORD_16_">kpv.KEY_ENTRY[2].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x120C0 - 0x120FC</td><td><a href="#kpv.KEY_ENTRY_3_.WORD_16_">kpv.KEY_ENTRY[3].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12100 - 0x1213C</td><td><a href="#kpv.KEY_ENTRY_4_.WORD_16_">kpv.KEY_ENTRY[4].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12140 - 0x1217C</td><td><a href="#kpv.KEY_ENTRY_5_.WORD_16_">kpv.KEY_ENTRY[5].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12180 - 0x121BC</td><td><a href="#kpv.KEY_ENTRY_6_.WORD_16_">kpv.KEY_ENTRY[6].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x121C0 - 0x121FC</td><td><a href="#kpv.KEY_ENTRY_7_.WORD_16_">kpv.KEY_ENTRY[7].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12200 - 0x1223C</td><td><a href="#kpv.KEY_ENTRY_8_.WORD_16_">kpv.KEY_ENTRY[8].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12240 - 0x1227C</td><td><a href="#kpv.KEY_ENTRY_9_.WORD_16_">kpv.KEY_ENTRY[9].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12280 - 0x122BC</td><td><a href="#kpv.KEY_ENTRY_10_.WORD_16_">kpv.KEY_ENTRY[10].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x122C0 - 0x122FC</td><td><a href="#kpv.KEY_ENTRY_11_.WORD_16_">kpv.KEY_ENTRY[11].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12300 - 0x1233C</td><td><a href="#kpv.KEY_ENTRY_12_.WORD_16_">kpv.KEY_ENTRY[12].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12340 - 0x1237C</td><td><a href="#kpv.KEY_ENTRY_13_.WORD_16_">kpv.KEY_ENTRY[13].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12380 - 0x123BC</td><td><a href="#kpv.KEY_ENTRY_14_.WORD_16_">kpv.KEY_ENTRY[14].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x123C0 - 0x123FC</td><td><a href="#kpv.KEY_ENTRY_15_.WORD_16_">kpv.KEY_ENTRY[15].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12400 - 0x1243C</td><td><a href="#kpv.KEY_ENTRY_16_.WORD_16_">kpv.KEY_ENTRY[16].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12440 - 0x1247C</td><td><a href="#kpv.KEY_ENTRY_17_.WORD_16_">kpv.KEY_ENTRY[17].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12480 - 0x124BC</td><td><a href="#kpv.KEY_ENTRY_18_.WORD_16_">kpv.KEY_ENTRY[18].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x124C0 - 0x124FC</td><td><a href="#kpv.KEY_ENTRY_19_.WORD_16_">kpv.KEY_ENTRY[19].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12500 - 0x1253C</td><td><a href="#kpv.KEY_ENTRY_20_.WORD_16_">kpv.KEY_ENTRY[20].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12540 - 0x1257C</td><td><a href="#kpv.KEY_ENTRY_21_.WORD_16_">kpv.KEY_ENTRY[21].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12580 - 0x125BC</td><td><a href="#kpv.KEY_ENTRY_22_.WORD_16_">kpv.KEY_ENTRY[22].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x125C0 - 0x125FC</td><td><a href="#kpv.KEY_ENTRY_23_.WORD_16_">kpv.KEY_ENTRY[23].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12600 - 0x1263C</td><td><a href="#kpv.KEY_ENTRY_24_.WORD_16_">kpv.KEY_ENTRY[24].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12640 - 0x1267C</td><td><a href="#kpv.KEY_ENTRY_25_.WORD_16_">kpv.KEY_ENTRY[25].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12680 - 0x126BC</td><td><a href="#kpv.KEY_ENTRY_26_.WORD_16_">kpv.KEY_ENTRY[26].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x126C0 - 0x126FC</td><td><a href="#kpv.KEY_ENTRY_27_.WORD_16_">kpv.KEY_ENTRY[27].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12700 - 0x1273C</td><td><a href="#kpv.KEY_ENTRY_28_.WORD_16_">kpv.KEY_ENTRY[28].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12740 - 0x1277C</td><td><a href="#kpv.KEY_ENTRY_29_.WORD_16_">kpv.KEY_ENTRY[29].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12780 - 0x127BC</td><td><a href="#kpv.KEY_ENTRY_30_.WORD_16_">kpv.KEY_ENTRY[30].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x127C0 - 0x127FC</td><td><a href="#kpv.KEY_ENTRY_31_.WORD_16_">kpv.KEY_ENTRY[31].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12800 - 0x1283C</td><td><a href="#kpv.KEY_ENTRY_32_.WORD_16_">kpv.KEY_ENTRY[32].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12840 - 0x1287C</td><td><a href="#kpv.KEY_ENTRY_33_.WORD_16_">kpv.KEY_ENTRY[33].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12880 - 0x128BC</td><td><a href="#kpv.KEY_ENTRY_34_.WORD_16_">kpv.KEY_ENTRY[34].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x128C0 - 0x128FC</td><td><a href="#kpv.KEY_ENTRY_35_.WORD_16_">kpv.KEY_ENTRY[35].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12900 - 0x1293C</td><td><a href="#kpv.KEY_ENTRY_36_.WORD_16_">kpv.KEY_ENTRY[36].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12940 - 0x1297C</td><td><a href="#kpv.KEY_ENTRY_37_.WORD_16_">kpv.KEY_ENTRY[37].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12980 - 0x129BC</td><td><a href="#kpv.KEY_ENTRY_38_.WORD_16_">kpv.KEY_ENTRY[38].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x129C0 - 0x129FC</td><td><a href="#kpv.KEY_ENTRY_39_.WORD_16_">kpv.KEY_ENTRY[39].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12A00 - 0x12A3C</td><td><a href="#kpv.KEY_ENTRY_40_.WORD_16_">kpv.KEY_ENTRY[40].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12A40 - 0x12A7C</td><td><a href="#kpv.KEY_ENTRY_41_.WORD_16_">kpv.KEY_ENTRY[41].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12A80 - 0x12ABC</td><td><a href="#kpv.KEY_ENTRY_42_.WORD_16_">kpv.KEY_ENTRY[42].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12AC0 - 0x12AFC</td><td><a href="#kpv.KEY_ENTRY_43_.WORD_16_">kpv.KEY_ENTRY[43].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12B00 - 0x12B3C</td><td><a href="#kpv.KEY_ENTRY_44_.WORD_16_">kpv.KEY_ENTRY[44].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12B40 - 0x12B7C</td><td><a href="#kpv.KEY_ENTRY_45_.WORD_16_">kpv.KEY_ENTRY[45].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12B80 - 0x12BBC</td><td><a href="#kpv.KEY_ENTRY_46_.WORD_16_">kpv.KEY_ENTRY[46].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12BC0 - 0x12BFC</td><td><a href="#kpv.KEY_ENTRY_47_.WORD_16_">kpv.KEY_ENTRY[47].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12C00 - 0x12C3C</td><td><a href="#kpv.KEY_ENTRY_48_.WORD_16_">kpv.KEY_ENTRY[48].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12C40 - 0x12C7C</td><td><a href="#kpv.KEY_ENTRY_49_.WORD_16_">kpv.KEY_ENTRY[49].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12C80 - 0x12CBC</td><td><a href="#kpv.KEY_ENTRY_50_.WORD_16_">kpv.KEY_ENTRY[50].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12CC0 - 0x12CFC</td><td><a href="#kpv.KEY_ENTRY_51_.WORD_16_">kpv.KEY_ENTRY[51].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12D00 - 0x12D3C</td><td><a href="#kpv.KEY_ENTRY_52_.WORD_16_">kpv.KEY_ENTRY[52].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12D40 - 0x12D7C</td><td><a href="#kpv.KEY_ENTRY_53_.WORD_16_">kpv.KEY_ENTRY[53].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12D80 - 0x12DBC</td><td><a href="#kpv.KEY_ENTRY_54_.WORD_16_">kpv.KEY_ENTRY[54].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12DC0 - 0x12DFC</td><td><a href="#kpv.KEY_ENTRY_55_.WORD_16_">kpv.KEY_ENTRY[55].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12E00 - 0x12E3C</td><td><a href="#kpv.KEY_ENTRY_56_.WORD_16_">kpv.KEY_ENTRY[56].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12E40 - 0x12E7C</td><td><a href="#kpv.KEY_ENTRY_57_.WORD_16_">kpv.KEY_ENTRY[57].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12E80 - 0x12EBC</td><td><a href="#kpv.KEY_ENTRY_58_.WORD_16_">kpv.KEY_ENTRY[58].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12EC0 - 0x12EFC</td><td><a href="#kpv.KEY_ENTRY_59_.WORD_16_">kpv.KEY_ENTRY[59].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12F00 - 0x12F3C</td><td><a href="#kpv.KEY_ENTRY_60_.WORD_16_">kpv.KEY_ENTRY[60].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12F40 - 0x12F7C</td><td><a href="#kpv.KEY_ENTRY_61_.WORD_16_">kpv.KEY_ENTRY[61].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12F80 - 0x12FBC</td><td><a href="#kpv.KEY_ENTRY_62_.WORD_16_">kpv.KEY_ENTRY[62].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x12FC0 - 0x12FFC</td><td><a href="#kpv.KEY_ENTRY_63_.WORD_16_">kpv.KEY_ENTRY[63].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
 <tr><td>0x13000 - 0x130FC</td><td><a href="#CTRL_64_">CTRL[64]</a></td><td>RW</td><td>Per-slot control: lock bits (W1S) and the erase trigger</td></tr>
 <tr><td>0x13100</td><td><a href="#KPV_SCRAMBLER_KEY">KPV_SCRAMBLER_KEY</a></td><td>RW</td><td>32-bit key for KPV key entry scrambling. No reset; powers up random. Locked when KPV_SCRAMBLER_CTRL.LOCK=1.</td></tr>
 <tr><td>0x13104</td><td><a href="#KPV_SCRAMBLER_CTRL">KPV_SCRAMBLER_CTRL</a></td><td>RW</td><td>KPV scrambler enable and lock. Reset to 0 on KM reset. LOCK is write-one-only.</td></tr>
 <tr><td>0x14000</td><td><a href="#VERSION">VERSION</a></td><td>R</td><td>Hardware version register (semantic versioning: major.minor.patch)</td></tr>
 <tr><td>0x14004</td><td><a href="#CTRL">CTRL</a></td><td>R</td><td>Control register (reserved for future use)</td></tr>
 <tr><td>0x14008</td><td><a href="#SOFT_RST_CODE">SOFT_RST_CODE</a></td><td>RW</td><td>Software reset code register. Write 0x53525354 (&#x27;SRST&#x27;) to trigger soft reset. Any other value has no effect.</td></tr>
-<tr><td>0x1400C</td><td><a href="#IRQ_STATUS">IRQ_STATUS</a></td><td>RW</td><td>Interrupt status register. Sticky bits cleared by writing 1.</td></tr>
-<tr><td>0x14010</td><td><a href="#IRQ_ENABLE">IRQ_ENABLE</a></td><td>RW</td><td>Interrupt enable/mask register</td></tr>
+<tr><td>0x1400C</td><td><a href="#kmcsr.IRQ_STATUS">kmcsr.IRQ_STATUS</a></td><td>RW</td><td>Interrupt status register. Sticky bits cleared by writing 1.</td></tr>
+<tr><td>0x14010</td><td><a href="#kmcsr.IRQ_ENABLE">kmcsr.IRQ_ENABLE</a></td><td>RW</td><td>Interrupt enable/mask register</td></tr>
 <tr><td>0x14014</td><td><a href="#SCRAMBLER_KEY">SCRAMBLER_KEY</a></td><td>RW</td><td>32-bit scrambler key for SRAM address/data scrambling. When locked: writes ignored, reads return 0. No reset; powers up random.</td></tr>
 <tr><td>0x14018</td><td><a href="#SCRAMBLER_CTRL">SCRAMBLER_CTRL</a></td><td>RW</td><td>Scrambler control register</td></tr>
 <tr><td>0x1401C</td><td><a href="#SRAM_LOCK">SRAM_LOCK</a></td><td>RW</td><td>SRAM write-lock bits. Bit[i]=1 locks region i (1 KB each, 32 regions). Write-1-only: writing 1 sets the bit, writing 0 has no effect. Cleared by warm or cold reset (warm reset domain); ROM re-applies the lock policy on every boot before handover to mutable firmware.</td></tr>
@@ -249,12 +381,34 @@
 <tr><td>0x1500C</td><td><a href="#PREFETCH_DATA">PREFETCH_DATA</a></td><td>R</td><td>Prefetched word (read-only, for debugging). Cleared when PREFETCH=0. No reset; power-up undefined.</td></tr>
 <tr><td>0x18000 - 0x1802C</td><td><a href="#KEY_SHARE0_12_">KEY_SHARE0[12]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
 <tr><td>0x18030 - 0x1805C</td><td><a href="#KEY_SHARE1_12_">KEY_SHARE1[12]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
-<tr><td>0x18060</td><td><a href="#KEY_CTRL">KEY_CTRL</a></td><td>RW</td><td>Key control register. Writing KEY_VALID=1 asserts the sideload<br>valid signal to the OTBN core.</td></tr>
-<tr><td>0x19000 - 0x1901C</td><td><a href="#KEY_SHARE0_8_">KEY_SHARE0[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
-<tr><td>0x19020 - 0x1903C</td><td><a href="#KEY_SHARE1_8_">KEY_SHARE1[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
+<tr><td>0x18060</td><td><a href="#otbn_wrapper_key.KEY_CTRL">otbn_wrapper_key.KEY_CTRL</a></td><td>RW</td><td>Key control register. Writing KEY_VALID=1 asserts the sideload<br>valid signal to the OTBN core.</td></tr>
+<tr><td>0x19000 - 0x1901C</td><td><a href="#aes_wrapper_key.KEY_SHARE0_8_">aes_wrapper_key.KEY_SHARE0[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
+<tr><td>0x19020 - 0x1903C</td><td><a href="#aes_wrapper_key.KEY_SHARE1_8_">aes_wrapper_key.KEY_SHARE1[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
+<tr><td>0x19040</td><td><a href="#aes_wrapper_key.KEY_CTRL">aes_wrapper_key.KEY_CTRL</a></td><td>RW</td><td>Key control register. Writing KEY_VALID=1 asserts the sideload<br>valid signal to the AES core.</td></tr>
+<tr><td>0x1A000 - 0x1A01C</td><td><a href="#kmac_wrapper_key.KEY_SHARE0_8_">kmac_wrapper_key.KEY_SHARE0[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
+<tr><td>0x1A020 - 0x1A03C</td><td><a href="#kmac_wrapper_key.KEY_SHARE1_8_">kmac_wrapper_key.KEY_SHARE1[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
+<tr><td>0x1A040</td><td><a href="#kmac_wrapper_key.KEY_CTRL">kmac_wrapper_key.KEY_CTRL</a></td><td>RW</td><td>Key control register. Writing KEY_VALID=1 asserts the sideload<br>valid signal to the KMAC core.</td></tr>
+<tr><td>0x1B000 - 0x1B01C</td><td><a href="#hmac_wrapper_key.KEY_SHARE0_8_">hmac_wrapper_key.KEY_SHARE0[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
+<tr><td>0x1B020 - 0x1B03C</td><td><a href="#hmac_wrapper_key.KEY_SHARE1_8_">hmac_wrapper_key.KEY_SHARE1[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
+<tr><td>0x1B040</td><td><a href="#hmac_wrapper_key.KEY_CTRL">hmac_wrapper_key.KEY_CTRL</a></td><td>RW</td><td>Key control register. Writing KEY_VALID=1 asserts the sideload<br>valid signal to the HMAC core.</td></tr>
+<tr><td>0x1C000 - 0x1C01C</td><td><a href="#abr_wrapper_key.MLDSA_SEED.KEY_SHARE0_8_">abr_wrapper_key.MLDSA_SEED.KEY_SHARE0[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
+<tr><td>0x1C020 - 0x1C03C</td><td><a href="#abr_wrapper_key.MLDSA_SEED.KEY_SHARE1_8_">abr_wrapper_key.MLDSA_SEED.KEY_SHARE1[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
+<tr><td>0x1C040</td><td><a href="#abr_wrapper_key.MLDSA_SEED.KEY_CTRL">abr_wrapper_key.MLDSA_SEED.KEY_CTRL</a></td><td>RW</td><td>Seed control register. Writing KEY_VALID=1 marks the seed as loaded.<br>Write 0 to invalidate. The KV shim gates the AB kv_read response<br>on this bit.</td></tr>
+<tr><td>0x1C100 - 0x1C11C</td><td><a href="#abr_wrapper_key.MLKEM_SEED_D.KEY_SHARE0_8_">abr_wrapper_key.MLKEM_SEED_D.KEY_SHARE0[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
+<tr><td>0x1C120 - 0x1C13C</td><td><a href="#abr_wrapper_key.MLKEM_SEED_D.KEY_SHARE1_8_">abr_wrapper_key.MLKEM_SEED_D.KEY_SHARE1[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
+<tr><td>0x1C140</td><td><a href="#abr_wrapper_key.MLKEM_SEED_D.KEY_CTRL">abr_wrapper_key.MLKEM_SEED_D.KEY_CTRL</a></td><td>RW</td><td>Seed control register. Writing KEY_VALID=1 marks the seed as loaded.<br>Write 0 to invalidate. The KV shim gates the AB kv_read response<br>on this bit.</td></tr>
+<tr><td>0x1C200 - 0x1C21C</td><td><a href="#abr_wrapper_key.MLKEM_SEED_Z.KEY_SHARE0_8_">abr_wrapper_key.MLKEM_SEED_Z.KEY_SHARE0[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
+<tr><td>0x1C220 - 0x1C23C</td><td><a href="#abr_wrapper_key.MLKEM_SEED_Z.KEY_SHARE1_8_">abr_wrapper_key.MLKEM_SEED_Z.KEY_SHARE1[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
+<tr><td>0x1C240</td><td><a href="#abr_wrapper_key.MLKEM_SEED_Z.KEY_CTRL">abr_wrapper_key.MLKEM_SEED_Z.KEY_CTRL</a></td><td>RW</td><td>Seed control register. Writing KEY_VALID=1 marks the seed as loaded.<br>Write 0 to invalidate. The KV shim gates the AB kv_read response<br>on this bit.</td></tr>
+<tr><td>0x1C300 - 0x1C31C</td><td><a href="#abr_wrapper_key.MLKEM_MSG.KEY_SHARE0_8_">abr_wrapper_key.MLKEM_MSG.KEY_SHARE0[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
+<tr><td>0x1C320 - 0x1C33C</td><td><a href="#abr_wrapper_key.MLKEM_MSG.KEY_SHARE1_8_">abr_wrapper_key.MLKEM_MSG.KEY_SHARE1[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
+<tr><td>0x1C340</td><td><a href="#abr_wrapper_key.MLKEM_MSG.KEY_CTRL">abr_wrapper_key.MLKEM_MSG.KEY_CTRL</a></td><td>RW</td><td>Seed control register. Writing KEY_VALID=1 marks the seed as loaded.<br>Write 0 to invalidate. The KV shim gates the AB kv_read response<br>on this bit.</td></tr>
 <tr><td>0x1C400 - 0x1C41C</td><td><a href="#KEY_8_">KEY[8]</a></td><td>R</td><td>One 32-bit word of ML-KEM shared key output. Written by hardware<br>when key is ready; read by KM firmware to consume. Hardware clears<br>all words to 0 when KEY_CTRL.KEY_VALID is cleared (via hwclr).</td></tr>
+<tr><td>0x1C420</td><td><a href="#abr_wrapper_key.MLKEM_SHARED_KEY.KEY_CTRL">abr_wrapper_key.MLKEM_SHARED_KEY.KEY_CTRL</a></td><td>RW</td><td>Shared-key control. HW sets KEY_VALID when a new key is ready.<br>Firmware writes 0 to clear (consume and zeroize).</td></tr>
+<tr><td>0x1C424</td><td><a href="#abr_wrapper_key.MLKEM_SHARED_KEY.IRQ_STATUS">abr_wrapper_key.MLKEM_SHARED_KEY.IRQ_STATUS</a></td><td>RW</td><td>Interrupt status for ML-KEM shared key. Sticky bit set by<br>hardware when a new shared key becomes valid; cleared by writing 1.</td></tr>
+<tr><td>0x1C428</td><td><a href="#abr_wrapper_key.MLKEM_SHARED_KEY.IRQ_ENABLE">abr_wrapper_key.MLKEM_SHARED_KEY.IRQ_ENABLE</a></td><td>RW</td><td>Interrupt enable for ML-KEM shared key. Mask for the<br>PicoRV32 IRQ vector bit driven by the shared-key-valid event.</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="KM_WRITE_DATA">KM_WRITE_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -277,10 +431,10 @@
 <tr><td>31:26</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
 <tr><td>25</td><td>outbound_separator</td><td>R</td><td>0x0</td><td>Message separator: 1 if the last word read from outbound FIFO had the separator bit set (last word of message). Read-only, not sticky.</td></tr>
 <tr><td>24</td><td>inbound_separator</td><td>R</td><td>0x0</td><td>Message separator: 1 if the last word read from inbound FIFO had the separator bit set (last word of message). Read-only, not sticky.</td></tr>
-<tr><td>23</td><td>outbound_underflow</td><td>RW</td><td>0x0</td><td>Outbound FIFO underflow detected (read attempted when empty). Sticky, write 1 to clear.</td></tr>
-<tr><td>22</td><td>inbound_underflow</td><td>RW</td><td>0x0</td><td>Inbound FIFO underflow detected (read attempted when empty). Sticky, write 1 to clear.</td></tr>
-<tr><td>21</td><td>outbound_overflow</td><td>RW</td><td>0x0</td><td>Outbound FIFO overflow detected (write attempted when full). Sticky, write 1 to clear.</td></tr>
-<tr><td>20</td><td>inbound_overflow</td><td>RW</td><td>0x0</td><td>Inbound FIFO overflow detected (write attempted when full). Sticky, write 1 to clear.</td></tr>
+<tr><td>23</td><td>outbound_underflow</td><td>RW1C</td><td>0x0</td><td>Outbound FIFO underflow detected (read attempted when empty). Sticky, write 1 to clear.</td></tr>
+<tr><td>22</td><td>inbound_underflow</td><td>RW1C</td><td>0x0</td><td>Inbound FIFO underflow detected (read attempted when empty). Sticky, write 1 to clear.</td></tr>
+<tr><td>21</td><td>outbound_overflow</td><td>RW1C</td><td>0x0</td><td>Outbound FIFO overflow detected (write attempted when full). Sticky, write 1 to clear.</td></tr>
+<tr><td>20</td><td>inbound_overflow</td><td>RW1C</td><td>0x0</td><td>Inbound FIFO overflow detected (write attempted when full). Sticky, write 1 to clear.</td></tr>
 <tr><td>19:12</td><td>outbound_depth</td><td>R</td><td>0x0</td><td>Outbound FIFO fill level (number of words in FIFO)</td></tr>
 <tr><td>11:4</td><td>inbound_depth</td><td>R</td><td>0x0</td><td>Inbound FIFO fill level (number of words in FIFO)</td></tr>
 <tr><td>3</td><td>outbound_full</td><td>R</td><td>0x0</td><td>Outbound FIFO is full (cannot write more data)</td></tr>
@@ -292,9 +446,9 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:5</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
-<tr><td>4</td><td>flushed_by_sep</td><td>RW</td><td>0x0</td><td>SEP performed a mailbox flush. Sticky, write 1 to clear.</td></tr>
-<tr><td>3</td><td>inbound_underflow</td><td>RW</td><td>0x0</td><td>Inbound FIFO underflow detected. Sticky, write 1 to clear.</td></tr>
-<tr><td>2</td><td>outbound_overflow</td><td>RW</td><td>0x0</td><td>Outbound FIFO overflow detected. Sticky, write 1 to clear.</td></tr>
+<tr><td>4</td><td>flushed_by_sep</td><td>RW1C</td><td>0x0</td><td>SEP performed a mailbox flush. Sticky, write 1 to clear.</td></tr>
+<tr><td>3</td><td>inbound_underflow</td><td>RW1C</td><td>0x0</td><td>Inbound FIFO underflow detected. Sticky, write 1 to clear.</td></tr>
+<tr><td>2</td><td>outbound_overflow</td><td>RW1C</td><td>0x0</td><td>Outbound FIFO overflow detected. Sticky, write 1 to clear.</td></tr>
 <tr><td>1</td><td>outbound_write_space_avail</td><td>R</td><td>0x0</td><td>Outbound FIFO has space available for KM to write (level-sensitive). 1 = space available, 0 = full.</td></tr>
 <tr><td>0</td><td>inbound_read_data_avail</td><td>R</td><td>0x0</td><td>Inbound FIFO has data available for KM to read (level-sensitive). 1 = data available, 0 = empty.</td></tr>
 </table>
@@ -319,91 +473,93 @@
 <h3 id="LOCKS">LOCKS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63</td><td>SEP_SYS_ID_READ_LOCK</td><td>RW</td><td>0x0</td><td>sep_sys_id_read_lock (slot 31): when set, SEP_SYS_ID is not read-able.</td></tr>
-<tr><td>62</td><td>SEP_SYS_ID_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>sep_sys_id_write_lock (slot 31): when set, SEP_SYS_ID is not write-able.</td></tr>
-<tr><td>61</td><td>SEP_SIP_ID_READ_LOCK</td><td>RW</td><td>0x0</td><td>sep_sip_id_read_lock (slot 30): when set, SEP_SIP_ID is not read-able.</td></tr>
-<tr><td>60</td><td>SEP_SIP_ID_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>sep_sip_id_write_lock (slot 30): when set, SEP_SIP_ID is not write-able.</td></tr>
-<tr><td>59</td><td>SEP_CHIPLET_ID_READ_LOCK</td><td>RW</td><td>0x0</td><td>sep_chiplet_id_read_lock (slot 29): when set, SEP_CHIPLET_ID is not read-able.</td></tr>
-<tr><td>58</td><td>SEP_CHIPLET_ID_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>sep_chiplet_id_write_lock (slot 29): when set, SEP_CHIPLET_ID is not write-able.</td></tr>
-<tr><td>57</td><td>SIP_PUBK_PQC_HASH1_READ_LOCK</td><td>RW</td><td>0x0</td><td>sip_pubk_pqc_hash1_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>56</td><td>SIP_PUBK_PQC_HASH1_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>sip_pubk_pqc_hash1_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>55</td><td>SIP_PUBK_HASH1_READ_LOCK</td><td>RW</td><td>0x0</td><td>sip_pubk_hash1_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>54</td><td>SIP_PUBK_HASH1_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>sip_pubk_hash1_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>53</td><td>SYS_PUBK_PQC_HASH_READ_LOCK</td><td>RW</td><td>0x0</td><td>sys_pubk_pqc_hash_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>52</td><td>SYS_PUBK_PQC_HASH_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>sys_pubk_pqc_hash_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>51</td><td>SIP_PUBK_PQC_HASH0_READ_LOCK</td><td>RW</td><td>0x0</td><td>sip_pubk_pqc_hash0_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>50</td><td>SIP_PUBK_PQC_HASH0_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>sip_pubk_pqc_hash0_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>49</td><td>CHIPLET_PUBK_PQC_HASH1_READ_LOCK</td><td>RW</td><td>0x0</td><td>chiplet_pubk_pqc_hash1_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>48</td><td>CHIPLET_PUBK_PQC_HASH1_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>chiplet_pubk_pqc_hash1_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>47</td><td>CHIPLET_PUBK_PQC_HASH0_READ_LOCK</td><td>RW</td><td>0x0</td><td>chiplet_pubk_pqc_hash0_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>46</td><td>CHIPLET_PUBK_PQC_HASH0_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>chiplet_pubk_pqc_hash0_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>45</td><td>REQUIRED_ALGS_READ_LOCK</td><td>RW</td><td>0x0</td><td>required_algs_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>44</td><td>REQUIRED_ALGS_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>required_algs_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>43</td><td>REQUIRED_SIGNERS_READ_LOCK</td><td>RW</td><td>0x0</td><td>required_signers_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>42</td><td>REQUIRED_SIGNERS_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>required_signers_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>41</td><td>CHIPLET_PUBK_HASH1_READ_LOCK</td><td>RW</td><td>0x0</td><td>chiplet_pubk_hash1_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>40</td><td>CHIPLET_PUBK_HASH1_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>chiplet_pubk_hash1_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>39</td><td>CHIPLET_PUBK_HASH0_READ_LOCK</td><td>RW</td><td>0x0</td><td>chiplet_pubk_hash0_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>38</td><td>CHIPLET_PUBK_HASH0_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>chiplet_pubk_hash0_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>37</td><td>SPI_CONFIG_EN_READ_LOCK</td><td>RW</td><td>0x0</td><td>spi_config_en_read_lock, when set, the SPI_CONFIG group is not read-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>36</td><td>SPI_CONFIG_EN_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>spi_config_en_write_lock, when set, the SPI_CONFIG group is not write-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>35</td><td>ROM_CTL_READ_LOCK</td><td>RW</td><td>0x0</td><td>rom_ctl_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>34</td><td>ROM_CTL_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>rom_ctl_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>33</td><td>STATUS_RPT_READ_LOCK</td><td>RW</td><td>0x0</td><td>status_rpt_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>32</td><td>STATUS_RPT_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>status_rpt_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>31</td><td>SYS_UID_READ_LOCK</td><td>RW</td><td>0x0</td><td>sys_uid_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>30</td><td>SYS_UID_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>sys_uid_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>29</td><td>SYS_PUBK_HASH_READ_LOCK</td><td>RW</td><td>0x0</td><td>sys_pubk_hash_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>28</td><td>SYS_PUBK_HASH_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>sys_pubk_hash_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>27</td><td>SIP_UID_READ_LOCK</td><td>RW</td><td>0x0</td><td>sip_uid_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>26</td><td>SIP_UID_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>sip_uid_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>25</td><td>SIP_PUBK_HASH0_READ_LOCK</td><td>RW</td><td>0x0</td><td>sip_pubk_hash0_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>24</td><td>SIP_PUBK_HASH0_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>sip_pubk_hash0_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>23</td><td>CHIPLET_UID_READ_LOCK</td><td>RW</td><td>0x0</td><td>chiplet_uid_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>22</td><td>CHIPLET_UID_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>chiplet_uid_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>21</td><td>BL2_VERSION_READ_LOCK</td><td>RW</td><td>0x0</td><td>bl2_version_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>20</td><td>BL2_VERSION_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>bl2_version_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>19</td><td>BL1_VERSION_READ_LOCK</td><td>RW</td><td>0x0</td><td>bl1_version_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>18</td><td>BL1_VERSION_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>bl1_version_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>17</td><td>CHIPLET_PUBK_REVOKE_READ_LOCK</td><td>RW</td><td>0x0</td><td>chiplet_pubk_revoke_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>16</td><td>CHIPLET_PUBK_REVOKE_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>chiplet_pubk_revoke_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>15</td><td>CLASS_KEY_READ_LOCK</td><td>RW</td><td>0x0</td><td>class_key_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>14</td><td>CLASS_KEY_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>class_key_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>13</td><td>RMA_CHIPLET_TOKEN_DIGEST_READ_LOCK</td><td>RW</td><td>0x0</td><td>rma_chiplet_token_digest_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>12</td><td>RMA_CHIPLET_TOKEN_DIGEST_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>rma_chiplet_token_digest_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>11</td><td>RMA_SIP_TOKEN_DIGEST_READ_LOCK</td><td>RW</td><td>0x0</td><td>rma_sip_token_digest_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>10</td><td>RMA_SIP_TOKEN_DIGEST_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>rma_sip_token_digest_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>9</td><td>SYS_DIS_READ_LOCK</td><td>RW</td><td>0x0</td><td>sys_dis_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>8</td><td>SYS_DIS_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>sys_dis_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>7</td><td>SIP_DIS_READ_LOCK</td><td>RW</td><td>0x0</td><td>sip_dis_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>6</td><td>SIP_DIS_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>sip_dis_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>5</td><td>TRANSIENT_RMA_EN_READ_LOCK</td><td>RW</td><td>0x0</td><td>TRANSIENT_RMA_EN_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>4</td><td>TRANSIENT_RMA_EN_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>TRANSIENT_RMA_EN_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>3</td><td>SBOOT_DIS_READ_LOCK</td><td>RW</td><td>0x0</td><td>sboot_dis_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>2</td><td>SBOOT_DIS_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>sboot_dis_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>1</td><td>LC_STATE_READ_LOCK</td><td>RW</td><td>0x0</td><td>lc_state_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>0</td><td>LC_STATE_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>lc_state_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>63</td><td>SEP_SYS_ID_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>sep_sys_id_read_lock (slot 31): when set, SEP_SYS_ID is not read-able.</td></tr>
+<tr><td>62</td><td>SEP_SYS_ID_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>sep_sys_id_write_lock (slot 31): when set, SEP_SYS_ID is not write-able.</td></tr>
+<tr><td>61</td><td>SEP_SIP_ID_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>sep_sip_id_read_lock (slot 30): when set, SEP_SIP_ID is not read-able.</td></tr>
+<tr><td>60</td><td>SEP_SIP_ID_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>sep_sip_id_write_lock (slot 30): when set, SEP_SIP_ID is not write-able.</td></tr>
+<tr><td>59</td><td>SEP_CHIPLET_ID_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>sep_chiplet_id_read_lock (slot 29): when set, SEP_CHIPLET_ID is not read-able.</td></tr>
+<tr><td>58</td><td>SEP_CHIPLET_ID_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>sep_chiplet_id_write_lock (slot 29): when set, SEP_CHIPLET_ID is not write-able.</td></tr>
+<tr><td>57</td><td>SIP_PUBK_PQC_HASH1_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>sip_pubk_pqc_hash1_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>56</td><td>SIP_PUBK_PQC_HASH1_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>sip_pubk_pqc_hash1_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>55</td><td>SIP_PUBK_HASH1_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>sip_pubk_hash1_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>54</td><td>SIP_PUBK_HASH1_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>sip_pubk_hash1_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>53</td><td>SYS_PUBK_PQC_HASH_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>sys_pubk_pqc_hash_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>52</td><td>SYS_PUBK_PQC_HASH_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>sys_pubk_pqc_hash_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>51</td><td>SIP_PUBK_PQC_HASH0_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>sip_pubk_pqc_hash0_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>50</td><td>SIP_PUBK_PQC_HASH0_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>sip_pubk_pqc_hash0_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>49</td><td>CHIPLET_PUBK_PQC_HASH1_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>chiplet_pubk_pqc_hash1_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>48</td><td>CHIPLET_PUBK_PQC_HASH1_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>chiplet_pubk_pqc_hash1_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>47</td><td>CHIPLET_PUBK_PQC_HASH0_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>chiplet_pubk_pqc_hash0_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>46</td><td>CHIPLET_PUBK_PQC_HASH0_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>chiplet_pubk_pqc_hash0_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>45</td><td>REQUIRED_ALGS_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>required_algs_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>44</td><td>REQUIRED_ALGS_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>required_algs_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>43</td><td>REQUIRED_SIGNERS_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>required_signers_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>42</td><td>REQUIRED_SIGNERS_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>required_signers_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>41</td><td>CHIPLET_PUBK_HASH1_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>chiplet_pubk_hash1_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>40</td><td>CHIPLET_PUBK_HASH1_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>chiplet_pubk_hash1_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>39</td><td>CHIPLET_PUBK_HASH0_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>chiplet_pubk_hash0_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>38</td><td>CHIPLET_PUBK_HASH0_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>chiplet_pubk_hash0_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>37</td><td>SYSCLK_FREQ_MHZ_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>sysclk_freq_mhz_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>36</td><td>SYSCLK_FREQ_MHZ_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>sysclk_freq_mhz_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>35</td><td>ROM_CTL_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>rom_ctl_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>34</td><td>ROM_CTL_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>rom_ctl_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>33</td><td>STATUS_RPT_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>status_rpt_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>32</td><td>STATUS_RPT_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>status_rpt_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>31</td><td>SYS_UID_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>sys_uid_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>30</td><td>SYS_UID_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>sys_uid_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>29</td><td>SYS_PUBK_HASH_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>sys_pubk_hash_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>28</td><td>SYS_PUBK_HASH_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>sys_pubk_hash_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>27</td><td>SIP_UID_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>sip_uid_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>26</td><td>SIP_UID_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>sip_uid_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>25</td><td>SIP_PUBK_HASH0_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>sip_pubk_hash0_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>24</td><td>SIP_PUBK_HASH0_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>sip_pubk_hash0_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>23</td><td>CHIPLET_UID_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>chiplet_uid_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>22</td><td>CHIPLET_UID_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>chiplet_uid_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>21</td><td>BL2_VERSION_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>bl2_version_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>20</td><td>BL2_VERSION_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>bl2_version_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>19</td><td>BL1_VERSION_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>bl1_version_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>18</td><td>BL1_VERSION_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>bl1_version_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>17</td><td>CHIPLET_PUBK_REVOKE_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>chiplet_pubk_revoke_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>16</td><td>CHIPLET_PUBK_REVOKE_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>chiplet_pubk_revoke_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>15</td><td>CLASS_KEY_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>class_key_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>14</td><td>CLASS_KEY_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>class_key_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>13</td><td>RMA_CHIPLET_TOKEN_DIGEST_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>rma_chiplet_token_digest_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>12</td><td>RMA_CHIPLET_TOKEN_DIGEST_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>rma_chiplet_token_digest_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>11</td><td>RMA_SIP_TOKEN_DIGEST_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>rma_sip_token_digest_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>10</td><td>RMA_SIP_TOKEN_DIGEST_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>rma_sip_token_digest_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>9</td><td>SYS_DIS_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>sys_dis_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>8</td><td>SYS_DIS_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>sys_dis_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>7</td><td>SIP_DIS_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>sip_dis_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>6</td><td>SIP_DIS_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>sip_dis_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>5</td><td>TRANSIENT_RMA_EN_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>TRANSIENT_RMA_EN_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>4</td><td>TRANSIENT_RMA_EN_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>TRANSIENT_RMA_EN_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>3</td><td>SBOOT_DIS_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>sboot_dis_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>2</td><td>SBOOT_DIS_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>sboot_dis_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>1</td><td>LC_STATE_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>lc_state_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>0</td><td>LC_STATE_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>lc_state_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
 </table>
 <h3 id="LOCKS_SPARE">LOCKS_SPARE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:16</td><td>SPARE_LOCK_RSVD</td><td>RW</td><td>0x0</td><td>Unassigned lock slots 40-47. Reserved for future field lock assignments.</td></tr>
-<tr><td>15</td><td>SPARE7_READ_LOCK</td><td>RW</td><td>0x0</td><td>spare7_read_lock (slot 39): when set, spare7 is not read-able.</td></tr>
-<tr><td>14</td><td>SPARE7_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>spare7_write_lock (slot 39): when set, spare7 is not write-able.</td></tr>
-<tr><td>13</td><td>SPARE6_READ_LOCK</td><td>RW</td><td>0x0</td><td>spare6_read_lock (slot 38): when set, spare6 is not read-able.</td></tr>
-<tr><td>12</td><td>SPARE6_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>spare6_write_lock (slot 38): when set, spare6 is not write-able.</td></tr>
-<tr><td>11</td><td>SPARE5_READ_LOCK</td><td>RW</td><td>0x0</td><td>spare5_read_lock (slot 37): when set, spare5 is not read-able.</td></tr>
-<tr><td>10</td><td>SPARE5_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>spare5_write_lock (slot 37): when set, spare5 is not write-able.</td></tr>
-<tr><td>9</td><td>SPARE4_READ_LOCK</td><td>RW</td><td>0x0</td><td>spare4_read_lock (slot 36): when set, spare4 is not read-able.</td></tr>
-<tr><td>8</td><td>SPARE4_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>spare4_write_lock (slot 36): when set, spare4 is not write-able.</td></tr>
-<tr><td>7</td><td>SPARE3_READ_LOCK</td><td>RW</td><td>0x0</td><td>spare3_read_lock (slot 35): when set, spare3 is not read-able.</td></tr>
-<tr><td>6</td><td>SPARE3_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>spare3_write_lock (slot 35): when set, spare3 is not write-able.</td></tr>
-<tr><td>5</td><td>SPARE2_READ_LOCK</td><td>RW</td><td>0x0</td><td>spare2_read_lock (slot 34): when set, spare2 is not read-able.</td></tr>
-<tr><td>4</td><td>SPARE2_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>spare2_write_lock (slot 34): when set, spare2 is not write-able.</td></tr>
-<tr><td>3</td><td>SPARE1_READ_LOCK</td><td>RW</td><td>0x0</td><td>spare1_read_lock (slot 33): when set, spare1 is not read-able.</td></tr>
-<tr><td>2</td><td>SPARE1_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>spare1_write_lock (slot 33): when set, spare1 is not write-able.</td></tr>
-<tr><td>1</td><td>SPARE0_READ_LOCK</td><td>RW</td><td>0x0</td><td>spare0_read_lock (slot 32): when set, spare0 is not read-able.</td></tr>
-<tr><td>0</td><td>SPARE0_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>spare0_write_lock (slot 32): when set, spare0 is not write-able.</td></tr>
+<tr><td>31:18</td><td>SPARE_LOCK_RSVD</td><td>RW1S</td><td>0x0</td><td>Unassigned lock slots 41-47. Reserved for future field lock assignments.</td></tr>
+<tr><td>17</td><td>SPARE8_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>spare8_read_lock (slot 40): when set, spare8 is not read-able.</td></tr>
+<tr><td>16</td><td>SPARE8_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>spare8_write_lock (slot 40): when set, spare8 is not write-able.</td></tr>
+<tr><td>15</td><td>SPARE7_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>spare7_read_lock (slot 39): when set, spare7 is not read-able.</td></tr>
+<tr><td>14</td><td>SPARE7_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>spare7_write_lock (slot 39): when set, spare7 is not write-able.</td></tr>
+<tr><td>13</td><td>SPARE6_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>spare6_read_lock (slot 38): when set, spare6 is not read-able.</td></tr>
+<tr><td>12</td><td>SPARE6_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>spare6_write_lock (slot 38): when set, spare6 is not write-able.</td></tr>
+<tr><td>11</td><td>SPARE5_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>spare5_read_lock (slot 37): when set, spare5 is not read-able.</td></tr>
+<tr><td>10</td><td>SPARE5_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>spare5_write_lock (slot 37): when set, spare5 is not write-able.</td></tr>
+<tr><td>9</td><td>SPARE4_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>spare4_read_lock (slot 36): when set, spare4 is not read-able.</td></tr>
+<tr><td>8</td><td>SPARE4_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>spare4_write_lock (slot 36): when set, spare4 is not write-able.</td></tr>
+<tr><td>7</td><td>SPARE3_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>spare3_read_lock (slot 35): when set, spare3 is not read-able.</td></tr>
+<tr><td>6</td><td>SPARE3_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>spare3_write_lock (slot 35): when set, spare3 is not write-able.</td></tr>
+<tr><td>5</td><td>SPARE2_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>spare2_read_lock (slot 34): when set, spare2 is not read-able.</td></tr>
+<tr><td>4</td><td>SPARE2_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>spare2_write_lock (slot 34): when set, spare2 is not write-able.</td></tr>
+<tr><td>3</td><td>SPARE1_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>spare1_read_lock (slot 33): when set, spare1 is not read-able.</td></tr>
+<tr><td>2</td><td>SPARE1_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>spare1_write_lock (slot 33): when set, spare1 is not write-able.</td></tr>
+<tr><td>1</td><td>SPARE0_READ_LOCK</td><td>RW1S</td><td>0x0</td><td>spare0_read_lock (slot 32): when set, spare0 is not read-able.</td></tr>
+<tr><td>0</td><td>SPARE0_WRITE_LOCK</td><td>RW1S</td><td>0x0</td><td>spare0_write_lock (slot 32): when set, spare0 is not write-able.</td></tr>
 </table>
 <h3 id="LC_STATE">LC_STATE</h3>
 <table>
@@ -426,32 +582,26 @@
 <h3 id="SIP_DIS">SIP_DIS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:48</td><td>func_reserved</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined functional feature gating (bits 63:48).</td></tr>
-<tr><td>47:39</td><td>test_reserved</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined test scan chains (bits 47:39).</td></tr>
-<tr><td>38</td><td>fuse_vendor_test</td><td>RW</td><td>0x0</td><td>FUSE_VENDOR_TEST (bit 38): 1&#x27;b1: OTP IP-vendor test and calibration interface is disabled. 1&#x27;b0: enabled. Used during ATE for vendor-specific OTP test and internal-voltage calibration. TODO(AMBIG-5): No RTL consumer exists for this bit in the current implementation. Arch must define the forwarding path before this bit can be enforced.</td></tr>
-<tr><td>37</td><td>smc_fuse_test</td><td>RW</td><td>0x0</td><td>SMC_FUSE_TEST (bit 37): 1&#x27;b1: SMC fuse controller and fuse-block interface scan is disabled. 1&#x27;b0: enabled. Exported on SEP boundary; consumed by SMC to gate its fuse-test path. TODO(AMBIG-5): No SEP output port for this bit exists and the SMC feat_ctrl_i port is deleted — this bit has no RTL consumer in the current implementation. Arch must define the forwarding path (e.g. a new SEP output) before this bit can enforce its intent.</td></tr>
-<tr><td>36:33</td><td>test_reserved_lo</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined test scan chains (bits 36:33).</td></tr>
-<tr><td>32</td><td>sep_fuse_test</td><td>RW</td><td>0x0</td><td>SEP_FUSE_TEST (bit 32): 1&#x27;b1: SEP fuse controller and fuse-block interface scan is disabled. 1&#x27;b0: enabled.</td></tr>
-<tr><td>31:17</td><td>debug_reserved_dbg2</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined DBG_2 debug scan chains (bits 31:17).</td></tr>
-<tr><td>16</td><td>sip_debug</td><td>RW</td><td>0x0</td><td>SIP_DBG (bit 16): Coarse-grained debug enable for the inter-chiplet debug-bypass path (e.g. forwarding external debug to downstream chiplets via outbound JTAG PTAP). 1&#x27;b1: disabled. 1&#x27;b0: enabled.</td></tr>
-<tr><td>15:2</td><td>debug_reserved_dbg1</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined DBG_1 debug scan chains (bits 15:2).</td></tr>
-<tr><td>1</td><td>chiplet_dbg</td><td>RW</td><td>0x0</td><td>CHIPLET_DBG (bit 1): Coarse-grained debug enable for the chiplet scope. 1&#x27;b1: chiplet-scope debug/scan-dump access disabled. 1&#x27;b0: enabled. Does not gate the crypto/KM secret-bearing chain.</td></tr>
-<tr><td>0</td><td>sep_debug</td><td>RW</td><td>0x0</td><td>SEP_DBG (bit 0): Coarse-grained debug enable for the SEP scope. 1&#x27;b1: SEP-scope debug/scan-dump access disabled and external inbound traffic is filtered. 1&#x27;b0: enabled.</td></tr>
+<tr><td>63:48</td><td>func_reserved</td><td>RW1S</td><td>0x0</td><td>Reserved for adopter-defined functional feature gating (bits 63:48).</td></tr>
+<tr><td>47:25</td><td>debug_reserved_dbg2</td><td>RW1S</td><td>0x0</td><td>Reserved for adopter-defined inter-chiplet-bypass (DBG_2) debug scan chains (bits 47:25).</td></tr>
+<tr><td>24</td><td>sip_debug</td><td>RW1S</td><td>0x0</td><td>SIP_DBG (bit 24): Coarse-grained debug enable for the SiP scope: the inter-chiplet debug-bypass gate that admits external (PTAP) debug traffic into this chiplet and forwards it onward to the next chiplet via the outbound JTAG PTAP. 1&#x27;b1: disabled. 1&#x27;b0: enabled.</td></tr>
+<tr><td>23:4</td><td>debug_reserved_dbg1</td><td>RW1S</td><td>0x0</td><td>Reserved for adopter-defined local (DBG_1) debug scan chains (bits 23:4).</td></tr>
+<tr><td>3</td><td>smc_fuse_dbg</td><td>RW1S</td><td>0x0</td><td>SMC_FUSE_DBG (bit 3): 1&#x27;b1: the DFT-inserted access path into the SMC OTP is disabled. 1&#x27;b0: enabled. Produced by SEP-LCC feat_ctrl_o, exported on the SEP boundary, and consumed by SMC to gate its own inserted fuse path.</td></tr>
+<tr><td>2</td><td>sep_fuse_dbg</td><td>RW1S</td><td>0x0</td><td>SEP_FUSE_DBG (bit 2): 1&#x27;b1: the DFT-inserted access path into the SEP OTP is disabled. 1&#x27;b0: enabled. Also covers the OTP IP-vendor test and calibration interface, which is reachable only over that inserted path. The functional JTAG2AXIL path to the OTP is always available and is not gated by this bit.</td></tr>
+<tr><td>1</td><td>chiplet_dbg</td><td>RW1S</td><td>0x0</td><td>CHIPLET_DBG (bit 1): Coarse-grained debug enable for the chiplet scope. 1&#x27;b1: chiplet-scope debug/scan-dump access disabled. 1&#x27;b0: enabled. Never acts alone: an external debugger reaches chiplet-internal resources only when SIP_DBG is open as well. Contributes to the reachability of the crypto/KM secure chain but never authorizes a dump from it.</td></tr>
+<tr><td>0</td><td>sep_debug</td><td>RW1S</td><td>0x0</td><td>SEP_DBG (bit 0): Coarse-grained debug enable for the SEP scope. 1&#x27;b1: SEP-scope debug/scan-dump access disabled and external inbound traffic is filtered. 1&#x27;b0: enabled. A local gate only: reaching SEP internal state from an external debugger additionally requires SIP_DBG and CHIPLET_DBG.</td></tr>
 </table>
 <h3 id="SYS_DIS">SYS_DIS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:48</td><td>func_reserved</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined functional feature gating (bits 63:48).</td></tr>
-<tr><td>47:39</td><td>test_reserved</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined test scan chains (bits 47:39).</td></tr>
-<tr><td>38</td><td>fuse_vendor_test</td><td>RW</td><td>0x0</td><td>FUSE_VENDOR_TEST (bit 38): 1&#x27;b1: OTP IP-vendor test and calibration interface is disabled. 1&#x27;b0: enabled. Used during ATE for vendor-specific OTP test and internal-voltage calibration. TODO(AMBIG-5): No RTL consumer exists for this bit in the current implementation. Arch must define the forwarding path before this bit can be enforced.</td></tr>
-<tr><td>37</td><td>smc_fuse_test</td><td>RW</td><td>0x0</td><td>SMC_FUSE_TEST (bit 37): 1&#x27;b1: SMC fuse controller and fuse-block interface scan is disabled. 1&#x27;b0: enabled. Exported on SEP boundary; consumed by SMC to gate its fuse-test path. TODO(AMBIG-5): No SEP output port for this bit exists and the SMC feat_ctrl_i port is deleted — this bit has no RTL consumer in the current implementation. Arch must define the forwarding path (e.g. a new SEP output) before this bit can enforce its intent.</td></tr>
-<tr><td>36:33</td><td>test_reserved_lo</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined test scan chains (bits 36:33).</td></tr>
-<tr><td>32</td><td>sep_fuse_test</td><td>RW</td><td>0x0</td><td>SEP_FUSE_TEST (bit 32): 1&#x27;b1: SEP fuse controller and fuse-block interface scan is disabled. 1&#x27;b0: enabled.</td></tr>
-<tr><td>31:17</td><td>debug_reserved_dbg2</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined DBG_2 debug scan chains (bits 31:17).</td></tr>
-<tr><td>16</td><td>sip_debug</td><td>RW</td><td>0x0</td><td>SIP_DBG (bit 16): Coarse-grained debug enable for the inter-chiplet debug-bypass path (e.g. forwarding external debug to downstream chiplets via outbound JTAG PTAP). 1&#x27;b1: disabled. 1&#x27;b0: enabled.</td></tr>
-<tr><td>15:2</td><td>debug_reserved_dbg1</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined DBG_1 debug scan chains (bits 15:2).</td></tr>
-<tr><td>1</td><td>chiplet_dbg</td><td>RW</td><td>0x0</td><td>CHIPLET_DBG (bit 1): Coarse-grained debug enable for the chiplet scope. 1&#x27;b1: chiplet-scope debug/scan-dump access disabled. 1&#x27;b0: enabled. Does not gate the crypto/KM secret-bearing chain.</td></tr>
-<tr><td>0</td><td>sep_debug</td><td>RW</td><td>0x0</td><td>SEP_DBG (bit 0): Coarse-grained debug enable for the SEP scope. 1&#x27;b1: SEP-scope debug/scan-dump access disabled and external inbound traffic is filtered. 1&#x27;b0: enabled.</td></tr>
+<tr><td>63:48</td><td>func_reserved</td><td>RW1S</td><td>0x0</td><td>Reserved for adopter-defined functional feature gating (bits 63:48).</td></tr>
+<tr><td>47:25</td><td>debug_reserved_dbg2</td><td>RW1S</td><td>0x0</td><td>Reserved for adopter-defined inter-chiplet-bypass (DBG_2) debug scan chains (bits 47:25).</td></tr>
+<tr><td>24</td><td>sip_debug</td><td>RW1S</td><td>0x0</td><td>SIP_DBG (bit 24): Coarse-grained debug enable for the SiP scope: the inter-chiplet debug-bypass gate that admits external (PTAP) debug traffic into this chiplet and forwards it onward to the next chiplet via the outbound JTAG PTAP. 1&#x27;b1: disabled. 1&#x27;b0: enabled.</td></tr>
+<tr><td>23:4</td><td>debug_reserved_dbg1</td><td>RW1S</td><td>0x0</td><td>Reserved for adopter-defined local (DBG_1) debug scan chains (bits 23:4).</td></tr>
+<tr><td>3</td><td>smc_fuse_dbg</td><td>RW1S</td><td>0x0</td><td>SMC_FUSE_DBG (bit 3): 1&#x27;b1: the DFT-inserted access path into the SMC OTP is disabled. 1&#x27;b0: enabled. Produced by SEP-LCC feat_ctrl_o, exported on the SEP boundary, and consumed by SMC to gate its own inserted fuse path.</td></tr>
+<tr><td>2</td><td>sep_fuse_dbg</td><td>RW1S</td><td>0x0</td><td>SEP_FUSE_DBG (bit 2): 1&#x27;b1: the DFT-inserted access path into the SEP OTP is disabled. 1&#x27;b0: enabled. Also covers the OTP IP-vendor test and calibration interface, which is reachable only over that inserted path. The functional JTAG2AXIL path to the OTP is always available and is not gated by this bit.</td></tr>
+<tr><td>1</td><td>chiplet_dbg</td><td>RW1S</td><td>0x0</td><td>CHIPLET_DBG (bit 1): Coarse-grained debug enable for the chiplet scope. 1&#x27;b1: chiplet-scope debug/scan-dump access disabled. 1&#x27;b0: enabled. Never acts alone: an external debugger reaches chiplet-internal resources only when SIP_DBG is open as well. Contributes to the reachability of the crypto/KM secure chain but never authorizes a dump from it.</td></tr>
+<tr><td>0</td><td>sep_debug</td><td>RW1S</td><td>0x0</td><td>SEP_DBG (bit 0): Coarse-grained debug enable for the SEP scope. 1&#x27;b1: SEP-scope debug/scan-dump access disabled and external inbound traffic is filtered. 1&#x27;b0: enabled. A local gate only: reaching SEP internal state from an external debugger additionally requires SIP_DBG and CHIPLET_DBG.</td></tr>
 </table>
 <h3 id="RMA_SIP_TOKEN_DIGEST">RMA_SIP_TOKEN_DIGEST</h3>
 <table>
@@ -521,52 +671,11 @@
 <tr><td>5:1</td><td>rom_swap_ctrl</td><td>R</td><td>0x0</td><td>controls how the rom slices are swapped</td></tr>
 <tr><td>0</td><td>rom_endianness_ctrl</td><td>R</td><td>0x0</td><td>controls the endianness of the rom data out. 0-&gt;little endian; 1-&gt;big endian</td></tr>
 </table>
-<h3 id="SEP_SPI_CTRL_FIELD_EN">SEP_SPI_CTRL_FIELD_EN</h3>
+<h3 id="SYSCLK_FREQ_MHZ">SYSCLK_FREQ_MHZ</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:19</td><td>spi_control_field_en_rsvd</td><td>R</td><td>0x0</td><td>Reserved 13 bits</td></tr>
-<tr><td>18:8</td><td>smu_pll_sysclk</td><td>R</td><td>0x0</td><td>11 bits that indicates the configured sysclk PLL frequency in MHz; ignored if 0</td></tr>
-<tr><td>7:0</td><td>spi_control_field_en</td><td>R</td><td>0x0</td><td>8 bit which indicates the following 8 spi config regs are enabled or not. SPI_CONFIG_EN[7:0] corresponds to SPI config words 1-8. When bit N is set, configuration register N+1 is valid in fuses and will be written into the specified SPI configuration register during SPI controller initialization. 1-&gt;enabled; 0-&gt;disabled</td></tr>
-</table>
-<h3 id="SPI_DISCOVERY_CTRL">SPI_DISCOVERY_CTRL</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>discovery</td><td>R</td><td>0x0</td><td>spi discovery control reg</td></tr>
-</table>
-<h3 id="SPI_PHY_DQ_TIMING">SPI_PHY_DQ_TIMING</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>dq_timing</td><td>R</td><td>0x0</td><td>spi phy dq timing reg</td></tr>
-</table>
-<h3 id="SPI_PHY_DQS_TIMING">SPI_PHY_DQS_TIMING</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>dqs_timing</td><td>R</td><td>0x0</td><td>spi phy dqs timing reg</td></tr>
-</table>
-<h3 id="SPI_PHY_GATE_LPBK">SPI_PHY_GATE_LPBK</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>gate_lpbk</td><td>R</td><td>0x0</td><td>spi phy gate lpbk ctrl reg</td></tr>
-</table>
-<h3 id="SPI_PHY_DLL_SLAVE">SPI_PHY_DLL_SLAVE</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>dll_slave</td><td>R</td><td>0x0</td><td>spi phy dll slv ctrl reg</td></tr>
-</table>
-<h3 id="SPI_PHY_DLL_MASTER">SPI_PHY_DLL_MASTER</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>dll_master</td><td>R</td><td>0x0</td><td>spi phy dll mst ctrl reg</td></tr>
-</table>
-<h3 id="SPI_PHY_MISC">SPI_PHY_MISC</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>misc</td><td>R</td><td>0x0</td><td>spi init phy misc</td></tr>
-</table>
-<h3 id="SPI_RB_VALID_TIME">SPI_RB_VALID_TIME</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>rb_valid_time</td><td>R</td><td>0x0</td><td>spi init rb valid time</td></tr>
+<tr><td>31:11</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>10:0</td><td>sysclk_freq_mhz</td><td>R</td><td>0x0</td><td>Configured sysclk PLL frequency in MHz; ignored if 0. Consumed by boot ROM clock math.</td></tr>
 </table>
 <h3 id="CHIPLET_PUBK_HASH0">CHIPLET_PUBK_HASH0</h3>
 <table>
@@ -582,35 +691,35 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:2</td><td>reserved</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
-<tr><td>1:0</td><td>required_signers</td><td>RW</td><td>0x0</td><td>Owners whose signature is required to authenticate any image loadable by SEP ROM. Per owner, 1 = required, 0 = not-required; the default all-zero value requires no additional owner. [0] SiP owner, [1] system owner. The chiplet creator is the root of trust and always authenticates BL1, so it has no bit here.</td></tr>
+<tr><td>1:0</td><td>required_signers</td><td>RW1S</td><td>0x0</td><td>Owners whose signature is required to authenticate any image loadable by SEP ROM. Per owner, 1 = required, 0 = not-required; the default all-zero value requires no additional owner. [0] SiP owner, [1] system owner. The chiplet creator is the root of trust and always authenticates BL1, so it has no bit here.</td></tr>
 </table>
 <h3 id="REQUIRED_ALGS">REQUIRED_ALGS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:12</td><td>reserved</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
-<tr><td>11:8</td><td>sys_algs</td><td>RW</td><td>0x0</td><td>Per-owner required signature algorithms for system owner. bit 0 = classical, bit 1 = post-quantum (ML-DSA), bits 3:2 reserved.</td></tr>
-<tr><td>7:4</td><td>sip_algs</td><td>RW</td><td>0x0</td><td>Per-owner required signature algorithms for SiP owner. bit 0 = classical, bit 1 = post-quantum (ML-DSA), bits 3:2 reserved.</td></tr>
-<tr><td>3:0</td><td>chiplet_algs</td><td>RW</td><td>0x0</td><td>Per-owner required signature algorithms for chiplet. Each nibble: bit 0 = classical (ECDSA P-384 or RSA), bit 1 = post-quantum (ML-DSA), bits 3:2 reserved.</td></tr>
+<tr><td>11:8</td><td>sys_algs</td><td>RW1S</td><td>0x0</td><td>Per-owner required signature algorithms for system owner. bit 0 = classical, bit 1 = post-quantum (ML-DSA), bits 3:2 reserved.</td></tr>
+<tr><td>7:4</td><td>sip_algs</td><td>RW1S</td><td>0x0</td><td>Per-owner required signature algorithms for SiP owner. bit 0 = classical, bit 1 = post-quantum (ML-DSA), bits 3:2 reserved.</td></tr>
+<tr><td>3:0</td><td>chiplet_algs</td><td>RW1S</td><td>0x0</td><td>Per-owner required signature algorithms for chiplet. Each nibble: bit 0 = classical (ECDSA P-384 or RSA), bit 1 = post-quantum (ML-DSA), bits 3:2 reserved.</td></tr>
 </table>
 <h3 id="CHIPLET_PUBK_PQC_HASH0">CHIPLET_PUBK_PQC_HASH0</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Chiplet owner ML-DSA (PQC) authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</td></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Chiplet owner ML-DSA PQC authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</td></tr>
 </table>
 <h3 id="CHIPLET_PUBK_PQC_HASH1">CHIPLET_PUBK_PQC_HASH1</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Chiplet owner ML-DSA (PQC) authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</td></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Chiplet owner ML-DSA PQC authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</td></tr>
 </table>
 <h3 id="SIP_PUBK_PQC_HASH0">SIP_PUBK_PQC_HASH0</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of the SiP owner&#x27;s ML-DSA (PQC) root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</td></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of the SiP owner&#x27;s ML-DSA PQC root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</td></tr>
 </table>
 <h3 id="SYS_PUBK_PQC_HASH">SYS_PUBK_PQC_HASH</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of the system owner&#x27;s ML-DSA (PQC) root public key for secure boot. PQC counterpart of SYS_PUBK_HASH.</td></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of the system owner&#x27;s ML-DSA PQC root public key for secure boot. PQC counterpart of SYS_PUBK_HASH.</td></tr>
 </table>
 <h3 id="SIP_PUBK_HASH1">SIP_PUBK_HASH1</h3>
 <table>
@@ -620,7 +729,7 @@
 <h3 id="SIP_PUBK_PQC_HASH1">SIP_PUBK_PQC_HASH1</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of the SiP owner&#x27;s ML-DSA (PQC) root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</td></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of the SiP owner&#x27;s ML-DSA PQC root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</td></tr>
 </table>
 <h3 id="SEP_CHIPLET_ID">SEP_CHIPLET_ID</h3>
 <table>
@@ -640,50 +749,55 @@
 <h3 id="spare0">spare0</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).</td></tr>
+<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).</td></tr>
 </table>
 <h3 id="spare1">spare1</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).</td></tr>
+<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).</td></tr>
 </table>
 <h3 id="spare2">spare2</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).</td></tr>
+<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).</td></tr>
 </table>
 <h3 id="spare3">spare3</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).</td></tr>
+<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).</td></tr>
 </table>
 <h3 id="spare4">spare4</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).</td></tr>
+<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).</td></tr>
 </table>
 <h3 id="spare5">spare5</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).</td></tr>
+<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).</td></tr>
 </table>
 <h3 id="spare6">spare6</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).</td></tr>
+<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).</td></tr>
 </table>
 <h3 id="spare7">spare7</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).</td></tr>
+<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).</td></tr>
+</table>
+<h3 id="spare8">spare8</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).</td></tr>
 </table>
 <h3 id="EFUSE_INTERFACE_CTRL_STATUS">EFUSE_INTERFACE_CTRL_STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>10</td><td>efuse_read_addr_error_clear</td><td>W</td><td>0x0</td><td>Clears the read out of bounds error bit (efuse_read_addr_error) in efuse_ctrl_status</td></tr>
-<tr><td>9</td><td>efuse_program_addr_error_clear</td><td>W</td><td>0x0</td><td>Clears the program out of bounds error bit (efuse_program_addr_error) in efuse_ctrl_status</td></tr>
-<tr><td>8</td><td>efuse_req_error_clear</td><td>W</td><td>0x0</td><td>Clears the blocked request error bit in efuse_ctrl_status</td></tr>
+<tr><td>10</td><td>efuse_read_addr_error_clear</td><td>W 1P</td><td>0x0</td><td>Clears the read out of bounds error bit (efuse_read_addr_error) in efuse_ctrl_status</td></tr>
+<tr><td>9</td><td>efuse_program_addr_error_clear</td><td>W 1P</td><td>0x0</td><td>Clears the program out of bounds error bit (efuse_program_addr_error) in efuse_ctrl_status</td></tr>
+<tr><td>8</td><td>efuse_req_error_clear</td><td>W 1P</td><td>0x0</td><td>Clears the blocked request error bit in efuse_ctrl_status</td></tr>
 <tr><td>7</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>6</td><td>efuse_read_addr_error</td><td>R</td><td>0x0</td><td>Indicates that an invalid eFuse read address was used (address exceeds the implemented eFuse size). The error must be cleared by writing 1 to efuse_read_addr_error_clear.</td></tr>
 <tr><td>5</td><td>efuse_program_addr_error</td><td>R</td><td>0x0</td><td>Indicates that an invalid eFuse program address was used (address exceeds the implemented eFuse size). The error must be cleared by writing 1 to efuse_program_addr_error_clear.</td></tr>
@@ -701,7 +815,7 @@
 <tr><td>24</td><td>program_busy</td><td>R</td><td>0x0</td><td>When set, the program is in progress</td></tr>
 <tr><td>23:19</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>18</td><td>efuse_program_read_back</td><td>RW</td><td>0x0</td><td>When set, trigger a read back after a program</td></tr>
-<tr><td>17</td><td>efuse_program_go</td><td>RW</td><td>0x0</td><td>When set, triggers a program to the eFuse.  This will be ignored if the lock bit is set</td></tr>
+<tr><td>17</td><td>efuse_program_go</td><td>RW 1P</td><td>0x0</td><td>When set, triggers a program to the eFuse.  This will be ignored if the lock bit is set</td></tr>
 <tr><td>16</td><td>efuse_data</td><td>RW</td><td>0x0</td><td>Data to program to eFuse.  If this bit is 0, the program request will be ignored</td></tr>
 <tr><td>15:0</td><td>efuse_addr</td><td>RW</td><td>0x0</td><td>Bit address to program</td></tr>
 </table>
@@ -711,11 +825,11 @@
 <tr><td>31:29</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>28</td><td>read_enable</td><td>RW</td><td>0x0</td><td>When set, enables the read request</td></tr>
 <tr><td>27</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>26</td><td>read_status</td><td>R</td><td>0x0</td><td>0: No Error.  1: Logic error, assert read_go when read is not enabled</td></tr>
+<tr><td>26</td><td>read_status</td><td>R</td><td>0x0</td><td>0: No Error.  1: Error. Set when read_go is asserted while read is not enabled, the address is out of bounds, or the read request times out.</td></tr>
 <tr><td>25</td><td>read_done</td><td>R</td><td>0x0</td><td>When set, the read has completed, the status of which is in read_status</td></tr>
 <tr><td>24</td><td>read_busy</td><td>R</td><td>0x0</td><td>When set, the read is in progress</td></tr>
 <tr><td>23:17</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>16</td><td>efuse_read_go</td><td>RW</td><td>0x0</td><td>When set, triggers a read to efuse.</td></tr>
+<tr><td>16</td><td>efuse_read_go</td><td>RW 1P</td><td>0x0</td><td>When set, triggers a read to efuse.</td></tr>
 <tr><td>15:0</td><td>efuse_addr</td><td>RW</td><td>0x0</td><td>Bit address to read</td></tr>
 </table>
 <h3 id="EFUSE_PROGRAM_INTERFACE_READ_DATA">EFUSE_PROGRAM_INTERFACE_READ_DATA</h3>
@@ -761,11 +875,11 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:17</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>16</td><td>secure_disable_token_go</td><td>W</td><td>0x0</td><td>Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.</td></tr>
+<tr><td>16</td><td>secure_disable_token_go</td><td>W 1P</td><td>0x0</td><td>Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.</td></tr>
 <tr><td>15:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>8</td><td>rma_chiplet_token_go</td><td>W</td><td>0x0</td><td>Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.</td></tr>
+<tr><td>8</td><td>rma_chiplet_token_go</td><td>W 1P</td><td>0x0</td><td>Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.</td></tr>
 <tr><td>7:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>rma_sip_token_go</td><td>W</td><td>0x0</td><td>Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.</td></tr>
+<tr><td>0</td><td>rma_sip_token_go</td><td>W 1P</td><td>0x0</td><td>Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.</td></tr>
 </table>
 <h3 id="RMA_SIP_TOKEN_MATCH">RMA_SIP_TOKEN_MATCH</h3>
 <table>
@@ -795,7 +909,322 @@
 <tr><td>7:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>rma_sip_token_fault</td><td>R</td><td>0x0</td><td>A redundancy fault was detected in the RMA_SIP_TOKEN comparators.</td></tr>
 </table>
-<h3 id="WORD_16_">WORD[16]</h3>
+<h3 id="kpv.KEY_ENTRY_0_.WORD_16_">kpv.KEY_ENTRY[0].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_1_.WORD_16_">kpv.KEY_ENTRY[1].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_2_.WORD_16_">kpv.KEY_ENTRY[2].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_3_.WORD_16_">kpv.KEY_ENTRY[3].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_4_.WORD_16_">kpv.KEY_ENTRY[4].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_5_.WORD_16_">kpv.KEY_ENTRY[5].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_6_.WORD_16_">kpv.KEY_ENTRY[6].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_7_.WORD_16_">kpv.KEY_ENTRY[7].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_8_.WORD_16_">kpv.KEY_ENTRY[8].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_9_.WORD_16_">kpv.KEY_ENTRY[9].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_10_.WORD_16_">kpv.KEY_ENTRY[10].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_11_.WORD_16_">kpv.KEY_ENTRY[11].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_12_.WORD_16_">kpv.KEY_ENTRY[12].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_13_.WORD_16_">kpv.KEY_ENTRY[13].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_14_.WORD_16_">kpv.KEY_ENTRY[14].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_15_.WORD_16_">kpv.KEY_ENTRY[15].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_16_.WORD_16_">kpv.KEY_ENTRY[16].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_17_.WORD_16_">kpv.KEY_ENTRY[17].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_18_.WORD_16_">kpv.KEY_ENTRY[18].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_19_.WORD_16_">kpv.KEY_ENTRY[19].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_20_.WORD_16_">kpv.KEY_ENTRY[20].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_21_.WORD_16_">kpv.KEY_ENTRY[21].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_22_.WORD_16_">kpv.KEY_ENTRY[22].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_23_.WORD_16_">kpv.KEY_ENTRY[23].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_24_.WORD_16_">kpv.KEY_ENTRY[24].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_25_.WORD_16_">kpv.KEY_ENTRY[25].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_26_.WORD_16_">kpv.KEY_ENTRY[26].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_27_.WORD_16_">kpv.KEY_ENTRY[27].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_28_.WORD_16_">kpv.KEY_ENTRY[28].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_29_.WORD_16_">kpv.KEY_ENTRY[29].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_30_.WORD_16_">kpv.KEY_ENTRY[30].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_31_.WORD_16_">kpv.KEY_ENTRY[31].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_32_.WORD_16_">kpv.KEY_ENTRY[32].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_33_.WORD_16_">kpv.KEY_ENTRY[33].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_34_.WORD_16_">kpv.KEY_ENTRY[34].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_35_.WORD_16_">kpv.KEY_ENTRY[35].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_36_.WORD_16_">kpv.KEY_ENTRY[36].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_37_.WORD_16_">kpv.KEY_ENTRY[37].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_38_.WORD_16_">kpv.KEY_ENTRY[38].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_39_.WORD_16_">kpv.KEY_ENTRY[39].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_40_.WORD_16_">kpv.KEY_ENTRY[40].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_41_.WORD_16_">kpv.KEY_ENTRY[41].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_42_.WORD_16_">kpv.KEY_ENTRY[42].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_43_.WORD_16_">kpv.KEY_ENTRY[43].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_44_.WORD_16_">kpv.KEY_ENTRY[44].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_45_.WORD_16_">kpv.KEY_ENTRY[45].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_46_.WORD_16_">kpv.KEY_ENTRY[46].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_47_.WORD_16_">kpv.KEY_ENTRY[47].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_48_.WORD_16_">kpv.KEY_ENTRY[48].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_49_.WORD_16_">kpv.KEY_ENTRY[49].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_50_.WORD_16_">kpv.KEY_ENTRY[50].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_51_.WORD_16_">kpv.KEY_ENTRY[51].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_52_.WORD_16_">kpv.KEY_ENTRY[52].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_53_.WORD_16_">kpv.KEY_ENTRY[53].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_54_.WORD_16_">kpv.KEY_ENTRY[54].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_55_.WORD_16_">kpv.KEY_ENTRY[55].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_56_.WORD_16_">kpv.KEY_ENTRY[56].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_57_.WORD_16_">kpv.KEY_ENTRY[57].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_58_.WORD_16_">kpv.KEY_ENTRY[58].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_59_.WORD_16_">kpv.KEY_ENTRY[59].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_60_.WORD_16_">kpv.KEY_ENTRY[60].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_61_.WORD_16_">kpv.KEY_ENTRY[61].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_62_.WORD_16_">kpv.KEY_ENTRY[62].WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="kpv.KEY_ENTRY_63_.WORD_16_">kpv.KEY_ENTRY[63].WORD[16]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
@@ -804,10 +1233,10 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:4</td><td>rsvd_31_4</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
-<tr><td>3</td><td>seal</td><td>RW</td><td>0x0</td><td>Seals this key entry until warm reset. Read-any, write-1-only. Setting this<br>bit also sets lock_write in hardware, so a single write seals the slot: its<br>data can be read but not overwritten. Erase remains available, and erasing<br>a sealed slot retires it rather than freeing it (see ERASE), so a sealed<br>slot&#x27;s material can be destroyed but its slot never reused.</td></tr>
-<tr><td>2</td><td>erase</td><td>RW</td><td>0x0</td><td>Write-1 to start hardware erase of this slot: an LFSR fills all 16 key<br>words (through the KPV scrambler). Hardware self-clears this bit when the<br>erase completes. Never blocked: neither lock_write, lock_use nor seal<br>prevents an erase. The slot&#x27;s seal state when the erase completes decides<br>the outcome. Unsealed, the slot CTRL register is cleared and the slot is<br>reusable. Sealed, lock_write stays set and lock_use is set, retiring the<br>slot: its data is destroyed and it can be neither read, rewritten nor<br>reused until warm reset. A seal taken while an erase is already in flight<br>therefore still retires the slot.</td></tr>
-<tr><td>1</td><td>lock_use</td><td>RW</td><td>0x0</td><td>Prevents KM read of this key entry data until reset. Read-any, write-1-only.<br>Hardware sets this bit when an erase of a sealed slot completes, retiring<br>the slot: its destroyed contents cannot be read back.</td></tr>
-<tr><td>0</td><td>lock_write</td><td>RW</td><td>0x0</td><td>Prevents KM write to this key entry data until reset; this register stays<br>writable so that a locked slot can still be read-locked and erased.<br>Read-any, write-1-only. Hardware holds this bit set for as long as SEAL is<br>set, so sealing a slot write-locks it without a separate write here.</td></tr>
+<tr><td>3</td><td>seal</td><td>RW1S</td><td>0x0</td><td>Seals this key entry until warm reset. Read-any, write-1-only. Setting this<br>bit also sets lock_write in hardware, so a single write seals the slot: its<br>data can be read but not overwritten. Erase remains available, and erasing<br>a sealed slot retires it rather than freeing it (see ERASE), so a sealed<br>slot&#x27;s material can be destroyed but its slot never reused.</td></tr>
+<tr><td>2</td><td>erase</td><td>RW1S</td><td>0x0</td><td>Write-1 to start hardware erase of this slot: an LFSR fills all 16 key<br>words (through the KPV scrambler). Hardware self-clears this bit when the<br>erase completes. Never blocked: neither lock_write, lock_use nor seal<br>prevents an erase. The slot&#x27;s seal state when the erase completes decides<br>the outcome. Unsealed, the slot CTRL register is cleared and the slot is<br>reusable. Sealed, lock_write stays set and lock_use is set, retiring the<br>slot: its data is destroyed and it can be neither read, rewritten nor<br>reused until warm reset. A seal taken while an erase is already in flight<br>therefore still retires the slot.</td></tr>
+<tr><td>1</td><td>lock_use</td><td>RW1S</td><td>0x0</td><td>Prevents KM read of this key entry data until reset. Read-any, write-1-only.<br>Hardware sets this bit when an erase of a sealed slot completes, retiring<br>the slot: its destroyed contents cannot be read back.</td></tr>
+<tr><td>0</td><td>lock_write</td><td>RW1S</td><td>0x0</td><td>Prevents KM write to this key entry data until reset; this register stays<br>writable so that a locked slot can still be read-locked and erased.<br>Read-any, write-1-only. Hardware holds this bit set for as long as SEAL is<br>set, so sealing a slot write-locks it without a separate write here.</td></tr>
 </table>
 <h3 id="KPV_SCRAMBLER_KEY">KPV_SCRAMBLER_KEY</h3>
 <table>
@@ -818,7 +1247,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:2</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
-<tr><td>1</td><td>lock</td><td>RW</td><td>0x0</td><td>Write-one-only. When 1, key and ENABLE cannot be modified until KM reset.</td></tr>
+<tr><td>1</td><td>lock</td><td>RW1S</td><td>0x0</td><td>Write-one-only. When 1, key and ENABLE cannot be modified until KM reset.</td></tr>
 <tr><td>0</td><td>enable</td><td>RW</td><td>0x0</td><td>1 = scramble key entry data on write, descramble on read; 0 = passthrough.</td></tr>
 </table>
 <h3 id="VERSION">VERSION</h3>
@@ -839,24 +1268,24 @@
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>code</td><td>RW</td><td>0x0</td><td>32-bit reset code. Write 0x53525354 to trigger soft reset.</td></tr>
 </table>
-<h3 id="IRQ_STATUS">IRQ_STATUS</h3>
+<h3 id="kmcsr.IRQ_STATUS">kmcsr.IRQ_STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:12</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
-<tr><td>11</td><td>rom_access_violation</td><td>RW</td><td>0x0</td><td>KM ROM instruction fetch or data read attempted after the ROM lockout engaged. The lockout engages on the first committed instruction fetch from write-locked SRAM once SRAM_EXEC_MODE.enable is set, and clears only on warm or cold reset. Sticky, write 1 to clear.</td></tr>
-<tr><td>10</td><td>exec_violation</td><td>RW</td><td>0x0</td><td>Instruction fetch from a non-whitelisted (non-executable) memory region detected, excluding the KM ROM. Sticky, write 1 to clear.</td></tr>
-<tr><td>9</td><td>otp_sigint</td><td>RW</td><td>0x0</td><td>OTP dual-rail encoding integrity violation: value and complement are not complementary on at least one field. Sticky, write 1 to clear.</td></tr>
-<tr><td>8</td><td>otp_change</td><td>RW</td><td>0x0</td><td>An OTP readout field value changed (decoded value differs from prior cycle). Sticky, write 1 to clear. Check OTP_CHANGE_STATUS for the specific field(s).</td></tr>
-<tr><td>7</td><td>wipe_state</td><td>RW</td><td>0x0</td><td>Wipe state event (rising edge of wipe_state input). Sticky, write 1 to clear.</td></tr>
-<tr><td>6</td><td>drbg_err</td><td>RW</td><td>0x0</td><td>DRBG Sampler error (timeout or AXI-Stream error). Sticky, write 1 to clear.</td></tr>
-<tr><td>5</td><td>axi_decerr</td><td>RW</td><td>0x0</td><td>AXI DECERR (decode error) response detected on CPU bus transaction. Sticky, write 1 to clear.</td></tr>
-<tr><td>4</td><td>axi_slverr</td><td>RW</td><td>0x0</td><td>AXI SLVERR (slave error) response detected on CPU bus transaction. Sticky, write 1 to clear.</td></tr>
-<tr><td>3</td><td>sram_write_lock_err</td><td>RW</td><td>0x0</td><td>SRAM write attempt to a write-locked region detected. Sticky, write 1 to clear.</td></tr>
-<tr><td>2</td><td>rom_write_err</td><td>RW</td><td>0x0</td><td>ROM write attempt detected (ROM is read-only). Sticky, write 1 to clear.</td></tr>
-<tr><td>1</td><td>sram_parity_err</td><td>RW</td><td>0x0</td><td>SRAM parity error detected. Sticky, write 1 to clear.</td></tr>
-<tr><td>0</td><td>rom_parity_err</td><td>RW</td><td>0x0</td><td>ROM parity error detected. Sticky, write 1 to clear.</td></tr>
+<tr><td>11</td><td>rom_access_violation</td><td>RW1C</td><td>0x0</td><td>KM ROM instruction fetch or data read attempted after the ROM lockout engaged. The lockout engages on the first committed instruction fetch from write-locked SRAM once SRAM_EXEC_MODE.enable is set, and clears only on warm or cold reset. Sticky, write 1 to clear.</td></tr>
+<tr><td>10</td><td>exec_violation</td><td>RW1C</td><td>0x0</td><td>Instruction fetch from a non-whitelisted (non-executable) memory region detected, excluding the KM ROM. Sticky, write 1 to clear.</td></tr>
+<tr><td>9</td><td>otp_sigint</td><td>RW1C</td><td>0x0</td><td>OTP dual-rail encoding integrity violation: value and complement are not complementary on at least one field. Sticky, write 1 to clear.</td></tr>
+<tr><td>8</td><td>otp_change</td><td>RW1C</td><td>0x0</td><td>An OTP readout field value changed (decoded value differs from prior cycle). Sticky, write 1 to clear. Check OTP_CHANGE_STATUS for the specific field(s).</td></tr>
+<tr><td>7</td><td>wipe_state</td><td>RW1C</td><td>0x0</td><td>Wipe state event (rising edge of wipe_state input). Sticky, write 1 to clear.</td></tr>
+<tr><td>6</td><td>drbg_err</td><td>RW1C</td><td>0x0</td><td>DRBG Sampler error (timeout or AXI-Stream error). Sticky, write 1 to clear.</td></tr>
+<tr><td>5</td><td>axi_decerr</td><td>RW1C</td><td>0x0</td><td>AXI DECERR (decode error) response detected on CPU bus transaction. Sticky, write 1 to clear.</td></tr>
+<tr><td>4</td><td>axi_slverr</td><td>RW1C</td><td>0x0</td><td>AXI SLVERR (slave error) response detected on CPU bus transaction. Sticky, write 1 to clear.</td></tr>
+<tr><td>3</td><td>sram_write_lock_err</td><td>RW1C</td><td>0x0</td><td>SRAM write attempt to a write-locked region detected. Sticky, write 1 to clear.</td></tr>
+<tr><td>2</td><td>rom_write_err</td><td>RW1C</td><td>0x0</td><td>ROM write attempt detected (ROM is read-only). Sticky, write 1 to clear.</td></tr>
+<tr><td>1</td><td>sram_parity_err</td><td>RW1C</td><td>0x0</td><td>SRAM parity error detected. Sticky, write 1 to clear.</td></tr>
+<tr><td>0</td><td>rom_parity_err</td><td>RW1C</td><td>0x0</td><td>ROM parity error detected. Sticky, write 1 to clear.</td></tr>
 </table>
-<h3 id="IRQ_ENABLE">IRQ_ENABLE</h3>
+<h3 id="kmcsr.IRQ_ENABLE">kmcsr.IRQ_ENABLE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:12</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
@@ -888,29 +1317,29 @@
 <h3 id="SRAM_LOCK">SRAM_LOCK</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>lock_bits</td><td>RW</td><td>0x0</td><td>One bit per 1 KB SRAM region. Region 0 = 0x8000-0x83FF, region 31 = 0xFC00-0xFFFF. Write 1 to lock; 0 has no effect. Warm reset domain: cleared by warm or cold reset.</td></tr>
+<tr><td>31:0</td><td>lock_bits</td><td>RW1S</td><td>0x0</td><td>One bit per 1 KB SRAM region. Region 0 = 0x8000-0x83FF, region 31 = 0xFC00-0xFFFF. Write 1 to lock; 0 has no effect. Warm reset domain: cleared by warm or cold reset.</td></tr>
 </table>
 <h3 id="IRQ_SET">IRQ_SET</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:12</td><td>rsvd</td><td>W</td><td>0x0</td><td>Reserved (write-only; reads trigger SLVERR via err_if_bad_rw)</td></tr>
-<tr><td>11</td><td>rom_access_violation_set</td><td>W</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.ROM_ACCESS_VIOLATION (triggers ROM lockout violation interrupt for testing)</td></tr>
-<tr><td>10</td><td>exec_violation_set</td><td>W</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.EXEC_VIOLATION (triggers exec-permission violation interrupt for testing)</td></tr>
-<tr><td>9</td><td>otp_sigint_set</td><td>W</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.OTP_SIGINT (triggers OTP sigint interrupt for testing)</td></tr>
-<tr><td>8</td><td>otp_change_set</td><td>W</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.OTP_CHANGE (triggers OTP change interrupt for testing)</td></tr>
-<tr><td>7</td><td>wipe_state_set</td><td>W</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.WIPE_STATE (triggers wipe state interrupt for testing)</td></tr>
-<tr><td>6</td><td>drbg_err_set</td><td>W</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.DRBG_ERR (triggers DRBG Sampler interrupt for testing)</td></tr>
-<tr><td>5</td><td>axi_decerr_set</td><td>W</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.AXI_DECERR (triggers AXI DECERR interrupt for testing)</td></tr>
-<tr><td>4</td><td>axi_slverr_set</td><td>W</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.AXI_SLVERR (triggers AXI SLVERR interrupt for testing)</td></tr>
-<tr><td>3</td><td>sram_write_lock_err_set</td><td>W</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.SRAM_WRITE_LOCK_ERR (triggers SRAM write-lock interrupt for testing)</td></tr>
-<tr><td>2</td><td>rom_write_err_set</td><td>W</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.ROM_WRITE_ERR (triggers ROM write interrupt for testing)</td></tr>
-<tr><td>1</td><td>sram_parity_err_set</td><td>W</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.SRAM_PARITY_ERR (triggers SRAM parity interrupt for testing)</td></tr>
-<tr><td>0</td><td>rom_parity_err_set</td><td>W</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.ROM_PARITY_ERR (triggers ROM parity interrupt for testing)</td></tr>
+<tr><td>11</td><td>rom_access_violation_set</td><td>W 1P</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.ROM_ACCESS_VIOLATION (triggers ROM lockout violation interrupt for testing)</td></tr>
+<tr><td>10</td><td>exec_violation_set</td><td>W 1P</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.EXEC_VIOLATION (triggers exec-permission violation interrupt for testing)</td></tr>
+<tr><td>9</td><td>otp_sigint_set</td><td>W 1P</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.OTP_SIGINT (triggers OTP sigint interrupt for testing)</td></tr>
+<tr><td>8</td><td>otp_change_set</td><td>W 1P</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.OTP_CHANGE (triggers OTP change interrupt for testing)</td></tr>
+<tr><td>7</td><td>wipe_state_set</td><td>W 1P</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.WIPE_STATE (triggers wipe state interrupt for testing)</td></tr>
+<tr><td>6</td><td>drbg_err_set</td><td>W 1P</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.DRBG_ERR (triggers DRBG Sampler interrupt for testing)</td></tr>
+<tr><td>5</td><td>axi_decerr_set</td><td>W 1P</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.AXI_DECERR (triggers AXI DECERR interrupt for testing)</td></tr>
+<tr><td>4</td><td>axi_slverr_set</td><td>W 1P</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.AXI_SLVERR (triggers AXI SLVERR interrupt for testing)</td></tr>
+<tr><td>3</td><td>sram_write_lock_err_set</td><td>W 1P</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.SRAM_WRITE_LOCK_ERR (triggers SRAM write-lock interrupt for testing)</td></tr>
+<tr><td>2</td><td>rom_write_err_set</td><td>W 1P</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.ROM_WRITE_ERR (triggers ROM write interrupt for testing)</td></tr>
+<tr><td>1</td><td>sram_parity_err_set</td><td>W 1P</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.SRAM_PARITY_ERR (triggers SRAM parity interrupt for testing)</td></tr>
+<tr><td>0</td><td>rom_parity_err_set</td><td>W 1P</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.ROM_PARITY_ERR (triggers ROM parity interrupt for testing)</td></tr>
 </table>
 <h3 id="SRAM_WRITE_LOCK_VIOLATION">SRAM_WRITE_LOCK_VIOLATION</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>violation_bits</td><td>RW</td><td>0x0</td><td>Bit[i]=1 if region i had attempted write while locked. Sticky, write 1 to clear each bit.</td></tr>
+<tr><td>31:0</td><td>violation_bits</td><td>RW1C</td><td>0x0</td><td>Bit[i]=1 if region i had attempted write while locked. Sticky, write 1 to clear each bit.</td></tr>
 </table>
 <h3 id="RECOVERABLE_ERR">RECOVERABLE_ERR</h3>
 <table>
@@ -922,7 +1351,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
-<tr><td>0</td><td>cold_boot_done</td><td>RW</td><td>0x0</td><td>Write-1-only: set by ROM firmware at end of cold boot. Reads 0 after cold reset; reads 1 after firmware sets it. Sticky until next cold reset (preserved across warm resets).</td></tr>
+<tr><td>0</td><td>cold_boot_done</td><td>RW1S</td><td>0x0</td><td>Write-1-only: set by ROM firmware at end of cold boot. Reads 0 after cold reset; reads 1 after firmware sets it. Sticky until next cold reset (preserved across warm resets).</td></tr>
 </table>
 <h3 id="OTP_LIFE_CYCLE">OTP_LIFE_CYCLE</h3>
 <table>
@@ -941,7 +1370,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
-<tr><td>0</td><td>enable</td><td>RW</td><td>0x0</td><td>Execute-permission mode: 0=ROM-only whitelist; 1=write-locked SRAM whitelist, arming the ROM lockout. Write 1 to set; write 0 has no effect. Warm reset domain: cleared by warm or cold reset.</td></tr>
+<tr><td>0</td><td>enable</td><td>RW1S</td><td>0x0</td><td>Execute-permission mode: 0=ROM-only whitelist; 1=write-locked SRAM whitelist, arming the ROM lockout. Write 1 to set; write 0 has no effect. Warm reset domain: cleared by warm or cold reset.</td></tr>
 </table>
 <h3 id="IRQ_ENTRY_ADDR">IRQ_ENTRY_ADDR</h3>
 <table>
@@ -952,7 +1381,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved; reads as zero.</td></tr>
-<tr><td>0</td><td>lock</td><td>RW</td><td>0x0</td><td>Write 1 to set; write 0 has no effect; sticky until reset.</td></tr>
+<tr><td>0</td><td>lock</td><td>RW1S</td><td>0x0</td><td>Write 1 to set; write 0 has no effect; sticky until reset.</td></tr>
 </table>
 <h3 id="VUART_TX">VUART_TX</h3>
 <table>
@@ -1345,43 +1774,43 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:9</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
-<tr><td>8</td><td>sep_sys_id</td><td>RW</td><td>0x0</td><td>Lock OTP_SEP_SYS_ID_VAL/CPL reads (returns zero when locked)</td></tr>
-<tr><td>7</td><td>sep_sip_id</td><td>RW</td><td>0x0</td><td>Lock OTP_SEP_SIP_ID_VAL/CPL reads (returns zero when locked)</td></tr>
-<tr><td>6</td><td>sep_chiplet_id</td><td>RW</td><td>0x0</td><td>Lock OTP_SEP_CHIPLET_ID_VAL/CPL reads (returns zero when locked)</td></tr>
-<tr><td>5</td><td>class_key</td><td>RW</td><td>0x0</td><td>Lock OTP_CLASS_KEY_VAL/CPL reads (returns zero when locked)</td></tr>
-<tr><td>4</td><td>sys_uid</td><td>RW</td><td>0x0</td><td>Lock OTP_SYS_UID_VAL/CPL reads (returns zero when locked)</td></tr>
-<tr><td>3</td><td>sip_uid</td><td>RW</td><td>0x0</td><td>Lock OTP_SIP_UID_VAL/CPL reads (returns zero when locked)</td></tr>
-<tr><td>2</td><td>chiplet_uid</td><td>RW</td><td>0x0</td><td>Lock OTP_CHIPLET_UID_VAL/CPL reads (returns zero when locked)</td></tr>
-<tr><td>1</td><td>demotion</td><td>RW</td><td>0x0</td><td>Lock OTP_DEMOTION_STATE reads (returns zero when locked)</td></tr>
-<tr><td>0</td><td>life_cycle</td><td>RW</td><td>0x0</td><td>Lock OTP_LIFE_CYCLE reads (returns zero when locked)</td></tr>
+<tr><td>8</td><td>sep_sys_id</td><td>RW1S</td><td>0x0</td><td>Lock OTP_SEP_SYS_ID_VAL/CPL reads (returns zero when locked)</td></tr>
+<tr><td>7</td><td>sep_sip_id</td><td>RW1S</td><td>0x0</td><td>Lock OTP_SEP_SIP_ID_VAL/CPL reads (returns zero when locked)</td></tr>
+<tr><td>6</td><td>sep_chiplet_id</td><td>RW1S</td><td>0x0</td><td>Lock OTP_SEP_CHIPLET_ID_VAL/CPL reads (returns zero when locked)</td></tr>
+<tr><td>5</td><td>class_key</td><td>RW1S</td><td>0x0</td><td>Lock OTP_CLASS_KEY_VAL/CPL reads (returns zero when locked)</td></tr>
+<tr><td>4</td><td>sys_uid</td><td>RW1S</td><td>0x0</td><td>Lock OTP_SYS_UID_VAL/CPL reads (returns zero when locked)</td></tr>
+<tr><td>3</td><td>sip_uid</td><td>RW1S</td><td>0x0</td><td>Lock OTP_SIP_UID_VAL/CPL reads (returns zero when locked)</td></tr>
+<tr><td>2</td><td>chiplet_uid</td><td>RW1S</td><td>0x0</td><td>Lock OTP_CHIPLET_UID_VAL/CPL reads (returns zero when locked)</td></tr>
+<tr><td>1</td><td>demotion</td><td>RW1S</td><td>0x0</td><td>Lock OTP_DEMOTION_STATE reads (returns zero when locked)</td></tr>
+<tr><td>0</td><td>life_cycle</td><td>RW1S</td><td>0x0</td><td>Lock OTP_LIFE_CYCLE reads (returns zero when locked)</td></tr>
 </table>
 <h3 id="OTP_CHANGE_STATUS">OTP_CHANGE_STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:9</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
-<tr><td>8</td><td>sep_sys_id</td><td>RW</td><td>0x0</td><td>OTP_SEP_SYS_ID value changed since last cycle. Sticky, write 1 to clear.</td></tr>
-<tr><td>7</td><td>sep_sip_id</td><td>RW</td><td>0x0</td><td>OTP_SEP_SIP_ID value changed since last cycle. Sticky, write 1 to clear.</td></tr>
-<tr><td>6</td><td>sep_chiplet_id</td><td>RW</td><td>0x0</td><td>OTP_SEP_CHIPLET_ID value changed since last cycle. Sticky, write 1 to clear.</td></tr>
-<tr><td>5</td><td>class_key</td><td>RW</td><td>0x0</td><td>OTP_CLASS_KEY value changed since last cycle. Sticky, write 1 to clear.</td></tr>
-<tr><td>4</td><td>sys_uid</td><td>RW</td><td>0x0</td><td>OTP_SYS_UID value changed since last cycle. Sticky, write 1 to clear.</td></tr>
-<tr><td>3</td><td>sip_uid</td><td>RW</td><td>0x0</td><td>OTP_SIP_UID value changed since last cycle. Sticky, write 1 to clear.</td></tr>
-<tr><td>2</td><td>chiplet_uid</td><td>RW</td><td>0x0</td><td>OTP_CHIPLET_UID value changed since last cycle. Sticky, write 1 to clear.</td></tr>
-<tr><td>1</td><td>demotion</td><td>RW</td><td>0x0</td><td>OTP_DEMOTION_STATE value changed since last cycle. Sticky, write 1 to clear.</td></tr>
-<tr><td>0</td><td>life_cycle</td><td>RW</td><td>0x0</td><td>OTP_LIFE_CYCLE value changed since last cycle. Sticky, write 1 to clear.</td></tr>
+<tr><td>8</td><td>sep_sys_id</td><td>RW1C</td><td>0x0</td><td>OTP_SEP_SYS_ID value changed since last cycle. Sticky, write 1 to clear.</td></tr>
+<tr><td>7</td><td>sep_sip_id</td><td>RW1C</td><td>0x0</td><td>OTP_SEP_SIP_ID value changed since last cycle. Sticky, write 1 to clear.</td></tr>
+<tr><td>6</td><td>sep_chiplet_id</td><td>RW1C</td><td>0x0</td><td>OTP_SEP_CHIPLET_ID value changed since last cycle. Sticky, write 1 to clear.</td></tr>
+<tr><td>5</td><td>class_key</td><td>RW1C</td><td>0x0</td><td>OTP_CLASS_KEY value changed since last cycle. Sticky, write 1 to clear.</td></tr>
+<tr><td>4</td><td>sys_uid</td><td>RW1C</td><td>0x0</td><td>OTP_SYS_UID value changed since last cycle. Sticky, write 1 to clear.</td></tr>
+<tr><td>3</td><td>sip_uid</td><td>RW1C</td><td>0x0</td><td>OTP_SIP_UID value changed since last cycle. Sticky, write 1 to clear.</td></tr>
+<tr><td>2</td><td>chiplet_uid</td><td>RW1C</td><td>0x0</td><td>OTP_CHIPLET_UID value changed since last cycle. Sticky, write 1 to clear.</td></tr>
+<tr><td>1</td><td>demotion</td><td>RW1C</td><td>0x0</td><td>OTP_DEMOTION_STATE value changed since last cycle. Sticky, write 1 to clear.</td></tr>
+<tr><td>0</td><td>life_cycle</td><td>RW1C</td><td>0x0</td><td>OTP_LIFE_CYCLE value changed since last cycle. Sticky, write 1 to clear.</td></tr>
 </table>
 <h3 id="OTP_READ_LOCK_COLD">OTP_READ_LOCK_COLD</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:9</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
-<tr><td>8</td><td>sep_sys_id</td><td>RW</td><td>0x0</td><td>Cold-reset read-lock for OTP_SEP_SYS_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_sys_id | OTP_READ_LOCK_COLD.sep_sys_id.</td></tr>
-<tr><td>7</td><td>sep_sip_id</td><td>RW</td><td>0x0</td><td>Cold-reset read-lock for OTP_SEP_SIP_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_sip_id | OTP_READ_LOCK_COLD.sep_sip_id.</td></tr>
-<tr><td>6</td><td>sep_chiplet_id</td><td>RW</td><td>0x0</td><td>Cold-reset read-lock for OTP_SEP_CHIPLET_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_chiplet_id | OTP_READ_LOCK_COLD.sep_chiplet_id.</td></tr>
-<tr><td>5</td><td>class_key</td><td>RW</td><td>0x0</td><td>Cold-reset read-lock for OTP_CLASS_KEY_VAL/CPL. Effective lock = OTP_READ_LOCK.class_key | OTP_READ_LOCK_COLD.class_key.</td></tr>
-<tr><td>4</td><td>sys_uid</td><td>RW</td><td>0x0</td><td>Cold-reset read-lock for OTP_SYS_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.sys_uid | OTP_READ_LOCK_COLD.sys_uid.</td></tr>
-<tr><td>3</td><td>sip_uid</td><td>RW</td><td>0x0</td><td>Cold-reset read-lock for OTP_SIP_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.sip_uid | OTP_READ_LOCK_COLD.sip_uid.</td></tr>
-<tr><td>2</td><td>chiplet_uid</td><td>RW</td><td>0x0</td><td>Cold-reset read-lock for OTP_CHIPLET_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.chiplet_uid | OTP_READ_LOCK_COLD.chiplet_uid.</td></tr>
-<tr><td>1</td><td>demotion</td><td>RW</td><td>0x0</td><td>Cold-reset read-lock for OTP_DEMOTION_STATE. Effective lock = OTP_READ_LOCK.demotion | OTP_READ_LOCK_COLD.demotion.</td></tr>
-<tr><td>0</td><td>life_cycle</td><td>RW</td><td>0x0</td><td>Cold-reset read-lock for OTP_LIFE_CYCLE. Effective lock = OTP_READ_LOCK.life_cycle | OTP_READ_LOCK_COLD.life_cycle.</td></tr>
+<tr><td>8</td><td>sep_sys_id</td><td>RW1S</td><td>0x0</td><td>Cold-reset read-lock for OTP_SEP_SYS_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_sys_id | OTP_READ_LOCK_COLD.sep_sys_id.</td></tr>
+<tr><td>7</td><td>sep_sip_id</td><td>RW1S</td><td>0x0</td><td>Cold-reset read-lock for OTP_SEP_SIP_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_sip_id | OTP_READ_LOCK_COLD.sep_sip_id.</td></tr>
+<tr><td>6</td><td>sep_chiplet_id</td><td>RW1S</td><td>0x0</td><td>Cold-reset read-lock for OTP_SEP_CHIPLET_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_chiplet_id | OTP_READ_LOCK_COLD.sep_chiplet_id.</td></tr>
+<tr><td>5</td><td>class_key</td><td>RW1S</td><td>0x0</td><td>Cold-reset read-lock for OTP_CLASS_KEY_VAL/CPL. Effective lock = OTP_READ_LOCK.class_key | OTP_READ_LOCK_COLD.class_key.</td></tr>
+<tr><td>4</td><td>sys_uid</td><td>RW1S</td><td>0x0</td><td>Cold-reset read-lock for OTP_SYS_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.sys_uid | OTP_READ_LOCK_COLD.sys_uid.</td></tr>
+<tr><td>3</td><td>sip_uid</td><td>RW1S</td><td>0x0</td><td>Cold-reset read-lock for OTP_SIP_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.sip_uid | OTP_READ_LOCK_COLD.sip_uid.</td></tr>
+<tr><td>2</td><td>chiplet_uid</td><td>RW1S</td><td>0x0</td><td>Cold-reset read-lock for OTP_CHIPLET_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.chiplet_uid | OTP_READ_LOCK_COLD.chiplet_uid.</td></tr>
+<tr><td>1</td><td>demotion</td><td>RW1S</td><td>0x0</td><td>Cold-reset read-lock for OTP_DEMOTION_STATE. Effective lock = OTP_READ_LOCK.demotion | OTP_READ_LOCK_COLD.demotion.</td></tr>
+<tr><td>0</td><td>life_cycle</td><td>RW1S</td><td>0x0</td><td>Cold-reset read-lock for OTP_LIFE_CYCLE. Effective lock = OTP_READ_LOCK.life_cycle | OTP_READ_LOCK_COLD.life_cycle.</td></tr>
 </table>
 <h3 id="OTP_SEP_CHIPLET_ID_VAL_0">OTP_SEP_CHIPLET_ID_VAL_0</h3>
 <table>
@@ -1638,11 +2067,11 @@
 <h3 id="STATUS">STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:16</td><td>count_good</td><td>R</td><td>0x0</td><td>Successful words transferred to CPU. Saturates at 0xFFFF.</td></tr>
-<tr><td>15:8</td><td>count_bad</td><td>R</td><td>0x0</td><td>Failed transactions (timeout or error). Saturates at 0xFF.</td></tr>
+<tr><td>31:16</td><td>count_good</td><td>RW</td><td>0x0</td><td>Counts only reads completed through StRespond, excluding prefetched words. Saturates at 0xFFFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.</td></tr>
+<tr><td>15:8</td><td>count_bad</td><td>RW</td><td>0x0</td><td>Failed transactions (timeout or error). Saturates at 0xFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.</td></tr>
 <tr><td>7:4</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
-<tr><td>3</td><td>stream_err</td><td>RW</td><td>0x0</td><td>Set when there is an error on the DRBG AXI-Stream interface (e.g. TVALID deasserted before TREADY). Write 1 to clear.</td></tr>
-<tr><td>2</td><td>timeout_err</td><td>RW</td><td>0x0</td><td>Set when a DRBG read from the KM CPU times out. Write 1 to clear.</td></tr>
+<tr><td>3</td><td>stream_err</td><td>RW1C</td><td>0x0</td><td>Set when there is an error on the DRBG AXI-Stream interface (e.g. TVALID deasserted before TREADY). Write 1 to clear.</td></tr>
+<tr><td>2</td><td>timeout_err</td><td>RW1C</td><td>0x0</td><td>Set when a DRBG read from the KM CPU times out. Write 1 to clear.</td></tr>
 <tr><td>1</td><td>prefetched</td><td>R</td><td>0x0</td><td>Prefetched data available</td></tr>
 <tr><td>0</td><td>drbg_ready</td><td>R</td><td>0x0</td><td>TVALID asserted from DRBG</td></tr>
 </table>
@@ -1661,25 +2090,145 @@
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>data</td><td>W</td><td>-</td><td>32-bit key data word. Write-only for security.</td></tr>
 </table>
-<h3 id="KEY_CTRL">KEY_CTRL</h3>
+<h3 id="otbn_wrapper_key.KEY_CTRL">otbn_wrapper_key.KEY_CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
 <tr><td>0</td><td>key_valid</td><td>RW</td><td>0x0</td><td>When 1, asserts keymgr_key_i.valid to indicate key is loaded.<br>Write 0 to invalidate the current key.</td></tr>
 </table>
-<h3 id="KEY_SHARE0_8_">KEY_SHARE0[8]</h3>
+<h3 id="aes_wrapper_key.KEY_SHARE0_8_">aes_wrapper_key.KEY_SHARE0[8]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>data</td><td>W</td><td>-</td><td>32-bit key data word. Write-only for security.</td></tr>
 </table>
-<h3 id="KEY_SHARE1_8_">KEY_SHARE1[8]</h3>
+<h3 id="aes_wrapper_key.KEY_SHARE1_8_">aes_wrapper_key.KEY_SHARE1[8]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>data</td><td>W</td><td>-</td><td>32-bit key data word. Write-only for security.</td></tr>
+</table>
+<h3 id="aes_wrapper_key.KEY_CTRL">aes_wrapper_key.KEY_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>0</td><td>key_valid</td><td>RW</td><td>0x0</td><td>When 1, asserts keymgr_key_i.valid to indicate key is loaded.<br>Write 0 to invalidate the current key.</td></tr>
+</table>
+<h3 id="kmac_wrapper_key.KEY_SHARE0_8_">kmac_wrapper_key.KEY_SHARE0[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>W</td><td>-</td><td>32-bit key data word. Write-only for security.</td></tr>
+</table>
+<h3 id="kmac_wrapper_key.KEY_SHARE1_8_">kmac_wrapper_key.KEY_SHARE1[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>W</td><td>-</td><td>32-bit key data word. Write-only for security.</td></tr>
+</table>
+<h3 id="kmac_wrapper_key.KEY_CTRL">kmac_wrapper_key.KEY_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>0</td><td>key_valid</td><td>RW</td><td>0x0</td><td>When 1, asserts keymgr_key_i.valid to indicate key is loaded.<br>Write 0 to invalidate the current key.</td></tr>
+</table>
+<h3 id="hmac_wrapper_key.KEY_SHARE0_8_">hmac_wrapper_key.KEY_SHARE0[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>W</td><td>-</td><td>32-bit key data word. Write-only for security.</td></tr>
+</table>
+<h3 id="hmac_wrapper_key.KEY_SHARE1_8_">hmac_wrapper_key.KEY_SHARE1[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>W</td><td>-</td><td>32-bit key data word. Write-only for security.</td></tr>
+</table>
+<h3 id="hmac_wrapper_key.KEY_CTRL">hmac_wrapper_key.KEY_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>0</td><td>key_valid</td><td>RW</td><td>0x0</td><td>When 1, asserts keymgr_key_i.valid to indicate key is loaded.<br>Write 0 to invalidate the current key.</td></tr>
+</table>
+<h3 id="abr_wrapper_key.MLDSA_SEED.KEY_SHARE0_8_">abr_wrapper_key.MLDSA_SEED.KEY_SHARE0[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>W</td><td>-</td><td>32-bit key data word. Write-only for security.</td></tr>
+</table>
+<h3 id="abr_wrapper_key.MLDSA_SEED.KEY_SHARE1_8_">abr_wrapper_key.MLDSA_SEED.KEY_SHARE1[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>W</td><td>-</td><td>32-bit key data word. Write-only for security.</td></tr>
+</table>
+<h3 id="abr_wrapper_key.MLDSA_SEED.KEY_CTRL">abr_wrapper_key.MLDSA_SEED.KEY_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>0</td><td>key_valid</td><td>RW</td><td>0x0</td><td>When 1, the seed is loaded and the KV shim will serve it to Adams Bridge.<br>Write 0 to invalidate and allow a new seed to be written.</td></tr>
+</table>
+<h3 id="abr_wrapper_key.MLKEM_SEED_D.KEY_SHARE0_8_">abr_wrapper_key.MLKEM_SEED_D.KEY_SHARE0[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>W</td><td>-</td><td>32-bit key data word. Write-only for security.</td></tr>
+</table>
+<h3 id="abr_wrapper_key.MLKEM_SEED_D.KEY_SHARE1_8_">abr_wrapper_key.MLKEM_SEED_D.KEY_SHARE1[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>W</td><td>-</td><td>32-bit key data word. Write-only for security.</td></tr>
+</table>
+<h3 id="abr_wrapper_key.MLKEM_SEED_D.KEY_CTRL">abr_wrapper_key.MLKEM_SEED_D.KEY_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>0</td><td>key_valid</td><td>RW</td><td>0x0</td><td>When 1, the seed is loaded and the KV shim will serve it to Adams Bridge.<br>Write 0 to invalidate and allow a new seed to be written.</td></tr>
+</table>
+<h3 id="abr_wrapper_key.MLKEM_SEED_Z.KEY_SHARE0_8_">abr_wrapper_key.MLKEM_SEED_Z.KEY_SHARE0[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>W</td><td>-</td><td>32-bit key data word. Write-only for security.</td></tr>
+</table>
+<h3 id="abr_wrapper_key.MLKEM_SEED_Z.KEY_SHARE1_8_">abr_wrapper_key.MLKEM_SEED_Z.KEY_SHARE1[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>W</td><td>-</td><td>32-bit key data word. Write-only for security.</td></tr>
+</table>
+<h3 id="abr_wrapper_key.MLKEM_SEED_Z.KEY_CTRL">abr_wrapper_key.MLKEM_SEED_Z.KEY_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>0</td><td>key_valid</td><td>RW</td><td>0x0</td><td>When 1, the seed is loaded and the KV shim will serve it to Adams Bridge.<br>Write 0 to invalidate and allow a new seed to be written.</td></tr>
+</table>
+<h3 id="abr_wrapper_key.MLKEM_MSG.KEY_SHARE0_8_">abr_wrapper_key.MLKEM_MSG.KEY_SHARE0[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>W</td><td>-</td><td>32-bit key data word. Write-only for security.</td></tr>
+</table>
+<h3 id="abr_wrapper_key.MLKEM_MSG.KEY_SHARE1_8_">abr_wrapper_key.MLKEM_MSG.KEY_SHARE1[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>W</td><td>-</td><td>32-bit key data word. Write-only for security.</td></tr>
+</table>
+<h3 id="abr_wrapper_key.MLKEM_MSG.KEY_CTRL">abr_wrapper_key.MLKEM_MSG.KEY_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>0</td><td>key_valid</td><td>RW</td><td>0x0</td><td>When 1, the seed is loaded and the KV shim will serve it to Adams Bridge.<br>Write 0 to invalidate and allow a new seed to be written.</td></tr>
 </table>
 <h3 id="KEY_8_">KEY[8]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>data</td><td>R</td><td>0x0</td><td>32-bit shared-key word. Hardware writes on key-ready event;<br>hardware clears to 0 on key-consume event (KEY_VALID cleared).</td></tr>
+</table>
+<h3 id="abr_wrapper_key.MLKEM_SHARED_KEY.KEY_CTRL">abr_wrapper_key.MLKEM_SHARED_KEY.KEY_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>0</td><td>key_valid</td><td>RW0C</td><td>0x0</td><td>1 = shared key is valid and ready for firmware consumption.<br>Hardware sets this bit on key-ready event. Write 0 to clear;<br>write 1 has no effect (software cannot set this bit).</td></tr>
+</table>
+<h3 id="abr_wrapper_key.MLKEM_SHARED_KEY.IRQ_STATUS">abr_wrapper_key.MLKEM_SHARED_KEY.IRQ_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>0</td><td>key_valid</td><td>RW1C</td><td>0x0</td><td>ML-KEM shared key valid. Sticky, write 1 to clear.</td></tr>
+</table>
+<h3 id="abr_wrapper_key.MLKEM_SHARED_KEY.IRQ_ENABLE">abr_wrapper_key.MLKEM_SHARED_KEY.IRQ_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>0</td><td>key_valid_en</td><td>RW</td><td>0x0</td><td>1 = enable PicoRV32 IRQ when ML-KEM shared key is valid.<br>0 = mask the interrupt (KEY_CTRL.KEY_VALID can still be polled).</td></tr>
 </table>
 </div>

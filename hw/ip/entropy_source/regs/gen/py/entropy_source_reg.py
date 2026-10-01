@@ -435,7 +435,7 @@ class ENTROPY_SOURCE_SHA256_STATUS_reg_t(Structure):
         ('busy', c_uint16, 1),
         ('rsvd_0', c_uint16, 3),
         ('input_count', c_uint16, 4),
-        ('output_count', c_uint16, 3),
+        ('output_count', c_uint16, 4),
     ]
 
 ENTROPY_SOURCE_SHA256_STATUS_REG_DEFAULT = 0x00000000

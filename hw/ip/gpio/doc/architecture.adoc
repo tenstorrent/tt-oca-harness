@@ -1,132 +1,188 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+ifdef::backend-html5[]
+++++
+<span id="functional-blocks"></span>
+<span id="data-flow-architecture"></span>
+++++
+endif::backend-html5[]
+
 [[gpio-architecture]]
-===== Architecture
+== Operation
 
-At the heart of the OCH system’s digital I/O lies the GPIO peripheral, a
-controller designed for both versatility and robust security. Its
-dual-mode operation allows it to seamlessly switch between
-register-driven control and direct hardware guidance via the LSIO
-interface, all while maintaining strict access governance and flexible
-interrupt handling throughout.
+<<gpio-interface-diagram>> shows the two blocks that serve one pad: the `gpio` controller
+in the SMC pad ring, and the `gpio_shim` that the adopter's pad integration places in front
+of the technology pad macro. Each block receives its own AXI-Lite register slot. In `gpio`,
+the LSIO mux chooses the pad data and enables from the LSIO plane or from `DATA_CTRL`, and
+the synchronized pad input feeds both the `DATA_CTRL.pad2core` readback and the interrupt
+detector. In `gpio_shim`, the 2nd-HW override mux can replace the primary plane, the
+electrical mux chooses the drive, pull and glitch-filter settings, and the strap latch
+captures the pad input at the end of cold reset. Trapezoids are muxes and demuxes, with
+their inputs on the wide side; the dashed strap latch is present only when
+`INPUT_BY_DEFAULT` is set.
 
-====== Functional Blocks
+[[gpio-interface-diagram]]
+.GPIO controller, interface shim, LSIO mux and strap-capture path
+image::gpio-interface-and-shim.svg[alt="GPIO controller with access filter, interface registers, LSIO mux, input synchronizer and interrupt detector, above the gpio_shim with its control registers, strap latch, electrical mux and 2nd-HW override mux in front of the pad macro",width=100%,pdfwidth=100%]
 
-The top-level GPIO controller (gpio.sv) sits at the center of the
-architecture, orchestrating the actions of all internal components. It
-elegantly arbitrates incoming bus transactions, mediates between
-register and LSIO modes, fuses interrupt sources into a unified signal,
-and ensures strap values are captured properly when the system starts.
-Address spaces are kept distinct and the transition between control
-modes is smooth and automatic.
+ifdef::backend-html5[]
+++++
+<span id="control-path-and-mode-selection"></span>
+<span id="lsio-protocol-specifications"></span>
+++++
+endif::backend-html5[]
 
-Security is enforced by the Access Control Filter (gpio_filter.sv). True
-to its name, it inspects every AXI read and write transaction,
-confirming the proper permission levels before allowing access. The
-protection requirements are software-programmable, allowing enforcement
-policies to adapt to changing system needs on the fly.
+[[gpio-ownership]]
+=== Data and Direction Ownership
 
-The filter implements full 3-bit AXI protection matching, comparing the
-transaction's protection bits (`aw.prot[2:0]` for writes,
-`ar.prot[2:0]` for reads) against configurable requirement values. The
-protection bits encode privilege level (bit 0), security domain (bit 1),
-and transaction type (bit 2). When protection filtering is enabled, only
-transactions with matching protection attributes are allowed through;
-unauthorized attempts are blocked and receive an immediate error response,
-all while keeping performance unaffected for legitimate accesses.
+After cold reset, the controller selects output data, transmit enable and
+receive enable independently. For each field, the first applicable row wins:
 
-Protection filtering is configured via the `ACCESS_FILTER` register
-fields: `awprot_requirement` and `arprot_requirement` specify the
-required protection values, while `write_filter_enable` and
-`read_filter_enable` control whether filtering is active. See the
-Programming section for configuration details.
+[cols="1,2,3",options="header"]
+.GPIO data and direction selection
+|===
+|Priority |Condition |Source
+|1 |`lsio_interface_select_i = 1` and `DATA_CTRL.lsio_disable = 0`
+|Hardware LSIO data and direction inputs.
+|2 |`DATA_CTRL.interface_enable = 1`, or the corresponding
+`DATA_CTRL_ENABLE.use_reg_*` bit is set
+|`DATA_CTRL.core2pad`, `enable_rx_tx[0]` (TX), or `enable_rx_tx[1]` (RX).
+|3 |`DATA_CTRL.lsio_select = 1` and `DATA_CTRL.lsio_disable = 0`
+|Software-forced LSIO, using the same LSIO inputs.
+|4 |No preceding condition applies
+|Output data 0, TX disabled, RX set by `INPUT_BY_DEFAULT`.
+|===
 
-Between the hardware and software is the GPIO Shim (gpio_shim.sv). This
-block translates software-side register programming into model-specific
-control signals, maintaining a consistent state across the register
-interface and the underlying physical I/O. The shim also abstracts
-model-specific details so different pad implementations can coexist
-under a unified interface.
+The per-field overrides are `use_reg_core2pad`, `use_reg_tx` and `use_reg_rx`.
+They allow different sources for data and direction. A hardware LSIO request
+outranks all three overrides; software-forced LSIO does not.
+`lsio_disable` gates both forms of LSIO selection.
 
-Finally, the GPIO Model (gpio_model/) is where electrical attributes and
-physical pad behavior live. It offers programmable drive strengths,
-pull-up and pull-down configuration, signal conditioning to guard
-against glitches, and fully independent TX/RX enables, making true
-bidirectional I/O possible.
+`DATA_CTRL.lsio_enable` reports the hardware request after the disable gate:
+`lsio_interface_select_i && !lsio_disable`. It does not report a
+software-forced selection and is not a general pad-owner indicator.
 
-====== Data Flow Architecture
+=== Input Readback
 
-In typical register-driven mode, the data path forms a tight,
-predictable loop: software writes an output value into a DATA_CTRL
-register, the mode selector switches to software control, and the
-register’s value flows to the model, driving the I/O pad. Input values
-are always readable via a separate field, ensuring software insight into
-pad state.
+`DATA_CTRL.pad2core` returns the synchronized input when
+`interface_enable` or `use_reg_rx` selects register readback; otherwise it
+returns zero. The pad receiver must also be enabled by the selected owner.
 
-When LSIO mode is engaged, control shifts: the LSIO hardware asserts its
-selection input, and from this moment, it directly governs the pad’s
-output and enable signals. The regular register pathway is bypassed, and
-the status of LSIO is reflected back to software for monitoring
-purposes. Thanks to the clear priority scheme, LSIO always wins control
-if contention arises.
+The LSIO return path uses the unsynchronized pad input while either LSIO
+request is active. This return path is independent of the data/direction
+priority: a software LSIO request can enable readback even when registers
+own an output field. During cold reset, the LSIO return path also carries
+the pad input.
 
-====== Control Path and Mode Selection
+=== SMC Pad Ring
 
-Configuration sources follow a strict ranking: LSIO commands always take
-the highest precedence, overriding any register settings when active. If
-LSIO is not in control, the system defers to register-directed
-configuration. If neither is in play, safe hardware defaults ensure the
-pad remains in a benign state.
+The SMC instantiates one `gpio` controller per pad in `u_smc_padring`, 65 in all.
+<<gpio-padring-diagram>> shows how the controllers are reached and where the shims sit.
+The peripheral crossbar sends the GPIO interface window to `u_gpio_intf_demux`, which
+decodes one 16-byte slot per pad and answers any other address with DECERR. The LSIO pad
+map assigns the SPI, UART, I3C, I2C, AVSBus, system-timer, isolate-request, boot-stall and
+cool-reset functions to fixed pads, and drives the LSIO plane of each controller. The
+controllers' pad wires leave the SMC; outside it, the adopter's pad integration places a
+`gpio_shim` and a pad macro on each pad, and decodes the `smc_external` window to give
+each shim its `gpio_ctrl` slot. The figure draws pads 0, 1 and 64; the ellipses stand for
+the pads between them.
 
-The logic for this selection is straightforward but decisive:
+[[gpio-padring-diagram]]
+.SMC pad ring GPIO interfaces and adopter pad shims
+image::gpio-padring.svg[alt="Peripheral crossbar feeding u_smc_padring, whose demux reaches 65 gpio controllers and a DECERR responder, with the LSIO pad map on a shared bus; the controllers' pad wires reach per-pad gpio_shim and pad macro instances in the adopter pad integration, which decodes the smc_external window",width=100%,pdfwidth=100%]
 
-[source,sourceCode,]
-----
-if (lsio_interface_select_i && !lsio_disable) {
-    // LSIO mode: hardware takes over
-    pad_control_source = LSIO;
-} else if (interface_enable) {
-    // Register mode: software control
-    pad_control_source = REGISTERS;
-} else {
-    // Defaults: pad is idle and safe
-    pad_control_source = DEFAULTS;
-}
-----
+The open reference integration, `smc_ip_integration`, stands in for the adopter side
+with one `prim_pad_shim` per pad at fixed electrical settings, and answers the `gpio_ctrl`
+range of the `smc_external` window with DECERR.
 
-====== Interrupts: Flexible and Responsive
+[[gpio-electrical-control]]
+=== Pad Settings and Secondary Function
 
-The GPIO’s interrupt subsystem is engineered for flexibility. It
-supports both level and edge detection, allowing software to choose
-between active-high/low levels or rising/falling edges. Interrupts can
-be enabled or masked at runtime, and the state is always visible to
-software.
+The shim selects drive strength, pull settings and input conditioning in
+this order: hardware LSIO request, `CONTROL.config_enable`, software-forced
+LSIO, then parameter defaults. The LSIO requests use the same disable gate
+as the controller. In register mode, `CONTROL` supplies `drive_strength`,
+`pull_enable_n0_scan`, `pull_select` and `schmitt_select`.
 
-Here’s a look at the internal decision logic:
+A separate mux selects a secondary hardware function when
+`CONTROL.hw2_ovrd = 1` and `force_primary_i = 0`. It overrides the primary
+data and direction path. `force_primary_i` restores the primary path
+regardless of the register setting. The integrator must coordinate switching
+with both hardware functions.
 
-[source,sourceCode,]
-----
-interrupt_trigger = case (interrupt_type)
-    2'b00: pad2core;              // Active-high level
-    2'b01: !pad2core;             // Active-low level
-    2'b10: pad2core_rising_edge;  // Rising edge
-    2'b11: pad2core_falling_edge; // Falling edge
-endcase
+Electrical effects depend on the connected pad implementation. The supplied
+`gpio_model` models output drive and receive enable; it does not model drive
+strength, pull resistors or input conditioning. Do not interpret the
+`drive_strength` encoding as a portable current rating.
 
-interrupt_o = interrupt_enable && interrupt_trigger;
-----
+ifdef::backend-html5[]
+++++
+<span id="interrupts-flexible-and-responsive"></span>
+<span id="interrupt-specifications"></span>
+++++
+endif::backend-html5[]
 
-====== Clocking and Reset: Safe and Predictable
+[[gpio-interrupt-operation]]
+=== Interrupts
 
-All GPIO logic is synchronized to a single system clock (clk_i). There
-are no internal clock domains or generated clocks to complicate timing—
-everything operates in lockstep, rising edge after rising edge.
+The input passes through a three-stage synchronizer before interrupt
+detection. The selected condition is registered on `clk_i` and gated by
+`DATA_CTRL.interrupt_enable` at `interrupt_o`.
 
-Reset is provided as a synchronous active-low input (rst_ni). When
-asserted, every flip-flop in the design is immediately reset to a known
-baseline. During the reset period, the pad value is continuously
-monitored; once reset is released (on a clock edge), the final pad state
-is latched as a configuration strap. Only after this carefully ordered
-process does the GPIO begin normal operation, fully configured and
-secure.
+[cols="1,2,3",options="header"]
+.GPIO interrupt modes
+|===
+|`interrupt_type` |Condition |Output while enabled
+|`00` |Input high |Level follows the registered condition.
+|`01` |Input low |Level follows the registered condition.
+|`10` |Rising edge |One clock-cycle pulse per detected edge.
+|`11` |Falling edge |One clock-cycle pulse per detected edge.
+|===
+
+There is no sticky interrupt status or acknowledge register in this block.
+A level condition must cease, or the interrupt must be disabled, to remove
+the request. Edge pulses are not stretched; the receiving interrupt
+controller must capture them. Detection uses the synchronized input,
+independently of whether register readback is selected.
+
+ifdef::backend-html5[]
+++++
+<span id="clocking-and-reset-safe-and-predictable"></span>
+++++
+endif::backend-html5[]
+
+[[gpio-reset-straps]]
+=== Reset and Strap Capture
+
+`rst_primary_ni` asynchronously resets interface/control registers, the
+input synchronizer and interrupt state. `rst_cold_ni` separately forces
+controller outputs to data 0, TX disabled and RX=`INPUT_BY_DEFAULT`, and
+forces the shim's electrical settings to their parameter defaults.
+The integration supplies reset timing; these modules do not synchronize
+reset deassertion internally.
+
+With `INPUT_BY_DEFAULT = 1`, the shim's strap latch follows the pad while
+cold reset is asserted and holds the level when cold reset is released.
+This is a level-sensitive latch, not a sample taken on a `clk_i` edge.
+With the parameter clear, the captured value is zero.
+
+`CONTROL.strap_value` and `captured_strap_o` report that captured level.
+`CONTROL.strap_valid` reflects `INPUT_BY_DEFAULT`; it is not a capture-done
+flag. Read the strap after the system has released cold reset. Primary
+reset alone does not recapture it.
+
+[[gpio-access-control]]
+=== Register Access Filtering
+
+The interface-bank filter compares all three AXI `PROT` bits against the
+configured read or write requirement. Each direction has its own enable.
+A mismatch is sent to an error responder and completes with `DECERR`;
+disabling a filter permits that direction regardless of `PROT`.
+
+Filtering resets disabled. The stored read and write requirements reset to
+`3'b001` (secure, privileged data), but apply only when enabled. `PROT`
+expresses transaction attributes, not initiator identity: this filter alone
+does not establish SEP-only access. It protects the interface bank, not the
+shim's separate control bank. See <<gpio-filter-programming>> for setup and
+readback requirements.

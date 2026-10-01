@@ -1,41 +1,51 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-[cols="1,1,1,3", options="header"]
-.Register Map
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-edn]
+== Entropy Distribution Network
+
+Distributes random numbers produced by CSRNG to hardware blocks
+
+[cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description
-| 0x0 | INTR_STATE | RW a| -
-| 0x4 | INTR_ENABLE | RW a| -
-| 0x8 | INTR_TEST | W a| -
-| 0xC | ALERT_TEST | W a| -
-| 0x10 | REGWEN | RW a| -
-| 0x14 | CTRL | RW a| -
-| 0x18 | BOOT_INS_CMD | RW a| -
-| 0x1C | BOOT_GEN_CMD | RW a| -
-| 0x20 | SW_CMD_REQ | W a| -
-| 0x24 | SW_CMD_STS | R a| -
-| 0x28 | HW_CMD_STS | R a| -
-| 0x2C | RESEED_CMD | W a| -
-| 0x30 | GENERATE_CMD | W a| -
-| 0x34 | MAX_NUM_REQS_BETWEEN_RESEEDS | RW a| -
-| 0x38 | RECOV_ALERT_STS | RW a| -
-| 0x3C | ERR_CODE | R a| -
-| 0x40 | ERR_CODE_TEST | RW a| -
-| 0x44 | MAIN_SM_STATE | R a| -
+| 0x0 | <<reg-{regmap-instance}-edn-INTR_STATE,INTR_STATE>> | RW a| -
+| 0x4 | <<reg-{regmap-instance}-edn-INTR_ENABLE,INTR_ENABLE>> | RW a| -
+| 0x8 | <<reg-{regmap-instance}-edn-INTR_TEST,INTR_TEST>> | W a| -
+| 0xC | <<reg-{regmap-instance}-edn-ALERT_TEST,ALERT_TEST>> | W a| -
+| 0x10 | <<reg-{regmap-instance}-edn-REGWEN,REGWEN>> | RW a| -
+| 0x14 | <<reg-{regmap-instance}-edn-CTRL,CTRL>> | RW a| -
+| 0x18 | <<reg-{regmap-instance}-edn-BOOT_INS_CMD,BOOT_INS_CMD>> | RW a| -
+| 0x1C | <<reg-{regmap-instance}-edn-BOOT_GEN_CMD,BOOT_GEN_CMD>> | RW a| -
+| 0x20 | <<reg-{regmap-instance}-edn-SW_CMD_REQ,SW_CMD_REQ>> | W a| -
+| 0x24 | <<reg-{regmap-instance}-edn-SW_CMD_STS,SW_CMD_STS>> | R a| -
+| 0x28 | <<reg-{regmap-instance}-edn-HW_CMD_STS,HW_CMD_STS>> | R a| -
+| 0x2C | <<reg-{regmap-instance}-edn-RESEED_CMD,RESEED_CMD>> | W a| -
+| 0x30 | <<reg-{regmap-instance}-edn-GENERATE_CMD,GENERATE_CMD>> | W a| -
+| 0x34 | <<reg-{regmap-instance}-edn-MAX_NUM_REQS_BETWEEN_RESEEDS,MAX_NUM_REQS_BETWEEN_RESEEDS>> | RW a| -
+| 0x38 | <<reg-{regmap-instance}-edn-RECOV_ALERT_STS,RECOV_ALERT_STS>> | RW a| -
+| 0x3C | <<reg-{regmap-instance}-edn-ERR_CODE,ERR_CODE>> | R a| -
+| 0x40 | <<reg-{regmap-instance}-edn-ERR_CODE_TEST,ERR_CODE_TEST>> | RW a| -
+| 0x44 | <<reg-{regmap-instance}-edn-MAIN_SM_STATE,MAIN_SM_STATE>> | R a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.INTR_STATE Register
+[#reg-{regmap-instance}-edn-INTR_STATE]
+=== INTR_STATE
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:2 | `Reserved` | - | - a| Reserved
-| 1 | `edn_fatal_err` | RW | 0x0 a| Asserted when a FIFO error occurs.
-| 0 | `edn_cmd_req_done` | RW | 0x0 a| Asserted when a software CSRNG request has completed.
+| 1 | `edn_fatal_err` | RW1C | 0x0 a| Asserted when a FIFO error occurs.
+| 0 | `edn_cmd_req_done` | RW1C | 0x0 a| Asserted when a software CSRNG request has completed.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.INTR_ENABLE Register
+[#reg-{regmap-instance}-edn-INTR_ENABLE]
+=== INTR_ENABLE
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:2 | `Reserved` | - | - a| Reserved
@@ -43,8 +53,10 @@
 | 0 | `edn_cmd_req_done` | RW | 0x0 a| Enable interrupt when !!INTR_STATE.edn_cmd_req_done is set.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.INTR_TEST Register
+[#reg-{regmap-instance}-edn-INTR_TEST]
+=== INTR_TEST
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:2 | `Reserved` | - | - a| Reserved
@@ -52,8 +64,10 @@
 | 0 | `edn_cmd_req_done` | W | 0x0 a| Write 1 to force !!INTR_STATE.edn_cmd_req_done to 1.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.ALERT_TEST Register
+[#reg-{regmap-instance}-edn-ALERT_TEST]
+=== ALERT_TEST
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:2 | `Reserved` | - | - a| Reserved
@@ -61,19 +75,23 @@
 | 0 | `recov_alert` | W | 0x0 a| Write 1 to trigger one alert event of this kind.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.REGWEN Register
+[#reg-{regmap-instance}-edn-REGWEN]
+=== REGWEN
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `Reserved` | - | - a| Reserved
-| 0 | `REGWEN` | RW | 0x1 a| When true, the CTRL can be written by software.
+| 0 | `REGWEN` | RW0C | 0x1 a| When true, the CTRL can be written by software.
 When false, this field read-only. Defaults true, write zero to clear.
 Note that this needs to be cleared after initial configuration at boot in order to
 lock in the listed register settings.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.CTRL Register
+[#reg-{regmap-instance}-edn-CTRL]
+=== CTRL
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:16 | `Reserved` | - | - a| Reserved
@@ -101,8 +119,10 @@ entropy complex may only be enabled and disabled in a specific order, see
 Programmers Guide for details.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.BOOT_INS_CMD Register
+[#reg-{regmap-instance}-edn-BOOT_INS_CMD]
+=== BOOT_INS_CMD
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `BOOT_INS_CMD` | RW | 0x901 a| This field is used as the value for the `instantiate` command at boot time.
@@ -113,8 +133,10 @@ If `clen` has a different value, EDN will hang.
 Fixing this requires disabling and restarting both EDN and CSRNG.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.BOOT_GEN_CMD Register
+[#reg-{regmap-instance}-edn-BOOT_GEN_CMD]
+=== BOOT_GEN_CMD
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `BOOT_GEN_CMD` | RW | 0xFFF003 a| This field is used as the value for the `generate` command at boot time.
@@ -125,8 +147,10 @@ If `clen` has a different value, EDN will hang.
 Fixing this requires disabling and restarting both EDN and CSRNG.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.SW_CMD_REQ Register
+[#reg-{regmap-instance}-edn-SW_CMD_REQ]
+=== SW_CMD_REQ
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `SW_CMD_REQ` | W | - a| Any CSRNG action can be initiated by writing a CSRNG command to this register.
@@ -138,8 +162,10 @@ After that command has been processed, writes to this register will have no effe
 Refer to the [CSRNG documentation](../../csrng/doc/theory_of_operation.md#general-command-format) for details on the command format.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.SW_CMD_STS Register
+[#reg-{regmap-instance}-edn-SW_CMD_STS]
+=== SW_CMD_STS
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:6 | `Reserved` | - | - a| Reserved
@@ -163,8 +189,10 @@ This bit has to be polled before each word of a command is written to !!SW_CMD_R
 0b1: The EDN is ready to accept the next word.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.HW_CMD_STS Register
+[#reg-{regmap-instance}-edn-HW_CMD_STS]
+=== HW_CMD_STS
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
@@ -188,8 +216,10 @@ The instantiate command is issued via SW interface and is thus not part of the h
 0b1: The EDN is in boot mode.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.RESEED_CMD Register
+[#reg-{regmap-instance}-edn-RESEED_CMD]
+=== RESEED_CMD
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `RESEED_CMD` | W | - a| Writing this register will fill a FIFO with up to 13 command words (32b words).
@@ -202,8 +232,10 @@ Otherwise, undefined behavior may result.
 If more than 13 entries are written to the FIFO, they are ignored and EDN signals an `edn_fatal_err` interrupt as well as a fatal alert.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.GENERATE_CMD Register
+[#reg-{regmap-instance}-edn-GENERATE_CMD]
+=== GENERATE_CMD
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `GENERATE_CMD` | W | - a| Writing this register will fill a FIFO with up to 13 command words (32b words).
@@ -217,8 +249,10 @@ Otherwise, undefined behavior may result.
 If more than 13 entries are written to the FIFO, they are ignored and EDN signals an `edn_fatal_err` interrupt as well as a fatal alert.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.MAX_NUM_REQS_BETWEEN_RESEEDS Register
+[#reg-{regmap-instance}-edn-MAX_NUM_REQS_BETWEEN_RESEEDS]
+=== MAX_NUM_REQS_BETWEEN_RESEEDS
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `MAX_NUM_REQS_BETWEEN_RESEEDS` | RW | 0x0 a| Setting this field will set the number of `generate` command requests that are made
@@ -230,33 +264,37 @@ This register will be used by a counter that counts down, triggering an automati
 Note that this value must be chosen smaller than or equal to the value configured in the [`RESEED_INTERVAL` register of CSRNG](../../csrng/doc/registers.md#reseed-interval).
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.RECOV_ALERT_STS Register
+[#reg-{regmap-instance}-edn-RECOV_ALERT_STS]
+=== RECOV_ALERT_STS
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:14 | `Reserved` | - | - a| Reserved
-| 13 | `CSRNG_ACK_ERR` | RW | 0x0 a| This bit is set when the CSRNG returns an acknowledgement where the status signal is non-zero.
+| 13 | `CSRNG_ACK_ERR` | RW0C | 0x0 a| This bit is set when the CSRNG returns an acknowledgement where the status signal is non-zero.
 Writing a zero resets this status bit.
-| 12 | `EDN_BUS_CMP_ALERT` | RW | 0x0 a| This bit is set when the interal entropy bus value is equal to the prior
+| 12 | `EDN_BUS_CMP_ALERT` | RW0C | 0x0 a| This bit is set when the interal entropy bus value is equal to the prior
 valid value on the bus, indicating a possible attack.
 Writing a zero resets this status bit.
 | 11:4 | `Reserved` | - | - a| Reserved
-| 3 | `CMD_FIFO_RST_FIELD_ALERT` | RW | 0x0 a| This bit is set when the CMD_FIFO_RST field is set to an illegal value,
+| 3 | `CMD_FIFO_RST_FIELD_ALERT` | RW0C | 0x0 a| This bit is set when the CMD_FIFO_RST field is set to an illegal value,
 something other than kMultiBitBool4True or kMultiBitBool4False.
 Writing a zero resets this status bit.
-| 2 | `AUTO_REQ_MODE_FIELD_ALERT` | RW | 0x0 a| This bit is set when the !!CTRL.AUTO_REQ_MODE field is set to an illegal value,
+| 2 | `AUTO_REQ_MODE_FIELD_ALERT` | RW0C | 0x0 a| This bit is set when the !!CTRL.AUTO_REQ_MODE field is set to an illegal value,
 something other than kMultiBitBool4True or kMultiBitBool4False.
 Writing a zero resets this status bit.
-| 1 | `BOOT_REQ_MODE_FIELD_ALERT` | RW | 0x0 a| This bit is set when the BOOT_REQ_MODE field is set to an illegal value,
+| 1 | `BOOT_REQ_MODE_FIELD_ALERT` | RW0C | 0x0 a| This bit is set when the BOOT_REQ_MODE field is set to an illegal value,
 something other than kMultiBitBool4True or kMultiBitBool4False.
 Writing a zero resets this status bit.
-| 0 | `EDN_ENABLE_FIELD_ALERT` | RW | 0x0 a| This bit is set when the EDN_ENABLE field is set to an illegal value,
+| 0 | `EDN_ENABLE_FIELD_ALERT` | RW0C | 0x0 a| This bit is set when the EDN_ENABLE field is set to an illegal value,
 something other than kMultiBitBool4True or kMultiBitBool4False.
 Writing a zero resets this status bit.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.ERR_CODE Register
+[#reg-{regmap-instance}-edn-ERR_CODE]
+=== ERR_CODE
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31 | `Reserved` | - | - a| Reserved
@@ -288,8 +326,10 @@ bits (bits 28 through 30 of this register).
 When this bit is set, a fatal error condition will result.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.ERR_CODE_TEST Register
+[#reg-{regmap-instance}-edn-ERR_CODE_TEST]
+=== ERR_CODE_TEST
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:5 | `Reserved` | - | - a| Reserved
@@ -301,8 +341,10 @@ register is to test that any error properly propagates to either
 an interrupt or an alert.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.MAIN_SM_STATE Register
+[#reg-{regmap-instance}-edn-MAIN_SM_STATE]
+=== MAIN_SM_STATE
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:9 | `Reserved` | - | - a| Reserved

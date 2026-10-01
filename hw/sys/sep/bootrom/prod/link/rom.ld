@@ -1,30 +1,17 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
-/* Linker script for SEP bootcode (self-contained Boot ROM image).
+/* Linker script for the SEP Boot ROM image.
  *
- * Code (.text), metadata, and read-only data (.rodata/.srodata) reside in and
- * are read from Boot ROM (0x10040000): the IFU reaches ROM via its AXI demux,
- * and the LSU reaches ROM via the LSU->ROM demux (sep_cpu.sv) and the boot-ROM
- * AXI mux (sep.sv, u_boot_rom_axi_mux), so read-only data does not consume DCCM.
- *
- * Writable runtime data (.data/.bss) and the stack live in DCCM.  .data's
- * initial image is stored in Boot ROM (LMA via AT> rom) and copied to DCCM by
- * vector.S at boot; .bss is zeroed there.
- *
- * In the DV environment, Boot ROM is preloaded via +BOOT_ROM_VMEM_FILE; DCCM
- * needs no firmware preload (DATA_SIZE=0), only ECC init via init_tcms().
- */
+ * .text/.metadata/.rodata stay in Boot ROM at 0x10040000 and are read in place,
+ * so read-only data does not consume DCCM. .data/.bss and the stack live in
+ * DCCM; .data's initial image has a ROM LMA and vector.S copies it at boot. */
 
 OUTPUT_ARCH("riscv")
 ENTRY(_start)
 
 MEMORY {
-  /* Boot ROM: 64KiB read-only instruction memory.
-   *   SEP_BOOT_ROM_MEM_BASE_ADDR = 0x10040000
-   *   SEP_BOOT_ROM_MEM_SIZE      = 0x00010000 (64KiB)
-   *   Hardware: prim_rom 16384×64-bit = 128KiB physical, but address
-   *   decode in IFU demux uses SEP_BOOT_ROM_MEM_SIZE (64KiB). */
+  /* Boot ROM: 64KiB read-only instruction memory. */
   rom  (rx)  : ORIGIN = 0x10040000, LENGTH = 0x00010000  /* 64KiB */
 
   /* DCCM (aka DTCM) window from EL2 snapshot.
@@ -49,19 +36,15 @@ SECTIONS {
     __metadata_end = .;
   } > rom
 
-  /* Read-only data lives in Boot ROM and is read in place by the LSU (via the
-   * LSU->ROM demux / boot-ROM AXI mux), so it does not consume DCCM.  Relaxation
-   * is disabled (-mno-relax / --no-relax), so .srodata is addressed absolutely
-   * rather than gp-relative and can safely live in ROM. */
+  /* Read-only data lives in Boot ROM and is read in place by the LSU, so it does
+   * not consume DCCM.  Relaxation is off (-mno-relax), so .srodata is addressed
+   * absolutely rather than gp-relative and can safely live in ROM. */
   .rodata : ALIGN(4) {
     *(.rodata .rodata.* .srodata .srodata.*)
   } > rom
 
-  /* Switch the VMA location counter to DCCM for writable runtime sections.
-   * .data executes from DCCM, but its initial image is stored in Boot ROM
-   * (LMA via AT> rom) and copied to DCCM by vector.S at boot.  __data_load_start
-   * therefore resolves to a ROM address, making the vector.S copy a real
-   * ROM->DCCM copy (it was a no-op self-copy when .data's LMA was in DCCM). */
+  /* Switch the VMA counter to DCCM. .data executes from DCCM but its initial
+   * image is stored in ROM (AT> rom), so vector.S does a real ROM->DCCM copy. */
   . = ORIGIN(dccm);
 
   .data : ALIGN(4) {
@@ -81,24 +64,28 @@ SECTIONS {
     __bss_end = .;
   } > dccm
 
-  /* BL0 state structure is placed at the very top of DCCM (bl0_state.h:
-   *   BL0_STATE_ADDR = OROM_DCCM_BASE + OROM_DCCM_SIZE - BL0_STATE_SIZE).
-   * Reserve space so the stack does not overlap with it.
-   * bl0_state is ~80 bytes; round up to 128 for alignment + future growth. */
-  __bl0_state_reserve = 128;
+  /* Reserve the top of DCCM for bl0_state so the stack cannot overlap it. MUST
+   * equal BL0_STATE_RESERVE_BYTES in include/bl0_state.h; rom_main.c compares
+   * the pair at boot and fails loudly if they drift. */
+  __bl0_state_reserve = 256;
 
   /* Stack grows downward from below the BL0 state region toward .bss.
    * __stack_top   = highest stack address (initial sp), below BL0 state.
    * __stack_bottom = lowest usable stack address (just above .bss).
    *
    * C16 stack canary: rom_main writes STACK_CANARY_VALUE at __stack_bottom
-   * at init and checks it before PASS.  If the canary is corrupted, it
+   * at init and re-checks it just before the BL1 hand-off.  If corrupted, it
    * means the stack overflowed into the .bss region — a fatal error. */
   __stack_top = ORIGIN(dccm) + LENGTH(dccm) - __bl0_state_reserve;
   __stack_bottom = ALIGN(__bss_end, 4);
 
   /* Catch accidental DCCM overflow early at link time. */
   ASSERT(__bss_end <= __stack_top, "DCCM overflow: .data/.bss exceeds available stack space (DCCM minus BL0 state reserve)")
+
+  /* __stack_bottom is derived from __bss_end, so an output section placed after
+   * .bss would move the canary out of the stack window and silently disable the
+   * overflow check.  Keep .bss last in dccm. */
+  ASSERT(__stack_bottom < __stack_top, "stack window is empty or inverted: __stack_bottom must be below __stack_top")
 
   /DISCARD/ : {
     *(.comment*)

@@ -3,9 +3,9 @@
 /*
  * smu_sep_ext_axi_combined_probe_test  --  shared protocol contract.
  *
- * Included by both firmwares (the SEP and SMC outbound producers) and parsed by
- * the cocotb checker so DUT stimulus and DV expectations share one contract.
- * Every value is a plain integer/hex #define for the Python parser.
+ * Included by both firmwares (the SEP and SMC outbound producers). Python
+ * goldens derive CSR facts independently from PeakRDL; they do not parse this
+ * header.
  *
  * Test shape (four legal external legs + one blocked route + recovery):
  *   ext_in -> SMC aperture (route data 0x11223344 @ SMC scratch8)
@@ -32,13 +32,13 @@
  *     scratch7  SMC_GO           local 0xC00390B8  ext_in-global 0x020390B8
  *     scratch8  route data       local 0xC00390C0  ext_in-global 0x020390C0
  *     scratch9  ROUTE_DONE_SMC   local 0xC00390C8  ext_in-global 0x020390C8
- *     scratch10 SMU016_SMC_PASS  local 0xC00390D0  (card cites 0x000390D0 = the
- *               SMU post-remap monitor form; the SMC firmware writes its LOCAL
- *               register 0xC00390D0 per smc_top_regs.h -- headers win.)
+ *     scratch10 EXTAXI_SMC_PASS  local 0xC00390D0  (0x000390D0 is the SMU
+ *               post-remap monitor form of the same register; the SMC firmware
+ *               writes its LOCAL register 0xC00390D0 per smc_top_regs.h.)
  *   SEP cold scratch (SEP-local base 0x10802000, 8-byte stride). The ext_in-global form is
  *   sep_global_base + local (0x04000000 + 0x108020xx = 0x148020xx); the SEP inbound
  *   axi_window_remap (target_base=0) subtracts sep_global_base back to the local register.
- *   (cold6 SMU016_SEP_PASS is SEP-local only -- the SEP writes it, DV reads it backdoor --
+ *   (cold6 EXTAXI_SEP_PASS is SEP-local only -- the SEP writes it, DV reads it backdoor --
  *    so it needs no ext_in-global form.):
  *     cold0     route data       local 0x10802000  ext_in-global 0x14802000
  *     cold4     SEP_READY        local 0x10802020  ext_in-global 0x14802020
@@ -98,13 +98,10 @@
  * staying well below the 0x80000000 egress addresses. This same region also feeds the SMU
  * xbar sep_in addr_map (smu_axi_xbar.sv:94-95) so ext_in->SEP decodes to mst0.
  * (SMC differs: its remap target_base is nonzero so global 0x020390xx -> local 0x000390xx
- * is a valid SMC-fabric alias, which is why the SMC leg already passed.) */
+ * is a valid SMC-fabric alias.) */
 #define EXTAXI_SEP_GLOBAL_BASE 0x04000000 /* SEP_CPU_CTRL.SEP_GLOBAL_BASE_ADDR */
-/* Keep value on the same line as #define: cocotb parses this header with a
- * single-line regex (see smu_sep_ext_axi_combined_probe_test._parse_protocol_header). */
-// clang-format off
-#define EXTAXI_SEP_REGION_SIZE 0x11000000 /* SEP_CPU_CTRL.SEP_REGION_SIZE (covers local 0x10802040) */
-// clang-format on
+#define EXTAXI_SEP_REGION_SIZE \
+    0x11000000 /* SEP_CPU_CTRL.SEP_REGION_SIZE (covers local 0x10802040) */
 #define EXTAXI_SMC_GLOBAL_BASE 0x02000000 /* SMC_BASE_CONFIG.GLOBAL_BASE */
 #define EXTAXI_SMC_REGION_SIZE 0x01000000 /* SMC_BASE_CONFIG.REGION_SIZE */
 
@@ -132,15 +129,23 @@
 #define EXTAXI_SMC_SCRATCH7_LOCAL 0xC00390B8 /* SMC_CPU_CTRL_SCRATCH_7__REG_ADDR */
 #define EXTAXI_SMC_SCRATCH9_LOCAL 0xC00390C8 /* SMC_CPU_CTRL_SCRATCH_9__REG_ADDR */
 #define EXTAXI_SMC_SCRATCH10_LOCAL \
-    0xC00390D0                            /* SMC_CPU_CTRL_SCRATCH_10__REG_ADDR (not 0x000390D0) */
-#define EXTAXI_SEP_COLD4_LOCAL 0x10802020 /* SEP_SCRATCH_COLD_SCRATCH_4__REG_ADDR */
-#define EXTAXI_SEP_COLD5_LOCAL 0x10802028 /* SEP_SCRATCH_COLD_SCRATCH_5__REG_ADDR */
-#define EXTAXI_SEP_COLD6_LOCAL 0x10802030 /* SEP_SCRATCH_COLD_SCRATCH_6__REG_ADDR */
-#define EXTAXI_SEP_COLD7_LOCAL 0x10802038 /* SEP_SCRATCH_COLD_SCRATCH_7__REG_ADDR */
+    0xC00390D0 /* SMC_CPU_CTRL_SCRATCH_10__REG_ADDR (not 0x000390D0) */
+#ifdef SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR
+#define EXTAXI_SEP_COLD4_LOCAL SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(4)
+#define EXTAXI_SEP_COLD5_LOCAL SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(5)
+#define EXTAXI_SEP_COLD6_LOCAL SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(6)
+#define EXTAXI_SEP_COLD7_LOCAL SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7)
+#else
+#define EXTAXI_SEP_COLD4_LOCAL 0x10802020
+#define EXTAXI_SEP_COLD5_LOCAL 0x10802028
+#define EXTAXI_SEP_COLD6_LOCAL 0x10802030
+#define EXTAXI_SEP_COLD7_LOCAL 0x10802038
+#endif
 
-/* Bind duplicated protocol literals to each owning generated register header. The shared header
- * is parsed directly by cocotb, so the literals remain here; a firmware build must fail if RDL
- * moves any local scratch or if a global-address derivation drifts. */
+/* Bind duplicated protocol literals to each owning generated register header.
+ * The hex forms stay for the SMC translation unit, which cannot include sep.h.
+ * A firmware build must fail if RDL moves a local scratch or a global-address
+ * derivation drifts. */
 #if defined(SMC_CPU_CTRL_SCRATCH_6__REG_ADDR)
 _Static_assert(EXTAXI_SMC_SCRATCH6_LOCAL == SMC_CPU_CTRL_SCRATCH_6__REG_ADDR,
                "SMC scratch6 local address drift");
@@ -164,26 +169,18 @@ _Static_assert(EXTAXI_SMC_SCRATCH9_GLOBAL ==
                "SMC scratch9 global address drift");
 #endif
 
-#if defined(SEP_SCRATCH_COLD_SCRATCH_0__REG_ADDR)
-_Static_assert(EXTAXI_SEP_COLD4_LOCAL == SEP_SCRATCH_COLD_SCRATCH_4__REG_ADDR,
-               "SEP cold scratch4 local address drift");
-_Static_assert(EXTAXI_SEP_COLD5_LOCAL == SEP_SCRATCH_COLD_SCRATCH_5__REG_ADDR,
-               "SEP cold scratch5 local address drift");
-_Static_assert(EXTAXI_SEP_COLD6_LOCAL == SEP_SCRATCH_COLD_SCRATCH_6__REG_ADDR,
-               "SEP cold scratch6 local address drift");
-_Static_assert(EXTAXI_SEP_COLD7_LOCAL == SEP_SCRATCH_COLD_SCRATCH_7__REG_ADDR,
-               "SEP cold scratch7 local address drift");
+#if defined(SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR)
 _Static_assert(EXTAXI_SEP_COLD0_GLOBAL ==
-                   (EXTAXI_SEP_GLOBAL_BASE + SEP_SCRATCH_COLD_SCRATCH_0__REG_ADDR),
+                   (EXTAXI_SEP_GLOBAL_BASE + SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0)),
                "SEP cold scratch0 global address drift");
 _Static_assert(EXTAXI_SEP_COLD4_GLOBAL ==
-                   (EXTAXI_SEP_GLOBAL_BASE + SEP_SCRATCH_COLD_SCRATCH_4__REG_ADDR),
+                   (EXTAXI_SEP_GLOBAL_BASE + SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(4)),
                "SEP cold scratch4 global address drift");
 _Static_assert(EXTAXI_SEP_COLD5_GLOBAL ==
-                   (EXTAXI_SEP_GLOBAL_BASE + SEP_SCRATCH_COLD_SCRATCH_5__REG_ADDR),
+                   (EXTAXI_SEP_GLOBAL_BASE + SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(5)),
                "SEP cold scratch5 global address drift");
 _Static_assert(EXTAXI_SEP_COLD7_GLOBAL ==
-                   (EXTAXI_SEP_GLOBAL_BASE + SEP_SCRATCH_COLD_SCRATCH_7__REG_ADDR),
+                   (EXTAXI_SEP_GLOBAL_BASE + SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7)),
                "SEP cold scratch7 global address drift");
 #endif
 
@@ -195,29 +192,28 @@ _Static_assert(EXTAXI_SEP_COLD7_GLOBAL ==
  * group_id are left 0 (ignored: !(|cfg) passes any initiator). */
 #define EXTAXI_FILTER_CFG_SECURE 0x0000000001000013ULL /* rd|wr|en|burst, allow_ns=0 */
 #define EXTAXI_FILTER_CFG_NS 0x0000000001000113ULL     /* rd|wr|en|burst, allow_ns=1 */
-/* Filter-register byte offsets. Kept as plain literals so the cocotb protocol-header parser
- * (literal-only regex) can read them, but BOUND to the generated register-map symbols below via
- * _Static_assert so an RDL change that moves an offset fails the firmware build instead of
- * silently drifting. STRIDE = distance between adjacent filter-rule blocks (CTRL_1 - CTRL_0). */
+/* Filter-register byte offsets. SEP firmware aliases the generated inbound-filter
+ * map; the hex else-branch stays for the SMC translation unit, which cannot
+ * include sep.h. The asserts bind the generated offsets to that hex so an RDL
+ * layout change fails the SEP firmware build instead of the SMC interop write. */
+#ifdef SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR
+#define EXTAXI_FILTER_CFG_OFF \
+    (SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0) - \
+     SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0))
+#define EXTAXI_FILTER_START_OFF \
+    (SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(0) - SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0))
+#define EXTAXI_FILTER_END_OFF \
+    (SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(0) - SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0))
+#define EXTAXI_FILTER_STRIDE SEP_TOP_INBOUND_FILTER_CTRL_STRIDE
+_Static_assert(EXTAXI_FILTER_CFG_OFF == 0x0u, "inbound filter CFG offset drift");
+_Static_assert(EXTAXI_FILTER_START_OFF == 0x8u, "inbound filter START offset drift");
+_Static_assert(EXTAXI_FILTER_END_OFF == 0x10u, "inbound filter END offset drift");
+_Static_assert(EXTAXI_FILTER_STRIDE == 0x20u, "inbound filter stride drift");
+#else
 #define EXTAXI_FILTER_CFG_OFF 0x0u
 #define EXTAXI_FILTER_START_OFF 0x8u
 #define EXTAXI_FILTER_END_OFF 0x10u
 #define EXTAXI_FILTER_STRIDE 0x20u
-
-/* Compile-time binding to the generated offsets (only when the generated header is in scope --
- * i.e. in the firmware translation units that include sep.h; skipped for the cocotb
- * text parse). Uses the SEP inbound filter block as the canonical source; the SMC block and the
- * outbound blocks share the same filter_ctrl_reg layout. */
-#if defined(INBOUND_FILTER_CTRL_0__FILTER_CONFIG_REG_OFFSET)
-_Static_assert(EXTAXI_FILTER_CFG_OFF == INBOUND_FILTER_CTRL_0__FILTER_CONFIG_REG_OFFSET,
-               "EXTAXI_FILTER_CFG_OFF drifted from generated FILTER_CONFIG offset");
-_Static_assert(EXTAXI_FILTER_START_OFF == INBOUND_FILTER_CTRL_0__START_ADDR_REG_OFFSET,
-               "EXTAXI_FILTER_START_OFF drifted from generated START_ADDR offset");
-_Static_assert(EXTAXI_FILTER_END_OFF == INBOUND_FILTER_CTRL_0__END_ADDR_REG_OFFSET,
-               "EXTAXI_FILTER_END_OFF drifted from generated END_ADDR offset");
-_Static_assert(EXTAXI_FILTER_STRIDE == (INBOUND_FILTER_CTRL_1__REG_MAP_BASE_ADDR -
-                                        INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR),
-               "EXTAXI_FILTER_STRIDE drifted from generated CTRL_1-CTRL_0 block stride");
 #endif
 
 /* Firmware poll bound (loop iterations; never hang). Secondary bound only -- the

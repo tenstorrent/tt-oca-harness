@@ -5,8 +5,9 @@
 `define SYSTEM_TIMER_OCTS_RDL
 
 addrmap system_timer_octs {
+    name = "OCTS System Timer Address Map";
     desc = "Open Chiplet Time Synchronization (OCTS) System Timer Registers";
-
+    
     //////////////////////////
     // Register Definitions //
     //////////////////////////
@@ -51,7 +52,7 @@ addrmap system_timer_octs {
         field {
             sw = r;
             hw = w;
-            desc = "Timer mode: 0=PRIMARY, 1=SECONDARY (set by module parameter)";
+            desc = "Timer mode driven by the is_primary_i input: 0=PRIMARY (is_primary_i=1), 1=SECONDARY (is_primary_i=0).";
         } MODE[0:0] = 0x0;
 
         field {
@@ -110,7 +111,7 @@ addrmap system_timer_octs {
             sw = rw;
             hw = w;
             desc = "Maximum number of clock cycles since a count credit expired (SECONDARY only). To reset the value of this register, write anything to it.
-                    If this number is very high (exact value depends on clock speed and credit value), this indicates that the secondary has not recieved a count credit pulse in a while, and is likely not syncing properly with the primary.
+                    If this number is very high (exact value depends on clock speed and credit value), this indicates that the secondary has not received a count credit pulse in a while, and is likely not syncing properly with the primary.
                     This register can also be used to determine the clock skew between the primary and secondary.
                     If PRIMARY, this field is always 0.";
         } MAX_CYCLES_EXPIRED[31:0] = 0x0;

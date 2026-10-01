@@ -7,7 +7,7 @@
  * Purpose
  * -------
  *   Demonstrates that, with the real SEP RTL instantiated inside the SMU
- *   wrapper (compile_smu_chiplet_sep_rtl, +define+SEP_RTL), the SEP CPU
+ *   wrapper (compile_smu_chiplet, +define+SEP_RTL), the SEP CPU
  *   boots from its TCM and can correctly access several IP modules through
  *   the SEP local fabric.
  *
@@ -40,18 +40,15 @@
 #include "test_completion.h"
 
 /*
- * NOTE on STDOUT usage
- * --------------------
+ * STDOUT usage
+ * ------------
  * In the SMU testbench the cocotb monitor wakes on every AXI awvalid pulse on
- * the SEP ext_out interface and runs a Python coroutine to inspect the data.
- * Each printf() byte is an 8-bit AXI write and therefore induces enormous
- * cocotb VPI overhead (the prior version stalled the simulator at 27us for
- * tens of minutes of wall time).
+ * the SEP ext_out interface and runs a Python coroutine to inspect the data,
+ * so each printf() byte (an 8-bit AXI write) costs a VPI round trip.
  *
- * To keep the test fast we drop printf() entirely and rely solely on the
- * 32-bit magic-word handshake from test_completion.h (test_pass / test_fail).
- * Diagnostic information is preserved by writing failure stage IDs into the
- * SEP outbound STDOUT mailbox as 32-bit stores so they remain visible in
+ * printf() is compiled out; completion is the 32-bit magic-word handshake from
+ * test_completion.h (test_pass / test_fail). Failure stage IDs are 32-bit
+ * stores to the SEP outbound STDOUT mailbox so they remain visible in
  * waveforms / sim.log without the per-byte overhead.
  */
 #define printf(...) ((void)0)
@@ -89,11 +86,11 @@ static void to_hex(const uint8_t *in, int n, char *out) {
 static int hmac_wait_done_or_idle(void) {
     int t = HMAC_TIMEOUT_ITERS;
     while (t-- > 0) {
-        hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
-        hmac__STATUS_t sts = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
+        hmac__INTR_STATE_t intr = {.w = READ_REG(SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
+        hmac__STATUS_t sts = {.w = READ_REG(SEP_TOP_HMAC_STATUS_BASE_ADDR)};
         if (intr.f.hmac_done || sts.f.hmac_idle) {
             hmac__INTR_STATE_t clear = {.f.hmac_done = 1};
-            WRITE_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, clear.w);
+            WRITE_REG(SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, clear.w);
             return 0;
         }
     }
@@ -103,7 +100,7 @@ static int hmac_wait_done_or_idle(void) {
 
 static int hmac_sha256_abc(uint8_t digest[32]) {
     hmac__INTR_ENABLE_t intr_en = {.f.hmac_done = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, intr_en.w);
+    WRITE_REG(SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, intr_en.w);
 
     hmac__CFG_t cfg = {.w = 0};
     cfg.f.hmac_en = 0;
@@ -111,19 +108,19 @@ static int hmac_sha256_abc(uint8_t digest[32]) {
     cfg.f.endian_swap = 0;
     cfg.f.digest_swap = 0;
     cfg.f.digest_size = 1; /* SHA2-256 */
-    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
     hmac__CMD_t cmd = {.f.hash_start = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
 
     /* Feed "abc" — 3 bytes via byte stores so MSG_LENGTH bookkeeping is exact. */
-    volatile uint8_t *fifo8 = (volatile uint8_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR;
+    volatile uint8_t *fifo8 = (volatile uint8_t *)(uintptr_t)SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR;
     const char *msg = "abc";
     for (int i = 0; i < 3; i++) {
         int spins = 0;
         hmac__STATUS_t s;
         do {
-            s.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR);
+            s.w = READ_REG(SEP_TOP_HMAC_STATUS_BASE_ADDR);
             if (++spins > 10000) {
                 printf("    [HMAC] FIFO full timeout\n");
                 return -1;
@@ -134,27 +131,27 @@ static int hmac_sha256_abc(uint8_t digest[32]) {
 
     cmd.w = 0;
     cmd.f.hash_process = 1;
-    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
 
     if (hmac_wait_done_or_idle() != 0) return -1;
 
     for (int i = 0; i < 8; i++) {
-        uint32_t raw = READ_REG(OCH_SEP_TOP_HMAC_DIGEST_BASE_ADDR(0) + (i * 4));
+        uint32_t raw = READ_REG(SEP_TOP_HMAC_DIGEST_BASE_ADDR(0) + (i * 4));
         ((uint32_t *)digest)[i] = bswap32(raw);
     }
 
     /* Cleanup */
-    cfg.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR);
+    cfg.w = READ_REG(SEP_TOP_HMAC_CFG_BASE_ADDR);
     cfg.f.sha_en = 0;
-    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_HMAC_WIPE_SECRET_BASE_ADDR, 0xFFFFFFFFu);
-    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, 0);
+    WRITE_REG(SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_HMAC_WIPE_SECRET_BASE_ADDR, 0xFFFFFFFFu);
+    WRITE_REG(SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, 0);
     return 0;
 }
 
 static int stage_hmac(void) {
     printf("\n[Stage 2] HMAC SHA-256 KAT (\"abc\")\n");
-    printf("    HMAC base=0x%08x\n", OCH_SEP_TOP_HMAC_BASE_ADDR);
+    printf("    HMAC base=0x%08x\n", SEP_TOP_HMAC_BASE_ADDR);
 
     /* NIST FIPS 180-4 KAT for SHA-256("abc"). */
     static const char *expected_hex =
@@ -185,7 +182,7 @@ static int stage_hmac(void) {
 
 #define KMAC_TIMEOUT_ITERS 1000000
 
-/* KMAC CMD codes (from och_sep_top_reg / hjson). */
+/* KMAC CMD codes (from sep_top_reg / hjson). */
 #define KMAC_CMD_START 29
 #define KMAC_CMD_PROCESS 46
 #define KMAC_CMD_DONE 22
@@ -197,7 +194,7 @@ static const uint32_t sha3_256_abc_ref[8] = {0x3a985da7u, 0x4fe225b2u, 0x045c172
 static int kmac_wait_idle(void) {
     int t = KMAC_TIMEOUT_ITERS;
     while (t-- > 0) {
-        kmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
+        kmac__STATUS_t s = {.w = READ_REG(SEP_TOP_KMAC_STATUS_BASE_ADDR)};
         if (s.f.sha3_idle) return 0;
     }
     printf("    [KMAC] Timeout waiting for idle\n");
@@ -207,9 +204,9 @@ static int kmac_wait_idle(void) {
 static int kmac_wait_done(void) {
     int t = KMAC_TIMEOUT_ITERS;
     while (t-- > 0) {
-        uint32_t intr = READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
+        uint32_t intr = READ_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
         if (intr & 0x1u) {
-            WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x1u);
+            WRITE_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x1u);
             return 0;
         }
     }
@@ -229,42 +226,41 @@ static int kmac_sha3_256_abc(uint32_t digest_be[8]) {
     cfg.f.msg_endianness = 0;
     cfg.f.state_endianness = 0;
     cfg.f.entropy_ready = 0;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
 
     /* SW-entropy handshake: set entropy_ready, then write 6 seed words. */
     cfg.f.entropy_ready = 1;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     for (int i = 0; i < 6; i++) {
-        WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEFu + i);
+        WRITE_REG(SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEFu + i);
     }
 
     kmac__CMD_t cmd = {.w = 0};
     cmd.f.cmd = KMAC_CMD_START;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
-    /* Write "abc" — must use byte stores to the SAME word-aligned base
-     * (kmac_sha3_256_test fix v2): non-word-aligned byte stores get dropped
-     * by the 64→32 AXI DW converter, so use fifo8[0] for all three bytes. */
+    /* Write "abc" — must use byte stores to the SAME word-aligned base:
+     * non-word-aligned byte stores get dropped by the 64→32 AXI DW converter,
+     * so use fifo8[0] for all three bytes. */
     {
-        volatile uint8_t *fifo8 =
-            (volatile uint8_t *)(uintptr_t)(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR);
+        volatile uint8_t *fifo8 = (volatile uint8_t *)(uintptr_t)(SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR);
         fifo8[0] = 'a';
         fifo8[0] = 'b';
         fifo8[0] = 'c';
     }
 
     cmd.f.cmd = KMAC_CMD_PROCESS;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     if (kmac_wait_done() != 0) return -1;
 
     /* Read both shares and XOR to get digest (masking compensation). */
     uint32_t share0[8], share1[8];
     for (int i = 0; i < 8; i++) {
-        share0[i] = READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (i * 4));
-        share1[i] = READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + 0x100 + (i * 4));
+        share0[i] = READ_REG(SEP_TOP_KMAC_STATE_BASE_ADDR + (i * 4));
+        share1[i] = READ_REG(SEP_TOP_KMAC_STATE_BASE_ADDR + 0x100 + (i * 4));
     }
 
     /* state_endianness=0 → little-endian; convert to BE for KAT compare. */
@@ -273,13 +269,13 @@ static int kmac_sha3_256_abc(uint32_t digest_be[8]) {
     }
 
     cmd.f.cmd = KMAC_CMD_DONE;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
     return 0;
 }
 
 static int stage_kmac(void) {
     printf("\n[Stage 3] KMAC SHA3-256 KAT (\"abc\", SW entropy)\n");
-    printf("    KMAC base=0x%08x\n", OCH_SEP_TOP_KMAC_BASE_ADDR);
+    printf("    KMAC base=0x%08x\n", SEP_TOP_KMAC_BASE_ADDR);
 
     uint32_t digest_be[8];
     if (kmac_sha3_256_abc(digest_be) != 0) {
@@ -304,21 +300,19 @@ static int stage_kmac(void) {
 }
 
 int main(void) {
-    /* Beacon 0 = main entered; written via raw store BEFORE outbound filter
-     * init.  In the standalone SEP TB the outbound filter is open by default
-     * and STDOUT writes succeed immediately.  In the SMU TB we cannot tell
-     * whether the SoC fabric routes 0x80000000 stores out as ext_out_*,
-     * so the very first beacon also serves as a sanity check that the SEP
-     * CPU is at least executing instructions.
+    /* The outbound window must be opened BEFORE the first STDOUT store. The
+     * SEP outbound filter is instantiated with BlockByDefault=1
+     * (sep_system_peripherals.sv), so an unmatched write is isolated and
+     * answered with an error, which the EL2 takes as a store access fault;
+     * crt0's _trap then jumps to _finish and the firmware dies before it can
+     * open the very window it needs.
      *
-     * NOTE: writing to STDOUT before sep_outbound_filter_init() will be
-     * rejected by the SEP outbound filter (no AXI write reaches the SMU
-     * fabric).  We deliberately keep this beacon — if no beacon ever shows
-     * up on ext_out, even after filter init, the firmware likely never
-     * reached main().  Read sep_stdout_count from cocotb to disambiguate.
+     * Beacon 0 therefore means "main entered AND the outbound window is open".
+     * Liveness earlier than that is covered by sep_smu_boot_health, whose
+     * evidence is SEP-local and needs no outbound path at all.
      */
-    STAGE_BEACON(0);
     sep_outbound_filter_init();
+    STAGE_BEACON(0);
     STAGE_BEACON(1);
 
     printf("\n========================================\n");

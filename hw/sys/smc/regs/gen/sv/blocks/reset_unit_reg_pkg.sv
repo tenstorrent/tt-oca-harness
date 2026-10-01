@@ -38,22 +38,6 @@ package reset_unit_reg_pkg;
         reset_unit__SS_RESET_COMPLETE__reset_complete__in_t reset_complete;
     } reset_unit__SS_RESET_COMPLETE__in_t;
 
-    typedef struct {
-        logic [31:0] next;
-    } reset_unit__STRAPS_LO__straps__in_t;
-
-    typedef struct {
-        reset_unit__STRAPS_LO__straps__in_t straps;
-    } reset_unit__STRAPS_LO__in_t;
-
-    typedef struct {
-        logic [28:0] next;
-    } reset_unit__STRAPS_HI__straps__in_t;
-
-    typedef struct {
-        reset_unit__STRAPS_HI__straps__in_t straps;
-    } reset_unit__STRAPS_HI__in_t;
-
     typedef struct packed {
         logic [31:0] isolate_req_reg;
     } reset_unit__ISOLATE_REQ_REG__external__fields__in_t;
@@ -137,8 +121,6 @@ package reset_unit_reg_pkg;
         reset_unit__SS_CONFIG__external__in_t SS_CONFIG;
         reset_unit__SS_COLD_RESET_N__external__in_t SS_COLD_RESET_N;
         reset_unit__SS_RESET_COMPLETE__in_t SS_RESET_COMPLETE;
-        reset_unit__STRAPS_LO__in_t STRAPS_LO;
-        reset_unit__STRAPS_HI__in_t STRAPS_HI;
         reset_unit__ISOLATE_REQ_REG__external__in_t ISOLATE_REQ_REG;
         reset_unit__ISOLATE_REQ_PINEN_REG__external__in_t ISOLATE_REQ_PINEN_REG;
         reset_unit__ISOLATE_REQ_SMC_REG__external__in_t ISOLATE_REQ_SMC_REG;

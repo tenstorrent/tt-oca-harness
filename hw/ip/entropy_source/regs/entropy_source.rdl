@@ -85,8 +85,8 @@ addrmap entropy_source {
         field {
             sw = r;
             hw = w;
-            desc = "Number of 32-bit digest words remaining for output.";
-        } OUTPUT_COUNT[10:8] = 3'h0;
+            desc = "Number of 32-bit digest words remaining for output. Reports 8 when a digest becomes available, decrements through 0 as words are accepted, and remains 0 while idle or bypassed.";
+        } OUTPUT_COUNT[11:8] = 4'h0;
     };
 
     reg DEBUG_CTRL {
@@ -107,56 +107,56 @@ addrmap entropy_source {
         desc = "Reports latched interrupt status; write one to clear a bit.";
         field {
             sw = rw;
-            hw = w;
+            hw = rw;
             level intr;
             woclr;
             desc = "Indicates a failure in the 32-bit entropy-stream health tests. Write one to clear.";
         } HEALTH_TEST_FAILED[0:0] = 0x0;
         field {
             sw = rw;
-            hw = w;
+            hw = rw;
             level intr;
             woclr;
             desc = "Indicates a FIFO integrity error. Write one to clear.";
         } FIFO_ERROR[4:4] = 0x0;
         field {
             sw = rw;
-            hw = w;
+            hw = rw;
             level intr;
             woclr;
             desc = "Indicates that a main FIFO write was discarded while full. Write one to clear.";
         } FIFO_OVERFLOW[8:8] = 0x0;
         field {
             sw = rw;
-            hw = w;
+            hw = rw;
             level intr;
             woclr;
             desc = "Indicates that software read the empty main FIFO. Write one to clear.";
         } FIFO_UNDERFLOW[12:12] = 0x0;
         field {
             sw = rw;
-            hw = w;
+            hw = rw;
             level intr;
             woclr;
             desc = "Indicates a persistent health-test failure or health-test counter error. Write one to clear.";
         } PERSISTENT_FAILURE[16:16] = 0x0;
         field {
             sw = rw;
-            hw = w;
+            hw = rw;
             level intr;
             woclr;
             desc = "Indicates a per-generator health-test failure while automatic detuning is enabled. Write one to clear.";
         } AUTOTUNE_FAIL[20:20] = 0x0;
         field {
             sw = rw;
-            hw = w;
+            hw = rw;
             level intr;
             woclr;
             desc = "Indicates that a BIW observe FIFO word was discarded while full. Write one to clear.";
         } BIW_OBS_OVERFLOW[24:24] = 0x0;
         field {
             sw = rw;
-            hw = w;
+            hw = rw;
             level intr;
             woclr;
             desc = "Indicates that a raw-noise observe FIFO word was discarded while full. Write one to clear.";
@@ -167,42 +167,42 @@ addrmap entropy_source {
         desc = "Enables individual interrupt sources.";
         field {
             sw = rw;
-            hw = r; // TODO: Change to na after PeakRDL bug fix
+            hw = r;
             desc = "Enables the health-test failure interrupt.";
         } HEALTH_TEST_FAILED[0:0] = 0x0;
         field {
             sw = rw;
-            hw = r; // TODO: Change to na after PeakRDL bug fix
+            hw = r;
             desc = "Enables the FIFO integrity-error interrupt.";
         } FIFO_ERROR[4:4] = 0x0;
         field {
             sw = rw;
-            hw = r; // TODO: Change to na after PeakRDL bug fix
+            hw = r;
             desc = "Enables the main FIFO overflow interrupt.";
         } FIFO_OVERFLOW[8:8] = 0x0;
         field {
             sw = rw;
-            hw = r; // TODO: Change to na after PeakRDL bug fix
+            hw = r;
             desc = "Enables the main FIFO underflow interrupt.";
         } FIFO_UNDERFLOW[12:12] = 0x0;
         field {
             sw = rw;
-            hw = r; // TODO: Change to na after PeakRDL bug fix
+            hw = r;
             desc = "Enables the persistent-failure interrupt.";
         } PERSISTENT_FAILURE[16:16] = 0x0;
         field {
             sw = rw;
-            hw = r; // TODO: Change to na after PeakRDL bug fix
+            hw = r;
             desc = "Enables the automatic-detuning failure interrupt.";
         } AUTOTUNE_FAIL[20:20] = 0x0;
         field {
             sw = rw;
-            hw = r; // TODO: Change to na after PeakRDL bug fix
+            hw = r;
             desc = "Enables the BIW observe FIFO overflow interrupt.";
         } BIW_OBS_OVERFLOW[24:24] = 0x0;
         field {
             sw = rw;
-            hw = r; // TODO: Change to na after PeakRDL bug fix
+            hw = r;
             desc = "Enables the raw-noise observe FIFO overflow interrupt.";
         } NOISE_OBS_OVERFLOW[28:28] = 0x0;
     };
@@ -573,13 +573,13 @@ addrmap entropy_source {
         field {
             sw = rw;
             hw = r;
-            desc = "Selects the shorter tap for each noise ring oscillator while automatic tuning is disabled. FIPS_LOCK.LOCK prevents software changes.";
+            desc = "Selects the full-length (longer) tap for each noise ring oscillator, lowering its frequency, while automatic tuning is disabled; the reset value (clear) selects the shorter tap. FIPS_LOCK.LOCK prevents software changes.";
             swwel = true;  // Locked by FIPS_LOCK.LOCK: certified-config field, SW writes ignored while locked (cleared only by reset).
         } DETUNE[11:0] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Selects the shorter shared sample-clock oscillator tap when any bit is set. FIPS_LOCK.LOCK prevents software changes.";
+            desc = "Selects the full-length (longer) shared sample-clock oscillator tap, lowering its frequency, when any bit is set. FIPS_LOCK.LOCK prevents software changes.";
             swwel = true;  // Locked by FIPS_LOCK.LOCK: certified-config field, SW writes ignored while locked (cleared only by reset).
         } SAMPLE_CLK_DETUNE[23:12] = 0x0;
     };
@@ -1150,12 +1150,6 @@ addrmap entropy_source {
              NOISE_OBS_CTRL                 NOISE_OBS_CTRL                     @0x170;
              NOISE_OBS_STATUS               NOISE_OBS_STATUS                   @0x174;
     external NOISE_OBS_RDATA                NOISE_OBS_RDATA                    @0x178;
-
-    // TODO: Uncomment after PeakRDL bug fix
-    // TODO // INTR_STATUS.HEALTH_TEST_FAILED->hwenable = INTR_ENABLE.HEALTH_TEST_FAILED;
-    // TODO // INTR_STATUS.FIFO_ERROR        ->hwenable = INTR_ENABLE.FIFO_ERROR;
-    // TODO // INTR_STATUS.FIFO_OVERFLOW     ->hwenable = INTR_ENABLE.FIFO_OVERFLOW;
-    // TODO // INTR_STATUS.FIFO_UNDERFLOW    ->hwenable = INTR_ENABLE.FIFO_UNDERFLOW;
 
 };
 

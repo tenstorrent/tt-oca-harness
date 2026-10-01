@@ -26,21 +26,15 @@ int main(void) {
     ctx.body_crc_err_inject_mode = OCCP_CRC_INJECT_NONE;
     ctx.invalid_header_inject_mode = OCCP_INVALID_HDR_INJECT_NONE;
 
-    /* Warm-up */
-    // execute_random_commands(&ctx, 5);
-
-    /* Enable undersize body injection */
     ctx.inject_undersize_body_err = true;
     ctx.exp_response_code = OCCP_INCOMPLETE_MSG;
     execute_random_commands(&ctx, 10);
 
-    // try some jump and validate boot
     if (!is_secure_mode()) {
         occp_send_jump_command(&ctx, ctx.slave_addr, OCCP_TEST_BASE_ADDR);
     }
     occp_send_validate_boot_command(&ctx, ctx.slave_addr, OCCP_TEST_BASE_ADDR);
 
-    /* Disable and recover */
     ctx.inject_undersize_body_err = false;
     ctx.exp_response_code = OCCP_ERROR_NONE;
     execute_random_commands(&ctx, 5);

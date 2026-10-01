@@ -21,8 +21,11 @@ import sys
 from pathlib import Path
 from typing import Union
 
-from systemrdl import RDLCompiler, RDLCompileError
-from systemrdl import node
+from systemrdl import RDLCompileError, RDLCompiler, node
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from common.fieldprops import extract_field_props  # noqa: E402
+from common.rdlview import parse_rdl_params  # noqa: E402
 
 SCRIPT_VERSION = "r2026-08-04"
 
@@ -67,46 +70,21 @@ class JsonExporter:
         return f"{obj.inst_name}_{nxt}"
 
     def field(self, obj: node.FieldNode) -> dict:
-        out = {
+        props = extract_field_props(obj)
+        return {
             "def_file": self.def_file(obj),
             "type": "field",
             "inst_name": obj.inst_name,
             "desc": obj.get_property("desc", default=""),
-            "lsb": obj.lsb,
-            "msb": obj.msb,
-            "reset": obj.get_property("reset"),
-            "sw_access": obj.get_property("sw").name,
-            "woclr": 1 if obj.get_property("woclr") else 0,
+            "lsb": props.lsb,
+            "msb": props.msb,
+            "reset": props.reset,
+            "sw_access": props.sw,
+            "woclr": 1 if props.woclr else 0,
+            "onwrite": props.onwrite,
+            "onread": props.onread,
+            "singlepulse": 1 if props.singlepulse else 0,
         }
-
-        # onwrite/onread are the explicit form; woset/woclr and rset/rclr are the
-        # shorthand RDL allows instead. Report whichever the source used.
-        on_write = obj.get_property("onwrite", default=None)
-        if on_write is None:
-            woset = obj.get_property("woset")
-            woclr = obj.get_property("woclr")
-            if woset and woclr:
-                raise RuntimeError(
-                    f"field {obj.inst_name} sets both woset and woclr"
-                )
-            out["onwrite"] = "woset" if woset else ("woclr" if woclr else "")
-        else:
-            out["onwrite"] = on_write.name
-
-        on_read = obj.get_property("onread", default=None)
-        if on_read is None:
-            rset = obj.get_property("rset")
-            rclr = obj.get_property("rclr")
-            if rset and rclr:
-                raise RuntimeError(
-                    f"field {obj.inst_name} sets both rset and rclr"
-                )
-            out["onread"] = "rset" if rset else ("rclr" if rclr else "")
-        else:
-            out["onread"] = on_read.name
-
-        out["singlepulse"] = 1 if obj.get_property("singlepulse") else 0
-        return out
 
     def reg(self, obj: node.RegNode) -> dict:
         out = {
@@ -115,9 +93,7 @@ class JsonExporter:
             "inst_name": self.indexed_name(obj, self.array_regs),
             "def_type": self.type_name(obj),
             "desc": obj.get_property("desc", default=""),
-            "addr_offset": (
-                obj.raw_address_offset if self.compact_arrays else obj.address_offset
-            ),
+            "addr_offset": (obj.raw_address_offset if self.compact_arrays else obj.address_offset),
             "regsize": obj.get_property("regwidth"),
             "accesssize": obj.get_property("accesswidth"),
         }
@@ -139,9 +115,7 @@ class JsonExporter:
             "mementries": obj.get_property("mementries"),
         }
 
-    def container(
-        self, obj: Union[node.AddrmapNode, node.RegfileNode]
-    ) -> dict:
+    def container(self, obj: Union[node.AddrmapNode, node.RegfileNode]) -> dict:
         if isinstance(obj, node.AddrmapNode):
             kind, counters = "addrmap", self.array_addrmaps
         elif isinstance(obj, node.RegfileNode):
@@ -160,9 +134,7 @@ class JsonExporter:
         out["type"] = kind
         out["inst_name"] = inst_name
         out["def_type"] = self.type_name(obj)
-        out["addr_offset"] = (
-            obj.raw_address_offset if self.compact_arrays else obj.address_offset
-        )
+        out["addr_offset"] = obj.raw_address_offset if self.compact_arrays else obj.address_offset
         # Declared extent of one array element, which can exceed what the children
         # occupy when the RDL pads a map out to a fixed aperture.
         out["size"] = obj.size
@@ -207,24 +179,43 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("input_rdl_file")
     parser.add_argument("output_json_file")
-    parser.add_argument("-u", "--udp_rdl_file", required=True,
-                        help="the PeakRDL UDP RDL file (./regblock_udps.rdl)")
+    parser.add_argument(
+        "-u", "--udp_rdl_file", required=True, help="the PeakRDL UDP RDL file (./regblock_udps.rdl)"
+    )
     parser.add_argument("-t", "--top", help="address map to use as the top")
-    parser.add_argument("-i", "--incdir", action="append",
-                        help="directory to search for included files")
-    parser.add_argument("-c", "--compact_arrays", action="store_true",
-                        help="emit arrays as a size/stride pair instead of unrolling")
-    parser.add_argument("-r", "--repo-root",
-                        help="root the def_file paths are reported relative to")
-    parser.add_argument("-g", "--git_sha", default=os.getenv("GIT_SHA", "unknown"),
-                        help="git SHA recorded in the model")
+    parser.add_argument(
+        "-i", "--incdir", action="append", help="directory to search for included files"
+    )
+    parser.add_argument(
+        "-c",
+        "--compact_arrays",
+        action="store_true",
+        help="emit arrays as a size/stride pair instead of unrolling",
+    )
+    parser.add_argument(
+        "-r", "--repo-root", help="root the def_file paths are reported relative to"
+    )
+    parser.add_argument(
+        "-g",
+        "--git_sha",
+        default=os.getenv("GIT_SHA", "unknown"),
+        help="git SHA recorded in the model",
+    )
+    parser.add_argument(
+        "-P",
+        dest="rdl_params",
+        action="append",
+        default=[],
+        metavar="NAME=VALUE",
+        help="override an addrmap parameter (repeatable)",
+    )
     args = parser.parse_args()
 
     rdlc = RDLCompiler()
     try:
         rdlc.compile_file(args.udp_rdl_file)
         rdlc.compile_file(args.input_rdl_file, incl_search_paths=args.incdir)
-        root = rdlc.elaborate(args.top)
+        root = rdlc.elaborate(args.top, parameters=parse_rdl_params(args.rdl_params) or None)
     except RDLCompileError:
         sys.exit(1)
 

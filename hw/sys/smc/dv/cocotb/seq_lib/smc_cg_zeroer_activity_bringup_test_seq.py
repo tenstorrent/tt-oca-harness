@@ -6,19 +6,19 @@ DV-CARD: SMCCGP0_004 ANCHOR: smc_cg_zeroer_activity_bringup_test
 
 from __future__ import annotations
 
-import logging
-
 import cocotb
-from cocotb.triggers import ClockCycles, RisingEdge, ReadOnly, Timer
-
+from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge, Timer
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
+from . import smc_addr_map as _addr
+from . import smc_cg_obs_utils as cg
 from ._one_shot import _OneShot
 from .smc_csr_seq_utils import SmcCsrSeq
-from . import smc_cg_obs_utils as cg
-from . import smc_addr_map as _addr
 
-_LOG = logging.getLogger(__name__)
+# Every record this sequence emits goes through `cocotb.log`: a module-level
+# `logging.getLogger(__name__)` is not captured by the cocotb/pyuvm runner, so
+# the STEP/CHK/FENCE evidence written through one never reaches the kept log
+# ([EVIDENCE-TOKEN-CONDITIONAL]).
 
 HYST = 0
 IDLE_OBSERVE = 16
@@ -49,7 +49,7 @@ ZEROER_POISON = bytes.fromhex("b1b2b3b4b5b6b7b8")
 
 class smc_cg_zeroer_activity_bringup_test_seq(SmcCsrSeq):
     """LIVE Zeroer axi_clk + reg_clk activity-driven gate/ungate triggered by one
-    zero operation (SMCCGP0_004, Skill 1.5)."""
+    zero operation (SMCCGP0_004)."""
 
     def __init__(self, name: str = "smc_cg_zeroer_activity_bringup_test_seq") -> None:
         super().__init__(name)
@@ -61,9 +61,7 @@ class smc_cg_zeroer_activity_bringup_test_seq(SmcCsrSeq):
 
     async def _program_cg(self, *, zeroer_en: bool, hyst: int = HYST) -> None:
         cur = await self.csr_read("CLOCK_GATE_CONTROL_RD", CLOCK_GATE_CONTROL, length=8)
-        nxt = (cur & ~ZEROER_CG_EN & ~CG_HYST_MASK) | (
-            (hyst << CG_HYST_SHIFT) & CG_HYST_MASK
-        )
+        nxt = (cur & ~ZEROER_CG_EN & ~CG_HYST_MASK) | ((hyst << CG_HYST_SHIFT) & CG_HYST_MASK)
         if zeroer_en:
             nxt |= ZEROER_CG_EN
         await self.csr_write("CLOCK_GATE_CONTROL_WR", CLOCK_GATE_CONTROL, nxt, length=8)
@@ -72,9 +70,7 @@ class smc_cg_zeroer_activity_bringup_test_seq(SmcCsrSeq):
 
     async def _program_output_fabric_pass_all(self) -> None:
         await self.csr_write("INBOUND0_START_PASS_ALL", INBOUND0_START, 0x0, length=8)
-        await self.csr_write(
-            "INBOUND0_END_PASS_ALL", INBOUND0_END, 0x00FF_FFFF_FFFF_FFFF, length=8
-        )
+        await self.csr_write("INBOUND0_END_PASS_ALL", INBOUND0_END, 0x00FF_FFFF_FFFF_FFFF, length=8)
         await self.csr_write(
             "INBOUND0_FILTER_CONFIG_PASS_ALL",
             INBOUND0_FILTER_CONFIG,
@@ -173,12 +169,8 @@ class smc_cg_zeroer_activity_bringup_test_seq(SmcCsrSeq):
         await self.csr_write(
             "ZEROER_DEST_ADDR", ZEROER_CTRL_DEST_ADDR, OUTPUT_FABRIC_ADDR, length=8
         )
-        await self.csr_write(
-            "ZEROER_SIZE", ZEROER_CTRL_SIZE, len(ZEROER_POISON), length=8
-        )
-        await self.csr_write(
-            "ZEROER_CTRL_STATUS_START", ZEROER_CTRL_STATUS, 0x1, length=8
-        )
+        await self.csr_write("ZEROER_SIZE", ZEROER_CTRL_SIZE, len(ZEROER_POISON), length=8)
+        await self.csr_write("ZEROER_CTRL_STATUS_START", ZEROER_CTRL_STATUS, 0x1, length=8)
         state["writing"] = False
         for _ in range(BUSY_TIMEOUT_SMC * 8):
             if state["done"]:
@@ -233,9 +225,7 @@ class smc_cg_zeroer_activity_bringup_test_seq(SmcCsrSeq):
             max_smc=GATE_OFF_TIMEOUT_SMC,
             diag_names=("tb_zeroer_cg_en", "tb_zeroer_busy"),
         )
-        edges = await cg.count_enabled_at_smc_rise(
-            dut, "tb_zeroer_gated_reg_clk", IDLE_OBSERVE
-        )
+        edges = await cg.count_enabled_at_smc_rise(dut, "tb_zeroer_gated_reg_clk", IDLE_OBSERVE)
         assert edges == 0, f"reg_clk still toggling idle: {edges}"
         cg.emit_chk(
             self.chk_seen,
@@ -255,8 +245,7 @@ class smc_cg_zeroer_activity_bringup_test_seq(SmcCsrSeq):
         )
         cg.log_step(
             "S3",
-            "sample zeroer_axi_gated_clk and zeroer_busy_o from operation start "
-            "through completion",
+            "sample zeroer_axi_gated_clk and zeroer_busy_o from operation start through completion",
         )
         cg.log_step(
             "S4",
@@ -326,4 +315,4 @@ class smc_cg_zeroer_activity_bringup_test_seq(SmcCsrSeq):
             "< busy-ungates-axi-clk-observed < PASS",
         )
         cg.mark_fence(self.fence, "PASS")
-        _LOG.info("smc_cg_zeroer_activity_bringup_test_seq PASS")
+        cocotb.log.info("smc_cg_zeroer_activity_bringup_test_seq PASS")

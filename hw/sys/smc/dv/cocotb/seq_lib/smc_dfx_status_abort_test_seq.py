@@ -15,7 +15,19 @@ from .smc_addr_map import (
 )
 from .smc_csr_seq_utils import SmcCsrSeq
 
-_CSR_BOUND = 64
+# Bound on the CSR polls each stage may take. The path being timed is
+# `mem_repair_abort_i` / `mbist_abort_i` -> the STATUS_SMU sticky bit -> one
+# SEP_IN AXI-Lite read; the pins are driven from this coroutine and the bit is
+# sticky, so a healthy DUT shows the new word on the FIRST read after the drive
+# and every stage below costs exactly one access. The bound is
+# tight rather than generous: it is the only check here on how long the pin
+# takes to reach the status word, and its expiry is a FAILURE, never a pass
+# ([TIMEOUT-MUST-FAIL]). The observed poll count is carried into every token so
+# a run that needed more than one poll is visible instead of being absorbed.
+_MAX_STATUS_POLLS = 4
+# Value-checked reads this sequence must book with the scoreboard: the two
+# sticky readbacks that carry `expected=`.
+EXPECTED_VALUE_CHECKS = 2
 
 
 class smc_dfx_status_abort_test_seq(SmcCsrSeq):
@@ -23,76 +35,120 @@ class smc_dfx_status_abort_test_seq(SmcCsrSeq):
 
     def __init__(self, name: str = "smc_dfx_status_abort_test_seq") -> None:
         super().__init__(name)
-        self.idle_ok = False
-        self.repair_ok = False
-        self.mbist_ok = False
+        #: STATUS_SMU words observed at each stage, in order.
+        self.status_progression: list[int] = []
+        #: CSR polls each `_await_status` stage needed, in order.
+        self.stage_polls: list[int] = []
+        #: scoreboard value compares booked by this sequence's `expected=` reads
+        self.value_checks = 0
 
-    def _bit(self, sig, name: str) -> int:
-        if not sig.value.is_resolvable:
-            raise AssertionError(f"X/Z on {name}: {sig.value}")
-        return int(sig.value) & 1
-
-    async def _await_status(self, want: int, bound: int, label: str) -> int:
+    async def _await_status(self, want: int, label: str) -> int:
         last = 0
-        for _ in range(bound):
+        for poll in range(1, _MAX_STATUS_POLLS + 1):
             last = await self.csr_read(label, DFX_STATUS_SMU)
             if last == want:
+                self.stage_polls.append(poll)
                 return last
             await RisingEdge(cocotb.top.clk_smc_i)
-        raise AssertionError(f"{label}: STATUS_SMU=0x{last:x} want 0x{want:x}")
+        raise AssertionError(
+            f"{label}: STATUS_SMU=0x{last:x} want 0x{want:x} after {_MAX_STATUS_POLLS} CSR poll(s)"
+        )
 
     async def body(self) -> None:
         dut = cocotb.top
         await self.wait_fuse_sense_done()
         assert hasattr(dut, "tb_mem_repair_abort"), "tb_mem_repair_abort missing"
         assert hasattr(dut, "tb_mbist_abort"), "tb_mbist_abort missing"
+        # TB deposit. `tb_mem_repair_abort` / `tb_mbist_abort` are top-level TB
+        # input ports (tb_top.sv:179-180) wired to `.mem_repair_abort_i` /
+        # `.mbist_abort_i` (tb_top.sv:1316,1319) with no other driver, so
+        # reading them back would only observe this coroutine's own write and
+        # could not fail on anything the DUT did ([NO-ALWAYS-PASS-CHECKER]).
+        # The deposit is instead validated by its effect: the STATUS_SMU compare
+        # in the next statement is what fails if the pins are not at 0.
         dut.tb_mem_repair_abort.value = 0
         dut.tb_mbist_abort.value = 0
 
-        idle = await self._await_status(DFX_STATUS_IDLE, _CSR_BOUND, "STATUS_IDLE")
-        assert self._bit(dut.tb_mem_repair_abort, "tb_mem_repair_abort") == 0
-        assert self._bit(dut.tb_mbist_abort, "tb_mbist_abort") == 0
-        self.idle_ok = True
-        cocotb.log.info("CHK-DFX-ABORT-IDLE: STATUS_SMU=0x%x abort pins=0", idle)
+        idle = await self._await_status(DFX_STATUS_IDLE, "STATUS_IDLE")
+        self.status_progression.append(idle)
+        cocotb.log.info(
+            "CHK-DFX-ABORT-IDLE: STATUS_SMU=0x%x (no abort bit set) after "
+            "%d CSR poll(s) with both abort pins driven 0",
+            idle,
+            self.stage_polls[-1],
+        )
 
         dut.tb_mem_repair_abort.value = 1
         repair = await self._await_status(
-            DFX_STATUS_IDLE | DFX_MEM_REPAIR_ABORT, _CSR_BOUND, "STATUS_REPAIR_ABORT"
+            DFX_STATUS_IDLE | DFX_MEM_REPAIR_ABORT, "STATUS_REPAIR_ABORT"
         )
-        assert (repair & DFX_MBIST_ABORT) == 0, (
-            f"mbist_abort set by mem_repair pulse: 0x{repair:x}"
-        )
+        repair_live_polls = self.stage_polls[-1]
         dut.tb_mem_repair_abort.value = 0
         sticky = await self.csr_read(
             "STATUS_REPAIR_STICKY",
             DFX_STATUS_SMU,
             expected=DFX_STATUS_IDLE | DFX_MEM_REPAIR_ABORT,
         )
-        self.repair_ok = True
+        self.status_progression.append(sticky)
         cocotb.log.info(
-            "CHK-DFX-ABORT-REPAIR: STATUS_SMU=0x%x after pin 1→0 (sticky)", sticky
+            "CHK-DFX-ABORT-REPAIR: STATUS_SMU=0x%x live after %d CSR poll(s) "
+            "with mem_repair_abort_i=1, still 0x%x after the pin returned to 0 "
+            "(sticky)",
+            repair,
+            repair_live_polls,
+            sticky,
         )
 
         dut.tb_mbist_abort.value = 1
         both = await self._await_status(
             DFX_STATUS_IDLE | DFX_MEM_REPAIR_ABORT | DFX_MBIST_ABORT,
-            _CSR_BOUND,
             "STATUS_MBIST_ABORT",
         )
+        mbist_live_polls = self.stage_polls[-1]
         dut.tb_mbist_abort.value = 0
         both_sticky = await self.csr_read(
             "STATUS_MBIST_STICKY",
             DFX_STATUS_SMU,
             expected=DFX_STATUS_IDLE | DFX_MEM_REPAIR_ABORT | DFX_MBIST_ABORT,
         )
-        self.mbist_ok = True
+        self.status_progression.append(both_sticky)
         cocotb.log.info(
-            "CHK-DFX-ABORT-MBIST: STATUS_SMU=0x%x both abort sticky", both_sticky
+            "CHK-DFX-ABORT-MBIST: STATUS_SMU=0x%x live after %d CSR poll(s) "
+            "with mbist_abort_i=1, still 0x%x after the pin returned to 0 "
+            "(both aborts sticky)",
+            both,
+            mbist_live_polls,
+            both_sticky,
+        )
+
+        # Reconciliation against the SCOREBOARD, not against this sequence's own
+        # counters. `csr_read` never compares `expected` itself -- the only
+        # value compare is `smc_scoreboard.py:711-718` -- so without these two
+        # legs a mis-bound analysis path would run every stage above with no
+        # compare at all and the sequence could not tell ([NO-ZERO-ACTIVITY-PASS]).
+        sb = self.env.scoreboard
+        assert sb.sys_axi_checks_seen >= self.accesses, (
+            f"DFX_STATUS_ABORT: the scoreboard checked only "
+            f"{sb.sys_axi_checks_seen} SYS AXI item(s) but this sequence issued "
+            f"{self.accesses} access(es) -- the traffic never reached the "
+            f"scoreboard, so none of it is checked evidence"
+        )
+        self.value_checks = sb.sys_axi_value_checks_seen
+        assert self.value_checks >= EXPECTED_VALUE_CHECKS, (
+            f"DFX_STATUS_ABORT: the two sticky readbacks must book "
+            f"{EXPECTED_VALUE_CHECKS} scoreboard value compare(s), the "
+            f"scoreboard booked {self.value_checks}"
         )
         cocotb.log.info(
-            "CHK-DFX-ABORT-BASIC: idle=%s repair=%s mbist=%s (live=0x%x)",
-            self.idle_ok,
-            self.repair_ok,
-            self.mbist_ok,
-            both,
+            "CHK-DFX-ABORT-BASIC: STATUS_SMU %s across idle -> mem_repair "
+            "abort -> mbist abort; stage poll counts %s (bound %d, so each "
+            "abort pin reached the status word inside one CSR round trip); "
+            "%d access(es) checked by the scoreboard, %d of them value "
+            "compares (>= %d)",
+            " -> ".join(f"0x{w:x}" for w in self.status_progression),
+            self.stage_polls,
+            _MAX_STATUS_POLLS,
+            sb.sys_axi_checks_seen,
+            self.value_checks,
+            EXPECTED_VALUE_CHECKS,
         )

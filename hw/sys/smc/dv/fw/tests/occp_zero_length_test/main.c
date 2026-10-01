@@ -16,7 +16,6 @@
 
 #include "occp_test_common.h"
 
-// Function to read and validate SMC status buffer entries
 static void validate_smc_status_buffer(test_context_t *ctx, int exp_write_errors,
                                        int exp_read_errors) {
     uint32_t smc_status = 0;
@@ -26,7 +25,6 @@ static void validate_smc_status_buffer(test_context_t *ctx, int exp_write_errors
 
     simputs("=== Validating SMC Status Buffer ===\n");
 
-    // Read all status entries from SMC status buffer
     simputs("Reading SMC status buffer entries:\n");
 
     while (true) {
@@ -60,8 +58,7 @@ static void validate_smc_status_buffer(test_context_t *ctx, int exp_write_errors
 
         // Check if this is an SMC ROM error about unknown OCCP command
         if (fw_id == 0x2 && msg_type == 0x2) { // SMC BL0, Error type
-            // Check command failed errors first (more specific range)
-            if (msg_value == 0x120) { // SMC_OCCP_ERROR_READ_OVERFLOW
+            if (msg_value == 0x120) {          // SMC_OCCP_ERROR_READ_OVERFLOW
                 simputs("  Found error SMC_OCCP_ERROR_READ_OVERFLOW\n");
                 total_read_errors++;
             } else if (msg_value == 0x130) { // SMC_OCCP_ERROR_WRITE_OVERFLOW
@@ -75,7 +72,6 @@ static void validate_smc_status_buffer(test_context_t *ctx, int exp_write_errors
         }
     }
 
-    // Summary and validation
     simputs("=== SMC Status Buffer Validation Summary ===\n");
     simputshex32("Total write errors: ", total_write_errors);
     simputshex32("Total read errors: ", total_read_errors);
@@ -131,22 +127,19 @@ static void run_zero_length_tests(test_context_t *ctx) {
     int num_write_errors = 0;
     int num_read_errors = 0;
 
-    // Test at base address
     test_zero_length_write(ctx, ctx->test_base_addr);
     test_zero_length_read(ctx, ctx->test_base_addr);
     num_write_errors++;
     num_read_errors++;
 
-    // Test at offset addresses
     test_zero_length_write(ctx, ctx->test_upper_addr_bound - 1);
     test_zero_length_read(ctx, ctx->test_upper_addr_bound - 1);
     num_write_errors++;
     num_read_errors++;
 
-    // Test multiple consecutive zero length operations
     simputs("=== Testing Random Zero Length Operations ===\n");
     for (int i = 0; i < 10; i++) {
-        if (get_random_int() % 2) { // write or read
+        if (get_random_int() % 2) {
             test_zero_length_write(
                 ctx, ctx->test_base_addr +
                          (get_random_int() % (ctx->test_upper_addr_bound - ctx->test_base_addr)));
@@ -174,13 +167,11 @@ int main(void) {
 
     init_test(0);
 
-    // Initialize interface and discover devices
     if (!initialize_interface(&test_ctx)) {
         simputs("FAIL: Interface initialization failed\n");
         return -1;
     }
 
-    // Set up test context
     test_ctx.test_base_addr = OCCP_TEST_BASE_ADDR;
     test_ctx.test_upper_addr_bound = OCCP_TEST_UPPER_ADDR;
     test_ctx.overall_result = true;
@@ -190,13 +181,11 @@ int main(void) {
     simputs("=== First execute random commands (5 commands) ===\n");
     execute_random_commands(&test_ctx, 5);
 
-    // Run the comprehensive zero length tests
     run_zero_length_tests(&test_ctx);
 
     simputs("=== Second execute random commands (5 commands) ===\n");
     execute_random_commands(&test_ctx, 5);
 
-    // Finalize and report results
     finalize_test_results(&test_ctx);
 
     simputs("Done\n");

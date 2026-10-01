@@ -5,9 +5,10 @@
 `define AVS_CONTROLLER_RDL_DEFINED
 
 addrmap avsbus_controller {
+    name = "AVSBus Controller Address Map";
+    desc = "Command, readback, status, and interrupt registers for the AVSBus (V1.3.1) controller.";
 
-   desc = "AVSBus V1.3.1 Registers";
-
+   
    ////////////////////////////////////////////////////////////////////////////
    // Register Definitions
    ////////////////////////////////////////////////////////////////////////////
@@ -158,7 +159,7 @@ addrmap avsbus_controller {
    };
 
    reg AVS_LATEST_SLAVE_SUBFRAME {
-      desc = "This register contains the most recently received subframe from the AVS slave, by-passing the
+      desc = "This register contains the most recently received subframe from the AVS slave, bypassing the
                AVS readback fifo. It is provided so that APB can see the current slave StatusResponse and SlaveAck
                settings in a timely fashion, since the status data from the next entry in the readback fifo might
                have considerable latency relative to when it was initially received from the AVS Slave. ";
@@ -483,7 +484,7 @@ addrmap avsbus_controller {
          sw = rw;
          hw = r;
          desc = "Maximum number of times to attempt a retry if an AVS command returns a fail
-                  status (either due to targetted resource being busy or CRC failure)";
+                  status (either due to targeted resource being busy or CRC failure)";
       } MAX_RETRIES[23:16] = 5;
 
       field {

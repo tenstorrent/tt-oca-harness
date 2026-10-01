@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= eFuse Shadow Register Scan Protection
+:description: SMC eFuse asset classification and scan-chain protection policy.
+
 [[smc-scan-protection]]
-=== eFuse Shadow Register Scan Protection
 
 DFT scan test and debug scandump share the scan chain infrastructure. Any flop
 placed on a scan chain can be shifted out, and any flop on a dumpable chain can
@@ -17,8 +19,12 @@ The asset classes referenced here (Class 1 / Class 2 / Class 3) are defined
 authoritatively in the SEP Lifecycle Controller chapter, _Asset and Scan-Chain
 Protection_. This section records how they apply to the SMC eFuse controller.
 
-==== SMC eFuse Asset Classification
+== SMC eFuse Asset Classification
 
+<<smc-efuse-shadow-register-classification-table>> relates the SMC fuse contents to
+their security class and scan policy.
+
+[[smc-efuse-shadow-register-classification-table]]
 .SMC eFuse shadow register classification
 [width="100%",cols="20%,25%,55%",options="header",]
 |=======================================================================
@@ -27,8 +33,8 @@ Protection_. This section records how they apply to the SMC eFuse controller.
 |Class 1a (confidentiality)
 |_none_
 |The SMC fuse map holds no device secrets -- it carries identifiers
-(`CHIPLET_ID`, `PACKAGE_ID`, `I2C_I3C_ID`), memory repair data (`BIRA`), and
-topology / clocking / SPI configuration. There are no keys, no UIDs used as key
+(`JTAG_PUBLIC_IDENTITY`, `I2C_I3C_ID`), boot configuration (`SMC_CONFIG`,
+`OCCP_TRANSPORT_TIMEOUT`), and spare regions. There are no keys, no UIDs used as key
 material, and no token registers. Consequently no confidentiality masking is
 required.
 
@@ -54,7 +60,7 @@ disconnection in the SMC eFuse controller: `secure_tm_i` is tied to `1'b0` and
 `secure_tm` disconnects the UID / `CLASS_KEY` sources from their Class 2
 consumers.
 
-==== Implementation
+== Implementation
 
 `efuse_shadow_regs` keeps its shadow storage in two separately named arrays and
 reconstructs the public register view from both. The array holding Class 1 words
@@ -83,21 +89,25 @@ localparam efuse_pkg::shadow_word_range_map_t Class1ShadowRanges = '{
 `LOCKS` sits at fuse-map offset `0x0` and is 64 bits wide, so this resolves to
 shadow words 0 and 1.
 
+<<smc-shadow-word-allocation-table>> maps fuse fields to their shadow-register word
+ranges.
+
+[[smc-shadow-word-allocation-table]]
 .SMC shadow word allocation
 [width="100%",cols="55%,45%",options="header",]
 |=================================================================
 |Quantity |Value
 
-|Fuse map size |3 KB (24576 bits, 768 x 32-bit words)
+|Fuse map size |1 KB (8192 bits, 256 x 32-bit words)
 |Class 1 words (`shadow_efuse_values_n0_scan`) |2 (words 0-1, `LOCKS`)
-|Class 3 words (`shadow_efuse_values`) |766
+|Class 3 words (`shadow_efuse_values`) |254
 |=================================================================
 
 Three `ASSERT_INIT` checks in `efuse_shadow_regs` verify at elaboration that the
 configured ranges are well formed, non-overlapping, and inside the shadow array,
 so a bad range map is a build failure rather than a silent loss of protection.
 
-==== Downstream Lock Path
+== Downstream Lock Path
 
 Excluding the `LOCKS` shadow flops is only sufficient if no scannable flop
 downstream of them re-derives the lock decision. In the SMC eFuse controller
@@ -112,7 +122,7 @@ The one sequential consumer of that logic is
 attempted. It carries an access-violation event, not lock state, so observing it
 does not reveal or alter the `LOCKS` value.
 
-==== Notes for DFT
+== Notes for DFT
 
 * The `_n0_scan` suffix is a Class 1 marker and takes precedence over any
 enclosing scan hierarchy. Do not rename it; the exclusion is carried entirely by
@@ -127,7 +137,7 @@ extending `Class1ShadowRanges` (and, for a confidentiality asset,
 `SECRET_SHADOW_RANGES` plus a real `secure_tm_i` source). Adding the register to
 the RDL alone does not confer scan protection.
 
-==== Verification
+== Verification
 
 `smc_efuse_shadow_lock_matrix_test` exercises reads and writes across the
 `LOCKS` matrix and therefore covers the relocated words functionally, confirming

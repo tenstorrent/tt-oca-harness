@@ -50,6 +50,19 @@ SIMULATOR_PARSER_EXTENSION_KEYS = {
 
 ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 
+# A `grader = "formal"` policy grades a formal stage from per-task status lines instead of
+# simulation pass/fail evidence; `runlib.formal` applies it.
+FORMAL_POLICY_KEYS = {
+    "grader",
+    "strip_ansi",
+    "task_status_patterns",
+    "task_results",
+    "evidence_patterns",
+    "hard_fail_patterns",
+}
+FORMAL_POLICY_LIST_KEYS = ("task_status_patterns", "evidence_patterns", "hard_fail_patterns")
+FORMAL_TASK_RESULT_FORMATS = {"sby-junit", "none"}
+
 
 def load_parser_registry(root: Path) -> dict[str, Any]:
     path = configs_root(root) / "parsers.toml"
@@ -76,13 +89,83 @@ def _compile_regex(pattern: str, source: str) -> None:
         raise ConfigError(f"{source}: invalid regex `{pattern}`: {exc}") from exc
 
 
+def is_formal_policy(policy: Any) -> bool:
+    return isinstance(policy, dict) and policy.get("grader") == "formal"
+
+
+def validate_formal_policy(name: str, policy: dict[str, Any]) -> None:
+    """Check a `grader = "formal"` policy: its keys, its patterns, and the `status` group."""
+    where = f"parsers.toml policy `{name}`"
+    if policy.get("grader") != "formal":
+        raise ConfigError(f'{where}: `grader` must be "formal"')
+    unknown = sorted(set(policy) - FORMAL_POLICY_KEYS)
+    if unknown:
+        raise ConfigError(f"{where}: unsupported key(s) for a formal grader: {', '.join(unknown)}")
+    if not isinstance(policy.get("strip_ansi", True), bool):
+        raise ConfigError(f"{where}: strip_ansi must be bool")
+    if str(policy.get("task_results", "none")) not in FORMAL_TASK_RESULT_FORMATS:
+        raise ConfigError(
+            f"{where}: task_results must be one of {', '.join(sorted(FORMAL_TASK_RESULT_FORMATS))}"
+        )
+    for key in FORMAL_POLICY_LIST_KEYS:
+        for pattern in as_str_list(policy.get(key), f"policy.{name}.{key}"):
+            _compile_regex(pattern, where)
+    task_patterns = as_str_list(policy.get("task_status_patterns"), f"policy.{name}")
+    if not task_patterns:
+        raise ConfigError(f"{where}: task_status_patterns must list at least one pattern")
+    for pattern in task_patterns:
+        if "status" not in re.compile(pattern).groupindex:
+            raise ConfigError(
+                f"{where}: task_status_patterns entry `{pattern}` needs a (?P<status>...) group"
+            )
+
+
+def validate_formal_grading_sources(
+    flow: Flow, simulators: dict[str, Any], policies: dict[str, Any]
+) -> None:
+    """Every formal app backend needs a grading source: an `evidence` table on the app, or a
+    formal `parser_policy` on the tool's registry entry."""
+    graded_tools: set[str] = set()
+    for tool in flow.tools:
+        tool_cfg = simulators.get(tool, {})
+        name = tool_cfg.get("parser_policy") if isinstance(tool_cfg, dict) else None
+        if name is None:
+            continue
+        if not is_formal_policy(policies.get(str(name))):
+            raise ConfigError(
+                f"simulators.toml: [{tool}].parser_policy `{name}` is not a "
+                f'`grader = "formal"` policy in parsers.toml'
+            )
+        graded_tools.add(tool)
+    formal = flow.raw.get("formal", {})
+    apps = formal.get("apps", {}) if isinstance(formal, dict) else {}
+    if not isinstance(apps, dict):
+        return
+    for app_name, app in apps.items():
+        if not isinstance(app, dict):
+            continue
+        for tool, table in app.items():
+            if not isinstance(table, dict) or "evidence" in table or tool in graded_tools:
+                continue
+            raise ConfigError(
+                f"{flow.path} [formal.apps.{app_name}.{tool}]: no grading source; the `{tool}` "
+                "registry entry names no formal `parser_policy` and the app sets no `evidence` "
+                "table"
+            )
+
+
 def validate_parser_registry(root: Path) -> dict[str, Any]:
     policies = load_parser_registry(root)
     for name, policy in policies.items():
         if not isinstance(policy, dict):
             raise ConfigError(f"parsers.toml: [policy.{name}] must be a table")
+        if "grader" in policy:
+            validate_formal_policy(name, policy)
+            continue
         if not isinstance(policy.get("require_positive_evidence", True), bool):
-            raise ConfigError(f"parsers.toml: policy `{name}` require_positive_evidence must be bool")
+            raise ConfigError(
+                f"parsers.toml: policy `{name}` require_positive_evidence must be bool"
+            )
         if str(policy.get("structured_format", "none")) not in {"xunit", "junit", "none"}:
             raise ConfigError(f"parsers.toml: policy `{name}` structured_format is unsupported")
         for key in PARSER_LIST_KEYS:
@@ -93,8 +176,11 @@ def validate_parser_registry(root: Path) -> dict[str, Any]:
     return policies
 
 
-def validate_parser_extensions(flow: Flow, simulators: dict[str, Any], policies: dict[str, Any]) -> None:
+def validate_parser_extensions(
+    flow: Flow, simulators: dict[str, Any], policies: dict[str, Any]
+) -> None:
     if flow.framework == "formal":
+        validate_formal_grading_sources(flow, simulators, policies)
         return
     policy_name = parser_policy_name(flow)
     if policy_name not in policies:
@@ -108,7 +194,9 @@ def validate_parser_extensions(flow: Flow, simulators: dict[str, Any], policies:
         if key == "policy":
             continue
         if key.startswith("replace_"):
-            raise ConfigError(f"{flow.path}: `{key}` weakens parser policy; use additive extra_* keys")
+            raise ConfigError(
+                f"{flow.path}: `{key}` weakens parser policy; use additive extra_* keys"
+            )
         if key not in FLOW_PARSER_EXTENSION_KEYS:
             raise ConfigError(f"{flow.path}: unsupported [pass_fail] key `{key}`")
         for pattern in as_str_list(value, f"pass_fail.{key}"):
@@ -121,8 +209,12 @@ def validate_parser_extensions(flow: Flow, simulators: dict[str, Any], policies:
             as_str_list(policy.get("structured_results"), "generic-regex.structured_results")
             or as_str_list(policy.get("summary_patterns"), "generic-regex.summary_patterns")
             or as_str_list(policy.get("pass_patterns"), "generic-regex.pass_patterns")
-            or as_str_list(pass_fail.get("extra_structured_results"), "pass_fail.extra_structured_results")
-            or as_str_list(pass_fail.get("extra_summary_patterns"), "pass_fail.extra_summary_patterns")
+            or as_str_list(
+                pass_fail.get("extra_structured_results"), "pass_fail.extra_structured_results"
+            )
+            or as_str_list(
+                pass_fail.get("extra_summary_patterns"), "pass_fail.extra_summary_patterns"
+            )
             or as_str_list(pass_fail.get("extra_pass_patterns"), "pass_fail.extra_pass_patterns")
         )
         if not positive_sources:
@@ -137,7 +229,9 @@ def validate_parser_extensions(flow: Flow, simulators: dict[str, Any], policies:
             raise ConfigError(f"simulators.toml: [{tool}.parser_extensions] must be a table")
         for key, value in extensions.items():
             if key not in SIMULATOR_PARSER_EXTENSION_KEYS:
-                raise ConfigError(f"simulators.toml: unsupported [{tool}.parser_extensions] key `{key}`")
+                raise ConfigError(
+                    f"simulators.toml: unsupported [{tool}.parser_extensions] key `{key}`"
+                )
             for pattern in as_str_list(value, f"{tool}.parser_extensions.{key}"):
                 _compile_regex(pattern, f"simulators.toml {tool}.parser_extensions.{key}")
 
@@ -152,6 +246,10 @@ def resolved_parser_policy(
     base = policies.get(policy_name)
     if not isinstance(base, dict):
         raise ConfigError(f"{flow.path}: parser policy `{policy_name}` missing from parsers.toml")
+    if "grader" in base:
+        raise ConfigError(
+            f"{flow.path}: parser policy `{policy_name}` is a formal grader, not a simulation policy"
+        )
 
     effective: dict[str, Any] = {
         "require_positive_evidence": bool(base.get("require_positive_evidence", True)),
@@ -195,21 +293,108 @@ def evidence_record(kind: str, path: Path, root: Path, status: str, message: str
 
 def parse_xunit_result(path: Path, root: Path) -> tuple[str, dict[str, str]]:
     if not path.is_file():
-        return "UNKNOWN", evidence_record("results_xml", path, root, "UNKNOWN", "structured result missing")
+        return "UNKNOWN", evidence_record(
+            "results_xml", path, root, "UNKNOWN", "structured result missing"
+        )
     if path.stat().st_size == 0:
-        return "UNKNOWN", evidence_record("results_xml", path, root, "UNKNOWN", "structured result is empty")
+        return "UNKNOWN", evidence_record(
+            "results_xml", path, root, "UNKNOWN", "structured result is empty"
+        )
     try:
         root_elem = ET.parse(path).getroot()
     except ET.ParseError as exc:
-        return "UNKNOWN", evidence_record("results_xml", path, root, "UNKNOWN", f"malformed XML: {exc}")
+        return "UNKNOWN", evidence_record(
+            "results_xml", path, root, "UNKNOWN", f"malformed XML: {exc}"
+        )
 
     total = len(root_elem.findall(".//testcase"))
     failing = len(root_elem.findall(".//failure")) + len(root_elem.findall(".//error"))
     if total == 0:
-        return "UNKNOWN", evidence_record("results_xml", path, root, "UNKNOWN", "0 testcase(s) found")
+        return "UNKNOWN", evidence_record(
+            "results_xml", path, root, "UNKNOWN", "0 testcase(s) found"
+        )
     if failing:
-        return "FAIL", evidence_record("results_xml", path, root, "FAIL", f"{failing} testcase failure/error node(s)")
+        return "FAIL", evidence_record(
+            "results_xml", path, root, "FAIL", f"{failing} testcase failure/error node(s)"
+        )
     return "PASS", evidence_record("results_xml", path, root, "PASS", f"{total} testcase(s) passed")
+
+
+def xunit_failure_messages(path: Path) -> list[str]:
+    """The message of every failure/error node in a JUnit file, first line only.
+
+    cocotb writes the assertion text as `error_msg`; JUnit proper uses `message`; a node
+    with neither carries it as text. Returns [] for a missing or malformed file.
+    """
+    if not path.is_file():
+        return []
+    try:
+        root_elem = ET.parse(path).getroot()
+    except ET.ParseError:
+        return []
+    messages: list[str] = []
+    for node in [*root_elem.iter("failure"), *root_elem.iter("error")]:
+        text = node.get("message") or node.get("error_msg") or (node.text or "")
+        first = text.strip().splitlines()[0].strip() if text.strip() else ""
+        if first:
+            messages.append(first)
+    return messages
+
+
+def log_failure_messages(log_path: Path, policy: dict[str, Any]) -> list[str]:
+    """Every log line holding a fail-pattern match that no ignore pattern covers, in log order.
+
+    The fail and ignore patterns apply to the whole log as in the fail-pattern pass of
+    `parse_stage_result`, whether or not the parser reaches that pass. Each line is returned
+    once, whole and stripped. Returns [] for a missing log.
+    """
+    if not log_path.is_file():
+        return []
+    text = log_path.read_text(errors="replace")
+    if policy["strip_ansi"]:
+        text = ANSI_ESCAPE_RE.sub("", text)
+    starts: set[int] = set()
+    for pattern in policy["fail_patterns"]:
+        for match in re.finditer(pattern, text, flags=re.MULTILINE):
+            matched = match.group(0)
+            if _is_ignored(matched.strip() or pattern, policy["ignore_patterns"]):
+                continue
+            # A match that opens with whitespace, such as `^\s*Error:`, may start on an
+            # earlier line than the one it reports.
+            first = match.start() + len(matched) - len(matched.lstrip())
+            starts.add(text.rfind("\n", 0, first) + 1)
+    messages: list[str] = []
+    for start in sorted(starts):
+        end = text.find("\n", start)
+        line = text[start : end if end >= 0 else len(text)].strip()
+        if line:
+            messages.append(line)
+    return messages
+
+
+def observed_failure_messages(
+    *,
+    flow: Flow,
+    tool: str,
+    policies: dict[str, Any],
+    simulators: dict[str, Any],
+    log_path: Path,
+    results_dir: Path,
+) -> list[str]:
+    """The failure messages of a leaf, from the source its parser policy grades it by.
+
+    A policy with structured results reads those files, which the framework writes. Any other
+    policy reads the log's fail-pattern lines; a results.xml beside such a leaf is the
+    runner's report of the graded status, never evidence.
+    """
+    _, policy, _ = resolved_parser_policy(flow, tool, policies, simulators)
+    if policy["structured_results"]:
+        return [
+            message
+            for name in policy["structured_results"]
+            for message in xunit_failure_messages(results_dir / name)
+        ]
+    return log_failure_messages(log_path, policy)
 
 
 def _match_lines(patterns: list[str], text: str) -> list[str]:
@@ -224,7 +409,9 @@ def _is_ignored(line: str, patterns: list[str]) -> bool:
     return any(re.search(pattern, line, flags=re.MULTILINE) for pattern in patterns)
 
 
-def _summary_evidence(pattern: str, match: re.Match[str], log_path: Path, root: Path) -> dict[str, str]:
+def _summary_evidence(
+    pattern: str, match: re.Match[str], log_path: Path, root: Path
+) -> dict[str, str]:
     numbers = {
         key: int(value)
         for key, value in match.groupdict().items()
@@ -235,20 +422,25 @@ def _summary_evidence(pattern: str, match: re.Match[str], log_path: Path, root: 
     if {"tests", "pass", "fail", "skip"}.issubset(numbers):
         status = (
             "PASS"
-            if numbers["tests"] > 0 and numbers["fail"] == 0
+            if numbers["tests"] > 0
+            and numbers["fail"] == 0
             and numbers["pass"] + numbers["skip"] == numbers["tests"]
             else "FAIL"
         )
         return evidence_record("log_summary", log_path, root, status, message)
 
     if "uvm_error" in numbers or "uvm_fatal" in numbers:
-        status = "PASS" if numbers.get("uvm_error", 0) == 0 and numbers.get("uvm_fatal", 0) == 0 else "FAIL"
+        status = (
+            "PASS"
+            if numbers.get("uvm_error", 0) == 0 and numbers.get("uvm_fatal", 0) == 0
+            else "FAIL"
+        )
         return evidence_record("log_summary", log_path, root, status, message)
 
     return evidence_record("log_summary", log_path, root, "PASS", message or pattern)
 
 
-def _fingerprint(policy: dict[str, Any]) -> str:
+def policy_fingerprint(policy: dict[str, Any]) -> str:
     payload = json.dumps(policy, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return "sha256:" + hashlib.sha256(payload).hexdigest()
 
@@ -265,7 +457,7 @@ def _decision(
 ) -> ParserDecision:
     parser = {
         "policy": policy_name,
-        "policy_fingerprint": _fingerprint(policy),
+        "policy_fingerprint": policy_fingerprint(policy),
         "positive_evidence_required": bool(policy["require_positive_evidence"]),
         "status_source": source,
         "extensions": extensions,
@@ -301,7 +493,16 @@ def parse_stage_result(
         structured_status, record = parse_xunit_result(results_dir / result_name, root)
         evidence.append(record)
         if structured_status == "FAIL":
-            return _decision(policy_name, policy, extensions, "FAIL", record["message"], "structured_result", evidence, "sim_failure")
+            return _decision(
+                policy_name,
+                policy,
+                extensions,
+                "FAIL",
+                record["message"],
+                "structured_result",
+                evidence,
+                "sim_failure",
+            )
         if structured_status == "PASS":
             positive = True
         else:
@@ -311,17 +512,46 @@ def parse_stage_result(
     if hard_fail_matches:
         for line in hard_fail_matches[:10]:
             evidence.append(evidence_record("hard_fail_pattern", log_path, root, "ERROR", line))
-        return _decision(policy_name, policy, extensions, "ERROR", f"hard-fail pattern matched: {hard_fail_matches[0]}", "log_pattern", evidence, "tool_error")
+        return _decision(
+            policy_name,
+            policy,
+            extensions,
+            "ERROR",
+            f"hard-fail pattern matched: {hard_fail_matches[0]}",
+            "log_pattern",
+            evidence,
+            "tool_error",
+        )
 
     if return_code != 0:
-        evidence.append(evidence_record("return_code", log_path, root, "FAIL", f"process exited {return_code}"))
-        return _decision(policy_name, policy, extensions, "FAIL", f"process exited {return_code}", "return_code", evidence, "sim_failure")
+        evidence.append(
+            evidence_record("return_code", log_path, root, "FAIL", f"process exited {return_code}")
+        )
+        return _decision(
+            policy_name,
+            policy,
+            extensions,
+            "FAIL",
+            f"process exited {return_code}",
+            "return_code",
+            evidence,
+            "sim_failure",
+        )
 
     for pattern in policy["required_patterns"]:
         if not re.search(pattern, text, flags=re.MULTILINE):
             message = f"required pattern missing: {pattern}"
             evidence.append(evidence_record("required_pattern", log_path, root, "FAIL", message))
-            return _decision(policy_name, policy, extensions, "FAIL", message, "log_pattern", evidence, "sim_failure")
+            return _decision(
+                policy_name,
+                policy,
+                extensions,
+                "FAIL",
+                message,
+                "log_pattern",
+                evidence,
+                "sim_failure",
+            )
 
     unignored_failures: list[str] = []
     for line in _match_lines(policy["fail_patterns"], text):
@@ -331,7 +561,16 @@ def parse_stage_result(
             unignored_failures.append(line)
             evidence.append(evidence_record("fail_pattern", log_path, root, "FAIL", line))
     if unignored_failures:
-        return _decision(policy_name, policy, extensions, "FAIL", f"fail pattern matched: {unignored_failures[0]}", "log_pattern", evidence, "sim_failure")
+        return _decision(
+            policy_name,
+            policy,
+            extensions,
+            "FAIL",
+            f"fail pattern matched: {unignored_failures[0]}",
+            "log_pattern",
+            evidence,
+            "sim_failure",
+        )
 
     for pattern in policy["summary_patterns"]:
         matches = list(re.finditer(pattern, text, flags=re.MULTILINE))
@@ -340,7 +579,16 @@ def parse_stage_result(
         record = _summary_evidence(pattern, matches[-1], log_path, root)
         evidence.append(record)
         if record["status"] == "FAIL":
-            return _decision(policy_name, policy, extensions, "FAIL", record["message"], "log_summary", evidence, "sim_failure")
+            return _decision(
+                policy_name,
+                policy,
+                extensions,
+                "FAIL",
+                record["message"],
+                "log_summary",
+                evidence,
+                "sim_failure",
+            )
         positive = True
 
     for line in _match_lines(policy["pass_patterns"], text):
@@ -349,7 +597,34 @@ def parse_stage_result(
             positive = True
 
     if structured_unknown:
-        return _decision(policy_name, policy, extensions, "UNKNOWN", "structured result missing or inconclusive", "structured_result", evidence, "unknown")
+        return _decision(
+            policy_name,
+            policy,
+            extensions,
+            "UNKNOWN",
+            "structured result missing or inconclusive",
+            "structured_result",
+            evidence,
+            "unknown",
+        )
     if policy["require_positive_evidence"] and not positive:
-        return _decision(policy_name, policy, extensions, "UNKNOWN", "no positive pass evidence matched", "log_pattern", evidence, "unknown")
-    return _decision(policy_name, policy, extensions, "PASS", "positive pass evidence matched", "structured_result" if policy["structured_results"] else "log_pattern", evidence, None)
+        return _decision(
+            policy_name,
+            policy,
+            extensions,
+            "UNKNOWN",
+            "no positive pass evidence matched",
+            "log_pattern",
+            evidence,
+            "unknown",
+        )
+    return _decision(
+        policy_name,
+        policy,
+        extensions,
+        "PASS",
+        "positive pass evidence matched",
+        "structured_result" if policy["structured_results"] else "log_pattern",
+        evidence,
+        None,
+    )

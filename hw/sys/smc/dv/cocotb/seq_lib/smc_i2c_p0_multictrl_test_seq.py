@@ -29,9 +29,7 @@ from .smc_i2c_field_masks import (
     pack_acq,
 )
 
-CLOCK_GATE_CONTROL = smc_addr(
-    "SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
-)
+CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 
 _PHASES: list[tuple[int, int, int, list[int]]] = [
     (0, 1, 0x30, [0xAA, 0xBB, 0xCC, 0xDD]),
@@ -104,9 +102,7 @@ class smc_i2c_p0_multictrl_test_seq(SmcCsrSeq):
 
     async def _disconnect_all(self) -> None:
         for idx in (0, 1, 2):
-            wrap = self._idx_addr(
-                "SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", idx
-            )
+            wrap = self._idx_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", idx)
             await self.csr_write(f"I2C{idx}_WRAP_OFF", wrap, 0)
             await self.csr_write(
                 f"I2C{idx}_CTRL_OFF",
@@ -115,9 +111,7 @@ class smc_i2c_p0_multictrl_test_seq(SmcCsrSeq):
             )
 
     async def _wait_hostidle(self, host: int, label: str) -> None:
-        status_addr = self._idx_addr(
-            "SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR", host
-        )
+        status_addr = self._idx_addr("SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR", host)
         status = 0
         left_idle = False
         for _ in range(200):
@@ -125,27 +119,19 @@ class smc_i2c_p0_multictrl_test_seq(SmcCsrSeq):
             if not (status & I2C_STATUS_HOSTIDLE):
                 left_idle = True
                 break
-            await Timer(1, units="us")
+            await Timer(1, unit="us")
         if not left_idle:
-            raise AssertionError(
-                f"{label}: I2C{host} never left hostidle (STATUS=0x{status:08x})"
-            )
+            raise AssertionError(f"{label}: I2C{host} never left hostidle (STATUS=0x{status:08x})")
         for _ in range(400):
             status = await self.csr_read(f"{label}_STATUS", status_addr)
             if status & I2C_STATUS_HOSTIDLE:
                 return
-            await Timer(10, units="us")
-        raise AssertionError(
-            f"{label}: I2C{host} stuck busy (STATUS=0x{status:08x})"
-        )
+            await Timer(10, unit="us")
+        raise AssertionError(f"{label}: I2C{host} stuck busy (STATUS=0x{status:08x})")
 
     async def _drain_acq_until_stop(self, tgt: int) -> list[int]:
-        status_addr = self._idx_addr(
-            "SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR", tgt
-        )
-        acq_addr = self._idx_addr(
-            "SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR", tgt
-        )
+        status_addr = self._idx_addr("SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR", tgt)
+        acq_addr = self._idx_addr("SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR", tgt)
         got: list[int] = []
         saw_stop = False
         for _ in range(4000):
@@ -153,7 +139,7 @@ class smc_i2c_p0_multictrl_test_seq(SmcCsrSeq):
             if status & I2C_STATUS_ACQEMPTY:
                 if saw_stop:
                     return got
-                await Timer(10, units="us")
+                await Timer(10, unit="us")
                 continue
             word = await self.csr_read(f"I2C{tgt}_ACQDATA", acq_addr)
             got.append(int(word) & 0xFFFF)
@@ -161,8 +147,7 @@ class smc_i2c_p0_multictrl_test_seq(SmcCsrSeq):
                 saw_stop = True
         if not saw_stop:
             raise AssertionError(
-                f"I2C{tgt} ACQ: no STOP before drain timeout; "
-                f"words={[hex(w) for w in got]}"
+                f"I2C{tgt} ACQ: no STOP before drain timeout; words={[hex(w) for w in got]}"
             )
         return got
 
@@ -172,9 +157,7 @@ class smc_i2c_p0_multictrl_test_seq(SmcCsrSeq):
         label = f"P{phase}_I2C{host}->I2C{tgt}"
         await self._disconnect_all()
 
-        wrap_t = self._idx_addr(
-            "SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", tgt
-        )
+        wrap_t = self._idx_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", tgt)
         await self.csr_write(f"{label}_TGT_WRAP", wrap_t, I2C_WRAP_CTRL_TARGET)
         await self._program_timing(tgt)
         await self.csr_write(
@@ -193,9 +176,7 @@ class smc_i2c_p0_multictrl_test_seq(SmcCsrSeq):
             I2C_CTRL_ENABLETARGET | I2C_CTRL_ACQ_START_STOP_EN,
         )
 
-        wrap_h = self._idx_addr(
-            "SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", host
-        )
+        wrap_h = self._idx_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", host)
         await self.csr_write(f"{label}_HOST_WRAP", wrap_h, I2C_WRAP_CTRL_HOST)
         await self._program_timing(host)
         await self.csr_write(
@@ -210,9 +191,7 @@ class smc_i2c_p0_multictrl_test_seq(SmcCsrSeq):
         )
         await self.csr_write(
             f"{label}_CEVENTS",
-            self._idx_addr(
-                "SMC_TOP_SMC_I2C_WRAP_I2C_CONTROLLER_EVENTS_BASE_ADDR", host
-            ),
+            self._idx_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CONTROLLER_EVENTS_BASE_ADDR", host),
             I2C_CONTROLLER_EVENTS_ALL,
         )
         await self.csr_write(
@@ -226,9 +205,7 @@ class smc_i2c_p0_multictrl_test_seq(SmcCsrSeq):
         await self.csr_write(f"{label}_FDATA_START", fdata, I2C_FDATA_START | addr_w)
         for i, byte in enumerate(payload[:-1]):
             await self.csr_write(f"{label}_FDATA_{i}", fdata, byte)
-        await self.csr_write(
-            f"{label}_FDATA_STOP", fdata, I2C_FDATA_STOP | payload[-1]
-        )
+        await self.csr_write(f"{label}_FDATA_STOP", fdata, I2C_FDATA_STOP | payload[-1])
 
         await self._wait_hostidle(host, label)
         words = await self._drain_acq_until_stop(tgt)
@@ -239,26 +216,17 @@ class smc_i2c_p0_multictrl_test_seq(SmcCsrSeq):
         expect.append(pack_acq(0, I2C_ACQ_SIGNAL_STOP))
         if len(words) < len(expect):
             raise AssertionError(
-                f"{label}: ACQ too short got={len(words)} "
-                f"words={[hex(w) for w in words]}"
+                f"{label}: ACQ too short got={len(words)} words={[hex(w) for w in words]}"
             )
         for i, exp in enumerate(expect[:-1]):
             got = words[i]
-            if acq_abyte(got) != acq_abyte(exp) or acq_signal(got) != acq_signal(
-                exp
-            ):
-                raise AssertionError(
-                    f"{label}: ACQ[{i}] mismatch got=0x{got:x} "
-                    f"exp=0x{exp:x}"
-                )
+            if acq_abyte(got) != acq_abyte(exp) or acq_signal(got) != acq_signal(exp):
+                raise AssertionError(f"{label}: ACQ[{i}] mismatch got=0x{got:x} exp=0x{exp:x}")
         if acq_signal(words[len(expect) - 1]) != I2C_ACQ_SIGNAL_STOP:
-            raise AssertionError(
-                f"{label}: missing STOP SIGNAL at ACQ[{len(expect)-1}]"
-            )
+            raise AssertionError(f"{label}: missing STOP SIGNAL at ACQ[{len(expect) - 1}]")
 
         cocotb.log.info(
-            "CHK-I2C-P0-MULTICTRL-P%d: I2C%d→I2C%d @0x%02x payload=%s "
-            "ACQ=%s",
+            "CHK-I2C-P0-MULTICTRL-P%d: I2C%d→I2C%d @0x%02x payload=%s ACQ=%s",
             phase,
             host,
             tgt,
@@ -276,9 +244,7 @@ class smc_i2c_p0_multictrl_test_seq(SmcCsrSeq):
             )
 
         cg = await self.csr_read("CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL)
-        await self.csr_write(
-            "CLOCK_GATE_UNGATE_I2C", CLOCK_GATE_CONTROL, cg & ~I2C_CG_EN
-        )
+        await self.csr_write("CLOCK_GATE_UNGATE_I2C", CLOCK_GATE_CONTROL, cg & ~I2C_CG_EN)
 
         for phase, (host, tgt, addr, payload) in enumerate(_PHASES):
             await self._run_phase(phase, host, tgt, addr, payload)

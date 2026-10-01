@@ -6,113 +6,121 @@
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: smc_efuse_map</h2>
+<h2 id="regmap-smc_efuse_map">Efuse address map of physical efuse macro</h2>
+<p>Address map for efuse shadow registers providing access to various chip configuration and ID fields</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
-<li><strong>I2C_I3C_ID[9]</strong>: 9 registers, base 0x8AC, stride 0x8</li>
-<li><strong>RESERVED[65]</strong>: 65 registers, base 0xAFC, stride 0x4</li>
+<li><strong>I2C_I3C_ID[9]</strong>: 9 registers, base 0x28, stride 0x8</li>
+<li><strong>SPARE[28]</strong>: 28 registers, base 0x80, stride 0x20</li>
 </ul>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#LOCKS">LOCKS</a></td><td>RW</td><td>Lock controls for each fuse field. When write locked, the corresponding field is not<br>programmable. When read locked, the shadow register is not readable.</td></tr>
-<tr><td>0x8</td><td><a href="#CHIPLET_ID">CHIPLET_ID</a></td><td>RW</td><td>Chiplet ID register</td></tr>
-<tr><td>0x28</td><td><a href="#PACKAGE_ID">PACKAGE_ID</a></td><td>RW</td><td>Package ID register</td></tr>
-<tr><td>0x48</td><td><a href="#BIRA">BIRA</a></td><td>RW</td><td>Built-In Repair Analysis data</td></tr>
-<tr><td>0x848</td><td><a href="#CLUSTER">CLUSTER</a></td><td>RW</td><td>CPU cluster configuration</td></tr>
-<tr><td>0x888</td><td><a href="#FABRIC">FABRIC</a></td><td>RW</td><td>Fabric configuration</td></tr>
-<tr><td>0x8A8</td><td><a href="#SOP_TOPOLOGY">SOP_TOPOLOGY</a></td><td>RW</td><td>System on Package topology</td></tr>
-<tr><td>0x8AC - 0x8EC</td><td><a href="#I2C_I3C_ID_9_">I2C_I3C_ID[9]</a></td><td>RW</td><td>I2C/I3C interface ID</td></tr>
-<tr><td>0x8F4</td><td><a href="#I2C_CLOCK_GATING">I2C_CLOCK_GATING</a></td><td>RW</td><td>I2C clock gating control</td></tr>
-<tr><td>0x8F8</td><td><a href="#I3C_DISABLE">I3C_DISABLE</a></td><td>RW</td><td>I3C interface disable control</td></tr>
-<tr><td>0x8FC</td><td><a href="#PLL_AND_SENSOR">PLL_AND_SENSOR</a></td><td>RW</td><td>PLL and sensor configuration</td></tr>
-<tr><td>0xAFC - 0xBFC</td><td><a href="#RESERVED_65_">RESERVED[65]</a></td><td>RW</td><td>Reserved register</td></tr>
+<tr><td>0x8</td><td><a href="#JTAG_PUBLIC_IDENTITY">JTAG_PUBLIC_IDENTITY</a></td><td>RW</td><td>JTAG-public exception window. In PROD and RMA_SiP, JTAG reads of this range<br>are admitted while JTAG access to every other fuse field is blocked. Encoding<br>is adopter-defined; the harness does not interpret or consume the value. The<br>slot-0 read lock still hides the bits when set.</td></tr>
+<tr><td>0x28 - 0x68</td><td><a href="#I2C_I3C_ID_9_">I2C_I3C_ID[9]</a></td><td>RW</td><td>I2C/I3C interface ID</td></tr>
+<tr><td>0x70</td><td><a href="#SMC_CONFIG">SMC_CONFIG</a></td><td>RW</td><td>SMC boot and configuration controls sourced from fuse. Only the low word carries<br>assigned bits, so firmware reads it as a single 32-bit access.</td></tr>
+<tr><td>0x78</td><td><a href="#OCCP_TRANSPORT_TIMEOUT">OCCP_TRANSPORT_TIMEOUT</a></td><td>RW</td><td>OCCP transport timeout in the low word; upper word reserved.</td></tr>
+<tr><td>0x80 - 0x3E0</td><td><a href="#SPARE_28_">SPARE[28]</a></td><td>RW</td><td>Individually lockable 256-bit spare region, reserved for fields assigned after the<br>RTL is frozen. Each element has its own write/read lock pair in LOCKS.</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="LOCKS">LOCKS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:26</td><td>unused_lock_bits</td><td>RW</td><td>0x0</td><td>Unused lock bits for future expansion.</td></tr>
-<tr><td>25</td><td>reserved_read_lock</td><td>RW</td><td>0x0</td><td>Reserved read lock. When set, reserved field is not readable.</td></tr>
-<tr><td>24</td><td>reserved_write_lock</td><td>RW</td><td>0x0</td><td>Reserved write lock. When set, reserved field is not writable.</td></tr>
-<tr><td>23</td><td>spi_config_read_lock</td><td>RW</td><td>0x0</td><td>SPI config read lock. When set, SPI config field is not readable.</td></tr>
-<tr><td>22</td><td>spi_config_write_lock</td><td>RW</td><td>0x0</td><td>SPI config write lock. When set, SPI config field is not writable.</td></tr>
-<tr><td>21</td><td>spi_ctrl_field_enable_read_lock</td><td>RW</td><td>0x0</td><td>SPI control field enable read lock. When set, SPI control field is not readable.</td></tr>
-<tr><td>20</td><td>spi_ctrl_field_enable_write_lock</td><td>RW</td><td>0x0</td><td>SPI control field enable write lock. When set, SPI control field is not writable.</td></tr>
-<tr><td>19</td><td>pll_and_sensor_read_lock</td><td>RW</td><td>0x0</td><td>PLL and sensor read lock. When set, PLL and sensor field is not readable.</td></tr>
-<tr><td>18</td><td>pll_and_sensor_write_lock</td><td>RW</td><td>0x0</td><td>PLL and sensor write lock. When set, PLL and sensor field is not writable.</td></tr>
-<tr><td>17</td><td>i3c_disable_read_lock</td><td>RW</td><td>0x0</td><td>I3C disable read lock. When set, I3C disable field is not readable.</td></tr>
-<tr><td>16</td><td>i3c_disable_write_lock</td><td>RW</td><td>0x0</td><td>I3C disable write lock. When set, I3C disable field is not writable.</td></tr>
-<tr><td>15</td><td>i2c_clock_gating_read_lock</td><td>RW</td><td>0x0</td><td>I2C clock gating read lock. When set, I2C clock gating field is not readable.</td></tr>
-<tr><td>14</td><td>i2c_clock_gating_write_lock</td><td>RW</td><td>0x0</td><td>I2C clock gating write lock. When set, I2C clock gating field is not writable.</td></tr>
-<tr><td>13</td><td>i2c_i3c_id_read_lock</td><td>RW</td><td>0x0</td><td>I2C/I3C ID read lock. When set, I2C/I3C ID field is not readable.</td></tr>
-<tr><td>12</td><td>i2c_i3c_id_write_lock</td><td>RW</td><td>0x0</td><td>I2C/I3C ID write lock. When set, I2C/I3C ID field is not writable.</td></tr>
-<tr><td>11</td><td>sop_topology_read_lock</td><td>RW</td><td>0x0</td><td>SOP topology read lock. When set, SOP topology field is not readable.</td></tr>
-<tr><td>10</td><td>sop_topology_write_lock</td><td>RW</td><td>0x0</td><td>SOP topology write lock. When set, SOP topology field is not writable.</td></tr>
-<tr><td>9</td><td>fabric_read_lock</td><td>RW</td><td>0x0</td><td>Fabric read lock. When set, fabric field is not readable.</td></tr>
-<tr><td>8</td><td>fabric_write_lock</td><td>RW</td><td>0x0</td><td>Fabric write lock. When set, fabric field is not writable.</td></tr>
-<tr><td>7</td><td>cluster_read_lock</td><td>RW</td><td>0x0</td><td>Cluster read lock. When set, cluster field is not readable.</td></tr>
-<tr><td>6</td><td>cluster_write_lock</td><td>RW</td><td>0x0</td><td>Cluster write lock. When set, cluster field is not writable.</td></tr>
-<tr><td>5</td><td>bira_dis_read_lock</td><td>RW</td><td>0x0</td><td>BIRA disable read lock. When set, BIRA field is not readable.</td></tr>
-<tr><td>4</td><td>bira_dis_write_lock</td><td>RW</td><td>0x0</td><td>BIRA disable write lock. When set, BIRA field is not writable.</td></tr>
-<tr><td>3</td><td>package_id_read_lock</td><td>RW</td><td>0x0</td><td>Package ID read lock. When set, package ID field is not readable.</td></tr>
-<tr><td>2</td><td>package_id_write_lock</td><td>RW</td><td>0x0</td><td>Package ID write lock. When set, package ID field is not writable.</td></tr>
-<tr><td>1</td><td>chiplet_id_read_lock</td><td>RW</td><td>0x0</td><td>Chiplet ID read lock. When set, chiplet ID field is not readable.</td></tr>
-<tr><td>0</td><td>chiplet_id_write_lock</td><td>RW</td><td>0x0</td><td>Chiplet ID write lock. When set, chiplet ID field is not writable.</td></tr>
+<tr><td>63</td><td>spare27_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 27 read lock (slot 31). When set, SPARE[27] is not readable.</td></tr>
+<tr><td>62</td><td>spare27_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 27 write lock (slot 31). When set, SPARE[27] is not writable.</td></tr>
+<tr><td>61</td><td>spare26_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 26 read lock (slot 30). When set, SPARE[26] is not readable.</td></tr>
+<tr><td>60</td><td>spare26_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 26 write lock (slot 30). When set, SPARE[26] is not writable.</td></tr>
+<tr><td>59</td><td>spare25_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 25 read lock (slot 29). When set, SPARE[25] is not readable.</td></tr>
+<tr><td>58</td><td>spare25_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 25 write lock (slot 29). When set, SPARE[25] is not writable.</td></tr>
+<tr><td>57</td><td>spare24_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 24 read lock (slot 28). When set, SPARE[24] is not readable.</td></tr>
+<tr><td>56</td><td>spare24_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 24 write lock (slot 28). When set, SPARE[24] is not writable.</td></tr>
+<tr><td>55</td><td>spare23_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 23 read lock (slot 27). When set, SPARE[23] is not readable.</td></tr>
+<tr><td>54</td><td>spare23_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 23 write lock (slot 27). When set, SPARE[23] is not writable.</td></tr>
+<tr><td>53</td><td>spare22_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 22 read lock (slot 26). When set, SPARE[22] is not readable.</td></tr>
+<tr><td>52</td><td>spare22_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 22 write lock (slot 26). When set, SPARE[22] is not writable.</td></tr>
+<tr><td>51</td><td>spare21_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 21 read lock (slot 25). When set, SPARE[21] is not readable.</td></tr>
+<tr><td>50</td><td>spare21_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 21 write lock (slot 25). When set, SPARE[21] is not writable.</td></tr>
+<tr><td>49</td><td>spare20_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 20 read lock (slot 24). When set, SPARE[20] is not readable.</td></tr>
+<tr><td>48</td><td>spare20_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 20 write lock (slot 24). When set, SPARE[20] is not writable.</td></tr>
+<tr><td>47</td><td>spare19_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 19 read lock (slot 23). When set, SPARE[19] is not readable.</td></tr>
+<tr><td>46</td><td>spare19_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 19 write lock (slot 23). When set, SPARE[19] is not writable.</td></tr>
+<tr><td>45</td><td>spare18_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 18 read lock (slot 22). When set, SPARE[18] is not readable.</td></tr>
+<tr><td>44</td><td>spare18_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 18 write lock (slot 22). When set, SPARE[18] is not writable.</td></tr>
+<tr><td>43</td><td>spare17_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 17 read lock (slot 21). When set, SPARE[17] is not readable.</td></tr>
+<tr><td>42</td><td>spare17_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 17 write lock (slot 21). When set, SPARE[17] is not writable.</td></tr>
+<tr><td>41</td><td>spare16_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 16 read lock (slot 20). When set, SPARE[16] is not readable.</td></tr>
+<tr><td>40</td><td>spare16_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 16 write lock (slot 20). When set, SPARE[16] is not writable.</td></tr>
+<tr><td>39</td><td>spare15_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 15 read lock (slot 19). When set, SPARE[15] is not readable.</td></tr>
+<tr><td>38</td><td>spare15_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 15 write lock (slot 19). When set, SPARE[15] is not writable.</td></tr>
+<tr><td>37</td><td>spare14_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 14 read lock (slot 18). When set, SPARE[14] is not readable.</td></tr>
+<tr><td>36</td><td>spare14_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 14 write lock (slot 18). When set, SPARE[14] is not writable.</td></tr>
+<tr><td>35</td><td>spare13_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 13 read lock (slot 17). When set, SPARE[13] is not readable.</td></tr>
+<tr><td>34</td><td>spare13_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 13 write lock (slot 17). When set, SPARE[13] is not writable.</td></tr>
+<tr><td>33</td><td>spare12_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 12 read lock (slot 16). When set, SPARE[12] is not readable.</td></tr>
+<tr><td>32</td><td>spare12_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 12 write lock (slot 16). When set, SPARE[12] is not writable.</td></tr>
+<tr><td>31</td><td>spare11_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 11 read lock (slot 15). When set, SPARE[11] is not readable.</td></tr>
+<tr><td>30</td><td>spare11_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 11 write lock (slot 15). When set, SPARE[11] is not writable.</td></tr>
+<tr><td>29</td><td>spare10_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 10 read lock (slot 14). When set, SPARE[10] is not readable.</td></tr>
+<tr><td>28</td><td>spare10_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 10 write lock (slot 14). When set, SPARE[10] is not writable.</td></tr>
+<tr><td>27</td><td>spare9_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 9 read lock (slot 13). When set, SPARE[9] is not readable.</td></tr>
+<tr><td>26</td><td>spare9_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 9 write lock (slot 13). When set, SPARE[9] is not writable.</td></tr>
+<tr><td>25</td><td>spare8_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 8 read lock (slot 12). When set, SPARE[8] is not readable.</td></tr>
+<tr><td>24</td><td>spare8_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 8 write lock (slot 12). When set, SPARE[8] is not writable.</td></tr>
+<tr><td>23</td><td>spare7_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 7 read lock (slot 11). When set, SPARE[7] is not readable.</td></tr>
+<tr><td>22</td><td>spare7_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 7 write lock (slot 11). When set, SPARE[7] is not writable.</td></tr>
+<tr><td>21</td><td>spare6_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 6 read lock (slot 10). When set, SPARE[6] is not readable.</td></tr>
+<tr><td>20</td><td>spare6_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 6 write lock (slot 10). When set, SPARE[6] is not writable.</td></tr>
+<tr><td>19</td><td>spare5_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 5 read lock (slot 9). When set, SPARE[5] is not readable.</td></tr>
+<tr><td>18</td><td>spare5_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 5 write lock (slot 9). When set, SPARE[5] is not writable.</td></tr>
+<tr><td>17</td><td>spare4_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 4 read lock (slot 8). When set, SPARE[4] is not readable.</td></tr>
+<tr><td>16</td><td>spare4_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 4 write lock (slot 8). When set, SPARE[4] is not writable.</td></tr>
+<tr><td>15</td><td>spare3_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 3 read lock (slot 7). When set, SPARE[3] is not readable.</td></tr>
+<tr><td>14</td><td>spare3_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 3 write lock (slot 7). When set, SPARE[3] is not writable.</td></tr>
+<tr><td>13</td><td>spare2_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 2 read lock (slot 6). When set, SPARE[2] is not readable.</td></tr>
+<tr><td>12</td><td>spare2_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 2 write lock (slot 6). When set, SPARE[2] is not writable.</td></tr>
+<tr><td>11</td><td>spare1_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 1 read lock (slot 5). When set, SPARE[1] is not readable.</td></tr>
+<tr><td>10</td><td>spare1_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 1 write lock (slot 5). When set, SPARE[1] is not writable.</td></tr>
+<tr><td>9</td><td>spare0_read_lock</td><td>RW1S</td><td>0x0</td><td>Spare 0 read lock (slot 4). When set, SPARE[0] is not readable.</td></tr>
+<tr><td>8</td><td>spare0_write_lock</td><td>RW1S</td><td>0x0</td><td>Spare 0 write lock (slot 4). When set, SPARE[0] is not writable.</td></tr>
+<tr><td>7</td><td>occp_transport_timeout_read_lock</td><td>RW1S</td><td>0x0</td><td>OCCP transport timeout read lock (slot 3). When set, OCCP_TRANSPORT_TIMEOUT is not readable.</td></tr>
+<tr><td>6</td><td>occp_transport_timeout_write_lock</td><td>RW1S</td><td>0x0</td><td>OCCP transport timeout write lock (slot 3). When set, OCCP_TRANSPORT_TIMEOUT is not writable.</td></tr>
+<tr><td>5</td><td>smc_config_read_lock</td><td>RW1S</td><td>0x0</td><td>SMC config read lock (slot 2). When set, SMC_CONFIG is not readable.</td></tr>
+<tr><td>4</td><td>smc_config_write_lock</td><td>RW1S</td><td>0x0</td><td>SMC config write lock (slot 2). When set, SMC_CONFIG is not writable.</td></tr>
+<tr><td>3</td><td>i2c_i3c_id_read_lock</td><td>RW1S</td><td>0x0</td><td>I2C/I3C ID read lock (slot 1). When set, no I2C_I3C_ID element is readable.</td></tr>
+<tr><td>2</td><td>i2c_i3c_id_write_lock</td><td>RW1S</td><td>0x0</td><td>I2C/I3C ID write lock (slot 1). When set, no I2C_I3C_ID element is writable.</td></tr>
+<tr><td>1</td><td>jtag_public_identity_read_lock</td><td>RW1S</td><td>0x0</td><td>JTAG public identity read lock (slot 0). When set, JTAG_PUBLIC_IDENTITY is not readable.</td></tr>
+<tr><td>0</td><td>jtag_public_identity_write_lock</td><td>RW1S</td><td>0x0</td><td>JTAG public identity write lock (slot 0). When set, JTAG_PUBLIC_IDENTITY is not writable.</td></tr>
 </table>
-<h3 id="CHIPLET_ID">CHIPLET_ID</h3>
+<h3 id="JTAG_PUBLIC_IDENTITY">JTAG_PUBLIC_IDENTITY</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>chiplet_id_value</td><td>RW</td><td>0x0</td><td>Chiplet ID stored in fuse, divided into 8 words and defined as follows:<br>[1:0]: Serial number of the chiplet. The format is flexible and could include time info of manufacture, (x, y) coordinates on the wafer, and a counter for example;<br>[3]: Chiplet Design Version. The format is flexible and the word bits could be defined as reserved[31:16], major[15:8], minor[7:0] for example;[127:96]: Chiplet Design ID;<br>[4]: Chiplet User ID. When TT assembles the package, we assign TT’s ID (32’b0);<br>[5]: Chiplet User Group ID;<br>[7:6]: Reserved for extension.</td></tr>
-</table>
-<h3 id="PACKAGE_ID">PACKAGE_ID</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>package_id_value</td><td>RW</td><td>0x0</td><td>Package ID stored in fuse, divided into 8 words. The same value gets provisioned into SMCs in all chiplets of the same package. Words are defined as follows:<br>[1:0]: Serial number of the package;<br>[2]: Package Design Version, e.g. A1Q1/…​;<br>[3]: Package Design ID;<br>[4]: Package User ID, e.g. if it’s TT who assembles the system, use TT’s GROUP_ID (32’b0);<br>[5]: Package User Group ID;<br>[7:6]: Reserved for extension</td></tr>
-</table>
-<h3 id="BIRA">BIRA</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>16383:0</td><td>repair_data</td><td>RW</td><td>0x0</td><td>16KB memory repair data for SMC and SEP SRAMs</td></tr>
-</table>
-<h3 id="CLUSTER">CLUSTER</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>511:0</td><td>cluster_config</td><td>RW</td><td>0x0</td><td>512-bit fuses reserved for CPU cluster configuration</td></tr>
-</table>
-<h3 id="FABRIC">FABRIC</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>fabric_config</td><td>RW</td><td>0x0</td><td>256-bit fuses reserved for fabric configuration</td></tr>
-</table>
-<h3 id="SOP_TOPOLOGY">SOP_TOPOLOGY</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>topology_serial</td><td>RW</td><td>0x0</td><td>Serial number of topology configuration</td></tr>
+<tr><td>255:0</td><td>value</td><td>RW</td><td>0x0</td><td>Opaque payload. Encoding is adopter-defined; the harness does not interpret<br>it.</td></tr>
 </table>
 <h3 id="I2C_I3C_ID_9_">I2C_I3C_ID[9]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:0</td><td>interface_id</td><td>RW</td><td>0x0</td><td>I2C or I3C ID configuration:<br>* Static ID mode: [6:0] contains ID, [63:7] reserved<br>* Provisional ID mode: [63:0] full ID</td></tr>
 </table>
-<h3 id="I2C_CLOCK_GATING">I2C_CLOCK_GATING</h3>
+<h3 id="SMC_CONFIG">SMC_CONFIG</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>clock_gating_config</td><td>RW</td><td>0x0</td><td>I2C clock gating configuration</td></tr>
+<tr><td>63:16</td><td>config_rsvd_high</td><td>RW</td><td>0x0</td><td>Reserved for future configuration bits.</td></tr>
+<tr><td>15</td><td>dft_ignore_error</td><td>RW</td><td>0x0</td><td>When set, boot continues despite a reported memory repair or MBIST failure.</td></tr>
+<tr><td>14:8</td><td>config_rsvd_mid</td><td>RW</td><td>0x0</td><td>Reserved for future configuration bits.</td></tr>
+<tr><td>7</td><td>sram_auto_zero_disable</td><td>RW</td><td>0x0</td><td>When set, boot skips the SRAM auto-zero initialisation pass.</td></tr>
+<tr><td>6:1</td><td>config_rsvd_low</td><td>RW</td><td>0x0</td><td>Reserved for future configuration bits.</td></tr>
+<tr><td>0</td><td>rom_flip_endianness</td><td>RW</td><td>0x0</td><td>When set, the ROM interface swaps byte order on instruction fetch.</td></tr>
 </table>
-<h3 id="I3C_DISABLE">I3C_DISABLE</h3>
+<h3 id="OCCP_TRANSPORT_TIMEOUT">OCCP_TRANSPORT_TIMEOUT</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>disable_config</td><td>RW</td><td>0x0</td><td>I3C interface disable configuration</td></tr>
+<tr><td>63:32</td><td>timeout_rsvd</td><td>RW</td><td>0x0</td><td>Reserved for extension of the timeout encoding.</td></tr>
+<tr><td>31:0</td><td>timeout</td><td>RW</td><td>0x0</td><td>Transport timeout value consumed by the boot ROM OCCP driver.</td></tr>
 </table>
-<h3 id="PLL_AND_SENSOR">PLL_AND_SENSOR</h3>
+<h3 id="SPARE_28_">SPARE[28]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>4095:0</td><td>pll_sensor_config</td><td>RW</td><td>0x0</td><td>4KB fuses reserved for PLL and sensor configuration</td></tr>
-</table>
-<h3 id="RESERVED_65_">RESERVED[65]</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>reserved_data</td><td>RW</td><td>0x0</td><td>Reserved for future use</td></tr>
+<tr><td>255:0</td><td>rsvd</td><td>RW</td><td>0x0</td><td>Spare fuse bits for future use.</td></tr>
 </table>
 </div>

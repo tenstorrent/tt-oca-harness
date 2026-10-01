@@ -43,12 +43,8 @@ class smc_jtag_dmi_smoke_test_seq(SmcCsrSeq):
             length=8,
         )
         await ClockCycles(cocotb.top.clk_smc_i, 64)
-        reset_ctrl = await self.csr_read(
-            "CPU_CTRL_RESET_CTRL_RB", CPU_CTRL_RESET_CTRL, length=8
-        )
-        assert reset_ctrl & (1 << 24), (
-            f"debug_reset_n not set in RESET_CTRL (got 0x{reset_ctrl:X})"
-        )
+        reset_ctrl = await self.csr_read("CPU_CTRL_RESET_CTRL_RB", CPU_CTRL_RESET_CTRL, length=8)
+        assert reset_ctrl & (1 << 24), f"debug_reset_n not set in RESET_CTRL (got 0x{reset_ctrl:X})"
 
         tap = SmcJtagTap(name="smc_jtag_dmi")
         tap.init_signals()
@@ -63,14 +59,18 @@ class smc_jtag_dmi_smoke_test_seq(SmcCsrSeq):
         self.dmstatus = await tap.read_dmstatus()
         dm_ver = self.dmstatus & 0xF
         assert dm_ver == 2, (
-            f"dmstatus.version={dm_ver} != 2 (Debug Spec 0.13); "
-            f"dmstatus=0x{self.dmstatus:08X}"
+            f"dmstatus.version={dm_ver} != 2 (Debug Spec 0.13); dmstatus=0x{self.dmstatus:08X}"
         )
         assert self.dmstatus != 0, "dmstatus read as zero after dmactive"
         self.dmi_ok = True
+        # Emitted only after the three exact compares above pass; the line
+        # carries the captured words, not the expected constants.
         cocotb.log.info(
-            "U7-3 DMI smoke OK: IDCODE=0x%08X DTMCS=0x%08X dmstatus=0x%08X",
+            "CHK-JTAG-DMI-SMOKE: IDCODE=0x%08X DTMCS=0x%08X dmstatus=0x%08X "
+            "(DTMCS.version=0x%X, dmstatus.version=%d)",
             self.idcode,
             self.dtmcs,
             self.dmstatus,
+            self.dtmcs & 0xF,
+            self.dmstatus & 0xF,
         )

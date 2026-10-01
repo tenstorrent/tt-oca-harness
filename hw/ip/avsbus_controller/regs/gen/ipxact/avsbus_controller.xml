@@ -12,7 +12,8 @@
       <ipxact:name>avsbus_controller_mmap</ipxact:name>
       <ipxact:addressBlock>
         <ipxact:name>avsbus_controller</ipxact:name>
-        <ipxact:description>AVSBus V1.3.1 Registers</ipxact:description>
+        <ipxact:displayName>AVSBus Controller Address Map</ipxact:displayName>
+        <ipxact:description>Command, readback, status, and interrupt registers for the AVSBus (V1.3.1) controller.</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
         <ipxact:range>'h5c</ipxact:range>
         <ipxact:width>32</ipxact:width>
@@ -236,7 +237,7 @@ AVS readback fifo pointer. Provided for debug purposes.</ipxact:description>
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>AVS_LATEST_SLAVE_SUBFRAME</ipxact:name>
-          <ipxact:description>This register contains the most recently received subframe from the AVS slave, by-passing the
+          <ipxact:description>This register contains the most recently received subframe from the AVS slave, bypassing the
 AVS readback fifo. It is provided so that APB can see the current slave StatusResponse and SlaveAck
 settings in a timely fashion, since the status data from the next entry in the readback fifo might
 have considerable latency relative to when it was initially received from the AVS Slave.</ipxact:description>
@@ -857,7 +858,7 @@ full =&gt; response was dropped</ipxact:description>
           <ipxact:field>
             <ipxact:name>MAX_RETRIES</ipxact:name>
             <ipxact:description>Maximum number of times to attempt a retry if an AVS command returns a fail
-status (either due to targetted resource being busy or CRC failure)</ipxact:description>
+status (either due to targeted resource being busy or CRC failure)</ipxact:description>
             <ipxact:bitOffset>16</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>

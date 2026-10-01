@@ -24,9 +24,7 @@ from .smc_i2c_field_masks import (
 )
 from .smc_i2c_protocol_vip import SmcI2cNackSlave
 
-CLOCK_GATE_CONTROL = smc_addr(
-    "SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
-)
+CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 
 _VIP_ADDR = 0x10
 _INTERNAL_TARGET_ADDR = 0x20
@@ -108,7 +106,7 @@ class smc_i2c_p0_nack_test_seq(SmcCsrSeq):
                 if not (status & I2C_STATUS_HOSTIDLE):
                     left_idle = True
                     break
-                await Timer(1, units="us")
+                await Timer(1, unit="us")
             if not left_idle:
                 raise AssertionError(
                     f"{label}: I2C0 host never left hostidle (STATUS=0x{status:08x})"
@@ -117,17 +115,13 @@ class smc_i2c_p0_nack_test_seq(SmcCsrSeq):
             status = await self.csr_read(f"{label}_STATUS", status_addr)
             if status & I2C_STATUS_HOSTIDLE:
                 return
-            await Timer(10, units="us")
-        raise AssertionError(
-            f"{label}: I2C0 host stuck busy (STATUS=0x{status:08x})"
-        )
+            await Timer(10, unit="us")
+        raise AssertionError(f"{label}: I2C0 host stuck busy (STATUS=0x{status:08x})")
 
     async def _clear_events(self) -> None:
         await self.csr_write(
             "I2C0_CEVENTS_CLR",
-            self._idx_addr(
-                "SMC_TOP_SMC_I2C_WRAP_I2C_CONTROLLER_EVENTS_BASE_ADDR", 0
-            ),
+            self._idx_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CONTROLLER_EVENTS_BASE_ADDR", 0),
             I2C_CONTROLLER_EVENTS_ALL,
         )
 
@@ -147,9 +141,7 @@ class smc_i2c_p0_nack_test_seq(SmcCsrSeq):
         counter; this bit is the DUT sticky proof.
         """
         status_addr = self._idx_addr("SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR", 0)
-        ev_addr = self._idx_addr(
-            "SMC_TOP_SMC_I2C_WRAP_I2C_CONTROLLER_EVENTS_BASE_ADDR", 0
-        )
+        ev_addr = self._idx_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CONTROLLER_EVENTS_BASE_ADDR", 0)
         status = 0
         events = 0
         for _ in range(2000):
@@ -157,16 +149,14 @@ class smc_i2c_p0_nack_test_seq(SmcCsrSeq):
             status = await self.csr_read(f"{label}_STATUS", status_addr)
             if events & I2C_CONTROLLER_EVENTS_NACK:
                 return events, status
-            await Timer(10, units="us")
+            await Timer(10, unit="us")
         raise AssertionError(
             f"{label}: timeout waiting for CONTROLLER_EVENTS.NACK "
             f"(STATUS=0x{status:08x} EVENTS=0x{events:08x})"
         )
 
     async def _setup_host(self) -> None:
-        wrap0 = self._idx_addr(
-            "SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", 0
-        )
+        wrap0 = self._idx_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", 0)
         await self.csr_write("I2C0_WRAP_HOST", wrap0, I2C_WRAP_CTRL_HOST)
         await self._program_timing(0)
         await self.csr_write(
@@ -187,9 +177,7 @@ class smc_i2c_p0_nack_test_seq(SmcCsrSeq):
         )
 
     async def _setup_internal_target(self) -> None:
-        wrap1 = self._idx_addr(
-            "SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", 1
-        )
+        wrap1 = self._idx_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", 1)
         await self.csr_write("I2C1_WRAP_TARGET", wrap1, I2C_WRAP_CTRL_TARGET)
         await self._program_timing(1)
         await self.csr_write(
@@ -213,20 +201,14 @@ class smc_i2c_p0_nack_test_seq(SmcCsrSeq):
         fdata = self._idx_addr("SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR", 0)
         addr_w = (_INTERNAL_TARGET_ADDR << 1) | 0
         await self.csr_write("I2C0_FDATA_START", fdata, I2C_FDATA_START | addr_w)
-        await self.csr_write(
-            "I2C0_FDATA_PAYLOAD_STOP", fdata, I2C_FDATA_STOP | _ALLOW_PAYLOAD
-        )
+        await self.csr_write("I2C0_FDATA_PAYLOAD_STOP", fdata, I2C_FDATA_STOP | _ALLOW_PAYLOAD)
         await self._wait_hostidle("ALLOW_PATH")
         events = await self.csr_read(
             "ALLOW_EVENTS",
-            self._idx_addr(
-                "SMC_TOP_SMC_I2C_WRAP_I2C_CONTROLLER_EVENTS_BASE_ADDR", 0
-            ),
+            self._idx_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CONTROLLER_EVENTS_BASE_ADDR", 0),
         )
         if events & I2C_CONTROLLER_EVENTS_NACK:
-            raise AssertionError(
-                f"allow-path unexpected NACK EVENTS=0x{events:08x}"
-            )
+            raise AssertionError(f"allow-path unexpected NACK EVENTS=0x{events:08x}")
         cocotb.log.info(
             "CHK-I2C-P0-NACK-ALLOW: I2C0→I2C1 @0x%02x write 0x%02x idle no NACK",
             _INTERNAL_TARGET_ADDR,
@@ -236,9 +218,7 @@ class smc_i2c_p0_nack_test_seq(SmcCsrSeq):
         await self._clear_events()
 
     async def _tc1_addr_nack(self) -> None:
-        vip = SmcI2cNackSlave(
-            addr=_VIP_ADDR, nack_at_address=True, name="nack_addr"
-        )
+        vip = SmcI2cNackSlave(addr=_VIP_ADDR, nack_at_address=True, name="nack_addr")
         try:
             await self._clear_events()
             fdata = self._idx_addr("SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR", 0)
@@ -254,8 +234,7 @@ class smc_i2c_p0_nack_test_seq(SmcCsrSeq):
                     f"TC1: VIP did not drive address NACK (count={vip.addr_nacks})"
                 )
             cocotb.log.info(
-                "CHK-I2C-P0-NACK-TC1: addr-phase NACK @0x%02x "
-                "EVENTS=0x%x STATUS=0x%x vip_nacks=%d",
+                "CHK-I2C-P0-NACK-TC1: addr-phase NACK @0x%02x EVENTS=0x%x STATUS=0x%x vip_nacks=%d",
                 _VIP_ADDR,
                 events,
                 status,
@@ -267,16 +246,12 @@ class smc_i2c_p0_nack_test_seq(SmcCsrSeq):
         await self._recover_after_nack("TC1")
 
     async def _tc2_data_nack(self) -> None:
-        vip = SmcI2cNackSlave(
-            addr=_VIP_ADDR, nack_at_data=True, name="nack_data"
-        )
+        vip = SmcI2cNackSlave(addr=_VIP_ADDR, nack_at_data=True, name="nack_data")
         try:
             await self._clear_events()
             fdata = self._idx_addr("SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR", 0)
             addr_w = (_VIP_ADDR << 1) | 0
-            await self.csr_write(
-                "I2C0_FDATA_START_ADDR", fdata, I2C_FDATA_START | addr_w
-            )
+            await self.csr_write("I2C0_FDATA_START_ADDR", fdata, I2C_FDATA_START | addr_w)
             await self.csr_write(
                 "I2C0_FDATA_DATA_STOP",
                 fdata,
@@ -284,13 +259,9 @@ class smc_i2c_p0_nack_test_seq(SmcCsrSeq):
             )
             events, status = await self._await_nack_event("TC2_DATA_NACK")
             if vip.addr_acks < 1:
-                raise AssertionError(
-                    f"TC2: VIP never ACKed address (acks={vip.addr_acks})"
-                )
+                raise AssertionError(f"TC2: VIP never ACKed address (acks={vip.addr_acks})")
             if vip.data_nacks < 1:
-                raise AssertionError(
-                    f"TC2: VIP did not drive data NACK (count={vip.data_nacks})"
-                )
+                raise AssertionError(f"TC2: VIP did not drive data NACK (count={vip.data_nacks})")
             cocotb.log.info(
                 "CHK-I2C-P0-NACK-TC2: data-phase NACK @0x%02x byte=0x%02x "
                 "EVENTS=0x%x STATUS=0x%x vip_acks=%d vip_data_nacks=%d",
@@ -313,9 +284,7 @@ class smc_i2c_p0_nack_test_seq(SmcCsrSeq):
             )
 
         cg = await self.csr_read("CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL)
-        await self.csr_write(
-            "CLOCK_GATE_UNGATE_I2C", CLOCK_GATE_CONTROL, cg & ~I2C_CG_EN
-        )
+        await self.csr_write("CLOCK_GATE_UNGATE_I2C", CLOCK_GATE_CONTROL, cg & ~I2C_CG_EN)
 
         await self._setup_internal_target()
         await self._setup_host()

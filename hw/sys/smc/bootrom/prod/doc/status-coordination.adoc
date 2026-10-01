@@ -1,0 +1,337 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[status-reporting]]
+== Status and coordination
+
+=== Scratch registers
+
+The CPU-control block begins at `0xC0039000`.
+Scratch register 0 is at `0xC0039080`; consecutive scratch registers are eight bytes apart.
+
+.Scratch registers used by the ROM
+[cols="1,2,4",options="header"]
+|===
+|Index |Address |Use
+
+|0
+|`0xC0039080`
+|Simulation pass/fail and generic early-trap indication.
+
+|1
+|`0xC0039088`
+|Structured POST word.
+
+|2
+|`0xC0039090`
+|Virtual console output in debug-enabled builds.
+
+|8
+|`0xC00390C0`
+|Manifest offset from SRAM base, or `0xFFFFFFFF` when invalid.
+
+|9
+|`0xC00390C8`
+|SMC-to-SEP coordination bits.
+
+|10
+|`0xC00390D0`
+|Available through the MBIST-failure helper; the assembly checks use register 15.
+
+|11
+|`0xC00390D8`
+|SEP status-buffer offset from SRAM base.
+
+|13
+|`0xC00390E8`
+|SEP-safe SRAM start offset from SRAM base.
+
+|14
+|`0xC00390F0`
+|SEP-safe SRAM size in bytes.
+
+|15
+|`0xC00390F8`
+|MBIST, memory-repair, or ROM-padding-trap status.
+|===
+
+Assembly clears registers 8, 9, 11, 13, and 14 after installing the early trap vector.
+It deliberately preserves register 15.
+
+.Scratch register 9
+[cols="1,2,4",options="header"]
+|===
+|Bit |Name |Set when
+|0 |SRAM initialized |Status buffers and the safe-region description have been initialized.
+|1 |Manifest ready |`AuthenticateImage` has published scratch register 8.
+|2 |Status buffer ready |Scratch register 11 contains the SEP ring-buffer offset.
+|3 |SRAM protected |Defined by the interface but not set by the current ROM.
+|===
+
+The published SRAM addresses are offsets from `0xC0060000`.
+The normal values in registers 13 and 14 describe `0xC0066400` through `0xC015AFFF`.
+
+=== Ring buffers
+
+The ROM initializes separate SMC and SEP ring buffers at the end of SRAM.
+Each holds 512 32-bit entries plus `head`, `tail`, and `num_entries` fields.
+A write to a full buffer advances the tail and overwrites the oldest entry.
+A read returns the oldest unread entry and advances the tail.
+
+Status messages use this format:
+
+.Status message
+[cols="1,2,4",options="header"]
+|===
+|Bits |Field |Encoding
+|31:24 |Message type |`0x01` status, `0x08` warning, `0x0F` error
+|23:16 |Firmware ID |`0x01` SEP BL0, `0x02` SEP BL1, `0x03` SMC BL0, `0x04` SMC BL1
+|15:0 |Value |Boot or command-specific status value
+|===
+
+=== Ring-buffer status values
+
+The SMC ROM FW writes the following boot values to the SMC ring buffer.
+Primary, secondary, and recovery values report sampled straps; they do not
+select different ROM FW algorithms.
+
+.Boot status values
+[cols="1,2,1,4",options="header"]
+|===
+|Value |Name |Type |Current emission
+
+|`0x001`
+|`SMC_STATUS_ROM_STARTED`
+|Status
+|`smc_status_init` emits this value as its initialization marker, and `main`
+emits it again explicitly after publishing the initial coordination state.
+
+|`0x010`
+|`SMC_STATUS_BOOT_START`
+|Status
+|After strap, eFuse, lifecycle, and optional PLL processing.
+
+|`0x020`
+|`SMC_STATUS_RECOVERY_MODE`
+|Warning
+|When the recovery strap is asserted.
+
+|`0x021`
+|`SMC_STATUS_PRIMARY_MODE`
+|Status
+|When the primary-chiplet strap is asserted.
+
+|`0x022`
+|`SMC_STATUS_SECONDARY_MODE`
+|Status
+|When the primary-chiplet strap is deasserted.
+
+|`0x025`
+|`SMC_STATUS_INVALID_SEC_MODE`
+|Error
+|Before halting on an invalid lifecycle encoding or value.
+
+|`0x030`
+|`SMC_STATUS_OCCP_INIT_FAILED`
+|Error
+|Before halting when any configured OCCP transport fails initialization.
+
+|`0x031`
+|`SMC_STATUS_OCCP_READY`
+|Status
+|After all configured OCCP transports initialize successfully.
+
+|`0x040`
+|`SMC_STATUS_COORDINATION_ACTIVE`
+|Status
+|After the SEP-safe SRAM range and SRAM-ready indication are published.
+
+|`0x050`
+|`SMC_STATUS_BOOT_COMPLETE`
+|Status
+|When the ROM FW enters the OCCP command loop, and again before an accepted
+`ExecuteImage` transfers control.
+
+|`0x0FF`
+|`SMC_STATUS_UNEXPECTED_EXIT`
+|Error
+|Only if the normally non-returning OCCP command loop returns.
+|===
+
+OCCP processing uses the following value families. Values described as
+“base OR data” use `SMC_OCCP_ERROR_WITH_DATA` to OR the base with the low
+eight bits of the associated command or error value. Access-denied details use
+`SMC_OCCP_ERROR_WITH_NIBBLE`, which computes
+`base | ((detail & 0xF) << 8)`.
+
+.OCCP ring-buffer status values
+[cols="1,2,4",options="header"]
+|===
+|Base value |Name |Current use
+
+|`0x100`
+|`SMC_OCCP_ERROR_CMD_READ`
+|Packet-header transport read failure.
+
+|`0x101` OR data
+|`SMC_OCCP_ERROR_CMD_UNKNOWN`
+|Unknown application or message ID; data identifies the rejected value.
+
+|`0x110` OR data
+|`SMC_OCCP_ERROR_CMD_FAILED`
+|Header validation, command execution, or interface-unlatch detail. Unlatch
+events use warning type; command failures use error type.
+
+|`0x120`
+|`SMC_OCCP_ERROR_READ_OVERFLOW`
+|Invalid or excessive `ReadData` size, or an invalid `ReadData`,
+`ExecuteImage`, or `AuthenticateImage` body length.
+
+|`0x121`, optionally with shifted detail
+|`SMC_OCCP_ERROR_READ_ACCESS_DENIED`
+|Misaligned or policy-rejected read address.
+
+|`0x130`
+|`SMC_OCCP_ERROR_WRITE_OVERFLOW`
+|Invalid or excessive write-command length.
+
+|`0x131`, optionally with shifted detail
+|`SMC_OCCP_ERROR_WRITE_ACCESS_DENIED`
+|Misaligned or policy-rejected write address.
+
+|`0x140`
+|`SMC_OCCP_ERROR_VALIDATE_SECURITY`
+|Defined for authenticate security failures but not emitted by the current
+implementation.
+
+|`0x141`
+|`SMC_OCCP_ERROR_VALIDATE_ADDRESS_FAILED`
+|Authenticate transport, address, or policy failure.
+
+|`0x200` OR address data
+|`SMC_OCCP_STATUS_JUMP_EXECUTED`
+|Accepted `ExecuteImage`; data is address bits 23:16.
+
+|`0x201`
+|`SMC_OCCP_ERROR_JUMP_SECURITY`
+|`ExecuteImage` rejected in a secure lifecycle state.
+
+|`0x202`
+|`SMC_OCCP_ERROR_JUMP_READ_FAILED`
+|`ExecuteImage` body, transport, address, or policy failure.
+|===
+
+Handler-specific error values do not replace the command loop's common error
+report. After most handlers return an error, the loop emits a second
+`SMC_OCCP_ERROR_CMD_FAILED` value with the returned internal error code.
+
+[[status-reporting-flow]]
+.SMC ROM FW status-reporting flow
+[plantuml]
+....
+@startuml
+start
+:Initialize status buffers;
+:Publish status-buffer offset and readiness;
+:Status ROM_STARTED (0x001)\ninitialization marker;
+:Publish SEP-safe SRAM range and SRAM ready;
+:Status COORDINATION_ACTIVE (0x040);
+:Status ROM_STARTED (0x001)\nexplicit startup report;
+:Status PRIMARY_MODE (0x021)\nor SECONDARY_MODE (0x022);
+if (Recovery strap asserted?) then (yes)
+  :Warning RECOVERY_MODE (0x020);
+endif
+if (Lifecycle valid?) then (no)
+  :Error INVALID_SEC_MODE (0x025);
+  :WFI forever;
+  stop
+endif
+if (Optional PLL hook fails?) then (yes)
+  :Main emits no ring-buffer report;\nrecord POST interface error;
+  :WFI forever;
+  stop
+endif
+:Status BOOT_START (0x010);
+if (OCCP initialization succeeds?) then (no)
+  :Error OCCP_INIT_FAILED (0x030);
+  :WFI forever;
+  stop
+endif
+:Status OCCP_READY (0x031);
+:Status BOOT_COMPLETE (0x050);
+:Enter OCCP command loop;
+stop
+@enduml
+....
+
+The `STATUS_RPT_DISABLE` strap does not disable ring-buffer initialization or writes.
+It only rejects OCCP `GetStatus`.
+
+=== Software OCCP status word
+
+The ROM maintains an in-memory 32-bit status word:
+
+.OCCP status word
+[cols="1,2,4",options="header"]
+|===
+|Bits |Field |Current update behavior
+|3:0 |Boot status |Initialized to zero. The current main flow does not advance this field.
+|7:4 |Interface status |Set to ready after successful transport initialization or error after failure.
+|15:8 |Command count |Incremented when a successful packet-header transport read reaches the common end of the command iteration, including header-validation and dispatch errors; wraps from 255 to 0. Header-read transport failures and successful terminal handoffs are not counted.
+|23:16 |Last internal error |Updated after command failures.
+|31:24 |Reserved |Zero.
+|===
+
+`GetStatus` IDs `0x0000` through `0x0003` expose individual fields in the status-message envelope described in <<occp-protocol>>.
+
+=== POST word
+
+Scratch register 1 carries a structured development-observability word.
+
+.POST fields
+[cols="1,2,4",options="header"]
+|===
+|Bits |Field |Values used by the ROM
+
+|31:28
+|Boot phase
+|0 initialization, 1 straps/eFuses, 2 SRAM setup, 3 interface setup, 4 OCCP ready, 5 OCCP processing, 6 boot complete, 7 error
+
+|27:24
+|OCCP state
+|0 idle, 1 command received, 2 processing, 3 response ready, 4 complete, 5 error
+
+|23:20
+|Latched interface
+|0 none, 1 I3C0, 2 I3C1, 4 I3C3, 5 I2C0, 6 I2C1
+
+|19:16
+|Error
+|0 none, 1 SRAM, 2 interface, 3 command, 4 access, 5 invalid security mode
+
+|15:12
+|Security decisions
+|Bits indicate secure, production, and RMA SoP classifications.
+
+|11:8
+|Boot observations
+|Bits indicate primary strap, recovery strap, I2C boot strap, and SRAM-auto-zero-disable strap.
+
+|7:4
+|Strap observations
+|Bits 7 and 4 are reserved; bits 6 and 5 indicate status-report disable and
+memory-repair bypass.
+
+|3:0
+|Coordination
+|Bits indicate SRAM ready, manifest ready, status buffer ready, and coordination active.
+|===
+
+POST state reports decisions made by the current ROM; it is not a separate boot-control interface.
+During startup, the implementation writes boot-phase values in the sequence
+0, 2, 1, 2, 3, 4, and 5. The first phase-2 write follows publication of the
+SRAM coordination state; phase 1 then records strap and eFuse processing, and
+the second phase-2 write records the explicit C-flow SRAM phase.
+The `SMC_STATUS_BOOT_COMPLETE` ring-buffer value emitted on entry to the OCCP
+loop does not set POST boot phase 6. The ROM FW sets phase 6 only immediately
+before an accepted `ExecuteImage` transfers control.

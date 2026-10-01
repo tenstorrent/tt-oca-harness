@@ -17,36 +17,47 @@ WSTRB coverage note: cocotbext-axi ``init_write`` has no explicit-strobe argumen
 -- it derives the strobe from address+length, so only CONTIGUOUS byte runs are
 expressible. This rep walks all 36 contiguous masks (all 8 one-hot lanes + every
 contiguous multi-byte run). Arbitrary NON-contiguous masks (e.g. 0x05) are NOT
-expressible without a lower-level explicit-strobe write -- infra-gated/deferred.
+expressible without a lower-level explicit-strobe write.
 WSTRB=0x00 (all-zero strobe) is excluded (undefined per the SRAM spec).
 """
 
 from __future__ import annotations
 
-from sep_reg_meta import sym
-
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
+from sep_reg_meta import sym
+
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
 # SEP SRAM aperture (256 KiB). Derived from the generated Python register export
 # rather than a literal, so a map change surfaces as an import error instead of a
 # silently stale constant. The C header spells the same aperture
-# OCH_SEP_TOP_SEP_SRAM_BASE_ADDR / _SIZE in sep_addr.h, but only the Python export
+# SEP_TOP_SEP_SRAM_BASE_ADDR / _SIZE in sep_addr.h, but only the Python export
 # is importable from here.
 SEP_SRAM_BASE = sym("SEP_SRAM_MEM_BASE_ADDR")
-SEP_SRAM_SIZE = 0x0004_0000
+SEP_SRAM_SIZE = sym("SEP_SRAM_MEM_SIZE")
 _MASK64 = 0xFFFF_FFFF_FFFF_FFFF
+
+_WORD_BITS = 64
+
+# Walking one and walking zero: every one of the 64 bit positions, one word each.
+WALKING_ONE_PATTERNS = [1 << bit for bit in range(_WORD_BITS)]
+WALKING_ZERO_PATTERNS = [_MASK64 ^ (1 << bit) for bit in range(_WORD_BITS)]
 
 # Required data patterns (always present; the RANDCFG adds seed-random extras).
 _REQUIRED_PATTERNS = [
     0xAAAA_AAAA_AAAA_AAAA,
     0x5555_5555_5555_5555,
-    0x0000_0000_0000_0001,   # walking-1 lsb
-    0x8000_0000_0000_0000,   # walking-1 msb
-    0xFFFF_FFFF_FFFF_FFFE,   # walking-0 lsb
+    *WALKING_ONE_PATTERNS,
+    *WALKING_ZERO_PATTERNS,
     0xDEAD_BEEF_CAFE_BABE,
 ]
+
+
+# Floors the test asserts, so a generator or list that shrank fails the run
+# rather than reporting a clean pass over fewer cells.
+CONTIGUOUS_WSTRB_SPECS = 36  # 8 one-hot + 28 multi-byte runs on an 8-byte lane
+WALKING_POSITIONS = 64  # one walking-one and one walking-zero word per data bit
 
 
 def _contiguous_wstrb_specs() -> list[tuple[int, int]]:
@@ -71,28 +82,62 @@ class SepSramBreadthCfg:
         # WSTRB: all 36 contiguous masks REQUIRED (deterministic), order shuffled;
         # the init word and per-mask new-data are seed-random (masked to 64b).
         self.wstrb_specs = _contiguous_wstrb_specs()
+        # Construction invariant, in the same spirit as the inbound START/END
+        # count: the 8-byte lane has exactly 36 contiguous runs, so a generator
+        # change is a config bug and must not reach the bench as a smaller sweep.
+        if len(self.wstrb_specs) != CONTIGUOUS_WSTRB_SPECS:
+            raise RuntimeError(
+                f"contiguous WSTRB set is {len(self.wstrb_specs)}, "
+                f"expected {CONTIGUOUS_WSTRB_SPECS} on an 8-byte lane"
+            )
         rng.shuffle(self.wstrb_specs)
         self.wstrb_offset = self._aligned(rng, 0x1000, 0x2000)
         self.wstrb_init = rng.getrandbits(64)
         self.wstrb_newdata = [rng.getrandbits(64) for _ in self.wstrb_specs]
 
         # Patterns: the required cells are always present; add a few seed-random extras.
+        # Each walk covers all 64 bit positions exactly once; a shorter walk is a
+        # config bug and must not reach the bench as a narrower CHK-PATTERN.
+        for name, walk in (
+            ("walking-one", WALKING_ONE_PATTERNS),
+            ("walking-zero", WALKING_ZERO_PATTERNS),
+        ):
+            if len(set(walk)) != WALKING_POSITIONS:
+                raise RuntimeError(
+                    f"{name} set has {len(set(walk))} distinct words, "
+                    f"expected {WALKING_POSITIONS} on a 64-bit word"
+                )
         n_extra = rng.randrange(2, 5)
-        self.pattern_values = list(_REQUIRED_PATTERNS) + [rng.getrandbits(64) for _ in range(n_extra)]
+        self.pattern_values = list(_REQUIRED_PATTERNS) + [
+            rng.getrandbits(64) for _ in range(n_extra)
+        ]
         self.pattern_offset = self._aligned(rng, 0x2000, 0x3000)
 
         # Boundary: always the base word and the top valid 64-bit word.
         self.boundary_addrs = [self.base_addr, self.base_addr + self.size - 8]
+
+        # Address lines: the base word, one word at every power-of-two offset
+        # from the word stride up to half the generated size, and the top word.
+        # Each holds its own value, so a memory that decodes fewer address bits
+        # than the generated size -- 64 KiB aliased four times over 256 KiB,
+        # say -- fails. Offsets at or above 0x1_0000 are the upper 192 KiB.
+        self.addr_line_offsets = (
+            [0] + [1 << k for k in range(3, self.size.bit_length() - 1)] + [self.size - 8]
+        )
+        self.addr_line_values = [
+            (0xA11E_0000_0000_0000 | (i << 40) | off) & _MASK64
+            for i, off in enumerate(self.addr_line_offsets)
+        ]
 
         # Sequential: >= 4 words (seed-bounded), random aligned base + seed data.
         self.seq_words = rng.randrange(4, 9)
         self.seq_offset = self._aligned(rng, 0x3000, 0x3F00)
         self.seq_seed = rng.getrandbits(64)
 
-        # Non-vacuity: a distinct unwritten word adjacent to a written one.
+        # Non-vacuity: two adjacent words written with complementary patterns.
         self.nonvac_wr_offset = self._aligned(rng, 0x4000, 0x5000)
         self.nonvac_rd_offset = self.nonvac_wr_offset + 8
-        self.nonvac_pattern = rng.getrandbits(64) | 1   # ensure nonzero
+        self.nonvac_pattern = rng.getrandbits(64)
 
     @staticmethod
     def _aligned(rng: SepSeededRng, lo: int, hi: int) -> int:
@@ -103,7 +148,7 @@ class SepSramBreadthCfg:
         b = self.base_addr
         return (
             f"seed={self.seed} wstrb_masks={len(self.wstrb_specs)} (all contiguous; "
-            f"non-contiguous infra-gated) wstrb@0x{b + self.wstrb_offset:08x} "
+            f"non-contiguous not walked) wstrb@0x{b + self.wstrb_offset:08x} "
             f"patterns={len(self.pattern_values)} pat@0x{b + self.pattern_offset:08x} "
             f"seq_words={self.seq_words} seq@0x{b + self.seq_offset:08x} "
             f"boundary=[0x{self.boundary_addrs[0]:08x},0x{self.boundary_addrs[1]:08x}]"
@@ -119,8 +164,11 @@ class SepSramBreadth:
 
     async def write(self, addr: int, data: int, length: int = 8) -> None:
         seq = SepAxiAccessSeq(
-            f"sram_wr_0x{addr:08x}_l{length}", op=SepAxiOp.WRITE,
-            addr=addr, wdata=data, length=length,
+            f"sram_wr_0x{addr:08x}_l{length}",
+            op=SepAxiOp.WRITE,
+            addr=addr,
+            wdata=data,
+            length=length,
         )
         await self.test.start_seq(seq)
         if not seq.resp_ok:
@@ -128,8 +176,10 @@ class SepSramBreadth:
 
     async def read(self, addr: int, length: int = 8) -> int:
         seq = SepAxiAccessSeq(
-            f"sram_rd_0x{addr:08x}_l{length}", op=SepAxiOp.READ,
-            addr=addr, length=length,
+            f"sram_rd_0x{addr:08x}_l{length}",
+            op=SepAxiOp.READ,
+            addr=addr,
+            length=length,
         )
         await self.test.start_seq(seq)
         if not seq.resp_ok:

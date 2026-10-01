@@ -2,28 +2,42 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[jtag-intf-unit-architecture]]
-==== Architecture
 
-The JTAG Interface Unit integrates PTAP, STAP chain, and iJTAG network into a
-unified debug access point.
+The JTAG Interface Unit integrates the PTAP, STAP chain and iJTAG network into
+a unified debug access point.
 
-Shown below is an abstract diagram of the JTAG scan chain.
+<<jtag-interface-unit-scan-chain-figure>> shows the PTAP, STAP chain, and iJTAG network
+at the debug access point. Follow the arrows from TDI to TDO: italic labels beside
+a mux name the instructions or select bit that choose its input, 0 or 1 at a mux
+input is the select value that picks it, and italic labels in the STAPs and SIBs
+name the `dbg_disable_i` field that closes each one. Dashed blocks exist only when
+their enable parameter is set; `NUM_EXTRA_STAPS` sets the number of `u_stap_extra`
+instances. TDO is retimed on the falling edge of TCK except during a
+`ZERO_LENGTH_BYPASS` DR scan, when the last mux takes the TDO mux output ahead of
+the retimer and TDI reaches TDO combinationally.
 
-image::jtag_scan_chain.drawio.svg[JTAG Scan Chain Diagram,scaledwidth=90.0%]
+[[jtag-interface-unit-scan-chain-figure]]
+.JTAG Interface Unit scan chain
+image::dtp-jtag-scan-chain.svg[alt="JTAG Interface Unit scan chain: TDI fans out to the PTAP instruction and data registers, the boundary-scan chain and the three iJTAG SIBs; the PTAP output passes through the STAP chain and an external STAP chain back to the TDO mux",width=100%,pdfwidth=100%]
 
-===== Scan Chain Topology
+=== Scan Chain Topology
 
 The PTAP is connected to the incoming JTAG interface for the chiplet. The scan
 chain is organized in three major segments: the Primary TAP processes all
 instructions, the Secondary TAP chain provides hierarchical TAP access, and the
 iJTAG network enables instrument-level access to debug blocks.
 
-====== STAP Chain Hierarchy
+==== STAP Chain Hierarchy
 
 The STAP chain implements a four-level hierarchy with configurable lockup latch
 insertion optimized for different physical routing distances.
 
+<<jiu-stap-chain-hierarchy-table>> relates each STAP level to its lockup-latch
+configuration and physical role.
+
+[[jiu-stap-chain-hierarchy-table]]
 [width="100%",cols="<15%,<25%,<15%,<15%,<30%",options="header"]
+.JIU STAP chain hierarchy
 |===
 |Level |STAP Type |TDI_LOCKUP |SCAN_OUT_LOCKUP |Purpose
 
@@ -48,101 +62,160 @@ insertion optimized for different physical routing distances.
 |4
 |Extra STAPs [N-1:0]
 |0
-|i == N-1 ? 1 : 0
-|Local debug ports (scan output lockup on last STAP only)
+|0
+|Local debug ports
 |===
 
 The I/O STAP enables TDI lockup to handle the longer propagation delays across
 die boundaries. On-chip STAPs (SMC Debug, SEP Debug) disable TDI lockup since
-signal routing is local to the chiplet. The final extra STAP in the chain
-enables scan output lockup when `NUM_EXTRA_STAPS > 0`, providing additional
-output timing margin before the scan path returns to the PTAP.
+signal routing is local to the chiplet.
 
-====== Feature Control Synchronization
+No STAP in the chain enables scan output lockup. The chain return reaches the
+PTAP's falling-edge TDO retimer, and a lockup ahead of that retimer would add
+one TCK of latency to every scan through the STAP chain. The last STAP's scan
+output also drives `stap_host_scan_out_o`, which launches on the rising edge of
+TCK like the host scan outputs of the iJTAG SIBs.
 
-The lifecycle feature control signals originate in the system clock domain and
-must be synchronized to the TCK domain before use. The interface unit implements
-64 individual 2-FF synchronizer chains, one per bit of the feature control
-vector. This per-bit synchronization approach breaks up the CDC timing path that
-would exist if the entire 64-bit vector were synchronized as a single unit.
+`stap_host_scan_out_o` carries the scan bit of the last STAP's SIB. That bit
+resets to 0 on TRST and in Test-Logic-Reset, so the port reads 0 from reset.
 
-The synchronized feature control bits determine security access levels for STAP
-and SIB selection. `feat_ctrl_i` is enable-polarity (1 = feature enabled). Each
-access point is enabled only when *all* of its listed enables are asserted, so
-it is disabled when *any* one of them is deasserted:
+==== Debug Disable Synchronization
 
-[width="100%",cols="<20%,<40%,<40%",options="header"]
+`dbg_disable_i` (`sep_lifecycle_ctrl_pkg::dbg_disable_t`) is in the system clock
+domain and must be synchronized to TCK before use. The interface unit
+synchronizes each bit through a 2-FF chain whose reset value is 1 (fail-closed).
+The synchronized fields gate STAP and SIB selection and are forwarded to the
+PTAP for the JTAG2AXI bridges.
+
+Each field is active-high (1 = path disabled).
+
+<<jiu-debug-disable-fields-table>> maps each debug access point to its synchronized
+disable field.
+
+[[jiu-debug-disable-fields-table]]
+[width="100%",cols="<40%,<60%",options="header"]
+.JIU debug-disable fields
 |===
-|Access Point |Enabled When Feature Control Satisfies |Security Disable Signal
+|Access Point |Disable Field
 
 |I/O STAP
-|`sip_debug`
-|`!sip_debug`
+|`dbg_disable_i.stap_io`
 
 |SMC Debug STAP
-|`soc_debug \&\& ap_debug`
-|`!soc_debug \|\| !ap_debug`
+|`dbg_disable_i.stap_smc`
 
 |SEP Debug STAP
-|`sep_debug \&\& soc_debug \&\& ap_debug`
-|`!sep_debug \|\| !soc_debug \|\| !ap_debug`
+|`dbg_disable_i.stap_sep`
 
 |Extra STAPs
-|`ap_debug`
-|`!ap_debug`
+|`dbg_disable_i.stap_extra`
 
 |External STAP return path
-|`ap_debug`
-|`!ap_debug`
+|`dbg_disable_i.stap_host`
 
 |DFT Secure SIB
-|`fuse_test \&\& sep_debug \&\& soc_debug \&\& ap_debug`
-|`!fuse_test \|\| !sep_debug \|\| !soc_debug \|\| !ap_debug`
+|`dbg_disable_i.dft_secure`
 
 |DFT Non-Secure SIB
-|`soc_debug \&\& ap_debug`
-|`!soc_debug \|\| !ap_debug`
+|`dbg_disable_i.dft_nonsecure`
 
 |DFD SIB
-|`ap_debug`
-|`!ap_debug`
+|`dbg_disable_i.dfd`
+
+|SMC fabric JTAG2AXI
+|`dbg_disable_i.smc_jtag2axi`
+
+|SMC OTP JTAG2AXI
+|`dbg_disable_i.smc_otp_jtag2axi`
+
+|SEP OTP JTAG2AXI
+|`dbg_disable_i.sep_otp_jtag2axi`
 |===
 
-===== iJTAG Network
+[[jiu-ijtag-network]]
+=== iJTAG Network
 
 The iJTAG network is organized into three cascaded Segment Insertion Bit (SIB)
-chains with differing security requirements. Each SIB gates access to a specific
-set of debug instruments based on the synchronized feature control signals, and
-requires *all* of the enables listed for it above.
+chains. Each SIB is gated by the corresponding synchronized debug-disable field.
+Each SIB's scan bit and control bit reset to 0 on TRST and in Test-Logic-Reset,
+so `dft_secure_host_scan_out_o`, `dft_host_scan_out_o` and `dfd_host_scan_out_o`
+read 0 from reset, whether or not the SIB is disabled.
 
-====== DFT Secure Chain
+The PTAP selects the iJTAG network as its DR under SELECT_IJTAG and, when
+`RUNBIST_ENABLE` is set, under RUNBIST. From TDI the scan path passes through the
+DFT Secure SIB, the DFT Non-Secure SIB and the DFD SIB, and the DFD SIB's output
+returns to the PTAP. Each SIB is one bit long. While a SIB is open, its segment
+is inserted on the TDO side of its bit: the SIB bit drives the segment's scan
+input, and the segment's return continues to the next SIB. With every SIB closed
+the iJTAG DR is three bits long, laid out as in <<jiu-ijtag-sib-bit-map-table>>.
 
-The DFT Secure chain is the most restrictive of the three: it is accessible only
-when fuse test, SEP debug, SOC debug, and AP debug are all enabled. This chain
-is ported out of the DTP for connection to tooling-generated DFT logic such as
-MBIST controllers and scan compression logic.
+[[jiu-ijtag-sib-bit-map-table]]
+[width="100%",cols="<12%,<28%,<30%,<30%",options="header"]
+.JIU iJTAG DR with every SIB closed
+|===
+|DR Bit |SIB |Segment Ports |Disable Field
 
-====== DFT Non-Secure Chain
+|0
+|DFD
+|`dfd_host_scan_*`
+|`dbg_disable_i.dfd`
 
-The DFT Non-Secure chain requires both SOC debug and AP debug to be enabled.
-This chain provides access to DFT instrumentation that does not involve
-security-sensitive fuse or SEP operations.
+|1
+|DFT Non-Secure
+|`dft_host_scan_*`
+|`dbg_disable_i.dft_nonsecure`
 
-====== DFD Chain
+|2
+|DFT Secure
+|`dft_secure_host_scan_*`
+|`dbg_disable_i.dft_secure`
+|===
 
-The Debug Forensics Dump (DFD) chain requires AP debug to be enabled. The SIB
-gate itself is the least restrictive of the three; the resources reached through
-it are gated again inside the PTAP, where each JTAG2AXI bridge applies its own
-lifecycle condition. This chain grants access to:
+Bit 0 is nearest TDO and is the first bit shifted in. A SIB bit shifted in as 1
+opens that SIB at Update-DR, and its segment is on the scan path from the next DR
+scan. Each SIB captures its own open state. A SIB whose disable field is set
+stays closed and remains a one-bit stage that captures 0, whatever is shifted
+into it.
 
-* SMC AXI4 system fabric via JTAG2AXI bridge
-* SMC OTP controller via AXI-Lite-to-APB bridge
-* SEP OTP controller via AXI-Lite-to-APB bridge
-* Extension port for integrator-defined debug instruments
+To reach a segment through the iJTAG network:
 
-===== JTAG2AXI Interfaces
+1. Shift SELECT_IJTAG, or RUNBIST to run BIST, into the instruction register
+   using the IR-Scan sequence.
+2. Shift three bits into TDI using the DR-Scan sequence, starting with the least
+   significant bit, to open the target SIB: 3'b100 for DFT Secure, 3'b010 for
+   DFT Non-Secure or 3'b001 for DFD. The target SIB's disable field must be
+   clear.
+3. Shift the lengthened DR into TDI using the DR-Scan sequence, starting with
+   the least significant bit, with the target SIB's bit held at 1. With the DFT
+   Non-Secure SIB open and an N-bit segment, the DR is N + 3 bits long: bit 0 is
+   the DFD SIB, bits N to 1 are the segment with the bit nearest its scan output
+   at bit 1, bit N + 1 is the DFT Non-Secure SIB and bit N + 2 is the DFT Secure
+   SIB. The contents and length of each segment are defined by the network
+   attached to its ports.
+4. The captured contents of the same scan path shift out on TDO.
+5. To close the SIB, shift the same DR with the target SIB's bit at 0.
 
-The interface unit instantiates multiple JTAG2AXI bridges:
+==== DFT Secure Chain
+
+The DFT Secure chain is gated by `dbg_disable_i.dft_secure`. This port is for
+security-sensitive DFT control.
+
+==== DFT Non-Secure Chain
+
+The DFT Non-Secure chain is gated by `dbg_disable_i.dft_nonsecure`. General DFT
+control is attached to this port.
+
+==== DFD Chain
+
+The Design-for-Debug (DFD) chain is gated by `dbg_disable_i.dfd`.
+Integrator-defined debug instruments are attached to this port.
+
+=== JTAG2AXI Interfaces
+
+The interface unit instantiates multiple JTAG2AXI bridges. Each bridge is a set
+of PTAP TDRs selected by its own instructions and gated by its own
+`dbg_disable_i` field (<<jiu-debug-disable-fields-table>>); no bridge is reached
+through the iJTAG network.
 
 * *SMC JTAG2AXI TDRs*: This set of TDRs provide a mechanism to inject AXI
   transactions onto the SMC AXI local interconnect.

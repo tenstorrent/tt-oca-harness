@@ -5,15 +5,17 @@
 from __future__ import annotations
 
 import pyuvm
-
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_uart_loopback_test_seq import TX_BYTE, smc_uart_loopback_test_seq
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
 class smc_uart_loopback_test(smc_base_test):
     """U4-1: AXI-program UART0 THR and capture the byte on pad12 TX."""
+
+    required_evidence = ("CHK-UART-TX-PAD-CAPTURE",)
+    min_evidence = 1
 
     auto_protocol_vip = False
 
@@ -25,6 +27,9 @@ class smc_uart_loopback_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.UART_LOG,
             type(self).__name__,
+            # Stimulus floor, literal here rather than read from `seq.accesses`: it sits below the
+            # run-to-run minimum because the TX-empty poll is timing-dependent.
+            min_csr_accesses=7,
             csr_accesses=seq.accesses,
             proxy=False,
             details=(

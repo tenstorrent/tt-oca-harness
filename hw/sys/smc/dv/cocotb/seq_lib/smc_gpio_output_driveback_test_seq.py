@@ -14,7 +14,7 @@ so exactly one output-enable bit must change, and that bit's value must track
 the register. This is self-locating (no hard-coded pad index) and does not
 depend on the OR aggregates.
 
-DATA_CTRL field encoding (hw/periph/gpio/data/registers/rdl/gpio_intf.rdl):
+DATA_CTRL field encoding (hw/ip/gpio/regs/gpio_intf.rdl):
   * bit0      core2pad          register-driven value to the pad
   * bit[5:4]  enable_rx_tx      2'b01 = TX enabled (drive pad)
   * bit16     interface_enable  select register values to drive the pad
@@ -31,8 +31,8 @@ from .smc_csr_seq_utils import SmcCsrSeq
 GPIO0_DATA_CTRL = smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 0)
 
 _CORE2PAD = 1 << 0
-_TX_ENABLE = 1 << 4          # enable_rx_tx = 2'b01
-_IF_ENABLE = 1 << 16         # interface_enable
+_TX_ENABLE = 1 << 4  # enable_rx_tx = 2'b01
+_IF_ENABLE = 1 << 16  # interface_enable
 
 OUT_DRIVE_HIGH = _IF_ENABLE | _TX_ENABLE | _CORE2PAD
 OUT_DRIVE_LOW = _IF_ENABLE | _TX_ENABLE
@@ -51,8 +51,8 @@ class smc_gpio_output_driveback_test_seq(SmcCsrSeq):
         preserved). VCS leaves undriven upper pad bits at X (X-init pessimism)
         while Verilator zero-inits them; this test isolates GPIO wrap 0 by a
         single-bit delta, so the undriven X bits are irrelevant and safely read
-        as 0. A driven bit that is itself X still reads 0, which makes the
-        delta/value assertions below fail with a clear message."""
+        as 0. The pad under test is separately required to read a driven 0/1
+        by ``_require_resolved`` before each compare."""
         v = sig.value
         try:
             return int(v)
@@ -66,6 +66,14 @@ class smc_gpio_output_driveback_test_seq(SmcCsrSeq):
 
     def _val_vec(self, dut) -> int:
         return self._resolve_int(dut.tb_core2pad_o)
+
+    @staticmethod
+    def _require_resolved(sig, bit: int, what: str) -> None:
+        """The pad under test must read 0 or 1; an X or Z there is a failure, not a 0."""
+        s = getattr(sig.value, "binstr", None) or str(sig.value)
+        bits = "".join(c for c in s if c not in " _")
+        ch = bits[-1 - bit] if bit < len(bits) else "?"
+        assert ch in "01", f"GPIO wrap0 pad[{bit}] {what} reads {ch!r}, not a driven 0/1"
 
     async def body(self) -> None:
         dut = cocotb.top
@@ -93,29 +101,56 @@ class smc_gpio_output_driveback_test_seq(SmcCsrSeq):
         )
         pad_bit = newly_en
         pad_idx = newly_en.bit_length() - 1
-        assert (self._val_vec(dut) & pad_bit) != 0, (
+        self._require_resolved(dut.tb_core2pad_o, pad_idx, "value")
+        val_high = self._val_vec(dut)
+        assert (val_high & pad_bit) != 0, (
             f"GPIO wrap0 pad[{pad_idx}] value did not follow register (high)"
         )
 
         # 2) Keep TX enabled, drive value low -> value clears, enable stays.
         await self.csr_write("GPIO0_TX_LOW", GPIO0_DATA_CTRL, OUT_DRIVE_LOW)
         await ClockCycles(dut.clk_smc_i, 8)
-        assert (self._en_vec(dut) & pad_bit) != 0, (
+        self._require_resolved(dut.tb_core2pad_en_o, pad_idx, "output-enable")
+        self._require_resolved(dut.tb_core2pad_o, pad_idx, "value")
+        en_low = self._en_vec(dut)
+        val_low = self._val_vec(dut)
+        assert (en_low & pad_bit) != 0, (
             f"GPIO wrap0 pad[{pad_idx}] output-enable dropped while TX still enabled"
         )
-        assert (self._val_vec(dut) & pad_bit) == 0, (
+        assert (val_low & pad_bit) == 0, (
             f"GPIO wrap0 pad[{pad_idx}] value did not follow register (low)"
         )
 
         # 3) Disable the register interface -> pad output released.
         await self.csr_write("GPIO0_DISABLE", GPIO0_DATA_CTRL, OUT_DISABLE)
         await ClockCycles(dut.clk_smc_i, 8)
-        assert (self._en_vec(dut) & pad_bit) == 0, (
+        self._require_resolved(dut.tb_core2pad_en_o, pad_idx, "output-enable")
+        en_off = self._en_vec(dut)
+        assert (en_off & pad_bit) == 0, (
             f"GPIO wrap0 pad[{pad_idx}] output-enable did not release after disable"
         )
 
-        assert self.accesses == 3, "GPIO output driveback access count mismatch"
+        # `self.accesses` is incremented by every csr_* call in
+        # smc_csr_seq_utils.py, so `self.accesses == <literal>` restates the
+        # loop above and cannot fail on anything the DUT did
+        # ([NO-ZERO-ACTIVITY-PASS]). `assert_all_reachable` cross-checks the
+        # same count against the scoreboard, which a mis-bound analysis path
+        # or a dead port fails.
+        self.assert_all_reachable(3, "GPIO_OUTPUT_DRIVEBACK")
         cocotb.log.info(
-            "GPIO wrap0 output driveback verified on pad[%d] (core2pad + core2pad_en)",
+            "CHK-GPIO-OUTPUT-DRIVEBACK: GPIO wrap0 TX enable raised exactly one "
+            "core2pad_en_o bit, pad[%d] (delta 0x%x over base 0x%x); core2pad_o[%d] "
+            "read %d with DATA_CTRL.core2pad=1 and %d with core2pad=0 while "
+            "core2pad_en_o[%d] stayed %d, and core2pad_en_o[%d] read %d after "
+            "interface disable; 3 CSR writes reached the scoreboard",
             pad_idx,
+            newly_en,
+            base_en,
+            pad_idx,
+            (val_high >> pad_idx) & 1,
+            (val_low >> pad_idx) & 1,
+            pad_idx,
+            (en_low >> pad_idx) & 1,
+            pad_idx,
+            (en_off >> pad_idx) & 1,
         )

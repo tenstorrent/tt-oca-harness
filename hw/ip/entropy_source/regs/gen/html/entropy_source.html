@@ -6,8 +6,9 @@
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: entropy_source</h2>
-<h2>Register List:</h2>
+<h2 id="regmap-entropy_source">Entropy Source Address Map</h2>
+<p>Entropy-source configuration, status, and data registers.</p>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#COMPONENT_ID">COMPONENT_ID</a></td><td>R</td><td>Identifies the entropy-source register interface.</td></tr>
@@ -80,7 +81,7 @@
 <tr><td>0x174</td><td><a href="#NOISE_OBS_STATUS">NOISE_OBS_STATUS</a></td><td>R</td><td>Reports raw-noise observe FIFO occupancy and pointers.</td></tr>
 <tr><td>0x178</td><td><a href="#NOISE_OBS_RDATA">NOISE_OBS_RDATA</a></td><td>R</td><td>Provides the next packed raw-noise observe word.</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="COMPONENT_ID">COMPONENT_ID</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -115,21 +116,21 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:29</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>28</td><td>NOISE_OBS_OVERFLOW</td><td>RW</td><td>0x0</td><td>Indicates that a raw-noise observe FIFO word was discarded while full. Write one to clear.</td></tr>
+<tr><td>28</td><td>NOISE_OBS_OVERFLOW</td><td>RW1C</td><td>0x0</td><td>Indicates that a raw-noise observe FIFO word was discarded while full. Write one to clear.</td></tr>
 <tr><td>27:25</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>24</td><td>BIW_OBS_OVERFLOW</td><td>RW</td><td>0x0</td><td>Indicates that a BIW observe FIFO word was discarded while full. Write one to clear.</td></tr>
+<tr><td>24</td><td>BIW_OBS_OVERFLOW</td><td>RW1C</td><td>0x0</td><td>Indicates that a BIW observe FIFO word was discarded while full. Write one to clear.</td></tr>
 <tr><td>23:21</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>20</td><td>AUTOTUNE_FAIL</td><td>RW</td><td>0x0</td><td>Indicates a per-generator health-test failure while automatic detuning is enabled. Write one to clear.</td></tr>
+<tr><td>20</td><td>AUTOTUNE_FAIL</td><td>RW1C</td><td>0x0</td><td>Indicates a per-generator health-test failure while automatic detuning is enabled. Write one to clear.</td></tr>
 <tr><td>19:17</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>16</td><td>PERSISTENT_FAILURE</td><td>RW</td><td>0x0</td><td>Indicates a persistent health-test failure or health-test counter error. Write one to clear.</td></tr>
+<tr><td>16</td><td>PERSISTENT_FAILURE</td><td>RW1C</td><td>0x0</td><td>Indicates a persistent health-test failure or health-test counter error. Write one to clear.</td></tr>
 <tr><td>15:13</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>12</td><td>FIFO_UNDERFLOW</td><td>RW</td><td>0x0</td><td>Indicates that software read the empty main FIFO. Write one to clear.</td></tr>
+<tr><td>12</td><td>FIFO_UNDERFLOW</td><td>RW1C</td><td>0x0</td><td>Indicates that software read the empty main FIFO. Write one to clear.</td></tr>
 <tr><td>11:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>8</td><td>FIFO_OVERFLOW</td><td>RW</td><td>0x0</td><td>Indicates that a main FIFO write was discarded while full. Write one to clear.</td></tr>
+<tr><td>8</td><td>FIFO_OVERFLOW</td><td>RW1C</td><td>0x0</td><td>Indicates that a main FIFO write was discarded while full. Write one to clear.</td></tr>
 <tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>4</td><td>FIFO_ERROR</td><td>RW</td><td>0x0</td><td>Indicates a FIFO integrity error. Write one to clear.</td></tr>
+<tr><td>4</td><td>FIFO_ERROR</td><td>RW1C</td><td>0x0</td><td>Indicates a FIFO integrity error. Write one to clear.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>HEALTH_TEST_FAILED</td><td>RW</td><td>0x0</td><td>Indicates a failure in the 32-bit entropy-stream health tests. Write one to clear.</td></tr>
+<tr><td>0</td><td>HEALTH_TEST_FAILED</td><td>RW1C</td><td>0x0</td><td>Indicates a failure in the 32-bit entropy-stream health tests. Write one to clear.</td></tr>
 </table>
 <h3 id="INTR_ENABLE">INTR_ENABLE</h3>
 <table>
@@ -155,27 +156,27 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:29</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>28</td><td>NOISE_OBS_OVERFLOW</td><td>W</td><td>0x0</td><td>Write one to pulse the raw-noise observe FIFO overflow interrupt source.</td></tr>
+<tr><td>28</td><td>NOISE_OBS_OVERFLOW</td><td>W 1P</td><td>0x0</td><td>Write one to pulse the raw-noise observe FIFO overflow interrupt source.</td></tr>
 <tr><td>27:25</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>24</td><td>BIW_OBS_OVERFLOW</td><td>W</td><td>0x0</td><td>Write one to pulse the BIW observe FIFO overflow interrupt source.</td></tr>
+<tr><td>24</td><td>BIW_OBS_OVERFLOW</td><td>W 1P</td><td>0x0</td><td>Write one to pulse the BIW observe FIFO overflow interrupt source.</td></tr>
 <tr><td>23:21</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>20</td><td>AUTOTUNE_FAIL</td><td>W</td><td>0x0</td><td>Write one to pulse the automatic-detuning failure interrupt source.</td></tr>
+<tr><td>20</td><td>AUTOTUNE_FAIL</td><td>W 1P</td><td>0x0</td><td>Write one to pulse the automatic-detuning failure interrupt source.</td></tr>
 <tr><td>19:17</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>16</td><td>PERSISTENT_FAILURE</td><td>W</td><td>0x0</td><td>Write one to pulse the persistent-failure interrupt source.</td></tr>
+<tr><td>16</td><td>PERSISTENT_FAILURE</td><td>W 1P</td><td>0x0</td><td>Write one to pulse the persistent-failure interrupt source.</td></tr>
 <tr><td>15:13</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>12</td><td>FIFO_UNDERFLOW</td><td>W</td><td>0x0</td><td>Write one to pulse the main FIFO underflow interrupt source.</td></tr>
+<tr><td>12</td><td>FIFO_UNDERFLOW</td><td>W 1P</td><td>0x0</td><td>Write one to pulse the main FIFO underflow interrupt source.</td></tr>
 <tr><td>11:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>8</td><td>FIFO_OVERFLOW</td><td>W</td><td>0x0</td><td>Write one to pulse the main FIFO overflow interrupt source.</td></tr>
+<tr><td>8</td><td>FIFO_OVERFLOW</td><td>W 1P</td><td>0x0</td><td>Write one to pulse the main FIFO overflow interrupt source.</td></tr>
 <tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>4</td><td>FIFO_ERROR</td><td>W</td><td>0x0</td><td>Write one to pulse the FIFO integrity-error interrupt source.</td></tr>
+<tr><td>4</td><td>FIFO_ERROR</td><td>W 1P</td><td>0x0</td><td>Write one to pulse the FIFO integrity-error interrupt source.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>HEALTH_TEST_FAILED</td><td>W</td><td>0x0</td><td>Write one to pulse the health-test failure interrupt source.</td></tr>
+<tr><td>0</td><td>HEALTH_TEST_FAILED</td><td>W 1P</td><td>0x0</td><td>Write one to pulse the health-test failure interrupt source.</td></tr>
 </table>
 <h3 id="SHA256_STATUS">SHA256_STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>10:8</td><td>OUTPUT_COUNT</td><td>R</td><td>0x0</td><td>Number of 32-bit digest words remaining for output.</td></tr>
+<tr><td>31:12</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>11:8</td><td>OUTPUT_COUNT</td><td>R</td><td>0x0</td><td>Number of 32-bit digest words remaining for output. Reports 8 when a digest becomes available, decrements through 0 as words are accepted, and remains 0 while idle or bypassed.</td></tr>
 <tr><td>7:4</td><td>INPUT_COUNT</td><td>R</td><td>0x0</td><td>Number of 32-bit words currently accumulated in the 512-bit input block.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates that SHA-256 processing or digest output is active.</td></tr>
@@ -201,7 +202,7 @@
 <h3 id="FIFO_RDATA">FIFO_RDATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>RDATA</td><td>R</td><td>0x0</td><td>Returns and removes the next FIFO word. Reading an empty FIFO sets INTR_STATUS.FIFO_UNDERFLOW and returns undefined data.</td></tr>
+<tr><td>31:0</td><td>RDATA</td><td>R RMOD</td><td>0x0</td><td>Returns and removes the next FIFO word. Reading an empty FIFO sets INTR_STATUS.FIFO_UNDERFLOW and returns undefined data.</td></tr>
 </table>
 <h3 id="HEALTH_TEST_CTRL">HEALTH_TEST_CTRL</h3>
 <table>
@@ -227,7 +228,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7:0</td><td>HEALTH_STATUS</td><td>RW</td><td>0x0</td><td>Latched health-test failure bits; write one to clear.</td></tr>
+<tr><td>7:0</td><td>HEALTH_STATUS</td><td>RW1C</td><td>0x0</td><td>Latched health-test failure bits; write one to clear.</td></tr>
 </table>
 <h3 id="REPETITION_TEST_COUNT">REPETITION_TEST_COUNT</h3>
 <table>
@@ -276,8 +277,8 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>23:12</td><td>SAMPLE_CLK_DETUNE</td><td>RW</td><td>0x0</td><td>Selects the shorter shared sample-clock oscillator tap when any bit is set. FIPS_LOCK.LOCK prevents software changes.</td></tr>
-<tr><td>11:0</td><td>DETUNE</td><td>RW</td><td>0x0</td><td>Selects the shorter tap for each noise ring oscillator while automatic tuning is disabled. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+<tr><td>23:12</td><td>SAMPLE_CLK_DETUNE</td><td>RW</td><td>0x0</td><td>Selects the full-length (longer) shared sample-clock oscillator tap, lowering its frequency, when any bit is set. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+<tr><td>11:0</td><td>DETUNE</td><td>RW</td><td>0x0</td><td>Selects the full-length (longer) tap for each noise ring oscillator, lowering its frequency, while automatic tuning is disabled; the reset value (clear) selects the shorter tap. FIPS_LOCK.LOCK prevents software changes.</td></tr>
 </table>
 <h3 id="RING_OSC_CTRL">RING_OSC_CTRL</h3>
 <table>
@@ -303,8 +304,8 @@
 <tr><td>31:14</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>13</td><td>ALERT_CNTR_CLR_OK</td><td>R</td><td>0x0</td><td>Indicates that a passing window may clear alert failure counters.</td></tr>
 <tr><td>12</td><td>BOOT_PHASE_DONE</td><td>R</td><td>0x0</td><td>Indicates successful completion of startup health testing and permits entropy output.</td></tr>
-<tr><td>11</td><td>ERR</td><td>RW</td><td>0x0</td><td>Latches an illegal state or health-test counter integrity error. Write one or reset the block to clear.</td></tr>
-<tr><td>10</td><td>ALERT</td><td>RW</td><td>0x0</td><td>Latches entry into the persistent-failure alert path, which halts entropy output. Write one or reset the block to clear.</td></tr>
+<tr><td>11</td><td>ERR</td><td>RW1C</td><td>0x0</td><td>Latches an illegal state or health-test counter integrity error. Write one or reset the block to clear.</td></tr>
+<tr><td>10</td><td>ALERT</td><td>RW1C</td><td>0x0</td><td>Latches entry into the persistent-failure alert path, which halts entropy output. Write one or reset the block to clear.</td></tr>
 <tr><td>9</td><td>IDLE</td><td>R</td><td>0x0</td><td>Indicates that the state machine is idle.</td></tr>
 <tr><td>8:0</td><td>STATE</td><td>R</td><td>0x0</td><td>Current sparse-encoded state-machine state.</td></tr>
 </table>
@@ -312,73 +313,73 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7:0</td><td>STATUS</td><td>RW</td><td>0x0</td><td>Generator 0 failure bits use the HEALTH_TEST_STATUS allocation.</td></tr>
+<tr><td>7:0</td><td>STATUS</td><td>RW1C</td><td>0x0</td><td>Generator 0 failure bits use the HEALTH_TEST_STATUS allocation.</td></tr>
 </table>
 <h3 id="GENERATOR_1_HEALTH_STATUS">GENERATOR_1_HEALTH_STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7:0</td><td>STATUS</td><td>RW</td><td>0x0</td><td>Generator 1 failure bits use the HEALTH_TEST_STATUS allocation.</td></tr>
+<tr><td>7:0</td><td>STATUS</td><td>RW1C</td><td>0x0</td><td>Generator 1 failure bits use the HEALTH_TEST_STATUS allocation.</td></tr>
 </table>
 <h3 id="GENERATOR_2_HEALTH_STATUS">GENERATOR_2_HEALTH_STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7:0</td><td>STATUS</td><td>RW</td><td>0x0</td><td>Generator 2 failure bits use the HEALTH_TEST_STATUS allocation.</td></tr>
+<tr><td>7:0</td><td>STATUS</td><td>RW1C</td><td>0x0</td><td>Generator 2 failure bits use the HEALTH_TEST_STATUS allocation.</td></tr>
 </table>
 <h3 id="GENERATOR_3_HEALTH_STATUS">GENERATOR_3_HEALTH_STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7:0</td><td>STATUS</td><td>RW</td><td>0x0</td><td>Generator 3 failure bits use the HEALTH_TEST_STATUS allocation.</td></tr>
+<tr><td>7:0</td><td>STATUS</td><td>RW1C</td><td>0x0</td><td>Generator 3 failure bits use the HEALTH_TEST_STATUS allocation.</td></tr>
 </table>
 <h3 id="GENERATOR_4_HEALTH_STATUS">GENERATOR_4_HEALTH_STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7:0</td><td>STATUS</td><td>RW</td><td>0x0</td><td>Generator 4 failure bits use the HEALTH_TEST_STATUS allocation.</td></tr>
+<tr><td>7:0</td><td>STATUS</td><td>RW1C</td><td>0x0</td><td>Generator 4 failure bits use the HEALTH_TEST_STATUS allocation.</td></tr>
 </table>
 <h3 id="GENERATOR_5_HEALTH_STATUS">GENERATOR_5_HEALTH_STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7:0</td><td>STATUS</td><td>RW</td><td>0x0</td><td>Generator 5 failure bits use the HEALTH_TEST_STATUS allocation.</td></tr>
+<tr><td>7:0</td><td>STATUS</td><td>RW1C</td><td>0x0</td><td>Generator 5 failure bits use the HEALTH_TEST_STATUS allocation.</td></tr>
 </table>
 <h3 id="GENERATOR_6_HEALTH_STATUS">GENERATOR_6_HEALTH_STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7:0</td><td>STATUS</td><td>RW</td><td>0x0</td><td>Generator 6 failure bits use the HEALTH_TEST_STATUS allocation.</td></tr>
+<tr><td>7:0</td><td>STATUS</td><td>RW1C</td><td>0x0</td><td>Generator 6 failure bits use the HEALTH_TEST_STATUS allocation.</td></tr>
 </table>
 <h3 id="GENERATOR_7_HEALTH_STATUS">GENERATOR_7_HEALTH_STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7:0</td><td>STATUS</td><td>RW</td><td>0x0</td><td>Generator 7 failure bits use the HEALTH_TEST_STATUS allocation.</td></tr>
+<tr><td>7:0</td><td>STATUS</td><td>RW1C</td><td>0x0</td><td>Generator 7 failure bits use the HEALTH_TEST_STATUS allocation.</td></tr>
 </table>
 <h3 id="GENERATOR_8_HEALTH_STATUS">GENERATOR_8_HEALTH_STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7:0</td><td>STATUS</td><td>RW</td><td>0x0</td><td>Generator 8 failure bits use the HEALTH_TEST_STATUS allocation.</td></tr>
+<tr><td>7:0</td><td>STATUS</td><td>RW1C</td><td>0x0</td><td>Generator 8 failure bits use the HEALTH_TEST_STATUS allocation.</td></tr>
 </table>
 <h3 id="GENERATOR_9_HEALTH_STATUS">GENERATOR_9_HEALTH_STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7:0</td><td>STATUS</td><td>RW</td><td>0x0</td><td>Generator 9 failure bits use the HEALTH_TEST_STATUS allocation.</td></tr>
+<tr><td>7:0</td><td>STATUS</td><td>RW1C</td><td>0x0</td><td>Generator 9 failure bits use the HEALTH_TEST_STATUS allocation.</td></tr>
 </table>
 <h3 id="GENERATOR_10_HEALTH_STATUS">GENERATOR_10_HEALTH_STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7:0</td><td>STATUS</td><td>RW</td><td>0x0</td><td>Generator 10 failure bits use the HEALTH_TEST_STATUS allocation.</td></tr>
+<tr><td>7:0</td><td>STATUS</td><td>RW1C</td><td>0x0</td><td>Generator 10 failure bits use the HEALTH_TEST_STATUS allocation.</td></tr>
 </table>
 <h3 id="GENERATOR_11_HEALTH_STATUS">GENERATOR_11_HEALTH_STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7:0</td><td>STATUS</td><td>RW</td><td>0x0</td><td>Generator 11 failure bits use the HEALTH_TEST_STATUS allocation.</td></tr>
+<tr><td>7:0</td><td>STATUS</td><td>RW1C</td><td>0x0</td><td>Generator 11 failure bits use the HEALTH_TEST_STATUS allocation.</td></tr>
 </table>
 <h3 id="GENERATOR_0_SAMPLE_CLK_CONFIG">GENERATOR_0_SAMPLE_CLK_CONFIG</h3>
 <table>
@@ -509,7 +510,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>LOCK</td><td>RW</td><td>0x0</td><td>Write one to set the configuration lock. Only hardware reset clears it.</td></tr>
+<tr><td>0</td><td>LOCK</td><td>RW1S</td><td>0x0</td><td>Write one to set the configuration lock. Only hardware reset clears it.</td></tr>
 </table>
 <h3 id="ALERT_THRESHOLD">ALERT_THRESHOLD</h3>
 <table>
@@ -548,7 +549,7 @@
 <h3 id="BIW_OBS_RDATA">BIW_OBS_RDATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>RDATA</td><td>R</td><td>0x0</td><td>Returns and removes the next BIW observe FIFO word.</td></tr>
+<tr><td>31:0</td><td>RDATA</td><td>R RMOD</td><td>0x0</td><td>Returns and removes the next BIW observe FIFO word.</td></tr>
 </table>
 <h3 id="NOISE_OBS_CTRL">NOISE_OBS_CTRL</h3>
 <table>
@@ -556,7 +557,7 @@
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>7:4</td><td>LANE_SEL</td><td>RW</td><td>0x0</td><td>Selects generator lane 0 through 11; other values select lane 0. Changing lanes restarts packing and flushes buffered words.</td></tr>
 <tr><td>3:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>FLUSH</td><td>W</td><td>0x0</td><td>Write one to discard buffered raw-noise words. Changing LANE_SEL also flushes the FIFO.</td></tr>
+<tr><td>1</td><td>FLUSH</td><td>W 1P</td><td>0x0</td><td>Write one to discard buffered raw-noise words. Changing LANE_SEL also flushes the FIFO.</td></tr>
 <tr><td>0</td><td>RAW_ENABLE</td><td>RW</td><td>0x0</td><td>Enables LSB-first packing of selected-lane samples into 32-bit observe words. This copy-only control remains writable after FIPS_LOCK.LOCK.</td></tr>
 </table>
 <h3 id="NOISE_OBS_STATUS">NOISE_OBS_STATUS</h3>
@@ -572,6 +573,6 @@
 <h3 id="NOISE_OBS_RDATA">NOISE_OBS_RDATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>RDATA</td><td>R</td><td>0x0</td><td>Returns and removes 32 LSB-first pre-decorrelator samples from the selected lane.</td></tr>
+<tr><td>31:0</td><td>RDATA</td><td>R RMOD</td><td>0x0</td><td>Returns and removes 32 LSB-first pre-decorrelator samples from the selected lane.</td></tr>
 </table>
 </div>

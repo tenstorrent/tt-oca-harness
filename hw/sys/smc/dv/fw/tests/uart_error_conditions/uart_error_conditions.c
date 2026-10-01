@@ -10,7 +10,8 @@
 // Test focus:
 //  - RX overrun error -> LSR.OE + IIR line status interrupt
 //  - parity error      -> LSR.PE + IIR line status interrupt (parity mismatch)
-//  - break/framing     -> LSR.BI and (expected) LSR.FE + IIR line status interrupt (via set_break +
+//  - break             -> LSR.BI (and opportunistically LSR.FE) + IIR line status interrupt
+//                         (via set_break + loopback). Framing error is NOT injected.
 //  loopback)
 //
 // To control simulation time, this test:
@@ -245,7 +246,12 @@ static int uart_test_overrun(uint32_t uart_idx) {
     lsr.w = read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR(0) -
                                   SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
     if (lsr.f.OE) {
-        return 3; // OE should be cleared after the FIFO is emptied.
+        // Not "OE was cleared by emptying the FIFO" -- LSR.OE is rclr
+        // (uart_16550_main.rdl:214-219), so the drain loop's own LSR reads are
+        // what cleared it, and this read would find 0 whatever the FIFO did.
+        // What it does establish is that OE stays clear rather than
+        // re-asserting spuriously once the overrun condition is gone.
+        return 3;
     }
 
     return 0;
@@ -472,14 +478,15 @@ static int uart_test_parity_error(uint32_t ctrl_idx, uint32_t tgt_idx) {
     return 0;
 }
 
-// Case 3: Break condition / framing error (via set_break + loopback)
+// Case 3: Break condition (via set_break + loopback). Framing error is NOT
+// injected here: SET_BREAK produces a break, not a missing stop bit.
 static int uart_test_break_and_framing(uint32_t uart_idx) {
     const uint32_t uart_base = get_uart_reg_base(uart_idx);
     uart_16550_main__LCR_t lcr;
     uart_16550_main__LSR_t lsr;
     uart_16550_main__IIR_t iir;
 
-    simputs("\n[UART_ERROR] Case 3: Break / Framing start\n");
+    simputs("\n[UART_ERROR] Case 3: Break start\n");
     simputshex32("  uart_idx   = ", uart_idx);
     simputshex32("  uart_base  = ", uart_base);
 
@@ -543,8 +550,7 @@ static int uart_test_break_and_framing(uint32_t uart_idx) {
         }
     }
     if (!saw_line_status_intr) {
-        simputs(
-            "  [ERROR] Case3: Break/Framing error occurred but no Line Status interrupt seen\n");
+        simputs("  [ERROR] Case3: Break condition occurred but no Line Status interrupt seen\n");
         return 22; // A break event should generate a line status interrupt.
     }
 
@@ -572,33 +578,38 @@ static int uart_test_break_and_framing(uint32_t uart_idx) {
                                   SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
     if (lsr.f.FE || lsr.f.BI) {
         simputshex32("  [ERROR] Case3: FE/BI still set after clearing sequence, LSR=0x", lsr.w);
-        return 23; // After clearing the break condition, FE/BI should also be cleared.
+        // Same caveat as the OE check above: FE and BI are rclr
+        // (uart_16550_main.rdl:235-252), so the 32 LSR reads in the loop are
+        // what cleared them and this read cannot find them set on account of
+        // the break being deasserted. It establishes only that they stay clear
+        // instead of re-asserting with no break present.
+        return 23;
     }
 
-    // saw_fe is not a hard requirement because some implementations only set BI for break.
-    // But if saw_fe is 1, it means the framing-error check is also covered.
+    // saw_fe is observed opportunistically and deliberately not required: some
+    // implementations only raise BI for a break. Note this case therefore does
+    // NOT cover framing error -- SET_BREAK produces a break condition, not a
+    // missing stop bit, so nothing here injects a real framing error. The
+    // case name and banners say "Break" only, for that reason.
+    (void)saw_fe;
     return 0;
 }
 
 int main(void) {
-    // v010c: parity error is DETECTED on the target (receiver). Swap so the
-    // target is UART0 (replica[0], the only coverage-counted replica) instead
-    // of UART3 (waived). UART3 transmits with mismatched parity; UART0 receives
-    // and flags LSR.PE / rx_parity_err_o -> closes replica[0] parity CODE
-    // coverage. Overrun/break already use UART0 single-ended loopback.
-    const uint32_t uart_ctrl_idx = 3u;    // controller (TX) for parity tests (UART3, waived)
-    const uint32_t uart_tgt_idx = 0u;     // target (RX, PE detected here) = UART0 = replica[0]
-    const uint32_t uart_overrun_idx = 0u; // UART0 used for loopback overrun test
-    const uint32_t uart_break_idx = 0u;   // UART0 also used for break tests
-
-    // peripherals_out_of_reset();
+    // The parity error is detected on the receiver, so UART0 (replica[0]) is the
+    // target and UART3 transmits with mismatched parity. Overrun and break use
+    // the UART0 single-ended loopback.
+    const uint32_t uart_ctrl_idx = 3u;    // controller (TX) for the parity test
+    const uint32_t uart_tgt_idx = 0u;     // target (RX, PE detected here)
+    const uint32_t uart_overrun_idx = 0u; // loopback overrun test
+    const uint32_t uart_break_idx = 0u;   // break test
 
     simputs("\n");
     simputs("========================================\n");
     simputs(" UART Error Conditions Test\n");
     simputs("  - Case 1: Parity Error\n");
     simputs("  - Case 2: RX Overrun\n");
-    simputs("  - Case 3: Break / Framing Error\n");
+    simputs("  - Case 3: Break Condition\n");
     simputs("========================================\n");
     simputs("\n");
 
@@ -627,15 +638,15 @@ int main(void) {
     }
     simputs("INFO: UART Error Conditions - Case 2 (RX Overrun) PASSED\n");
 
-    // Case 3: Break / Framing Error
+    // Case 3: Break Condition (framing error is NOT injected -- see case3 notes)
     rc = uart_test_break_and_framing(uart_break_idx);
     if (rc != 0) {
-        simputs("ERROR: UART Error Conditions - Case 3 (Break / Framing) FAILED\n");
+        simputs("ERROR: UART Error Conditions - Case 3 (Break) FAILED\n");
         simputshex32("  rc = ", (uint32_t)rc);
         write_scratch(0, 0xBAD00030u | ((uint32_t)rc & 0xFFu));
         test_fail(0);
     }
-    simputs("INFO: UART Error Conditions - Case 3 (Break / Framing) PASSED\n");
+    simputs("INFO: UART Error Conditions - Case 3 (Break) PASSED\n");
 
     simputs("\nUART Error Conditions Test: ALL CASES PASSED\n");
 

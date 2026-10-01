@@ -2,42 +2,62 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[uart-16550-programming]]
-===== Programming
+== Programming
 
-====== Baud Rate Configuration
+=== Baud Rate and Frame Configuration
 
-To configure the baud rate:
+ifdef::backend-html5[]
+// Preserve incoming links to the consolidated sections.
+++++
+<span id="baud-rate-configuration"></span>
+++++
+endif::backend-html5[]
 
-1.  Set DLAB=1 in LCR register (0x0C)
-2.  Calculate divisor:
-`divisor = clock_frequency / (16 * desired_baud_rate)`
-3.  Write low byte of divisor to DLL (0x00)
-4.  Write high byte of divisor to DLM (0x04)
-5.  Clear DLAB=0 in LCR register to resume normal operation
+. Quiesce the data path before reconfiguration; wait for `LSR.TEMT` if queued
+  transmit data must finish. Serialize accesses so another context cannot use
+  THR/RBR/IER while DLAB selects the divisor view.
+. Choose a supported frame format in LCR. Compute
+  `divisor = round(clock_frequency / (16 * desired_baud_rate)) - 1` and check
+  that it is in the usable 16-bit range 1–65535.
+. Set `LCR.DLAB=1` (`LCR` is at `0x0C`), preserving the selected frame format.
+. Write DLL at `0x00` and DLM at `0x04`, then clear DLAB before normal data/IER
+  accesses. The two divisor writes are not an atomic update.
 
-Example for 115200 baud with 50MHz clock:
-`divisor = 50000000 / (16 * 115200) = 27 (0x001B)` - Write 0x1B to DLL -
-Write 0x00 to DLM
+At 50 MHz, a requested 115200 baud gives divisor 26 (`0x001A`). The actual baud
+rate is `50000000 / (16 * 27)`, approximately 115741 baud. Divisor zero disables
+both transmitter and receiver; it is not the highest-speed setting.
 
-====== FIFO Configuration
+=== FIFO Configuration
 
-To enable and configure FIFOs:
+`FCR` is write-only at `0x08`, sharing its address with the read-only IIR.
+Maintain a software copy of the persistent FCR settings rather than attempting
+a read-modify-write through that address.
 
-1.  Write to FCR register (0x08): Set FIFOEN=1
-2.  Configure receive trigger level in RXTRIG field
-3.  Reset FIFOs if needed using RFIFORST and TFIFORST bits
-4.  Select DMA mode if using DMA transfers
+. Set `FCR.FIFO_ENABLE` for FIFO operation; changing it discards buffered data.
+. Set `FCR.RCVR_TRIGGER` and `ECR.RCVR_TRIGGER_MS2B` for the receive threshold.
+  Codes 0–3 mean 1, 4, 8 and 14 characters; codes 4–11 mean 32, 64, 128, 256,
+  512, 1024, 2048 and 4096. Choose a threshold supported by `RX_FIFO_DEPTH`;
+  unsupported selections do not assert the receive watermark.
+. Set `FCR.DMA_MODE_SELECT` if using mode-1 DMA service indications.
+. When discarding data intentionally, pulse `FCR.RCVR_FIFO_RESET` or
+  `FCR.XMIT_FIFO_RESET`, preserving FIFO enable, DMA mode and trigger settings.
 
-====== Interrupt Configuration
+For conservative polled transmission, wait for `LSR.THRE`, then write no more
+than the configured FIFO capacity (one byte when FIFO mode is disabled).
+For reception, check `LSR.DR`, capture line errors and read RBR. Do not treat
+an AXI write acknowledgement as a guarantee that a full transmit buffer accepted
+a character.
 
-To configure interrupts:
+=== Interrupt Configuration
 
-1.  Enable desired interrupt sources in IER register (0x04)
-2.  Configure OUT2 in MCR register if needed for interrupt enable
-3.  Read IIR register (0x08) to identify pending interrupts
-4.  Service interrupts by reading appropriate status/data registers
+Program the required IER enables with DLAB clear. Read IIR and service its
+highest-priority source according to <<uart-interrupt-service-table>>, then
+repeat until `INTERRUPT_PENDING` reads one. Take care with read-to-clear LSR/MSR
+fields and the THRE acknowledgement side effect of IIR reads. OUT2 is not an
+interrupt enable in this implementation; the receive-timeout source is not
+masked by IER.
 
-====== Modem Status and Flow Control
+=== Modem Status and Flow Control
 
 The component does not implement automatic flow control. The `cts_ni`,
 `dsr_ni`, `ri_ni` and `dcd_ni` inputs are synchronized and reported in the
@@ -57,7 +77,8 @@ To use CTS-based flow control on the transmit side:
 
 The four delta bits (DCTS, DDSR, TERI, DDCD) are sticky and are cleared by
 any read of MSR, including a read that only intended to sample one of them.
-A single read must therefore be used to capture the state of every modem
+TERI records only the trailing edge of ring indication; the other delta bits
+record either transition. A single read must therefore be used to capture the state of every modem
 input. Because they are sticky, a change is still reported even if the input
 returns to its previous level before software gets to the read - the delta
 bit records that something moved, while the level bits only show where the
@@ -76,9 +97,3 @@ read `0`. If both bits are set at once the two paths resolve priority
 differently: the modem outputs follow line loopback, while MSR follows system
 loopback. Delta bits and the Modem Status Interrupt track whatever values are
 substituted.
-
-The memory map provides comprehensive control over all UART 16550
-functions while maintaining backward compatibility with the original
-16550 standard. The dynamic register mapping through DLAB provides
-efficient access to both normal operation and baud rate configuration
-registers.

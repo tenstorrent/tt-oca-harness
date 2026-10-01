@@ -10,10 +10,12 @@
   <ipxact:memoryMaps>
     <ipxact:memoryMap>
       <ipxact:name>gpio_wrap</ipxact:name>
-      <ipxact:description>Top-level addrmap for gpio_intf and gpio_shim</ipxact:description>
+      <ipxact:displayName>GPIO Wrapper Address Map</ipxact:displayName>
+      <ipxact:description>Top-level GPIO address map composing the interface and control register blocks.</ipxact:description>
       <ipxact:addressBlock>
         <ipxact:name>gpio_intf</ipxact:name>
-        <ipxact:description>GPIO Interface CSR</ipxact:description>
+        <ipxact:displayName>GPIO Interface Address Map</ipxact:displayName>
+        <ipxact:description>GPIO interface configuration: pad/core routing, receive and transmit enables, and interrupt control.</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
         <ipxact:range>'hc</ipxact:range>
         <ipxact:width>32</ipxact:width>
@@ -59,7 +61,10 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>lsio_select</ipxact:name>
-            <ipxact:description>Force LSIO interface to be used. interface_enable has higher priority over this</ipxact:description>
+            <ipxact:description>Force the LSIO interface to be used from software, when no hardware LSIO request is
+present on this pad. interface_enable has higher priority over this bit. This ranking
+applies to this software force bit only: the hardware lsio_interface_select_i input
+outranks interface_enable. Use lsio_disable to gate both.</ipxact:description>
             <ipxact:bitOffset>17</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -83,7 +88,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>lsio_disable</ipxact:name>
-            <ipxact:description>When set, LSIO acceses will be blocked from the GPIO interface</ipxact:description>
+            <ipxact:description>When set, LSIO accesses will be blocked from the GPIO interface</ipxact:description>
             <ipxact:bitOffset>19</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -107,7 +112,11 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>lsio_enable</ipxact:name>
-            <ipxact:description>When set, this bit indicates that the pad being driving by the LSIO</ipxact:description>
+            <ipxact:description>LSIO hardware request status. Set while lsio_interface_select_i is asserted and
+lsio_disable is clear. Because the hardware LSIO request outranks interface_enable,
+a set value also means the LSIO plane is driving this pad's data and direction.
+This field does not reflect a software-forced selection via lsio_select, which ranks
+below the register interface - it reads 0 in that case even when LSIO drives the pad.</ipxact:description>
             <ipxact:bitOffset>25</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -181,7 +190,7 @@ the filter may not update before your next transaction, causing unexpected behav
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>write_filter_enable</ipxact:name>
-            <ipxact:description>Filter Enable - when set, only SEP may access the GPIO register interface. This effectivley makes the GPIO a SEP-only interface.
+            <ipxact:description>Write Filter Enable. When set, writes require an exact match between AXI AWPROT and awprot_requirement. When clear, writes are unfiltered. PROT does not identify the initiator.
 WARNING: please read back this register to ensure the filter was written correctly. If you do not do so
 the filter may not update before your next transaction, causing unexpected behavior.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
@@ -195,7 +204,7 @@ the filter may not update before your next transaction, causing unexpected behav
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>read_filter_enable</ipxact:name>
-            <ipxact:description>Filter Value - the value that must be written to the filter register to allow access to the GPIO register interface.
+            <ipxact:description>Read Filter Enable. When set, reads require an exact match between AXI ARPROT and arprot_requirement. When clear, reads are unfiltered. PROT does not identify the initiator.
 WARNING: please read back this register to ensure the filter was written correctly. If you do not do so
 the filter may not update before your next transaction, causing unexpected behavior.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
@@ -239,7 +248,8 @@ the filter may not update before your next transaction, causing unexpected behav
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>gpio_ctrl</ipxact:name>
-        <ipxact:description>GPIO Control CSR</ipxact:description>
+        <ipxact:displayName>GPIO Control Address Map</ipxact:displayName>
+        <ipxact:description>Per-pin GPIO pad control registers: drive strength, pull configuration, and strap capture.</ipxact:description>
         <ipxact:baseAddress>'h10</ipxact:baseAddress>
         <ipxact:range>'h4</ipxact:range>
         <ipxact:width>32</ipxact:width>

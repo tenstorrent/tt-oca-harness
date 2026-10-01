@@ -1,30 +1,48 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-module OCAH4CORECluster_InferredResetSynchronizerPrimitiveShiftReg_d3_i0(
-  input  clock,
-  input  reset,
-  input  io_d,
-  output io_q
+// Replace the Chipyard inferred-reset shift-register black box.
+//
+// Substitutes an OCAH synchronizer for the generated inferred reset primitive.
+// Three flops synchronize io_d into the local clock domain; reset clears them asynchronously
+// and also forces io_q low combinationally.
+
+module OCAH4CORECluster_InferredResetSynchronizerPrimitiveShiftReg_d3_i0 (
+  input  clock,                         // Destination clock for the three synchronizer flops.
+  input  reset,                         // Active-high reset; asynchronously clears the synchronizer
+                                        // flops and forces io_q low.
+  input  io_d,                          // Data bit to synchronize into the clock domain.
+  output io_q                           // Synchronized data bit, held low while reset is high.
 );
 
-wire io_rstbypass, io_rst_synced;
+  wire io_rstbypass, io_rst_synced, reset_n;
 
-prim_flop_3sync_r prim_flop_3sync_r (
-  .i_CK(clock),
-  .i_RN(~reset),
-  .i_D(io_d),
-  .o_Q(io_rst_synced)
-);
+  prim_inv u_reset_inv (
+    .in_i  (reset),
+    .out_o (reset_n)
+  );
 
-assign io_rstbypass = io_rst_synced & ~reset;
+  prim_flop_3sync_r u_prim_flop_3sync_r (
+    .clk_i(clock),
+    .rst_ni(reset_n),
+    .d_i(io_d),
+    .q_o(io_rst_synced)
+  );
 
-prim_rstbypass_stdmux2 rstbypass (
-  .i_reset_n(io_rstbypass),
-  .i_test_reset_n(1'b0),
-  .i_test_mode(1'b0),
-  .o_reset_n(io_q)
-);
+  prim_and2 #(
+    .Width(1)
+  ) u_rstbypass_and (
+    .in0_i (io_rst_synced),
+    .in1_i (reset_n),
+    .out_o (io_rstbypass)
+  );
+
+  prim_rst_mux2_hf_n u_rstbypass (
+    .rst0_ni(io_rstbypass),
+    .rst1_ni(1'b0),
+    .sel_i  (1'b0),
+    .rst_no (io_q)
+  );
 
 endmodule
 

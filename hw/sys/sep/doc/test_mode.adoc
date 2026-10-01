@@ -1,33 +1,76 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= Test Mode Entry
+:description: SEP secure test-mode qualification and control.
+
 [[test-mode-entry]]
-=== Test Mode Entry
 
-Chiplets shall implement a strap TEST_EN for test mode entry. TEST_EN is
-latched when SEP fuse sensing is done if SEC_DIS is not asserted.
-TEST_EN is latched on chiplet cold reset release if SEC_DIS is asserted.
+`SECURE_TM` selects the protected configuration required for secure scan tests.
+It does not authenticate a JTAG owner or enable debug access. Lifecycle state,
+`SIP_DIS`, `SYS_DIS` and the `SEC_DIS` override determine the debug and function
+bits of `feat_ctrl_o`; `SECURE_TM` does not qualify those bits.
 
-The latched value becomes the internal signal SECURE_TM, which can be
-cleared only by chip reset.
+== Entry and Exit
 
-SECURE_TM is not an authorization signal, and no feature control bit is
-qualified by it: the debug and function groups of `feat_ctrl_o` are
-determined solely by the LC state, the DIS vectors, and the SEC_DIS
-override. SECURE_TM is instead a coercion -- it forces the part into a
-configuration in which no secret is present and no fuse can be
-programmed. It has four uses, defined normatively in the Life Cycle
-Controller chapter, _`secure_tm` and the Secure Scan Chain_:
+Connect the chiplet's `TEST_EN` strap to the SEP wrapper's
+`secure_tm_req_i`. Hold it stable through reset release, fuse sensing and the
+test session. The entry contract requires the sampled `SECURE_TM` value to
+remain asserted until chiplet cold reset ends the session; software has no
+clear operation.
 
-. On the dedicated secure scan chain, a *test* command is admitted only
-while SECURE_TM = 1. At SECURE_TM = 0 no command is admitted on that
-chain, and a *dump* command is never admitted at either value.
+[cols="2,3",options="header"]
+.Secure test-mode sampling in the SEP wrapper
+|===
+|Condition |Action
+|Cold reset asserted |Clear `SECURE_TM` to 0.
+|`SEC_DIS` asserted at the early capture point
+|Sample the strap on the second rising clock edge after wrapper cold-reset release.
+|Fuse-sense completion rises |Sample the strap, including when `SEC_DIS` is asserted.
+|Neither sampling event |Retain the sampled value.
+|===
 
-. The shadow registers of LOCK (both the LOCKS and LOCKS_SPARE windows),
-LC_STATE, SIP_DIS, and SYS_DIS are blocked from any update.
+The early capture counter saturates after that opportunity: asserting `SEC_DIS`
+later does not itself sample the strap. A subsequent fuse-sense completion can
+sample it again. The current wrapper loads the strap value at each sampling
+event; it is not a set-only latch. If the strap changes from 1 to 0 between
+captures, the later capture can clear `SECURE_TM` without reset. The stable-strap
+requirement is therefore necessary to meet the reset-only exit contract; that
+contract is not an unconditional hardware guarantee for a changing strap.
 
-. The fuse write-enable inputs to the fuse IP block are tied inactive.
+== Protection While Active
 
-. The secret sources (the UIDs and CLASS_KEY) are disconnected from
-downstream logic. This is what protects the secrets that cannot be
-erased before entering RMA modes.
+The secure-test configuration must enforce all four protections below. The
+adopter's DFT integration remains responsible for secure-chain separation and
+command admission.
+
+[cols="2,3",options="header"]
+.Required secure-test protections
+|===
+|Protected resource |Requirement while `SECURE_TM=1`
+|Dedicated secure scan chain
+|Admit test commands only through an open, feature-gated scan path. Never admit
+ dump commands. At `SECURE_TM=0`, admit no command on this chain.
+|Protection shadows
+|Block all updates to `LOCKS`, `LOCKS_SPARE`, `LC_STATE`, `SIP_DIS` and `SYS_DIS`.
+|OTP programming path |Hold the fuse macro's write-enable inputs inactive.
+|Secret outputs
+|Disconnect `CHIPLET_UID`, `SIP_UID`, `SYS_UID` and `CLASS_KEY` from downstream consumers.
+|===
+
+The eFuse controller implements request blocking and masks the designated
+secret shadow outputs to zero. Masking does not erase the stored fuse or
+shadow values, and register reads retain their normal access controls. It must
+not be treated as proof that every downstream consumer has been cleared.
+These protections allow testing without exposing persistent secrets that
+cannot be erased before RMA.
+
+General scan chains follow their ordinary debug gates; the dedicated secure
+chain has the additional command restrictions above. For the normative scan
+classes and access rules, see
+ifdef::backend-html5[]
+xref:sep:lifecycle_controller.adoc#secure-tm-vs-scandump[`secure_tm` and the Secure Scan Chain].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<secure-tm-vs-scandump,`secure_tm` and the Secure Scan Chain>>.
+endif::backend-pdf[]

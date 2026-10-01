@@ -25,8 +25,7 @@ This package is the base bus BFM that the protocol-specific VIPs build on.
 ## Backend
 
 The released AXI master and responder BFMs are backed by `cocotbext-axi`
-(`cocotbext-axi>=0.1.24,<0.2` in `pyproject.toml`; 0.1.28 in the current OSS
-environment):
+(pinned in `hw/common/dv/pyproject.toml`):
 
 | Wrapper | Backend |
 |---|---|
@@ -37,26 +36,32 @@ environment):
 | `OcahAxiMonitor` / `OcahAxiLiteMonitor` | OCAH passive samplers that emit item dataclasses |
 | `OcahAxiChecker` | OCAH item-level protocol checker |
 
+Every driver zeroes its source-channel payload signals at construction
+(`init_signals()`, also callable explicitly), overriding the backend's all-X
+payload init so a bus idles clean from time 0 on 4-state simulators. The
+slave drivers also hold their channel endpoints in reset until the reset
+input reads a defined inactive level, so a responder built at time 0 never
+samples a handshake the DUT has not driven yet (X on 4-state simulators). No
+process-global cocotb or `cocotbext-axi` state is touched.
+
 ---
 
-## When to use this wrapper vs the legacy VIPs
+## Which class to use
 
 | Scenario | Recommended class |
 |---|---|
 | Writing a new OCAH cocotb test | `OcahAxiMasterAgent` / `OcahAxiLiteMasterAgent` |
-| Extending an existing test that already imports `axi4_vip` directly | Prefer migrating the touched path to `ocah_axi_vip` |
 | Burst AXI4 traffic (memory fills, DMA) | `OcahAxiMasterAgent` |
 | Memory-backed AXI subordinate/responder | `OcahAxiSlaveAgent` |
 | Control/status register access over AXI4-Lite | `OcahAxiLiteMasterAgent` |
 | Memory-backed AXI4-Lite responder | `OcahAxiLiteSlaveAgent` |
 | Passive observation without driving the bus | `OcahAxiMonitor` / `OcahAxiLiteMonitor` |
+| Binding an interface scope whose members are wider than the bus | `OcahAxiConfig` (`geometry.bus(scope)` returns an `OcahAxiBus`) |
 | Item-level protocol sanity checks | `OcahAxiChecker` |
 | AXI-Stream (e.g. entropy data path) | **Out of scope** for this package — stream sources stay DUT-local |
 
 Do not use `cocotbext-axi` types (`AxiMaster`, `AxiLiteMaster`, etc.)
-directly in new test files; always go through this package. Existing SEP files
-are the no-touch compatibility reference for this release and are not
-migrated.
+directly in new test files; always go through this package.
 
 ---
 
@@ -78,30 +83,42 @@ ocah_axi_vip/
     ocah_axi_item.py                    — transaction item dataclasses (side-neutral)
     ocah_axi_monitor.py                 — OcahAxiMonitor, OcahAxiLiteMonitor (side-neutral)
     ocah_axi_checker.py                 — OcahAxiChecker (item rules + CHK-* evidence)
+    ocah_axi_config.py                  — OcahAxiConfig (bus geometry; binds an interface
+                                          scope at the real widths, side-neutral)
     ocah_axi_ref_model.py               — OcahAxiRefModel (shadow memory + response policy)
     ocah_axi_scoreboard.py              — OcahAxiScoreboard (evidence-emitting comparator)
     ocah_axi_protocol_watcher.py        — cycle-level protocol-rule watchers
-    ocah_axi_results.py                 — result dataclasses + response-code helpers
+    ocah_axi_types.py                   — response/protection codes + value-conversion helpers
+    examples/
+      example_register_access.py        — annotated usage snippets
+      example_axi_scoreboard_selftest.py — simulator-free checker/model/scoreboard proof
   interface/ocah_axi_if.sv       — flat AXI4/AXI4-Lite monitor interface (SV)
-  sva/ocah_axi_sva.sv            — clean-room AXI protocol SVA (OCAH_AXI_* rules)
-  sv/ocah_axil_ram_responder.sv  — behavioral AXI-Lite RAM responder (error-injectable)
-  sv/ocah_axi_ram_responder.sv   — behavioral AXI4 RAM responder (error-injectable)
+  interface/ocah_axi_struct_bridge.sv — places a pulp request/response struct
+                                   port on an ocah_axi_if for the slave agent
+  sva/ocah_axi_sva.sv            — AXI protocol SVA derived from ARM IHI 0022
+  sva/ocah_axi_fv.sv             — the handshake, reset, burst and ordering rules in the
+                                   boolean subset formal environments bind; both checkers
+                                   assert or assume each side by parameter
   uvm/ocah_axi_uvm_pkg.sv        — SV-UVM layer: side-neutral passive stack
                                    (monitor/ref-model/scoreboard/env) + slave
                                    agent (reactive memory-backed responder)
                                    + master agent/env (active initiator driven
                                    through ocah_axi_master_sequence)
-  cov/ocah_axi_cov.sv            — commercial-simulator functional coverage
-  examples/
-    example_register_access.py            — annotated usage snippets
-    example_axi_scoreboard_selftest.py    — simulator-free checker/model/scoreboard proof
-  dv/                            — simulated VIP selftests on a passive wire
-                                   harness (master <-> fault slave; response-ID
-                                   observation and corruption proofs), one
+  cov/ocah_axi_cov.sv            — optional-backend functional coverage
+  dv/                            — simulated VIP selftests on a wire harness
+                                   (master <-> fault slave: response-ID
+                                   observation and corruption proofs; master
+                                   <-> struct bridge <-> slave agent: the
+                                   struct-port boundary; sva/ocah_axi_sva.sv
+                                   bound to every VIP-driven bundle), one
                                    scenario set for both frameworks:
                                    python3 tools/dv/run_dv.py --dut ocah_axi_vip --items smoke
+                                   python3 tools/dv/run_dv.py --dut ocah_axi_vip --items all --cov
                                    python3 tools/dv/run_dv.py --dut ocah_axi_vip \
-                                       --framework uvm --tool vcs --items smoke
+                                       --framework uvm --items smoke --cov
+                                   dv/cov/config/verilator/coverage_policy.toml grades
+                                   the Verilator run; the SV-UVM shape samples the
+                                   covergroups
 ```
 
 ### Side-token naming
@@ -111,19 +128,23 @@ side-specific components — agent, config, driver, sequence — carry the side
 token in their basenames. Tests consume each side ONLY through its
 `*Sequence` class (usually `agent.sequence`); missing operations get added to
 the sequence layer, never inlined in tests. The bus monitors and the passive
-UVM environment are deliberately side-NEUTRAL and carry no side token: they
-reconstruct traffic from the shared wires regardless of who generated it
-(a VIP master, a VIP responder, or the DUT itself — DTP observes purely
-DUT-generated traffic with no VIP master present), so a side token on them
-would be false labeling.
+UVM environment are side-NEUTRAL and carry no side token: they reconstruct
+traffic from the shared wires regardless of who generated it (a VIP master, a
+VIP responder, or the DUT itself — DTP observes purely DUT-generated traffic
+with no VIP master present).
+
+The package contains only canonical component files, matching the SV-UVM
+flow's basenames one-to-one (flow-only components follow the same pattern):
+shared dataclasses live in `ocah_axi_item.py`, shared constants and value
+conversions in `ocah_axi_types.py`, and behavior lives in the component that
+owns it — support modules outside the taxonomy are not added.
 
 The checker, reference model, and scoreboard follow the shared contract in
 `hw/common/dv/docs/vip-checker-model.adoc`: named
 `CHK-* PASS/FAIL` evidence with a `CHECKER_SUMMARY`, expected-vs-unexpected
 non-OKAY classification via armed credits, blocked-window/no-activity checks,
-and fail-closed finalization. Protocol rules are re-implemented clean-room
-from the public AMBA AXI4 specification (ARM IHI 0022) rule descriptions;
-no third-party protocol-checker source was consulted or copied. See
+and fail-closed finalization. Protocol rules implement the public AMBA AXI4
+specification (ARM IHI 0022) rule descriptions. See
 `MANUAL.md` for the full rule and check-ID tables, the SV-UVM layer, and the
 DTP adoption pattern.
 
@@ -137,9 +158,9 @@ DTP adoption pattern.
 from ocah_axi_vip import OcahAxiMasterAgent
 
 master = OcahAxiMasterAgent(
-    dut.axi_if,              # cocotb handle for axi4_intf.sv instance
+    dut.axi_if,              # cocotb handle for the AXI4 interface instance
     name="axi4_host",        # used in log messages
-    timeout_cycles=1000,     # clock cycles before TimeoutError
+    timeout_ns=500_000,      # bound of every blocking operation (ns)
     addr_width=32,           # address bus width (informational)
     data_width=32,           # data bus width; derives full_strb
     raise_on_error=True,     # raise OcahAxiMasterError on non-OKAY response
@@ -148,7 +169,7 @@ master = OcahAxiMasterAgent(
 
 | Method | Returns | Notes |
 |---|---|---|
-| `master.init_signals()` | `None` | Drive all outputs to idle; call before first clock edge |
+| `master.init_signals()` | `None` | Re-drive payload signals to 0 idle (already done at construction) |
 | `await master.wait_for_reset()` | `None` | Block until `aresetn` deasserts |
 | `await master.write(addr, data, *, strb, size, burst, id, prot)` | `int` (resp code) | Single-beat write |
 | `await master.read(addr, *, size, burst, id, prot)` | `int` (data) | Single-beat read |
@@ -165,7 +186,8 @@ master = OcahAxiMasterAgent(
 
 | Key | Type | Default | Description |
 |---|---|---|---|
-| `timeout_cycles` | int | 1000 | Per-channel handshake timeout |
+| `timeout_ns` | int | 500000 | Bound of every blocking operation in ns; `None` at construction selects `DEFAULT_TIMEOUT_NS` or `+OCAH_AXI_TIMEOUT_NS` |
+| `timeout_cycles` | int | 1000 | Deprecated on the AXI4 master (reported by `get_statistics()` only; one warning per instance when set) |
 | `default_id` | int | 0 | Default AWID/ARID |
 | `b_ready_before_valid` | bool | True | Assert BREADY before BVALID |
 | `r_ready_before_valid` | bool | True | Assert RREADY before RVALID |
@@ -193,12 +215,16 @@ master = OcahAxiLiteMasterAgent(
 
 | Method | Returns | Notes |
 |---|---|---|
-| `master.init_signals()` | `None` | |
+| `master.init_signals()` | `None` | Re-drive payload signals to 0 idle (already done at construction) |
 | `await master.wait_for_reset()` | `None` | |
-| `await master.write(addr, data, *, strb, prot)` | `int` (resp) | Compatibility helper |
-| `await master.read(addr, *, prot)` | `int` (data) | Compatibility helper |
-| `await master.write_result(addr, data, ...)` | `OcahAxiWriteResult` | Use for non-OKAY inspection |
+| `await master.write(addr, data, *, strb, prot)` | `int` (resp) | Returns only the response code |
+| `await master.read(addr, *, prot)` | `int` (data) | Returns only the data |
+| `await master.write_result(addr, data, ...)` | `OcahAxiWriteResult` | Use for non-OKAY inspection; contiguous partial `strb` supported |
 | `await master.read_result(addr, ...)` | `OcahAxiReadResult` | Use for read response inspection |
+| `await master.write_skewed_result(addr, data, *, aw_valid_delay, w_valid_delay, b_ready_delay, ...)` | `OcahAxiWriteResult` | Single-beat write with independent AW/W launch skew and deferred BREADY (SV-UVM parity op) |
+| `await master.read_hold_result(addr, hold_cycles, ...)` | `OcahAxiReadResult` | Read holding RREADY low after RVALID; `hold_stable` reports RDATA/RRESP stability (SV-UVM parity op) |
+| `await master.write_pair_skewed_result(addr_a, data_a, addr_b, data_b, *, aw_valid_delay, w_valid_delay, b_ready_delay, ...)` | `OcahAxiWritePairResult` | Two writes queued back to back, BREADY deferred after the first request phase; `aw_stall_cycles` / `aw_stable` observe the AW channel across the pair (SV-UVM parity op) |
+| `await master.read_pair_hold_result(addr_a, addr_b, hold_cycles, ...)` | `OcahAxiReadPairResult` | Two reads, the second AR presented while RREADY is held; `ar_stall_cycles` / `ar_stable` observe the AR channel across the pair (SV-UVM parity op) |
 | `master.init_write(...)` / `master.init_read(...)` | cocotb event | Event-style access for explicit timeout flows |
 | `master.configure(**kwargs)` | `None` | Same keys as AXI4, minus ID/burst/size |
 | `master.get_statistics()` | `dict` | |
@@ -260,6 +286,51 @@ It has the same backdoor and fault-control helpers as `OcahAxiSlaveAgent`.
 
 ---
 
+### OcahAxiConfig — binding at the real bus geometry
+
+`ocah_axi_if` instances carry the interface's default (maximum) member
+widths so the SV-UVM layer sees one `virtual ocah_axi_if` type. The cocotb
+engines size their byte lanes from the signals they are handed, so a 32-bit
+AXI4-Lite port bound straight onto such an instance is driven as a 64-bit
+bus and its sub-word offsets land in the wrong lanes. `OcahAxiConfig` is the
+cocotb twin of the SV `ocah_axi_config`: it carries the real geometry, and
+`bus()` hands the agents a view of the scope in which every geometry-bearing
+member reports the configured width. Reads return the low bits; writes drive
+the low bits and hold the bits above at zero.
+
+```python
+from ocah_axi_vip import (
+    OcahAxiConfig,
+    OcahAxiLiteMasterAgent,
+    OcahAxiLiteSlaveAgent,
+    OcahAxiProtocol,
+)
+
+geometry = OcahAxiConfig(protocol=OcahAxiProtocol.AXI4_LITE, addr_width=32, data_width=32)
+ram = OcahAxiLiteSlaveAgent(
+    geometry.bus(dut.u_otp_axil_if), dut.clk_i, dut.rst_ni, reset_active_level=False
+).sequence
+host = OcahAxiLiteMasterAgent(
+    geometry.bus(dut.u_csr_axil_if), dut.clk_i, dut.rst_ni, reset_active_level=False
+).sequence
+```
+
+| Field / method | Notes |
+|---|---|
+| `protocol` | `OcahAxiProtocol.AXI4` or `AXI4_LITE`; selects `AxiBus` or `AxiLiteBus` |
+| `addr_width`, `data_width` | Address and data widths of the real bus; `strb_width` derives from `data_width` |
+| `id_width`, `user_width` | AXI4 only; `0` leaves the ID and user members at their physical widths |
+| `geometry.bus(scope, *, prefix=None)` | `OcahAxiBus` over an interface handle, or over a flattened bundle when `prefix` is given; pass it unchanged to this package's agents, monitors, and watchers |
+| `geometry.member_widths(prefix=None)` | The configured width of every geometry-bearing signal, keyed by name |
+
+Members already at the configured width pass through unchanged, so the same
+call binds a flat port bundle (`geometry.bus(dut, prefix="cfg_axil")`) or a
+real-geometry interface. The `dv/` harness proves the binding on
+default-geometry instances (`ocah_axi_lite_geometry_test`,
+`ocah_axi_geometry_test`).
+
+---
+
 ### OcahAxiMonitor — passive AXI4 observation
 
 ```python
@@ -301,15 +372,12 @@ optional and default to deterministic / non-verbose behaviour.
 
 | Plusarg | Type | Default | Description |
 |---|---|---|---|
-| `+OCAH_AXI_TIMEOUT` | int | 1000 | Default `timeout_cycles` for all master instances constructed without an explicit value |
-| `+OCAH_AXI_VERBOSE` | 0 or 1 | 0 | Set logging level to DEBUG for all ocah_axi_vip loggers |
+| `+OCAH_AXI_TIMEOUT_NS` | int | 500000 | Default `timeout_ns` of every master sequence constructed without an explicit value (`DEFAULT_TIMEOUT_NS` when absent) |
 
-Read them in your test with:
+A per-instance bound overrides the run default:
 
 ```python
-import os
-timeout = int(os.environ.get("COCOTB_PLUSARG_OCAH_AXI_TIMEOUT", "1000"))
-master = OcahAxiLiteMasterAgent(dut.axil_if, timeout_cycles=timeout).sequence
+master = OcahAxiLiteMasterAgent(dut.axil_if, timeout_ns=20_000).sequence
 ```
 
 Simulator plusarg forwarding varies by runner; see the cocotb documentation
@@ -349,9 +417,14 @@ if not result.ok:
     cocotb.log.warning(f"read returned resp=0x{result.resp:X}")
 ```
 
-Use `allow_timeout=True` with `timeout_ns=<n>` when a negative test intentionally
-accepts a non-completing access. In that case the result has `timed_out=True`,
-`ok=False`, and `resp=-1`.
+Every blocking operation is bounded. The bound is the call's `timeout_ns`,
+else the instance's `timeout_ns`, else the package default `DEFAULT_TIMEOUT_NS`
+(500 000 ns) or the `+OCAH_AXI_TIMEOUT_NS` plusarg. On expiry the operation
+raises `AssertionError` unless `allow_timeout=True`, in which case the result
+has `timed_out=True`, `ok=False`, and `resp=RESP_TIMEOUT` (-1). The AXI4-Lite
+`write_skewed_result()` / `read_hold_result()` operations bound each phase
+with `timeout_cycles` instead. `dv/` proves both on the wire harness
+(`ocah_axi_timeout_test`).
 
 ---
 
@@ -371,48 +444,55 @@ replay of failures.
 
 ---
 
+## Supported behavior and limitations
+
+| Area | This package provides | Outside this package |
+|---|---|---|
+| Transfers | AXI4 single-beat and burst reads and writes (`INCR`, `FIXED`, `WRAP`, up to 256 beats) at any `size` up to the bus width; byte-granular ranges through `write_bytes_result` / `read_bytes_result`; AXI4-Lite single-beat access with a contiguous partial `strb` | An explicit partial or non-contiguous `strb` on the AXI4 master (`check_strb` rejects it); exclusive (`LOCK`) transactions; `QOS`, `CACHE`, `REGION`, and `USER` values other than their idle defaults; more than the two outstanding single-beat transactions of the pair operations on the SV-UVM master |
+| Responses | `OKAY`, `EXOKAY`, `SLVERR`, `DECERR` on every result; a typed exception or an inspectable `resp` per `raise_on_error`; responders inject a one-shot `SLVERR`/`DECERR` per address and, on AXI4, a one-shot response-ID corruption | Persistent error regions on a responder; address policy belongs to the adopter's reference model (`OcahAxiRegionExpectation`) |
+| Backpressure | Responder READY stalls per channel (`enable_backpressure`); master `b_ready_*` / `r_ready_*` delay knobs; every stall bounded and deterministic | Random delays (opt-in, logged as a warning) |
+| Reset | `reset_active_level`, `wait_for_reset()`, idle payload from construction (`init_signals()`), responder channels held in reset until the reset input reads inactive | A transaction cut by a mid-flight reset is the DUT bench's scenario; the VIP neither aborts nor replays it |
+| Timeout | Every blocking operation is bounded (`timeout_ns`, else `DEFAULT_TIMEOUT_NS` or `+OCAH_AXI_TIMEOUT_NS`); `allow_timeout=True` returns `RESP_TIMEOUT` | — |
+| Protocol checking | `OcahAxiChecker` item rules, the cycle-level watchers, and `sva/ocah_axi_sva.sv`, which the `dv/` harness binds to every VIP-driven bundle; `sva/ocah_axi_fv.sv` carries the handshake, reset, burst and ordering rules in the boolean subset a formal environment binds, each side asserted or assumed by parameter | Rules beyond the IHI 0022 A3/A5/A7/B1 subset listed in `MANUAL.md` |
+| Coverage | `cov/ocah_axi_cov.sv` covergroups, sampled by the SV-UVM harness through one `ocah_axi_cov_if` (`--dut ocah_axi_vip --framework uvm --cov`) together with the `OCAH_AXI_C_*` cover properties; `--cov` on `--dut ocah_axi_vip` collects Verilator line and branch coverage of the SV collateral, graded by `dv/cov/config/verilator/coverage_policy.toml` | Python components carry no simulator coverage metric; their evidence is the `CHK-*` matrix of `dv/` and the scoreboard selftest |
+| Simulators and protocols | Verilator and the optional backends reported by `run_dv.py --list`; AXI4 and AXI4-Lite | Backends outside the selected framework's allowlist; AXI-Stream; AXI5-only features |
+
+---
+
 ## Detailed Manual
 
 See `MANUAL.md` in this folder for complete construction rules, result-object
-semantics, DTP fault responder usage, SEP no-touch compatibility notes, and
-migration guidance.
+semantics, the fault-capable responders, the reference model and scoreboard,
+and the SV-UVM layer.
 
 ---
 
 ## Examples
 
-See `examples/example_register_access.py` for annotated snippets covering the
+See `cocotb/examples/example_register_access.py` for annotated snippets covering the
 AXI4 / AXI4-Lite master types and the passive monitor.
 
 ---
 
-## Migration from legacy axi4_vip / axi4_lite_vip
+## Extending the wrapper
 
-| Legacy call | Replacement |
-|---|---|
-| `AXI4LiteMasterBFM(intf).write_transaction(txn)` | `OcahAxiLiteMasterAgent(intf).sequence.write(addr, data)` |
-| `AXI4MasterBFM(intf).write_single(addr, data)` | `OcahAxiMasterAgent(intf).sequence.write(addr, data)` |
-| `AXI4MasterBFM(intf).write_burst(txn)` | `OcahAxiMasterAgent(intf).sequence.burst_write(addr, data_list)` |
-| `create_axi4_monitor(intf, clk)` | `OcahAxiMonitor(intf, clk)` |
-
-The wrapper API does not expose transaction dataclass types (`AXI4WriteTransaction`,
-etc.).  If you need fine-grained control (e.g. non-default QOS or LOCK bits)
-that is not yet exposed by the wrapper, open an issue on the OCAH tracker so
-the API can be extended rather than bypassed.
+The wrapper API does not expose backend transaction types. If you need
+fine-grained control (e.g. non-default QOS or LOCK bits) that the wrapper does
+not expose, extend the wrapper API rather than bypassing it.
 
 ## Hierarchical VIP Layout
 
 This package follows the OCAH hierarchical VIP convention (see
-`hw/common/dv/README.md` and the 1_vip layout guide): all cocotb (Python)
+`hw/common/dv/README.md`): all cocotb (Python)
 code lives in `cocotb/`, and the root `__init__.py` is a thin shim
 re-exporting the stable public API — always import
 `from ocah_axi_vip import <Class>`, never from the subfolders.
-`cov/` holds this package's framework-neutral commercial-simulator
+`cov/` holds this package's framework-neutral optional-backend
 functional-coverage model (`cov/ocah_axi_cov.sv` — plain covergroup/bind SV
-with no UVM phasing, so the cocotb commercial-sim flow compiles it and the
-UVM flow binds the same file). `interface/` (shared SV interfaces) and `uvm/`
-(SV-UVM agent + env) are added as they land for this protocol. The SV-UVM
-template and the commercial-VIP plug-in contract (env-level factory
+with no UVM phasing, so a four-state cocotb flow compiles it and the
+UVM flow binds the same file). `interface/` holds the shared SV interfaces and
+`uvm/` the SV-UVM agents and envs. The SV-UVM
+template and the optional-backend plug-in contract (env-level factory
 override, user-implemented API wrapper, monitor closing, nested vendor
 interface) are documented in `../ocah_jtag_vip/README.md`
 ("Template Contract") — the reference implementation for all OCAH SV-UVM

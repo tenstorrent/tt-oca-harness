@@ -2,13 +2,14 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[jtag-intf-unit-interface]]
-==== Interface
 
-===== Instruction Encodings
+=== Instruction Encodings
 
-The JTAG interface unit uses 6-bit instruction encodings:
+The JTAG interface unit uses 6-bit instruction encodings (<<jiu-instruction-encodings-table>>).
 
+[[jiu-instruction-encodings-table]]
 [cols="<,<,<,<",options="header"]
+.JIU instruction encodings
 |===
 |Encoding |Name |Register Size |Security
 |0x00 |BYPASS (IEEE 1149.1, Section 8.4) |1 |
@@ -28,65 +29,61 @@ The JTAG interface unit uses 6-bit instruction encodings:
 |0x0E |TAP_3DCR (IEEE 1838, Section 5.5.1) |2 |
 |0x10-0x17 |_Reserved for RISC-V_ | |
 |0x18 |DEBUG_CONTROL |5 |
-|0x19 |JTAG_CAPS |40 |
+|0x19 |JTAG_CAPS |60 |
 |0x1A |SELECT_IJTAG |Variable |
-|0x1B |SMC_OTP_JTAG2AXI_CAPS | |
-|0x1C |SMC_OTP_AXI_SINGLE_OP | |
-|0x1D |SMC_OTP_AXI_SERIES_CTRL | |
-|0x1E |SMC_OTP_AXI_SERIES_DATA_INCR | |
-|0x1F |SMC_OTP_AXI_SERIES_DATA_NO_INCR | |
-|0x20 |SMC_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS | |
-|0x21 |SEP_OTP_JTAG2AXI_CAPS | |
-|0x22 |SEP_OTP_AXI_SINGLE_OP | |
-|0x23 |SEP_OTP_AXI_SERIES_CTRL | |
-|0x24 |SEP_OTP_AXI_SERIES_DATA_INCR | |
-|0x25 |SEP_OTP_AXI_SERIES_DATA_NO_INCR | |
-|0x26 |SEP_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS | |
-|0x27 |SMC_JTAG2AXI_CAPS | |
-|0x28 |SMC_AXI_SINGLE_OP | |
-|0x29 |SMC_AXI_SERIES_CTRL | |
-|0x2A |SMC_AXI_SERIES_DATA_INCR | |
-|0x2B |SMC_AXI_SERIES_DATA_NO_INCR | |
-|0x2C |SMC_AXI_SERIES_DATA_WITH_ERROR_STATUS | |
+|0x1B |SMC_OTP_JTAG2AXI_CAPS |14 |
+|0x1C |SMC_OTP_AXI_SINGLE_OP |Variable |
+|0x1D |SMC_OTP_AXI_SERIES_CTRL |Variable |
+|0x1E |SMC_OTP_AXI_SERIES_DATA_INCR |Variable |
+|0x1F |SMC_OTP_AXI_SERIES_DATA_NO_INCR |Variable |
+|0x20 |SMC_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS |Variable |
+|0x21 |SEP_OTP_JTAG2AXI_CAPS |14 |
+|0x22 |SEP_OTP_AXI_SINGLE_OP |Variable |
+|0x23 |SEP_OTP_AXI_SERIES_CTRL |Variable |
+|0x24 |SEP_OTP_AXI_SERIES_DATA_INCR |Variable |
+|0x25 |SEP_OTP_AXI_SERIES_DATA_NO_INCR |Variable |
+|0x26 |SEP_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS |Variable |
+|0x27 |SMC_JTAG2AXI_CAPS |14 |
+|0x28 |SMC_AXI_SINGLE_OP |Variable |
+|0x29 |SMC_AXI_SERIES_CTRL |Variable |
+|0x2A |SMC_AXI_SERIES_DATA_INCR |Variable |
+|0x2B |SMC_AXI_SERIES_DATA_NO_INCR |Variable |
+|0x2C |SMC_AXI_SERIES_DATA_WITH_ERROR_STATUS |Variable |
 |0x3D |ZERO_LENGTH_BYPASS |0 |
 |0x3E |INV_BYPASS | |
 |0x3F |BYPASS (IEEE 1149.1, Section 8.4) |1 |
 |===
 
+The length of each variable-length JTAG2AXI register follows from the bridge's
+address width, data width and pipeline depth, and for the series data registers
+from the size last written to `*_AXI_SERIES_CTRL`. The
+ifdef::backend-html5[]
+xref:ip:jtag_ptap/doc/index.adoc#ptap-jtag2axi-support[PTAP JTAG2AXI Support]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<ptap-jtag2axi-support,PTAP JTAG2AXI Support>>
+endif::backend-pdf[]
+section defines each layout.
+
 **NOTE:** All instruction encodings _not_ explicitly defined in this table map
 to the BYPASS instruction.
 
-===== Signal Interface
+=== Signal Interface
 
-[cols="<,<,<,<",options="header"]
-|===
-|Signal |Direction |Width |Description
-|clk_i |Input |1 |System clock for AXI interfaces
-|rst_ni |Input |1 |Active-low system reset
-|pwr_on_rst_ni |Input |1 |Power-on reset for JTAG logic
-|tck_i |Input |1 |JTAG TCK
-|tdi_i |Input |1 |JTAG TDI
-|tdo_o |Output |1 |JTAG TDO
-|tms_i |Input |1 |JTAG TMS
-|trst_ni |Input |1 |JTAG TRST
-|tdo_en_o |Output |1 |TDO output enable
-|jtag_clock_stop_o |Output |1 |Clock stop from DEBUG_CONTROL
-|cla_clock_stop_en_o |Output |1 |CLA clock stop enable from DEBUG_CONTROL
-|cla_clock_stop_i |Input |1 |CLA clock stop status for readback
-|boot_stall_o |Output |1 |Boot stall control
-|boot_stall_ovrd_o |Output |1 |Boot stall override enable
-|security_disable_i |Input |1 |Lifecycle security disable
-|stap_ext_* |Bidirectional | |Extended STAP chain interface
-|ijtag_ext_* |Bidirectional | |Extended iJTAG interface
-|smc_axi_* |Output | |SMC AXI master interface
-|smc_otp_axil_* |Output | |SMC OTP AXI-Lite interface
-|sep_otp_axil_* |Output | |SEP OTP AXI-Lite interface
-|===
+Packed control and bus types remain bundles at the `jtag_intf_unit` boundary; their
+members are not separate scalar ports.
 
-===== Dependencies
+ifdef::backend-html5[]
+The parameters and ports of `jtag_intf_unit` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/jtag_intf_unit/jtag_intf_unit.adoc[jtag_intf_unit].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters and ports of `jtag_intf_unit` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
+
+=== Dependencies
 
 The JTAG Interface Unit depends on the following components:
 
 * `hw/ip/jtag/jtag_ptap` - Primary TAP
 * `hw/ip/jtag/jtag_stap` - Secondary TAP
-* `hw/common/och_prim` - Primitive cells
+* `hw/common/ocah_prim` - Primitive cells

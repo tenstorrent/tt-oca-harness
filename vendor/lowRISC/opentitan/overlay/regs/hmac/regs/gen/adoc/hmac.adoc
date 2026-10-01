@@ -1,56 +1,60 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-hmac]
+== HMAC Accelerator
+
+Accelerator for SHA-2 256/384/512-based keyed HMAC and the hash function
+
 [NOTE]
 ======
-*Register Arrays:* This register map contains the following register arrays:
+*Register Arrays:*
 
-* *KEY[32]*: 32 registers
-  ** Base Address: 0x24
-  ** Address Increment: 0x4 per register
-
-* *DIGEST[16]*: 16 registers
-  ** Base Address: 0xA4
-  ** Address Increment: 0x4 per register
-
+* *KEY[32]*: 32 registers, base 0x24, stride 0x4
+* *DIGEST[16]*: 16 registers, base 0xA4, stride 0x4
 ======
 
-[cols="1,1,1,3", options="header"]
-.Register Map
+[cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description
-| 0x0 | INTR_STATE | RW a| -
-| 0x4 | INTR_ENABLE | RW a| -
-| 0x8 | INTR_TEST | W a| -
-| 0xC | ALERT_TEST | W a| -
-| 0x10 | CFG | RW a| -
-| 0x14 | CMD | W a| -
-| 0x18 | STATUS | R a| -
-| 0x1C | ERR_CODE | R a| -
-| 0x20 | WIPE_SECRET | W a| -
-| 0x24 - 0xA0 | KEY[32] | W a| -
-| 0xA4 - 0xE0 | DIGEST[16] | RW a| -
-| 0xE4 | MSG_LENGTH_LOWER | RW a| -
-| 0xE8 | MSG_LENGTH_UPPER | RW a| -
+| 0x0 | <<reg-{regmap-instance}-hmac-INTR_STATE,INTR_STATE>> | RW a| -
+| 0x4 | <<reg-{regmap-instance}-hmac-INTR_ENABLE,INTR_ENABLE>> | RW a| -
+| 0x8 | <<reg-{regmap-instance}-hmac-INTR_TEST,INTR_TEST>> | W a| -
+| 0xC | <<reg-{regmap-instance}-hmac-ALERT_TEST,ALERT_TEST>> | W a| -
+| 0x10 | <<reg-{regmap-instance}-hmac-CFG,CFG>> | RW a| -
+| 0x14 | <<reg-{regmap-instance}-hmac-CMD,CMD>> | W a| -
+| 0x18 | <<reg-{regmap-instance}-hmac-STATUS,STATUS>> | R a| -
+| 0x1C | <<reg-{regmap-instance}-hmac-ERR_CODE,ERR_CODE>> | R a| -
+| 0x20 | <<reg-{regmap-instance}-hmac-WIPE_SECRET,WIPE_SECRET>> | W a| -
+| 0x24 - 0xA0 | <<reg-{regmap-instance}-hmac-KEY-0-,KEY[32]>> | W a| -
+| 0xA4 - 0xE0 | <<reg-{regmap-instance}-hmac-DIGEST-0-,DIGEST[16]>> | RW a| -
+| 0xE4 | <<reg-{regmap-instance}-hmac-MSG_LENGTH_LOWER,MSG_LENGTH_LOWER>> | RW a| -
+| 0xE8 | <<reg-{regmap-instance}-hmac-MSG_LENGTH_UPPER,MSG_LENGTH_UPPER>> | RW a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.INTR_STATE Register
+[#reg-{regmap-instance}-hmac-INTR_STATE]
+=== INTR_STATE
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:3 | `Reserved` | - | - a| Reserved
-| 2 | `hmac_err` | RW | 0x0 a| HMAC error has occurred. ERR_CODE register shows which error occurred.
+| 2 | `hmac_err` | RW1C | 0x0 a| HMAC error has occurred. ERR_CODE register shows which error occurred.
 | 1 | `fifo_empty` | R | 0x0 a| The message FIFO is empty.
 This interrupt is raised only if the message FIFO is actually writable by software, i.e., if all of the following conditions are met:
 i) The HMAC block is not running in HMAC mode and performing the second round of computing the final hash of the outer key as well as the result of the first round using the inner key.
 ii) Software has not yet written the Process or Stop command to finish the hashing operation.
 For the interrupt to be raised, the message FIFO must also have been full previously.
 Otherwise, the hardware empties the FIFO faster than software can fill it and there is no point in interrupting the software to inform it about the message FIFO being empty.
-| 0 | `hmac_done` | RW | 0x0 a| HMAC/SHA-2 has completed.
+| 0 | `hmac_done` | RW1C | 0x0 a| HMAC/SHA-2 has completed.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.INTR_ENABLE Register
+[#reg-{regmap-instance}-hmac-INTR_ENABLE]
+=== INTR_ENABLE
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:3 | `Reserved` | - | - a| Reserved
@@ -59,8 +63,10 @@ Otherwise, the hardware empties the FIFO faster than software can fill it and th
 | 0 | `hmac_done` | RW | 0x0 a| Enable interrupt when !!INTR_STATE.hmac_done is set.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.INTR_TEST Register
+[#reg-{regmap-instance}-hmac-INTR_TEST]
+=== INTR_TEST
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:3 | `Reserved` | - | - a| Reserved
@@ -69,16 +75,20 @@ Otherwise, the hardware empties the FIFO faster than software can fill it and th
 | 0 | `hmac_done` | W | 0x0 a| Write 1 to force !!INTR_STATE.hmac_done to 1.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.ALERT_TEST Register
+[#reg-{regmap-instance}-hmac-ALERT_TEST]
+=== ALERT_TEST
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `Reserved` | - | - a| Reserved
 | 0 | `fatal_fault` | W | 0x0 a| Write 1 to trigger one alert event of this kind.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.CFG Register
+[#reg-{regmap-instance}-hmac-CFG]
+=== CFG
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:15 | `Reserved` | - | - a| Reserved
@@ -121,22 +131,26 @@ When the SHA-2 engine is disabled the digest is cleared.
 If this bit is 1, HMAC operates when `hash_start` toggles.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.CMD Register
+[#reg-{regmap-instance}-hmac-CMD]
+=== CMD
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:4 | `Reserved` | - | - a| Reserved
-| 3 | `hash_continue` | W | - a| When 1 is written to this field, SHA-2 or HMAC will continue hashing based on the current hash in the digest registers and the message length, which both have to be restored to switch context.
-| 2 | `hash_stop` | W | - a| When 1 is written to this field, SHA-2 or HMAC will afterwards set the `hmac_done` interrupt as soon as the current block has been hashed.
+| 3 | `hash_continue` | W1C | - a| When 1 is written to this field, SHA-2 or HMAC will continue hashing based on the current hash in the digest registers and the message length, which both have to be restored to switch context.
+| 2 | `hash_stop` | W1C | - a| When 1 is written to this field, SHA-2 or HMAC will afterwards set the `hmac_done` interrupt as soon as the current block has been hashed.
 The hash can then be read from the registers !!DIGEST_0 to !!DIGEST_15.
 Together with the message length in !!MSG_LENGTH_LOWER and !!MSG_LENGTH_UPPER, this forms the information that has to be saved before switching context.
-| 1 | `hash_process` | W | - a| If 1 is written to this field, SHA-2 or HMAC calculates the digest or signing based on currently received message.
-| 0 | `hash_start` | W | - a| If 1 is written into this field, SHA-2 or HMAC begins its operation.
+| 1 | `hash_process` | W1C | - a| If 1 is written to this field, SHA-2 or HMAC calculates the digest or signing based on currently received message.
+| 0 | `hash_start` | W1C | - a| If 1 is written into this field, SHA-2 or HMAC begins its operation.
 CPU must configure relative information first, such as the digest size, secret key and the key length.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.STATUS Register
+[#reg-{regmap-instance}-hmac-STATUS]
+=== STATUS
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
@@ -148,44 +162,56 @@ CPU must configure relative information first, such as the digest size, secret k
 When IDLE, the `DIGEST` and the `MSG_LENGTH_LOWER`/`MSG_LENGTH_UPPER` can be written to from SW which enables restoring context (to support context switching).
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.ERR_CODE Register
+[#reg-{regmap-instance}-hmac-ERR_CODE]
+=== ERR_CODE
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `err_code` | R | 0x0 a| If an error interrupt occurs, this register has information of error cause.
 Please take a look at `hw/ip/prim/rtl/prim_sha2_pkg.sv:err_code_e enum type.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.WIPE_SECRET Register
+[#reg-{regmap-instance}-hmac-WIPE_SECRET]
+=== WIPE_SECRET
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `secret` | W | - a| Secret value
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.KEY[32] Register
+[#reg-{regmap-instance}-hmac-KEY-0-]
+=== KEY[32]
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `key_0` | W | - a| 32-bit chunk of 1024-bit secret key
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.DIGEST[16] Register
+[#reg-{regmap-instance}-hmac-DIGEST-0-]
+=== DIGEST[16]
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `digest_0` | RW | - a| 32-bit chunk of 512-bit digest
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.MSG_LENGTH_LOWER Register
+[#reg-{regmap-instance}-hmac-MSG_LENGTH_LOWER]
+=== MSG_LENGTH_LOWER
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `v` | RW | - a| Message Length [31:0]
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.MSG_LENGTH_UPPER Register
+[#reg-{regmap-instance}-hmac-MSG_LENGTH_UPPER]
+=== MSG_LENGTH_UPPER
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `v` | RW | - a| Message Length [63:32]

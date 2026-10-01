@@ -5,6 +5,8 @@
 `define SEP_SCRATCH_REG_RDL
 
 addrmap sep_scratch {
+    name = "SEP Scratch Address Map";
+    desc = "General-purpose SEP scratch register bank.";
     reg SCRATCH {
         regwidth = 64;
         accesswidth = 64;

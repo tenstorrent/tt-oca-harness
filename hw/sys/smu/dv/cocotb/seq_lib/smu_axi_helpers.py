@@ -15,16 +15,16 @@ from dataclasses import dataclass, field
 from cocotb.triggers import RisingEdge, Timer
 from ocah_axi_vip import OcahAxiMasterAgent, OcahAxiMasterSequence, resp_name
 
+from seq_lib.smu_tb_pins import smu_axi_in_prefix
+
 __all__ = [
     "AXI_TIMEOUT_NS",
     "AXI_BOUND_LABEL",
     "make_smu_axi_master",
-    "axi_read32",
     "axi_read32_resp",
     "axi_read32_resp_ids",
     "axi_read32_resp_ids_bounded",
     "axi_read32_resp_bounded",
-    "axi_write32",
     "axi_write32_resp",
     "axi_write32_resp_bounded",
     "axi_write32_resp_ids",
@@ -40,16 +40,24 @@ AXI_TIMEOUT_NS = 200_000
 AXI_BOUND_LABEL = "bound=200us"
 
 
-async def make_smu_axi_master(dut, clk, reset) -> OcahAxiMasterSequence:
-    agent = OcahAxiMasterAgent.from_prefix(dut, "s_axi", clk, reset)
+async def make_smu_axi_master(
+    dut, clk, reset, *, prefix: str | None = None
+) -> OcahAxiMasterSequence:
+    """Master on the SMU AXI slave, named by whichever TB top is loaded.
+
+    tb/tb_wrapper_top.sv exposes the interface -- ``smu_axi_in_req_i`` /
+    ``smu_axi_in_resp_o`` on smu_wrapper.sv -- as ``ext_in_*``; a top that
+    flattens it as ``s_axi_*`` resolves too. The prefix is detected rather
+    than passed.
+
+    The bench wires the optional qualifiers (prot/cache/qos/region/lock and
+    the user fields) through to the wrapper, and cocotbext-axi drives them
+    when they are present.
+    """
+    agent = OcahAxiMasterAgent.from_prefix(dut, prefix or smu_axi_in_prefix(dut), clk, reset)
     await agent.start()
     await Timer(1, unit="ns")
     return agent.sequence
-
-
-async def axi_read32(master: OcahAxiMasterSequence, addr: int) -> int:
-    result = await master.read_bytes_result(addr, 4, check_response=False)
-    return result.data
 
 
 async def axi_read32_resp(
@@ -93,9 +101,7 @@ async def axi_read32_resp_ids(
             f"TIMEOUT {label}: {AXI_BOUND_LABEL} last_state=no_rresp addr=0x{addr:08x}"
         )
     if result.observed_id is None:
-        raise AssertionError(
-            f"RID capture miss after read addr=0x{addr:08x} arid=0x{issued:x}"
-        )
+        raise AssertionError(f"RID capture miss after read addr=0x{addr:08x} arid=0x{issued:x}")
     return result.data, result.resp, int(result.issued_id), int(result.observed_id)
 
 
@@ -108,9 +114,7 @@ async def axi_read32_resp_ids_bounded(
     timeout_ns: int = AXI_TIMEOUT_NS,
 ) -> tuple[int, int, int, int]:
     """Like axi_read32_resp_ids but fail-closed on hang with last-state diagnostics."""
-    return await axi_read32_resp_ids(
-        master, addr, arid=arid, timeout_ns=timeout_ns, label=label
-    )
+    return await axi_read32_resp_ids(master, addr, arid=arid, timeout_ns=timeout_ns, label=label)
 
 
 async def axi_read32_resp_bounded(
@@ -126,16 +130,9 @@ async def axi_read32_resp_bounded(
     )
     if result.timed_out:
         raise AssertionError(
-            f"TIMEOUT {label}: {AXI_BOUND_LABEL} last_state=no_rresp "
-            f"addr=0x{addr:08x}"
+            f"TIMEOUT {label}: {AXI_BOUND_LABEL} last_state=no_rresp addr=0x{addr:08x}"
         )
     return result.data, result.resp
-
-
-async def axi_write32(master: OcahAxiMasterSequence, addr: int, value: int) -> None:
-    await master.write_bytes_result(
-        addr, value.to_bytes(4, byteorder="little"), check_response=False
-    )
 
 
 async def axi_write32_resp(
@@ -173,8 +170,7 @@ async def axi_write32_resp_bounded(
     )
     if result.timed_out:
         raise AssertionError(
-            f"TIMEOUT {label}: {AXI_BOUND_LABEL} last_state=no_bresp "
-            f"addr=0x{addr:08x}"
+            f"TIMEOUT {label}: {AXI_BOUND_LABEL} last_state=no_bresp addr=0x{addr:08x}"
         )
     return result.resp
 
@@ -207,9 +203,7 @@ async def axi_write32_resp_ids(
             f"TIMEOUT {label}: {AXI_BOUND_LABEL} last_state=no_bresp addr=0x{addr:08x}"
         )
     if result.observed_id is None:
-        raise AssertionError(
-            f"BID capture miss after write addr=0x{addr:08x} awid=0x{issued:x}"
-        )
+        raise AssertionError(f"BID capture miss after write addr=0x{addr:08x} awid=0x{issued:x}")
     return result.resp, int(result.issued_id), int(result.observed_id)
 
 

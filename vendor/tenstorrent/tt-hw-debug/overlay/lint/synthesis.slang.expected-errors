@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# The generic_dff outputs and destination enums have matching widths. These
+# path-and-message patterns audit the two upstream assignments before Yosys
+# enables enum compatibility. Each pattern must match exactly once.
+vendor/tenstorrent/tt-hw-debug/upstream/rtl/trace/tnif\.sv:[[:digit:]]+:[[:digit:]]+: error: value of type 'logic\[0:0\]' cannot be assigned to type 'tnifState_e'
+vendor/tenstorrent/tt-hw-debug/upstream/rtl/trace/trace_axi_master\.sv:[[:digit:]]+:[[:digit:]]+: error: value of type 'logic\[2:0\]' cannot be assigned to type 'state_t'

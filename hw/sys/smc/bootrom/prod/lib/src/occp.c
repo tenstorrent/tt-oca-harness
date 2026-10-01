@@ -205,8 +205,8 @@ static bool enable_i3c_gpio_overrides(uint32_t controller_id) {
     (void)controller_id;
 
 #ifdef I3C_USE_HCI_CORE
-    /* I3C_CORE=swap (OCA/HCI i3c-core as the OCCP target): the OCA core reaches the i3c pads via
-     * the gpio LSIO path (lsio_interface_select, driven by smc_padring), NOT the
+    /* I3C_CORE=chipsalliance (OCA/HCI i3c-core as the OCCP target): the OCA core reaches the i3c
+     * pads via the gpio LSIO path (lsio_interface_select, driven by smc_padring), NOT the
      * smc_ip_integration hw2_ovrd override path that the Cadence core uses. Setting hw2_ovrd here
      * would force the gpio_shim onto the override path, whose drive/input-enable signals are gated
      * OFF for the OCA instance (SwapI3cCore=1) -> the pad INPUT buffer stays disabled and the OCA
@@ -377,7 +377,7 @@ static Occp_ErrMsgID smc_occp_validate_header(packet_header hdr) {
 static Occp_ErrMsgID smc_occp_validate_body(uint8_t *data_buffer, size_t data_len,
                                             bool crc_present) {
     simputshex16("OCCP: Validating body of length: ", data_len);
-    if (data_len == 0) // This condition should not be hit, as the calling function should ahve
+    if (data_len == 0) // This condition should not be hit, as the calling function should have
                        // checked this earlier
     {
         return Invalid_header;
@@ -1777,6 +1777,9 @@ static int smc_occp_read_from_bus_4byte_aligned_or_complete_stream(
             return OCCP_ERROR_TIMEOUT;
         }
         simputs("smc_occp_read_from_bus: Error writing to buffer from I2C bus\n");
+        /* Fail-safe: an unmapped driver status (e.g. I2C_ERR_HW, or any future code)
+         * must not fall through as success -- that silently accepted corrupt/absent data. */
+        return OCCP_ERROR_INTERFACE_ERROR;
     } else if (drv_type == DRIVER_TYPE_I3C) {
         i3c_status = i3c_drv->receive_payload_stream(i3c_drv, buffer, length, &bytes_received,
                                                      timeout, expect_excess_bytes, is_flush);

@@ -5,16 +5,18 @@
 from __future__ import annotations
 
 import pyuvm
-from smc_base_test import smc_base_test
-
 from seq_lib.smc_gpio_output_driveback_test_seq import (
     smc_gpio_output_driveback_test_seq,
 )
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
 class smc_gpio_output_driveback_test(smc_base_test):
     """Program GPIO wrap 0 as TX output and check the DUT pad outputs."""
+
+    required_evidence = ("CHK-GPIO-OUTPUT-DRIVEBACK",)
+    min_evidence = 1
 
     auto_protocol_vip = False
 

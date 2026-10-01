@@ -173,7 +173,7 @@ module otbn_instruction_fetch
 
     // Start as soon as the instruction is fetched the first time.
     .start_i          (insn_fetch_en),
-    .mac_en_i         (mac_bignum_predec_to_fsm.op_en),
+    .mac_en_i         (mac_bignum_predec_to_fsm.mac_en),
     .is_vec_i         (mac_bignum_predec_to_fsm.is_vec),
     .is_mod_i         (mac_bignum_predec_to_fsm.is_mod),
     .is_lane_i        (mac_bignum_predec_to_fsm.is_lane),
@@ -202,6 +202,7 @@ module otbn_instruction_fetch
     mac_bignum_predec_to_fsm.mul_add_en,
     mac_bignum_predec_to_fsm.c_add_en,
     mac_bignum_predec_to_fsm.add_mod_en,
+    mac_bignum_predec_to_fsm.acc_qw_sel,
     mac_bignum_predec_to_fsm.acc_merger_en,
     mac_bignum_predec_to_fsm.mul_shift_en,
     mac_bignum_predec_to_fsm.mul_merger_en,

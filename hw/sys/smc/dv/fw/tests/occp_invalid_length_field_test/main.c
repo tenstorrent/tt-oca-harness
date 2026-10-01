@@ -2,10 +2,8 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * OCCP Invalid Length Field Test (Refactored)
- *
- * Enables global invalid length injection and runs random traffic.
- * Then (optionally) sends manual JUMP/VALIDATE if in secure mode.
+ * Runs random OCCP traffic with invalid length fields injected, then a JUMP (non-secure
+ * mode only) and a VALIDATE_BOOT under injection, and checks the ROM still answers after.
  */
 
 #include "occp_test_common.h"
@@ -26,11 +24,9 @@ static void run_test_suite(test_context_t *ctx) {
 
     disable_len_injection(ctx);
 
-    /* Warm-up: Run some valid commands to establish baseline */
     simputs("-- Baseline: Running valid commands --\n");
     execute_random_commands(ctx, 1);
 
-    // re-latch to recover
     uint32_t status_data = 0;
     int retval = occp_send_get_version_command(ctx, ctx->slave_addr, &status_data);
     if (retval != OCCP_SUCCESS) {
@@ -38,15 +34,13 @@ static void run_test_suite(test_context_t *ctx) {
         ctx->overall_result = false;
     }
 
-    /* Enable global invalid length injection */
     simputs("-- Enabling global invalid length injection --\n");
     enable_len_injection(ctx);
 
-    /* Run randomized traffic under injection */
     execute_random_commands(ctx, 4);
 
     disable_len_injection(ctx);
-    // re-latch to recover
+    // A valid command clears the ROM's consecutive-error count; five errors unlatch it.
     retval = occp_send_get_version_command(ctx, ctx->slave_addr, &status_data);
     if (retval != OCCP_SUCCESS) {
         simputs("FAIL: Failed to get version command\n");
@@ -55,7 +49,6 @@ static void run_test_suite(test_context_t *ctx) {
     increment_cmd_count(ctx);
     enable_len_injection(ctx);
 
-    /* Optionally send manual boot commands under injection */
     if (!is_secure_mode()) {
         simputs("-- Sending manual JUMP under injection --\n");
         occp_send_jump_command(ctx, ctx->slave_addr, OCCP_TEST_BASE_ADDR);
@@ -66,12 +59,10 @@ static void run_test_suite(test_context_t *ctx) {
     occp_send_validate_boot_command(ctx, ctx->slave_addr, OCCP_TEST_BASE_ADDR);
     increment_cmd_count(ctx);
 
-    /* Disable injection and run a few valid commands */
     simputs("-- Disabling injection and running valid commands --\n");
     disable_len_injection(ctx);
     execute_random_commands(ctx, 1);
 
-    // re-latch to recover
     retval = occp_send_get_version_command(ctx, ctx->slave_addr, &status_data);
     if (retval != OCCP_SUCCESS) {
         simputs("FAIL: Failed to get version command\n");
@@ -108,7 +99,6 @@ int main(void) {
         return -1;
     }
 
-    /* Set up test context */
     ctx.test_base_addr = OCCP_TEST_BASE_ADDR;
     ctx.test_upper_addr_bound = OCCP_TEST_BUFFER_SAFE_UPPER_ADDR;
     ctx.overall_result = true;
@@ -117,10 +107,8 @@ int main(void) {
     ctx.exp_occp_last_error = 0;
     ctx.exp_response_code = OCCP_ERROR_NONE;
 
-    /* Run the test suite */
     run_test_suite(&ctx);
 
-    /* Finalize and report results */
     finalize_test_results(&ctx);
 
     simputs("Done\n");

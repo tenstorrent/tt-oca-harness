@@ -32,11 +32,11 @@ This module implements a general-purpose I/O (GPIO) pad model for bidirectional 
 
 | Port | Width | Description |
 |------|-------|-------------|
-| `GPIO_PAD` | 1 | Bidirectional external pad connection |
+| `gpio_pad_io` | 1 | Bidirectional external pad connection |
 
 ## Functionality
 
-The GPIO model provides three main functions:
+The GPIO model provides two main functions:
 
 1. **Output Drive**: When `core2pad_en_i` is asserted, the pad is driven with the value from `core2pad_i`
 2. **Input Reception**: When `pad2core_en_i` is asserted, the pad value is passed to `pad2core_o`

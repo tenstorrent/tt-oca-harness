@@ -5,9 +5,10 @@
 `define GPIO_INTF_RDL_DEFINED
 
 addrmap gpio_intf {
+    name = "GPIO Interface Address Map";
+    desc = "GPIO interface configuration: pad/core routing, receive and transmit enables, and interrupt control.";
 
-    desc = "GPIO Interface CSR";
-
+    
     ////////////////////////////////////////////////////////////////////////////
     // Register Definitions
     ////////////////////////////////////////////////////////////////////////////
@@ -20,7 +21,7 @@ addrmap gpio_intf {
         field {
             sw = rw;
             hw = r;
-            desc = "Filter Enable - when set, only SEP may access the GPIO register interface. This effectivley makes the GPIO a SEP-only interface.
+            desc = "Write Filter Enable. When set, writes require an exact match between AXI AWPROT and awprot_requirement. When clear, writes are unfiltered. PROT does not identify the initiator.
                     WARNING: please read back this register to ensure the filter was written correctly. If you do not do so
                     the filter may not update before your next transaction, causing unexpected behavior.";
         } write_filter_enable[0:0] = 0x0;
@@ -28,7 +29,7 @@ addrmap gpio_intf {
         field {
             sw = rw;
             hw = r;
-            desc = "Filter Value - the value that must be written to the filter register to allow access to the GPIO register interface.
+            desc = "Read Filter Enable. When set, reads require an exact match between AXI ARPROT and arprot_requirement. When clear, reads are unfiltered. PROT does not identify the initiator.
                     WARNING: please read back this register to ensure the filter was written correctly. If you do not do so
                     the filter may not update before your next transaction, causing unexpected behavior.";
         } read_filter_enable[1:1] = 0x0;
@@ -75,7 +76,10 @@ addrmap gpio_intf {
         field {
             sw = rw;
             hw = r;
-            desc = "Force LSIO interface to be used. interface_enable has higher priority over this";
+            desc = "Force the LSIO interface to be used from software, when no hardware LSIO request is
+                    present on this pad. interface_enable has higher priority over this bit. This ranking
+                    applies to this software force bit only: the hardware lsio_interface_select_i input
+                    outranks interface_enable. Use lsio_disable to gate both.";
         } lsio_select[17:17] = 0x0;
 
         field {
@@ -87,7 +91,7 @@ addrmap gpio_intf {
         field {
             sw = rw;
             hw = r;
-            desc = "When set, LSIO acceses will be blocked from the GPIO interface";
+            desc = "When set, LSIO accesses will be blocked from the GPIO interface";
         } lsio_disable[19:19] = 0x0;
 
         field {
@@ -99,7 +103,11 @@ addrmap gpio_intf {
         field {
             sw = r;
             hw = w;
-            desc = "When set, this bit indicates that the pad being driving by the LSIO";
+            desc = "LSIO hardware request status. Set while lsio_interface_select_i is asserted and
+                    lsio_disable is clear. Because the hardware LSIO request outranks interface_enable,
+                    a set value also means the LSIO plane is driving this pad's data and direction.
+                    This field does not reflect a software-forced selection via lsio_select, which ranks
+                    below the register interface - it reads 0 in that case even when LSIO drives the pad.";
         } lsio_enable[25:25] = 0x0;
 
         field {

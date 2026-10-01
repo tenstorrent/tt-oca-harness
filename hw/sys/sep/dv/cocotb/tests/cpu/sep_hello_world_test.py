@@ -25,19 +25,19 @@ import os
 from pathlib import Path
 
 import pyuvm
-
-from sep_base_test import sep_base_test
 from env.sep_boot_scoreboard import SepBootScoreboard
+from sep_base_test import sep_base_test
+from sep_reg_meta import sym
 
-# OSS-owned firmware lives under the DV tree (sibling of cocotb/) so it migrates
-# with the env. parents[3] of .../cocotb/tests/cpu/<file> == the DV root.
+# Firmware lives under the DV tree (sibling of cocotb/); parents[3] of
+# .../cocotb/tests/cpu/<file> is the DV root.
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
 _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "hello_world")
 _ITCM_HEX = os.path.join(_FW_DIR, "hello_world.itcm.hex")
 _DTCM_HEX = os.path.join(_FW_DIR, "hello_world.dtcm.hex")
 
-# Reset PC -> ICCM base 0xC0000000; rst_vec carries PC[31:1] to tb_top.sv.
-_ICCM_BASE = 0xC000_0000
+# Reset PC -> ICCM base; rst_vec carries PC[31:1] to tb_top.sv.
+_ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
 # Boot bound: hello_world (filter init + picolibc printf + test_pass) completes
 # well within this; the run loop early-exits on fw_done.
 _MAX_RUN_CYCLES = 2_000_000
@@ -59,9 +59,26 @@ class sep_hello_world_test(sep_base_test):
 
     async def run_scenario(self) -> None:
         await self.boot_firmware(
-            self.sb, _ITCM_HEX, _DTCM_HEX,
+            self.sb,
+            _ITCM_HEX,
+            _DTCM_HEX,
             rst_vec=_ICCM_BASE >> 1,
             max_run_cycles=_MAX_RUN_CYCLES,
             no_boot_cycles=_NO_BOOT_CYCLES,
             progress_every=_PROGRESS_EVERY,
+        )
+
+        # CHK-BOOT: the console line is the evidence the card names -- only executed
+        # code out of tightly-coupled memory can produce it. The boot scoreboard
+        # raises on its absence; assert it here too so the record rests on the text
+        # rather than on the run having ended.
+        console = self.sb.console_text()
+        assert self.sb.expected_line in console, (
+            f"firmware console has no {self.sb.expected_line!r}, so the core did not "
+            f"reach the firmware entry point. Console was:\n{console}"
+        )
+        self.logger.info(
+            "CHK-BOOT PASS: %r on the console, so the core executed from "
+            "tightly-coupled memory and reached the entry point",
+            self.sb.expected_line,
         )

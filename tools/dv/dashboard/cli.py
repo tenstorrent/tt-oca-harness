@@ -19,9 +19,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
     collect = subparsers.add_parser("collect", help="collect one DUT result")
     collect.add_argument("--dut", required=True)
-    collect.add_argument("--framework", help="framework view to resolve (e.g. uvm); default: the DUT's default_framework")
+    collect.add_argument(
+        "--framework",
+        help="framework view to resolve (e.g. uvm); default: the DUT's default_framework",
+    )
     collect.add_argument("--run-dir")
     collect.add_argument("--output")
+    collect.add_argument(
+        "--all-attempts",
+        action="store_true",
+        help="keep every attempt of a retried leaf in tests_detail (default: its final attempt)",
+    )
 
     report = subparsers.add_parser("report", help="generate one per-flow HTML report")
     report.add_argument("--result", required=True)
@@ -47,36 +55,52 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     if args.cmd == "collect":
-        return collect_results.main([
-            "--dut", args.dut,
-            *(["--framework", args.framework] if args.framework else []),
-            *(["--run-dir", args.run_dir] if args.run_dir else []),
-            *(["--output", args.output] if args.output else []),
-        ])
+        return collect_results.main(
+            [
+                "--dut",
+                args.dut,
+                *(["--framework", args.framework] if args.framework else []),
+                *(["--run-dir", args.run_dir] if args.run_dir else []),
+                *(["--output", args.output] if args.output else []),
+                *(["--all-attempts"] if args.all_attempts else []),
+            ]
+        )
     if args.cmd == "report":
-        return gen_report.main([
-            "--result", args.result,
-            "--html-out", args.html_out,
-            *(["--json-out", args.json_out] if args.json_out else []),
-        ])
+        return gen_report.main(
+            [
+                "--result",
+                args.result,
+                "--html-out",
+                args.html_out,
+                *(["--json-out", args.json_out] if args.json_out else []),
+            ]
+        )
     if args.cmd == "dashboard":
-        return gen_dashboard.main([
-            "--results", *args.results,
-            *(["--html-out", args.html_out] if args.html_out else []),
-            "--summary-out", args.summary_out,
-            *(["--history-in", args.history_in] if args.history_in else []),
-            *(["--history-out", args.history_out] if args.history_out else []),
-        ])
+        return gen_dashboard.main(
+            [
+                "--results",
+                *args.results,
+                *(["--html-out", args.html_out] if args.html_out else []),
+                "--summary-out",
+                args.summary_out,
+                *(["--history-in", args.history_in] if args.history_in else []),
+                *(["--history-out", args.history_out] if args.history_out else []),
+            ]
+        )
     if args.cmd == "publish":
-        return publish_reports.main([
-            "--source", args.source,
-            "--publish-root", args.publish_root,
-            "--name", args.name,
-            *(["--timestamp", args.timestamp] if args.timestamp else []),
-        ])
+        return publish_reports.main(
+            [
+                "--source",
+                args.source,
+                "--publish-root",
+                args.publish_root,
+                "--name",
+                args.name,
+                *(["--timestamp", args.timestamp] if args.timestamp else []),
+            ]
+        )
     return 2
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

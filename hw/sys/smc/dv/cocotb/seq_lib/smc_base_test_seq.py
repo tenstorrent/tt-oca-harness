@@ -15,6 +15,41 @@ from cocotb.triggers import ClockCycles, RisingEdge
 from pyuvm import uvm_sequence
 
 
+async def wait_fuse_sense_done(max_cycles: int = 200_000) -> None:
+    """Block until the warm-reset domain is released via fuse sense.
+
+    ``SCRATCH_COLD_WARM_*`` (and other warm-reset CSRs) stay in reset until
+    ``rst_warm`` deasserts. That path is
+    ``fuse_sense_done -> fuse_reset_n (16-stage delayed) -> rst_warm sync``.
+    Waiting only on ``tb_fuse_sense_done`` plus a short settle is not enough:
+    warm-domain AXI then hangs with no ready. The eFuse shadow window answers
+    SLVERR / 0xBADCAB1E to every access until sense completes, so a leaf that
+    reads the map, over SEP_IN or over the JTAG-side AXI-Lite port, waits here
+    first.
+    """
+    dut = cocotb.top
+    clk = dut.clk_smc_i
+
+    async def _wait_high(sig, name: str) -> None:
+        if int(sig.value):
+            return
+        for _ in range(max_cycles):
+            await RisingEdge(clk)
+            if int(sig.value):
+                return
+        raise AssertionError(f"{name} never asserted within {max_cycles} smc clocks")
+
+    await _wait_high(dut.tb_fuse_sense_done, "tb_fuse_sense_done")
+    # Prefer the delayed fuse_reset (matches CPU/mem-init pipe) when present.
+    if hasattr(dut, "tb_fuse_reset_n"):
+        await _wait_high(dut.tb_fuse_reset_n, "tb_fuse_reset_n")
+    if hasattr(dut, "tb_rst_warm_smc_clk_n"):
+        await _wait_high(dut.tb_rst_warm_smc_clk_n, "tb_rst_warm_smc_clk_n")
+    else:
+        # Fallback when the TB probes are absent.
+        await ClockCycles(clk, 64)
+
+
 class smc_base_test_seq(uvm_sequence):
     """Common SMC OSS sequence base."""
 
@@ -30,37 +65,7 @@ class smc_base_test_seq(uvm_sequence):
         return self.cfg.memory_model
 
     async def wait_fuse_sense_done(self, max_cycles: int = 200_000) -> None:
-        """Block until warm-reset domain is released via fuse sense.
-
-        ``SCRATCH_COLD_WARM_*`` (and other warm-reset CSRs) stay in reset until
-        ``rst_warm`` deasserts. That path is
-        ``fuse_sense_done → fuse_reset_n (16-stage delayed o) → rst_warm sync``.
-        Waiting only on ``tb_fuse_sense_done`` + a short settle is not enough —
-        warm-domain AXI then hangs with no ready.
-        """
-        dut = cocotb.top
-        clk = dut.clk_smc_i
-
-        async def _wait_high(sig, name: str) -> None:
-            if int(sig.value):
-                return
-            for _ in range(max_cycles):
-                await RisingEdge(clk)
-                if int(sig.value):
-                    return
-            raise AssertionError(
-                f"{name} never asserted within {max_cycles} smc clocks"
-            )
-
-        await _wait_high(dut.tb_fuse_sense_done, "tb_fuse_sense_done")
-        # Prefer the delayed fuse_reset (matches CPU/mem-init pipe) when present.
-        if hasattr(dut, "tb_fuse_reset_n"):
-            await _wait_high(dut.tb_fuse_reset_n, "tb_fuse_reset_n")
-        if hasattr(dut, "tb_rst_warm_smc_clk_n"):
-            await _wait_high(dut.tb_rst_warm_smc_clk_n, "tb_rst_warm_smc_clk_n")
-        else:
-            # Legacy fallback when TB probes are absent.
-            await ClockCycles(clk, 64)
+        await wait_fuse_sense_done(max_cycles)
 
     async def body(self) -> None:
         raise NotImplementedError

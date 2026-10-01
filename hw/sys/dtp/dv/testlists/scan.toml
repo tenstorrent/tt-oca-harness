@@ -7,7 +7,7 @@ schema_version = 1
 
 [[tests]]
 name = "dtp_ijtag_sib_all_off_test"
-module = "dtp_ijtag_sib_all_off_test"
+module = { cocotb = "dtp_ijtag_sib_all_off_test", uvm = "dtp_ijtag_sib_all_off_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["scan"]
@@ -15,7 +15,7 @@ run_modes = ["scan"]
 
 [[tests]]
 name = "dtp_ijtag_sib_all_on_test"
-module = "dtp_ijtag_sib_all_on_test"
+module = { cocotb = "dtp_ijtag_sib_all_on_test", uvm = "dtp_ijtag_sib_all_on_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["scan"]
@@ -23,7 +23,7 @@ run_modes = ["scan"]
 
 [[tests]]
 name = "dtp_ijtag_sib_random_test"
-module = "dtp_ijtag_sib_random_test"
+module = { cocotb = "dtp_ijtag_sib_random_test", uvm = "dtp_ijtag_sib_random_test" }
 seed = 1
 timeout_sec = 2400
 tags = ["scan"]
@@ -31,7 +31,7 @@ run_modes = ["scan"]
 
 [[tests]]
 name = "dtp_ijtag_dft_test"
-module = "dtp_ijtag_dft_test"
+module = { cocotb = "dtp_ijtag_dft_test", uvm = "dtp_ijtag_dft_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["scan"]
@@ -39,7 +39,7 @@ run_modes = ["scan"]
 
 [[tests]]
 name = "dtp_ijtag_dfd_test"
-module = "dtp_ijtag_dfd_test"
+module = { cocotb = "dtp_ijtag_dfd_test", uvm = "dtp_ijtag_dfd_test" }
 seed = 1
 timeout_sec = 2400
 tags = ["scan"]
@@ -47,7 +47,7 @@ run_modes = ["scan"]
 
 [[tests]]
 name = "dtp_3dcr_stap_sel_ds_test"
-module = "dtp_3dcr_stap_sel_ds_test"
+module = { cocotb = "dtp_3dcr_stap_sel_ds_test", uvm = "dtp_3dcr_stap_sel_ds_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["scan"]
@@ -55,7 +55,7 @@ run_modes = ["scan"]
 
 [[tests]]
 name = "dtp_3dcr_stap_sel_smc_test"
-module = "dtp_3dcr_stap_sel_smc_test"
+module = { cocotb = "dtp_3dcr_stap_sel_smc_test", uvm = "dtp_3dcr_stap_sel_smc_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["scan"]
@@ -63,7 +63,7 @@ run_modes = ["scan"]
 
 [[tests]]
 name = "dtp_3dcr_stap_sel_extra_test"
-module = "dtp_3dcr_stap_sel_extra_test"
+module = { cocotb = "dtp_3dcr_stap_sel_extra_test", uvm = "dtp_3dcr_stap_sel_extra_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["scan"]
@@ -71,7 +71,7 @@ run_modes = ["scan"]
 
 [[tests]]
 name = "dtp_3dcr_stap_sel_sep_test"
-module = "dtp_3dcr_stap_sel_sep_test"
+module = { cocotb = "dtp_3dcr_stap_sel_sep_test", uvm = "dtp_3dcr_stap_sel_sep_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["scan"]
@@ -79,7 +79,15 @@ run_modes = ["scan"]
 
 [[tests]]
 name = "dtp_ext_stap_scan_test"
-module = "dtp_ext_stap_scan_test"
+module = { cocotb = "dtp_ext_stap_scan_test", uvm = "dtp_ext_stap_scan_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["scan"]
+run_modes = ["scan"]
+
+[[tests]]
+name = "dtp_stap_chain_hold_test"
+module = { cocotb = "dtp_stap_chain_hold_test", uvm = "dtp_stap_chain_hold_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["scan"]
@@ -87,7 +95,7 @@ run_modes = ["scan"]
 
 [[tests]]
 name = "dtp_3dcr_config_hold_test"
-module = "dtp_3dcr_config_hold_test"
+module = { cocotb = "dtp_3dcr_config_hold_test", uvm = "dtp_3dcr_config_hold_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["scan"]
@@ -95,7 +103,7 @@ run_modes = ["scan"]
 
 [[tests]]
 name = "dtp_3dcr_tms_hold_test"
-module = "dtp_3dcr_tms_hold_test"
+module = { cocotb = "dtp_3dcr_tms_hold_test", uvm = "dtp_3dcr_tms_hold_test" }
 seed = 1
 timeout_sec = 2400
 tags = ["scan"]
@@ -104,7 +112,7 @@ run_modes = ["scan"]
 
 [[tests]]
 name = "dtp_scan_dbg_disable_matrix_test"
-module = "dtp_scan_dbg_disable_matrix_test"
+module = { cocotb = "dtp_scan_dbg_disable_matrix_test", uvm = "dtp_scan_dbg_disable_matrix_test" }
 seed = 1
 timeout_sec = 2400
 tags = ["scan", "dbg_disable"]

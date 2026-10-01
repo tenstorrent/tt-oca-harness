@@ -22,7 +22,7 @@ from typing import Any
 from ocah_checker import OcahChecker
 
 from .ocah_axi_item import OcahAxiItem
-from .ocah_axi_results import RESP_DECERR, RESP_EXOKAY, RESP_OKAY, RESP_SLVERR, RESP_TIMEOUT
+from .ocah_axi_types import RESP_DECERR, RESP_EXOKAY, RESP_OKAY, RESP_SLVERR, RESP_TIMEOUT
 
 LEGAL_RESPONSES = {RESP_OKAY, RESP_EXOKAY, RESP_SLVERR, RESP_DECERR, RESP_TIMEOUT}
 
@@ -229,9 +229,7 @@ class OcahAxiChecker:
         if item.protocol != "axi4" or item.burst is None:
             return
         if int(item.burst) not in _LEGAL_BURSTS:
-            self._record(
-                "AXI-BURST-LEGAL", f"reserved burst encoding {item.burst:#b}", item
-            )
+            self._record("AXI-BURST-LEGAL", f"reserved burst encoding {item.burst:#b}", item)
 
     def _check_size_legal(self, item: OcahAxiItem) -> None:
         if self.bus_bytes is None or item.size is None:
@@ -293,8 +291,7 @@ class OcahAxiChecker:
         beat_bytes = 2 ** int(item.size)
         transfer_bytes = beat_bytes * max(item.beat_count, 1)
         # Beats after the first are size-aligned, so the burst footprint spans
-        # from the ALIGNED start; using the raw (possibly unaligned) address
-        # would overestimate and false-fail boundary-adjacent bursts.
+        # from the ALIGNED start.
         aligned = item.address & ~(beat_bytes - 1)
         if (aligned & 0xFFF) + transfer_bytes > 0x1000:
             self._record(
@@ -323,8 +320,7 @@ class OcahAxiChecker:
             if int(strobe) & ~bus_mask:
                 self._record(
                     "AXI-STRB-LEGAL",
-                    f"beat {beat_index} strobe 0x{int(strobe):x} exceeds "
-                    f"{self.bus_bytes}-byte bus",
+                    f"beat {beat_index} strobe 0x{int(strobe):x} exceeds {self.bus_bytes}-byte bus",
                     item,
                 )
         if item.size is None or item.burst == BURST_WRAP:

@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[key-manager-km-firmware]]
-===== Key Manager (KM) Firmware
+= Firmware
 
 This section is the developer reference for the KM ROM firmware that runs
 on the PicoRV32 and services SEP requests. It documents the SEP-facing
@@ -39,7 +39,7 @@ because the ROM hands control to the mutable firmware before returning,
 `CMD_SRAM_VER` is only meaningful when sent to running mutable firmware.
 
 [[km-firmware-global-parameters]]
-===== Firmware Global Parameters
+== Firmware Global Parameters
 
 `SHRED_ITER` indicates the number of extra overwrite passes used during
 shred operations. Any shred sequence therefore performs `SHRED_ITER + 1`
@@ -51,7 +51,7 @@ parameter, fixed in a given ROM image. No command reports it, no command
 selects it, and no message carries a field naming it.
 
 [[km-key-model]]
-===== Key Management Model
+== Key Management Model
 
 The command reference that follows assumes the vocabulary defined here: owners,
 domains, roots, the KPV and the key registry, handles, and provenance flags.
@@ -60,7 +60,7 @@ supplies, and several are load-bearing for the security argument rather than
 merely descriptive. Read this section before the commands.
 
 [[km-owners]]
-====== Owners
+=== Owners
 
 An *owner* is one of the three agents the KM derives keys on behalf of. The owner
 is a first-class input to key derivation, not an access-control label: two owners
@@ -127,7 +127,7 @@ whether an owner's key population is really that owner's material needs to check
 one flag per key, not walk any chains.
 
 [[km-domains]]
-====== Domains
+=== Domains
 
 A *domain* records whether a key's derivation chain is anchored in hardware or
 software roots. There are exactly two values.
@@ -156,7 +156,7 @@ NOTE: There is no "ID" domain. Identity keys come from a third *kind of root*
 fuse. "HW / SW / ID" names the three root kinds, not three domain values.
 
 [[km-roots]]
-====== Roots
+=== Roots
 
 
 A *root* is a 256-bit secret the KM derives at ROM boot from OTP fuse material,
@@ -336,7 +336,7 @@ key rather than the subset firmware believes is affected, and it re-anchors the
 roots, which a registry walk could not do.
 
 [[km-kpv-registry]]
-====== The KPV and the key registry
+=== The KPV and the key registry
 
 Two distinct components, worth keeping straight because this document refers to
 both:
@@ -437,7 +437,7 @@ byte-identically. Ephemeral keys are the exception and must stay resident for
 their whole useful life.
 
 [[km-handles]]
-====== Handles
+=== Handles
 
 A *handle* is the 64-bit token the SEP uses to name a key it has created. It is an
 opaque *sealed token*: the KM encrypts the descriptor index together with a
@@ -469,7 +469,7 @@ Roots and identity keys have no handles at all. Identity keys are transient: the
 stream to an engine key port and are never registry-resident.
 
 [[km-provenance]]
-====== Provenance flags
+=== Provenance flags
 
 Each key carries flags recording how it came to exist. All are KM-forged — none is
 SEP-settable — and `CMD_KEY_INFO` returns them.
@@ -499,7 +499,7 @@ produce *different* keys. Once the KM has handed over to mutable firmware, new
 key, by construction rather than by policy.
 
 [[km-material-flow]]
-====== Key material never leaves the KM in the clear
+=== Key material never leaves the KM in the clear
 
 No command returns key material. Keys reach a crypto engine only by the KM
 sideloading them directly into that engine's key port, and only if the key's
@@ -519,7 +519,7 @@ What the SEP obtains is a handle and the public metadata behind it. That asymmet
 the whole design exists to protect.
 
 [[km-firmware-command-message-reference]]
-===== Command Message Reference
+== Command Message Reference
 
 The SEP communicates with the KM through a framed command/response
 protocol carried over the mailbox FIFOs. Every direct SEP command elicits
@@ -602,7 +602,7 @@ The rest of this section describes all valid commands and their payloads.
 |===
 
 [[km-cmd-hw-ver]]
-====== 0x00 - CMD_HW_VER
+=== 0x00 - CMD_HW_VER
 
 *Description*
 
@@ -628,7 +628,7 @@ and a return argument containing the version of the hardware.
 |===
 
 [[km-cmd-rom-ver]]
-====== 0x01 - CMD_ROM_VER
+=== 0x01 - CMD_ROM_VER
 
 *Description*
 
@@ -654,7 +654,7 @@ and a return argument containing the version of the ROM firmware.
 |===
 
 [[km-cmd-sram-ver]]
-====== 0x02 - CMD_SRAM_VER
+=== 0x02 - CMD_SRAM_VER
 
 *Description*
 
@@ -692,7 +692,7 @@ containing the version of the SRAM firmware.
 |===
 
 [[km-cmd-stat]]
-====== 0x03 - CMD_STAT
+=== 0x03 - CMD_STAT
 
 *Description*
 
@@ -790,7 +790,7 @@ status bit as the unrecoverable indicator: if the interrupt has fired, or if
 commands stop being answered, the KM has halted and needs a hard reset.
 
 [[km-cmd-recov-ack]]
-====== 0x04 - CMD_RECOV_ACK
+=== 0x04 - CMD_RECOV_ACK
 
 *Description*
 
@@ -807,7 +807,7 @@ This command has a `RESP_CMD` response with a return code of _success_,
 and no return argument.
 
 [[km-cmd-exec-rom]]
-====== 0x10 - CMD_EXEC_ROM
+=== 0x10 - CMD_EXEC_ROM
 
 *Description*
 
@@ -829,7 +829,7 @@ first call, or _failure_ if a handover command has already been issued in
 this epoch (including a prior `CMD_EXEC_ROM`).
 
 [[km-cmd-sram-load-exec]]
-====== 0x11 - CMD_SRAM_LOAD_EXEC
+=== 0x11 - CMD_SRAM_LOAD_EXEC
 
 *Description*
 
@@ -924,7 +924,7 @@ or image exceeds the stack guard region), a `RESP_CMD` error response is
 sent by the normal dispatcher path.
 
 [[km-cmd-sram-exec]]
-====== 0x12 - CMD_SRAM_EXEC
+=== 0x12 - CMD_SRAM_EXEC
 
 *Description*
 
@@ -957,7 +957,7 @@ If the handover-disabled flag is set, the command returns _failure_ with
 `KM_ERR_HANDOVER_DISABLED`.
 
 [[km-cmd-key-generate]]
-====== 0x22 - CMD_KEY_GENERATE
+=== 0x22 - CMD_KEY_GENERATE
 
 *Description*
 
@@ -1241,7 +1241,7 @@ See <<km-handles>> for what a handle is and, in particular, why it must not be
 persisted across resets or treated as key identity.
 
 [[km-cmd-key-revoke]]
-====== 0x23 - CMD_KEY_REVOKE
+=== 0x23 - CMD_KEY_REVOKE
 
 *Description*
 
@@ -1306,7 +1306,7 @@ downstream of a *root* needs it, since roots are not registry-resident and are
 never a descendant's recorded parent.
 
 [[km-cmd-key-transfer]]
-====== 0x24 - CMD_KEY_TRANSFER
+=== 0x24 - CMD_KEY_TRANSFER
 
 *Description*
 
@@ -1448,7 +1448,7 @@ followed by the key handle.
 |===
 
 [[km-cmd-engine-shred]]
-====== 0x25 - CMD_ENGINE_SHRED
+=== 0x25 - CMD_ENGINE_SHRED
 
 *Description*
 
@@ -1532,7 +1532,7 @@ engines that were purged.
 |===
 
 [[km-cmd-key-load]]
-====== 0x26 - CMD_KEY_LOAD
+=== 0x26 - CMD_KEY_LOAD
 
 *Description*
 
@@ -1735,7 +1735,7 @@ is marked `IMPORTED` and confined to the `SW` domain to provide some constraints
 key identification.
 
 [[km-cmd-abr-sk-ingest]]
-====== 0x27 - CMD_ABR_SK_INGEST
+=== 0x27 - CMD_ABR_SK_INGEST
 
 *Description*
 
@@ -1907,7 +1907,7 @@ domain: a caller reading `CMD_KEY_INFO` can always tell an asserted type from a
 derived one.
 
 [[km-cmd-otp-read-lock-cold]]
-====== 0x28 - CMD_OTP_READ_LOCK_COLD
+=== 0x28 - CMD_OTP_READ_LOCK_COLD
 
 *Description*
 
@@ -2078,7 +2078,7 @@ working. A locked-down KM can still be inspected and still be made *more*
 restrictive, which is the direction a host locking fuses is trying to travel.
 
 [[km-cmd-key-info]]
-====== 0x30 - CMD_KEY_INFO
+=== 0x30 - CMD_KEY_INFO
 
 *Description*
 
@@ -2159,7 +2159,7 @@ word for equality, and MUST ignore a nonzero `RESERVED`. Both are how this block
 gains fields in a later revision without breaking an older host.
 
 [[km-cmd-key-list]]
-====== 0x31 - CMD_KEY_LIST
+=== 0x31 - CMD_KEY_LIST
 
 *Description*
 
@@ -2187,7 +2187,7 @@ NOTE: This command enumerates every live key, not only those belonging to the
 requesting agent — the KM does not filter by requester (<<km-handles>>).
 
 [[km-cmd-invoke-id-key]]
-====== 0x32 - CMD_INVOKE_ID_KEY
+=== 0x32 - CMD_INVOKE_ID_KEY
 
 *Description*
 
@@ -2237,7 +2237,7 @@ service and an `LC`/`D` lock disables all of them
 the material delivered to the engine port.
 
 [[km-cmd-clear-id-root]]
-====== 0x33 - CMD_CLEAR_ID_ROOT
+=== 0x33 - CMD_CLEAR_ID_ROOT
 
 *Description*
 
@@ -2261,7 +2261,7 @@ _invalid_arg_ for an owner outside the valid range, otherwise _success_ with no
 return argument.
 
 [[km-cmd-bl-decrypt-key]]
-====== 0x34 - CMD_BL_DECRYPT_KEY
+=== 0x34 - CMD_BL_DECRYPT_KEY
 
 *Description*
 
@@ -2311,7 +2311,7 @@ status does not distinguish them, and does not need to — both mean the command
 will not work again for the rest of the power cycle.
 
 [[km-cmd-assign-key-owner]]
-====== 0x35 - CMD_ASSIGN_KEY_OWNER
+=== 0x35 - CMD_ASSIGN_KEY_OWNER
 
 *Description*
 
@@ -2391,7 +2391,7 @@ reassignment sets the sticky `OWNER_XFERRED` flag, so a key that has moved is
 permanently distinguishable through `CMD_KEY_INFO`.
 
 [[km-cmd-clear-owner-keys]]
-====== 0x36 - CMD_CLEAR_OWNER_KEYS
+=== 0x36 - CMD_CLEAR_OWNER_KEYS
 
 *Description*
 
@@ -2444,7 +2444,7 @@ NOTE: Engine sideload registers are not touched — a key already transferred to
 an engine survives there until `CMD_ENGINE_SHRED`.
 
 [[km-cmd-clear-hw-keys]]
-====== 0x37 - CMD_CLEAR_HW_KEYS
+=== 0x37 - CMD_CLEAR_HW_KEYS
 
 *Description*
 
@@ -2488,7 +2488,7 @@ NOTE: Engine sideload registers are not touched — a key already transferred to
 an engine survives there until `CMD_ENGINE_SHRED`.
 
 [[km-cmd-clear-key-tree]]
-====== 0x38 - CMD_CLEAR_KEY_TREE
+=== 0x38 - CMD_CLEAR_KEY_TREE
 
 *Description*
 
@@ -2543,7 +2543,7 @@ derivable from `A`, and the registry never held the request block needed to
 re-derive it in any case.
 
 [[km-cmd-gen-ml-kem-mval]]
-====== 0x39 - CMD_GEN_ML_KEM_MVAL
+=== 0x39 - CMD_GEN_ML_KEM_MVAL
 
 *Description*
 
@@ -2571,7 +2571,7 @@ seed or the masking randomness (fail closed: nothing lands and nothing is
 retained).
 
 [[km-cmd-clear-orphaned-keys]]
-====== 0x3A - CMD_CLEAR_ORPHANED_KEYS
+=== 0x3A - CMD_CLEAR_ORPHANED_KEYS
 
 *Description*
 
@@ -2623,7 +2623,7 @@ single return argument.
 |===
 
 [[km-firmware-response-message-reference]]
-===== Response Message Reference
+== Response Message Reference
 
 .Response Message
 [cols="32*^",options="header"]
@@ -2658,7 +2658,7 @@ relationship between command IDs and response IDs.
 |===
 
 [[km-resp-cmd]]
-====== 0x00 - RESP_CMD
+=== 0x00 - RESP_CMD
 
 *Description*
 
@@ -2719,7 +2719,7 @@ silently drives the other: a protocol rejection leaves the KM untouched, and a
 latched KM fault does not stop the transport from framing and replying.
 
 [[km-status-codes]]
-====== KM Status Codes
+=== KM Status Codes
 
 The return code above and the `KM_ERR_*` status are two different things at two
 different layers, and a client needs both:
@@ -2797,7 +2797,7 @@ fix the request and retry, and `KM_ERR_HANDOVER_DISABLED` means the decision is
 already made and retrying will never help.
 
 [[km-resp-km-ready]]
-====== 0x55 - RESP_KM_READY
+=== 0x55 - RESP_KM_READY
 
 *Description*
 
@@ -2810,7 +2810,7 @@ life indicator for the SEP.
 This message has no payload.
 
 [[km-resp-abr-shared-key-ready]]
-====== 0x56 - RESP_ABR_SHARED_KEY_READY
+=== 0x56 - RESP_ABR_SHARED_KEY_READY
 
 *Description*
 
@@ -2826,7 +2826,7 @@ KPV and obtain a handle.
 This message has no payload.
 
 [[km-resp-recoverable-fault]]
-====== 0xFE - RESP_RECOVERABLE_FAULT
+=== 0xFE - RESP_RECOVERABLE_FAULT
 
 *Description*
 
@@ -2857,7 +2857,7 @@ A signed 8-bit code indicating the cause of the fault.
 |===
 
 [[km-resp-unrecoverable-fault]]
-====== 0xFF - RESP_UNRECOVERABLE_FAULT
+=== 0xFF - RESP_UNRECOVERABLE_FAULT
 
 *Description*
 
@@ -2901,10 +2901,10 @@ A signed 8-bit code indicating the cause of the fault.
 |===
 
 [[km-firmware-common-sequences]]
-===== Common Sequences
+== Common Sequences
 
 [[km-seq-initial-boot]]
-====== Initial Boot
+=== Initial Boot
 
 As soon as the KM is taken out of reset, it begins executing out of the
 ROM. The ROM performs basic setup routines such as initialization of
@@ -2917,7 +2917,7 @@ At this point the SEP may want to query hardware and/or firmware version
 and status via the `CMD_HW_VER`, `CMD_ROM_VER`, and `CMD_STAT`.
 
 [[km-seq-sep-key-loading]]
-====== SEP Key Loading
+=== SEP Key Loading
 
 The KM supports loading host-provided key material into the KPV directly
 over the mailbox using the `CMD_KEY_LOAD` command. The SEP never writes
@@ -2939,7 +2939,7 @@ bytes stored, whether the material was truncated, and the new key handle.
 management operations.
 
 [[km-seq-key-transfer-purge]]
-====== Key Transfer and Sideload Purge
+=== Key Transfer and Sideload Purge
 
 The SEP requests transfer of a key from the KPV to any crypto engine
 sideload key register via the `CMD_KEY_TRANSFER` command. The SEP provides
@@ -2964,7 +2964,7 @@ it issues `CMD_GEN_ML_KEM_MVAL`, which mints a fresh ephemeral `m`, lands it
 on the `abr_mlkem_msg` port and retains nothing — once per encapsulation.
 
 [[km-seq-abr-shared-key-capture]]
-====== Adams Bridge Shared-Key Capture
+=== Adams Bridge Shared-Key Capture
 
 The Adams Bridge ML-KEM shared-key interface flows in the opposite direction
 from the seed and engine sideloads: Adams Bridge computes a shared key and
@@ -2990,7 +2990,7 @@ write-locks the slot, and responds with _success_ and the new key handle.
 including transferring the captured key to a permitted engine.
 
 [[km-seq-key-revocation]]
-====== Key Revocation
+=== Key Revocation
 
 The SEP requests revocation of a key in the KPV via the `CMD_KEY_REVOKE`
 command. The KM wipes the key material, releases its KPV slots, and retires
@@ -3019,7 +3019,7 @@ transferred to an engine persists there until `CMD_ENGINE_SHRED`
 (<<km-seq-key-transfer-purge>>).
 
 [[km-seq-error-recovery]]
-====== Error Recovery
+=== Error Recovery
 
 The KM can encounter a variety of recoverable and unrecoverable errors.
 
@@ -3072,7 +3072,7 @@ to interrupt the SEP.
 sequence.
 
 [[km-seq-sram-fw-handover]]
-====== SRAM Firmware Handover
+=== SRAM Firmware Handover
 
 The KM ROM supports handing control from immutable ROM to mutable SRAM
 firmware via the `CMD_SRAM_LOAD_EXEC` (load + run) or `CMD_SRAM_EXEC`
@@ -3246,7 +3246,7 @@ remain attributable to immutable code, which is why identity minting ends at the
 handover boundary even though SW derivation does not.
 
 [[km-rom-mutable-split]]
-====== ROM and mutable firmware
+=== ROM and mutable firmware
 
 The KM can executes from two memories; ROM and SRAM. Execution from either is mutually exculsive. 
 The KM CPU may never executre from from both in either ROM or mutable software mode.
@@ -3285,6 +3285,17 @@ state, so mutable firmware cannot clear either and cannot re-enter the ROM by an
 sequence of writes; only a
 warm or cold reset restores ROM access, and that restarts the ROM from its entry
 point rather than resuming it.
+
+The virtual ROM (VROM, `0x1000_0000`) is exempt only in a simulation build that
+defines `OCAH_KM_VROM`, and carries no security requirement. Without the define
+the window is an unmapped address, so a fetch from it pulses `EXEC_VIOLATION`
+like any other fetch outside the whitelist. See
+ifdef::backend-html5[]
+xref:ocah-integrator-guide:ROOT:defines.adoc#sep-defines-km[Key manager defines in the Integrator Guide].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-integrator-guide/latest/defines.html#sep-defines-km[Key manager defines in the Integrator Guide].
+endif::backend-pdf[]
 
 *Why the ROM is closed off*
 
@@ -3385,7 +3396,7 @@ A host that defers any of these until after the jump is asking the loaded image
 to enforce them on its behalf.
 
 [[km-rom-stack-budget]]
-====== ROM Stack Budget and the Static Load Ceiling
+=== ROM Stack Budget and the Static Load Ceiling
 
 Mutable firmware is loaded from the SRAM base (`0x8000`) and grows upward,
 while the ROM stack grows downward from `STACK` (the top of the ROM's
@@ -3422,17 +3433,18 @@ IRQ stack depths and deepest paths:
 
 [source,bash]
 ----
-python3 scripts/km_stack_analyze.py build/tests/rom_main/rom_main.rom.elf \
+cd hw/ip/key_manager/approm/prod
+python3 scripts/km_stack_analyze.py build/rom_main.elf \
   --objdump riscv64-unknown-elf-objdump --root main --limit 0x600
 ----
 
 Raise the budget only if the analyzer reports a worst case that exceeds it.
 
 [[km-firmware-bootloader]]
-===== Bootloader
+== Bootloader
 
 [[km-boot-sequence]]
-====== Boot Sequence
+=== Boot Sequence
 
 The ROM bootloader will perform the following sequence of steps:
 
@@ -3506,7 +3518,7 @@ cycle.
 . Finally, enter the main event loop.
 
 [[km-firmware-message-buffers]]
-===== Message Buffers
+== Message Buffers
 
 The message receive and transmit buffers are fixed size SRAM-based linear
 buffers that store message frames that have been read from or are ready to be
@@ -3544,10 +3556,10 @@ mask the mailbox IRQ for the duration of the mutation and then restore it to
 its previous state.
 
 [[km-firmware-prng]]
-===== Pseudorandom Generators
+== Pseudorandom Generators
 
 [[km-prng-firmware]]
-====== Firmware PRNG
+=== Firmware PRNG
 
 The KM firmware shall use the xoshiro128++ algorithm as its
 general-purpose pseudorandom number generator. The PRNG is used for
@@ -3579,7 +3591,7 @@ SRAM shred loop. The PRNG state must not be stored in SRAM at any point
 during SRAM shredding.
 
 [[km-prng-register-shuffling]]
-====== Register Access Shuffling
+=== Register Access Shuffling
 
 All operations requiring pseudorandom-order register access must use the
 Fisher-Yates shuffle to generate the access order. This includes all
@@ -3598,7 +3610,7 @@ The bit pool is a 32-bit register refilled from the PRNG whenever
 insufficient bits remain. Bits are consumed from LSB to MSB.
 
 [[km-firmware-interrupt-handlers]]
-===== Interrupt Handlers
+== Interrupt Handlers
 
 The PicoRV32 has a very basic interrupt controller that does not support
 hardware interrupt priority or nested interrupts. Due to these
@@ -3608,7 +3620,7 @@ response latency. The main ISR must process all currently active
 interrupts within a single call.
 
 [[km-irq-priority]]
-====== Interrupt Priority
+=== Interrupt Priority
 
 Interrupt priority must be handled by firmware within the PicoRV32's main
 interrupt service routine (ISR). Any new interrupts that arrive while the
@@ -3645,7 +3657,7 @@ failure to the fabric and send debugging toward the memory map. An unrelated
 fabric error sets SLVERR on its own and is unaffected by the ordering.
 
 [[km-irq-ebreak]]
-====== EBREAK / Illegal Instruction
+=== EBREAK / Illegal Instruction
 
 The EBREAK / illegal instruction interrupt handler distinguishes the
 faulting instruction by reading the opcode at the saved PC. An EBREAK
@@ -3654,14 +3666,14 @@ Any other illegal instruction triggers an unrecoverable fault with the
 `illegal_insn` fault code. The interrupt status bit is not cleared.
 
 [[km-irq-bus-error]]
-====== Bus Error or Misaligned Access
+=== Bus Error or Misaligned Access
 
 The bus error or misaligned access interrupt handler will trigger an
 unrecoverable fault. The interrupt status bit is not cleared. This
 behavior may change in future firmware revisions.
 
 [[km-irq-wipe-state]]
-====== Wipe State
+=== Wipe State
 
 The wipe state interrupt handler will purge keys from all crypto engines,
 trigger an unrecoverable fault, and finally shred the entire SRAM.
@@ -3679,42 +3691,42 @@ This diverges from typical shred operations that normally reseed the PRNG
 from the DRBG.
 
 [[km-irq-rom-parity]]
-====== ROM Parity Error
+=== ROM Parity Error
 
 The ROM parity error interrupt handler will trigger an unrecoverable
 fault. The interrupt status bit is not cleared. This behavior may change
 in future firmware revisions.
 
 [[km-irq-sram-parity]]
-====== SRAM Parity Error
+=== SRAM Parity Error
 
 The SRAM parity error interrupt handler will trigger an unrecoverable
 fault. The interrupt status bit is not cleared. This behavior may change
 in future firmware revisions.
 
 [[km-irq-rom-write]]
-====== ROM Write Error
+=== ROM Write Error
 
 The ROM write error interrupt handler will trigger an unrecoverable fault.
 The interrupt status bit is not cleared. This behavior may change in
 future firmware revisions.
 
 [[km-irq-sram-write-lock]]
-====== SRAM Write Lock Error
+=== SRAM Write Lock Error
 
 The SRAM write lock error interrupt handler will trigger an unrecoverable
 fault. The interrupt status bit is not cleared. This behavior may change
 in future firmware revisions.
 
 [[km-irq-axi-decerr]]
-====== AXI DECERR
+=== AXI DECERR
 
 The AXI DECERR interrupt handler will trigger an unrecoverable fault. The
 interrupt status bit is not cleared. This behavior may change in future
 firmware revisions.
 
 [[km-irq-axi-slverr]]
-====== AXI SLVERR
+=== AXI SLVERR
 
 The AXI SLVERR interrupt handler will trigger an unrecoverable fault with the
 `axi_slverr` fault code. It is reached only when the DRBG error status bit is
@@ -3723,7 +3735,7 @@ interrupt status bit is not cleared. This behavior may change in future
 firmware revisions.
 
 [[km-irq-drbg-error]]
-====== DRBG Error
+=== DRBG Error
 
 The DRBG error interrupt handler will trigger an unrecoverable fault with the
 `drbg_err` fault code. It is checked before the AXI SLVERR handler
@@ -3733,7 +3745,7 @@ status bit is not cleared. This behavior may change in future firmware
 revisions.
 
 [[km-irq-otp-sigint]]
-====== OTP Integrity Violation
+=== OTP Integrity Violation
 
 The OTP integrity violation interrupt handler will trigger an
 unrecoverable fault with the `otp_sigint` fault code. This interrupt is
@@ -3742,7 +3754,7 @@ on a redundantly-encoded OTP field. The interrupt status bit is not
 cleared. This behavior may change in future firmware revisions.
 
 [[km-irq-otp-change]]
-====== OTP Change Status
+=== OTP Change Status
 
 The OTP change status interrupt is an informational (non-fault) source
 that indicates one or more monitored OTP fields have changed. Unlike the
@@ -3774,7 +3786,7 @@ delivery. Nothing that must happen before a state change takes effect can be
 placed here, because there is no ordering guarantee to place it behind.
 
 [[km-irq-mailbox]]
-====== Mailbox
+=== Mailbox
 
 The mailbox interrupt handler transfers message frames between the mailbox
 FIFOs and the message buffers. It also handles any other interrupts raised
@@ -3839,7 +3851,7 @@ frame.
 disable the incoming mailbox FIFO interrupt.
 
 [[km-irq-abr-sharedkey]]
-====== Adams Bridge ML-KEM Shared Key
+=== Adams Bridge ML-KEM Shared Key
 
 The Adams Bridge shared-key interrupt is an informational (non-fault) source
 delivered on its own PicoRV32 interrupt (bit 5), separate from the
@@ -3859,7 +3871,7 @@ automatically. The main loop sends `RESP_ABR_SHARED_KEY_READY` to the SEP when
 it observes the pending-notify flag (<<km-firmware-main-event-loop>>).
 
 [[km-irq-spurious]]
-====== Spurious IRQ
+=== Spurious IRQ
 
 After all known IRQ sources have been serviced, the ISR checks for any
 unrecognised bits in the IRQ mask. If any are set, the ISR triggers an
@@ -3868,7 +3880,7 @@ security-critical firmware never silently ignores unexpected interrupt
 sources.
 
 [[km-firmware-incoming-message-handler]]
-===== Incoming Message Handler
+== Incoming Message Handler
 
 The incoming message handler parses incoming message frames from the
 message receive buffer in SRAM, checks their properties, and calls the
@@ -3937,7 +3949,7 @@ return argument from the command handler.
 . Return.
 
 [[km-firmware-outgoing-message-handler]]
-===== Outgoing Message Handler
+== Outgoing Message Handler
 
 The outgoing message handler constructs a message from a given response
 payload and writes it into the message transmit buffer in SRAM. The
@@ -3965,7 +3977,7 @@ FIFO.
 . Return.
 
 [[km-firmware-command-handlers]]
-===== Command Handlers
+== Command Handlers
 
 Each supported KM command has an associated command handler function. They
 are called by the incoming message handler, validate the arguments
@@ -3977,7 +3989,7 @@ errors it will return a _success_ code and provide an optional return
 argument.
 
 [[km-firmware-drbg-driver]]
-===== DRBG Driver
+== DRBG Driver
 
 *Initialize DRBG*
 
@@ -4005,11 +4017,11 @@ read. It has the following execution flow:
 . Return the random words.
 
 [[km-firmware-kpv-driver]]
-===== KPV Driver
+== KPV Driver
 
 These functions provide firmware abstractions for the KPV. The KPV is a bank of
-key-data registers plus, per slot, a control register carrying the `lock_use`,
-`lock_write` and `seal` bits and the `ERASE` trigger.
+key-data registers plus, per slot, a control register whose bits 0–3 are
+`lock_write`, `lock_use`, the `ERASE` trigger and `seal`.
 Firmware drives the control register and reads the key and status registers.
 Every function here operates on one slot, addressed by slot index. The KPV has no
 notion of a key spanning slots, so grouping slots into keys belongs to the key
@@ -4126,7 +4138,7 @@ the one function that needs no registry input, which is what makes it usable as
 a recovery path when the registry itself cannot be trusted.
 
 [[km-firmware-crypto-drivers]]
-===== Crypto Engine Drivers (HMAC / KMAC / AES / OTBN / Adams Bridge)
+== Crypto Engine Drivers (HMAC / KMAC / AES / OTBN / Adams Bridge)
 
 Each crypto engine (HMAC, KMAC, AES, OTBN) and each of the four Adams Bridge
 seed inputs (ML-DSA seed, ML-KEM seed D, ML-KEM seed Z, ML-KEM message) has a
@@ -4211,7 +4223,7 @@ it during boot and leaves it enabled, relying on the sticky-status W1C
 acknowledgement rather than toggling the enable per event.
 
 [[km-firmware-kdf-library]]
-===== Key Derivation Function Library
+== Key Derivation Function Library
 
 The `rom_kdf` library implements the NIST SP 800-108r1 counter-mode key
 derivation function (KDF) with HMAC-SHA-256 as its pseudorandom function.
@@ -4276,7 +4288,7 @@ the embedded expected value. A boot flow that derives real key material
 must run this test first and fail closed if it does not pass.
 
 [[km-firmware-crc-library]]
-===== CRC Function Library
+== CRC Function Library
 
 The CRC function library contains routines for CRC computations. The
 high-level functions (`rom_crc8_rohc`, `rom_crc32c`) are built on the hardware
@@ -4290,7 +4302,7 @@ section of the architecture documentation for the instruction encodings
 and engine behavior.
 
 [[km-crc8-rohc]]
-====== CRC-8/ROHC
+=== CRC-8/ROHC
 
 Compute the CRC-8/ROHC for a given block of data.
 
@@ -4311,7 +4323,7 @@ The CRC-8/ROHC is computed over the input bytes in little endian order,
 from least significant byte to most significant byte.
 
 [[km-crc32c]]
-====== CRC-32C
+=== CRC-32C
 
 Compute the CRC-32C (Castagnoli) for a given block of data.
 
@@ -4333,7 +4345,7 @@ The CRC-32C is computed over the input bytes in little endian order, from
 least significant byte to most significant byte.
 
 [[km-firmware-key-registry]]
-===== Key/Root Registry
+== Key/Root Registry
 
 KM firmware maintains the *key registry* and *root registry*: one *key descriptor* per 
 live key, and the mapping between those descriptors and the 64 discrete KPV slots holding
@@ -5000,7 +5012,7 @@ destroyable. Idempotent — clearing an already-cleared root succeeds and change
 nothing.
 
 [[km-firmware-key-management]]
-===== Key Management
+== Key Management
 
 These functions provide high-level key management operations. In general, they
 are called by command handler functions. They sit between the command handlers
@@ -5299,7 +5311,7 @@ the failure is reported — otherwise an engine would be left holding a key the
 SEP has no reason to believe it must shred.
 
 [[km-firmware-main-event-loop]]
-===== Main Event Loop
+== Main Event Loop
 
 After the bootloader initializes the KM, the main loop of the KM
 continuously monitors the incoming message buffer for commands. When the
@@ -5317,7 +5329,7 @@ notification set by the ISR can neither be dropped (lost update) nor leave the
 CPU sleeping with work pending (lost wakeup).
 
 [[km-main-fault-handling]]
-====== Fault Handling
+=== Fault Handling
 
 When the KM encounters an unrecoverable fault, it will flush the mailbox
 FIFOs and then write a `RESP_UNRECOVERABLE_FAULT` message directly to the

@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
-//------------------------------------------------
-// AXI4 Lite to TL-UL Converter
 //
-// Converts AXI4 Lite slave interface to TL-UL host interface.
+// AXI4-Lite slave to TL-UL host protocol converter.
 //
-// Copyright 2026 Tenstorrent Inc.
-//------------------------------------------------
-
+// AckZeroStrobeWrite: a write with WSTRB == 0 is a legal AXI no-op (no byte is
+// written), but forwarding it as a TL-UL PutPartialData with an all-zero mask
+// makes OpenTitan register files return d_error, which surfaces as SLVERR. Such
+// beats are not issued by software; they are produced by an AXI data-width
+// downsizer splitting a wider master's beat, where the lanes outside the
+// master's strobe land on the neighbouring 32-bit register. With the parameter
+// set, the converter completes the write with OKAY locally and issues no TL-UL
+// transaction. Default off so existing consumers keep their strict behaviour.
 
 module axi_lite_to_tlul
 	import tlul_pkg::*;
@@ -23,8 +25,9 @@ module axi_lite_to_tlul
 		parameter int unsigned AXI_USER_WIDTH    = 1,
 		parameter type         axi_lite_req_t    = logic,
 		parameter type         axi_lite_rsp_t    = logic,
-		parameter bit          EnableCmdIntgGen  = 1'b1,  // Generate command integrity
-		parameter bit          EnableDataIntgGen = 1'b1   // Generate data integrity
+		parameter bit          EnableCmdIntgGen   = 1'b1,  // Generate command integrity
+		parameter bit          EnableDataIntgGen  = 1'b1,  // Generate data integrity
+		parameter bit          AckZeroStrobeWrite = 1'b0   // WSTRB==0 writes: OKAY, no TL-UL Put
 	) (
 		input  logic      clk_i,
 		input  logic      rst_ni,
@@ -37,8 +40,11 @@ module axi_lite_to_tlul
 		output tl_h2d_t   tl_o,
 		input  tl_d2h_t   tl_i,
 
-		// Error output (sticky)
-		output logic      err_o
+		// Error output (sticky). Held until err_clr_i; a new error in the same cycle
+		// as the clear still latches, so a fault racing the clear is never lost.
+		// Tie err_clr_i low to keep the pre-clear behaviour of holding until reset.
+		output logic      err_o,
+		input  logic      err_clr_i
 	);
 
 	// --------------------------------------------------
@@ -114,7 +120,8 @@ module axi_lite_to_tlul
 		req_strb_d   = req_strb_q;
 		resp_data_d  = resp_data_q;
 		req_error_d  = req_error_q;
-		sticky_err_d = sticky_err_q;
+		// Clear applies first; the set condition below overrides it in the same cycle.
+		sticky_err_d = sticky_err_q & ~err_clr_i;
 
 		// Default AXI Outputs (Zero out the structs first)
 		axi_lite_rsp_o = '0;
@@ -148,7 +155,13 @@ module axi_lite_to_tlul
 					req_addr_d = axi_lite_req_i.aw.addr;
 					req_data_d = axi_lite_req_i.w.data;
 					req_strb_d = axi_lite_req_i.w.strb;
-					state_d = TL_PUT_REQ;
+					if (AckZeroStrobeWrite && (axi_lite_req_i.w.strb == '0)) begin
+						// No byte to write: complete with OKAY, skip the TL-UL Put.
+						req_error_d = 1'b0;
+						state_d     = AXI_B_RESP;
+					end else begin
+						state_d = TL_PUT_REQ;
+					end
 				end
 			end
 

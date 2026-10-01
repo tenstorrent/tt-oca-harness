@@ -1,0 +1,64 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Watchdog Timer (WDT)
+:description: SEP watchdog timer integration, clocking, bark interrupts, and bite reset requests.
+
+[[watchdog-timer-wdt-watchdog-timer-wdt,Watchdog Timer (WDT)]]
+
+The Watchdog timer is a component used to enhance reliability and ensure
+that the system is notified if the SEP subsystem is ``hanging''. The SEP
+CPU must periodically visit the WDT and reset its counter, proving that
+the CPU is still alive and well i.e. not hanging. If the WDT timer
+counts up to its bark threshold it fires an external interrupt, and if it
+counts up to its bite threshold it requests a reset, both indicating a
+timeout has expired and there is a problem within the SEP.
+
+== Bus Interface
+
+The `sep_wdt_wrap` module integrates the OpenTitan `aon_timer` IP as the watchdog timer. The 64-bit AXI slave port from the system crossbar is narrowed to 32-bit AXI through an `axi_dw_converter`. The address path subtracts the WDT base address so that the internal TL-UL decoder sees zero-based offsets. After `axi_to_axi_lite` and `axi_lite_to_tlul` conversion, the TL-UL bus drives the standard `aon_timer` register block.
+
+== Clock, Reset, and Debug Behavior
+
+The wrapper provides a dedicated watchdog clock input (`clk_wdt_i`) that is synchronized through a `prim_sync_reset` to produce the `rst_aon_ni` reset for the always-on timer domain. The `wdt_debug_sleep_mode_i` input controls whether the timer continues to count during debug halt. Life-cycle escalation is tied to its inactive state. Alert receivers are initialized to the idle encoding to avoid spurious integrity errors; alert outputs are left unconnected since the SEP aggregates watchdog events through the interrupt path.
+
+== Bark Interrupt and Bite Reset
+
+The wrapper exports two signals: `intr_wdog_timer_bark_o`, the watchdog bark interrupt that fires when the first timeout stage expires, and `wdt_timer_rst_req_o`, the bite reset request that fires when the second timeout stage expires and the system failed to respond to the bark.
+
+== Programming Reference
+
+Consult the
+https://opentitan.org/book/hw/ip/aon_timer/[OpenTitan Always-On Timer
+documentation] for the authoritative core functionality of the IP. The
+ifdef::backend-html5[]
+register map follows below.
+endif::backend-html5[]
+ifdef::backend-pdf[]
+register map follows below.
+endif::backend-pdf[]
+
+== Memory Map and Register Reference
+
+ifdef::backend-html5[]
+++++
+<span id="register-reference"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
+
+Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.
+
+=== Detailed Register Map
+
+ifdef::backend-html5[]
+++++
+include::ip:partial$aon_timer/regs/gen/html/aon_timer.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/aon_timer/regs/gen/adoc/aon_timer.adoc[leveloffset=+2]
+endif::backend-pdf[]

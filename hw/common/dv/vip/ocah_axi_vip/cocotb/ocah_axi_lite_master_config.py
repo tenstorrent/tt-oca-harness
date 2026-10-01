@@ -24,6 +24,7 @@ class OcahAxiLiteMasterConfig:
     reset_active_level: bool = False
     # Sequence-level policy.
     timeout_cycles: int = 1000
+    # None selects the package default (DEFAULT_TIMEOUT_NS or +OCAH_AXI_TIMEOUT_NS).
     timeout_ns: int | None = None
     raise_on_error: bool = True
     # Extra keyword arguments forwarded verbatim to the cocotbext backend.

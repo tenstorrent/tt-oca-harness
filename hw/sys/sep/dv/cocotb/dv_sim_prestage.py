@@ -37,6 +37,8 @@ to catch drift.
 from __future__ import annotations
 
 import importlib.util
+import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -84,10 +86,49 @@ def _locked_field_irq_fixed(seed: int) -> dict[str, int]:
     return mod.SepLockedFieldIrqCfg(seed).image_fixed()
 
 
+def _program_lock_spares_fixed() -> dict[str, int]:
+    """Same pins as ``sep_efuse_program_lock_matrix_test``: every spare field at 0."""
+    mod = _load_env_module("sep_locked_field_irq", "sep_locked_field_irq.py")
+    pins: dict[str, int] = mod.spare_zero_pins()
+    return pins
+
+
+def _lc_transition_fixed(seed: int) -> dict[str, int]:
+    """Same pins as ``sep_lcc_lc_state_transition_matrix_test``'s ``cfg.image_fixed()``.
+
+    ``_load_env_module`` returns ``Any``; the annotated local keeps this return out
+    of mypy's ``no-any-return`` check.
+    """
+    mod = _load_env_module("sep_lc_transition", "sep_lc_transition.py")
+    fixed: dict[str, int] = mod.SepLcTransitionCfg(seed).image_fixed()
+    return fixed
+
+
+def _feat_ctrl_dis_fixed(seed: int) -> dict[str, int]:
+    """Same vectors as ``sep_efuse_image_test``'s feat_ctrl_nonvacuous_fixed().
+
+    Returns CHIPLET_UID alone on the common seed; replaces the disable vectors
+    only when the natural draw would make post-sense FEAT_CTRL zero.
+    """
+    mod = _load_env_module("sep_efuse_feat_ctrl", "sep_efuse_feat_ctrl.py")
+    return mod.feat_ctrl_nonvacuous_fixed(seed, base={"CHIPLET_UID": 0})
+
+
 def _set_only_fixed(seed: int) -> dict[str, int]:
     """Same pins as ``sep_efuse_set_only_monotonicity_test``'s ``cfg.image_fixed()``."""
     mod = _load_env_module("sep_efuse_set_only", "sep_efuse_set_only.py")
     return mod.SepEfuseSetOnlyCfg(seed).image_fixed()
+
+
+def _km_otp_id_fixed(seed: int) -> dict[str, int]:
+    """Same pins as ``sep_efuse_km_public_id_test``'s ``cfg.image_fixed()``.
+
+    ``_load_env_module`` returns ``Any``; the annotated local keeps this return out
+    of mypy's ``no-any-return`` check.
+    """
+    mod = _load_env_module("sep_km_otp_id", "sep_km_otp_id.py")
+    fixed: dict[str, int] = mod.SepKmOtpIdCfg(seed).image_fixed()
+    return fixed
 
 
 # Common LC-gated field pins shared by several PROD-lifecycle tests.
@@ -98,47 +139,72 @@ _SIP_SYS_DIS_PINS = {
 
 # sep_lcc_uvm_inbound_filter_gating_test needs DBG_1 bits 0/1 left enabled, because a
 # PROD demotion only relaxes its group to these vectors rather than forcing it open.
-# Kept separate rather than changing the shared dict: the other two entries want the
-# fully-disabled vectors, and this file must mirror each test's own
-# select_efuse_image(fixed=...) or the staged image and the golden disagree.
+# A separate dict: the other entries need the fully-disabled vectors, and each entry
+# must mirror its test's own select_efuse_image(fixed=...) or the staged image and
+# the golden disagree.
 _SIP_SYS_DIS_PINS_DBG_OPEN = {
     "SIP_DIS": 0x0F0F_0F0F_0F0F_0F0C,
     "SYS_DIS": 0x00FF_00FF_00FF_00FC,
 }
 
 # test name -> OTP image spec. mode "random" => randomize(seed+seed_offset, **kw);
-# mode "preload" => load(preload). Mirrors each test's select_efuse_image(...).
+# mode "preload" => load(preload); mode "blank" => SepEfuseImage() unchanged. Mirrors each test's select_efuse_image(...).
 EFUSE_IMAGE_REGISTRY: dict[str, dict] = {
     # Full-shadow proof + W1S persistence: seed-random with CHIPLET_UID pinned to 0
     # (the test programs one bit of it after the first sense). Must match the test's
     # select_efuse_image(fixed={"CHIPLET_UID": 0}).
-    "sep_efuse_image_test": {"mode": "random", "fixed": {"CHIPLET_UID": 0}},
+    # Full-shadow proof + W1S persistence: seed-random with CHIPLET_UID pinned to 0
+    # (the test programs one bit of it after the first sense). The disable vectors
+    # stay random; feat_ctrl_nonvacuous_fixed() replaces them ONLY on a draw that
+    # would make post-sense FEAT_CTRL zero, which would leave the test's
+    # fail-closed contrast comparing 0 against 0.
+    "sep_efuse_image_test": {"mode": "random", "fixed_from": "feat_ctrl_dis"},
     # Committed preload image (test passes +sep_efuse_preload, seed-independent).
     "sep_efuse_sense_test": {"mode": "preload", "preload": str(_DEFAULT_EFUSE_PRELOAD)},
     # LC stitch: starts at TEST_DEV (lc_raw=0x0) with SIP/SYS pins.
     "sep_efuse_lcc_lc_state_stitch_test": {
-        "mode": "random", "lc_raw": 0x0, "fixed": dict(_SIP_SYS_DIS_PINS)},
+        "mode": "random",
+        "lc_raw": 0x0,
+        "fixed": dict(_SIP_SYS_DIS_PINS),
+    },
     # PROD-lifecycle real-sense tests (lc_raw=0x1 = LC_PROD).
     "sep_efuse_jtag_axil_el2_cpu_mux_test": {"mode": "random", "lc_raw": 0x1},
     "sep_fabric_inbound_filter_rule_matrix_test": {
-        "mode": "random", "lc_raw": 0x1, "fixed": dict(_SIP_SYS_DIS_PINS)},
+        "mode": "random",
+        "lc_raw": 0x1,
+        "fixed": dict(_SIP_SYS_DIS_PINS),
+    },
     "sep_sec_dis_override_test": {
-        "mode": "random", "lc_raw": 0x1, "fixed": dict(_SIP_SYS_DIS_PINS)},
+        "mode": "random",
+        "lc_raw": 0x1,
+        "fixed": dict(_SIP_SYS_DIS_PINS),
+    },
     "sep_lcc_uvm_inbound_filter_gating_test": {
-        "mode": "random", "lc_raw": 0x1, "fixed": dict(_SIP_SYS_DIS_PINS_DBG_OPEN)},
+        "mode": "random",
+        "lc_raw": 0x1,
+        "fixed": dict(_SIP_SYS_DIS_PINS_DBG_OPEN),
+    },
     "sep_efuse_km_axil_cpu_mux_coexist_test": {
-        "mode": "random", "lc_raw": 0x1, "fixed": {"CHIPLET_UID": 0xDEAD_BEEF}},
+        "mode": "random",
+        "lc_raw": 0x1,
+        "fixed": {"CHIPLET_UID": 0xDEAD_BEEF},
+    },
     "sep_km_kmac_sideload_kat_test": {"mode": "random", "lc_raw": 0x1},
     "sep_km_aes_sideload_kat_test": {"mode": "random", "lc_raw": 0x1},
     "sep_km_hmac_sideload_kat_test": {"mode": "random", "lc_raw": 0x1},
     "sep_km_otbn_sideload_kat_test": {"mode": "random", "lc_raw": 0x1},
+    "sep_km_handover_test": {"mode": "random", "lc_raw": 0x1},
+    "sep_km_wipe_reset_test": {"mode": "random", "lc_raw": 0x1},
+    "sep_km_command_set_rand_test": {"mode": "random", "lc_raw": 0x1},
+    "sep_km_abr_seed_sideload_test": {"mode": "random", "lc_raw": 0x1},
+    "sep_km_abr_mlkem_sideload_test": {"mode": "random", "lc_raw": 0x1},
     "sep_drbg_real_sink_multi_km_aes_test": {"mode": "random", "lc_raw": 0x1},
-    # Spare-field lock x program. SPARE0..7 pinned 0 so the unlocked-then-lock
-    # walk starts from a known-zero field (lock_prob stays 0).
+    # Spare-field lock x program. Every spare field is pinned 0 so the
+    # unlocked-then-lock walk starts from a known-zero field (lock_prob stays 0).
     "sep_efuse_program_lock_matrix_test": {
         "mode": "random",
         "lc_raw": 0x0,
-        "fixed": {f"SPARE{i}": 0 for i in range(8)},
+        "fixed_from": "program_lock_spares",
     },
     # Demote product starts at TEST_DEV with DIS=0; the pinned DIS pair is
     # W1S-programmed after the first LC walk.
@@ -154,6 +220,11 @@ EFUSE_IMAGE_REGISTRY: dict[str, dict] = {
         "lc_raw": 0x1,
         "fixed_from": "rma_token",
     },
+    "sep_efuse_digest_latch_fault_test": {
+        "mode": "random",
+        "lc_raw": 0x1,
+        "fixed_from": "rma_token",
+    },
     # Set-only shadow OR-merge. Sensed ones come from SepEfuseSetOnlyCfg(seed);
     # see _set_only_fixed() so the t=0 hex matches the test golden.
     "sep_efuse_set_only_monotonicity_test": {
@@ -161,12 +232,71 @@ EFUSE_IMAGE_REGISTRY: dict[str, dict] = {
         "lc_raw": 0x0,
         "fixed_from": "set_only",
     },
+    # LC_STATE shadow-write next-state walk. The OTP image is a t=0 deposit that
+    # survives reset, so each sensed starting state is its own leaf and the
+    # +lc_start on the leaf's args must agree with lc_raw here -- the test reads
+    # the sensed nibble off the DUT and fails loudly if they disagree. Token
+    # digests and SIP/SYS pins come from SepLcTransitionCfg(seed); see
+    # _lc_transition_fixed().
+    "sep_lcc_lc_state_w1s_prod_test": {
+        "mode": "random",
+        "lc_raw": 0x1,
+        "fixed_from": "lc_transition",
+    },
+    "sep_lcc_lc_state_w1s_prod_demote_test": {
+        "mode": "random",
+        "lc_raw": 0x1,
+        "fixed_from": "lc_transition",
+    },
+    "sep_lcc_lc_state_w1s_rma_sip_test": {
+        "mode": "random",
+        "lc_raw": 0x2,
+        "fixed_from": "lc_transition",
+    },
+    "sep_lcc_lc_state_w1s_rma_chiplet_test": {
+        "mode": "random",
+        "lc_raw": 0x6,
+        "fixed_from": "lc_transition",
+    },
+    "sep_lcc_lc_state_w1s_prod_end_test": {
+        "mode": "random",
+        "lc_raw": 0x8,
+        "fixed_from": "lc_transition",
+    },
+    "sep_lcc_lc_state_w1s_prod_end_rma_test": {
+        "mode": "random",
+        "lc_raw": 0x8,
+        "fixed_from": "lc_transition",
+    },
+    # The transient-RMA leaf senses TRANSIENT_RMA_EN=1, which the test re-pins in
+    # its own select_efuse_image call.
+    "sep_lcc_lc_state_w1s_transient_test": {
+        "mode": "random",
+        "lc_raw": 0x8,
+        "fixed_from": "lc_transition",
+        "fixed_extra": {"TRANSIENT_RMA_EN": 1},
+    },
+    # Blank OTP image: the test stages SepEfuseImage() unchanged as its golden.
+    "sep_efuse_token_match_fault_pic_test": {"mode": "blank"},
     # Locked-field shadow IRQ. SPARE lock bits and patterns come from
     # SepLockedFieldIrqCfg(seed); see _locked_field_irq_fixed().
     "sep_locked_field_access_irq_path_test": {
         "mode": "random",
         "lc_raw": 0x1,
         "fixed_from": "locked_field_irq",
+    },
+    # SECURE_TM leaf of the same module: same image pins, same seed derivation.
+    "sep_efuse_secure_tm_write_lock_test": {
+        "mode": "random",
+        "lc_raw": 0x1,
+        "fixed_from": "locked_field_irq",
+    },
+    # KM public-ID readout. The three SEP_*_ID values and the one eFuse read
+    # lock among them come from SepKmOtpIdCfg(seed); see _km_otp_id_fixed().
+    "sep_efuse_km_public_id_test": {
+        "mode": "random",
+        "lc_raw": 0x1,
+        "fixed_from": "km_otp_id",
     },
 }
 
@@ -212,11 +342,56 @@ def _resolve_preload(path: str, cwd, root) -> Path:
     raise FileNotFoundError(f"+sep_efuse_preload={path} not found (tried: {tried})")
 
 
+# KM production ROM built by [c_build.km_rom_main] (sep_sim_cfg.toml). c_compile
+# builds it in <run_dir>/stages/c_compile/rom_main/<item>/, a directory private
+# to that run and test, and declares no output, so this hook stages it.
+_KM_ROM_MAIN = "rom_main.rom.parhex"
+_KM_ROM_MAIN_ARG = f"+km_rom_hex={_KM_ROM_MAIN}"
+
+
+def _stage_km_rom_main(item: str, cwd, sim_args) -> bool:
+    """Copy this run's KM rom_main image into the sim directory.
+
+    Applies to a leaf whose plusargs carry ``+km_rom_hex=rom_main.rom.parhex``.
+    The run directory is the nearest ancestor of ``cwd`` that holds this
+    item's c_compile build directory (``cwd`` is ``<run_dir>/<item>``, or
+    ``<run_dir>/<item>/seed_<n>/attempt_<m>`` in a regression). The copy is
+    written to a temporary name, then moved into place. A missing image raises, so a sim
+    never boots an image from another run or an earlier build.
+    """
+    if _KM_ROM_MAIN_ARG not in (sim_args or []):
+        return False
+    cwd = Path(cwd).resolve()
+    rel = Path("stages") / "c_compile" / "rom_main" / item / _KM_ROM_MAIN
+    for base in (cwd, *cwd.parents):
+        src = base / rel
+        if src.parent.is_dir():
+            break
+    else:
+        raise FileNotFoundError(
+            f"{item}: no c_compile build of {_KM_ROM_MAIN} for this run "
+            f"(looked for <run_dir>/{rel} above {cwd}); run c_compile first"
+        )
+    if not src.is_file() or src.stat().st_size == 0:
+        raise FileNotFoundError(f"{item}: c_compile left no {_KM_ROM_MAIN} at {src}")
+    dst = cwd / _KM_ROM_MAIN
+    tmp = cwd / f".{_KM_ROM_MAIN}.tmp.{os.getpid()}"
+    shutil.copyfile(src, tmp)
+    os.replace(tmp, dst)
+    print(f"[dv_sim_prestage] staged {item} KM ROM {src} -> {dst}", flush=True)
+    return True
+
+
 def stage(item: str, seed: int, cwd, *, sim_args=None, root=None) -> bool:
-    """Write ``<cwd>/out/sep_efuse.hex`` for a registered efuse test OR any test that
-    passes ``+sep_efuse_preload`` (the plusarg overrides the registry, matching the
-    runtime ``select_efuse_image`` contract). Returns True if an image was staged,
-    False if the test is neither registered nor carrying a preload plusarg (no-op)."""
+    """Stage the pre-sim images a leaf loads at time 0.
+
+    Copies this run's KM rom_main image when the leaf boots it (see
+    ``_stage_km_rom_main``). Writes ``<cwd>/out/sep_efuse.hex`` for a registered
+    efuse test OR any test that passes ``+sep_efuse_preload`` (the plusarg
+    overrides the registry, matching the runtime ``select_efuse_image``
+    contract). Returns True if an eFuse image was staged, False if the test is
+    neither registered nor carrying a preload plusarg."""
+    _stage_km_rom_main(item, cwd, sim_args)
     preload_sel = _preload_from_args(sim_args)
     spec = EFUSE_IMAGE_REGISTRY.get(item)
     if preload_sel is None and spec is None:
@@ -238,14 +413,27 @@ def stage(item: str, seed: int, cwd, *, sim_args=None, root=None) -> bool:
         image.load(path)
     elif spec.get("mode") == "preload":
         image.load(spec["preload"])
+    elif spec.get("mode") == "blank":
+        pass
     else:
         fixed = spec.get("fixed")
         if spec.get("fixed_from") == "rma_token":
             fixed = _rma_token_fixed(seed + int(spec.get("seed_offset", 0)))
+        elif spec.get("fixed_from") == "feat_ctrl_dis":
+            fixed = _feat_ctrl_dis_fixed(seed + int(spec.get("seed_offset", 0)))
         elif spec.get("fixed_from") == "set_only":
             fixed = _set_only_fixed(seed + int(spec.get("seed_offset", 0)))
+        elif spec.get("fixed_from") == "lc_transition":
+            fixed = _lc_transition_fixed(seed + int(spec.get("seed_offset", 0)))
+        elif spec.get("fixed_from") == "program_lock_spares":
+            fixed = _program_lock_spares_fixed()
         elif spec.get("fixed_from") == "locked_field_irq":
             fixed = _locked_field_irq_fixed(seed + int(spec.get("seed_offset", 0)))
+        elif spec.get("fixed_from") == "km_otp_id":
+            fixed = _km_otp_id_fixed(seed + int(spec.get("seed_offset", 0)))
+        extra = spec.get("fixed_extra")
+        if extra:
+            fixed = {**(fixed or {}), **extra}
         image.randomize(
             seed + int(spec.get("seed_offset", 0)),
             lc_raw=spec.get("lc_raw"),

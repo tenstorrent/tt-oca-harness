@@ -1,0 +1,98 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+#
+# SMC Verilator coverage policy.
+#
+# Two mechanisms, do not confuse them:
+#
+#   smc_cov_scope.vlt   `coverage_off` -> the point never enters the database.
+#                       Structural OUT: code this DUT does not own.
+#   [[holes]] here      the point exists and is not hit, carried with a
+#                       category, a rationale and an owner.
+#
+# Scope: smc_cov_scope.vlt drops the chipyard-generated CPU cluster, TB code and
+# most vendored RTL at compile time, following the SEP precedent that
+# hw/sys/smc/dv/cov/config/vcs/README.md records. Third-party RTL and the
+# generated CPU cluster dominate the unscoped denominator. The gap:
+# `coverage_off -file "*vendor/*"` does not reach vendor/pulp-platform/** or
+# vendor/tenstorrent/tt-hw-debug/**, so those stay in the denominator; no file
+# pattern reaches them (that README, "Known gap in the Verilator scope").
+#
+# `hw/ip/**` stays in scope: it is Tenstorrent IP that SMC integrates, and
+# integration coverage of those blocks is part of what SMC-level DV is for.
+#
+# The scoped number is "the SMC DUT minus the CPU cluster, the I3C core, the
+# lowRISC prims and TB code" -- not "SMC coverage". Quote it that way.
+#
+# Public gate is the `user` family: every `cov/sv` point is hit or classified.
+# `max_unclassified_points = 0` on that row fails a new unclassified user hole.
+# line / branch / expression floors are regression guards only and do not set
+# that knob: those families still have unclassified vendor and generated-CPU
+# points that `smc_cov_scope.vlt` cannot drop.
+#
+# The coverage set is `--items hosted fw`, 294 of the 299 leaves in the
+# package regression `all`. It leaves out the three `sanity` leaves, which
+# elaborate a second build target that the coverage merge cannot combine with
+# `default`, and the two MMIO isolate-flush leaves
+# (`smc_cpu_mmio_read_wedge_test`, `smc_cpu_mmio_write_wedge_test`), which are
+# in `all` and in none of `hosted`, `fw` or `sanity`. SEP names its coverage set
+# the same way, `all` less `rom_fw`. `hosted` alone is the
+# toolchain-free CI tier; the fw leaves carry the PLIC, I2C, UART and OCTS
+# stimulus that no hosted leaf drives.
+#
+# Floors: line 78.0 / branch 75.9 / expression 69.0 were set from the
+# hosted measurement (Verilator 5.050, 168 leaves: line 78.0977,
+# branch 75.9964, expression 69.0966) and stay as regression guards; the
+# `hosted fw` measurement (294 leaves) reads line 97.83, branch
+# 92.58, expression 92.54 and user 453 of 453. Every collected `user`
+# point is hit by an enrolled leaf; a point this bench cannot legally reach
+# is not collected (see the Phase 2 list in SMC_FCOV.adoc) rather than
+# waived here, so this file carries no `[[holes]]`.
+#
+# Hole categories a row may carry:
+#   missing_stimulus  no enrolled test drives the condition; the rationale
+#                     names the cell and, where one is proposed, the test.
+#   needs_review      the cell is blocked by an open spec finding; the point
+#                     stays on the implemented behaviour and takes no credit
+#                     until the finding is answered.
+#   unreachable       no stimulus this bench can present can satisfy the
+#                     point (the rationale names the blocking path).
+# Selectors are exact hierarchies with expected_matches = 1. The grader fails
+# when a row's selectors match a different number of observations, when two
+# rows claim one observation, and when an `accepted` row with disposition
+# `waive` or `exclude_scope` matches a covered point. Any other row whose point
+# is hit, an `open` `cover` row included, grades without error, so a row whose
+# point starts firing stays in this file until it is removed by hand.
+
+schema_version = 1
+dut = "smc"
+scope_epoch = "smc-fcov-v1"
+
+[[thresholds]]
+id = "smc-user-effective"
+tool = "verilator"
+metric_family = "user"
+population = "effective"
+minimum_percent = 100.0
+max_unclassified_points = 0
+
+[[thresholds]]
+id = "smc-line-effective"
+tool = "verilator"
+metric_family = "line"
+population = "effective"
+minimum_percent = 78.0
+
+[[thresholds]]
+id = "smc-branch-effective"
+tool = "verilator"
+metric_family = "branch"
+population = "effective"
+minimum_percent = 75.9
+
+[[thresholds]]
+id = "smc-expression-effective"
+tool = "verilator"
+metric_family = "expression"
+population = "effective"
+minimum_percent = 69.0

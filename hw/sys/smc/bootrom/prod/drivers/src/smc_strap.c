@@ -58,8 +58,6 @@ void smc_strap_init(void) {
     g_smc_straps.rotate_update =
         (g_smc_straps.straps_hi_raw & SMC_STRAP_ROTATE_UPDATE_MASK) ? 1 : 0;
 
-    g_smc_straps.boot_stall = (g_smc_straps.straps_lo_raw & SMC_STRAP_BOOT_STALL_MASK) ? 1 : 0;
-
     /* Mark as initialized */
     g_strap_initialized = 1;
 
@@ -144,12 +142,12 @@ static inline void smc_strap_post_code_update(void) {
         /* Report boot modes detected */
         smc_status_report(SMC_STATUS_TYPE_STATUS,
                           SMC_STATUS_PRIMARY_MODE); // report primary mode or secondary mode though
-                                                    // it doesnt affect the SMC ROM behavior
+                                                    // it doesn't affect the SMC ROM behavior
     } else {
         smc_post_code_mark_secondary();
         smc_status_report(
             SMC_STATUS_TYPE_STATUS,
-            SMC_STATUS_SECONDARY_MODE); // report primary mode or secondary mode though it doesnt
+            SMC_STATUS_SECONDARY_MODE); // report primary mode or secondary mode though it doesn't
                                         // affect the SMC ROM behavior
     }
 
@@ -166,10 +164,6 @@ static inline void smc_strap_post_code_update(void) {
     }
 
     /* Update POST code strap status bits */
-    if (g_smc_straps.boot_stall) {
-        strap_status_bits |=
-            (uint8_t)(1U << (POST_CODE_STRAP_BOOT_STALL_BIT - POST_CODE_STRAP_STATUS_SHIFT));
-    }
     if (g_smc_straps.status_rpt_disable) {
         strap_status_bits |=
             (uint8_t)(1U << (POST_CODE_STRAP_STATUS_RPT_DIS_BIT - POST_CODE_STRAP_STATUS_SHIFT));

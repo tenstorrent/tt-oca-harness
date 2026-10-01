@@ -30,7 +30,7 @@
 cond_swap_gprs:
   /*
    * Calculate Boolean mask (0 - b) = 0 if b == 0 else 0xFFFF_FFFF
-   * Randomize the destination register to soften the impact of overwritting
+   * Randomize the destination register to soften the impact of overwriting
    * it with all 0s or all 1s:
    *
    *   d = (0 - b)
@@ -110,7 +110,7 @@ modexp_65536:
  *
  * Calculates: C = modexp(A, d) = A^d mod M
  *
- * This routine implements a constant-time modular exponentation Montgomery
+ * This routine implements a constant-time modular exponentiation Montgomery
  * ladder using Boolean-masked exponents in two shares (d0, d1) as proposed by
  * Tunstall et al.
  *
@@ -119,7 +119,7 @@ modexp_65536:
  * The individual bits of the exponent shares randomize the memory accesses of
  * intermediate values in each iteration thus inhibiting horizontal attacks that
  * exploit leakage spanning multiple rounds. As the exponent is re-masked for
- * every exponentation vertical attacks over multiple traces are mitigated as
+ * every exponentiation vertical attacks over multiple traces are mitigated as
  * well.
  *
  * The input A is blinded for each exponentiation using the inverse-free
@@ -237,7 +237,7 @@ _message_blinding_prologue_end:
   # into Z/NZ (see Section 2.4.2 in https://eprint.iacr.org/2017/1057.pdf for
   # more details on this optimization).
   #
-  # [1] asks for r0 and r1 to be initialzed to 1 or montmul(1, RR) in the
+  # [1] asks for r0 and r1 to be initialized to 1 or montmul(1, RR) in the
   # Montgomery domain over Z/MZ which congruent to -M in Z/RZ.
   la  x2, r0
   la  x3, r1
@@ -609,7 +609,7 @@ cond_sub_to_dmem:
     /* load limb of subtrahend (input B): w3 = dmem[x16+i] */
     bn.lid    x9, 0(x16++)
 
-    /* move limb from bignum bufer to w2 */
+    /* move limb from bignum buffer to w2 */
     bn.movr   x11, x8++
 
     /* perform subtraction for a limb w3 = w2-1 */

@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Checks spelled-out forms of this repository's acronyms against their
+# canonical expansions, regardless of how a wrong expansion is worded.
+# AcronymDefinitions.tengo owns the single registry of accepted expansions
+# and the in-tree source that confirms each one.
+extends: script
+message: "%s"
+level: error
+scope: raw
+script: AcronymDefinitions.tengo

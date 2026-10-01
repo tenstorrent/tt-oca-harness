@@ -6,17 +6,17 @@
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: chip_config</h2>
-<h2>Register List:</h2>
+<h2 id="regmap-chip_config">Chip Configuration Address Map</h2>
+<p>Chip version, identification, and lifecycle-state registers.</p>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#VERSION_LO">VERSION_LO</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x4</td><td><a href="#VERSION_HI">VERSION_HI</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x8</td><td><a href="#CHIP_ID">CHIP_ID</a></td><td>R</td><td>-</td></tr>
 <tr><td>0xC</td><td><a href="#LC_STATE">LC_STATE</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x10</td><td><a href="#RAS_BANK_INFO">RAS_BANK_INFO</a></td><td>RW</td><td>-</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="VERSION_LO">VERSION_LO</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -37,12 +37,5 @@
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>7:0</td><td>lc_state</td><td>R</td><td>0xF</td><td>Lifecycle state value from SEP. Default to invalid state</td></tr>
-</table>
-<h3 id="RAS_BANK_INFO">RAS_BANK_INFO</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7:4</td><td>bank_instance</td><td>RW</td><td>0x0</td><td>Chiplet instance ID</td></tr>
-<tr><td>3:0</td><td>bank_chip</td><td>RW</td><td>0x0</td><td>Chiplet type ID</td></tr>
 </table>
 </div>

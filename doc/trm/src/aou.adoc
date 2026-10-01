@@ -1,0 +1,72 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= AXI-over-UCIe Bridge (AoU)
+
+[[axi-over-ucie-bridge]]
+The AXI-over-UCIe bridge transports AXI transactions between chiplets through
+the UCIe interface. These pages reproduce the AOU_CORE Microarchitecture
+Specification, originally authored by BOS Semiconductors, and follow the
+https://www.openchipletatlas.org/specifications/aou/latest[AXI over UCIe protocol specification].
+
+ifdef::backend-pdf[]
+:aou-imagesdir: {docdir}/../../../vendor/tenstorrent/aou/upstream/DOC/MAS/assets
+
+== Overview and Features
+
+include::../modules/aou/partials/pdf/overview.adoc[leveloffset=+1]
+include::../modules/aou/partials/pdf/architecture.adoc[leveloffset=+0]
+
+== Interrupts and Errors
+
+include::../modules/aou/partials/pdf/interrupts-errors.adoc[leveloffset=+1]
+
+== PPA and Appendices
+
+include::../modules/aou/partials/pdf/ppa-appendices.adoc[leveloffset=+1]
+
+include::../modules/aou/partials/pdf/software-operation.adoc[leveloffset=+1]
+
+For references from all TRM chapters, see
+<<trm-referenced-documents,Referenced Documents>>.
+
+endif::backend-pdf[]
+
+ifdef::backend-html5[]
+include::aou:partial$overview-anchors.adoc[]
+
+* xref:aou-overview.adoc[Overview and Features] -- bridge operation, supported
+  interfaces, configurations, and capabilities.
+
+include::aou:partial$architecture-anchors.adoc[]
+
+* xref:aou-architecture.adoc[Architecture] -- transmit and receive paths,
+  width conversion, transaction handling, credits, and UCIe flow control.
+
+include::aou:partial$interrupts-errors-anchors.adoc[]
+
+* xref:aou-interrupts-errors.adoc[Interrupts and Errors] -- interrupt sources,
+  status reporting, and error handling.
+
+include::aou:partial$ppa-appendices-anchors.adoc[]
+
+* xref:aou-ppa-appendices.adoc[PPA] -- performance, power, and area.
+
+ifndef::release[]
+include::aou:partial$records-of-changes-anchors.adoc[]
+
+* xref:aou-records-of-changes.adoc[Appendix A. Records of Changes] -- revision history.
+endif::release[]
+
+include::aou:partial$referenced-documents-anchors.adoc[]
+
+* xref:aou-referenced-documents.adoc[Appendix B. Referenced Documents] -- reference list.
+
+include::aou:partial$software-operation-anchors.adoc[]
+
+* xref:aou-software-operation.adoc[Appendix C. Software Operation] -- software operation guide.
+
+Integration details are in the xref:ocah-integrator-guide:ROOT:aou.adoc[Integrator Guide].
+Register programming and activation flows are in the
+xref:ocah-programmer-guide:ROOT:index.adoc[Programmer's Guide].
+endif::backend-html5[]

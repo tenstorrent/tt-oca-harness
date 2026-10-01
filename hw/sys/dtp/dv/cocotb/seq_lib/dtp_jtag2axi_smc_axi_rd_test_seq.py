@@ -31,22 +31,20 @@ class dtp_jtag2axi_smc_axi_rd_test_seq(dtp_jtag2axi_base_test_seq):
         self.data = DEFAULT_AXI_DATA
         self.operation_count = 0
 
+    def bus_ledger_target(self) -> str | None:
+        return None if "security_gating" in self.scenario else "smc_axi"
+
     async def run_single_write_read(self) -> None:
         self.log_banner("SMC_AXI_SINGLE_OP Single Write-Read")
         await self.reset_tap()
-        addr = DEFAULT_AXI_ADDR + 0x400
-        # Seeded per-pass payload: each loop writes and reads back different data.
-        data = self.rng("smc_axi_single_wr_rd").getrandbits(64)
-        write_item = await self.write_single_and_check(addr, data, context="single_wr_rd.write")
-        read_item = await self.read_single_and_check(addr, data, context="single_wr_rd.read")
-        self.status = (
-            read_item.status
-            if read_item.status != DtpJtag2AxiStatus.SUCCESS
-            else write_item.status
+        # Seeded per-pass payloads: each loop writes and reads back different data.
+        self.status, self.rdata, self.data = await self.write_neighbour_then_read(
+            "smc_axi",
+            DEFAULT_AXI_ADDR + 0x400,
+            self.rng("smc_axi_single_wr_rd"),
+            context="single_wr_rd",
         )
-        self.rdata = read_item.rdata
-        self.data = data
-        self.operation_count += 2
+        self.operation_count += 3
 
     async def run_series_write_read_incr(self) -> None:
         self.log_banner("SMC_AXI Series Write-Read Incrementing")
@@ -55,43 +53,102 @@ class dtp_jtag2axi_smc_axi_rd_test_seq(dtp_jtag2axi_base_test_seq):
         size = 3
         stride = self.size_bytes(size)
         beats = max(2, min(self.random_count, 6))
-        base = self.random_aligned_addr(rng, size) & ~0x3F
+        base = self.random_series_base("smc_axi", rng, span=beats * stride, straddle=True)
         expected = []
         self.log_step(1, "Write incrementing series")
         await self.jtag2axi_series_ctrl(DtpJtag2AxiOp.WRITE, base, size=size)
         for idx in range(beats):
             data = rng.getrandbits(64) & self.data_mask(size)
             expected.append(data)
-            before = await self.axi_activity_counts()
-            await self.series_data_incr(data, size=size, back_to_rti=True)
-            await self.wait_for_smc_axi_activity(
-                before=before,
-                read=False,
-                context=f"series_wr_rd_incr.write_axi#{idx}",
-            )
-            self.assert_equal(
-                f"series_wr_rd_incr.mem#{idx}",
-                self.read_mem_int(base + idx * stride, size),
+            await self.series_write_beat(
+                "smc_axi",
                 data,
+                addr=base + idx * stride,
+                size=size,
+                increment=True,
+                context=f"series_wr_rd_incr.write#{idx}",
             )
         self.log_step(2, "Read incrementing series back")
         for idx, exp in enumerate(expected):
             addr = base + idx * stride
-            await self.jtag2axi_series_ctrl(DtpJtag2AxiOp.READ, addr, size=size)
-            before = await self.axi_activity_counts()
-            await self.series_data_incr(0, size=size, back_to_rti=True)
-            await self.wait_for_smc_axi_activity(
-                before=before,
-                read=True,
-                context=f"series_wr_rd_incr.read_axi#{idx}",
+            obs = await self.series_read_beat(
+                "smc_axi",
+                addr=addr,
+                size=size,
+                increment=True,
+                context=f"series_wr_rd_incr.read#{idx}",
             )
-            raw = await self.series_data_incr(0, size=size, back_to_rti=True)
-            obs, _ = self.__class__.unpack_series_value(raw, size)
-            self.log_iteration(idx + 1, beats, "series read incr addr=0x%08x obs=0x%x", addr, obs)
+            self.log_iteration(idx + 1, beats, "series read incr addr=0x%014x obs=0x%x", addr, obs)
             self.assert_equal(f"series_wr_rd_incr.rdata#{idx}", obs, exp, f"addr=0x{addr:x}")
             self.operation_count += 1
-        _, _, _, _, status = await self.read_series_ctrl(size=size)
-        self.status = status
+        # The last primed incrementing read advanced the series address by
+        # one stride past the last beat.
+        self.status = await self.check_series_addr(
+            "smc_axi", addr + stride, size=size, context="series_wr_rd_incr.final"
+        )
+
+    async def run_series_write_read_incr_narrow(self) -> None:
+        self.log_banner("SMC_AXI Series Write-Read 32-bit Incrementing at Beat Offset +4")
+        await self.reset_tap()
+        rng = self.rng("series_read_incr_narrow")
+        size = 2
+        stride = self.size_bytes(size)
+        beats = max(2, min(self.random_count, 6))
+        # The whole 64-bit beats the stream's words touch.
+        span = (4 + beats * stride + AXI_BEAT_BYTES - 1) // AXI_BEAT_BYTES * AXI_BEAT_BYTES
+        base = self.random_series_base("smc_axi", rng, span=span, straddle=True) + 4
+        # A read returns the whole beat, which the reference model predicts
+        # from its shadow at the full address: whole-beat preloads give every
+        # beat the stream touches a known word on the lanes it does not write.
+        first_beat = base - base % AXI_BEAT_BYTES
+        for beat in range(first_beat, base + beats * stride, AXI_BEAT_BYTES):
+            self.write_mem_int(beat, rng.getrandbits(64), 3)
+        expected = []
+        self.log_step(1, "Write 32-bit incrementing series at +4")
+        await self.jtag2axi_series_ctrl(DtpJtag2AxiOp.WRITE, base, size=size)
+        for idx in range(beats):
+            data = rng.getrandbits(64) & self.data_mask(size)
+            expected.append(data)
+            addr = base + idx * stride
+            await self.series_write_beat(
+                "smc_axi",
+                data,
+                addr=addr,
+                size=size,
+                increment=True,
+                context=f"series_wr_rd_incr_narrow.write#{idx}",
+            )
+            # A NOP SERIES_CTRL capture leaves the latched stream running.
+            status = await self.check_series_addr(
+                "smc_axi", addr + stride, size=size, context=f"series_wr_rd_incr_narrow.write#{idx}"
+            )
+            self.assert_equal(
+                f"series_wr_rd_incr_narrow.write_status#{idx}", status, DtpJtag2AxiStatus.SUCCESS
+            )
+        self.log_step(2, "Read 32-bit incrementing series back")
+        for idx, exp in enumerate(expected):
+            addr = base + idx * stride
+            obs = await self.series_read_beat(
+                "smc_axi",
+                addr=addr,
+                size=size,
+                increment=True,
+                context=f"series_wr_rd_incr_narrow.read#{idx}",
+            )
+            self.log_iteration(
+                idx + 1, beats, "series read incr narrow addr=0x%014x obs=0x%x", addr, obs
+            )
+            self.assert_equal(f"series_wr_rd_incr_narrow.rdata#{idx}", obs, exp, f"addr=0x{addr:x}")
+            # The primed read advanced the series address by one stride.
+            self.status = await self.check_series_addr(
+                "smc_axi", addr + stride, size=size, context=f"series_wr_rd_incr_narrow.read#{idx}"
+            )
+            self.assert_equal(
+                f"series_wr_rd_incr_narrow.read_status#{idx}",
+                self.status,
+                DtpJtag2AxiStatus.SUCCESS,
+            )
+            self.operation_count += 1
 
     async def run_series_write_read_no_incr(self) -> None:
         self.log_banner("SMC_AXI Series Write-Read No-Increment")
@@ -99,97 +156,53 @@ class dtp_jtag2axi_smc_axi_rd_test_seq(dtp_jtag2axi_base_test_seq):
         rng = self.rng("series_read_no_incr")
         size = 3
         beats = max(2, min(self.random_count, 6))
-        addr = self.random_aligned_addr(rng, size)
+        addr = self.random_upper_addr("smc_axi", rng) | self.random_aligned_addr(rng, size)
         values = [rng.getrandbits(64) & self.data_mask(size) for _ in range(beats)]
         await self.jtag2axi_series_ctrl(DtpJtag2AxiOp.WRITE, addr, size=size)
         for idx, data in enumerate(values, start=1):
-            self.log_iteration(idx, beats, "series no-incr write addr=0x%08x data=0x%x", addr, data)
-            before = await self.axi_activity_counts()
-            await self.series_data_no_incr(data, size=size, back_to_rti=True)
-            await self.wait_for_smc_axi_activity(
-                before=before,
-                read=False,
-                context=f"series_wr_rd_no_incr.write_axi#{idx}",
+            self.log_iteration(
+                idx, beats, "series no-incr write addr=0x%014x data=0x%x", addr, data
             )
-        expected = values[-1]
-        for idx in range(1, beats + 1):
-            await self.jtag2axi_series_ctrl(DtpJtag2AxiOp.READ, addr, size=size)
-            before = await self.axi_activity_counts()
-            await self.series_data_no_incr(0, size=size, back_to_rti=True)
-            await self.wait_for_smc_axi_activity(
-                before=before,
-                read=True,
-                context=f"series_wr_rd_no_incr.read_axi#{idx}",
+            await self.series_write_beat(
+                "smc_axi",
+                data,
+                addr=addr,
+                size=size,
+                increment=False,
+                context=f"series_wr_rd_no_incr.write#{idx}",
             )
-            raw = await self.series_data_no_incr(0, size=size, back_to_rti=True)
-            obs, _ = self.__class__.unpack_series_value(raw, size)
-            self.log_iteration(idx, beats, "series no-incr read addr=0x%08x obs=0x%x", addr, obs)
-            self.assert_equal(f"series_wr_rd_no_incr.rdata#{idx}", obs, expected)
-            self.operation_count += 1
-        _, addr_after, _, _, status = await self.read_series_ctrl(size=size)
-        self.assert_equal("series_wr_rd_no_incr.addr_after", addr_after, addr)
-        self.status = status
+        self.status = await self.series_reread_fixed(
+            "smc_axi", addr, values[-1], beats, rng, context="series_wr_rd_no_incr"
+        )
+        self.operation_count += beats
 
     async def run_series_write_read_incr_with_error(self) -> None:
         self.log_banner("SMC_AXI Series Write-Read With Error-Status Mode")
         await self.reset_tap()
         rng = self.rng("series_read_with_status")
-        size = 3
-        stride = self.size_bytes(size)
-        base = self.random_aligned_addr(rng, size) & ~0x3F
-        increments = [1, 0, 1, 1]
-        expected_by_addr = {}
-        addr = base
-        await self.jtag2axi_series_ctrl(DtpJtag2AxiOp.WRITE, base, size=size, back_to_rti=True)
-        for idx, inc in enumerate(increments, start=1):
-            data = rng.getrandbits(64) & self.data_mask(size)
-            self.log_iteration(
-                idx,
-                len(increments),
-                "write-with-status addr=0x%08x inc=%d",
-                addr,
-                inc,
-            )
-            before = await self.axi_activity_counts()
-            await self.series_data_with_status(data, size=size, increment=inc, back_to_rti=True)
-            await self.wait_for_smc_axi_activity(
-                before=before,
-                read=False,
-                context=f"series_wr_rd_status.write_axi#{idx}",
-            )
-            expected_by_addr[addr] = data
-            addr += stride if inc else 0
-        addr = base
-        for idx, inc in enumerate(increments, start=1):
-            await self.jtag2axi_series_ctrl(DtpJtag2AxiOp.READ, addr, size=size, back_to_rti=True)
-            before = await self.axi_activity_counts()
-            await self.series_data_with_status(0, size=size, increment=inc, back_to_rti=True)
-            await self.wait_for_smc_axi_activity(
-                before=before,
-                read=True,
-                context=f"series_wr_rd_status.read_axi#{idx}",
-            )
-            raw_data, status_bit = await self.series_data_with_status(
-                0,
-                size=size,
-                increment=0,
-                back_to_rti=True,
-            )
-            exp = expected_by_addr[addr]
-            self.log_iteration(
-                idx,
-                len(increments),
-                "read-with-status addr=0x%08x inc=%d status_bit=%d",
-                addr,
-                inc,
-                status_bit,
-            )
-            self.assert_equal(f"series_wr_rd_status.rdata#{idx}", raw_data, exp)
-            addr += stride if inc else 0
-            self.operation_count += 1
-        _, addr_after, _, _, status = await self.read_series_ctrl(size=size)
-        self.assert_equal("series_wr_rd_status.addr_after", addr_after, addr)
-        self.status = status
+        plan = self.plan_series_status("smc_axi", rng)
+        words = [rng.getrandbits(64) & self.data_mask(plan.size) for _ in plan.increments]
+        self.log_step(1, "Write the with-status series without a fault")
+        await self.run_series_status_write(plan, words, context="series_wr_rd_status.write")
+        plan = self.arm_series_status_fault(plan, rng, read=True)
+        self.log_step(
+            2, "Read the series back; beat %d returns %s", plan.fault_idx, plan.expected.name
+        )
+        await self.run_series_status_read(
+            plan, plan.final_words(words), context="series_wr_rd_status.read"
+        )
+        self.log_step(3, "Recover with a legal single read outside the stream")
+        self.status = await self.verify_target_recovery(
+            "smc_axi",
+            addr=self.series_status_recovery_addr(plan),
+            data=rng.getrandbits(64),
+            read=True,
+            context="series_wr_rd_status",
+        )
+        self.operation_count += 2 * plan.beats + 1
+        self.emit_series_status_nonvacuity(
+            "series_write_read_incr_with_error", plan, self.operation_count
+        )
 
     async def run_read_random_ops(self) -> None:
         self.log_banner("SMC_AXI_SINGLE_OP Randomized Reads")
@@ -197,13 +210,18 @@ class dtp_jtag2axi_smc_axi_rd_test_seq(dtp_jtag2axi_base_test_seq):
         rng = self.rng("random_read_ops")
         for idx in range(1, self.random_count + 1):
             size = rng.choice([0, 1, 2, 3])
-            addr = self.random_aligned_addr(rng, size)
-            data = rng.getrandbits(64) & self.data_mask(size)
-            self.write_mem_int(addr, data, size)
+            beat = self.random_upper_addr("smc_axi", rng) | self.random_aligned_addr(rng, size)
+            offset = rng.randrange(0, AXI_BEAT_BYTES >> size) << size
+            addr = beat + offset
+            # Whole-beat preload: the read returns the whole beat, and the
+            # reference model predicts it from its shadow at the full address.
+            word = rng.getrandbits(64)
+            self.write_mem_int(beat, word, 3)
+            data = (word >> (8 * offset)) & self.data_mask(size)
             self.log_iteration(
                 idx,
                 self.random_count,
-                "random read addr=0x%08x size=%d data=0x%x",
+                "random read addr=0x%014x size=%d data=0x%x",
                 addr,
                 size,
                 data,
@@ -239,18 +257,24 @@ class dtp_jtag2axi_smc_axi_rd_test_seq(dtp_jtag2axi_base_test_seq):
 
         # Two assert/release passes of the one direct disable prove the gate
         # is repeatable, not a one-shot POR effect.
+        cfg = self.target_cfg("smc_axi")
+        image_rng = self.rng("smc_axi_read_gate_image")
         for idx in (1, 2):
             bit_name = f"smc_jtag2axi_pass{idx}"
             self.log_step(idx + 1, "Gate SMC fabric read with smc_jtag2axi (pass %d)", idx)
+            gate_addr = addr + (idx * AXI_BEAT_BYTES)
+            reference = await self.gate_image_reference(
+                "smc_axi", image_rng, request_addr=gate_addr
+            )
             await self.disable_debug_bits("smc_jtag2axi")
             # Snapshot BEFORE the gated attempt so a request pulse leaked at
             # shift time is caught, then hold a blocked window across it: any
             # monitored m_axi transaction inside the window fails.
             gate_before = await self.axi_activity_counts()
             self.scoreboard_begin_blocked("smc_axi")
-            raw = pack_single_op(DtpJtag2AxiOp.READ, addr + (idx * AXI_BEAT_BYTES))
+            raw = pack_single_op(DtpJtag2AxiOp.READ, gate_addr)
             await self.load_ir(DtpJtagInstr.SMC_AXI_SINGLE_OP, back_to_rti=True)
-            await self.shift_dr(raw, 132, back_to_rti=True)
+            gated = await self.shift_dr(raw, cfg.single_op_len, back_to_rti=True)
             await self.expect_no_smc_axi_activity(8, context=f"read_gate.{bit_name}.no_axi")
             if self.axi_scoreboard is not None:
                 gate_after = await self.axi_activity_counts()
@@ -262,6 +286,15 @@ class dtp_jtag2axi_smc_axi_rd_test_seq(dtp_jtag2axi_base_test_seq):
                         f"source=tb_pulse_counters window=gated_attempt+8cyc"
                     ),
                 )
+            post = await self.read_tdr(cfg.single_op_reg)
+            self.check_gated_tdr(
+                "smc_axi",
+                reference,
+                raw,
+                request_capture=gated.result,
+                post_capture=post,
+                context=f"read_gate.{bit_name}",
+            )
             # Hold the blocked window ACROSS disable release: a bridge that
             # queued the gated request and replays it once the gate re-opens
             # is the exact leak this scenario must catch.
@@ -314,16 +347,12 @@ class dtp_jtag2axi_smc_axi_rd_test_seq(dtp_jtag2axi_base_test_seq):
                 ),
             )
 
-    @staticmethod
-    def unpack_series_value(raw: int, size: int) -> tuple[int, int]:
-        from env.dtp_types import unpack_series_data
-        return unpack_series_data(raw, size)
-
     async def body(self) -> None:
         await self.enable_all_debug()
         scenarios = {
             "single_write_read": self.run_single_write_read,
             "series_write_read_incr": self.run_series_write_read_incr,
+            "series_write_read_incr_narrow": self.run_series_write_read_incr_narrow,
             "series_write_read_no_incr": self.run_series_write_read_no_incr,
             "series_write_read_incr_with_error": self.run_series_write_read_incr_with_error,
             "read_random_ops": self.run_read_random_ops,

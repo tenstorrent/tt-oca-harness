@@ -1,20 +1,26 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+// Declare memory-interface typedefs for the four-core Chipyard cluster.
+//
+// Declares ROM, scratch RAM, and L1 cache request/response structs, and the TileLink structs
+// of the cluster boot ROM port.
+// Bank-count localparams size the mem-swap and CPU wrapper port arrays.
+
 `ifndef CHIPYARD_4CORE_MEMORY_INTERFACE
 `define CHIPYARD_4CORE_MEMORY_INTERFACE
 
 package chipyard_4core_mem_pkg;
 
-	// Memory Parameters
-	localparam int unsigned NUM_SRAM_BANKS = 32;
-	localparam int unsigned NUM_ICACHE_TAG_BANKS = 4;
-	localparam int unsigned NUM_ICACHE_DATA_BANKS = 8;
-	localparam int unsigned NUM_DCACHE_TAG_BANKS = 4;
-	localparam int unsigned NUM_DCACHE_DATA_BANKS = 4;
+  // Memory Parameters
+  localparam int unsigned NUM_SRAM_BANKS = 32;
+  localparam int unsigned NUM_ICACHE_TAG_BANKS = 4;
+  localparam int unsigned NUM_ICACHE_DATA_BANKS = 8;
+  localparam int unsigned NUM_DCACHE_TAG_BANKS = 4;
+  localparam int unsigned NUM_DCACHE_DATA_BANKS = 4;
 
   // SRAM Size Parameters, 2^SRAM_SIZE bytes
-	localparam bit [5:0] SRAM_SIZE = 20;
+  localparam bit [5:0] SRAM_SIZE = 20;
 
   localparam int unsigned SMC_4CORE_SCRATCH_RAM_ADDR_WIDTH = 12;
   localparam int unsigned SMC_4CORE_SCRATCH_RAM_DATA_WIDTH = 72;
@@ -22,7 +28,8 @@ package chipyard_4core_mem_pkg;
   `include "chipyard_mem_defines.svh"
 
   // define all the structs needed for chipyard cpu memory interfaces
-  `CHIPYARD_MEM_REQ_T(scratch_ram_req_t, SMC_4CORE_SCRATCH_RAM_ADDR_WIDTH, SMC_4CORE_SCRATCH_RAM_DATA_WIDTH, 1)
+  `CHIPYARD_MEM_REQ_T(scratch_ram_req_t, SMC_4CORE_SCRATCH_RAM_ADDR_WIDTH,
+                      SMC_4CORE_SCRATCH_RAM_DATA_WIDTH, 1)
   `CHIPYARD_MEM_RSP_T(scratch_ram_rsp_t, SMC_4CORE_SCRATCH_RAM_DATA_WIDTH)
 
   `CHIPYARD_MEM_REQ_T(l1_icache_tag_req_t, 5, 94, 2)

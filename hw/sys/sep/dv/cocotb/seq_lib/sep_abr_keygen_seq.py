@@ -2,119 +2,85 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Adams Bridge ML-DSA-87 keyGen driver (sep_abr_mldsa_keygen_kat_test).
 
-Aperture base is the ``sep_crypto_pkg`` localparam (not a generated map
-symbol). Register offsets are the ``abr_reg_uvm.sv`` add_reg/add_submap
-addresses. Identity words come from ``abr_params_pkg::MLDSA_CORE_NAME``.
-32-bit beats (size=2) on the 64-bit port; STATUS at +0x14 is an odd-word
-offset with no width converter.
+Aperture base is the ABR row of ``hw/sys/sep/doc/memory_map.adoc``.
+Register offsets come from the Caliptra ``abr_reg.rdl``. The RDL declares the
+``MLDSA_NAME`` / ``MLDSA_VERSION`` identity words ``sw = r`` with no reset, and
+no SEP document gives their values, so this driver holds their addresses
+only. 32-bit beats (size=2) on the 64-bit port, one register per access;
+STATUS at +0x14 is an odd-word offset. ``[[abr-access-size]]`` in ``hw/sys/sep/doc/adams_bridge.adoc`` gives
+the rules for other access sizes.
 """
 
 from __future__ import annotations
 
-import re
-from pathlib import Path
-
 from env.sep_seeded_rng import SepSeededRng
+from env.sep_spec_tables import (
+    abr_ctrl_cmd,
+    abr_field_mask,
+    abr_off,
+    agg_from_pic,
+    kv_field_mask,
+    window,
+)
+
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
-_SEP_RTL = Path(__file__).resolve().parents[3] / "rtl"
-_REPO = Path(__file__).resolve().parents[6]
-_PKG = _SEP_RTL / "sep_crypto_pkg.sv"
-_UVM = (
-    _REPO / "vendor" / "chipsalliance" / "adams-bridge" / "upstream"
-    / "src" / "abr_top" / "rtl" / "abr_reg_uvm.sv"
-)
-_PARAMS = (
-    _REPO / "vendor" / "chipsalliance" / "adams-bridge" / "upstream"
-    / "src" / "abr_top" / "rtl" / "abr_params_pkg.sv"
-)
-
-
-def _pkg_u32(name: str) -> int:
-    text = _PKG.read_text(encoding="utf-8")
-    m = re.search(rf"localparam logic \[31:0\] {name} = 32'h([0-9A-Fa-f_]+);", text)
-    if not m:
-        raise RuntimeError(f"{name} not found in {_PKG}")
-    return int(m.group(1).replace("_", ""), 16)
-
-
-def _uvm_reg_off(name: str) -> int:
-    text = _UVM.read_text(encoding="utf-8")
-    m = re.search(rf"add_reg\(this\.{name}, 'h([0-9a-fA-F]+)\)", text)
-    if not m:
-        raise RuntimeError(f"{name} add_reg not found in {_UVM}")
-    return int(m.group(1), 16)
-
-
-def _uvm_array_base(name: str) -> int:
-    text = _UVM.read_text(encoding="utf-8")
-    m = re.search(
-        rf"add_reg\(this\.{name}\[i0\], 'h([0-9a-fA-F]+) \+ i0\*'h4\)",
-        text,
-    )
-    if not m:
-        raise RuntimeError(f"{name}[i0] add_reg not found in {_UVM}")
-    return int(m.group(1), 16)
-
-
-def _uvm_submap_off(name: str) -> int:
-    text = _UVM.read_text(encoding="utf-8")
-    m = re.search(
-        rf"add_submap\(this\.{name}\.default_map, 'h([0-9a-fA-F]+)\)",
-        text,
-    )
-    if not m:
-        raise RuntimeError(f"{name} add_submap not found in {_UVM}")
-    return int(m.group(1), 16)
-
-
-def _mldsa_core_name() -> tuple[int, int]:
-    text = _PARAMS.read_text(encoding="utf-8")
-    m = re.search(
-        r"MLDSA_CORE_NAME\s*=\s*64'h([0-9A-Fa-f]+)_([0-9A-Fa-f]+);",
-        text,
-    )
-    if not m:
-        raise RuntimeError(f"MLDSA_CORE_NAME not found in {_PARAMS}")
-    hi = int(m.group(1), 16)
-    lo = int(m.group(2), 16)
-    return lo, hi
-
-
-ABR_BASE = _pkg_u32("ABR_REG_MAP_BASE_ADDR")
-ABR_NAME0 = ABR_BASE + _uvm_array_base("MLDSA_NAME")
+ABR_BASE = window("ABR").base
+ABR_NAME0 = ABR_BASE + abr_off("MLDSA_NAME")
 ABR_NAME1 = ABR_NAME0 + 4
-ABR_CTRL = ABR_BASE + _uvm_reg_off("MLDSA_CTRL")
-ABR_STATUS = ABR_BASE + _uvm_reg_off("MLDSA_STATUS")
-ABR_ENTROPY = ABR_BASE + _uvm_array_base("ABR_ENTROPY")
-ABR_SEED = ABR_BASE + _uvm_array_base("MLDSA_SEED")
-ABR_PUBKEY = ABR_BASE + _uvm_submap_off("MLDSA_PUBKEY")
-ABR_INTR = ABR_BASE + _uvm_submap_off("intr_block_rf")
-ABR_GLOBAL_INTR_EN = ABR_INTR + 0x0
-ABR_ERROR_INTR_EN = ABR_INTR + 0x4
-ABR_NOTIF_INTR_EN = ABR_INTR + 0x8
-ABR_ERROR_INTR = ABR_INTR + _uvm_reg_off("error_internal_intr_r")
-ABR_ERROR_TRIG = ABR_INTR + _uvm_reg_off("error_intr_trig_r")
-ABR_NOTIF_INTR = ABR_INTR + _uvm_reg_off("notif_internal_intr_r")
+ABR_VERSION0 = ABR_BASE + abr_off("MLDSA_VERSION")
+ABR_VERSION1 = ABR_VERSION0 + 4
+ABR_CTRL = ABR_BASE + abr_off("MLDSA_CTRL")
+ABR_STATUS = ABR_BASE + abr_off("MLDSA_STATUS")
+ABR_ENTROPY = ABR_BASE + abr_off("ABR_ENTROPY")
+ABR_SEED = ABR_BASE + abr_off("MLDSA_SEED")
+ABR_PUBKEY = ABR_BASE + abr_off("MLDSA_PUBKEY")
+ABR_MLDSA_KV_RD_SEED_CTRL = ABR_BASE + abr_off("kv_mldsa_seed_rd_ctrl")
+ABR_KV_RD_SEED_READ_EN = kv_field_mask("kv_read_ctrl_reg", "read_en")
+ABR_INTR = ABR_BASE + abr_off("intr_block_rf")
+ABR_GLOBAL_INTR_EN = ABR_INTR + abr_off("global_intr_en_r")
+ABR_ERROR_INTR_EN = ABR_INTR + abr_off("error_intr_en_r")
+ABR_NOTIF_INTR_EN = ABR_INTR + abr_off("notif_intr_en_r")
+ABR_ERROR_INTR = ABR_INTR + abr_off("error_internal_intr_r")
+ABR_ERROR_TRIG = ABR_INTR + abr_off("error_intr_trig_r")
+ABR_NOTIF_INTR = ABR_INTR + abr_off("notif_internal_intr_r")
 
-NAME0_EXP, NAME1_EXP = _mldsa_core_name()
-
-CMD_KEYGEN = 0x1
-CTRL_ZEROIZE = 1 << 3
-ST_READY = 1 << 0
-ST_VALID = 1 << 1
-ST_ERROR = 1 << 3
+CMD_KEYGEN = abr_ctrl_cmd("MLDSA_CTRL", "KEYGEN")
+CMD_SIGN = abr_ctrl_cmd("MLDSA_CTRL", "SIGN")
+CMD_VERIFY = abr_ctrl_cmd("MLDSA_CTRL", "VERIFY")
+CTRL_ZEROIZE = abr_field_mask("MLDSA_CTRL", "ZEROIZE")
+# MLDSA_CTRL.EXTERNAL_MU. The vendored sigGen/sigVer vectors are the ACVP
+# external-mu groups, so the engine is handed mu directly instead of a message.
+CTRL_EXTERNAL_MU = abr_field_mask("MLDSA_CTRL", "EXTERNAL_MU")
+ST_READY = abr_field_mask("MLDSA_STATUS", "READY")
+ST_VALID = abr_field_mask("MLDSA_STATUS", "VALID")
+ST_ERROR = abr_field_mask("MLDSA_STATUS", "ERROR")
 
 SEED_WORDS = 8
 ENTROPY_WORDS = 16
 PK_WORDS = 648
+SK_WORDS = 1224
+MU_WORDS = 16
+SIG_WORDS = 1157
+# MLDSA_VERIFY_RES[N] in abr_reg.rdl; c~ is those leading signature words.
+VERIFY_RES_WORDS = (abr_off("MLDSA_EXTERNAL_MU") - abr_off("MLDSA_VERIFY_RES")) // 4
 
-IRQ_ABR_ERROR = 34
-IRQ_ABR_NOTIF = 35
+# Sign / verify register windows, by symbol from the vendor RDL like the
+# keygen ones above.
+ABR_MSG = ABR_BASE + abr_off("MLDSA_MSG")
+ABR_EXTERNAL_MU = ABR_BASE + abr_off("MLDSA_EXTERNAL_MU")
+ABR_SIGN_RND = ABR_BASE + abr_off("MLDSA_SIGN_RND")
+ABR_SIGNATURE = ABR_BASE + abr_off("MLDSA_SIGNATURE")
+ABR_VERIFY_RES = ABR_BASE + abr_off("MLDSA_VERIFY_RES")
+ABR_PRIVKEY_IN = ABR_BASE + abr_off("MLDSA_PRIVKEY_IN")
 
-# global_intr_en_r: error_en[0] + notif_en[1]; per-event enables at +4/+8 bit 0.
-INTR_GLOBAL_BOTH = 0x3
-INTR_EVENT_EN = 0x1
+IRQ_ABR_ERROR = agg_from_pic("Adams Bridge error")
+IRQ_ABR_NOTIF = agg_from_pic("Adams Bridge notification")
+
+INTR_ERROR_EN = abr_field_mask("global_intr_en_r", "error_en")
+INTR_NOTIF_EN = abr_field_mask("global_intr_en_r", "notif_en")
+INTR_GLOBAL_BOTH = INTR_ERROR_EN | INTR_NOTIF_EN
+INTR_EVENT_EN = abr_field_mask("error_intr_en_r", "error_internal_en")
 
 
 class SepAbrKeygenCfg:
@@ -192,11 +158,22 @@ def _selftest() -> None:
     assert ABR_ENTROPY - ABR_BASE == 0x18
     assert ABR_SEED - ABR_BASE == 0x58
     assert ABR_PUBKEY - ABR_BASE == 0x1000
+    # Sign / verify windows, pinned so a bad RDL resolution fails at import
+    # rather than as a mid-simulation wrong-address access.
+    assert ABR_SIGN_RND - ABR_BASE == 0x78
+    assert ABR_MSG - ABR_BASE == 0x98
+    assert ABR_VERIFY_RES - ABR_BASE == 0xD8
+    assert ABR_EXTERNAL_MU - ABR_BASE == 0x118
+    assert VERIFY_RES_WORDS == 16
+    assert ABR_VERIFY_RES + 4 * VERIFY_RES_WORDS == ABR_EXTERNAL_MU
+    assert ABR_SIGNATURE - ABR_BASE == 0x2000
+    assert ABR_PRIVKEY_IN - ABR_BASE == 0x6000
+    # The four windows a sign or verify touches must not overlap each other.
+    assert ABR_SIGNATURE + 4 * SIG_WORDS <= ABR_PRIVKEY_IN
     assert ABR_ERROR_INTR - ABR_INTR == 0x14
-    assert ABR_ERROR_TRIG - ABR_INTR == 0x1c
+    assert ABR_ERROR_TRIG - ABR_INTR == 0x1C
     assert ABR_NOTIF_INTR - ABR_INTR == 0x18
-    assert NAME0_EXP == 0x44534D4C
-    assert NAME1_EXP == 0x3837412D
+    assert ABR_VERSION0 - ABR_NAME0 == 0x8
     cfg = SepAbrKeygenCfg(1)
     assert len(cfg.entropy) == ENTROPY_WORDS
     flipped = cfg.flipped_seed([0] * SEED_WORDS)

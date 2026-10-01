@@ -2,43 +2,28 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for dtp_jtag_bypass_test.
 
-Checks both DTP BYPASS instruction encodings using raw IR/DR scans, with a
-passive OCAH JTAG monitor providing scan-length evidence and the shared TAP
-reference model providing one-TCK BYPASS latency evidence.
+Checks both DTP BYPASS instruction encodings using raw IR/DR scans, with the
+shared TAP reference model providing one-TCK BYPASS latency evidence and the
+family checker taking the scan-length and scan-count evidence from the DUT's
+exported TAP state.
 """
 
 from __future__ import annotations
 
-import cocotb
 from env.dtp_jtag_bypass_model import DtpBypassRefModel, DtpBypassSuiteCfg
-from env.dtp_types import DTP_IR_WIDTH
-from ocah_jtag_vip import OcahJtagChecker, OcahJtagMasterMonitor
 
 from .dtp_jtag_base_test_seq import dtp_jtag_base_test_seq
-
-_DTP_JTAG_SIGNAL_MAP = {
-    "tck": "jtag_tck",
-    "tms": "jtag_tms",
-    "tdi": "jtag_tdi",
-    "tdo": "jtag_tdo",
-    "trst": "jtag_trst",
-    "tdo_oen": "jtag_tdo_oen",
-}
 
 
 class dtp_jtag_bypass_test_seq(dtp_jtag_base_test_seq):
     """Run BYPASS latency checks for IR=0x00 and IR=0x3f."""
 
     async def body(self) -> None:
-        seed = (
-            self.scenario_seed if self.scenario_seed is not None else self.random_seed()
-        )
+        seed = self.scenario_seed
         suite = DtpBypassSuiteCfg.from_seed(seed, random_count=self.random_count)
         model = DtpBypassRefModel()
-        checker = OcahJtagChecker(
-            name=f"{self.get_name()}.checker",
-            raise_on_error=False,
-            required_ids={
+        checker = await self.attach_family_checker(
+            {
                 "CHK-BYPASS-00",
                 "CHK-BYPASS-3F",
                 "CHK-BYPASS-LATENCY",
@@ -47,16 +32,8 @@ class dtp_jtag_bypass_test_seq(dtp_jtag_base_test_seq):
                 "CHK-SCAN-IR-LEN",
                 "CHK-SCAN-DR-LEN",
                 "CHK-NONVAC",
-            },
-            logger=cocotb.log,
+            }
         )
-        self.attach_tap_checker(checker)
-        monitor = OcahJtagMasterMonitor(
-            cocotb.top,
-            name=f"{self.get_name()}.monitor",
-            signal_map=_DTP_JTAG_SIGNAL_MAP,
-        )
-        await monitor.start()
 
         self.log.info(
             "DTP BYPASS suite config: seed=%d cases=%d opcodes=%s",
@@ -77,8 +54,9 @@ class dtp_jtag_bypass_test_seq(dtp_jtag_base_test_seq):
             mask = (1 << case.width) - 1
             observed = item.result & mask
             expected = model.predict(case)
-            checker.expect_equal(
+            self.family_check(
                 case.check_id,
+                f"bypass TDO for IR 0x{case.instruction:02x}",
                 observed,
                 expected,
                 context=f"seed={suite.seed} {case.context}",
@@ -97,37 +75,13 @@ class dtp_jtag_bypass_test_seq(dtp_jtag_base_test_seq):
             if observed == expected and observed != model.direct_passthrough(case):
                 delayed_observations += 1
 
-        await monitor.stop()
-        ir_items = monitor.get_ir_transactions()
-        dr_items = monitor.get_dr_transactions()
-        checker.expect_equal(
-            "CHK-SCAN-COUNT",
-            (len(ir_items), len(dr_items)),
-            (len(suite.cases), len(suite.cases)),
-            context=f"monitored (ir, dr) scans for {len(suite.cases)} cases",
-        )
-        if len(ir_items) == len(suite.cases) and len(dr_items) == len(suite.cases):
-            for case, ir_item, dr_item in zip(suite.cases, ir_items, dr_items):
-                checker.check_scan_length(
-                    ir_item,
-                    expected_width=DTP_IR_WIDTH,
-                    context=case.context,
-                )
-                checker.check_scan_length(
-                    dr_item,
-                    expected_width=case.width,
-                    context=case.context,
-                )
-
         checker.expect_true(
             "CHK-NONVAC",
-            len(observed_opcodes) == 2
-            and len(observed_patterns) >= 6
-            and delayed_observations > 0,
+            len(observed_opcodes) == 2 and len(observed_patterns) >= 6 and delayed_observations > 0,
             context=(
                 f"seed={suite.seed} cases={len(suite.cases)} "
                 f"opcodes={len(observed_opcodes)} patterns={len(observed_patterns)} "
                 f"delayed_observations={delayed_observations}"
             ),
         )
-        checker.finalize()
+        await self.finalize_family_checker()

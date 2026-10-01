@@ -3,7 +3,6 @@
 """DTP VPLAN scenario `dtp_jtag2axi_backpressure_aw_before_w_test`."""
 
 import pyuvm
-
 from dtp_base_test import dtp_base_test
 from env.dtp_types import DtpJtag2AxiStatus
 from seq_lib.dtp_jtag2axi_robustness_test_seq import dtp_jtag2axi_robustness_test_seq
@@ -18,18 +17,26 @@ class dtp_jtag2axi_backpressure_aw_before_w_test(dtp_base_test):
     use_axi_scoreboard = True
     axi_checker_required_ids = (
         "CHK-AXI-RESP",
+        "CHK-AXI-STRB",
+        "CHK-AXI-WMEM",
         "CHK-AXI-COMPLETION",
+        "CHK-AXI-CREDITS",
         "CHK-AXI-STREAM-MIN",
     )
-    axi_checker_stream_minimums = {'smc_axi': 2, 'smc_otp': 2, 'sep_otp': 2}
+    axi_checker_target_required_ids = (
+        "CHK-J2A-STALL-FSM",
+        "CHK-J2A-STALL-BUSY",
+        "CHK-J2A-STALL-HOLD",
+    )
+    axi_checker_stream_minimums = {"smc_axi": 2, "smc_otp": 2, "sep_otp": 2}
 
     async def run_scenario(self) -> None:
         sequences = await self.start_looped_seq(
             dtp_jtag2axi_robustness_test_seq,
             "backpressure_aw_before_w",
-            specific_env="DTP_JTAG2AXI_BACKPRESSURE_AW_BEFORE_W_TEST_LOOPS",
+            specific_knob="DTP_JTAG2AXI_BACKPRESSURE_AW_BEFORE_W_TEST_LOOPS",
             default_loops=16,
-            group_env="DTP_JTAG2AXI_TEST_LOOPS",
+            group_knob="DTP_JTAG2AXI_TEST_LOOPS",
             scenario="backpressure_aw_before_w",
         )
         for seq in sequences:

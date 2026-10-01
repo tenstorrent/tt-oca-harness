@@ -6,38 +6,39 @@
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: el2_pic</h2>
+<h2 id="regmap-el2_pic">EL2_PIC</h2>
+<p>VeeR EL2 Programmable Interrupt Controller (PIC) memory-mapped registers.<br>Supports up to PIC_TOTAL_INT external interrupt sources with 15 priority levels.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
-<li><strong>meipl[32]</strong>: 32 registers, base 0x4, stride 0x4</li>
-<li><strong>meip[2]</strong>: 2 registers, base 0x1000, stride 0x4</li>
-<li><strong>meie[32]</strong>: 32 registers, base 0x2004, stride 0x4</li>
-<li><strong>meigwctrl[32]</strong>: 32 registers, base 0x4004, stride 0x4</li>
-<li><strong>meigwclr[32]</strong>: 32 registers, base 0x5004, stride 0x4</li>
+<li><strong>meipl[256]</strong>: 256 registers, base 0x0, stride 0x4</li>
+<li><strong>meip[8]</strong>: 8 registers, base 0x1000, stride 0x4</li>
+<li><strong>meie[256]</strong>: 256 registers, base 0x2000, stride 0x4</li>
+<li><strong>meigwctrl[256]</strong>: 256 registers, base 0x4000, stride 0x4</li>
+<li><strong>meigwclr[256]</strong>: 256 registers, base 0x5000, stride 0x4</li>
 </ul>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x4 - 0x80</td><td><a href="#meipl_32_">meipl[32]</a></td><td>RW</td><td>External Interrupt Priority Level Register. Sets the priority level for an interrupt source.</td></tr>
-<tr><td>0x1000 - 0x1004</td><td><a href="#meip_2_">meip[2]</a></td><td>R</td><td>External Interrupt Pending Register. Reports pending status of up to 32 interrupt sources.</td></tr>
-<tr><td>0x2004 - 0x2080</td><td><a href="#meie_32_">meie[32]</a></td><td>RW</td><td>External Interrupt Enable Register. Controls interrupt enable for a single source.</td></tr>
+<tr><td>0x0 - 0x3FC</td><td><a href="#meipl_256_">meipl[256]</a></td><td>RW</td><td>External Interrupt Priority Level Register. Sets the priority level for an interrupt source.</td></tr>
+<tr><td>0x1000 - 0x101C</td><td><a href="#meip_8_">meip[8]</a></td><td>R</td><td>External Interrupt Pending Register. Reports pending status of up to 32 interrupt sources.</td></tr>
+<tr><td>0x2000 - 0x23FC</td><td><a href="#meie_256_">meie[256]</a></td><td>RW</td><td>External Interrupt Enable Register. Controls interrupt enable for a single source.</td></tr>
 <tr><td>0x3000</td><td><a href="#mpiccfg">mpiccfg</a></td><td>RW</td><td>PIC Configuration Register. Used to select the operational parameters of the PIC.</td></tr>
-<tr><td>0x4004 - 0x4080</td><td><a href="#meigwctrl_32_">meigwctrl[32]</a></td><td>RW</td><td>External Interrupt Gateway Configuration Register. Controls interrupt type and polarity.</td></tr>
-<tr><td>0x5004 - 0x5080</td><td><a href="#meigwclr_32_">meigwclr[32]</a></td><td>W</td><td>External Interrupt Gateway Clear Register. Writing any value clears the gateway&#x27;s<br>interrupt pending (IP) bit for edge-triggered interrupts.</td></tr>
+<tr><td>0x4000 - 0x43FC</td><td><a href="#meigwctrl_256_">meigwctrl[256]</a></td><td>RW</td><td>External Interrupt Gateway Configuration Register. Controls interrupt type and polarity.</td></tr>
+<tr><td>0x5000 - 0x53FC</td><td><a href="#meigwclr_256_">meigwclr[256]</a></td><td>W</td><td>External Interrupt Gateway Clear Register. Writing any value clears the gateway&#x27;s<br>interrupt pending (IP) bit for edge-triggered interrupts.</td></tr>
 </table>
-<h2>Register Details:</h2>
-<h3 id="meipl_32_">meipl[32]</h3>
+<p><strong>Register Details:</strong></p>
+<h3 id="meipl_256_">meipl[256]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>3:0</td><td>intpriority</td><td>RW</td><td>0x0</td><td>External interrupt priority level:<br>RISC-V standard order: 0=Never interrupt, 1..15=Priority (1 lowest, 15 highest)<br>Reverse order: 15=Never interrupt, 14..0=Priority (14 lowest, 0 highest)</td></tr>
 </table>
-<h3 id="meip_2_">meip[2]</h3>
+<h3 id="meip_8_">meip[8]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>intpend</td><td>R</td><td>0x0</td><td>External interrupt pending bits. Bit Y indicates pending status for source X*32+Y.<br>0: Interrupt not pending<br>1: Interrupt pending</td></tr>
 </table>
-<h3 id="meie_32_">meie[32]</h3>
+<h3 id="meie_256_">meie[256]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -49,14 +50,14 @@
 <tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>priord</td><td>RW</td><td>0x0</td><td>Priority order:<br>0: RISC-V standard compliant priority order (0=lowest to 15=highest)<br>1: Reverse priority order (15=lowest to 0=highest)</td></tr>
 </table>
-<h3 id="meigwctrl_32_">meigwctrl[32]</h3>
+<h3 id="meigwctrl_256_">meigwctrl[256]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>1</td><td>irq_type</td><td>RW</td><td>0x0</td><td>External interrupt type:<br>0: Level-triggered interrupt<br>1: Edge-triggered interrupt</td></tr>
 <tr><td>0</td><td>polarity</td><td>RW</td><td>0x0</td><td>External interrupt polarity:<br>0: Active-high interrupt<br>1: Active-low interrupt</td></tr>
 </table>
-<h3 id="meigwclr_32_">meigwclr[32]</h3>
+<h3 id="meigwclr_256_">meigwclr[256]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>

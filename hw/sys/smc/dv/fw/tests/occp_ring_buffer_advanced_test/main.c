@@ -2,14 +2,8 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * OCCP Ring Buffer Advanced Test Suite
- *
- * Comprehensive testing of ring buffer advanced scenarios:
- * - Overflow protection with fullness limits per message type
- * - Head/tail pointer wrap-around at 512-entry boundary
- * - Concurrent SMC/SEP ring buffer access patterns
- * - Ring buffer corruption recovery testing
- * - Complete message format validation
+ * Reads the SMC and SEP status ring buffers through OCCP status commands: drains the SMC
+ * buffer, interleaves SMC/SEP reads, and polls repeatedly, checking each non-empty entry.
  */
 
 #include "occp_test_common.h"
@@ -19,15 +13,6 @@
 #include "smc_status.h"
 
 #define SMC_RING_BUFFER_SIZE 512
-
-// #define SMC_STATUS_FW_ID_SEP_BL0  0x1
-// #define SMC_STATUS_FW_ID_SEP_BL1  0x2
-// #define SMC_STATUS_FW_ID_SMC_BL0  0x3
-// #define SMC_STATUS_FW_ID_SMC_BL1  0x4
-
-// #define SMC_STATUS_TYPE_STATUS  0x1
-// #define SMC_STATUS_TYPE_WARNING 0x8
-// #define SMC_STATUS_TYPE_ERROR   0xF
 
 typedef struct {
     test_context_t *occp_ctx;

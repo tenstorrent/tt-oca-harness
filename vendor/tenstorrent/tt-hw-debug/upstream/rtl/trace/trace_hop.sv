@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 // Trace Hop - Block that connects the TNIF to the Trace funnel
 
 module trace_hop

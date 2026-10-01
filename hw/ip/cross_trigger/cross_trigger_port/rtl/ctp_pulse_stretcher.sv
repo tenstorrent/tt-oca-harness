@@ -1,65 +1,63 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//------------------------------------------------------------------------------
-// Cross Trigger Port Pulse Stretcher Module
+// Stretch a core-side pulse to stretch_mult_i+1 clk_i cycles for wire-OR mode.
 //
-// Description:
-// Stretches a core-side pulse to (STRETCH_MULT + 1) clock cycles for wire-OR mode.
-// If a new pulse arrives before the current pulse finishes stretching, the counter
-// is restarted to ensure all chiplets see the pulse.
-//------------------------------------------------------------------------------
-
+// pulse_i is synchronous to clk_i; a new pulse while stretching restarts the counter so
+// every chiplet still sees the event.
+// stretched_pulse_o is the registered stretched pulse.
 
 module ctp_pulse_stretcher (
-    input  logic        clk_i,
-    input  logic        rst_ni,
+  input  logic        clk_i,            // System clock.
+  input  logic        rst_ni,           // Active-low asynchronous reset; clears the counter and the
+                                        // output.
 
-    // Pulse input (synchronous to clk_i)
-    input  logic        pulse_i,
+  input  logic        pulse_i,          // Outgoing core-side cross-trigger pulse, synchronous to
+                                        // clk_i; each assertion reloads the stretch counter.
 
-    // Stretch multiplier (number of cycles to stretch)
-    input  logic [15:0] stretch_mult_i,
+  input  logic [15:0] stretch_mult_i,   // Stretch length: the output stays high for
+                                        // stretch_mult_i+1 clk_i cycles after the most recent
+                                        // pulse_i.
 
-    // Stretched pulse output (registered)
-    output logic        stretched_pulse_o
+  output logic        stretched_pulse_o  // Stretched pulse, registered and reset low; drives the
+                                         // CT_Req_out output enable in wire-OR mode.
 );
 
-    logic [15:0] counter_q, counter_d;
-    logic        active_q, active_d;
+  logic [15:0] counter_q, counter_d;
+  logic active_q, active_d;
 
-    // Counter logic: count down from stretch_mult_i to 0
-    always_comb begin
-        counter_d = counter_q;
-        active_d  = active_q;
+  // Counter logic: count down from stretch_mult_i to 0
+  always_comb begin
+    counter_d = counter_q;
+    active_d  = active_q;
 
-        if (pulse_i) begin
-            // New pulse arrives - restart counter
-            counter_d = stretch_mult_i;
-            active_d  = 1'b1;
-        end else if (active_q && (counter_q != 16'd0)) begin
-            // Count down while active
-            counter_d = counter_q - 16'd1;
-            active_d  = 1'b1;
-        end else begin
-            // Counter reached zero or not active
-            counter_d = 16'd0;
-            active_d  = 1'b0;
-        end
+    if (pulse_i) begin
+      // New pulse arrives - restart counter
+      counter_d = stretch_mult_i;
+      active_d  = 1'b1;
+    end else if (active_q && (counter_q != 16'd0)) begin
+      // Count down while active
+      counter_d = counter_q - 16'd1;
+      active_d  = 1'b1;
+    end else begin
+      // Counter reached zero or not active
+      counter_d = 16'd0;
+      active_d  = 1'b0;
     end
+  end
 
-    // Registered outputs
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-        if (!rst_ni) begin
-            counter_q <= 16'd0;
-            active_q  <= 1'b0;
-        end else begin
-            counter_q <= counter_d;
-            active_q  <= active_d;
-        end
+  // Registered outputs
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      counter_q <= 16'd0;
+      active_q  <= 1'b0;
+    end else begin
+      counter_q <= counter_d;
+      active_q  <= active_d;
     end
+  end
 
-    // Output is active when counter is non-zero or just started
-    assign stretched_pulse_o = active_q;
+  // Output is active when counter is non-zero or just started
+  assign stretched_pulse_o = active_q;
 
 endmodule : ctp_pulse_stretcher

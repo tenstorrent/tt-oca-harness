@@ -7,9 +7,10 @@
 addrmap telemetry_receiver #(
     longint unsigned NUM_COUNTER_REGS = 32
 ) {
+    name = "Telemetry Receiver Address Map";
+    desc = "Configuration, status, and data-buffer registers for a single telemetry receiver channel.";
 
-    desc = "Telemetry Receiver";
-
+    
     //////////////////////////
     // Register Definitions //
     //////////////////////////
@@ -31,8 +32,10 @@ addrmap telemetry_receiver #(
             sw = w;
             hw = r;
             singlepulse;
-            desc = "Telemetry Receiver Flush. Writing `1` flushes the Telemetry Receiver Buffer and
-                    all other storage elements in the Telemetry Receiver.";
+            desc = "Telemetry Receiver Flush. Writing `1` discards queued messages and resets the assembly write
+                    pointer. Stored payload bytes are not cleared. In particular, a later short
+                    message can retain trailing counter values and validity from an earlier
+                    message. This operation does not erase storage.";
         } TELEMETRY_RX_FLUSH[4:4] = 0x0;
 
         field {
@@ -129,7 +132,7 @@ addrmap telemetry_receiver #(
 
         field {
             sw = rw;
-            hw = r; // TODO: Change to na after PeakRDL bug fix
+            hw = r;
             desc = "Last Packet Missing Interrupt Enable.";
         } MISSING_LAST[0:0] = 0x0;
 
@@ -171,14 +174,6 @@ addrmap telemetry_receiver #(
     TELEMETRY_PROBE_ID        TELEMETRY_PROBE_ID                           @0x14;
     TELEMETRY_COUNTER_VLDS    TELEMETRY_COUNTER_VLDS                       @0x18;
     TELEMETRY_COUNTER         TELEMETRY_COUNTER     [NUM_COUNTER_REGS]     @0x80;
-
-
-    /////////////////////////
-    // Property Assignment //
-    /////////////////////////
-
-    // TODO: Uncomment after PeakRDL bug fix
-    // TODO // INTR_STATUS.MISSING_LAST->hwenable = INTR_ENABLE.MISSING_LAST;
 
 };
 

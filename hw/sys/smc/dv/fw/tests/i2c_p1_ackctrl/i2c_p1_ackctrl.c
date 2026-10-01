@@ -14,13 +14,9 @@
  *
  * Test Objective:
  * - Verify automatic ACK mode: Target automatically sends ACK when receiving data
- * - Verify manual ACK mode: Target sends ACK/NACK based on software control
- * - Verify ACK/NACK timing compliance with I2C specification
  *
  * Expected Result:
  * - Automatic mode: Target automatically ACKs all received bytes
- * - Manual mode: Target sends ACK/NACK based on software configuration
- * - All ACK/NACK timing meets I2C specification
  *
  * =============================================================================
  * Test Architecture: Two-Level I2C Control
@@ -44,7 +40,7 @@
  *
  * I2C_1 Configuration (Target Mode):
  *   - Address: 0x10 (7-bit)
- *   - ACK Control: Automatic / Manual (configurable)
+ *   - ACK Control: Automatic
  *   - FIFO Thresholds: TX=5, ACQ=29
  *
  * =============================================================================
@@ -54,8 +50,7 @@
  * Step 1: System Initialization
  * Step 2: Wrapper Control Enable
  * Step 3: Test Automatic ACK Mode
- * Step 4: Test Manual ACK Mode
- * Step 5: Test Complete
+ * Step 4: Test Complete
  *
  * =============================================================================
  */
@@ -97,7 +92,7 @@ static int test_automatic_ack_mode(void) {
     simputs("Testing Automatic ACK Mode...\n");
 
     i2c_timing_physical_t physical_params = {.speed = I2C_SPEED_STANDARD,
-                                             .clock_period_nanos = 10,
+                                             .clock_period_nanos = 5,
                                              .sda_rise_nanos = 300,
                                              .sda_fall_nanos = 100,
                                              .scl_period_nanos = 0};
@@ -164,7 +159,6 @@ static int test_automatic_ack_mode(void) {
         return ret;
     }
 
-    // Note: For internal loopback, just verify we received some data (like i2c_p1_fifo_stress)
     simputs("  Received ");
     simputshex32("", received_len);
     simputs(" bytes\n");
@@ -173,10 +167,8 @@ static int test_automatic_ack_mode(void) {
     return I2C_OK;
 }
 
-// Note: test_manual_ack_mode() removed
-// Manual ACK mode requires explicit ACK/NACK control after each byte received
-// This needs additional logic beyond standard i2c_target_receive_transaction()
-// Current test focuses on Automatic ACK mode which is the common use case
+// Manual ACK mode needs per-byte ACK/NACK control that i2c_target_receive_transaction()
+// does not provide; this image exercises automatic ACK only.
 
 int main(void) {
     int ret = I2C_OK;
@@ -208,10 +200,6 @@ int main(void) {
     }
 
     write_scratch(1, 0x00000031);
-
-    // Note: Manual ACK mode test removed - requires additional ACK control logic
-    // Manual ACK mode needs explicit ACK/NACK control after each byte received
-    // Current test focuses on Automatic ACK mode which is the common use case
 
     simputs("\n");
     simputs("###################################################\n");

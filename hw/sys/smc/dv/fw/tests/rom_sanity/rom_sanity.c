@@ -8,7 +8,7 @@
 
 int main(void) {
 
-    // Values from bootrom_sanity.rv64.hex
+    // Expected first/middle/last words of the preloaded boot ROM image.
 
     const uint64_t first_addr = 0xC0040000;
     const uint64_t first_data = 0x000005177c105073;
@@ -18,8 +18,6 @@ int main(void) {
 
     const uint64_t last_addr = 0xC005FFF8;
     const uint64_t last_data = 0xabcd123456789fc4;
-
-    // no need to change clock freq
 
     uint64_t rom_data_first;
 

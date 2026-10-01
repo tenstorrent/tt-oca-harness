@@ -2,12 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """GPIO interrupt-type (polarity) matrix verification.
 
-Existing GPIO IRQ coverage only exercised the active-low level type. This
-sequence programs GPIO wrap 0 for both level polarities and drives the pad
-externally to prove the GPIO interrupt aggregate follows the configured
-polarity.
+Programs GPIO wrap 0 for both level polarities and drives the pad externally to
+prove the GPIO interrupt aggregate follows the configured polarity.
 
-DATA_CTRL field encoding (hw/periph/gpio/data/registers/rdl/gpio_intf.rdl):
+DATA_CTRL field encoding (hw/ip/gpio/regs/gpio_intf.rdl):
   * bit[5:4]   enable_rx_tx     2'b10 = RX enabled (sample pad)
   * bit16      interface_enable select register control of the pad
   * bit18      interrupt_enable
@@ -24,7 +22,7 @@ from .smc_csr_seq_utils import SmcCsrSeq
 
 GPIO0_DATA_CTRL = smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 0)
 
-_RX_ENABLE = 2 << 4          # enable_rx_tx = 2'b10
+_RX_ENABLE = 2 << 4  # enable_rx_tx = 2'b10
 _IF_ENABLE = 1 << 16
 _IRQ_ENABLE = 1 << 18
 
@@ -42,6 +40,8 @@ class smc_gpio_irq_type_matrix_test_seq(SmcCsrSeq):
 
     def __init__(self, name: str = "smc_gpio_irq_type_matrix_test_seq") -> None:
         super().__init__(name)
+        # (pad, tb_gpio_irq_any) pairs sampled after each settle, in drive order.
+        self.trace: list[tuple[int, int]] = []
 
     def _irq(self, dut) -> int:
         return int(dut.tb_gpio_irq_any.value)
@@ -49,6 +49,8 @@ class smc_gpio_irq_type_matrix_test_seq(SmcCsrSeq):
     async def _drive(self, dut, value: int) -> None:
         dut.tb_gpio_ext_drive_value.value = value & 0x1
         await ClockCycles(dut.clk_smc_i, _SETTLE)
+        if dut.tb_gpio_irq_any.value.is_resolvable:
+            self.trace.append((value & 0x1, self._irq(dut)))
 
     async def body(self) -> None:
         dut = cocotb.top
@@ -78,5 +80,22 @@ class smc_gpio_irq_type_matrix_test_seq(SmcCsrSeq):
         # Release the external pad drive.
         dut.tb_gpio_ext_drive_en.value = 0x0
 
-        assert self.accesses == 2, "GPIO IRQ-type matrix access count mismatch"
-        cocotb.log.info("GPIO0 IRQ-type matrix verified (active-high + active-low level)")
+        # `self.accesses` is incremented by every csr_* call in
+        # smc_csr_seq_utils.py, so `self.accesses == <literal>` restates the
+        # loop above and cannot fail on anything the DUT did
+        # ([NO-ZERO-ACTIVITY-PASS]). `assert_all_reachable` cross-checks the
+        # same count against the scoreboard, which a mis-bound analysis path
+        # or a dead port fails.
+        self.assert_all_reachable(2, "GPIO_IRQ_TYPE_MATRIX")
+        cocotb.log.info(
+            "CHK-GPIO-IRQ-TYPE-POLARITY: GPIO0 DATA_CTRL=0x%08x (active-high level) "
+            "gave (pad, tb_gpio_irq_any) = %s and DATA_CTRL=0x%08x (active-low "
+            "level) gave %s, each sampled %d clk_smc_i cycles after the pad drive; "
+            "the aggregate follows the programmed polarity and clears when the pad "
+            "leaves the active level",
+            CFG_ACTIVE_HIGH,
+            self.trace[:3],
+            CFG_ACTIVE_LOW,
+            self.trace[3:],
+            _SETTLE,
+        )

@@ -17,6 +17,11 @@ its error count and start.S emits the PASS (0xCAFEBABE) / FAIL (0xDEADBEEF)
 magic on the 0x8000_0000 mailbox, which the boot scoreboard gates on, alongside
 the banner and ICCM-execution checks.
 
+The TB also counts cycles where the CPU-LSU and DMA local-crossbar inputs both
+present an SRAM request on the same AXI address channel. A positive count is
+the arbitration-contention proof; DMA BUSY alone proves only that the job was
+active during the CPU loop.
+
 No fuse data is read, so the testlist entry uses ``+skip_fuse_sense``.
 """
 
@@ -25,22 +30,36 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+import cocotb
 import pyuvm
-
-from sep_base_test import sep_base_test
 from env.sep_boot_scoreboard import SepBootScoreboard
+from sep_base_test import sep_base_test
+from sep_reg_meta import sym
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
 _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "dma_cpu_contention_test")
 _ITCM_HEX = os.path.join(_FW_DIR, "dma_cpu_contention_test.itcm.hex")
 _DTCM_HEX = os.path.join(_FW_DIR, "dma_cpu_contention_test.dtcm.hex")
 
-_ICCM_BASE = 0xC000_0000
+_ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
 # 2 KiB SRAM->SRAM copy + a 256 B CPU loop + two full-region verifies; the run
 # loop early-exits on fw_done, so this is an upper bound.
 _MAX_RUN_CYCLES = 4_000_000
 _NO_BOOT_CYCLES = 80_000
 _PROGRESS_EVERY = 5_000
+# The clauses of the firmware's single verdict line, one per card row. A stale image
+# that dropped a leg loses its clause, which fails here rather than at the PASS magic.
+_VERDICT_CLAUSES = (
+    (
+        "overlap STATUS=0x00000001",
+        "CHK-IN-FLIGHT",
+        "the DMA busy and not done at store-loop exit",
+    ),
+    ("ERROR_CODE=0", "CHK-NOERR", "the DMA completing with no error"),
+    ("DONE+RW1C clear", "CHK-RW1C", "the done status clearing on write-one-to-clear"),
+    ("dst==src", "CHK-DMA-DATA", "the DMA destination matching its source"),
+    ("cont==cpu", "CHK-CPU-DATA", "the CPU region holding exactly what the CPU wrote"),
+)
 _BANNER = "SEP DMA/CPU contention test"
 
 
@@ -59,9 +78,38 @@ class sep_dma_cpu_contention_test(sep_base_test):
         # build_phase, which resets it to the hello_world default).
         self.sb.expected_line = _BANNER
         await self.boot_firmware(
-            self.sb, _ITCM_HEX, _DTCM_HEX,
+            self.sb,
+            _ITCM_HEX,
+            _DTCM_HEX,
             rst_vec=_ICCM_BASE >> 1,
             max_run_cycles=_MAX_RUN_CYCLES,
             no_boot_cycles=_NO_BOOT_CYCLES,
             progress_every=_PROGRESS_EVERY,
+        )
+
+        # The firmware scores five contracts into one verdict line. The PASS magic
+        # cannot say which of them ran, so gate on each clause the line carries and
+        # emit the record the VPLAN card names for it.
+        console = self.sb.console_text()
+        verdict = next((ln for ln in console.splitlines() if ln.startswith("PASS: DMA(")), "")
+        assert verdict, (
+            f"firmware console has no 'PASS: DMA(...' verdict line. Console was:\n{console}"
+        )
+        for needle, chk, what in _VERDICT_CLAUSES:
+            assert needle in verdict, (
+                f"firmware verdict line has no {needle!r}, so {what} was not "
+                f"checked. Line was: {verdict!r}"
+            )
+            self.logger.info("%s PASS: firmware reported %s", chk, what)
+
+        overlap = cocotb.top.dma_cpu_sram_overlap_count_o.value
+        assert overlap.is_resolvable, f"dma_cpu_sram_overlap_count_o is unresolvable ({overlap})"
+        overlap_count = int(overlap)
+        assert overlap_count > 0, (
+            "CHK-OVERLAP FAIL: CPU-LSU and DMA never presented simultaneous "
+            "SRAM requests on the same local-crossbar address channel"
+        )
+        self.logger.info(
+            "CHK-OVERLAP PASS: CPU-LSU and DMA SRAM request windows overlapped for %d cycle(s)",
+            overlap_count,
         )

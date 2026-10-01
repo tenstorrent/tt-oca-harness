@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+waive --rule=module-filename --regex="module entropy_source_tb_top" --location=".*hw/ip/entropy_source/dv/tb/tb_top\.sv$"

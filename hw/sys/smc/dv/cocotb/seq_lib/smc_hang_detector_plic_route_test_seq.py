@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Hang-detector OR reaches the PLIC on peripheral_interrupts[31].
+"""Hang-detector OR reaches the PLIC on peripheral_interrupts[30].
 
-Covers the smc_base -> smc_peripherals[31] -> cpu_interrupts route added so FW
-can service an armed detector. The observation point is the PLIC source pin on
-``u_smc_cpu_wrapper.interrupts_i`` (raw bit NUM_EXT_INTERRUPTS+31 = 287 in the
-4-core config, PLIC source ID 288). PLIC register-level claim/complete needs CPU
+Covers the smc_base -> smc_peripherals[30] -> cpu_interrupts route through which
+FW services an armed detector. The observation point is the PLIC source pin on
+``u_smc_cpu_wrapper.interrupts_i`` (raw bit NUM_EXT_INTERRUPTS+30 = 286 in the
+4-core config, PLIC source ID 287). PLIC register-level claim/complete needs CPU
 firmware and is not claimed here.
 """
 
@@ -24,13 +24,13 @@ from .smc_addr_map import (
 )
 from .smc_csr_seq_utils import SmcCsrSeq
 
-# irq_o is combinational after the CTRL flop, and the new route to the PLIC pin
-# is combinational too, so the AXI write completion already implies the update.
+# irq_o is combinational after the CTRL flop, and the route to the PLIC pin is
+# combinational too, so the AXI write completion already implies the update.
 # This bound is only the fail-closed ceiling.
 _IRQ_BOUND = 64
 
 # Every stage of the route, innermost first. All three must move together.
-_ROUTE = ("tb_axi_hang_irq", "tb_axi_hang_irq_periph31", "tb_axi_hang_irq_plic_src")
+_ROUTE = ("tb_axi_hang_irq", "tb_axi_hang_irq_periph30", "tb_axi_hang_irq_plic_src")
 
 # Independent detectors: (label, CTRL addr, TB per-source pin).
 _DETECTORS = (
@@ -85,11 +85,11 @@ class smc_hang_detector_plic_route_test_seq(SmcCsrSeq):
         dut = cocotb.top
         await self.wait_fuse_sense_done()
 
-        # The slot used to be tied to zero. Prove it is still quiet at rest, so a
-        # pass below is the route working and not a stuck-high peripheral bit.
+        # Quiet at rest, so a pass below is the route working and not a
+        # stuck-high peripheral bit.
         await self._await_pins(dut, {n: 0 for n in _ROUTE}, "IDLE")
         self.idle_ok = True
-        cocotb.log.info("CHK-HANG-PLIC-IDLE: periph[31] and PLIC source pin low at rest")
+        cocotb.log.info("CHK-HANG-PLIC-IDLE: periph[30] and PLIC source pin low at rest")
 
         # irq_test without enable+irq_en must not reach the PLIC either.
         await self.csr_write(
@@ -108,9 +108,7 @@ class smc_hang_detector_plic_route_test_seq(SmcCsrSeq):
             expect_fire[pin] = 1
             expect_fire.update({n: 1 for n in _ROUTE})
             await self._await_pins(dut, expect_fire, f"{label}_PLIC_FIRE")
-            cocotb.log.info(
-                "CHK-HANG-PLIC-%s-FIRE: source=1 periph[31]=1 PLIC source pin=1", label
-            )
+            cocotb.log.info("CHK-HANG-PLIC-%s-FIRE: source=1 periph[30]=1 PLIC source pin=1", label)
 
             await self.csr_write(f"HANG_{label}_CLR", addr, 0)
             await self._await_pins(dut, {pin: 0, **{n: 0 for n in _ROUTE}}, f"{label}_PLIC_CLR")

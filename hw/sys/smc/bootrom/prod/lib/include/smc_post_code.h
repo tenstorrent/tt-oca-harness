@@ -62,8 +62,7 @@
 #define POST_CODE_BOOT_I2C_MODE_BIT 9     /* I2C Mode */
 #define POST_CODE_BOOT_SRAM_NO_ZERO_BIT 8 /* SRAM Auto-Zero Disabled */
 
-/* Strap Status Bits (bits 7:4) */
-#define POST_CODE_STRAP_BOOT_STALL_BIT 7      /* Boot Stall */
+/* Strap Status Bits (bits 7:4; bit 7 is reserved) */
 #define POST_CODE_STRAP_STATUS_RPT_DIS_BIT 6  /* Status Report Disable */
 #define POST_CODE_STRAP_SRAM_REPAIR_BYP_BIT 5 /* SRAM Repair Bypass */
 

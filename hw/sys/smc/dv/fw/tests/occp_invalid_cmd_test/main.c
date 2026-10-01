@@ -2,15 +2,10 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * OCCP Invalid Command Code Test
- *
- * This test sends commands with invalid OCCP command codes to verify
- * that the ROM properly rejects them and reports appropriate error status.
- *
- * IMPORTANT NOTE: The ROM status buffer only preserves the low byte of
- * invalid commands due to the SMC_OCCP_ERROR_WITH_DATA macro limitation.
- * Multi-byte commands (e.g., 0xDEAD) are stored as (0x101 | 0xAD = 0x1AD).
- * This is per ROM specification and is expected behavior.
+ * Sends OCCP requests with an invalid MsgID, an invalid AppID, and both, and checks that the
+ * ROM rejects each and records the expected entries in the SMC status buffer.
+ * With STATUS_RPT_DISABLE active, response checks still run but status-buffer validation is
+ * skipped.
  */
 
 #include "occp_test_common.h"
@@ -62,19 +57,17 @@ static void run_test_suite(test_context_t *ctx) {
     int retval;
     uint32_t status_data = 0;
 
-    // Execute a few valid commands first to establish baseline
     simputs("=== Valid Commands Test (baseline) ===\n");
     execute_random_commands(ctx, 1);
 
     simputs("=== Invalid Header Format Tests (AppID/MsgID) ===\n");
 
-    // Case 1: Valid AppID (Base) with invalid MsgID -> expect Invalid_MsgID
     ctx->invalid_header_inject_mode = OCCP_INVALID_HDR_INVALID_MSGID;
     execute_random_commands(ctx, 1);
     exp_num_cmd_unknown_errors += 1;
     ctx->invalid_header_inject_mode = OCCP_INVALID_HDR_INJECT_NONE;
 
-    // re-latch to recover
+    // A valid command clears the ROM's consecutive-error count; five errors unlatch it.
     retval = occp_send_get_version_command(ctx, ctx->slave_addr, &status_data);
     if (retval != OCCP_SUCCESS) {
         simputs("FAIL: Failed to get version command\n");
@@ -82,12 +75,10 @@ static void run_test_suite(test_context_t *ctx) {
     }
     increment_cmd_count(ctx);
 
-    // Case 2: Invalid AppID with valid MsgID (0) -> expect Invalid_AppID
     ctx->invalid_header_inject_mode = OCCP_INVALID_HDR_INVALID_APPID;
     execute_random_commands(ctx, 1);
     exp_num_cmd_unknown_errors += 1;
     ctx->invalid_header_inject_mode = OCCP_INVALID_HDR_INJECT_NONE;
-    // re-latch to recover
     retval = occp_send_get_version_command(ctx, ctx->slave_addr, &status_data);
     if (retval != OCCP_SUCCESS) {
         simputs("FAIL: Failed to get version command\n");
@@ -95,12 +86,10 @@ static void run_test_suite(test_context_t *ctx) {
     }
     increment_cmd_count(ctx);
 
-    // Case 3: Invalid AppID and Invalid MsgID -> expect Invalid_AppID precedence
     ctx->invalid_header_inject_mode = OCCP_INVALID_HDR_INVALID_BOTH;
     execute_random_commands(ctx, 1);
     exp_num_cmd_unknown_errors += 1;
     ctx->invalid_header_inject_mode = OCCP_INVALID_HDR_INJECT_NONE;
-    // relatch to recover
     retval = occp_send_get_version_command(ctx, ctx->slave_addr, &status_data);
     if (retval != OCCP_SUCCESS) {
         simputs("FAIL: Failed to get version command\n");
@@ -110,7 +99,6 @@ static void run_test_suite(test_context_t *ctx) {
     simputs("Invalid header tests completed\n");
 
     ctx->invalid_header_inject_mode = OCCP_INVALID_HDR_INJECT_NONE;
-    // recovery from invalid command
     execute_random_commands(ctx, 1);
 }
 
@@ -142,7 +130,6 @@ int main(void) {
         return -1;
     }
 
-    // Set up test context
     test_ctx.test_base_addr = OCCP_TEST_BASE_ADDR;
     test_ctx.test_upper_addr_bound = OCCP_TEST_BUFFER_SAFE_UPPER_ADDR;
     test_ctx.overall_result = true;
@@ -150,10 +137,8 @@ int main(void) {
     test_ctx.cmd_count = 0;
     test_ctx.exp_occp_last_error = 0;
 
-    // Run the test suite
     run_test_suite(&test_ctx);
 
-    // Read and validate the status buffer
     read_and_validate_smc_status_buffer(&test_ctx);
 
     // Finalize and report results

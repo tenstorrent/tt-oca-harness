@@ -32,9 +32,7 @@ from .smc_i2c_field_masks import (
     I2C_WRAP_CTRL_TARGET,
 )
 
-CLOCK_GATE_CONTROL = smc_addr(
-    "SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
-)
+CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 
 _TARGET_ADDR = 0x10
 _ACQ_THRESH = 4
@@ -68,9 +66,7 @@ def _target_id(address0: int, mask0: int = 0x7F) -> int:
 
 
 def _acq_lvl(status: int) -> int:
-    return (int(status) & I2C_TARGET_FIFO_STATUS_ACQLVL_BM) >> (
-        I2C_TARGET_FIFO_STATUS_ACQLVL_BP
-    )
+    return (int(status) & I2C_TARGET_FIFO_STATUS_ACQLVL_BM) >> (I2C_TARGET_FIFO_STATUS_ACQLVL_BP)
 
 
 def _tx_lvl(status: int) -> int:
@@ -116,9 +112,7 @@ class smc_i2c_p0_fifo_test_seq(SmcCsrSeq):
         )
 
     async def _wait_hostidle(self, host: int, label: str) -> None:
-        status_addr = self._idx_addr(
-            "SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR", host
-        )
+        status_addr = self._idx_addr("SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR", host)
         status = 0
         left = False
         for _ in range(200):
@@ -126,23 +120,19 @@ class smc_i2c_p0_fifo_test_seq(SmcCsrSeq):
             if not (status & I2C_STATUS_HOSTIDLE):
                 left = True
                 break
-            await Timer(1, units="us")
+            await Timer(1, unit="us")
         if not left:
-            raise AssertionError(
-                f"{label}: never left hostidle STATUS=0x{status:08x}"
-            )
+            raise AssertionError(f"{label}: never left hostidle STATUS=0x{status:08x}")
         for _ in range(400):
             status = await self.csr_read(f"{label}_STATUS", status_addr)
             if status & I2C_STATUS_HOSTIDLE:
                 return
-            await Timer(10, units="us")
+            await Timer(10, unit="us")
         raise AssertionError(f"{label}: stuck busy STATUS=0x{status:08x}")
 
     async def _acq_threshold_leg(self) -> None:
         # I2C0 target
-        wrap0 = self._idx_addr(
-            "SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", 0
-        )
+        wrap0 = self._idx_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", 0)
         await self.csr_write("I2C0_WRAP_TGT", wrap0, I2C_WRAP_CTRL_TARGET)
         await self._program_timing(0)
         await self.csr_write(
@@ -158,9 +148,7 @@ class smc_i2c_p0_fifo_test_seq(SmcCsrSeq):
         # ACQ_THRESH in [27:16]
         await self.csr_write(
             "I2C0_TGT_FIFO_CFG",
-            self._idx_addr(
-                "SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_FIFO_CONFIG_BASE_ADDR", 0
-            ),
+            self._idx_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_FIFO_CONFIG_BASE_ADDR", 0),
             (_ACQ_THRESH & 0xFFF) << I2C_TARGET_FIFO_CONFIG_ACQ_THRESH_BP,
         )
         await self.csr_write(
@@ -180,9 +168,7 @@ class smc_i2c_p0_fifo_test_seq(SmcCsrSeq):
         )
 
         # I2C1 host write
-        wrap1 = self._idx_addr(
-            "SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", 1
-        )
+        wrap1 = self._idx_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", 1)
         await self.csr_write("I2C1_WRAP_HOST", wrap1, I2C_WRAP_CTRL_HOST)
         await self._program_timing(1)
         await self.csr_write(
@@ -206,16 +192,12 @@ class smc_i2c_p0_fifo_test_seq(SmcCsrSeq):
         await self.csr_write("I2C1_FDATA_START", fdata, I2C_FDATA_START | addr_w)
         for i, b in enumerate(_ACQ_PAYLOAD[:-1]):
             await self.csr_write(f"I2C1_FDATA_{i}", fdata, b)
-        await self.csr_write(
-            "I2C1_FDATA_STOP", fdata, I2C_FDATA_STOP | _ACQ_PAYLOAD[-1]
-        )
+        await self.csr_write("I2C1_FDATA_STOP", fdata, I2C_FDATA_STOP | _ACQ_PAYLOAD[-1])
         await self._wait_hostidle(1, "ACQ_HOST")
 
         fifo_st = await self.csr_read(
             "I2C0_TGT_FIFO_STATUS",
-            self._idx_addr(
-                "SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_FIFO_STATUS_BASE_ADDR", 0
-            ),
+            self._idx_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_FIFO_STATUS_BASE_ADDR", 0),
         )
         intr = await self.csr_read(
             "I2C0_INTR_STATE",
@@ -224,16 +206,12 @@ class smc_i2c_p0_fifo_test_seq(SmcCsrSeq):
         lvl = _acq_lvl(fifo_st)
         if lvl <= _ACQ_THRESH:
             raise AssertionError(
-                f"ACQ lvl={lvl} not > thresh={_ACQ_THRESH} "
-                f"(fifo_st=0x{fifo_st:08x})"
+                f"ACQ lvl={lvl} not > thresh={_ACQ_THRESH} (fifo_st=0x{fifo_st:08x})"
             )
         if not (intr & I2C_INTR_STATE_ACQ_THRESHOLD):
-            raise AssertionError(
-                f"ACQ_THRESHOLD not set INTR_STATE=0x{intr:08x} lvl={lvl}"
-            )
+            raise AssertionError(f"ACQ_THRESHOLD not set INTR_STATE=0x{intr:08x} lvl={lvl}")
         cocotb.log.info(
-            "CHK-I2C-P0-FIFO-ACQ: ACQLVL=%d > thresh=%d INTR_STATE.ACQ_THRESHOLD "
-            "fifo_st=0x%x",
+            "CHK-I2C-P0-FIFO-ACQ: ACQLVL=%d > thresh=%d INTR_STATE.ACQ_THRESHOLD fifo_st=0x%x",
             lvl,
             _ACQ_THRESH,
             fifo_st,
@@ -254,9 +232,7 @@ class smc_i2c_p0_fifo_test_seq(SmcCsrSeq):
         )
         await self.csr_write(
             "I2C0_TGT_FIFO_CFG_TX",
-            self._idx_addr(
-                "SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_FIFO_CONFIG_BASE_ADDR", 0
-            ),
+            self._idx_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_FIFO_CONFIG_BASE_ADDR", 0),
             (_TX_THRESH & 0xFFF) << I2C_TARGET_FIFO_CONFIG_TX_THRESH_BP,
         )
         await self.csr_write(
@@ -269,12 +245,8 @@ class smc_i2c_p0_fifo_test_seq(SmcCsrSeq):
             self._idx_addr("SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR", 0),
             0xFFFFFFFF,
         )
-        fifo_addr = self._idx_addr(
-            "SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_FIFO_STATUS_BASE_ADDR", 0
-        )
-        intr_addr = self._idx_addr(
-            "SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR", 0
-        )
+        fifo_addr = self._idx_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_FIFO_STATUS_BASE_ADDR", 0)
+        intr_addr = self._idx_addr("SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR", 0)
         fifo_st = 0
         intr = 0
         lvl = 0
@@ -284,7 +256,7 @@ class smc_i2c_p0_fifo_test_seq(SmcCsrSeq):
             lvl = _tx_lvl(fifo_st)
             if lvl < _TX_THRESH and (intr & I2C_INTR_STATE_TX_THRESHOLD):
                 break
-            await Timer(1, units="us")
+            await Timer(1, unit="us")
         else:
             raise AssertionError(
                 f"TX_THRESHOLD not seen with empty TX "
@@ -300,13 +272,9 @@ class smc_i2c_p0_fifo_test_seq(SmcCsrSeq):
 
     async def body(self) -> None:
         if "smc_i2c_shared_bus" not in cocotb.plusargs:
-            raise AssertionError(
-                "smc_i2c_p0_fifo_test requires +smc_i2c_shared_bus"
-            )
+            raise AssertionError("smc_i2c_p0_fifo_test requires +smc_i2c_shared_bus")
         cg = await self.csr_read("CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL)
-        await self.csr_write(
-            "CLOCK_GATE_UNGATE_I2C", CLOCK_GATE_CONTROL, cg & ~I2C_CG_EN
-        )
+        await self.csr_write("CLOCK_GATE_UNGATE_I2C", CLOCK_GATE_CONTROL, cg & ~I2C_CG_EN)
         await self._acq_threshold_leg()
         await self._tx_threshold_empty_leg()
         cocotb.log.info(

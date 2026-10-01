@@ -1,83 +1,91 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-[cols="1,1,1,3", options="header"]
-.Register Map
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-entropy_source]
+== Entropy Source Address Map
+
+Entropy-source configuration, status, and data registers.
+
+[cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description
-| 0x0 | COMPONENT_ID | R a| Identifies the entropy-source register interface.
-| 0x4 | CTRL | RW a| Controls entropy generation and conditioning.
-| 0xC | DEBUG_CTRL | RW a| Controls the external debug observation pin. These fields remain writable after FIPS_LOCK.LOCK; system integration controls access to exposed pre-conditioning entropy.
-| 0x10 | INTR_STATUS | RW a| Reports latched interrupt status; write one to clear a bit.
-| 0x14 | INTR_ENABLE | RW a| Enables individual interrupt sources.
-| 0x18 | INTR_TEST | W a| Triggers individual interrupt sources for testing.
-| 0x1C | SHA256_STATUS | R a| Reports SHA-256 conditioner progress.
-| 0x20 | FIFO_CTRL | RW a| Controls the 64-entry main entropy FIFO.
-| 0x24 | FIFO_STATUS | R a| Reports main FIFO occupancy and pointers.
-| 0x28 | FIFO_RDATA | R a| Provides the next main FIFO word.
-| 0x30 | HEALTH_TEST_CTRL | RW a| Controls continuous entropy health tests.
-| 0x34 | HEALTH_TEST_WINDOW_SIZE | RW a| Sets the APT and Markov window length.
-| 0x38 | MARKOV_TEST_PROB_THRESHOLDS | RW a| Sets high and low Markov alternation-count thresholds.
-| 0x40 | HEALTH_TEST_STATUS | RW a| Latches 32-bit stream health-test failures: repetition [0], APT high or low [3], Markov high [4], and Markov low [5]. Write one to clear.
-| 0x44 | REPETITION_TEST_COUNT | R a| Reports the highest current repetition count.
-| 0x50 | APT_PATTERN_COUNT_1BIT | R a| Reports the highest per-lane APT one-count in the current window.
-| 0x54 | APT_PATTERN_COUNT_2BIT | R a| Reports the lowest per-lane APT one-count in the current window.
-| 0x60 | APT_PROPORTION_1BIT | RW a| Sets the APT high one-count threshold.
-| 0x70 | APT_PROPORTION_LO | RW a| Sets the APT low one-count threshold.
-| 0x80 | MARKOV_TEST_COUNTS_0 | R a| Reports the highest and lowest per-lane alternation counts in the current Markov window.
-| 0x90 | RING_OSC_ENABLE | RW a| Controls noise and sample-clock ring oscillators.
-| 0x94 | RING_OSC_TUNE | RW a| Selects detuned ring-oscillator tap points.
-| 0x98 | RING_OSC_CTRL | RW a| Selects each generator sample-clock source.
-| 0xA0 | DECORRELATOR_CTRL | RW a| Controls generator decorrelation and byte cadence.
-| 0xA4 | DECORRELATOR_MASK | RW a| Masks bits in every generator entropy byte.
-| 0xB4 | MAIN_SM_STATUS | RW a| Reports the startup health-test gate state machine.
-| 0xC0 | GENERATOR_0_HEALTH_STATUS | RW a| Latches generator 0 health-test failures; write one to clear.
-| 0xC4 | GENERATOR_1_HEALTH_STATUS | RW a| Latches generator 1 health-test failures; write one to clear.
-| 0xC8 | GENERATOR_2_HEALTH_STATUS | RW a| Latches generator 2 health-test failures; write one to clear.
-| 0xCC | GENERATOR_3_HEALTH_STATUS | RW a| Latches generator 3 health-test failures; write one to clear.
-| 0xD0 | GENERATOR_4_HEALTH_STATUS | RW a| Latches generator 4 health-test failures; write one to clear.
-| 0xD4 | GENERATOR_5_HEALTH_STATUS | RW a| Latches generator 5 health-test failures; write one to clear.
-| 0xD8 | GENERATOR_6_HEALTH_STATUS | RW a| Latches generator 6 health-test failures; write one to clear.
-| 0xDC | GENERATOR_7_HEALTH_STATUS | RW a| Latches generator 7 health-test failures; write one to clear.
-| 0xE0 | GENERATOR_8_HEALTH_STATUS | RW a| Latches generator 8 health-test failures; write one to clear.
-| 0xE4 | GENERATOR_9_HEALTH_STATUS | RW a| Latches generator 9 health-test failures; write one to clear.
-| 0xE8 | GENERATOR_10_HEALTH_STATUS | RW a| Latches generator 10 health-test failures; write one to clear.
-| 0xEC | GENERATOR_11_HEALTH_STATUS | RW a| Latches generator 11 health-test failures; write one to clear.
-| 0x100 | GENERATOR_0_SAMPLE_CLK_CONFIG | RW a| Controls generator 0 sample-clock division.
-| 0x104 | GENERATOR_1_SAMPLE_CLK_CONFIG | RW a| Controls generator 1 sample-clock division.
-| 0x108 | GENERATOR_2_SAMPLE_CLK_CONFIG | RW a| Controls generator 2 sample-clock division.
-| 0x10C | GENERATOR_3_SAMPLE_CLK_CONFIG | RW a| Controls generator 3 sample-clock division.
-| 0x110 | GENERATOR_4_SAMPLE_CLK_CONFIG | RW a| Controls generator 4 sample-clock division.
-| 0x114 | GENERATOR_5_SAMPLE_CLK_CONFIG | RW a| Controls generator 5 sample-clock division.
-| 0x118 | GENERATOR_6_SAMPLE_CLK_CONFIG | RW a| Controls generator 6 sample-clock division.
-| 0x11C | GENERATOR_7_SAMPLE_CLK_CONFIG | RW a| Controls generator 7 sample-clock division.
-| 0x120 | GENERATOR_8_SAMPLE_CLK_CONFIG | RW a| Controls generator 8 sample-clock division.
-| 0x124 | GENERATOR_9_SAMPLE_CLK_CONFIG | RW a| Controls generator 9 sample-clock division.
-| 0x128 | GENERATOR_10_SAMPLE_CLK_CONFIG | RW a| Controls generator 10 sample-clock division.
-| 0x12C | GENERATOR_11_SAMPLE_CLK_CONFIG | RW a| Controls generator 11 sample-clock division.
-| 0x130 | HT_WATERMARK_NUM | RW a| Selects the counter and direction for the shared health-test watermark. Changing the selection preserves the current watermark.
-| 0x134 | HT_WATERMARK | R a| Reports one selector-dependent watermark. A CTRL.MODULE_ENABLE rising edge arms high modes to zero and low modes to 0xFFFF.
-| 0x138 | REPCNT_TOTAL_FAILS | R a| Counts repetition-test failures since the last CTRL.MODULE_ENABLE rising edge.
-| 0x13C | APT_HI_TOTAL_FAILS | R a| Counts APT high-threshold failures since the last CTRL.MODULE_ENABLE rising edge.
-| 0x140 | APT_LO_TOTAL_FAILS | R a| Counts APT low-threshold failures since the last CTRL.MODULE_ENABLE rising edge.
-| 0x144 | MARKOV_HI_TOTAL_FAILS | R a| Counts Markov high-threshold failures since the last CTRL.MODULE_ENABLE rising edge.
-| 0x148 | MARKOV_LO_TOTAL_FAILS | R a| Counts Markov low-threshold failures since the last CTRL.MODULE_ENABLE rising edge.
-| 0x14C | ALERT_SUMMARY_FAIL_COUNTS | R a| Counts consecutive health-test windows containing any failure and clears after an accepted passing window.
-| 0x150 | ALERT_FAIL_COUNTS | R a| Reports saturating per-test failure counts for the current alert sequence.
-| 0x154 | FIPS_LOCK | RW a| Locks entropy generation, conditioning, and health-test configuration against software writes until hardware reset.
-| 0x158 | ALERT_THRESHOLD | RW a| Sets the failing-window count that enters the persistent-failure alert path.
-| 0x15C | MIN_ENTROPY_H | RW a| Stores assessed per-sample min-entropy in unsigned Q4.4 format for advisory threshold calculation.
-| 0x160 | RECOMMENDED_THRESHOLDS | R a| Reports advisory repetition and APT thresholds derived from MIN_ENTROPY_H.
-| 0x164 | BIW_OBS_CTRL | RW a| Controls copy-only capture of the post-BIW, pre-SHA stream.
-| 0x168 | BIW_OBS_STATUS | R a| Reports BIW observe FIFO occupancy and pointers.
-| 0x16C | BIW_OBS_RDATA | R a| Provides the next post-BIW, pre-SHA observe word.
-| 0x170 | NOISE_OBS_CTRL | RW a| Controls copy-only capture of one pre-decorrelator generator lane.
-| 0x174 | NOISE_OBS_STATUS | R a| Reports raw-noise observe FIFO occupancy and pointers.
-| 0x178 | NOISE_OBS_RDATA | R a| Provides the next packed raw-noise observe word.
+| 0x0 | <<reg-{regmap-instance}-entropy_source-COMPONENT_ID,COMPONENT_ID>> | R a| Identifies the entropy-source register interface.
+| 0x4 | <<reg-{regmap-instance}-entropy_source-CTRL,CTRL>> | RW a| Controls entropy generation and conditioning.
+| 0xC | <<reg-{regmap-instance}-entropy_source-DEBUG_CTRL,DEBUG_CTRL>> | RW a| Controls the external debug observation pin. These fields remain writable after FIPS_LOCK.LOCK; system integration controls access to exposed pre-conditioning entropy.
+| 0x10 | <<reg-{regmap-instance}-entropy_source-INTR_STATUS,INTR_STATUS>> | RW a| Reports latched interrupt status; write one to clear a bit.
+| 0x14 | <<reg-{regmap-instance}-entropy_source-INTR_ENABLE,INTR_ENABLE>> | RW a| Enables individual interrupt sources.
+| 0x18 | <<reg-{regmap-instance}-entropy_source-INTR_TEST,INTR_TEST>> | W a| Triggers individual interrupt sources for testing.
+| 0x1C | <<reg-{regmap-instance}-entropy_source-SHA256_STATUS,SHA256_STATUS>> | R a| Reports SHA-256 conditioner progress.
+| 0x20 | <<reg-{regmap-instance}-entropy_source-FIFO_CTRL,FIFO_CTRL>> | RW a| Controls the 64-entry main entropy FIFO.
+| 0x24 | <<reg-{regmap-instance}-entropy_source-FIFO_STATUS,FIFO_STATUS>> | R a| Reports main FIFO occupancy and pointers.
+| 0x28 | <<reg-{regmap-instance}-entropy_source-FIFO_RDATA,FIFO_RDATA>> | R a| Provides the next main FIFO word.
+| 0x30 | <<reg-{regmap-instance}-entropy_source-HEALTH_TEST_CTRL,HEALTH_TEST_CTRL>> | RW a| Controls continuous entropy health tests.
+| 0x34 | <<reg-{regmap-instance}-entropy_source-HEALTH_TEST_WINDOW_SIZE,HEALTH_TEST_WINDOW_SIZE>> | RW a| Sets the APT and Markov window length.
+| 0x38 | <<reg-{regmap-instance}-entropy_source-MARKOV_TEST_PROB_THRESHOLDS,MARKOV_TEST_PROB_THRESHOLDS>> | RW a| Sets high and low Markov alternation-count thresholds.
+| 0x40 | <<reg-{regmap-instance}-entropy_source-HEALTH_TEST_STATUS,HEALTH_TEST_STATUS>> | RW a| Latches 32-bit stream health-test failures: repetition [0], APT high or low [3], Markov high [4], and Markov low [5]. Write one to clear.
+| 0x44 | <<reg-{regmap-instance}-entropy_source-REPETITION_TEST_COUNT,REPETITION_TEST_COUNT>> | R a| Reports the highest current repetition count.
+| 0x50 | <<reg-{regmap-instance}-entropy_source-APT_PATTERN_COUNT_1BIT,APT_PATTERN_COUNT_1BIT>> | R a| Reports the highest per-lane APT one-count in the current window.
+| 0x54 | <<reg-{regmap-instance}-entropy_source-APT_PATTERN_COUNT_2BIT,APT_PATTERN_COUNT_2BIT>> | R a| Reports the lowest per-lane APT one-count in the current window.
+| 0x60 | <<reg-{regmap-instance}-entropy_source-APT_PROPORTION_1BIT,APT_PROPORTION_1BIT>> | RW a| Sets the APT high one-count threshold.
+| 0x70 | <<reg-{regmap-instance}-entropy_source-APT_PROPORTION_LO,APT_PROPORTION_LO>> | RW a| Sets the APT low one-count threshold.
+| 0x80 | <<reg-{regmap-instance}-entropy_source-MARKOV_TEST_COUNTS_0,MARKOV_TEST_COUNTS_0>> | R a| Reports the highest and lowest per-lane alternation counts in the current Markov window.
+| 0x90 | <<reg-{regmap-instance}-entropy_source-RING_OSC_ENABLE,RING_OSC_ENABLE>> | RW a| Controls noise and sample-clock ring oscillators.
+| 0x94 | <<reg-{regmap-instance}-entropy_source-RING_OSC_TUNE,RING_OSC_TUNE>> | RW a| Selects detuned ring-oscillator tap points.
+| 0x98 | <<reg-{regmap-instance}-entropy_source-RING_OSC_CTRL,RING_OSC_CTRL>> | RW a| Selects each generator sample-clock source.
+| 0xA0 | <<reg-{regmap-instance}-entropy_source-DECORRELATOR_CTRL,DECORRELATOR_CTRL>> | RW a| Controls generator decorrelation and byte cadence.
+| 0xA4 | <<reg-{regmap-instance}-entropy_source-DECORRELATOR_MASK,DECORRELATOR_MASK>> | RW a| Masks bits in every generator entropy byte.
+| 0xB4 | <<reg-{regmap-instance}-entropy_source-MAIN_SM_STATUS,MAIN_SM_STATUS>> | RW a| Reports the startup health-test gate state machine.
+| 0xC0 | <<reg-{regmap-instance}-entropy_source-GENERATOR_0_HEALTH_STATUS,GENERATOR_0_HEALTH_STATUS>> | RW a| Latches generator 0 health-test failures; write one to clear.
+| 0xC4 | <<reg-{regmap-instance}-entropy_source-GENERATOR_1_HEALTH_STATUS,GENERATOR_1_HEALTH_STATUS>> | RW a| Latches generator 1 health-test failures; write one to clear.
+| 0xC8 | <<reg-{regmap-instance}-entropy_source-GENERATOR_2_HEALTH_STATUS,GENERATOR_2_HEALTH_STATUS>> | RW a| Latches generator 2 health-test failures; write one to clear.
+| 0xCC | <<reg-{regmap-instance}-entropy_source-GENERATOR_3_HEALTH_STATUS,GENERATOR_3_HEALTH_STATUS>> | RW a| Latches generator 3 health-test failures; write one to clear.
+| 0xD0 | <<reg-{regmap-instance}-entropy_source-GENERATOR_4_HEALTH_STATUS,GENERATOR_4_HEALTH_STATUS>> | RW a| Latches generator 4 health-test failures; write one to clear.
+| 0xD4 | <<reg-{regmap-instance}-entropy_source-GENERATOR_5_HEALTH_STATUS,GENERATOR_5_HEALTH_STATUS>> | RW a| Latches generator 5 health-test failures; write one to clear.
+| 0xD8 | <<reg-{regmap-instance}-entropy_source-GENERATOR_6_HEALTH_STATUS,GENERATOR_6_HEALTH_STATUS>> | RW a| Latches generator 6 health-test failures; write one to clear.
+| 0xDC | <<reg-{regmap-instance}-entropy_source-GENERATOR_7_HEALTH_STATUS,GENERATOR_7_HEALTH_STATUS>> | RW a| Latches generator 7 health-test failures; write one to clear.
+| 0xE0 | <<reg-{regmap-instance}-entropy_source-GENERATOR_8_HEALTH_STATUS,GENERATOR_8_HEALTH_STATUS>> | RW a| Latches generator 8 health-test failures; write one to clear.
+| 0xE4 | <<reg-{regmap-instance}-entropy_source-GENERATOR_9_HEALTH_STATUS,GENERATOR_9_HEALTH_STATUS>> | RW a| Latches generator 9 health-test failures; write one to clear.
+| 0xE8 | <<reg-{regmap-instance}-entropy_source-GENERATOR_10_HEALTH_STATUS,GENERATOR_10_HEALTH_STATUS>> | RW a| Latches generator 10 health-test failures; write one to clear.
+| 0xEC | <<reg-{regmap-instance}-entropy_source-GENERATOR_11_HEALTH_STATUS,GENERATOR_11_HEALTH_STATUS>> | RW a| Latches generator 11 health-test failures; write one to clear.
+| 0x100 | <<reg-{regmap-instance}-entropy_source-GENERATOR_0_SAMPLE_CLK_CONFIG,GENERATOR_0_SAMPLE_CLK_CONFIG>> | RW a| Controls generator 0 sample-clock division.
+| 0x104 | <<reg-{regmap-instance}-entropy_source-GENERATOR_1_SAMPLE_CLK_CONFIG,GENERATOR_1_SAMPLE_CLK_CONFIG>> | RW a| Controls generator 1 sample-clock division.
+| 0x108 | <<reg-{regmap-instance}-entropy_source-GENERATOR_2_SAMPLE_CLK_CONFIG,GENERATOR_2_SAMPLE_CLK_CONFIG>> | RW a| Controls generator 2 sample-clock division.
+| 0x10C | <<reg-{regmap-instance}-entropy_source-GENERATOR_3_SAMPLE_CLK_CONFIG,GENERATOR_3_SAMPLE_CLK_CONFIG>> | RW a| Controls generator 3 sample-clock division.
+| 0x110 | <<reg-{regmap-instance}-entropy_source-GENERATOR_4_SAMPLE_CLK_CONFIG,GENERATOR_4_SAMPLE_CLK_CONFIG>> | RW a| Controls generator 4 sample-clock division.
+| 0x114 | <<reg-{regmap-instance}-entropy_source-GENERATOR_5_SAMPLE_CLK_CONFIG,GENERATOR_5_SAMPLE_CLK_CONFIG>> | RW a| Controls generator 5 sample-clock division.
+| 0x118 | <<reg-{regmap-instance}-entropy_source-GENERATOR_6_SAMPLE_CLK_CONFIG,GENERATOR_6_SAMPLE_CLK_CONFIG>> | RW a| Controls generator 6 sample-clock division.
+| 0x11C | <<reg-{regmap-instance}-entropy_source-GENERATOR_7_SAMPLE_CLK_CONFIG,GENERATOR_7_SAMPLE_CLK_CONFIG>> | RW a| Controls generator 7 sample-clock division.
+| 0x120 | <<reg-{regmap-instance}-entropy_source-GENERATOR_8_SAMPLE_CLK_CONFIG,GENERATOR_8_SAMPLE_CLK_CONFIG>> | RW a| Controls generator 8 sample-clock division.
+| 0x124 | <<reg-{regmap-instance}-entropy_source-GENERATOR_9_SAMPLE_CLK_CONFIG,GENERATOR_9_SAMPLE_CLK_CONFIG>> | RW a| Controls generator 9 sample-clock division.
+| 0x128 | <<reg-{regmap-instance}-entropy_source-GENERATOR_10_SAMPLE_CLK_CONFIG,GENERATOR_10_SAMPLE_CLK_CONFIG>> | RW a| Controls generator 10 sample-clock division.
+| 0x12C | <<reg-{regmap-instance}-entropy_source-GENERATOR_11_SAMPLE_CLK_CONFIG,GENERATOR_11_SAMPLE_CLK_CONFIG>> | RW a| Controls generator 11 sample-clock division.
+| 0x130 | <<reg-{regmap-instance}-entropy_source-HT_WATERMARK_NUM,HT_WATERMARK_NUM>> | RW a| Selects the counter and direction for the shared health-test watermark. Changing the selection preserves the current watermark.
+| 0x134 | <<reg-{regmap-instance}-entropy_source-HT_WATERMARK,HT_WATERMARK>> | R a| Reports one selector-dependent watermark. A CTRL.MODULE_ENABLE rising edge arms high modes to zero and low modes to 0xFFFF.
+| 0x138 | <<reg-{regmap-instance}-entropy_source-REPCNT_TOTAL_FAILS,REPCNT_TOTAL_FAILS>> | R a| Counts repetition-test failures since the last CTRL.MODULE_ENABLE rising edge.
+| 0x13C | <<reg-{regmap-instance}-entropy_source-APT_HI_TOTAL_FAILS,APT_HI_TOTAL_FAILS>> | R a| Counts APT high-threshold failures since the last CTRL.MODULE_ENABLE rising edge.
+| 0x140 | <<reg-{regmap-instance}-entropy_source-APT_LO_TOTAL_FAILS,APT_LO_TOTAL_FAILS>> | R a| Counts APT low-threshold failures since the last CTRL.MODULE_ENABLE rising edge.
+| 0x144 | <<reg-{regmap-instance}-entropy_source-MARKOV_HI_TOTAL_FAILS,MARKOV_HI_TOTAL_FAILS>> | R a| Counts Markov high-threshold failures since the last CTRL.MODULE_ENABLE rising edge.
+| 0x148 | <<reg-{regmap-instance}-entropy_source-MARKOV_LO_TOTAL_FAILS,MARKOV_LO_TOTAL_FAILS>> | R a| Counts Markov low-threshold failures since the last CTRL.MODULE_ENABLE rising edge.
+| 0x14C | <<reg-{regmap-instance}-entropy_source-ALERT_SUMMARY_FAIL_COUNTS,ALERT_SUMMARY_FAIL_COUNTS>> | R a| Counts consecutive health-test windows containing any failure and clears after an accepted passing window.
+| 0x150 | <<reg-{regmap-instance}-entropy_source-ALERT_FAIL_COUNTS,ALERT_FAIL_COUNTS>> | R a| Reports saturating per-test failure counts for the current alert sequence.
+| 0x154 | <<reg-{regmap-instance}-entropy_source-FIPS_LOCK,FIPS_LOCK>> | RW a| Locks entropy generation, conditioning, and health-test configuration against software writes until hardware reset.
+| 0x158 | <<reg-{regmap-instance}-entropy_source-ALERT_THRESHOLD,ALERT_THRESHOLD>> | RW a| Sets the failing-window count that enters the persistent-failure alert path.
+| 0x15C | <<reg-{regmap-instance}-entropy_source-MIN_ENTROPY_H,MIN_ENTROPY_H>> | RW a| Stores assessed per-sample min-entropy in unsigned Q4.4 format for advisory threshold calculation.
+| 0x160 | <<reg-{regmap-instance}-entropy_source-RECOMMENDED_THRESHOLDS,RECOMMENDED_THRESHOLDS>> | R a| Reports advisory repetition and APT thresholds derived from MIN_ENTROPY_H.
+| 0x164 | <<reg-{regmap-instance}-entropy_source-BIW_OBS_CTRL,BIW_OBS_CTRL>> | RW a| Controls copy-only capture of the post-BIW, pre-SHA stream.
+| 0x168 | <<reg-{regmap-instance}-entropy_source-BIW_OBS_STATUS,BIW_OBS_STATUS>> | R a| Reports BIW observe FIFO occupancy and pointers.
+| 0x16C | <<reg-{regmap-instance}-entropy_source-BIW_OBS_RDATA,BIW_OBS_RDATA>> | R a| Provides the next post-BIW, pre-SHA observe word.
+| 0x170 | <<reg-{regmap-instance}-entropy_source-NOISE_OBS_CTRL,NOISE_OBS_CTRL>> | RW a| Controls copy-only capture of one pre-decorrelator generator lane.
+| 0x174 | <<reg-{regmap-instance}-entropy_source-NOISE_OBS_STATUS,NOISE_OBS_STATUS>> | R a| Reports raw-noise observe FIFO occupancy and pointers.
+| 0x178 | <<reg-{regmap-instance}-entropy_source-NOISE_OBS_RDATA,NOISE_OBS_RDATA>> | R a| Provides the next packed raw-noise observe word.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.COMPONENT_ID Register
+[#reg-{regmap-instance}-entropy_source-COMPONENT_ID]
+=== COMPONENT_ID
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:28 | `MAJOR_VERSION` | R | 0x0 a| Major interface version.
@@ -86,8 +94,10 @@
 | 15:0 | `NAME` | R | 0x1 a| Entropy-source component identifier.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.CTRL Register
+[#reg-{regmap-instance}-entropy_source-CTRL]
+=== CTRL
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:29 | `Reserved` | - | - a| Reserved
@@ -103,8 +113,10 @@
 | 0 | `RSVD0` | R | 0x0 a| Reserved; reads zero and ignores writes.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.DEBUG_CTRL Register
+[#reg-{regmap-instance}-entropy_source-DEBUG_CTRL]
+=== DEBUG_CTRL
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:11 | `Reserved` | - | - a| Reserved
@@ -112,30 +124,34 @@
 | 7:0 | `SELECT_SIGNAL` | RW | 0x0 a| Selects the observed signal: generator noise bits [11:0], sample clocks [27:16], BIW data [63:32], FIFO input [95:64], or generator bytes [223:128]. Other selections drive the divider input low.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.INTR_STATUS Register
+[#reg-{regmap-instance}-entropy_source-INTR_STATUS]
+=== INTR_STATUS
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:29 | `Reserved` | - | - a| Reserved
-| 28 | `NOISE_OBS_OVERFLOW` | RW | 0x0 a| Indicates that a raw-noise observe FIFO word was discarded while full. Write one to clear.
+| 28 | `NOISE_OBS_OVERFLOW` | RW1C | 0x0 a| Indicates that a raw-noise observe FIFO word was discarded while full. Write one to clear.
 | 27:25 | `Reserved` | - | - a| Reserved
-| 24 | `BIW_OBS_OVERFLOW` | RW | 0x0 a| Indicates that a BIW observe FIFO word was discarded while full. Write one to clear.
+| 24 | `BIW_OBS_OVERFLOW` | RW1C | 0x0 a| Indicates that a BIW observe FIFO word was discarded while full. Write one to clear.
 | 23:21 | `Reserved` | - | - a| Reserved
-| 20 | `AUTOTUNE_FAIL` | RW | 0x0 a| Indicates a per-generator health-test failure while automatic detuning is enabled. Write one to clear.
+| 20 | `AUTOTUNE_FAIL` | RW1C | 0x0 a| Indicates a per-generator health-test failure while automatic detuning is enabled. Write one to clear.
 | 19:17 | `Reserved` | - | - a| Reserved
-| 16 | `PERSISTENT_FAILURE` | RW | 0x0 a| Indicates a persistent health-test failure or health-test counter error. Write one to clear.
+| 16 | `PERSISTENT_FAILURE` | RW1C | 0x0 a| Indicates a persistent health-test failure or health-test counter error. Write one to clear.
 | 15:13 | `Reserved` | - | - a| Reserved
-| 12 | `FIFO_UNDERFLOW` | RW | 0x0 a| Indicates that software read the empty main FIFO. Write one to clear.
+| 12 | `FIFO_UNDERFLOW` | RW1C | 0x0 a| Indicates that software read the empty main FIFO. Write one to clear.
 | 11:9 | `Reserved` | - | - a| Reserved
-| 8 | `FIFO_OVERFLOW` | RW | 0x0 a| Indicates that a main FIFO write was discarded while full. Write one to clear.
+| 8 | `FIFO_OVERFLOW` | RW1C | 0x0 a| Indicates that a main FIFO write was discarded while full. Write one to clear.
 | 7:5 | `Reserved` | - | - a| Reserved
-| 4 | `FIFO_ERROR` | RW | 0x0 a| Indicates a FIFO integrity error. Write one to clear.
+| 4 | `FIFO_ERROR` | RW1C | 0x0 a| Indicates a FIFO integrity error. Write one to clear.
 | 3:1 | `Reserved` | - | - a| Reserved
-| 0 | `HEALTH_TEST_FAILED` | RW | 0x0 a| Indicates a failure in the 32-bit entropy-stream health tests. Write one to clear.
+| 0 | `HEALTH_TEST_FAILED` | RW1C | 0x0 a| Indicates a failure in the 32-bit entropy-stream health tests. Write one to clear.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.INTR_ENABLE Register
+[#reg-{regmap-instance}-entropy_source-INTR_ENABLE]
+=== INTR_ENABLE
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:29 | `Reserved` | - | - a| Reserved
@@ -156,41 +172,47 @@
 | 0 | `HEALTH_TEST_FAILED` | RW | 0x0 a| Enables the health-test failure interrupt.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.INTR_TEST Register
+[#reg-{regmap-instance}-entropy_source-INTR_TEST]
+=== INTR_TEST
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:29 | `Reserved` | - | - a| Reserved
-| 28 | `NOISE_OBS_OVERFLOW` | W | 0x0 a| Write one to pulse the raw-noise observe FIFO overflow interrupt source.
+| 28 | `NOISE_OBS_OVERFLOW` | W 1P | 0x0 a| Write one to pulse the raw-noise observe FIFO overflow interrupt source.
 | 27:25 | `Reserved` | - | - a| Reserved
-| 24 | `BIW_OBS_OVERFLOW` | W | 0x0 a| Write one to pulse the BIW observe FIFO overflow interrupt source.
+| 24 | `BIW_OBS_OVERFLOW` | W 1P | 0x0 a| Write one to pulse the BIW observe FIFO overflow interrupt source.
 | 23:21 | `Reserved` | - | - a| Reserved
-| 20 | `AUTOTUNE_FAIL` | W | 0x0 a| Write one to pulse the automatic-detuning failure interrupt source.
+| 20 | `AUTOTUNE_FAIL` | W 1P | 0x0 a| Write one to pulse the automatic-detuning failure interrupt source.
 | 19:17 | `Reserved` | - | - a| Reserved
-| 16 | `PERSISTENT_FAILURE` | W | 0x0 a| Write one to pulse the persistent-failure interrupt source.
+| 16 | `PERSISTENT_FAILURE` | W 1P | 0x0 a| Write one to pulse the persistent-failure interrupt source.
 | 15:13 | `Reserved` | - | - a| Reserved
-| 12 | `FIFO_UNDERFLOW` | W | 0x0 a| Write one to pulse the main FIFO underflow interrupt source.
+| 12 | `FIFO_UNDERFLOW` | W 1P | 0x0 a| Write one to pulse the main FIFO underflow interrupt source.
 | 11:9 | `Reserved` | - | - a| Reserved
-| 8 | `FIFO_OVERFLOW` | W | 0x0 a| Write one to pulse the main FIFO overflow interrupt source.
+| 8 | `FIFO_OVERFLOW` | W 1P | 0x0 a| Write one to pulse the main FIFO overflow interrupt source.
 | 7:5 | `Reserved` | - | - a| Reserved
-| 4 | `FIFO_ERROR` | W | 0x0 a| Write one to pulse the FIFO integrity-error interrupt source.
+| 4 | `FIFO_ERROR` | W 1P | 0x0 a| Write one to pulse the FIFO integrity-error interrupt source.
 | 3:1 | `Reserved` | - | - a| Reserved
-| 0 | `HEALTH_TEST_FAILED` | W | 0x0 a| Write one to pulse the health-test failure interrupt source.
+| 0 | `HEALTH_TEST_FAILED` | W 1P | 0x0 a| Write one to pulse the health-test failure interrupt source.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.SHA256_STATUS Register
+[#reg-{regmap-instance}-entropy_source-SHA256_STATUS]
+=== SHA256_STATUS
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 31:11 | `Reserved` | - | - a| Reserved
-| 10:8 | `OUTPUT_COUNT` | R | 0x0 a| Number of 32-bit digest words remaining for output.
+| 31:12 | `Reserved` | - | - a| Reserved
+| 11:8 | `OUTPUT_COUNT` | R | 0x0 a| Number of 32-bit digest words remaining for output. Reports 8 when a digest becomes available, decrements through 0 as words are accepted, and remains 0 while idle or bypassed.
 | 7:4 | `INPUT_COUNT` | R | 0x0 a| Number of 32-bit words currently accumulated in the 512-bit input block.
 | 3:1 | `Reserved` | - | - a| Reserved
 | 0 | `BUSY` | R | 0x0 a| Indicates that SHA-256 processing or digest output is active.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.FIFO_CTRL Register
+[#reg-{regmap-instance}-entropy_source-FIFO_CTRL]
+=== FIFO_CTRL
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:5 | `Reserved` | - | - a| Reserved
@@ -199,8 +221,10 @@
 | 0 | `ENABLE` | RW | 0x1 a| Enables FIFO writes. Reads remain available while writes are disabled.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.FIFO_STATUS Register
+[#reg-{regmap-instance}-entropy_source-FIFO_STATUS]
+=== FIFO_STATUS
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:22 | `Reserved` | - | - a| Reserved
@@ -211,15 +235,19 @@
 | 6:0 | `LEVEL` | R | 0x0 a| Number of valid 32-bit words in the FIFO.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.FIFO_RDATA Register
+[#reg-{regmap-instance}-entropy_source-FIFO_RDATA]
+=== FIFO_RDATA
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `RDATA` | R | 0x0 a| Returns and removes the next FIFO word. Reading an empty FIFO sets INTR_STATUS.FIFO_UNDERFLOW and returns undefined data.
+| 31:0 | `RDATA` | R RMOD | 0x0 a| Returns and removes the next FIFO word. Reading an empty FIFO sets INTR_STATUS.FIFO_UNDERFLOW and returns undefined data.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.HEALTH_TEST_CTRL Register
+[#reg-{regmap-instance}-entropy_source-HEALTH_TEST_CTRL]
+=== HEALTH_TEST_CTRL
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:16 | `Reserved` | - | - a| Reserved
@@ -228,80 +256,100 @@
 | 2:0 | `ENABLE` | RW | 0x7 a| Enables the repetition-count, adaptive-proportion, and Markov tests in bits 0, 1, and 2. Disabling a test clears its state.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.HEALTH_TEST_WINDOW_SIZE Register
+[#reg-{regmap-instance}-entropy_source-HEALTH_TEST_WINDOW_SIZE]
+=== HEALTH_TEST_WINDOW_SIZE
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:16 | `Reserved` | - | - a| Reserved
 | 15:0 | `SIZE` | RW | 0x800 a| Number of valid entropy words per APT and Markov window. FIPS_LOCK.LOCK requires a value of at least 1024 and prevents software changes.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.MARKOV_TEST_PROB_THRESHOLDS Register
+[#reg-{regmap-instance}-entropy_source-MARKOV_TEST_PROB_THRESHOLDS]
+=== MARKOV_TEST_PROB_THRESHOLDS
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:16 | `PROB_10_THRESHOLD` | RW | 0x64 a| Minimum allowed per-lane alternation count at the window boundary. FIPS_LOCK.LOCK prevents software changes.
 | 15:0 | `PROB_01_THRESHOLD` | RW | 0x4B0 a| Maximum allowed per-lane alternation count at the window boundary. FIPS_LOCK.LOCK prevents software changes.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.HEALTH_TEST_STATUS Register
+[#reg-{regmap-instance}-entropy_source-HEALTH_TEST_STATUS]
+=== HEALTH_TEST_STATUS
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `HEALTH_STATUS` | RW | 0x0 a| Latched health-test failure bits; write one to clear.
+| 7:0 | `HEALTH_STATUS` | RW1C | 0x0 a| Latched health-test failure bits; write one to clear.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.REPETITION_TEST_COUNT Register
+[#reg-{regmap-instance}-entropy_source-REPETITION_TEST_COUNT]
+=== REPETITION_TEST_COUNT
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:16 | `Reserved` | - | - a| Reserved
 | 15:0 | `REPETITION_COUNT` | R | 0x0 a| Highest current repetition count among the 32 entropy lanes.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.APT_PATTERN_COUNT_1BIT Register
+[#reg-{regmap-instance}-entropy_source-APT_PATTERN_COUNT_1BIT]
+=== APT_PATTERN_COUNT_1BIT
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:16 | `Reserved` | - | - a| Reserved
 | 15:0 | `PATTERN_COUNT` | R | 0x0 a| Highest current one-count among the 32 entropy lanes.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.APT_PATTERN_COUNT_2BIT Register
+[#reg-{regmap-instance}-entropy_source-APT_PATTERN_COUNT_2BIT]
+=== APT_PATTERN_COUNT_2BIT
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:16 | `Reserved` | - | - a| Reserved
 | 15:0 | `PATTERN_COUNT` | R | 0x0 a| Lowest current one-count among the 32 entropy lanes.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.APT_PROPORTION_1BIT Register
+[#reg-{regmap-instance}-entropy_source-APT_PROPORTION_1BIT]
+=== APT_PROPORTION_1BIT
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:16 | `Reserved` | - | - a| Reserved
 | 15:0 | `LIMIT` | RW | 0x4B0 a| Maximum allowed per-lane one-count at the window boundary. FIPS_LOCK.LOCK prevents software changes.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.APT_PROPORTION_LO Register
+[#reg-{regmap-instance}-entropy_source-APT_PROPORTION_LO]
+=== APT_PROPORTION_LO
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:16 | `Reserved` | - | - a| Reserved
 | 15:0 | `LIMIT` | RW | 0x350 a| Minimum allowed per-lane one-count at the window boundary. Zero disables the low-side test. FIPS_LOCK.LOCK prevents software changes.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.MARKOV_TEST_COUNTS_0 Register
+[#reg-{regmap-instance}-entropy_source-MARKOV_TEST_COUNTS_0]
+=== MARKOV_TEST_COUNTS_0
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:16 | `COUNT_10` | R | 0x0 a| Lowest current per-lane alternation count.
 | 15:0 | `COUNT_01` | R | 0x0 a| Highest current per-lane alternation count.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.RING_OSC_ENABLE Register
+[#reg-{regmap-instance}-entropy_source-RING_OSC_ENABLE]
+=== RING_OSC_ENABLE
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:24 | `Reserved` | - | - a| Reserved
@@ -309,305 +357,381 @@
 | 11:0 | `ENABLE` | RW | 0xFFF a| Enables each generator noise ring oscillator. FIPS_LOCK.LOCK prevents software changes.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.RING_OSC_TUNE Register
+[#reg-{regmap-instance}-entropy_source-RING_OSC_TUNE]
+=== RING_OSC_TUNE
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:24 | `Reserved` | - | - a| Reserved
-| 23:12 | `SAMPLE_CLK_DETUNE` | RW | 0x0 a| Selects the shorter shared sample-clock oscillator tap when any bit is set. FIPS_LOCK.LOCK prevents software changes.
-| 11:0 | `DETUNE` | RW | 0x0 a| Selects the shorter tap for each noise ring oscillator while automatic tuning is disabled. FIPS_LOCK.LOCK prevents software changes.
+| 23:12 | `SAMPLE_CLK_DETUNE` | RW | 0x0 a| Selects the full-length (longer) shared sample-clock oscillator tap, lowering its frequency, when any bit is set. FIPS_LOCK.LOCK prevents software changes.
+| 11:0 | `DETUNE` | RW | 0x0 a| Selects the full-length (longer) tap for each noise ring oscillator, lowering its frequency, while automatic tuning is disabled; the reset value (clear) selects the shorter tap. FIPS_LOCK.LOCK prevents software changes.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.RING_OSC_CTRL Register
+[#reg-{regmap-instance}-entropy_source-RING_OSC_CTRL]
+=== RING_OSC_CTRL
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:12 | `Reserved` | - | - a| Reserved
 | 11:0 | `SAMPLE_CLK_SELECT` | RW | 0xFFF a| Selects the shared internal sample clock when set and the external sample clock when clear. FIPS_LOCK.LOCK prevents software changes.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.DECORRELATOR_CTRL Register
+[#reg-{regmap-instance}-entropy_source-DECORRELATOR_CTRL]
+=== DECORRELATOR_CTRL
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:12 | `SAMPLE_CLK_DIV` | RW | 0x3F a| Sets the generator byte-output period to this value plus one sample-clock cycles. FIPS_LOCK.LOCK prevents software changes.
 | 11:0 | `BYPASS` | RW | 0x0 a| Bypasses the LFSR feedback path independently for each generator. FIPS_LOCK.LOCK prevents software changes.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.DECORRELATOR_MASK Register
+[#reg-{regmap-instance}-entropy_source-DECORRELATOR_MASK]
+=== DECORRELATOR_MASK
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
 | 7:0 | `ENTROPY_BYTE_MASK` | RW | 0xFF a| Enables corresponding entropy-byte bits when set. FIPS_LOCK.LOCK prevents software changes.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.MAIN_SM_STATUS Register
+[#reg-{regmap-instance}-entropy_source-MAIN_SM_STATUS]
+=== MAIN_SM_STATUS
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:14 | `Reserved` | - | - a| Reserved
 | 13 | `ALERT_CNTR_CLR_OK` | R | 0x0 a| Indicates that a passing window may clear alert failure counters.
 | 12 | `BOOT_PHASE_DONE` | R | 0x0 a| Indicates successful completion of startup health testing and permits entropy output.
-| 11 | `ERR` | RW | 0x0 a| Latches an illegal state or health-test counter integrity error. Write one or reset the block to clear.
-| 10 | `ALERT` | RW | 0x0 a| Latches entry into the persistent-failure alert path, which halts entropy output. Write one or reset the block to clear.
+| 11 | `ERR` | RW1C | 0x0 a| Latches an illegal state or health-test counter integrity error. Write one or reset the block to clear.
+| 10 | `ALERT` | RW1C | 0x0 a| Latches entry into the persistent-failure alert path, which halts entropy output. Write one or reset the block to clear.
 | 9 | `IDLE` | R | 0x0 a| Indicates that the state machine is idle.
 | 8:0 | `STATE` | R | 0x0 a| Current sparse-encoded state-machine state.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.GENERATOR_0_HEALTH_STATUS Register
+[#reg-{regmap-instance}-entropy_source-GENERATOR_0_HEALTH_STATUS]
+=== GENERATOR_0_HEALTH_STATUS
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `STATUS` | RW | 0x0 a| Generator 0 failure bits use the HEALTH_TEST_STATUS allocation.
+| 7:0 | `STATUS` | RW1C | 0x0 a| Generator 0 failure bits use the HEALTH_TEST_STATUS allocation.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.GENERATOR_1_HEALTH_STATUS Register
+[#reg-{regmap-instance}-entropy_source-GENERATOR_1_HEALTH_STATUS]
+=== GENERATOR_1_HEALTH_STATUS
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `STATUS` | RW | 0x0 a| Generator 1 failure bits use the HEALTH_TEST_STATUS allocation.
+| 7:0 | `STATUS` | RW1C | 0x0 a| Generator 1 failure bits use the HEALTH_TEST_STATUS allocation.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.GENERATOR_2_HEALTH_STATUS Register
+[#reg-{regmap-instance}-entropy_source-GENERATOR_2_HEALTH_STATUS]
+=== GENERATOR_2_HEALTH_STATUS
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `STATUS` | RW | 0x0 a| Generator 2 failure bits use the HEALTH_TEST_STATUS allocation.
+| 7:0 | `STATUS` | RW1C | 0x0 a| Generator 2 failure bits use the HEALTH_TEST_STATUS allocation.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.GENERATOR_3_HEALTH_STATUS Register
+[#reg-{regmap-instance}-entropy_source-GENERATOR_3_HEALTH_STATUS]
+=== GENERATOR_3_HEALTH_STATUS
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `STATUS` | RW | 0x0 a| Generator 3 failure bits use the HEALTH_TEST_STATUS allocation.
+| 7:0 | `STATUS` | RW1C | 0x0 a| Generator 3 failure bits use the HEALTH_TEST_STATUS allocation.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.GENERATOR_4_HEALTH_STATUS Register
+[#reg-{regmap-instance}-entropy_source-GENERATOR_4_HEALTH_STATUS]
+=== GENERATOR_4_HEALTH_STATUS
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `STATUS` | RW | 0x0 a| Generator 4 failure bits use the HEALTH_TEST_STATUS allocation.
+| 7:0 | `STATUS` | RW1C | 0x0 a| Generator 4 failure bits use the HEALTH_TEST_STATUS allocation.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.GENERATOR_5_HEALTH_STATUS Register
+[#reg-{regmap-instance}-entropy_source-GENERATOR_5_HEALTH_STATUS]
+=== GENERATOR_5_HEALTH_STATUS
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `STATUS` | RW | 0x0 a| Generator 5 failure bits use the HEALTH_TEST_STATUS allocation.
+| 7:0 | `STATUS` | RW1C | 0x0 a| Generator 5 failure bits use the HEALTH_TEST_STATUS allocation.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.GENERATOR_6_HEALTH_STATUS Register
+[#reg-{regmap-instance}-entropy_source-GENERATOR_6_HEALTH_STATUS]
+=== GENERATOR_6_HEALTH_STATUS
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `STATUS` | RW | 0x0 a| Generator 6 failure bits use the HEALTH_TEST_STATUS allocation.
+| 7:0 | `STATUS` | RW1C | 0x0 a| Generator 6 failure bits use the HEALTH_TEST_STATUS allocation.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.GENERATOR_7_HEALTH_STATUS Register
+[#reg-{regmap-instance}-entropy_source-GENERATOR_7_HEALTH_STATUS]
+=== GENERATOR_7_HEALTH_STATUS
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `STATUS` | RW | 0x0 a| Generator 7 failure bits use the HEALTH_TEST_STATUS allocation.
+| 7:0 | `STATUS` | RW1C | 0x0 a| Generator 7 failure bits use the HEALTH_TEST_STATUS allocation.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.GENERATOR_8_HEALTH_STATUS Register
+[#reg-{regmap-instance}-entropy_source-GENERATOR_8_HEALTH_STATUS]
+=== GENERATOR_8_HEALTH_STATUS
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `STATUS` | RW | 0x0 a| Generator 8 failure bits use the HEALTH_TEST_STATUS allocation.
+| 7:0 | `STATUS` | RW1C | 0x0 a| Generator 8 failure bits use the HEALTH_TEST_STATUS allocation.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.GENERATOR_9_HEALTH_STATUS Register
+[#reg-{regmap-instance}-entropy_source-GENERATOR_9_HEALTH_STATUS]
+=== GENERATOR_9_HEALTH_STATUS
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `STATUS` | RW | 0x0 a| Generator 9 failure bits use the HEALTH_TEST_STATUS allocation.
+| 7:0 | `STATUS` | RW1C | 0x0 a| Generator 9 failure bits use the HEALTH_TEST_STATUS allocation.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.GENERATOR_10_HEALTH_STATUS Register
+[#reg-{regmap-instance}-entropy_source-GENERATOR_10_HEALTH_STATUS]
+=== GENERATOR_10_HEALTH_STATUS
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `STATUS` | RW | 0x0 a| Generator 10 failure bits use the HEALTH_TEST_STATUS allocation.
+| 7:0 | `STATUS` | RW1C | 0x0 a| Generator 10 failure bits use the HEALTH_TEST_STATUS allocation.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.GENERATOR_11_HEALTH_STATUS Register
+[#reg-{regmap-instance}-entropy_source-GENERATOR_11_HEALTH_STATUS]
+=== GENERATOR_11_HEALTH_STATUS
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `STATUS` | RW | 0x0 a| Generator 11 failure bits use the HEALTH_TEST_STATUS allocation.
+| 7:0 | `STATUS` | RW1C | 0x0 a| Generator 11 failure bits use the HEALTH_TEST_STATUS allocation.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.GENERATOR_0_SAMPLE_CLK_CONFIG Register
+[#reg-{regmap-instance}-entropy_source-GENERATOR_0_SAMPLE_CLK_CONFIG]
+=== GENERATOR_0_SAMPLE_CLK_CONFIG
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:5 | `Reserved` | - | - a| Reserved
 | 4:0 | `SAMPLE_CLK_DIVIDE` | RW | 0x0 a| Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.GENERATOR_1_SAMPLE_CLK_CONFIG Register
+[#reg-{regmap-instance}-entropy_source-GENERATOR_1_SAMPLE_CLK_CONFIG]
+=== GENERATOR_1_SAMPLE_CLK_CONFIG
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:5 | `Reserved` | - | - a| Reserved
 | 4:0 | `SAMPLE_CLK_DIVIDE` | RW | 0x0 a| Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.GENERATOR_2_SAMPLE_CLK_CONFIG Register
+[#reg-{regmap-instance}-entropy_source-GENERATOR_2_SAMPLE_CLK_CONFIG]
+=== GENERATOR_2_SAMPLE_CLK_CONFIG
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:5 | `Reserved` | - | - a| Reserved
 | 4:0 | `SAMPLE_CLK_DIVIDE` | RW | 0x1 a| Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.GENERATOR_3_SAMPLE_CLK_CONFIG Register
+[#reg-{regmap-instance}-entropy_source-GENERATOR_3_SAMPLE_CLK_CONFIG]
+=== GENERATOR_3_SAMPLE_CLK_CONFIG
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:5 | `Reserved` | - | - a| Reserved
 | 4:0 | `SAMPLE_CLK_DIVIDE` | RW | 0x1 a| Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.GENERATOR_4_SAMPLE_CLK_CONFIG Register
+[#reg-{regmap-instance}-entropy_source-GENERATOR_4_SAMPLE_CLK_CONFIG]
+=== GENERATOR_4_SAMPLE_CLK_CONFIG
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:5 | `Reserved` | - | - a| Reserved
 | 4:0 | `SAMPLE_CLK_DIVIDE` | RW | 0x2 a| Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.GENERATOR_5_SAMPLE_CLK_CONFIG Register
+[#reg-{regmap-instance}-entropy_source-GENERATOR_5_SAMPLE_CLK_CONFIG]
+=== GENERATOR_5_SAMPLE_CLK_CONFIG
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:5 | `Reserved` | - | - a| Reserved
 | 4:0 | `SAMPLE_CLK_DIVIDE` | RW | 0x2 a| Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.GENERATOR_6_SAMPLE_CLK_CONFIG Register
+[#reg-{regmap-instance}-entropy_source-GENERATOR_6_SAMPLE_CLK_CONFIG]
+=== GENERATOR_6_SAMPLE_CLK_CONFIG
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:5 | `Reserved` | - | - a| Reserved
 | 4:0 | `SAMPLE_CLK_DIVIDE` | RW | 0x0 a| Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.GENERATOR_7_SAMPLE_CLK_CONFIG Register
+[#reg-{regmap-instance}-entropy_source-GENERATOR_7_SAMPLE_CLK_CONFIG]
+=== GENERATOR_7_SAMPLE_CLK_CONFIG
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:5 | `Reserved` | - | - a| Reserved
 | 4:0 | `SAMPLE_CLK_DIVIDE` | RW | 0x0 a| Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.GENERATOR_8_SAMPLE_CLK_CONFIG Register
+[#reg-{regmap-instance}-entropy_source-GENERATOR_8_SAMPLE_CLK_CONFIG]
+=== GENERATOR_8_SAMPLE_CLK_CONFIG
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:5 | `Reserved` | - | - a| Reserved
 | 4:0 | `SAMPLE_CLK_DIVIDE` | RW | 0x1 a| Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.GENERATOR_9_SAMPLE_CLK_CONFIG Register
+[#reg-{regmap-instance}-entropy_source-GENERATOR_9_SAMPLE_CLK_CONFIG]
+=== GENERATOR_9_SAMPLE_CLK_CONFIG
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:5 | `Reserved` | - | - a| Reserved
 | 4:0 | `SAMPLE_CLK_DIVIDE` | RW | 0x1 a| Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.GENERATOR_10_SAMPLE_CLK_CONFIG Register
+[#reg-{regmap-instance}-entropy_source-GENERATOR_10_SAMPLE_CLK_CONFIG]
+=== GENERATOR_10_SAMPLE_CLK_CONFIG
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:5 | `Reserved` | - | - a| Reserved
 | 4:0 | `SAMPLE_CLK_DIVIDE` | RW | 0x2 a| Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.GENERATOR_11_SAMPLE_CLK_CONFIG Register
+[#reg-{regmap-instance}-entropy_source-GENERATOR_11_SAMPLE_CLK_CONFIG]
+=== GENERATOR_11_SAMPLE_CLK_CONFIG
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:5 | `Reserved` | - | - a| Reserved
 | 4:0 | `SAMPLE_CLK_DIVIDE` | RW | 0x2 a| Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.HT_WATERMARK_NUM Register
+[#reg-{regmap-instance}-entropy_source-HT_WATERMARK_NUM]
+=== HT_WATERMARK_NUM
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:4 | `Reserved` | - | - a| Reserved
 | 3:0 | `WATERMARK_NUM` | RW | 0x0 a| Selects the watermark source. Unsupported values select REPCNT_HI.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.HT_WATERMARK Register
+[#reg-{regmap-instance}-entropy_source-HT_WATERMARK]
+=== HT_WATERMARK
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:16 | `Reserved` | - | - a| Reserved
 | 15:0 | `WATERMARK_VALUE` | R | 0x0 a| Current shared watermark value.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.REPCNT_TOTAL_FAILS Register
+[#reg-{regmap-instance}-entropy_source-REPCNT_TOTAL_FAILS]
+=== REPCNT_TOTAL_FAILS
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `FAIL_COUNT` | R | 0x0 a| Total repetition-test failure pulses.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.APT_HI_TOTAL_FAILS Register
+[#reg-{regmap-instance}-entropy_source-APT_HI_TOTAL_FAILS]
+=== APT_HI_TOTAL_FAILS
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `FAIL_COUNT` | R | 0x0 a| Total APT high-threshold failure pulses.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.APT_LO_TOTAL_FAILS Register
+[#reg-{regmap-instance}-entropy_source-APT_LO_TOTAL_FAILS]
+=== APT_LO_TOTAL_FAILS
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `FAIL_COUNT` | R | 0x0 a| Total APT low-threshold failure pulses.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.MARKOV_HI_TOTAL_FAILS Register
+[#reg-{regmap-instance}-entropy_source-MARKOV_HI_TOTAL_FAILS]
+=== MARKOV_HI_TOTAL_FAILS
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `FAIL_COUNT` | R | 0x0 a| Total Markov high-threshold failure pulses.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.MARKOV_LO_TOTAL_FAILS Register
+[#reg-{regmap-instance}-entropy_source-MARKOV_LO_TOTAL_FAILS]
+=== MARKOV_LO_TOTAL_FAILS
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `FAIL_COUNT` | R | 0x0 a| Total Markov low-threshold failure pulses.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.ALERT_SUMMARY_FAIL_COUNTS Register
+[#reg-{regmap-instance}-entropy_source-ALERT_SUMMARY_FAIL_COUNTS]
+=== ALERT_SUMMARY_FAIL_COUNTS
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:16 | `Reserved` | - | - a| Reserved
 | 15:0 | `ANY_FAIL_COUNT` | R | 0x0 a| Number of consecutive failing health-test windows.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.ALERT_FAIL_COUNTS Register
+[#reg-{regmap-instance}-entropy_source-ALERT_FAIL_COUNTS]
+=== ALERT_FAIL_COUNTS
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:20 | `Reserved` | - | - a| Reserved
@@ -618,48 +742,60 @@
 | 3:0 | `APT_LO_FAIL_COUNT` | R | 0x0 a| Saturating APT low-threshold failure count.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.FIPS_LOCK Register
+[#reg-{regmap-instance}-entropy_source-FIPS_LOCK]
+=== FIPS_LOCK
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `Reserved` | - | - a| Reserved
-| 0 | `LOCK` | RW | 0x0 a| Write one to set the configuration lock. Only hardware reset clears it.
+| 0 | `LOCK` | RW1S | 0x0 a| Write one to set the configuration lock. Only hardware reset clears it.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.ALERT_THRESHOLD Register
+[#reg-{regmap-instance}-entropy_source-ALERT_THRESHOLD]
+=== ALERT_THRESHOLD
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:16 | `Reserved` | - | - a| Reserved
 | 15:0 | `THRESHOLD` | RW | 0x4 a| Number of consecutive failing windows that triggers the alert; zero disables this trigger. FIPS_LOCK.LOCK prevents software changes.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.MIN_ENTROPY_H Register
+[#reg-{regmap-instance}-entropy_source-MIN_ENTROPY_H]
+=== MIN_ENTROPY_H
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
 | 7:0 | `H` | RW | 0xC a| Assessed min-entropy in bits per sample. FIPS_LOCK.LOCK prevents software changes.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.RECOMMENDED_THRESHOLDS Register
+[#reg-{regmap-instance}-entropy_source-RECOMMENDED_THRESHOLDS]
+=== RECOMMENDED_THRESHOLDS
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:16 | `APT_LIMIT` | R | 0x0 a| Advisory APT high cutoff derived for a 1024-sample window.
 | 15:0 | `RCT_LIMIT` | R | 0x0 a| Advisory repetition-count cutoff C = 1 + ceil(20 / H).
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.BIW_OBS_CTRL Register
+[#reg-{regmap-instance}-entropy_source-BIW_OBS_CTRL]
+=== BIW_OBS_CTRL
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `Reserved` | - | - a| Reserved
 | 0 | `RAW_ENABLE` | RW | 0x0 a| Enables capture after startup health testing completes. This copy-only control remains writable after FIPS_LOCK.LOCK.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.BIW_OBS_STATUS Register
+[#reg-{regmap-instance}-entropy_source-BIW_OBS_STATUS]
+=== BIW_OBS_STATUS
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:22 | `Reserved` | - | - a| Reserved
@@ -670,26 +806,32 @@
 | 6:0 | `LEVEL` | R | 0x0 a| Number of valid 32-bit words in the BIW observe FIFO.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.BIW_OBS_RDATA Register
+[#reg-{regmap-instance}-entropy_source-BIW_OBS_RDATA]
+=== BIW_OBS_RDATA
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `RDATA` | R | 0x0 a| Returns and removes the next BIW observe FIFO word.
+| 31:0 | `RDATA` | R RMOD | 0x0 a| Returns and removes the next BIW observe FIFO word.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.NOISE_OBS_CTRL Register
+[#reg-{regmap-instance}-entropy_source-NOISE_OBS_CTRL]
+=== NOISE_OBS_CTRL
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
 | 7:4 | `LANE_SEL` | RW | 0x0 a| Selects generator lane 0 through 11; other values select lane 0. Changing lanes restarts packing and flushes buffered words.
 | 3:2 | `Reserved` | - | - a| Reserved
-| 1 | `FLUSH` | W | 0x0 a| Write one to discard buffered raw-noise words. Changing LANE_SEL also flushes the FIFO.
+| 1 | `FLUSH` | W 1P | 0x0 a| Write one to discard buffered raw-noise words. Changing LANE_SEL also flushes the FIFO.
 | 0 | `RAW_ENABLE` | RW | 0x0 a| Enables LSB-first packing of selected-lane samples into 32-bit observe words. This copy-only control remains writable after FIPS_LOCK.LOCK.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.NOISE_OBS_STATUS Register
+[#reg-{regmap-instance}-entropy_source-NOISE_OBS_STATUS]
+=== NOISE_OBS_STATUS
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:22 | `Reserved` | - | - a| Reserved
@@ -700,9 +842,11 @@
 | 6:0 | `LEVEL` | R | 0x0 a| Number of valid 32-bit words in the raw-noise observe FIFO.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.NOISE_OBS_RDATA Register
+[#reg-{regmap-instance}-entropy_source-NOISE_OBS_RDATA]
+=== NOISE_OBS_RDATA
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `RDATA` | R | 0x0 a| Returns and removes 32 LSB-first pre-decorrelator samples from the selected lane.
+| 31:0 | `RDATA` | R RMOD | 0x0 a| Returns and removes 32 LSB-first pre-decorrelator samples from the selected lane.
 |===

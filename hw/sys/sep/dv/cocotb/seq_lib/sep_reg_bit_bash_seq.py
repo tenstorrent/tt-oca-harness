@@ -13,14 +13,19 @@ Inbound-filter START/END stay in the write sweep under the full export
 mask. ``axi_filter_wrap`` rewrites a same-beat window only
 (``START[2:0]->0``, ``END[2:0]->1``; END reset ``0x7``). Solo bash keeps
 the peer at reset, so the checker compares readback to that wrap model
-rather than stripping ``[2:0]`` from the mask. Skipping those 32
-registers is a coverage hole, not a fix.
+rather than stripping ``[2:0]`` from the mask.
 
-Full complement bash stays on no-side-effect blocks. ``TOUCH_BLOCKS``
-picks one RW register per other major IP from the export candidate list,
-writes a seed-derived ``x``, and checks ``(readback & mask) == (x & mask)``
-before restoring reset. The pick is seed-selected only where the block
-offers more than one candidate -- see the TOUCH_BLOCKS comment.
+Full complement bash stays on no-side-effect blocks. The masked storage
+touch is wider: every register the safety gate admits gets a seed-derived
+``x`` inside the software-usable mask, a ``(readback & mask) == (x & mask)``
+compare, and a restore to reset. The gate is
+``touch_reason(info) is None and side_effect_reason(info) is None``.
+``touch_reason`` alone is NOT a gate: it consults reset_reason, the mask,
+name suffixes and the touch deny tables, and never the write-side
+side-effect tables, so on its own it admits the outbound-filter,
+alias-remap and fabric-remap banks whose write redirects or drops a live
+beat. ``TOUCH_BLOCKS`` is the anti-vacuity list of IPs that must each
+still contribute at least one touch.
 """
 
 from __future__ import annotations
@@ -29,17 +34,22 @@ from collections import defaultdict
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
+from env.sep_spec_tables import AXI_BUS_BYTES
 from sep_reg_meta import (
+    INBOUND_FILTER_CTRL_0,
+    KM_MAILBOX_SEP,
+    RegAccess,
     RegInfo,
     iter_register_walk,
     reg_hw_updating,
 )
+
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
 # (block, name) -> reason. name None = every register in the block.
 # kind is consulted by the cfg, not stored here: RESET_EXCLUDE vs WRITE_EXCLUDE.
 RESET_EXCLUDE: dict[tuple[str, str | None], str] = {
-    ("OCH_SEP_TOP", None): "top container, not a register block",
+    ("SEP_TOP", None): "top container, not a register block",
     ("PIC", None): "CPU-internal PIC, not on the CPU-LSU splice",
     ("SEP_EXTERNAL", None): "adopter extension window",
     ("SEP_EXTERNAL_EFUSE_SHIM_CTRL", None): "adopter extension window",
@@ -51,13 +61,15 @@ RESET_EXCLUDE: dict[tuple[str, str | None], str] = {
     ("SEP_CPU_CTRL", "SEP_TEST_CTRL"): "hw-driven straps",
     ("SEP_CPU_CTRL", "SEP_FUSE_SENSE_STATUS"): "hw-driven fuse-sense status",
     ("SEP_CPU_CTRL", "SMC_FUSE_SENSE_STATUS"): "hw-driven fuse-sense status",
-    ("SEP_CPU_CTRL", "SEP_STRAPS"): "hw-driven straps",
     ("SEP_CPU_CTRL", "TIMEOUT_CLEAR"): "write-only",
     ("SEP_CPU_CTRL", "TIMEOUT_MODE"): "write-only",
+    ("SEP_CPU_CTRL", "DMA_BUS_ERR_CLEAR"): "write-only",
+    ("SEP_CPU_CTRL", "PERIPH_BUS_ERR_CLEAR"): "write-only",
     ("WDT_TIMER", "WKUP_COUNT_HI"): "hw-driven timer",
     ("WDT_TIMER", "WKUP_COUNT_LO"): "hw-driven timer",
     ("WDT_TIMER", "WDOG_COUNT"): "hw-driven timer",
 }
+
 
 # ENTROPY_SOURCE registers hardware may change while the noise source runs: a
 # reset compare on one measures elapsed time, not the DUT's reset value. The set
@@ -89,11 +101,20 @@ RESET_EXCLUDE_SUFFIX: dict[str, str] = {
     # INTR_STATUS.FIFO_UNDERFLOW and returns undefined data. Reading one to check
     # a reset value therefore destroys the state it is checking.
     "RDATA": "FIFO",
+    "ERROR_FLAGS": "read-clear",
     "GENBITS": "FIFO",
     "CMD": "trigger",
+    # spi_host COMMAND: write-only segment trigger (swaccess wo, hwext); reads
+    # return 0, so it is neither reset-checkable nor a storage touch.
+    "COMMAND": "trigger",
     "CMD_REQ": "trigger",
 }
 
+# Blocks the aggressive complement/all-ones bash may not enter, block-wide.
+# A blanket: the reason names what the block as a whole holds, so a plain
+# storage register inside one is still a legal masked touch. touch_reason
+# refines these per register, which is how the storage touch reaches AES,
+# HMAC, KMAC, OTBN, SECURE_DMA, SPI_CONTROLLER, WDT_TIMER and the mailboxes.
 WRITE_EXCLUDE: dict[tuple[str, str | None], str] = {
     ("SECURE_DMA", None): "trigger",
     ("WDT_TIMER", None): "trigger",
@@ -105,6 +126,14 @@ WRITE_EXCLUDE: dict[tuple[str, str | None], str] = {
     ("KM_MAILBOX_SEP", None): "FIFO / trigger",
     ("AXIL_MAILBOX", None): "FIFO",
     ("SPI_CONTROLLER", None): "trigger",
+}
+
+# Registers whose write has a side effect beyond its own storage: it moves
+# the LSU, changes the fabric window, re-selects the entropy source, fires a
+# key wipe, or is not storage at all (read-only / write-once-set). No write
+# path may touch one, so write_reason and the masked storage touch both gate
+# on this table through side_effect_reason.
+SIDE_EFFECT_EXCLUDE: dict[tuple[str, str | None], str] = {
     ("SEP_CPU_CTRL", "CLOCK_GATE_CTRL"): "side-effect",
     ("SEP_CPU_CTRL", "SEP_GLOBAL_BASE_ADDR"): "side-effect: fabric remap",
     ("SEP_CPU_CTRL", "SEP_LOCAL_BASE_ADDR"): "side-effect: fabric remap",
@@ -128,24 +157,19 @@ WRITE_SAFE_PREFIXES = (
     "INBOUND_FILTER_CTRL_",
 )
 
-# One RW storage touch per IP outside WRITE_SAFE_PREFIXES. Candidates and
-# addr/reset/mask come from the export; names here are only which blocks must
-# be visited. No GO / key / lock / fabric remap / SW reset.
-#
-# The pick is seed-selected only where the block has more than one candidate.
-# Measured against the current export: SECURE_DMA 14, SPI_CONTROLLER 4,
-# WDT_TIMER 4 vary with the seed; AES, HMAC, KMAC, OTBN and both mailboxes
-# have a single candidate, so their pick is fixed and reseeding does not
-# widen it.
-# Four of those fixed picks are INTR_ENABLE, which is the generated interrupt
-# shim rather than IP-owned storage -- a decode/storage proof for the block,
-# not evidence about the engine. Say so rather than letting the log imply the
-# whole set is randomized.
+# Anti-vacuity list, not the touch set: the touch set is every register the
+# gate admits. Each of these IPs sits outside WRITE_SAFE_PREFIXES, so its only
+# write coverage is the masked touch. If the export or a deny table stops
+# admitting any register in one of them, the cfg raises instead of quietly
+# shipping a narrower sweep.
 #
 # AES's only candidate is CTRL_AUX_SHADOWED. touch_write detects the SHADOWED
 # name and issues the dual write the register requires, so it is a valid
 # storage touch; the deny list covers CTRL_SHADOWED / CFG_SHADOWED because
 # those are the shadowed *control* registers whose value has side effects.
+# HMAC, KMAC and OTBN contribute INTR_ENABLE only -- the generated interrupt
+# shim rather than IP-owned storage, so those rows are block decode/storage
+# evidence, not evidence about the engine.
 TOUCH_BLOCKS: tuple[str, ...] = (
     "AES",
     "HMAC",
@@ -172,8 +196,9 @@ _TOUCH_DENY_SUBSTR: dict[str, str] = {
     "ENTROPY_SEED": "key material",
     "LOAD_CHECKSUM": "hw-produced result",
     "INSN_CNT": "engine-updated",
-    "ERR_BITS": "W1C status",
-    "FATAL_ALERT": "W1C status",
+    # Labels follow the IP-XACT export (regs/gen/ipxact/sep.xml).
+    "ERR_BITS": "hw-updated status (read-write, volatile)",
+    "FATAL_ALERT": "read-only hw status",
     "CTRL_SHADOWED": "shadowed control",
     "CFG_SHADOWED": "shadowed control",
     "CTRL_GCM": "multi-field encoding",
@@ -185,63 +210,107 @@ _TOUCH_DENY_SUBSTR: dict[str, str] = {
     "CLEAR_INTR": "trigger",
 }
 
+# Entropy-complex CSRs the export marks rw but hardware owns. A sticky
+# lock is never a storage touch: it changes the machine under the rest
+# of the sweep.
+_TOUCH_DENY_SUFFIX_HW: dict[str, str] = {
+    "_STS": "hw-driven status",
+    "_SM_STATE": "hw state observability",
+    "COMPONENT_ID": "read-only identity",
+    "GENBITS_VLD": "hw-driven valid",
+    "INT_STATE_VAL": "windowed read port, not storage",
+}
+
+_TOUCH_DENY_PREFIX_HW: dict[str, str] = {
+    "RESEED_COUNTER_": "hw-driven counter",
+}
+
 # Exact names: W1C / status / enable-ish multi-field CSRs that are still
 # export-rw but do not behave as plain storage under a random ``x``.
 _TOUCH_DENY_NAME: dict[str, str] = {
+    "FIPS_LOCK": "sticky lock; setting it freezes the block for the rest of the run",
+    # Both refuse a random mask-legal value:
+    # HT_WATERMARK_NUM.WATERMARK_NUM carries `encode = WATERMARK_TEST`:
+    # "Unsupported values are sanitized to REPCNT_HI", so a legal encoding lands
+    # and any other reads back 0. NOISE_OBS_CTRL holds FLUSH[1:1], `sw = w` and
+    # `singlepulse`, inside the software-usable mask -- a value with bit 1 set
+    # pulses the flush and self-clears -- and its LANE_SEL sanitizes an
+    # out-of-range lane to 0.
+    "HT_WATERMARK_NUM": "enumerated selector; an unsupported value sanitizes",
+    "NOISE_OBS_CTRL": "write-only singlepulse field inside the mask",
     "CTRL": "trigger",
     "CFG": "multi-field encoding",
     "INTR_STATE": "W1C status",
     "IRQS": "W1C status",
-    "IRQP": "W1C status",
-    "ERR_CODE": "W1C status",
-    "ERROR_CODE": "W1C status",
-    "WKUP_CAUSE": "W1C status",
+    "IRQP": "read-only hw status",
+    "ERR_CODE": "read-only hw status",
+    "ERROR_CODE": "read-only hw status",
+    "ERROR_FLAGS": "read-clear status",
+    "WKUP_CAUSE": "write-zero-to-clear status",
     "RANGE_VALID": "arms the range",
     # Thresholds clamp to FIFO depth; export mask is wider than storage.
     "RIRQT": "clamped to FIFO depth",
     "WIRQT": "clamped to FIFO depth",
     # Entropy CSRs need KMAC CFG / runtime; not plain POR storage.
     "ENTROPY_PERIOD": "needs KMAC cfg",
-    "ENTROPY_REFRESH_HASH_CNT": "needs KMAC cfg",
+    "ENTROPY_REFRESH_HASH_CNT": "read-only hw counter",
     "ENTROPY_REFRESH_THRESHOLD_SHADOWED": "needs KMAC cfg",
 }
 
 # Remap / outbound-filter writes are reset-checked only: an unprogrammed
-# alias region still rewrites a live beat.
-WRITE_EXCLUDE_PREFIXES: dict[str, str] = {
+# alias region still rewrites a live beat, and an outbound-filter window
+# programmed under a random value drops live beats. No write path may enter
+# these banks, the masked storage touch included.
+SIDE_EFFECT_EXCLUDE_PREFIXES: dict[str, str] = {
     "LOCAL_MASTER_ALIAS_REMAP_CTRL_": "side-effect: alias remap rewrites LSU",
     "AP_OUTPUT_REMAP_CTRL_": "side-effect: outbound remap",
     "STEE_OUTPUT_REMAP_CTRL_": "side-effect: outbound remap",
     "OUTBOUND_FILTER_CTRL_": "side-effect: outbound filter drop",
+}
+
+# Blanket bash exclusion, refined per register by touch_reason: the mailbox
+# data ports are a FIFO, but IRQEN in the same block is plain storage.
+WRITE_EXCLUDE_PREFIXES: dict[str, str] = {
     "AXIL_MAILBOX_": "FIFO",
 }
 
-# Beat granule (DataBusWidthLog2=3). END_ADDR reset is 0x7.
-_GRANULE = 0x7
+# Beat granule. hw/ip/axi_filter/doc/index.adoc (Address Range Granule): with
+# allow_burst = 0 the granule is the data bus width and address bits [2:0] are
+# ignored, so the mask is one less than the bus width in bytes.
+_GRANULE = AXI_BUS_BYTES - 1
 _INBOUND_ADDR = frozenset({"START_ADDR", "END_ADDR"})
-# Peer at reset during solo bash (each bash restores before the next reg).
-_INBOUND_PEER_RESET = {"START_ADDR": 0x7, "END_ADDR": 0x0}
+# Peer at reset during solo bash (each bash restores before the next reg), taken
+# from the generated export rather than transcribed: the value for START_ADDR is
+# the peer END_ADDR's reset, and vice versa.
+_INBOUND_PEER_RESET = {
+    "START_ADDR": INBOUND_FILTER_CTRL_0.reset("END_ADDR"),
+    "END_ADDR": INBOUND_FILTER_CTRL_0.reset("START_ADDR"),
+}
 
 
 def write_mask(info: RegInfo) -> int:
-    """Software-usable bits a complement write must move."""
-    return info.mask
+    """Software-usable bits a complement write must move.
+
+    ``KM_MAILBOX_SEP.SEP_CTRL`` carries FLUSH inside the software-usable mask:
+    the field is write-1 and hardware clears it when the flush completes, so it
+    never reads back what a random ``x`` wrote. The two response bits beside it
+    are plain storage, so the register stays on the touch with the pulse masked
+    out rather than being denied whole -- the same treatment NOISE_OBS_CTRL's
+    write-only field would need if its peers were storage.
+    """
+    mask = info.mask
+    if info.block == "KM_MAILBOX_SEP" and info.name == "SEP_CTRL":
+        mask &= ~KM_MAILBOX_SEP.field_mask("SEP_CTRL", "flush")
+    return mask & 0xFFFF_FFFF
 
 
 def inbound_addr_expected(name: str, written: int) -> int:
     """Readback after a solo START/END write with the peer at reset.
 
-    Models ``axi_filter_wrap`` allow_burst=0: when START and END share a
-    beat, START[2:0] clears and END[2:0] sets; otherwise the write lands.
-
-    This is an RTL-behaviour lock, not a specification check. The same-beat
-    widen appears in no architecture document -- neither
-    ``hw/sys/sep/doc/fabric.adoc`` nor ``hw/sys/sep/doc/memory_map.adoc``
-    describes it -- so this compare pins what the RTL does today and fails
-    loudly if it changes. It cannot tell a correct widen from a window
-    over-grant, because nothing states which is intended. The sibling
-    allow_burst=1 4 KB widen is the same open question and is not modelled
-    here. Resolve the specification before treating either as proven.
+    ``allow_burst`` reset is 0, so the granule is 8 bytes
+    (``hw/ip/axi_filter/doc/index.adoc``, ``filter_ctrl.rdl``):
+    when START and END share a beat, START[2:0] clears and END[2:0] sets;
+    otherwise the write lands. The 4 KB granule is CHK-PAGE-WIDEN.
     """
     written &= 0xFFFF_FFFF
     peer = _INBOUND_PEER_RESET[name]
@@ -253,23 +322,32 @@ def inbound_addr_expected(name: str, written: int) -> int:
 
 
 def _is_inbound_addr(info: RegInfo) -> bool:
-    return (
-        info.block.startswith("INBOUND_FILTER_CTRL_")
-        and info.name in _INBOUND_ADDR
-    )
+    return info.block.startswith("INBOUND_FILTER_CTRL_") and info.name in _INBOUND_ADDR
 
 
 def touch_reason(info: RegInfo) -> str | None:
-    """Why this register is not a plain storage touch, or None if it is.
+    """Why this register does not behave as plain storage, or None if it does.
 
     Mirrors reset_reason/write_reason: every exclusion carries a reason the
     cfg tallies, so the summary accounts for every inventory register.
     Export symbols that lack DEFAULT/struct are counted by
     ``iter_register_walk`` (``nometa``), not here.
+
+    Not a complete gate on its own. It answers "is the storage plain?", not
+    "is a write safe?", so a caller must also clear side_effect_reason before
+    it writes. Alone it admits the outbound-filter, alias-remap and
+    fabric-remap banks.
     """
     why = reset_reason(info)
     if why is not None:
         return why
+    # Software cannot write a read-only register, so the touch would write
+    # nothing and then compare the readback against the value it meant to
+    # write. The reset arms above do not cover this one: a read-only register
+    # that DOES declare a reset (abr_reg.rdl MLDSA_VERIFY_RES, `sw = r` with
+    # `resetsignal`) is a real reset-compare row and a bogus touch row.
+    if info.access.access == frozenset({"read-only"}):
+        return "sw=r; a write does not reach storage"
     if info.mask == 0:
         return "no software-usable field"
     why = _suffix_reason(info.name)
@@ -280,6 +358,12 @@ def touch_reason(info: RegInfo) -> str | None:
         return why
     for frag, reason in _TOUCH_DENY_SUBSTR.items():
         if frag in info.name:
+            return reason
+    for suffix, reason in _TOUCH_DENY_SUFFIX_HW.items():
+        if info.name == suffix or info.name.endswith(suffix):
+            return reason
+    for prefix, reason in _TOUCH_DENY_PREFIX_HW.items():
+        if info.name.startswith(prefix):
             return reason
     return None
 
@@ -293,9 +377,7 @@ def touch_write_value(before: int, mask: int, rng: SepSeededRng) -> int:
     return (before & ~mask & 0xFFFF_FFFF) | field
 
 
-def _lookup(
-    table: dict[tuple[str, str | None], str], block: str, name: str
-) -> str | None:
+def _lookup(table: dict[tuple[str, str | None], str], block: str, name: str) -> str | None:
     return table.get((block, name)) or table.get((block, None))
 
 
@@ -309,6 +391,21 @@ def _suffix_reason(name: str) -> str | None:
 
 
 def reset_reason(info: RegInfo) -> str | None:
+    """Why a reset read-compare on this register proves nothing, or None.
+
+    The two access-shaped arms come first because they are derived from the
+    RDL, not from a name: a register the RDL declares write-only returns no
+    storage on a read, and a read-only register with no declared reset is
+    driven by hardware, so the generated ``_REG_DEFAULT`` is a field default
+    and not a POR value. Comparing a read against either one measures the
+    generator. Both shapes read back 0 against a default of 0 far more often
+    than not, so leaving them in makes the compare pass without the DUT having
+    demonstrated anything.
+    """
+    if info.access.write_only:
+        return "sw=w; a read does not return storage"
+    if info.access.hw_driven:
+        return "sw=r with no declared reset; the export DEFAULT is not a POR value"
     hit = _lookup(RESET_EXCLUDE, info.block, info.name) or _suffix_reason(info.name)
     if hit is not None:
         return hit
@@ -317,22 +414,42 @@ def reset_reason(info: RegInfo) -> str | None:
     return None
 
 
+def side_effect_reason(info: RegInfo) -> str | None:
+    """Why no write path may touch this register, or None if a write is safe.
+
+    The side-effect half of write_reason, shared with the masked storage touch
+    so the two gates cannot drift apart. Covers the registers whose write
+    reaches past their own storage -- fabric and alias remap, outbound filter,
+    the entropy mux, the write-once-set locks -- plus the ones that are not
+    storage at all. FILTER_CONFIG carries a read-only field in the same word,
+    so a full-mask compare on it measures the generator, not the DUT.
+    """
+    if info.name == "FILTER_CONFIG":
+        return "read-only field in word"
+    hit = _lookup(SIDE_EFFECT_EXCLUDE, info.block, info.name)
+    if hit is not None:
+        return hit
+    for prefix, reason in SIDE_EFFECT_EXCLUDE_PREFIXES.items():
+        if info.block.startswith(prefix):
+            return reason
+    return None
+
+
 def write_reason(info: RegInfo) -> str | None:
     if reset_reason(info) is not None:
         return reset_reason(info)
     if info.mask == 0:
         return "no software-usable field"
-    if info.name == "FILTER_CONFIG":
-        return "read-only field in word"
+    hit = side_effect_reason(info)
+    if hit is not None:
+        return hit
     hit = _lookup(WRITE_EXCLUDE, info.block, info.name)
     if hit is not None:
         return hit
     for prefix, reason in WRITE_EXCLUDE_PREFIXES.items():
         if info.block.startswith(prefix):
             return reason
-    if not any(
-        info.block == p or info.block.startswith(p) for p in WRITE_SAFE_PREFIXES
-    ):
+    if not any(info.block == p or info.block.startswith(p) for p in WRITE_SAFE_PREFIXES):
         return "not a no-side-effect block"
     return None
 
@@ -340,9 +457,11 @@ def write_reason(info: RegInfo) -> str | None:
 class SepRegBitBashCfg:
     """Seeded walk of the generated register export.
 
-    Discrete cells every seed: every reset-eligible register, then every
-    write-safe register. The seed shuffles block order and whether the
-    complement write or the all-ones write runs first.
+    Discrete cells every seed: every reset-eligible register, every
+    bash-safe register, then every register the masked storage touch admits.
+    The seed shuffles block order, picks the touch values, and picks whether
+    the complement write or the all-ones write runs first. It does not change
+    which cells run, so coverage is the same at every seed.
     """
 
     def __init__(self, seed: int) -> None:
@@ -378,7 +497,8 @@ class SepRegBitBashCfg:
         for i in range(len(self.reset_blocks) - 1, 0, -1):
             j = rng_order.randrange(0, i + 1)
             self.reset_blocks[i], self.reset_blocks[j] = (
-                self.reset_blocks[j], self.reset_blocks[i]
+                self.reset_blocks[j],
+                self.reset_blocks[i],
             )
         self.write_blocks = [b for b in self.reset_blocks if b in write_by_block]
         self.ones_first = bool(rng.getrandbits(1))
@@ -389,9 +509,9 @@ class SepRegBitBashCfg:
         if not self.write_regs:
             raise RuntimeError("write sweep is empty after exclusions")
         inbound_addr = [
-            info for info in self.write_regs
-            if info.block.startswith("INBOUND_FILTER_CTRL_")
-            and info.name in _INBOUND_ADDR
+            info
+            for info in self.write_regs
+            if info.block.startswith("INBOUND_FILTER_CTRL_") and info.name in _INBOUND_ADDR
         ]
         if len(inbound_addr) != 32:
             raise RuntimeError(
@@ -399,41 +519,58 @@ class SepRegBitBashCfg:
                 "expected 32 (16 entries x START/END)"
             )
 
+        # Masked storage touch: every register that is plain storage AND whose
+        # write has no side effect. touch_reason alone would admit the
+        # outbound-filter, alias-remap and fabric-remap banks, so the two
+        # halves are ANDed and the side-effect half is the shared predicate,
+        # not a second copy of the tables.
         by_block: dict[str, list[RegInfo]] = defaultdict(list)
         self.touch_skipped: dict[str, int] = defaultdict(int)
         for info in inventory:
-            why_t = touch_reason(info)
+            why_t = touch_reason(info) or side_effect_reason(info)
             if why_t is None:
                 by_block[info.block].append(info)
             else:
                 self.touch_skipped[why_t] += 1
+        for block in TOUCH_BLOCKS:
+            if not by_block.get(block):
+                raise RuntimeError(f"TOUCH_BLOCKS {block}: no RW storage candidate in export")
         rng_touch = SepSeededRng(seed ^ 0xC0FFEE)
         touch: list[tuple[RegInfo, int]] = []
-        for block in TOUCH_BLOCKS:
-            cands = by_block.get(block)
-            if not cands:
-                raise RuntimeError(
-                    f"TOUCH_BLOCKS {block}: no RW storage candidate in export"
-                )
-            info = cands[rng_touch.randrange(0, len(cands))]
-            # Value uses reset as the pre-touch image (bring-up leaves POR).
-            x = touch_write_value(info.reset, info.mask, rng_touch)
-            touch.append((info, x))
+        # touch_reason defers to reset_reason first, so every admitted block is
+        # also a reset block: the seed-shuffled reset order carries the touch.
+        touch_blocks = [b for b in self.reset_blocks if b in by_block]
+        for block in touch_blocks:
+            for info in by_block[block]:
+                # Value uses reset as the pre-touch image (bring-up leaves POR).
+                x = touch_write_value(info.reset, info.mask, rng_touch)
+                touch.append((info, x))
+        self.touch_blocks = touch_blocks
         self.touch_regs = tuple(touch)
+        if not self.touch_regs:
+            raise RuntimeError("storage touch sweep is empty after exclusions")
+        admitted = sum(len(regs) for regs in by_block.values())
+        if len(self.touch_regs) != admitted:
+            raise RuntimeError(
+                f"storage touch sweep is {len(self.touch_regs)} of {admitted} "
+                "admitted registers; the block order dropped some"
+            )
 
     def summary(self) -> str:
         skip_r = " ".join(f"{k}={v}" for k, v in sorted(self.reset_skipped.items()))
         skip_w = " ".join(f"{k}={v}" for k, v in sorted(self.write_skipped.items()))
         skip_t = " ".join(f"{k}={v}" for k, v in sorted(self.touch_skipped.items()))
-        touches = ",".join(
-            f"{i.block}.{i.name}=0x{x:x}/m0x{i.mask:x}" for i, x in self.touch_regs
-        )
+        per_block: dict[str, int] = defaultdict(int)
+        for info, _x in self.touch_regs:
+            per_block[info.block] += 1
+        touches = ",".join(f"{b}={per_block[b]}" for b in self.touch_blocks)
         return (
             f"seed={self.seed} ones_first={int(self.ones_first)} "
             f"export={self.export} inventory={self.inventory} nometa={self.nometa} "
             f"reset={len(self.reset_regs)}/{len(self.reset_blocks)}blocks "
             f"write={len(self.write_regs)}/{len(self.write_blocks)}blocks "
-            f"touch={len(self.touch_regs)}[{touches}] "
+            f"touch={len(self.touch_regs)}/{len(self.touch_blocks)}blocks"
+            f"[{touches}] "
             f"reset_skip=[{skip_r}] write_skip=[{skip_w}] "
             f"touch_skip=[{skip_t}]"
         )
@@ -463,15 +600,23 @@ class SepRegBitBash:
 
     async def _rd(self, addr: int, *, name: str) -> tuple[int, int]:
         seq = SepAxiAccessSeq(
-            f"bash_rd_{name}", op=SepAxiOp.READ, addr=addr, length=4, size=2,
+            f"bash_rd_{name}",
+            op=SepAxiOp.READ,
+            addr=addr,
+            length=4,
+            size=2,
         )
         await self.test.start_seq(seq)
         return seq.resp_code, seq.rdata & 0xFFFF_FFFF
 
     async def _wr(self, addr: int, data: int, *, name: str) -> int:
         seq = SepAxiAccessSeq(
-            f"bash_wr_{name}", op=SepAxiOp.WRITE, addr=addr, wdata=data,
-            length=4, size=2,
+            f"bash_wr_{name}",
+            op=SepAxiOp.WRITE,
+            addr=addr,
+            wdata=data,
+            length=4,
+            size=2,
         )
         await self.test.start_seq(seq)
         return seq.resp_code
@@ -494,22 +639,16 @@ class SepRegBitBash:
     async def bash_write(self, info: RegInfo, *, ones_first: bool) -> None:
         tag = f"{info.block}_{info.name}"
         resp, before = await self._rd(info.addr, name=tag)
-        assert resp == 0, (
-            f"{info.block}.{info.name} @0x{info.addr:08x} resp={resp} before write"
-        )
+        assert resp == 0, f"{info.block}.{info.name} @0x{info.addr:08x} resp={resp} before write"
         inbound = _is_inbound_addr(info)
 
         async def do_complement(entry: int) -> int:
             mask = write_mask(info)
             pat = (~entry) & 0xFFFF_FFFF
             wr = await self._wr(info.addr, pat, name=f"{tag}_comp")
-            assert wr == 0, (
-                f"{info.block}.{info.name} complement write resp={wr}"
-            )
+            assert wr == 0, f"{info.block}.{info.name} complement write resp={wr}"
             rd, after = await self._rd(info.addr, name=f"{tag}_comp")
-            assert rd == 0, (
-                f"{info.block}.{info.name} complement read resp={rd}"
-            )
+            assert rd == 0, f"{info.block}.{info.name} complement read resp={rd}"
             if inbound:
                 expected = inbound_addr_expected(info.name, pat)
                 assert after == expected, (
@@ -559,13 +698,9 @@ class SepRegBitBash:
             mask = write_mask(info)
             pat = 0xFFFF_FFFF
             wr = await self._wr(info.addr, pat, name=f"{tag}_ones")
-            assert wr == 0, (
-                f"{info.block}.{info.name} all-ones write resp={wr}"
-            )
+            assert wr == 0, f"{info.block}.{info.name} all-ones write resp={wr}"
             rd, after = await self._rd(info.addr, name=f"{tag}_ones")
-            assert rd == 0, (
-                f"{info.block}.{info.name} all-ones read resp={rd}"
-            )
+            assert rd == 0, f"{info.block}.{info.name} all-ones read resp={rd}"
             if inbound:
                 expected = inbound_addr_expected(info.name, pat)
                 assert after == expected, (
@@ -575,8 +710,7 @@ class SepRegBitBash:
                 return after
             leaked = (entry ^ after) & ~mask & 0xFFFF_FFFF
             assert leaked == 0, (
-                f"CHK-RO FAIL: {info.block}.{info.name} all-ones moved "
-                f"outside mask 0x{leaked:08x}"
+                f"CHK-RO FAIL: {info.block}.{info.name} all-ones moved outside mask 0x{leaked:08x}"
             )
             if mask != 0 and mask == info.mask:
                 reserved = after & info.reserved
@@ -594,9 +728,7 @@ class SepRegBitBash:
             await do_ones(mid)
 
         wr = await self._wr(info.addr, info.reset, name=f"{tag}_restore")
-        assert wr == 0, (
-            f"{info.block}.{info.name} restore write resp={wr}"
-        )
+        assert wr == 0, f"{info.block}.{info.name} restore write resp={wr}"
         rd, got = await self._rd(info.addr, name=f"{tag}_restore")
         assert rd == 0 and got == info.reset, (
             f"{info.block}.{info.name} restore read 0x{got:08x} "
@@ -605,7 +737,13 @@ class SepRegBitBash:
         self.write_ok += 1
 
     async def touch_write(self, info: RegInfo, x: int) -> None:
-        """RW storage proof: write ``x``, check ``(read & mask) == (x & mask)``."""
+        """RW storage proof: write ``x``, check ``(read & mask) == (x & mask)``.
+
+        Inbound-filter START/END compare against the same-beat wrap model
+        instead of ``x``: the peer is at reset here (each touch restores before
+        the next), so ``inbound_addr_expected`` is the readback contract. A
+        raw ``x`` compare would fail on the RTL widen of bits [2:0].
+        """
         tag = f"touch_{info.block}_{info.name}"
         mask = write_mask(info)
         shadowed = "SHADOWED" in info.name
@@ -616,38 +754,31 @@ class SepRegBitBash:
             f"resp={resp} before write"
         )
         wr = await self._wr(info.addr, x, name=f"{tag}_wr")
-        assert wr == 0, (
-            f"CHK-BLOCK-TOUCH FAIL: {info.block}.{info.name} write resp={wr}"
-        )
+        assert wr == 0, f"CHK-BLOCK-TOUCH FAIL: {info.block}.{info.name} write resp={wr}"
         if shadowed:
             wr = await self._wr(info.addr, x, name=f"{tag}_wr2")
             assert wr == 0, (
-                f"CHK-BLOCK-TOUCH FAIL: {info.block}.{info.name} shadow "
-                f"commit resp={wr}"
+                f"CHK-BLOCK-TOUCH FAIL: {info.block}.{info.name} shadow commit resp={wr}"
             )
         rd, after = await self._rd(info.addr, name=f"{tag}_rd")
-        assert rd == 0, (
-            f"CHK-BLOCK-TOUCH FAIL: {info.block}.{info.name} read resp={rd}"
-        )
-        assert (after & mask) == (x & mask), (
+        assert rd == 0, f"CHK-BLOCK-TOUCH FAIL: {info.block}.{info.name} read resp={rd}"
+        want = inbound_addr_expected(info.name, x) if _is_inbound_addr(info) else x
+        assert (after & mask) == (want & mask), (
             f"CHK-BLOCK-TOUCH FAIL: {info.block}.{info.name} "
             f"(read 0x{after:08x} & mask 0x{mask:08x})=0x{after & mask:08x} "
-            f"!= (x 0x{x:08x} & mask)=0x{x & mask:08x}"
+            f"!= (expected 0x{want:08x} & mask)=0x{want & mask:08x} "
+            f"(wrote 0x{x:08x})"
         )
         leaked = (before ^ after) & ~mask & 0xFFFF_FFFF
         assert leaked == 0, (
-            f"CHK-BLOCK-TOUCH FAIL: {info.block}.{info.name} bits outside mask "
-            f"moved 0x{leaked:08x}"
+            f"CHK-BLOCK-TOUCH FAIL: {info.block}.{info.name} bits outside mask moved 0x{leaked:08x}"
         )
         wr = await self._wr(info.addr, info.reset, name=f"{tag}_restore")
-        assert wr == 0, (
-            f"CHK-BLOCK-TOUCH FAIL: {info.block}.{info.name} restore resp={wr}"
-        )
+        assert wr == 0, f"CHK-BLOCK-TOUCH FAIL: {info.block}.{info.name} restore resp={wr}"
         if shadowed:
             wr = await self._wr(info.addr, info.reset, name=f"{tag}_restore2")
             assert wr == 0, (
-                f"CHK-BLOCK-TOUCH FAIL: {info.block}.{info.name} shadow "
-                f"restore resp={wr}"
+                f"CHK-BLOCK-TOUCH FAIL: {info.block}.{info.name} shadow restore resp={wr}"
             )
         rd, got = await self._rd(info.addr, name=f"{tag}_restore")
         assert rd == 0 and got == info.reset, (
@@ -689,6 +820,58 @@ def _selftest() -> None:
     assert inbound_addr_expected("START_ADDR", 0x5) == 0x0
     assert inbound_addr_expected("END_ADDR", 0xFFFF_FFF8) == 0xFFFF_FFF8
     assert inbound_addr_expected("END_ADDR", 0x0) == 0x7
+    # touch_reason admits the outbound-filter bank; the side-effect half is
+    # what keeps a write off it. Both halves must be consulted.
+    outbound = RegInfo(
+        block="OUTBOUND_FILTER_CTRL_0_",
+        name="START_ADDR",
+        addr=0,
+        reset=0,
+        mask=0xFFFF_FFFF,
+        mask_all=0xFFFF_FFFF,
+    )
+    filter_cfg = RegInfo(
+        block="INBOUND_FILTER_CTRL_0_",
+        name="FILTER_CONFIG",
+        addr=0,
+        reset=0,
+        mask=0xFFFF_FFFF,
+        mask_all=0xFFFF_FFFF,
+    )
+    assert touch_reason(outbound) is None
+    assert side_effect_reason(outbound) == "side-effect: outbound filter drop"
+    assert side_effect_reason(filter_cfg) == "read-only field in word"
+    assert side_effect_reason(scratch) is None
+    assert side_effect_reason(start) is None
+    assert write_reason(scratch) is None
+    assert write_reason(outbound) == "side-effect: outbound filter drop"
+
+    # The three access-shaped arms. Every RegInfo above carries the default
+    # read-write storage shape, so without these the arms are never taken here
+    # and a change to them shows up only in a simulation.
+    def shaped(access: str, declared_reset: bool) -> RegInfo:
+        return RegInfo(
+            block="ABR",
+            name="SHAPE_PROBE",
+            addr=0,
+            reset=0xF,
+            mask=0xFFFF_FFFF,
+            mask_all=0xFFFF_FFFF,
+            access=RegAccess(frozenset({access}), declared_reset),
+        )
+
+    write_only = shaped("write-only", True)
+    hw_driven = shaped("read-only", False)
+    read_only = shaped("read-only", True)
+    assert reset_reason(write_only) == "sw=w; a read does not return storage"
+    assert reset_reason(hw_driven) == (
+        "sw=r with no declared reset; the export DEFAULT is not a POR value"
+    )
+    # Read-only WITH a reset stays a reset row, and only the touch refuses it.
+    assert reset_reason(read_only) is None
+    assert touch_reason(read_only) == "sw=r; a write does not reach storage"
+    assert touch_reason(scratch) is None
+
     rng = SepSeededRng(1)
     v = touch_write_value(0x11, 0xF, rng)
     assert (v & ~0xF) == (0x11 & ~0xF)

@@ -1,307 +1,210 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-aes]
+== AES Accelerator
+
+AES encryption and decryption engine with SCA and FI countermeasures
+
 [NOTE]
 ======
-*Register Arrays:* This register map contains the following register arrays:
+*Register Arrays:*
 
-* *KEY_SHARE0[8]*: 8 registers
-  ** Base Address: 0x4
-  ** Address Increment: 0x4 per register
-
-* *KEY_SHARE1[8]*: 8 registers
-  ** Base Address: 0x24
-  ** Address Increment: 0x4 per register
-
-* *IV[4]*: 4 registers
-  ** Base Address: 0x44
-  ** Address Increment: 0x4 per register
-
-* *DATA_IN[4]*: 4 registers
-  ** Base Address: 0x54
-  ** Address Increment: 0x4 per register
-
-* *DATA_OUT[4]*: 4 registers
-  ** Base Address: 0x64
-  ** Address Increment: 0x4 per register
-
+* *KEY_SHARE0[8]*: 8 registers, base 0x4, stride 0x4
+* *KEY_SHARE1[8]*: 8 registers, base 0x24, stride 0x4
+* *IV[4]*: 4 registers, base 0x44, stride 0x4
+* *DATA_IN[4]*: 4 registers, base 0x54, stride 0x4
+* *DATA_OUT[4]*: 4 registers, base 0x64, stride 0x4
 ======
 
-[cols="1,1,1,3", options="header"]
-.Register Map
+[cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description
-| 0x0 | ALERT_TEST | W a| -
-| 0x4 - 0x20 | KEY_SHARE0[8] | W a| -
-| 0x24 - 0x40 | KEY_SHARE1[8] | W a| -
-| 0x44 - 0x50 | IV[4] | RW a| -
-| 0x54 - 0x60 | DATA_IN[4] | W a| -
-| 0x64 - 0x70 | DATA_OUT[4] | R a| -
-| 0x74 | CTRL_SHADOWED | RW a| -
-| 0x78 | CTRL_AUX_SHADOWED | RW a| -
-| 0x7C | CTRL_AUX_REGWEN | RW a| -
-| 0x80 | TRIGGER | W a| -
-| 0x84 | STATUS | R a| -
-| 0x88 | CTRL_GCM_SHADOWED | RW a| -
+| 0x0 | <<reg-{regmap-instance}-aes-ALERT_TEST,ALERT_TEST>> | W a| -
+| 0x4 - 0x20 | <<reg-{regmap-instance}-aes-KEY_SHARE0-0-,KEY_SHARE0[8]>> | W a| -
+| 0x24 - 0x40 | <<reg-{regmap-instance}-aes-KEY_SHARE1-0-,KEY_SHARE1[8]>> | W a| -
+| 0x44 - 0x50 | <<reg-{regmap-instance}-aes-IV-0-,IV[4]>> | RW a| -
+| 0x54 - 0x60 | <<reg-{regmap-instance}-aes-DATA_IN-0-,DATA_IN[4]>> | W a| -
+| 0x64 - 0x70 | <<reg-{regmap-instance}-aes-DATA_OUT-0-,DATA_OUT[4]>> | R a| -
+| 0x74 | <<reg-{regmap-instance}-aes-CTRL_SHADOWED,CTRL_SHADOWED>> | RW a| -
+| 0x78 | <<reg-{regmap-instance}-aes-CTRL_AUX_SHADOWED,CTRL_AUX_SHADOWED>> | RW a| -
+| 0x7C | <<reg-{regmap-instance}-aes-CTRL_AUX_REGWEN,CTRL_AUX_REGWEN>> | RW a| -
+| 0x80 | <<reg-{regmap-instance}-aes-TRIGGER,TRIGGER>> | W a| -
+| 0x84 | <<reg-{regmap-instance}-aes-STATUS,STATUS>> | R a| -
+| 0x88 | <<reg-{regmap-instance}-aes-CTRL_GCM_SHADOWED,CTRL_GCM_SHADOWED>> | RW a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.ALERT_TEST Register
+[#reg-{regmap-instance}-aes-ALERT_TEST]
+=== ALERT_TEST
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:2 | `Reserved` | - | - a| Reserved
-| 1 | `fatal_fault` | W | 0x0 a| Write 1 to trigger one alert event of this kind.
-| 0 | `recov_ctrl_update_err` | W | 0x0 a| Write 1 to trigger one alert event of this kind.
+| 1 | `FATAL_FAULT` | W | 0x0 a| Write 1 to trigger one alert event of this kind.
+| 0 | `RECOV_CTRL_UPDATE_ERR` | W | 0x0 a| Write 1 to trigger one alert event of this kind.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.KEY_SHARE0[8] Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:0 | `KEY_SHARE0` | W | 0x0 a| Initial Key Registers Share 0.
+[#reg-{regmap-instance}-aes-KEY_SHARE0-0-]
+=== KEY_SHARE0[8]
 
-The actual initial key corresponds to Initial Key Registers
-Share 0 XORed with Initial Key Registers Share 1.  Loaded into
-the internal Full Key register upon starting
-encryption/decryption of the next block.  All key registers
-(Share 0 and Share 1) must be written at least once when the
-key is changed, regardless of key length (write random data
-for unused bits).  The order in which the registers are
-updated does not matter.  Can only be updated when the AES
-unit is idle.  If the AES unit is non-idle, writes to these
-registers are ignored.
-Upon reset, these registers are cleared with pseudo-random data.
-|===
-
-[cols="1,1,1,1,3", options="header"]
-.KEY_SHARE1[8] Register
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `KEY_SHARE1` | W | 0x0 a| Initial Key Registers Share 1.
-
-The actual initial key corresponds to Initial Key Registers
-Share 0 XORed with Initial Key Registers Share 1.  Loaded into
-the internal Full Key register upon starting
-encryption/decryption of the next block.  All key registers
-(Share 0 and Share 1) must be written at least once when the
-key is changed, regardless of key length (write random data
-for unused bits).  The order in which the registers are
-updated does not matter.  Can only be updated when the AES
-unit is idle.  If the AES unit is non-idle, writes to these
-registers are ignored.  Upon reset, these registers are
-cleared with pseudo-random data.
+| 31:0 | `KEY_SHARE0` | W | 0x0 a| Initial Key Share 0
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.IV[4] Register
+[#reg-{regmap-instance}-aes-KEY_SHARE1-0-]
+=== KEY_SHARE1[8]
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `IV` | RW | 0x0 a| Initialization Vector Registers.
-
-The initialization vector (IV) or initial counter value must
-be written to these registers when starting a new message in
-CBC or CTR mode (see Control Register), respectively.  In CBC
-and CTR modes, the AES unit does not start
-encryption/decryption with a partially updated IV.  Each
-register has to be written at least once.  The order in which
-the registers are written does not matter.  If the AES unit is
-non-idle, writes to these registers are ignored.  Whenever
-starting a new message, the corresponding IV value must be
-provided by the processor.  Once started, the AES unit
-automatically updates the contents of these registers.  In ECB
-mode, the IV registers are not used and do not need to be
-configured.  Upon reset, these registers are cleared with
-pseudo-random data.
+| 31:0 | `KEY_SHARE1` | W | 0x0 a| Initial Key Share 1
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.DATA_IN[4] Register
+[#reg-{regmap-instance}-aes-IV-0-]
+=== IV[4]
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `DATA_IN` | W | 0x0 a| Input Data Registers.
-
-If MANUAL_OPERATION=0 (see Control Register), the AES unit
-automatically starts encryption/decryption after all Input
-Data registers have been written.  Each register has to be
-written at least once.  The order in which the registers are
-written does not matter.  Loaded into the internal State
-register upon starting encryption/decryption of the next
-block.  After that, the processor can update the Input Data
-registers (See INPUT_READY field of Status Register).  Upon
-reset, these registers are cleared with pseudo-random data.
+| 31:0 | `IV` | RW | 0x0 a| Initialization Vector
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.DATA_OUT[4] Register
+[#reg-{regmap-instance}-aes-DATA_IN-0-]
+=== DATA_IN[4]
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `DATA_OUT` | R | 0x0 a| Output Data Register.
-
-Holds the output data produced by the AES unit during the last
-encryption/decryption operation.  If MANUAL_OPERATION=0 (see
-Control Register), the AES unit is stalled when the previous
-output data has not yet been read and is about to be
-overwritten.  Each register has to be read at least once.  The
-order in which the registers are read does not matter.  Upon
-reset, these registers are cleared with pseudo-random data.
+| 31:0 | `DATA_IN` | W | 0x0 a| Input Data
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.CTRL_SHADOWED Register
+[#reg-{regmap-instance}-aes-DATA_OUT-0-]
+=== DATA_OUT[4]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `DATA_OUT` | R | 0x0 a| Output Data
+|===
+
+[#reg-{regmap-instance}-aes-CTRL_SHADOWED]
+=== CTRL_SHADOWED
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:16 | `Reserved` | - | - a| Reserved
-| 15 | `MANUAL_OPERATION` | RW | 0x0 a| Controls whether the AES unit is operated in
-normal/automatic mode (0) or fully manual mode (1).  In
-automatic mode (0), the AES unit automatically i) starts
-to encrypt/decrypt when it receives new input data, and
-ii) stalls during the last encryption/decryption cycle if
-the previous output data has not yet been read.  This is
-the most efficient mode to operate in.  Note that the
-corresponding status tracking is automatically cleared
-upon a write to the Control Register.  In manual mode (1),
-the AES unit i) only starts to encrypt/decrypt after
-receiving a start trigger (see Trigger Register), and ii)
-overwrites previous output data irrespective of whether it
-has been read out or not.  This mode is useful if software needs full
-control over the AES unit.
-| 14:12 | `PRNG_RESEED_RATE` | RW | 0x1 a| 3-bit one-hot field to control the reseeding rate
-of the internal pseudo-random number generator (PRNG) used
-for masking. Invalid input values, i.e., values with
-multiple bits set and value 3'b000 are mapped to the
-highest reseeding rate PER_1 (3'b001).
-| 11 | `SIDELOAD` | RW | 0x0 a| Controls whether the AES unit uses the key
-provided by the key manager via key sideload interface (1)
-or the key provided by software via Initial Key Registers
-KEY_SHARE1_0 - KEY_SHARE1_7 (0).
+| 15 | `MANUAL_OPERATION` | RW | 0x0 a| Controls whether the AES unit is operated in normal/automatic mode (0) or fully manual mode (1).
+In automatic mode (0), the AES unit automatically i) starts to encrypt/decrypt when it receives new input data, and ii) stalls during the last encryption/decryption cycle if the previous output data has not yet been read.
+This is the most efficient mode to operate in.
+Note that the corresponding status tracking is automatically cleared upon a write to the Control Register.
+In manual mode (1), the AES unit i) only starts to encrypt/decrypt after receiving a start trigger (see Trigger Register), and ii) overwrites previous output data irrespective of whether it has been read out or not.
+This mode is useful if software needs full control over the AES unit.
+| 14:12 | `PRNG_RESEED_RATE` | RW | 0x1 a| 3-bit one-hot field to control the reseeding rate of the internal pseudo-random number generator (PRNG) used for masking.
+Invalid input values, i.e., values with multiple bits set and value 3'b000 are mapped to the highest reseeding rate PER_1 (3'b001).
+| 11 | `SIDELOAD` | RW | 0x0 a| Controls whether the AES unit uses the key provided by the key manager via key sideload interface (1) or the key provided by software via Initial Key Registers KEY_SHARE1_0 - KEY_SHARE1_7 (0).
 | 10:8 | `KEY_LEN` | RW | 0x1 a| 3-bit one-hot field to select AES key length.
-Invalid input values, i.e., values with multiple bits set,
-value 3'b000, and value 3'b010 in case 192-bit keys are
-not supported (because disabled at compile time) are
-mapped to AES_256 (3'b100).
-| 7:2 | `MODE` | RW | 0x3F a| 6-bit one-hot field to select AES block cipher
-mode.  Invalid input values, i.e., values with multiple
-bits set and value 6'b00_0000, are mapped to AES_NONE
-(6'b11_1111).
-| 1:0 | `OPERATION` | RW | 0x1 a| 2-bit one-hot field to select the operation of AES
-unit.  Invalid input values, i.e., values with multiple
-bits set and value 2'b00, are mapped to AES_ENC (2'b01).
+Invalid input values, i.e., values with multiple bits set, value 3'b000, and value 3'b010 in case 192-bit keys are not supported (because disabled at compile time) are mapped to AES_256 (3'b100).
+| 7:2 | `MODE` | RW | 0x3F a| 6-bit one-hot field to select AES block cipher mode.
+Invalid input values, i.e., values with multiple bits set and value 6'b00_0000, are mapped to AES_NONE (6'b11_1111).
+| 1:0 | `OPERATION` | RW | 0x1 a| 2-bit one-hot field to select the operation of AES unit.
+Invalid input values, i.e., values with multiple bits set and value 2'b00, are mapped to AES_ENC (2'b01).
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.CTRL_AUX_SHADOWED Register
+[#reg-{regmap-instance}-aes-CTRL_AUX_SHADOWED]
+=== CTRL_AUX_SHADOWED
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:2 | `Reserved` | - | - a| Reserved
-| 1 | `FORCE_MASKS` | RW | 0x0 a| Allow the internal masking PRNG to advance (0) or
-force its internal state (1) leading to constant masks.
-Setting all masks to constant value can be useful when
-performing SCA.  To completely disable the masking, the
-second key share (KEY_SHARE1_0 - KEY_SHARE1_7) must be
-zero as well.  In addition, a special seed needs to be
-loaded into the masking PRNG using the EDN interface.
-Only applicable if both the Masking parameter and the
-SecAllowForcingMasks parameter are set to one.
-| 0 | `KEY_TOUCH_FORCES_RESEED` | RW | 0x1 a| Controls whether providing a new key triggers the reseeding
-of internal pseudo-random number generators used for clearing and
-masking (1) or not (0).
+| 1 | `FORCE_MASKS` | RW | 0x0 a| Allow the internal masking PRNG to advance (0) or force its internal state (1) leading to constant masks.
+Setting all masks to constant value can be useful when performing SCA.
+To completely disable the masking, the second key share (KEY_SHARE1_0 - KEY_SHARE1_7) must be zero as well.
+In addition, a special seed needs to be loaded into the masking PRNG using the EDN interface.
+Only applicable if both the Masking parameter and the SecAllowForcingMasks parameter are set to one.
+| 0 | `KEY_TOUCH_FORCES_RESEED` | RW | 0x1 a| Controls whether providing a new key triggers the reseeding of internal pseudo-random number generators used for clearing and masking (1) or not (0).
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.CTRL_AUX_REGWEN Register
+[#reg-{regmap-instance}-aes-CTRL_AUX_REGWEN]
+=== CTRL_AUX_REGWEN
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `Reserved` | - | - a| Reserved
-| 0 | `CTRL_AUX_REGWEN` | RW | 0x1 a| Auxiliary Control Register configuration enable
-bit.  If this is cleared to 0, the Auxiliary Control
-Register cannot be written anymore.
+| 0 | `CTRL_AUX_REGWEN` | RW0C | 0x1 a| Auxiliary Control Register configuration enable bit.
+If this is cleared to 0, the Auxiliary Control Register cannot be written anymore.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.TRIGGER Register
+[#reg-{regmap-instance}-aes-TRIGGER]
+=== TRIGGER
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:4 | `Reserved` | - | - a| Reserved
-| 3 | `PRNG_RESEED` | W | 0x1 a| Keep continuing with the current states of the
-internal pseudo-random number generators used for register
-clearing and masking (0) or perform a reseed of the internal
-states from the connected entropy source (1).  If the
-KEY_TOUCH_FORCES_RESEED bit in the Auxiliary Control
-Register is set to one, this trigger will automatically get
-set after providing a new initial key.
-| 2 | `DATA_OUT_CLEAR` | W | 0x1 a| Keep current values in Output Data registers (0) or
-clear those registers with pseudo-random data (1).
-| 1 | `KEY_IV_DATA_IN_CLEAR` | W | 0x1 a| Keep current values in Initial Key, internal Full
-Key and Decryption Key registers, IV registers and Input
-Data registers (0) or clear all those registers with
-pseudo-random data (1).
-| 0 | `START` | W | 0x0 a| Keep AES unit paused (0) or trigger the
-encryption/decryption of one data block (1).  This trigger
-is cleared to `0` if MANUAL_OPERATION=0 or if MODE=AES_NONE
-(see Control Register).
+| 3 | `PRNG_RESEED` | W | 0x1 a| Keep continuing with the current states of the internal pseudo-random number generators used for register clearing and masking (0) or perform a reseed of the internal states from the connected entropy source (1).
+If the KEY_TOUCH_FORCES_RESEED bit in the Auxiliary Control Register is set to one, this trigger will automatically get set after providing a new initial key.
+| 2 | `DATA_OUT_CLEAR` | W | 0x1 a| Keep current values in Output Data registers (0) or clear those registers with pseudo-random data (1).
+| 1 | `KEY_IV_DATA_IN_CLEAR` | W | 0x1 a| Keep current values in Initial Key, internal Full Key and Decryption Key registers, IV registers and Input Data registers (0) or clear all those registers with pseudo-random data (1).
+| 0 | `START` | W | 0x0 a| Keep AES unit paused (0) or trigger the encryption/decryption of one data block (1).
+This trigger is cleared to `0` if MANUAL_OPERATION=0 or if MODE=AES_NONE (see Control Register).
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.STATUS Register
+[#reg-{regmap-instance}-aes-STATUS]
+=== STATUS
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:7 | `Reserved` | - | - a| Reserved
-| 6 | `ALERT_FATAL_FAULT` | R | 0x0 a| No fatal fault has occurred inside the AES unit
-(0).  A fatal fault has occurred and the AES unit needs to
-be reset (1).  Examples for fatal faults include i) storage
-errors in the Control Register, ii) if any internal FSM
-enters an invalid state, iii) if any sparsely encoded signal
-takes on an invalid value, iv) errors in the internal round
-counter, v) escalations triggered by the life cycle
-controller, and vi) fatal integrity failures on the TL-UL bus.
-| 5 | `ALERT_RECOV_CTRL_UPDATE_ERR` | R | 0x0 a| An update error has not occurred (0) or has
-occurred (1) in the shadowed Control Register.  AES
-operation needs to be restarted by re-writing the Control
-Register.
-| 4 | `INPUT_READY` | R | 0x0 a| The AES unit is ready (1) or not ready (0) to
-receive new data input via the DATA_IN registers.  If the
-present values in the DATA_IN registers have not yet been
-loaded into the module this flag is `0` (not ready).
+| 6 | `ALERT_FATAL_FAULT` | R | 0x0 a| No fatal fault has occurred inside the AES unit (0).
+A fatal fault has occurred and the AES unit needs to be reset (1).
+Examples for fatal faults include
+i) storage errors in the Control Register,
+ii) if any internal FSM enters an invalid state,
+iii) if any sparsely encoded signal takes on an invalid value,
+iv) errors in the internal round counter,
+v) escalations triggered by the life cycle controller, and
+vi) fatal integrity failures on the TL-UL bus.
+| 5 | `ALERT_RECOV_CTRL_UPDATE_ERR` | R | 0x0 a| An update error has not occurred (0) or has occurred (1) in the shadowed Control Register.
+AES operation needs to be restarted by re-writing the Control Register.
+| 4 | `INPUT_READY` | R | 0x0 a| The AES unit is ready (1) or not ready (0) to receive new data input via the DATA_IN registers.
+If the present values in the DATA_IN registers have not yet been loaded into the
+module this flag is `0` (not ready).
 | 3 | `OUTPUT_VALID` | R | 0x0 a| The AES unit has no valid output (0) or has valid output data (1).
-| 2 | `OUTPUT_LOST` | R | 0x0 a| All previous output data has been fully read by
-the processor (0) or at least one previous output data block
-has been lost (1).  It has been overwritten by the AES unit
-before the processor could fully read it.  Once set to `1`,
-this flag remains set until AES operation is restarted by
-re-writing the Control Register.  The primary use of this
-flag is for design verification.  This flag is not
-meaningful if MANUAL_OPERATION=0 (see Control Register).
-| 1 | `STALL` | R | 0x0 a| The AES unit is not stalled (0) or stalled (1)
-because there is previous output data that must be read by
-the processor before the AES unit can overwrite this data.
-This flag is not meaningful if MANUAL_OPERATION=1 (see
-Control Register).
-| 0 | `IDLE` | R | 0x0 a| The AES unit is idle (1) or busy (0).  This flag
-is `0` if one of the following operations is currently
-running: i) encryption/decryption, ii) register clearing or
-iii) PRNG reseeding.  This flag is also `0` if an
-encryption/decryption is running but the AES unit is
-stalled.
+| 2 | `OUTPUT_LOST` | R | 0x0 a| All previous output data has been fully read by the processor (0) or at least one previous output data block has been lost (1).
+It has been overwritten by the AES unit before the processor could fully read it.
+Once set to `1`, this flag remains set until AES operation is restarted by re-writing the Control Register.
+The primary use of this flag is for design verification.
+This flag is not meaningful if MANUAL_OPERATION=0 (see Control Register).
+| 1 | `STALL` | R | 0x0 a| The AES unit is not stalled (0) or stalled (1) because there is previous
+output data that must be read by the processor before the AES unit can
+overwrite this data.
+This flag is not meaningful if MANUAL_OPERATION=1 (see Control Register).
+| 0 | `IDLE` | R | 0x0 a| The AES unit is idle (1) or busy (0).
+This flag is `0` if one of the following operations is currently running: i) encryption/decryption, ii) register clearing or iii) PRNG reseeding.
+This flag is also `0` if an encryption/decryption is running but the AES unit is stalled.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.CTRL_GCM_SHADOWED Register
+[#reg-{regmap-instance}-aes-CTRL_GCM_SHADOWED]
+=== CTRL_GCM_SHADOWED
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:11 | `Reserved` | - | - a| Reserved
 | 10:6 | `NUM_VALID_BYTES` | RW | 0x10 a| Number of valid bytes of the current input block.
-Only the last block in the GCM_AAD and GCM_TEXT phases are
-expected to have not all bytes marked as valid.  For all
-other blocks, the number of valid bytes should be set to 16.
-Invalid input values, i.e., the value 5'b0_0000, and all
-other values different from 5'b1_0000 in case GCM is not
-supported (because disabled at compile time) are mapped to
-5'b1_0000.
-| 5:0 | `PHASE` | RW | 0x1 a| 6-bit one-hot field to select the phase of the
-Galois/Counter Mode (GCM) of operation.  Invalid input
-values, i.e., values with multiple bits set and value
-6'b00_0000, are mapped to GCM_INIT (6'b00_0001).  In case
-support for GCM has been disabled at compile time, this
-field is not writable and always reads as GCM_INIT
-(6'b00_0001).
+Only the last block in the GCM_AAD and GCM_TEXT phases are expected to have not all bytes marked as valid.
+For all other blocks, the number of valid bytes should be set to 16.
+Invalid input values, i.e., the value 5'b0_0000, and all other values different from 5'b1_0000 in case GCM is not supported (because disabled at compile time) are mapped to 5'b1_0000.
+| 5:0 | `PHASE` | RW | 0x1 a| 6-bit one-hot field to select the phase of the Galois/Counter Mode (GCM) of operation.
+Invalid input values, i.e., values with multiple bits set and value 6'b00_0000, are mapped to GCM_INIT (6'b00_0001).
+In case support for GCM has been disabled at compile time, this field is not writable and always reads as GCM_INIT (6'b00_0001).
 |===

@@ -64,8 +64,7 @@ class sep_axi_order_sweep_m_axi_test(_s_axi.sep_axi_order_sweep_test):
         await filt.disable_all()
         for entry, (name, start, end) in enumerate(M_AXI_ALLOW_WINDOWS):
             rule = SepInboundFilterCfg(entry=entry, allow_addr=start)
-            await filt.program_rule(
-                rule, read_allowed=True, write_allowed=True, end_addr=end)
+            await filt.program_rule(rule, read_allowed=True, write_allowed=True, end_addr=end)
             self.logger.info(
-                "inbound filter entry %d allows %s 0x%08x..0x%08x r+w",
-                entry, name, start, end)
+                "inbound filter entry %d allows %s 0x%08x..0x%08x r+w", entry, name, start, end
+            )

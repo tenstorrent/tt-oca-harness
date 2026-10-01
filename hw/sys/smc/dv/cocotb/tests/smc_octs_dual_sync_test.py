@@ -5,15 +5,17 @@
 from __future__ import annotations
 
 import pyuvm
-
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_octs_dual_sync_test_seq import smc_octs_dual_sync_test_seq
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
 class smc_octs_dual_sync_test(smc_base_test):
     """U4-5: SECONDARY pad inject + PRIMARY sync/credit pad edges."""
+
+    required_evidence = ("CHK-OCTS-DUAL-SYNC",)
+    min_evidence = 1
 
     auto_protocol_vip = False
 
@@ -24,6 +26,12 @@ class smc_octs_dual_sync_test(smc_base_test):
             SmcProtocolVipKind.SIDEBAND,
             type(self).__name__,
             csr_accesses=0,
+            # No CSR traffic and no byte golden on the record, so nothing on it
+            # could fail: booked as an ACTIVITY STAMP in the scoreboard's
+            # protocol_vip_auto bin rather than as a protocol VIP check
+            # ([NO-ALWAYS-PASS-CHECKER]). The OCTS pad-edge asserts in the
+            # sequence remain the scenario's proof.
+            auto_evidence=True,
             proxy=False,
             details=(
                 "OCTS dual-chiplet: secondary sync-then-credit COUNT + "

@@ -19,7 +19,7 @@ class dtp_dbg_ctrl_boot_stall_test_seq(dtp_debug_tdr_base_test_seq):
         cla_clock_stop_en: int = 0,
         context: str = "",
     ) -> None:
-        """Write one DEBUG_CONTROL combination and check outputs plus readback."""
+        """Write one DEBUG_CONTROL combination and record outputs plus readback."""
         value = self.pack_debug_control(
             boot_stall_ovrd=boot_stall_ovrd,
             boot_stall=boot_stall,
@@ -27,8 +27,7 @@ class dtp_dbg_ctrl_boot_stall_test_seq(dtp_debug_tdr_base_test_seq):
             cla_clock_stop_en=cla_clock_stop_en,
         )
         self.log.info(
-            "%s write DEBUG_CONTROL=0x%02x boot_ovrd=%d boot_stall=%d "
-            "jtag_stop=%d cla_stop_en=%d",
+            "%s write DEBUG_CONTROL=0x%02x boot_ovrd=%d boot_stall=%d jtag_stop=%d cla_stop_en=%d",
             context,
             value,
             boot_stall_ovrd,
@@ -38,26 +37,28 @@ class dtp_dbg_ctrl_boot_stall_test_seq(dtp_debug_tdr_base_test_seq):
         )
         await self.write_debug_control(value)
         await self.wait_sys_cycles()
-        await self.expect_signal("jtag_boot_stall_ovrd", boot_stall_ovrd)
-        await self.expect_signal("jtag_boot_stall", boot_stall)
+        await self.expect_dbg_signal("jtag_boot_stall_ovrd", boot_stall_ovrd, context=context)
+        await self.expect_dbg_signal("jtag_boot_stall", boot_stall, context=context)
 
         readback = await self.read_debug_control(shift_value=value)
         decoded = self.log_debug_control(f"{context} readback", readback)
-        self.assert_equal("DEBUG_CONTROL.boot_stall_ovrd", decoded["boot_stall_ovrd"], boot_stall_ovrd, context)
-        self.assert_equal("DEBUG_CONTROL.boot_stall", decoded["boot_stall"], boot_stall, context)
-        self.assert_equal("DEBUG_CONTROL.jtag_clock_stop", decoded["jtag_clock_stop"], jtag_clock_stop, context)
-        self.assert_equal(
-            "DEBUG_CONTROL.cla_clock_stop_en",
-            decoded["cla_clock_stop_en"],
-            cla_clock_stop_en,
-            context,
+        self.check_debug_control_fields(
+            decoded,
+            {
+                "boot_stall_ovrd": boot_stall_ovrd,
+                "boot_stall": boot_stall,
+                "jtag_clock_stop": jtag_clock_stop,
+                "cla_clock_stop_en": cla_clock_stop_en,
+            },
+            context=context,
         )
 
     async def body(self) -> None:
         self.log_banner("DEBUG_CONTROL Boot Stall")
+        await self.attach_family_checker({"CHK-TAP-RESET-TLR", "CHK-DBG-TDR", "CHK-DBG-PIN"})
 
         self.log_step(1, "Reset TAP and verify boot-stall reset value")
-        await self.reset_tap()
+        await self.reset_to_tlr()
         # The DEBUG_CONTROL reset check below includes the live cla_clock_stop
         # status bit, which mirrors the xtrig_clk_stop_req TB input: clear it
         # explicitly instead of relying on one-time bring-up state.
@@ -65,9 +66,9 @@ class dtp_dbg_ctrl_boot_stall_test_seq(dtp_debug_tdr_base_test_seq):
 
         reset_value = await self.read_debug_control()
         self.log_debug_control("After reset", reset_value)
-        self.assert_equal("DEBUG_CONTROL reset", reset_value, 0)
-        await self.expect_signal("jtag_boot_stall_ovrd", 0)
-        await self.expect_signal("jtag_boot_stall", 0)
+        self.family_check("CHK-DBG-TDR", "DEBUG_CONTROL reset", reset_value, 0)
+        await self.expect_dbg_signal("jtag_boot_stall_ovrd", 0, context="after reset")
+        await self.expect_dbg_signal("jtag_boot_stall", 0, context="after reset")
 
         self.log_step(2, "Loop all boot_stall_ovrd / boot_stall combinations")
         # Exhaustive 2x2 sweep in a seeded per-pass order: repeated loops
@@ -110,13 +111,34 @@ class dtp_dbg_ctrl_boot_stall_test_seq(dtp_debug_tdr_base_test_seq):
                 **extras,
             )
 
-        self.log_step(5, "Cleanup DEBUG_CONTROL")
+        self.log_step(5, "Reset the TAP over a seeded nonzero DEBUG_CONTROL[3:0]")
+        # Capture-DR returns the reset register, 0x00, not the stale value
+        # last shifted in.
+        stale = self.rng("boot_stall_stale").randint(1, 0xF)
+        stale_context = f"stale=0x{stale:x}"
+        await self.write_debug_control(stale)
+        await self.reset_to_tlr()
+        await self.expect_dbg_signal(
+            "jtag_boot_stall_ovrd", 0, context=f"after TAP reset {stale_context}"
+        )
+        await self.expect_dbg_signal(
+            "jtag_boot_stall", 0, context=f"after TAP reset {stale_context}"
+        )
+        readback = await self.read_debug_control()
+        self.log_debug_control("After TAP reset", readback)
+        self.family_check(
+            "CHK-DBG-TDR", "DEBUG_CONTROL after TAP reset", readback, 0, context=stale_context
+        )
+
+        self.log_step(6, "Cleanup DEBUG_CONTROL")
         await self.write_debug_control(0)
         await self.wait_sys_cycles()
-        await self.expect_signal("jtag_boot_stall_ovrd", 0)
-        await self.expect_signal("jtag_boot_stall", 0)
+        await self.expect_dbg_signal("jtag_boot_stall_ovrd", 0, context="cleanup")
+        await self.expect_dbg_signal("jtag_boot_stall", 0, context="cleanup")
         self.log_summary(
             "Boot-stall complete",
             combination_count=len(combinations),
             interaction_count=len(interaction_cases),
+            stale=f"0x{stale:x}",
         )
+        await self.finalize_family_checker()

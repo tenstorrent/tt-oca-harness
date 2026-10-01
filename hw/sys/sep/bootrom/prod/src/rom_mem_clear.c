@@ -18,15 +18,15 @@
 
 #include <stdint.h>
 
-#include "manifest.h"
+#include "oca_boot.h"
 #include "errors.h"
 #include "rom_mmio.h"
 
-// Generated register map (provides OCH_SEP_TOP_SEP_SRAM_BASE_ADDR/SIZE).
+// Generated register map (provides SEP_TOP_SEP_SRAM_BASE_ADDR/SIZE).
 #include "sep.h"
 
-#define SRAM_BASE ((uint32_t)OCH_SEP_TOP_SEP_SRAM_BASE_ADDR)
-#define SRAM_SIZE ((uint32_t)OCH_SEP_TOP_SEP_SRAM_SIZE)
+#define SRAM_BASE ((uint32_t)SEP_TOP_SEP_SRAM_BASE_ADDR)
+#define SRAM_SIZE ((uint32_t)SEP_TOP_SEP_SRAM_SIZE)
 
 #ifndef SRAM_SCRUB_BYTES
 #define SRAM_SCRUB_BYTES 0

@@ -42,15 +42,14 @@ class Dut:
     path: Path
     raw: dict[str, Any]
     # Frameworks this DUT implements: the declared `[frameworks.<fw>]` tables in its sim config
-    # (`framework` above is the selected one). Legacy single-framework configs get a one-item list.
+    # (`framework` above is the selected one). Single-framework configs get a one-item list.
     frameworks: list[str] = field(default_factory=list)
     # The framework selected when no --framework is given; bare-string testlist `module` values
     # bind this framework only.
     default_framework: str = ""
 
 
-# Back-compat alias: much of the runner/dashboard still annotates and imports `Flow`. The concept
-# is now a DUT; keeping the alias avoids churning ~150 call sites for no functional change.
+# Alias: the runner and dashboard import and annotate a Dut as `Flow`.
 Flow = Dut
 
 
@@ -58,8 +57,8 @@ Flow = Dut
 class TestEntry:
     name: str
     # The entry point for the selected framework. Resolved from `bindings` at catalog load;
-    # empty when the scenario has no binding for the selected framework (selection then fails
-    # loudly, or skips under --skip-unimplemented).
+    # empty when the scenario has no binding for the selected framework. `excluded` tells a
+    # declared-out-of-scope framework apart from a missing entry.
     module: str
     target: str | None = None
     seed: int | None = None
@@ -67,11 +66,29 @@ class TestEntry:
     timeout_sec: int | None = None
     tags: list[str] | None = None
     run_modes: list[str] | None = None
+    # Simulators this scenario can run on. Empty means every tool the DUT declares, which
+    # is the normal case and what an absent key yields. A scenario whose stimulus depends
+    # on one tool's hierarchy access -- a VPI reach into a generate block that only one
+    # simulator makes public, say -- names that tool here, so selection drops it under the
+    # others instead of erroring at run time. Validated against the DUT's own `tools` list
+    # at catalog load.
+    tools: list[str] | None = None
     args: list[str] | None = None
     firmware: str | dict[str, Any] | None = None
+    # `expect_fail = "<reason>"`: the leaf reproduces a filed defect and FAILS on a DUT that still
+    # carries it. The runner grades that FAIL as PASS and an observed PASS as FAIL, so the
+    # reproducer runs inside a green regression and turns red the day the defect is gone.
+    expect_fail: str | None = None
+    # `expect_fail_match = "<regex>"`: the observed failure message must match it, so a leaf
+    # that fails for a different reason than the recorded one is graded FAIL, not PASS.
+    expect_fail_match: str | None = None
     # Per-framework entry points from a `module = { cocotb = "...", uvm = "..." }` binding map.
     # A bare-string `module` is normalized to a single binding for the DUT's default framework.
     bindings: dict[str, str] = field(default_factory=dict)
+    # Frameworks the binding map declares out of scope with `<fw> = false`. Selection treats
+    # such a framework like one the map omits (skipped from groups and tags, an error when
+    # named with --items); `--list` counts the two apart.
+    excluded: frozenset[str] = frozenset()
     # Per-framework runtime overrides from `[tests.overrides.<fw>]` (seed/timeout_sec/args).
     overrides: dict[str, dict[str, Any]] = field(default_factory=dict)
     # The testlist file that declared this entry, so cross-reference errors (for example an
@@ -102,6 +119,10 @@ class StageResult:
     parser: dict[str, Any] | None = None
     metadata: dict[str, Any] | None = None
     target: str | None = None
+    # Proof totals and per-task statuses of a graded formal stage; None on every other stage.
+    formal: dict[str, Any] | None = None
+    # Repo-relative path of the leaf's own result.json; None on a run-level stage.
+    result_json: str | None = None
 
 
 @dataclass

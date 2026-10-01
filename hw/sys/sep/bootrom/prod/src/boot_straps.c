@@ -3,8 +3,8 @@
 
 // Boot strap parsing implementation for OROM.
 //
-// Reads SMC straps via the SEP outbound window (SMC_LOCAL_BASE_ADDR + offset)
-// and populates a boot_straps structure using OCH dynamic addresses.
+// Reads captured GPIO straps from the SMC external supplementary window and
+// populates a boot_straps structure.
 
 #include "boot_straps.h"
 #include "rom_mmio.h"
@@ -20,10 +20,10 @@ void init_straps(struct boot_straps *straps) {
 
     // Bit positions defined in sep_smc_interface.h (SEP↔SMC interface contract).
     straps->primary_chiplet = !!(lo & SMC_STRAP_PRIMARY_CHIPLET_MASK);
-    straps->boot_recovery = !!(hi & SMC_STRAP_BOOT_RECOVERY_MASK);
+    straps->boot_recovery = !!(lo & SMC_STRAP_BOOT_RECOVERY_MASK);
     straps->rotate_update = !!(hi & SMC_STRAP_ROTATE_UPDATE_MASK);
     straps->status_report_disable = !!(lo & SMC_STRAP_STATUS_RPT_DISABLE_MASK);
-    straps->bl0_pll_clk = !!(hi & SMC_STRAP_BL0_PLLCLK_MASK);
+    straps->bl0_pll_clk = !!(lo & SMC_STRAP_BL0_PLLCLK_MASK);
 
     // Diagnostic output (always, regardless of channel enables).
     simputshex32("STRAPS_LO=", lo);

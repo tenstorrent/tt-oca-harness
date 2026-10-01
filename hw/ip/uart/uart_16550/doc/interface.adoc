@@ -2,56 +2,21 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[uart-16550-interface]]
-===== Interface
+== Interface
 
-====== Configuration Parameters
+=== Configuration Parameters
 
 The UART 16550 module provides configurable parameters to customize FIFO
 sizes according to system requirements.
 
-.Module Parameters
-[width="100%",cols="20%,15%,15%,50%",options="header",]
-|=======================================================================
-|Parameter |Type |Default |Description
-|`TX_FIFO_DEPTH` |`int unsigned` |`16` |Transmitter FIFO depth. Must be
-a power of 2 between 4 and 4096 (inclusive). Determines the number of
-characters that can be buffered for transmission.
+ifdef::backend-html5[]
+The parameters and ports of `uart_16550` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/uart_16550/uart_16550.adoc[uart_16550].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters and ports of `uart_16550` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
 
-|`RX_FIFO_DEPTH` |`int unsigned` |`16` |Receiver FIFO depth. Must be a
-power of 2 between 4 and 4096 (inclusive). Determines the number of
-characters that can be buffered for reception.
-|=======================================================================
-
-====== Signal Interface
-
-====== Global Interface
-
-.Global Signals
-[width="100%",cols="15%,10%,15%,10%,50%",options="header",]
-|=======================================================================
-|Signal Name |Width |Direction |Active Level |Description
-|`clk_i` |1 |Input |Rising Edge |System clock. All synchronous
-operations are performed on the rising edge of this clock.
-
-|`rst_ni` |1 |Input |Low |System reset. Asynchronous assertion and
-synchronous deassertion. When asserted, all registers are reset to their
-default values and FIFOs are cleared.
-|=======================================================================
-
-====== UART Serial Interface
-
-.UART Serial Signals
-[width="100%",cols="15%,10%,15%,10%,50%",options="header",]
-|=======================================================================
-|Signal Name |Width |Direction |Active Level |Description
-|`rx_i` |1 |Input |High |UART receive input. Asynchronous serial data
-input. Idle state is high (logic 1).
-
-|`tx_o` |1 |Output |High |UART transmit output. Serial data output. Idle
-state is high (logic 1).
-|=======================================================================
-
-====== Modem Control Interface
+=== Modem Control Interface
 
 The modem control interface provides full RS-232 modem signaling
 compatibility. All modem signals are active low at the pins, matching the
@@ -64,92 +29,16 @@ Modem Status Interrupt. None of them gates the datapath: this component
 implements no automatic flow control, so software must act on the
 interrupt to throttle traffic. See the Programming section.
 
-.Modem Control Input Signals
-[width="100%",cols="15%,10%,15%,10%,50%",options="header",]
-|=======================================================================
-|Signal Name |Width |Direction |Active Level |Description
-|`cts_ni` |1 |Input |Low |Clear To Send. Asynchronous modem input. When
-asserted (low), indicates remote device is ready to receive data.
-Reported in `MSR.CTS`; a change sets `MSR.DCTS` and raises the Modem
-Status Interrupt. Does not stall the transmitter - flow control is
-performed by software.
-
-|`dsr_ni` |1 |Input |Low |Data Set Ready. Asynchronous modem input.
-Indicates remote modem is connected and ready. Reported in `MSR.DSR`; a
-change sets `MSR.DDSR`.
-
-|`ri_ni` |1 |Input |Low |Ring Indicator. Asynchronous modem input.
-Indicates incoming call on modem connection. Reported in `MSR.RI`; a
-trailing edge sets `MSR.TERI`.
-
-|`dcd_ni` |1 |Input |Low |Data Carrier Detect. Asynchronous modem input.
-Indicates carrier signal detected on modem connection. Reported in
-`MSR.DCD`; a change sets `MSR.DDCD`.
-|=======================================================================
-
-.Modem Control Output Signals
-[width="100%",cols="15%,10%,15%,10%,50%",options="header",]
-|=======================================================================
-|Signal Name |Width |Direction |Active Level |Description
-|`rts_no` |1 |Output |Low |Request To Send. Modem control output driven
-from `MCR.RTS` in the opposite polarity. When asserted (low), indicates
-this device is ready to receive data. Driven by software; the receiver
-does not deassert it automatically when the RX FIFO fills.
-
-|`dtr_no` |1 |Output |Low |Data Terminal Ready. Modem control output.
-Indicates this device is connected and ready for communication.
-
-|`out1_no` |1 |Output |Low |General-purpose output 1. User-defined modem
-control output controlled by MCR register.
-
-|`out2_no` |1 |Output |Low |General-purpose output 2. User-defined modem
-control output controlled by MCR register. Often used for interrupt
-enable in some systems.
-|=======================================================================
-
-====== DMA Interface
+=== DMA Interface
 
 The DMA interface provides signals for Direct Memory Access controllers
-to manage data transfers automatically.
+to manage data transfers automatically. The `rxrdy_o` and `txrdy_o` signals
+indicate when DMA operations can proceed, with behavior configurable through
+FIFO control modes.
 
-.DMA Interface Signals
-[width="100%",cols="15%,10%,15%,10%,50%",options="header",]
-|=======================================================================
-|Signal Name |Width |Direction |Active Level |Description
-|`rxrdy_o` |1 |Output |High |Receiver ready. Indicates received data is
-available for reading. Behavior depends on DMA mode (immediate or
-hysteresis).
+=== Interface Timing Considerations
 
-|`txrdy_o` |1 |Output |High |Transmitter ready. Indicates transmitter is
-ready to accept new data. Behavior depends on DMA mode (immediate or
-hysteresis).
-|=======================================================================
-
-====== Error Interface
-
-.Error Interface Signals
-[width="100%",cols="15%,10%,15%,10%,50%",options="header",]
-|=======================================================================
-|Signal Name |Width |Direction |Active Level |Description
-|`err_o` |1 |Output |High |FIFO parity error. Indicates parity error
-detected in FIFO data or pointer structures. This is separate from
-received character parity errors.
-|=======================================================================
-
-====== Interrupt Interface
-
-.Interrupt Interface Signals
-[width="100%",cols="15%,10%,15%,10%,50%",options="header",]
-|=======================================================================
-|Signal Name |Width |Direction |Active Level |Description
-|`irq_o` |1 |Output |High |Interrupt request. Asserted when any enabled
-interrupt condition occurs. Six priority levels supported with automatic
-prioritization.
-|=======================================================================
-
-====== Interface Timing Considerations
-
-====== Clock Domain
+=== Clock Domain
 
 All interface signals operate in a single clock domain referenced to
 `clk_i`. The following timing considerations apply:
@@ -162,15 +51,17 @@ internally
 * *Reset Requirements*: `rst_ni` should be asserted asynchronously and
 deasserted synchronously relative to `clk_i`
 
-====== Serial Interface Timing
+=== Serial Interface Timing
 
 * *Baud Rate*: Serial data rate is determined by the divisor latch
 registers (DLL/DLM) and uses 16x oversampling
-* *Maximum Baud Rate*: Limited to `system_clock_frequency / 16`
+* *Maximum Baud Rate*: Limited to `system_clock_frequency / 32` - a
+divisor of `0` disables the transmitter and receiver, so the smallest
+usable divisor is `1`
 * *Data Frame*: Configurable start bit (always 1), 5-8 data bits,
 optional parity bit, 1-2 stop bits
 
-====== Protocol Support
+=== Protocol Support
 
 The interface supports standard UART communication protocols:
 

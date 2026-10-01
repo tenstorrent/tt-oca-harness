@@ -37,7 +37,7 @@ int uart_sanity_sequence(int hartid) {
         UART_CTRL_ADDR(0)); // fine to use UART0 since all will be the same default val out of reset
     uart_enables.f.UART_EN = 0x1; // enable uart device
 
-    // There are 4 UARTs; we only need 2 here but follow the new uart_sanity test style
+    // Enable all 4 UARTs; the transfer below uses two controller/target pairs.
     uint32_t num_uarts = 4;
 
     for (int i = 0; i < num_uarts; i++) {
@@ -53,8 +53,7 @@ int uart_sanity_sequence(int hartid) {
         write_reg(uart_ctrl_reg_addr, uart_enables.w);
     }
 
-    int divisor = 1; // for 115200 --> (int) (1 / (CLOCK_PERIOD_NS * 1e-9)) / (16 * BAUD_RATE); //
-                     // DOUBLE CHECK FREQ
+    int divisor = 1; // divide-by-1: fastest baud for simulation
 
     //---------------------------//
     // UART 16550 Controller Setup //

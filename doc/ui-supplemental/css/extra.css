@@ -1,3 +1,12 @@
+/* SPDX-License-Identifier: Apache-2.0
+ * SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ */
+
+.doc .stemblock > .content {
+    max-width: 100%;
+    overflow-x: auto;
+}
+
 /* Hide placeholder navbar items (upstream demo content only: any leftover
    Home/Products/Services/Download not otherwise replaced) -- explicit
    exceptions for every real item we've added. */
@@ -163,6 +172,7 @@
     --oca-gold-accessible: #937027;
     --oca-orange: #F6931E;
     --oca-text: #484848;
+    --oca-code-inline-bg: #D8E1E7;
     --oca-font-display: "Degular Display", Georgia, "Iowan Old Style", serif;
     --oca-font-body: "Neue Haas Unica Pro", -apple-system, "Segoe UI", sans-serif;
     --oca-font-mono: "Berkeley Mono", ui-monospace, "SFMono-Regular", monospace;
@@ -182,7 +192,7 @@
 
 /* Logo swap: hide default text title, show OCA logo image instead */
 .navbar-brand a.navbar-item {
-    background: url("../img/oca.png") no-repeat left center;
+    background: url("../img/oca_black.svg") no-repeat left center;
     background-size: contain;
     text-indent: -9999px;
     width: 120px;
@@ -217,6 +227,7 @@
 }
 
 .nav-panel-menu .nav-link,
+.nav-panel-menu .nav-text,
 .nav-panel-menu a {
     color: #ffffff !important;
     font-family: var(--oca-font-body);
@@ -225,6 +236,22 @@
 .nav-panel-menu .is-current-page > .nav-link,
 .nav-panel-menu a:hover {
     color: var(--oca-gold) !important;
+}
+
+/* Keep the desktop navigation within the viewport while the menu tree uses
+   its existing internal scroll area. */
+@media screen and (min-width: 1024px) {
+    .nav-container {
+        align-self: flex-start;
+        position: sticky;
+        top: 3.5rem;
+        height: calc(100vh - 3.5rem);
+    }
+
+    .nav {
+        position: static;
+        height: 100%;
+    }
 }
 
 /* Component/version switcher panel (".nav-panel-explore") -- shows when
@@ -276,6 +303,11 @@
     font-weight: 500;
     color: var(--oca-green);
 }
+
+.doc h3 { font-size: 1.3em; }
+.doc h4 { font-size: 1.2em; }
+.doc h5 { font-size: 1.1em; }
+.doc h6 { font-size: 1em; }
 
 /* Body copy */
 .doc {
@@ -337,10 +369,58 @@
     min-height: 24px;
 }
 
+.toc .toc-menu li[data-level="4"] a {
+    padding-left: 2.75rem;
+}
+
+.toc .toc-menu li[data-level="5"] a {
+    padding-left: 3.5rem;
+}
+
+.toc .toc-menu a {
+    overflow-wrap: anywhere;
+}
+
+.toc .toc-menu.is-collapsible li[hidden] {
+    display: none;
+}
+
+.toc .toc-menu.is-collapsible li > a {
+    min-height: 24px;
+}
+
+.toc .toc-menu a:focus-visible {
+    outline: 2px solid var(--oca-green);
+    outline-offset: -2px;
+}
+
+.toc .toc-menu .is-active-ancestor > a {
+    border-left-color: var(--oca-green);
+    font-weight: 600;
+}
+
+@media screen and (min-width: 1024px) {
+    aside.toc.sidebar {
+        flex-basis: 12rem;
+    }
+}
+
+@media screen and (min-width: 1216px) {
+    aside.toc.sidebar {
+        flex-basis: 16rem;
+    }
+}
+
 /* Code/mono elements */
 .doc code,
 .doc pre {
     font-family: var(--oca-font-mono);
+}
+
+.doc .colist > table code,
+.doc p code,
+.doc thead code {
+    background-color: var(--oca-code-inline-bg);
 }
 
 /* ========================================
@@ -396,11 +476,11 @@
 .footer .footer-tt-link {
     display: inline-flex;
     text-decoration: none;
+    vertical-align: middle;
 }
 
 .footer .footer-tt-icon {
     height: 20px;
-    vertical-align: middle;
 }
 
 /* De-emphasized license attribution, kept for MPL-2.0 compliance rather
@@ -422,26 +502,42 @@
     font-family: var(--oca-font-body);
 }
 
+.dashboard-table-scroll {
+    overflow-x: auto;
+}
+
+/* Keep a heading, and a number and its unit, on one line. */
+.dashboard-table th,
+.dashboard-table td {
+    white-space: nowrap;
+}
+
 .dashboard-table th {
     background-color: var(--oca-cream);
     color: var(--oca-text);
     text-transform: uppercase;
     font-size: 0.72rem;
     letter-spacing: 0.03em;
-    padding: 10px 14px;
-    text-align: left;
+    padding: 10px 9px;
+    text-align: center;
     border: 1px solid #ddd;
 }
 
 .dashboard-table td {
-    padding: 10px 14px;
+    padding: 10px 9px;
     border: 1px solid #ddd;
     text-align: center;
     font-weight: 600;
 }
 
-.dashboard-table td:first-child {
+/* Only the overview tables lead with a label; the block page leads with a
+   measurement. */
+.dashboard-table-series th:first-child,
+.dashboard-table-series td:first-child {
     text-align: left;
+}
+
+.dashboard-table-series td:first-child {
     font-weight: normal;
     background-color: #fafafa;
 }
@@ -480,6 +576,104 @@
     margin-right: 2px;
 }
 
+.dashboard-status {
+    font-size: 0.85rem;
+    color: var(--oca-text);
+    padding: 8px 12px;
+    margin: 1em 0;
+    border-left: 3px solid var(--oca-green);
+    background-color: #fafafa;
+}
+
+.dashboard-status-error {
+    border-left-color: #C55050;
+    background-color: #fbf0f0;
+}
+
+.dashboard-na {
+    color: #888;
+    font-weight: normal;
+}
+
+.dashboard-detail-table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 0.5em 0 1.5em 0;
+    font-size: 0.78rem;
+    font-family: var(--oca-font-body);
+}
+
+.dashboard-detail-table th {
+    text-align: left;
+    text-transform: uppercase;
+    font-size: 0.68rem;
+    letter-spacing: 0.03em;
+    color: var(--oca-text);
+    background-color: var(--oca-cream);
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+}
+
+.dashboard-detail-table td {
+    padding: 5px 10px;
+    border: 1px solid #eee;
+    text-align: left;
+    font-weight: normal;
+    vertical-align: middle;
+}
+
+.dashboard-detail-table .dash-pass,
+.dashboard-detail-table .dash-fail {
+    text-align: center;
+}
+
+.dashboard .dashboard-more {
+    margin-top: 2em;
+}
+
+.dashboard-window {
+    font-size: 0.85rem;
+    color: var(--oca-text);
+}
+
+.dashboard-window select {
+    font-family: var(--oca-font-body);
+    font-size: 0.85rem;
+    margin-left: 6px;
+    padding: 2px 6px;
+    border: 1px solid #ddd;
+}
+
+.dashboard-badges {
+    margin: 1em 0;
+    line-height: 1.9;
+}
+
+.dashboard-badge {
+    vertical-align: middle;
+    margin-right: 6px;
+}
+
+.dashboard .dashboard-back {
+    margin: 1.5em 0;
+}
+
+.dashboard-chart {
+    margin: 0.5em 0 1.5em 0;
+}
+
+.dashboard .dashboard-detail-reason {
+    font-family: var(--oca-font-mono);
+    font-size: 0.72rem;
+    text-align: left;
+    word-break: break-word;
+    max-width: 34em;
+}
+
+.dashboard .dashboard-outcome {
+    font-weight: 500;
+}
+
 /* ========================================
    MOBILE NAVBAR
    ======================================== */
@@ -513,6 +707,12 @@
    Overridden here rather than in the generator, since that's separately
    owned tooling output.
    ======================================== */
+.ocah-reg-html {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
 .ocah-reg-html table {
     background: var(--oca-cream) !important;
     font-size: 0.85rem;
@@ -528,6 +728,35 @@
     color: #ffffff !important;
 }
 
+.ocah-reg-html h2 + table,
+.ocah-reg-html .register-list {
+    min-width: 740px;
+    table-layout: fixed;
+    overflow-wrap: anywhere;
+}
+
+.ocah-reg-html h2 + table th:nth-child(1),
+.ocah-reg-html .register-list th:nth-child(1) {
+    width: 16%;
+}
+
+.ocah-reg-html h2 + table th:nth-child(2),
+.ocah-reg-html .register-list th:nth-child(2) {
+    width: 32%;
+}
+
+.ocah-reg-html h2 + table th:nth-child(3),
+.ocah-reg-html .register-list th:nth-child(3) {
+    width: 9%;
+}
+
+.ocah-reg-html h3 + table th:nth-child(2),
+.ocah-reg-html h3 + table td:nth-child(2),
+.ocah-reg-html .register-fields th:nth-child(2),
+.ocah-reg-html .register-fields td:nth-child(2) {
+    white-space: nowrap;
+}
+
 /* %autowidth tables get Asciidoctor's `fit-content` class, so this avoids
    table overrunning.  */
 .tableblock.fit-content {
@@ -539,4 +768,184 @@
 .tableblock.fit-content th {
     overflow-wrap: break-word;
     word-break: break-word;
+}
+
+/* Fixed-width tables are implemented using a colgroup in the table body, but
+   the problem of code overrunning remains - though limited to the `code` items */
+.tableblock:has(colgroup) code {
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+.telemetry-table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.telemetry-table-scroll:focus-visible {
+    outline: 3px solid var(--oca-gold-accessible);
+    outline-offset: 1px;
+}
+
+.doc .telemetry-table-scroll table.telemetry-table {
+    min-width: 680px;
+}
+
+.smc-memory-table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.smc-memory-table-scroll:focus-visible {
+    outline: 3px solid var(--oca-gold-accessible);
+    outline-offset: 1px;
+}
+
+.doc .smc-memory-table-scroll table.smc-memory-table {
+    min-width: 680px;
+}
+
+.smc-interrupt-table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.smc-interrupt-table-scroll:focus-visible {
+    outline: 3px solid var(--oca-gold-accessible);
+    outline-offset: 1px;
+}
+
+.doc .smc-interrupt-table-scroll table.smc-interrupt-table {
+    min-width: 680px;
+}
+
+.doc .smc-interrupt-table-scroll table.smc-interrupt-table-wide {
+    min-width: 750px;
+}
+
+.lifecycle-table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.lifecycle-table-scroll:focus-visible {
+    outline: 3px solid var(--oca-gold-accessible);
+    outline-offset: 1px;
+}
+
+.doc .lifecycle-table-scroll table.lifecycle-table {
+    min-width: 680px;
+}
+
+.doc .lifecycle-table-scroll table.lifecycle-table-wide {
+    min-width: 774px;
+}
+
+/* ========================================
+   PORT REFERENCE TABLES
+   Scoped to .port-reference role only; no global selectors.
+   ======================================== */
+
+/* Keep wide tables within the viewport while preserving readable columns. */
+.port-reference-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.port-reference-scroll:focus-visible {
+    outline: 3px solid var(--oca-gold-accessible);
+    outline-offset: 1px;
+}
+
+.doc .port-reference-scroll table.port-reference {
+    min-width: 680px;
+}
+
+.doc .port-reference-scroll table.port-reference-wide {
+    min-width: 750px;
+}
+
+.doc table.port-reference {
+    table-layout: fixed;
+    width: 100%;
+    max-width: 100%;
+}
+
+.doc table.port-reference td,
+.doc table.port-reference th,
+.doc table.port-reference code {
+    overflow-wrap: anywhere;
+    white-space: normal;
+    word-break: normal;
+}
+
+/* ========================================
+   WIDE TABLE CONTAINMENT — PTAP Module Hierarchy
+   The AsciiDoc source wraps the Module Hierarchy table in a passthrough
+   <div class="ptap-module-hierarchy-scroll"> (HTML backend only), mirroring
+   the pattern used by the DTP port reference table. The table also carries
+   role class [.ptap-module-hierarchy] for styling.
+   Allows long identifiers and conditional expressions to wrap naturally
+   while providing local horizontal scroll at narrow viewports.
+   The tabindex="0" on the wrapper is set explicitly in the AsciiDoc
+   passthrough HTML, making the scroll area keyboard-operable.
+   ======================================== */
+
+/* Scroll wrapper — passthrough div in the AsciiDoc source */
+.ptap-module-hierarchy-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.ptap-module-hierarchy-scroll:focus-visible {
+    outline: 3px solid var(--oca-gold-accessible);
+    outline-offset: 1px;
+}
+
+/* Table itself — allow wrapping of long identifiers and conditions */
+.doc table.ptap-module-hierarchy {
+    width: 100%;
+    table-layout: auto;
+}
+
+.doc table.ptap-module-hierarchy td,
+.doc table.ptap-module-hierarchy th,
+.doc table.ptap-module-hierarchy code {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+/* ========================================
+   VERSION SELECTOR CONTEXT TOGGLE
+   The .context element inside .nav-panel-explore is a native <button>
+   (supplied by the nav-explore.hbs partial override) that toggles the
+   expanded component/version list. The bundle's site.js attaches the
+   panel-toggle click handler to .querySelector(".context"), so a button
+   with class="context" receives both mouse clicks and keyboard Enter/Space.
+   The collapsed view shows only the version pill; the full product name is
+   exposed via aria-label on the button and remains visible in the expanded
+   .components list. Selectors are scoped to .nav-panel-explore only.
+   ======================================== */
+.nav-panel-explore .context {
+    appearance: none;
+    -webkit-appearance: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    width: 100%;
+    text-align: left;
+    font-family: var(--oca-font-mono);
+    font-size: 0.68rem;
+    color: var(--oca-text);
+    background-color: var(--oca-cream);
+    border-top: 2px solid var(--oca-green);
+}
+
+.nav-panel-explore .context:focus-visible {
+    outline: 3px solid var(--oca-gold-accessible);
+    outline-offset: -3px;
 }

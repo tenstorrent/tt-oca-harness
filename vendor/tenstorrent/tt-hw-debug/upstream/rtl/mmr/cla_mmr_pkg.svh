@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 /*******************************************************************************
  * Header file for register addresses
  *
@@ -151,8 +153,8 @@ localparam CLA_CDBGCLATIMESTAMPSYNC_REG_OFFSET                         = 12'h2F8
 localparam CLA_CDBGCLATIMESTAMPSYNC_REG_ADDR                           = 12'h2F8;
 localparam CLA_CDBGCLATIMESTAMPCONFIG_REG_OFFSET                       = 12'h300;
 localparam CLA_CDBGCLATIMESTAMPCONFIG_REG_ADDR                         = 12'h300;
-localparam CLA_CRSCRATCHPAD_REG_OFFSET                                 = 12'h3F0;
-localparam CLA_CRSCRATCHPAD_REG_ADDR                                   = 12'h3F0;
+localparam CLA_CDBGCLATIMESTAMPOFFSET_REG_OFFSET                       = 12'h308;
+localparam CLA_CDBGCLATIMESTAMPOFFSET_REG_ADDR                         = 12'h308;
 localparam CLA_CDBGSIGNALMASK0HI_REG_OFFSET                            = 12'h400;
 localparam CLA_CDBGSIGNALMASK0HI_REG_ADDR                              = 12'h400;
 localparam CLA_CDBGSIGNALMATCH0HI_REG_OFFSET                           = 12'h408;
@@ -2408,11 +2410,17 @@ localparam CLA_CDBGCLAXTRIGGERTIMESTRETCH_RSVD_LOW                      = 16;
 localparam CLA_CDBGCLAXTRIGGERTIMESTRETCH_RSVD_HIGH                     = 63;
 localparam CLA_CDBGCLAXTRIGGERTIMESTRETCH_RSVD_WIDTH                    = 48;
 
-localparam CLA_CDBGCLATIMESTAMP_TIMESTAMP_MASK                          = 64'hFFFFFFFFFFFFFFFF;
-localparam CLA_CDBGCLATIMESTAMP_TIMESTAMP_SHIFT                         = 0;
-localparam CLA_CDBGCLATIMESTAMP_TIMESTAMP_LOW                           = 0;
-localparam CLA_CDBGCLATIMESTAMP_TIMESTAMP_HIGH                          = 63;
-localparam CLA_CDBGCLATIMESTAMP_TIMESTAMP_WIDTH                         = 64;
+localparam CLA_CDBGCLATIMESTAMP_TIMESTAMPLOWER_MASK                     = 64'hFF;
+localparam CLA_CDBGCLATIMESTAMP_TIMESTAMPLOWER_SHIFT                    = 0;
+localparam CLA_CDBGCLATIMESTAMP_TIMESTAMPLOWER_LOW                      = 0;
+localparam CLA_CDBGCLATIMESTAMP_TIMESTAMPLOWER_HIGH                     = 7;
+localparam CLA_CDBGCLATIMESTAMP_TIMESTAMPLOWER_WIDTH                    = 8;
+
+localparam CLA_CDBGCLATIMESTAMP_TIMESTAMPUPPER_MASK                     = 64'hFFFFFFFFFFFFFF00;
+localparam CLA_CDBGCLATIMESTAMP_TIMESTAMPUPPER_SHIFT                    = 8;
+localparam CLA_CDBGCLATIMESTAMP_TIMESTAMPUPPER_LOW                      = 8;
+localparam CLA_CDBGCLATIMESTAMP_TIMESTAMPUPPER_HIGH                     = 63;
+localparam CLA_CDBGCLATIMESTAMP_TIMESTAMPUPPER_WIDTH                    = 56;
 
 localparam CLA_CDBGCLATIMESTAMPSYNC_TIMESTAMPSYNC_MASK                  = 64'hFFFFFFFFFFFFFFFF;
 localparam CLA_CDBGCLATIMESTAMPSYNC_TIMESTAMPSYNC_SHIFT                 = 0;
@@ -2420,11 +2428,11 @@ localparam CLA_CDBGCLATIMESTAMPSYNC_TIMESTAMPSYNC_LOW                   = 0;
 localparam CLA_CDBGCLATIMESTAMPSYNC_TIMESTAMPSYNC_HIGH                  = 63;
 localparam CLA_CDBGCLATIMESTAMPSYNC_TIMESTAMPSYNC_WIDTH                 = 64;
 
-localparam CLA_CDBGCLATIMESTAMPCONFIG_TSCAPTURE_MASK                    = 64'h1;
-localparam CLA_CDBGCLATIMESTAMPCONFIG_TSCAPTURE_SHIFT                   = 0;
-localparam CLA_CDBGCLATIMESTAMPCONFIG_TSCAPTURE_LOW                     = 0;
-localparam CLA_CDBGCLATIMESTAMPCONFIG_TSCAPTURE_HIGH                    = 0;
-localparam CLA_CDBGCLATIMESTAMPCONFIG_TSCAPTURE_WIDTH                   = 1;
+localparam CLA_CDBGCLATIMESTAMPCONFIG_RESYNC_MASK                       = 64'h1;
+localparam CLA_CDBGCLATIMESTAMPCONFIG_RESYNC_SHIFT                      = 0;
+localparam CLA_CDBGCLATIMESTAMPCONFIG_RESYNC_LOW                        = 0;
+localparam CLA_CDBGCLATIMESTAMPCONFIG_RESYNC_HIGH                       = 0;
+localparam CLA_CDBGCLATIMESTAMPCONFIG_RESYNC_WIDTH                      = 1;
 
 localparam CLA_CDBGCLATIMESTAMPCONFIG_DEBUGMARKER_MASK                  = 64'h1FE;
 localparam CLA_CDBGCLATIMESTAMPCONFIG_DEBUGMARKER_SHIFT                 = 1;
@@ -2432,29 +2440,29 @@ localparam CLA_CDBGCLATIMESTAMPCONFIG_DEBUGMARKER_LOW                   = 1;
 localparam CLA_CDBGCLATIMESTAMPCONFIG_DEBUGMARKER_HIGH                  = 8;
 localparam CLA_CDBGCLATIMESTAMPCONFIG_DEBUGMARKER_WIDTH                 = 8;
 
-localparam CLA_CDBGCLATIMESTAMPCONFIG_TSSYNCOFFSET_MASK                 = 64'h200;
-localparam CLA_CDBGCLATIMESTAMPCONFIG_TSSYNCOFFSET_SHIFT                = 9;
-localparam CLA_CDBGCLATIMESTAMPCONFIG_TSSYNCOFFSET_LOW                  = 9;
-localparam CLA_CDBGCLATIMESTAMPCONFIG_TSSYNCOFFSET_HIGH                 = 9;
-localparam CLA_CDBGCLATIMESTAMPCONFIG_TSSYNCOFFSET_WIDTH                = 1;
+localparam CLA_CDBGCLATIMESTAMPCONFIG_TSCAPTURE_MASK                    = 64'h200;
+localparam CLA_CDBGCLATIMESTAMPCONFIG_TSCAPTURE_SHIFT                   = 9;
+localparam CLA_CDBGCLATIMESTAMPCONFIG_TSCAPTURE_LOW                     = 9;
+localparam CLA_CDBGCLATIMESTAMPCONFIG_TSCAPTURE_HIGH                    = 9;
+localparam CLA_CDBGCLATIMESTAMPCONFIG_TSCAPTURE_WIDTH                   = 1;
 
-localparam CLA_CDBGCLATIMESTAMPCONFIG_TSSYNCRAW_MASK                    = 64'h400;
-localparam CLA_CDBGCLATIMESTAMPCONFIG_TSSYNCRAW_SHIFT                   = 10;
-localparam CLA_CDBGCLATIMESTAMPCONFIG_TSSYNCRAW_LOW                     = 10;
-localparam CLA_CDBGCLATIMESTAMPCONFIG_TSSYNCRAW_HIGH                    = 10;
-localparam CLA_CDBGCLATIMESTAMPCONFIG_TSSYNCRAW_WIDTH                   = 1;
-
-localparam CLA_CDBGCLATIMESTAMPCONFIG_RSVD1_MASK                        = 64'hFFFFFFFFFFFFF800;
-localparam CLA_CDBGCLATIMESTAMPCONFIG_RSVD1_SHIFT                       = 11;
-localparam CLA_CDBGCLATIMESTAMPCONFIG_RSVD1_LOW                         = 11;
+localparam CLA_CDBGCLATIMESTAMPCONFIG_RSVD1_MASK                        = 64'hFFFFFFFFFFFFFC00;
+localparam CLA_CDBGCLATIMESTAMPCONFIG_RSVD1_SHIFT                       = 10;
+localparam CLA_CDBGCLATIMESTAMPCONFIG_RSVD1_LOW                         = 10;
 localparam CLA_CDBGCLATIMESTAMPCONFIG_RSVD1_HIGH                        = 63;
-localparam CLA_CDBGCLATIMESTAMPCONFIG_RSVD1_WIDTH                       = 53;
+localparam CLA_CDBGCLATIMESTAMPCONFIG_RSVD1_WIDTH                       = 54;
 
-localparam CLA_CRSCRATCHPAD_DATA_MASK                                   = 64'hFFFFFFFFFFFFFFFF;
-localparam CLA_CRSCRATCHPAD_DATA_SHIFT                                  = 0;
-localparam CLA_CRSCRATCHPAD_DATA_LOW                                    = 0;
-localparam CLA_CRSCRATCHPAD_DATA_HIGH                                   = 63;
-localparam CLA_CRSCRATCHPAD_DATA_WIDTH                                  = 64;
+localparam CLA_CDBGCLATIMESTAMPOFFSET_OFFSET_MASK                       = 64'hFFFFFFFFFFFFFF;
+localparam CLA_CDBGCLATIMESTAMPOFFSET_OFFSET_SHIFT                      = 0;
+localparam CLA_CDBGCLATIMESTAMPOFFSET_OFFSET_LOW                        = 0;
+localparam CLA_CDBGCLATIMESTAMPOFFSET_OFFSET_HIGH                       = 55;
+localparam CLA_CDBGCLATIMESTAMPOFFSET_OFFSET_WIDTH                      = 56;
+
+localparam CLA_CDBGCLATIMESTAMPOFFSET_RSVD0_MASK                        = 64'hFF00000000000000;
+localparam CLA_CDBGCLATIMESTAMPOFFSET_RSVD0_SHIFT                       = 56;
+localparam CLA_CDBGCLATIMESTAMPOFFSET_RSVD0_LOW                         = 56;
+localparam CLA_CDBGCLATIMESTAMPOFFSET_RSVD0_HIGH                        = 63;
+localparam CLA_CDBGCLATIMESTAMPOFFSET_RSVD0_WIDTH                       = 8;
 
 localparam CLA_CDBGSIGNALMASK0HI_VALUE_MASK                             = 64'hFFFFFFFFFFFFFFFF;
 localparam CLA_CDBGSIGNALMASK0HI_VALUE_SHIFT                            = 0;
@@ -2894,7 +2902,7 @@ typedef struct packed {
   logic               ClaMmrCdbgclatimestampHit;
   logic               ClaMmrCdbgclatimestampsyncHit;
   logic               ClaMmrCdbgclatimestampconfigHit;
-  logic               ClaMmrCrscratchpadHit;
+  logic               ClaMmrCdbgclatimestampoffsetHit;
   logic               ClaMmrCdbgsignalmask0HiHit;
   logic               ClaMmrCdbgsignalmatch0HiHit;
   logic               ClaMmrCdbgsignalmask1HiHit;
@@ -3606,7 +3614,8 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic   [63:0]        Timestamp ;
+    logic   [55:0]        TimestampUpper ;
+    logic    [7:0]        TimestampLower ;
 } ClaCdbgclatimestampMmr_s;
 
 
@@ -3618,18 +3627,18 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic   [52:0]        Rsvd1 ;
-    logic    [0:0]        TsSyncRaw ;
-    logic    [0:0]        TsSyncOffset ;
-    logic    [7:0]        DebugMarker ;
+    logic   [53:0]        Rsvd1 ;
     logic    [0:0]        TsCapture ;
+    logic    [7:0]        DebugMarker ;
+    logic    [0:0]        Resync ;
 } ClaCdbgclatimestampconfigMmr_s;
 
 
 
 typedef struct packed {
-    logic   [63:0]        Data ;
-} ClaCrscratchpadMmr_s;
+    logic    [7:0]        Rsvd0 ;
+    logic   [55:0]        Offset ;
+} ClaCdbgclatimestampoffsetMmr_s;
 
 
 
@@ -4603,7 +4612,8 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic   [63:0]        Timestamp ;
+    logic   [55:0]        TimestampUpper ;
+    logic    [7:0]        TimestampLower ;
 } ClaCdbgclatimestampMmrUnpack_s;
 
 
@@ -4615,18 +4625,18 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic   [52:0]        Rsvd1 ;
-    logic    [0:0]        TsSyncRaw ;
-    logic    [0:0]        TsSyncOffset ;
-    logic    [7:0]        DebugMarker ;
+    logic   [53:0]        Rsvd1 ;
     logic    [0:0]        TsCapture ;
+    logic    [7:0]        DebugMarker ;
+    logic    [0:0]        Resync ;
 } ClaCdbgclatimestampconfigMmrUnpack_s;
 
 
 
 typedef struct packed {
-    logic   [63:0]        Data ;
-} ClaCrscratchpadMmrUnpack_s;
+    logic    [7:0]        Rsvd0 ;
+    logic   [55:0]        Offset ;
+} ClaCdbgclatimestampoffsetMmrUnpack_s;
 
 
 
@@ -5138,16 +5148,16 @@ typedef struct packed {
 
 typedef struct packed {
     ClaCdbgclatimestampMmr_s Data;
-    logic                 TimestampWrEn ;
+    logic                 TimestampUpperWrEn ;
+    logic                 TimestampLowerWrEn ;
 } ClaCdbgclatimestampMmrWr_s;
 
 
 
 typedef struct packed {
     ClaCdbgclatimestampconfigMmr_s Data;
-    logic                 TsSyncRawWrEn ;
-    logic                 TsSyncOffsetWrEn ;
     logic                 TsCaptureWrEn ;
+    logic                 ResyncWrEn ;
 } ClaCdbgclatimestampconfigMmrWr_s;
 
 
@@ -5341,7 +5351,7 @@ typedef struct packed {
     ClaCdbgclatimestampMmr_s Cdbgclatimestamp;
     ClaCdbgclatimestampsyncMmr_s Cdbgclatimestampsync;
     ClaCdbgclatimestampconfigMmr_s Cdbgclatimestampconfig;
-    ClaCrscratchpadMmr_s  Crscratchpad;
+    ClaCdbgclatimestampoffsetMmr_s Cdbgclatimestampoffset;
     ClaCdbgsignalmask0HiMmr_s Cdbgsignalmask0Hi;
     ClaCdbgsignalmatch0HiMmr_s Cdbgsignalmatch0Hi;
     ClaCdbgsignalmask1HiMmr_s Cdbgsignalmask1Hi;
@@ -6276,7 +6286,8 @@ function automatic ClaCdbgclatimestampMmrUnpack_s unpack_ClaCdbgclatimestampMmr;
 input ClaCdbgclatimestampMmr_s packed_mmr;
 begin
     unpack_ClaCdbgclatimestampMmr = '0;
-    unpack_ClaCdbgclatimestampMmr.Timestamp = packed_mmr.Timestamp;
+    unpack_ClaCdbgclatimestampMmr.TimestampLower = packed_mmr.TimestampLower;
+    unpack_ClaCdbgclatimestampMmr.TimestampUpper = packed_mmr.TimestampUpper;
 end
 endfunction
 
@@ -6294,20 +6305,20 @@ function automatic ClaCdbgclatimestampconfigMmrUnpack_s unpack_ClaCdbgclatimesta
 input ClaCdbgclatimestampconfigMmr_s packed_mmr;
 begin
     unpack_ClaCdbgclatimestampconfigMmr = '0;
-    unpack_ClaCdbgclatimestampconfigMmr.TsCapture = packed_mmr.TsCapture;
+    unpack_ClaCdbgclatimestampconfigMmr.Resync = packed_mmr.Resync;
     unpack_ClaCdbgclatimestampconfigMmr.DebugMarker = packed_mmr.DebugMarker;
-    unpack_ClaCdbgclatimestampconfigMmr.TsSyncOffset = packed_mmr.TsSyncOffset;
-    unpack_ClaCdbgclatimestampconfigMmr.TsSyncRaw = packed_mmr.TsSyncRaw;
+    unpack_ClaCdbgclatimestampconfigMmr.TsCapture = packed_mmr.TsCapture;
     unpack_ClaCdbgclatimestampconfigMmr.Rsvd1 = packed_mmr.Rsvd1;
 end
 endfunction
 
 
-function automatic ClaCrscratchpadMmrUnpack_s unpack_ClaCrscratchpadMmr;
-input ClaCrscratchpadMmr_s packed_mmr;
+function automatic ClaCdbgclatimestampoffsetMmrUnpack_s unpack_ClaCdbgclatimestampoffsetMmr;
+input ClaCdbgclatimestampoffsetMmr_s packed_mmr;
 begin
-    unpack_ClaCrscratchpadMmr = '0;
-    unpack_ClaCrscratchpadMmr.Data = packed_mmr.Data;
+    unpack_ClaCdbgclatimestampoffsetMmr = '0;
+    unpack_ClaCdbgclatimestampoffsetMmr.Offset = packed_mmr.Offset;
+    unpack_ClaCdbgclatimestampoffsetMmr.Rsvd0 = packed_mmr.Rsvd0;
 end
 endfunction
 
@@ -7549,7 +7560,8 @@ endfunction
 function automatic ClaCdbgclatimestampMmr_s pack_ClaCdbgclatimestampMmr;
 input ClaCdbgclatimestampMmrUnpack_s unpacked_mmr;
 begin
-    pack_ClaCdbgclatimestampMmr.Timestamp = unpacked_mmr.Timestamp;
+    pack_ClaCdbgclatimestampMmr.TimestampLower = unpacked_mmr.TimestampLower;
+    pack_ClaCdbgclatimestampMmr.TimestampUpper = unpacked_mmr.TimestampUpper;
 end
 endfunction
 
@@ -7565,19 +7577,19 @@ endfunction
 function automatic ClaCdbgclatimestampconfigMmr_s pack_ClaCdbgclatimestampconfigMmr;
 input ClaCdbgclatimestampconfigMmrUnpack_s unpacked_mmr;
 begin
-    pack_ClaCdbgclatimestampconfigMmr.TsCapture = unpacked_mmr.TsCapture;
+    pack_ClaCdbgclatimestampconfigMmr.Resync = unpacked_mmr.Resync;
     pack_ClaCdbgclatimestampconfigMmr.DebugMarker = unpacked_mmr.DebugMarker;
-    pack_ClaCdbgclatimestampconfigMmr.TsSyncOffset = unpacked_mmr.TsSyncOffset;
-    pack_ClaCdbgclatimestampconfigMmr.TsSyncRaw = unpacked_mmr.TsSyncRaw;
+    pack_ClaCdbgclatimestampconfigMmr.TsCapture = unpacked_mmr.TsCapture;
     pack_ClaCdbgclatimestampconfigMmr.Rsvd1 = unpacked_mmr.Rsvd1;
 end
 endfunction
 
 
-function automatic ClaCrscratchpadMmr_s pack_ClaCrscratchpadMmr;
-input ClaCrscratchpadMmrUnpack_s unpacked_mmr;
+function automatic ClaCdbgclatimestampoffsetMmr_s pack_ClaCdbgclatimestampoffsetMmr;
+input ClaCdbgclatimestampoffsetMmrUnpack_s unpacked_mmr;
 begin
-    pack_ClaCrscratchpadMmr.Data = unpacked_mmr.Data;
+    pack_ClaCdbgclatimestampoffsetMmr.Offset = unpacked_mmr.Offset;
+    pack_ClaCdbgclatimestampoffsetMmr.Rsvd0 = unpacked_mmr.Rsvd0;
 end
 endfunction
 

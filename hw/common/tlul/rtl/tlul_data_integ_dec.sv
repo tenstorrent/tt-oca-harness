@@ -2,17 +2,17 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
+// Decode data-plus-integrity and report a data-integrity error.
+//
+// Check the integrity bits appended to data_intg_i and raise data_err_o when the payload
+// does not match.
 
-/**
- * Data integrity decoder for bus integrity scheme
- */
-
-module tlul_data_integ_dec import tlul_pkg::*; (
-  // TL-UL interface
-  input        [DataMaxWidth+DataIntgWidth-1:0] data_intg_i,
-  output logic                                  data_err_o
+module tlul_data_integ_dec
+  import tlul_pkg::*;
+(
+  input        [DataMaxWidth+DataIntgWidth-1:0] data_intg_i,  // Data word with integrity bits.
+  output logic                                  data_err_o    // High when data integrity fails.
 );
-
   logic [1:0] data_err;
   prim_secded_inv_39_32_dec u_data_chk (
     .data_i(data_intg_i),

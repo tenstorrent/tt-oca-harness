@@ -1,9 +1,11 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: CC-BY-4.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 = License
 
-The Open Chiplet Atlas Harness (OCAH) is licensed under the Apache License 2.0:
+Open Chiplet Atlas (OCA) Harness hardware, software, and scripts are licensed
+under the Apache License 2.0, except where a file or accompanying notice states
+otherwise:
 
 [source]
 ----
@@ -17,9 +19,24 @@ works -- provided the license notice and any copyright/attribution notices
 are preserved. It does not impose copyleft obligations on derivative works,
 and permits commercial use without royalty.
 
-For the complete license text, see the
+Documentation and images are licensed under Creative Commons Attribution 4.0
+International (CC-BY-4.0). For the complete license texts, see
 https://github.com/tenstorrent/tt-oca-harness/blob/main/LICENSE[LICENSE
-file] in the repository root.
+file] and
+https://github.com/tenstorrent/tt-oca-harness/blob/main/LICENSE-DOCS[LICENSE-DOCS]
+in the repository root.
+
+[NOTE]
+====
+Generated register collateral under `hw/**/regs/gen/` -- including its `.adoc`
+and `.html` tables -- is excluded from CC-BY-4.0 even though it lives under a
+documentation extension. It is a mechanical rendering of the Apache-2.0
+SystemRDL source it is generated from, so it carries the same Apache-2.0
+header as the `.sv`, `.c`, and `.py` collateral generated from that same
+source; see
+xref:ocah-starting:ROOT:guidelines.adoc[the
+development guidelines] for the full rationale.
+====
 
 [NOTE]
 ====

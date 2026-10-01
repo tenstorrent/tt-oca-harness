@@ -10,8 +10,9 @@ triage-ready evidence without weakening the native runner's PASS authority.
 [IMPORTANT]
 ====
 This is the normative, DUT-neutral contract. Concrete register maps, opcodes,
-hierarchy, scenario suites, test names, and captured qualification results
-belong in each adopter's DV documentation and retained CI artifacts.
+hierarchy, scenario suites, and test names belong in each adopter's DV tree;
+captured qualification results belong in external qualification records and
+retained CI artifacts.
 ====
 
 [[shared-checker-evidence]]
@@ -34,7 +35,10 @@ Evidence requirements:
 * PASS is emitted only after the comparison succeeds;
 * failure is retained before fail-fast raising;
 * required IDs make missing execution visible;
-* finalization rejects zero checks, failures, and missing IDs.
+* finalization rejects zero checks, failures, and missing IDs;
+* finalization runs once per checker; a second call is rejected;
+* zero checks pass only for a stream the owner declares idle
+  (`require_checks=False`), never by default.
 
 Integers are rendered in hexadecimal, booleans as lowercase `true`/`false`,
 bytes as hexadecimal payloads, and other values with a deterministic
@@ -86,6 +90,13 @@ required IDs, timeout evidence, retained findings, and finalization.
 
 |`hw/common/dv/vip/ocah_checker/cocotb/examples/example_checker.py`
 |Runnable, simulator-independent positive example.
+
+|`hw/common/dv/vip/ocah_checker/cocotb/examples/example_checker_selftest.py`
+|Runnable, simulator-independent selftest: every rule positive and negative.
+
+|`hw/common/dv/vip/ocah_checker/uvm/ocah_checker.svh`
+|The SV-UVM twin of the core (`ocah_checker_uvm_pkg::ocah_checker`), listed
+first in every dependent VIP manifest.
 
 |`hw/common/dv/vip/ocah_<protocol>_vip/cocotb/`
 |Protocol items, monitors, and protocol-specific checker rules composed over
@@ -162,14 +173,37 @@ second. Returns `True` on PASS; retains a finding before any exception.
 |Requires `timed_out == True` for an explicitly specified bounded-timeout
 scenario.
 
-|`finalize()`
+|`expect_rw1c(id, *, before, after, mask, context="")`
+|`bool`
+|Write-one-to-clear status: the `mask` bits were set in `before` and are clear
+in `after`; bits outside the mask are not judged. Records the masked value
+after the write against `0x0` with both raw reads in the context.
+
+|`expect_sticky(id, *, first, second, mask, context="")`
+|`bool`
+|Sticky status: the `mask` bits read set in `first` and again in `second` with
+no clearing write between. Records the masked second read against `mask`.
+
+|`expect_pulse(id, *, asserted, deasserted, context="")`
+|`bool`
+|Pulse-only event: asserted for the event (bit 1) and deasserted after
+completion (bit 0), recorded against `0x3`.
+
+|`finalize(*, require_checks=True)`
 |`None`
 |Logs one summary and raises `OcahCheckerError` on zero checks, retained
-failures, or missing required IDs.
+failures, missing required IDs, or a second call. `require_checks=False`
+declares the stream idle for this scenario, so zero checks pass; a failure or
+a missing ID still raises.
 
 |`clear()`
 |`None`
-|Clears findings and seen IDs. Required-ID configuration is retained.
+|Clears findings, seen IDs, and the finalized state. Required-ID configuration
+is retained.
+
+|`finalized`
+|`bool`
+|Whether `finalize()` has run since construction or the last `clear()`.
 
 |`findings`
 |`list[OcahCheckFinding]`
@@ -223,20 +257,65 @@ stable `key=value` fields such as `seed=1 addr=0x1000 loop=2`.
 [[shared-checker-monitor-callback]]
 === Monitor Callback Failure
 
-OCAH monitors catch and log callback exceptions. This protects monitor
-sampling, but means an exception alone may not fail a test. Protocol checkers
-therefore:
+A monitor publishes items to subscriber callbacks. Two kinds of exception can
+leave a callback, and the shared monitors treat them differently:
+
+* an `AssertionError`, which includes `OcahCheckerError`, is a checker verdict:
+  the monitor re-raises it, so a fail-fast checker attached to a monitor fails
+  the test at once (the finding is retained first, so aggregate mode is
+  unaffected);
+* any other exception is a subscriber defect: the monitor logs it, counts it
+  in `callback_errors`, exposes the count through `get_statistics()`, and keeps
+  sampling.
+
+A counted subscriber defect must not pass silently. The component that owns
+the monitor records the count as evidence after traffic: the AXI scoreboard
+folds it into `CHK-AXI-DRAIN` together with in-flight requests and orphan
+completions, and every VIP selftest harness records
+`CHK-<PROTO>-MON-CALLBACKS` against zero when it stops its monitors. A DUT
+scoreboard that attaches a shared monitor does the same in its drain.
+
+Protocol checkers therefore:
 
 . retain the finding before raising;
 . expose `finalize()` or `assert_clean()`;
-. require the owning test/scoreboard to call finalization after traffic.
+. require the owning test/scoreboard to call finalization after traffic, and
+  to record the monitor's `callback_errors` there.
 
 [WARNING]
 ====
 Attaching a checker to a monitor without finalization is incomplete. A retained
-callback error may otherwise be visible in the log while the structured test
-result remains green.
+finding or a counted callback error may otherwise be visible in the log while
+the structured test result remains green.
 ====
+
+[[shared-checker-expected-errors]]
+=== Expected-Error Credits
+
+A protocol error expected by the scenario (an error response to an
+unmapped address, a refused command, a bad frame) earns PASS evidence only
+through a credit the test arms from its own intent, never from the
+observation:
+
+* the credit is armed before the transaction that consumes it is observed; a
+  credit armed after the observation classifies nothing;
+* a credit is consumed once, by the first matching observation, and its
+  record names the credit (`CHK-AXI-RESP-EXPECTED`, `CHK-SPI-WREN-ORDER` for a
+  refused program, `CHK-UART-CLASSIFY` for an injected frame fault);
+* an armed credit that is never consumed fails at finalization
+  (`CHK-AXI-CREDITS`): an error that was expected and did not happen is a
+  failure;
+* a credit never overrides a reference model: where a model predicts the
+  response, the model comparison is recorded as well, and a credit that
+  contradicts the model fails;
+* an expected timeout is the credit form of a timeout (`expect_timeout`, or
+  `arm_expected_timeout` on the AXI scoreboard) and carries its bound;
+* an operation outside a package's scope earns no credit of any kind
+  (`CHK-SPI-UNSUPPORTED` counts it and never credits it).
+
+The AXI scoreboard's simulator-free selftest proves each of these rules
+negatively (an un-armed error, a stale credit, a late-armed credit, a credit
+conflicting with the model, an un-armed timeout).
 
 [[shared-checker-protocol-composition]]
 === Protocol Checker Composition Template
@@ -294,6 +373,126 @@ positive/negative proof is
 SV-UVM mirror of the evidence grammar is
 `ocah_axi_vip/uvm/ocah_axi_checker.svh`.
 
+[[shared-checker-realization-parity]]
+=== Realization Parity
+
+`ocah_checker.OcahChecker` (cocotb) and `ocah_checker_uvm_pkg::ocah_checker`
+(SV-UVM) implement one contract. The SV twin is the base class every
+`ocah_<protocol>_vip` UVM checker extends; the cocotb core is composed.
+
+[cols="<3,<3,<4",options="header"]
+|===
+|Contract |cocotb |SV-UVM
+
+|Identifier grammar
+|`CHK-[A-Z0-9][A-Z0-9_-]*`, `ValueError` otherwise
+|Same grammar, `uvm_fatal` otherwise
+
+|Record grammar
+|`CHK-<ID> PASS\|FAIL expected=<v> observed=<v> context=<c>`; PASS at INFO,
+FAIL at ERROR
+|Same text; PASS through `uvm_info` (`UVM_LOW`), FAIL through `uvm_error`
+
+|Value rendering
+|Integers hexadecimal, booleans `true`/`false`, bytes hexadecimal, other values
+`repr()`; empty context `-`
+|Integers `0x%0h`, booleans `true`/`false`, word lists `(0x..,0x..)`; empty
+context `-`
+
+|Comparisons
+|`expect_equal`, `expect_true`
+|`expect_equal` (64-bit), `expect_true`, `expect_equal_words`
+
+|Timeout evidence
+|`expect_not_timed_out`, `expect_timeout`; the bound rides in the context as
+`timeout_ns=<n>`
+|Same names and context field
+
+|Status evidence
+|`expect_rw1c`, `expect_sticky`, `expect_pulse`
+|Same names, 64-bit values
+
+|Fail-fast
+|`fail_fast=True` raises `OcahCheckerError` after retaining the finding
+|Every FAIL is a `uvm_error`; the run fails through the log policy
+
+|Required identifiers
+|`required_ids` at construction; `missing_ids`
+|`required_ids` queue set by the owning env or test before finalization
+
+|Zero checks
+|`finalize()` raises; `finalize(require_checks=False)` declares the stream
+idle
+|`finalize(1)` errors; `finalize(0)` declares the stream idle (an adopter's
+policy object carries the bit)
+
+|Finalize once
+|A second `finalize()` raises; `clear()` re-arms
+|A second `finalize()` is a `uvm_error`; `clear()` re-arms
+
+|Summary
+|`CHECKER_SUMMARY name=<n> checks=N passed=N failed=N missing=N`
+|Same line
+|===
+
+The idle declaration exists for a passive checker on a stream the scenario
+never drives; the owner states it from its scenario policy, never from the
+observed count. `ocah_lib`'s scoreboard bases derive it from whether any
+registered feature is required.
+
+[[shared-checker-status-patterns]]
+=== Reset, Interrupt, and Status Evidence
+
+Reset, interrupt, and status behavior is judged with the same evidence core
+through three patterns. Each names the real source CSR or signal in the
+identifier or the context, and never an aggregate interrupt wire in place of
+the status register that drives it.
+
+[cols="<2,<4,<4",options="header"]
+|===
+|Pattern |Contract |Helper
+
+|Write-one-to-clear
+|Observe the status bits set, write the clearing value, read back the bits
+clear. The read before the write is the precondition; a bit that was never set
+cannot be credited as cleared.
+|`expect_rw1c(id, before=, after=, mask=)`
+
+|Sticky status
+|The status bits stay set across a second read with no clearing write between.
+A level that has already returned to zero is a pulse, not a sticky status.
+|`expect_sticky(id, first=, second=, mask=)`
+
+|Pulse
+|The event asserts the signal and the signal deasserts after completion on its
+own. Observe both edges; a stuck-high or never-fired signal fails.
+|`expect_pulse(id, asserted=, deasserted=)`
+|===
+
+Decide sticky versus pulse from the register description, not from a
+measurement: a `W1C` or `RW1C` field is sticky and must clear by write; a
+status bit documented as reflecting a live condition is a level and is judged
+by observing the condition's edges; an interrupt output is a pulse or a level
+according to the interrupt controller's contract, and the source register
+behind it is judged separately. A reset scenario combines the patterns: the
+value before reset, the value at the architectural reset point, and the value
+after release are three independent observations compared with the register's
+documented reset value.
+
+[source,python]
+----
+checker = OcahChecker(name="irq-status", required_ids={"CHK-DONE-RW1C", "CHK-IRQ-PULSE"})
+before = await csr.read(STATUS)
+await csr.write(STATUS, DONE)
+after = await csr.read(STATUS)
+checker.expect_rw1c("CHK-DONE-RW1C", before=before, after=after, mask=DONE, context="csr=STATUS.DONE")
+checker.expect_pulse("CHK-IRQ-PULSE", asserted=irq_seen, deasserted=irq_released, context="signal=irq_done_o")
+checker.finalize()
+----
+
+The SV twin carries the same three helpers. The SEP and SMC benches own the
+register maps and scenarios that use them.
+
 [[shared-jtag-checker-reference]]
 === `OcahJtagChecker` Adapter Reference
 
@@ -337,9 +536,9 @@ negative TDO shape. Returns `True` if no new protocol finding was retained.
 |Clears both protocol findings and common evidence.
 |===
 
-`OcahJtagCheckerError` is the immutable record stored in `errors`; despite its
-historical name, it is not an exception class. Protocol finalization raises
-`AssertionError`, while evidence finalization raises `OcahCheckerError`.
+`OcahJtagCheckerError` is the immutable record stored in `errors`, not an
+exception class. Protocol finalization raises `AssertionError`, while evidence
+finalization raises `OcahCheckerError`.
 
 [[shared-checker-adoption-recipe]]
 === DUT Test Adoption Recipe
@@ -649,10 +848,9 @@ result controls CI.
 [[shared-checker-fixed-contract-example]]
 === Example: Fixed Register Contract
 
-Use a direct checker when the specification provides a fixed expected value and
-no transformation model is needed. The sequence declares all required intent,
-collects values from completed protocol transactions, checks stability and
-fields, then finalizes once:
+Use a direct checker when the specification provides a fixed expected value.
+The sequence declares all required intent, collects values from completed
+protocol transactions, checks stability and fields, then finalizes once:
 
 [source,python]
 ----
@@ -843,40 +1041,71 @@ CHECKER_SUMMARY name=register-example checks=2 passed=2 failed=0 missing=0
 [[shared-checker-negative-validation]]
 === Prove Failure Is Retained
 
-A positive-only example does not prove fail-closed behavior. The following
-model check deliberately supplies the wrong expectation, aggregates the
-finding, and requires finalization to reject it:
+A positive-only example does not prove fail-closed behavior. The core's
+simulator-free selftest exercises every rule of this chapter positively and
+then makes each one fail: the identifier grammar at construction and at record
+time, the record grammar and value rendering, fail-fast raising after the
+finding is retained, aggregate collection, finalization rejecting a retained
+failure, a missing required identifier, zero checks, and a second call, the
+idle declaration, `clear()`, the timeout evidence in both directions, the
+status helpers with their preconditions, and the immutability of findings:
 
 [source,bash]
 ----
-PYTHONPATH="$PWD/hw/common/dv/vip" \
-  .venv/bin/python - <<'PY'
-from ocah_checker import OcahCheckerError
-from ocah_checker import OcahChecker
-
-checker = OcahChecker(
-    name="negative-model",
-    fail_fast=False,
-    required_ids={"CHK-MODEL"},
-)
-checker.expect_equal(
-    "CHK-MODEL",
-    observed=0x5A,
-    expected=0xB4,
-    context="case=wrong-expectation",
-)
-try:
-    checker.finalize()
-except OcahCheckerError as exc:
-    assert "failed=1" in str(exc)
-    print("negative-model PASS: wrong expectation rejected")
-else:
-    raise AssertionError("wrong model expectation did not fail")
-PY
+uv run --locked --group dv python \
+  hw/common/dv/vip/ocah_checker/cocotb/examples/example_checker_selftest.py
 ----
 
-The expected checker lines include `CHK-MODEL FAIL` and
-`CHECKER_SUMMARY ... failed=1`.
+The expected tail is `ocah_checker selftest PASS`; every rule prints an
+`ok:` line naming what it proved.
+
+[[shared-checker-family-negatives]]
+=== Negative Qualification by Checker Family
+
+Every released checker family has a must-fail entry point, so a green run of
+the family is trustworthy. Each command below exits non-zero:
+
+[cols="<2,<8",options="header"]
+|===
+|Family |Must-fail entry points
+
+|Evidence core (cocotb)
+|The selftest above; on a harness, `OCAH_CHECKER_SELFTEST_NEGATIVE=1` arms a
+required identifier no scenario records, so finalization reports `missing=1`:
+`OCAH_CHECKER_SELFTEST_NEGATIVE=1 python3 tools/dv/run_dv.py --dut ocah_jtag_vip
+--items ocah_jtag_idcode_test --tool verilator`
+
+|Evidence core (SV-UVM)
+|`python3 tools/dv/run_dv.py --dut ocah_jtag_vip --framework uvm
+--items ocah_jtag_idcode_test --plusarg=+OCAH_CHECKER_SELFTEST_NEGATIVE`
+
+|AXI
+|`uv run --locked --group dv python
+hw/common/dv/vip/ocah_axi_vip/cocotb/examples/example_axi_scoreboard_selftest.py`
+runs eighteen negative cases against the scoreboard, the reference model, and
+the credits; the SV-UVM scoreboard is exercised by the `--dut ocah_axi_vip
+--framework uvm` selftests
+
+|JTAG
+|`OCAH_JTAG_SELFTEST_NEGATIVE=1 python3 tools/dv/run_dv.py --dut ocah_jtag_vip
+--items ocah_jtag_tap_reset_test --tool verilator` and the SV-UVM twin
+`--plusarg=+OCAH_JTAG_SELFTEST_NEGATIVE` on `ocah_jtag_idcode_test`; every
+harness selftest also carries in-band `CHK-JTAG-NEG-*` probes
+
+|SPI
+|`OCAH_SPI_SELFTEST_NEGATIVE=1 python3 tools/dv/run_dv.py --dut ocah_spi_vip
+--items ocah_spi_program_readback_test --tool verilator` (and
+`ocah_spi_ordering_test`); in-band `CHK-SPI-NEG-*` probes
+
+|UART
+|`OCAH_UART_SELFTEST_NEGATIVE=1 python3 tools/dv/run_dv.py --dut ocah_uart_vip
+--items ocah_uart_data_test --tool verilator` (and `ocah_uart_error_test`,
+`ocah_uart_timeout_test`); in-band `CHK-UART-NEG-*` probes
+
+|DUT adopters
+|Each bench names its own knob; the DTP bench arms
+`DTP_JTAG_TAP_CHECKER_NEGATIVE` in both flows
+|===
 
 [[shared-checker-qualification]]
 === Qualify an Adopter
@@ -905,13 +1134,13 @@ path. Qualification requires all of the following:
 * log summary reports `TESTS=1 PASS=1 FAIL=0 SKIP=0`;
 * required `CHK-*` lines and `CHECKER_SUMMARY` are present.
 
-Do not commit generated `build/runs/` artifacts. Retain the CI artifact or cite
-its URL and candidate commit in the qualification record.
+Do not commit generated `build/runs/` artifacts; retain the CI artifact in the
+external qualification record.
 
 [[shared-checker-qualification-record]]
 === Qualification Record
 
-Every adopter keeps a compact, reproducible record:
+Every adopter keeps a compact, reproducible external qualification record:
 
 [cols="<3,<7",options="header"]
 |===
@@ -978,7 +1207,7 @@ mode, and finalization follow
 
 |Monitor integration
 |Callback failure is retained and finalization occurs outside the callback.
-|A deliberately bad monitored item fails the owning test at finalization.
+|An injected invalid monitored item fails the owning test at finalization.
 
 |Timeout
 |Normal timeout fails. An expected timeout is bounded and explicitly required
@@ -1001,8 +1230,29 @@ cannot satisfy the check.
 |Named `CHK-NONVAC` with domain-specific context.
 
 |Negative validation
-|A wrong expectation or missing required ID is rejected.
+|A wrong expectation or missing required ID is rejected, and the family has
+a must-fail entry point from
+<<shared-checker-family-negatives,Negative Qualification by Checker Family>>.
 |`CHK-* FAIL`, failing summary, and raised checker error.
+
+|Finalize once
+|Exactly one finalization per checker after drain; a second call is rejected.
+|One `CHECKER_SUMMARY` per checker name in the log.
+
+|Callback errors
+|Checker verdicts leave the monitor callback; other subscriber exceptions are
+counted and recorded against zero at drain.
+|`callback_errors` in the monitor statistics and its evidence record.
+
+|Expected-error credits
+|An expected error is credited only through a credit armed from scenario
+intent before observation; an unconsumed credit fails.
+|The credit's record and the finalization failure of a stale credit.
+
+|Realization parity
+|The cocotb and SV-UVM cores accept the same grammar and reject the same
+defects (<<shared-checker-realization-parity,Realization Parity>>).
+|The core selftest and the SV-UVM harness negatives.
 
 |Runner qualification
 |Structured test and run results agree with named evidence.

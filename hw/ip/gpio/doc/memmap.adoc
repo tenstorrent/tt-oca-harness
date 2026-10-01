@@ -1,55 +1,69 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+ifdef::backend-html5[]
+++++
+<span id="address-space-organization"></span>
+++++
+endif::backend-html5[]
+
 [[gpio-memory-map]]
-===== Memory Map
+== Memory Map and Register Reference
 
-The GPIO peripheral provides two separate register banks for
-comprehensive I/O control: the Interface Register Bank (gpio_intf_reg)
-for high-level GPIO functionality and the Control Register Bank
-(gpio_ctrl_reg) for physical layer characteristics. Both banks are
-accessed through 32-bit AXI4-Lite interfaces with independent address
-spaces.
+ifdef::backend-html5[]
+++++
+<span id="register-maps"></span>
+++++
+endif::backend-html5[]
 
-====== Address Space Organization
+=== Memory Map
 
-The GPIO peripheral uses a dual-bank register architecture:
+The controller's interface bank contains `DATA_CTRL`, `DATA_CTRL_ENABLE`
+and `ACCESS_FILTER`; the shim's control bank contains `CONTROL`.
+The generated `gpio_intf` and `gpio_ctrl` maps in
+<<gpio-detailed-register-map>> define their register offsets, and `gpio_wrap`
+defines the bank placement within the composite aperture. The enclosing
+padring determines their system addresses.
 
-* *Interface Register Bank*: High-level GPIO control, data path, and
-security filtering
-* *Control Register Bank*: Physical layer configuration, drive strength,
-and termination
+ifdef::backend-html5[]
+++++
+<span id="reset-behavior"></span>
+++++
+endif::backend-html5[]
 
-Each bank operates independently with separate AXI4-Lite interfaces to
-enable concurrent access and modular functionality.
+==== Reset Values
 
-====== Reset Behavior
+`ACCESS_FILTER` resets to `0x00010100`: read and write filters are disabled,
+with each stored protection requirement set to `3'b001`. `DATA_CTRL` and
+`DATA_CTRL_ENABLE` software controls reset to zero. Default pad direction
+and post-reset LSIO ownership are described in <<gpio-ownership>> and
+<<gpio-reset-straps>>; zeroed software controls do not imply that every
+pad path is disabled.
 
-When the system reset (rst_ni) is asserted, the GPIO peripheral
-initializes each register bank to well-defined, safe starting values. In
-the Interface Register Bank, the ACCESS_FILTER register is set to
-0x00010100, enforcing default security protection levels, while the
-DATA_CTRL register clears all control bits to 0x00000000, ensuring no
-data path is active by default. Simultaneously, the Control Register
-Bank's CONTROL register is initialized to 0x00100002, establishing a 6mA
-drive strength and enabling strap validity as the hardware default for the physical I/O.
+`CONTROL` resets its drive-strength field to `3'b010` and its software
+pull, conditioning, configuration-enable and secondary-override controls
+to zero. The read-only strap fields reflect `INPUT_BY_DEFAULT` and the
+captured input, so the complete value is not a single fixed reset word.
 
-During reset deassertion, the peripheral captures the pad state for
-configuration strap functionality, updating both the strap_valid and
-strap_value fields based on the observed pad logic level. At this stage,
-all GPIO operation modes remain inactive, and explicit software
-configuration is required to enable any functional path. Throughout
-reset, the hardware maintains a safe low-current output condition on the
-pads, minimizing the risk of unintended external drive or contention.
+ifdef::backend-html5[]
+++++
+<span id="detailed-register-map"></span>
+++++
+endif::backend-html5[]
 
-====== Detailed Register Map
+[[gpio-detailed-register-map]]
+=== Detailed Register Map
 
 ifdef::backend-html5[]
 ++++
 include::partial$gpio/regs/gen/html/gpio_intf.html[]
+include::partial$gpio/regs/gen/html/gpio_ctrl.html[]
+include::partial$gpio/regs/gen/html/gpio_wrap.html[]
 ++++
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/gpio_intf.adoc[]
+include::../regs/gen/adoc/gpio_intf.adoc[leveloffset=+2]
+include::../regs/gen/adoc/gpio_ctrl.adoc[leveloffset=+2]
+include::../regs/gen/adoc/gpio_wrap.adoc[leveloffset=+2]
 endif::backend-pdf[]

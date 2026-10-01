@@ -1,20 +1,66 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= System Management Controller (SMC)
+:description: SMC architecture, management functions, processing, peripherals, debug, and register reference.
+
 [[system-management-controller]]
-== System Management Controller (SMC)
 
-:imagesdir: assets
+The System Management Controller (SMC) performs firmware-driven platform
+management for each chiplet. Its documentation is organized into focused topic
+pages covering the subsystem architecture, hardware services, and programming
+interfaces.
 
-include::overview.adoc[leveloffset=0]
-include::clk_rst.adoc[leveloffset=0]
-include::periphs.adoc[leveloffset=0]
-include::cpu.adoc[leveloffset=0]
-include::interrupts.adoc[leveloffset=0]
-include::rom.adoc[leveloffset=0]
-include::fabric.adoc[leveloffset=0]
-include::dma.adoc[leveloffset=0]
-include::dfd.adoc[leveloffset=0]
-include::zeroer.adoc[leveloffset=0]
-include::scan_protection.adoc[leveloffset=0]
-include::memmap.adoc[leveloffset=0]
+ifdef::backend-html5[]
+== Reading Order
+
+* xref:overview.adoc[Overview]
+* xref:clk_rst.adoc[Clocks and Resets]
+* xref:cpu.adoc[CPU]
+* xref:rom.adoc[Boot ROM]
+** xref:smc-bootrom-prod:index.adoc[Production ROM Manual]
+* xref:fabric.adoc[Interconnect]
+* xref:interrupts.adoc[Interrupts]
+* xref:periphs.adoc[Peripherals]
+** xref:smc:dma.adoc[Direct Memory Access Engine]
+** xref:smc:zeroer.adoc[Zeroer]
+** xref:smc:watchdog.adoc[Watchdog Timer (WDT)]
+** xref:ip:axi_lite_mailbox_unit/doc/index.adoc[Mailboxes]
+** xref:ip:system_timer_octs/doc/index.adoc[System Timer OCTS]
+** xref:ip:efuse/doc/index.adoc[eFuse]
+** xref:ip:uart_16550/doc/index.adoc[UART 16550]
+** xref:ip:log_engine/doc/index.adoc[Log Engine]
+** xref:ip:i2c/doc/index.adoc[I2C]
+** xref:ip:i3ccore_wrap/doc/index.adoc[I3C]
+** xref:ip:avsbus_controller/doc/index.adoc[AVSBus Controller]
+** xref:ip:gpio/doc/index.adoc[GPIO]
+** xref:ip:telemetry_receiver/doc/index.adoc[Telemetry Receiver]
+* xref:dfd.adoc[Design-for-Debug and CLA]
+* xref:scan_protection.adoc[eFuse Scan Protection]
+* xref:memmap.adoc[Memory Map and Register Reference]
+endif::backend-html5[]
+
+ifdef::backend-html5[]
+++++
+<span id="overview"></span>
+<span id="clock-and-reset-management"></span>
+<span id="cpu-memory-system"></span>
+<span id="fabric"></span>
+<span id="peripherals"></span>
+<span id="interrupts"></span>
+<span id="rom"></span>
+<span id="direct-memory-access-dma-engine"></span>
+<span id="memory-zeroer"></span>
+<span id="smc-dfd-cla"></span>
+<span id="smc-scan-protection"></span>
+<span id="smc-memory-map"></span>
+++++
+endif::backend-html5[]
+
+ifdef::backend-html5[]
+++++
+<span id="architecture-and-processing"></span>
+<span id="services-and-peripherals"></span>
+<span id="debug-protection-and-reference"></span>
+++++
+endif::backend-html5[]

@@ -1,0 +1,88 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+version = 1
+
+[[views]]
+name = "smc-functional"
+title = "SMC Functional Address-Space Organization"
+base_mode = "relative"
+columns = ["range", "size", "label", "description"]
+
+[[views.rows]]
+kind = "group"
+label = "Watchdog Timers"
+members = ["smc_cluster_core0_wdt", "smc_cluster_core1_wdt", "smc_cluster_core2_wdt", "smc_cluster_core3_wdt"]
+description = "Per-core watchdog timers."
+
+[[views.rows]]
+kind = "group"
+label = "System and Peripheral Control"
+members = ["smc_reset_unit", "smc_misc_wrap", "gpio_intf", "smc_avsbus_controller", "smc_i2c_wrap", "smc_uart_wrap", "smc_efuse_map", "efuse_interface_ctrl", "smc_telemetry_receiver_wrap", "smc_system_timer_octs", "dtp_ctrl_reg", "dfx_ctrl"]
+description = "Reset, GPIO, serial peripherals, eFuse, telemetry, timer, DTP, and DFT status."
+
+[[views.rows]]
+kind = "group"
+label = "Fabric Control"
+members = ["smc_base_config", "smc_alias_remap", "smc_mmode_remap", "smc_xvisor_remap", "smc_inbound_filter_ctrl", "smc_outbound_filter_ctrl"]
+description = "Base configuration, address remapping, and traffic filters."
+
+[[views.rows]]
+kind = "group"
+label = "Mailbox"
+members = ["smc_mailbox"]
+
+[[views.rows]]
+kind = "group"
+label = "Data Processing"
+members = ["dma_ctrl", "zeroer_ctrl"]
+description = "DMA controller and memory zeroer."
+
+[[views.rows]]
+kind = "group"
+label = "CPU and I/O Control"
+members = ["smc_cpu_ctrl", "oca_i3c_wrap"]
+description = "CPU-cluster control and OCA I3C controller."
+
+[[views.rows]]
+kind = "group"
+label = "Local Memories"
+members = ["spm_rom_memory", "spm_memory"]
+description = "Scratchpad ROM and RAM."
+
+[[views.rows]]
+kind = "group"
+label = "CLA"
+members = ["smc_cla"]
+description = "Core Logic Analyzer debug and trace."
+
+[[views.rows]]
+kind = "group"
+label = "Adopter External"
+members = ["smc_external"]
+description = "Adopter-owned technology-specific and supplementary peripherals."
+
+[[views.rows]]
+kind = "group"
+label = "Address Remapping"
+members = ["ecam_region", "mmode_region", "xvisor_region"]
+description = "ECAM, machine-mode, and hypervisor remapped regions."
+
+[[views.rows]]
+kind = "group"
+label = "PLIC"
+members = ["smc_cluster_plic"]
+description = "Platform-Level Interrupt Controller aperture."
+
+[[views.rows]]
+kind = "group"
+label = "Core-Local Timer and Errors"
+members = ["smc_cluster_clint", "smc_cluster_core0_beu", "smc_cluster_core1_beu", "smc_cluster_core2_beu", "smc_cluster_core3_beu"]
+description = "Core-local timer and per-core bus-error units."
+
+[[views]]
+name = "smc-components"
+title = "SMC Component Address Map"
+include_all = true
+base_mode = "relative"
+columns = ["range", "size", "occupied_size", "label", "instances", "stride", "description", "hole_resp", "past_resp"]

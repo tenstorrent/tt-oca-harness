@@ -18,13 +18,18 @@ _UART_WO_H = (
     _REPO / "hw" / "ip" / "uart" / "uart_16550" / "regs" / "gen" / "c" / "uart_16550_main_wo.h"
 )
 _UART_CTRL_H = (
-    _REPO / "hw" / "ip" / "uart" / "uart_log_engine_wrap" / "regs" / "gen" / "c"
+    _REPO
+    / "hw"
+    / "ip"
+    / "uart"
+    / "uart_log_engine_wrap"
+    / "regs"
+    / "gen"
+    / "c"
     / "uart_log_engine_ctrl.h"
 )
 
-CLOCK_GATE_CONTROL = smc_addr(
-    "SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
-)
+CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 
 UART_EN = _field_mask(_UART_CTRL_H, "UART_LOG_ENGINE_CTRL__CTRL__UART_EN_bm")
 FCR_FIFO_ENABLE = _field_mask(_UART_WO_H, "UART_16550_MAIN_WO__FCR__FIFO_ENABLE_bm")
@@ -32,9 +37,7 @@ IER_ERBFI = _field_mask(_UART_H, "UART_16550_MAIN__IER__ERBFI_bm")
 IER_ETBEI = _field_mask(_UART_H, "UART_16550_MAIN__IER__ETBEI_bm")
 IER_ELSI = _field_mask(_UART_H, "UART_16550_MAIN__IER__ELSI_bm")
 IER_EDSSI = _field_mask(_UART_H, "UART_16550_MAIN__IER__EDSSI_bm")
-IIR_INTERRUPT_PENDING = _field_mask(
-    _UART_H, "UART_16550_MAIN__IIR__INTERRUPT_PENDING_bm"
-)
+IIR_INTERRUPT_PENDING = _field_mask(_UART_H, "UART_16550_MAIN__IIR__INTERRUPT_PENDING_bm")
 IIR_INTERRUPT_ID = _field_mask(_UART_H, "UART_16550_MAIN__IIR__INTERRUPT_ID_bm")
 IIR_INTERRUPT_ID_BP = _field_mask(_UART_H, "UART_16550_MAIN__IIR__INTERRUPT_ID_bp")
 LCR_DLAB = _field_mask(_UART_H, "UART_16550_MAIN__LCR__DLAB_bm")
@@ -139,7 +142,7 @@ class smc_uart_error_conditions_test_seq(SmcCsrSeq):
             iir = await self.csr_read(f"{tag}_IIR", r["iir"])
             if _iir_pending(iir) and _iir_id(iir) == expect:
                 return True
-            await Timer(100, units="ns")
+            await Timer(100, unit="ns")
         return False
 
     async def _test_parity(self) -> None:
@@ -170,7 +173,7 @@ class smc_uart_error_conditions_test_seq(SmcCsrSeq):
                     saw_lsr_irq = True
                 if saw_pe and saw_lsr_irq:
                     break
-                await Timer(100, units="ns")
+                await Timer(100, unit="ns")
             if not saw_pe:
                 raise AssertionError(f"parity PE not seen for byte 0x{tx:02x}")
             if not saw_lsr_irq:
@@ -189,9 +192,7 @@ class smc_uart_error_conditions_test_seq(SmcCsrSeq):
                 raise AssertionError(f"matched parity missing RDR for 0x{tx:02x}")
             lsr = await self.csr_read(f"OK_LSR_{i}", tgt["lsr"])
             if lsr & (LSR_PE | LSR_FE | LSR_BI):
-                raise AssertionError(
-                    f"matched parity unexpected err LSR=0x{lsr:08x}"
-                )
+                raise AssertionError(f"matched parity unexpected err LSR=0x{lsr:08x}")
             await self.csr_read(f"OK_POP_{i}", tgt["rbr"])
         cocotb.log.info("CHK-UART-ERR-PE-NEG: matched even parity clean")
 
@@ -200,6 +201,22 @@ class smc_uart_error_conditions_test_seq(SmcCsrSeq):
         await self._enable(0)
         await self._program_format(r, "OE", loop=True)
         await self._clear_status(r, "OE")
+
+        # Below-threshold control for the OE claim below: one byte cannot
+        # overflow a FIFO of _FIFO_DEPTH, so DR must set and OE must stay clear.
+        # It puts OE=0 in the run alongside the OE=1 the overflow leg produces,
+        # which a bit stuck at 1 or a constant LSR read cannot do.
+        await self.csr_write("OE_NEG_THR", r["rbr"], 0x5A)
+        if not await self._wait_iir_id(r, "OE_NEG_RDR", _INTR_RDR, 512):
+            raise AssertionError("single byte produced no RDR interrupt")
+        lsr = await self.csr_read("OE_NEG_LSR", r["lsr"])
+        if not lsr & LSR_DR:
+            raise AssertionError(f"single byte left LSR.DR clear LSR=0x{lsr:08x}")
+        if lsr & LSR_OE:
+            raise AssertionError(f"single byte set LSR.OE LSR=0x{lsr:08x}")
+        cocotb.log.info("CHK-UART-ERR-OE-NEG: one byte -> LSR.DR=1 LSR.OE=0 (LSR=0x%08x)", lsr)
+        await self._clear_status(r, "OE")
+
         total = _FIFO_DEPTH + 4
         for i in range(total):
             await self.csr_write(f"OE_THR_{i}", r["rbr"], 0x20 + (i & 0x3F))
@@ -211,7 +228,7 @@ class smc_uart_error_conditions_test_seq(SmcCsrSeq):
             if lsr & LSR_OE:
                 saw_oe = True
                 break
-            await Timer(100, units="ns")
+            await Timer(100, unit="ns")
         if not saw_oe:
             raise AssertionError("LSR.OE never set after FIFO overflow")
         if not await self._wait_iir_id(r, "OE_LSR", _INTR_LSR, 32):
@@ -241,7 +258,7 @@ class smc_uart_error_conditions_test_seq(SmcCsrSeq):
             if lsr & LSR_BI:
                 saw_bi = True
                 break
-            await Timer(1, units="us")
+            await Timer(1, unit="us")
         if not saw_bi:
             raise AssertionError("LSR.BI never set under SET_BREAK loopback")
         if not await self._wait_iir_id(r, "BRK_LSR", _INTR_LSR, 32):
@@ -254,11 +271,9 @@ class smc_uart_error_conditions_test_seq(SmcCsrSeq):
             await self.csr_read("BRK_CLR_IIR", r["iir"])
             if not (lsr & (LSR_FE | LSR_BI)):
                 break
-            await Timer(100, units="ns")
+            await Timer(100, unit="ns")
         else:
-            raise AssertionError(
-                f"FE/BI sticky after break clear LSR=0x{lsr:08x}"
-            )
+            raise AssertionError(f"FE/BI sticky after break clear LSR=0x{lsr:08x}")
         lsr = await self.csr_read("BRK_POST", r["lsr"])
         if lsr & (LSR_FE | LSR_BI):
             raise AssertionError(f"FE/BI reappeared after clear LSR=0x{lsr:08x}")

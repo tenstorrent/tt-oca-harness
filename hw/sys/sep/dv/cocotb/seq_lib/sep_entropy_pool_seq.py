@@ -2,88 +2,113 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Entropy-pool aperture driver (sep_entropy_pool_aperture_test).
 
-64-bit AXI-Lite drain of ``sep_entropy_fifo`` at the local-xbar
-``entropy_fifo.main`` window. Offsets from ``hw/sys/sep/rtl/sep_entropy_fifo.sv``:
-status ``0x00``, irq-cause ``0x08``, pop ``0x10``; every other in-window offset
-and every write is SLVERR. Depth=32, LowWatermark=8, StallThresh=4096.
+64-bit AXI-Lite drain of the fabric Entropy Pool target
+(``memory_map.adoc`` EPOOL). Live offsets: status ``0x00``, irq-cause
+``0x08``, pop ``0x10``; every other in-window offset and every write is
+SLVERR (``fabric.adoc``).
 """
 
 from __future__ import annotations
 
-import re
-from pathlib import Path
-
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
+from env.sep_spec_tables import agg_from_pic, window
+from sep_reg_meta import EDN, ENTROPY_SOURCE, RegBlock, sym
+
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
-from sep_reg_meta import ENTROPY_SOURCE
-
 from seq_lib.sep_esrc_bringup_seq import EDN_CTRL, EDN_CTRL_AUTO, ESRC_CTRL
 
-_XBAR = Path(__file__).resolve().parents[3] / "rtl" / "sep_local_axi_xbar.sv"
-_FIFO = Path(__file__).resolve().parents[3] / "rtl" / "sep_entropy_fifo.sv"
-
-
-def _xbar_entropy_fifo_base() -> int:
-    text = _XBAR.read_text(encoding="utf-8")
-    m = re.search(r"entropy_fifo\.main:\s*0x([0-9A-Fa-f]+)", text)
-    if not m:
-        raise RuntimeError(f"entropy_fifo.main base not found in {_XBAR}")
-    return int(m.group(1), 16)
-
-
-def _fifo_param(name: str) -> int:
-    text = _FIFO.read_text(encoding="utf-8")
-    m = re.search(rf"parameter int unsigned {name}\s*=\s*(\d+)", text)
-    if not m:
-        raise RuntimeError(f"{name} not found in {_FIFO}")
-    return int(m.group(1))
-
-
-POOL_BASE = _xbar_entropy_fifo_base()
-POOL_STATUS = POOL_BASE + 0x00
-POOL_IRQ_CAUSE = POOL_BASE + 0x08
-POOL_POP = POOL_BASE + 0x10
-FIFO_DEPTH = _fifo_param("FifoDepth")
-LOW_WATERMARK = _fifo_param("LowWatermark")
-STALL_THRESH = _fifo_param("StallThresh")
+# Aperture from memory_map.adoc EPOOL. Occupancy and pool_low are graded
+# from the live status / aggregator flags, not from a FIFO watermark.
+POOL_BASE = window("EPOOL").base
+POOL_STATUS = sym("ENTROPY_POOL_STATUS_REG_ADDR")
+POOL_IRQ_CAUSE = sym("ENTROPY_POOL_IRQ_CAUSE_REG_ADDR")
+POOL_POP = sym("ENTROPY_POOL_DATA_REG_ADDR")
+if (POOL_STATUS, POOL_IRQ_CAUSE, POOL_POP) != (
+    POOL_BASE,
+    POOL_BASE + sym("ENTROPY_POOL_IRQ_CAUSE_REG_OFFSET"),
+    POOL_BASE + sym("ENTROPY_POOL_DATA_REG_OFFSET"),
+):
+    raise RuntimeError("entropy-pool RDL addresses do not match the EPOOL window")
+# Occupancy ceiling used only as the CHK-WRITE-SLVERR room bound. The live
+# STATUS.level / pool_edn_req_o compare grades fullness, not this constant.
+FIFO_DEPTH = 32
+# DV-owned fill-stall poll ceiling in core cycles. Not a specification value;
+# the stall flag is the verdict, and this bound only names the wait.
+STALL_THRESH = 4096
 
 RESP_OKAY = 0
 RESP_SLVERR = 2
 
-IRQ_POOL_LOW = 36
-IRQ_FILL_STALL = 37
+# STATUS and IRQ_CAUSE field geometry from the SEP_ENTROPY_POOL RDL export.
+_POOL = RegBlock("SEP_ENTROPY_POOL")
+ST_LEVEL_MASK = _POOL.field_mask("STATUS", "fifo_level")
+ST_LEVEL_LSB = _POOL.field_lsb("STATUS", "fifo_level")
+ST_POOL_LOW = _POOL.field_mask("STATUS", "pool_low")
+ST_FILL_STALL = _POOL.field_mask("STATUS", "fill_stall")
+ST_POOL_ERROR = _POOL.field_mask("STATUS", "pool_error")
+CAUSE_POOL_LOW = _POOL.field_mask("IRQ_CAUSE", "pool_low")
+CAUSE_FILL_STALL = _POOL.field_mask("IRQ_CAUSE", "fill_stall")
+
+
+def pool_level(status: int) -> int:
+    """STATUS.fifo_level of a pool STATUS read."""
+    return (status & ST_LEVEL_MASK) >> ST_LEVEL_LSB
+
+
+def pool_flag(status: int, mask: int) -> int:
+    """One single-bit STATUS field as 0/1."""
+    return 1 if status & mask else 0
+
+
+IRQ_POOL_LOW = agg_from_pic("Entropy pool low")
+IRQ_FILL_STALL = agg_from_pic("Entropy pool fill stall")
 
 # Offsets that alias a live register if the decode drops high address bits
 # (the defect the 16-bit unique-case exists to catch). A seed that only
 # probes 0x18 never sees that class: 0x18 is the unused [4:3]=11 code.
 _ALIAS_UNMAPPED = (
-    0x20,    # -> status  0x00 if [4:0] only
-    0x28,    # -> irq     0x08 if [4:0] only
-    0x30,    # -> pop     0x10 if [4:0] only
-    0x100,   # -> status  0x00 if [7:0] only
+    0x20,  # -> status  0x00 if [4:0] only
+    0x28,  # -> irq     0x08 if [4:0] only
+    0x30,  # -> pop     0x10 if [4:0] only
+    0x100,  # -> status  0x00 if [7:0] only
     0x1000,  # -> status  0x00 if [11:0] only
     0x8000,  # -> status  0x00 if [14:0] only
 )
-# Unique-dead extra: SLVERR even under a 2-bit [4:3] decode.
+# Upper 32-bit word of each live register.
+# hw/sys/sep/regs/include/sep_entropy_pool.rdl declares every register
+# `regwidth = 64; accesswidth = 64;`, so a 32-bit beat at +4 is not a legal
+# access to that register and must be refused without a side effect.
+HALF_UPPER = (
+    ("status", POOL_STATUS + 4),
+    ("irq-cause", POOL_IRQ_CAUSE + 4),
+    ("data", POOL_POP + 4),
+)
+# Unique-dead extras: SLVERR even under a 2-bit [4:3] decode. All three are
+# walked every seed -- 0x18 is the unused [4:3]=11 code and catches a class the
+# other two do not, so a seeded pick of one could miss it.
 _UNIQUE_DEAD = (0x18, 0x40, 0x80)
 
 # Legal disable: MODULE_ENABLE=0, every other CTRL field at its reset (including
 # SHA256_WHITENING_ENABLE=1). A hand-cleared multi-bit field is an alert.
 ESRC_CTRL_DISABLE = ENTROPY_SOURCE.value("CTRL", MODULE_ENABLE=0)
-# EDN_CTRL mubi4: True=0x6, False=0x9. AUTO bring-up is 0x9666 (ENABLE=T).
-# MODULE_ENABLE=0 does not drop AUTO-mode EDN acks while CSRNG still has a
-# seed, so fill-stall needs EDN_ENABLE=False to leave the pool request
-# outstanding without ack.
-EDN_CTRL_DISABLE = (EDN_CTRL_AUTO & ~0xF) | 0x9
+# EDN_CTRL.EDN_ENABLE is mubi4 and resets to mubi-false. MODULE_ENABLE=0 does
+# not drop AUTO-mode EDN acks while CSRNG still has a seed, so fill-stall
+# needs EDN_ENABLE=False to leave the pool request outstanding without ack.
+# Every other field keeps its AUTO bring-up value.
+_EDN_ENABLE = EDN.fields("CTRL")["EDN_ENABLE"]
+EDN_CTRL_DISABLE = (EDN_CTRL_AUTO & ~_EDN_ENABLE["bm"]) | (
+    (_EDN_ENABLE["reset"] << _EDN_ENABLE["bp"]) & _EDN_ENABLE["bm"]
+)
 
 
 class SepEntropyPoolCfg:
-    """RANDCFG: extra accepted pops, plus one unique-dead offset.
+    """RANDCFG: extra accepted pops.
 
     Every seed walks ``alias_offs`` (high-bit mirrors of the live
-    registers). The seed only picks the extra unique-dead offset.
+    registers) and all three unique-dead offsets (``unmapped_offs``). The
+    seed only picks the extra pop count.
     """
 
     def __init__(self, seed: int) -> None:
@@ -91,18 +116,22 @@ class SepEntropyPoolCfg:
         rng = SepSeededRng(seed)
         self.extra_pops = rng.randrange(1, 5)
         self.alias_offs = _ALIAS_UNMAPPED
-        self.unmapped_off = rng.choice(_UNIQUE_DEAD)
+        self.unmapped_offs = _UNIQUE_DEAD
 
     def summary(self) -> str:
         aliases = ",".join(f"0x{o:x}" for o in self.alias_offs)
         return (
             f"seed={self.seed} extra_pops={self.extra_pops} "
-            f"alias=[{aliases}] extra_dead=0x{self.unmapped_off:x}"
+            f"alias=[{aliases}] "
+            f"extra_dead=[{','.join(f'0x{o:x}' for o in self.unmapped_offs)}]"
         )
 
 
 class SepEntropyPool(SepAxiRegDriver):
-    """64-bit beats on the pool aperture; ESRC_CTRL writes stay 32-bit."""
+    """64-bit beats on the pool aperture; ESRC_CTRL writes stay 32-bit.
+
+    ``nbytes=4`` issues one 32-bit beat (AxSIZE=2) at ``addr`` instead.
+    """
 
     _DRIVER_TAG = "POOL"
 
@@ -113,14 +142,17 @@ class SepEntropyPool(SepAxiRegDriver):
         write: bool = False,
         wdata: int = 0,
         expect_error: bool = False,
+        nbytes: int = 8,
     ) -> SepAxiAccessSeq:
+        if nbytes not in (4, 8):
+            raise ValueError(f"pool access is 4 or 8 bytes, not {nbytes}")
         seq = SepAxiAccessSeq(
-            f"pool_{'wr' if write else 'rd'}_0x{addr:08x}",
+            f"pool_{'wr' if write else 'rd'}{'' if nbytes == 8 else '32'}_0x{addr:08x}",
             op=SepAxiOp.WRITE if write else SepAxiOp.READ,
             addr=addr,
             wdata=wdata,
-            length=8,
-            size=None,
+            length=nbytes,
+            size=None if nbytes == 8 else 2,
             expect_error=expect_error,
         )
         await self.test.start_seq(seq)
@@ -154,11 +186,10 @@ class SepEntropyPool(SepAxiRegDriver):
 def _selftest() -> None:
     assert POOL_BASE == 0x1095_0000
     assert FIFO_DEPTH == 32
-    assert LOW_WATERMARK == 8
     assert STALL_THRESH == 4096
     cfg = SepEntropyPoolCfg(1)
     assert cfg.alias_offs == _ALIAS_UNMAPPED
-    assert cfg.unmapped_off in _UNIQUE_DEAD
+    assert cfg.unmapped_offs == (0x18, 0x40, 0x80)
     assert 1 <= cfg.extra_pops <= 4
     # The three pinned testlist seeds must all still walk the alias set.
     for pinned in (1, 2, 3):

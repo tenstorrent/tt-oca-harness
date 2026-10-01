@@ -1,25 +1,37 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Verilator stubs (SMC)
 
-Listed in `smc_sim_cfg.toml` `[build].stubs` ahead of the Bender
-filelist so `-Wno-MODDUP` first-wins under Verilator. VCS ignores this list.
-Also reused by `smu_wrapper` / bare `smu`.
+Behavioural stand-in for the `ocah_prim` three-stage synchroniser. The runner
+compiles it on Verilator and Xcelium and drops it on VCS.
 
-**Tooling vs product (do not confuse):**
+| File | Replaces | Difference from the product cell |
+|------|----------|----------------------------------|
+| `prim_sync3.sv` | `hw/common/ocah_prim/rtl/prim_sync3.sv` | same three-flop pipe, every stage `initial '0` |
 
-| Kind | Examples | Signoff? |
-|------|----------|----------|
-| Tooling shim (allowed here) | `prim_sync2/3` port remap + X-init | Compile-only; not a feature PASS |
-| Product stub in DUT RTL | `i3ccore_stub`, `pll_wrap`/`pvt_wrap` OKAY+0 | Green only as *signature/reachability* when labeled; protocol → deferred |
-| TB glue | `tb_dfd_fault_inject` token `0xDB5C_AFE1` | Deferred (`tb_glue`) — never green feature PASS |
+The port list (`clk_i` / `d_i` / `q_o`) and parameters are identical to the
+product cell, which is in the same compile. The product cell's
+`prim_cdc_rand_delay` stage passes its input through unless a run sets
+`+cdc_instrumentation_enabled=1`, so it too is a plain flop pipe; the one
+behaviour this file adds is a defined `0` on the far side of the crossing
+before the pipe has filled; the product cell shows X there on a four-state
+simulator. Two-stage crossings use OpenTitan `prim_flop_2sync`, which has a
+reset port and no stand-in.
 
-**Only tooling shims are allowed in this directory** — never override a
-product module (`smc_reset_*`, `smc_dfx_*`, etc.).
+Enrolment: `smc_sim_cfg.toml` `[build].stubs`. The runner
+(`tools/dv/runlib/stages.py`) filters that list only when `tool == "vcs"`:
+there it drops any stub whose basename the Bender graph supplies, so the
+product cell elaborates on VCS. On Verilator and Xcelium it keeps both files
+and emits the stub ahead of the Bender filelist, so the stub and the product
+cell are in the same compile; Verilator's `-Wno-MODDUP` first-definition-wins picks
+the stub, and no Xcelium build of this bench is recorded. The SMU bench
+enrols the same file in the `[build].stubs` of
+`hw/sys/smu/dv/smu_sim_cfg.toml` (`--dut smu`).
 
-| Stub | Role vs SEP |
-|------|-------------|
-| `prim_sync2.sv` | Same port remap need as `sep/dv/shims/prim/prim_sync2.sv`, but **hand-rolled + X-init** (SEP wraps `prim_flop_2sync` with `rst_ni=1`; SMC/SMU LSIO needs defined sync without reset) |
-| `prim_sync3.sv` | 3-flop sync + X-init (SEP has no `prim_sync3` shim) |
+Nothing under this directory may replace an SMC module (`smc_*`). PeakRDL
+nested hwif structs are kept compilable by `disable_public_flat_rw` plus
+`smc_public_scope.vlt`, never by a module stub.
 
-Historical PeakRDL nested-struct Verilator codegen issues (B1) are worked
-around via `disable_public_flat_rw` + `smc_public_scope.vlt`, not module stubs.
+Which enrolled leaves read a signal behind one of these crossings, what each
+verdict reads, and the VCS control run that keeps those claims honest are
+recorded in the *Bench stand-ins* section of
+`docs/SMC_VPLAN.adoc` (Known Limitations, "SMC deferred and OUT disposition").

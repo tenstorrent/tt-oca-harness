@@ -14,6 +14,8 @@ from dataclasses import dataclass, field
 from systemrdl import RDLListener
 from systemrdl.node import SignalNode
 
+from .fieldprops import extract_field_props
+
 
 @dataclass
 class FieldInfo:
@@ -143,10 +145,9 @@ class FieldCollector(RDLListener):
         # Same type must agree on field layout and access (reset may differ).
         if fullname in self.regs:
             existing_fields = self.regs[fullname].fields
-            if (
-                [field_access_key(f) for f in existing_fields]
-                != [field_access_key(f) for f in fields]
-            ):
+            if [field_access_key(f) for f in existing_fields] != [
+                field_access_key(f) for f in fields
+            ]:
                 raise ValueError(f"ERROR: register '{fullname}' already exists")
 
         self.regs[fullname] = RegTypeInfo(
@@ -157,31 +158,19 @@ class FieldCollector(RDLListener):
 
     def enter_Field(self, node):
         if self.under_target:
-            reset = node.get_property("reset")
-            onwrite = node.get_property("onwrite", default=None)
-            if onwrite is None:
-                onwrite = "woset" if node.get_property("woset") else (
-                    "woclr" if node.get_property("woclr") else ""
+            props = extract_field_props(node)
+            self.curr_reg_fields.append(
+                FieldInfo(
+                    name=node.get_path_segment(array_suffix="_{index:d}_"),
+                    high=node.high,
+                    low=node.low,
+                    reset=0 if props.reset is None else props.reset,
+                    sw=props.sw,
+                    onwrite=props.onwrite,
+                    onread=props.onread,
+                    singlepulse=props.singlepulse,
                 )
-            else:
-                onwrite = onwrite.name
-            onread = node.get_property("onread", default=None)
-            if onread is None:
-                onread = "rset" if node.get_property("rset") else (
-                    "rclr" if node.get_property("rclr") else ""
-                )
-            else:
-                onread = onread.name
-            self.curr_reg_fields.append(FieldInfo(
-                name=node.get_path_segment(array_suffix="_{index:d}_"),
-                high=node.high,
-                low=node.low,
-                reset=0 if reset is None else reset,
-                sw=node.get_property("sw").name,
-                onwrite=onwrite,
-                onread=onread,
-                singlepulse=bool(node.get_property("singlepulse")),
-            ))
+            )
 
 
 def build_struct_fields(fields: list[FieldInfo]) -> list[tuple[str, int]]:

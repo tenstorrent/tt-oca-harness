@@ -1,5 +1,7 @@
 `include "generic_macro_assertion.vh"
-// Trace Sink: Implements the Trace SRAM for the two trace sink modes
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ // Trace Sink: Implements the Trace SRAM for the two trace sink modes
 module trace_sink
   import tn_pkg::*;
   import ntr_sink_mmr_pkg::*;

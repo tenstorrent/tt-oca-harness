@@ -1,6 +1,6 @@
 # Shared profile for DUTs on the native runner — "native" = the flow's stage
 # plan, tool invocation, and results are owned by this runner, not a
-# wrapped/external flow (e.g. the classic VCS Make/VPI path).
+# wrapped/external flow.
 #
 # Framework (cocotb | uvm) is a selectable dimension inside this one profile: shared launch
 # policy lives at the top level, per-framework residue in [frameworks.<fw>], and each DUT
@@ -18,9 +18,10 @@ license = "none"
 default_tool = "verilator"
 tools = ["verilator", "xcelium", "vcs"]
 
+# A cluster executor takes its queue, resource defaults and limits from the site layer.
 [scheduler]
 default_executor = "local"
-allowed = ["local"]
+allowed = ["local", "lsf", "slurm"]
 
 [defaults]
 seed = 1
@@ -37,22 +38,16 @@ cache_enabled = false
 rebuild = false
 cache_key_extra = []
 
-# One simulation define set for both frameworks: enabling SVAs for UVM (dropping DISABLE_ASSERT /
-# COMMON_CELLS_ASSERTS_OFF) is a deliberate follow-up, not a silent difference between the flows.
+# One simulation define set for both frameworks; a framework overlay only ADDS to it (see
+# [frameworks.uvm.target_defaults.default] below), so the flows never differ silently.
 # Tool-specific fields use nested tool tables so every simulator follows the same naming rule:
 # target.tools.<tool>.flags.
 [target_defaults.default]
 defines = [
   "SIMULATION",
-  "NO_LIBCELL",
-  "DISABLE_ASSERT",
-  "COMMON_CELLS_ASSERTS_OFF",
-  "INITIALIZE_MEMORY",
   "RANDOM=0",
   "RANDOMIZE_MEM_INIT",
   "RANDOMIZE_REG_INIT",
-  "RANDOMIZE_GARBAGE_ASSIGN",
-  "RANDOMIZE_INVALID_ASSIGN",
   "RANDOMIZE_DELAY=0.02",
 ]
 
@@ -65,6 +60,9 @@ flags = [
   "-Wno-UNSIGNED",
   "-Wno-REDEFMACRO",
   "-Wno-MODDUP",
+  # The inline assertion blocks of the vendored common_cells do not compile
+  # under Verilator; VCS and Xcelium compile and run them.
+  "+define+COMMON_CELLS_ASSERTS_OFF",
 ]
 
 [target_defaults.default.tools.xcelium]
@@ -78,10 +76,10 @@ enabled = true
 status = "active"
 
 # ONE canonical stage graph for both frameworks. The generic kinds dispatch per
-# (tool, framework) at run time: `hdl_compile` builds the cocotb model (Verilator/Xcelium/VCS
-# classic make) or runs the folded VCS analyze+elaborate two-step for SV-UVM; `sim` launches the
-# cocotb test or the built simv (`+UVM_TESTNAME`); `c_compile` runs only for tests that declare
-# firmware.
+# (tool, framework) at run time: `hdl_compile` builds the cocotb model (Verilator/Xcelium/VCS,
+# all through cocotb's Python runner) or runs the folded VCS analyze+elaborate two-step for
+# SV-UVM; `sim` launches the cocotb test or the built simv (`+UVM_TESTNAME`); `c_compile` runs
+# only for tests that declare firmware.
 [native.stages.flist]
 kind = "filelist"
 
@@ -95,18 +93,25 @@ kind = "hdl_compile"
 kind = "sim"
 
 # Coverage aggregation (run automatically with --cov, or via --stage cov_merge --stage
-# cov_report). cocotb-only for now: the vcs_* UVM build/sim adapters do not inject `-cm ...`
-# instrumentation args yet, so the uvm framework declares no coverage stages and --cov is
-# rejected up front (UVM coverage wiring is a documented follow-up).
+# cov_report). Both frameworks declare the stages: the cocotb tools consume the
+# [<tool>.coverage_defaults] args through the cocotb build/makefile path, and the vcs_* UVM
+# build/sim adapters inject the same `-cm ...` compile/sim instrumentation directly (covergroups
+# collect into the same per-test simv.vdb).
 [frameworks.cocotb.native.stages.cov_merge]
 kind = "coverage_merge"
 
 [frameworks.cocotb.native.stages.cov_report]
 kind = "coverage_report"
 
+[frameworks.uvm.native.stages.cov_merge]
+kind = "coverage_merge"
+
+[frameworks.uvm.native.stages.cov_report]
+kind = "coverage_report"
+
 # SystemVerilog UVM: the UVM library comes from the simulator itself (the VCS analyze stage
 # precompiles it with a dedicated `vlogan -ntb_opts uvm` invocation before analyzing user
-# sources). VCS only until the xrun UVM adapter is signed off (see simulators.toml).
+# sources).
 [frameworks.uvm]
 default_tool = "vcs"
 tools = ["vcs"]

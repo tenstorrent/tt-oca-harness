@@ -14,6 +14,7 @@
 #include "sep.h"
 #include "sep_outbound_filter.h"
 #include "sep_aes_init.h"
+#include "sep_entropy.h"
 #include "aes_test_util.h"
 
 static const uint32_t k_key[4] = {0x16157e2bu, 0xa6d2ae28u, 0x8815f7abu, 0x3c4fcf09u};
@@ -55,8 +56,27 @@ __attribute__((used, noinline, noreturn)) void smu_sep_aes_fail_loop(void) {
     }
 }
 
+/* Separate from the AES fail loop: an entropy bring-up that never completed is a
+ * missing prerequisite, not an AES defect, and the testbench classifies the run
+ * by which loop the CPU parks in. */
+__attribute__((used, noinline, noreturn)) void smu_sep_aes_fail_entropy_loop(void) {
+    while (1) {
+        __asm__ volatile("wfi");
+        __asm__ volatile("nop");
+    }
+}
+
 int main(void) {
     sep_outbound_filter_init();
+
+    /* OpenTitan AES reseeds its masking PRNG from crypto-EDN, so wait_for_idle()
+     * never clears unless the entropy stack is up. sep_entropy_bringup() skips
+     * itself when the boot gate is already open, so this is safe under
+     * hw/sys/sep/dv, where a cocotb sequence may have done the bring-up first. */
+    if (sep_entropy_bringup() != SEP_ENTROPY_OK) {
+        smu_sep_aes_fail_entropy_loop();
+    }
+
     if (run_aes_ecb_kat() == 0) {
         smu_sep_aes_pass_loop();
     } else {

@@ -6,8 +6,8 @@
  * @brief I2C target TX stretch timeout recovery test
  *
  * I2C_1 acts as controller and I2C_0 acts as target. The controller first
- * issues a READ while target firmware intentionally leaves the target TX FIFO
- * empty, causing automatic TX clock stretch until the controller times out.
+ * issues a READ while the target TX FIFO is empty, causing automatic TX clock
+ * stretch until the controller times out.
  * Firmware then disables the target to release the stretch, disables the
  * controller to exercise the automatic STOP recovery path, reinitializes both
  * sides, and verifies that a following 16-byte WRITE is received correctly.
@@ -26,6 +26,11 @@
 #define VERIFY_WRITE_LEN 16
 #define READ_STRETCH_TIMEOUT_CYCLES 2000
 #define READ_STRETCH_SETTLE_CYCLES 256
+
+/* Poll bound for the stretch timeout report. Generous against the ~100 us the
+ * bus needs to reach the stretch, but finite so a stretch that never happens
+ * fails here with a diagnostic instead of running into the TB's timeout. */
+#define READ_STRETCH_POLL_BOUND 20000u
 #define POLL_TIMEOUT 10000
 
 static void i2c_wrapper_enable(uint32_t idx, bool controller_mode) {
@@ -58,7 +63,14 @@ static int wait_for_target_idle(uint32_t idx) {
     return I2C_ERROR_TIMEOUT;
 }
 
+/* Last INTR_STATE sampled by clear_controller_events_and_wait() before it
+ * cleared: the sample that carries the property under test has to be taken
+ * before the blanket 0xFFFFFFFF clear destroys it. Callers that provoke a
+ * timeout read this. */
+static uint32_t g_last_intr_state_before_clear;
+
 static int clear_controller_events_and_wait(uint32_t idx) {
+    g_last_intr_state_before_clear = i2c_get_interrupt_state(idx);
     i2c_clear_controller_events(idx, 0xFFFFFFFF);
 
     for (uint32_t i = 0; i < POLL_TIMEOUT; i++) {
@@ -94,7 +106,7 @@ static int clear_target_events_and_wait(uint32_t idx) {
 
 static void get_test_timing(i2c_timing_config_t *timing) {
     i2c_timing_physical_t physical_params = {.speed = I2C_SPEED_STANDARD,
-                                             .clock_period_nanos = 10,
+                                             .clock_period_nanos = 5,
                                              .sda_rise_nanos = 300,
                                              .sda_fall_nanos = 100,
                                              .scl_period_nanos = 0};
@@ -123,6 +135,14 @@ static int init_controller(void) {
     }
 
     i2c_config_timeout(CONTROLLER_IDX, READ_STRETCH_TIMEOUT_CYCLES, true, true);
+
+    /* Enable the STRETCH_TIMEOUT interrupt for the property under test.
+     *
+     * INTR_STATE.STRETCH_TIMEOUT latches whether or not the interrupt is
+     * enabled (INTR_ENABLE masks irq_o only), so the status read below does
+     * not depend on this. Enabling it as well keeps the interrupt line as a
+     * second, independent observation of the same event. */
+    i2c_enable_interrupts(CONTROLLER_IDX, I2C__INTR_ENABLE__STRETCH_TIMEOUT_bm);
     return I2C_OK;
 }
 
@@ -236,12 +256,49 @@ static int trigger_read_timeout(void) {
     }
 
     write_scratch(1, 0x00000026);
-    for (volatile uint32_t i = 0; i < READ_STRETCH_SETTLE_CYCLES; i++) {
-        __asm__("nop");
+
+    /* Wait for the stretch timeout to be reported, rather than spinning a fixed
+     * count and assuming it happened.
+     *
+     * The fixed READ_STRETCH_SETTLE_CYCLES window was 256 iterations ~= 50.6 us,
+     * against the ~98.7 us this test's own programmed timing needs just to get
+     * START + address + ACK onto the bus -- so recovery began before the target
+     * had started stretching, and the stretch under test never occurred. Nothing
+     * measured it either way, so the test passed on a bus that stayed idle.
+     *
+     * Polling the status bit makes the wait self-timing and turns the property
+     * into something that can fail: with the enqueue above removed, no timeout
+     * is ever reported and this returns an error. */
+    {
+        uint32_t polls = 0;
+        i2c__INTR_STATE_t intr = {.w = 0};
+
+        while (polls < READ_STRETCH_POLL_BOUND) {
+            intr.w = i2c_get_interrupt_state(CONTROLLER_IDX);
+            if (intr.f.STRETCH_TIMEOUT) {
+                break;
+            }
+            polls++;
+        }
+
+        if (!intr.f.STRETCH_TIMEOUT) {
+            simputs("  ERROR: STRETCH_TIMEOUT never reported after ");
+            simputshex32("", polls);
+            simputs(" polls; INTR_STATE=");
+            simputshex32("", intr.w);
+            simputs("\n");
+            return I2C_ERROR_TIMEOUT;
+        }
+
+        simputs("  STRETCH_TIMEOUT observed after ");
+        simputshex32("", polls);
+        simputs(" polls, INTR_STATE=");
+        simputshex32("", intr.w);
+        simputs("\n");
     }
 
     write_scratch(1, 0x00000027);
-    simputs("  Controller READ settle window completed; starting recovery\n");
+    simputs("  Controller READ stretch timeout observed; starting recovery\n");
     return I2C_OK;
 }
 

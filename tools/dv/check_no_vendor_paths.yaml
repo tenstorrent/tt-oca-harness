@@ -18,37 +18,13 @@
 # Forbidden prefixes
 # -------------------------------------------------------------------------
 forbidden_prefixes:
-  # Samsung foundry-specific paths
-  - prefix: "/tech/samsung"
-    description: "Samsung foundry GPIO, OTP, and standard-cell models"
-  - prefix: "/tech/Samsung"
-    description: "Samsung foundry models (capital-S variant)"
-  - prefix: "samsung/LN04LPP"
-    description: "Samsung LN04LPP process-specific models (relative path form)"
-  - prefix: "/LN04LPP"
-    description: "Samsung LN04LPP embedded in a longer absolute path"
-
-  # Movellus vendor IP paths
-  - prefix: "/vendor_ip/movellus"
-    description: "Movellus PLL and droop-sensor simulation IP"
-
-  # Cadence vendor IP paths
-  - prefix: "/vendor_ip/cadence"
-    description: "Cadence I3C controller and xSPI/DLL/PHY simulation IP"
-
-  # Synopsys vendor IP paths
-  - prefix: "/vendor_ip/synopsys"
-    description: "Synopsys TRNG (DWC_trng) simulation IP"
-
-  # Alpha Solutions vendor IP paths
-  - prefix: "/vendor_ip/alpha_solutions"
-    description: "Alpha Solutions temperature sensor simulation models"
-
-  # Generic catch-all for any path rooted at /vendor_ip or /tech
+  # Any path rooted at a foundry/tech or vendor-IP tree. These roots hold
+  # process-specific simulation models and vendor simulation IP that are not
+  # available in CI or to OSS contributors.
   - prefix: "/vendor_ip/"
-    description: "Generic vendor IP root — catch-all for unlisted vendor paths"
+    description: "Vendor IP root — no vendor simulation IP in the public flow"
   - prefix: "/tech/"
-    description: "Generic foundry/tech root — catch-all for unlisted foundry paths"
+    description: "Foundry/tech root — no process-specific models in the public flow"
 
   # Internal server mounts sometimes appear in developer-local filelists
   - prefix: "/nfs/tools"
@@ -64,21 +40,19 @@ forbidden_prefixes:
 # Each entry has:
 #   target:   arbitrary label matching the --target argument of check_no_vendor_paths.py
 #   allow:    list of prefix strings to exempt from the forbidden_prefixes check
-#   reason:   mandatory explanation; must reference a tracking issue or known gap
+#   reason:   mandatory explanation of the gap the exception covers
 
 per_target_allowlist:
-  # Example (currently no exceptions are granted):
+  # Example entry:
   #
-  # - target: "smc_vendor_dv"
+  # - target: "internal_vendor_dv"
   #   allow:
-  #     - "/vendor_ip/movellus"
-  #     - "/tech/samsung"
+  #     - "/vendor_ip/"
+  #     - "/tech/"
   #   reason: >
-  #     Internal SMC vendor-accurate regression flow.  Not part of the public
-  #     OSS filelist.  Tracked in OCAH issue #99 for eventual shim replacement.
+  #     Vendor-accurate regression flow; not part of the public OSS filelist.
   #
-  # When an exception is granted, document it here and add the target label
-  # to the workflow step that scans that filelist.
+  # An exception is documented here and selected with `--target <label>`.
   []
 
 # -------------------------------------------------------------------------

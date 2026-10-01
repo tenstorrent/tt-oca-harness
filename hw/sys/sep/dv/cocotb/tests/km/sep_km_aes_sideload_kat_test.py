@@ -13,7 +13,7 @@ ECB-256 encryptions and proves the AES engine CONSUMED exactly that key:
 
 AES has write-only KEY CSRs and is not programmable, so (unlike the OTBN KAT)
 the delivered key cannot be dumped back; the consume-proof IS the encryption
-cross-check, exactly as the reference AES leaf does it. This OSS port is STRONGER than
+cross-check, exactly as the reference AES leaf does it. This port differs from the
 reference suite on two axes:
   * frontdoor known key: CMD_KEY_LOAD replaces the reference suite's CMD_KEY_GENERATE + read-only
     backdoor share reconstruction, so the delivered key value is known a priori.
@@ -31,7 +31,8 @@ VPLAN-parity checkers (mapped to the reference AES-leaf checker list):
   CHK-ISO  key-bus isolation: only AES released; OTBN/KMAC/HMAC parked in SW reset
            so they physically cannot receive the key (OSS analog of the reference suite's per-
            engine key-bus AW monitor; same mechanism as the OTBN KAT)
-  CHK-PUB  AES public KEY_SHARE0/1 frontdoor reads stay zero after sideload:
+  PUB-OBS  AES public KEY_SHARE0/1 frontdoor reads stay zero after sideload (not
+           scored -- swaccess=wo makes the read unfalsifiable):
            the KM-delivered key is not exposed through software-readable CSRs
   CHK-F    ct_side == AES(known_key, PT) golden: sideload delivered the exact key
            (replaces the reference suite's backdoor SHARE0^SHARE1 non-degeneracy proof)
@@ -43,21 +44,19 @@ VPLAN-parity checkers (mapped to the reference AES-leaf checker list):
            the released AES masking PRNG reseeds from the crypto EDN leg, so a
            second real EDN consumer (besides KM) is witnessed off one DRBG.
 
-Accepted scope deltas vs the reference suite (documented, no silent skips):
+Scope deltas vs the reference suite:
   * the reference suite's backdoor SHARE0^SHARE1 reconstruction + non-degeneracy
     guards are dropped: with a KNOWN, distinct-word key loaded via CMD_KEY_LOAD
     there is no KM keygen and no constant-word keygen defect to guard against, and
-    CHK-F (golden value compare) proves the exact key flowed -- stronger than
-    "the reconstructed key is not a single repeated word". No backdoor is used.
+    CHK-F (golden value compare) proves the exact key flowed. No backdoor is used.
     The ONE sub-property the reference suite checks that a frontdoor port cannot
     see is the raw SHARE0 *mask* non-degeneracy inside the AES wrapper (its
     !mask_all_same guard): the combined
     key is correct (CHK-F) yet the 2-share masking could in principle be degenerate.
     That is an AES-wrapper-internal masking property, not the KM->AES sideload-consume
-    contract this leaf owns, and it is proven frontdoor by the sibling OTBN KAT
-    (sep_km_otbn_sideload_kat_test CHK-F dumps S0/S1) -- so it is out of frontdoor
-    scope here by design, not a silent gap.
-  * key-bus isolation is proven by SW_RESET_N read-back (only AES out of the four
+    contract this leaf owns; the sibling OTBN KAT (sep_km_otbn_sideload_kat_test
+    CHK-F dumps S0/S1) proves it frontdoor.
+  * key-bus isolation is proven by SW_RESET_N read-back (only AES out of the five
     sideload targets is released) rather than the reference suite bus-AW monitor, which has no
     OSS frontdoor analog; CHK-F additionally proves AES got the correct key.
 
@@ -66,25 +65,30 @@ responder powers up zero+valid-parity; rom_main built PROD_BOOT_WIPE=0).
 
 Entropy ordering mirrors reference suite bringup_real_entropy_and_boot_km + the AES leaf's
 release_consumers_pre_noise(): AES is left RELEASED through entropy bring-up (its
-masking-PRNG reseed is served as EDN starts), while OTBN/KMAC are parked so the KM
-owns the boot/seed stream; HMAC is parked too for key-bus isolation.
+masking-PRNG reseed is served as EDN starts), while OTBN/KMAC/HMAC are parked so
+the KM owns the boot/seed stream and the other sideload targets cannot take the key.
 """
 
 from __future__ import annotations
 
 import pyuvm
-
-from sep_base_test import sep_base_test
 from env.sep_aes_golden import aes256_ecb_encrypt_words
+from sep_base_test import sep_base_test
 from seq_lib.sep_aes_seq import SepAes
-from seq_lib.sep_km_mailbox_seq import SepKmMailbox, KM_DEST_AES
+from seq_lib.sep_km_mailbox_seq import KM_DEST_AES, SepKmMailbox
 from seq_lib.sep_sw_reset_seq import SW_RESET_N_BIT
 
 # Known 256-bit KAT key: 8 DISTINCT 32-bit words so the golden compare and the
 # negative reference catch a truncated / word-swapped / share-defeated sideload.
 KAT_KEY = (
-    0xDEADBEEF, 0x00112233, 0x44556677, 0x8899AABB,
-    0xCCDDEEFF, 0x01234567, 0x89ABCDEF, 0xFEDCBA98,
+    0xDEADBEEF,
+    0x00112233,
+    0x44556677,
+    0x8899AABB,
+    0xCCDDEEFF,
+    0x01234567,
+    0x89ABCDEF,
+    0xFEDCBA98,
 )
 
 # Fixed ECB plaintext block (ECB keeps the focus on the key-source path, no IV).
@@ -92,8 +96,14 @@ AES_ECB_PT = (0x00112233, 0x44556677, 0x8899AABB, 0xCCDDEEFF)
 
 # Dummy SW key for the negative reference (unrelated to KAT_KEY).
 AES_DUMMY_SW_KEY = (
-    0xDEADBEEF, 0xCAFEF00D, 0x12345678, 0x9ABCDEF0,
-    0x0F0E0D0C, 0x0B0A0908, 0x07060504, 0x03020100,
+    0xDEADBEEF,
+    0xCAFEF00D,
+    0x12345678,
+    0x9ABCDEF0,
+    0x0F0E0D0C,
+    0x0B0A0908,
+    0x07060504,
+    0x03020100,
 )
 
 
@@ -112,8 +122,8 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
         self.km = SepKmMailbox(self)
         self.aes = SepAes(self)
 
-        # OTBN/KMAC JTAG-held across rst_ni release, then parked in SW_RESET_N so they never sit ungranted through fuse
-        # sense; HMAC parked for key-bus isolation. AES stays released so its
+        # OTBN/KMAC/HMAC parked in SW_RESET_N so they never sit ungranted
+        # through fuse sense and cannot take the key. AES stays released so its
         # masking-PRNG reseed is served when EDN starts.
 
         # Strict entropy bring-up: CHK1..CHK4 bit-exact golden; CHK5_km observed
@@ -121,8 +131,7 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
         # crypto EDN leg delivers real beats to the released AES masking PRNG, not
         # only the KM leg. Fork the concurrent FIFO_RDATA drain so CHK2 is scored
         # without an ESRC FIFO overflow.
-        await self.bring_up_entropy(
-            strict=True, score_km="observe", score_sinks={"aes": "observe"})
+        await self.bring_up_entropy(strict=True, score_km="observe", score_sinks={"aes": "observe"})
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
         self.start_fifo_drain()
         self.logger.info("real entropy flowing; releasing KM firmware (rom_main)")
@@ -132,7 +141,7 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
         self.logger.info("CHK0 KM firmware boot PASS: RESP_KM_READY over the mailbox")
 
         # --- Frontdoor consume-proof: load known key -> transfer -> encrypt ----
-        # CHK-A: provision the KNOWN key into a KPV handle (no backdoor needed).
+        # CHK-A: provision the KNOWN key into a KPV handle over the frontdoor.
         handle = await self.km.key_load(key_words=list(KAT_KEY), dest=KM_DEST_AES)
         self.logger.info("CHK-A CMD_KEY_LOAD PASS: known key staged, handle=0x%02x", handle)
 
@@ -151,26 +160,34 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
         self.logger.info("CHK-NEG dummy-key ECB PASS: ct_dummy == AES(dummy, PT) golden")
 
         # CHK-B: sideload the handle's key to the AES wrapper KEY CSRs.
-        rc = await self.km.key_transfer(handle=handle, dest=KM_DEST_AES)
+        rc, _ = await self.km.key_transfer(handle=handle, dest=KM_DEST_AES)
         assert rc == 0, f"CMD_KEY_TRANSFER returned rc={rc} (expected 0)"
         self.logger.info("CHK-B CMD_KEY_TRANSFER PASS: rc=0 (key sideloaded to AES)")
 
-        # CHK-ISO: key-bus isolation, positive evidence. Only AES (of the four KM
-        # sideload targets) is released; OTBN/KMAC/HMAC are held in SW reset and
-        # cannot receive the key. OSS analog of the reference suite's per-engine key-bus AW count.
+        # CHK-ISO: key-bus isolation, positive evidence. Only AES (of the five KM
+        # sideload targets) is released; OTBN/KMAC/HMAC are held in SW reset
+        # and cannot receive the key. OSS analog of the reference suite's per-engine key-bus AW count.
         rst = await self.swrst.read_back()
-        parked = (1 << SW_RESET_N_BIT["otbn"]) | (1 << SW_RESET_N_BIT["kmac"]) \
+        parked = (
+            (1 << SW_RESET_N_BIT["otbn"])
+            | (1 << SW_RESET_N_BIT["kmac"])
             | (1 << SW_RESET_N_BIT["hmac"])
-        assert (rst & parked) == 0, \
+        )
+        assert (rst & parked) == 0, (
             f"key-bus isolation: OTBN/KMAC/HMAC not parked (SW_RESET_N=0x{rst:08x})"
-        assert rst & (1 << SW_RESET_N_BIT["aes"]), \
+        )
+        assert rst & (1 << SW_RESET_N_BIT["aes"]), (
             f"AES not released for the transfer (SW_RESET_N=0x{rst:08x})"
+        )
         self.logger.info(
-            "CHK-ISO key-bus isolation PASS: only KM+AES released, OTBN/KMAC/HMAC "
-            "parked (SW_RESET_N=0x%02x)", rst)
+            "CHK-ISO key-bus isolation PASS: only KM+AES released, "
+            "OTBN/KMAC/HMAC parked (SW_RESET_N=0x%02x)",
+            rst,
+        )
 
-        # CHK-PUB: the public KEY_SHARE CSRs still read zero, and the read path
-        # that produced those zeros is alive. The positive control is the point:
+        # PUB-OBSERVATION: the public KEY_SHARE CSRs read zero, and the read path
+        # that produced those zeros is alive. Logged, not scored. The control is
+        # the only falsifiable half:
         # KEY_SHARE0/1 are write-only with read data tied to zero in the generated
         # register block, so on its own "reads zero" is unfalsifiable -- it holds
         # whether the key is protected, mirrored elsewhere, or never delivered.
@@ -178,7 +195,7 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
         # the check fail if the read path dies or if these become readable.
         s0_pub, s1_pub, ctl_pub = await self.aes.read_public_key_shares()
         assert ctl_pub != 0, (
-            "CHK-PUB positive control failed: AES STATUS read back 0 over the same "
+            "PUB-OBSERVATION positive control failed: AES STATUS read back 0 over the same "
             "frontdoor, so the all-zero KEY_SHARE reads prove nothing about the key"
         )
         assert all(w == 0 for w in s0_pub) and all(w == 0 for w in s1_pub), (
@@ -187,12 +204,14 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
             f"  s1={[hex(w) for w in s1_pub if w]}"
         )
         self.logger.info(
-            "CHK-PUB AES public KEY_SHARE0/1 frontdoor reads zero after sideload "
-            "(read path alive: STATUS=%#010x)", ctl_pub)
+            "PUB-OBSERVATION AES public KEY_SHARE0/1 frontdoor reads zero after "
+            "sideload. Not scored: aes.hjson declares them swaccess=wo, so this read "
+            "cannot fail. Read path alive: STATUS=%#010x",
+            ctl_pub,
+        )
 
         # CHK-F: encrypt with the SIDELOAD key and value-check against the golden.
-        # This proves AES consumed the exact KM-delivered key (stronger than the reference suite's
-        # backdoor non-degeneracy guard).
+        # This proves AES consumed the exact KM-delivered key.
         golden = aes256_ecb_encrypt_words(list(KAT_KEY), list(AES_ECB_PT))
         await self.aes.configure_ecb_enc_256(sideload=True)
         await self.aes.trigger_prng_reseed()
@@ -218,8 +237,7 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
             f"  pt_side_dec={[hex(w) for w in pt_side_dec]}\n"
             f"  expected PT={[hex(w) for w in AES_ECB_PT]}"
         )
-        self.logger.info(
-            "CHK-RT sideload round-trip PASS: DEC(ct_side) == original PT")
+        self.logger.info("CHK-RT sideload round-trip PASS: DEC(ct_side) == original PT")
 
         # CHK-H: write the KNOWN key through the SW KEY_SHARE path and prove
         # the SW-key ciphertext equals AES(known_key, PT) golden.
@@ -231,8 +249,7 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
             "SW-key ciphertext != AES(known_key, PT) golden:\n"
             f"  ct_swref={[hex(w) for w in ct_swref]} golden={[hex(w) for w in golden]}"
         )
-        self.logger.info(
-            "CHK-H consume-proof PASS: ct_swref == AES(known_key, PT) golden")
+        self.logger.info("CHK-H consume-proof PASS: ct_swref == AES(known_key, PT) golden")
 
         # --- EOT: entropy health + clean shutdown ------------------------------
         await self.km.check_outbound_empty("EOT")

@@ -1,0 +1,115 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Boot ROM
+
+[[sep-rom]]
+The SEP maps a 64 KiB immutable Boot ROM aperture at `0x1004_0000` through
+`0x1004_FFFF`. The SEP CPU wrapper sets the VeeR EL2 `RESET_VEC` parameter to
+the base of this region, so a cold boot begins in the BL0 Root-of-Trust
+firmware.
+
+ifdef::backend-html5[]
+++++
+<span id="rom-architecture"></span>
+++++
+endif::backend-html5[]
+[[sep-rom-rom-architecture]]
+== ROM Architecture
+
+The CPU instruction-fetch and load/store interfaces reach the Boot ROM over a
+dedicated path outside the SEP local AXI crossbar. The SEP ROM interface shim
+converts the CPU memory request into the request, 64-bit word address, and
+read-data signals used by the ROM macro. Stores receive a response but are not
+forwarded to the macro and do not modify the ROM.
+
+The open integration instantiates a 16K-by-64-bit generic ROM, a physical
+128 KiB array. The generated SEP address map and production linker expose only
+the first 64 KiB. The unused physical capacity is not part of the BL0 software
+address contract.
+
+The ROM stores executable code, immutable metadata, read-only data, and the
+initial image of writable data. The production linker script,
+`hw/sys/sep/bootrom/prod/link/rom.ld`, places `.text`, `.metadata`, and
+`.rodata` in the ROM. It gives `.data` a runtime address in the 128 KiB DCCM at
+`0xC004_0000`, with its initial image in ROM; reset code copies that image and
+clears `.bss` before entering C. The stack also occupies DCCM, below a reserved
+BL0-to-BL1 state block at the top of the memory.
+
+BL0 stages the selected manifest and payload in SEP SRAM beginning at
+`0x1000_0000`. A validated SEP BL1 image is copied by the secure DMA to the
+256 KiB ICCM at `0xC000_0000`, where the instruction-fetch unit executes it.
+The CPU load/store unit cannot access ICCM, so BL0 cannot populate it with an
+ordinary software copy.
+
+ifdef::backend-html5[]
+++++
+<span id="integrity-features"></span>
+++++
+endif::backend-html5[]
+[[sep-rom-integrity-features]]
+== Hardware Configuration and Integrity
+
+A future ROM patching facility using OTP backup storage is planned for the
+second generation; it is not implemented in the first generation.
+
+The open generic ROM model has a 64-bit data path and no ECC or integrity-error
+sideband. Technology-specific integrity behavior is therefore outside this
+integration's visible hardware contract.
+
+ifdef::backend-html5[]
+++++
+<span id="firmware-behavior"></span>
+++++
+endif::backend-html5[]
+[[sep-rom-firmware-behavior]]
+== Boot Flow
+
+The production BL0 firmware selects SPI flash or an SMC-staged image from the
+captured boot straps. It validates the manifest, applies the lifecycle and
+secure-boot policy, checks the payload, locks sensitive fuse reads, and
+transfers control to BL1. The production ROM firmware documentation under
+`hw/sys/sep/bootrom/prod/doc/` describes that behavior and its build artifacts
+in detail.
+
+[[bl0-secure-boot-and-bl1-execution-unlock]]
+=== BL0 Secure Boot and BL1 Execution Unlock
+
+The SEP CPU Boot ROM firmware AKA BL0 is responsible for bringing the
+SEP system into a runnable state after power on reset (PoR) and running
+the first stage of external firmware AKA BL1.
+
+The complete boot flow is specified by the production ROM documentation under
+`hw/sys/sep/bootrom/prod/doc/`. It covers CPU initialization, PMP fencing,
+fuse and lifecycle evaluation, SMC synchronization, boot-source selection,
+manifest and payload validation, secure boot, demotion, attestation and
+hand-off, with requirement identifiers and an implementation-status matrix.
+The summary below places the ROM in the context of this chapter, the definitive
+description is in  the production ROM documentation
+
+* SEP initialization -- read configuration straps, determine boot options
+* Configure CPU CSRs, PMP among them, and peripherals (SPI host, OTP, DMA, HMAC-SHA256)
+* Load a boot manifest, from SPI flash or SMC SRAM, into SEP memory
+* Validate it. Under secure boot this means authorizing the root key
+against a trust anchor the device holds -- a ROM-embedded digest or an
+OTP hash bank -- before any public-key operation, then checking
+revocation and anti-rollback, then verifying an RSA-3072 signature on
+OTBN
+* Load the payload it describes, decrypting it when the manifest says so,
+and verify its hashes -- over the ciphertext before decryption and the
+plaintext after
+* Select BL1 from the payload table of contents, unlock execution in the
+CPU PMP, and jump
+* Failure of any check ends the boot. A failure the backup manifest slot
+recovers from is a warning; exhausting every slot is an error, after
+which the processor enters a fail loop requiring a reset to exit
+
+
+== Firmware Reference
+
+ifdef::backend-html5[]
+xref:sep-bootrom-prod:index.adoc[Production ROM Manual]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+`hw/sys/sep/bootrom/prod/doc/index.adoc` (Production ROM Manual)
+endif::backend-pdf[]

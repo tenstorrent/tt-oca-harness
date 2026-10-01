@@ -11,14 +11,15 @@
  * SEP_SMU_003  smc_sep_xbar  --  SMC (producer/consumer) firmware.
  *
  * Force-free SEP-driven bring-up: the real SEP CPU re-vectored + released these cores over
- * the SEP->SMC alias (no TB reset/vector force; no ext_in -- see B-EXTIN-CPUCTRL-WRITE).
+ * the SEP->SMC alias (no TB reset/vector force; the ext_in path is not used for CPU_CTRL
+ * writes).
  * This SMC fw drives the fixed-alias bidirectional datapath handshake with the live SEP:
  * publish SMC_READY -> validate the SEP->SMC scratch8 word (final consumer) -> command the
  * SMC->SEP xbar channel (CMD/DONE) -> two-sided acknowledged completion -> TEST_PASS.
  *
- * STACKLESS BY DESIGN (smc_stackless_test.h): the SEP-driven boot does not init the SMC SRAM
- * stack, so main() makes NO function calls and uses only SMC_* absolute-MMIO/poll macros ->
- * no stack frame. A future `add sp,sp,-N` in main() would wedge the core -- verify the .dis.
+ * STACKLESS (smc_stackless_test.h): the SEP-driven boot does not init the SMC SRAM stack, so
+ * main() makes no function calls and uses only SMC_* absolute-MMIO/poll macros; any
+ * `add sp,sp,-N` in main() wedges the core.
  */
 SMC_STACKLESS_ENTRY(smc_sep_xbar_entry)
 
@@ -75,7 +76,6 @@ int main(void) {
     /* S4: CLA run release + arm token (satisfies the SV real-CLA liveness monitor); read back.
      * Ordered AFTER SMC_READY so the cla_ext_action_custom[1]/[4] release edge follows SMC_READY.
      */
-    SMC_WR64(SMC_CLA_CDFDCSR_REG_ADDR, XBAR_CLA_CDFDCSR_EXPECT);
     SMC_WR64(SMC_CLA_CDBGCLACTRLSTATUS_REG_ADDR, XBAR_CLA_CTRLSTATUS_EXPECT);
     SMC_WR64(SMC_CLA_CDBGNODE0EAP0_REG_ADDR, XBAR_CLA_EAP0_RELEASE);
     SMC_WR64(SMC_CLA_CDBGNODE0EAP1_REG_ADDR, XBAR_CLA_EAP1_RELEASE);

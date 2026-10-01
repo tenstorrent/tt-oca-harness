@@ -10,25 +10,41 @@ shadow array against that image after sense-done.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
+import re
 import shutil
 import sys
 from pathlib import Path
 from typing import Awaitable, Callable
 
+# A log record carrying a non-ASCII character raises UnicodeEncodeError inside the
+# logging handler when the interpreter's stdio encoding follows an ASCII locale,
+# and the traceback is reported as a simulation error rather than the failed print
+# it is. Shared VIP log strings outside this tree carry such characters, so escape
+# unencodable output instead of aborting on it. Nothing is suppressed: the record
+# still prints, with the offending character shown escaped.
+for _log_stream in (sys.stdout, sys.stderr):
+    try:
+        _log_stream.reconfigure(errors="backslashreplace")
+    except (AttributeError, OSError, ValueError):
+        pass
+
+
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge, Timer, with_timeout
+from cocotb.triggers import (
+    ClockCycles,
+    NextTimeStep,
+    ReadOnly,
+    RisingEdge,
+    SimTimeoutError,
+    Timer,
+    with_timeout,
+)
+from ocah_axi_vip import OcahAxiLiteMasterAgent, OcahAxiSlaveAgent
 from pyuvm import ConfigDB, uvm_test
-
-# Intentional OSS exception: this JTAG AXI-Lite helper must run on the public
-from ocah_axi_vip import OcahAxiLiteMasterAgent
-
-try:  # cocotb < 2.0
-    from cocotb.result import SimTimeoutError
-except ImportError:  # cocotb >= 2.0
-    from cocotb.triggers import SimTimeoutError
 
 # The cocotb runner only puts the test dir on sys.path. Make the cocotb root
 # (env/, seq_lib/) and shared OSS VIP root importable before concrete tests
@@ -41,10 +57,12 @@ for _path in (_COCOTB_ROOT, _OSS_HW_ROOT / "common" / "dv" / "vip"):
         sys.path.insert(0, _path_str)
 
 from env.sep_cpu_trace_monitor import SepCpuTraceMonitor
+from env.sep_efuse_image import SepEfuseImage
 from env.sep_env import SepEnv
 from env.sep_env_cfg import SepEnvCfg
-from env.sep_efuse_image import SepEfuseImage
-
+from env.sep_smc_mem import SMC_AXI_GEOMETRY, SMC_MEM_SIZE, preload_smc_mem
+from env.sep_verdict import decode_verdict
+from models.entropy_noise_model import EntropyNoiseModel
 
 # Committed default OTP image loaded when a test passes `+sep_efuse_preload` with
 # no path (see select_efuse_image()). Real-fuse-sense tests (no +skip_fuse_sense)
@@ -57,6 +75,49 @@ _DEFAULT_EFUSE_PRELOAD = (
 # AXI round trip (which is tens of ns) but finite, so a wedged fabric cannot turn
 # the diagnostic itself into a sim timeout.
 _STALL_CSR_TIMEOUT_NS = 50_000
+# Cap on the dirty-file list in RUN-IDENTITY-DIRTY. The digest covers the whole
+# diff; the paths are there to be read, so a 400-file rebase does not bury the log.
+_RUN_IDENTITY_MAX_PATHS = 40
+# Above this the simulator binary is named and sized but not hashed, so a
+# pathological build cannot add minutes to every run's time 0.
+_SIM_BINARY_HASH_MAX_BYTES = 512 << 20
+
+
+class _EvidenceFilter(logging.Filter):
+    """Collect the named evidence a test emits, by watching its own log.
+
+    Tests already report each graded contract as ``CHK-<ID> PASS``. Reading the
+    records as they pass keeps that the single source of the ID -- a separate
+    call to register the check could drift from the line the log actually
+    carries, and then the summary would describe a check nobody ran.
+
+    Never filters: every record is returned unchanged.
+    """
+
+    _CHK = re.compile(r"\b(CHK-[A-Z0-9_-]+)\b\s*(?:\([^)]*\)\s*)?(PASS|OK)\b")
+
+    # IDs sep_base_test itself emits. Counted in `observed` but excluded from
+    # `own`, which is what a floor grades. Empty: bring-up logs no named CHK.
+    BASE_IDS: frozenset[str] = frozenset()
+
+    # Empty: firmware-console leaves emit CHK-FW-CONSOLE from poll_boot after
+    # the mailbox PASS magic is observed. That ID is intentionally not in
+    # BASE_IDS, so it counts as the leaf's own evidence. This list may only
+    # shrink. A new exemption is a logging gap, not a verification gap.
+    NO_OWN_EVIDENCE: dict[str, str] = {}
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.seen: set[str] = set()
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        try:
+            message = record.getMessage()
+        except Exception:  # a broken format string is the caller's failure, not ours
+            return True
+        for check_id, _status in self._CHK.findall(message):
+            self.seen.add(check_id)
+        return True
 
 
 class sep_base_test(uvm_test):
@@ -64,18 +125,103 @@ class sep_base_test(uvm_test):
 
     build_env = True
 
+    # Which channel poll_boot() gates completion on.
+    #
+    #   "mailbox"  -- fw_done_o/fw_pass_o from the outbound mailbox decoder
+    #                 (dv/tb/sep_outbound_mbx.sv). The default. spi/km/cpu
+    #                 payloads report through the mailbox.
+    #   "scratch0" -- the ROM/BL1 verdict word in cold_scratch[0]
+    #                 (env/sep_verdict.py). Opt-in, set by rom_fw tests only.
+    #
+    # Opt-in rather than a global switch: this attribute decides how a test
+    # concludes it passed. Flipping it for firmware that never writes
+    # cold_scratch[0] does not fail loudly -- the test never completes.
+    verdict_source = "mailbox"
+
+    # Evidence gate. A clean exit is not a pass: a test whose stimulus stopped
+    # reaching the DUT compares nothing, asserts nothing, and returns normally.
+    # Every leaf reports its graded contracts as `CHK-<ID> PASS`, so the base
+    # class counts what this run actually emitted and fails a silent one.
+    #
+    #   required_evidence -- IDs this test must emit. Missing any one fails.
+    #   min_evidence      -- fewest distinct IDs of the test's OWN (records the
+    #                        base class emits do not count). 0 disables it.
+    #
+    # Both default to off. They tighten a leaf that already emits records; they
+    # do not replace the unconditional floor in `_finalize_evidence`. A leaf
+    # whose `own` count is zero fails unless it is named in NO_OWN_EVIDENCE.
+    # Graded contracts the floor accepts log `CHK-<ID> PASS` (or OK) after the
+    # check. A colon-only `CHK-<ID>:` line does not match the counter, even when
+    # an assert already sat in front of it.
+    required_evidence: tuple[str, ...] = ()
+    min_evidence = 0
+
     @staticmethod
     def random_seed() -> int:
         """Runner-provided seed (run_dv.py --seed -> RANDOM_SEED); default 1."""
         return int(os.environ.get("RANDOM_SEED", "1"), 0)
 
     @staticmethod
-    def rd(sig) -> int:
-        """Read a DUT signal as int, resolving X/Z to zero via the env policy."""
-        try:
-            return int(sig.value)
-        except Exception:
-            return 0
+    def rd(sig, mask: int | None = None, *, allow_unknown: bool = False) -> int:
+        """Read a DUT signal as int. Raise if a bit selected by ``mask`` is not 0 or 1.
+
+        ``mask`` selects the bits the caller reads; the default is every bit
+        the signal carries. The return carries only the masked bits, so a
+        compare cannot match on a bit that was never required to be known.
+        Pass a mask on a wide probe whose other lanes can legitimately be X,
+        for example one 32-bit word of ``scratch_cold_probe_o``.
+
+        An unknown bit raises by default because a zero-expecting compare on an
+        X/Z node would otherwise pass: resolved to 0, an undriven or unknown
+        node is indistinguishable from a node the device drove low.
+
+        ``allow_unknown=True`` resolves X/Z/U/W/- to 0 and weak H/L to 1/0 per
+        bit instead of raising. Use it only where an unknown value is legal for
+        the read: a diagnostic log line, or a poll that waits for a nonzero
+        value and so fails closed on X (it times out rather than passing).
+
+        Two cocotb versions are in use here: the Verilator flow runs 2.x and
+        the VCS flow runs 1.x. Both expose the per-bit string (``binstr`` on
+        1.x, ``str()`` on 2.x), which is what is inspected. Verilator is built
+        two-state here, so an unknown bit can only occur under VCS.
+        """
+        value = sig.value
+        if isinstance(value, int):
+            result = int(value)
+        else:
+            bits = getattr(value, "binstr", None)
+            if bits is None:
+                bits = str(value)
+            bits = bits.strip()
+            if not bits or any(c not in "01xXzZuUwWhHlL-" for c in bits):
+                # Not a bit string (for example a real or string handle).
+                result = int(value)
+            else:
+                unknown = [
+                    i
+                    for i, c in enumerate(reversed(bits))
+                    if c not in "01" and (mask is None or (mask >> i) & 1)
+                ]
+                if unknown and not allow_unknown:
+                    raise AssertionError(
+                        f"{getattr(sig, '_path', sig)} is not fully known at the bits this "
+                        f"read selects: bits={bits!r}, unknown bit indices {unknown[:16]}"
+                        f"{' ...' if len(unknown) > 16 else ''}. A compare on an unknown "
+                        "node can pass for free, so the read raises. Pass a mask that "
+                        "selects only the bits the caller uses, or allow_unknown=True "
+                        "where an unknown value is legal for this read."
+                    )
+                result = int("".join("1" if c in "1hH" else "0" for c in bits), 2)
+        return result if mask is None else result & mask
+
+    @staticmethod
+    def rd_known(sig, mask: int | None = None) -> int:
+        """Read a signal, raising if any bit selected by ``mask`` is not 0 or 1.
+
+        Same contract as ``rd`` with ``allow_unknown=False``. Kept as the
+        explicit name at zero-expecting compares.
+        """
+        return sep_base_test.rd(sig, mask)
 
     @staticmethod
     def _set_if_exists(dut, name: str, value: int) -> None:
@@ -85,15 +231,18 @@ class sep_base_test(uvm_test):
             pass
 
     def build_phase(self) -> None:
+        # Installed before anything can log, so no evidence predates the filter.
+        self._evidence = _EvidenceFilter()
+        self._install_evidence_filter(self._evidence)
         self.cfg = SepEnvCfg("cfg")
         self._efuse_compare_image: SepEfuseImage | None = None
-        self.cfg.randomize_timing(self.random_seed())
         self.logger.info(
-            "SEP timing: sys_clk_period=%dns (seed=%d)",
+            "SEP timing: sys_clk_period=%s ns ref_clk_period=%s ns",
             self.cfg.sys_clk_period_ns,
-            self.random_seed(),
+            self.cfg.ref_clk_period_ns,
         )
         ConfigDB().set(None, "*", "cfg", self.cfg)
+        self.bind_smc_responder(cocotb.top)
         # Processor-state monitor on the EL2 retirement trace. Built for every
         # test (concrete tests build their scoreboards after super().build_phase(),
         # so the ConfigDB entry is in place); it self-idles unless the +cpu_boot
@@ -112,6 +261,29 @@ class sep_base_test(uvm_test):
         cocotb.start_soon(
             Clock(dut.entropy_rosc_sample_clk_i, self.cfg.entropy_clk_period_ns, units="ns").start()
         )
+        cocotb.start_soon(Clock(dut.clk_ref_i, self.cfg.ref_clk_period_ns, units="ns").start())
+
+    def bind_smc_responder(self, dut) -> None:
+        """Attach the shared AXI slave agent to the SEP->SMC boundary.
+
+        Only the ``rom_boot`` target instantiates ``u_smc_axi_if``; every other
+        build leaves ``cfg.smc_mem`` at None. Bound in ``build_phase`` so the
+        responder exists before the first clock edge (the boundary's READY
+        signals are driven from time zero) and before any test-owned monitor
+        that samples its memory starts; the preload here means the Boot ROM's
+        first fetch already sees the scratch, status, strap, and image words.
+        """
+        if self.cfg.smc_mem is not None or not hasattr(dut, "u_smc_axi_if"):
+            return
+        self.cfg.smc_mem = OcahAxiSlaveAgent(
+            SMC_AXI_GEOMETRY.bus(dut.u_smc_axi_if),
+            dut.clk_i,
+            dut.rst_ni,
+            reset_active_level=False,
+            size=SMC_MEM_SIZE,
+            name="sep_smc_mem",
+        ).sequence
+        preload_smc_mem(self.cfg.smc_mem, cocotb.plusargs, self.logger)
 
     def drive_idle_defaults(self, dut=None, *, cpu_run: bool = False, rst_vec: int = 0) -> None:
         """Drive stable top-level controls before reset is released."""
@@ -140,9 +312,23 @@ class sep_base_test(uvm_test):
         self._set_if_exists(dut, "jtag_hmac_rst_hold_i", 0)
         self._set_if_exists(dut, "jtag_kmac_rst_hold_i", 0)
         self._set_if_exists(dut, "jtag_trng_rst_hold_i", 0)
+        self._set_if_exists(dut, "jtag_abr_rst_hold_i", 0)
+        self._set_if_exists(dut, "jtag_sep_reset_n_ovrd_i", 0)
+        self._set_if_exists(dut, "jtag_sep_reset_n_val_i", 0)
+        self._set_if_exists(dut, "jtag_ic_reset_tdr_en_i", 0)
+        self._set_if_exists(dut, "jtag_ic_reset_tck_i", 0)
+        self._set_if_exists(dut, "jtag_ic_reset_select_i", 0)
+        self._set_if_exists(dut, "jtag_ic_reset_capture_en_i", 0)
+        self._set_if_exists(dut, "jtag_ic_reset_shift_en_i", 0)
+        self._set_if_exists(dut, "jtag_ic_reset_update_en_i", 0)
+        self._set_if_exists(dut, "jtag_ic_reset_rst_n_i", 1)
+        self._set_if_exists(dut, "jtag_ic_reset_trst_n_i", 1)
+        self._set_if_exists(dut, "jtag_ic_reset_tdi_i", 0)
         self._set_if_exists(dut, "lc_sigint_inject_i", 0)
         self._set_if_exists(dut, "token_cmp_fault_inject_i", 0)
         self._set_if_exists(dut, "token_cmp_fault_sel_i", 0)
+        self._set_if_exists(dut, "token_digest_test_en_inject_i", 0)
+        self._set_if_exists(dut, "dma_host_intg_inject_i", 0)
         # Idle the master strobes from t=0 (valid=0, ready=1) so a test that
         # does not construct OcahAxiMasterAgent still presents a resolved idle
         # bus. Called before start_clocks. Env-built tests drive the same idle.
@@ -152,6 +338,19 @@ class sep_base_test(uvm_test):
             self._set_if_exists(dut, f"{prefix}_arvalid", 0)
             self._set_if_exists(dut, f"{prefix}_bready", 1)
             self._set_if_exists(dut, f"{prefix}_rready", 1)
+
+        # Hold the TB-owned drbg_axil64_lane_adapter arbitration vehicle in
+        # reset with its request channels idle. It is a live instance in every
+        # build, so leaving its inputs unresolved would drive X into its
+        # ASSERT_KNOWN checks in tests that never use it.
+        # sep_drbg_axil_adapter_port_arbitration_test releases it itself.
+        self._set_if_exists(dut, "tbadp_rst_ni_i", 0)
+        for pin in ("aw_valid", "w_valid", "ar_valid"):
+            self._set_if_exists(dut, f"tbadp_{pin}_i", 0)
+        for pin in ("aw_addr", "ar_addr", "w_data", "w_strb"):
+            self._set_if_exists(dut, f"tbadp_{pin}_i", 0)
+        for pin in ("b_ready", "r_ready"):
+            self._set_if_exists(dut, f"tbadp_{pin}_i", 1)
 
     def _check_efuse_shadow_after_sense(self) -> None:
         """Backdoor-compare sensed shadow data for real eFuse-image sense runs."""
@@ -171,18 +370,17 @@ class sep_base_test(uvm_test):
         probe = getattr(cocotb.top, "secure_tm_o", None)
         if probe is not None:
             secure_tm = int(probe.value) & 0x1
-        check_efuse_shadow_backdoor(
-            self.logger, self._efuse_compare_image, secure_tm=secure_tm)
+        check_efuse_shadow_backdoor(self.logger, self._efuse_compare_image, secure_tm=secure_tm)
 
     async def _wait_fuse_sense(self, max_cycles: int) -> None:
         """Poll sep_fuse_sense_done_o until it asserts (or time out), then settle.
 
-        This is the canonical "fabric released" gate for every bring-up. It is
-        correct in both modes: with +skip_fuse_sense the RTL asserts the done
-        flop ~1 cycle after reset release (no wasted time), and without it we sit
-        through the real 256-word sense and compare the sensed shadow against the
-        staged eFuse image. Gating on the DUT's actual done signal is more robust
-        than a guessed fixed cycle count.
+        Every bring-up gates on this signal. With +skip_fuse_sense the RTL asserts
+        the done flop ~1 cycle after reset release; without it the real 256-word
+        sense runs and the sensed shadow is compared against the staged eFuse
+        image. A skip without ``+sep_efuse_preload`` leaves the shadow at its
+        reset (zero). That is the intended default: no skip-mode leaf grades a
+        shadow value.
         """
         dut = cocotb.top
         for cycle in range(max_cycles):
@@ -200,13 +398,14 @@ class sep_base_test(uvm_test):
         "hmac": "jtag_hmac_rst_hold_i",
         "kmac": "jtag_kmac_rst_hold_i",
         "trng": "jtag_trng_rst_hold_i",
+        "abr": "jtag_abr_rst_hold_i",
     }
 
     def _jtag_sw_rst_hold(self, engines: tuple[str, ...], hold: bool) -> None:
         """Drive the JTAG SW-reset override so named engines never leave reset.
 
         Applied before ``rst_ni`` release so AES/KMAC/OTBN cannot raise
-        crypto ``edn_req`` (CSR reset 0x3E would release them). The caller
+        crypto ``edn_req`` (CSR reset 0x7E would release them). The caller
         drops the override after the hold window. Empty ``engines`` is a no-op.
         """
         dut = cocotb.top
@@ -218,7 +417,8 @@ class sep_base_test(uvm_test):
         if engines:
             self.logger.info(
                 "JTAG SW-reset hold %s -> %s",
-                ",".join(engines), "on" if hold else "off",
+                ",".join(engines),
+                "on" if hold else "off",
             )
 
     async def assert_cold_reset(self, dut) -> None:
@@ -269,47 +469,51 @@ class sep_base_test(uvm_test):
     async def check_pre_sense_fail_closed(self) -> None:
         """AXI-read ``FEAT_CTRL`` while sense is still running; expect fail-closed.
 
-        Downstream ``shadow_regs_o`` stays at ``LC_STATE_INVALID`` until
-        ``fuse_sense_done_i || final_sec_disable``
-        (``hw/ip/efuse/rtl/efuse_token_processing.sv``). LCC decodes that as
-        no live chip, so ``FEAT_CTRL`` is 0. The read must land before
-        ``sep_fuse_sense_done_o``. The ``final_sec_disable`` half of the term
-        is not claimed.
+        ``hw/sys/sep/doc/lifecycle_controller.adoc`` (LC State Machine): the
+        OTP controller holds the LC-state shadow output at the INVALID
+        encoding (4'b1111) until fuse sensing completes, so the LCC produces
+        the INVALID feature-control profile, which the DV golden decodes to
+        ``FEAT_CTRL`` = 0. The read must land before ``sep_fuse_sense_done_o``.
         """
         from env.sep_lcc_golden import feat_ctrl_expected
         from seq_lib.sep_lcc_inbound_filter_gating_seq import SepLccFeatCtrlCheckSeq
 
         dut = cocotb.top
-        assert not self.rd(dut.sep_fuse_sense_done_o), (
-            "CHK-PRE-SENSE-FAIL-CLOSED FAIL: sep_fuse_sense_done_o already 1; "
-            "no pre-sense window"
+        assert not self.rd_known(dut.sep_fuse_sense_done_o), (
+            "CHK-PRE-SENSE-FAIL-CLOSED FAIL: sep_fuse_sense_done_o already 1; no pre-sense window"
         )
         # LC_STATE_INVALID low nibble is 4'hF — not a legal raw state.
         closed = feat_ctrl_expected(0xF, 0, 0)
-        assert closed == 0, (
-            "CHK-PRE-SENSE-FAIL-CLOSED FAIL: invalid-LC golden is not 0"
-        )
+        assert closed == 0, "CHK-PRE-SENSE-FAIL-CLOSED FAIL: invalid-LC golden is not 0"
         seq = SepLccFeatCtrlCheckSeq(closed)
+        mark = self.sb_mark()
         await self.start_seq(seq)
-        assert not self.rd(dut.sep_fuse_sense_done_o), (
+        assert not self.rd_known(dut.sep_fuse_sense_done_o), (
             "CHK-PRE-SENSE-FAIL-CLOSED FAIL: sense completed during the FEAT_CTRL "
             "read; the closed side was not observed"
         )
+        self.assert_sb_judged(mark, "CHK-PRE-SENSE-FAIL-CLOSED")
+        assert seq.feat_ctrl == closed, (
+            f"CHK-PRE-SENSE-FAIL-CLOSED FAIL: FEAT_CTRL=0x{seq.feat_ctrl:016x} before "
+            f"sense-done, expected 0x{closed:016x}"
+        )
         self.logger.info(
-            "CHK-PRE-SENSE-FAIL-CLOSED PASS: FEAT_CTRL=0x%016x while "
-            "sep_fuse_sense_done_o=0",
+            "CHK-PRE-SENSE-FAIL-CLOSED PASS: FEAT_CTRL=0x%016x while sep_fuse_sense_done_o=0",
             seq.feat_ctrl,
         )
 
     async def bring_up_no_cpu(
-        self, *, max_cycles: int = 20_000, park: tuple[str, ...] = (),
+        self,
+        *,
+        max_cycles: int = 20_000,
+        park: tuple[str, ...] = (),
     ) -> None:
         """Bring up the DUT (CPU held off; the stub drives the LSU AXI from the
         cocotb master), gating on fuse-sense-done before returning.
 
         ``park`` names SW_RESET_N engines to JTAG-hold through ``rst_ni``
         release and fuse sense, then park in the CSR, then drop the override.
-        AES/KMAC/OTBN power up released (reset 0x3E) and would assert crypto
+        AES/KMAC/OTBN power up released (reset 0x7E) and would assert crypto
         ``edn_req``; dropping that ungranted ``req`` fails the arbiter
         hold-until-grant assume. The CSR write waits until sense has opened
         the fabric — an in-flight ``SW_RESET_N`` beat across sense-done
@@ -320,6 +524,7 @@ class sep_base_test(uvm_test):
         await self.wait_fuse_sense(max_cycles=max_cycles)
         if park:
             from seq_lib.sep_sw_reset_seq import SepSwReset
+
             if getattr(self, "swrst", None) is None:
                 self.swrst = SepSwReset(self)
             await self.swrst.park(*park)
@@ -327,16 +532,20 @@ class sep_base_test(uvm_test):
             self._jtag_sw_rst_hold(park, False)
 
     async def bring_up_and_wait_fuse_sense(self, *, max_cycles: int = 20_000) -> None:
-        """Alias for bring_up_no_cpu, kept for eFuse-test intent. Both gate on
-        real fuse-sense-done."""
+        """Alias for ``bring_up_no_cpu``; both gate on real fuse-sense-done."""
         await self.bring_up_no_cpu(max_cycles=max_cycles)
 
     async def resense(self, *, hold_cycles: int = 20, max_cycles: int = 20_000) -> None:
         """Re-pulse rst_ni to trigger a fresh fuse-sense (clocks already running).
 
-        The OTP responder reloads its image on reset assertion, so a test can
-        regenerate the eFuse image between sense cycles and resense to pick up
-        the new contents.
+        This re-senses whatever the OTP bank currently holds. It does NOT reload
+        the image file: ``efuse_bank_model`` deposits the hex in a time-0
+        ``initial`` and a fuse holds its state across every reset (the bank
+        register field has no reset value), so rewriting ``out/sep_efuse.hex``
+        between senses changes only the golden, not the DUT. To change what the
+        DUT senses, either program the OTP bits for real -- W1S, so only a
+        superset is reachable -- or start a new leaf with the image staged at
+        t=0 by ``dv_sim_prestage.py``.
         """
         dut = cocotb.top
         self.logger.info("Re-sensing: pulsing rst_ni")
@@ -364,7 +573,7 @@ class sep_base_test(uvm_test):
         With ``release_park`` (the default) the override drops after sense;
         with ``release_park=False`` the hold stays for the rest of the run
         so those engines never raise crypto ``edn_req``. The SW_RESET_N CSR
-        stays at reset 0x3E either way (JTAG is an override). Empty ``park``
+        stays at reset 0x7E either way (JTAG is an override). Empty ``park``
         leaves the hardware reset default.
         """
         dut = cocotb.top
@@ -395,10 +604,10 @@ class sep_base_test(uvm_test):
             )
         self.logger.info(
             "CPU boot: post-fuse reset state sep_rst_n=%d cpu_rst_n=%d run_ack=%d iccm_act=%d",
-            self.rd(dut.dbg_sep_reset_n_o),
-            self.rd(dut.sep_cpu_reset_n_o),
-            self.rd(dut.o_cpu_run_ack_o),
-            self.rd(dut.dbg_iccm_active_o),
+            self.rd(dut.dbg_sep_reset_n_o, allow_unknown=True),
+            self.rd(dut.sep_cpu_reset_n_o, allow_unknown=True),
+            self.rd(dut.o_cpu_run_ack_o, allow_unknown=True),
+            self.rd(dut.dbg_iccm_active_o, allow_unknown=True),
         )
         await ClockCycles(dut.clk_i, wait_after_reset_cycles)
         if post_reset_run_pulse:
@@ -408,10 +617,10 @@ class sep_base_test(uvm_test):
             dut.i_cpu_run_req_i.value = 0
             self.logger.info(
                 "CPU boot: deasserted run request run_ack=%d trace_valid=%d iccm_act=%d iccm_addr=0x%x",
-                self.rd(dut.o_cpu_run_ack_o),
-                self.rd(dut.cpu_trace_valid_o),
-                self.rd(dut.dbg_iccm_active_o),
-                self.rd(dut.dbg_iccm_addr_o),
+                self.rd(dut.o_cpu_run_ack_o, allow_unknown=True),
+                self.rd(dut.cpu_trace_valid_o, allow_unknown=True),
+                self.rd(dut.dbg_iccm_active_o, allow_unknown=True),
+                self.rd(dut.dbg_iccm_addr_o, allow_unknown=True),
             )
         self.cfg.reset_done.set()
 
@@ -428,6 +637,7 @@ class sep_base_test(uvm_test):
         run_pulse_cycles: int = 40,
         park: tuple[str, ...] = (),
         release_park: bool = True,
+        after_bring_up_hook: Callable[[], Awaitable[None]] | None = None,
     ) -> None:
         """Stage a firmware TCM image, boot the EL2 core, and sample boot
         observables into the boot scoreboard ``sb`` until the firmware signals
@@ -435,12 +645,13 @@ class sep_base_test(uvm_test):
         boot-poll live in one place (do not duplicate this in concrete tests).
 
         ``park`` / ``release_park`` are forwarded to ``bring_up_cpu_boot``.
-        The SW_RESET_N CSR stays at reset 0x3E.
+        ``after_bring_up_hook`` runs after the CPU is released and before the
+        boot poll, so a test can sample an idle output before firmware programs
+        it. The SW_RESET_N CSR stays at reset 0x7E.
 
         The TCM responder backdoor-loads ``sep_itcm.hex`` / ``sep_dtcm.hex`` from
-        the sim CWD, so the images are staged there. (CWD-shared: only one CPU
-        firmware test runs per sim, so they do not collide; a future per-run path
-        would need a responder plusarg like the eFuse model's +sep_efuse_hex.)
+        the sim CWD, so the images are staged there. (CWD-shared: one CPU firmware
+        test runs per sim, so the images do not collide.)
         """
         dut = cocotb.top
         for src, dst in ((itcm_hex, "sep_itcm.hex"), (dtcm_hex, "sep_dtcm.hex")):
@@ -451,6 +662,7 @@ class sep_base_test(uvm_test):
                 )
             shutil.copyfile(src, os.path.join(os.getcwd(), dst))
         self.logger.info("staged firmware TCM images into %s", os.getcwd())
+        self._log_firmware_identity(itcm_hex, dtcm_hex)
 
         # Feed the firmware's nm listing (built next to the hex images by
         # compile.mk) to the trace monitor so backtraces symbolize. Best-effort:
@@ -467,8 +679,7 @@ class sep_base_test(uvm_test):
             for sym in sym_files:
                 self.cpu_trace_mon.add_symbols(sym)
         else:
-            self.logger.info("no %s.*.sym next to %s; trace PCs stay numeric",
-                             fw_name, itcm_hex)
+            self.logger.info("no %s.*.sym next to %s; trace PCs stay numeric", fw_name, itcm_hex)
 
         async def _load_tcm() -> None:
             self.logger.info("CPU boot: pulsing tcm_load_i")
@@ -479,9 +690,14 @@ class sep_base_test(uvm_test):
             self.logger.info("CPU boot: tcm_load_i pulse complete")
 
         await self.bring_up_cpu_boot(
-            rst_vec, pre_reset_hook=_load_tcm, run_pulse_cycles=run_pulse_cycles,
-            park=park, release_park=release_park,
+            rst_vec,
+            pre_reset_hook=_load_tcm,
+            run_pulse_cycles=run_pulse_cycles,
+            park=park,
+            release_park=release_park,
         )
+        if after_bring_up_hook is not None:
+            await after_bring_up_hook()
 
         await self.poll_boot(
             sb,
@@ -501,7 +717,7 @@ class sep_base_test(uvm_test):
         """Sample boot observables into the boot scoreboard ``sb`` until the
         firmware signals completion (or the no-boot/max-run bounds trip).
 
-        Split out of ``boot_firmware`` so a test that must do work CONCURRENTLY
+        ``boot_firmware`` calls this last; a test that must do work CONCURRENTLY
         with the running firmware (e.g. drive a second master while the CPU loops)
         can ``bring_up_cpu_boot`` itself, ``cocotb.start_soon(self.poll_boot(...))``,
         and run its own stimulus alongside.
@@ -511,12 +727,13 @@ class sep_base_test(uvm_test):
         last_log = 0
         self.logger.info(
             "boot poll start run_ack=%d cpu_rst_n=%d trace_valid=%d iccm_act=%d iccm_addr=0x%x",
-            self.rd(dut.o_cpu_run_ack_o),
-            self.rd(dut.sep_cpu_reset_n_o),
-            self.rd(dut.cpu_trace_valid_o),
-            self.rd(dut.dbg_iccm_active_o),
-            self.rd(dut.dbg_iccm_addr_o),
+            self.rd(dut.o_cpu_run_ack_o, allow_unknown=True),
+            self.rd(dut.sep_cpu_reset_n_o, allow_unknown=True),
+            self.rd(dut.cpu_trace_valid_o, allow_unknown=True),
+            self.rd(dut.dbg_iccm_active_o, allow_unknown=True),
+            self.rd(dut.dbg_iccm_addr_o, allow_unknown=True),
         )
+        gate_on_scratch = self.verdict_source == "scratch0"
         for cycle in range(max_run_cycles):
             await RisingEdge(dut.clk_i)
             # Trace sampling lives in the CPU trace monitor; this loop owns
@@ -524,7 +741,19 @@ class sep_base_test(uvm_test):
             sb.note_run_ack(self.rd(dut.o_cpu_run_ack_o))
             if self.rd(dut.fw_char_valid_o):
                 sb.note_char(self.rd(dut.fw_char_o))
-            if self.rd(dut.fw_done_o):
+            if gate_on_scratch:
+                # cold_scratch[0] only; the other scratch words are not read.
+                verdict = decode_verdict(self.rd(dut.scratch_cold_probe_o, mask=0xFFFF_FFFF))
+                if verdict is not None:
+                    sb.note_fw(True, verdict[1])
+                    self.logger.info(
+                        "CHK-VERDICT: firmware signaled completion at cycle %d "
+                        "via cold_scratch[0], pass=%d",
+                        cycle,
+                        verdict[1],
+                    )
+                    break
+            elif self.rd(dut.fw_done_o):
                 sb.note_fw(True, self.rd(dut.fw_pass_o))
                 self.logger.info("firmware signaled completion at cycle %d", cycle)
                 break
@@ -533,9 +762,14 @@ class sep_base_test(uvm_test):
                 self.logger.info(
                     "boot progress cyc=%d retired=%d pcs=%d last_pc=0x%08x con=%dB rst_n=%s "
                     "iccm_act=%s exc=%s",
-                    cycle, mon.trace_count, len(mon.pcs), mon.last_pc, len(sb.console),
-                    self.rd(dut.dbg_sep_reset_n_o), self.rd(dut.dbg_iccm_active_o),
-                    self.rd(dut.dbg_cpu_trace_exc_o),
+                    cycle,
+                    mon.trace_count,
+                    len(mon.pcs),
+                    mon.last_pc,
+                    len(sb.console),
+                    self.rd(dut.dbg_sep_reset_n_o, allow_unknown=True),
+                    self.rd(dut.dbg_iccm_active_o, allow_unknown=True),
+                    self.rd(dut.dbg_cpu_trace_exc_o, allow_unknown=True),
                 )
             if cycle >= no_boot_cycles and mon.trace_count == 0:
                 self.logger.error(
@@ -544,6 +778,8 @@ class sep_base_test(uvm_test):
                 break
         if sb.console:
             self.logger.info("firmware console: %r", sb.console_text())
+        if sb.fw_done and sb.fw_pass:
+            self.logger.info("CHK-FW-CONSOLE PASS: firmware mailbox completion with PASS magic")
         if not (sb.fw_done and sb.fw_pass):
             # Hang, no-boot, run-cycle exhaustion, or firmware FAIL: put the
             # symbolized backtrace in the log before the scoreboard's
@@ -622,10 +858,53 @@ class sep_base_test(uvm_test):
         """Run a sequence on the primary CPU-LSU AXI sequencer (s_axi)."""
         await seq.start(self.env.axi_agent.sequencer)
 
-    # No spi_mux helper on the Python side. The SPI pad mux sits in a nonfree
-    # wrapper, so a pure-open SEP has no mux: pads come straight off the
-    # wrapper's struct port. Firmware that programs that mux lives with the
-    # wrapper, not in this tree.
+    def sb_mark(self) -> tuple[int, int]:
+        """Scoreboard error and judged-read counts, taken before a checked sequence."""
+        sb = self.env.scoreboard
+        return len(sb.errors), sb.value_checks
+
+    def assert_sb_judged(self, mark: tuple[int, int], chk: str) -> None:
+        """Fail ``chk`` unless the scoreboard judged a read and rejected none since ``mark``.
+
+        SepScoreboard.write compares every read that carries ``item.expected``:
+        a mismatch goes to ``errors`` and fails the test only at check_phase, and
+        a match counts in ``value_checks``. A CHK PASS line logged after this
+        call rests on that judgment, so it cannot print for a value the
+        scoreboard rejected.
+        """
+        errs, judged = mark
+        sb = self.env.scoreboard
+        new = sb.errors[errs:]
+        assert not new, f"{chk} FAIL: scoreboard rejected {len(new)} read(s): " + "; ".join(new)
+        assert sb.value_checks > judged, f"{chk} FAIL: the scoreboard judged no read value"
+
+    def watch_sys_csr_lite(self, *, write: bool) -> tuple[object, list[int]]:
+        """Record system-CSR AXI-Lite handshakes until the caller kills the task.
+
+        Returns ``(task, addrs)``. ``addrs`` is appended in place while the
+        task runs, one entry per AW (``write``) or AR handshake at the
+        ``sys_csr_axil_*`` observation ports. Lite has no AxLEN; each handshake
+        is one converted single.
+        """
+        dut = cocotb.top
+        addrs: list[int] = []
+
+        async def _mon() -> None:
+            while True:
+                await RisingEdge(dut.clk_i)
+                await ReadOnly()
+                if write:
+                    valid = dut.sys_csr_axil_awvalid_o
+                    ready = dut.sys_csr_axil_awready_o
+                    addr = dut.sys_csr_axil_awaddr_o
+                else:
+                    valid = dut.sys_csr_axil_arvalid_o
+                    ready = dut.sys_csr_axil_arready_o
+                    addr = dut.sys_csr_axil_araddr_o
+                if self.rd_known(valid) and self.rd_known(ready):
+                    addrs.append(self.rd_known(addr) & 0xFFFF_FFFF)
+
+        return cocotb.start_soon(_mon()), addrs
 
     async def start_ext_seq(self, seq) -> None:
         """Run a sequence on the SMN-inbound EXTERNAL AXI sequencer (m_axi).
@@ -640,8 +919,7 @@ class sep_base_test(uvm_test):
     # The DUT's real axil_sep_otp_jtag port, brought out flat as j_axi_* in
     # tb_top: the debug/JTAG path into the eFuse interface controller (arbitrates
     # with the CPU eFuse-MMR path at the eFuse AXI-Lite mux; LC-state-gated).
-    # Driving a real DUT port is frontdoor, not a backdoor. Shared here so any
-    # JTAG/eFuse test reuses one master + op helper rather than re-rolling them.
+    # One master and one op helper, shared by every JTAG/eFuse test.
     def jtag_axil_master(self):
         """Construct (once) and return the AXI-Lite master sequence on j_axi."""
         if getattr(self, "_jtag_axil", None) is None:
@@ -657,8 +935,9 @@ class sep_base_test(uvm_test):
             ).sequence
         return self._jtag_axil
 
-    async def jtag_axil_op(self, *, write: bool, addr: int, wdata: int = 0,
-                           timeout_ns: int = 50_000) -> tuple[int, int]:
+    async def jtag_axil_op(
+        self, *, write: bool, addr: int, wdata: int = 0, timeout_ns: int = 50_000
+    ) -> tuple[int, int]:
         """Drive one JTAG AXI-Lite op; return (resp_code, rdata).
 
         resp_code is the AXI response (OKAY=0, SLVERR=2, DECERR=3; -1 if
@@ -683,13 +962,34 @@ class sep_base_test(uvm_test):
         for _ in range(timeout):
             await RisingEdge(cocotb.top.clk_i)
             await ReadOnly()
-            if self.rd(sig):
+            # A poll for a nonzero value fails closed on X: an unknown node
+            # never reads as set, so the wait times out. KM SRAM word0 is
+            # memory content and is legitimately X before its first store.
+            if self.rd(sig, allow_unknown=True):
                 return True
         return False
 
     async def wait_seed_ready(self, timeout: int = 60_000) -> bool:
         """Wait until ESRC accumulates a seed and presents it to CSRNG."""
         return await self._wait_high(cocotb.top.drbg_seed_valid_o, timeout)
+
+    async def poll_internal_irq(self, idx: int, expect: int, *, timeout: int = 400) -> int:
+        """Poll ``sep_internal_interrupts_probe_o[idx]`` until it equals ``expect``.
+
+        Returns the last sampled vector. The aggregate has no CSR mirror, so
+        this is the frontdoor-equivalent observation of one PIC wire.
+        """
+        sample = 0
+        for _ in range(timeout):
+            await RisingEdge(cocotb.top.clk_i)
+            await ReadOnly()
+            sample = self.rd_known(cocotb.top.sep_internal_interrupts_probe_o, mask=1 << idx)
+            if ((sample >> idx) & 1) == expect:
+                return sample
+        raise AssertionError(
+            f"sep_internal_interrupts[{idx}] did not become {expect} in "
+            f"{timeout} cycles (vec=0x{sample:x})"
+        )
 
     async def report_entropy_stall(self, window: int = 4_000) -> None:
         """Log WHERE the ESRC->DRBG chain stopped after a seed/genbits timeout.
@@ -712,37 +1012,35 @@ class sep_base_test(uvm_test):
             await RisingEdge(dut.clk_i)
             await ReadOnly()
             for name, sig in strobes.items():
-                counts[name] += 1 if self.rd(sig) else 0
+                counts[name] += 1 if self.rd(sig, allow_unknown=True) else 0
 
         self.logger.error(
             "entropy stall over %d cycles: %s (noise_active=%d ro_enable=0x%03x "
             "last_compress_data=0x%08x)",
             window,
             " ".join(f"{k}={v}" for k, v in counts.items()),
-            self.rd(dut.esrc_noise_active_o),
-            self.rd(dut.esrc_ro_enable_o),
-            self.rd(dut.esrc_compress_data_o),
+            self.rd(dut.esrc_noise_active_o, allow_unknown=True),
+            self.rd(dut.esrc_ro_enable_o, allow_unknown=True),
+            self.rd(dut.esrc_compress_data_o, allow_unknown=True),
         )
 
         # Frontdoor status: FIFO level and health-test result decide whether the
         # ESRC itself is stuck or the DRBG side is not draining.
         #
-        # Every read is BOUNDED and failure-tolerant. One plausible cause of the
-        # stall is a fabric that never released, in which case these reads would
-        # never retire -- and an unbounded diagnostic would turn an attributed
-        # failure into a bare sim timeout, the exact outcome a bounded wait exists
-        # to prevent. The strobe counts above always survive, so a wedged CSR path
-        # degrades to "counts logged, CSR unreadable" instead of taking the whole
-        # report down with it.
+        # Every read is bounded and failure-tolerant: a fabric that never released
+        # is one cause of the stall, and an unbounded read here would turn the
+        # attributed failure into a bare sim timeout. The strobe counts above are
+        # already logged, so a wedged CSR path degrades to "counts logged, CSR
+        # unreadable".
+        from env.sep_axi_agent import SepAxiOp
+        from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
         from seq_lib.sep_esrc_bringup_seq import (
+            ESRC_CTRL,
             ESRC_FIFO_STATUS,
             ESRC_HEALTH_TEST_CTRL,
             ESRC_HEALTH_TEST_STATUS,
             ESRC_MAIN_SM_STATUS,
-            ESRC_CTRL,
         )
-        from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
-        from env.sep_axi_agent import SepAxiOp
 
         for label, addr in (
             ("ESRC_CTRL", ESRC_CTRL),
@@ -797,23 +1095,25 @@ class sep_base_test(uvm_test):
         first CHK5_km AXIS beat the scoreboard tapped is the expected SRAM
         content: a wrong-word store, a dropped store, or a store to the wrong
         offset all fail here, where the non-zero poll passes. Logged under
-        `CHK5_km_sram` so the plan can cite it apart from the handshake row.
+        `CHK-KM-SRAM` so the plan can cite it apart from the handshake row.
         """
         delivered = self.drbg_sb.km_words()
         assert delivered, (
-            "CHK5_km_sram: no EDN->KM AXIS beat was tapped, so there is no "
+            "CHK-KM-SRAM: no EDN->KM AXIS beat was tapped, so there is no "
             "delivered word to compare KM SRAM word0 against"
         )
         expected = delivered[0]
         actual = self.rd(cocotb.top.km_sram_word0_o)
         assert actual == expected, (
-            f"CHK5_km_sram FAIL: KM SRAM word0 = 0x{actual:08x}, but the KM "
+            f"CHK-KM-SRAM FAIL: KM SRAM word0 = 0x{actual:08x}, but the KM "
             f"consumed 0x{expected:08x} on the AXIS endpoint "
             f"({len(delivered)} beat(s) tapped)"
         )
         self.logger.info(
-            "CHK5_km_sram PASS: KM SRAM word0 = 0x%08x == the delivered "
-            "EDN->KM AXIS word (beat 1 of %d)", actual, len(delivered),
+            "CHK-KM-SRAM PASS: KM SRAM word0 = 0x%08x == the delivered "
+            "EDN->KM AXIS word (beat 1 of %d)",
+            actual,
+            len(delivered),
         )
         return actual
 
@@ -828,10 +1128,44 @@ class sep_base_test(uvm_test):
         assert seq.edn_err == 0, f"EDN ERR_CODE=0x{seq.edn_err:08x}"
         assert seq.edn_alert == 0, f"EDN RECOV_ALERT=0x{seq.edn_alert:08x}"
         self.logger.info(
-            "CHK-ALERTS-ZERO PASS: CSRNG/EDN ERR_CODE=0 RECOV_ALERT=0 "
-            "(0x%x 0x%x 0x%x 0x%x)",
-            seq.csrng_err, seq.csrng_alert, seq.edn_err, seq.edn_alert)
+            "CHK-ALERTS-ZERO PASS: CSRNG/EDN ERR_CODE=0 RECOV_ALERT=0 (0x%x 0x%x 0x%x 0x%x)",
+            seq.csrng_err,
+            seq.csrng_alert,
+            seq.edn_err,
+            seq.edn_alert,
+        )
         return seq
+
+    def start_esrc_noise_driver(
+        self, *, noise_mode: str = "unbiased", seed_base: int = 0x1234_5678
+    ):
+        """Drive tb_top.esrc_noise_ext_i every cycle and return the forked task.
+
+        ``+esrc_noise_force`` only routes this port onto the ring-oscillator
+        noise input; it does not generate anything. A test that brings the
+        entropy stack up WITHOUT the DRBG scoreboard -- firmware doing its own
+        ESRC/CSRNG/EDN programming, for instance -- still needs the raw bits
+        driven, or the health window never fills and the boot gate never opens.
+
+        This is the drive half of ``SepDrbgScoreboard`` with no golden chain and
+        no scoring: the caller gets entropy that moves, not entropy that is
+        graded. A test that needs the values checked wants ``bring_up_entropy``.
+
+        Kill the returned task before the test ends. A forked task still writing
+        a DUT port while the simulator tears down segfaults the run, which shows
+        up as a non-zero exit on an otherwise passing test.
+        """
+        dut = cocotb.top
+        gen = EntropyNoiseModel()
+        gen.configure(noise_mode, seed_base=seed_base)
+
+        async def _drive() -> None:
+            while True:
+                await RisingEdge(dut.clk_i)
+                await NextTimeStep()
+                dut.esrc_noise_ext_i.value = gen.step_all()
+
+        return cocotb.start_soon(_drive())
 
     async def assert_noise_force_active(self, cycles: int = 16) -> None:
         """Prove +esrc_noise_force took: lane-0's actual DUT noise_i tracks the
@@ -851,8 +1185,41 @@ class sep_base_test(uvm_test):
             prev = drv
         assert toggled, "driven ESRC noise is static (LFSR not toggling)"
 
-    async def bring_up_entropy(self, cfg=None, *, strict: bool = True,
-                               score_km: bool | str = True, score_sinks: dict | None = None):
+    async def assert_noise_force_routed(self) -> None:
+        """Prove +esrc_noise_force routed the port, without needing live noise.
+
+        The drive half of ``assert_noise_force_active`` requires a running
+        generator, so a test that holds the raw noise at a constant on purpose
+        -- the persistent-failure trips, which need a degenerate stream --
+        cannot use it. This drives both values by hand and checks lane-0's
+        actual DUT noise_i follows each, which is the routing contract alone.
+        """
+        dut = cocotb.top
+        for bit in (1, 0):
+            dut.esrc_noise_ext_i.value = bit
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            act = self.rd(dut.esrc_noise_active_o)
+            assert act == bit, (
+                f"+esrc_noise_force not active: drove raw noise {bit} and lane0 "
+                f"noise_i read {act}; the plusarg did not route the port"
+            )
+            # Leave ReadOnly before the next iteration drives the port again:
+            # a write in that phase is a RuntimeError, not a DUT failure.
+            await NextTimeStep()
+        self.logger.info(
+            "CHK-NOISE-FORCE PASS: lane0 noise_i followed the driven bit both ways, "
+            "so +esrc_noise_force routed esrc_noise_ext_i"
+        )
+
+    async def bring_up_entropy(
+        self,
+        cfg=None,
+        *,
+        strict: bool = True,
+        score_km: bool | str = True,
+        score_sinks: dict | None = None,
+    ):
         """Bring up the real ESRC->DRBG->CSRNG->EDN entropy stack and return the
         started CHK1..CHK5 scoreboard (also stored as ``self.drbg_sb``).
 
@@ -884,17 +1251,21 @@ class sep_base_test(uvm_test):
         from seq_lib.sep_esrc_bringup_seq import (
             SepEntropyCfg,
             SepEsrcConfigSeq,
-            SepEsrcEnableGeneratorsSeq,
             SepEsrcEnableEdnSeq,
+            SepEsrcEnableGeneratorsSeq,
         )
 
         if cfg is None:
             cfg = SepEntropyCfg()
         self.entropy_cfg = cfg
         self.drbg_sb = SepDrbgScoreboard(
-            cocotb.top, self.logger, strict=strict,
-            golden_kwargs=cfg.golden_kwargs(), chk2_backdoor=cfg.chk2_backdoor,
-            score_km=score_km, score_sinks=score_sinks,
+            cocotb.top,
+            self.logger,
+            strict=strict,
+            golden_kwargs=cfg.golden_kwargs(),
+            chk2_backdoor=cfg.chk2_backdoor,
+            score_km=score_km,
+            score_sinks=score_sinks,
         )
         self.drbg_sb.start()
         await self.assert_noise_force_active()
@@ -928,7 +1299,8 @@ class sep_base_test(uvm_test):
         """Fork the concurrent FIFO drain (no-op for backdoor-CHK2 configs)."""
         self._drain_stop = False
         self._drain_task = (
-            None if getattr(self, "entropy_cfg", None) and self.entropy_cfg.chk2_backdoor
+            None
+            if getattr(self, "entropy_cfg", None) and self.entropy_cfg.chk2_backdoor
             else cocotb.start_soon(self._fifo_drain_loop())
         )
 
@@ -943,7 +1315,408 @@ class sep_base_test(uvm_test):
         """Override with the per-test stimulus."""
         raise NotImplementedError
 
+    @staticmethod
+    def _sha256_file(path: str) -> tuple[str, int]:
+        """Return ``(hexdigest, size)`` for ``path``. Raises if the file is missing."""
+        digest = hashlib.sha256()
+        with open(path, "rb") as fh:
+            for chunk in iter(lambda: fh.read(1 << 20), b""):
+                digest.update(chunk)
+        return digest.hexdigest(), os.path.getsize(path)
+
+    def _log_firmware_identity(self, itcm_hex: str, dtcm_hex: str) -> None:
+        """Record sha256 of the staged TCM images, then check their build identity.
+
+        Firmware checkers live in the image. A log that names only the path
+        cannot prove which bytes were loaded, and the bytes alone cannot prove
+        which source they came from; CHK-FW-IDENTITY closes that.
+        """
+        parts = []
+        for label, path in (("itcm", itcm_hex), ("dtcm", dtcm_hex)):
+            digest, nbytes = self._sha256_file(path)
+            parts.append(f"{label}={path} sha256={digest} bytes={nbytes}")
+        self.logger.info("RUN-IDENTITY-FW: %s", " ".join(parts))
+        self._check_firmware_identity(itcm_hex, dtcm_hex)
+
+    @staticmethod
+    def _tcm_hex_bytes(path: str) -> bytes:
+        """Byte stream of a ``objcopy -O verilog`` image, address lines dropped."""
+        out = bytearray()
+        with open(path) as fh:
+            for line in fh:
+                if not line.startswith("@"):
+                    out.extend(int(tok, 16) for tok in line.split())
+        return bytes(out)
+
+    def _check_firmware_identity(self, itcm_hex: str, dtcm_hex: str) -> None:
+        """CHK-FW-IDENTITY: the loaded image was built from the source at this commit.
+
+        The firmware build (``fw/fw.mk``) compiles ``FW-BUILD-ID:<digest>`` into
+        every EL2 TCM image, where ``<digest>`` is ``fw/fw_src_digest.py`` over
+        the firmware source tree at build time. This reads that string out of
+        the same files RUN-IDENTITY-FW hashed and compares it with the digest of
+        the tree this test runs from, which RUN-IDENTITY binds to a commit. An
+        image left over from other source, or built without the identity,
+        fails here.
+        """
+        import importlib.util
+
+        script = _OSS_HW_ROOT / "sys" / "sep" / "dv" / "fw" / "fw_src_digest.py"
+        spec = importlib.util.spec_from_file_location("sep_fw_src_digest", script)
+        assert spec is not None and spec.loader is not None, f"cannot load {script}"
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        expected = mod.digest(_OSS_HW_ROOT.parent)
+
+        # Both images must carry it: the firmware's checkers run from ICCM, so a
+        # current DCCM image beside a stale ICCM image is not a current build.
+        for label, path in (("itcm", itcm_hex), ("dtcm", dtcm_hex)):
+            data = self._tcm_hex_bytes(path)
+            at = data.find(mod.MARKER)
+            assert at >= 0, (
+                f"CHK-FW-IDENTITY FAIL: no FW-BUILD-ID string in the {label} image "
+                f"{path}; it was not built by the current fw/fw.mk"
+            )
+            start = at + len(mod.MARKER)
+            got = data[start : start + 64].decode("ascii", "replace")
+            assert got == expected, (
+                f"CHK-FW-IDENTITY FAIL: the {label} image {path} was built from source "
+                f"digest {got}, but the firmware source at this commit digests to "
+                f"{expected}; the image is stale"
+            )
+        self.logger.info(
+            "CHK-FW-IDENTITY PASS: the itcm and dtcm images both carry FW-BUILD-ID %s, "
+            "equal to the digest of the firmware source at this commit (%d files)",
+            expected,
+            len(mod.source_files(_OSS_HW_ROOT.parent)),
+        )
+
+    def _log_run_identity(self) -> None:
+        """Record the commit, tree state and run directory in the log.
+
+        A log that names no commit cannot be bound to the sources it is
+        offered as evidence for, and the identity cannot be recovered after
+        the run.
+        """
+        import os
+        import subprocess
+
+        git_dir = os.path.dirname(os.path.abspath(__file__))
+
+        def _git(*args, timeout=15):
+            """Run one git command. Returns (ok, stdout_bytes).
+
+            ok is False for a failed spawn, a nonzero exit AND a timeout, so a
+            caller can tell "git said no" from "git said nothing". Treating
+            those as an empty answer is what lets an unanswered question read
+            as a negative answer.
+            """
+            # GIT_OPTIONAL_LOCKS=0 stops `git status` from taking the index
+            # lock to refresh it, so concurrent leaves of one regression do
+            # not contend on the lock.
+            try:
+                cp = subprocess.run(
+                    ["git", *args],
+                    cwd=git_dir,
+                    capture_output=True,
+                    timeout=timeout,
+                    env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"},
+                )
+            except (OSError, subprocess.SubprocessError):
+                return False, b""
+            return cp.returncode == 0, cp.stdout
+
+        head_ok, head_out = _git("rev-parse", "HEAD", timeout=10)
+        head = head_out.decode("utf-8", "replace").strip() if head_ok else ""
+        # An env override names the commit the CALLER believes was built. It is
+        # reported next to live HEAD rather than in place of it: a stale export
+        # would otherwise pair commit A with tree B's dirtiness, and nothing in
+        # the log would show it.
+        env_rev = os.environ.get("SEP_DV_GIT_REV") or ""
+        rev = env_rev or head
+        rev_note = ""
+        if env_rev and head_ok and env_rev != head:
+            rev_note = f" (SEP_DV_GIT_REV; live HEAD={head} -- THEY DISAGREE)"
+        elif env_rev and not head_ok:
+            rev_note = " (SEP_DV_GIT_REV; live HEAD unavailable, not corroborated)"
+
+        # Tree state comes from two independent git commands. `git diff HEAD`
+        # binds the tracked sources: an empty diff is a clean tracked tree, and
+        # a non-empty diff is hashed. `git status` adds the untracked files,
+        # which the diff does not cover. `--binary` puts the content of a
+        # changed binary file in the digest; `--no-ext-diff` and `--no-color`
+        # keep the bytes independent of the user's git config.
+        #
+        # The leaf fails when neither answer is available: a log that cannot
+        # say which sources ran is not evidence for them.
+        diff_ok, diff_out = _git(
+            "diff", "HEAD", "--binary", "--no-ext-diff", "--no-color", timeout=120
+        )
+        dirty_ok, dirty_out = _git("status", "--porcelain", "-uall", timeout=120)
+        dirty = dirty_out.decode("utf-8", "replace") if dirty_ok else ""
+        status_clean = dirty_ok and not dirty.strip()
+        diff_digest = hashlib.sha256(diff_out).hexdigest()[:16] if diff_ok else ""
+        if not diff_ok and not status_clean:
+            raise AssertionError(
+                "RUN-IDENTITY FAIL: `git diff HEAD` failed and `git status` "
+                + ("reports uncommitted files" if dirty_ok else "failed")
+                + f" (cwd {git_dir}), so this run cannot be bound to the sources it ran"
+            )
+        if status_clean:
+            state = ""
+        elif diff_ok and not diff_out:
+            state = (
+                " (tracked tree clean"
+                + (
+                    "; untracked files present"
+                    if dirty_ok
+                    else "; untracked files not checked: git status failed"
+                )
+                + ")"
+            )
+        else:
+            state = f" (tree dirty: tracked-diff-sha256={diff_digest or 'unavailable'})"
+        self.logger.info(
+            "RUN-IDENTITY: commit=%s%s%s work-dir=%s",
+            rev or "unknown",
+            rev_note,
+            state,
+            os.environ.get("SEP_DV_RUN_DIR") or os.getcwd(),
+        )
+        plus_parts = []
+        for key in sorted(cocotb.plusargs):
+            val = cocotb.plusargs[key]
+            plus_parts.append(f"+{key}" if val is True or val == "" else f"+{key}={val}")
+        self.logger.info("RUN-IDENTITY-PLUSARGS: %s", " ".join(plus_parts) or "(none)")
+        # KM ROM is loaded by tb_backdoor_mem from +km_rom_hex. A path-only
+        # plusarg cannot join those bytes, so the staged file is hashed. The
+        # c_compile log line KM-ROM-IDENTITY (sep_sim_cfg.toml
+        # [c_build.km_rom_main] / [c_build.km_rom_blob]) prints the same image
+        # sha256 next to its source, which joins this run to that build.
+        km_rom = cocotb.plusargs.get("km_rom_hex")
+        if km_rom and km_rom is not True:
+            km_path = (
+                km_rom if os.path.isabs(str(km_rom)) else os.path.join(os.getcwd(), str(km_rom))
+            )
+            if os.path.isfile(km_path):
+                digest, nbytes = self._sha256_file(km_path)
+                self.logger.info(
+                    "RUN-IDENTITY-FW: km_rom=%s sha256=%s bytes=%d", km_path, digest, nbytes
+                )
+            else:
+                self.logger.info("RUN-IDENTITY-FW: km_rom=%s missing -- bytes not hashed", km_path)
+        # Build identity: the binary this process IS. A commit names the
+        # sources on disk at time 0, which is not the same claim as "the model
+        # executing was compiled from them" -- a reused simv, or a rebuild that
+        # landed after the flist was read, produces a truthful-looking commit
+        # line for a run that executed something else. The digest is the part
+        # that cannot be recovered after the fact.
+        #
+        # Hashed ONCE PER BUILD, not once per test. A regression reuses one
+        # binary across every leaf, and sha256 runs at ~45 MB/s here, so a
+        # 512 MiB VCS simv would cost ~11 s on every one of them. The digest is
+        # a property of the binary, so it is cached beside it, keyed on size
+        # and mtime; an unwritable or mismatched cache costs a rehash, never a
+        # wrong answer. The line says which it was: `cached` is trusted on
+        # (size, mtime) rather than on content, so a reader chasing a
+        # provenance question knows to delete the sidecar and rerun to get a
+        # digest computed from the bytes.
+        try:
+            exe = os.path.realpath("/proc/self/exe")
+            st = os.stat(exe)
+            key = f"{st.st_size} {int(st.st_mtime)}"
+            cache = Path(f"{exe}.sha256")
+            exe_digest = ""
+            digest_src = "computed"
+            try:
+                cached_key, cached_digest = cache.read_text().split("\n")[0].rsplit(" ", 1)
+                if cached_key == key:
+                    exe_digest = cached_digest.strip()
+                    digest_src = "cached"
+            except (OSError, ValueError):
+                pass
+            if not exe_digest:
+                if st.st_size <= _SIM_BINARY_HASH_MAX_BYTES:
+                    h = hashlib.sha256()
+                    with open(exe, "rb") as fh:
+                        for chunk in iter(lambda: fh.read(1 << 20), b""):
+                            h.update(chunk)
+                    exe_digest = h.hexdigest()[:16]
+                    try:
+                        # Atomic, because concurrent leaves of one regression
+                        # race here; a torn file would be read back as a
+                        # mismatched key and simply rehashed.
+                        tmp = cache.with_suffix(f".sha256.{os.getpid()}")
+                        tmp.write_text(f"{key} {exe_digest}\n")
+                        os.replace(tmp, cache)
+                    except OSError:
+                        pass
+                else:
+                    exe_digest = f"not-hashed(>{_SIM_BINARY_HASH_MAX_BYTES}B)"
+            self.logger.info(
+                "RUN-IDENTITY-BUILD: sim-binary=%s sha256=%s (%s) bytes=%d mtime=%d git-head=%s",
+                exe,
+                exe_digest,
+                digest_src,
+                st.st_size,
+                int(st.st_mtime),
+                rev or "unknown",
+            )
+        except (OSError, ValueError) as exc:
+            # Say so rather than omit the line: a missing build identity is a
+            # gap a reader must see, not one they should have to infer.
+            self.logger.info(
+                "RUN-IDENTITY-BUILD: unavailable (%s) -- this log cannot be "
+                "bound to the build that produced it",
+                type(exc).__name__,
+            )
+        # WHICH files, not just that some were. "tree dirty" alone cannot be
+        # acted on after the run: a reader has to decide whether any
+        # uncommitted file was on this test's proof path, and the boolean makes
+        # that unanswerable from the artifact.
+        #
+        # Untracked files are included. The question is what the run executed,
+        # and an untracked module on a proof path is as unrecorded as a
+        # modified one -- `--untracked-files=no` would hide exactly the new
+        # test or generated image most likely to matter.
+        if diff_ok and diff_out and not dirty_ok:
+            # Paths from the diff headers, so a failed `git status` still names
+            # the modified files.
+            tracked = [
+                line[len(b"diff --git a/") :].split(b" b/", 1)[0].decode("utf-8", "replace")
+                for line in diff_out.splitlines()
+                if line.startswith(b"diff --git a/")
+            ]
+            shown = tracked[:_RUN_IDENTITY_MAX_PATHS]
+            self.logger.info(
+                "RUN-IDENTITY-DIRTY: %d tracked file(s) modified, "
+                "tracked-diff-sha256=%s%s paths=%s (untracked files not checked: "
+                "git status failed)",
+                len(tracked),
+                diff_digest,
+                "" if len(tracked) == len(shown) else f" (first {len(shown)} shown)",
+                ",".join(shown) or "none",
+            )
+        if dirty_ok and dirty.strip():
+            # Tracked modifications and untracked files are reported
+            # separately, because they answer the proof-path question
+            # differently and mixing them buries the answer: `-uall` expands a
+            # single untracked venv/ into four figures of paths, and a 40-path
+            # cap then hides the one modified source that mattered. Tracked
+            # paths are listed; untracked are counted and named by top-level
+            # area, which is enough to see whether a new module could be on the
+            # proof path.
+            tracked, untracked = [], []
+            for line in dirty.splitlines():
+                # Porcelain v1: two status characters, a space, then the path.
+                # Slice the RAW line -- stripping the block first eats the
+                # leading space of an unstaged-only first entry (" M path") and
+                # cuts a character off that path, which is precisely the name a
+                # reader greps against the proof path.
+                if len(line) <= 3:
+                    continue
+                path = line[3:].strip().strip('"')
+                (untracked if line.startswith("??") else tracked).append(path)
+            digest = diff_digest or "unavailable"
+            shown = tracked[:_RUN_IDENTITY_MAX_PATHS]
+            self.logger.info(
+                "RUN-IDENTITY-DIRTY: %d tracked file(s) modified, "
+                "tracked-diff-sha256=%s%s paths=%s",
+                len(tracked),
+                digest,
+                "" if len(tracked) == len(shown) else f" (first {len(shown)} shown)",
+                ",".join(shown) or "none",
+            )
+            if untracked:
+                # Group by the first two path components, so "venv/bin" is one
+                # area rather than 300, and a new DV module still shows as
+                # "hw/sys" -- specific enough to ask "could that be on my
+                # proof path?" without reprinting the list.
+                areas = sorted({"/".join(u.split("/")[:2]) for u in untracked})
+                shown_areas = areas[:_RUN_IDENTITY_MAX_PATHS]
+                self.logger.info(
+                    "RUN-IDENTITY-UNTRACKED: %d file(s) in %d area(s)%s: %s "
+                    "(not covered by tracked-diff-sha256)",
+                    len(untracked),
+                    len(areas),
+                    "" if len(areas) == len(shown_areas) else f", first {len(shown_areas)} shown",
+                    ",".join(shown_areas),
+                )
+
+    def _install_evidence_filter(self, filt: "_EvidenceFilter") -> None:
+        """Put the evidence filter where every CHK-* record passes through it.
+
+        A logger-level filter sees only records logged on that exact logger --
+        it is not applied to records propagating up from children. Sequences
+        grade their own contracts on their own loggers (`cocotb.log`, the
+        component tree), so filtering `self.logger` alone drops them and the
+        leaf reads as grading nothing. Handler-level filters do see propagated
+        records, so the handlers the simulator already installed are the one
+        place that observes the whole run.
+        """
+        handlers = list(logging.getLogger().handlers)
+        for name in ("cocotb", "test", "gpi", "uvm"):
+            handlers.extend(logging.getLogger(name).handlers)
+        installed = 0
+        for handler in handlers:
+            if filt not in handler.filters:
+                handler.addFilter(filt)
+                installed += 1
+        # No handler yet means nothing has emitted and the run would grade
+        # nothing at all, so fall back to the loggers a check is logged on.
+        if not installed:
+            for name in ("cocotb", "test", "uvm"):
+                logging.getLogger(name).addFilter(filt)
+        self.logger.addFilter(filt)
+
+    def _finalize_evidence(self) -> None:
+        """Report the evidence this run produced, and grade it if the leaf asked.
+
+        Runs only after run_scenario() returns normally. A test that already
+        failed raised, and this must not turn that into a different complaint.
+
+        `own` excludes the records sep_base_test emits itself, so a declared
+        floor grades what the leaf proved rather than what bring-up logged.
+        """
+        seen = sorted(getattr(self, "_evidence", _EvidenceFilter()).seen)
+        own = [c for c in seen if c not in _EvidenceFilter.BASE_IDS]
+        required = tuple(self.required_evidence)
+        missing = [check_id for check_id in required if check_id not in seen]
+
+        self.logger.info(
+            "EVIDENCE_SUMMARY test=%s observed=%d own=%d required=%d missing=%d ids=%s",
+            self.get_type_name(),
+            len(seen),
+            len(own),
+            len(required),
+            len(missing),
+            ",".join(seen) or "-",
+        )
+
+        problems: list[str] = []
+        if not own and self.get_type_name() not in _EvidenceFilter.NO_OWN_EVIDENCE:
+            problems.append(
+                "no CHK-* PASS record of its own -- a run that grades nothing cannot "
+                "be a pass. If this leaf's checks live in its sequence, log them "
+                "there; if it genuinely checks nothing, that is the finding"
+            )
+        if self.min_evidence and len(own) < self.min_evidence:
+            problems.append(
+                f"{len(own)} distinct CHK-* PASS record(s) of its own, "
+                f"expected at least {self.min_evidence}"
+            )
+        if missing:
+            problems.append("never emitted: " + ", ".join(missing))
+        if problems:
+            raise AssertionError(
+                f"EVIDENCE FAIL {self.get_type_name()}: "
+                + "; ".join(problems)
+                + " -- the run exited cleanly without grading what it claims to grade"
+            )
+
     async def run_phase(self) -> None:
         self.raise_objection()
+        self._log_run_identity()
         await self.run_scenario()
+        self._finalize_evidence()
         self.drop_objection()

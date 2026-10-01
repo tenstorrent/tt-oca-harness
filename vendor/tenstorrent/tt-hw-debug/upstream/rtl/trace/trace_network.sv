@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 // Trace Network - Connects all the trace hops as per the Cluster Organization
 
 module trace_network

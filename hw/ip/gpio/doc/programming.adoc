@@ -2,158 +2,131 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[gpio-programming]]
-===== Programming
+== Programming
 
-====== Basic GPIO Configuration
+The sequences below use register names relative to one pad's interface and
+control banks. Preserve unrelated fields when updating a register.
 
-Setting up GPIO for simple output operation:
+ifdef::backend-html5[]
+++++
+<span id="basic-gpio-configuration"></span>
+<span id="bidirectional-operation"></span>
+++++
+endif::backend-html5[]
 
-....
-1. Configure physical characteristics in CONTROL register:
-   - Set drive_strength to desired value (default 010 = 6mA)
-   - Configure pull resistors if needed
-   - Enable config_enable = 1
+[[gpio-output-programming]]
+=== Register-Controlled Input and Output
 
-2. Configure interface in DATA_CTRL register:
-   - Set interface_enable = 1 for register control
-   - Set enable_rx_tx = 01 for output operation
-   - Set core2pad to desired output value
+. Confirm that the shim's secondary-function override is inactive, or arrange
+  a controlled handover with that function.
+. Set `DATA_CTRL.lsio_disable = 1` to prevent an LSIO request from taking
+  the primary data/direction path.
+. With TX disabled, program the intended output value and any required
+  electrical settings. `CONTROL.config_enable = 1` selects register-based
+  electrical settings once hardware LSIO is disabled.
+. Set `DATA_CTRL.interface_enable = 1` and select `enable_rx_tx`:
+  `00` disables both paths, `01` enables TX, `10` enables RX, and `11` enables both.
+. Read `DATA_CTRL.pad2core` with RX enabled to obtain the synchronized input.
 
-3. Monitor operation:
-   - Check lsio_enable status for interface conflicts
-   - Read pad2core for input feedback
-....
+For bidirectional use, coordinate external-driver release before enabling
+TX. Input-only mode disables TX; enabling both paths allows readback while
+driving. The pad implementation determines electrical behavior and settling
+requirements.
 
-====== Configuration Strap Capture
+ifdef::backend-html5[]
+++++
+<span id="configuration-strap-capture"></span>
+++++
+endif::backend-html5[]
 
-Reading configuration straps captured during reset:
+=== Reading Configuration Straps
 
-....
-1. Wait for system initialization to complete
-2. Read DATA_CTRL.strap_valid to verify strap capture
-3. If valid, read DATA_CTRL.strap_value for configuration data
-4. Use strap value for system configuration decisions
-....
+After cold reset is released, read `CONTROL.strap_valid` and
+`CONTROL.strap_value` from the control bank. A set `strap_valid` means the
+pad was configured for input by default and strap capture is supported;
+it does not indicate that reset has completed. See <<gpio-reset-straps>>.
 
-Note: Strap capture only occurs if GPIO is configured as input by
-default (INPUT_BY_DEFAULT parameter = 1).
+ifdef::backend-html5[]
+++++
+<span id="interrupt-configuration"></span>
+++++
+endif::backend-html5[]
 
-====== Interrupt Configuration
+=== Enabling Interrupts
 
-Setting up GPIO interrupt generation:
+. Clear `DATA_CTRL.interrupt_enable` while configuring the input.
+. Ensure the selected owner enables the pad receiver. For register control,
+  use `interface_enable = 1` and `enable_rx_tx = 10`.
+. Set `DATA_CTRL.interrupt_type` using the mode table in <<gpio-interrupt-operation>>.
+. Configure the receiving interrupt controller for the GPIO request and
+  set `DATA_CTRL.interrupt_enable = 1`.
 
-....
-1. Configure interrupt type in DATA_CTRL.interrupt_type:
-   - 00: Active-high level interrupt
-   - 01: Active-low level interrupt
-   - 10: Rising-edge interrupt
-   - 11: Falling-edge interrupt
+A level interrupt can assert as soon as it is enabled if the selected level
+is already present. This block has no pending-event queue or software-clear
+bit; handle or mask the condition at its source.
 
-2. Enable interrupts:
-   - Set DATA_CTRL.interrupt_enable = 1
+ifdef::backend-html5[]
+++++
+<span id="lsio-interface-operation"></span>
+++++
+endif::backend-html5[]
 
-3. Configure GPIO for input:
-   - Set DATA_CTRL.enable_rx_tx = 10 (RX enabled)
-   - Set DATA_CTRL.interface_enable = 1
+[[gpio-lsio-programming]]
+=== Selecting LSIO
 
-4. Handle interrupts in software interrupt service routine
-....
+For hardware selection, clear `DATA_CTRL.lsio_disable`. When the peripheral
+asserts `lsio_interface_select_i`, its data and direction take priority over
+`interface_enable` and the per-field overrides. `DATA_CTRL.lsio_enable`
+reports this gated hardware request.
 
-====== LSIO Interface Operation
+For software-forced selection, clear `interface_enable` and all
+`DATA_CTRL_ENABLE.use_reg_*` bits, then set `lsio_select = 1` with
+`lsio_disable = 0`. Clear `CONTROL.config_enable` as well if LSIO should
+supply the electrical settings. Software-forced LSIO ranks below register
+control and does not set `lsio_enable`.
 
-Configuring GPIO for LSIO hardware control:
+To reclaim the primary path, set `lsio_disable = 1`, then program register
+data and direction. Setting `interface_enable` alone cannot reclaim a pad
+whose hardware request remains asserted. In SMC, this includes pads with
+permanently selected hardware functions: the I3C pads, and the isolate-request, boot-stall
+and cool-reset-out signals.
 
-....
-1. Disable register interface:
-   - Set DATA_CTRL.interface_enable = 0
+ifdef::backend-html5[]
+++++
+<span id="security-configuration"></span>
+<span id="protection-bit-encoding"></span>
+<span id="filter-configuration"></span>
+<span id="filter-behavior"></span>
+++++
+endif::backend-html5[]
 
-2. Enable LSIO interface:
-   - Set DATA_CTRL.lsio_select = 1 (if forcing LSIO)
-   - Ensure DATA_CTRL.lsio_disable = 0
+[[gpio-filter-programming]]
+=== Configuring Access Filtering
 
-3. Monitor LSIO operation:
-   - Check DATA_CTRL.lsio_enable for active status
-   - Hardware LSIO interface controls pad directly
+Each filter compares the complete three-bit protection value:
 
-4. LSIO interface has priority over register control when active
-....
+[cols="1,2,2",options="header"]
+.AXI protection encoding
+|===
+|Bit |0 |1
+|0 |Unprivileged |Privileged
+|1 |Secure |Non-secure
+|2 |Data |Instruction
+|===
 
-====== Security Configuration
+Thus `0x0` means secure unprivileged data, `0x1` secure privileged data,
+`0x2` non-secure unprivileged data, and `0x3` non-secure privileged data.
 
-The GPIO controller implements protection-based access filtering to
-enforce security policies. The filter examines AXI protection bits
-(`aw.prot` for writes, `ar.prot` for reads) and compares them against
-configurable requirement values.
+. Choose `ACCESS_FILTER.awprot_requirement` and `arprot_requirement` for
+  the intended writers and readers. Both reset to `0x1`.
+. Set `write_filter_enable` and/or `read_filter_enable` to enforce those
+  requirements. The current transaction must satisfy any filter already enabled.
+. Read back `ACCESS_FILTER` after writing it, using a read transaction that
+  satisfies the resulting policy. The register definition requires this readback
+  before relying on the new filter settings for subsequent accesses.
+. Check that permitted accesses succeed and rejected accesses return `DECERR`.
 
-===== Protection Bit Encoding
-
-AXI protection bits are 3-bit fields encoding transaction attributes:
-
-* *Bit [0]*: Privilege level (0=User, 1=Privileged)
-* *Bit [1]*: Security domain (0=Secure, 1=Non-Secure)
-* *Bit [2]*: Transaction type (0=Data, 1=Instruction)
-
-Common protection values:
-* `0x0` (000): Data, Secure, User
-* `0x1` (001): Data, Secure, Privileged (default for GPIO)
-* `0x2` (010): Data, Non-Secure, User
-* `0x3` (011): Data, Non-Secure, Privileged
-
-===== Filter Configuration
-
-Setting up access control filtering:
-
-....
-1. Determine required protection levels:
-   - Normal data: PROT = 0x0 (000)
-   - Privileged data: PROT = 0x1 (001) - recommended default
-   - Secure privileged: PROT = 0x1 (001)
-   - Non-secure privileged: PROT = 0x3 (011)
-
-2. Configure protection requirements:
-   - Set ACCESS_FILTER.awprot_requirement[2:0] for writes
-   - Set ACCESS_FILTER.arprot_requirement[2:0] for reads
-   - Default value is 0x1 (Data, Secure, Privileged)
-
-3. Enable filtering:
-   - Set ACCESS_FILTER.write_filter_enable = 1
-   - Set ACCESS_FILTER.read_filter_enable = 1
-
-4. Test access with different protection levels to verify operation:
-   - Transactions with matching protection: allowed
-   - Transactions with non-matching protection: blocked (DECERR)
-....
-
-===== Filter Behavior
-
-When protection filtering is enabled:
-* Transactions with protection bits matching the requirement are allowed
-* Transactions with non-matching protection bits are blocked and receive
-  a decode error (DECERR) response
-* When filtering is disabled, all transactions are allowed regardless of
-  protection bits
-
-The filter operates on every transaction, providing real-time security
-enforcement without impacting performance for legitimate accesses.
-
-====== Bidirectional Operation
-
-Configuring GPIO for bidirectional communication:
-
-....
-1. Set initial direction:
-   - For output: enable_rx_tx = 01
-   - For input: enable_rx_tx = 10
-
-2. Dynamic direction switching:
-   - Write new enable_rx_tx value to change direction
-   - Direction change takes effect immediately
-
-3. Monitor operation:
-   - Always read pad2core for current pad state
-   - Write core2pad when in output mode
-
-4. Handle contention:
-   - Ensure external drivers are tristated before switching to output
-   - Use pull resistors to define idle state
-....
+The enables reset clear, so the reset requirements do not restrict access
+until enabled. Changing the write requirement can exclude the software
+agent making the change. Plan the resulting read and write policy before
+applying it; `PROT` does not identify a particular initiator.

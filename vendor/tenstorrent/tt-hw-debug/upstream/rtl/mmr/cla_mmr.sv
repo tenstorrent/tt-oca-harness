@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 /*******************************************************************************
  * Registers
  *
@@ -107,7 +109,7 @@ output ClaCdbgclaxtriggertimestretchMmr_s       ClaMmrCdbgclaxtriggertimestretch
 output ClaCdbgclatimestampMmr_s                 ClaMmrCdbgclatimestamp,
 output ClaCdbgclatimestampsyncMmr_s             ClaMmrCdbgclatimestampsync,
 output ClaCdbgclatimestampconfigMmr_s           ClaMmrCdbgclatimestampconfig,
-output ClaCrscratchpadMmr_s                     ClaMmrCrscratchpad,
+output ClaCdbgclatimestampoffsetMmr_s           ClaMmrCdbgclatimestampoffset,
 output ClaCdbgsignalmask0HiMmr_s                ClaMmrCdbgsignalmask0Hi,
 output ClaCdbgsignalmatch0HiMmr_s               ClaMmrCdbgsignalmatch0Hi,
 output ClaCdbgsignalmask1HiMmr_s                ClaMmrCdbgsignalmask1Hi,
@@ -278,7 +280,7 @@ localparam   [ADDR_W-1:0] ADDR_MMR_CDBGCLAXTRIGGERTIMESTRETCH = ADDR_W'(BASE_ADD
 localparam   [ADDR_W-1:0] ADDR_MMR_CDBGCLATIMESTAMP      = ADDR_W'(BASE_ADDR + 'h2F0);
 localparam   [ADDR_W-1:0] ADDR_MMR_CDBGCLATIMESTAMPSYNC  = ADDR_W'(BASE_ADDR + 'h2F8);
 localparam   [ADDR_W-1:0] ADDR_MMR_CDBGCLATIMESTAMPCONFIG = ADDR_W'(BASE_ADDR + 'h300);
-localparam   [ADDR_W-1:0] ADDR_MMR_CRSCRATCHPAD          = ADDR_W'(BASE_ADDR + 'h3F0);
+localparam   [ADDR_W-1:0] ADDR_MMR_CDBGCLATIMESTAMPOFFSET = ADDR_W'(BASE_ADDR + 'h308);
 localparam   [ADDR_W-1:0] ADDR_MMR_CDBGSIGNALMASK0HI     = ADDR_W'(BASE_ADDR + 'h400);
 localparam   [ADDR_W-1:0] ADDR_MMR_CDBGSIGNALMATCH0HI    = ADDR_W'(BASE_ADDR + 'h408);
 localparam   [ADDR_W-1:0] ADDR_MMR_CDBGSIGNALMASK1HI     = ADDR_W'(BASE_ADDR + 'h410);
@@ -422,7 +424,7 @@ logic                [63:0] MMR_CDbgClaXtriggerTimestretch;
 logic                [63:0] MMR_CDbgClaTimestamp;
 logic                [63:0] MMR_CDbgClaTimestampSync;
 logic                [63:0] MMR_CDbgClaTimestampConfig;
-logic                [63:0] MMR_CrScratchpad;
+logic                [63:0] MMR_CDbgClaTimestampOffset;
 logic                [63:0] MMR_CDbgSignalMask0Hi;
 logic                [63:0] MMR_CDbgSignalMatch0Hi;
 logic                [63:0] MMR_CDbgSignalMask1Hi;
@@ -833,14 +835,15 @@ logic                 [1:0] MMR_CDbgSignalDelayMuxSel_F_Muxselseg0;
 logic                [47:0] MMR_CDbgClaXtriggerTimestretch_F_Rsvd;
 logic                 [7:0] MMR_CDbgClaXtriggerTimestretch_F_Xtrigger1Stretch;
 logic                 [7:0] MMR_CDbgClaXtriggerTimestretch_F_Xtrigger0Stretch;
-logic                [63:0] MMR_CDbgClaTimestamp_F_Timestamp;
+logic                [55:0] MMR_CDbgClaTimestamp_F_TimestampUpper;
+logic                 [7:0] MMR_CDbgClaTimestamp_F_TimestampLower;
 logic                [63:0] MMR_CDbgClaTimestampSync_F_TimestampSync;
-logic                [52:0] MMR_CDbgClaTimestampConfig_F_Rsvd1;
-logic                 [0:0] MMR_CDbgClaTimestampConfig_F_TsSyncRaw;
-logic                 [0:0] MMR_CDbgClaTimestampConfig_F_TsSyncOffset;
-logic                 [7:0] MMR_CDbgClaTimestampConfig_F_DebugMarker;
+logic                [53:0] MMR_CDbgClaTimestampConfig_F_Rsvd1;
 logic                 [0:0] MMR_CDbgClaTimestampConfig_F_TsCapture;
-logic                [63:0] MMR_CrScratchpad_F_Data;
+logic                 [7:0] MMR_CDbgClaTimestampConfig_F_DebugMarker;
+logic                 [0:0] MMR_CDbgClaTimestampConfig_F_Resync;
+logic                 [7:0] MMR_CDbgClaTimestampOffset_F_Rsvd0;
+logic                [55:0] MMR_CDbgClaTimestampOffset_F_Offset;
 logic                [63:0] MMR_CDbgSignalMask0Hi_F_Value;
 logic                [63:0] MMR_CDbgSignalMatch0Hi_F_Value;
 logic                [63:0] MMR_CDbgSignalMask1Hi_F_Value;
@@ -8547,25 +8550,46 @@ generic_dff #(
 );
 
 //Register: MMR_CDBGCLATIMESTAMP
-logic                                           MMR_CDbgClaTimestamp_F_Timestamp_WrEn;
-logic [CLA_CDBGCLATIMESTAMP_TIMESTAMP_WIDTH-1:0] MMR_CDbgClaTimestamp_F_Timestamp_Data;
-logic [CLA_CDBGCLATIMESTAMP_TIMESTAMP_WIDTH-1:0] MMR_CDbgClaTimestamp_F_Timestamp_DataEff;
-logic [CLA_CDBGCLATIMESTAMP_TIMESTAMP_WIDTH-1:0] MMR_CDbgClaTimestamp_F_Timestamp_Data_muxed;
-logic [CLA_CDBGCLATIMESTAMP_TIMESTAMP_WIDTH-1:0] MMR_CDbgClaTimestamp_F_Timestamp_Data_prev;
-assign MMR_CDbgClaTimestamp_F_Timestamp_DataEff = {reg_wr_strb[1] ? reg_wr_data[63:32] : MMR_CDbgClaTimestamp_F_Timestamp[63:32] , reg_wr_strb[0] ? reg_wr_data[31:0] : MMR_CDbgClaTimestamp_F_Timestamp[31:0]};
-assign MMR_CDbgClaTimestamp_F_Timestamp_Data = ((reg_write & (reg_addr == ADDR_MMR_CDBGCLATIMESTAMP)) ? CLA_CDBGCLATIMESTAMP_TIMESTAMP_WIDTH'(update_value(64'(MMR_CDbgClaTimestamp_F_Timestamp), 64'(MMR_CDbgClaTimestamp_F_Timestamp_DataEff[63:0]), reg_wr_instr_type)) : ClaMmrCdbgclatimestampWr.Data.Timestamp);
-assign MMR_CDbgClaTimestamp_F_Timestamp_WrEn = (((reg_write & (reg_addr == ADDR_MMR_CDBGCLATIMESTAMP)) | ClaMmrCdbgclatimestampWr.TimestampWrEn));
-assign MMR_CDbgClaTimestamp_F_Timestamp_Data_prev = MMR_CDbgClaTimestamp_F_Timestamp;
-assign MMR_CDbgClaTimestamp_F_Timestamp_Data_muxed = MMR_CDbgClaTimestamp_F_Timestamp_WrEn ? MMR_CDbgClaTimestamp_F_Timestamp_Data : MMR_CDbgClaTimestamp_F_Timestamp_Data_prev;
+logic                                           MMR_CDbgClaTimestamp_F_TimestampUpper_WrEn;
+logic [CLA_CDBGCLATIMESTAMP_TIMESTAMPUPPER_WIDTH-1:0] MMR_CDbgClaTimestamp_F_TimestampUpper_Data;
+logic [CLA_CDBGCLATIMESTAMP_TIMESTAMPUPPER_WIDTH-1:0] MMR_CDbgClaTimestamp_F_TimestampUpper_DataEff;
+logic [CLA_CDBGCLATIMESTAMP_TIMESTAMPUPPER_WIDTH-1:0] MMR_CDbgClaTimestamp_F_TimestampUpper_Data_muxed;
+logic [CLA_CDBGCLATIMESTAMP_TIMESTAMPUPPER_WIDTH-1:0] MMR_CDbgClaTimestamp_F_TimestampUpper_Data_prev;
+assign MMR_CDbgClaTimestamp_F_TimestampUpper_DataEff = {reg_wr_strb[1] ? reg_wr_data[63:32] : MMR_CDbgClaTimestamp_F_TimestampUpper[55:24] , reg_wr_strb[0] ? reg_wr_data[31:8] : MMR_CDbgClaTimestamp_F_TimestampUpper[23:0]};
+assign MMR_CDbgClaTimestamp_F_TimestampUpper_Data = ((reg_write & (reg_addr == ADDR_MMR_CDBGCLATIMESTAMP)) ? CLA_CDBGCLATIMESTAMP_TIMESTAMPUPPER_WIDTH'(update_value(64'(MMR_CDbgClaTimestamp_F_TimestampUpper), 64'(MMR_CDbgClaTimestamp_F_TimestampUpper_DataEff[55:0]), reg_wr_instr_type)) : ClaMmrCdbgclatimestampWr.Data.TimestampUpper);
+assign MMR_CDbgClaTimestamp_F_TimestampUpper_WrEn = (((reg_write & (reg_addr == ADDR_MMR_CDBGCLATIMESTAMP)) | ClaMmrCdbgclatimestampWr.TimestampUpperWrEn));
+assign MMR_CDbgClaTimestamp_F_TimestampUpper_Data_prev = MMR_CDbgClaTimestamp_F_TimestampUpper;
+assign MMR_CDbgClaTimestamp_F_TimestampUpper_Data_muxed = MMR_CDbgClaTimestamp_F_TimestampUpper_WrEn ? MMR_CDbgClaTimestamp_F_TimestampUpper_Data : MMR_CDbgClaTimestamp_F_TimestampUpper_Data_prev;
 generic_dff #(
-    .WIDTH       ($bits(logic [CLA_CDBGCLATIMESTAMP_TIMESTAMP_WIDTH-1:0])),
-    .RESET_VALUE (CLA_CDBGCLATIMESTAMP_TIMESTAMP_WIDTH'(0))
-) MMR_CDbgClaTimestamp_F_Timestamp_ff (
+    .WIDTH       ($bits(logic [CLA_CDBGCLATIMESTAMP_TIMESTAMPUPPER_WIDTH-1:0])),
+    .RESET_VALUE (CLA_CDBGCLATIMESTAMP_TIMESTAMPUPPER_WIDTH'(0))
+) MMR_CDbgClaTimestamp_F_TimestampUpper_ff (
     .clk   (clk),
     .rst_n (reset_n_warm_ovrride),
-    .en    (MMR_CDbgClaTimestamp_F_Timestamp_WrEn),
-    .in    (MMR_CDbgClaTimestamp_F_Timestamp_Data),
-    .out   (MMR_CDbgClaTimestamp_F_Timestamp)
+    .en    (MMR_CDbgClaTimestamp_F_TimestampUpper_WrEn),
+    .in    (MMR_CDbgClaTimestamp_F_TimestampUpper_Data),
+    .out   (MMR_CDbgClaTimestamp_F_TimestampUpper)
+);
+
+logic                                           MMR_CDbgClaTimestamp_F_TimestampLower_WrEn;
+logic [CLA_CDBGCLATIMESTAMP_TIMESTAMPLOWER_WIDTH-1:0] MMR_CDbgClaTimestamp_F_TimestampLower_Data;
+logic [CLA_CDBGCLATIMESTAMP_TIMESTAMPLOWER_WIDTH-1:0] MMR_CDbgClaTimestamp_F_TimestampLower_DataEff;
+logic [CLA_CDBGCLATIMESTAMP_TIMESTAMPLOWER_WIDTH-1:0] MMR_CDbgClaTimestamp_F_TimestampLower_Data_muxed;
+logic [CLA_CDBGCLATIMESTAMP_TIMESTAMPLOWER_WIDTH-1:0] MMR_CDbgClaTimestamp_F_TimestampLower_Data_prev;
+assign MMR_CDbgClaTimestamp_F_TimestampLower_DataEff = {reg_wr_data[7:0]};
+assign MMR_CDbgClaTimestamp_F_TimestampLower_Data = ((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_CDBGCLATIMESTAMP)) ? CLA_CDBGCLATIMESTAMP_TIMESTAMPLOWER_WIDTH'(update_value(64'(MMR_CDbgClaTimestamp_F_TimestampLower), 64'(MMR_CDbgClaTimestamp_F_TimestampLower_DataEff[7:0]), reg_wr_instr_type)) : ClaMmrCdbgclatimestampWr.Data.TimestampLower);
+assign MMR_CDbgClaTimestamp_F_TimestampLower_WrEn = (((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_CDBGCLATIMESTAMP)) | ClaMmrCdbgclatimestampWr.TimestampLowerWrEn));
+assign MMR_CDbgClaTimestamp_F_TimestampLower_Data_prev = MMR_CDbgClaTimestamp_F_TimestampLower;
+assign MMR_CDbgClaTimestamp_F_TimestampLower_Data_muxed = MMR_CDbgClaTimestamp_F_TimestampLower_WrEn ? MMR_CDbgClaTimestamp_F_TimestampLower_Data : MMR_CDbgClaTimestamp_F_TimestampLower_Data_prev;
+generic_dff #(
+    .WIDTH       ($bits(logic [CLA_CDBGCLATIMESTAMP_TIMESTAMPLOWER_WIDTH-1:0])),
+    .RESET_VALUE (CLA_CDBGCLATIMESTAMP_TIMESTAMPLOWER_WIDTH'(0))
+) MMR_CDbgClaTimestamp_F_TimestampLower_ff (
+    .clk   (clk),
+    .rst_n (reset_n_warm_ovrride),
+    .en    (MMR_CDbgClaTimestamp_F_TimestampLower_WrEn),
+    .in    (MMR_CDbgClaTimestamp_F_TimestampLower_Data),
+    .out   (MMR_CDbgClaTimestamp_F_TimestampLower)
 );
 
 //Register: MMR_CDBGCLATIMESTAMPSYNC
@@ -8596,8 +8620,8 @@ logic [CLA_CDBGCLATIMESTAMPCONFIG_RSVD1_WIDTH-1:0] MMR_CDbgClaTimestampConfig_F_
 logic [CLA_CDBGCLATIMESTAMPCONFIG_RSVD1_WIDTH-1:0] MMR_CDbgClaTimestampConfig_F_Rsvd1_DataEff;
 logic [CLA_CDBGCLATIMESTAMPCONFIG_RSVD1_WIDTH-1:0] MMR_CDbgClaTimestampConfig_F_Rsvd1_Data_muxed;
 logic [CLA_CDBGCLATIMESTAMPCONFIG_RSVD1_WIDTH-1:0] MMR_CDbgClaTimestampConfig_F_Rsvd1_Data_prev;
-assign MMR_CDbgClaTimestampConfig_F_Rsvd1_DataEff = {reg_wr_strb[1] ? reg_wr_data[63:32] : MMR_CDbgClaTimestampConfig_F_Rsvd1[52:21] , reg_wr_strb[0] ? reg_wr_data[31:11] : MMR_CDbgClaTimestampConfig_F_Rsvd1[20:0]};
-assign MMR_CDbgClaTimestampConfig_F_Rsvd1_Data = (CLA_CDBGCLATIMESTAMPCONFIG_RSVD1_WIDTH'(update_value(64'(MMR_CDbgClaTimestampConfig_F_Rsvd1), 64'(MMR_CDbgClaTimestampConfig_F_Rsvd1_DataEff[52:0]), reg_wr_instr_type)));
+assign MMR_CDbgClaTimestampConfig_F_Rsvd1_DataEff = {reg_wr_strb[1] ? reg_wr_data[63:32] : MMR_CDbgClaTimestampConfig_F_Rsvd1[53:22] , reg_wr_strb[0] ? reg_wr_data[31:10] : MMR_CDbgClaTimestampConfig_F_Rsvd1[21:0]};
+assign MMR_CDbgClaTimestampConfig_F_Rsvd1_Data = (CLA_CDBGCLATIMESTAMPCONFIG_RSVD1_WIDTH'(update_value(64'(MMR_CDbgClaTimestampConfig_F_Rsvd1), 64'(MMR_CDbgClaTimestampConfig_F_Rsvd1_DataEff[53:0]), reg_wr_instr_type)));
 assign MMR_CDbgClaTimestampConfig_F_Rsvd1_WrEn = (((reg_write & (reg_addr == ADDR_MMR_CDBGCLATIMESTAMPCONFIG))));
 assign MMR_CDbgClaTimestampConfig_F_Rsvd1_Data_prev = MMR_CDbgClaTimestampConfig_F_Rsvd1;
 assign MMR_CDbgClaTimestampConfig_F_Rsvd1_Data_muxed = MMR_CDbgClaTimestampConfig_F_Rsvd1_WrEn ? MMR_CDbgClaTimestampConfig_F_Rsvd1_Data : MMR_CDbgClaTimestampConfig_F_Rsvd1_Data_prev;
@@ -8612,46 +8636,25 @@ generic_dff #(
     .out   (MMR_CDbgClaTimestampConfig_F_Rsvd1)
 );
 
-logic                                           MMR_CDbgClaTimestampConfig_F_TsSyncRaw_WrEn;
-logic [CLA_CDBGCLATIMESTAMPCONFIG_TSSYNCRAW_WIDTH-1:0] MMR_CDbgClaTimestampConfig_F_TsSyncRaw_Data;
-logic [CLA_CDBGCLATIMESTAMPCONFIG_TSSYNCRAW_WIDTH-1:0] MMR_CDbgClaTimestampConfig_F_TsSyncRaw_DataEff;
-logic [CLA_CDBGCLATIMESTAMPCONFIG_TSSYNCRAW_WIDTH-1:0] MMR_CDbgClaTimestampConfig_F_TsSyncRaw_Data_muxed;
-logic [CLA_CDBGCLATIMESTAMPCONFIG_TSSYNCRAW_WIDTH-1:0] MMR_CDbgClaTimestampConfig_F_TsSyncRaw_Data_prev;
-assign MMR_CDbgClaTimestampConfig_F_TsSyncRaw_DataEff = {reg_wr_data[10:10]};
-assign MMR_CDbgClaTimestampConfig_F_TsSyncRaw_Data = ((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_CDBGCLATIMESTAMPCONFIG)) ? CLA_CDBGCLATIMESTAMPCONFIG_TSSYNCRAW_WIDTH'(update_value(64'(MMR_CDbgClaTimestampConfig_F_TsSyncRaw), 64'(MMR_CDbgClaTimestampConfig_F_TsSyncRaw_DataEff[0:0]), reg_wr_instr_type)) : ClaMmrCdbgclatimestampconfigWr.Data.TsSyncRaw);
-assign MMR_CDbgClaTimestampConfig_F_TsSyncRaw_WrEn = (((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_CDBGCLATIMESTAMPCONFIG)) | ClaMmrCdbgclatimestampconfigWr.TsSyncRawWrEn));
-assign MMR_CDbgClaTimestampConfig_F_TsSyncRaw_Data_prev = MMR_CDbgClaTimestampConfig_F_TsSyncRaw;
-assign MMR_CDbgClaTimestampConfig_F_TsSyncRaw_Data_muxed = MMR_CDbgClaTimestampConfig_F_TsSyncRaw_WrEn ? MMR_CDbgClaTimestampConfig_F_TsSyncRaw_Data : MMR_CDbgClaTimestampConfig_F_TsSyncRaw_Data_prev;
+logic                                           MMR_CDbgClaTimestampConfig_F_TsCapture_WrEn;
+logic [CLA_CDBGCLATIMESTAMPCONFIG_TSCAPTURE_WIDTH-1:0] MMR_CDbgClaTimestampConfig_F_TsCapture_Data;
+logic [CLA_CDBGCLATIMESTAMPCONFIG_TSCAPTURE_WIDTH-1:0] MMR_CDbgClaTimestampConfig_F_TsCapture_DataEff;
+logic [CLA_CDBGCLATIMESTAMPCONFIG_TSCAPTURE_WIDTH-1:0] MMR_CDbgClaTimestampConfig_F_TsCapture_Data_muxed;
+logic [CLA_CDBGCLATIMESTAMPCONFIG_TSCAPTURE_WIDTH-1:0] MMR_CDbgClaTimestampConfig_F_TsCapture_Data_prev;
+assign MMR_CDbgClaTimestampConfig_F_TsCapture_DataEff = {reg_wr_data[9:9]};
+assign MMR_CDbgClaTimestampConfig_F_TsCapture_Data = ((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_CDBGCLATIMESTAMPCONFIG)) ? CLA_CDBGCLATIMESTAMPCONFIG_TSCAPTURE_WIDTH'(update_value(64'(MMR_CDbgClaTimestampConfig_F_TsCapture), 64'(MMR_CDbgClaTimestampConfig_F_TsCapture_DataEff[0:0]), reg_wr_instr_type)) : ClaMmrCdbgclatimestampconfigWr.Data.TsCapture);
+assign MMR_CDbgClaTimestampConfig_F_TsCapture_WrEn = (((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_CDBGCLATIMESTAMPCONFIG)) | ClaMmrCdbgclatimestampconfigWr.TsCaptureWrEn));
+assign MMR_CDbgClaTimestampConfig_F_TsCapture_Data_prev = MMR_CDbgClaTimestampConfig_F_TsCapture;
+assign MMR_CDbgClaTimestampConfig_F_TsCapture_Data_muxed = MMR_CDbgClaTimestampConfig_F_TsCapture_WrEn ? MMR_CDbgClaTimestampConfig_F_TsCapture_Data : MMR_CDbgClaTimestampConfig_F_TsCapture_Data_prev;
 generic_dff #(
-    .WIDTH       ($bits(logic [CLA_CDBGCLATIMESTAMPCONFIG_TSSYNCRAW_WIDTH-1:0])),
-    .RESET_VALUE (CLA_CDBGCLATIMESTAMPCONFIG_TSSYNCRAW_WIDTH'(0))
-) MMR_CDbgClaTimestampConfig_F_TsSyncRaw_ff (
+    .WIDTH       ($bits(logic [CLA_CDBGCLATIMESTAMPCONFIG_TSCAPTURE_WIDTH-1:0])),
+    .RESET_VALUE (CLA_CDBGCLATIMESTAMPCONFIG_TSCAPTURE_WIDTH'(0))
+) MMR_CDbgClaTimestampConfig_F_TsCapture_ff (
     .clk   (clk),
     .rst_n (reset_n_warm_ovrride),
-    .en    (MMR_CDbgClaTimestampConfig_F_TsSyncRaw_WrEn),
-    .in    (MMR_CDbgClaTimestampConfig_F_TsSyncRaw_Data),
-    .out   (MMR_CDbgClaTimestampConfig_F_TsSyncRaw)
-);
-
-logic                                           MMR_CDbgClaTimestampConfig_F_TsSyncOffset_WrEn;
-logic [CLA_CDBGCLATIMESTAMPCONFIG_TSSYNCOFFSET_WIDTH-1:0] MMR_CDbgClaTimestampConfig_F_TsSyncOffset_Data;
-logic [CLA_CDBGCLATIMESTAMPCONFIG_TSSYNCOFFSET_WIDTH-1:0] MMR_CDbgClaTimestampConfig_F_TsSyncOffset_DataEff;
-logic [CLA_CDBGCLATIMESTAMPCONFIG_TSSYNCOFFSET_WIDTH-1:0] MMR_CDbgClaTimestampConfig_F_TsSyncOffset_Data_muxed;
-logic [CLA_CDBGCLATIMESTAMPCONFIG_TSSYNCOFFSET_WIDTH-1:0] MMR_CDbgClaTimestampConfig_F_TsSyncOffset_Data_prev;
-assign MMR_CDbgClaTimestampConfig_F_TsSyncOffset_DataEff = {reg_wr_data[9:9]};
-assign MMR_CDbgClaTimestampConfig_F_TsSyncOffset_Data = ((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_CDBGCLATIMESTAMPCONFIG)) ? CLA_CDBGCLATIMESTAMPCONFIG_TSSYNCOFFSET_WIDTH'(update_value(64'(MMR_CDbgClaTimestampConfig_F_TsSyncOffset), 64'(MMR_CDbgClaTimestampConfig_F_TsSyncOffset_DataEff[0:0]), reg_wr_instr_type)) : ClaMmrCdbgclatimestampconfigWr.Data.TsSyncOffset);
-assign MMR_CDbgClaTimestampConfig_F_TsSyncOffset_WrEn = (((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_CDBGCLATIMESTAMPCONFIG)) | ClaMmrCdbgclatimestampconfigWr.TsSyncOffsetWrEn));
-assign MMR_CDbgClaTimestampConfig_F_TsSyncOffset_Data_prev = MMR_CDbgClaTimestampConfig_F_TsSyncOffset;
-assign MMR_CDbgClaTimestampConfig_F_TsSyncOffset_Data_muxed = MMR_CDbgClaTimestampConfig_F_TsSyncOffset_WrEn ? MMR_CDbgClaTimestampConfig_F_TsSyncOffset_Data : MMR_CDbgClaTimestampConfig_F_TsSyncOffset_Data_prev;
-generic_dff #(
-    .WIDTH       ($bits(logic [CLA_CDBGCLATIMESTAMPCONFIG_TSSYNCOFFSET_WIDTH-1:0])),
-    .RESET_VALUE (CLA_CDBGCLATIMESTAMPCONFIG_TSSYNCOFFSET_WIDTH'(0))
-) MMR_CDbgClaTimestampConfig_F_TsSyncOffset_ff (
-    .clk   (clk),
-    .rst_n (reset_n_warm_ovrride),
-    .en    (MMR_CDbgClaTimestampConfig_F_TsSyncOffset_WrEn),
-    .in    (MMR_CDbgClaTimestampConfig_F_TsSyncOffset_Data),
-    .out   (MMR_CDbgClaTimestampConfig_F_TsSyncOffset)
+    .en    (MMR_CDbgClaTimestampConfig_F_TsCapture_WrEn),
+    .in    (MMR_CDbgClaTimestampConfig_F_TsCapture_Data),
+    .out   (MMR_CDbgClaTimestampConfig_F_TsCapture)
 );
 
 logic                                           MMR_CDbgClaTimestampConfig_F_DebugMarker_WrEn;
@@ -8675,47 +8678,68 @@ generic_dff #(
     .out   (MMR_CDbgClaTimestampConfig_F_DebugMarker)
 );
 
-logic                                           MMR_CDbgClaTimestampConfig_F_TsCapture_WrEn;
-logic [CLA_CDBGCLATIMESTAMPCONFIG_TSCAPTURE_WIDTH-1:0] MMR_CDbgClaTimestampConfig_F_TsCapture_Data;
-logic [CLA_CDBGCLATIMESTAMPCONFIG_TSCAPTURE_WIDTH-1:0] MMR_CDbgClaTimestampConfig_F_TsCapture_DataEff;
-logic [CLA_CDBGCLATIMESTAMPCONFIG_TSCAPTURE_WIDTH-1:0] MMR_CDbgClaTimestampConfig_F_TsCapture_Data_muxed;
-logic [CLA_CDBGCLATIMESTAMPCONFIG_TSCAPTURE_WIDTH-1:0] MMR_CDbgClaTimestampConfig_F_TsCapture_Data_prev;
-assign MMR_CDbgClaTimestampConfig_F_TsCapture_DataEff = {reg_wr_data[0:0]};
-assign MMR_CDbgClaTimestampConfig_F_TsCapture_Data = ((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_CDBGCLATIMESTAMPCONFIG)) ? CLA_CDBGCLATIMESTAMPCONFIG_TSCAPTURE_WIDTH'(update_value(64'(MMR_CDbgClaTimestampConfig_F_TsCapture), 64'(MMR_CDbgClaTimestampConfig_F_TsCapture_DataEff[0:0]), reg_wr_instr_type)) : ClaMmrCdbgclatimestampconfigWr.Data.TsCapture);
-assign MMR_CDbgClaTimestampConfig_F_TsCapture_WrEn = (((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_CDBGCLATIMESTAMPCONFIG)) | ClaMmrCdbgclatimestampconfigWr.TsCaptureWrEn));
-assign MMR_CDbgClaTimestampConfig_F_TsCapture_Data_prev = MMR_CDbgClaTimestampConfig_F_TsCapture;
-assign MMR_CDbgClaTimestampConfig_F_TsCapture_Data_muxed = MMR_CDbgClaTimestampConfig_F_TsCapture_WrEn ? MMR_CDbgClaTimestampConfig_F_TsCapture_Data : MMR_CDbgClaTimestampConfig_F_TsCapture_Data_prev;
+logic                                           MMR_CDbgClaTimestampConfig_F_Resync_WrEn;
+logic [CLA_CDBGCLATIMESTAMPCONFIG_RESYNC_WIDTH-1:0] MMR_CDbgClaTimestampConfig_F_Resync_Data;
+logic [CLA_CDBGCLATIMESTAMPCONFIG_RESYNC_WIDTH-1:0] MMR_CDbgClaTimestampConfig_F_Resync_DataEff;
+logic [CLA_CDBGCLATIMESTAMPCONFIG_RESYNC_WIDTH-1:0] MMR_CDbgClaTimestampConfig_F_Resync_Data_muxed;
+logic [CLA_CDBGCLATIMESTAMPCONFIG_RESYNC_WIDTH-1:0] MMR_CDbgClaTimestampConfig_F_Resync_Data_prev;
+assign MMR_CDbgClaTimestampConfig_F_Resync_DataEff = {reg_wr_data[0:0]};
+assign MMR_CDbgClaTimestampConfig_F_Resync_Data = ((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_CDBGCLATIMESTAMPCONFIG)) ? CLA_CDBGCLATIMESTAMPCONFIG_RESYNC_WIDTH'(update_value(64'(MMR_CDbgClaTimestampConfig_F_Resync), 64'(MMR_CDbgClaTimestampConfig_F_Resync_DataEff[0:0]), reg_wr_instr_type)) : ClaMmrCdbgclatimestampconfigWr.Data.Resync);
+assign MMR_CDbgClaTimestampConfig_F_Resync_WrEn = (((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_CDBGCLATIMESTAMPCONFIG)) | ClaMmrCdbgclatimestampconfigWr.ResyncWrEn));
+assign MMR_CDbgClaTimestampConfig_F_Resync_Data_prev = MMR_CDbgClaTimestampConfig_F_Resync;
+assign MMR_CDbgClaTimestampConfig_F_Resync_Data_muxed = MMR_CDbgClaTimestampConfig_F_Resync_WrEn ? MMR_CDbgClaTimestampConfig_F_Resync_Data : MMR_CDbgClaTimestampConfig_F_Resync_Data_prev;
 generic_dff #(
-    .WIDTH       ($bits(logic [CLA_CDBGCLATIMESTAMPCONFIG_TSCAPTURE_WIDTH-1:0])),
-    .RESET_VALUE (CLA_CDBGCLATIMESTAMPCONFIG_TSCAPTURE_WIDTH'(0))
-) MMR_CDbgClaTimestampConfig_F_TsCapture_ff (
+    .WIDTH       ($bits(logic [CLA_CDBGCLATIMESTAMPCONFIG_RESYNC_WIDTH-1:0])),
+    .RESET_VALUE (CLA_CDBGCLATIMESTAMPCONFIG_RESYNC_WIDTH'(0))
+) MMR_CDbgClaTimestampConfig_F_Resync_ff (
     .clk   (clk),
     .rst_n (reset_n_warm_ovrride),
-    .en    (MMR_CDbgClaTimestampConfig_F_TsCapture_WrEn),
-    .in    (MMR_CDbgClaTimestampConfig_F_TsCapture_Data),
-    .out   (MMR_CDbgClaTimestampConfig_F_TsCapture)
+    .en    (MMR_CDbgClaTimestampConfig_F_Resync_WrEn),
+    .in    (MMR_CDbgClaTimestampConfig_F_Resync_Data),
+    .out   (MMR_CDbgClaTimestampConfig_F_Resync)
 );
 
-//Register: MMR_CRSCRATCHPAD
-logic                                           MMR_CrScratchpad_F_Data_WrEn;
-logic [CLA_CRSCRATCHPAD_DATA_WIDTH        -1:0] MMR_CrScratchpad_F_Data_Data;
-logic [CLA_CRSCRATCHPAD_DATA_WIDTH        -1:0] MMR_CrScratchpad_F_Data_DataEff;
-logic [CLA_CRSCRATCHPAD_DATA_WIDTH        -1:0] MMR_CrScratchpad_F_Data_Data_muxed;
-logic [CLA_CRSCRATCHPAD_DATA_WIDTH        -1:0] MMR_CrScratchpad_F_Data_Data_prev;
-assign MMR_CrScratchpad_F_Data_DataEff = {reg_wr_strb[1] ? reg_wr_data[63:32] : MMR_CrScratchpad_F_Data[63:32] , reg_wr_strb[0] ? reg_wr_data[31:0] : MMR_CrScratchpad_F_Data[31:0]};
-assign MMR_CrScratchpad_F_Data_Data = (CLA_CRSCRATCHPAD_DATA_WIDTH'(update_value(64'(MMR_CrScratchpad_F_Data), 64'(MMR_CrScratchpad_F_Data_DataEff[63:0]), reg_wr_instr_type)));
-assign MMR_CrScratchpad_F_Data_WrEn = (((reg_write & (reg_addr == ADDR_MMR_CRSCRATCHPAD))));
-assign MMR_CrScratchpad_F_Data_Data_prev = MMR_CrScratchpad_F_Data;
-assign MMR_CrScratchpad_F_Data_Data_muxed = MMR_CrScratchpad_F_Data_WrEn ? MMR_CrScratchpad_F_Data_Data : MMR_CrScratchpad_F_Data_Data_prev;
+//Register: MMR_CDBGCLATIMESTAMPOFFSET
+logic                                           MMR_CDbgClaTimestampOffset_F_Rsvd0_WrEn;
+logic [CLA_CDBGCLATIMESTAMPOFFSET_RSVD0_WIDTH-1:0] MMR_CDbgClaTimestampOffset_F_Rsvd0_Data;
+logic [CLA_CDBGCLATIMESTAMPOFFSET_RSVD0_WIDTH-1:0] MMR_CDbgClaTimestampOffset_F_Rsvd0_DataEff;
+logic [CLA_CDBGCLATIMESTAMPOFFSET_RSVD0_WIDTH-1:0] MMR_CDbgClaTimestampOffset_F_Rsvd0_Data_muxed;
+logic [CLA_CDBGCLATIMESTAMPOFFSET_RSVD0_WIDTH-1:0] MMR_CDbgClaTimestampOffset_F_Rsvd0_Data_prev;
+assign MMR_CDbgClaTimestampOffset_F_Rsvd0_DataEff = {reg_wr_data[63:56]};
+assign MMR_CDbgClaTimestampOffset_F_Rsvd0_Data = (CLA_CDBGCLATIMESTAMPOFFSET_RSVD0_WIDTH'(update_value(64'(MMR_CDbgClaTimestampOffset_F_Rsvd0), 64'(MMR_CDbgClaTimestampOffset_F_Rsvd0_DataEff[7:0]), reg_wr_instr_type)));
+assign MMR_CDbgClaTimestampOffset_F_Rsvd0_WrEn = (((reg_write & reg_wr_strb[1] & (reg_addr == ADDR_MMR_CDBGCLATIMESTAMPOFFSET))));
+assign MMR_CDbgClaTimestampOffset_F_Rsvd0_Data_prev = MMR_CDbgClaTimestampOffset_F_Rsvd0;
+assign MMR_CDbgClaTimestampOffset_F_Rsvd0_Data_muxed = MMR_CDbgClaTimestampOffset_F_Rsvd0_WrEn ? MMR_CDbgClaTimestampOffset_F_Rsvd0_Data : MMR_CDbgClaTimestampOffset_F_Rsvd0_Data_prev;
 generic_dff #(
-    .WIDTH       ($bits(logic [CLA_CRSCRATCHPAD_DATA_WIDTH-1:0])),
-    .RESET_VALUE (CLA_CRSCRATCHPAD_DATA_WIDTH'(64'hBFBFBFBFBFBFBFBF))
-) MMR_CrScratchpad_F_Data_ff (
+    .WIDTH       ($bits(logic [CLA_CDBGCLATIMESTAMPOFFSET_RSVD0_WIDTH-1:0])),
+    .RESET_VALUE (CLA_CDBGCLATIMESTAMPOFFSET_RSVD0_WIDTH'(0))
+) MMR_CDbgClaTimestampOffset_F_Rsvd0_ff (
     .clk   (clk),
-    .rst_n (reset_n),
-    .en    (MMR_CrScratchpad_F_Data_WrEn),
-    .in    (MMR_CrScratchpad_F_Data_Data),
-    .out   (MMR_CrScratchpad_F_Data)
+    .rst_n (reset_n_warm_ovrride),
+    .en    (MMR_CDbgClaTimestampOffset_F_Rsvd0_WrEn),
+    .in    (MMR_CDbgClaTimestampOffset_F_Rsvd0_Data),
+    .out   (MMR_CDbgClaTimestampOffset_F_Rsvd0)
+);
+
+logic                                           MMR_CDbgClaTimestampOffset_F_Offset_WrEn;
+logic [CLA_CDBGCLATIMESTAMPOFFSET_OFFSET_WIDTH-1:0] MMR_CDbgClaTimestampOffset_F_Offset_Data;
+logic [CLA_CDBGCLATIMESTAMPOFFSET_OFFSET_WIDTH-1:0] MMR_CDbgClaTimestampOffset_F_Offset_DataEff;
+logic [CLA_CDBGCLATIMESTAMPOFFSET_OFFSET_WIDTH-1:0] MMR_CDbgClaTimestampOffset_F_Offset_Data_muxed;
+logic [CLA_CDBGCLATIMESTAMPOFFSET_OFFSET_WIDTH-1:0] MMR_CDbgClaTimestampOffset_F_Offset_Data_prev;
+assign MMR_CDbgClaTimestampOffset_F_Offset_DataEff = {reg_wr_strb[1] ? reg_wr_data[55:32] : MMR_CDbgClaTimestampOffset_F_Offset[55:32] , reg_wr_strb[0] ? reg_wr_data[31:0] : MMR_CDbgClaTimestampOffset_F_Offset[31:0]};
+assign MMR_CDbgClaTimestampOffset_F_Offset_Data = (CLA_CDBGCLATIMESTAMPOFFSET_OFFSET_WIDTH'(update_value(64'(MMR_CDbgClaTimestampOffset_F_Offset), 64'(MMR_CDbgClaTimestampOffset_F_Offset_DataEff[55:0]), reg_wr_instr_type)));
+assign MMR_CDbgClaTimestampOffset_F_Offset_WrEn = (((reg_write & (reg_addr == ADDR_MMR_CDBGCLATIMESTAMPOFFSET))));
+assign MMR_CDbgClaTimestampOffset_F_Offset_Data_prev = MMR_CDbgClaTimestampOffset_F_Offset;
+assign MMR_CDbgClaTimestampOffset_F_Offset_Data_muxed = MMR_CDbgClaTimestampOffset_F_Offset_WrEn ? MMR_CDbgClaTimestampOffset_F_Offset_Data : MMR_CDbgClaTimestampOffset_F_Offset_Data_prev;
+generic_dff #(
+    .WIDTH       ($bits(logic [CLA_CDBGCLATIMESTAMPOFFSET_OFFSET_WIDTH-1:0])),
+    .RESET_VALUE (CLA_CDBGCLATIMESTAMPOFFSET_OFFSET_WIDTH'(0))
+) MMR_CDbgClaTimestampOffset_F_Offset_ff (
+    .clk   (clk),
+    .rst_n (reset_n_warm_ovrride),
+    .en    (MMR_CDbgClaTimestampOffset_F_Offset_WrEn),
+    .in    (MMR_CDbgClaTimestampOffset_F_Offset_Data),
+    .out   (MMR_CDbgClaTimestampOffset_F_Offset)
 );
 
 //Register: MMR_CDBGSIGNALMASK0HI
@@ -11093,11 +11117,13 @@ assign MMR_CDbgClaXtriggerTimestretch_muxed = {
     MMR_CDbgClaXtriggerTimestretch_F_Xtrigger0Stretch_Data_muxed
 };
 assign MMR_CDbgClaTimestamp = {
-    MMR_CDbgClaTimestamp_F_Timestamp
+    MMR_CDbgClaTimestamp_F_TimestampUpper,
+    MMR_CDbgClaTimestamp_F_TimestampLower
 };
 logic [63:0] MMR_CDbgClaTimestamp_muxed;
 assign MMR_CDbgClaTimestamp_muxed = {
-    MMR_CDbgClaTimestamp_F_Timestamp_Data_muxed
+    MMR_CDbgClaTimestamp_F_TimestampUpper_Data_muxed,
+    MMR_CDbgClaTimestamp_F_TimestampLower_Data_muxed
 };
 assign MMR_CDbgClaTimestampSync = {
     MMR_CDbgClaTimestampSync_F_TimestampSync
@@ -11108,25 +11134,25 @@ assign MMR_CDbgClaTimestampSync_muxed = {
 };
 assign MMR_CDbgClaTimestampConfig = {
     MMR_CDbgClaTimestampConfig_F_Rsvd1,
-    MMR_CDbgClaTimestampConfig_F_TsSyncRaw,
-    MMR_CDbgClaTimestampConfig_F_TsSyncOffset,
+    MMR_CDbgClaTimestampConfig_F_TsCapture,
     MMR_CDbgClaTimestampConfig_F_DebugMarker,
-    MMR_CDbgClaTimestampConfig_F_TsCapture
+    MMR_CDbgClaTimestampConfig_F_Resync
 };
 logic [63:0] MMR_CDbgClaTimestampConfig_muxed;
 assign MMR_CDbgClaTimestampConfig_muxed = {
     MMR_CDbgClaTimestampConfig_F_Rsvd1_Data_muxed,
-    MMR_CDbgClaTimestampConfig_F_TsSyncRaw_Data_muxed,
-    MMR_CDbgClaTimestampConfig_F_TsSyncOffset_Data_muxed,
+    MMR_CDbgClaTimestampConfig_F_TsCapture_Data_muxed,
     MMR_CDbgClaTimestampConfig_F_DebugMarker_Data_muxed,
-    MMR_CDbgClaTimestampConfig_F_TsCapture_Data_muxed
+    MMR_CDbgClaTimestampConfig_F_Resync_Data_muxed
 };
-assign MMR_CrScratchpad = {
-    MMR_CrScratchpad_F_Data
+assign MMR_CDbgClaTimestampOffset = {
+    MMR_CDbgClaTimestampOffset_F_Rsvd0,
+    MMR_CDbgClaTimestampOffset_F_Offset
 };
-logic [63:0] MMR_CrScratchpad_muxed;
-assign MMR_CrScratchpad_muxed = {
-    MMR_CrScratchpad_F_Data_Data_muxed
+logic [63:0] MMR_CDbgClaTimestampOffset_muxed;
+assign MMR_CDbgClaTimestampOffset_muxed = {
+    MMR_CDbgClaTimestampOffset_F_Rsvd0_Data_muxed,
+    MMR_CDbgClaTimestampOffset_F_Offset_Data_muxed
 };
 assign MMR_CDbgSignalMask0Hi = {
     MMR_CDbgSignalMask0Hi_F_Value
@@ -11572,7 +11598,7 @@ always_comb begin : mmr_rd_comb
         ADDR_MMR_CDBGCLATIMESTAMP               : begin : mmr_rd_hit_MMR_CDbgClaTimestamp reg_prehit.ClaMmrCdbgclatimestampHit = 1'b1; reg_rd_data = {MMR_CDbgClaTimestamp}; end
         ADDR_MMR_CDBGCLATIMESTAMPSYNC           : begin : mmr_rd_hit_MMR_CDbgClaTimestampSync reg_prehit.ClaMmrCdbgclatimestampsyncHit = 1'b1; reg_rd_data = {MMR_CDbgClaTimestampSync}; end
         ADDR_MMR_CDBGCLATIMESTAMPCONFIG         : begin : mmr_rd_hit_MMR_CDbgClaTimestampConfig reg_prehit.ClaMmrCdbgclatimestampconfigHit = 1'b1; reg_rd_data = {MMR_CDbgClaTimestampConfig}; end
-        ADDR_MMR_CRSCRATCHPAD                   : begin : mmr_rd_hit_MMR_CrScratchpad reg_prehit.ClaMmrCrscratchpadHit = 1'b1; reg_rd_data = {MMR_CrScratchpad}; end
+        ADDR_MMR_CDBGCLATIMESTAMPOFFSET         : begin : mmr_rd_hit_MMR_CDbgClaTimestampOffset reg_prehit.ClaMmrCdbgclatimestampoffsetHit = 1'b1; reg_rd_data = {MMR_CDbgClaTimestampOffset}; end
         ADDR_MMR_CDBGSIGNALMASK0HI              : begin : mmr_rd_hit_MMR_CDbgSignalMask0Hi reg_prehit.ClaMmrCdbgsignalmask0HiHit = 1'b1; reg_rd_data = {MMR_CDbgSignalMask0Hi}; end
         ADDR_MMR_CDBGSIGNALMATCH0HI             : begin : mmr_rd_hit_MMR_CDbgSignalMatch0Hi reg_prehit.ClaMmrCdbgsignalmatch0HiHit = 1'b1; reg_rd_data = {MMR_CDbgSignalMatch0Hi}; end
         ADDR_MMR_CDBGSIGNALMASK1HI              : begin : mmr_rd_hit_MMR_CDbgSignalMask1Hi reg_prehit.ClaMmrCdbgsignalmask1HiHit = 1'b1; reg_rd_data = {MMR_CDbgSignalMask1Hi}; end
@@ -11709,7 +11735,7 @@ always_comb begin : mmr_rd_d1_comb
         ADDR_MMR_CDBGCLATIMESTAMP               : begin : mmr_rd_d1_MMR_CDbgClaTimestamp reg_rd_data_d1 = {MMR_CDbgClaTimestamp}; end
         ADDR_MMR_CDBGCLATIMESTAMPSYNC           : begin : mmr_rd_d1_MMR_CDbgClaTimestampSync reg_rd_data_d1 = {MMR_CDbgClaTimestampSync}; end
         ADDR_MMR_CDBGCLATIMESTAMPCONFIG         : begin : mmr_rd_d1_MMR_CDbgClaTimestampConfig reg_rd_data_d1 = {MMR_CDbgClaTimestampConfig}; end
-        ADDR_MMR_CRSCRATCHPAD                   : begin : mmr_rd_d1_MMR_CrScratchpad reg_rd_data_d1 = {MMR_CrScratchpad}; end
+        ADDR_MMR_CDBGCLATIMESTAMPOFFSET         : begin : mmr_rd_d1_MMR_CDbgClaTimestampOffset reg_rd_data_d1 = {MMR_CDbgClaTimestampOffset}; end
         ADDR_MMR_CDBGSIGNALMASK0HI              : begin : mmr_rd_d1_MMR_CDbgSignalMask0Hi reg_rd_data_d1 = {MMR_CDbgSignalMask0Hi}; end
         ADDR_MMR_CDBGSIGNALMATCH0HI             : begin : mmr_rd_d1_MMR_CDbgSignalMatch0Hi reg_rd_data_d1 = {MMR_CDbgSignalMatch0Hi}; end
         ADDR_MMR_CDBGSIGNALMASK1HI              : begin : mmr_rd_d1_MMR_CDbgSignalMask1Hi reg_rd_data_d1 = {MMR_CDbgSignalMask1Hi}; end
@@ -12167,14 +12193,15 @@ assign ClaMmrCdbgsignaldelaymuxsel.Muxselseg0   = MMR_CDbgSignalDelayMuxSel_F_Mu
 assign ClaMmrCdbgclaxtriggertimestretch.Rsvd    = MMR_CDbgClaXtriggerTimestretch_F_Rsvd;
 assign ClaMmrCdbgclaxtriggertimestretch.Xtrigger1Stretch = MMR_CDbgClaXtriggerTimestretch_F_Xtrigger1Stretch;
 assign ClaMmrCdbgclaxtriggertimestretch.Xtrigger0Stretch = MMR_CDbgClaXtriggerTimestretch_F_Xtrigger0Stretch;
-assign ClaMmrCdbgclatimestamp.Timestamp         = MMR_CDbgClaTimestamp_F_Timestamp;
+assign ClaMmrCdbgclatimestamp.TimestampUpper    = MMR_CDbgClaTimestamp_F_TimestampUpper;
+assign ClaMmrCdbgclatimestamp.TimestampLower    = MMR_CDbgClaTimestamp_F_TimestampLower;
 assign ClaMmrCdbgclatimestampsync.TimestampSync = MMR_CDbgClaTimestampSync_F_TimestampSync;
 assign ClaMmrCdbgclatimestampconfig.Rsvd1       = MMR_CDbgClaTimestampConfig_F_Rsvd1;
-assign ClaMmrCdbgclatimestampconfig.TsSyncRaw   = MMR_CDbgClaTimestampConfig_F_TsSyncRaw;
-assign ClaMmrCdbgclatimestampconfig.TsSyncOffset = MMR_CDbgClaTimestampConfig_F_TsSyncOffset;
-assign ClaMmrCdbgclatimestampconfig.DebugMarker = MMR_CDbgClaTimestampConfig_F_DebugMarker;
 assign ClaMmrCdbgclatimestampconfig.TsCapture   = MMR_CDbgClaTimestampConfig_F_TsCapture;
-assign ClaMmrCrscratchpad.Data                  = MMR_CrScratchpad_F_Data;
+assign ClaMmrCdbgclatimestampconfig.DebugMarker = MMR_CDbgClaTimestampConfig_F_DebugMarker;
+assign ClaMmrCdbgclatimestampconfig.Resync      = MMR_CDbgClaTimestampConfig_F_Resync;
+assign ClaMmrCdbgclatimestampoffset.Rsvd0       = MMR_CDbgClaTimestampOffset_F_Rsvd0;
+assign ClaMmrCdbgclatimestampoffset.Offset      = MMR_CDbgClaTimestampOffset_F_Offset;
 assign ClaMmrCdbgsignalmask0Hi.Value            = MMR_CDbgSignalMask0Hi_F_Value;
 assign ClaMmrCdbgsignalmatch0Hi.Value           = MMR_CDbgSignalMatch0Hi_F_Value;
 assign ClaMmrCdbgsignalmask1Hi.Value            = MMR_CDbgSignalMask1Hi_F_Value;
@@ -12329,7 +12356,7 @@ input [ADDR_W-1:0] addr;
         ADDR_MMR_CDBGCLATIMESTAMP               : begin : get_reg_val_MMR_CDbgClaTimestamp get_register_value = {MMR_CDbgClaTimestamp}; end
         ADDR_MMR_CDBGCLATIMESTAMPSYNC           : begin : get_reg_val_MMR_CDbgClaTimestampSync get_register_value = {MMR_CDbgClaTimestampSync}; end
         ADDR_MMR_CDBGCLATIMESTAMPCONFIG         : begin : get_reg_val_MMR_CDbgClaTimestampConfig get_register_value = {MMR_CDbgClaTimestampConfig}; end
-        ADDR_MMR_CRSCRATCHPAD                   : begin : get_reg_val_MMR_CrScratchpad get_register_value = {MMR_CrScratchpad}; end
+        ADDR_MMR_CDBGCLATIMESTAMPOFFSET         : begin : get_reg_val_MMR_CDbgClaTimestampOffset get_register_value = {MMR_CDbgClaTimestampOffset}; end
         ADDR_MMR_CDBGSIGNALMASK0HI              : begin : get_reg_val_MMR_CDbgSignalMask0Hi get_register_value = {MMR_CDbgSignalMask0Hi}; end
         ADDR_MMR_CDBGSIGNALMATCH0HI             : begin : get_reg_val_MMR_CDbgSignalMatch0Hi get_register_value = {MMR_CDbgSignalMatch0Hi}; end
         ADDR_MMR_CDBGSIGNALMASK1HI              : begin : get_reg_val_MMR_CDbgSignalMask1Hi get_register_value = {MMR_CDbgSignalMask1Hi}; end

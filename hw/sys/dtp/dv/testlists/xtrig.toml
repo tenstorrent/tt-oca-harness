@@ -7,7 +7,7 @@ schema_version = 1
 
 [[tests]]
 name = "dtp_xtrig_reg_stall_test"
-module = "dtp_xtrig_reg_stall_test"
+module = { cocotb = "dtp_xtrig_reg_stall_test", uvm = "dtp_xtrig_reg_stall_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["xtrig"]
@@ -15,7 +15,7 @@ run_modes = ["xtrig"]
 
 [[tests]]
 name = "dtp_xtrig_rand_deterministic_csr_sweep_test"
-module = "dtp_xtrig_rand_deterministic_csr_sweep_test"
+module = { cocotb = "dtp_xtrig_rand_deterministic_csr_sweep_test", uvm = "dtp_xtrig_rand_deterministic_csr_sweep_test" }
 seed = 1
 timeout_sec = 2400
 tags = ["xtrig"]
@@ -23,7 +23,7 @@ run_modes = ["xtrig"]
 
 [[tests]]
 name = "dtp_ctm_rand_deterministic_csr_sweep_test"
-module = "dtp_ctm_rand_deterministic_csr_sweep_test"
+module = { cocotb = "dtp_ctm_rand_deterministic_csr_sweep_test", uvm = "dtp_ctm_rand_deterministic_csr_sweep_test" }
 seed = 1
 timeout_sec = 2400
 tags = ["xtrig"]
@@ -31,7 +31,15 @@ run_modes = ["xtrig"]
 
 [[tests]]
 name = "dtp_xtrig_wire_or_test"
-module = "dtp_xtrig_wire_or_test"
+module = { cocotb = "dtp_xtrig_wire_or_test", uvm = "dtp_xtrig_wire_or_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["xtrig"]
+run_modes = ["xtrig"]
+
+[[tests]]
+name = "dtp_xtrig_wire_or_bus_test"
+module = { cocotb = "dtp_xtrig_wire_or_bus_test", uvm = "dtp_xtrig_wire_or_bus_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["xtrig"]
@@ -39,7 +47,7 @@ run_modes = ["xtrig"]
 
 [[tests]]
 name = "dtp_xtrig_p2p_test"
-module = "dtp_xtrig_p2p_test"
+module = { cocotb = "dtp_xtrig_p2p_test", uvm = "dtp_xtrig_p2p_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["xtrig"]
@@ -47,7 +55,7 @@ run_modes = ["xtrig"]
 
 [[tests]]
 name = "dtp_xtrig_rand_test"
-module = "dtp_xtrig_rand_test"
+module = { cocotb = "dtp_xtrig_rand_test", uvm = "dtp_xtrig_rand_test" }
 seed = 1
 timeout_sec = 2400
 tags = ["xtrig"]
@@ -55,7 +63,7 @@ run_modes = ["xtrig"]
 
 [[tests]]
 name = "dtp_ctm_rand_all_source_select_coverage_test"
-module = "dtp_ctm_rand_all_source_select_coverage_test"
+module = { cocotb = "dtp_ctm_rand_all_source_select_coverage_test", uvm = "dtp_ctm_rand_all_source_select_coverage_test" }
 seed = 1
 timeout_sec = 2400
 tags = ["xtrig"]
@@ -63,7 +71,7 @@ run_modes = ["xtrig"]
 
 [[tests]]
 name = "dtp_xtrig_reset_test"
-module = "dtp_xtrig_reset_test"
+module = { cocotb = "dtp_xtrig_reset_test", uvm = "dtp_xtrig_reset_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["xtrig"]
@@ -71,7 +79,7 @@ run_modes = ["xtrig"]
 
 [[tests]]
 name = "dtp_xtrig_rand_deterministic_dst_port_sweep_test"
-module = "dtp_xtrig_rand_deterministic_dst_port_sweep_test"
+module = { cocotb = "dtp_xtrig_rand_deterministic_dst_port_sweep_test", uvm = "dtp_xtrig_rand_deterministic_dst_port_sweep_test" }
 seed = 1
 timeout_sec = 2400
 tags = ["xtrig"]
@@ -79,7 +87,7 @@ run_modes = ["xtrig"]
 
 [[tests]]
 name = "dtp_xtrig_axi_channel_skew_test"
-module = "dtp_xtrig_axi_channel_skew_test"
+module = { cocotb = "dtp_xtrig_axi_channel_skew_test", uvm = "dtp_xtrig_axi_channel_skew_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["xtrig"]
@@ -87,7 +95,7 @@ run_modes = ["xtrig"]
 
 [[tests]]
 name = "dtp_xtrig_axi_channel_skew_demux_aw_lock_release_test"
-module = "dtp_xtrig_axi_channel_skew_demux_aw_lock_release_test"
+module = { cocotb = "dtp_xtrig_axi_channel_skew_demux_aw_lock_release_test", uvm = "dtp_xtrig_axi_channel_skew_demux_aw_lock_release_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["xtrig"]
@@ -95,7 +103,7 @@ run_modes = ["xtrig"]
 
 [[tests]]
 name = "dtp_xtrig_axi_channel_skew_read_decode_backpressure_test"
-module = "dtp_xtrig_axi_channel_skew_read_decode_backpressure_test"
+module = { cocotb = "dtp_xtrig_axi_channel_skew_read_decode_backpressure_test", uvm = "dtp_xtrig_axi_channel_skew_read_decode_backpressure_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["xtrig"]
@@ -103,7 +111,7 @@ run_modes = ["xtrig"]
 
 [[tests]]
 name = "dtp_ctm_wire_or_cla_to_ctp_test"
-module = "dtp_ctm_wire_or_cla_to_ctp_test"
+module = { cocotb = "dtp_ctm_wire_or_cla_to_ctp_test", uvm = "dtp_ctm_wire_or_cla_to_ctp_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["xtrig"]
@@ -111,7 +119,7 @@ run_modes = ["xtrig"]
 
 [[tests]]
 name = "dtp_ctm_wire_or_ctp_to_cla_test"
-module = "dtp_ctm_wire_or_ctp_to_cla_test"
+module = { cocotb = "dtp_ctm_wire_or_ctp_to_cla_test", uvm = "dtp_ctm_wire_or_ctp_to_cla_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["xtrig"]
@@ -119,7 +127,7 @@ run_modes = ["xtrig"]
 
 [[tests]]
 name = "dtp_ctm_wire_or_cla_to_cla_test"
-module = "dtp_ctm_wire_or_cla_to_cla_test"
+module = { cocotb = "dtp_ctm_wire_or_cla_to_cla_test", uvm = "dtp_ctm_wire_or_cla_to_cla_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["xtrig"]
@@ -127,7 +135,7 @@ run_modes = ["xtrig"]
 
 [[tests]]
 name = "dtp_ctm_wire_or_ctp_to_ctp_test"
-module = "dtp_ctm_wire_or_ctp_to_ctp_test"
+module = { cocotb = "dtp_ctm_wire_or_ctp_to_ctp_test", uvm = "dtp_ctm_wire_or_ctp_to_ctp_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["xtrig"]
@@ -135,7 +143,7 @@ run_modes = ["xtrig"]
 
 [[tests]]
 name = "dtp_ctm_p2p_cla_to_ctp_test"
-module = "dtp_ctm_p2p_cla_to_ctp_test"
+module = { cocotb = "dtp_ctm_p2p_cla_to_ctp_test", uvm = "dtp_ctm_p2p_cla_to_ctp_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["xtrig"]
@@ -143,7 +151,7 @@ run_modes = ["xtrig"]
 
 [[tests]]
 name = "dtp_ctm_p2p_ctp_to_cla_test"
-module = "dtp_ctm_p2p_ctp_to_cla_test"
+module = { cocotb = "dtp_ctm_p2p_ctp_to_cla_test", uvm = "dtp_ctm_p2p_ctp_to_cla_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["xtrig"]
@@ -151,7 +159,7 @@ run_modes = ["xtrig"]
 
 [[tests]]
 name = "dtp_ctm_p2p_cla_to_cla_test"
-module = "dtp_ctm_p2p_cla_to_cla_test"
+module = { cocotb = "dtp_ctm_p2p_cla_to_cla_test", uvm = "dtp_ctm_p2p_cla_to_cla_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["xtrig"]
@@ -159,7 +167,7 @@ run_modes = ["xtrig"]
 
 [[tests]]
 name = "dtp_ctm_p2p_ctp_to_ctp_test"
-module = "dtp_ctm_p2p_ctp_to_ctp_test"
+module = { cocotb = "dtp_ctm_p2p_ctp_to_ctp_test", uvm = "dtp_ctm_p2p_ctp_to_ctp_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["xtrig"]
@@ -167,7 +175,7 @@ run_modes = ["xtrig"]
 
 [[tests]]
 name = "dtp_ctm_reset_wire_or_mode_test"
-module = "dtp_ctm_reset_wire_or_mode_test"
+module = { cocotb = "dtp_ctm_reset_wire_or_mode_test", uvm = "dtp_ctm_reset_wire_or_mode_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["xtrig"]
@@ -175,7 +183,7 @@ run_modes = ["xtrig"]
 
 [[tests]]
 name = "dtp_ctm_reset_p2p_mode_test"
-module = "dtp_ctm_reset_p2p_mode_test"
+module = { cocotb = "dtp_ctm_reset_p2p_mode_test", uvm = "dtp_ctm_reset_p2p_mode_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["xtrig"]
@@ -183,7 +191,7 @@ run_modes = ["xtrig"]
 
 [[tests]]
 name = "dtp_ctm_reset_all_modes_test"
-module = "dtp_ctm_reset_all_modes_test"
+module = { cocotb = "dtp_ctm_reset_all_modes_test", uvm = "dtp_ctm_reset_all_modes_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["xtrig"]
@@ -191,7 +199,7 @@ run_modes = ["xtrig"]
 
 [[tests]]
 name = "dtp_ctm_rand_all_scenarios_test"
-module = "dtp_ctm_rand_all_scenarios_test"
+module = { cocotb = "dtp_ctm_rand_all_scenarios_test", uvm = "dtp_ctm_rand_all_scenarios_test" }
 seed = 1
 timeout_sec = 2400
 tags = ["xtrig"]
@@ -199,7 +207,7 @@ run_modes = ["xtrig"]
 
 [[tests]]
 name = "dtp_ctm_rand_wire_or_only_test"
-module = "dtp_ctm_rand_wire_or_only_test"
+module = { cocotb = "dtp_ctm_rand_wire_or_only_test", uvm = "dtp_ctm_rand_wire_or_only_test" }
 seed = 1
 timeout_sec = 2400
 tags = ["xtrig"]
@@ -207,7 +215,7 @@ run_modes = ["xtrig"]
 
 [[tests]]
 name = "dtp_ctm_rand_p2p_only_test"
-module = "dtp_ctm_rand_p2p_only_test"
+module = { cocotb = "dtp_ctm_rand_p2p_only_test", uvm = "dtp_ctm_rand_p2p_only_test" }
 seed = 1
 timeout_sec = 2400
 tags = ["xtrig"]
@@ -215,7 +223,7 @@ run_modes = ["xtrig"]
 
 [[tests]]
 name = "dtp_ctm_rand_cla_to_ctp_test"
-module = "dtp_ctm_rand_cla_to_ctp_test"
+module = { cocotb = "dtp_ctm_rand_cla_to_ctp_test", uvm = "dtp_ctm_rand_cla_to_ctp_test" }
 seed = 1
 timeout_sec = 2400
 tags = ["xtrig"]
@@ -223,7 +231,7 @@ run_modes = ["xtrig"]
 
 [[tests]]
 name = "dtp_ctm_rand_ctp_to_cla_test"
-module = "dtp_ctm_rand_ctp_to_cla_test"
+module = { cocotb = "dtp_ctm_rand_ctp_to_cla_test", uvm = "dtp_ctm_rand_ctp_to_cla_test" }
 seed = 1
 timeout_sec = 2400
 tags = ["xtrig"]

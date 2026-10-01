@@ -12,6 +12,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+from urllib.parse import quote
 
 PROJECT_NUMBER = 291
 PROJECT_OWNER = "tenstorrent"
@@ -25,12 +26,21 @@ TAXONOMY_PREFIX = re.compile(r"^\[[A-Z]+/")
 HEADING = re.compile(r"^### ([^\n]+)\n+([^\n#]+)", re.MULTILINE)
 BRACKET_PREFIX = re.compile(r"^\[([A-Z]+)/([A-Z]+)(?:-([A-Z]+))?\]")
 REVIEW_REQUEST_MARKER = "<!-- github-auto-review-request -->"
+REVIEWER_REASONS = {
+    "suggested": "GitHub suggested you based on the files it touches",
+    "linked_issue": "you are assigned to an issue this pull request closes",
+    "path_history": "you recently committed to files this pull request touches",
+    "reviewer_pool": "you are next in the repository reviewer pool",
+}
 PR_REVIEW_COMMENT = (
     "@{login} — you've been automatically requested to review this pull "
-    "request because GitHub suggested you based on the files it touches.\n\n"
+    "request because {reason}.\n\n"
     "If someone else is a better fit, please feel free to reassign.\n\n"
     f"{REVIEW_REQUEST_MARKER}"
 )
+CLOSING_ISSUE = re.compile(r"(?i)\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#(\d+)")
+PATH_HISTORY_FILE_CAP = 8
+PATH_HISTORY_COMMITS_PER_FILE = 10
 
 TAXONOMY_FIELDS = (
     "Workstream",
@@ -81,25 +91,44 @@ def load_taxonomy(path: Path) -> dict:
 
 
 def _taxonomy_from_simple_yaml(path: Path) -> dict:
-    """Read project.fields lists without PyYAML."""
+    """Read project.fields lists and curation.reviewer_pool without PyYAML."""
     text = path.read_text(encoding="utf-8")
     fields: dict[str, list[str]] = {}
     current: str | None = None
     in_fields = False
+    pool: list[str] = []
+    in_pool = False
     for raw in text.splitlines():
         line = raw.rstrip()
+        if line.startswith("  reviewer_pool:"):
+            in_pool = True
+            in_fields = False
+            continue
+        if in_pool:
+            if line.startswith("    - "):
+                pool.append(line[len("    - ") :].strip())
+                continue
+            if line and not line.startswith("    "):
+                in_pool = False
         if line.startswith("  fields:"):
             in_fields = True
             continue
         if in_fields and line and not line.startswith(" "):
-            break
-        if in_fields and line.startswith("    ") and not line.startswith("      ") and line.endswith(":"):
+            in_fields = False
+            current = None
+            continue
+        if (
+            in_fields
+            and line.startswith("    ")
+            and not line.startswith("      ")
+            and line.endswith(":")
+        ):
             current = line.strip()[:-1]
             fields[current] = []
             continue
         if in_fields and current and line.startswith("      - "):
-            fields[current].append(line[len("      - "):].strip())
-    return {"project": {"fields": fields}}
+            fields[current].append(line[len("      - ") :].strip())
+    return {"project": {"fields": fields}, "curation": {"reviewer_pool": pool}}
 
 
 def title_with_prefix(title: str, workstream: str, subsystem: str, component: str) -> str:
@@ -148,7 +177,15 @@ def field_catalog(token: str) -> tuple[str, dict[str, dict]]:
         token,
     )
     fields = gh_json(
-        ["project", "field-list", str(PROJECT_NUMBER), "--owner", PROJECT_OWNER, "--format", "json"],
+        [
+            "project",
+            "field-list",
+            str(PROJECT_NUMBER),
+            "--owner",
+            PROJECT_OWNER,
+            "--format",
+            "json",
+        ],
         token,
     )
     catalog: dict[str, dict] = {}
@@ -272,8 +309,15 @@ def ingest_issue(number: int, taxonomy: dict) -> None:
         raise SystemExit("GITHUB_TOKEN is required")
 
     issue = gh_json(
-        ["issue", "view", str(number), "--repo", repo_full, "--json",
-         "title,body,url,labels,author,assignees,milestone"],
+        [
+            "issue",
+            "view",
+            str(number),
+            "--repo",
+            repo_full,
+            "--json",
+            "title,body,url,labels,author,assignees,milestone",
+        ],
         issue_token,
     )
     fields = taxonomy["project"]["fields"]
@@ -359,11 +403,25 @@ def ingest_issue(number: int, taxonomy: dict) -> None:
 
     target_release = values.get("Target release")
     tr_map = taxonomy.get("release", {}).get("target_release_to_milestone", {})
-    if target_release in tr_map and not (issue.get("milestone") or {}).get("number") and not is_protected:
+    if (
+        target_release in tr_map
+        and not (issue.get("milestone") or {}).get("number")
+        and not is_protected
+    ):
         milestone_title = tr_map[target_release]
         try:
-            run(["gh", "issue", "edit", str(number), "--repo", repo_full,
-                 "--milestone", milestone_title])
+            run(
+                [
+                    "gh",
+                    "issue",
+                    "edit",
+                    str(number),
+                    "--repo",
+                    repo_full,
+                    "--milestone",
+                    milestone_title,
+                ]
+            )
             print("milestone", milestone_title)
         except subprocess.CalledProcessError as exc:
             print("milestone set failed:", exc.stderr, file=sys.stderr)
@@ -399,7 +457,16 @@ def assignee_logins(pr: dict) -> set[str]:
 
 def _comments_contain(repo_full: str, number: int, marker: str) -> bool:
     try:
-        text = run(["gh", "api", "--paginate", f"repos/{repo_full}/issues/{number}/comments", "-q", ".[].body"])
+        text = run(
+            [
+                "gh",
+                "api",
+                "--paginate",
+                f"repos/{repo_full}/issues/{number}/comments",
+                "-q",
+                ".[].body",
+            ]
+        )
     except subprocess.CalledProcessError:
         return False
     return marker in (text or "")
@@ -436,15 +503,29 @@ def _parent_issue_assignee(repo_full: str, number: int) -> str | None:
     )
     try:
         payload = gh_json(
-            ["api", "graphql", "-f", f"query={query}",
-             "-F", f"owner={owner}", "-F", f"name={repo}", "-F", f"number={number}"]
+            [
+                "api",
+                "graphql",
+                "-f",
+                f"query={query}",
+                "-F",
+                f"owner={owner}",
+                "-F",
+                f"name={repo}",
+                "-F",
+                f"number={number}",
+            ]
         )
         nodes = (
-            payload.get("data", {}).get("repository", {})
-            .get("issue", {}).get("trackedInIssues", {}).get("nodes") or []
+            payload.get("data", {})
+            .get("repository", {})
+            .get("issue", {})
+            .get("trackedInIssues", {})
+            .get("nodes")
+            or []
         )
         for parent in nodes:
-            for assignee in (parent.get("assignees", {}).get("nodes") or []):
+            for assignee in parent.get("assignees", {}).get("nodes") or []:
                 login = assignee.get("login")
                 if login and not login.endswith("[bot]"):
                     return login
@@ -460,7 +541,8 @@ def _assign_issue_mechanical(number: int, repo_full: str, issue: dict) -> None:
     author_login = (issue.get("author") or {}).get("login", "")
     body = issue.get("body") or ""
     mentions = {
-        m for m in re.findall(r"@([A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)", body)
+        m
+        for m in re.findall(r"@([A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)", body)
         if m != author_login and not m.endswith("[bot]")
     }
     login = reason = None
@@ -492,33 +574,155 @@ def _assign_issue_mechanical(number: int, repo_full: str, issue: dict) -> None:
     print("issue assigned", login)
 
 
-def request_pr_reviewer(number: int) -> None:
+def pick_reviewer(
+    author_login: str,
+    suggested: list[str],
+    linked_assignees: list[str],
+    path_authors: list[str],
+    pool: list[str],
+    usable=None,
+) -> tuple[str | None, str | None]:
+    """Return the first usable reviewer and the rule that selected them."""
+
+    def ok(login: str) -> bool:
+        if not login or login.endswith("[bot]") or login == author_login:
+            return False
+        return True if usable is None else usable(login)
+
+    for login in suggested:
+        if ok(login):
+            return login, "suggested"
+    for login in linked_assignees:
+        if ok(login):
+            return login, "linked_issue"
+    for login in path_authors:
+        if ok(login):
+            return login, "path_history"
+    for login in pool:
+        if ok(login):
+            return login, "reviewer_pool"
+    return None, None
+
+
+def reviewer_pool(taxonomy: dict) -> list[str]:
+    raw = (taxonomy.get("curation") or {}).get("reviewer_pool") or []
+    return [str(login) for login in raw if login]
+
+
+def closing_issue_numbers(body: str) -> list[int]:
+    seen: list[int] = []
+    seen_set: set[int] = set()
+    for raw in CLOSING_ISSUE.findall(body or ""):
+        number = int(raw)
+        if number not in seen_set:
+            seen_set.add(number)
+            seen.append(number)
+    return seen
+
+
+def _suggested_reviewer_logins(pr: dict) -> list[str]:
+    logins: list[str] = []
+    for suggestion in pr.get("suggestedReviewers") or []:
+        if suggestion.get("isAuthor"):
+            continue
+        login = (suggestion.get("reviewer") or {}).get("login")
+        if login:
+            logins.append(login)
+    return logins
+
+
+def _add_unique_login(logins: list[str], seen: set[str], login: str | None) -> None:
+    if login and login not in seen:
+        seen.add(login)
+        logins.append(login)
+
+
+def _linked_issue_assignees(repo_full: str, pr: dict) -> list[str]:
+    logins: list[str] = []
+    seen: set[str] = set()
+    for issue in (pr.get("closingIssuesReferences") or {}).get("nodes") or []:
+        for assignee in (issue.get("assignees") or {}).get("nodes") or []:
+            _add_unique_login(logins, seen, assignee.get("login"))
+    for number in closing_issue_numbers(pr.get("body") or ""):
+        try:
+            issue = gh_json(
+                ["issue", "view", str(number), "--repo", repo_full, "--json", "assignees"]
+            )
+        except (subprocess.CalledProcessError, json.JSONDecodeError):
+            continue
+        for assignee in issue.get("assignees") or []:
+            _add_unique_login(logins, seen, assignee.get("login"))
+    return logins
+
+
+def _path_history_authors(repo_full: str, number: int, base: str) -> list[str]:
+    try:
+        files = gh_json(["api", "--paginate", f"repos/{repo_full}/pulls/{number}/files"])
+    except (subprocess.CalledProcessError, json.JSONDecodeError):
+        return []
+    if not isinstance(files, list):
+        return []
+    paths = [
+        entry.get("filename")
+        for entry in files
+        if isinstance(entry, dict) and entry.get("filename")
+    ]
+    logins: list[str] = []
+    seen: set[str] = set()
+    for path in paths[:PATH_HISTORY_FILE_CAP]:
+        endpoint = (
+            f"repos/{repo_full}/commits?path={quote(path, safe='')}&sha={quote(base, safe='')}"
+            f"&per_page={PATH_HISTORY_COMMITS_PER_FILE}"
+        )
+        try:
+            commits = gh_json(["api", endpoint])
+        except (subprocess.CalledProcessError, json.JSONDecodeError):
+            continue
+        if not isinstance(commits, list):
+            continue
+        for commit in commits:
+            if not isinstance(commit, dict):
+                continue
+            _add_unique_login(logins, seen, (commit.get("author") or {}).get("login"))
+    return logins
+
+
+def request_pr_reviewer(number: int, taxonomy_path: Path | None = None) -> None:
     repo_full = os.environ.get("GITHUB_REPOSITORY", REPO)
     owner, repo = repo_full.split("/", 1)
     query = (
         "query($owner:String!,$name:String!,$number:Int!){"
         "repository(owner:$owner,name:$name){"
         "pullRequest(number:$number){"
-        "isDraft author{login}"
-        "reviewRequests(first:10){nodes{requestedReviewer{...on User{login}}}}"
-        "reviews(first:10){nodes{author{login}}}"
-        "suggestedReviewers{isAuthor reviewer{login}}}}}"
+        "isDraft author{login} body baseRefName "
+        "reviewRequests(first:10){nodes{requestedReviewer{...on User{login}}}} "
+        "reviews(first:10){nodes{author{login}}} "
+        "suggestedReviewers{isAuthor reviewer{login}} "
+        "closingIssuesReferences(first:10){nodes{assignees(first:10){nodes{login}}}}"
+        "}}}"
     )
     pr_data = gh_json(
-        ["api", "graphql", "-f", f"query={query}",
-         "-F", f"owner={owner}", "-F", f"name={repo}", "-F", f"number={number}"]
+        [
+            "api",
+            "graphql",
+            "-f",
+            f"query={query}",
+            "-F",
+            f"owner={owner}",
+            "-F",
+            f"name={repo}",
+            "-F",
+            f"number={number}",
+        ]
     )
-    pr = (pr_data.get("data", {}).get("repository", {}).get("pullRequest") or {})
+    pr = pr_data.get("data", {}).get("repository", {}).get("pullRequest") or {}
     if pr.get("isDraft"):
         print("skip reviewer: PR is draft")
         return
     existing = {
         (n.get("requestedReviewer") or {}).get("login")
         for n in (pr.get("reviewRequests", {}).get("nodes") or [])
-    } | {
-        (n.get("author") or {}).get("login")
-        for n in (pr.get("reviews", {}).get("nodes") or [])
-    }
+    } | {(n.get("author") or {}).get("login") for n in (pr.get("reviews", {}).get("nodes") or [])}
     if existing - {None}:
         print("skip reviewer: reviewer already requested or reviewed")
         return
@@ -526,29 +730,36 @@ def request_pr_reviewer(number: int) -> None:
         print("skip reviewer: review-request comment already present")
         return
     author_login = (pr.get("author") or {}).get("login", "")
-    login = next(
-        (
-            s["reviewer"]["login"]
-            for s in (pr.get("suggestedReviewers") or [])
-            if not s.get("isAuthor")
-            and (s.get("reviewer") or {}).get("login")
-            and not s["reviewer"]["login"].endswith("[bot]")
-            and s["reviewer"]["login"] != author_login
-            and login_is_assignable(repo_full, s["reviewer"]["login"])
-        ),
-        None,
+    taxonomy = load_taxonomy(taxonomy_path or github_dir() / "issue-taxonomy.yml")
+    login, rule = pick_reviewer(
+        author_login,
+        _suggested_reviewer_logins(pr),
+        _linked_issue_assignees(repo_full, pr),
+        _path_history_authors(repo_full, number, pr.get("baseRefName") or "main"),
+        reviewer_pool(taxonomy),
+        usable=lambda candidate: login_is_assignable(repo_full, candidate),
     )
-    if not login:
-        print("no usable suggested reviewer")
+    if not login or not rule:
+        print("no usable reviewer")
         return
     try:
         run(["gh", "pr", "edit", str(number), "--repo", repo_full, "--add-reviewer", login])
     except subprocess.CalledProcessError as exc:
         print("reviewer request failed:", exc.stderr, file=sys.stderr)
         return
-    run(["gh", "pr", "comment", str(number), "--repo", repo_full, "--body",
-         PR_REVIEW_COMMENT.format(login=login)])
-    print("reviewer requested", login)
+    run(
+        [
+            "gh",
+            "pr",
+            "comment",
+            str(number),
+            "--repo",
+            repo_full,
+            "--body",
+            PR_REVIEW_COMMENT.format(login=login, reason=REVIEWER_REASONS[rule]),
+        ]
+    )
+    print("reviewer requested", login, f"({rule})")
 
 
 def assign_pr_author(number: int) -> None:
@@ -702,15 +913,40 @@ Future
     assert wsc_from_title("[INVALID/SEP] Title", fields) == (None, None, None)
     assert wsc_from_title("freeform title", fields) == (None, None, None)
     assert (
-        title_with_prefix(
-            "[Task]: Use upstream versions of lc_*_pkg's", "RTL", "OCAH", "General"
-        )
+        title_with_prefix("[Task]: Use upstream versions of lc_*_pkg's", "RTL", "OCAH", "General")
         == "[RTL/OCAH] Use upstream versions of lc_*_pkg's"
     )
     assert (
         title_with_prefix("[Task]: [RTL/OCAH] already prefixed", "RTL", "OCAH", "General")
         == "[RTL/OCAH] already prefixed"
     )
+    simple = _taxonomy_from_simple_yaml(github_dir() / "issue-taxonomy.yml")
+    pool = reviewer_pool(simple)
+    assert pool == ["aottavianoTT", "nbetikTT", "nboettcher-tenstorrent"]
+    assert reviewer_pool(taxonomy) == pool
+    assert closing_issue_numbers("Fixes #339 and closes #12. Resolve #339 again.") == [339, 12]
+    assert pick_reviewer("alice", ["alice", "bob"], ["carol"], ["dave"], pool) == (
+        "bob",
+        "suggested",
+    )
+    assert pick_reviewer("alice", [], ["alice", "carol"], ["dave"], pool) == (
+        "carol",
+        "linked_issue",
+    )
+    assert pick_reviewer("alice", [], ["alice"], ["alice", "dave"], pool) == (
+        "dave",
+        "path_history",
+    )
+    assert pick_reviewer("alice", [], [], [], ["alice", "erin"]) == ("erin", "reviewer_pool")
+    assert pick_reviewer("alice", ["alice"], ["alice"], ["alice"], ["alice"]) == (None, None)
+    assert pick_reviewer(
+        "alice",
+        ["bob"],
+        [],
+        [],
+        pool,
+        usable=lambda login: login == "aottavianoTT",
+    ) == ("aottavianoTT", "reviewer_pool")
     print("self-test ok")
 
 
@@ -733,7 +969,7 @@ def main() -> None:
     elif args.pr_assign:
         assign_pr_author(args.pr_assign)
     elif args.pr_review:
-        request_pr_reviewer(args.pr_review)
+        request_pr_reviewer(args.pr_review, args.taxonomy)
     else:
         raise SystemExit("pass --issue, --pr-assign, --pr-review, or --self-test")
 

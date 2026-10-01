@@ -8,33 +8,34 @@ engines without a read-modify-write race, the way the reference consume base seq
 releases KM first and the target crypto engine later.
 
 The shadow is seeded with the generated HW reset default:
-km_sw_rst_n=0 (held), otbn/aes/hmac/kmac/trng=1 (released) => 0x3E.
+km_sw_rst_n=0 (held), otbn/aes/hmac/kmac/trng/abr=1 (released) => 0x7E.
 A test that wants the crypto engines parked (e.g. to dedicate entropy to the KM)
-must park() them explicitly; do not rely on a wrong all-parked assumption.
+must park() them explicitly; the reset default leaves them released.
 
 Bit map (hw/sys/sep/regs/blocks/sep_reset_ctrl/sep_reset_ctrl.rdl):
-  km=0, otbn=1, aes=2, hmac=3, kmac=4, trng=5
+  km=0, otbn=1, aes=2, hmac=3, kmac=4, trng=5, abr=6
 """
 
 from __future__ import annotations
 
+from env.sep_axi_agent import SepAxiOp
 from sep_reg_meta import SEP_RESET_CTRL, sym
 
-from env.sep_axi_agent import SepAxiOp
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
 SEP_RESET_CTRL_SW_RESET_N = sym("SEP_RESET_CTRL_SW_RESET_N_REG_ADDR")
 
 SW_RESET_N_BIT = {
-    "km": 0,
-    "otbn": 1,
-    "aes": 2,
-    "hmac": 3,
-    "kmac": 4,
-    "trng": 5,
+    "km": SEP_RESET_CTRL.field_lsb("SW_RESET_N", "km_sw_rst_n"),
+    "otbn": SEP_RESET_CTRL.field_lsb("SW_RESET_N", "otbn_sw_rst_n"),
+    "aes": SEP_RESET_CTRL.field_lsb("SW_RESET_N", "aes_sw_rst_n"),
+    "hmac": SEP_RESET_CTRL.field_lsb("SW_RESET_N", "hmac_sw_rst_n"),
+    "kmac": SEP_RESET_CTRL.field_lsb("SW_RESET_N", "kmac_sw_rst_n"),
+    "trng": SEP_RESET_CTRL.field_lsb("SW_RESET_N", "trng_sw_rst_n"),
+    "abr": SEP_RESET_CTRL.field_lsb("SW_RESET_N", "abr_sw_rst_n"),
 }
 
-# HW reset default: km held; otbn/aes/hmac/kmac/trng released.
+# HW reset default: km held; otbn/aes/hmac/kmac/trng/abr released.
 SW_RESET_N_RESET_DEFAULT = SEP_RESET_CTRL.reset32("SW_RESET_N")
 
 
@@ -70,19 +71,18 @@ class SepSwReset:
         self.log.info("SW_RESET_N released %s -> 0x%08x", ",".join(engines), self.value)
 
     async def park(self, *engines: str) -> None:
-        """Hold engines in SW reset. Call while they are not live EDN
-        requesters (JTAG-held through ``rst_ni`` and fuse sense, then this
-        CSR write on the open fabric, then the override drops): dropping
-        ``edn_req`` mid-arbitration fails the crypto EDN arbiter
-        hold-until-grant assume."""
+        """Hold engines in SW reset.
+
+        A reset of AES, KMAC, or OTBN pulses the shared crypto EDN adapter
+        clear for one cycle. That clear drops every endpoint's staged word,
+        not only the engine being parked. The arbiter hold-until-grant
+        assumption is a separate check, and this write does not grade it."""
         for eng in engines:
             self.value &= ~(1 << SW_RESET_N_BIT[eng])
         await self._write()
         self.log.info("SW_RESET_N parked %s -> 0x%08x", ",".join(engines), self.value)
 
-    async def begin_trng_recovery(
-        self, *, reset_km: bool, release_trng: bool = True
-    ) -> int:
+    async def begin_trng_recovery(self, *, reset_km: bool, release_trng: bool = True) -> int:
         """Quiesce consumers, reset TRNG, and leave consumers held.
 
         The caller must next run ``SepEsrcConfigSeq(reset_trng=False)``, start

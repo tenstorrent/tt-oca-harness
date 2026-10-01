@@ -161,11 +161,13 @@ module secure_dma
                         (ctrl_state_q != DmaIdle) ||
                         sw_reg_wr_extended;
 
-  prim_clkgater dma_clk_gate (
-    .i_clk ( clk_i        ),
-    .i_en  ( gated_clk_en ),
-    .i_te  ( scanmode     ),     ///< Test On to turn off the clock gating during test
-    .o_clk ( gated_clk    )
+  prim_clock_gating #(
+    .FpgaBufGlobal(1'b0) // Instantiate a local instead of a global clock buffer on FPGAs
+  ) dma_clk_gate (
+    .clk_i    ( clk_i        ),
+    .en_i     ( gated_clk_en ),
+    .test_en_i( scanmode     ),     ///< Test On to turn off the clock gating during test
+    .clk_o    ( gated_clk    )
   );
 
   logic reg_intg_error;

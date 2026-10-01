@@ -2,22 +2,22 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
+// Generate TL-UL A-channel command integrity.
+//
+// Copy tl_i to tl_o and fill in a_user.cmd_intg. When EnableDataIntgGen is set, also
+// generate a_user.data_intg from a_data; otherwise pass it through from tl_i.
 
-/**
- * Tile-Link UL command integrity generator
- */
-
-module tlul_cmd_intg_gen import tlul_pkg::*; #(
-  parameter bit EnableDataIntgGen = 1'b1
+module tlul_cmd_intg_gen
+  import tlul_pkg::*;
+#(
+  parameter bit EnableDataIntgGen = 1'b1  // Generate data_intg; clear passes it through.
 ) (
-  // TL-UL interface
-  input  tl_h2d_t tl_i,
-  output tl_h2d_t tl_o
+  input  tl_h2d_t tl_i,  // A-channel request before integrity insertion.
+  output tl_h2d_t tl_o   // A-channel request with integrity fields filled.
 );
-
   `include "prim_assert.sv"
 
-  tl_h2d_cmd_intg_t cmd;
+tl_h2d_cmd_intg_t cmd;
   assign cmd = extract_h2d_cmd_intg(tl_i);
   logic [H2DCmdMaxWidth-1:0] unused_cmd_payload;
 

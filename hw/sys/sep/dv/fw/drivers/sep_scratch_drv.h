@@ -6,19 +6,22 @@
 // The SEP system CSR block has an 8-word "cold" scratch register array (each
 // word's [31:0] is software RW) that survives a KM/CPU warm reset. Firmware uses
 // it to publish a measured summary to a passive testbench observer that cannot
-// run an AXI master while the EL2 owns the LSU bus. (Addresses are SEP fabric
-// facts; hw/sys/sep/regs sep_scratch. Cold base = 0x1080_2000, 8-byte stride.)
+// run an AXI master while the EL2 owns the LSU bus. Addresses come from
+// generated sep_addr.h (via sep.h).
 
 #ifndef SEP_SCRATCH_DRV_H
 #define SEP_SCRATCH_DRV_H
 
 #include <stdint.h>
 
-#define SEP_SCRATCH_COLD_BASE 0x10802000u // SCRATCH[0]; stride 8 bytes
-#define SEP_SCRATCH_COLD_STRIDE 0x8u
+#include "sep.h"
+
+#define SEP_SCRATCH_COLD_BASE SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0)
+#define SEP_SCRATCH_COLD_STRIDE \
+    (SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(1) - SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0))
 
 static inline uint32_t sep_scratch_addr(uint32_t idx) {
-    return SEP_SCRATCH_COLD_BASE + idx * SEP_SCRATCH_COLD_STRIDE;
+    return SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(idx);
 }
 
 static inline void sep_scratch_wr(uint32_t idx, uint32_t value) {

@@ -1,0 +1,95 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+minimum_pre_commit_version: "4.5.1"
+
+exclude: >-
+  (?x)^(
+    vendor/|
+    nonfree/|
+    .*\/regs\/gen\/|
+    .*\/build(_ot|_ot_pio)?\/
+  )
+
+repos:
+  - repo: local
+    hooks:
+      - id: git-diff-check
+        name: Check staged whitespace and conflict markers
+        entry: git diff --cached --check --
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: ruff-check
+        name: Lint Python with Ruff
+        entry: sh -c 'make -s --no-print-directory ocah-lint-python OCAH_LINT_RUFF_EXTRA_FLAGS=--force-exclude PYTHON_PATH="$*"' --
+        language: system
+        types_or: [python, pyi]
+
+      - id: ruff-format
+        name: Check Python formatting with Ruff
+        entry: sh -c 'make -s --no-print-directory ocah-format-python-check OCAH_LINT_RUFF_EXTRA_FLAGS=--force-exclude PYTHON_PATH="$*"' --
+        language: system
+        types_or: [python, pyi]
+
+      - id: clang-format
+        name: Check C/C++ formatting with clang-format
+        entry: sh -c 'make -s --no-print-directory ocah-format-c-check FORMAT_C_PATH="$*"' --
+        language: system
+        files: '\.(c|h|cpp)$'
+
+      - id: nix-format
+        name: Check Nix formatting with nix fmt
+        entry: sh -c 'make -s --no-print-directory ocah-format-nix-check OCAH_FORMAT_NIX_FILES="$*"' --
+        language: system
+        files: '(\.nix|flake.lock)$'
+
+      - id: tclfmt
+        name: Check Tcl formatting with tclfmt
+        entry: sh -c 'make -s --no-print-directory ocah-format-tcl-check TCL_PATH="$*"' --
+        language: system
+        files: '\.tcl$'
+
+      - id: tclint
+        name: Lint Tcl with tclint
+        entry: sh -c 'make -s --no-print-directory ocah-lint-tcl TCL_PATH="$*"' --
+        language: system
+        files: '\.tcl$'
+
+      - id: codespell
+        name: Check spelling with codespell
+        # No filenames appended (see below): codespell's skip= glob patterns in
+        # pyproject.toml ([tool.codespell]) only prune directories it walks
+        # itself. Handed an explicit file argument -- which is what pre-commit
+        # would otherwise pass -- it checks that file regardless of skip=, so
+        # a skip-listed path (e.g. the vendored Metal HAL headers) would still
+        # get flagged the moment it's staged. Scanning from repo root every
+        # time keeps this consistent with `make ocah-lint-spelling`.
+        entry: make -s --no-print-directory ocah-lint-spelling
+        language: system
+        pass_filenames: false
+
+      - id: yamllint
+        name: Lint YAML with yamllint
+        entry: sh -c 'make -s --no-print-directory ocah-lint-yaml YAML_PATH="$*"' --
+        language: system
+        files: '\.ya?ml$'
+
+      - id: tomllint
+        name: Check TOML syntax with tomllint
+        entry: sh -c 'make -s --no-print-directory ocah-lint-toml TOML_PATH="$*"' --
+        language: system
+        files: '\.toml$'
+
+      - id: shellcheck
+        name: Lint shell scripts with shellcheck
+        entry: sh -c 'make -s --no-print-directory ocah-lint-shell SHELL_PATH="$*"' --
+        language: system
+        files: '\.sh$'
+
+      - id: shfmt
+        name: Check shell formatting with shfmt
+        entry: sh -c 'make -s --no-print-directory ocah-format-shell-check SHELL_PATH="$*"' --
+        language: system
+        files: '\.sh$'

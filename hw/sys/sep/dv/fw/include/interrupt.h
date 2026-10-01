@@ -5,7 +5,8 @@
  * VeeR EL2 PIC interrupt utilities
  *
  * PIC register addresses are derived from RDL (see el2_pic.rdl)
- * PIC base: 0x1080_0000 (from och_sep_top.rdl)
+ * PIC base: SEP_TOP_PIC_BASE_ADDR = 0xC008_0000 (generated sep_addr.h, from
+ * hw/sys/sep/regs/sep.rdl)
  */
 
 #ifndef INTERRUPT_H

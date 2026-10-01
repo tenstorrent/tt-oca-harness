@@ -1,19 +1,24 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC OSS P1 coverage-gap Round 4: XVISOR_REMAP full sweep."""
+"""SMC OSS XVISOR_REMAP full sweep."""
 
 from __future__ import annotations
 
 import pyuvm
-
 from env.smc_protocol_vip_item import SmcProtocolVipKind
+from seq_lib.smc_xvisor_remap_test_seq import EXPECTED_ACCESSES, smc_xvisor_remap_test_seq
 from smc_base_test import smc_base_test
-from seq_lib.smc_xvisor_remap_test_seq import smc_xvisor_remap_test_seq
 
 
 @pyuvm.test()
 class smc_xvisor_remap_test(smc_base_test):
-    """P1 coverage-gap depth: hypervisor remap table (0xC001_4000) sweep."""
+    """Hypervisor remap table (0xC001_4000) sweep."""
+
+    required_evidence = (
+        "CHK-XVISOR-REMAP-CORESIDENT",
+        "CHK-XVISOR-REMAP-RESET-DEFAULT",
+    )
+    min_evidence = 2
 
     auto_protocol_vip = False
 
@@ -23,8 +28,12 @@ class smc_xvisor_remap_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.OUTPUT_FABRIC,
             type(self).__name__,
+            # Directed stimulus floor: 8 reset reads plus the 32 co-resident
+            # pattern/restore accesses over XVISOR_REMAP 0..7. A constant of the
+            # sequence module, not read back from `seq.accesses`.
+            min_csr_accesses=EXPECTED_ACCESSES,
             csr_accesses=seq.accesses,
             timeouts=seq.timeouts,
             proxy=False,
-            details="P1 coverage-gap R4: XVISOR_REMAP 0..7 bounded sweep",
+            details="XVISOR_REMAP 0..7 reset sweep and co-resident per-entry patterns",
         )

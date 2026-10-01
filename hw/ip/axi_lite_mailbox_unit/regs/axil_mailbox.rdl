@@ -5,7 +5,9 @@
 `define AXIL_MAILBOX_RDL
 
 addrmap axil_mailbox {
-    desc = "";
+    name = "AXI-Lite Mailbox Address Map";
+    desc = "Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.";
+        ocah_aperture_size = 0x800;
 
     ////////////////////////////////////////////////////////////////////////////
     // Register Definitions
@@ -18,6 +20,7 @@ addrmap axil_mailbox {
         field {
             sw = w;
             hw = r;
+            onwrite = wuser;
             desc = "Write data to mailbox fifo";
         } write_data [63:0] = 0x0;
     };
@@ -27,9 +30,10 @@ addrmap axil_mailbox {
         accesswidth = 64;
         field {
             sw = r;
-            hw = r;
+            hw = w;
+            onread = ruser;
             desc = "Read data from mailbox fifo";
-        } read_data [63:0] = 0x0;
+        } read_data [63:0];
     };
 
    reg STATUS {
@@ -37,26 +41,26 @@ addrmap axil_mailbox {
         accesswidth = 64;
         field {
             sw = r;
-            hw = r;
+            hw = w;
             desc = "0: Data is available to read, 1: Data is not available to read";
-        } empty [0:0] = 0x0;
+        } empty [0:0] = 0x1;
 
         field {
             sw = r;
-            hw = r;
+            hw = w;
             desc = "0: Space is available to write, 1: Space is not available to write";
         } full [1:1] = 0x0;
 
         field {
             sw = r;
-            hw = r;
-            desc = "If set, write fifo level is higher than threshhold set in WIRQT";
+            hw = w;
+            desc = "If set, write fifo level is higher than threshold set in WIRQT";
         } write_level_above_thresh [2:2] = 0x0;
 
         field {
             sw = r;
-            hw = r;
-            desc = "If set, read fifo level is higher than threshhold set in RIRQT";
+            hw = w;
+            desc = "If set, read fifo level is higher than threshold set in RIRQT";
         } read_level_above_thresh [3:3] = 0x0;
     };
 
@@ -65,13 +69,17 @@ addrmap axil_mailbox {
         accesswidth = 64;
         field {
             sw = r;
-            hw = r;
+            hw = w;
+            stickybit;
+            rclr;
             desc = "Attempted write to a full mailbox";
         } write_error [1:1] = 0x0;
 
         field {
             sw = r;
-            hw = r;
+            hw = w;
+            stickybit;
+            rclr;
             desc = "Attempted read from an empty mailbox";
         } read_error [0:0] = 0x0;
     };
@@ -104,7 +112,9 @@ addrmap axil_mailbox {
 
         field {
             sw = rw;
-            hw = r;
+            hw = rw;
+            stickybit;
+            woclr;
             desc = "On read:
                     [0]: No interrupt request
                     [1]: Error on mailbox access
@@ -115,7 +125,9 @@ addrmap axil_mailbox {
 
         field {
             sw = rw;
-            hw = r;
+            hw = rw;
+            stickybit;
+            woclr;
             desc = "On read:
                     [0]: No interrupt request
                     [1]: Usage level threshold in read mailbox exceeded
@@ -126,7 +138,9 @@ addrmap axil_mailbox {
 
         field {
             sw = rw;
-            hw = r;
+            hw = rw;
+            stickybit;
+            woclr;
             desc = "On read:
                     [0]: No interrupt request
                     [1]: Usage level threshold in write mailbox exceeded
@@ -172,21 +186,21 @@ addrmap axil_mailbox {
 
         field {
             sw = r;
-            hw = r;
+            hw = w;
             desc = "[0]: No error IRQ pending
                     [1]: Error IRQ pending";
         } eirq [2:2] = 0x0;
 
         field {
             sw = r;
-            hw = r;
+            hw = w;
             desc = "[0]: No read threshold IRQ pending
                     [1]: Read threshold IRQ pending";
         } rtirq [1:1] = 0x0;
 
         field {
             sw = r;
-            hw = r;
+            hw = w;
             desc = "[0]: No write threshold IRQ pending
                     [1]: Write threshold IRQ pending";
         } wtirq [0:0] = 0x0;
@@ -198,12 +212,14 @@ addrmap axil_mailbox {
         field {
             sw = w;
             hw = r;
+            onwrite = wuser;
             desc = "Flush the read FIFO for this port";
         } rflush [1:1] = 0x0;
 
         field {
             sw = w;
             hw = r;
+            onwrite = wuser;
             desc = "Flush the write FIFO for this port";
         } wflush [0:0] = 0x0;
     };
@@ -212,8 +228,8 @@ addrmap axil_mailbox {
     // Address Map
     ////////////////////////////////////////////////////////////////////////////
 
-    WRITE_DATA WRITE_DATA    @0x0;
-    READ_DATA  READ_DATA     @0x8;
+    external WRITE_DATA WRITE_DATA    @0x0;
+    external READ_DATA  READ_DATA     @0x8;
     STATUS     STATUS        @0x10;
     ERROR      ERROR_FLAGS   @0x18;
     WIRQT      WIRQT         @0x20;
@@ -221,7 +237,11 @@ addrmap axil_mailbox {
     IRQS       IRQS          @0x30;
     IRQEN      IRQEN         @0x38;
     IRQP       IRQP          @0x40;
-    CTRL       CTRL          @0x48;
+    external CTRL       CTRL          @0x48;
+
+`ifdef OCAH_DOC_MEMORY_MAP
+    ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+`endif
 };
 
 `endif

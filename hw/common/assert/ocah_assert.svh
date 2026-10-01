@@ -5,8 +5,8 @@
 `define OCAH_ASSERT_SV
 
 // Default clock and reset signals for assertion macros
-`define OCAH_ASSERT_DEFAULT_CLK i_clk
-`define OCAH_ASSERT_DEFAULT_RST !i_reset_n
+`define OCAH_ASSERT_DEFAULT_CLK clk_i
+`define OCAH_ASSERT_DEFAULT_RST !rst_ni
 
 // Helper macro to convert a block of code into a Verilog string
 `define OCAH_STRINGIFY(__x) `"__x`"
@@ -41,15 +41,24 @@
 // OCAH_ASSUME: Assume a concurrent property.
 // OCAH_ASSUME_I: Assume an immediate property.
 
+// OCAH_DEBUG_LIVE selects the RTL debug hooks: elaboration checks, assertions, and $display /
+// $error / $fatal messages. The simulation and emulation views compile them; the synthesis view
+// does not. EMULATION takes precedence over SYNTHESIS, so a compile that sets both gets the
+// emulation view.
+`ifdef EMULATION
+`define OCAH_DEBUG_LIVE
+`elsif SYNTHESIS
+`else
+`define OCAH_DEBUG_LIVE
+`endif
+
 // Define OCAH_INC_ASSERT only when assertions should be compiled in. The macro bodies in
 // ocah_assert_standard_macros.svh are each guarded by `ifdef OCAH_INC_ASSERT, so under
 // synthesis / Verilator (OCAH_INC_ASSERT undefined) they expand to nothing.
-`ifndef SYNTHESIS
+`ifdef OCAH_DEBUG_LIVE
 `ifndef VERILATOR
-`ifndef TARGET_VERILATOR
 `ifndef NO_OCAH_ASSERT
-  `define OCAH_INC_ASSERT
-`endif
+`define OCAH_INC_ASSERT
 `endif
 `endif
 `endif
@@ -58,6 +67,8 @@
 // Complex assertion macros //
 //////////////////////////////
 
+// Keep macro headers on one physical line for synthesis elaboration.
+// verilog_format: off
 // Assert that signal is an active-high pulse with pulse length of 1 clock cycle
 `define OCAH_ASSERT_PULSE(__name, __sig, __clk = `OCAH_ASSERT_DEFAULT_CLK, __rst = `OCAH_ASSERT_DEFAULT_RST) \
   `OCAH_ASSERT(__name, $rose(__sig) |=> !(__sig), __clk, __rst)
@@ -70,5 +81,6 @@
 `define OCAH_ASSERT_KNOWN_IF(__name, __sig, __enable, __clk = `OCAH_ASSERT_DEFAULT_CLK, __rst = `OCAH_ASSERT_DEFAULT_RST) \
   `OCAH_ASSERT_KNOWN(__name``KnownEnable, __enable, __clk, __rst)                                                     \
   `OCAH_ASSERT_IF(__name, !$isunknown(__sig), __enable, __clk, __rst)
+// verilog_format: on
 
 `endif  // OCAH_ASSERT_SV

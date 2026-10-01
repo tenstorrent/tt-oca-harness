@@ -3,16 +3,18 @@
 
 schema_version = 1
 
-# Aggregate testlist: merges the smoke and functional testlists. This is the file the DTP DUT
-# points at, so `--items smoke` and `--items functional` both resolve.
+# Aggregate testlist: merges the per-area testlists. This is the file dtp_sim_cfg.toml points
+# at, so every group name below resolves as an --items target.
 includes = ["jtag.toml", "jtag2axi.toml", "debug_tdr.toml", "scan.toml", "xtrig.toml"]
 
 [[groups]]
 name = "smoke"
+expected_count = 2
 tests = ["dtp_sanity_test", "dtp_jtag_idcode_test"]
 
 [[groups]]
 name = "basic_jtag"
+expected_count = 19
 tests = [
     "dtp_sanity_test",
     "dtp_jtag_bypass_test",
@@ -37,6 +39,7 @@ tests = [
 
 [[groups]]
 name = "functional"
+expected_count = 4
 tests = [
     "dtp_sanity_test",
     "dtp_jtag_idcode_test",
@@ -46,16 +49,19 @@ tests = [
 
 [[groups]]
 name = "jtag2axi"
+expected_count = 80
 tests = [
     "dtp_jtag2axi_smc_axi_single_write_test",
     "dtp_jtag2axi_smc_axi_single_write_data_verify_test",
     "dtp_jtag2axi_smc_axi_series_write_incr_test",
+    "dtp_jtag2axi_smc_axi_series_write_incr_narrow_test",
     "dtp_jtag2axi_smc_axi_series_write_no_incr_test",
     "dtp_jtag2axi_smc_axi_series_write_incr_with_error_test",
     "dtp_jtag2axi_smc_axi_random_ops_test",
     "dtp_jtag2axi_smc_axi_write_security_gating_test",
     "dtp_jtag2axi_smc_axi_single_write_read_test",
     "dtp_jtag2axi_smc_axi_series_write_read_incr_test",
+    "dtp_jtag2axi_smc_axi_series_write_read_incr_narrow_test",
     "dtp_jtag2axi_smc_axi_series_write_read_no_incr_test",
     "dtp_jtag2axi_smc_axi_series_write_read_incr_with_error_test",
     "dtp_jtag2axi_smc_axi_read_random_ops_test",
@@ -77,6 +83,7 @@ tests = [
     "dtp_jtag2axi_sep_otp_axi_write_security_gating_test",
     "dtp_jtag2axi_smc_otp_axi_single_write_read_test",
     "dtp_jtag2axi_smc_otp_axi_series_write_read_incr_test",
+    "dtp_jtag2axi_smc_otp_axi_series_write_read_incr_oversize_test",
     "dtp_jtag2axi_smc_otp_axi_series_write_read_no_incr_test",
     "dtp_jtag2axi_smc_otp_axi_series_write_read_incr_with_error_test",
     "dtp_jtag2axi_smc_otp_axi_read_random_ops_test",
@@ -128,6 +135,7 @@ tests = [
 
 [[groups]]
 name = "scan"
+expected_count = 14
 tests = [
     "dtp_ijtag_sib_all_off_test",
     "dtp_ijtag_sib_all_on_test",
@@ -139,6 +147,7 @@ tests = [
     "dtp_3dcr_stap_sel_extra_test",
     "dtp_3dcr_stap_sel_sep_test",
     "dtp_ext_stap_scan_test",
+    "dtp_stap_chain_hold_test",
     "dtp_3dcr_config_hold_test",
     "dtp_3dcr_tms_hold_test",
     "dtp_scan_dbg_disable_matrix_test",
@@ -149,6 +158,7 @@ tests = [
 # sep_lifecycle_ctrl_pkg::dbg_disable_t fields.
 [[groups]]
 name = "dbg_disable"
+expected_count = 19
 tests = [
     "dtp_scan_dbg_disable_matrix_test",
     "dtp_jtag2axi_dbg_disable_matrix_test",
@@ -173,11 +183,13 @@ tests = [
 
 [[groups]]
 name = "xtrig"
+expected_count = 29
 tests = [
     "dtp_xtrig_reg_stall_test",
     "dtp_xtrig_rand_deterministic_csr_sweep_test",
     "dtp_ctm_rand_deterministic_csr_sweep_test",
     "dtp_xtrig_wire_or_test",
+    "dtp_xtrig_wire_or_bus_test",
     "dtp_xtrig_p2p_test",
     "dtp_xtrig_rand_test",
     "dtp_ctm_rand_all_source_select_coverage_test",
@@ -208,7 +220,7 @@ tests = [
 name = "all"
 # Exact nightly inventory; must match the VPLAN's scenario-expanded test-case
 # count. The loader errors when the list and this count diverge.
-expected_count = 149
+expected_count = 154
 tests = [
     "dtp_sanity_test",
     "dtp_jtag_bypass_test",
@@ -234,12 +246,14 @@ tests = [
     "dtp_jtag2axi_smc_axi_read_random_ops_test",
     "dtp_jtag2axi_smc_axi_series_write_read_incr_with_error_test",
     "dtp_jtag2axi_smc_axi_series_write_read_no_incr_test",
+    "dtp_jtag2axi_smc_axi_series_write_read_incr_narrow_test",
     "dtp_jtag2axi_smc_axi_series_write_read_incr_test",
     "dtp_jtag2axi_smc_axi_single_write_read_test",
     "dtp_jtag2axi_smc_axi_write_security_gating_test",
     "dtp_jtag2axi_smc_axi_random_ops_test",
     "dtp_jtag2axi_smc_axi_series_write_incr_with_error_test",
     "dtp_jtag2axi_smc_axi_series_write_no_incr_test",
+    "dtp_jtag2axi_smc_axi_series_write_incr_narrow_test",
     "dtp_jtag2axi_smc_axi_series_write_incr_test",
     "dtp_jtag2axi_smc_axi_single_write_data_verify_test",
     "dtp_jtag2axi_smc_axi_single_write_test",
@@ -259,6 +273,7 @@ tests = [
     "dtp_jtag2axi_sep_otp_axi_write_security_gating_test",
     "dtp_jtag2axi_smc_otp_axi_single_write_read_test",
     "dtp_jtag2axi_smc_otp_axi_series_write_read_incr_test",
+    "dtp_jtag2axi_smc_otp_axi_series_write_read_incr_oversize_test",
     "dtp_jtag2axi_smc_otp_axi_series_write_read_no_incr_test",
     "dtp_jtag2axi_smc_otp_axi_series_write_read_incr_with_error_test",
     "dtp_jtag2axi_smc_otp_axi_read_random_ops_test",
@@ -327,6 +342,7 @@ tests = [
     "dtp_3dcr_stap_sel_extra_test",
     "dtp_3dcr_stap_sel_sep_test",
     "dtp_ext_stap_scan_test",
+    "dtp_stap_chain_hold_test",
     "dtp_3dcr_config_hold_test",
     "dtp_3dcr_tms_hold_test",
     "dtp_scan_dbg_disable_matrix_test",
@@ -335,6 +351,7 @@ tests = [
     "dtp_xtrig_rand_deterministic_csr_sweep_test",
     "dtp_ctm_rand_deterministic_csr_sweep_test",
     "dtp_xtrig_wire_or_test",
+    "dtp_xtrig_wire_or_bus_test",
     "dtp_xtrig_p2p_test",
     "dtp_xtrig_rand_test",
     "dtp_ctm_rand_all_source_select_coverage_test",

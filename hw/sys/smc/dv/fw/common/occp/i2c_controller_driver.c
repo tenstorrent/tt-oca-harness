@@ -4,8 +4,7 @@
 #include "occp_test_common.h"
 #include "virt_console.h"
 
-/* The I2C wrapper has no native generated block header, so its register
- * offsets and field unions come from this extracted subset. */
+/* Local I2C wrapper register subset; smc_i2c_regs.h says why. */
 #include "smc_i2c_regs.h"
 
 #define I2C_INSTANCE_STRIDE 0x200u
@@ -14,9 +13,9 @@
 
 #define debug_mode 1
 
-#define I2C_CLOCK_PERIOD_NS 10u
-// Effective SCL period is controlled directly by I2C_SCL_PERIOD_NS.
-// In debug_mode, use a 10x shorter period to speed up simulation.
+#define I2C_CLOCK_PERIOD_NS 5u
+// debug_mode shortens SCL for simulation: I2C_SCL_PERIOD_NS can only lengthen SCL beyond the
+// speed-mode minimums, and debug_mode skips the clamp to the slowest target's period.
 #if debug_mode
 #define I2C_SCL_PERIOD_NS 240u
 #define I2C_SDA_RISE_NS 20u
@@ -33,7 +32,6 @@
 
 #define DEBUG_PRINT 0
 
-// Wrapper that replaces direct simputs() calls with a debug-enabled version.
 static inline void log_simputs(const char *msg) {
 #if DEBUG_PRINT
     simputs(msg);
@@ -42,7 +40,6 @@ static inline void log_simputs(const char *msg) {
 #endif
 }
 
-// Wrapper that replaces direct simputshex16() calls with a debug-enabled version.
 static inline void log_simputshex16(const char *msg, uint16_t val) {
 #if DEBUG_PRINT
     simputshex16(msg, val);
@@ -52,7 +49,6 @@ static inline void log_simputshex16(const char *msg, uint16_t val) {
 #endif
 }
 
-// Wrapper that replaces direct simputshex32() calls with a debug-enabled version.
 static inline void log_simputshex32(const char *msg, uint32_t val) {
 #if DEBUG_PRINT
     simputshex32(msg, val);
@@ -483,7 +479,6 @@ I2C_Status init_i2c_ctrlr(I2C_Driver *drv, uint8_t i2c_addr) {
     log_simputs("[I2C_CTRL][init_i2c_ctrlr] target_addr=");
     log_simputshex16("", i2c_addr);
     I2C_release_reset(i2c_id);
-    // i2c_wrapper disable
     I2C_CTRL_I2C_CTRL_reg_u ctrl_gate = {.val = read_reg(kCtrlGateAddrs[i2c_id])};
     ctrl_gate.f.i2c_en = 1;
     ctrl_gate.f.i2c_controller_mode_en = 1;
@@ -562,7 +557,6 @@ I2C_Status ctrlr_send_data_w_timeout(I2C_Driver *drv, const uint8_t *tx_buf, siz
     addr_cmd.f.start = 1;
     addr_cmd.f.stop = (tx_buf_len == 0);
     write_i2c_reg(i2c_id, SMC_I2C_WRAP_I2C_0__FDATA_REG_OFFSET, addr_cmd.val);
-    // Debug: log full FDATA word for address phase (includes START/STOP bits)
     log_simputs("[I2C_CTRL][TX] addr_cmd=");
     log_simputshex16("", addr_cmd.val);
 
@@ -576,7 +570,6 @@ I2C_Status ctrlr_send_data_w_timeout(I2C_Driver *drv, const uint8_t *tx_buf, siz
         data_cmd.f.stop = (i == tx_buf_len - 1);
         if (data_cmd.f.stop) simputs("[I2C_CTRL][TX] stop bit\n");
         write_i2c_reg(i2c_id, SMC_I2C_WRAP_I2C_0__FDATA_REG_OFFSET, data_cmd.val);
-        // Debug: log full FDATA word for each data phase entry
         log_simputs("[I2C_CTRL][TX] data_cmd=");
         log_simputshex16("", data_cmd.val);
     }
@@ -619,10 +612,7 @@ I2C_Status ctrlr_receive_data_w_timeout(I2C_Driver *drv, uint8_t *rx_buf, size_t
 
     const uint8_t i2c_id = drv->ctx.controller_id;
 
-    // timeout semantics:
-    //  - timeout  < 0 : use default timeout
-    //  - timeout == 0 : no timeout (infinite poll)
-    //  - timeout  > 0 : timeout in polling iterations
+    // timeout: < 0 selects the default, 0 polls forever, > 0 is a polling-iteration count.
     uint32_t effective_timeout = (timeout < 0) ? I2C_DEFAULT_TIMEOUT : (uint32_t)timeout;
 
     if (rx_buf_len == 0) {
@@ -635,7 +625,6 @@ I2C_Status ctrlr_receive_data_w_timeout(I2C_Driver *drv, uint8_t *rx_buf, size_t
     simputs("[I2C_CTRL][RX] LEN==");
     simputshex16("", (uint32_t)rx_buf_len);
 
-    // Ensure there is room in the FMT FIFO before writing address / read commands.
     I2C_Status status = wait_for_fmt_space(i2c_id, effective_timeout);
     if (status != I2C_OK) {
         if (bytes_received != NULL) {
@@ -644,26 +633,16 @@ I2C_Status ctrlr_receive_data_w_timeout(I2C_Driver *drv, uint8_t *rx_buf, size_t
         return status;
     }
 
-    // Address phase: repeated START + 7-bit address with READ bit set.
     I2C_FDATA_reg_u addr_cmd = {.val = 0};
     addr_cmd.f.fbyte = compose_address_byte(g_target_addr[i2c_id], true);
     addr_cmd.f.start = 1;
-    // Do not generate STOP here when rx_buf_len > 0: STOP will be handled by the
-    // subsequent READ command(s), after all bytes have been received.
     addr_cmd.f.stop = 0;
     write_i2c_reg(i2c_id, SMC_I2C_WRAP_I2C_0__FDATA_REG_OFFSET, addr_cmd.val);
-    // Debug: log address phase READ command sent on FDATA
     log_simputs("[I2C_CTRL][RX] addr_cmd=");
     simputshex16("", addr_cmd.val);
 
-    // Issue one or more READ commands that tell the controller how many bytes to read.
-    // HW will then clock out the requested bytes and ACK every byte. This helper
-    // does not explicitly generate a NACK or a STOP; a higher layer is responsible
-    // for terminating the transaction as needed.
-    //
-    // NOTE: FDATA.FBYTE is only 8 bits, where 0 encodes 256 bytes. For lengths
-    // larger than 256, we program multiple READ commands, each requesting up to
-    // 256 bytes, until the full rx_buf_len is covered.
+    // FDATA.FBYTE counts 1-256 bytes (0 means 256), so longer reads are chained with RCONT.
+    // The controller NACKs the final byte but sends no STOP; the caller ends the transaction.
     size_t remaining = rx_buf_len;
     size_t received = 0;
 
@@ -680,11 +659,10 @@ I2C_Status ctrlr_receive_data_w_timeout(I2C_Driver *drv, uint8_t *rx_buf, size_t
         }
 
         I2C_FDATA_reg_u read_cmd = {.val = 0};
-        // 0 encodes 256 bytes in hardware.
         read_cmd.f.fbyte = (uint8_t)(chunk_len & 0xFF);
-        read_cmd.f.readb = 1; // "read N bytes" command
+        read_cmd.f.readb = 1;
         read_cmd.f.rcont = is_last_chunk ? 0 : 1;
-        read_cmd.f.stop = 0; // do NOT generate STOP here (higher layer terminates)
+        read_cmd.f.stop = 0;
         write_i2c_reg(i2c_id, SMC_I2C_WRAP_I2C_0__FDATA_REG_OFFSET, read_cmd.val);
 
         if (!is_last_chunk) {
@@ -707,7 +685,6 @@ I2C_Status ctrlr_receive_data_w_timeout(I2C_Driver *drv, uint8_t *rx_buf, size_t
             }
             I2C_RDATA_reg_u rdata = {
                 .val = read_i2c_reg(i2c_id, SMC_I2C_WRAP_I2C_0__RDATA_REG_OFFSET)};
-            // Debug: log every data byte received from the bus
             log_simputs("[I2C_CTRL][RX] data_byte=");
             log_simputshex16("", (uint32_t)rdata.f.data);
             rx_buf[received++] = (uint8_t)rdata.f.data;

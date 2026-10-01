@@ -8,31 +8,40 @@ from .dtp_debug_tdr_base_test_seq import dtp_debug_tdr_base_test_seq
 
 
 class dtp_dbg_ctrl_clk_stop_jtag_clock_stop_test_seq(dtp_debug_tdr_base_test_seq):
-    """Check JTAG_CLOCK_STOP drives and releases stop_clks_o."""
+    """Check JTAG_CLOCK_STOP drives and releases stop_clks_o.
+
+    Across the pass no ``stop_clks`` change falls off a clk_i rising edge
+    (``CHK-DBG-STOP-EDGE``).
+    """
 
     async def body(self) -> None:
         self.log_banner("DEBUG_CONTROL JTAG Clock Stop")
+        await self.attach_family_checker(
+            {"CHK-TAP-RESET-TLR", "CHK-DBG-TDR", "CHK-DBG-PIN", "CHK-DBG-STOP-EDGE"},
+        )
+        _, off_edge_start = self.stop_clks_counts()
 
         self.log_step(1, "Reset TAP and clear CLA clock-stop requests")
-        await self.reset_tap()
+        await self.reset_to_tlr()
         await self.set_clk_stop_requests(0)
 
         reset_value = await self.read_debug_control()
         self.log_debug_control("After reset", reset_value)
-        self.assert_equal("DEBUG_CONTROL reset", reset_value, 0)
+        self.family_check("CHK-DBG-TDR", "DEBUG_CONTROL reset", reset_value, 0)
 
         self.log_step(2, "Set JTAG_CLOCK_STOP and expect stop_clks to assert")
         control_value = self.pack_debug_control(jtag_clock_stop=1)
         await self.write_debug_control(control_value)
         await self.wait_sys_cycles()
         await self.wait_for_signal_value("stop_clks", 1, context="jtag_clock_stop=1")
-        await self.expect_signal("cla_clock_stop_en", 0)
+        await self.expect_dbg_signal("cla_clock_stop_en", 0, context="jtag stop only")
 
         self.log_step(3, "Read DEBUG_CONTROL and confirm CLA status ignores JTAG stop")
         readback = await self.read_debug_control(shift_value=control_value)
         decoded = self.log_debug_control("JTAG stop readback", readback)
-        self.assert_equal("DEBUG_CONTROL.jtag_clock_stop", decoded["jtag_clock_stop"], 1)
-        self.assert_equal("DEBUG_CONTROL.cla_clock_stop", decoded["cla_clock_stop"], 0)
+        self.check_debug_control_fields(
+            decoded, {"jtag_clock_stop": 1, "cla_clock_stop": 0}, context="jtag_clock_stop=1"
+        )
 
         self.log_step(4, "Clear JTAG_CLOCK_STOP and expect stop_clks to release")
         clear_value = self.pack_debug_control(jtag_clock_stop=0)
@@ -54,9 +63,14 @@ class dtp_dbg_ctrl_clk_stop_jtag_clock_stop_test_seq(dtp_debug_tdr_base_test_seq
             await self.wait_for_signal_value("stop_clks", 0, context=f"toggle#{toggle}.release")
 
         final_readback = await self.read_debug_control(shift_value=clear_value)
-        self.log_debug_control("After JTAG stop clear", final_readback)
+        final_decoded = self.log_debug_control("After JTAG stop clear", final_readback)
+        self.check_debug_control_fields(
+            final_decoded, {"jtag_clock_stop": 0, "cla_clock_stop": 0}, context="after the toggles"
+        )
+        self.check_stop_clks_off_edge(off_edge_start, context="whole pass")
         self.log_summary(
             "JTAG clock-stop complete",
             asserted_control=f"0x{control_value:02x}",
             final_control=f"0x{final_readback:02x}",
         )
+        await self.finalize_family_checker()

@@ -1,308 +1,221 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-# Memory Interface
+= Memory Interface
 
-This directory contains the `memory_interface` module - a reusable AXI-to-memory bridge component that can be integrated into any memory-based design.
+This directory holds `memory_interface`, a reusable AXI4-to-memory bridge, together with
+SRAM and ROM example collateral that shows how a complete memory block is assembled
+around it.
 
-## Overview
+== Overview
 
-The `memory_interface` module provides a standardized bridge between AXI4/AXI4-Lite bus interfaces and a generic memory interface protocol. This allows designers to easily integrate memory controllers into their systems without dealing with AXI protocol details. It is to be used along with an "Interface Shim" module that contains the CSRs and the memory interface to the memory macro, and a memory macro module. Examples of the Interface Shim and memory macro are provided in the `rtl/examples` directory. See the image below for a diagram of the components for a complete implementation of memory (note the seperation between OCH and adopter implemented components).
+`memory_interface` is the OCAH-owned half of a memory block. It takes a system AXI4
+memory port and an AXI4-Lite config port, converts the AXI4 port into a simple
+request/response memory stream, and rebases both ports from system addresses to
+block-local offsets. It contains no memory macro and no registers of its own.
 
-image::memory_macros_wrapper.png[width=600,align=center]
+Everything below it is adopter-owned: an _interface shim_ holding the CSR file and the
+translation from the memory stream to whatever the macro expects, and the _memory macro_
+itself. Together those form the memory wrapper.
 
-## Core Component: `memory_interface`
+image::doc/memory_macros_wrapper.svg[Memory macro wrapper block diagram,width=700,align=center]
 
-The `memory_interface` module is the key reusable component that provides a bridge between system bus interfaces and memory controllers. It handles protocol conversion from AXI4/AXI4-Lite to a simple memory interface, while also providing address translation and routing between CSR (register) and memory access paths. It can be used for any type of memory, not just the SRAM/ROM examples provided. It only supports word-aligned memory addresses (e.g. 0x0000, 0x0004, 0x0008, etc.).
+The bridge is memory-agnostic. The SRAM and ROM collateral here are examples, not the
+only supported shapes.
 
-### Generating the Interface
+== Directory contents
 
-The `memory_interface` module supports separate interface types for CSR (register) and memory access, with both struct and flattened signal options. You can use the `generate_ip.py` script to generate the module with the appropriate interface types.
+[cols="1,2"]
+|===
+|Path |Contents
 
-```bash
-python3 generate_ip.py --name <name> --mem-port <mem-port-type> --csr-port <csr-port-type>
-```
+|`rtl/memory_interface.sv`
+|The bridge itself.
 
-### Name Options (`--name`):
+|`rtl/examples/sram/example_sram_pkg.sv`, `rtl/examples/rom/example_rom_pkg.sv`
+|Example widths and type definitions: the memory stream structs, plus AXI4, AXI4-Lite and
+APB4 typedefs. Both set a 64-bit data width to match the SEP AXI bus.
 
-* `memory_interface` - Default name if `--name` is not specified
-* `name` - Custom name for the generated module
+|`rtl/examples/rom/generate_rom_init.py`
+|Generates a VMEM initialisation file of test patterns and seeded random data for a ROM
+example.
 
-If you specify the same name twice (or default twice), the script will add a number to the end of the name to make it unique (i.e. `memory_interface_1`).
+|`regs/sram_example/`, `regs/rom_example/`
+|Example SystemRDL for a memory, its macro CSRs, and a wrapper address map combining the
+two.
 
-### Memory Interface Options (`--mem-port`):
+|`doc/`
+|The block diagram above.
+|===
 
-* `axi4` - Struct AXI4 interface for memory access
-* `axi4-lite` - Struct AXI4-Lite interface for memory access
-* `axi4-flattened` - Flattened AXI4 signals for memory access
-* `axi4-lite-flattened` - Flattened AXI4-Lite signals for memory access
+The interface shim, the memory wrapper and the memory macro are not in this tree. An
+adopter writes them; the packages and RDL here are the reference for what they have to
+line up with.
 
+== Build integration
 
-### CSR Interface Options (`--csr-port`):
+`Bender.yml` lists `rtl/memory_interface.sv` and both example packages under the `sep`
+target, so they compile as part of that subsystem's filelist. There is no standalone
+testbench in this directory.
 
-* `axi4-lite` - Struct AXI4-Lite interface for register access
-* `apb4` - Struct APB4 interface for register access
-* `axi4-lite-flattened` - Flattened AXI4-Lite signals for register access
-* `apb4-flattened` - Flattened APB4 signals for register access
+== Ports and parameters
 
-### Example Usage:
-```bash
-# AXI4-Lite CSR with AXI4 memory
-python3 generate_ip.py --csr-port axi4-lite --mem-port axi4
+The module has one fixed port set: struct AXI4 for the memory
+port, and struct AXI4-Lite for the config port on both its inbound and outbound side.
 
-# APB4 CSR with AXI4-Lite memory
-python3 generate_ip.py --csr-port apb4 --mem-port axi4-lite
+[source,systemverilog]
+----
+input  logic            clk_i,
+input  logic            rst_ni,
 
-# Flattened interfaces
-python3 generate_ip.py --csr-port axi4-lite-flattened --mem-port axi4-flattened
-```
+// AXI4 memory port from the system
+input  mem_axi_req_t    mem_axi_req_i,
+output mem_axi_resp_t   mem_axi_resp_o,
 
-### Implementation Requirements
+// AXI4-Lite config port from the system
+input  csr_axil_req_t   csr_in_axil_req_i,
+output csr_axil_resp_t  csr_in_axil_resp_o,
 
-To use this interface, you must define all parameters in the `memory_interface.sv` module. Here are all of the possible parameters, some are not needed depending on the interface type you generate:
+// AXI4-Lite config port out to the shim's CSR file
+output csr_axil_req_t   csr_out_axil_req_o,
+input  csr_axil_resp_t  csr_out_axil_resp_i,
 
-**NOTE**: All of these parameters are defined in `example_sram_pkg.sv`/`example_rom_pkg.sv` and can be overridden as needed.
+// Memory stream out to the shim
+output mem_req_t        mem_req_o,
+input  mem_rsp_t        mem_rsp_i,
+output                  busy_o
+----
 
-```systemverilog
-// User Specified Parameters
-parameter int unsigned MEM_ADDR_WIDTH           // Memory address width
-parameter int unsigned MEM_DATA_WIDTH           // Memory data width
-parameter int unsigned MEM_ID_WIDTH             // Memory ID width
-parameter int unsigned AXI_USER_WIDTH           // AXI user width
-parameter int unsigned CSR_ADDR_WIDTH           // CSR address width
-parameter int unsigned CSR_DATA_WIDTH           // CSR data width
+`busy_o` asserts while an AXI request is in flight.
 
-// Address Decode
-parameter logic [31:0] CSR_BASE_ADDR            // CSR base address
-parameter logic [31:0] MEM_BASE_ADDR            // Memory base address
+Every parameter defaults to `0` or `logic`, so all of them have to be overridden.
 
-// Type Definitions
-// Memory Interface Types (flattened interfaces)
-parameter type mem_addr_t;                      // Memory address type
-parameter type mem_data_t;                      // Memory data type
-parameter type mem_strb_t;                      // Memory strobe type
-parameter type mem_id_t;                        // Memory ID type
-parameter type mem_user_t;                      // Memory user type
+[cols="1,1,2"]
+|===
+|Parameter |Constraint |Purpose
 
-// Memory Interface Types (struct interfaces)
-parameter type mem_req_t;                       // Memory request struct
-parameter type mem_rsp_t;                       // Memory response struct
-parameter type mem_axi_req_t;                   // AXI memory request struct
-parameter type mem_axi_resp_t;                  // AXI memory response struct
-parameter type mem_axil_req_t;                  // AXI4-Lite memory request struct
-parameter type mem_axil_resp_t;                 // AXI4-Lite memory response struct
+|`MEM_ADDR_WIDTH`
+|`<= 64`
+|Memory port address width. Must match the address fields of `mem_axi_req_t`.
 
-// CSR Interface Types (flattened interfaces)
-parameter type csr_addr_t;                      // CSR address type
-parameter type csr_data_t;                      // CSR data type
-parameter type csr_strb_t;                      // CSR strobe type
+|`MEM_DATA_WIDTH`
+|`32`, `64`, `128`, `256`, `512` or `1024`
+|Memory port data width. Must match the data and strobe fields of `mem_axi_req_t`.
 
-// CSR Interface Types (struct interfaces)
-parameter type csr_axil_req_t;                  // AXI4-Lite CSR request struct
-parameter type csr_axil_resp_t;                 // AXI4-Lite CSR response struct
-parameter type csr_apb_req_t;                   // APB4 CSR request struct
-parameter type csr_apb_resp_t;                  // APB4 CSR response struct
-```
+|`MEM_ID_WIDTH`
+|—
+|AXI ID width. Must match the `id` fields of `mem_axi_req_t` and `mem_axi_resp_t`.
 
-### Key Features
+|`mem_axi_req_t`, `mem_axi_resp_t`
+|—
+|AXI4 request/response structs, from `axi/typedef.svh`.
 
-* **Dual Interface Support**: Separate configurable interfaces for CSR (registers) and memory access
-* **Address Translation**: Automatic address parsing and translation using configurable base addresses
-  - CSR transactions: Translates from system addresses to local CSR addresses using `CSR_BASE_ADDR`
-  - Memory transactions: Translates from system addresses to local memory addresses using `MEM_BASE_ADDR`
-* **Word Aligned Addresses**: The memory interface only supports word-aligned addresses (e.g. 0x0000, 0x0004, 0x0008, etc.).
-* **Interface Validation**: Built-in assertions validate interface parameters and struct compatibility
-* **Flexible Interface Options**: Support for both struct-based and flattened signal interfaces
+|`mem_req_t`, `mem_rsp_t`
+|—
+|Memory stream structs; see <<memory-stream>>.
 
-### Built-in Parameter Validation
+|`CSR_ADDR_WIDTH`
+|`<= 64`
+|Config port address width. Must match the address fields of `csr_axil_req_t`.
 
-The `memory_interface` module includes comprehensive assertions to validate configuration parameters and ensure interface compatibility:
+|`CSR_DATA_WIDTH`
+|`32` or `64`
+|Config port data width. Must match the data and strobe fields of `csr_axil_req_t`.
 
-* **Memory Interface Validation**: Validates `MEM_ADDR_WIDTH`, `MEM_DATA_WIDTH`, and `MEM_ID_WIDTH` parameters
-* **CSR Interface Validation**: Validates `CSR_ADDR_WIDTH` and `CSR_DATA_WIDTH` parameters
-* **Type Width Checking**: Ensures typedef widths match parameter values when using flattened interfaces
-* **Protocol Constraints**: Enforces protocol-specific constraints (e.g., AXI4-Lite data width limitations)
+|`csr_axil_req_t`, `csr_axil_resp_t`
+|—
+|AXI4-Lite request/response structs. The same types serve both the inbound and the
+outbound side, so the shim's CSR file sees the system port's widths.
 
-**Warning**: There is no validation if using struct interfaces due to SystemVerilog limitations, proceed with caution if using these. This will not be an issue for flattened interfaces.
+|`MEM_BASE_ADDR`
+|Aligned to `MEM_DATA_WIDTH/8`
+|Base of the memory region in system address space.
 
-These assertions help catch configuration errors early in the design flow and ensure proper interface integration.
+|`CSR_BASE_ADDR`
+|Aligned to `CSR_DATA_WIDTH/8`
+|Base of the CSR region in system address space.
 
-## Memory Interface Protocol
+|`NUM_BANKS`
+|`1`
+|Bank count passed to `axi_to_mem`. The assertion admits `1` to `16`, but `mem_req_t` and
+`mem_rsp_t` carry a single bank's signals, so only `1` connects correctly.
+|===
 
-The `memory_interface` module outputs a simple memory interface that you connect to your SRAM controller. The interface can be provided as either structured types or flattened signals, depending on your configuration.
+== Address translation
 
-### Structured Interface Mode
+Both ports are rebased by unsigned subtraction: the memory port's `aw.addr` and `ar.addr`
+lose `MEM_BASE_ADDR`, and the config port's lose `CSR_BASE_ADDR`.
 
-#### Memory Request (`mem_req_t`)
-```systemverilog
+The module assumes the address has already been decoded to this block. It does no range
+checking and never generates an error response, so an address below its base wraps.
+Apart from that subtraction the config port is a pass-through, with
+`csr_in_axil_resp_o` driven straight from `csr_out_axil_resp_i`.
+
+[[memory-stream]]
+== Memory stream protocol
+
+`mem_req_t` and `mem_rsp_t` are supplied by the integrator; the example packages define
+them as:
+
+[source,systemverilog]
+----
 typedef struct packed {
-    logic                           req;        // Request valid
-    logic [MEM_ADDR_WIDTH-1:0]      addr;       // Memory address
-    logic [MEM_DATA_WIDTH-1:0]      wdata;      // Write data
-    logic [MEM_DATA_WIDTH/8-1:0]    strb;       // Byte strobe
-    axi_pkg::atop_t                 atop;       // Atomic operation type
-    logic                           wenable;    // Write enable
+  logic           req;      // Request valid
+  mem_addr_t      addr;     // Byte address, aligned to MEM_DATA_WIDTH/8
+  mem_data_t      wdata;    // Write data
+  mem_strb_t      strb;     // Byte strobe
+  axi_pkg::atop_t atop;     // Atomic operation type
+  logic           wenable;  // Write enable
 } mem_req_t;
-```
 
-#### Memory Response (`mem_rsp_t`)
-```systemverilog
 typedef struct packed {
-    logic                           gnt;        // Grant (memory isready to accept)
-    logic                           rvalid;     // Response data valid (read or write)
-    logic [MEM_DATA_WIDTH-1:0]      rdata;      // Read data
+  logic           gnt;      // Memory is ready to accept the request
+  logic           rvalid;   // Response valid
+  mem_data_t      rdata;    // Response data
 } mem_rsp_t;
-```
+----
 
-### Flattened Interface Mode
+Three constraints the shim has to respect:
 
-When using flattened interfaces, the memory signals are provided as individual ports to the memory interface shim:
+* `addr` is a *byte* address with its low `$clog2(MEM_DATA_WIDTH/8)` bits cleared. A macro
+  indexed by words needs the shim to shift it right by that amount.
+* `rvalid` is expected for *every* request, write as well as read, so the shim has to
+  acknowledge writes too. `rdata` is response data rather than read data for the same
+  reason.
+* The `axi_to_mem` instance fixes `BufDepth` at `1`, which upstream documents as the
+  memory's response latency. A macro that answers later than one cycle after the grant
+  needs that value raised.
 
-```systemverilog
-// Memory Request Signals
-input   logic                    mem_req_i;      // Request valid
-input   mem_addr_t               mem_addr_i;     // Memory address
-input   mem_data_t               mem_wdata_i;    // Write data
-input   mem_strb_t               mem_strb_i;     // Byte strobe
-input   axi_pkg::atop_t          mem_atop_i;     // Atomic operation type
-input   logic                    mem_wenable_i;  // Write enable
+== Parameter validation
 
-// Memory Response Signals
-output  logic                    mem_gnt_o;      // Grant (memory is ready to accept)
-output  logic                    mem_rvalid_o;   // Response data valid (read or write)
-output  mem_data_t               mem_rdata_o;    // Read data
-```
+Parameter ranges and base address alignment are checked with `OCAH_ASSERT_INIT`. The
+struct field widths are checked separately, by `$bits()` comparisons in `initial` blocks —
+so a mismatch between a parameter and the struct it describes is caught at time zero in
+simulation, but not by lint or synthesis.
 
-## Example Implementation
+== Register examples
 
-There are two examples provided in the `rtl/examples` directory:
-- `rtl/examples/sram` - Shows integration with SRAM macro and CSRs
-- `rtl/examples/rom` - Shows integration with ROM macro and CSRs
+The RDL under `regs/` is a specification sketch, not generated collateral. It sits in
+`regs/<example>/` rather than `regs/<block>.rdl`, so the repo's register flow does not
+discover it and `make regen-regs` emits nothing for this block. Copy it into your own
+block's `regs/` tree to generate from it, or ignore it and describe your registers however
+your flow prefers.
 
-These directories include example templates and register definitions that show how to use `memory_interface`. Both of these examples use memory macros that support word-aligned addresses (e.g. 0x0000, 0x0001, 0x0002, etc.), so the interface shim translates the word-aligned addresses from the memory interface to the byte-aligned addresses for the memory macro. This is vital for the memory interface to work correctly.
+Each example is three files: the memory itself (`mem`, defaulting to 1024 entries of
+32 bits), a macro CSR map (a status register with maskable level interrupts for busy,
+error and alert, plus a scratch register), and a wrapper address map placing the memory at
+offset `0x0` and the CSRs at `0x2000`.
 
-**Note**: The RDL (Register Description Language) files are provided as examples for register generation, but you don't have to use RDL - you can define your registers using any method that suits your design flow.
+== ROM initialisation
 
-**These are templates and examples only** - customize them for your specific implementation. The SRAM macro, interface shim, and register definitions should be adapted to match your actual hardware requirements.
+`generate_rom_init.py` writes a VMEM file to seed a ROM example:
 
-### SRAM Example
+[source,bash]
+----
+python3 rtl/examples/rom/generate_rom_init.py [output_file] \
+    [--entries N] [--width W] [--seed S]
+----
 
-#### SystemVerilog Templates
-- `rtl/examples/sram/templates/example_sram_wrapper.sv.tpl` - Shows integration with SRAM macro and CSRs
-- `rtl/examples/sram/templates/example_sram_interface_shim.sv.tpl` - Shows CSR integration and memory interface handling, translates word-aligned addresses to byte-aligned addresses for the SRAM macro
-- `rtl/examples/sram/example_sram_pkg.sv` - Shows package definitions needed for AXI, AXI4-Lite, and APB4 interfaces
-
-#### Register Definitions (Optional)
-- `regs/sram_example/example_sram_macro_csr.rdl` - CSR register descriptions
-- `regs/sram_example/example_sram_wrap.rdl` - Wrapper register descriptions
-- `regs/sram_example/example_sram.rdl` - SRAM register descriptions
-
-#### Testbench
-- `tb_sram/templates/tb_sram.sv.tpl` - SystemVerilog testbench template
-- `tb_sram/templates/tb_sram.py.tpl` - Python test suite template (basic read/write operations and CSR read/write operations)
-
-### ROM Example
-
-The ROM example demonstrates how to integrate read-only memory with the memory interface. Unlike SRAM, ROM only supports read operations and requires its contents to be initialized at simulation time.
-
-#### SystemVerilog Templates
-- `rtl/examples/rom/templates/example_rom_wrapper.sv.tpl` - Shows integration with ROM macro and CSRs
-- `rtl/examples/rom/templates/example_rom_interface_shim.sv.tpl` - Shows CSR integration and memory interface handling, translates word-aligned addresses to byte-aligned addresses for the ROM macro
-- `rtl/examples/rom/example_rom_pkg.sv` - Shows package definitions needed for AXI, AXI4-Lite, and APB4 interfaces
-- `rtl/examples/rom/generate_rom_init.py` - ROM initialization script for generating ROM content (Only works with VCS, not Verilator, this limitation is built into the python testbench)
-
-#### Register Definitions (Optional)
-- `regs/rom_example/example_rom_macro_csr.rdl` - CSR register descriptions
-- `regs/rom_example/example_rom_wrap.rdl` - Wrapper register descriptions
-- `regs/rom_example/example_rom.rdl` - ROM register descriptions
-
-#### Testbench
-- `tb_rom/templates/tb_rom.sv.tpl` - SystemVerilog testbench template
-- `tb_rom/templates/tb_rom.py.tpl` - Python test suite template (basic read operations and CSR read/write operations)
-
-## Quick Setup Guide
-
-### Prerequisites Setup
-```bash
-# Load the environment setup
-source bin/setup_env.sh  # from OCAH repository root
-
-# Navigate to SRAM peripheral directory
-cd hw/ip/memory_interface
-```
-
-### Generating and Testing
-
-```bash
-# Generate the IP first (required before testing)
-python3 generate_ip.py --csr-port axi4-lite --mem-port axi4
-
-# Navigate to testbench directory
-cd tb_sram
-# or
-cd tb_rom
-
-# Clean build
-make clean
-
-# Run all tests
-make
-
-# Run with specific simulator
-make SIM=vcs
-
-# Run a specific test
-make TESTCASE=reset_and_init_test
-
-# Run with waveform generation
-make SIM=vcs WAVES=1
-```
-
-## File Structure
-
-```
-hw/periph/memory_interface/
-├── README.adoc                                    # This documentation
-├── memory_macros_wrapper.png                      # Diagram of the components
-├── generate_ip.py                                 # IP generation script
-├── test_all_combinations.sh                       # Test script for all interface combinations
-├── regs/                                          # Register definitions; collateral
-│   │                                              # comes from `make -f ocah.mk ocah-regen-regs`
-│   ├── sram_example/                              # SRAM example register definitions
-│   │   ├── example_sram_macro_csr.rdl             # CSR register descriptions
-│   │   ├── example_sram_wrap.rdl                  # Wrapper register descriptions
-│   │   └── example_sram.rdl                       # SRAM register descriptions
-│   └── rom_example/                               # ROM example register definitions
-│       ├── example_rom_macro_csr.rdl              # CSR register descriptions
-│       ├── example_rom_wrap.rdl                   # Wrapper register descriptions
-│       └── example_rom.rdl                        # ROM register descriptions
-├── rtl/
-│   ├── templates/
-│   │   └── memory_interface.sv.tpl                # Template for interface generation
-│   └── examples/
-│       ├── sram/                                  # SRAM example implementation
-│       │   ├── example_sram_pkg.sv                # Package definitions for AXI/APB interfaces
-│       │   └── templates/
-│       │       ├── example_sram_wrapper.sv.tpl    # Top-level wrapper template
-│       │       └── example_sram_interface_shim.sv.tpl  # CSR and interface controller template
-│       └── rom/                                   # ROM example implementation
-│           ├── example_rom_pkg.sv                 # Package definitions for AXI/APB interfaces
-│           ├── generate_rom_init.py               # ROM initialization script
-│           └── templates/
-│               ├── example_rom_wrapper.sv.tpl     # Top-level wrapper template
-│               └── example_rom_interface_shim.sv.tpl  # CSR and interface controller template
-├── tb_sram/                                       # SRAM testbench
-│   ├── Makefile                                   # Build system
-│   ├── novas_dump.log                             # Simulation log file
-│   ├── results.xml                                # Test results file
-│   └── templates/
-│       ├── tb_sram.sv.tpl                         # SystemVerilog testbench template
-│       └── tb_sram.py.tpl                         # Python test cases template
-└── tb_rom/                                        # ROM testbench
-    ├── Makefile                                   # Build system
-    ├── novas_dump.log                             # Simulation log file
-    ├── results.xml                                # Test results file
-    └── templates/
-        ├── tb_rom.sv.tpl                          # SystemVerilog testbench template
-        └── tb_rom.py.tpl                          # Python test cases template
-```
+It defaults to `example_rom_init.vmem`, 1024 entries of 32 bits, and seed 42. The output
+is known patterns at the start, seeded random data through the middle, and end markers at
+the top of the range, so it is reproducible for a given seed.

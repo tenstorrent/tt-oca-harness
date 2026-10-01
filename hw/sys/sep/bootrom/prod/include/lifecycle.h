@@ -7,13 +7,17 @@
 // set, and provides helpers for secure boot enforcement and manifest
 // usage constraints validation.
 //
+// Also owns the SBOOT_DIS chicken bit, the device's other secure-boot posture
+// input, so that both halves of that posture are read and decided in one place.
+//
 // RTL reference: hw/sys/sep/rtl/sep_lifecycle_ctrl.sv
 // Registers:
 //   FEAT_CTRL  @ 0x10918000 (64-bit, read-only)
 //   DEMOTE_1   @ 0x10918008 (demote[0] + lock[1])
 //   DEMOTE_2   @ 0x10918010 (demote[0] + lock[1])
 // Efuse:
-//   LC_STATE   @ 0x10930008 (8-bit field; low 4 bits = raw LC state)
+//   LC_STATE   @ 0x1093000C (8-bit field; low 4 bits = raw LC state)
+//   SBOOT_DIS  @ 0x10930010 (disable_secure_boot[0] + rsvd[31:1])
 
 #pragma once
 
@@ -52,10 +56,6 @@ bool lc_state_enforces_secure_boot(uint32_t lc_state);
 // Check if the given LC state is an RMA state (SiP or Chiplet).
 bool lc_state_is_rma(uint32_t lc_state);
 
-// Map a decoded LC state to the corresponding manifest usage_constraints
-// life_cycle_states bit position.  Returns -1 if no mapping.
-int lc_state_to_manifest_bit(uint32_t lc_state);
-
 // Read FEAT_CTRL from the lifecycle controller (64-bit).
 // Returns the low 32 bits; *hi receives the high 32 bits.
 uint32_t lc_read_feat_ctrl(uint32_t *hi);
@@ -72,3 +72,21 @@ void lc_write_demotion_2(bool demote, bool lock);
 // Returns the decoded LC state on success.
 // Calls rom_err_fail() on invalid state (does not return).
 uint32_t rom_lifecycle_policy(void);
+
+// ---------------------------------------------------------------------------
+// Secure-boot chicken bit (SBOOT_DIS)
+// ---------------------------------------------------------------------------
+
+// Full SBOOT_DIS policy ([S18]): one read of the shadow, masked to
+// disable_secure_boot, validated, reported, recorded in bl0_state, and latched
+// for sboot_dis_disabled().
+// Calls rom_err_fail() when a reserved bit is set (does not return).
+void rom_sboot_dis_policy(void);
+
+// The chicken-bit value latched by rom_sboot_dis_policy().
+//
+// Every consumer of the secure-boot posture reads this rather than the shadow,
+// so the policy input, bl0_state and the boot measurement agree on both which
+// bit matters and when it was sampled. Reads false until [S18] runs, and false
+// enforces secure boot.
+bool sboot_dis_disabled(void);

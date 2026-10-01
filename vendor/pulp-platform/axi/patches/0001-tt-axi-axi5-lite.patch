@@ -1,5 +1,3 @@
-diff --git a/include/axi/assign.svh b/include/axi/assign.svh
-index 927ee67..20a62b2 100644
 --- a/include/axi/assign.svh
 +++ b/include/axi/assign.svh
 @@ -538,6 +538,95 @@
@@ -98,13 +96,11 @@ index 927ee67..20a62b2 100644
  ////////////////////////////////////////////////////////////////////////////////////////////////////
  // Macros for assigning flattened AXI ports to req/resp AXI structs
  // Flat AXI ports are required by the Vivado IP Integrator. Vivado naming convention is followed.
-diff --git a/include/axi/typedef.svh b/include/axi/typedef.svh
-index 648c3fe..32f729d 100644
 --- a/include/axi/typedef.svh
 +++ b/include/axi/typedef.svh
-@@ -242,4 +242,127 @@
+@@ -270,4 +270,127 @@
+   `AXI_LITE_TYPEDEF_ALL_CT(__name, __name``_req_t, __name``_resp_t, __addr_t, __data_t, __strb_t)
  ////////////////////////////////////////////////////////////////////////////////////////////////////
- 
  
 +
 +////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -230,9 +226,6 @@ index 648c3fe..32f729d 100644
 +////////////////////////////////////////////////////////////////////////////////////////////////////
 +
  `endif
-diff --git a/src/axi5_lite_demux.sv b/src/axi5_lite_demux.sv
-new file mode 100644
-index 0000000..b4f37a9
 --- /dev/null
 +++ b/src/axi5_lite_demux.sv
 @@ -0,0 +1,631 @@
@@ -867,9 +860,6 @@ index 0000000..b4f37a9
 +  `endif
 +  // pragma translate_on
 +endmodule
-diff --git a/src/axi5_lite_demux_brcst.sv b/src/axi5_lite_demux_brcst.sv
-new file mode 100644
-index 0000000..f7d965f
 --- /dev/null
 +++ b/src/axi5_lite_demux_brcst.sv
 @@ -0,0 +1,828 @@
@@ -1701,9 +1691,6 @@ index 0000000..f7d965f
 +  `endif
 +  // pragma translate_on
 +endmodule
-diff --git a/src/axi5_lite_mux.sv b/src/axi5_lite_mux.sv
-new file mode 100644
-index 0000000..c44ccb6
 --- /dev/null
 +++ b/src/axi5_lite_mux.sv
 @@ -0,0 +1,585 @@
@@ -2292,9 +2279,6 @@ index 0000000..c44ccb6
 +  `endif
 +  // pragma translate_on
 +endmodule
-diff --git a/src/axi5_lite_mux_brcst.sv b/src/axi5_lite_mux_brcst.sv
-new file mode 100644
-index 0000000..4bfec1d
 --- /dev/null
 +++ b/src/axi5_lite_mux_brcst.sv
 @@ -0,0 +1,607 @@
@@ -2905,9 +2889,6 @@ index 0000000..4bfec1d
 +  `endif
 +  // pragma translate_on
 +endmodule
-diff --git a/src/axi5_lite_to_axi5.sv b/src/axi5_lite_to_axi5.sv
-new file mode 100644
-index 0000000..2bc3689
 --- /dev/null
 +++ b/src/axi5_lite_to_axi5.sv
 @@ -0,0 +1,164 @@
@@ -3075,9 +3056,6 @@ index 0000000..2bc3689
 +  assign out.r_ready   = in.r_ready;
 +
 +endmodule
-diff --git a/src/axi5_lite_xbar.sv b/src/axi5_lite_xbar.sv
-new file mode 100644
-index 0000000..1c671cf
 --- /dev/null
 +++ b/src/axi5_lite_xbar.sv
 @@ -0,0 +1,288 @@
@@ -3369,9 +3347,6 @@ index 0000000..1c671cf
 +    );
 +  end
 +endmodule
-diff --git a/src/axi5_lite_xbar_brcst.sv b/src/axi5_lite_xbar_brcst.sv
-new file mode 100644
-index 0000000..474b324
 --- /dev/null
 +++ b/src/axi5_lite_xbar_brcst.sv
 @@ -0,0 +1,304 @@

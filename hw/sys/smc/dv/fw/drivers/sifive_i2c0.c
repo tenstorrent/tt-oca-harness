@@ -57,9 +57,9 @@
 #define METAL_I2C_LOG(x)
 #endif
 
-/* Check endianess */
+/* Check endianness */
 #if __BYTE_ORDER__ != __ORDER_LITTLE_ENDIAN__
-#error *** Unsupported endianess ***
+#error *** Unsupported endianness ***
 #endif
 
 #define METAL_SIFIVE_I2C_INSERT_STOP(stop_flag) ((stop_flag & 0x01UL) << 6)

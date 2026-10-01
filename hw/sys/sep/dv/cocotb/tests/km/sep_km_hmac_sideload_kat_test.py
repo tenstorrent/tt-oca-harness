@@ -8,36 +8,49 @@ then CMD_KEY_TRANSFERs it to the OpenTitan HMAC engine. The host runs a keyed
 HMAC-SHA256 over a fixed message with the sideloaded key and proves HMAC consumed
 exactly that key: the engine digest equals an independent HMAC-SHA256 golden
 (env/sep_hmac_golden.py, Python stdlib hmac/hashlib, RFC 4231 self-tested) of the
-known key. There is deliberately no decoy-key comparison: it would be entailed by
-that equality, since both goldens are pure functions of file-scope constants.
+known key.
 
 HMAC has NO CFG sideload bit and KEY_VALID is set on the KM's private key bus
-(the host cannot clear it), so the AES-style sideload-vs-SW-key cross-check is
-impossible -- the consume-proof IS the digest-vs-golden compare (this is how reference suite
-does it too). This OSS port is a FRONTDOOR known-key variant, STRONGER than the reference suite:
+(the host cannot clear it), so the AES-style run of the same operation once with
+the SW key and once with the sideload key is not possible. The decoy leg takes
+its place: after the sideload, the host writes a seeded software decoy key to
+the public KEY CSRs, then runs the keyed MAC. The digest must equal the golden
+of the KM key and differ from the golden of the decoy, so an engine that takes
+the CSR key over the sideloaded key fails. This port is a FRONTDOOR known-key
+variant:
 the reference suite generates a random key, reconstructs it by a read-only backdoor of the
 wrapper shares, then SEARCHES 8 byte/word representations for the one that
 reproduces the engine digest; here the key is known a priori and the digest is
-checked directly against the golden under the RTL-pinned convention
-(key_word_rev=1, key_be=1, msg_be=0 -- the structural contract reference suite confirmed),
+checked directly against the golden under key_word_rev=1, key_be=1,
+msg_be=0,
 so a truncated/word-swapped/wrong-key sideload changes the digest and fails.
 
 VPLAN-parity checkers:
   CHK0      boot KM on real DRBG -> RESP_KM_READY
   CHK-A     CMD_KEY_LOAD known key (frontdoor; wrapper shares are write-only)
   CHK-ISO   key-bus isolation by SW_RESET_N read-back: only HMAC of the four
-            sideload targets released; AES/KMAC/OTBN parked
+            non-ABR sideload engines released; AES/KMAC/OTBN parked
   CHK-B     CMD_KEY_TRANSFER rc=0 to HMAC
-  CHK-PUB   HMAC public KEY CSRs read back zero after the sideload (SepHmac.read_public_key)
+  PUB-OBS   HMAC public KEY CSRs read back zero after the sideload. NOT a checker:
+            hmac.hjson declares KEY swaccess=wo, so the read returns zero whether the
+            key is protected, mirrored elsewhere, or never delivered. CHK-SIDE and
+            CHK-MAC carry the key-protection evidence that can fail.
+  CHK-DECOY engine keyed digest != HMAC-SHA256(decoy_key, msg) golden, where the
+            decoy is a seeded SW key written to the public KEY CSRs after the
+            sideload and before the MAC (the engine did not use the CSR key)
   CHK-MAC   engine keyed digest == HMAC-SHA256(known_key, msg) golden (consume-proof)
   CHK-RW1C  HMAC done event W1C-clears (INTR_STATE.hmac_done -> 0)
   CHK-ERR   HMAC ERR_CODE == 0 and INTR_STATE.hmac_err == 0
   CHK1..CHK4 strict DRBG golden + CHK5_km observed (the KM boot/load consumer);
             HMAC is not an EDN consumer, so no crypto EDN sink is scored.
+  CHK5      the KM draws real entropy beats while the key is staged: the
+            CHK5_km beat count taken just before CMD_KEY_LOAD is lower than
+            the count taken after the CMD_KEY_TRANSFER response
 
-Accepted scope deltas vs the reference suite (documented; no silent skips):
-  * known-key golden value-compare under the RTL-pinned convention (proves the
-    exact key flowed). The HMAC-wrapper-internal SHARE0 *mask* non-degeneracy is
+Scope deltas vs the reference suite:
+  * known-key golden value-compare under key_word_rev=1 / key_be=1
+    (proves the exact key flowed). The HMAC-wrapper-internal SHARE0 *mask*
+    non-degeneracy is
     out of frontdoor scope (covered frontdoor by the OTBN KAT's CHK-F, as for the
     AES sideload KAT).
   * key-bus isolation uses SW_RESET_N read-back (no OSS frontdoor analog of the reference suite's
@@ -52,23 +65,35 @@ transfer (like OTBN), keeping the EDN stream dedicated to the KM.
 from __future__ import annotations
 
 import pyuvm
-
-from sep_base_test import sep_base_test
 from env.sep_hmac_golden import hmac_sha256_words
+from env.sep_seeded_rng import SepSeededRng
+from sep_base_test import sep_base_test
 from seq_lib.sep_hmac_seq import SepHmac
-from seq_lib.sep_km_mailbox_seq import SepKmMailbox, KM_DEST_HMAC
+from seq_lib.sep_km_mailbox_seq import KM_DEST_HMAC, SepKmMailbox
 from seq_lib.sep_sw_reset_seq import SW_RESET_N_BIT
 
 # Known 256-bit KAT key: 8 DISTINCT 32-bit words (non-degenerate by construction).
 KAT_KEY = (
-    0xDEADBEEF, 0x00112233, 0x44556677, 0x8899AABB,
-    0xCCDDEEFF, 0x01234567, 0x89ABCDEF, 0xFEDCBA98,
+    0xDEADBEEF,
+    0x00112233,
+    0x44556677,
+    0x8899AABB,
+    0xCCDDEEFF,
+    0x01234567,
+    0x89ABCDEF,
+    0xFEDCBA98,
 )
 
 # Fixed message (reference HMAC_MSG): bytes 0x00..0x1f as 8 little-endian words.
 HMAC_MSG = (
-    0x00010203, 0x04050607, 0x08090A0B, 0x0C0D0E0F,
-    0x10111213, 0x14151617, 0x18191A1B, 0x1C1D1E1F,
+    0x00010203,
+    0x04050607,
+    0x08090A0B,
+    0x0C0D0E0F,
+    0x10111213,
+    0x14151617,
+    0x18191A1B,
+    0x1C1D1E1F,
 )
 
 
@@ -85,7 +110,8 @@ class sep_km_hmac_sideload_kat_test(sep_base_test):
         self.km = SepKmMailbox(self)
         self.hmac = SepHmac(self)
 
-        # All four sideload targets JTAG-held across rst_ni release, then parked in SW_RESET_N. HMAC is not an EDN
+        # The four non-ABR sideload engines (OTBN, AES, HMAC, KMAC) are JTAG-held
+        # across rst_ni release, then parked in SW_RESET_N. HMAC is not an EDN
         # consumer; it stays parked through boot/load and is released only
         # before the transfer.
 
@@ -102,7 +128,11 @@ class sep_km_hmac_sideload_kat_test(sep_base_test):
         self.logger.info("CHK0 KM firmware boot PASS: RESP_KM_READY over the mailbox")
 
         # --- Frontdoor consume-proof: load known key -> transfer -> keyed MAC ---
-        # CHK-A: provision the KNOWN key into a KPV handle (no backdoor needed).
+        # CHK5 window opens here: KM entropy beats counted from CMD_KEY_LOAD
+        # to the CMD_KEY_TRANSFER response, not over the whole run.
+        km_beats_at_load = self.drbg_sb.km_beats()
+
+        # CHK-A: provision the KNOWN key into a KPV handle over the frontdoor.
         handle = await self.km.key_load(key_words=list(KAT_KEY), dest=KM_DEST_HMAC)
         self.logger.info("CHK-A CMD_KEY_LOAD PASS: known key staged, handle=0x%02x", handle)
 
@@ -111,28 +141,53 @@ class sep_km_hmac_sideload_kat_test(sep_base_test):
         # never lands. (reference releases HMAC right after keygen, before the transfer.)
         await self.swrst.release("hmac")
 
-        # CHK-ISO: only HMAC (of the four sideload targets) is released; AES/KMAC/OTBN
+        # CHK-ISO: only HMAC (of the four non-ABR sideload engines) is released; AES/KMAC/OTBN
         # stay parked and cannot receive the key.
         rst = await self.swrst.read_back()
-        parked = (1 << SW_RESET_N_BIT["aes"]) | (1 << SW_RESET_N_BIT["kmac"]) \
+        parked = (
+            (1 << SW_RESET_N_BIT["aes"])
+            | (1 << SW_RESET_N_BIT["kmac"])
             | (1 << SW_RESET_N_BIT["otbn"])
-        assert (rst & parked) == 0, \
+        )
+        assert (rst & parked) == 0, (
             f"key-bus isolation: AES/KMAC/OTBN not parked (SW_RESET_N=0x{rst:08x})"
-        assert rst & (1 << SW_RESET_N_BIT["hmac"]), \
+        )
+        assert rst & (1 << SW_RESET_N_BIT["hmac"]), (
             f"HMAC not released for the transfer (SW_RESET_N=0x{rst:08x})"
+        )
         self.logger.info(
-            "CHK-ISO key-bus isolation PASS: only KM+HMAC released, AES/KMAC/OTBN "
-            "parked (SW_RESET_N=0x%02x)", rst)
+            "CHK-ISO key-bus isolation PASS: only KM+HMAC released, "
+            "AES/KMAC/OTBN parked (SW_RESET_N=0x%02x)",
+            rst,
+        )
 
         # CHK-B: sideload the handle's key to the HMAC wrapper KEY CSRs.
-        rc = await self.km.key_transfer(handle=handle, dest=KM_DEST_HMAC)
+        rc, _ = await self.km.key_transfer(handle=handle, dest=KM_DEST_HMAC)
         assert rc == 0, f"CMD_KEY_TRANSFER returned rc={rc} (expected 0)"
         self.logger.info("CHK-B CMD_KEY_TRANSFER PASS: rc=0 (key sideloaded to HMAC)")
 
-        # CHK-PUB: the sideloaded key is NOT exposed on the public KEY CSRs.
+        km_beats_at_xfer = self.drbg_sb.km_beats()
+        staged_beats = km_beats_at_xfer - km_beats_at_load
+        assert staged_beats > 0, (
+            f"CHK5 FAIL: no KM entropy beats while the key was staged "
+            f"(CHK5_km count {km_beats_at_load} at CMD_KEY_LOAD, "
+            f"{km_beats_at_xfer} after CMD_KEY_TRANSFER)"
+        )
+        self.logger.info(
+            "CHK5 PASS: KM drew %d real entropy beats while the key was staged "
+            "(CHK5_km count %d at CMD_KEY_LOAD -> %d after CMD_KEY_TRANSFER)",
+            staged_beats,
+            km_beats_at_load,
+            km_beats_at_xfer,
+        )
+
+        # PUB-OBSERVATION: the public KEY CSRs read zero. Logged, not scored --
+        # hmac.hjson declares them swaccess=wo, so "reads zero" holds on any RTL.
+        # The falsifiable half is the positive control below: a dead read path, or
+        # these registers becoming readable and leaking, still fails.
         pub, ctl_pub = await self.hmac.read_public_key()
         assert ctl_pub != 0, (
-            "CHK-PUB positive control failed: HMAC STATUS read back 0 over the same "
+            "PUB-OBSERVATION positive control failed: HMAC STATUS read back 0 over the same "
             "frontdoor, so the all-zero KEY reads prove nothing about the key"
         )
         assert all(w == 0 for w in pub), (
@@ -140,20 +195,68 @@ class sep_km_hmac_sideload_kat_test(sep_base_test):
             f"{[hex(w) for w in pub if w]}"
         )
         self.logger.info(
-            "CHK-PUB HMAC public KEY frontdoor reads zero after sideload "
-            "(read path alive: STATUS=%#010x)", ctl_pub)
+            "PUB-OBSERVATION HMAC public KEY frontdoor reads zero after sideload. "
+            "Not scored: hmac.hjson declares KEY swaccess=wo, so this read cannot "
+            "fail. Read path alive: STATUS=%#010x",
+            ctl_pub,
+        )
 
-        # CHK-MAC: keyed HMAC-SHA256 with the SIDELOAD key, value-checked vs golden.
+        # Decoy leg: write a seeded SW key to the public KEY CSRs after the
+        # sideload. Each decoy word differs from the KM key word at the same
+        # index. The write must return OKAY (SepHmac.write_key raises otherwise).
+        seed = self.random_seed()
+        rng = SepSeededRng(seed)
+        decoy = []
+        for kat_word in KAT_KEY:
+            word = rng.getrandbits(32)
+            while word == kat_word:
+                word = rng.getrandbits(32)
+            decoy.append(word)
+        await self.hmac.write_key(decoy)
+        self.logger.info(
+            "decoy SW key written to HMAC KEY_0..KEY_7 (seed=%d): %s",
+            seed,
+            [hex(w) for w in decoy],
+        )
+
+        # Keyed HMAC-SHA256 with the SIDELOAD key live and the decoy in the CSRs.
         await self.hmac.configure_keyed_256()
         digest = await self.hmac.run_keyed_mac(list(HMAC_MSG))  # CHK-RW1C inside
         golden = hmac_sha256_words(list(KAT_KEY), list(HMAC_MSG))
+        # Decoy goldens under both key byte conventions: the SW-key register
+        # convention (KEY_0 first, big-endian per word; SepHmacCfg defaults) and
+        # the sideload convention the KM key golden uses.
+        decoy_goldens = {
+            "sw_key": hmac_sha256_words(decoy, list(HMAC_MSG), key_word_rev=False, key_be=True),
+            "sideload": hmac_sha256_words(decoy, list(HMAC_MSG)),
+        }
+        assert all(g != golden for g in decoy_goldens.values()), (
+            "decoy golden equals the KM key golden; the decoy cannot separate the keys"
+        )
+
+        # CHK-DECOY: the engine did not consume the CSR decoy key.
+        used = [name for name, g in decoy_goldens.items() if digest == g]
+        assert not used, (
+            "CHK-DECOY FAIL: HMAC digest == HMAC-SHA256(decoy_key, msg) golden "
+            f"({', '.join(used)} convention) -- the engine used the public KEY CSRs, "
+            "not the KM-sideloaded key:\n"
+            f"  digest={[hex(w) for w in digest]}"
+        )
+        self.logger.info(
+            "CHK-DECOY PASS: digest differs from HMAC-SHA256(decoy_key, msg) under "
+            "the SW-key and sideload conventions"
+        )
+
+        # CHK-MAC: the digest is the golden of the KM-sideloaded key.
         assert digest == golden, (
             "HMAC sideload digest != HMAC-SHA256(known_key, msg) golden -- HMAC did "
             "not consume the exact KM-delivered key:\n"
             f"  digest={[hex(w) for w in digest]}\n"
             f"  golden={[hex(w) for w in golden]}"
         )
-        self.logger.info("CHK-MAC KM->HMAC sideload KAT PASS: digest == HMAC-SHA256(known_key, msg) golden")
+        self.logger.info(
+            "CHK-MAC KM->HMAC sideload KAT PASS: digest == HMAC-SHA256(known_key, msg) golden"
+        )
         self.logger.info("CHK-RW1C PASS: HMAC done event W1C-cleared (in run_keyed_mac)")
 
         # CHK-ERR: HMAC raised no error across the keyed op.

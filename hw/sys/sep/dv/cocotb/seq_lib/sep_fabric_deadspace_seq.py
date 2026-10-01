@@ -4,7 +4,9 @@
 
 Each block owns a memory-map window and populates only ``REG_MAP_SIZE``
 of it. An access past that allocated size owns no register and must be
-refused -- DECERR or SLVERR, the specification does not mandate which.
+refused -- DECERR or SLVERR. This walk grades refusal only; the past-extent
+code ``sep.rdl`` states per block (``ocah_resp``) is graded by
+``sep_unmapped_access_policy_test`` at the points that test probes.
 Truncating the address, wrapping it onto a live register and answering
 OKAY is what this sequence exists to catch.
 
@@ -18,6 +20,16 @@ Windows cover CSR apertures whose memory-map window is larger than
 lifecycle, SPI). HMAC/KMAC fill their map window so they have no
 intra-window dead span here. Remap / filter arrays and scratch are
 owned elsewhere for live programming.
+
+The TRNG window is forwarded whole to an adopter endpoint on
+``ext_trng_axil``; SEP allocates no register in it. With no external TRNG
+connected, as in the reference integration, no offset owns a register, and
+both ``hw/sys/sep/doc/memory_map.adoc`` (SLVERR for an offset that owns no
+register) and ``doc/integrator/src/smu.adoc`` (a DECERR slave when no TRNG is
+connected) require the access to be refused. The two documents name
+different flavours, so the flavour is reported per probe and not graded.
+Its alias targets are the neighbouring ESRC registers, which an access
+that drops address bit 12 reaches.
 
 Known wrap offsets that alias onto live registers stay in the probe set
 every seed. The seed adds further dead offsets. Do not shrink the set to
@@ -39,6 +51,7 @@ from sep_reg_meta import (
     reg_write_destructive,
     sym,
 )
+
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_irq_aggregator_seq import CSRNG_BASE, EDN_BASE
 
@@ -53,8 +66,16 @@ RESP_DECERR = 3
 # the pointer advances, FIFO_STATUS.LEVEL drops, and an empty FIFO raises
 # INTR_STATUS.FIFO_UNDERFLOW into whatever test runs next.
 _WATCH_SKIP_SUFFIX = (
-    "INTR_TEST", "ALERT_TEST", "TXDATA", "RXDATA", "WRITE_DATA",
-    "READ_DATA", "RDATA", "GENBITS", "CMD", "CMD_REQ",
+    "INTR_TEST",
+    "ALERT_TEST",
+    "TXDATA",
+    "RXDATA",
+    "WRITE_DATA",
+    "READ_DATA",
+    "RDATA",
+    "GENBITS",
+    "CMD",
+    "CMD_REQ",
 )
 
 
@@ -69,8 +90,8 @@ class DeadWindow:
     watch: tuple[int, ...]
     write_ok: bool = True
     # Watched addresses hardware may change on its own (sep_reg_meta.reg_hw_updating,
-    # the same source the bit-bash reset walk uses). Excluded from the write-probe
-    # store compare -- see probe(). They stay in the snapshot for the read-alias
+    # the same source the bit-bash reset walk uses). Excluded from the per-probe
+    # change compare -- see probe(). They stay in the snapshot for the read-alias
     # compare, which does not care that they move.
     hw_updating: frozenset[int] = frozenset()
     # Watched addresses a sampled value cannot be written back to (woclr/woset).
@@ -78,13 +99,18 @@ class DeadWindow:
     # CLEARED in the DUT, so the "restore" destroys the live status it claims to
     # put back.
     #
-    # LIMITATION: populated for entropy_src only. Its leaf Python header opts into
-    # generated field-access metadata. The other nine windows still need that
-    # metadata enabled and wired here; until then, W1C registers such as
-    # spi_controller ERROR_STATUS and km_mailbox status_reg / irq_status_reg are
-    # written back by restore(). restore() runs only after a probe already failed,
+    # Populated for entropy_src only, the one leaf whose Python header carries
+    # generated field-access metadata. For the other nine windows restore() writes
+    # back W1C registers such as spi_controller ERROR_STATUS and km_mailbox
+    # status_reg / irq_status_reg. restore() runs only after a probe has failed,
     # so the corruption is confined to a run that is already reporting failure.
     write_destructive: frozenset[int] = frozenset()
+    # The window is forwarded whole to an adopter endpoint and allocates no SEP
+    # register. ``watch`` then holds the neighbouring registers an aliasing
+    # access reaches, named by ``watch_from``, and the caller reports the
+    # refusal flavour of every probe.
+    adopter: bool = False
+    watch_from: str = ""
 
     @property
     def dead_lo(self) -> int:
@@ -101,7 +127,8 @@ def _watch_skip(name: str) -> bool:
 
 def _sep_watch(base: int, alloc: int) -> tuple[int, ...]:
     addrs = [
-        addr for _block, name, addr in iter_addrs()
+        addr
+        for _block, name, addr in iter_addrs()
         if base <= addr < base + alloc and not _watch_skip(name)
     ]
     return tuple(sorted(set(addrs)))
@@ -109,8 +136,7 @@ def _sep_watch(base: int, alloc: int) -> tuple[int, ...]:
 
 def _ot_watch(ip: str, base: int, alloc: int) -> tuple[int, ...]:
     addrs = [
-        base + off for name, off in ot_reg_offsets(ip)
-        if off < alloc and not _watch_skip(name)
+        base + off for name, off in ot_reg_offsets(ip) if off < alloc and not _watch_skip(name)
     ]
     return tuple(sorted(set(addrs)))
 
@@ -118,40 +144,41 @@ def _ot_watch(ip: str, base: int, alloc: int) -> tuple[int, ...]:
 def _ot_named(ip: str, base: int, alloc: int, names) -> frozenset[int]:
     """Watched addresses of an OT block whose register name is in ``names``."""
     return frozenset(
-        base + off for name, off in ot_reg_offsets(ip)
+        base + off
+        for name, off in ot_reg_offsets(ip)
         if off < alloc and not _watch_skip(name) and name in names
     )
 
 
 def dead_windows() -> tuple[DeadWindow, ...]:
     """Source-derived windows. Allocated size is never the RTL truncate width."""
-    esrc_base = 0x1091_6000
+    esrc_base = sym("ENTROPY_SOURCE_REG_MAP_BASE_ADDR")
     return (
         DeadWindow(
             "secure_dma",
             sym("SECURE_DMA_REG_MAP_BASE_ADDR"),
-            0x1080_1000,
+            sym("WDT_TIMER_REG_MAP_BASE_ADDR"),
             block_size("SECURE_DMA"),
             _sep_watch(sym("SECURE_DMA_REG_MAP_BASE_ADDR"), block_size("SECURE_DMA")),
         ),
         DeadWindow(
             "wdt_timer",
             sym("WDT_TIMER_REG_MAP_BASE_ADDR"),
-            0x1080_2000,
+            sym("SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR"),
             block_size("WDT_TIMER"),
             _sep_watch(sym("WDT_TIMER_REG_MAP_BASE_ADDR"), block_size("WDT_TIMER")),
         ),
         DeadWindow(
             "aes",
             sym("AES_REG_MAP_BASE_ADDR"),
-            0x1091_1000,
+            sym("HMAC_REG_MAP_BASE_ADDR"),
             block_size("AES"),
             _sep_watch(sym("AES_REG_MAP_BASE_ADDR"), block_size("AES")),
         ),
         DeadWindow(
             "otbn",
             sym("OTBN_REG_MAP_BASE_ADDR"),
-            0x1091_0000,
+            sym("AES_REG_MAP_BASE_ADDR"),
             block_size("OTBN"),
             _sep_watch(sym("OTBN_REG_MAP_BASE_ADDR"), block_size("OTBN")),
         ),
@@ -165,26 +192,33 @@ def dead_windows() -> tuple[DeadWindow, ...]:
         DeadWindow(
             "edn",
             EDN_BASE,
-            0x1091_6000,
+            esrc_base,
             ot_reg_map_size("edn"),
             _ot_watch("edn", EDN_BASE, ot_reg_map_size("edn")),
         ),
         DeadWindow(
             "entropy_src",
             esrc_base,
-            0x1091_7000,
+            sym("TRNG_REG_MAP_BASE_ADDR"),
             ot_reg_map_size("entropy_source"),
             _ot_watch("entropy_source", esrc_base, ot_reg_map_size("entropy_source")),
             hw_updating=_ot_named(
-                "entropy_source", esrc_base, ot_reg_map_size("entropy_source"),
-                reg_hw_updating("entropy_source")),
+                "entropy_source",
+                esrc_base,
+                ot_reg_map_size("entropy_source"),
+                reg_hw_updating("entropy_source"),
+            ),
             write_destructive=_ot_named(
-                "entropy_source", esrc_base, ot_reg_map_size("entropy_source"),
-                reg_write_destructive("entropy_source")),
+                "entropy_source",
+                esrc_base,
+                ot_reg_map_size("entropy_source"),
+                reg_write_destructive("entropy_source"),
+            ),
         ),
         DeadWindow(
             "km_mailbox",
             sym("KM_MAILBOX_SEP_REG_MAP_BASE_ADDR"),
+            # Map window end; no neighbouring REG_MAP_BASE_ADDR (memory_map.adoc).
             0x1092_1000,
             block_size("KM_MAILBOX_SEP"),
             _sep_watch(
@@ -195,7 +229,7 @@ def dead_windows() -> tuple[DeadWindow, ...]:
         DeadWindow(
             "lifecycle",
             sym("SEP_LIFECYCLE_CTRL_REG_MAP_BASE_ADDR"),
-            0x1092_0000,
+            sym("KM_MAILBOX_SEP_REG_MAP_BASE_ADDR"),
             block_size("SEP_LIFECYCLE_CTRL"),
             _sep_watch(
                 sym("SEP_LIFECYCLE_CTRL_REG_MAP_BASE_ADDR"),
@@ -206,6 +240,7 @@ def dead_windows() -> tuple[DeadWindow, ...]:
         DeadWindow(
             "spi_controller",
             sym("SPI_CONTROLLER_REG_MAP_BASE_ADDR"),
+            # Map window end; no neighbouring REG_MAP_BASE_ADDR (memory_map.adoc).
             0x10C0_0000,
             block_size("SPI_CONTROLLER"),
             _sep_watch(
@@ -213,8 +248,31 @@ def dead_windows() -> tuple[DeadWindow, ...]:
                 block_size("SPI_CONTROLLER"),
             ),
         ),
+        DeadWindow(
+            "trng",
+            sym("TRNG_REG_MAP_BASE_ADDR"),
+            sym("SEP_LIFECYCLE_CTRL_REG_MAP_BASE_ADDR"),
+            0,
+            _ot_watch("entropy_source", esrc_base, ot_reg_map_size("entropy_source")),
+            hw_updating=_ot_named(
+                "entropy_source",
+                esrc_base,
+                ot_reg_map_size("entropy_source"),
+                reg_hw_updating("entropy_source"),
+            ),
+            write_destructive=_ot_named(
+                "entropy_source",
+                esrc_base,
+                ot_reg_map_size("entropy_source"),
+                reg_write_destructive("entropy_source"),
+            ),
+            adopter=True,
+            watch_from="entropy_src",
+        ),
     )
 
+
+_TRNG = sym("TRNG_REG_MAP_BASE_ADDR")
 
 # (window name, addr, "r"|"w") — directed dead-space anchors. Every seed probes all of them.
 DEADSPACE_ANCHORS: tuple[tuple[str, int, str], ...] = (
@@ -230,6 +288,13 @@ DEADSPACE_ANCHORS: tuple[tuple[str, int, str], ...] = (
     ("csrng", 0x1091_5248, "w"),
     ("entropy_src", 0x1091_651C, "w"),
     ("secure_dma", 0x1080_08A8, "w"),
+    # First, middle and last word of the adopter TRNG window, read and write.
+    ("trng", _TRNG + 0x000, "r"),
+    ("trng", _TRNG + 0x000, "w"),
+    ("trng", _TRNG + 0x800, "r"),
+    ("trng", _TRNG + 0x800, "w"),
+    ("trng", _TRNG + 0xFFC, "r"),
+    ("trng", _TRNG + 0xFFC, "w"),
 )
 
 
@@ -250,10 +315,7 @@ class SepDeadspaceCfg:
         missing = {name for name, _a, _op in DEADSPACE_ANCHORS if name not in self.windows}
         if missing:
             raise RuntimeError(f"anchor window(s) not in dead_windows(): {sorted(missing)}")
-        probes = [
-            DeadProbe(name, addr, op, True)
-            for name, addr, op in DEADSPACE_ANCHORS
-        ]
+        probes = [DeadProbe(name, addr, op, True) for name, addr, op in DEADSPACE_ANCHORS]
         rng = SepSeededRng(seed)
         taken = {(p.window, p.addr, p.op) for p in probes}
         # Windows that could not supply their full random quota within the spin
@@ -289,8 +351,7 @@ class SepDeadspaceCfg:
         n_anchor = sum(1 for p in self.probes if p.anchor)
         n_rand = len(self.probes) - n_anchor
         short = " ".join(
-            f"{name}={got}/{want}"
-            for name, (got, want) in sorted(self.short_windows.items())
+            f"{name}={got}/{want}" for name, (got, want) in sorted(self.short_windows.items())
         )
         return (
             f"seed={self.seed} probes={len(self.probes)} "
@@ -305,16 +366,27 @@ class SepDeadspace:
     def __init__(self, test) -> None:
         self.test = test
         self.log = test.logger
-        # Refusals whose flavour is not the DECERR memory_map.adoc names.
-        # Reported for the design owner, not failed.
+        # Refusals whose flavour is not DECERR. Reported, not failed: this walk
+        # grades refusal only.
         self.flavour_findings: list[str] = []
+        # Response of the last probe(); -1 when it timed out.
+        self.last_resp: int = -1
 
     async def _access(
-        self, op: SepAxiOp, addr: int, *, wdata: int = 0, expect_error: bool = False,
+        self,
+        op: SepAxiOp,
+        addr: int,
+        *,
+        wdata: int = 0,
+        expect_error: bool = False,
     ) -> tuple[int, int, bool]:
         seq = SepAxiAccessSeq(
             f"dead_{op.value}_0x{addr:08x}",
-            op=op, addr=addr, wdata=wdata, length=4, size=2,
+            op=op,
+            addr=addr,
+            wdata=wdata,
+            length=4,
+            size=2,
             expect_error=expect_error,
         )
         await self.test.start_seq(seq)
@@ -322,53 +394,88 @@ class SepDeadspace:
 
     async def burst_across_extent(
         self, win
-    ) -> tuple[int, int, bool, list[int], list[tuple[int, int]]]:
+    ) -> tuple[int, list[int], bool, list[int], list[tuple[int, int]], list[int | None]]:
         """Read an INCR burst that starts inside the extent and ends past it.
 
         AXI routes a burst on its FIRST address and a burst may not cross a 4 KB
         boundary, which is what normally makes a refused address unreachable. An
         extent that does not end on a 4 KB boundary breaks that: a burst begun in
         the last live words is routed wholly to this block, and its later beats
-        land past ``REG_MAP_SIZE`` -- the span `memory_map.adoc` says returns
-        DECERR and never reaches the unit.
+        land past ``REG_MAP_SIZE`` -- the span `memory_map.adoc` says is
+        refused at the fabric and never reaches a unit.
 
         Returns the start address, the responses the master reported, the
-        timeout flag, the four beats, and a single-beat read of each of the same
-        addresses. The responses cover the burst, not one entry per beat.
+        timeout flag, the four beats, a single-beat read of each of the same
+        addresses, and the per-beat response vector the passive monitor observed.
+
+        The master collapses a read burst to one response: the cocotbext-axi
+        beat loop keeps the last non-OKAY RRESP and discards the rest, so
+        ``seq.resp_list`` cannot say which beats were refused. The passive
+        monitor records every R beat separately and publishes the whole vector
+        at RLAST, so the per-beat contract is read from there instead.
         """
-        beats = 4                     # two live beats, then two past the extent
+        beats = 4  # two live beats, then two past the extent
         start = win.dead_lo - 4 * (beats // 2)
         mon = self.test.env.axi_monitor
+        mon.start_beat_capture()
         # The later beats land in dead space, so a correct fabric answers this
         # burst with an error. Credit those beats and hand back whatever the
         # fabric did not use: without the credit the monitor reports a correct
-        # refusal as a protocol error, and this walk cannot pass even once the
-        # block starts refusing.
+        # refusal as a protocol error, and this walk could not pass against a
+        # block that refuses correctly.
         mon.arm_expected_decerr(beats)
         seq = SepAxiAccessSeq(
-            f"dead_burst_0x{start:08x}", op=SepAxiOp.READ, addr=start,
-            length=4 * beats, size=2, expect_error=True,
+            f"dead_burst_0x{start:08x}",
+            op=SepAxiOp.READ,
+            addr=start,
+            length=4 * beats,
+            size=2,
+            expect_error=True,
             allow_unverified_write_resp=True,
         )
         await self.test.start_seq(seq)
-        used = sum(1 for r in seq.resp_list if r == RESP_DECERR)
+        # Per-beat responses come from the monitor; the master has only the
+        # collapsed one. The capture window records every R beat on this bus, not
+        # this burst's beats specifically, so quiescence and the length check
+        # below are what make the vector attributable to this burst.
+        captured = mon.take_beat_capture()
+        # Only a complete, fully resolved sequence is evidence. A shorter one
+        # means beats were not observed and a longer one means unrelated traffic
+        # shared the window, so neither is attributable to this burst. An entry
+        # that did not resolve to an int is not evidence either, and it must not
+        # be read as a refusal: the checker fails a beat that answers OKAY past
+        # the extent, so an unresolved beat there would otherwise pass by
+        # default. Rejecting the whole vector sends the window to the tally
+        # instead, where it is named rather than counted as proof.
+        usable = len(captured) == beats and all(r is not None for r in captured)
+        mon_resps = [r for r in captured if r is not None] if usable else []
+        # Credit from the per-beat vector when it is available: the collapsed
+        # response holds at most one entry, so crediting from it releases beats
+        # the fabric did refuse. That over-release can only make the monitor
+        # report a refusal it was told to expect, never absorb one it was not:
+        # release_expected_decerr floors at zero, so the failure direction is a
+        # spurious monitor error, not a swallowed DECERR.
+        used = (
+            sum(1 for r in mon_resps if r == RESP_DECERR)
+            if mon_resps
+            else sum(1 for r in seq.resp_list if r == RESP_DECERR)
+        )
         if beats > used:
             mon.release_expected_decerr(beats - used)
         words = [(seq.rdata >> (32 * i)) & 0xFFFF_FFFF for i in range(beats)]
         # Single-beat the same four addresses. Beats 0-1 are inside the extent
         # and must match; beats 2-3 are past it and are refused on their own, so
-        # a non-zero burst word there is data the single-beat path cannot reach.
+        # the test holds a burst word there to the single-beat no-alias rule.
         singles = []
         for i in range(beats):
             past = start + 4 * i >= win.dead_lo
             if past:
                 mon.arm_expected_decerr(1)
-            r, d, _to = await self._access(
-                SepAxiOp.READ, start + 4 * i, expect_error=past)
+            r, d, _to = await self._access(SepAxiOp.READ, start + 4 * i, expect_error=past)
             if past and r != RESP_DECERR:
                 mon.release_expected_decerr(1)
             singles.append((r, d))
-        return start, list(seq.resp_list), seq.timed_out, words, singles
+        return (start, list(seq.resp_list), seq.timed_out, words, singles, mon_resps)
 
     async def snapshot(self, win) -> dict[int, int]:
         snap: dict[int, int] = {}
@@ -385,7 +492,9 @@ class SepDeadspace:
         if volatile:
             self.log.info(
                 "%s: %d self-changing watch address(es) dropped from no-alias",
-                win.name, len(volatile))
+                win.name,
+                len(volatile),
+            )
         return snap
 
     async def restore(self, win, snap: dict[int, int]) -> None:
@@ -407,7 +516,11 @@ class SepDeadspace:
         self.test.logger.info(
             "deadspace restore: %s restored %d of %d register(s); %d skipped as "
             "write-destructive (a write-back would clear or re-set them)",
-            win.name, len(snap) - skipped, len(snap), skipped)
+            win.name,
+            len(snap) - skipped,
+            len(snap),
+            skipped,
+        )
 
     async def probe(self, win, item: DeadProbe, snap: dict[int, int]) -> list[str]:
         """Return failure strings. Empty means this probe matched the spec."""
@@ -420,15 +533,20 @@ class SepDeadspace:
         mon.arm_expected_decerr(1)
         if item.op == "w":
             resp, _rd, timed_out = await self._access(
-                SepAxiOp.WRITE, item.addr, wdata=0xFFFF_FFFF, expect_error=True,
+                SepAxiOp.WRITE,
+                item.addr,
+                wdata=0xFFFF_FFFF,
+                expect_error=True,
             )
         else:
             resp, rdata, timed_out = await self._access(
-                SepAxiOp.READ, item.addr, expect_error=True,
+                SepAxiOp.READ,
+                item.addr,
+                expect_error=True,
             )
-            # `memory_map.adoc` makes two statements about the reserved
-            # remainder: it returns DECERR, and an access there never reaches
-            # the unit. The second holds whatever the response was, so the
+            # `memory_map.adoc` says an address past the extent a unit
+            # allocates is refused at the fabric and never reaches a unit. The
+            # second half holds whatever the response flavour was, so the
             # alias compare is not gated on OKAY -- a refused read that still
             # hands back a live register's value has reached the unit. A real
             # refusal carries the error slave's poison, which matches no
@@ -443,6 +561,7 @@ class SepDeadspace:
                         break
         if timed_out or resp != RESP_DECERR:
             mon.release_expected_decerr(1)
+        self.last_resp = -1 if timed_out else resp
         if timed_out:
             fails.append(f"{win.name} {item.op} 0x{item.addr:08x} timed out")
             return fails
@@ -451,25 +570,23 @@ class SepDeadspace:
                 f"{win.name} {item.op} 0x{item.addr:08x} resp=OKAY, "
                 f"expected refuse (allocated ends at +0x{win.alloc:x})"
             )
-        elif resp != RESP_DECERR:
+        elif resp != RESP_DECERR and not win.adopter:
             # The contract asserted here is that the access is REFUSED, and any
-            # error response satisfies it. `hw/sys/sep/doc/memory_map.adoc`
-            # names DECERR for the reserved remainder inside an aperture, so a
-            # refusal in another flavour is reported for the design owner
-            # rather than failed: which responses are permitted is a
-            # specification question, and the defect this walk exists to catch
+            # error response satisfies it. A refusal in another flavour is
+            # reported rather than failed: the defect this walk exists to catch
             # is OKAY plus aliasing.
             self.flavour_findings.append(
                 f"{win.name} {item.op} 0x{item.addr:08x} refused with "
                 f"resp={resp}, not DECERR (allocated ends at +0x{win.alloc:x})"
             )
-        # A read of a dead offset must not return a live register's value.
-        # Write probes also require the allocated image to stay put: a
-        # DECERR/SLVERR that still stores is the wrap this entry exists to
-        # catch. Read probes skip that compare — health-test counters move
-        # on their own and would false-fail it.
+        # A read of a dead offset must not return a live register's value, and
+        # no probe -- read or write -- may change the allocated image: a refused
+        # write that still stores is the wrap this entry exists to catch, and a
+        # refused read that still reaches a unit can pop a FIFO or clear a
+        # read-to-clear field without returning anything that matches the
+        # snapshot.
         #
-        # The store compare covers software-WRITABLE registers only. A field
+        # The change compare covers software-WRITABLE registers only. A field
         # declared `sw = r` has no bus write path -- the generated regblock
         # answers a write to one with OKAY and no error (entropy_source_reg.sv
         # `is_valid_rw = '1'`, `cpuif_wr_err = '0'`) and stores nothing -- so
@@ -478,39 +595,53 @@ class SepDeadspace:
         # Leaving it in this compare instead measures the entropy source's own
         # health-test counters advancing over the microseconds the readback
         # takes, and reports that drift as a wrap. Every `sw = rw` register
-        # stays armed, so a write that aliases onto a control register is still
-        # caught -- at that control register, where the store actually lands.
-        if item.op == "w":
-            after = {}
-            skipped = 0
-            for addr in snap:
-                if addr in win.hw_updating:
-                    skipped += 1
-                    continue
-                resp_a, val, _to = await self._access(SepAxiOp.READ, addr)
-                if resp_a == RESP_OKAY:
-                    after[addr] = val
-            # Report the size of the store compare, not just its verdict. An
-            # exclusion that silently grows -- a schema change widening the
-            # software-read-only set onto a control register -- would otherwise
-            # shrink the coverage with an identical-looking log.
-            self.test.logger.info(
-                "deadspace scope: %s %s 0x%08x compared %d of %d watched "
-                "register(s); %d skipped as hardware-updating",
-                win.name, item.op, item.addr, len(after), len(snap), skipped)
-            changed = {
-                addr: (snap[addr], after[addr])
-                for addr in snap
-                if addr in after and after[addr] != snap[addr]
-            }
-            if changed:
-                detail = " ".join(
-                    f"+0x{addr - win.base:x}:0x{old:08x}->0x{new:08x}"
-                    for addr, (old, new) in sorted(changed.items())
-                )
-                fails.append(
-                    f"{win.name} {item.op} 0x{item.addr:08x} changed live "
-                    f"register(s) {detail}"
-                )
-                await self.restore(win, snap)
+        # stays armed, so an access that aliases onto a control register is
+        # still caught -- at that control register, where it lands.
+        after = {}
+        skipped = 0
+        unread: list[str] = []
+        for addr in snap:
+            if addr in win.hw_updating:
+                skipped += 1
+                continue
+            resp_a, val, to_a = await self._access(SepAxiOp.READ, addr)
+            if resp_a == RESP_OKAY and not to_a:
+                after[addr] = val
+            else:
+                unread.append(f"+0x{addr - win.base:x} resp={resp_a} timed_out={to_a}")
+        # An armed register that cannot be read back cannot show it did not
+        # move, so a failed re-read fails the probe instead of shrinking it.
+        if unread:
+            fails.append(
+                f"{win.name} {item.op} 0x{item.addr:08x} re-read of armed register(s) "
+                f"failed: {' '.join(unread)}"
+            )
+        # Report the size of the change compare, not just its verdict. An
+        # exclusion that silently grows -- a schema change widening the
+        # software-read-only set onto a control register -- would otherwise
+        # shrink the coverage with an identical-looking log.
+        self.test.logger.info(
+            "deadspace scope: %s %s 0x%08x compared %d of %d watched "
+            "register(s); %d skipped as hardware-updating",
+            win.name,
+            item.op,
+            item.addr,
+            len(after),
+            len(snap),
+            skipped,
+        )
+        changed = {
+            addr: (snap[addr], after[addr])
+            for addr in snap
+            if addr in after and after[addr] != snap[addr]
+        }
+        if changed:
+            detail = " ".join(
+                f"+0x{addr - win.base:x}:0x{old:08x}->0x{new:08x}"
+                for addr, (old, new) in sorted(changed.items())
+            )
+            fails.append(
+                f"{win.name} {item.op} 0x{item.addr:08x} changed live register(s) {detail}"
+            )
+            await self.restore(win, snap)
         return fails

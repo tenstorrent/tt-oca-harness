@@ -14,22 +14,24 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
-from pyuvm import uvm_sequence
-
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
 from env.sep_efuse_image import LC_WORD_IDX
 from env.sep_lcc_golden import LC_RMA_CHIP_1, LC_RMA_SIP_1
-from env.sep_rma_token import SepRmaTokenCfg
-from sep_reg_meta import sym
 
-_EFUSE_MMR_BASE = sym("EFUSE_MMR_REG_MAP_BASE_ADDR")
-_RMA_SIP_TOKEN_I = _EFUSE_MMR_BASE + 0x00
-_RMA_CHIPLET_TOKEN_I = _EFUSE_MMR_BASE + 0x20
-_SEC_DISABLE_TOKEN_I = _EFUSE_MMR_BASE + 0x40
-_TOKEN_EOP = _EFUSE_MMR_BASE + 0x60
-_RMA_SIP_TOKEN_MATCH = _EFUSE_MMR_BASE + 0x64
-_RMA_CHIPLET_TOKEN_MATCH = _EFUSE_MMR_BASE + 0x68
-_SEC_DISABLE_TOKEN_MATCH = _EFUSE_MMR_BASE + 0x6C
+# Re-exported for sep_efuse_rma_token_rand_test, which builds its golden via
+# seq_lib rather than reaching into env directly.
+from env.sep_rma_token import SepRmaTokenCfg as SepRmaTokenCfg
+from env.sep_spec_tables import agg_from_pic
+from pyuvm import uvm_sequence
+from sep_reg_meta import EFUSE_MMR, sym
+
+_RMA_SIP_TOKEN_I = sym("EFUSE_MMR_RMA_SIP_TOKEN_I_0__REG_ADDR")
+_RMA_CHIPLET_TOKEN_I = sym("EFUSE_MMR_RMA_CHIPLET_TOKEN_I_0__REG_ADDR")
+_SEC_DISABLE_TOKEN_I = sym("EFUSE_MMR_SEC_DISABLE_TOKEN_I_0__REG_ADDR")
+_TOKEN_EOP = sym("EFUSE_MMR_TOKEN_EOP_REG_ADDR")
+_RMA_SIP_TOKEN_MATCH = sym("EFUSE_MMR_RMA_SIP_TOKEN_MATCH_REG_ADDR")
+_RMA_CHIPLET_TOKEN_MATCH = sym("EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_REG_ADDR")
+_SEC_DISABLE_TOKEN_MATCH = sym("EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_REG_ADDR")
 _TOKEN_MATCH_FAULT = sym("EFUSE_MMR_TOKEN_MATCH_FAULT_REG_ADDR")
 _TOKEN_MATCH = 0x15
 _TOKEN_MISMATCH = 0x2A
@@ -40,9 +42,14 @@ TOKEN_MATCH = _TOKEN_MATCH
 TOKEN_MISMATCH = _TOKEN_MISMATCH
 TOKEN_ERROR = _TOKEN_ERROR
 TOKEN_MATCH_FAULT = _TOKEN_MATCH_FAULT
-FAULT_RMA_SIP = 0x1
-FAULT_RMA_CHIPLET = 0x100
-FAULT_SEC_DISABLE = 0x10000
+FAULT_RMA_SIP = EFUSE_MMR.field_mask("TOKEN_MATCH_FAULT", "rma_sip_token_fault")
+FAULT_RMA_CHIPLET = EFUSE_MMR.field_mask("TOKEN_MATCH_FAULT", "rma_chiplet_token_fault")
+FAULT_SEC_DISABLE = EFUSE_MMR.field_mask("TOKEN_MATCH_FAULT", "secure_disable_token_fault")
+EOP_RMA_SIP = EFUSE_MMR.field_mask("TOKEN_EOP", "rma_sip_token_go")
+EOP_RMA_CHIPLET = EFUSE_MMR.field_mask("TOKEN_EOP", "rma_chiplet_token_go")
+EOP_SEC_DISABLE = EFUSE_MMR.field_mask("TOKEN_EOP", "secure_disable_token_go")
+_MATCH_STATUS_MASK = EFUSE_MMR.field_mask("TOKEN_MATCH", "token_match_status")
+_MATCH_STATUS_LSB = EFUSE_MMR.field_lsb("TOKEN_MATCH", "token_match_status")
 TOKEN_CMP_INJECT_OFF = 0
 TOKEN_CMP_INJECT_COLLAPSE = 1
 TOKEN_CMP_INJECT_DISAGREE = 2
@@ -51,7 +58,7 @@ TOKEN_CMP_INJECT_COMMON_MATCH = 4
 TOKEN_CMP_SEL_SIP = 0
 TOKEN_CMP_SEL_CHIPLET = 1
 TOKEN_CMP_SEL_SEC = 2
-IRQ_TOKEN_MATCH_FAULT = 38
+IRQ_TOKEN_MATCH_FAULT = agg_from_pic("Token match fault")
 
 TOKEN_RMA_SIP = 0
 TOKEN_RMA_CHIPLET = 1
@@ -77,6 +84,7 @@ class SepRmaTokenMatchSeq(uvm_sequence):
         self.token = token
         self.matched: bool | None = None
         self.match_code: int | None = None
+        self.timed_out = False
 
     async def _write(self, addr: int, data: int, label: str) -> None:
         item = SepAxiItem(f"{label}_0x{addr:08x}")
@@ -99,17 +107,17 @@ class SepRmaTokenMatchSeq(uvm_sequence):
     async def body(self) -> None:
         if self.kind == TOKEN_RMA_SIP:
             token_base = _RMA_SIP_TOKEN_I
-            eop_value = 0x0000_0001
+            eop_value = EOP_RMA_SIP
             match_addr = _RMA_SIP_TOKEN_MATCH
             token_name = "RMA_SIP"
         elif self.kind == TOKEN_RMA_CHIPLET:
             token_base = _RMA_CHIPLET_TOKEN_I
-            eop_value = 0x0000_0100
+            eop_value = EOP_RMA_CHIPLET
             match_addr = _RMA_CHIPLET_TOKEN_MATCH
             token_name = "RMA_CHIPLET"
         else:
             token_base = _SEC_DISABLE_TOKEN_I
-            eop_value = 0x0001_0000
+            eop_value = EOP_SEC_DISABLE
             match_addr = _SEC_DISABLE_TOKEN_MATCH
             token_name = "SEC_DISABLE"
 
@@ -123,20 +131,50 @@ class SepRmaTokenMatchSeq(uvm_sequence):
 
         for _ in range(_POLL_CYCLES):
             await ClockCycles(cocotb.top.clk_i, 1)
-            result = await self._read(match_addr, "token_match") & 0x3F
+            raw = await self._read(match_addr, "token_match")
+            result = (raw & _MATCH_STATUS_MASK) >> _MATCH_STATUS_LSB
             self.match_code = result
             if result in _TOKEN_CODES:
                 self.matched = result == _TOKEN_MATCH
                 cocotb.log.info(
                     "[rma] %s token code=0x%02x matched=%s",
-                    token_name, result, self.matched,
+                    token_name,
+                    result,
+                    self.matched,
                 )
                 return
-        self.matched = False
-        cocotb.log.info(
-            "[rma] %s token did not settle (last code=0x%02x)",
-            token_name, self.match_code,
+        # Never settling is a DUT failure, not a mismatch. Recording it as
+        # matched=False would make a token block that answers nothing
+        # indistinguishable from one that correctly rejected a wrong token, so
+        # every "mismatch" check in every caller would pass on a dead comparator.
+        raise AssertionError(
+            f"{token_name} token match status never settled after {_POLL_CYCLES} "
+            f"cycles (last code=0x{self.match_code:02x}; expected one of "
+            f"match 0x{_TOKEN_MATCH:02x}, mismatch 0x{_TOKEN_MISMATCH:02x}, "
+            f"error 0x{_TOKEN_ERROR:02x})"
         )
+
+
+_MATCH_ADDR = {
+    TOKEN_RMA_SIP: _RMA_SIP_TOKEN_MATCH,
+    TOKEN_RMA_CHIPLET: _RMA_CHIPLET_TOKEN_MATCH,
+    TOKEN_SEC_DISABLE: _SEC_DISABLE_TOKEN_MATCH,
+}
+
+
+class SepRmaTokenStatusSeq(SepRmaTokenMatchSeq):
+    """Read one token's match status once, without presenting a token.
+
+    Publishes ``match_code`` (the ``token_match_status`` field) and ``matched``.
+    """
+
+    def __init__(self, kind: int, *, name: str = "sep_rma_token_status_seq") -> None:
+        super().__init__(kind, 0, name=name)
+
+    async def body(self) -> None:
+        raw = await self._read(_MATCH_ADDR[self.kind], "token_match")
+        self.match_code = (raw & _MATCH_STATUS_MASK) >> _MATCH_STATUS_LSB
+        self.matched = self.match_code == _TOKEN_MATCH
 
 
 def rma_lc_bit(kind: int) -> int:

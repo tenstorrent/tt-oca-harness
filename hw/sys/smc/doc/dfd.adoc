@@ -1,31 +1,61 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= Design-for-Debug (DFD) and Core Logic Analyzer (CLA)
+:description: SMC debug observation, event triggering, actions, and trace capture.
+
 [[smc-dfd-cla]]
-=== Design-for-Debug (DFD) and Core Logic Analyzer (CLA)
 
 The SMC integrates a Design-for-Debug (DFD) subsystem that observes
 internal activity, triggers on programmable conditions, and captures
 trace, all on-chip and without external instrumentation. Its core is a
 Core Logic Analyzer (CLA) that watches a configurable debug bus,
 evaluates programmable events, and fires actions — an interrupt, a clock
-stop, a GPIO toggle, a cross-trigger, or a trace capture — when those
-events occur. A trace subsystem timestamps the captured activity and
-streams it to memory for offline analysis.
+stop, a cross-trigger, or a trace capture — when those events occur.
+Trace storage uses the connected external sink-memory interface. Several
+capabilities of the generic DFD block are not connected in SMC, as detailed below.
+
+[[smc-dfd-diagram]]
+.SMC DFD block diagram
+image::smc-dfd.svg[alt="SMC DFD block diagram: the debug-bus mux tree, clock gate and time-tick generator in smc_dfd_wrap, and the CLA, debug signal trace, trace network and registers of the DFD IP, with the parts SMC does not build or connect drawn dashed",width=100%,pdfwidth=100%]
+
+<<smc-dfd-diagram>> shows the DFD block as SMC instantiates it. `smc_dfd_wrap`
+contains the DFD IP `dfd_top_cla_dst_apb` (`u_dfd_top`), configured with one
+CLA and one debug signal trace (DST) instance. Parts of the generic block
+that SMC does not build are drawn as dashed grey boxes. Inputs and outputs
+that SMC ties off or leaves unconnected are drawn as dashed lines. The
+instruction trace (N-Trace) is not built. The trace AXI master and the JTAG
+register port are tied off, and the timestamp inputs are tied to zero.
+The CLA and DST paths provide the observation functions described here.
+
+The debug bus from `smc_base` has 64 lanes of 16 bits. Eight level-3 and
+four level-2 debug-bus muxes reduce it to the 16 lanes that enter the CLA,
+under the select register in the DFX CSRs. The CLA's own mux stage then
+selects the 64-bit debug bus that the CLA evaluates and passes to the DST.
+The wrapper gates `clk_smc_i` for the muxes and the IP under `dfd_cg_en`,
+and it counts `clk_ref_i` edges into the CLA time tick. The trace sink
+writes eight external trace RAMs of 256 × 64 bits, 16 KiB in total.
+
+Bit 0 of `xtrig_clk_halt_mask` in the DFX CSRs masks the CLA cross-trigger
+and halt-clock outputs. The clocks-stopped output also requires
+`tdr_dbg_ctrl_clock_stop_en_i`, and it drives a CPU interrupt and a DTP
+clock-stop request. The debug interrupt drives a CPU interrupt. The sixteen
+custom actions leave the SMC, and the SMU wires five of them to the SEP CPU
+debug controls. The debug marker returns to the SMC debug bus.
 
 Key features include:
 
 * A programmable debug bus that routes internal signals of interest to
   the analyzer under software control
 * An event engine supporting signal-match, edge, transition, ones-count,
-  any-change, time-match, and counter events
+  any-change, and counter events
 * Event-action pairing that binds detected events to system actions
 * Per-trigger snapshot of the debug bus and status flags identifying
   which pair fired
 * Cross-trigger exchange with the rest of the debug infrastructure
-* Timestamped trace streamed to memory over the fabric
+* Trace capture through the external sink-memory interface
 
-==== Debug Bus
+== Debug Bus
 
 The analyzer operates on a debug bus: a fixed-width vector of internal
 signals sampled every cycle. A selection fabric chooses which internal
@@ -34,14 +64,16 @@ different parts of the design without RTL changes. Software selects the
 observed signal set, then programs the event engine against the resulting
 bus value.
 
-==== Core Logic Analyzer
+== Core Logic Analyzer
 
 The CLA is organized as a set of nodes, each holding several event-action
 pairs (EAPs). An EAP binds one or more events, computed from the debug
 bus, to one or more actions taken when those events occur. The event
-engine evaluates several event types in parallel:
+engine evaluates several event types in parallel (<<smc-cla-event-types-table>>).
 
+[[smc-cla-event-types-table]]
 [cols="30%,70%",options="header",]
+.SMC CLA event types
 |=======================================================================
 |Event |Description
 |Signal match |Fires when the masked debug bus equals a programmed value
@@ -53,8 +85,9 @@ programmed value A to a programmed value B.
 |Ones count |Fires when the population count of a masked subset equals a
 programmed value.
 |Any change |Fires when any signal within a masked subset changes.
-|Time match |Fires when the internal time counter reaches a programmed
-value, allowing time-based triggering.
+|Time match |Unavailable in this integration. Its timestamp input is tied to
+zero. The comparator requires a nonzero match value, so the event cannot fire;
+it does not use the local CLA timestamp register.
 |Counter |Counts cycles following an event match and fires when the
 count is reached; a small pool of counters is available for measuring
 intervals or deferring an action.
@@ -66,13 +99,14 @@ register latches the debug-bus value at the moment of the trigger for
 post-mortem inspection. EAPs are enabled together once programming is
 complete, so a partially programmed pairing never triggers.
 
-==== Actions and Cross-Triggering
+== Actions and Cross-Triggering
 
 An EAP can drive one or more actions:
 
 * *Debug interrupt* — raise a non-maskable interrupt to the CPU.
 * *Clock stop* — halt clocks to freeze the design for inspection.
-* *GPIO toggle* — drive an externally observable pin.
+* *GPIO toggle* — the generic block provides this action, but SMC terminates
+  it on an unused local signal; it does not drive a pad.
 * *Cross-trigger out* — signal other debug blocks that a local event
   occurred.
 * *Trace capture* — hand the event to the trace subsystem.
@@ -83,27 +117,58 @@ actions, and cross-trigger outputs propagate local events outward, so
 debug conditions can be correlated across blocks rather than observed in
 isolation.
 
-==== Trace
+== Trace
 
-The trace subsystem captures, timestamps, and streams debug activity for
-offline analysis. Samples and events are encoded and packetized, merged
-through a trace network, and written to memory over the fabric by a trace
-master. A global timestamp with a synchronization mechanism places trace
-from different sources on a common time base, so captures can be aligned
-after the fact.
+The configured trace sink uses external memory request/response ports. The
+optional trace AXI master has unconnected request outputs and tied-low response
+inputs, so it cannot stream trace over the SMC fabric.
 
-==== Interrupts
+SMC selects local CLA timestamp scheme 0, advanced by the wrapper's reference
+clock-derived `time_tick`. This local counter is distinct from the generic
+`i_timestamp`, reference timestamp, and OCTS timestamp inputs, all tied to zero.
+The integration does not provide the advertised global timestamp alignment
+through those inputs. In particular, the time-match event consumes the tied-off
+timestamp rather than the running CLA timestamp register.
 
-The SMC interrupt table in <<interrupts>> lists the two CLA-driven
-sources:
+== Interrupts
+
+The SMC interrupt table lists the two CLA-driven sources. See
+ifdef::backend-html5[]
+xref:smc:interrupts.adoc#interrupts[Interrupts].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<interrupts>>.
+endif::backend-pdf[]
 
 * *CLA clock stop* — asserted while the CLA has stopped clocks.
 * *CLA debug interrupt* — the debug interrupt raised by a CLA action.
 
-==== Register Map
+== Memory Map and Register Reference
+
+ifdef::backend-html5[]
+++++
+<span id="register-map"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
+
+The CLA counter values and timestamp fields are software-writable. Software
+writes take priority over simultaneous hardware updates; later hardware updates
+can advance or clear them according to their configured controls. The sink's
+`trDstRamWPHigh` register likewise accepts software writes. Treat these as live
+read/write state when programming or testing them, not read-only status.
 
 The generated `smc_cla` map is the programmer view of this aperture (see
-<<smc-memory-map>>).
+ifdef::backend-html5[]
+xref:smc:memmap.adoc#smc-memory-map[Memory Map]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<smc-memory-map>>
+endif::backend-pdf[]
+).
+
+=== Detailed Register Map
 
 ifdef::backend-html5[]
 ++++
@@ -112,5 +177,5 @@ include::ip:partial$dfd/regs/gen/html/smc_cla.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../../../ip/dfd/regs/gen/adoc/smc_cla.adoc[]
+include::../../../ip/dfd/regs/gen/adoc/smc_cla.adoc[leveloffset=+2]
 endif::backend-pdf[]

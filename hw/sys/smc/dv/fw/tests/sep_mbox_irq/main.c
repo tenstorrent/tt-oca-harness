@@ -21,11 +21,11 @@
  * OWN outbound egress filter over the mailbox window and drives only real
  * AXI-lite MMIO.
  *
- * STACKLESS BY DESIGN (smc_stackless_test.h): the SMU cocotb / SEP-driven boot
- * does NOT initialise the SMC SRAM stack, so main() makes NO function calls and
- * uses only the SMC_* absolute-MMIO/poll macros -> no stack frame. The named
- * pass/fail loops are NAKED and reached by a tail `j` (no stack). If a future
- * edit reintroduces `add sp,sp,-N` in main, it will hang -- verify the .dis.
+ * STACKLESS (smc_stackless_test.h): the SMU cocotb / SEP-driven boot does not
+ * initialise the SMC SRAM stack, so main() makes no function calls and uses
+ * only the SMC_* absolute-MMIO/poll macros. The named pass/fail loops are NAKED
+ * and reached by a tail `j` (no stack); any `add sp,sp,-N` in main hangs the
+ * core.
  */
 SMC_STACKLESS_ENTRY(sep_mbox_irq_entry)
 
@@ -40,8 +40,7 @@ __attribute__((naked, section(".text"), used)) void smu_sep_mailbox_irq_smc_fail
 }
 
 /* SMC outbound egress filter entry 0 (opens the mailbox window; 64-bit CSRs,
- * single stores on RV64). Addresses come from the generated SMC register map --
- * no hardcoded literals. */
+ * single stores on RV64). Addresses come from the generated SMC register map. */
 #define SMC_MBOX_FILTER_IDX 0
 #define SMC_FILTER_CONFIG_ADDR \
     SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(SMC_MBOX_FILTER_IDX)
@@ -91,10 +90,10 @@ int main(void) {
     SMC_FENCE();
 
     /* b. Open the SMC outbound egress filter over the mailbox region (START/END
-     *    before CONFIG). PROGRAM-AND-GO: do NOT fw-read-back+compare the filter
-     *    CSRs (the SEP_SMU_003 lesson -- hardware-injected/converted bits never
-     *    match the written value). The filter programming is verified PASSIVELY
-     *    in the cocotb checker via filter_ctrl_reg.field_storage. */
+     *    before CONFIG). No firmware read-back compare of the filter CSRs: a
+     *    read-back returns hardware-fixed bits that differ from the written
+     *    value. The cocotb checker verifies the filter programming via
+     *    filter_ctrl_reg.field_storage. */
     SMC_WR64(SMC_FILTER_START_ADDR, SMU015_MBOX_FILTER_START);
     SMC_WR64(SMC_FILTER_END_ADDR, SMU015_MBOX_FILTER_END);
     SMC_WR64(SMC_FILTER_CONFIG_ADDR, SMU015_MBOX_FILTER_CFG);

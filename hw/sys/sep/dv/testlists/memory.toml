@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 schema_version = 1
 
-# Daily regression policy: run the no_cpu and cpu groups separately,
-# `python3 tools/dv/run_dv.py --dut sep --items <no_cpu|cpu> --regress`. Tests with run_modes=["no_cpu"]
+# Daily regression policy: run the cpu_stub and cpu groups separately,
+# `python3 tools/dv/run_dv.py --dut sep --items <cpu_stub|cpu> --regress`. Tests with run_modes=["no_cpu"]
 # select target="lsu_stub_all_live"; CPU firmware tests omit target and use the
 # full-CPU default model.
 
@@ -39,6 +39,20 @@ module = "sram.sep_sram_datapath_breadth_test"
 seed = 1
 timeout_sec = 1800
 tags = ["sram", "memory", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# FIXED and WRAP bursts into SEP SRAM (fabric.adoc: AXI4 fabric). A burst
+# type the slave does not implement must be refused with SRAM unchanged, or
+# performed at the beat addresses AXI4 gives it. OKAY with INCR beat
+# addresses fails. Do not XFAIL. no_cpu; +skip_fuse_sense.
+name = "sep_sram_burst_type_test"
+module = "sram.sep_sram_burst_type_test"
+seed = 1
+timeout_sec = 1800
+tags = ["sram", "memory", "negative", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]

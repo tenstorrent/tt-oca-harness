@@ -14,7 +14,7 @@ SEP master interfaces brought out in tb_top:
     block-by-default, skipped only when feat_ctrl.sep_debug=1). Used by the
     inbound-filter-gating test to prove external AXI is blocked/allowed.
 Set ``agent.axi_prefix`` right after constructing a second agent; it defaults to
-``s_axi`` so existing single-master tests are unchanged.
+``s_axi``.
 """
 
 from __future__ import annotations
@@ -22,6 +22,7 @@ from __future__ import annotations
 from enum import Enum
 
 import cocotb
+from ocah_axi_vip import OcahAxiMasterAgent, OcahAxiMasterSequence
 from pyuvm import (
     ConfigDB,
     uvm_agent,
@@ -30,8 +31,6 @@ from pyuvm import (
     uvm_sequence_item,
     uvm_sequencer,
 )
-
-from ocah_axi_vip import OcahAxiMasterAgent, OcahAxiMasterSequence
 
 
 class SepAxiOp(Enum):
@@ -46,7 +45,7 @@ class SepAxiItem(uvm_sequence_item):
         super().__init__(name)
         self.op: SepAxiOp = SepAxiOp.READ
         self.addr: int = 0
-        self.length: int = 4          # bytes
+        self.length: int = 4  # bytes
         # AXI AxSIZE encoding (2 => 4-byte beat). None lets cocotbext-axi pick the
         # full bus width (64-bit). OTBN IMEM/DMEM are 32-bit SECDED words and
         # reject a 64-bit beat (SLVERR), so those accesses force size=2.
@@ -58,6 +57,12 @@ class SepAxiItem(uvm_sequence_item):
         # Some target windows acknowledge writes in a way cocotbext-axi cannot
         # classify, while a following readback still proves the write landed.
         self.allow_unverified_write_resp: bool = False
+        # Read-side counterpart, for a read the specification refuses without
+        # naming the response code (a read-locked eFuse shadow). The scoreboard
+        # does not grade a non-OKAY response on such a read; the caller grades
+        # the returned data and side effects. A timed-out read still fails
+        # unless allow_timeout is also set; the sequence then grades the wedge.
+        self.allow_ungraded_read_resp: bool = False
         # When True a non-completing access (no response within the timeout) is
         # NOT a test-fatal wedge but an explicitly expected outcome for a specific
         # sequence. Most negative-path checks should require a real error response
@@ -65,20 +70,34 @@ class SepAxiItem(uvm_sequence_item):
         # The driver then sets timed_out=True and resp_ok=False rather than raising.
         self.allow_timeout: bool = False
         # Negative-path probe: this access expects a non-OKAY response and the
-        # sequence/test asserts the exact resp_code itself. The scoreboard then
+        # sequence/test asserts the exact resp_code itself. On the s_axi agent,
+        # the only one sep_env connects to the scoreboard, the scoreboard then
         # tolerates resp_ok=False (instead of failing) and, conversely, fails if a
-        # probe marked expect_error returns OKAY (the access was NOT blocked).
+        # probe marked expect_error returns OKAY (the access was NOT blocked). On
+        # the m_axi (external) agent nothing grades this flag, so the caller must
+        # assert the response itself.
         # Independent of allow_timeout: an expect_error probe still requires a real
         # error response, not a wedge, unless allow_timeout is also set.
         self.expect_error: bool = False
+        # Read-data X/Z policy. The driver packs rdata from the VIP's bytes,
+        # which carry X/Z as 0, so the unknown bits are checked on the bus by
+        # SepAxiMonitor: an OKAY/EXOKAY beat with an X/Z bit in a lane this
+        # read accesses fails the run. Set True only for a read whose data is
+        # legitimately partly unknown; the monitor then skips its lane check.
+        self.allow_unknown_rdata: bool = False
         # Packed AWUSER/ARUSER. The inbound filter matches FILTER_CONFIG.src_id
-        # against user[3:0] (SrcIdUserBitStart=0, SrcIdWidth=4). Default 0 keeps
-        # every existing caller bit-identical.
+        # against user[3:0] (SrcIdUserBitStart=0, SrcIdWidth=4).
         self.user: int = 0
         # AXI AxBURST. None lets the VIP default (INCR). Leave None everywhere
         # except the inbound-filter burst checkers, which opt in with INCR and
         # a multi-beat length so AxLEN != 0.
         self.burst: int | None = None
+        # AXI AxID. Every access defaults to 0, which is what the whole suite
+        # used before this field existed, so the transaction ID is not a
+        # dimension a test gets for free -- it opts in. The crossbars prepend
+        # the master index to it, and the demux keeps one outstanding counter
+        # per ID, so an access that never leaves 0 exercises one ID slot.
+        self.axi_id: int = 0
         # Filled in by the driver. resp_ok defaults False (fail closed): only a
         # confirmed OKAY response sets it True. resp_code is the worst (max) AXI
         # response code observed (OKAY=0, EXOKAY=1, SLVERR=2, DECERR=3), or -1 if
@@ -110,6 +129,7 @@ class SepAxiDriver(uvm_driver):
         self.cfg = ConfigDB().get(self, "", "cfg")
         self.ap = uvm_analysis_port("ap", self)
         self.axi: OcahAxiMasterSequence | None = None
+        self.monitor = None
 
     async def run_phase(self) -> None:
         dut = cocotb.top
@@ -134,6 +154,13 @@ class SepAxiDriver(uvm_driver):
             timeout_ns=self.cfg.axi_timeout_ns,
             raise_on_error=False,
         ).sequence
+        # The bus monitor for this prefix owns the read-data X/Z check. The
+        # driver needs it only to open the exemption window for a read that
+        # sets allow_unknown_rdata, and to drop the AR of a timed-out read.
+        try:
+            self.monitor = ConfigDB().get(self, "", f"sep_axi_monitor_{self.prefix}")
+        except Exception:
+            self.monitor = None
         await self.cfg.reset_done.wait()
         self.logger.info("OcahAxiMasterSequence ready on %s bus", self.prefix)
 
@@ -150,7 +177,7 @@ class SepAxiDriver(uvm_driver):
         common = {
             "size": item.size,
             "burst": item.burst,
-            "id": 0,
+            "id": item.axi_id,
             "prot": None,
             "check_response": False,
             "timeout_ns": self.cfg.axi_timeout_ns,
@@ -158,16 +185,36 @@ class SepAxiDriver(uvm_driver):
             "user": item.user,
         }
         if item.op is SepAxiOp.READ:
-            result = await self.axi.read_bytes_result(item.addr, item.length, **common)
+            exempt = item.allow_unknown_rdata and self.monitor is not None
+            if item.allow_unknown_rdata and self.monitor is None:
+                raise AssertionError(
+                    f"allow_unknown_rdata read at 0x{item.addr:08x} on {self.prefix}: "
+                    "no SepAxiMonitor is registered for this bus, so the exemption "
+                    "cannot be scoped to this read"
+                )
+            if exempt:
+                self.monitor.open_unknown_rdata_window()
+            try:
+                result = await self.axi.read_bytes_result(item.addr, item.length, **common)
+            finally:
+                if exempt:
+                    self.monitor.close_unknown_rdata_window()
             self._apply_result(item, result, "read")
             if item.timed_out:
+                if self.monitor is not None:
+                    self.monitor.forget_pending_reads(item.axi_id)
                 return
+            # X/Z bits arrive here as 0; SepAxiMonitor fails the run on an
+            # OKAY beat with X/Z in an accessed lane unless allow_unknown_rdata.
             item.rdata = (
                 int.from_bytes(result.data_bytes, "little") if result.data_bytes else result.data
             )
             self.logger.info(
                 "AXI read  0x%08x -> 0x%x (ok=%s resp=%d)",
-                item.addr, item.rdata, item.resp_ok, item.resp_code,
+                item.addr,
+                item.rdata,
+                item.resp_ok,
+                item.resp_code,
             )
         elif item.op is SepAxiOp.WRITE:
             result = await self.axi.write_bytes_result(
@@ -178,7 +225,10 @@ class SepAxiDriver(uvm_driver):
                 return
             self.logger.info(
                 "AXI write 0x%08x <- 0x%x (ok=%s resp=%d)",
-                item.addr, item.wdata, item.resp_ok, item.resp_code,
+                item.addr,
+                item.wdata,
+                item.resp_ok,
+                item.resp_code,
             )
         else:
             raise ValueError(f"unknown SEP AXI op {item.op}")
@@ -191,7 +241,8 @@ class SepAxiDriver(uvm_driver):
         if result.timed_out:
             self.logger.info(
                 "AXI %s @ 0x%08x timed out (allowed by this sequence)",
-                what, item.addr,
+                what,
+                item.addr,
             )
 
 

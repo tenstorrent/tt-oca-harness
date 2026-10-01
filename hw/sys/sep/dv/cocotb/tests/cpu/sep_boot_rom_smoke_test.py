@@ -8,14 +8,11 @@ retired-instruction trace advances through the expected ROM addresses.
 
 from __future__ import annotations
 
-from sep_reg_meta import sym
-
 import cocotb
-from cocotb.triggers import RisingEdge
-
 import pyuvm
-
+from cocotb.triggers import RisingEdge
 from sep_base_test import sep_base_test
+from sep_reg_meta import sym
 
 _BOOT_ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 _LOOP_PC = _BOOT_ROM_BASE + 12
@@ -40,7 +37,7 @@ class sep_boot_rom_smoke_test(sep_base_test):
             while True:
                 await RisingEdge(dut.clk_i)
                 if self.rd(dut.cpu_trace_valid_o):
-                    pcs.add(self.rd(dut.cpu_trace_addr_o) & 0xFFFF_FFFF)
+                    pcs.add(self.rd_known(dut.cpu_trace_addr_o) & 0xFFFF_FFFF)
 
         sampler = cocotb.start_soon(_trace_sampler())
         try:
@@ -68,6 +65,7 @@ class sep_boot_rom_smoke_test(sep_base_test):
             f"{[hex(pc) for pc in missing]}, saw {sorted(hex(pc) for pc in pcs)}"
         )
         self.logger.info(
-            "CHK-ROM-EXEC PASS: retired all %d instructions of the staged boot-ROM "
-            "program (%s)", len(expected), " ".join(hex(pc) for pc in expected)
+            "CHK-ROM-EXEC PASS: retired all %d instructions of the staged boot-ROM program (%s)",
+            len(expected),
+            " ".join(hex(pc) for pc in expected),
         )

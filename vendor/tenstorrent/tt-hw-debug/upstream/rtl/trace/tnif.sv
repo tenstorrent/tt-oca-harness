@@ -1,5 +1,7 @@
 `include "generic_macro_assertion.vh"
-// Trace Network Interface - Block that connects the Packet source to the Trace Network
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ // Trace Network Interface - Block that connects the Packet source to the Trace Network
 
 module tnif import tn_pkg::*; # (
     parameter DATA_PORTS = 2,                                         //Numer of data ports

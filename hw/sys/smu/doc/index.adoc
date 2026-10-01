@@ -1,0 +1,203 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= System Management Unit (SMU)
+:description: SMU overview — composition, AXI crossbar and child subsystem roles.
+
+[[system-management-unit]]
+
+The System Management Unit (SMU) is the chiplet's system-management subsystem.
+It integrates three functional blocks around a runtime-programmable AXI crossbar
+and presents a single boundary to the System Management Network (SMN).
+
+[[smu-composition]]
+== Composition
+
+anchor:composition[]The SMU combines:
+
+:smu-dtp-desc: Standardised debug and test access across heterogeneous, \
+  multi-vendor chiplet systems. Covers JTAG scan chains, JTAG2AXI debug \
+  bridges, cross-trigger network and synchronised clock control.
+:smu-sep-desc: Root of Trust with a physically isolated RISC-V execution \
+  environment for secure boot, lifecycle control, device attestation and \
+  hardware-accelerated cryptography (OTBN PKA, AES, HMAC-SHA2, KMAC-SHA3, \
+  TRNG, DRBG, Key Manager).
+:smu-smc-desc: Firmware-driven orchestration engine responsible for clock, \
+  voltage and reset management, platform bootstrapping, system initialisation, \
+  and power/thermal management. Built on a RISC-V micro-controller with DMA \
+  and memory-zeroer accelerators.
+
+ifdef::backend-html5[]
+* xref:sep:index.adoc[*Security Processor (SEP)*] — {smu-sep-desc}
+* xref:smc:index.adoc[*System Management Controller (SMC)*] — {smu-smc-desc}
+* xref:dtp:index.adoc[*Debug and Test Ports (DTP)*] — {smu-dtp-desc}
+endif::backend-html5[]
+ifdef::backend-pdf[]
+* *Security Processor (SEP)* — {smu-sep-desc} See <<security-processor-sep>>.
+* *System Management Controller (SMC)* — {smu-smc-desc}
+  See <<system-management-controller>>.
+* *Debug and Test Ports (DTP)* — {smu-dtp-desc} See <<debug-test-ports>>.
+endif::backend-pdf[]
+
+These three subsystems share a single primary clock domain (`clk_smu_i`) and
+are released from reset by the SMC's reset unit in a controlled sequence.
+Platform-wide clock, power and reset behaviour is described in the
+ifdef::backend-html5[]
+xref:ROOT:clock_domains.adoc[Clock Domains] chapter.
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<ocah-clock-domains,Clock Domains>> chapter.
+endif::backend-pdf[]
+
+[[smu-composition-diagram]]
+.SMU composition with the optional SEP subsystem
+image::smu-composition.svg[alt="SMU composition with the optional SEP subsystem",width=100%,pdfwidth=100%]
+
+The SMU composition is shown in <<smu-composition-diagram>>.
+The dashed SEP boundary denotes the optional subsystem controlled by the
+`SEP` integration parameter. Memory capacities in the diagram describe the
+illustrated configuration. Hatched blocks are future: the safety bus and the
+safety monitor, whose connections to the SEP and SMC are drawn dashed.
+
+[[smu-axi-crossbar]]
+== AXI Crossbar
+
+Inside the SMU, the `smu_axi_xbar` module is the system-level arbitration
+fabric between SEP, SMC, and the rest of the chiplet (reached through the
+`smu_axi_in` / `smu_axi_out` boundary pair). It is a 3×3 AXI4 crossbar with
+non-reflexive connectivity: each master can reach the other two subordinates
+but never its own inbound port.
+
+[[smu-crossbar-connectivity-diagram]]
+.SMU AXI crossbar connectivity
+image::smu-crossbar-connectivity.svg[alt="SMU AXI crossbar connectivity",width=640,pdfwidth=62%]
+
+<<smu-axi-crossbar-ports-table>> lists the permitted initiator-to-subordinate paths and
+their purposes.
+
+[[smu-axi-crossbar-ports-table]]
+.SMU AXI crossbar ports
+[cols="<22%,<22%,<56%",options="header"]
+|===
+|Master (from) |Subordinate (to) |Purpose
+
+|`sep_out` |`smc_in`  |SEP-initiated transactions into SMC resources
+|`sep_out` |`ext_out` |SEP-initiated transactions leaving the SMU
+|`smc_out` |`sep_in`  |SMC-initiated transactions into SEP resources
+|`smc_out` |`ext_out` |SMC-initiated transactions leaving the SMU
+|`ext_in`  |`sep_in`  |External transactions targeting SEP
+|`ext_in`  |`smc_in`  |External transactions targeting SMC
+|===
+
+Routing decisions use a runtime address map with two programmable rules, the
+SEP and SMC apertures. `ext_out` has no address rule; it is the default
+subordinate for `sep_out` and `smc_out` requests that match neither aperture.
+See
+ifdef::backend-html5[]
+xref:ROOT:architecture.adoc#ocah-memory-map[OCAH Memory Map]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<ocah-memory-map,OCAH Memory Map>>
+endif::backend-pdf[]
+for the fixed-vs-programmable split and the reference envelope convention, and
+see the SMU AXI Crossbar Address Map section in the Integrator Guide for
+firmware programming order.
+
+[[smu-crossbar-decode-diagram]]
+.SMU aperture decode and routing
+image::smu-aperture-decode.svg[alt="SMU aperture decode and routing",width=100%,pdfwidth=100%]
+
+<<smu-crossbar-decode-diagram>> shows the independent SEP and SMC address
+comparisons for each read or write request. Each aperture includes its base
+address and excludes `base + size`; the addition uses 57 bits to preserve
+carry from the 56-bit address, and the address is zero-extended to 57 bits for
+the comparison. The SEP and SMC ranges must not overlap.
+
+The decoded aperture and the connectivity in
+<<smu-crossbar-connectivity-diagram>> together determine where each request
+goes, as <<smu-axi-crossbar-routing-table>> shows.
+
+[[smu-axi-crossbar-routing-table]]
+.SMU AXI crossbar routing by initiator and decoded aperture
+[cols="<22%,<26%,<26%,<26%",options="header"]
+|===
+|Initiator |SEP aperture |SMC aperture |Neither aperture
+
+|`sep_out` |`DECERR`  |`smc_in`  |`ext_out`
+|`smc_out` |`sep_in`  |`DECERR`  |`ext_out`
+|`ext_in`  |`sep_in`  |`smc_in`  |`DECERR`
+|===
+
+* A `sep_out` or `smc_out` request that matches neither aperture is forwarded
+  to `ext_out`.
+* A `sep_out` request that matches the SEP aperture, or an `smc_out` request
+  that matches the SMC aperture, returns `DECERR`, because no initiator is
+  connected to its own subsystem's inbound port.
+* An `ext_in` request that matches neither aperture returns `DECERR`, because
+  `ext_in` is not connected to `ext_out`.
+
+The crossbar generates each `DECERR` response itself; the request reaches no
+subordinate.
+
+[[smu-clocks-and-resets]]
+== Clocks and Resets
+
+<<smu-clock-distribution>> and <<smu-reset-distribution>> show the clock and
+reset distribution from the SMU boundary to DTP, SEP, SMC, and the shared
+AXI infrastructure. Boundary inputs enter on the left and boundary outputs
+leave on the right; nets generated inside the SMU run in the channel to the
+right of the instances. A dot marks fan-out, and a gap in a line marks a
+crossing without a connection. Labels at an instance's right edge name the
+net it drives or the port that receives a generated net. Instance names match
+the SMU RTL hierarchy, and paths to the SEP exist only when the `SEP`
+parameter is non-zero.
+
+Active-low resets use the `_ni`, `_no` or `trst_n` suffixes; the SMC CPU JTAG
+reset is active-high, so `dtp_smc_stap_tap_ctrl.trst_n` passes through an
+inverter. <<smu-reset-distribution>> shows reset distribution within the SMU,
+not the reset logic inside each subsystem.
+
+[[smu-clock-distribution]]
+.SMU clock distribution
+image::smu-clock-distribution.svg[alt="SMU clock sources and consumers",width=100%,pdfwidth=100%]
+
+[[smu-reset-distribution]]
+.SMU reset distribution
+image::smu-reset-distribution.svg[alt="SMU reset sources and consumers",width=100%,pdfwidth=100%]
+
+[[smu-lifecycle-propagation]]
+== Lifecycle and Feature Control
+
+SEP lifecycle state and feature controls constrain the debug paths in DTP
+and the management functions in SMC, as shown in
+<<smu-lifecycle-propagation-diagram>>.
+
+[[smu-lifecycle-propagation-diagram]]
+.SEP lifecycle and feature-control propagation to SMC and DTP
+image::smu-lifecycle-controls.svg[alt="SEP lifecycle and feature-control propagation to SMC and DTP",width=100%,pdfwidth=100%]
+
+In <<smu-lifecycle-propagation-diagram>>, the OTP shadow registers, the
+demotion CSRs and the security-disable token feed the Life Cycle Controller,
+and each named output runs to the block that consumes it; a slashed line
+carries its bus width. <<smu-lifecycle-effects-table>> gives the effect of
+each control on its consumer. The demotion CSRs clear on SEP cold reset, and security disable
+overrides the normal feature restrictions.
+
+[[smu-lifecycle-effects-table]]
+.SEP lifecycle and feature-control effects
+[cols="<32%,<68%",options="header"]
+|===
+|Control |Consumer and effect
+
+|`dbg_disable_o` |DTP: disables selected STAPs, SIBs and SMC-fabric JTAG2AXI access
+|`lc_state_o` |SMC: eFuse JTAG access policy and the `LC_STATE` CSR. Also an SMU boundary output.
+|`security_disable_o` |SMC `sep_security_disable_i`: security-disable override for the eFuse wrapper
+|`sep_fuse_dft_disable_o`, `smc_fuse_dft_disable_o` |SMU boundary outputs for adopter DFT insertion; each gates its DFT OTP access paths
+|`feat_ctrl.sep_debug` |SEP inbound AXI filter: `1` bypasses the filter; `0` filters external traffic
+|`LC_STATE`, `lcc_demote_state_1/2` |Key Manager: lifecycle and demotion context. The demotion state also reaches the SMU boundary.
+|===
+
+[[child-subsystems]]
+anchor:smu-child-subsystems[]The subsystem chapters (SEP, SMC, DTP) follow
+immediately; see the <<smu-composition,Composition>> section above for roles
+and cross-references.

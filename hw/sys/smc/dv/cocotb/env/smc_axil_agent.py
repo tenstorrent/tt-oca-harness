@@ -17,7 +17,6 @@ from .smc_axil_item import SmcAxilItem, SmcAxilOp
 
 
 class SmcAxilDriver(uvm_driver):
-
     def build_phase(self) -> None:
         self.cfg = ConfigDB().get(self, "", "cfg")
         self.ap = uvm_analysis_port("ap", self)
@@ -39,8 +38,8 @@ class SmcAxilDriver(uvm_driver):
     def _sample(self, item: SmcAxilItem) -> None:
         dut = self.dut
         signals = {
-            "dtp_csr_active":    dut.tb_axil_dtp_csr_active,
-            "external_active":   dut.tb_axil_external_active,
+            "dtp_csr_active": dut.tb_axil_dtp_csr_active,
+            "external_active": dut.tb_axil_external_active,
             "efuse_bank_active": dut.tb_axil_efuse_bank_active,
             "any_master_active": dut.tb_axil_any_master_active,
         }
@@ -57,7 +56,6 @@ class SmcAxilDriver(uvm_driver):
 
 
 class SmcAxilAgent(uvm_agent):
-
     def build_phase(self) -> None:
         self.cfg = ConfigDB().get(self, "", "cfg")
         self.sequencer = uvm_sequencer("sequencer", self)

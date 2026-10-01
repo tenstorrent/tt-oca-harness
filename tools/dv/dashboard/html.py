@@ -13,11 +13,11 @@ from urllib.parse import urlparse
 COVERAGE_FIELDS = (
     ("total", "Total"),
     ("line", "Line"),
-    ("cond", "Cond"),
+    ("condition", "Condition"),
     ("toggle", "Toggle"),
-    ("fsm", "FSM"),
+    ("fsm_state", "FSM"),
     ("branch", "Branch"),
-    ("assert", "Assertion"),
+    ("assertion", "Assertion"),
     ("functional", "Functional"),
     ("expression", "Expression"),
     ("user", "User"),
@@ -131,9 +131,10 @@ def fmt(value: Any) -> str:
 
 
 def coverage_value(result: dict[str, Any], name: str) -> Any:
+    """One coverage column: the total, else the metric family's effective, then raw, percent."""
     coverage = result.get("coverage", {})
-    source = result.get("source", {})
     if name == "total":
         return coverage.get("total_percent")
-    return coverage.get(f"{name}_percent", source.get(f"coverage_{name}"))
-
+    effective = coverage.get("effective_metrics") or {}
+    raw = coverage.get("raw_metrics") or {}
+    return effective.get(name, raw.get(name))

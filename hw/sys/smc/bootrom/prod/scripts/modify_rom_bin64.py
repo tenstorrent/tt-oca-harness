@@ -80,17 +80,13 @@ def load_rom_words(path: pathlib.Path) -> tuple[list[tuple[int, str]], bool]:
             try:
                 current_addr = int(line[1:], 0)
             except ValueError as exc:
-                raise ValueError(
-                    f"Invalid address directive on line {lineno}: {line}"
-                ) from exc
+                raise ValueError(f"Invalid address directive on line {lineno}: {line}") from exc
             if current_addr < 0:
                 raise ValueError(f"Negative address on line {lineno}: {line}")
             saw_address_directive = True
             continue
         if len(line) != 64 or any(c not in "01" for c in line):
-            raise ValueError(
-                f"Expected 64 binary digits per line (line {lineno!r}: {line})."
-            )
+            raise ValueError(f"Expected 64 binary digits per line (line {lineno!r}: {line}).")
         entries.append((current_addr, line))
         current_addr += 1
 
@@ -106,9 +102,7 @@ def _swap_word_endianness(word: str) -> str:
     return "".join(reversed(chunks))
 
 
-def apply_endianness_swap(
-    entries: Sequence[tuple[int, str]]
-) -> list[tuple[int, str]]:
+def apply_endianness_swap(entries: Sequence[tuple[int, str]]) -> list[tuple[int, str]]:
     """Apply a byte-level endianness swap to every word."""
     return [(addr, _swap_word_endianness(word)) for addr, word in entries]
 
@@ -240,5 +234,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
-

@@ -5,6 +5,8 @@
 `define I2C_RDL
 
 addrmap i2c {
+    name = "I2C Address Map";
+    desc = "Interrupt status, enable, and test registers for a single I2C controller and target.";
 
     //////////////////////////
     // Register Definitions //
@@ -36,7 +38,7 @@ addrmap i2c {
 
         field {
             sw = rw;
-            hw = w;
+            hw = rw;
             level intr;
             woclr;
             desc = "Controller Mode interrupt: asserted when the Controller RX FIFO overflows.
@@ -53,7 +55,7 @@ addrmap i2c {
 
         field {
             sw = rw;
-            hw = w;
+            hw = rw;
             level intr;
             woclr;
             desc = "Controller Mode interrupt: asserted when SCL is unexpectedly pulled LOW by
@@ -62,7 +64,7 @@ addrmap i2c {
 
         field {
             sw = rw;
-            hw = w;
+            hw = rw;
             level intr;
             woclr;
             desc = "Controller Mode interrupt: asserted when SDA is unexpectedly pulled LOW by
@@ -71,7 +73,7 @@ addrmap i2c {
 
         field {
             sw = rw;
-            hw = w;
+            hw = rw;
             level intr;
             woclr;
             desc = "Controller Mode interrupt: asserted when the target stretches the clock longer
@@ -81,7 +83,7 @@ addrmap i2c {
 
         field {
             sw = rw;
-            hw = w;
+            hw = rw;
             level intr;
             woclr;
             desc = "Controller Mode interrupt: asserted when the target fails to keep SDA stable
@@ -90,7 +92,7 @@ addrmap i2c {
 
         field {
             sw = rw;
-            hw = w;
+            hw = rw;
             level intr;
             woclr;
             desc = "Controller/Target Mode interrupt: asserted when this/the controller finishes
@@ -123,7 +125,7 @@ addrmap i2c {
 
         field {
             sw = rw;
-            hw = w;
+            hw = rw;
             level intr;
             woclr;
             desc = "Target Mode interrupt: asserted when the controller sends this target a STOP
@@ -132,7 +134,7 @@ addrmap i2c {
 
         field {
             sw = rw;
-            hw = w;
+            hw = rw;
             level intr;
             woclr;
             desc = "Target Mode interrupt: asserted when the controller stops generating the clock
@@ -141,7 +143,7 @@ addrmap i2c {
 
         field {
             sw = rw;
-            hw = w;
+            hw = rw;
             level intr;
             woclr;
             desc = "Controller Mode interrupt: asserted when `smbalert_ni` is asserted. Write `1`
@@ -150,7 +152,7 @@ addrmap i2c {
 
         field {
             sw = rw;
-            hw = w;
+            hw = rw;
             level intr;
             woclr;
             desc = "Controller Mode interrupt: asserted when the Controller TX FIFO has a parity
@@ -159,7 +161,7 @@ addrmap i2c {
 
         field {
             sw = rw;
-            hw = w;
+            hw = rw;
             level intr;
             woclr;
             desc = "Controller Mode interrupt: asserted when the Controller RX FIFO has a parity
@@ -168,7 +170,7 @@ addrmap i2c {
 
         field {
             sw = rw;
-            hw = w;
+            hw = rw;
             level intr;
             woclr;
             desc = "Target Mode interrupt: asserted when the Target TX FIFO has a parity error.
@@ -177,7 +179,7 @@ addrmap i2c {
 
         field {
             sw = rw;
-            hw = w;
+            hw = rw;
             level intr;
             woclr;
             desc = "Target Mode interrupt: asserted when the Target RX FIFO has a parity error.
@@ -208,7 +210,7 @@ addrmap i2c {
 
         field {
             sw = rw;
-            hw = r; // TODO: Change to na after PeakRDL bug fix
+            hw = r;
             desc = "Enables the `RX_OVERFLOW` interrupt.";
         } RX_OVERFLOW[3:3] = 0x0;
 
@@ -220,31 +222,31 @@ addrmap i2c {
 
         field {
             sw = rw;
-            hw = r; // TODO: Change to na after PeakRDL bug fix
+            hw = r;
             desc = "Enables the `SCL_INTERFERENCE` interrupt.";
         } SCL_INTERFERENCE[5:5] = 0x0;
 
         field {
             sw = rw;
-            hw = r; // TODO: Change to na after PeakRDL bug fix
+            hw = r;
             desc = "Enables the `SDA_INTERFERENCE` interrupt.";
         } SDA_INTERFERENCE[6:6] = 0x0;
 
         field {
             sw = rw;
-            hw = r; // TODO: Change to na after PeakRDL bug fix
+            hw = r;
             desc = "Enables the `STRETCH_TIMEOUT` interrupt.";
         } STRETCH_TIMEOUT[7:7] = 0x0;
 
         field {
             sw = rw;
-            hw = r; // TODO: Change to na after PeakRDL bug fix
+            hw = r;
             desc = "Enables the `SDA_UNSTABLE` interrupt.";
         } SDA_UNSTABLE[8:8] = 0x0;
 
         field {
             sw = rw;
-            hw = r; // TODO: Change to na after PeakRDL bug fix
+            hw = r;
             desc = "Enables the `CMD_COMPLETE` interrupt.";
         } CMD_COMPLETE[9:9] = 0x0;
 
@@ -268,43 +270,43 @@ addrmap i2c {
 
         field {
             sw = rw;
-            hw = r; // TODO: Change to na after PeakRDL bug fix
+            hw = r;
             desc = "Enables the `UNEXP_STOP` interrupt.";
         } UNEXP_STOP[13:13] = 0x0;
 
         field {
             sw = rw;
-            hw = r; // TODO: Change to na after PeakRDL bug fix
+            hw = r;
             desc = "Enables the `HOST_TIMEOUT` interrupt.";
         } HOST_TIMEOUT[14:14] = 0x0;
 
         field {
             sw = rw;
-            hw = r; // TODO: Change to na after PeakRDL bug fix
+            hw = r;
             desc = "Enables the `SMBALERT` interrupt.";
         } SMBALERT[15:15] = 0x0;
 
         field {
             sw = rw;
-            hw = r; // TODO: Change to na after PeakRDL bug fix
+            hw = r;
             desc = "Enables the `CONTROLLER_TX_FIFO_ERROR` interrupt.";
         } CONTROLLER_TX_FIFO_ERROR[16:16] = 0x0;
 
         field {
             sw = rw;
-            hw = r; // TODO: Change to na after PeakRDL bug fix
+            hw = r;
             desc = "Enables the `CONTROLLER_RX_FIFO_ERROR` interrupt.";
         } CONTROLLER_RX_FIFO_ERROR[17:17] = 0x0;
 
         field {
             sw = rw;
-            hw = r; // TODO: Change to na after PeakRDL bug fix
+            hw = r;
             desc = "Enables the `TARGET_TX_FIFO_ERROR` interrupt.";
         } TARGET_TX_FIFO_ERROR[18:18] = 0x0;
 
         field {
             sw = rw;
-            hw = r; // TODO: Change to na after PeakRDL bug fix
+            hw = r;
             desc = "Enables the `TARGET_RX_FIFO_ERROR` interrupt.";
         } TARGET_RX_FIFO_ERROR[19:19] = 0x0;
     };
@@ -1344,26 +1346,6 @@ addrmap i2c {
              CONTROLLER_EVENTS            CONTROLLER_EVENTS            @0x78;
              TARGET_EVENTS                TARGET_EVENTS                @0x7c;
              SMBUS_STATUS                 SMBUS_STATUS                 @0x80;
-
-
-    //////////////////////////
-    // Property Assignments //
-    //////////////////////////
-
-    // TODO: Uncomment after PeakRDL bug fix
-    // INTR_STATE.RX_OVERFLOW             ->hwenable = INTR_ENABLE.RX_OVERFLOW;
-    // INTR_STATE.SCL_INTERFERENCE        ->hwenable = INTR_ENABLE.SCL_INTERFERENCE;
-    // INTR_STATE.SDA_INTERFERENCE        ->hwenable = INTR_ENABLE.SDA_INTERFERENCE;
-    // INTR_STATE.STRETCH_TIMEOUT         ->hwenable = INTR_ENABLE.STRETCH_TIMEOUT;
-    // INTR_STATE.SDA_UNSTABLE            ->hwenable = INTR_ENABLE.SDA_UNSTABLE;
-    // INTR_STATE.CMD_COMPLETE            ->hwenable = INTR_ENABLE.CMD_COMPLETE;
-    // INTR_STATE.UNEXP_STOP              ->hwenable = INTR_ENABLE.UNEXP_STOP;
-    // INTR_STATE.HOST_TIMEOUT            ->hwenable = INTR_ENABLE.HOST_TIMEOUT;
-    // INTR_STATE.SMBALERT                ->hwenable = INTR_ENABLE.SMBALERT;
-    // INTR_STATE.CONTROLLER_TX_FIFO_ERROR->hwenable = INTR_ENABLE.CONTROLLER_TX_FIFO_ERROR;
-    // INTR_STATE.CONTROLLER_RX_FIFO_ERROR->hwenable = INTR_ENABLE.CONTROLLER_RX_FIFO_ERROR;
-    // INTR_STATE.TARGET_TX_FIFO_ERROR    ->hwenable = INTR_ENABLE.TARGET_TX_FIFO_ERROR;
-    // INTR_STATE.TARGET_RX_FIFO_ERROR    ->hwenable = INTR_ENABLE.TARGET_RX_FIFO_ERROR;
 
 };
 

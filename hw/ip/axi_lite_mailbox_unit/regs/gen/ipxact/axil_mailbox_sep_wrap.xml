@@ -10,10 +10,16 @@
   <ipxact:memoryMaps>
     <ipxact:memoryMap>
       <ipxact:name>axil_mailbox_sep_wrap</ipxact:name>
-      <ipxact:description></ipxact:description>
+      <ipxact:displayName>SEP AXI-Lite Mailbox Wrapper Address Map</ipxact:displayName>
+      <ipxact:description>SEP-side wrapper instantiating the AXI-Lite mailbox pairs.
+Each outbound_mailbox_N / inbound_mailbox_N pair is the two apertures of one
+bidirectional mailbox and shares a single pair of FIFOs: data written through
+WRITE_DATA in one aperture is what READ_DATA in the other aperture returns.
+The outbound/inbound naming reflects intended use, not an access restriction.</ipxact:description>
       <ipxact:addressBlock>
         <ipxact:name>outbound_mailbox_0</ipxact:name>
-        <ipxact:description></ipxact:description>
+        <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+        <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
         <ipxact:range>'h50</ipxact:range>
         <ipxact:width>64</ipxact:width>
@@ -32,6 +38,7 @@
             </ipxact:resets>
             <ipxact:bitWidth>64</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -42,13 +49,10 @@
             <ipxact:name>read_data</ipxact:name>
             <ipxact:description>Read data from mailbox fifo</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
             <ipxact:bitWidth>64</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>modify</ipxact:readAction>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -61,10 +65,11 @@
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
+                <ipxact:value>'h1</ipxact:value>
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -77,11 +82,12 @@
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>write_level_above_thresh</ipxact:name>
-            <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+            <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
             <ipxact:bitOffset>2</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -89,11 +95,12 @@
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>read_level_above_thresh</ipxact:name>
-            <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+            <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
             <ipxact:bitOffset>3</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -101,6 +108,7 @@
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -118,7 +126,9 @@
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>clear</ipxact:readAction>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>write_error</ipxact:name>
@@ -130,7 +140,9 @@
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>clear</ipxact:readAction>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -187,7 +199,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rtirq</ipxact:name>
@@ -204,7 +218,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>eirq</ipxact:name>
@@ -221,7 +237,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -285,6 +303,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -298,6 +317,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -311,6 +331,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -329,6 +350,7 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
@@ -341,12 +363,14 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>inbound_mailbox_0</ipxact:name>
-        <ipxact:description></ipxact:description>
+        <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+        <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
         <ipxact:baseAddress>'h800</ipxact:baseAddress>
         <ipxact:range>'h50</ipxact:range>
         <ipxact:width>64</ipxact:width>
@@ -365,6 +389,7 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>64</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -375,13 +400,10 @@ On write:
             <ipxact:name>read_data</ipxact:name>
             <ipxact:description>Read data from mailbox fifo</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
             <ipxact:bitWidth>64</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>modify</ipxact:readAction>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -394,10 +416,11 @@ On write:
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
+                <ipxact:value>'h1</ipxact:value>
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -410,11 +433,12 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>write_level_above_thresh</ipxact:name>
-            <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+            <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
             <ipxact:bitOffset>2</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -422,11 +446,12 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>read_level_above_thresh</ipxact:name>
-            <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+            <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
             <ipxact:bitOffset>3</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -434,6 +459,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -451,7 +477,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>clear</ipxact:readAction>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>write_error</ipxact:name>
@@ -463,7 +491,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>clear</ipxact:readAction>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -520,7 +550,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rtirq</ipxact:name>
@@ -537,7 +569,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>eirq</ipxact:name>
@@ -554,7 +588,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -618,6 +654,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -631,6 +668,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -644,6 +682,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -662,6 +701,7 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
@@ -674,12 +714,14 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>outbound_mailbox_1</ipxact:name>
-        <ipxact:description></ipxact:description>
+        <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+        <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
         <ipxact:baseAddress>'h1000</ipxact:baseAddress>
         <ipxact:range>'h50</ipxact:range>
         <ipxact:width>64</ipxact:width>
@@ -698,6 +740,7 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>64</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -708,13 +751,10 @@ On write:
             <ipxact:name>read_data</ipxact:name>
             <ipxact:description>Read data from mailbox fifo</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
             <ipxact:bitWidth>64</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>modify</ipxact:readAction>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -727,10 +767,11 @@ On write:
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
+                <ipxact:value>'h1</ipxact:value>
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -743,11 +784,12 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>write_level_above_thresh</ipxact:name>
-            <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+            <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
             <ipxact:bitOffset>2</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -755,11 +797,12 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>read_level_above_thresh</ipxact:name>
-            <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+            <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
             <ipxact:bitOffset>3</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -767,6 +810,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -784,7 +828,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>clear</ipxact:readAction>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>write_error</ipxact:name>
@@ -796,7 +842,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>clear</ipxact:readAction>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -853,7 +901,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rtirq</ipxact:name>
@@ -870,7 +920,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>eirq</ipxact:name>
@@ -887,7 +939,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -951,6 +1005,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -964,6 +1019,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -977,6 +1033,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -995,6 +1052,7 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
@@ -1007,12 +1065,14 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>inbound_mailbox_1</ipxact:name>
-        <ipxact:description></ipxact:description>
+        <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+        <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
         <ipxact:baseAddress>'h1800</ipxact:baseAddress>
         <ipxact:range>'h50</ipxact:range>
         <ipxact:width>64</ipxact:width>
@@ -1031,6 +1091,7 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>64</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -1041,13 +1102,10 @@ On write:
             <ipxact:name>read_data</ipxact:name>
             <ipxact:description>Read data from mailbox fifo</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
             <ipxact:bitWidth>64</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>modify</ipxact:readAction>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -1060,10 +1118,11 @@ On write:
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
+                <ipxact:value>'h1</ipxact:value>
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -1076,11 +1135,12 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>write_level_above_thresh</ipxact:name>
-            <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+            <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
             <ipxact:bitOffset>2</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1088,11 +1148,12 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>read_level_above_thresh</ipxact:name>
-            <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+            <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
             <ipxact:bitOffset>3</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1100,6 +1161,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -1117,7 +1179,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>clear</ipxact:readAction>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>write_error</ipxact:name>
@@ -1129,7 +1193,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>clear</ipxact:readAction>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -1186,7 +1252,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rtirq</ipxact:name>
@@ -1203,7 +1271,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>eirq</ipxact:name>
@@ -1220,7 +1290,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -1284,6 +1356,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -1297,6 +1370,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -1310,6 +1384,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -1328,6 +1403,7 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
@@ -1340,12 +1416,14 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>outbound_mailbox_2</ipxact:name>
-        <ipxact:description></ipxact:description>
+        <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+        <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
         <ipxact:baseAddress>'h2000</ipxact:baseAddress>
         <ipxact:range>'h50</ipxact:range>
         <ipxact:width>64</ipxact:width>
@@ -1364,6 +1442,7 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>64</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -1374,13 +1453,10 @@ On write:
             <ipxact:name>read_data</ipxact:name>
             <ipxact:description>Read data from mailbox fifo</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
             <ipxact:bitWidth>64</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>modify</ipxact:readAction>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -1393,10 +1469,11 @@ On write:
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
+                <ipxact:value>'h1</ipxact:value>
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -1409,11 +1486,12 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>write_level_above_thresh</ipxact:name>
-            <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+            <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
             <ipxact:bitOffset>2</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1421,11 +1499,12 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>read_level_above_thresh</ipxact:name>
-            <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+            <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
             <ipxact:bitOffset>3</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1433,6 +1512,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -1450,7 +1530,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>clear</ipxact:readAction>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>write_error</ipxact:name>
@@ -1462,7 +1544,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>clear</ipxact:readAction>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -1519,7 +1603,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rtirq</ipxact:name>
@@ -1536,7 +1622,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>eirq</ipxact:name>
@@ -1553,7 +1641,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -1617,6 +1707,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -1630,6 +1721,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -1643,6 +1735,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -1661,6 +1754,7 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
@@ -1673,12 +1767,14 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>inbound_mailbox_2</ipxact:name>
-        <ipxact:description></ipxact:description>
+        <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+        <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
         <ipxact:baseAddress>'h2800</ipxact:baseAddress>
         <ipxact:range>'h50</ipxact:range>
         <ipxact:width>64</ipxact:width>
@@ -1697,6 +1793,7 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>64</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -1707,13 +1804,10 @@ On write:
             <ipxact:name>read_data</ipxact:name>
             <ipxact:description>Read data from mailbox fifo</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
             <ipxact:bitWidth>64</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>modify</ipxact:readAction>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -1726,10 +1820,11 @@ On write:
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
+                <ipxact:value>'h1</ipxact:value>
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -1742,11 +1837,12 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>write_level_above_thresh</ipxact:name>
-            <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+            <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
             <ipxact:bitOffset>2</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1754,11 +1850,12 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>read_level_above_thresh</ipxact:name>
-            <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+            <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
             <ipxact:bitOffset>3</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1766,6 +1863,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -1783,7 +1881,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>clear</ipxact:readAction>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>write_error</ipxact:name>
@@ -1795,7 +1895,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>clear</ipxact:readAction>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -1852,7 +1954,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rtirq</ipxact:name>
@@ -1869,7 +1973,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>eirq</ipxact:name>
@@ -1886,7 +1992,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -1950,6 +2058,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -1963,6 +2072,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -1976,6 +2086,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -1994,6 +2105,7 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
@@ -2006,12 +2118,14 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>outbound_mailbox_3</ipxact:name>
-        <ipxact:description></ipxact:description>
+        <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+        <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
         <ipxact:baseAddress>'h3000</ipxact:baseAddress>
         <ipxact:range>'h50</ipxact:range>
         <ipxact:width>64</ipxact:width>
@@ -2030,6 +2144,7 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>64</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2040,13 +2155,10 @@ On write:
             <ipxact:name>read_data</ipxact:name>
             <ipxact:description>Read data from mailbox fifo</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
             <ipxact:bitWidth>64</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>modify</ipxact:readAction>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2059,10 +2171,11 @@ On write:
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
+                <ipxact:value>'h1</ipxact:value>
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -2075,11 +2188,12 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>write_level_above_thresh</ipxact:name>
-            <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+            <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
             <ipxact:bitOffset>2</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2087,11 +2201,12 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>read_level_above_thresh</ipxact:name>
-            <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+            <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
             <ipxact:bitOffset>3</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2099,6 +2214,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -2116,7 +2232,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>clear</ipxact:readAction>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>write_error</ipxact:name>
@@ -2128,7 +2246,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>clear</ipxact:readAction>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2185,7 +2305,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rtirq</ipxact:name>
@@ -2202,7 +2324,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>eirq</ipxact:name>
@@ -2219,7 +2343,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2283,6 +2409,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -2296,6 +2423,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -2309,6 +2437,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -2327,6 +2456,7 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
@@ -2339,12 +2469,14 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>inbound_mailbox_3</ipxact:name>
-        <ipxact:description></ipxact:description>
+        <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+        <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
         <ipxact:baseAddress>'h3800</ipxact:baseAddress>
         <ipxact:range>'h50</ipxact:range>
         <ipxact:width>64</ipxact:width>
@@ -2363,6 +2495,7 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>64</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2373,13 +2506,10 @@ On write:
             <ipxact:name>read_data</ipxact:name>
             <ipxact:description>Read data from mailbox fifo</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
             <ipxact:bitWidth>64</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>modify</ipxact:readAction>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2392,10 +2522,11 @@ On write:
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
+                <ipxact:value>'h1</ipxact:value>
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -2408,11 +2539,12 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>write_level_above_thresh</ipxact:name>
-            <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+            <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
             <ipxact:bitOffset>2</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2420,11 +2552,12 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>read_level_above_thresh</ipxact:name>
-            <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+            <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
             <ipxact:bitOffset>3</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2432,6 +2565,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -2449,7 +2583,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>clear</ipxact:readAction>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>write_error</ipxact:name>
@@ -2461,7 +2597,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>clear</ipxact:readAction>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2518,7 +2656,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rtirq</ipxact:name>
@@ -2535,7 +2675,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>eirq</ipxact:name>
@@ -2552,7 +2694,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2616,6 +2760,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -2629,6 +2774,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -2642,6 +2788,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -2660,6 +2807,7 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
@@ -2672,12 +2820,14 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>outbound_mailbox_4</ipxact:name>
-        <ipxact:description></ipxact:description>
+        <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+        <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
         <ipxact:baseAddress>'h4000</ipxact:baseAddress>
         <ipxact:range>'h50</ipxact:range>
         <ipxact:width>64</ipxact:width>
@@ -2696,6 +2846,7 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>64</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2706,13 +2857,10 @@ On write:
             <ipxact:name>read_data</ipxact:name>
             <ipxact:description>Read data from mailbox fifo</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
             <ipxact:bitWidth>64</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>modify</ipxact:readAction>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2725,10 +2873,11 @@ On write:
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
+                <ipxact:value>'h1</ipxact:value>
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -2741,11 +2890,12 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>write_level_above_thresh</ipxact:name>
-            <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+            <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
             <ipxact:bitOffset>2</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2753,11 +2903,12 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>read_level_above_thresh</ipxact:name>
-            <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+            <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
             <ipxact:bitOffset>3</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2765,6 +2916,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -2782,7 +2934,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>clear</ipxact:readAction>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>write_error</ipxact:name>
@@ -2794,7 +2948,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>clear</ipxact:readAction>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2851,7 +3007,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rtirq</ipxact:name>
@@ -2868,7 +3026,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>eirq</ipxact:name>
@@ -2885,7 +3045,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2949,6 +3111,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -2962,6 +3125,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -2975,6 +3139,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -2993,6 +3158,7 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
@@ -3005,12 +3171,14 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>inbound_mailbox_4</ipxact:name>
-        <ipxact:description></ipxact:description>
+        <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+        <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
         <ipxact:baseAddress>'h4800</ipxact:baseAddress>
         <ipxact:range>'h50</ipxact:range>
         <ipxact:width>64</ipxact:width>
@@ -3029,6 +3197,7 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>64</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -3039,13 +3208,10 @@ On write:
             <ipxact:name>read_data</ipxact:name>
             <ipxact:description>Read data from mailbox fifo</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
             <ipxact:bitWidth>64</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>modify</ipxact:readAction>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -3058,10 +3224,11 @@ On write:
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
+                <ipxact:value>'h1</ipxact:value>
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -3074,11 +3241,12 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>write_level_above_thresh</ipxact:name>
-            <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+            <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
             <ipxact:bitOffset>2</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -3086,11 +3254,12 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>read_level_above_thresh</ipxact:name>
-            <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+            <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
             <ipxact:bitOffset>3</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -3098,6 +3267,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -3115,7 +3285,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>clear</ipxact:readAction>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>write_error</ipxact:name>
@@ -3127,7 +3299,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>clear</ipxact:readAction>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -3184,7 +3358,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rtirq</ipxact:name>
@@ -3201,7 +3377,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>eirq</ipxact:name>
@@ -3218,7 +3396,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -3282,6 +3462,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -3295,6 +3476,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -3308,6 +3490,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -3326,6 +3509,7 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
@@ -3338,12 +3522,14 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>outbound_mailbox_5</ipxact:name>
-        <ipxact:description></ipxact:description>
+        <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+        <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
         <ipxact:baseAddress>'h5000</ipxact:baseAddress>
         <ipxact:range>'h50</ipxact:range>
         <ipxact:width>64</ipxact:width>
@@ -3362,6 +3548,7 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>64</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -3372,13 +3559,10 @@ On write:
             <ipxact:name>read_data</ipxact:name>
             <ipxact:description>Read data from mailbox fifo</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
             <ipxact:bitWidth>64</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>modify</ipxact:readAction>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -3391,10 +3575,11 @@ On write:
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
+                <ipxact:value>'h1</ipxact:value>
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -3407,11 +3592,12 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>write_level_above_thresh</ipxact:name>
-            <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+            <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
             <ipxact:bitOffset>2</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -3419,11 +3605,12 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>read_level_above_thresh</ipxact:name>
-            <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+            <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
             <ipxact:bitOffset>3</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -3431,6 +3618,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -3448,7 +3636,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>clear</ipxact:readAction>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>write_error</ipxact:name>
@@ -3460,7 +3650,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>clear</ipxact:readAction>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -3517,7 +3709,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rtirq</ipxact:name>
@@ -3534,7 +3728,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>eirq</ipxact:name>
@@ -3551,7 +3747,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -3615,6 +3813,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -3628,6 +3827,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -3641,6 +3841,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -3659,6 +3860,7 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
@@ -3671,12 +3873,14 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>inbound_mailbox_5</ipxact:name>
-        <ipxact:description></ipxact:description>
+        <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+        <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
         <ipxact:baseAddress>'h5800</ipxact:baseAddress>
         <ipxact:range>'h50</ipxact:range>
         <ipxact:width>64</ipxact:width>
@@ -3695,6 +3899,7 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>64</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -3705,13 +3910,10 @@ On write:
             <ipxact:name>read_data</ipxact:name>
             <ipxact:description>Read data from mailbox fifo</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
             <ipxact:bitWidth>64</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>modify</ipxact:readAction>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -3724,10 +3926,11 @@ On write:
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
+                <ipxact:value>'h1</ipxact:value>
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -3740,11 +3943,12 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>write_level_above_thresh</ipxact:name>
-            <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+            <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
             <ipxact:bitOffset>2</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -3752,11 +3956,12 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>read_level_above_thresh</ipxact:name>
-            <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+            <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
             <ipxact:bitOffset>3</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -3764,6 +3969,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -3781,7 +3987,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>clear</ipxact:readAction>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>write_error</ipxact:name>
@@ -3793,7 +4001,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>clear</ipxact:readAction>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -3850,7 +4060,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rtirq</ipxact:name>
@@ -3867,7 +4079,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>eirq</ipxact:name>
@@ -3884,7 +4098,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -3948,6 +4164,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -3961,6 +4178,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -3974,6 +4192,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -3992,6 +4211,7 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
@@ -4004,12 +4224,14 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>outbound_mailbox_6</ipxact:name>
-        <ipxact:description></ipxact:description>
+        <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+        <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
         <ipxact:baseAddress>'h6000</ipxact:baseAddress>
         <ipxact:range>'h50</ipxact:range>
         <ipxact:width>64</ipxact:width>
@@ -4028,6 +4250,7 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>64</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -4038,13 +4261,10 @@ On write:
             <ipxact:name>read_data</ipxact:name>
             <ipxact:description>Read data from mailbox fifo</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
             <ipxact:bitWidth>64</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>modify</ipxact:readAction>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -4057,10 +4277,11 @@ On write:
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
+                <ipxact:value>'h1</ipxact:value>
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -4073,11 +4294,12 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>write_level_above_thresh</ipxact:name>
-            <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+            <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
             <ipxact:bitOffset>2</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -4085,11 +4307,12 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>read_level_above_thresh</ipxact:name>
-            <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+            <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
             <ipxact:bitOffset>3</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -4097,6 +4320,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -4114,7 +4338,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>clear</ipxact:readAction>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>write_error</ipxact:name>
@@ -4126,7 +4352,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>clear</ipxact:readAction>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -4183,7 +4411,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rtirq</ipxact:name>
@@ -4200,7 +4430,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>eirq</ipxact:name>
@@ -4217,7 +4449,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -4281,6 +4515,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -4294,6 +4529,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -4307,6 +4543,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -4325,6 +4562,7 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
@@ -4337,12 +4575,14 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>inbound_mailbox_6</ipxact:name>
-        <ipxact:description></ipxact:description>
+        <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+        <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
         <ipxact:baseAddress>'h6800</ipxact:baseAddress>
         <ipxact:range>'h50</ipxact:range>
         <ipxact:width>64</ipxact:width>
@@ -4361,6 +4601,7 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>64</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -4371,13 +4612,10 @@ On write:
             <ipxact:name>read_data</ipxact:name>
             <ipxact:description>Read data from mailbox fifo</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
             <ipxact:bitWidth>64</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>modify</ipxact:readAction>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -4390,10 +4628,11 @@ On write:
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
+                <ipxact:value>'h1</ipxact:value>
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -4406,11 +4645,12 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>write_level_above_thresh</ipxact:name>
-            <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+            <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
             <ipxact:bitOffset>2</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -4418,11 +4658,12 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>read_level_above_thresh</ipxact:name>
-            <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+            <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
             <ipxact:bitOffset>3</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -4430,6 +4671,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -4447,7 +4689,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>clear</ipxact:readAction>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>write_error</ipxact:name>
@@ -4459,7 +4703,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>clear</ipxact:readAction>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -4516,7 +4762,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rtirq</ipxact:name>
@@ -4533,7 +4781,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>eirq</ipxact:name>
@@ -4550,7 +4800,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -4614,6 +4866,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -4627,6 +4880,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -4640,6 +4894,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -4658,6 +4913,7 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
@@ -4670,12 +4926,14 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>outbound_mailbox_7</ipxact:name>
-        <ipxact:description></ipxact:description>
+        <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+        <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
         <ipxact:baseAddress>'h7000</ipxact:baseAddress>
         <ipxact:range>'h50</ipxact:range>
         <ipxact:width>64</ipxact:width>
@@ -4694,6 +4952,7 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>64</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -4704,13 +4963,10 @@ On write:
             <ipxact:name>read_data</ipxact:name>
             <ipxact:description>Read data from mailbox fifo</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
             <ipxact:bitWidth>64</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>modify</ipxact:readAction>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -4723,10 +4979,11 @@ On write:
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
+                <ipxact:value>'h1</ipxact:value>
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -4739,11 +4996,12 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>write_level_above_thresh</ipxact:name>
-            <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+            <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
             <ipxact:bitOffset>2</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -4751,11 +5009,12 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>read_level_above_thresh</ipxact:name>
-            <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+            <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
             <ipxact:bitOffset>3</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -4763,6 +5022,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -4780,7 +5040,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>clear</ipxact:readAction>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>write_error</ipxact:name>
@@ -4792,7 +5054,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>clear</ipxact:readAction>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -4849,7 +5113,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rtirq</ipxact:name>
@@ -4866,7 +5132,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>eirq</ipxact:name>
@@ -4883,7 +5151,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -4947,6 +5217,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -4960,6 +5231,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -4973,6 +5245,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -4991,6 +5264,7 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
@@ -5003,12 +5277,14 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>inbound_mailbox_7</ipxact:name>
-        <ipxact:description></ipxact:description>
+        <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+        <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
         <ipxact:baseAddress>'h7800</ipxact:baseAddress>
         <ipxact:range>'h50</ipxact:range>
         <ipxact:width>64</ipxact:width>
@@ -5027,6 +5303,7 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>64</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -5037,13 +5314,10 @@ On write:
             <ipxact:name>read_data</ipxact:name>
             <ipxact:description>Read data from mailbox fifo</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
             <ipxact:bitWidth>64</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>modify</ipxact:readAction>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -5056,10 +5330,11 @@ On write:
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
+                <ipxact:value>'h1</ipxact:value>
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -5072,11 +5347,12 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>write_level_above_thresh</ipxact:name>
-            <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+            <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
             <ipxact:bitOffset>2</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -5084,11 +5360,12 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>read_level_above_thresh</ipxact:name>
-            <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+            <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
             <ipxact:bitOffset>3</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -5096,6 +5373,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -5113,7 +5391,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>clear</ipxact:readAction>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>write_error</ipxact:name>
@@ -5125,7 +5405,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
+            <ipxact:readAction>clear</ipxact:readAction>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -5182,7 +5464,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rtirq</ipxact:name>
@@ -5199,7 +5483,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>eirq</ipxact:name>
@@ -5216,7 +5502,9 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -5280,6 +5568,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -5293,6 +5582,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -5306,6 +5596,7 @@ On write:
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -5324,6 +5615,7 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
@@ -5336,6 +5628,7 @@ On write:
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
+            <ipxact:modifiedWriteValue>modify</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
       </ipxact:addressBlock>

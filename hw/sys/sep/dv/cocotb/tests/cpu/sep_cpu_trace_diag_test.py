@@ -15,14 +15,17 @@ ground truth:
     (nm-listing symbolization is correct on a CSR-true PC);
   * CHK-CHAIN-SYM  -- retired PCs cover every function of the chain (the
     monitor saw the chain execute, and each PC resolves to the right name);
-  * CHK-DEPTH      -- the shadow call stack reached the chain's depth while
-    the trap frame was live.
+  * CHK-DEPTH      -- while the trap frame is live, the shadow call stack
+    held exactly the named chain, resolved through the firmware symbol
+    listing: crt0 (_start) -> main -> diag_leaf1 -> diag_leaf2 -> diag_leaf3,
+    then the breakpoint trap inside diag_leaf3. Each call frame's call site
+    must lie in the caller and its target must be the callee's entry.
 
 Standard boot-scoreboard checks (banner + firmware PASS + PC advance) apply on
 top. The firmware image is fw/build/tests/cpu_trace_diag_test/*.{itcm,dtcm}.hex,
 built by the c_compile stage (make dv-fw-tests TEST=cpu_trace_diag_test).
 
-Stimulus is deliberately deterministic: the reconstruction is auditable only
+Stimulus is deterministic: the reconstruction is auditable only
 against a known call chain and a known trap site, and the prebuilt image fixes
 both at compile time (same shape as every cpu firmware test here). The seeded
 clock-timing randomization from sep_base_test still applies on top, so the
@@ -36,9 +39,9 @@ import re
 from pathlib import Path
 
 import pyuvm
-
-from sep_base_test import sep_base_test
 from env.sep_boot_scoreboard import SepBootScoreboard
+from sep_base_test import sep_base_test
+from sep_reg_meta import sym
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
 _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "cpu_trace_diag_test")
@@ -46,13 +49,21 @@ _ITCM_HEX = os.path.join(_FW_DIR, "cpu_trace_diag_test.itcm.hex")
 _DTCM_HEX = os.path.join(_FW_DIR, "cpu_trace_diag_test.dtcm.hex")
 
 _EXPECTED_LINE = "SEP CPU trace diag test"
-# main + diag_leaf1..3 are linking calls live at the ebreak; the trap frame
-# stacks on top. crt0's `call main` may add one more -- assert the floor.
-_MIN_STACK_DEPTH = 4
+# Trap-live shadow stack, outermost first: one (caller, callee) pair per
+# linking call, then the trap frame inside the innermost callee. The crt0 entry
+# symbol is _start (fw/startup/crt0.s `call main`); the rest is the noinline
+# chain in fw/tests/cpu_trace_diag_test/cpu_trace_diag_test.c.
+_CALL_CHAIN = (
+    ("_start", "main"),
+    ("main", "diag_leaf1"),
+    ("diag_leaf1", "diag_leaf2"),
+    ("diag_leaf2", "diag_leaf3"),
+)
+_TRAP_FUNC = "diag_leaf3"
 _MCAUSE_BREAKPOINT = 3
 _CHAIN_SYMBOLS = ("diag_leaf1", "diag_leaf2", "diag_leaf3", "main")
 
-_ICCM_BASE = 0xC000_0000
+_ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
 _MAX_RUN_CYCLES = 2_000_000
 _NO_BOOT_CYCLES = 80_000
 _PROGRESS_EVERY = 2_000
@@ -73,7 +84,9 @@ class sep_cpu_trace_diag_test(sep_base_test):
         # default banner and would overwrite an assignment made there).
         self.sb.expected_line = _EXPECTED_LINE
         await self.boot_firmware(
-            self.sb, _ITCM_HEX, _DTCM_HEX,
+            self.sb,
+            _ITCM_HEX,
+            _DTCM_HEX,
             rst_vec=_ICCM_BASE >> 1,
             max_run_cycles=_MAX_RUN_CYCLES,
             no_boot_cycles=_NO_BOOT_CYCLES,
@@ -95,7 +108,8 @@ class sep_cpu_trace_diag_test(sep_base_test):
         )
         self.logger.info(
             "CHK-TRAP-EVENT PASS: 1 breakpoint trap, trace pc=0x%08x (%s)",
-            trap_pc, mon.symbols.lookup(trap_pc),
+            trap_pc,
+            mon.symbols.lookup(trap_pc),
         )
 
         # CHK-TRAP-SYM: the CSR-true mepc the firmware printed symbolizes into
@@ -118,16 +132,36 @@ class sep_cpu_trace_diag_test(sep_base_test):
             f"CHK-CHAIN-SYM FAIL: no retired PC symbolized into {missing} "
             f"(saw {len(mon.pcs)} distinct PCs)"
         )
-        self.logger.info(
-            "CHK-CHAIN-SYM PASS: retirements cover %s", ", ".join(_CHAIN_SYMBOLS)
-        )
+        self.logger.info("CHK-CHAIN-SYM PASS: retirements cover %s", ", ".join(_CHAIN_SYMBOLS))
 
-        # CHK-DEPTH: the shadow stack tracked the chain plus the trap frame.
-        assert mon.max_depth >= _MIN_STACK_DEPTH, (
-            f"CHK-DEPTH FAIL: max shadow-stack depth {mon.max_depth} < "
-            f"{_MIN_STACK_DEPTH}"
+        # CHK-DEPTH: the snapshot taken at the breakpoint push, not the
+        # run-global max. Every frame is named through the symbol listing, so
+        # a stale frame left by a missed return, a missing level, or a trap
+        # outside diag_leaf3 fails here even when the depth still matches.
+        def _func(pc) -> str:
+            # Function that contains pc (call site or trap PC).
+            return "<unfilled>" if pc is None else mon.symbols.lookup(pc).split("+")[0]
+
+        def _entry(pc) -> str:
+            # Exact symbol at pc; an offset means pc is not a function entry.
+            return "<unfilled>" if pc is None else mon.symbols.lookup(pc)
+
+        got_frames = [
+            ("call", _func(f[1]), _entry(f[2])) if f[0] == "call" else (f[0], _func(f[1]))
+            for f in mon.trap_stack
+        ]
+        want_frames = [("call", caller, callee) for caller, callee in _CALL_CHAIN]
+        want_frames.append(("trap", _TRAP_FUNC))
+        assert got_frames == want_frames, (
+            f"CHK-DEPTH FAIL: trap-live shadow stack {got_frames} "
+            f"(depth {mon.trap_depth}) is not the named chain {want_frames}"
         )
         self.logger.info(
-            "CHK-DEPTH PASS: max call depth %d (resync notes %d)",
-            mon.max_depth, mon.resync_notes,
+            "CHK-DEPTH PASS: trap-live stack is %s -> trap in %s, depth %d "
+            "(run-global max %d, resync notes %d)",
+            " -> ".join([_CALL_CHAIN[0][0]] + [callee for _, callee in _CALL_CHAIN]),
+            _TRAP_FUNC,
+            mon.trap_depth,
+            mon.max_depth,
+            mon.resync_notes,
         )

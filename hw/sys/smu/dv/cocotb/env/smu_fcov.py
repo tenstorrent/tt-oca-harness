@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Lightweight Python-side FCOV counters for OSS SMU (SEP=0 P1/P2/P3).
+"""Lightweight Python-side FCOV counters for OSS SMU.
 
 Verilator cannot compile SV covergroups; VCS can still use this as a
 scenario-intent ledger that prints at end-of-test. Hits are recorded when
@@ -10,8 +10,7 @@ tests call ``hit()`` or when ``SmuScoreboard`` tags a check with ``fcov=``.
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Iterable, Optional
-
+from typing import Iterable
 
 # covergroup -> coverpoint -> bin
 FCOV_BINS: dict[str, dict[str, set[str]]] = {
@@ -162,10 +161,6 @@ TEST_FCOV_HITS: dict[str, list[tuple[str, str, str]]] = {
         ("reg_access_cg", "path", "jtag2axi_otp"),
         ("dtp_debug_cg", "otp", "map_complete"),
     ],
-    "smu_dtp_ptap_otp_instr_scan_test": [
-        ("reg_access_cg", "path", "jtag2axi_otp"),
-        ("dtp_debug_cg", "otp", "instr_scan"),
-    ],
     "smu_jtag_chain_enhanced_test": [
         ("dtp_debug_cg", "jtag", "chain_freq"),
     ],
@@ -214,10 +209,6 @@ TEST_FCOV_HITS: dict[str, list[tuple[str, str, str]]] = {
         ("wdt_cg", "scratch", "cold_sticky"),
         ("wdt_cg", "scratch", "cold_warm_clear"),
         ("wdt_cg", "scratch", "double_pulse"),
-    ],
-    "smu_dtp_jtag2axi_abort_mid_op_test": [
-        ("dtp_debug_cg", "jtag2axi", "abort_mid"),
-        ("reg_access_cg", "outcome", "success"),
     ],
     "smu_feat_ctrl_flip_mid_jtag2axi_test": [
         ("fuse_lifecycle_cg", "feat_ctrl", "mid_op_gate"),
@@ -306,14 +297,14 @@ TEST_FCOV_HITS: dict[str, list[tuple[str, str, str]]] = {
 
 
 class SmuFcov:
-    """Per-test FCOV hit ledger (SEP=0 intent bins)."""
+    """Per-test FCOV hit ledger."""
 
     def __init__(self) -> None:
         self._hits: dict[tuple[str, str, str], int] = defaultdict(int)
 
     def hit(self, covergroup: str, coverpoint: str, bin_name: str) -> None:
         key = (covergroup, coverpoint, bin_name)
-        # Unknown bins still count (forward-compatible) but preferred from FCOV_BINS.
+        # Keys are not validated against FCOV_BINS; any (cg, cp, bin) triple is counted.
         self._hits[key] += 1
 
     def hit_many(self, items: Iterable[tuple[str, str, str]]) -> None:

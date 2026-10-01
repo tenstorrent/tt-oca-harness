@@ -1,0 +1,44 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef OUTPUT_REMAP_REG_RDL
+`define OUTPUT_REMAP_REG_RDL
+
+addrmap output_remap {
+    name = "Output Remap Address Map";
+    desc = "Address-translation registers that remap outbound transactions and tag their attributes.";
+    
+    ////////////////////////////////////////////////////////////////////////////
+    // Register Definitions
+    ////////////////////////////////////////////////////////////////////////////
+
+    regfile output_remap_region {
+        reg REGION_ATTRS {
+            regwidth = 64;
+            accesswidth = 64;
+            field {
+                sw = rw;
+                hw = r;
+                desc = "Address translation for remap region. RTL will use the number of bits appropriate for region granulaity.
+                    e.g. SMC: 8 * 1MB regions --> 20 bits of address space per region, 36 MSBs from this register used
+                        SEP: 16 * 512KB regions --> 19 bits of address space per region, 37 MSBs from this register used";
+            } offset [55:0] = 0x0;
+            field {
+                sw = rw;
+                hw = r;
+                desc = "If set, accesses to this region are remapped by offset; if clear, they pass through with their address unchanged";
+            } valid[63:63] = 0x0;
+        };
+
+        // Register instantiation with address
+        REGION_ATTRS region_attrs @0x00;
+    };
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Address Map
+    ////////////////////////////////////////////////////////////////////////////
+
+    output_remap_region REGION @0x00;
+};
+
+`endif

@@ -5,15 +5,24 @@
 from __future__ import annotations
 
 import pyuvm
-from smc_base_test import smc_base_test
 from seq_lib.smc_jtag_boot_stall_sanity_test_seq import (
     smc_jtag_boot_stall_sanity_test_seq,
 )
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
 class smc_jtag_boot_stall_sanity_test(smc_base_test):
     """JTAG boot-stall override clears sticky while pad 57 is held."""
+
+    required_evidence = (
+        "CHK-JTAG-BOOT-STALL-BASIC",
+        "CHK-JTAG-BOOT-STALL-HOLD",
+        "CHK-JTAG-BOOT-STALL-LOCK",
+        "CHK-JTAG-BOOT-STALL-OVRD",
+        "CHK-JTAG-BOOT-STALL-WARM",
+    )
+    min_evidence = 5
 
     auto_protocol_vip = False
 

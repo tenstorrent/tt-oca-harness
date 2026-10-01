@@ -12,14 +12,13 @@
       <ipxact:name>aon_timer_mmap</ipxact:name>
       <ipxact:addressBlock>
         <ipxact:name>aon_timer</ipxact:name>
-        <ipxact:displayName>AON_Timer</ipxact:displayName>
-        <ipxact:description>Always-On Timer with wakeup and watchdog functionality. Provides a 64-bit wakeup timer with prescaler and a 32-bit watchdog timer with bark and bite thresholds.</ipxact:description>
+        <ipxact:displayName>Always-On Timer</ipxact:displayName>
+        <ipxact:description>Wakeup and watchdog timers running on a low-power, always-on clock</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
         <ipxact:range>'h38</ipxact:range>
         <ipxact:width>32</ipxact:width>
         <ipxact:register>
           <ipxact:name>ALERT_TEST</ipxact:name>
-          <ipxact:description>Alert Test Register</ipxact:description>
           <ipxact:addressOffset>'h0</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -37,12 +36,11 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>WKUP_CTRL</ipxact:name>
-          <ipxact:description>Wakeup Timer Control register. Each write to the register resets the internal prescaler count.</ipxact:description>
           <ipxact:addressOffset>'h4</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>enable</ipxact:name>
-            <ipxact:description>When set to 1, the wakeup timer will count.</ipxact:description>
+            <ipxact:description>When set to 1, the wakeup timer will count</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -54,7 +52,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>prescaler</ipxact:name>
-            <ipxact:description>Pre-scaler value for wakeup timer count.</ipxact:description>
+            <ipxact:description>Pre-scaler value for wakeup timer count</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -67,7 +65,6 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>WKUP_THOLD_HI</ipxact:name>
-          <ipxact:description>Wakeup Timer Threshold Register (bits 63 - 32)</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -85,7 +82,6 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>WKUP_THOLD_LO</ipxact:name>
-          <ipxact:description>Wakeup Timer Threshold Register (bits 31 - 0)</ipxact:description>
           <ipxact:addressOffset>'hc</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -103,7 +99,6 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>WKUP_COUNT_HI</ipxact:name>
-          <ipxact:description>Wakeup Timer Count Register (bits 63 - 32)</ipxact:description>
           <ipxact:addressOffset>'h10</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -122,7 +117,6 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>WKUP_COUNT_LO</ipxact:name>
-          <ipxact:description>Wakeup Timer Count Register (bits 31 - 0)</ipxact:description>
           <ipxact:addressOffset>'h14</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -141,7 +135,6 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>WDOG_REGWEN</ipxact:name>
-          <ipxact:description>Watchdog Timer Write Enable Register</ipxact:description>
           <ipxact:addressOffset>'h18</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -155,12 +148,11 @@
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:access>read-write</ipxact:access>
-            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
+            <ipxact:modifiedWriteValue>zeroToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>WDOG_CTRL</ipxact:name>
-          <ipxact:description>Watchdog Timer Control register</ipxact:description>
           <ipxact:addressOffset>'h1c</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -190,7 +182,6 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>WDOG_BARK_THOLD</ipxact:name>
-          <ipxact:description>Watchdog Timer Bark Threshold Register</ipxact:description>
           <ipxact:addressOffset>'h20</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -208,7 +199,6 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>WDOG_BITE_THOLD</ipxact:name>
-          <ipxact:description>Watchdog Timer Bite Threshold Register</ipxact:description>
           <ipxact:addressOffset>'h24</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -226,7 +216,6 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>WDOG_COUNT</ipxact:name>
-          <ipxact:description>Watchdog Timer Count Register</ipxact:description>
           <ipxact:addressOffset>'h28</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -245,7 +234,6 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>INTR_STATE</ipxact:name>
-          <ipxact:description>Interrupt State Register</ipxact:description>
           <ipxact:addressOffset>'h2c</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -279,18 +267,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>INTR_TEST</ipxact:name>
-          <ipxact:description>Interrupt Test Register</ipxact:description>
           <ipxact:addressOffset>'h30</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>wkup_timer_expired</ipxact:name>
             <ipxact:description>Write 1 to force wkup_timer_expired interrupt.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
           </ipxact:field>
@@ -298,18 +280,12 @@
             <ipxact:name>wdog_timer_bark</ipxact:name>
             <ipxact:description>Write 1 to force wdog_timer_bark interrupt.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>WKUP_CAUSE</ipxact:name>
-          <ipxact:description>Wakeup request status</ipxact:description>
           <ipxact:addressOffset>'h34</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -324,7 +300,7 @@
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
-            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
+            <ipxact:modifiedWriteValue>zeroToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
       </ipxact:addressBlock>

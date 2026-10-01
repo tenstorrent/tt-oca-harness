@@ -2,91 +2,103 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[telemetry-receiver-architecture]]
-===== Architecture
+== Architecture
 
-The Telemetry Receiver leverages a dual-buffer design for robust and
-continuous telemetry data capture from an ARM Trace Bus (ATB) source.
-Its architecture brings together configurable register interfaces, full
-ATB compliance, intelligent buffering, and efficient message
-processing—balancing narrative clarity with compact organization.
+The receiver has two stores: a byte assembly buffer for the incoming message
+and a queue of decoded messages for software. Neither is a second independently
+configurable telemetry channel.
 
-====== Functional Blocks
+=== Assembly and Decode
 
-====== Register Interface Block
+ifdef::backend-html5[]
+++++
+<span id="functional-blocks"></span>
+<span id="atb-interface-block"></span>
+<span id="assembly-buffer"></span>
+<span id="message-decoder"></span>
+<span id="data-flow"></span>
+++++
+endif::backend-html5[]
 
-The register interface uses an AXI4-Lite bus for access to control,
-status, and data registers. Control registers handle buffer thresholds
-and interrupt enables for system optimization. Status registers provide
-real-time buffer occupancy and error flags. Data registers make probe ID
-and counter details accessible, while interrupt registers support
-selective and responsive event handling for seamless system integration.
+An accepted beat (`atvalid_i && atready_o`) writes one assembly byte. Eight
+beats form a packet, least-significant byte first. Bit 63 marks the last packet;
+the first packet carries the probe ID at bits `[60:56]`. Counter decoding starts
+at block 1 of the first packet, continues across packet boundaries, and assembles
+each counter most-significant byte first. All four block-valid bits must be set
+for a counter to be valid; otherwise its decoded value is zero.
 
-====== ATB Interface Block
+The assembly capacity is derived from `MAX_NUM_COUNTERS_PER_MESSAGE`. Reaching
+that capacity without a last-packet marker raises `MISSING_LAST` and resets the
+write pointer. A last-packet marker also resets the pointer and queues the
+decoded message. The core accepts beats except during a receiver-flush pulse;
+message-queue fullness does not apply backpressure.
 
-The ATB interface guarantees protocol-compliant 8-bit telemetry data
-reception using handshaked ready/valid flows, supporting industrial
-trace infrastructures. It manages per-source ID tracking for
-multi-source collection and delivers reliable operation under variable
-load, with flush signaling to mark stream boundaries and maintain
-session integrity.
+IMPORTANT: Every configured counter position is decoded, including positions
+beyond the last packet received. A short message following a longer one can
+therefore inherit trailing values and validity bits. Producers must overwrite
+the complete configured message footprint and mark unused counter blocks
+invalid. Receiver flush resets the pointer but leaves assembly bytes intact;
+only reset clears that storage.
 
-====== Assembly Buffer
+=== Message Queue and Readout
 
-This buffer assembles streams of 8-bit ATB data into 64-bit packets. It
-ensures data ordering, detects packet boundaries, and supports
-little-endian (LSB-first) byte alignment. Temporary storage enables
-smooth handling of irregular traffic and guarantees data integrity
-throughout packet reconstruction.
+ifdef::backend-html5[]
+++++
+<span id="register-interface-block"></span>
+<span id="message-buffer"></span>
+<span id="control-path"></span>
+++++
+endif::backend-html5[]
 
-====== Message Decoder
+The queue exposes its oldest message in `TELEMETRY_PROBE_ID`,
+`TELEMETRY_COUNTER_VLDS` and `TELEMETRY_COUNTER[0..31]`. Reads do not consume data;
+`CTRL.BUFFER_POP` advances the queue only when it is nonempty. Empty-queue reads
+return zero. Counter registers beyond the configured counter count also return
+zero and have cleared validity bits.
 
-Assembled packets are parsed for probe IDs and up to four counters, each
-with validity checked. It validates each 9-bit packet block, provides
-error reporting, and detects last-packet boundaries—crucial for reliable
-source tracking and efficient telemetry message integrity.
+On arrival while full, hardware drops the oldest message and advances the read
+pointer. There is no snapshot across the separate software reads: overflow can
+change the visible message mid-read. Arrange sufficient buffering/service rate,
+or quiesce the producer, when a coherent software snapshot is required. `STATUS`
+reports empty/full, not a numeric occupancy count or an overflow interrupt.
 
-====== Message Buffer
+=== Interrupts
 
-A circular message buffer persistently holds decoded messages. It offers
-configurable depth (2–N entries), FIFO access, threshold monitoring with
-interrupt generation, and full status reporting (occupancy, empty/full).
+`irq_o` is the OR of the two status sources masked by their corresponding
+`INTR_ENABLE` bits. Masking an interrupt does not acknowledge its source.
 
-====== Data Flow
+[cols="1,3",options="header"]
+.Telemetry interrupt conditions
+|===
+|Source |Condition and clearing
+|`MISSING_LAST` |Sticky status when assembly capacity is reached without the
+last-packet marker. It latches even while disabled. Write one to the status bit
+to clear it; `INTR_TEST.MISSING_LAST` supplies a test pulse.
+|`BUFFER_THRESHOLD` |Read-only live status while occupancy is strictly greater
+than the effective threshold, or `INTR_TEST.BUFFER_THRESHOLD` is set. Drain to
+at most the threshold, raise the threshold, or clear the test bit as appropriate.
+Writing the status bit does not clear this source.
+|===
 
-*Reception Phase* The ATB interface receives telemetry in 8-bit beats,
-accumulated into 64-bit packets in the assembly buffer, then validated
-for structure.
+=== Reset and Flush
 
-*Decoding Phase* Packets are parsed for headers (probe ID), broken into
-9-bit blocks, counters are extracted and checked, and validity flags
-assigned.
+ifdef::backend-html5[]
+++++
+<span id="clocking-and-reset"></span>
+<span id="reset-behavior"></span>
+++++
+endif::backend-html5[]
 
-*Buffering Phase* Decoded messages are stored FIFO-style; pointers,
-counters, and flags update atomically. Threshold or error interrupts are
-generated as needed.
+Reset clears assembly bytes, queue pointers and control/interrupt registers.
+Queue payload storage is not reset, but empty-queue reads return zero. Supply
+`rst_ni` with asynchronous assertion and deassertion synchronized to `clk_i`.
 
-*Readout Phase* Telemetry is accessed by software via register reads.
-Buffer pointers advance after each access, and status or error
-conditions are monitored in real-time.
+`CTRL.TELEMETRY_RX_FLUSH` is a pulse that discards queued messages and resets
+the assembly pointer. It does not erase either payload store or purge the
+wrapper's upstream ATB crossing FIFO. Quiesce traffic when an empty receiver
+must remain empty after the pulse.
 
-====== Control Path
-
-*Configuration Control* Software configures buffer thresholds, enables
-interrupts, and clears errors, permitting runtime adaptation and robust
-error handling.
-
-*Status Reporting* Occupancy, availability, and error flags are
-accessible, providing up-to-date telemetry collection health.
-
-*Interrupt Handling* Interrupts are generated for buffer threshold
-crossings and validation errors; all can be cleared by software.
-
-====== Clocking and Reset
-
-*Clock Domain* The design operates fully synchronous on `clk_i`,
-avoiding clock crossing complexity and easing verification.
-
-*Reset Architecture* An asynchronous reset (`rst_ni`), synchronously
-deasserted, guarantees all storage and state machines revert to known
-conditions on startup. This approach secures clean initialization and
-reliable operation from power-on forward.
+`CTRL.TELEMETRY_TX_FLUSH` requests a flush from the upstream transmitter through
+`afvalid_o`. Hardware clears the request after `afvalid_o && afready_i`.
+Completion depends on the producer's acknowledgement; this is separate from a
+local receiver flush.

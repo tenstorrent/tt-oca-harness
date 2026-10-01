@@ -8,7 +8,7 @@
 //   +0x3000: CGM_0_STATUS (lock_detect in bit 0)
 //   +0x3020: AG_MUX_SELECT (clock mux)
 //
-// Hardware confirmed present in OCH (gap summary v3).
+// Hardware confirmed present in OCAH (gap summary v3).
 
 #pragma once
 

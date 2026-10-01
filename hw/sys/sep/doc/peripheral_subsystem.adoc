@@ -1,0 +1,53 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Peripheral Subsystem
+:description: SEP access to SMC peripherals and the local SPI boot interface.
+ifdef::backend-html5[]
+:sep-output-fabric-ref: xref:sep:fabric.adoc#sep-output-fabric-diagram[SEP output fabric]
+endif::backend-html5[]
+ifndef::backend-html5[]
+:sep-output-fabric-ref: <<sep-output-fabric-diagram>>
+endif::backend-html5[]
+
+[[peripheral-subsystem,Peripheral Subsystem]]
+
+SEP reaches the serial-I/O peripherals in SMC over a dedicated AXI4 port,
+`sep_ext_to_smc_axi_req_o`, split off by the route demux in
+`sep_system_peripherals` and wired to SMC's `sep_axi_in`. It reaches every SMC
+local target without passing the SEP outbound filter. SEP also has a local SPI
+host for boot-flash access. The SPI chapter describes that controller; SMC
+documents the shared peripherals.
+
+SEP boot uses configuration straps supplied from the SMC GPIO interface.
+For their role in selecting boot options, see
+ifdef::backend-html5[]
+xref:cpu.adoc#configuration-straps[Configuration Straps] and
+xref:rom.adoc#bl0-secure-boot-and-bl1-execution-unlock[BL0 Boot Flow].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<configuration-straps,Configuration Straps>> and
+<<bl0-secure-boot-and-bl1-execution-unlock,BL0 Boot Flow>>.
+endif::backend-pdf[]
+
+<<sep-peripheral-extension-port-figure>> shows the connection from SEP to peripherals
+shared with SMC.
+
+[[sep-peripheral-extension-port-figure]]
+.SEP peripheral extension port
+image::sep-peripheral-extension-port.svg[alt="SEP local SPI host path and the dedicated AXI4 port from the SEP route demux through the SMU to the SMC input fabric, local crossbar and peripheral crossbar",width=100%,pdfwidth=100%]
+
+The figure reads from the SEP local crossbar outwards. The SPI host sits
+behind the `sep_io` target, which downsizes the 64-bit AXI4 request to 32
+bits, converts it to AXI-Lite and sends addresses outside the SPI host to a
+DECERR responder; the quad SPI signals leave for the SPI pads. Requests in the
+SMC aperture take the route demux of `sep_system_peripherals` (see
+{sep-output-fabric-ref}) onto the SMC port, which the SMU wires directly
+to the SMC's `sep_axi_in` port with no crossbar and no clock-domain crossing.
+The SMC flow is drawn right to left. The SMC input fabric passes addresses in
+the SMC local or global window, truncated to 32 bits, and answers others with
+DECERR. The SMC local fabric rebases them onto the SMC local base, and the
+`sep_in` initiator of the SMC local crossbar reaches every target, including
+the peripheral port, which is converted to 32-bit AXI-Lite for the SMC
+peripheral crossbar. The UART, I2C and AVSBus controllers sit behind
+clock-domain crossings into the peripheral clock.

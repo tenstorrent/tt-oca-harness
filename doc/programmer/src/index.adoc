@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: CC-BY-4.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 = OCAH Programmer's Guide
@@ -18,10 +18,52 @@ added as the project matures.
 [[smc]]
 == SMC
 
-[NOTE]
+=== Per-Core Reset
+
+ifdef::backend-html5[]
+See the
+xref:ocah-docs:smc:cpu.adoc#smc-core-reset[SMC CPU reset description]
+in the Technical Reference Manual for the hardware behavior and associated
+risks.
+endif::backend-html5[]
+ifdef::backend-pdf[]
+See the _SMC CPU Reset, Boot, and Initialization_ section of the Technical
+Reference Manual for the hardware behavior and associated risks.
+endif::backend-pdf[]
+
+[WARNING]
 ====
-SMC programming guidance will be added as the product matures.
+Do not reset a hart while any hart is performing coherent memory accesses.
 ====
+
+A safe startup scenario, subject to the warning above, is when three of four
+harts remain parked after ROM boot and must start at a different firmware
+address. Before they join normal coherent operation, software can program a
+parked hart's `RESET_VECTOR[n]` and pulse its reset to start it at that address.
+Avoid this flow where possible for the reasons described in the Technical
+Reference Manual.
+
+[[smc-ndm-reset]]
+=== External CPU cluster NDM reset
+
+Read `NDMRESET_REQUEST` bit `i` as the NDM reset request from external
+CPU cluster `i`. Write `NDMRESET_PROCESS` bit `i` to answer that
+cluster. Read `NDMRESET_CLUSTER_COUNT` and mask both registers with
+that value.
+
+This harness reports 4 in `NDMRESET_CLUSTER_COUNT`. Bits of
+`NDMRESET_REQUEST` at and above the count read as 0. Writes to those
+bits of `NDMRESET_PROCESS` stay in the register.
+
+ifdef::backend-html5[]
+The register block is
+xref:ocah-docs:smc:memmap.adoc#smc-ndm-reset-block[Chip Config, Scratch, NDM Reset, and Misc Wrap]
+in the Technical Reference Manual.
+endif::backend-html5[]
+ifdef::backend-pdf[]
+The register block is in the _Chip Config, Scratch, NDM Reset, and Misc
+Wrap_ section of the Technical Reference Manual.
+endif::backend-pdf[]
 
 [[sep]]
 == SEP
@@ -120,6 +162,7 @@ sequence below applies only to streams firmware explicitly changes to 0.
 @startuml
 start
 :Stop dispatching new entropy-dependent operations;
+:Keep the Key Manager idle;
 :Choose and initialize entropy source;
 if (Use OCAH TRNG?) then (yes)
   :Pulse shared TRNG reset;
@@ -157,10 +200,13 @@ Use generated register definitions and named fields rather than copying complete
 register literals. Several control fields use MuBi4 encodings, for which true is
 `0x6` and false is `0x9`.
 
-. Prevent new entropy-dependent operations during initialization. On first boot,
-  initialize entropy before accepting crypto work. A runtime recovery may either
-  let an in-flight consumer stall until fresh entropy is available or, after the
-  consumer is idle, hold it in software reset to abort its operation.
+. Prevent new entropy-dependent operations during initialization. On first
+  boot, initialize entropy before accepting crypto work; the Key Manager is
+  held in software reset, which keeps it idle. A runtime recovery must wait
+  until KM is idle, or hold it in software reset, before pulsing the TRNG
+  reset. AES, KMAC, and OTBN may stall until fresh entropy is available, or,
+  after each is idle, firmware may hold them in software reset to abort their
+  operations.
 . Reset the internal entropy chain by clearing and then setting
   `SEP_RESET_CTRL.SW_RESET_N.trng_sw_rst_n` with read-modify-write operations
   that preserve the other reset bits. This reset covers ESRC, CSRNG, EDN, their
@@ -239,8 +285,10 @@ operation is not recovery: the consumer can wait indefinitely for entropy.
 
 For a runtime restart of the internal chain:
 
-. Stop dispatching new entropy-dependent operations. If policy requires aborting
-  in-flight work, wait for each consumer to become idle, save `SW_RESET_N`, and
+. Stop dispatching new entropy-dependent operations. The Key Manager must be
+  idle before the TRNG reset is asserted: wait until it is not consuming
+  entropy, or hold it in software reset. If policy requires aborting AES, KMAC,
+  or OTBN in-flight work, wait for each to become idle, save `SW_RESET_N`, and
   hold those consumers in reset.
 . Clear `trng_sw_rst_n`; hardware drains accepted control transactions,
   isolates the three internal TRNG register ports, and clears buffered internal
@@ -255,9 +303,27 @@ The native EDN boundary uses request/acknowledge, not valid/ready. During TRNG
 reset the post-mux adapters suppress acknowledgements and discard buffered
 entropy. A request already asserted by AES, KMAC, or OTBN remains asserted and
 is serviced with fresh entropy after the adapter and internal chain restart.
-The Key Manager AXI-Stream leg similarly stalls until fresh data is valid.
-Resetting consumers is therefore an operation-abort policy, not a prerequisite
-for the coordinated TRNG reset.
+Resetting those consumers is an operation-abort policy, not a prerequisite for
+the coordinated TRNG reset.
+
+The Key Manager AXI-Stream has no post-mux adapter, so TRNG reset does not
+scrub it. A reset while the DRBG sampler is requesting or assembling a word can
+mix leftover bytes into the next DATA read or raise a stream error. The Key
+Manager must be idle before the SEP host asserts the TRNG reset.
 
 Do not try to recover only ESRC with `CTRL[0]`. A shared TRNG reset invalidates
 the entire internal chain.
+
+[[aou-software-operation]]
+== AXI-over-UCIe Bridge (AoU) Software Operation
+
+:sectnums!:
+ifdef::backend-pdf[]
+:aou-imagesdir: {docdir}/../../../vendor/tenstorrent/aou/upstream/DOC/MAS/assets
+include::../../../vendor/tenstorrent/aou/upstream/DOC/MAS/software-operation.adoc[leveloffset=+1]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+:aou-architecture-xref: ocah-docs:ROOT:architecture.adoc
+include::aou:partial$software-operation.adoc[leveloffset=+1]
+endif::backend-html5[]
+:sectnums:

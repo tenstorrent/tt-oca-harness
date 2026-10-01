@@ -1,48 +1,55 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-aes_wrapper_key]
+== AES Wrapper Key Registers
+
+Key storage registers for the AES sideload interface.
+Written by Key Manager CPU, drives keymgr_key_i on the OT AES core.
+
 [NOTE]
 ======
-*Register Arrays:* This register map contains the following register arrays:
+*Register Arrays:*
 
-* *KEY_SHARE0[8]*: 8 registers
-  ** Base Address: 0x0
-  ** Address Increment: 0x4 per register
-
-* *KEY_SHARE1[8]*: 8 registers
-  ** Base Address: 0x20
-  ** Address Increment: 0x4 per register
-
+* *KEY_SHARE0[8]*: 8 registers, base 0x0, stride 0x4
+* *KEY_SHARE1[8]*: 8 registers, base 0x20, stride 0x4
 ======
 
-[cols="1,1,1,3", options="header"]
-.Register Map
+[cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description
-| 0x0 - 0x1C | KEY_SHARE0[8] | W a| One 32-bit word of key data. Write-only; reads return 0.
+| 0x0 - 0x1C | <<reg-{regmap-instance}-aes_wrapper_key-KEY_SHARE0-0-,KEY_SHARE0[8]>> | W a| One 32-bit word of key data. Write-only; reads return 0.
 No reset; powers up with undefined value.
-| 0x20 - 0x3C | KEY_SHARE1[8] | W a| One 32-bit word of key data. Write-only; reads return 0.
+| 0x20 - 0x3C | <<reg-{regmap-instance}-aes_wrapper_key-KEY_SHARE1-0-,KEY_SHARE1[8]>> | W a| One 32-bit word of key data. Write-only; reads return 0.
 No reset; powers up with undefined value.
-| 0x40 | KEY_CTRL | RW a| Key control register. Writing KEY_VALID=1 asserts the sideload
+| 0x40 | <<reg-{regmap-instance}-aes_wrapper_key-KEY_CTRL,KEY_CTRL>> | RW a| Key control register. Writing KEY_VALID=1 asserts the sideload
 valid signal to the AES core.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.KEY_SHARE0[8] Register
+[#reg-{regmap-instance}-aes_wrapper_key-KEY_SHARE0-0-]
+=== KEY_SHARE0[8]
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `data` | W | - a| 32-bit key data word. Write-only for security.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.KEY_SHARE1[8] Register
+[#reg-{regmap-instance}-aes_wrapper_key-KEY_SHARE1-0-]
+=== KEY_SHARE1[8]
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `data` | W | - a| 32-bit key data word. Write-only for security.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.KEY_CTRL Register
+[#reg-{regmap-instance}-aes_wrapper_key-KEY_CTRL]
+=== KEY_CTRL
+
+[cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `rsvd` | R | 0x0 a| Reserved

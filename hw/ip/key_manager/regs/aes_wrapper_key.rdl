@@ -81,4 +81,8 @@ addrmap aes_wrapper_key {
     };
 
     key_ctrl_reg KEY_CTRL @ 0x040;
+
+`ifdef OCAH_DOC_MEMORY_MAP
+    ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+`endif
 };

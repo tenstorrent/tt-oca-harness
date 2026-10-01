@@ -132,7 +132,7 @@ proc set_async_clock_groups { groups args } {
           with -allow_paths ($n_split pairs split by -exclude)"
 
     # One clock to one clock rather than collection to collection, so each
-    # exception is individually reportable and one pair can be retuned without
+    # exception is individually reportable and one pair can be returned without
     # unpicking a group. Both directions: -from A -to B does not cover B -> A.
     set n 0; set n_skip 0
     for { set i 0 } { $i < $ng } { incr i } {

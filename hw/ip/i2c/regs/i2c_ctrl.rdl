@@ -7,6 +7,8 @@
 addrmap i2c_ctrl #(
     longint unsigned NUM_I2CS = 3
 ) {
+    name = "I2C Control Address Map";
+    desc = "Top-level enable registers selecting I2C, controller-mode, and SMBus operation.";
 
     //////////////////////////
     // Register Definitions //

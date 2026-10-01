@@ -1,0 +1,30 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef EFUSE_BANK_RDL_DEFINED
+`define EFUSE_BANK_RDL_DEFINED
+addrmap efuse_bank {
+    name = "eFuse Bank Model Address Map";
+    desc = "DV model of an eFuse bank exposing the sense-data output register.";
+
+    reg EFUSE_BANK_REG {
+        desc = "eFuse bank storage word. Models a single 32-bit OTP word in the reference bank model, using write-one-to-set semantics to emulate set-once OTP behavior.";
+        regwidth = 32;
+        accesswidth = 32;
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            // No reset value: a fuse holds its state across every reset, so the
+            // storage must not be cleared by arst_n. A reset value here would
+            // make the generated storage async-reset to 0, which erases both the
+            // model's time-0 OTP image preload and any word programmed before a
+            // warm reset.
+            desc = "Read Data from eFuse";
+        } dout[31:0];
+    };
+
+    EFUSE_BANK_REG        EFUSE_BANK_REG[1024]     @0x0;
+};
+
+`endif

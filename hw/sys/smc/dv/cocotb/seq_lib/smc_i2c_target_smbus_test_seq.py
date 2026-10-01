@@ -33,26 +33,14 @@ _SMBSUS_PAD = 40
 _POLL_ITERS = 500
 _POLL_STEP_US = 10
 
-CLOCK_GATE_CONTROL = smc_addr(
-    "SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
-)
-I2C0_WRAP_CTRL = smc_indexed_addr(
-    "SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", 0
-)
+CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
+I2C0_WRAP_CTRL = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", 0)
 I2C0_OVRD = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_OVRD_BASE_ADDR", 0)
-I2C0_SMBUS_CTRL = smc_indexed_addr(
-    "SMC_TOP_SMC_I2C_WRAP_I2C_SMBUS_CTRL_BASE_ADDR", 0
-)
-I2C0_SMBUS_STATUS = smc_indexed_addr(
-    "SMC_TOP_SMC_I2C_WRAP_I2C_SMBUS_STATUS_BASE_ADDR", 0
-)
+I2C0_SMBUS_CTRL = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_SMBUS_CTRL_BASE_ADDR", 0)
+I2C0_SMBUS_STATUS = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_SMBUS_STATUS_BASE_ADDR", 0)
 I2C0_CTRL = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR", 0)
-I2C0_FIFO_CTRL = smc_indexed_addr(
-    "SMC_TOP_SMC_I2C_WRAP_I2C_FIFO_CTRL_BASE_ADDR", 0
-)
-I2C0_TARGET_ID = smc_indexed_addr(
-    "SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ID_BASE_ADDR", 0
-)
+I2C0_FIFO_CTRL = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_FIFO_CTRL_BASE_ADDR", 0)
+I2C0_TARGET_ID = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ID_BASE_ADDR", 0)
 I2C0_TXDATA = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TXDATA_BASE_ADDR", 0)
 I2C0_TIMING0 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING0_BASE_ADDR", 0)
 I2C0_TIMING1 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING1_BASE_ADDR", 0)
@@ -81,9 +69,7 @@ def _pack_timing4(tsu_sto: int, t_buf: int) -> int:
     return (tsu_sto & 0x1FFF) | ((t_buf & 0x1FFF) << 16)
 
 
-def _pack_target_id(
-    address0: int, mask0: int = 0x7F, address1: int = 0, mask1: int = 0
-) -> int:
+def _pack_target_id(address0: int, mask0: int = 0x7F, address1: int = 0, mask1: int = 0) -> int:
     return (
         (address0 & 0x7F)
         | ((mask0 & 0x7F) << 7)
@@ -118,7 +104,7 @@ class smc_i2c_target_smbus_test_seq(SmcCsrSeq):
         for _ in range(timeout_us):
             if int(dut.tb_i2c0_smbalert.value) == want:
                 return True
-            await Timer(1, units="us")
+            await Timer(1, unit="us")
         return False
 
     async def _await_smbsus_status(self, *, want_set: bool) -> None:
@@ -128,10 +114,8 @@ class smc_i2c_target_smbus_test_seq(SmcCsrSeq):
             bit = bool(st & I2C_SMBUS_STATUS_SMBSUS)
             if bit == want_set:
                 return
-            await Timer(_POLL_STEP_US, units="us")
-        raise AssertionError(
-            f"SMBSUS STATUS timeout want_set={want_set} SMBUS_STATUS=0x{st:08x}"
-        )
+            await Timer(_POLL_STEP_US, unit="us")
+        raise AssertionError(f"SMBSUS STATUS timeout want_set={want_set} SMBUS_STATUS=0x{st:08x}")
 
     def _drive_smbsus(self, assert_low: bool) -> None:
         """Drive I2C0 SMBSUS# pad 40 via tb_gpio_ext_drive (active-low)."""
@@ -163,12 +147,8 @@ class smc_i2c_target_smbus_test_seq(SmcCsrSeq):
         await self.prove_dut_i2c0_pins()
 
         cg = await self.csr_read("CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL)
-        await self.csr_write(
-            "CLOCK_GATE_UNGATE_I2C", CLOCK_GATE_CONTROL, cg & ~I2C_CG_EN
-        )
-        await self.csr_write(
-            "I2C0_WRAP_TARGET_SMBUS", I2C0_WRAP_CTRL, I2C_WRAP_CTRL_TARGET_SMBUS
-        )
+        await self.csr_write("CLOCK_GATE_UNGATE_I2C", CLOCK_GATE_CONTROL, cg & ~I2C_CG_EN)
+        await self.csr_write("I2C0_WRAP_TARGET_SMBUS", I2C0_WRAP_CTRL, I2C_WRAP_CTRL_TARGET_SMBUS)
         await self.wait_i2c0_lsio_ready("I2C0_TARGET_SMBUS_WRAP")
         await self.csr_write("I2C0_OVRD_OFF", I2C0_OVRD, 0)
         await self._program_timing()
@@ -190,9 +170,7 @@ class smc_i2c_target_smbus_test_seq(SmcCsrSeq):
         if idle != 1:
             raise AssertionError(f"SMBALERT# idle expected high, got {idle}")
 
-        await self.csr_write(
-            "I2C0_SMBUS_CTRL_ALERT", I2C0_SMBUS_CTRL, I2C_SMBUS_CTRL_SMBALERT
-        )
+        await self.csr_write("I2C0_SMBUS_CTRL_ALERT", I2C0_SMBUS_CTRL, I2C_SMBUS_CTRL_SMBALERT)
         self.alert_asserted = await self._wait_smbalert(expect_low=True)
         if not self.alert_asserted:
             raise AssertionError("SMBALERT# (pad39) did not go low after CTRL write")
@@ -206,14 +184,10 @@ class smc_i2c_target_smbus_test_seq(SmcCsrSeq):
                 f"ARA reply mismatch: got 0x{resp:02X}, expected 0x{_ARA_REPLY:02X}"
             )
         self.ara_ok = True
-        self.alert_cleared = await self._wait_smbalert(
-            expect_low=False, timeout_us=5000
-        )
+        self.alert_cleared = await self._wait_smbalert(expect_low=False, timeout_us=5000)
         if not self.alert_cleared:
             raise AssertionError("SMBALERT# stayed low after ARA (expected hwclr)")
-        cocotb.log.info(
-            "CHK-I2C-TGT-SMBUS-ARA: reply=0x%02X; SMBALERT# cleared", resp
-        )
+        cocotb.log.info("CHK-I2C-TGT-SMBUS-ARA: reply=0x%02X; SMBALERT# cleared", resp)
 
         # External SMBSUS# on GPIO[40].
         self._drive_smbsus(assert_low=True)
@@ -224,13 +198,6 @@ class smc_i2c_target_smbus_test_seq(SmcCsrSeq):
         self._release_smbsus()
         self.suspend_ok = True
         cocotb.log.info("CHK-I2C-TGT-SMBUS-SUS-CLR: STATUS.SMBSUS cleared after release")
-        cocotb.log.info(
-            "CHK-I2C-TGT-SMBUS-BASIC: alert=%s ara=%s clr=%s sus=%s",
-            self.alert_asserted,
-            self.ara_ok,
-            self.alert_cleared,
-            self.suspend_ok,
-        )
 
         await self.csr_write("I2C0_CTRL_DISABLE", I2C0_CTRL, 0)
         await self.csr_write("CLOCK_GATE_RESTORE", CLOCK_GATE_CONTROL, cg)

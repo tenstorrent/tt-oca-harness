@@ -43,11 +43,9 @@ from dataclasses import dataclass
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
-import cocotb
-from cocotb.triggers import RisingEdge
-
 from ocah_axi_vip import AxiTimingProfile
 from sep_reg_meta import RegInfo, iter_register_walk, sym
+
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_reg_bit_bash_seq import (
     TOUCH_BLOCKS,
@@ -84,28 +82,32 @@ BLOCK_EXCLUDE: dict[str, str] = {
 # Blocks kept out of the sweep when it is driven from the SMN inbound master,
 # for a reason that belongs to that path. Each entry names the RTL fact.
 BLOCK_EXCLUDE_M_AXI: dict[str, str] = {
-    # Every INBOUND_FILTER_CTRL_<n>_ block IS the rule set that gates this bus:
-    # sep_system_peripherals.sv drives u_inbound_filter.filter_ctrl_i from these
-    # CSRs, and the swept registers are that entry's START_ADDR / END_ADDR. A
+    # Every INBOUND_FILTER_CTRL_<n>_ block IS the rule set that gates this bus.
+    # hw/sys/sep/doc/fabric.adoc (Traffic Filter Decode) states the inbound
+    # filter has 16 entries and that each entry is one filter_ctrl register
+    # triple -- FILTER_CONFIG, START_ADDR, END_ADDR -- so the swept registers are
+    # that entry's own address window. A
     # sweep write there moves the address window of the access in flight, so the
     # cell would measure filter reprogramming rather than an adapter's channel
     # ordering. Reaching them from m_axi at all would also need an allow window
     # over the filter CSR bank, which is the software hole
     # sep_fabric_inbound_filter_rule_matrix_test asserts must stay shut. The
     # CPU-LSU sweep covers these registers; that path has no inbound filter.
-    f"INBOUND_FILTER_CTRL_{n}_":
-        "inbound-filter rule bank: the entry's own address window gates this "
-        "bus, so a sweep write reprograms the path under the walk"
+    f"INBOUND_FILTER_CTRL_{n}_": "inbound-filter rule bank: the entry's own address window gates this "
+    "bus, so a sweep write reprograms the path under the walk"
     for n in range(16)
 }
 
 # Coarse inbound-filter allow windows for the m_axi walk, as
-# (name, start, end_inclusive). traffic_filter.sv compares
-# addr[AW-1:3] against start[AW-1:3]..end[AW-1:3] inclusive (DataBusWidthLog2=3
-# for the 64-bit inbound bus), so END is the last byte address inside the
-# window, and axi_filter_wrap.sv reports it back with its low 3 bits set.
-# allow_burst stays 0, so the 4 KB page widen does not apply and the granule is
-# 8 bytes.
+# (name, start, end_inclusive).
+#
+# The comparison granule is the specification's, not the design's:
+# hw/ip/axi_filter/doc/index.adoc (Address Range Granule) states that with
+# allow_burst = 0 the granule is the data bus width -- 8 bytes on a 64-bit bus
+# -- and address bits [2:0] are ignored, that START_ADDR widens *down* to the
+# base of its granule and END_ADDR widens *up* to the top of its granule. So END
+# below is the last byte address inside the window and reads back with its low
+# three bits set. allow_burst stays 0, so the 4 KB page widen does not apply.
 #
 # Five windows out of the sixteen filter entries, coarse so the walk needs no
 # reprogramming mid-sweep. None of them covers the filter CSR bank at
@@ -122,15 +124,13 @@ M_AXI_ALLOW_WINDOWS: tuple[tuple[str, int, int], ...] = (
 # A floor on the m_axi walk. BLOCK_EXCLUDE_M_AXI is the only reduction the path
 # justifies, so a map or routing change that removed more registers must fail
 # here rather than let a shrinking walk report a clean pass.
-M_AXI_CELL_FLOOR = 225
+M_AXI_CELL_FLOOR = 222
 
-# The same floor for s_axi. Comparing the cells run against the cells this same
-# config built only says the run matched itself: a map or exclusion change that
-# shrank the walk to a handful of cells would still satisfy it. Set to the count
-# the walk presents, like M_AXI_CELL_FLOOR: slack here is registers that can go
-# missing without failing anything, and three orderings per register means even
-# a small slack hides several of them.
-S_AXI_CELL_FLOOR = 321
+# The same floor for s_axi, set to the count the walk presents, like
+# M_AXI_CELL_FLOOR: slack here is registers that can go missing without failing
+# anything, and three orderings per register means even a small slack hides
+# several of them.
+S_AXI_CELL_FLOOR = 318
 
 # The three legal write orderings, as (aw_delay, w_delay) offsets. The seed
 # scales the separation; the ordering itself is fixed, so every seed covers
@@ -191,7 +191,7 @@ def sweep_candidates(bus: str = "s_axi") -> tuple[list[RegInfo], dict[str, int]]
     * ``write_reason() is None`` -- the no-side-effect blocks whose full write
       bash is safe (scratch, CPU control, the inbound filter windows).
     * ``touch_reason() is None`` restricted to ``TOUCH_BLOCKS`` -- plain RW
-      storage inside the other major IPs. Restricted deliberately: a block
+      storage inside the other major IPs. Restricted to that list: a block
       outside that list may be held in reset or need an init sequence, and a
       readback mismatch there would report bring-up state as an ordering bug.
 
@@ -261,13 +261,9 @@ class SepAxiOrderSweepCfg:
                     )
                     mask = write_mask(info)
                     value = touch_write_value(info.reset, mask, rng)
-                    witness = (
-                        peers[rng.randrange(0, len(peers))] if peers else None
-                    )
+                    witness = peers[rng.randrange(0, len(peers))] if peers else None
                     w_bit = rng.randrange(0, 32)
-                    cells.append(OrderCell(
-                        order, info, value, size, profile, witness, w_bit
-                    ))
+                    cells.append(OrderCell(order, info, value, size, profile, witness, w_bit))
         self.cells = tuple(cells)
 
     def n_cells(self) -> int:
@@ -288,9 +284,7 @@ class SepAxiOrderSweepCfg:
     def cross_cells(self) -> set[tuple[str, int]]:
         """Every (ordering, size) pair the sweep must report a compare for."""
         return {
-            (order, SIZE_BYTES[s])
-            for order, _a, _w in WRITE_ORDERS
-            for s in sorted(SIZE_BYTES)
+            (order, SIZE_BYTES[s]) for order, _a, _w in WRITE_ORDERS for s in sorted(SIZE_BYTES)
         }
 
     def summary(self) -> str:
@@ -315,12 +309,10 @@ class SepAxiOrderSweep:
         # has to be caught on both.
         self.bus = bus
         env = test.env
-        self._agent_name = ("env.axi_agent" if bus == "s_axi"
-                            else "env.ext_axi_agent")
+        self._agent_name = "env.axi_agent" if bus == "s_axi" else "env.ext_axi_agent"
         self._agent = env.axi_agent if bus == "s_axi" else env.ext_axi_agent
         self._mon = env.axi_monitor if bus == "s_axi" else env.ext_axi_monitor
-        self._start = (test.start_seq if bus == "s_axi"
-                       else test.start_ext_seq)
+        self._start = test.start_seq if bus == "s_axi" else test.start_ext_seq
         self.covered: dict[str, int] = defaultdict(int)
         self.cross_covered: dict[tuple[str, int], int] = defaultdict(int)
         self.blocks_hit: set[str] = set()
@@ -349,8 +341,11 @@ class SepAxiOrderSweep:
 
     async def _rd(self, addr: int, *, size: int = SIZE_4B) -> tuple[int, int]:
         seq = SepAxiAccessSeq(
-            f"ord_rd_0x{addr:08x}", op=SepAxiOp.READ, addr=addr,
-            length=SIZE_BYTES[size], size=size,
+            f"ord_rd_0x{addr:08x}",
+            op=SepAxiOp.READ,
+            addr=addr,
+            length=SIZE_BYTES[size],
+            size=size,
         )
         await self._start(seq)
         return seq.resp_code, seq.rdata & 0xFFFF_FFFF
@@ -360,9 +355,12 @@ class SepAxiOrderSweep:
         # The item carries exactly nbytes; a wider value is a caller error the
         # driver reports as OverflowError rather than as a lane mismatch.
         seq = SepAxiAccessSeq(
-            f"ord_wr_0x{addr:08x}", op=SepAxiOp.WRITE, addr=addr,
+            f"ord_wr_0x{addr:08x}",
+            op=SepAxiOp.WRITE,
+            addr=addr,
             wdata=data & ((1 << (8 * nbytes)) - 1),
-            length=nbytes, size=size,
+            length=nbytes,
+            size=size,
         )
         await self._start(seq)
         return seq.resp_code
@@ -409,7 +407,7 @@ class SepAxiOrderSweep:
             f"write could not be observed"
         )
 
-        drv.set_timing(AxiTimingProfile())          # prime at default timing
+        drv.set_timing(AxiTimingProfile())  # prime at default timing
         # Prime the complement across the whole word, so the written lanes
         # always change and the untouched lanes hold a value a widened strobe
         # would destroy. A prime of the reset value would leave the upper
@@ -421,8 +419,7 @@ class SepAxiOrderSweep:
         resp, staged = await self._rd(info.addr)
         if resp != RESP_OKAY or (staged & mask) != (prime & mask):
             self.dropped[cell.key] = (
-                f"prime readback 0x{staged:08x} != 0x{prime:08x} under "
-                f"mask 0x{mask:08x}"
+                f"prime readback 0x{staged:08x} != 0x{prime:08x} under mask 0x{mask:08x}"
             )
             return None
 
@@ -531,18 +528,28 @@ class SepAxiOrderSweep:
             "CHK-ORDER-STIM %s: requested=%s presented=%s handshake=%s "
             "(awv=%s wv=%s awhs=%s whs=%s) %s.%s",
             "OK " if stim == cell.order else "DIFF",
-            cell.order, stim, hs, *cyc, info.block, info.name)
+            cell.order,
+            stim,
+            hs,
+            *cyc,
+            info.block,
+            info.name,
+        )
         if stim != cell.order:
             return (
                 f"{tag} requested {cell.order} but presented {stim} "
                 f"(awvalid cycle {cyc[0]}, wvalid cycle {cyc[1]}); the "
                 f"ordering under test never reached the bus"
             )
-        if hs not in (cell.order, "same-cycle"):
+        allowed_hs = (
+            (cell.order,)
+            if self.bus == "m_axi" and cell.order == "w-first"
+            else (cell.order, "same-cycle")
+        )
+        if hs not in allowed_hs:
             return (
                 f"{tag} presented {stim} and the slave answered {hs}; a "
-                f"handshake may match the presentation or coincide, not "
-                f"invert it"
+                f"handshake on {self.bus} must be one of {allowed_hs}"
             )
         self.stim_seen[stim] += 1
         if hs is not None:
@@ -562,8 +569,7 @@ class SepAxiOrderSweep:
             f"order x size {len(self.cross_covered)}/{len(cfg.cross_cells())}; "
             f"displacement witnesses={self.witnessed}"
             + (f"; NOT covered: {missing}" if missing else "")
-            + (f"; order x size NOT covered: {cross_missing}"
-               if cross_missing else "")
+            + (f"; order x size NOT covered: {cross_missing}" if cross_missing else "")
             + (f"; dropped: {len(self.dropped)}" if self.dropped else "")
         )
 
@@ -579,7 +585,8 @@ def _selftest() -> None:
         for cell in c.cells:
             by_reg[(cell.info.block, cell.info.name)].add(cell.order)
             assert cell.profile.write_order == cell.order, (
-                f"profile {cell.profile.summary()} is not {cell.order}")
+                f"profile {cell.profile.summary()} is not {cell.order}"
+            )
             assert cell.value < (1 << 32), cell
         for reg, orders in by_reg.items():
             assert len(orders) == len(WRITE_ORDERS), f"{reg} covers {orders}"

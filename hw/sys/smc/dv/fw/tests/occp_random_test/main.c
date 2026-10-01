@@ -2,16 +2,12 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * OCCP Master Test Suite - Main Entry Point
- *
- *
- *
+ * Runs random OCCP commands, checks GET_STATUS, then drains the SEP and SMC status
+ * ring buffers.
  */
 
 #include "occp_test_common.h"
-//#include "smc_defines.h"
-//#include "smc_test.h"
-#include <string.h> // For memcpy
+#include <string.h>
 
 static void run_test_suite(test_context_t *ctx) {
     simputs("=== Starting Random OCCP Protocol Test ===\n");
@@ -21,15 +17,12 @@ static void run_test_suite(test_context_t *ctx) {
     int retval;
     uint32_t status_data = 0;
 
-    // TODO: audit these values OCCP spec
     int exp_interface_status = 0x1;
     int exp_boot_status = 0x5;
 
-    // Execute 25 random OCCP commands using shared function
     simputs("=== Random OCCP Commands Test (25 commands) ===\n");
     execute_random_commands(ctx, 5);
 
-    // general status check
     retval = occp_send_get_status_command(ctx, ctx->slave_addr, &status_data);
     if (retval == OCCP_SUCCESS) {
         check_occp_status_data(ctx, status_data, exp_interface_status, exp_boot_status);
@@ -39,7 +32,6 @@ static void run_test_suite(test_context_t *ctx) {
         ctx->overall_result = false;
     }
 
-    // EOT: drain ring buffers and check data correctness
     do {
         retval = occp_send_get_sep_status_command(ctx, ctx->slave_addr, &status_data);
         if (retval == OCCP_SUCCESS) {
@@ -90,7 +82,6 @@ int main(void) {
         return -1;
     }
 
-    // Set up test context
     test_ctx.test_base_addr = OCCP_TEST_BASE_ADDR;
     test_ctx.test_upper_addr_bound = OCCP_TEST_UPPER_ADDR;
     test_ctx.overall_result = true;
@@ -98,10 +89,8 @@ int main(void) {
     test_ctx.cmd_count = 0;
     test_ctx.exp_occp_last_error = 0;
 
-    // Run the test suite
     run_test_suite(&test_ctx);
 
-    // Finalize and report results
     finalize_test_results(&test_ctx);
 
     simputs("Done\n");

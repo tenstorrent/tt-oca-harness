@@ -40,6 +40,10 @@ SECTIONS {
         *(.text)
         *(.text.*)
         . = ALIGN(4);
+        /* Build identity, ICCM copy (fw_build_id.c): kept against
+         * --gc-sections so the instruction image carries it too. */
+        KEEP(*(.fw_build_id_itcm))
+        . = ALIGN(4);
 
         /*
          * NMI handler - must be 256-byte aligned for VeeR nmi_vec.
@@ -67,6 +71,11 @@ SECTIONS {
         *(.sdata)
         *(.sdata.*)
         . = ALIGN(4);
+        /* Build identity, DCCM copy (fw_build_id.c). Nothing references
+         * it at run time, so it is kept explicitly against --gc-sections; the
+         * host reads it out of the image (CHK-FW-IDENTITY). */
+        KEEP(*(.fw_build_id_dtcm))
+        . = ALIGN(4);
         *(.rodata)
         *(.rodata.*)
         . = ALIGN(4);
@@ -81,8 +90,8 @@ SECTIONS {
      * picolibc keeps state such as the rand() seed in .tdata/.tbss when it is
      * built with thread-local-storage enabled, and reaches it via tp-relative
      * accesses. Placing the TLS block explicitly gives crt0 a base symbol to
-     * point tp at; without it tp stays 0 and the first access traps. Whether
-     * the toolchain emits TLS or not, this block is simply empty and harmless.
+     * point tp at; without it tp stays 0 and the first access traps. When the
+     * toolchain emits no TLS the block is empty.
      *
      * This firmware is single-threaded, so the linked .tdata doubles as the
      * initial thread's copy and needs no runtime relocation. .tbss is placed

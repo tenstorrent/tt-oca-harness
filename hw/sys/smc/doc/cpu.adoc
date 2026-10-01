@@ -1,19 +1,21 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= CPU
+:description: SMC processor cluster, caches, local memory, isolation, interrupts, and debug.
+
 [[cpu-memory-system]]
-=== CPU & Memory System
 
 This section describes the SMC's CPU subsystem, which is based on the
 Rocket RV64GC RISC-V processor core (see:
 https://chipyard.readthedocs.io/en/stable/Generators/Rocket.html[Rocket
 Chip]). The cluster is generated using the Chipyard Rocket-chip
-generator and supports 1 to 4 processor cores, each with private L1
+generator and supports 4 processor cores, each with private L1
 cache and access to a shared local SRAM.
 
 Key features include:
 
-* Up to 4 Rocket CPU cores (RV64GC ISA, 56-bit physical addressing)
+* 4 Rocket CPU cores (RV64GC ISA, 56-bit physical addressing)
 * Core-local L1 instruction and data caches, each configurable in size
 and associativity
 * Shared local SRAM/Scratchpad and Boot ROM
@@ -21,15 +23,42 @@ and associativity
 management workloads
 * Full support for RISC-V privilege levels (Machine, Supervisor, User)
 
-==== Processor Core Overview
+<<smc-cpu-cluster-diagram>> shows the CPU cluster, memory hierarchy, and fabric bridge.
 
-The table below summarizes the key features of the Rocket CPU core, and
+[[smc-cpu-cluster-diagram]]
+.SMC CPU cluster and TileLink-to-AXI integration
+image::smc-cpu-cluster.svg[alt="SMC CPU cluster: four Rocket tiles on the TileLink system bus, the control, front and memory buses, and the AXI4 bridges and isolation at the cluster boundary, with the scratchpad SRAM and boot ROM macros outside the SMC",width=100%,pdfwidth=100%]
+
+The figure shows three nested boundaries: `u_digital_top`, the Chipyard-generated
+cluster; `u_smc_cpu`, which adds the boundary isolation, reset sequencing and scratch
+RAM zero-fill; and `u_smc_cpu_wrapper`, which adds the front-port demux, the `cpu_ctrl`
+registers and the boot ROM bridge. Thick lines are AXI4 and thin dark lines are
+TileLink, except for the AXI-Lite link to `cpu_ctrl`. Each tile has one manager port
+on the system bus (`sbus`) and one subordinate port, from the control bus (`cbus`),
+that reaches its Bus Error Unit (BEU). Debug-module system bus accesses (SBA) and
+the L2 frontend port enter the system bus through the front bus (`fbus`). The
+coherence manager (`coh_wrapper`, a TileLink broadcast hub) leads to the memory bus
+(`mbus`), which serves the scratchpad and the boot ROM port. The scratchpad block is
+logic only: 32 TLRAM banks with their SECDED ECC encode and decode. The
+technology-dependent SRAM macros that hold the scratchpad data, drawn in grey, sit
+outside the SMC, as do the boot ROM macro and the L1 cache tag and data arrays.
+`u_smc_cpu_wrapper` reaches them through memory interface ports, one 72-bit port per
+scratchpad bank, that `smc` carries to its own boundary. Interrupts from
+the four watchdog timers and the four BEUs reach the PLIC inside the cluster, which
+the figure does not draw.
+
+[[processor-core-overview]]
+== Processor Core
+
+<<smc-processor-core-features-table>> summarizes the key features of the Rocket CPU core, and
 its cache hierarchy
 
-[cols=",",options="header",]
+[[smc-processor-core-features-table]]
+[cols="30%,70%",options="header"]
+.SMC processor core features
 |========================================================
 |Attribute |Description
-|Cores |1–4, Rocket RV64GC
+|Cores |4, Rocket RV64GC
 |ISA |RV64GC (I, M, A, F, D, C extensions)
 |Microarchitecture |In-order, 5-stage pipeline
 |Privilege Levels |M/S/U
@@ -37,9 +66,21 @@ its cache hierarchy
 |Reset Vector |Per-core, independently configurable (56b)
 |========================================================
 
-==== Cache and Memory Hierarchy
+[[cache-and-memory-hierarchy]]
+== Local Memory
 
-[cols="25%,15%,35%,25%",options="header",]
+<<smc-cache-and-memory-hierarchy-table>> lists the default memory sizes and their
+configurability.
+
+ifdef::backend-html5[]
+++++
+<div class="smc-memory-table-scroll" role="region" aria-label="Cache and memory hierarchy" tabindex="0">
+++++
+endif::backend-html5[]
+
+[[smc-cache-and-memory-hierarchy-table]]
+[cols="25%,20%,30%,25%",options="header",role="smc-memory-table"]
+.SMC cache and memory hierarchy
 |=======================================================================
 |Component |Default Size |Notes |Configurability
 |L1 I-Cache per core |4 KiB (32 sets × 2 ways) |Write-through, Parity
@@ -54,15 +95,35 @@ its cache hierarchy
 |Boot ROM |128 KiB |Read-only, stores boot firmware |rom_cfg
 |=======================================================================
 
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
+
 All memory components (SRAM, caches, ROM) are configurable via top-level
 parameters. The scratchpad SRAM allows deterministic accesses,
 independent of cache state, and supports per-bank sizing and power
 management.
 
 Internally, the CPU cluster uses a TileLink bus to connect cores to the scratchpad, Boot ROM, PLIC, CLINT, and Bus Error Units.
-At the cluster boundary, TileLink is protocol-bridged to AXI4 and AXI4-Lite for integration with the SMC fabric (see <<fabric>>).
+At the cluster boundary, TileLink is bridged to AXI4 for the MMIO manager port, and AXI4 is bridged to TileLink for the L2 frontend port. The only AXI4-Lite link is the one in `smc_cpu_wrapper` from the front-port demux to the `cpu_ctrl` registers. Both AXI4 ports connect to the SMC fabric (see
+ifdef::backend-html5[]
+xref:smc:fabric.adoc#fabric[Fabric]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<fabric>>
+endif::backend-pdf[]
+).
 
-==== Reset, Boot, and Initialization
+[[smc-per-core-reset]]
+== Reset and Boot
+
+ifdef::backend-html5[]
+++++
+<span id="reset-boot-and-initialization"></span>
+++++
+endif::backend-html5[]
 
 Each CPU core supports an independent reset mechanism and a programmable
 reset vector, configured via rst_core_N_ni and reset_vector_N_i signals
@@ -70,28 +131,35 @@ for cores N=0 to 3. The design provides separate reset controls for the
 uncore logic and debug subsystems, enabling flexible platform management
 and debug flows.
 
+Individual core reset clears the core's private L1 cache and TileLink client
+state without resetting the shared coherence manager. The current SMC Rocket
+integration provides no reset-aware coherence mechanism to drain outstanding
+transactions or preserve dirty cache data.
+
 SRAM initialization is handled automatically by hardware on reset,
 ensuring memory consistency and error-free operation at startup; this
-feature can be disabled using disable_sram_auto_init_i to support
+feature can be disabled using smc_disable_sram_auto_init_i to support
 specialized or custom boot procedures. The completion of SRAM
-initialization is reported through the init_mem_done_o status signal,
+initialization is reported through the smc_init_mem_done_o status signal,
 allowing software to reliably detect when memory is ready for use.
 
-==== Memory Repair
+== Memory Repair
 
 The SMC CPU subsystem includes Built-In Redundancy Analysis (BIRA) memory repair
 support to address manufacturing defects in SRAM arrays. Repair uses redundant
-memory elements configured with data stored in eFuse memory, applied during the
+memory elements configured by an external repair controller, applied during the
 boot sequence.
 
 Memory repair executes automatically after eFuse sensing completes and before
-MBIST operations. The process reads repair data from the eFuse BIRA register
-(16-kilobit `repair_data` field) and configures redundant memory elements,
-ensuring SRAM arrays are functional before the CPU cluster begins execution.
+MBIST operations. The external controller configures the redundant memory
+elements and reports completion through `mem_repair_done` / `mem_repair_success`,
+ensuring SRAM arrays are functional before the CPU cluster begins execution. The
+SMC fuse map provides no repair-data storage; where that data lives is an
+integration choice.
 
 **Control Mechanisms:**
 
-* `fuse_sense_done_o`: eFuse controller output indicating sensing completion.
+* `smc_fuse_sense_done_o`: eFuse controller output indicating sensing completion.
   External DFT logic monitors this signal to trigger repair operations.
 
 * `skip_mem_repair_o`: Reset unit output that bypasses repair when asserted,
@@ -111,7 +179,7 @@ completion before proceeding with boot operations.
 **Boot Sequence Integration:**
 
 Memory repair integrates into the boot sequence as follows: after power-on reset
-deasserts and eFuse sensing begins, `fuse_sense_done_o` assertion triggers
+deasserts and eFuse sensing begins, `smc_fuse_sense_done_o` assertion triggers
 repair operations. Repair data is read from eFuse shadow registers and applied
 to SRAM, with completion reported through DFT Control Status registers. MBIST
 operations begin after repair completes (or is bypassed), and the CPU cluster
@@ -122,17 +190,23 @@ During FLR operations, repair is automatically bypassed via `skip_mem_repair_o`
 to enable rapid reset sequences. Normal cold reset sequences always execute
 repair unless explicitly bypassed via strap configuration.
 
-==== System Interfaces
+== System Interfaces
 
-[cols=",,",options="header",]
+<<smc-cpu-system-interfaces-table>> identifies the protocols and roles of the CPU
+cluster interfaces.
+
+[[smc-cpu-system-interfaces-table]]
+[cols="25%,20%,55%",options="header"]
+.SMC CPU system interfaces
 |==============================================
 |Interface |Protocol |Description
-|MMIO |AXI4-Lite |56b addressing, low-latency
+|MMIO |AXI4 |Manager port to the SMC fabric; 56-bit address, 64-bit data, 3-bit ID
 |L2 Frontend |AXI4 |For shared memory/coherency
-|Debug |APB, JTAG |Non-intrusive, per-core
+|Debug |JTAG |JTAG debug transport module into the debug module on the control bus;
+system bus access through the front bus
 |==============================================
 
-==== Cluster Boundary Isolation
+== CPU AXI Isolation
 
 The cluster is reset independently of the surrounding SMC fabric.
 If the cluster were reset while a transaction on one of its AXI ports
@@ -148,31 +222,76 @@ outstanding transactions:
 
 * the *L2 frontend* slave port, which blocks new transactions rather than
   terminating them, and
-* the *MMIO* master port, which terminates outstanding transactions with an
-  error response to keep reset-time X values from propagating into the fabric.
+* the *MMIO* master port, which terminates new transactions presented while
+  isolated with SLVERR responses to keep reset-time X values from propagating
+  into the fabric.
 
 The non-AXI status crossings (`wb_pc_valid`, `wb_reg_pc`, and the per-core
 `wdt_reset`) are clamped to constants over the same window so they cannot leak
-glitches either. The boundary also self-isolates on cold boot, releasing only
-once SRAM initialization completes and the cores and uncore are out of reset.
+glitches either. The boundary also self-isolates on cold boot, releasing four
+cycles after SRAM initialization completes and the cores and uncore are out of
+reset.
 
-===== Drain Handshake
+The boundary is shared by all cores and stays isolated while any core or the
+uncore is in reset. Holding one core in reset therefore also terminates the
+other cores' MMIO accesses with SLVERR and stalls L2 frontend traffic until
+every core is released.
 
-Isolation is coordinated with the control logic
-(`smc_cpu_ctrl_wrap`) through two signals:
+=== Drain Handshake
 
-* `isolate_req_i` — asserted by the control logic whenever a software reset of
-  the cluster is pending. The control logic withholds the reset itself until
-  the cluster reports that it is safe to apply.
-* `drained_o` — asserted once both `axi_isolate` instances have drained and
-  isolated their ports, telling the control logic the withheld reset may now be
-  released.
+A software reset through `CPU_CTRL.RESET_CTRL`, whether a core or uncore reset
+bit or a core reset pulse, proceeds as follows:
 
-===== Reset-Domain Crossing
+. Firmware writes `RESET_CTRL`.
+. The control logic (`smc_cpu_ctrl_wrap`) raises `isolate_req_i` and withholds
+the reset.
+. Both `axi_isolate` instances drain their outstanding transactions and
+isolate.
+. The cluster raises `drained_o`, and the control logic applies the reset.
+. `isolate_req_i` stays high until every reset bit is released and every pulse
+completes. The boundary then reconnects.
+
+=== Timeout Recovery
+
+`CPU_CTRL.RESET_TIMEOUT` limits how long a software-requested reset waits for
+the drain handshake. A `timeout_value` of zero disables the timer. When the
+timer expires, `timeout_mode=0` reports the timeout and continues to withhold
+the reset. `timeout_mode=1` forces the reset and flushes both AXI isolation
+blocks.
+
+`reset_timeout` remains high until the software reset request is removed,
+including after a recovery flush completes. `reset_applied` is high once the
+reset is applied by a completed drain or a force-mode timeout.
+
+The flush clears outstanding-transaction records at the cluster boundary and
+discards late responses and write data until isolation is released. This lets
+the reset complete when the CPU cluster is unresponsive but the surrounding
+fabric remains operational.
+
+[WARNING]
+====
+The flush cannot cancel an address request or write-data beat while `VALID` is
+high and `READY` is low. It waits for that transfer before flushing the channel.
+If `READY` never goes high, isolation cannot complete.
+
+The flush clears only the CPU isolation blocks. It does not clear state
+elsewhere in the SMC fabric. The cluster reset may complete while another block
+remains unresponsive or holds a response, leaving that route or AXI ID blocked,
+so that block must be recovered separately or through the eventual cold reset.
+====
+
+=== Reset-Domain Crossing
 
 The flops driving the isolate-control logic are held by the cluster's
 uncore/core reset, while the flops inside `axi_isolate` are held by the Primary
-Reset (see <<clock-and-reset-management,Clock and Reset Management>>). The
+Reset (see
+ifdef::backend-html5[]
+xref:smc:clk_rst.adoc#clock-and-reset-management[Clock and Reset Management]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<clock-and-reset-management,Clock and Reset Management>>
+endif::backend-pdf[]
+). The
 uncore/core reset is driven from two sources:
 
 * a Warm Reset from a watchdog timeout, which is *asynchronous* to the isolate
@@ -187,27 +306,37 @@ watchdog timeout is followed by a cold reset, so the
 brief crossing window has no functional consequence. The CSR path is
 synchronous and crosses no domains.
 
-==== Interrupt and Control Integration
+[[interrupt-and-control-integration]]
+== Interrupt Integration
 
 All interrupt wiring—MMIO bases for PLIC, CLINT, watchdog, and bus-error
 units; the authoritative `cpu_interrupts_o` map; PLIC/CLINT register
-documentation; and BEU NMI delivery—is documented in <<interrupts,Interrupts>>.
+documentation; and BEU direct interrupt delivery—is documented in
+ifdef::backend-html5[]
+xref:smc:interrupts.adoc#interrupts[Interrupts].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<interrupts,Interrupts>>.
+endif::backend-pdf[]
 
-==== Watchdog Timer System
+== Watchdog Interface
 
-Each CPU core includes a dedicated watchdog timer (at 0xC000_0000 + N *
-0x400), enabling per-core fault detection and recovery without impacting
-other cores. Base addresses and interrupt-related context for the WDT are
-summarized in <<interrupts,Interrupts>>.
+Each core has a watchdog. See
+ifdef::backend-html5[]
+xref:watchdog.adoc[Watchdog Timers]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<smc-watchdog,Watchdog Timers>>
+endif::backend-pdf[]
+for operation and the register reference.
 
-Timeouts are configurable to suit different workloads, and staged
-warnings (followed by reset) allow software intervention before hardware
-reset is triggered.
+ifdef::backend-html5[]
+++++
+<span id="watchdog-timer-system"></span>
+++++
+endif::backend-html5[]
 
-Watchdog monitoring can be disabled during debugging to prevent false
-triggers, supporting uninterrupted development and troubleshooting.
-
-==== Advanced Bus Infrastructure Monitoring and Error Management
+== Advanced Bus Infrastructure Monitoring and Error Management
 
 Per-core bus error monitors (at 0xC801_0000 + N * 0x1000) track AXI
 transactions, allowing the system to quickly detect and respond to
@@ -225,15 +354,24 @@ Error address and transaction capture aid debugging, preserving context
 like addresses and data to support thorough fault analysis and recovery
 coordination.
 
-==== Debug
+== Debug
 
-Debugging is facilitated by a dedicated APB interface and JTAG, enabling
+Debugging is facilitated by JTAG, through the cluster's debug transport module and
+debug module, enabling
 per-core access to registers, memory, and both hardware and software
 breakpoints. These debug capabilities function independently of
 functional resets and allow override of reset vectors to support
 firmware development and diagnostics.
 
-==== Detailed Register Map
+[[detailed-register-map]]
+== Memory Map and Register Reference
+
+=== Memory Map
+
+Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.
+
+=== Detailed Register Map
 
 ifdef::backend-html5[]
 ++++
@@ -241,14 +379,12 @@ include::partial$smc/regs/gen/html/blocks/cpu_ctrl.html[]
 include::partial$smc/regs/gen/html/blocks/clint.html[]
 include::partial$smc/regs/gen/html/blocks/debug_module.html[]
 include::partial$smc/regs/gen/html/blocks/bus_error_unit.html[]
-include::partial$smc/regs/gen/html/blocks/wdt.html[]
 ++++
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/blocks/cpu_ctrl.adoc[]
-include::../regs/gen/adoc/blocks/clint.adoc[]
-include::../regs/gen/adoc/blocks/debug_module.adoc[]
-include::../regs/gen/adoc/blocks/bus_error_unit.adoc[]
-include::../regs/gen/adoc/blocks/wdt.adoc[]
+include::../regs/gen/adoc/blocks/cpu_ctrl.adoc[leveloffset=+2]
+include::../regs/gen/adoc/blocks/clint.adoc[leveloffset=+2]
+include::../regs/gen/adoc/blocks/debug_module.adoc[leveloffset=+2]
+include::../regs/gen/adoc/blocks/bus_error_unit.adoc[leveloffset=+2]
 endif::backend-pdf[]

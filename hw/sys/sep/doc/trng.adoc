@@ -1,0 +1,239 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= TRNG and DRBG
+:description: SEP entropy generation, deterministic random bit generation, distribution, and reset coordination.
+ifdef::ocah-trm[]
+:page-aliases: ip:drbg/doc/index.adoc
+endif::ocah-trm[]
+
+SEP separates physical entropy generation from deterministic random-data
+production and distribution. The internal path is:
+
+* Entropy Source (ESRC): ring-oscillator sampling, extraction, health checks
+  and SHA-256 conditioning.
+* Cryptographically Secure Random Number Generator (CSRNG): an AES-CTR
+  deterministic random bit generator (DRBG), seeded by ESRC.
+* Entropy Distribution Network (EDN): requests generated data from CSRNG
+  and supplies the three SEP sink paths below.
+
+Each sink can instead select an external stream. The source muxes sit after
+EDN, so external data bypasses the internal ESRC/CSRNG/EDN chain. Stream
+availability and FIPS tags do not establish entropy quality or certification.
+
+[[sep-trng-diagram]]
+.SEP TRNG and DRBG entropy distribution
+image::sep-trng-distribution.svg[alt="SEP TRNG and DRBG entropy distribution: the entropy source seeds CSRNG through a seed packer, EDN fills three AXI-Stream FIFOs, a source select can replace each stream with the external TRNG, and the streams feed the Key Manager, an EDN adapter for AES, KMAC and OTBN, and the entropy pool",width=100%,pdfwidth=100%]
+
+<<sep-trng-diagram>> reads left to right. Inside `u_sep_trng`, the entropy source
+drives a 32-bit stream into the DRBG, whose seed packer collects twelve words into
+each 384-bit CSRNG seed. EDN draws from CSRNG and fills one 8-entry AXI-Stream FIFO
+per endpoint. The crypto AXI interconnect reaches the entropy source, CSRNG and
+EDN registers, and the external TRNG register window. The source select holds one
+2:1 mux per stream; each bit of `EXT_TRNG_SRC_SEL` chooses the internal DRBG (0)
+or the external TRNG (1, the reset value) for its stream. Streams 0, 1 and 2 go
+to the Key Manager DRBG sampler, to the crypto EDN adapter and to the pool EDN
+adapter. The entropy pool sits in `sep`, outside `sep_crypto`, and packs the
+32-bit words into a 32-entry FIFO of 64-bit words that software reads through the
+SEP local crossbar. The CSRNG and EDN cores are OpenTitan IP; their internal
+structure and register semantics are described in the
+https://opentitan.org/book/hw/ip/csrng/[OpenTitan CSRNG] and
+https://opentitan.org/book/hw/ip/edn/[EDN] documentation.
+
+[[true-random-number-generator-trng-true-random-number-generator-trng]]
+== Entropy Generation
+
+The internal ESRC samples ring oscillators, decorrelates/extracts their output
+and conditions it with SHA-256. Its gating health test observes the extracted
+32-bit stream before SHA-256; per-generator health results provide additional
+monitoring. The health tests include repetition, adaptive-proportion and Markov
+checks. This is not a test of each DRBG output word.
+
+Startup health testing gates release into the normal output path. The stream
+to DRBG is the ESRC output selected by its configuration: normally SHA-256
+output, but compressor-bypass mode selects uncompressed generator data and
+disables the gating 32-bit health test. Do not treat bypass or diagnostic
+settings as equivalent to the qualified operating configuration.
+
+Source characterization, health-test thresholds and permitted configurations
+belong to the entropy-source qualification. Conditioning does not by itself
+establish the amount of physical entropy in a seed. The source requirements
+are described by https://csrc.nist.gov/pubs/sp/800/90/b/final[NIST SP 800-90B].
+
+ifdef::backend-html5[]
+See xref:ip:entropy_source/doc/index.adoc[Entropy Source] for the source controls,
+startup status, health monitoring and configuration locks.
+endif::backend-html5[]
+ifdef::backend-pdf[]
+See <<entropy-source,Entropy Source>> for the source controls, startup status,
+health monitoring and configuration locks.
+endif::backend-pdf[]
+
+== Distribution and Source Selection
+
+SEP instantiates `drbg` with three AXI-Stream outputs and no direct native EDN
+endpoints. The crypto and pool paths convert the selected streams back to
+native EDN requests/responses outside that wrapper.
+
+[[sep-entropy-endpoint-routing]]
+.SEP entropy sink paths
+[cols="1,2,4",options="header"]
+|===
+|Stream / select bit |Sink |Connection after the source mux
+|0 |Key Manager |Direct stream to the KM DRBG sampler.
+|1 |AES, KMAC, OTBN |`u_axis_edn_crypto_s3c_scan` distributes words to native
+clients 0 = AES, 1 = KMAC, 2 = OTBN RND, 3 = OTBN URND, using round-robin arbitration.
+|2 |Fabric entropy pool |`u_axis_edn_pool_s3c_scan` supplies the single native
+EDN fill port of `u_entropy_fifo` in `sep.sv`.
+|===
+
+`SEP_CPU_CTRL.EXT_TRNG_SRC_SEL` selects each path independently: 0 selects
+internal DRBG data and 1 selects external data. Its reset value is `0b111`,
+so all three paths initially select external inputs. The write-once-set
+`EXT_TRNG_SRC_SEL_LOCK` prevents selection changes until the CPU-control bank
+is reset; resetting the internal TRNG alone does not unlock it.
+
+The selected source receives the sink's ready signal. An unselected internal
+endpoint is backpressured and retains queued data; an unselected external input
+receives ready high and its beats are discarded. Selection is combinational:
+there is no switch-complete handshake or automatic flush of previously queued
+words. Quiesce consumers before changing selection and account for buffered
+state when choosing the source-change/reset policy.
+
+[[entropy-streaming-signals-table]]
+.SEP random-data stream contract
+[cols="1,1,3",options="header"]
+|===
+|Signal |Direction / width |Meaning
+|`tvalid` |Source / 1 |A word is available; transfer occurs with `tready` high.
+|`tready` |Sink / 1 |The sink can accept the word. Hold valid data stable while stalled.
+|`tdata` |Source / 32 |One random-data word.
+|`tstrb` |Source / 4 |Byte strobes. Internal endpoints drive `0xF`; the crypto
+and pool adapters accept only full words (`0xF`). Partial strobes stall those adapters.
+|`tuser` |Internal source / 1 |Per-word FIPS provenance from EDN. The external
+input has no provenance bit; its source mux supplies a constant 1.
+|===
+
+There is no stream address: each physical output selects its sink path.
+The pool packs received words for its 64-bit read aperture and reports
+`entropy_pool_low`, `entropy_pool_fill_stall` and `entropy_pool_err`.
+
+ifdef::backend-html5[]
+See xref:sep:interrupts.adoc#sep-cpu-interrupt-vector-map[SEP CPU Interrupt Vector Map]
+for source assignments.
+endif::backend-html5[]
+ifdef::backend-pdf[]
+See <<sep-cpu-interrupt-vector-map>> for source assignments.
+endif::backend-pdf[]
+
+=== FIPS Provenance
+
+The internal seed adapter attaches the provisional constant
+`DRBG_CSRNG_SEED_FIPS_PROVISIONAL = 1`. CSRNG/EDN output provenance is retained
+in each endpoint FIFO and forwarded through `tuser` into the native client's
+`edn_fips`. OTBN RND checks the returned tag and can report `rnd_fips_chk_fail`.
+The external mux also attaches 1 unconditionally. Neither constant measures
+source quality, validates an external producer, or establishes FIPS compliance;
+qualification must justify the source and its operating configuration separately.
+
+== Reset and Recovery Boundaries
+
+`SEP_RESET_CTRL.SW_RESET_N.TRNG_SW_RST_N` controls one internal reset domain:
+ESRC, CSRNG, EDN and the DRBG endpoint queues. The TRNG sequencer isolates
+all three host paths to drain and safely reset their converted AXI4-Lite CSR
+transactions. This protects register transactions; it does not wait for entropy consumers to become idle.
+
+[[sep-entropy-reset-boundaries]]
+.TRNG reset effects outside the internal domain
+[cols="2,4",options="header"]
+|===
+|Block |Effect
+|Post-mux crypto and pool adapters |Synchronously clear pending and buffered
+state while the internal TRNG reset is active, even if external inputs are selected.
+|Fabric entropy pool |Clears its partial word, queued entropy and fill-stall
+state. Its AXI responder remains accessible; this is not a reset of that responder.
+|AES, KMAC and OTBN |Not reset by the TRNG coordinator. Native requests receive
+no acknowledgement during adapter clear and can resume after fresh data arrives.
+Their own resets cancel the corresponding adapter endpoints; OTBN owns RND and URND.
+|Key Manager sampler |Not scrubbed by TRNG reset: there is no post-mux adapter
+on this path. Keep KM idle before asserting TRNG reset; holding KM in software
+reset is sufficient. Hardware does not enforce this ordering.
+|External TRNG CSR path |Not included in the internal TRNG reset/isolation boundary.
+|===
+
+An in-progress KM sample can otherwise combine old and new stream data or
+report a stream error. The reset is therefore not an atomic restart of all
+entropy consumers. Firmware recovery must stop new TRNG CSR traffic, satisfy
+KM quiescence and decide whether other consumers must also be reset to abort
+their operations.
+
+After release, reinitialize ESRC, CSRNG and EDN, including source startup-health
+qualification and configuration locking, before depending on internal random
+data. Observe fresh endpoint/pool progress before releasing held consumers.
+External crypto/pool traffic also pauses during adapter clear; it can resume
+when that clear ends, independently of internal generator initialization.
+
+ifdef::backend-html5[]
+See xref:sep:reset_controller.adoc#sep-trng-reset[Resetting the TRNG] for the
+coordinator and recovery contract.
+endif::backend-html5[]
+ifdef::backend-pdf[]
+See <<sep-trng-reset>> for the coordinator and recovery contract.
+endif::backend-pdf[]
+
+=== Scan Protection Boundary
+
+The Class 2 entropy boundary starts at `u_trng_wrapper_s3c_scan`: its sequencer,
+128-bit release stage and stream FIFOs retain seed material; the vendor core
+uses its delivered DFT view. Within `u_sep_crypto.u_sep_trng`,
+`u_entropy_source_s3c_scan` covers entropy FIFO/SHA-256 state and
+`u_drbg_s3c_scan` covers CSRNG, EDN and endpoint state. The post-mux
+`u_axis_edn_crypto_s3c_scan` covers staging outside the DRBG root.
+Source-selection muxes are combinational, not scan assets.
+
+ifdef::backend-html5[]
+include::ip:partial$drbg/doc/architecture.adoc[leveloffset=+1]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+include::../../../ip/drbg/doc/architecture.adoc[leveloffset=+1]
+endif::backend-pdf[]
+
+== Memory Map and Register Reference
+
+ifdef::backend-html5[]
+++++
+<span id="csrng-register-reference"></span>
+<span id="edn-register-reference"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
+
+CSRNG and EDN occupy separate apertures in the SEP memory map. Their register
+offsets and access rules are given in the generated maps below.
+
+=== Detailed Register Map
+
+==== CSRNG Registers
+
+ifdef::backend-html5[]
+++++
+include::ip:partial$csrng/regs/gen/html/csrng.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/adoc/csrng.adoc[leveloffset=+3]
+endif::backend-pdf[]
+
+==== EDN Registers
+
+ifdef::backend-html5[]
+++++
+include::ip:partial$edn/regs/gen/html/edn.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/adoc/edn.adoc[leveloffset=+3]
+endif::backend-pdf[]

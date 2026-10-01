@@ -4,12 +4,9 @@
 /*******************************************************************************
  * OCH SEP Common Header
  *
- * This file provides common register access macros for OCH SEP firmware and tests.
- * Similar to tt_sep's sep_common.h but without the address offset.
- *
- * In tt_sep, WRITE_EXT/READ_EXT add SEP_EXT_BASE (0xc000_0000) to addresses.
- * In och_sep, WRITE_REG/READ_REG use addresses directly since sep.h / sep_addr.h
- * already provides absolute addresses.
+ * Register access macros for OCH SEP firmware and tests. WRITE_REG/READ_REG
+ * take the absolute addresses that sep.h / sep_addr.h provide; no base offset
+ * is added.
  *
  ******************************************************************************/
 
@@ -29,7 +26,7 @@
  * @param value 32-bit value to write
  *
  * Example:
- *   WRITE_REG(OCH_SEP_TOP_OTBN_CMD_BASE_ADDR, OTBN_CMD_EXECUTE);
+ *   WRITE_REG(SEP_TOP_OTBN_CMD_BASE_ADDR, OTBN_CMD_EXECUTE);
  */
 #define WRITE_REG(addr, value) (*((volatile uint32_t *)(uintptr_t)(addr)) = (value))
 
@@ -40,7 +37,7 @@
  * @return     32-bit value read from the register
  *
  * Example:
- *   uint32_t status = READ_REG(OCH_SEP_TOP_OTBN_STATUS_BASE_ADDR);
+ *   uint32_t status = READ_REG(SEP_TOP_OTBN_STATUS_BASE_ADDR);
  */
 #define READ_REG(addr) (*((volatile uint32_t *)(uintptr_t)(addr)))
 
@@ -178,7 +175,8 @@ static inline int poll_reg_timeout(uintptr_t addr, uint32_t mask, uint32_t expec
 #define CHECK_REG_ADDR(addr) \
     do { \
         if ((addr) < 0x40000000 || (addr) >= 0x50000000) { \
-            /* Address out of expected OCH SEP range */ \
+            /* Address outside 0x4000_0000-0x4FFF_FFFF, part of the SMC \
+             * row of the SEP CPU logical map, not the SEP-local window */ \
             __builtin_trap(); \
         } \
     } while (0)
@@ -186,32 +184,13 @@ static inline int poll_reg_timeout(uintptr_t addr, uint32_t mask, uint32_t expec
 #define CHECK_REG_ADDR(addr) ((void)0)
 #endif
 
-//==============================================================================
-// Comparison with tt_sep
-//==============================================================================
 /*
- * tt_sep uses WRITE_EXT/READ_EXT which ADD SEP_EXT_BASE (0xc000_0000):
- *   #define SEP_EXT_BASE (0xc0000000)
- *   #define WRITE_EXT(addr, value) \
- *     (*((volatile uint32_t *)(uintptr_t)(SEP_EXT_BASE + addr)) = value)
- *   #define READ_EXT(addr) \
- *     (*((volatile uint32_t *)(uintptr_t)(SEP_EXT_BASE + addr)))
- *
- * och_sep uses WRITE_REG/READ_REG which use addresses DIRECTLY:
- *   #define WRITE_REG(addr, value) \
- *     (*((volatile uint32_t *)(uintptr_t)(addr)) = value)
- *   #define READ_REG(addr) \
- *     (*((volatile uint32_t *)(uintptr_t)(addr)))
- *
- * This is because sep.h / sep_addr.h already provides absolute addresses:
- *   #define OCH_SEP_TOP_OTBN_CMD_BASE_ADDR (0x40000010)  // Already absolute!
- *
  * Usage in firmware/tests:
- *   #include "sep.h"  // Get absolute addresses
- *   #include "och_sep_common.h"   // Get register access macros
+ *   #include "sep.h"            // absolute register addresses
+ *   #include "och_sep_common.h" // register access macros
  *
- *   WRITE_REG(OCH_SEP_TOP_OTBN_CMD_BASE_ADDR, OTBN_CMD_EXECUTE);
- *   uint32_t status = READ_REG(OCH_SEP_TOP_OTBN_STATUS_BASE_ADDR);
+ *   WRITE_REG(SEP_TOP_OTBN_CMD_BASE_ADDR, OTBN_CMD_EXECUTE);
+ *   uint32_t status = READ_REG(SEP_TOP_OTBN_STATUS_BASE_ADDR);
  */
 
 #endif // OCH_SEP_COMMON_H

@@ -5,9 +5,10 @@
  * Status reporting codes for OCCP command processing and boot sequence
  *
  *
- * This header defines all error and status codes used by the SMC Production ROM
- * for ring buffer status reporting. See docs/SMC_ROM_Status_Codes.md for complete
- * specification and usage guidelines.
+ * This header defines all error and status codes used by the SMC production
+ * ROM FW for ring buffer status reporting. See
+ * hw/sys/smc/bootrom/prod/doc/status-coordination.adoc for the documented
+ * values and current emission behavior.
  */
 
 #ifndef SMC_OCCP_ERROR_CODES_H
