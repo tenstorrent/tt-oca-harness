@@ -51,7 +51,8 @@ The SEP connects to the system through three AXI paths. The `smn_outbound_axi`
 master interface allows SEP firmware to access system resources outside the SEP
 domain, such as SMC registers or external memory. The `smn_inbound_axi` slave
 interface accepts requests from system masters requiring access to SEP-managed
-resources. The `sep_ext_to_smc_axi` output provides a dedicated AXI path for
+resources. System masters must access SEP register regions with single-beat
+transactions. The `sep_ext_to_smc_axi` output provides a dedicated AXI path for
 SEP-to-SMC transactions, connecting to the SMC's `sep_axi_in` port.
 
 An additional AXI extension port (`axi_extension_axi`) enables adopters to
@@ -116,6 +117,9 @@ eFuse bank; do not share the SMC's. The SHIM contract is
 `efuse_shim_command_*`. Through the SMU those ports appear as
 `sep_efuse_bank_ctrl_*` and `sep_efuse_shim_command_*`. The SEP SHIM control
 CSRs sit at the base of `sep_external`; see <<efuse-bank-ctrl-window>>.
+SEP routes a burst on its first address, so a burst that begins in that window
+carries its later beats to the SHIM. An address that owns no SHIM register must
+return SLVERR and must not alias onto a live register.
 
 SEP senses this bank after its own reset. Watch `sep_fuse_sense_done_o`.
 On `sep.sv`, drive `smc_fuse_sense_done_i` from the SMC so firmware can
