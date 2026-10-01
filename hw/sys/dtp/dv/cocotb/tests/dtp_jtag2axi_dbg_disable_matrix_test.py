@@ -32,11 +32,12 @@ class dtp_jtag2axi_dbg_disable_matrix_test(dtp_base_test):
     axi_checker_stream_minimums = {"smc_axi": 2, "smc_otp": 2, "sep_otp": 2}
 
     async def run_scenario(self) -> None:
-        await self.start_looped_seq(
-            dtp_dbg_disable_jtag2axi_matrix_test_seq,
+        seq = dtp_dbg_disable_jtag2axi_matrix_test_seq(
             "dbg_disable_jtag2axi_matrix",
-            specific_knob="DTP_JTAG2AXI_DBG_DISABLE_MATRIX_TEST_LOOPS",
-            default_loops=16,
-            group_knob="DTP_JTAG2AXI_TEST_LOOPS",
+            scenario_seed=self.base_seed(),
+            # The matrix runs once: its rows (all_clear, one one-hot per bridge
+            # gate field, multi_hot_rows multi-hot, all_disabled) are the seeded
+            # iterations.
             multi_hot_rows=OcahKnobs.get_int_min("DTP_DBG_DISABLE_MULTI_HOT_ROWS", 11, 1),
         )
+        await self.start_seq(seq)
