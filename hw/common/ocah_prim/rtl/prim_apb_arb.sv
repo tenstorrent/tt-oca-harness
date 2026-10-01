@@ -163,7 +163,7 @@ module prim_apb_arb #(
   prim_fair_rr_arb #(
     .NUM_IN(MASTER_SUM_NUM),
     .DATA_WIDTH(0),
-    .DataType(logic),
+    .data_t(logic),
     .EXT_PRIO(1'b0),
     .AXI_VLD_RDY(1'b1),
     .LOCK_IN(1'b1),

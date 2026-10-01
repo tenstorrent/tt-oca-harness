@@ -18,9 +18,9 @@
 
 module prim_fair_rr_arb #(
   parameter int unsigned NUM_IN      = 64,  // Number of inputs to arbitrate.
-  parameter int unsigned DATA_WIDTH  = 32,  // Payload width in bits; unused when DataType is
+  parameter int unsigned DATA_WIDTH  = 32,  // Payload width in bits; unused when data_t is
                                             // overridden.
-  parameter type         DataType    = logic [DATA_WIDTH-1:0],  // Payload type; defaults to logic
+  parameter type         data_t      = logic [DATA_WIDTH-1:0],  // Payload type; defaults to logic
                                                                 // [DATA_WIDTH-1:0].
   parameter bit          EXT_PRIO    = 1'b0,  // 1 overrides the internal RR counter with
                                               // rr_priority_i. Share rr_priority_i across arbiters
@@ -41,22 +41,21 @@ module prim_fair_rr_arb #(
                                                             // granted index; do not overwrite
                                                             // IdxWidth behind it.
 ) (
-  input  logic                 clk_i,  // Clock, positive-edge triggered.
-  input  logic                 rst_ni,  // Active-low reset, sampled synchronously.
-  input  logic                 flush_i,  // Synchronously clears the RR pointer and, with LOCK_IN,
-                                         // the lock state; no effect when EXT_PRIO is 1.
-  input  idx_t                 rr_priority_i,  // External RR priority; used only when EXT_PRIO is
-                                               // 1.
-  input  logic    [NUM_IN-1:0] request_i,  // Per-port arbitration requests.
+  input  logic               clk_i,  // Clock, positive-edge triggered.
+  input  logic               rst_ni,  // Active-low reset, sampled synchronously.
+  input  logic               flush_i,  // Synchronously clears the RR pointer and, with LOCK_IN, the
+                                       // lock state; no effect when EXT_PRIO is 1.
+  input  idx_t               rr_priority_i,  // External RR priority; used only when EXT_PRIO is 1.
+  input  logic  [NUM_IN-1:0] request_i,  // Per-port arbitration requests.
   /* verilator lint_off UNOPTFLAT */
-  output logic    [NUM_IN-1:0] grant_o,  // Per-port grants.
+  output logic  [NUM_IN-1:0] grant_o,  // Per-port grants.
   /* verilator lint_on UNOPTFLAT */
-  input  DataType [NUM_IN-1:0] data_i,  // Per-port payloads.
-  output logic                 request_o,  // Winning request toward the destination.
-  input  logic                 grant_i,  // Destination grant for the winner.
-  output DataType              data_o,  // Winning payload.
-  output idx_t                 index_o  // Index of the winning input; valid while request_o is
-                                        // high.
+  input  data_t [NUM_IN-1:0] data_i,  // Per-port payloads.
+  output logic               request_o,  // Winning request toward the destination.
+  input  logic               grant_i,  // Destination grant for the winner.
+  output data_t              data_o,  // Winning payload.
+  output idx_t               index_o  // Index of the winning input; valid while request_o is
+                                      // high.
 );
 
   `include "ocah_assert.svh"
@@ -73,13 +72,13 @@ module prim_fair_rr_arb #(
     localparam int unsigned NumLevels = unsigned'($clog2(NUM_IN));
 
     /* verilator lint_off UNOPTFLAT */
-    idx_t    [2**NumLevels-2:0] index_nodes; // used to propagate the indices
-    DataType [2**NumLevels-2:0] data_nodes;  // used to propagate the data
-    logic    [2**NumLevels-2:0] gnt_nodes;   // used to propagate the grant to masters
-    logic    [2**NumLevels-2:0] req_nodes;   // used to propagate the requests to slave
+    idx_t  [2**NumLevels-2:0] index_nodes; // used to propagate the indices
+    data_t [2**NumLevels-2:0] data_nodes;  // used to propagate the data
+    logic  [2**NumLevels-2:0] gnt_nodes;   // used to propagate the grant to masters
+    logic  [2**NumLevels-2:0] req_nodes;   // used to propagate the requests to slave
     /* lint_off */
-    idx_t                       rr_q;
-    logic [NUM_IN-1:0]          req_d;
+    idx_t                     rr_q;
+    logic [NUM_IN-1:0]        req_d;
 
     // the final arbitration decision can be taken from the root of the tree
     assign request_o        = req_nodes[0];
@@ -219,7 +218,7 @@ module prim_fair_rr_arb #(
           if (unsigned'(l) * 2 > NUM_IN - 1) begin : gen_out_of_range
             assign req_nodes[Idx0]   = 1'b0;
             assign index_nodes[Idx0] = idx_t'('0);
-            assign data_nodes[Idx0]  = DataType'('0);
+            assign data_nodes[Idx0]  = data_t'('0);
           end
           //////////////////////////////////////////////////////////////
           // general case for other levels within the tree
