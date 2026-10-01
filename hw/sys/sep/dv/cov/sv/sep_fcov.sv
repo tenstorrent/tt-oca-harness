@@ -811,6 +811,18 @@ module sep_fcov (
   wire dma_copy_go = dma_go && (dma_opcode_w == DmaOpCopy);
   wire dma_hash_go = dma_go && (dma_opcode_w == DmaOpSha256);
   wire dma_total_wr = wr_ev && (aw_addr_q == SECURE_DMA_TOTAL_DATA_SIZE_REG_ADDR);
+  // TOTAL_DATA_SIZE is scored at the COPY GO that uses it. A register walk
+  // writes the size but never issues GO.
+  logic [31:0] dma_total_q;
+  logic        dma_total_valid_q;
+  always_ff @(posedge clk_i) begin
+    if (in_reset) begin
+      dma_total_valid_q <= 1'b0;
+    end else if (dma_total_wr) begin
+      dma_total_q       <= wr_data;
+      dma_total_valid_q <= 1'b1;
+    end
+  end
   // Any inline-hash GO, whatever the digest length, so the opcode
   // coverpoint can say WHICH hash the suite walked. dma_hash_go above
   // stays SHA-256-only because the completion pairing below is written
@@ -1196,7 +1208,30 @@ module sep_fcov (
       in_blk(aw_addr_q, AXIL_MAILBOX_REG_MAP_BASE_ADDR, AXIL_MAILBOX_REG_MAP_SIZE) &&
       (((aw_addr_q - AXIL_MAILBOX_REG_MAP_BASE_ADDR) & MboxBankMask) ==
        AXIL_MAILBOX_INBOUND_MAILBOX_0_WIRQT_REG_OFFSET);
-  wire  [7:0] mbox_wirqt = 8'(wr_data & AXIL_MAILBOX_WIRQT_WIRQT_MASK);
+  // A WIRQT value is scored at the next push to the same mailbox, so the
+  // threshold was in place for a transfer. A register walk that writes WIRQT
+  // and never pushes after it does not score.
+  wire  [31:0] mbox_off = aw_addr_q - AXIL_MAILBOX_REG_MAP_BASE_ADDR;
+  wire  [3:0] mbox_bank = 4'(mbox_off >> 11);
+  wire        mbox_push = wr_ev &&
+      in_blk(aw_addr_q, AXIL_MAILBOX_REG_MAP_BASE_ADDR, AXIL_MAILBOX_REG_MAP_SIZE) &&
+      ((mbox_off & MboxBankMask & ~32'h4) == AXIL_MAILBOX_OUTBOUND_MAILBOX_0_WRITE_DATA_REG_OFFSET);
+  logic [7:0] mbox_wirqt_q;
+  logic [3:0] mbox_wirqt_bank_q;
+  logic       mbox_wirqt_pend_q;
+  wire        mbox_wirqt_used = mbox_push && mbox_wirqt_pend_q && (mbox_bank == mbox_wirqt_bank_q);
+
+  always_ff @(posedge clk_i) begin
+    if (in_reset) begin
+      mbox_wirqt_pend_q <= 1'b0;
+    end else if (mbox_wirqt_wr) begin
+      mbox_wirqt_q      <= 8'(wr_data & AXIL_MAILBOX_WIRQT_WIRQT_MASK);
+      mbox_wirqt_bank_q <= mbox_bank;
+      mbox_wirqt_pend_q <= 1'b1;
+    end else if (mbox_wirqt_used) begin
+      mbox_wirqt_pend_q <= 1'b0;
+    end
+  end
   // The KM mailbox edges count once software enabled a KM mailbox interrupt
   // (a non-zero SEP_IRQ_ENABLE write). A leaf that never enables one is not
   // exercising the mailbox interrupt path.
@@ -2342,21 +2377,24 @@ module sep_fcov (
     }
   endgroup
 
-  // WIRQT, drawn from 1..MAILBOX_DEPTH-1 by SepMboxCfg.
+  // WIRQT, drawn from 1..MAILBOX_DEPTH-1 by SepMboxCfg, at the first push
+  // after it is written.
   covergroup sep_mbox_rand_cg @(posedge clk_i);
     option.per_instance = 1;
     option.name = "sep_mbox_rand_cg";
-    cp_wirqt: coverpoint mbox_wirqt iff (mbox_wirqt_wr) {
+    cp_wirqt: coverpoint mbox_wirqt_q iff (mbox_wirqt_used) {
       bins low = {[8'd1 : 8'(sep_pkg::MAILBOX_DEPTH / 2 - 1)]};
       bins high = {[8'(sep_pkg::MAILBOX_DEPTH / 2) : 8'(sep_pkg::MAILBOX_DEPTH - 1)]};
     }
   endgroup
 
-  // TOTAL_DATA_SIZE of the dma_basic copy, drawn from {16, 32}.
+  // TOTAL_DATA_SIZE of the dma_basic copy, drawn from {16, 32}, at its COPY GO.
   covergroup sep_dma_rand_cg @(posedge clk_i);
     option.per_instance = 1;
     option.name = "sep_dma_rand_cg";
-    cp_len: coverpoint wr_data iff (dma_total_wr) {bins b16 = {32'd16}; bins b32 = {32'd32};}
+    cp_len: coverpoint dma_total_q iff (dma_copy_go && dma_total_valid_q) {
+      bins b16 = {32'd16}; bins b32 = {32'd32};
+    }
   endgroup
 
   covergroup sep_wdt_bark_cg @(posedge clk_i);
