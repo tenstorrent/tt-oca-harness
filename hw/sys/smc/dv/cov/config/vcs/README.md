@@ -380,7 +380,7 @@ object comes from, not why it cannot be reached.
 
 | File | Class | Scope | Fact | Retired by | Reviewer |
 | --- | --- | --- | --- | --- | --- |
-| `smc_legacy_exclusions.el` | L1 LEGACY-DE-APPROVED | the objects of the archived bench's exclusion files that this database still holds, at the scope the legacy file gave them | provenance: tt-oca-hw excluded the object in one of the eleven files of `dv/smc/tb/tb_uvm/exclusion_files/` at commit `cb678bff` that `gen_smc_legacy_exclusions.py` lists, and design engineering reviewed those files there; the ANNOTATION before each group names the file | an enrolled leaf that covers the object, or design engineering withdrawing the approval | design engineering + DV peer |
+| `smc_legacy_exclusions.el` | L1 LEGACY-DE-APPROVED | report-gated: the objects of the archived bench's exclusion files that this database still holds and the graded run leaves uncovered, at the scope the legacy file gave them | provenance: tt-oca-hw excluded the object in one of the eleven files of `dv/smc/tb/tb_uvm/exclusion_files/` at commit `cb678bff` that `gen_smc_legacy_exclusions.py` lists, and design engineering reviewed those files there; the ANNOTATION before each group names the file | an enrolled leaf that covers the object, or design engineering withdrawing the approval | design engineering + DV peer |
 
 The legacy files are not in this repository. The generator reads them from a
 directory given on the command line and records only the repository, commit
@@ -388,14 +388,18 @@ and file names. It maps each Toggle, Block, Fsm state or transition and
 Condition object onto this hierarchy, `u_smc_wrapper` read as `u_dut`, and an
 instance path compared without the `u_` or `i_` prefix and without unindexed
 generate blocks where this tree renamed them, and writes an object only where
-urg's templates hold it, with the template's checksum and text. Its docstring
-gives every rule. An object is written whether or not a run covers it, so the
-file does not move from seed to seed; where a legacy object is covered, the
-class lowers that metric's figure rather than raising it. Most legacy objects
+urg's templates hold it and the run's raw report (`cov/report_raw/modinfo.txt`)
+marks it uncovered, with the template's checksum and text: a toggle per bit and
+direction, a line block by its source line, an FSM state or transition by name
+and a condition row by source line and vector. Nothing a leaf covers is waived.
+Like the SMU `MEM-MACRO` class the file is therefore report-gated: it belongs to
+one graded run, is regenerated from each graded run, and `--check` compares it
+against the run it is given. Its docstring gives every rule. Most legacy objects
 belong to units the scope now drops at compile time or to blocks this build no
 longer has, and are not written. A legacy INSTANCE line with no object under
 it excludes a whole instance and states no object, so it is not carried;
 `--stats` counts those and every object that does not map, by reason.
 
     cd <dir> && urg -dir <run dir>/cov/merged.vdb -dump full_exclusions tgl+line+fsm+cond -report rep
-    python3 hw/sys/smc/dv/cov/config/vcs/gen_smc_legacy_exclusions.py <legacy dir> <dir> [--check]
+    python3 hw/sys/smc/dv/cov/config/vcs/gen_smc_legacy_exclusions.py <legacy dir> <dir> \
+        <run dir>/cov/report_raw/modinfo.txt [--check]

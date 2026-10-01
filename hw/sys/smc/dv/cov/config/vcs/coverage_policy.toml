@@ -127,8 +127,9 @@ args = ["-elfile", "{path}"]
 # LEGACY-DE-APPROVED). The class records a provenance, not a design fact: design
 # engineering reviewed those exclusion files in that repository.
 # gen_smc_legacy_exclusions.py maps each object onto this hierarchy and writes
-# only the objects this database holds; README.md states the class and its
-# retiring condition.
+# only the objects this database holds and the graded run's raw report leaves
+# uncovered, so the file is report-gated and is regenerated from each graded
+# run; README.md states the class and its retiring condition.
 [[native_files]]
 tool = "vcs"
 role = "exclude"
