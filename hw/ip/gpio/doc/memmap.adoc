@@ -1,48 +1,57 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+ifdef::backend-html5[]
+++++
+<span id="address-space-organization"></span>
+++++
+endif::backend-html5[]
+
 [[gpio-memory-map]]
-== Memory Map
+== Memory Map and Register Reference
 
-The GPIO peripheral provides two separate register banks for
-comprehensive I/O control: the Interface Register Bank (gpio_intf_reg)
-for high-level GPIO functionality and the Control Register Bank
-(gpio_ctrl_reg) for physical layer characteristics. Both banks are
-accessed through 32-bit AXI4-Lite interfaces with independent address
-spaces.
+ifdef::backend-html5[]
+++++
+<span id="register-maps"></span>
+++++
+endif::backend-html5[]
 
-=== Address Space Organization
+=== Memory Map
 
-The GPIO peripheral uses a dual-bank register architecture:
+The controller's interface bank contains `DATA_CTRL`, `DATA_CTRL_ENABLE`
+and `ACCESS_FILTER`; the shim's control bank contains `CONTROL`.
+The generated `gpio_intf` and `gpio_ctrl` maps in
+<<gpio-detailed-register-map>> define their register offsets, and `gpio_wrap`
+defines the bank placement within the composite aperture. The enclosing
+padring determines their system addresses.
 
-* *Interface Register Bank*: High-level GPIO control, data path, and
-security filtering
-* *Control Register Bank*: Physical layer configuration, drive strength,
-and termination
+ifdef::backend-html5[]
+++++
+<span id="reset-behavior"></span>
+++++
+endif::backend-html5[]
 
-Each bank operates independently with separate AXI4-Lite interfaces to
-enable concurrent access and modular functionality.
+==== Reset Values
 
-=== Reset Behavior
+`ACCESS_FILTER` resets to `0x00010100`: read and write filters are disabled,
+with each stored protection requirement set to `3'b001`. `DATA_CTRL` and
+`DATA_CTRL_ENABLE` software controls reset to zero. Default pad direction
+and post-reset LSIO ownership are described in <<gpio-ownership>> and
+<<gpio-reset-straps>>; zeroed software controls do not imply that every
+pad path is disabled.
 
-`ACCESS_FILTER` resets to `0x00010100`. Both filter-enable bits are zero,
-so reads and writes are initially allowed regardless of AXI `PROT`. The stored
-read and write requirements are each `3'b001`; they apply only after software
-enables the corresponding filter. The filter compares transaction protection
-attributes, not initiator identity, and cannot by itself guarantee SEP-only access.
+`CONTROL` resets its drive-strength field to `3'b010` and its software
+pull, conditioning, configuration-enable and secondary-override controls
+to zero. The read-only strap fields reflect `INPUT_BY_DEFAULT` and the
+captured input, so the complete value is not a single fixed reset word.
 
-`DATA_CTRL` resets its software controls to zero, leaving register overrides
-disabled. This does not disable every pad path: with the default
-`INPUT_BY_DEFAULT = 1`, receive is enabled and transmit disabled while cold reset
-is asserted and when no interface owns the pad. After cold reset, a hardware
-LSIO request can select the pad without software enabling the register interface.
-Its direction signals then control transmit and receive.
+ifdef::backend-html5[]
+++++
+<span id="detailed-register-map"></span>
+++++
+endif::backend-html5[]
 
-The control bank's `strap_valid` reflects `INPUT_BY_DEFAULT`, not the sampled
-pad level. `strap_value` reports the captured strap level. The visible `CONTROL`
-value therefore depends on the parameter and captured input as well as the
-reset values of its software-controlled pad settings.
-
+[[gpio-detailed-register-map]]
 === Detailed Register Map
 
 ifdef::backend-html5[]

@@ -3,7 +3,7 @@
 
 = License
 
-Open Chiplet Atlas Harness (OCAH) hardware, software, and scripts are licensed
+Open Chiplet Atlas (OCA) Harness hardware, software, and scripts are licensed
 under the Apache License 2.0, except where a file or accompanying notice states
 otherwise:
 

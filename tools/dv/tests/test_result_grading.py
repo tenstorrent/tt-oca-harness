@@ -292,6 +292,22 @@ class RegressionRecord(unittest.TestCase):
         self.assertEqual((bucket["kind"], bucket["count"]), ("unknown", 1))
         self.assertEqual(bucket["affected"][0]["item"], "t_a")
 
+    def test_rerun_command_selects_the_framework_of_the_run(self):
+        for framework in ("cocotb", "uvm"):
+            with self.subTest(framework=framework):
+                self.flow = make_flow(self.root, framework)
+                payload = self.regression([self.job("t_a", 0, "FAIL")])
+                (failed,) = payload["failed_tests"]
+                self.assertIn(f"--framework {framework} ", failed["rerun"])
+
+    def test_formal_rerun_command_selects_the_mode_and_no_framework(self):
+        self.flow = make_flow(self.root, "formal")
+        self.args.mode = "formal"
+        payload = self.regression([self.job("t_a", 0, "FAIL")])
+        (failed,) = payload["failed_tests"]
+        self.assertIn("--mode formal ", failed["rerun"])
+        self.assertNotIn("--framework", failed["rerun"])
+
     def test_skipped_leaf_is_outside_total_and_not_failed(self):
         payload = self.regression([self.job("t_a", 0, "FAIL"), self.job("t_b", 0, "SKIP")])
         tests = payload["tests"]

@@ -396,6 +396,96 @@ The `--waves-on-fail` flag may be used instead of `--waves`, to only generate wa
 * https://surfer-project.org[Surfer project website]
 * https://ics.jku.at/files/2024RISCVSummit_Surfer.pdf[RISC-V Summit paper on Surfer]
 
+== Virtual Platform
+
+The OCA Harness Virtual Platform (VP) is a SystemC-based simulation environment for testing chiplets, provided by the `tt-oca-harness-model` submodule under `virtual_platform/`. It runs firmware (including production boot ROMs) faster than RTL simulation. The VP includes three executables:
+
+* `sep-vp` — the SEP subsystem (default).
+* `smc-vp` — the SMC subsystem (requires Whisper ISS).
+* `smu-vp` — the SMC and SEP subsystems in one process (for cross-subsystem testing).
+
+=== Prerequisites
+
+* A C{plus}{plus}20 compiler (e.g., `g{plus}{plus}-12`).
+* SystemC, CCI, Boost and OpenSSL, built into `virtual_platform/local/` when the host does not provide them.
+* The Whisper ISS, for `smc-vp` and `smu-vp` only; it is built on first use.
+* A RISC-V toolchain with picolibc for the SEP boot ROM and firmware tests; without one those builds fall back to the container.
+* `uv` for the Python environment.
+
+With `VP_CONTAINER=1` the container provides all of these.
+
+=== Initialising the Virtual Platform
+
+To use the container to build and run the VP, set `VP_CONTAINER=1`
+
+```bash
+# Initialize the model submodule
+make ocah-vp-init
+
+# Build dependencies (if not provided by host)
+make ocah-vp-deps
+```
+
+=== Running Tests on the Virtual Platform
+
+==== SEP Virtual Platform
+
+The SEP Virtual Platform is integrated with multiple different test suites:
+
+```bash
+# Build
+make -C virtual_platform vp
+
+# Run the SEP test suite
+make -C virtual_platform vp-test # pass extra arguments with PYTEST_ARGS='<args>'
+
+# Run a software test
+make -C virtual_platform smoke SW_TEST='<test>' # See virtual_platform/tt-oca-harness-model/sw/sep-vp-tests
+
+# Run a fw test
+make -C virtual_platform fw-run FW_TEST='<test>' # See hw/sys/sep/dv/fw
+
+# Build and run the SEP BOOT ROM
+make -C virtual_platform boot-build
+make -C virtual_platform boot-run # Configure with BOOT_ARGS='<args>'
+```
+
+==== SMC and SMU Virtual Platforms
+
+The SMC Virtual Platform provides a single test suite, while the SMU integrates the SMC and SEP, to provide a combined test environment and suite.
+
+For the SMC:
+
+```bash
+# build smc-vp (requires Whisper ISS)
+make -C virtual_platform smc-vp
+
+# Run test suite
+make -C virtual_platform smc-test
+
+# Run single test, see virtual_platform/tt-oca-harness-model/sw/smc-vp-tests
+make -C virtual_platform smc-test SMC_ARGS='<test-name>'
+```
+
+For the SMU:
+```bash
+# build smu-vp (requires Whisper ISS)
+make -C virtual_platform smu-vp
+
+# Run test suite
+make -C virtual_platform smu-test
+
+# Run single test, see virtual_platform/tt-oca-harness-model/sw/smu-vp-tests
+make -C virtual_platform smu-test SMU_ARGS='<test-name>'
+```
+
+=== Further Reading
+- `virtual_platform/Makefile` for detailed build options (`make -C virtual_platform help`).
+- `virtual_platform/README.md` for the three executables, dependency resolution and the containerized flow.
+- `virtual_platform/BUILDING_NATIVELY.md` for building and running the VP on your own host.
+- `virtual_platform/sepvp/README.md` for the `sepvp` runner: boot straps, fuse maps and status channels.
+- `virtual_platform/RUNNING_THE_SMC_BOOT_ROM.md` for guidance on running the SMC Boot ROM on the Virtual Platform.
+
 == Synthesis
 
 OCAH is designed around open-source workflows. For this reason, we have chosen to

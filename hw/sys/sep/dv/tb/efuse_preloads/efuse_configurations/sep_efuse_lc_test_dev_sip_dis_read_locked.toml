@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# TEST_DEV with SIP_DIS read-locked and both disable vectors clear.
+#
+# A read-locked field returns a sentinel rather than its value, so the ROM cannot
+# see that debug is open and must treat the lock as debug disabled
+# (SEP-ROM-SB-025). The vectors are clear so that only the lock can explain an
+# enforced boot.
+#
+# Used by sep_rom_dbg_lock_read_locked_refuse_test.
+
+[LC_STATE]
+  # Differentially encoded {~raw[3:0], raw[3:0]}: raw 0x0 (TEST_DEV) stores as
+  # 0xF0. See the directory README.
+  [LC_STATE.fields.lc_state]
+  value = 0xF0
+
+[LOCKS]
+  [LOCKS.fields.sip_dis_read_lock]
+  value = 0x1

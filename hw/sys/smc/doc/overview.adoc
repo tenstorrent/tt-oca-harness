@@ -25,37 +25,6 @@ various purposes. At high level, SMC's main control logic is implemented in the
 firmware running on the micro-controller. Hardware facilitative components are
 added only when certain tasks cannot be implemented by firmware.
 
-The SMC architecture is organized around a RISC-V CPU cluster that executes
-firmware-based control logic. The CPU operates within the primary SMC clock
-domain and includes associated cache hierarchies for efficient instruction and
-data access. The system employs a multi-domain clocking architecture with a
-high-speed SMC clock domain for computational components, a stable reference
-clock domain for timing-sensitive operations, and a peripheral clock domain
-for external interfaces.
-
-The interconnect fabric provides AXI4 and AXI4-Lite bus infrastructure
-connecting the CPU to various system components. This fabric includes address
-remapping engines for security and virtualization support, traffic filtering
-mechanisms for access control, and crossbar switches for efficient data routing.
-
-Memory resources include read-only memory (ROM) for firmware storage and
-scratchpad memory for runtime data. The memory system is complemented by a DMA
-controller for efficient bulk data transfers and a memory zeroer for secure data
-clearing operations.
-
-Peripheral interfaces enable communication and control of external systems.
-These include GPIO controllers for general-purpose I/O, I2C and UART
-interfaces for serial communication, AVSBus controller for adaptive voltage
-scaling, and PVT (Process, Voltage, Temperature) sensors for environmental
-monitoring. A telemetry receiver collects system performance data, while the
-system timer OCTS provides multi-chiplet time synchronization.
-
-System management functions include clock and reset controllers for power and
-reset sequencing, an interrupt controller (PLIC) for handling system events, and
-core-local interruptors (CLINT) for timer and software interrupt management.
-Debug infrastructure provides JTAG access and RISC-V debug module support for
-development and troubleshooting.
-
 <<smc-top-level-block-diagram-figure>> shows the SMC microarchitectural diagram.
 
 [[smc-top-level-block-diagram-figure]]
@@ -103,3 +72,53 @@ The rest of this documentation describes architectural requirements and
 microarchitectural implementation of SMC's components in OCAH. A
 consolidated description of OCAH use cases is available in
 xref:ocah-home::use-cases.adoc[Use Cases].
+
+== Clocks and Resets
+
+SMC coordinates clock, voltage and reset control. Its processing, reference
+timing and peripheral interfaces use distinct clock branches. Clocks and
+Resets describes the domains and reset sequencing.
+
+== CPU
+
+The RISC-V CPU cluster executes management firmware using its caches and local
+memories. The CPU chapter describes its configuration, interfaces, isolation,
+error reporting and debug support.
+
+== Boot ROM
+
+Boot ROM contains the startup firmware. Scratchpad memory provides runtime
+storage. The Boot ROM chapter describes the hardware and links to the
+production firmware manual.
+
+== Interconnect
+
+AXI4 and AXI4-Lite connect the CPU and management blocks. Remapping, traffic
+filters and crossbars provide address translation, access control and routing.
+
+== Interrupts
+
+The PLIC routes system events; CLINT supplies core-local timer and software
+interrupts. The interrupt chapter describes their integration and handling.
+
+== Peripherals
+
+DMA performs bulk transfers and Zeroer clears memory. Communication and
+control services include mailboxes, GPIO, I2C, I3C, UART and AVSBus. Telemetry
+receivers collect performance data; OCTS supports multi-chiplet timekeeping.
+PVT sensors provide environmental monitoring through adopter integration.
+
+== Design-for-Debug and CLA
+
+JTAG, the RISC-V debug module and the Core Logic Analyzer support observation,
+triggering and trace capture.
+
+== eFuse Scan Protection
+
+Scan protection controls access to eFuse shadow-register assets. Its dedicated
+chapter describes the asset classes and access restrictions.
+
+== Memory Map
+
+The memory map summarizes the address space and points to the block pages for
+register details.

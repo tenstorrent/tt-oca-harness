@@ -6,28 +6,22 @@
 
 == Overview
 
-This document specifies the Mailbox Unit hardware IP functionality. The
-Mailbox Unit provides FIFO-based bidirectional communication channels
-for inter-processor or inter-chiplet communication using AXI4-Lite
-interfaces. It enables efficient data exchange between processing
-elements through dedicated hardware channels with minimal software
-overhead.
+ifdef::backend-html5[]
+++++
+<span id="description-and-features"></span>
+++++
+endif::backend-html5[]
 
-== Description and Features
+The Mailbox Unit connects two software endpoints through a pair of FIFOs.
+Each endpoint has a register aperture: writing `WRITE_DATA` sends one word to
+the peer, and reading `READ_DATA` consumes one word sent by the peer. A single
+AXI4-Lite slave port serves all pairs.
 
-The Mailbox Unit enables secure, FIFO-based, bidirectional communication
-between processing elements or chiplets in multicore systems. Each
-configurable mailbox instance consists of paired inbound and outbound
-channels, allowing simultaneous data transfer with a 64-bit data path.
-Multiple independent mailbox pairs are supported, each equipped with
-dedicated control registers, status monitoring, and programmable
-interrupt thresholds.
-
-The architecture uses standard AXI4-Lite interfaces for integration and
-provides robust error detection, reporting, and software-controllable
-FIFO flushing. Channel depth is adjustable per instance to suit system
-needs, while hardware minimizes software overhead for efficient,
-low-latency data exchange.
+`NUM_MAILBOXES` counts bidirectional pairs, each with two directional apertures
+and two interrupt outputs. The SMC instance provides 32 pairs (64 apertures);
+the SEP instance provides 8 pairs (16 apertures). Aperture names describe intended use; both ends remain reachable
+through the same slave port. Access isolation is the subsystem's responsibility,
+not a property conferred by naming an aperture inbound or outbound.
 
 [[mailbox-wrapper-diagram]]
 .SMC mailbox wrapper and interrupt routing

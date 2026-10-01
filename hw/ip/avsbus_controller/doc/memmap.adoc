@@ -2,9 +2,15 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[avsbus-controller-memory-map]]
-== Memory Map
+== Memory Map and Register Reference
 
-=== Overview
+ifdef::backend-html5[]
+++++
+<span id="overview-2"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
 
 The AVSBus Controller occupies a 128-byte address space (0x00-0x7F) reached
 through its AXI4-Lite port. The register map holds the command and readback
@@ -12,7 +18,7 @@ FIFO windows, status registers for monitoring the bus and the target,
 interrupt status, mask and clear registers, and configuration registers for
 the clock, the retry budget and the resync interval.
 
-=== Address Alignment and Access Requirements
+==== Address Alignment and Access Requirements
 
 All registers are 32 bits wide and aligned to a 4-byte boundary. The highest
 allocated offset is `0x58`; offsets `0x5C` through `0x7F` are unallocated and

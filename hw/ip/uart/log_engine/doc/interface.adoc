@@ -4,11 +4,6 @@
 [[log-engine-interface]]
 == Interface
 
-The OCA Log Engine provides multiple AXI4-Lite interfaces for register
-access, memory fetching, and UART communication.
-
-The engine serves 16 independent log entries, set by `NUM_LOG_ENTRIES` in `log_engine_pkg`.
-
 ifdef::backend-html5[]
 The parameters and ports of `log_engine` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/log_engine/log_engine.adoc[log_engine].
 endif::backend-html5[]
@@ -16,29 +11,56 @@ ifndef::backend-html5[]
 The parameters and ports of `log_engine` are listed in the HTML edition of this manual, under RTL Modules Reference.
 endif::backend-html5[]
 
-=== DMA Interface
+ifdef::backend-html5[]
+++++
+<span id="configuration-parameters"></span>
+++++
+endif::backend-html5[]
 
-The DMA interface provides flow control coordination with the UART
-transmitter.
+[[log-engine-configuration-parameters-table]]
+.Log-engine configuration
+[cols="2,1,3",options="header"]
+|===
+|Setting |Value |Source
+|`FIFO_DEPTH` |4 by default |Module parameter: buffered 64-bit words.
+|`NUM_LOG_ENTRIES` |16 |Package constant and generated register inventory.
+|Maximum region |512 KiB |Package constant `MAX_LOG_REGION_SIZE`.
+|Fetch address/data |56/64 bits |Package types.
+|Write address/data |32/32 bits |Package types.
+|CSR data |32 bits |Register interface; address width comes from the generated map.
+|===
 
-=== Flow Control Operation:
+ifdef::backend-html5[]
+++++
+<span id="signal-interfaces"></span>
+<span id="global-interface"></span>
+++++
+endif::backend-html5[]
 
-* The log write FSM waits for `uart_tx_ready_i` assertion before
-initiating write transfers
-* This prevents overwhelming the UART transmitter and maintains data
-integrity
-* Ready signal typically indicates UART FIFO has space for additional
-characters
+A shared `clk_i` and active-low asynchronous `rst_ni` drive all interfaces and
+internal logic. The CSR AXI4-Lite slave (`csr_axil_req_i` / `csr_axil_resp_o`)
+carries register traffic; two AXI4-Lite initiators carry memory reads
+(`log_fetch_axil_req_o` / `log_fetch_axil_resp_i`) and UART writes
+(`log_write_axil_req_o` / `log_write_axil_resp_i`). Both initiator adapters use
+`PROT = 3'b010` (non-secure, unprivileged data) and allow one outstanding
+request each. They issue no bursts.
 
-=== Interrupt Interface
+ifdef::backend-html5[]
+++++
+<span id="dma-interface"></span>
+<span id="flow-control-operation"></span>
+++++
+endif::backend-html5[]
 
-The interrupt interface provides error signaling to the system.
+`uart_tx_ready_i` permits the write FSM to request the next character transfer.
+The UART integration supplies readiness in the engine's clock domain and
+must account for writes already accepted by the bus. See <<log-engine-transfer>>
+for the write data and strobe behavior.
 
-=== Interrupt Sources:
+ifdef::backend-html5[]
+++++
+<span id="interrupt-interface"></span>
+++++
+endif::backend-html5[]
 
-* *LOG_FETCH_ERR*: AXI4-Lite log fetch bus returned error response
-* *LOG_WRITE_ERR*: AXI4-Lite log write bus returned error response
-
-*Interrupt Control:* * Individual enable bits in INTR_ENABLE register *
-Status bits in INTR_STATUS register (write-1-to-clear) * Test capability
-via INTR_TEST register
+`irq_o` is the active-high OR of enabled, latched fetch and write error status.

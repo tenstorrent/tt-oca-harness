@@ -826,7 +826,11 @@ module sep_uvm_top
     initial begin : backdoor_default_fill_zero
         for (int i = 0; i < 32768; i++)
             `SEP_IPI.u_sep_sram.gen_ram_inst[0].u_mem.mem[i] = 64'h0;
-        for (int i = 0; i < 16384; i++)
+        for (
+            int i = 0;
+            i < sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_SIZE / 8;
+            i++
+        )
             `SEP_IPI.u_sep_boot_rom.mem[i] = 64'h0;
         for (int r = 0; r < 16384; r++) begin
             `BD_ICCM(0)[r] = 39'h0; `BD_ICCM(1)[r] = 39'h0;
