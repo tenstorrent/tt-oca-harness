@@ -1,19 +1,21 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP_IN register traffic across the clock domains with all three input clocks at one period.
+"""SEP_IN register traffic at ref / smc / periph 10 / 12 / 4 ns.
 
-The SMC, reference and peripheral clocks run at one period. `clk_rst.adoc`
-constrains `clk_periph_i` to 100 MHz or faster and states no other relation
-between the three input clocks, so this is a legal configuration that the
-bench's default periods (ref / smc / periph 10 / 1.25 / 5 ns) never produce.
-The leaf pins the periods to 10 / 10 / 10 ns (ref / smc / periph), confirms
-the relation by measuring each period and counting edges across one
+The SMC clock runs slower than the reference and the peripheral clock runs more
+than twice as fast as it.
+
+`clk_rst.adoc` constrains `clk_periph_i` to 100 MHz or faster and states no
+other relation between the three input clocks, so this is a legal
+configuration that the bench's default periods (ref / smc / periph 10 / 1.25 /
+5 ns) never produce. The leaf pins ref / smc / periph to 10 / 12 / 4 ns,
+confirms the relation by measuring each period and counting edges across one
 ratio-collector window, and drives register traffic into both sides of the
 peripheral clock-domain crossing.
 
 Run:
     CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smc \\
-        --items smc_clk_smc_equal_ref_test --tool verilator
+        --items smc_clk_smc_slower_periph_much_faster_test --tool verilator
 """
 
 from __future__ import annotations
@@ -27,15 +29,15 @@ from seq_lib.smc_clk_ratio_test_seq import (
 from smc_base_test import smc_base_test
 
 REF_CLK_PERIOD_NS = 10
-SMC_CLK_PERIOD_NS = 10
-PERIPH_CLK_PERIOD_NS = 10
+SMC_CLK_PERIOD_NS = 12
+PERIPH_CLK_PERIOD_NS = 4
 # The cg_clk_ratio classes of the SMC and the peripheral clock against ref.
-RELATIONS = ("same", "same")
+RELATIONS = ("slower", "much_faster")
 
 
 @pyuvm.test()
-class smc_clk_smc_equal_ref_test(smc_base_test):
-    """Register traffic across the clock domains with all three input clocks at one period."""
+class smc_clk_smc_slower_periph_much_faster_test(smc_base_test):
+    """Register traffic across the clock domains at ref / smc / periph 10 / 12 / 4 ns."""
 
     required_evidence = ("CHK-CLK-RATIO-CSR", "CHK-CLK-RATIO-PERIODS")
     min_evidence = 2
@@ -48,7 +50,7 @@ class smc_clk_smc_equal_ref_test(smc_base_test):
         self.cfg.smc_clk_period_ns = SMC_CLK_PERIOD_NS
         self.cfg.periph_clk_period_ns = PERIPH_CLK_PERIOD_NS
         self.logger.info(
-            "SMC timing pinned by the leaf: ref=%dns smc=%dns periph=%dns",
+            "SMC timing pinned by the leaf: ref=%sns smc=%sns periph=%sns",
             REF_CLK_PERIOD_NS,
             SMC_CLK_PERIOD_NS,
             PERIPH_CLK_PERIOD_NS,

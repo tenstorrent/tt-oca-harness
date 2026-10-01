@@ -335,6 +335,20 @@ feature rows.
 |`smc_cg_test_mode_bypass_test` |LIVE test_en_i DFT bypass.
 |`smc_cg_zeroer_activity_bringup_test` |LIVE Zeroer axi_clk + reg_clk activity-driven gate/ungate, single zero operation.
 |`smc_clk_multi_window_test` |LIVE hysteresis-window scaling.
+|`smc_clk_periph_slower_than_ref_test` |Register traffic into the SMC and peripheral clock domains with the peripheral clock slower than the reference clock.
+|`smc_clk_smc_equal_periph_faster_test` |Register traffic into the SMC and peripheral clock domains with the SMC clock at the same period as the reference and the peripheral clock between one and two times as fast as it.
+|`smc_clk_smc_equal_periph_much_faster_test` |Register traffic into the SMC and peripheral clock domains with the SMC clock at the same period as the reference and the peripheral clock more than twice as fast as it.
+|`smc_clk_smc_equal_periph_slower_test` |Register traffic into the SMC and peripheral clock domains with the SMC clock at the same period as the reference and the peripheral clock slower than it.
+|`smc_clk_smc_faster_periph_equal_test` |Register traffic into the SMC and peripheral clock domains with the SMC clock between one and two times as fast as the reference and the peripheral clock at the same period as it.
+|`smc_clk_smc_faster_periph_faster_test` |Register traffic into the SMC and peripheral clock domains with the SMC clock between one and two times as fast as the reference and the peripheral clock between one and two times as fast as it.
+|`smc_clk_smc_faster_periph_much_faster_test` |Register traffic into the SMC and peripheral clock domains with the SMC clock between one and two times as fast as the reference and the peripheral clock more than twice as fast as it.
+|`smc_clk_smc_faster_periph_slower_test` |Register traffic into the SMC and peripheral clock domains with the SMC clock between one and two times as fast as the reference and the peripheral clock slower than it.
+|`smc_clk_smc_much_faster_periph_equal_test` |Register traffic into the SMC and peripheral clock domains with the SMC clock more than twice as fast as the reference and the peripheral clock at the same period as it.
+|`smc_clk_smc_much_faster_periph_faster_test` |Register traffic into the SMC and peripheral clock domains at the bench's default periods, pinned: the SMC clock more than twice the reference and the peripheral clock between one and two times it.
+|`smc_clk_smc_much_faster_periph_much_faster_test` |Register traffic into the SMC and peripheral clock domains with the SMC clock more than twice as fast as the reference and the peripheral clock more than twice as fast as it.
+|`smc_clk_smc_slower_periph_equal_test` |Register traffic into the SMC and peripheral clock domains with the SMC clock slower than the reference and the peripheral clock at the same period as it.
+|`smc_clk_smc_slower_periph_much_faster_test` |Register traffic into the SMC and peripheral clock domains with the SMC clock slower than the reference and the peripheral clock more than twice as fast as it.
+|`smc_clk_smc_slower_periph_slower_test` |Register traffic into the SMC and peripheral clock domains with the SMC clock slower than the reference and the peripheral clock slower than it.
 |`smc_clk_running_test` |P0 bring-up LIVE CG enable / idle gate / DMA ungate.
 |`smc_clk_smc_equal_ref_test` |Register traffic into the SMC and peripheral clock domains with all three input clocks at one period.
 |`smc_clk_smc_slower_than_ref_test` |Register traffic into the SMC and peripheral clock domains with the SMC clock slower than the reference clock.
@@ -2436,7 +2450,7 @@ Drive `smc_cold_reset_repeated_test_seq`. Each checker below is a named compare 
 |Checker |Description
 |`CHK-MID-ASSERT-HOLD` |Every `clk_ref_i` sample across the `MID_ASSERT_HOLD_REF_CYCLES` window after the assert handshake matched carries the asserted levels (`_hold_raw` in `smc_reset_seq_base.py`); each sample carries the expectation, so the scoreboard fails the run at the first sample that leaves them, one token per held window
 |`CHK-SKIP-MEM-REPAIR-PIN` |`skip_mem_repair_o` 0 within a bounded poll of driving the isolate-request pad low and 1 within a bounded poll of driving it high, with no FLR signalled and `ISOLATE_REQ_SMC_REG` at 0; expiry or a wrong level fails
-|`CHK-SENSE-DONE-REPAIR-ENABLED` |`tb_fuse_sense_done` rises within a bounded wait after the last reset release and `skip_mem_repair_o` reads 0 at that point with the pin held low; expiry or a 1 fails
+|`CHK-SENSE-DONE-REPAIR-ENABLED` |`tb_fuse_sense_done` reads 0 on at least the first sample after the last reset release and then rises within a bounded wait, and `skip_mem_repair_o` reads 0 at that point with the pin held low; already 1, expiry, or a 1 on `skip_mem_repair_o` fails
 |===
 
 
@@ -3383,8 +3397,8 @@ Drive `smc_clk_running_test_seq`. Each checker below is a named compare the DUT 
 
 *Test Coverage*:
 
-* `clk_rst.adoc` constrains one input clock: `clk_periph_i` runs at 100 MHz or faster. It states no relation between `clk_smc_i` and `clk_ref_i` or between `clk_smc_i` and `clk_periph_i`, so every ratio between them is legal. The base test draws the periods from sets in which the SMC clock is always the fastest, so this relation never runs otherwise.
-* The leaf pins ref / smc / periph to 10 / 12 / 8 ns after the base test's draw and measures each clock's period over 64 of its own rising edges before any traffic. Each must equal its pinned period, so the run is known to have the relation it is named for.
+* `clk_rst.adoc` constrains one input clock: `clk_periph_i` runs at 100 MHz or faster. It states no relation between `clk_smc_i` and `clk_ref_i` or between `clk_smc_i` and `clk_periph_i`, so every ratio between them is legal. The bench drives the `pll_wrap` oscillators at ref / smc / periph 10 / 1.25 / 5 ns by default, so this relation never runs otherwise.
+* The leaf pins ref / smc / periph to 10 / 12 / 8 ns after the base test resolves its periods, measures each clock's period over 64 of its own rising edges, and counts the SMC and peripheral rising edges together across 1024 reference edges, one `smc_clk_fcov` ratio window, before any traffic. The measured periods are compared with the leaf's declared constants, not with the bench configuration that drives the clocks, and each count must be within one edge of what those periods give and fall in the `cg_clk_ratio` class the leaf's name states, so the run is known to have the relation it is named for.
 * Register traffic crosses into both domains: the generated resets of `GLOBAL_BASE`, core 0 watchdog `CMP`, `AVS_CFG_0` and every UART `LSR`, then distinct patterns written to every UART `SCR` and every I2C `TARGET_ID` before any is read back, each restored and read back.
 
 *Test Procedure*:
@@ -3396,7 +3410,7 @@ Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below i
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-CLK-RATIO-PERIODS` |Each input clock measured its pinned period. A configuration check: it fails on a bench that did not apply the pinned periods, not on the DUT
+|`CHK-CLK-RATIO-PERIODS` |Each input clock measured the period the leaf declares in its own constants, the SMC and peripheral edge counts across 1024 reference edges are within one of what those periods give, and the counts fall in the `cg_clk_ratio` classes the leaf's name states. A stimulus-integrity check, not a DUT property: it proves the bench drove the declared periods and fails when it did not
 |`CHK-CLK-RATIO-CSR` |Every reset read returned its generated value and every co-resident pattern read back exactly, with the scoreboard booking at least `EXPECTED_VALUE_CHECKS` exact compares and the leaf issuing exactly `EXPECTED_ACCESSES` accesses
 |===
 
@@ -3414,8 +3428,8 @@ Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below i
 
 *Test Coverage*:
 
-* `clk_rst.adoc` constrains one input clock: `clk_periph_i` runs at 100 MHz or faster. It states no relation between `clk_smc_i` and `clk_ref_i` or between `clk_smc_i` and `clk_periph_i`, so every ratio between them is legal. The base test draws the periods from sets in which the SMC clock is always the fastest, so this relation never runs otherwise.
-* The leaf pins ref / smc / periph to 10 / 10 / 10 ns after the base test's draw and measures each clock's period over 64 of its own rising edges before any traffic. Each must equal its pinned period, so the run is known to have the relation it is named for.
+* `clk_rst.adoc` constrains one input clock: `clk_periph_i` runs at 100 MHz or faster. It states no relation between `clk_smc_i` and `clk_ref_i` or between `clk_smc_i` and `clk_periph_i`, so every ratio between them is legal. The bench drives the `pll_wrap` oscillators at ref / smc / periph 10 / 1.25 / 5 ns by default, so this relation never runs otherwise.
+* The leaf pins ref / smc / periph to 10 / 10 / 10 ns after the base test resolves its periods, measures each clock's period over 64 of its own rising edges, and counts the SMC and peripheral rising edges together across 1024 reference edges, one `smc_clk_fcov` ratio window, before any traffic. The measured periods are compared with the leaf's declared constants, not with the bench configuration that drives the clocks, and each count must be within one edge of what those periods give and fall in the `cg_clk_ratio` class the leaf's name states, so the run is known to have the relation it is named for.
 * Register traffic crosses into both domains: the generated resets of `GLOBAL_BASE`, core 0 watchdog `CMP`, `AVS_CFG_0` and every UART `LSR`, then distinct patterns written to every UART `SCR` and every I2C `TARGET_ID` before any is read back, each restored and read back.
 
 *Test Procedure*:
@@ -3427,7 +3441,441 @@ Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below i
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-CLK-RATIO-PERIODS` |Each input clock measured its pinned period. A configuration check: it fails on a bench that did not apply the pinned periods, not on the DUT
+|`CHK-CLK-RATIO-PERIODS` |Each input clock measured the period the leaf declares in its own constants, the SMC and peripheral edge counts across 1024 reference edges are within one of what those periods give, and the counts fall in the `cg_clk_ratio` classes the leaf's name states. A stimulus-integrity check, not a DUT property: it proves the bench drove the declared periods and fails when it did not
+|`CHK-CLK-RATIO-CSR` |Every reset read returned its generated value and every co-resident pattern read back exactly, with the scoreboard booking at least `EXPECTED_VALUE_CHECKS` exact compares and the leaf issuing exactly `EXPECTED_ACCESSES` accesses
+|===
+
+*Pass Criteria*: both checkers hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
+'''''
+
+[[sec-306-smc_clk_periph_slower_than_ref_test]]
+===== 306 `smc_clk_periph_slower_than_ref_test`
+
+*Source Module*: `smc_clk_periph_slower_than_ref_test`
+
+*BFM / Model*: SEP_IN AXI driver (no external VIP); the leaf's own period measurement on the three input clocks
+
+*Objective*: SEP_IN register traffic into the SMC and peripheral clock domains completes with the expected words while the peripheral clock runs slower than the reference clock.
+
+*Test Coverage*:
+
+* `clk_rst.adoc` constrains one input clock: `clk_periph_i` runs at 100 MHz or faster. It states no frequency for `clk_ref_i` and no relation between the input clocks, so a reference clock faster than a 100 MHz peripheral clock is legal. The bench drives the `pll_wrap` oscillators at ref 10 ns and periph 5 ns by default, so this relation never runs otherwise.
+* The leaf pins ref / smc / periph to 8 / 1.25 / 10 ns (125 / 800 / 100 MHz) after the base test resolves its periods, measures each clock's period over 64 of its own rising edges, and counts the SMC and peripheral rising edges together across 1024 reference edges, one `smc_clk_fcov` ratio window, before any traffic. The measured periods are compared with the leaf's declared constants, not with the bench configuration that drives the clocks, and each count must be within one edge of what those periods give and fall in the `cg_clk_ratio` class the leaf's name states, so the run is known to have the relation it is named for.
+* Register traffic crosses into both domains: the generated resets of `GLOBAL_BASE`, core 0 watchdog `CMP`, `AVS_CFG_0` and every UART `LSR`, then distinct patterns written to every UART `SCR` and every I2C `TARGET_ID` before any is read back, each restored and read back.
+
+*Test Procedure*:
+
+Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below is a named compare the DUT or the configuration can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CLK-RATIO-PERIODS` |Each input clock measured the period the leaf declares in its own constants, the SMC and peripheral edge counts across 1024 reference edges are within one of what those periods give, and the counts fall in the `cg_clk_ratio` classes the leaf's name states. A stimulus-integrity check, not a DUT property: it proves the bench drove the declared periods and fails when it did not
+|`CHK-CLK-RATIO-CSR` |Every reset read returned its generated value and every co-resident pattern read back exactly, with the scoreboard booking at least `EXPECTED_VALUE_CHECKS` exact compares and the leaf issuing exactly `EXPECTED_ACCESSES` accesses
+|===
+
+*Pass Criteria*: both checkers hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
+'''''
+
+[[sec-307-smc_clk_smc_slower_periph_slower_test]]
+===== 307 `smc_clk_smc_slower_periph_slower_test`
+
+*Source Module*: `smc_clk_smc_slower_periph_slower_test`
+
+*BFM / Model*: SEP_IN AXI driver (no external VIP); the leaf's own period measurement and edge count on the three input clocks
+
+*Objective*: SEP_IN register traffic into the SMC and peripheral clock domains completes with the expected words while the SMC clock runs slower than the reference clock and the peripheral clock runs slower than it.
+
+*Test Coverage*:
+
+* `clk_rst.adoc` constrains one input clock: `clk_periph_i` runs at 100 MHz or faster. It states no frequency for `clk_ref_i` and no relation between the input clocks, so every ratio between them is legal. The bench drives the `pll_wrap` oscillators at ref / smc / periph 10 / 1.25 / 5 ns by default, so this relation never runs otherwise.
+* The leaf pins ref / smc / periph to 8 / 12 / 10 ns after the base test resolves its periods, measures each clock's period over 64 of its own rising edges, and counts the SMC and peripheral rising edges together across 1024 reference edges, one `smc_clk_fcov` ratio window, before any traffic. The measured periods are compared with the leaf's declared constants, not with the bench configuration that drives the clocks, and each count must be within one edge of what those periods give and fall in the `cg_clk_ratio` class the leaf's name states, so the run is known to have the relation it is named for.
+* Register traffic crosses into both domains: the generated resets of `GLOBAL_BASE`, core 0 watchdog `CMP`, `AVS_CFG_0` and every UART `LSR`, then distinct patterns written to every UART `SCR` and every I2C `TARGET_ID` before any is read back, each restored and read back.
+
+*Test Procedure*:
+
+Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below is a named compare the DUT or the configuration can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CLK-RATIO-PERIODS` |Each input clock measured the period the leaf declares in its own constants, the SMC and peripheral edge counts across 1024 reference edges are within one of what those periods give, and the counts fall in the `cg_clk_ratio` classes the leaf's name states. A stimulus-integrity check, not a DUT property: it proves the bench drove the declared periods and fails when it did not
+|`CHK-CLK-RATIO-CSR` |Every reset read returned its generated value and every co-resident pattern read back exactly, with the scoreboard booking at least `EXPECTED_VALUE_CHECKS` exact compares and the leaf issuing exactly `EXPECTED_ACCESSES` accesses
+|===
+
+*Pass Criteria*: both checkers hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
+'''''
+
+[[sec-308-smc_clk_smc_slower_periph_equal_test]]
+===== 308 `smc_clk_smc_slower_periph_equal_test`
+
+*Source Module*: `smc_clk_smc_slower_periph_equal_test`
+
+*BFM / Model*: SEP_IN AXI driver (no external VIP); the leaf's own period measurement and edge count on the three input clocks
+
+*Objective*: SEP_IN register traffic into the SMC and peripheral clock domains completes with the expected words while the SMC clock runs slower than the reference clock and the peripheral clock runs at the same period as it.
+
+*Test Coverage*:
+
+* `clk_rst.adoc` constrains one input clock: `clk_periph_i` runs at 100 MHz or faster. It states no frequency for `clk_ref_i` and no relation between the input clocks, so every ratio between them is legal. The bench drives the `pll_wrap` oscillators at ref / smc / periph 10 / 1.25 / 5 ns by default, so this relation never runs otherwise.
+* The leaf pins ref / smc / periph to 10 / 12 / 10 ns after the base test resolves its periods, measures each clock's period over 64 of its own rising edges, and counts the SMC and peripheral rising edges together across 1024 reference edges, one `smc_clk_fcov` ratio window, before any traffic. The measured periods are compared with the leaf's declared constants, not with the bench configuration that drives the clocks, and each count must be within one edge of what those periods give and fall in the `cg_clk_ratio` class the leaf's name states, so the run is known to have the relation it is named for.
+* Register traffic crosses into both domains: the generated resets of `GLOBAL_BASE`, core 0 watchdog `CMP`, `AVS_CFG_0` and every UART `LSR`, then distinct patterns written to every UART `SCR` and every I2C `TARGET_ID` before any is read back, each restored and read back.
+
+*Test Procedure*:
+
+Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below is a named compare the DUT or the configuration can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CLK-RATIO-PERIODS` |Each input clock measured the period the leaf declares in its own constants, the SMC and peripheral edge counts across 1024 reference edges are within one of what those periods give, and the counts fall in the `cg_clk_ratio` classes the leaf's name states. A stimulus-integrity check, not a DUT property: it proves the bench drove the declared periods and fails when it did not
+|`CHK-CLK-RATIO-CSR` |Every reset read returned its generated value and every co-resident pattern read back exactly, with the scoreboard booking at least `EXPECTED_VALUE_CHECKS` exact compares and the leaf issuing exactly `EXPECTED_ACCESSES` accesses
+|===
+
+*Pass Criteria*: both checkers hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
+'''''
+
+[[sec-309-smc_clk_smc_slower_periph_much_faster_test]]
+===== 309 `smc_clk_smc_slower_periph_much_faster_test`
+
+*Source Module*: `smc_clk_smc_slower_periph_much_faster_test`
+
+*BFM / Model*: SEP_IN AXI driver (no external VIP); the leaf's own period measurement and edge count on the three input clocks
+
+*Objective*: SEP_IN register traffic into the SMC and peripheral clock domains completes with the expected words while the SMC clock runs slower than the reference clock and the peripheral clock runs more than twice as fast as it.
+
+*Test Coverage*:
+
+* `clk_rst.adoc` constrains one input clock: `clk_periph_i` runs at 100 MHz or faster. It states no frequency for `clk_ref_i` and no relation between the input clocks, so every ratio between them is legal. The bench drives the `pll_wrap` oscillators at ref / smc / periph 10 / 1.25 / 5 ns by default, so this relation never runs otherwise.
+* The leaf pins ref / smc / periph to 10 / 12 / 4 ns after the base test resolves its periods, measures each clock's period over 64 of its own rising edges, and counts the SMC and peripheral rising edges together across 1024 reference edges, one `smc_clk_fcov` ratio window, before any traffic. The measured periods are compared with the leaf's declared constants, not with the bench configuration that drives the clocks, and each count must be within one edge of what those periods give and fall in the `cg_clk_ratio` class the leaf's name states, so the run is known to have the relation it is named for.
+* Register traffic crosses into both domains: the generated resets of `GLOBAL_BASE`, core 0 watchdog `CMP`, `AVS_CFG_0` and every UART `LSR`, then distinct patterns written to every UART `SCR` and every I2C `TARGET_ID` before any is read back, each restored and read back.
+
+*Test Procedure*:
+
+Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below is a named compare the DUT or the configuration can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CLK-RATIO-PERIODS` |Each input clock measured the period the leaf declares in its own constants, the SMC and peripheral edge counts across 1024 reference edges are within one of what those periods give, and the counts fall in the `cg_clk_ratio` classes the leaf's name states. A stimulus-integrity check, not a DUT property: it proves the bench drove the declared periods and fails when it did not
+|`CHK-CLK-RATIO-CSR` |Every reset read returned its generated value and every co-resident pattern read back exactly, with the scoreboard booking at least `EXPECTED_VALUE_CHECKS` exact compares and the leaf issuing exactly `EXPECTED_ACCESSES` accesses
+|===
+
+*Pass Criteria*: both checkers hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
+'''''
+
+[[sec-310-smc_clk_smc_equal_periph_slower_test]]
+===== 310 `smc_clk_smc_equal_periph_slower_test`
+
+*Source Module*: `smc_clk_smc_equal_periph_slower_test`
+
+*BFM / Model*: SEP_IN AXI driver (no external VIP); the leaf's own period measurement and edge count on the three input clocks
+
+*Objective*: SEP_IN register traffic into the SMC and peripheral clock domains completes with the expected words while the SMC clock runs at the same period as the reference clock and the peripheral clock runs slower than it.
+
+*Test Coverage*:
+
+* `clk_rst.adoc` constrains one input clock: `clk_periph_i` runs at 100 MHz or faster. It states no frequency for `clk_ref_i` and no relation between the input clocks, so every ratio between them is legal. The bench drives the `pll_wrap` oscillators at ref / smc / periph 10 / 1.25 / 5 ns by default, so this relation never runs otherwise.
+* The leaf pins ref / smc / periph to 8 / 8 / 10 ns after the base test resolves its periods, measures each clock's period over 64 of its own rising edges, and counts the SMC and peripheral rising edges together across 1024 reference edges, one `smc_clk_fcov` ratio window, before any traffic. The measured periods are compared with the leaf's declared constants, not with the bench configuration that drives the clocks, and each count must be within one edge of what those periods give and fall in the `cg_clk_ratio` class the leaf's name states, so the run is known to have the relation it is named for.
+* Register traffic crosses into both domains: the generated resets of `GLOBAL_BASE`, core 0 watchdog `CMP`, `AVS_CFG_0` and every UART `LSR`, then distinct patterns written to every UART `SCR` and every I2C `TARGET_ID` before any is read back, each restored and read back.
+
+*Test Procedure*:
+
+Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below is a named compare the DUT or the configuration can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CLK-RATIO-PERIODS` |Each input clock measured the period the leaf declares in its own constants, the SMC and peripheral edge counts across 1024 reference edges are within one of what those periods give, and the counts fall in the `cg_clk_ratio` classes the leaf's name states. A stimulus-integrity check, not a DUT property: it proves the bench drove the declared periods and fails when it did not
+|`CHK-CLK-RATIO-CSR` |Every reset read returned its generated value and every co-resident pattern read back exactly, with the scoreboard booking at least `EXPECTED_VALUE_CHECKS` exact compares and the leaf issuing exactly `EXPECTED_ACCESSES` accesses
+|===
+
+*Pass Criteria*: both checkers hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
+'''''
+
+[[sec-311-smc_clk_smc_equal_periph_faster_test]]
+===== 311 `smc_clk_smc_equal_periph_faster_test`
+
+*Source Module*: `smc_clk_smc_equal_periph_faster_test`
+
+*BFM / Model*: SEP_IN AXI driver (no external VIP); the leaf's own period measurement and edge count on the three input clocks
+
+*Objective*: SEP_IN register traffic into the SMC and peripheral clock domains completes with the expected words while the SMC clock runs at the same period as the reference clock and the peripheral clock runs between one and two times as fast as it.
+
+*Test Coverage*:
+
+* `clk_rst.adoc` constrains one input clock: `clk_periph_i` runs at 100 MHz or faster. It states no frequency for `clk_ref_i` and no relation between the input clocks, so every ratio between them is legal. The bench drives the `pll_wrap` oscillators at ref / smc / periph 10 / 1.25 / 5 ns by default, so this relation never runs otherwise.
+* The leaf pins ref / smc / periph to 10 / 10 / 5 ns after the base test resolves its periods, measures each clock's period over 64 of its own rising edges, and counts the SMC and peripheral rising edges together across 1024 reference edges, one `smc_clk_fcov` ratio window, before any traffic. The measured periods are compared with the leaf's declared constants, not with the bench configuration that drives the clocks, and each count must be within one edge of what those periods give and fall in the `cg_clk_ratio` class the leaf's name states, so the run is known to have the relation it is named for.
+* Register traffic crosses into both domains: the generated resets of `GLOBAL_BASE`, core 0 watchdog `CMP`, `AVS_CFG_0` and every UART `LSR`, then distinct patterns written to every UART `SCR` and every I2C `TARGET_ID` before any is read back, each restored and read back.
+
+*Test Procedure*:
+
+Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below is a named compare the DUT or the configuration can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CLK-RATIO-PERIODS` |Each input clock measured the period the leaf declares in its own constants, the SMC and peripheral edge counts across 1024 reference edges are within one of what those periods give, and the counts fall in the `cg_clk_ratio` classes the leaf's name states. A stimulus-integrity check, not a DUT property: it proves the bench drove the declared periods and fails when it did not
+|`CHK-CLK-RATIO-CSR` |Every reset read returned its generated value and every co-resident pattern read back exactly, with the scoreboard booking at least `EXPECTED_VALUE_CHECKS` exact compares and the leaf issuing exactly `EXPECTED_ACCESSES` accesses
+|===
+
+*Pass Criteria*: both checkers hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
+'''''
+
+[[sec-312-smc_clk_smc_equal_periph_much_faster_test]]
+===== 312 `smc_clk_smc_equal_periph_much_faster_test`
+
+*Source Module*: `smc_clk_smc_equal_periph_much_faster_test`
+
+*BFM / Model*: SEP_IN AXI driver (no external VIP); the leaf's own period measurement and edge count on the three input clocks
+
+*Objective*: SEP_IN register traffic into the SMC and peripheral clock domains completes with the expected words while the SMC clock runs at the same period as the reference clock and the peripheral clock runs more than twice as fast as it.
+
+*Test Coverage*:
+
+* `clk_rst.adoc` constrains one input clock: `clk_periph_i` runs at 100 MHz or faster. It states no frequency for `clk_ref_i` and no relation between the input clocks, so every ratio between them is legal. The bench drives the `pll_wrap` oscillators at ref / smc / periph 10 / 1.25 / 5 ns by default, so this relation never runs otherwise.
+* The leaf pins ref / smc / periph to 10 / 10 / 4 ns after the base test resolves its periods, measures each clock's period over 64 of its own rising edges, and counts the SMC and peripheral rising edges together across 1024 reference edges, one `smc_clk_fcov` ratio window, before any traffic. The measured periods are compared with the leaf's declared constants, not with the bench configuration that drives the clocks, and each count must be within one edge of what those periods give and fall in the `cg_clk_ratio` class the leaf's name states, so the run is known to have the relation it is named for.
+* Register traffic crosses into both domains: the generated resets of `GLOBAL_BASE`, core 0 watchdog `CMP`, `AVS_CFG_0` and every UART `LSR`, then distinct patterns written to every UART `SCR` and every I2C `TARGET_ID` before any is read back, each restored and read back.
+
+*Test Procedure*:
+
+Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below is a named compare the DUT or the configuration can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CLK-RATIO-PERIODS` |Each input clock measured the period the leaf declares in its own constants, the SMC and peripheral edge counts across 1024 reference edges are within one of what those periods give, and the counts fall in the `cg_clk_ratio` classes the leaf's name states. A stimulus-integrity check, not a DUT property: it proves the bench drove the declared periods and fails when it did not
+|`CHK-CLK-RATIO-CSR` |Every reset read returned its generated value and every co-resident pattern read back exactly, with the scoreboard booking at least `EXPECTED_VALUE_CHECKS` exact compares and the leaf issuing exactly `EXPECTED_ACCESSES` accesses
+|===
+
+*Pass Criteria*: both checkers hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
+'''''
+
+[[sec-313-smc_clk_smc_faster_periph_slower_test]]
+===== 313 `smc_clk_smc_faster_periph_slower_test`
+
+*Source Module*: `smc_clk_smc_faster_periph_slower_test`
+
+*BFM / Model*: SEP_IN AXI driver (no external VIP); the leaf's own period measurement and edge count on the three input clocks
+
+*Objective*: SEP_IN register traffic into the SMC and peripheral clock domains completes with the expected words while the SMC clock runs between one and two times as fast as the reference clock and the peripheral clock runs slower than it.
+
+*Test Coverage*:
+
+* `clk_rst.adoc` constrains one input clock: `clk_periph_i` runs at 100 MHz or faster. It states no frequency for `clk_ref_i` and no relation between the input clocks, so every ratio between them is legal. The bench drives the `pll_wrap` oscillators at ref / smc / periph 10 / 1.25 / 5 ns by default, so this relation never runs otherwise.
+* The leaf pins ref / smc / periph to 8 / 5 / 10 ns after the base test resolves its periods, measures each clock's period over 64 of its own rising edges, and counts the SMC and peripheral rising edges together across 1024 reference edges, one `smc_clk_fcov` ratio window, before any traffic. The measured periods are compared with the leaf's declared constants, not with the bench configuration that drives the clocks, and each count must be within one edge of what those periods give and fall in the `cg_clk_ratio` class the leaf's name states, so the run is known to have the relation it is named for.
+* Register traffic crosses into both domains: the generated resets of `GLOBAL_BASE`, core 0 watchdog `CMP`, `AVS_CFG_0` and every UART `LSR`, then distinct patterns written to every UART `SCR` and every I2C `TARGET_ID` before any is read back, each restored and read back.
+
+*Test Procedure*:
+
+Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below is a named compare the DUT or the configuration can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CLK-RATIO-PERIODS` |Each input clock measured the period the leaf declares in its own constants, the SMC and peripheral edge counts across 1024 reference edges are within one of what those periods give, and the counts fall in the `cg_clk_ratio` classes the leaf's name states. A stimulus-integrity check, not a DUT property: it proves the bench drove the declared periods and fails when it did not
+|`CHK-CLK-RATIO-CSR` |Every reset read returned its generated value and every co-resident pattern read back exactly, with the scoreboard booking at least `EXPECTED_VALUE_CHECKS` exact compares and the leaf issuing exactly `EXPECTED_ACCESSES` accesses
+|===
+
+*Pass Criteria*: both checkers hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
+'''''
+
+[[sec-314-smc_clk_smc_faster_periph_equal_test]]
+===== 314 `smc_clk_smc_faster_periph_equal_test`
+
+*Source Module*: `smc_clk_smc_faster_periph_equal_test`
+
+*BFM / Model*: SEP_IN AXI driver (no external VIP); the leaf's own period measurement and edge count on the three input clocks
+
+*Objective*: SEP_IN register traffic into the SMC and peripheral clock domains completes with the expected words while the SMC clock runs between one and two times as fast as the reference clock and the peripheral clock runs at the same period as it.
+
+*Test Coverage*:
+
+* `clk_rst.adoc` constrains one input clock: `clk_periph_i` runs at 100 MHz or faster. It states no frequency for `clk_ref_i` and no relation between the input clocks, so every ratio between them is legal. The bench drives the `pll_wrap` oscillators at ref / smc / periph 10 / 1.25 / 5 ns by default, so this relation never runs otherwise.
+* The leaf pins ref / smc / periph to 10 / 5 / 10 ns after the base test resolves its periods, measures each clock's period over 64 of its own rising edges, and counts the SMC and peripheral rising edges together across 1024 reference edges, one `smc_clk_fcov` ratio window, before any traffic. The measured periods are compared with the leaf's declared constants, not with the bench configuration that drives the clocks, and each count must be within one edge of what those periods give and fall in the `cg_clk_ratio` class the leaf's name states, so the run is known to have the relation it is named for.
+* Register traffic crosses into both domains: the generated resets of `GLOBAL_BASE`, core 0 watchdog `CMP`, `AVS_CFG_0` and every UART `LSR`, then distinct patterns written to every UART `SCR` and every I2C `TARGET_ID` before any is read back, each restored and read back.
+
+*Test Procedure*:
+
+Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below is a named compare the DUT or the configuration can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CLK-RATIO-PERIODS` |Each input clock measured the period the leaf declares in its own constants, the SMC and peripheral edge counts across 1024 reference edges are within one of what those periods give, and the counts fall in the `cg_clk_ratio` classes the leaf's name states. A stimulus-integrity check, not a DUT property: it proves the bench drove the declared periods and fails when it did not
+|`CHK-CLK-RATIO-CSR` |Every reset read returned its generated value and every co-resident pattern read back exactly, with the scoreboard booking at least `EXPECTED_VALUE_CHECKS` exact compares and the leaf issuing exactly `EXPECTED_ACCESSES` accesses
+|===
+
+*Pass Criteria*: both checkers hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
+'''''
+
+[[sec-315-smc_clk_smc_faster_periph_faster_test]]
+===== 315 `smc_clk_smc_faster_periph_faster_test`
+
+*Source Module*: `smc_clk_smc_faster_periph_faster_test`
+
+*BFM / Model*: SEP_IN AXI driver (no external VIP); the leaf's own period measurement and edge count on the three input clocks
+
+*Objective*: SEP_IN register traffic into the SMC and peripheral clock domains completes with the expected words while the SMC clock runs between one and two times as fast as the reference clock and the peripheral clock runs between one and two times as fast as it.
+
+*Test Coverage*:
+
+* `clk_rst.adoc` constrains one input clock: `clk_periph_i` runs at 100 MHz or faster. It states no frequency for `clk_ref_i` and no relation between the input clocks, so every ratio between them is legal. The bench drives the `pll_wrap` oscillators at ref / smc / periph 10 / 1.25 / 5 ns by default, so this relation never runs otherwise.
+* The leaf pins ref / smc / periph to 10 / 5 / 5 ns after the base test resolves its periods, measures each clock's period over 64 of its own rising edges, and counts the SMC and peripheral rising edges together across 1024 reference edges, one `smc_clk_fcov` ratio window, before any traffic. The measured periods are compared with the leaf's declared constants, not with the bench configuration that drives the clocks, and each count must be within one edge of what those periods give and fall in the `cg_clk_ratio` class the leaf's name states, so the run is known to have the relation it is named for.
+* Register traffic crosses into both domains: the generated resets of `GLOBAL_BASE`, core 0 watchdog `CMP`, `AVS_CFG_0` and every UART `LSR`, then distinct patterns written to every UART `SCR` and every I2C `TARGET_ID` before any is read back, each restored and read back.
+
+*Test Procedure*:
+
+Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below is a named compare the DUT or the configuration can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CLK-RATIO-PERIODS` |Each input clock measured the period the leaf declares in its own constants, the SMC and peripheral edge counts across 1024 reference edges are within one of what those periods give, and the counts fall in the `cg_clk_ratio` classes the leaf's name states. A stimulus-integrity check, not a DUT property: it proves the bench drove the declared periods and fails when it did not
+|`CHK-CLK-RATIO-CSR` |Every reset read returned its generated value and every co-resident pattern read back exactly, with the scoreboard booking at least `EXPECTED_VALUE_CHECKS` exact compares and the leaf issuing exactly `EXPECTED_ACCESSES` accesses
+|===
+
+*Pass Criteria*: both checkers hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
+'''''
+
+[[sec-316-smc_clk_smc_faster_periph_much_faster_test]]
+===== 316 `smc_clk_smc_faster_periph_much_faster_test`
+
+*Source Module*: `smc_clk_smc_faster_periph_much_faster_test`
+
+*BFM / Model*: SEP_IN AXI driver (no external VIP); the leaf's own period measurement and edge count on the three input clocks
+
+*Objective*: SEP_IN register traffic into the SMC and peripheral clock domains completes with the expected words while the SMC clock runs between one and two times as fast as the reference clock and the peripheral clock runs more than twice as fast as it.
+
+*Test Coverage*:
+
+* `clk_rst.adoc` constrains one input clock: `clk_periph_i` runs at 100 MHz or faster. It states no frequency for `clk_ref_i` and no relation between the input clocks, so every ratio between them is legal. The bench drives the `pll_wrap` oscillators at ref / smc / periph 10 / 1.25 / 5 ns by default, so this relation never runs otherwise.
+* The leaf pins ref / smc / periph to 10 / 5 / 4 ns after the base test resolves its periods, measures each clock's period over 64 of its own rising edges, and counts the SMC and peripheral rising edges together across 1024 reference edges, one `smc_clk_fcov` ratio window, before any traffic. The measured periods are compared with the leaf's declared constants, not with the bench configuration that drives the clocks, and each count must be within one edge of what those periods give and fall in the `cg_clk_ratio` class the leaf's name states, so the run is known to have the relation it is named for.
+* Register traffic crosses into both domains: the generated resets of `GLOBAL_BASE`, core 0 watchdog `CMP`, `AVS_CFG_0` and every UART `LSR`, then distinct patterns written to every UART `SCR` and every I2C `TARGET_ID` before any is read back, each restored and read back.
+
+*Test Procedure*:
+
+Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below is a named compare the DUT or the configuration can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CLK-RATIO-PERIODS` |Each input clock measured the period the leaf declares in its own constants, the SMC and peripheral edge counts across 1024 reference edges are within one of what those periods give, and the counts fall in the `cg_clk_ratio` classes the leaf's name states. A stimulus-integrity check, not a DUT property: it proves the bench drove the declared periods and fails when it did not
+|`CHK-CLK-RATIO-CSR` |Every reset read returned its generated value and every co-resident pattern read back exactly, with the scoreboard booking at least `EXPECTED_VALUE_CHECKS` exact compares and the leaf issuing exactly `EXPECTED_ACCESSES` accesses
+|===
+
+*Pass Criteria*: both checkers hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
+'''''
+
+[[sec-317-smc_clk_smc_much_faster_periph_equal_test]]
+===== 317 `smc_clk_smc_much_faster_periph_equal_test`
+
+*Source Module*: `smc_clk_smc_much_faster_periph_equal_test`
+
+*BFM / Model*: SEP_IN AXI driver (no external VIP); the leaf's own period measurement and edge count on the three input clocks
+
+*Objective*: SEP_IN register traffic into the SMC and peripheral clock domains completes with the expected words while the SMC clock runs more than twice as fast as the reference clock and the peripheral clock runs at the same period as it.
+
+*Test Coverage*:
+
+* `clk_rst.adoc` constrains one input clock: `clk_periph_i` runs at 100 MHz or faster. It states no frequency for `clk_ref_i` and no relation between the input clocks, so every ratio between them is legal. The bench drives the `pll_wrap` oscillators at ref / smc / periph 10 / 1.25 / 5 ns by default, so this relation never runs otherwise.
+* The leaf pins ref / smc / periph to 10 / 1.25 / 10 ns after the base test resolves its periods, measures each clock's period over 64 of its own rising edges, and counts the SMC and peripheral rising edges together across 1024 reference edges, one `smc_clk_fcov` ratio window, before any traffic. The measured periods are compared with the leaf's declared constants, not with the bench configuration that drives the clocks, and each count must be within one edge of what those periods give and fall in the `cg_clk_ratio` class the leaf's name states, so the run is known to have the relation it is named for.
+* Register traffic crosses into both domains: the generated resets of `GLOBAL_BASE`, core 0 watchdog `CMP`, `AVS_CFG_0` and every UART `LSR`, then distinct patterns written to every UART `SCR` and every I2C `TARGET_ID` before any is read back, each restored and read back.
+
+*Test Procedure*:
+
+Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below is a named compare the DUT or the configuration can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CLK-RATIO-PERIODS` |Each input clock measured the period the leaf declares in its own constants, the SMC and peripheral edge counts across 1024 reference edges are within one of what those periods give, and the counts fall in the `cg_clk_ratio` classes the leaf's name states. A stimulus-integrity check, not a DUT property: it proves the bench drove the declared periods and fails when it did not
+|`CHK-CLK-RATIO-CSR` |Every reset read returned its generated value and every co-resident pattern read back exactly, with the scoreboard booking at least `EXPECTED_VALUE_CHECKS` exact compares and the leaf issuing exactly `EXPECTED_ACCESSES` accesses
+|===
+
+*Pass Criteria*: both checkers hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
+'''''
+
+[[sec-318-smc_clk_smc_much_faster_periph_much_faster_test]]
+===== 318 `smc_clk_smc_much_faster_periph_much_faster_test`
+
+*Source Module*: `smc_clk_smc_much_faster_periph_much_faster_test`
+
+*BFM / Model*: SEP_IN AXI driver (no external VIP); the leaf's own period measurement and edge count on the three input clocks
+
+*Objective*: SEP_IN register traffic into the SMC and peripheral clock domains completes with the expected words while the SMC clock runs more than twice as fast as the reference clock and the peripheral clock runs more than twice as fast as it.
+
+*Test Coverage*:
+
+* `clk_rst.adoc` constrains one input clock: `clk_periph_i` runs at 100 MHz or faster. It states no frequency for `clk_ref_i` and no relation between the input clocks, so every ratio between them is legal. The bench drives the `pll_wrap` oscillators at ref / smc / periph 10 / 1.25 / 5 ns by default, so this relation never runs otherwise.
+* The leaf pins ref / smc / periph to 10 / 1.25 / 4 ns after the base test resolves its periods, measures each clock's period over 64 of its own rising edges, and counts the SMC and peripheral rising edges together across 1024 reference edges, one `smc_clk_fcov` ratio window, before any traffic. The measured periods are compared with the leaf's declared constants, not with the bench configuration that drives the clocks, and each count must be within one edge of what those periods give and fall in the `cg_clk_ratio` class the leaf's name states, so the run is known to have the relation it is named for.
+* Register traffic crosses into both domains: the generated resets of `GLOBAL_BASE`, core 0 watchdog `CMP`, `AVS_CFG_0` and every UART `LSR`, then distinct patterns written to every UART `SCR` and every I2C `TARGET_ID` before any is read back, each restored and read back.
+
+*Test Procedure*:
+
+Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below is a named compare the DUT or the configuration can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CLK-RATIO-PERIODS` |Each input clock measured the period the leaf declares in its own constants, the SMC and peripheral edge counts across 1024 reference edges are within one of what those periods give, and the counts fall in the `cg_clk_ratio` classes the leaf's name states. A stimulus-integrity check, not a DUT property: it proves the bench drove the declared periods and fails when it did not
+|`CHK-CLK-RATIO-CSR` |Every reset read returned its generated value and every co-resident pattern read back exactly, with the scoreboard booking at least `EXPECTED_VALUE_CHECKS` exact compares and the leaf issuing exactly `EXPECTED_ACCESSES` accesses
+|===
+
+*Pass Criteria*: both checkers hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
+'''''
+
+[[sec-319-smc_clk_smc_much_faster_periph_faster_test]]
+===== 319 `smc_clk_smc_much_faster_periph_faster_test`
+
+*Source Module*: `smc_clk_smc_much_faster_periph_faster_test`
+
+*BFM / Model*: SEP_IN AXI driver (no external VIP); the leaf's own period measurement and edge count on the three input clocks
+
+*Objective*: SEP_IN register traffic into the SMC and peripheral clock domains completes with the expected words while the SMC clock runs more than twice as fast as the reference clock and the peripheral clock runs between one and two times as fast as it, the bench's default relation.
+
+*Test Coverage*:
+
+* `clk_rst.adoc` constrains one input clock: `clk_periph_i` runs at 100 MHz or faster. It states no frequency for `clk_ref_i` and no relation between the input clocks, so every ratio between them is legal. These are the periods the bench drives the `pll_wrap` oscillators at by default; the leaf pins them so the ratio leaves give every cell of the `smc_clk_fcov` ratio cross a driver of their own in the `clock` group, where the other leaves end before a ratio window closes.
+* The leaf pins ref / smc / periph to 10 / 1.25 / 5 ns after the base test resolves its periods, measures each clock's period over 64 of its own rising edges, and counts the SMC and peripheral rising edges together across 1024 reference edges, one `smc_clk_fcov` ratio window, before any traffic. The measured periods are compared with the leaf's declared constants, not with the bench configuration that drives the clocks, and each count must be within one edge of what those periods give and fall in the `cg_clk_ratio` class the leaf's name states, so the run is known to have the relation it is named for.
+* Register traffic crosses into both domains: the generated resets of `GLOBAL_BASE`, core 0 watchdog `CMP`, `AVS_CFG_0` and every UART `LSR`, then distinct patterns written to every UART `SCR` and every I2C `TARGET_ID` before any is read back, each restored and read back.
+
+*Test Procedure*:
+
+Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below is a named compare the DUT or the configuration can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CLK-RATIO-PERIODS` |Each input clock measured the period the leaf declares in its own constants, the SMC and peripheral edge counts across 1024 reference edges are within one of what those periods give, and the counts fall in the `cg_clk_ratio` classes the leaf's name states. A stimulus-integrity check, not a DUT property: it proves the bench drove the declared periods and fails when it did not
 |`CHK-CLK-RATIO-CSR` |Every reset read returned its generated value and every co-resident pattern read back exactly, with the scoreboard booking at least `EXPECTED_VALUE_CHECKS` exact compares and the leaf issuing exactly `EXPECTED_ACCESSES` accesses
 |===
 
@@ -4605,7 +5053,7 @@ Drive `smc_dfd_trace_format_sweep_test_seq` with `fmt` set to 0. Each checker be
 |`CHK-DST-FORMAT-FRAMELEN` |The frame length took both programmed values during the live trace, each read back exactly; a frame length that does not change fails it
 |===
 
-*Known limitation*: one compression mode per run, one leaf per mode. The packetizer can be emptied from software by clearing `Trdstenable` alone with `Trdstactive` held at 1, which `smc_dfd_trace_sink_concurrent_test` witnesses; clearing both together stops the DST clock first and leaves a partial bank behind. Re-running a second mode after that flush is not measured, so the modes keep a leaf each.
+*Known limitation*: one compression mode per run, one leaf per mode. The packetizer can be emptied from software by clearing `Trdstenable` alone with `Trdstactive` held at 1, which the emptying stop before the odd-offset walk of `smc_dfd_trace_sink_concurrent_test` witnesses (with packets in flight it does not empty at every clock phase; see that card); clearing both together stops the DST clock first and leaves a partial bank behind. Re-running a second mode after that flush is not measured, so the modes keep a leaf each.
 
 
 
@@ -4940,23 +5388,24 @@ Drive `smc_dfd_dbm_mode_lock_test_seq`. Each checker below is a named compare th
 
 *Test Coverage*:
 
-* `smc_dfd_trace_sink_readout_test` stops the trace before reading the sink back, so the sink's read and write sides never move together. This leaf keeps the trace running and drives the read pointer and the RAM data port underneath it, so the write pointer and the read pointer are in motion at the same time and the data port is taken while frames are still arriving.
+* `smc_dfd_trace_sink_readout_test` stops the trace before reading the sink back, so the sink's read and write sides never move together. This leaf keeps the trace running and drives the read pointer and the RAM data port underneath it, so the write pointer and the read pointer are in motion at the same time and the data port is taken while frames are still arriving. The write-pointer field, with the wrap flag in the same register masked out (field layout from the generated register map), is read at each of the eight read-side steps and has to change between at least one pair of consecutive steps.
 * The sink's destination mode is changed between two live phases, so the mode selection is exercised with traffic in flight rather than on an idle sink.
-* A third phase runs a compressed stream and walks the frame shape under it: every combination of the frame-closure mode and the frame length. Where a packet lands inside the accumulator is the write byte boundary, and no register addresses it; the frame geometry is the only software lever that moves it, because it sets where a frame closes and whether a packet crossing that point is pushed back or the frame is closed early.
+* A third phase enables the DST in the compressed format and walks the frame shape: every combination of the frame-closure mode and the frame length. Where a packet lands inside the accumulator is the write byte boundary, and no register addresses it; the frame geometry is the only software lever that moves it, because it sets where a frame closes and whether a packet crossing that point is pushed back or the frame is closed early. The CLA mux is still off in this phase, so the traced bus holds still and the walk is a register-contract walk; whether packets arrive during it is not measured.
 * Before the read side is driven, the trace runs until the sink's wrap flag reports one pass of the window, so every read-pointer position holds a word the trace wrote. The sink's pointer fields sit above two reserved bits and hardware writes them too, so they are programmed through each field's own mask; the register's plain read-write mask leaves them out.
 * The compressed phase then puts the CLA's own debug-bus mux (`CDbgMuxSelLo`, off at reset, so the trace sampled a constant bus in every other leaf) in normal mode, puts every DEBUG_BUS_MUX identifier in the identifier output mode, and returns each to normal mode until the `Node0Eap0` debug-signal snapshot changes. The two bus states of that mux, read through the snapshot, must differ in an odd number of bytes. After an emptying stop the action field is walked until `Trdstempty` reads 0 with the bus switching, which restarts the compressed trace, and the bus is switched 160 times at the longest frame length. A run of equal odd-sized compressed packets walks the accumulator write offset through every position, including the odd ones above 32 that an uncompressed stream never reaches; the accumulator offset has no register view, so the next coverage measurement is its witness.
 * A RAM-mode window is placed with `Trdstramstartlow` at 0x4000 bytes, one trace RAM size (16 KB) up, and a 0x400-byte limit past it. The value is legal for the byte-address field and out of the RAM's range by construction; the RAM indexes the low address bits, so the trace still lands in it. The held trace has to move the write pointer from the programmed start through that window, which is what the register view shows (0x4000 to 0x4140 in the measured run), and the start register is then written back to its reset. The staged-RAM write-side wrap is set by this window while the read side stays unwrapped, which executes the lapped arm of the sink's distance computation; the read-side wrap itself cannot be set, because the read address only advances through the tied memory write-out.
 * A window whose limit is one 64-byte line above its start, the smallest the sink's byte-address fields describe, is programmed, its limit read back, and the trace held on into it.
-* The leaf ends in the sink's memory mode (`Trdstrammode` = 1). The memory write-out is never accepted in this bench, so the frames the sink stages in its local RAM are never drained, it backpressures the DST, and in this state the sink's memory-mode flush also reaches the DST. The trace runs uncompressed with the periodic timestamp at its shortest period and the traced bus switched under each of 100 writes of the restarting action, so data and timestamp packets keep asking for space the backpressured sink does not free and the packetizer has to retry them. Still in memory mode, the sink enable is then cleared with the sink active and stop-on-wrap set, and the trace is stopped the same way, so the sink's memory-mode stop terms and its empty computation see staged frames with nothing arriving; the sink control is read across that without a claim on the empty flag, and the trace is restarted. The sink is then re-armed in RAM mode and the stream has to resume, after which the RAM data port is read back to back while the stream writes, so register reads meet RAM writes; every wait is bounded, so a sink stuck in backpressure fails the leaf instead of stalling it. It runs last because a software stop after it does not empty the packetizer. The staged-RAM lap rows cannot be reached: the read side only advances through the tied memory write-out, and backpressure at half the staging RAM stops the write side long before it can lap.
-* The uncompressed stream runs at the longest frame length the field offers, so the fixed-size packets carry the accumulator's write offset through every even position before a frame closes, and then at the shortest frame and stream lengths. The trace is then stopped by clearing `Trdstenable` alone with `Trdstactive` held at 1, so the DST clock keeps running while the stream winds down with packets in flight.
+* The leaf ends in the sink's memory mode (`Trdstrammode` = 1). The memory write-out is never accepted in this bench, so the frames the sink stages in its local RAM are never drained, it backpressures the DST, and in this state the sink's memory-mode flush also reaches the DST. The trace runs uncompressed with the periodic timestamp at its shortest period and the traced bus switched under each of 100 writes of the restarting action, so data and timestamp packets keep asking for space the backpressured sink does not free and the packetizer has to retry them. No register reports the backpressure: `Trdstempty` reads 0 after the 100 writes, which shows data in the DST with the trace held on, and it reads 0 for a stream draining into a RAM-mode sink too, so the leaf claims the flag, not the backpressure. Still in memory mode, the sink enable is then cleared with the sink active and stop-on-wrap set, and the trace is stopped the same way, so the sink's memory-mode stop terms and its empty computation see staged frames with nothing arriving; the sink control is read across that without a claim on the empty flag, and the trace is restarted. The sink is then re-armed in RAM mode and the stream has to resume, after which the RAM data port is read back to back while the stream writes, so register reads meet RAM writes; every wait is bounded, so a sink stuck in backpressure fails the leaf instead of stalling it. It runs last because a software stop after it does not empty the packetizer. The staged-RAM lap rows cannot be reached: the read side only advances through the tied memory write-out, and backpressure at half the staging RAM stops the write side long before it can lap.
+* The uncompressed stream runs at the longest frame length the field offers, so the fixed-size packets carry the accumulator's write offset through every even position before a frame closes, and then at the shortest frame and stream lengths. With `Trdstempty` at 0 and the restarting action written before each of four write-pointer reads, the pointer has to advance at every read, so the stream is still running into the sink when the trace is stopped by clearing `Trdstenable` alone with `Trdstactive` held at 1, so the DST clock keeps running while the stream winds down with packets in flight, and the write pointer has to park. A register read takes a fixed number of `clk_smc_i` cycles and the DST, the sink and the read path all run on that clock, so the bound is a count of reads and holds at every sys-clock period. `Trdstempty` is then read over 32 polls and recorded without a claim; see the first open DUT observation below.
 * The trace is then run into a sink with `Trdstramstoponwrap` set, and the sink enable is cleared afterwards with the sink kept active and the setting still held.
-* `Trdstsyncmode` is walked through every value of its field under both values of `Trdsttimestampconfig`, on a fresh sink with the uncompressed stream running under each. The RDL description publishes only the timestamp value of the sync mode and marks the others as not applicable, so the walk takes the whole field range. Under each value a short action burst is followed by the restarting action measured in the odd-offset walk, held for 24 writes: a sweep of the action field passes values that stop the trace as well as start it, so a sweep alone runs the stream for about eleven 64-byte frames and leaves it stopped, short of the shortest stream length.
+* `Trdstsyncmode` is walked through every value of its field under both values of `Trdsttimestampconfig`, on a fresh sink with a 0x10000-byte window, so the stream under one value does not carry the write pointer a whole lap, and the pointer is read before the walk and after each value and has to move under each. The RDL description publishes only the timestamp value of the sync mode and marks the others as not applicable, so the walk takes the whole field range. Under each value a short action burst is followed by the restarting action measured in the odd-offset walk, held for 24 writes: a sweep of the action field passes values that stop the trace as well as start it, so a sweep alone runs the stream for about eleven 64-byte frames and leaves it stopped, short of the shortest stream length.
 * Last of all, frame mode is turned off in `CDbgDebugTraceCfg`, the uncompressed stream is held on and the enable cleared with the DST active, and `Trdstempty` is read over a bounded number of polls without a claim; the outcome is recorded below.
 
 *Known limitation*: the accumulator's bank states are not visible at the register interface, so this leaf produces the boundary stimulus but cannot witness which bank state a given frame shape reaches. An uncompressed packet is a fixed 10 bytes against a 32-byte bank, so the boundary only ever lands on even offsets, and the long-frame stretch carries it through all of them; the odd offsets need odd-sized compressed packets, which the odd-offset walk produces.
 
-*Open DUT observations*, measured on this leaf's stimulus and not yet traced to a cause:
+*Open DUT observations*, measured on this leaf's stimulus:
 
+* Traced to a cause: clearing `Trdstenable` alone with `Trdstactive` held at 1 while the uncompressed stream is running does not always bring `Trdstempty` back to 1. The falling enable puts the packetizer in flush mode on the next clock, and flush mode ends on the first frame close (`packetizer.sv:258`, `flush_mode_exit = frame_fill && !fifo_push`; `debug_sig_trace_gen.sv:130-132`). When the falling enable lands so that flush mode starts in the same clock as an ordinary frame close, flush mode ends at once, and the packet still in the generator pipeline lands in the accumulator after it: the FIFO reads empty, the accumulator holds that packet, no further frame close comes, and `Trdstempty` stays 0. Measured at the shortest frame (64 bytes, a frame closing every six clocks under the uncompressed stream): of the six clock phases at which the stop can fall, one leaves `Trdstempty` at 0 for as long as the leaf polls and the other five read it back at 1 on the first poll. Which phase a run hits is set by the bench's clock periods and the register path's latency, not by the seed. The register description gives `Trdstempty` no text, so no specification states it must return to 1; the claim that a software stop with packets in flight empties the packetizer is Phase 2 (below).
 * A trace stopped by a CLA action leaves a partial bank in the packetizer accumulator: the FIFO reads empty, the accumulator does not, and the bank stays until more trace arrives or `Trdstenable` is cleared with `Trdstactive` held. Only that falling enable starts the flush. Whether an action-driven stop should flush the last partial bank is a design question.
 * After the memory-mode phase, in which the sink's memory-mode flush reaches the DST as a hardware flush, clearing `Trdstenable` with `Trdstactive` held does not empty the packetizer: the flush mode does not start, the FIFO reads empty and the accumulator does not. The memory-mode phase therefore runs last.
 * With `FrameModeEnable` cleared, clearing `Trdstenable` with `Trdstactive` held does not bring `Trdstempty` back to 1 within 32 polls; measured once with the software-stop phase run in frame mode off, before the memory-mode phase, and again at the end of the leaf. The frame-mode-off leg therefore runs last and claims nothing about emptying.
@@ -4972,17 +5421,19 @@ Drive `smc_dfd_trace_sink_concurrent_test_seq`. Each checker below is a named co
 |===
 |Checker |Description
 |`CHK-DST-CONCURRENT-HIGHSTART` |With `Trdstramstartlow` at 0x4000 bytes and the limit 0x400 past it, the held trace moves the write pointer above the start and not past the limit within 32 polls; a pointer that stays at or below the start, or passes the limit, fails it
-|`CHK-DST-CONCURRENT-IDLE` |The RAM data port reads 0 and the write pointer its reset with the sink armed and no trace captured; either one already non-zero fails it and makes the live phase prove nothing
-|`CHK-DST-CONCURRENT-DRAIN` |Inside one live trace the read pointer was driven across the window, the data port returned at least one non-zero word against that baseline, and the write pointer was sampled away from its starting value in the same phase; any of the three missing fails it
+|`CHK-DST-CONCURRENT-IDLE` |With the sink armed and no trace captured, the RAM data port reads 0 and the write-pointer register reads 0: the pointer field the arm wrote and the wrap flag clear. Either one non-zero fails it
+|`CHK-DST-CONCURRENT-DRAIN` |Inside one live trace the read pointer was driven to eight positions across the window, the data port returned at least one non-zero word against that baseline, and the write-pointer field, wrap flag masked, read at those eight steps, changed between at least one pair of consecutive steps; any of the three missing fails it
 |`CHK-DST-CONCURRENT-MODE` |The sink was armed and driven through a live trace in both values of its destination-mode field, each read back exactly; a value the register does not accept fails it
 |`CHK-DST-CONCURRENT-EDGES` |`Trdstramlimitlow` reads back the one-line limit 0x40 it was written, with the trace then held on into that window; a limit that does not read back fails it
-|`CHK-DST-CONCURRENT-FRAMEWALK` |Under a compressed stream the frame shape was walked through all 32 combinations of the closure mode and the frame length, each written and read back exactly; a combination the registers do not accept fails it
+|`CHK-DST-CONCURRENT-FRAMEWALK` |With the DST enabled in the compressed format the frame shape was walked through all 32 combinations of the closure mode and the frame length, each written and read back exactly; a combination the registers do not accept fails it
 |`CHK-DST-CONCURRENT-ODDBYTES` |With the CLA mux in normal mode, a DEBUG_BUS_MUX identifier whose mode change moves the debug-signal snapshot is found, its two bus states differ in an odd number of bytes, an action restarts the compressed trace after an emptying stop, the sink write pointer moves across the 160 switches, and the snapshot ends on the normal-mode state; no mux that moves the snapshot, an even byte difference, no restarting action, a pointer that stays put or a wrong final state fails it
-|`CHK-DST-CONCURRENT-MEMORY` |With the sink in memory mode and the uncompressed trace held on for 100 action writes, `Trdstempty` reads 0; the sink and trace stop writes that follow read back exactly; re-armed in RAM mode, the write pointer moves within 32 polls. A DST that drained anyway, or a stream that does not resume, fails it
-|`CHK-DST-CONCURRENT-STOP` |`Trdstempty` reads 0 with the uncompressed stream running and back at 1, its reset value, within 32 polls of `Trdstenable` being cleared with `Trdstactive` held; already 1 while running, or still 0 after the polls, fails it
+|`CHK-DST-CONCURRENT-MEMORY` |With the sink in memory mode and the uncompressed trace held on for 100 action writes, `Trdstempty` reads 0; the sink and trace stop writes that follow read back exactly; re-armed in RAM mode, the write pointer moves within 32 polls. `Trdstempty` at 1 after the hold writes, or a stream that does not resume, fails it; the flag does not distinguish a refusing sink from a draining one, so backpressure itself is not claimed
+|`CHK-DST-CONCURRENT-STOP` |With the uncompressed stream running, `Trdstempty` reads 0 and, with the restarting action written before each read, four write-pointer reads advance one after another immediately before the stop; once `Trdstenable` is cleared with `Trdstactive` held, three back-to-back pointer reads agree within 32 reads, and `Trdstcontrol` reads `Trdstenable` 0 and `Trdstactive` 1. `Trdstempty` already 1 while running, a pointer that does not move while running, or one that keeps moving after the stop fails it. `Trdstempty` after the stop is recorded, not compared
 |`CHK-DST-CONCURRENT-STOPWRAP` |With `Trdstramstoponwrap` set the write pointer is sampled between 0 and where it ends, the last three of eight samples agree while the trace is still driven, the parked value is inside the window, and it does not move once the sink enable is cleared with the setting held; a pointer that never moves, keeps moving, parks past the window or moves after the disable fails it
-|`CHK-DST-CONCURRENT-SYNCWALK` |`Trdstsyncmode` was written and read back exactly in every value of its field under both timestamp sources with the stream running; a value either register does not accept fails it
+|`CHK-DST-CONCURRENT-SYNCWALK` |`Trdstsyncmode` was written and read back exactly in every value of its field under both timestamp sources, and the sink write pointer read after the stream under each value differs from the read before it; a value either register does not accept, or a pointer that does not move under a value, fails it
 |===
+
+*Phase 2*: `Trdstempty` back at 1 after `Trdstenable` is cleared alone with `Trdstactive` held while packets are in flight. The packetizer does not do this at every clock phase of the stop (first open DUT observation), so no checker claims it. It returns to this leaf when the flush is held until the generator pipeline is empty, or when the specification states the outcome for a stop that coincides with a frame close.
 
 
 *Pass Criteria*: `CHK-DST-CONCURRENT-DRAIN`, `CHK-DST-CONCURRENT-EDGES`, `CHK-DST-CONCURRENT-FRAMEWALK`, `CHK-DST-CONCURRENT-HIGHSTART`, `CHK-DST-CONCURRENT-IDLE`, `CHK-DST-CONCURRENT-MEMORY`, `CHK-DST-CONCURRENT-MODE`, `CHK-DST-CONCURRENT-ODDBYTES`, `CHK-DST-CONCURRENT-STOP`, `CHK-DST-CONCURRENT-STOPWRAP`, `CHK-DST-CONCURRENT-SYNCWALK` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
@@ -8243,11 +8694,11 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 *Test Procedure*:
 
 [arabic]
-. Build `i2c_acq_fifo_stretch_reset` through `[c_build.default]`, stage `i2c_acq_fifo_stretch_reset.ecc.hex`, select the shared pad bus, hold `boot_stall` from t=0, clear CPU_CTRL SCRATCH_0 and read the clear back, arm the wire monitor and a SCRATCH_1 watcher.
+. Build `i2c_acq_fifo_stretch_reset` through `[c_build.default]`, stage `i2c_acq_fifo_stretch_reset.ecc.hex`, select the shared pad bus, hold `boot_stall` from t=0, clear CPU_CTRL SCRATCH_0 and read the clear back, arm the wire monitor and a SCRATCH_1 watcher. The leaf runs with `+pll_sys_period_ns=10`, `clk_smc_i` at 100 MHz; I2C is timed by the 200 MHz periph clock, and the simulated time, about 7.6 ms, is set by the standard-mode write that fills ACQ and does not depend on the seed.
 . Program the reset vector and release. The image parks at SCRATCH_1 = 0x31 with the ACQ FIFO full and waits for SCRATCH_4 = 0xC10A.
-. At 0x31, sample `tb_i2c0_scl_dut_low` across a window of about 20 SCL periods; require it asserted continuously for at least 20 us and through the final quarter of the window with SCL low; read the ACQ level the image published in SCRATCH_5 and require it non-zero. Only then write the acknowledge.
+. At 0x31, sample `tb_i2c0_scl_dut_low` across a window of about 20 SCL periods; read the controller's TIMING0.TLOW the image published in SCRATCH_6 and require the pull asserted continuously for at least four of those clock-low phases (TLOW periph cycles each) and through the final quarter of the window with SCL low; read the ACQ level the image published in SCRATCH_5 and require it non-zero. Only then write the acknowledge.
 . The image resets the ACQ FIFO, recovers the write and parks at SCRATCH_1 = 0x32. Sample the same window and require the pull absent throughout; read the level from SCRATCH_6 and require zero. Acknowledge.
-. Poll SCRATCH_0 for the PASS magic and grade the wire: at least one acknowledged write frame to 0x10 carrying at least 4 data bytes.
+. Poll SCRATCH_0 for the PASS magic and grade the wire: the last acknowledged write frame to 0x10 has to be the verify write, the length header 04 then a5 5a c3 3c, every byte acknowledged.
 
 *Checkers*:
 
@@ -8255,9 +8706,9 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 |===
 |Checker |Description
 |`CHK-FW-I2C-ACQ-STRETCH-BOOT` |The firmware's own PASS word is read back from CPU_CTRL SCRATCH_0 after a cleared-and-verified start
-|`CHK-FW-I2C-ACQ-STRETCH-SCL` |At marker 0x31 the target's SCL pull is asserted continuously for at least 20 us and through the final quarter of the window with SCL low, and the ACQ level the firmware published is non-zero
+|`CHK-FW-I2C-ACQ-STRETCH-SCL` |At marker 0x31 the target's SCL pull is asserted continuously for at least four of the controller's programmed clock-low phases (TIMING0.TLOW as the firmware published it) and through the final quarter of the window with SCL low, and the ACQ level the firmware published is non-zero
 |`CHK-FW-I2C-ACQ-RELEASE-SCL` |At marker 0x32 the target's pull is absent throughout the window (resolved SCL reported, not required idle), and the published ACQ level is zero
-|`CHK-FW-I2C-WIRE-TRAFFIC` |At least one acknowledged write frame to 0x10 carrying at least 4 data bytes: the verify write after recovery crossed the pads
+|`CHK-FW-I2C-WIRE-TRAFFIC` |The last acknowledged write frame to 0x10 decoded on the pads is the verify write after recovery, `04 a5 5a c3 3c` with every byte acknowledged; a missing frame, other bytes, or an unacknowledged byte fails it
 |===
 
 *Pass Criteria*: all four checkers hold. Each acknowledge is written only after its window is graded, so the firmware cannot run past either. No `ci` tag: the hosted runners have no RISC-V toolchain. Enrolled in: `all`, `fw`.
