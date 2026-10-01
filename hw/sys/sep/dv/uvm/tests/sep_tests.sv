@@ -22,6 +22,20 @@ import sep_seq_lib_pkg::*;
 
 // CSR scenarios on the CPU-LSU AXI4 splice.
 `include "sep_axi_smoke_test.svh"
+`include "sep_address_map_test.svh"
+
+// Memory scenarios on the CPU-LSU AXI4 splice.
+`include "sep_sram_smoke_test.svh"
+`include "sep_periph_bus_err_misaligned_test.svh"
+
+// Reset-path scenarios driven and observed through sep_tb_if.
+`include "sep_clock_uvm_wdt_rst_input_reset_path_test.svh"
+`include "sep_irq_ip_to_aggregator_test.svh"
+`include "sep_otbn_mem_smoke_test.svh"
+`include "sep_efuse_sense_test.svh"
+
+// Key Manager memory scenario (KM ROM image, tb_top KM probes).
+`include "sep_km_mem_smoke_test.svh"
 
 // Adopter overlay hook: an external (non-OSS) build may append vendor-
 // specific test classes -- e.g. a commercial-VIP overlay -- by defining

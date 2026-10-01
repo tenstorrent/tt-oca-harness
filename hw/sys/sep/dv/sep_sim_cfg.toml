@@ -734,6 +734,8 @@ sources = [
   "hw/sys/smc/regs/gen/sv/smc_addrmap_pkg.sv",
   "hw/sys/sep/dv/tb/sep_outbound_mbx.sv",
   "hw/sys/sep/dv/cov/sv/sep_fcov.sv",
+  # IC_RESET TDR storage for the SEP slice (same entry as the DUT [build]).
+  "hw/ip/jtag/jtag_ptap/rtl/jtag_ic_reset_reg.sv",
   "hw/sys/sep/dv/tb/sep_tb_if.sv",
   "hw/sys/sep/dv/uvm/env/sep_env_pkg.sv",
   "hw/sys/sep/dv/uvm/seq_lib/sep_seq_lib_pkg.sv",

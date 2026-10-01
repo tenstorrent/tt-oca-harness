@@ -108,9 +108,9 @@ image::sep-crypto-resets.svg[alt="Resets inside u_sep_crypto, including the TRNG
 Inside `u_sep_trng`, `por_rst_ni` resets a 2-flop synchronizer that samples the
 inverted TRNG reset and drives `trng_reset_active`. That signal synchronously
 clears both EDN AXIS adapters and, as `trng_entropy_clear_o`, the entropy pool.
-The crypto EDN adapter also takes per-endpoint resets from the gated OTBN, AES
-and KMAC resets, so a client's reset cancels only its own endpoint. The Key
-Manager conditions `sep_reset_n` into its cold domain through
+Both adapters take `rst_ni`. An OTBN, AES or KMAC software reset cancels that
+engine's endpoints in the crypto adapter (see {sep-reset-controller-ref}). The
+Key Manager conditions `sep_reset_n` into its cold domain through
 `u_cold_rst_sync`, and the gated Key Manager reset or its software reset
 `soft_rst_n` into a warm reset held for at least 10 cycles, as
 {km-reset-diagram-ref} shows in more detail.

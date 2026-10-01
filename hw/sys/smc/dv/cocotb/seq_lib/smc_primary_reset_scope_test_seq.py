@@ -2,10 +2,11 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Cores, fabric and peripherals are all held while rst_primary_no is asserted.
 
-``clk_rst.adoc`` (Primary Reset) scopes the primary reset over "CPU cores and
-cache hierarchies, fabric infrastructure, peripheral controllers and
-interfaces, and SMC control and configuration registers", and lists the cool
-reset as one of its activation sources. Each consumer is put into a state a
+``clk_rst.adoc`` ("Primary and Warm Reset") makes the de-glitched cool reset a
+term of ``rst_primary_n``, says "Primary reset covers the main SMC functional
+fabric, peripheral control and configuration paths", and gives the warm reset
+that drives CPU core/uncore reset control ``rst_primary_n`` as a term. Each
+consumer is put into a state a
 reset would visibly end, the cool pin is asserted, and the consumer is
 observed held for a whole window rather than at one instant:
 

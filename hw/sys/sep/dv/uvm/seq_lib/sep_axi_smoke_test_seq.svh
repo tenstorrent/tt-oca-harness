@@ -8,8 +8,8 @@
 //   * read the reset value of sep_cpu_ctrl.SEP_LOCAL_BASE_ADDR (decode
 //     sanity: a non-zero reset value proves the block decoded rather than
 //     returning zeros from an unmapped address);
-//   * write the three directed patterns of the cocotb scenario to
-//     SEP_SW_DEBUG, SEP_NMI_VEC, and PKA_CTRL and read each
+//   * write the four directed patterns of the cocotb scenario to
+//     SEP_SW_DEBUG, SEP_NMI_VEC, PKA_CTRL, and SEP_REGION_SIZE and read each
 //     back through its implemented-field mask; then random_count seeded
 //     random patterns per register IN ADDITION (+SEP_RANDOM_COUNT, default
 //     5; each pass exercises different data), each read back;
@@ -17,10 +17,10 @@
 //     leaves the block as reset left it;
 //   * named evidence through the base-sequence ocah_checker: fabric
 //     release, reset value, directed and random readbacks, restores, every
-//     OKAY response, and the non-vacuity count of real CPU-LSU CSR
-//     accesses: one reset read, then per register a directed write and
-//     readback, random_count random writes and readbacks, and a restore
-//     write and readback.
+//     OKAY response, and non-vacuity: the cpu_ctrl_csr scoreboard compares
+//     this pass added must equal the predicted reads it issued (one reset
+//     read, then per register a directed readback, random_count random
+//     readbacks, and a restore readback).
 // The always-on sep_scoreboard independently predicts every predicted-CSR
 // read from the writes the passive monitor observed;
 // +SEP_CSR_SCOREBOARD_NEGATIVE corrupts that prediction so the run must
@@ -43,12 +43,12 @@ class sep_axi_smoke_test_seq extends sep_base_test_seq;
     bit [31:0]     pattern;
   } write_case_t;
 
-  // Accesses per register and pass beyond the random patterns: a directed
-  // write and readback, a restore write and readback; each random pattern
-  // adds a write and a readback. The reset read is one more access.
-  localparam int unsigned FixedAccessesPerRegister = 4;
-  localparam int unsigned AccessesPerRandomPattern = 2;
-  localparam int unsigned ResetReadAccesses = 1;
+  // Predicted reads per register and pass beyond the random patterns: a
+  // directed readback and a restore readback; each random pattern adds one
+  // readback. The reset read is one more.
+  localparam int unsigned FixedReadsPerRegister = 2;
+  localparam int unsigned ReadsPerRandomPattern = 1;
+  localparam int unsigned ResetReads = 1;
 
   function new(string name = "sep_axi_smoke_test_seq");
     super.new(name);
@@ -58,8 +58,8 @@ class sep_axi_smoke_test_seq extends sep_base_test_seq;
   // each with a distinct pattern so a write to one register cannot satisfy
   // the readback of another.
   function void write_cases(ref write_case_t cases[$]);
-    string     names[$] = {"SEP_SW_DEBUG", "SEP_NMI_VEC", "PKA_CTRL"};
-    bit [31:0] patterns[$] = {32'hDEAD_BEEF, 32'h0BAD_C0DE, 32'h0000_0007};
+    string     names[$] = {"SEP_SW_DEBUG", "SEP_NMI_VEC", "PKA_CTRL", "SEP_REGION_SIZE"};
+    bit [31:0] patterns[$] = {32'hDEAD_BEEF, 32'h0BAD_C0DE, 32'h0000_0007, 32'h0200_0000};
     cases.delete();
     foreach (names[i]) begin
       write_case_t c;
@@ -78,6 +78,7 @@ class sep_axi_smoke_test_seq extends sep_base_test_seq;
     seed_scenario_rng();
     attach_evidence('{ChkFuseSense, ChkCsrResp, ChkCsrReset, ChkCsrReadback, ChkCsrRandom,
                     ChkCsrRestore, ChkNonvac});
+    mark_scoreboard_feature(SepFeatureCpuCtrlCsr);
     write_cases(cases);
     if (!sep_cpu_ctrl_csr_by_name(ResetReadRegister, reset_reg))
       `uvm_fatal(get_type_name(), {"register not in the predicted set: ", ResetReadRegister})
@@ -116,10 +117,9 @@ class sep_axi_smoke_test_seq extends sep_base_test_seq;
                      cases[i].desc.name, ".restore"});
     end
 
-    check_evidence(ChkNonvac, "lsu_csr_accesses", 64'(csr_accesses),
-                   64'(
-                   ResetReadAccesses + cases.size() * (FixedAccessesPerRegister +
-                   AccessesPerRandomPattern * random_count)));
+    check_scoreboard_compares(
+        ChkNonvac, SepFeatureCpuCtrlCsr,
+        ResetReads + cases.size() * (FixedReadsPerRegister + ReadsPerRandomPattern * random_count));
     finalize_evidence();
   endtask
 
