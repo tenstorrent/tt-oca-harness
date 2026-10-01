@@ -197,9 +197,11 @@ module sep_ip_integration
   // ROM External Module //
   /////////////////////////
 
-  localparam int unsigned ROM_N_ENTRIES = 16384;  // 16K entries * 8B = 128KB
-  localparam int unsigned ROM_ADDR_WIDTH = $clog2(ROM_N_ENTRIES);
   localparam int unsigned ROM_DATA_WIDTH = 64;
+  localparam int unsigned ROM_N_ENTRIES = int'(
+      sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_SIZE / (ROM_DATA_WIDTH / 8)
+  );
+  localparam int unsigned ROM_ADDR_WIDTH = $clog2(ROM_N_ENTRIES);
 
   logic                      rom_macro_req;
   logic [ROM_ADDR_WIDTH-1:0] rom_macro_addr;
