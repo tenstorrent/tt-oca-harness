@@ -6805,7 +6805,7 @@ fixed access policy. Data movement is out (<<dtp-formal-exclusions>>).
 [cols="1,3,3,2,2",options="header",]
 |===
 |Target |Described block |Rows |Formal top and item |Path
-|T1 TAP controller |`jtag_tap_ctrlr`: the sixteen-state Moore machine, the saturating TMS counter, the scan-control flags |F1.1, F1.2 |`dtp`, `dtp_tap_fpv` |Open
+|T1 TAP controller |`jtag_tap_ctrlr`: the sixteen-state Moore machine and the scan-control flags |F1.1, F1.2 |`dtp`, `dtp_tap_fpv` |Open
 |T2 Instruction register and TDR selection |`jtag_inst_reg` (6-bit shift, 64-bit one-hot decode, IDCODE on reset) and the PTAP select and TDO multiplexer terms: bypass for undefined opcodes and for disabled features, one TDR selected per instruction, zero-length bypass, the read-only IDCODE and CAPS captures |F1.3, F1.4, F1.5 (selection), F2.5 |`dtp`, `dtp_ir_fpv` |Open
 |T3 Reset hierarchy and persistence |`jtag_trst_n = trst_n AND pwr_on_rst_ni`, `rst_n = !test_logic_reset`, `chrst_n` under `jtag_tmp`; `jtag_tmp_status_reg`; `jtag_ic_reset_reg` with `reset_hold`; `jtag_3dcr_reg` with `config_hold` |F1.2, F1.6, F2.1, F2.2 |`dtp`, `dtp_reset_fpv` |Open
 |T4 STAP selection and debug disable |The PTAP 3DCR select, the four `jtag_stap` instances (I/O, SMC, SEP, extra) with their 3DCR and lockup flops, the `stap_host` return path in `jtag_intf_unit`, the two-flop `dbg_disable_i` synchronizers |F3.3, F3.4, F3.5, F3.6 |`dtp`, `dtp_stap_fpv` |Open; STAP chain order and disable wiring also as licensed connectivity
@@ -6851,7 +6851,7 @@ T1 is the property module in `formal/props/dtp_tap_props.sv`, bound to
 |===
 |Label |Checks |Row |Prio
 |`ast_tap_state_one_hot` |The state register holds exactly one state |F1.1 |P0
-|`ast_tap_five_tms_high_reach_tlr` |A saturated TMS counter implies Test-Logic-Reset |F1.2 |P0
+|`ast_tap_five_tms_high_reach_tlr` |Five consecutive TMS-high cycles reach Test-Logic-Reset from any state |F1.2 |P0
 |`ast_tap_tlr_holds_on_tms_high`, `ast_tap_tlr_exits_to_rti`, `ast_tap_rti_holds_on_tms_low`, `ast_tap_shift_holds_on_tms_low`, `ast_tap_update_dr_only_from_exit`, `ast_tap_update_ir_only_from_exit` |The legal TMS arcs into and out of the reset, idle, shift and update states |F1.1 |P1
 |`ast_tap_select_exclusive`, `ast_tap_moore_flags_follow_state`, `ast_tap_negedge_flags_follow_state` |The DR and IR selects are exclusive; the Moore flags and the negedge-clocked scan-control flags follow the state |F1.1 |P1
 |===
