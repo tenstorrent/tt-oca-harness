@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-01T11:29:58+00:00",
+  "generated_at": "2026-10-01T16:54:00+00:00",
   "points": [
     {
       "failed_tests": 1,
@@ -3523,6 +3523,82 @@
         }
       ],
       "test_pass_rate": 100.0
+    },
+    {
+      "failed_tests": 462,
+      "flaky_tests": 13,
+      "flow_pass_rate": 0.0,
+      "generated_at": "2026-10-01T16:54:00+00:00",
+      "id": "bf8af11238bd68d4",
+      "per_dut": [
+        {
+          "comparison_key": "COVCMP-0d889ea89535e2ec",
+          "coverage_status": "FAIL",
+          "effective_metrics": {
+            "assertion": 95.54,
+            "branch": 86.25,
+            "condition": 83.72,
+            "fsm_state": 70.87,
+            "functional": 100.0,
+            "line": 94.03,
+            "toggle": 93.41,
+            "user": 96.4361
+          },
+          "flow": "dtp",
+          "framework": "cocotb",
+          "holes_summary": {
+            "accepted": 0,
+            "by_category": {
+              "user": 17
+            },
+            "by_disposition": {
+              "cover": 17
+            },
+            "by_metric": {
+              "user": 17
+            },
+            "by_status": {
+              "open": 17
+            },
+            "details_available": true,
+            "hole_group_count": 0,
+            "native_point_count": 17,
+            "observations_complete": false,
+            "open": 17,
+            "unclassified": 17
+          },
+          "raw_metrics": {
+            "assertion": 95.54,
+            "branch": 82.72,
+            "condition": 81.78,
+            "fsm_state": 52.64,
+            "functional": 100.0,
+            "line": 92.28,
+            "toggle": 65.85,
+            "user": 96.4361
+          },
+          "status": "FAIL",
+          "target": "default",
+          "threshold_met": false,
+          "tool": "vcs"
+        },
+        {
+          "comparison_key": null,
+          "coverage_status": "ERROR",
+          "effective_metrics": {},
+          "flow": "dtp",
+          "framework": "uvm",
+          "holes_summary": {
+            "details_available": false
+          },
+          "raw_metrics": {},
+          "status": "FAIL",
+          "target": null,
+          "threshold_met": null,
+          "tool": "vcs"
+        }
+      ],
+      "test_pass_rate": 50.0
     }
   ],
   "schema_version": "0.2"
