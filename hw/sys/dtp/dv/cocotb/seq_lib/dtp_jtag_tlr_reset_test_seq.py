@@ -6,14 +6,15 @@ Five or more TMS-high TCK cycles force Test-Logic-Reset from any state. TLR
 re-selects the device-identification register over the loaded instruction,
 returns DEBUG_CONTROL to 0x00 and IC_RESET (written with reset_hold = 1) to its
 all-ones default with the pin outputs of both following, and leaves the TAP
-ready for instruction-register access from Run-Test/Idle.
+ready for instruction-register access from Run-Test/Idle. Every comparison
+lands as named ``CHK-*`` evidence through the family checker, finalized once
+per pass.
 """
 
 from __future__ import annotations
 
 import random
 
-import cocotb
 from env.dtp_tap_device import DTP_DEFAULT_IDCODE, DTP_IC_RESET_LEN
 from env.dtp_types import DtpJtagInstr, DtpTapState
 from ocah_jtag_vip import OcahJtagChecker
@@ -120,8 +121,9 @@ class dtp_jtag_tlr_reset_test_seq(dtp_debug_tdr_base_test_seq):
 
         context = f"from={state.name} tms_ones={ones}"
         idcode = await self.shift_dr(0, 32)
-        checker.expect_equal(
+        self.family_check(
             "CHK-TAP-TLR-IDCODE",
+            "DR scan after TLR, no IR load",
             idcode.result & IDCODE_MASK,
             DTP_DEFAULT_IDCODE,
             context=context,
@@ -129,20 +131,19 @@ class dtp_jtag_tlr_reset_test_seq(dtp_debug_tdr_base_test_seq):
         await self.check_tdr_defaults(context=f"after TLR {context}")
         await self.load_ir(DtpJtagInstr.IDCODE)
         resumed = await self.shift_dr(0, 32)
-        checker.expect_equal(
+        self.family_check(
             RESUME_CHECK_ID,
+            "IDCODE by IR scan after TLR",
             resumed.result & IDCODE_MASK,
             DTP_DEFAULT_IDCODE,
-            context=f"IDCODE by IR scan after TLR {context}",
+            context=context,
         )
         return ones, (idcode.result & IDCODE_MASK) == DTP_DEFAULT_IDCODE
 
     async def body(self) -> None:
         rng = self.rng("tlr_reset")
-        checker = OcahJtagChecker(
-            name=f"{self.get_name()}.checker",
-            logger=cocotb.log,
-            required_ids={
+        checker = await self.attach_family_checker(
+            {
                 "CHK-TAP-RESET-TLR",
                 "CHK-TAP-STATE",
                 "CHK-TAP-TLR-TMS5",
@@ -151,8 +152,11 @@ class dtp_jtag_tlr_reset_test_seq(dtp_debug_tdr_base_test_seq):
                 RESUME_CHECK_ID,
                 "CHK-NONVAC",
             },
+            # The navigation into the Pause states and the TMS-high walk out of
+            # the Shift states leave Shift-x without a scan the sequence
+            # issued.
+            use_monitor=False,
         )
-        self.attach_tap_checker(checker)
         # DTP_JTAG_TAP_CHECKER_NEGATIVE=1 is the documented negative-validation
         # hook: it desyncs the TAP reference model so the next
         # state check must FAIL, proving the checker rejects a bad prediction
@@ -182,4 +186,4 @@ class dtp_jtag_tlr_reset_test_seq(dtp_debug_tdr_base_test_seq):
                 f"tms_ones={ones_counts} idcode_restored={idcode_ok}/{len(states)}"
             ),
         )
-        checker.finalize()
+        await self.finalize_family_checker()

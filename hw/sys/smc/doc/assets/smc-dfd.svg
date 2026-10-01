@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="676" viewBox="0 0 1040 676" role="img" aria-labelledby="title desc">
+<title id="title">SMC DFD block diagram</title>
+<desc id="desc">Block diagram of smc_dfd_wrap, the SMC design-for-debug block. On the left of the wrapper the debug-bus mux tree takes the 64-lane, 16-bit-per-lane debug_bus_i from smc_base: eight level-3 tt_debug_bus_mux instances reduce it to 32 lanes and four level-2 instances to 16 lanes, all selected by dbg_mux_sel from the DFX CSRs. Below them the clock gate u_dfd_clk_gate gates clk_smc_i under dfd_cg_en to clock the muxes and the DFD IP, and the time-tick generator counts clk_ref_i edges in Gray code and synchronises them into a CLA time tick. The DFD IP u_dfd_top, dfd_top_cla_dst_apb, holds one core logic analyzer (CLA) and one debug signal trace instance (DST). The CLA is fed with the 16 muxed lanes; its mux_sel stage selects the 64-bit debug bus that the CLA evaluates and passes to the DST with trace control. The DST feeds the trace network interface, which feeds the trace network and funnel; its trace sink writes eight external trace RAMs of 256 × 64 bits. The instruction trace (N-Trace) is not built, the trace AXI master is tied off, the JTAG register port is tied off and the timestamp inputs are tied to zero. The memory-mapped registers take APB from smc_local_xbar. The CLA drives the clock-stop and cross-trigger outputs through a mask set by bit 0 of xtrig_clk_halt_mask, accepts cross-triggers from the DTP, and drives the debug interrupt, sixteen custom actions and the debug marker. Its GPIO toggle and local halt-clock outputs are unconnected.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="gs" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#5b6670"/></marker>
+<marker id="je" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="js" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#42759b"/></marker>
+<marker id="m-smu" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#103525"/></marker>
+<marker id="m-ref" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#2f7f79"/></marker>
+<marker id="m-per" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#937027"/></marker>
+<marker id="m-tel" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#664488"/></marker>
+<marker id="m-wdt" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#77736b"/></marker>
+<marker id="m-rosc" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<marker id="m-jtag" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="m-spi" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-slate" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-pg" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.h { font-size: 22px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.si { font-size: 13px; font-style: italic; fill: #484848; }
+.pmt { font-size: 12px; font-weight: bold; fill: #ffffff; }
+.pst { font-size: 12px; font-weight: bold; fill: #103525; }
+.pjt { font-size: 12px; font-weight: bold; fill: #1d4b6e; }
+.pct { font-size: 12px; font-weight: bold; fill: #1f5c57; }
+.pm { fill: #103525; stroke: #103525; stroke-width: 1.2; }
+.ps { fill: #ffffff; stroke: #103525; stroke-width: 1.2; }
+.pj { fill: #e8f3ff; stroke: #42759b; stroke-width: 1.2; }
+.pc { fill: #d9f0ee; stroke: #2f7f79; stroke-width: 1.2; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.network { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.future { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.nostroke { stroke: none; }
+.fut { fill: none; stroke-dasharray: 7 5; }
+.opt { stroke-dasharray: 7 5; }
+.hatch { fill: none; stroke: #103525; stroke-opacity: 0.16; stroke-width: 1.2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
+.axio { fill: none; stroke: #103525; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#as); marker-end: url(#ae); }
+.sig { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); marker-end: url(#ge); }
+.sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+.jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
+.jtagb { fill: none; stroke: #42759b; stroke-width: 1.8; marker-start: url(#js); marker-end: url(#je); }
+.sigplain { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+.n-smu { fill: none; stroke: #103525; stroke-width: 2.5; }
+.a-smu { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#m-smu); }
+.n-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; }
+.a-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; marker-end: url(#m-ref); }
+.n-per { fill: none; stroke: #937027; stroke-width: 1.8; }
+.a-per { fill: none; stroke: #937027; stroke-width: 1.8; marker-end: url(#m-per); }
+.n-tel { fill: none; stroke: #664488; stroke-width: 1.8; }
+.a-tel { fill: none; stroke: #664488; stroke-width: 1.8; marker-end: url(#m-tel); }
+.n-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; }
+.a-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; marker-end: url(#m-wdt); }
+.n-rosc { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-rosc { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-rosc); }
+.n-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; }
+.a-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#m-jtag); }
+.n-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-spi); }
+.n-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-slate); }
+.n-pg { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-pg { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-pg); }
+.axil { fill: none; stroke: #103525; stroke-width: 1.5; marker-start: url(#as); marker-end: url(#ae); }
+.sigd { fill: none; stroke: #5b6670; stroke-width: 1.5; stroke-dasharray: 5 4; marker-end: url(#ge); }
+.axin { fill: none; stroke: #103525; stroke-width: 2.5; }
+.axis { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); }
+.axie { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#ae); }
+.axiln { fill: none; stroke: #103525; stroke-width: 1.5; }
+.tie { fill: none; stroke: #5b6670; stroke-width: 1.5; stroke-dasharray: 5 4; }
+.sigor { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); }
+</style>
+</defs>
+<rect width="1040" height="676" fill="#ffffff"/>
+<rect class="smu" x="160" y="62" width="720" height="538" rx="8"/>
+<text class="b" x="172" y="590" text-anchor="start">smc_dfd_wrap</text>
+<path class="fabric" d="M190,120 L236,160 L236,240 L190,280 Z"/>
+<path class="fabric" d="M270,150 L310,175 L310,225 L270,250 Z"/>
+<text class="s" x="213" y="97.5" text-anchor="middle">Level 3</text>
+<text class="s" x="213" y="112.5" text-anchor="middle">8 muxes</text>
+<text class="s" x="290" y="127.5" text-anchor="middle">Level 2</text>
+<text class="s" x="290" y="142.5" text-anchor="middle">4 muxes</text>
+<path class="sigo" d="M8,200 L187,200"/>
+<text class="s" x="8" y="193" text-anchor="start">debug_bus_i, 64 lanes</text>
+<path class="sigo" d="M236,200 L267,200"/>
+<path class="sigplain" d="M310,200 L350,200 L350,300"/>
+<path class="sigo" d="M350,300 L387,300"/>
+<text class="s" x="318" y="192" text-anchor="start">16</text>
+<path class="sigplain" d="M8,320 L280,320"/>
+<path class="sigo" d="M213,320 L213,263"/>
+<path class="sigo" d="M280,320 L280,248"/>
+<circle cx="213" cy="320" r="3.5" fill="#5b6670"/>
+<text class="s" x="8" y="313" text-anchor="start">dbg_mux_sel</text>
+<rect class="core" x="190" y="334" width="140" height="50" rx="5"/>
+<text class="s" x="260" y="356" text-anchor="middle">Clock gate</text>
+<text class="s" x="260" y="372" text-anchor="middle">u_dfd_clk_gate</text>
+<path class="sigo" d="M8,346 L187,346"/>
+<text class="s" x="8" y="339" text-anchor="start">clk_smc_i</text>
+<path class="sigo" d="M8,374 L187,374"/>
+<text class="s" x="8" y="367" text-anchor="start">dfd_cg_en (DFX CSRs)</text>
+<path class="n-smu" d="M330,359 L338,359 L338,262 L286,262 M274,262 L228,262"/>
+<path class="a-smu" d="M228,262 L228,251"/>
+<path class="a-smu" d="M300,262 L300,235"/>
+<circle cx="300" cy="262" r="4" fill="#103525"/>
+<circle cx="338" cy="359" r="4" fill="#103525"/>
+<path class="n-smu" d="M338,359 L372,359"/>
+<circle cx="372" cy="359" r="4" fill="#103525"/>
+<rect class="core" x="190" y="404" width="140" height="50" rx="5"/>
+<text class="s" x="260" y="426" text-anchor="middle">Time tick</text>
+<text class="s" x="260" y="442" text-anchor="middle">Gray count + sync</text>
+<path class="sigo" d="M8,426 L187,426"/>
+<text class="s" x="8" y="419" text-anchor="start">clk_ref_i</text>
+<path class="sigo" d="M330,426 L387,426"/>
+<text class="s" x="338" y="418" text-anchor="start">tick</text>
+<rect class="smu" x="360" y="72" width="440" height="503" rx="6"/>
+<text class="bs" x="372" y="565" text-anchor="start">u_dfd_top</text>
+<text class="s" x="456" y="565" text-anchor="start">dfd_top_cla_dst_apb</text>
+<rect class="external opt" x="384" y="96" width="150" height="44" rx="5"/>
+<text class="s" x="459" y="115" text-anchor="middle">Instruction trace</text>
+<text class="s" x="459" y="131" text-anchor="middle">(N-Trace): not built</text>
+<rect class="core" x="384" y="172" width="150" height="56" rx="5"/>
+<text class="s" x="459" y="197" text-anchor="middle">Debug signal trace</text>
+<text class="s" x="459" y="213" text-anchor="middle">dst_wrapper</text>
+<rect class="core" x="556" y="96" width="90" height="132" rx="5"/>
+<text class="s" x="601" y="151" text-anchor="middle">Trace</text>
+<text class="s" x="601" y="167" text-anchor="middle">network</text>
+<text class="s" x="601" y="183" text-anchor="middle">interface</text>
+<rect class="core" x="668" y="96" width="112" height="132" rx="5"/>
+<text class="s" x="724" y="143" text-anchor="middle">Trace</text>
+<text class="s" x="724" y="159" text-anchor="middle">network</text>
+<text class="s" x="724" y="175" text-anchor="middle">and funnel</text>
+<text class="s" x="724" y="191" text-anchor="middle">trace_top</text>
+<path class="tie" d="M534,118 L556,118"/>
+<path class="sigo" d="M534,200 L553,200"/>
+<path class="sig" d="M649,162 L665,162"/>
+<rect class="external" x="900" y="100" width="130" height="60" rx="6"/>
+<text class="s" x="965" y="127" text-anchor="middle">Trace RAMs</text>
+<text class="s" x="965" y="143" text-anchor="middle">8 × 256 × 64 bits</text>
+<path class="sig" d="M783,130 L829,130 M841,130 L897,130"/>
+<text class="s" x="846" y="122" text-anchor="start">sink</text>
+<path class="tie" d="M724,228 L724,250"/>
+<text class="s" x="724" y="266" text-anchor="middle">trace AXI master: tied off</text>
+<rect class="core" x="384" y="276" width="176" height="164" rx="5"/>
+<text class="s" x="472" y="335.5" text-anchor="middle">Core logic analyzer</text>
+<text class="s" x="472" y="352.5" text-anchor="middle">cla_wrapper, 1 instance</text>
+<text class="s" x="472" y="369.5" text-anchor="middle">mux_sel: 16 lanes</text>
+<text class="s" x="472" y="386.5" text-anchor="middle">to 64-bit debug bus</text>
+<path class="sigo" d="M420,276 L420,231"/>
+<text class="s" x="428" y="256" text-anchor="start">debug bus</text>
+<path class="sigo" d="M508,276 L508,231"/>
+<text class="s" x="516" y="256" text-anchor="start">trace control</text>
+<path class="tie" d="M472,440 L472,458"/>
+<text class="s" x="480" y="460" text-anchor="start">timestamps: tied 0</text>
+<rect class="core" x="812" y="272" width="46" height="46" rx="5"/>
+<text class="s" x="835" y="300" text-anchor="middle">mask</text>
+<path class="sigo" d="M835,54 L835,269"/>
+<text class="s" x="835" y="46" text-anchor="middle">xtrig_clk_halt_mask[0] (DFX CSRs)</text>
+<path class="sigplain" d="M560,288 L812,288"/>
+<path class="sigo" d="M858,288 L1030,288"/>
+<text class="s" x="890" y="283" text-anchor="start">clocks stopped</text>
+<path class="sigplain" d="M560,310 L812,310"/>
+<path class="sigo" d="M858,310 L1030,310"/>
+<text class="s" x="890" y="305" text-anchor="start">xtrigger to DTP</text>
+<path class="sigor" d="M563,330 L1030,330"/>
+<text class="s" x="890" y="325" text-anchor="start">xtrigger from DTP</text>
+<path class="sigo" d="M560,350 L1030,350"/>
+<text class="s" x="890" y="345" text-anchor="start">debug interrupt</text>
+<path class="sigo" d="M560,370 L1030,370"/>
+<text class="s" x="890" y="365" text-anchor="start">custom actions ×16</text>
+<path class="sigo" d="M560,390 L1030,390"/>
+<text class="s" x="890" y="385" text-anchor="start">debug marker</text>
+<path class="tie" d="M560,412 L600,412"/>
+<text class="s" x="606" y="416" text-anchor="start">GPIO toggle: open</text>
+<path class="tie" d="M560,430 L600,430"/>
+<text class="s" x="606" y="434" text-anchor="start">local halt: open</text>
+<rect class="core" x="384" y="480" width="150" height="56" rx="5"/>
+<text class="s" x="459" y="505" text-anchor="middle">Memory-mapped</text>
+<text class="s" x="459" y="521" text-anchor="middle">registers (mmrs)</text>
+<path class="axil" d="M8,508 L371,508"/>
+<text class="s" x="8" y="501" text-anchor="start">APB (smc_local_xbar)</text>
+<path class="tie" d="M534,508 L580,508"/>
+<text class="s" x="586" y="512" text-anchor="start">JTAG register port: tied off</text>
+<path class="n-smu" d="M372,294 L372,84 L700,84 M372,306 L372,420 M372,432 L372,488"/>
+<path class="a-smu" d="M372,214 L381,214"/>
+<circle cx="372" cy="214" r="4" fill="#103525"/>
+<path class="a-smu" d="M372,380 L381,380"/>
+<circle cx="372" cy="380" r="4" fill="#103525"/>
+<path class="a-smu" d="M372,488 L381,488"/>
+<path class="a-smu" d="M601,84 L601,93"/>
+<circle cx="601" cy="84" r="4" fill="#103525"/>
+<path class="a-smu" d="M700,84 L700,93"/>
+<rect class="core" x="14" y="621" width="36" height="18" rx="4"/>
+<text class="s" x="58" y="634.5" text-anchor="start">RTL block</text>
+<path class="fabric" d="M146.1,625 L168.1,620 L168.1,640 L146.1,635 Z"/>
+<text class="s" x="176.1" y="634.5" text-anchor="start">Debug-bus mux</text>
+<rect class="smu" x="291.8" y="621" width="36" height="18" rx="4"/>
+<text class="s" x="335.8" y="634.5" text-anchor="start">Hierarchy boundary</text>
+<rect class="external" x="486" y="621" width="36" height="18" rx="4"/>
+<text class="s" x="530" y="634.5" text-anchor="start">Outside the SMC DFD</text>
+<rect class="external opt" x="687.1" y="621" width="36" height="18" rx="4"/>
+<text class="s" x="731.1" y="634.5" text-anchor="start">Not built in the SMC</text>
+<text class="s" x="44" y="662.5" text-anchor="start">Subordinate port</text>
+<path class="axil" d="M183.4,658 L225.4,658"/>
+<text class="s" x="236.4" y="662.5" text-anchor="start">APB</text>
+<path class="sigo" d="M286.1,658 L328.1,658"/>
+<text class="s" x="339.1" y="662.5" text-anchor="start">Signals</text>
+<path class="sigplain" d="M413.40000000000003,658 L443.40000000000003,658 M428.40000000000003,658 L428.40000000000003,667"/>
+<circle cx="428.4" cy="658" r="3.5" fill="#5b6670"/>
+<text class="s" x="451.4" y="662.5" text-anchor="start">Fan-out</text>
+<path class="a-smu" d="M528.7,658 L570.7,658"/>
+<text class="s" x="581.7" y="662.5" text-anchor="start">Gated SMC clock</text>
+<path class="tie" d="M714.2,658 L756.2,658"/>
+<text class="s" x="767.2" y="662.5" text-anchor="start">Tied off or unconnected</text>
+<rect class="ps" x="373.0" y="499.0" width="22" height="18" rx="4"/>
+<text class="pst" x="384" y="512.5" text-anchor="middle">S</text>
+<rect class="ps" x="14.0" y="649.0" width="22" height="18" rx="4"/>
+<text class="pst" x="25" y="662.5" text-anchor="middle">S</text>
+</svg>

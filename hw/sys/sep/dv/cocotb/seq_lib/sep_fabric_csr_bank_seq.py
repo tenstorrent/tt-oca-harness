@@ -15,7 +15,7 @@ sep_address_map_seq writes the same value.
 Bank map (see `hw/sys/sep/regs/gen/svh/sep_reg.svh`):
   Local-master alias-remap : base 0x10A1_0000, stride 0x20, 16 regions
       REGION_START +0x00 (64b), REGION_END +0x08 (64b, 4KB-aligned),
-      REGION_ATTRS +0x10 (64b; remap offset [55:12], cacheable[62], valid[63]=R/W)
+      REGION_ATTRS +0x10 (64b; remap offset [55:12], cacheable[59:56], valid[63]=R/W)
   AP   output-remap        : base 0x10A1_0200, stride 0x08; REGION_ATTRS +0x00 (64b)
   STEE output-remap        : base 0x10A1_0300, stride 0x08; REGION_ATTRS +0x00 (64b)
   Inbound  filter          : base 0x10A2_1000, stride 0x20, 16 entries
@@ -68,13 +68,16 @@ AP_BASE = sym("AP_OUTPUT_REMAP_CTRL_0__REG_MAP_BASE_ADDR")
 STEE_BASE = sym("STEE_OUTPUT_REMAP_CTRL_0__REG_MAP_BASE_ADDR")
 REMAP_STRIDE = sym("AP_OUTPUT_REMAP_CTRL_1__REG_MAP_BASE_ADDR") - AP_BASE
 REMAP_ATTRS = sym("AP_OUTPUT_REMAP_CTRL_0__REGION_REGION_ATTRS_REG_OFFSET")
-# REGION_ATTRS.offset is sw=rw over its whole RDL width (output_remap.rdl), so
-# the CSR R/W stimulus drives every bit of it, the SEP 512 KB granule (bit 19
-# and up) included. AP and STEE are both instances of the output_remap type.
+# REGION_ATTRS.offset and .valid are sw=rw over their whole RDL width
+# (output_remap.rdl), so the CSR R/W stimulus drives every bit of them, the SEP
+# 512 KB granule (bit 19 and up) included. AP and STEE are both instances of the
+# output_remap type.
 _OUTPUT_REMAP = RegBlock("OUTPUT_REMAP")
 REMAP_OFFSET_MASK = _OUTPUT_REMAP.field_mask("REGION_REGION_ATTRS", "offset")
 REMAP_OFFSET_LO_MASK = REMAP_OFFSET_MASK & 0xFFFF_FFFF
-REMAP_OFFSET_HI_MASK = REMAP_OFFSET_MASK >> 32
+REMAP_RW_HI_MASK = (
+    REMAP_OFFSET_MASK | _OUTPUT_REMAP.field_mask("REGION_REGION_ATTRS", "valid")
+) >> 32
 
 # --- inbound / outbound filter config -----------------------------------------
 INFILT_BASE = sym("INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR")
@@ -91,10 +94,12 @@ FILTER_CONFIG = INBOUND_FILTER_CTRL_0.offset("FILTER_CONFIG")
 # remap valid[63] (R/W) and filter locked[63] (woset) both sit in the hi word.
 WOSET_HI_BIT = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.field_lsb("REGION_REGION_ATTRS", "valid") - 32
 
-# AMBA AXI4 (IHI 0022): OKAY=0, SLVERR=2. A locked filter entry rejects a
-# further write with SLVERR.
+# AMBA AXI4 (IHI 0022): OKAY=0, DECERR=3. While FILTER_CONFIG.locked is set,
+# every write to that entry's FILTER_CONFIG, START_ADDR and END_ADDR goes to
+# the AXI error subordinate and completes DECERR (filter_ctrl.rdl locked,
+# hw/ip/axi_filter/doc/index.adoc "Locking a Filter Entry").
 RESP_OKAY = 0
-RESP_SLVERR = 2
+RESP_DECERR = 3
 
 # FILTER_CONFIG field positions (lo word), from the generated bitfield.
 F_READ_ALLOWED = INBOUND_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "read_allowed")
@@ -172,9 +177,9 @@ class SepFabricCsrCfg:
         self.end_lo = rng.getrandbits(32) & ALIAS_END_MASK  # 4KB-aligned
         self.attrs_lo = rng.getrandbits(32) & ALIAS_ATTRS_MASK  # remap offset [31:12]
         self.ap_lo = rng.getrandbits(32) & REMAP_OFFSET_LO_MASK
-        self.ap_hi = rng.getrandbits(32) & REMAP_OFFSET_HI_MASK
+        self.ap_hi = rng.getrandbits(32) & REMAP_RW_HI_MASK
         self.stee_lo = rng.getrandbits(32) & REMAP_OFFSET_LO_MASK
-        self.stee_hi = rng.getrandbits(32) & REMAP_OFFSET_HI_MASK
+        self.stee_hi = rng.getrandbits(32) & REMAP_RW_HI_MASK
         # Random legal FILTER_CONFIG RW fields (never the RO data_bus_width [14:12]).
         p = 0
         for b in (F_READ_ALLOWED, F_WRITE_ALLOWED, F_ENTRY_ENABLED, F_ALLOW_NS, F_ALLOW_BURST):
@@ -214,9 +219,13 @@ class SepFabricCsrBank(SepAxiRegDriver):
     async def _wr_tolerant(self, addr: int, data: int) -> int:
         """Write tolerating a non-OKAY response; return the AXI resp_code.
 
-        A locked (woset) entry actively REJECTS a subsequent write with SLVERR, so
-        the clear-attempt must not raise; the proof is the read-back value.
+        A write to a locked entry completes DECERR by the spec, so the write must
+        not raise; the caller grades the code and the read-back value. One DECERR
+        credit is armed on the bus monitor for the write and handed back when
+        the write answers anything else, so a stray DECERR elsewhere still fails.
         """
+        mon = self.test.env.axi_monitor
+        mon.arm_expected_decerr(1)
         seq = SepAxiAccessSeq(
             "fab_wr_tol",
             op=SepAxiOp.WRITE,
@@ -226,7 +235,24 @@ class SepFabricCsrBank(SepAxiRegDriver):
             allow_unverified_write_resp=True,
         )
         await self.test.start_seq(seq)
+        if seq.timed_out or seq.resp_code != RESP_DECERR:
+            mon.release_expected_decerr(1)
         return seq.resp_code
+
+    async def locked_write_probe(self, addr: int, flip: int) -> tuple[int, int, int]:
+        """Write the current word with ``flip`` inverted to a word of a locked entry.
+
+        Returns (before, after, resp): the word before and after the write, and
+        the AXI response of the write. The written value always differs from
+        ``before``, so an accepted write shows as a changed word. By the spec the
+        write completes DECERR and the word keeps ``before``.
+        """
+        if not flip & 0xFFFF_FFFF:
+            raise ValueError("flip must change at least one bit")
+        before = await self._rd(addr)
+        resp = await self._wr_tolerant(addr, (before ^ flip) & 0xFFFF_FFFF)
+        after = await self._rd(addr)
+        return before, after, resp
 
     async def bank_field_walk(self) -> tuple[int, list[str]]:
         """Write an index-derived pattern into every R/W word of every bank entry,
@@ -333,13 +359,13 @@ class SepFabricCsrBank(SepAxiRegDriver):
         Returns (after_set, after_clear, clear_resp) -- the bit value after the set,
         the bit value after the clear-attempt, and the AXI resp of the clear write.
           * RW bit:        (1, 0, OKAY=0)        -- clear succeeds.
-          * woset (locked): (1, 1, SLVERR=2)     -- set sticks; the lock rejects the
-            clear write with SLVERR and the bit stays set.
+          * woset (locked): (1, 1, DECERR=3)     -- set sticks; the lock steers the
+            clear write to the error subordinate (DECERR) and the bit stays set.
         """
         cur = await self._rd(hi_addr)
         await self._wr(hi_addr, cur | (1 << bit))  # set (OKAY)
         after_set = (await self._rd(hi_addr) >> bit) & 1
-        # Attempt to clear (tolerant: a locked entry rejects this with SLVERR).
+        # Attempt to clear (tolerant: a locked entry answers this with DECERR).
         clear_resp = await self._wr_tolerant(
             hi_addr, (cur | (1 << bit)) & ~(1 << bit) & 0xFFFF_FFFF
         )

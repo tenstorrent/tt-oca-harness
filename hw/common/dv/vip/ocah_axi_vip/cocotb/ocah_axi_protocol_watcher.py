@@ -2,10 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Cycle-level AXI4/AXI4-Lite protocol-rule watchers (practical subset).
 
-Pure-Python signal sampling (RisingEdge + ReadOnly), Verilator-friendly — no
-SVA. Rule provenance: implemented from the public AMBA AXI4 specification
-(ARM IHI 0022) rule descriptions; no third-party protocol-checker source was
-consulted or copied.
+Pure-Python signal sampling (RisingEdge + ReadOnly) that sleeps while every
+VALID is low, Verilator-friendly — no SVA. Rule provenance: implemented from
+the public AMBA AXI4 specification (ARM IHI 0022) rule descriptions; no
+third-party protocol-checker source was consulted or copied.
 
 Rules
 -----
@@ -28,9 +28,12 @@ from dataclasses import dataclass
 from typing import Any
 
 import cocotb
-from cocotb.triggers import ReadOnly, RisingEdge
+from cocotb.task import Task
+from cocotb.triggers import FallingEdge, RisingEdge
 from cocotb.utils import get_sim_time
 from cocotbext.axi import AxiBus, AxiLiteBus
+
+from .ocah_axi_sampling import is_high, next_sample, valid_handles
 
 __all__ = [
     "OcahAxiWatchFinding",
@@ -136,16 +139,18 @@ class _BaseProtocolWatcher:
         self.bus = self._coerce_bus(intf, prefix)
         self.errors: list[OcahAxiWatchFinding] = []
         self._rule_totals: dict[str, int] = {}
-        self._task = None
+        self._task: Task[None] | None = None
         self._running = False
-        # Per-channel previous-cycle shadow: (valid, ready, payload tuple)
-        self._shadow: dict[str, tuple[int, int, tuple[int, ...]]] = {}
+        # Per-channel previous-cycle shadow: (valid, ready, payload tuple); the
+        # payload is None on a cycle that sampled none.
+        self._shadow: dict[str, tuple[int, int, tuple[int, ...] | None]] = {}
         # Burst tracking (AXI4 only)
         self._aw_lengths: deque[int] = deque()
         self._early_wburst_lens: deque[int] = deque()
         self._w_beats = 0
         self._ar_lengths: dict[int, deque[int]] = {}
         self._r_beats: dict[int, int] = {}
+        self._valid_handles: list[Any] | None = None
 
     @classmethod
     def from_prefix(cls, dut, prefix: str, clock, **kwargs: Any):
@@ -235,6 +240,23 @@ class _BaseProtocolWatcher:
             "r": self.bus.read.r,
         }
 
+    def _idle_wake(self) -> list[Any] | None:
+        """Return the wake triggers while every VALID is low, else None.
+
+        A cycle with every VALID low changes no watcher state; a reset that
+        asserts meanwhile still clears the shadow and burst state.
+        """
+        if self._valid_handles is None:
+            self._valid_handles = valid_handles(self.bus)
+        if any(is_high(handle) for handle in self._valid_handles):
+            return None
+        wake: list[Any] = [RisingEdge(handle) for handle in self._valid_handles]
+        if self.reset is not None:
+            wake.append(
+                RisingEdge(self.reset) if self.reset_active_level else FallingEdge(self.reset)
+            )
+        return wake
+
     async def _run(self) -> None:
         valid_names = {
             "aw": "awvalid",
@@ -251,9 +273,10 @@ class _BaseProtocolWatcher:
             "r": "rready",
         }
 
+        sampled = False
         while self._running:
-            await RisingEdge(self.clock)
-            await ReadOnly()
+            await next_sample(self.clock, self._idle_wake() if sampled else None)
+            sampled = True
 
             channels = self._channels()
             in_reset = self._in_reset()
@@ -273,9 +296,16 @@ class _BaseProtocolWatcher:
             for channel, obj in channels.items():
                 valid = _sig_int(obj, valid_names[channel])
                 ready = _sig_int(obj, ready_names[channel])
-                payload = _payload_tuple(obj, self._payload_map[channel])
-
                 previous = self._shadow.get(channel)
+                stalled = previous is not None and bool(previous[0]) and not previous[1]
+                # STABLE compares payloads only across a stall, so a beat is
+                # sampled only while it stalls or was stalled the cycle before.
+                payload = (
+                    _payload_tuple(obj, self._payload_map[channel])
+                    if valid and (stalled or not ready)
+                    else None
+                )
+
                 if previous is not None:
                     prev_valid, prev_ready, prev_payload = previous
                     if prev_valid and not prev_ready:

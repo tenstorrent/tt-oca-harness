@@ -367,11 +367,11 @@ tops in the same shape.
   five consecutive `tms`-high cycles reach Test-Logic-Reset from any state,
   the entry and hold conditions of the reset, idle, shift and update states,
   the exclusivity of the DR and IR scan selects, and the Moore and
-  negedge-clocked scan-control flags following the state. Enum states come
+  negedge-clocked scan-control flags following the state. A helper flop in
+  the module counts the consecutive `tms`-high cycles. Enum states come
   from `jtag_tap_pkg`.
 * `props/dtp_tap_bind.sv`: binds the module to `jtag_tap_ctrlr` and connects
-  the TAP control struct, the state, the `tms` counter and the scan-control
-  struct members.
+  the TAP control struct, the state and the scan-control struct members.
 * `props/dtp_jtag_fv_bind.sv`: binds the shared JTAG checker to `dtp` on the
   primary TAP, the host's phase rule assumed and the TAP's rules asserted;
   `dtp_jtag2axi_axi_fv_bind.sv` and `dtp_ctn_axi_fv_bind.sv` do the same with

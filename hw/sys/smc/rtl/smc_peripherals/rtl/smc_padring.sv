@@ -364,7 +364,7 @@ module smc_padring #(
     lsio_pad2core_en_n[28]      = smc_padring_pkg::ENABLED;
     i3c_sda_o[0]                = lsio_pad2core_data[28];
 
-    // I3C 2 - 5 (I3C[1] is fully unbonded at GPIO[66,67])
+    // I3C 2 - 5 (I3C[1] is fully unbonded at GPIO[63,64])
     for (integer i = 0; i < (smc_config_pkg::NUM_I3C - 2); i = i + 1) begin : gen_i3c_connections
       lsio_interface_select_o[29+(2*i)] = i3c_enable_i[2+i];
       lsio_core2pad_en_n[29+(2*i)]      = i3c_scl_oen_i[2+i];
@@ -468,10 +468,6 @@ module smc_padring #(
     lsio_pad2core_en_n[51]      = smc_padring_pkg::ENABLED;
     avs_sdata_o                 = lsio_pad2core_data[51];
 
-    // CAT THERM (GPIO 52) is driven in smc_ip_integration: it is the PRIMARY
-    // function, force-selected on a thermal event (force_primary) so it
-    // preempts the xtrigger 2nd-HW override. No LSIO drive from the core here.
-
     // Isolate Request Pin
     lsio_interface_select_o[53] = 1'b1;
     lsio_core2pad_en_n[53]      = smc_padring_pkg::DISABLED;
@@ -486,7 +482,7 @@ module smc_padring #(
     lsio_pad2core_en_n[54]      = ~spi_mem_rebar_iepad_i;
     spi_mem_rebar_ipad_o        = lsio_pad2core_data[54];
 
-    // System Timer OCTS (old 58/59, now 55/56 after the 68->65 GPIO shrink)
+    // System Timer OCTS
     // Primary: drive sync load and credit cnt signals to pad
     // Secondary: receive sync load and credit cnt signals from pad
     lsio_interface_select_o[55] = timer_gpio_enable_i;
@@ -501,26 +497,26 @@ module smc_padring #(
     lsio_pad2core_en_n[56]      = chiplet_is_primary_i ? smc_padring_pkg::DISABLED : smc_padring_pkg::ENABLED;
     timer_cnt_credit_o          = lsio_pad2core_data[56];
 
-    // Boot Stall (old 60, now 57)
+    // Boot Stall
     lsio_interface_select_o[57]   = 1'b1;
     lsio_core2pad_en_n[57]        = smc_padring_pkg::DISABLED;
     lsio_core2pad_data[57]        = '0;
     lsio_pad2core_en_n[57]        = smc_padring_pkg::ENABLED;
     boot_stall_o                  = lsio_pad2core_data[57];
 
-    // ROTATE_UPDATE strap pad; also the OCCP interface software GPIO (old 61, now 58)
+    // OCCP interface software GPIO
     lsio_interface_select_o[58] = '0;
     lsio_core2pad_en_n[58]      = smc_padring_pkg::DISABLED;
     lsio_core2pad_data[58]      = '0;
     lsio_pad2core_en_n[58]      = smc_padring_pkg::DISABLED;
 
-    // Cool Reset In (Dont drive here, just set pullup) (old 64, now 61)
+    // Cool Reset In
     lsio_interface_select_o[61] = '0;
     lsio_core2pad_en_n[61]      = smc_padring_pkg::DISABLED;
     lsio_core2pad_data[61]      = '0;
     lsio_pad2core_en_n[61]      = smc_padring_pkg::DISABLED;
 
-    // Cool Reset Out (old 65, now 62)
+    // Cool Reset Out
     lsio_interface_select_o[62] = 1'b1;
     lsio_core2pad_en_n[62]      = rst_cool_ni;
     lsio_core2pad_data[62]      = 1'b0;

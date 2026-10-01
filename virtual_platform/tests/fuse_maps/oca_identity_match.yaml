@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# SEP_CHIPLET_ID matching the identity configs/oca_identity_boot_test.yaml requires.
+#
+# The manifest's sparse chiplet_id fixes bytes 0 and 1 to 0xDE 0xAD and leaves
+# every unselected byte at the producer's 0xA5 filler, so the device fuse must
+# read DE AD followed by thirty 0xA5 bytes.
+#
+# Words are little-endian, word[0] = bits[31:0]: bytes DE AD A5 A5 -> 0xA5A5ADDE.
+#
+# This bank only became settable when the VP eFuse model gained SEP_CHIPLET_ID --
+# it was inside a generic RESERVED block before, so identity constraints could
+# not be tested at all.
+lc_state: TEST_DEV
+sboot_dis: 0
+sep_chiplet_id:
+  - 0xa5a5adde
+  - 0xa5a5a5a5
+  - 0xa5a5a5a5
+  - 0xa5a5a5a5
+  - 0xa5a5a5a5
+  - 0xa5a5a5a5
+  - 0xa5a5a5a5
+  - 0xa5a5a5a5

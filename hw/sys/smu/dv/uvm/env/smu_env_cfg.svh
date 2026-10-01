@@ -14,7 +14,7 @@ class smu_env_cfg extends ocah_env_cfg;
 
   // clk_period_ns (base) is the smu clock; the other domains follow.
   int unsigned ref_clk_period_ns     = 10;
-  int unsigned periph_clk_period_ns  = 20;
+  int unsigned periph_clk_period_ns  = 5;
   int unsigned sep_wdt_clk_period_ns = 100;
   // Primary TAP TCK half period, in nanoseconds.
   int unsigned tck_half_period_ns = 20;

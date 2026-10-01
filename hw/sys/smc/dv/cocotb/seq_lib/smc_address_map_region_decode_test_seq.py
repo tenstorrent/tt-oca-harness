@@ -303,7 +303,7 @@ class smc_address_map_region_decode_test_seq(SmcDecodeProbeSeq):
         self.close_cell(
             "gpio-region",
             f"GPIO_INTF[0] and GPIO_INTF[{GPIO_NUM - 1}] ACCESS_FILTER both read "
-            f"0x{GPIO_INTF_ACCESS_FILTER_REG_DEFAULT:x} (bits above 16 set: a 32-bit APB4 data path)",
+            f"0x{GPIO_INTF_ACCESS_FILTER_REG_DEFAULT:x} (bits above 16 set: a 32-bit data path)",
         )
 
     async def _region_i3c(self) -> None:
@@ -540,10 +540,12 @@ class smc_address_map_region_decode_test_seq(SmcDecodeProbeSeq):
         sb = self.env.scoreboard
         value_checks_before = sb.sys_axi_value_checks_seen
         # The SEP_IN monitor flags any DECERR it was not told to expect; these
-        # five are the intended error-slave probes. Two are in the adopter
-        # window and answered by its terminator: the supplementary base, since
-        # this bench attaches no supplementary device, and the first word past
-        # the straps block.
+        # nine are the intended error-slave probes: three past the WDT, DFX and
+        # fabric-control windows; two in the adopter window, answered by its
+        # terminator (the supplementary base, since this bench attaches no
+        # supplementary device, and the first word past the straps block); and
+        # four past the generated extents of the GPIO, misc-wrap, DMA and
+        # zeroer blocks.
         self.env.axi_monitor.expected_decerr_addrs.update(
             {
                 WDT_REGION_BEYOND,
@@ -590,13 +592,13 @@ class smc_address_map_region_decode_test_seq(SmcDecodeProbeSeq):
             f"(no generated-map block, no crossbar rule) each answered DECERR",
         )
         self.close_cell(
-            "apb4-32bit-address",
-            "APB4-fronted blocks (GPIO, AVSBus, OCTS, telemetry, eFuse interface) decoded at their "
-            "32-bit generated-map addresses",
+            "periph-32bit-address",
+            "32-bit peripheral CSR blocks behind the AXI-Lite peripheral crossbar (GPIO, AVSBus, "
+            "OCTS, telemetry, eFuse interface) decoded at their generated-map addresses",
         )
         self.close_cell(
-            "apb4-32bit-data",
-            f"32-bit APB4 reads returned values with bits above 16 set "
+            "periph-32bit-data",
+            f"32-bit reads returned values with bits above 16 set "
             f"(GPIO ACCESS_FILTER 0x{GPIO_INTF_ACCESS_FILTER_REG_DEFAULT:x}, AVS_CFG_0 "
             f"0x{AVSBUS_CONTROLLER_AVS_CFG_0_REG_DEFAULT:x}, eFuse READ_REQ_TIMEOUT "
             f"0x{EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_DEFAULT:x})",

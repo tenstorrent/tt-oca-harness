@@ -51,8 +51,8 @@
 #define OCCP_ACCESSIBLE_SRAM_BASE 0xC0066000 /* OCCP accessible region start */
 
 // Test configuration
-#define MAX_STATUS_BUFFER_READS 200      /* Maximum status reads */
-#define MAX_INVALID_COMMANDS 16          /* Maximum invalid commands to test */
+#define MAX_STATUS_BUFFER_READS 200 /* Maximum status reads */
+#define MAX_INVALID_COMMANDS 16     /* Maximum invalid commands to test */
 
 typedef struct {
     test_context_t *occp_ctx;

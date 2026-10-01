@@ -1,0 +1,112 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+Cross-trigger configuration is static. Software programs every external CTP
+from the SiP cross-trigger topology once per boot, then opens the CTM routes
+that use those ports, and leaves both unchanged for the rest of the session.
+Register offsets are relative to the CTN base address;
+<<ctn-address-allocation-table>> lists the CTM and CTP windows.
+
+[[ctn-programming-requirements]]
+=== Requirements
+
+* Both ends of a CTP link use the same protocol and polarity, and the board
+  determines both:
+** A shared wire-OR line with pull-ups uses `MODE` = 0 and `INVERT` = 0; with
+   pull-downs it uses `MODE` = 0 and `INVERT` = 1.
+** A point-to-point link with active-high signaling uses `MODE` = 1 and
+   `INVERT` = 0; with active-low signaling it uses `MODE` = 1 and `INVERT` = 1.
+* The configuration stays fixed for the session. Change a port whose routes
+  are already open only through the sequence in
+  <<ctn-programming-reconfigure>>.
+* After reset every CTP is in wire-OR mode with `INVERT` = 0, and every CTM
+  output is disabled because each `CT_DST_SELECT` resets to zero. Until
+  software writes `CONFIG`, a CTP drives neither `CT_Req_out` nor
+  `CT_Ack_out`, so the board pulls set the level the far end sees on those
+  lines. Choose pulls that the far end reads as deasserted.
+* Internal CTPs have no registers. The `INT_CT_MODE` parameter fixes their
+  protocol.
+* The CTM configuration across the SiP is free of loops. A wire-OR CTP
+  receives its own assertion of the shared wire, so a route from a wire-OR
+  CTP back to the same CTP is a loop.
+
+[[ctn-programming-init]]
+=== Initialization Sequence
+
+. For each external CTP `i` that the SiP uses:
+.. For a wire-OR port, write `STRETCH_MULT` with the pulse width the shared
+   wire requires, minus one.
+.. Write `CONFIG` with `MODE` and `INVERT` for the board in a single write,
+   with `RESET` = 0.
+. For each CTM output `n` that carries triggers, write
+  `CT_SRC[n].CONFIG_0.CT_DST_SELECT`. Setting bit `m` forwards the triggers
+  that port `m` receives to port `n`. <<ctn-matrix-port-indices-table>> maps
+  port indices to external and internal CTPs.
+
+The order matters. A CTM route delivers triggers to a CTP from the moment it
+is written. A CTP still in its reset-default wire-OR mode transmits a trigger
+by driving `CT_Req_out` to the asserted wire-OR level, which is low with
+`INVERT` = 0. A point-to-point far end built for active-low signaling reads
+that level as a request. Writing `MODE` and `INVERT` together keeps a port from
+running, even briefly, with one field set for the board and the other still
+at its reset value.
+
+The following example configures external CTP 0 for an active-low
+point-to-point link and external CTP 1 for a wire-OR line with pull-ups, then
+routes triggers between them.
+
+[source,sourceCode,c]
+----
+#define CTP_REG(i, reg)  (ctn_base + CROSS_TRIGGER_NETWORK_CTP_BASE_ADDR(i) + (reg))
+#define CTM_ROUTE(n)     (ctn_base + CROSS_TRIGGER_NETWORK_CTM_BASE_ADDR + \
+                          CROSS_TRIGGER_MATRIX_CT_SRC_CONFIG_0_BASE_ADDR(n))
+
+#define CONFIG_MODE_P2P  (1u << 0)
+#define CONFIG_INVERT    (1u << 1)
+#define CONFIG_RESET     (1u << 2)
+
+// Configure every port before opening any route.
+write32(CTP_REG(0, CROSS_TRIGGER_PORT_CONFIG_BASE_ADDR), CONFIG_MODE_P2P | CONFIG_INVERT);
+write32(CTP_REG(1, CROSS_TRIGGER_PORT_STRETCH_MULT_BASE_ADDR), 15); // 16-cycle pulses
+write32(CTP_REG(1, CROSS_TRIGGER_PORT_CONFIG_BASE_ADDR), 0);
+
+// Triggers received on port 1 go out on port 0, and the reverse.
+write32(CTM_ROUTE(0), 1u << 1);
+write32(CTM_ROUTE(1), 1u << 0);
+----
+
+[[ctn-programming-reconfigure]]
+=== Changing a Port's Configuration
+
+Changing `CONFIG` after routes are open is discouraged. When a link must
+change protocol or polarity, for example after both chiplets agree on a new
+topology, reconfigure port `p` as follows:
+
+. Close every route that involves port `p`: write zero to `CT_SRC[p]`, and
+  clear bit `p` in every other `CT_SRC[n]`.
+. Poll `STATUS.BUSY` of port `p` until it reads 0. If a point-to-point far end
+  never acknowledges and `BUSY` stays 1, recover the port as described in
+  <<ctn-programming-deadlock>>.
+. Write `CONFIG` with the new `MODE` and `INVERT` in a single write.
+. Reopen the routes.
+
+The CTP holds its point-to-point handshake idle while wire-OR mode is
+selected. After point-to-point mode is selected, the handshake ignores
+`CT_Req_in` and `CT_Ack_in` until their synchronized levels are valid.
+Closing the routes first keeps triggers from being sent or forwarded while
+the two ends of the link disagree.
+
+[[ctn-programming-deadlock]]
+=== Handshake Deadlock Recovery
+
+A point-to-point sender waits for `CT_Ack_in` without a timeout. If the far
+end stops responding, `STATUS.REQ_OUT` and `STATUS.BUSY` stay 1, and the port
+transmits no further triggers.
+
+. Write `CONFIG` with `RESET` = 1, keeping `MODE` and `INVERT` unchanged.
+  `CT_Req_out` deasserts, and the port discards triggers delivered to it
+  while `RESET` is set.
+. Write `CONFIG` with `RESET` = 0.
+
+`RESET` does not affect the receiving side. A far end that holds `CT_Req_in`
+asserted keeps `STATUS.BUSY` at 1 until it releases the request.

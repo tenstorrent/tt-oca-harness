@@ -6,58 +6,43 @@
 
 === Buffer Management
 
-Reading Telemetry Data:
+. Check `STATUS.BUFFER_EMPTY` before reading.
+. Read `TELEMETRY_PROBE_ID` and `TELEMETRY_COUNTER_VLDS`, then the required valid
+  counter registers. Unused or invalid counter positions read as zero.
+. Write a one to `CTRL.BUFFER_POP` after consuming the message.
+. Repeat while the queue is nonempty.
 
-....
-1. Check STATUS.BUFFER_EMPTY to ensure data is available
-2. Read TELEMETRY_PROBE_ID to get the probe identifier
-3. Read TELEMETRY_COUNTER_VLDS to determine valid counters
-4. Read required TELEMETRY_COUNTER[0..31] registers
-5. Write CTRL.BUFFER_POP = 1 to advance to next message
-6. Repeat as needed while STATUS.BUFFER_EMPTY = 0
-....
+Only one software consumer should own this sequence. Incoming traffic can
+replace the head while the queue is full, so these reads are not an atomic
+snapshot; follow the producer/buffering constraints in the architecture section.
 
-Buffer Threshold Configuration:
+Preserve `CTRL.BUFFER_THRESHOLD` and any outstanding TX-flush request when
+issuing a pop or RX-flush pulse. These fields share one register; a full-word
+write containing only the pulse bit would overwrite the other writable fields.
+Serialize control-register updates between software contexts.
 
-....
-1. Calculate desired threshold value (0-4095 messages)
-2. Write CTRL.BUFFER_THRESHOLD = threshold_value
-3. Write INTR_ENABLE.BUFFER_THRESHOLD = 1 to enable interrupt
-4. Monitor INTR_STATUS.BUFFER_THRESHOLD for threshold events
-....
+For notification on any queued message, set the threshold to zero and enable
+`INTR_ENABLE.BUFFER_THRESHOLD`. The CSR field is 12 bits, but the core casts it
+to `$clog2(BUFFER_DEPTH)+1` bits before comparing occupancy. Use values within
+the configured queue depth rather than treating all values 0–4095 as distinct
+thresholds. With the default depth 8, only the low four bits participate.
 
 === Flush Operations
 
-Receiver Flush (clears internal buffers):
+* *Local discard:* pulse `CTRL.TELEMETRY_RX_FLUSH`. This discards queued messages
+  and resets assembly position, without erasing stored bytes or flushing the
+  wrapper crossing FIFO. New traffic can make the queue nonempty again.
+* *Upstream flush:* set `CTRL.TELEMETRY_TX_FLUSH` and poll until hardware clears
+  it after acknowledgement. Choose a firmware timeout appropriate to the producer;
+  the core provides no fixed completion deadline.
 
-....
-1. Write CTRL.TELEMETRY_RX_FLUSH = 1
-2. Wait for operation to complete (automatic)
-3. Check STATUS.BUFFER_EMPTY = 1 to confirm flush
-....
-
-Transmitter Flush (upstream telemetry source):
-
-....
-1. Write CTRL.TELEMETRY_TX_FLUSH = 1
-2. Monitor bit until it automatically clears (flush complete)
-3. Resume normal operation
-....
+Neither operation makes stale trailing blocks safe: producers must still
+write the full configured message footprint and invalidate unused counters.
 
 === Interrupt Handling
 
-Buffer Threshold Interrupt:
-
-....
-1. Read INTR_STATUS.BUFFER_THRESHOLD to confirm source
-2. Process available telemetry messages using buffer read sequence
-3. Interrupt automatically clears when buffer level drops below threshold
-....
-
-Missing Last Packet Interrupt:
-
-....
-1. Read INTR_STATUS.MISSING_LAST to confirm source
-2. Handle error condition (log, reset, etc.)
-3. Write INTR_STATUS.MISSING_LAST = 1 to clear interrupt
-....
+Read `INTR_STATUS` and service the enabled sources. For `BUFFER_THRESHOLD`,
+drain until occupancy is at most the threshold; clear the threshold test bit
+if software asserted it. For `MISSING_LAST`, investigate the producer's framing
+and write one to that status bit after handling the event. A receiver flush
+alone does not acknowledge this sticky interrupt.

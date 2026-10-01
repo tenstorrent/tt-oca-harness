@@ -1,0 +1,16 @@
+# sep-vp firmware test harness: per-run working dirs and Python caches.
+logs/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# sepvp Build Artifacts (env-tagged variants included: local-ctr/, ...)
+downloads/
+local/
+local-*/
+setup_environment*.sh
+.vp-config-stamp*
+
+# JUnit XML from `make vp-test PYTEST_ARGS=--junitxml=...` (.github/workflows/vp.yml)
+pytest-results.xml

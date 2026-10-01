@@ -132,6 +132,9 @@ addrmap wdt {
     KEY             KEY             @0x1c;
     CMP             CMP             @0x20;
 
+`ifdef OCAH_DOC_MEMORY_MAP
+    ocah_hole_note = "Offset 0xC holds the watchdog's countHi register, which this map does not list; a 32-bit write there locks the watchdog key again.";
+`endif
 };
 
 `endif

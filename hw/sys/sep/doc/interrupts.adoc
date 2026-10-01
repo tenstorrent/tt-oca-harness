@@ -6,6 +6,8 @@
 
 [[sep-interrupts]]
 
+== Controllers
+
 The SEP integrates a VeeR EL2 core with a built-in
 **Programmable Interrupt Controller (PIC)**. All maskable external interrupt
 sources feed a single `extintsrc_req` bus; the memory-mapped `meipl`, `meie`,
@@ -15,13 +17,7 @@ source.
 The PIC base address is `0xC008_0000`; its register layout is described in the
 <<sep-pic-registers,Register Interfaces>> section below.
 
-Interrupt source IDs are **1-based** inside the PIC. Source 0 is permanently
-tied to zero inside the core. Firmware programs source `N` through the
-per-source arrays, each indexed at an offset of `N * 4` from its region base:
-`meipl` at PIC base `+0x0000`, `meie` at `+0x2000`, `meigwctrl` at `+0x4000`
-and `meigwclr` at `+0x5000`. Pending status is the exception -- `meip` at
-`+0x1000` is a bitmap rather than a per-source array, so source `N` is bit
-`N % 32` of `meip[N / 32]`.
+== Sources and Routing
 
 The vector driven to the core, `sep_internal_interrupts`, is indexed from 0.
 Bit `i` of that vector is PIC source `i + 1`. The core's `extintsrc_req` port
@@ -30,22 +26,9 @@ driven vector is the first programmable source. The comment directly above
 `NUM_INTERNAL_IRQS` in `sep_pkg.sv` numbers sources by that vector index, one
 less than the PIC source in <<sep-pic-source-assignments-table>>.
 
-Each per-source array carries an entry 0, so that the array index is the source
-ID and no off-by-one applies: `meipl[7]` is source 7. That entry is reserved and
-has no hardware behind it -- the PIC decodes the address but ties the register
-off, so `+0x0000`, `+0x2000`, `+0x4000` and `+0x5000` read as zero and discard
-writes. It appears in the RDL, the generated headers and the UVM RAL only to
-preserve the indexing; firmware must never program it.
-
-NOTE: Register tests that walk the whole PIC map must skip index 0 of `meipl`,
-`meie`, `meigwctrl` and `meigwclr`. The register model declares those entries
-read-write like every other element, but the hardware treats them as reserved,
-so a read-write check on them fails.
-
-// Canonical SEP interrupt documentation: maintain this section with RTL changes.
-// Other guides should xref <<sep-cpu-interrupt-vector-map>>.
+// Canonical SEP interrupt map; other guides link to this anchor.
 [[sep-cpu-interrupt-vector-map]]
-== SEP CPU Interrupt Vector Map
+=== SEP CPU Interrupt Vector Map
 
 The PIC supports 255 external sources. Slots 1–43 are individually assigned to
 specific peripherals and subsystems connected to the SEP, including both
@@ -276,13 +259,19 @@ endif::backend-pdf[]
 |=======================================================================
 
 [[sep-non-pic-paths]]
-== Non-PIC Interrupt Paths
+=== Non-PIC Interrupt Paths
 
 Three CPU interrupt pins bypass the EL2 PIC entirely. The core also reports its
 own memory errors through a path that is neither a pin nor a PIC source; see
 <<sep-memory-error-reporting>>.
 
-=== NMI — Watchdog Timer Bark
+ifdef::backend-html5[]
+++++
+<span id="nmi-watchdog-timer-bark"></span>
+++++
+endif::backend-html5[]
+[[sep-interrupts-nmi-watchdog-timer-bark]]
+==== NMI — Watchdog Timer Bark
 
 The VeeR EL2 `nmi_int` pin is wired to the watchdog timer bark signal from
 `sep_wdt_wrap`. When the bark fires, the CPU jumps to the NMI vector address
@@ -292,7 +281,13 @@ runtime modification of the vector once locked.
 The NMI is non-maskable: it cannot be suppressed by `mstatus.MIE` or any PIC
 configuration register.
 
-=== Timer and Software Interrupts
+ifdef::backend-html5[]
+++++
+<span id="timer-and-software-interrupts"></span>
+++++
+endif::backend-html5[]
+[[sep-interrupts-timer-and-software-interrupts]]
+==== Timer and Software Interrupts
 
 The `timer_int` and `soft_int` pins of the VeeR EL2 core are tied to zero at
 the SMU integration boundary. There is no external CLINT-style delivery path.
@@ -307,7 +302,7 @@ bit set in `mcause`). Enabling `mie.MTIE` or `mie.MSIE` does not enable the
 internal timers.
 
 [[sep-memory-error-reporting]]
-=== Memory ECC Errors
+==== Memory ECC Errors
 
 The ICCM and DCCM are SECDED-protected. Neither reaches the PIC: the core
 reports these errors itself, correctable ones as a local interrupt and
@@ -318,7 +313,13 @@ The SEP core is configured without an I-cache, so the I-cache parity counter
 `MICECT` (`0x7F0`) never increments. Only the two tightly-coupled-memory
 counters below are live.
 
-==== Correctable (single-bit) errors
+ifdef::backend-html5[]
+++++
+<span id="correctable-single-bit-errors"></span>
+++++
+endif::backend-html5[]
+[[sep-interrupts-correctable-single-bit-errors]]
+===== Correctable (single-bit) errors
 
 Hardware corrects the data and the access is retried, so no data is lost and no
 trap is taken. Each protected memory has a counter CSR (<<sep-correctable-error-counters-table>>).
@@ -363,7 +364,13 @@ The threshold trades interrupt rate against detection latency. A low threshold
 reports a degrading SRAM early at the cost of an interrupt per error; a high one
 lets transient flips accumulate before firmware is told.
 
-==== Uncorrectable (double-bit) errors
+ifdef::backend-html5[]
+++++
+<span id="uncorrectable-double-bit-errors"></span>
+++++
+endif::backend-html5[]
+[[sep-interrupts-uncorrectable-double-bit-errors]]
+===== Uncorrectable (double-bit) errors
 
 These cannot be masked and have no enable bit. The access returned no valid
 data, so the core traps on the instruction that hit the error (<<sep-uncorrectable-error-traps-table>>).
@@ -392,9 +399,9 @@ data, so the core traps on the instruction that hit the error (<<sep-uncorrectab
 |=======================================================================
 
 `mcause` alone does not identify these as memory failures -- a bad pointer and a
-failing SRAM both raise a load access fault. `MSCAUSE` (`0x7FF`) is what
+failing SRAM both raise a load access fault. `mscause` (`0x7FF`) is what
 separates them: on an access fault, `mscause` = `1` means uncorrectable ECC.
-A handler that does not read `MSCAUSE` cannot distinguish a software bug from
+A handler that does not read `mscause` cannot distinguish a software bug from
 failing hardware.
 
 Firmware is expected to treat these as fatal for the affected context. The
@@ -406,7 +413,13 @@ An uncorrectable error on an externally initiated (DMA) access to either memory
 is not a CPU trap at all. It is returned as an error response on that
 transaction, and the initiator is responsible for reporting it.
 
-==== Debug bus mirror
+ifdef::backend-html5[]
+++++
+<span id="debug-bus-mirror"></span>
+++++
+endif::backend-html5[]
+[[sep-interrupts-debug-bus-mirror]]
+===== Debug bus mirror
 
 The ICCM and DCCM single- and double-bit error signals are also mirrored onto
 `ext_debug_bus_o[367:364]`, most significant first: ICCM single, ICCM double,
@@ -415,18 +428,54 @@ handshake, provided for external trace and bring-up observability. They are not
 a delivery path, so software must not rely on sampling them; use the CSRs above.
 
 
+== Software Handling
+
+Interrupt source IDs are **1-based** inside the PIC. Source 0 is permanently
+tied to zero inside the core. Firmware programs source `N` through the
+per-source arrays, each indexed at an offset of `N * 4` from its region base:
+`meipl` at PIC base `+0x0000`, `meie` at `+0x2000`, `meigwctrl` at `+0x4000`
+and `meigwclr` at `+0x5000`. Pending status is the exception -- `meip` at
+`+0x1000` is a bitmap rather than a per-source array, so source `N` is bit
+`N % 32` of `meip[N / 32]`.
+
+Each per-source array carries an entry 0, so that the array index is the source
+ID and no off-by-one applies: `meipl[7]` is source 7. That entry is reserved and
+has no hardware behind it -- the PIC decodes the address but ties the register
+off, so `+0x0000`, `+0x2000`, `+0x4000` and `+0x5000` read as zero and discard
+writes. It appears in the RDL, the generated headers and the UVM RAL only to
+preserve the indexing; firmware must never program it.
+
+NOTE: Register tests that walk the whole PIC map must skip index 0 of `meipl`,
+`meie`, `meigwctrl` and `meigwclr`. The register model declares those entries
+read-write like every other element, but the hardware treats them as reserved,
+so a read-write check on them fails.
+
+ifdef::backend-html5[]
+++++
+<span id="register-reference"></span>
+++++
+endif::backend-html5[]
 [[sep-pic-registers]]
-== Register Interfaces
+== Memory Map and Register Reference
+
+=== Memory Map
 
 The EL2 PIC register block (`meipl`, `meie`, `meigwctrl`, `meigwclr`, and
-related registers) is documented with the full SEP address map in
-ifdef::backend-html5[]
-xref:sep:memory_map.adoc#sep-detailed-register-map[Memory Map — Detailed Register Map].
-endif::backend-html5[]
-ifdef::backend-pdf[]
-<<sep-detailed-register-map>>.
-endif::backend-pdf[]
+related registers) is documented in the register reference below.
 
 The per-source arrays in that table are listed from index 0. Index 0 is the
 reserved entry described in <<sep-interrupts,Interrupts>>: it exists so the array index
 equals the interrupt source ID, and the first programmable source is index 1.
+
+
+=== Detailed Register Map
+
+ifdef::backend-html5[]
+++++
+include::partial$sep/regs/gen/html/blocks/el2_pic.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/el2_pic.adoc[leveloffset=+2]
+endif::backend-pdf[]

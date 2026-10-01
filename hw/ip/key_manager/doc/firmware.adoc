@@ -4,39 +4,17 @@
 [[key-manager-km-firmware]]
 = Firmware
 
-This section is the developer reference for the KM ROM firmware that runs
-on the PicoRV32 and services SEP requests. It documents the SEP-facing
-command/response API in detail, along with the firmware-internal
-subsystems that implement it. Use this document when writing SEP firmware
-that drives the KM mailbox.
+[[key-manager-rom-code]]
+The KM ROM runs on PicoRV32. It initializes the subsystem, services SEP
+mailbox requests, manages KPV keys and crypto-engine sideloads, handles faults,
+and can hand control to mutable firmware in SRAM.
 
-The KM firmware is responsible for bringing the subsystem to a secure
-operational state, servicing SEP mailbox commands, managing key material
-in the KPV, sideloading keys into approved crypto engines, and handling
-recoverable and unrecoverable fault conditions. In this revision, the ROM
-firmware includes the following major functional areas:
-
-* Boot and secure initialization
-* Mailbox command/response protocol
-* Message receive/transmit buffering
-* Command parsing and validation
-* Interrupt and fault handling
-* DRBG and firmware PRNG support
-* KPV management
-* Crypto-engine sideload drivers for HMAC, KMAC, AES, OTBN, and Adams Bridge
-* CRC support functions
-* SP 800-108r1 counter-mode key derivation
-* Key registry and key lifecycle management
-* Mutable firmware handover (load, lock, scramble, jump)
-* Main event loop and runtime state management
-
-The firmware supports the SEP-facing command set for version and status
-queries, random key generation, key loading, key transfer, key
-revocation, engine shredding, recoverable-fault acknowledgement, and
-mutable firmware handover. In this ROM revision, `CMD_SRAM_VER` returns
-failure unless mutable (SRAM-loaded) firmware is present and executing;
-because the ROM hands control to the mutable firmware before returning,
-`CMD_SRAM_VER` is only meaningful when sent to running mutable firmware.
+For SEP callers, start with the <<km-firmware-command-message-reference,command reference>>,
+<<km-firmware-response-message-reference,response reference>> and
+<<km-firmware-common-sequences,common sequences>>.
+The remaining sections describe the ROM implementation: initialization,
+message processing, interrupts, drivers, libraries and key management.
+After SRAM handover, the mutable image owns the mailbox service.
 
 [[km-firmware-global-parameters]]
 == Firmware Global Parameters
@@ -49,10 +27,11 @@ total passes.
 == Command Message Reference
 
 The SEP communicates with the KM through a framed command/response
-protocol carried over the mailbox FIFOs. Every direct SEP command elicits
-a `RESP_CMD` response from the KM. The KM may also emit unsolicited
-responses, including `RESP_KM_READY`, `RESP_RECOVERABLE_FAULT`, and
-`RESP_UNRECOVERABLE_FAULT`.
+protocol carried over the mailbox FIFOs. The ROM replies to complete command
+frames with `RESP_CMD`, including validation failures. An overflowing partial
+frame instead takes the recovery path; a fatal fault can prevent a normal
+reply. Successful handover sends one confirmation before leaving the ROM
+service. The KM also emits unsolicited readiness, shared-key and fault messages.
 
 All reserved fields read as 0 and must be written as 0. The maximum
 payload length for a single message is 255 32-bit words (1020 bytes). The
@@ -91,7 +70,13 @@ image::km_packet_command_message.svg["Word 0: bits 31 to 24: HEADER_CRC8; bits 2
 | `PAYLOAD_CRC32` | A CRC-32C (Castagnoli) computed from the command payload in little endian order from `PAYLOAD_WORD[0]` to `PAYLOAD_WORD[n-1]`. `PAYLOAD_LEN` equal to 0 implies no `PAYLOAD_CRC32` is present.
 |===
 
-The rest of this section describes all valid commands and their payloads.
+The mailbox separator marks the final word: the header for a zero-payload
+message, otherwise the payload CRC. Command and response counters are separate
+8-bit counters, initially zero and wrapping after 255. Once a header passes
+CRC and sequence validation, the expected command sequence advances even if a
+later check rejects the command. `header_crc` and `cmd_noseq` do not advance it.
+Mailbox recovery flushes reset both counters; see <<km-seq-error-recovery>>.
+The full validation order is in <<km-firmware-incoming-message-handler>>.
 
 <<key-manager-command-summary-table>> lists the command IDs and their functions.
 
@@ -170,12 +155,9 @@ image::km_packet_rom_version.svg["Word 0: bits 31 to 24: RESERVED; bits 23 to 16
 
 Requests KM SRAM firmware version information (if any).
 
-Mutable SRAM firmware may now be loaded via `CMD_SRAM_LOAD_EXEC`.  If the
-KM has jumped to mutable firmware (via either `CMD_SRAM_LOAD_EXEC` or
-`CMD_SRAM_EXEC`), the mutable firmware is responsible for handling this
-command and returning its own version information.  While still in ROM, the
-ROM itself handles this command and returns _failure_ with no return
-argument, indicating no SRAM firmware is currently active.
+The ROM always returns _failure_ with no return argument, including when an
+image is stored in SRAM but is not executing. Once the KM has handed control
+to SRAM, that image is responsible for implementing the version query.
 
 *Payload*
 
@@ -183,12 +165,8 @@ This command has no payload.
 
 *Response*
 
-If no SRAM firmware is loaded, this command has a `RESP_CMD` response with
-a return code of _failure_, and no return argument.
-
-If SRAM firmware is loaded and executing, this command has a `RESP_CMD`
-response with a return code of _success_, and a return argument
-containing the version of the SRAM firmware.
+The mutable-firmware version response uses _success_ with the packed version
+argument below. ROM cannot provide that response on the image's behalf.
 
 <<key-manager-sram-version-response-figure>> shows the SRAM firmware-version fields
 returned on success.
@@ -274,57 +252,22 @@ this epoch (including a prior `CMD_EXEC_ROM`).
 
 *Description*
 
-Instructs the KM ROM to accept a mutable firmware image via the mailbox
-FIFO, load it into SRAM starting at address `0x8000`, verify the image
-integrity with CRC-32C, and hand control to the loaded firmware.
+Loads an image at SRAM address `0x8000`, verifies its CRC-32C and transfers
+control to it. The SEP must wait for the direct `RESP_CMD` success confirmation
+before streaming exactly `FW_WORDS` raw image words and a CRC-32C trailer,
+with the separator on the trailer. This image frame bypasses normal message
+buffering and the 255-word command-payload limit.
 
-After sending the command, the SEP waits for the KM to confirm that it is
-ready to receive the image.  The KM sends a `RESP_CMD` success response
-("confirmation"), then immediately disables inbound mailbox buffering and
-waits for the image frame.  The SEP must then send exactly one mailbox
-frame containing the `FW_WORDS` firmware words followed by a CRC-32C of
-the entire image as the final word.  The frame separator must be set on the
-CRC word.
+The command returns _failure_ if `CMD_EXEC_ROM` disabled handover. Reserved
+size bits, zero `FW_WORDS`, or an image extending above `+__km_fw_load_limit+`
+return _invalid_arg_ with argument `0`, before requesting an image. The
+region-aligned load ceiling protects the worst-case ROM stack, including
+warm-reset restarts (<<km-rom-stack-budget>>).
 
-If the CRC check fails, the KM triggers an unrecoverable fault
-(`fw_crc` fault code) and halts.  Recovery requires a warm or cold reset.
-
-If the CRC check passes, the KM:
-
-. Shreds every crypto engine sideload key-share register and zeroizes the Adams
-  Bridge ML-KEM shared key. These banks lie outside SRAM, so the scramble below
-  cannot reach them.
-. Locks OTP secret fields and the `rom_persist` SRAM region, and closes the KPV
-  to mutable firmware by read-locking (`lock_use`) every registered slot and
-  shredding every free one.
-. Write-locks the SRAM regions containing the firmware image.
-. Disables all IRQ sources, masks all CPU IRQs, and flushes both mailbox FIFOs
-  to erase residual inbound payload.  ROM does not program `IRQ_ENTRY_ADDR`;
-  the loaded firmware sets its own IRQ entry vector before re-enabling
-  interrupts (`IRQ_ENTRY_LOCK` is left unset so it may do so).
-. Scrambles the entire SRAM with a pseudo-random pattern (locked regions are
-  silently skipped by hardware).
-. Clears all CPU general-purpose registers.
-. Jumps to `0x8000` (SRAM base).
-
-The ROM never returns to the main loop.  The mutable firmware is responsible
-for sending its own ready message to the SEP.
-
-*Notes*
-
-* If the handover-disabled flag is set (from a prior `CMD_EXEC_ROM`),
-  the command returns _failure_ immediately and the image is not requested.
-* `FW_WORDS` must be non-zero and the loaded image must fit entirely below
-  the static load ceiling `__km_fw_load_limit` (the worst-case ROM stack
-  bound, region-aligned to a 1 KB SRAM write-lock boundary), otherwise
-  _invalid_arg_ is returned and no image is requested.  The ceiling is a
-  build-time constant, so a warm-reset
-  `CMD_SRAM_EXEC` restart whose ROM stack runs deeper than at load time can
-  never descend into the loaded image.
-* The two execution paths (`CMD_SRAM_LOAD_EXEC` and `CMD_SRAM_EXEC`) both
-  call `rom_handover_finish()`.  The stack-less assembly handoff
-  (`rom_handover_jump.S`) runs after all C-level operations complete.
-  This ordering is required because the assembly wipes the C stack.
+Confirmation accepts the transfer; it does not certify the image. A CRC
+mismatch raises the fatal `fw_crc` fault. On success, ROM performs the
+<<km-seq-sram-fw-handover>> procedure and never returns to the dispatcher.
+The mutable image must send its own ready message.
 
 *Payload*
 
@@ -383,8 +326,8 @@ command in an earlier boot epoch (i.e., `sram_fw_size > 0` in the
 `rom_persist` region).
 
 The KM sends a `RESP_CMD` success response directly, then executes the same
-handover finish sequence as `CMD_SRAM_LOAD_EXEC` (lock sensitive data, lock
-SRAM firmware regions, scramble, clear GPRs, jump).  The mutable firmware
+handover finish sequence as `CMD_SRAM_LOAD_EXEC`
+(<<km-seq-sram-fw-handover>>).  The mutable firmware
 is responsible for sending its own ready message to the SEP.
 
 *Payload*
@@ -397,7 +340,7 @@ If a firmware image is present (`sram_fw_size > 0`), the KM sends a
 `RESP_CMD` success response directly and then never returns.
 
 If no firmware has been loaded (`sram_fw_size == 0`), the command returns
-_invalid_arg_ via the normal dispatcher.
+_invalid_arg_ with no return argument via the normal dispatcher.
 
 If the handover-disabled flag is set, the command returns _failure_.
 
@@ -448,8 +391,11 @@ index of the invalid payload word: `0` for `REQ_SIZE`, `1` for `DEST_VALID`.
 payload word greater than `127` is rejected as _invalid_arg_ with `return_arg` =
 `0`, including one whose reserved bits `[31:7]` are non-zero.
 
-The KM will respond with _failure_ if the KPV does not have `REQ_SIZE+1`
-number of consecutive free slots available to grant.
+`DEST_VALID` must select at least one of the eight destinations and have no
+reserved bits set. The KM returns _failure_ if it cannot store the key or
+allocate a handle. A key occupies `ceil((REQ_SIZE + 1) / 16)` consecutive
+eligible slots: the encoded size counts words, not slots. Allocation and
+failure effects are described in <<km-firmware-key-management>>.
 
 If the request is granted, this command has a `RESP_CMD` response with a
 return code of _success_, and a return argument containing the parameters
@@ -469,8 +415,8 @@ image::km_packet_key_result.svg["Word 0: bits 31 to 24: RESERVED; bits 23 to 16:
 
 *Description*
 
-This command will revoke an existing key from the KPV, given a valid key
-handle.
+Erases a vault key and invalidates its handle. Engine copies require a
+separate purge (<<km-seq-key-revocation>>).
 
 *Payload*
 
@@ -552,6 +498,8 @@ If the request cannot be satisfied for any other reason, this command has
 a `RESP_CMD` response with a return code of _failure_, and no return
 argument. If _any_ requested crypto engines are disallowed, the request
 will result in _failure_ and no requested key transfers will take place.
+A driver failure after transfer begins does not undo earlier engine writes
+(<<km-firmware-key-management>>).
 
 If the request is granted, this command has a `RESP_CMD` response with a
 return code of _success_, and a return argument containing the key handle
@@ -589,7 +537,7 @@ transfer response.
 
 This command will purge the key data registers from one or multiple
 crypto engines. These registers will be scrambled with random data. Any
-number of engines may be selected.
+nonzero subset of the eight engines may be selected.
 
 *Payload*
 
@@ -727,27 +675,20 @@ error returned at each failure.
 | 5 | `DEST_VALID == 0` (no destination selected) | _invalid_arg_ | `1`
 |===
 
-*Capacity failure*
+*Capacity and success*
 
-After argument validation, the KM checks that the KPV has `KEY_SIZE+1`
-eligible consecutive free slots and that at least one key handle is free
-before mutating any KPV state. If either resource is exhausted, the
-command returns `RESP_CMD` _failure_ with no return argument. A
-_failure_ response is also returned, before the handler runs, whenever
-`RECOVERABLE_ERR` is set in the KMCSR. In every _failure_ case the KPV
-state and key registry are left exactly as they were before the command
-arrived; the load is atomic.
+A key requires `ceil((KEY_SIZE + 1) / 16)` consecutive eligible slots and a
+previously unused handle. Resource exhaustion returns _failure_ with no
+argument before modifying the vault. The recovery gate also rejects this
+command before its handler runs (<<km-seq-error-recovery>>).
 
-*Success*
+The shared <<km-firmware-key-management,load path>> registers the handle and
+CRC, shreds and writes the selected slots, then write-locks them. A subsequent
+slot-write failure destroys the handle registration, but does not roll back
+vault writes already performed. Do not treat every _failure_ as an atomic no-op.
 
-If the request is granted, the KM shreds the chosen slots, writes the
-`KEY_DATA`, write-locks the slots, stores the key CRC-32C, and allocates a
-new non-zero handle. The command responds with `RESP_CMD` _success_ and a
-return argument containing the parameters of the loaded key: its handle,
-its size, and its valid destinations. The granted size always equals the
-requested size, and the returned handle is usable by every other
-key-management command with no distinction from a `CMD_KEY_GENERATE`
-handle.
+On _success_, the return argument contains the new handle, requested size and
+allowed destinations. The handle works like a generated-key handle.
 
 <<key-load-success-response-figure>> shows the loaded key handle, size, and destination
 policy returned on success.
@@ -811,7 +752,9 @@ if `DEST_VALID` has any reserved bit set (`[31:8]`) or is zero.
 
 If no shared key is currently available (the interface `KEY_VALID` is clear),
 the command returns `RESP_CMD` _failure_ with no return argument. A _failure_
-response is also returned if the KPV cannot allocate a slot for the key.
+response is also returned if storage or handle allocation fails. Capture
+consumes and zeroizes the source key *before* allocation; an allocation
+failure therefore cannot be retried against the same pending source key.
 
 If the request is granted, the command returns `RESP_CMD` _success_ with a
 return argument containing the handle of the newly stored key.
@@ -923,7 +866,7 @@ generate them.
 [cols="^10%,<40%,<50%",options="header"]
 |===
 | ID | Response | Trigger
-| `0x00` | `RESP_CMD` | Reply to every direct SEP command.
+| `0x00` | `RESP_CMD` | Command result or pre-handover confirmation.
 | `0x55` | `RESP_KM_READY` | Unsolicited; KM finished init and entered main loop.
 | `0x56` | `RESP_ABR_SHARED_KEY_READY` | Unsolicited; Adams Bridge ML-KEM shared key is available to capture.
 | `0xFE` | `RESP_RECOVERABLE_FAULT` | Unsolicited; KM hit a recoverable fault.
@@ -935,13 +878,16 @@ generate them.
 
 *Description*
 
-A general command response message. The key manager responds to all
-direct commands from the SEP with this response.
+The result of a command frame, or the confirmation that starts SRAM handover.
+Its payload echoes the source command; its response-header sequence number
+belongs to the independent response stream.
 
 *Payload*
 
 The sequence number from the source command, the source command ID, a
-signed 8-bit return code, and an optional argument.
+signed 8-bit return code, and an optional argument. The return code occupies
+bits `[7:0]` of its word; bits `[31:8]` are zero, including for negative codes.
+The fault-message payloads instead sign-extend their codes to 32 bits.
 
 <<key-manager-command-response-payload-figure>> shows the source command, return code,
 and optional return argument.
@@ -965,17 +911,12 @@ return arguments.
 | `-4` | `invalid_cmd` | `COMMAND_ID` did not map to a valid command. No action was taken. | None.
 | `-5` | `invalid_len` | Either the `PAYLOAD_LEN` of the source command did not correspond to the size of the mailbox message frame, or the frame was self-consistent but `PAYLOAD_LEN` was not the length the named command requires. No action was taken. | The actual length of the message payload that was received.
 | `-6` | `payload_crc` | The payload CRC-32C of the source command was invalid. No action was taken. | The CRC-32C the KM computed over the received payload, i.e. the value the SEP should have sent.
-| `-7` | `invalid_arg` | One or more payload arguments of the source command were invalid. No action was taken. | The index for the payload word of the received command with the invalid argument. If the index points to a location outside of the received payload arguments, it indicates an argument was missing.
+| `-7` | `invalid_arg` | One or more payload arguments of the source command were invalid. No action was taken. | Usually the invalid payload-word index. `CMD_OTP_READ_LOCK_COLD` returns the raw invalid mask; `CMD_SRAM_EXEC` with no stored image returns no argument. See each command.
 |===
 
-Both CRC return arguments carry the KM's own computed value rather than the one
-received. Echoing the received value back would tell the SEP nothing it did not
-already send; the computed value is what lets it see which side disagrees.
-
-While `RECOVERABLE_ERR` is asserted, only `CMD_HW_VER`, `CMD_ROM_VER`,
-`CMD_SRAM_VER`, `CMD_STAT` and `CMD_RECOV_ACK` are accepted. Any other command
-is answered `failure` with no return argument, and its handler is never invoked
-(<<km-seq-error-recovery>>).
+Both CRC return arguments carry the KM's computed value. Recovery gating and
+the ordering of fault and command responses are defined in
+<<km-seq-error-recovery>>.
 
 [[km-resp-km-ready]]
 === 0x55 - RESP_KM_READY
@@ -1048,7 +989,9 @@ the SEP host.
 *Description*
 
 An unsolicited response message that indicates the KM has encountered an
-unrecoverable fault. Core execution has halted.
+unrecoverable fault. The report precedes SRAM shredding and the final halt;
+receiving it alone is not evidence that those later steps have completed.
+See <<km-seq-error-recovery>> for the firmware path and its limits.
 
 *Payload*
 
@@ -1071,13 +1014,13 @@ to the SEP host.
 [cols="^12%,<28%,<60%",options="header"]
 |===
 | Code | Name | Description
-| `-1` | `wipe_state` | The wipe state signal was asserted and the KM has purged all sensitive data.
+| `-1` | `wipe_state` | The wipe state signal was asserted; the ROM has entered its fatal-fault path.
 | `-2` | `rom_parity` | The ROM encountered a parity error.
 | `-3` | `sram_parity` | The SRAM encountered a parity error.
 | `-4` | `rom_write` | The ROM encountered a write error.
 | `-5` | `sram_write_lock` | The SRAM encountered a write error to a write-locked region.
 | `-6` | `axi_decerr` | The KM system fabric encountered an AXI DECERR.
-| `-7` | `axi_slverr` | The KM system fabric encountered an unhandled AXI SLVERR with no DRBG error alongside it. A DRBG read timeout also raises SLVERR, and is reported as `drbg_err` instead.
+| `-7` | `axi_slverr` | The KM system fabric encountered an AXI SLVERR without a higher-priority enabled fault taking precedence. A DRBG read timeout also raises SLVERR, and is reported as `drbg_err` instead.
 | `-8` | `drbg_err` | There was an error reading from the DRBG. A DRBG read timeout answers the CPU with SLVERR in the same cycle as it flags the DRBG error, so both status bits are set; firmware reports this condition as `drbg_err` rather than the generic `axi_slverr`.
 | `-9` | `illegal_insn` | An illegal instruction was encountered.
 | `-10` | `bus_error` | The CPU core encountered an internal bus error or misaligned access.
@@ -1085,10 +1028,10 @@ to the SEP host.
 | `-12` | `spurious_irq` | An unrecognised IRQ source was asserted.
 | `-13` | `otp_sigint` | The OTP controller reported a dual-rail integrity violation.
 | `-14` | `fw_crc` | The loaded mutable firmware image failed its CRC-32C integrity check. The KM halts; recovery requires a warm or cold reset.
-| `-15` | `fw_stack_ovf` | The firmware load destination reached the stack guard region boundary, indicating the SEP sent more words than declared in `FW_WORDS`. The KM halts; recovery requires a warm or cold reset.
+| `-15` | `fw_stack_ovf` | The per-word firmware load guard detected a destination at or above the static load ceiling. The KM halts; recovery requires a warm or cold reset.
 | `-16` | `shred_range` | A shred operation was requested with a word count that exceeded the shred-order buffer. The KM halts; recovery requires a warm or cold reset.
 | `-17` | `exec` | An instruction fetch was attempted from a non-whitelisted (non-executable) memory region other than the ROM (execute-permission whitelist violation). The KM halts; recovery requires a warm or cold reset.
-| `-18` | `rom_access` | A ROM instruction fetch or data read was attempted after the ROM lockout engaged (<<km-rom-lockout>>). Only reportable as a fault code while the ROM is still live, because the ISR that decodes it is itself inside the locked-out ROM; a real breach after handover halts the KM through the illegal-instruction trap instead. The KM halts; recovery requires a warm or cold reset.
+| `-18` | `rom_access` | A ROM instruction fetch or data read was attempted after the ROM lockout engaged (<<km-rom-lockout,ROM lockout>>). The ROM handler can report this code only while ROM remains executable. After lockout, blocked reads return zero and set sticky status; a blocked fetch can lead to an illegal-instruction trap without a mailbox report. Warm or cold reset restores ROM access.
 |===
 
 [[km-firmware-common-sequences]]
@@ -1110,20 +1053,11 @@ and status via the `CMD_HW_VER`, `CMD_ROM_VER`, and `CMD_STAT`.
 [[km-seq-sep-key-loading]]
 === SEP Key Loading
 
-The KM supports loading host-provided key material into the KPV directly
-over the mailbox using the `CMD_KEY_LOAD` command. The SEP never writes
-KPV slots directly; the KM firmware performs all slot allocation and key
-writes on the SEP's behalf. The typical flow is as follows:
-
-. The SEP issues a `CMD_KEY_LOAD` command containing the key size, the
-valid crypto engine destinations, and the key material itself, then waits
-for a response from the KM.
-. The KM allocates a set of free KPV slots, writes the key material into
-them, write-locks the slots, and registers a key handle.
-. The KM responds with _success_ and a return argument containing the key
-handle, size, and valid destinations.
-. The SEP may now use the provided key handle for any further key
-management operations.
+Send <<km-cmd-key-load,CMD_KEY_LOAD>> with the encoded word count,
+`DEST_VALID` and key data. The SEP does not write KPV slots directly. On
+success, retain the returned handle, size and destination policy for later
+operations. Allocation, storage and failure behavior are defined in the command
+reference and <<km-firmware-key-management>>.
 
 [[km-seq-key-transfer-purge]]
 === Key Transfer and Sideload Purge
@@ -1132,9 +1066,8 @@ The SEP requests transfer of a key from the KPV to any crypto engine
 sideload key register via the `CMD_KEY_TRANSFER` command. The SEP
 provides a handle for the key and a bitmask indicating the destination
 sideload key registers. The KM will respond with _success_ when the
-operation is complete. If the key handle is invalid or any requested
-destination sideload key registers are disallowed, the KM will respond
-with _failure_.
+operation is complete. Use the command reference for the distinction between malformed arguments
+(`invalid_arg`) and an unavailable handle or disallowed destination (`failure`).
 
 When the SEP is done with the crypto engine, it issues the
 `CMD_ENGINE_SHRED` command to purge key material in the key sideload
@@ -1144,110 +1077,72 @@ complete.
 [[km-seq-abr-shared-key-capture]]
 === Adams Bridge Shared-Key Capture
 
-The Adams Bridge ML-KEM shared-key interface flows in the opposite direction
-from the seed and engine sideloads: Adams Bridge computes a shared key and
-delivers it _into_ the KM. The capture flow is as follows:
-
-. Adams Bridge loads the 256-bit shared key into the KM shared-key interface
-and the hardware sets the sticky `IRQ_STATUS.key_valid` bit, which (when
-`IRQ_ENABLE` is set) raises the shared-key interrupt on PicoRV32 bit 5.
-. The KM ISR acknowledges the interrupt by clearing the sticky `IRQ_STATUS`
-bit (write-1-to-clear) and flags the main loop. The ISR does not consume the
-key; `KEY_VALID` remains set.
-. From the main loop, the KM sends the SEP an unsolicited
-`RESP_ABR_SHARED_KEY_READY` notification.
-. The SEP issues `CMD_ABR_SK_TRANSFER`, supplying the `DEST_VALID` for the
-captured key.
-. The KM reads the shared key, clears the interface `KEY_VALID` (zeroizing the
-source registers), writes the key into a freshly allocated KPV slot,
-write-locks the slot, and responds with _success_ and the new key handle.
-. The SEP may then use the handle with any other key-management command,
-including transferring the captured key to a permitted engine.
+Adams Bridge delivers a shared key into KM; the <<km-irq-abr-sharedkey,ISR>>
+acknowledges the event without consuming the key. The main loop sends
+`RESP_ABR_SHARED_KEY_READY`. The SEP then sends
+<<km-cmd-abr-sk-transfer,CMD_ABR_SK_TRANSFER>> with a destination policy and
+retains the returned handle on success. Capture consumes the source before
+vault allocation, so a storage failure requires a new shared-key delivery.
 
 [[km-seq-key-revocation]]
 === Key Revocation
 
-The SEP requests revocation of a key in the KPV via the `CMD_KEY_REVOKE`
-command. The KM erases every slot the key occupies and then removes the key from
-the key registry. It is now no longer accessible or transferable by either the
-SEP or KM.
-
-The erase overwrites each slot's data through the KPV scrambler and returns the
-slots to the free pool (<<km-firmware-key-management>>). A slot sealed before
-revocation is retired instead of freed, and is neither readable nor reusable
-until warm reset.
+Use <<km-cmd-key-revoke,CMD_KEY_REVOKE>> to erase the key's vault slots and
+invalidate its handle. Unsealed slots become reusable; sealed slots retire
+until reset (<<km-firmware-kpv-driver>>). Revocation does not purge copies
+already sideloaded into engines. Use `CMD_ENGINE_SHRED` for those copies.
 
 [[km-seq-error-recovery]]
 === Error Recovery
 
-The KM can encounter a variety of recoverable and unrecoverable errors.
+*Recoverable faults*
 
-A recoverable error signals a condition that halts critical KM services
-until acknowledged. It has the following flow:
+`RECOVERABLE_ERR` gates key operations until the SEP acknowledges the fault.
+While it is set, only `CMD_HW_VER`, `CMD_ROM_VER`, `CMD_SRAM_VER`, `CMD_STAT`
+and `CMD_RECOV_ACK` reach their handlers; other valid commands return _failure_
+with no argument. Normal frame validation still runs first.
 
-. The KM asserts the recoverable error signal.
-. The KM flushes the mailbox _only_ for any recoverable error involving
-the mailbox or message buffers.
-. The KM sends the `RESP_RECOVERABLE_FAULT` response message to the SEP
-with a code indicating the cause of the fault.
-. The KM will _not_ process any command *except*:
-.. `CMD_HW_VER`
-.. `CMD_ROM_VER`
-.. `CMD_SRAM_VER`
-.. `CMD_STAT`
-.. `CMD_RECOV_ACK`
-. The SEP takes any action it deems necessary before it clears the fault.
-. The SEP sends a `CMD_RECOV_ACK` command message to clear the fault.
-. The KM deasserts the recoverable error signal.
-. The KM resumes normal operation, handling all valid commands.
+For `key_slot_crc`, the fault response precedes the triggering command's
+`RESP_CMD` failure. The SEP must drain both before sending `CMD_RECOV_ACK`,
+so that the outstanding command result is not mistaken for the acknowledgement.
+The key fault does not flush the mailbox or reset sequence counters.
 
-When a recoverable fault is triggered by a command handler (for example, a
-`key_slot_crc` fault raised while processing a command), the KM sends
-*both* the `RESP_RECOVERABLE_FAULT` and that command's own `RESP_CMD`
-error response (`failure`). The paired `RESP_CMD` follows immediately
-after the fault response. The SEP must drain both messages before issuing
-`CMD_RECOV_ACK`; otherwise a subsequent response read consumes the stale
-`RESP_CMD` instead of the acknowledgement's reply. Faults raised from
-within the mailbox interrupt handler (`mbox_overflow`, `mbox_underflow`,
-`flushed_by_sep`) are not paired with a `RESP_CMD`, because the transmit
-buffer has been flushed and the fault message is written directly to the
-outgoing mailbox FIFO.
+Mailbox overflow, underflow and an overflowing partial RX frame flush the
+hardware FIFOs and software buffers, then reset both sequence counters. A
+SEP-initiated flush resets the software buffers and counters without flushing
+the FIFOs again. These transport faults send a fault response without a paired
+command reply; the first response after the reset has sequence zero. Resume
+commands at sequence zero, take the necessary recovery action, then send
+`CMD_RECOV_ACK`. Its handler clears `RECOVERABLE_ERR` and returns success.
 
-An unrecoverable error signals a condition that puts the KM into a
-permanent halt state. It has the following flow:
+*Unrecoverable faults*
 
-. The KM shreds all crypto engine key sideload registers and zeroizes the
-Adams Bridge ML-KEM shared key.
-. The KM flushes the mailbox.
-. The KM sends the `RESP_UNRECOVERABLE_FAULT` response message to the SEP
-with a code indicating the cause of the fault.
-. The KM shreds the entire SRAM using one pass of a Weyl sequence
-followed by two passes of a xoshiro128++ PRNG.
-. The KM CPU permanently halts, which sets the unrecoverable error signal
-to interrupt the SEP.
-. The SEP must hard-reset the KM to bring it back through the boot
-sequence.
+When executable ROM code enters the normal fatal handler, it performs:
 
-The two wiping steps — the sideload-register shred and the whole-SRAM shred —
-are together gated on a single build-time predicate, which is enabled by
-default. The fault report and the halt are not gated, so a fault is always
-announced and always fatal whether or not the wipe runs. The predicate is a weak
-function, so a build can override it; DV tests do exactly that, because a test
-that needs to observe post-fault state cannot have its SRAM erased underneath
-it. A production build leaves it enabled.
+. Shred all eight engine sideload banks and zeroize the Adams Bridge shared key.
+. Flush the mailbox FIFOs and send `RESP_UNRECOVERABLE_FAULT` directly to the
+outbound FIFO, bypassing the TX buffer.
+. Shred SRAM in assembly: one Weyl-sequence pass and two xoshiro128++ passes.
+The assembly loads PRNG state before overwriting memory, then performs no SRAM
+reads or C stack accesses during or after the overwrite loops.
+. Trap the CPU, asserting the unrecoverable-fault signal to the SEP. A warm or
+cold reset is required to restart ROM.
 
-Note that the fault report is sent *after* the sideload shred but *before* the
-SRAM shred. Sending it first would leave key material live in the engine
-registers for the duration of the mailbox write, while deferring it until after
-the SRAM shred would risk the KM halting with nothing reported.
+The sideload and SRAM wipes share the weak `rom_unrec_wipe_enabled()` predicate,
+enabled by default; DV builds can override it. The report and trap are outside
+that gate. Fault-path shredding never reseeds from the DRBG, so it does not
+wait for an entropy source that may itself have failed.
 
-`shred_range` is the one fault code that does not take this path. It is raised
-by the shred routine itself on an out-of-range word count, so the KM reports the
-fault and halts directly, without the sideload shred, the mailbox flush or the
-SRAM shred; taking the flow above would re-enter the routine that just failed.
-The CPU halt still asserts the unrecoverable-fault signal to the SEP, so only
-the wiping is skipped. The condition is reachable only through a firmware bug or
-memory corruption, since every caller passes a compile-time-bounded count.
+The report is sent after sideload shredding but before SRAM shredding. It is
+not a completion acknowledgement for the wipe. Nor does every hardware halt
+execute this ROM path: a trap or blocked ROM fetch can prevent firmware from
+reporting a fault (<<km-rom-lockout,ROM lockout>>).
+
+`shred_range` has a separate fail-stop path. An out-of-range shred count reports
+the fault directly and traps, without the sideload wipe, mailbox flush or SRAM
+wipe; calling the normal handler would re-enter the failing shred routine.
+Current callers use compile-time-bounded counts, so this guard indicates a
+firmware defect or corrupted state.
 
 [[km-seq-sram-fw-handover]]
 === SRAM Firmware Handover
@@ -1259,9 +1154,9 @@ firmware via the `CMD_SRAM_LOAD_EXEC` (load + run) or `CMD_SRAM_EXEC`
 The high-level steps for `CMD_SRAM_LOAD_EXEC` are:
 
 . *Validate.*  The ROM checks `FW_WORDS > 0` and that the firmware image
-  fits below the static load ceiling `__km_fw_load_limit` — a build-time
-  constant computed by the linker as `STACK - __rom_max_stack`, rounded down
-  to a 1 KB SRAM write-lock region boundary, where `__rom_max_stack` is
+  fits below the static load ceiling `+__km_fw_load_limit+` — a build-time
+  constant computed by the linker as `+STACK - __rom_max_stack+`, rounded down
+  to a 1 KB SRAM write-lock region boundary, where `+__rom_max_stack+` is
   the worst-case ROM stack depth validated against the production ELF (see
   <<km-rom-stack-budget>>).  If either check fails, the command returns
   _invalid_arg_ and no image is requested.
@@ -1274,7 +1169,7 @@ The high-level steps for `CMD_SRAM_LOAD_EXEC` are:
 . *Stream.*  The ROM polls the inbound FIFO directly (bypassing the normal
   message buffer), storing each word into SRAM starting at `0x8000` and
   accumulating a running CRC-32C.  A per-word guard (defense-in-depth on top
-  of the static `__km_fw_load_limit` validation) ensures the destination
+  of the static `+__km_fw_load_limit+` validation) ensures the destination
   address never reaches the load ceiling.
 
 . *Verify.*  The trailing CRC-32C word (sent by the SEP as the last word
@@ -1299,8 +1194,8 @@ The high-level steps for `CMD_SRAM_LOAD_EXEC` are:
   shredded through the hardware erase path.  Note that this read-lock is what
   denies mutable firmware the surviving key material; it is not the per-slot
   `seal` bit (<<km-firmware-kpv-driver>>), which no ROM flow sets.  The erase
-  path is not gated by the slot locks, so even a write-locked free slot — a
-  revoked key, for instance — is wiped and made unreadable.
+  path is not gated by slot locks, so even an unregistered write-locked slot
+  has its old contents destroyed.
 
 . *Write-lock the image.*  The SRAM write-lock mask is set to cover all 1 KB
   regions that contain the loaded image.  The load-time bounds check guarantees
@@ -1343,7 +1238,7 @@ The high-level steps for `CMD_SRAM_LOAD_EXEC` are:
   performs a triple write to `KMCSR.SRAM_EXEC_MODE.enable` (write-1-only,
   warm-reset domain).  This adds the write-locked SRAM regions to the
   execute-permission whitelist and *arms* the ROM lockout, which engages on the
-  first committed fetch from write-locked SRAM (<<km-rom-lockout>>).  The ROM
+  first committed fetch from write-locked SRAM (<<km-rom-lockout,ROM lockout>>).  The ROM
   therefore stays executable across this store, which is what keeps the
   stack-less handover assembly running after it.  The triple write hardens
   against voltage-glitch attacks that might cause a single store to be skipped.
@@ -1355,49 +1250,38 @@ The high-level steps for `CMD_SRAM_LOAD_EXEC` are:
   never returns.  The mutable firmware is responsible for sending its own
   ready message to the SEP.
 
-For `CMD_SRAM_EXEC`, the handover begins at step 6 (no image load),
-provided `sram_fw_size > 0`.
+For `CMD_SRAM_EXEC`, the ROM sends the same direct success confirmation, then
+begins at step 6 without loading or rechecking image CRC, provided
+`sram_fw_size > 0` and handover is enabled.
 
 [[km-rom-lockout]]
 *ROM lockout*
 
-Handover is an exchange rather than an addition: mutable firmware gains
-execute permission on its own SRAM regions and loses all access to the ROM it
-was handed control from.
+`SRAM_EXEC_MODE.enable` arms lockout; the first committed fetch from a
+write-locked SRAM region engages it. This lets the final ROM assembly execute
+between the arming store and the jump. After engagement, ROM reads and fetches
+return zero and set sticky `rom_access_violation` status. ROM writes still
+reach the ROM interface and can raise `rom_write_err`.
 
-Arming and engaging are separate events. `SRAM_EXEC_MODE.enable` only arms the
-exchange; the lockout engages on the first committed instruction fetch from a
-write-locked SRAM address, which is when the mutable image actually starts
-running. Splitting the two is what lets the arming store itself, and the rest
-of the ROM handover assembly that follows it, keep executing from ROM.
+A blocked data read alone does not imply a CPU halt. A blocked fetch returns
+an illegal instruction; with the inherited IRQ masks this traps the CPU.
+The ROM ISR is itself inaccessible after lockout, so the host cannot rely on a
+`rom_access` mailbox report. Mutable firmware must install its own SRAM IRQ
+vector before enabling interrupts.
 
-Once engaged, every ROM instruction fetch and every ROM data read is refused
-and returns zeros rather than ROM content. Zeros are returned on a completion
-the CPU wrapper synthesizes, because `km_rom_interface` derives its ready from
-the ROM response and would otherwise stall the CPU forever. ROM *writes* are
-not part of the lockout; they still reach the ROM interface so that it can
-raise `rom_write_err` as before.
+The enable and lockout state cannot be cleared by software. Warm or cold reset
+restores ROM access and restarts ROM at its entry point.
 
-A refused access sets `IRQ_STATUS.rom_access_violation`, which is reported as
-the `rom_access` fault (`-18`) and kept distinct from `exec` (`-17`) so that a
-lockout breach is distinguishable from an ordinary non-executable fetch. The
-status bit is sticky and is set in the cycle of the access, but the ISR that
-would translate it into a mailbox fault code lives in the ROM the lockout has
-just revoked. A real breach after handover therefore halts the KM without
-emitting `rom_access` to the host: containment comes from the illegal-instruction
-trap on the zeros a blocked fetch returns, and the sticky status bit is read out
-after the halt. The fault code is observable only while the ROM is still live,
-or through an interrupt vector the mutable image installed itself.
-
-The lockout is one-way within a boot. `SRAM_EXEC_MODE.enable` is write-1-only
-and the lockout latch is not software-writable at all. Both are warm-reset-domain
-state, so mutable firmware cannot clear either and cannot re-enter the ROM by
-any sequence of writes. Only a warm or cold reset restores ROM access, and that
-restarts the ROM from its entry point rather than resuming it.
-
-The testbench virtual ROM (VROM, `0x1000_0000`) is exempt, because block-level
-firmware runs its `.text` from there. VROM does not exist in production silicon
-and carries no security requirement.
+The virtual ROM (VROM, `0x1000_0000`) is exempt only in a simulation build that
+defines `OCAH_KM_VROM`, and carries no security requirement. Without the define
+the window is an unmapped address, so a fetch from it pulses `EXEC_VIOLATION`
+like any other fetch outside the whitelist. See
+ifdef::backend-html5[]
+xref:ocah-integrator-guide:ROOT:defines.adoc#sep-defines-km[Key manager defines in the Integrator Guide].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-integrator-guide/latest/defines.html#sep-defines-km[Key manager defines in the Integrator Guide].
+endif::backend-pdf[]
 
 [[km-rom-stack-budget]]
 === ROM Stack Budget and the Static Load Ceiling
@@ -1423,11 +1307,11 @@ The bound is enforced statically:
   indirect call on a reachable path, or a call-graph cycle.
 
 * The firmware build passes the budget to the linker via
-  `--defsym=__rom_max_stack=0x600`, so the load ceiling below is derived from the
+  `+--defsym=__rom_max_stack=0x600+`, so the load ceiling below is derived from the
   same value the analyzer checks the image against.
 
 * The linker (`km_sram_layout.ld`) derives the load ceiling
-  `__km_fw_load_limit = (STACK - __rom_max_stack)`, rounded down to a 1 KB
+  `+__km_fw_load_limit = (STACK - __rom_max_stack)+`, rounded down to a 1 KB
   SRAM write-lock region so the image and ROM stack never share a lock region,
   and asserts that a non-empty load area remains.  `rom_cmd_sram_load_exec()`
   rejects any image whose top exceeds this symbol.
@@ -1445,19 +1329,20 @@ python3 scripts/km_stack_analyze.py build/rom_main.elf \
 Raise the budget only if the analyzer reports a worst case that exceeds it.
 
 [[km-firmware-bootloader]]
-== Bootloader
+== ROM Initialization
 
 [[km-boot-sequence]]
 === Boot Sequence
 
-The ROM bootloader will perform the following sequence of steps:
+The ROM initializes the subsystem in the following order, then remains in
+the runtime message-processing loop:
 
 . Sample whether this is a cold or a warm boot by reading `COLD_BOOT_DONE`
 before the final step sets it.
 . Clear all KMCSR IRQ status bits, then enable all fault and error related
 interrupts: ROM and SRAM parity, ROM write, SRAM write lock, AXI SLVERR and
 DECERR, DRBG error, wipe state, OTP integrity, execute permission violation,
-and ROM access violation (<<km-rom-lockout>>).
+and ROM access violation (<<km-rom-lockout,ROM lockout>>).
 . Rewrite `IRQ_ENTRY_ADDR` to the ROM interrupt entry point, then unmask CPU
 IRQs. `IRQ_ENTRY_ADDR` and `IRQ_ENTRY_LOCK` are warm-reset-domain, so a vector
 chosen by a previous mutable image cannot persist into ROM execution; the ROM
@@ -1495,43 +1380,36 @@ message to the SEP. These two steps are adjacent and last by design:
 `BOOT_STATUS` on seeing it must already observe `COLD_BOOT_DONE`.
 . Finally, enter the main event loop.
 
+[[memory-scrambler-provisioning]]
+=== Memory Scrambler Provisioning
+
+ROM provisions and locks the SRAM and KPV scramblers during
+<<km-boot-sequence>>. The SRAM scrambler key and enable/lock state survive
+warm reset, so ROM retains an already enabled SRAM scrambler. Cold reset
+requires fresh provisioning. The boot sequence above defines the ordering;
+the hardware behavior is described in <<kpv-scrambling>> and the SRAM
+scrambler reference.
+
 [[km-firmware-message-buffers]]
 == Message Buffers
 
-The message receive and transmit buffers are fixed size SRAM-based linear
-buffers that store message frames that have been read from or are ready to be
-written to the mailbox FIFOs. Since the maximum message payload length is 255
-words, each message buffer is 257 words in size (1 header word + 255 payload
-words + 1 CRC-32C word), which is exactly one maximal frame. Since the KM
-firmware does not have a heap, the buffers are statically allocated.
+RX and TX each use one statically allocated 257-word SRAM buffer: a header,
+up to 255 payload words and a CRC. Each linear buffer accepts at most one
+complete frame. Frames start at index zero; state consists of a word count,
+completion flag, frame length and read index. No heap or per-frame pointer
+queue is used.
 
-Each buffer holds *at most one complete frame at a time*, and every new frame
-begins at index 0. A buffer therefore needs no head pointer and no per-frame
-start and end pointers: its state is the word count, a flag for whether a
-complete frame is present, that frame's length, and a read index. Once a
-complete frame is present, further writes are rejected until it is consumed,
-which is what bounds the buffer and gives the receive path its overflow
-detection.
+The mailbox ISR writes RX and reads TX; the main loop reads RX and writes TX.
+Main-loop mutations mask the mailbox IRQ and restore its previous mask
+afterwards. A complete frame blocks further writes until consumed. RX stops
+at the separator even if more FIFO data is pending; a partial frame can keep
+filling the buffer. `rx_buff_oflow` means a full buffer without a separator,
+not an accumulation of valid commands.
 
-Holding one frame rather than several is what makes the buffer's occupancy
-independent of how the SEP paces its commands: a maximal frame always fits, so
-a legal command can never be refused for want of room, and the KM processes
-commands strictly in order in any case (<<km-firmware-main-event-loop>>). The
-`rx_buff_oflow` fault therefore signals a single frame longer than a legal
-message, not an accumulation of pending ones.
-
-All access to the message buffers must go through a well defined interface. The
-interface must define functions for initializing, reading, writing, and getting
-status from a message buffer. The interface must support writing a frame
-word-by-word as the mailbox ISR receives it and reading it back word-by-word as
-the main loop parses it, and it must prevent buffer overflow and underflow.
-
-Each buffer has exactly one writer and one reader: the mailbox ISR is the sole
-writer of the receive buffer and sole reader of the transmit buffer, and the
-main loop is the sole writer of the transmit buffer and sole reader of the
-receive buffer. Main-loop code that mutates a buffer shared with the ISR must
-mask the mailbox IRQ for the duration of the mutation and then restore it to
-its previous state.
+The buffer interface checks overflow and underflow and supports word-at-a-time
+transfer. The <<km-irq-mailbox,mailbox ISR>> controls FIFO interrupts; the
+<<km-firmware-incoming-message-handler,incoming handler>> validates and
+consumes frames.
 
 [[km-firmware-prng]]
 == Pseudorandom Generators
@@ -1539,7 +1417,7 @@ its previous state.
 [[km-prng-firmware]]
 === Firmware PRNG
 
-The KM firmware shall use the xoshiro128++ algorithm as its
+The KM firmware uses the xoshiro128++ algorithm as its
 general-purpose pseudorandom number generator. The PRNG is used for
 generating shred data and seeding pseudorandom-order operations. It must
 not be used for generating cryptographic key material; all key material
@@ -1574,8 +1452,8 @@ The state object is overwritten along with the rest of SRAM when the shred runs.
 === Register Access Shuffling
 
 All operations requiring pseudorandom-order register access must use the
-Fisher-Yates shuffle to generate the access order. This covers the shred and key
-write operations on the KPV slots and on the crypto engine key-share registers.
+Fisher-Yates shuffle to generate the access order. The crypto-engine drivers use this for key-share writes and shredding.
+KPV slot reads and writes are sequential; KPV shredding uses hardware erase.
 The shuffle operates on an index array initialized to `[0, 1, ..., n-1]` and
 produces a uniformly random permutation.
 
@@ -1596,25 +1474,19 @@ insufficient bits remain. Bits are consumed from LSB to MSB.
 [[km-firmware-interrupt-handlers]]
 == Interrupt Handlers
 
-The PicoRV32 has a very basic interrupt controller that does not support
-hardware interrupt priority or nested interrupts. Due to these
-limitations, interrupt priority must be managed by firmware and all
-interrupt handlers must be kept as short as possible to minimize interrupt
-response latency. The main ISR must process all currently active
-interrupts within a single call.
+[[basic-interrupt-service-handler]]
+PicoRV32 does not provide hardware priority or nested interrupts. `rom_irq()`
+checks the active sources in firmware order; a fatal handler does not return.
+New pending interrupts are serviced after the current ISR returns. Keep
+handlers short because a higher-priority source cannot preempt an active ISR.
 
 [[km-irq-priority]]
 === Interrupt Priority
 
-Interrupt priority must be handled by firmware within the PicoRV32's main
-interrupt service routine (ISR). Any new interrupts that arrive while the
-PicoRV32 ISR is executing will trigger a pending interrupt signal that
-will then re-execute the main ISR after it returns. Since higher priority
-interrupts cannot preempt lower priority interrupts, short and
-deterministic ISR execution time is important.
+The dispatch order is fixed. KMCSR sources are eligible only when both status
+and enable are set; masked sticky bits are skipped.
 
-The ISR should prioritize interrupts in the following order, from highest
-priority to lowest priority:
+The order, from highest to lowest priority, is:
 
 . EBREAK / Illegal instruction
 . Bus error or misaligned access
@@ -1634,16 +1506,13 @@ priority to lowest priority:
 . Adams Bridge ML-KEM shared key
 . Spurious IRQ (catch-all for unrecognised sources)
 
-DRBG error is ranked above AXI SLVERR deliberately. A DRBG read timeout answers
-the CPU with SLVERR in the same cycle as it flags the DRBG error, so both status
-bits are always set together; testing SLVERR first would attribute every entropy
-failure to the fabric and send debugging toward the memory map. An unrelated
-fabric error sets SLVERR on its own and is unaffected by the ordering.
+DRBG precedes AXI SLVERR so a timed-out DRBG data read, which raises both
+conditions, reports the specific entropy fault. This precedence applies to
+enabled sources. <<km-boot-sequence>> defines the ROM enables.
 
-Each KMCSR source is tested against `IRQ_STATUS` and its `IRQ_ENABLE` bit, so a
-sticky status bit whose enable is clear is passed over rather than handled. The
-boot sequence (<<km-boot-sequence>>) determines which sources are enabled in
-ROM.
+All fatal handlers below use <<km-seq-error-recovery,the common fatal path>>
+and leave the triggering status uncleared. The individual entries identify
+the code and any source-specific behavior.
 
 [[km-irq-ebreak]]
 === EBREAK / Illegal Instruction
@@ -1657,114 +1526,67 @@ Any other illegal instruction triggers an unrecoverable fault with the
 [[km-irq-bus-error]]
 === Bus Error or Misaligned Access
 
-The bus error or misaligned access interrupt handler will trigger an
-unrecoverable fault. The interrupt status bit is not cleared. This
-behavior may change in future firmware revisions.
+Reports `bus_error`.
 
 [[km-irq-wipe-state]]
 === Wipe State
 
-The wipe state interrupt handler will purge keys from all crypto engines,
-trigger an unrecoverable fault, and finally shred the entire SRAM.
-Hardware will automatically clear the KPV, so firmware can skip it. The
-interrupt status bit is not cleared.
-
-SRAM shredding is done last, and must be implemented entirely within
-assembly code that does not perform any SRAM read operations. Any
-operations after SRAM shredding must also be implemented in assembly since
-all program state (stack, etc.) has been destroyed.
-
-NOTE: To ensure the wipe state process does not hang, the PRNG is _never_
-reseeded from the DRBG during any shred operation in the wipe state flow.
-This diverges from typical shred operations that normally reseed the PRNG
-from the DRBG.
+Reports `wipe_state`. Hardware handles the KPV wipe; firmware uses the common
+fatal path for sideloads and SRAM, without DRBG reseeding.
 
 [[km-irq-rom-parity]]
 === ROM Parity Error
 
-The ROM parity error interrupt handler will trigger an unrecoverable
-fault. The interrupt status bit is not cleared. This behavior may change
-in future firmware revisions.
+Reports `rom_parity`.
 
 [[km-irq-sram-parity]]
 === SRAM Parity Error
 
-The SRAM parity error interrupt handler will trigger an unrecoverable
-fault. The interrupt status bit is not cleared. This behavior may change
-in future firmware revisions.
+Reports `sram_parity`.
 
 [[km-irq-rom-write]]
 === ROM Write Error
 
-The ROM write error interrupt handler will trigger an unrecoverable fault.
-The interrupt status bit is not cleared. This behavior may change in
-future firmware revisions.
+Reports `rom_write`.
 
 [[km-irq-sram-write-lock]]
 === SRAM Write Lock Error
 
-The SRAM write lock error interrupt handler will trigger an unrecoverable
-fault. The interrupt status bit is not cleared. This behavior may change
-in future firmware revisions.
+Reports `sram_write_lock`.
 
 [[km-irq-axi-decerr]]
 === AXI DECERR
 
-The AXI DECERR interrupt handler will trigger an unrecoverable fault. The
-interrupt status bit is not cleared. This behavior may change in future
-firmware revisions.
+Reports `axi_decerr`.
 
 [[km-irq-axi-slverr]]
 === AXI SLVERR
 
-The AXI SLVERR interrupt handler will trigger an unrecoverable fault with the
-`axi_slverr` fault code. It is reached only when the DRBG error status bit is
-clear, since the DRBG handler is checked first (<<km-irq-priority>>). The
-interrupt status bit is not cleared. This behavior may change in future
-firmware revisions.
+Reports `axi_slverr` if no higher-priority enabled fault takes precedence.
 
 [[km-irq-drbg-error]]
 === DRBG Error
 
-The DRBG error interrupt handler will trigger an unrecoverable fault with the
-`drbg_err` fault code. It is checked before the AXI SLVERR handler, because a
-DRBG read timeout sets both status bits and the specific code is the useful one
-(<<km-irq-priority>>). A stale DRBG error cannot misattribute a later fabric
-fault, because the handler halts the CPU rather than returning. The interrupt
-status bit is not cleared. This behavior may change in future firmware
-revisions.
+Reports `drbg_err` before considering AXI SLVERR (<<km-irq-priority>>).
 
 [[km-irq-otp-sigint]]
 === OTP Integrity Violation
 
-The OTP integrity violation interrupt handler will trigger an
-unrecoverable fault with the `otp_sigint` fault code. This interrupt is
-asserted when the OTP controller detects a dual-rail integrity violation
-on a redundantly-encoded OTP field. The interrupt status bit is not
-cleared. This behavior may change in future firmware revisions.
+Reports `otp_sigint` for a dual-rail integrity violation in a redundantly
+encoded OTP field.
 
 [[km-irq-exec-violation]]
 === Execute Permission Violation
 
-The execute permission violation interrupt handler will trigger an
-unrecoverable fault with the `exec` fault code. This interrupt is asserted when
-a committed instruction fetch targets a memory region outside the
-execute-permission whitelist, other than the ROM. The interrupt status bit is
-not cleared.
+Reports `exec` when a committed fetch targets a non-whitelisted region other
+than ROM.
 
 [[km-irq-rom-access-violation]]
 === ROM Access Violation
 
-The ROM access violation interrupt handler will trigger an unrecoverable fault
-with the `rom_access` fault code. This interrupt is asserted when a ROM
-instruction fetch or data read is attempted after the ROM lockout has engaged
-(<<km-rom-lockout>>). The interrupt status bit is not cleared.
-
-This handler is only reachable while the ROM is still live, since it is itself
-ROM code and the lockout revokes the ROM that contains it. It therefore reports
-a breach detected before handover completes, or one raised through `IRQ_SET`;
-after the lockout engages, containment is the illegal-instruction trap on the
-zeros a blocked fetch returns.
+Reports `rom_access` while ROM remains executable, for example when the source
+is asserted through `IRQ_SET`. Once lockout engages, this handler is itself
+inaccessible; see <<km-rom-lockout,ROM lockout>>.
 
 [[km-irq-otp-change]]
 === OTP Change Status
@@ -1786,67 +1608,29 @@ boot. Firmware that overrides the hook enables the source itself.
 [[km-irq-mailbox]]
 === Mailbox
 
-The mailbox interrupt handler transfers message frames between the mailbox
-FIFOs and the message buffers. It also handles any other interrupts raised
-by the mailbox due to error or status conditions. It does not check the
-properties of incoming messages or construct the headers of outgoing
-messages, as this is the job of the message handlers.
+The mailbox ISR moves words; framing validation and response construction
+belong to the message handlers. It checks enabled errors before transferring
+data, in this order:
 
-The mailbox interrupt handler has the following execution flow:
+. `OUTBOUND_OVERFLOW`: flush hardware FIFOs and software buffers; report
+`mbox_overflow`.
+. `INBOUND_UNDERFLOW`: the same flush; report `mbox_underflow`.
+. `FLUSHED_BY_SEP`: flush only software buffers; report `flushed_by_sep`.
 
-. Check for and handle any mailbox error interrupts.
-.. If the `OUTBOUND_OVERFLOW` interrupt is enabled and asserted:
-... Set the `RECOVERABLE_ERR` register of the KMCSR.
-... Flush _all_ message buffers and mailbox FIFOs.
-... Message sequence numbers are reset to zero.
-... A `RESP_RECOVERABLE_FAULT` response is sent to the SEP with a
-_mbox_overflow_ fault code through the mailbox FIFOs directly. The message
-transmit buffer is bypassed.
-... Clear the `OUTBOUND_OVERFLOW` interrupt status bit.
-... Enable the incoming mailbox FIFO interrupt if necessary.
-... Return immediately.
-.. If the `INBOUND_UNDERFLOW` interrupt status is enabled and asserted:
-... Set the `RECOVERABLE_ERR` register of the KMCSR.
-... Flush _all_ message buffers and mailbox FIFOs.
-... Message sequence numbers are reset to zero.
-... A `RESP_RECOVERABLE_FAULT` response is sent to the SEP with a
-_mbox_underflow_ fault code through the mailbox FIFOs directly. The
-message transmit buffer is bypassed.
-... Clear the `INBOUND_UNDERFLOW` interrupt status bit.
-... Enable the incoming mailbox FIFO interrupt if necessary.
-... Return immediately.
-.. If the `FLUSHED_BY_SEP` interrupt status is enabled and asserted:
-... Set the `RECOVERABLE_ERR` register of the KMCSR.
-... Flush _all_ message buffers, but do not flush the mailbox FIFOs.
-... Message sequence numbers are reset to zero.
-... A `RESP_RECOVERABLE_FAULT` response is sent to the SEP with a
-_flushed_by_sep_ fault code through the mailbox FIFOs directly. The
-message transmit buffer is bypassed.
-... Clear the `FLUSHED_BY_SEP` interrupt status bit.
-... Enable the incoming mailbox FIFO interrupt if necessary.
-... Return immediately.
-. Check for any pending words in the message transmit buffer.
-.. Calculate the minimum between the number of words currently in the
-message transmit buffer, and the available capacity of the outgoing
-mailbox FIFO.
-.. Transfer this determined count of words from the message transmit
-buffer into the outgoing mailbox FIFO.
-.. Set the separator bit in the FIFO before writing the final message
-frame word.
-.. After words are transferred, if the message transmit buffer is empty,
-disable the outgoing mailbox FIFO interrupt.
-. Check for any pending words in the incoming mailbox FIFO.
-.. Calculate the minimum between the number of words currently in the
-incoming mailbox FIFO, and the available capacity of the message receive
-buffer.
-.. Transfer this determined count of words from the incoming mailbox FIFO
-into the message receive buffer.
-.. Check the separator bit after each word is moved from the FIFO to the
-buffer. The separator bit is aligned with the last word of each message
-frame.
-.. Record pointers for the start/end words of each message frame.
-.. After the words are transferred, if the message receive buffer is full,
-disable the incoming mailbox FIFO interrupt.
+Each error resets both sequence counters, enables inbound interrupts, clears
+its W1C status, sets `RECOVERABLE_ERR`, writes the fault response directly to
+the outbound FIFO and returns. See <<km-seq-error-recovery>> for SEP recovery.
+
+With no error, the ISR services enabled outbound-space and inbound-data sources:
+
+* TX: copy at most the smaller of FIFO free space and remaining frame words.
+Set the separator before writing the final word. Consume the drained frame
+and disable outbound-space interrupts when no frame remains.
+* RX: copy at most the smaller of FIFO depth and available buffer space, stopping
+at the first separator. Do not accept a second frame until the main loop
+consumes the first. If FIFO data remains while RX is full or holds a complete
+frame, disable inbound-data interrupts until software makes room. A partial
+frame with free space keeps the interrupt enabled.
 
 [[km-irq-abr-sharedkey]]
 === Adams Bridge ML-KEM Shared Key
@@ -1880,445 +1664,146 @@ sources.
 [[km-firmware-incoming-message-handler]]
 == Incoming Message Handler
 
-The incoming message handler parses incoming message frames from the
-message receive buffer in SRAM, checks their properties, and calls the
-associated command handler. The incoming message handler is called as part
-of the main task loop of the KM system firmware, and it processes a single
-message frame per-call to the function. It must ensure that invalid or
-malformed messages are not processed by the KM. It must use functions
-provided by the message buffer interface and may not manipulate the
-message buffer directly. Partial message frames, i.e. message frames that
-have not been fully received with a message separator indicator, are
-skipped.
+[[mailbox-message-handler]]
+`rom_msg_rx_process()` services at most one complete frame per main-loop
+iteration. It uses the buffer interface and consumes rejected complete frames
+as well as successful ones. A partial frame waits for more data; if it fills
+the buffer without a separator, the handler takes the `rx_buff_oflow` recovery
+path. Inbound interrupts are re-enabled when the buffer can accept more data.
 
-The incoming message handler has no arguments. It has the following
-execution flow:
+For a complete frame, validation and dispatch occur in this order:
 
-. If the message receive buffer is full AND it only contains a single
-partial message frame:
-.. Flush _all_ message buffers and mailbox FIFOs.
-.. Reset both the command and response sequence counters to zero. The flush
-discards whatever the SEP had in flight, so neither side can agree on where the
-count stands; restarting both from zero is what lets the link resynchronize
-after the SEP acknowledges the fault.
-.. Set the `RECOVERABLE_ERR` register of the KMCSR.
-.. A `RESP_RECOVERABLE_FAULT` response is sent to the SEP with an
-_rx_buff_oflow_ fault code.
-.. Enable the incoming mailbox FIFO interrupt if necessary.
-.. Return immediately.
-. If the message receive buffer is empty OR it only contains a single
-partial message frame:
-.. Enable the incoming mailbox FIFO interrupt if necessary.
-.. Return immediately.
-. Acquire the next fully valid message frame from the message receive
-buffer.
-. If the message header CRC-8/ROHC is invalid:
-.. A `RESP_CMD` response is sent back to the SEP with a _header_crc_
-return code and the handler returns.
-. If the sequence number is not the next expected value:
-.. A `RESP_CMD` response is sent back to the SEP with a _cmd_noseq_ return
-code and the handler returns.
-. If the command ID is not a valid command:
-.. A `RESP_CMD` response is sent back to the SEP with an _invalid_cmd_
-return code and the handler returns.
-. If the payload length is not consistent with the message frame length
-counted during transfer from the incoming mailbox FIFO to the message
-receive buffer:
-.. A `RESP_CMD` response is sent back to the SEP with an _invalid_len_
-return code and the handler returns.
-. If the message has a payload and the payload CRC-32C is invalid:
-.. A `RESP_CMD` response is sent back to the SEP with a _payload_crc_
-return code and the handler returns.
-. If the `RECOVERABLE_ERR` bit is set in the KMCSR:
-.. Only allow the following commands:
-... `CMD_HW_VER`
-... `CMD_ROM_VER`
-... `CMD_SRAM_VER`
-... `CMD_STAT`
-... `CMD_RECOV_ACK`
-.. A `RESP_CMD` response is sent back to the SEP with the return code and
-return argument from the command handler.
-.. Respond to all other commands with a `RESP_CMD` response of _failure_
-and do not execute the command.
-. If the `RECOVERABLE_ERR` bit is _not_ set in the KMCSR:
-.. Call the command handler corresponding to the command ID and include
-the following arguments:
-... The length of the message payload.
-... A structure containing the message payload.
-.. A `RESP_CMD` response is sent back to the SEP with the return code and
-return argument from the command handler.
-. Enable the incoming mailbox FIFO interrupt if necessary.
-. Return.
+. Check header CRC-8/ROHC; reject with `header_crc` and the computed CRC.
+. Check command sequence; reject with `cmd_noseq` and the expected number.
+. Advance the expected command sequence, including when any later check fails.
+. Check the command ID; reject with `invalid_cmd` if unknown.
+. Check that frame length equals `1 + PAYLOAD_LEN + (PAYLOAD_LEN > 0 ? 1 : 0)`;
+reject with `invalid_len` if inconsistent.
+. For a nonempty payload, verify CRC-32C; reject with `payload_crc` and the
+computed CRC on mismatch.
+. Apply the <<km-seq-error-recovery,recovery gate>>. Disallowed commands return
+`failure` without calling a handler.
+. Dispatch the command, checking its fixed payload length before parsing its
+arguments. `CMD_KEY_LOAD` instead checks its variable length inside the handler
+(<<cmd-key-load-validation-order-table>>).
+. Consume the frame and send `RESP_CMD` with the handler's return code and
+optional argument. Successful handover sends its own confirmation and never
+returns to this step.
+
+The receive path securely clears the copied `CMD_KEY_LOAD` payload after use,
+including payload-CRC failure and recovery-gate rejection. Error encodings and
+return arguments are defined in <<key-manager-command-return-codes-table>>.
 
 [[km-firmware-outgoing-message-handler]]
 == Outgoing Message Handler
 
-The outgoing message handler constructs a message from a given response
-payload and writes it into the message transmit buffer in SRAM. The
-outgoing message handler is called from command handlers and other system
-functions to send responses to the SEP. It must use functions provided by
-the message buffer interface and may not manipulate the message buffer
-directly.
+`rom_msg_tx_send()` builds a response from its ID and payload. It consumes the
+next response sequence number, computes header CRC-8/ROHC, and appends payload
+CRC-32C only for a nonempty payload. The last word closes the frame.
 
-The outgoing message handler takes a response ID and a payload as
-arguments. It has the following execution flow:
+It writes through the TX buffer interface and enables outbound-space interrupts
+so the mailbox ISR can drain the frame. If the buffer cannot accept a write,
+it enables that interrupt and spin-waits. Progress requires both ISR execution
+and the SEP draining the hardware FIFO.
 
-. The next message sequence number is inserted into the message header.
-. The response ID is inserted into the message header.
-. The payload length is calculated and inserted into the message header.
-. The message header CRC-8/ROHC is calculated and inserted into the
-header.
-. If the payload length is nonzero, the payload CRC-32C is calculated and
-appended to the message.
-. The entire message frame is written into the message transmit buffer. If
-the buffer is full, enable the outgoing mailbox FIFO interrupt and block
-(spin-wait) until enough free space is available to write the entire
-frame. Further execution depends on the SEP draining the outgoing mailbox
-FIFO.
-. Enable the outgoing mailbox FIFO interrupt if necessary.
-. Return.
-
-The mailbox ISR is what moves those frames onward, draining the transmit buffer
-into the outbound FIFO as space appears; the buffer does not wait on SEP activity
-alone.
-
-Some messages are framed identically but written straight to the outbound FIFO,
-bypassing the transmit buffer: the unrecoverable fault report, the mailbox-error
-recoverable faults raised from the ISR itself, and the `RESP_CMD` confirmation
-sent at handover. Each of these is followed immediately by a CPU halt or by
-interrupt masking, so a buffered frame would never be drained.
+`rom_msg_tx_send_direct()` uses identical framing but polls FIFO space and
+writes directly. Fatal reports, mailbox-error reports from the ISR and handover
+confirmations use this path because they cannot rely on normal buffered TX
+progress. The mailbox-error ISR returns after reporting; fatal and successful
+handover paths do not return to normal command processing.
 
 [[km-firmware-command-handlers]]
 == Command Handlers
 
-Each supported KM command has an associated command handler function. They
-are called by the incoming message handler, validate the arguments
-provided in the command message, and then call the appropriate system or
-key management function. If a command handler encounters an error it will
-return with an error code and an optional return argument. This includes
-errors encountered during payload parsing. Otherwise, if there are no
-errors it will return a _success_ code and provide an optional return
-argument.
+`rom_cmd_dispatch()` checks command-specific lengths and calls typed handlers.
+Handlers validate arguments, call system or key-management operations, and
+return a code with an optional argument. The <<km-firmware-command-message-reference,command reference>>
+is authoritative for the on-wire contract; successful handover is the
+non-returning exception.
 
 [[km-firmware-drbg-driver]]
 == DRBG Driver
 
-*Initialize DRBG*
+`rom_drbg_init()` waits for sampler `STATUS.drbg_ready`; it does not configure
+the upstream entropy system. Status reads return `STATUS`; single-word reads
+return `DATA`. Block reads enable `CFG.prefetch`, read the requested words from
+`DATA`, then disable prefetch.
 
-Configures the DRBG and waits for it to be ready. It has the following
-execution flow:
-
-. Wait for `DRBG_READY` in the STATUS register.
-
-*Get Status*
-
-Returns the value of the STATUS register.
-
-*Get Word*
-
-Returns a single random word from the DRBG, read from the `DATA` register.
-
-*Get Block*
-
-Gets a block of random words from the DRBG, given a number of words to
-read. It has the following execution flow:
-
-. Enable DRBG prefetch.
-. Read the given number of random words, each from the `DATA` register.
-. Disable DRBG prefetch.
-. Return the random words.
-
-Every word must be read from `DATA`, including in the prefetching block path.
-Only a `DATA` read consumes the prefetched word and starts the next fetch.
-`PREFETCH_DATA` is a read-only debug mirror of the same holding register, so
-reading it in a loop returns one value repeatedly instead of a stream — which
-would silently yield a key made of a single repeated word.
+Only `DATA` consumes a prefetched word and starts the next fetch.
+`PREFETCH_DATA` is a debug mirror: repeatedly reading it returns the held word,
+not a fresh stream.
 
 [[km-firmware-kpv-driver]]
 == KPV Driver
 
-These functions provide firmware abstractions for the KPV. The vault holds 64
-slots of 16 words each, and each slot carries a `CTRL` register holding the
-`lock_write`, `lock_use` and `seal` bits and the `erase` trigger, in bits `0`
-through `3`. All four are write-one-to-set, and a warm reset clears every one of
-them so a slot cannot carry stale control state into a later erase.
+The vault has 64 slots of 16 words. Per-slot operations take indexes `0`–`63`;
+the caller supplies the key extent from the <<km-firmware-key-registry,key registry>>.
+`CTRL` bits 0–3 are `lock_write`, `lock_use`, `erase` and `seal`. All are
+write-one-to-set; warm reset clears slot control state.
 
-Every entry point operates on exactly one slot, addressed by slot index
-(`0`–`63`), and knows nothing of keys. The KPV stores key data and lock state
-only: it has no field describing how many slots a key spans or how many words
-of its final slot are meaningful. That extent is software state held in the key
-registry (<<km-firmware-key-registry>>), so a caller operating on a whole key
-loops over its slots itself.
+*Scrambler operations.* Initialization writes `SHRED_ITER + 1` DRBG words to
+the key register if unlocked. Enable/disable controls scrambling; lock prevents
+further configuration or key changes until reset. Production boot enables and
+locks it; tests can disable an unlocked scrambler to inspect raw storage.
 
-Because hardware masks nothing, a read of a slot returns all the words asked
-for, and words past the end of a key read back as whatever the preceding shred
-left there rather than as zero. Only `lock_use` forces read data to zero.
+*Erase and shred.* Erase triple-writes `CTRL.erase` and polls until hardware
+clears it. Hardware overwrites all slot words through the scrambler regardless
+of read/write locks or seal. An unsealed slot's control clears, making it
+reusable. A sealed slot retires: `lock_write` remains set and `lock_use` is set,
+preventing readout or reuse until reset. Slot shred repeats erase
+`SHRED_ITER + 1` times; whole-vault shred applies it to every slot.
 
-*Initialize Scrambler*
+*Read and write.* Counts must be `1`–`16`; operations start at word zero and
+reject an invalid count or the applicable lock before accessing data. The
+caller must avoid crossing slot bounds. Unwritten trailing words retain the
+preceding shred data; hardware has no key-length field to mask them to zero.
+Hardware read-locking returns zero, while the driver rejects a read-locked slot.
 
-If unlocked, writes the KPV scrambler key register `SHRED_ITER+1` number
-of times with random words sourced from the DRBG.
+*Lock and seal.* Write-lock sets `lock_write`; read-lock sets `lock_use`.
+Seal writes only `seal`, and hardware also sets `lock_write`; the driver checks
+both bits afterwards. Each operation triple-writes a value built from zero,
+avoiding a read-modify-write that could retrigger `erase`. A sealed readable key
+can still be revoked, but erasure retires the slot instead of freeing it.
+No ROM boot or handover flow sets a seal in this revision.
 
-*Scrambler Enable*
-
-Enables the KPV scrambler.
-
-*Scrambler Disable*
-
-Disables the KPV scrambler, unless it is already locked. Used by tests to read
-back raw stored data and confirm that scrambling took effect; production
-firmware locks the scrambler instead.
-
-*Scrambler Lock*
-
-Locks the KPV scrambler.
-
-*Erase Slot*
-
-Hardware-erases one slot:
-
-. Asserts the slot's `CTRL.erase` trigger. The write-1 trigger is issued
-three times so a single skipped store (e.g. from a fault-injection glitch)
-cannot prevent the erase from starting.
-. Polls the slot's `erase` bit until the hardware self-clears it.
-
-The hardware overwrites every key word of the slot through the KPV scrambler.
-Nothing gates an erase — not `lock_write`, not `lock_use`, not a seal — but the
-slot's seal state decides what the slot looks like afterwards. An unsealed slot
-comes back with its control register cleared and is reusable. A sealed slot is
-*retired* instead: `lock_write` stays set, `lock_use` is set, and the slot can
-be neither read, rewritten nor reused until the next warm reset. Erase being
-ungated is what keeps revocation available on a sealed slot; retirement is what
-stops the freed slot being refilled with a value of the caller's choosing.
-
-*Shred Slot*
-
-Shreds a single slot by invoking *Erase Slot* on it `SHRED_ITER+1` times.
-Because it uses the hardware erase path it also wipes a write-locked slot, and
-a sealed slot ends up retired rather than free.
-
-*Shred KPV*
-
-Shreds every KPV slot by invoking *Shred Slot* on each slot, so each slot is
-hardware-erased `SHRED_ITER+1` times. Write-locked slots are wiped too.
-
-*Write Slot*
-
-Writes up to a slot's worth of key data, given a slot index, the data, and a
-word count of `1`–`16`. The words land starting at word 0 of the slot; any
-remaining words keep whatever the preceding shred put there. The function
-returns an error and writes nothing if the word count is outside `1`–`16` or
-the slot is write-locked, which includes any sealed or retired slot. The count
-is bounded because slots are contiguous, so an over-long write would run into
-the neighbouring slot.
-
-*Read Slot*
-
-Reads key data out of one slot, given a slot index, an output buffer, and a
-word count of `1`–`16`. The words are read starting at word 0 of the slot. How
-many of them are meaningful is the caller's business — the extent lives in the
-key registry. The function returns an error and reads nothing if the word count
-is outside `1`–`16` or the slot is read-locked, which includes any retired
-slot.
-
-*Write-Lock Slot*
-
-Sets `lock_write` on one slot. The register write is issued three times so a
-single skipped store cannot leave the slot writable. The value is built from
-zero rather than read-modify-written, because every control field is
-write-one-to-set and a written-back read value could only ever set bits — which
-would re-trigger an in-flight erase.
-
-*Read-Lock Slot*
-
-Sets `lock_use` on one slot, by the same triple-write convention, preventing
-further reads of its key data.
-
-*Seal Slot*
-
-Seals one slot, leaving its data readable but not overwritable until the next
-warm reset. Only the seal bit is written, by the same triple-write convention:
-hardware sets `lock_write` alongside the seal, and reading both back is the
-fault check the function reports on.
-
-Sealing commits the slot as well as its contents. The material can still be
-revoked, because erase is never gated, but the erase retires the slot, so the
-slot never carries anything else within the boot cycle. That is what the seal
-exists for: key material can cross a trust boundary revocable but not
-replaceable.
-
-No ROM boot or handover flow in this revision seals a slot. The primitive and
-its two predicates are the driver surface a future flow — or mutable firmware —
-uses to take and to check a seal.
-
-*Slot Sealed*
-
-Reports whether a slot is sealed, which is the check a consumer of surviving
-key material makes before trusting it: a sealed slot cannot have been altered
-since the seal was taken, because a seal holds `lock_write` set. It is true of
-a retired slot as well, so pair it with *Slot Retired* to tell a live sealed
-slot from one whose material is gone.
-
-*Slot Retired*
-
-Reports whether a slot is retired, i.e. a sealed slot that has since been
-erased. A sealed slot gains `lock_use` only from an erase completing, so a set
-`lock_use` is what separates a retired slot from a sealed live one.
+*Predicates.* `rom_kpv_slot_sealed()` tests `lock_write && seal`.
+`rom_kpv_slot_retired()` tests `seal && lock_use`. The latter identifies an
+inaccessible sealed slot; it is not proof that erasure occurred, because an
+explicit read-lock can also set `lock_use`.
 
 [[km-firmware-crypto-drivers]]
 == Crypto Engine Drivers (HMAC / KMAC / AES / OTBN / Adams Bridge)
 
-Each crypto engine (HMAC, KMAC, AES, OTBN) and each of the four Adams Bridge
-seed inputs (ML-DSA seed, ML-KEM seed D, ML-KEM seed Z, ML-KEM message) has a
-driver that manages key material for that destination. All of these drivers
-expose the same interface and share the same execution flow; they differ only
-in the engine they target.
+HMAC, KMAC, AES, OTBN and the four Adams Bridge seed/message destinations use
+the same sideload operations.
 
-*Shred Key*
+*Shred.* Clear `key_valid`, then overwrite both shares with PRNG data in
+shuffled order for `SHRED_ITER + 1` passes. Normal calls reseed from the DRBG
+before each pass; the fatal path disables reseeding.
 
-Purges the sideload key share registers with random data from the PRNG. It
-has the following execution flow:
+*Write.* Form one full-width key share from the supplied key, padding short
+keys with DRBG words. Generate an equally sized DRBG mask `RAND`, then write
+`RAND` and `KEY XOR RAND` into the two shares in a shuffled, interleaved order.
+The helper writes the destination's share width. If the key is longer, it uses
+only that many leading words; it does not reject the length. Callers must
+select a key length appropriate to the engine. Securely clear the local padded-key and
+mask buffers, then set `key_valid`.
 
-. Clears the key valid bit.
-. Writes random data sourced from the PRNG to both key share registers.
-.. Reseeds the PRNG from the DRBG.
-.. Writes the registers with random data from the PRNG across both key
-share registers in a pseudorandom order that is seeded from the PRNG.
-Write order should be randomly interleaved across both key share registers
-to enhance obfuscation.
-.. Performs this entire sequence a total of `SHRED_ITER+1` times.
-
-*Write Key*
-
-Writes key data to the sideload key share registers in a pseudorandom
-order that is seeded from the PRNG. The two key share registers XOR
-together within the accelerator to produce the real key. It has the
-following execution flow:
-
-. Pads the given key, `KEY`, with random data from the DRBG up to the full
-length of one of the sideload key share registers.
-. Collect a random array of data, `RAND`, from the DRBG the same size as
-the padded key.
-. For each word, `i: KEY_RAND[i] = XOR(KEY[i], RAND[i])`.
-. Writes `RAND` to `KEY_SHARE0` and `KEY_RAND` to `KEY_SHARE1` in a
-pseudorandom order that is seeded from the PRNG. Write order should be
-randomly interleaved across both key share registers to enhance
-obfuscation.
-. Sets the key valid bit.
-
-*Adams Bridge ML-KEM shared-key driver*
-
-The Adams Bridge ML-KEM shared-key interface is the one inbound path
-(Adams Bridge → KM); it is read-only to firmware and consumed rather than
-written:
-
-* *Read (consume) shared key.* Reads the eight 256-bit key words into a caller
-buffer, then writes `KEY_CTRL = 0` to clear `KEY_VALID`, which triggers a
-hardware zeroize of the source key registers. Invoked by the
-`CMD_ABR_SK_TRANSFER` handler.
-
-* *Acknowledge interrupt.* Clears the sticky `IRQ_STATUS.key_valid` bit by
-writing 1 (W1C). Called by the shared-key ISR to acknowledge the interrupt
-without consuming the key.
-
-* *Interrupt enable / disable.* Set or clear the `IRQ_ENABLE.key_valid_en`
-bit. The masked CPU interrupt is `IRQ_STATUS & IRQ_ENABLE`; firmware enables
-it during boot and leaves it enabled, relying on the sticky-status W1C
-acknowledgement rather than toggling the enable per event.
-
-[[km-firmware-kdf-library]]
-== Key Derivation Function Library
-
-The `rom_kdf` library implements the NIST SP 800-108r1 counter-mode key
-derivation function (KDF) with HMAC-SHA-256 as its pseudorandom function.
-The KDF is defined by the following construction, where `i` and `L` are
-unsigned 16-bit big-endian values and `L` is the requested output length
-in bits:
-
-----
-K(i) = HMAC-SHA-256(key, BE16(i) || input[192] || BE16(L))
-out  = leftmost L bits of K(1) || K(2) || ...
-----
-
-The counter starts at 1. The library computes
-`ceil(L / 256)` HMAC iterations and copies `ceil(L / 8)` bytes to the
-caller's output buffer. `L` is in the range 1 through 8192 bits. If `L`
-is not byte-aligned, the final output byte is copied in full and the
-caller ignores the bits beyond `L`. Because `L` is included in every HMAC
-message, outputs requested at different lengths are cryptographically
-separated; a shorter output is not a prefix of a longer output.
-
-The input is a fixed 192-byte `km_kdf_input_t`. The library copies this
-structure into the HMAC message verbatim. Structure fields use the
-PicoRV32 in-memory byte representation; only the surrounding counter and
-output-length fields are big-endian.
-
-<<kdf-fixed-input-layout-table>> defines the byte layout of the fixed input mixed into
-key derivation.
-
-[[kdf-fixed-input-layout-table]]
-.KDF Fixed Input Layout
-[cols="^15%,<25%,<60%",options="header"]
-|===
-| Byte Offset | Field | Description
-| `0-1` | `version` | KM ABI version mixed into the derivation.
-| `2` | `out_class` | Class of the derived key.
-| `3` | `out_type` | Type of the derived key.
-| `4` | `out_owner` | Owner of the derived key.
-| `5` | `out_domain` | Parent-inherited domain, forged by the KM.
-| `6-7` | `flags` | Provenance and operational flags, forged by the KM.
-| `8-9` | `purpose` | Public purpose metadata.
-| `10-11` | `out_bits` | Requested derived-key size recorded in the input.
-| `12-15` | `caps` | Capabilities requested for the derived key.
-| `16-19` | `device_state` | Live life-cycle and demotion state sampled by the KM.
-| `20-31` | `rsvd` | Reserved; all bytes are zero.
-| `32-63` | `label` | Fixed operation label providing domain separation.
-| `64-127` | `context` | Caller- or ROM-provided derivation context.
-| `128-191` | `entropy` | DRBG input for ephemeral operations; otherwise all zero.
-|===
-
-`rom_kdf_800_108()` uses `rom_hmac_sha256()` for each counter iteration.
-An HMAC key of at most 64 bytes is passed directly to HMAC. A longer key is
-first reduced to a 32-byte SHA-256 digest as specified by RFC 2104. This
-normalization accepts a parent key of any length — comfortably including the
-512-byte KM symmetric-key limit of 128 words — while retaining the HMAC
-library's 64-byte key limit. The KDF itself does not enforce the KM key-size
-limit; a caller that must respect it enforces it before calling.
-
-The requested output length is expressed in bits, and the supported range is
-`1`–`8192` bits (1024 bytes). A single derivation can therefore produce more
-material than one KM key can hold. The KDF rejects null required
-pointers, a null key with non-zero length, and an output length of zero or above
-that ceiling. Invalid arguments leave the output buffer unchanged. If SHA-256 or
-HMAC fails after validation, the KDF zeroes the complete requested output region
-before returning an error. The implementation also securely clears its
-normalized key, HMAC message, and digest scratch buffers before returning.
-
-`rom_kdf_selftest()` provides the KDF power-on known-answer test. It
-derives a 512-bit output from an embedded 32-byte key and 192-byte input,
-thereby exercising two counter iterations, and compares the result with
-the embedded expected value.
-
-The shipped ROM does not call this self-test, and neither its boot sequence
-(<<km-firmware-bootloader>>) nor any command handler is gated on it. It is
-available for a caller that wants the check; a boot flow that derives real key
-material should run it and fail closed, but nothing in the current ROM enforces
-that.
+*Adams Bridge shared-key input.* This inbound interface is consumed rather than
+written. The read helper copies eight 32-bit words (256 bits), then writes
+`KEY_CTRL = 0`, clearing `KEY_VALID` and causing hardware to zeroize the source.
+The ISR separately acknowledges `IRQ_STATUS.key_valid` with W1C; this does not
+consume the key. Boot enables `IRQ_ENABLE.key_valid_en` and leaves it enabled
+for later deliveries (<<km-irq-abr-sharedkey>>).
 
 [[km-firmware-crc-library]]
 == CRC Function Library
 
-The CRC function library contains routines for CRC computations. The
-high-level functions (`rom_crc8_rohc`, `rom_crc32c`) preserve their public
-signatures and golden-vector results, but are implemented on top of the
-hardware CRC accelerator rather than software lookup loops: each consumes
-one accelerator instruction per input unit (one byte per CRC-8/ROHC call,
-one 32-bit word per CRC-32C word call, and one byte per CRC-32C tail
-byte). The accelerator returns the CRC-32C running remainder before the
-final XOR, so `rom_crc32c` seeds `0xFFFF_FFFF`, chains word and tail-byte
-updates, and applies the final XOR once at the end. See the CRC Accelerator
-section of the architecture documentation for the instruction encodings
-and engine behavior.
+`rom_crc8_rohc()` and `rom_crc32c()` use the hardware CRC accelerator. CRC-8
+updates one byte per instruction. CRC-32C updates full 32-bit words followed
+by any tail bytes, starting from `0xFFFF_FFFF` and applying the final XOR once.
+The accelerator returns the running remainder before that XOR. The architecture
+CRC Accelerator reference gives instruction encodings and hardware behavior.
 
 [[km-crc8-rohc]]
 === CRC-8/ROHC
@@ -2373,256 +1858,91 @@ least significant byte to most significant byte.
 [[km-firmware-key-registry]]
 == Key Registry
 
-KM firmware maintains a mapping between key handles and key slots in the
-KPV, called the key registry. Key handles are unique 8-bit numbers that
-act as aliases to key slots in the KPV. Handle `0x00` is reserved for
-"null", i.e. no handle is assigned. Key handles are simply incremented as
-they are allocated in the registry. Key handles cannot be reused, and are
-permanently invalidated when they are destroyed.
+The registry maps handles to KPV extents and maintains the reverse slot map.
+A valid handle records the base slot, key length in 32-bit words, CRC-32C and
+8-bit `DEST_VALID` policy. Every occupied slot maps back to its handle.
+The registry is the only record of key length; the hardware vault has none.
 
-Because handles are never reused, the handle space is exhaustible independently
-of the vault: the 64 KPV slots bound how many keys can be *live* at once, not how
-many handles have ever been issued. A host that repeatedly generates and revokes
-a key frees the slot each time but consumes a fresh handle, so 255 such cycles
-exhaust the space with the vault almost empty throughout. The registry therefore
-checks for exhaustion on every allocation and fails the request rather than
-wrapping to `0`, which would alias the null handle. Recovering the handle space
-requires a reset.
+Handles are 8-bit values allocated monotonically from 1 through 255. Zero means
+no handle. Destroyed handles are not reused within a boot, so repeated
+load/revoke cycles can exhaust handles even with free vault capacity. Allocation
+fails instead of wrapping to zero; boot initialization after reset restores the
+handle space.
 
-There are two data structures in the key registry:
+*Initialize.* Clear all entries and slot mappings; set the next handle to 1.
 
-* A mapping from key handles to a base slot index, the key's length in 32-bit
-words, a CRC-32C value for the associated key, and an 8-bit `DEST_VALID`
-destination-policy bitmask.
-* A mapping from slot indexes to a key handle. A key handle value of NULL
-(`0x00`) indicates the slot does not have an associated key handle.
+*Look up by slot.* Return the owning handle, including for a non-base slot.
+An unregistered or out-of-range slot returns zero.
 
-Each handle entry also carries a validity flag. Destroying a handle clears that
-flag and clears the slots' entries in the reverse map, but leaves the entry's
-other metadata in place; every lookup below tests the flag, so a destroyed
-handle is indistinguishable from one never issued.
+*Look up by handle.* Return base slot, word count, CRC or destination policy.
+Each lookup rejects an invalid or destroyed handle. Callers derive the slot
+span from the word count.
 
-The registry is the *only* record of a key's extent. The KPV has no field
-describing how many slots a key spans or how many words of its final slot are
-meaningful (<<km-firmware-kpv-driver>>), so a key's length is recorded once here
-at generation time and the slot span is derived from it. That keeps the recorded
-length and the set of slots claimed for the key from ever disagreeing.
+*Generate handle.* Validate `1`–`128` words and a span that stays within the
+vault, check handle exhaustion, then store metadata and update every slot in
+the reverse map. This function does not check for existing slot ownership;
+the allocation caller must supply a free run.
 
-All access to the key registry must go through a well defined interface.
-The following functions manipulate the key registry.
-
-*Initialize Registry*
-
-Clears every handle entry and every slot mapping, and sets the next allocatable
-handle to `1`. Called once from the boot sequence (<<km-firmware-bootloader>>).
-
-*Get Key Handle*
-
-Returns the registered key handle, given a key slot index. The given key
-slot index does not need to be the base slot for the key. Unlike the lookups
-below, this function does not signal an error: a slot with no associated handle,
-or a slot index past the end of the vault, returns NULL (`0x00`). Allocation
-uses it as the free-slot predicate on that basis.
-
-*Get Key Slot*
-
-Returns the registered base key slot index, given a key handle. Returns an
-error if the key handle does not exist or has been invalidated.
-
-*Get Key CRC*
-
-Returns the registered CRC-32C for a key, given a key handle. Returns an
-error if the key handle does not exist or has been invalidated.
-
-*Get Key Destinations*
-
-Returns the registered `DEST_VALID` destination-policy bitmask for a key,
-given a key handle. Returns an error if the key handle does not exist or has
-been invalidated.
-
-*Get Key Words*
-
-Returns the registered length of a key in 32-bit words, given a key handle.
-Returns an error if the key handle does not exist or has been invalidated.
-Every caller that has to walk a key's slots — CRC computation, key transfer,
-revocation — takes its extent from here.
-
-*Generate Handle*
-
-Returns and registers a unique 8-bit key handle, given the following:
-
-* The base slot index for a key
-* The key length in 32-bit words
-* A CRC-32C of the key data
-* The valid crypto engine destinations for the key
-
-It has the following execution flow:
-
-. Returns with an error if the key length is outside `1`–`128` words, or if the
-key's slot span derived from that length would run past the last KPV slot.
-Bounding the span here is what keeps the reverse slot-to-handle map from being
-written past its end.
-. Assigns the next handle. Handles are allocated monotonically from `1` rather
-than by searching for a free value, so a handle is never reused once
-invalidated.
-.. Returns with an error if the next handle would wrap to `0`, i.e. handles are
-exhausted.
-. Updates the registry with the generated key handle, base slot, key length,
-CRC-32C, and destination-policy bitmask, and points every slot the key occupies
-at that handle in the reverse map.
-
-This function does not check whether the requested slots are already registered.
-Allocating a free run of slots is the caller's responsibility
-(<<km-firmware-key-management>>).
-
-*Destroy Handle*
-
-Invalidates a given key handle in the registry. The key handle may not be
-used again. Returns with an error if the given key handle does not exist.
+*Destroy handle.* Reject an invalid handle; otherwise clear its validity flag
+and destination policy, and clear reverse slot mappings. Base slot, length and
+CRC remain but are inaccessible through validity-checked lookups. This operation alone does not erase vault data.
 
 [[km-firmware-key-management]]
 == Key Management
 
-These functions provide high-level key management operations. In general,
-they are called by command handler functions.
+`rom_keymgmt` implements the shared lifecycle used by the command handlers.
+Keys contain `1`–`128` 32-bit words and occupy `ceil(words / 16)` consecutive
+slots. The final slot is read or written only for the remaining key words.
 
-*Check Key*
+*Check.* Look up the extent and stored CRC, read the key and compute CRC-32C.
+An invalid handle or read failure returns an error. A CRC mismatch additionally
+sets `RECOVERABLE_ERR` and queues `RESP_RECOVERABLE_FAULT(key_slot_crc)`.
+Scratch key material is securely cleared.
 
-Checks the integrity of a stored key, given a key handle. Returns an error
-if the key handle does not exist or the CRC-32C is invalid. Triggers a
-recoverable fault if the CRC-32C is invalid. It has the following
-execution flow:
+*Generate.* Obtain `encoded_size + 1` words from the DRBG, call the common
+load path and securely clear the generated-key buffer afterwards.
 
-. Get the key slot, key length and CRC-32C for the given key handle, returning
-with an error if invalid.
-. Calculate the CRC-32C over the key data, reading one slot at a time across the
-key's slot span and taking only the remaining words from the final slot. The
-span comes from the registered key length, since the KPV records no extent of
-its own.
-. If the calculated CRC-32C does not match the CRC-32C stored in the key
-registry:
-.. Set the `RECOVERABLE_ERR` register of the KMCSR.
-.. A `RESP_RECOVERABLE_FAULT` response is sent to the SEP with a
-_key_slot_crc_ fault code.
-.. Return with an error.
+*Load.* SEP loading, random generation and Adams Bridge capture share this path:
 
-*Generate Key*
+. Validate encoded size `0`–`127`, nonzero destination policy and supported span.
+. Search from a DRBG-selected starting slot, wrapping the search once. A run
+must not straddle the vault end; every slot must be unassigned and have neither
+read nor write lock set. Sealed and retired slots are therefore excluded.
+. Compute the key CRC and register a fresh handle with extent and policy,
+before any vault mutation. Capacity or handle exhaustion leaves the vault intact.
+. Shred the chosen slots, write the key one slot at a time, and write-lock all
+slots. On a slot-write error, destroy the registration; earlier writes are not
+rolled back and that handle value is not reused.
+. Return the handle on success.
 
-Generates a random key, given the following:
+*Revoke.* Look up the extent, hardware-erase every slot and wait for each erase
+to complete, then destroy the handle. Unsealed slots become free; sealed slots
+retire (<<km-firmware-kpv-driver>>). Existing engine copies are unaffected.
 
-* The size of the key in multiples of 32-bit words
-* Valid crypto engine destinations for the key
-
-It collects the key material from the DRBG and then stores it by the same path
-as *Load Key* below, zeroizing its scratch buffer afterwards.
-
-*Load Key*
-
-Stores key material in the KPV, given the following:
-
-* The size of the key in multiples of 32-bit words
-* Valid crypto engine destinations for the key
-* The key data
-
-This is the single store path: *Generate Key* supplies DRBG output as the key
-data, and the SEP-facing load and Adams Bridge capture commands supply theirs.
-It has the following execution flow:
-
-. Returns with an error if the encoded size exceeds `127`, the destination mask
-is zero, or the resulting slot span exceeds the span of the largest supported
-key.
-. Finds a set of unoccupied consecutive key slots, returning with an error
-if none are available.
-.. The search starts at a slot index selected randomly using data from the DRBG
-and wraps once around the vault.
-.. A run that would extend past the last slot is skipped rather than wrapped,
-so a key never straddles the end of the vault.
-.. Selected slots must not be write-locked or read-locked, which also excludes
-any sealed or retired slot.
-.. Selected slots must not be associated with an existing key handle.
-. Computes the CRC-32C over the key data, before anything is written to the KPV.
-. Registers the handle, recording the base slot, key length, CRC-32C and
-destination mask. This happens *before* any KPV mutation, because the registry
-holds the key's only record of its own length; if a subsequent slot write fails,
-the handle is destroyed again so no registry entry survives without the key
-material it describes.
-. Shreds all slots associated with the key.
-. Writes the key material one slot at a time, the final slot taking only the
-words that remain.
-. Write-locks all slots associated with the key.
-. Returns the handle for the key.
-
-*Revoke Key*
-
-Revokes a key, given a key handle. It has the following execution flow:
-
-. Gets the base slot index and key length associated with the key handle,
-returning with an error if invalid.
-. Hardware-erases every slot across the key's span: each slot's `CTRL.erase`
-trigger is asserted, and firmware waits until the hardware self-clears it. The
-erase overwrites the key data through the KPV scrambler. An unsealed slot also
-has its CTRL register cleared, including the lock bits, so it is wiped and
-reusable; a sealed slot is retired instead and cannot be reused until warm
-reset (<<km-firmware-kpv-driver>>).
-. Destroys the given key handle.
-. Returns success.
-
-*Transfer Key*
-
-Transfers a key from the KPV to one or more crypto engines, given the
-following:
-
-* The handle for the key
-* A bitfield of crypto engine destinations for the key
-
-It has the following execution flow:
-
-. Gets the base slot index associated with the key handle, returning with
-an error if invalid.
-. Checks the integrity of the key associated with the given handle,
-returning with an error if invalid.
-. Gets the destination-policy bitmask from the key registry and checks that
-*all* requested crypto engine destinations are allowed,
-returning with an error if any are invalid.
-. Transfers the key to all requested crypto engines.
-. Returns success.
+*Transfer.* Check key CRC, read the extent and policy, and require every selected
+destination to be permitted. Write selected engines in bit order: HMAC, KMAC,
+AES, OTBN, ABR ML-DSA seed, ML-KEM seed D, seed Z, then message. Stop at the first
+driver failure; earlier engine writes are not undone. Clear the scratch key
+buffer on exit. The command succeeds only after all selected writes complete.
 
 [[km-firmware-main-event-loop]]
 == Main Event Loop
 
-After the bootloader initializes the KM, the main loop of the KM
-continuously monitors the incoming message buffer for commands. When the
-incoming message buffer is empty, the main loop should wait for an
-interrupt. All other tasks are handled by the main ISR.
+After initialization, each iteration calls `rom_msg_rx_process()`, even without
+a complete frame, so partial-frame overflow and interrupt re-arming make
+progress. Commands execute in receive order.
 
-The KM processes commands strictly in the order that they are received.
-
-The main loop also dispatches the Adams Bridge shared-key notification. The
-shared-key ISR sets a pending-notify flag; each iteration the main loop
-samples and clears that flag and, if set, sends the SEP an unsolicited
-`RESP_ABR_SHARED_KEY_READY`. The mailbox and shared-key interrupts are masked
-around the flag sample/clear and the wait-for-interrupt decision so that a
-notification set by the ISR can neither be dropped (lost update) nor leave the
-CPU sleeping with work pending (lost wakeup).
+Next, the loop masks mailbox and Adams Bridge shared-key interrupts, samples
+and clears the pending-notify flag, and waits for an interrupt only if neither
+a notification nor a complete RX frame is pending. It then restores the prior
+mask and sends `RESP_ABR_SHARED_KEY_READY` if needed. Sampling and deciding to
+wait under the same mask avoids lost updates and lost wakeups; sending outside
+that window allows TX-buffer draining.
 
 [[km-main-fault-handling]]
 === Fault Handling
 
-When the KM encounters an unrecoverable fault it purges key material, flushes
-the mailbox FIFOs, and then writes a `RESP_UNRECOVERABLE_FAULT` message directly
-to the outgoing mailbox FIFO. The message transmit buffer is entirely bypassed
-for this operation. Finally the PicoRV32 traps so that it halts execution. At
-this point the SEP must hard-reset the KM. <<km-seq-error-recovery>> gives the
-full ordered flow and states which of its steps are gated on the build-time wipe
-predicate.
-
-When the KM encounters a recoverable fault, it should set the
-`RECOVERABLE_ERR` register bit in the KMCSR. The intent is that the KM
-should halt critical services until the SEP has had a chance to
-acknowledge the fault and take any desired action. While this bit is set the KM
-answers every command with _failure_ except the four query commands
-(`CMD_HW_VER`, `CMD_ROM_VER`, `CMD_SRAM_VER`, `CMD_STAT`) and `CMD_RECOV_ACK`
-itself, rejecting the command before its handler runs. The
-`RESP_RECOVERABLE_FAULT` message is always sent back to the SEP in
-addition to any error messages returned from any command that may have
-triggered the fault.
+The main loop continues after a recoverable fault, with command dispatch gated
+by `RECOVERABLE_ERR`. A fatal handler never returns to the loop. SEP recovery,
+response ordering and the optional wipe behavior are defined once in
+<<km-seq-error-recovery>>.

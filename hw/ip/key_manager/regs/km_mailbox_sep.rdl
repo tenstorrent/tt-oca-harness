@@ -372,4 +372,8 @@ addrmap km_mailbox_sep {
     };
 
     ctrl_reg SEP_CTRL @ 0x018;
+
+`ifdef OCAH_DOC_MEMORY_MAP
+    ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+`endif
 };

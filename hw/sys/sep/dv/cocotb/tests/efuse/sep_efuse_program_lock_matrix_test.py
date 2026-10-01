@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """eFuse program x write-lock matrix on every legal spare field.
 
-RAND-REP. Every seed walks both cells on SPARE0..SPARE7 (never LC_STATE):
+RAND-REP. Every seed walks both cells on SPARE0..SPARE8 (never LC_STATE):
 
   * unlocked: program a seed-selected bit, prove it in OTP and after resense
   * write-locked: program the spare's write-lock, resense, reject a second
@@ -21,6 +21,7 @@ from __future__ import annotations
 import pyuvm
 from env.sep_efuse_image import SepEfuseImage
 from env.sep_lcc_golden import LC_TEST_DEV
+from env.sep_locked_field_irq import spare_zero_pins
 from sep_base_test import sep_base_test
 from seq_lib.sep_efuse_direct_read_seq import sep_efuse_direct_read_seq
 from seq_lib.sep_efuse_otp_program_seq import sep_efuse_otp_program_seq
@@ -44,9 +45,8 @@ class sep_efuse_program_lock_matrix_test(sep_base_test):
         cfg = SepEfuseProgramLockCfg(self.random_seed())
         self.logger.info("efuse program-lock matrix: %s", cfg.summary())
 
-        spare_fixed = {f"SPARE{i}": 0 for i in range(8)}
         # t=0 OTP load is staged by cocotb/dv_sim_prestage.py with these kwargs.
-        img = self.select_efuse_image(lc_raw=LC_TEST_DEV, fixed=spare_fixed)
+        img = self.select_efuse_image(lc_raw=LC_TEST_DEV, fixed=spare_zero_pins())
         for cell in cfg.cells:
             assert img.field_int(cell.field) == 0
         assert img.field_int("LOCKS") == 0 and img.field_int("LOCKS_SPARE") == 0
