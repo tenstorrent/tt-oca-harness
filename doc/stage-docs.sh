@@ -44,7 +44,7 @@ MODULES="ROOT $SUBSYSTEMS aou ip"
 
 clean() {
   rm -rf "$MOD/ROOT/pages" "$MOD/ROOT/partials/hw" "$MOD/ROOT/assets"
-  for m in smc sep dtp smu aou ip; do
+  for m in smc sep dtp smu aou ip smc-bootrom-prod sep-bootrom-prod; do
     rm -rf "${MOD:?}/$m"
   done
   rm -f "$ASSETS"/aou-*
@@ -150,6 +150,18 @@ for s in $SUBSYSTEMS; do
 done
 # DTP and SMU port tables are private ROOT partials included by their owning pages.
 rm -f "$MOD/dtp/pages/port_table.adoc" "$MOD/smu/pages/port_table.adoc"
+
+# --- production ROM manuals: index.adoc includes its untitled chapter
+#     fragments by relative path. They move to partials/ so they have no
+#     standalone URL, and the staged index includes them via partial$.
+for m in smc-bootrom-prod sep-bootrom-prod; do
+  idx="$MOD/$m/pages/index.adoc"
+  [ -f "$idx" ] || continue
+  for frag in $(sed -nE 's/^include::([^/$]+\.adoc)\[.*$/\1/p' "$idx"); do
+    [ -f "$MOD/$m/pages/$frag" ] && mv -f "$MOD/$m/pages/$frag" "$MOD/$m/partials/$frag"
+  done
+  sed -i -E 's/^include::([^/$]+\.adoc)\[/include::partial$\1[/' "$idx"
+done
 
 # --- aou: each product stages only the section it publishes ---
 rm -rf "$MOD/aou"
