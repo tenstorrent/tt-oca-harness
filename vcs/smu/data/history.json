@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-01T12:27:24.069470+00:00",
+  "generated_at": "2026-10-01T18:59:22+00:00",
   "points": [
     {
       "failed_tests": 0,
@@ -578,6 +578,57 @@
         }
       ],
       "test_pass_rate": 98.33
+    },
+    {
+      "failed_tests": 12,
+      "flaky_tests": 0,
+      "flow_pass_rate": 0.0,
+      "generated_at": "2026-10-01T18:59:22+00:00",
+      "id": "1ce576b551ea3abf",
+      "per_dut": [
+        {
+          "comparison_key": "COVCMP-aece7ac18e83028f",
+          "coverage_status": "PASS",
+          "effective_metrics": {
+            "assertion": 100.0,
+            "branch": 100.0,
+            "condition": 100.0,
+            "functional": 99.11,
+            "line": 100.0,
+            "toggle": 86.15,
+            "user": 100.0
+          },
+          "flow": "smu",
+          "framework": "cocotb",
+          "holes_summary": {
+            "accepted": 0,
+            "by_category": {},
+            "by_disposition": {},
+            "by_metric": {},
+            "by_status": {},
+            "details_available": true,
+            "hole_group_count": 0,
+            "native_point_count": 0,
+            "observations_complete": false,
+            "open": 0,
+            "unclassified": 0
+          },
+          "raw_metrics": {
+            "assertion": 100.0,
+            "branch": 100.0,
+            "condition": 60.0,
+            "functional": 69.38,
+            "line": 100.0,
+            "toggle": 59.91,
+            "user": 100.0
+          },
+          "status": "FAIL",
+          "target": "compile_smu_chiplet",
+          "threshold_met": true,
+          "tool": "vcs"
+        }
+      ],
+      "test_pass_rate": 90.0
     }
   ],
   "schema_version": "0.2"
