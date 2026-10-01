@@ -122,17 +122,6 @@ sources:
   # hmac_wrapper.sv, kmac_wrapper.sv, sep_crypto_otbn_wrapper.sv, sep.sv's secure_dma
   # integration) unconditionally instantiate these OpenTitan IP cores, so any build
   # that compiles SEP/SMU needs this whole file list to elaborate cleanly.
-  - target: any(smc, opentitan_smu, sep, smu)
-    files:
-      - upstream/hw/ip/prim/rtl/prim_subreg_arb.sv
-      - upstream/hw/ip/prim/rtl/prim_subreg.sv
-      - upstream/hw/ip/prim/rtl/prim_subreg_ext.sv
-      - upstream/hw/ip/prim/rtl/prim_arbiter_tree.sv
-      - upstream/hw/ip/prim/rtl/prim_fifo_async.sv
-  - target: any(smc, opentitan_smu, sep, smu, key_manager)
-    files:
-      - upstream/hw/ip/prim/rtl/prim_rst_sync.sv
-
   - target: any(drbg, opentitan_smu, sep, smu)
     files:
       # Primitive packages.

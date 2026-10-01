@@ -233,10 +233,9 @@ module telemetry_receiver_wrap #(
 
     // afready_i arrives from the telemetry clock domain but is consumed by
     // telemetry_receiver on clk_i, so it is synchronized into clk_i.
-    prim_sync2r #(
-      .WIDTH                  (1),
-      .RANDOM_DELAY_GRAY_CODE (1'b0)
-    ) afready_sync2r (
+    prim_flop_2sync #(
+      .Width(1)
+    ) u_afready_sync2r (
       .clk_i                  (clk_i),
       .d_i                    (afready_i[i]),
       .rst_ni                 (rst_ni),
@@ -245,10 +244,9 @@ module telemetry_receiver_wrap #(
 
     // afvalid is produced on clk_i and exported to the telemetry clock
     // domain, so it is synchronized into clk_telemetry_i.
-    prim_sync2r #(
-      .WIDTH                  (1),
-      .RANDOM_DELAY_GRAY_CODE (1'b0)
-    ) afvalid_sync2r (
+    prim_flop_2sync #(
+      .Width(1)
+    ) u_afvalid_sync2r (
       .clk_i                  (clk_telemetry_i),
       .d_i                    (afvalid),
       .rst_ni                 (rst_telemetry_ni),
