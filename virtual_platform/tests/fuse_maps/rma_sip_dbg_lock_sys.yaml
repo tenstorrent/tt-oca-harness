@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# RMA_SiP, secure boot not disabled, CHIPLET_DBG (bit 1) set in SYS_DIS only.
+# RMA_SiP does not apply SYS_DIS to feature control; the ROM still reads it,
+# so the part enforces secure boot (SEP-ROM-SB-025).
+lc_state: RMA_SIP
+sboot_dis: 0
+locks_lo: 0xA800
+sys_dis_lo: 0x2
