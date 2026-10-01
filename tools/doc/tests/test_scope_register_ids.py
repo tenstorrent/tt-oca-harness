@@ -34,7 +34,7 @@ class RegisterLinks(unittest.TestCase):
         result = module.scope_ids(html, "testblock")
         self.assertIn('id="regmap-UART_CTRL"', result)
         self.assertIn('href="#regmap-UART_CTRL"', result)
-        self.assertNotIn('testblock-regmap-', result)
+        self.assertNotIn("testblock-regmap-", result)
 
 
 if __name__ == "__main__":

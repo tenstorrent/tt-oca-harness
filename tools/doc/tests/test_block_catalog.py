@@ -50,7 +50,7 @@ See <<fixed-figure>>.
 
 class BlockCatalogTests(unittest.TestCase):
     def test_register_maps_keep_one_legacy_fragment(self):
-        source = '''= Registers
+        source = """= Registers
 :ocah-trm:
 
 ++++
@@ -60,7 +60,7 @@ class BlockCatalogTests(unittest.TestCase):
 ++++
 <h3 id="edn-INTR_STATE" data-register-alias="INTR_STATE">EDN status</h3>
 ++++
-'''
+"""
         html, _ = self.convert("javascript", source)
         for fragment in ("INTR_STATE", "csrng-INTR_STATE", "edn-INTR_STATE"):
             self.assertEqual(html.count(f'id="{fragment}"'), 1)
