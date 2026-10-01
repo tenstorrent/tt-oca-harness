@@ -167,4 +167,61 @@ class sep_base_test_seq extends ocah_sequence;
                    64'(expected), $sformatf("addr=0x%0h", addr));
   endtask
 
+  // CSR access whose expected response the caller gives (a refusal check
+  // expects SLVERR or DECERR). The response is recorded under check_id, not
+  // CHK-CSR-RESP, and a non-OKAY response does not raise an error by itself.
+  task csr_write_expect(string check_id, bit [63:0] addr, bit [31:0] data, ocah_axi_resp_e expected,
+                        string label = "");
+    sep_axi_csr_write_seq op = sep_axi_csr_write_seq::type_id::create("csr_write");
+    op.addr = addr;
+    op.data = data;
+    op.check_response = 1'b0;
+    op.start(p_sequencer.m_lsu_seqr);
+    check_evidence(check_id, label.len() ? label : $sformatf("wr_0x%0h", addr),
+                   64'(op.result.worst_resp()), 64'(expected), $sformatf(
+                   "write addr=0x%0h data=0x%08h resp=%s", addr, data, op.result.worst_resp().name()
+                   ));
+  endtask
+
+  task csr_read_expect(string check_id, bit [63:0] addr, ocah_axi_resp_e expected,
+                       output bit [31:0] data, input string label = "");
+    sep_axi_csr_read_seq op = sep_axi_csr_read_seq::type_id::create("csr_read");
+    op.addr = addr;
+    op.check_response = 1'b0;
+    op.start(p_sequencer.m_lsu_seqr);
+    data = op.data;
+    check_evidence(check_id, label.len() ? label : $sformatf("rd_0x%0h", addr),
+                   64'(op.result.worst_resp()), 64'(expected), $sformatf(
+                   "read addr=0x%0h data=0x%08h resp=%s", addr, data, op.result.worst_resp().name()
+                   ));
+  endtask
+
+  // Raw single-beat access at any address and size (memory words, narrow or
+  // misaligned beats). Neither records evidence nor escalates the response:
+  // the caller grades the returned item's data and response.
+  task bus_write(bit [63:0] addr, bit [63:0] word, bit [7:0] strb, int size,
+                 output ocah_axi_item result, input string label = "");
+    sep_axi_bus_write_seq op = sep_axi_bus_write_seq::type_id::create("bus_write");
+    op.addr = addr;
+    op.word = word;
+    op.strb = strb;
+    op.size = size;
+    op.start(p_sequencer.m_lsu_seqr);
+    result = op.result;
+    `uvm_info(get_type_name(),
+              $sformatf("LSU BUS WRITE %-24s addr=0x%08h size=%0d strb=0x%02h data=0x%016h resp=%s",
+                        label, addr, size, strb, word, result.worst_resp().name()), UVM_MEDIUM)
+  endtask
+
+  task bus_read(bit [63:0] addr, int size, output ocah_axi_item result, input string label = "");
+    sep_axi_bus_read_seq op = sep_axi_bus_read_seq::type_id::create("bus_read");
+    op.addr = addr;
+    op.size = size;
+    op.start(p_sequencer.m_lsu_seqr);
+    result = op.result;
+    `uvm_info(get_type_name(),
+              $sformatf("LSU BUS READ  %-24s addr=0x%08h size=%0d data=0x%016h resp=%s", label,
+                        addr, size, result.first_data(), result.worst_resp().name()), UVM_MEDIUM)
+  endtask
+
 endclass : sep_base_test_seq

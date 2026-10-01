@@ -34,6 +34,8 @@ package sep_seq_lib_pkg;
   // Reusable operations (one agent, one operation).
   `include "sep_axi_csr_write_seq.svh"
   `include "sep_axi_csr_read_seq.svh"
+  `include "sep_axi_bus_write_seq.svh"
+  `include "sep_axi_bus_read_seq.svh"
 
   // Scenario layer: the base virtual sequence, then the scenarios.
   `include "sep_base_test_seq.svh"
