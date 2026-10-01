@@ -109,8 +109,10 @@ args = ["-elfile", "{path}"]
 # by scope: smc_toggle_module_exclusions.el holds the rows true of every
 # instance of a module, smc_toggle_instance_exclusions.el those true of one
 # instance. T1 OPENTITAN-PORTS-ONLY and T2 to T12 grade a unit on its ports and
-# take every net inside it. The rows come from urg's templates alone, so they
-# do not change with the run's seeds. gen_smc_toggle_exclusions.py writes
+# take every net inside it; UNION-ALIAS, EFUSE-IMAGE-COPY,
+# EFUSE-FIELD-MAP-CONST and VERSION-ID-CONST are design facts; ATOP-ZERO and
+# EXT-IRQ-TIED are the bench's. The rows come from urg's templates alone, so
+# they do not change with the run's seeds. gen_smc_toggle_exclusions.py writes
 # both files; README.md gives each class's fact and granularity.
 [[native_files]]
 tool = "vcs"

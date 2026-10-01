@@ -9972,8 +9972,6 @@ Toggle s_axil_rdata [15:8] "logic s_axil_rdata[31:0]"
 Toggle s_axil_rdata [3:1] "logic s_axil_rdata[31:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.CHIP_ID.chip_id.next "logic hwif_in.CHIP_ID.chip_id.next[31:0]"
-Toggle hwif_in.VERSION_HI.version_hi.next "logic hwif_in.VERSION_HI.version_hi.next[31:0]"
-Toggle hwif_in.VERSION_LO.version_lo.next "logic hwif_in.VERSION_LO.version_lo.next[31:0]"
 
 CHECKSUM: "346538436 3233800566"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_misc_wrap.u_smc_ndm_reset_reg

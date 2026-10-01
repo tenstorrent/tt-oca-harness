@@ -2,10 +2,12 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Plan the SMC toggle exclusions whose fact holds for a whole signal or a fixed bit window.
 
-A class whose fact is about the signal itself -- here a net inside a unit
-graded on its ports -- takes the signal whole: every bit, both directions,
-covered or not. A class whose fact names some bits of a signal takes those
-bits, both directions. Both kinds are read from urg's templates alone, so the rows do not depend on which
+A class whose fact is about the signal itself -- a union view that aliases flops
+another view already counts, a port that carries another graded signal
+unchanged, a constant, a tie-off, or a net inside a unit graded on its ports --
+takes the signal whole: every bit, both directions, covered or not. A class
+whose fact names some bits of a signal takes those bits, both directions. Both
+kinds are read from urg's templates alone, so the rows do not depend on which
 points a run covers: they stay the same across seeds and runs of one build and
 change only when the templates do. The classes whose fact is about individual
 points, the review classes of smc_reviewed_exclusions.toml, stay report-gated
@@ -16,7 +18,7 @@ module and urg takes a toggle exclusion on the module's section, and at
 INSTANCE scope otherwise: a fact about one instance, a module elaborated per
 parameter set (urg takes no toggle exclusion on such a section), or a module
 some of whose instances the fact does not reach. A signal is owned by the first
-class that names it, in the order T1, then the manifest's units.
+class that names it, in the order T1, the manifest's units, then FACT_ORDER.
 
 The ports-only units are planned here from the manifest's `[[unit]]` entries:
 a unit root keeps the ports the run's report lists under Port Details and
@@ -69,6 +71,76 @@ T1_UNITS: tuple[tuple[str, str], ...] = (
     ("prim_clock_mux2", "hw/common/ocah_prim_generic/rtl/prim_clock_mux2.sv"),
 )
 
+# EFUSE-IMAGE-COPY: (module, prefix) whose `prefix.values` carries an image signal
+# graded elsewhere unchanged. `efuse_shadow_regs.sv:766` assigns `shadow_efuse_o`
+# from `shadow_efuse_masked`; `efuse_interface_controller.sv:771` and `:856` connect
+# that port to the controller's `shadow_regs` and to `efuse_guard.shadow_regs_i`;
+# `smc_efuse_wrapper.sv:273`, `smc_peripherals.sv:1061`, `smc.sv:861` and
+# `smc_wrapper.sv:271` carry the controller's `shadow_regs_o` up unchanged.
+IMAGE_COPIES: frozenset[tuple[str, str]] = frozenset(
+    {
+        ("efuse_shadow_regs", "shadow_efuse_o"),
+        ("efuse_interface_controller", "shadow_regs"),
+        ("efuse_guard", "shadow_regs_i"),
+        ("smc_efuse_wrapper", "shadow_regs_o"),
+        ("smc_peripherals", "shadow_regs_o"),
+        ("smc", "shadow_regs_o"),
+        ("smc_wrapper", "shadow_regs_o"),
+    }
+)
+
+# EFUSE-FIELD-MAP-CONST: the modules `smc_efuse_wrapper.sv:268` passes
+# `smc_efuse_pkg::EfuseFieldMap` to, directly or through the controller
+# (`efuse_interface_controller.sv:757`, `:838`).
+FIELD_MAP_MODULES = frozenset(
+    {
+        "efuse_interface_controller",
+        "efuse_shadow_regs",
+        "efuse_guard",
+        "efuse_shadow_reg_access_control",
+    }
+)
+FIELD_MAP = re.compile(r"^efuse_field_map_i\[\d+\]\.")
+
+# VERSION-ID-CONST: the nets `smc_version_id_wrap.sv` drives from `prim_rev_cell`
+# instances whose sources are tied to 1'b0 and 1'b1, and their copies into the
+# chip_config register block (`smc_misc_wrap.sv:180-219`).
+VERSION_NETS: frozenset[tuple[str, str]] = frozenset(
+    {
+        ("smc_version_id_wrap", "low"),
+        ("smc_version_id_wrap", "high"),
+        ("smc_version_id_wrap", "version_id_o"),
+        ("smc_misc_wrap", "version_id"),
+        ("smc_misc_wrap", "hwif_in.VERSION_LO.version_lo.next"),
+        ("smc_misc_wrap", "hwif_in.VERSION_HI.version_hi.next"),
+        ("chip_config_reg", "hwif_in.VERSION_LO.version_lo.next"),
+        ("chip_config_reg", "hwif_in.VERSION_HI.version_hi.next"),
+    }
+)
+
+ATOP = re.compile(r"(?:^|\.)aw\.atop$|(?:^|[._])aw_?atop(?:_[io])?$")
+
+# EXT-IRQ-TIED: the nets that carry external interrupt sources 17 and up, which
+# `tb_top.sv` ties to zero (`{(NUM_EXT_INTERRUPTS-17){1'b0}}`), by (module,
+# signal), and the per-bit cells of the synchronizer `smc_base.sv:351-358` passes
+# them through, whose data nets carry nothing else.
+EXT_IRQ_FIRST = 17
+EXT_IRQ_LAST = 255
+EXT_IRQ_NETS: frozenset[tuple[str, str]] = frozenset(
+    {
+        ("smc_wrapper", "smc_ext_interrupts_i"),
+        ("smc", "smc_ext_interrupts_i"),
+        ("smc_base", "ext_interrupts_i"),
+        ("smc_base", "ext_interrupts_smc_clk"),
+        ("smc_base", "cpu_interrupts_o"),
+        ("smc", "cpu_interrupts"),
+        ("smc_cpu_wrapper", "interrupts_i"),
+        ("smc_4core_cpu", "interrupts_i"),
+    }
+)
+CLOCK_RESET = re.compile(r"^(?:clk|rst)\w*$")
+EXT_IRQ_SYNC = re.compile(r"\.u_smc_base\.u_ext_interrupts_sync3\.u_sync3\[(\d+)\]$")
+
 CLASSES: dict[str, ToggleClass] = {
     c.id: c
     for c in (
@@ -84,8 +156,93 @@ CLASSES: dict[str, ToggleClass] = {
             "the unit's source losing its OpenTitan origin, or the package grading OpenTitan "
             "internals",
         ),
+        ToggleClass(
+            "UNION-ALIAS",
+            "design",
+            "whole signal",
+            "the fields and locks views of the packed union efuse_map_t alias the flops its values view counts",
+            "efuse_map_t is a packed union (smc_efuse_pkg.sv:171-175), so urg lists the same 8192 "
+            "flops under the values, fields and locks views; the fields and locks views of every "
+            "efuse_map_t net are left out and values carries each bit once.",
+            "efuse_map_t ceasing to be a union",
+        ),
+        ToggleClass(
+            "EFUSE-IMAGE-COPY",
+            "design",
+            "whole signal",
+            "this port carries a shadow-image net, graded at its source, unchanged",
+            "this port carries a shadow-image net unchanged: efuse_shadow_regs.sv:766 assigns "
+            "shadow_efuse_o from shadow_efuse_masked, efuse_interface_controller.sv:771 and :856 "
+            "connect it to shadow_regs and efuse_guard.shadow_regs_i, and smc_efuse_wrapper.sv:273, "
+            "smc_peripherals.sv:1061, smc.sv:861 and smc_wrapper.sv:271 carry the controller's "
+            "shadow_regs_o up without logic. The image stays graded on shadow_efuse_values, "
+            "shadow_efuse.values, shadow_efuse_masked.values and the controller's shadow_regs_o.",
+            "logic between a copy and its source, such as a mask or a gate added on the path",
+        ),
+        ToggleClass(
+            "EFUSE-FIELD-MAP-CONST",
+            "design",
+            "whole signal",
+            "efuse_field_map_i is the localparam EfuseFieldMap passed through ports and never changes",
+            "smc_efuse_wrapper.sv:268 connects efuse_field_map_i to the localparam "
+            "smc_efuse_pkg::EfuseFieldMap (smc_efuse_pkg.sv:246), and the controller passes it on "
+            "unchanged (efuse_interface_controller.sv:757, :838); -cm_noconst does not prune a "
+            "struct constant passed through ports, so the field map is listed while it never "
+            "changes.",
+            "a field map that is programmable or loaded from fuses",
+        ),
+        ToggleClass(
+            "VERSION-ID-CONST",
+            "design",
+            "whole signal",
+            "the version identifier comes from revision cells tied to constants",
+            "smc_version_id_wrap.sv builds the version identifier from prim_rev_cell instances "
+            "whose src_low_i and src_high_i are tied to 1'b0 and 1'b1 (prim_rev_cell.sv:13-17 "
+            "copies them to lo_o and hi_o), and smc_misc_wrap.sv:180-219 copies it into the "
+            "chip_config register block's hardware inputs; the scope drops prim_rev_cell, so the "
+            "constant is not pruned.",
+            "a version identifier driven from anything other than tied revision cells",
+        ),
+        ToggleClass(
+            "ATOP-ZERO",
+            "bench",
+            "whole signal",
+            "bench scope: no initiator of this bench issues an atomic, so AWATOP stays zero",
+            "bench scope for the inbound ports: no AXI initiator in this bench issues an atomic. "
+            "hw/sys/smc/dv/tb/tb_top.sv ties AWATOP to zero on the SEP, system and JTAG ports "
+            "(:858, :911, :964), the CPU MMIO port ties it (smc_4core_cpu.sv:517), the iDMA "
+            "legalizer (idma_generated.sv:4025), the zeroer (zeroer.sv:454) and the log engine's "
+            "axi_lite_to_axi (axi_lite_to_axi.sv:40-47, default zero) issue none, and every SMC "
+            "fabric is built with ATOPs or AtopSupport at zero (smc_local_xbar.sv:179, "
+            "smc_input_fabric.sv:317, smc_output_fabric.sv:233).",
+            "an initiator that issues atomics, or a bench port that drives AWATOP",
+        ),
+        ToggleClass(
+            "EXT-IRQ-TIED",
+            "bench",
+            "bit window",
+            "bench scope: tb_top.sv ties external interrupt sources 17 to 255 to zero",
+            "bench scope: hw/sys/smc/dv/tb/tb_top.sv:1294 drives smc_ext_interrupts_i[255:17] "
+            "with {(NUM_EXT_INTERRUPTS-17){1'b0}}, so external interrupt sources 17 to 255 are "
+            "zero; smc_base.sv:351-364 synchronizes them through u_ext_interrupts_sync3 into "
+            "cpu_interrupts_o[255:0], which reaches the CPU unchanged. Bits [255:17] of those "
+            "nets and the data nets of the synchronizer cells for those bits are left out; their "
+            "clocks and resets, and sources 2 to 16, which have a bench pin, stay graded.",
+            "bench pins on external interrupt sources 17 and up",
+        ),
     )
 }
+
+# Class order: the first class that names a signal owns it. The unit classes
+# from the manifest are inserted after T1.
+FACT_ORDER = (
+    "UNION-ALIAS",
+    "EFUSE-IMAGE-COPY",
+    "EFUSE-FIELD-MAP-CONST",
+    "VERSION-ID-CONST",
+    "ATOP-ZERO",
+    "EXT-IRQ-TIED",
+)
 
 COPYRIGHT = re.compile(r"^\s*//\s*Copyright.*?(lowRISC|OpenTitan).*$", re.I | re.M)
 COMMENTS = re.compile(r"//[^\n]*|/\*.*?\*/", re.S)
@@ -142,6 +299,19 @@ def module_ports(path: Path, module: str) -> set[str]:
 def head_name(signal: str) -> str:
     """The declared name a toggle point belongs to: `a.b[3].c` -> `a`."""
     return signal.split(".")[0].split("[")[0]
+
+
+def union_view(signal: str, signals: dict[str, str]) -> bool:
+    """Whether a point sits under the fields or locks view of a net that also has values."""
+    parts = signal.split(".")
+    for i in range(1, len(parts)):
+        if parts[i] in ("fields", "locks") and ".".join(parts[:i]) + ".values" in signals:
+            return True
+    return False
+
+
+def window(lo: int, hi: int) -> str:
+    return f" [{hi}:{lo}]"
 
 
 @dataclass
@@ -224,8 +394,13 @@ class Planner:
         self.absent: list[str] = []
         self.order = ["T1-OPENTITAN-PORTS-ONLY"]
         self.order += [c for c in manifest.classes if c.startswith("T")]
+        self.order += list(FACT_ORDER)
         self.t1()
         self.units()
+        self.facts()
+
+    def modules(self) -> list[tuple[str, reviewed.Scope]]:
+        return [(s, sc) for s, sc in sorted(self.db.modules.items()) if "tgl" in sc.checksum]
 
     def t1(self) -> None:
         for module, relative in T1_UNITS:
@@ -283,6 +458,40 @@ class Planner:
             for signal in sc.signals:
                 if signal not in kept:
                     self.plan.add("INSTANCE", path, signal, cls)
+
+    def facts(self) -> None:
+        plan = self.plan
+        for scope, sc in self.modules():
+            module = sc.module or ""
+            for signal in sc.signals:
+                if union_view(signal, sc.signals):
+                    plan.add("MODULE", scope, signal, "UNION-ALIAS")
+            for m, prefix in IMAGE_COPIES:
+                if m == module:
+                    plan.add("MODULE", scope, prefix + ".values", "EFUSE-IMAGE-COPY")
+            if module in FIELD_MAP_MODULES:
+                for signal in sc.signals:
+                    if FIELD_MAP.match(signal):
+                        plan.add("MODULE", scope, signal, "EFUSE-FIELD-MAP-CONST")
+            for m, signal in VERSION_NETS:
+                if m == module:
+                    plan.add("MODULE", scope, signal, "VERSION-ID-CONST")
+            for signal in sc.signals:
+                if ATOP.search(signal):
+                    plan.add("MODULE", scope, signal, "ATOP-ZERO")
+        tied = window(EXT_IRQ_FIRST, EXT_IRQ_LAST)
+        for scope, sc in self.modules():
+            for m, signal in EXT_IRQ_NETS:
+                if m == sc.module:
+                    plan.add("MODULE", scope, signal, "EXT-IRQ-TIED", tied)
+        for path, sc in sorted(self.db.instances.items()):
+            if "tgl" not in sc.checksum:
+                continue
+            m = EXT_IRQ_SYNC.search(path)
+            if m and EXT_IRQ_FIRST <= int(m.group(1)) <= EXT_IRQ_LAST:
+                for signal in sc.signals:
+                    if not CLOCK_RESET.match(signal):
+                        plan.add("INSTANCE", path, signal, "EXT-IRQ-TIED")
 
     def describe(self, cls: str) -> tuple[str, str, str]:
         """A class's one-line fact, its full fact and its retiring condition."""
