@@ -1544,16 +1544,92 @@ and hang in <code>wfi</code>. The ROM shall never attempt to resume from a trap.
 <div class="paragraph">
 <p><a id="req-SEP-ROM-CPU-080"></a><strong>[SEP-ROM-CPU-080]</strong> The ROM shall not arm the watchdog timer. WDT
 ownership belongs to BL1; the ROM&#8217;s only WDT-related obligation is the warm-reset re-entry
-protocol (<a href="#sec:warm_reset">Warm-Reset Resume Path</a>). Consequently every unbounded wait in the ROM (fuse sense, PLL
-lock, SMC hand-shake spins) hangs the boot rather than triggering a retry — this is the
-accepted failure mode for BL0, observable through the status channel (<a href="#sec:status">Status and POST Codes</a>).</p>
+protocol (<a href="#sec:warm_reset">Warm-Reset Resume Path</a>).</p>
 </div>
 <div class="paragraph">
-<p>Waits on the secure-DMA engine and the HMAC message FIFO are outside that list and are
-bounded. A DMA transfer that neither completes nor errors within a budget scaled to its
-length is aborted and returns the DMA error its caller handles; a message FIFO that
-stops draining fails the hash. Either becomes a failed manifest attempt or a terminal error
-rather than a hang.</p>
+<p>The waits below are unbounded. Each depends on another agent or on analog hardware with no
+deadline the ROM can know, so a part on which one never completes hangs: the accepted failure
+mode for BL0. Each shall report a status immediately before it starts waiting, so a hung part
+is left showing which wait it is in (<a href="#sec:status">Status and POST Codes</a>).</p>
+</div>
+<table class="tableblock frame-ends grid-rows stretch">
+<colgroup>
+<col style="width: 34%;">
+<col style="width: 12%;">
+<col style="width: 54%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Unbounded wait</th>
+<th class="tableblock halign-left valign-top">Stage</th>
+<th class="tableblock halign-left valign-top">Status left in <code>cold_scratch[1]</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC status buffer ready</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[S07]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>STATUS_REPORTING_ENABLED</code> (DEBUG)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fuse sense complete</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[S08]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>FUSE_SENSE_WAIT</code> (DEBUG)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PLL lock</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[S09]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>WAIT_FOR_PLL_LOCK</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC manifest ready (recovery and secondary boot)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[S23]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>WAIT_FOR_SMC_MANIFEST_READY</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Every other wait on hardware is bounded. The two below report a status only when their bound
+expires, so a boot that completes writes no status near a cryptographic operation;
+the status is a WARN because the caller decides whether the failure is terminal.</p>
+</div>
+<table class="tableblock frame-ends grid-rows stretch">
+<colgroup>
+<col style="width: 26%;">
+<col style="width: 30%;">
+<col style="width: 20%;">
+<col style="width: 24%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Bounded wait</th>
+<th class="tableblock halign-left valign-top">Bound</th>
+<th class="tableblock halign-left valign-top">Status on expiry</th>
+<th class="tableblock halign-left valign-top">Outcome</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure-DMA completion (<code>sep_dma_copy()</code> / <code>sep_dma_zero()</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">a budget scaled to the transfer
+length</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DMA_TIMEOUT</code> (WARN)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">the transfer is aborted and returns the DMA error</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">HMAC message-FIFO room</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>HMAC_FIFO_POLL_MAX</code> STATUS reads</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>HMAC_FIFO_TIMEOUT</code> (WARN)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">the
+hash fails</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The remaining waits are bounded too and fail through their callers' error paths: the OpenTitan
+SPI host polls, including its secure-DMA drain; the HMAC completion wait; the AES, OTBN and
+entropy-source waits; and the MBIST-done wait in <code>vector.S</code>. Either way, a stalled block becomes
+a failed manifest attempt or a terminal error rather than a hang.</p>
 </div>
 </div>
 <div class="sect2">
@@ -2292,7 +2368,7 @@ version (<a href="#sec:secure_boot">Secure Boot Decision and Signature Verificat
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>CHIPLET_PUBK_HASH0</code> / <code>HASH1</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x10930198</code> / <code>0x109301B8</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x10930178</code> / <code>0x10930198</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">256 b each</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SHA-256 digests of
 the chiplet-creator field-programmable RSA-3072 public keys; select bits 16 / 17
@@ -2300,7 +2376,7 @@ the chiplet-creator field-programmable RSA-3072 public keys; select bits 16 / 17
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>SIP_PUBK_HASH0</code> / <code>SIP_PUBK_HASH1</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x109300EC</code> / <code>0x10930260</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x109300EC</code> / <code>0x10930240</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">256 b each</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SiP-owner key
 digests; select bits 20 / 24 (<a href="#tbl:key_slots">Root key slots</a>).</p></td>
@@ -2313,11 +2389,11 @@ digests; select bits 20 / 24 (<a href="#tbl:key_slots">Root key slots</a>).</p><
 (<a href="#tbl:key_slots">Root key slots</a>).</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEP_SPI_CTRL_FIELD_EN</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SYSCLK_FREQ_MHZ</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x10930174</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">32 b</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smu_pll_sysclk</code> (11-bit MHz target) for PLL
-init; SPI field-enable controls.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">11 b</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configured sysclk PLL frequency in MHz, read at [S09]
+(PLL init); 0 keeps the reference clock.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>STATUS_RPT</code></p></td>
@@ -5018,7 +5094,7 @@ are generated from it; the table below is likewise generated — do not hand-edi
 anywhere, including here.</p>
 </div>
 <table id="tbl:sep_msg_codes" class="tableblock frame-ends grid-rows stretch">
-<caption class="title">Table 26. SEP_MSG_* status codes (151 defined)</caption>
+<caption class="title">Table 26. SEP_MSG_* status codes (155 defined)</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 75%;">
@@ -5627,6 +5703,22 @@ anywhere, including here.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEP_MSG_ENTROPY_INIT_FAILED</code></p></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0227</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEP_MSG_FUSE_SBOOT_DIS_RSVD</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0228</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEP_MSG_SBOOT_DBG_LOCK</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0229</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEP_MSG_DMA_TIMEOUT</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x022A</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEP_MSG_HMAC_FIFO_TIMEOUT</code></p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xFFFE</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEP_MSG_INFO_OVERFLOW</code></p></td>
 </tr>
@@ -5755,7 +5847,7 @@ authoritative mapping is <a href="#sec:security_inventory">Security-Check Invent
 <div class="paragraph">
 <p><a href="#tbl:stage_trace">Boot stage → status code traceability</a> maps every boot stage to the status codes it emits, in emission order —
 the DV entry point for stage-by-stage checkers. Code <strong>names</strong> are authoritative here; their
-numeric values come only from the generated registry (<a href="#tbl:sep_msg_codes">SEP_MSG_* status codes (151 defined)</a>). <code>→</code> <code>INFO_EXT</code>
+numeric values come only from the generated registry (<a href="#tbl:sep_msg_codes">SEP_MSG_* status codes (155 defined)</a>). <code>→</code> <code>INFO_EXT</code>
 denotes a following 16-bit payload word.</p>
 </div>
 <table id="tbl:stage_trace" class="tableblock frame-ends grid-rows stretch">
@@ -5821,8 +5913,10 @@ denotes a following 16-bit payload word.</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S09] clocks</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>PLL_CLK_INIT</code> → <code>INFO_EXT</code> (MHz); <code>REF_CLK_SELECTED</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>PLL_FUSES_BLANK</code> (WARN)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>PLL_CLK_INIT</code>; then <code>WAIT_FOR_PLL_LOCK</code> before the lock poll, or
+<code>PLL_FUSES_BLANK</code> and <code>REF_CLK_SELECTED</code>; then <code>INFO_EXT</code> (MHz)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>PLL_FUSES_BLANK</code> (WARN); — for
+the lock poll (unbounded; hang is the failure mode)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S11] lifecycle</p></td>
@@ -5905,6 +5999,18 @@ enforce secure boot</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">payload hashes</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>OCA_FAIL_PAYLOAD_HASH</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">any SHA-256 or HMAC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>HMAC_FIFO_TIMEOUT</code> (WARN, the engine stopped consuming), then the
+caller&#8217;s error</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">any secure-DMA copy or fill</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DMA_TIMEOUT</code> (WARN, a transfer that never completed), then the
+caller&#8217;s error</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S25] demotion + locks</p></td>

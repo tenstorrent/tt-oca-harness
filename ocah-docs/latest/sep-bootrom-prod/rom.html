@@ -1408,7 +1408,7 @@ program.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP efuse map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x10930000</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 KiB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Fuse shadow registers; see <a href="#tbl:fuse_fields">Table 11</a>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fuse shadow registers; see <a href="#tbl:fuse_fields">Table 13</a>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">AXI-Lite mailboxes</p></td>
@@ -1537,7 +1537,7 @@ SEP↔SMC interface contract (<code>sep_smc_interface.h</code>).</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC CPU_CTRL scratch registers</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x10100 + 8·index</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Coordination protocol
-(<a href="#tbl:smc_scratch">Table 12</a>).</p></td>
+(<a href="#tbl:smc_scratch">Table 14</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC fuse map: chiplet ID / package ID</p></td>
@@ -2015,16 +2015,94 @@ and hang in <code>wfi</code>. The ROM shall never attempt to resume from a trap.
 <div class="paragraph">
 <p><a id="req-SEP-ROM-CPU-080"></a><strong>[SEP-ROM-CPU-080]</strong> The ROM shall not arm the watchdog timer. WDT
 ownership belongs to BL1; the ROM&#8217;s only WDT-related obligation is the warm-reset re-entry
-protocol (<a href="#sec:warm_reset">Section 7</a>). Consequently every unbounded wait in the ROM (fuse sense, PLL
-lock, SMC hand-shake spins) hangs the boot rather than triggering a retry — this is the
-accepted failure mode for BL0, observable through the status channel (<a href="#sec:status">Section 21</a>).</p>
+protocol (<a href="#sec:warm_reset">Section 7</a>).</p>
 </div>
 <div class="paragraph">
-<p>Waits on the secure-DMA engine and the HMAC message FIFO are outside that list and are
-bounded. A DMA transfer that neither completes nor errors within a budget scaled to its
-length is aborted and returns the DMA error its caller handles; a message FIFO that
-stops draining fails the hash. Either becomes a failed manifest attempt or a terminal error
-rather than a hang.</p>
+<p>The waits below are unbounded. Each depends on another agent or on analog hardware with no
+deadline the ROM can know, so a part on which one never completes hangs: the accepted failure
+mode for BL0. Each shall report a status immediately before it starts waiting, so a hung part
+is left showing which wait it is in (<a href="#sec:status">Section 21</a>).</p>
+</div>
+<table id="trm-table-8" class="tableblock frame-ends grid-rows stretch">
+<caption class="title">Table 8. Watchdog Posture</caption>
+<colgroup>
+<col style="width: 34%;">
+<col style="width: 12%;">
+<col style="width: 54%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Unbounded wait</th>
+<th class="tableblock halign-left valign-top">Stage</th>
+<th class="tableblock halign-left valign-top">Status left in <code>cold_scratch[1]</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC status buffer ready</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[S07]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>STATUS_REPORTING_ENABLED</code> (DEBUG)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fuse sense complete</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[S08]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>FUSE_SENSE_WAIT</code> (DEBUG)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PLL lock</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[S09]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>WAIT_FOR_PLL_LOCK</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC manifest ready (recovery and secondary boot)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[S23]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>WAIT_FOR_SMC_MANIFEST_READY</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Every other wait on hardware is bounded. The two below report a status only when their bound
+expires, so a boot that completes writes no status near a cryptographic operation;
+the status is a WARN because the caller decides whether the failure is terminal.</p>
+</div>
+<table id="trm-table-9" class="tableblock frame-ends grid-rows stretch">
+<caption class="title">Table 9. Watchdog Posture</caption>
+<colgroup>
+<col style="width: 26%;">
+<col style="width: 30%;">
+<col style="width: 20%;">
+<col style="width: 24%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Bounded wait</th>
+<th class="tableblock halign-left valign-top">Bound</th>
+<th class="tableblock halign-left valign-top">Status on expiry</th>
+<th class="tableblock halign-left valign-top">Outcome</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure-DMA completion (<code>sep_dma_copy()</code> / <code>sep_dma_zero()</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">a budget scaled to the transfer
+length</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DMA_TIMEOUT</code> (WARN)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">the transfer is aborted and returns the DMA error</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">HMAC message-FIFO room</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>HMAC_FIFO_POLL_MAX</code> STATUS reads</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>HMAC_FIFO_TIMEOUT</code> (WARN)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">the
+hash fails</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The remaining waits are bounded too and fail through their callers' error paths: the OpenTitan
+SPI host polls, including its secure-DMA drain; the HMAC completion wait; the AES, OTBN and
+entropy-source waits; and the MBIST-done wait in <code>vector.S</code>. Either way, a stalled block becomes
+a failed manifest attempt or a terminal error rather than a hang.</p>
 </div>
 </div>
 <div class="sect2">
@@ -2032,8 +2110,8 @@ rather than a hang.</p>
 <div class="paragraph">
 <p>After the entry checks, <code>rom_main()</code> performs the following platform bring-up, in order:</p>
 </div>
-<table id="trm-table-8" class="tableblock frame-ends grid-rows stretch">
-<caption class="title">Table 8. Early Platform Initialization ([S04]–[S20])</caption>
+<table id="trm-table-10" class="tableblock frame-ends grid-rows stretch">
+<caption class="title">Table 10. Early Platform Initialization ([S04]–[S20])</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 80%;">
@@ -2342,7 +2420,7 @@ matching no rule faults. No catch-all entry is used; a window the rule set fails
 shall manifest as a precise trap (fatal per SEP-ROM-CPU-070), never as silent access.</p>
 </li>
 <li>
-<p>The locked rule set implements <a href="#tbl:pmp_regions">Table 9</a> as amended by the fence policy: ROM
+<p>The locked rule set implements <a href="#tbl:pmp_regions">Table 11</a> as amended by the fence policy: ROM
 <code>R-X</code>; DCCM, mailbox, peripheral block, SMC window, xSPI controller/XIP windows <code>RW-</code>;
 SEP SRAM and ICCM <code>RW-</code> (no execute) until hand-off.</p>
 </li>
@@ -2391,12 +2469,12 @@ no additional protection against that attacker.</p>
 <div class="sect2">
 <h3 id="reference-region-set"><a class="anchor" href="#reference-region-set"></a><a class="link" href="#reference-region-set">8.3. Reference Region Set</a></h3>
 <div class="paragraph">
-<p><a href="#tbl:pmp_regions">Table 9</a> lists the NAPOT region set programmed by the reference implementation
+<p><a href="#tbl:pmp_regions">Table 11</a> lists the NAPOT region set programmed by the reference implementation
 (<code>vector.S</code>, <code>PMP_ENABLE=1</code>). All entries are NAPOT-encoded; <code>pmpaddr</code> values are the
 literal CSR values.</p>
 </div>
 <table id="tbl:pmp_regions" class="tableblock frame-ends grid-rows stretch">
-<caption class="title">Table 9. Reference PMP region set (as currently programmed)</caption>
+<caption class="title">Table 11. Reference PMP region set (as currently programmed)</caption>
 <colgroup>
 <col style="width: 8%;">
 <col style="width: 14%;">
@@ -2573,7 +2651,7 @@ fail open.</p>
 (<code>0x1093_0008</code>).</p>
 </div>
 <table id="tbl:lc_states" class="tableblock frame-ends grid-rows stretch">
-<caption class="title">Table 10. Lifecycle states</caption>
+<caption class="title">Table 12. Lifecycle states</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 15%;">
@@ -2698,7 +2776,7 @@ enabled on a part whose fuses disable it.</p>
 <div class="sect2">
 <h3 id="fuse-fields-touched-by-the-rom"><a class="anchor" href="#fuse-fields-touched-by-the-rom"></a><a class="link" href="#fuse-fields-touched-by-the-rom">9.5. Fuse Fields Touched by the ROM</a></h3>
 <table id="tbl:fuse_fields" class="tableblock frame-ends grid-rows stretch">
-<caption class="title">Table 11. SEP efuse map fields touched by BL0</caption>
+<caption class="title">Table 13. SEP efuse map fields touched by BL0</caption>
 <colgroup>
 <col style="width: 28%;">
 <col style="width: 14%;">
@@ -2764,32 +2842,32 @@ version (<a href="#sec:secure_boot">Section 15</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>CHIPLET_PUBK_HASH0</code> / <code>HASH1</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x10930198</code> / <code>0x109301B8</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x10930178</code> / <code>0x10930198</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">256 b each</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SHA-256 digests of
 the chiplet-creator field-programmable RSA-3072 public keys; select bits 16 / 17
-(<a href="#tbl:key_slots">Table 19</a>).</p></td>
+(<a href="#tbl:key_slots">Table 21</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>SIP_PUBK_HASH0</code> / <code>SIP_PUBK_HASH1</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x109300EC</code> / <code>0x10930260</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x109300EC</code> / <code>0x10930240</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">256 b each</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SiP-owner key
-digests; select bits 20 / 24 (<a href="#tbl:key_slots">Table 19</a>).</p></td>
+digests; select bits 20 / 24 (<a href="#tbl:key_slots">Table 21</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>SYS_PUBK_HASH</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x1093012C</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">256 b</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">System-owner key digest; select bit 22
-(<a href="#tbl:key_slots">Table 19</a>).</p></td>
+(<a href="#tbl:key_slots">Table 21</a>).</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEP_SPI_CTRL_FIELD_EN</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SYSCLK_FREQ_MHZ</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x10930174</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">32 b</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smu_pll_sysclk</code> (11-bit MHz target) for PLL
-init; SPI field-enable controls.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">11 b</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configured sysclk PLL frequency in MHz, read at [S09]
+(PLL init); 0 keeps the reference clock.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>STATUS_RPT</code></p></td>
@@ -2858,7 +2936,7 @@ map SMC SRAM at different addresses).</p>
 <div class="sect2">
 <h3 id="scratch-register-protocol"><a class="anchor" href="#scratch-register-protocol"></a><a class="link" href="#scratch-register-protocol">10.1. Scratch-Register Protocol</a></h3>
 <table id="tbl:smc_scratch" class="tableblock frame-ends grid-rows stretch">
-<caption class="title">Table 12. SMC scratch registers used in the SEP↔SMC protocol (offset &lt;code&gt;0x10100 + 8·index&lt;/code&gt; in the SMC window)</caption>
+<caption class="title">Table 14. SMC scratch registers used in the SEP↔SMC protocol (offset &lt;code&gt;0x10100 + 8·index&lt;/code&gt; in the SMC window)</caption>
 <colgroup>
 <col style="width: 10%;">
 <col style="width: 20%;">
@@ -3033,7 +3111,7 @@ window; the SEP reads them over the SMC window (<code>STRAPS_LO</code> @ <code>0
 the SEP↔SMC interface contract.</p>
 </div>
 <table id="tbl:straps" class="tableblock frame-ends grid-rows stretch">
-<caption class="title">Table 13. Hardware straps consumed by the SEP ROM</caption>
+<caption class="title">Table 15. Hardware straps consumed by the SEP ROM</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 20%;">
@@ -3093,7 +3171,7 @@ from the strap combination, record it in <code>bl0_state.boot_mode</code>, and r
 channel:</p>
 </div>
 <table id="tbl:boot_modes" class="tableblock frame-ends grid-rows stretch">
-<caption class="title">Table 14. Boot-mode selection</caption>
+<caption class="title">Table 16. Boot-mode selection</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 20%;">
@@ -3182,7 +3260,7 @@ depend on which controller is fitted.</p>
 <div class="sect2">
 <h3 id="flash-layout"><a class="anchor" href="#flash-layout"></a><a class="link" href="#flash-layout">12.1. Flash Layout</a></h3>
 <table id="tbl:flash_layout" class="tableblock frame-ends grid-rows stretch">
-<caption class="title">Table 15. Boot flash layout</caption>
+<caption class="title">Table 17. Boot flash layout</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 25%;">
@@ -3242,7 +3320,7 @@ readable window for a slot runs from its manifest to the end of that slot.</p>
 <div class="paragraph">
 <p>The OCA combined-image configs place the backup manifest at <code>0x41000</code>, matching the offsets
 above, and backup-slot rotation is exercised in simulation. The offsets in
-<a href="#tbl:flash_layout">Table 15</a> remain normative for any producer.</p>
+<a href="#tbl:flash_layout">Table 17</a> remain normative for any producer.</p>
 </div>
 </div>
 <div class="sect2">
@@ -3374,12 +3452,12 @@ consuming any manifest field.</p>
 <div class="sect2">
 <h3 id="rom-relevant-field-layout"><a class="anchor" href="#rom-relevant-field-layout"></a><a class="link" href="#rom-relevant-field-layout">13.2. ROM-Relevant Field Layout</a></h3>
 <div class="paragraph">
-<p><a href="#tbl:manifest_fields">Table 16</a> lists the fields the ROM consumes. Authoritative source:
+<p><a href="#tbl:manifest_fields">Table 18</a> lists the fields the ROM consumes. Authoritative source:
 <code>oca_layout_classic.h</code> / <code>oca_layout.h</code> (<code>tt-oca-manifest</code>); reserved fields not listed here
 must be zero and are covered by the reserved-bits check.</p>
 </div>
 <table id="tbl:manifest_fields" class="tableblock frame-ends grid-rows stretch">
-<caption class="title">Table 16. OCA CLASSIC manifest — fields consumed by the SEP ROM</caption>
+<caption class="title">Table 18. OCA CLASSIC manifest — fields consumed by the SEP ROM</caption>
 <colgroup>
 <col style="width: 12%;">
 <col style="width: 10%;">
@@ -3439,7 +3517,7 @@ fuses (unselected bytes = <code>0xA5</code>).</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4 ea</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>lifecycle_*_states</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Allowed-lifecycle bitmasks (bit positions per
-<a href="#tbl:lc_states">Table 10</a>).</p></td>
+<a href="#tbl:lc_states">Table 12</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">148–164</p></td>
@@ -3692,7 +3770,7 @@ overflow-checked.</p>
 <p><strong>Usage constraints:</strong> <code>selector_bits</code> enables per-word identity comparisons against the SMC
 fuse map (chiplet/package ID) and lifecycle/version-range windows. The device&#8217;s LC state
 must map to a set bit in the applicable <code>lifecycle_*_states</code> mask (mapping per
-<a href="#tbl:lc_states">Table 10</a>). <a id="req-SEP-ROM-MAN-040"></a><strong>[SEP-ROM-MAN-040]</strong> A selected constraint whose
+<a href="#tbl:lc_states">Table 12</a>). <a id="req-SEP-ROM-MAN-040"></a><strong>[SEP-ROM-MAN-040]</strong> A selected constraint whose
 device-side value cannot be read shall fail the check — "unavailable" is a failure, never a
 silent pass.</p>
 </li>
@@ -3827,8 +3905,8 @@ read-modify-write so the other blocks' reset bits survive). The pulse is require
 than a bare release: if the chain is already out of reset a release is a no-op and stale
 state persists.</p>
 </div>
-<table id="trm-table-17" class="tableblock frame-ends grid-rows stretch">
-<caption class="title">Table 17. Sequence</caption>
+<table id="trm-table-19" class="tableblock frame-ends grid-rows stretch">
+<caption class="title">Table 19. Sequence</caption>
 <colgroup>
 <col style="width: 12%;">
 <col style="width: 88%;">
@@ -4011,7 +4089,7 @@ keeps the decision and the attestation of that decision the same fact.</p>
 </ol>
 </div>
 <table id="tbl:sb_truth" class="tableblock frame-ends grid-rows stretch">
-<caption class="title">Table 18. Secure-boot decision truth table</caption>
+<caption class="title">Table 20. Secure-boot decision truth table</caption>
 <colgroup>
 <col style="width: 18%;">
 <col style="width: 14%;">
@@ -4128,7 +4206,7 @@ manifest a bitmap, so this ROM&#8217;s resolution code (<code>oca_platform.c</co
 of them meaning and is the definition the table below records:</p>
 </div>
 <table id="tbl:key_slots" class="tableblock frame-ends grid-rows stretch">
-<caption class="title">Table 19. Root key slots</caption>
+<caption class="title">Table 21. Root key slots</caption>
 <colgroup>
 <col style="width: 18%;">
 <col style="width: 18%;">
@@ -4238,7 +4316,7 @@ implementation applies none&#8201;&#8212;&#8201;<code>plat_get_root_key_revocati
 directly into the low word of the 128-bit revocation bitmap.</p>
 </div>
 <table id="tbl:revoke_map" class="tableblock frame-ends grid-rows" style="width: 70%;">
-<caption class="title">Table 20. Device revocation fuse → OCA bitmap mapping</caption>
+<caption class="title">Table 22. Device revocation fuse → OCA bitmap mapping</caption>
 <colgroup>
 <col style="width: 40%;">
 <col style="width: 30%;">
@@ -4385,7 +4463,7 @@ escalation flag: <code>unauthenticated_flags</code> bit 0 is read by neither the
 library (tracked in <a href="#sec:impl_matrix">Appendix C</a>). Every other element of this section — the OCA
 128-bit select bitmap, <code>public_key_classic_revoke</code>, the flag-superset anti-rollback check
 before and after signature verification, and the OTP hash-bank addresses of
-<a href="#tbl:key_slots">Table 19</a> — is implemented as specified.</p>
+<a href="#tbl:key_slots">Table 21</a> — is implemented as specified.</p>
 </div>
 </td>
 </tr>
@@ -4411,7 +4489,7 @@ frozen until the next cold reset.</p>
 four bits, as two <strong>(enable, state)</strong> pairs:</p>
 </div>
 <table id="tbl:demotion_bits" class="tableblock frame-ends grid-rows stretch">
-<caption class="title">Table 21. &lt;code&gt;demotion_control&lt;/code&gt; bit assignments</caption>
+<caption class="title">Table 23. &lt;code&gt;demotion_control&lt;/code&gt; bit assignments</caption>
 <colgroup>
 <col style="width: 12%;">
 <col style="width: 25%;">
@@ -4564,7 +4642,7 @@ the same bounds checks. All staging obeys SEP-ROM-SPI-020 / SEP-ROM-SMC-050.</p>
 <div class="sect2">
 <h3 id="payload-toc"><a class="anchor" href="#payload-toc"></a><a class="link" href="#payload-toc">17.1. Payload TOC</a></h3>
 <table id="tbl:toc_layout" class="tableblock frame-ends grid-rows stretch">
-<caption class="title">Table 22. Payload TOC header (OCA spec v0.8 Table 5)</caption>
+<caption class="title">Table 24. Payload TOC header (OCA spec v0.8 Table 5)</caption>
 <colgroup>
 <col style="width: 22%;">
 <col style="width: 12%;">
@@ -4607,7 +4685,7 @@ past the last image (in-place flash update room).</p></td>
 </tbody>
 </table>
 <table id="tbl:toc_entry" class="tableblock frame-ends grid-rows stretch">
-<caption class="title">Table 23. Payload TOC entry, 276 B (OCA spec v0.8 Table 6)</caption>
+<caption class="title">Table 25. Payload TOC entry, 276 B (OCA spec v0.8 Table 6)</caption>
 <colgroup>
 <col style="width: 14%;">
 <col style="width: 20%;">
@@ -4966,7 +5044,7 @@ carries the decided values rather than a read-back of the register. The two cann
 reflects what BL0 applied rather than what the manifest requested.</p>
 </div>
 <table id="tbl:measurement_input" class="tableblock frame-ends grid-rows stretch">
-<caption class="title">Table 24. Boot-state record (&lt;code&gt;struct boot_state_record&lt;/code&gt;, packed, little-endian, 40 B)</caption>
+<caption class="title">Table 26. Boot-state record (&lt;code&gt;struct boot_state_record&lt;/code&gt;, packed, little-endian, 40 B)</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 15%;">
@@ -5120,7 +5198,7 @@ false accept.</p>
 (<code>0xC0040000 + 0x20000 − sizeof</code>) so BL1 can discover it by magic and size from the DCCM end.</p>
 </div>
 <table id="tbl:bl0_state" class="tableblock frame-ends grid-rows stretch">
-<caption class="title">Table 25. &lt;code&gt;struct bl0_state&lt;/code&gt; (all fields written by BL0)</caption>
+<caption class="title">Table 27. &lt;code&gt;struct bl0_state&lt;/code&gt; (all fields written by BL0)</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 15%;">
@@ -5152,12 +5230,12 @@ false accept.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>boot_mode</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">u32</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>BOOT_MODE_SPI</code> / <code>RECOVERY</code> / <code>SECONDARY</code> (<a href="#tbl:boot_modes">Table 14</a>).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>BOOT_MODE_SPI</code> / <code>RECOVERY</code> / <code>SECONDARY</code> (<a href="#tbl:boot_modes">Table 16</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>secure_boot</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">bool</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The secure-boot decision (<a href="#tbl:sb_truth">Table 18</a>).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The secure-boot decision (<a href="#tbl:sb_truth">Table 20</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>sboot_dis</code></p></td>
@@ -5193,7 +5271,7 @@ boot state (<a href="#sec:boot_measurement">Section 18</a>). Legacy once the PCR
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>meas_boot_record</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">40 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Raw boot-state record for slot 1 (<a href="#tbl:measurement_input">Table 24</a>).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Raw boot-state record for slot 1 (<a href="#tbl:measurement_input">Table 26</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>bl2_demotion_decision</code></p></td>
@@ -5274,7 +5352,7 @@ before <code>rom_handoff_bl1()</code>, which satisfies SEP-ROM-HOFF-010.</p>
 <h2 id="sec:retry"><a class="anchor" href="#sec:retry"></a><a class="link" href="#sec:retry">20. Retry and Backup Bank</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Boot flash carries two complete, independent manifest+payload pairs (<a href="#tbl:flash_layout">Table 15</a>).
+<p>Boot flash carries two complete, independent manifest+payload pairs (<a href="#tbl:flash_layout">Table 17</a>).
 If anything in the load/validation chain fails against one slot, the ROM retries the entire
 chain against the other before declaring the boot failed.</p>
 </div>
@@ -5369,7 +5447,7 @@ builds).</p>
 </div>
 </div>
 <table id="tbl:status_types" class="tableblock frame-ends grid-rows" style="width: 80%;">
-<caption class="title">Table 26. Status message types</caption>
+<caption class="title">Table 28. Status message types</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 15%;">
@@ -5419,7 +5497,7 @@ implementation-specific.</p>
 <div class="sect2">
 <h3 id="channels"><a class="anchor" href="#channels"></a><a class="link" href="#channels">21.2. Channels</a></h3>
 <table id="tbl:status_channels" class="tableblock frame-ends grid-rows stretch">
-<caption class="title">Table 27. Status output channels</caption>
+<caption class="title">Table 29. Status output channels</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 25%;">
@@ -5491,7 +5569,7 @@ are generated from it; the table below is likewise generated — do not hand-edi
 anywhere, including here.</p>
 </div>
 <table id="tbl:sep_msg_codes" class="tableblock frame-ends grid-rows stretch">
-<caption class="title">Table 28. SEP_MSG_* status codes (151 defined)</caption>
+<caption class="title">Table 30. SEP_MSG_* status codes (155 defined)</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 75%;">
@@ -6100,6 +6178,22 @@ anywhere, including here.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEP_MSG_ENTROPY_INIT_FAILED</code></p></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0227</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEP_MSG_FUSE_SBOOT_DIS_RSVD</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0228</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEP_MSG_SBOOT_DBG_LOCK</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0229</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEP_MSG_DMA_TIMEOUT</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x022A</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEP_MSG_HMAC_FIFO_TIMEOUT</code></p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xFFFE</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEP_MSG_INFO_OVERFLOW</code></p></td>
 </tr>
@@ -6117,7 +6211,7 @@ anywhere, including here.</p>
 separate 32-bit namespace:</p>
 </div>
 <table id="tbl:rom_err" class="tableblock frame-ends grid-rows" style="width: 90%;">
-<caption class="title">Table 29. &lt;code&gt;ROM_ERR_*&lt;/code&gt; fatal codes</caption>
+<caption class="title">Table 31. &lt;code&gt;ROM_ERR_*&lt;/code&gt; fatal codes</caption>
 <colgroup>
 <col style="width: 40%;">
 <col style="width: 20%;">
@@ -6226,13 +6320,13 @@ authoritative mapping is <a href="#sec:security_inventory">Appendix B</a>.</p>
 <h2 id="sec:stage_trace"><a class="anchor" href="#sec:stage_trace"></a><a class="link" href="#sec:stage_trace">Appendix A: Boot-Stage to Status-Code Traceability</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p><a href="#tbl:stage_trace">Table 30</a> maps every boot stage to the status codes it emits, in emission order —
+<p><a href="#tbl:stage_trace">Table 32</a> maps every boot stage to the status codes it emits, in emission order —
 the DV entry point for stage-by-stage checkers. Code <strong>names</strong> are authoritative here; their
-numeric values come only from the generated registry (<a href="#tbl:sep_msg_codes">Table 28</a>). <code>→</code> <code>INFO_EXT</code>
+numeric values come only from the generated registry (<a href="#tbl:sep_msg_codes">Table 30</a>). <code>→</code> <code>INFO_EXT</code>
 denotes a following 16-bit payload word.</p>
 </div>
 <table id="tbl:stage_trace" class="tableblock frame-ends grid-rows stretch">
-<caption class="title">Table 30. Boot stage → status code traceability</caption>
+<caption class="title">Table 32. Boot stage → status code traceability</caption>
 <colgroup>
 <col style="width: 16%;">
 <col style="width: 44%;">
@@ -6294,8 +6388,10 @@ denotes a following 16-bit payload word.</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S09] clocks</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>PLL_CLK_INIT</code> → <code>INFO_EXT</code> (MHz); <code>REF_CLK_SELECTED</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>PLL_FUSES_BLANK</code> (WARN)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>PLL_CLK_INIT</code>; then <code>WAIT_FOR_PLL_LOCK</code> before the lock poll, or
+<code>PLL_FUSES_BLANK</code> and <code>REF_CLK_SELECTED</code>; then <code>INFO_EXT</code> (MHz)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>PLL_FUSES_BLANK</code> (WARN); — for
+the lock poll (unbounded; hang is the failure mode)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S11] lifecycle</p></td>
@@ -6380,6 +6476,18 @@ enforce secure boot</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>OCA_FAIL_PAYLOAD_HASH</code></p></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">any SHA-256 or HMAC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>HMAC_FIFO_TIMEOUT</code> (WARN, the engine stopped consuming), then the
+caller&#8217;s error</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">any secure-DMA copy or fill</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DMA_TIMEOUT</code> (WARN, a transfer that never completed), then the
+caller&#8217;s error</p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S25] demotion + locks</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>FUSE_SECRETS_LOCK</code>; <code>FUSE_SECRETS_LOCKED</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>FUSE_SECRETS_NOT_LOCKED</code> (ERROR) + <code>ROM_ERR_FUSE_SECRETS_NOT_LOCKED</code></p></td>
@@ -6429,7 +6537,7 @@ failing looks like, and the ordering constraints a verification environment must
 the governing "shall".</p>
 </div>
 <table id="tbl:security_inventory" class="tableblock frame-ends grid-rows stretch">
-<caption class="title">Table 31. Security-check inventory</caption>
+<caption class="title">Table 33. Security-check inventory</caption>
 <colgroup>
 <col style="width: 18%;">
 <col style="width: 20%;">
@@ -6615,7 +6723,7 @@ execution region; <code>entry_point &lt; length</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Demotion authority</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">validated manifest, LC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PROD_END lock-out; pairs per
-<a href="#tbl:demotion_bits">Table 21</a></p></td>
+<a href="#tbl:demotion_bits">Table 23</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">— (directive, not check)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Only post-validation, one-shot.
 DEM-010..050</p></td>
@@ -6670,7 +6778,7 @@ since been implemented and verified; they are kept rather than deleted so the re
 changed is not lost.</p>
 </div>
 <table id="tbl:impl_matrix" class="tableblock frame-ends grid-rows stretch">
-<caption class="title">Table 32. Specification vs implementation status</caption>
+<caption class="title">Table 34. Specification vs implementation status</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 14%;">
@@ -6907,8 +7015,8 @@ pinned in SEP-ROM-MAN-050/-060.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>tt-oca-manifest</code> layout tables</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>closed</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Re-verified against the upreved submodule
-(2026-09-02). <a href="#tbl:toc_entry">Table 23</a> matches <code>oca_layout.h</code> / <code>constants.py</code> (276 B, entry <code>hash</code>
-at 80) and per-entry TOC hashes are verified. <a href="#tbl:manifest_fields">Table 16</a> was still recorded
+(2026-09-02). <a href="#tbl:toc_entry">Table 25</a> matches <code>oca_layout.h</code> / <code>constants.py</code> (276 B, entry <code>hash</code>
+at 80) and per-entry TOC hashes are verified. <a href="#tbl:manifest_fields">Table 18</a> was still recorded
 against the pre-uprev revision — every offset from <code>payload_encryption_control</code> onward was
 low, the signed region among them (<code>[0,3145)</code> for <code>[0,3172)</code>) — and has been corrected
 field by field.</p></td>
@@ -6988,7 +7096,7 @@ evaluation (research R13); boot never depends on programmed fuses.</p></td>
 <p>All 95 tagged requirements. Each ID links to its definition.</p>
 </div>
 <table id="tbl:req_index" class="tableblock frame-ends grid-rows stretch">
-<caption class="title">Table 33. Requirement index</caption>
+<caption class="title">Table 35. Requirement index</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 60%;">

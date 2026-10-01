@@ -230,8 +230,8 @@ management, clock control, reset sequencing, and peripheral interface
 coordination. The <code>smc.sv</code> module exposes logic-level interfaces; all
 technology-specific components (PLLs, PVT sensors, eFuses, memory macros,
 GPIO padrings) are instantiated externally by the adopter. See the
-<a href="#smu-module-variants">SMU Module Variants</a> section for how the reference
-wrappers demonstrate this integration.</p>
+  <a href="smu-composition.html#smu-module-variants" class="xref page">SMU Module Variants</a>
+section for how the reference wrappers demonstrate this integration.</p>
 </div>
 <div class="paragraph">
 <p>For detailed architectural documentation about the SMC internal design, refer to
@@ -267,8 +267,9 @@ hierarchy.</p>
 <p>Reset domain overrides are delivered through a single typed input,
 <code>jtag_reset_ctrl_i</code> (<code>smc_pkg::jtag_smc_reset_ctrl_t</code>), which carries all
 SMC reset override enables and active-low values. The DTP drives this input
-through the JTAG IC_RESET mechanism (see <a href="#smc-dtp-interconnection">[smc-dtp-interconnection]</a>); most
-integrations leave all override enables deasserted.</p>
+through the JTAG IC_RESET mechanism (see the
+<a href="smu-composition.html#smc-dtp-interconnection" class="xref page">SMC-DTP Internal Interconnection</a>
+section); most integrations leave all override enables deasserted.</p>
 </div>
 </div>
 </div>
@@ -337,8 +338,9 @@ assigned to SMC.</p></td>
 </tbody>
 </table>
 <div class="paragraph">
-<p>The SMC fabric uses three registers in the CPU Control block
-(<code>0xC001_0000</code>) to distinguish local from remote addresses:</p>
+<p>The SMC routes bus transactions from inside the SMU to either be local
+(accessing something inside the SMC) or global. This routing is configured by
+three of the SMC base configuration registers:</p>
 </div>
 <div class="ulist">
 <ul>
@@ -449,7 +451,9 @@ drive to conform with the cross-trigger methodology described in
 <a href="../../ocah-docs/latest/ip/cross_trigger_port/doc/index.html" class="xref page">Cross-Trigger Port</a>.</p>
 </div>
 <div class="paragraph">
-<p>See <a href="#xtrig-ctp-gpio-interface">[xtrig-ctp-gpio-interface]</a> for the SMU-level ports.</p>
+<p>See
+<a href="smu-composition.html#xtrig-ctp-gpio-interface" class="xref page">Cross Trigger Port GPIO Interface</a>
+for the SMU-level ports.</p>
 </div>
 <div class="paragraph">
 <p>OCAH also requires a reference clock, a cold reset, and a powergood indication
@@ -503,19 +507,22 @@ in this range to <code>smc_external_req_o</code> except the eFuse SHIM range at 
 generated SMC memory map reports the window as one opaque aperture.</p>
 </div>
 <div class="paragraph">
-<p>The window is split into two regions. Apart from the eFuse SHIM control block due to security reasons,
-hardware treats both identically&#8201;&#8212;&#8201;the split is organizational only:</p>
+<p>The window is split into two regions. Apart from the eFuse SHIM control block
+needed for security reasons, hardware treats both identically&#8201;&#8212;&#8201;the split is
+organizational only:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Mandatory</strong> (<code>BASE + 0x040_0000</code>): blocks every integration must implement.
-OCAH specifications dictate their function, but their implementation, register
-layout and placement within the region are technology- and vendor-specific.</p>
+<p><strong>Mandatory</strong> (<code>BASE + 0x040_0000</code>):
+Blocks every integration must implement. OCAH specifications dictate their
+function, but their implementation, register layout and placement within the
+region are technology- and vendor-specific.</p>
 </li>
 <li>
-<p><strong>Supplementary</strong> (<code>BASE + 0x040_4000</code>): additional memory-mapped devices the
-adopter chooses to expose, plus the captured strap registers.</p>
+<p><strong>Supplementary</strong> (<code>BASE + 0x040_4000</code>):
+Any additional memory-mapped devices the adopter chooses to expose, plus the
+captured strap registers.</p>
 </li>
 </ul>
 </div>
@@ -951,8 +958,9 @@ inside SEP.</p>
 <div class="sectionbody">
 <div class="paragraph">
 <p>The SMC includes an embedded RISC-V CPU cluster with associated memory
-interfaces. See <a href="#immutable-rom-fw-integration">[immutable-rom-fw-integration]</a> for the ROM FW integration
-contract.</p>
+interfaces. See
+<a href="smu-rom-fw.html#immutable-rom-fw-integration" class="xref page">Immutable ROM FW Integration</a>
+for the ROM FW integration contract.</p>
 </div>
 <div class="sect2">
 <h3 id="smc-sram-cache-integration"><a class="anchor" href="#smc-sram-cache-integration"></a><a class="link" href="#smc-sram-cache-integration">7.1. SRAM and Cache Array Integration</a></h3>
@@ -990,9 +998,8 @@ CPU cluster can safely access SRAM arrays. Repair is required on every cold
 reset but can be bypassed during Function Level Reset (FLR) operations for
 faster recovery.</p>
 </div>
-<div class="paragraph">
-<p><strong>Control Signals:</strong></p>
-</div>
+<div class="sect2">
+<h3 id="control-signals"><a class="anchor" href="#control-signals"></a><a class="link" href="#control-signals">8.1. Control Signals</a></h3>
 <div class="ulist">
 <ul>
 <li>
@@ -1014,17 +1021,17 @@ its boot sequence.</p>
 </li>
 </ul>
 </div>
-<div class="paragraph">
-<p><strong>Repair Data:</strong></p>
 </div>
+<div class="sect2">
+<h3 id="repair-data"><a class="anchor" href="#repair-data"></a><a class="link" href="#repair-data">8.2. Repair Data</a></h3>
 <div class="paragraph">
 <p>The SMC fuse map does not allocate storage for repair data. Your external memory
 repair controller must source it from wherever your manufacturing flow keeps it
 and apply it to SRAM arrays according to your memory architecture.</p>
 </div>
-<div class="paragraph">
-<p><strong>Status Monitoring:</strong></p>
 </div>
+<div class="sect2">
+<h3 id="status-monitoring"><a class="anchor" href="#status-monitoring"></a><a class="link" href="#status-monitoring">8.3. Status Monitoring</a></h3>
 <div class="paragraph">
 <p>Repair completion and success are reported through
 <code>DFX_CTRL_STATUS.STATUS_SMU</code> at <code>0xC000_B800</code>. The <code>mem_repair_done</code> bit
@@ -1033,9 +1040,9 @@ successful repair. Both bits are set by the external repair controller. The SMC
 ROM FW monitors these bits during initialization to verify repair
 completion.</p>
 </div>
-<div class="paragraph">
-<p><strong>Bypass Configuration:</strong></p>
 </div>
+<div class="sect2">
+<h3 id="bypass-configuration"><a class="anchor" href="#bypass-configuration"></a><a class="link" href="#bypass-configuration">8.4. Bypass Configuration</a></h3>
 <div class="paragraph">
 <p>The <code>BYPASS_SRAM_REPAIR</code> configuration strap (<code>STRAPS_LO[13]</code>) is captured into
 the strap registers in the adopter peripheral window. Keep these three mechanisms distinct:</p>
@@ -1062,30 +1069,31 @@ whether to bypass physical repair operations.</p>
 <p>Use bypass mode only when SRAM arrays are guaranteed defect-free, such as
 during development or with known-good components.</p>
 </div>
-<div class="paragraph">
-<p><strong>Integration Requirements:</strong></p>
 </div>
+<div class="sect2">
+<h3 id="integration-requirements"><a class="anchor" href="#integration-requirements"></a><a class="link" href="#integration-requirements">8.5. Integration Requirements</a></h3>
 <div class="paragraph">
-<p>Provide an external memory repair controller that monitors <code>smc_fuse_sense_done_o</code>
-to initiate repair, respects <code>skip_mem_repair_o</code> for bypass control, reads
-repair data from eFuse shadow registers, applies repair configuration to SRAM
-arrays, asserts <code>ext_boot_seq_done_i</code> and updates DFT Control Status registers
-with completion status. The controller operates independently of the SMC core
-and must complete before the CPU cluster accesses SRAM.</p>
+<p>Provide an external memory repair controller that monitors
+<code>smc_fuse_sense_done_o</code> to initiate repair, respects <code>skip_mem_repair_o</code> for
+bypass control, reads repair data from eFuse shadow registers, applies repair
+configuration to SRAM arrays, asserts <code>ext_boot_seq_done_i</code> and updates
+<code>DFX_CTRL_STATUS</code> with completion status. The controller operates independently
+of the SMC core and must complete before the CPU cluster accesses SRAM.</p>
 </div>
 <div class="paragraph">
 <p>Note: For a standalone SEP, the adopter must synchronize <code>ext_boot_seq_done_i</code> to
 the system clock and ensure the signal is held until next cold reset.</p>
 </div>
 <div class="paragraph">
-<p>For direct access to the eFuse besides from the shim, i.e. from a DFT fuse controller,
-adopters must ensure the integrated logic will not interfere with accesses from the
-OCAH&#8217;s efuse interface.</p>
+<p>For direct access to the eFuse not through the SHIM, i.e. from a DFT fuse
+controller, adopters must ensure the integrated logic will not interfere with
+accesses from the OCAH&#8217;s efuse interface.</p>
 </div>
 <div class="paragraph">
-<p>During FLR operations, the isolation request path asserts <code>skip_mem_repair_o</code>
-to bypass repair for rapid reset sequences. Normal cold reset sequences always
-execute repair unless isolation is already asserted.</p>
+<p>The isolation request path asserts <code>skip_mem_repair_o</code> during Function Level
+Reset (FLR) operations to bypass repair for rapid reset sequences. Normal cold
+reset sequences always execute repair unless isolation is already asserted.</p>
+</div>
 </div>
 </div>
 </div>
@@ -1106,7 +1114,7 @@ maintained in a single place:</p>
 <div class="paragraph">
 <p>The SMC PLIC and CPU interrupt vector are internal. <code>sync_irq_o</code> is <strong>not</strong> the
 interrupt aggregate&#8201;&#8212;&#8201;it is the software-controlled <code>SYNC_REG.sync</code> global
-synchronisation bit in the reset unit, unrelated to PLIC interrupt delivery.
+synchronization bit in the reset unit, unrelated to PLIC interrupt delivery.
 Do not connect an external interrupt controller to <code>sync_irq_o</code>.</p>
 </div>
 <div class="paragraph">
@@ -1170,14 +1178,14 @@ signal indicates completion of memory initialization if automatic SRAM zeroing
 is enabled.</p>
 </div>
 <div class="paragraph">
-<p>To support Function Level Reset (FLR), assert <code>cfg_flr_pf_active_i</code> to trigger
-a warm reset sequence. The SMC asserts <code>isolate_req_o</code> bits for the affected
+<p>To support Function Level Reset (FLR), assert <code>cfg_flr_pf_active_i</code> to trigger a
+warm reset sequence. The SMC asserts <code>isolate_req_o</code> bits for the affected
 subsystem indices. The adopter&#8217;s power controller drives <code>ss_reset_complete_i</code>
 high once the subsystem reset is complete; the SMC synchronizes this into the
-readable <code>SS_RESET_COMPLETE</code> register. Isolation remains asserted until cleared by software: SMC firmware must poll
-<code>SS_RESET_COMPLETE</code> and then write <code>ISOLATE_REQ_SMC_REG</code> to clear the FLR
-isolation latch. Do not assume isolation releases automatically on
-<code>ss_reset_complete_i</code>.</p>
+readable <code>SS_RESET_COMPLETE</code> register. Isolation remains asserted until cleared
+by software: SMC firmware must poll <code>SS_RESET_COMPLETE</code> and then write
+<code>ISOLATE_REQ_SMC_REG</code> to clear the FLR isolation latch. Do not assume isolation
+releases automatically on <code>ss_reset_complete_i</code>.</p>
 </div>
 <div class="paragraph">
 <p>See <code>hw/top/smu_wrapper.sv</code> and <code>hw/top/smc_ip_integration.sv</code> for reference
@@ -2556,9 +2564,9 @@ register descriptions (see <a href="#smc-external-supplementary">Supplementary R
 <div class="paragraph">
 <p>For multi-chiplet systems, the <code>PRIMARY_CHIPLET</code> strap (<code>STRAPS_LO[25]</code>)
 determines whether the chiplet operates as primary or secondary. The primary
-chiplet&#8217;s System Timer OCTS generates synchronization pulses
-(<code>timer_sync_load_o</code>, <code>timer_cnt_credit_o</code>) that secondary chiplets receive to
-maintain coherent timestamps across the system.</p>
+chiplet&#8217;s System Timer OCTS (Open Chiplet Time Synchronization) generates
+synchronization pulses (<code>timer_sync_load_o</code>, <code>timer_cnt_credit_o</code>) that
+secondary chiplets receive to maintain coherent timestamps across the system.</p>
 </div>
 </div>
 </div>
