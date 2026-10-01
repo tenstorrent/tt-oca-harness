@@ -935,7 +935,7 @@ cells for a walk that exercises the PROD rows only
 |===
 |Coverpoint |Bins
 |`cp_raise` / `cp_clear` |Rising and falling edge of any SEP AXI mailbox source, `sep_internal_interrupts[7:0]`, driven from `inbound_interrupt_o` in `sep.sv`
-|`cp_km_raise` / `cp_km_clear` |Rising and falling edge of the KM mailbox, `sep_internal_interrupts[14]`, after software wrote a non-zero `SEP_IRQ_ENABLE`. A leaf that never enables a KM mailbox interrupt does not exercise this path, so its edges do not count. `sep_reg_bit_bash_rand_test` writes `SEP_IRQ_ENABLE` = 0x15 and then 0 in its storage walk; the inbound-space status is set at idle, so the line really falls, and that leaf fills `cp_km_clear` too
+|`cp_km_raise` / `cp_km_clear` |Rising and falling edge of the KM mailbox, `sep_internal_interrupts[14]`, after software wrote a non-zero `SEP_IRQ_ENABLE`. A leaf that never enables a KM mailbox interrupt does not exercise this path, so its edges do not count. `sep_reg_bit_bash_rand_test` writes `SEP_IRQ_ENABLE` = 0x15 and then 0 in its storage walk; the inbound-space status is set at idle, so the line really falls, and on some seeds (the walk order is seeded) that leaf fills `cp_km_clear` too
 |`cp_peer_fill` |A completed external-master write to the inbound mailbox `WRITE_DATA`. The SEP CPU can raise the same inbound source itself, so an IRQ edge alone does not show an external master drove the receive direction. Both 4-byte halves alias to the register, so the address compare masks bit 2.
 |===
 
