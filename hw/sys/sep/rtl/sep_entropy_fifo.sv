@@ -269,13 +269,23 @@ module sep_entropy_fifo
   // -------------------------------------------------------------------------
   // AXI-Lite read channel (single outstanding, non-blocking pop)
   // -------------------------------------------------------------------------
-  // Decode the full 16-bit aperture offset (region is 64 KiB) so the three
+  // Decode the aperture offset (region is 64 KiB) against the register offsets
+  // taken from the generated sep_entropy_pool address map, so the three
   // registers are not mirrored across the aperture:
-  //   0x0000 -> status word          (non-destructive)
-  //   0x0008 -> irq-cause word        (non-destructive)
-  //   0x0010 -> pool data pop         (pulses pool_rready when data present;
-  //                                    SLVERR when the pool is empty)
-  //   else   -> RRESP=SLVERR, RDATA=0
+  //   STATUS    -> status word    (non-destructive)
+  //   IRQ_CAUSE -> irq-cause word (non-destructive)
+  //   DATA      -> pool data pop  (pulses pool_rready when data present;
+  //                                SLVERR when the pool is empty)
+  //   else      -> RRESP=SLVERR, RDATA=0
+  localparam logic [15:0] STATUS_OFFSET =
+      16'(sep_addrmap_pkg::SEP_TOP_ENTROPY_POOL_STATUS_BASE_ADDR
+          - sep_addrmap_pkg::SEP_TOP_ENTROPY_POOL_BASE_ADDR);
+  localparam logic [15:0] IRQ_CAUSE_OFFSET =
+      16'(sep_addrmap_pkg::SEP_TOP_ENTROPY_POOL_IRQ_CAUSE_BASE_ADDR
+          - sep_addrmap_pkg::SEP_TOP_ENTROPY_POOL_BASE_ADDR);
+  localparam logic [15:0] DATA_OFFSET =
+      16'(sep_addrmap_pkg::SEP_TOP_ENTROPY_POOL_DATA_BASE_ADDR
+          - sep_addrmap_pkg::SEP_TOP_ENTROPY_POOL_BASE_ADDR);
 
   logic        rd_pending_q;
   logic [63:0] rd_data_q;
@@ -307,9 +317,9 @@ module sep_entropy_fifo
     rd_resp_next = axi_pkg::RESP_OKAY;
     rd_pop       = 1'b0;
     unique case (rd_offset)
-      16'h0000: rd_data_next = status_word;
-      16'h0008: rd_data_next = {61'b0, pool_err_o, fill_stall_o, pool_low_o};
-      16'h0010: begin
+      STATUS_OFFSET: rd_data_next = status_word;
+      IRQ_CAUSE_OFFSET: rd_data_next = {61'b0, pool_err_o, fill_stall_o, pool_low_o};
+      DATA_OFFSET: begin
         rd_data_next = entropy_clear_i ? 64'b0 : pool_rdata;
         rd_pop       = pool_rvalid & ~entropy_clear_i;
         // Distinguish "no entropy available" from a popped word: an
@@ -347,7 +357,7 @@ module sep_entropy_fifo
         rd_pending_q <= 1'b1;
         rd_data_q    <= rd_data_next;
         rd_resp_q    <= rd_resp_next;
-        rd_entropy_q <= (rd_offset == 16'h0010);
+        rd_entropy_q <= (rd_offset == DATA_OFFSET);
       end else if (rd_pending_q && s_axil_req.r_ready) begin
         rd_pending_q <= 1'b0;
         rd_entropy_q <= 1'b0;

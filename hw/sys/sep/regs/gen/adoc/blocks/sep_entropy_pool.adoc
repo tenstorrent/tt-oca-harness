@@ -1,0 +1,51 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-sep_entropy_pool]
+== SEP Entropy Pool
+
+Read-only entropy pool FIFO; DATA reads drain conditioned entropy supplied by the native EDN, and writes return SLVERR.
+
+[cols="1,4,1,6", options="header"]
+|===
+| Address | Name | Access | Description
+| 0x0 | <<reg-{regmap-instance}-sep_entropy_pool-STATUS,STATUS>> | R a| -
+| 0x8 | <<reg-{regmap-instance}-sep_entropy_pool-IRQ_CAUSE,IRQ_CAUSE>> | R a| -
+| 0x10 | <<reg-{regmap-instance}-sep_entropy_pool-DATA,DATA>> | R a| -
+|===
+
+[#reg-{regmap-instance}-sep_entropy_pool-STATUS]
+=== STATUS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:9 | `Reserved` | - | - a| Reserved
+| 8 | `pool_error` | R | - a| The pool detected a FIFO integrity error
+| 7 | `fill_stall` | R | - a| The EDN fill request exceeded the configured stall threshold
+| 6 | `pool_low` | R | - a| The pool occupancy is below the configured low watermark
+| 5:0 | `fifo_level` | R | - a| Current number of available 64-bit entropy words
+|===
+
+[#reg-{regmap-instance}-sep_entropy_pool-IRQ_CAUSE]
+=== IRQ_CAUSE
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `pool_error` | R | - a| -
+| 1 | `fill_stall` | R | - a| -
+| 0 | `pool_low` | R | - a| -
+|===
+
+[#reg-{regmap-instance}-sep_entropy_pool-DATA]
+=== DATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `entropy` | R | - a| Pops one conditioned entropy word; an empty pool returns SLVERR
+|===

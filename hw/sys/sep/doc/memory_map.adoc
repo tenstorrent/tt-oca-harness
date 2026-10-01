@@ -131,6 +131,7 @@ ifdef::backend-html5[]
 * xref:dma.adoc[Direct Memory Access (DMA)] — secure_dma.
 * xref:spi.adoc[Serial Peripheral Interface (SPI)] — spi_controller.
 * xref:cpu.adoc#dual-scratch-register-banks[CPU scratch banks] — sep_scratch.
+* xref:entropy_pool.adoc[Entropy Pool] — sep_entropy_pool.
 * xref:ip:entropy_source/doc/index.adoc[Entropy Source].
 * xref:ip:key_manager/doc/index.adoc[Key Manager] — controller, KPV, sampler, mailboxes and key wrappers.
 * xref:ip:efuse/doc/index.adoc[Shared eFuse IP] — eFuse MMR and interface registers.
