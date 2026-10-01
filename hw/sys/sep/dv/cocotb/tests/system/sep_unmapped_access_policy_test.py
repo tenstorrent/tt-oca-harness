@@ -23,6 +23,11 @@ CHK-SYSCSR-HOLE-REFUSE, CHK-SYS-RESERVED-REFUSE, CHK-MBOX-UPPER-REFUSE,
 CHK-EFUSE-CTRL-PAST-REFUSE, CHK-EFUSE-MMR-PAST-REFUSE and CHK-SPI-PAST-REFUSE:
 every read and write in that set is refused (never OKAY, never a timeout).
 
+CHK-SYSCSR-HOLE-DECODE: no system-CSR hole or reserved-row probe reaches the
+system-CSR AXI-Lite port. The system-peripherals crossbar refuses them itself,
+so a write answers DECERR rather than the SLVERR the AXI-Lite converter makes of
+any write error behind it.
+
 CHK-TOKEN-FAULT-EXTENT: TOKEN_MATCH_FAULT, the last register the RDL gives the
 eFuse token MMR, reads OKAY with its RDL reset, and the first word after it is
 refused. The extent therefore ends where the RDL ends it.
@@ -151,16 +156,21 @@ class sep_unmapped_access_policy_test(sep_base_test):
         alias_fails: list[str] = []
         per_group: dict[str, list[str]] = {g: [] for g in REFUSE_GROUPS}
         code_fails: list[str] = []
+        decode_fails: list[str] = []
         n_code = 0
+        n_watched = 0
         for p in cfg.probes:
             r = await ua.probe(p)
             key = (p.group, p.op)
             codes.setdefault(key, Counter())[_code(r.resp)] += 1
+            where = f"{p.op} 0x{p.addr:08x} ({p.note})"
             if r.lite_reached is not None:
                 tally = lite.setdefault(key, [0, 0])
                 tally[0] += int(r.lite_reached)
                 tally[1] += 1
-            where = f"{p.op} 0x{p.addr:08x} ({p.note})"
+                n_watched += 1
+                if r.lite_reached:
+                    decode_fails.append(f"{where} reached the system-CSR AXI-Lite port")
             if r.timed_out:
                 per_group[p.group].append(f"{where} timed out")
             elif r.resp == RESP_OKAY:
@@ -193,6 +203,9 @@ class sep_unmapped_access_policy_test(sep_base_test):
                     )
         for g in REFUSE_GROUPS:
             verdict[_CHK[g]] = per_group[g]
+        if n_watched == 0:
+            decode_fails.append("no probe watched the system-CSR AXI-Lite port")
+        verdict["CHK-SYSCSR-HOLE-DECODE"] = decode_fails
 
         # Tally of the codes CHK-UNMAPPED-CODE graded, per group and channel.
         for (g, op), c in codes.items():
@@ -207,13 +220,6 @@ class sep_unmapped_access_policy_test(sep_base_test):
                 "write BRESP" if op == "w" else "read RRESP",
                 line,
                 extra,
-            )
-        for g in LITE_WATCHED:
-            self.logger.info(
-                "UNMAPPED-CODE: %s: the Lite port has no response probe, so the "
-                "slave-side BRESP of a write is not observable here; a read RRESP "
-                "is the slave's code, passed through unchanged",
-                g,
             )
 
         # --- array tails ----------------------------------------------------
@@ -349,6 +355,10 @@ class sep_unmapped_access_policy_test(sep_base_test):
         for g in REFUSE_GROUPS:
             n = sum(1 for p in cfg.probes if p.group == g)
             counts[_CHK[g]] = f"all {n} {g} probe(s) were refused"
+        counts["CHK-SYSCSR-HOLE-DECODE"] = (
+            f"none of the {n_watched} {' and '.join(LITE_WATCHED)} probe(s) reached the "
+            "system-CSR AXI-Lite port"
+        )
         bad = []
         for chk, fails in verdict.items():
             if fails:

@@ -222,7 +222,6 @@ addrmap sep_top #(
     sep_boot_rom->desc = "BL0 immutable instruction memory.";
     ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::OKAY, rdata: 0x0, bresp: ocah_resp_e::OKAY};
     ocah_gap_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xCA11AB1EBADCAB1E, bresp: ocah_resp_e::DECERR};
-    ocah_gap_note = "A write to a reserved address in 0x1080_2000-0x1080_20FF or 0x10A1_0000-0x10A4_FFFF answers SLVERR.";
     secure_dma->ocah_aperture_size = 0x1000;
     secure_dma->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xCA11AB1EBADCAB1E, bresp: ocah_resp_e::DECERR};
     secure_dma->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xFFFFFFFF, bresp: ocah_resp_e::SLVERR};
@@ -273,15 +272,15 @@ addrmap sep_top #(
     axil_mailbox->desc = "Eight bidirectional mailbox pairs.";
     local_master_alias_remap_ctrl->ocah_aperture_size = 0x200;
     local_master_alias_remap_ctrl->ocah_full_stride_extent = true;
-    local_master_alias_remap_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xCA11AB1EBADCAB1E, bresp: ocah_resp_e::SLVERR};
+    local_master_alias_remap_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xCA11AB1EBADCAB1E, bresp: ocah_resp_e::DECERR};
     outbound_filter_ctrl->ocah_aperture_size = 0x400;
     outbound_filter_ctrl->ocah_full_stride_extent = true;
-    outbound_filter_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xCA11AB1EBADCAB1E, bresp: ocah_resp_e::SLVERR};
+    outbound_filter_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xCA11AB1EBADCAB1E, bresp: ocah_resp_e::DECERR};
     inbound_filter_ctrl->ocah_aperture_size = 0x200;
     inbound_filter_ctrl->ocah_full_stride_extent = true;
-    inbound_filter_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xCA11AB1EBADCAB1E, bresp: ocah_resp_e::SLVERR};
+    inbound_filter_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xCA11AB1EBADCAB1E, bresp: ocah_resp_e::DECERR};
     sep_cpu_ctrl->ocah_aperture_size = 0x2000;
-    sep_cpu_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xCA11AB1EBADCAB1E, bresp: ocah_resp_e::SLVERR};
+    sep_cpu_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xCA11AB1EBADCAB1E, bresp: ocah_resp_e::DECERR};
     sep_cpu_ctrl->desc = "SEP CPU control and interrupt registers.";
     spi_controller->ocah_aperture_size = 0x100000;
     spi_controller->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
