@@ -74,6 +74,9 @@ function automatic void sep_cpu_ctrl_csr_regs(ref sep_csr_desc_t regs[$]);
                  32'(SEP_CPU_CTRL_SEP_NMI_VEC_NMI_VEC_MASK)});
   regs.push_back('{"PKA_CTRL", 64'(SEP_CPU_CTRL_PKA_CTRL_REG_ADDR),
                  32'(SEP_CPU_CTRL_PKA_CTRL_REG_DEFAULT), SepPkaCtrlMask});
+  regs.push_back('{"SEP_REGION_SIZE", 64'(SEP_CPU_CTRL_SEP_REGION_SIZE_REG_ADDR),
+                 32'(SEP_CPU_CTRL_SEP_REGION_SIZE_REG_DEFAULT),
+                 32'(SEP_CPU_CTRL_SEP_REGION_SIZE_SIZE_MASK)});
 endfunction
 
 // ---------------------------------------------------------------------------

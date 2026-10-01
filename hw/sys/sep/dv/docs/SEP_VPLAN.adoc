@@ -13,13 +13,13 @@
 |Bare core |`sep` (`hw/sys/sep/rtl/sep.sv`)
 |Repository |`tt-oca-harness`
 |Project |OCAH
-|Framework |PyUVM on cocotb (Phase 1 / Phase 2); SystemVerilog UVM on the same top (Phase 3, `--framework uvm`)
+|Framework |PyUVM on cocotb (Phase 1 to Phase 3); SystemVerilog UVM smoke set on the same top (`--framework uvm`, VCS)
 |Primary simulator |Verilator
 |Architecture reference |`hw/sys/sep/doc/`
 |Register export |`hw/sys/sep/regs/gen/` (via `env/sep_reg_meta.py`)
 |How to run |`README.md` in this DV tree (`tools/dv/run_dv.py --dut sep`)
 |Cocotb tests |Every member of the `all` group in `testlists/all.toml`; its `expected_count` is the authoritative number
-|SV-UVM realization |`sep_axi_smoke_test` (`--framework uvm`)
+|SV-UVM smoke set |Every test with a `uvm` binding (`--framework uvm --items all`); see <<sv-uvm-smoke>>
 |===
 
 This VPLAN is the technical contract for the open-source SEP DV
@@ -35,7 +35,8 @@ not enough.
 
 === Verification Strategy
 
-One DUT. Two environments across three phases.
+One DUT. Three phases on cocotb, plus a SystemVerilog UVM smoke set
+(see <<sv-uvm-smoke>>).
 
 [cols="1,2,3",options="header"]
 |===
@@ -50,8 +51,8 @@ One DUT. Two environments across three phases.
 |Iconic feature coverage by IP, plus cross-IP edges a per-IP bench cannot see. Includes block activation for instantiated IPs that otherwise had no vehicle. Randomize when there is a legal matrix (`RAND-REP` / `RANDCFG`); keep directed (`RAND-NONE`) when there is not.
 
 |Phase 3
-|SystemVerilog UVM realization of the same testbench top
-|The same scenario names on the same testbench top; `sep_axi_smoke_test` is bound in both realizations (see that procedure). The UVM class library and run recipes are in link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_TB_ARCH]. Contracts this plan does not claim are listed in <<phase-3>>.
+|Same cocotb environment
+|Closes the contracts this plan does not claim yet, listed in <<phase-3,Known Limitations>>. Coming soon.
 |===
 
 [arabic]
@@ -1004,12 +1005,6 @@ The checker table is the fail-able contract.
 *Evidence*: one aggregate record, `CHK-AXI-SMOKE` (`cocotb/seq_lib/sep_axi_smoke_seq.py`), covers CHK-DECODE and CHK-WR-RB. CHK-RESP and CHK-NONVAC are enforced in `check_phase` of the shared scoreboard (`cocotb/env/sep_scoreboard.py`).
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
-
-The same scenario is bound in the SV-UVM realization (`--framework uvm`). That
-pass keeps these checkers on the CPU-LSU splice over 16 seeded runs, requires
-the always-on scoreboard `cpu_ctrl_csr` feature, and
-`+SEP_CSR_SCOREBOARD_NEGATIVE` must FAIL the scoreboard. Structure and run
-recipes: link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_TB_ARCH].
 
 '''''
 
@@ -7940,6 +7935,41 @@ the wipe security contract.
 *Pass Criteria*: Every named checker PASSes. `UVM_ERROR` is 0.
 
 '''''
+
+[[sv-uvm-smoke]]
+=== SystemVerilog UVM Smoke Set
+
+The SV-UVM realization runs a smoke set of the cocotb scenarios on the same
+testbench top, for adopters with a commercial UVM simulator. It is VCS only and
+sits outside the three phases. A scenario keeps its cocotb name; its testlist
+entry binds both implementations
+(`module = { cocotb = "...", uvm = "..." }`), and the SV-UVM class name is the
+`uvm` entry (`+UVM_TESTNAME`). `--framework uvm --items all` runs every bound
+scenario. The class library and run recipes are in
+link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_TB_ARCH].
+
+Each bound scenario proves the contract of its cocotb procedure. The table
+below gives only what the SV-UVM pass adds or names differently.
+
+[cols="2,5",options="header"]
+|===
+|Scenario |SV-UVM contract
+
+|<<sep_axi_smoke_test,`sep_axi_smoke_test`>>
+|Sixteen seeded passes by default (`+SEP_TEST_LOOPS`, `+SEP_SYSTEM_TEST_LOOPS`,
+`+SEP_AXI_SMOKE_TEST_LOOPS`). Each pass reads `SEP_LOCAL_BASE_ADDR` at its reset
+value (CHK-CSR-RESET-VALUE), writes and reads back `SEP_SW_DEBUG`,
+`SEP_NMI_VEC`, `PKA_CTRL` and `SEP_REGION_SIZE` with the directed patterns
+(CHK-CSR-READBACK) and with `+SEP_RANDOM_COUNT` seeded random patterns, five by
+default (CHK-CSR-RANDOM-READBACK), each masked to the implemented field bits,
+then restores and reads back every reset value (CHK-CSR-RESTORE). Every access
+completes OKAY (CHK-CSR-RESP) after fuse sense is done (CHK-FUSE-SENSE-DONE).
+The always-on scoreboard predicts every read from the writes the passive
+monitor observed and must compare with no mismatch (CHK-SB-CPU-CTRL-CSR). The
+scoreboard compares a pass adds must equal the predicted reads it issued
+(CHK-NONVAC). `+SEP_CSR_SCOREBOARD_NEGATIVE` corrupts the prediction, and the
+run must FAIL.
+|===
 
 === Regression Groups
 

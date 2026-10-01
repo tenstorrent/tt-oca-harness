@@ -13,7 +13,7 @@
 |Bare core |`sep` (`hw/sys/sep/rtl/sep.sv`)
 |Repository |`tt-oca-harness`
 |Project |OCAH
-|Framework |PyUVM on cocotb (Phase 1 / Phase 2); SystemVerilog UVM on the same top (Phase 3, `--framework uvm`)
+|Framework |PyUVM on cocotb (Phase 1 to Phase 3); SystemVerilog UVM smoke set on the same top (`--framework uvm`, VCS)
 |Primary simulator |Verilator
 |Commercial simulator use |VCS / Xcelium for development iteration; Verilator is pre-merge acceptance
 |How to run |`README.md` (`tools/dv/run_dv.py --dut sep`)
