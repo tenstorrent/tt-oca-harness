@@ -8,38 +8,38 @@ of RXDATA. The image needs no external flash model and programs no pad path:
 the OT SPI host reaches the pads only on the SMC LSIO primary plane (GPIO 0-10
 and the DQS loopback pad 54), and no select steers it.
 
-smu.sv drives the SEP SPI pad signals it passes to the SMC from
-sep_io_pkg::ot_spi_pad_map (hw/sys/sep/rtl/sep_io_pkg.sv), and returns the data
-lanes from the SMC as the SPI host response. This sequence grades that contract
-at the deepest point the open tree carries: the SMC pad ports of smu.sv
-(core2pad_o, core2pad_en_o, pad2core_en_o, lsio_interface_select_o, pad2core_i).
-The host side is read on the ports of u_sep_ot_spi_wrap, upstream of smu.sv.
+The sequence grades, at the SMC pad ports of smu.sv (core2pad_o,
+core2pad_en_o, pad2core_i), that the SMC SPI pins carry the host request as
+SPI_PIN_TABLE states it. SPI_PIN_TABLE is DV-owned: every row cites the spec
+file and line it comes from, never the RTL that implements it. The host side is
+read on the ports of u_sep_ot_spi_wrap, upstream of smu.sv. Facts the table
+needs and no spec states are listed in SPEC_GAPS and logged on every run.
 
 Every clk_smu cycle from the first sample with the SEP's ICCM-fetch latch set
 to POST_IDLE_CYCLES after the firmware verdict is sampled, and:
 
-* MAP: every field that ot_spi_pad_map produces equals, at the pads, the value
-  the function defines for the host request of that cycle (``_pad_map_model``
-  transcribes the function), and the host data inputs equal pad2core_i[3:0].
+* MAP: on every SPI pin of the table, the pad data and output enable equal the
+  host output and host enable the row names, a pin with no SEP source is not
+  output-enabled, and each host data input equals the pad input of its lane.
 * SCK: the pad SCK rises exactly the number of times the firmware's byte counts
   give (FW_SEGMENTS), and the host's own SCK output rises the same number of
   times in the same window.
 * FRAME: the pad CS# falls once per chip-select window of the firmware, each
   window holds that window's SCK rises, and no SCK rise occurs with CS# high.
-* OE: at every SCK rise the SCK and CS# pads are driven, the receive lane and
-  lanes 2-7 are not driven, and on every transmit bit the transmit lane is
-  driven; while CS# is high no data lane is driven; before the host enables its
-  outputs the SCK and CS# pads are not driven. In standard mode lane 0 is the
-  host's output lane and the host may keep it driven into a receive segment, so
-  on receive bits its enable is graded by MAP against the host, not here.
-* MOSI: the bytes on the transmit pad at the SCK rises are the firmware's
-  TXDATA bytes in the host's little-endian byte order.
+* OE: at every SCK rise the SCK and CS# pads are driven, the receive lane, the
+  standard-mode unused lanes and the pins with no SEP source are not driven,
+  and on every transmit bit the transmit lane is driven; before the host
+  enables its outputs the SCK and CS# pads are not driven. The host may keep
+  the transmit lane driven into a receive segment, so on receive bits its
+  enable is graded by MAP against the host, not here.
+* MOSI: the bytes on the transmit pad at the SCK rises are the bytes the
+  firmware pushes into TXDATA, low byte of a word first, MSB first.
 * RSP: a bench SPI device drives a seeded pattern on the receive pad, shifting
   on the SCK falling edge; the host data input follows the pad at every receive
   SCK rise, and the one word popped from the host RX FIFO equals the pattern.
-* IDLE: no pad net moves on a cycle where the host outputs do not move, the
-  windows before and after the transfer have no pad change, and each pad net
-  the transfer drives moves inside the transfer.
+* IDLE: no graded pad net moves on a cycle where the host outputs do not move,
+  the windows before and after the transfer have no pad change, and the SCK,
+  CS# and transmit pins move as data and as output enable inside the transfer.
 
 X/Z is not graded as a check: Verilator, the simulator this bench builds with,
 is two-state. A sample the monitor cannot read as 0/1 still fails the run,
@@ -53,6 +53,7 @@ loops, so a firmware failure names the point in the transfer that stalled.
 from __future__ import annotations
 
 import importlib.util
+from dataclasses import dataclass
 from pathlib import Path
 
 import cocotb
@@ -68,25 +69,96 @@ SMU_PATH = "u_dut.u_smu"
 HOST_PATH = "gen_sep.u_sep.u_sep_io.u_sep_ot_spi_wrap"
 HOST_CORE_PATH = HOST_PATH + ".u_spi_host"
 
-# SMC LSIO primary-plane SPI pins (hw/sys/smc/rtl/smc_peripherals/rtl/smc_padring.sv).
-PAD_DQ = tuple(range(8))
-PAD_CS = 8
-PAD_SCK = 9
-PAD_DQS = 10
-PAD_DQS_LOOP = 54
-SPI_PADS = (*PAD_DQ, PAD_CS, PAD_SCK, PAD_DQS, PAD_DQS_LOOP)
+# ---------------------------------------------------------------------------
+# DV-owned SPI pin table. Spec sources (paths from the repository root):
+#   GPIO  doc/integrator/meta/ocah_gpio_table.csv -- the function of each GPIO pad
+#   SEP   hw/sys/sep/doc/spi.adoc -- the SEP SPI host: SCK, CS and a 4-bit
+#         bidirectional data bus (:48); quad is the widest mode, four data
+#         lines, and there is no DQS read strobe (:35-39)
+#   OT    vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/data/spi_host.hjson
+#         -- sck, csb (one hot, active low) and sd outputs (:109-122);
+#         CONTROL.OUTPUT_EN enables the sck, csb and sd output buffers and
+#         resets to 0 (:221-225)
+#   OTDOC https://opentitan.org/book/hw/ip/spi_host/index.html, the document
+#         hw/sys/sep/doc/spi.adoc:69-71 names authoritative: in standard mode
+#         SD[0] carries host-to-device data and SD[1] device-to-host data
+#   EN    doc/starting/src/guidelines.adoc:166-167 -- an active-low signal
+#         carries _n; hw/sys/smu/doc/port_table.adoc:105-108 -- pad2core_i is
+#         the pad input, core2pad_o the pad output, core2pad_en_o the
+#         core-to-pad path enable (no _n: active high)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class SpiPin:
+    """One SMC SPI pin: what the pad must carry for the SEP SPI host."""
+
+    pad: int
+    function: str
+    #: Host output whose level core2pad_o[pad] carries, or None.
+    data: str | None
+    #: Host enable that core2pad_en_o[pad] follows; None: the pin has no SEP
+    #: source and is never output-enabled.
+    oe: str | None
+    #: Host data-input lane that pad2core_i[pad] feeds, or None.
+    rx_lane: int | None
+    cite: str
+
+
+SPI_PIN_TABLE = (
+    SpiPin(0, "SPI.DATA[0]", "sd0", "sd_oe0", 0, "GPIO :2; SEP :48"),
+    SpiPin(1, "SPI.DATA[1]", "sd1", "sd_oe1", 1, "GPIO :3; SEP :48"),
+    SpiPin(2, "SPI.DATA[2]", "sd2", "sd_oe2", 2, "GPIO :4; SEP :48"),
+    SpiPin(3, "SPI.DATA[3]", "sd3", "sd_oe3", 3, "GPIO :5; SEP :48"),
+    SpiPin(4, "SPI.DATA[4]", None, None, None, "GPIO :6; SEP :35-36"),
+    SpiPin(5, "SPI.DATA[5]", None, None, None, "GPIO :7; SEP :35-36"),
+    SpiPin(6, "SPI.DATA[6]", None, None, None, "GPIO :8; SEP :35-36"),
+    SpiPin(7, "SPI.DATA[7]", None, None, None, "GPIO :9; SEP :35-36"),
+    SpiPin(8, "SPI.CS", "cs_n", "cs_oe", None, "GPIO :10; OT :113-116"),
+    SpiPin(9, "SPI.CLK", "sck", "sck_oe", None, "GPIO :11; OT :110-112"),
+    SpiPin(10, "SPI.DQS", None, None, None, "GPIO :12; SEP :37-38"),
+    SpiPin(54, "SPI DQS Loopback", None, None, None, "GPIO :56; SEP :37-38"),
+)
+_PIN = {p.function: p.pad for p in SPI_PIN_TABLE}
+PAD_DQ = tuple(_PIN[f"SPI.DATA[{i}]"] for i in range(8))
+PAD_CS = _PIN["SPI.CS"]
+PAD_SCK = _PIN["SPI.CLK"]
+PAD_DQS = _PIN["SPI.DQS"]
+PAD_DQS_LOOP = _PIN["SPI DQS Loopback"]
+SPI_PADS = tuple(p.pad for p in SPI_PIN_TABLE)
+UNSOURCED_PADS = tuple(p.pad for p in SPI_PIN_TABLE if p.oe is None)
+# Standard-mode lane roles (OTDOC).
 MOSI_LANE = 0
 MISO_LANE = 1
+STD_UNUSED_LANES = (2, 3)
+
+#: Facts the pin table relies on, or leaves ungraded, that no spec states.
+SPEC_GAPS = (
+    "graded, no spec text: the SMC GPIO SPI.* functions are driven by the SEP SPI host "
+    "(the GPIO table names the function SPI, no document names its source)",
+    "graded, by name only: host data lane n is SPI.DATA[n]",
+    "graded, DV rule: a pin with no SEP source (SPI.DATA[7:4], SPI.DQS, the DQS loopback) "
+    "is not output-enabled",
+    "graded, external spec only: standard-mode lane roles (OTDOC, not in the repository)",
+    "not graded, no spec: the SPI function select (lsio_interface_select_o) on these pins",
+    "not graded, no spec: the pad input enable (pad2core_en_o) of every SPI pin",
+    "not graded, no spec: the pad data level on pins with no SEP source",
+    "not graded, no spec: whether a data lane may be driven while CS# is high",
+)
 
 # The transfer run_spi_txrx_sequence() in sep_smu_spi.c issues, in order:
-# (bytes, COMMAND.CSAAT, direction). Every segment is standard speed
-# (COMMAND.SPEED=0), so a byte is 8 SCK periods on one lane, and with
-# CONFIGOPTS.CPOL=0 each period has one SCK rising edge.
+# (bytes, COMMAND.CSAAT, direction). A segment moves LEN+1 bytes (OT :443-452);
+# CSAAT=0 raises CS# at the end of the segment, CSAAT=1 holds it low (OT
+# :470-476). Every segment is standard speed (COMMAND.SPEED=0), so a byte is 8
+# SCK periods on one lane, and with CONFIGOPTS.CPOL=0 SCK idles low and emits
+# one high pulse per period (OT :352-356).
 TX = "tx"
 RX = "rx"
 FW_SEGMENTS = ((1, 0, TX), (4, 1, TX), (4, 0, RX))
-# The TXDATA word the firmware writes for each TX segment, in order.
-FW_TXDATA_WORDS = (0x0000_009F, 0x0010_0003)
+# The bytes the firmware pushes into TXDATA, in FIFO order: one byte store
+# (TXDATA takes byte enables, OT :518), then one word, whose low byte goes first
+# (STATUS.BYTEORDER=1, OT :76-82).
+FW_TXDATA_BYTES = (0x9F, *(0x0010_0003).to_bytes(4, "little"))
 BITS_PER_BYTE = 8
 
 #: Clock cycles sampled after the firmware verdict; the host is idle there.
@@ -117,15 +189,12 @@ EDGE_DIRECTIONS, CS_WINDOW_RISES = _edge_plan()
 EXPECTED_SCK_RISES = len(EDGE_DIRECTIONS)
 TX_BYTES = sum(n for n, _, d in FW_SEGMENTS if d == TX)
 RX_BYTES = sum(n for n, _, d in FW_SEGMENTS if d == RX)
-# STATUS.BYTEORDER=1 (OpenTitan spi_host ByteOrder): the host sends byte 0 of
-# each TXDATA word first and puts the first received byte in RXDATA[7:0]; bits
-# go MSB first inside a byte. A TX segment sends the first bytes of its own
-# word; the host drops the bytes a segment leaves unsent in its last word.
-EXPECTED_MOSI = [
-    (word >> (8 * i)) & 0xFF
-    for word, nbytes in zip(FW_TXDATA_WORDS, (n for n, _, d in FW_SEGMENTS if d == TX), strict=True)
-    for i in range(nbytes)
-]
+# Each byte goes out MSB first (OT :521-522), and the TX segments send the FIFO
+# bytes in order. The first received byte lands in RXDATA[7:0] (OT :76-82), and
+# received bytes also go MSB first (OT :496-497).
+if len(FW_TXDATA_BYTES) != TX_BYTES:
+    raise AssertionError("FW_TXDATA_BYTES and the TX segment byte counts differ")
+EXPECTED_MOSI = list(FW_TXDATA_BYTES)
 
 # Host fields that must take both values inside the window, so the MAP check
 # grades both polarities of each pad field that follows them.
@@ -156,64 +225,26 @@ def _wire_bits(word: int) -> list[int]:
     return [(word >> (8 * byte + bit)) & 1 for byte in range(RX_BYTES) for bit in range(7, -1, -1)]
 
 
-def _pad_map_model(req: dict[str, int]) -> dict[str, int]:
-    """sep_io_pkg::ot_spi_pad_map, transcribed field by field."""
-    return {
-        "enable": 1,
-        "clk": req["sck"],
-        "txd": req["sd"] & 0xF,
-        "cs_n": req["cs_n"],
-        "cs_oe_n": req["cs_oe"] ^ 1,
-        "cs_ie_n": req["cs_oe"],
-        "clk_oe_n": req["sck_oe"] ^ 1,
-        "clk_ie_n": req["sck_oe"],
-        "dqs_oe_n": 1,
-        "dqs_ie_n": 1,
-        "dq_oe_n": 0xF0 | (~req["sd_oe"] & 0xF),
-        "dq_ie_n": 0xF0 | (req["sd_oe"] & 0xF),
-        "mem_rebar_oepad": 0,
-        "mem_rebar_opad": 0,
-        "mem_rebar_iepad": 0,
-    }
-
-
 def _bits(value: str, pads) -> int:
     """Gather the given bit positions of an MSB-first binary string, LSB first."""
     return sum(int(value[-1 - pad]) << i for i, pad in enumerate(pads))
 
 
-def _inv(value: int, width: int) -> int:
-    return ~value & ((1 << width) - 1)
-
-
-def _pads_as_fields(pad: dict[str, str]) -> dict[str, int]:
-    """Read each ot_spi_pad_map field back off the SMC pads.
-
-    The SMC LSIO pin select hands each pad the LSIO data and the inverse of the
-    active-low LSIO enables (hw/ip/gpio/rtl/gpio.sv), so an active-low field
-    reads as the inverse of its pad enable.
-    """
-    c2p, oe, ie, sel = pad["core2pad"], pad["core2pad_en"], pad["pad2core_en"], pad["select"]
-    selects = _bits(sel, SPI_PADS)
-    every = (1 << len(SPI_PADS)) - 1
-    return {
-        # 1 or 0 when every SPI pad agrees; otherwise the per-pad select mask.
-        "enable": 1 if selects == every else (0 if selects == 0 else selects << 1),
-        "clk": _bits(c2p, (PAD_SCK,)),
-        "txd": _bits(c2p, PAD_DQ),
-        "cs_n": _bits(c2p, (PAD_CS,)),
-        "cs_oe_n": _inv(_bits(oe, (PAD_CS,)), 1),
-        "cs_ie_n": _inv(_bits(ie, (PAD_CS,)), 1),
-        "clk_oe_n": _inv(_bits(oe, (PAD_SCK,)), 1),
-        "clk_ie_n": _inv(_bits(ie, (PAD_SCK,)), 1),
-        "dqs_oe_n": _inv(_bits(oe, (PAD_DQS,)), 1),
-        "dqs_ie_n": _inv(_bits(ie, (PAD_DQS,)), 1),
-        "dq_oe_n": _inv(_bits(oe, PAD_DQ), 8),
-        "dq_ie_n": _inv(_bits(ie, PAD_DQ), 8),
-        "mem_rebar_oepad": _bits(oe, (PAD_DQS_LOOP,)),
-        "mem_rebar_opad": _bits(c2p, (PAD_DQS_LOOP,)),
-        "mem_rebar_iepad": _bits(ie, (PAD_DQS_LOOP,)),
-    }
+def _pin_check(host: dict[str, int], pad: dict[str, str]) -> dict[str, tuple[int, int]]:
+    """Per pin, the (expected, observed) value of each graded pad net."""
+    out: dict[str, tuple[int, int]] = {}
+    for pin in SPI_PIN_TABLE:
+        name = pin.function
+        if pin.data is not None:
+            out[f"{name} data"] = (host[pin.data], _bits(pad["core2pad"], (pin.pad,)))
+        want_oe = host[pin.oe] if pin.oe is not None else 0
+        out[f"{name} oe"] = (want_oe, _bits(pad["core2pad_en"], (pin.pad,)))
+        if pin.rx_lane is not None:
+            out[f"{name} rx"] = (
+                _bits(pad["pad2core"], (pin.pad,)),
+                (host["sd_i"] >> pin.rx_lane) & 1,
+            )
+    return out
 
 
 class SmuSepSpiSeq(SepTerminalLoopSeq):
@@ -289,8 +320,8 @@ class SmuSepSpiSeq(SepTerminalLoopSeq):
         assert not short, f"{self.NAME}: pad vectors too narrow for pad {max(SPI_PADS)}: {short}"
 
     def _drive_miso(self, enable: int, value: int) -> None:
-        self._drive_en.value = enable << MISO_LANE
-        self._drive_val.value = (value & enable) << MISO_LANE
+        self._drive_en.value = enable << PAD_DQ[MISO_LANE]
+        self._drive_val.value = (value & enable) << PAD_DQ[MISO_LANE]
 
     # ---------------------------------------------------------------- monitor
     async def _monitor(self, rx_bits: list[int]) -> dict:
@@ -307,7 +338,6 @@ class SmuSepSpiSeq(SepTerminalLoopSeq):
             "cs_windows": [],
             "rises_cs_high": [],
             "edges": [],
-            "cs_high_data_oe": [],
             "pre_enable_cycles": 0,
             "host_changes": [],
             "pad_changes": [],
@@ -357,19 +387,15 @@ class SmuSepSpiSeq(SepTerminalLoopSeq):
                 continue
 
             host = {k: int(v, 2) for k, v in raw_host.items()}
-            host["sd0"] = (host["sd"] >> MOSI_LANE) & 1
-            host["sd_oe0"] = (host["sd_oe"] >> MOSI_LANE) & 1
+            for lane in range(4):
+                host[f"sd{lane}"] = (host["sd"] >> lane) & 1
+                host[f"sd_oe{lane}"] = (host["sd_oe"] >> lane) & 1
             for f in HOST_TOGGLE_FIELDS:
                 st["toggles"][f].add(host[f])
 
-            want = _pad_map_model(host)
-            seen = _pads_as_fields(raw_pad)
-            # Response: smu.sv returns the SMC data lanes 3:0 as the host input.
-            want["rxd"] = _bits(raw_pad["pad2core"], range(4))
-            seen["rxd"] = host["sd_i"] & 0xF
-            for field, value in want.items():
-                if seen[field] != value:
-                    rec = st["map_bad"].setdefault(field, [0, cycle, value, seen[field]])
+            for field, (value, got) in _pin_check(host, raw_pad).items():
+                if got != value:
+                    rec = st["map_bad"].setdefault(field, [0, cycle, value, got])
                     rec[0] += 1
 
             sck = _bits(raw_pad["core2pad"], (PAD_SCK,))
@@ -377,14 +403,9 @@ class SmuSepSpiSeq(SepTerminalLoopSeq):
             oe = _bits(raw_pad["core2pad_en"], range(max(SPI_PADS) + 1))
             if not (oe >> PAD_SCK) & 1 and not (oe >> PAD_CS) & 1:
                 st["pre_enable_cycles"] += 1
-            if cs_n and _bits(raw_pad["core2pad_en"], PAD_DQ):
-                st["cs_high_data_oe"].append((cycle, _bits(raw_pad["core2pad_en"], PAD_DQ)))
 
             host_sig = tuple(host[k] for k in ("sck", "sck_oe", "cs_n", "cs_oe", "sd", "sd_oe"))
-            pad_sig = {
-                k: _bits(raw_pad[k], SPI_PADS)
-                for k in ("core2pad", "core2pad_en", "pad2core_en", "select")
-            }
+            pad_sig = {k: _bits(raw_pad[k], SPI_PADS) for k in ("core2pad", "core2pad_en")}
             if prev_host is not None:
                 if host["sck"] and not prev_host["sck"]:
                     st["host_rises"] += 1
@@ -429,14 +450,15 @@ class SmuSepSpiSeq(SepTerminalLoopSeq):
                             "cycle": cycle,
                             "dir": EDGE_DIRECTIONS[n - 1] if n <= EXPECTED_SCK_RISES else None,
                             "oe": oe,
-                            "mosi": _bits(raw_pad["core2pad"], (MOSI_LANE,)),
+                            "mosi": _bits(raw_pad["core2pad"], (PAD_DQ[MOSI_LANE],)),
                             "host_miso": (host["sd_i"] >> MISO_LANE) & 1,
                             "driven": driving,
                         }
                     )
-                # Bench SPI device, mode 0: present the next receive bit on the
-                # SCK falling edge, so it is stable at the rising edge the host
-                # samples on, and release the pad after the last receive bit.
+                # Bench SPI device, mode 0 (CPHA=0: data changes on the trailing
+                # edge and is sampled on the leading edge, OT :360-364): present
+                # the next receive bit on the SCK falling edge, and release the
+                # pad after the last receive bit.
                 if prev_sck and not sck and not cs_n:
                     k = st["pad_rises"] + 1 - first_rx
                     if 0 <= k < len(rx_bits):
@@ -475,13 +497,15 @@ class SmuSepSpiSeq(SepTerminalLoopSeq):
             )
         for field, (count, c, want, seen) in sorted(st["map_bad"].items()):
             errors.append(
-                f"MAP: pad field {field} differs from ot_spi_pad_map on {count} cycles; "
-                f"first at cycle {c}: expected 0x{want:x}, pads 0x{seen:x}"
+                f"MAP: {field} differs from SPI_PIN_TABLE on {count} cycles; "
+                f"first at cycle {c}: expected {want}, observed {seen}"
             )
         if not untoggled and not st["map_bad"]:
             log(
-                "CHK-SEP-SPI-PAD-MAP: PASS (the 15 ot_spi_pad_map fields and rxd match the "
-                "host request on every cycle, %s; host fields with both values: %s)",
+                "CHK-SEP-SPI-PAD-MAP: PASS (data, output enable and receive input of the %d "
+                "SPI_PIN_TABLE pins match the host on every cycle, %s; host fields with both "
+                "values: %s)",
+                len(SPI_PIN_TABLE),
                 span,
                 ", ".join(HOST_TOGGLE_FIELDS),
             )
@@ -537,18 +561,18 @@ class SmuSepSpiSeq(SepTerminalLoopSeq):
             got = {
                 "sck_oe": (oe >> PAD_SCK) & 1,
                 "cs_oe": (oe >> PAD_CS) & 1,
-                "mosi_oe": (oe >> MOSI_LANE) & 1,
-                "miso_oe": (oe >> MISO_LANE) & 1,
-                "dq7_2_oe": (oe >> 2) & 0x3F,
-                "dqs_oe": (oe >> PAD_DQS) & 1,
+                "mosi_oe": (oe >> PAD_DQ[MOSI_LANE]) & 1,
+                "miso_oe": (oe >> PAD_DQ[MISO_LANE]) & 1,
+                "std_unused_oe": [(oe >> PAD_DQ[i]) & 1 for i in STD_UNUSED_LANES],
+                "unsourced_oe": [(oe >> p) & 1 for p in UNSOURCED_PADS],
             }
             want = {
                 "sck_oe": 1,
                 "cs_oe": 1,
                 "mosi_oe": 1 if e["dir"] == TX else got["mosi_oe"],
                 "miso_oe": 0,
-                "dq7_2_oe": 0,
-                "dqs_oe": 0,
+                "std_unused_oe": [0] * len(STD_UNUSED_LANES),
+                "unsourced_oe": [0] * len(UNSOURCED_PADS),
             }
             if got != want:
                 oe_bad.append((e["n"], e["dir"], got))
@@ -556,12 +580,8 @@ class SmuSepSpiSeq(SepTerminalLoopSeq):
             errors.append(
                 f"OE: pad output enables wrong at {len(oe_bad)} SCK rises; first "
                 f"(rise, dir, enables) {oe_bad[0]}; expected SCK and CS# driven, the receive "
-                "lane and lanes 2-7 released, the transmit lane driven on transmit bits"
-            )
-        if st["cs_high_data_oe"]:
-            errors.append(
-                f"OE: a data pad is driven while CS# is high on {len(st['cs_high_data_oe'])} "
-                f"cycles; first (cycle, lane enables) {st['cs_high_data_oe'][0]}"
+                "lane, unused lanes and unsourced pins released, the transmit lane driven on "
+                "transmit bits"
             )
         if len(st["edges"]) != EXPECTED_SCK_RISES:
             errors.append(
@@ -573,17 +593,12 @@ class SmuSepSpiSeq(SepTerminalLoopSeq):
                 "OE: no cycle had the SCK and CS# pads released, so the window did not "
                 "start before the host enabled its outputs"
             )
-        if (
-            not oe_bad
-            and not st["cs_high_data_oe"]
-            and st["pre_enable_cycles"]
-            and len(st["edges"]) == EXPECTED_SCK_RISES
-        ):
+        if not oe_bad and st["pre_enable_cycles"] and len(st["edges"]) == EXPECTED_SCK_RISES:
             log(
-                "CHK-SEP-SPI-PAD-OE: PASS (%d SCK rises: SCK and CS# driven, receive lane "
-                "and lanes 2-7 released, transmit lane driven on all %d transmit bits; no "
-                "data pad driven with CS# high; %d cycles with SCK and CS# released before "
-                "the host enabled its outputs)",
+                "CHK-SEP-SPI-PAD-OE: PASS (%d SCK rises: SCK and CS# driven, receive lane, "
+                "unused lanes and unsourced pins released, transmit lane driven on all %d "
+                "transmit bits; %d cycles with SCK and CS# released before the host enabled "
+                "its outputs)",
                 len(st["edges"]),
                 EDGE_DIRECTIONS.count(TX),
                 st["pre_enable_cycles"],
@@ -601,7 +616,7 @@ class SmuSepSpiSeq(SepTerminalLoopSeq):
             )
         else:
             log(
-                "CHK-SEP-SPI-PAD-MOSI: PASS (transmit pad bytes %s == TXDATA bytes)",
+                "CHK-SEP-SPI-PAD-MOSI: PASS (transmit pad bytes %s == the TXDATA bytes)",
                 [hex(b) for b in mosi],
             )
 
@@ -663,8 +678,8 @@ class SmuSepSpiSeq(SepTerminalLoopSeq):
             )
         must_move = tuple(
             f"{vec}[{p}]"
-            for vec in ("core2pad", "core2pad_en", "pad2core_en")
-            for p in (PAD_SCK, PAD_CS, MOSI_LANE)
+            for vec in ("core2pad", "core2pad_en")
+            for p in (PAD_SCK, PAD_CS, PAD_DQ[MOSI_LANE])
         )
         still = [k for k in must_move if not st["pad_moves"].get(k)]
         if still:
@@ -697,6 +712,19 @@ class SmuSepSpiSeq(SepTerminalLoopSeq):
             CS_WINDOW_RISES,
             [hex(b) for b in EXPECTED_MOSI],
         )
+        for pin in SPI_PIN_TABLE:
+            self.log.info(
+                "%s: pin table GPIO %d %s data=%s oe=%s rx_lane=%s (%s)",
+                self.NAME,
+                pin.pad,
+                pin.function,
+                pin.data,
+                pin.oe or "held 0",
+                pin.rx_lane,
+                pin.cite,
+            )
+        for gap in SPEC_GAPS:
+            self.log.info("%s: spec gap: %s", self.NAME, gap)
         self._drive_miso(0, 0)
         monitor = cocotb.start_soon(self._monitor(_wire_bits(pattern)))
         try:

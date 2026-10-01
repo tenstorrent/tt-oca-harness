@@ -427,9 +427,9 @@ args = [
 
 # SEP OpenTitan SPI host transfer, graded at the SMC LSIO pads. The image runs a
 # command / address / receive sequence with no flash model and no pad select.
-# Every clk_smu cycle, the sequence checks that smu.sv puts the host request on
-# the primary-plane pads as sep_io_pkg::ot_spi_pad_map defines it, and returns
-# the pad data lanes to the host. It counts the SCK rises the firmware's byte
+# Every clk_smu cycle, the sequence checks that the SMC SPI pins carry the host
+# request and return the pad data lanes to the host, as a DV-owned pin table
+# with a spec citation per row states. It counts the SCK rises the firmware's byte
 # counts give, at the pads and at the host, checks the CS# framing, the output
 # enables and the transmit bytes, drives a seeded word on the receive pad and
 # grades the RXDATA word the host pops, and requires the pads to stay still

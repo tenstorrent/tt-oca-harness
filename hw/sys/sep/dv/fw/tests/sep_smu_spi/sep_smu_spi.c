@@ -14,7 +14,7 @@
  *   The bench grades the pins: it counts the SCK edges and checks the chip
  *   select and output enables at the pads, and it drives the receive data pad
  *   with a seeded pattern and grades the RXDATA word this image pops. Keep the
- *   segment lengths, CSAAT and TXDATA words in step with
+ *   segment lengths, CSAAT and TXDATA bytes in step with
  *   hw/sys/smu/dv/cocotb_wrapper/seq_lib/smu_sep_spi_seq.py.
  */
 
@@ -108,14 +108,15 @@ static int run_spi_txrx_sequence(void) {
     spi_controller_init();
 
     /*
-     * The host sends the low byte of a TXDATA word first (STATUS.BYTEORDER=1)
-     * and drops the bytes a segment leaves unsent in its last word, so each
-     * segment writes its own word with its first byte in bits 7:0.
+     * The TX FIFO holds exactly the bytes each segment sends: TXDATA takes
+     * byte enables, so the 1-byte segment pushes one byte with a byte store,
+     * and the 4-byte segment pushes one word. The host sends the low byte of a
+     * word first (STATUS.BYTEORDER=1).
      */
 
     /* Step 1: TX single-byte command (0x9F). */
     if (wait_ready() != 0) return SPI_ERR_WAIT_READY_CMD;
-    WRITE_REG(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0x0000009Fu);
+    *(volatile uint8_t *)(uintptr_t)SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0) = 0x9Fu;
     cmd.w = 0;
     cmd.f.LEN = 0; /* one byte */
     cmd.f.CSAAT = 0;
