@@ -107,9 +107,10 @@ class ocah_axi_slave_driver extends uvm_component;
   // nonzero = READY low for N sampled edges, high for one, repeating until
   // the handshake lands — so a pending VALID completes within N+1 cycles).
   // Stall 0 keeps the assert-and-hold behavior. The knob is re-evaluated
-  // every pattern iteration, so a stall enabled while the responder is
-  // already parked waiting for VALID still takes effect before the next
-  // handshake (the cocotb pause generators likewise apply immediately).
+  // every sampled edge, so a stall enabled while the responder is already
+  // parked waiting for VALID still takes effect before the next handshake,
+  // and a stall disabled mid-pattern releases READY on the next edge (the
+  // cocotb pause generators likewise apply immediately).
   // All three return at the handshake edge (mon_cb holds that beat's
   // sampled values) or on reset deassertion — callers re-check aresetn.
 
@@ -128,7 +129,7 @@ class ocah_axi_slave_driver extends uvm_component;
         end
       end else begin
         cfg.vif.awready <= 1'b0;
-        repeat (cfg.aw_stall_cycles) begin
+        for (int unsigned n = 0; n < cfg.aw_stall_cycles; n++) begin
           @(cfg.vif.mon_cb);
           if (!cfg.vif.aresetn) return;
         end
@@ -156,7 +157,7 @@ class ocah_axi_slave_driver extends uvm_component;
         end
       end else begin
         cfg.vif.arready <= 1'b0;
-        repeat (cfg.ar_stall_cycles) begin
+        for (int unsigned n = 0; n < cfg.ar_stall_cycles; n++) begin
           @(cfg.vif.mon_cb);
           if (!cfg.vif.aresetn) return;
         end
@@ -181,7 +182,7 @@ class ocah_axi_slave_driver extends uvm_component;
         if (cfg.vif.mon_cb.wvalid && cfg.vif.mon_cb.wready) return;
       end else begin
         cfg.vif.wready <= 1'b0;
-        repeat (cfg.w_stall_cycles) begin
+        for (int unsigned n = 0; n < cfg.w_stall_cycles; n++) begin
           @(cfg.vif.mon_cb);
           if (!cfg.vif.aresetn) return;
         end

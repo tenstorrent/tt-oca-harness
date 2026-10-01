@@ -17,11 +17,12 @@
 // SIB/3DCR fields and the downstream IRs exactly as Update-DR does. A data
 // scan under any other PTAP instruction runs through the STAP chain as well
 // while the select is set, and its Update-DR commits the chain fields
-// without reaching the PTAP 3DCR: under ZERO_LENGTH_BYPASS TDI enters the
-// chain directly (DTP_SCAN_ZLB, the STAP chain alone); under BYPASS the
-// one-bit bypass register, which captures 0, precedes the chain
-// (DTP_SCAN_BYPASS). An attached host segment (tb_top) follows the last
-// STAP, at the TDO end of every scan, while stap_host is enabled; with
+// without reaching the PTAP 3DCR: under BYPASS the one-bit bypass register,
+// which captures 0, precedes the chain (DTP_SCAN_BYPASS), and
+// ZERO_LENGTH_BYPASS (DTP_SCAN_ZLB) is BYPASS while the select is set; with
+// the select clear it is the zero-length TDI-to-TDO path. An attached host
+// segment (tb_top) follows the last STAP, at the TDO end of every scan,
+// while stap_host is enabled; with
 // stap_host disabled the last STAP's scan-out is the chain return and the
 // segment holds its value. While the PTAP select is clear the chain, host
 // segment included, holds through every scan and a scan covers only the
@@ -153,7 +154,8 @@ class dtp_stap_3dcr_model;
 
   // --- composed-chain layout -------------------------------------------------
   // (owner, field, bit) per chain flop in TDI-to-TDO order, current state.
-  // With the PTAP select clear the chain is out of the scan path.
+  // With the PTAP select clear the chain is out of the scan path, and a
+  // DTP_SCAN_ZLB layout is empty.
   function void chain_layout(sep_lifecycle_ctrl_pkg::dbg_disable_t d, ref layout_entry_t layout[$],
                              input dtp_scan_kind_e kind = DTP_SCAN_DR);
     bit g[DtpStapCount];
@@ -164,7 +166,7 @@ class dtp_stap_3dcr_model;
     end else if (kind == DTP_SCAN_DR) begin
       layout.push_back('{-1, FLD_STAP_SEL, 0});
       layout.push_back('{-1, FLD_CONFIG_HOLD, 0});
-    end else if (kind == DTP_SCAN_BYPASS) begin
+    end else if (kind == DTP_SCAN_BYPASS || (kind == DTP_SCAN_ZLB && ptap_select)) begin
       layout.push_back('{-1, FLD_BYPASS, 0});
     end
     if (!ptap_select) return;

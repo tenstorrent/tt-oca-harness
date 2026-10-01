@@ -80,6 +80,9 @@ class sep_firmware_cntl_secure_boot_flow_test(sep_backup_manifest_fail_base):
 
     flash_image = SECURE_FLASH_IMAGE
     efuse_preload = _EFUSE_PRELOAD
+    # The lifecycle line the ROM must print for the enforcement to be the one
+    # under test.
+    lc_marker = _LC_PROD
     # A class-control refusal prints no token of its own -- it lands before key
     # selection -- so the error code IS the defect marker, the same way
     # sep_firmware_primary_invalid_security_version_test uses its dedicated code.
@@ -173,9 +176,9 @@ class sep_firmware_cntl_secure_boot_flow_test(sep_backup_manifest_fail_base):
         # The lifecycle the override depends on, as the ROM itself read it. The OTP
         # assertion in check_efuse covers the image; this covers what the ROM made
         # of it.
-        assert any(_LC_PROD in line for line in console), (
-            f"ROM never printed {_LC_PROD}: the lifecycle that forces secure boot "
-            f"here is not the one the ROM resolved. Console: {console}"
+        assert any(self.lc_marker in line for line in console), (
+            f"ROM never printed {self.lc_marker}: the lifecycle that forces secure "
+            f"boot here is not the one the ROM resolved. Console: {console}"
         )
         # Both slots gone, so the retry loop exhausted rather than the run ending
         # on one slot's verdict.
@@ -186,7 +189,7 @@ class sep_firmware_cntl_secure_boot_flow_test(sep_backup_manifest_fail_base):
         self.logger.info(
             "CHK-LIFECYCLE-WINS: %s, both slots refused with %s, %s -- the cleared "
             "manifest flag did not disable secure boot",
-            _LC_PROD,
+            self.lc_marker,
             self.backup_defect_marker,
             _ALL_FAILED,
         )

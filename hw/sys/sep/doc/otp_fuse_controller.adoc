@@ -216,9 +216,10 @@ one write cannot establish both RMA stages. Invalid lifecycle encodings are
 terminal. Otherwise, LC_STATE[2:1] cannot be updated.
 
 |SBOOT_DIS |1 |32 (use only 1 bit) |true |true |Disables secure boot when
-set to 1, in any lifecycle state (global override, including the
-otherwise-mandatory enforcement in PROD and PROD_END); see Secure-Boot
-Enforcement in the Life Cycle Controller section.
+set to 1, in any lifecycle state. It overrides lifecycle enforcement in PROD
+and PROD_END and the TEST_DEV debug-lock rule, but not a signed manifest's
+request for verification; see Secure-Boot Enforcement in the Life Cycle
+Controller section.
 
 |TRANSIENT_RMA_EN |2 |32 (use only 1 bit) |true |true |Enables automatic
 RMA shadow-state updates after token matching, without requiring a reset.

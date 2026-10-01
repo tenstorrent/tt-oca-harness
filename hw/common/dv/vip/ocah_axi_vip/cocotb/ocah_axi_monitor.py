@@ -41,14 +41,24 @@ def _now_ns() -> int:
 
 
 class _BaseMonitor:
-    def __init__(self, *, name: str, max_history: int) -> None:
+    def __init__(
+        self,
+        *,
+        name: str,
+        max_history: int,
+        reset: Any = None,
+        reset_active_level: bool = True,
+    ) -> None:
         self.name = name
         self.log = logging.getLogger(name)
+        self.reset = reset
+        self.reset_active_level = reset_active_level
         self._max_history = max_history
         self._history: list[OcahAxiItem] = []
         self._write_callbacks: list[Callable[[OcahAxiItem], None]] = []
         self._read_callbacks: list[Callable[[OcahAxiItem], None]] = []
         self._item_callbacks: list[Callable[[OcahAxiItem], None]] = []
+        self._flush_callbacks: list[Callable[[list[int]], None]] = []
         self._task = None
         self._running = False
         self._activity = {"aw": 0, "w": 0, "ar": 0}
@@ -75,6 +85,10 @@ class _BaseMonitor:
     def add_item_callback(self, fn: Callable[[OcahAxiItem], None]) -> None:
         """Register a callback for every completed item."""
         self._item_callbacks.append(fn)
+
+    def add_flush_callback(self, fn: Callable[[list[int]], None]) -> None:
+        """Register a callback for the commit orders a reset flush drops."""
+        self._flush_callbacks.append(fn)
 
     async def start(self) -> None:
         """Start passive monitoring."""
@@ -172,6 +186,25 @@ class _BaseMonitor:
             direction or "-",
         )
 
+    def _in_reset(self) -> bool:
+        if self.reset is None:
+            return False
+        try:
+            value = int(self.reset.value)
+        except Exception:  # noqa: BLE001
+            return False
+        return bool(value) == bool(self.reset_active_level)
+
+    def _flush(self) -> list[int]:
+        """Drop every in-flight request and return the commit orders they held."""
+        raise NotImplementedError
+
+    def _drop_in_flight(self) -> None:
+        orders = self._flush()
+        if orders:
+            for callback in list(self._flush_callbacks):
+                callback(orders)
+
     def _track_activity(self, channel: str, valid: int) -> None:
         if valid:
             self._activity[channel] += 1
@@ -232,7 +265,8 @@ class OcahAxiMonitor(_BaseMonitor):
     RID against per-ARID address queues, and completed write bursts are matched
     to BID responses. Single-ID traffic behaves identically to FIFO pairing.
     A completion with no matching request phase is retained as an orphan
-    finding (never published as a transaction).
+    finding (never published as a transaction). With ``reset`` given, all
+    in-flight state flushes while it is at ``reset_active_level``.
     """
 
     def __init__(
@@ -243,8 +277,15 @@ class OcahAxiMonitor(_BaseMonitor):
         name: str = "OcahAxiMonitor",
         max_history: int = _TRANSACTION_HISTORY_MAX,
         prefix: str | None = None,
+        reset: Any = None,
+        reset_active_level: bool = True,
     ) -> None:
-        super().__init__(name=name, max_history=max_history)
+        super().__init__(
+            name=name,
+            max_history=max_history,
+            reset=reset,
+            reset_active_level=reset_active_level,
+        )
         self.clock = clock
         self.bus = self._coerce_bus(axi4_intf, prefix)
         self._pending_aw: deque[dict[str, int]] = deque()
@@ -290,10 +331,25 @@ class OcahAxiMonitor(_BaseMonitor):
             ),
         }
 
+    def _flush(self) -> list[int]:
+        orders = [aw_info["order"] for pairs in self._paired_wr.values() for aw_info, _ in pairs]
+        self._pending_aw.clear()
+        self._pending_wburst.clear()
+        self._paired_wr.clear()
+        self._pending_ar.clear()
+        self._current_w = []
+        self._current_r.clear()
+        self._r_no_ar.clear()
+        return orders
+
     async def _run(self) -> None:
         while self._running:
             await RisingEdge(self.clock)
             await ReadOnly()
+
+            if self._in_reset():
+                self._drop_in_flight()
+                continue
 
             aw = self.bus.write.aw
             w = self.bus.write.w
@@ -438,7 +494,11 @@ class OcahAxiMonitor(_BaseMonitor):
 
 
 class OcahAxiLiteMonitor(_BaseMonitor):
-    """Passive AXI4-Lite monitor that emits `OcahAxiItem` objects."""
+    """Passive AXI4-Lite monitor that emits `OcahAxiItem` objects.
+
+    With ``reset`` given, all in-flight state flushes while it is at
+    ``reset_active_level``.
+    """
 
     def __init__(
         self,
@@ -448,8 +508,15 @@ class OcahAxiLiteMonitor(_BaseMonitor):
         name: str = "OcahAxiLiteMonitor",
         max_history: int = _TRANSACTION_HISTORY_MAX,
         prefix: str | None = None,
+        reset: Any = None,
+        reset_active_level: bool = True,
     ) -> None:
-        super().__init__(name=name, max_history=max_history)
+        super().__init__(
+            name=name,
+            max_history=max_history,
+            reset=reset,
+            reset_active_level=reset_active_level,
+        )
         self.clock = clock
         self.bus = self._coerce_bus(axi4_lite_intf, prefix)
         self._pending_aw: deque[dict[str, int]] = deque()
@@ -477,10 +544,21 @@ class OcahAxiLiteMonitor(_BaseMonitor):
             "read": len(self._pending_ar),
         }
 
+    def _flush(self) -> list[int]:
+        orders = [info["order"] for info in (*self._pending_w, *self._pending_ar)]
+        self._pending_aw.clear()
+        self._pending_w.clear()
+        self._pending_ar.clear()
+        return orders
+
     async def _run(self) -> None:
         while self._running:
             await RisingEdge(self.clock)
             await ReadOnly()
+
+            if self._in_reset():
+                self._drop_in_flight()
+                continue
 
             aw = self.bus.write.aw
             w = self.bus.write.w
