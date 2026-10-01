@@ -182,9 +182,7 @@ module axi_lite_to_ahb #(
         wr_strb_offset = {axi_lite_req_i.w.strb[3] | axi_lite_req_i.w.strb[2],
                           axi_lite_req_i.w.strb[3] | axi_lite_req_i.w.strb[1]};
       end
-      default: begin
-        wr_strb_legal = 1'b0;
-      end
+      default: ;
     endcase
   end
 
