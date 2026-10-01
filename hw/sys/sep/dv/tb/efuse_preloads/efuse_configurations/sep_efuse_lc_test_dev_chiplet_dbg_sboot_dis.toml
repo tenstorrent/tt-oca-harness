@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# TEST_DEV with CHIPLET_DBG disabled by SIP_DIS and the SBOOT_DIS chicken bit set.
+#
+# SBOOT_DIS overrides the debug lock as it overrides PROD enforcement
+# (SEP-ROM-SB-040), so an image that does not ask to be verified boots
+# unverified.
+#
+# Used by sep_rom_dbg_lock_sboot_dis_boot_test.
+
+[LC_STATE]
+  # Differentially encoded {~raw[3:0], raw[3:0]}: raw 0x0 (TEST_DEV) stores as
+  # 0xF0. See the directory README.
+  [LC_STATE.fields.lc_state]
+  value = 0xF0
+
+[SIP_DIS]
+  # Whole-vector write. CHIPLET_DBG is bit 1.
+  [SIP_DIS.fields.sip_dis]
+  value = 0x2
+
+[SBOOT_DIS]
+  [SBOOT_DIS.fields.disable_secure_boot]
+  value = 0x1

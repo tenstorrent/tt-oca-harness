@@ -2465,3 +2465,137 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_invalid_0x9.toml",
 ]
+
+[[tests]]
+# A debug-locked TEST_DEV part refuses an unsigned image (SEP-ROM-SB-025).
+#
+# TEST_DEV with CHIPLET_DBG set in SIP_DIS, and both manifest slots' secure_boot
+# flag cleared, so the device's enforcement view decides alone. The refusal is
+# sep_firmware_cntl_secure_boot_flow_test's: both slots fail the signature-class
+# check, ahead of key selection and RSA. +esrc_noise_force for the same reason
+# as that entry: the ROM brings entropy up before it validates.
+name = "sep_rom_dbg_lock_sip_dis_refuse_test"
+module = "rom_fw.sep_rom_dbg_lock_sip_dis_refuse_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "lifecycle", "negative", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_test_dev_chiplet_dbg_sip.toml",
+  "+esrc_noise_force",
+]
+
+[[tests]]
+# The SYS_DIS half of SEP-ROM-SB-025: CHIPLET_DBG in SYS_DIS alone locks debug.
+# Otherwise as sep_rom_dbg_lock_sip_dis_refuse_test.
+name = "sep_rom_dbg_lock_sys_dis_refuse_test"
+module = "rom_fw.sep_rom_dbg_lock_sys_dis_refuse_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "lifecycle", "negative", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_test_dev_chiplet_dbg_sys.toml",
+  "+esrc_noise_force",
+]
+
+[[tests]]
+# A read-locked SIP_DIS counts as debug disabled (SEP-ROM-SB-025). Both vectors
+# are clear, so only the lock can explain the refusal. Otherwise as
+# sep_rom_dbg_lock_sip_dis_refuse_test.
+name = "sep_rom_dbg_lock_read_locked_refuse_test"
+module = "rom_fw.sep_rom_dbg_lock_read_locked_refuse_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "lifecycle", "negative", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_test_dev_sip_dis_read_locked.toml",
+  "+esrc_noise_force",
+]
+
+[[tests]]
+# A debug-locked TEST_DEV part still boots a validly signed image: the full
+# RSA-3072 chain, then BL1. Same image and budget as sep_rom_ot_secure_boot_test,
+# whose OTP this swaps for TEST_DEV with CHIPLET_DBG set in SIP_DIS.
+name = "sep_rom_dbg_lock_secure_boot_test"
+module = "rom_fw.sep_rom_dbg_lock_secure_boot_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "crypto", "lifecycle", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_test_dev_chiplet_dbg_sip.toml",
+  "+esrc_noise_force",
+]
+
+[[tests]]
+# SBOOT_DIS overrides the TEST_DEV debug lock (SEP-ROM-SB-040): the unsigned
+# image that sep_rom_ot_dma_boot_test boots with debug open also boots here,
+# with SBOOT_OFF and without SBOOT_DBG_LOCK.
+name = "sep_rom_dbg_lock_sboot_dis_boot_test"
+module = "rom_fw.sep_rom_dbg_lock_sboot_dis_boot_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "rom", "spi", "efuse", "lifecycle", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_test_dev_chiplet_dbg_sboot_dis.toml",
+  "+esrc_noise_force",
+]
+
+[[tests]]
+# LC_STATE raw 0x4 is INVALID to the lifecycle controller, which decodes
+# RMA_CHIPLET as 4'b011?, and the ROM must agree (SEP-ROM-FUSE-020). [S11] halts
+# before boot-mode selection, so no SPI transport or entropy plusarg is needed.
+# Budget matches sep_firmware_sboot_dis_rsvd_terminal_test, which halts later.
+name = "sep_rom_lc_state_invalid_0x4_test"
+module = "rom_fw.sep_rom_lc_state_invalid_0x4_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "rom", "efuse", "lifecycle", "error", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_invalid_0x4.toml",
+]
+
+[[tests]]
+# LC_STATE raw 0x5 is INVALID to the lifecycle controller, which decodes
+# RMA_CHIPLET as 4'b011?, and the ROM must agree (SEP-ROM-FUSE-020). [S11] halts
+# before boot-mode selection, so no SPI transport or entropy plusarg is needed.
+# Budget matches sep_firmware_sboot_dis_rsvd_terminal_test, which halts later.
+name = "sep_rom_lc_state_invalid_0x5_test"
+module = "rom_fw.sep_rom_lc_state_invalid_0x5_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "rom", "efuse", "lifecycle", "error", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_invalid_0x5.toml",
+]
