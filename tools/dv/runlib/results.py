@@ -517,6 +517,8 @@ def _rerun_command(flow: Flow, tool: str, job: dict[str, Any], args: Any | None)
     mode = str(getattr(args, "mode", "sim")) if args is not None else "sim"
     if mode != "sim":
         command.extend(["--mode", mode])
+    elif flow.framework:
+        command.extend(["--framework", flow.framework])
     command.extend(["--items", str(job.get("item", "")), "--stage", stage, "--tool", tool])
     seed = job.get("seed")
     if seed is not None and mode == "sim":
