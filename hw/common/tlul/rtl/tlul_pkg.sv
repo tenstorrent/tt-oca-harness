@@ -15,14 +15,14 @@
 
 package tlul_pkg;
   typedef enum logic [2:0] {
-    PutFullData    = 3'h 0,
-    PutPartialData = 3'h 1,
-    Get            = 3'h 4
+    PUT_FULL_DATA    = 3'h 0,
+    PUT_PARTIAL_DATA = 3'h 1,
+    GET              = 3'h 4
   } tl_a_op_e;
 
   typedef enum logic [2:0] {
-    AccessAck     = 3'h 0,
-    AccessAckData = 3'h 1
+    ACCESS_ACK      = 3'h 0,
+    ACCESS_ACK_DATA = 3'h 1
   } tl_d_op_e;
 
   parameter int H2D_CMD_MAX_WIDTH = 57;

@@ -131,19 +131,19 @@ package sep_crypto_pkg;
   // AXI demux port indices (must match axi_demux master port order in sep_crypto.sv).
   // Highest enum value must equal SEP_CRYPTO_NUM_AXI_MST - 1.
   typedef enum int unsigned {
-    SepCryptoAxiErrSlv       = 0,
-    SepCryptoAxiOtbn         = 1,
-    SepCryptoAxiHmac         = 2,
-    SepCryptoAxiAes          = 3,
-    SepCryptoAxiKmac         = 4,
-    SepCryptoAxiFuse         = 5,
-    SepCryptoAxiLifecycle    = 6,
-    SepCryptoAxiKm           = 7,
-    SepCryptoAxiCsrng        = 8,
-    SepCryptoAxiEdn          = 9,
-    SepCryptoAxiEntropySrc   = 10,
-    SepCryptoAxiTrng         = 11,
-    SepCryptoAxiAbr          = 12
+    SEP_CRYPTO_AXI_ERR_SLV       = 0,
+    SEP_CRYPTO_AXI_OTBN          = 1,
+    SEP_CRYPTO_AXI_HMAC          = 2,
+    SEP_CRYPTO_AXI_AES           = 3,
+    SEP_CRYPTO_AXI_KMAC          = 4,
+    SEP_CRYPTO_AXI_FUSE          = 5,
+    SEP_CRYPTO_AXI_LIFECYCLE     = 6,
+    SEP_CRYPTO_AXI_KM            = 7,
+    SEP_CRYPTO_AXI_CSRNG         = 8,
+    SEP_CRYPTO_AXI_EDN           = 9,
+    SEP_CRYPTO_AXI_ENTROPY_SRC   = 10,
+    SEP_CRYPTO_AXI_TRNG          = 11,
+    SEP_CRYPTO_AXI_ABR           = 12
   } sep_crypto_axi_port_e;
 
   localparam int unsigned SEP_CRYPTO_NUM_AXI_MST = 13;

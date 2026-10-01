@@ -451,13 +451,13 @@ drives the read `data` onto `efuse_shim_command_resp_i.data` and asserts
 that `valid` is high, advancing to the next eFuse word on each assertion.
 
 <<efuse-sense-timing-fig>> shows the stream for the 256-word bank. The sense FSM
-leaves `StRead` after one cycle and waits in `StWait`. Each `valid` strobe
+leaves `ST_READ` after one cycle and waits in `ST_WAIT`. Each `valid` strobe
 stores `data` into shadow word `words_received_q` and increments the count one
 cycle later. Gaps between strobes are allowed, as between cycles 2 and 4, and
 so are strobes on consecutive cycles, as in cycles 4 and 5, provided each
 cycle carries a new word. `data` is sampled only while `valid` is high. The
 strobe for word 255 (`NumShadowWords - 1`) stores the last word and moves the
-FSM to `StFinished` without incrementing. `fuse_sense_done` rises one cycle
+FSM to `ST_FINISHED` without incrementing. `fuse_sense_done` rises one cycle
 after that.
 
 [[efuse-sense-timing-fig]]

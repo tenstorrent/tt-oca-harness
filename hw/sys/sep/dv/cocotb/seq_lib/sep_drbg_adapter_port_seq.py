@@ -58,7 +58,7 @@ PORT_ORDERS: tuple[tuple[str, int, int, int], ...] = (
 ORDER_NAMES = tuple(name for name, *_o in PORT_ORDERS)
 
 # The access must be protocol-legal, or the adapter never forwards anything: an
-# access it cannot carry is answered SLVERR straight out of StIdle with no
+# access it cannot carry is answered SLVERR straight out of ST_IDLE with no
 # downstream request at all -- and it retires just as promptly as a real one, so
 # a control built on such an access would "pass" while proving only that the
 # reject path works.

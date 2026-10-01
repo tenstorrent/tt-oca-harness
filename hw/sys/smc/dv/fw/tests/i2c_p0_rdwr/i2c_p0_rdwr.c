@@ -298,7 +298,7 @@ int main(void) {
         simputshex32("", (uint32_t)ret);
         simputs("\n");
         /* Last state at the moment the wait gave up. STATUS.HOSTIDLE reads 0
-         * forever after an unexpected NACK (the FSM parks in Idle with
+         * forever after an unexpected NACK (the FSM parks in IDLE with
          * trans_started set, i2c_controller_fsm.sv:653-663), so
          * CONTROLLER_EVENTS is what distinguishes that from a stalled bus. */
         simputshex32("    Controller STATUS: ", i2c_get_status(CONTROLLER_IDX));
@@ -478,7 +478,7 @@ int main(void) {
 
     // Step 5: Wait for Target to be idle before read request
     // This ensures Target FSM is ready to handle the read transaction
-    // CRITICAL: Target must be in Idle state with SCL released (high) before read request
+    // CRITICAL: Target must be in IDLE state with SCL released (high) before read request
     uint32_t target_base = i2c_get_base(TARGET_IDX);
     uint32_t idle_wait_count = 0;
     const uint32_t IDLE_WAIT_TIMEOUT = 10000;

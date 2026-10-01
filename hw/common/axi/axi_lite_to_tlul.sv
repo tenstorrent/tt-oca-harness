@@ -4,7 +4,7 @@
 // AXI4-Lite slave to TL-UL host protocol converter.
 //
 // ACK_ZERO_STROBE_WRITE: a write with WSTRB == 0 is a legal AXI no-op (no byte is
-// written), but forwarding it as a TL-UL PutPartialData with an all-zero mask
+// written), but forwarding it as a TL-UL PUT_PARTIAL_DATA with an all-zero mask
 // makes OpenTitan register files return d_error, which surfaces as SLVERR. Such
 // beats are not issued by software; they are produced by an AXI data-width
 // downsizer splitting a wider master's beat, where the lanes outside the
@@ -170,7 +170,7 @@ module axi_lite_to_tlul
 			// ==========================================
 			TL_GET_REQ: begin
 				tl_o.a_valid   = 1'b1;
-				tl_o.a_opcode  = tlul_pkg::Get;
+				tl_o.a_opcode  = tlul_pkg::GET;
 				tl_o.a_address = req_addr_q;
 				tl_o.a_mask    = {(AXI_DATA_WIDTH/8){1'b1}};
 
@@ -210,9 +210,9 @@ module axi_lite_to_tlul
 
 				// Determine opcode based on write strobe
 				if (req_strb_q == {(AXI_DATA_WIDTH/8){1'b1}}) begin
-					tl_o.a_opcode = tlul_pkg::PutFullData;
+					tl_o.a_opcode = tlul_pkg::PUT_FULL_DATA;
 				end else begin
-					tl_o.a_opcode = tlul_pkg::PutPartialData;
+					tl_o.a_opcode = tlul_pkg::PUT_PARTIAL_DATA;
 				end
 
 				if (tl_i.a_ready) begin

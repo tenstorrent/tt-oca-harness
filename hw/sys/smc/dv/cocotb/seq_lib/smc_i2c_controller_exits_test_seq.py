@@ -8,7 +8,7 @@ it was given, and clears a NACK as soon as it sees one. Two other endings:
 * **A read that continues.** When the last byte of a read carries no STOP, the
   controller goes back to the format FIFO for the next entry instead of
   stopping, which is the only way it leaves the read acknowledge into
-  `PopFmtFifo`.
+  `POP_FMT_FIFO`.
 * **A NACK left unhandled.** `i2c.rdl` describes `HOST_NACK_HANDLER_TIMEOUT`
   as the limit on how long software may leave the controller halted on an
   unexpected NACK; past it the controller raises

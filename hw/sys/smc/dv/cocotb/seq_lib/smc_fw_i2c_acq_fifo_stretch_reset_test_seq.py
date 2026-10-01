@@ -12,7 +12,7 @@ recovery -- and waits for SCRATCH_4 = 0xC10A each time.
 
 The watcher answers both. At 0x31 it samples tb_i2c0_scl_dut_low, the
 open-drain pull of I2C_0 alone, across a window of ~20 SCL periods. A target
-never drives SCL except to stretch, and the FSM enters StretchAcqFull at the
+never drives SCL except to stretch, and the FSM enters STRETCH_ACQ_FULL at the
 ACK phase of the byte in flight when STATUS.ACQFULL asserts, so the window may
 open on that byte's last clocks; what is required is that the pull is asserted
 for a contiguous span far longer than any clock-low phase and is still asserted,

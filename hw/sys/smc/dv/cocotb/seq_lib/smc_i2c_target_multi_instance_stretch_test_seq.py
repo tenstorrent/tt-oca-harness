@@ -29,7 +29,7 @@ drains `ACQDATA`. The bench-side variant of the same check, where the bench
 controller releases SCL and only the target can be pulling it, is
 `smc_i2c_target_acq_stretch_test` on I2C0.
 
-Address-phase stretch (`StretchAddrAck`, `StretchAddrAckSetup`) stays out: it
+Address-phase stretch (`STRETCH_ADDR_ACK`, `STRETCH_ADDR_ACK_SETUP`) stays out: it
 needs the acquisition FIFO still full when a later transaction starts, plus
 `nack_addr_after_timeout`, which no register this bench programs reaches.
 """
