@@ -57,9 +57,9 @@ class smc_fw_i2c_acq_fifo_stretch_reset_test_seq(smc_fw_i2c_pair_test_seq):
     """Boot the ACQ-stretch image and observe the two SCL windows it holds open."""
 
     tag = "I2C-ACQ-STRETCH"
-    # PASS landed 5.9 ms after release in the reference run (~11,800 polls at a
-    # 5 ns clk_smc_i): the ~62-byte fill to ACQFULL, two bench windows, the
-    # recovery and the 4-byte write. 100_000 is ~8x that.
+    # PASS lands 7.6 ms after release at the 10 ns clk_smc_i the testlist runs
+    # this leaf at (~7,600 polls): the ~62-byte fill to ACQFULL, two bench
+    # windows, the recovery and the 4-byte write. 100_000 is ~13x that.
     poll_iterations = 100_000
     floors = (WireFloor(TARGET_ADDR, False, min_frames=1, min_data_bytes=VERIFY_WRITE_LEN),)
 

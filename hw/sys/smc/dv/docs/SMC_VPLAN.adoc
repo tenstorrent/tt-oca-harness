@@ -8246,7 +8246,7 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 *Test Procedure*:
 
 [arabic]
-. Build `i2c_acq_fifo_stretch_reset` through `[c_build.default]`, stage `i2c_acq_fifo_stretch_reset.ecc.hex`, select the shared pad bus, hold `boot_stall` from t=0, clear CPU_CTRL SCRATCH_0 and read the clear back, arm the wire monitor and a SCRATCH_1 watcher.
+. Build `i2c_acq_fifo_stretch_reset` through `[c_build.default]`, stage `i2c_acq_fifo_stretch_reset.ecc.hex`, select the shared pad bus, hold `boot_stall` from t=0, clear CPU_CTRL SCRATCH_0 and read the clear back, arm the wire monitor and a SCRATCH_1 watcher. The leaf runs with `+pll_sys_period_ns=10`, `clk_smc_i` at 100 MHz; I2C is timed by the 200 MHz periph clock, and the simulated time, about 7.6 ms, is set by the standard-mode write that fills ACQ and does not depend on the seed.
 . Program the reset vector and release. The image parks at SCRATCH_1 = 0x31 with the ACQ FIFO full and waits for SCRATCH_4 = 0xC10A.
 . At 0x31, sample `tb_i2c0_scl_dut_low` across a window of about 20 SCL periods; require it asserted continuously for at least 20 us and through the final quarter of the window with SCL low; read the ACQ level the image published in SCRATCH_5 and require it non-zero. Only then write the acknowledge.
 . The image resets the ACQ FIFO, recovers the write and parks at SCRATCH_1 = 0x32. Sample the same window and require the pull absent throughout; read the level from SCRATCH_6 and require zero. Acknowledge.
