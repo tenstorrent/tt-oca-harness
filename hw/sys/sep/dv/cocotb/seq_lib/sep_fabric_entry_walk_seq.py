@@ -43,6 +43,7 @@ from seq_lib.sep_fabric_csr_bank_seq import (
     F_WRITE_ALLOWED,
     FILTER_CONFIG,
     FILTER_END_ADDR,
+    FILTER_RW_MASK,
     FILTER_START_ADDR,
     FILTER_STRIDE,
 )
@@ -154,9 +155,11 @@ class SepFilterEntryWalker(SepAxiRegDriver):
         await self._wr(self._ebase(entry) + FILTER_CONFIG, ENTRY_CFG if enabled else 0)
         got = await self._rd(self._ebase(entry) + FILTER_CONFIG)
         want = ENTRY_CFG if enabled else 0
-        assert (got & want) == want and (enabled or not (got & F_ENTRY_ENABLED)), (
+        # Every RW field of the low word must read back as written; the RO
+        # data_bus_width field is outside FILTER_RW_MASK.
+        assert (got & FILTER_RW_MASK) == (want & FILTER_RW_MASK), (
             f"CHK-WALK-READBACK FAIL: {self.bank} entry {entry} FILTER_CONFIG read "
-            f"0x{got:08x}, want enable bits 0x{want:08x}"
+            f"0x{got:08x}, want RW fields 0x{want & FILTER_RW_MASK:08x}"
         )
         self.readbacks += 1
 
