@@ -9,6 +9,10 @@ None of it is implemented by the current ROM, whose services are listed under
 <<km-implemented-services,Implemented services>>. Each section states what
 additional firmware or hardware it requires.
 
+The derivations below build on the firmware's software HMAC-SHA256 and
+NIST SP 800-108 KDF library, described in
+<<km-firmware-kdf-library,Key Derivation Function Library>>.
+
 [[km-design-target-otp-inputs]]
 == OTP Inputs to the Key Hierarchy (Design Target)
 
