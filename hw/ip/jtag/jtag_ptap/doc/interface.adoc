@@ -55,7 +55,7 @@ register lengths.
 |0x2A |SMC_AXI_SERIES_DATA_INCR |Variable |SMC fabric bridge series data, incrementing address
 |0x2B |SMC_AXI_SERIES_DATA_NO_INCR |Variable |SMC fabric bridge series data, fixed address
 |0x2C |SMC_AXI_SERIES_DATA_WITH_ERROR_STATUS |Variable |SMC fabric bridge series data with error status
-|0x3D |ZERO_LENGTH_BYPASS |0 |
+|0x3D |ZERO_LENGTH_BYPASS |0, or 1 |TDI to TDO with no register; BYPASS, with its 1-bit register, while the TAP_3DCR STAP-select bit is set
 |0x3E |INV_BYPASS | |
 |0x3F |BYPASS |1 |IEEE 1149.1, Section 8.4
 |===

@@ -151,7 +151,7 @@ module jtag_intf_unit
   input  logic            ptap_client_tdi_i,  // PTAP client serial test data input.
   output logic            ptap_client_tdo_o,  // PTAP client serial test data output, retimed on the
                                               // falling TCK edge except during a ZERO_LENGTH_BYPASS
-                                              // DR shift.
+                                              // DR shift with the PTAP 3DCR STAP-select bit clear.
   output logic            ptap_client_tdo_oen_o,  // PTAP client TDO output enable, active-high
                                                   // during Shift-IR and Shift-DR.
 

@@ -431,10 +431,11 @@ class DtpStap3dcrModel:
 
     A data scan under any other PTAP instruction runs through the STAP chain
     as well while the PTAP 3DCR select is set, and its Update-DR commits the
-    chain fields without reaching the PTAP 3DCR. Under ZERO_LENGTH_BYPASS TDI
-    enters the chain directly, so the scan is the STAP chain alone
-    (``"zlb"``); under BYPASS the one-bit bypass register, which captures 0,
-    precedes the chain (``"bypass"``).
+    chain fields without reaching the PTAP 3DCR. Under BYPASS the one-bit
+    bypass register, which captures 0, precedes the chain (``"bypass"``).
+    ZERO_LENGTH_BYPASS (``"zlb"``) is BYPASS while the PTAP 3DCR select is
+    set, and the zero-length TDI-to-TDO path, with no chain, while it is
+    clear.
     """
 
     # Extra full-cycle flops a STAP's selected splice inserts into the chain.
@@ -500,7 +501,8 @@ class DtpStap3dcrModel:
 
         ``scan_kind`` is ``"dr"`` (TAP_3DCR data scan: PTAP 3DCR first),
         ``"ir"`` (instruction scan: PTAP IR first, PTAP 3DCR absent),
-        ``"zlb"`` (data scan under ZERO_LENGTH_BYPASS: no PTAP flop), or
+        ``"zlb"`` (data scan under ZERO_LENGTH_BYPASS: the ``"bypass"`` layout
+        while the PTAP select is set, no PTAP flop while it is clear), or
         ``"bypass"`` (data scan under BYPASS: the PTAP bypass register first).
         With the PTAP select clear the chain is out of the scan path.
         """
@@ -510,7 +512,7 @@ class DtpStap3dcrModel:
             flops.extend(ChainFlop("ptap", "ir", bit) for bit in range(DTP_IR_WIDTH - 1, -1, -1))
         elif scan_kind == "dr":
             flops.extend((ChainFlop("ptap", "stap_sel"), ChainFlop("ptap", "config_hold")))
-        elif scan_kind == "bypass":
+        elif scan_kind == "bypass" or (scan_kind == "zlb" and self.ptap_select):
             flops.append(ChainFlop("ptap", "bypass"))
         elif scan_kind != "zlb":
             raise ValueError(f"unknown scan kind {scan_kind!r}")
@@ -1046,10 +1048,12 @@ def _selftest_host_segment(width: int) -> None:
 
 
 def _selftest_zlb_bypass(width: int, device) -> None:
-    """A data scan under ZERO_LENGTH_BYPASS is the STAP chain alone and one
-    under BYPASS starts with the bypass register's captured 0; neither
-    reaches the PTAP 3DCR, and the spliced downstream register latches the
-    value composed for it."""
+    """With the PTAP select set, a data scan under ZERO_LENGTH_BYPASS is the
+    BYPASS scan: the bypass register's captured 0 precedes the STAP chain,
+    neither reaches the PTAP 3DCR, and the spliced downstream register
+    latches the value composed for it. With the select clear neither layout
+    holds a chain flop."""
+    assert DtpStap3dcrModel().chain_layout(scan_kind="zlb") == []
     model = DtpStap3dcrModel()
     model.attach("smc", device)
     model.apply_scan(ptap_select=1, ptap_config_hold=1)
@@ -1057,8 +1061,8 @@ def _selftest_zlb_bypass(width: int, device) -> None:
     model.apply_scan(payloads={"smc": Stap3dcrState(0, 1, 0)})
     model.apply_ir_scan(0x3D, ds_ir={"smc": 0x02})
     zlb = model.chain_layout(scan_kind="zlb")
-    assert model.chain_layout(scan_kind="dr")[PTAP_3DCR_WIDTH:] == zlb
-    assert model.chain_layout(scan_kind="bypass") == [ChainFlop("ptap", "bypass"), *zlb]
+    chain = model.chain_layout(scan_kind="dr")[PTAP_3DCR_WIDTH:]
+    assert zlb == model.chain_layout(scan_kind="bypass") == [ChainFlop("ptap", "bypass"), *chain]
     composed = model.compose_scan(width, ds_values={"smc": 0xABC}, scan_kind="zlb")
     depth0 = next(d for d, f in enumerate(zlb) if f.owner == "smc" and f.field == "ds")
     assert (composed >> (width - depth0 - 12)) & 0xFFF == 0xABC
@@ -1066,10 +1070,9 @@ def _selftest_zlb_bypass(width: int, device) -> None:
     assert model.ptap_select == 1 and model.ptap_config_hold == 1
     lsb, seg = model.ds_capture_slice("smc", scan_kind="zlb")
     expected, care, chain_len = model.expected_capture(scan_kind="zlb")
-    assert chain_len == len(zlb) and seg == 12 and (expected >> lsb) & 0xFFF == 0xABC
-    expected, care, chain_len = model.expected_capture(scan_kind="bypass")
-    assert chain_len == len(zlb) + 1
-    assert (care >> len(zlb)) & 1 == 1 and (expected >> len(zlb)) & 1 == 0
+    assert chain_len == len(chain) + 1 and seg == 12 and (expected >> lsb) & 0xFFF == 0xABC
+    assert (care >> len(chain)) & 1 == 1 and (expected >> len(chain)) & 1 == 0
+    assert model.expected_capture(scan_kind="bypass") == (expected, care, chain_len)
 
 
 if __name__ == "__main__":

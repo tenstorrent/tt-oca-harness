@@ -39,7 +39,9 @@ while `stap_select`, the TAP_3DCR select bit, is set. The retimer registers the
 result on the falling TCK edge, and `u_tdo_bypass_mux` bypasses the retimer during
 a ZERO_LENGTH_BYPASS DR scan. Both ZERO_LENGTH_BYPASS multiplexers take their
 select from `inst_decoded_o[3D]` ANDed with `dr_scan_select_reg`, the DR scan
-select registered on the falling TCK edge.
+select registered on the falling TCK edge, and with the inverse of `stap_select`.
+While `stap_select` is set, ZERO_LENGTH_BYPASS therefore behaves exactly as
+BYPASS (<<ptap-zero-length-bypass>>).
 
 `pwr_on_rst_ni` is ANDed with the client TRST in `u_trst_n_and`. The result,
 `jtag_trst_n`, resets the TAP controller and the retimer, and the controller
@@ -220,9 +222,7 @@ active and the required feature is enabled.
 
 The scan path supports zero-length bypass through explicit `prim_stdmux2`
 multiplexer cells rather than behavioral multiplexing. This implementation
-prevents glitches on scan path selectors during instruction transitions. The
-zero-length bypass instruction connects TDI directly to TDO without intermediate
-register stages, providing minimum scan latency for hierarchical JTAG chains.
+prevents glitches on scan path selectors during instruction transitions.
 
 STAP selection is implemented as a second-level multiplexer. When the 3DCR
 register's select bit is asserted, the STAP chain input replaces the TDR
@@ -232,14 +232,31 @@ operation during both IR and DR scan sequences as required by IEEE 1838. The
 select bit also gates the select, capture, shift and update strobes of the STAP
 scan interface, so they stay low while the bit is clear.
 
+[[ptap-zero-length-bypass]]
+==== Zero-Length Bypass
+
+While the TAP_3DCR STAP-select bit is clear, the ZERO_LENGTH_BYPASS instruction
+connects TDI directly to TDO without intermediate register stages, providing
+minimum scan latency for hierarchical JTAG chains. The DR scan adds no bit, and
+TDO follows TDI combinationally rather than through the retimer.
+
+While the STAP-select bit is set, ZERO_LENGTH_BYPASS behaves exactly as BYPASS.
+The last stage of the STAP chain shifts on the rising TCK edge, so its return
+must reach TDO through the falling-edge retimer, and a path that skips the
+retimer cannot carry it. The bypass register is selected, captures 0 and leads
+the STAP chain, and TDO is retimed. A DR scan under ZERO_LENGTH_BYPASS is then
+one bit longer than the STAP chain and matches a DR scan under BYPASS bit for
+bit.
+
 === TDO Retiming
 
 The TDO output is retimed on the falling edge of TCK as required by IEEE 1149.1
 Section 4.5.2. The retiming register ensures that TDO transitions occur at the
 same clock edge that samples TDI at the receiving device, maintaining timing
-margins across board-level JTAG chains. For zero-length bypass operation, the
-retimer is bypassed using an explicit `prim_stdmux2` cell to minimize scan
-latency.
+margins across board-level JTAG chains. For zero-length bypass operation with
+the TAP_3DCR STAP-select bit clear, the retimer is bypassed using an explicit
+`prim_stdmux2` cell to minimize scan latency. While the bit is set, TDO is
+retimed under every instruction, ZERO_LENGTH_BYPASS included.
 
 === ID Code
 
