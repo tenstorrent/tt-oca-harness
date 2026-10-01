@@ -172,9 +172,11 @@ A covergroup bin is an interface event. It is not a substitute for a VPLAN
 checker that compares a golden (digest, banner text, shadow image).
 
 Collect with `--tool vcs --cov --target default` and read the URG Group pages
-for `u_sep_fcov`. The DUT SCORE (line/cond/toggle/FSM/branch/assert) is a
-different number, and the sampler's own line weight is part of it -- it is a
-testbench cone, not a DUT cone.
+for `u_sep_fcov`. The code-coverage number (line/cond/toggle/FSM/branch) is a
+different number, and the sampler is not part of it:
+`cov/config/vcs/sep_cov_scope.hier` removes `sep_uvm_top.u_sep_fcov` from code
+coverage, so only its covergroups are graded, as the Group number. The URG
+headline SCORE averages both.
 
 `OCAH_FCOV_COVER` cover-property points are unused.
 
