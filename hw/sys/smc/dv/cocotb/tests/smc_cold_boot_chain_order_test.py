@@ -3,7 +3,7 @@
 """Cold boot chain runs in order and the cluster self-isolates until it is ready.
 
 Closes the observable cells of INT-POR-BOOT, SMC-CLUSTER-ISO.S6 and
-SMC-CLUSTER-ISO.S7 (cpu.adoc: Memory Repair, Cluster Boundary Isolation;
+SMC-CLUSTER-ISO.S7 (cpu.adoc: Memory Repair, CPU AXI Isolation;
 rom.adoc: Boot ROM; clk_rst.adoc: Reset Architecture): a second cold reset is
 driven through the reset agent and every boundary observable is stamped on one
 clk_smc_i timeline -- power-good stable before fuse sense, fuse sense before

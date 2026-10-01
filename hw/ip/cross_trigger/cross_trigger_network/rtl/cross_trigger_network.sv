@@ -38,6 +38,8 @@ module cross_trigger_network
 ) (
     input  logic        clk_i,          // System clock; all CSRs, ports and the matrix run on it.
     input  logic        rst_ni,         // Active-low asynchronous reset.
+    input  logic        test_en_i,      // DFT test-mode enable, active-high, for the AXI-Lite CSR
+                                        // crossbar.
 
     input  axil_req_t   axil_req_i,     // AXI-Lite CSR subordinate request; the crossbar routes
                                         // offset 0 to the CTM and the following windows to the
@@ -138,7 +140,10 @@ module cross_trigger_network
 
     // Address space sizes
     localparam int unsigned ADDR_CTM_SIZE = CSR_ADDR_CTM_SIZE;  // 512 bytes for CTM
+    localparam int unsigned ADDR_CTM_REG_SIZE = CSR_ADDR_CTM_REG_SIZE;
     localparam int unsigned ADDR_CTP_SIZE = CSR_ADDR_CTP_SIZE;  // 16 bytes per CTP
+
+    `OCAH_OT_ASSERT_STATIC_IN_PACKAGE(CtmRegsFitAperture_A, ADDR_CTM_REG_SIZE <= ADDR_CTM_SIZE)
 
     //--------------------------------------------------------------------------
     // AXI-Lite Crossbar Type Definitions
@@ -179,16 +184,17 @@ module cross_trigger_network
 
     // Generate address map: CTM first at address 0, then external CTPs
     generate
-        // CTM is the first port (index 0, address 0x0000-0x01FF)
+        // CTM is the first port (index 0). Its rule ends at the register map's extent, so the
+        // rest of its 512-byte aperture decodes as unmapped.
         assign addr_map[0].idx        = 0;
         assign addr_map[0].start_addr = 0;
-        assign addr_map[0].end_addr   = ADDR_CTM_SIZE - 1;
+        assign addr_map[0].end_addr   = ADDR_CTM_REG_SIZE;
 
         // External CTPs follow (indices 1 to NUM_CTP, starting at 0x0200)
         for (genvar i = 0; i < NUM_CTP; i++) begin : gen_ctp_addr_map
             assign addr_map[i + 1].idx        = i + 1;
             assign addr_map[i + 1].start_addr = ADDR_CTM_SIZE + (i * ADDR_CTP_SIZE);
-            assign addr_map[i + 1].end_addr   = ADDR_CTM_SIZE + ((i + 1) * ADDR_CTP_SIZE) - 1;
+            assign addr_map[i + 1].end_addr   = ADDR_CTM_SIZE + ((i + 1) * ADDR_CTP_SIZE);
         end
     endgenerate
 
@@ -237,7 +243,7 @@ module cross_trigger_network
     ) u_axil_xbar (
         .clk_i                  (clk_i),
         .rst_ni                 (rst_ni),
-        .test_i                 (1'b0),
+        .test_i                 (test_en_i),
         .slv_ports_req_i        (xbar_slv_req),
         .slv_ports_resp_o       (xbar_slv_resp),
         .mst_ports_req_o        (xbar_mst_req),

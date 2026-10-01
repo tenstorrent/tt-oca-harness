@@ -1,0 +1,93 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Clocks and Resets
+
+[[sep-clocks-and-resets]]
+
+[[sep-clock-distribution]]
+== Clock Distribution
+
+The SEP system fabric, CPU and cryptographic subsystem receive `clk_i`.
+The CPU and some cryptographic blocks gate branches of this clock locally;
+these branches do not provide independently programmable CPU or accelerator
+frequencies. The other clock inputs serve reference counting, watchdog timing,
+entropy sampling and JTAG debug.
+
+.SEP clock inputs
+[cols="1,3",options="header"]
+|===
+|Input |Use
+|`clk_i`
+|Main functional clock for the fabric, CPU, cryptographic subsystem and register interfaces.
+|`clk_ref_i`
+|Free-running reference clock counted by `REFERENCE_COUNTER`; the count crosses into `clk_i` for software access.
+|`clk_wdt_i`
+|Watchdog timer clock. The watchdog register interface uses `clk_i`, with clock-domain crossings to the timer core.
+|`entropy_rosc_sample_clk_i`
+|External entropy-sampling clock option. Each noise-source sampler selects between this input and the internal shared ring oscillator, then applies its sample-clock divider.
+|`jtag_tck_i`
+|CPU JTAG TAP clock; debug requests cross into `clk_i` through the debug-interface handshake.
+|===
+
+<<sep-clock-tree>> overlays these clock domains on the SEP top-level diagram.
+The CPU TAP runs on `jtag_tck_i`; local clock gating and derived clocks are
+described below.
+The CPU has a free-running branch and a pipeline branch gated according to
+halt/pause state, flush activity and clock override. SPI generates its serial
+clock locally. Entropy-source oscillators and sample clocks are distinct from
+the main functional clock. The diagram describes connectivity; operating
+frequencies and timing constraints belong to the platform integration.
+
+[[sep-clock-tree]]
+.SEP clock tree and clock domains
+image::sep-clock-domains.svg[alt="SEP clock domains overlaid on the top-level diagram",width=100%,pdfwidth=100%]
+
+== Reset Architecture
+
+Reset scope determines which state survives a restart. In normal operation
+(with debug and scan overrides inactive), SEP uses the following reset boundaries.
+
+.SEP reset boundaries
+[cols="1,3",options="header"]
+|===
+|Reset |Scope and release condition
+|Cold reset (`rst_ni`)
+|Resets the early infrastructure, including the local AXI crossbar, OTP controller, watchdog and reset-isolation sequencers. This infrastructure can operate before the boot-qualified SEP reset is released.
+|Boot-qualified SEP reset (`sep_reset_n`)
+|The OTP controller qualifies release with fuse sensing complete, cold reset released and `ext_boot_seq_done_i` asserted. The SEP Reset Controller applies the SEP JTAG override and synchronizes release to `clk_i`. This reset feeds system peripherals and the reset-controller registers, and qualifies the software-controlled engine resets.
+|CPU reset (`sep_cpu_reset_n`)
+|Combines `sep_reset_n` with the aggregated SMC/SEP watchdog reset input, `wdt_rst_ni`. A watchdog reset restarts the CPU without asserting the boot-qualified SEP reset or the software-controlled cryptographic resets. It also clears the warm scratch register bank through the system CSR warm-reset input.
+|Software-controlled engine resets
+|Separate requests for Key Manager, OTBN, AES, HMAC, KMAC, Adams Bridge and the shared TRNG domain. Each sequencer isolates its required AXI paths and waits for the isolation acknowledgements before asserting reset.
+|===
+
+A watchdog restart therefore does not imply that the cryptographic engines or
+their software reset requests have returned to cold-reset defaults. Recovery
+software must account for surviving engine state before submitting new work.
+The watchdog itself uses cold reset; its timer-domain reset release is
+synchronized to `clk_wdt_i`.
+
+JTAG can override the SEP and individual engine resets. These overrides do
+not perform the software-request isolation sequence. Scan test enable selects
+`scan_rst_ni` at the SEP reset synchronizer and the final engine reset outputs.
+These debug/test paths are separate from normal software recovery.
+
+The Platform Reset chapter describes the shared reset sources and subsystem
+effects. The SEP Reset Controller owns the software programming sequence,
+AXI isolation behavior and shared TRNG-domain details, including the distinction
+between the entropy subsystem and the Key Manager sampler.
+
+ifdef::backend-html5[]
+xref:ocah-docs:ROOT:reset.adoc[Platform Reset]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<ocah-reset,Platform Reset>>
+endif::backend-pdf[]
+
+ifdef::backend-html5[]
+xref:reset_controller.adoc[SEP Reset Controller]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<sep-reset-controller,SEP Reset Controller>>
+endif::backend-pdf[]

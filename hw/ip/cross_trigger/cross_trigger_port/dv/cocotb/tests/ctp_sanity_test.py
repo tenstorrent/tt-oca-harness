@@ -10,7 +10,8 @@ Scenarios:
    combinations plus an all-ones write; only the 3 defined bits stick.
 3. STRETCH_MULT write/read law — deterministic corners plus randomized
    values; only the low 16 bits stick.
-4. STATUS read-only law — an all-ones write leaves the (idle) status at 0.
+4. STATUS read-only law — an all-ones write completes OKAY and leaves the
+   (idle) status at 0.
 5. Wire-OR smoke — one core-side pulse produces a stretched CT_Req_out
    window and a matching BUSY excursion.
 """
@@ -101,11 +102,11 @@ async def ctp_sanity_test(dut) -> None:
 
     # ------------------------------------------------------------------
     tb.log.info("=" * 70)
-    tb.log.info("TEST 4: STATUS read-only law (all-ones write leaves idle status 0)")
+    tb.log.info("TEST 4: STATUS read-only law (all-ones write completes OKAY, idle status 0)")
     tb.log.info("=" * 70)
-    # The write may complete with any response; the law under test is that it
-    # cannot change the read-only hardware readouts.
-    await tb.seq.write_result(STATUS_REG_ADDR, 0xFFFF_FFFF, check_response=False)
+    result = await tb.seq.write_result(STATUS_REG_ADDR, 0xFFFF_FFFF, check_response=False)
+    tb.log.info("STATUS all-ones write response: ok=%s resp=0x%x", result.ok, result.resp)
+    assert result.ok, f"STATUS write must complete OKAY, observed resp=0x{result.resp:x}"
     observed = await tb.seq.read(STATUS_REG_ADDR)
     tb.log.info("STATUS after all-ones write: 0x%08x (expected 0x0)", observed)
     assert observed == 0, (

@@ -615,6 +615,9 @@ sources:
   - target: any(dtp, sep, smc, key_manager, uart, system_timer_octs, axi_hang_detector)
     files:
       - hw/common/ocah_prim/rtl/prim_axi_snoop.sv
+  - target: any(dtp, sep, smc, key_manager, uart, system_timer_octs, entropy_source)
+    files:
+      - hw/common/ocah_prim/rtl/prim_clkmux4.sv
   - target: any(dtp, sep, smc, key_manager, uart, system_timer_octs)
     files:
       - hw/common/ocah_prim/rtl/prim_ag_clk_mux.sv
@@ -639,7 +642,6 @@ sources:
       - hw/common/ocah_prim/rtl/prim_clk_counter.sv
       - hw/common/ocah_prim/rtl/prim_clk_counter_fifo_sync.sv
       - hw/common/ocah_prim/rtl/prim_clk_gater_hysteresis.sv
-      - hw/common/ocah_prim/rtl/prim_clkmux4.sv
       - hw/common/ocah_prim/rtl/prim_diff_decode_multi.sv
       - hw/common/ocah_prim/rtl/prim_diff_encode_multi.sv
       - hw/common/ocah_prim/rtl/prim_fair_rr_arb.sv
@@ -1523,6 +1525,7 @@ sources:
       - hw/sys/smc/rtl/smc_misc/rtl/smc_misc_wrap.sv
       - hw/sys/smc/rtl/smc_misc/rtl/smc_version_id_wrap.sv
       - hw/sys/smc/rtl/smc_peripherals/efuse/smc_efuse_wrapper.sv
+      - hw/sys/smc/rtl/smc_peripherals/rtl/ext_boot_seq_done_qual.sv
       - hw/sys/smc/rtl/smc_peripherals/rtl/smc_padring.sv
       - hw/sys/smc/rtl/smc_peripherals/rtl/smc_peripherals.sv
       - hw/sys/smc/rtl/smc_peripherals/rtl/smc_peripherals_cdc.sv
@@ -1575,6 +1578,7 @@ sources:
       - hw/top/sep_ip_integration.sv
   - target: sep_wrapper
     files:
+      - hw/sys/smc/rtl/smc_peripherals/rtl/ext_boot_seq_done_qual.sv
       - hw/top/sep_wrapper.sv
   - target: any(smc_wrapper, smu_wrapper)
     files:

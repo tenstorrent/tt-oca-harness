@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[ctn-memory-map]]
+=== Memory Map
 
 The Cross Trigger Network combines the Cross Trigger Matrix (CTM) and Cross
 Trigger Port (CTP) registers into a unified address space. Its generated map
@@ -19,7 +20,20 @@ The CTN adds no CTN-specific registers; it decodes the AXI-Lite CSR interface
 onto the CTM and CTP blocks it instantiates. The composite SystemRDL top is the
 common source for these addresses and for the generated RTL constants.
 
-=== Cross Trigger Matrix Registers
+The last two columns state how the network answers a 32-bit access that no
+register backs, as seen at its AXI-Lite CSR port, and
+ifdef::backend-html5[]
+xref:ocah-docs:ROOT:memory_map.adoc#ocah-decode-response-codes[Decode Response Codes]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<ocah-decode-response-codes,Decode Response Codes>>
+endif::backend-pdf[]
+defines them and their codes. An address above `0x2FF` matches no block and
+answers `DECERR`, with read data `0xBADCAB1E`.
+
+=== Detailed Register Map
+
+==== Cross Trigger Matrix Registers
 
 ifdef::backend-html5[]
 ++++
@@ -28,10 +42,10 @@ include::partial$cross_trigger_matrix/regs/gen/html/cross_trigger_matrix.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../../cross_trigger_matrix/regs/gen/adoc/cross_trigger_matrix.adoc[leveloffset=+2]
+include::../../cross_trigger_matrix/regs/gen/adoc/cross_trigger_matrix.adoc[leveloffset=+3]
 endif::backend-pdf[]
 
-=== Cross Trigger Port Registers
+==== Cross Trigger Port Registers
 
 Each CTP window repeats the following register layout.
 
@@ -42,10 +56,10 @@ include::partial$cross_trigger_port/regs/gen/html/cross_trigger_port.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../../cross_trigger_port/regs/gen/adoc/cross_trigger_port.adoc[leveloffset=+2]
+include::../../cross_trigger_port/regs/gen/adoc/cross_trigger_port.adoc[leveloffset=+3]
 endif::backend-pdf[]
 
-=== Composite Network Registers
+==== Composite Network Registers
 
 This map gives the CTM and CTP register offsets within the generated CTN
 composition. The individual block maps above give offsets within each block.
@@ -57,5 +71,5 @@ include::partial$cross_trigger_network/regs/gen/html/cross_trigger_network.html[
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/cross_trigger_network.adoc[leveloffset=+2]
+include::../regs/gen/adoc/cross_trigger_network.adoc[leveloffset=+3]
 endif::backend-pdf[]

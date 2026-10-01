@@ -6,12 +6,15 @@
 // ingress: the reset unit's two `onwrite=woset` lock registers are sticky,
 // and each one masks the register it guards.
 //
-// Semantics are taken from the RDL and the RTL, not assumed. Both lock fields
-// are `sw=rw; hw=r; onwrite=woset;` with reset 0, one bit per subsystem
-// (reset_unit.rdl:18-26 and :87-95), and both guarded registers are external
-// registers whose write bit-enables are filtered before they reach the
-// storage flop (smc_subsystem_resets.sv:81 and :100), so a locked bit keeps
-// its value on read-back.
+// Semantics are taken from the RDL, not assumed. Both lock fields are
+// `sw=rw; hw=r; onwrite=woset;` with reset 0, one bit per subsystem, and each
+// lock's description names the register it guards and the per-bit hold rule:
+// SS_CONFIG_LOCK "lock[s] down SS config. If bit 0 is written, then bit 0 of
+// other SS config cannot be written to again" (reset_unit.rdl:20-27), and
+// SS_COLD_RESET_LOCK the same for SS cold reset (reset_unit.rdl:89-96). So a
+// locked bit keeps its value on read-back. The RDL does not state how the
+// bus answers a write that hits locked bits; CHK-CSR-RESP requires OKAY there
+// as this bench's working assumption, recorded in the VPLAN row.
 //
 // Two things stop the masking leg passing for the wrong reason:
 //

@@ -18,37 +18,13 @@
 # Forbidden prefixes
 # -------------------------------------------------------------------------
 forbidden_prefixes:
-  # Samsung foundry-specific paths
-  - prefix: "/tech/samsung"
-    description: "Foundry-specific simulation models"
-  - prefix: "/tech/Samsung"
-    description: "Foundry-specific simulation models (capitalized path variant)"
-  - prefix: "samsung/LN04LPP"
-    description: "Foundry process-specific models (relative path form)"
-  - prefix: "/LN04LPP"
-    description: "Foundry process directory embedded in a longer absolute path"
-
-  # Movellus vendor IP paths
-  - prefix: "/vendor_ip/movellus"
-    description: "Vendor simulation IP"
-
-  # Cadence vendor IP paths
-  - prefix: "/vendor_ip/cadence"
-    description: "Vendor simulation IP"
-
-  # Synopsys vendor IP paths
-  - prefix: "/vendor_ip/synopsys"
-    description: "Vendor simulation IP"
-
-  # Alpha Solutions vendor IP paths
-  - prefix: "/vendor_ip/alpha_solutions"
-    description: "Vendor simulation models"
-
-  # Generic catch-all for any path rooted at /vendor_ip or /tech
+  # Any path rooted at a foundry/tech or vendor-IP tree. These roots hold
+  # process-specific simulation models and vendor simulation IP that are not
+  # available in CI or to OSS contributors.
   - prefix: "/vendor_ip/"
-    description: "Generic vendor IP root — catch-all for unlisted vendor paths"
+    description: "Vendor IP root — no vendor simulation IP in the public flow"
   - prefix: "/tech/"
-    description: "Generic foundry/tech root — catch-all for unlisted foundry paths"
+    description: "Foundry/tech root — no process-specific models in the public flow"
 
   # Internal server mounts sometimes appear in developer-local filelists
   - prefix: "/nfs/tools"
@@ -69,13 +45,12 @@ forbidden_prefixes:
 per_target_allowlist:
   # Example entry:
   #
-  # - target: "smc_vendor_dv"
+  # - target: "internal_vendor_dv"
   #   allow:
-  #     - "/vendor_ip/movellus"
-  #     - "/tech/samsung"
+  #     - "/vendor_ip/"
+  #     - "/tech/"
   #   reason: >
-  #     Vendor-accurate SMC regression flow; not part of the public OSS
-  #     filelist.
+  #     Vendor-accurate regression flow; not part of the public OSS filelist.
   #
   # An exception is documented here and selected with `--target <label>`.
   []

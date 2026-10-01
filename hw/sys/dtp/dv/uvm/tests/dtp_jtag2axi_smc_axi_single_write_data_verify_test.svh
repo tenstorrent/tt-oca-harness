@@ -24,8 +24,10 @@ class dtp_jtag2axi_smc_axi_single_write_data_verify_test extends dtp_base_test;
                             "CHK-AXI-WDATA",
                             "CHK-AXI-RADDR",
                             "CHK-AXI-RDATA",
+                            "CHK-AXI-WMEM",
                             "CHK-AXI-COMPLETION",
-                            "CHK-AXI-NONVAC"
+                            "CHK-AXI-NONVAC",
+                            "CHK-J2A-BUS-REQ"
                         });
   endfunction
 

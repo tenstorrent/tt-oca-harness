@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 module mmr_req_ctrl #(
     parameter int unsigned NUM_MMR_BLOCKS     = 1,
     parameter int unsigned MMR_PIPE_LAT       = 2,

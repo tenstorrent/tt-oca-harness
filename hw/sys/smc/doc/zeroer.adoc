@@ -19,7 +19,8 @@ fabric integration.
 |===================================================================
 |Parameter |Description
 |Address Range |0xC003_8200 - 0xC003_83FF (512 bytes)
-|Control Interface |AXI4-Lite
+|Control Interface |AXI4 (5-bit address, 64-bit data, 8-bit ID), converted internally to
+AXI4-Lite for the registers
 |Data Interface |AXI4 Master (56-bit address, 64-bit data, 4-bit ID)
 |Maximum Burst Length |256 beats (`AWLEN = 255`)
 |Outstanding Transactions |Counted by a 32-bit counter; no 32-transaction
@@ -38,15 +39,16 @@ sequences
 
 The DMA and zeroer share the data-accelerator fabric path shown in
 ifdef::backend-html5[]
-xref:dma.adoc#smc-dma-zeroer-diagram[SMC DMA and memory-zeroer architecture].
+xref:dma.adoc#smc-dma-zeroer-diagram[SMC DMA frontend, backend and shared fabric path].
 endif::backend-html5[]
 ifdef::backend-pdf[]
-<<smc-dma-zeroer-diagram,SMC DMA and memory-zeroer architecture>>.
+<<smc-dma-zeroer-diagram,SMC DMA frontend, backend and shared fabric path>>.
 endif::backend-pdf[]
 
 === State Machine
 
-The zeroer implements a three-state operation model (<<smc-zeroer-state-machine-table>>).
+The zeroer state machine has three operating states and an error state
+(<<smc-zeroer-state-machine-table>>).
 
 [[smc-zeroer-state-machine-table]]
 .SMC zeroer state machine
@@ -56,7 +58,23 @@ The zeroer implements a three-state operation model (<<smc-zeroer-state-machine-
 |ST_IDLE (3'b001) |Idle state waiting for configuration and trigger
 |ST_ISSUE_ADDR (3'b010) |Address phase - issuing AXI write addresses
 |ST_ISSUE_DATA (3'b100) |Data phase - streaming zero data for all beats
+|ST_ERROR (3'b000) |Entered from any illegal state encoding; holds the zeroer busy, with
+no interrupt, until reset
 |======================================================================
+
+<<smc-memory-zeroer-diagram>> shows the state machine and its AXI write flow.
+
+[[smc-memory-zeroer-diagram]]
+.SMC memory zeroer state machine and AXI write flow
+image::smc-memory-zeroer.svg[alt="SMC memory zeroer: register path, clear state machine with its four states, and the AW, W and B channels of its AXI4 master port",width=100%,pdfwidth=100%]
+
+Rounded boxes are the states of the clear state machine, with their encodings; grey
+arrows are transitions, labelled with their conditions. A write to `CTRL_STATUS` while
+`SIZE` is non-zero leaves `ST_IDLE`. Each pass through `ST_ISSUE_ADDR` and
+`ST_ISSUE_DATA` issues one write burst of zeros, and the machine returns to `ST_IDLE`
+once no bytes remain. `ST_ERROR` is entered only from an illegal state encoding and
+is left only by reset. The write-response channel is always ready and its response code
+is not checked; the outstanding-request count decides when the zeroer stops being busy.
 
 === Operation Flow
 
@@ -200,7 +218,14 @@ no hardware overflow-rejection status or recovery control
 outstanding writes
 |=======================================================================
 
-== Detailed Register Map
+== Memory Map and Register Reference
+
+=== Memory Map
+
+Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.
+
+=== Detailed Register Map
 
 ifdef::backend-html5[]
 ++++
@@ -209,5 +234,5 @@ include::ip:partial$zeroer/regs/gen/html/zeroer_ctrl.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../../../ip/zeroer/regs/gen/adoc/zeroer_ctrl.adoc[leveloffset=+1]
+include::../../../ip/zeroer/regs/gen/adoc/zeroer_ctrl.adoc[leveloffset=+2]
 endif::backend-pdf[]

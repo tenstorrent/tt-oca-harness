@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: CC-BY-4.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-= Open Chiplet Atlas Harness (OCAH)
+= Open Chiplet Atlas (OCA) Harness
 
-The Open Chiplet Atlas Harness (OCAH) is an OCA architecture compliant, open-source chiplet
+The Open Chiplet Atlas (OCA) Harness is an OCA architecture compliant, open-source chiplet
 framework: a reusable implementation vehicle for the Open Chiplet Atlas
 (OCA) standard. It packages the common, non-differentiating infrastructure
 every chiplet needs -- security, boot, system management, debug, test, and
@@ -13,14 +13,14 @@ value-differentiating application logic.
 image::oca-banner.png[OCA banner,width=600]
 
 [NOTE]
-OCAH is the *Harness* pillar of the wider
+OCA Harness is the *Harness* pillar of the wider
 https://www.openchipletatlas.org[Open Chiplet Atlas (OCA)] ecosystem,
 alongside the OCA Architecture specification and the OCA Compliance program.
 
 == Ecosystem repositories
 
 The OCA Harness ecosystem itself spans a small family of Tenstorrent-owned
-repositories, each covering a distinct part of building and using OCAH:
+repositories, each covering a distinct part of building and using OCA Harness:
 
 [cols="1,1,2,3",options="header"]
 |===
@@ -29,12 +29,12 @@ repositories, each covering a distinct part of building and using OCAH:
 |tt-oca-harness
 |Tenstorrent
 |https://github.com/tenstorrent/tt-oca-harness[tenstorrent/tt-oca-harness]
-|This repository: OCAH's RTL, documentation, and register/IP-XACT tooling
+|This repository: OCA Harness's RTL, documentation, and register/IP-XACT tooling
 
 |tt-oca-harness-aou
 |Tenstorrent
 |https://github.com/tenstorrent/tt-oca-harness-aou[tenstorrent/tt-oca-harness-aou]
-|AXI-over-UCIe Bridge (AoU) RTL, a component of OCAH's RTL collateral
+|AXI-over-UCIe Bridge (AoU) RTL, a component of OCA Harness's RTL collateral
 
 |tt-oca-harness-model
 |Tenstorrent
@@ -45,10 +45,10 @@ repositories, each covering a distinct part of building and using OCAH:
 |Tenstorrent
 |https://github.com/tenstorrent/tt-oca-manifest[tenstorrent/tt-oca-manifest]
 |OCA boot manifest format specification and producer/consumer tooling for
-the secure boot images OCAH's SEP subsystem loads
+the secure boot images OCA Harness's SEP subsystem loads
 |===
 
-OCAH also reuses third-party open-source IP rather than reimplementing it.
+OCA Harness also reuses third-party open-source IP rather than reimplementing it.
 Tenstorrent generally maintains a fork of each such dependency to support
 coordinated development, keeps it synchronized with the upstream project, and
 contributes suitable changes back upstream where possible. The exact
@@ -59,7 +59,7 @@ explains how Bender materializes and updates them.
 
 [cols="1,1,2,3",options="header"]
 |===
-|Package |Upstream |Repository |Role in OCAH
+|Package |Upstream |Repository |Role in OCA Harness
 
 |OpenTitan
 |lowRISC
@@ -70,7 +70,7 @@ explains how Bender materializes and updates them.
 |PULP Platform
 |https://github.com/tenstorrent/tt-common_verification[tenstorrent/tt-common_verification]
 |Vendored so PULP-derived dependencies resolve a consistent local copy; not
-directly used by OCAH
+directly used by OCA Harness
 
 |Common Cells
 |PULP Platform
@@ -96,18 +96,18 @@ directly used by OCAH
 |PULP Platform
 |https://github.com/tenstorrent-forks/unbent[tenstorrent-forks/unbent]
 |AXI bus-error-unit wrapper for chiplet integrators; not instantiated in
-OCAH's own RTL
+OCA Harness's own RTL
 
 |AXI Stream
 |PULP Platform
 |https://github.com/tenstorrent/tt-axi_stream[tenstorrent/tt-axi_stream]
-|Compiled into iDMA's generated backend bundle; OCAH's AXI-only DMA
+|Compiled into iDMA's generated backend bundle; OCA Harness's AXI-only DMA
 configuration does not instantiate it
 
 |OBI
 |PULP Platform
 |https://github.com/tenstorrent/tt-obi[tenstorrent/tt-obi]
-|Supplies the types iDMA's OBI backend headers reference; OCAH does not
+|Supplies the types iDMA's OBI backend headers reference; OCA Harness does not
 instantiate an OBI bus
 
 |Register Interface
@@ -162,18 +162,18 @@ the repository under
 
 == Learn more
 
-* xref:features.adoc[Feature Overview] -- what OCAH provides today
-* xref:motivation.adoc[Motivation] -- why OCAH exists
-* xref:use-cases.adoc[Use Cases] -- how adopters use OCAH in practice
-* xref:license.adoc[License] -- OCAH's open-source license
+* xref:features.adoc[Feature Overview] -- what OCA Harness provides today
+* xref:motivation.adoc[Motivation] -- why OCA Harness exists
+* xref:use-cases.adoc[Use Cases] -- how adopters use OCA Harness in practice
+* xref:license.adoc[License] -- OCA Harness's open-source license
 
 == Explore the documentation
 
-xref:ocah-starting::index.adoc[Starting with OCAH]:: How to get started
+xref:ocah-starting::index.adoc[Starting with OCA Harness]:: How to get started
 with and contribute to the project
 xref:ocah-docs::index.adoc[Technical Reference Manual]:: Architecture and
-register-level detail for every OCAH subsystem
-xref:ocah-integrator-guide::index.adoc[Integrator Guide]:: Bringing OCAH
+register-level detail for every OCA Harness subsystem
+xref:ocah-integrator-guide::index.adoc[Integrator Guide]:: Bringing OCA Harness
 into your own SoC
 xref:ocah-programmer-guide::index.adoc[Programmer's Guide]:: Software and
 firmware interfaces

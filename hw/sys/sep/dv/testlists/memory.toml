@@ -20,7 +20,7 @@ args = ["+skip_fuse_sense"]
 
 [[tests]]
 name = "sep_sram_smoke_test"
-module = "sram.sep_sram_smoke_test"
+module = { cocotb = "sram.sep_sram_smoke_test", uvm = "sep_sram_smoke_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["smoke", "sram", "memory"]

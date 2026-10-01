@@ -28,7 +28,9 @@ labelled in the output), proving fail-closed finalization per
 15. commit-order buffering cannot bypass temporal policy: a transaction
     observed during a blocked window fails even when replayed after
     closure, a credit armed after observation never classifies it, and
-    corrupted expected-EXOKAY read data is rejected.
+    corrupted expected-EXOKAY read data is rejected;
+16. a commit slot voided by a reset releases the transaction buffered
+    behind it, and voiding a slot already replayed is rejected.
 
 Run from the repository root::
 
@@ -491,6 +493,40 @@ def negative_temporal_policy_bypass() -> None:
         raise AssertionError("corrupted expected-EXOKAY read data passed")
 
 
+def negative_voided_commit_order() -> None:
+    """A voided slot releases the transaction behind it, and a slot already
+    replayed cannot be voided."""
+    # (a) the buffered DECERR behind a voided slot is replayed and fails.
+    scoreboard = OcahAxiScoreboard(name="neg-void-release", raise_on_error=False)
+    err = _read_item(RAM_BASE, 0, resp=RESP_DECERR)
+    err.metadata["commit_order"] = 1
+    scoreboard.add_observed(err)  # buffered: waits for order 0
+    scoreboard.void_commit_orders([0])
+    try:
+        scoreboard.finalize()
+    except (OcahCheckerError, AssertionError) as exc:
+        assert "CHK-AXI-RESP" in str(exc), exc
+        assert "held for a missing earlier completion" not in str(exc), exc
+        print("selftest negative-S PASS: voided slot releases the buffered transaction")
+    else:
+        raise AssertionError("transaction behind a voided slot was never replayed")
+
+    # (b) voiding a slot that was already replayed is a defect.
+    model = OcahAxiRefModel(name="neg-model-void", beat_bytes=BEAT_BYTES)
+    scoreboard2 = OcahAxiScoreboard(name="neg-void-stale", model=model, raise_on_error=False)
+    first = _read_item(RAM_BASE, 0)
+    first.metadata["commit_order"] = 0
+    scoreboard2.add_observed(first)
+    scoreboard2.void_commit_orders([0])
+    try:
+        scoreboard2.finalize()
+    except (OcahCheckerError, AssertionError) as exc:
+        assert "void of a processed" in str(exc), exc
+        print("selftest negative-T PASS: void of a replayed slot rejected")
+    else:
+        raise AssertionError("void of a replayed commit slot passed")
+
+
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     positive_flow()
@@ -510,6 +546,7 @@ def main() -> None:
     negative_drain_orphans_and_callbacks()
     negative_duplicate_commit_order()
     negative_temporal_policy_bypass()
+    negative_voided_commit_order()
     print("example_axi_scoreboard_selftest: ALL CASES PASS")
 
 

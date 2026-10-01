@@ -5,6 +5,13 @@
 
 === Signal Interface
 
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="ctm-signal-interface-table"></span>
+++++
+endif::backend-html5[]
+
 Packed control and bus types remain bundles at the `cross_trigger_matrix` module
 boundary; their members are not separate scalar ports.
 

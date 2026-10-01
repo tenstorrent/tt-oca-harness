@@ -28,7 +28,12 @@ you will need to handle package installation yourself.
 The project uses the following documentation tools. See xref:setup.adoc[Environment Setup] for
 installation/setup options.
 
-* *Asciidoctor*: AsciiDoc documentation processing and PDF generation - Requires `asciidoctor-pdf` Version 2.3.24+
+* *Asciidoctor*: AsciiDoc documentation processing and PDF generation
+** `asciidoctor-pdf` Version 2.3.24+
+** `asciidoctor-diagram` — renders diagrams during the PDF builds; the Integrator
+and Programmer guides require it. PlantUML diagrams are drawn by its bundled jar,
+so a Java runtime is also needed. The HTML builds instead render diagrams through
+the `asciidoctor-kroki` Antora extension and need no Java.
 * *Antora*: Multi-repository documentation site generator for AsciiDoc - Version 3.1.10+
 * *Python packages*: Managed by the repo-level `pyproject.toml` and `uv.lock`;
 run `make uv-sync` or `uv sync` from the repository root.

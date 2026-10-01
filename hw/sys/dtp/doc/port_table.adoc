@@ -117,6 +117,9 @@ endif::backend-html5[]
 |`xtrig_ctp_ack_out_dout_en_o` |`logic` |Out |`[XTRIG_NUM_CTP-1:0]` |CTP ack-out output enable. |GPIO pad ring
 |`xtrig_ctp_ack_out_din_i` |`logic` |In |`[XTRIG_NUM_CTP-1:0]` |CTP ack-out data input. Default: tie to '0 if unused. |GPIO pad ring
 |`xtrig_ctp_ack_out_din_en_o` |`logic` |Out |`[XTRIG_NUM_CTP-1:0]` |CTP ack-out input enable. |GPIO pad ring
+
+|`test_en_i` |`logic` |In |1 |DFT test-mode enable (active high) for the JTAG2AXI bridges and the cross trigger CSR crossbar. Default: 0 in functional mode. |DFT controller
+|`scan_rst_ni` |`logic` |In |1 |DFT scan reset (active low). Unused: DTP has no reset synchronizer, so `rst_n_i` must arrive scan-controlled. |DFT controller, or tie high
 |===
 
 ifdef::backend-html5[]

@@ -5,8 +5,10 @@
 == SEP coverage scope and exclusion evidence
 
 The VCS code-coverage result grades TT-owned SEP integration RTL. The
-compile-time `cov/config/vcs/sep_cov_scope.hier` removes the testbench, CPU
-subtree, library-class cells, DV models and complete third-party IP modules.
+compile-time `cov/config/vcs/sep_cov_scope.hier` removes the testbench, the VeeR
+EL2 core complex inside `sep_cpu`, library-class cells, DV models and complete
+third-party IP modules and interfaces. The TT CPU wrapper `sep_cpu` (window
+remaps, IFU/LSU demux decode) stays graded.
 Those whole-module entries are ownership decisions, not claims that the logic
 is unreachable.
 
@@ -20,20 +22,24 @@ denominator.
 `cov/config/vcs/sep_regblock_exclusions.el` excludes generated register-block
 signals that cannot change:
 
-* Every listed block hardwires `cpuif_req_stall_rd` and
+* A block listed for no-stall hardwires `cpuif_req_stall_rd` and
   `cpuif_req_stall_wr` to zero. For example,
   `hw/sys/sep/regs/gen/sv/blocks/sep_scratch_reg.sv:220-221` contains the tie.
+  A block with external registers drives the stall from `external_pending`
+  (`efuse_mmr_reg`, `entropy_source_reg`, `km_kpv_reg`), so its stall stays
+  graded.
 * Register spaces with no error decode also hold `is_valid_addr` and
   `is_valid_rw` high and `decoded_err` low. The same generated block shows
   these assignments at lines 243-248.
-* The five wrapper-key register blocks decode real errors. Their exclusion is
-  limited to the two no-stall signals; their error responses remain graded.
+* The wrapper-key register blocks and the KM `km_csr`, `km_drbg_sampler` and
+  `km_mailbox_*` blocks decode real errors. Their exclusion is limited to the
+  two no-stall signals; their error responses remain graded.
 
 === External TRNG payload
 
 `cov/config/vcs/sep_ext_trng_payload_exclusions.el` excludes the three
 AXI-Stream request payloads while they cross `sep_ip_integration`, `sep` and
-`sep_crypto`. `hw/top/sep_ip_integration.sv:773` ties the complete request
+`sep_crypto`. `hw/top/sep_ip_integration.sv:775` ties the complete request
 array to zero. The source-select mux remains graded because software controls
 its select.
 
@@ -42,11 +48,23 @@ its select.
 `cov/config/vcs/sep_unreachable_exclusions.el` contains two instance-scoped
 blocks on `sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap`:
 
-* `hw/sys/sep/rtl/sep.sv:1085-1087` connects LSIO trigger bit 0 to SPI and ties
+* `hw/sys/sep/rtl/sep.sv:1104-1106` connects LSIO trigger bit 0 to SPI and ties
   bits 10:1 low. Bit 0 remains graded.
-* `hw/sys/sep/rtl/sep_dma_wrap.sv:324-333` ties the unused CTN response fields,
-  and line 347 ties the alert receiver ping request low. The live DMA host path
+* `hw/sys/sep/rtl/sep_dma_wrap.sv:341-350` ties the unused CTN response fields,
+  and line 364 ties the alert receiver ping request low. The live DMA host path
   and alert request/acknowledge behaviour remain graded.
+
+=== Single-master AXI ties
+
+`cov/config/vcs/sep_master_tie_exclusions.el` excludes request fields on ports
+that exactly one internal master drives: the VeeR IFU, LSU and debug masters
+and the secure DMA host port. Each master assigns those fields a constant, for
+example `el2_ifu_mem_ctl.sv:1074-1101` and
+`vendor/pulp-platform/axi/upstream/src/axi_lite_to_axi.sv:39-67`, and every
+module on the path passes them unchanged. A port that the inbound SoC port,
+the JTAG bridge or a second master can reach is not listed. A tied field that a
+leaf moved, for example through the no_cpu TB force on the LSU path, is not
+listed.
 
 The checksums in each `.el` file come from `urg -dump full_exclusions` on the
 merged VCS database. A report run must complete without a checksum or missing

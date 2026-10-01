@@ -77,6 +77,8 @@ stage_gen_adoc() {
 
 # Copy generated single-file HTML register docs if present. These are intended
 # for Antora backend-html5 includes and are not the native PeakRDL mini-site.
+# Fragment ids are namespaced at build time by tools/doc/block-captions.js, so
+# the fragments are staged verbatim.
 stage_gen_html() {
   local src="$1" dst="$2"
   [ -d "$src" ] || return 0
@@ -99,6 +101,9 @@ strip_drawio_switch_fallback() {
   local dir="$1"
   [ -d "$dir" ] || return 0
   find "$dir" -name '*.svg' -type f -print0 | while IFS= read -r -d '' svg; do
+    # The rewrite joins lines, so leave SVGs without the fallback untouched;
+    # some are tracked sources rather than staged copies.
+    grep -q 'drawio\.com/doc/faq/svg-export-text-problems' "$svg" || continue
     local tmp
     tmp="$(mktemp)"
     tr '\n' ' ' <"$svg" |

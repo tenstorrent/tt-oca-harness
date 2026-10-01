@@ -4,8 +4,8 @@
 
 EXTEST_PULSE (IR 0x06) selects the boundary-scan chain, which this bench loops
 back without boundary cells. The chain's run_test_idle strobe is the
-Run-Test/Idle decode the AC pulse launches on: one pulse across a DR scan, on
-the return to Run-Test/Idle, and high while the TAP is parked there
+Run-Test/Idle decode the AC pulse launches on: low across a DR scan until the
+scan returns to Run-Test/Idle, and high while the TAP is parked there
 (CHK-BSR-RTI).
 """
 
@@ -47,19 +47,13 @@ class dtp_jtag_ac_extest_pulse_test_seq(dtp_jtag_base_test_seq):
             await self.check_loopback_scan(DtpJtagInstr.EXTEST_PULSE, pattern)
         for pattern in (0xAA, 0x55, 0xFF, 0x00):
             await self.check_loopback_scan(DtpJtagInstr.EXTEST_PULSE, pattern)
-        self.log_step(3, "EXTEST_PULSE scan controls; run_test_idle pulses once, on the return")
-        counts = await self.check_bsr_scan_ctrl(
+        self.log_step(3, "EXTEST_PULSE scan controls; run_test_idle high only on the return")
+        await self.check_bsr_scan_ctrl(
             DtpJtagInstr.EXTEST_PULSE,
             self.random_pattern(DTP_BSR_MODEL_LEN, rng),
             extra_signals=(RTI_SIGNAL,),
         )
-        self.family_check(
-            RTI_CHECK_ID,
-            f"{RTI_SIGNAL} pulses across the scan",
-            counts[RTI_SIGNAL],
-            1,
-            context="EXTEST_PULSE DR scan",
-        )
+        self.check_run_test_idle_window(RTI_CHECK_ID, RTI_SIGNAL, context="EXTEST_PULSE DR scan")
         self.log_step(4, "EXTEST_PULSE parked in Run-Test/Idle holds run_test_idle high")
         context = "EXTEST_PULSE parked in Run-Test/Idle"
         await self.check_scan_observable(RTI_CHECK_ID, RTI_SIGNAL, 1, context=context)

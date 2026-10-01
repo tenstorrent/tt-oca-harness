@@ -37,11 +37,15 @@ class dtp_ijtag_scan_test_seq extends dtp_scan_base_test_seq;
   protected task check_stored_sib_across_gate(
       int unsigned sib, bit [DtpIjtagSibCount-1:0] open_pattern,
       sep_lifecycle_ctrl_pkg::dbg_disable_t gate_mask, string context_s);
+    string gated_controls[$];
     // Baseline: everything enabled, all SIBs closed.
     check_ijtag_pattern(3'b000, '0, {context_s, ".baseline"});
-    // Attempt to open the target SIB while its disable is asserted.
+    // Attempt to open the target SIB while its disable is asserted: its
+    // four scan controls stay quiet across the whole attempt.
     set_dbg_disable_full(gate_mask);
-    program_ijtag_sibs(open_pattern, gate_mask, {context_s, ".gated_open_attempt"});
+    ijtag_gated_controls(gate_mask, gated_controls);
+    program_ijtag_sibs_quiet(open_pattern, gate_mask, gated_controls, {
+                             context_s, ".gated_open_attempt"});
     // Release the disable without any reset: the gated open attempt must
     // not have stuck (a pre-staged open activating on release would be a
     // delayed-replay hazard).
@@ -77,6 +81,7 @@ class dtp_ijtag_scan_test_seq extends dtp_scan_base_test_seq;
     sep_lifecycle_ctrl_pkg::dbg_disable_t gate_masks[4];
     int unsigned order[4] = '{0, 1, 2, 3};
     `uvm_info(get_type_name(), "iJTAG SIB all-on", UVM_LOW)
+    check_host_scan_out_reset("all_on.reset");
     check_ijtag_pattern(3'b111, '0, "all_on.nominal");
     // One mask per SIB, then all three together.
     gate_masks[3] = '0;
@@ -177,6 +182,7 @@ class dtp_ijtag_scan_test_seq extends dtp_scan_base_test_seq;
     // Per-pass evidence every iJTAG pass must record (cocotb twin:
     // dtp_ijtag_scan_test_seq.py).
     string required[$] = {"CHK-TAP-RESET-TLR", "CHK-SCAN-WIN", "CHK-SCAN-LEN", "CHK-SCAN-CHAIN"};
+    if (scenario == "sib_all_on") required.push_back("CHK-SCAN-RESET");
     seed_scenario_rng();
     // Scenario-owned Shift-x exits: skip the scan-count cross-check.
     attach_family_checker(required, 1'b0);

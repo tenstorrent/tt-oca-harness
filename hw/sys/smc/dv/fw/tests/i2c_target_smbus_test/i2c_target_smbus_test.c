@@ -212,7 +212,7 @@ int main(void) {
     // Compute optimal timing parameters from physical characteristics
     i2c_timing_physical_t physical_params = {
         .speed = I2C_SPEED_STANDARD, // 100 kHz
-        .clock_period_nanos = 10,    // 100 MHz system clock (1/100MHz = 10ns)
+        .clock_period_nanos = 5,     // 200 MHz peripheral clock
         .sda_rise_nanos = 300,       // Typical for 4.7k pullup
         .sda_fall_nanos = 100,       // Typical fall time
         .scl_period_nanos = 0        // Auto (use minimum for standard mode = 10us)

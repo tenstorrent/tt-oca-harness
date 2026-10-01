@@ -45,8 +45,8 @@ addrmap alias_remap {
             field {
                 sw = rw;
                 hw = r;
-                desc = "If set, top two bits of a*cache will be tied high";
-            } cacheable[62:62] = 0x0;
+                desc = "Set to change the value of the axcache field of the transaction. This field will override all existing axcache bits.";
+            } cacheable[59:56] = 0x0;
 
             field {
                 sw = rw;

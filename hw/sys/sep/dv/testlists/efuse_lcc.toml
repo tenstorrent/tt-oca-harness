@@ -8,15 +8,26 @@ schema_version = 1
 
 [[tests]]
 name = "sep_efuse_sense_test"
-module = "efuse.sep_efuse_sense_test"
+module = { cocotb = "efuse.sep_efuse_sense_test", uvm = "sep_efuse_sense_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["smoke", "efuse", "ci"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
+
 # Pin the committed default preload (bare +sep_efuse_preload, no path) so the two
 # tests cover both sources: preload+backdoor here vs random+AXI in the image test.
+[tests.overrides.cocotb]
 args = ["+sep_efuse_preload"]
+
+# The eFuse bank model loads the same committed preload; the sequence compares
+# the sensed shadow with its committed expected shadow
+# (cocotb/env/sep_efuse_default_shadow.py writes it).
+[tests.overrides.uvm]
+args = [
+  "+sep_efuse_hex={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/sep_efuse_default.hex",
+  "+sep_efuse_shadow_hex={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/sep_efuse_default.shadow.hex",
+]
 
 [[tests]]
 name = "sep_efuse_image_test"
@@ -79,13 +90,13 @@ run_modes = ["cpu"]
 
 [[tests]]
 # eFuse program x write-lock on every legal spare field (never LC_STATE).
-# RAND-REP: unlocked program + write-lock reject on SPARE0..SPARE7 every seed;
+# RAND-REP: unlocked program + write-lock reject on SPARE0..SPARE8 every seed;
 # the seed selects only the bit offsets inside each spare. Real fuse sense.
 # Clear-after-program.
 name = "sep_efuse_program_lock_matrix_test"
 module = "efuse.sep_efuse_program_lock_matrix_test"
 seed = 1
-# No reseed: the walk visits SPARE0..SPARE7 every run, so slot coverage does not
+# No reseed: the walk visits SPARE0..SPARE8 every run, so slot coverage does not
 # depend on how many seeds CI draws. Only the bit offsets within each spare are
 # seed-selected.
 timeout_sec = 1800
@@ -129,10 +140,12 @@ target = "lsu_stub_all_live"
 # AXI OKAY. The map gate input is tied off, so that read returns an error
 # and the leaf fails there. After sense, zero opens FEAT_CTRL; token=1
 # mismatches and restores fail-closed PROD.
-# Does not force sec_dis.
+# Does not force sec_dis. Clearing the override resets the crypto engines
+# without isolation, so the crypto EDN request-hold checks are off.
 name = "sep_sec_dis_override_test"
 module = "efuse.sep_sec_dis_override_test"
 seed = 1
+args = ["+sep_edn_jtag_reset_waive"]
 timeout_sec = 1800
 tags = ["efuse", "lcc", "sec_dis", "subsystem"]
 run_modes = ["no_cpu"]
@@ -144,10 +157,12 @@ target = "lsu_stub_all_live"
 # slice. Override pins stay 0. SW_RESET_N returns its reset default once the
 # TDR releases sep_reset_n. Restoring the TDR enable holds the reset again, and
 # sense-done releases it. FEAT_CTRL stays the withheld profile before sense and
-# reads the PROD golden after it.
+# reads the PROD golden after it. The TDR re-hold resets the crypto engines
+# without isolation, so the crypto EDN request-hold checks are off.
 name = "sep_sec_dis_reset_reach_test"
 module = "efuse.sep_sec_dis_reset_reach_test"
 seed = 1
+args = ["+sep_edn_jtag_reset_waive"]
 timeout_sec = 1800
 tags = ["efuse", "lcc", "sec_dis", "subsystem"]
 run_modes = ["no_cpu"]
@@ -179,7 +194,7 @@ target = "lsu_stub_all_live"
 
 [[tests]]
 # Locked-field shadow access pulses sep_internal_interrupts[33]. RAND-REP:
-# write-lock and read-lock every seed. RANDCFG: which SPARE0..7 fields carry
+# write-lock and read-lock every seed. RANDCFG: which SPARE0..8 fields carry
 # write-lock, read-lock, and the unlocked contrast. Real fuse sense, LC_PROD.
 # Shadow aperture, not OTP program. Pulse-only combinational IRQ. no_cpu.
 name = "sep_locked_field_access_irq_path_test"

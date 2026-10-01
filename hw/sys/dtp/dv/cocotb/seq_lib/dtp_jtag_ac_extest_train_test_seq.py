@@ -5,8 +5,8 @@
 EXTEST_TRAIN (IR 0x05) selects the boundary-scan chain, which this bench loops
 back without boundary cells. The chain's ``run_test_idle`` strobe is the
 Run-Test/Idle decode the AC training launches on: it is high while the TAP is
-parked in Run-Test/Idle, low in Test-Logic-Reset, and pulses once across a DR
-scan, on the return to Run-Test/Idle.
+parked in Run-Test/Idle, low in Test-Logic-Reset, and low across a DR scan
+until the scan returns to Run-Test/Idle.
 """
 
 from __future__ import annotations
@@ -64,19 +64,13 @@ class dtp_jtag_ac_extest_train_test_seq(dtp_jtag_base_test_seq):
             await self.check_loopback_scan(DtpJtagInstr.EXTEST_TRAIN, pattern)
         self.log_step(3, "run_test_idle strobe follows the TAP parking state")
         await self.check_run_test_idle_strobe()
-        self.log_step(4, "EXTEST_TRAIN scan controls; run_test_idle pulses once, on the return")
-        counts = await self.check_bsr_scan_ctrl(
+        self.log_step(4, "EXTEST_TRAIN scan controls; run_test_idle high only on the return")
+        await self.check_bsr_scan_ctrl(
             DtpJtagInstr.EXTEST_TRAIN,
             self.random_pattern(DTP_BSR_MODEL_LEN, rng),
             extra_signals=(RTI_SIGNAL,),
         )
-        self.family_check(
-            RTI_CHECK_ID,
-            f"{RTI_SIGNAL} pulses across the scan",
-            counts[RTI_SIGNAL],
-            1,
-            context="EXTEST_TRAIN DR scan",
-        )
+        self.check_run_test_idle_window(RTI_CHECK_ID, RTI_SIGNAL, context="EXTEST_TRAIN DR scan")
         self.log_step(5, "BYPASS scan: select stays low while the TAP strobes pulse")
         await self.check_bsr_scan_ctrl(
             DtpJtagInstr.BYPASS_3F, 0x3C3C, width=16, mode=DtpScanCtrlExpect.UNSELECTED

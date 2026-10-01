@@ -8,7 +8,7 @@ schema_version = 1
 
 [[tests]]
 name = "sep_otbn_mem_smoke_test"
-module = "otbn.sep_otbn_mem_smoke_test"
+module = { cocotb = "otbn.sep_otbn_mem_smoke_test", uvm = "sep_otbn_mem_smoke_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["smoke", "otbn", "crypto", "memory"]
@@ -349,12 +349,16 @@ args = ["+skip_fuse_sense"]
 # defined): host reads and writes of the ABR aperture answer DECERR, and KM
 # CPU stores and loads of the ABR wrapper key aperture set AXI_DECERR, with
 # live HMAC controls on both paths. no_cpu; +skip_fuse_sense.
+# Pinned to Verilator: VCS coverage runs elaborate one target, `default`,
+# which keeps Adams Bridge, so this leaf cannot run there. The checks grade
+# response codes, which the two-state simulator observes.
 name = "sep_abr_absent_decerr_test"
 module = "crypto.sep_abr_absent_decerr_test"
 firmware = { name = "km_rom_abr_absent", mode = "km_rom_blob" }
 seed = 1
 timeout_sec = 1800
 tags = ["crypto", "abr", "km", "subsystem"]
+tools = ["verilator"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_abr_absent"
 args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_abr_absent.parhex"]

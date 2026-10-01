@@ -26,7 +26,7 @@ Per-core reset control and status, reset timing, chip configuration, mailbox, an
 [cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description
-| 0x0 - 0x18 | <<reg-{regmap-instance}-cpu_ctrl-RESET_VECTOR-0-,RESET_VECTOR[4]>> | RW a| -
+| 0x0 - 0x18 | <<reg-{regmap-instance}-cpu_ctrl-RESET_VECTOR-,RESET_VECTOR[4]>> | RW a| -
 | 0x20 | <<reg-{regmap-instance}-cpu_ctrl-RESET_CTRL,RESET_CTRL>> | RW a| -
 | 0x28 | <<reg-{regmap-instance}-cpu_ctrl-CORE_RESET_PULSE_COUNT,CORE_RESET_PULSE_COUNT>> | RW a| -
 | 0x30 | <<reg-{regmap-instance}-cpu_ctrl-RESET_TIMEOUT,RESET_TIMEOUT>> | RW a| -
@@ -34,22 +34,22 @@ Per-core reset control and status, reset timing, chip configuration, mailbox, an
 | 0x50 | <<reg-{regmap-instance}-cpu_ctrl-WDT_TIMEOUT,WDT_TIMEOUT>> | RW a| -
 | 0x58 | <<reg-{regmap-instance}-cpu_ctrl-WDT_TIMEOUT_RESET,WDT_TIMEOUT_RESET>> | RW a| -
 | 0x60 | <<reg-{regmap-instance}-cpu_ctrl-TEST_CTRL,TEST_CTRL>> | R a| -
-| 0x80 - 0xF8 | <<reg-{regmap-instance}-cpu_ctrl-SCRATCH-0-,SCRATCH[16]>> | RW a| -
-| 0x100 - 0x138 | <<reg-{regmap-instance}-cpu_ctrl-WB_PC_CORE0-0-,WB_PC_CORE0[8]>> | R a| -
-| 0x140 - 0x178 | <<reg-{regmap-instance}-cpu_ctrl-WB_PC_CORE1-0-,WB_PC_CORE1[8]>> | R a| -
-| 0x180 - 0x1B8 | <<reg-{regmap-instance}-cpu_ctrl-WB_PC_CORE2-0-,WB_PC_CORE2[8]>> | R a| -
-| 0x1C0 - 0x1F8 | <<reg-{regmap-instance}-cpu_ctrl-WB_PC_CORE3-0-,WB_PC_CORE3[8]>> | R a| -
+| 0x80 - 0xF8 | <<reg-{regmap-instance}-cpu_ctrl-SCRATCH-,SCRATCH[16]>> | RW a| -
+| 0x100 - 0x138 | <<reg-{regmap-instance}-cpu_ctrl-WB_PC_CORE0-,WB_PC_CORE0[8]>> | R a| -
+| 0x140 - 0x178 | <<reg-{regmap-instance}-cpu_ctrl-WB_PC_CORE1-,WB_PC_CORE1[8]>> | R a| -
+| 0x180 - 0x1B8 | <<reg-{regmap-instance}-cpu_ctrl-WB_PC_CORE2-,WB_PC_CORE2[8]>> | R a| -
+| 0x1C0 - 0x1F8 | <<reg-{regmap-instance}-cpu_ctrl-WB_PC_CORE3-,WB_PC_CORE3[8]>> | R a| -
 | 0x200 | <<reg-{regmap-instance}-cpu_ctrl-SMC_ATTRIBUTES,SMC_ATTRIBUTES>> | R a| -
-| 0x240 - 0x258 | <<reg-{regmap-instance}-cpu_ctrl-MUTEX-0-,MUTEX[4]>> | RW a| -
-| 0x260 - 0x278 | <<reg-{regmap-instance}-cpu_ctrl-SEMA-0-,SEMA[4]>> | RW a| -
+| 0x240 - 0x258 | <<reg-{regmap-instance}-cpu_ctrl-MUTEX-,MUTEX[4]>> | RW a| -
+| 0x260 - 0x278 | <<reg-{regmap-instance}-cpu_ctrl-SEMA-,SEMA[4]>> | RW a| -
 | 0x280 | <<reg-{regmap-instance}-cpu_ctrl-DUMMY_ROM_0,DUMMY_ROM_0>> | RW a| -
 | 0x288 | <<reg-{regmap-instance}-cpu_ctrl-DUMMY_ROM_1,DUMMY_ROM_1>> | RW a| -
 | 0x290 | <<reg-{regmap-instance}-cpu_ctrl-DUMMY_ROM_2,DUMMY_ROM_2>> | RW a| -
 | 0x298 | <<reg-{regmap-instance}-cpu_ctrl-DUMMY_ROM_3,DUMMY_ROM_3>> | RW a| -
-| 0x2A0 - 0x2B8 | <<reg-{regmap-instance}-cpu_ctrl-DUMMY_ROM_NULL-0-,DUMMY_ROM_NULL[4]>> | RW a| -
+| 0x2A0 - 0x2B8 | <<reg-{regmap-instance}-cpu_ctrl-DUMMY_ROM_NULL-,DUMMY_ROM_NULL[4]>> | RW a| -
 |===
 
-[#reg-{regmap-instance}-cpu_ctrl-RESET_VECTOR-0-]
+[#reg-{regmap-instance}-cpu_ctrl-RESET_VECTOR-]
 === RESET_VECTOR[4]
 
 [cols="1,3,1,1,6", options="header"]
@@ -140,10 +140,10 @@ for drain) before timeout. 0 = disabled, wait indefinitely.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:4 | `Reserved` | - | - a| Reserved
-| 3 | `reset_cycle_count_3` | RW | 0x0 a| Reset current cycle count value in 2nd stage watchdog timer
-| 2 | `reset_cycle_count_2` | RW | 0x0 a| Reset current cycle count value in 2nd stage watchdog timer
-| 1 | `reset_cycle_count_1` | RW | 0x0 a| Reset current cycle count value in 2nd stage watchdog timer
-| 0 | `reset_cycle_count_0` | RW | 0x0 a| Reset current cycle count value in 2nd stage watchdog timer
+| 3 | `reset_cycle_count_3` | RW 1P | 0x0 a| Reset current cycle count value in 2nd stage watchdog timer
+| 2 | `reset_cycle_count_2` | RW 1P | 0x0 a| Reset current cycle count value in 2nd stage watchdog timer
+| 1 | `reset_cycle_count_1` | RW 1P | 0x0 a| Reset current cycle count value in 2nd stage watchdog timer
+| 0 | `reset_cycle_count_0` | RW 1P | 0x0 a| Reset current cycle count value in 2nd stage watchdog timer
 |===
 
 [#reg-{regmap-instance}-cpu_ctrl-TEST_CTRL]
@@ -156,7 +156,7 @@ for drain) before timeout. 0 = disabled, wait indefinitely.
 | 31:0 | `data` | R | 0x0 a| Test control register for the CPU
 |===
 
-[#reg-{regmap-instance}-cpu_ctrl-SCRATCH-0-]
+[#reg-{regmap-instance}-cpu_ctrl-SCRATCH-]
 === SCRATCH[16]
 
 [cols="1,3,1,1,6", options="header"]
@@ -166,7 +166,7 @@ for drain) before timeout. 0 = disabled, wait indefinitely.
 | 31:0 | `data` | RW | 0x0 a| Scratch register for the CPU
 |===
 
-[#reg-{regmap-instance}-cpu_ctrl-WB_PC_CORE0-0-]
+[#reg-{regmap-instance}-cpu_ctrl-WB_PC_CORE0-]
 === WB_PC_CORE0[8]
 
 [cols="1,3,1,1,6", options="header"]
@@ -176,7 +176,7 @@ for drain) before timeout. 0 = disabled, wait indefinitely.
 | 57:0 | `pc` | R | 0x0 a| Writeback PC value
 |===
 
-[#reg-{regmap-instance}-cpu_ctrl-WB_PC_CORE1-0-]
+[#reg-{regmap-instance}-cpu_ctrl-WB_PC_CORE1-]
 === WB_PC_CORE1[8]
 
 [cols="1,3,1,1,6", options="header"]
@@ -186,7 +186,7 @@ for drain) before timeout. 0 = disabled, wait indefinitely.
 | 57:0 | `pc` | R | 0x0 a| Writeback PC value
 |===
 
-[#reg-{regmap-instance}-cpu_ctrl-WB_PC_CORE2-0-]
+[#reg-{regmap-instance}-cpu_ctrl-WB_PC_CORE2-]
 === WB_PC_CORE2[8]
 
 [cols="1,3,1,1,6", options="header"]
@@ -196,7 +196,7 @@ for drain) before timeout. 0 = disabled, wait indefinitely.
 | 57:0 | `pc` | R | 0x0 a| Writeback PC value
 |===
 
-[#reg-{regmap-instance}-cpu_ctrl-WB_PC_CORE3-0-]
+[#reg-{regmap-instance}-cpu_ctrl-WB_PC_CORE3-]
 === WB_PC_CORE3[8]
 
 [cols="1,3,1,1,6", options="header"]
@@ -224,7 +224,7 @@ for drain) before timeout. 0 = disabled, wait indefinitely.
 | 0 | `chiplet_is_primary` | R | - a| Indicates if this chiplet is primary (1) or secondary (0). Driven by strap.
 |===
 
-[#reg-{regmap-instance}-cpu_ctrl-MUTEX-0-]
+[#reg-{regmap-instance}-cpu_ctrl-MUTEX-]
 === MUTEX[4]
 
 [cols="1,3,1,1,6", options="header"]
@@ -234,7 +234,7 @@ for drain) before timeout. 0 = disabled, wait indefinitely.
 | 0 | `mutex` | RW | 0x1 a| HW mutex. Reads will attempt to acquire mutex, 1 on success. If the mutex is already acquired, the read will return 0. To release the mutex, write any value to the register.
 |===
 
-[#reg-{regmap-instance}-cpu_ctrl-SEMA-0-]
+[#reg-{regmap-instance}-cpu_ctrl-SEMA-]
 === SEMA[4]
 
 [cols="1,3,1,1,6", options="header"]
@@ -281,7 +281,7 @@ The written value is treated as a signed number using 2s compliment.
 | 63:0 | `dummy_rom_word_3` | RW | 0xFFDFF06F a| Word 3 of WFI loop
 |===
 
-[#reg-{regmap-instance}-cpu_ctrl-DUMMY_ROM_NULL-0-]
+[#reg-{regmap-instance}-cpu_ctrl-DUMMY_ROM_NULL-]
 === DUMMY_ROM_NULL[4]
 
 [cols="1,3,1,1,6", options="header"]

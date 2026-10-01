@@ -106,6 +106,11 @@ module dtp_stap_props
                   ptap_tdo_mux_i ==
                   (ptap_stap_select_i ? ptap_stap_scan_in_i : ptap_zlb_tdr_mux_i),
                   tck_i, trst_ni)
+  `OCAH_FV_ASSERT(ast_stap_chain_quiet_unselected,
+                  `OCAH_FV_IMPLIES(!ptap_stap_select_i,
+                                   !ptap_stap_ctrl_i.select && !ptap_stap_ctrl_i.capture_en &&
+                                   !ptap_stap_ctrl_i.shift_en && !ptap_stap_ctrl_i.update_en),
+                  tck_i, trst_ni)
 
   // ---- dbg_disable_i synchronizers: reset to disabled, two tck edges of latency --------------
   `OCAH_FV_ASSERT(ast_dbg_disable_sync_fail_closed,

@@ -182,7 +182,15 @@ Once the repository is cloned, install the required open source tools:
 
 ```bash
 sudo apt install asciidoctor asciidoctor-pdf verilator gcc \
-ccache picolibc-riscv64-unknown-elf cmake
+ccache picolibc-riscv64-unknown-elf cmake default-jre-headless
+```
+
+`default-jre-headless` provides the Java runtime that renders PlantUML diagrams in
+the PDF builds. The `asciidoctor-diagram` extension those builds require is not
+packaged for Ubuntu; install it as a gem:
+
+```bash
+gem install asciidoctor-diagram
 ```
 
 Follow the instructions on the following pages for tools not packaged within Ubuntu:

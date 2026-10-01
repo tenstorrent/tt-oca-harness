@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 module generic_vidtopid #(
     parameter int NumHarts = 8,
     parameter int NumHartsIdx = (NumHarts == 1) ? 1 : $clog2(NumHarts)

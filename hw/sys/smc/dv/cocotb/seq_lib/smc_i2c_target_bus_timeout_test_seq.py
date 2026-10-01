@@ -82,11 +82,12 @@ CLEAN_BYTE = 0x4B
 SWEEP_BYTE = 0xD2
 VIP_SPEED = 2_000_000
 
-# Timeout value in core clock cycles. The VIP holds SCL low for about one bit
-# period between bits, so the value sits well above that and the deliberate
-# park sits well above the value: the timeout must fire only where this leaf
-# puts it, never on ordinary bit timing.
-TIMEOUT_VAL = 400
+# Timeout value in time, programmed in cycles of the I2C core's peripheral
+# clock. The VIP holds SCL low for about one bit period between bits, so the
+# value sits well above that and the deliberate park sits well above the
+# value: the timeout must fire only where this leaf puts it, never on
+# ordinary bit timing.
+TIMEOUT_NS = 4_000
 SCL_PARK_NS = 20_000
 
 # Payload long enough to fill the acquisition FIFO, whose depth is read from
@@ -96,7 +97,8 @@ FILL_PAYLOAD = bytes((0x60 + i) & 0xFF for i in range(70))
 POLL_CYCLES = 200
 POLL_LIMIT = 400
 DRAIN_LIMIT = 600
-SETTLE_CYCLES = 40
+# Settle between polls, in time; the loops convert it to clk_smc_i cycles.
+SETTLE_NS = 200
 FILL_POLL_LIMIT = 4000
 
 
@@ -147,7 +149,8 @@ class smc_i2c_target_bus_timeout_test_seq(SmcCsrSeq):
             self._addr("TARGET_ID", idx),
             _pack_target_id(TARGET_ADDR[idx], 0x7F, 0, 0),
         )
-        timeout_word = (I2C_TIMEOUT_CTRL_EN | I2C_TIMEOUT_MODE_BUS | TIMEOUT_VAL) if timeout else 0
+        timeout_val = int(TIMEOUT_NS / self.cfg.periph_clk_period_ns)
+        timeout_word = (I2C_TIMEOUT_CTRL_EN | I2C_TIMEOUT_MODE_BUS | timeout_val) if timeout else 0
         await self.csr_write(
             f"I2C{idx}_TIMEOUT_CTRL", self._addr("TIMEOUT_CTRL", idx), timeout_word
         )
@@ -161,13 +164,16 @@ class smc_i2c_target_bus_timeout_test_seq(SmcCsrSeq):
             I2C_CTRL_ENABLETARGET | I2C_CTRL_ACQ_START_STOP_EN,
         )
 
+    def _settle_cycles(self) -> int:
+        return max(1, round(SETTLE_NS / self.cfg.smc_clk_period_ns))
+
     async def _wait_target_idle(self, idx: int, label: str) -> None:
         status = 0
         for _ in range(POLL_LIMIT):
             status = await self.csr_read(f"{label}_TIDLE", self._addr("STATUS", idx))
             if status & I2C_STATUS_TARGETIDLE:
                 return
-            await ClockCycles(cocotb.top.clk_smc_i, SETTLE_CYCLES)
+            await ClockCycles(cocotb.top.clk_smc_i, self._settle_cycles())
         raise AssertionError(f"{label}: I2C{idx} never reported TARGETIDLE (STATUS=0x{status:08x})")
 
     async def _drain_acq(self, idx: int, label: str) -> list[int]:
@@ -230,7 +236,7 @@ class smc_i2c_target_bus_timeout_test_seq(SmcCsrSeq):
                 break
             if task.done():
                 break
-            await ClockCycles(cocotb.top.clk_smc_i, SETTLE_CYCLES)
+            await ClockCycles(cocotb.top.clk_smc_i, self._settle_cycles())
         assert full & I2C_STATUS_ACQFULL, (
             f"I2C{idx} never filled its acquisition FIFO from a {len(FILL_PAYLOAD)}-byte write "
             f"with nothing draining it (STATUS=0x{full:08x})"
