@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-01T15:29:14+00:00",
+  "generated_at": "2026-10-01T17:54:34+00:00",
   "points": [
     {
       "failed_tests": 0,
@@ -541,6 +541,67 @@
       "per_dut": [
         {
           "comparison_key": "COVCMP-48e66ae6f6f971ff",
+          "coverage_status": "PASS",
+          "effective_metrics": {
+            "assertion": 96.44,
+            "branch": 86.53,
+            "condition": 82.32,
+            "fsm_state": 89.43,
+            "functional": 97.68,
+            "line": 95.47,
+            "toggle": 36.75,
+            "user": 99.7988
+          },
+          "flow": "smc",
+          "framework": "cocotb",
+          "holes_summary": {
+            "accepted": 0,
+            "by_category": {
+              "user": 1
+            },
+            "by_disposition": {
+              "cover": 1
+            },
+            "by_metric": {
+              "user": 1
+            },
+            "by_status": {
+              "open": 1
+            },
+            "details_available": true,
+            "hole_group_count": 0,
+            "native_point_count": 1,
+            "observations_complete": false,
+            "open": 1,
+            "unclassified": 1
+          },
+          "raw_metrics": {
+            "assertion": 96.44,
+            "branch": 83.94,
+            "condition": 72.29,
+            "fsm_state": 56.03,
+            "functional": 78.77,
+            "line": 95.47,
+            "toggle": 37.1,
+            "user": 99.7988
+          },
+          "status": "FAIL",
+          "target": "default",
+          "threshold_met": true,
+          "tool": "vcs"
+        }
+      ],
+      "test_pass_rate": 98.33
+    },
+    {
+      "failed_tests": 5,
+      "flaky_tests": 7,
+      "flow_pass_rate": 0.0,
+      "generated_at": "2026-10-01T17:54:34+00:00",
+      "id": "7ae3a12c499b0e4c",
+      "per_dut": [
+        {
+          "comparison_key": "COVCMP-183415ea58eea6f7",
           "coverage_status": "PASS",
           "effective_metrics": {
             "assertion": 96.44,
