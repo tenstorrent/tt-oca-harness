@@ -711,6 +711,33 @@
 <caption class="title"><a href="#trm-table-2">Table 2</a>. <code>sep_io_spi_rsp_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
 <tr><td><code>sd</code></td><td><code>logic [3:0]</code></td><td></td></tr>
 </table>
+<h2 id="sep_io_spi_pads_t"><code>sep_io_spi_pads_t</code></h2>
+<p>=========================================================================</p>
+<p>Packed struct</p>
+<table id="trm-table-3">
+<caption class="title"><a href="#trm-table-3">Table 3</a>. <code>sep_io_spi_pads_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>enable</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>clk</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>txd</code></td><td><code>logic [7:0]</code></td><td></td></tr>
+<tr><td><code>cs_n</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>cs_oe_n</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>cs_ie_n</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>clk_oe_n</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>clk_ie_n</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>dqs_oe_n</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>dqs_ie_n</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>dq_oe_n</code></td><td><code>logic [7:0]</code></td><td></td></tr>
+<tr><td><code>dq_ie_n</code></td><td><code>logic [7:0]</code></td><td></td></tr>
+<tr><td><code>mem_rebar_oepad</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>mem_rebar_opad</code></td><td><code>logic</code></td><td></td></tr>
+<tr><td><code>mem_rebar_iepad</code></td><td><code>logic</code></td><td></td></tr>
+</table>
+<h2 id="ot_spi_pad_map"><code>ot_spi_pad_map</code></h2>
+<p>Function returning <code>sep_io_spi_pads_t</code></p>
+<table id="trm-table-4">
+<caption class="title"><a href="#trm-table-4">Table 4</a>. <code>ot_spi_pad_map</code></caption><tr><th>Name</th><th>Direction</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>req</code></td><td>input</td><td><code>sep_io_spi_req_t</code></td><td></td></tr>
+</table>
 </div>
 </article>
   </div>

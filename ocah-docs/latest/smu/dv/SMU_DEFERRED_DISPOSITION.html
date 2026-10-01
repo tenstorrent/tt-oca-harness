@@ -939,8 +939,8 @@ elaboration leaves — are not in this table: each is carded in
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu_sep_spi_mux_ctrl_wire_test</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">OUT-until-SEP1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside <code>hosted</code> (bucket <code>OUT-until-SEP1</code>).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">waived</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Leftover catalog name. The EXT_SPI_CTRL register it names is in a companion wrapper outside the OCAH hierarchy, so this bench has no register for it to wire. No SPI select exists: the OT SPI host reaches the pads only on the SMC LSIO primary plane.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu_sep_wdt_cdc_path_test</p></td>
