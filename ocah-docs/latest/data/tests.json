@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-01T06:49:41+00:00",
+  "generated_at": "2026-10-01T11:29:58+00:00",
   "results": [
     {
       "flow": "aou",
@@ -550,1235 +550,1235 @@
       "tests": [
         {
           "category": "smoke",
-          "duration_sec": 15.565,
-          "name": "dtp_jtag_idcode_test",
-          "seed": 250216044,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "basic_jtag",
-          "duration_sec": 21.892,
-          "name": "dtp_jtag_runbist_test",
-          "seed": 506279557,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "basic_jtag",
-          "duration_sec": 15.744,
-          "name": "dtp_jtag_extest_test",
-          "seed": 1175193262,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "basic_jtag",
-          "duration_sec": 15.932,
-          "name": "dtp_jtag_intest_test",
-          "seed": 343523960,
+          "duration_sec": 18.357,
+          "name": "dtp_sanity_test",
+          "seed": 708692975,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "smoke",
-          "duration_sec": 33.886,
-          "name": "dtp_sanity_test",
-          "seed": 456853002,
+          "duration_sec": 11.184,
+          "name": "dtp_jtag_idcode_test",
+          "seed": 1582358225,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "basic_jtag",
-          "duration_sec": 29.322,
+          "duration_sec": 9.858,
+          "name": "dtp_jtag_runbist_test",
+          "seed": 981350440,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "basic_jtag",
+          "duration_sec": 14.559,
           "name": "dtp_jtag_sample_preload_test",
-          "seed": 757500734,
+          "seed": 485699273,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "basic_jtag",
-          "duration_sec": 22.887,
-          "name": "dtp_jtag_highz_test",
-          "seed": 900444000,
+          "duration_sec": 11.936,
+          "name": "dtp_jtag_extest_test",
+          "seed": 1825557308,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "basic_jtag",
-          "duration_sec": 82.406,
+          "duration_sec": 28.051,
           "name": "dtp_jtag_bypass_test",
-          "seed": 1187120394,
+          "seed": 1967705261,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "basic_jtag",
-          "duration_sec": 10.368,
-          "name": "dtp_jtag_trst_test",
-          "seed": 1668779291,
+          "duration_sec": 29.39,
+          "name": "dtp_jtag_intest_test",
+          "seed": 962244402,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "basic_jtag",
-          "duration_sec": 6.409,
-          "name": "dtp_jtag_trst_por_independence_test",
-          "seed": 350862456,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "basic_jtag",
-          "duration_sec": 76.738,
+          "duration_sec": 16.212,
           "name": "dtp_jtag_clamp_test",
-          "seed": 509558680,
+          "seed": 909661458,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "basic_jtag",
-          "duration_sec": 33.692,
-          "name": "dtp_jtag_tlr_reset_test",
-          "seed": 1469118902,
+          "duration_sec": 10.021,
+          "name": "dtp_jtag_trst_test",
+          "seed": 218055889,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "basic_jtag",
-          "duration_sec": 19.665,
-          "name": "dtp_jtag_ac_extest_train_test",
-          "seed": 726344222,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "basic_jtag",
-          "duration_sec": 31.848,
-          "name": "dtp_jtag_zero_length_bypass_test",
-          "seed": 777726719,
-          "stage": "sim",
-          "status": "FAIL"
-        },
-        {
-          "category": "basic_jtag",
-          "duration_sec": 25.016,
-          "name": "dtp_jtag_ac_extest_pulse_test",
-          "seed": 137795842,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "basic_jtag",
-          "duration_sec": 184.514,
+          "duration_sec": 83.721,
           "name": "dtp_jtag_undef_instr_test",
-          "seed": 805376328,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 61.715,
-          "name": "dtp_jtag2axi_smc_axi_series_write_read_incr_with_error_test",
-          "seed": 2042871411,
+          "seed": 1625759596,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "basic_jtag",
-          "duration_sec": 27.362,
+          "duration_sec": 49.251,
+          "name": "dtp_jtag_highz_test",
+          "seed": 1123800807,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "basic_jtag",
+          "duration_sec": 29.803,
+          "name": "dtp_jtag_zero_length_bypass_test",
+          "seed": 364095591,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "basic_jtag",
+          "duration_sec": 29.101,
           "name": "dtp_jtag_inv_bypass_test",
-          "seed": 480324867,
+          "seed": 1281880427,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "basic_jtag",
-          "duration_sec": 250.111,
+          "duration_sec": 7.505,
+          "name": "dtp_jtag_trst_por_independence_test",
+          "seed": 1006816077,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "basic_jtag",
+          "duration_sec": 38.382,
+          "name": "dtp_jtag_tlr_reset_test",
+          "seed": 652988214,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "basic_jtag",
+          "duration_sec": 24.192,
+          "name": "dtp_jtag_ac_extest_train_test",
+          "seed": 665372650,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "basic_jtag",
+          "duration_sec": 19.731,
+          "name": "dtp_jtag_ac_extest_pulse_test",
+          "seed": 732765183,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "basic_jtag",
+          "duration_sec": 70.24,
           "name": "dtp_jtag_clamp_hold_test",
-          "seed": 1332060866,
+          "seed": 938535406,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 25.272,
+          "name": "dtp_jtag2axi_smc_axi_read_security_gating_no_axi_activity_test",
+          "seed": 771735234,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 38.923,
+          "name": "dtp_jtag2axi_smc_axi_read_security_gating_test",
+          "seed": 1946992074,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 25.734,
+          "name": "dtp_jtag2axi_smc_axi_read_random_ops_test",
+          "seed": 335497668,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 24.207,
+          "name": "dtp_jtag2axi_smc_axi_series_write_read_incr_with_error_test",
+          "seed": 1860953074,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 15.919,
+          "name": "dtp_jtag2axi_smc_axi_series_write_read_no_incr_test",
+          "seed": 1240668018,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 21.675,
+          "name": "dtp_jtag2axi_smc_axi_series_write_read_incr_narrow_test",
+          "seed": 213311269,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 24.125,
+          "name": "dtp_jtag2axi_smc_axi_series_write_read_incr_test",
+          "seed": 1578396349,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "functional",
+          "duration_sec": 20.411,
+          "name": "dtp_jtag2axi_smc_axi_single_write_read_test",
+          "seed": 1096927262,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 21.682,
+          "name": "dtp_jtag2axi_smc_axi_write_security_gating_test",
+          "seed": 1415308835,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 14.897,
+          "name": "dtp_jtag2axi_smc_axi_random_ops_test",
+          "seed": 1795966413,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 13.199,
+          "name": "dtp_jtag2axi_smc_axi_series_write_incr_narrow_test",
+          "seed": 1038700383,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 30.289,
+          "name": "dtp_jtag2axi_smc_axi_series_write_incr_with_error_test",
+          "seed": 975651677,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 27.215,
+          "name": "dtp_jtag2axi_smc_axi_series_write_no_incr_test",
+          "seed": 2024439422,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 10.613,
+          "name": "dtp_jtag2axi_smc_axi_series_write_incr_test",
+          "seed": 868816914,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 18.472,
+          "name": "dtp_jtag2axi_smc_axi_single_write_data_verify_test",
+          "seed": 93762496,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 16.922,
+          "name": "dtp_jtag2axi_smc_otp_axi_single_write_data_verify_test",
+          "seed": 1478107495,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "basic_jtag",
-          "duration_sec": 293.24,
+          "duration_sec": 166.031,
           "name": "dtp_jtag_clamp_release_test",
-          "seed": 332497026,
+          "seed": 128041485,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 249.139,
-          "name": "dtp_jtag2axi_smc_axi_read_security_gating_test",
-          "seed": 1750103182,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 147.454,
-          "name": "dtp_jtag2axi_smc_axi_series_write_read_incr_test",
-          "seed": 402533306,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "functional",
-          "duration_sec": 80.316,
-          "name": "dtp_jtag2axi_smc_axi_single_write_read_test",
-          "seed": 326308426,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 41.296,
-          "name": "dtp_jtag2axi_smc_axi_series_write_incr_with_error_test",
-          "seed": 358357722,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 374.885,
-          "name": "dtp_jtag2axi_smc_axi_read_security_gating_no_axi_activity_test",
-          "seed": 1636710929,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 359.554,
-          "name": "dtp_jtag2axi_smc_axi_read_random_ops_test",
-          "seed": 1203182918,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 65.158,
-          "name": "dtp_jtag2axi_smc_axi_series_write_no_incr_test",
-          "seed": 1399646124,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 24.552,
-          "name": "dtp_jtag2axi_smc_axi_series_write_incr_test",
-          "seed": 1198296233,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 25.612,
-          "name": "dtp_jtag2axi_smc_axi_single_write_data_verify_test",
-          "seed": 1574428384,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 79.516,
-          "name": "dtp_jtag2axi_smc_axi_series_write_incr_narrow_test",
-          "seed": 1285871793,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 192.727,
-          "name": "dtp_jtag2axi_smc_axi_random_ops_test",
-          "seed": 1958514128,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 32.088,
-          "name": "dtp_jtag2axi_smc_otp_axi_single_write_data_verify_test",
-          "seed": 741815235,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 68.573,
+          "duration_sec": 30.741,
           "name": "dtp_jtag2axi_smc_otp_axi_single_write_test",
-          "seed": 650381509,
+          "seed": 1876944455,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 36.626,
+          "duration_sec": 18.974,
           "name": "dtp_jtag2axi_smc_otp_axi_series_write_incr_test",
-          "seed": 1253439250,
+          "seed": 1839275623,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 37.339,
-          "name": "dtp_jtag2axi_smc_otp_axi_series_write_incr_with_error_test",
-          "seed": 1500465888,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 98.29,
+          "duration_sec": 25.559,
           "name": "dtp_jtag2axi_smc_otp_axi_series_write_no_incr_test",
-          "seed": 2029138784,
+          "seed": 1294475697,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 59.516,
+          "duration_sec": 17.519,
+          "name": "dtp_jtag2axi_smc_otp_axi_series_write_incr_with_error_test",
+          "seed": 925108273,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 23.415,
           "name": "dtp_jtag2axi_smc_otp_axi_random_ops_test",
-          "seed": 110991988,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 512.535,
-          "name": "dtp_jtag2axi_smc_axi_series_write_read_incr_narrow_test",
-          "seed": 699047446,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 74.254,
-          "name": "dtp_jtag2axi_sep_otp_axi_single_write_data_verify_test",
-          "seed": 795518706,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 142.72,
-          "name": "dtp_jtag2axi_sep_otp_axi_series_write_incr_test",
-          "seed": 852751897,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 69.448,
-          "name": "dtp_jtag2axi_sep_otp_axi_series_write_incr_with_error_test",
-          "seed": 366091716,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 716.893,
-          "name": "dtp_jtag2axi_smc_axi_series_write_read_no_incr_test",
-          "seed": 345431999,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 284.126,
-          "name": "dtp_jtag2axi_sep_otp_axi_single_write_test",
-          "seed": 1758750748,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 85.524,
-          "name": "dtp_jtag2axi_smc_otp_axi_single_write_read_test",
-          "seed": 2053850458,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 48.719,
-          "name": "dtp_jtag2axi_smc_otp_axi_series_write_read_incr_test",
-          "seed": 425765439,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 412.053,
-          "name": "dtp_jtag2axi_smc_otp_axi_write_security_gating_test",
-          "seed": 1939370888,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 208.185,
-          "name": "dtp_jtag2axi_sep_otp_axi_random_ops_test",
-          "seed": 2072890136,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 150.795,
-          "name": "dtp_jtag2axi_sep_otp_axi_write_security_gating_test",
-          "seed": 383834262,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 336.97,
-          "name": "dtp_jtag2axi_sep_otp_axi_series_write_no_incr_test",
-          "seed": 1729341656,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 136.851,
-          "name": "dtp_jtag2axi_smc_otp_axi_series_write_read_incr_oversize_test",
-          "seed": 2081422450,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 90.109,
-          "name": "dtp_jtag2axi_smc_otp_axi_series_write_read_incr_with_error_test",
-          "seed": 1384039638,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 107.137,
-          "name": "dtp_jtag2axi_smc_otp_axi_read_security_gating_test",
-          "seed": 493043920,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 144.74,
-          "name": "dtp_jtag2axi_smc_otp_axi_read_random_ops_test",
-          "seed": 147966390,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 32.388,
-          "name": "dtp_jtag2axi_sep_otp_axi_series_write_read_no_incr_test",
-          "seed": 2066018469,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 216.528,
-          "name": "dtp_jtag2axi_smc_otp_axi_series_write_read_no_incr_test",
-          "seed": 547792709,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 149.046,
-          "name": "dtp_jtag2axi_sep_otp_axi_single_write_read_test",
-          "seed": 2061948962,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 140.312,
-          "name": "dtp_jtag2axi_sep_otp_axi_series_write_read_incr_test",
-          "seed": 1085917641,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 81.198,
-          "name": "dtp_jtag2axi_sep_otp_axi_read_random_ops_test",
-          "seed": 2048396832,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 74.08,
-          "name": "dtp_jtag2axi_sep_otp_axi_read_security_gating_test",
-          "seed": 957184794,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 103.63,
-          "name": "dtp_jtag2axi_smc_axi_error_single_write_test",
-          "seed": 1075995440,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 70.912,
-          "name": "dtp_jtag2axi_smc_axi_error_series_no_incr_read_test",
-          "seed": 1406631008,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 136.52,
-          "name": "dtp_jtag2axi_smc_axi_error_series_incr_write_test",
-          "seed": 386687293,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 70.669,
-          "name": "dtp_jtag2axi_smc_axi_error_series_incr_write_with_status_test",
-          "seed": 1720579018,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 189.468,
-          "name": "dtp_jtag2axi_smc_axi_error_single_read_test",
-          "seed": 201774837,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 174.214,
-          "name": "dtp_jtag2axi_smc_axi_error_series_incr_read_test",
-          "seed": 337758327,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 306.706,
-          "name": "dtp_jtag2axi_smc_axi_error_series_no_incr_write_test",
-          "seed": 613484519,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 164.894,
-          "name": "dtp_jtag2axi_smc_axi_error_series_incr_read_with_status_test",
-          "seed": 533621569,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 119.044,
-          "name": "dtp_jtag2axi_smc_axi_error_security_gating_test",
-          "seed": 1648362883,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 95.798,
-          "name": "dtp_jtag2axi_smc_otp_axi_error_single_write_test",
-          "seed": 1804494789,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 45.556,
-          "name": "dtp_jtag2axi_smc_otp_axi_error_series_incr_write_test",
-          "seed": 1349099799,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 71.668,
-          "name": "dtp_jtag2axi_smc_otp_axi_error_series_incr_read_test",
-          "seed": 2134812357,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 97.115,
-          "name": "dtp_jtag2axi_smc_otp_axi_error_series_no_incr_read_test",
-          "seed": 831990753,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 607.371,
-          "name": "dtp_jtag2axi_sep_otp_axi_series_write_read_incr_with_error_test",
-          "seed": 45716367,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 107.202,
-          "name": "dtp_jtag2axi_smc_otp_axi_error_single_read_test",
-          "seed": 668383618,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 84.802,
-          "name": "dtp_jtag2axi_smc_otp_axi_error_series_incr_read_with_status_test",
-          "seed": 922803417,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 215.941,
-          "name": "dtp_jtag2axi_smc_otp_axi_error_series_no_incr_write_test",
-          "seed": 2007412101,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 57.613,
-          "name": "dtp_jtag2axi_sep_otp_axi_error_series_no_incr_write_test",
-          "seed": 973558880,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 43.845,
-          "name": "dtp_jtag2axi_sep_otp_axi_error_series_no_incr_read_test",
-          "seed": 1676904928,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 243.002,
-          "name": "dtp_jtag2axi_smc_otp_axi_error_series_incr_write_with_status_test",
-          "seed": 2124282846,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 217.677,
-          "name": "dtp_jtag2axi_smc_otp_axi_error_security_gating_test",
-          "seed": 20243377,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 51.435,
-          "name": "dtp_jtag2axi_sep_otp_axi_error_series_incr_read_test",
-          "seed": 763191166,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 192.037,
-          "name": "dtp_jtag2axi_sep_otp_axi_error_single_write_test",
-          "seed": 1530974521,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 73.707,
-          "name": "dtp_jtag2axi_sep_otp_axi_error_series_incr_write_with_status_test",
-          "seed": 2102386921,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 40.972,
-          "name": "dtp_jtag2axi_backpressure_aw_before_w_test",
-          "seed": 1750921054,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 116.022,
-          "name": "dtp_jtag2axi_sep_otp_axi_error_series_incr_read_with_status_test",
-          "seed": 2112394146,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 23.643,
-          "name": "dtp_jtag2axi_backpressure_abort_at_data_w_test",
-          "seed": 1517722538,
-          "stage": "sim",
-          "status": "FAIL"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 359.14,
-          "name": "dtp_jtag2axi_sep_otp_axi_error_single_read_test",
-          "seed": 1133749001,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 287.107,
-          "name": "dtp_jtag2axi_sep_otp_axi_error_series_incr_write_test",
-          "seed": 203983560,
+          "seed": 283149536,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "functional",
-          "duration_sec": 1736.949,
+          "duration_sec": 77.215,
           "name": "dtp_jtag2axi_smc_axi_single_write_test",
-          "seed": 479565743,
+          "seed": 890462376,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 282.075,
+          "duration_sec": 31.652,
+          "name": "dtp_jtag2axi_smc_otp_axi_write_security_gating_test",
+          "seed": 664865690,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 15.669,
+          "name": "dtp_jtag2axi_sep_otp_axi_single_write_data_verify_test",
+          "seed": 1905894954,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 25.114,
+          "name": "dtp_jtag2axi_sep_otp_axi_series_write_incr_test",
+          "seed": 1054187298,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 9.741,
+          "name": "dtp_jtag2axi_sep_otp_axi_series_write_no_incr_test",
+          "seed": 833690981,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 15.7,
+          "name": "dtp_jtag2axi_sep_otp_axi_series_write_incr_with_error_test",
+          "seed": 949827448,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 55.084,
+          "name": "dtp_jtag2axi_sep_otp_axi_single_write_test",
+          "seed": 1008516172,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 26.848,
+          "name": "dtp_jtag2axi_sep_otp_axi_random_ops_test",
+          "seed": 126127313,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 21.413,
+          "name": "dtp_jtag2axi_sep_otp_axi_write_security_gating_test",
+          "seed": 1456788292,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 17.316,
+          "name": "dtp_jtag2axi_smc_otp_axi_single_write_read_test",
+          "seed": 1018531685,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 24.701,
+          "name": "dtp_jtag2axi_smc_otp_axi_series_write_read_incr_test",
+          "seed": 1213020201,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 23.179,
+          "name": "dtp_jtag2axi_smc_otp_axi_series_write_read_incr_with_error_test",
+          "seed": 352152345,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 39.584,
+          "name": "dtp_jtag2axi_smc_otp_axi_series_write_read_no_incr_test",
+          "seed": 34374326,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 10.581,
+          "name": "dtp_jtag2axi_sep_otp_axi_single_write_read_test",
+          "seed": 641774018,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 16.915,
+          "name": "dtp_jtag2axi_sep_otp_axi_series_write_read_incr_test",
+          "seed": 261393431,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 18.42,
+          "name": "dtp_jtag2axi_sep_otp_axi_series_write_read_incr_with_error_test",
+          "seed": 843708243,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 57.957,
+          "name": "dtp_jtag2axi_smc_otp_axi_series_write_read_incr_oversize_test",
+          "seed": 1820283237,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 45.915,
+          "name": "dtp_jtag2axi_smc_otp_axi_read_random_ops_test",
+          "seed": 1693433114,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 29.785,
+          "name": "dtp_jtag2axi_sep_otp_axi_series_write_read_no_incr_test",
+          "seed": 106043943,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 24.242,
+          "name": "dtp_jtag2axi_sep_otp_axi_read_random_ops_test",
+          "seed": 1578848417,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 17.486,
+          "name": "dtp_jtag2axi_smc_axi_error_single_write_test",
+          "seed": 1064772279,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 15.234,
+          "name": "dtp_jtag2axi_smc_axi_error_single_read_test",
+          "seed": 289124811,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 56.966,
+          "name": "dtp_jtag2axi_smc_otp_axi_read_security_gating_test",
+          "seed": 996047338,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 13.106,
+          "name": "dtp_jtag2axi_smc_axi_error_series_no_incr_write_test",
+          "seed": 516935518,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 20.27,
+          "name": "dtp_jtag2axi_smc_axi_error_series_no_incr_read_test",
+          "seed": 2102698450,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 11.521,
+          "name": "dtp_jtag2axi_smc_axi_error_series_incr_write_test",
+          "seed": 1245702759,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 15.991,
+          "name": "dtp_jtag2axi_smc_axi_error_series_incr_read_test",
+          "seed": 309218739,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 11.873,
+          "name": "dtp_jtag2axi_smc_axi_error_series_incr_write_with_status_test",
+          "seed": 409872810,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 13.119,
+          "name": "dtp_jtag2axi_smc_axi_error_series_incr_read_with_status_test",
+          "seed": 1969881300,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 66.973,
+          "name": "dtp_jtag2axi_sep_otp_axi_read_security_gating_test",
+          "seed": 912820695,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 19.131,
+          "name": "dtp_jtag2axi_smc_otp_axi_error_single_read_test",
+          "seed": 1264511096,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 10.981,
+          "name": "dtp_jtag2axi_smc_otp_axi_error_series_incr_write_test",
+          "seed": 392672254,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 22.751,
+          "name": "dtp_jtag2axi_smc_otp_axi_error_series_incr_read_test",
+          "seed": 1888349418,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 46.498,
+          "name": "dtp_jtag2axi_smc_axi_error_security_gating_test",
+          "seed": 1199193708,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 25.594,
+          "name": "dtp_jtag2axi_smc_otp_axi_error_single_write_test",
+          "seed": 124068142,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 38.717,
+          "name": "dtp_jtag2axi_smc_otp_axi_error_series_no_incr_write_test",
+          "seed": 261653112,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 26.337,
+          "name": "dtp_jtag2axi_smc_otp_axi_error_series_no_incr_read_test",
+          "seed": 737210563,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 14.397,
+          "name": "dtp_jtag2axi_smc_otp_axi_error_series_incr_write_with_status_test",
+          "seed": 1014862102,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 12.966,
+          "name": "dtp_jtag2axi_smc_otp_axi_error_series_incr_read_with_status_test",
+          "seed": 224149568,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 23.652,
+          "name": "dtp_jtag2axi_smc_otp_axi_error_security_gating_test",
+          "seed": 1573453529,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 26.582,
+          "name": "dtp_jtag2axi_sep_otp_axi_error_single_write_test",
+          "seed": 1619501807,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 17.818,
+          "name": "dtp_jtag2axi_sep_otp_axi_error_series_no_incr_write_test",
+          "seed": 889392121,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 23.288,
+          "name": "dtp_jtag2axi_sep_otp_axi_error_series_no_incr_read_test",
+          "seed": 990924116,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 11.675,
+          "name": "dtp_jtag2axi_sep_otp_axi_error_series_incr_write_test",
+          "seed": 99151816,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 15.979,
+          "name": "dtp_jtag2axi_sep_otp_axi_error_series_incr_write_with_status_test",
+          "seed": 309562352,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 22.925,
+          "name": "dtp_jtag2axi_sep_otp_axi_error_series_incr_read_with_status_test",
+          "seed": 1218503911,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 29.796,
+          "name": "dtp_jtag2axi_sep_otp_axi_error_single_read_test",
+          "seed": 2102622756,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 24.25,
+          "name": "dtp_jtag2axi_sep_otp_axi_error_series_incr_read_test",
+          "seed": 2133602136,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 18.765,
           "name": "dtp_jtag2axi_sep_otp_axi_error_security_gating_test",
-          "seed": 1361465418,
+          "seed": 711893767,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 98.317,
-          "name": "dtp_jtag2axi_cdc_clear_abort_narrow_reset_mid_xaction_test",
-          "seed": 143061246,
+          "duration_sec": 19.651,
+          "name": "dtp_jtag2axi_backpressure_aw_before_w_test",
+          "seed": 1012142740,
           "stage": "sim",
-          "status": "FAIL"
+          "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 128.238,
+          "duration_sec": 43.591,
+          "name": "dtp_jtag2axi_cdc_clear_abort_back_to_back_reset_test",
+          "seed": 2001202886,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 17.557,
           "name": "dtp_jtag2axi_decode_error_decerr_write_test",
-          "seed": 967566861,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "debug_tdr",
-          "duration_sec": 15.616,
-          "name": "dtp_jtag_tmp_status_register_smoke_test",
-          "seed": 4930296,
+          "seed": 530471981,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 169.374,
+          "duration_sec": 59.558,
+          "name": "dtp_jtag2axi_backpressure_abort_at_data_w_test",
+          "seed": 1943958730,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 29.279,
           "name": "dtp_jtag2axi_decode_error_decerr_read_test",
-          "seed": 1457593613,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "debug_tdr",
-          "duration_sec": 12.103,
-          "name": "dtp_jtag_tmp_status_chrst_n_in_persistence_test",
-          "seed": 1716230668,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "debug_tdr",
-          "duration_sec": 11.633,
-          "name": "dtp_jtag_tmp_status_bypass_escape_test",
-          "seed": 192054886,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "debug_tdr",
-          "duration_sec": 26.149,
-          "name": "dtp_dbg_ctrl_clk_stop_jtag_clock_stop_test",
-          "seed": 1138718857,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "debug_tdr",
-          "duration_sec": 41.226,
-          "name": "dtp_jtag_ic_reset_test",
-          "seed": 1106744789,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "debug_tdr",
-          "duration_sec": 32.969,
-          "name": "dtp_dbg_ctrl_clk_stop_cla_clock_stop_test",
-          "seed": 199357724,
+          "seed": 484973437,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 2169.906,
-          "name": "dtp_jtag2axi_smc_axi_write_security_gating_test",
-          "seed": 108829854,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "debug_tdr",
-          "duration_sec": 103.877,
-          "name": "dtp_dbg_jtag_caps_test",
-          "seed": 1597410444,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "debug_tdr",
-          "duration_sec": 47.705,
-          "name": "dtp_dbg_ctrl_boot_stall_test",
-          "seed": 1552023277,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 329.069,
+          "duration_sec": 41.995,
           "name": "dtp_jtag2axi_decode_error_mixed_test",
-          "seed": 461669929,
+          "seed": 1191036609,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "debug_tdr",
-          "duration_sec": 29.102,
-          "name": "dtp_dbg_smc_jtag2axi_caps_test",
-          "seed": 1528057807,
+          "duration_sec": 10.621,
+          "name": "dtp_jtag_tmp_status_register_smoke_test",
+          "seed": 8598962,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "debug_tdr",
-          "duration_sec": 33.704,
-          "name": "dtp_dbg_sep_otp_jtag2axi_caps_test",
-          "seed": 1754211000,
+          "duration_sec": 10.403,
+          "name": "dtp_jtag_tmp_status_chrst_n_in_persistence_test",
+          "seed": 152653086,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "debug_tdr",
-          "duration_sec": 45.905,
-          "name": "dtp_dbg_smc_otp_jtag2axi_caps_test",
-          "seed": 469755230,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "scan",
-          "duration_sec": 24.188,
-          "name": "dtp_ijtag_sib_all_off_test",
-          "seed": 509015917,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "scan",
-          "duration_sec": 33.291,
-          "name": "dtp_ijtag_sib_all_on_test",
-          "seed": 748082830,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "scan",
-          "duration_sec": 38.264,
-          "name": "dtp_ijtag_sib_random_test",
-          "seed": 1245963143,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "scan",
-          "duration_sec": 17.261,
-          "name": "dtp_ijtag_dft_test",
-          "seed": 904177013,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "scan",
-          "duration_sec": 18.831,
-          "name": "dtp_ijtag_dfd_test",
-          "seed": 1286801785,
+          "duration_sec": 10.735,
+          "name": "dtp_jtag_tmp_status_bypass_escape_test",
+          "seed": 406571823,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "debug_tdr",
-          "duration_sec": 209.444,
-          "name": "dtp_dbg_ctrl_clk_stop_random_clock_stop_test",
-          "seed": 123305957,
+          "duration_sec": 13.839,
+          "name": "dtp_dbg_ctrl_clk_stop_jtag_clock_stop_test",
+          "seed": 1392128085,
           "stage": "sim",
           "status": "PASS"
         },
         {
-          "category": "scan",
-          "duration_sec": 34.875,
-          "name": "dtp_3dcr_stap_sel_smc_test",
-          "seed": 1392066721,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "scan",
-          "duration_sec": 45.756,
-          "name": "dtp_3dcr_stap_sel_extra_test",
-          "seed": 1878050275,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "scan",
-          "duration_sec": 43.985,
-          "name": "dtp_3dcr_stap_sel_sep_test",
-          "seed": 1834365812,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "scan",
-          "duration_sec": 11.559,
-          "name": "dtp_ext_stap_scan_test",
-          "seed": 1285745910,
+          "category": "debug_tdr",
+          "duration_sec": 20.686,
+          "name": "dtp_dbg_ctrl_clk_stop_cla_clock_stop_test",
+          "seed": 734845225,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 701.372,
+          "duration_sec": 140.183,
           "name": "dtp_jtag2axi_backpressure_long_stall_test",
-          "seed": 299651069,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "scan",
-          "duration_sec": 76.051,
-          "name": "dtp_3dcr_stap_sel_ds_test",
-          "seed": 1954318382,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "scan",
-          "duration_sec": 11.785,
-          "name": "dtp_stap_chain_hold_test",
-          "seed": 1079929372,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "scan",
-          "duration_sec": 11.367,
-          "name": "dtp_scan_dbg_disable_matrix_test",
-          "seed": 867338325,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "scan",
-          "duration_sec": 30.597,
-          "name": "dtp_3dcr_tms_hold_test",
-          "seed": 1699237836,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "xtrig",
-          "duration_sec": 12.909,
-          "name": "dtp_xtrig_reg_stall_test",
-          "seed": 1390245999,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "xtrig",
-          "duration_sec": 32.672,
-          "name": "dtp_xtrig_rand_deterministic_csr_sweep_test",
-          "seed": 675534115,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "xtrig",
-          "duration_sec": 31.562,
-          "name": "dtp_ctm_rand_deterministic_csr_sweep_test",
-          "seed": 1750698507,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "xtrig",
-          "duration_sec": 9.742,
-          "name": "dtp_xtrig_wire_or_test",
-          "seed": 1481812874,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "xtrig",
-          "duration_sec": 7.229,
-          "name": "dtp_xtrig_wire_or_bus_test",
-          "seed": 213356881,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "scan",
-          "duration_sec": 93.978,
-          "name": "dtp_3dcr_config_hold_test",
-          "seed": 2136779411,
+          "seed": 2056903671,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 86.289,
+          "duration_sec": 122.33,
+          "name": "dtp_jtag2axi_cdc_clear_abort_narrow_reset_mid_xaction_test",
+          "seed": 2092753908,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "debug_tdr",
+          "duration_sec": 33.752,
+          "name": "dtp_dbg_jtag_caps_test",
+          "seed": 968850425,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "debug_tdr",
+          "duration_sec": 75.817,
+          "name": "dtp_jtag_ic_reset_test",
+          "seed": 1625787052,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "debug_tdr",
+          "duration_sec": 54.693,
+          "name": "dtp_dbg_ctrl_boot_stall_test",
+          "seed": 1822075207,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "debug_tdr",
+          "duration_sec": 44.38,
+          "name": "dtp_dbg_smc_jtag2axi_caps_test",
+          "seed": 1520403862,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "debug_tdr",
+          "duration_sec": 17.875,
+          "name": "dtp_dbg_sep_otp_jtag2axi_caps_test",
+          "seed": 263118090,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "scan",
+          "duration_sec": 9.728,
+          "name": "dtp_ijtag_sib_all_off_test",
+          "seed": 409864429,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "debug_tdr",
+          "duration_sec": 64.57,
+          "name": "dtp_dbg_ctrl_clk_stop_random_clock_stop_test",
+          "seed": 1560970347,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "scan",
+          "duration_sec": 12.706,
+          "name": "dtp_ijtag_sib_all_on_test",
+          "seed": 563965815,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "scan",
+          "duration_sec": 18.235,
+          "name": "dtp_ijtag_sib_random_test",
+          "seed": 1374004729,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "scan",
+          "duration_sec": 15.861,
+          "name": "dtp_ijtag_dft_test",
+          "seed": 177200964,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "scan",
+          "duration_sec": 19.491,
+          "name": "dtp_ijtag_dfd_test",
+          "seed": 298447504,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "debug_tdr",
+          "duration_sec": 60.573,
+          "name": "dtp_dbg_smc_otp_jtag2axi_caps_test",
+          "seed": 263865905,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "scan",
+          "duration_sec": 30.846,
+          "name": "dtp_3dcr_stap_sel_ds_test",
+          "seed": 2034485918,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "scan",
+          "duration_sec": 10.299,
+          "name": "dtp_ext_stap_scan_test",
+          "seed": 744905183,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "scan",
+          "duration_sec": 23.324,
+          "name": "dtp_stap_chain_hold_test",
+          "seed": 602179152,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "scan",
+          "duration_sec": 26.626,
+          "name": "dtp_3dcr_stap_sel_smc_test",
+          "seed": 630829054,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "scan",
+          "duration_sec": 32.91,
+          "name": "dtp_3dcr_stap_sel_extra_test",
+          "seed": 1386863874,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "scan",
+          "duration_sec": 46.958,
+          "name": "dtp_3dcr_stap_sel_sep_test",
+          "seed": 1168601302,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "scan",
+          "duration_sec": 13.557,
+          "name": "dtp_scan_dbg_disable_matrix_test",
+          "seed": 1331136812,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 264.329,
+          "name": "dtp_jtag2axi_series_corner_all_bridges_test",
+          "seed": 175280202,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "scan",
+          "duration_sec": 40.441,
+          "name": "dtp_3dcr_tms_hold_test",
+          "seed": 335211185,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 42.075,
           "name": "dtp_jtag2axi_dbg_disable_matrix_test",
-          "seed": 637251631,
+          "seed": 1009310426,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "xtrig",
-          "duration_sec": 8.85,
+          "duration_sec": 11.042,
+          "name": "dtp_xtrig_reg_stall_test",
+          "seed": 1648993320,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "xtrig",
+          "duration_sec": 25.132,
+          "name": "dtp_xtrig_rand_deterministic_csr_sweep_test",
+          "seed": 1752662114,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "xtrig",
+          "duration_sec": 25.348,
+          "name": "dtp_ctm_rand_deterministic_csr_sweep_test",
+          "seed": 1253201971,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "xtrig",
+          "duration_sec": 9.813,
+          "name": "dtp_xtrig_wire_or_test",
+          "seed": 1489148774,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "scan",
+          "duration_sec": 85.348,
+          "name": "dtp_3dcr_config_hold_test",
+          "seed": 668834593,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "xtrig",
+          "duration_sec": 8.075,
+          "name": "dtp_xtrig_wire_or_bus_test",
+          "seed": 535833372,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "xtrig",
+          "duration_sec": 7.514,
           "name": "dtp_xtrig_p2p_test",
-          "seed": 210123469,
+          "seed": 579578718,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "xtrig",
-          "duration_sec": 12.086,
+          "duration_sec": 10.067,
           "name": "dtp_xtrig_rand_test",
-          "seed": 862631227,
+          "seed": 388274630,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "xtrig",
-          "duration_sec": 12.052,
+          "duration_sec": 9.99,
           "name": "dtp_xtrig_reset_test",
-          "seed": 1807368187,
+          "seed": 1181245560,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "xtrig",
-          "duration_sec": 37.28,
-          "name": "dtp_ctm_rand_all_source_select_coverage_test",
-          "seed": 1074482306,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "xtrig",
-          "duration_sec": 10.667,
-          "name": "dtp_xtrig_axi_channel_skew_test",
-          "seed": 1295173479,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "xtrig",
-          "duration_sec": 10.87,
-          "name": "dtp_xtrig_axi_channel_skew_demux_aw_lock_release_test",
-          "seed": 1118970907,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "xtrig",
-          "duration_sec": 10.764,
-          "name": "dtp_xtrig_axi_channel_skew_read_decode_backpressure_test",
-          "seed": 1096958096,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "xtrig",
-          "duration_sec": 12.849,
-          "name": "dtp_ctm_wire_or_cla_to_ctp_test",
-          "seed": 584663604,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "xtrig",
-          "duration_sec": 33.08,
+          "duration_sec": 24.99,
           "name": "dtp_xtrig_rand_deterministic_dst_port_sweep_test",
-          "seed": 1090756562,
+          "seed": 2079039805,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "xtrig",
-          "duration_sec": 11.358,
+          "duration_sec": 6.157,
+          "name": "dtp_xtrig_axi_channel_skew_test",
+          "seed": 1507174119,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "xtrig",
+          "duration_sec": 30.351,
+          "name": "dtp_ctm_rand_all_source_select_coverage_test",
+          "seed": 2049468510,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "xtrig",
+          "duration_sec": 6.858,
+          "name": "dtp_xtrig_axi_channel_skew_demux_aw_lock_release_test",
+          "seed": 365033654,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "xtrig",
+          "duration_sec": 5.684,
+          "name": "dtp_xtrig_axi_channel_skew_read_decode_backpressure_test",
+          "seed": 1585036524,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "xtrig",
+          "duration_sec": 7.929,
+          "name": "dtp_ctm_wire_or_cla_to_ctp_test",
+          "seed": 999620289,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "xtrig",
+          "duration_sec": 8.134,
           "name": "dtp_ctm_wire_or_ctp_to_cla_test",
-          "seed": 857707430,
+          "seed": 306319998,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "xtrig",
-          "duration_sec": 11.217,
+          "duration_sec": 8.101,
           "name": "dtp_ctm_wire_or_cla_to_cla_test",
-          "seed": 394313959,
+          "seed": 1638411705,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "xtrig",
-          "duration_sec": 12.114,
+          "duration_sec": 8.047,
           "name": "dtp_ctm_wire_or_ctp_to_ctp_test",
-          "seed": 2043341713,
+          "seed": 2035700919,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "xtrig",
+          "duration_sec": 9.455,
+          "name": "dtp_ctm_p2p_cla_to_ctp_test",
+          "seed": 2026237951,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "xtrig",
+          "duration_sec": 8.511,
+          "name": "dtp_ctm_p2p_ctp_to_cla_test",
+          "seed": 1616332944,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "xtrig",
+          "duration_sec": 7.62,
+          "name": "dtp_ctm_p2p_cla_to_cla_test",
+          "seed": 1978041358,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "xtrig",
+          "duration_sec": 9.025,
+          "name": "dtp_ctm_p2p_ctp_to_ctp_test",
+          "seed": 528770794,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "xtrig",
+          "duration_sec": 8.409,
+          "name": "dtp_ctm_reset_wire_or_mode_test",
+          "seed": 1215665053,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "xtrig",
+          "duration_sec": 8.941,
+          "name": "dtp_ctm_reset_p2p_mode_test",
+          "seed": 1105851049,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "xtrig",
+          "duration_sec": 10.236,
+          "name": "dtp_ctm_reset_all_modes_test",
+          "seed": 1094801486,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "xtrig",
+          "duration_sec": 11.69,
+          "name": "dtp_ctm_rand_all_scenarios_test",
+          "seed": 1618826402,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "xtrig",
+          "duration_sec": 10.062,
+          "name": "dtp_ctm_rand_wire_or_only_test",
+          "seed": 1496647836,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "xtrig",
           "duration_sec": 13.134,
-          "name": "dtp_ctm_p2p_cla_to_ctp_test",
-          "seed": 561003167,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "xtrig",
-          "duration_sec": 12.816,
-          "name": "dtp_ctm_p2p_ctp_to_cla_test",
-          "seed": 1240886169,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "xtrig",
-          "duration_sec": 10.808,
-          "name": "dtp_ctm_p2p_cla_to_cla_test",
-          "seed": 397789255,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "xtrig",
-          "duration_sec": 11.759,
-          "name": "dtp_ctm_p2p_ctp_to_ctp_test",
-          "seed": 105624046,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "xtrig",
-          "duration_sec": 11.746,
-          "name": "dtp_ctm_reset_wire_or_mode_test",
-          "seed": 1649210774,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "xtrig",
-          "duration_sec": 12.735,
-          "name": "dtp_ctm_reset_p2p_mode_test",
-          "seed": 1032550732,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "xtrig",
-          "duration_sec": 14.074,
-          "name": "dtp_ctm_reset_all_modes_test",
-          "seed": 512542704,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "xtrig",
-          "duration_sec": 15.485,
-          "name": "dtp_ctm_rand_all_scenarios_test",
-          "seed": 921330781,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "xtrig",
-          "duration_sec": 19.122,
-          "name": "dtp_ctm_rand_wire_or_only_test",
-          "seed": 306796159,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "xtrig",
-          "duration_sec": 22.163,
           "name": "dtp_ctm_rand_p2p_only_test",
-          "seed": 649126260,
+          "seed": 2114979738,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "xtrig",
-          "duration_sec": 22.385,
-          "name": "dtp_ctm_rand_ctp_to_cla_test",
-          "seed": 1678491290,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "xtrig",
-          "duration_sec": 24.674,
+          "duration_sec": 13.169,
           "name": "dtp_ctm_rand_cla_to_ctp_test",
-          "seed": 1861684101,
+          "seed": 237172217,
           "stage": "sim",
           "status": "PASS"
         },
         {
-          "category": "jtag2axi",
-          "duration_sec": 1154.942,
-          "name": "dtp_jtag2axi_cdc_clear_abort_back_to_back_reset_test",
-          "seed": 2014590270,
+          "category": "xtrig",
+          "duration_sec": 11.137,
+          "name": "dtp_ctm_rand_ctp_to_cla_test",
+          "seed": 120099367,
           "stage": "sim",
           "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 3001.257,
-          "name": "dtp_jtag2axi_series_corner_all_bridges_test",
-          "seed": 562800856,
-          "stage": "sim",
-          "status": "TIMEOUT"
         }
       ],
       "tool": "vcs"
@@ -1789,1233 +1789,1233 @@
       "tests": [
         {
           "category": "smoke",
-          "duration_sec": 11.723,
+          "duration_sec": 8.437,
           "name": "dtp_sanity_test",
-          "seed": 1275214914,
+          "seed": 1150661043,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "basic_jtag",
-          "duration_sec": 8.422,
+          "duration_sec": 9.408,
           "name": "dtp_jtag_bypass_test",
-          "seed": 1986179078,
+          "seed": 442507694,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "basic_jtag",
-          "duration_sec": 14.058,
+          "duration_sec": 15.306,
           "name": "dtp_jtag_undef_instr_test",
-          "seed": 2117528686,
+          "seed": 565136235,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "smoke",
-          "duration_sec": 5.449,
+          "duration_sec": 6.798,
           "name": "dtp_jtag_idcode_test",
-          "seed": 745814363,
+          "seed": 1625839571,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "basic_jtag",
-          "duration_sec": 4.993,
+          "duration_sec": 6.679,
           "name": "dtp_jtag_runbist_test",
-          "seed": 209473437,
+          "seed": 1272411692,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "basic_jtag",
-          "duration_sec": 6.73,
+          "duration_sec": 6.562,
           "name": "dtp_jtag_sample_preload_test",
-          "seed": 337400038,
+          "seed": 439067997,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "basic_jtag",
-          "duration_sec": 5.696,
+          "duration_sec": 7.393,
           "name": "dtp_jtag_extest_test",
-          "seed": 469137607,
+          "seed": 366506166,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "basic_jtag",
-          "duration_sec": 7.919,
+          "duration_sec": 6.913,
           "name": "dtp_jtag_intest_test",
-          "seed": 791852787,
+          "seed": 1450449358,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "basic_jtag",
-          "duration_sec": 6.711,
+          "duration_sec": 7.721,
           "name": "dtp_jtag_clamp_test",
-          "seed": 506462201,
+          "seed": 172803835,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "basic_jtag",
-          "duration_sec": 7.118,
+          "duration_sec": 8.106,
           "name": "dtp_jtag_highz_test",
-          "seed": 137596298,
+          "seed": 105473340,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "basic_jtag",
-          "duration_sec": 7.343,
-          "name": "dtp_jtag_inv_bypass_test",
-          "seed": 1781980528,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "basic_jtag",
-          "duration_sec": 5.525,
-          "name": "dtp_jtag_trst_test",
-          "seed": 1313021778,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "basic_jtag",
-          "duration_sec": 4.997,
-          "name": "dtp_jtag_trst_por_independence_test",
-          "seed": 617953866,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "basic_jtag",
-          "duration_sec": 8.715,
-          "name": "dtp_jtag_tlr_reset_test",
-          "seed": 1147404339,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "basic_jtag",
-          "duration_sec": 12.239,
-          "name": "dtp_jtag_clamp_hold_test",
-          "seed": 696563156,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "basic_jtag",
-          "duration_sec": 7.727,
+          "duration_sec": 10.055,
           "name": "dtp_jtag_zero_length_bypass_test",
-          "seed": 389399548,
+          "seed": 1127023479,
           "stage": "sim",
-          "status": "FAIL"
+          "status": "PASS"
         },
         {
           "category": "basic_jtag",
-          "duration_sec": 10.061,
+          "duration_sec": 7.899,
+          "name": "dtp_jtag_inv_bypass_test",
+          "seed": 1778236651,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "basic_jtag",
+          "duration_sec": 6.187,
+          "name": "dtp_jtag_trst_test",
+          "seed": 1414834861,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "basic_jtag",
+          "duration_sec": 6.426,
+          "name": "dtp_jtag_trst_por_independence_test",
+          "seed": 282444000,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "basic_jtag",
+          "duration_sec": 7.773,
+          "name": "dtp_jtag_tlr_reset_test",
+          "seed": 1438377879,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "basic_jtag",
+          "duration_sec": 11.052,
+          "name": "dtp_jtag_clamp_hold_test",
+          "seed": 1352863742,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "basic_jtag",
+          "duration_sec": 10.915,
           "name": "dtp_jtag_clamp_release_test",
-          "seed": 937244528,
+          "seed": 1294489790,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "basic_jtag",
-          "duration_sec": 6.835,
+          "duration_sec": 7.304,
           "name": "dtp_jtag_ac_extest_train_test",
-          "seed": 805795276,
+          "seed": 366465676,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "basic_jtag",
-          "duration_sec": 7.07,
+          "duration_sec": 7.547,
           "name": "dtp_jtag_ac_extest_pulse_test",
-          "seed": 1435685733,
+          "seed": 1928479506,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 7.42,
+          "duration_sec": 10.38,
           "name": "dtp_jtag2axi_smc_axi_read_security_gating_no_axi_activity_test",
-          "seed": 1343360913,
+          "seed": 997852463,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 8.448,
+          "duration_sec": 8.828,
           "name": "dtp_jtag2axi_smc_axi_read_security_gating_test",
-          "seed": 1974593877,
+          "seed": 1702910975,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 9.367,
+          "duration_sec": 8.091,
           "name": "dtp_jtag2axi_smc_axi_read_random_ops_test",
-          "seed": 815862092,
+          "seed": 300397728,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 8.15,
+          "duration_sec": 7.704,
           "name": "dtp_jtag2axi_smc_axi_series_write_read_incr_with_error_test",
-          "seed": 2040037956,
+          "seed": 272164058,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 7.847,
+          "duration_sec": 8.115,
           "name": "dtp_jtag2axi_smc_axi_series_write_read_no_incr_test",
-          "seed": 725269102,
+          "seed": 1306184720,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 7.4,
+          "duration_sec": 6.886,
           "name": "dtp_jtag2axi_smc_axi_series_write_read_incr_narrow_test",
-          "seed": 281276626,
+          "seed": 1802871620,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 7.174,
+          "duration_sec": 6.495,
           "name": "dtp_jtag2axi_smc_axi_series_write_read_incr_test",
-          "seed": 620794189,
+          "seed": 709404375,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "functional",
-          "duration_sec": 7.56,
+          "duration_sec": 7.009,
           "name": "dtp_jtag2axi_smc_axi_single_write_read_test",
-          "seed": 948038140,
+          "seed": 672173102,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 15.401,
+          "duration_sec": 8.103,
           "name": "dtp_jtag2axi_smc_axi_write_security_gating_test",
-          "seed": 352430088,
+          "seed": 231239809,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 8.538,
+          "duration_sec": 6.402,
           "name": "dtp_jtag2axi_smc_axi_random_ops_test",
-          "seed": 1715286546,
+          "seed": 1073231653,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 6.874,
+          "duration_sec": 7.94,
           "name": "dtp_jtag2axi_smc_axi_series_write_incr_with_error_test",
-          "seed": 345683209,
+          "seed": 1553931171,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 6.616,
+          "duration_sec": 5.831,
           "name": "dtp_jtag2axi_smc_axi_series_write_no_incr_test",
-          "seed": 1759825164,
+          "seed": 1289898777,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 8.126,
+          "duration_sec": 5.972,
           "name": "dtp_jtag2axi_smc_axi_series_write_incr_narrow_test",
-          "seed": 2099772865,
+          "seed": 1822622227,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 7.456,
+          "duration_sec": 5.697,
           "name": "dtp_jtag2axi_smc_axi_series_write_incr_test",
-          "seed": 182590796,
+          "seed": 2110563986,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 7.988,
+          "duration_sec": 6.135,
           "name": "dtp_jtag2axi_smc_axi_single_write_data_verify_test",
-          "seed": 913098912,
+          "seed": 1518013568,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "functional",
-          "duration_sec": 11.269,
+          "duration_sec": 9.859,
           "name": "dtp_jtag2axi_smc_axi_single_write_test",
-          "seed": 1712398765,
+          "seed": 706255884,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 8.699,
+          "duration_sec": 7.158,
           "name": "dtp_jtag2axi_smc_otp_axi_single_write_test",
-          "seed": 2121749405,
+          "seed": 33461576,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 7.308,
+          "duration_sec": 5.935,
           "name": "dtp_jtag2axi_smc_otp_axi_single_write_data_verify_test",
-          "seed": 2074798283,
+          "seed": 1109872384,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 7.09,
+          "duration_sec": 5.643,
           "name": "dtp_jtag2axi_smc_otp_axi_series_write_incr_test",
-          "seed": 762985846,
+          "seed": 536110955,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 7.852,
+          "duration_sec": 5.927,
           "name": "dtp_jtag2axi_smc_otp_axi_series_write_no_incr_test",
-          "seed": 2112459233,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 5.919,
-          "name": "dtp_jtag2axi_smc_otp_axi_series_write_incr_with_error_test",
-          "seed": 620614136,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 6.074,
-          "name": "dtp_jtag2axi_smc_otp_axi_random_ops_test",
-          "seed": 987350790,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 6.884,
-          "name": "dtp_jtag2axi_smc_otp_axi_write_security_gating_test",
-          "seed": 361680782,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 6.875,
-          "name": "dtp_jtag2axi_sep_otp_axi_single_write_test",
-          "seed": 376085586,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 5.97,
-          "name": "dtp_jtag2axi_sep_otp_axi_single_write_data_verify_test",
-          "seed": 1596792122,
+          "seed": 907516409,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
           "duration_sec": 5.811,
+          "name": "dtp_jtag2axi_smc_otp_axi_series_write_incr_with_error_test",
+          "seed": 1794946768,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 6.116,
+          "name": "dtp_jtag2axi_smc_otp_axi_random_ops_test",
+          "seed": 260881205,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 7.495,
+          "name": "dtp_jtag2axi_smc_otp_axi_write_security_gating_test",
+          "seed": 1461854778,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 6.887,
+          "name": "dtp_jtag2axi_sep_otp_axi_single_write_test",
+          "seed": 466885029,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 5.698,
+          "name": "dtp_jtag2axi_sep_otp_axi_single_write_data_verify_test",
+          "seed": 836694180,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 5.645,
           "name": "dtp_jtag2axi_sep_otp_axi_series_write_incr_test",
-          "seed": 510851038,
+          "seed": 810385652,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 5.531,
+          "duration_sec": 5.694,
           "name": "dtp_jtag2axi_sep_otp_axi_series_write_no_incr_test",
-          "seed": 1537493942,
+          "seed": 316063556,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 5.932,
+          "duration_sec": 5.959,
           "name": "dtp_jtag2axi_sep_otp_axi_series_write_incr_with_error_test",
-          "seed": 575435390,
+          "seed": 432522824,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 6.128,
+          "duration_sec": 6.288,
           "name": "dtp_jtag2axi_sep_otp_axi_random_ops_test",
-          "seed": 879591426,
+          "seed": 975638314,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 10.677,
+          "duration_sec": 7.583,
           "name": "dtp_jtag2axi_sep_otp_axi_write_security_gating_test",
-          "seed": 1244316698,
+          "seed": 169263613,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 6.426,
+          "duration_sec": 5.727,
           "name": "dtp_jtag2axi_smc_otp_axi_single_write_read_test",
-          "seed": 10745137,
+          "seed": 434397888,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 6.77,
+          "duration_sec": 6.493,
           "name": "dtp_jtag2axi_smc_otp_axi_series_write_read_incr_test",
-          "seed": 2121159870,
+          "seed": 319787150,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 6.857,
+          "duration_sec": 5.991,
           "name": "dtp_jtag2axi_smc_otp_axi_series_write_read_incr_oversize_test",
-          "seed": 1477033044,
+          "seed": 308754360,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 6.937,
+          "duration_sec": 6.321,
           "name": "dtp_jtag2axi_smc_otp_axi_series_write_read_no_incr_test",
-          "seed": 1940627177,
+          "seed": 1760048690,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 6.417,
+          "duration_sec": 5.813,
           "name": "dtp_jtag2axi_smc_otp_axi_series_write_read_incr_with_error_test",
-          "seed": 858606214,
+          "seed": 1399883596,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 6.505,
+          "duration_sec": 8.84,
           "name": "dtp_jtag2axi_smc_otp_axi_read_random_ops_test",
-          "seed": 1151704249,
+          "seed": 1933444070,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 6.398,
+          "duration_sec": 5.977,
           "name": "dtp_jtag2axi_smc_otp_axi_read_security_gating_test",
-          "seed": 1008594913,
+          "seed": 132137784,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 6.343,
+          "duration_sec": 5.716,
           "name": "dtp_jtag2axi_sep_otp_axi_single_write_read_test",
-          "seed": 1708553064,
+          "seed": 1036044997,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 8.16,
+          "duration_sec": 7.658,
           "name": "dtp_jtag2axi_sep_otp_axi_series_write_read_incr_test",
-          "seed": 1290202295,
+          "seed": 577240186,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 9.648,
+          "duration_sec": 6.529,
           "name": "dtp_jtag2axi_sep_otp_axi_series_write_read_no_incr_test",
-          "seed": 1156253262,
+          "seed": 571281034,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 6.138,
+          "duration_sec": 6.204,
           "name": "dtp_jtag2axi_sep_otp_axi_series_write_read_incr_with_error_test",
-          "seed": 926144123,
+          "seed": 141980616,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 6.009,
+          "duration_sec": 6.183,
           "name": "dtp_jtag2axi_sep_otp_axi_read_random_ops_test",
-          "seed": 1272879360,
+          "seed": 2109394004,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 6.639,
+          "duration_sec": 6.274,
           "name": "dtp_jtag2axi_sep_otp_axi_read_security_gating_test",
-          "seed": 1578936656,
+          "seed": 1984859791,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 6.688,
+          "duration_sec": 6.487,
           "name": "dtp_jtag2axi_smc_axi_error_single_write_test",
-          "seed": 545828252,
+          "seed": 1762400503,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 8.139,
+          "duration_sec": 7.83,
           "name": "dtp_jtag2axi_smc_axi_error_single_read_test",
-          "seed": 71437996,
+          "seed": 76065296,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 6.719,
+          "duration_sec": 6.027,
           "name": "dtp_jtag2axi_smc_axi_error_series_no_incr_write_test",
-          "seed": 538517322,
+          "seed": 1197267792,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 7.975,
+          "duration_sec": 6.201,
           "name": "dtp_jtag2axi_smc_axi_error_series_no_incr_read_test",
-          "seed": 2038824386,
+          "seed": 1736443922,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 7.054,
+          "duration_sec": 6.098,
           "name": "dtp_jtag2axi_smc_axi_error_series_incr_write_test",
-          "seed": 598645888,
+          "seed": 637754115,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 7.76,
+          "duration_sec": 8.195,
           "name": "dtp_jtag2axi_smc_axi_error_series_incr_read_test",
-          "seed": 1925457172,
+          "seed": 1015505143,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 6.99,
+          "duration_sec": 6.165,
           "name": "dtp_jtag2axi_smc_axi_error_series_incr_write_with_status_test",
-          "seed": 652615612,
+          "seed": 184179802,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 7.582,
+          "duration_sec": 5.711,
           "name": "dtp_jtag2axi_smc_axi_error_series_incr_read_with_status_test",
-          "seed": 814328787,
+          "seed": 937115039,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 9.439,
+          "duration_sec": 7.3,
           "name": "dtp_jtag2axi_smc_axi_error_security_gating_test",
-          "seed": 1170999628,
+          "seed": 1110794692,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 6.31,
+          "duration_sec": 5.975,
           "name": "dtp_jtag2axi_smc_otp_axi_error_single_write_test",
-          "seed": 641479896,
+          "seed": 834143576,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 6.829,
+          "duration_sec": 5.233,
           "name": "dtp_jtag2axi_smc_otp_axi_error_single_read_test",
-          "seed": 1887917591,
+          "seed": 1419470018,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 6.063,
+          "duration_sec": 5.269,
           "name": "dtp_jtag2axi_smc_otp_axi_error_series_no_incr_write_test",
-          "seed": 967339111,
+          "seed": 1274835800,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 6.65,
+          "duration_sec": 5.877,
           "name": "dtp_jtag2axi_smc_otp_axi_error_series_no_incr_read_test",
-          "seed": 988253196,
+          "seed": 242675455,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 5.962,
+          "duration_sec": 5.995,
           "name": "dtp_jtag2axi_smc_otp_axi_error_series_incr_write_test",
-          "seed": 158705728,
+          "seed": 187069845,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 6.485,
+          "duration_sec": 5.767,
           "name": "dtp_jtag2axi_smc_otp_axi_error_series_incr_read_test",
-          "seed": 872119222,
+          "seed": 1861051406,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 5.925,
+          "duration_sec": 5.661,
           "name": "dtp_jtag2axi_smc_otp_axi_error_series_incr_write_with_status_test",
-          "seed": 1280311255,
+          "seed": 424936132,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 6.136,
+          "duration_sec": 5.652,
           "name": "dtp_jtag2axi_smc_otp_axi_error_series_incr_read_with_status_test",
-          "seed": 1598650090,
+          "seed": 285167464,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 7.546,
+          "duration_sec": 7.35,
           "name": "dtp_jtag2axi_smc_otp_axi_error_security_gating_test",
-          "seed": 900543211,
+          "seed": 749687540,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 8.603,
+          "duration_sec": 7.749,
           "name": "dtp_jtag2axi_sep_otp_axi_error_single_write_test",
-          "seed": 901067691,
+          "seed": 163164879,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 7.667,
+          "duration_sec": 6.578,
           "name": "dtp_jtag2axi_sep_otp_axi_error_single_read_test",
-          "seed": 1133056765,
+          "seed": 567389079,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 7.069,
+          "duration_sec": 5.661,
           "name": "dtp_jtag2axi_sep_otp_axi_error_series_no_incr_write_test",
-          "seed": 600304528,
+          "seed": 2052532072,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 7.422,
+          "duration_sec": 6.26,
           "name": "dtp_jtag2axi_sep_otp_axi_error_series_no_incr_read_test",
-          "seed": 802533107,
+          "seed": 2005059849,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 7.093,
+          "duration_sec": 5.478,
           "name": "dtp_jtag2axi_sep_otp_axi_error_series_incr_write_test",
-          "seed": 1467843714,
+          "seed": 2133153914,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 7.195,
+          "duration_sec": 7.602,
           "name": "dtp_jtag2axi_sep_otp_axi_error_series_incr_read_test",
-          "seed": 1054113439,
+          "seed": 1275731297,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 6.98,
+          "duration_sec": 6.777,
           "name": "dtp_jtag2axi_sep_otp_axi_error_series_incr_write_with_status_test",
-          "seed": 1706558314,
+          "seed": 68966448,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 5.709,
+          "duration_sec": 5.82,
           "name": "dtp_jtag2axi_sep_otp_axi_error_series_incr_read_with_status_test",
-          "seed": 1801019246,
+          "seed": 989813217,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 6.765,
+          "duration_sec": 6.738,
           "name": "dtp_jtag2axi_sep_otp_axi_error_security_gating_test",
-          "seed": 1630517377,
+          "seed": 1485876879,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 6.043,
+          "duration_sec": 7.807,
           "name": "dtp_jtag2axi_backpressure_aw_before_w_test",
-          "seed": 521442041,
+          "seed": 1594265486,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 12.19,
+          "duration_sec": 9.375,
           "name": "dtp_jtag2axi_backpressure_long_stall_test",
-          "seed": 1093824562,
+          "seed": 1788633222,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 7.265,
-          "name": "dtp_jtag2axi_cdc_clear_abort_back_to_back_reset_test",
-          "seed": 1564856542,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 6.601,
-          "name": "dtp_jtag2axi_decode_error_decerr_write_test",
-          "seed": 1161749484,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "jtag2axi",
-          "duration_sec": 9.421,
+          "duration_sec": 7.279,
           "name": "dtp_jtag2axi_backpressure_abort_at_data_w_test",
-          "seed": 56768668,
+          "seed": 2100392066,
           "stage": "sim",
-          "status": "FAIL"
+          "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 8.576,
+          "duration_sec": 7.355,
           "name": "dtp_jtag2axi_cdc_clear_abort_narrow_reset_mid_xaction_test",
-          "seed": 1541023803,
+          "seed": 374327614,
           "stage": "sim",
-          "status": "FAIL"
+          "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 7.241,
+          "duration_sec": 7.541,
+          "name": "dtp_jtag2axi_cdc_clear_abort_back_to_back_reset_test",
+          "seed": 1180748645,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 6.778,
+          "name": "dtp_jtag2axi_decode_error_decerr_write_test",
+          "seed": 2056360492,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "jtag2axi",
+          "duration_sec": 7.898,
           "name": "dtp_jtag2axi_decode_error_decerr_read_test",
-          "seed": 905717647,
+          "seed": 2024894437,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 8.695,
+          "duration_sec": 8.438,
           "name": "dtp_jtag2axi_decode_error_mixed_test",
-          "seed": 1788452859,
+          "seed": 942612175,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 13.598,
+          "duration_sec": 13.973,
           "name": "dtp_jtag2axi_series_corner_all_bridges_test",
-          "seed": 1337963286,
+          "seed": 586118500,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "debug_tdr",
-          "duration_sec": 5.546,
+          "duration_sec": 5.595,
           "name": "dtp_jtag_tmp_status_register_smoke_test",
-          "seed": 1496067009,
+          "seed": 1442887775,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "debug_tdr",
-          "duration_sec": 5.447,
+          "duration_sec": 7.731,
           "name": "dtp_jtag_tmp_status_chrst_n_in_persistence_test",
-          "seed": 1436749311,
+          "seed": 759127446,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "debug_tdr",
-          "duration_sec": 5.507,
+          "duration_sec": 7.984,
           "name": "dtp_jtag_tmp_status_bypass_escape_test",
-          "seed": 207294920,
+          "seed": 750876445,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "debug_tdr",
-          "duration_sec": 5.439,
+          "duration_sec": 7.809,
           "name": "dtp_jtag_ic_reset_test",
-          "seed": 1399198614,
+          "seed": 189759624,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "debug_tdr",
-          "duration_sec": 6.061,
+          "duration_sec": 8.132,
           "name": "dtp_dbg_jtag_caps_test",
-          "seed": 1317497216,
+          "seed": 860206550,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "debug_tdr",
-          "duration_sec": 4.57,
+          "duration_sec": 7.843,
           "name": "dtp_dbg_ctrl_clk_stop_jtag_clock_stop_test",
-          "seed": 1142759877,
+          "seed": 1451561536,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "debug_tdr",
-          "duration_sec": 4.749,
+          "duration_sec": 5.32,
           "name": "dtp_dbg_ctrl_clk_stop_cla_clock_stop_test",
-          "seed": 1598457577,
+          "seed": 557042934,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "debug_tdr",
-          "duration_sec": 12.276,
+          "duration_sec": 12.949,
           "name": "dtp_dbg_ctrl_clk_stop_random_clock_stop_test",
-          "seed": 1292753259,
+          "seed": 1039066710,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "debug_tdr",
-          "duration_sec": 6.365,
+          "duration_sec": 5.804,
           "name": "dtp_dbg_ctrl_boot_stall_test",
-          "seed": 1641065430,
+          "seed": 2003519778,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "debug_tdr",
-          "duration_sec": 5.722,
+          "duration_sec": 6.182,
           "name": "dtp_dbg_smc_jtag2axi_caps_test",
-          "seed": 1114098099,
+          "seed": 301939953,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "debug_tdr",
-          "duration_sec": 5.951,
+          "duration_sec": 6.434,
           "name": "dtp_dbg_sep_otp_jtag2axi_caps_test",
-          "seed": 488161410,
+          "seed": 935920068,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "debug_tdr",
-          "duration_sec": 7.827,
+          "duration_sec": 6.36,
           "name": "dtp_dbg_smc_otp_jtag2axi_caps_test",
-          "seed": 1620201885,
+          "seed": 226730455,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "scan",
-          "duration_sec": 5.078,
+          "duration_sec": 6.423,
           "name": "dtp_ijtag_sib_all_off_test",
-          "seed": 1748098677,
+          "seed": 1846745875,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "scan",
-          "duration_sec": 5.437,
+          "duration_sec": 5.924,
           "name": "dtp_ijtag_sib_all_on_test",
-          "seed": 956856199,
+          "seed": 1631182219,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "scan",
-          "duration_sec": 11.612,
+          "duration_sec": 9.636,
           "name": "dtp_ijtag_sib_random_test",
-          "seed": 135767922,
+          "seed": 519475780,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "scan",
-          "duration_sec": 5.773,
+          "duration_sec": 7.356,
           "name": "dtp_ijtag_dft_test",
-          "seed": 680693384,
+          "seed": 1485804904,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "scan",
-          "duration_sec": 6.575,
+          "duration_sec": 6.017,
           "name": "dtp_ijtag_dfd_test",
-          "seed": 1294731890,
+          "seed": 1073914808,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "scan",
-          "duration_sec": 8.573,
-          "name": "dtp_3dcr_stap_sel_ds_test",
-          "seed": 1982537777,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "scan",
-          "duration_sec": 7.534,
+          "duration_sec": 7.143,
           "name": "dtp_3dcr_stap_sel_smc_test",
-          "seed": 1752662919,
+          "seed": 1202108285,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "scan",
-          "duration_sec": 6.236,
+          "duration_sec": 6.928,
           "name": "dtp_3dcr_stap_sel_extra_test",
-          "seed": 2124130019,
+          "seed": 904552651,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "scan",
-          "duration_sec": 7.793,
-          "name": "dtp_3dcr_stap_sel_sep_test",
-          "seed": 1628889384,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "scan",
-          "duration_sec": 5.215,
+          "duration_sec": 5.834,
           "name": "dtp_ext_stap_scan_test",
-          "seed": 1500790842,
+          "seed": 2034105067,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "scan",
-          "duration_sec": 5.081,
+          "duration_sec": 5.147,
           "name": "dtp_stap_chain_hold_test",
-          "seed": 1852598187,
+          "seed": 1445600538,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "scan",
-          "duration_sec": 12.038,
+          "duration_sec": 11.487,
           "name": "dtp_3dcr_config_hold_test",
-          "seed": 1491489942,
+          "seed": 1474198414,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "scan",
-          "duration_sec": 9.2,
+          "duration_sec": 10.096,
           "name": "dtp_3dcr_tms_hold_test",
-          "seed": 930762978,
+          "seed": 1810636330,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "scan",
+          "duration_sec": 6.475,
+          "name": "dtp_scan_dbg_disable_matrix_test",
+          "seed": 377544595,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "jtag2axi",
-          "duration_sec": 12.277,
+          "duration_sec": 8.666,
           "name": "dtp_jtag2axi_dbg_disable_matrix_test",
-          "seed": 1973499791,
+          "seed": 1617106507,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "xtrig",
-          "duration_sec": 6.298,
+          "duration_sec": 6.788,
           "name": "dtp_xtrig_reg_stall_test",
-          "seed": 2061874791,
+          "seed": 983857272,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "xtrig",
-          "duration_sec": 11.318,
+          "duration_sec": 11.17,
           "name": "dtp_xtrig_rand_deterministic_csr_sweep_test",
-          "seed": 1907287104,
+          "seed": 1339125490,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "xtrig",
-          "duration_sec": 13.258,
+          "duration_sec": 13.566,
           "name": "dtp_ctm_rand_deterministic_csr_sweep_test",
-          "seed": 707411096,
+          "seed": 1963475865,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "xtrig",
-          "duration_sec": 6.39,
+          "duration_sec": 6.887,
           "name": "dtp_xtrig_wire_or_test",
-          "seed": 1982696607,
+          "seed": 420244402,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "xtrig",
-          "duration_sec": 5.294,
+          "duration_sec": 5.885,
           "name": "dtp_xtrig_wire_or_bus_test",
-          "seed": 1519631396,
+          "seed": 796317533,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "xtrig",
-          "duration_sec": 5.213,
+          "duration_sec": 5.877,
           "name": "dtp_xtrig_p2p_test",
-          "seed": 321567018,
+          "seed": 507208661,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "xtrig",
-          "duration_sec": 6.182,
+          "duration_sec": 6.681,
           "name": "dtp_xtrig_rand_test",
-          "seed": 332286941,
+          "seed": 1782546901,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "xtrig",
-          "duration_sec": 15.293,
+          "duration_sec": 15.098,
           "name": "dtp_ctm_rand_all_source_select_coverage_test",
-          "seed": 6058473,
+          "seed": 1455429945,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "xtrig",
-          "duration_sec": 6.138,
+          "duration_sec": 6.368,
           "name": "dtp_xtrig_reset_test",
-          "seed": 1717575802,
+          "seed": 1689723369,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "xtrig",
-          "duration_sec": 13.295,
+          "duration_sec": 12.936,
           "name": "dtp_xtrig_rand_deterministic_dst_port_sweep_test",
-          "seed": 1902643800,
+          "seed": 1346721349,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "xtrig",
-          "duration_sec": 4.676,
+          "duration_sec": 4.977,
           "name": "dtp_xtrig_axi_channel_skew_test",
-          "seed": 1066144503,
+          "seed": 2107775104,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "xtrig",
-          "duration_sec": 4.677,
+          "duration_sec": 4.985,
           "name": "dtp_xtrig_axi_channel_skew_demux_aw_lock_release_test",
-          "seed": 1893332812,
+          "seed": 449565115,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "xtrig",
-          "duration_sec": 4.662,
+          "duration_sec": 4.988,
           "name": "dtp_xtrig_axi_channel_skew_read_decode_backpressure_test",
-          "seed": 1321421739,
+          "seed": 1532933690,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "xtrig",
-          "duration_sec": 5.421,
+          "duration_sec": 7.198,
           "name": "dtp_ctm_wire_or_cla_to_ctp_test",
-          "seed": 698615054,
+          "seed": 600413070,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "xtrig",
-          "duration_sec": 5.04,
+          "duration_sec": 7.428,
           "name": "dtp_ctm_wire_or_ctp_to_cla_test",
-          "seed": 712402486,
+          "seed": 2112275519,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "xtrig",
-          "duration_sec": 4.949,
+          "duration_sec": 7.202,
           "name": "dtp_ctm_wire_or_cla_to_cla_test",
-          "seed": 1591392847,
+          "seed": 704783559,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "xtrig",
-          "duration_sec": 5.277,
+          "duration_sec": 6.971,
           "name": "dtp_ctm_wire_or_ctp_to_ctp_test",
-          "seed": 1877016807,
+          "seed": 1171511321,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "xtrig",
-          "duration_sec": 5.35,
+          "duration_sec": 7.263,
           "name": "dtp_ctm_p2p_cla_to_ctp_test",
-          "seed": 1855826841,
+          "seed": 86102582,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "xtrig",
-          "duration_sec": 5.181,
+          "duration_sec": 7.743,
           "name": "dtp_ctm_p2p_ctp_to_cla_test",
-          "seed": 825824836,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "xtrig",
-          "duration_sec": 5.151,
-          "name": "dtp_ctm_p2p_cla_to_cla_test",
-          "seed": 885532263,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "xtrig",
-          "duration_sec": 5.301,
-          "name": "dtp_ctm_p2p_ctp_to_ctp_test",
-          "seed": 1942249549,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "xtrig",
-          "duration_sec": 6.391,
-          "name": "dtp_ctm_reset_wire_or_mode_test",
-          "seed": 1603651466,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "xtrig",
-          "duration_sec": 6.447,
-          "name": "dtp_ctm_reset_p2p_mode_test",
-          "seed": 339591265,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "xtrig",
-          "duration_sec": 6.649,
-          "name": "dtp_ctm_reset_all_modes_test",
-          "seed": 1751899145,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "xtrig",
-          "duration_sec": 7.36,
-          "name": "dtp_ctm_rand_all_scenarios_test",
-          "seed": 2094402497,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "xtrig",
-          "duration_sec": 7.224,
-          "name": "dtp_ctm_rand_wire_or_only_test",
-          "seed": 342282927,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "xtrig",
-          "duration_sec": 7.459,
-          "name": "dtp_ctm_rand_p2p_only_test",
-          "seed": 1833867485,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "xtrig",
-          "duration_sec": 7.734,
-          "name": "dtp_ctm_rand_cla_to_ctp_test",
-          "seed": 1748555783,
+          "seed": 1865428307,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "scan",
-          "duration_sec": 4.969,
-          "name": "dtp_scan_dbg_disable_matrix_test",
-          "seed": 1078692959,
+          "duration_sec": 7.276,
+          "name": "dtp_3dcr_stap_sel_ds_test",
+          "seed": 960729269,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "scan",
+          "duration_sec": 9.535,
+          "name": "dtp_3dcr_stap_sel_sep_test",
+          "seed": 1983680183,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "xtrig",
-          "duration_sec": 6.945,
+          "duration_sec": 7.196,
+          "name": "dtp_ctm_p2p_cla_to_cla_test",
+          "seed": 788499191,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "xtrig",
+          "duration_sec": 8.105,
+          "name": "dtp_ctm_p2p_ctp_to_ctp_test",
+          "seed": 1610206540,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "xtrig",
+          "duration_sec": 7.876,
+          "name": "dtp_ctm_reset_wire_or_mode_test",
+          "seed": 1052835202,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "xtrig",
+          "duration_sec": 7.798,
+          "name": "dtp_ctm_reset_p2p_mode_test",
+          "seed": 1747678838,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "xtrig",
+          "duration_sec": 8.155,
+          "name": "dtp_ctm_reset_all_modes_test",
+          "seed": 986008438,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "xtrig",
+          "duration_sec": 8.903,
+          "name": "dtp_ctm_rand_all_scenarios_test",
+          "seed": 1359026171,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "xtrig",
+          "duration_sec": 7.052,
+          "name": "dtp_ctm_rand_wire_or_only_test",
+          "seed": 1793790112,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "xtrig",
+          "duration_sec": 7.089,
+          "name": "dtp_ctm_rand_p2p_only_test",
+          "seed": 196383914,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "xtrig",
+          "duration_sec": 7.664,
+          "name": "dtp_ctm_rand_cla_to_ctp_test",
+          "seed": 295109859,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "xtrig",
+          "duration_sec": 7.559,
           "name": "dtp_ctm_rand_ctp_to_cla_test",
-          "seed": 1773419178,
+          "seed": 1019858904,
           "stage": "sim",
           "status": "PASS"
         }
