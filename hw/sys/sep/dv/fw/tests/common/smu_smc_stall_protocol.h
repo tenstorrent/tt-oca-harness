@@ -23,7 +23,7 @@
 /* Frontdoor SMC bring-up over the SEP->SMC port -- no net force, no ext_in master, and
  * NOT behind the SMC sys-INBOUND filter. (The SEP's own OUTBOUND egress filter IS
  * configured as required setup -- see open_sep_outbound_xbar_window; that is what "no
- * filter" excludes: only the SMC sys-inbound BlockByDefault filter, which this port does
+ * filter" excludes: only the SMC sys-inbound BLOCK_BY_DEFAULT filter, which this port does
  * not traverse.) The TB backdoor-preloads the SMC image into SRAM (accepted setup that
  * stands in for the SMC-ROM-loads-SRAM step; 004 does NOT verify the production SMC
  * secure-boot / manifest / BL1 flow). The real SEP firmware then, over the same alias

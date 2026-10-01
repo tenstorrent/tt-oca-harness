@@ -539,7 +539,7 @@ The window is decoded from the `FILTER_CONFIG` / `START_ADDR` / `END_ADDR`
 writes on the CSR bus. The compare is against the PROGRAMMED range, not its
 4 KB page:
 `traffic_filter.sv` compares `addr[.:12]` only in its allow_burst arm, and
-`addr[.:DataBusWidthLog2]` otherwise, so a page compare is a superset of the
+`addr[.:DATA_BUS_WIDTH_LOG2]` otherwise, so a page compare is a superset of the
 real grant. Comparing the range can only miss a page-widened grant, never
 invent one. Both bins are also gated on exactly one outstanding inbound
 transaction, like the CSR-side bins -- `sep_axi_order_sweep_m_axi_test` runs

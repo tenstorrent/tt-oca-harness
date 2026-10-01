@@ -13,7 +13,7 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_sys_in_filter_reprogram_shrink_test(smu_base_test):
-    """Wide -> shrink -> clear restores selective / BlockByDefault deny."""
+    """Wide -> shrink -> clear restores selective / BLOCK_BY_DEFAULT deny."""
 
     use_shared_env = True
 

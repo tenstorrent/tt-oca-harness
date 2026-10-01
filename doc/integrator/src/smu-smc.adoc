@@ -695,7 +695,7 @@ default direction or decode configuration straps; use
 register descriptions (see <<smc-external-supplementary>>) for those.
 
 ifdef::backend-html5[]
-include::meta/ocah_gpio_table.adoc[]
+include::partial$meta/ocah_gpio_table.adoc[]
 endif::backend-html5[]
 ifdef::backend-pdf[]
 include::../meta/ocah_gpio_table.adoc[]

@@ -659,7 +659,7 @@ Toggle axil_ar_select "logic axil_ar_select[1:0]"
 Toggle unused_alert_tx.alert_n "logic unused_alert_tx.alert_n"
 Toggle unused_alert_tx.alert_p "logic unused_alert_tx.alert_p"
 
-CHECKSUM: "2535161971 1742511118"
+CHECKSUM: "716831743 1742511118"
 ANNOTATION: "SMC-TOGGLE-T1-OPENTITAN-PORTS-ONLY: this unit comes from OpenTitan, whose own verification covers its internals, so the package grades it on its ports and excludes the nets it declares inside. Every unit that is not from OpenTitan keeps all of its nets in the toggle score. The source's copyright line is quoted in the block above."
 ANNOTATION: "uart_core: Copyright lowRISC contributors."
 MODULE: uart_core

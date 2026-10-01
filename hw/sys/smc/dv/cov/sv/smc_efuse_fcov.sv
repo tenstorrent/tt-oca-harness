@@ -15,9 +15,9 @@
 `include "ocah_fcov_macros.svh"
 
 module smc_efuse_fcov #(
-  parameter int unsigned ShadowWidth = 1,
-  parameter int unsigned LcStateWidth = 8,
-  parameter logic [7:0] LcStateTestDev = 8'hF0
+  parameter int unsigned SHADOW_WIDTH = 1,
+  parameter int unsigned LC_STATE_WIDTH = 8,
+  parameter logic [7:0] LC_STATE_TEST_DEV = 8'hF0
 ) (
   input wire clk_smc_i,
   input wire rst_cold_ni,
@@ -25,9 +25,9 @@ module smc_efuse_fcov #(
   input wire fuse_sense_done_i,
   input wire fuse_reset_ni,
   input wire skip_mem_repair_i,
-  input wire [ShadowWidth-1:0] shadow_regs_i,
+  input wire [SHADOW_WIDTH-1:0] shadow_regs_i,
 
-  input wire [LcStateWidth-1:0] lc_state_i,
+  input wire [LC_STATE_WIDTH-1:0] lc_state_i,
   input wire lc_sigint_err_i,
 
   // Bank-control AXI-Lite port and the SHIM custom-command handshake.
@@ -101,14 +101,14 @@ module smc_efuse_fcov #(
   // changed at least once: it means "TEST_DEV accepted after another
   // encoding was driven".
   // ------------------------------------------------------------------
-  logic [LcStateWidth-1:0] lc_state_q;
+  logic [LC_STATE_WIDTH-1:0] lc_state_q;
   logic lc_state_changed_q;
   always_ff @(posedge clk_smc_i) begin
     lc_state_q <= lc_state_i;
     if (in_reset) lc_state_changed_q <= 1'b0;
     else if ((lc_state_i !== lc_state_q) && (^lc_state_q !== 1'bx)) lc_state_changed_q <= 1'b1;
   end
-  wire lc_state_test_dev_tie_e = lc_state_changed_q && (lc_state_i === LcStateTestDev)
+  wire lc_state_test_dev_tie_e = lc_state_changed_q && (lc_state_i === LC_STATE_TEST_DEV)
       && (lc_sigint_err_i === 1'b0);
   `OCAH_FCOV_COVER(c_lc_state_test_dev_tie, lc_state_test_dev_tie_e, clk_smc_i, in_reset)
 

@@ -1,0 +1,614 @@
+diff --git a/hw/ip/aes/rtl/aes_reg_top.sv b/hw/ip/aes/rtl/aes_reg_top.sv
+index 58e62c7c31..1f73a9b5b4 100644
+--- a/hw/ip/aes/rtl/aes_reg_top.sv
++++ b/hw/ip/aes/rtl/aes_reg_top.sv
+@@ -83,8 +83,8 @@ module aes_reg_top (
+   // outgoing integrity generation
+   tlul_pkg::tl_d2h_t tl_o_pre;
+   tlul_rsp_intg_gen #(
+-    .EnableRspIntgGen(1),
+-    .EnableDataIntgGen(1)
++    .ENABLE_RSP_INTG_GEN(1),
++    .ENABLE_DATA_INTG_GEN(1)
+   ) u_rsp_intg_gen (
+     .tl_i(tl_o_pre),
+     .tl_o(tl_o)
+@@ -94,9 +94,9 @@ module aes_reg_top (
+   assign tl_o_pre   = tl_reg_d2h;
+ 
+   tlul_adapter_reg #(
+-    .RegAw(AW),
+-    .RegDw(DW),
+-    .EnableDataIntgGen(0)
++    .REG_AW(AW),
++    .REG_DW(DW),
++    .ENABLE_DATA_INTG_GEN(0)
+   ) u_reg_if (
+     .clk_i  (clk_i),
+     .rst_ni (rst_ni),
+diff --git a/hw/ip/aon_timer/rtl/aon_timer_reg_top.sv b/hw/ip/aon_timer/rtl/aon_timer_reg_top.sv
+index 91f9ff9238..53e4a11be2 100644
+--- a/hw/ip/aon_timer/rtl/aon_timer_reg_top.sv
++++ b/hw/ip/aon_timer/rtl/aon_timer_reg_top.sv
+@@ -92,8 +92,8 @@ module aon_timer_reg_top
+   // outgoing integrity generation
+   tlul_pkg::tl_d2h_t tl_o_pre;
+   tlul_rsp_intg_gen #(
+-    .EnableRspIntgGen(1),
+-    .EnableDataIntgGen(1)
++    .ENABLE_RSP_INTG_GEN(1),
++    .ENABLE_DATA_INTG_GEN(1)
+   ) u_rsp_intg_gen (
+     .tl_i(tl_o_pre),
+     .tl_o(tl_o)
+@@ -103,9 +103,9 @@ module aon_timer_reg_top
+   assign tl_o_pre   = tl_reg_d2h;
+ 
+   tlul_adapter_reg #(
+-    .RegAw(AW),
+-    .RegDw(DW),
+-    .EnableDataIntgGen(0)
++    .REG_AW(AW),
++    .REG_DW(DW),
++    .ENABLE_DATA_INTG_GEN(0)
+   ) u_reg_if (
+     .clk_i  (clk_i),
+     .rst_ni (rst_ni),
+diff --git a/hw/ip/csrng/rtl/csrng_reg_top.sv b/hw/ip/csrng/rtl/csrng_reg_top.sv
+index 11b01f1b53..db1ac69e10 100644
+--- a/hw/ip/csrng/rtl/csrng_reg_top.sv
++++ b/hw/ip/csrng/rtl/csrng_reg_top.sv
+@@ -80,8 +80,8 @@ module csrng_reg_top (
+   // outgoing integrity generation
+   tlul_pkg::tl_d2h_t tl_o_pre;
+   tlul_rsp_intg_gen #(
+-    .EnableRspIntgGen(1),
+-    .EnableDataIntgGen(1)
++    .ENABLE_RSP_INTG_GEN(1),
++    .ENABLE_DATA_INTG_GEN(1)
+   ) u_rsp_intg_gen (
+     .tl_i(tl_o_pre),
+     .tl_o(tl_o)
+@@ -91,9 +91,9 @@ module csrng_reg_top (
+   assign tl_o_pre   = tl_reg_d2h;
+ 
+   tlul_adapter_reg #(
+-    .RegAw(AW),
+-    .RegDw(DW),
+-    .EnableDataIntgGen(0)
++    .REG_AW(AW),
++    .REG_DW(DW),
++    .ENABLE_DATA_INTG_GEN(0)
+   ) u_reg_if (
+     .clk_i  (clk_i),
+     .rst_ni (rst_ni),
+diff --git a/hw/ip/dma/rtl/secure_dma.sv b/hw/ip/dma/rtl/secure_dma.sv
+index 3e754e1d13..c153ece4f6 100644
+--- a/hw/ip/dma/rtl/secure_dma.sv
++++ b/hw/ip/dma/rtl/secure_dma.sv
+@@ -15,7 +15,7 @@ module secure_dma
+   parameter int unsigned                    AlertSkewCycles           = 1,
+   parameter bit                             EnableDataIntgGen         = 1'b1,
+   parameter bit                             EnableRspDataIntgCheck    = 1'b1,
+-  parameter logic [RsvdWidth-1:0]           TlUserRsvd                = '0,
++  parameter logic [RSVD_WIDTH-1:0]          TlUserRsvd                = '0,
+   parameter top_racl_pkg::racl_role_t       SysRaclRole               = '0,
+   parameter int unsigned                    OtAgentId                 = 0,
+   parameter bit                             EnableRacl                = 1'b0,
+@@ -217,8 +217,8 @@ module secure_dma
+   // Adapter from the DMA to Host
+   tlul_adapter_host #(
+     .MAX_REQS(NUM_MAX_OUTSTANDING_REQS),
+-    .EnableDataIntgGen(EnableDataIntgGen),
+-    .EnableRspDataIntgCheck(EnableRspDataIntgCheck)
++    .ENABLE_DATA_INTG_GEN(EnableDataIntgGen),
++    .ENABLE_RSP_DATA_INTG_CHECK(EnableRspDataIntgCheck)
+   ) u_dma_host_tlul_host (
+     .clk_i          ( gated_clk                        ),
+     .rst_ni         ( rst_ni                           ),
+@@ -244,8 +244,8 @@ module secure_dma
+   // Adapter from the DMA to the CTN
+   tlul_adapter_host #(
+     .MAX_REQS(NUM_MAX_OUTSTANDING_REQS),
+-    .EnableDataIntgGen(EnableDataIntgGen),
+-    .EnableRspDataIntgCheck(EnableRspDataIntgCheck)
++    .ENABLE_DATA_INTG_GEN(EnableDataIntgGen),
++    .ENABLE_RSP_DATA_INTG_CHECK(EnableRspDataIntgCheck)
+   ) u_dma_ctn_tlul_host (
+     .clk_i          ( gated_clk                        ),
+     .rst_ni         ( rst_ni                           ),
+diff --git a/hw/ip/dma/rtl/secure_dma_reg_top.sv b/hw/ip/dma/rtl/secure_dma_reg_top.sv
+index 8b9332fc06..bf74caa126 100644
+--- a/hw/ip/dma/rtl/secure_dma_reg_top.sv
++++ b/hw/ip/dma/rtl/secure_dma_reg_top.sv
+@@ -90,8 +90,8 @@ module secure_dma_reg_top
+   // outgoing integrity generation
+   tlul_pkg::tl_d2h_t tl_o_pre;
+   tlul_rsp_intg_gen #(
+-    .EnableRspIntgGen(1),
+-    .EnableDataIntgGen(1)
++    .ENABLE_RSP_INTG_GEN(1),
++    .ENABLE_DATA_INTG_GEN(1)
+   ) u_rsp_intg_gen (
+     .tl_i(tl_o_pre),
+     .tl_o(tl_o)
+@@ -101,9 +101,9 @@ module secure_dma_reg_top
+   assign tl_o_pre   = tl_reg_d2h;
+ 
+   tlul_adapter_reg #(
+-    .RegAw(AW),
+-    .RegDw(DW),
+-    .EnableDataIntgGen(0)
++    .REG_AW(AW),
++    .REG_DW(DW),
++    .ENABLE_DATA_INTG_GEN(0)
+   ) u_reg_if (
+     .clk_i  (clk_i),
+     .rst_ni (rst_ni),
+diff --git a/hw/ip/edn/rtl/edn_reg_top.sv b/hw/ip/edn/rtl/edn_reg_top.sv
+index 79247f81bb..51e626d61f 100644
+--- a/hw/ip/edn/rtl/edn_reg_top.sv
++++ b/hw/ip/edn/rtl/edn_reg_top.sv
+@@ -80,8 +80,8 @@ module edn_reg_top (
+   // outgoing integrity generation
+   tlul_pkg::tl_d2h_t tl_o_pre;
+   tlul_rsp_intg_gen #(
+-    .EnableRspIntgGen(1),
+-    .EnableDataIntgGen(1)
++    .ENABLE_RSP_INTG_GEN(1),
++    .ENABLE_DATA_INTG_GEN(1)
+   ) u_rsp_intg_gen (
+     .tl_i(tl_o_pre),
+     .tl_o(tl_o)
+@@ -91,9 +91,9 @@ module edn_reg_top (
+   assign tl_o_pre   = tl_reg_d2h;
+ 
+   tlul_adapter_reg #(
+-    .RegAw(AW),
+-    .RegDw(DW),
+-    .EnableDataIntgGen(0)
++    .REG_AW(AW),
++    .REG_DW(DW),
++    .ENABLE_DATA_INTG_GEN(0)
+   ) u_reg_if (
+     .clk_i  (clk_i),
+     .rst_ni (rst_ni),
+diff --git a/hw/ip/entropy_src/rtl/entropy_src_reg_top.sv b/hw/ip/entropy_src/rtl/entropy_src_reg_top.sv
+index 89adc6dc81..2efb962a16 100644
+--- a/hw/ip/entropy_src/rtl/entropy_src_reg_top.sv
++++ b/hw/ip/entropy_src/rtl/entropy_src_reg_top.sv
+@@ -79,8 +79,8 @@ module entropy_src_reg_top (
+   // outgoing integrity generation
+   tlul_pkg::tl_d2h_t tl_o_pre;
+   tlul_rsp_intg_gen #(
+-    .EnableRspIntgGen(1),
+-    .EnableDataIntgGen(1)
++    .ENABLE_RSP_INTG_GEN(1),
++    .ENABLE_DATA_INTG_GEN(1)
+   ) u_rsp_intg_gen (
+     .tl_i(tl_o_pre),
+     .tl_o(tl_o)
+@@ -90,9 +90,9 @@ module entropy_src_reg_top (
+   assign tl_o_pre   = tl_reg_d2h;
+ 
+   tlul_adapter_reg #(
+-    .RegAw(AW),
+-    .RegDw(DW),
+-    .EnableDataIntgGen(0)
++    .REG_AW(AW),
++    .REG_DW(DW),
++    .ENABLE_DATA_INTG_GEN(0)
+   ) u_reg_if (
+     .clk_i  (clk_i),
+     .rst_ni (rst_ni),
+diff --git a/hw/ip/hmac/rtl/hmac.sv b/hw/ip/hmac/rtl/hmac.sv
+index 9206175f2c..e7dc52e09d 100644
+--- a/hw/ip/hmac/rtl/hmac.sv
++++ b/hw/ip/hmac/rtl/hmac.sv
+@@ -589,11 +589,11 @@ module hmac
+ 
+   // TL ADAPTER SRAM
+   tlul_adapter_sram #(
+-    .SramAw (9),
+-    .SramDw (32),
+-    .Outstanding (1),
+-    .ByteAccess  (1),
+-    .ErrOnRead   (1)
++    .SRAM_AW (9),
++    .SRAM_DW (32),
++    .OUTSTANDING (1),
++    .BYTE_ACCESS (1),
++    .ERR_ON_READ (1)
+   ) u_tlul_adapter (
+     .clk_i,
+     .rst_ni,
+diff --git a/hw/ip/hmac/rtl/hmac_reg_top.sv b/hw/ip/hmac/rtl/hmac_reg_top.sv
+index 2699c881bc..ec71171c0b 100644
+--- a/hw/ip/hmac/rtl/hmac_reg_top.sv
++++ b/hw/ip/hmac/rtl/hmac_reg_top.sv
+@@ -84,8 +84,8 @@ module hmac_reg_top (
+   // outgoing integrity generation
+   tlul_pkg::tl_d2h_t tl_o_pre;
+   tlul_rsp_intg_gen #(
+-    .EnableRspIntgGen(1),
+-    .EnableDataIntgGen(1)
++    .ENABLE_RSP_INTG_GEN(1),
++    .ENABLE_DATA_INTG_GEN(1)
+   ) u_rsp_intg_gen (
+     .tl_i(tl_o_pre),
+     .tl_o(tl_o)
+@@ -105,16 +105,16 @@ module hmac_reg_top (
+ 
+   // Create Socket_1n
+   tlul_socket_1n #(
+-    .N            (2),
+-    .HReqPass     (1'b1),
+-    .HRspPass     (1'b1),
+-    .DReqPass     ({2{1'b1}}),
+-    .DRspPass     ({2{1'b1}}),
+-    .HReqDepth    (4'h0),
+-    .HRspDepth    (4'h0),
+-    .DReqDepth    ({2{4'h0}}),
+-    .DRspDepth    ({2{4'h0}}),
+-    .ExplicitErrs (1'b0)
++    .N             (2),
++    .H_REQ_PASS    (1'b1),
++    .H_RSP_PASS    (1'b1),
++    .D_REQ_PASS    ({2{1'b1}}),
++    .D_RSP_PASS    ({2{1'b1}}),
++    .H_REQ_DEPTH   (4'h0),
++    .H_RSP_DEPTH   (4'h0),
++    .D_REQ_DEPTH   ({2{4'h0}}),
++    .D_RSP_DEPTH   ({2{4'h0}}),
++    .EXPLICIT_ERRS (1'b0)
+   ) u_socket (
+     .clk_i  (clk_i),
+     .rst_ni (rst_ni),
+@@ -139,9 +139,9 @@ module hmac_reg_top (
+   end
+ 
+   tlul_adapter_reg #(
+-    .RegAw(AW),
+-    .RegDw(DW),
+-    .EnableDataIntgGen(0)
++    .REG_AW(AW),
++    .REG_DW(DW),
++    .ENABLE_DATA_INTG_GEN(0)
+   ) u_reg_if (
+     .clk_i  (clk_i),
+     .rst_ni (rst_ni),
+diff --git a/hw/ip/kmac/rtl/kmac.sv b/hw/ip/kmac/rtl/kmac.sv
+index 51c4a034a3..7fc9143abb 100644
+--- a/hw/ip/kmac/rtl/kmac.sv
++++ b/hw/ip/kmac/rtl/kmac.sv
+@@ -1001,11 +1001,11 @@ module kmac
+ 
+   // TL Adapter
+   tlul_adapter_sram #(
+-    .SramAw ($clog2(MsgWindowDepth)),
+-    .SramDw (MsgWindowWidth),
+-    .Outstanding (1),
+-    .ByteAccess  (1),
+-    .ErrOnRead   (1)
++    .SRAM_AW ($clog2(MsgWindowDepth)),
++    .SRAM_DW (MsgWindowWidth),
++    .OUTSTANDING (1),
++    .BYTE_ACCESS (1),
++    .ERR_ON_READ (1)
+   ) u_tlul_adapter_msgfifo (
+     .clk_i,
+     .rst_ni,
+diff --git a/hw/ip/kmac/rtl/kmac_reg_top.sv b/hw/ip/kmac/rtl/kmac_reg_top.sv
+index bef6ae6274..f52a399339 100644
+--- a/hw/ip/kmac/rtl/kmac_reg_top.sv
++++ b/hw/ip/kmac/rtl/kmac_reg_top.sv
+@@ -88,8 +88,8 @@ module kmac_reg_top (
+   // outgoing integrity generation
+   tlul_pkg::tl_d2h_t tl_o_pre;
+   tlul_rsp_intg_gen #(
+-    .EnableRspIntgGen(1),
+-    .EnableDataIntgGen(1)
++    .ENABLE_RSP_INTG_GEN(1),
++    .ENABLE_DATA_INTG_GEN(1)
+   ) u_rsp_intg_gen (
+     .tl_i(tl_o_pre),
+     .tl_o(tl_o)
+@@ -111,16 +111,16 @@ module kmac_reg_top (
+ 
+   // Create Socket_1n
+   tlul_socket_1n #(
+-    .N            (3),
+-    .HReqPass     (1'b1),
+-    .HRspPass     (1'b1),
+-    .DReqPass     ({3{1'b1}}),
+-    .DRspPass     ({3{1'b1}}),
+-    .HReqDepth    (4'h0),
+-    .HRspDepth    (4'h0),
+-    .DReqDepth    ({3{4'h0}}),
+-    .DRspDepth    ({3{4'h0}}),
+-    .ExplicitErrs (1'b0)
++    .N             (3),
++    .H_REQ_PASS    (1'b1),
++    .H_RSP_PASS    (1'b1),
++    .D_REQ_PASS    ({3{1'b1}}),
++    .D_RSP_PASS    ({3{1'b1}}),
++    .H_REQ_DEPTH   (4'h0),
++    .H_RSP_DEPTH   (4'h0),
++    .D_REQ_DEPTH   ({3{4'h0}}),
++    .D_RSP_DEPTH   ({3{4'h0}}),
++    .EXPLICIT_ERRS (1'b0)
+   ) u_socket (
+     .clk_i  (clk_i),
+     .rst_ni (rst_ni),
+@@ -146,9 +146,9 @@ module kmac_reg_top (
+   end
+ 
+   tlul_adapter_reg #(
+-    .RegAw(AW),
+-    .RegDw(DW),
+-    .EnableDataIntgGen(0)
++    .REG_AW(AW),
++    .REG_DW(DW),
++    .ENABLE_DATA_INTG_GEN(0)
+   ) u_reg_if (
+     .clk_i  (clk_i),
+     .rst_ni (rst_ni),
+diff --git a/hw/ip/kmac/rtl/kmac_staterd.sv b/hw/ip/kmac/rtl/kmac_staterd.sv
+index 773ac1cdcb..c4af4cef79 100644
+--- a/hw/ip/kmac/rtl/kmac_staterd.sv
++++ b/hw/ip/kmac/rtl/kmac_staterd.sv
+@@ -51,12 +51,12 @@ module kmac_staterd
+ 
+   // TL Adapter
+   tlul_adapter_sram #(
+-    .SramAw (AddrW-2),
+-    .SramDw (32),
+-    .Outstanding (1),
+-    .ByteAccess  (1),
+-    .ErrOnWrite  (1),
+-    .ErrOnRead   (0)
++    .SRAM_AW (AddrW-2),
++    .SRAM_DW (32),
++    .OUTSTANDING  (1),
++    .BYTE_ACCESS  (1),
++    .ERR_ON_WRITE (1),
++    .ERR_ON_READ  (0)
+   ) u_tlul_adapter (
+     .clk_i,
+     .rst_ni,
+diff --git a/hw/ip/otbn/rtl/otbn.sv b/hw/ip/otbn/rtl/otbn.sv
+index 3dd376b20c..4e118fb37b 100644
+--- a/hw/ip/otbn/rtl/otbn.sv
++++ b/hw/ip/otbn/rtl/otbn.sv
+@@ -361,13 +361,13 @@ module otbn
+   // SEC_CM: MEM.SCRAMBLE
+   // OCH patch: use _ext variant to expose SRAM interface
+   prim_ram_1p_scr_ext #(
+-    .Width          (39),
+-    .Depth          (ImemSizeWords),
+-    .InstDepth      (ImemSizeWords),
+-    .DataBitsPerMask(39),
+-    .EnableParity   (0),
+-    .ram_req_t      (sep_crypto_pka_imem_sram_req_t),
+-    .ram_rsp_t      (sep_crypto_pka_imem_sram_rsp_t)
++    .WIDTH             (39),
++    .DEPTH             (ImemSizeWords),
++    .INST_DEPTH        (ImemSizeWords),
++    .DATA_BITS_PER_MASK(39),
++    .ENABLE_PARITY     (0),
++    .ram_req_t         (sep_crypto_pka_imem_sram_req_t),
++    .ram_rsp_t         (sep_crypto_pka_imem_sram_rsp_t)
+   ) u_imem (
+     .clk_i,
+     .rst_ni(rst_n),
+@@ -407,13 +407,13 @@ module otbn
+   assign imem_gnt_bus = imem_req_bus;
+ 
+   tlul_adapter_sram #(
+-    .SramAw          (ImemIndexWidth),
+-    .SramDw          (32),
+-    .Outstanding     (1),
+-    .ByteAccess      (0),
+-    .ErrOnRead       (0),
+-    .EnableDataIntgPt(1),
+-    .SecFifoPtr      (1)  // SEC_CM: TLUL_FIFO.CTR.REDUN
++    .SRAM_AW            (ImemIndexWidth),
++    .SRAM_DW            (32),
++    .OUTSTANDING        (1),
++    .BYTE_ACCESS        (0),
++    .ERR_ON_READ        (0),
++    .ENABLE_DATA_INTG_PT(1),
++    .SEC_FIFO_PTR       (1)  // SEC_CM: TLUL_FIFO.CTR.REDUN
+   ) u_tlul_adapter_sram_imem (
+     .clk_i,
+     .rst_ni                     (rst_n),
+@@ -581,14 +581,14 @@ module otbn
+   // SEC_CM: MEM.SCRAMBLE
+   // OCH patch: use _ext variant to expose SRAM interface
+   prim_ram_1p_scr_ext #(
+-    .Width             (ExtWLEN),
+-    .Depth             (DmemSizeWords),
+-    .InstDepth         (DmemSizeWords),
+-    .DataBitsPerMask   (39),
+-    .EnableParity      (0),
+-    .ReplicateKeyStream(1),
+-    .ram_req_t         (sep_crypto_pka_dmem_sram_req_t),
+-    .ram_rsp_t         (sep_crypto_pka_dmem_sram_rsp_t)
++    .WIDTH               (ExtWLEN),
++    .DEPTH               (DmemSizeWords),
++    .INST_DEPTH          (DmemSizeWords),
++    .DATA_BITS_PER_MASK  (39),
++    .ENABLE_PARITY       (0),
++    .REPLICATE_KEY_STREAM(1),
++    .ram_req_t           (sep_crypto_pka_dmem_sram_req_t),
++    .ram_rsp_t           (sep_crypto_pka_dmem_sram_rsp_t)
+   ) u_dmem (
+     .clk_i,
+     .rst_ni(rst_n),
+@@ -664,13 +664,13 @@ module otbn
+   assign dmem_gnt_bus = dmem_req_bus;
+ 
+   tlul_adapter_sram #(
+-    .SramAw          (DmemBusIndexWidth),
+-    .SramDw          (WLEN),
+-    .Outstanding     (1),
+-    .ByteAccess      (0),
+-    .ErrOnRead       (0),
+-    .EnableDataIntgPt(1),
+-    .SecFifoPtr      (1)  // SEC_CM: TLUL_FIFO.CTR.REDUN
++    .SRAM_AW            (DmemBusIndexWidth),
++    .SRAM_DW            (WLEN),
++    .OUTSTANDING        (1),
++    .BYTE_ACCESS        (0),
++    .ERR_ON_READ        (0),
++    .ENABLE_DATA_INTG_PT(1),
++    .SEC_FIFO_PTR       (1)  // SEC_CM: TLUL_FIFO.CTR.REDUN
+   ) u_tlul_adapter_sram_dmem (
+     .clk_i,
+     .rst_ni                     (rst_n),
+diff --git a/hw/ip/otbn/rtl/otbn_reg_top.sv b/hw/ip/otbn/rtl/otbn_reg_top.sv
+index 028fb398fb..58a8459152 100644
+--- a/hw/ip/otbn/rtl/otbn_reg_top.sv
++++ b/hw/ip/otbn/rtl/otbn_reg_top.sv
+@@ -84,8 +84,8 @@ module otbn_reg_top (
+   // outgoing integrity generation
+   tlul_pkg::tl_d2h_t tl_o_pre;
+   tlul_rsp_intg_gen #(
+-    .EnableRspIntgGen(1),
+-    .EnableDataIntgGen(0)
++    .ENABLE_RSP_INTG_GEN(1),
++    .ENABLE_DATA_INTG_GEN(0)
+   ) u_rsp_intg_gen (
+     .tl_i(tl_o_pre),
+     .tl_o(tl_o)
+@@ -107,16 +107,16 @@ module otbn_reg_top (
+ 
+   // Create Socket_1n
+   tlul_socket_1n #(
+-    .N            (3),
+-    .HReqPass     (1'b1),
+-    .HRspPass     (1'b1),
+-    .DReqPass     ({3{1'b1}}),
+-    .DRspPass     ({3{1'b1}}),
+-    .HReqDepth    (4'h0),
+-    .HRspDepth    (4'h0),
+-    .DReqDepth    ({3{4'h0}}),
+-    .DRspDepth    ({3{4'h0}}),
+-    .ExplicitErrs (1'b0)
++    .N             (3),
++    .H_REQ_PASS    (1'b1),
++    .H_RSP_PASS    (1'b1),
++    .D_REQ_PASS    ({3{1'b1}}),
++    .D_RSP_PASS    ({3{1'b1}}),
++    .H_REQ_DEPTH   (4'h0),
++    .H_RSP_DEPTH   (4'h0),
++    .D_REQ_DEPTH   ({3{4'h0}}),
++    .D_RSP_DEPTH   ({3{4'h0}}),
++    .EXPLICIT_ERRS (1'b0)
+   ) u_socket (
+     .clk_i  (clk_i),
+     .rst_ni (rst_ni),
+@@ -142,9 +142,9 @@ module otbn_reg_top (
+   end
+ 
+   tlul_adapter_reg #(
+-    .RegAw(AW),
+-    .RegDw(DW),
+-    .EnableDataIntgGen(1)
++    .REG_AW(AW),
++    .REG_DW(DW),
++    .ENABLE_DATA_INTG_GEN(1)
+   ) u_reg_if (
+     .clk_i  (clk_i),
+     .rst_ni (rst_ni),
+diff --git a/hw/ip/spi_host/rtl/spi_host_reg_top.sv b/hw/ip/spi_host/rtl/spi_host_reg_top.sv
+index 1e2b2f2a4d..3bf0ca62ab 100644
+--- a/hw/ip/spi_host/rtl/spi_host_reg_top.sv
++++ b/hw/ip/spi_host/rtl/spi_host_reg_top.sv
+@@ -94,8 +94,8 @@ module spi_host_reg_top
+   // outgoing integrity generation
+   tlul_pkg::tl_d2h_t tl_o_pre;
+   tlul_rsp_intg_gen #(
+-    .EnableRspIntgGen(1),
+-    .EnableDataIntgGen(1)
++    .ENABLE_RSP_INTG_GEN(1),
++    .ENABLE_DATA_INTG_GEN(1)
+   ) u_rsp_intg_gen (
+     .tl_i(tl_o_pre),
+     .tl_o(tl_o)
+@@ -117,16 +117,16 @@ module spi_host_reg_top
+ 
+   // Create Socket_1n
+   tlul_socket_1n #(
+-    .N            (3),
+-    .HReqPass     (1'b1),
+-    .HRspPass     (1'b1),
+-    .DReqPass     ({3{1'b1}}),
+-    .DRspPass     ({3{1'b1}}),
+-    .HReqDepth    (4'h0),
+-    .HRspDepth    (4'h0),
+-    .DReqDepth    ({3{4'h0}}),
+-    .DRspDepth    ({3{4'h0}}),
+-    .ExplicitErrs (1'b0)
++    .N             (3),
++    .H_REQ_PASS    (1'b1),
++    .H_RSP_PASS    (1'b1),
++    .D_REQ_PASS    ({3{1'b1}}),
++    .D_RSP_PASS    ({3{1'b1}}),
++    .H_REQ_DEPTH   (4'h0),
++    .H_RSP_DEPTH   (4'h0),
++    .D_REQ_DEPTH   ({3{4'h0}}),
++    .D_RSP_DEPTH   ({3{4'h0}}),
++    .EXPLICIT_ERRS (1'b0)
+   ) u_socket (
+     .clk_i  (clk_i),
+     .rst_ni (rst_ni),
+@@ -152,9 +152,9 @@ module spi_host_reg_top
+   end
+ 
+   tlul_adapter_reg #(
+-    .RegAw(AW),
+-    .RegDw(DW),
+-    .EnableDataIntgGen(0)
++    .REG_AW(AW),
++    .REG_DW(DW),
++    .ENABLE_DATA_INTG_GEN(0)
+   ) u_reg_if (
+     .clk_i  (clk_i),
+     .rst_ni (rst_ni),
+diff --git a/hw/ip/spi_host/rtl/spi_host_window.sv b/hw/ip/spi_host/rtl/spi_host_window.sv
+index dd63cdbf92..23509d31d4 100644
+--- a/hw/ip/spi_host/rtl/spi_host_window.sv
++++ b/hw/ip/spi_host/rtl/spi_host_window.sv
+@@ -52,9 +52,9 @@ module spi_host_window
+   assign rx_access_error = rx_we;
+ 
+   tlul_adapter_reg #(
+-    .RegAw             ( AW                       ),
+-    .RegDw             ( DW                       ),
+-    .EnableDataIntgGen ( 0                        )
++    .REG_AW               ( AW                    ),
++    .REG_DW               ( DW                    ),
++    .ENABLE_DATA_INTG_GEN ( 0                     )
+   ) u_adapter_rx (
+     .clk_i,
+     .rst_ni,
+@@ -84,12 +84,12 @@ module spi_host_window
+ 
+   // Only support writes to the data TX fifo window
+   tlul_adapter_sram #(
+-    .SramAw(AW),
+-    .SramDw(DW),
+-    .Outstanding(1),
+-    .ByteAccess(1),
+-    .ErrOnWrite(0),
+-    .ErrOnRead(1)
++    .SRAM_AW(AW),
++    .SRAM_DW(DW),
++    .OUTSTANDING(1),
++    .BYTE_ACCESS(1),
++    .ERR_ON_WRITE(0),
++    .ERR_ON_READ(1)
+   ) u_adapter_tx (
+     .clk_i,
+     .rst_ni,

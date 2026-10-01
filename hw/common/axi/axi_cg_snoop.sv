@@ -20,9 +20,9 @@
 
 
 module axi_cg_snoop #(
-  parameter int unsigned OutstandingTx = 1,
-  parameter int unsigned DenyDelay = 1,
-  parameter int unsigned HystWidth = 6
+  parameter int unsigned OUTSTANDING_TX = 1,
+  parameter int unsigned DENY_DELAY = 1,
+  parameter int unsigned HYST_WIDTH = 6
 ) (
   input  logic                    clk_i,
   input  logic                    rst_ni,
@@ -50,7 +50,7 @@ module axi_cg_snoop #(
   // Clock Gating Interface
   input  logic                    kick_i,
   input  logic                    test_clk_en_i,
-  input  logic [HystWidth-1:0]    hysteresis_i,
+  input  logic [HYST_WIDTH-1:0]   hysteresis_i,
   output logic                    clk_active_o,
   output logic                    gated_clk_o,
 
@@ -64,9 +64,9 @@ module axi_cg_snoop #(
   // Parameter Validation
   ////////////////////////////////////////////////////////////////////////////////
 
-  `OCAH_OT_ASSERT_INIT(ValidOutstandingTx_A, OutstandingTx >= 1)
-  `OCAH_OT_ASSERT_INIT(ValidDenyDelay_A, DenyDelay >= 1)
-  `OCAH_OT_ASSERT_INIT(ValidHystWidth_A, HystWidth >= 1 && HystWidth <= 32)
+  `OCAH_OT_ASSERT_INIT(ValidOutstandingTx_A, OUTSTANDING_TX >= 1)
+  `OCAH_OT_ASSERT_INIT(ValidDenyDelay_A, DENY_DELAY >= 1)
+  `OCAH_OT_ASSERT_INIT(ValidHystWidth_A, HYST_WIDTH >= 1 && HYST_WIDTH <= 32)
 
   ////////////////////////////////////////////////////////////////////////////////
   // Internal Signals
@@ -86,7 +86,7 @@ module axi_cg_snoop #(
   ////////////////////////////////////////////////////////////////////////////////
 
   prim_axi_snoop #(
-    .OutstandingTx(OutstandingTx)
+    .OUTSTANDING_TX(OUTSTANDING_TX)
   ) u_axi_snoop (
     .clk_i               (clk_i),
     .rst_ni              (rst_ni),
@@ -126,7 +126,7 @@ module axi_cg_snoop #(
   ////////////////////////////////////////////////////////////////////////////////
 
   prim_cg_req #(
-    .DenyDelay(DenyDelay)
+    .DENY_DELAY(DENY_DELAY)
   ) u_cg_req (
     .clk_i        (clk_i),
     .rst_ni       (rst_ni),
@@ -148,7 +148,7 @@ module axi_cg_snoop #(
   assign cg_enable_internal = !qreq_n;
 
   prim_clk_gater_hysteresis #(
-    .HYST_WIDTH(HystWidth)
+    .HYST_WIDTH(HYST_WIDTH)
   ) u_clk_gater (
     .clk_i           (clk_i),
     .rst_ni          (rst_ni),
@@ -187,7 +187,7 @@ module axi_cg_snoop #(
   `OCAH_OT_ASSERT_KNOWN(HysteresisKnown_A, hysteresis_i, clk_i, !rst_ni)
 
   // Validate that hysteresis value is within reasonable bounds
-  `OCAH_OT_ASSERT(HysteresisBounds_A, hysteresis_i <= {HystWidth{1'b1}}, clk_i, !rst_ni)
+  `OCAH_OT_ASSERT(HysteresisBounds_A, hysteresis_i <= {HYST_WIDTH{1'b1}}, clk_i, !rst_ni)
 
   // Validate output signals consistency
   `OCAH_OT_ASSERT_KNOWN(ClkActiveKnown_A, clk_active_o, clk_i, !rst_ni)

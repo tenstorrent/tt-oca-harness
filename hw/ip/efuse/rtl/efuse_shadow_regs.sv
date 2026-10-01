@@ -393,7 +393,7 @@ module efuse_shadow_regs
       end
   end
 
-  prim_diff_encode_multi #(.Width(LC_STATE_WIDTH)) u_lc_state_enc (
+  prim_diff_encode_multi #(.WIDTH(LC_STATE_WIDTH)) u_lc_state_enc (
       .clk_i,
       .rst_ni,
       .data_i (lc_state_raw_d),

@@ -25,7 +25,7 @@
  * FILTER_CONFIG open window. XBAR_SEP_OUTBOUND_CFG is the named golden
  * for the same word: read | write | entry_enabled | allow_burst, with the
  * read-only data_bus_width at its reset value and no bit set outside a
- * field. Do NOT set ALLOW_NS: EnNsFilter=1 and SEP CPU traffic is secure
+ * field. Do NOT set ALLOW_NS: EN_NS_FILTER=1 and SEP CPU traffic is secure
  * (ns=0).
  */
 #define SEP_OUTBOUND_FILTER_CFG_OPEN XBAR_SEP_OUTBOUND_CFG

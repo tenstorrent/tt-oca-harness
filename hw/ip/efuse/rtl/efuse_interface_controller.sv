@@ -349,8 +349,8 @@ module efuse_interface_controller #(
 
   // AXI-Lite to APB conversion
   prim_axi_lite_to_apb_single #(
-    .PipelineRequest(1'b1),
-    .PipelineResponse(1'b1),
+    .PIPELINE_REQUEST(1'b1),
+    .PIPELINE_RESPONSE(1'b1),
     .AXI_ADDR_WIDTH(ADDR_WIDTH),
     .AXI_DATA_WIDTH(DATA_WIDTH),
     .ADDR_START(32'h0000_0000),

@@ -20,7 +20,7 @@
 `include "ocah_fcov_macros.svh"
 
 module smc_cpu_fcov #(
-  parameter int unsigned CustomActionWidth = 1
+  parameter int unsigned CUSTOM_ACTION_WIDTH = 1
 ) (
   input wire clk_smc_i,
   input wire rst_cold_ni,
@@ -64,7 +64,7 @@ module smc_cpu_fcov #(
 
   // Cluster-side interrupt vector and debug outputs.
   input wire zeroer_intp_i,
-  input wire [CustomActionWidth-1:0] cla_custom_action_i
+  input wire [CUSTOM_ACTION_WIDTH-1:0] cla_custom_action_i
 );
 
   wire in_reset = (rst_cold_ni !== 1'b1);
