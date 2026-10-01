@@ -18,9 +18,9 @@ Every point of an object entry, and every line, FSM and condition point of a
 unit, is report-gated: it is written only where urg's templates of the merged
 database hold it and the run's raw report (written without exclusion files)
 marks it uncovered, so nothing a leaf covers is waived, and the output belongs
-to one graded run. A unit's toggle points are not planned here: a ports-only
-unit loses every internal net whole, which smc_toggle_exclusions.py plans, and
-an object entry leaves alone the bits that plan already takes. A toggle is
+to one graded run. A unit's toggle points are not planned here but in
+smc_toggle_exclusions.py, gated the same way, and an object entry leaves alone
+the bits that plan names. A toggle is
 decided per bit and direction, a line block by its source line, an FSM state
 or transition by name and a condition row by source line and vector. A module entry is written at module scope where
 the module's report section, the union of its instances, marks the point
@@ -628,7 +628,7 @@ class Planner:
     def unit(self, entry: dict, root: str) -> None:
         """Every uncovered line, FSM and condition point inside one instance.
 
-        A unit's toggle points are whole-signal and smc_toggle_exclusions.py plans them.
+        A unit's toggle points are planned by smc_toggle_exclusions.py.
         """
         db, report = self.db, self.report
         review = self.manifest.review

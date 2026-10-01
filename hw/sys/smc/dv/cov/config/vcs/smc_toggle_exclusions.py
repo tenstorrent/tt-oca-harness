@@ -1,29 +1,34 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Plan the SMC toggle exclusions whose fact holds for a whole signal or a fixed bit window.
+"""Plan the SMC toggle exclusions whose fact is stated for a whole signal or a bit window.
 
 A class whose fact is about the signal itself -- a union view that aliases flops
 another view already counts, a port that carries another graded signal
 unchanged, a constant, a tie-off, or a net inside a unit graded on its ports --
-takes the signal whole: every bit, both directions, covered or not. A class
-whose fact names some bits of a signal takes those bits, both directions. Both
-kinds are read from urg's templates alone, so the rows do not depend on which
-points a run covers: they stay the same across seeds and runs of one build and
-change only when the templates do. The classes whose fact is about individual
-points, the review classes of smc_reviewed_exclusions.toml, stay report-gated
-per bit and direction and are written by the other generators.
+names the signal whole: every bit, both directions. A class whose fact names
+some bits of a signal names those bits, both directions. That is the pattern;
+the rows written follow the graded run: only the bit-directions the run's raw
+report leaves uncovered are written, so nothing a leaf covers leaves the score.
+A row takes the whole signal where every bit-direction is uncovered and bit or
+part selects with their direction otherwise. The rows belong to one graded run
+and are regenerated from each; `--check` compares them against the run it is
+given. The review classes of smc_reviewed_exclusions.toml are report-gated the
+same way and are written by the other generators.
 
 A row is written at MODULE scope when it holds for every instance of the
 module and urg takes a toggle exclusion on the module's section, and at
 INSTANCE scope otherwise: a fact about one instance, a module elaborated per
 parameter set (urg takes no toggle exclusion on such a section), or a module
-some of whose instances the fact does not reach. A signal is owned by the first
-class that names it, in the order T1, the manifest's units, then FACT_ORDER.
+some of whose instances the fact does not reach. A module row keeps what the
+module's report section, the union of its instances, leaves uncovered, and an
+instance that leaves more uncovered gets the rest on an instance row. A signal
+is owned by the first class that names it, in the order T1, the manifest's
+units, then FACT_ORDER.
 
 The ports-only units are planned here from the manifest's `[[unit]]` entries:
-a unit root keeps the ports the run's report lists under Port Details and
-loses every other net, and every instance beneath a root loses all of its nets.
-The report is read for its port lists only, which do not depend on coverage.
+a unit root keeps the ports the run's report lists under Port Details, and its
+other nets and every net of every instance beneath it are excluded while
+uncovered.
 """
 
 from __future__ import annotations
@@ -148,9 +153,10 @@ CLASSES: dict[str, ToggleClass] = {
             "T1-OPENTITAN-PORTS-ONLY",
             "design",
             "whole signal",
-            "a unit of OpenTitan origin is graded on its ports; every net it declares inside is excluded",
+            "a unit of OpenTitan origin is graded on its ports; the nets it declares inside are excluded while uncovered",
             "this unit comes from OpenTitan, whose own verification covers its internals, so the "
-            "package grades it on its ports and excludes every net it declares inside. Every unit "
+            "package grades it on its ports and excludes the nets it declares inside while the "
+            "run leaves them uncovered. Every unit "
             "that is not from OpenTitan keeps all of its nets in the toggle score. The source's "
             "copyright line is quoted in the block.",
             "the unit's source losing its OpenTitan origin, or the package grading OpenTitan "
@@ -163,7 +169,7 @@ CLASSES: dict[str, ToggleClass] = {
             "the fields and locks views of the packed union efuse_map_t alias the flops its values view counts",
             "efuse_map_t is a packed union (smc_efuse_pkg.sv:171-175), so urg lists the same 8192 "
             "flops under the values, fields and locks views; the fields and locks views of every "
-            "efuse_map_t net are left out and values carries each bit once.",
+            "efuse_map_t net are left out while uncovered and values carries each bit once.",
             "efuse_map_t ceasing to be a union",
         ),
         ToggleClass(
@@ -398,6 +404,7 @@ class Planner:
         self.t1()
         self.units()
         self.facts()
+        self.written = self.gate()
 
     def modules(self) -> list[tuple[str, reviewed.Scope]]:
         return [(s, sc) for s, sc in sorted(self.db.modules.items()) if "tgl" in sc.checksum]
@@ -506,8 +513,8 @@ class Planner:
         review = self.manifest.review
         unit = entry["fact"].split(" is graded on its ports", 1)[0]
         summary = (
-            f"{unit} is graded on its ports, as design engineering reviewed; every net inside it "
-            "and every instance beneath it is excluded"
+            f"{unit} is graded on its ports, as design engineering reviewed; the nets inside it "
+            "and beneath it are excluded while uncovered"
         )
         full = (
             f"{entry['fact']} Reviewed with design engineering in {review['repository']} "
@@ -530,13 +537,50 @@ class Planner:
             out += ["//", *("// " + line for line in textwrap.wrap(body, 96))]
         return out
 
+    def gate(self) -> dict[tuple[str, str], dict[str, tuple[str, dict[Bit, set[str]]]]]:
+        """The planned bits the run's raw report leaves uncovered, by scope and signal.
+
+        A module row keeps the bit-directions its module section, the union of its
+        instances, marks uncovered; an instance of it that leaves more uncovered gets
+        those on an instance row.
+        """
+        db, report = self.db, self.report
+        out: dict = defaultdict(dict)
+
+        def keep(kind, scope, sc, signal, row, minus=None):
+            dims = reviewed.declared(signal, sc.signals[signal])
+            picked = reviewed.bits_of(dims, row.select) or set()
+            have = report.toggles(kind, scope, sc, db).get(signal, {})
+            owned = {}
+            for b in picked:
+                dirs = set(have.get(b, ())) - (minus or {}).get(b, set())
+                if dirs:
+                    owned[b] = dirs
+            return owned
+
+        for (kind, scope), signals in self.plan.rows.items():
+            sc = (db.modules if kind == "MODULE" else db.instances)[scope]
+            for signal, row in signals.items():
+                owned = keep(kind, scope, sc, signal, row)
+                if owned:
+                    out[(kind, scope)][signal] = (row.cls, owned)
+                if kind != "MODULE":
+                    continue
+                for _, path, inst in db.members(scope, "tgl"):
+                    if signal in self.plan.rows.get(("INSTANCE", path), {}):
+                        continue
+                    extra = keep("INSTANCE", path, inst, signal, row, owned)
+                    if extra:
+                        out[("INSTANCE", path)][signal] = (row.cls, extra)
+        return out
+
     def render(self, kind: str) -> tuple[list[str], Counter]:
         """The `.el` blocks of one scope kind, in template order."""
-        db, plan = self.db, self.plan
+        db = self.db
         rank = {c: i for i, c in enumerate(self.order)}
         counts: Counter = Counter()
         out: list[str] = []
-        for (k, scope), signals in sorted(plan.rows.items(), key=lambda t: t[0][1]):
+        for (k, scope), signals in sorted(self.written.items(), key=lambda t: t[0][1]):
             if k != kind or not signals:
                 continue
             sc = (db.modules if k == "MODULE" else db.instances)[scope]
@@ -551,8 +595,8 @@ class Planner:
             out.append(f"{k}: {scope}")
             by_cls: dict[str, list[str]] = defaultdict(list)
             for signal in sorted(signals, key=lambda s: (order.get(s, 1 << 30), s)):
-                row = signals[signal]
-                by_cls[row.cls].append(f'Toggle {signal}{row.select} "{sc.signals[signal]}"')
+                cls, owned = signals[signal]
+                by_cls[cls] += reviewed.toggle_rows(signal, sc.signals[signal], owned)
             for cls in sorted(by_cls, key=lambda c: rank.get(c, len(rank))):
                 out.append(self.annotation(cls))
                 if cls == "T1-OPENTITAN-PORTS-ONLY" and sc.module in self.copyright:
@@ -570,10 +614,10 @@ HEADER = (
     "// Format Version: 2",
     "// ExclMode: default",
     "//",
-    "// Generated by gen_smc_toggle_exclusions.py from urg's templates; regenerate",
-    "// rather than edit. Every row takes a whole signal, both directions, or the",
-    "// bit window its class names, so the file depends on the build and not on",
-    "// which points a run covers. {what}",
+    "// Generated by gen_smc_toggle_exclusions.py from urg's templates and the run's",
+    "// raw report; regenerate from each graded run rather than edit. A class names",
+    "// whole signals or a bit window; only the bit-directions the run leaves",
+    "// uncovered are written, so covered points stay graded. {what}",
     "// Each block names its class; the classes below state their facts and",
     "// retiring conditions, and README.md gives every class's granularity.",
     "//==================================================",

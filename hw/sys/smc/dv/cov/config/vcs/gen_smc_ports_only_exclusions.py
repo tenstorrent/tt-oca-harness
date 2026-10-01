@@ -4,8 +4,9 @@
 """Write smc_ports_only_exclusions.el: the line and condition points of ports-only units.
 
 T2 to T12 are the units smc_reviewed_exclusions.toml records as graded on their
-ports: the unit's own ports stay in the score and the points inside it leave.
-Their toggle points are whole-signal and go to the toggle files
+ports: the unit's own ports stay in the score and the points inside it leave
+while the run leaves them uncovered.
+Their toggle points go to the toggle files
 gen_smc_toggle_exclusions.py writes; this file holds their line blocks and
 condition rows while the run's raw report leaves them uncovered. The same
 units' register-block and FSM points go to smc_regblock_exclusions.el and

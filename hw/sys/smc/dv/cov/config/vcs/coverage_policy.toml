@@ -105,15 +105,15 @@ path = "smc_disabled_feature_exclusions.el"
 apply_phase = "report"
 args = ["-elfile", "{path}"]
 
-# Toggle rows whose fact holds for a whole signal or a fixed bit window, split
-# by scope: smc_toggle_module_exclusions.el holds the rows true of every
+# Toggle rows of the classes whose fact names a whole signal or a bit window,
+# split by scope: smc_toggle_module_exclusions.el holds the rows true of every
 # instance of a module, smc_toggle_instance_exclusions.el those true of one
-# instance. T1 OPENTITAN-PORTS-ONLY and T2 to T12 grade a unit on its ports and
-# take every net inside it; UNION-ALIAS, EFUSE-IMAGE-COPY,
-# EFUSE-FIELD-MAP-CONST and VERSION-ID-CONST are design facts; ATOP-ZERO and
-# EXT-IRQ-TIED are the bench's. The rows come from urg's templates alone, so
-# they do not change with the run's seeds. gen_smc_toggle_exclusions.py writes
-# both files; README.md gives each class's fact and granularity.
+# instance. T1 OPENTITAN-PORTS-ONLY and T2 to T12 grade a unit on its ports;
+# UNION-ALIAS, EFUSE-IMAGE-COPY, EFUSE-FIELD-MAP-CONST and VERSION-ID-CONST are
+# design facts; ATOP-ZERO and EXT-IRQ-TIED are the bench's. Only the
+# bit-directions the graded run leaves uncovered are written, so
+# gen_smc_toggle_exclusions.py regenerates both files from each graded run;
+# README.md gives each class's fact and granularity.
 [[native_files]]
 tool = "vcs"
 role = "exclude"

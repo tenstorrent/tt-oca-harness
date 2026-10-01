@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Write the SMC toggle exclusions that take whole signals or fixed bit windows.
+"""Write the SMC toggle exclusions whose classes name whole signals or bit windows.
 
 smc_toggle_module_exclusions.el holds the rows that hold for every instance of
 a module, smc_toggle_instance_exclusions.el the rows that hold for one
@@ -10,9 +10,9 @@ its fact and its granularity: T1 OPENTITAN-PORTS-ONLY and the ports-only units
 T2 to T12 of smc_reviewed_exclusions.toml, UNION-ALIAS, EFUSE-IMAGE-COPY,
 EFUSE-FIELD-MAP-CONST, VERSION-ID-CONST, ATOP-ZERO and EXT-IRQ-TIED.
 
-Every checksum and signature comes from urg's templates, and the run's raw
-report is read for the port lists of the unit roots, so the files hold for any
-run of the build the templates were dumped from::
+Every checksum and signature comes from urg's templates; the run's raw report
+gives the unit roots' port lists and the bit-directions the run leaves
+uncovered, the only ones written, so the files belong to that graded run::
 
     urg -dir <run dir>/cov/merged.vdb -dump full_exclusions tgl+line+fsm+cond+branch \
         -report <dir>
