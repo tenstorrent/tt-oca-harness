@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: SHL-0.51
 // Copyright 2018 ETH Zurich and University of Bologna.
 // Copyright and related rights are licensed under the Solderpad Hardware
 // License, Version 0.51 (the “License”); you may not use this file except in
@@ -13,8 +14,10 @@
 // Description: AXI Lite compatible interface
 //
 
-// Louis notes:
-// This file is modified upon open source file: https://aus-gitlab.local.tenstorrent.com/riscv/forks/cva6/-/blob/master/corev_apu/clint/axi_lite_interface.sv
+// Notes:
+// This file is modified from the open-source corev_apu/clint/axi_lite_interface.sv
+// module in the CVA6 project (via an internal Tenstorrent fork; internal source
+// location omitted for public release).
 // It is used as an AXI slave interface, it does:
 
 // This open source module is used as an AXI master module, it does:

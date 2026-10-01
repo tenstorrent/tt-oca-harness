@@ -493,6 +493,8 @@ module smu #(
   logic boot_stall_jtag_val;
   logic boot_stall_combined; // currently unused but exposed in case DTP or SEP needs visibility of boot stall
 
+  logic ext_boot_seq_done_qual;
+
   // DTP DEBUG_CONTROL CLA clock-stop enable to SMC TDR path
   logic dtp_cla_clock_stop_en;
 
@@ -853,6 +855,7 @@ module smu #(
     .boot_stall_combined_o               (boot_stall_combined),
     .skip_mem_repair_o                   (skip_mem_repair_o),
     .ext_boot_seq_done_i                 (ext_boot_seq_done_i),
+    .ext_boot_seq_done_qual_o            (ext_boot_seq_done_qual),
     .sep_security_disable_i              (sep_security_disable),
     .lc_state_i                          (sep_lc_state),
     .lc_sigint_err_o                     (efuse_lc_sigint_err),
@@ -974,7 +977,7 @@ module smu #(
       .test_en_i                     (test_en_i),
       .scan_rst_ni                   (scan_rst_ni),
 
-      .ext_boot_seq_done_i           (ext_boot_seq_done_i),
+      .ext_boot_seq_done_i           (ext_boot_seq_done_qual),
 
       // STAP access is already gated by lifecycle; the core DM AXI master
       // reaches the SEP fabric, so the DMI uncore aperture is unused.

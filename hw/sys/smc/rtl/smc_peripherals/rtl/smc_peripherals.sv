@@ -182,6 +182,8 @@ module smc_peripherals #(
   input  logic ext_boot_seq_done_i,     // External boot sequence done, active-high; the
                                         // eFuse wrapper holds its released reset until it is
                                         // set.
+  output logic ext_boot_seq_done_qual_o,  // ext_boot_seq_done_i synchronized to clk_smc_i
+                                          // and held set until cold reset.
 
   input  logic sep_security_disable_i,  // Security disable from the SEP eFuse
                                         // controller, active-high; skips automatic fuse
@@ -1018,6 +1020,14 @@ module smc_peripherals #(
   /////////////////////
 
   logic fuse_reset_n;
+  logic ext_boot_seq_done_qual;
+
+  ext_boot_seq_done_qual u_ext_boot_seq_done_qual (
+    .clk_i                    (clk_smc_i),
+    .rst_ni                   (rst_cold_ni),
+    .ext_boot_seq_done_i      (ext_boot_seq_done_i),
+    .ext_boot_seq_done_qual_o (ext_boot_seq_done_qual)
+  );
 
   smc_efuse_wrapper u_smc_efuse_wrapper (
     .clk_i                           (clk_smc_i),
@@ -1044,7 +1054,7 @@ module smc_peripherals #(
     .efuse_shim_command_resp_i       (efuse_shim_command_resp_i),
 
     .sep_security_disable_i          (sep_security_disable_i),
-    .ext_boot_seq_done_i             (ext_boot_seq_done_i),
+    .ext_boot_seq_done_i             (ext_boot_seq_done_qual),
 
     .reset_n_o                       (fuse_reset_n),
     .fuse_sense_done_o               (fuse_sense_done_o),
@@ -1298,6 +1308,8 @@ module smc_peripherals #(
     .test_en_i                  (test_en_i),
     .scan_rst_ni                (scan_rst_ni)
   );
+
+  assign ext_boot_seq_done_qual_o = ext_boot_seq_done_qual;
 
   assign powergood_stable_o = powergood_stable;
 

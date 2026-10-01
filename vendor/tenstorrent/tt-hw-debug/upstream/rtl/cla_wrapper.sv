@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 module cla_wrapper
     import cla_mmr_pkg::*;
     import cla_pkg::*;

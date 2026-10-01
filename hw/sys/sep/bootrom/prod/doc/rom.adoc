@@ -253,7 +253,12 @@ boot flow. Addresses are as seen by the SEP CPU.
 |*Region* |*Base* |*Size* |*Boot-flow role*
 |SEP SRAM |`0x10000000` |256 KiB |Destination for the manifest and payload; BL1 may also
 execute from here when `BL1_SRAM_EXEC_ENABLE` permits it (<<sec:manifest>>). Cleared by the ROM
-before use ([S15]).
+before use ([S15]). The top 8 bytes are reserved: `sep_dma_zero()` fills from a source word
+the engine re-reads for every beat, and the CPU rewrites that word immediately before each
+fill, so the manifest body, the payload and BL1's permitted load span all stop short of it
+(`SEP_SRAM_USABLE_SIZE`). SEP has no zeroing engine and the secure DMA has no fill opcode, so
+a fill needs a real source address; ROM `.rodata` cannot serve as one, because the engine
+cannot read the ROM aperture.
 |Boot ROM |`0x10040000` |64 KiB |BL0 code, `.rodata`, ROM metadata (version + self-hash), and
 the load image (LMA) of `.data`. Execute/read only.
 |Secure DMA |`0x10800000` |4 KiB |DMA engine registers.
@@ -321,7 +326,7 @@ usage-constraint identity checks ([S23]).
 |`DFX_CTRL_STATUS_SMU` |`0xF800` |Memory-repair/MBIST completion gate (<<sec:smc_sync>>).
 |SMC SRAM |`0x60000` |1 MiB shared memory: status ring buffer; manifest/payload staging for
 recovery and secondary boot.
-|SMC `CPU_CTRL_RESET_CTRL` |`0x0020` |Written only on invalid LC state to hold all SMC cores
+|SMC `CPU_CTRL_RESET_CTRL` |`0x39020` |Written only on invalid LC state to hold all SMC cores
 in reset (<<sec:fuses>>).
 |===
 
@@ -1041,10 +1046,10 @@ locked out (<<sec:demotion>>).
 
 [[req-SEP-ROM-FUSE-020]]*[SEP-ROM-FUSE-020]* The ROM shall validate the sensed LC state
 against the closed set above. On an invalid value the ROM shall (a) hold all SMC cores in
-reset (write `0xF` to the core reset bits of SMC `CPU_CTRL_RESET_CTRL`), rendering the SMU
-inoperative, and (b) fail fatally (`ROM_ERR_LIFECYCLE_INVALID`, `0xA002`). An invalid LC
-state may indicate a fuse attack or hardware fault; the system shall not run in an unknown
-lifecycle state.
+reset (clear the active-low core reset bits `[3:0]` of SMC `CPU_CTRL_RESET_CTRL`, preserving
+the rest of the register), rendering the SMU inoperative, and (b) fail fatally
+(`ROM_ERR_LIFECYCLE_INVALID`, `0xA002`). An invalid LC state may indicate a fuse attack or
+hardware fault; the system shall not run in an unknown lifecycle state.
 
 [[req-SEP-ROM-FUSE-030]]*[SEP-ROM-FUSE-030]* The validated LC state shall be recorded in
 `bl0_state.lc_state` for consumption by later stages and by BL1, and shall be reported on the
@@ -2020,6 +2025,18 @@ protect, and routing it through the Key Manager would make secure boot depend on
 ROM otherwise does not use. An earlier specification described provisioning the manifest's
 public key `(n, e)` into the Key Manager through its software write port; that description
 is withdrawn and should not be reintroduced.
+
+[[req-SEP-ROM-SB-120]]*[SEP-ROM-SB-120]* Signature verification shall not report success
+unless OTBN is confirmed to have executed. The RSA application uses one DMEM buffer
+(`inout`) for both the signature and the modexp result, so a command the block never
+accepted leaves the caller's own signature bytes where the result belongs — and a signature
+authored as a well-formed PKCS#1 v1.5 block then verifies against itself, with no private
+key involved. Neither register the completion path would naturally consult distinguishes
+that case: `STATUS` reads idle, which is the state OTBN was already in, and `ERR_BITS` reads
+zero, because nothing ran to fail. `INTR_STATE.done`, cleared before the command and
+required after it, is the signal that separates "finished" from "never started". The ROM
+shall additionally reject a result bit-identical to the signature it supplied, since
+`sig^e mod n` cannot equal `sig` for a value that also parses as that block.
 
 [[fig:key_select_revoke]]
 .Key authorization, revocation, and verification
@@ -3307,6 +3324,8 @@ terminal
 |<<sec:secure_boot>>
 |<<req-SEP-ROM-SB-110,SEP-ROM-SB-110>> |Public key goes straight to OTBN; Key Manager not
 involved |<<sec:secure_boot>>
+|<<req-SEP-ROM-SB-120,SEP-ROM-SB-120>> |No verified verdict unless OTBN is confirmed to have
+executed |<<sec:secure_boot>>
 |<<req-SEP-ROM-ENT-010,SEP-ROM-ENT-010>> |Entropy chain brought up lazily, once, before
 first use |<<sec:entropy>>
 |<<req-SEP-ROM-ENT-020,SEP-ROM-ENT-020>> |Entropy bring-up failure stops the boot; not a

@@ -21,10 +21,6 @@
 #include "sep.h"
 #include "sep_smc_interface.h"
 
-// SMC CPU CTRL reset control register offset (holds SMC cores in reset).
-// Writing 1 to core*_reset_n_n0_scan bits asserts reset on each SMC core.
-#define SMC_CPU_CTRL_RESET_CTRL_OFFSET 0x0020u
-
 // ---------------------------------------------------------------------------
 // LC state read helper.
 // ---------------------------------------------------------------------------
@@ -131,11 +127,16 @@ uint32_t rom_lifecycle_policy(void) {
         // Put SMC in reset to make the whole SMU inoperative.
         // Invalid LC_STATE may indicate fuse attack or HW fault — do not let
         // SMC continue running in an unknown state.
-        uint32_t smc_base = sep_get_smc_base();
-        uint32_t rst = mmio_read32(smc_base + SMC_CPU_CTRL_RESET_CTRL_OFFSET);
-        rst |= 0xFu; // core0~core3 reset_n bits → hold all cores in reset
-        mmio_write32(smc_base + SMC_CPU_CTRL_RESET_CTRL_OFFSET, rst);
+        uint32_t reset_ctrl = sep_get_smc_base() + SMC_CPU_CTRL_RESET_CTRL_OFFSET;
+        uint32_t rst = mmio_read32(reset_ctrl);
+        mmio_write32(reset_ctrl, rst & ~SMC_CPU_CTRL_RESET_CTRL_CORE_RESET_N_MASK);
         simputs("SMC_RESET_ON_INVALID_LC\n");
+        // Diagnostic only: the halt below happens either way. A core bit that
+        // reads back set means that core is still running.
+        rst = mmio_read32(reset_ctrl);
+        if ((rst & SMC_CPU_CTRL_RESET_CTRL_CORE_RESET_N_MASK) != 0u) {
+            simputshex32("SMC_RESET_NOT_HELD=", rst);
+        }
 
         rom_err_fail_ext(ROM_ERR_LIFECYCLE_INVALID);
     }

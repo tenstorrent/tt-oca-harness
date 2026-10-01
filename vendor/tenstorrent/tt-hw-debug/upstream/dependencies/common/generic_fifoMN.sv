@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 module generic_fifoMN #(
     parameter integer DATA_WIDTH  = 4,
     parameter integer ENTRIES     = 8,

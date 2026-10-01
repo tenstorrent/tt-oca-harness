@@ -312,6 +312,8 @@ module smc #(
                                         // memory repair and MBIST.
   input  logic ext_boot_seq_done_i,     // External boot sequence done, active-high; the
                                         // fuse-released reset stays low until it is set.
+  output logic ext_boot_seq_done_qual_o,  // ext_boot_seq_done_i synchronized to the SMC
+                                          // clock and held set until cold reset.
 
   input logic sep_security_disable_i,   // Security disable from the SEP eFuse
                                         // controller, active-high; skips automatic fuse
@@ -846,6 +848,7 @@ module smc #(
 
     // Efuse dft signal
     .ext_boot_seq_done_i                   (ext_boot_seq_done_i),
+    .ext_boot_seq_done_qual_o              (ext_boot_seq_done_qual_o),
 
     // SEP security disable
     .sep_security_disable_i                (sep_security_disable_i),
