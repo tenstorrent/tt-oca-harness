@@ -63,6 +63,12 @@ sources = [
   "hw/sys/dtp/dv/cov/sv/dtp_xtrig_fcov.sv",
 ]
 
+# The cocotb bench needs read and write access, which keeps VCS optimizing the DUT,
+# rather than the debug access to every object cocotb's Vcs runner grants. A run that
+# dumps waves keeps cocotb's access.
+[build.vcs]
+cocotb_access = ["-debug_access+r+w"]
+
 [frameworks.cocotb]
 # Uniform flow-first layout: cocotb env/seq_lib/tests live under cocotb/.
 python_root = "hw/sys/dtp/dv/cocotb"
