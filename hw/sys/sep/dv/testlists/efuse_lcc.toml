@@ -140,10 +140,12 @@ target = "lsu_stub_all_live"
 # AXI OKAY. The map gate input is tied off, so that read returns an error
 # and the leaf fails there. After sense, zero opens FEAT_CTRL; token=1
 # mismatches and restores fail-closed PROD.
-# Does not force sec_dis.
+# Does not force sec_dis. Clearing the override resets the crypto engines
+# without isolation, so the crypto EDN request-hold checks are off.
 name = "sep_sec_dis_override_test"
 module = "efuse.sep_sec_dis_override_test"
 seed = 1
+args = ["+sep_edn_jtag_reset_waive"]
 timeout_sec = 1800
 tags = ["efuse", "lcc", "sec_dis", "subsystem"]
 run_modes = ["no_cpu"]
@@ -155,10 +157,12 @@ target = "lsu_stub_all_live"
 # slice. Override pins stay 0. SW_RESET_N returns its reset default once the
 # TDR releases sep_reset_n. Restoring the TDR enable holds the reset again, and
 # sense-done releases it. FEAT_CTRL stays the withheld profile before sense and
-# reads the PROD golden after it.
+# reads the PROD golden after it. The TDR re-hold resets the crypto engines
+# without isolation, so the crypto EDN request-hold checks are off.
 name = "sep_sec_dis_reset_reach_test"
 module = "efuse.sep_sec_dis_reset_reach_test"
 seed = 1
+args = ["+sep_edn_jtag_reset_waive"]
 timeout_sec = 1800
 tags = ["efuse", "lcc", "sec_dis", "subsystem"]
 run_modes = ["no_cpu"]

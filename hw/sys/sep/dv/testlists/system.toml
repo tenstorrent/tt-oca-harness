@@ -130,10 +130,11 @@ args = ["+skip_fuse_sense"]
 # clears; reverse the roles. Once URND is being acknowledged, a KMAC software
 # reset is stepped across that acknowledge period. The KMAC endpoint's edn_ack
 # and edn_bus stay 0 on every gated-reset edge, and URND may complete its own
-# beat. The software reset write outlasts one KMAC seed, so the in-request
-# sample is the JTAG leg: the same walk from the JTAG KMAC override, with
-# SW_RESET_N still showing KMAC released, including one edge taken while KMAC
-# edn_req is high. CHK-EDN-HOLD arms on an edge that still presents a URND
+# beat. CHK-EDN-LEAD software-resets KMAC, AES and OTBN while their endpoint
+# holds a word, and requires edn_ack and edn_bus at 0 on the last cycle before
+# the gated reset falls and on every asserted-reset cycle. CHK-EDN-DISCARD
+# requires that no held word is acknowledged to any client afterwards.
+# CHK-EDN-HOLD arms on a KMAC software-reset edge that still presents a URND
 # word staged with edn_ack low. An empty-FIFO gap, where the next cycle reads
 # 0, is not that arm. An edge that presents a different word fails, and so
 # does every candidate edge zeroing the word. CHK-EDN-HOLD-KEEP requires that
