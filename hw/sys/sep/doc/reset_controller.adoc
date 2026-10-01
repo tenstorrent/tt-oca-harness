@@ -157,19 +157,14 @@ place of the eFuse reset through the SEP slice of the IC_RESET TDR (see
 whose fuse sensing does not complete. The per-IP JTAG override muxes are
 applied last, allowing debug to force reset without waiting for isolation.
 
-An OTBN, AES, or KMAC software reset also cancels that engine's endpoints in
-the shared crypto EDN adapter. The cancel begins once the engine's paths report
-isolated, one cycle before its reset asserts, and holds until reset releases, so
-EDN continues to serve the engine while its transactions drain. A word already
+An OTBN, AES, or KMAC reset also cancels that engine's endpoints in the shared
+crypto EDN adapter. The cancel begins once the engine's paths report isolated,
+one cycle before its reset asserts, and holds until reset releases, so EDN
+continues to serve the engine while its transactions drain. A word already
 committed to the engine but not yet acknowledged is discarded; it is never
 delivered to another client. Requests and staged words of the other EDN clients
-are unaffected.
-
-A JTAG override bypasses this cancellation along with the isolation sequencing.
-The engine's endpoint keeps its state through the override reset: a word already
-committed to it stays in that endpoint, and is never delivered to another
-client.
-
+are unaffected. A JTAG override bypasses this cancellation along with the
+isolation sequencing.
 [[sep-km-reset]]
 == Resetting the Key Manager
 
