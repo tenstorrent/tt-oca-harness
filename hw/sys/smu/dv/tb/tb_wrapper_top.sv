@@ -50,9 +50,13 @@ module smu_wrapper_uvm_top
 `undef SMU_TB_IN
 `undef SMU_TB_OUT
 
-  localparam int unsigned SEP_ENABLED = 1;
-  localparam bit SEP_PRESENT = 1'b1;
   localparam smu_pkg::smu_cfg_t SMU_BASE_CFG = smu_pkg::DefaultCfg;
+
+  // SEP_SEC_DISABLE_TOKEN is the metal expected digest. Product RTL defaults it
+  // to 0, which no SHA-256 output matches; the SHA-256 of the all-zero 32-byte
+  // token stands in for the metal value so a frontdoor token can take the match.
+  localparam bit [255:0] SEC_DIS_TB_DIGEST =
+      256'h66687aad_f862bd77_6c8fc18b_8e9f8e20_08971485_6ee233b3_902a591d_0d5f2925;
 
   // Same override tb_top.sv applies: exercise the most-significant configured
   // DTP cross-trigger mode bit while [1:0] stay SMC-reserved. Without it lane 7
@@ -61,6 +65,7 @@ module smu_wrapper_uvm_top
   function automatic smu_pkg::smu_cfg_t make_tb_cfg();
     smu_pkg::smu_cfg_t cfg = SMU_BASE_CFG;
     cfg.XTRIG_INT_CT_MODE = 8'h80;
+    cfg.SEP_SEC_DISABLE_TOKEN = SEC_DIS_TB_DIGEST;
     return cfg;
   endfunction
 
@@ -485,7 +490,7 @@ module smu_wrapper_uvm_top
 
   // Cocotb observe ports that hw/top/smu_wrapper does not expose directly.
   assign dut_present_o = 1'b1;
-  assign sep_enabled_o = SEP_ENABLED;
+  assign sep_enabled_o = SMU_CFG.SEP;
   assign powergood_o   = powergood_i;
   assign rst_cold_n_o  = rst_cold_stable_ref_clk_n;
   assign rst_primary_smc_clk_n_o = rst_primary_smc_clk_n;
@@ -1185,16 +1190,8 @@ module smu_wrapper_uvm_top
   sep_pkg::sep_lockstep_ctrl_t   sep_lockstep_ctrl_i = '0;
   sep_pkg::sep_lockstep_status_t sep_lockstep_status_o;
 
-  // SEP_SEC_DISABLE_TOKEN is the metal expected digest. Product RTL defaults it
-  // to 0, which no SHA-256 output matches; the SHA-256 of the all-zero 32-byte
-  // token stands in for the metal value so a frontdoor token can take the match.
-  localparam bit [255:0] SEC_DIS_TB_DIGEST =
-      256'h66687aad_f862bd77_6c8fc18b_8e9f8e20_08971485_6ee233b3_902a591d_0d5f2925;
-
   smu_wrapper #(
-    .CFG                   (SMU_CFG),
-    .SEP                   (SEP_ENABLED[0]),
-    .SEP_SEC_DISABLE_TOKEN (SEC_DIS_TB_DIGEST)
+    .CFG (SMU_CFG)
   ) u_dut (
     .entropy_rosc_sample_clk_i,
     .rst_cold_ni,
@@ -1392,7 +1389,7 @@ module smu_wrapper_uvm_top
 
   // SEP_PRESENT drops the SEP-only points on the no-SEP elaboration.
   smu_boot_fcov #(
-    .SEP_PRESENT(SEP_PRESENT)
+    .SEP_PRESENT(SMU_CFG.SEP)
   ) u_smu_boot_fcov (
     .clk_ref_i                   (clk_ref),
     .clk_smu_i                   (clk_smu),
@@ -1424,7 +1421,7 @@ module smu_wrapper_uvm_top
 
   // SEP_PRESENT drops the SEP-only points on the no-SEP elaboration.
   smu_xbar_fcov #(
-    .SEP_PRESENT(SEP_PRESENT)
+    .SEP_PRESENT(SMU_CFG.SEP)
   ) u_smu_xbar_fcov (
     .clk_smu_i                (clk_smu),
     .rst_cold_ni              (rst_cold_ni),
@@ -1453,7 +1450,7 @@ module smu_wrapper_uvm_top
 
   // SEP_PRESENT drops the SEP-only points on the no-SEP elaboration.
   smu_rst_fcov #(
-    .SEP_PRESENT(SEP_PRESENT)
+    .SEP_PRESENT(SMU_CFG.SEP)
   ) u_smu_rst_fcov (
     .clk_ref_i                   (clk_ref),
     .clk_smu_i                   (clk_smu),
@@ -1480,7 +1477,7 @@ module smu_wrapper_uvm_top
 
   // SEP_PRESENT drops the SEP-only points on the no-SEP elaboration.
   smu_clk_fcov #(
-    .SEP_PRESENT(SEP_PRESENT)
+    .SEP_PRESENT(SMU_CFG.SEP)
   ) u_smu_clk_fcov (
     .clk_smu_i               (clk_smu),
     .rst_primary_smc_clk_ni  (rst_primary_smc_clk_n_o),
@@ -1497,7 +1494,7 @@ module smu_wrapper_uvm_top
   );
 
   smu_lc_fcov #(
-    .SEP_PRESENT(SEP_PRESENT)
+    .SEP_PRESENT(SMU_CFG.SEP)
   ) u_smu_lc_fcov (
     .clk_smu_i                (clk_smu),
     .rst_cold_ni              (rst_cold_ni),
@@ -1524,7 +1521,7 @@ module smu_wrapper_uvm_top
 
   // SEP_PRESENT drops the SEP-only points on the no-SEP elaboration.
   smu_ext_fcov #(
-    .SEP_PRESENT(SEP_PRESENT)
+    .SEP_PRESENT(SMU_CFG.SEP)
   ) u_smu_ext_fcov (
     .clk_smu_i                (clk_smu),
     .rst_cold_ni              (rst_cold_ni),
@@ -1569,7 +1566,7 @@ module smu_wrapper_uvm_top
 
   // SEP_PRESENT drops the SEP-only points on the no-SEP elaboration.
   smu_dbg_fcov #(
-    .SEP_PRESENT(SEP_PRESENT)
+    .SEP_PRESENT(SMU_CFG.SEP)
   ) u_smu_dbg_fcov (
     .clk_smu_i                   (clk_smu),
     .rst_primary_smc_clk_ni      (rst_primary_smc_clk_n_o),
@@ -1629,7 +1626,7 @@ module smu_wrapper_uvm_top
 
   // SEP_PRESENT drops the SEP-only points on the no-SEP elaboration.
   smu_alias_fcov #(
-    .SEP_PRESENT(SEP_PRESENT)
+    .SEP_PRESENT(SMU_CFG.SEP)
   ) u_smu_alias_fcov (
     .clk_smu_i                 (clk_smu),
     .rst_primary_smc_clk_ni    (rst_primary_smc_clk_n_o),

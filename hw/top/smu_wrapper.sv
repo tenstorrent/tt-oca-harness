@@ -37,17 +37,14 @@ module smu_wrapper
   import sep_io_pkg::*;
   import km_intf_pkg::*;
 #(
-  parameter smu_pkg::smu_cfg_t CFG = smu_pkg::DefaultCfg,
-  parameter bit           SEP                   = 1'b1,
-  parameter bit [255:0]   SEP_SEC_DISABLE_TOKEN = 256'b0,
-  parameter int unsigned  EXT_TRNG_NUM_AXIS     = 3,
+  parameter int unsigned CFG_IDX = 0,
+  parameter smu_pkg::smu_cfg_t CFG = smu_pkg::SmuConfigs[CFG_IDX],
   parameter type  ic_reset_ext_t = jtag_tap_pkg::jtag_ic_reset_default_t,
 
   localparam int unsigned  XTRIG_NUM_CTP          = CFG.XTRIG_NUM_CTP,
   localparam int unsigned  XTRIG_NUM_INT_CT       = CFG.XTRIG_NUM_INT_CT,
   localparam int unsigned  XTRIG_NUM_CLK_STOP_REQ = CFG.XTRIG_NUM_CLK_STOP_REQ,
-  localparam int unsigned  JTAG_NUM_EXTRA_STAP_PORTS =
-      (CFG.JTAG_NUM_EXTRA_STAPS > 0) ? CFG.JTAG_NUM_EXTRA_STAPS : 1
+  localparam int unsigned  JTAG_NUM_EXTRA_STAP_PORTS = smu_pkg::jtag_num_extra_stap_ports(CFG)
 ) (
   // Clock and Reset
   input  logic  rst_cold_ni,
@@ -343,8 +340,8 @@ module smu_wrapper
   sep_pkg::sep_32_32_axil_req_t  ext_trng_axil_req;
   sep_pkg::sep_32_32_axil_resp_t ext_trng_axil_resp;
 
-  ext_trng_axis_req_t ext_trng_axis_req [EXT_TRNG_NUM_AXIS-1:0];
-  ext_trng_axis_rsp_t ext_trng_axis_rsp [EXT_TRNG_NUM_AXIS-1:0];
+  ext_trng_axis_req_t ext_trng_axis_req [CFG.EXT_TRNG_NUM_AXIS-1:0];
+  ext_trng_axis_rsp_t ext_trng_axis_rsp [CFG.EXT_TRNG_NUM_AXIS-1:0];
 
   logic ext_trng_irq;
 
@@ -376,11 +373,8 @@ module smu_wrapper
   /////////////////////
 
   smu #(
-    .CFG                   (CFG),
-    .SEP                   (SEP),
-    .SEP_SEC_DISABLE_TOKEN (SEP_SEC_DISABLE_TOKEN),
-    .EXT_TRNG_NUM_AXIS     (EXT_TRNG_NUM_AXIS),
-    .ic_reset_ext_t         (ic_reset_ext_t)
+    .CFG            (CFG),
+    .ic_reset_ext_t (ic_reset_ext_t)
   ) u_smu (
     .clk_smu_i    (clk_sys),
     .clk_ref_i    (clk_ref),
@@ -643,7 +637,7 @@ module smu_wrapper
   /////////////////////////
 
   sep_ip_integration #(
-    .EXT_TRNG_NUM_AXIS (EXT_TRNG_NUM_AXIS),
+    .EXT_TRNG_NUM_AXIS (CFG.EXT_TRNG_NUM_AXIS),
     .ABR_MASKING_EN    (CFG.SEP_ABR_MASKING_EN)
   ) u_sep_ip_integration (
     .clk_i  (clk_sys),

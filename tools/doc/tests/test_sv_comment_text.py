@@ -1,12 +1,15 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+import re
 import sys
 import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from sv_comment_text import struct_field_clauses  # noqa: E402
+
+ROOT = Path(__file__).resolve().parents[3]
 
 
 class StructFieldClausesTests(unittest.TestCase):
@@ -71,6 +74,15 @@ class StructFieldClausesTests(unittest.TestCase):
                 "rsp_t": {"valid": "Response valid.", "data": "Response data."},
             },
         )
+
+    def test_every_smu_cfg_field_has_a_clause(self):
+        lines = (ROOT / "hw/sys/smu/rtl/smu_pkg.sv").read_text(encoding="utf-8").splitlines()
+        end = next(i for i, line in enumerate(lines) if re.match(r"\s*\}\s*smu_cfg_t\s*;", line))
+        start = max(i for i in range(end) if "typedef struct" in lines[i])
+        code = " ".join(line.split("//", 1)[0] for line in lines[start + 1 : end])
+        fields = re.findall(r"([A-Za-z_]\w*)\s*;", code)
+        self.assertTrue(fields)
+        self.assertEqual(list(struct_field_clauses(lines)["smu_cfg_t"]), fields)
 
 
 if __name__ == "__main__":

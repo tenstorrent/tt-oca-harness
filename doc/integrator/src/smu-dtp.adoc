@@ -80,7 +80,7 @@ dtp #(
 The DTP secondary scan path chains multiple STAPs on a single PTAP-managed scan
 string. The fixed order on this string is: PTAP, I/O STAP (if
 `JTAG_STAP_IO_ENABLE=1`), SMC debug STAP (if `JTAG_SMC_DBG_ENABLE=1`), SEP
-debug STAP (if `SEP=1` in the SMU), extra STAP[N-1:0], and return to PTAP.
+debug STAP (if `CFG.SEP=1` in the SMU), extra STAP[N-1:0], and return to PTAP.
 
 The string carries scans only while the PTAP 3DCR select bit is set. While the
 bit is clear, the scan-control strobes to every STAP stay low, so the STAP SIBs
@@ -96,7 +96,7 @@ not exported on the SMU boundary. The SMU wires the SMC debug STAP host outputs
 to the SMC CPU/system JTAG ports (`smc_cpu_jtag_*`) when
 `JTAG_SMC_DBG_ENABLE=1`; when disabled, the DTP bypasses this STAP in the
 secondary scan chain and drives the internal host outputs low. The SEP debug
-STAP connects to the SEP JTAG debug port when `SEP=1`; when `SEP=0`, the SMU
+STAP connects to the SEP JTAG debug port when `CFG.SEP=1`; when `CFG.SEP=0`, the SMU
 ties `sep_stap_tdo_to_dtp = 1'b0` to bypass the SEP STAP return path.
 
 Each STAP host interface is gated by a field of `dbg_disable_i`, synchronized to
