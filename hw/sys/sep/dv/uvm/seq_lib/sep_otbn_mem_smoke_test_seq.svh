@@ -65,7 +65,7 @@ class sep_otbn_mem_smoke_test_seq extends sep_base_test_seq;
 
   task body();
     bit [31:0] status_word;
-    bit [ 7:0] status;
+    bit [7:0] status;
     bit [31:0] imem_words[$];
     bit [31:0] dmem_words[$];
     bit [31:0] imem_req0, imem_wr0, dmem_req0, dmem_wr0;
