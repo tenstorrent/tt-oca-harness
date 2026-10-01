@@ -108,12 +108,12 @@ the `OCAH_FCOV_COVER` points that populate the `user` metric family.
 
 ## Exclusion files
 
-`coverage_policy.toml` beside this file names eight `-elfile` files the report
+`coverage_policy.toml` beside this file names seven `-elfile` files the report
 applies, the form `hw/sys/sep/dv/cov/config/vcs/coverage_policy.toml` uses.
-The seventh and eighth, `smc_legacy_exclusions.el` and
-`smc_legacy_children_exclusions.el`, carry a provenance rather than a fact and
-have their own section below.
-The first four are written by `gen_smc_cov_exclusions.py` from urg's exclusion
+Some classes in them rest on a design-engineering review recorded in
+`smc_reviewed_exclusions.toml`; those have their own section below.
+The first four and `smc_reviewed_field_exclusions.el` are written by
+`gen_smc_cov_exclusions.py` from urg's exclusion
 templates and the run's raw report (`cov/report_raw`, written without the
 exclusion files). Every entry lists a point that report marks uncovered, rows,
 branch arms and FSM states and transitions alike, so a reachable point is never
@@ -150,7 +150,7 @@ fact turns on which term of an expression a row holds away from a tied value,
 the class reads the report's term list for that expression and decides the row
 from it, rather than matching the expression by name:
 
-    urg -dir <run dir>/cov/merged.vdb -dump full_exclusions cond+branch+fsm -report <dir>
+    urg -dir <run dir>/cov/merged.vdb -dump full_exclusions tgl+line+fsm+cond+branch -report <dir>
     python3 hw/sys/smc/dv/cov/config/vcs/gen_smc_cov_exclusions.py <dir> <run dir>/cov/report_raw/modinfo.txt
 
 | File | Class | Fact |
@@ -170,7 +170,7 @@ from it, rather than matching the expression by name:
 | `smc_regblock_exclusions.el` | C3 NO-EXTERNAL-WRITE | the main UART map's only external register, RBR, is read-only, so PeakRDL gives `external_wr_ack` a constant zero and a row needing an external write acked cannot occur |
 | `smc_regblock_exclusions.el` | C4 STROBE-CARRIES-DIRECTION | PeakRDL folds the direction into the decode strobe of a read-only or write-only register and into the `req` it presents for an external one, so neither is high in the other direction. A row needing that, in the block or in `i2c_core`, `uart_core` or `avsbus_controller`, which consume those reqs, cannot occur. `avsbus_controller.sv:1302-1304` ANDs the AVS_CMD and AVS_READBACK reqs with `req_is_wr` and its negation, which the block latches from `pwrite` in the setup phase, and its `axi_lite_to_apb` (`:315-341`) holds `pwrite` through access, so `R_avs_cmd_wr_en` and `R_avs_readback_rd_en` carry the direction of the transfer in flight. The test rewrites each strobe, req or enable as itself and its direction and takes a row only when that makes it unsatisfiable. The same fact takes `uart_16550_main_reg.sv:1403`'s internal-write operand with the external term set, since RBR, the map's only external register, is read-only (`:262`) |
 | `smc_regblock_exclusions.el` | B1 PARTIAL-LANE-WRITE | **a bench fact, not a design one.** The SMC AXI agent takes a one- or two-byte length (`smc_sys_axi_agent.py:350-354`), but no leaf of the measured run writes a block whose cpuif carries no more than 32 bits with a lane off; a leaf that does covers the rows it reaches, and the next re-pin drops them. A row of a field's software-write branch (`next_c = ...` under `// SW write`) that needs some `decoded_wr_biten` lane off, the retain row or a row of the retain or write-data operand, is reachable in the design and uncovered for want of a partial write. The test is exact: the row must be out of reach with every lane on and within reach with them free, over the report's own term list. **A block with a wider cpuif takes a half-word write from the same agent**, so its rows stay graded. The clear-on-write form of a W1C field is left out, and a leaf covers it |
-| `smc_opentitan_toggle_exclusions.el` | T1 OPENTITAN-PORTS-ONLY | a unit that comes from OpenTitan is graded on its ports for toggle, its internals being verified upstream; every other unit the scope keeps is graded on all of its nets. Origin is the source's copyright line, not the unit's name, and the generator re-checks it. The ten units and their qualifying lines are listed below |
+| `smc_ports_only_exclusions.el` | T1 OPENTITAN-PORTS-ONLY | a unit that comes from OpenTitan is graded on its ports for toggle, its internals being verified upstream; every other unit the scope keeps is graded on all of its nets. Origin is the source's copyright line, not the unit's name, and the generator re-checks it. The ten units and their qualifying lines are listed below |
 | `smc_xor_network_exclusions.el` | X1 XOR-NETWORK | a CRC or parity network is an XOR of four or more terms; condition coverage enumerates 2^n input combinations of a function the tests compare by its output |
 | `smc_fsm_exclusions.el` | F2 DEFAULT | `avsbus_controller.cur_state` has `next_state = AVS_IDLE` as its always_comb default, which the extractor lists as an edge from every state; every state has a case arm and every arm assigns next_state, so the default never fires. `AVS_IDLE`, `AVS_SLAVE_RESYNC` and `AVS_END_LAST_SUBFRAME` assign AVS_IDLE in their own arm, reach it in the ordinary sequence, and stay graded |
 | `smc_fsm_exclusions.el` | F3 TIEOFF | `smc_dfd_wrap` ties every `m_trc_axi_*` response input to zero, so `trace_axi_master` never completes a response handshake and cannot pass REQ_HANDSHAKE: the states an `aw_ready`, `w_ready` or `b_valid` is needed to enter, and the edges touching them, cannot occur. The request it issues on `valid_i` needs no response, so RESET_VALUE, REQ_HANDSHAKE and the edge between them stay graded |
@@ -237,7 +237,7 @@ A regblock whose stall is `external_pending` (it has external registers)
 gets A2 only; a regblock that decodes errors gets neither. `--check` reports
 when the committed files no longer match the templates.
 
-The fifth file is a covergroup exclusion. `-cm_hier` scopes line, condition,
+`smc_group_exclusions.el` is a covergroup exclusion. `-cm_hier` scopes line, condition,
 FSM, toggle and branch, and `-cm_common_hier` extends it to assertions;
 neither reaches a covergroup, so a covergroup declared inside RTL is graded
 wherever the elaboration instantiates it. The six
@@ -332,9 +332,12 @@ scope file silently); and `u_dut` matches
 - **`-cm_common_hier` needs `-lca`.** An opt-in switch, not a separate
   licence.
 
-## Toggle inside OpenTitan units
+## Units graded on their ports
 
-`smc_opentitan_toggle_exclusions.el` carries the T1 rule. `-cm_tgl portsonly`
+`smc_ports_only_exclusions.el` holds the classes that grade a unit on its
+ports: the unit's own ports stay in the score and the points inside it leave.
+T1 is decided from the source and is described here; T2 to T12 are the units
+design engineering reviewed, in the section below. The file carries the T1 rule. `-cm_tgl portsonly`
 applies to a whole run and cannot name one unit, and a `begin tgl(portsonly)
 ... end` block in `smc_cov_scope.hier` is not an option either:
 `hw/sys/smu/dv/cov/config/vcs/README.md` records that VCS keeps the toggle
@@ -369,41 +372,59 @@ it is listed because the rule reaches it. A listed unit the database does not
 hold contributes nothing either, and the generator names it as skipped. The scope drops `hw/common/ocah_prim/`
 but not `ocah_prim_generic/`, which is why this one is graded at all.
 
-    urg -dir <run dir>/cov/merged.vdb -dump full_exclusions tgl -report <dir>
-    python3 hw/sys/smc/dv/cov/config/vcs/gen_smc_opentitan_toggle_exclusions.py <dir>
+    urg -dir <run dir>/cov/merged.vdb -dump full_exclusions tgl+line+fsm+cond+branch -report <dir>
+    python3 hw/sys/smc/dv/cov/config/vcs/gen_smc_ports_only_exclusions.py <dir> <run dir>/cov/report_raw/modinfo.txt
 
-## Exclusions carried from tt-oca-hw
+## Exclusions design engineering reviewed
 
-`smc_legacy_exclusions.el` carries the SMC exclusions of the archived
-tt-oca-hw repository onto this bench. Design engineering reviewed those files
-in that repository, and the class rests on that review: it states where an
-object comes from, not why it cannot be reached.
-
-| File | Class | Scope | Fact | Retired by | Reviewer |
-| --- | --- | --- | --- | --- | --- |
-| `smc_legacy_exclusions.el` | L1 LEGACY-DE-APPROVED | report-gated: the objects of the archived bench's exclusion files that this database still holds and the graded run leaves uncovered, at the scope the legacy file gave them | provenance: tt-oca-hw excluded the object in one of the eleven files of `dv/smc/tb/tb_uvm/exclusion_files/` at commit `cb678bff` that `gen_smc_legacy_exclusions.py` lists, and design engineering reviewed those files there; the ANNOTATION before each group names the file | an enrolled leaf that covers the object, or design engineering withdrawing the approval | design engineering + DV peer |
-| `smc_legacy_children_exclusions.el` | L2 LEGACY-INSTANCE-CHILDREN | report-gated: the internals of each instance a legacy file excluded whole that this database still holds, its internal signals and every instance beneath it, while the graded run leaves them uncovered; the instance's own ports stay graded, as T1 keeps an OpenTitan unit's ports, and an excluded instance inside another is part of the outer one's internals | provenance: the same eleven files excluded the instance whole, with the annotation that the wrapper hierarchy stays visible, and design engineering reviewed them there; the ANNOTATION before each group names the file | an enrolled leaf that covers the object, or design engineering withdrawing the approval | design engineering + DV peer |
-
-The legacy files are not in this repository. The generator reads them from a
-directory given on the command line and records only the repository, commit
-and file names. It maps each Toggle, Block, Fsm state or transition and
-Condition object onto this hierarchy, `u_smc_wrapper` read as `u_dut`, and an
-instance path compared without the `u_` or `i_` prefix and without unindexed
-generate blocks where this tree renamed them, and writes an object only where
-urg's templates hold it and the run's raw report (`cov/report_raw/modinfo.txt`)
-marks it uncovered, with the template's checksum and text: a toggle per bit and
+`smc_reviewed_exclusions.toml` records exclusions design engineering reviewed
+for the SMC bench in an earlier repository (`[review]` names it, the reviewed
+files and the commit; the reviewed dumps are not in this repository), by
+category and against this tree's names: an `[[object]]` names a module or an
+instance and the toggle signals, selects, line blocks, FSM points or condition
+rows it covers, and a `[[unit]]` names an instance graded on its ports. Each
+entry carries its class and reviewed file; the class carries the fact, the
+retiring condition and the reviewer. `smc_reviewed_exclusions.py` resolves the
+manifest against urg's templates and keeps only the points the run's raw
+report (`cov/report_raw/modinfo.txt`) marks uncovered: a toggle per bit and
 direction, a line block by its source line, an FSM state or transition by name
-and a condition row by source line and vector. Nothing a leaf covers is waived.
-Like the SMU `MEM-MACRO` class the file is therefore report-gated: it belongs to
-one graded run, is regenerated from each graded run, and `--check` compares it
-against the run it is given. Its docstring gives every rule. Most legacy objects
-belong to units the scope now drops at compile time or to blocks this build no
-longer has, and are not written. A legacy INSTANCE line with no object under
-it excluded a whole instance; L2 carries it as that instance's internals, in
-`smc_legacy_children_exclusions.el` under the same report gate, and keeps the
-instance's ports graded. `--stats` counts every object that does not map, by
-reason, and what each L2 instance contributed.
+and a condition row by source line and vector. Nothing a leaf covers is
+waived. Like the SMU `MEM-MACRO` class the rows are therefore report-gated:
+they belong to one graded run, are regenerated from each graded run, and
+`--check` compares them against the run it is given. Inside a unit, a PeakRDL
+register block's points take A13 and FSM points F11, so each lands in the file
+of its category; a point is written once, to the first entry that names it.
+`gen_smc_cov_exclusions.py` writes the A, F and R classes and
+`gen_smc_ports_only_exclusions.py` the T classes, from the same plan. The
+counts below are the points written for the run the files were generated from.
 
-    cd <dir> && urg -dir <run dir>/cov/merged.vdb -dump full_exclusions tgl+line+fsm+cond -report rep
-    python3 hw/sys/smc/dv/cov/config/vcs/gen_smc_legacy_exclusions.py <legacy dir> <dir> \
-        <run dir>/cov/report_raw/modinfo.txt [--check]
+| File | Class | Points | Fact | Retired by | Reviewer |
+| --- | --- | --- | --- | --- | --- |
+| `smc_regblock_exclusions.el` | A12-REGBLOCK-FIELDS-REVIEWED | 38,920 half-toggles, 1 line blocks | design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. | an enrolled leaf that covers the point, or design engineering withdrawing the review | DE + DV peer |
+| `smc_regblock_exclusions.el` | A13-REGBLOCK-IN-PORTS-ONLY-UNIT | 88,595 half-toggles, 964 line blocks, 4,636 condition rows | this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its points are excluded while uncovered. | an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit | DE + DV peer |
+| `smc_fsm_exclusions.el` | F10-FSM-REVIEWED | 288 FSM points | design engineering reviewed these FSM states and transitions as not exercised by the SMC bench. | an enrolled leaf that covers the point, or design engineering withdrawing the review | DE + DV peer |
+| `smc_fsm_exclusions.el` | F11-FSM-IN-PORTS-ONLY-UNIT | 23 FSM points | this FSM sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its states and transitions are excluded while uncovered. | an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit | DE + DV peer |
+| `smc_ports_only_exclusions.el` | T2-DFD-PORTS-ONLY | 192,784 half-toggles, 207 line blocks, 977 condition rows | the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while its internal signals and every instance beneath it are excluded while uncovered. | an enrolled leaf that covers the point, or design engineering withdrawing the review | DE + DV peer |
+| `smc_ports_only_exclusions.el` | T3-PADRING-PORTS-ONLY | 94,327 half-toggles, 672 line blocks, 1,028 condition rows | the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while its internal signals and every instance beneath it are excluded while uncovered. | an enrolled leaf that covers the point, or design engineering withdrawing the review | DE + DV peer |
+| `smc_ports_only_exclusions.el` | T4-UART-I2C-PORTS-ONLY | 15,191 half-toggles, 206 line blocks, 491 condition rows | the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while its internal signals and every instance beneath it are excluded while uncovered. | an enrolled leaf that covers the point, or design engineering withdrawing the review | DE + DV peer |
+| `smc_ports_only_exclusions.el` | T5-FILTER-PORTS-ONLY | 299 half-toggles, 304 condition rows | the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while its internal signals and every instance beneath it are excluded while uncovered. | an enrolled leaf that covers the point, or design engineering withdrawing the review | DE + DV peer |
+| `smc_ports_only_exclusions.el` | T6-TELEMETRY-PORTS-ONLY | 29,811 half-toggles, 2 line blocks, 36 condition rows | the telemetry receiver wrapper is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while its internal signals and every instance beneath it are excluded while uncovered. | an enrolled leaf that covers the point, or design engineering withdrawing the review | DE + DV peer |
+| `smc_ports_only_exclusions.el` | T7-CPU-PORTS-ONLY | 12,562 half-toggles, 4 line blocks, 30 condition rows | the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while its internal signals and every instance beneath it are excluded while uncovered. | an enrolled leaf that covers the point, or design engineering withdrawing the review | DE + DV peer |
+| `smc_ports_only_exclusions.el` | T8-DMA-ZEROER-PORTS-ONLY | 17,894 half-toggles, 6 line blocks, 71 condition rows | the iDMA wrapper and the zeroer is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while its internal signals and every instance beneath it are excluded while uncovered. | an enrolled leaf that covers the point, or design engineering withdrawing the review | DE + DV peer |
+| `smc_ports_only_exclusions.el` | T9-IP-INTEGRATION-PORTS-ONLY | 25,581 half-toggles, 9 line blocks, 9 condition rows | the IP integration shell (memories, eFuse shim, I3C and PLL models it hosts) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while its internal signals and every instance beneath it are excluded while uncovered. | an enrolled leaf that covers the point, or design engineering withdrawing the review | DE + DV peer |
+| `smc_ports_only_exclusions.el` | T10-CDC-SYNC-PORTS-ONLY | 588 half-toggles, 4 condition rows | the peripheral clock-domain crossings and the synchronizer cells is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while its internal signals and every instance beneath it are excluded while uncovered. | an enrolled leaf that covers the point, or design engineering withdrawing the review | DE + DV peer |
+| `smc_ports_only_exclusions.el` | T11-AVS-PORTS-ONLY | 4,598 condition rows | the AVS bus CRC units and register block is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while its internal signals and every instance beneath it are excluded while uncovered. | an enrolled leaf that covers the point, or design engineering withdrawing the review | DE + DV peer |
+| `smc_ports_only_exclusions.el` | T12-FABRIC-PORTS-ONLY | 1,676 half-toggles | the peripheral AXI-Lite crossbar and the clock-gate snoopers is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while its internal signals and every instance beneath it are excluded while uncovered. | an enrolled leaf that covers the point, or design engineering withdrawing the review | DE + DV peer |
+| `smc_reviewed_field_exclusions.el` | R1-EFUSE-FIELDS | 59,441 half-toggles | design engineering reviewed these eFuse image and field-map bits as not exercised by the SMC bench. | an enrolled leaf that covers the point, or design engineering withdrawing the review | DE + DV peer |
+| `smc_reviewed_field_exclusions.el` | R2-FABRIC-WINDOWS | 95,475 half-toggles | design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. | an enrolled leaf that covers the point, or design engineering withdrawing the review | DE + DV peer |
+| `smc_reviewed_field_exclusions.el` | R3-SHELL-PASSTHROUGH | 27,253 half-toggles | design engineering reviewed these pass-through ports of the SMC hierarchy shells as not exercised by the SMC bench. | an enrolled leaf that covers the point, or design engineering withdrawing the review | DE + DV peer |
+| `smc_reviewed_field_exclusions.el` | R4-CPU-INTERFACE | 24,845 half-toggles | design engineering reviewed these CPU wrapper interface bits as not exercised by the SMC bench. | an enrolled leaf that covers the point, or design engineering withdrawing the review | DE + DV peer |
+| `smc_reviewed_field_exclusions.el` | R5-DMA | 16,253 half-toggles | design engineering reviewed these iDMA and zeroer bits as not exercised by the SMC bench. | an enrolled leaf that covers the point, or design engineering withdrawing the review | DE + DV peer |
+| `smc_reviewed_field_exclusions.el` | R6-DFD | 2,203 half-toggles | design engineering reviewed these debug and trace bits as not exercised by the SMC bench. | an enrolled leaf that covers the point, or design engineering withdrawing the review | DE + DV peer |
+| `smc_reviewed_field_exclusions.el` | R7-MEMORY-INTERFACE | 131 half-toggles | design engineering reviewed these memory interface words as not exercised by the SMC bench. | an enrolled leaf that covers the point, or design engineering withdrawing the review | DE + DV peer |
+| `smc_reviewed_field_exclusions.el` | R8-SYNC-CELLS | 48 half-toggles | design engineering reviewed these synchronizer-cell nets as not exercised by the SMC bench. | an enrolled leaf that covers the point, or design engineering withdrawing the review | DE + DV peer |
+| `smc_reviewed_field_exclusions.el` | R9-PERIPHERAL-FIELDS | 14,048 half-toggles, 1 line blocks | design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. | an enrolled leaf that covers the point, or design engineering withdrawing the review | DE + DV peer |
+
+    urg -dir <run dir>/cov/merged.vdb -dump full_exclusions tgl+line+fsm+cond+branch -report <dir>
+    python3 hw/sys/smc/dv/cov/config/vcs/gen_smc_cov_exclusions.py <dir> <run dir>/cov/report_raw/modinfo.txt
+    python3 hw/sys/smc/dv/cov/config/vcs/gen_smc_ports_only_exclusions.py <dir> <run dir>/cov/report_raw/modinfo.txt
