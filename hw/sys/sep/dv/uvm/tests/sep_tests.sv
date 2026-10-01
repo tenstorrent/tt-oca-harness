@@ -34,6 +34,9 @@ import sep_seq_lib_pkg::*;
 `include "sep_otbn_mem_smoke_test.svh"
 `include "sep_efuse_sense_test.svh"
 
+// Key Manager memory scenario (KM ROM image, tb_top KM probes).
+`include "sep_km_mem_smoke_test.svh"
+
 // Adopter overlay hook: an external (non-OSS) build may append vendor-
 // specific test classes -- e.g. a commercial-VIP overlay -- by defining
 // SEP_OVERLAY_TESTS to the quoted name of an include file on its own

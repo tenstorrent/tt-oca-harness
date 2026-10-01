@@ -7978,6 +7978,7 @@ beat to a seeded half and a full-word readback (CHK-RANDOM-STORE,
 CHK-RANDOM-LANE). CHK-RESP is the sequence's own check: every access returns
 `OKAY` and every read returns one beat. There is no aggregate CHK-SRAM-SMOKE
 record; each checker is its own record.
+
 |<<sep_address_map_test,`sep_address_map_test`>>
 |Same as the cocotb procedure, over sixteen passes by default
 (`+SEP_ADDRESS_MAP_TEST_LOOPS`). A table in the scenario sequence gives the
@@ -7987,6 +7988,7 @@ response of each sweep access. Adds CHK-FUSE-SENSE-DONE, `+SEP_RANDOM_COUNT`
 seeded random patterns per storage register, a readback after each restore,
 and a read of `0x10A3_0170` after the hole write that must return zero. The
 scoreboard check CHK-SB-CPU-CTRL-CSR is required.
+
 |<<sep_periph_bus_err_misaligned_test,`sep_periph_bus_err_misaligned_test`>>
 |Same as the cocotb procedure, over sixteen seeded passes by default
 (`+SEP_TEST_LOOPS`, `+SEP_SYSTEM_TEST_LOOPS`,
@@ -7995,6 +7997,7 @@ driver, not a bus monitor. Adds a fuse-sense-done check (CHK-FUSE-SENSE-DONE),
 an OKAY check on each status read (CHK-CSR-RESP), and, at the end of each pass,
 a clear through `PERIPH_BUS_ERR_CLEAR.hmac` and `DMA_BUS_ERR_CLEAR.clr` with
 both registers read back as 0 (CHK-MISALIGN-CLEAR).
+
 |<<sep_clock_uvm_wdt_rst_input_reset_path_test,`sep_clock_uvm_wdt_rst_input_reset_path_test`>>
 |Same as the cocotb procedure, over sixteen seeded passes by default
 (`+SEP_TEST_LOOPS`, `+SEP_SYSTEM_TEST_LOOPS`,
@@ -8003,6 +8006,7 @@ before the baseline, and a second CHK-ASSERT read after a seeded extra hold of
 0 to 15 system clocks. Each pass releases the main reset after the
 CHK-ISOLATION control, and the next pass's CHK-BASELINE proves both resets
 recovered.
+
 |<<sep_irq_ip_to_aggregator_test,`sep_irq_ip_to_aggregator_test`>>
 |Same as the cocotb procedure, over sixteen seeded passes by default
 (`+SEP_TEST_LOOPS`, `+SEP_SYSTEM_TEST_LOOPS`,
@@ -8011,6 +8015,7 @@ CHK-BASE, CHK-SET, CHK-ISO and CHK-CLR, and CHK-AGG requires all ten sources
 to pass all four. Each walk ends with `INTR_ENABLE` back at 0. The DMA hole
 write carries a seeded random word. Adds a fuse-sense-done check
 (CHK-FUSE-SENSE-DONE) and an OKAY check on every other access (CHK-CSR-RESP).
+
 |<<sep_otbn_mem_smoke_test,`sep_otbn_mem_smoke_test`>>
 |Same as the cocotb procedure, over sixteen seeded passes by default
 (`+SEP_TEST_LOOPS`, `+SEP_CRYPTO_TEST_LOOPS`, `+SEP_OTBN_MEM_SMOKE_TEST_LOOPS`).
@@ -8019,6 +8024,7 @@ random words per memory (five by default) after the directed word, each written
 and read back at the memory base. CHK-IMEM, CHK-DMEM and CHK-ARRIVED are
 recorded under CHK-OTBN-MEM, together with the read responses; the counters are
 graded as the increments of each pass. The STATUS read response is CHK-CSR-RESP.
+
 |<<sep_efuse_sense_test,`sep_efuse_sense_test`>>
 |Same as the cocotb procedure, over sixteen passes by default
 (`+SEP_TEST_LOOPS`, `+SEP_EFUSE_LCC_TEST_LOOPS`, `+SEP_EFUSE_SENSE_TEST_LOOPS`);
@@ -8032,6 +8038,14 @@ written by `cocotb/env/sep_efuse_default_shadow.py` and kept current by
 256-word fuse map of `hw/sys/sep/doc/otp_fuse_controller.adoc`: the probe is
 8192 bits wide, and the file holds one data line of 2048 hex digits that loads
 with no X and at least one non-zero word.
+
+|<<sep_km_mem_smoke_test,`sep_km_mem_smoke_test`>>
+|Same as the cocotb procedure, over sixteen passes by default
+(`+SEP_TEST_LOOPS`, `+SEP_KM_TEST_LOOPS`, `+SEP_KM_MEM_SMOKE_TEST_LOOPS`). Each
+pass after the first starts with a primary reset, and its marker poll also
+waits for the image's nine SRAM stores, because the SRAM keeps the words of the
+pass before. CHK-KM-MEM adds a control: the KM ROM request count is 0 while the
+KM is held in software reset. The KM release write records CHK-CSR-RESP.
 |===
 
 === Regression Groups
