@@ -199,6 +199,40 @@ def exact_window(x: int) -> tuple[int, int]:
     return x & ~GRAN_MASK & ADDR_MASK, x | GRAN_MASK
 
 
+def bit_legs(x: int):
+    """Per-bit windows where one START or END bit alone decides the response.
+
+    For each address bit k above the granule, two windows relative to target x:
+      * x[k] == 0: START = x[55:k+1] | 1<<k | 0  -> deny (START > x);
+                   END   = x[55:k+1] | 1<<k | 0  -> allow (END > x).
+      * x[k] == 1: START = x[55:k+1] | 0 | ones  -> allow (START < x);
+                   END   = x[55:k+1] | 0 | ones  -> deny (END < x).
+    The other bound is 0 or all-ones, so it cannot decide. A comparator that
+    ignores START or END bit k sees that bound with bit k flipped, which moves
+    it to the other side of x, so the response flips. Yields
+    ``(k, field, (start, end), expect_allow)``; legs whose flipped bound would
+    still land in x's granule are skipped, because there the bit cannot decide.
+    """
+    g = GRAN_MASK.bit_length()
+    for k in range(g, ADDR_W):
+        high = (x >> (k + 1)) << (k + 1)
+        low_ones = (1 << k) - 1
+        if not (x >> k) & 1:
+            bound = high | (1 << k)
+            flipped = high
+            if granule(flipped) == granule(x):
+                continue
+            yield k, "START", (bound, ADDR_MASK), False
+            yield k, "END", (0, bound), True
+        else:
+            bound = high | low_ones
+            flipped = bound | (1 << k)
+            if granule(flipped) == granule(x):
+                continue
+            yield k, "START", (bound, ADDR_MASK), True
+            yield k, "END", (0, bound), False
+
+
 def _selftest() -> None:
     m = SepFilterBoundsModel()
     m.write_half("START", False, 0x1000_0004)
@@ -212,6 +246,13 @@ def _selftest() -> None:
     m.write_half("END", True, 0xFF_FFFF)
     assert (m.start, m.end) == (0x10, 0xFF_FFFF_0000_0020)
     assert exact_window(0x1234_5678_9ABC) == (0x1234_5678_9AB8, 0x1234_5678_9ABF)
+    for x in (0x10A3_0178, 0x89F0_A9A7_3D30_90, ADDR_MASK & ~GRAN_MASK, GRANULE_BYTES):
+        for k, field, (st, en), allow in bit_legs(x):
+            assert st <= en
+            assert (granule(st) <= granule(x) <= granule(en)) == allow, (hex(x), k, field)
+            # The same window with bit k of the deciding bound flipped flips the answer.
+            st2, en2 = (st ^ (1 << k), en) if field == "START" else (st, en ^ (1 << k))
+            assert (granule(st2) <= granule(x) <= granule(en2)) != allow, (hex(x), k, field)
 
 
 _selftest()

@@ -5633,7 +5633,8 @@ behaviour and the JTAG read are graded on
 . Narrow the window to the one granule at X1: OKAY at X1, DECERR at the next granule of the same region.
 . Set START to the inverse of the first window's START (above X1): DECERR.
 . Program offset O2 = ~O1, so X2 is at or above 2^55. A window holding X2 answers OKAY; a window ending at the inverse of that END (below X2) answers DECERR; the granule at X2 answers OKAY.
-. Clear valid: the beat keeps its local address, outside the granule at X2, and answers DECERR.
+. For every address bit k above the granule, program a window where START bit k alone decides the response at X2, then one where END bit k alone decides it.
+. Clear valid: the granule at X2 answers DECERR and the granule at the beat's own local address answers OKAY.
 . Restore the entry and the region to reset.
 
 *Checkers*:
@@ -5651,8 +5652,10 @@ behaviour and the JTAG read are graded on
 |A window whose START is above the beat answers DECERR.
 |CHK-WALK-BELOW
 |A window whose END is below the beat answers DECERR.
+|CHK-WALK-BIT
+|For each address bit k above the granule, two windows whose other bound is 0 or all-ones, so START bit k or END bit k alone puts X2 inside or outside: one answers OKAY and one DECERR. A compare that ignores bit k of either bound flips one of them.
 |CHK-WALK-PASSTHRU
-|With valid clear the beat passes through untranslated (`output_remap.rdl` valid: "if clear, they pass through with their address unchanged") and misses the granule at the translated address.
+|With valid clear the beat passes through with its address unchanged (`output_remap.rdl` valid: "if clear, they pass through with their address unchanged"): the one granule at the beat's own local address answers OKAY, and the granule at the translated address answers DECERR.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
@@ -5683,6 +5686,7 @@ behaviour and the JTAG read are graded on
 [arabic]
 . Bring up PROD with the inbound filter active. Disable every entry and stage a value in the target CSR from the CPU-LSU master.
 . For each entry, enable only that entry and program: a window [S, E] holding the target, then [S, ~E] (both END values at or above the target); START S_B and ~S_B (both above the target); a window ending below the target; the one granule at the target.
+. For every address bit k above the granule, program a window where START bit k alone decides the response, then one where END bit k alone decides it (for k >= 32 these are the one-hot bounds 1<<k, since the target's upper bits are zero).
 . After each, the external master reads the target (and, for the granule, the next granule).
 . Restore the entry to reset.
 
@@ -5701,6 +5705,8 @@ behaviour and the JTAG read are graded on
 |A window starting above the target answers DECERR and does not return the staged value (`hw/ip/axi_filter/doc/index.adoc`, Blocked Transactions).
 |CHK-WALK-BELOW
 |A window ending below the target answers DECERR and does not return the staged value.
+|CHK-WALK-BIT
+|For each address bit k above the granule, two windows whose other bound is 0 or all-ones, so START bit k or END bit k alone puts the target inside (OKAY with the staged value) or outside (DECERR without it). A compare that ignores bit k of either bound flips one of them.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.

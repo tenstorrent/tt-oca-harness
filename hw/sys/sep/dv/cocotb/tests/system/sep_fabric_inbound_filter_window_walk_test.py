@@ -28,6 +28,11 @@ Checkers:
                      DECERR without the staged value.
   CHK-WALK-BELOW     a window ending below X answers DECERR without the
                      staged value.
+  CHK-WALK-BIT       for every address bit k above the granule, a window
+                     where START bit k alone, and one where END bit k alone,
+                     decides the response: a compare that ignores bit k of
+                     either bound flips one of them. For k >= 32 these are the
+                     one-hot bounds 1<<k, since X has zero upper bits.
 """
 
 from __future__ import annotations
@@ -42,6 +47,7 @@ from seq_lib.sep_fabric_entry_walk_seq import (
     ADDR_MASK,
     GRANULE_BYTES,
     SepFilterEntryWalker,
+    bit_legs,
     exact_window,
     granule,
 )
@@ -140,7 +146,7 @@ class sep_fabric_inbound_filter_window_walk_test(sep_base_test):
         filt = SepFilterEntryWalker(
             self, bank_base=INFILT_BASE, bank="INFILT", n_entries=INFILT_N_ENTRIES
         )
-        counts = dict.fromkeys(("ALLOW", "EXACT", "ABOVE", "BELOW"), 0)
+        counts = dict.fromkeys(("ALLOW", "EXACT", "ABOVE", "BELOW", "BIT"), 0)
 
         for p in plans:
             e = p.entry
@@ -168,6 +174,15 @@ class sep_fabric_inbound_filter_window_walk_test(sep_base_test):
             win = await filt.check_window(e, "exact")
             await self._expect_allow("CHK-WALK-EXACT", e, X, win, staged)
             await self._expect_deny("CHK-WALK-EXACT", e, X + GRANULE_BYTES, win, staged)
+
+            for k, field, bwin, bit_allow in bit_legs(X):
+                await filt.program_window(e, *bwin)
+                chk = f"CHK-WALK-BIT k={k} {field}"
+                if bit_allow:
+                    await self._expect_allow(chk, e, X, bwin, staged)
+                else:
+                    await self._expect_deny(chk, e, X, bwin, staged)
+                counts["BIT"] += 1
 
             await filt.restore(e)
             counts["ALLOW"] += 2
@@ -202,4 +217,8 @@ class sep_fabric_inbound_filter_window_walk_test(sep_base_test):
         )
         self.logger.info(
             "CHK-WALK-BELOW PASS: %d windows ending below X answered DECERR", counts["BELOW"]
+        )
+        self.logger.info(
+            "CHK-WALK-BIT PASS: %d single-bit START/END windows decided the response",
+            counts["BIT"],
         )

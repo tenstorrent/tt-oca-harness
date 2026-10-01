@@ -29,8 +29,14 @@ Checkers:
                      neighbour beat (next granule, same region) answers DECERR.
   CHK-WALK-ABOVE     START = ~start of the ALLOW window (> X) answers DECERR.
   CHK-WALK-BELOW     END = ~end of the ALLOW window (< X) answers DECERR.
-  CHK-WALK-PASSTHRU  with valid cleared, the exact-granule window answers
-                     DECERR: the beat passes through untranslated.
+  CHK-WALK-BIT       for every address bit k above the granule, a window
+                     where START bit k alone, and one where END bit k alone,
+                     decides the response at X2: a compare that ignores bit k
+                     of either bound flips one of them.
+  CHK-WALK-PASSTHRU  with valid cleared, the exact granule at the beat's own
+                     (untranslated) address answers OKAY, and the granule at
+                     the translated address answers DECERR: the beat passes
+                     through with its address unchanged.
 """
 
 from __future__ import annotations
@@ -44,6 +50,7 @@ from seq_lib.sep_fabric_entry_walk_seq import (
     GRANULE_BYTES,
     SepFilterEntryWalker,
     SepRemapRegionDriver,
+    bit_legs,
     containing_window,
     exact_window,
     granule,
@@ -123,7 +130,7 @@ class sep_fabric_outbound_remap_filter_walk_test(sep_base_test):
             self, bank_base=OUTFILT_BASE, bank="OUTFILT", n_entries=OUTFILT_N_ENTRIES
         )
         remap = SepRemapRegionDriver(self)
-        counts = dict.fromkeys(("ALLOW", "EXACT", "ABOVE", "BELOW", "PASSTHRU"), 0)
+        counts = dict.fromkeys(("ALLOW", "EXACT", "ABOVE", "BELOW", "BIT", "PASSTHRU"), 0)
 
         for p in pairs:
             e = p.entry
@@ -173,10 +180,24 @@ class sep_fabric_outbound_remap_filter_walk_test(sep_base_test):
             win = await filt.check_window(e, "exact-2")
             await self._expect("CHK-WALK-EXACT", p, p.access, x2, win, deny=False)
 
-            # valid=0: the beat keeps its local address, which is outside ex2.
+            for k, field, bwin, bit_allow in bit_legs(x2):
+                await filt.program_window(e, *bwin)
+                await self._expect(
+                    f"CHK-WALK-BIT k={k} {field}", p, p.access, x2, bwin, deny=not bit_allow
+                )
+                counts["BIT"] += 1
+
+            # valid=0: the beat keeps its local address. The granule at X2
+            # misses it; the granule at its own address admits it.
             await remap.program(p.csr_base, p.region, p.o2, False)
             assert granule(p.access) != granule(x2)
+            await filt.program_window(e, *ex2)
+            win = await filt.check_window(e, "passthru-x2")
             await self._expect("CHK-WALK-PASSTHRU", p, p.access, p.access, win, deny=True)
+            own = exact_window(p.access)
+            await filt.program_window(e, *own)
+            win = await filt.check_window(e, "passthru-own")
+            await self._expect("CHK-WALK-PASSTHRU", p, p.access, p.access, win, deny=False)
 
             await filt.restore(e)
             await remap.program(p.csr_base, p.region, 0, False)
@@ -184,7 +205,7 @@ class sep_fabric_outbound_remap_filter_walk_test(sep_base_test):
             counts["EXACT"] += 3
             counts["ABOVE"] += 1
             counts["BELOW"] += 1
-            counts["PASSTHRU"] += 1
+            counts["PASSTHRU"] += 2
             self.logger.info(
                 "pair %s: O1=0x%014x X1=0x%014x O2=0x%014x X2=0x%014x "
                 "allow1=0x%014x..0x%014x above=0x%014x.. below=..0x%014x",
@@ -223,6 +244,11 @@ class sep_fabric_outbound_remap_filter_walk_test(sep_base_test):
             "CHK-WALK-BELOW PASS: %d windows with END below X answered DECERR", counts["BELOW"]
         )
         self.logger.info(
-            "CHK-WALK-PASSTHRU PASS: %d invalid regions passed the beat through untranslated",
+            "CHK-WALK-BIT PASS: %d single-bit START/END windows decided the response at X2",
+            counts["BIT"],
+        )
+        self.logger.info(
+            "CHK-WALK-PASSTHRU PASS: %d reads with valid clear (OKAY at the untranslated "
+            "address, DECERR at the translated one)",
             counts["PASSTHRU"],
         )
