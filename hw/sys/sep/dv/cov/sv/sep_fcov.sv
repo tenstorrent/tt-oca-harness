@@ -525,6 +525,9 @@ module sep_fcov (
   logic [7:0] km_rsp_rc_q;       // rc (payload word 3)
   logic       km_rsp_is_cmd_q;   // outbound header resp_id was RESP_CMD
   logic [7:0] km_rsp_len_q;      // declared RESP payload_len, from the header
+  logic [7:0] km_cmd_id_q;       // cmd_id of the frame being written (header [15:8])
+  logic [15:0] km_load_words_q;  // FW_WORDS of the last CMD_SRAM_LOAD_EXEC payload
+  logic [16:0] km_raw_left_q;    // raw image words + CRC trailer still to come
 
   // Generate succeeded: the response frame echoed CMD_KEY_GENERATE with rc 0
   // and a non-null handle. Nothing here is inferred from silence.
@@ -549,6 +552,12 @@ module sep_fcov (
   wire km_xfer_scored = km_rd_data && km_rsp_arm_q && km_rsp_is_cmd_q &&
       (km_rsp_idx_q == 9'd4) && (km_rsp_cmd_q == KmCmdTransfer) &&
       (km_rsp_rc_q == 8'h00);
+  // CMD_SRAM_LOAD_EXEC accepted: the raw image stream follows.
+  wire km_load_accepted = km_rsp_last && (km_rsp_cmd_q == KmCmdSramLoadExec) &&
+      (km_rsp_rc_now == 8'h00);
+  // SW_RESET_N write that holds the KM in reset (km_sw_rst_n = 0).
+  wire km_reset_wr = wr_ev && (aw_addr_q == SEP_RESET_CTRL_SW_RESET_N_REG_ADDR) &&
+      wr_strb[0] && ((wr_data & SEP_RESET_CTRL_SW_RESET_N_KM_SW_RST_N_MASK) == 32'h0);
   wire km_wipe = wr_ev && (aw_addr_q == SEP_CPU_CTRL_KM_WIPE_CTRL_REG_ADDR) &&
       wr_strb[0] && wr_data[0];
   wire km_swrst_rel = wr_ev && (aw_addr_q == SEP_RESET_CTRL_SW_RESET_N_REG_ADDR) &&
@@ -937,6 +946,9 @@ module sep_fcov (
       km_rsp_arm_q      <= 1'b0;
       km_rsp_is_cmd_q   <= 1'b0;
       km_rsp_len_q      <= '0;
+      km_cmd_id_q       <= '0;
+      km_load_words_q   <= '0;
+      km_raw_left_q     <= '0;
       dma_copy_q        <= 1'b0;
       dma_hs_q          <= 1'b0;
       dma_hash_q        <= 1'b0;
@@ -1097,26 +1109,43 @@ module sep_fcov (
       end
 
       // KM command frame: header, payload_len words, then the payload CRC word
-      // when payload_len > 0.
-      if (km_wr_data) begin
+      // when payload_len > 0. After a CMD_SRAM_LOAD_EXEC success the SEP
+      // streams exactly FW_WORDS raw image words and a CRC-32C trailer outside
+      // the message framing (hw/ip/key_manager/doc/firmware.adoc,
+      // CMD_SRAM_LOAD_EXEC), so those writes are counted off, not parsed.
+      if (km_reset_wr) begin
+        // A KM software reset restarts the ROM's frame state; an abandoned
+        // frame on either side does not carry over.
+        km_cmd_hdr_next_q <= 1'b1;
+        km_cmd_idx_q      <= '0;
+        km_rsp_idx_q      <= '0;
+        km_rsp_arm_q      <= 1'b0;
+        km_raw_left_q     <= '0;
+      end else if (km_wr_data && (km_raw_left_q != '0)) begin
+        km_raw_left_q <= km_raw_left_q - 17'd1;
+      end else if (km_wr_data) begin
         if (km_cmd_hdr_next_q) begin
           km_cmd_len_q      <= wr_data[23:16];
+          km_cmd_id_q       <= wr_data[15:8];
           km_cmd_idx_q      <= 9'd0;
           km_cmd_hdr_next_q <= (wr_data[23:16] == 8'h00);
           km_rsp_idx_q      <= 9'd0;
           km_rsp_arm_q      <= 1'b1;
         end else begin
+          if ((km_cmd_idx_q == 9'd0) && (km_cmd_id_q == KmCmdSramLoadExec))
+            km_load_words_q <= wr_data[15:0];
           km_cmd_idx_q      <= km_cmd_idx_q + 9'd1;
           // last word of the frame = payload_len + 1 (the CRC word)
           km_cmd_hdr_next_q <= ((km_cmd_idx_q + 9'd1) >= (9'(km_cmd_len_q) + 9'd1));
         end
       end
+      if (km_load_accepted) km_raw_left_q <= 17'(km_load_words_q) + 17'd1;
 
       // KM response frame: header, then payload [cmd_seq, cmd_id, rc, arg].
       // Index only while a response is pending. The mailbox tests also read
       // READ_DATA outside a frame (FIFO depth, flush), and an unindexed read
       // would shift a later word onto index 4 and false-hit cp_generate.
-      if (km_rd_data && km_rsp_arm_q) begin
+      if (km_rd_data && km_rsp_arm_q && !km_reset_wr) begin
         km_rsp_idx_q <= km_rsp_idx_q + 9'd1;
         // The header carries the length, so it cannot itself be compared
         // against it: at index 0 the register still holds the PREVIOUS frame's
