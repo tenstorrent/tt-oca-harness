@@ -11,13 +11,13 @@ KM firmware validates requests, accesses the vault and writes accelerator
 sideload registers. The host has no direct bus access to KM key storage.
 
 [[km-implemented-services]]
-The current ROM implements DRBG-based random key generation, key loading,
-vault storage, explicit revocation, accelerator transfer and shredding.
-It is the resident command processor as well as the startup firmware.
-UID-derived hierarchies, configuration-bound automatic revocation and PCR
-integration are <<root-keys-and-hierarchy,design targets>>, not current
-mailbox services. The firmware includes an HMAC-SHA256 KDF library; that
-library alone does not provide those services.
+The ROM is the resident command processor as well as the startup firmware.
+Its mailbox commands report the hardware, ROM and SRAM firmware versions and
+the recoverable-error status, generate keys from the DRBG, load SEP-supplied
+keys, revoke keys, transfer keys to the accelerators, shred accelerator
+sideload keys, capture the Adams Bridge ML-KEM shared key into the vault, set
+cold-domain OTP read-locks, and either load and execute mutable firmware in
+SRAM or keep the ROM running (<<key-manager-command-summary-table>>).
 
 A single KM-mastered AXI4-Lite crossbar connects KMCSR, KPV, the DRBG sampler
 and mailbox to the private accelerator key interfaces and the SEP OTP/eFuse
@@ -847,11 +847,10 @@ values cannot be spoofed by software. SEP dual-rail-encodes each 256-bit field
 at the SEP-to-KM boundary (`{~value, value}`) from the sensed eFuse shadow:
 
 * the fuse-provisioned secrets — `CHIPLET_UID`, `SIP_UID`, `SYS_UID`,
-`CLASS_KEY` — inputs intended for the root-key design described below;
+`CLASS_KEY`;
 * the three 256-bit public identities — `SEP_CHIPLET_ID`, `SEP_SIP_ID`,
-`SEP_SYS_ID` — per-owner values that personalize each owner's identity root;
-* the life-cycle state, one of the contexts a derived key is bound to (see
-<<chip-configuration,Chip configuration>>).
+`SEP_SYS_ID` — one per owner;
+* the life-cycle state.
 
 *UID delivery and protection.* The UIDs are held in a KM-local copy. The KM's own
 warm-domain read-lock protects that copy at mutable-firmware handover (see <<uid-provisioning-and-access,UID provisioning and access>>) so mutable firmware
@@ -868,19 +867,17 @@ words only.
 
 *Life-cycle state.* The life-cycle state is hardwired into the KM as
 authoritative, software-readable status. Being non-secret it is neither locked
-nor wiped. The design target uses it for key bindings (see <<key-revocation,Key revocation>>);
-the current registry does not track such bindings.
+nor wiped. The key registry does not bind keys to it.
 
 *eFuse access path.* The KM also has a programmatic (AXI-Lite) path to the eFuse
 controller — for example to request a read or a program operation. That path is
 treated exactly like a system-host access: same access filtering, and it honors
 the eFuse controller's native per-field read/write locks, so the KM gains no
-read privilege over the fuse array beyond the SEP host's. The key-binding design target uses the hardwired life-cycle value above.
+read privilege over the fuse array beyond the SEP host's.
 
 *Demotion and PCR.* The owner demotion state is hardwired from the Life Cycle
 Controller (LCC). A PCR Vault (PCRV) and PCR-change interrupt are not present
-in this integration. PCR binding in <<chip-configuration,Chip configuration>> requires additional
-hardware and firmware support.
+in this integration.
 
 *KMCSR readout registers.* The OTP-derived fields above are exposed to KM
 firmware in the KMCSR region as hardware-driven, read-only registers. Each field
@@ -913,8 +910,7 @@ Manager firmware.
 *Dual-rail integrity.* The hardware continuously checks that each value word is
 the bitwise inverse of its complement word. Any violation raises the
 `OTP_SIGINT` interrupt, which ROM firmware treats as an unrecoverable fault.
-This applies to the public identity fields as much as to the secrets: a flipped
-bit there would silently personalize `ID_ROOT` with the wrong identity.
+This applies to the public identity fields as much as to the secrets.
 
 *Change detection.* When a monitored field's decoded value changes, the hardware
 sets the corresponding `OTP_CHANGE_STATUS` bit and raises the `OTP_CHANGE`
@@ -927,15 +923,13 @@ after cold or warm reset.
 
 The KM receives three fuse-provisioned Unique Identifiers — `CHIPLET_UID`,
 `SIP_UID`, and `SYS_UID` (256 bits each) — provisioned respectively by the
-chiplet creator, the SiP owner, and the system owner. The root-key design
-below proposes deriving each owner's keys from its UID; the current firmware
-does not implement that derivation.
+chiplet creator, the SiP owner, and the system owner. ROM does not derive keys
+from them.
 
 The CPU services mailbox commands from ROM and supports loading and executing
 SRAM firmware. Before handing control to that firmware, ROM applies the OTP
 read locks and wipes secrets from the shared execution environment. A warm
-reset returns the CPU to ROM, where the handover protections are re-established;
-it does not trigger an implemented UID-root derivation service.
+reset returns the CPU to ROM, where the handover protections are re-established.
 
 Concretely, this safeguard is the `OTP_READ_LOCK` register: one
 write-one-to-set bit per OTP readout field (life-cycle, demotion, the four
@@ -946,8 +940,7 @@ it commits even under a single-bit glitch. `OTP_CHANGE_STATUS` shares the same
 warm reset domain for the same reasons.
 
 ROM does not lock the public identity fields at handover, since concealing them
-buys nothing. Their lock bits suppress KMCSR readback like those of the secret fields;
-they do not implement an `ID_ROOT` derivation service.
+buys nothing. Their lock bits suppress KMCSR readback like those of the secret fields.
 
 A parallel *cold-reset-domain* register, `OTP_READ_LOCK_COLD`, provides the
 same write-one-to-set, per-field locking semantics but survives warm reset
@@ -1155,8 +1148,9 @@ firmware at the KPV KM-port window.  During handover ROM walks every KPV slot,
 using the firmware key registry to distinguish live slots from free ones: each
 registered slot is read-locked (`lock_use`, which is independent of
 `lock_write`, so the hardware returns zero for KM-port key reads), and each free
-slot is overwritten with PRNG data (falling back to a read-lock if a free slot
-is already write-locked, such as a revoked key, and so cannot be shredded).
+slot is shredded by `SHRED_ITER + 1` hardware erases through its `erase`
+trigger. The slot locks do not block an erase, so a write-locked free slot,
+such as a revoked key, is shredded as well.
 
 *Mailbox flush.* After the outbound `RESP_CMD` confirmation has been sent and
 consumed by the SEP (and, for `CMD_SRAM_LOAD_EXEC`, after the image stream has
@@ -1192,250 +1186,6 @@ clears any pending sticky IRQ status bits before the assembly handoff.  This
 ensures mutable firmware does not inherit spurious pending interrupts (in
 particular, the `sram_write_lock_err` that would otherwise be raised by the
 whole-SRAM scramble writing into locked firmware regions).
-
-
-[[root-keys-and-hierarchy]]
-== Root Keys and Key Hierarchy (Design Target)
-
-The remainder of this design description, through ECC signing metadata,
-requires firmware and PCR integration beyond <<km-implemented-services,Implemented services>>.
-It specifies intended behavior, including automatic revocation, without
-providing a current software guarantee.
-
-The proposed deterministic service uses HMAC-SHA256 with UID/root material
-and a fixed context; it does not mix fresh DRBG entropy into UID-derived
-hierarchy keys. Requester-supplied randomness can be carried in `user_input`
-without changing reproducibility for the same inputs. The proposal collects
-arguments from management CSRs and root storage, writes the derived key to a
-KPV slot or crypto-engine sideload, and optionally repeats the computation
-to detect faults and report a mismatch through interrupt status. These are
-design targets, not services of the current ROM command dispatcher. Current
-random-key generation instead draws new material from the DRBG sampler.
-
-The proposed ROM service derives two domain-separated root keys from each UID.
-The current life-cycle state is an input to both derivations:
-
-* a *software root key* — `SW_root = KDF(UID, "SW_ROOT", lc_state)`
-* a *hardware root key* — `HW_root = KDF(UID, "HW_ROOT", lc_state)`
-
-The distinct domain-separation labels make the two roots cryptographically
-independent even though they share a UID, and the life-cycle binding makes the
-roots — and every key derived from them — specific to the life-cycle state they
-were derived under. The demotion state is deliberately *not* a root input: it
-is a volatile control, cleared on reset and set by firmware during boot, so it
-is undefined at root-derivation time. Keys that must be bound to demotion bind
-it at leaf-key derivation instead (see <<chip-configuration,Chip configuration>>). The roots are
-then used, with additional context, to derive the *key hierarchy*. A leaf key
-is `KDF(selected_root, context || user_input || label)`, where `||` denotes
-concatenation and `context` is the selected configuration (life-cycle state,
-demotion, PCR, ...).
-
-A core KM principle applies throughout: *derived secret keys are never
-returned to the SEP requester. KM ROM necessarily handles the material;
-exposure to mutable KM firmware depends on the selected root policy.* The KM side-loads each derived key into the
-engine's write-only key registers; only non-secret results (for example a
-generated public key) are returned over the mailbox. Side-loading — not key
-return — is the reason the KM exists.
-
-Because ROM is the KM's steady-state firmware, derivation runs on demand at
-run time, and both branches can bind to *run-time* inputs: PCR values, read by
-the KM directly from the PCR Vault, and `user_input`, supplied in the mailbox
-command that requests the derivation. After a warm reset ROM re-reads the UID
-and re-derives keys as needed; no cold reset is required in the ROM-only
-baseline.
-
-The two roots differ only in their exposure to *mutable* KM firmware (the
-optional SRAM-loaded extension):
-
-* *Software root* (`SW_root`) — may be read by KM software, including future
-mutable firmware, so an extension can derive further keys from it.
-* *Hardware root* (`HW_root`) — never readable by mutable firmware; it is used
-only by immutable ROM and side-loaded into crypto engines over a private
-hardware path into their write-only key registers (never returned to software).
-If the SRAM extension is ever used, before transferring control ROM wipes the
-hardware key from any downstream crypto engine still consuming it and read-locks
-the UID copy and the KPV slot(s) holding `HW_root` (a read-lock prevents KM-port readback; hardware erase is also available), preserving this property.
-
-[[chip-configuration]]
-*Chip configuration and key lifetime (design target)*
-
-The *chip configuration* is the named bundle of context that a derived key is
-bound to. The requester *selects the chip configuration* for a derivation;
-together with `user_input` it determines the key (<<key-derivation-chip-configuration-fields-table>>).
-
-[[key-derivation-chip-configuration-fields-table]]
-[cols="<22%,<78%",options="header"]
-.Key derivation chip-configuration fields
-|===
-|Field |Description
-|`uid_select` |Which owner's root is used: chiplet, SiP, or system.
-|`hw_only` |Hardware-only flag: selects the hardware root (a hardware-confined key) versus the software root, and sets the key's confidentiality policy.
-|`lc_state` |Life-cycle state the key is bound to. Always bound for UID-derived keys: the roots themselves bind the life-cycle state (see <<root-keys-and-hierarchy>>), so explicit selection is meaningful only for keys derived from injected user-input keys.
-|`demote_1` |Demotion 1 (local-debug / DBG_1) state the key is bound to.
-|`demote_2` |Demotion 2 (inter-chiplet debug-bypass / DBG_2) state the key is bound to.
-|`pcr` |Which PCR(s), if any, the key is bound to; the KM reads their authentic digests from the PCR Vault. Omitted for keys that are not PCR-bound.
-|===
-
-`user_input` (a 512-bit value carried in the mailbox derivation command) is a
-further per-derivation input.
-
-*Selection.* The requester chooses *which configuration fields to bind* — any
-subset of the fields above (for example a demotion state only, or a PCR plus
-both demotion states) — and there is no restriction on the values it may
-select (access control over `uid_select` is left open for a future revision).
-The KM derives the key bound to exactly that selected subset, and ROM records
-the binding so the key's lifetime can be tracked. A UID-derived key is
-life-cycle-bound regardless of this selection, through its root ancestry.
-
-*Lifetime.* The lifetime of every UID-derived key is tied to the specific
-fields it is bound to. When a bound demotion state or PCR changes, that key
-becomes stale and is revoked; keys that do not bind the changed field are
-unaffected. The life-cycle state is the exception: because the roots bind it,
-a life-cycle transition invalidates the roots and, with them, the entire
-UID-derived hierarchy — regardless of each key's selected binding. A revoked
-key must be re-derived before use. The mechanism is described in
-*Key revocation (design target)* below.
-
-[[key-revocation]]
-*Key revocation*
-
-ROM maintains a registry of every derived key, recording its configuration
-binding (the specific fields and values it was derived under), its KPV storage
-location, its crypto-engine binding, and its derivation parent.
-
-*Triggers.* A key is revoked when either:
-
-* any configuration field it is bound to changes value — a life-cycle
-transition, a demotion, or (for a PCR-bound key) an extend of the bound PCR; or
-* its derivation parent is revoked — revocation cascades to every key derived
-from it. (This is also how an explicitly revoked user key takes its derived
-keys with it.)
-
-A life-cycle transition additionally invalidates the roots themselves — the
-roots bind the life-cycle state — so it revokes the *entire* UID-derived
-hierarchy through the parent cascade, regardless of each key's selected
-binding.
-
-*Action.* Revoking a key erases it from its KPV slot — using the per-slot
-hardware Erase control, which overwrites the key data through the KPV scrambler
-and clears an unsealed slot's CTRL register so it is reusable; a sealed slot
-is retired instead (see <<key-and-policy-vault-kpv>>) — and shreds its crypto-engine binding (zeroes the
-side-loaded key and drops its valid indication). A revoked key must be
-re-derived before it can be used again.
-
-*Mechanism.* Revocation is performed entirely by ROM firmware; there is no
-hardware key-use interlock. On *any* change to a bound configuration field, ROM
-walks its key registry and revokes the affected keys — hardware-erasing them
-from the KPV and shredding their crypto-engine bindings — together with any keys
-derived from them; the keys are re-derived on next use. Hardware support is the
-per-slot KPV Erase controller plus the interrupts that notify the KM CPU:
-
-* *Life-cycle state and demotion* — typically configured per boot, but ROM does
-not assume they are immutable at run time: a change at any time triggers the
-same registry walk and revocation. A demotion change revokes only the keys
-that bound demotion; a life-cycle change sweeps the entire UID-derived
-hierarchy, roots included.
-* *PCR* — a run-time field. A PCR change raises an interrupt to the KM CPU,
-which then revokes the keys that bound that PCR.
-* *Parent revocation* — an explicit revoke (for example of a user input key,
-requested over the mailbox) raises the KM inbound interrupt and triggers the
-same sweep, cascading to derived keys.
-
-Reset re-enters ROM. Key-data flops have no hardware reset value; any
-proposed boot-time destruction or re-derivation must be implemented by the
-boot policy, not inferred from reset assertion.
-
-[[user-input-keys]]
-*User input keys*
-
-Besides the UID-derived hierarchy, the SEP host may *inject* its own keys —
-*user input keys* — for the KM to manage and derive from. Unlike the UID keys
-and hardware root keys, user input keys are *software-visible*: they are
-supplied by the host and live in the software-accessible key domain, not in the
-ROM-only secret class.
-
-*Injection.* The host injects a user input key over the mailbox command
-protocol; KM firmware writes it into a KPV slot and registers the key (integrity
-check and slot write-lock) so it can be tracked, derived from, and revoked.
-
-*Derivation.* A user input key may serve as a derivation root: the KM offers
-the same derivation support for user input keys as for UID roots, deriving
-child keys with the same chip-configuration context and domain-separation
-labels. Keys derived from a user input key bind to the selected configuration
-exactly as UID-derived keys do, and therefore carry the same configuration-tied
-lifetime. As with all derived keys, the resulting secret keys are side-loaded
-into the crypto engines and are never returned.
-
-*Revocation.* The SEP host revokes a user input key by a request over the
-mailbox, which raises the KM inbound interrupt; ROM then removes the key and
-*cascades* to every key derived from it — those derived keys are wiped from KM
-key storage and shredded in the crypto engines — using the same parent-revoke
-mechanism as configuration-driven revocation (see *Key revocation* above).
-
-[[ecc-key-metadata]]
-*ECC key metadata in signatures (design target)*
-
-The *metadata* associated with a derived ECC private key is the *selected chip
-configuration* under which that key was generated (the same configuration
-fields recorded for the key's lifetime; see *Chip configuration and key
-lifetime*).
-
-When the key signs, this metadata may optionally be *included in the hash that
-is signed* — the KM hashes the message together with the metadata. This binds
-the configuration into the signature, so a relying party can determine from the
-signature how the signing key was generated (under which life-cycle state,
-demotion, PCR, and so on). Inclusion is selected per signing operation; only
-inclusion in the signed hash cryptographically attests the configuration.
-
-[[remote-attestation-support-in-kpv-and-pcrv]]
-=== Remote Attestation Support in KPV and PCRV -- Design Target
-
-Attestation provisioning and public-key generation below are proposals, not
-implemented ROM command services. PCRV is absent from this integration.
-The intended manufacturing model needs a separate protocol/algorithm review
-before it becomes a software contract.
-
-The proposed Endorsement Key (EK) is a public-private key pair. The
-proposal names ECDSA P256 and P384 and excludes RSA. The public and private keys are
-injected into the device (or generated on the device) and stored in OTP.
-The public key is recorded in the HSM database. The EK is intended for identity proof. Its algorithm and permitted operations
-require protocol review; no EK decryption or signing service is specified by
-the current ROM.
-
-The Attestation Key (AK) is also a ECDSA public-private key pair but is
-generated inside the device during device manufacturing. The private key
-is stored in the OTP while the public key is exported for recording in
-the HSM database. The private key is used as a limited signing key of
-internal device measurements such as PCR quotes.
-
-The EK and AK are stored in the KPV storage structure described above.
-
-The Platform Configuration Register (PCR) bank stores system integrity
-measurement data. These are stored in a dedicated
-component called the PCR Vault (PCRV). PCRV implementation is deferred to
-a future OCAH version.
-
-Another use case is loading the EK and AK attestation keys into the KPV. The
-SEP host provisions these keys over the mailbox command protocol; KM firmware
-validates the request and writes the supplied key material into KPV slots on
-the host's behalf, then asserts the slot lock control field. The host has no
-direct write path into the KPV -- all provisioning is mediated by KM
-firmware. Once the entries are in place, the KM can read them and derive
-further keys, populating other KPV slots with the KDF results.
-
-[[pk-key-generation-support]]
-=== PK Key Generation Support (Design Target)
-
-KM must be able to generate a public-private key pair during device test
-and provisioning manufacturing steps. RSA is a complicated process as
-two primes need to be generated and this requires running the
-Miller-Rabin test on large random numbers. It is also much larger than
-equivalent security ECC keys. The primary use case is TPM 2.0
-attestation signing keys and we primarily will be using ECDSA P256 and
-possibly P384. The keys are only 256 or 384 bits long and are relatively
-simple to generate. Once generated, the private key stays on the device
-and the public key is exported. Export is performed through the outbound
-mailbox path.
 
 ifdef::backend-html5[]
 xref:ip:scrambler/doc/index.adoc[Scrambler]
