@@ -48,9 +48,10 @@ Two ways of stopping the trace close the leaf:
 
 * **Clearing ``Trdstenable`` alone.** The DST is kept active, so its clock keeps
   running while the trace winds down, and the uncompressed stream is running
-  with packets in flight when the enable drops. ``Trdstempty`` has to read 0
-  and the sink write pointer has to move while that stream runs, and the
-  pointer has to park once the enable has been cleared. ``Trdstempty`` after
+  with packets in flight when the enable drops. ``Trdstempty`` has to read 0,
+  and with the restarting action written before each read the sink write
+  pointer has to advance at every one of several reads right before the stop,
+  then park once the enable has been cleared. ``Trdstempty`` after
   the stop is recorded, not required. Before the stop the stream runs at the
   longest frame length the field offers and then at the shortest frame and
   stream lengths.
@@ -62,7 +63,8 @@ Two ways of stopping the trace close the leaf:
 
 After both, ``Trdstsyncmode`` is walked through every value of its field under
 each timestamp source, on a fresh sink with the uncompressed stream running and
-the restarting action held so the stream runs for many frames under each.
+the restarting action held so the stream runs for many frames under each; the
+write pointer is read after each value and has to have moved.
 
 Before that, a RAM-mode window is placed with ``Trdstramstartlow`` one trace
 RAM size above the RAM, a legal value for the field and out of the RAM's range
@@ -70,9 +72,10 @@ by construction, and the write pointer has to run through it.
 
 The leaf ends in the sink's memory mode. The memory write-out is never
 accepted in this bench, so the frames the sink stages in its local RAM are
-never drained and it backpressures the DST. The trace is held on well past
-that, and the sink is then re-armed in RAM mode, where the stream has to
-resume. It comes last because a software stop after it does not empty the
+never drained. The trace is held on well past the point the sink stops taking
+frames and ``Trdstempty`` has to read 0; no register reports the backpressure
+itself, so that read is all the leaf claims about it. The sink is then re-armed
+in RAM mode, where the stream has to resume. It comes last because a software stop after it does not empty the
 packetizer.
 """
 
@@ -124,6 +127,13 @@ _SETTLE_CYCLES = 16
 _DELIVER_POLLS = 32
 # Write-pointer samples that have to agree for the pointer to count as parked.
 _PARKED_SAMPLES = 3
+# The sync-walk window: large enough that the stream driven under one sync-mode
+# value does not carry the write pointer a whole lap, so a pointer that reads the
+# same before and after a value did not move.
+_SYNC_WINDOW_BYTES = 0x10000
+# Write-pointer reads, each after a write of the restarting action, that have to
+# advance one after another immediately before the software stop.
+_ADVANCE_SAMPLES = 4
 
 # Mode switches in the odd-offset walk: each makes one compressed packet, and a
 # run of equal odd-sized packets visits every offset of the 64-byte accumulator
@@ -173,6 +183,7 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
         self.sync_modes: list[tuple[int, int]] = []
         self.stop_polls = 0
         self.stop_wp_samples: list[int] = []
+        self.sync_pointers: list[int] = []
         self.wrap_samples: list[int] = []
         self.sampled_mux = -1
         self.odd_bytes = 0
@@ -293,7 +304,7 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
     # -- the concurrent phase ---------------------------------------------
 
     async def _walk_frame_shape(self, logical_op: int) -> None:
-        """Walk the frame controls under a compressed stream.
+        """Walk the frame controls with the DST enabled in the compressed format.
 
         The accumulator's write boundary is where a packet lands in the bank,
         and no register addresses it. What the register contract does offer is
@@ -301,7 +312,8 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
         closure mode decides whether a packet crossing that boundary is pushed
         back or the frame is closed early. Both move the offsets packets land
         on, so walking them is the widest aim at the boundary available from
-        software.
+        software. The CLA mux is still off here, so the traced bus holds still;
+        whether packets arrive during the walk is not measured.
         """
         impl = dst_register("Trdstimpl")
         length = reg_field(impl, "Trdstvendorframelength")
@@ -638,8 +650,11 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
         write-out this bench never accepts, so the staged frames are never
         drained: the sink applies backpressure once they pass its threshold and
         the DST holds data it cannot hand on. The trace is held on the
-        restarting action well past that point, ``Trdstempty`` has to read 0
-        afterwards, and the sink is then re-armed in RAM mode, where the write
+        restarting action well past that point and ``Trdstempty`` has to read 0
+        afterwards. No register reports the backpressure itself, and ``Trdstempty``
+        also reads 0 for a stream draining into a RAM-mode sink, so the read shows
+        data in the DST with the trace held on, not that the sink is refusing it.
+        The sink is then re-armed in RAM mode, where the write
         pointer has to move within a bounded number of polls. Every wait is
         bounded, so a sink that never leaves backpressure fails the leaf rather
         than stalling it.
@@ -670,8 +685,8 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
         held = await self._read(control, "memory_held")
         assert not held & empty.mask, (
             f"DST Trdstcontrol reads 0x{held:08x} after {_MEMORY_HOLD_WRITES} writes of the "
-            f"restarting action with the sink in memory mode: Trdstempty is 1, so the DST was "
-            f"not holding back data the sink refused"
+            f"restarting action with the sink in memory mode: Trdstempty is 1, so the trace "
+            f"held on in memory mode left nothing in the DST"
         )
         # Still in memory mode: the sink enable is cleared with the sink active and
         # its stop-on-wrap setting on, and the trace is stopped the same way, so the
@@ -720,9 +735,8 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
         self.value_checks += 2
         cocotb.log.info(
             "CHK-DST-CONCURRENT-MEMORY: with the sink in memory mode and the uncompressed "
-            "trace held on for %d action writes, Trdstempty read 0, the DST holding data the "
-            "sink would not take; re-armed in RAM mode, the stream resumed and moved the "
-            "write pointer to 0x%x",
+            "trace held on for %d action writes, Trdstempty read 0; re-armed in RAM mode, the "
+            "stream resumed and moved the write pointer to 0x%x",
             _MEMORY_HOLD_WRITES,
             self.memory_exit_pointer,
         )
@@ -833,11 +847,19 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
             f"Trdstempty is already 1, so there is nothing in flight for the stop below to "
             f"wind down and clearing the enable would prove nothing"
         )
-        live = [await self._read(wp, f"live{i}") & pointer.mask for i in range(2)]
-        assert live[0] != live[1], (
-            f"the sink write pointer read 0x{live[0]:x} twice back to back with the "
-            f"uncompressed stream running, so the trace was not reaching the sink and a "
-            f"pointer that parks after the stop would prove nothing"
+        eap = cla_register("CDbgNode0Eap0")
+        hold = pack_fields(
+            eap, {"LogicalOp": logical_op, "DestNode": 0, "Action0": self.odd_start_action}
+        )
+        live = []
+        for i in range(_ADVANCE_SAMPLES):
+            await self._write(eap, hold, f"livehold{i}")
+            live.append(await self._read(wp, f"live{i}") & pointer.mask)
+        assert all(a != b for a, b in zip(live, live[1:])), (
+            f"the sink write pointer read {', '.join(hex(w) for w in live)} across "
+            f"{_ADVANCE_SAMPLES} writes of the restarting action, not advancing at every read, "
+            f"so the stream was not still running into the sink when the enable is cleared "
+            f"and a pointer that parks after the stop would prove nothing"
         )
         await self._write_check(
             control,
@@ -872,11 +894,12 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "CHK-DST-CONCURRENT-STOP: with the uncompressed stream running, first at the "
             "longest frame length and then at the shortest frame and stream lengths, "
-            "Trdstempty read 0 and the sink write pointer moved from 0x%x to 0x%x between two "
-            "back-to-back reads; once Trdstenable was cleared with Trdstactive held at 1 the "
-            "pointer parked at 0x%x, %d equal reads in a row after %d reads (%s) of at most %d",
-            live[0],
-            live[1],
+            "Trdstempty read 0 and, with the restarting action held, the sink write pointer "
+            "advanced at each of %d reads immediately before the stop (%s); once Trdstenable "
+            "was cleared with Trdstactive held at 1 the pointer parked at 0x%x, %d equal reads "
+            "in a row after %d reads (%s) of at most %d",
+            _ADVANCE_SAMPLES,
+            ", ".join(hex(w) for w in live),
             tail[-1],
             _PARKED_SAMPLES,
             len(self.stop_wp_samples),
@@ -975,7 +998,10 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
         sync = reg_field(control, "Trdstsyncmode")
         impl = dst_register("Trdstimpl")
         source = reg_field(impl, "Trdsttimestampconfig")
-        await self._open_sink(0, "sync")
+        wp = sink_register("Trdstramwplow")
+        pointer = reg_field(wp, "Trdstramwplow")
+        await self._open_sink(0, "sync", _SYNC_WINDOW_BYTES)
+        self.sync_pointers = [await self._read(wp, "sync_start") & pointer.mask]
         for ts in range(1 << source.width):
             await self._write_check(
                 impl,
@@ -1000,6 +1026,12 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
                 self.sync_modes.append((ts, value))
                 await self._drive_actions(logical_op, 8, f"sync{ts}_{value}")
                 await self._hold_action(logical_op, f"hold{ts}_{value}")
+                self.sync_pointers.append(await self._read(wp, f"sync{ts}_{value}") & pointer.mask)
+                assert self.sync_pointers[-1] != self.sync_pointers[-2], (
+                    f"the sink write pointer read 0x{self.sync_pointers[-1]:x} before and after "
+                    f"the stream was driven under Trdstsyncmode {value} with timestamp source "
+                    f"{ts}, so the stream was not running under that value"
+                )
         expected = [(t, v) for t in range(1 << source.width) for v in range(1 << sync.width)]
         assert self.sync_modes == expected, (
             f"the sync-mode walk wrote {self.sync_modes}, not every sync mode under every "
@@ -1008,9 +1040,11 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "CHK-DST-CONCURRENT-SYNCWALK: Trdstsyncmode was written and read back exactly in "
             "all %d values of its %d-bit field under both timestamp sources, at the shortest "
-            "frame and stream lengths, with a burst of the uncompressed stream driven under each",
+            "frame and stream lengths, and the sink write pointer moved under each value "
+            "(%s)",
             1 << sync.width,
             sync.width,
+            ", ".join(hex(w) for w in self.sync_pointers),
         )
 
     # -- body -------------------------------------------------------------
@@ -1104,7 +1138,7 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
             mode.width,
         )
 
-        # A compressed stream, with the frame shape walked underneath it.
+        # The DST in the compressed format, with the frame shape walked.
         await self._open_sink(0, "shaped")
         await self._write_check(
             dst_register("Trdstcontrol"),
@@ -1123,11 +1157,10 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
         )
         self.value_checks += 1
         cocotb.log.info(
-            "CHK-DST-CONCURRENT-FRAMEWALK: under a compressed stream the frame shape was "
-            "walked through all %d combinations of the closure mode and the frame length, "
-            "each written and read back exactly, so the offsets packets land on inside the "
-            "accumulator were moved across every frame geometry the register contract "
-            "offers; no register addresses that offset directly",
+            "CHK-DST-CONCURRENT-FRAMEWALK: with the DST enabled in the compressed format the "
+            "frame shape was walked through all %d combinations of the closure mode and the "
+            "frame length, each written and read back exactly; whether packets arrived during "
+            "the walk is not measured",
             len(expected),
         )
 
