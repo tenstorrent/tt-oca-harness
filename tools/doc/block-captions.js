@@ -14,6 +14,30 @@ function tableTitle (section, headings) {
   return section
 }
 
+// A page may include several generated register maps, each carrying the same
+// unscoped field ids (INTR_STATE, CTRL, …). Namespace every map's fragment ids
+// so they stay unique. A generated map opens with an id="regmap-<ns>" heading;
+// <ns> scopes the other ids in that map, which are also tagged with a
+// data-register-alias for the legacy-fragment pass. regmap- anchors stay
+// unscoped so a cross-reference to a whole map keeps resolving.
+function scopeRegisterIds (html) {
+  return html.split(/(?=<[^>]*\bid="regmap-)/).map((region) => {
+    const marker = region.match(/\bid="regmap-([^"]+)"/)
+    if (!marker) return region
+    const ns = marker[1]
+    const ids = new Set(
+      [...region.matchAll(/\bid="([^"]+)"/g)]
+        .map((match) => match[1])
+        .filter((id) => !id.startsWith('regmap-'))
+    )
+    return region
+      .replace(/\bid="([^"]+)"/g, (whole, id) =>
+        ids.has(id) ? `id="${ns}-${id}" data-register-alias="${id}"` : whole)
+      .replace(/\bhref="#([^"]+)"/g, (whole, id) =>
+        ids.has(id) ? `href="#${ns}-${id}"` : whole)
+  }).join('')
+}
+
 exports.register = function (registry, { file } = {}) {
   registry.treeProcessor(function () {
     this.process(function (doc) {
@@ -22,7 +46,7 @@ exports.register = function (registry, { file } = {}) {
       const legacyIds = new Set()
       for (const block of doc.findBy()) {
         if (block.getContext() !== 'pass') continue
-        block.lines = [block.getSource().replace(/(<h[1-6]\b[^>]* data-register-alias="([^"]+)"[^>]*>)/g, (heading, tag, id) => {
+        block.lines = [scopeRegisterIds(block.getSource()).replace(/(<h[1-6]\b[^>]* data-register-alias="([^"]+)"[^>]*>)/g, (heading, tag, id) => {
           if (legacyIds.has(id) || doc.getCatalog().refs['$key?'](id)) return heading
           legacyIds.add(id)
           return `<span id="${id}"></span>${heading}`

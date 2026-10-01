@@ -54,16 +54,47 @@ class BlockCatalogTests(unittest.TestCase):
 :ocah-trm:
 
 ++++
-<h3 id="csrng-INTR_STATE" data-register-alias="INTR_STATE">CSRNG status</h3>
+<h2 id="regmap-csrng">CSRNG</h2>
+<h3 id="INTR_STATE">CSRNG status</h3>
 ++++
 
 ++++
-<h3 id="edn-INTR_STATE" data-register-alias="INTR_STATE">EDN status</h3>
+<h2 id="regmap-edn">EDN</h2>
+<h3 id="INTR_STATE">EDN status</h3>
 ++++
 """
         html, _ = self.convert("javascript", source)
+        # block-captions.js namespaces each map's field ids from its regmap-<ns>
+        # heading, then keeps a single legacy unscoped anchor at the first map.
         for fragment in ("INTR_STATE", "csrng-INTR_STATE", "edn-INTR_STATE"):
             self.assertEqual(html.count(f'id="{fragment}"'), 1)
+
+    def test_scoped_register_ids(self):
+        source = """= Registers
+:ocah-trm:
+
+++++
+<h2 id="regmap-csrng">CSRNG</h2>
+<a href="#INTR_STATE">status</a>
+<a href="other.html#INTR_STATE">other</a>
+<h3 id="INTR_STATE">Status</h3>
+<a href="#regmap-csrng">top</a>
+<h2 id="regmap-edn">EDN</h2>
+<h3 id="INTR_STATE">Status</h3>
+++++
+"""
+        html, _ = self.convert("javascript", source)
+        # Two maps in one passthrough: each INTR_STATE scopes to its own regmap.
+        self.assertIn('id="csrng-INTR_STATE"', html)
+        self.assertIn('id="edn-INTR_STATE"', html)
+        self.assertIn('data-register-alias="INTR_STATE"', html)
+        # Local hrefs follow the scoped id; regmap- anchors and cross-file links
+        # stay unscoped.
+        self.assertIn('href="#csrng-INTR_STATE"', html)
+        self.assertIn('id="regmap-csrng"', html)
+        self.assertIn('href="#regmap-csrng"', html)
+        self.assertIn('href="other.html#INTR_STATE"', html)
+        self.assertNotIn("csrng-regmap-", html)
 
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
