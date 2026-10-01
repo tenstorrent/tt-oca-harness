@@ -562,14 +562,7 @@ module smc_peripherals #(
   // Clock-gated peripheral access //
   ///////////////////////////////////
 
-  // Each CLOCK_GATE_CONTROL enable that stops a peripheral clock also steers that
-  // peripheral's crossbar leg into an error slave, so a gated peripheral answers SLVERR with
-  // read data 0xBADCAB1E instead of holding the access in a register block whose clock has
-  // stopped. The gates run on clk_smc_i, ahead of the peripheral clock-domain crossings, and
-  // take each enable as the SMC-clock register value: the leg is redirected as soon as the
-  // register write completes, while the clock itself stops only after the enable has crossed
-  // into the peripheral clock domain, so an access accepted before the write completes still
-  // reaches a running peripheral.
+  // Gated peripherals return SLVERR to prevent hangs upon attempted access
 
   prim_axil_access_gate #(
     .ADDR_WIDTH     (smc_pkg::SMC_LOCAL_ADDR_WIDTH),

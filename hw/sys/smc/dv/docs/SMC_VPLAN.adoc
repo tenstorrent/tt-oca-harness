@@ -996,39 +996,8 @@ Drive `smc_avsbus_clock_config_proxy_test_seq`. Each checker below is a named co
 *Pass Criteria*: `CHK-AVSBUS-CG`, `CHK-SIDEBAND-OBSERVABILITY` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-011-smc_periph_cg_access_error_test]]
-===== 11 `smc_periph_cg_access_error_test`
-
-*Source Module*: `smc_periph_cg_access_error_test`
-
-*BFM / Model*: ocah_axi_vip (AXI)
-
-*Objective*: Each CLOCK_GATE_CONTROL peripheral enable (AVSBus, I2C, UART, telemetry, I3C) set in turn: the gated window answers SLVERR with 0xBADCAB1E on read and SLVERR on write, and its recorded word again once ungated.
-
-*Test Coverage*:
-
-* `CLOCK_GATE_CONTROL` stops the AVSBus, I2C, UART, telemetry and I3C clocks with one enable each. In front of each of those peripherals an access gate on the SMC clock steers the crossbar leg into an error slave while the enable is set, so software reads an error instead of waiting on a register block whose clock has stopped.
-* For each peripheral the same three-step experiment runs on its own enable, with the other four enables cleared: gate CLEARED -- a probe register answers OKAY and its word is recorded ([NEGATIVE-NEEDS-POSITIVE-CONTROL]); gate SET -- a read of the probe completes SLVERR with `0xBADCAB1E` and a write of the complemented word completes SLVERR, and a no-response raises in the driver ([TIMEOUT-MUST-FAIL]); gate CLEARED -- the probe answers OKAY with the recorded word, so the refused write took no effect and the peripheral is reachable again.
-* The probes are AVS_CFG_0, I2C_CTRL_0, UART0 LOG_ENGINE_CTRL, telemetry receiver 0 CTRL and I3C0 HCI_VERSION, each from the generated map; where the register is writable the recovery read also shows the refused write landed nowhere.
-
-*Test Procedure*:
-
-Drive `smc_periph_cg_access_error_test_seq` on the SEP_IN AXI sequencer: save CLOCK_GATE_CONTROL, clear all five peripheral enables, run the three-step experiment on each peripheral, restore CLOCK_GATE_CONTROL and reconcile the access count and the value-compare count against the scoreboard. The leaf then requires every peripheral to appear in the positive-control, refused and recovered sets.
-
-*Checkers*:
-
-[cols="1,2",options="header",]
-|===
-|Checker |Description
-|`CHK-PERIPH-CG-ACCESS-ERROR-<periph>` |One line per peripheral (AVSBUS, I2C, UART, TELEMETRY, I3C): its probe answered OKAY ungated, SLVERR with 0xBADCAB1E on read and SLVERR on write while its enable was set, and OKAY with the recorded word once the enable was cleared; a timeout, an OKAY while gated, a DECERR, another data word or a changed word after recovery fails it
-|`CHK-PERIPH-CG-ACCESS-ERROR-SWEEP` |Summary line: all five peripherals passed the three steps, CLOCK_GATE_CONTROL was restored and read back, and the scoreboard booked at least the expected number of value compares
-|===
-
-*Pass Criteria*: all six checkers hold and every sequence assert holds. Enrolled in: `all`, `hosted`.
-'''''
-
-[[sec-012-smc_avsbus_sanity_test]]
-===== 12 `smc_avsbus_sanity_test`
+[[sec-011-smc_avsbus_sanity_test]]
+===== 11 `smc_avsbus_sanity_test`
 
 *Source Module*: `smc_avsbus_sanity_test`
 
@@ -1065,8 +1034,8 @@ Drive `smc_avsbus_sanity_test_seq`. Each checker below is a named compare the DU
 *Pass Criteria*: `CHK-AVS-DEBUG-READBACK-NONDESTRUCTIVE`, `CHK-AVS-FIFOS-STATUS`, `CHK-AVS-INTERRUPT-MASK`, `CHK-AVS-INTERRUPT-W1C`, `CHK-AVS-NORMAL-STATUS`, `CHK-AVS-READBACK-EMPTY-FIFO-READ` (and 3 more) hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-013-smc_avsbus_status_depth_test]]
-===== 13 `smc_avsbus_status_depth_test`
+[[sec-012-smc_avsbus_status_depth_test]]
+===== 12 `smc_avsbus_status_depth_test`
 
 *Source Module*: `smc_avsbus_status_depth_test`
 
@@ -1095,8 +1064,8 @@ Drive `smc_avsbus_status_depth_test_seq`. Each checker below is a named compare 
 *Pass Criteria*: `CHK-SIDEBAND-OBSERVABILITY` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-014-smc_dma_sanity_test]]
-===== 14 `smc_dma_sanity_test`
+[[sec-013-smc_dma_sanity_test]]
+===== 13 `smc_dma_sanity_test`
 
 *Source Module*: `smc_dma_sanity_test`
 
@@ -1128,8 +1097,8 @@ Drive `smc_dma_sanity_test_seq`. Each checker below is a named compare the DUT c
 *Pass Criteria*: all three copies match their expected destination bytes, the LENGTH = 1 leg leaves the destination's upper seven bytes at the poison, and each leg addressed the SYS_OUT responder exactly once per direction. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-015-smc_octs_dual_sync_test]]
-===== 15 `smc_octs_dual_sync_test`
+[[sec-014-smc_octs_dual_sync_test]]
+===== 14 `smc_octs_dual_sync_test`
 
 *Source Module*: `smc_octs_dual_sync_test`
 
@@ -1159,8 +1128,8 @@ Drive `smc_octs_dual_sync_test_seq`. Each checker below is a named compare the D
 *Pass Criteria*: `CHK-OCTS-DUAL-SYNC` holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-016-smc_octs_sanity_test]]
-===== 16 `smc_octs_sanity_test`
+[[sec-015-smc_octs_sanity_test]]
+===== 15 `smc_octs_sanity_test`
 
 *Source Module*: `smc_octs_sanity_test`
 
@@ -1190,8 +1159,8 @@ Drive `smc_octs_sanity_test_seq`. Each checker below is a named compare the DUT 
 *Pass Criteria*: `CHK-SIDEBAND-OBSERVABILITY` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-017-smc_sideband_protocol_smoke_test]]
-===== 17 `smc_sideband_protocol_smoke_test`
+[[sec-016-smc_sideband_protocol_smoke_test]]
+===== 16 `smc_sideband_protocol_smoke_test`
 
 *Source Module*: `smc_sideband_protocol_smoke_test`
 
@@ -1228,8 +1197,8 @@ Drive `smc_sideband_protocol_smoke_test_seq`. Each checker below is a named comp
 *Pass Criteria*: `CHK-AVS-DEBUG-READBACK-NONDESTRUCTIVE`, `CHK-AVS-FIFOS-STATUS`, `CHK-AVS-INTERRUPT-MASK`, `CHK-AVS-INTERRUPT-W1C`, `CHK-AVS-NORMAL-STATUS`, `CHK-AVS-READBACK-EMPTY-FIFO-READ` (and 2 more) hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-018-smc_telemetry_receiver_csr_test]]
-===== 18 `smc_telemetry_receiver_csr_test`
+[[sec-017-smc_telemetry_receiver_csr_test]]
+===== 17 `smc_telemetry_receiver_csr_test`
 
 *Source Module*: `smc_telemetry_receiver_csr_test`
 
@@ -1261,8 +1230,8 @@ Drive `smc_telemetry_receiver_csr_test_seq`. Each checker below is a named compa
 *Pass Criteria*: `CHK-TELEMETRY-RECEIVER-CSR` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-019-smc_wdt_key_csr_test]]
-===== 19 `smc_wdt_key_csr_test`
+[[sec-018-smc_wdt_key_csr_test]]
+===== 18 `smc_wdt_key_csr_test`
 
 *Source Module*: `smc_wdt_key_csr_test`
 
@@ -1292,8 +1261,8 @@ Drive `smc_wdt_key_csr_test_seq`. Each checker below is a named compare the DUT 
 *Pass Criteria*: `CHK-WDT-KEY-PROTOCOL` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-020-smc_wdt_timeout_pin_test]]
-===== 20 `smc_wdt_timeout_pin_test`
+[[sec-019-smc_wdt_timeout_pin_test]]
+===== 19 `smc_wdt_timeout_pin_test`
 
 *Source Module*: `smc_wdt_timeout_pin_test`
 
@@ -1327,8 +1296,8 @@ Drive `smc_wdt_timeout_pin_test_seq`. Each checker below is a bounded observatio
 *Pass Criteria*: `CHK-WDT-TIMEOUT-CORES`, `CHK-WDT-TIMEOUT-FIRST`, `CHK-WDT-TIMEOUT-SECOND`, `CHK-WDT-TIMEOUT-RESET` hold after their observations. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-021-smc_zeroer_dma_timeout_test]]
-===== 21 `smc_zeroer_dma_timeout_test`
+[[sec-020-smc_zeroer_dma_timeout_test]]
+===== 20 `smc_zeroer_dma_timeout_test`
 
 *Source Module*: `smc_zeroer_dma_timeout_test`
 
@@ -1366,8 +1335,8 @@ Drive `smc_zeroer_dma_timeout_test_seq`. Each checker below is a named compare t
 *Pass Criteria*: `CHK-NONVAC`, `CHK-ZEROER-CTRL-STATUS`, `CHK-ZEROER-REGION-DECODE`, `CHK-ZEROER-REGION-ZEROED`, `CHK-ZEROER-STATUS-BUSY-ASSERTED`, `CHK-ZEROER-STATUS-LIFECYCLE` (and 1 more) hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-022-smc_zeroer_sanity_test]]
-===== 22 `smc_zeroer_sanity_test`
+[[sec-021-smc_zeroer_sanity_test]]
+===== 21 `smc_zeroer_sanity_test`
 
 *Source Module*: `smc_zeroer_sanity_test`
 
@@ -1405,8 +1374,8 @@ Drive `smc_zeroer_sanity_test_seq`. Each checker below is a named compare the DU
 *Pass Criteria*: `CHK-NONVAC`, `CHK-ZEROER-CTRL-STATUS`, `CHK-ZEROER-REGION-DECODE`, `CHK-ZEROER-REGION-ZEROED`, `CHK-ZEROER-STATUS-BUSY-ASSERTED`, `CHK-ZEROER-STATUS-LIFECYCLE` (and 1 more) hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-185-smc_dma_reserved_stream_banks_test]]
-===== 185 `smc_dma_reserved_stream_banks_test`
+[[sec-184-smc_dma_reserved_stream_banks_test]]
+===== 184 `smc_dma_reserved_stream_banks_test`
 
 *Source Module*: `smc_dma_reserved_stream_banks_test`
 
@@ -1439,11 +1408,41 @@ Drive `smc_dma_reserved_stream_banks_test_seq` on the SEP_IN AXI sequencer: unga
 
 '''''
 
+[[sec-320-smc_periph_cg_access_error_test]]
+===== 320 `smc_periph_cg_access_error_test`
+
+*Source Module*: `smc_periph_cg_access_error_test`
+
+*BFM / Model*: ocah_axi_vip (AXI)
+
+*Objective*: Each CLOCK_GATE_CONTROL peripheral enable (AVSBus, I2C, UART, telemetry, I3C) set in turn: the gated window answers SLVERR with 0xBADCAB1E on read and SLVERR on write, and its recorded word again once ungated.
+
+*Test Coverage*:
+
+* `CLOCK_GATE_CONTROL` stops the AVSBus, I2C, UART, telemetry and I3C clocks with one enable each. In front of each of those peripherals an access gate on the SMC clock steers the crossbar leg into an error slave while the enable is set, so software reads an error instead of waiting on a register block whose clock has stopped.
+* For each peripheral the same three-step experiment runs on its own enable, with the other four enables cleared: gate CLEARED -- a probe register answers OKAY and its word is recorded ([NEGATIVE-NEEDS-POSITIVE-CONTROL]); gate SET -- a read of the probe completes SLVERR with `0xBADCAB1E` and a write of the complemented word completes SLVERR, and a no-response raises in the driver ([TIMEOUT-MUST-FAIL]); gate CLEARED -- the probe answers OKAY with the recorded word, so the refused write took no effect and the peripheral is reachable again.
+* The probes are AVS_CFG_0, I2C_CTRL_0, UART0 LOG_ENGINE_CTRL, telemetry receiver 0 CTRL and I3C0 HCI_VERSION, each from the generated map; where the register is writable the recovery read also shows the refused write landed nowhere.
+
+*Test Procedure*:
+
+Drive `smc_periph_cg_access_error_test_seq` on the SEP_IN AXI sequencer: save CLOCK_GATE_CONTROL, clear all five peripheral enables, run the three-step experiment on each peripheral, restore CLOCK_GATE_CONTROL and reconcile the access count and the value-compare count against the scoreboard. The leaf then requires every peripheral to appear in the positive-control, refused and recovered sets.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-PERIPH-CG-ACCESS-ERROR-<periph>` |One line per peripheral (AVSBUS, I2C, UART, TELEMETRY, I3C): its probe answered OKAY ungated, SLVERR with 0xBADCAB1E on read and SLVERR on write while its enable was set, and OKAY with the recorded word once the enable was cleared; a timeout, an OKAY while gated, a DECERR, another data word or a changed word after recovery fails it
+|`CHK-PERIPH-CG-ACCESS-ERROR-SWEEP` |Summary line: all five peripherals passed the three steps, CLOCK_GATE_CONTROL was restored and read back, and the scoreboard booked at least the expected number of value compares
+|===
+
+*Pass Criteria*: all six checkers hold and every sequence assert holds. Enrolled in: `all`, `hosted`.
+'''''
 
 ==== FABRIC
 
-[[sec-023-smc_axi_error_response_depth_test]]
-===== 23 `smc_axi_error_response_depth_test`
+[[sec-022-smc_axi_error_response_depth_test]]
+===== 22 `smc_axi_error_response_depth_test`
 
 *Source Module*: `smc_axi_error_response_depth_test`
 
@@ -1475,8 +1474,8 @@ Drive `smc_axi_error_response_depth_test_seq`. Each checker below is a named com
 *Pass Criteria*: `CHK-AXI-ERR-DEPTH` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-024-smc_axil_burst_idle_test]]
-===== 24 `smc_axil_burst_idle_test`
+[[sec-023-smc_axil_burst_idle_test]]
+===== 23 `smc_axil_burst_idle_test`
 
 *Source Module*: `smc_axil_burst_idle_test`
 
@@ -1511,8 +1510,8 @@ Drive `smc_axil_burst_idle_test_seq`. Each checker below is a named compare the 
 *Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-EFUSE-BANK-AXIL-ACTIVE`, `CHK-NONVAC`, `CHK-PROBE-AXIL-EXTERNAL-ALIVE` hold after their compares. Enrolled in: `all`, `hosted`, `axil`.
 '''''
 
-[[sec-025-smc_axil_idle_test]]
-===== 25 `smc_axil_idle_test`
+[[sec-024-smc_axil_idle_test]]
+===== 24 `smc_axil_idle_test`
 
 *Source Module*: `smc_axil_idle_test`
 
@@ -1544,8 +1543,8 @@ Drive `smc_axil_idle_test_seq`. Each checker below is a named compare the DUT ca
 *Pass Criteria*: `CHK-AXIL-IDLE`, `CHK-DIAG-AXIL-ACTIVE`, `CHK-EFUSE-BANK-AXIL-ACTIVE` hold after their compares. Enrolled in: `all`, `hosted`, `axil`.
 '''''
 
-[[sec-026-smc_cpu_to_sep_axi_test]]
-===== 26 `smc_cpu_to_sep_axi_test`
+[[sec-025-smc_cpu_to_sep_axi_test]]
+===== 25 `smc_cpu_to_sep_axi_test`
 
 *Source Module*: `smc_cpu_to_sep_axi_test`
 
@@ -1575,8 +1574,8 @@ Drive `smc_cpu_to_sep_axi_test_seq`. Each checker below is a named compare the D
 '''''
 
 
-[[sec-027-smc_deadspace_decode_test]]
-===== 27 `smc_deadspace_decode_test`
+[[sec-026-smc_deadspace_decode_test]]
+===== 26 `smc_deadspace_decode_test`
 
 *Source Module*: `smc_deadspace_decode_test`
 
@@ -1611,8 +1610,8 @@ Drive `smc_deadspace_decode_test_seq` on the SEP_IN AXI sequencer. The sequence 
 '''''
 
 
-[[sec-028-smc_filter_field_sweep_test]]
-===== 28 `smc_filter_field_sweep_test`
+[[sec-027-smc_filter_field_sweep_test]]
+===== 27 `smc_filter_field_sweep_test`
 
 *Source Module*: `smc_filter_field_sweep_test`
 
@@ -1644,8 +1643,8 @@ Drive `smc_filter_field_sweep_test_seq`. Each checker below is a named compare t
 
 '''''
 
-[[sec-029-smc_filter_multi_entry_test]]
-===== 29 `smc_filter_multi_entry_test`
+[[sec-028-smc_filter_multi_entry_test]]
+===== 28 `smc_filter_multi_entry_test`
 
 *Source Module*: `smc_filter_multi_entry_test`
 
@@ -1680,8 +1679,8 @@ Drive `smc_filter_multi_entry_test_seq`. Each checker below is a named compare t
 *Pass Criteria*: `CHK-FILTER-MULTI-ENTRY-SLOT-IDENTITY` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-030-smc_input_fabric_axi_wr_rd_test]]
-===== 30 `smc_input_fabric_axi_wr_rd_test`
+[[sec-029-smc_input_fabric_axi_wr_rd_test]]
+===== 29 `smc_input_fabric_axi_wr_rd_test`
 
 *Source Module*: `smc_input_fabric_axi_wr_rd_test`
 
@@ -1714,8 +1713,8 @@ Drive `smc_input_output_fabric_wr_rd_test_seq` over SEP_IN AXI. Each checker bel
 *Pass Criteria*: `CHK-ALIAS-REMAP-RESET-DEFAULT`, `CHK-NONVAC` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-031-smc_input_output_fabric_wr_rd_test]]
-===== 31 `smc_input_output_fabric_wr_rd_test`
+[[sec-030-smc_input_output_fabric_wr_rd_test]]
+===== 30 `smc_input_output_fabric_wr_rd_test`
 
 *Source Module*: `smc_input_output_fabric_wr_rd_test`
 
@@ -1747,8 +1746,8 @@ Drive `output_fabric_pass_all_cfg_seq` over SEP_IN AXI, then a JTAG-AXI write an
 *Pass Criteria*: `CHK-INPUT-OUTPUT-FABRIC-WR-RD`, `CHK-NONVAC` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-032-smc_local_fabric_csr_depth_test]]
-===== 32 `smc_local_fabric_csr_depth_test`
+[[sec-031-smc_local_fabric_csr_depth_test]]
+===== 31 `smc_local_fabric_csr_depth_test`
 
 *Source Module*: `smc_local_fabric_csr_depth_test`
 
@@ -1777,8 +1776,8 @@ Drive `smc_local_fabric_csr_depth_test_seq`. Each checker below is a named compa
 *Pass Criteria*: `CHK-LOCAL-FABRIC-CSR-DEPTH` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-033-smc_output_fabric_slverr_inject_test]]
-===== 33 `smc_output_fabric_slverr_inject_test`
+[[sec-032-smc_output_fabric_slverr_inject_test]]
+===== 32 `smc_output_fabric_slverr_inject_test`
 
 *Source Module*: `smc_output_fabric_slverr_inject_test`
 
@@ -1810,8 +1809,8 @@ Drive `smc_output_fabric_slverr_inject_test_seq`. Each checker below is a named 
 *Pass Criteria*: the OKAY path completes and is booked against the memory model, each injected error reaches the manager with the encoding it had on the SYS_OUT wire, the stored word is untouched by the errored accesses, and the following OKAY write/read pair completes normally. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-034-smc_output_fabric_wr_rd_responder_test]]
-===== 34 `smc_output_fabric_wr_rd_responder_test`
+[[sec-033-smc_output_fabric_wr_rd_responder_test]]
+===== 33 `smc_output_fabric_wr_rd_responder_test`
 
 *Source Module*: `smc_output_fabric_wr_rd_responder_test`
 
@@ -1840,8 +1839,8 @@ Drive the JTAG-AXI write and read from the test module (`smc_output_fabric_wr_rd
 *Pass Criteria*: `CHK-OUTPUT-FABRIC-WR-RD-GOLDEN` holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-035-smc_output_filter_remap_security_test]]
-===== 35 `smc_output_filter_remap_security_test`
+[[sec-034-smc_output_filter_remap_security_test]]
+===== 34 `smc_output_filter_remap_security_test`
 
 *Source Module*: `smc_output_filter_remap_security_test`
 
@@ -1874,8 +1873,8 @@ Drive `smc_output_filter_remap_security_test_seq`. Each checker below is a named
 *Pass Criteria*: `CHK-NONVAC`, `CHK-NONVAC-PHASE-FENCE`, `CHK-OUTBOUND-BLOCK-WRITE`, `CHK-OUTBOUND-PASS-ALL` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-036-smc_remap_cla_test]]
-===== 36 `smc_remap_cla_test`
+[[sec-035-smc_remap_cla_test]]
+===== 35 `smc_remap_cla_test`
 
 *Source Module*: `smc_remap_cla_test`
 
@@ -1913,8 +1912,8 @@ Drive `smc_remap_cla_test_seq`. Each checker below is a named compare the DUT ca
 *Pass Criteria*: `CHK-CLA-RESET-SWEEP`, `CHK-CLA-WINDOW-ALLOW`, `CHK-CLA-WINDOW-DENY`, `CHK-REMAP-ALIAS0-IDENTITY`, `CHK-REMAP-ALIAS0-LANDING`, `CHK-REMAP-ALIAS0-OFF`, `CHK-REMAP-TABLE-CORESIDENT`, `CHK-REMAP-TABLE-RESET` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-037-smc_sys_out_aw_w_split_test]]
-===== 37 `smc_sys_out_aw_w_split_test`
+[[sec-036-smc_sys_out_aw_w_split_test]]
+===== 36 `smc_sys_out_aw_w_split_test`
 
 *Source Module*: `smc_sys_out_aw_w_split_test`
 
@@ -1949,8 +1948,8 @@ Drive `smc_sys_out_aw_w_split_test_seq`. Each checker below is a named compare t
 
 '''''
 
-[[sec-038-smc_xvisor_remap_test]]
-===== 38 `smc_xvisor_remap_test`
+[[sec-037-smc_xvisor_remap_test]]
+===== 37 `smc_xvisor_remap_test`
 
 *Source Module*: `smc_xvisor_remap_test`
 
@@ -1983,8 +1982,8 @@ Drive `smc_xvisor_remap_test_seq`. Each checker below is a named compare the DUT
 
 '''''
 
-[[sec-180-smc_address_map_region_decode_test]]
-===== 180 `smc_address_map_region_decode_test`
+[[sec-179-smc_address_map_region_decode_test]]
+===== 179 `smc_address_map_region_decode_test`
 
 *Source Module*: `smc_address_map_region_decode_test`
 
@@ -2021,8 +2020,8 @@ Drive `smc_address_map_region_decode_test_seq` on the SEP_IN AXI sequencer. The 
 
 '''''
 
-[[sec-181-smc_address_window_top_decode_test]]
-===== 181 `smc_address_window_top_decode_test`
+[[sec-180-smc_address_window_top_decode_test]]
+===== 180 `smc_address_window_top_decode_test`
 
 *Source Module*: `smc_address_window_top_decode_test`
 
@@ -2058,8 +2057,8 @@ Drive `smc_address_window_top_decode_test_seq` on the SEP_IN AXI sequencer, then
 
 '''''
 
-[[sec-182-smc_alias_remap_spare_block_decode_test]]
-===== 182 `smc_alias_remap_spare_block_decode_test`
+[[sec-181-smc_alias_remap_spare_block_decode_test]]
+===== 181 `smc_alias_remap_spare_block_decode_test`
 
 *Source Module*: `smc_alias_remap_spare_block_decode_test`
 
@@ -2092,8 +2091,8 @@ Drive `smc_alias_remap_spare_block_decode_test_seq` on the SEP_IN AXI sequencer,
 
 '''''
 
-[[sec-186-smc_dual_base_addressing_test]]
-===== 186 `smc_dual_base_addressing_test`
+[[sec-185-smc_dual_base_addressing_test]]
+===== 185 `smc_dual_base_addressing_test`
 
 *Source Module*: `smc_dual_base_addressing_test`
 
@@ -2128,8 +2127,8 @@ Drive `smc_dual_base_addressing_test_seq` on the SEP_IN AXI sequencer: read `REG
 '''''
 
 
-[[sec-191-smc_region_size_plic_clint_beu_decode_test]]
-===== 191 `smc_region_size_plic_clint_beu_decode_test`
+[[sec-190-smc_region_size_plic_clint_beu_decode_test]]
+===== 190 `smc_region_size_plic_clint_beu_decode_test`
 
 *Source Module*: `smc_region_size_plic_clint_beu_decode_test`
 
@@ -2164,8 +2163,8 @@ Drive `smc_region_size_plic_clint_beu_decode_test_seq` on the SEP_IN AXI sequenc
 
 '''''
 
-[[sec-193-smc_sys_axi_in_port_test]]
-===== 193 `smc_sys_axi_in_port_test`
+[[sec-192-smc_sys_axi_in_port_test]]
+===== 192 `smc_sys_axi_in_port_test`
 
 *Source Module*: `smc_sys_axi_in_port_test`
 
@@ -2209,8 +2208,8 @@ Drive `smc_sys_axi_in_port_test_seq` on the SEP_IN AXI sequencer, with the SYS_I
 '''''
 
 
-[[sec-195-smc_sep_in_axi_shape_test]]
-===== 195 `smc_sep_in_axi_shape_test`
+[[sec-194-smc_sep_in_axi_shape_test]]
+===== 194 `smc_sep_in_axi_shape_test`
 
 *Source Module*: `smc_sep_in_axi_shape_test`
 
@@ -2249,8 +2248,8 @@ Drive `smc_sep_in_axi_shape_test_seq` on the SEP_IN AXI sequencer: seed a scratc
 
 '''''
 
-[[sec-196-smc_sep_in_axi_flow_control_test]]
-===== 196 `smc_sep_in_axi_flow_control_test`
+[[sec-195-smc_sep_in_axi_flow_control_test]]
+===== 195 `smc_sep_in_axi_flow_control_test`
 
 *Source Module*: `smc_sep_in_axi_flow_control_test`
 
@@ -2282,8 +2281,8 @@ Drive `smc_sep_in_axi_flow_control_test_seq` on the SEP_IN AXI sequencer with a 
 
 '''''
 
-[[sec-197-smc_axil_downstream_concurrency_test]]
-===== 197 `smc_axil_downstream_concurrency_test`
+[[sec-196-smc_axil_downstream_concurrency_test]]
+===== 196 `smc_axil_downstream_concurrency_test`
 
 *Source Module*: `smc_axil_downstream_concurrency_test`
 
@@ -2315,8 +2314,8 @@ Drive `smc_axil_downstream_concurrency_test_seq` on the SEP_IN AXI sequencer wit
 '''''
 
 
-[[sec-189-smc_peripheral_instance_decode_test]]
-===== 189 `smc_peripheral_instance_decode_test`
+[[sec-188-smc_peripheral_instance_decode_test]]
+===== 188 `smc_peripheral_instance_decode_test`
 
 *Source Module*: `smc_peripheral_instance_decode_test`
 
@@ -2352,8 +2351,8 @@ Drive `smc_peripheral_instance_decode_test_seq` on the SEP_IN AXI sequencer: swe
 
 ==== RESET
 
-[[sec-039-smc_cg_dft_reset_bringup_test]]
-===== 39 `smc_cg_dft_reset_bringup_test`
+[[sec-038-smc_cg_dft_reset_bringup_test]]
+===== 38 `smc_cg_dft_reset_bringup_test`
 
 *Source Module*: `smc_cg_dft_reset_bringup_test`
 
@@ -2387,8 +2386,8 @@ Drive `smc_cg_dft_reset_bringup_test_seq`. Each checker below is a named compare
 
 '''''
 
-[[sec-040-smc_reset_unit_lock_test]]
-===== 40 `smc_reset_unit_lock_test`
+[[sec-039-smc_reset_unit_lock_test]]
+===== 39 `smc_reset_unit_lock_test`
 
 *Source Module*: `smc_reset_unit_lock_test`
 
@@ -2455,8 +2454,8 @@ Under `--framework uvm` -- a framework no run in this package executes, so the S
 
 '''''
 
-[[sec-041-smc_cold_reset_repeated_test]]
-===== 41 `smc_cold_reset_repeated_test`
+[[sec-040-smc_cold_reset_repeated_test]]
+===== 40 `smc_cold_reset_repeated_test`
 
 *Source Module*: `smc_cold_reset_repeated_test`
 
@@ -2491,8 +2490,8 @@ Drive `smc_cold_reset_repeated_test_seq`. Each checker below is a named compare 
 
 '''''
 
-[[sec-042-smc_cold_reset_test]]
-===== 42 `smc_cold_reset_test`
+[[sec-041-smc_cold_reset_test]]
+===== 41 `smc_cold_reset_test`
 
 *Source Module*: `smc_cold_reset_test`
 
@@ -2531,8 +2530,8 @@ Drive `smc_cold_reset_test_seq`. Each checker below is a named compare the DUT c
 *Pass Criteria*: `CHK-BRINGUP-LEVELS`, `CHK-COLD-ASSERT-PRIMARY`, `CHK-COOL-PRIMARY`, `CHK-INT-COOL-SEQ`, `CHK-INT-POR-COLD`, `CHK-MID-ASSERT-HOLD` (and 3 more) hold after their compares. Enrolled in: `all`, `hosted`, `reset`, `smoke`.
 '''''
 
-[[sec-043-smc_cool_reset_from_pcie_test]]
-===== 43 `smc_cool_reset_from_pcie_test`
+[[sec-042-smc_cool_reset_from_pcie_test]]
+===== 42 `smc_cool_reset_from_pcie_test`
 
 *Source Module*: `smc_cool_reset_from_pcie_test`
 
@@ -2572,8 +2571,8 @@ Drive `smc_cool_reset_from_pcie_test_seq`. Each checker below is a named compare
 
 '''''
 
-[[sec-044-smc_cool_reset_x_cold_reset_test]]
-===== 44 `smc_cool_reset_x_cold_reset_test`
+[[sec-043-smc_cool_reset_x_cold_reset_test]]
+===== 43 `smc_cool_reset_x_cold_reset_test`
 
 *Source Module*: `smc_cool_reset_x_cold_reset_test`
 
@@ -2606,8 +2605,8 @@ Drive `smc_cool_reset_x_cold_reset_test_seq`. Each checker below is a named comp
 *Pass Criteria*: `CHK-FLR-COLD-ISO-LIVE`, `CHK-FLR-COLD-POS-COOL`, `CHK-FLR-COLD-SCRATCH`, `CHK-FLR-COLD-WINS`, `CHK-FLR-COOL-SCRATCH-CLEAR` hold after their compares. Enrolled in: `all`, `hosted`, `reset`.
 '''''
 
-[[sec-045-smc_cpu_reset_source_test]]
-===== 45 `smc_cpu_reset_source_test`
+[[sec-044-smc_cpu_reset_source_test]]
+===== 44 `smc_cpu_reset_source_test`
 
 *Source Module*: `smc_cpu_reset_source_test`
 
@@ -2639,8 +2638,8 @@ Drive `smc_cpu_reset_source_test_seq`. Each checker below is a named compare the
 *Pass Criteria*: `CHK-CPU-RST-BASIC`, `CHK-CPU-RST-IDLE`, `CHK-CPU-RST-REL`, `CHK-CPU-RST-SW` hold after their compares. Enrolled in: `all`, `hosted`, `reset`.
 '''''
 
-[[sec-046-smc_flr_sanity_test]]
-===== 46 `smc_flr_sanity_test`
+[[sec-045-smc_flr_sanity_test]]
+===== 45 `smc_flr_sanity_test`
 
 *Source Module*: `smc_flr_sanity_test`
 
@@ -2670,8 +2669,8 @@ Drive `smc_flr_sanity_test_seq`. Each checker below is a named compare the DUT c
 *Pass Criteria*: `CHK-FLR-COOL-CSR-RECOVERY` holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-047-smc_gpio_boot_stall_test]]
-===== 47 `smc_gpio_boot_stall_test`
+[[sec-046-smc_gpio_boot_stall_test]]
+===== 46 `smc_gpio_boot_stall_test`
 
 *Source Module*: `smc_gpio_boot_stall_test`
 
@@ -2706,8 +2705,8 @@ Drive `smc_gpio_boot_stall_test_seq`. Each checker below is a named compare the 
 
 '''''
 
-[[sec-048-smc_irq_during_powergood_glitch_test]]
-===== 48 `smc_irq_during_powergood_glitch_test`
+[[sec-047-smc_irq_during_powergood_glitch_test]]
+===== 47 `smc_irq_during_powergood_glitch_test`
 
 *Source Module*: `smc_irq_during_powergood_glitch_test`
 
@@ -2739,8 +2738,8 @@ Drive `smc_irq_during_powergood_glitch_test_seq`. Each checker below is a named 
 *Pass Criteria*: `CHK-IRQ-PG-GLITCH-NO-SPURIOUS` hold after their compares. Enrolled in: `all`, `hosted`, `combined`, `irq`.
 '''''
 
-[[sec-049-smc_jtag_boot_stall_sanity_test]]
-===== 49 `smc_jtag_boot_stall_sanity_test`
+[[sec-048-smc_jtag_boot_stall_sanity_test]]
+===== 48 `smc_jtag_boot_stall_sanity_test`
 
 *Source Module*: `smc_jtag_boot_stall_sanity_test`
 
@@ -2774,8 +2773,8 @@ Drive `smc_jtag_boot_stall_sanity_test_seq`. Each checker below is a named compa
 
 '''''
 
-[[sec-050-smc_jtag_reset_ctrl_test]]
-===== 50 `smc_jtag_reset_ctrl_test`
+[[sec-049-smc_jtag_reset_ctrl_test]]
+===== 49 `smc_jtag_reset_ctrl_test`
 
 *Source Module*: `smc_jtag_reset_ctrl_test`
 
@@ -2811,8 +2810,8 @@ Drive `smc_jtag_reset_ctrl_test_seq`. Each checker below is a named compare the 
 *Pass Criteria*: `CHK-JTAG-RST-BASIC`, `CHK-JTAG-RST-COOL`, `CHK-JTAG-RST-IDLE`, `CHK-JTAG-RST-SS0`, `CHK-JTAG-RST-WARM-HELD`, `CHK-JTAG-RST-WARM-SCRATCH` hold after their compares. Enrolled in: `all`, `hosted`, `reset`.
 '''''
 
-[[sec-051-smc_jtag_reset_proxy_test]]
-===== 51 `smc_jtag_reset_proxy_test`
+[[sec-050-smc_jtag_reset_proxy_test]]
+===== 50 `smc_jtag_reset_proxy_test`
 
 *Source Module*: `smc_jtag_reset_proxy_test`
 
@@ -2848,8 +2847,8 @@ Drive `smc_jtag_reset_proxy_test_seq`. Each checker below is a named compare the
 *Pass Criteria*: `CHK-CPU-JTAG-DTMCS`, `CHK-CPU-JTAG-IDCODE`, `CHK-CPU-JTAG-SCAN-ACTIVITY` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-052-smc_mixed_boot_stall_test]]
-===== 52 `smc_mixed_boot_stall_test`
+[[sec-051-smc_mixed_boot_stall_test]]
+===== 51 `smc_mixed_boot_stall_test`
 
 *Source Module*: `smc_mixed_boot_stall_test`
 
@@ -2884,8 +2883,8 @@ Drive `smc_mixed_boot_stall_test_seq`. Each checker below is a named compare the
 *Pass Criteria*: `CHK-MIXED-BOOT-STALL-BASIC`, `CHK-MIXED-BOOT-STALL-DROP`, `CHK-MIXED-BOOT-STALL-GPIO`, `CHK-MIXED-BOOT-STALL-OVRD`, `CHK-MIXED-BOOT-STALL-VAL1`, `CHK-MIXED-BOOT-STALL-WARM` hold after their compares. Enrolled in: `all`, `hosted`, `reset`.
 '''''
 
-[[sec-053-smc_multi_reset_csr_persistence_test]]
-===== 53 `smc_multi_reset_csr_persistence_test`
+[[sec-052-smc_multi_reset_csr_persistence_test]]
+===== 52 `smc_multi_reset_csr_persistence_test`
 
 *Source Module*: `smc_multi_reset_csr_persistence_test`
 
@@ -2946,8 +2945,8 @@ complete write / pulse / check / restore cycle with a fresh pattern, so back-to-
 re-proved rather than assumed. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-054-smc_ndm_reset_test]]
-===== 54 `smc_ndm_reset_test`
+[[sec-053-smc_ndm_reset_test]]
+===== 53 `smc_ndm_reset_test`
 
 *Source Module*: `smc_ndm_reset_test`
 
@@ -2982,8 +2981,8 @@ Drive `smc_ndm_reset_test_seq`. Each checker below is a named compare the DUT ca
 *Pass Criteria*: `CHK-NDM-CLR-<bit>`, `CHK-NDM-COUNT`, `CHK-NDM-DROP-<bit>`, `CHK-NDM-IDLE`, `CHK-NDM-PROC-<bit>`, `CHK-NDM-REQ-<bit>` hold after their compares. Enrolled in: `all`, `hosted`, `reset`.
 '''''
 
-[[sec-055-smc_powergood_glitch_test]]
-===== 55 `smc_powergood_glitch_test`
+[[sec-054-smc_powergood_glitch_test]]
+===== 54 `smc_powergood_glitch_test`
 
 *Source Module*: `smc_powergood_glitch_test`
 
@@ -3014,8 +3013,8 @@ Drive `smc_powergood_glitch_test_seq`. Each checker below is a named compare the
 
 '''''
 
-[[sec-056-smc_reset_recovery_matrix_test]]
-===== 56 `smc_reset_recovery_matrix_test`
+[[sec-055-smc_reset_recovery_matrix_test]]
+===== 55 `smc_reset_recovery_matrix_test`
 
 *Source Module*: `smc_reset_recovery_matrix_test`
 
@@ -3046,8 +3045,8 @@ Drive `smc_reset_recovery_matrix_test_seq`. Each checker below is a named compar
 *Pass Criteria*: `CHK-MID-ASSERT-HOLD` holds after its hold window and every sequence assert holds. Enrolled in: `all`, `hosted`, `reset`.
 '''''
 
-[[sec-057-smc_reset_unit_sanity_test]]
-===== 57 `smc_reset_unit_sanity_test`
+[[sec-056-smc_reset_unit_sanity_test]]
+===== 56 `smc_reset_unit_sanity_test`
 
 *Source Module*: `smc_reset_unit_sanity_test`
 
@@ -3078,8 +3077,8 @@ Drive `smc_reset_unit_sanity_test_seq`. Each checker below is a named compare th
 *Pass Criteria*: `CHK-RESET-UNIT-PRE`, `CHK-RESET-UNIT-SS-SWEEP`, `CHK-RESET-UNIT-WDT` hold after their compares. Enrolled in: `all`, `hosted`, `reset`.
 '''''
 
-[[sec-058-smc_ss_reset_complete_test]]
-===== 58 `smc_ss_reset_complete_test`
+[[sec-057-smc_ss_reset_complete_test]]
+===== 57 `smc_ss_reset_complete_test`
 
 *Source Module*: `smc_ss_reset_complete_test`
 
@@ -3112,8 +3111,8 @@ Drive `smc_ss_reset_complete_test_seq`. Each checker below is a named compare th
 *Pass Criteria*: `CHK-SS-COMPLETE-DROP`, `CHK-SS-COMPLETE-IDLE`, `CHK-SS-COMPLETE-RESTORE`, `CHK-SS-COMPLETE-SCRATCH-RW`, `CHK-SS-WARM-SS0` hold after their compares. Enrolled in: `all`, `hosted`, `reset`.
 '''''
 
-[[sec-059-smc_uart_fifo_basic_trigger_reset_test]]
-===== 59 `smc_uart_fifo_basic_trigger_reset_test`
+[[sec-058-smc_uart_fifo_basic_trigger_reset_test]]
+===== 58 `smc_uart_fifo_basic_trigger_reset_test`
 
 *Source Module*: `smc_uart_fifo_basic_trigger_reset_test`
 
@@ -3147,8 +3146,8 @@ Drive `smc_uart_fifo_basic_trigger_reset_test_seq`. Each checker below is a name
 *Pass Criteria*: `CHK-UART-FIFO-RST-RX`, `CHK-UART-FIFO-RST-TX`, `CHK-UART-FIFO-TRIG-1B`, `CHK-UART-FIFO-TRIG-32B`, `CHK-UART-FIFO-TRIG-4B`, `CHK-UART-FIFO-TRIG-ABOVE-DEPTH` hold after their compares. Enrolled in: `all`, `hosted`, `uart`.
 '''''
 
-[[sec-184-smc_cold_boot_chain_order_test]]
-===== 184 `smc_cold_boot_chain_order_test`
+[[sec-183-smc_cold_boot_chain_order_test]]
+===== 183 `smc_cold_boot_chain_order_test`
 
 *Source Module*: `smc_cold_boot_chain_order_test`
 
@@ -3190,8 +3189,8 @@ Drive `smc_uart_fifo_basic_trigger_reset_test_seq`. Each checker below is a name
 
 '''''
 
-[[sec-190-smc_primary_reset_scope_test]]
-===== 190 `smc_primary_reset_scope_test`
+[[sec-189-smc_primary_reset_scope_test]]
+===== 189 `smc_primary_reset_scope_test`
 
 *Source Module*: `smc_primary_reset_scope_test`
 
@@ -3233,8 +3232,8 @@ Drive `smc_uart_fifo_basic_trigger_reset_test_seq`. Each checker below is a name
 
 '''''
 
-[[sec-192-smc_reset_sync_edge_test]]
-===== 192 `smc_reset_sync_edge_test`
+[[sec-191-smc_reset_sync_edge_test]]
+===== 191 `smc_reset_sync_edge_test`
 
 *Source Module*: `smc_reset_sync_edge_test`
 
@@ -3279,8 +3278,8 @@ Drive `smc_uart_fifo_basic_trigger_reset_test_seq`. Each checker below is a name
 
 ==== CLOCK
 
-[[sec-060-smc_cg_test_mode_bypass_test]]
-===== 60 `smc_cg_test_mode_bypass_test`
+[[sec-059-smc_cg_test_mode_bypass_test]]
+===== 59 `smc_cg_test_mode_bypass_test`
 
 *Source Module*: `smc_cg_test_mode_bypass_test`
 
@@ -3311,8 +3310,8 @@ Drive `smc_cg_test_mode_bypass_test_seq`. Each checker below is a named compare 
 *Pass Criteria*: `CHK-DFT-BYPASS-DMA`, `CHK-DFT-BYPASS-ZEROER`, `CHK-NONVAC` hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
 '''''
 
-[[sec-061-smc_cg_zeroer_activity_bringup_test]]
-===== 61 `smc_cg_zeroer_activity_bringup_test`
+[[sec-060-smc_cg_zeroer_activity_bringup_test]]
+===== 60 `smc_cg_zeroer_activity_bringup_test`
 
 *Source Module*: `smc_cg_zeroer_activity_bringup_test`
 
@@ -3346,8 +3345,8 @@ Drive `smc_cg_zeroer_activity_bringup_test_seq`. Each checker below is a named c
 
 '''''
 
-[[sec-062-smc_clk_multi_window_test]]
-===== 62 `smc_clk_multi_window_test`
+[[sec-061-smc_clk_multi_window_test]]
+===== 61 `smc_clk_multi_window_test`
 
 *Source Module*: `smc_clk_multi_window_test`
 
@@ -3382,8 +3381,8 @@ Drive `smc_clk_multi_window_test_seq`. Each checker below is a named compare the
 *Pass Criteria*: `CHK-DMA-PAYLOAD-GOLDEN`, `CHK-HYST-WINDOW`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS` hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
 '''''
 
-[[sec-063-smc_clk_running_test]]
-===== 63 `smc_clk_running_test`
+[[sec-062-smc_clk_running_test]]
+===== 62 `smc_clk_running_test`
 
 *Source Module*: `smc_clk_running_test`
 
@@ -3419,8 +3418,8 @@ Drive `smc_clk_running_test_seq`. Each checker below is a named compare the DUT 
 *Pass Criteria*: `CHK-ACTIVE-RUNNING`, `CHK-CG-ENABLE-READBACK`, `CHK-DMA-ACTIVITY-UNGATE`, `CHK-DMA-PAYLOAD-GOLDEN`, `CHK-IDLE-GATED-BASELINE`, `CHK-NONVAC` (and 1 more) hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
 '''''
 
-[[sec-305-smc_clk_smc_slower_than_ref_test]]
-===== 305 `smc_clk_smc_slower_than_ref_test`
+[[sec-304-smc_clk_smc_slower_than_ref_test]]
+===== 304 `smc_clk_smc_slower_than_ref_test`
 
 *Source Module*: `smc_clk_smc_slower_than_ref_test`
 
@@ -3450,8 +3449,8 @@ Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below i
 *Pass Criteria*: both checkers hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
 '''''
 
-[[sec-306-smc_clk_smc_equal_ref_test]]
-===== 306 `smc_clk_smc_equal_ref_test`
+[[sec-305-smc_clk_smc_equal_ref_test]]
+===== 305 `smc_clk_smc_equal_ref_test`
 
 *Source Module*: `smc_clk_smc_equal_ref_test`
 
@@ -3481,8 +3480,8 @@ Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below i
 *Pass Criteria*: both checkers hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
 '''''
 
-[[sec-307-smc_clk_periph_slower_than_ref_test]]
-===== 307 `smc_clk_periph_slower_than_ref_test`
+[[sec-306-smc_clk_periph_slower_than_ref_test]]
+===== 306 `smc_clk_periph_slower_than_ref_test`
 
 *Source Module*: `smc_clk_periph_slower_than_ref_test`
 
@@ -3512,8 +3511,8 @@ Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below i
 *Pass Criteria*: both checkers hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
 '''''
 
-[[sec-308-smc_clk_smc_slower_periph_slower_test]]
-===== 308 `smc_clk_smc_slower_periph_slower_test`
+[[sec-307-smc_clk_smc_slower_periph_slower_test]]
+===== 307 `smc_clk_smc_slower_periph_slower_test`
 
 *Source Module*: `smc_clk_smc_slower_periph_slower_test`
 
@@ -3543,8 +3542,8 @@ Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below i
 *Pass Criteria*: both checkers hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
 '''''
 
-[[sec-309-smc_clk_smc_slower_periph_equal_test]]
-===== 309 `smc_clk_smc_slower_periph_equal_test`
+[[sec-308-smc_clk_smc_slower_periph_equal_test]]
+===== 308 `smc_clk_smc_slower_periph_equal_test`
 
 *Source Module*: `smc_clk_smc_slower_periph_equal_test`
 
@@ -3574,8 +3573,8 @@ Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below i
 *Pass Criteria*: both checkers hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
 '''''
 
-[[sec-310-smc_clk_smc_slower_periph_much_faster_test]]
-===== 310 `smc_clk_smc_slower_periph_much_faster_test`
+[[sec-309-smc_clk_smc_slower_periph_much_faster_test]]
+===== 309 `smc_clk_smc_slower_periph_much_faster_test`
 
 *Source Module*: `smc_clk_smc_slower_periph_much_faster_test`
 
@@ -3605,8 +3604,8 @@ Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below i
 *Pass Criteria*: both checkers hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
 '''''
 
-[[sec-311-smc_clk_smc_equal_periph_slower_test]]
-===== 311 `smc_clk_smc_equal_periph_slower_test`
+[[sec-310-smc_clk_smc_equal_periph_slower_test]]
+===== 310 `smc_clk_smc_equal_periph_slower_test`
 
 *Source Module*: `smc_clk_smc_equal_periph_slower_test`
 
@@ -3636,8 +3635,8 @@ Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below i
 *Pass Criteria*: both checkers hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
 '''''
 
-[[sec-312-smc_clk_smc_equal_periph_faster_test]]
-===== 312 `smc_clk_smc_equal_periph_faster_test`
+[[sec-311-smc_clk_smc_equal_periph_faster_test]]
+===== 311 `smc_clk_smc_equal_periph_faster_test`
 
 *Source Module*: `smc_clk_smc_equal_periph_faster_test`
 
@@ -3667,8 +3666,8 @@ Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below i
 *Pass Criteria*: both checkers hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
 '''''
 
-[[sec-313-smc_clk_smc_equal_periph_much_faster_test]]
-===== 313 `smc_clk_smc_equal_periph_much_faster_test`
+[[sec-312-smc_clk_smc_equal_periph_much_faster_test]]
+===== 312 `smc_clk_smc_equal_periph_much_faster_test`
 
 *Source Module*: `smc_clk_smc_equal_periph_much_faster_test`
 
@@ -3698,8 +3697,8 @@ Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below i
 *Pass Criteria*: both checkers hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
 '''''
 
-[[sec-314-smc_clk_smc_faster_periph_slower_test]]
-===== 314 `smc_clk_smc_faster_periph_slower_test`
+[[sec-313-smc_clk_smc_faster_periph_slower_test]]
+===== 313 `smc_clk_smc_faster_periph_slower_test`
 
 *Source Module*: `smc_clk_smc_faster_periph_slower_test`
 
@@ -3729,8 +3728,8 @@ Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below i
 *Pass Criteria*: both checkers hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
 '''''
 
-[[sec-315-smc_clk_smc_faster_periph_equal_test]]
-===== 315 `smc_clk_smc_faster_periph_equal_test`
+[[sec-314-smc_clk_smc_faster_periph_equal_test]]
+===== 314 `smc_clk_smc_faster_periph_equal_test`
 
 *Source Module*: `smc_clk_smc_faster_periph_equal_test`
 
@@ -3760,8 +3759,8 @@ Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below i
 *Pass Criteria*: both checkers hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
 '''''
 
-[[sec-316-smc_clk_smc_faster_periph_faster_test]]
-===== 316 `smc_clk_smc_faster_periph_faster_test`
+[[sec-315-smc_clk_smc_faster_periph_faster_test]]
+===== 315 `smc_clk_smc_faster_periph_faster_test`
 
 *Source Module*: `smc_clk_smc_faster_periph_faster_test`
 
@@ -3791,8 +3790,8 @@ Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below i
 *Pass Criteria*: both checkers hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
 '''''
 
-[[sec-317-smc_clk_smc_faster_periph_much_faster_test]]
-===== 317 `smc_clk_smc_faster_periph_much_faster_test`
+[[sec-316-smc_clk_smc_faster_periph_much_faster_test]]
+===== 316 `smc_clk_smc_faster_periph_much_faster_test`
 
 *Source Module*: `smc_clk_smc_faster_periph_much_faster_test`
 
@@ -3822,8 +3821,8 @@ Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below i
 *Pass Criteria*: both checkers hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
 '''''
 
-[[sec-318-smc_clk_smc_much_faster_periph_equal_test]]
-===== 318 `smc_clk_smc_much_faster_periph_equal_test`
+[[sec-317-smc_clk_smc_much_faster_periph_equal_test]]
+===== 317 `smc_clk_smc_much_faster_periph_equal_test`
 
 *Source Module*: `smc_clk_smc_much_faster_periph_equal_test`
 
@@ -3853,8 +3852,8 @@ Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below i
 *Pass Criteria*: both checkers hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
 '''''
 
-[[sec-319-smc_clk_smc_much_faster_periph_much_faster_test]]
-===== 319 `smc_clk_smc_much_faster_periph_much_faster_test`
+[[sec-318-smc_clk_smc_much_faster_periph_much_faster_test]]
+===== 318 `smc_clk_smc_much_faster_periph_much_faster_test`
 
 *Source Module*: `smc_clk_smc_much_faster_periph_much_faster_test`
 
@@ -3884,8 +3883,8 @@ Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below i
 *Pass Criteria*: both checkers hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
 '''''
 
-[[sec-320-smc_clk_smc_much_faster_periph_faster_test]]
-===== 320 `smc_clk_smc_much_faster_periph_faster_test`
+[[sec-319-smc_clk_smc_much_faster_periph_faster_test]]
+===== 319 `smc_clk_smc_much_faster_periph_faster_test`
 
 *Source Module*: `smc_clk_smc_much_faster_periph_faster_test`
 
@@ -3915,8 +3914,8 @@ Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below i
 *Pass Criteria*: both checkers hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
 '''''
 
-[[sec-064-smc_dma_cg_activity_test]]
-===== 64 `smc_dma_cg_activity_test`
+[[sec-063-smc_dma_cg_activity_test]]
+===== 63 `smc_dma_cg_activity_test`
 
 *Source Module*: `smc_dma_cg_activity_test`
 
@@ -3955,8 +3954,8 @@ Drive `smc_dma_cg_activity_test_seq`. Each checker below is a named compare the 
 *Pass Criteria*: `CHK-DMA-GATE-OFF`, `CHK-DMA-GATING-DISABLED`, `CHK-DMA-HYST-RACE`, `CHK-DMA-HYST-SWEEP`, `CHK-DMA-WAKEUP-BACKEND`, `CHK-DMA-WAKEUP-FRONTEND` (and 3 more) hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
 '''''
 
-[[sec-065-smc_i2c_cg_sanity_test]]
-===== 65 `smc_i2c_cg_sanity_test`
+[[sec-064-smc_i2c_cg_sanity_test]]
+===== 64 `smc_i2c_cg_sanity_test`
 
 *Source Module*: `smc_i2c_cg_sanity_test`
 
@@ -3991,8 +3990,8 @@ Drive `smc_i2c_cg_sanity_test_seq`. Each checker below is a named compare the DU
 *Pass Criteria*: `CHK-I2C-CG-SANITY-GATED` hold after their compares. Enrolled in: `all`, `hosted`, `i2c`.
 '''''
 
-[[sec-066-smc_static_cg_sanity_test]]
-===== 66 `smc_static_cg_sanity_test`
+[[sec-065-smc_static_cg_sanity_test]]
+===== 65 `smc_static_cg_sanity_test`
 
 *Source Module*: `smc_static_cg_sanity_test`
 
@@ -4027,8 +4026,8 @@ Drive `smc_static_cg_sanity_test_seq`. Each checker below is a named compare the
 *Pass Criteria*: `CHK-DMA-GATE-DISABLED-FREE-RUN`, `CHK-ENABLE-THRESHOLD`, `CHK-MODULE-GATING`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS`, `CHK-ZEROER-GATE-DISABLED-FREE-RUN` hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
 '''''
 
-[[sec-067-smc_zeroer_axiclk_cg_test]]
-===== 67 `smc_zeroer_axiclk_cg_test`
+[[sec-066-smc_zeroer_axiclk_cg_test]]
+===== 66 `smc_zeroer_axiclk_cg_test`
 
 *Source Module*: `smc_zeroer_axiclk_cg_test`
 
@@ -4066,8 +4065,8 @@ Drive `smc_zeroer_axiclk_cg_test_seq`. Each checker below is a named compare the
 *Pass Criteria*: `CHK-NONVAC`, `CHK-NONVAC-P2`, `CHK-TIMEOUT-PATHS`, `CHK-ZAXI-BUSY-ENABLE`, `CHK-ZAXI-DISABLE-CG`, `CHK-ZAXI-GATE-OFF-IDLE` (and 3 more) hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
 '''''
 
-[[sec-068-smc_zeroer_cg_indep_test]]
-===== 68 `smc_zeroer_cg_indep_test`
+[[sec-067-smc_zeroer_cg_indep_test]]
+===== 67 `smc_zeroer_cg_indep_test`
 
 *Source Module*: `smc_zeroer_cg_indep_test`
 
@@ -4097,8 +4096,8 @@ Drive `smc_zeroer_cg_indep_test_seq`. Each checker below is a named compare the 
 *Pass Criteria*: `CHK-NONVAC`, `CHK-ZINDEP-DECOUPLE` hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
 '''''
 
-[[sec-069-smc_zeroer_regclk_cg_test]]
-===== 69 `smc_zeroer_regclk_cg_test`
+[[sec-068-smc_zeroer_regclk_cg_test]]
+===== 68 `smc_zeroer_regclk_cg_test`
 
 *Source Module*: `smc_zeroer_regclk_cg_test`
 
@@ -4135,8 +4134,8 @@ Drive `smc_zeroer_regclk_cg_test_seq`. Each checker below is a named compare the
 *Pass Criteria*: `CHK-NONVAC`, `CHK-NONVAC-P2`, `CHK-TIMEOUT-PATHS`, `CHK-ZEROER-REGCLK-ACCESS-COMPLETE`, `CHK-ZEROER-REGCLK-UNGATE`, `CHK-ZREG-ACTIVITY-ENABLE` (and 3 more) hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
 '''''
 
-[[sec-183-smc_clock_domain_connectivity_test]]
-===== 183 `smc_clock_domain_connectivity_test`
+[[sec-182-smc_clock_domain_connectivity_test]]
+===== 182 `smc_clock_domain_connectivity_test`
 
 *Source Module*: `smc_clock_domain_connectivity_test`
 
@@ -4172,8 +4171,8 @@ Drive `smc_clock_domain_connectivity_test_seq` on the SEP_IN AXI sequencer: unga
 
 ==== CPU
 
-[[sec-070-smc_cluster_beu_test]]
-===== 70 `smc_cluster_beu_test`
+[[sec-069-smc_cluster_beu_test]]
+===== 69 `smc_cluster_beu_test`
 
 *Source Module*: `smc_cluster_beu_test`
 
@@ -4202,8 +4201,8 @@ Drive `smc_cluster_beu_test_seq`. Each checker below is a named compare the DUT 
 *Pass Criteria*: `CHK-BEU-WINDOW-DECERR` holds after its compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-071-smc_cpu_ctrl_map_depth_test]]
-===== 71 `smc_cpu_ctrl_map_depth_test`
+[[sec-070-smc_cpu_ctrl_map_depth_test]]
+===== 70 `smc_cpu_ctrl_map_depth_test`
 
 *Source Module*: `smc_cpu_ctrl_map_depth_test`
 
@@ -4243,8 +4242,8 @@ Drive `smc_cpu_ctrl_map_depth_test_seq`. Each checker below is a named compare t
 *Pass Criteria*: `CHK-CPU-BFM-OBSERVABILITY`, `CHK-CPU-CTRL-MAP-DEPTH`, `CHK-CPU-CTRL-MAP-LIVE`, `CHK-CPU-CTRL-MAP-LOCAL-BASE-RO` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-072-smc_cpu_ctrl_scratch_window_test]]
-===== 72 `smc_cpu_ctrl_scratch_window_test`
+[[sec-071-smc_cpu_ctrl_scratch_window_test]]
+===== 71 `smc_cpu_ctrl_scratch_window_test`
 
 *Source Module*: `smc_cpu_ctrl_scratch_window_test`
 
@@ -4275,8 +4274,8 @@ Drive `smc_cpu_ctrl_scratch_window_test_seq`. Each checker below is a named comp
 *Pass Criteria*: `CHK-CPU-BFM-OBSERVABILITY`, `CHK-CPU-CTRL-DUMMY-ROM`, `CHK-CPU-CTRL-SCRATCH` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-073-smc_cpu_ecc_lint_pint_depth_test]]
-===== 73 `smc_cpu_ecc_lint_pint_depth_test`
+[[sec-072-smc_cpu_ecc_lint_pint_depth_test]]
+===== 72 `smc_cpu_ecc_lint_pint_depth_test`
 
 *Source Module*: `smc_cpu_ecc_lint_pint_depth_test`
 
@@ -4313,8 +4312,8 @@ Drive `smc_cpu_ecc_lint_pint_depth_test_seq`. Each checker below is a named comp
 *Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-DIAG-AXIL-IDLE`, `CHK-DIAG-CSR-COUNT`, `CHK-DIAG-CSR-DFX_DEBUG_BUS_MUX`, `CHK-DIAG-CSR-DFX_DEBUG_CTRL`, `CHK-DIAG-CSR-NDMRESET_PROCESS` (and 3 more) hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-074-smc_cpu_firmware_boot_test]]
-===== 74 `smc_cpu_firmware_boot_test`
+[[sec-073-smc_cpu_firmware_boot_test]]
+===== 73 `smc_cpu_firmware_boot_test`
 
 *Source Module*: `smc_cpu_firmware_boot_test`
 
@@ -4349,8 +4348,8 @@ Drive `smc_cpu_firmware_boot_test_seq`. Each checker below is a named compare th
 *Pass Criteria*: `CHK-CLK-SMC-LIVE`, `CHK-CPU-BFM-OBSERVABILITY`, `CHK-EFUSE-SENSE-DONE`, `CHK-NONVAC`, `CHK-RESET-VECTOR-FETCH`, `CHK-ROM-IS-TARGET` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-075-smc_cpu_sanity_test]]
-===== 75 `smc_cpu_sanity_test`
+[[sec-074-smc_cpu_sanity_test]]
+===== 74 `smc_cpu_sanity_test`
 
 *Source Module*: `smc_cpu_sanity_test`
 
@@ -4381,8 +4380,8 @@ Drive `smc_cpu_sanity_test_seq`. Each checker below is a named compare the DUT c
 *Pass Criteria*: `CHK-CPU-BFM-OBSERVABILITY`, `CHK-CPU-CTRL-MAP-DEPTH`, `CHK-CPU-CTRL-MAP-LIVE` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-076-smc_ecc_codeword_ded_test]]
-===== 76 `smc_ecc_codeword_ded_test`
+[[sec-075-smc_ecc_codeword_ded_test]]
+===== 75 `smc_ecc_codeword_ded_test`
 
 *Source Module*: `smc_ecc_codeword_ded_test`
 
@@ -4421,8 +4420,8 @@ Drive `smc_ecc_codeword_ded_test_seq`. Each checker below is a named compare the
 *Pass Criteria*: `CHK-ECC-CODEWORD-DED` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-077-smc_ecc_codeword_sec_test]]
-===== 77 `smc_ecc_codeword_sec_test`
+[[sec-076-smc_ecc_codeword_sec_test]]
+===== 76 `smc_ecc_codeword_sec_test`
 
 *Source Module*: `smc_ecc_codeword_sec_test`
 
@@ -4462,8 +4461,8 @@ Drive `smc_ecc_codeword_sec_test_seq`. Each checker below is a named compare the
 *Pass Criteria*: `CHK-ECC-CODEWORD-SEC` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-078-smc_ecc_dfd_dbs_sanity_test]]
-===== 78 `smc_ecc_dfd_dbs_sanity_test`
+[[sec-077-smc_ecc_dfd_dbs_sanity_test]]
+===== 77 `smc_ecc_dfd_dbs_sanity_test`
 
 *Source Module*: `smc_ecc_dfd_dbs_sanity_test`
 
@@ -4502,8 +4501,8 @@ Drive `smc_ecc_dfd_dbs_sanity_test_seq`. Each checker below is a named compare t
 *Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-DIAG-AXIL-IDLE`, `CHK-DIAG-CSR-COUNT`, `CHK-DIAG-CSR-DFX_DEBUG_BUS_MUX`, `CHK-DIAG-CSR-DFX_DEBUG_CTRL`, `CHK-DIAG-CSR-NDMRESET_PROCESS` (and 3 more) hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-079-smc_ecc_fault_inject_test]]
-===== 79 `smc_ecc_fault_inject_test`
+[[sec-078-smc_ecc_fault_inject_test]]
+===== 78 `smc_ecc_fault_inject_test`
 
 *Source Module*: `smc_ecc_fault_inject_test`
 
@@ -4544,8 +4543,8 @@ Drive `smc_ecc_fault_inject_test_seq`. Each checker below is a named compare the
 *Pass Criteria*: `CHK-ECC-INJECT`, `CHK-ECC-INJECT-NO-DUT-SECDED`, `CHK-ECC-INJECT-RECOVERY` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-080-smc_mutex_semaphore_test]]
-===== 80 `smc_mutex_semaphore_test`
+[[sec-079-smc_mutex_semaphore_test]]
+===== 79 `smc_mutex_semaphore_test`
 
 *Source Module*: `smc_mutex_semaphore_test`
 
@@ -4605,8 +4604,8 @@ Enrolled in: `all`, `hosted`.
 '''''
 
 
-[[sec-082-smc_reference_counter_test]]
-===== 82 `smc_reference_counter_test`
+[[sec-081-smc_reference_counter_test]]
+===== 81 `smc_reference_counter_test`
 
 *Source Module*: `smc_reference_counter_test`
 
@@ -4639,8 +4638,8 @@ Drive `smc_reference_counter_test_seq`. Each checker below is a named compare th
 *Pass Criteria*: `CHK-REF-COUNT`, `CHK-REF-COUNT-BASIC` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-083-smc_spm_mem_boundary_test]]
-===== 83 `smc_spm_mem_boundary_test`
+[[sec-082-smc_spm_mem_boundary_test]]
+===== 82 `smc_spm_mem_boundary_test`
 
 *Source Module*: `smc_spm_mem_boundary_test`
 
@@ -4694,8 +4693,8 @@ replaced rather than merely re-read. Under `--framework uvm` -- a framework no r
 instead, and `+SMC_SPM_MEM_SCOREBOARD_NEGATIVE` must fail the run. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-081-smc_occp_sanity_secure_error_test]]
-===== 81 `smc_occp_sanity_secure_error_test`
+[[sec-080-smc_occp_sanity_secure_error_test]]
+===== 80 `smc_occp_sanity_secure_error_test`
 
 *Source Module*: `smc_occp_sanity_secure_error_test`
 
@@ -4730,8 +4729,8 @@ Drive `smc_occp_sanity_secure_error_test_seq`. Each checker below is a named com
 
 ==== JTAG
 
-[[sec-084-smc_dbs_idle_test]]
-===== 84 `smc_dbs_idle_test`
+[[sec-083-smc_dbs_idle_test]]
+===== 83 `smc_dbs_idle_test`
 
 *Source Module*: `smc_dbs_idle_test`
 
@@ -4768,8 +4767,8 @@ Drive `smc_dbs_idle_test_seq`. Each checker below is a named compare the DUT can
 *Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-DIAG-AXIL-IDLE`, `CHK-DIAG-CSR-COUNT`, `CHK-DIAG-CSR-DFX_DEBUG_BUS_MUX`, `CHK-DIAG-CSR-DFX_DEBUG_CTRL`, `CHK-DIAG-CSR-NDMRESET_PROCESS` (and 3 more) hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-085-smc_dfd_sanity_test]]
-===== 85 `smc_dfd_sanity_test`
+[[sec-084-smc_dfd_sanity_test]]
+===== 84 `smc_dfd_sanity_test`
 
 *Source Module*: `smc_dfd_sanity_test`
 
@@ -4806,8 +4805,8 @@ Drive `smc_dfd_sanity_test_seq`. Each checker below is a named compare the DUT c
 *Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-DIAG-AXIL-IDLE`, `CHK-DIAG-CSR-COUNT`, `CHK-DIAG-CSR-DFX_DEBUG_BUS_MUX`, `CHK-DIAG-CSR-DFX_DEBUG_CTRL`, `CHK-DIAG-CSR-NDMRESET_PROCESS` (and 3 more) hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-086-smc_dfx_status_abort_test]]
-===== 86 `smc_dfx_status_abort_test`
+[[sec-085-smc_dfx_status_abort_test]]
+===== 85 `smc_dfx_status_abort_test`
 
 *Source Module*: `smc_dfx_status_abort_test`
 
@@ -4840,8 +4839,8 @@ Drive `smc_dfx_status_abort_test_seq`. Each checker below is a named compare the
 *Pass Criteria*: `CHK-DFX-ABORT-BASIC`, `CHK-DFX-ABORT-IDLE`, `CHK-DFX-ABORT-MBIST`, `CHK-DFX-ABORT-REPAIR` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-087-smc_ijtag_basic_test]]
-===== 87 `smc_ijtag_basic_test`
+[[sec-086-smc_ijtag_basic_test]]
+===== 86 `smc_ijtag_basic_test`
 
 *Source Module*: `smc_ijtag_basic_test`
 
@@ -4874,8 +4873,8 @@ Drive `smc_ijtag_basic_test_seq`. Each checker below is a named compare the DUT 
 *Pass Criteria*: `CHK-CPU-JTAG-DTMCS`, `CHK-CPU-JTAG-IDCODE`, `CHK-CPU-JTAG-SCAN-ACTIVITY` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-088-smc_jtag_dmi_smoke_test]]
-===== 88 `smc_jtag_dmi_smoke_test`
+[[sec-087-smc_jtag_dmi_smoke_test]]
+===== 87 `smc_jtag_dmi_smoke_test`
 
 *Source Module*: `smc_jtag_dmi_smoke_test`
 
@@ -4907,8 +4906,8 @@ Drive `smc_jtag_dmi_smoke_test_seq`. Each checker below is a named compare the D
 *Pass Criteria*: `CHK-JTAG-DMI-SMOKE` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-211-smc_dfd_cla_mmr_sweep_test]]
-===== 211 `smc_dfd_cla_mmr_sweep_test`
+[[sec-210-smc_dfd_cla_mmr_sweep_test]]
+===== 210 `smc_dfd_cla_mmr_sweep_test`
 
 *Source Module*: `smc_dfd_cla_mmr_sweep_test`
 
@@ -4946,8 +4945,8 @@ Drive `smc_dfd_cla_mmr_sweep_test_seq`. Each checker below is a named compare th
 *Pass Criteria*: `CHK-CLA-MMR-HOLE`, `CHK-CLA-MMR-WRITE-SWEEP`, `CHK-CLA-TIMESTAMP` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-212-smc_dfd_cla_node_eap_sweep_test]]
-===== 212 `smc_dfd_cla_node_eap_sweep_test`
+[[sec-211-smc_dfd_cla_node_eap_sweep_test]]
+===== 211 `smc_dfd_cla_node_eap_sweep_test`
 
 *Source Module*: `smc_dfd_cla_node_eap_sweep_test`
 
@@ -4982,8 +4981,8 @@ Drive `smc_dfd_cla_node_eap_sweep_test_seq`. Each checker below is a named compa
 *Pass Criteria*: `CHK-CLA-EAP-LOGICAL-OP-FIRE`, `CHK-CLA-EAP-STATUS-RESET`, `CHK-CLA-EAP-STATUS-W2C`, `CHK-CLA-NODE-TRAVERSAL` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-213-smc_dfd_trace_accumulator_fill_test]]
-===== 213 `smc_dfd_trace_accumulator_fill_test`
+[[sec-212-smc_dfd_trace_accumulator_fill_test]]
+===== 212 `smc_dfd_trace_accumulator_fill_test`
 
 *Source Module*: `smc_dfd_trace_accumulator_fill_test`
 
@@ -5020,8 +5019,8 @@ Drive `smc_dfd_trace_accumulator_fill_test_seq`. Each checker below is a named c
 *Pass Criteria*: `CHK-DST-TRACE-ACCUMULATE`, `CHK-DST-TRACE-BANK-HANDOFF`, `CHK-DST-TRACE-IDLE`, `CHK-DST-TRACE-SINK-DISABLED` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-214-smc_dfd_cla_counter_edge_test]]
-===== 214 `smc_dfd_cla_counter_edge_test`
+[[sec-213-smc_dfd_cla_counter_edge_test]]
+===== 213 `smc_dfd_cla_counter_edge_test`
 
 *Source Module*: `smc_dfd_cla_counter_edge_test`
 
@@ -5054,8 +5053,8 @@ Drive `smc_dfd_cla_counter_edge_test_seq`. Each checker below is a named compare
 *Pass Criteria*: `CHK-CLA-COUNTER-CLEARS`, `CHK-CLA-COUNTER-COUNTS`, `CHK-CLA-COUNTER-RESET`, `CHK-CLA-EDGE-SELECT-SWEEP` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-215-smc_dfd_trace_format_sweep_test]]
-===== 215 `smc_dfd_trace_format_sweep_test`
+[[sec-214-smc_dfd_trace_format_sweep_test]]
+===== 214 `smc_dfd_trace_format_sweep_test`
 
 *Source Module*: `smc_dfd_trace_format_sweep_test`
 
@@ -5093,8 +5092,8 @@ Drive `smc_dfd_trace_format_sweep_test_seq` with `fmt` set to 0. Each checker be
 *Pass Criteria*: `CHK-DST-FORMAT-FRAMELEN`, `CHK-DST-FORMAT-IDLE`, `CHK-DST-FORMAT-PAYLOAD`, `CHK-DST-FORMAT-STREAM` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-221-smc_dfd_trace_xor_format_test]]
-===== 221 `smc_dfd_trace_xor_format_test`
+[[sec-220-smc_dfd_trace_xor_format_test]]
+===== 220 `smc_dfd_trace_xor_format_test`
 
 *Source Module*: `smc_dfd_trace_xor_format_test`
 
@@ -5129,8 +5128,8 @@ Drive `smc_dfd_trace_format_sweep_test_seq` with `fmt` set to 1. Each checker be
 *Pass Criteria*: `CHK-DST-FORMAT-FRAMELEN`, `CHK-DST-FORMAT-IDLE`, `CHK-DST-FORMAT-PAYLOAD`, `CHK-DST-FORMAT-STREAM` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-222-smc_dfd_trace_vlt_format_test]]
-===== 222 `smc_dfd_trace_vlt_format_test`
+[[sec-221-smc_dfd_trace_vlt_format_test]]
+===== 221 `smc_dfd_trace_vlt_format_test`
 
 *Source Module*: `smc_dfd_trace_vlt_format_test`
 
@@ -5165,8 +5164,8 @@ Drive `smc_dfd_trace_format_sweep_test_seq` with `fmt` set to 3. Each checker be
 *Pass Criteria*: `CHK-DST-FORMAT-FRAMELEN`, `CHK-DST-FORMAT-IDLE`, `CHK-DST-FORMAT-PAYLOAD`, `CHK-DST-FORMAT-STREAM` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-216-smc_dfd_trace_sink_window_test]]
-===== 216 `smc_dfd_trace_sink_window_test`
+[[sec-215-smc_dfd_trace_sink_window_test]]
+===== 215 `smc_dfd_trace_sink_window_test`
 
 *Source Module*: `smc_dfd_trace_sink_window_test`
 
@@ -5199,8 +5198,8 @@ Drive `smc_dfd_trace_sink_window_test_seq`. Each checker below is a named compar
 *Pass Criteria*: `CHK-DST-FUNNEL-ALLOW`, `CHK-DST-FUNNEL-DENY`, `CHK-DST-SINK-WINDOW` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-217-smc_dfd_cla_event_type_sweep_test]]
-===== 217 `smc_dfd_cla_event_type_sweep_test`
+[[sec-216-smc_dfd_cla_event_type_sweep_test]]
+===== 216 `smc_dfd_cla_event_type_sweep_test`
 
 *Source Module*: `smc_dfd_cla_event_type_sweep_test`
 
@@ -5231,8 +5230,8 @@ Drive `smc_dfd_cla_event_type_sweep_test_seq`. Each checker below is a named com
 *Pass Criteria*: `CHK-CLA-EVENT-SELECT-LIVE`, `CHK-CLA-EVENT-SELECT-SWEEP` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-218-smc_dfd_trace_sink_readout_test]]
-===== 218 `smc_dfd_trace_sink_readout_test`
+[[sec-217-smc_dfd_trace_sink_readout_test]]
+===== 217 `smc_dfd_trace_sink_readout_test`
 
 *Source Module*: `smc_dfd_trace_sink_readout_test`
 
@@ -5269,8 +5268,8 @@ Drive `smc_dfd_trace_sink_readout_test_seq`. Each checker below is a named compa
 *Pass Criteria*: `CHK-DST-SINK-BASELINE`, `CHK-DST-SINK-DEACTIVATE`, `CHK-DST-SINK-MODE`, `CHK-DST-SINK-READOUT` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-219-smc_dfd_sink_mmr_sweep_test]]
-===== 219 `smc_dfd_sink_mmr_sweep_test`
+[[sec-218-smc_dfd_sink_mmr_sweep_test]]
+===== 218 `smc_dfd_sink_mmr_sweep_test`
 
 *Source Module*: `smc_dfd_sink_mmr_sweep_test`
 
@@ -5304,8 +5303,8 @@ Drive `smc_dfd_sink_mmr_sweep_test_seq`. Each checker below is a named compare t
 *Pass Criteria*: `CHK-DFD-SINK-MMR-DECODE`, `CHK-DFD-SINK-MMR-PAIR`, `CHK-DFD-SINK-MMR-READONLY` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-220-smc_dfd_ro_mmr_write_test]]
-===== 220 `smc_dfd_ro_mmr_write_test`
+[[sec-219-smc_dfd_ro_mmr_write_test]]
+===== 219 `smc_dfd_ro_mmr_write_test`
 
 *Source Module*: `smc_dfd_ro_mmr_write_test`
 
@@ -5339,8 +5338,8 @@ Drive `smc_dfd_ro_mmr_write_test_seq`. Each checker below is a named compare the
 *Pass Criteria*: `CHK-DFD-RO-MMR-HELD`, `CHK-DFD-RO-MMR-UNDECLARED` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-254-smc_dfd_mmr_lane_test]]
-===== 254 `smc_dfd_mmr_lane_test`
+[[sec-253-smc_dfd_mmr_lane_test]]
+===== 253 `smc_dfd_mmr_lane_test`
 
 *Source Module*: `smc_dfd_mmr_lane_test`
 
@@ -5378,8 +5377,8 @@ Drive `smc_dfd_mmr_lane_test_seq`. Each checker below is a named compare the DUT
 *Pass Criteria*: `CHK-DFD-MMR-BYTE`, `CHK-DFD-MMR-PAST-WINDOW`, `CHK-DFD-MMR-UNMAPPED` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-223-smc_dfd_dbm_mode_lock_test]]
-===== 223 `smc_dfd_dbm_mode_lock_test`
+[[sec-222-smc_dfd_dbm_mode_lock_test]]
+===== 222 `smc_dfd_dbm_mode_lock_test`
 
 *Source Module*: `smc_dfd_dbm_mode_lock_test`
 
@@ -5410,8 +5409,8 @@ Drive `smc_dfd_dbm_mode_lock_test_seq`. Each checker below is a named compare th
 *Pass Criteria*: `CHK-CLA-LOCK-LATCHED`, `CHK-DBM-MODE-SWEEP` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-224-smc_dfd_trace_sink_concurrent_test]]
-===== 224 `smc_dfd_trace_sink_concurrent_test`
+[[sec-223-smc_dfd_trace_sink_concurrent_test]]
+===== 223 `smc_dfd_trace_sink_concurrent_test`
 
 *Source Module*: `smc_dfd_trace_sink_concurrent_test`
 
@@ -5472,8 +5471,8 @@ Drive `smc_dfd_trace_sink_concurrent_test_seq`. Each checker below is a named co
 *Pass Criteria*: `CHK-DST-CONCURRENT-DRAIN`, `CHK-DST-CONCURRENT-EDGES`, `CHK-DST-CONCURRENT-FRAMEWALK`, `CHK-DST-CONCURRENT-HIGHSTART`, `CHK-DST-CONCURRENT-IDLE`, `CHK-DST-CONCURRENT-MEMORY`, `CHK-DST-CONCURRENT-MODE`, `CHK-DST-CONCURRENT-ODDBYTES`, `CHK-DST-CONCURRENT-STOP`, `CHK-DST-CONCURRENT-STOPWRAP`, `CHK-DST-CONCURRENT-SYNCWALK` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-225-smc_dfd_cla_snapshot_capture_test]]
-===== 225 `smc_dfd_cla_snapshot_capture_test`
+[[sec-224-smc_dfd_cla_snapshot_capture_test]]
+===== 224 `smc_dfd_cla_snapshot_capture_test`
 
 *Source Module*: `smc_dfd_cla_snapshot_capture_test`
 
@@ -5508,8 +5507,8 @@ Drive `smc_dfd_cla_snapshot_capture_test_seq`. Each checker below is a named com
 *Pass Criteria*: `CHK-CLA-SNAPSHOT-CAPTURE`, `CHK-CLA-SNAPSHOT-DRIVE`, `CHK-CLA-SNAPSHOT-RESET` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-301-smc_dfd_cla_live_bus_test]]
-===== 301 `smc_dfd_cla_live_bus_test`
+[[sec-300-smc_dfd_cla_live_bus_test]]
+===== 300 `smc_dfd_cla_live_bus_test`
 
 *Source Module*: `smc_dfd_cla_live_bus_test`
 
@@ -5551,8 +5550,8 @@ Drive `smc_dfd_cla_live_bus_test_seq`. Each checker below is a named compare the
 *Pass Criteria*: `CHK-CLA-LIVE-ACTIONS`, `CHK-CLA-LIVE-BUS`, `CHK-CLA-LIVE-MATCH`, `CHK-CLA-LIVE-MUXMODES`, `CHK-CLA-LIVE-NODE` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-302-smc_dfd_trace_flush_corner_test]]
-===== 302 `smc_dfd_trace_flush_corner_test`
+[[sec-301-smc_dfd_trace_flush_corner_test]]
+===== 301 `smc_dfd_trace_flush_corner_test`
 
 *Source Module*: `smc_dfd_trace_flush_corner_test`
 
@@ -5594,8 +5593,8 @@ Drive `smc_dfd_trace_flush_corner_test_seq`. Each checker below is a named compa
 *Pass Criteria*: `CHK-DST-FLUSH-ACTIONS`, `CHK-DST-FLUSH-LOOP`, `CHK-DST-FLUSH-MEMARMS`, `CHK-DST-FLUSH-PHASES`, `CHK-DST-FLUSH-REGS`, `CHK-DST-FLUSH-STREAMS` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-303-smc_dfd_trace_reset_test]]
-===== 303 `smc_dfd_trace_reset_test`
+[[sec-302-smc_dfd_trace_reset_test]]
+===== 302 `smc_dfd_trace_reset_test`
 
 *Source Module*: `smc_dfd_trace_reset_test`
 
@@ -5629,8 +5628,8 @@ Drive `smc_dfd_trace_reset_test_seq`. Each checker below is a named compare the 
 *Pass Criteria*: `CHK-DFD-RESET-CLEARED`, `CHK-DFD-RESET-LIVE`, `CHK-DFD-RESET-RESTART`, `CHK-DFD-RESET-TAKEN` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-304-smc_dfd_trace_writeout_phase_test]]
-===== 304 `smc_dfd_trace_writeout_phase_test`
+[[sec-303-smc_dfd_trace_writeout_phase_test]]
+===== 303 `smc_dfd_trace_writeout_phase_test`
 
 *Source Module*: `smc_dfd_trace_writeout_phase_test`
 
@@ -5666,8 +5665,8 @@ Drive `smc_dfd_trace_writeout_phase_test_seq`. Each checker below is a named com
 ==== EFUSE
 
 
-[[sec-090-smc_efuse_chip_config_read_test]]
-===== 90 `smc_efuse_chip_config_read_test`
+[[sec-089-smc_efuse_chip_config_read_test]]
+===== 89 `smc_efuse_chip_config_read_test`
 
 *Source Module*: `smc_efuse_chip_config_read_test`
 
@@ -5697,8 +5696,8 @@ Drive `smc_efuse_chip_config_read_test_seq`. Each checker below is a named compa
 *Pass Criteria*: `CHK-EFUSE-BANK-AXIL-ACTIVE`, `CHK-EFUSE-BANK-IDLE` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-091-smc_efuse_jtag_lc_access_matrix_test]]
-===== 91 `smc_efuse_jtag_lc_access_matrix_test`
+[[sec-090-smc_efuse_jtag_lc_access_matrix_test]]
+===== 90 `smc_efuse_jtag_lc_access_matrix_test`
 
 *Source Module*: `smc_efuse_jtag_lc_access_matrix_test`
 
@@ -5763,8 +5762,8 @@ Drive `smc_efuse_jtag_lc_access_matrix_test_seq`. Each checker below is a named 
 *Pass Criteria*: `CHK-EFUSE-JTAG-LC-PROD`, `CHK-EFUSE-JTAG-LC-PROD_END`, `CHK-EFUSE-JTAG-LC-RMA_CHIPLET`, `CHK-EFUSE-JTAG-LC-RMA_SOP`, `CHK-EFUSE-JTAG-LC-SIGINT`, `CHK-EFUSE-JTAG-LC-TEST_DEV` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-092-smc_efuse_jtag_lc_negative_test]]
-===== 92 `smc_efuse_jtag_lc_negative_test`
+[[sec-091-smc_efuse_jtag_lc_negative_test]]
+===== 91 `smc_efuse_jtag_lc_negative_test`
 
 *Source Module*: `smc_efuse_jtag_lc_negative_test`
 
@@ -5800,8 +5799,8 @@ Drive `smc_efuse_jtag_lc_negative_test_seq`. Each checker below is a named compa
 
 
 
-[[sec-096-smc_efuse_otp_clock_config_depth_test]]
-===== 96 `smc_efuse_otp_clock_config_depth_test`
+[[sec-095-smc_efuse_otp_clock_config_depth_test]]
+===== 95 `smc_efuse_otp_clock_config_depth_test`
 
 *Source Module*: `smc_efuse_otp_clock_config_depth_test`
 
@@ -5833,8 +5832,8 @@ Drive `smc_efuse_otp_clock_config_depth_test_seq`. Each checker below is a named
 *Pass Criteria*: `CHK-EFUSE-BANK-AXIL-ACTIVE`, `CHK-EFUSE-BANK-IDLE`, `CHK-EFUSE-CLOCK-GATE-DEPTH` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-097-smc_efuse_otp_clock_test]]
-===== 97 `smc_efuse_otp_clock_test`
+[[sec-096-smc_efuse_otp_clock_test]]
+===== 96 `smc_efuse_otp_clock_test`
 
 *Source Module*: `smc_efuse_otp_clock_test`
 
@@ -5865,8 +5864,8 @@ Drive `smc_efuse_otp_clock_test_seq`. Each checker below is a named compare the 
 *Pass Criteria*: `CHK-EFUSE-BANK-AXIL-ACTIVE`, `CHK-EFUSE-BANK-IDLE`, `CHK-EFUSE-OTP-CSR` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-098-smc_efuse_permission_boundary_test]]
-===== 98 `smc_efuse_permission_boundary_test`
+[[sec-097-smc_efuse_permission_boundary_test]]
+===== 97 `smc_efuse_permission_boundary_test`
 
 *Source Module*: `smc_efuse_permission_boundary_test`
 
@@ -5897,8 +5896,8 @@ Drive `smc_efuse_chip_config_read_test_seq`. Each checker below is a named compa
 *Pass Criteria*: `CHK-EFUSE-BANK-AXIL-ACTIVE`, `CHK-EFUSE-BANK-IDLE` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-099-smc_efuse_read_program_timeout_test]]
-===== 99 `smc_efuse_read_program_timeout_test`
+[[sec-098-smc_efuse_read_program_timeout_test]]
+===== 98 `smc_efuse_read_program_timeout_test`
 
 *Source Module*: `smc_efuse_read_program_timeout_test`
 
@@ -5940,8 +5939,8 @@ Drive `smc_efuse_read_program_timeout_test_seq`. Each checker below is a named c
 *Pass Criteria*: `CHK-EFUSE-READ-STATUS-SET-ON-NO-ENABLE`, `CHK-EFUSE-TMO-BASIC`, `CHK-EFUSE-TMO-PROG`, `CHK-EFUSE-TMO-PROG-REC`, `CHK-EFUSE-TMO-PROG-SET`, `CHK-EFUSE-TMO-RD` (and 1 more) hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-100-smc_efuse_read_timeout_status_test]]
-===== 100 `smc_efuse_read_timeout_status_test`
+[[sec-099-smc_efuse_read_timeout_status_test]]
+===== 99 `smc_efuse_read_timeout_status_test`
 
 *Source Module*: `smc_efuse_read_timeout_status_test`
 
@@ -5975,8 +5974,8 @@ Drive `smc_efuse_read_program_timeout_test_seq`. Each checker below is a named c
 
 '''''
 
-[[sec-101-smc_efuse_shim_ctrl_test]]
-===== 101 `smc_efuse_shim_ctrl_test`
+[[sec-100-smc_efuse_shim_ctrl_test]]
+===== 100 `smc_efuse_shim_ctrl_test`
 
 *Source Module*: `smc_efuse_shim_ctrl_test`
 
@@ -6006,8 +6005,8 @@ Drive `smc_efuse_shim_ctrl_test_seq`. Each checker below is a named compare the 
 
 '''''
 
-[[sec-102-smc_state_fault_inject_test]]
-===== 102 `smc_state_fault_inject_test`
+[[sec-101-smc_state_fault_inject_test]]
+===== 101 `smc_state_fault_inject_test`
 
 *Source Module*: `smc_state_fault_inject_test`
 
@@ -6121,8 +6120,8 @@ recorded under Known Limitations.
 
 '''''
 
-[[sec-094-smc_efuse_map_read_test]]
-===== 94 `smc_efuse_map_read_test`
+[[sec-093-smc_efuse_map_read_test]]
+===== 93 `smc_efuse_map_read_test`
 
 *Source Module*: `smc_efuse_map_read_test`
 
@@ -6153,8 +6152,8 @@ Drive `smc_efuse_map_read_test_seq`. Each checker below is a named compare the D
 *Pass Criteria*: `CHK-EFUSE-MAP-READ` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-089-smc_efuse_boundary_signals_test]]
-===== 89 `smc_efuse_boundary_signals_test`
+[[sec-088-smc_efuse_boundary_signals_test]]
+===== 88 `smc_efuse_boundary_signals_test`
 
 *Source Module*: `smc_efuse_boundary_signals_test`
 
@@ -6189,8 +6188,8 @@ Drive `smc_efuse_boundary_signals_test_seq`. Each checker below is a named compa
 *Pass Criteria*: `CHK-EFUSE-BND-BASIC`, `CHK-EFUSE-BND-HOLD`, `CHK-EFUSE-BND-MAP`, `CHK-EFUSE-BND-REL`, `CHK-EFUSE-BND-STAY` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-093-smc_efuse_locked_access_interrupt_test]]
-===== 93 `smc_efuse_locked_access_interrupt_test`
+[[sec-092-smc_efuse_locked_access_interrupt_test]]
+===== 92 `smc_efuse_locked_access_interrupt_test`
 
 *Source Module*: `smc_efuse_locked_access_interrupt_test`
 
@@ -6230,8 +6229,8 @@ Drive `smc_efuse_locked_access_interrupt_test_seq`. Each checker below is a name
 *Pass Criteria*: `CHK-EFUSE-LOCK-IRQ-RD`, `CHK-EFUSE-LOCK-IRQ-UNLOCK`, `CHK-EFUSE-LOCK-IRQ-WR`, `CHK-EFUSE-LOCK-PRE`, `CHK-EFUSE-LOCK-SCOREBOARD` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-095-smc_efuse_otp_burn_shadow_test]]
-===== 95 `smc_efuse_otp_burn_shadow_test`
+[[sec-094-smc_efuse_otp_burn_shadow_test]]
+===== 94 `smc_efuse_otp_burn_shadow_test`
 
 *Source Module*: `smc_efuse_otp_burn_shadow_test`
 
@@ -6271,8 +6270,8 @@ Drive `smc_efuse_otp_burn_shadow_test_seq`. Each checker below is a named compar
 
 ==== GPIO
 
-[[sec-103-smc_gpio_ctrl_full_sweep_test]]
-===== 103 `smc_gpio_ctrl_full_sweep_test`
+[[sec-102-smc_gpio_ctrl_full_sweep_test]]
+===== 102 `smc_gpio_ctrl_full_sweep_test`
 
 *Source Module*: `smc_gpio_ctrl_full_sweep_test`
 
@@ -6304,8 +6303,8 @@ Drive `smc_gpio_ctrl_full_sweep_test_seq`. Each checker below is a named compare
 
 '''''
 
-[[sec-104-smc_gpio_filter_access_sep_test]]
-===== 104 `smc_gpio_filter_access_sep_test`
+[[sec-103-smc_gpio_filter_access_sep_test]]
+===== 103 `smc_gpio_filter_access_sep_test`
 
 *Source Module*: `smc_gpio_filter_access_sep_test`
 
@@ -6342,8 +6341,8 @@ Drive `smc_gpio_filter_access_sep_test_seq`. Each checker below is a named compa
 *Pass Criteria*: `CHK-GPIO-FILTER-GPIO1`, `CHK-GPIO-FILTER-PRE`, `CHK-GPIO-FILTER-PRIV`, `CHK-GPIO-FILTER-SCOREBOARD`, `CHK-GPIO-FILTER-SWEEP`, `CHK-GPIO-FILTER-UNPRIV`, `CHK-GPIO-FILTER-WR-DENY` hold after their compares. Enrolled in: `all`, `hosted`, `gpio`.
 '''''
 
-[[sec-105-smc_gpio_intf_full_sweep_test]]
-===== 105 `smc_gpio_intf_full_sweep_test`
+[[sec-104-smc_gpio_intf_full_sweep_test]]
+===== 104 `smc_gpio_intf_full_sweep_test`
 
 *Source Module*: `smc_gpio_intf_full_sweep_test`
 
@@ -6374,8 +6373,8 @@ Drive `smc_gpio_intf_full_sweep_test_seq`. Each checker below is a named compare
 
 '''''
 
-[[sec-106-smc_gpio_irq_active_test]]
-===== 106 `smc_gpio_irq_active_test`
+[[sec-105-smc_gpio_irq_active_test]]
+===== 105 `smc_gpio_irq_active_test`
 
 *Source Module*: `smc_gpio_irq_active_test`
 
@@ -6409,8 +6408,8 @@ Drive `smc_gpio_irq_active_test_seq`. Each checker below is a named compare the 
 *Pass Criteria*: `CHK-GPIO-IRQ-ACTIVE-LOW`, `CHK-GPIO-IRQ-ACTIVE-LOW-ASSERT`, `CHK-GPIO-IRQ-ACTIVE-LOW-CLEAR`, `CHK-GPIO-IRQ-ACTIVE-LOW-IDLE`, `CHK-GPIO0-DATA-CTRL-READBACK`, `CHK-MAILBOX-IRQEN-RESET` hold after their compares. Enrolled in: `all`, `hosted`, `gpio`.
 '''''
 
-[[sec-107-smc_gpio_irq_type_matrix_test]]
-===== 107 `smc_gpio_irq_type_matrix_test`
+[[sec-106-smc_gpio_irq_type_matrix_test]]
+===== 106 `smc_gpio_irq_type_matrix_test`
 
 *Source Module*: `smc_gpio_irq_type_matrix_test`
 
@@ -6442,8 +6441,8 @@ Drive `smc_gpio_irq_type_matrix_test_seq`. Each checker below is a named compare
 *Pass Criteria*: `CHK-GPIO-IRQ-TYPE-POLARITY` holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `gpio`.
 '''''
 
-[[sec-108-smc_gpio_multi_sample_test]]
-===== 108 `smc_gpio_multi_sample_test`
+[[sec-107-smc_gpio_multi_sample_test]]
+===== 107 `smc_gpio_multi_sample_test`
 
 *Source Module*: `smc_gpio_multi_sample_test`
 
@@ -6475,8 +6474,8 @@ Drive `smc_gpio_multi_sample_test_seq`. Each checker below is a named compare th
 *Pass Criteria*: `CHK-GPIO-MULTI-SAMPLE-MATCHES-REF-1`, `CHK-GPIO-MULTI-SAMPLE-MATCHES-REF-2`, `CHK-GPIO-MULTI-SAMPLE-STABLE` hold after their compares. Enrolled in: `all`, `hosted`, `gpio`.
 '''''
 
-[[sec-109-smc_gpio_observe_test]]
-===== 109 `smc_gpio_observe_test`
+[[sec-108-smc_gpio_observe_test]]
+===== 108 `smc_gpio_observe_test`
 
 *Source Module*: `smc_gpio_observe_test`
 
@@ -6508,8 +6507,8 @@ Drive `smc_gpio_observe_test_seq`. Each checker below is a named compare the DUT
 *Pass Criteria*: `CHK-GPIO-PAD-BUS-STABLE`, `CHK-PROBE-CONTROLS`, `CHK-PROBE-GPIO-PAD-BUS-ALIVE` hold after their compares. Enrolled in: `all`, `hosted`, `gpio`.
 '''''
 
-[[sec-110-smc_gpio_output_driveback_test]]
-===== 110 `smc_gpio_output_driveback_test`
+[[sec-109-smc_gpio_output_driveback_test]]
+===== 109 `smc_gpio_output_driveback_test`
 
 *Source Module*: `smc_gpio_output_driveback_test`
 
@@ -6540,8 +6539,8 @@ Drive `smc_gpio_output_driveback_test_seq`. Each checker below is a named compar
 *Pass Criteria*: `CHK-GPIO-OUTPUT-DRIVEBACK` holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `gpio`.
 '''''
 
-[[sec-111-smc_gpio_p0_int_test]]
-===== 111 `smc_gpio_p0_int_test`
+[[sec-110-smc_gpio_p0_int_test]]
+===== 110 `smc_gpio_p0_int_test`
 
 *Source Module*: `smc_gpio_p0_int_test`
 
@@ -6573,8 +6572,8 @@ Drive `smc_gpio_p0_int_test_seq`. Each checker below is a named compare the DUT 
 *Pass Criteria*: `CHK-GPIO-P0-INT-BASIC`, `CHK-GPIO-P0-INT-FALL`, `CHK-GPIO-P0-INT-RISE` hold after their compares. Enrolled in: `all`, `hosted`, `gpio`.
 '''''
 
-[[sec-112-smc_gpio_p0_mux_test]]
-===== 112 `smc_gpio_p0_mux_test`
+[[sec-111-smc_gpio_p0_mux_test]]
+===== 111 `smc_gpio_p0_mux_test`
 
 *Source Module*: `smc_gpio_p0_mux_test`
 
@@ -6607,8 +6606,8 @@ Drive `smc_gpio_p0_mux_test_seq`. Each checker below is a named compare the DUT 
 *Pass Criteria*: `CHK-GPIO-P0-MUX-LSIO`, `CHK-GPIO-P0-MUX-PATTERN`, `CHK-GPIO-P0-MUX-PRIO`, `CHK-GPIO-P0-MUX-REG` hold after their compares. Enrolled in: `all`, `hosted`, `gpio`.
 '''''
 
-[[sec-187-smc_external_window_pad_ctrl_decode_test]]
-===== 187 `smc_external_window_pad_ctrl_decode_test`
+[[sec-186-smc_external_window_pad_ctrl_decode_test]]
+===== 186 `smc_external_window_pad_ctrl_decode_test`
 
 *Source Module*: `smc_external_window_pad_ctrl_decode_test`
 
@@ -6642,8 +6641,8 @@ Drive `smc_external_window_pad_ctrl_decode_test_seq` on the SEP_IN AXI sequencer
 
 '''''
 
-[[sec-188-smc_gpio_pad_input_readback_test]]
-===== 188 `smc_gpio_pad_input_readback_test`
+[[sec-187-smc_gpio_pad_input_readback_test]]
+===== 187 `smc_gpio_pad_input_readback_test`
 
 *Source Module*: `smc_gpio_pad_input_readback_test`
 
@@ -6678,8 +6677,8 @@ Drive `smc_gpio_pad_input_readback_test_seq` on the SEP_IN AXI sequencer. Per wr
 '''''
 
 
-[[sec-164-smc_gpio_irq_mask_deassert_test]]
-===== 164 `smc_gpio_irq_mask_deassert_test`
+[[sec-163-smc_gpio_irq_mask_deassert_test]]
+===== 163 `smc_gpio_irq_mask_deassert_test`
 
 *Source Module*: `smc_gpio_irq_mask_deassert_test`
 
@@ -6714,8 +6713,8 @@ Drive `smc_gpio_pad_input_readback_test_seq` on the SEP_IN AXI sequencer. Per wr
 
 ==== IRQ
 
-[[sec-113-smc_hang_detector_data_timeout_test]]
-===== 113 `smc_hang_detector_data_timeout_test`
+[[sec-112-smc_hang_detector_data_timeout_test]]
+===== 112 `smc_hang_detector_data_timeout_test`
 
 *Source Module*: `smc_hang_detector_data_timeout_test`
 
@@ -6751,8 +6750,8 @@ Drive `smc_hang_detector_data_timeout_test_seq`. Each checker below is a named c
 *Pass Criteria*: `CHK-HANG-DATA-TIMEOUT-ACCEPT`, `CHK-HANG-DATA-TIMEOUT-ARM`, `CHK-HANG-DATA-TIMEOUT-BASIC`, `CHK-HANG-DATA-TIMEOUT-DISABLED`, `CHK-HANG-DATA-TIMEOUT-DROP`, `CHK-HANG-DATA-TIMEOUT-FIRE` (and 1 more) hold after their compares. Enrolled in: `all`, `hosted`, `irq`.
 '''''
 
-[[sec-114-smc_hang_detector_plic_route_test]]
-===== 114 `smc_hang_detector_plic_route_test`
+[[sec-113-smc_hang_detector_plic_route_test]]
+===== 113 `smc_hang_detector_plic_route_test`
 
 *Source Module*: `smc_hang_detector_plic_route_test`
 
@@ -6795,8 +6794,8 @@ Drive `smc_hang_detector_plic_route_test_seq`. Each checker below is a named com
 
 '''''
 
-[[sec-115-smc_hang_detector_sanity_test]]
-===== 115 `smc_hang_detector_sanity_test`
+[[sec-114-smc_hang_detector_sanity_test]]
+===== 114 `smc_hang_detector_sanity_test`
 
 *Source Module*: `smc_hang_detector_sanity_test`
 
@@ -6837,8 +6836,8 @@ Drive `smc_hang_detector_sanity_test_seq`. Each checker below is a named compare
 *Pass Criteria*: `CHK-HANG-BASIC`, `CHK-HANG-DATA-CLR`, `CHK-HANG-DATA-FIRE`, `CHK-HANG-OR-ALL`, `CHK-HANG-OR-CLR`, `CHK-HANG-OR-HOLD` (and 5 more) hold after their compares. Enrolled in: `all`, `hosted`, `irq`.
 '''''
 
-[[sec-116-smc_hang_detector_sys_timeout_test]]
-===== 116 `smc_hang_detector_sys_timeout_test`
+[[sec-115-smc_hang_detector_sys_timeout_test]]
+===== 115 `smc_hang_detector_sys_timeout_test`
 
 *Source Module*: `smc_hang_detector_sys_timeout_test`
 
@@ -6874,8 +6873,8 @@ Drive `smc_hang_detector_sys_timeout_test_seq`. Each checker below is a named co
 
 '''''
 
-[[sec-117-smc_hang_detector_timeout_test]]
-===== 117 `smc_hang_detector_timeout_test`
+[[sec-116-smc_hang_detector_timeout_test]]
+===== 116 `smc_hang_detector_timeout_test`
 
 *Source Module*: `smc_hang_detector_timeout_test`
 
@@ -6909,8 +6908,8 @@ Drive `smc_hang_detector_timeout_test_seq`. Each checker below is a named compar
 *Pass Criteria*: `CHK-HANG-TIMEOUT-AR`, `CHK-HANG-TIMEOUT-ARM`, `CHK-HANG-TIMEOUT-BASIC`, `CHK-HANG-TIMEOUT-DISABLED`, `CHK-HANG-TIMEOUT-DROP`, `CHK-HANG-TIMEOUT-FIRE` hold after their compares. Enrolled in: `all`, `hosted`, `irq`.
 '''''
 
-[[sec-118-smc_irq_multi_sample_test]]
-===== 118 `smc_irq_multi_sample_test`
+[[sec-117-smc_irq_multi_sample_test]]
+===== 117 `smc_irq_multi_sample_test`
 
 *Source Module*: `smc_irq_multi_sample_test`
 
@@ -6941,8 +6940,8 @@ Drive `smc_irq_multi_sample_test_seq`. Each checker below is a named compare the
 *Pass Criteria*: `CHK-IRQ-MULTI-SAMPLE-STABLE` hold after their compares. Enrolled in: `all`, `hosted`, `irq`.
 '''''
 
-[[sec-119-smc_irq_observe_test]]
-===== 119 `smc_irq_observe_test`
+[[sec-118-smc_irq_observe_test]]
+===== 118 `smc_irq_observe_test`
 
 *Source Module*: `smc_irq_observe_test`
 
@@ -6978,8 +6977,8 @@ Drive `smc_irq_observe_test_seq` on the IRQ sequencer, then `smc_irq_concurrent_
 *Pass Criteria*: `CHK-IRQ-CONCURRENT-SOURCES` and `CHK-IRQ-OBSERVE-IDLE-CHECKED` hold after their compares. Enrolled in: `all`, `hosted`, `irq`.
 '''''
 
-[[sec-120-smc_temp_interrupt_test]]
-===== 120 `smc_temp_interrupt_test`
+[[sec-119-smc_temp_interrupt_test]]
+===== 119 `smc_temp_interrupt_test`
 
 *Source Module*: `smc_temp_interrupt_test`
 
@@ -7015,8 +7014,8 @@ Drive `smc_temp_interrupt_test_seq`. Each checker below is a named compare the D
 
 ==== I2C
 
-[[sec-121-smc_i2c_error_fifo_depth_test]]
-===== 121 `smc_i2c_error_fifo_depth_test`
+[[sec-120-smc_i2c_error_fifo_depth_test]]
+===== 120 `smc_i2c_error_fifo_depth_test`
 
 *Source Module*: `smc_i2c_error_fifo_depth_test`
 
@@ -7051,8 +7050,8 @@ Drive `smc_i2c_error_fifo_depth_test_seq`. Each checker below is a named compare
 *Pass Criteria*: `CHK-I2C0-HOST-WRITE`, `CHK-I2C0-OVRD-PAD`, `CHK-I2C0-SMBUS-ARA`, `CHK-I2C0-SMBUS-PEC`, `CHK-I2C0-U4-2-SMBUS` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-122-smc_i2c_fifo_full_test]]
-===== 122 `smc_i2c_fifo_full_test`
+[[sec-121-smc_i2c_fifo_full_test]]
+===== 121 `smc_i2c_fifo_full_test`
 
 *Source Module*: `smc_i2c_fifo_full_test`
 
@@ -7086,8 +7085,8 @@ Drive `smc_i2c_fifo_full_test_seq`. Each checker below is a named compare the DU
 *Pass Criteria*: `CHK-I2C-FIFO-FULL-ACQ`, `CHK-I2C-FIFO-FULL-BASIC`, `CHK-I2C-FIFO-FULL-FMT`, `CHK-I2C-FIFO-FULL-RX`, `CHK-I2C-FIFO-FULL-TX` hold after their compares. Enrolled in: `all`, `hosted`, `i2c`.
 '''''
 
-[[sec-123-smc_i2c_master_target_test]]
-===== 123 `smc_i2c_master_target_test`
+[[sec-122-smc_i2c_master_target_test]]
+===== 122 `smc_i2c_master_target_test`
 
 *Source Module*: `smc_i2c_master_target_test`
 
@@ -7122,8 +7121,8 @@ Drive `smc_i2c_master_target_test_seq`. Each checker below is a named compare th
 *Pass Criteria*: `CHK-I2C0-HOST-WRITE`, `CHK-I2C0-OVRD-PAD`, `CHK-I2C0-SMBUS-ARA`, `CHK-I2C0-SMBUS-PEC`, `CHK-I2C0-U4-2-SMBUS` hold after their compares. Enrolled in: `all`, `hosted`, `i2c`.
 '''''
 
-[[sec-124-smc_i2c_multi_instance_test]]
-===== 124 `smc_i2c_multi_instance_test`
+[[sec-123-smc_i2c_multi_instance_test]]
+===== 123 `smc_i2c_multi_instance_test`
 
 *Source Module*: `smc_i2c_multi_instance_test`
 
@@ -7156,8 +7155,8 @@ Drive `smc_i2c_multi_instance_test_seq`. Each checker below is a named compare t
 
 '''''
 
-[[sec-125-smc_i2c_multi_sample_test]]
-===== 125 `smc_i2c_multi_sample_test`
+[[sec-124-smc_i2c_multi_sample_test]]
+===== 124 `smc_i2c_multi_sample_test`
 
 *Source Module*: `smc_i2c_multi_sample_test`
 
@@ -7188,8 +7187,8 @@ Drive `smc_i2c_multi_sample_test_seq`. Each checker below is a named compare the
 *Pass Criteria*: `CHK-I2C-MULTI-SAMPLE-STABLE` hold after their compares. Enrolled in: `all`, `hosted`, `i2c`.
 '''''
 
-[[sec-126-smc_i2c_p0_cfifo_test]]
-===== 126 `smc_i2c_p0_cfifo_test`
+[[sec-125-smc_i2c_p0_cfifo_test]]
+===== 125 `smc_i2c_p0_cfifo_test`
 
 *Source Module*: `smc_i2c_p0_cfifo_test`
 
@@ -7220,8 +7219,8 @@ Drive `smc_i2c_p0_cfifo_test_seq`. Each checker below is a named compare the DUT
 
 '''''
 
-[[sec-127-smc_i2c_p0_conti_test]]
-===== 127 `smc_i2c_p0_conti_test`
+[[sec-126-smc_i2c_p0_conti_test]]
+===== 126 `smc_i2c_p0_conti_test`
 
 *Source Module*: `smc_i2c_p0_conti_test`
 
@@ -7255,8 +7254,8 @@ Drive `smc_i2c_p0_conti_test_seq`. Each checker below is a named compare the DUT
 
 '''''
 
-[[sec-128-smc_i2c_p0_fifo_test]]
-===== 128 `smc_i2c_p0_fifo_test`
+[[sec-127-smc_i2c_p0_fifo_test]]
+===== 127 `smc_i2c_p0_fifo_test`
 
 *Source Module*: `smc_i2c_p0_fifo_test`
 
@@ -7287,8 +7286,8 @@ Drive `smc_i2c_p0_fifo_test_seq`. Each checker below is a named compare the DUT 
 *Pass Criteria*: `CHK-I2C-P0-FIFO`, `CHK-I2C-P0-FIFO-ACQ`, `CHK-I2C-P0-FIFO-TX` hold after their compares. Enrolled in: `all`, `hosted`, `i2c`.
 '''''
 
-[[sec-129-smc_i2c_p0_multictrl_test]]
-===== 129 `smc_i2c_p0_multictrl_test`
+[[sec-128-smc_i2c_p0_multictrl_test]]
+===== 128 `smc_i2c_p0_multictrl_test`
 
 *Source Module*: `smc_i2c_p0_multictrl_test`
 
@@ -7321,8 +7320,8 @@ Drive `smc_i2c_p0_multictrl_test_seq`. Each checker below is a named compare the
 *Pass Criteria*: `CHK-I2C-P0-MULTICTRL`, `CHK-I2C-P0-MULTICTRL-P0`, `CHK-I2C-P0-MULTICTRL-P1`, `CHK-I2C-P0-MULTICTRL-P2` hold after their compares. Enrolled in: `all`, `hosted`, `i2c`.
 '''''
 
-[[sec-130-smc_i2c_p0_nack_test]]
-===== 130 `smc_i2c_p0_nack_test`
+[[sec-129-smc_i2c_p0_nack_test]]
+===== 129 `smc_i2c_p0_nack_test`
 
 *Source Module*: `smc_i2c_p0_nack_test`
 
@@ -7354,8 +7353,8 @@ Drive `smc_i2c_p0_nack_test_seq`. Each checker below is a named compare the DUT 
 *Pass Criteria*: `CHK-I2C-P0-NACK-ALLOW`, `CHK-I2C-P0-NACK-TC1`, `CHK-I2C-P0-NACK-TC2` hold after their compares. Enrolled in: `all`, `hosted`, `i2c`.
 '''''
 
-[[sec-131-smc_i2c_p0_rdwr_test]]
-===== 131 `smc_i2c_p0_rdwr_test`
+[[sec-130-smc_i2c_p0_rdwr_test]]
+===== 130 `smc_i2c_p0_rdwr_test`
 
 *Source Module*: `smc_i2c_p0_rdwr_test`
 
@@ -7386,8 +7385,8 @@ Drive `smc_i2c_p0_rdwr_test_seq`. Each checker below is a named compare the DUT 
 
 '''''
 
-[[sec-132-smc_i2c_p0_stretch_test]]
-===== 132 `smc_i2c_p0_stretch_test`
+[[sec-131-smc_i2c_p0_stretch_test]]
+===== 131 `smc_i2c_p0_stretch_test`
 
 *Source Module*: `smc_i2c_p0_stretch_test`
 
@@ -7419,8 +7418,8 @@ Drive `smc_i2c_p0_stretch_test_seq`. Each checker below is a named compare the D
 *Pass Criteria*: `CHK-I2C-P0-HOST-SETTLED`, `CHK-I2C-P0-STRETCH` hold after their compares. Enrolled in: `all`, `hosted`, `i2c`.
 '''''
 
-[[sec-133-smc_i2c_p0_timeout_test]]
-===== 133 `smc_i2c_p0_timeout_test`
+[[sec-132-smc_i2c_p0_timeout_test]]
+===== 132 `smc_i2c_p0_timeout_test`
 
 *Source Module*: `smc_i2c_p0_timeout_test`
 
@@ -7455,8 +7454,8 @@ Drive `smc_i2c_p0_timeout_test_seq`. Each checker below is a named compare the D
 *Pass Criteria*: `CHK-I2C-P0-TIMEOUT`, `CHK-I2C-P0-TIMEOUT-RELEASE`, `CHK-I2C-P0-TIMEOUT-TARGET-LIVE`, `CHK-I2C-TIMEOUT-CSR-SWEEP` hold after their compares. Enrolled in: `all`, `hosted`, `i2c`.
 '''''
 
-[[sec-134-smc_i2c_p1_rdwr_protocol_test]]
-===== 134 `smc_i2c_p1_rdwr_protocol_test`
+[[sec-133-smc_i2c_p1_rdwr_protocol_test]]
+===== 133 `smc_i2c_p1_rdwr_protocol_test`
 
 *Source Module*: `smc_i2c_p1_rdwr_protocol_test`
 
@@ -7490,8 +7489,8 @@ Drive `smc_i2c_p1_rdwr_protocol_test_seq`. Each checker below is a named compare
 *Pass Criteria*: `CHK-I2C0-HOST-WRITE`, `CHK-I2C0-OVRD-PAD`, `CHK-I2C0-SMBUS-ARA`, `CHK-I2C0-SMBUS-PEC`, `CHK-I2C0-U4-2-SMBUS` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-135-smc_i2c_target_smbus_test]]
-===== 135 `smc_i2c_target_smbus_test`
+[[sec-134-smc_i2c_target_smbus_test]]
+===== 134 `smc_i2c_target_smbus_test`
 
 *Source Module*: `smc_i2c_target_smbus_test`
 
@@ -7524,8 +7523,8 @@ Drive `smc_i2c_target_smbus_test_seq`. Each checker below is a named compare the
 *Pass Criteria*: `CHK-I2C-TGT-SMBUS-ALERT`, `CHK-I2C-TGT-SMBUS-ARA`, `CHK-I2C-TGT-SMBUS-SUS-ASSERT`, `CHK-I2C-TGT-SMBUS-SUS-CLR` hold after their compares. Enrolled in: `all`, `hosted`, `i2c`.
 '''''
 
-[[sec-136-smc_smbus_alert_ara_test]]
-===== 136 `smc_smbus_alert_ara_test`
+[[sec-135-smc_smbus_alert_ara_test]]
+===== 135 `smc_smbus_alert_ara_test`
 
 *Source Module*: `smc_smbus_alert_ara_test`
 
@@ -7558,8 +7557,8 @@ Drive `smc_smbus_alert_ara_test_seq`. Each checker below is a named compare the 
 
 '''''
 
-[[sec-137-smc_smbus_alert_suspend_test]]
-===== 137 `smc_smbus_alert_suspend_test`
+[[sec-136-smc_smbus_alert_suspend_test]]
+===== 136 `smc_smbus_alert_suspend_test`
 
 *Source Module*: `smc_smbus_alert_suspend_test`
 
@@ -7593,8 +7592,8 @@ Drive `smc_smbus_alert_suspend_test_seq`. Each checker below is a named compare 
 *Pass Criteria*: `CHK-SMBUS-ALERT-SUS-ALERT`, `CHK-SMBUS-ALERT-SUS-ARA`, `CHK-SMBUS-ALERT-SUS-BASIC`, `CHK-SMBUS-ALERT-SUS-CLR`, `CHK-SMBUS-ALERT-SUS-SUSPEND` hold after their compares. Enrolled in: `all`, `hosted`, `i2c`.
 '''''
 
-[[sec-138-smc_smbus_hostnotify_test]]
-===== 138 `smc_smbus_hostnotify_test`
+[[sec-137-smc_smbus_hostnotify_test]]
+===== 137 `smc_smbus_hostnotify_test`
 
 *Source Module*: `smc_smbus_hostnotify_test`
 
@@ -7625,8 +7624,8 @@ Drive `smc_smbus_hostnotify_test_seq`. Each checker below is a named compare the
 *Pass Criteria*: `CHK-SMBUS-HOSTNOTIFY-FRAME` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-139-smc_smbus_pmbus_test]]
-===== 139 `smc_smbus_pmbus_test`
+[[sec-138-smc_smbus_pmbus_test]]
+===== 138 `smc_smbus_pmbus_test`
 
 *Source Module*: `smc_smbus_pmbus_test`
 
@@ -7659,8 +7658,8 @@ Drive `smc_smbus_pmbus_test_seq`. Each checker below is a named compare the DUT 
 
 '''''
 
-[[sec-166-smc_i2c_intr_mask_test]]
-===== 166 `smc_i2c_intr_mask_test`
+[[sec-165-smc_i2c_intr_mask_test]]
+===== 165 `smc_i2c_intr_mask_test`
 
 *Source Module*: `smc_i2c_intr_mask_test`
 
@@ -7701,8 +7700,8 @@ Drive `smc_smbus_pmbus_test_seq`. Each checker below is a named compare the DUT 
 
 ==== I3C
 
-[[sec-140-smc_i3c_to_fabric_test]]
-===== 140 `smc_i3c_to_fabric_test`
+[[sec-139-smc_i3c_to_fabric_test]]
+===== 139 `smc_i3c_to_fabric_test`
 
 *Source Module*: `smc_i3c_to_fabric_test`
 
@@ -7736,8 +7735,8 @@ Drive `smc_i3c_to_fabric_test_seq`. Each checker below is a named compare the DU
 
 ==== MAILBOX
 
-[[sec-141-smc_mailbox_data_error_test]]
-===== 141 `smc_mailbox_data_error_test`
+[[sec-140-smc_mailbox_data_error_test]]
+===== 140 `smc_mailbox_data_error_test`
 
 *Source Module*: `smc_mailbox_data_error_test`
 
@@ -7775,8 +7774,8 @@ Drive `smc_mailbox_data_error_test_seq`. Each checker below is a named compare t
 *Pass Criteria*: `CHK-MAILBOX-FIFO-DATA`, `CHK-MAILBOX-IRQ-ASSERT`, `CHK-MAILBOX-IRQ-CLEAR`, `CHK-MAILBOX-IRQ-IDLE`, `CHK-MAILBOX-IRQ-SOURCE` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-142-smc_mailbox_event_irq_test]]
-===== 142 `smc_mailbox_event_irq_test`
+[[sec-141-smc_mailbox_event_irq_test]]
+===== 141 `smc_mailbox_event_irq_test`
 
 *Source Module*: `smc_mailbox_event_irq_test`
 
@@ -7811,8 +7810,8 @@ Drive `smc_mailbox_event_irq_test_seq`. Each checker below is a named compare th
 *Pass Criteria*: `CHK-MAILBOX-IRQ-ASSERT`, `CHK-MAILBOX-IRQ-CLEAR`, `CHK-MAILBOX-IRQ-IDLE`, `CHK-MAILBOX-IRQ-SOURCE`, `CHK-MAILBOX-IRQT-CLAMP`, `CHK-MAILBOX-IRQT-IN-RANGE` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-143-smc_mailbox_field_sweep_test]]
-===== 143 `smc_mailbox_field_sweep_test`
+[[sec-142-smc_mailbox_field_sweep_test]]
+===== 142 `smc_mailbox_field_sweep_test`
 
 *Source Module*: `smc_mailbox_field_sweep_test`
 
@@ -7846,8 +7845,8 @@ Drive `smc_mailbox_event_irq_test_seq`. Each checker below is a named compare th
 
 '''''
 
-[[sec-144-smc_mailbox_flush_test]]
-===== 144 `smc_mailbox_flush_test`
+[[sec-143-smc_mailbox_flush_test]]
+===== 143 `smc_mailbox_flush_test`
 
 *Source Module*: `smc_mailbox_flush_test`
 
@@ -7883,8 +7882,8 @@ Drive `smc_mailbox_event_irq_test_seq`. Each checker below is a named compare th
 
 '''''
 
-[[sec-145-smc_mailbox_idle_test]]
-===== 145 `smc_mailbox_idle_test`
+[[sec-144-smc_mailbox_idle_test]]
+===== 144 `smc_mailbox_idle_test`
 
 *Source Module*: `smc_mailbox_idle_test`
 
@@ -7914,8 +7913,8 @@ Drive `smc_mailbox_idle_test_seq`. Each checker below is a named compare the DUT
 *Pass Criteria*: `CHK-MAILBOX-IRQT-CLAMP`, `CHK-MAILBOX-IRQT-IN-RANGE` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-146-smc_mailbox_inbound_test]]
-===== 146 `smc_mailbox_inbound_test`
+[[sec-145-smc_mailbox_inbound_test]]
+===== 145 `smc_mailbox_inbound_test`
 
 *Source Module*: `smc_mailbox_inbound_test`
 
@@ -7946,8 +7945,8 @@ Drive `smc_mailbox_inbound_test_seq`. Each checker below is a named compare the 
 
 '''''
 
-[[sec-147-smc_mailbox_irq_test]]
-===== 147 `smc_mailbox_irq_test`
+[[sec-146-smc_mailbox_irq_test]]
+===== 146 `smc_mailbox_irq_test`
 
 *Source Module*: `smc_mailbox_irq_test`
 
@@ -7983,8 +7982,8 @@ Drive `smc_mailbox_irq_test_seq`. Each checker below is a named compare the DUT 
 *Pass Criteria*: `CHK-MAILBOX-IRQ-ASSERT`, `CHK-MAILBOX-IRQ-CLEAR`, `CHK-MAILBOX-IRQ-IDLE`, `CHK-MAILBOX-IRQ-SOURCE`, `CHK-MAILBOX-IRQT-CLAMP`, `CHK-MAILBOX-IRQT-IN-RANGE` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-148-smc_mailbox_multi_instance_test]]
-===== 148 `smc_mailbox_multi_instance_test`
+[[sec-147-smc_mailbox_multi_instance_test]]
+===== 147 `smc_mailbox_multi_instance_test`
 
 *Source Module*: `smc_mailbox_multi_instance_test`
 
@@ -8018,8 +8017,8 @@ Drive `smc_mailbox_multi_instance_test_seq`. Each checker below is a named compa
 
 ==== SPI
 
-[[sec-149-smc_spi_pad_bfm_test]]
-===== 149 `smc_spi_pad_bfm_test`
+[[sec-148-smc_spi_pad_bfm_test]]
+===== 148 `smc_spi_pad_bfm_test`
 
 *Source Module*: `smc_spi_pad_bfm_test`
 
@@ -8051,8 +8050,8 @@ Drive `smc_spi_pad_bfm_test_seq`. Each checker below is a named compare the DUT 
 
 ==== UART
 
-[[sec-150-smc_uart_baud_word_parity_format_test]]
-===== 150 `smc_uart_baud_word_parity_format_test`
+[[sec-149-smc_uart_baud_word_parity_format_test]]
+===== 149 `smc_uart_baud_word_parity_format_test`
 
 *Source Module*: `smc_uart_baud_word_parity_format_test`
 
@@ -8087,8 +8086,8 @@ Drive `smc_uart_baud_word_parity_format_test_seq`: ungate the UART clock and ena
 *Pass Criteria*: `CHK-UART-BAUD-BASIC`, `CHK-UART-BAUD-FMT`, `CHK-UART-FMT-FE-ASSERTS`, `CHK-UART-FMT-PE-ASSERTS` hold after their compares. Enrolled in: `all`, `hosted`, `uart`.
 '''''
 
-[[sec-151-smc_uart_error_conditions_test]]
-===== 151 `smc_uart_error_conditions_test`
+[[sec-150-smc_uart_error_conditions_test]]
+===== 150 `smc_uart_error_conditions_test`
 
 *Source Module*: `smc_uart_error_conditions_test`
 
@@ -8123,8 +8122,8 @@ Drive `smc_uart_error_conditions_test_seq`. Each checker below is a named compar
 *Pass Criteria*: `CHK-UART-ERR-BASIC`, `CHK-UART-ERR-BI`, `CHK-UART-ERR-OE`, `CHK-UART-ERR-OE-NEG`, `CHK-UART-ERR-PE`, `CHK-UART-ERR-PE-NEG` hold after their compares. Enrolled in: `all`, `hosted`, `uart`.
 '''''
 
-[[sec-152-smc_uart_extremes_misc_test]]
-===== 152 `smc_uart_extremes_misc_test`
+[[sec-151-smc_uart_extremes_misc_test]]
+===== 151 `smc_uart_extremes_misc_test`
 
 *Source Module*: `smc_uart_extremes_misc_test`
 
@@ -8158,8 +8157,8 @@ Drive `smc_uart_extremes_misc_test_seq`. Each checker below is a named compare t
 *Pass Criteria*: `CHK-UART-EXT-BASIC`, `CHK-UART-EXT-DR-POS`, `CHK-UART-EXT-IDLE`, `CHK-UART-EXT-SCR` hold after their compares. Enrolled in: `all`, `hosted`, `uart`.
 '''''
 
-[[sec-153-smc_uart_irq_sources_priority_test]]
-===== 153 `smc_uart_irq_sources_priority_test`
+[[sec-152-smc_uart_irq_sources_priority_test]]
+===== 152 `smc_uart_irq_sources_priority_test`
 
 *Source Module*: `smc_uart_irq_sources_priority_test`
 
@@ -8203,8 +8202,8 @@ Drive `smc_uart_irq_sources_priority_test_seq`. Each checker below is a named co
 *Pass Criteria*: `CHK-UART-IRQ-CLR-MSR`, `CHK-UART-IRQ-CLR-RDR`, `CHK-UART-IRQ-CLR-THRE`, `CHK-UART-IRQ-GATE-FIFO`, `CHK-UART-IRQ-GATE-LSR`, `CHK-UART-IRQ-GATE-MODEM` (and 8 more) hold after their compares. Enrolled in: `all`, `hosted`, `uart`.
 '''''
 
-[[sec-154-smc_uart_log_engine_error_boundary_test]]
-===== 154 `smc_uart_log_engine_error_boundary_test`
+[[sec-153-smc_uart_log_engine_error_boundary_test]]
+===== 153 `smc_uart_log_engine_error_boundary_test`
 
 *Source Module*: `smc_uart_log_engine_error_boundary_test`
 
@@ -8234,8 +8233,8 @@ Drive `smc_uart_log_engine_error_boundary_test_seq`. Each checker below is a nam
 *Pass Criteria*: `CHK-UART-LOG-ENGINE-REG-RESTORE`, `CHK-UART-LOG-ENGINE-REG-RW` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-155-smc_uart_log_engine_reg_rw_test]]
-===== 155 `smc_uart_log_engine_reg_rw_test`
+[[sec-154-smc_uart_log_engine_reg_rw_test]]
+===== 154 `smc_uart_log_engine_reg_rw_test`
 
 *Source Module*: `smc_uart_log_engine_reg_rw_test`
 
@@ -8265,8 +8264,8 @@ Drive `smc_uart_log_engine_reg_rw_test_seq`. Each checker below is a named compa
 *Pass Criteria*: `CHK-UART-LOG-ENGINE-REG-RESTORE`, `CHK-UART-LOG-ENGINE-REG-RW` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-156-smc_uart_loopback_test]]
-===== 156 `smc_uart_loopback_test`
+[[sec-155-smc_uart_loopback_test]]
+===== 155 `smc_uart_loopback_test`
 
 *Source Module*: `smc_uart_loopback_test`
 
@@ -8296,8 +8295,8 @@ Drive `smc_uart_loopback_test_seq`. Each checker below is a named compare the DU
 
 '''''
 
-[[sec-157-smc_uart_sanity_test]]
-===== 157 `smc_uart_sanity_test`
+[[sec-156-smc_uart_sanity_test]]
+===== 156 `smc_uart_sanity_test`
 
 *Source Module*: `smc_uart_sanity_test`
 
@@ -8328,8 +8327,8 @@ Drive `smc_uart_sanity_test_seq`. Each checker below is a named compare the DUT 
 *Pass Criteria*: `CHK-UART-SANITY`, `CHK-UART-SANITY-BASIC` hold after their compares. Enrolled in: `all`, `hosted`, `uart`.
 '''''
 
-[[sec-158-smc_uart_spi_log_engine_test]]
-===== 158 `smc_uart_spi_log_engine_test`
+[[sec-157-smc_uart_spi_log_engine_test]]
+===== 157 `smc_uart_spi_log_engine_test`
 
 *Source Module*: `smc_uart_spi_log_engine_test`
 
@@ -8369,8 +8368,8 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 *Pass Criteria*: `CHK-UART-LOG-COUNT`, `CHK-UART-LOG-LOG_ENGINE_CTRL`, `CHK-UART-LOG-LOG_ENGINE_INTR_STATUS`, `CHK-UART-LOG-UART_IIR`, `CHK-UART-LOG-UART_LOG_ENGINE_CTRL`, `CHK-UART-LOG-UART_LSR` (and 6 more) hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-165-smc_log_engine_intr_mask_test]]
-===== 165 `smc_log_engine_intr_mask_test`
+[[sec-164-smc_log_engine_intr_mask_test]]
+===== 164 `smc_log_engine_intr_mask_test`
 
 *Source Module*: `smc_log_engine_intr_mask_test`
 
@@ -8408,8 +8407,8 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 
 ==== OCCP
 
-[[sec-159-smc_dual_elaboration_test]]
-===== 159 `smc_dual_elaboration_test`
+[[sec-158-smc_dual_elaboration_test]]
+===== 158 `smc_dual_elaboration_test`
 
 *Source Module*: `smc_dual_elaboration_test`
 
@@ -8451,8 +8450,8 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 
 '''''
 
-[[sec-160-smc_dual_axi_sram_probe_test]]
-===== 160 `smc_dual_axi_sram_probe_test`
+[[sec-159-smc_dual_axi_sram_probe_test]]
+===== 159 `smc_dual_axi_sram_probe_test`
 
 *Source Module*: `smc_dual_axi_sram_probe_test`
 
@@ -8490,8 +8489,8 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 
 '''''
 
-[[sec-161-smc_occp_sanity_test]]
-===== 161 `smc_occp_sanity_test`
+[[sec-160-smc_occp_sanity_test]]
+===== 160 `smc_occp_sanity_test`
 
 *Source Module*: `smc_occp_sanity_test`
 
@@ -8528,8 +8527,8 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 
 ==== FIRMWARE
 
-[[sec-167-smc_fw_hello_world_test]]
-===== 167 `smc_fw_hello_world_test`
+[[sec-166-smc_fw_hello_world_test]]
+===== 166 `smc_fw_hello_world_test`
 
 *Source Module*: `smc_fw_hello_world_test`
 
@@ -8564,8 +8563,8 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 
 '''''
 
-[[sec-168-smc_fw_hello_world_multicore_test]]
-===== 168 `smc_fw_hello_world_multicore_test`
+[[sec-167-smc_fw_hello_world_multicore_test]]
+===== 167 `smc_fw_hello_world_multicore_test`
 
 *Source Module*: `smc_fw_hello_world_multicore_test`
 
@@ -8601,8 +8600,8 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 
 '''''
 
-[[sec-169-smc_fw_octs_p0_primary_test]]
-===== 169 `smc_fw_octs_p0_primary_test`
+[[sec-168-smc_fw_octs_p0_primary_test]]
+===== 168 `smc_fw_octs_p0_primary_test`
 
 *Source Module*: `smc_fw_octs_p0_primary_test`
 
@@ -8637,8 +8636,8 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 
 '''''
 
-[[sec-170-smc_fw_i2c_sanity_test]]
-===== 170 `smc_fw_i2c_sanity_test`
+[[sec-169-smc_fw_i2c_sanity_test]]
+===== 169 `smc_fw_i2c_sanity_test`
 
 *Source Module*: `smc_fw_i2c_sanity_test`
 
@@ -8672,8 +8671,8 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 
 '''''
 
-[[sec-171-smc_fw_i2c_target_sanity_test]]
-===== 171 `smc_fw_i2c_target_sanity_test`
+[[sec-170-smc_fw_i2c_target_sanity_test]]
+===== 170 `smc_fw_i2c_target_sanity_test`
 
 *Source Module*: `smc_fw_i2c_target_sanity_test`
 
@@ -8709,8 +8708,8 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 
 '''''
 
-[[sec-172-smc_fw_i2c_acq_fifo_stretch_reset_test]]
-===== 172 `smc_fw_i2c_acq_fifo_stretch_reset_test`
+[[sec-171-smc_fw_i2c_acq_fifo_stretch_reset_test]]
+===== 171 `smc_fw_i2c_acq_fifo_stretch_reset_test`
 
 *Source Module*: `smc_fw_i2c_acq_fifo_stretch_reset_test`
 
@@ -8748,8 +8747,8 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 
 '''''
 
-[[sec-173-smc_fw_i2c_p1_fifo_depth_xfer_test]]
-===== 173 `smc_fw_i2c_p1_fifo_depth_xfer_test`
+[[sec-172-smc_fw_i2c_p1_fifo_depth_xfer_test]]
+===== 172 `smc_fw_i2c_p1_fifo_depth_xfer_test`
 
 *Source Module*: `smc_fw_i2c_p1_fifo_depth_xfer_test`
 
@@ -8782,8 +8781,8 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 
 '''''
 
-[[sec-174-smc_fw_i2c_tx_stretch_timeout_recovery_test]]
-===== 174 `smc_fw_i2c_tx_stretch_timeout_recovery_test`
+[[sec-173-smc_fw_i2c_tx_stretch_timeout_recovery_test]]
+===== 173 `smc_fw_i2c_tx_stretch_timeout_recovery_test`
 
 *Source Module*: `smc_fw_i2c_tx_stretch_timeout_recovery_test`
 
@@ -8816,8 +8815,8 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 
 '''''
 
-[[sec-175-smc_fw_i2c_fifo_full_test]]
-===== 175 `smc_fw_i2c_fifo_full_test`
+[[sec-174-smc_fw_i2c_fifo_full_test]]
+===== 174 `smc_fw_i2c_fifo_full_test`
 
 *Source Module*: `smc_fw_i2c_fifo_full_test`
 
@@ -8851,8 +8850,8 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 
 '''''
 
-[[sec-176-smc_fw_uart_log_engine_single_entry_test]]
-===== 176 `smc_fw_uart_log_engine_single_entry_test`
+[[sec-175-smc_fw_uart_log_engine_single_entry_test]]
+===== 175 `smc_fw_uart_log_engine_single_entry_test`
 
 *Source Module*: `smc_fw_uart_log_engine_single_entry_test`
 
@@ -8889,8 +8888,8 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 
 '''''
 
-[[sec-177-smc_fw_uart_log_engine_boundary_backpressure_test]]
-===== 177 `smc_fw_uart_log_engine_boundary_backpressure_test`
+[[sec-176-smc_fw_uart_log_engine_boundary_backpressure_test]]
+===== 176 `smc_fw_uart_log_engine_boundary_backpressure_test`
 
 *Source Module*: `smc_fw_uart_log_engine_boundary_backpressure_test`
 
@@ -8926,8 +8925,8 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 
 '''''
 
-[[sec-178-smc_fw_uart_log_engine_disable_during_xfer_test]]
-===== 178 `smc_fw_uart_log_engine_disable_during_xfer_test`
+[[sec-177-smc_fw_uart_log_engine_disable_during_xfer_test]]
+===== 177 `smc_fw_uart_log_engine_disable_during_xfer_test`
 
 *Source Module*: `smc_fw_uart_log_engine_disable_during_xfer_test`
 
@@ -8962,8 +8961,8 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 
 '''''
 
-[[sec-179-smc_fw_uart_log_engine_fetch_err_test]]
-===== 179 `smc_fw_uart_log_engine_fetch_err_test`
+[[sec-178-smc_fw_uart_log_engine_fetch_err_test]]
+===== 178 `smc_fw_uart_log_engine_fetch_err_test`
 
 *Source Module*: `smc_fw_uart_log_engine_fetch_err_test`
 
@@ -9001,8 +9000,8 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 '''''
 
 
-[[sec-194-smc_rdl_field_sweep_test]]
-===== 194 `smc_rdl_field_sweep_test`
+[[sec-193-smc_rdl_field_sweep_test]]
+===== 193 `smc_rdl_field_sweep_test`
 
 *Source Module*: `smc_rdl_field_sweep_test`
 
@@ -9037,8 +9036,8 @@ Drive `smc_rdl_field_sweep_test_seq`. Each checker below is a named compare the 
 
 '''''
 
-[[sec-195-smc_cpu_l2_read_wedge_test]]
-===== 195 `smc_cpu_l2_read_wedge_test`
+[[sec-194-smc_cpu_l2_read_wedge_test]]
+===== 194 `smc_cpu_l2_read_wedge_test`
 
 *Source Module*: `smc_cpu_l2_read_wedge_test`
 
@@ -9076,8 +9075,8 @@ withdrawal they would report is recorded under <<smc-known-limitations,Known Lim
 
 '''''
 
-[[sec-196-smc_cpu_l2_write_wedge_test]]
-===== 196 `smc_cpu_l2_write_wedge_test`
+[[sec-195-smc_cpu_l2_write_wedge_test]]
+===== 195 `smc_cpu_l2_write_wedge_test`
 
 *Source Module*: `smc_cpu_l2_write_wedge_test`
 
@@ -9112,8 +9111,8 @@ Drive `smc_cpu_l2_write_wedge_test_seq`. Each checker below is a named compare t
 
 '''''
 
-[[sec-197-smc_cpu_mmio_read_wedge_test]]
-===== 197 `smc_cpu_mmio_read_wedge_test`
+[[sec-196-smc_cpu_mmio_read_wedge_test]]
+===== 196 `smc_cpu_mmio_read_wedge_test`
 
 *Source Module*: `smc_cpu_mmio_read_wedge_test`
 
@@ -9148,8 +9147,8 @@ Drive `smc_cpu_mmio_read_wedge_test_seq`. Each checker below is a named compare 
 
 '''''
 
-[[sec-198-smc_cpu_mmio_write_wedge_test]]
-===== 198 `smc_cpu_mmio_write_wedge_test`
+[[sec-197-smc_cpu_mmio_write_wedge_test]]
+===== 197 `smc_cpu_mmio_write_wedge_test`
 
 *Source Module*: `smc_cpu_mmio_write_wedge_test`
 
@@ -9184,8 +9183,8 @@ Drive `smc_cpu_mmio_write_wedge_test_seq`. Each checker below is a named compare
 
 '''''
 
-[[sec-199-smc_gpio_intf_regblock_sweep_test]]
-===== 199 `smc_gpio_intf_regblock_sweep_test`
+[[sec-198-smc_gpio_intf_regblock_sweep_test]]
+===== 198 `smc_gpio_intf_regblock_sweep_test`
 
 *Source Module*: `smc_gpio_intf_regblock_sweep_test`
 
@@ -9218,8 +9217,8 @@ Drive `smc_gpio_intf_regblock_sweep_test_seq`. Each checker below is a named com
 
 '''''
 
-[[sec-200-smc_filter_config_field_sweep_test]]
-===== 200 `smc_filter_config_field_sweep_test`
+[[sec-199-smc_filter_config_field_sweep_test]]
+===== 199 `smc_filter_config_field_sweep_test`
 
 *Source Module*: `smc_filter_config_field_sweep_test`
 
@@ -9251,8 +9250,8 @@ Drive `smc_filter_config_field_sweep_test_seq`. Each checker below is a named co
 
 '''''
 
-[[sec-201-smc_i2c_intr_reg_sweep_test]]
-===== 201 `smc_i2c_intr_reg_sweep_test`
+[[sec-200-smc_i2c_intr_reg_sweep_test]]
+===== 200 `smc_i2c_intr_reg_sweep_test`
 
 *Source Module*: `smc_i2c_intr_reg_sweep_test`
 
@@ -9286,8 +9285,8 @@ Drive `smc_i2c_intr_reg_sweep_test_seq`. Each checker below is a named compare t
 
 '''''
 
-[[sec-202-smc_uart_log_engine_field_sweep_test]]
-===== 202 `smc_uart_log_engine_field_sweep_test`
+[[sec-201-smc_uart_log_engine_field_sweep_test]]
+===== 201 `smc_uart_log_engine_field_sweep_test`
 
 *Source Module*: `smc_uart_log_engine_field_sweep_test`
 
@@ -9321,8 +9320,8 @@ Drive `smc_uart_log_engine_field_sweep_test_seq`. Each checker below is a named 
 
 '''''
 
-[[sec-203-smc_log_engine_transfer_test]]
-===== 203 `smc_log_engine_transfer_test`
+[[sec-202-smc_log_engine_transfer_test]]
+===== 202 `smc_log_engine_transfer_test`
 
 *Source Module*: `smc_log_engine_transfer_test`
 
@@ -9357,8 +9356,8 @@ Drive `smc_log_engine_transfer_test_seq`. Each checker below is a named compare 
 
 '''''
 
-[[sec-204-smc_zeroer_multi_burst_test]]
-===== 204 `smc_zeroer_multi_burst_test`
+[[sec-203-smc_zeroer_multi_burst_test]]
+===== 203 `smc_zeroer_multi_burst_test`
 
 *Source Module*: `smc_zeroer_multi_burst_test`
 
@@ -9399,8 +9398,8 @@ Drive `smc_zeroer_multi_burst_test_seq`. Each checker below is a named compare t
 
 '''''
 
-[[sec-205-smc_cool_reset_zero_delay_test]]
-===== 205 `smc_cool_reset_zero_delay_test`
+[[sec-204-smc_cool_reset_zero_delay_test]]
+===== 204 `smc_cool_reset_zero_delay_test`
 
 *Source Module*: `smc_cool_reset_zero_delay_test`
 
@@ -9433,8 +9432,8 @@ Drive `smc_cool_reset_zero_delay_test_seq`. Each checker below is a named compar
 
 '''''
 
-[[sec-206-smc_log_engine_abort_test]]
-===== 206 `smc_log_engine_abort_test`
+[[sec-205-smc_log_engine_abort_test]]
+===== 205 `smc_log_engine_abort_test`
 
 *Source Module*: `smc_log_engine_abort_test`
 
@@ -9468,8 +9467,8 @@ Drive `smc_log_engine_abort_test_seq`. Each checker below is a named compare the
 
 '''''
 
-[[sec-207-smc_periph_regblock_sweep_test]]
-===== 207 `smc_periph_regblock_sweep_test`
+[[sec-206-smc_periph_regblock_sweep_test]]
+===== 206 `smc_periph_regblock_sweep_test`
 
 *Source Module*: `smc_periph_regblock_sweep_test`
 
@@ -9511,8 +9510,8 @@ Drive `smc_periph_regblock_sweep_test_seq`. Each checker below is a named compar
 
 '''''
 
-[[sec-208-smc_uart_char_loopback_test]]
-===== 208 `smc_uart_char_loopback_test`
+[[sec-207-smc_uart_char_loopback_test]]
+===== 207 `smc_uart_char_loopback_test`
 
 *Source Module*: `smc_uart_char_loopback_test`
 
@@ -9548,8 +9547,8 @@ Drive `smc_uart_char_loopback_test_seq`. Each checker below is a named compare t
 
 '''''
 
-[[sec-209-smc_efuse_lock_guard_test]]
-===== 209 `smc_efuse_lock_guard_test`
+[[sec-208-smc_efuse_lock_guard_test]]
+===== 208 `smc_efuse_lock_guard_test`
 
 *Source Module*: `smc_efuse_lock_guard_test`
 
@@ -9585,8 +9584,8 @@ Drive `smc_efuse_lock_guard_test_seq`. Each checker below is a named compare the
 
 '''''
 
-[[sec-210-smc_cpu_ctrl_read_only_write_test]]
-===== 210 `smc_cpu_ctrl_read_only_write_test`
+[[sec-209-smc_cpu_ctrl_read_only_write_test]]
+===== 209 `smc_cpu_ctrl_read_only_write_test`
 
 *Source Module*: `smc_cpu_ctrl_read_only_write_test`
 
@@ -9622,8 +9621,8 @@ Drive `smc_cpu_ctrl_read_only_write_test_seq`. Each checker below is a named com
 
 '''''
 
-[[sec-211-smc_dma_reg_byte_enable_error_test]]
-===== 211 `smc_dma_reg_byte_enable_error_test`
+[[sec-210-smc_dma_reg_byte_enable_error_test]]
+===== 210 `smc_dma_reg_byte_enable_error_test`
 
 *Source Module*: `smc_dma_reg_byte_enable_error_test`
 
@@ -9656,8 +9655,8 @@ Drive `smc_dma_reg_byte_enable_error_test_seq`. Each checker below is a named co
 
 '''''
 
-[[sec-212-smc_uart_core_mode_select_test]]
-===== 212 `smc_uart_core_mode_select_test`
+[[sec-211-smc_uart_core_mode_select_test]]
+===== 211 `smc_uart_core_mode_select_test`
 
 *Source Module*: `smc_uart_core_mode_select_test`
 
@@ -9694,8 +9693,8 @@ Drive `smc_uart_core_mode_select_test_seq`. Each checker below is a named compar
 
 '''''
 
-[[sec-213-smc_i2c_config_regblock_sweep_test]]
-===== 213 `smc_i2c_config_regblock_sweep_test`
+[[sec-212-smc_i2c_config_regblock_sweep_test]]
+===== 212 `smc_i2c_config_regblock_sweep_test`
 
 *Source Module*: `smc_i2c_config_regblock_sweep_test`
 
@@ -9730,8 +9729,8 @@ Drive `smc_i2c_config_regblock_sweep_test_seq`. Each checker below is a named co
 
 '''''
 
-[[sec-214-smc_i2c_fifo_reset_pulse_test]]
-===== 214 `smc_i2c_fifo_reset_pulse_test`
+[[sec-213-smc_i2c_fifo_reset_pulse_test]]
+===== 213 `smc_i2c_fifo_reset_pulse_test`
 
 *Source Module*: `smc_i2c_fifo_reset_pulse_test`
 
@@ -9765,8 +9764,8 @@ Drive `smc_i2c_fifo_reset_pulse_test_seq`. Each checker below is a named compare
 
 '''''
 
-[[sec-215-smc_filter_region_span_test]]
-===== 215 `smc_filter_region_span_test`
+[[sec-214-smc_filter_region_span_test]]
+===== 214 `smc_filter_region_span_test`
 
 *Source Module*: `smc_filter_region_span_test`
 
@@ -9801,8 +9800,8 @@ Drive `smc_filter_region_span_test_seq`. Each checker below is a named compare t
 
 '''''
 
-[[sec-216-smc_dma_decouple_rw_test]]
-===== 216 `smc_dma_decouple_rw_test`
+[[sec-215-smc_dma_decouple_rw_test]]
+===== 215 `smc_dma_decouple_rw_test`
 
 *Source Module*: `smc_dma_decouple_rw_test`
 
@@ -9848,8 +9847,8 @@ Drive `smc_dma_decouple_rw_test_seq`. Each checker below is a named compare the 
 
 '''''
 
-[[sec-217-smc_intr_status_partial_clear_test]]
-===== 217 `smc_intr_status_partial_clear_test`
+[[sec-216-smc_intr_status_partial_clear_test]]
+===== 216 `smc_intr_status_partial_clear_test`
 
 *Source Module*: `smc_intr_status_partial_clear_test`
 
@@ -9881,8 +9880,8 @@ Drive `smc_intr_status_partial_clear_test_seq`. Each checker below is a named co
 
 '''''
 
-[[sec-218-smc_gpio_data_ctrl_field_test]]
-===== 218 `smc_gpio_data_ctrl_field_test`
+[[sec-217-smc_gpio_data_ctrl_field_test]]
+===== 217 `smc_gpio_data_ctrl_field_test`
 
 *Source Module*: `smc_gpio_data_ctrl_field_test`
 
@@ -9915,8 +9914,8 @@ Drive `smc_gpio_data_ctrl_field_test_seq`. Each checker below is a named compare
 
 '''''
 
-[[sec-219-smc_alias_remap_region_attrs_test]]
-===== 219 `smc_alias_remap_region_attrs_test`
+[[sec-218-smc_alias_remap_region_attrs_test]]
+===== 218 `smc_alias_remap_region_attrs_test`
 
 *Source Module*: `smc_alias_remap_region_attrs_test`
 
@@ -9949,8 +9948,8 @@ Drive `smc_alias_remap_region_attrs_test_seq`. Each checker below is a named com
 
 '''''
 
-[[sec-221-smc_avsbus_frame_transaction_test]]
-===== 221 `smc_avsbus_frame_transaction_test`
+[[sec-220-smc_avsbus_frame_transaction_test]]
+===== 220 `smc_avsbus_frame_transaction_test`
 
 *Source Module*: `smc_avsbus_frame_transaction_test`
 
@@ -9987,8 +9986,8 @@ Drive `smc_avsbus_frame_transaction_test_seq`. Each checker below is a named com
 
 '''''
 
-[[sec-222-smc_avsbus_retry_exhaust_test]]
-===== 222 `smc_avsbus_retry_exhaust_test`
+[[sec-221-smc_avsbus_retry_exhaust_test]]
+===== 221 `smc_avsbus_retry_exhaust_test`
 
 *Source Module*: `smc_avsbus_retry_exhaust_test`
 
@@ -10022,8 +10021,8 @@ Drive `smc_avsbus_retry_exhaust_test_seq`. Each checker below is a named compare
 
 '''''
 
-[[sec-223-smc_telemetry_atb_capture_test]]
-===== 223 `smc_telemetry_atb_capture_test`
+[[sec-222-smc_telemetry_atb_capture_test]]
+===== 222 `smc_telemetry_atb_capture_test`
 
 *Source Module*: `smc_telemetry_atb_capture_test`
 
@@ -10057,8 +10056,8 @@ Drive `smc_telemetry_atb_capture_test_seq`. Each checker below is a named compar
 '''''
 
 
-[[sec-224-smc_i2c_target_acq_stretch_test]]
-===== 224 `smc_i2c_target_acq_stretch_test`
+[[sec-223-smc_i2c_target_acq_stretch_test]]
+===== 223 `smc_i2c_target_acq_stretch_test`
 
 *Source Module*: `smc_i2c_target_acq_stretch_test`
 
@@ -10093,8 +10092,8 @@ Drive `smc_i2c_target_acq_stretch_test_seq`. Each checker below is a named compa
 '''''
 
 
-[[sec-225-smc_i2c_target_multi_instance_stretch_test]]
-===== 225 `smc_i2c_target_multi_instance_stretch_test`
+[[sec-224-smc_i2c_target_multi_instance_stretch_test]]
+===== 224 `smc_i2c_target_multi_instance_stretch_test`
 
 *Source Module*: `smc_i2c_target_multi_instance_stretch_test`
 
@@ -10137,8 +10136,8 @@ Drive `smc_i2c_target_multi_instance_stretch_test_seq`. Each checker below is a 
 '''''
 
 
-[[sec-226-smc_i2c_protocol_interruption_test]]
-===== 226 `smc_i2c_protocol_interruption_test`
+[[sec-225-smc_i2c_protocol_interruption_test]]
+===== 225 `smc_i2c_protocol_interruption_test`
 
 *Source Module*: `smc_i2c_protocol_interruption_test`
 
@@ -10182,8 +10181,8 @@ Drive `smc_i2c_protocol_interruption_test_seq`. Each checker below is a named co
 
 '''''
 
-[[sec-227-smc_i2c2_controller_rdwr_test]]
-===== 227 `smc_i2c2_controller_rdwr_test`
+[[sec-226-smc_i2c2_controller_rdwr_test]]
+===== 226 `smc_i2c2_controller_rdwr_test`
 
 *Source Module*: `smc_i2c2_controller_rdwr_test`
 
@@ -10215,8 +10214,8 @@ Drive `smc_i2c2_controller_rdwr_test_seq`. Each checker below is a named compare
 '''''
 
 
-[[sec-228-smc_i2c_target_bus_timeout_test]]
-===== 228 `smc_i2c_target_bus_timeout_test`
+[[sec-227-smc_i2c_target_bus_timeout_test]]
+===== 227 `smc_i2c_target_bus_timeout_test`
 
 *Source Module*: `smc_i2c_target_bus_timeout_test`
 
@@ -10258,8 +10257,8 @@ Drive `smc_i2c_target_bus_timeout_test_seq`. Each checker below is a named compa
 '''''
 
 
-[[sec-229-smc_i2c_bus_monitor_idle_test]]
-===== 229 `smc_i2c_bus_monitor_idle_test`
+[[sec-228-smc_i2c_bus_monitor_idle_test]]
+===== 228 `smc_i2c_bus_monitor_idle_test`
 
 *Source Module*: `smc_i2c_bus_monitor_idle_test`
 
@@ -10299,8 +10298,8 @@ Drive `smc_i2c_bus_monitor_idle_test_seq`. Each checker below is a named compare
 '''''
 
 
-[[sec-230-smc_i2c_controller_sda_interference_test]]
-===== 230 `smc_i2c_controller_sda_interference_test`
+[[sec-229-smc_i2c_controller_sda_interference_test]]
+===== 229 `smc_i2c_controller_sda_interference_test`
 
 *Source Module*: `smc_i2c_controller_sda_interference_test`
 
@@ -10336,8 +10335,8 @@ Drive `smc_i2c_controller_sda_interference_test_seq`. Each checker below is a na
 '''''
 
 
-[[sec-231-smc_avsbus_interrupt_sources_test]]
-===== 231 `smc_avsbus_interrupt_sources_test`
+[[sec-230-smc_avsbus_interrupt_sources_test]]
+===== 230 `smc_avsbus_interrupt_sources_test`
 
 *Source Module*: `smc_avsbus_interrupt_sources_test`
 
@@ -10378,8 +10377,8 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 '''''
 
 
-[[sec-232-smc_avsbus_clock_divider_test]]
-===== 232 `smc_avsbus_clock_divider_test`
+[[sec-231-smc_avsbus_clock_divider_test]]
+===== 231 `smc_avsbus_clock_divider_test`
 
 *Source Module*: `smc_avsbus_clock_divider_test`
 
@@ -10418,8 +10417,8 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 
 '''''
 
-[[sec-233-smc_i2c0_target_addr_stretch_test]]
-===== 233 `smc_i2c0_target_addr_stretch_test`
+[[sec-232-smc_i2c0_target_addr_stretch_test]]
+===== 232 `smc_i2c0_target_addr_stretch_test`
 
 *Source Module*: `smc_i2c0_target_addr_stretch_test`
 
@@ -10460,8 +10459,8 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 
 '''''
 
-[[sec-234-smc_i2c_target_ack_ctrl_test]]
-===== 234 `smc_i2c_target_ack_ctrl_test`
+[[sec-233-smc_i2c_target_ack_ctrl_test]]
+===== 233 `smc_i2c_target_ack_ctrl_test`
 
 *Source Module*: `smc_i2c_target_ack_ctrl_test`
 
@@ -10499,8 +10498,8 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 
 '''''
 
-[[sec-235-smc_avsbus_retry_suppressed_test]]
-===== 235 `smc_avsbus_retry_suppressed_test`
+[[sec-234-smc_avsbus_retry_suppressed_test]]
+===== 234 `smc_avsbus_retry_suppressed_test`
 
 *Source Module*: `smc_avsbus_retry_suppressed_test`
 
@@ -10538,8 +10537,8 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 
 '''''
 
-[[sec-236-smc_i2c_target_nack_timeout_test]]
-===== 236 `smc_i2c_target_nack_timeout_test`
+[[sec-235-smc_i2c_target_nack_timeout_test]]
+===== 235 `smc_i2c_target_nack_timeout_test`
 
 *Source Module*: `smc_i2c_target_nack_timeout_test`
 
@@ -10587,8 +10586,8 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 
 '''''
 
-[[sec-237-smc_i2c0_target_fast_controller_test]]
-===== 237 `smc_i2c0_target_fast_controller_test`
+[[sec-236-smc_i2c0_target_fast_controller_test]]
+===== 236 `smc_i2c0_target_fast_controller_test`
 
 *Source Module*: `smc_i2c0_target_fast_controller_test`
 
@@ -10631,8 +10630,8 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 
 '''''
 
-[[sec-238-smc_i2c_controller_stretch_test]]
-===== 238 `smc_i2c_controller_stretch_test`
+[[sec-237-smc_i2c_controller_stretch_test]]
+===== 237 `smc_i2c_controller_stretch_test`
 
 *Source Module*: `smc_i2c_controller_stretch_test`
 
@@ -10669,8 +10668,8 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 
 '''''
 
-[[sec-239-smc_i2c_controller_control_symbol_test]]
-===== 239 `smc_i2c_controller_control_symbol_test`
+[[sec-238-smc_i2c_controller_control_symbol_test]]
+===== 238 `smc_i2c_controller_control_symbol_test`
 
 *Source Module*: `smc_i2c_controller_control_symbol_test`
 
@@ -10707,8 +10706,8 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 
 '''''
 
-[[sec-240-smc_uart_rbr_error_path_test]]
-===== 240 `smc_uart_rbr_error_path_test`
+[[sec-239-smc_uart_rbr_error_path_test]]
+===== 239 `smc_uart_rbr_error_path_test`
 
 *Source Module*: `smc_uart_rbr_error_path_test`
 
@@ -10747,8 +10746,8 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 
 '''''
 
-[[sec-241-smc_i2c_controller_exits_test]]
-===== 241 `smc_i2c_controller_exits_test`
+[[sec-240-smc_i2c_controller_exits_test]]
+===== 240 `smc_i2c_controller_exits_test`
 
 *Source Module*: `smc_i2c_controller_exits_test`
 
@@ -10790,8 +10789,8 @@ The controller's third ending, the automatic stop it makes when `CTRL.ENABLEHOST
 
 '''''
 
-[[sec-242-smc_avsbus_frame_sequencing_test]]
-===== 242 `smc_avsbus_frame_sequencing_test`
+[[sec-241-smc_avsbus_frame_sequencing_test]]
+===== 241 `smc_avsbus_frame_sequencing_test`
 
 *Source Module*: `smc_avsbus_frame_sequencing_test`
 
@@ -10841,8 +10840,8 @@ The controller's third ending, the automatic stop it makes when `CTRL.ENABLEHOST
 
 '''''
 
-[[sec-265-smc_i2c1_target_addr_stretch_test]]
-===== 265 `smc_i2c1_target_addr_stretch_test`
+[[sec-264-smc_i2c1_target_addr_stretch_test]]
+===== 264 `smc_i2c1_target_addr_stretch_test`
 
 *Source Module*: `smc_i2c1_target_addr_stretch_test`
 
@@ -10874,8 +10873,8 @@ Drive `smc_i2c_target_addr_stretch_test_seq` with the instance set to 1. The ste
 '''''
 
 
-[[sec-244-smc_i2c2_target_addr_stretch_test]]
-===== 244 `smc_i2c2_target_addr_stretch_test`
+[[sec-243-smc_i2c2_target_addr_stretch_test]]
+===== 243 `smc_i2c2_target_addr_stretch_test`
 
 *Source Module*: `smc_i2c2_target_addr_stretch_test`
 
@@ -10906,8 +10905,8 @@ Drive `smc_i2c_target_addr_stretch_test_seq` with the instance set to 2. The ste
 
 '''''
 
-[[sec-245-smc_i2c1_target_fast_controller_test]]
-===== 245 `smc_i2c1_target_fast_controller_test`
+[[sec-244-smc_i2c1_target_fast_controller_test]]
+===== 244 `smc_i2c1_target_fast_controller_test`
 
 *Source Module*: `smc_i2c1_target_fast_controller_test`
 
@@ -10939,8 +10938,8 @@ Drive `smc_i2c_target_fast_controller_test_seq` with the instance set to 1. The 
 '''''
 
 
-[[sec-246-smc_i2c2_target_fast_controller_test]]
-===== 246 `smc_i2c2_target_fast_controller_test`
+[[sec-245-smc_i2c2_target_fast_controller_test]]
+===== 245 `smc_i2c2_target_fast_controller_test`
 
 *Source Module*: `smc_i2c2_target_fast_controller_test`
 
@@ -10971,8 +10970,8 @@ Drive `smc_i2c_target_fast_controller_test_seq` with the instance set to 2. The 
 
 '''''
 
-[[sec-247-smc_cpuif_handshake_test]]
-===== 247 `smc_cpuif_handshake_test`
+[[sec-246-smc_cpuif_handshake_test]]
+===== 246 `smc_cpuif_handshake_test`
 
 *Source Module*: `smc_cpuif_handshake_test`
 
@@ -11012,8 +11011,8 @@ Drive `smc_cpuif_handshake_test_seq`. Each checker below is a named compare the 
 
 '''''
 
-[[sec-248-smc_cpuif_external_stall_test]]
-===== 248 `smc_cpuif_external_stall_test`
+[[sec-247-smc_cpuif_external_stall_test]]
+===== 247 `smc_cpuif_external_stall_test`
 
 *Source Module*: `smc_cpuif_external_stall_test`
 
@@ -11045,8 +11044,8 @@ Drive `smc_cpuif_external_stall_test_seq`. Each checker below is a named compare
 
 '''''
 
-[[sec-249-smc_cpuif_wrong_direction_test]]
-===== 249 `smc_cpuif_wrong_direction_test`
+[[sec-248-smc_cpuif_wrong_direction_test]]
+===== 248 `smc_cpuif_wrong_direction_test`
 
 *Source Module*: `smc_cpuif_wrong_direction_test`
 
@@ -11078,8 +11077,8 @@ Drive `smc_cpuif_wrong_direction_test_seq`. Each checker below is a named compar
 
 '''''
 
-[[sec-250-smc_i2c_target_read_abort_test]]
-===== 250 `smc_i2c_target_read_abort_test`
+[[sec-249-smc_i2c_target_read_abort_test]]
+===== 249 `smc_i2c_target_read_abort_test`
 
 *Source Module*: `smc_i2c_target_read_abort_test`
 
@@ -11116,8 +11115,8 @@ Drive `smc_cpuif_wrong_direction_test_seq`. Each checker below is a named compar
 
 '''''
 
-[[sec-251-smc_i2c_controller_scl_events_test]]
-===== 251 `smc_i2c_controller_scl_events_test`
+[[sec-250-smc_i2c_controller_scl_events_test]]
+===== 250 `smc_i2c_controller_scl_events_test`
 
 *Source Module*: `smc_i2c_controller_scl_events_test`
 
@@ -11161,8 +11160,8 @@ SDA changing while the controller holds a pulse high is not driven here; `smc_i2
 
 '''''
 
-[[sec-252-smc_i2c_controller_disable_stop_test]]
-===== 252 `smc_i2c_controller_disable_stop_test`
+[[sec-251-smc_i2c_controller_disable_stop_test]]
+===== 251 `smc_i2c_controller_disable_stop_test`
 
 *Source Module*: `smc_i2c_controller_disable_stop_test`
 
@@ -11198,8 +11197,8 @@ SDA changing while the controller holds a pulse high is not driven here; `smc_i2
 
 '''''
 
-[[sec-253-smc_fw_narrow_store_lane_test]]
-===== 253 `smc_fw_narrow_store_lane_test`
+[[sec-252-smc_fw_narrow_store_lane_test]]
+===== 252 `smc_fw_narrow_store_lane_test`
 
 *Source Module*: `smc_fw_narrow_store_lane_test`
 
@@ -11241,8 +11240,8 @@ SDA changing while the controller holds a pulse high is not driven here; `smc_i2
 
 '''''
 
-[[sec-255-smc_i3c_dxt_table_test]]
-===== 255 `smc_i3c_dxt_table_test`
+[[sec-254-smc_i3c_dxt_table_test]]
+===== 254 `smc_i3c_dxt_table_test`
 
 *Source Module*: `smc_i3c_dxt_table_test`
 
@@ -11275,8 +11274,8 @@ Drive `smc_i3c_dxt_table_test_seq`. Each checker below is a named compare the DU
 
 '''''
 
-[[sec-260-smc_telemetry_buffer_overflow_test]]
-===== 260 `smc_telemetry_buffer_overflow_test`
+[[sec-259-smc_telemetry_buffer_overflow_test]]
+===== 259 `smc_telemetry_buffer_overflow_test`
 
 *Source Module*: `smc_telemetry_buffer_overflow_test`
 
@@ -11320,8 +11319,8 @@ Drive `smc_i3c_dxt_table_test_seq`. Each checker below is a named compare the DU
 
 '''''
 
-[[sec-256-smc_i2c_controller_queue_shapes_test]]
-===== 256 `smc_i2c_controller_queue_shapes_test`
+[[sec-255-smc_i2c_controller_queue_shapes_test]]
+===== 255 `smc_i2c_controller_queue_shapes_test`
 
 *Source Module*: `smc_i2c_controller_queue_shapes_test`
 
@@ -11370,8 +11369,8 @@ Drive `smc_i3c_dxt_table_test_seq`. Each checker below is a named compare the DU
 
 '''''
 
-[[sec-257-smc_i2c_controller_edge_timing_test]]
-===== 257 `smc_i2c_controller_edge_timing_test`
+[[sec-256-smc_i2c_controller_edge_timing_test]]
+===== 256 `smc_i2c_controller_edge_timing_test`
 
 *Source Module*: `smc_i2c_controller_edge_timing_test`
 
@@ -11423,8 +11422,8 @@ The fall is clock synchronisation and must raise `INTR_STATE.SCL_INTERFERENCE`.
 
 '''''
 
-[[sec-258-smc_i2c_target_loopback_test]]
-===== 258 `smc_i2c_target_loopback_test`
+[[sec-257-smc_i2c_target_loopback_test]]
+===== 257 `smc_i2c_target_loopback_test`
 
 *Source Module*: `smc_i2c_target_loopback_test`
 
@@ -11463,8 +11462,8 @@ The fall is clock synchronisation and must raise `INTR_STATE.SCL_INTERFERENCE`.
 
 '''''
 
-[[sec-259-smc_avsbus_slave_reply_test]]
-===== 259 `smc_avsbus_slave_reply_test`
+[[sec-258-smc_avsbus_slave_reply_test]]
+===== 258 `smc_avsbus_slave_reply_test`
 
 *Source Module*: `smc_avsbus_slave_reply_test`
 
@@ -11541,8 +11540,8 @@ The fall is clock synchronisation and must raise `INTR_STATE.SCL_INTERFERENCE`.
 
 '''''
 
-[[sec-261-smc_output_remap_window_test]]
-===== 261 `smc_output_remap_window_test`
+[[sec-260-smc_output_remap_window_test]]
+===== 260 `smc_output_remap_window_test`
 
 *Source Module*: `smc_output_remap_window_test`
 
@@ -11578,8 +11577,8 @@ Drive `smc_output_remap_window_test_seq`. Each checker below is a named compare 
 
 '''''
 
-[[sec-281-smc_i2c_event_retain_test]]
-===== 281 `smc_i2c_event_retain_test`
+[[sec-280-smc_i2c_event_retain_test]]
+===== 280 `smc_i2c_event_retain_test`
 
 *Source Module*: `smc_i2c_event_retain_test`
 
@@ -11618,8 +11617,8 @@ Drive `smc_output_remap_window_test_seq`. Each checker below is a named compare 
 
 '''''
 
-[[sec-282-smc_uart_thr_paths_test]]
-===== 282 `smc_uart_thr_paths_test`
+[[sec-281-smc_uart_thr_paths_test]]
+===== 281 `smc_uart_thr_paths_test`
 
 *Source Module*: `smc_uart_thr_paths_test`
 
@@ -11662,8 +11661,8 @@ Drive `smc_output_remap_window_test_seq`. Each checker below is a named compare 
 
 '''''
 
-[[sec-283-smc_log_engine_fetch_error_test]]
-===== 283 `smc_log_engine_fetch_error_test`
+[[sec-282-smc_log_engine_fetch_error_test]]
+===== 282 `smc_log_engine_fetch_error_test`
 
 *Source Module*: `smc_log_engine_fetch_error_test`
 
@@ -11702,8 +11701,8 @@ Drive `smc_output_remap_window_test_seq`. Each checker below is a named compare 
 
 '''''
 
-[[sec-284-smc_octs_credit_expired_test]]
-===== 284 `smc_octs_credit_expired_test`
+[[sec-283-smc_octs_credit_expired_test]]
+===== 283 `smc_octs_credit_expired_test`
 
 *Source Module*: `smc_octs_credit_expired_test`
 
@@ -11736,8 +11735,8 @@ Drive `smc_output_remap_window_test_seq`. Each checker below is a named compare 
 
 '''''
 
-[[sec-285-smc_efuse_guard_target_test]]
-===== 285 `smc_efuse_guard_target_test`
+[[sec-284-smc_efuse_guard_target_test]]
+===== 284 `smc_efuse_guard_target_test`
 
 *Source Module*: `smc_efuse_guard_target_test`
 
@@ -11787,8 +11786,8 @@ Drive `smc_output_remap_window_test_seq`. Each checker below is a named compare 
 
 '''''
 
-[[sec-262-smc_regblock_partial_write_test]]
-===== 262 `smc_regblock_partial_write_test`
+[[sec-261-smc_regblock_partial_write_test]]
+===== 261 `smc_regblock_partial_write_test`
 
 *Source Module*: `smc_regblock_partial_write_test`
 
@@ -11838,8 +11837,8 @@ Drive `smc_regblock_partial_write_test_seq`. Each checker below is a named compa
 
 '''''
 
-[[sec-263-smc_cpu_reset_pulse_test]]
-===== 263 `smc_cpu_reset_pulse_test`
+[[sec-262-smc_cpu_reset_pulse_test]]
+===== 262 `smc_cpu_reset_pulse_test`
 
 *Source Module*: `smc_cpu_reset_pulse_test`
 
@@ -11870,8 +11869,8 @@ Drive `smc_cpu_reset_pulse_test_seq`. Each checker below is a named compare the 
 
 '''''
 
-[[sec-286-smc_i2c_bus_corners_test]]
-===== 286 `smc_i2c_bus_corners_test`
+[[sec-285-smc_i2c_bus_corners_test]]
+===== 285 `smc_i2c_bus_corners_test`
 
 *Source Module*: `smc_i2c_bus_corners_test`
 
@@ -11917,8 +11916,8 @@ Drive `smc_cpu_reset_pulse_test_seq`. Each checker below is a named compare the 
 
 '''''
 
-[[sec-287-smc_octs_primary_start_test]]
-===== 287 `smc_octs_primary_start_test`
+[[sec-286-smc_octs_primary_start_test]]
+===== 286 `smc_octs_primary_start_test`
 
 *Source Module*: `smc_octs_primary_start_test`
 
@@ -11950,8 +11949,8 @@ Drive `smc_cpu_reset_pulse_test_seq`. Each checker below is a named compare the 
 
 '''''
 
-[[sec-288-smc_decode_hole_test]]
-===== 288 `smc_decode_hole_test`
+[[sec-287-smc_decode_hole_test]]
+===== 287 `smc_decode_hole_test`
 
 *Source Module*: `smc_decode_hole_test`
 
@@ -11988,8 +11987,8 @@ Drive `smc_cpu_reset_pulse_test_seq`. Each checker below is a named compare the 
 
 '''''
 
-[[sec-289-smc_zeroer_size_corners_test]]
-===== 289 `smc_zeroer_size_corners_test`
+[[sec-288-smc_zeroer_size_corners_test]]
+===== 288 `smc_zeroer_size_corners_test`
 
 *Source Module*: `smc_zeroer_size_corners_test`
 
@@ -12023,8 +12022,8 @@ Drive `smc_cpu_reset_pulse_test_seq`. Each checker below is a named compare the 
 
 '''''
 
-[[sec-290-smc_hang_detector_disable_test]]
-===== 290 `smc_hang_detector_disable_test`
+[[sec-289-smc_hang_detector_disable_test]]
+===== 289 `smc_hang_detector_disable_test`
 
 *Source Module*: `smc_hang_detector_disable_test`
 
@@ -12057,8 +12056,8 @@ Drive `smc_cpu_reset_pulse_test_seq`. Each checker below is a named compare the 
 
 '''''
 
-[[sec-291-smc_cpu_uncore_reset_test]]
-===== 291 `smc_cpu_uncore_reset_test`
+[[sec-290-smc_cpu_uncore_reset_test]]
+===== 290 `smc_cpu_uncore_reset_test`
 
 *Source Module*: `smc_cpu_uncore_reset_test`
 
@@ -12090,8 +12089,8 @@ Drive `smc_cpu_reset_pulse_test_seq`. Each checker below is a named compare the 
 
 '''''
 
-[[sec-292-smc_dma_backpressure_test]]
-===== 292 `smc_dma_backpressure_test`
+[[sec-291-smc_dma_backpressure_test]]
+===== 291 `smc_dma_backpressure_test`
 
 *Source Module*: `smc_dma_backpressure_test`
 
@@ -12128,8 +12127,8 @@ Drive `smc_cpu_reset_pulse_test_seq`. Each checker below is a named compare the 
 
 '''''
 
-[[sec-293-smc_i3c_private_write_test]]
-===== 293 `smc_i3c_private_write_test`
+[[sec-292-smc_i3c_private_write_test]]
+===== 292 `smc_i3c_private_write_test`
 
 *Source Module*: `smc_i3c_private_write_test`
 
@@ -12162,8 +12161,8 @@ Drive `smc_cpu_reset_pulse_test_seq`. Each checker below is a named compare the 
 
 '''''
 
-[[sec-243-smc_jtag_axi_shape_test]]
-===== 243 `smc_jtag_axi_shape_test`
+[[sec-242-smc_jtag_axi_shape_test]]
+===== 242 `smc_jtag_axi_shape_test`
 
 *Source Module*: `smc_jtag_axi_shape_test`
 
@@ -12200,8 +12199,8 @@ Drive `smc_jtag_axi_shape_test_seq` on the SEP_IN AXI sequencer; the JTAG legs g
 *Pass Criteria*: `CHK-JTAG-AXI-BACKPRESSURE`, `CHK-JTAG-AXI-BURSTS`, `CHK-JTAG-AXI-ERRORS` and `CHK-JTAG-AXI-PORT` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
-[[sec-295-smc_i2c_window_landing_test]]
-===== 295 `smc_i2c_window_landing_test`
+[[sec-294-smc_i2c_window_landing_test]]
+===== 294 `smc_i2c_window_landing_test`
 
 *Source Module*: `smc_i2c_window_landing_test`
 
@@ -12239,8 +12238,8 @@ Drive `smc_jtag_axi_shape_test_seq` on the SEP_IN AXI sequencer; the JTAG legs g
 
 '''''
 
-[[sec-296-smc_uart_window_landing_test]]
-===== 296 `smc_uart_window_landing_test`
+[[sec-295-smc_uart_window_landing_test]]
+===== 295 `smc_uart_window_landing_test`
 
 *Source Module*: `smc_uart_window_landing_test`
 
@@ -12586,8 +12585,8 @@ Every one carries an arm leg that must pass before its defect leg is scored.
 Without that, a stuck-at field or a dead probe would satisfy the defect leg for
 the wrong reason.
 
-[[sec-264-smc_filter_lock_window_test]]
-===== 264 `smc_filter_lock_window_test`
+[[sec-263-smc_filter_lock_window_test]]
+===== 263 `smc_filter_lock_window_test`
 
 *Source Module*: `smc_filter_lock_window_test`
 
@@ -12617,8 +12616,8 @@ Drive `smc_filter_lock_window_test_seq`. Each checker below is a named compare t
 *Pass Criteria*: expected to fail on current RTL; enrolled in `rtl_issue` with `expect_fail`, not in `all`. The weekly tier grades the recorded failure as PASS and turns red the week the lock window closes.
 '''''
 
-[[sec-294-smc_isolate_req_smc_lane_test]]
-===== 294 `smc_isolate_req_smc_lane_test`
+[[sec-293-smc_isolate_req_smc_lane_test]]
+===== 293 `smc_isolate_req_smc_lane_test`
 
 *Source Module*: `smc_isolate_req_smc_lane_test`
 
@@ -12647,8 +12646,8 @@ Drive `smc_isolate_req_smc_lane_test_seq`. Each checker below is a named compare
 
 *Pass Criteria*: expected to fail on current RTL; enrolled in `rtl_issue` with `expect_fail`, not in `all`. The weekly tier grades the recorded failure as PASS and turns red the week the clear is qualified by bit 0's byte enable and a written 0.
 '''''
-[[sec-162-smc_occp_dual_unsecure_boot_test]]
-===== 162 `smc_occp_dual_unsecure_boot_test`
+[[sec-161-smc_occp_dual_unsecure_boot_test]]
+===== 161 `smc_occp_dual_unsecure_boot_test`
 
 *Source Module*: `smc_occp_dual_unsecure_boot_test`
 
@@ -12698,8 +12697,8 @@ Held out of `all` on runtime (hours of wall clock per run). Enrolled in: `occp_r
 
 
 
-[[sec-163-smc_prod_rom_occp_ready_test]]
-===== 163 `smc_prod_rom_occp_ready_test`
+[[sec-162-smc_prod_rom_occp_ready_test]]
+===== 162 `smc_prod_rom_occp_ready_test`
 
 *Source Module*: `smc_prod_rom_occp_ready_test`
 
