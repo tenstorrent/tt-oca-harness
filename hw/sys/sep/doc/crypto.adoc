@@ -73,10 +73,10 @@ The integrator must instantiate the Adams Bridge working SRAMs outside SEP and
 connect them through the dedicated `abr_mem` request/response interface.
 For the memory interface and configuration requirements, see
 ifdef::backend-html5[]
-xref:ocah-integrator-guide:ROOT:smu.adoc#sep-memory-interfaces[SEP Memory Interfaces in the Integrator Guide].
+xref:ocah-integrator-guide:ROOT:smu-sep.adoc#sep-memory-interfaces[SEP Memory Interfaces in the Integrator Guide].
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-integrator-guide/latest/smu.html#sep-memory-interfaces[SEP Memory Interfaces in the Integrator Guide].
+https://tenstorrent.github.io/tt-oca-harness/ocah-integrator-guide/latest/smu-sep.html#sep-memory-interfaces[SEP Memory Interfaces in the Integrator Guide].
 endif::backend-pdf[]
 
 The `sep_crypto` module implements the integration layer, with

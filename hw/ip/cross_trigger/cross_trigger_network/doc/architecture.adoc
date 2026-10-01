@@ -71,6 +71,13 @@ twice, the second copy one wire-OR round trip after the first.
 
 === Cross Trigger Port (CTP)
 
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="ctn-cross-trigger-port-structure-figure"></span>
+++++
+endif::backend-html5[]
+
 OCAH supports a configurable number of CTPs, from 0 to 8, for a total number of
 up to 32 required GPIOs. These ports support both point-to-point and wire-OR
 cross trigger signaling modes.
@@ -118,6 +125,14 @@ The register interface for each CTP module is described in the
 
 ==== Wire-OR Mode
 
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="ctn-wire-or-port-behavior-figure"></span>
+<span id="ctn-wire-or-chiplet-connections-figure"></span>
+++++
+endif::backend-html5[]
+
 Wire-OR mode is a 1-wire cross trigger signaling scheme compatible with many
 existing cross triggering implementations. This scheme is very resource
 efficient, as it only requires a single pin per chiplet connected to the
@@ -156,6 +171,15 @@ endif::backend-pdf[]
 in the same architecture section.
 
 ==== Point-to-Point Mode
+
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="ctn-point-to-point-port-behavior-figure"></span>
+<span id="ctn-point-to-point-chiplet-connections-figure"></span>
+<span id="ctn-request-acknowledge-timing-figure"></span>
+++++
+endif::backend-html5[]
 
 Point-to-point mode utilizes a four-phase handshaking scheme to synchronize a
 cross trigger quickly and reliably between two chiplets without pulse
@@ -200,6 +224,13 @@ endif::backend-pdf[]
 in the Cross-Trigger Port architecture.
 
 === Cross Trigger Matrix (CTM)
+
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="ctn-cross-trigger-matrix-figure"></span>
+++++
+endif::backend-html5[]
 
 The CTM is a crossbar that aggregates and statically routes cross trigger pulses
 between various sources and sinks. Typical connections to the CTM include Core
@@ -436,6 +467,13 @@ cross-trigger network.
 2. *From Internal Source*: ctm_dst_req_i -> Internal CTP -> CTM ct_dst
 
 === Clock Stop Control
+
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="ctn-clock-stop-signals-table"></span>
+++++
+endif::backend-html5[]
 
 The `ctn_clock_stop_ctrl` module aggregates clock stop requests from multiple
 sources using a two-stage OR-tree architecture. The module separates CLA-only

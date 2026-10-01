@@ -46,6 +46,10 @@
   var BLOCK_ROWS = ['dtp', 'sep', 'smc', 'smu', 'aou'];
   var LINKABLE_ROWS = CHIP_ROWS.concat(BLOCK_ROWS);
 
+  // The name a block is shown under, where it differs from its flow. Queries,
+  // links and the published data keep the flow.
+  var BLOCK_NAMES = { dtp: 'DTP', sep: 'SEP', smc: 'SMC', smu: 'SMU', aou: 'AoU' };
+
   /**
    * Read a value from the page theme.
    * @param {string} name CSS custom property, e.g. "--oca-text".
@@ -154,7 +158,16 @@
   }
 
   /**
-   * Name one series for a heading, e.g. "dtp (uvm, vcs)".
+   * The name a block is shown under.
+   * @param {string} flow The block as the publisher names it.
+   * @return {string} Its BLOCK_NAMES entry, or the flow itself when it has none.
+   */
+  function blockName(flow) {
+    return Object.prototype.hasOwnProperty.call(BLOCK_NAMES, flow) ? BLOCK_NAMES[flow] : flow;
+  }
+
+  /**
+   * Name one series for a heading, e.g. "DTP (uvm, vcs)".
    *
    * Where the framework and simulator are absent, the block name stands alone.
    * @param {!Object} entry Any entry carrying the identity fields.
@@ -168,7 +181,7 @@
       .map(function (field) {
         return entry[field];
       });
-    return entry.flow + (ran.length ? ' (' + ran.join(', ') + ')' : '');
+    return blockName(entry.flow) + (ran.length ? ' (' + ran.join(', ') + ')' : '');
   }
 
   /**
@@ -255,7 +268,8 @@
   /**
    * Build one row of an overview table, naming the series and linking to its
    * block page.
-   * @param {string} name Block name, used when nothing was published for it.
+   * @param {string} name The block's flow as its table declares it, shown
+   *     through blockName() when nothing was published for it.
    * @param {?Object} dut The series' dut_status entry, or null when the block
    *     published none; every measurement then reads n/a.
    * @return {!HTMLTableRowElement} The populated row.
@@ -274,7 +288,7 @@
       link.textContent = seriesLabel(dut);
       td.appendChild(link);
     } else {
-      td.textContent = dut ? seriesLabel(dut) : name;
+      td.textContent = dut ? seriesLabel(dut) : blockName(name);
     }
     row.appendChild(td);
 
@@ -353,7 +367,9 @@
       .then(function (summary) {
         /**
          * Fill a table, giving a block one row per series it published. A
-         * block that published none still gets a row, reading n/a.
+         * series without a framework that reports tests stands for the whole
+         * block on its simulator and replaces the block's other series there.
+         * A block that published none still gets a row, reading n/a.
          * @param {!HTMLTableSectionElement} body The table body to fill.
          * @param {!Array<string>} names The blocks that table declares.
          */
@@ -366,9 +382,20 @@
               body.appendChild(summaryRow(name, null));
               return;
             }
-            series.forEach(function (dut) {
-              body.appendChild(summaryRow(name, dut));
-            });
+            var merged = series
+              .filter(function (dut) {
+                return !dut.framework && dut.tests_total > 0;
+              })
+              .map(function (dut) {
+                return dut.tool;
+              });
+            series
+              .filter(function (dut) {
+                return !dut.framework || merged.indexOf(dut.tool) === -1;
+              })
+              .forEach(function (dut) {
+                body.appendChild(summaryRow(name, dut));
+              });
           });
         }
 
@@ -1210,8 +1237,11 @@
         document.title = (wanted.flow ? seriesLabel(wanted) : 'Test') + ' — Test History';
         wrapEl.hidden = false;
 
+        var drawable = series.filter(function (entry) {
+          return (entry.runs || []).length && Object.keys(entry.tests || {}).length;
+        });
         var drawn = [];
-        series.forEach(function (entry) {
+        drawable.forEach(function (entry) {
           // Each series gets its own element, so several stack down the page
           // rather than one overwriting another.
           var host = chartEl;

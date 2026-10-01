@@ -26,6 +26,13 @@ The PTAP provides:
 
 == Configuration Parameters
 
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="ptap-configuration-parameters-table"></span>
+++++
+endif::backend-html5[]
+
 The PTAP is configured through feature enables for the optional instructions, TMP,
 IC_RESET slices and debug bridges, the IC_RESET slice types, the IDCODE and JTAG_CAPS
 values, and the JTAG2AXI pipeline depths.
