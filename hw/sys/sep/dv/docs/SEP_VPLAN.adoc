@@ -8003,6 +8003,14 @@ before the baseline, and a second CHK-ASSERT read after a seeded extra hold of
 0 to 15 system clocks. Each pass releases the main reset after the
 CHK-ISOLATION control, and the next pass's CHK-BASELINE proves both resets
 recovered.
+|<<sep_irq_ip_to_aggregator_test,`sep_irq_ip_to_aggregator_test`>>
+|Same as the cocotb procedure, over sixteen seeded passes by default
+(`+SEP_TEST_LOOPS`, `+SEP_SYSTEM_TEST_LOOPS`,
+`+SEP_IRQ_IP_TO_AGGREGATOR_TEST_LOOPS`). Each source's walk is graded under
+CHK-BASE, CHK-SET, CHK-ISO and CHK-CLR, and CHK-AGG requires all ten sources
+to pass all four. Each walk ends with `INTR_ENABLE` back at 0. The DMA hole
+write carries a seeded random word. Adds a fuse-sense-done check
+(CHK-FUSE-SENSE-DONE) and an OKAY check on every other access (CHK-CSR-RESP).
 |===
 
 === Regression Groups
