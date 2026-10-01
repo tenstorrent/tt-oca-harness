@@ -428,6 +428,14 @@ never when it was written.
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
 |Live remap plus outbound-filter drop.
+|`sep_fabric_outbound_remap_filter_walk_test`
+|no_cpu, +skip_fuse_sense
+|ocah_axi_vip
+|Every AP/STEE output-remap region, each paired with its own outbound-filter entry, at full 56-bit width: offsets O and ~O, windows holding, above, below and exactly at the remapped beat, and valid clear. The block-by-default filter grades the remapped address on every live beat.
+|`sep_fabric_inbound_filter_window_walk_test`
+|no_cpu, real PROD fuse sense
+|ocah_axi_vip
+|Every inbound-filter entry at full 56-bit START/END width, on live external reads of a staged CSR: inside the window OKAY with the value, outside DECERR without it.
 |`sep_reg_bit_bash_rand_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -444,6 +452,10 @@ never when it was written.
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
 |Scope is the sixteen programmable local-master regions ahead of the system-peripherals routing demux (`hw/sys/sep/doc/fabric.adoc`, "Address Remapping").
+|`sep_fabric_local_alias_offset_walk_test`
+|no_cpu, +skip_fuse_sense
+|ocah_axi_vip
+|Every local-master alias region at full 56-bit START/END/offset width. A hit sends the CPU-LSU beat to a 56-bit SMU-path target that one outbound-filter granule admits; a miss or valid clear returns the staged local word.
 |`sep_axi_order_sweep_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -750,10 +762,10 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_axi_smoke_test`, `sep_address_map_test` (`sep_cpu_ctrl` + one CSR per LSU-reachable block, including ABR and entropy pool)
 
 |Inbound filter (block-by-default, allow, `SEP_DBG`)
-|`sep_lcc_uvm_inbound_filter_gating_test`, `sep_fabric_inbound_filter_rule_matrix_test`. Firmware must keep CFG outside allow windows; the hardware applies the rules it is given and is correct as built.
+|`sep_lcc_uvm_inbound_filter_gating_test`, `sep_fabric_inbound_filter_rule_matrix_test`, `sep_fabric_inbound_filter_window_walk_test` (every entry, full 56-bit bounds). Firmware must keep CFG outside allow windows; the hardware applies the rules it is given and is correct as built.
 
 |Outbound filter / live remap
-|`sep_fabric_output_remap_datapath_proxy_test` (live); CSR bank on `sep_fabric_remap_filter_csr_bank_test`
+|`sep_fabric_output_remap_datapath_proxy_test` (live), `sep_fabric_outbound_remap_filter_walk_test` (every region and entry, full 56-bit width, valid pass-through); CSR bank on `sep_fabric_remap_filter_csr_bank_test`
 
 |CPU alias window (LSU + IFU)
 |`sep_cpu_ifu_lsu_alias_remap_matrix_test`
@@ -885,7 +897,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_lcc_demote_feat_ctrl_matrix_test` (`CHK-DBG-DISABLE`, `CHK-FUSE-DFT-DIS`). All eleven `dbg_disable` bits match the DTP gating ladder for the same `FEAT_CTRL` the cell just verified, across the whole demote matrix. `dft_secure` is Case 3 and `dfd` is Case 1. The DFT-inserted fuse-path ports are separate DUT outputs, not members of `dbg_disable`: `sep_fuse_dft_disable` is Case 3 AND `sep_fuse_dbg`, inverted; `smc_fuse_dft_disable` is Case 2 AND `smc_fuse_dbg`, inverted. The compose cell closes those two bits while Case 2 and Case 3 stay open.
 
 |Local-master alias remap datapath
-|`sep_fabric_local_alias_datapath_test`
+|`sep_fabric_local_alias_datapath_test`, `sep_fabric_local_alias_offset_walk_test` (every region, full 56-bit bounds and offset)
 
 |CSR reset / RW / RO / reserved
 |`sep_reg_bit_bash_rand_test`
@@ -5595,6 +5607,153 @@ behaviour and the JTAG read are graded on
 
 '''''
 
+[[sep_fabric_outbound_remap_filter_walk_test]]
+===== `sep_fabric_outbound_remap_filter_walk_test`
+
+*Phase*: 2
+
+*Bucket*: Fabric and remap
+
+*Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`
+
+*Source Module*: `sep_fabric_outbound_remap_filter_walk_test`
+
+*BFM / Model*: ocah_axi_vip (CPU-LSU master); `tb/sep_outbound_mbx.sv` (outbound responder: OKAY at any address); `seq_lib/sep_fabric_entry_walk_seq.py` (START/END readback model under the same-granule write-back rule of `filter_ctrl.rdl`)
+
+*Randomization*: RANDCFG — the seed selects the in-region beat, the offsets and the windows of every pair. Every region and every entry runs at each seed; `reseed = 2` adds a second seed in a regression.
+
+*Objective*: Every AP/STEE output-remap region and every outbound-filter entry translate and compare all 56 address bits on live traffic.
+
+*Test Coverage*: All 2 x 16 remap regions (`output_remap.rdl` offset[55:0], valid[63]) and all 32 outbound-filter entries (`filter_ctrl.rdl` start_addr[55:0], end_addr[55:0]). AP region r pairs with entry r and STEE region r with entry 16 + r. Each pair runs offset O (bit 55 clear) and then ~O, and each bound takes a value and its inverse, so every offset, START and END bit takes a 0->1 and a 1->0 step.
+
+*Test Procedure*:
+
+[arabic]
+. Program region r with offset O1, then enable only entry e with a random window that holds the remapped beat X1. A CPU-LSU read of the region answers OKAY.
+. Narrow the window to the one granule at X1: OKAY at X1, DECERR at the next granule of the same region.
+. Set START to the inverse of the first window's START (above X1): DECERR.
+. Program offset O2 = ~O1, so X2 is at or above 2^55. A window holding X2 answers OKAY; a window ending at the inverse of that END (below X2) answers DECERR; the granule at X2 answers OKAY.
+. Clear valid: the beat keeps its local address, outside the granule at X2, and answers DECERR.
+. Restore the entry and the region to reset.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-WALK-READBACK
+|Every START/END (56 bits), FILTER_CONFIG and remap ATTRS write reads back as the readback model says (`filter_ctrl.rdl` start_addr: rounded write-back only when START and END share a granule).
+|CHK-WALK-ALLOW
+|A window that holds the remapped beat answers OKAY. The filter blocks by default and only this entry is enabled, so the OKAY places the 56-bit remapped address inside the window.
+|CHK-WALK-EXACT
+|The one granule at the predicted address `{offset[55:IdxStart], adjusted[IdxStart-1:0]}` (`output_remap.rdl` offset, region granularity; `hw/sys/sep/doc/fabric.adoc`: the output remap replaces the address with the region offset) answers OKAY and the next granule answers DECERR, so the remap produced exactly the predicted address.
+|CHK-WALK-ABOVE
+|A window whose START is above the beat answers DECERR.
+|CHK-WALK-BELOW
+|A window whose END is below the beat answers DECERR.
+|CHK-WALK-PASSTHRU
+|With valid clear the beat passes through untranslated (`output_remap.rdl` valid: "if clear, they pass through with their address unchanged") and misses the granule at the translated address.
+|===
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+'''''
+
+[[sep_fabric_inbound_filter_window_walk_test]]
+===== `sep_fabric_inbound_filter_window_walk_test`
+
+*Phase*: 2
+
+*Bucket*: Fabric and remap
+
+*Run mode*: `no_cpu` (`lsu_stub_all_live`), real PROD fuse sense (`sep_debug=0`, value-checked against the lifecycle golden)
+
+*Source Module*: `sep_fabric_inbound_filter_window_walk_test`
+
+*BFM / Model*: ocah_axi_vip (CPU-LSU master and the external SMN master); `seq_lib/sep_fabric_entry_walk_seq.py` (START/END readback model)
+
+*Randomization*: RANDCFG — the seed selects the staged value and every window. Every entry runs at each seed; `reseed = 2` adds a second seed in a regression.
+
+*Objective*: Every inbound-filter entry compares all 56 address bits on live external traffic.
+
+*Test Coverage*: All 16 inbound-filter entries (`filter_ctrl.rdl` start_addr[55:0], end_addr[55:0]). The target is a pure-RW CSR (`SEP_SW_DEBUG`) whose address has zero upper bits, so the upper bound bits [55:32] decide each response.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up PROD with the inbound filter active. Disable every entry and stage a value in the target CSR from the CPU-LSU master.
+. For each entry, enable only that entry and program: a window [S, E] holding the target, then [S, ~E] (both END values at or above the target); START S_B and ~S_B (both above the target); a window ending below the target; the one granule at the target.
+. After each, the external master reads the target (and, for the granule, the next granule).
+. Restore the entry to reset.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-WALK-READBACK
+|Every START/END (56 bits) and FILTER_CONFIG write reads back as the readback model says.
+|CHK-WALK-ALLOW
+|A window holding the target answers OKAY with the staged value (the read reached the CSR).
+|CHK-WALK-EXACT
+|The granule at the target answers OKAY with the staged value; the next granule answers DECERR.
+|CHK-WALK-ABOVE
+|A window starting above the target answers DECERR and does not return the staged value (`hw/ip/axi_filter/doc/index.adoc`, Blocked Transactions).
+|CHK-WALK-BELOW
+|A window ending below the target answers DECERR and does not return the staged value.
+|===
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+'''''
+
+[[sep_fabric_local_alias_offset_walk_test]]
+===== `sep_fabric_local_alias_offset_walk_test`
+
+*Phase*: 2
+
+*Bucket*: Fabric and remap
+
+*Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`
+
+*Source Module*: `sep_fabric_local_alias_offset_walk_test`
+
+*BFM / Model*: ocah_axi_vip (CPU-LSU master); `tb/sep_outbound_mbx.sv` (outbound responder: OKAY at any address)
+
+*Randomization*: RANDCFG — the seed selects every target, bound and the staged word. Every region runs at each seed; `reseed = 2` adds a second seed in a regression.
+
+*Objective*: Every local-master alias region matches and translates with all 56 address bits on live traffic.
+
+*Test Coverage*: All 16 alias regions (`alias_remap.rdl` start_addr[55:12], end_addr[55:12], offset[55:12], valid[63]). The source beat is a staged START_ADDR low word of the last inbound-filter entry, which stays disabled. A hit targets an address at or above `0x1_0000_0000`, which the routing demux sends (`hw/sys/sep/doc/fabric.adoc`) to the SMU path and through the block-by-default outbound filter.
+
+*Test Procedure*:
+
+[arabic]
+. Stage the source word from the CPU-LSU master.
+. For each region: with offset O, then ~O, the region starts at the source page and ends at E, then ~E (both above the page); one outbound entry admits only the granule at the predicted target. Read the source beat and the next beat.
+. Clear valid with the hit bounds: read the source beat.
+. Program bounds starting at S, then ~S (both above the source page): read the source beat.
+. Restore the region and the entry to reset.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-ALIAS-WALK-READBACK
+|Every alias START/END/ATTRS and outbound-filter write reads back as programmed (56 bits).
+|CHK-ALIAS-WALK-HIT
+|The translated beat answers OKAY in the one granule at `{offset[55:12] + addr[55:12], addr[11:0]}` and DECERR one granule up, so the alias adder produced exactly that 56-bit address.
+|CHK-ALIAS-WALK-MISS
+|A region that starts above the source page does not translate: OKAY with the staged word.
+|CHK-ALIAS-WALK-VALID
+|With valid clear the region does not translate: OKAY with the staged word.
+|===
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+'''''
+
 [[sep_esrc_ht_watermark_arming_test]]
 ===== `sep_esrc_ht_watermark_arming_test`
 
@@ -8041,11 +8200,6 @@ constraint is not an open defect.
 
 |Scratch bank register count (spec vs RTL)
 |`hw/sys/sep/doc/cpu.adoc` requires "two sets of 16 x 32-bit scratch register banks". `hw/sys/sep/regs/blocks/sep_scratch/sep_scratch.rdl` declares `SCRATCH[8]`, so each bank implements eight registers, not sixteen. The reset-domain behaviour of the banks that exist is proven; the count is not, and no test asserts it. This row is the record of the difference, not a claimed contract. Do not XFAIL.
-
-|AP/STEE output-remap attributes and pass-through (spec)
-|`hw/sys/sep/doc/fabric.adoc` gives the AP/STEE remappers a cacheable attribute and says unprogrammed regions are transparent pass-throughs. `hw/ip/output_remap/rtl/output_remap.sv` has neither a valid bit nor a cacheable bit and rewrites the address unconditionally, so an unprogrammed region zeroes the upper address bits instead of passing through. The vehicle on this bank is `sep_fabric_output_remap_datapath_proxy_test`, which proves a programmed window translates and that a beat outside it is refused; the pass-through behaviour of an unprogrammed region has no checker, so this row is the record of the gap and not a claimed contract. Do not XFAIL.
-
-This row is about the AP/STEE bank only. The local-master aliaser is a different block: `hw/ip/axi_alias_remap/rtl/axi_alias_remap.sv` carries `region_valid` per region, drives the outbound cache bits from the region on a hit, and passes an address through unchanged when no region hits. `sep_fabric_local_alias_datapath_test` covers the enable with `CHK-VALID-GATE`.
 
 |Class 2 scan-root count (spec)
 |`hw/sys/sep/doc/attack_countermeasures.adoc` states "exactly 10" Class 2 scan roots. The RTL instantiates an eleventh on the entropy-pool EDN leg that is absent from the list, and nothing lints the manifest against the RTL. That manifest is the sole input deciding what is never scan-dumpable.
