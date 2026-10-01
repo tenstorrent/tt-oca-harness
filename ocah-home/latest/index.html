@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Open Chiplet Atlas Harness (OCAH) :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>Open Chiplet Atlas (OCA) Harness :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../_/css/site.css">
     <link rel="stylesheet" href="../../_/css/extra.css">
@@ -183,11 +183,11 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<h1 class="page">Open Chiplet Atlas Harness (OCAH)</h1>
+<h1 class="page">Open Chiplet Atlas (OCA) Harness</h1>
 <div id="preamble">
 <div class="sectionbody">
 <div class="paragraph">
-<p>The Open Chiplet Atlas Harness (OCAH) is an OCA architecture compliant, open-source chiplet
+<p>The Open Chiplet Atlas (OCA) Harness is an OCA architecture compliant, open-source chiplet
 framework: a reusable implementation vehicle for the Open Chiplet Atlas
 (OCA) standard. It packages the common, non-differentiating infrastructure
 every chiplet needs&#8201;&#8212;&#8201;security, boot, system management, debug, test, and
@@ -206,7 +206,7 @@ value-differentiating application logic.</p>
 <i class="fa icon-note" title="Note"></i>
 </td>
 <td class="content">
-OCAH is the <strong>Harness</strong> pillar of the wider
+OCA Harness is the <strong>Harness</strong> pillar of the wider
 <a href="https://www.openchipletatlas.org">Open Chiplet Atlas (OCA)</a> ecosystem,
 alongside the OCA Architecture specification and the OCA Compliance program.
 </td>
@@ -220,7 +220,7 @@ alongside the OCA Architecture specification and the OCA Compliance program.
 <div class="sectionbody">
 <div class="paragraph">
 <p>The OCA Harness ecosystem itself spans a small family of Tenstorrent-owned
-repositories, each covering a distinct part of building and using OCAH:</p>
+repositories, each covering a distinct part of building and using OCA Harness:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -242,13 +242,13 @@ repositories, each covering a distinct part of building and using OCAH:</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">tt-oca-harness</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Tenstorrent</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent/tt-oca-harness">tenstorrent/tt-oca-harness</a></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">This repository: OCAH&#8217;s RTL, documentation, and register/IP-XACT tooling</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">This repository: OCA Harness&#8217;s RTL, documentation, and register/IP-XACT tooling</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">tt-oca-harness-aou</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Tenstorrent</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent/tt-oca-harness-aou">tenstorrent/tt-oca-harness-aou</a></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI-over-UCIe Bridge (AoU) RTL, a component of OCAH&#8217;s RTL collateral</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI-over-UCIe Bridge (AoU) RTL, a component of OCA Harness&#8217;s RTL collateral</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">tt-oca-harness-model</p></td>
@@ -261,12 +261,12 @@ repositories, each covering a distinct part of building and using OCAH:</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Tenstorrent</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent/tt-oca-manifest">tenstorrent/tt-oca-manifest</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">OCA boot manifest format specification and producer/consumer tooling for
-the secure boot images OCAH&#8217;s SEP subsystem loads</p></td>
+the secure boot images OCA Harness&#8217;s SEP subsystem loads</p></td>
 </tr>
 </tbody>
 </table>
 <div class="paragraph">
-<p>OCAH also reuses third-party open-source IP rather than reimplementing it.
+<p>OCA Harness also reuses third-party open-source IP rather than reimplementing it.
 Tenstorrent generally maintains a fork of each such dependency to support
 coordinated development, keeps it synchronized with the upstream project, and
 contributes suitable changes back upstream where possible. The exact
@@ -287,7 +287,7 @@ explains how Bender materializes and updates them.</p>
 <th class="tableblock halign-left valign-top">Package</th>
 <th class="tableblock halign-left valign-top">Upstream</th>
 <th class="tableblock halign-left valign-top">Repository</th>
-<th class="tableblock halign-left valign-top">Role in OCAH</th>
+<th class="tableblock halign-left valign-top">Role in OCA Harness</th>
 </tr>
 </thead>
 <tbody>
@@ -302,7 +302,7 @@ explains how Bender materializes and updates them.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PULP Platform</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent/tt-common_verification">tenstorrent/tt-common_verification</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Vendored so PULP-derived dependencies resolve a consistent local copy; not
-directly used by OCAH</p></td>
+directly used by OCA Harness</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Common Cells</p></td>
@@ -333,20 +333,20 @@ directly used by OCAH</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PULP Platform</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent-forks/unbent">tenstorrent-forks/unbent</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">AXI bus-error-unit wrapper for chiplet integrators; not instantiated in
-OCAH&#8217;s own RTL</p></td>
+OCA Harness&#8217;s own RTL</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">AXI Stream</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PULP Platform</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent/tt-axi_stream">tenstorrent/tt-axi_stream</a></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Compiled into iDMA&#8217;s generated backend bundle; OCAH&#8217;s AXI-only DMA
+<td class="tableblock halign-left valign-top"><p class="tableblock">Compiled into iDMA&#8217;s generated backend bundle; OCA Harness&#8217;s AXI-only DMA
 configuration does not instantiate it</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">OBI</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PULP Platform</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent/tt-obi">tenstorrent/tt-obi</a></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Supplies the types iDMA&#8217;s OBI backend headers reference; OCAH does not
+<td class="tableblock halign-left valign-top"><p class="tableblock">Supplies the types iDMA&#8217;s OBI backend headers reference; OCA Harness does not
 instantiate an OBI bus</p></td>
 </tr>
 <tr>
@@ -417,16 +417,16 @@ the repository under
 <div class="ulist">
 <ul>
 <li>
-<p><a href="features.html" class="xref page">Feature Overview</a>&#8201;&#8212;&#8201;what OCAH provides today</p>
+<p><a href="features.html" class="xref page">Feature Overview</a>&#8201;&#8212;&#8201;what OCA Harness provides today</p>
 </li>
 <li>
-<p><a href="motivation.html" class="xref page">Motivation</a>&#8201;&#8212;&#8201;why OCAH exists</p>
+<p><a href="motivation.html" class="xref page">Motivation</a>&#8201;&#8212;&#8201;why OCA Harness exists</p>
 </li>
 <li>
-<p><a href="use-cases.html" class="xref page">Use Cases</a>&#8201;&#8212;&#8201;how adopters use OCAH in practice</p>
+<p><a href="use-cases.html" class="xref page">Use Cases</a>&#8201;&#8212;&#8201;how adopters use OCA Harness in practice</p>
 </li>
 <li>
-<p><a href="license.html" class="xref page">License</a>&#8201;&#8212;&#8201;OCAH&#8217;s open-source license</p>
+<p><a href="license.html" class="xref page">License</a>&#8201;&#8212;&#8201;OCA Harness&#8217;s open-source license</p>
 </li>
 </ul>
 </div>
@@ -437,7 +437,7 @@ the repository under
 <div class="sectionbody">
 <div class="dlist">
 <dl>
-<dt class="hdlist1"><a href="../../ocah-starting/latest/index.html" class="xref page">Starting with OCAH</a></dt>
+<dt class="hdlist1"><a href="../../ocah-starting/latest/index.html" class="xref page">Starting with OCA Harness</a></dt>
 <dd>
 <p>How to get started
 with and contribute to the project</p>
@@ -445,11 +445,11 @@ with and contribute to the project</p>
 <dt class="hdlist1"><a href="../../ocah-docs/latest/index.html" class="xref page">Technical Reference Manual</a></dt>
 <dd>
 <p>Architecture and
-register-level detail for every OCAH subsystem</p>
+register-level detail for every OCA Harness subsystem</p>
 </dd>
 <dt class="hdlist1"><a href="../../ocah-integrator-guide/latest/index.html" class="xref page">Integrator Guide</a></dt>
 <dd>
-<p>Bringing OCAH
+<p>Bringing OCA Harness
 into your own SoC</p>
 </dd>
 <dt class="hdlist1"><a href="../../ocah-programmer-guide/latest/index.html" class="xref page">Programmer&#8217;s Guide</a></dt>

@@ -188,11 +188,11 @@
 <div id="preamble">
 <div class="sectionbody">
 <div class="paragraph">
-<p>The following use cases illustrate how OCAH provides value as a
+<p>The following use cases illustrate how OCA Harness provides value as a
 system-level framework for reusable chiplet infrastructure. Rather than
 focusing on individual internal blocks, these use cases highlight the
 recurring integration, boot, security, management, and serviceability
-problems that OCAH is intended to solve across a broad range of
+problems that OCA Harness is intended to solve across a broad range of
 chiplet-based systems.</p>
 </div>
 </div>
@@ -201,7 +201,7 @@ chiplet-based systems.</p>
 <h2 id="secure-chiplet-boot-and-chain-of-trust"><a class="anchor" href="#secure-chiplet-boot-and-chain-of-trust"></a><a class="link" href="#secure-chiplet-boot-and-chain-of-trust">Secure Chiplet Boot and Chain of Trust</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>OCAH provides a reusable foundation for secure chiplet initialization,
+<p>OCA Harness provides a reusable foundation for secure chiplet initialization,
 including boot sequencing, authentication, firmware loading, and the
 establishment of a trusted execution context before application logic is
 released.</p>
@@ -215,7 +215,7 @@ boot process and device configuration and performing attestation using
 public key infrastructure.</p>
 </div>
 <div class="paragraph">
-<p>This is one of the most important adoption use cases for OCAH because
+<p>This is one of the most important adoption use cases for OCA Harness because
 secure boot is required in nearly every deployable chiplet system, yet it
 is also one of the most repetitive and integration-sensitive pieces of
 infrastructure.</p>
@@ -226,7 +226,7 @@ infrastructure.</p>
 <h2 id="system-bring-up-and-operational-management"><a class="anchor" href="#system-bring-up-and-operational-management"></a><a class="link" href="#system-bring-up-and-operational-management">System Bring-up and Operational Management</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>OCAH supports the non-application control functions needed to bring a
+<p>OCA Harness supports the non-application control functions needed to bring a
 chiplet or multi-chiplet package into operation and keep it there. This
 includes initialization of platform resources, configuration of
 management interconnects, power and reset coordination, telemetry
@@ -253,10 +253,10 @@ fuse sensing and distribution.</p>
 <h2 id="interoperable-chiplet-integration"><a class="anchor" href="#interoperable-chiplet-integration"></a><a class="link" href="#interoperable-chiplet-integration">Interoperable Chiplet Integration</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>A central OCAH use case is to let adopters integrate application
+<p>A central OCA Harness use case is to let adopters integrate application
 chiplets into an OCA-based system without having to build all
 surrounding framework logic themselves. By providing common
-infrastructure for management, security, debug, and communication, OCAH
+infrastructure for management, security, debug, and communication, OCA Harness
 reduces the amount of custom glue logic needed at integration time and
 makes it easier to combine chiplets from different teams or vendors
 within a consistent system architecture.</p>
@@ -274,13 +274,13 @@ the auxiliary transport.</p>
 <div class="sectionbody">
 <div class="paragraph">
 <p>In many chiplet systems, not every chiplet owns an independent external
-boot source or complete standalone management stack. OCAH enables a
+boot source or complete standalone management stack. OCA Harness enables a
 system-level model in which one chiplet or management endpoint can
 provision firmware, coordinate initialization, and establish runtime
 policy across other chiplets.</p>
 </div>
 <div class="paragraph">
-<p>This makes OCAH especially useful in asymmetric systems where different
+<p>This makes OCA Harness especially useful in asymmetric systems where different
 chiplets have different boot roles, capabilities, and trust
 responsibilities.</p>
 </div>
@@ -290,7 +290,7 @@ responsibilities.</p>
 <h2 id="cryptographic-services"><a class="anchor" href="#cryptographic-services"></a><a class="link" href="#cryptographic-services">Cryptographic Services</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>OCAH provides a physically isolated execution environment for
+<p>OCA Harness provides a physically isolated execution environment for
 cryptographic operations through the SEP subsystem. Secure key services,
 hardware-accelerated symmetric and asymmetric cryptography, and a True
 Random Number Generator (TRNG) are available to both SEP firmware and
@@ -300,7 +300,7 @@ the rest of the system.</p>
 <p>User authentication is another service the framework offers: the
 authentication result can be tied to the secret key derivation so that
 bypassing authentication renders the system unusable. These capabilities
-allow adopters to build security features on top of OCAH without
+allow adopters to build security features on top of OCA Harness without
 provisioning their own cryptographic infrastructure.</p>
 </div>
 </div>
@@ -309,7 +309,7 @@ provisioning their own cryptographic infrastructure.</p>
 <h2 id="debug-test-and-serviceability"><a class="anchor" href="#debug-test-and-serviceability"></a><a class="link" href="#debug-test-and-serviceability">Debug, Test, and Serviceability</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>OCAH is also intended to support the practical needs of development and
+<p>OCA Harness is also intended to support the practical needs of development and
 production beyond nominal runtime operation. Common debug and test
 access, manufacturing-oriented initialization flows, and service
 interfaces for fault handling and recovery are all use cases that
@@ -319,7 +319,7 @@ benefit from a shared framework.</p>
 <p>Chiplet status reporting is provided through a dedicated UART-based log
 engine: internally generated log information from different in-package
 agents is forwarded to the primary SMC and sent out via its UART port.
-Providing these mechanisms as part of OCAH improves consistency across
+Providing these mechanisms as part of OCA Harness improves consistency across
 chiplets and reduces the effort needed to make a design usable in
 validation, bring-up, and field support.</p>
 </div>
@@ -329,7 +329,7 @@ validation, bring-up, and field support.</p>
 <h2 id="reference-platform-for-ecosystem-adoption"><a class="anchor" href="#reference-platform-for-ecosystem-adoption"></a><a class="link" href="#reference-platform-for-ecosystem-adoption">Reference Platform for Ecosystem Adoption</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Beyond any single chiplet implementation, OCAH serves as a reference
+<p>Beyond any single chiplet implementation, OCA Harness serves as a reference
 framework for organizations adopting OCA. It gives designers a concrete
 starting point for how boot, security, management, and interoperability
 infrastructure can be realized in practice, which lowers the barrier to
