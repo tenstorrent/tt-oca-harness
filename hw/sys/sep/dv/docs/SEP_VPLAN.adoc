@@ -655,7 +655,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |`sep_sec_dis_override_test`
 |no_cpu, real fuse sense
 |ocah_axi_vip
-|A match is reachable because `tb_top` binds `SEP_SEC_DISABLE_TOKEN` to SHA-256 of the all-zero token. `CHK-OVR-ALONE` requires the `sep_reset_n` override, before any match, to release the sense-gated reset and leave feature control closed. `CHK-SENSE-GATED-RESET` requires that the match leaves the reset held. `CHK-FEAT-PRESENSE` requires that the match opens feature control before sensing finishes. `CHK-OVR-AFTER` requires the same override inputs to release and re-hold the reset after the match. `CHK-MAP-OPEN` requires an OKAY `LC_STATE` shadow-map read in that window. The map gate input is tied off, so that read returns an error and the leaf fails there.
+|A match is reachable because `tb_top` binds `SEP_SEC_DISABLE_TOKEN` to SHA-256 of the all-zero token. `CHK-OVR-ALONE` requires the `sep_reset_n` override, before any match, to release the sense-gated reset and leave feature control closed. `CHK-SENSE-GATED-RESET` requires that the match leaves the reset held. `CHK-FEAT-PRESENSE` requires that the match opens feature control before sensing finishes. `CHK-OVR-AFTER` requires the same override inputs to release and re-hold the reset after the match. `CHK-MAP-OPEN` requires an OKAY `LC_STATE` shadow-map read in that window. `CHK-SENSE-STUCK` requires that the match stops the sense. After a `rst_ni` pulse with the token kept, the `CHK-RETAIN-*` checkers require SEC_DIS to stay active, sense to stay stopped, the map read to return OKAY and the override to release the reset. `CHK-DROP` then clears SEC_DIS, and `CHK-SENSE-CONTROL` requires a full sense after a second pulse to finish inside the stuck window.
 |`sep_sec_dis_reset_reach_test`
 |no_cpu, real fuse sense
 |ocah_axi_vip, `jtag_ic_reset_reg`
@@ -880,7 +880,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_efuse_km_public_id_test`. The sensed `SEP_CHIPLET_ID`, `SEP_SIP_ID` and `SEP_SYS_ID` are compared with the staged image on the Key Manager's OTP input (`{~id, id}`) and in the 48 KMCSR words KM firmware reads. The two read-lock domains are graded apart: an eFuse read lock withholds the shadow read and leaves both KM views, and `OTP_READ_LOCK` zeroes the KMCSR words and leaves the input. Delivery under `secure_tm`, `OTP_READ_LOCK_COLD` for these fields, and identity-key derivation from them are not claimed.
 
 |SEC_DIS override
-|`sep_sec_dis_override_test`. `CHK-OVR-ALONE` grades the `sep_reset_n` override before any match: reset releases and feature control stays closed (`hw/sys/sep/doc/security_disable.adoc`). `CHK-SENSE-GATED-RESET` grades that the match leaves the reset held. `CHK-FEAT-PRESENSE` grades that the match opens feature control before sensing finishes (`hw/sys/sep/doc/token_processing.adoc`). `CHK-OVR-AFTER` grades the same override inputs after the match. `CHK-MAP-OPEN` requires an OKAY `LC_STATE` shadow-map read while sensing is still open. The map gate input is tied off, so that read returns an error and the leaf fails there. Post-sense match / mismatch / restore stays. The leaf drives the SEP override inputs and reads the reset probes. `sep_sec_dis_reset_reach_test` grades the bus access and the IC_RESET TDR write.
+|`sep_sec_dis_override_test`. `CHK-OVR-ALONE` grades the `sep_reset_n` override before any match: reset releases and feature control stays closed (`hw/sys/sep/doc/security_disable.adoc`). `CHK-SENSE-GATED-RESET` grades that the match leaves the reset held. `CHK-FEAT-PRESENSE` grades that the match opens feature control before sensing finishes (`hw/sys/sep/doc/token_processing.adoc`). `CHK-OVR-AFTER` grades the same override inputs after the match. `CHK-MAP-OPEN` requires an OKAY `LC_STATE` shadow-map read while sensing is still open. `CHK-SENSE-STUCK` grades that the match stops the sense. The `CHK-RETAIN-*` checkers grade the recovery reset: the token digest survives `rst_ni`, so SEC_DIS, the open map and the override still work and sense stays stopped. `CHK-DROP` and `CHK-SENSE-CONTROL` clear SEC_DIS and grade a full sense after a second reset. Post-sense match / mismatch / restore stays. The leaf drives the SEP override inputs and reads the reset probes. `sep_sec_dis_reset_reach_test` grades the bus access and the IC_RESET TDR write.
 
 |eFuse set-only (anti-rollback)
 |`sep_efuse_set_only_monotonicity_test`. Set-only OR-merge is walked on the six non-`LOCK` set-only rows and on both `LOCK` RDL windows (`LOCKS` word 0, `LOCKS` word 1, `LOCKS_SPARE`) after those other rows. SW-writable rows, `REQUIRED_SIGNERS` included, overwrite and then a write of 0 clears.
@@ -6855,9 +6855,9 @@ error path works.
 
 *Randomization*: RAND-NONE — directed match / mismatch / restore.
 
-*Objective*: A match is reachable because `tb_top` binds `SEP_SEC_DISABLE_TOKEN` to SHA-256 of the all-zero token. `hw/sys/sep/doc/security_disable.adoc` says a match does not release the SEP reset, and that the IC_RESET `sep_reset_n` override is an independent step: the override alone releases the reset and leaves life-cycle control closed. `hw/sys/sep/doc/token_processing.adoc` says the match opens feature control without waiting for fuse sensing. `hw/sys/sep/doc/reset_controller.adoc` records the override. This leaf drives the SEP override inputs and reads the reset probes and `FEAT_CTRL`. The bus access and the IC_RESET TDR write are `sep_sec_dis_reset_reach_test`. A read of the `LC_STATE` shadow-map word while SEC_DIS is active and sensing is still open must return AXI OKAY. The map gate input is tied off, so that read returns an error and the leaf fails there.
+*Objective*: A match is reachable because `tb_top` binds `SEP_SEC_DISABLE_TOKEN` to SHA-256 of the all-zero token. `hw/sys/sep/doc/security_disable.adoc` says a match does not release the SEP reset, and that the IC_RESET `sep_reset_n` override is an independent step: the override alone releases the reset and leaves life-cycle control closed. `hw/sys/sep/doc/token_processing.adoc` says the match opens feature control without waiting for fuse sensing. `hw/sys/sep/doc/reset_controller.adoc` records the override. This leaf drives the SEP override inputs and reads the reset probes and `FEAT_CTRL`. The bus access and the IC_RESET TDR write are `sep_sec_dis_reset_reach_test`. A read of the `LC_STATE` shadow-map word while SEC_DIS is active and sensing is still open must return AXI OKAY. A match while sensing is still open stops the sense, so `sep_fuse_sense_done_o` stays 0. SEC_DIS is for a part whose sense is already broken, and the recovery flow is a reset after the token. `hw/sys/sep/doc/security_disable.adoc` says the token state is retained across reset, so after that reset SEC_DIS is still active, sense stays stopped, the map stays open and the override still releases the reset. A mismatch token then clears SEC_DIS, and a second reset runs a full sense.
 
-*Test Coverage*: Security-disable match, mismatch, restore, override-before-match, sense-gated reset hold, pre-sense feature control, the same override inputs after the match, and the pre-sense shadow-map read.
+*Test Coverage*: Security-disable match, mismatch, restore, override-before-match, sense-gated reset hold, pre-sense feature control, the same override inputs after the match, the pre-sense shadow-map read, the sense stopped by the match, SEC_DIS kept across `rst_ni`, and a full sense after SEC_DIS clears.
 
 *Test Procedure*:
 
@@ -6868,7 +6868,11 @@ error path works.
 . Write the all-zero token before `sep_fuse_sense_done_o`. Match must assert, and `sep_cpu_reset_n_o` and `dbg_sep_reset_n_o` must stay 0 while sense is still open (`ext_boot_seq_done_i` is already 1, so sense is the only held term). `FEAT_CTRL` equals the all-ones override golden.
 . Drive the override again. Both reset probes read 1 while sense is still 0 and `sec_dis` is 1. Clear both inputs. Both probes read 0.
 . Read the `LC_STATE` shadow-map word while `sec_dis=1` and sense is still 0. The checker requires AXI OKAY.
-. Wait for sense-done. Token `1` mismatches.
+. Watch 4000 cycles. Sense stays 0 and both reset probes stay 0.
+. Pulse `rst_ni` with the token kept. `sec_dis` stays 1 and `FEAT_CTRL` stays all ones, both reset probes stay 0, the `LC_STATE` read returns AXI OKAY, the override releases and re-holds the reset, and sense stays 0 for another 4000 cycles.
+. Token `1` mismatches and `sec_dis` drops to 0.
+. Pulse `rst_ni` again. Sense finishes in fewer than 4000 cycles, the sensed shadow matches the staged image, and both reset probes read 1.
+. Token `1` mismatches.
 . On a later match, `sec_dis` asserts and `FEAT_CTRL` follows feat_ctrl_expected(..., sec_dis=1).
 
 *Checkers*:
@@ -6885,7 +6889,23 @@ error path works.
 |CHK-OVR-AFTER
 |With `sec_dis=1` and `sep_fuse_sense_done_o=0`, `jtag_sep_reset_n_ovrd_i=1` and `jtag_sep_reset_n_val_i=1` make both reset probes read 1. Clearing the override makes both probes read 0 while sense is still 0. The IC_RESET TDR write is `sep_sec_dis_reset_reach_test`.
 |CHK-MAP-OPEN
-|With `sec_dis=1` and `sep_fuse_sense_done_o=0`, a read of the `LC_STATE` shadow-map word returns AXI OKAY. The map gate input is tied off, so the read returns an error and this checker fails.
+|With `sec_dis=1` and `sep_fuse_sense_done_o=0`, a read of the `LC_STATE` shadow-map word returns AXI OKAY.
+|CHK-SENSE-STUCK
+|After that match, `sep_fuse_sense_done_o` stays 0 for 4000 cycles, and both reset probes stay 0.
+|CHK-RETAIN-FEAT
+|After a `rst_ni` pulse with the token kept, `sec_dis=1` and `FEAT_CTRL` equals the all-ones golden while `sep_fuse_sense_done_o=0`. `hw/sys/sep/doc/security_disable.adoc`: the token state is retained across reset.
+|CHK-RETAIN-RESET
+|In that window, `ext_boot_seq_done_i=1` and both reset probes stay 0.
+|CHK-RETAIN-MAP-OPEN
+|In that window, a read of the `LC_STATE` shadow-map word returns AXI OKAY.
+|CHK-RETAIN-OVR
+|In that window, the override inputs release both reset probes to 1, and clearing them returns both to 0.
+|CHK-RETAIN-STUCK
+|In that window, `sep_fuse_sense_done_o` stays 0 for 4000 cycles, and both reset probes stay 0.
+|CHK-DROP
+|Token `1` returns `SEC_DISABLE_TOKEN_MATCH=0x2a`, and `sec_dis` drops to 0.
+|CHK-SENSE-CONTROL
+|After a second `rst_ni` pulse with `sec_dis=0`, `sep_fuse_sense_done_o` rises in fewer than 4000 cycles. This is the live control for both stuck windows. The sensed shadow then matches the staged image, and both reset probes read 1.
 |CHK-MISMATCH
 |Written token=1 returns `SEC_DISABLE_TOKEN_MATCH=0x2a`.
 |CHK-NO-OVERRIDE
@@ -6902,7 +6922,7 @@ error path works.
 
 *Pass Criteria*: Every named checker PASSes. `UVM_ERROR` is 0.
 
-*Current status*: red on the current RTL. `CHK-MAP-OPEN` fails, and every other named checker PASSes. See <<known-limitations>>.
+*Current status*: green.
 
 '''''
 
@@ -8261,9 +8281,6 @@ constraint is not an open defect.
 
 |Entropy pool pointer fault, PIC source 39 (hardware not built)
 |`sep_internal_interrupts[38]` is reserved for the entropy pool FIFO's pointer-integrity error. The check is not built in this configuration, so the source is tied to zero, can never assert, and no vehicle grades it. `interrupts.adoc` documents the same. A built check is level-sensitive with no write-one-to-clear, so firmware must mask the source or scrub the pool rather than acknowledge it.
-
-|Shadow map before sense with SEC_DIS active (hardware)
-|`sep_sec_dis_override_test` is red. With `sec_dis=1` and `sep_fuse_sense_done_o=0`, a read of the `LC_STATE` shadow-map word returns an error response instead of AXI OKAY, because the map gate input is tied off. `CHK-MAP-OPEN` fails, and every other checker of the leaf PASSes. The leaf stays red while that input is tied off.
 
 |Write burst past a block extent (hardware)
 |`sep_fabric_burst_wrap_test` is red. A write burst that starts on the last live word of `sep_reset_ctrl`, `wdt_timer` or `secure_dma` is routed on its first address, and a later beat past the extent lands on a live register: `SW_RESET_N` answers OKAY and changes; `WKUP_THOLD_HI` and `SRC_ADDR_LO` answer SLVERR and still change. `hw/sys/sep/doc/memory_map.adoc` says an access past the extent never reaches a unit. Do not XFAIL.
