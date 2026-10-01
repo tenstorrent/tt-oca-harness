@@ -28,6 +28,8 @@ from smc_base_test import smc_base_test
 REF_CLK_PERIOD_NS = 10
 SMC_CLK_PERIOD_NS = 1.25
 PERIPH_CLK_PERIOD_NS = 5
+# The cg_clk_ratio classes of the SMC and the peripheral clock against ref.
+RELATIONS = ("much_faster", "faster")
 
 
 @pyuvm.test()
@@ -52,7 +54,11 @@ class smc_clk_smc_much_faster_periph_faster_test(smc_base_test):
         )
 
     async def run_scenario(self) -> None:
-        seq = smc_clk_ratio_test_seq("clk_ratio_seq")
+        seq = smc_clk_ratio_test_seq(
+            "clk_ratio_seq",
+            periods_ns=(REF_CLK_PERIOD_NS, SMC_CLK_PERIOD_NS, PERIPH_CLK_PERIOD_NS),
+            relations=RELATIONS,
+        )
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
         value_compares = self.env.scoreboard.sys_axi_value_checks_seen
         assert value_compares >= EXPECTED_VALUE_CHECKS, (
