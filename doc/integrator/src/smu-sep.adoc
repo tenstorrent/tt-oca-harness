@@ -105,8 +105,17 @@ window and forwards every access on `ext_trng_axil`. It does not decode offsets
 inside that window: the endpoint is an adopter-defined IP.
 
 The adopter must perform the intra-aperture decode. An address that owns no
-register must return SLVERR and must not alias onto a live register. When no
-external TRNG is connected, terminate `ext_trng_axil` with a DECERR slave.
+register must return an error response and must not alias onto a live register.
+When no external TRNG is connected, terminate `ext_trng_axil` with a DECERR
+slave.
+
+The TRNG path reaches `ext_trng_axil` through an AXI4-to-AXI-Lite conversion
+(64-to-32 downsizer and burst splitter). On that path an errored read returns
+the slave's response verbatim, but an errored write is reported as SLVERR
+regardless of the slave's response. A DECERR slave therefore answers errored
+reads with DECERR and errored writes with SLVERR; both still refuse the access.
+An adopter whose endpoint returns DECERR for an unowned offset sees the same
+asymmetry.
 
 == eFuse and Lifecycle
 

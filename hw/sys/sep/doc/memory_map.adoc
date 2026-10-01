@@ -76,10 +76,14 @@ endif::backend-pdf[]
 defines them and their codes.
 
 The TRNG aperture is forwarded in full to an adopter-defined external IP. SEP
-does not decode offsets inside that window, so every access reaches the TRNG
-slave. Intra-aperture decode is an integrator constraint: an address that owns
-no register must return SLVERR and must not alias onto a live register. See the
-{sep-integrator-guide-ref}.
+does not decode offsets inside that window, so every access reaches the external
+TRNG slave. Intra-aperture decode is then an integrator constraint: when an
+adopter TRNG is connected, an address that owns no register must return an error
+and must not alias onto a live register. When no external TRNG is connected, the
+window is terminated with a DECERR slave; reads return DECERR, while writes
+return SLVERR because the AXI4-to-AXI-Lite conversion on the TRNG path forces an
+errored write response to SLVERR. Both refuse the access and never alias onto a
+live register. See the {sep-integrator-guide-ref}.
 
 The crypto region, 0x1090_0000 - 0x1094_FFFF (OTBN through ABR), accepts
 single-beat transactions only; see {sep-crypto-access-ref}.
