@@ -444,9 +444,10 @@ SMU the scan order from TDI to TDO is:</p>
 <p>The SMU enables the SMC slice unconditionally, the SEP slice when <code>SEP=1</code>
 (otherwise that slice has width 0 and is omitted), and the external slice when
 <code>JTAG_IC_RESET_ENABLE</code> is set. Each slice is a packed struct with <code>.ovrd</code> and
-<code>.val</code> halves of equal width; <code>jtag_ptap</code> sizes the slice from <code>$bits(type)/2</code>
-and interleaves the halves into the <code>{reset_enable, reset_control}</code> pair IEEE
-§17 requires per port. Declaration order within each half is the TDI-to-TDO
+<code>.val</code> halves of equal width; <code>jtag_ptap</code> sizes the slice from <code>$bits(type)/2</code>.
+Each port has the reset-enable and reset-control pair IEEE §17 requires, with
+<code>reset_enable</code> nearer TDO. <code>.val</code> carries <code>reset_control</code>, and <code>.ovrd</code> carries
+the inverse of <code>reset_enable</code>. Declaration order within each half is the TDI-to-TDO
 scan order: the first field is nearest TDI.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">

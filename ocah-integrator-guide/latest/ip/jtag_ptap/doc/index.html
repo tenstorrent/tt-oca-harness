@@ -1205,10 +1205,11 @@ instantiator supplies this type; the PTAP does not name the external ports.</p>
 <div class="paragraph">
 <p>Each slice&#8217;s struct must contain <code>.ovrd</code> and <code>.val</code> sub-structs of identical
 width (checked via an elaboration-time assertion in <code>jtag_ptap</code>). Within
-<code>jtag_ic_reset_reg</code>, the override-enable and control bits remain interleaved as
-<code>{enable, control}</code> pairs per the JTAG specification; <code>jtag_ptap</code> packs the
-three struct slices into that interleaved bus and unpacks the outputs back into
-structured form. The TDR carries the SMC slice closest to TDI, then SEP, then
+<code>jtag_ic_reset_reg</code>, the reset-enable and reset-control bits are interleaved in
+IEEE 1149.1 §17 order: in each port&#8217;s pair, <code>reset_enable</code> is nearer TDO and
+<code>reset_control</code> nearer TDI, so port <em>n</em> occupies TDR bits <code>2*n+1</code> and <code>2*n+2</code>
+(<a href="#ptap-ic-reset-fields-table">PTAP IC_RESET fields</a>). <code>jtag_ptap</code> packs the three struct slices into
+that interleaved bus and unpacks the outputs back into structured form. The TDR carries the SMC slice closest to TDI, then SEP, then
 the external slice, followed by the single <code>reset_hold</code> bit.</p>
 </div>
 <div class="paragraph">
