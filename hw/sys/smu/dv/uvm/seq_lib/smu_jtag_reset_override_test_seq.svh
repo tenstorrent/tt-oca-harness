@@ -16,8 +16,8 @@
 // controller receives equals the slice the image encodes (CHK-IC-SMC-COLD-
 // OVERRIDE, CHK-IC-DOMAIN); S5 the default image restores both exports and
 // the SMC comes back out of the reset the override held it in (CHK-IC-
-// CLEAR); TIMEOUT the bounded-wait inventory (CHK-TIMEOUT-PATHS) and the
-// ordered step fence (CHK-NONVAC). The external port sits nearest TDO, so a
+// CLEAR); TIMEOUT the bounded-wait inventory (CHK-TIMEOUT-PATHS). The
+// external port sits nearest TDO, so a
 // geometry short of the TDR lands its fields in the SEP slice and S3 fails:
 // this is the scenario that catches a wrong slice width. Independently, the
 // always-on scoreboard's ic_reset_tdr feature predicts the capture of every

@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from tools.regs.common.rdlview import collect, compile_root, write_adoc, write_html
+from tools.regs.common.rdlview import ArraySpec, collect, compile_root, write_adoc, write_html
 
 
 class RegisterViewTests(unittest.TestCase):
@@ -56,12 +56,21 @@ addrmap top {
             self.assertEqual(regs["cold.scratch[4]"], "0x4 - 0x10")
             self.assertEqual(regs["warm.scratch[4]"], "0x84 - 0x90")
             self.assertEqual(regs["channels[2].control"], "0x100 - 0x140")
-            self.assertEqual(regs["channels[0].scratch[4]"], "0x104 - 0x110")
-            self.assertEqual(regs["channels[1].scratch[4]"], "0x144 - 0x150")
+            # The register array inside the bank array collapses across both
+            # levels into one entry spanning every instance.
+            self.assertEqual(regs["channels[2].scratch[4]"], "0x104 - 0x150")
+            self.assertNotIn("channels[0].scratch[4]", regs)
             self.assertEqual(regs["status"], "0x200")
-            self.assertEqual(len(regs), 8)
+            self.assertEqual(len(regs), 7)
             self.assertEqual(len(regs), len(data.regs))
-            self.assertEqual(data.arrays["warm.scratch[4]"], (4, "0x84", "0x4"))
+            self.assertEqual(
+                data.arrays["warm.scratch[4]"],
+                ArraySpec("0x84", "0x90", 4, [("scratch", 4, "0x4")]),
+            )
+            self.assertEqual(
+                data.arrays["channels[2].scratch[4]"],
+                ArraySpec("0x104", "0x150", 8, [("channels", 2, "0x40"), ("scratch", 4, "0x4")]),
+            )
 
             adoc = Path(temp) / "banks.adoc"
             html = Path(temp) / "banks.html"
@@ -74,6 +83,33 @@ addrmap top {
             links = re.findall(r'href="#([^"]+)"', html.read_text())
             self.assertEqual(len(anchors), len(set(anchors)))
             self.assertEqual(anchors, links)
+
+    def test_addrmap_arrays_collapse_and_single_element_arrays_are_plain(self):
+        with TemporaryDirectory() as temp:
+            source = Path(temp) / "maps.rdl"
+            source.write_text("""
+addrmap core {
+    reg { field { sw = rw; hw = r; } value[31:0]; } cfg @0x0;
+};
+addrmap top {
+    core cores[3] @0x0 += 0x10;
+    core solo[1] @0x100 += 0x10;
+    reg { field { sw = rw; hw = r; } value[31:0]; } cfg @0x200;
+};
+""")
+            data = collect(compile_root(str(source), None, []))
+            regs = {reg.name: reg.addr for reg in data.regs}
+            # An array of addrmaps collapses to one entry spanning the instances.
+            self.assertEqual(regs["cores[3].cfg"], "0x0 - 0x20")
+            self.assertEqual(
+                data.arrays["cores[3].cfg"],
+                ArraySpec("0x0", "0x20", 3, [("cores", 3, "0x10")]),
+            )
+            # A single-element array is not a repetition: plain register, no note,
+            # no "[1]" in the name.
+            self.assertEqual(regs["solo.cfg"], "0x100")
+            self.assertNotIn("solo[1].cfg", regs)
+            self.assertNotIn("solo.cfg", data.arrays)
 
     def test_addrmap_name_renders_as_heading_with_desc_below(self):
         with TemporaryDirectory() as temp:

@@ -563,8 +563,6 @@ static oca_hw_result_t plat_get_lifecycle_state(oca_lifecycle_level_t level,
         *out_state = OCA_LIFECYCLE_RMA_SIP;
         break;
     case LC_STATE_RMA_CHIPLET_LO:
-    case 0x5u:
-    case 0x6u:
     case LC_STATE_RMA_CHIPLET_HI:
         *out_state = OCA_LIFECYCLE_RMA_CHIPLET;
         break;
@@ -597,7 +595,18 @@ static oca_hw_result_t plat_get_version(oca_version_level_t level, uint16_t *out
 
 static oca_secure_bool_t plat_is_secure_boot_active(void) {
     uint32_t lc = lc_read_state();
-    return lc_state_enforces_secure_boot(lc) ? OCA_SECURE_TRUE : OCA_SECURE_FALSE;
+    if (lc_state_enforces_secure_boot(lc)) {
+        return OCA_SECURE_TRUE;
+    }
+    // A TEST_DEV part with chiplet debug disabled enforces secure boot, so a
+    // locked debug posture cannot be bypassed by loading unsigned code. The RMA
+    // states stay manifest-optional whatever the disable vectors say.
+    //
+    // Latched at [S18] so the answer cannot move under the validator's re-checks.
+    if (lc == LC_STATE_TEST_DEV && chiplet_debug_disabled()) {
+        return OCA_SECURE_TRUE;
+    }
+    return OCA_SECURE_FALSE;
 }
 
 static oca_secure_bool_t plat_is_secure_boot_disabled(void) {

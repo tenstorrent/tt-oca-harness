@@ -39,7 +39,9 @@ while `stap_select`, the TAP_3DCR select bit, is set. The retimer registers the
 result on the falling TCK edge, and `u_tdo_bypass_mux` bypasses the retimer during
 a ZERO_LENGTH_BYPASS DR scan. Both ZERO_LENGTH_BYPASS multiplexers take their
 select from `inst_decoded_o[3D]` ANDed with `dr_scan_select_reg`, the DR scan
-select registered on the falling TCK edge.
+select registered on the falling TCK edge, and with the inverse of `stap_select`.
+While `stap_select` is set, ZERO_LENGTH_BYPASS therefore behaves exactly as
+BYPASS (<<ptap-zero-length-bypass>>).
 
 `pwr_on_rst_ni` is ANDed with the client TRST in `u_trst_n_and`. The result,
 `jtag_trst_n`, resets the TAP controller and the retimer, and the controller
@@ -166,15 +168,16 @@ TAP-controller states.
 |UPDATE_IR |16'h8000 |State 15: Update IR, decode new instruction
 |===
 
-The state machine includes an automatic fault recovery mechanism. A 3-bit TMS
-reset counter tracks consecutive TMS high assertions. When the counter reaches
-5, the state machine automatically transitions to TEST_LOGIC_RESET regardless of
-current state, providing recovery from corrupted or invalid states.
+Five consecutive TCK cycles with TMS high bring the state machine to
+TEST_LOGIC_RESET from any state, as the IEEE 1149.1 state graph defines. A state
+register value that is not one of the sixteen one-hot encodings also moves to
+TEST_LOGIC_RESET on the next rising edge of TCK.
 
-Control signals are generated using a split approach. Update, run-test-idle, and
-test-logic-reset signals are generated combinationally as Moore machine outputs.
-Capture and shift signals are registered on the falling edge of TCK to ensure
-stable control windows before the rising edge samples data.
+Control signals are generated using a split approach. The update and
+run-test-idle signals are decoded combinationally from the current state as
+Moore machine outputs. The capture, shift, test-logic-reset and TDO output
+enable signals are decoded from the current state and registered on the falling
+edge of TCK, so they are stable before the next rising edge samples data.
 
 === Reset Hierarchy
 
@@ -220,9 +223,7 @@ active and the required feature is enabled.
 
 The scan path supports zero-length bypass through explicit `prim_stdmux2`
 multiplexer cells rather than behavioral multiplexing. This implementation
-prevents glitches on scan path selectors during instruction transitions. The
-zero-length bypass instruction connects TDI directly to TDO without intermediate
-register stages, providing minimum scan latency for hierarchical JTAG chains.
+prevents glitches on scan path selectors during instruction transitions.
 
 STAP selection is implemented as a second-level multiplexer. When the 3DCR
 register's select bit is asserted, the STAP chain input replaces the TDR
@@ -232,14 +233,31 @@ operation during both IR and DR scan sequences as required by IEEE 1838. The
 select bit also gates the select, capture, shift and update strobes of the STAP
 scan interface, so they stay low while the bit is clear.
 
+[[ptap-zero-length-bypass]]
+==== Zero-Length Bypass
+
+While the TAP_3DCR STAP-select bit is clear, the ZERO_LENGTH_BYPASS instruction
+connects TDI directly to TDO without intermediate register stages, providing
+minimum scan latency for hierarchical JTAG chains. The DR scan adds no bit, and
+TDO follows TDI combinationally rather than through the retimer.
+
+While the STAP-select bit is set, ZERO_LENGTH_BYPASS behaves exactly as BYPASS.
+The last stage of the STAP chain shifts on the rising TCK edge, so its return
+must reach TDO through the falling-edge retimer, and a path that skips the
+retimer cannot carry it. The bypass register is selected, captures 0 and leads
+the STAP chain, and TDO is retimed. A DR scan under ZERO_LENGTH_BYPASS is then
+one bit longer than the STAP chain and matches a DR scan under BYPASS bit for
+bit.
+
 === TDO Retiming
 
 The TDO output is retimed on the falling edge of TCK as required by IEEE 1149.1
 Section 4.5.2. The retiming register ensures that TDO transitions occur at the
 same clock edge that samples TDI at the receiving device, maintaining timing
-margins across board-level JTAG chains. For zero-length bypass operation, the
-retimer is bypassed using an explicit `prim_stdmux2` cell to minimize scan
-latency.
+margins across board-level JTAG chains. For zero-length bypass operation with
+the TAP_3DCR STAP-select bit clear, the retimer is bypassed using an explicit
+`prim_stdmux2` cell to minimize scan latency. While the bit is set, TDO is
+retimed under every instruction, ZERO_LENGTH_BYPASS included.
 
 === ID Code
 
@@ -522,9 +540,10 @@ For each of the resets defined in the TDR, the PTAP exposes two logical signals
 
 === iJTAG Support
 
-The PTAP has optional support for a IEEE 1687-2014-compliant hierarchical iJTAG
-network, and support is enabled by default. When the _SELECT_IJTAG_ instruction
-is enabled, the iJTAG network is selected for scan.
+The PTAP provides a scan port for an IEEE 1687-2014-compliant hierarchical iJTAG
+network. The _SELECT_IJTAG_ instruction is always decoded; no configuration
+parameter removes it. While it is the current instruction, a DR scan selects the
+iJTAG network and the network return drives TDO.
 
 [[ptap-jtag2axi-support]]
 === JTAG2AXI Support
@@ -591,7 +610,7 @@ and operation fields.
 |(2+S+D/8) +: D |data |RW |0 |The data to write on an AXI write during Update-DR. On a Capture-DR, this field contains the data returned from an AXI read if the previous operation was a read, or holds the write data previously used if the previous operation was a write.
 |(2+S) +: (D/8) |wstrb |RW |0 |The byte strobes for a write transaction. This value is driven on WSTRB when the transaction is a write. On a Capture-DR, this field holds the previous value.
 |2 +: S |size |RW |0 |The requested transfer size in powers-of-2 bytes. The effective size `E`, the smaller of this field and `data_size`, is used as AxSIZE for the transaction. 0: 1 byte (8 bits) 1: 2 bytes (16 bits) 2: 4 bytes (32 bits) 3: 8 bytes (64 bits) 4: 16 bytes (128 bits) 5: 32 bytes (256 bits) 6: 64 bytes (512 bits) 7: 128 bytes (1024 bits)
-|1:0 |op |RW |0 |When the debugger writes this field, it has the following meaning: 0: Ignore data and address (nop) Don't send anything over AXI during Update-DR. This operation should never result in a busy or error response. 1: Read from address (read) 2: Write data to address (write) 3: Reserved When the debugger reads this field, it means the following: 0: The previous operation completed successfully and returned an OKAY status 1: The previous operation completed but failed and returned a SLVERR status 2: The previous operation completed but failed and returned a DECERR or other error status. 3: The latest operation was attempted before the previous operation completed; the previous AXI request is still in progress. The operation attempted in this access will be ignored. If a debugger sees this status, it needs to give the target more TCK edges between Update-DR and Capture-DR. The simplest way to do that is to add extra transitions in Run-Test/Idle.
+|1:0 |op |RW |0 |When the debugger writes this field, it has the following meaning: 0: Ignore data and address (nop) Don't send anything over AXI during Update-DR. This operation should never result in a busy or error response. 1: Read from address (read) 2: Write data to address (write) 3: Reserved When the debugger reads this field, it means the following: 0: The previous operation completed successfully and returned an OKAY status 1: The previous operation completed but failed and returned a SLVERR status 2: The previous operation completed but failed and returned a DECERR or other error status, or a system reset discarded it (see <<jtag2axi-system-reset>>). 3: The latest operation was attempted before the previous operation completed; the previous AXI request is still in progress. The operation attempted in this access will be ignored. If a debugger sees this status, it needs to give the target more TCK edges between Update-DR and Capture-DR. The simplest way to do that is to add extra transitions in Run-Test/Idle.
 |===
 
 ==== *_AXI_SERIES_CTRL
@@ -629,7 +648,7 @@ manage a series of AXI accesses.
 |(2+S+P) +: A |address |RW |0 |Address used for AXI access. In Update-DR the AXI transaction is issued.
 |(2+S) +: P |pl_depth |RW |0 |pipeline_depth For write transactions, this sets the number of pending unissued write transactions that can be queued by this block to pl_depth + 1. Setting a non-zero value allows the debugger to queue additional write transactions before the previous ones have been issued. For read transactions, this field sets the number of read responses that this block will pipeline. This allows the debugger to queue multiple reads to targets with long or variable latency while getting read data responses in a deterministic fashion. The first pl_depth + 1 reads will return DEADBEEF marker data. This field can be set to a value between 0 and the (wr/rd)_pl_depth field read from the bridge's `*_JTAG2AXI_CAPS` register. When the debugger reads this field, an indication of whether there are any pending transactions will be returned: 2'b00: There are no pending transactions 2'b01: There is at least one pending transaction
 |2 +: S |size |RW |0 |The requested transfer size in powers-of-2 bytes. The effective size `E`, the smaller of this field and `data_size`, is used as AxSIZE for the transaction. 0: 1 byte (8 bits) 1: 2 bytes (16 bits) 2: 4 bytes (32 bits) 3: 8 bytes (64 bits) 4: 16 bytes (128 bits) 5: 32 bytes (256 bits) 6: 64 bytes (512 bits) 7: 128 bytes (1024 bits)
-|1:0 |op |RW |0 |When the debugger writes this field, it has the following meaning: 0: Ignore data and address (nop). Don't do anything on Update-DR for AXI_SERIES_DATA. 1: Read from address (read). Update-DR for AXI_SERIES_DATA causes an AXI read to be performed. 2: Write data to address (write). Update-DR for AXI_SERIES_DATA causes an AXI write to be performed. 3: Reserved; treated as nop. When the debugger reads this field, it means the following: 0: All previous series operations completed successfully and returned an OKAY status. 1: At least one previous series operation completed but failed and returned a SLVERR status. This status is sticky until cleared by AXI_SERIES_CTRL.reset. 2: At least one previous series operation completed but failed and returned a DECERR or other error status. This status is sticky until cleared by AXI_SERIES_CTRL.reset. Codes 1 and 2 report the first failed series operation since the last AXI_SERIES_CTRL.reset; a later failure does not replace it. The completion status of an AXI_SINGLE_OP operation is reported only through AXI_SINGLE_OP.op and does not change codes 0 to 2. 3: At least one operation was attempted before the previous operation completed. The operations attempted when there was a pending operation in progress were ignored. If a debugger sees this status, it needs to give the target more TCK edges between Update-DR and Capture-DR. The simplest way to do that is to add extra transitions in Run-Test/Idle. This status is sticky until cleared by AXI_SERIES_CTRL.reset.
+|1:0 |op |RW |0 |When the debugger writes this field, it has the following meaning: 0: Ignore data and address (nop). Don't do anything on Update-DR for AXI_SERIES_DATA. 1: Read from address (read). Update-DR for AXI_SERIES_DATA causes an AXI read to be performed. 2: Write data to address (write). Update-DR for AXI_SERIES_DATA causes an AXI write to be performed. 3: Reserved; treated as nop. When the debugger reads this field, it means the following: 0: All previous series operations completed successfully and returned an OKAY status. 1: At least one previous series operation completed but failed and returned a SLVERR status. This status is sticky until cleared by AXI_SERIES_CTRL.reset. 2: At least one previous series operation completed but failed and returned a DECERR or other error status, or a system reset discarded a series operation that was in progress or queued (see <<jtag2axi-system-reset>>). This status is sticky until cleared by AXI_SERIES_CTRL.reset. Codes 1 and 2 report the first failed series operation since the last AXI_SERIES_CTRL.reset; a later failure does not replace it. The completion status of an AXI_SINGLE_OP operation is reported only through AXI_SINGLE_OP.op and does not change codes 0 to 2. 3: At least one operation was attempted before the previous operation completed. The operations attempted when there was a pending operation in progress were ignored. If a debugger sees this status, it needs to give the target more TCK edges between Update-DR and Capture-DR. The simplest way to do that is to add extra transitions in Run-Test/Idle. This status is sticky until cleared by AXI_SERIES_CTRL.reset.
 |===
 
 ==== *_AXI_SERIES_DATA_INCR
@@ -785,9 +804,39 @@ increment-control and error-status bit.
 .JTAG2AXI data and error-status fields
 |===
 |Bits |Field |Access |Reset |Description
-|n |increment/status |RW |0 |The value shifted into this bit indicates whether the address should be incremented after this transaction completes. The value shifted out of this bit indicates whether the previous transaction completed successfully (0 = succeeded, 1 = failed). An AXI result of SLVERR or DECERR as well as attempting a new transaction while the previous was still pending will cause the status to be returned as "failed".
+|n |increment/status |RW |0 |The value shifted into this bit indicates whether the address should be incremented after this transaction completes. The value shifted out of this bit indicates whether the previous transaction completed successfully (0 = succeeded, 1 = failed). An AXI result of SLVERR or DECERR, a system reset that discarded the transaction, as well as attempting a new transaction while the previous was still pending will cause the status to be returned as "failed".
 |n-1:0 |data |RW |0 |Data value to read/write. The read data is from the previous read access.
 |===
+
+[[jtag2axi-system-reset]]
+==== System Reset Recovery
+
+A system reset resets the AXI side of each JTAG2AXI instrument while its JTAG
+side keeps running. The instrument recovers without a TAP reset. When the
+reset reaches its JTAG side, it discards every operation that is in flight or
+queued: the AXI transaction it was waiting on, series requests not yet issued,
+and series read data not yet shifted out. The target can still complete a
+transaction that was already on the AXI bus before the reset reached it, so
+the debugger must treat a discarded write as having an unknown effect.
+
+After the discard:
+
+* The SINGLE_OP op field reads 2 if a single operation or an error-status
+  series operation was discarded, and its captured read-data field reads 0.
+  Otherwise both keep their values.
+* The SERIES_CTRL op field reads 2 if a series operation was discarded and it
+  held no earlier series error. Otherwise it keeps its value, including a
+  sticky status of 3. Only AXI_SERIES_CTRL.reset clears it.
+* The SERIES_CTRL address, size, pl_depth and op settings keep their values,
+  but the read pipeline restarts empty. Reprogram SERIES_CTRL before resuming
+  a pipelined series read.
+
+Recovery starts when the system reset asserts and completes within 52 periods
+of the slower of TCK and the AXI clock after the system reset deasserts. TCK
+periods count only while the debugger drives TCK, for example with transitions
+in Run-Test/Idle. An operation shifted in during that time is held and issued
+once recovery completes, and the SINGLE_OP op field reads 3 until the
+operation finishes.
 
 === Debug Disable
 

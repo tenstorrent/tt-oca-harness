@@ -84,7 +84,7 @@ package jtag_inst_reg_pkg;
     UNDEFINED_BYPASS_3A_INSTR                        = 6'h3A,  // Undefined bypass instruction.
     UNDEFINED_BYPASS_3B_INSTR                        = 6'h3B,  // Undefined bypass instruction.
     UNDEFINED_BYPASS_3C_INSTR                        = 6'h3C,  // Undefined bypass instruction.
-    ZERO_LENGTH_BYPASS_INSTR                         = 6'h3D,  // Zero length bypass - direct TDI to TDO.
+    ZERO_LENGTH_BYPASS_INSTR                         = 6'h3D,  // Zero length bypass - direct TDI to TDO; BYPASS while the 3DCR STAP-select bit is set.
     INV_BYPASS_INSTR                                 = 6'h3E,  // Inverted bypass.
     BYPASS_INSTR                                     = 6'h3F   // Bypass register (all-one encoding).
   } jtag_instruction_e;

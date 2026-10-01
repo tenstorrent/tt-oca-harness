@@ -367,12 +367,35 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
     ));
   endtask
 
-  // System reset while the bridge is observed mid-flight on a held write;
-  // `recovered` is 1 when the bridge's status left BUSY_OR_FULL afterwards
-  // and the recovery write ran.
-  protected task reset_abort_mid_flight(
-      dtp_j2a_target_t t, string channel, int unsigned reset_cycles, int unsigned addr_idx,
-      bit [63:0] recovery_xor, string context_s, output bit recovered);
+  // Pulse the system reset again on an idle bridge whose first clear has
+  // completed, and record its CDC clear.
+  protected task second_reset(dtp_j2a_target_t t, int unsigned reset_cycles, string context_s);
+    repeat (AbortSettleTck) step(1'b0);
+    clear_cdc_clear_seen();
+    pulse_system_reset(reset_cycles);
+    repeat (AbortCdcClearTck) step(1'b0);
+    void'(record_abort_check(
+        DtpJ2aCdcClearCheckId,
+        {
+          context_s, ".second_cdc_clear"
+        },
+        64'(cdc_clear_seen(
+            t
+        )),
+        64'd1,
+        "tck-side isolate-and-clear after the second reset"
+    ));
+  endtask
+
+  // System reset while the bridge is observed mid-flight on a held write; a
+  // non-zero `second_reset_cycles` pulses the reset again once the first
+  // clear has completed, before the status is polled. `recovered` is 1 when
+  // the bridge reported the discarded write as DECERR afterwards and the
+  // recovery write ran.
+  protected task reset_abort_mid_flight(dtp_j2a_target_t t, string channel,
+                                        int unsigned reset_cycles, int unsigned addr_idx,
+                                        bit [63:0] recovery_xor, string context_s,
+                                        int unsigned second_reset_cycles, output bit recovered);
     int unsigned size = t.default_size;
     bit [63:0] addr = robust_addr(t, addr_idx);
     bit [63:0] data = rand_data(t) & data_mask(size);
@@ -433,12 +456,13 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
         $sformatf(
             "addr=0x%0h", addr)
     ));
+    if (second_reset_cycles != 0) second_reset(t, second_reset_cycles, context_s);
     poll_single(t, st, rdata, {context_s, ".recovery"}, AbortRecoveryPolls);
     recovered = record_abort_check(
         DtpJ2aAbortRecoveryCheckId,
         {context_s, ".recovery_status"},
-        64'(st != DTP_J2A_BUSY_OR_FULL),
-        64'd1,
+        64'(st),
+        64'(DTP_J2A_DECERR),
         $sformatf(
             "status=%s max_captures=%0d after the mid-flight reset", st.name(), AbortRecoveryPolls)
     );
@@ -465,11 +489,13 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
   endtask
 
   protected task run_reset_abort(string label, string channel, int unsigned reset_cycles_hi,
-                                 bit [63:0] recovery_xor, int unsigned addr_offset);
+                                 bit [63:0] recovery_xor, int unsigned addr_offset,
+                                 bit with_second_reset = 1'b0);
     string stuck = "";
     for (int unsigned i = 0; i < NumTargets; i++) begin
       dtp_j2a_target_t t = select_target(i);
       bit recovered;
+      int unsigned second_reset_cycles = 0;
       `uvm_info(get_type_name(), $sformatf(
                 "[%0d/%0d] target=%s %s: system reset while %s is held",
                 i + 1,
@@ -478,13 +504,18 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
                 label,
                 channel
                 ), UVM_LOW)
+      if (with_second_reset) second_reset_cycles = $urandom_range(reset_cycles_hi, 1);
       reset_abort_mid_flight(t, channel, $urandom_range(reset_cycles_hi, 1), i + 1 + addr_offset,
-                             recovery_xor, $sformatf("%s.%s", label, t.name), recovered);
+                             recovery_xor, $sformatf("%s.%s", label, t.name), second_reset_cycles,
+                             recovered);
       if (!recovered) stuck = {stuck, (stuck == "") ? "" : ", ", t.name};
     end
     if (stuck != "")
       `uvm_error("jtag2axi_abort_chk", $sformatf(
-                 "%s: %s stayed BUSY_OR_FULL after the mid-flight reset", label, stuck))
+                 "%s: %s did not report the discarded write as DECERR after the mid-flight reset",
+                 label,
+                 stuck
+                 ))
   endtask
 
   protected task run_back_to_back_reset();
@@ -494,8 +525,15 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
       // Seeded per-pass payload and pulse widths: each loop stresses a
       // different back-to-back reset spacing.
       bit [63:0] data = rand_data(t);
+      dtp_j2a_status_e op_status;
+      dtp_j2a_status_e st;
+      bit [63:0] rdata;
       `uvm_info(get_type_name(), $sformatf(
                 "[%0d/%0d] target=%s back-to-back reset", i + 1, NumTargets, t.name), UVM_LOW)
+      arm_target_error(t, addr + 64'h100, OCAH_AXI_RESP_SLVERR, 1'b0, 1'b1);
+      write_target_single_expect_status(t, addr + 64'h100, data ^ 64'h5A5A, DTP_J2A_SLVERR,
+                                        op_status, t.default_size, full_wstrb(t.default_size),
+                                        $sformatf("back_to_back_reset.%s.prime", t.name));
       clear_cdc_clear_seen();
       pulse_system_reset($urandom_range(2, 1));
       pulse_system_reset($urandom_range(3, 1));
@@ -511,6 +549,18 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
           )),
           64'd1,
           "tck-side isolate-and-clear after two resets"
+      ));
+      poll_single(t, st, rdata, $sformatf("back_to_back_reset.%s.status_kept", t.name),
+                  AbortRecoveryPolls);
+      void'(record_abort_check(
+          DtpJ2aAbortRecoveryCheckId,
+          $sformatf(
+              "back_to_back_reset.%s.status_kept", t.name
+          ),
+          64'(st),
+          64'(DTP_J2A_SLVERR),
+          $sformatf(
+              "status=%s max_captures=%0d after two idle resets", st.name(), AbortRecoveryPolls)
       ));
       verify_target_recovery(t, addr, data, 1'b0, $sformatf("back_to_back_reset.%s", t.name));
       recover_target(t, addr, data, 1'b1, $sformatf("back_to_back_reset_read.%s", t.name), status);
@@ -828,7 +878,7 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
       // The responder accepts W only after AW, so holding AW keeps both
       // channels from handshaking before the reset.
       "cdc_clear_abort_narrow_reset_mid_xaction":
-                run_reset_abort("narrow_reset", "aw", 1, 64'h2222, 8);
+                run_reset_abort("narrow_reset", "aw", 1, 64'h2222, 8, 1'b1);
       "cdc_clear_abort_back_to_back_reset": run_back_to_back_reset();
       "decode_error_decerr_write":  run_decode_error_decerr_write();
       "decode_error_decerr_read":   run_decode_error_decerr_read();

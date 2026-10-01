@@ -1613,6 +1613,47 @@ module sep_uvm_top
 `undef DMA_HOST_CMD_INTG_DI
 
     // ------------------------------------------------------------------
+    // HMAC message-FIFO drain stall.
+    // ------------------------------------------------------------------
+    // hmac_fifo_drain_stall_i=1 holds the message FIFO's rready low, so the hash
+    // engine stops consuming and the FIFO fills: the wedge the ROM's bounded
+    // FIFO waits must turn into a hash failure. fifo_rready is the hmac-local
+    // net that drives the FIFO's read side. Re-issued every clock for Verilator,
+    // released when the port drops.
+`define HMAC_FIFO_RREADY `SEP_CORE.u_sep_crypto.u_hmac_wrapper_s3c_scan.u_tt_hmac.fifo_rready
+    always @(posedge clk_i) begin
+        if (hmac_fifo_drain_stall_i === 1'b1) begin
+            force `HMAC_FIFO_RREADY = 1'b0;
+        end else begin
+            release `HMAC_FIFO_RREADY;
+        end
+    end
+`undef HMAC_FIFO_RREADY
+
+    // ------------------------------------------------------------------
+    // DMA host-port stall.
+    // ------------------------------------------------------------------
+    // +sep_dma_host_stall holds the host TL-UL response idle -- a_ready and
+    // d_valid both 0 -- so the secure DMA can neither issue a request nor see a
+    // response: it stays busy and reports neither DONE nor ERROR, which is the
+    // wedge the ROM's bounded completion poll must turn into an error. The whole
+    // struct is forced, since d_valid=0 keeps its integrity fields unchecked.
+    // The force targets the wrapper-local net the adapter drives, not the
+    // engine's input port. Re-issued every clock for Verilator, as above.
+    logic dma_host_stall_on;
+    initial begin
+        dma_host_stall_on = $test$plusargs("sep_dma_host_stall");
+        if (dma_host_stall_on) begin
+            $display("[tb] +sep_dma_host_stall: secure DMA host port held idle");
+        end
+    end
+`define DMA_HOST_RSP `SEP_CORE.u_sep_dma_wrap.host_tl_h_i
+    always @(posedge clk_i) begin
+        if (dma_host_stall_on) force `DMA_HOST_RSP = '0;
+    end
+`undef DMA_HOST_RSP
+
+    // ------------------------------------------------------------------
     // ESRC raw-noise force + entropy datapath probes.
     // ------------------------------------------------------------------
     // The ESRC ring oscillators' `#delay` feedback is ignored under Verilator, so
@@ -2378,6 +2419,28 @@ module sep_uvm_top
     always @(negedge rst_ni) rst_assert_count <= rst_assert_count + 32'd1;
     assign u_tb_if.rst_assert_count = rst_assert_count;
 
+    // Observation probes the sequences read through sep_tb_if.
+    assign u_tb_if.sep_internal_interrupts   = sep_internal_interrupts_probe_o;
+    assign u_tb_if.efuse_shadow              = efuse_shadow_probe_o;
+    assign u_tb_if.otbn_imem_req_count       = otbn_imem_req_count_o;
+    assign u_tb_if.otbn_imem_write_count     = otbn_imem_write_count_o;
+    assign u_tb_if.otbn_dmem_req_count       = otbn_dmem_req_count_o;
+    assign u_tb_if.otbn_dmem_write_count     = otbn_dmem_write_count_o;
+    assign u_tb_if.km_rom_req_count          = km_rom_req_count_o;
+    assign u_tb_if.km_sram_probe             = km_sram_probe_o;
+    assign u_tb_if.km_sram_rd_accept_count   = km_sram_rd_accept_count_o;
+    assign u_tb_if.km_sram_rd_b2b_diff_count = km_sram_rd_b2b_diff_count_o;
+    assign u_tb_if.km_sram_rd_lat1_count     = km_sram_rd_lat1_count_o;
+    assign u_tb_if.km_sram_rd_lat_err_count  = km_sram_rd_lat_err_count_o;
+    assign u_tb_if.km_sram_req_count         = km_sram_req_count_o;
+    assign u_tb_if.km_sram_scr_rd_count      = km_sram_scr_rd_count_o;
+    assign u_tb_if.km_sram_scr_wr_addr       = km_sram_scr_wr_addr_o;
+    assign u_tb_if.km_sram_scr_wr_cell       = km_sram_scr_wr_cell_o;
+    assign u_tb_if.km_sram_scr_wr_count      = km_sram_scr_wr_count_o;
+    assign u_tb_if.km_sram_scr_wr_data       = km_sram_scr_wr_data_o;
+    assign u_tb_if.km_sram_word0             = km_sram_word0_o;
+    assign u_tb_if.km_sram_write_count       = km_sram_write_count_o;
+
     // CPU-LSU initiator: the shared ocah_axi_vip UVM master agent drives the
     // s_axi_* request side (the agent's driver procedurally drives the
     // request payloads and valids plus bready/rready on the master
@@ -2560,6 +2623,7 @@ module sep_uvm_top
     assign token_cmp_fault_sel_i    = '0;
     assign token_digest_test_en_inject_i = 1'b0;
     assign dma_host_intg_inject_i   = 1'b0;
+    assign hmac_fifo_drain_stall_i  = 1'b0;
     assign rst_vec_i                = '0;
     assign i_cpu_run_req_i          = 1'b0;
     assign tcm_load_i               = 1'b0;

@@ -250,7 +250,7 @@ expand over `smc_axi`, `smc_otp_axi`, and `sep_otp_axi`.
 |F4.1 Single-operation write and read on the SMC fabric, SMC OTP, and SEP OTP bridges, with data verification |`+dtp_jtag2axi_<target>_single_write_test+`, `+dtp_jtag2axi_<target>_single_write_data_verify_test+`, `+dtp_jtag2axi_<target>_single_write_read_test+` |jtag2axi; functional also carries `dtp_jtag2axi_smc_axi_single_write_test` and `dtp_jtag2axi_smc_axi_single_write_read_test` |`jtag2axi_single_op_cg`, `jtag2axi_response_cg` SUCCESS, `otp_jtag2axi_cg` |`CHK-AXI-RESP`, `CHK-AXI-STRB`, `CHK-AXI-COMPLETION`, `CHK-J2A-BUS-REQ`, `CHK-AXI-RDATA` (read-back scenarios), `CHK-AXI-WMEM` (write-read and data-verify scenarios, against the stimulus); `CHK-AXI-STREAM-MIN` and `CHK-AXI-CREDITS` (cocotb); `CHK-AXI-WADDR`, `CHK-AXI-WDATA`, `CHK-AXI-RADDR` on the reads, `CHK-AXI-NONVAC`, and the `jtag2axi_req` and `jtag2axi_status` scoreboard features (SV-UVM) |YES
 |F4.2 Series operations: INCR, NO_INCR, WITH_ERROR_STATUS, narrow beat offset, size field wider than the bus, randomized sequences, per-bridge independence, the SERIES_CTRL status held until `SERIES_CTRL.reset` |`+dtp_jtag2axi_<target>_series_write_{incr,no_incr,incr_with_error}_test+`, `+dtp_jtag2axi_<target>_series_write_read_{incr,no_incr,incr_with_error}_test+`, `+dtp_jtag2axi_<target>_random_ops_test+`, `+dtp_jtag2axi_<target>_read_random_ops_test+`, `dtp_jtag2axi_smc_axi_series_write_incr_narrow_test`, `dtp_jtag2axi_smc_axi_series_write_read_incr_narrow_test`, `dtp_jtag2axi_smc_otp_axi_series_write_read_incr_oversize_test`, `dtp_jtag2axi_series_corner_all_bridges_test` |jtag2axi |`jtag2axi_robustness_cg` series bins; `otp_jtag2axi_cg` series bins |`CHK-J2A-BUS-REQ` (every scenario but the series corner), `CHK-AXI-RDATA` (write-read and read random operations), `CHK-AXI-WMEM` (every series write beat and with-error recovery write, against the stimulus), `CHK-J2A-MEM-IMAGE` (random write operations), `CHK-J2A-SERIES-ADDR` (incrementing and narrow write-read, narrow write, series corner), `CHK-AXI-STRB` (narrow write, random write operations, with-error recovery writes), `CHK-AXI-COMPLETION`, `CHK-J2A-STATUS-BIT` (the WITH_ERROR_STATUS bit on every shift of the with-error series), `CHK-J2A-FAULT-STATUS` (the SERIES_CTRL captures of the series corner); `CHK-AXI-STREAM-MIN` and `CHK-AXI-CREDITS` (cocotb; credits where strobe or response credits are armed); `CHK-AXI-WADDR`, `CHK-AXI-WDATA`, `CHK-AXI-RADDR` (SV-UVM single operations and the narrow write); `CHK-AXI-NONVAC` (SV-UVM, and cocotb on the with-error series); `jtag2axi_req` and `jtag2axi_status` scoreboard features (SV-UVM) |YES for INCR, NO_INCR, WITH_ERROR_STATUS, the narrow beat offset and randomized sequences; NO for per-bridge independence and the SERIES_CTRL status held until `SERIES_CTRL.reset`, which `dtp_jtag2axi_series_corner_all_bridges_test` drives
 |F4.3 Response status: SLVERR and DECERR on single and series operations, the error-status TDR, recovery after an error |`+dtp_jtag2axi_<target>_error_{single_write,single_read,series_incr_write,series_incr_read,series_no_incr_write,series_no_incr_read,series_incr_write_with_status,series_incr_read_with_status}_test+`, `+dtp_jtag2axi_<target>_series_write{,_read}_incr_with_error_test+`, `dtp_jtag2axi_decode_error_decerr_write_test`, `dtp_jtag2axi_decode_error_decerr_read_test`, `dtp_jtag2axi_decode_error_mixed_test` |jtag2axi |`jtag2axi_response_cg` status bins; `otp_jtag2axi_cg` response bins |Armed non-OKAY response (`CHK-AXI-RESP-EXPECTED` cocotb, `CHK-AXI-ERR-INJ` SV-UVM), `CHK-AXI-NONVAC`, `CHK-AXI-RESP`, `CHK-AXI-COMPLETION`, `CHK-AXI-STRB` (scenarios with a single-operation write), `CHK-AXI-RDATA` (scenarios with reads), `CHK-AXI-WMEM` (recovery writes and the with-error series write beats, against the stimulus), `CHK-J2A-BUS-REQ` (every scenario but the decode-error ones, fault beats included), `CHK-J2A-FAULT-STATUS` (the sequence's judgement of the SINGLE_OP or SERIES_CTRL status: the injected code right after the fault beat, OKAY after a plain series beat before it), `CHK-J2A-STATUS-BIT` (the per-shift status bit of the with-error series and of the with-status error series), `CHK-J2A-ERR-RDATA` (the seeded word of the errored read beat on the single-read, plain series read, and decode-error read scenarios), `CHK-J2A-SERIES-ADDR` (the SERIES_CTRL address after the plain series error beats and after the fault beat of the with-status write error); `CHK-AXI-STREAM-MIN` and `CHK-AXI-CREDITS` (cocotb); `CHK-AXI-WADDR` and `CHK-AXI-WDATA` on the single-operation writes, `CHK-AXI-RADDR` on the reads, and the `jtag2axi_req` and `jtag2axi_status` scoreboard features (SV-UVM) |YES
-|F4.4 Backpressure and reset recovery: AW-before-W skew, long READY stalls, reset around the data phase, narrow and back-to-back resets |`dtp_jtag2axi_backpressure_aw_before_w_test`, `dtp_jtag2axi_backpressure_long_stall_test`, `dtp_jtag2axi_backpressure_abort_at_data_w_test`, `dtp_jtag2axi_cdc_clear_abort_narrow_reset_mid_xaction_test`, `dtp_jtag2axi_cdc_clear_abort_back_to_back_reset_test` |jtag2axi |`jtag2axi_robustness_cg` skew bins; its reset-timing request-issued and response-wait bins and its CDC clear bins carry dispositions in `coverage_policy.toml` |`CHK-AXI-COMPLETION`, `CHK-AXI-RESP`, `CHK-AXI-STRB`, `CHK-AXI-WMEM` (the backpressured and recovery writes, against the stimulus), `CHK-AXI-RDATA` on the long-stall and back-to-back leaves; `CHK-J2A-STALL-FSM`, `CHK-J2A-STALL-BUSY`, `CHK-J2A-STALL-HOLD` on the two backpressure leaves; `CHK-J2A-ABORT-MIDFLIGHT`, `CHK-J2A-ABORT-FSM`, `CHK-J2A-ABORT-ESCAPE`, `CHK-J2A-ABORT-RECOVERY` on the two reset-abort leaves; `CHK-J2A-CDC-CLEAR`, `CHK-RESET-COUNT` on the three reset leaves; `CHK-AXI-STREAM-MIN` and `CHK-AXI-CREDITS` (cocotb); `CHK-AXI-WADDR`, `CHK-AXI-WDATA`, `CHK-AXI-RADDR` on the reads, `CHK-AXI-NONVAC`, and the `jtag2axi_req` and `jtag2axi_status` scoreboard features (SV-UVM) |YES for skew and for a reset after completion; NO for a reset that lands mid-transaction, which the two reset-abort leaves drive
+|F4.4 Backpressure and reset recovery: AW-before-W skew, long READY stalls, reset around the data phase, narrow and back-to-back resets |`dtp_jtag2axi_backpressure_aw_before_w_test`, `dtp_jtag2axi_backpressure_long_stall_test`, `dtp_jtag2axi_backpressure_abort_at_data_w_test`, `dtp_jtag2axi_cdc_clear_abort_narrow_reset_mid_xaction_test`, `dtp_jtag2axi_cdc_clear_abort_back_to_back_reset_test` |jtag2axi |`jtag2axi_robustness_cg` skew bins; its reset-timing request-issued and response-wait bins and its CDC clear bins carry dispositions in `coverage_policy.toml` |`CHK-AXI-COMPLETION`, `CHK-AXI-RESP`, `CHK-AXI-STRB`, `CHK-AXI-WMEM` (the backpressured and recovery writes, against the stimulus), `CHK-AXI-RDATA` on the long-stall and back-to-back leaves; `CHK-J2A-STALL-FSM`, `CHK-J2A-STALL-BUSY`, `CHK-J2A-STALL-HOLD` on the two backpressure leaves; `CHK-J2A-ABORT-MIDFLIGHT`, `CHK-J2A-ABORT-FSM`, `CHK-J2A-ABORT-ESCAPE` on the two reset-abort leaves; `CHK-J2A-ABORT-RECOVERY`, `CHK-J2A-CDC-CLEAR`, `CHK-RESET-COUNT` on the three reset leaves; on the back-to-back leaf's armed SLVERR, `CHK-AXI-RESP-EXPECTED` (cocotb) and `CHK-AXI-ERR-INJ` (SV-UVM); `CHK-AXI-STREAM-MIN` and `CHK-AXI-CREDITS` (cocotb); `CHK-AXI-WADDR`, `CHK-AXI-WDATA`, `CHK-AXI-RADDR` on the reads, `CHK-AXI-NONVAC`, and the `jtag2axi_req` and `jtag2axi_status` scoreboard features (SV-UVM) |YES
 |F4.5 Each bridge's disable field: a gated bridge latches no TDR update, drops buffered requests, and generates no AXI traffic; release without replay; recovery |`+dtp_jtag2axi_<target>_{write,read,error}_security_gating_test+`, `dtp_jtag2axi_smc_axi_read_security_gating_no_axi_activity_test`, `dtp_jtag2axi_dbg_disable_matrix_test` |jtag2axi, dbg_disable |`otp_jtag2axi_cg` gating bins; `dbg_disable_cg`: the six bridge cells |`CHK-J2A-GATE-TDR` (every gated SINGLE_OP capture repeats the image captured before the disable), `CHK-AXI-RESP`, `CHK-AXI-COMPLETION`, `CHK-AXI-NONVAC` (the directed gating scenarios, and the matrix in SV-UVM), `CHK-AXI-STRB` (write and error gating, the matrix), `CHK-AXI-RDATA` (read gating, the matrix), and on the error gating scenarios the armed non-OKAY response (`CHK-AXI-RESP-EXPECTED` and `CHK-AXI-CREDITS` cocotb, `CHK-AXI-ERR-INJ` SV-UVM), `CHK-AXI-WMEM` (the recovery writes, against the stimulus), and `CHK-J2A-FAULT-STATUS`; `CHK-AXI-NOACT`, `CHK-AXI-STREAM-MIN`, and `CHK-AXI-BLOCKED` on the matrix (cocotb); `CHK-AXI-GATE-AW`, `CHK-AXI-GATE-W`, `CHK-AXI-GATE-AR`, `CHK-AXI-GATE-EXACT`, `CHK-AXI-WADDR` and `CHK-AXI-WDATA` with `CHK-AXI-STRB`, and `CHK-AXI-RADDR` with `CHK-AXI-RDATA` (SV-UVM); the write gating scenarios' queued series beats for the dropped buffered requests, with `CHK-AXI-WMEM` on their recovery write; the `jtag2axi_req` and `jtag2axi_status` scoreboard features (SV-UVM), `jtag2axi_req` proving no transaction while disabled; ledger `require_cells` (cocotb) |YES
 |F5.1 CTP wire-OR mode: pulse routing, configurable stretcher, inversion, the shared open-drain wire |`dtp_xtrig_wire_or_test`, `dtp_xtrig_wire_or_bus_test`, `dtp_ctm_wire_or_cla_to_ctp_test`, `dtp_ctm_wire_or_ctp_to_cla_test`, `dtp_ctm_wire_or_cla_to_cla_test`, `dtp_ctm_wire_or_ctp_to_ctp_test`, `dtp_ctm_rand_wire_or_only_test` |xtrig |`ctp_cg` mode, inversion, and stretch bins; `ctp_wire_or_rx_cg` sense and listener bins |`CHK-XTRIG-SIGNAL`, `CHK-XTRIG-STRETCH` (width and pulse count), `CHK-XTRIG-ROUTE-MODEL` (the fired outputs and one assertion per routed output), `CHK-XTRIG-WIRE`; `xtrig_csr` scoreboard feature (SV-UVM) |YES
 |F5.2 CTP point-to-point four-phase handshake: a request held until its acknowledge and released by it, an acknowledge raised by a request and dropped after it, STATUS through each phase |`dtp_xtrig_p2p_test`, `dtp_ctm_p2p_cla_to_ctp_test`, `dtp_ctm_p2p_ctp_to_cla_test`, `dtp_ctm_p2p_ctp_to_ctp_test`, `dtp_ctm_rand_p2p_only_test` |xtrig |`ctp_cg` P2P state bins |`CHK-XTRIG-SIGNAL` (each handshake phase at the CTP endpoints), `CHK-XTRIG-CSR` (STATUS, `dtp_xtrig_p2p_test`), `CHK-XTRIG-ROUTE-MODEL` |YES
@@ -878,9 +878,9 @@ c. Run a seeded random 32-bit DR scan and confirm the same 1-bit bypass behavior
 
 *Test Coverage*:
 
-* ZERO_LENGTH_BYPASS (IR=0x3D) provides a 0-bit DR path (TDI connects directly to TDO with no latency)
+* With the PTAP 3DCR select clear, ZERO_LENGTH_BYPASS (IR=0x3D) provides a 0-bit DR path (TDI connects directly to TDO with no latency)
 * DR chain length is exactly 0 bits, so the TAP effectively disappears from the scan chain
-* With the PTAP 3DCR select set and a behavioral downstream TAP spliced behind a seeded SMC, SEP, or extra STAP, ZERO_LENGTH_BYPASS adds no bit to the chain: a DR scan returns the chain captures followed by its marker after the STAP chain alone, one TCK earlier than under BYPASS; the I/O STAP's host TDO lockup samples TDI itself under ZERO_LENGTH_BYPASS, so the I/O STAP is not drawn
+* With the PTAP 3DCR select set and a behavioral downstream TAP spliced behind a seeded I/O, SMC, SEP, or extra STAP, ZERO_LENGTH_BYPASS behaves exactly as BYPASS: a DR scan returns the chain captures, then the bypass register's captured 0, then its marker, and matches the same scan under BYPASS
 * `jtag_instruction_cg` opcode bin 0x3D (ZERO_LENGTH_BYPASS)
 
 *Test Procedure*:
@@ -889,21 +889,21 @@ c. Run a seeded random 32-bit DR scan and confirm the same 1-bit bypass behavior
 . Load IR = 0x3D (ZERO_LENGTH_BYPASS) through `OcahJtagMasterDriver`.
 . Attempt a DR scan and confirm the DR chain length measures exactly 0 bits.
 . Shift a known pattern and verify TDO reflects TDI with zero additional delay.
-. Flush the TAP_3DCR configuration chain (TRST, a TAP_3DCR load and an over-length all-zero scan), then with composed TAP_3DCR scans set the PTAP 3DCR select, open the SIB of a seeded SMC, SEP, or extra STAP, and select it; one network-wide IR scan loads ZERO_LENGTH_BYPASS into the PTAP and `DS_TDR` into the downstream TAP.
-. Write a per-pass random `DS_TDR` value through the chain with a ZERO_LENGTH_BYPASS DR scan, then run a state-maintaining scan: the captured chain matches the reference model, and in both scans a seeded marker leaves TDO right after the STAP chain.
-. Load BYPASS (IR=0x3F) with a network-wide IR scan and repeat the maintaining scan: the chain reads back with the written value, the bit after the chain is the bypass register's captured 0, and the marker arrives one TCK later than under ZERO_LENGTH_BYPASS.
+. Flush the TAP_3DCR configuration chain (TRST, a TAP_3DCR load and an over-length all-zero scan), then with composed TAP_3DCR scans set the PTAP 3DCR select, open the SIB of a seeded I/O, SMC, SEP, or extra STAP, and select it; one network-wide IR scan loads ZERO_LENGTH_BYPASS into the PTAP and `DS_TDR` into the downstream TAP.
+. Write a per-pass random `DS_TDR` value through the chain with a ZERO_LENGTH_BYPASS DR scan, then run a state-maintaining scan: the captured chain matches the reference model, and in both scans the bit after the STAP chain is the bypass register's captured 0 and a seeded marker follows it.
+. Load BYPASS (IR=0x3F) with a network-wide IR scan and repeat the maintaining scan: the chain reads back with the written value, and the captured 0 and the marker arrive at the same positions as under ZERO_LENGTH_BYPASS.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`zlbypass_len_chk` |DR chain length is exactly 0 bits under IR=0x3D
-|`zlbypass_passthrough_chk` |TDO reflects TDI with zero added latency
-|`zlbypass_chain_align_chk` |No extra scan bits inserted; downstream chain alignment preserved: through the STAP chain the marker arrives after the chain alone under ZERO_LENGTH_BYPASS and one bit later, behind the bypass register's captured 0, under BYPASS, and the captured chain matches the reference model (`CHK-ZLB-CHAIN-ALIGN`, `CHK-SCAN-CHAIN`)
+|`zlbypass_len_chk` |DR chain length is exactly 0 bits under IR=0x3D with the PTAP 3DCR select clear
+|`zlbypass_passthrough_chk` |TDO reflects TDI with zero added latency with the PTAP 3DCR select clear
+|`zlbypass_chain_align_chk` |With the PTAP 3DCR select set, ZERO_LENGTH_BYPASS adds the BYPASS bit: through the STAP chain the bypass register's captured 0 follows the chain and the marker follows it, under ZERO_LENGTH_BYPASS and BYPASS alike, and the captured chain matches the reference model (`CHK-ZLB-CHAIN-ALIGN`, `CHK-SCAN-CHAIN`)
 |===
 
-*Pass Criteria*: ZERO_LENGTH_BYPASS yields a 0-bit DR with direct TDI-to-TDO pass-through and preserved chain alignment, with zero scoreboard/reference-model errors.
+*Pass Criteria*: With the PTAP 3DCR select clear, ZERO_LENGTH_BYPASS yields a 0-bit DR with direct TDI-to-TDO pass-through; with it set, the STAP chain scans exactly as under BYPASS, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -4690,7 +4690,7 @@ b. Release the stall and confirm the returned data matches the reference model.
 * A system reset (`rst_n_i`, the bridges' AXI-side reset) asserted while a SINGLE_OP write is held on the W channel of each bridge by a responder READY stall that is released only after the reset
 * The bridge observed mid-flight before the reset through `dtp_tb_if`: its TCK-domain AXI state machine on the write path, outside idle, with the single-op pending flag set (the CDC accepts AW and W at once, so the bridge waits for the write response while the responder holds the channel)
 * Containment: the state machine back to idle within 128 TCK cycles after the reset, the CDC's TCK-side isolate-and-clear observed, and no write for the aborted operation reaching the subordinate
-* Recovery: the SINGLE_OP status leaving `BUSY_OR_FULL` within eight SINGLE_OP captures (each a Capture-DR of the bridge's SINGLE_OP register from Run-Test/Idle, the instruction loaded once) and a legal write completing with OKAY afterwards
+* Recovery without a TAP reset: the SINGLE_OP status leaving `BUSY_OR_FULL` within eight SINGLE_OP captures (each a Capture-DR of the bridge's SINGLE_OP register from Run-Test/Idle, the instruction loaded once) and reporting the discarded write as `DECERR`, and a legal write completing with OKAY afterwards
 * The bench's three AXI responders reset on `rst_n_i` with the bridges, so each aborted transaction is dropped on the subordinate side of the port as well (<<dtp-vplan-scope>>)
 * A bridge that stays outside idle, waiting for the write response with status `BUSY_OR_FULL` after the reset, fails `CHK-J2A-ABORT-FSM` and `CHK-J2A-ABORT-RECOVERY`
 
@@ -4701,8 +4701,8 @@ b. Release the stall and confirm the returned data matches the reference model.
 . Step TCK in Run-Test/Idle while sampling the bridge FSM and pending flag through `dtp_tb_if` until the FSM leaves `AXI_IDLE`, bounded in TCK cycles (the FSM and the CDC's TCK side advance only while TCK runs); record `CHK-J2A-ABORT-MIDFLIGHT`.
 . Clear the sticky CDC clear-seen flag, pulse `rst_n_i` for one to three system cycles (`CHK-RESET-COUNT`), then release the stall.
 . Step TCK while sampling the FSM until it returns to `AXI_IDLE`, for at most 128 TCK cycles; record `CHK-J2A-ABORT-FSM`. Record `CHK-J2A-CDC-CLEAR` from the sticky clear-seen flag and `CHK-J2A-ABORT-ESCAPE` from the unchanged target slot.
-. Capture the SINGLE_OP status up to eight times, stopping when it leaves `BUSY_OR_FULL`; record `CHK-J2A-ABORT-RECOVERY` on whether it did, and when it did, issue a legal write to a clean slot with the memory compare and record `CHK-J2A-ABORT-ESCAPE` on the aborted slot again.
-. After all three bridges, fail the pass naming the bridges whose status stayed `BUSY_OR_FULL`.
+. Capture the SINGLE_OP status up to eight times, stopping when it leaves `BUSY_OR_FULL`; record `CHK-J2A-ABORT-RECOVERY` against `DECERR`, the status of an operation a system reset discarded, and when it matches, issue a legal write to a clean slot with the memory compare and record `CHK-J2A-ABORT-ESCAPE` on the aborted slot again.
+. After all three bridges, fail the pass naming the bridges that did not report the discarded write.
 
 *Checkers*:
 
@@ -4713,11 +4713,11 @@ b. Release the stall and confirm the returned data matches the reference model.
 |`CHK-J2A-ABORT-FSM` |The FSM is back in `AXI_IDLE` within 128 TCK cycles after the reset
 |`CHK-J2A-CDC-CLEAR` |The bridge's CDC ran its TCK-side isolate-and-clear after the reset
 |`CHK-J2A-ABORT-ESCAPE` |The aborted operation's slot in the subordinate memory is unchanged, after the reset and after the follow-on write
-|`CHK-J2A-ABORT-RECOVERY` |The SINGLE_OP status leaves `BUSY_OR_FULL` within eight SINGLE_OP captures; the follow-on legal write then completes with OKAY and lands (`CHK-AXI-WMEM`)
+|`CHK-J2A-ABORT-RECOVERY` |The SINGLE_OP status leaves `BUSY_OR_FULL` within eight SINGLE_OP captures and reads `DECERR` for the discarded write; the follow-on legal write then completes with OKAY and lands (`CHK-AXI-WMEM`)
 |`CHK-RESET-COUNT` |The tb_top reset-assertion counter advanced by one across the pulse
 |===
 
-*Pass Criteria*: On every bridge the reset lands with the FSM observed mid-flight, the FSM returns to `AXI_IDLE`, the CDC clear is observed, no write escapes, and the status leaves `BUSY_OR_FULL` so the follow-on write completes, with zero scoreboard/reference-model errors.
+*Pass Criteria*: On every bridge the reset lands with the FSM observed mid-flight, the FSM returns to `AXI_IDLE`, the CDC clear is observed, no write escapes, and the status reads `DECERR` for the discarded write so the follow-on write completes, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -4733,10 +4733,11 @@ b. Release the stall and confirm the returned data matches the reference model.
 * A system reset (`rst_n_i`, the bridges' AXI-side reset) asserted while a SINGLE_OP write is held on the AW channel of each bridge, with W not accepted ahead of AW, by a responder READY stall that is released only after the reset
 * The bridge observed mid-flight before the reset through `dtp_tb_if`: its TCK-domain AXI state machine on the write path, outside idle, with the single-op pending flag set (the CDC accepts AW and W at once, so the bridge waits for the write response while the responder holds the channel)
 * Containment: the state machine back to idle within 128 TCK cycles after the reset, the CDC's TCK-side isolate-and-clear observed, and no write for the aborted operation reaching the subordinate
-* Recovery: the SINGLE_OP status leaving `BUSY_OR_FULL` within eight SINGLE_OP captures (each a Capture-DR of the bridge's SINGLE_OP register from Run-Test/Idle, the instruction loaded once) and a legal write completing with OKAY afterwards
+* Recovery without a TAP reset: the SINGLE_OP status leaving `BUSY_OR_FULL` within eight SINGLE_OP captures (each a Capture-DR of the bridge's SINGLE_OP register from Run-Test/Idle, the instruction loaded once) and reporting the discarded write as `DECERR`, and a legal write completing with OKAY afterwards
 * The bench's three AXI responders reset on `rst_n_i` with the bridges, so each aborted transaction is dropped on the subordinate side of the port as well (<<dtp-vplan-scope>>)
 * The single-cycle pulse exercises the `axi_cdc_clearable` reset controllers' isolate-and-clear on the TCK side; the sticky clear-seen flag in `dtp_tb_if` is the observation
-* A bridge that stays outside idle, waiting for the write response with status `BUSY_OR_FULL` after the reset, fails `CHK-J2A-ABORT-FSM` and `CHK-J2A-ABORT-RECOVERY`
+* A second single-cycle reset once the first clear has completed, with the bridge idle and nothing pending: it discards nothing, so the `DECERR` of the discarded write survives it
+* A bridge that stays outside idle, waiting for the write response with status `BUSY_OR_FULL` after the reset, fails `CHK-J2A-ABORT-FSM` and `CHK-J2A-ABORT-RECOVERY`; a bridge whose second reset overwrites the `DECERR` fails `CHK-J2A-ABORT-RECOVERY`
 
 *Test Procedure*:
 
@@ -4745,8 +4746,9 @@ b. Release the stall and confirm the returned data matches the reference model.
 . Step TCK in Run-Test/Idle while sampling the bridge FSM and pending flag through `dtp_tb_if` until the FSM leaves `AXI_IDLE`, bounded in TCK cycles (the FSM and the CDC's TCK side advance only while TCK runs); record `CHK-J2A-ABORT-MIDFLIGHT`.
 . Clear the sticky CDC clear-seen flag, pulse `rst_n_i` for a single system cycle (`CHK-RESET-COUNT`), then release the stall.
 . Step TCK while sampling the FSM until it returns to `AXI_IDLE`, for at most 128 TCK cycles; record `CHK-J2A-ABORT-FSM`. Record `CHK-J2A-CDC-CLEAR` from the sticky clear-seen flag and `CHK-J2A-ABORT-ESCAPE` from the unchanged target slot.
-. Capture the SINGLE_OP status up to eight times, stopping when it leaves `BUSY_OR_FULL`; record `CHK-J2A-ABORT-RECOVERY` on whether it did, and when it did, issue a legal write to a clean slot with the memory compare and record `CHK-J2A-ABORT-ESCAPE` on the aborted slot again.
-. After all three bridges, fail the pass naming the bridges whose status stayed `BUSY_OR_FULL`.
+. Step 128 more TCK cycles so the first clear completes, which the PTAP document bounds at 52 TCK cycles on this bench, where TCK is the slower clock. Clear the clear-seen flag, pulse `rst_n_i` for a single system cycle again (`CHK-RESET-COUNT`), step 32 TCK cycles, and record `CHK-J2A-CDC-CLEAR` for the second clear.
+. Capture the SINGLE_OP status up to eight times, stopping when it leaves `BUSY_OR_FULL`; record `CHK-J2A-ABORT-RECOVERY` against `DECERR`, the status of an operation a system reset discarded, and when it matches, issue a legal write to a clean slot with the memory compare and record `CHK-J2A-ABORT-ESCAPE` on the aborted slot again.
+. After all three bridges, fail the pass naming the bridges that did not report the discarded write.
 
 *Checkers*:
 
@@ -4755,13 +4757,13 @@ b. Release the stall and confirm the returned data matches the reference model.
 |Checker |Description
 |`CHK-J2A-ABORT-MIDFLIGHT` |The FSM has left `AXI_IDLE` and the pending flag is set when the reset lands
 |`CHK-J2A-ABORT-FSM` |The FSM is back in `AXI_IDLE` within 128 TCK cycles after the reset
-|`CHK-J2A-CDC-CLEAR` |The bridge's CDC ran its TCK-side isolate-and-clear after the reset
+|`CHK-J2A-CDC-CLEAR` |The bridge's CDC ran its TCK-side isolate-and-clear after each reset
 |`CHK-J2A-ABORT-ESCAPE` |The aborted operation's slot in the subordinate memory is unchanged, after the reset and after the follow-on write
-|`CHK-J2A-ABORT-RECOVERY` |The SINGLE_OP status leaves `BUSY_OR_FULL` within eight SINGLE_OP captures; the follow-on legal write then completes with OKAY and lands (`CHK-AXI-WMEM`)
-|`CHK-RESET-COUNT` |The tb_top reset-assertion counter advanced by one across the pulse
+|`CHK-J2A-ABORT-RECOVERY` |After the second reset, the SINGLE_OP status leaves `BUSY_OR_FULL` within eight SINGLE_OP captures and reads `DECERR` for the write the first reset discarded; the follow-on legal write then completes with OKAY and lands (`CHK-AXI-WMEM`)
+|`CHK-RESET-COUNT` |The tb_top reset-assertion counter advanced by one across each pulse
 |===
 
-*Pass Criteria*: On every bridge the reset lands with the FSM observed mid-flight, the FSM returns to `AXI_IDLE`, the CDC clear is observed, no write escapes, and the status leaves `BUSY_OR_FULL` so the follow-on write completes, with zero scoreboard/reference-model errors.
+*Pass Criteria*: On every bridge the first reset lands with the FSM observed mid-flight, the FSM returns to `AXI_IDLE`, both CDC clears are observed, no write escapes, and the status still reads `DECERR` for the discarded write after the second reset so the follow-on write completes, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -4775,6 +4777,7 @@ b. Release the stall and confirm the returned data matches the reference model.
 *Test Coverage*:
 
 * Two system-reset pulses back to back across the TCK-to-ACLK domains on an idle bridge, the second inside the first's settle time
+* A SINGLE_OP write completed with an injected SLVERR before the burst: the resets discard nothing, so the SINGLE_OP status still reads `SLVERR` after them
 * The TCK-side isolate-and-clear of every bridge's CDC controller runs after the burst (the sticky `cdc_clear_seen` observable), and every pulse is counted (`CHK-RESET-COUNT`)
 * The bench does not sample the FIFO and FSM idle after the burst; the settled state is judged by the post-recovery reads and writes completing with the expected status and data
 * Post-recovery reads and writes complete correctly across all involved clock domains; a reset that lands on a bridge with a write in flight is the mid-flight abort scenarios' claim, not this one
@@ -4782,9 +4785,11 @@ b. Release the stall and confirm the returned data matches the reference model.
 *Test Procedure*:
 
 [arabic]
+. Arm a one-shot SLVERR on a slot of the bridge's target and issue a SINGLE_OP write to it; the write completes with `SLVERR`, consuming the armed response.
 . With the bridge idle, clear the sticky `cdc_clear_seen` flags.
 . Apply two system-reset pulses back to back through `dtp_tb_if`, the second within the first's settle time, each counted by the tb_top reset-assertion counter.
 . Step TCK and confirm every bridge's CDC controller ran its TCK-side isolate-and-clear (`cdc_clear_seen`).
+. Capture the SINGLE_OP status up to eight times, stopping when it leaves `BUSY_OR_FULL`; record `CHK-J2A-ABORT-RECOVERY` against `SLVERR`.
 . Issue subsequent write and read operations and confirm each reaches its expected terminal status with correct data.
 
 *Checkers*:
@@ -4793,10 +4798,11 @@ b. Release the stall and confirm the returned data matches the reference model.
 |===
 |Checker |Description
 |`j2a_cdc_b2b_clear_chk` |Every bridge's CDC controller ran its TCK-side isolate-and-clear after the reset burst (`CHK-J2A-CDC-CLEAR`), and both pulses were counted (`CHK-RESET-COUNT`)
+|`j2a_cdc_b2b_status_chk` |The SINGLE_OP status still reads the `SLVERR` completed before the burst (`CHK-J2A-ABORT-RECOVERY`)
 |`j2a_cdc_b2b_recovery_chk` |Post-recovery reads/writes complete correctly with expected status and data (`CHK-AXI-WMEM`, `CHK-AXI-RDATA`)
 |===
 
-*Pass Criteria*: Back-to-back resets on an idle bridge run every CDC controller's isolate-and-clear and are each counted, and subsequent reads and writes complete with the expected status and data on every bridge, with zero scoreboard/reference-model errors.
+*Pass Criteria*: Back-to-back resets on an idle bridge run every CDC controller's isolate-and-clear and are each counted, the SLVERR completed before them survives them, and subsequent reads and writes complete with the expected status and data on every bridge, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -6799,7 +6805,7 @@ fixed access policy. Data movement is out (<<dtp-formal-exclusions>>).
 [cols="1,3,3,2,2",options="header",]
 |===
 |Target |Described block |Rows |Formal top and item |Path
-|T1 TAP controller |`jtag_tap_ctrlr`: the sixteen-state Moore machine, the saturating TMS counter, the scan-control flags |F1.1, F1.2 |`dtp`, `dtp_tap_fpv` |Open
+|T1 TAP controller |`jtag_tap_ctrlr`: the sixteen-state Moore machine and the scan-control flags |F1.1, F1.2 |`dtp`, `dtp_tap_fpv` |Open
 |T2 Instruction register and TDR selection |`jtag_inst_reg` (6-bit shift, 64-bit one-hot decode, IDCODE on reset) and the PTAP select and TDO multiplexer terms: bypass for undefined opcodes and for disabled features, one TDR selected per instruction, zero-length bypass, the read-only IDCODE and CAPS captures |F1.3, F1.4, F1.5 (selection), F2.5 |`dtp`, `dtp_ir_fpv` |Open
 |T3 Reset hierarchy and persistence |`jtag_trst_n = trst_n AND pwr_on_rst_ni`, `rst_n = !test_logic_reset`, `chrst_n` under `jtag_tmp`; `jtag_tmp_status_reg`; `jtag_ic_reset_reg` with `reset_hold`; `jtag_3dcr_reg` with `config_hold` |F1.2, F1.6, F2.1, F2.2 |`dtp`, `dtp_reset_fpv` |Open
 |T4 STAP selection and debug disable |The PTAP 3DCR select, the four `jtag_stap` instances (I/O, SMC, SEP, extra) with their 3DCR and lockup flops, the `stap_host` return path in `jtag_intf_unit`, the two-flop `dbg_disable_i` synchronizers |F3.3, F3.4, F3.5, F3.6 |`dtp`, `dtp_stap_fpv` |Open; STAP chain order and disable wiring also as licensed connectivity
@@ -6845,7 +6851,7 @@ T1 is the property module in `formal/props/dtp_tap_props.sv`, bound to
 |===
 |Label |Checks |Row |Prio
 |`ast_tap_state_one_hot` |The state register holds exactly one state |F1.1 |P0
-|`ast_tap_five_tms_high_reach_tlr` |A saturated TMS counter implies Test-Logic-Reset |F1.2 |P0
+|`ast_tap_five_tms_high_reach_tlr` |Five consecutive TMS-high cycles reach Test-Logic-Reset from any state |F1.2 |P0
 |`ast_tap_tlr_holds_on_tms_high`, `ast_tap_tlr_exits_to_rti`, `ast_tap_rti_holds_on_tms_low`, `ast_tap_shift_holds_on_tms_low`, `ast_tap_update_dr_only_from_exit`, `ast_tap_update_ir_only_from_exit` |The legal TMS arcs into and out of the reset, idle, shift and update states |F1.1 |P1
 |`ast_tap_select_exclusive`, `ast_tap_moore_flags_follow_state`, `ast_tap_negedge_flags_follow_state` |The DR and IR selects are exclusive; the Moore flags and the negedge-clocked scan-control flags follow the state |F1.1 |P1
 |===
@@ -6884,7 +6890,7 @@ their arrays:
 [cols="1,3,4,1",options="header",]
 |===
 |Target |Module |Property intents |Prio
-|T2 |`dtp_ir_props.sv` on `jtag_inst_reg` and the PTAP select terms |`ast_ir_decoded_one_hot`: the decoded instruction is one-hot. `ast_ir_capture_loads_01`: Capture-IR loads `6'b000001`. `ast_ir_update_decodes_shift_reg`: after Update-IR the decoded instruction is `1 << shift_reg`. `ast_ir_reset_is_idcode`: Test-Logic-Reset, TRST and power-on reset leave IDCODE decoded. `ast_tdr_select_one_hot`: at most one register select is high in a DR scan, each select equals the DR select under its own instruction, the bypass register is also clocked by IDCODE, INV_BYPASS and SELECT_IJTAG scans, and the TDO multiplexer reads the register of the instruction. `ast_undefined_selects_bypass`: every opcode outside the defined set, and every defined opcode whose feature parameter is 0, selects the bypass register. `ast_zlb_bypasses_retimer`: under ZERO_LENGTH_BYPASS in Shift-DR, TDO follows TDI in the same step. `ast_idcode_caps_read_only`: the IDCODE and CAPS captures load the parameter constants and no Update-DR changes them. Covers: each of the 64 opcodes decoded, the bypass selection for one undefined opcode, a zero-length shift, a read of each capability TDR. |P1; the decode one-hot and the undefined-to-bypass rule P0
+|T2 |`dtp_ir_props.sv` on `jtag_inst_reg` and the PTAP select terms |`ast_ir_decoded_one_hot`: the decoded instruction is one-hot. `ast_ir_capture_loads_01`: Capture-IR loads `6'b000001`. `ast_ir_update_decodes_shift_reg`: after Update-IR the decoded instruction is `1 << shift_reg`. `ast_ir_reset_is_idcode`: Test-Logic-Reset, TRST and power-on reset leave IDCODE decoded. `ast_tdr_select_one_hot`: at most one register select is high in a DR scan, each select equals the DR select under its own instruction, the bypass register is also clocked by IDCODE, INV_BYPASS and SELECT_IJTAG scans and by ZERO_LENGTH_BYPASS scans with the PTAP 3DCR select set, and the TDO multiplexer reads the register of the instruction. `ast_undefined_selects_bypass`: every opcode outside the defined set, and every defined opcode whose feature parameter is 0, selects the bypass register. `ast_zlb_bypasses_retimer`: under ZERO_LENGTH_BYPASS in Shift-DR with the PTAP 3DCR select clear, TDO follows TDI in the same step; with the select set the bypass register is selected as under BYPASS. `ast_idcode_caps_read_only`: the IDCODE and CAPS captures load the parameter constants and no Update-DR changes them. Covers: each of the 64 opcodes decoded, the bypass selection for one undefined opcode, a zero-length shift, a read of each capability TDR. |P1; the decode one-hot and the undefined-to-bypass rule P0
 |T3 |`dtp_reset_props.sv` on the PTAP reset terms, `jtag_tmp`, `jtag_tmp_status_reg`, `jtag_ic_reset_reg`, `jtag_3dcr_reg` |`ast_trst_or_por_resets_tap`: either source low forces Test-Logic-Reset and the IDCODE instruction. `ast_tlr_asserts_rst_n`: `rst_n` is low exactly while the negedge-sampled state is Test-Logic-Reset. `ast_chrst_follows_rst_unless_persistent`: `chrst_n` equals `rst_n` while persistence is off and stays high in Test-Logic-Reset while it is on. `ast_tmp_on_only_by_clamp_hold`, `ast_tmp_off_by_release_or_escape`: the two TMP transitions and no other; the bypass escape needs Update-IR, an explicit BYPASS opcode and the escape bit. `ast_tmp_survives_tlr`: Test-Logic-Reset leaves the TMP state unchanged. `ast_ic_reset_hold_blocks_tlr`: with `reset_hold` 0, Test-Logic-Reset leaves `reset_enable` and `reset_control` unchanged; with `reset_hold` 1 it restores them to all-ones. `ast_ic_reset_trst_clears_all`: TRST restores every IC_RESET bit including `reset_hold`. `ast_ic_reset_ovrd_is_not_enable`: `.ovrd` is the inversion of `reset_enable` and `.val` equals `reset_control`. `ast_3dcr_config_hold_blocks_tlr`: the PTAP 3DCR survives Test-Logic-Reset while `config_hold` is set and clears on TRST. Covers: persistence on then off by each exit, an IC_RESET override held across a Test-Logic-Reset, a 3DCR held across a Test-Logic-Reset. |P0
 |T4 |`dtp_stap_props.sv` on the PTAP 3DCR, each `jtag_stap`, and the `stap_host` terms of `jtag_intf_unit` |`ast_stap_disable_forces_sel_low`, `ast_stap_disable_tdo_low`, `ast_stap_disable_blocks_3dcr_update`: with the STAP's disable field high, `stap_sel` is 0, `host_tdo_o` is 0, and the 3DCR update register holds its value. `ast_stap_unselected_parks_tms`: with `stap_sel` 0, `host_tap_ctrl_o.tms` equals `tms_hold`; with 1 it follows the client TMS. `ast_stap_tdo_oen_only_when_selected_shifting`: `host_tdo_oen_o` is `stap_sel AND shift_en`. `ast_stap_host_disable_loops_back`: with `stap_host` disabled the PTAP scan input is the chain's own output and every host scan-control enable is 0. `ast_ptap_stap_select_routes_tdo`: with the PTAP 3DCR select set, TDO comes from the STAP chain, else from the TDR multiplexer. `ast_stap_chain_quiet_unselected`: with the PTAP 3DCR select clear, the select, capture, shift and update enables of the STAP chain's scan control are 0. `ast_dbg_disable_sync_fail_closed`: each synchronizer resets to 1 and follows its input after two `tck` edges. Covers: the I/O, SMC, SEP and extra STAP each selected; a STAP disabled while selected; the return path disabled during a shift, and enabled during a shift with the PTAP select set. |P0
 |T5 |`dtp_sib_props.sv` on the three SIBs |`ast_sib_disable_forces_en_low`, `ast_sib_disable_blocks_update`, `ast_sib_disable_host_quiet`: with the SIB's field high, the segment enable is 0, the SIB bit does not update, and the host `capture_en`, `shift_en`, `update_en`, `select` and `host_scan_out_o` are 0. `ast_sib_open_routes_host`: with the enable set, the client scan output is the host scan input, else the SIB's own bit. `ast_sib_host_ctrl_follows_client`: the host enables equal the client enables AND `select` while enabled. `ast_sib_chain_order`: the DFD SIB's input is the non-secure SIB's output, whose input is the secure SIB's output. Covers: every SIB pattern (eight), each SIB disabled while open. |P0

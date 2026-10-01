@@ -8,15 +8,26 @@ schema_version = 1
 
 [[tests]]
 name = "sep_efuse_sense_test"
-module = "efuse.sep_efuse_sense_test"
+module = { cocotb = "efuse.sep_efuse_sense_test", uvm = "sep_efuse_sense_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["smoke", "efuse", "ci"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
+
 # Pin the committed default preload (bare +sep_efuse_preload, no path) so the two
 # tests cover both sources: preload+backdoor here vs random+AXI in the image test.
+[tests.overrides.cocotb]
 args = ["+sep_efuse_preload"]
+
+# The eFuse bank model loads the same committed preload; the sequence compares
+# the sensed shadow with its committed expected shadow
+# (cocotb/env/sep_efuse_default_shadow.py writes it).
+[tests.overrides.uvm]
+args = [
+  "+sep_efuse_hex={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/sep_efuse_default.hex",
+  "+sep_efuse_shadow_hex={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/sep_efuse_default.shadow.hex",
+]
 
 [[tests]]
 name = "sep_efuse_image_test"

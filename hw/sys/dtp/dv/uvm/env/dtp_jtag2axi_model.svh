@@ -12,16 +12,15 @@
 //                operation is still pending (then it is rejected: status
 //                BUSY_OR_FULL, sticky full). Capture-DR presents
 //                BUSY_OR_FULL while pending, else the last completion
-//                status, and the last read data after a read. The PTAP
-//                document states no status for an operation a system reset
-//                aborted, so a capture between that reset and the next
-//                launched operation carries no contract.
+//                status, and the last read data after a read.
 //   SERIES_CTRL  Update-DR with op != NOP latches op, size (limited to one
 //                full beat), pipeline depth and address and restarts the
 //                read budget; the reset bit clears the sticky status.
 //                Capture-DR presents the sticky status: BUSY_OR_FULL while
 //                full, else the first series error since the reset bit,
-//                else SUCCESS. SINGLE_OP completions do not reach it.
+//                else SUCCESS; a system reset that discarded a series
+//                operation counts as a DECERR error. SINGLE_OP completions
+//                do not reach it.
 //   SERIES_DATA  Update-DR launches one transaction at the series address
 //                on the byte lanes that address selects; a read is issued
 //                only within the budget of pipeline_depth + 1 per CTRL
@@ -36,7 +35,8 @@
 // follows them, so a capture during a shift sees the state of its own
 // Capture-DR. Plain class held by dtp_jtag2axi_req_ref_model and
 // dtp_jtag2axi_status_ref_model; no reporting. Not modelled: the series
-// read-data FIFO a SERIES_DATA capture returns, and true request-FIFO
+// read-data FIFO a SERIES_DATA capture returns (and so the DECERR a system
+// reset reports for its unread entries), and true request-FIFO
 // backpressure. No cocotb twin.
 
 class dtp_jtag2axi_model;
@@ -51,7 +51,6 @@ class dtp_jtag2axi_model;
 
   typedef struct {
     bit              single_pending;
-    bit              abort_unresolved;  // a system reset aborted the pending op
     dtp_j2a_status_e last_single_status;
     bit              last_single_was_read;
     bit [63:0]       last_read_data;
@@ -86,7 +85,6 @@ class dtp_jtag2axi_model;
       issued_t      no_issued[$];
       ocah_axi_item no_completed[$];
       b.single_pending        = 1'b0;
-      b.abort_unresolved      = 1'b0;
       b.last_single_status    = DTP_J2A_SUCCESS;
       b.last_single_was_read  = 1'b0;
       b.last_read_data        = '0;
@@ -105,17 +103,35 @@ class dtp_jtag2axi_model;
     end
   endfunction
 
-  // System reset: the AXI side drops its in-flight transaction and the
-  // pending operation completes nowhere; the JTAG-side registers keep
-  // their values.
+  // System reset: every operation launched and not yet completed is
+  // discarded. A discarded single or with-status operation reads DECERR on
+  // SINGLE_OP; a discarded series operation reads DECERR on the sticky
+  // status unless it already holds a series error. Every other status and
+  // the SERIES_CTRL configuration keep their values. Called at the first
+  // scan or TAP event after the reset, so every queued completion precedes
+  // it.
   function void abort_in_flight();
     foreach (m_bridge[n]) begin
-      issued_t      no_issued[$];
-      ocah_axi_item no_completed[$];
-      m_issued_q[n]    = no_issued;
-      m_completed_q[n] = no_completed;
-      if (m_bridge[n].single_pending) m_bridge[n].abort_unresolved = 1'b1;
-      m_bridge[n].single_pending = 1'b0;
+      issued_t no_issued[$];
+      bit      single_lost;
+      bit      series_lost;
+      apply_completions(n, $time);
+      single_lost = m_bridge[n].single_pending;
+      series_lost = 1'b0;
+      foreach (m_issued_q[n][i]) begin
+        if (m_issued_q[n][i].with_status) single_lost = 1'b1;
+        if (!m_issued_q[n][i].single) series_lost = 1'b1;
+      end
+      m_issued_q[n] = no_issued;
+      m_bridge[n].single_pending      = 1'b0;
+      m_bridge[n].series_reads_pushed = 0;
+      if (single_lost) begin
+        m_bridge[n].last_single_status = DTP_J2A_DECERR;
+        m_bridge[n].last_read_data     = '0;
+      end
+      if (series_lost && m_bridge[n].sticky_status == DTP_J2A_SUCCESS) begin
+        m_bridge[n].sticky_status = DTP_J2A_DECERR;
+      end
     end
   endfunction
 
@@ -199,7 +215,6 @@ class dtp_jtag2axi_model;
             ((capture_time - m_bridge[n].last_completion) < settle_window))
       exp.compare = 1'b0;
     if (kind == DTP_J2A_SCAN_SINGLE_OP) begin
-      if (m_bridge[n].abort_unresolved) exp.compare = 1'b0;
       exp.status = m_bridge[n].single_pending ? DTP_J2A_BUSY_OR_FULL
                                                     : m_bridge[n].last_single_status;
       exp.compare_rdata = !m_bridge[n].single_pending && m_bridge[n].last_single_was_read &&
@@ -230,7 +245,6 @@ class dtp_jtag2axi_model;
       return 1'b0;
     end
     m_bridge[n].single_pending       = 1'b1;
-    m_bridge[n].abort_unresolved     = 1'b0;
     m_bridge[n].last_single_was_read = (r.op == DTP_J2A_OP_READ);
     e.single      = 1'b1;
     e.is_read     = (r.op == DTP_J2A_OP_READ);

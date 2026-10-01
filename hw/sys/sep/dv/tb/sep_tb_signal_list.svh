@@ -109,6 +109,11 @@
 // still gates on a_valid, so a DMA-issued command is required. See the
 // force block below.
 `SEP_TB_IN(logic, dma_host_intg_inject_i)
+// HMAC message-FIFO drain stall. Default 0. When 1, tb holds the FIFO's read
+// side idle so the hash engine stops consuming and the FIFO fills. A port rather
+// than a plusarg so a test can raise it after the ROM's short self-test hash.
+// See the force block below.
+`SEP_TB_IN(logic, hmac_fifo_drain_stall_i)
 
 // ------------------------------------------------------------------
 // Flat CPU-LSU AXI manager (cocotbext-axi AxiMaster, prefix s_axi)

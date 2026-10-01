@@ -53,9 +53,6 @@ module jtag_tap_ctrlr
 
   assign current_state_q = tap_state_e'(current_state_q_bits);
 
-  // TMS reset counter for fault state recovery (IEEE 1149.1 compliance)
-  logic [2:0] tms_reset_counter_q, tms_reset_counter_d;
-
   // Internal control signals
   logic capture_dr, shift_dr, update_dr;
   logic capture_ir, shift_ir, update_ir;
@@ -66,7 +63,7 @@ module jtag_tap_ctrlr
   // Three-Always Block Implementation (Moore State Machine)
   //--------------------------------------------------------------------------
 
-  // Always block 1: State register with fault state recovery
+  // Always block 1: State register
   prim_flop #(
     .Width($bits(tap_state_e)),
     .ResetValue(TEST_LOGIC_RESET)
@@ -77,30 +74,9 @@ module jtag_tap_ctrlr
     .q_o    (current_state_q_bits)
   );
 
-  prim_flop #(
-    .Width(3),
-    .ResetValue(3'b0)
-  ) u_tms_reset_counter_flop (
-    .clk_i  (client_tap_ctrl_i.tck),
-    .rst_ni (client_tap_ctrl_i.trst_n),
-    .d_i    (tms_reset_counter_d),
-    .q_o    (tms_reset_counter_q)
-  );
-
   // Always block 2: Next state logic (combinational)
   always_comb begin
     next_state = current_state_q;  // Default: stay in current state
-
-    // TMS reset counter logic (IEEE 1149.1: 5 consecutive TMS high -> TLR)
-    if (client_tap_ctrl_i.tms) begin
-      if (tms_reset_counter_q < 3'd5) begin
-        tms_reset_counter_d = tms_reset_counter_q + 1'b1;
-      end else begin
-        tms_reset_counter_d = 3'd5;  // Saturate at 5
-      end
-    end else begin
-      tms_reset_counter_d = 3'b0;  // Reset counter on TMS low
-    end
 
     case (current_state_q)
       TEST_LOGIC_RESET: begin

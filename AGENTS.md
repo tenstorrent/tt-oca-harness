@@ -40,6 +40,8 @@ partial read costs far more time than a full one.
 | `scripts/docker.md` | Container subcommands, all environment variables, bubblewrap backend, GID fixup |
 | `nix/nix-infrastructure.md` | Nix flake structure, dev shell and container variants, adding packages, reproducibility |
 | `nix/glossary.md` | Plain-English definitions of Nix concepts (flake, derivation, overlay, dev shell) |
+| `flake.nix`, `ocah_deps.nix`, `nix/` | The nix-built container and dev shell: which packages and environment variables the image carries, including the VP's SystemC, CCI, Boost, OpenSSL and Whisper |
+| `virtual_platform/README.md` | Virtual platform: the three VP executables and which need Whisper, dependency resolution, the `sepvp` runner and pytest harness, container vs ambient build |
 | A testbench's own `README` — `hw/<ip\|sys>/<block>/dv/<tb dir>/README.md` or `.adoc` | Testbench usage, regression mechanics, log file locations |
 | `hw/common/dv/fw/` | Shared firmware build engine (`compile.mk`), link modes, toolchain checks |
 | `nonfree/setup_env.sh` | Environment setup — *proprietary companion, only present with access* |
@@ -270,14 +272,52 @@ controls.
 > loaded a tag, every checkout at that tag using the same engine reuses it. The bubblewrap
 > backend below never builds.
 
+That one image also carries the OCAH virtual platform's toolchain, so
+`make -C virtual_platform vp VP_CONTAINER=1` builds and runs `sep-vp` in it. `ocah_deps.nix`
+provides SystemC, CCI, Boost, OpenSSL and Whisper and exports `SYSTEMC_HOME`, `CCI_HOME`,
+`BOOST_ROOT`, `OPENSSL_ROOT` and `WHISPER_HOME`, so inside the container the VP resolves
+every dependency as explicit and builds none of them. Outside it, `virtual_platform/Makefile`
+still resolves or builds each one -- see `virtual_platform/README.md`.
+
+The model builds three VP executables and the harness builds all three. `sep-vp` is the
+default; `smc-vp` and `smu-vp` (the SMC+SEP integration, which runs both subsystems in
+one process) are **opt-in**, because asking for either first builds the Whisper ISS into
+`local/` — `make vp` never does, and needs no Whisper. They share a second build tree,
+`vp/build_smc`, since `WHISPER_HOME` is read at configure time and decides whether those
+platforms are generated at all. Their tests delegate to the model's own
+`sw/{smc,smu}-vp-tests` runners rather than the SEP-specific `sepvp` package. The image
+needs no extra packages for them.
+
+```bash
+make -C virtual_platform smc-vp smu-vp VP_CONTAINER=1
+make -C virtual_platform smc-test VP_CONTAINER=1   # SMC_ARGS=<one-test>
+make -C virtual_platform smu-test VP_CONTAINER=1   # SMU_ARGS=<one-test>
+```
+
+`smu-vp` has a companion artifact, `libsmc_cluster_smu.so`, built beside the target
+rather than into `bin/`. `smu-vp` bakes that build-tree path into its RUNPATH, so it runs
+in place — but a copy made without the `.so` binds silently to the build tree and then
+fails once that tree is gone. Carry both, or source the generated
+`setup_environment*.sh`, which puts its directory on `LD_LIBRARY_PATH`.
+
+```bash
+./scripts/docker-run.sh run-here sh -c 'g++ --version; cmake --version'  # the VP side
+```
+
+On a host with both podman and docker installed, `OCAH_ENGINE=docker` (or `podman`) pins
+which one `docker-run.sh` uses instead of taking whichever it finds first.
+
 A testbench that builds firmware as part of its own flow dispatches those builds through
 `scripts/docker-run.sh run-here`, so the container is used automatically while the simulator
 runs natively on the host. Not every testbench does this — check its Makefile rather than
 assuming.
 
 When `OCAH_TOOLCHAIN_ROOTFS` points at an extracted toolchain rootfs and `bwrap` is
-installed, `docker-run.sh` uses bubblewrap instead of a container engine. It is an opt-in
-either way: the companion sets it for you, and anyone can set it by hand. That path fails
+installed, `docker-run.sh` uses bubblewrap instead of a container engine. The rootfs must
+come from the merged image: both `usr/bin/riscv64-unknown-elf-gcc` and `usr/bin/g++` are
+probed, and a rootfs missing either is rejected up front with a warning and an automatic
+fall back to the container engine. It is an opt-in either way: the companion sets it for
+you, and anyone can set it by hand. That path fails
 when the checkout sits on a filesystem whose mountpoint bwrap cannot create inside its
 read-only rootfs, typically a networked or site-specific mount:
 
@@ -395,6 +435,7 @@ Whatever the testbench, these hold:
 | `doc/` | AsciiDoc products: `trm`, `integrator`, `programmer`, `user`, `appnotes`, `starting` |
 | `integration/` | Generated, grouped symlink indexes for integrator-facing RDL, IP-XACT and timing constraints |
 | `flows/` | Lint, format and synthesis flow makefiles |
+| `virtual_platform/` | SystemC virtual platform: the `tt-oca-harness-model` submodule that provides `sep-vp`, `smc-vp` and `smu-vp`, the `sepvp` Python runner and its pytest suite, and the Makefile that builds them and their dependencies |
 | `vendor/` | Vendored packages as `<Org>/<Repo>/upstream/`; never hand-edit those. Modify upstream files through the sibling `patches/`, and keep TT-owned additions in `overlay/`, which `bender vendor init` leaves alone. GitHub CI runs `bender vendor diff --err_on_diff` so committed `upstream/` trees match the pinned remotes plus patches |
 | `tools/` | Register, doc, DV and container tooling |
 | `scripts/` | `docker-run.sh` container front door, CI helpers |

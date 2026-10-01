@@ -18,10 +18,10 @@ Top-level enable registers selecting I2C, controller-mode, and SMBus operation.
 [cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description
-| 0x0 - 0x8 | <<reg-{regmap-instance}-i2c_ctrl-I2C_CTRL-0-,I2C_CTRL[3]>> | RW a| Control Register
+| 0x0 - 0x8 | <<reg-{regmap-instance}-i2c_ctrl-I2C_CTRL-,I2C_CTRL[3]>> | RW a| Control Register
 |===
 
-[#reg-{regmap-instance}-i2c_ctrl-I2C_CTRL-0-]
+[#reg-{regmap-instance}-i2c_ctrl-I2C_CTRL-]
 === I2C_CTRL[3]
 
 [cols="1,3,1,1,6", options="header"]
