@@ -611,8 +611,8 @@ For direct access to the eFuse not through the SHIM, i.e. from a DFT fuse
 controller, adopters must ensure the integrated logic will not interfere with
 accesses from the OCAH's efuse interface.
 
-During Function Level Reset (FLR) operations, the isolation request path asserts
-`skip_mem_repair_o` to bypass repair for rapid reset sequences. Normal cold
+The isolation request path asserts `skip_mem_repair_o` during Function Level
+Reset (FLR) operations to bypass repair for rapid reset sequences. Normal cold
 reset sequences always execute repair unless isolation is already asserted.
 
 == Interrupt Integration
