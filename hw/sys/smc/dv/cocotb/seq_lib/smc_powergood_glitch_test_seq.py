@@ -9,8 +9,8 @@ every reset observable is released again and sample.
 
 Two proof properties, both fail-capable:
 
-* mid-glitch (``clk_rst.adoc`` "Primary Reset Activation Sources": POR "holds
-  SMC functional reset gated until power-good is stable"): with
+* mid-glitch (``clk_rst.adoc`` "SMC reset sources and effects": power-good
+  low "Holds functional reset and resets the JTAG/TDR POR path"): with
   ``powergood_stable_o==0`` the cold-stable and both primary resets must read
   asserted -- and at **every** sample of the glitch, not at one instant, since
   a single snapshot also passes for a DUT that releases the functional reset
