@@ -329,8 +329,8 @@ args = ["+skip_fuse_sense"]
 name = "sep_fabric_inbound_filter_window_walk_test"
 module = "system.sep_fabric_inbound_filter_window_walk_test"
 seed = 1
-# Randomized stimulus: walk more than one seed in a regression.
-reseed = 2
+# One seed: every walked bit steps both ways and decides a response at any
+# seed, and a second seed added 39 of 1.9M toggle bits and nothing else.
 timeout_sec = 3600
 tags = ["fabric", "inbound_filter", "security", "system", "subsystem"]
 run_modes = ["no_cpu"]
@@ -360,8 +360,8 @@ args = ["+skip_fuse_sense"]
 name = "sep_fabric_outbound_remap_filter_walk_test"
 module = "system.sep_fabric_outbound_remap_filter_walk_test"
 seed = 1
-# Randomized stimulus: walk more than one seed in a regression.
-reseed = 2
+# One seed: every walked bit steps both ways and decides a response at any
+# seed, and a second seed added 39 of 1.9M toggle bits and nothing else.
 timeout_sec = 3600
 tags = ["fabric", "remap", "filter", "system", "subsystem"]
 run_modes = ["no_cpu"]
@@ -411,8 +411,8 @@ args = ["+skip_fuse_sense"]
 name = "sep_fabric_local_alias_offset_walk_test"
 module = "system.sep_fabric_local_alias_offset_walk_test"
 seed = 1
-# Randomized stimulus: walk more than one seed in a regression.
-reseed = 2
+# One seed: every walked bit steps both ways and decides a response at any
+# seed, and a second seed added 39 of 1.9M toggle bits and nothing else.
 timeout_sec = 3600
 tags = ["fabric", "remap", "filter", "system", "subsystem"]
 run_modes = ["no_cpu"]

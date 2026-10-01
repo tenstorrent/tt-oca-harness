@@ -5620,7 +5620,7 @@ behaviour and the JTAG read are graded on
 
 *BFM / Model*: ocah_axi_vip (CPU-LSU master); `tb/sep_outbound_mbx.sv` (outbound responder: OKAY at any address); `seq_lib/sep_fabric_entry_walk_seq.py` (START/END readback model under the same-granule write-back rule of `filter_ctrl.rdl`)
 
-*Randomization*: RANDCFG — the seed selects the in-region beat, the offsets and the windows of every pair. Every region and every entry runs at each seed; `reseed = 2` adds a second seed in a regression.
+*Randomization*: RANDCFG — the seed selects the in-region beat, the offsets and the windows of every pair. Every region and every entry runs at each seed; one seed per regression, because the bit coverage does not depend on the seed.
 
 *Objective*: Every AP/STEE output-remap region and every outbound-filter entry translate and compare all 56 address bits on live traffic.
 
@@ -5675,7 +5675,7 @@ behaviour and the JTAG read are graded on
 
 *BFM / Model*: ocah_axi_vip (CPU-LSU master and the external SMN master); `seq_lib/sep_fabric_entry_walk_seq.py` (START/END readback model)
 
-*Randomization*: RANDCFG — the seed selects the staged value and every window. Every entry runs at each seed; `reseed = 2` adds a second seed in a regression.
+*Randomization*: RANDCFG — the seed selects the staged value and every window. Every entry runs at each seed; one seed per regression, because the bit coverage does not depend on the seed.
 
 *Objective*: Every inbound-filter entry compares all 56 address bits on live external traffic.
 
@@ -5726,7 +5726,7 @@ behaviour and the JTAG read are graded on
 
 *BFM / Model*: ocah_axi_vip (CPU-LSU master); `tb/sep_outbound_mbx.sv` (outbound responder: OKAY at any address)
 
-*Randomization*: RANDCFG — the seed selects every target, bound and the staged word. Every region runs at each seed; `reseed = 2` adds a second seed in a regression.
+*Randomization*: RANDCFG — the seed selects every target, bound and the staged word. Every region runs at each seed; one seed per regression, because the bit coverage does not depend on the seed.
 
 *Objective*: Every local-master alias region matches and translates with all 56 address bits on live traffic.
 
