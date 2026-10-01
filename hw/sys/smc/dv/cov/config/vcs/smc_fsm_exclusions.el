@@ -72,19 +72,19 @@ Transition StWriteReadBackWait->StWriteIdle "7->0"
 Transition StWriteSetup->StWriteIdle "2->0"
 Transition StWriteWait->StWriteIdle "4->0"
 
-CHECKSUM: "2423281357 1499231322"
+CHECKSUM: "4060549009 1499231322"
 ANNOTATION: "SMC-FSM-F5-RESET-EDGE: the state register's reset assignment is expanded into a transition from every state, and no case arm of the source state assigns the reset state, so the edge exists only if the block's reset is asserted while the FSM occupies that one state. The DV package grades reset behaviour through its reset leaves."
 MODULE: efuse_shadow_regs
 Fsm efuse_sense_state_q "1499231322"
 Transition StRead->StIdle "1->0"
 
-CHECKSUM: "376348732 1594583517"
+CHECKSUM: "1305403113 1594583517"
 ANNOTATION: "SMC-FSM-F6-ENABLE-EDGE: the monitor enters StBusBusyHigh from the StBusBusyLow arm on an idle bus, and from the rising edge of the monitor enable in multi-controller mode, where the disabled branch has already parked the register at StBusFree; StBusBusyStop has no arm to StBusBusyHigh and cannot be the register's value at that edge, so an edge from there is an extraction artefact. The edge from StBusBusyLow is the ordinary sequence and stays graded."
 MODULE: i2c_bus_monitor
 Fsm state_q "1594583517"
 Transition StBusBusyStop->StBusBusyHigh "3->2"
 
-CHECKSUM: "1322761447 606724223"
+CHECKSUM: "3384408495 606724223"
 ANNOTATION: "SMC-FSM-F8-NO-INTERFERENCE: sda_released_but_low is gated on scl_sync, and the interference and arbitration-lost terms built on it are gated on the transmitting flag, so from a state whose output block leaves transmitting_o at zero, or that drives scl_d low, the term is identically false and the fan-in override it feeds cannot fire from that state. A state whose own case arm assigns the same destination for another reason is not named here."
 ANNOTATION: "SMC-FSM-B2-UNAIMED-OVERRIDE: a property of this bench, not of the design. The I2C FSMs end their next-state logic with fan-in overrides taken on a bus event or a register write: start detect to AcquireStart; stop detect, bus timeout or target disable to Idle; arbitration loss to WaitForStop; controller interference or a failed symbol to Idle. The states those overrides leave are timed below one bit by the block's own counters, and the SMC bench drives the bus through the pads and the registers, so it cannot place a bus event or a write in a chosen one of them; the edge an override would take out of a given state is uncovered for want of that aim. A bench that can place a bus event or a register write in a chosen sub-bit state retires the class. An edge the source state's own case arm assigns is reachable another way and stays graded, and F7 and F8 name the edges the design itself forbids."
 MODULE: i2c_controller_fsm
@@ -102,7 +102,7 @@ Transition HostHoldBitAck->Idle "20->0"
 Transition ReadClockLow->Idle "15->0"
 Transition ReadHoldBit->Idle "17->0"
 
-CHECKSUM: "395370686 229560382"
+CHECKSUM: "2631278932 229560382"
 ANNOTATION: "SMC-FSM-F7-SCL-HELD-LOW: the bus monitor raises start_detect only on a falling SDA while SCL is high on two samples, and clears the pending flag whenever SCL is low, so a target state that drives scl_d = 1'b0 holds the wired-AND SCL low for its whole duration and start_detect_i cannot rise in it. The fan-in override that takes the FSM to AcquireStart cannot fire from such a state."
 ANNOTATION: "SMC-FSM-F8-NO-INTERFERENCE: sda_released_but_low is gated on scl_sync, and the interference and arbitration-lost terms built on it are gated on the transmitting flag, so from a state whose output block leaves transmitting_o at zero, or that drives scl_d low, the term is identically false and the fan-in override it feeds cannot fire from that state. A state whose own case arm assigns the same destination for another reason is not named here."
 ANNOTATION: "SMC-FSM-B2-UNAIMED-OVERRIDE: a property of this bench, not of the design. The I2C FSMs end their next-state logic with fan-in overrides taken on a bus event or a register write: start detect to AcquireStart; stop detect, bus timeout or target disable to Idle; arbitration loss to WaitForStop; controller interference or a failed symbol to Idle. The states those overrides leave are timed below one bit by the block's own counters, and the SMC bench drives the bus through the pads and the registers, so it cannot place a bus event or a write in a chosen one of them; the edge an override would take out of a given state is uncovered for want of that aim. A bench that can place a bus event or a register write in a chosen sub-bit state retires the class. An edge the source state's own case arm assigns is reachable another way and stays graded, and F7 and F8 name the edges the design itself forbids."
@@ -177,7 +177,7 @@ MODULE: smc_cool_reset_wrap
 Fsm flr_counter_state "909361475"
 Transition COUNT_DOWN->IDLE "1->0"
 
-CHECKSUM: "1867070274 330493458"
+CHECKSUM: "1319975045 330493458"
 ANNOTATION: "SMC-FSM-F9-LOOP-INDEX-EXTRACTION: a property of the extraction, not of the design. block_index is a loop index local to an always_comb, set at the top of the block and walked by the for loop over the message's counters, with no flop behind it. The extractor reports it as an FSM because it is state-shaped, and the values and transitions it records are whichever it samples from that combinational loop; none of them is a state or a transition of the design. Only the points the report marks uncovered are written, so the sampled values it did record stay in the score."
 MODULE: telemetry_receiver
 Fsm block_index "330493458"
@@ -201,7 +201,7 @@ Transition RESP_HANDSHAKE->RESET_VALUE "4->0"
 Transition W_HANDSHAKE->RESET_VALUE "3->0"
 Transition W_HANDSHAKE->RESP_HANDSHAKE "3->4"
 
-CHECKSUM: "3737304986 4062283189"
+CHECKSUM: "3660651998 4062283189"
 ANNOTATION: "SMC-FSM-F5-RESET-EDGE: the state register's reset assignment is expanded into a transition from every state, and no case arm of the source state assigns the reset state, so the edge exists only if the block's reset is asserted while the FSM occupies that one state. The DV package grades reset behaviour through its reset leaves."
 MODULE: zeroer
 Fsm cur_state "4062283189"

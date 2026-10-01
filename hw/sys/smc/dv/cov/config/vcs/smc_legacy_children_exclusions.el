@@ -31,16 +31,14 @@
 // class; the ANNOTATION before each group names the legacy file.
 //==================================================
 
-CHECKSUM: "3869168330 760173647"
+CHECKSUM: "254295559 3808596618"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[0].u_smc_alias_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 27 "2010388566" "(field_storage.REGION.region_attrs.cacheable.value & ((~decoded_wr_biten[62]))) 1 -1" (3 "11")
-Condition 28 "539643002" "(decoded_wr_data[62] & decoded_wr_biten[62]) 1 -1" (3 "11")
 
-CHECKSUM: "3869168330 760173647"
+CHECKSUM: "254295559 3808596618"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[1].u_smc_alias_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -50,18 +48,13 @@ Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp
 Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
 Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 26 "1017968551" "((field_storage.REGION.region_attrs.cacheable.value & ((~decoded_wr_biten[62]))) | (decoded_wr_data[62] & decoded_wr_biten[62])) 1 -1" (3 "10")
-Condition 27 "2010388566" "(field_storage.REGION.region_attrs.cacheable.value & ((~decoded_wr_biten[62]))) 1 -1" (2 "10")
-Condition 27 "2010388566" "(field_storage.REGION.region_attrs.cacheable.value & ((~decoded_wr_biten[62]))) 1 -1" (3 "11")
-Condition 28 "539643002" "(decoded_wr_data[62] & decoded_wr_biten[62]) 1 -1" (2 "10")
-Condition 28 "539643002" "(decoded_wr_data[62] & decoded_wr_biten[62]) 1 -1" (3 "11")
-Condition 30 "1983377402" "((field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 31 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (2 "10")
-Condition 31 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (3 "11")
-Condition 32 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
-Condition 32 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (3 "11")
+Condition 27 "1983377402" "((field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
+Condition 28 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (2 "10")
+Condition 28 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (3 "11")
+Condition 29 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
+Condition 29 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (3 "11")
 
-CHECKSUM: "3869168330 760173647"
+CHECKSUM: "254295559 3808596618"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[2].u_smc_alias_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -71,18 +64,13 @@ Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp
 Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
 Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 26 "1017968551" "((field_storage.REGION.region_attrs.cacheable.value & ((~decoded_wr_biten[62]))) | (decoded_wr_data[62] & decoded_wr_biten[62])) 1 -1" (3 "10")
-Condition 27 "2010388566" "(field_storage.REGION.region_attrs.cacheable.value & ((~decoded_wr_biten[62]))) 1 -1" (2 "10")
-Condition 27 "2010388566" "(field_storage.REGION.region_attrs.cacheable.value & ((~decoded_wr_biten[62]))) 1 -1" (3 "11")
-Condition 28 "539643002" "(decoded_wr_data[62] & decoded_wr_biten[62]) 1 -1" (2 "10")
-Condition 28 "539643002" "(decoded_wr_data[62] & decoded_wr_biten[62]) 1 -1" (3 "11")
-Condition 30 "1983377402" "((field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 31 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (2 "10")
-Condition 31 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (3 "11")
-Condition 32 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
-Condition 32 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (3 "11")
+Condition 27 "1983377402" "((field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
+Condition 28 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (2 "10")
+Condition 28 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (3 "11")
+Condition 29 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
+Condition 29 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (3 "11")
 
-CHECKSUM: "3869168330 760173647"
+CHECKSUM: "254295559 3808596618"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[3].u_smc_alias_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -92,18 +80,13 @@ Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp
 Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
 Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 26 "1017968551" "((field_storage.REGION.region_attrs.cacheable.value & ((~decoded_wr_biten[62]))) | (decoded_wr_data[62] & decoded_wr_biten[62])) 1 -1" (3 "10")
-Condition 27 "2010388566" "(field_storage.REGION.region_attrs.cacheable.value & ((~decoded_wr_biten[62]))) 1 -1" (2 "10")
-Condition 27 "2010388566" "(field_storage.REGION.region_attrs.cacheable.value & ((~decoded_wr_biten[62]))) 1 -1" (3 "11")
-Condition 28 "539643002" "(decoded_wr_data[62] & decoded_wr_biten[62]) 1 -1" (2 "10")
-Condition 28 "539643002" "(decoded_wr_data[62] & decoded_wr_biten[62]) 1 -1" (3 "11")
-Condition 30 "1983377402" "((field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 31 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (2 "10")
-Condition 31 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (3 "11")
-Condition 32 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
-Condition 32 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (3 "11")
+Condition 27 "1983377402" "((field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
+Condition 28 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (2 "10")
+Condition 28 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (3 "11")
+Condition 29 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
+Condition 29 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (3 "11")
 
-CHECKSUM: "3869168330 760173647"
+CHECKSUM: "254295559 3808596618"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[4].u_smc_alias_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -113,18 +96,13 @@ Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp
 Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
 Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 26 "1017968551" "((field_storage.REGION.region_attrs.cacheable.value & ((~decoded_wr_biten[62]))) | (decoded_wr_data[62] & decoded_wr_biten[62])) 1 -1" (3 "10")
-Condition 27 "2010388566" "(field_storage.REGION.region_attrs.cacheable.value & ((~decoded_wr_biten[62]))) 1 -1" (2 "10")
-Condition 27 "2010388566" "(field_storage.REGION.region_attrs.cacheable.value & ((~decoded_wr_biten[62]))) 1 -1" (3 "11")
-Condition 28 "539643002" "(decoded_wr_data[62] & decoded_wr_biten[62]) 1 -1" (2 "10")
-Condition 28 "539643002" "(decoded_wr_data[62] & decoded_wr_biten[62]) 1 -1" (3 "11")
-Condition 30 "1983377402" "((field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 31 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (2 "10")
-Condition 31 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (3 "11")
-Condition 32 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
-Condition 32 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (3 "11")
+Condition 27 "1983377402" "((field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
+Condition 28 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (2 "10")
+Condition 28 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (3 "11")
+Condition 29 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
+Condition 29 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (3 "11")
 
-CHECKSUM: "3869168330 760173647"
+CHECKSUM: "254295559 3808596618"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[5].u_smc_alias_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -134,18 +112,13 @@ Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp
 Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
 Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 26 "1017968551" "((field_storage.REGION.region_attrs.cacheable.value & ((~decoded_wr_biten[62]))) | (decoded_wr_data[62] & decoded_wr_biten[62])) 1 -1" (3 "10")
-Condition 27 "2010388566" "(field_storage.REGION.region_attrs.cacheable.value & ((~decoded_wr_biten[62]))) 1 -1" (2 "10")
-Condition 27 "2010388566" "(field_storage.REGION.region_attrs.cacheable.value & ((~decoded_wr_biten[62]))) 1 -1" (3 "11")
-Condition 28 "539643002" "(decoded_wr_data[62] & decoded_wr_biten[62]) 1 -1" (2 "10")
-Condition 28 "539643002" "(decoded_wr_data[62] & decoded_wr_biten[62]) 1 -1" (3 "11")
-Condition 30 "1983377402" "((field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 31 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (2 "10")
-Condition 31 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (3 "11")
-Condition 32 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
-Condition 32 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (3 "11")
+Condition 27 "1983377402" "((field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
+Condition 28 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (2 "10")
+Condition 28 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (3 "11")
+Condition 29 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
+Condition 29 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (3 "11")
 
-CHECKSUM: "3869168330 760173647"
+CHECKSUM: "254295559 3808596618"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[6].u_smc_alias_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -155,18 +128,13 @@ Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp
 Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
 Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 26 "1017968551" "((field_storage.REGION.region_attrs.cacheable.value & ((~decoded_wr_biten[62]))) | (decoded_wr_data[62] & decoded_wr_biten[62])) 1 -1" (3 "10")
-Condition 27 "2010388566" "(field_storage.REGION.region_attrs.cacheable.value & ((~decoded_wr_biten[62]))) 1 -1" (2 "10")
-Condition 27 "2010388566" "(field_storage.REGION.region_attrs.cacheable.value & ((~decoded_wr_biten[62]))) 1 -1" (3 "11")
-Condition 28 "539643002" "(decoded_wr_data[62] & decoded_wr_biten[62]) 1 -1" (2 "10")
-Condition 28 "539643002" "(decoded_wr_data[62] & decoded_wr_biten[62]) 1 -1" (3 "11")
-Condition 30 "1983377402" "((field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 31 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (2 "10")
-Condition 31 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (3 "11")
-Condition 32 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
-Condition 32 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (3 "11")
+Condition 27 "1983377402" "((field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
+Condition 28 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (2 "10")
+Condition 28 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (3 "11")
+Condition 29 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
+Condition 29 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (3 "11")
 
-CHECKSUM: "3869168330 760173647"
+CHECKSUM: "254295559 3808596618"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[7].u_smc_alias_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -571,7 +539,7 @@ Condition 49 "1507075490" "(rd_mux_addr == 5'b0) 1 -1" (1 "0")
 Condition 50 "65692884" "(rd_mux_addr == 5'h08) 1 -1" (2 "1")
 Condition 51 "1504676740" "(rd_mux_addr == 5'h10) 1 -1" (2 "1")
 
-CHECKSUM: "3380085693 1539976365"
+CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[0].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -579,9 +547,9 @@ Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
-Condition 19 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
+Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
-CHECKSUM: "3380085693 1539976365"
+CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[1].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -594,9 +562,9 @@ Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
-Condition 19 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
+Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
-CHECKSUM: "3380085693 1539976365"
+CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[2].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -609,9 +577,14 @@ Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
-Condition 19 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
+Condition 20 "1983377402" "((field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
+Condition 21 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (2 "10")
+Condition 21 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (3 "11")
+Condition 22 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
+Condition 22 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (3 "11")
+Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
-CHECKSUM: "3380085693 1539976365"
+CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[3].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -624,9 +597,14 @@ Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
-Condition 19 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
+Condition 20 "1983377402" "((field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
+Condition 21 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (2 "10")
+Condition 21 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (3 "11")
+Condition 22 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
+Condition 22 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (3 "11")
+Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
-CHECKSUM: "3380085693 1539976365"
+CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[4].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -639,9 +617,14 @@ Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
-Condition 19 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
+Condition 20 "1983377402" "((field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
+Condition 21 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (2 "10")
+Condition 21 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (3 "11")
+Condition 22 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
+Condition 22 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (3 "11")
+Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
-CHECKSUM: "3380085693 1539976365"
+CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[5].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -654,9 +637,14 @@ Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
-Condition 19 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
+Condition 20 "1983377402" "((field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
+Condition 21 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (2 "10")
+Condition 21 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (3 "11")
+Condition 22 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
+Condition 22 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (3 "11")
+Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
-CHECKSUM: "3380085693 1539976365"
+CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[6].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -669,9 +657,14 @@ Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
-Condition 19 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
+Condition 20 "1983377402" "((field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
+Condition 21 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (2 "10")
+Condition 21 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (3 "11")
+Condition 22 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
+Condition 22 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (3 "11")
+Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
-CHECKSUM: "3380085693 1539976365"
+CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[7].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -684,7 +677,12 @@ Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
-Condition 19 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
+Condition 20 "1983377402" "((field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
+Condition 21 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (2 "10")
+Condition 21 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (3 "11")
+Condition 22 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
+Condition 22 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (3 "11")
+Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[0].u_outbound_filter_ctrl_reg
@@ -889,7 +887,7 @@ Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 45 "1061899655" "(field_storage.FILTER_CONFIG.locked.value | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
 Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
 
-CHECKSUM: "3380085693 1539976365"
+CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[0].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -902,9 +900,9 @@ Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
-Condition 19 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
+Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
-CHECKSUM: "3380085693 1539976365"
+CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[1].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -917,9 +915,14 @@ Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
-Condition 19 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
+Condition 20 "1983377402" "((field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
+Condition 21 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (2 "10")
+Condition 21 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (3 "11")
+Condition 22 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
+Condition 22 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (3 "11")
+Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
-CHECKSUM: "3380085693 1539976365"
+CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[2].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -932,9 +935,14 @@ Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
-Condition 19 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
+Condition 20 "1983377402" "((field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
+Condition 21 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (2 "10")
+Condition 21 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (3 "11")
+Condition 22 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
+Condition 22 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (3 "11")
+Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
-CHECKSUM: "3380085693 1539976365"
+CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[3].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -947,9 +955,14 @@ Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
-Condition 19 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
+Condition 20 "1983377402" "((field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
+Condition 21 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (2 "10")
+Condition 21 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (3 "11")
+Condition 22 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
+Condition 22 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (3 "11")
+Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
-CHECKSUM: "3380085693 1539976365"
+CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[4].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -962,9 +975,14 @@ Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
-Condition 19 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
+Condition 20 "1983377402" "((field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
+Condition 21 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (2 "10")
+Condition 21 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (3 "11")
+Condition 22 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
+Condition 22 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (3 "11")
+Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
-CHECKSUM: "3380085693 1539976365"
+CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[5].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -977,9 +995,14 @@ Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
-Condition 19 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
+Condition 20 "1983377402" "((field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
+Condition 21 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (2 "10")
+Condition 21 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (3 "11")
+Condition 22 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
+Condition 22 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (3 "11")
+Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
-CHECKSUM: "3380085693 1539976365"
+CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[6].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -992,9 +1015,14 @@ Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
-Condition 19 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
+Condition 20 "1983377402" "((field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
+Condition 21 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (2 "10")
+Condition 21 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (3 "11")
+Condition 22 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
+Condition 22 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (3 "11")
+Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
-CHECKSUM: "3380085693 1539976365"
+CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[7].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -1007,7 +1035,12 @@ Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
-Condition 19 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
+Condition 20 "1983377402" "((field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
+Condition 21 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (2 "10")
+Condition 21 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (3 "11")
+Condition 22 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
+Condition 22 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (3 "11")
+Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
 CHECKSUM: "2884589361 570709842"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_clk_gate
@@ -1364,6 +1397,7 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_df
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 2 "2321781715" "(dst_inst[0].sdtrig_dst_trace_start & dst_inst[0].Trdstcontrol.Trdstinsttriggerenable) 1 -1" (3 "11")
 Condition 4 "3950667315" "(dst_inst[0].sdtrig_dst_trace_stop & dst_inst[0].Trdstcontrol.Trdstinsttriggerenable) 1 -1" (3 "11")
+Condition 6 "375788308" "(tnif_dst_flush[0] & tnif_dst_bp[0]) 1 -1" (1 "01")
 Condition 7 "2549274228" "(dst_inst[0].trig_control_e == TRIG_TRACE_ON) 1 -1" (2 "1")
 Condition 8 "2297543608" "(dst_inst[0].trig_control_e == TRIG_TRACE_OFF) 1 -1" (2 "1")
 
@@ -1371,6 +1405,7 @@ CHECKSUM: "2480363511 1038873943"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.dst_wrapper.dst_inst[0].debug_sig_trace_gen
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 23 "1651327698" "(((~trace_stop_from_hw_flush)) & trace_stop_from_hw_flush_d1) 1 -1" (1 "01")
+Condition 26 "3578000669" "(trace_start & ((~trace_hardware_stop))) 1 -1" (2 "10")
 
 CHECKSUM: "243658460 2303570125"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.dst_wrapper.dst_inst[0].debug_sig_trace_gen.vlt_packet_compression
@@ -1407,6 +1442,14 @@ Condition 4 "3012564814" "((target_write_byte_boundary != write_byte_boundary) &
 Condition 6 "1199935182" "((target_write_byte_boundary < write_byte_boundary) && (target_write_byte_boundary_in_range == 1'b0) && (write_byte_boundary <= 6'(WRITE_BYTE_POINTER_RANGE_END))) 1 -1" (3 "110")
 Condition 9 "1194554766" "((write_byte_boundary <= 6'(WRITE_BYTE_POINTER_RANGE_START)) && (target_write_byte_boundary > 6'(WRITE_BYTE_POINTER_RANGE_END))) 1 -1" (1 "01")
 Condition 9 "1194554766" "((write_byte_boundary <= 6'(WRITE_BYTE_POINTER_RANGE_START)) && (target_write_byte_boundary > 6'(WRITE_BYTE_POINTER_RANGE_END))) 1 -1" (3 "11")
+
+CHECKSUM: "3168562659 3354666806"
+INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.dst_wrapper.dst_inst[0].debug_sig_trace_packetizer.frame_filler_instance
+ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
+Condition 9 "424692085" "((frame_closure_mode == 1'b0) && (frame_mode_enable || flush_mode_enable) && (10'(request_packet_space_in_bytes) > frame_length_minus_bytes_in_current_frame)) 1 -1" (2 "101")
+Condition 11 "1306576003" "(frame_mode_enable || flush_mode_enable) 1 -1" (1 "00")
+Condition 11 "1306576003" "(frame_mode_enable || flush_mode_enable) 1 -1" (2 "01")
+Condition 14 "2621529588" "(frame_mode_enable || flush_mode_enable) 1 -1" (1 "00")
 
 CHECKSUM: "3001181867 1671278051"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.mmrs
@@ -1543,10 +1586,19 @@ Condition 6 "2679841428" "(psel && penable && pready && (rsp_err || decode_miss)
 Condition 6 "2679841428" "(psel && penable && pready && (rsp_err || decode_miss)) 1 -1" (5 "1111")
 Condition 7 "4224431006" "(rsp_err || decode_miss) 1 -1" (2 "01")
 
+CHECKSUM: "3895468110 949337104"
+INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.mmrs.u_mmr_req_ctrl
+ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
+Condition 18 "502553976" "(ram_req_active & ((~TraceRamWrEn)) & ((~ram_launched_q))) 1 -1" (2 "101")
+
 CHECKSUM: "4226918805 2330986106"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.tnif_wrapper.tnif_gen_blk[0].i_tnif
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
+Condition 2 "3372887460" "(tr_gnt_in & ( ~ (dst_bp_in & ((~dst_flush_in))) ) & dst_req_in & ((ntr_req_in & ( ~ (ntr_bp_in & ((~ntr_flush_in))) )) ? (prev_gnt == tnifState_e'(DST_GNT)) : 1'b1)) 1 -1" (2 "1011")
+Condition 4 "80944167" "(dst_bp_in & ((~dst_flush_in))) 1 -1" (3 "11")
 Condition 5 "3193926140" "((ntr_req_in & ( ~ (ntr_bp_in & ((~ntr_flush_in))) )) ? (prev_gnt == tnifState_e'(DST_GNT)) : 1'b1) 1 -1" (2 "1")
+Condition 6 "1933900385" "(ntr_req_in & ( ~ (ntr_bp_in & ((~ntr_flush_in))) )) 1 -1" (3 "11")
+Condition 8 "2128817207" "(ntr_bp_in & ((~ntr_flush_in))) 1 -1" (3 "11")
 Condition 9 "4289729232" "(prev_gnt == tnifState_e'(DST_GNT)) 1 -1" (2 "1")
 Condition 18 "191604408" "((prev_gnt inside {NTR_GNT}) ? DST_GNT : NTR_GNT) 1 -1" (1 "0")
 
@@ -1594,6 +1646,8 @@ Condition 21 "1679181820" "((trntrRamRpLow_ANY[31:2] == trntrRamLimitLow_ANY[31:
 Condition 22 "126718797" "(trntrRamRpLow_ANY[31:2] == trntrRamLimitLow_ANY[31:2]) 1 -1" (1 "0")
 Condition 23 "2139922978" "(trntrRamRpLow_ANY[2] ? TraceRamData64b_TS2[63:32] : TraceRamData64b_TS2[31:0]) 1 -1" (2 "1")
 Condition 24 "3747907426" "(((~|TrRamPendDstPktVld_ANY)) & TrdstFlushTimeoutDone_ANY & (((~trdstRamMode_ANY)) | (trdstRamMode_ANY & ((~|trdstNumFramesFilledInSRAM_ANY))))) 1 -1" (1 "011")
+Condition 24 "3747907426" "(((~|TrRamPendDstPktVld_ANY)) & TrdstFlushTimeoutDone_ANY & (((~trdstRamMode_ANY)) | (trdstRamMode_ANY & ((~|trdstNumFramesFilledInSRAM_ANY))))) 1 -1" (3 "110")
+Condition 29 "3386698653" "(TS_TR_Dst_Bp_int & TS_TR_Dst_Flush_int) 1 -1" (2 "10")
 Condition 49 "3173394396" "(trntrRamMode_ANY & (((|trntrNumFrameFillComplete_ANY_d1)) | TrntrMemAxiWrVld_ANY)) 1 -1" (1 "01")
 Condition 49 "3173394396" "(trntrRamMode_ANY & (((|trntrNumFrameFillComplete_ANY_d1)) | TrntrMemAxiWrVld_ANY)) 1 -1" (2 "10")
 Condition 49 "3173394396" "(trntrRamMode_ANY & (((|trntrNumFrameFillComplete_ANY_d1)) | TrntrMemAxiWrVld_ANY)) 1 -1" (3 "11")
@@ -1601,6 +1655,8 @@ Condition 50 "3219102058" "(((|trntrNumFrameFillComplete_ANY_d1)) | TrntrMemAxiW
 Condition 50 "3219102058" "(((|trntrNumFrameFillComplete_ANY_d1)) | TrntrMemAxiWrVld_ANY) 1 -1" (3 "10")
 Condition 51 "1335075051" "(((~TrntrMemModeRamFlush_ANY)) & (9'((trntrNumFramesFilledInSRAM_ANY * InsnTrace_NumSetsPerFrame_ANY)) > trntrcoretoFlushThreshold_ANY)) 1 -1" (1 "01")
 Condition 51 "1335075051" "(((~TrntrMemModeRamFlush_ANY)) & (9'((trntrNumFramesFilledInSRAM_ANY * InsnTrace_NumSetsPerFrame_ANY)) > trntrcoretoFlushThreshold_ANY)) 1 -1" (3 "11")
+Condition 52 "325462764" "(((~TrdstMemModeRamFlush_ANY)) & (9'((trdstNumFramesFilledInSRAM_ANY * DataTrace_NumSetsPerFrame_ANY)) > trdstcoretoFlushThreshold_ANY)) 1 -1" (1 "01")
+Condition 52 "325462764" "(((~TrdstMemModeRamFlush_ANY)) & (9'((trdstNumFramesFilledInSRAM_ANY * DataTrace_NumSetsPerFrame_ANY)) > trdstcoretoFlushThreshold_ANY)) 1 -1" (3 "11")
 Condition 63 "460339696" "(trntrRamEnableStart_ANY_d1 | TrntrMemAxiWrVld_ANY) 1 -1" (2 "01")
 Condition 63 "460339696" "(trntrRamEnableStart_ANY_d1 | TrntrMemAxiWrVld_ANY) 1 -1" (3 "10")
 Condition 64 "794883189" "(trntrRamEnableStart_ANY_d1 ? trntrRamSMEMStartAddr_ANY : (9'((TrntrMemRamRdAddrFlop_ANY + 1'b1)))) 1 -1" (2 "1")
@@ -1772,6 +1828,8 @@ Condition 223 "1104102604" "(TrntrMemModeRamBackPressure_ANY & ((~TrntrMemModeRa
 Condition 224 "765035039" "(trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY)) 1 -1" (2 "10")
 Condition 224 "765035039" "(trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY)) 1 -1" (3 "11")
 Condition 225 "177503260" "(((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY) 1 -1" (3 "10")
+Condition 227 "1626401631" "(((~trdstRamMode_ANY)) & trdstStoponWrap_ANY & (((~trdstRamActiveEnable_ANY)) | trdstRamModeBP_ANY)) 1 -1" (1 "011")
+Condition 227 "1626401631" "(((~trdstRamMode_ANY)) & trdstStoponWrap_ANY & (((~trdstRamActiveEnable_ANY)) | trdstRamModeBP_ANY)) 1 -1" (3 "110")
 Condition 234 "3814235686" "((((~trntrRamMode_ANY)) & trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrRamModeBP_ANY)) | (trntrRamMode_ANY & (TrntrMemModeRamFlush_ANY | (trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY))))) 1 -1" (3 "10")
 Condition 235 "183357726" "(((~trntrRamMode_ANY)) & trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrRamModeBP_ANY)) 1 -1" (1 "011")
 Condition 235 "183357726" "(((~trntrRamMode_ANY)) & trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrRamModeBP_ANY)) 1 -1" (3 "110")
@@ -1783,6 +1841,8 @@ Condition 238 "2740983506" "(TrntrMemModeRamFlush_ANY | (trntrStoponWrap_ANY & (
 Condition 239 "2874380621" "(trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY)) 1 -1" (2 "10")
 Condition 239 "2874380621" "(trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY)) 1 -1" (3 "11")
 Condition 240 "2086714443" "(((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY) 1 -1" (3 "10")
+Condition 242 "429247782" "(((~trdstRamMode_ANY)) & trdstStoponWrap_ANY & (((~trdstRamActiveEnable_ANY)) | trdstRamModeBP_ANY)) 1 -1" (1 "011")
+Condition 242 "429247782" "(((~trdstRamMode_ANY)) & trdstStoponWrap_ANY & (((~trdstRamActiveEnable_ANY)) | trdstRamModeBP_ANY)) 1 -1" (3 "110")
 Condition 248 "2541592002" "(TrMemAxiWrRdy_ANY & TrdstMemRdBufferFull_ANY & (TrntrMemRdBufferFull_ANY ? (TrMemAxiWrVld_NtraceOrDst_ANY == 1'b0) : 1'b1)) 1 -1" (3 "110")
 Condition 249 "2223440153" "(TrntrMemRdBufferFull_ANY ? (TrMemAxiWrVld_NtraceOrDst_ANY == 1'b0) : 1'b1) 1 -1" (2 "1")
 Condition 250 "600193053" "(TrMemAxiWrVld_NtraceOrDst_ANY == 1'b0) 1 -1" (2 "1")
@@ -1811,8 +1871,11 @@ Condition 272 "2599483927" "(TrntrFlushTimeoutCntr_ANY == TR_SINK_FLUSH_TIMEOUT)
 Condition 277 "685580104" "(TR_TS_North_Vld[0] & ((~TR_TS_North_Src))) 1 -1" (2 "10")
 Condition 278 "19802203" "(TR_TS_North_Vld[0] & TR_TS_North_Src) 1 -1" (1 "01")
 Condition 278 "19802203" "(TR_TS_North_Vld[0] & TR_TS_North_Src) 1 -1" (3 "11")
+Condition 309 "1029620672" "((TrdstMemRamRdAddrWrap_ANY ^ trdstcoreRamWpWrap_ANY_d1[0]) ? (9'((trdstRamSMEMTotalSets_ANY - (TrdstMemRamRdAddr_TS1 - trdstcoreRamWpAddr_ANY_d1[0])))) : (9'((trdstcoreRamWpAddr_ANY_d1[0] - TrdstMemRamRdAddr_TS1)))) 1 -1" (2 "1")
+Condition 310 "1399830620" "(TrdstMemRamRdAddrWrap_ANY ^ trdstcoreRamWpWrap_ANY_d1[0]) 1 -1" (2 "01")
 Condition 310 "1399830620" "(TrdstMemRamRdAddrWrap_ANY ^ trdstcoreRamWpWrap_ANY_d1[0]) 1 -1" (3 "10")
 Condition 310 "1399830620" "(TrdstMemRamRdAddrWrap_ANY ^ trdstcoreRamWpWrap_ANY_d1[0]) 1 -1" (4 "11")
+Condition 314 "1853558963" "((TrdstMemRamRdAddrWrap_ANY ^ trdstcoreRamWpWrap_ANY_d1[0]) ? (9'((trdstcoreRamWpAddr_ANY_d1[0] - TrdstMemRamRdAddr_TS1)) > trdstRamSMEMTotalSets_ANY) : (trdstcoreRamWpAddr_ANY_d1[0] > TrdstMemRamRdAddr_TS1)) 1 -1" (2 "1")
 Condition 316 "191140502" "(((~|(trntrFrameLength_ANY[9] ? trntrcorenextwritecnt_ANY[0][4:0] : (trntrFrameLength_ANY[8] ? trntrcorenextwritecnt_ANY[0][3:0] : (trntrFrameLength_ANY[7] ? trntrcorenextwritecnt_ANY[0][2:0] : trntrcorenextwritecnt_ANY[0][1:0]))))) & InsnTraceWrEnPerCore_TS0[0]) 1 -1" (1 "01")
 Condition 316 "191140502" "(((~|(trntrFrameLength_ANY[9] ? trntrcorenextwritecnt_ANY[0][4:0] : (trntrFrameLength_ANY[8] ? trntrcorenextwritecnt_ANY[0][3:0] : (trntrFrameLength_ANY[7] ? trntrcorenextwritecnt_ANY[0][2:0] : trntrcorenextwritecnt_ANY[0][1:0]))))) & InsnTraceWrEnPerCore_TS0[0]) 1 -1" (3 "11")
 Condition 317 "1889701566" "(trntrcoreNewFrameStart_ANY[0] ? (trntrfirstcoreNewFrameStart_ANY[0] ? trntrnextlocalRamWpLow_ANY[0] : trntrnextlocalRamWpLow_ANY[1]) : ({(trntrcorenextRamWpLow_ANY[0][31:4] + 28'b1), 2'b0})) 1 -1" (2 "1")
@@ -2027,7 +2090,12 @@ Condition 1 "1049626380" "(en | clr) 1 -1" (2 "01")
 CHECKSUM: "1202387303 2652479517"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.TrdstMemModeRamBackPressure_ff
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
+Condition 1 "1049626380" "(en | clr) 1 -1" (1 "00")
+Condition 1 "1049626380" "(en | clr) 1 -1" (3 "10")
+Condition 2 "289541705" "(({WIDTH {(~clr)}}) & (en ? in : out)) 1 -1" (1 "01")
 Condition 2 "289541705" "(({WIDTH {(~clr)}}) & (en ? in : out)) 1 -1" (2 "10")
+Condition 2 "289541705" "(({WIDTH {(~clr)}}) & (en ? in : out)) 1 -1" (3 "11")
+Condition 3 "751045846" "(en ? in : out) 1 -1" (2 "1")
 
 CHECKSUM: "1202387303 877334790"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.TrntrFlushTimeoutCntr_ANY_ff
@@ -2252,7 +2320,7 @@ ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet
 Condition 4 "1494341974" "(zero & nd_req_valid_i & nd_req_ready_o) 1 -1" (2 "101")
 Condition 6 "3950647113" "(last & nd_req_valid_i & burst_req_ready_i) 1 -1" (2 "101")
 
-CHECKSUM: "3355438513 3938785771"
+CHECKSUM: "628509044 3938785771"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_dma_wrap.u_idma_frontend_wrapper.gen_axi_to_iDMA_fe[0].u_iDMA_frontend.gen_core_regs[0].i_idma_reg64_2d_reg_top
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 139 "4149940944" "(addr_hit[2] & reg_re & ((!reg_error))) 1 -1" (3 "110")
@@ -2309,12 +2377,12 @@ ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet
 Condition 1 "1782633341" "(next_q == '1) 1 -1" (2 "1")
 Condition 2 "121455226" "(completed_q == '1) 1 -1" (2 "1")
 
-CHECKSUM: "3737304986 2005796970"
+CHECKSUM: "3660651998 2005796970"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_zeroer
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 5 "2491476611" "((cur_size < (axi_data_t'(AXI_STRB_WIDTH) - axi_data_t'(cur_dest_addr[(AXI_DATA_SIZE - 1):0]))) ? cur_size[(AXI_DATA_WIDTH - 1):0] : ((axi_data_t'(AXI_STRB_WIDTH) - axi_data_t'(cur_dest_addr[(AXI_DATA_SIZE - 1):0])))) 1 -1" (2 "1")
 
-CHECKSUM: "3781890121 1317082537"
+CHECKSUM: "1059230947 1317082537"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_zeroer.u_zeroer_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -2652,6 +2720,16 @@ Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "1
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
 CHECKSUM: "3990118930 2189762317"
+INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[0].u_read_traffic_filter
+ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
+Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (1 "01")
+
+CHECKSUM: "3990118930 2189762317"
+INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[0].u_write_traffic_filter
+ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
+Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (1 "01")
+
+CHECKSUM: "3990118930 2189762317"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[10].u_read_traffic_filter
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
@@ -2856,6 +2934,51 @@ CHECKSUM: "3868945950 3460463107"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "1171358220" "(mem_init_reset_ni == 1'b0) 1 -1" (2 "1")
+Condition 7 "3550059789" "(l2_frontend_isolated & mmio_isolated) 1 -1" (2 "10")
+
+CHECKSUM: "2393566253 4118206563"
+INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.tlDM.dmInner.dmInner.hartIsInResetSync_0_debug_hartReset_0.output_chain.u_rstbypass.u_mux
+ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
+Condition 1 "3202969680" "((a0_i & a1_i) | (b0_i & b1_i) | (c0_i & c1_i)) 1 -1" (3 "010")
+Condition 2 "2954956168" "(a0_i & a1_i) 1 -1" (2 "10")
+Condition 2 "2954956168" "(a0_i & a1_i) 1 -1" (3 "11")
+Condition 3 "2403100006" "(b0_i & b1_i) 1 -1" (2 "10")
+Condition 3 "2403100006" "(b0_i & b1_i) 1 -1" (3 "11")
+Condition 4 "1491097246" "(c0_i & c1_i) 1 -1" (2 "10")
+Condition 4 "1491097246" "(c0_i & c1_i) 1 -1" (3 "11")
+
+CHECKSUM: "2393566253 4118206563"
+INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.tlDM.dmInner.dmInner.hartIsInResetSync_1_debug_hartReset_1.output_chain.u_rstbypass.u_mux
+ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
+Condition 1 "3202969680" "((a0_i & a1_i) | (b0_i & b1_i) | (c0_i & c1_i)) 1 -1" (3 "010")
+Condition 2 "2954956168" "(a0_i & a1_i) 1 -1" (2 "10")
+Condition 2 "2954956168" "(a0_i & a1_i) 1 -1" (3 "11")
+Condition 3 "2403100006" "(b0_i & b1_i) 1 -1" (2 "10")
+Condition 3 "2403100006" "(b0_i & b1_i) 1 -1" (3 "11")
+Condition 4 "1491097246" "(c0_i & c1_i) 1 -1" (2 "10")
+Condition 4 "1491097246" "(c0_i & c1_i) 1 -1" (3 "11")
+
+CHECKSUM: "2393566253 4118206563"
+INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.tlDM.dmInner.dmInner.hartIsInResetSync_2_debug_hartReset_2.output_chain.u_rstbypass.u_mux
+ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
+Condition 1 "3202969680" "((a0_i & a1_i) | (b0_i & b1_i) | (c0_i & c1_i)) 1 -1" (3 "010")
+Condition 2 "2954956168" "(a0_i & a1_i) 1 -1" (2 "10")
+Condition 2 "2954956168" "(a0_i & a1_i) 1 -1" (3 "11")
+Condition 3 "2403100006" "(b0_i & b1_i) 1 -1" (2 "10")
+Condition 3 "2403100006" "(b0_i & b1_i) 1 -1" (3 "11")
+Condition 4 "1491097246" "(c0_i & c1_i) 1 -1" (2 "10")
+Condition 4 "1491097246" "(c0_i & c1_i) 1 -1" (3 "11")
+
+CHECKSUM: "2393566253 4118206563"
+INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.tlDM.dmInner.dmInner.hartIsInResetSync_3_debug_hartReset_3.output_chain.u_rstbypass.u_mux
+ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
+Condition 1 "3202969680" "((a0_i & a1_i) | (b0_i & b1_i) | (c0_i & c1_i)) 1 -1" (3 "010")
+Condition 2 "2954956168" "(a0_i & a1_i) 1 -1" (2 "10")
+Condition 2 "2954956168" "(a0_i & a1_i) 1 -1" (3 "11")
+Condition 3 "2403100006" "(b0_i & b1_i) 1 -1" (2 "10")
+Condition 3 "2403100006" "(b0_i & b1_i) 1 -1" (3 "11")
+Condition 4 "1491097246" "(c0_i & c1_i) 1 -1" (2 "10")
+Condition 4 "1491097246" "(c0_i & c1_i) 1 -1" (3 "11")
 
 CHECKSUM: "3814944388 3447933561"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_avsbus_controller.u_avs_crc3_check_inst
@@ -7498,12 +7621,12 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_avsbus_controller.u_readas
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 4 "2759218582" "(rd_en_i & ((~rd_empty_o))) 1 -1" (2 "10")
 
-CHECKSUM: "376348732 4026430701"
+CHECKSUM: "1305403113 4026430701"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_core.u_i2c_bus_monitor
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 14 "3557830633" "(monitor_enable && ((!monitor_enable_q))) 1 -1" (1 "01")
 
-CHECKSUM: "1322761447 1438595411"
+CHECKSUM: "3384408495 1438595411"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_core.u_i2c_controller_fsm
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 34 "3859925586" "(unhandled_unexp_nak_i || unhandled_nak_timeout_i || halt_controller_i) 1 -1" (3 "010")
@@ -7513,7 +7636,7 @@ Condition 39 "3890143846" "(trans_started && ((!scl_i)) && ((!scl_i_q)) && stret
 Condition 40 "4193061578" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (1 "011")
 Condition 88 "2337000403" "(((!host_enable_i)) || (fmt_fifo_depth_i == 7'b1) || unhandled_unexp_nak_i || ((!trans_started))) 1 -1" (5 "1000")
 
-CHECKSUM: "376348732 4026430701"
+CHECKSUM: "1305403113 4026430701"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.u_i2c_bus_monitor
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 12 "937541305" "(((!scl_i)) || ((!sda_i))) 1 -1" (3 "10")
@@ -7522,7 +7645,7 @@ Condition 22 "1286515773" "(monitor_enable && start_det_pending && (ctrl_det_cou
 Condition 27 "3393594469" "(monitor_enable && stop_det_pending && (ctrl_det_count >= 14'(thd_dat_i))) 1 -1" (1 "011")
 Condition 31 "2016545571" "(((!target_idle_i)) && bus_inactive_timeout_det) 1 -1" (1 "01")
 
-CHECKSUM: "1322761447 1438595411"
+CHECKSUM: "3384408495 1438595411"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.u_i2c_controller_fsm
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 5 "1904410187" "(fmt_byte_i == '0) 1 -1" (2 "1")
@@ -7631,7 +7754,7 @@ Condition 93 "1198624123" "(unhandled_unexp_nak_i && host_enable_i && (state_q =
 Condition 93 "1198624123" "(unhandled_unexp_nak_i && host_enable_i && (state_q == Idle) && host_nack_handler_timeout_en_i && ((!unhandled_nak_timeout_i))) 1 -1" (6 "11111")
 Condition 95 "3363717873" "(stretch_en && timeout_enable_i && (stretch_idle_cnt > 31'(stretch_timeout_i))) 1 -1" (1 "011")
 
-CHECKSUM: "395370686 3250664004"
+CHECKSUM: "2631278932 3250664004"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.u_i2c_target_fsm
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 10 "3575893764" "(sw_nack_i && ((!can_auto_ack))) 1 -1" (3 "11")
@@ -7642,7 +7765,7 @@ Condition 31 "2216297856" "(((!ack_ctrl_mode_i)) || (auto_ack_cnt_i > '0)) 1 -1"
 Condition 40 "2934249426" "(target_enable_i & xfer_for_us_q & rw_bit_q & stop_detect_i & ((!expect_stop))) 1 -1" (1 "01111")
 Condition 40 "2934249426" "(target_enable_i & xfer_for_us_q & rw_bit_q & stop_detect_i & ((!expect_stop))) 1 -1" (2 "10111")
 
-CHECKSUM: "1206752896 482332505"
+CHECKSUM: "2279933121 482332505"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 7 "2635010072" "(fmt_fifo_depth == 7'(CONTROLLER_TX_FIFO_DEPTH)) 1 -1" (2 "1")
@@ -7718,7 +7841,7 @@ Condition 107 "2301913467" "(event_nak | event_controller_arbitration_lost | eve
 Condition 107 "2301913467" "(event_nak | event_controller_arbitration_lost | event_scl_interference | event_sda_interference | event_stretch_timeout | event_bus_active_timeout | event_sda_unstable | event_unhandled_nak_timeout) 1 -1" (8 "01000000")
 Condition 107 "2301913467" "(event_nak | event_controller_arbitration_lost | event_scl_interference | event_sda_interference | event_stretch_timeout | event_bus_active_timeout | event_sda_unstable | event_unhandled_nak_timeout) 1 -1" (9 "10000000")
 
-CHECKSUM: "376348732 4026430701"
+CHECKSUM: "1305403113 4026430701"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core.u_i2c_bus_monitor
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 12 "937541305" "(((!scl_i)) || ((!sda_i))) 1 -1" (3 "10")
@@ -7727,7 +7850,7 @@ Condition 22 "1286515773" "(monitor_enable && start_det_pending && (ctrl_det_cou
 Condition 27 "3393594469" "(monitor_enable && stop_det_pending && (ctrl_det_count >= 14'(thd_dat_i))) 1 -1" (1 "011")
 Condition 31 "2016545571" "(((!target_idle_i)) && bus_inactive_timeout_det) 1 -1" (1 "01")
 
-CHECKSUM: "1322761447 1438595411"
+CHECKSUM: "3384408495 1438595411"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core.u_i2c_controller_fsm
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 2 "1898423200" "(((!host_idle_o)) && ((!host_enable_i))) 1 -1" (3 "11")
@@ -7845,7 +7968,7 @@ Condition 95 "3363717873" "(stretch_en && timeout_enable_i && (stretch_idle_cnt 
 Condition 95 "3363717873" "(stretch_en && timeout_enable_i && (stretch_idle_cnt > 31'(stretch_timeout_i))) 1 -1" (3 "110")
 Condition 95 "3363717873" "(stretch_en && timeout_enable_i && (stretch_idle_cnt > 31'(stretch_timeout_i))) 1 -1" (4 "111")
 
-CHECKSUM: "395370686 3250664004"
+CHECKSUM: "2631278932 3250664004"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core.u_i2c_target_fsm
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 10 "3575893764" "(sw_nack_i && ((!can_auto_ack))) 1 -1" (3 "11")
@@ -8011,7 +8134,7 @@ Condition 494 "2985070047" "(((|field_storage.CONTROLLER_EVENTS.NACK.value)) || 
 Condition 495 "2778477252" "(((|field_storage.TARGET_EVENTS.TX_PENDING.value)) || ((|field_storage.TARGET_EVENTS.BUS_TIMEOUT.value)) || ((|field_storage.TARGET_EVENTS.ARBITRATION_LOST.value))) 1 -1" (2 "001")
 Condition 495 "2778477252" "(((|field_storage.TARGET_EVENTS.TX_PENDING.value)) || ((|field_storage.TARGET_EVENTS.BUS_TIMEOUT.value)) || ((|field_storage.TARGET_EVENTS.ARBITRATION_LOST.value))) 1 -1" (3 "010")
 
-CHECKSUM: "1250011607 3278115879"
+CHECKSUM: "2469021223 3278115879"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "1405087489" "((axil_req_i.aw.addr >= GPIO_INTF_BASE_ADDR) && (((axil_req_i.aw.addr - GPIO_INTF_BASE_ADDR) >> 4) < smc_pkg::NUM_GPIO_WRAPS)) 1 -1" (1 "01")
@@ -12994,7 +13117,7 @@ Condition 42 "2203264987" "(decoded_wr_data[19] & decoded_wr_biten[19]) 1 -1" (2
 Condition 42 "2203264987" "(decoded_wr_data[19] & decoded_wr_biten[19]) 1 -1" (3 "11")
 Condition 43 "1312375721" "(decoded_reg_strb.DATA_CTRL && decoded_req_is_wr) 1 -1" (3 "11")
 
-CHECKSUM: "4066092602 1067758899"
+CHECKSUM: "2231104132 1067758899"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[0].u_telemetry_receiver.u_telemetry_receiver_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -13010,7 +13133,7 @@ Condition 56 "2320845135" "((field_storage.INTR_TEST.MISSING_LAST.value & ((~dec
 Condition 57 "1174863421" "(field_storage.INTR_TEST.MISSING_LAST.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
 Condition 58 "1064717943" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
 
-CHECKSUM: "1867070274 2692214033"
+CHECKSUM: "1319975045 2692214033"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[1].u_telemetry_receiver
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "1041394388" "(last_packet_received || assembly_buffer_full || telemetry_receiver_flush) 1 -1" (2 "001")
@@ -13030,7 +13153,7 @@ Condition 19 "3024830023" "(afready_i && afvalid_o) 1 -1" (1 "01")
 Condition 19 "3024830023" "(afready_i && afvalid_o) 1 -1" (3 "11")
 Condition 20 "586682789" "(missing_last_event || missing_last_intr_test) 1 -1" (3 "10")
 
-CHECKSUM: "4066092602 1067758899"
+CHECKSUM: "2231104132 1067758899"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[1].u_telemetry_receiver.u_telemetry_receiver_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -13060,7 +13183,7 @@ Condition 56 "2320845135" "((field_storage.INTR_TEST.MISSING_LAST.value & ((~dec
 Condition 57 "1174863421" "(field_storage.INTR_TEST.MISSING_LAST.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
 Condition 58 "1064717943" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
 
-CHECKSUM: "1867070274 2692214033"
+CHECKSUM: "1319975045 2692214033"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[2].u_telemetry_receiver
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "1041394388" "(last_packet_received || assembly_buffer_full || telemetry_receiver_flush) 1 -1" (2 "001")
@@ -13080,7 +13203,7 @@ Condition 19 "3024830023" "(afready_i && afvalid_o) 1 -1" (1 "01")
 Condition 19 "3024830023" "(afready_i && afvalid_o) 1 -1" (3 "11")
 Condition 20 "586682789" "(missing_last_event || missing_last_intr_test) 1 -1" (3 "10")
 
-CHECKSUM: "4066092602 1067758899"
+CHECKSUM: "2231104132 1067758899"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[2].u_telemetry_receiver.u_telemetry_receiver_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -13110,7 +13233,19 @@ Condition 56 "2320845135" "((field_storage.INTR_TEST.MISSING_LAST.value & ((~dec
 Condition 57 "1174863421" "(field_storage.INTR_TEST.MISSING_LAST.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
 Condition 58 "1064717943" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
 
-CHECKSUM: "2489373665 1734903030"
+CHECKSUM: "2393566253 4118206563"
+INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.u_at_fifo_rd_rst_sync.u_sync_rst_n_bypass.u_mux
+ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
+Condition 1 "3202969680" "((a0_i & a1_i) | (b0_i & b1_i) | (c0_i & c1_i)) 1 -1" (2 "001")
+Condition 1 "3202969680" "((a0_i & a1_i) | (b0_i & b1_i) | (c0_i & c1_i)) 1 -1" (3 "010")
+
+CHECKSUM: "2393566253 4118206563"
+INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.u_at_fifo_wr_rst_sync.u_sync_rst_n_bypass.u_mux
+ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
+Condition 1 "3202969680" "((a0_i & a1_i) | (b0_i & b1_i) | (c0_i & c1_i)) 1 -1" (2 "001")
+Condition 1 "3202969680" "((a0_i & a1_i) | (b0_i & b1_i) | (c0_i & c1_i)) 1 -1" (3 "010")
+
+CHECKSUM: "3188872617 1734903030"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "305394200" "(log_pending && (effective_log_len != log_len_t'(0)) && ((!log_fetch_done_status))) 1 -1" (1 "011")
@@ -13132,7 +13267,7 @@ Condition 61 "3315472069" "((field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~de
 Condition 62 "3177167649" "(field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~decoded_wr_biten[4]))) 1 -1" (2 "10")
 Condition 63 "1936909404" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
 
-CHECKSUM: "3974971274 1889139731"
+CHECKSUM: "902851981 1889139731"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_dl_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -13140,7 +13275,7 @@ Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
-CHECKSUM: "2578676572 4290674178"
+CHECKSUM: "8204497 4290674178"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -13172,7 +13307,7 @@ Condition 162 "3203674146" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -
 Condition 164 "3607769644" "(external_wr_ack | (decoded_req & decoded_req_is_wr & ((~decoded_req_is_external)))) 1 -1" (3 "10")
 Condition 165 "3163379521" "(decoded_req & decoded_req_is_wr & ((~decoded_req_is_external))) 1 -1" (3 "110")
 
-CHECKSUM: "1248967099 3918030293"
+CHECKSUM: "1638888483 3918030293"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_wo_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -13222,13 +13357,14 @@ Condition 20 "2137222570" "(thr_rvalid && ((~^{thr_parity, thr_rdata}))) 1 -1" (
 Condition 27 "406227617" "(rbr_rvalid && ((~^{rbr_parity, rbr_rdata}))) 1 -1" (3 "11")
 Condition 30 "3531289681" "(tx_fifo_thr_err || rx_fifo_rbr_err) 1 -1" (2 "01")
 Condition 30 "3531289681" "(tx_fifo_thr_err || rx_fifo_rbr_err) 1 -1" (3 "10")
+Condition 38 "2929272635" "(uart_rxto_en && (rx_timeout_count_q == uart_rxto_val)) 1 -1" (1 "01")
 Condition 50 "616401281" "(reg_out_i.main.RBR.req && ((!reg_out_i.main.RBR.req_is_wr))) 1 -1" (2 "10")
 Condition 51 "241523009" "(reg_out_i.main.RBR.req && ((!reg_out_i.main.RBR.req_is_wr))) 1 -1" (2 "10")
 Condition 52 "2019871000" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr) 1 -1" (2 "10")
 Condition 53 "1284311563" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr && ((|reg_out_i.main_wo.THR.wr_biten[7:0]))) 1 -1" (2 "101")
 Condition 53 "1284311563" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr && ((|reg_out_i.main_wo.THR.wr_biten[7:0]))) 1 -1" (3 "110")
 
-CHECKSUM: "2004843254 1423410759"
+CHECKSUM: "2439670790 1423410759"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.u_uart_log_engine_ctrl_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -13239,12 +13375,12 @@ Condition 16 "1797526384" "(cpuif_req_masked & (cpuif_addr == 3'b0)) 1 -1" (2 "1
 Condition 17 "2037860155" "(cpuif_addr == 3'b0) 1 -1" (1 "0")
 Condition 22 "1785071699" "(rd_mux_addr == 3'b0) 1 -1" (1 "0")
 
-CHECKSUM: "976806579 376068046"
+CHECKSUM: "3124638153 376068046"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 6 "4066225999" "((csr_axil_req.ar.addr >= UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR) && (csr_axil_req.ar.addr < (UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR + UART_LOG_ENGINE_CTRL_REG_MAP_SIZE))) 1 -1" (3 "11")
 
-CHECKSUM: "2489373665 1734903030"
+CHECKSUM: "3188872617 1734903030"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "305394200" "(log_pending && (effective_log_len != log_len_t'(0)) && ((!log_fetch_done_status))) 1 -1" (1 "011")
@@ -13273,7 +13409,7 @@ Condition 61 "3315472069" "((field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~de
 Condition 62 "3177167649" "(field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~decoded_wr_biten[4]))) 1 -1" (2 "10")
 Condition 63 "1936909404" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
 
-CHECKSUM: "3974971274 1889139731"
+CHECKSUM: "902851981 1889139731"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_dl_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -13284,7 +13420,7 @@ Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
 Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
-CHECKSUM: "2578676572 4290674178"
+CHECKSUM: "8204497 4290674178"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -13318,7 +13454,6 @@ Condition 158 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01"
 Condition 158 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
 Condition 160 "3787437522" "(decoded_reg_strb.IIR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
 Condition 161 "3763558957" "(((|field_storage.LSR.OE.value)) || ((|field_storage.LSR.PE.value)) || ((|field_storage.LSR.FE.value)) || ((|field_storage.LSR.BI.value))) 1 -1" (2 "0001")
-Condition 161 "3763558957" "(((|field_storage.LSR.OE.value)) || ((|field_storage.LSR.PE.value)) || ((|field_storage.LSR.FE.value)) || ((|field_storage.LSR.BI.value))) 1 -1" (3 "0010")
 Condition 161 "3763558957" "(((|field_storage.LSR.OE.value)) || ((|field_storage.LSR.PE.value)) || ((|field_storage.LSR.FE.value)) || ((|field_storage.LSR.BI.value))) 1 -1" (4 "0100")
 Condition 161 "3763558957" "(((|field_storage.LSR.OE.value)) || ((|field_storage.LSR.PE.value)) || ((|field_storage.LSR.FE.value)) || ((|field_storage.LSR.BI.value))) 1 -1" (5 "1000")
 Condition 162 "3203674146" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
@@ -13328,7 +13463,7 @@ Condition 163 "841484986" "(((|field_storage.MSR.DCTS.value)) || ((|field_storag
 Condition 164 "3607769644" "(external_wr_ack | (decoded_req & decoded_req_is_wr & ((~decoded_req_is_external)))) 1 -1" (3 "10")
 Condition 165 "3163379521" "(decoded_req & decoded_req_is_wr & ((~decoded_req_is_external))) 1 -1" (3 "110")
 
-CHECKSUM: "1248967099 3918030293"
+CHECKSUM: "1638888483 3918030293"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_wo_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -13377,7 +13512,6 @@ Condition 1 "636464552" "(((!tx_enable)) && ((!rx_enable))) 1 -1" (2 "10")
 Condition 3 "3867028423" "(thr_rready && thr_rvalid) 1 -1" (2 "10")
 Condition 4 "1186798219" "(thr_wready && thr_wvalid) 1 -1" (1 "01")
 Condition 5 "3926131334" "(rx_fifo_rdata.break_err || rx_fifo_rdata.framing_err || rx_fifo_rdata.parity_err) 1 -1" (2 "001")
-Condition 5 "3926131334" "(rx_fifo_rdata.break_err || rx_fifo_rdata.framing_err || rx_fifo_rdata.parity_err) 1 -1" (3 "010")
 Condition 5 "3926131334" "(rx_fifo_rdata.break_err || rx_fifo_rdata.framing_err || rx_fifo_rdata.parity_err) 1 -1" (4 "100")
 Condition 6 "1576871296" "(rbr_rdata.break_err || rbr_rdata.framing_err || rbr_rdata.parity_err) 1 -1" (2 "001")
 Condition 6 "1576871296" "(rbr_rdata.break_err || rbr_rdata.framing_err || rbr_rdata.parity_err) 1 -1" (3 "010")
@@ -13388,7 +13522,6 @@ Condition 12 "579142211" "((intr_id == TRANSMITTER_HOLDING_REGISTER_EMPTY) && ii
 Condition 15 "3079199151" "(((~^tx_data)) ^ even_parity) 1 -1" (2 "01")
 Condition 15 "3079199151" "(((~^tx_data)) ^ even_parity) 1 -1" (4 "11")
 Condition 20 "2137222570" "(thr_rvalid && ((~^{thr_parity, thr_rdata}))) 1 -1" (3 "11")
-Condition 25 "1117152160" "(event_rx_frame_err && (rx_fifo_rbr_wdata == 8'b0)) 1 -1" (2 "10")
 Condition 27 "406227617" "(rbr_rvalid && ((~^{rbr_parity, rbr_rdata}))) 1 -1" (3 "11")
 Condition 28 "413551467" "(uart_fifo_en && (dma_mode == DMA_MODE_1)) 1 -1" (1 "01")
 Condition 30 "3531289681" "(tx_fifo_thr_err || rx_fifo_rbr_err) 1 -1" (2 "01")
@@ -13420,7 +13553,7 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_eng
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 3 "1794617131" "(((!tx_enable_i)) || (bit_cnt_q == 4'b0)) 1 -1" (3 "10")
 
-CHECKSUM: "2004843254 1423410759"
+CHECKSUM: "2439670790 1423410759"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_log_engine_ctrl_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -13442,12 +13575,12 @@ Condition 16 "1797526384" "(cpuif_req_masked & (cpuif_addr == 3'b0)) 1 -1" (2 "1
 Condition 17 "2037860155" "(cpuif_addr == 3'b0) 1 -1" (1 "0")
 Condition 22 "1785071699" "(rd_mux_addr == 3'b0) 1 -1" (1 "0")
 
-CHECKSUM: "976806579 376068046"
+CHECKSUM: "3124638153 376068046"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 6 "4066225999" "((csr_axil_req.ar.addr >= UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR) && (csr_axil_req.ar.addr < (UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR + UART_LOG_ENGINE_CTRL_REG_MAP_SIZE))) 1 -1" (3 "11")
 
-CHECKSUM: "2489373665 1734903030"
+CHECKSUM: "3188872617 1734903030"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "305394200" "(log_pending && (effective_log_len != log_len_t'(0)) && ((!log_fetch_done_status))) 1 -1" (1 "011")
@@ -13481,7 +13614,7 @@ Condition 62 "3177167649" "(field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~dec
 Condition 63 "1936909404" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
 Condition 93 "2166278152" "(((|field_storage.INTR_STATUS.LOG_FETCH_ERR.value)) || ((|field_storage.INTR_STATUS.LOG_WRITE_ERR.value))) 1 -1" (3 "10")
 
-CHECKSUM: "3974971274 1889139731"
+CHECKSUM: "902851981 1889139731"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_dl_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -13492,7 +13625,7 @@ Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
 Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
-CHECKSUM: "2578676572 4290674178"
+CHECKSUM: "8204497 4290674178"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -13536,7 +13669,7 @@ Condition 163 "841484986" "(((|field_storage.MSR.DCTS.value)) || ((|field_storag
 Condition 164 "3607769644" "(external_wr_ack | (decoded_req & decoded_req_is_wr & ((~decoded_req_is_external)))) 1 -1" (3 "10")
 Condition 165 "3163379521" "(decoded_req & decoded_req_is_wr & ((~decoded_req_is_external))) 1 -1" (3 "110")
 
-CHECKSUM: "1248967099 3918030293"
+CHECKSUM: "1638888483 3918030293"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_wo_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -13630,7 +13763,7 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_eng
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 3 "1794617131" "(((!tx_enable_i)) || (bit_cnt_q == 4'b0)) 1 -1" (3 "10")
 
-CHECKSUM: "2004843254 1423410759"
+CHECKSUM: "2439670790 1423410759"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_log_engine_ctrl_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -13652,7 +13785,7 @@ Condition 16 "1797526384" "(cpuif_req_masked & (cpuif_addr == 3'b0)) 1 -1" (2 "1
 Condition 17 "2037860155" "(cpuif_addr == 3'b0) 1 -1" (1 "0")
 Condition 22 "1785071699" "(rd_mux_addr == 3'b0) 1 -1" (1 "0")
 
-CHECKSUM: "976806579 376068046"
+CHECKSUM: "3124638153 376068046"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 2 "1510564319" "(GEN_LOG_ENGINE && (csr_axil_req.aw.addr >= LOG_ENGINE_REG_MAP_BASE_ADDR) && (csr_axil_req.aw.addr < (LOG_ENGINE_REG_MAP_BASE_ADDR + LOG_ENGINE_REG_MAP_SIZE))) 1 -1" (2 "-10")
@@ -13661,7 +13794,7 @@ Condition 5 "752976802" "(GEN_LOG_ENGINE && (csr_axil_req.ar.addr >= LOG_ENGINE_
 Condition 6 "4066225999" "((csr_axil_req.ar.addr >= UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR) && (csr_axil_req.ar.addr < (UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR + UART_LOG_ENGINE_CTRL_REG_MAP_SIZE))) 1 -1" (2 "10")
 Condition 6 "4066225999" "((csr_axil_req.ar.addr >= UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR) && (csr_axil_req.ar.addr < (UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR + UART_LOG_ENGINE_CTRL_REG_MAP_SIZE))) 1 -1" (3 "11")
 
-CHECKSUM: "2489373665 1734903030"
+CHECKSUM: "3188872617 1734903030"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "305394200" "(log_pending && (effective_log_len != log_len_t'(0)) && ((!log_fetch_done_status))) 1 -1" (1 "011")
@@ -13695,7 +13828,7 @@ Condition 62 "3177167649" "(field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~dec
 Condition 63 "1936909404" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
 Condition 93 "2166278152" "(((|field_storage.INTR_STATUS.LOG_FETCH_ERR.value)) || ((|field_storage.INTR_STATUS.LOG_WRITE_ERR.value))) 1 -1" (3 "10")
 
-CHECKSUM: "3974971274 1889139731"
+CHECKSUM: "902851981 1889139731"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_dl_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -13706,7 +13839,7 @@ Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
 Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
-CHECKSUM: "2578676572 4290674178"
+CHECKSUM: "8204497 4290674178"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -13741,6 +13874,7 @@ Condition 158 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11"
 Condition 160 "3787437522" "(decoded_reg_strb.IIR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
 Condition 161 "3763558957" "(((|field_storage.LSR.OE.value)) || ((|field_storage.LSR.PE.value)) || ((|field_storage.LSR.FE.value)) || ((|field_storage.LSR.BI.value))) 1 -1" (2 "0001")
 Condition 161 "3763558957" "(((|field_storage.LSR.OE.value)) || ((|field_storage.LSR.PE.value)) || ((|field_storage.LSR.FE.value)) || ((|field_storage.LSR.BI.value))) 1 -1" (3 "0010")
+Condition 161 "3763558957" "(((|field_storage.LSR.OE.value)) || ((|field_storage.LSR.PE.value)) || ((|field_storage.LSR.FE.value)) || ((|field_storage.LSR.BI.value))) 1 -1" (4 "0100")
 Condition 161 "3763558957" "(((|field_storage.LSR.OE.value)) || ((|field_storage.LSR.PE.value)) || ((|field_storage.LSR.FE.value)) || ((|field_storage.LSR.BI.value))) 1 -1" (5 "1000")
 Condition 162 "3203674146" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
 Condition 163 "841484986" "(((|field_storage.MSR.DCTS.value)) || ((|field_storage.MSR.DDSR.value)) || ((|field_storage.MSR.TERI.value)) || ((|field_storage.MSR.DDCD.value))) 1 -1" (2 "0001")
@@ -13749,7 +13883,7 @@ Condition 163 "841484986" "(((|field_storage.MSR.DCTS.value)) || ((|field_storag
 Condition 164 "3607769644" "(external_wr_ack | (decoded_req & decoded_req_is_wr & ((~decoded_req_is_external)))) 1 -1" (3 "10")
 Condition 165 "3163379521" "(decoded_req & decoded_req_is_wr & ((~decoded_req_is_external))) 1 -1" (3 "110")
 
-CHECKSUM: "1248967099 3918030293"
+CHECKSUM: "1638888483 3918030293"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_wo_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -13801,6 +13935,7 @@ Condition 4 "1186798219" "(thr_wready && thr_wvalid) 1 -1" (1 "01")
 Condition 5 "3926131334" "(rx_fifo_rdata.break_err || rx_fifo_rdata.framing_err || rx_fifo_rdata.parity_err) 1 -1" (2 "001")
 Condition 5 "3926131334" "(rx_fifo_rdata.break_err || rx_fifo_rdata.framing_err || rx_fifo_rdata.parity_err) 1 -1" (3 "010")
 Condition 5 "3926131334" "(rx_fifo_rdata.break_err || rx_fifo_rdata.framing_err || rx_fifo_rdata.parity_err) 1 -1" (4 "100")
+Condition 6 "1576871296" "(rbr_rdata.break_err || rbr_rdata.framing_err || rbr_rdata.parity_err) 1 -1" (2 "001")
 Condition 6 "1576871296" "(rbr_rdata.break_err || rbr_rdata.framing_err || rbr_rdata.parity_err) 1 -1" (3 "010")
 Condition 6 "1576871296" "(rbr_rdata.break_err || rbr_rdata.framing_err || rbr_rdata.parity_err) 1 -1" (4 "100")
 Condition 9 "3444096770" "(uart_fifo_en && rx_fifo_threshold_supported && (rx_fifo_threshold_t'(rx_fifo_depth) >= rx_fifo_threshold)) 1 -1" (2 "101")
@@ -13822,6 +13957,7 @@ Condition 52 "2019871000" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.r
 Condition 53 "1284311563" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr && ((|reg_out_i.main_wo.THR.wr_biten[7:0]))) 1 -1" (2 "101")
 Condition 53 "1284311563" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr && ((|reg_out_i.main_wo.THR.wr_biten[7:0]))) 1 -1" (3 "110")
 Condition 56 "3913595461" "(reg_out_i.main_wo.FCR.XMIT_FIFO_RESET.value || fifo_en_changed) 1 -1" (3 "10")
+Condition 57 "726277720" "((reg_out_i.main.LSR.intr || receiver_line_status_intr_test) && receiver_line_status_intr_en) 1 -1" (3 "11")
 Condition 64 "619033102" "((reg_out_i.main.MSR.intr || modem_status_intr_test) && modem_status_intr_en) 1 -1" (1 "01")
 Condition 65 "615111783" "(reg_out_i.main.MSR.intr || modem_status_intr_test) 1 -1" (2 "01")
 
@@ -13830,14 +13966,14 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_eng
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 4 "2785094000" "((bit_cnt_q == frame_length) && (rx_i != 1'b0)) 1 -1" (3 "11")
 Condition 17 "3823956829" "(extra_stop_bit_i && (word_length_i != 4'd5)) 1 -1" (2 "10")
-Condition 19 "2977631779" "(parity_enable_i && rx_valid_o && (parity_force_i ? ((^rx_data_o)) : (parity_odd_i ? ((~^{rx_parity, rx_data_o})) : ((^{rx_parity, rx_data_o}))))) 1 -1" (3 "110")
+Condition 19 "2977631779" "(parity_enable_i && rx_valid_o && (parity_force_i ? ((^rx_data_o)) : (parity_odd_i ? ((~^{rx_parity, rx_data_o})) : ((^{rx_parity, rx_data_o}))))) 1 -1" (4 "111")
 
 CHECKSUM: "802650105 1094008715"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_16550.u_uart_core.u_uart_tx
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 3 "1794617131" "(((!tx_enable_i)) || (bit_cnt_q == 4'b0)) 1 -1" (3 "10")
 
-CHECKSUM: "2004843254 1423410759"
+CHECKSUM: "2439670790 1423410759"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_log_engine_ctrl_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -13859,7 +13995,7 @@ Condition 16 "1797526384" "(cpuif_req_masked & (cpuif_addr == 3'b0)) 1 -1" (2 "1
 Condition 17 "2037860155" "(cpuif_addr == 3'b0) 1 -1" (1 "0")
 Condition 22 "1785071699" "(rd_mux_addr == 3'b0) 1 -1" (1 "0")
 
-CHECKSUM: "3238499240 193996585"
+CHECKSUM: "438890927 193996585"
 INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Condition 6 "371092708" "(i3c_dct_mem_sink_i[0].req & ((~i3c_dct_mem_sink_i[0].write))) 1 -1" (2 "10")
@@ -13868,236 +14004,6 @@ Condition 10 "3334913594" "(i3c_dct_mem_sink_i[2].req & ((~i3c_dct_mem_sink_i[2]
 Condition 12 "2159592749" "(i3c_dct_mem_sink_i[3].req & ((~i3c_dct_mem_sink_i[3].write))) 1 -1" (2 "10")
 Condition 14 "702031098" "(i3c_dct_mem_sink_i[4].req & ((~i3c_dct_mem_sink_i[4].write))) 1 -1" (2 "10")
 Condition 16 "1873174509" "(i3c_dct_mem_sink_i[5].req & ((~i3c_dct_mem_sink_i[5].write))) 1 -1" (2 "10")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[10].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (1 "01")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[12].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (1 "01")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[13].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (1 "01")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[16].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (1 "01")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[17].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (1 "01")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[18].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (1 "01")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[20].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (1 "01")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[21].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (1 "01")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[22].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (1 "01")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[24].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (1 "01")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[25].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (1 "01")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[26].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (1 "01")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[27].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (2 "10")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[28].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (2 "10")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[29].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (1 "01")
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (2 "10")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[30].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (1 "01")
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (2 "10")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[31].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (1 "01")
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (2 "10")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[32].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (1 "01")
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (2 "10")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[33].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (1 "01")
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (2 "10")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[34].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (1 "01")
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (2 "10")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[35].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (1 "01")
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (2 "10")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[36].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (1 "01")
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (2 "10")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[39].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (1 "01")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[3].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (1 "01")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[44].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (1 "01")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[49].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (1 "01")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[4].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (1 "01")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[50].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (1 "01")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[51].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (2 "10")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[53].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (2 "10")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[54].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (1 "01")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[55].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (2 "10")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[56].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (2 "10")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[57].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (2 "10")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[58].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (1 "01")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[59].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (1 "01")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[5].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (1 "01")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[61].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (1 "01")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[62].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (1 "01")
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (2 "10")
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (3 "11")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[63].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (1 "01")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[64].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (1 "01")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[6].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (1 "01")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[7].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (1 "01")
-
-CHECKSUM: "1059888339 4136629973"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[9].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Condition 1 "719200684" "(pad_in & pad2core_en_i) 1 -1" (1 "01")
 
 CHECKSUM: "1698122930 1130749731"
 INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.u_efuse_interface_shim
@@ -14146,6 +14052,8 @@ Transition W_HANDSHAKE->RESP_HANDSHAKE "3->4"
 CHECKSUM: "1698122930 169493608"
 INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.u_efuse_interface_shim
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
+Fsm efuse_read_state_q "3697515029"
+Transition StReadInit->StReadIdle "1->0"
 Fsm efuse_write_state_q "4135696745"
 Transition StWriteAccess->StWriteIdle "3->0"
 Transition StWriteInit->StWriteIdle "1->0"
@@ -14155,42 +14063,42 @@ Transition StWriteReadBackWait->StWriteIdle "7->0"
 Transition StWriteSetup->StWriteIdle "2->0"
 Transition StWriteWait->StWriteIdle "4->0"
 
-CHECKSUM: "3869168330 161093627"
+CHECKSUM: "254295559 3758367161"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[0].u_smc_alias_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "3869168330 161093627"
+CHECKSUM: "254295559 3758367161"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[1].u_smc_alias_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "3869168330 161093627"
+CHECKSUM: "254295559 3758367161"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[2].u_smc_alias_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "3869168330 161093627"
+CHECKSUM: "254295559 3758367161"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[3].u_smc_alias_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "3869168330 161093627"
+CHECKSUM: "254295559 3758367161"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[4].u_smc_alias_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "3869168330 161093627"
+CHECKSUM: "254295559 3758367161"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[5].u_smc_alias_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "3869168330 161093627"
+CHECKSUM: "254295559 3758367161"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[6].u_smc_alias_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "3869168330 161093627"
+CHECKSUM: "254295559 3758367161"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[7].u_smc_alias_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
@@ -14329,54 +14237,54 @@ Block 152 "1104249291" "next_c = ((field_storage.END_ADDR.end_addr.value & (~dec
 Block 164 "1842830368" "readback_data_var[55:0] = field_storage.START_ADDR.start_addr.value;"
 Block 167 "1930284241" "readback_data_var[55:0] = field_storage.END_ADDR.end_addr.value;"
 
-CHECKSUM: "3380085693 2875591747"
+CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[0].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "3380085693 2875591747"
+CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[1].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 37 "2871174096" "cpuif_req = '1;"
 Block 38 "3369338776" "axil_ar_accept = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "3380085693 2875591747"
+CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[2].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 37 "2871174096" "cpuif_req = '1;"
 Block 38 "3369338776" "axil_ar_accept = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "3380085693 2875591747"
+CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[3].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 37 "2871174096" "cpuif_req = '1;"
 Block 38 "3369338776" "axil_ar_accept = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "3380085693 2875591747"
+CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[4].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 37 "2871174096" "cpuif_req = '1;"
 Block 38 "3369338776" "axil_ar_accept = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "3380085693 2875591747"
+CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[5].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 37 "2871174096" "cpuif_req = '1;"
 Block 38 "3369338776" "axil_ar_accept = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "3380085693 2875591747"
+CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[6].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 37 "2871174096" "cpuif_req = '1;"
 Block 38 "3369338776" "axil_ar_accept = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "3380085693 2875591747"
+CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[7].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 37 "2871174096" "cpuif_req = '1;"
@@ -14463,56 +14371,56 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "3380085693 2875591747"
+CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[0].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 37 "2871174096" "cpuif_req = '1;"
 Block 38 "3369338776" "axil_ar_accept = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "3380085693 2875591747"
+CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[1].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 37 "2871174096" "cpuif_req = '1;"
 Block 38 "3369338776" "axil_ar_accept = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "3380085693 2875591747"
+CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[2].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 37 "2871174096" "cpuif_req = '1;"
 Block 38 "3369338776" "axil_ar_accept = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "3380085693 2875591747"
+CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[3].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 37 "2871174096" "cpuif_req = '1;"
 Block 38 "3369338776" "axil_ar_accept = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "3380085693 2875591747"
+CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[4].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 37 "2871174096" "cpuif_req = '1;"
 Block 38 "3369338776" "axil_ar_accept = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "3380085693 2875591747"
+CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[5].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 37 "2871174096" "cpuif_req = '1;"
 Block 38 "3369338776" "axil_ar_accept = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "3380085693 2875591747"
+CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[6].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 37 "2871174096" "cpuif_req = '1;"
 Block 38 "3369338776" "axil_ar_accept = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "3380085693 2875591747"
+CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[7].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 37 "2871174096" "cpuif_req = '1;"
@@ -15116,7 +15024,7 @@ Block 9 "379044390" "if (retire_i)"
 Block 10 "2836492767" "completed_d = 'h00000002;"
 Block 11 "2204045824" "completed_d = 'b1;"
 
-CHECKSUM: "3781890121 2284202446"
+CHECKSUM: "1059230947 2284202446"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_zeroer.u_zeroer_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
@@ -15133,12 +15041,12 @@ ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet
 Block 17 "2679859476" "return {data[7:0], data[15:8], data[23:16], data[31:24], data[39:32], data[47:40], data[55:48], data[63:56]};"
 Block 19 "2014165686" "auto_in_d_bits_data = flip_endianness(rom_bank_data_i);"
 
-CHECKSUM: "1322761447 2992148394"
+CHECKSUM: "3384408495 2992148394"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_core.u_i2c_controller_fsm
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 13 "623845184" "tcount_d = 14'b1;"
 
-CHECKSUM: "395370686 2148495424"
+CHECKSUM: "2631278932 2148495424"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_core.u_i2c_target_fsm
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 5 "1124555975" "tcount_d = 14'b1;"
@@ -15152,7 +15060,7 @@ Block 200 "1540518245" "state_d = WaitForStop;"
 Block 215 "1753508764" "state_d = WaitForStop;"
 Block 223 "113246427" "state_d = WaitForStop;"
 
-CHECKSUM: "1322761447 2992148394"
+CHECKSUM: "3384408495 2992148394"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.u_i2c_controller_fsm
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 13 "623845184" "tcount_d = 14'b1;"
@@ -15202,7 +15110,7 @@ Block 275 "374249837" "state_d = Idle;"
 Block 278 "4015693119" "state_d = Idle;"
 Block 287 "3303788013" "auto_stop_d = 1'b1;"
 
-CHECKSUM: "395370686 2148495424"
+CHECKSUM: "2631278932 2148495424"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.u_i2c_target_fsm
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 5 "1124555975" "tcount_d = 14'b1;"
@@ -15219,7 +15127,7 @@ Block 215 "1753508764" "state_d = WaitForStop;"
 Block 223 "113246427" "state_d = WaitForStop;"
 Block 251 "3177756689" "state_d = WaitForStop;"
 
-CHECKSUM: "1206752896 631037930"
+CHECKSUM: "2279933121 631037930"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 19 "2351103625" "controller_tx_ready_o = 1'b0;"
@@ -15231,7 +15139,7 @@ Block 43 "351329269" "if (tx_lt_threshold)"
 Block 44 "2869887708" "target_tx_ready_o = 1'b1;"
 Block 45 "1155078305" "target_tx_ready_o = 1'b0;"
 
-CHECKSUM: "1322761447 2992148394"
+CHECKSUM: "3384408495 2992148394"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core.u_i2c_controller_fsm
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 8 "1861052629" "tcount_d = 14'(thigh_i);"
@@ -15280,7 +15188,7 @@ Block 275 "374249837" "state_d = Idle;"
 Block 278 "4015693119" "state_d = Idle;"
 Block 287 "3303788013" "auto_stop_d = 1'b1;"
 
-CHECKSUM: "395370686 2148495424"
+CHECKSUM: "2631278932 2148495424"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core.u_i2c_target_fsm
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 5 "1124555975" "tcount_d = 14'b1;"
@@ -17212,36 +17120,36 @@ Block 122 "409613917" "field_storage.DATA_CTRL.lsio_disable.value <= field_combo
 Block 125 "1297118009" "next_c = ((field_storage.DATA_CTRL.interrupt_type.value & (~decoded_wr_biten[21:20])) | (decoded_wr_data[21:20] & decoded_wr_biten[21:20]));"
 Block 131 "2205696352" "field_storage.DATA_CTRL.interrupt_type.value <= field_combo.DATA_CTRL.interrupt_type.next;"
 
-CHECKSUM: "4066092602 1355226369"
+CHECKSUM: "2231104132 1355226369"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[0].u_telemetry_receiver.u_telemetry_receiver_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "1867070274 1665523634"
+CHECKSUM: "1319975045 1665523634"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[1].u_telemetry_receiver
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 24 "1460728686" "message_buffer_wr_ptr_next = message_buffer_ptr_t'(0);"
 
-CHECKSUM: "4066092602 1355226369"
+CHECKSUM: "2231104132 1355226369"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[1].u_telemetry_receiver.u_telemetry_receiver_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 94 "935732731" "next_c = '0;"
 Block 181 "1232499426" "readback_data_var[31:0] = hwif_in.TELEMETRY_COUNTER[i0].COUNTER.next;"
 
-CHECKSUM: "1867070274 1665523634"
+CHECKSUM: "1319975045 1665523634"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[2].u_telemetry_receiver
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 24 "1460728686" "message_buffer_wr_ptr_next = message_buffer_ptr_t'(0);"
 
-CHECKSUM: "4066092602 1355226369"
+CHECKSUM: "2231104132 1355226369"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[2].u_telemetry_receiver.u_telemetry_receiver_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 94 "935732731" "next_c = '0;"
 Block 181 "1232499426" "readback_data_var[31:0] = hwif_in.TELEMETRY_COUNTER[i0].COUNTER.next;"
 
-CHECKSUM: "2489373665 3243120082"
+CHECKSUM: "3188872617 3243120082"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 24 "3833313036" "log_fetch_done_status_next = 1'b0;"
@@ -17252,17 +17160,17 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_eng
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "3974971274 3186259801"
+CHECKSUM: "902851981 3186259801"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_dl_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "2578676572 930279896"
+CHECKSUM: "8204497 930279896"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "1248967099 2986629353"
+CHECKSUM: "1638888483 2986629353"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_wo_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 4 "4235059485" "axil_prev_was_rd <= '1;"
@@ -17282,17 +17190,17 @@ ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet
 Block 89 "2875201528" "rx_fifo_threshold = rx_fifo_threshold_t'(8);"
 Block 90 "1036727875" "rx_fifo_threshold = rx_fifo_threshold_t'(14);"
 
-CHECKSUM: "2004843254 25316389"
+CHECKSUM: "2439670790 25316389"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.u_uart_log_engine_ctrl_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "976806579 4080697105"
+CHECKSUM: "3124638153 4080697105"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 13 "3148483232" "csr_axil_ar_select = CTRL_REG_MAP;"
 
-CHECKSUM: "2489373665 3243120082"
+CHECKSUM: "3188872617 3243120082"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 24 "3833313036" "log_fetch_done_status_next = 1'b0;"
@@ -17303,19 +17211,20 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_eng
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "3974971274 3186259801"
+CHECKSUM: "902851981 3186259801"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_dl_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "2578676572 930279896"
+CHECKSUM: "8204497 930279896"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 242 "236095624" "next_c = '1;"
 Block 253 "1373107836" "next_c = '1;"
+Block 275 "1279213479" "next_c = '1;"
 
-CHECKSUM: "1248967099 2986629353"
+CHECKSUM: "1638888483 2986629353"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_wo_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 4 "4235059485" "axil_prev_was_rd <= '1;"
@@ -17356,7 +17265,7 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_eng
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 13 "2822615368" "idle_d = 1'b1;"
 
-CHECKSUM: "2004843254 25316389"
+CHECKSUM: "2439670790 25316389"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_log_engine_ctrl_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 4 "4235059485" "axil_prev_was_rd <= '1;"
@@ -17370,12 +17279,12 @@ Block 62 "2571312949" "s_axil_rvalid = '1;"
 Block 63 "480062622" "axil_resp_acked = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "976806579 4080697105"
+CHECKSUM: "3124638153 4080697105"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 13 "3148483232" "csr_axil_ar_select = CTRL_REG_MAP;"
 
-CHECKSUM: "2489373665 3243120082"
+CHECKSUM: "3188872617 3243120082"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 24 "3833313036" "log_fetch_done_status_next = 1'b0;"
@@ -17386,12 +17295,12 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_eng
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "3974971274 3186259801"
+CHECKSUM: "902851981 3186259801"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_dl_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "2578676572 930279896"
+CHECKSUM: "8204497 930279896"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
@@ -17400,7 +17309,7 @@ Block 253 "1373107836" "next_c = '1;"
 Block 264 "2751141056" "next_c = '1;"
 Block 275 "1279213479" "next_c = '1;"
 
-CHECKSUM: "1248967099 2986629353"
+CHECKSUM: "1638888483 2986629353"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_wo_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 4 "4235059485" "axil_prev_was_rd <= '1;"
@@ -17440,7 +17349,7 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_eng
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 13 "2822615368" "idle_d = 1'b1;"
 
-CHECKSUM: "2004843254 25316389"
+CHECKSUM: "2439670790 25316389"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_log_engine_ctrl_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 4 "4235059485" "axil_prev_was_rd <= '1;"
@@ -17454,12 +17363,12 @@ Block 62 "2571312949" "s_axil_rvalid = '1;"
 Block 63 "480062622" "axil_resp_acked = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "976806579 4080697105"
+CHECKSUM: "3124638153 4080697105"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 13 "3148483232" "csr_axil_ar_select = CTRL_REG_MAP;"
 
-CHECKSUM: "2489373665 3243120082"
+CHECKSUM: "3188872617 3243120082"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 24 "3833313036" "log_fetch_done_status_next = 1'b0;"
@@ -17470,20 +17379,21 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_eng
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "3974971274 3186259801"
+CHECKSUM: "902851981 3186259801"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_dl_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "2578676572 930279896"
+CHECKSUM: "8204497 930279896"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 242 "236095624" "next_c = '1;"
+Block 253 "1373107836" "next_c = '1;"
 Block 264 "2751141056" "next_c = '1;"
 Block 275 "1279213479" "next_c = '1;"
 
-CHECKSUM: "1248967099 2986629353"
+CHECKSUM: "1638888483 2986629353"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_wo_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 4 "4235059485" "axil_prev_was_rd <= '1;"
@@ -17515,6 +17425,7 @@ Block 96 "1834982481" "rx_fifo_threshold = rx_fifo_threshold_t'(1024);"
 Block 97 "2062889571" "rx_fifo_threshold = rx_fifo_threshold_t'(2048);"
 Block 98 "1709577418" "rx_fifo_threshold = rx_fifo_threshold_t'(4096);"
 Block 112 "3774925084" "intr_id = FIFO_ERROR;"
+Block 113 "2164394487" "intr_id = RECEIVER_LINE_STATUS;"
 Block 130 "3619336723" "cts = 1'b0;"
 
 CHECKSUM: "1695494083 3871428551"
@@ -17522,7 +17433,7 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_eng
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 13 "2822615368" "idle_d = 1'b1;"
 
-CHECKSUM: "2004843254 25316389"
+CHECKSUM: "2439670790 25316389"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_log_engine_ctrl_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 4 "4235059485" "axil_prev_was_rd <= '1;"
@@ -17558,7 +17469,7 @@ INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.u_straps_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
-CHECKSUM: "3869168330 3277739977"
+CHECKSUM: "254295559 3930243755"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[0].u_smc_alias_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle 1to0 cpuif_wr_biten "logic cpuif_wr_biten[63:0]"
@@ -17569,7 +17480,7 @@ Toggle axil_araddr [1:0] "logic axil_araddr[4:0]"
 Toggle axil_awaddr [2:0] "logic axil_awaddr[4:0]"
 Toggle 1to0 axil_wstrb "logic axil_wstrb[7:0]"
 Toggle 1to0 decoded_wr_biten "logic decoded_wr_biten[63:0]"
-Toggle field_combo.REGION.region_attrs.cacheable.next "logic field_combo.REGION.region_attrs.cacheable.next"
+Toggle field_combo.REGION.region_attrs.cacheable.next "logic field_combo.REGION.region_attrs.cacheable.next[3:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [43:20] "logic field_combo.REGION.region_attrs.offset.next[43:0]"
 Toggle field_combo.REGION.region_end.end_addr.next [43:19] "logic field_combo.REGION.region_end.end_addr.next[43:0]"
 Toggle field_combo.REGION.region_end.end_addr.next [17] "logic field_combo.REGION.region_end.end_addr.next[43:0]"
@@ -17582,7 +17493,7 @@ Toggle field_combo.REGION.region_start.start_addr.next [17:14] "logic field_comb
 Toggle field_combo.REGION.region_start.start_addr.next [12:9] "logic field_combo.REGION.region_start.start_addr.next[43:0]"
 Toggle field_combo.REGION.region_start.start_addr.next [7:2] "logic field_combo.REGION.region_start.start_addr.next[43:0]"
 Toggle field_combo.REGION.region_start.start_addr.next [0] "logic field_combo.REGION.region_start.start_addr.next[43:0]"
-Toggle field_storage.REGION.region_attrs.cacheable.value "logic field_storage.REGION.region_attrs.cacheable.value"
+Toggle field_storage.REGION.region_attrs.cacheable.value "logic field_storage.REGION.region_attrs.cacheable.value[3:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [43:20] "logic field_storage.REGION.region_attrs.offset.value[43:0]"
 Toggle field_storage.REGION.region_end.end_addr.value [43:19] "logic field_storage.REGION.region_end.end_addr.value[43:0]"
 Toggle field_storage.REGION.region_end.end_addr.value [17] "logic field_storage.REGION.region_end.end_addr.value[43:0]"
@@ -17598,7 +17509,7 @@ Toggle field_storage.REGION.region_start.start_addr.value [0] "logic field_stora
 Toggle readback_data [62:32] "logic readback_data[63:0]"
 Toggle readback_data [11:0] "logic readback_data[63:0]"
 
-CHECKSUM: "3869168330 3277739977"
+CHECKSUM: "254295559 3930243755"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[1].u_smc_alias_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle cpuif_wr_data [63:22] "logic cpuif_wr_data[63:0]"
@@ -17620,7 +17531,7 @@ Toggle decoded_wr_data [19:13] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [11:0] "logic decoded_wr_data[63:0]"
 Toggle 1to0 decoded_wr_biten "logic decoded_wr_biten[63:0]"
 Toggle field_combo.REGION.region_attrs.valid.next "logic field_combo.REGION.region_attrs.valid.next"
-Toggle field_combo.REGION.region_attrs.cacheable.next "logic field_combo.REGION.region_attrs.cacheable.next"
+Toggle field_combo.REGION.region_attrs.cacheable.next "logic field_combo.REGION.region_attrs.cacheable.next[3:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [43:10] "logic field_combo.REGION.region_attrs.offset.next[43:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [7:1] "logic field_combo.REGION.region_attrs.offset.next[43:0]"
 Toggle field_combo.REGION.region_end.end_addr.next [43:10] "logic field_combo.REGION.region_end.end_addr.next[43:0]"
@@ -17628,7 +17539,7 @@ Toggle field_combo.REGION.region_end.end_addr.next [8:1] "logic field_combo.REGI
 Toggle field_combo.REGION.region_start.start_addr.next [43:9] "logic field_combo.REGION.region_start.start_addr.next[43:0]"
 Toggle field_combo.REGION.region_start.start_addr.next [7:1] "logic field_combo.REGION.region_start.start_addr.next[43:0]"
 Toggle field_storage.REGION.region_attrs.valid.value "logic field_storage.REGION.region_attrs.valid.value"
-Toggle field_storage.REGION.region_attrs.cacheable.value "logic field_storage.REGION.region_attrs.cacheable.value"
+Toggle field_storage.REGION.region_attrs.cacheable.value "logic field_storage.REGION.region_attrs.cacheable.value[3:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [43:10] "logic field_storage.REGION.region_attrs.offset.value[43:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [7:1] "logic field_storage.REGION.region_attrs.offset.value[43:0]"
 Toggle field_storage.REGION.region_end.end_addr.value [43:10] "logic field_storage.REGION.region_end.end_addr.value[43:0]"
@@ -17639,7 +17550,7 @@ Toggle readback_data [63:22] "logic readback_data[63:0]"
 Toggle readback_data [19:13] "logic readback_data[63:0]"
 Toggle readback_data [11:0] "logic readback_data[63:0]"
 
-CHECKSUM: "3869168330 3277739977"
+CHECKSUM: "254295559 3930243755"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[2].u_smc_alias_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle cpuif_wr_data [63:22] "logic cpuif_wr_data[63:0]"
@@ -17661,7 +17572,7 @@ Toggle decoded_wr_data [19:14] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [12:0] "logic decoded_wr_data[63:0]"
 Toggle 1to0 decoded_wr_biten "logic decoded_wr_biten[63:0]"
 Toggle field_combo.REGION.region_attrs.valid.next "logic field_combo.REGION.region_attrs.valid.next"
-Toggle field_combo.REGION.region_attrs.cacheable.next "logic field_combo.REGION.region_attrs.cacheable.next"
+Toggle field_combo.REGION.region_attrs.cacheable.next "logic field_combo.REGION.region_attrs.cacheable.next[3:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [43:10] "logic field_combo.REGION.region_attrs.offset.next[43:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [7:2] "logic field_combo.REGION.region_attrs.offset.next[43:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [0] "logic field_combo.REGION.region_attrs.offset.next[43:0]"
@@ -17672,7 +17583,7 @@ Toggle field_combo.REGION.region_start.start_addr.next [43:9] "logic field_combo
 Toggle field_combo.REGION.region_start.start_addr.next [7:2] "logic field_combo.REGION.region_start.start_addr.next[43:0]"
 Toggle field_combo.REGION.region_start.start_addr.next [0] "logic field_combo.REGION.region_start.start_addr.next[43:0]"
 Toggle field_storage.REGION.region_attrs.valid.value "logic field_storage.REGION.region_attrs.valid.value"
-Toggle field_storage.REGION.region_attrs.cacheable.value "logic field_storage.REGION.region_attrs.cacheable.value"
+Toggle field_storage.REGION.region_attrs.cacheable.value "logic field_storage.REGION.region_attrs.cacheable.value[3:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [43:10] "logic field_storage.REGION.region_attrs.offset.value[43:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [7:2] "logic field_storage.REGION.region_attrs.offset.value[43:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [0] "logic field_storage.REGION.region_attrs.offset.value[43:0]"
@@ -17686,7 +17597,7 @@ Toggle readback_data [63:22] "logic readback_data[63:0]"
 Toggle readback_data [19:14] "logic readback_data[63:0]"
 Toggle readback_data [12:0] "logic readback_data[63:0]"
 
-CHECKSUM: "3869168330 3277739977"
+CHECKSUM: "254295559 3930243755"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[3].u_smc_alias_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle cpuif_wr_data [63:22] "logic cpuif_wr_data[63:0]"
@@ -17708,7 +17619,7 @@ Toggle decoded_wr_data [19:14] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [11:0] "logic decoded_wr_data[63:0]"
 Toggle 1to0 decoded_wr_biten "logic decoded_wr_biten[63:0]"
 Toggle field_combo.REGION.region_attrs.valid.next "logic field_combo.REGION.region_attrs.valid.next"
-Toggle field_combo.REGION.region_attrs.cacheable.next "logic field_combo.REGION.region_attrs.cacheable.next"
+Toggle field_combo.REGION.region_attrs.cacheable.next "logic field_combo.REGION.region_attrs.cacheable.next[3:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [43:10] "logic field_combo.REGION.region_attrs.offset.next[43:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [7:2] "logic field_combo.REGION.region_attrs.offset.next[43:0]"
 Toggle field_combo.REGION.region_end.end_addr.next [43:10] "logic field_combo.REGION.region_end.end_addr.next[43:0]"
@@ -17716,7 +17627,7 @@ Toggle field_combo.REGION.region_end.end_addr.next [8:2] "logic field_combo.REGI
 Toggle field_combo.REGION.region_start.start_addr.next [43:9] "logic field_combo.REGION.region_start.start_addr.next[43:0]"
 Toggle field_combo.REGION.region_start.start_addr.next [7:2] "logic field_combo.REGION.region_start.start_addr.next[43:0]"
 Toggle field_storage.REGION.region_attrs.valid.value "logic field_storage.REGION.region_attrs.valid.value"
-Toggle field_storage.REGION.region_attrs.cacheable.value "logic field_storage.REGION.region_attrs.cacheable.value"
+Toggle field_storage.REGION.region_attrs.cacheable.value "logic field_storage.REGION.region_attrs.cacheable.value[3:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [43:10] "logic field_storage.REGION.region_attrs.offset.value[43:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [7:2] "logic field_storage.REGION.region_attrs.offset.value[43:0]"
 Toggle field_storage.REGION.region_end.end_addr.value [43:10] "logic field_storage.REGION.region_end.end_addr.value[43:0]"
@@ -17727,7 +17638,7 @@ Toggle readback_data [63:22] "logic readback_data[63:0]"
 Toggle readback_data [19:14] "logic readback_data[63:0]"
 Toggle readback_data [11:0] "logic readback_data[63:0]"
 
-CHECKSUM: "3869168330 3277739977"
+CHECKSUM: "254295559 3930243755"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[4].u_smc_alias_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle cpuif_wr_data [63:22] "logic cpuif_wr_data[63:0]"
@@ -17749,7 +17660,7 @@ Toggle decoded_wr_data [19:15] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [13:0] "logic decoded_wr_data[63:0]"
 Toggle 1to0 decoded_wr_biten "logic decoded_wr_biten[63:0]"
 Toggle field_combo.REGION.region_attrs.valid.next "logic field_combo.REGION.region_attrs.valid.next"
-Toggle field_combo.REGION.region_attrs.cacheable.next "logic field_combo.REGION.region_attrs.cacheable.next"
+Toggle field_combo.REGION.region_attrs.cacheable.next "logic field_combo.REGION.region_attrs.cacheable.next[3:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [43:10] "logic field_combo.REGION.region_attrs.offset.next[43:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [7:3] "logic field_combo.REGION.region_attrs.offset.next[43:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [1:0] "logic field_combo.REGION.region_attrs.offset.next[43:0]"
@@ -17760,7 +17671,7 @@ Toggle field_combo.REGION.region_start.start_addr.next [43:9] "logic field_combo
 Toggle field_combo.REGION.region_start.start_addr.next [7:3] "logic field_combo.REGION.region_start.start_addr.next[43:0]"
 Toggle field_combo.REGION.region_start.start_addr.next [1:0] "logic field_combo.REGION.region_start.start_addr.next[43:0]"
 Toggle field_storage.REGION.region_attrs.valid.value "logic field_storage.REGION.region_attrs.valid.value"
-Toggle field_storage.REGION.region_attrs.cacheable.value "logic field_storage.REGION.region_attrs.cacheable.value"
+Toggle field_storage.REGION.region_attrs.cacheable.value "logic field_storage.REGION.region_attrs.cacheable.value[3:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [43:10] "logic field_storage.REGION.region_attrs.offset.value[43:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [7:3] "logic field_storage.REGION.region_attrs.offset.value[43:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [1:0] "logic field_storage.REGION.region_attrs.offset.value[43:0]"
@@ -17774,7 +17685,7 @@ Toggle readback_data [63:22] "logic readback_data[63:0]"
 Toggle readback_data [19:15] "logic readback_data[63:0]"
 Toggle readback_data [13:0] "logic readback_data[63:0]"
 
-CHECKSUM: "3869168330 3277739977"
+CHECKSUM: "254295559 3930243755"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[5].u_smc_alias_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle cpuif_wr_data [63:22] "logic cpuif_wr_data[63:0]"
@@ -17800,7 +17711,7 @@ Toggle decoded_wr_data [13] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [11:0] "logic decoded_wr_data[63:0]"
 Toggle 1to0 decoded_wr_biten "logic decoded_wr_biten[63:0]"
 Toggle field_combo.REGION.region_attrs.valid.next "logic field_combo.REGION.region_attrs.valid.next"
-Toggle field_combo.REGION.region_attrs.cacheable.next "logic field_combo.REGION.region_attrs.cacheable.next"
+Toggle field_combo.REGION.region_attrs.cacheable.next "logic field_combo.REGION.region_attrs.cacheable.next[3:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [43:10] "logic field_combo.REGION.region_attrs.offset.next[43:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [7:3] "logic field_combo.REGION.region_attrs.offset.next[43:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [1] "logic field_combo.REGION.region_attrs.offset.next[43:0]"
@@ -17811,7 +17722,7 @@ Toggle field_combo.REGION.region_start.start_addr.next [43:9] "logic field_combo
 Toggle field_combo.REGION.region_start.start_addr.next [7:3] "logic field_combo.REGION.region_start.start_addr.next[43:0]"
 Toggle field_combo.REGION.region_start.start_addr.next [1] "logic field_combo.REGION.region_start.start_addr.next[43:0]"
 Toggle field_storage.REGION.region_attrs.valid.value "logic field_storage.REGION.region_attrs.valid.value"
-Toggle field_storage.REGION.region_attrs.cacheable.value "logic field_storage.REGION.region_attrs.cacheable.value"
+Toggle field_storage.REGION.region_attrs.cacheable.value "logic field_storage.REGION.region_attrs.cacheable.value[3:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [43:10] "logic field_storage.REGION.region_attrs.offset.value[43:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [7:3] "logic field_storage.REGION.region_attrs.offset.value[43:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [1] "logic field_storage.REGION.region_attrs.offset.value[43:0]"
@@ -17826,7 +17737,7 @@ Toggle readback_data [19:15] "logic readback_data[63:0]"
 Toggle readback_data [13] "logic readback_data[63:0]"
 Toggle readback_data [11:0] "logic readback_data[63:0]"
 
-CHECKSUM: "3869168330 3277739977"
+CHECKSUM: "254295559 3930243755"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[6].u_smc_alias_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle cpuif_wr_data [63:22] "logic cpuif_wr_data[63:0]"
@@ -17848,7 +17759,7 @@ Toggle decoded_wr_data [19:15] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [12:0] "logic decoded_wr_data[63:0]"
 Toggle 1to0 decoded_wr_biten "logic decoded_wr_biten[63:0]"
 Toggle field_combo.REGION.region_attrs.valid.next "logic field_combo.REGION.region_attrs.valid.next"
-Toggle field_combo.REGION.region_attrs.cacheable.next "logic field_combo.REGION.region_attrs.cacheable.next"
+Toggle field_combo.REGION.region_attrs.cacheable.next "logic field_combo.REGION.region_attrs.cacheable.next[3:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [43:10] "logic field_combo.REGION.region_attrs.offset.next[43:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [7:3] "logic field_combo.REGION.region_attrs.offset.next[43:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [0] "logic field_combo.REGION.region_attrs.offset.next[43:0]"
@@ -17859,7 +17770,7 @@ Toggle field_combo.REGION.region_start.start_addr.next [43:9] "logic field_combo
 Toggle field_combo.REGION.region_start.start_addr.next [7:3] "logic field_combo.REGION.region_start.start_addr.next[43:0]"
 Toggle field_combo.REGION.region_start.start_addr.next [0] "logic field_combo.REGION.region_start.start_addr.next[43:0]"
 Toggle field_storage.REGION.region_attrs.valid.value "logic field_storage.REGION.region_attrs.valid.value"
-Toggle field_storage.REGION.region_attrs.cacheable.value "logic field_storage.REGION.region_attrs.cacheable.value"
+Toggle field_storage.REGION.region_attrs.cacheable.value "logic field_storage.REGION.region_attrs.cacheable.value[3:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [43:10] "logic field_storage.REGION.region_attrs.offset.value[43:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [7:3] "logic field_storage.REGION.region_attrs.offset.value[43:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [0] "logic field_storage.REGION.region_attrs.offset.value[43:0]"
@@ -17873,15 +17784,17 @@ Toggle readback_data [63:22] "logic readback_data[63:0]"
 Toggle readback_data [19:15] "logic readback_data[63:0]"
 Toggle readback_data [12:0] "logic readback_data[63:0]"
 
-CHECKSUM: "3869168330 3277739977"
+CHECKSUM: "254295559 3930243755"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[7].u_smc_alias_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle cpuif_wr_data [61:31] "logic cpuif_wr_data[63:0]"
+Toggle cpuif_wr_data [62:60] "logic cpuif_wr_data[63:0]"
+Toggle cpuif_wr_data [55:31] "logic cpuif_wr_data[63:0]"
 Toggle cpuif_wr_data [29] "logic cpuif_wr_data[63:0]"
 Toggle cpuif_wr_data [27:22] "logic cpuif_wr_data[63:0]"
 Toggle cpuif_wr_data [19:15] "logic cpuif_wr_data[63:0]"
 Toggle cpuif_wr_data [11:0] "logic cpuif_wr_data[63:0]"
-Toggle cpuif_rd_data [61:31] "logic cpuif_rd_data[63:0]"
+Toggle cpuif_rd_data [62:60] "logic cpuif_rd_data[63:0]"
+Toggle cpuif_rd_data [55:31] "logic cpuif_rd_data[63:0]"
 Toggle cpuif_rd_data [29] "logic cpuif_rd_data[63:0]"
 Toggle cpuif_rd_data [27:22] "logic cpuif_rd_data[63:0]"
 Toggle cpuif_rd_data [19:15] "logic cpuif_rd_data[63:0]"
@@ -17889,12 +17802,14 @@ Toggle cpuif_rd_data [11:0] "logic cpuif_rd_data[63:0]"
 Toggle axil_n_in_flight [1] "logic axil_n_in_flight[1:0]"
 Toggle axil_araddr [2:0] "logic axil_araddr[4:0]"
 Toggle axil_awaddr [1:0] "logic axil_awaddr[4:0]"
-Toggle axil_wdata [61:31] "logic axil_wdata[63:0]"
+Toggle axil_wdata [62:60] "logic axil_wdata[63:0]"
+Toggle axil_wdata [55:31] "logic axil_wdata[63:0]"
 Toggle axil_wdata [29] "logic axil_wdata[63:0]"
 Toggle axil_wdata [27:22] "logic axil_wdata[63:0]"
 Toggle axil_wdata [19:15] "logic axil_wdata[63:0]"
 Toggle axil_wdata [11:0] "logic axil_wdata[63:0]"
-Toggle decoded_wr_data [61:31] "logic decoded_wr_data[63:0]"
+Toggle decoded_wr_data [62:60] "logic decoded_wr_data[63:0]"
+Toggle decoded_wr_data [55:31] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [29] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [27:22] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [19:15] "logic decoded_wr_data[63:0]"
@@ -17915,7 +17830,8 @@ Toggle field_storage.REGION.region_start.start_addr.value [43:19] "logic field_s
 Toggle field_storage.REGION.region_start.start_addr.value [17] "logic field_storage.REGION.region_start.start_addr.value[43:0]"
 Toggle field_storage.REGION.region_start.start_addr.value [15:9] "logic field_storage.REGION.region_start.start_addr.value[43:0]"
 Toggle field_storage.REGION.region_start.start_addr.value [7:3] "logic field_storage.REGION.region_start.start_addr.value[43:0]"
-Toggle readback_data [61:31] "logic readback_data[63:0]"
+Toggle readback_data [62:60] "logic readback_data[63:0]"
+Toggle readback_data [55:31] "logic readback_data[63:0]"
 Toggle readback_data [29] "logic readback_data[63:0]"
 Toggle readback_data [27:22] "logic readback_data[63:0]"
 Toggle readback_data [19:15] "logic readback_data[63:0]"
@@ -18736,24 +18652,24 @@ Toggle readback_data [7:5] "logic readback_data[63:0]"
 Toggle readback_data [3:2] "logic readback_data[63:0]"
 Toggle 1to0 readback_data [63] "logic readback_data[63:0]"
 
-CHECKSUM: "3380085693 336826070"
+CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[0].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle cpuif_wr_data [63:26] "logic cpuif_wr_data[63:0]"
+Toggle cpuif_wr_data [62:26] "logic cpuif_wr_data[63:0]"
 Toggle cpuif_wr_data [24:23] "logic cpuif_wr_data[63:0]"
 Toggle cpuif_wr_data [21:0] "logic cpuif_wr_data[63:0]"
 Toggle 1to0 cpuif_wr_biten "logic cpuif_wr_biten[63:0]"
-Toggle cpuif_rd_data [63:26] "logic cpuif_rd_data[63:0]"
+Toggle cpuif_rd_data [62:26] "logic cpuif_rd_data[63:0]"
 Toggle cpuif_rd_data [24:23] "logic cpuif_rd_data[63:0]"
 Toggle cpuif_rd_data [21:0] "logic cpuif_rd_data[63:0]"
 Toggle axil_n_in_flight [1] "logic axil_n_in_flight[1:0]"
 Toggle axil_araddr [2:0] "logic axil_araddr[3:0]"
 Toggle axil_awaddr [2:0] "logic axil_awaddr[3:0]"
-Toggle axil_wdata [63:26] "logic axil_wdata[63:0]"
+Toggle axil_wdata [62:26] "logic axil_wdata[63:0]"
 Toggle axil_wdata [24:23] "logic axil_wdata[63:0]"
 Toggle axil_wdata [21:0] "logic axil_wdata[63:0]"
 Toggle 1to0 axil_wstrb "logic axil_wstrb[7:0]"
-Toggle decoded_wr_data [63:26] "logic decoded_wr_data[63:0]"
+Toggle decoded_wr_data [62:26] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [24:23] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [21:0] "logic decoded_wr_data[63:0]"
 Toggle 1to0 decoded_wr_biten "logic decoded_wr_biten[63:0]"
@@ -18763,20 +18679,20 @@ Toggle field_combo.REGION.region_attrs.offset.next [21:0] "logic field_combo.REG
 Toggle field_storage.REGION.region_attrs.offset.value [55:26] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [24:23] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [21:0] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
-Toggle readback_data [63:26] "logic readback_data[63:0]"
+Toggle readback_data [62:26] "logic readback_data[63:0]"
 Toggle readback_data [24:23] "logic readback_data[63:0]"
 Toggle readback_data [21:0] "logic readback_data[63:0]"
 
-CHECKSUM: "3380085693 336826070"
+CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[1].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle cpuif_wr_data [63:26] "logic cpuif_wr_data[63:0]"
+Toggle cpuif_wr_data [62:26] "logic cpuif_wr_data[63:0]"
 Toggle cpuif_wr_data [24:23] "logic cpuif_wr_data[63:0]"
 Toggle cpuif_wr_data [21] "logic cpuif_wr_data[63:0]"
 Toggle cpuif_wr_data [19:13] "logic cpuif_wr_data[63:0]"
 Toggle cpuif_wr_data [11:0] "logic cpuif_wr_data[63:0]"
 Toggle 1to0 cpuif_wr_biten "logic cpuif_wr_biten[63:0]"
-Toggle cpuif_rd_data [63:26] "logic cpuif_rd_data[63:0]"
+Toggle cpuif_rd_data [62:26] "logic cpuif_rd_data[63:0]"
 Toggle cpuif_rd_data [24:23] "logic cpuif_rd_data[63:0]"
 Toggle cpuif_rd_data [21] "logic cpuif_rd_data[63:0]"
 Toggle cpuif_rd_data [19:13] "logic cpuif_rd_data[63:0]"
@@ -18784,13 +18700,13 @@ Toggle cpuif_rd_data [11:0] "logic cpuif_rd_data[63:0]"
 Toggle axil_n_in_flight [1] "logic axil_n_in_flight[1:0]"
 Toggle axil_araddr [2:0] "logic axil_araddr[3:0]"
 Toggle axil_awaddr [2:0] "logic axil_awaddr[3:0]"
-Toggle axil_wdata [63:26] "logic axil_wdata[63:0]"
+Toggle axil_wdata [62:26] "logic axil_wdata[63:0]"
 Toggle axil_wdata [24:23] "logic axil_wdata[63:0]"
 Toggle axil_wdata [21] "logic axil_wdata[63:0]"
 Toggle axil_wdata [19:13] "logic axil_wdata[63:0]"
 Toggle axil_wdata [11:0] "logic axil_wdata[63:0]"
 Toggle 1to0 axil_wstrb "logic axil_wstrb[7:0]"
-Toggle decoded_wr_data [63:26] "logic decoded_wr_data[63:0]"
+Toggle decoded_wr_data [62:26] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [24:23] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [21] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [19:13] "logic decoded_wr_data[63:0]"
@@ -18806,44 +18722,53 @@ Toggle field_storage.REGION.region_attrs.offset.value [24:23] "logic field_stora
 Toggle field_storage.REGION.region_attrs.offset.value [21] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [19:13] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [11:0] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
-Toggle readback_data [63:26] "logic readback_data[63:0]"
+Toggle readback_data [62:26] "logic readback_data[63:0]"
 Toggle readback_data [24:23] "logic readback_data[63:0]"
 Toggle readback_data [21] "logic readback_data[63:0]"
 Toggle readback_data [19:13] "logic readback_data[63:0]"
 Toggle readback_data [11:0] "logic readback_data[63:0]"
 
-CHECKSUM: "3380085693 336826070"
+CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[2].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle cpuif_wr_data [63:23] "logic cpuif_wr_data[63:0]"
-Toggle cpuif_wr_data [21:14] "logic cpuif_wr_data[63:0]"
+Toggle cpuif_wr_data [63:26] "logic cpuif_wr_data[63:0]"
+Toggle cpuif_wr_data [24:23] "logic cpuif_wr_data[63:0]"
+Toggle cpuif_wr_data [19:14] "logic cpuif_wr_data[63:0]"
 Toggle cpuif_wr_data [12:0] "logic cpuif_wr_data[63:0]"
 Toggle 1to0 cpuif_wr_biten "logic cpuif_wr_biten[63:0]"
-Toggle cpuif_rd_data [63:23] "logic cpuif_rd_data[63:0]"
-Toggle cpuif_rd_data [21:14] "logic cpuif_rd_data[63:0]"
+Toggle cpuif_rd_data [63:26] "logic cpuif_rd_data[63:0]"
+Toggle cpuif_rd_data [24:23] "logic cpuif_rd_data[63:0]"
+Toggle cpuif_rd_data [19:14] "logic cpuif_rd_data[63:0]"
 Toggle cpuif_rd_data [12:0] "logic cpuif_rd_data[63:0]"
 Toggle axil_n_in_flight [1] "logic axil_n_in_flight[1:0]"
 Toggle axil_araddr [2:0] "logic axil_araddr[3:0]"
 Toggle axil_awaddr [2:0] "logic axil_awaddr[3:0]"
-Toggle axil_wdata [63:23] "logic axil_wdata[63:0]"
-Toggle axil_wdata [21:14] "logic axil_wdata[63:0]"
+Toggle axil_wdata [63:26] "logic axil_wdata[63:0]"
+Toggle axil_wdata [24:23] "logic axil_wdata[63:0]"
+Toggle axil_wdata [19:14] "logic axil_wdata[63:0]"
 Toggle axil_wdata [12:0] "logic axil_wdata[63:0]"
 Toggle 1to0 axil_wstrb "logic axil_wstrb[7:0]"
-Toggle decoded_wr_data [63:23] "logic decoded_wr_data[63:0]"
-Toggle decoded_wr_data [21:14] "logic decoded_wr_data[63:0]"
+Toggle decoded_wr_data [63:26] "logic decoded_wr_data[63:0]"
+Toggle decoded_wr_data [24:23] "logic decoded_wr_data[63:0]"
+Toggle decoded_wr_data [19:14] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [12:0] "logic decoded_wr_data[63:0]"
 Toggle 1to0 decoded_wr_biten "logic decoded_wr_biten[63:0]"
-Toggle field_combo.REGION.region_attrs.offset.next [55:23] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
-Toggle field_combo.REGION.region_attrs.offset.next [21:14] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
+Toggle field_combo.REGION.region_attrs.valid.next "logic field_combo.REGION.region_attrs.valid.next"
+Toggle field_combo.REGION.region_attrs.offset.next [55:26] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
+Toggle field_combo.REGION.region_attrs.offset.next [24:23] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
+Toggle field_combo.REGION.region_attrs.offset.next [19:14] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [12:0] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
-Toggle field_storage.REGION.region_attrs.offset.value [55:23] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
-Toggle field_storage.REGION.region_attrs.offset.value [21:14] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
+Toggle field_storage.REGION.region_attrs.valid.value "logic field_storage.REGION.region_attrs.valid.value"
+Toggle field_storage.REGION.region_attrs.offset.value [55:26] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
+Toggle field_storage.REGION.region_attrs.offset.value [24:23] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
+Toggle field_storage.REGION.region_attrs.offset.value [19:14] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [12:0] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
-Toggle readback_data [63:23] "logic readback_data[63:0]"
-Toggle readback_data [21:14] "logic readback_data[63:0]"
+Toggle readback_data [63:26] "logic readback_data[63:0]"
+Toggle readback_data [24:23] "logic readback_data[63:0]"
+Toggle readback_data [19:14] "logic readback_data[63:0]"
 Toggle readback_data [12:0] "logic readback_data[63:0]"
 
-CHECKSUM: "3380085693 336826070"
+CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[3].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle cpuif_wr_data [63:23] "logic cpuif_wr_data[63:0]"
@@ -18864,9 +18789,11 @@ Toggle decoded_wr_data [63:23] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [21:14] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [11:0] "logic decoded_wr_data[63:0]"
 Toggle 1to0 decoded_wr_biten "logic decoded_wr_biten[63:0]"
+Toggle field_combo.REGION.region_attrs.valid.next "logic field_combo.REGION.region_attrs.valid.next"
 Toggle field_combo.REGION.region_attrs.offset.next [55:23] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [21:14] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [11:0] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
+Toggle field_storage.REGION.region_attrs.valid.value "logic field_storage.REGION.region_attrs.valid.value"
 Toggle field_storage.REGION.region_attrs.offset.value [55:23] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [21:14] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [11:0] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
@@ -18874,7 +18801,7 @@ Toggle readback_data [63:23] "logic readback_data[63:0]"
 Toggle readback_data [21:14] "logic readback_data[63:0]"
 Toggle readback_data [11:0] "logic readback_data[63:0]"
 
-CHECKSUM: "3380085693 336826070"
+CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[4].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle cpuif_wr_data [63:23] "logic cpuif_wr_data[63:0]"
@@ -18895,9 +18822,11 @@ Toggle decoded_wr_data [63:23] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [21:15] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [13:0] "logic decoded_wr_data[63:0]"
 Toggle 1to0 decoded_wr_biten "logic decoded_wr_biten[63:0]"
+Toggle field_combo.REGION.region_attrs.valid.next "logic field_combo.REGION.region_attrs.valid.next"
 Toggle field_combo.REGION.region_attrs.offset.next [55:23] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [21:15] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [13:0] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
+Toggle field_storage.REGION.region_attrs.valid.value "logic field_storage.REGION.region_attrs.valid.value"
 Toggle field_storage.REGION.region_attrs.offset.value [55:23] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [21:15] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [13:0] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
@@ -18905,7 +18834,7 @@ Toggle readback_data [63:23] "logic readback_data[63:0]"
 Toggle readback_data [21:15] "logic readback_data[63:0]"
 Toggle readback_data [13:0] "logic readback_data[63:0]"
 
-CHECKSUM: "3380085693 336826070"
+CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[5].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle cpuif_wr_data [63:23] "logic cpuif_wr_data[63:0]"
@@ -18930,10 +18859,12 @@ Toggle decoded_wr_data [21:15] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [13] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [11:0] "logic decoded_wr_data[63:0]"
 Toggle 1to0 decoded_wr_biten "logic decoded_wr_biten[63:0]"
+Toggle field_combo.REGION.region_attrs.valid.next "logic field_combo.REGION.region_attrs.valid.next"
 Toggle field_combo.REGION.region_attrs.offset.next [55:23] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [21:15] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [13] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [11:0] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
+Toggle field_storage.REGION.region_attrs.valid.value "logic field_storage.REGION.region_attrs.valid.value"
 Toggle field_storage.REGION.region_attrs.offset.value [55:23] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [21:15] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [13] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
@@ -18943,7 +18874,7 @@ Toggle readback_data [21:15] "logic readback_data[63:0]"
 Toggle readback_data [13] "logic readback_data[63:0]"
 Toggle readback_data [11:0] "logic readback_data[63:0]"
 
-CHECKSUM: "3380085693 336826070"
+CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[6].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle cpuif_wr_data [63:23] "logic cpuif_wr_data[63:0]"
@@ -18964,9 +18895,11 @@ Toggle decoded_wr_data [63:23] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [21:15] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [12:0] "logic decoded_wr_data[63:0]"
 Toggle 1to0 decoded_wr_biten "logic decoded_wr_biten[63:0]"
+Toggle field_combo.REGION.region_attrs.valid.next "logic field_combo.REGION.region_attrs.valid.next"
 Toggle field_combo.REGION.region_attrs.offset.next [55:23] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [21:15] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [12:0] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
+Toggle field_storage.REGION.region_attrs.valid.value "logic field_storage.REGION.region_attrs.valid.value"
 Toggle field_storage.REGION.region_attrs.offset.value [55:23] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [21:15] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [12:0] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
@@ -18974,7 +18907,7 @@ Toggle readback_data [63:23] "logic readback_data[63:0]"
 Toggle readback_data [21:15] "logic readback_data[63:0]"
 Toggle readback_data [12:0] "logic readback_data[63:0]"
 
-CHECKSUM: "3380085693 336826070"
+CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[7].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle cpuif_wr_data [63:23] "logic cpuif_wr_data[63:0]"
@@ -18995,9 +18928,11 @@ Toggle decoded_wr_data [63:23] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [21:15] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [11:0] "logic decoded_wr_data[63:0]"
 Toggle 1to0 decoded_wr_biten "logic decoded_wr_biten[63:0]"
+Toggle field_combo.REGION.region_attrs.valid.next "logic field_combo.REGION.region_attrs.valid.next"
 Toggle field_combo.REGION.region_attrs.offset.next [55:23] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [21:15] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [11:0] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
+Toggle field_storage.REGION.region_attrs.valid.value "logic field_storage.REGION.region_attrs.valid.value"
 Toggle field_storage.REGION.region_attrs.offset.value [55:23] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [21:15] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [11:0] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
@@ -19678,10 +19613,10 @@ Toggle readback_data [62:26] "logic readback_data[63:0]"
 Toggle readback_data [15:14] "logic readback_data[63:0]"
 Toggle 1to0 readback_data [63] "logic readback_data[63:0]"
 
-CHECKSUM: "3380085693 336826070"
+CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[0].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle cpuif_wr_data [63:51] "logic cpuif_wr_data[63:0]"
+Toggle cpuif_wr_data [62:51] "logic cpuif_wr_data[63:0]"
 Toggle cpuif_wr_data [49] "logic cpuif_wr_data[63:0]"
 Toggle cpuif_wr_data [46] "logic cpuif_wr_data[63:0]"
 Toggle cpuif_wr_data [44:43] "logic cpuif_wr_data[63:0]"
@@ -19691,7 +19626,7 @@ Toggle cpuif_wr_data [24:23] "logic cpuif_wr_data[63:0]"
 Toggle cpuif_wr_data [19:13] "logic cpuif_wr_data[63:0]"
 Toggle cpuif_wr_data [11:0] "logic cpuif_wr_data[63:0]"
 Toggle 1to0 cpuif_wr_biten "logic cpuif_wr_biten[63:0]"
-Toggle cpuif_rd_data [63:51] "logic cpuif_rd_data[63:0]"
+Toggle cpuif_rd_data [62:51] "logic cpuif_rd_data[63:0]"
 Toggle cpuif_rd_data [49] "logic cpuif_rd_data[63:0]"
 Toggle cpuif_rd_data [46] "logic cpuif_rd_data[63:0]"
 Toggle cpuif_rd_data [44:43] "logic cpuif_rd_data[63:0]"
@@ -19703,7 +19638,7 @@ Toggle cpuif_rd_data [11:0] "logic cpuif_rd_data[63:0]"
 Toggle axil_n_in_flight [1] "logic axil_n_in_flight[1:0]"
 Toggle axil_araddr [2:0] "logic axil_araddr[3:0]"
 Toggle axil_awaddr [2:0] "logic axil_awaddr[3:0]"
-Toggle axil_wdata [63:51] "logic axil_wdata[63:0]"
+Toggle axil_wdata [62:51] "logic axil_wdata[63:0]"
 Toggle axil_wdata [49] "logic axil_wdata[63:0]"
 Toggle axil_wdata [46] "logic axil_wdata[63:0]"
 Toggle axil_wdata [44:43] "logic axil_wdata[63:0]"
@@ -19713,7 +19648,7 @@ Toggle axil_wdata [24:23] "logic axil_wdata[63:0]"
 Toggle axil_wdata [19:13] "logic axil_wdata[63:0]"
 Toggle axil_wdata [11:0] "logic axil_wdata[63:0]"
 Toggle 1to0 axil_wstrb "logic axil_wstrb[7:0]"
-Toggle decoded_wr_data [63:51] "logic decoded_wr_data[63:0]"
+Toggle decoded_wr_data [62:51] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [49] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [46] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [44:43] "logic decoded_wr_data[63:0]"
@@ -19741,7 +19676,7 @@ Toggle field_storage.REGION.region_attrs.offset.value [39:26] "logic field_stora
 Toggle field_storage.REGION.region_attrs.offset.value [24:23] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [19:13] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [11:0] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
-Toggle readback_data [63:51] "logic readback_data[63:0]"
+Toggle readback_data [62:51] "logic readback_data[63:0]"
 Toggle readback_data [49] "logic readback_data[63:0]"
 Toggle readback_data [46] "logic readback_data[63:0]"
 Toggle readback_data [44:43] "logic readback_data[63:0]"
@@ -19751,7 +19686,7 @@ Toggle readback_data [24:23] "logic readback_data[63:0]"
 Toggle readback_data [19:13] "logic readback_data[63:0]"
 Toggle readback_data [11:0] "logic readback_data[63:0]"
 
-CHECKSUM: "3380085693 336826070"
+CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[1].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle cpuif_wr_data [63:51] "logic cpuif_wr_data[63:0]"
@@ -19796,6 +19731,7 @@ Toggle decoded_wr_data [21] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [19:14] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [11:0] "logic decoded_wr_data[63:0]"
 Toggle 1to0 decoded_wr_biten "logic decoded_wr_biten[63:0]"
+Toggle field_combo.REGION.region_attrs.valid.next "logic field_combo.REGION.region_attrs.valid.next"
 Toggle field_combo.REGION.region_attrs.offset.next [55:51] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [49] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [46] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
@@ -19805,6 +19741,7 @@ Toggle field_combo.REGION.region_attrs.offset.next [39:23] "logic field_combo.RE
 Toggle field_combo.REGION.region_attrs.offset.next [21] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [19:14] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [11:0] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
+Toggle field_storage.REGION.region_attrs.valid.value "logic field_storage.REGION.region_attrs.valid.value"
 Toggle field_storage.REGION.region_attrs.offset.value [55:51] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [49] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [46] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
@@ -19824,7 +19761,7 @@ Toggle readback_data [21] "logic readback_data[63:0]"
 Toggle readback_data [19:14] "logic readback_data[63:0]"
 Toggle readback_data [11:0] "logic readback_data[63:0]"
 
-CHECKSUM: "3380085693 336826070"
+CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[2].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle cpuif_wr_data [63:51] "logic cpuif_wr_data[63:0]"
@@ -19869,6 +19806,7 @@ Toggle decoded_wr_data [21] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [19:14] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [11:0] "logic decoded_wr_data[63:0]"
 Toggle 1to0 decoded_wr_biten "logic decoded_wr_biten[63:0]"
+Toggle field_combo.REGION.region_attrs.valid.next "logic field_combo.REGION.region_attrs.valid.next"
 Toggle field_combo.REGION.region_attrs.offset.next [55:51] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [49] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [46] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
@@ -19878,6 +19816,7 @@ Toggle field_combo.REGION.region_attrs.offset.next [39:23] "logic field_combo.RE
 Toggle field_combo.REGION.region_attrs.offset.next [21] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [19:14] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [11:0] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
+Toggle field_storage.REGION.region_attrs.valid.value "logic field_storage.REGION.region_attrs.valid.value"
 Toggle field_storage.REGION.region_attrs.offset.value [55:51] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [49] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [46] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
@@ -19897,7 +19836,7 @@ Toggle readback_data [21] "logic readback_data[63:0]"
 Toggle readback_data [19:14] "logic readback_data[63:0]"
 Toggle readback_data [11:0] "logic readback_data[63:0]"
 
-CHECKSUM: "3380085693 336826070"
+CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[3].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle cpuif_wr_data [63:51] "logic cpuif_wr_data[63:0]"
@@ -19942,6 +19881,7 @@ Toggle decoded_wr_data [21] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [19:15] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [11:0] "logic decoded_wr_data[63:0]"
 Toggle 1to0 decoded_wr_biten "logic decoded_wr_biten[63:0]"
+Toggle field_combo.REGION.region_attrs.valid.next "logic field_combo.REGION.region_attrs.valid.next"
 Toggle field_combo.REGION.region_attrs.offset.next [55:51] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [49] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [46] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
@@ -19951,6 +19891,7 @@ Toggle field_combo.REGION.region_attrs.offset.next [39:23] "logic field_combo.RE
 Toggle field_combo.REGION.region_attrs.offset.next [21] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [19:15] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [11:0] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
+Toggle field_storage.REGION.region_attrs.valid.value "logic field_storage.REGION.region_attrs.valid.value"
 Toggle field_storage.REGION.region_attrs.offset.value [55:51] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [49] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [46] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
@@ -19970,7 +19911,7 @@ Toggle readback_data [21] "logic readback_data[63:0]"
 Toggle readback_data [19:15] "logic readback_data[63:0]"
 Toggle readback_data [11:0] "logic readback_data[63:0]"
 
-CHECKSUM: "3380085693 336826070"
+CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[4].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle cpuif_wr_data [63:51] "logic cpuif_wr_data[63:0]"
@@ -20019,6 +19960,7 @@ Toggle decoded_wr_data [19:15] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [13] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [11:0] "logic decoded_wr_data[63:0]"
 Toggle 1to0 decoded_wr_biten "logic decoded_wr_biten[63:0]"
+Toggle field_combo.REGION.region_attrs.valid.next "logic field_combo.REGION.region_attrs.valid.next"
 Toggle field_combo.REGION.region_attrs.offset.next [55:51] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [49] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [46] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
@@ -20029,6 +19971,7 @@ Toggle field_combo.REGION.region_attrs.offset.next [21] "logic field_combo.REGIO
 Toggle field_combo.REGION.region_attrs.offset.next [19:15] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [13] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [11:0] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
+Toggle field_storage.REGION.region_attrs.valid.value "logic field_storage.REGION.region_attrs.valid.value"
 Toggle field_storage.REGION.region_attrs.offset.value [55:51] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [49] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [46] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
@@ -20050,7 +19993,7 @@ Toggle readback_data [19:15] "logic readback_data[63:0]"
 Toggle readback_data [13] "logic readback_data[63:0]"
 Toggle readback_data [11:0] "logic readback_data[63:0]"
 
-CHECKSUM: "3380085693 336826070"
+CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[5].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle cpuif_wr_data [63:51] "logic cpuif_wr_data[63:0]"
@@ -20095,6 +20038,7 @@ Toggle decoded_wr_data [21] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [19:15] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [11:0] "logic decoded_wr_data[63:0]"
 Toggle 1to0 decoded_wr_biten "logic decoded_wr_biten[63:0]"
+Toggle field_combo.REGION.region_attrs.valid.next "logic field_combo.REGION.region_attrs.valid.next"
 Toggle field_combo.REGION.region_attrs.offset.next [55:51] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [49] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [46] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
@@ -20104,6 +20048,7 @@ Toggle field_combo.REGION.region_attrs.offset.next [39:23] "logic field_combo.RE
 Toggle field_combo.REGION.region_attrs.offset.next [21] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [19:15] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [11:0] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
+Toggle field_storage.REGION.region_attrs.valid.value "logic field_storage.REGION.region_attrs.valid.value"
 Toggle field_storage.REGION.region_attrs.offset.value [55:51] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [49] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [46] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
@@ -20123,7 +20068,7 @@ Toggle readback_data [21] "logic readback_data[63:0]"
 Toggle readback_data [19:15] "logic readback_data[63:0]"
 Toggle readback_data [11:0] "logic readback_data[63:0]"
 
-CHECKSUM: "3380085693 336826070"
+CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[6].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle cpuif_wr_data [63:51] "logic cpuif_wr_data[63:0]"
@@ -20168,6 +20113,7 @@ Toggle decoded_wr_data [21] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [19:15] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [11:0] "logic decoded_wr_data[63:0]"
 Toggle 1to0 decoded_wr_biten "logic decoded_wr_biten[63:0]"
+Toggle field_combo.REGION.region_attrs.valid.next "logic field_combo.REGION.region_attrs.valid.next"
 Toggle field_combo.REGION.region_attrs.offset.next [55:51] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [49] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [46] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
@@ -20177,6 +20123,7 @@ Toggle field_combo.REGION.region_attrs.offset.next [39:23] "logic field_combo.RE
 Toggle field_combo.REGION.region_attrs.offset.next [21] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [19:15] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [11:0] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
+Toggle field_storage.REGION.region_attrs.valid.value "logic field_storage.REGION.region_attrs.valid.value"
 Toggle field_storage.REGION.region_attrs.offset.value [55:51] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [49] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [46] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
@@ -20196,7 +20143,7 @@ Toggle readback_data [21] "logic readback_data[63:0]"
 Toggle readback_data [19:15] "logic readback_data[63:0]"
 Toggle readback_data [11:0] "logic readback_data[63:0]"
 
-CHECKSUM: "3380085693 336826070"
+CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[7].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle cpuif_wr_data [63:51] "logic cpuif_wr_data[63:0]"
@@ -20241,6 +20188,7 @@ Toggle decoded_wr_data [21] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [19:16] "logic decoded_wr_data[63:0]"
 Toggle decoded_wr_data [11:0] "logic decoded_wr_data[63:0]"
 Toggle 1to0 decoded_wr_biten "logic decoded_wr_biten[63:0]"
+Toggle field_combo.REGION.region_attrs.valid.next "logic field_combo.REGION.region_attrs.valid.next"
 Toggle field_combo.REGION.region_attrs.offset.next [55:51] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [49] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [46] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
@@ -20250,6 +20198,7 @@ Toggle field_combo.REGION.region_attrs.offset.next [39:23] "logic field_combo.RE
 Toggle field_combo.REGION.region_attrs.offset.next [21] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [19:16] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
 Toggle field_combo.REGION.region_attrs.offset.next [11:0] "logic field_combo.REGION.region_attrs.offset.next[55:0]"
+Toggle field_storage.REGION.region_attrs.valid.value "logic field_storage.REGION.region_attrs.valid.value"
 Toggle field_storage.REGION.region_attrs.offset.value [55:51] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [49] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
 Toggle field_storage.REGION.region_attrs.offset.value [46] "logic field_storage.REGION.region_attrs.offset.value[55:0]"
@@ -20505,10 +20454,8 @@ Toggle debug_signals_in [6][15:14] "logic [7:0][15:0]debug_signals_in"
 Toggle debug_signals_in [6][0] "logic [7:0][15:0]debug_signals_in"
 Toggle debug_signals_in [7][13:3] "logic [7:0][15:0]debug_signals_in"
 Toggle debug_signals_in [7][0] "logic [7:0][15:0]debug_signals_in"
-Toggle 1to0 debug_signals_in [1][1] "logic [7:0][15:0]debug_signals_in"
 Toggle 1to0 debug_signals_in [2][13] "logic [7:0][15:0]debug_signals_in"
 Toggle 1to0 debug_signals_in [2][11] "logic [7:0][15:0]debug_signals_in"
-Toggle 1to0 debug_signals_in [3][1] "logic [7:0][15:0]debug_signals_in"
 Toggle 1to0 debug_signals_in [4][13] "logic [7:0][15:0]debug_signals_in"
 Toggle 1to0 debug_signals_in [4][11] "logic [7:0][15:0]debug_signals_in"
 Toggle 1to0 debug_signals_in [6][13] "logic [7:0][15:0]debug_signals_in"
@@ -20530,13 +20477,10 @@ Toggle debug_mux_out [2][15:14] "logic [3:0][15:0]debug_mux_out"
 Toggle debug_mux_out [2][0] "logic [3:0][15:0]debug_mux_out"
 Toggle debug_mux_out [3][13:3] "logic [3:0][15:0]debug_mux_out"
 Toggle debug_mux_out [3][0] "logic [3:0][15:0]debug_mux_out"
-Toggle 1to0 debug_mux_out [1][1] "logic [3:0][15:0]debug_mux_out"
 Toggle 1to0 debug_mux_out [2][13] "logic [3:0][15:0]debug_mux_out"
 Toggle 1to0 debug_mux_out [2][11] "logic [3:0][15:0]debug_mux_out"
-Toggle 1to0 debug_mux_out [3][1] "logic [3:0][15:0]debug_mux_out"
 Toggle debug_bus [0][15:3] "logic [3:0][15:0]debug_bus"
-Toggle debug_bus [1][13:3] "logic [3:0][15:0]debug_bus"
-Toggle debug_bus [1][1:0] "logic [3:0][15:0]debug_bus"
+Toggle debug_bus [1][15:0] "logic [3:0][15:0]debug_bus"
 Toggle debug_bus [2][15:2] "logic [3:0][15:0]debug_bus"
 Toggle debug_bus [2][0] "logic [3:0][15:0]debug_bus"
 Toggle debug_bus [3][15:0] "logic [3:0][15:0]debug_bus"
@@ -20725,7 +20669,6 @@ Toggle debug_signals_in [0][15:12] "logic [7:0][15:0]debug_signals_in"
 Toggle debug_signals_in [1][15:11] "logic [7:0][15:0]debug_signals_in"
 Toggle debug_signals_in [1][9:7] "logic [7:0][15:0]debug_signals_in"
 Toggle debug_signals_in [1][5:4] "logic [7:0][15:0]debug_signals_in"
-Toggle debug_signals_in [2][11] "logic [7:0][15:0]debug_signals_in"
 Toggle debug_signals_in [3][15:10] "logic [7:0][15:0]debug_signals_in"
 Toggle debug_signals_in [3][8:5] "logic [7:0][15:0]debug_signals_in"
 Toggle debug_signals_in [5][15:6] "logic [7:0][15:0]debug_signals_in"
@@ -20744,7 +20687,6 @@ Toggle debug_mux_out [0][15:12] "logic [3:0][15:0]debug_mux_out"
 Toggle debug_mux_out [1][15:11] "logic [3:0][15:0]debug_mux_out"
 Toggle debug_mux_out [1][9:7] "logic [3:0][15:0]debug_mux_out"
 Toggle debug_mux_out [1][5:4] "logic [3:0][15:0]debug_mux_out"
-Toggle debug_mux_out [2][11] "logic [3:0][15:0]debug_mux_out"
 Toggle debug_mux_out [3][15:10] "logic [3:0][15:0]debug_mux_out"
 Toggle debug_mux_out [3][8:5] "logic [3:0][15:0]debug_mux_out"
 Toggle debug_bus [0][15:11] "logic [3:0][15:0]debug_bus"
@@ -21027,8 +20969,8 @@ Toggle i_octs_timestamp "logic [0:0][63:0]i_octs_timestamp"
 Toggle i_ref_timestamp "logic [0:0][55:0]i_ref_timestamp"
 Toggle i_sdtrig_control "logic [0:0][1:0]i_sdtrig_control"
 Toggle i_sink_mem_rsp[0].mem_rd_data [55:51] "logic i_sink_mem_rsp[0].mem_rd_data[63:0]"
-Toggle i_sink_mem_rsp[0].mem_rd_data [39:38] "logic i_sink_mem_rsp[0].mem_rd_data[63:0]"
-Toggle i_sink_mem_rsp[0].mem_rd_data [22:19] "logic i_sink_mem_rsp[0].mem_rd_data[63:0]"
+Toggle i_sink_mem_rsp[0].mem_rd_data [39:35] "logic i_sink_mem_rsp[0].mem_rd_data[63:0]"
+Toggle i_sink_mem_rsp[0].mem_rd_data [23:19] "logic i_sink_mem_rsp[0].mem_rd_data[63:0]"
 Toggle i_sink_mem_rsp[0].mem_rd_data [7:3] "logic i_sink_mem_rsp[0].mem_rd_data[63:0]"
 Toggle i_sink_mem_rsp[1].mem_rd_data [54:50] "logic i_sink_mem_rsp[1].mem_rd_data[63:0]"
 Toggle i_sink_mem_rsp[1].mem_rd_data [38:35] "logic i_sink_mem_rsp[1].mem_rd_data[63:0]"
@@ -21130,31 +21072,39 @@ Toggle 1to0 o_cla_external_action_halt_clock_local_out "logic o_cla_external_act
 Toggle 1to0 o_cla_external_action_halt_clock_out "logic o_cla_external_action_halt_clock_out[0:0]"
 Toggle o_debug_mux_sel[0].Rsvd157 "logic o_debug_mux_sel[0].Rsvd157[6:0]"
 Toggle o_sink_mem_req[0].mem_wr_data [54:51] "logic o_sink_mem_req[0].mem_wr_data[63:0]"
-Toggle o_sink_mem_req[0].mem_wr_data [22:21] "logic o_sink_mem_req[0].mem_wr_data[63:0]"
-Toggle o_sink_mem_req[0].mem_wr_data [19] "logic o_sink_mem_req[0].mem_wr_data[63:0]"
+Toggle o_sink_mem_req[0].mem_wr_data [38:35] "logic o_sink_mem_req[0].mem_wr_data[63:0]"
+Toggle o_sink_mem_req[0].mem_wr_data [22:19] "logic o_sink_mem_req[0].mem_wr_data[63:0]"
 Toggle o_sink_mem_req[0].mem_wr_data [6:3] "logic o_sink_mem_req[0].mem_wr_data[63:0]"
 Toggle o_sink_mem_req[0].mem_wr_mask_en "logic o_sink_mem_req[0].mem_wr_mask_en"
 Toggle o_sink_mem_req[1].mem_wr_data [54:51] "logic o_sink_mem_req[1].mem_wr_data[63:0]"
+Toggle o_sink_mem_req[1].mem_wr_data [38:35] "logic o_sink_mem_req[1].mem_wr_data[63:0]"
+Toggle o_sink_mem_req[1].mem_wr_data [22:19] "logic o_sink_mem_req[1].mem_wr_data[63:0]"
 Toggle o_sink_mem_req[1].mem_wr_data [6:3] "logic o_sink_mem_req[1].mem_wr_data[63:0]"
 Toggle o_sink_mem_req[1].mem_wr_mask_en "logic o_sink_mem_req[1].mem_wr_mask_en"
 Toggle o_sink_mem_req[2].mem_wr_data [54:51] "logic o_sink_mem_req[2].mem_wr_data[63:0]"
 Toggle o_sink_mem_req[2].mem_wr_data [38:35] "logic o_sink_mem_req[2].mem_wr_data[63:0]"
 Toggle o_sink_mem_req[2].mem_wr_data [22:19] "logic o_sink_mem_req[2].mem_wr_data[63:0]"
-Toggle o_sink_mem_req[2].mem_wr_data [3] "logic o_sink_mem_req[2].mem_wr_data[63:0]"
+Toggle o_sink_mem_req[2].mem_wr_data [6:3] "logic o_sink_mem_req[2].mem_wr_data[63:0]"
 Toggle o_sink_mem_req[2].mem_wr_mask_en "logic o_sink_mem_req[2].mem_wr_mask_en"
 Toggle o_sink_mem_req[3].mem_wr_data [54:51] "logic o_sink_mem_req[3].mem_wr_data[63:0]"
+Toggle o_sink_mem_req[3].mem_wr_data [38:35] "logic o_sink_mem_req[3].mem_wr_data[63:0]"
 Toggle o_sink_mem_req[3].mem_wr_data [22:19] "logic o_sink_mem_req[3].mem_wr_data[63:0]"
 Toggle o_sink_mem_req[3].mem_wr_data [6:3] "logic o_sink_mem_req[3].mem_wr_data[63:0]"
 Toggle o_sink_mem_req[3].mem_wr_mask_en "logic o_sink_mem_req[3].mem_wr_mask_en"
 Toggle o_sink_mem_req[4].mem_wr_data [54:51] "logic o_sink_mem_req[4].mem_wr_data[63:0]"
 Toggle o_sink_mem_req[4].mem_wr_data [38:35] "logic o_sink_mem_req[4].mem_wr_data[63:0]"
+Toggle o_sink_mem_req[4].mem_wr_data [22:19] "logic o_sink_mem_req[4].mem_wr_data[63:0]"
+Toggle o_sink_mem_req[4].mem_wr_data [6:3] "logic o_sink_mem_req[4].mem_wr_data[63:0]"
 Toggle o_sink_mem_req[4].mem_wr_mask_en "logic o_sink_mem_req[4].mem_wr_mask_en"
 Toggle o_sink_mem_req[5].mem_wr_data [54:51] "logic o_sink_mem_req[5].mem_wr_data[63:0]"
 Toggle o_sink_mem_req[5].mem_wr_data [38:35] "logic o_sink_mem_req[5].mem_wr_data[63:0]"
 Toggle o_sink_mem_req[5].mem_wr_data [22:19] "logic o_sink_mem_req[5].mem_wr_data[63:0]"
 Toggle o_sink_mem_req[5].mem_wr_data [6:3] "logic o_sink_mem_req[5].mem_wr_data[63:0]"
 Toggle o_sink_mem_req[5].mem_wr_mask_en "logic o_sink_mem_req[5].mem_wr_mask_en"
+Toggle o_sink_mem_req[6].mem_wr_data [54:51] "logic o_sink_mem_req[6].mem_wr_data[63:0]"
+Toggle o_sink_mem_req[6].mem_wr_data [38:35] "logic o_sink_mem_req[6].mem_wr_data[63:0]"
 Toggle o_sink_mem_req[6].mem_wr_data [22:19] "logic o_sink_mem_req[6].mem_wr_data[63:0]"
+Toggle o_sink_mem_req[6].mem_wr_data [6:3] "logic o_sink_mem_req[6].mem_wr_data[63:0]"
 Toggle o_sink_mem_req[6].mem_wr_mask_en "logic o_sink_mem_req[6].mem_wr_mask_en"
 Toggle o_sink_mem_req[7].mem_wr_data [54:51] "logic o_sink_mem_req[7].mem_wr_data[63:0]"
 Toggle o_sink_mem_req[7].mem_wr_data [38:35] "logic o_sink_mem_req[7].mem_wr_data[63:0]"
@@ -21187,8 +21137,8 @@ Toggle ClaMmrs[0].Cdbgsignalsnapshotnode0Eap0Hi.Value "logic ClaMmrs[0].Cdbgsign
 Toggle ClaMmrs[0].Cdbgclatimestampconfig.TsCapture "logic ClaMmrs[0].Cdbgclatimestampconfig.TsCapture[0:0]"
 Toggle ClaMmrs[0].Cdbgclatimestamp.TimestampUpper [55:33] "logic ClaMmrs[0].Cdbgclatimestamp.TimestampUpper[55:0]"
 Toggle ClaMmrs[0].Cdbgclatimestamp.TimestampUpper [31:26] "logic ClaMmrs[0].Cdbgclatimestamp.TimestampUpper[55:0]"
-Toggle ClaMmrs[0].Cdbgclatimestamp.TimestampUpper [24:13] "logic ClaMmrs[0].Cdbgclatimestamp.TimestampUpper[55:0]"
-Toggle 1to0 ClaMmrs[0].Cdbgclatimestamp.TimestampUpper [12] "logic ClaMmrs[0].Cdbgclatimestamp.TimestampUpper[55:0]"
+Toggle ClaMmrs[0].Cdbgclatimestamp.TimestampUpper [24:12] "logic ClaMmrs[0].Cdbgclatimestamp.TimestampUpper[55:0]"
+Toggle 1to0 ClaMmrs[0].Cdbgclatimestamp.TimestampUpper [11] "logic ClaMmrs[0].Cdbgclatimestamp.TimestampUpper[55:0]"
 Toggle ClaMmrs[0].Cdbgsignalsnapshotnode3Eap3Lo.Value [63:2] "logic ClaMmrs[0].Cdbgsignalsnapshotnode3Eap3Lo.Value[63:0]"
 Toggle 1to0 ClaMmrs[0].Cdbgsignalsnapshotnode3Eap3Lo.Value [1:0] "logic ClaMmrs[0].Cdbgsignalsnapshotnode3Eap3Lo.Value[63:0]"
 Toggle ClaMmrs[0].Cdbgsignalsnapshotnode3Eap2Lo.Value [63:2] "logic ClaMmrs[0].Cdbgsignalsnapshotnode3Eap2Lo.Value[63:0]"
@@ -21231,8 +21181,7 @@ Toggle ClaMmrs[0].Cdbgeapstatus.Rsvd3116 "logic ClaMmrs[0].Cdbgeapstatus.Rsvd311
 Toggle ClaMmrs[0].Cdbgclacounter3Cfg.Counter [15:9] "logic ClaMmrs[0].Cdbgclacounter3Cfg.Counter[15:0]"
 Toggle ClaMmrs[0].Cdbgclacounter3Cfg.UpperCounter "logic ClaMmrs[0].Cdbgclacounter3Cfg.UpperCounter[14:0]"
 Toggle ClaMmrs[0].Cdbgclacounter3Cfg.Rsvd "logic ClaMmrs[0].Cdbgclacounter3Cfg.Rsvd[0:0]"
-Toggle ClaMmrs[0].Cdbgclacounter2Cfg.Counter [15:10] "logic ClaMmrs[0].Cdbgclacounter2Cfg.Counter[15:0]"
-Toggle 1to0 ClaMmrs[0].Cdbgclacounter2Cfg.Counter [9] "logic ClaMmrs[0].Cdbgclacounter2Cfg.Counter[15:0]"
+Toggle ClaMmrs[0].Cdbgclacounter2Cfg.Counter [15:9] "logic ClaMmrs[0].Cdbgclacounter2Cfg.Counter[15:0]"
 Toggle ClaMmrs[0].Cdbgclacounter2Cfg.UpperCounter "logic ClaMmrs[0].Cdbgclacounter2Cfg.UpperCounter[14:0]"
 Toggle ClaMmrs[0].Cdbgclacounter2Cfg.Rsvd "logic ClaMmrs[0].Cdbgclacounter2Cfg.Rsvd[0:0]"
 Toggle ClaMmrs[0].Cdbgclacounter1Cfg.Counter [15:9] "logic ClaMmrs[0].Cdbgclacounter1Cfg.Counter[15:0]"
@@ -21287,8 +21236,8 @@ Toggle ClaMmrsWr[0].CdbgclatimestampWr.TimestampLowerWrEn "logic ClaMmrsWr[0].Cd
 Toggle ClaMmrsWr[0].CdbgclatimestampWr.TimestampUpperWrEn "logic ClaMmrsWr[0].CdbgclatimestampWr.TimestampUpperWrEn"
 Toggle ClaMmrsWr[0].CdbgclatimestampWr.Data.TimestampUpper [55:33] "logic ClaMmrsWr[0].CdbgclatimestampWr.Data.TimestampUpper[55:0]"
 Toggle ClaMmrsWr[0].CdbgclatimestampWr.Data.TimestampUpper [31:26] "logic ClaMmrsWr[0].CdbgclatimestampWr.Data.TimestampUpper[55:0]"
-Toggle ClaMmrsWr[0].CdbgclatimestampWr.Data.TimestampUpper [24:13] "logic ClaMmrsWr[0].CdbgclatimestampWr.Data.TimestampUpper[55:0]"
-Toggle 1to0 ClaMmrsWr[0].CdbgclatimestampWr.Data.TimestampUpper [12] "logic ClaMmrsWr[0].CdbgclatimestampWr.Data.TimestampUpper[55:0]"
+Toggle ClaMmrsWr[0].CdbgclatimestampWr.Data.TimestampUpper [24:12] "logic ClaMmrsWr[0].CdbgclatimestampWr.Data.TimestampUpper[55:0]"
+Toggle 1to0 ClaMmrsWr[0].CdbgclatimestampWr.Data.TimestampUpper [11] "logic ClaMmrsWr[0].CdbgclatimestampWr.Data.TimestampUpper[55:0]"
 Toggle ClaMmrsWr[0].Cdbgsignalsnapshotnode3Eap3LoWr.Data.Value [63:52] "logic ClaMmrsWr[0].Cdbgsignalsnapshotnode3Eap3LoWr.Data.Value[63:0]"
 Toggle ClaMmrsWr[0].Cdbgsignalsnapshotnode3Eap3LoWr.Data.Value [50:36] "logic ClaMmrsWr[0].Cdbgsignalsnapshotnode3Eap3LoWr.Data.Value[63:0]"
 Toggle ClaMmrsWr[0].Cdbgsignalsnapshotnode3Eap3LoWr.Data.Value [34] "logic ClaMmrsWr[0].Cdbgsignalsnapshotnode3Eap3LoWr.Data.Value[63:0]"
@@ -21421,8 +21370,7 @@ Toggle ClaMmrsWr[0].Cdbgclacounter3CfgWr.Data.UpperTarget "logic ClaMmrsWr[0].Cd
 Toggle ClaMmrsWr[0].Cdbgclacounter3CfgWr.Data.Rsvd "logic ClaMmrsWr[0].Cdbgclacounter3CfgWr.Data.Rsvd[0:0]"
 Toggle ClaMmrsWr[0].Cdbgclacounter2CfgWr.CounterWrEn "logic ClaMmrsWr[0].Cdbgclacounter2CfgWr.CounterWrEn"
 Toggle ClaMmrsWr[0].Cdbgclacounter2CfgWr.UpperCounterWrEn "logic ClaMmrsWr[0].Cdbgclacounter2CfgWr.UpperCounterWrEn"
-Toggle ClaMmrsWr[0].Cdbgclacounter2CfgWr.Data.Counter [15:10] "logic ClaMmrsWr[0].Cdbgclacounter2CfgWr.Data.Counter[15:0]"
-Toggle 1to0 ClaMmrsWr[0].Cdbgclacounter2CfgWr.Data.Counter [9] "logic ClaMmrsWr[0].Cdbgclacounter2CfgWr.Data.Counter[15:0]"
+Toggle ClaMmrsWr[0].Cdbgclacounter2CfgWr.Data.Counter [15:9] "logic ClaMmrsWr[0].Cdbgclacounter2CfgWr.Data.Counter[15:0]"
 Toggle ClaMmrsWr[0].Cdbgclacounter2CfgWr.Data.Target "logic ClaMmrsWr[0].Cdbgclacounter2CfgWr.Data.Target[15:0]"
 Toggle ClaMmrsWr[0].Cdbgclacounter2CfgWr.Data.ResetOnTarget "logic ClaMmrsWr[0].Cdbgclacounter2CfgWr.Data.ResetOnTarget[0:0]"
 Toggle ClaMmrsWr[0].Cdbgclacounter2CfgWr.Data.UpperCounter "logic ClaMmrsWr[0].Cdbgclacounter2CfgWr.Data.UpperCounter[14:0]"
@@ -21445,6 +21393,7 @@ Toggle ClaMmrsWr[0].Cdbgclacounter0CfgWr.Data.ResetOnTarget "logic ClaMmrsWr[0].
 Toggle ClaMmrsWr[0].Cdbgclacounter0CfgWr.Data.UpperCounter "logic ClaMmrsWr[0].Cdbgclacounter0CfgWr.Data.UpperCounter[14:0]"
 Toggle ClaMmrsWr[0].Cdbgclacounter0CfgWr.Data.UpperTarget "logic ClaMmrsWr[0].Cdbgclacounter0CfgWr.Data.UpperTarget[14:0]"
 Toggle ClaMmrsWr[0].Cdbgclacounter0CfgWr.Data.Rsvd "logic ClaMmrsWr[0].Cdbgclacounter0CfgWr.Data.Rsvd[0:0]"
+Toggle DstMmrs[0].Cdbgdebugtracecfg.FrameModeEnable "logic DstMmrs[0].Cdbgdebugtracecfg.FrameModeEnable[0:0]"
 Toggle DstMmrs[0].Trdstinstfeatures.Trdstinstnoaddrdiff "logic DstMmrs[0].Trdstinstfeatures.Trdstinstnoaddrdiff[0:0]"
 Toggle DstMmrs[0].Trdstinstfeatures.Trdstinstnotrapaddr "logic DstMmrs[0].Trdstinstfeatures.Trdstinstnotrapaddr[0:0]"
 Toggle DstMmrs[0].Trdstinstfeatures.Trdstinstenrepeatedhistory "logic DstMmrs[0].Trdstinstfeatures.Trdstinstenrepeatedhistory[0:0]"
@@ -21472,8 +21421,8 @@ Toggle DstMmrsWr[0].TrdstcontrolWr.Data.Trdstinhibitsrc "logic DstMmrsWr[0].Trds
 Toggle DstMmrsWr[0].TrdstcontrolWr.Data.Trdstsyncmode "logic DstMmrsWr[0].TrdstcontrolWr.Data.Trdstsyncmode[1:0]"
 Toggle DstMmrsWr[0].TrdstcontrolWr.Data.Trdstsyncmax "logic DstMmrsWr[0].TrdstcontrolWr.Data.Trdstsyncmax[3:0]"
 Toggle DstMmrsWr[0].TrdstcontrolWr.Data.Trdstformat "logic DstMmrsWr[0].TrdstcontrolWr.Data.Trdstformat[2:0]"
-Toggle DstSinkMmrs.Trdstramdata.Trdstramdata [22:18] "logic DstSinkMmrs.Trdstramdata.Trdstramdata[31:0]"
-Toggle DstSinkMmrs.Trdstramdata.Trdstramdata [6] "logic DstSinkMmrs.Trdstramdata.Trdstramdata[31:0]"
+Toggle DstSinkMmrs.Trdstramdata.Trdstramdata [22:17] "logic DstSinkMmrs.Trdstramdata.Trdstramdata[31:0]"
+Toggle DstSinkMmrs.Trdstramdata.Trdstramdata [6:3] "logic DstSinkMmrs.Trdstramdata.Trdstramdata[31:0]"
 Toggle DstSinkMmrs.Trdstramrplow.Rsvd10 "logic DstSinkMmrs.Trdstramrplow.Rsvd10[1:0]"
 Toggle DstSinkMmrs.Trdstramlimitlow.Rsvd10 "logic DstSinkMmrs.Trdstramlimitlow.Rsvd10[1:0]"
 Toggle DstSinkMmrs.Trdstramstartlow.Rsvd10 "logic DstSinkMmrs.Trdstramstartlow.Rsvd10[1:0]"
@@ -21484,12 +21433,12 @@ Toggle DstSinkMmrs.Trdstramimpl.Trdstramhassram "logic DstSinkMmrs.Trdstramimpl.
 Toggle DstSinkMmrs.Trdstramimpl.Trdstramhassmem "logic DstSinkMmrs.Trdstramimpl.Trdstramhassmem[0:0]"
 Toggle DstSinkMmrs.Trdstramimpl.Trdstramvendorframelength [0] "logic DstSinkMmrs.Trdstramimpl.Trdstramvendorframelength[3:0]"
 Toggle DstSinkMmrsWr.TrdstramdataWr.Data.Trdstramdata [22:19] "logic DstSinkMmrsWr.TrdstramdataWr.Data.Trdstramdata[31:0]"
-Toggle DstSinkMmrsWr.TrdstramdataWr.Data.Trdstramdata [6] "logic DstSinkMmrsWr.TrdstramdataWr.Data.Trdstramdata[31:0]"
+Toggle DstSinkMmrsWr.TrdstramdataWr.Data.Trdstramdata [6:3] "logic DstSinkMmrsWr.TrdstramdataWr.Data.Trdstramdata[31:0]"
 Toggle DstSinkMmrsWr.TrdstramrphighWr.TrdstramrphighWrEn "logic DstSinkMmrsWr.TrdstramrphighWr.TrdstramrphighWrEn"
 Toggle DstSinkMmrsWr.TrdstramrphighWr.Data.Trdstramrphigh "logic DstSinkMmrsWr.TrdstramrphighWr.Data.Trdstramrphigh[31:0]"
 Toggle DstSinkMmrsWr.TrdstramrplowWr.Data.Rsvd10 "logic DstSinkMmrsWr.TrdstramrplowWr.Data.Rsvd10[1:0]"
 Toggle DstSinkMmrsWr.TrdstramwphighWr.Data.Trdstramwphigh [31:20] "logic DstSinkMmrsWr.TrdstramwphighWr.Data.Trdstramwphigh[31:0]"
-Toggle DstSinkMmrsWr.TrdstramwplowWr.Data.Trdstramwplow [29:13] "logic DstSinkMmrsWr.TrdstramwplowWr.Data.Trdstramwplow[29:0]"
+Toggle DstSinkMmrsWr.TrdstramwplowWr.Data.Trdstramwplow [29:12] "logic DstSinkMmrsWr.TrdstramwplowWr.Data.Trdstramwplow[29:0]"
 Toggle DstSinkMmrsWr.TrdstramwplowWr.Data.Trdstramwplow [3:0] "logic DstSinkMmrsWr.TrdstramwplowWr.Data.Trdstramwplow[29:0]"
 Toggle DstSinkMmrsWr.TrdstramlimithighWr.TrdstramlimithighWrEn "logic DstSinkMmrsWr.TrdstramlimithighWr.TrdstramlimithighWrEn"
 Toggle DstSinkMmrsWr.TrdstramlimithighWr.Data.Trdstramlimithigh "logic DstSinkMmrsWr.TrdstramlimithighWr.Data.Trdstramlimithigh[31:0]"
@@ -21632,7 +21581,13 @@ Toggle debug_bus [0][34] "logic [0:0][63:0]debug_bus"
 Toggle debug_bus [0][32:20] "logic [0:0][63:0]debug_bus"
 Toggle debug_bus [0][15:4] "logic [0:0][63:0]debug_bus"
 Toggle dst_tnif_data [0][118:115] "logic [0:0][127:0]dst_tnif_data"
+Toggle dst_tnif_data [0][102:99] "logic [0:0][127:0]dst_tnif_data"
+Toggle dst_tnif_data [0][86:83] "logic [0:0][127:0]dst_tnif_data"
 Toggle dst_tnif_data [0][70:67] "logic [0:0][127:0]dst_tnif_data"
+Toggle dst_tnif_data [0][54:51] "logic [0:0][127:0]dst_tnif_data"
+Toggle dst_tnif_data [0][38:35] "logic [0:0][127:0]dst_tnif_data"
+Toggle dst_tnif_data [0][22:19] "logic [0:0][127:0]dst_tnif_data"
+Toggle dst_tnif_data [0][6:3] "logic [0:0][127:0]dst_tnif_data"
 Toggle s_mmr_axi_arready "logic s_mmr_axi_arready"
 Toggle s_mmr_axi_awready "logic s_mmr_axi_awready"
 Toggle s_mmr_axi_bid "logic s_mmr_axi_bid[3:0]"
@@ -21648,10 +21603,16 @@ Toggle s_mmr_axi_rvalid "logic s_mmr_axi_rvalid"
 Toggle s_mmr_axi_wready "logic s_mmr_axi_wready"
 Toggle timesync_cla_timestamp[0].time_val [63:41] "logic timesync_cla_timestamp[0].time_val[63:0]"
 Toggle timesync_cla_timestamp[0].time_val [39:34] "logic timesync_cla_timestamp[0].time_val[63:0]"
-Toggle timesync_cla_timestamp[0].time_val [32:21] "logic timesync_cla_timestamp[0].time_val[63:0]"
-Toggle 1to0 timesync_cla_timestamp[0].time_val [20] "logic timesync_cla_timestamp[0].time_val[63:0]"
+Toggle timesync_cla_timestamp[0].time_val [32:20] "logic timesync_cla_timestamp[0].time_val[63:0]"
+Toggle 1to0 timesync_cla_timestamp[0].time_val [19] "logic timesync_cla_timestamp[0].time_val[63:0]"
 Toggle tnif_tr_data [0][118:115] "logic [0:0][127:0]tnif_tr_data"
+Toggle tnif_tr_data [0][102:99] "logic [0:0][127:0]tnif_tr_data"
+Toggle tnif_tr_data [0][86:83] "logic [0:0][127:0]tnif_tr_data"
 Toggle tnif_tr_data [0][70:67] "logic [0:0][127:0]tnif_tr_data"
+Toggle tnif_tr_data [0][54:51] "logic [0:0][127:0]tnif_tr_data"
+Toggle tnif_tr_data [0][38:35] "logic [0:0][127:0]tnif_tr_data"
+Toggle tnif_tr_data [0][22:19] "logic [0:0][127:0]tnif_tr_data"
+Toggle tnif_tr_data [0][6:3] "logic [0:0][127:0]tnif_tr_data"
 
 CHECKSUM: "40131737 2423282837"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper
@@ -21671,8 +21632,8 @@ Toggle 1to0 o_cla_external_action_halt_clock_local_out "logic o_cla_external_act
 Toggle o_cla_external_action_custom [0][15:1] "logic [0:0][15:0]o_cla_external_action_custom"
 Toggle timesync_cla_timestamp[0].time_val [63:41] "logic timesync_cla_timestamp[0].time_val[63:0]"
 Toggle timesync_cla_timestamp[0].time_val [39:34] "logic timesync_cla_timestamp[0].time_val[63:0]"
-Toggle timesync_cla_timestamp[0].time_val [32:21] "logic timesync_cla_timestamp[0].time_val[63:0]"
-Toggle 1to0 timesync_cla_timestamp[0].time_val [20] "logic timesync_cla_timestamp[0].time_val[63:0]"
+Toggle timesync_cla_timestamp[0].time_val [32:20] "logic timesync_cla_timestamp[0].time_val[63:0]"
+Toggle 1to0 timesync_cla_timestamp[0].time_val [19] "logic timesync_cla_timestamp[0].time_val[63:0]"
 Toggle ClaMmrs[0].Cdbgtimestampcapture.Timestamp "logic ClaMmrs[0].Cdbgtimestampcapture.Timestamp[63:0]"
 Toggle ClaMmrs[0].Cdbglfsr.Lfsr [62:1] "logic ClaMmrs[0].Cdbglfsr.Lfsr[62:0]"
 Toggle ClaMmrs[0].Cdbgsignalsnapshotnode3Eap3Hi.Value "logic ClaMmrs[0].Cdbgsignalsnapshotnode3Eap3Hi.Value[63:0]"
@@ -21694,8 +21655,8 @@ Toggle ClaMmrs[0].Cdbgsignalsnapshotnode0Eap0Hi.Value "logic ClaMmrs[0].Cdbgsign
 Toggle ClaMmrs[0].Cdbgclatimestampconfig.TsCapture "logic ClaMmrs[0].Cdbgclatimestampconfig.TsCapture[0:0]"
 Toggle ClaMmrs[0].Cdbgclatimestamp.TimestampUpper [55:33] "logic ClaMmrs[0].Cdbgclatimestamp.TimestampUpper[55:0]"
 Toggle ClaMmrs[0].Cdbgclatimestamp.TimestampUpper [31:26] "logic ClaMmrs[0].Cdbgclatimestamp.TimestampUpper[55:0]"
-Toggle ClaMmrs[0].Cdbgclatimestamp.TimestampUpper [24:13] "logic ClaMmrs[0].Cdbgclatimestamp.TimestampUpper[55:0]"
-Toggle 1to0 ClaMmrs[0].Cdbgclatimestamp.TimestampUpper [12] "logic ClaMmrs[0].Cdbgclatimestamp.TimestampUpper[55:0]"
+Toggle ClaMmrs[0].Cdbgclatimestamp.TimestampUpper [24:12] "logic ClaMmrs[0].Cdbgclatimestamp.TimestampUpper[55:0]"
+Toggle 1to0 ClaMmrs[0].Cdbgclatimestamp.TimestampUpper [11] "logic ClaMmrs[0].Cdbgclatimestamp.TimestampUpper[55:0]"
 Toggle ClaMmrs[0].Cdbgsignalsnapshotnode3Eap3Lo.Value [63:2] "logic ClaMmrs[0].Cdbgsignalsnapshotnode3Eap3Lo.Value[63:0]"
 Toggle 1to0 ClaMmrs[0].Cdbgsignalsnapshotnode3Eap3Lo.Value [1:0] "logic ClaMmrs[0].Cdbgsignalsnapshotnode3Eap3Lo.Value[63:0]"
 Toggle ClaMmrs[0].Cdbgsignalsnapshotnode3Eap2Lo.Value [63:2] "logic ClaMmrs[0].Cdbgsignalsnapshotnode3Eap2Lo.Value[63:0]"
@@ -21738,8 +21699,7 @@ Toggle ClaMmrs[0].Cdbgeapstatus.Rsvd3116 "logic ClaMmrs[0].Cdbgeapstatus.Rsvd311
 Toggle ClaMmrs[0].Cdbgclacounter3Cfg.Counter [15:9] "logic ClaMmrs[0].Cdbgclacounter3Cfg.Counter[15:0]"
 Toggle ClaMmrs[0].Cdbgclacounter3Cfg.UpperCounter "logic ClaMmrs[0].Cdbgclacounter3Cfg.UpperCounter[14:0]"
 Toggle ClaMmrs[0].Cdbgclacounter3Cfg.Rsvd "logic ClaMmrs[0].Cdbgclacounter3Cfg.Rsvd[0:0]"
-Toggle ClaMmrs[0].Cdbgclacounter2Cfg.Counter [15:10] "logic ClaMmrs[0].Cdbgclacounter2Cfg.Counter[15:0]"
-Toggle 1to0 ClaMmrs[0].Cdbgclacounter2Cfg.Counter [9] "logic ClaMmrs[0].Cdbgclacounter2Cfg.Counter[15:0]"
+Toggle ClaMmrs[0].Cdbgclacounter2Cfg.Counter [15:9] "logic ClaMmrs[0].Cdbgclacounter2Cfg.Counter[15:0]"
 Toggle ClaMmrs[0].Cdbgclacounter2Cfg.UpperCounter "logic ClaMmrs[0].Cdbgclacounter2Cfg.UpperCounter[14:0]"
 Toggle ClaMmrs[0].Cdbgclacounter2Cfg.Rsvd "logic ClaMmrs[0].Cdbgclacounter2Cfg.Rsvd[0:0]"
 Toggle ClaMmrs[0].Cdbgclacounter1Cfg.Counter [15:9] "logic ClaMmrs[0].Cdbgclacounter1Cfg.Counter[15:0]"
@@ -21794,8 +21754,8 @@ Toggle ClaMmrsWr[0].CdbgclatimestampWr.TimestampLowerWrEn "logic ClaMmrsWr[0].Cd
 Toggle ClaMmrsWr[0].CdbgclatimestampWr.TimestampUpperWrEn "logic ClaMmrsWr[0].CdbgclatimestampWr.TimestampUpperWrEn"
 Toggle ClaMmrsWr[0].CdbgclatimestampWr.Data.TimestampUpper [55:33] "logic ClaMmrsWr[0].CdbgclatimestampWr.Data.TimestampUpper[55:0]"
 Toggle ClaMmrsWr[0].CdbgclatimestampWr.Data.TimestampUpper [31:26] "logic ClaMmrsWr[0].CdbgclatimestampWr.Data.TimestampUpper[55:0]"
-Toggle ClaMmrsWr[0].CdbgclatimestampWr.Data.TimestampUpper [24:13] "logic ClaMmrsWr[0].CdbgclatimestampWr.Data.TimestampUpper[55:0]"
-Toggle 1to0 ClaMmrsWr[0].CdbgclatimestampWr.Data.TimestampUpper [12] "logic ClaMmrsWr[0].CdbgclatimestampWr.Data.TimestampUpper[55:0]"
+Toggle ClaMmrsWr[0].CdbgclatimestampWr.Data.TimestampUpper [24:12] "logic ClaMmrsWr[0].CdbgclatimestampWr.Data.TimestampUpper[55:0]"
+Toggle 1to0 ClaMmrsWr[0].CdbgclatimestampWr.Data.TimestampUpper [11] "logic ClaMmrsWr[0].CdbgclatimestampWr.Data.TimestampUpper[55:0]"
 Toggle ClaMmrsWr[0].Cdbgsignalsnapshotnode3Eap3LoWr.Data.Value [63:52] "logic ClaMmrsWr[0].Cdbgsignalsnapshotnode3Eap3LoWr.Data.Value[63:0]"
 Toggle ClaMmrsWr[0].Cdbgsignalsnapshotnode3Eap3LoWr.Data.Value [50:36] "logic ClaMmrsWr[0].Cdbgsignalsnapshotnode3Eap3LoWr.Data.Value[63:0]"
 Toggle ClaMmrsWr[0].Cdbgsignalsnapshotnode3Eap3LoWr.Data.Value [34] "logic ClaMmrsWr[0].Cdbgsignalsnapshotnode3Eap3LoWr.Data.Value[63:0]"
@@ -21928,8 +21888,7 @@ Toggle ClaMmrsWr[0].Cdbgclacounter3CfgWr.Data.UpperTarget "logic ClaMmrsWr[0].Cd
 Toggle ClaMmrsWr[0].Cdbgclacounter3CfgWr.Data.Rsvd "logic ClaMmrsWr[0].Cdbgclacounter3CfgWr.Data.Rsvd[0:0]"
 Toggle ClaMmrsWr[0].Cdbgclacounter2CfgWr.CounterWrEn "logic ClaMmrsWr[0].Cdbgclacounter2CfgWr.CounterWrEn"
 Toggle ClaMmrsWr[0].Cdbgclacounter2CfgWr.UpperCounterWrEn "logic ClaMmrsWr[0].Cdbgclacounter2CfgWr.UpperCounterWrEn"
-Toggle ClaMmrsWr[0].Cdbgclacounter2CfgWr.Data.Counter [15:10] "logic ClaMmrsWr[0].Cdbgclacounter2CfgWr.Data.Counter[15:0]"
-Toggle 1to0 ClaMmrsWr[0].Cdbgclacounter2CfgWr.Data.Counter [9] "logic ClaMmrsWr[0].Cdbgclacounter2CfgWr.Data.Counter[15:0]"
+Toggle ClaMmrsWr[0].Cdbgclacounter2CfgWr.Data.Counter [15:9] "logic ClaMmrsWr[0].Cdbgclacounter2CfgWr.Data.Counter[15:0]"
 Toggle ClaMmrsWr[0].Cdbgclacounter2CfgWr.Data.Target "logic ClaMmrsWr[0].Cdbgclacounter2CfgWr.Data.Target[15:0]"
 Toggle ClaMmrsWr[0].Cdbgclacounter2CfgWr.Data.ResetOnTarget "logic ClaMmrsWr[0].Cdbgclacounter2CfgWr.Data.ResetOnTarget[0:0]"
 Toggle ClaMmrsWr[0].Cdbgclacounter2CfgWr.Data.UpperCounter "logic ClaMmrsWr[0].Cdbgclacounter2CfgWr.Data.UpperCounter[14:0]"
@@ -21957,8 +21916,8 @@ Toggle 1to0 external_action_halt_clock_local_out_int "logic external_action_halt
 Toggle external_action_custom_int [0][15:1] "logic [0:0][15:0]external_action_custom_int"
 Toggle timesync_cla_timestamp_int[0].time_val [63:41] "logic timesync_cla_timestamp_int[0].time_val[63:0]"
 Toggle timesync_cla_timestamp_int[0].time_val [39:34] "logic timesync_cla_timestamp_int[0].time_val[63:0]"
-Toggle timesync_cla_timestamp_int[0].time_val [32:21] "logic timesync_cla_timestamp_int[0].time_val[63:0]"
-Toggle 1to0 timesync_cla_timestamp_int[0].time_val [20] "logic timesync_cla_timestamp_int[0].time_val[63:0]"
+Toggle timesync_cla_timestamp_int[0].time_val [32:20] "logic timesync_cla_timestamp_int[0].time_val[63:0]"
+Toggle 1to0 timesync_cla_timestamp_int[0].time_val [19] "logic timesync_cla_timestamp_int[0].time_val[63:0]"
 Toggle debug_bus_int [0][63:52] "logic [0:0][63:0]debug_bus_int"
 Toggle debug_bus_int [0][50:36] "logic [0:0][63:0]debug_bus_int"
 Toggle debug_bus_int [0][34] "logic [0:0][63:0]debug_bus_int"
@@ -22015,8 +21974,8 @@ Toggle ClaMmrsWr_int[0].CdbgclatimestampWr.TimestampLowerWrEn "logic ClaMmrsWr_i
 Toggle ClaMmrsWr_int[0].CdbgclatimestampWr.TimestampUpperWrEn "logic ClaMmrsWr_int[0].CdbgclatimestampWr.TimestampUpperWrEn"
 Toggle ClaMmrsWr_int[0].CdbgclatimestampWr.Data.TimestampUpper [55:33] "logic ClaMmrsWr_int[0].CdbgclatimestampWr.Data.TimestampUpper[55:0]"
 Toggle ClaMmrsWr_int[0].CdbgclatimestampWr.Data.TimestampUpper [31:26] "logic ClaMmrsWr_int[0].CdbgclatimestampWr.Data.TimestampUpper[55:0]"
-Toggle ClaMmrsWr_int[0].CdbgclatimestampWr.Data.TimestampUpper [24:13] "logic ClaMmrsWr_int[0].CdbgclatimestampWr.Data.TimestampUpper[55:0]"
-Toggle 1to0 ClaMmrsWr_int[0].CdbgclatimestampWr.Data.TimestampUpper [12] "logic ClaMmrsWr_int[0].CdbgclatimestampWr.Data.TimestampUpper[55:0]"
+Toggle ClaMmrsWr_int[0].CdbgclatimestampWr.Data.TimestampUpper [24:12] "logic ClaMmrsWr_int[0].CdbgclatimestampWr.Data.TimestampUpper[55:0]"
+Toggle 1to0 ClaMmrsWr_int[0].CdbgclatimestampWr.Data.TimestampUpper [11] "logic ClaMmrsWr_int[0].CdbgclatimestampWr.Data.TimestampUpper[55:0]"
 Toggle ClaMmrsWr_int[0].Cdbgsignalsnapshotnode3Eap3LoWr.Data.Value [63:52] "logic ClaMmrsWr_int[0].Cdbgsignalsnapshotnode3Eap3LoWr.Data.Value[63:0]"
 Toggle ClaMmrsWr_int[0].Cdbgsignalsnapshotnode3Eap3LoWr.Data.Value [50:36] "logic ClaMmrsWr_int[0].Cdbgsignalsnapshotnode3Eap3LoWr.Data.Value[63:0]"
 Toggle ClaMmrsWr_int[0].Cdbgsignalsnapshotnode3Eap3LoWr.Data.Value [34] "logic ClaMmrsWr_int[0].Cdbgsignalsnapshotnode3Eap3LoWr.Data.Value[63:0]"
@@ -22149,8 +22108,7 @@ Toggle ClaMmrsWr_int[0].Cdbgclacounter3CfgWr.Data.UpperTarget "logic ClaMmrsWr_i
 Toggle ClaMmrsWr_int[0].Cdbgclacounter3CfgWr.Data.Rsvd "logic ClaMmrsWr_int[0].Cdbgclacounter3CfgWr.Data.Rsvd[0:0]"
 Toggle ClaMmrsWr_int[0].Cdbgclacounter2CfgWr.CounterWrEn "logic ClaMmrsWr_int[0].Cdbgclacounter2CfgWr.CounterWrEn"
 Toggle ClaMmrsWr_int[0].Cdbgclacounter2CfgWr.UpperCounterWrEn "logic ClaMmrsWr_int[0].Cdbgclacounter2CfgWr.UpperCounterWrEn"
-Toggle ClaMmrsWr_int[0].Cdbgclacounter2CfgWr.Data.Counter [15:10] "logic ClaMmrsWr_int[0].Cdbgclacounter2CfgWr.Data.Counter[15:0]"
-Toggle 1to0 ClaMmrsWr_int[0].Cdbgclacounter2CfgWr.Data.Counter [9] "logic ClaMmrsWr_int[0].Cdbgclacounter2CfgWr.Data.Counter[15:0]"
+Toggle ClaMmrsWr_int[0].Cdbgclacounter2CfgWr.Data.Counter [15:9] "logic ClaMmrsWr_int[0].Cdbgclacounter2CfgWr.Data.Counter[15:0]"
 Toggle ClaMmrsWr_int[0].Cdbgclacounter2CfgWr.Data.Target "logic ClaMmrsWr_int[0].Cdbgclacounter2CfgWr.Data.Target[15:0]"
 Toggle ClaMmrsWr_int[0].Cdbgclacounter2CfgWr.Data.ResetOnTarget "logic ClaMmrsWr_int[0].Cdbgclacounter2CfgWr.Data.ResetOnTarget[0:0]"
 Toggle ClaMmrsWr_int[0].Cdbgclacounter2CfgWr.Data.UpperCounter "logic ClaMmrsWr_int[0].Cdbgclacounter2CfgWr.Data.UpperCounter[14:0]"
@@ -22175,8 +22133,8 @@ Toggle ClaMmrsWr_int[0].Cdbgclacounter0CfgWr.Data.UpperTarget "logic ClaMmrsWr_i
 Toggle ClaMmrsWr_int[0].Cdbgclacounter0CfgWr.Data.Rsvd "logic ClaMmrsWr_int[0].Cdbgclacounter0CfgWr.Data.Rsvd[0:0]"
 Toggle cla_timestamp_muxed [0][63:41] "logic [0:0][63:0]cla_timestamp_muxed"
 Toggle cla_timestamp_muxed [0][39:34] "logic [0:0][63:0]cla_timestamp_muxed"
-Toggle cla_timestamp_muxed [0][32:21] "logic [0:0][63:0]cla_timestamp_muxed"
-Toggle 1to0 cla_timestamp_muxed [0][20] "logic [0:0][63:0]cla_timestamp_muxed"
+Toggle cla_timestamp_muxed [0][32:20] "logic [0:0][63:0]cla_timestamp_muxed"
+Toggle 1to0 cla_timestamp_muxed [0][19] "logic [0:0][63:0]cla_timestamp_muxed"
 
 CHECKSUM: "724319045 2272214434"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst
@@ -22202,8 +22160,7 @@ Toggle ClacounterCfg0Mmr.Rsvd "logic ClacounterCfg0Mmr.Rsvd[0:0]"
 Toggle ClacounterCfg1Mmr.Counter [15:9] "logic ClacounterCfg1Mmr.Counter[15:0]"
 Toggle ClacounterCfg1Mmr.UpperCounter "logic ClacounterCfg1Mmr.UpperCounter[14:0]"
 Toggle ClacounterCfg1Mmr.Rsvd "logic ClacounterCfg1Mmr.Rsvd[0:0]"
-Toggle ClacounterCfg2Mmr.Counter [15:10] "logic ClacounterCfg2Mmr.Counter[15:0]"
-Toggle 1to0 ClacounterCfg2Mmr.Counter [9] "logic ClacounterCfg2Mmr.Counter[15:0]"
+Toggle ClacounterCfg2Mmr.Counter [15:9] "logic ClacounterCfg2Mmr.Counter[15:0]"
 Toggle ClacounterCfg2Mmr.UpperCounter "logic ClacounterCfg2Mmr.UpperCounter[14:0]"
 Toggle ClacounterCfg2Mmr.Rsvd "logic ClacounterCfg2Mmr.Rsvd[0:0]"
 Toggle ClacounterCfg3Mmr.Counter [15:9] "logic ClacounterCfg3Mmr.Counter[15:0]"
@@ -22215,8 +22172,8 @@ Toggle ClactrlstatusMmr.Rsvd6216 "logic ClactrlstatusMmr.Rsvd6216[46:0]"
 Toggle 1to0 ClactrlstatusMmr.ClaLock "logic ClactrlstatusMmr.ClaLock[0:0]"
 Toggle ClatimestampMmr.TimestampUpper [55:33] "logic ClatimestampMmr.TimestampUpper[55:0]"
 Toggle ClatimestampMmr.TimestampUpper [31:26] "logic ClatimestampMmr.TimestampUpper[55:0]"
-Toggle ClatimestampMmr.TimestampUpper [24:13] "logic ClatimestampMmr.TimestampUpper[55:0]"
-Toggle 1to0 ClatimestampMmr.TimestampUpper [12] "logic ClatimestampMmr.TimestampUpper[55:0]"
+Toggle ClatimestampMmr.TimestampUpper [24:12] "logic ClatimestampMmr.TimestampUpper[55:0]"
+Toggle 1to0 ClatimestampMmr.TimestampUpper [11] "logic ClatimestampMmr.TimestampUpper[55:0]"
 Toggle ClatimestampconfigMmr.TsCapture "logic ClatimestampconfigMmr.TsCapture[0:0]"
 Toggle ClaMmrCdbglfsr.Lfsr [62:1] "logic ClaMmrCdbglfsr.Lfsr[62:0]"
 Toggle i_ref_timestamp "logic i_ref_timestamp[55:0]"
@@ -22240,8 +22197,7 @@ Toggle Clacounter1CfgMmrWr.Data.UpperTarget "logic Clacounter1CfgMmrWr.Data.Uppe
 Toggle Clacounter1CfgMmrWr.Data.Rsvd "logic Clacounter1CfgMmrWr.Data.Rsvd[0:0]"
 Toggle Clacounter2CfgMmrWr.CounterWrEn "logic Clacounter2CfgMmrWr.CounterWrEn"
 Toggle Clacounter2CfgMmrWr.UpperCounterWrEn "logic Clacounter2CfgMmrWr.UpperCounterWrEn"
-Toggle Clacounter2CfgMmrWr.Data.Counter [15:10] "logic Clacounter2CfgMmrWr.Data.Counter[15:0]"
-Toggle 1to0 Clacounter2CfgMmrWr.Data.Counter [9] "logic Clacounter2CfgMmrWr.Data.Counter[15:0]"
+Toggle Clacounter2CfgMmrWr.Data.Counter [15:9] "logic Clacounter2CfgMmrWr.Data.Counter[15:0]"
 Toggle Clacounter2CfgMmrWr.Data.Target "logic Clacounter2CfgMmrWr.Data.Target[15:0]"
 Toggle Clacounter2CfgMmrWr.Data.ResetOnTarget "logic Clacounter2CfgMmrWr.Data.ResetOnTarget[0:0]"
 Toggle Clacounter2CfgMmrWr.Data.UpperCounter "logic Clacounter2CfgMmrWr.Data.UpperCounter[14:0]"
@@ -22301,8 +22257,8 @@ Toggle ClatimestampWr.TimestampLowerWrEn "logic ClatimestampWr.TimestampLowerWrE
 Toggle ClatimestampWr.TimestampUpperWrEn "logic ClatimestampWr.TimestampUpperWrEn"
 Toggle ClatimestampWr.Data.TimestampUpper [55:33] "logic ClatimestampWr.Data.TimestampUpper[55:0]"
 Toggle ClatimestampWr.Data.TimestampUpper [31:26] "logic ClatimestampWr.Data.TimestampUpper[55:0]"
-Toggle ClatimestampWr.Data.TimestampUpper [24:13] "logic ClatimestampWr.Data.TimestampUpper[55:0]"
-Toggle 1to0 ClatimestampWr.Data.TimestampUpper [12] "logic ClatimestampWr.Data.TimestampUpper[55:0]"
+Toggle ClatimestampWr.Data.TimestampUpper [24:12] "logic ClatimestampWr.Data.TimestampUpper[55:0]"
+Toggle 1to0 ClatimestampWr.Data.TimestampUpper [11] "logic ClatimestampWr.Data.TimestampUpper[55:0]"
 Toggle ClatimestampconfigWr.ResyncWrEn "logic ClatimestampconfigWr.ResyncWrEn"
 Toggle ClatimestampconfigWr.TsCaptureWrEn "logic ClatimestampconfigWr.TsCaptureWrEn"
 Toggle ClatimestampconfigWr.Data.DebugMarker "logic ClatimestampconfigWr.Data.DebugMarker[7:0]"
@@ -22426,8 +22382,8 @@ Toggle ClaMmrCdbgtimestampcaptureWr.TimestampWrEn "logic ClaMmrCdbgtimestampcapt
 Toggle ClaMmrCdbgtimestampcaptureWr.Data.Timestamp "logic ClaMmrCdbgtimestampcaptureWr.Data.Timestamp[63:0]"
 Toggle o_cla_timesync_timestamp.time_val [63:41] "logic o_cla_timesync_timestamp.time_val[63:0]"
 Toggle o_cla_timesync_timestamp.time_val [39:34] "logic o_cla_timesync_timestamp.time_val[63:0]"
-Toggle o_cla_timesync_timestamp.time_val [32:21] "logic o_cla_timesync_timestamp.time_val[63:0]"
-Toggle 1to0 o_cla_timesync_timestamp.time_val [20] "logic o_cla_timesync_timestamp.time_val[63:0]"
+Toggle o_cla_timesync_timestamp.time_val [32:20] "logic o_cla_timesync_timestamp.time_val[63:0]"
+Toggle 1to0 o_cla_timesync_timestamp.time_val [19] "logic o_cla_timesync_timestamp.time_val[63:0]"
 Toggle event_bus [63:49] "logic event_bus[63:0]"
 Toggle event_bus [15:13] "logic event_bus[63:0]"
 Toggle event_bus [10:9] "logic event_bus[63:0]"
@@ -22445,8 +22401,7 @@ Toggle ClacounterCfgMmr[0].Rsvd "logic ClacounterCfgMmr[0].Rsvd[0:0]"
 Toggle ClacounterCfgMmr[1].Counter [15:9] "logic ClacounterCfgMmr[1].Counter[15:0]"
 Toggle ClacounterCfgMmr[1].UpperCounter "logic ClacounterCfgMmr[1].UpperCounter[14:0]"
 Toggle ClacounterCfgMmr[1].Rsvd "logic ClacounterCfgMmr[1].Rsvd[0:0]"
-Toggle ClacounterCfgMmr[2].Counter [15:10] "logic ClacounterCfgMmr[2].Counter[15:0]"
-Toggle 1to0 ClacounterCfgMmr[2].Counter [9] "logic ClacounterCfgMmr[2].Counter[15:0]"
+Toggle ClacounterCfgMmr[2].Counter [15:9] "logic ClacounterCfgMmr[2].Counter[15:0]"
 Toggle ClacounterCfgMmr[2].UpperCounter "logic ClacounterCfgMmr[2].UpperCounter[14:0]"
 Toggle ClacounterCfgMmr[2].Rsvd "logic ClacounterCfgMmr[2].Rsvd[0:0]"
 Toggle ClacounterCfgMmr[3].Counter [15:9] "logic ClacounterCfgMmr[3].Counter[15:0]"
@@ -22459,8 +22414,8 @@ Toggle debug_signals_d1 [32:20] "logic debug_signals_d1[63:0]"
 Toggle debug_signals_d1 [15:4] "logic debug_signals_d1[63:0]"
 Toggle cla_sync_timestamp [63:41] "logic cla_sync_timestamp[63:0]"
 Toggle cla_sync_timestamp [39:34] "logic cla_sync_timestamp[63:0]"
-Toggle cla_sync_timestamp [32:21] "logic cla_sync_timestamp[63:0]"
-Toggle 1to0 cla_sync_timestamp [20] "logic cla_sync_timestamp[63:0]"
+Toggle cla_sync_timestamp [32:20] "logic cla_sync_timestamp[63:0]"
+Toggle 1to0 cla_sync_timestamp [19] "logic cla_sync_timestamp[63:0]"
 Toggle i_xtrigger_ff "logic i_xtrigger_ff"
 Toggle xtrigger_posedge "logic xtrigger_posedge"
 Toggle DebugsignalCompareHiMmr[0].Value "logic DebugsignalCompareHiMmr[0].Value[63:0]"
@@ -22498,8 +22453,7 @@ Toggle ClacounterCfgMmrWr[1].Data.UpperTarget "logic ClacounterCfgMmrWr[1].Data.
 Toggle ClacounterCfgMmrWr[1].Data.Rsvd "logic ClacounterCfgMmrWr[1].Data.Rsvd[0:0]"
 Toggle ClacounterCfgMmrWr[2].CounterWrEn "logic ClacounterCfgMmrWr[2].CounterWrEn"
 Toggle ClacounterCfgMmrWr[2].UpperCounterWrEn "logic ClacounterCfgMmrWr[2].UpperCounterWrEn"
-Toggle ClacounterCfgMmrWr[2].Data.Counter [15:10] "logic ClacounterCfgMmrWr[2].Data.Counter[15:0]"
-Toggle 1to0 ClacounterCfgMmrWr[2].Data.Counter [9] "logic ClacounterCfgMmrWr[2].Data.Counter[15:0]"
+Toggle ClacounterCfgMmrWr[2].Data.Counter [15:9] "logic ClacounterCfgMmrWr[2].Data.Counter[15:0]"
 Toggle ClacounterCfgMmrWr[2].Data.Target "logic ClacounterCfgMmrWr[2].Data.Target[15:0]"
 Toggle ClacounterCfgMmrWr[2].Data.ResetOnTarget "logic ClacounterCfgMmrWr[2].Data.ResetOnTarget[0:0]"
 Toggle ClacounterCfgMmrWr[2].Data.UpperCounter "logic ClacounterCfgMmrWr[2].Data.UpperCounter[14:0]"
@@ -22515,13 +22469,13 @@ Toggle ClacounterCfgMmrWr[3].Data.UpperTarget "logic ClacounterCfgMmrWr[3].Data.
 Toggle ClacounterCfgMmrWr[3].Data.Rsvd "logic ClacounterCfgMmrWr[3].Data.Rsvd[0:0]"
 Toggle gen_timestamp_sync_scheme_0.timestamp_nxt [63:41] "logic gen_timestamp_sync_scheme_0.timestamp_nxt[63:0]"
 Toggle gen_timestamp_sync_scheme_0.timestamp_nxt [39:34] "logic gen_timestamp_sync_scheme_0.timestamp_nxt[63:0]"
-Toggle gen_timestamp_sync_scheme_0.timestamp_nxt [32:21] "logic gen_timestamp_sync_scheme_0.timestamp_nxt[63:0]"
-Toggle 1to0 gen_timestamp_sync_scheme_0.timestamp_nxt [20] "logic gen_timestamp_sync_scheme_0.timestamp_nxt[63:0]"
+Toggle gen_timestamp_sync_scheme_0.timestamp_nxt [32:20] "logic gen_timestamp_sync_scheme_0.timestamp_nxt[63:0]"
+Toggle 1to0 gen_timestamp_sync_scheme_0.timestamp_nxt [19] "logic gen_timestamp_sync_scheme_0.timestamp_nxt[63:0]"
 Toggle gen_timestamp_sync_scheme_0.timestamp_load "logic gen_timestamp_sync_scheme_0.timestamp_load"
 Toggle gen_timestamp_sync_scheme_0.timestamp_full [63:41] "logic gen_timestamp_sync_scheme_0.timestamp_full[63:0]"
 Toggle gen_timestamp_sync_scheme_0.timestamp_full [39:34] "logic gen_timestamp_sync_scheme_0.timestamp_full[63:0]"
-Toggle gen_timestamp_sync_scheme_0.timestamp_full [32:21] "logic gen_timestamp_sync_scheme_0.timestamp_full[63:0]"
-Toggle 1to0 gen_timestamp_sync_scheme_0.timestamp_full [20] "logic gen_timestamp_sync_scheme_0.timestamp_full[63:0]"
+Toggle gen_timestamp_sync_scheme_0.timestamp_full [32:20] "logic gen_timestamp_sync_scheme_0.timestamp_full[63:0]"
+Toggle 1to0 gen_timestamp_sync_scheme_0.timestamp_full [19] "logic gen_timestamp_sync_scheme_0.timestamp_full[63:0]"
 
 CHECKSUM: "2948406138 43412597"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.ClaActionGen
@@ -22575,8 +22529,7 @@ Toggle ClacounterCfgMmr[0].Rsvd "logic ClacounterCfgMmr[0].Rsvd[0:0]"
 Toggle ClacounterCfgMmr[1].Counter [15:9] "logic ClacounterCfgMmr[1].Counter[15:0]"
 Toggle ClacounterCfgMmr[1].UpperCounter "logic ClacounterCfgMmr[1].UpperCounter[14:0]"
 Toggle ClacounterCfgMmr[1].Rsvd "logic ClacounterCfgMmr[1].Rsvd[0:0]"
-Toggle ClacounterCfgMmr[2].Counter [15:10] "logic ClacounterCfgMmr[2].Counter[15:0]"
-Toggle 1to0 ClacounterCfgMmr[2].Counter [9] "logic ClacounterCfgMmr[2].Counter[15:0]"
+Toggle ClacounterCfgMmr[2].Counter [15:9] "logic ClacounterCfgMmr[2].Counter[15:0]"
 Toggle ClacounterCfgMmr[2].UpperCounter "logic ClacounterCfgMmr[2].UpperCounter[14:0]"
 Toggle ClacounterCfgMmr[2].Rsvd "logic ClacounterCfgMmr[2].Rsvd[0:0]"
 Toggle ClacounterCfgMmr[3].Counter [15:9] "logic ClacounterCfgMmr[3].Counter[15:0]"
@@ -22601,8 +22554,7 @@ Toggle ClacounterCfgMmrWr[1].Data.UpperTarget "logic ClacounterCfgMmrWr[1].Data.
 Toggle ClacounterCfgMmrWr[1].Data.Rsvd "logic ClacounterCfgMmrWr[1].Data.Rsvd[0:0]"
 Toggle ClacounterCfgMmrWr[2].CounterWrEn "logic ClacounterCfgMmrWr[2].CounterWrEn"
 Toggle ClacounterCfgMmrWr[2].UpperCounterWrEn "logic ClacounterCfgMmrWr[2].UpperCounterWrEn"
-Toggle ClacounterCfgMmrWr[2].Data.Counter [15:10] "logic ClacounterCfgMmrWr[2].Data.Counter[15:0]"
-Toggle 1to0 ClacounterCfgMmrWr[2].Data.Counter [9] "logic ClacounterCfgMmrWr[2].Data.Counter[15:0]"
+Toggle ClacounterCfgMmrWr[2].Data.Counter [15:9] "logic ClacounterCfgMmrWr[2].Data.Counter[15:0]"
 Toggle ClacounterCfgMmrWr[2].Data.Target "logic ClacounterCfgMmrWr[2].Data.Target[15:0]"
 Toggle ClacounterCfgMmrWr[2].Data.ResetOnTarget "logic ClacounterCfgMmrWr[2].Data.ResetOnTarget[0:0]"
 Toggle ClacounterCfgMmrWr[2].Data.UpperCounter "logic ClacounterCfgMmrWr[2].Data.UpperCounter[14:0]"
@@ -22780,23 +22732,19 @@ Toggle current_counter [30:9] "logic current_counter[30:0]"
 CHECKSUM: "1104308719 1451555111"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.ClaEventGen.gen_cla_counter[2].cla_counter_inst
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle ClacounterCfgMmr.Counter [15:10] "logic ClacounterCfgMmr.Counter[15:0]"
-Toggle 1to0 ClacounterCfgMmr.Counter [9] "logic ClacounterCfgMmr.Counter[15:0]"
+Toggle ClacounterCfgMmr.Counter [15:9] "logic ClacounterCfgMmr.Counter[15:0]"
 Toggle ClacounterCfgMmr.UpperCounter "logic ClacounterCfgMmr.UpperCounter[14:0]"
 Toggle ClacounterCfgMmr.Rsvd "logic ClacounterCfgMmr.Rsvd[0:0]"
 Toggle next_WrData.CounterWrEn "logic next_WrData.CounterWrEn"
 Toggle next_WrData.UpperCounterWrEn "logic next_WrData.UpperCounterWrEn"
-Toggle next_WrData.Data.Counter [15:10] "logic next_WrData.Data.Counter[15:0]"
-Toggle 1to0 next_WrData.Data.Counter [9] "logic next_WrData.Data.Counter[15:0]"
+Toggle next_WrData.Data.Counter [15:9] "logic next_WrData.Data.Counter[15:0]"
 Toggle next_WrData.Data.Target "logic next_WrData.Data.Target[15:0]"
 Toggle next_WrData.Data.ResetOnTarget "logic next_WrData.Data.ResetOnTarget[0:0]"
 Toggle next_WrData.Data.UpperCounter "logic next_WrData.Data.UpperCounter[14:0]"
 Toggle next_WrData.Data.UpperTarget "logic next_WrData.Data.UpperTarget[14:0]"
 Toggle next_WrData.Data.Rsvd "logic next_WrData.Data.Rsvd[0:0]"
-Toggle next_counter [30:10] "logic next_counter[30:0]"
-Toggle 1to0 next_counter [9] "logic next_counter[30:0]"
-Toggle current_counter [30:10] "logic current_counter[30:0]"
-Toggle 1to0 current_counter [9] "logic current_counter[30:0]"
+Toggle next_counter [30:9] "logic next_counter[30:0]"
+Toggle current_counter [30:9] "logic current_counter[30:0]"
 
 CHECKSUM: "1104308719 1451555111"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].cla_inst.ClaEventGen.gen_cla_counter[3].cla_counter_inst
@@ -23646,10 +23594,10 @@ Toggle debug_bus_d1 [50:36] "logic debug_bus_d1[63:0]"
 Toggle debug_bus_d1 [34] "logic debug_bus_d1[63:0]"
 Toggle debug_bus_d1 [32:20] "logic debug_bus_d1[63:0]"
 Toggle debug_bus_d1 [15:4] "logic debug_bus_d1[63:0]"
-Toggle FineGrainTime_d1 [5:4] "logic FineGrainTime_d1[7:0]"
-Toggle FineGrainTime_d1 [2] "logic FineGrainTime_d1[7:0]"
-Toggle 1to0 FineGrainTime_d1 [7:6] "logic FineGrainTime_d1[7:0]"
-Toggle 1to0 FineGrainTime_d1 [3] "logic FineGrainTime_d1[7:0]"
+Toggle FineGrainTime_d1 [6:5] "logic FineGrainTime_d1[7:0]"
+Toggle FineGrainTime_d1 [3] "logic FineGrainTime_d1[7:0]"
+Toggle 1to0 FineGrainTime_d1 [7] "logic FineGrainTime_d1[7:0]"
+Toggle 1to0 FineGrainTime_d1 [4] "logic FineGrainTime_d1[7:0]"
 Toggle debug_signals_in_d1 [0][15:4] "logic [15:0][15:0]debug_signals_in_d1"
 Toggle debug_signals_in_d1 [1][15:4] "logic [15:0][15:0]debug_signals_in_d1"
 Toggle debug_signals_in_d1 [1][2:0] "logic [15:0][15:0]debug_signals_in_d1"
@@ -23699,10 +23647,10 @@ Toggle debug_signals_in_mux [16][15:0] "logic [16:0][15:0]debug_signals_in_mux"
 CHECKSUM: "1659362951 2699126373"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].u_mux_sel.FineGrainTimeNext_ff
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle out [5:4] "logic out[7:0]"
-Toggle out [2] "logic out[7:0]"
-Toggle 1to0 out [7:6] "logic out[7:0]"
-Toggle 1to0 out [3] "logic out[7:0]"
+Toggle out [6:5] "logic out[7:0]"
+Toggle out [3] "logic out[7:0]"
+Toggle 1to0 out [7] "logic out[7:0]"
+Toggle 1to0 out [4] "logic out[7:0]"
 
 CHECKSUM: "1659362951 37599631"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].u_mux_sel.debug_bus_ff
@@ -23856,9 +23804,10 @@ Toggle debug_bus [0][15:4] "logic [0:0][63:0]debug_bus"
 Toggle i_timestamp "logic [0:0][63:0]i_timestamp"
 Toggle timesync_cla_timestamp[0].time_val [63:41] "logic timesync_cla_timestamp[0].time_val[63:0]"
 Toggle timesync_cla_timestamp[0].time_val [39:34] "logic timesync_cla_timestamp[0].time_val[63:0]"
-Toggle timesync_cla_timestamp[0].time_val [32:21] "logic timesync_cla_timestamp[0].time_val[63:0]"
-Toggle 1to0 timesync_cla_timestamp[0].time_val [20] "logic timesync_cla_timestamp[0].time_val[63:0]"
+Toggle timesync_cla_timestamp[0].time_val [32:20] "logic timesync_cla_timestamp[0].time_val[63:0]"
+Toggle 1to0 timesync_cla_timestamp[0].time_val [19] "logic timesync_cla_timestamp[0].time_val[63:0]"
 Toggle i_sdtrig_control "logic [0:0][1:0]i_sdtrig_control"
+Toggle DstMmrs[0].Cdbgdebugtracecfg.FrameModeEnable "logic DstMmrs[0].Cdbgdebugtracecfg.FrameModeEnable[0:0]"
 Toggle DstMmrs[0].Trdstinstfeatures.Trdstinstnoaddrdiff "logic DstMmrs[0].Trdstinstfeatures.Trdstinstnoaddrdiff[0:0]"
 Toggle DstMmrs[0].Trdstinstfeatures.Trdstinstnotrapaddr "logic DstMmrs[0].Trdstinstfeatures.Trdstinstnotrapaddr[0:0]"
 Toggle DstMmrs[0].Trdstinstfeatures.Trdstinstenrepeatedhistory "logic DstMmrs[0].Trdstinstfeatures.Trdstinstenrepeatedhistory[0:0]"
@@ -23887,14 +23836,27 @@ Toggle DstMmrsWr[0].TrdstcontrolWr.Data.Trdstsyncmode "logic DstMmrsWr[0].Trdstc
 Toggle DstMmrsWr[0].TrdstcontrolWr.Data.Trdstsyncmax "logic DstMmrsWr[0].TrdstcontrolWr.Data.Trdstsyncmax[3:0]"
 Toggle DstMmrsWr[0].TrdstcontrolWr.Data.Trdstformat "logic DstMmrsWr[0].TrdstcontrolWr.Data.Trdstformat[2:0]"
 Toggle dst_tnif_data [0][118:115] "logic [0:0][127:0]dst_tnif_data"
+Toggle dst_tnif_data [0][102:99] "logic [0:0][127:0]dst_tnif_data"
+Toggle dst_tnif_data [0][86:83] "logic [0:0][127:0]dst_tnif_data"
 Toggle dst_tnif_data [0][70:67] "logic [0:0][127:0]dst_tnif_data"
+Toggle dst_tnif_data [0][54:51] "logic [0:0][127:0]dst_tnif_data"
+Toggle dst_tnif_data [0][38:35] "logic [0:0][127:0]dst_tnif_data"
+Toggle dst_tnif_data [0][22:19] "logic [0:0][127:0]dst_tnif_data"
+Toggle dst_tnif_data [0][6:3] "logic [0:0][127:0]dst_tnif_data"
 Toggle dst_inst[0].trig_control_e "logic dst_inst[0].trig_control_e[1:0]"
+Toggle dst_inst[0].dst_trace_info.frame_mode_enable "logic dst_inst[0].dst_trace_info.frame_mode_enable"
 Toggle dst_inst[0].dst_trace_info.frame_length [5:0] "logic dst_inst[0].dst_trace_info.frame_length[9:0]"
 Toggle dst_inst[0].dst_trace_info.stream_depth [4:0] "logic dst_inst[0].dst_trace_info.stream_depth[9:0]"
 Toggle dst_inst[0].sdtrig_dst_trace_start "logic dst_inst[0].sdtrig_dst_trace_start"
 Toggle dst_inst[0].sdtrig_dst_trace_stop "logic dst_inst[0].sdtrig_dst_trace_stop"
 Toggle dst_inst[0].dst_tnif_data_w [118:115] "logic dst_inst[0].dst_tnif_data_w[127:0]"
+Toggle dst_inst[0].dst_tnif_data_w [102:99] "logic dst_inst[0].dst_tnif_data_w[127:0]"
+Toggle dst_inst[0].dst_tnif_data_w [86:83] "logic dst_inst[0].dst_tnif_data_w[127:0]"
 Toggle dst_inst[0].dst_tnif_data_w [70:67] "logic dst_inst[0].dst_tnif_data_w[127:0]"
+Toggle dst_inst[0].dst_tnif_data_w [54:51] "logic dst_inst[0].dst_tnif_data_w[127:0]"
+Toggle dst_inst[0].dst_tnif_data_w [38:35] "logic dst_inst[0].dst_tnif_data_w[127:0]"
+Toggle dst_inst[0].dst_tnif_data_w [22:19] "logic dst_inst[0].dst_tnif_data_w[127:0]"
+Toggle dst_inst[0].dst_tnif_data_w [6:3] "logic dst_inst[0].dst_tnif_data_w[127:0]"
 Toggle dst_inst[0].DstMmrsWr_int.TrdstcontrolWr.TrdstemptyWrEn "logic dst_inst[0].DstMmrsWr_int.TrdstcontrolWr.TrdstemptyWrEn"
 Toggle dst_inst[0].DstMmrsWr_int.TrdstcontrolWr.Data.Trdstactive "logic dst_inst[0].DstMmrsWr_int.TrdstcontrolWr.Data.Trdstactive[0:0]"
 Toggle dst_inst[0].DstMmrsWr_int.TrdstcontrolWr.Data.Trdstenable "logic dst_inst[0].DstMmrsWr_int.TrdstcontrolWr.Data.Trdstenable[0:0]"
@@ -23919,7 +23881,8 @@ Toggle dst_inst[0].vlt_packet [46:43] "logic dst_inst[0].vlt_packet[79:0]"
 Toggle dst_inst[0].vlt_packet [41] "logic dst_inst[0].vlt_packet[79:0]"
 Toggle dst_inst[0].vlt_packet [38:35] "logic dst_inst[0].vlt_packet[79:0]"
 Toggle dst_inst[0].vlt_packet [33] "logic dst_inst[0].vlt_packet[79:0]"
-Toggle dst_inst[0].vlt_packet [29] "logic dst_inst[0].vlt_packet[79:0]"
+Toggle dst_inst[0].vlt_packet [30:27] "logic dst_inst[0].vlt_packet[79:0]"
+Toggle dst_inst[0].vlt_packet [22:19] "logic dst_inst[0].vlt_packet[79:0]"
 Toggle dst_inst[0].vlt_packet [6:3] "logic dst_inst[0].vlt_packet[79:0]"
 Toggle dst_inst[0].dbg_trace_request_packet_space_in_bytes [4] "logic dst_inst[0].dbg_trace_request_packet_space_in_bytes[4:0]"
 Toggle dst_inst[0].Trdstcontrol.Trdstinstmode "logic dst_inst[0].Trdstcontrol.Trdstinstmode[2:0]"
@@ -23936,6 +23899,7 @@ Toggle dst_inst[0].Trdstinstfeatures.Trdstinstnoaddrdiff "logic dst_inst[0].Trds
 Toggle dst_inst[0].Trdstinstfeatures.Trdstinstnotrapaddr "logic dst_inst[0].Trdstinstfeatures.Trdstinstnotrapaddr[0:0]"
 Toggle dst_inst[0].Trdstinstfeatures.Trdstinstenrepeatedhistory "logic dst_inst[0].Trdstinstfeatures.Trdstinstenrepeatedhistory[0:0]"
 Toggle dst_inst[0].Trdstinstfeatures.Trdstsrcbits [2] "logic dst_inst[0].Trdstinstfeatures.Trdstsrcbits[3:0]"
+Toggle dst_inst[0].Cdbgdebugtracecfg.FrameModeEnable "logic dst_inst[0].Cdbgdebugtracecfg.FrameModeEnable[0:0]"
 Toggle dst_inst[0].TrdstcontrolWr.TrdstemptyWrEn "logic dst_inst[0].TrdstcontrolWr.TrdstemptyWrEn"
 Toggle dst_inst[0].TrdstcontrolWr.Data.Trdstactive "logic dst_inst[0].TrdstcontrolWr.Data.Trdstactive[0:0]"
 Toggle dst_inst[0].TrdstcontrolWr.Data.Trdstenable "logic dst_inst[0].TrdstcontrolWr.Data.Trdstenable[0:0]"
@@ -23988,8 +23952,8 @@ Toggle TrdstcontrolWr.Data.Trdstformat "logic TrdstcontrolWr.Data.Trdstformat[2:
 Toggle timestamp.time_val "logic timestamp.time_val[63:0]"
 Toggle cla_timesync_timestamp.time_val [63:41] "logic cla_timesync_timestamp.time_val[63:0]"
 Toggle cla_timesync_timestamp.time_val [39:34] "logic cla_timesync_timestamp.time_val[63:0]"
-Toggle cla_timesync_timestamp.time_val [32:21] "logic cla_timesync_timestamp.time_val[63:0]"
-Toggle 1to0 cla_timesync_timestamp.time_val [20] "logic cla_timesync_timestamp.time_val[63:0]"
+Toggle cla_timesync_timestamp.time_val [32:20] "logic cla_timesync_timestamp.time_val[63:0]"
+Toggle 1to0 cla_timesync_timestamp.time_val [19] "logic cla_timesync_timestamp.time_val[63:0]"
 Toggle vlt_packet [78:75] "logic vlt_packet[79:0]"
 Toggle vlt_packet [73] "logic vlt_packet[79:0]"
 Toggle vlt_packet [70:67] "logic vlt_packet[79:0]"
@@ -24001,13 +23965,15 @@ Toggle vlt_packet [46:43] "logic vlt_packet[79:0]"
 Toggle vlt_packet [41] "logic vlt_packet[79:0]"
 Toggle vlt_packet [38:35] "logic vlt_packet[79:0]"
 Toggle vlt_packet [33] "logic vlt_packet[79:0]"
-Toggle vlt_packet [29] "logic vlt_packet[79:0]"
+Toggle vlt_packet [30:27] "logic vlt_packet[79:0]"
+Toggle vlt_packet [22:19] "logic vlt_packet[79:0]"
 Toggle vlt_packet [6:3] "logic vlt_packet[79:0]"
 Toggle request_packet_space_in_bytes [4] "logic request_packet_space_in_bytes[4:0]"
 Toggle xor_debug_bus [63:34] "logic xor_debug_bus[63:0]"
 Toggle xor_debug_bus [32:3] "logic xor_debug_bus[63:0]"
-Toggle vlt_timestamp.time_val [63:15] "logic vlt_timestamp.time_val[63:0]"
-Toggle vlt_timestamp.time_val [13] "logic vlt_timestamp.time_val[63:0]"
+Toggle vlt_timestamp.time_val [63:9] "logic vlt_timestamp.time_val[63:0]"
+Toggle vlt_timestamp.time_val [7:6] "logic vlt_timestamp.time_val[63:0]"
+Toggle vlt_timestamp.time_val [4:3] "logic vlt_timestamp.time_val[63:0]"
 
 CHECKSUM: "243658460 4197296183"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.dst_wrapper.dst_inst[0].debug_sig_trace_gen.vlt_packet_compression
@@ -24017,8 +23983,9 @@ Toggle Trdstcontrol.Trdstcontext "logic Trdstcontrol.Trdstcontext[0:0]"
 Toggle Trdstcontrol.Trdstinststalloroverflow "logic Trdstcontrol.Trdstinststalloroverflow[0:0]"
 Toggle Trdstcontrol.Trdstinststallena "logic Trdstcontrol.Trdstinststallena[0:0]"
 Toggle Trdstcontrol.Trdstinhibitsrc "logic Trdstcontrol.Trdstinhibitsrc[0:0]"
-Toggle timestamp.time_val [63:15] "logic timestamp.time_val[63:0]"
-Toggle timestamp.time_val [13] "logic timestamp.time_val[63:0]"
+Toggle timestamp.time_val [63:9] "logic timestamp.time_val[63:0]"
+Toggle timestamp.time_val [7:6] "logic timestamp.time_val[63:0]"
+Toggle timestamp.time_val [4:3] "logic timestamp.time_val[63:0]"
 Toggle xor_debug_bus_in [63:34] "logic xor_debug_bus_in[63:0]"
 Toggle xor_debug_bus_in [32:3] "logic xor_debug_bus_in[63:0]"
 Toggle vlt_packet [78:75] "logic vlt_packet[79:0]"
@@ -24032,7 +23999,8 @@ Toggle vlt_packet [46:43] "logic vlt_packet[79:0]"
 Toggle vlt_packet [41] "logic vlt_packet[79:0]"
 Toggle vlt_packet [38:35] "logic vlt_packet[79:0]"
 Toggle vlt_packet [33] "logic vlt_packet[79:0]"
-Toggle vlt_packet [29] "logic vlt_packet[79:0]"
+Toggle vlt_packet [30:27] "logic vlt_packet[79:0]"
+Toggle vlt_packet [22:19] "logic vlt_packet[79:0]"
 Toggle vlt_packet [6:3] "logic vlt_packet[79:0]"
 Toggle request_packet_space_in_bytes [4] "logic request_packet_space_in_bytes[4:0]"
 Toggle next_vlt_packet [78:75] "logic next_vlt_packet[79:0]"
@@ -24046,14 +24014,15 @@ Toggle next_vlt_packet [46:43] "logic next_vlt_packet[79:0]"
 Toggle next_vlt_packet [41] "logic next_vlt_packet[79:0]"
 Toggle next_vlt_packet [38:35] "logic next_vlt_packet[79:0]"
 Toggle next_vlt_packet [33] "logic next_vlt_packet[79:0]"
-Toggle next_vlt_packet [29] "logic next_vlt_packet[79:0]"
+Toggle next_vlt_packet [30:27] "logic next_vlt_packet[79:0]"
+Toggle next_vlt_packet [22:19] "logic next_vlt_packet[79:0]"
 Toggle next_vlt_packet [6:3] "logic next_vlt_packet[79:0]"
 Toggle vlt_payload [63:34] "logic vlt_payload[63:0]"
 Toggle vlt_payload [32:10] "logic vlt_payload[63:0]"
 Toggle vlt_payload [8:3] "logic vlt_payload[63:0]"
 Toggle retry_vlt_packet [79:50] "logic retry_vlt_packet[79:0]"
-Toggle retry_vlt_packet [48:31] "logic retry_vlt_packet[79:0]"
-Toggle retry_vlt_packet [29] "logic retry_vlt_packet[79:0]"
+Toggle retry_vlt_packet [48:26] "logic retry_vlt_packet[79:0]"
+Toggle retry_vlt_packet [24:19] "logic retry_vlt_packet[79:0]"
 Toggle retry_vlt_packet [6:3] "logic retry_vlt_packet[79:0]"
 Toggle retry_vlt_packet_length_in_bytes [4] "logic retry_vlt_packet_length_in_bytes[4:0]"
 Toggle incoming_packet_length_in_bytes [4] "logic incoming_packet_length_in_bytes[4:0]"
@@ -24166,11 +24135,19 @@ Toggle data_in [46:43] "logic data_in[79:0]"
 Toggle data_in [41] "logic data_in[79:0]"
 Toggle data_in [38:35] "logic data_in[79:0]"
 Toggle data_in [33] "logic data_in[79:0]"
-Toggle data_in [29] "logic data_in[79:0]"
+Toggle data_in [30:27] "logic data_in[79:0]"
+Toggle data_in [22:19] "logic data_in[79:0]"
 Toggle data_in [6:3] "logic data_in[79:0]"
 Toggle request_packet_space_in_bytes [4] "logic request_packet_space_in_bytes[4:0]"
 Toggle tnif_data_out [118:115] "logic tnif_data_out[127:0]"
+Toggle tnif_data_out [102:99] "logic tnif_data_out[127:0]"
+Toggle tnif_data_out [86:83] "logic tnif_data_out[127:0]"
 Toggle tnif_data_out [70:67] "logic tnif_data_out[127:0]"
+Toggle tnif_data_out [54:51] "logic tnif_data_out[127:0]"
+Toggle tnif_data_out [38:35] "logic tnif_data_out[127:0]"
+Toggle tnif_data_out [22:19] "logic tnif_data_out[127:0]"
+Toggle tnif_data_out [6:3] "logic tnif_data_out[127:0]"
+Toggle frame_info.frame_mode_enable "logic frame_info.frame_mode_enable"
 Toggle frame_info.frame_length [5:0] "logic frame_info.frame_length[9:0]"
 Toggle frame_info.stream_depth [4:0] "logic frame_info.stream_depth[9:0]"
 Toggle accumulator_data [502:499] "logic accumulator_data[511:0]"
@@ -24178,30 +24155,43 @@ Toggle accumulator_data [486:483] "logic accumulator_data[511:0]"
 Toggle accumulator_data [470:467] "logic accumulator_data[511:0]"
 Toggle accumulator_data [454:451] "logic accumulator_data[511:0]"
 Toggle accumulator_data [438:435] "logic accumulator_data[511:0]"
+Toggle accumulator_data [422:419] "logic accumulator_data[511:0]"
 Toggle accumulator_data [406:403] "logic accumulator_data[511:0]"
 Toggle accumulator_data [390:387] "logic accumulator_data[511:0]"
 Toggle accumulator_data [374:371] "logic accumulator_data[511:0]"
 Toggle accumulator_data [358:355] "logic accumulator_data[511:0]"
+Toggle accumulator_data [342:339] "logic accumulator_data[511:0]"
 Toggle accumulator_data [326:323] "logic accumulator_data[511:0]"
 Toggle accumulator_data [310:307] "logic accumulator_data[511:0]"
 Toggle accumulator_data [294:291] "logic accumulator_data[511:0]"
 Toggle accumulator_data [278:275] "logic accumulator_data[511:0]"
+Toggle accumulator_data [262:259] "logic accumulator_data[511:0]"
 Toggle accumulator_data [246:243] "logic accumulator_data[511:0]"
 Toggle accumulator_data [230:227] "logic accumulator_data[511:0]"
 Toggle accumulator_data [214:211] "logic accumulator_data[511:0]"
 Toggle accumulator_data [198:195] "logic accumulator_data[511:0]"
+Toggle accumulator_data [182:179] "logic accumulator_data[511:0]"
 Toggle accumulator_data [166:163] "logic accumulator_data[511:0]"
 Toggle accumulator_data [150:147] "logic accumulator_data[511:0]"
 Toggle accumulator_data [134:131] "logic accumulator_data[511:0]"
 Toggle accumulator_data [118:115] "logic accumulator_data[511:0]"
+Toggle accumulator_data [102:99] "logic accumulator_data[511:0]"
 Toggle accumulator_data [86:83] "logic accumulator_data[511:0]"
 Toggle accumulator_data [70:67] "logic accumulator_data[511:0]"
 Toggle accumulator_data [54:51] "logic accumulator_data[511:0]"
 Toggle accumulator_data [38:35] "logic accumulator_data[511:0]"
-Toggle accumulator_data [3] "logic accumulator_data[511:0]"
-Toggle fifo_entry_count [4] "logic fifo_entry_count[4:0]"
+Toggle accumulator_data [22:19] "logic accumulator_data[511:0]"
+Toggle accumulator_data [6:3] "logic accumulator_data[511:0]"
+Toggle fifo_entry_count [4:3] "logic fifo_entry_count[4:0]"
+Toggle fifo_space_available "logic fifo_space_available"
 Toggle fifo_read_data [118:115] "logic fifo_read_data[127:0]"
+Toggle fifo_read_data [102:99] "logic fifo_read_data[127:0]"
+Toggle fifo_read_data [86:83] "logic fifo_read_data[127:0]"
 Toggle fifo_read_data [70:67] "logic fifo_read_data[127:0]"
+Toggle fifo_read_data [54:51] "logic fifo_read_data[127:0]"
+Toggle fifo_read_data [38:35] "logic fifo_read_data[127:0]"
+Toggle fifo_read_data [22:19] "logic fifo_read_data[127:0]"
+Toggle fifo_read_data [6:3] "logic fifo_read_data[127:0]"
 Toggle frame_fill_packet_bit_enable [255:160] "logic frame_fill_packet_bit_enable[255:0]"
 Toggle frame_fill_packet_be [31:20] "logic frame_fill_packet_be[31:0]"
 Toggle request_packet_space_in_bytes_with_frame_support [6:5] "logic request_packet_space_in_bytes_with_frame_support[6:0]"
@@ -24218,7 +24208,8 @@ Toggle cross_connect_data_in [46:43] "logic cross_connect_data_in[255:0]"
 Toggle cross_connect_data_in [41] "logic cross_connect_data_in[255:0]"
 Toggle cross_connect_data_in [38:35] "logic cross_connect_data_in[255:0]"
 Toggle cross_connect_data_in [33] "logic cross_connect_data_in[255:0]"
-Toggle cross_connect_data_in [29] "logic cross_connect_data_in[255:0]"
+Toggle cross_connect_data_in [30:27] "logic cross_connect_data_in[255:0]"
+Toggle cross_connect_data_in [22:19] "logic cross_connect_data_in[255:0]"
 Toggle cross_connect_data_in [6:3] "logic cross_connect_data_in[255:0]"
 Toggle cross_connect_data_byte_be_in [31:20] "logic cross_connect_data_byte_be_in[31:0]"
 Toggle frames_in_stream [9:8] "logic frames_in_stream[9:0]"
@@ -24235,38 +24226,51 @@ Toggle accumulator_data [486:483] "logic accumulator_data[511:0]"
 Toggle accumulator_data [470:467] "logic accumulator_data[511:0]"
 Toggle accumulator_data [454:451] "logic accumulator_data[511:0]"
 Toggle accumulator_data [438:435] "logic accumulator_data[511:0]"
+Toggle accumulator_data [422:419] "logic accumulator_data[511:0]"
 Toggle accumulator_data [406:403] "logic accumulator_data[511:0]"
 Toggle accumulator_data [390:387] "logic accumulator_data[511:0]"
 Toggle accumulator_data [374:371] "logic accumulator_data[511:0]"
 Toggle accumulator_data [358:355] "logic accumulator_data[511:0]"
+Toggle accumulator_data [342:339] "logic accumulator_data[511:0]"
 Toggle accumulator_data [326:323] "logic accumulator_data[511:0]"
 Toggle accumulator_data [310:307] "logic accumulator_data[511:0]"
 Toggle accumulator_data [294:291] "logic accumulator_data[511:0]"
 Toggle accumulator_data [278:275] "logic accumulator_data[511:0]"
+Toggle accumulator_data [262:259] "logic accumulator_data[511:0]"
 Toggle accumulator_data [246:243] "logic accumulator_data[511:0]"
 Toggle accumulator_data [230:227] "logic accumulator_data[511:0]"
 Toggle accumulator_data [214:211] "logic accumulator_data[511:0]"
 Toggle accumulator_data [198:195] "logic accumulator_data[511:0]"
+Toggle accumulator_data [182:179] "logic accumulator_data[511:0]"
 Toggle accumulator_data [166:163] "logic accumulator_data[511:0]"
 Toggle accumulator_data [150:147] "logic accumulator_data[511:0]"
 Toggle accumulator_data [134:131] "logic accumulator_data[511:0]"
 Toggle accumulator_data [118:115] "logic accumulator_data[511:0]"
+Toggle accumulator_data [102:99] "logic accumulator_data[511:0]"
 Toggle accumulator_data [86:83] "logic accumulator_data[511:0]"
 Toggle accumulator_data [70:67] "logic accumulator_data[511:0]"
 Toggle accumulator_data [54:51] "logic accumulator_data[511:0]"
 Toggle accumulator_data [38:35] "logic accumulator_data[511:0]"
-Toggle accumulator_data [3] "logic accumulator_data[511:0]"
+Toggle accumulator_data [22:19] "logic accumulator_data[511:0]"
+Toggle accumulator_data [6:3] "logic accumulator_data[511:0]"
 Toggle request_packet_space_in_bytes_with_frame_support [6:5] "logic request_packet_space_in_bytes_with_frame_support[6:0]"
+Toggle fifo_space_available "logic fifo_space_available"
 Toggle bank_to_fifo_data_out [246:243] "logic bank_to_fifo_data_out[255:0]"
 Toggle bank_to_fifo_data_out [230:227] "logic bank_to_fifo_data_out[255:0]"
 Toggle bank_to_fifo_data_out [214:211] "logic bank_to_fifo_data_out[255:0]"
 Toggle bank_to_fifo_data_out [198:195] "logic bank_to_fifo_data_out[255:0]"
+Toggle bank_to_fifo_data_out [182:179] "logic bank_to_fifo_data_out[255:0]"
+Toggle bank_to_fifo_data_out [166:163] "logic bank_to_fifo_data_out[255:0]"
 Toggle bank_to_fifo_data_out [150:147] "logic bank_to_fifo_data_out[255:0]"
 Toggle bank_to_fifo_data_out [134:131] "logic bank_to_fifo_data_out[255:0]"
 Toggle bank_to_fifo_data_out [118:115] "logic bank_to_fifo_data_out[255:0]"
+Toggle bank_to_fifo_data_out [102:99] "logic bank_to_fifo_data_out[255:0]"
+Toggle bank_to_fifo_data_out [86:83] "logic bank_to_fifo_data_out[255:0]"
 Toggle bank_to_fifo_data_out [70:67] "logic bank_to_fifo_data_out[255:0]"
 Toggle bank_to_fifo_data_out [54:51] "logic bank_to_fifo_data_out[255:0]"
 Toggle bank_to_fifo_data_out [38:35] "logic bank_to_fifo_data_out[255:0]"
+Toggle bank_to_fifo_data_out [22:19] "logic bank_to_fifo_data_out[255:0]"
+Toggle bank_to_fifo_data_out [6:3] "logic bank_to_fifo_data_out[255:0]"
 
 CHECKSUM: "3775597833 2890247207"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.dst_wrapper.dst_inst[0].debug_sig_trace_packetizer.accumulator_instance.gen_accumulator_bank_instance[0].accumulator_bank_instance
@@ -24275,41 +24279,50 @@ Toggle bank_data [246:243] "logic bank_data[255:0]"
 Toggle bank_data [230:227] "logic bank_data[255:0]"
 Toggle bank_data [214:211] "logic bank_data[255:0]"
 Toggle bank_data [198:195] "logic bank_data[255:0]"
+Toggle bank_data [182:179] "logic bank_data[255:0]"
 Toggle bank_data [166:163] "logic bank_data[255:0]"
 Toggle bank_data [150:147] "logic bank_data[255:0]"
 Toggle bank_data [134:131] "logic bank_data[255:0]"
 Toggle bank_data [118:115] "logic bank_data[255:0]"
+Toggle bank_data [102:99] "logic bank_data[255:0]"
 Toggle bank_data [86:83] "logic bank_data[255:0]"
 Toggle bank_data [70:67] "logic bank_data[255:0]"
 Toggle bank_data [54:51] "logic bank_data[255:0]"
 Toggle bank_data [38:35] "logic bank_data[255:0]"
-Toggle bank_data [3] "logic bank_data[255:0]"
+Toggle bank_data [22:19] "logic bank_data[255:0]"
+Toggle bank_data [6:3] "logic bank_data[255:0]"
 Toggle bank_data_out [246:243] "logic bank_data_out[255:0]"
 Toggle bank_data_out [230:227] "logic bank_data_out[255:0]"
 Toggle bank_data_out [214:211] "logic bank_data_out[255:0]"
 Toggle bank_data_out [198:195] "logic bank_data_out[255:0]"
+Toggle bank_data_out [182:179] "logic bank_data_out[255:0]"
 Toggle bank_data_out [166:163] "logic bank_data_out[255:0]"
 Toggle bank_data_out [150:147] "logic bank_data_out[255:0]"
 Toggle bank_data_out [134:131] "logic bank_data_out[255:0]"
 Toggle bank_data_out [118:115] "logic bank_data_out[255:0]"
+Toggle bank_data_out [102:99] "logic bank_data_out[255:0]"
 Toggle bank_data_out [86:83] "logic bank_data_out[255:0]"
 Toggle bank_data_out [70:67] "logic bank_data_out[255:0]"
 Toggle bank_data_out [54:51] "logic bank_data_out[255:0]"
 Toggle bank_data_out [38:35] "logic bank_data_out[255:0]"
-Toggle bank_data_out [3] "logic bank_data_out[255:0]"
+Toggle bank_data_out [22:19] "logic bank_data_out[255:0]"
+Toggle bank_data_out [6:3] "logic bank_data_out[255:0]"
 Toggle next_bank_data_out [246:243] "logic next_bank_data_out[255:0]"
 Toggle next_bank_data_out [230:227] "logic next_bank_data_out[255:0]"
 Toggle next_bank_data_out [214:211] "logic next_bank_data_out[255:0]"
 Toggle next_bank_data_out [198:195] "logic next_bank_data_out[255:0]"
+Toggle next_bank_data_out [182:179] "logic next_bank_data_out[255:0]"
 Toggle next_bank_data_out [166:163] "logic next_bank_data_out[255:0]"
 Toggle next_bank_data_out [150:147] "logic next_bank_data_out[255:0]"
 Toggle next_bank_data_out [134:131] "logic next_bank_data_out[255:0]"
 Toggle next_bank_data_out [118:115] "logic next_bank_data_out[255:0]"
+Toggle next_bank_data_out [102:99] "logic next_bank_data_out[255:0]"
 Toggle next_bank_data_out [86:83] "logic next_bank_data_out[255:0]"
 Toggle next_bank_data_out [70:67] "logic next_bank_data_out[255:0]"
 Toggle next_bank_data_out [54:51] "logic next_bank_data_out[255:0]"
 Toggle next_bank_data_out [38:35] "logic next_bank_data_out[255:0]"
-Toggle next_bank_data_out [3] "logic next_bank_data_out[255:0]"
+Toggle next_bank_data_out [22:19] "logic next_bank_data_out[255:0]"
+Toggle next_bank_data_out [6:3] "logic next_bank_data_out[255:0]"
 Toggle target_write_byte_wraparound "logic target_write_byte_wraparound"
 Toggle target_write_byte_boundary_crosses_bank_range "logic target_write_byte_boundary_crosses_bank_range"
 
@@ -24321,40 +24334,49 @@ Toggle bank_data [230:227] "logic bank_data[255:0]"
 Toggle bank_data [214:211] "logic bank_data[255:0]"
 Toggle bank_data [198:195] "logic bank_data[255:0]"
 Toggle bank_data [182:179] "logic bank_data[255:0]"
+Toggle bank_data [166:163] "logic bank_data[255:0]"
 Toggle bank_data [150:147] "logic bank_data[255:0]"
 Toggle bank_data [134:131] "logic bank_data[255:0]"
 Toggle bank_data [118:115] "logic bank_data[255:0]"
 Toggle bank_data [102:99] "logic bank_data[255:0]"
+Toggle bank_data [86:83] "logic bank_data[255:0]"
 Toggle bank_data [70:67] "logic bank_data[255:0]"
 Toggle bank_data [54:51] "logic bank_data[255:0]"
 Toggle bank_data [38:35] "logic bank_data[255:0]"
 Toggle bank_data [22:19] "logic bank_data[255:0]"
+Toggle bank_data [6:3] "logic bank_data[255:0]"
 Toggle bank_data_out [246:243] "logic bank_data_out[255:0]"
 Toggle bank_data_out [230:227] "logic bank_data_out[255:0]"
 Toggle bank_data_out [214:211] "logic bank_data_out[255:0]"
 Toggle bank_data_out [198:195] "logic bank_data_out[255:0]"
 Toggle bank_data_out [182:179] "logic bank_data_out[255:0]"
+Toggle bank_data_out [166:163] "logic bank_data_out[255:0]"
 Toggle bank_data_out [150:147] "logic bank_data_out[255:0]"
 Toggle bank_data_out [134:131] "logic bank_data_out[255:0]"
 Toggle bank_data_out [118:115] "logic bank_data_out[255:0]"
 Toggle bank_data_out [102:99] "logic bank_data_out[255:0]"
+Toggle bank_data_out [86:83] "logic bank_data_out[255:0]"
 Toggle bank_data_out [70:67] "logic bank_data_out[255:0]"
 Toggle bank_data_out [54:51] "logic bank_data_out[255:0]"
 Toggle bank_data_out [38:35] "logic bank_data_out[255:0]"
 Toggle bank_data_out [22:19] "logic bank_data_out[255:0]"
+Toggle bank_data_out [6:3] "logic bank_data_out[255:0]"
 Toggle next_bank_data_out [246:243] "logic next_bank_data_out[255:0]"
 Toggle next_bank_data_out [230:227] "logic next_bank_data_out[255:0]"
 Toggle next_bank_data_out [214:211] "logic next_bank_data_out[255:0]"
 Toggle next_bank_data_out [198:195] "logic next_bank_data_out[255:0]"
 Toggle next_bank_data_out [182:179] "logic next_bank_data_out[255:0]"
+Toggle next_bank_data_out [166:163] "logic next_bank_data_out[255:0]"
 Toggle next_bank_data_out [150:147] "logic next_bank_data_out[255:0]"
 Toggle next_bank_data_out [134:131] "logic next_bank_data_out[255:0]"
 Toggle next_bank_data_out [118:115] "logic next_bank_data_out[255:0]"
 Toggle next_bank_data_out [102:99] "logic next_bank_data_out[255:0]"
+Toggle next_bank_data_out [86:83] "logic next_bank_data_out[255:0]"
 Toggle next_bank_data_out [70:67] "logic next_bank_data_out[255:0]"
 Toggle next_bank_data_out [54:51] "logic next_bank_data_out[255:0]"
 Toggle next_bank_data_out [38:35] "logic next_bank_data_out[255:0]"
 Toggle next_bank_data_out [22:19] "logic next_bank_data_out[255:0]"
+Toggle next_bank_data_out [6:3] "logic next_bank_data_out[255:0]"
 Toggle target_write_byte_boundary_above_range "logic target_write_byte_boundary_above_range"
 Toggle target_write_byte_boundary_crosses_bank_range "logic target_write_byte_boundary_crosses_bank_range"
 
@@ -24373,7 +24395,8 @@ Toggle cross_connect_data_in [46:43] "logic cross_connect_data_in[255:0]"
 Toggle cross_connect_data_in [41] "logic cross_connect_data_in[255:0]"
 Toggle cross_connect_data_in [38:35] "logic cross_connect_data_in[255:0]"
 Toggle cross_connect_data_in [33] "logic cross_connect_data_in[255:0]"
-Toggle cross_connect_data_in [29] "logic cross_connect_data_in[255:0]"
+Toggle cross_connect_data_in [30:27] "logic cross_connect_data_in[255:0]"
+Toggle cross_connect_data_in [22:19] "logic cross_connect_data_in[255:0]"
 Toggle cross_connect_data_in [6:3] "logic cross_connect_data_in[255:0]"
 Toggle cross_connect_data_byte_be_in [31:20] "logic cross_connect_data_byte_be_in[31:0]"
 Toggle accumulator_data [502:499] "logic accumulator_data[511:0]"
@@ -24381,27 +24404,33 @@ Toggle accumulator_data [486:483] "logic accumulator_data[511:0]"
 Toggle accumulator_data [470:467] "logic accumulator_data[511:0]"
 Toggle accumulator_data [454:451] "logic accumulator_data[511:0]"
 Toggle accumulator_data [438:435] "logic accumulator_data[511:0]"
+Toggle accumulator_data [422:419] "logic accumulator_data[511:0]"
 Toggle accumulator_data [406:403] "logic accumulator_data[511:0]"
 Toggle accumulator_data [390:387] "logic accumulator_data[511:0]"
 Toggle accumulator_data [374:371] "logic accumulator_data[511:0]"
 Toggle accumulator_data [358:355] "logic accumulator_data[511:0]"
+Toggle accumulator_data [342:339] "logic accumulator_data[511:0]"
 Toggle accumulator_data [326:323] "logic accumulator_data[511:0]"
 Toggle accumulator_data [310:307] "logic accumulator_data[511:0]"
 Toggle accumulator_data [294:291] "logic accumulator_data[511:0]"
 Toggle accumulator_data [278:275] "logic accumulator_data[511:0]"
+Toggle accumulator_data [262:259] "logic accumulator_data[511:0]"
 Toggle accumulator_data [246:243] "logic accumulator_data[511:0]"
 Toggle accumulator_data [230:227] "logic accumulator_data[511:0]"
 Toggle accumulator_data [214:211] "logic accumulator_data[511:0]"
 Toggle accumulator_data [198:195] "logic accumulator_data[511:0]"
+Toggle accumulator_data [182:179] "logic accumulator_data[511:0]"
 Toggle accumulator_data [166:163] "logic accumulator_data[511:0]"
 Toggle accumulator_data [150:147] "logic accumulator_data[511:0]"
 Toggle accumulator_data [134:131] "logic accumulator_data[511:0]"
 Toggle accumulator_data [118:115] "logic accumulator_data[511:0]"
+Toggle accumulator_data [102:99] "logic accumulator_data[511:0]"
 Toggle accumulator_data [86:83] "logic accumulator_data[511:0]"
 Toggle accumulator_data [70:67] "logic accumulator_data[511:0]"
 Toggle accumulator_data [54:51] "logic accumulator_data[511:0]"
 Toggle accumulator_data [38:35] "logic accumulator_data[511:0]"
-Toggle accumulator_data [3] "logic accumulator_data[511:0]"
+Toggle accumulator_data [22:19] "logic accumulator_data[511:0]"
+Toggle accumulator_data [6:3] "logic accumulator_data[511:0]"
 Toggle accumulator_data_set0 [511:336] "logic accumulator_data_set0[511:0]"
 Toggle accumulator_data_set0 [334:331] "logic accumulator_data_set0[511:0]"
 Toggle accumulator_data_set0 [329] "logic accumulator_data_set0[511:0]"
@@ -24415,28 +24444,34 @@ Toggle accumulator_data_set0 [297] "logic accumulator_data_set0[511:0]"
 Toggle accumulator_data_set0 [294:291] "logic accumulator_data_set0[511:0]"
 Toggle accumulator_data_set0 [286:283] "logic accumulator_data_set0[511:0]"
 Toggle accumulator_data_set0 [278:275] "logic accumulator_data_set0[511:0]"
+Toggle accumulator_data_set0 [262:259] "logic accumulator_data_set0[511:0]"
 Toggle accumulator_data_set0 [246:243] "logic accumulator_data_set0[511:0]"
 Toggle accumulator_data_set0 [230:227] "logic accumulator_data_set0[511:0]"
 Toggle accumulator_data_set0 [214:211] "logic accumulator_data_set0[511:0]"
 Toggle accumulator_data_set0 [198:195] "logic accumulator_data_set0[511:0]"
+Toggle accumulator_data_set0 [182:179] "logic accumulator_data_set0[511:0]"
 Toggle accumulator_data_set0 [166:163] "logic accumulator_data_set0[511:0]"
 Toggle accumulator_data_set0 [150:147] "logic accumulator_data_set0[511:0]"
 Toggle accumulator_data_set0 [134:131] "logic accumulator_data_set0[511:0]"
 Toggle accumulator_data_set0 [118:115] "logic accumulator_data_set0[511:0]"
+Toggle accumulator_data_set0 [102:99] "logic accumulator_data_set0[511:0]"
 Toggle accumulator_data_set0 [86:83] "logic accumulator_data_set0[511:0]"
 Toggle accumulator_data_set0 [70:67] "logic accumulator_data_set0[511:0]"
 Toggle accumulator_data_set0 [54:51] "logic accumulator_data_set0[511:0]"
 Toggle accumulator_data_set0 [38:35] "logic accumulator_data_set0[511:0]"
+Toggle accumulator_data_set0 [22:19] "logic accumulator_data_set0[511:0]"
 Toggle accumulator_data_set0 [6:3] "logic accumulator_data_set0[511:0]"
 Toggle accumulator_data_set1 [502:499] "logic accumulator_data_set1[511:0]"
 Toggle accumulator_data_set1 [486:483] "logic accumulator_data_set1[511:0]"
 Toggle accumulator_data_set1 [470:467] "logic accumulator_data_set1[511:0]"
 Toggle accumulator_data_set1 [454:451] "logic accumulator_data_set1[511:0]"
 Toggle accumulator_data_set1 [438:435] "logic accumulator_data_set1[511:0]"
+Toggle accumulator_data_set1 [422:419] "logic accumulator_data_set1[511:0]"
 Toggle accumulator_data_set1 [406:403] "logic accumulator_data_set1[511:0]"
 Toggle accumulator_data_set1 [390:387] "logic accumulator_data_set1[511:0]"
 Toggle accumulator_data_set1 [374:371] "logic accumulator_data_set1[511:0]"
 Toggle accumulator_data_set1 [358:355] "logic accumulator_data_set1[511:0]"
+Toggle accumulator_data_set1 [342:339] "logic accumulator_data_set1[511:0]"
 Toggle accumulator_data_set1 [326:323] "logic accumulator_data_set1[511:0]"
 Toggle accumulator_data_set1 [310:307] "logic accumulator_data_set1[511:0]"
 Toggle accumulator_data_set1 [294:291] "logic accumulator_data_set1[511:0]"
@@ -24450,54 +24485,111 @@ Toggle accumulator_data_set1 [38:35] "logic accumulator_data_set1[511:0]"
 Toggle accumulator_data_set1 [30:27] "logic accumulator_data_set1[511:0]"
 Toggle accumulator_data_set1 [25] "logic accumulator_data_set1[511:0]"
 Toggle accumulator_data_set1 [22:19] "logic accumulator_data_set1[511:0]"
-Toggle accumulator_data_set1 [13] "logic accumulator_data_set1[511:0]"
-Toggle accumulator_data_set1 [3] "logic accumulator_data_set1[511:0]"
+Toggle accumulator_data_set1 [14:11] "logic accumulator_data_set1[511:0]"
+Toggle accumulator_data_set1 [6:3] "logic accumulator_data_set1[511:0]"
 Toggle accumulator_byte_enables_set0 [63:42] "logic accumulator_byte_enables_set0[63:0]"
 Toggle accumulator_byte_enables_set1 [32:8] "logic accumulator_byte_enables_set1[63:0]"
 
 CHECKSUM: "3117133656 2425448481"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.dst_wrapper.dst_inst[0].debug_sig_trace_packetizer.fifo_instance
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle o_cnt [4] "logic o_cnt[4:0]"
+Toggle o_cnt [4:3] "logic o_cnt[4:0]"
 Toggle o_data [0][118:115] "logic [0:0][127:0]o_data"
+Toggle o_data [0][102:99] "logic [0:0][127:0]o_data"
+Toggle o_data [0][86:83] "logic [0:0][127:0]o_data"
 Toggle o_data [0][70:67] "logic [0:0][127:0]o_data"
+Toggle o_data [0][54:51] "logic [0:0][127:0]o_data"
+Toggle o_data [0][38:35] "logic [0:0][127:0]o_data"
+Toggle o_data [0][22:19] "logic [0:0][127:0]o_data"
+Toggle o_data [0][6:3] "logic [0:0][127:0]o_data"
 Toggle o_broadside_data [0][118:115] "logic [8:0][127:0]o_broadside_data"
-Toggle o_broadside_data [0][101] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [0][102:99] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [0][86:83] "logic [8:0][127:0]o_broadside_data"
 Toggle o_broadside_data [0][70:67] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [0][54:51] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [0][38:35] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [0][22:19] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [0][6:3] "logic [8:0][127:0]o_broadside_data"
 Toggle o_broadside_data [1][118:115] "logic [8:0][127:0]o_broadside_data"
-Toggle o_broadside_data [1][86] "logic [8:0][127:0]o_broadside_data"
-Toggle o_broadside_data [1][84] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [1][102:99] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [1][86:83] "logic [8:0][127:0]o_broadside_data"
 Toggle o_broadside_data [1][70:67] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [1][54:51] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [1][38:35] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [1][22:19] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [1][6:3] "logic [8:0][127:0]o_broadside_data"
 Toggle o_broadside_data [2][118:115] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [2][102:99] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [2][86:83] "logic [8:0][127:0]o_broadside_data"
 Toggle o_broadside_data [2][70:67] "logic [8:0][127:0]o_broadside_data"
-Toggle o_broadside_data [2][53] "logic [8:0][127:0]o_broadside_data"
-Toggle o_broadside_data [2][36] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [2][54:51] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [2][38:35] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [2][22:19] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [2][6:3] "logic [8:0][127:0]o_broadside_data"
 Toggle o_broadside_data [3][118:115] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [3][102:99] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [3][86:83] "logic [8:0][127:0]o_broadside_data"
 Toggle o_broadside_data [3][70:67] "logic [8:0][127:0]o_broadside_data"
-Toggle o_broadside_data [3][54] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [3][54:51] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [3][38:35] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [3][22:19] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [3][6:3] "logic [8:0][127:0]o_broadside_data"
 Toggle o_broadside_data [4][118:115] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [4][102:99] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [4][86:83] "logic [8:0][127:0]o_broadside_data"
 Toggle o_broadside_data [4][70:67] "logic [8:0][127:0]o_broadside_data"
-Toggle o_broadside_data [4][20] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [4][54:51] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [4][38:35] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [4][22:19] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [4][6:3] "logic [8:0][127:0]o_broadside_data"
 Toggle o_broadside_data [5][118:115] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [5][102:99] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [5][86:83] "logic [8:0][127:0]o_broadside_data"
 Toggle o_broadside_data [5][70:67] "logic [8:0][127:0]o_broadside_data"
-Toggle o_broadside_data [5][22] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [5][54:51] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [5][38:35] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [5][22:19] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [5][6:3] "logic [8:0][127:0]o_broadside_data"
 Toggle o_broadside_data [6][118:115] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [6][102:99] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [6][86:83] "logic [8:0][127:0]o_broadside_data"
 Toggle o_broadside_data [6][70:67] "logic [8:0][127:0]o_broadside_data"
-Toggle o_broadside_data [6][52] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [6][54:51] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [6][38:35] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [6][22:19] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [6][6:3] "logic [8:0][127:0]o_broadside_data"
 Toggle o_broadside_data [7][118:115] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [7][102:99] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [7][86:83] "logic [8:0][127:0]o_broadside_data"
 Toggle o_broadside_data [7][70:67] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [7][54:51] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [7][38:35] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [7][22:19] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [7][6:3] "logic [8:0][127:0]o_broadside_data"
 Toggle o_broadside_data [8][118:115] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [8][102:99] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [8][86:83] "logic [8:0][127:0]o_broadside_data"
 Toggle o_broadside_data [8][70:67] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [8][54:51] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [8][38:35] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [8][22:19] "logic [8:0][127:0]o_broadside_data"
+Toggle o_broadside_data [8][6:3] "logic [8:0][127:0]o_broadside_data"
 Toggle o_rdptr [4] "logic o_rdptr[4:0]"
 Toggle o_wrptr [4] "logic o_wrptr[4:0]"
 Toggle i_data [0][118:115] "logic [1:0][127:0]i_data"
+Toggle i_data [0][102:99] "logic [1:0][127:0]i_data"
+Toggle i_data [0][86:83] "logic [1:0][127:0]i_data"
 Toggle i_data [0][70:67] "logic [1:0][127:0]i_data"
 Toggle i_data [0][54:51] "logic [1:0][127:0]i_data"
 Toggle i_data [0][38:35] "logic [1:0][127:0]i_data"
+Toggle i_data [0][22:19] "logic [1:0][127:0]i_data"
+Toggle i_data [0][6:3] "logic [1:0][127:0]i_data"
 Toggle i_data [1][118:115] "logic [1:0][127:0]i_data"
 Toggle i_data [1][102:99] "logic [1:0][127:0]i_data"
 Toggle i_data [1][86:83] "logic [1:0][127:0]i_data"
 Toggle i_data [1][70:67] "logic [1:0][127:0]i_data"
+Toggle i_data [1][54:51] "logic [1:0][127:0]i_data"
+Toggle i_data [1][38:35] "logic [1:0][127:0]i_data"
 Toggle i_data [1][22:19] "logic [1:0][127:0]i_data"
 Toggle i_data [1][6:3] "logic [1:0][127:0]i_data"
 Toggle nxt_rd_ptr [4] "logic nxt_rd_ptr[4:0]"
@@ -24508,70 +24600,166 @@ Toggle rd_ptr_wrap [0][4] "logic [0:0][4:0]rd_ptr_wrap"
 Toggle wr_ptr_wrap [0][4] "logic [1:0][4:0]wr_ptr_wrap"
 Toggle wr_ptr_wrap [1][4] "logic [1:0][4:0]wr_ptr_wrap"
 Toggle nxt_mem [0][118:115] "logic [8:0][127:0]nxt_mem"
-Toggle nxt_mem [0][101] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [0][102:99] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [0][86:83] "logic [8:0][127:0]nxt_mem"
 Toggle nxt_mem [0][70:67] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [0][54:51] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [0][38:35] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [0][22:19] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [0][6:3] "logic [8:0][127:0]nxt_mem"
 Toggle nxt_mem [1][118:115] "logic [8:0][127:0]nxt_mem"
-Toggle nxt_mem [1][86] "logic [8:0][127:0]nxt_mem"
-Toggle nxt_mem [1][84] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [1][102:99] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [1][86:83] "logic [8:0][127:0]nxt_mem"
 Toggle nxt_mem [1][70:67] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [1][54:51] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [1][38:35] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [1][22:19] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [1][6:3] "logic [8:0][127:0]nxt_mem"
 Toggle nxt_mem [2][118:115] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [2][102:99] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [2][86:83] "logic [8:0][127:0]nxt_mem"
 Toggle nxt_mem [2][70:67] "logic [8:0][127:0]nxt_mem"
-Toggle nxt_mem [2][53] "logic [8:0][127:0]nxt_mem"
-Toggle nxt_mem [2][36] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [2][54:51] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [2][38:35] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [2][22:19] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [2][6:3] "logic [8:0][127:0]nxt_mem"
 Toggle nxt_mem [3][118:115] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [3][102:99] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [3][86:83] "logic [8:0][127:0]nxt_mem"
 Toggle nxt_mem [3][70:67] "logic [8:0][127:0]nxt_mem"
-Toggle nxt_mem [3][54] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [3][54:51] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [3][38:35] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [3][22:19] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [3][6:3] "logic [8:0][127:0]nxt_mem"
 Toggle nxt_mem [4][118:115] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [4][102:99] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [4][86:83] "logic [8:0][127:0]nxt_mem"
 Toggle nxt_mem [4][70:67] "logic [8:0][127:0]nxt_mem"
-Toggle nxt_mem [4][20] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [4][54:51] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [4][38:35] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [4][22:19] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [4][6:3] "logic [8:0][127:0]nxt_mem"
 Toggle nxt_mem [5][118:115] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [5][102:99] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [5][86:83] "logic [8:0][127:0]nxt_mem"
 Toggle nxt_mem [5][70:67] "logic [8:0][127:0]nxt_mem"
-Toggle nxt_mem [5][22] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [5][54:51] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [5][38:35] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [5][22:19] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [5][6:3] "logic [8:0][127:0]nxt_mem"
 Toggle nxt_mem [6][118:115] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [6][102:99] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [6][86:83] "logic [8:0][127:0]nxt_mem"
 Toggle nxt_mem [6][70:67] "logic [8:0][127:0]nxt_mem"
-Toggle nxt_mem [6][52] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [6][54:51] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [6][38:35] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [6][22:19] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [6][6:3] "logic [8:0][127:0]nxt_mem"
 Toggle nxt_mem [7][118:115] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [7][102:99] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [7][86:83] "logic [8:0][127:0]nxt_mem"
 Toggle nxt_mem [7][70:67] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [7][54:51] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [7][38:35] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [7][22:19] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [7][6:3] "logic [8:0][127:0]nxt_mem"
 Toggle nxt_mem [8][118:115] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [8][102:99] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [8][86:83] "logic [8:0][127:0]nxt_mem"
 Toggle nxt_mem [8][70:67] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [8][54:51] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [8][38:35] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [8][22:19] "logic [8:0][127:0]nxt_mem"
+Toggle nxt_mem [8][6:3] "logic [8:0][127:0]nxt_mem"
 Toggle mem [0][118:115] "logic [8:0][127:0]mem"
-Toggle mem [0][101] "logic [8:0][127:0]mem"
+Toggle mem [0][102:99] "logic [8:0][127:0]mem"
+Toggle mem [0][86:83] "logic [8:0][127:0]mem"
 Toggle mem [0][70:67] "logic [8:0][127:0]mem"
+Toggle mem [0][54:51] "logic [8:0][127:0]mem"
+Toggle mem [0][38:35] "logic [8:0][127:0]mem"
+Toggle mem [0][22:19] "logic [8:0][127:0]mem"
+Toggle mem [0][6:3] "logic [8:0][127:0]mem"
 Toggle mem [1][118:115] "logic [8:0][127:0]mem"
-Toggle mem [1][86] "logic [8:0][127:0]mem"
-Toggle mem [1][84] "logic [8:0][127:0]mem"
+Toggle mem [1][102:99] "logic [8:0][127:0]mem"
+Toggle mem [1][86:83] "logic [8:0][127:0]mem"
 Toggle mem [1][70:67] "logic [8:0][127:0]mem"
+Toggle mem [1][54:51] "logic [8:0][127:0]mem"
+Toggle mem [1][38:35] "logic [8:0][127:0]mem"
+Toggle mem [1][22:19] "logic [8:0][127:0]mem"
+Toggle mem [1][6:3] "logic [8:0][127:0]mem"
 Toggle mem [2][118:115] "logic [8:0][127:0]mem"
+Toggle mem [2][102:99] "logic [8:0][127:0]mem"
+Toggle mem [2][86:83] "logic [8:0][127:0]mem"
 Toggle mem [2][70:67] "logic [8:0][127:0]mem"
-Toggle mem [2][53] "logic [8:0][127:0]mem"
-Toggle mem [2][36] "logic [8:0][127:0]mem"
+Toggle mem [2][54:51] "logic [8:0][127:0]mem"
+Toggle mem [2][38:35] "logic [8:0][127:0]mem"
+Toggle mem [2][22:19] "logic [8:0][127:0]mem"
+Toggle mem [2][6:3] "logic [8:0][127:0]mem"
 Toggle mem [3][118:115] "logic [8:0][127:0]mem"
+Toggle mem [3][102:99] "logic [8:0][127:0]mem"
+Toggle mem [3][86:83] "logic [8:0][127:0]mem"
 Toggle mem [3][70:67] "logic [8:0][127:0]mem"
-Toggle mem [3][54] "logic [8:0][127:0]mem"
+Toggle mem [3][54:51] "logic [8:0][127:0]mem"
+Toggle mem [3][38:35] "logic [8:0][127:0]mem"
+Toggle mem [3][22:19] "logic [8:0][127:0]mem"
+Toggle mem [3][6:3] "logic [8:0][127:0]mem"
 Toggle mem [4][118:115] "logic [8:0][127:0]mem"
+Toggle mem [4][102:99] "logic [8:0][127:0]mem"
+Toggle mem [4][86:83] "logic [8:0][127:0]mem"
 Toggle mem [4][70:67] "logic [8:0][127:0]mem"
-Toggle mem [4][20] "logic [8:0][127:0]mem"
+Toggle mem [4][54:51] "logic [8:0][127:0]mem"
+Toggle mem [4][38:35] "logic [8:0][127:0]mem"
+Toggle mem [4][22:19] "logic [8:0][127:0]mem"
+Toggle mem [4][6:3] "logic [8:0][127:0]mem"
 Toggle mem [5][118:115] "logic [8:0][127:0]mem"
+Toggle mem [5][102:99] "logic [8:0][127:0]mem"
+Toggle mem [5][86:83] "logic [8:0][127:0]mem"
 Toggle mem [5][70:67] "logic [8:0][127:0]mem"
-Toggle mem [5][22] "logic [8:0][127:0]mem"
+Toggle mem [5][54:51] "logic [8:0][127:0]mem"
+Toggle mem [5][38:35] "logic [8:0][127:0]mem"
+Toggle mem [5][22:19] "logic [8:0][127:0]mem"
+Toggle mem [5][6:3] "logic [8:0][127:0]mem"
 Toggle mem [6][118:115] "logic [8:0][127:0]mem"
+Toggle mem [6][102:99] "logic [8:0][127:0]mem"
+Toggle mem [6][86:83] "logic [8:0][127:0]mem"
 Toggle mem [6][70:67] "logic [8:0][127:0]mem"
-Toggle mem [6][52] "logic [8:0][127:0]mem"
+Toggle mem [6][54:51] "logic [8:0][127:0]mem"
+Toggle mem [6][38:35] "logic [8:0][127:0]mem"
+Toggle mem [6][22:19] "logic [8:0][127:0]mem"
+Toggle mem [6][6:3] "logic [8:0][127:0]mem"
 Toggle mem [7][118:115] "logic [8:0][127:0]mem"
+Toggle mem [7][102:99] "logic [8:0][127:0]mem"
+Toggle mem [7][86:83] "logic [8:0][127:0]mem"
 Toggle mem [7][70:67] "logic [8:0][127:0]mem"
+Toggle mem [7][54:51] "logic [8:0][127:0]mem"
+Toggle mem [7][38:35] "logic [8:0][127:0]mem"
+Toggle mem [7][22:19] "logic [8:0][127:0]mem"
+Toggle mem [7][6:3] "logic [8:0][127:0]mem"
 Toggle mem [8][118:115] "logic [8:0][127:0]mem"
+Toggle mem [8][102:99] "logic [8:0][127:0]mem"
+Toggle mem [8][86:83] "logic [8:0][127:0]mem"
 Toggle mem [8][70:67] "logic [8:0][127:0]mem"
+Toggle mem [8][54:51] "logic [8:0][127:0]mem"
+Toggle mem [8][38:35] "logic [8:0][127:0]mem"
+Toggle mem [8][22:19] "logic [8:0][127:0]mem"
+Toggle mem [8][6:3] "logic [8:0][127:0]mem"
 Toggle wr_en "logic wr_en[8:0]"
 Toggle data [0][118:115] "logic [0:0][127:0]data"
+Toggle data [0][102:99] "logic [0:0][127:0]data"
+Toggle data [0][86:83] "logic [0:0][127:0]data"
 Toggle data [0][70:67] "logic [0:0][127:0]data"
-Toggle nxt_cnt [4] "logic nxt_cnt[4:0]"
-Toggle cnt [4] "logic cnt[4:0]"
+Toggle data [0][54:51] "logic [0:0][127:0]data"
+Toggle data [0][38:35] "logic [0:0][127:0]data"
+Toggle data [0][22:19] "logic [0:0][127:0]data"
+Toggle data [0][6:3] "logic [0:0][127:0]data"
+Toggle nxt_cnt [4:3] "logic nxt_cnt[4:0]"
+Toggle cnt [4:3] "logic cnt[4:0]"
 
 CHECKSUM: "1659362951 101206360"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.dst_wrapper.dst_inst[0].debug_sig_trace_packetizer.fifo_instance.cnt_ff
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle in [4] "logic in[4:0]"
-Toggle out [4] "logic out[4:0]"
+Toggle in [4:3] "logic in[4:0]"
+Toggle out [4:3] "logic out[4:0]"
 
 CHECKSUM: "1659362951 101206360"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.dst_wrapper.dst_inst[0].debug_sig_trace_packetizer.fifo_instance.rd_ptr_ff
@@ -24589,6 +24777,7 @@ CHECKSUM: "3168562659 3739782643"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.dst_wrapper.dst_inst[0].debug_sig_trace_packetizer.frame_filler_instance
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle request_packet_space_in_bytes [4] "logic request_packet_space_in_bytes[4:0]"
+Toggle frame_info.frame_mode_enable "logic frame_info.frame_mode_enable"
 Toggle frame_info.frame_length [5:0] "logic frame_info.frame_length[9:0]"
 Toggle frame_info.stream_depth [4:0] "logic frame_info.stream_depth[9:0]"
 Toggle frame_fill_packet_bit_enable [255:160] "logic frame_fill_packet_bit_enable[255:0]"
@@ -24598,6 +24787,7 @@ Toggle ovrflw_adjust_packet_space_in_bytes [9:4] "logic ovrflw_adjust_packet_spa
 Toggle ovrflw_adjust_packet_space_in_bytes [0] "logic ovrflw_adjust_packet_space_in_bytes[9:0]"
 Toggle frame_length [5:0] "logic frame_length[9:0]"
 Toggle nummber_of_frame_fill_packets [0] "logic nummber_of_frame_fill_packets[9:0]"
+Toggle frame_mode_enable "logic frame_mode_enable"
 Toggle next_frame_fill_packet_bit_enable [255:160] "logic next_frame_fill_packet_bit_enable[255:0]"
 Toggle next_frame_fill_packet_bit_enable [31:0] "logic next_frame_fill_packet_bit_enable[255:0]"
 Toggle next_ovrflw_adjust_packet_bit_enable [255:64] "logic next_ovrflw_adjust_packet_bit_enable[255:0]"
@@ -24639,8 +24829,8 @@ Toggle ClaMmrs[0].Cdbgsignalsnapshotnode0Eap0Hi.Value "logic ClaMmrs[0].Cdbgsign
 Toggle ClaMmrs[0].Cdbgclatimestampconfig.TsCapture "logic ClaMmrs[0].Cdbgclatimestampconfig.TsCapture[0:0]"
 Toggle ClaMmrs[0].Cdbgclatimestamp.TimestampUpper [55:33] "logic ClaMmrs[0].Cdbgclatimestamp.TimestampUpper[55:0]"
 Toggle ClaMmrs[0].Cdbgclatimestamp.TimestampUpper [31:26] "logic ClaMmrs[0].Cdbgclatimestamp.TimestampUpper[55:0]"
-Toggle ClaMmrs[0].Cdbgclatimestamp.TimestampUpper [24:13] "logic ClaMmrs[0].Cdbgclatimestamp.TimestampUpper[55:0]"
-Toggle 1to0 ClaMmrs[0].Cdbgclatimestamp.TimestampUpper [12] "logic ClaMmrs[0].Cdbgclatimestamp.TimestampUpper[55:0]"
+Toggle ClaMmrs[0].Cdbgclatimestamp.TimestampUpper [24:12] "logic ClaMmrs[0].Cdbgclatimestamp.TimestampUpper[55:0]"
+Toggle 1to0 ClaMmrs[0].Cdbgclatimestamp.TimestampUpper [11] "logic ClaMmrs[0].Cdbgclatimestamp.TimestampUpper[55:0]"
 Toggle ClaMmrs[0].Cdbgsignalsnapshotnode3Eap3Lo.Value [63:2] "logic ClaMmrs[0].Cdbgsignalsnapshotnode3Eap3Lo.Value[63:0]"
 Toggle 1to0 ClaMmrs[0].Cdbgsignalsnapshotnode3Eap3Lo.Value [1:0] "logic ClaMmrs[0].Cdbgsignalsnapshotnode3Eap3Lo.Value[63:0]"
 Toggle ClaMmrs[0].Cdbgsignalsnapshotnode3Eap2Lo.Value [63:2] "logic ClaMmrs[0].Cdbgsignalsnapshotnode3Eap2Lo.Value[63:0]"
@@ -24683,8 +24873,7 @@ Toggle ClaMmrs[0].Cdbgeapstatus.Rsvd3116 "logic ClaMmrs[0].Cdbgeapstatus.Rsvd311
 Toggle ClaMmrs[0].Cdbgclacounter3Cfg.Counter [15:9] "logic ClaMmrs[0].Cdbgclacounter3Cfg.Counter[15:0]"
 Toggle ClaMmrs[0].Cdbgclacounter3Cfg.UpperCounter "logic ClaMmrs[0].Cdbgclacounter3Cfg.UpperCounter[14:0]"
 Toggle ClaMmrs[0].Cdbgclacounter3Cfg.Rsvd "logic ClaMmrs[0].Cdbgclacounter3Cfg.Rsvd[0:0]"
-Toggle ClaMmrs[0].Cdbgclacounter2Cfg.Counter [15:10] "logic ClaMmrs[0].Cdbgclacounter2Cfg.Counter[15:0]"
-Toggle 1to0 ClaMmrs[0].Cdbgclacounter2Cfg.Counter [9] "logic ClaMmrs[0].Cdbgclacounter2Cfg.Counter[15:0]"
+Toggle ClaMmrs[0].Cdbgclacounter2Cfg.Counter [15:9] "logic ClaMmrs[0].Cdbgclacounter2Cfg.Counter[15:0]"
 Toggle ClaMmrs[0].Cdbgclacounter2Cfg.UpperCounter "logic ClaMmrs[0].Cdbgclacounter2Cfg.UpperCounter[14:0]"
 Toggle ClaMmrs[0].Cdbgclacounter2Cfg.Rsvd "logic ClaMmrs[0].Cdbgclacounter2Cfg.Rsvd[0:0]"
 Toggle ClaMmrs[0].Cdbgclacounter1Cfg.Counter [15:9] "logic ClaMmrs[0].Cdbgclacounter1Cfg.Counter[15:0]"
@@ -24694,6 +24883,7 @@ Toggle ClaMmrs[0].Cdbgclacounter0Cfg.Counter [15:11] "logic ClaMmrs[0].Cdbgclaco
 Toggle 1to0 ClaMmrs[0].Cdbgclacounter0Cfg.Counter [10] "logic ClaMmrs[0].Cdbgclacounter0Cfg.Counter[15:0]"
 Toggle ClaMmrs[0].Cdbgclacounter0Cfg.UpperCounter "logic ClaMmrs[0].Cdbgclacounter0Cfg.UpperCounter[14:0]"
 Toggle ClaMmrs[0].Cdbgclacounter0Cfg.Rsvd "logic ClaMmrs[0].Cdbgclacounter0Cfg.Rsvd[0:0]"
+Toggle DstMmrs[0].Cdbgdebugtracecfg.FrameModeEnable "logic DstMmrs[0].Cdbgdebugtracecfg.FrameModeEnable[0:0]"
 Toggle DstMmrs[0].Trdstinstfeatures.Trdstinstnoaddrdiff "logic DstMmrs[0].Trdstinstfeatures.Trdstinstnoaddrdiff[0:0]"
 Toggle DstMmrs[0].Trdstinstfeatures.Trdstinstnotrapaddr "logic DstMmrs[0].Trdstinstfeatures.Trdstinstnotrapaddr[0:0]"
 Toggle DstMmrs[0].Trdstinstfeatures.Trdstinstenrepeatedhistory "logic DstMmrs[0].Trdstinstfeatures.Trdstinstenrepeatedhistory[0:0]"
@@ -24781,8 +24971,8 @@ Toggle NtrSinkMmrs.Trramcontrol.Trramenable "logic NtrSinkMmrs.Trramcontrol.Trra
 Toggle NtrSinkMmrs.Trramcontrol.Trramempty "logic NtrSinkMmrs.Trramcontrol.Trramempty[0:0]"
 Toggle NtrSinkMmrs.Trramcontrol.Trrammode "logic NtrSinkMmrs.Trramcontrol.Trrammode[0:0]"
 Toggle NtrSinkMmrs.Trramcontrol.Trramstoponwrap "logic NtrSinkMmrs.Trramcontrol.Trramstoponwrap[0:0]"
-Toggle DstSinkMmrs.Trdstramdata.Trdstramdata [22:18] "logic DstSinkMmrs.Trdstramdata.Trdstramdata[31:0]"
-Toggle DstSinkMmrs.Trdstramdata.Trdstramdata [6] "logic DstSinkMmrs.Trdstramdata.Trdstramdata[31:0]"
+Toggle DstSinkMmrs.Trdstramdata.Trdstramdata [22:17] "logic DstSinkMmrs.Trdstramdata.Trdstramdata[31:0]"
+Toggle DstSinkMmrs.Trdstramdata.Trdstramdata [6:3] "logic DstSinkMmrs.Trdstramdata.Trdstramdata[31:0]"
 Toggle DstSinkMmrs.Trdstramrplow.Rsvd10 "logic DstSinkMmrs.Trdstramrplow.Rsvd10[1:0]"
 Toggle DstSinkMmrs.Trdstramlimitlow.Rsvd10 "logic DstSinkMmrs.Trdstramlimitlow.Rsvd10[1:0]"
 Toggle DstSinkMmrs.Trdstramstartlow.Rsvd10 "logic DstSinkMmrs.Trdstramstartlow.Rsvd10[1:0]"
@@ -24841,8 +25031,8 @@ Toggle ClaMmrsWr[0].CdbgclatimestampWr.TimestampLowerWrEn "logic ClaMmrsWr[0].Cd
 Toggle ClaMmrsWr[0].CdbgclatimestampWr.TimestampUpperWrEn "logic ClaMmrsWr[0].CdbgclatimestampWr.TimestampUpperWrEn"
 Toggle ClaMmrsWr[0].CdbgclatimestampWr.Data.TimestampUpper [55:33] "logic ClaMmrsWr[0].CdbgclatimestampWr.Data.TimestampUpper[55:0]"
 Toggle ClaMmrsWr[0].CdbgclatimestampWr.Data.TimestampUpper [31:26] "logic ClaMmrsWr[0].CdbgclatimestampWr.Data.TimestampUpper[55:0]"
-Toggle ClaMmrsWr[0].CdbgclatimestampWr.Data.TimestampUpper [24:13] "logic ClaMmrsWr[0].CdbgclatimestampWr.Data.TimestampUpper[55:0]"
-Toggle 1to0 ClaMmrsWr[0].CdbgclatimestampWr.Data.TimestampUpper [12] "logic ClaMmrsWr[0].CdbgclatimestampWr.Data.TimestampUpper[55:0]"
+Toggle ClaMmrsWr[0].CdbgclatimestampWr.Data.TimestampUpper [24:12] "logic ClaMmrsWr[0].CdbgclatimestampWr.Data.TimestampUpper[55:0]"
+Toggle 1to0 ClaMmrsWr[0].CdbgclatimestampWr.Data.TimestampUpper [11] "logic ClaMmrsWr[0].CdbgclatimestampWr.Data.TimestampUpper[55:0]"
 Toggle ClaMmrsWr[0].Cdbgsignalsnapshotnode3Eap3LoWr.Data.Value [63:52] "logic ClaMmrsWr[0].Cdbgsignalsnapshotnode3Eap3LoWr.Data.Value[63:0]"
 Toggle ClaMmrsWr[0].Cdbgsignalsnapshotnode3Eap3LoWr.Data.Value [50:36] "logic ClaMmrsWr[0].Cdbgsignalsnapshotnode3Eap3LoWr.Data.Value[63:0]"
 Toggle ClaMmrsWr[0].Cdbgsignalsnapshotnode3Eap3LoWr.Data.Value [34] "logic ClaMmrsWr[0].Cdbgsignalsnapshotnode3Eap3LoWr.Data.Value[63:0]"
@@ -24975,8 +25165,7 @@ Toggle ClaMmrsWr[0].Cdbgclacounter3CfgWr.Data.UpperTarget "logic ClaMmrsWr[0].Cd
 Toggle ClaMmrsWr[0].Cdbgclacounter3CfgWr.Data.Rsvd "logic ClaMmrsWr[0].Cdbgclacounter3CfgWr.Data.Rsvd[0:0]"
 Toggle ClaMmrsWr[0].Cdbgclacounter2CfgWr.CounterWrEn "logic ClaMmrsWr[0].Cdbgclacounter2CfgWr.CounterWrEn"
 Toggle ClaMmrsWr[0].Cdbgclacounter2CfgWr.UpperCounterWrEn "logic ClaMmrsWr[0].Cdbgclacounter2CfgWr.UpperCounterWrEn"
-Toggle ClaMmrsWr[0].Cdbgclacounter2CfgWr.Data.Counter [15:10] "logic ClaMmrsWr[0].Cdbgclacounter2CfgWr.Data.Counter[15:0]"
-Toggle 1to0 ClaMmrsWr[0].Cdbgclacounter2CfgWr.Data.Counter [9] "logic ClaMmrsWr[0].Cdbgclacounter2CfgWr.Data.Counter[15:0]"
+Toggle ClaMmrsWr[0].Cdbgclacounter2CfgWr.Data.Counter [15:9] "logic ClaMmrsWr[0].Cdbgclacounter2CfgWr.Data.Counter[15:0]"
 Toggle ClaMmrsWr[0].Cdbgclacounter2CfgWr.Data.Target "logic ClaMmrsWr[0].Cdbgclacounter2CfgWr.Data.Target[15:0]"
 Toggle ClaMmrsWr[0].Cdbgclacounter2CfgWr.Data.ResetOnTarget "logic ClaMmrsWr[0].Cdbgclacounter2CfgWr.Data.ResetOnTarget[0:0]"
 Toggle ClaMmrsWr[0].Cdbgclacounter2CfgWr.Data.UpperCounter "logic ClaMmrsWr[0].Cdbgclacounter2CfgWr.Data.UpperCounter[14:0]"
@@ -25062,12 +25251,12 @@ Toggle NtrSinkMmrsWr.TrramcontrolWr.Data.Trramempty "logic NtrSinkMmrsWr.Trramco
 Toggle NtrSinkMmrsWr.TrramcontrolWr.Data.Trrammode "logic NtrSinkMmrsWr.TrramcontrolWr.Data.Trrammode[0:0]"
 Toggle NtrSinkMmrsWr.TrramcontrolWr.Data.Trramstoponwrap "logic NtrSinkMmrsWr.TrramcontrolWr.Data.Trramstoponwrap[0:0]"
 Toggle DstSinkMmrsWr.TrdstramdataWr.Data.Trdstramdata [22:19] "logic DstSinkMmrsWr.TrdstramdataWr.Data.Trdstramdata[31:0]"
-Toggle DstSinkMmrsWr.TrdstramdataWr.Data.Trdstramdata [6] "logic DstSinkMmrsWr.TrdstramdataWr.Data.Trdstramdata[31:0]"
+Toggle DstSinkMmrsWr.TrdstramdataWr.Data.Trdstramdata [6:3] "logic DstSinkMmrsWr.TrdstramdataWr.Data.Trdstramdata[31:0]"
 Toggle DstSinkMmrsWr.TrdstramrphighWr.TrdstramrphighWrEn "logic DstSinkMmrsWr.TrdstramrphighWr.TrdstramrphighWrEn"
 Toggle DstSinkMmrsWr.TrdstramrphighWr.Data.Trdstramrphigh "logic DstSinkMmrsWr.TrdstramrphighWr.Data.Trdstramrphigh[31:0]"
 Toggle DstSinkMmrsWr.TrdstramrplowWr.Data.Rsvd10 "logic DstSinkMmrsWr.TrdstramrplowWr.Data.Rsvd10[1:0]"
 Toggle DstSinkMmrsWr.TrdstramwphighWr.Data.Trdstramwphigh [31:20] "logic DstSinkMmrsWr.TrdstramwphighWr.Data.Trdstramwphigh[31:0]"
-Toggle DstSinkMmrsWr.TrdstramwplowWr.Data.Trdstramwplow [29:13] "logic DstSinkMmrsWr.TrdstramwplowWr.Data.Trdstramwplow[29:0]"
+Toggle DstSinkMmrsWr.TrdstramwplowWr.Data.Trdstramwplow [29:12] "logic DstSinkMmrsWr.TrdstramwplowWr.Data.Trdstramwplow[29:0]"
 Toggle DstSinkMmrsWr.TrdstramwplowWr.Data.Trdstramwplow [3:0] "logic DstSinkMmrsWr.TrdstramwplowWr.Data.Trdstramwplow[29:0]"
 Toggle DstSinkMmrsWr.TrdstramlimithighWr.TrdstramlimithighWrEn "logic DstSinkMmrsWr.TrdstramlimithighWr.TrdstramlimithighWrEn"
 Toggle DstSinkMmrsWr.TrdstramlimithighWr.Data.Trdstramlimithigh "logic DstSinkMmrsWr.TrdstramlimithighWr.Data.Trdstramlimithigh[31:0]"
@@ -25229,8 +25418,7 @@ Toggle ClaMmrCdbgclacounter0Cfg.Rsvd "logic ClaMmrCdbgclacounter0Cfg.Rsvd[0:0]"
 Toggle ClaMmrCdbgclacounter1Cfg.Counter [15:9] "logic ClaMmrCdbgclacounter1Cfg.Counter[15:0]"
 Toggle ClaMmrCdbgclacounter1Cfg.UpperCounter "logic ClaMmrCdbgclacounter1Cfg.UpperCounter[14:0]"
 Toggle ClaMmrCdbgclacounter1Cfg.Rsvd "logic ClaMmrCdbgclacounter1Cfg.Rsvd[0:0]"
-Toggle ClaMmrCdbgclacounter2Cfg.Counter [15:10] "logic ClaMmrCdbgclacounter2Cfg.Counter[15:0]"
-Toggle 1to0 ClaMmrCdbgclacounter2Cfg.Counter [9] "logic ClaMmrCdbgclacounter2Cfg.Counter[15:0]"
+Toggle ClaMmrCdbgclacounter2Cfg.Counter [15:9] "logic ClaMmrCdbgclacounter2Cfg.Counter[15:0]"
 Toggle ClaMmrCdbgclacounter2Cfg.UpperCounter "logic ClaMmrCdbgclacounter2Cfg.UpperCounter[14:0]"
 Toggle ClaMmrCdbgclacounter2Cfg.Rsvd "logic ClaMmrCdbgclacounter2Cfg.Rsvd[0:0]"
 Toggle ClaMmrCdbgclacounter3Cfg.Counter [15:9] "logic ClaMmrCdbgclacounter3Cfg.Counter[15:0]"
@@ -25277,8 +25465,8 @@ Toggle ClaMmrCdbgsignalsnapshotnode3Eap3Lo.Value [63:2] "logic ClaMmrCdbgsignals
 Toggle 1to0 ClaMmrCdbgsignalsnapshotnode3Eap3Lo.Value [1:0] "logic ClaMmrCdbgsignalsnapshotnode3Eap3Lo.Value[63:0]"
 Toggle ClaMmrCdbgclatimestamp.TimestampUpper [55:33] "logic ClaMmrCdbgclatimestamp.TimestampUpper[55:0]"
 Toggle ClaMmrCdbgclatimestamp.TimestampUpper [31:26] "logic ClaMmrCdbgclatimestamp.TimestampUpper[55:0]"
-Toggle ClaMmrCdbgclatimestamp.TimestampUpper [24:13] "logic ClaMmrCdbgclatimestamp.TimestampUpper[55:0]"
-Toggle 1to0 ClaMmrCdbgclatimestamp.TimestampUpper [12] "logic ClaMmrCdbgclatimestamp.TimestampUpper[55:0]"
+Toggle ClaMmrCdbgclatimestamp.TimestampUpper [24:12] "logic ClaMmrCdbgclatimestamp.TimestampUpper[55:0]"
+Toggle 1to0 ClaMmrCdbgclatimestamp.TimestampUpper [11] "logic ClaMmrCdbgclatimestamp.TimestampUpper[55:0]"
 Toggle ClaMmrCdbgclatimestampconfig.TsCapture "logic ClaMmrCdbgclatimestampconfig.TsCapture[0:0]"
 Toggle ClaMmrCdbgsignalsnapshotnode0Eap0Hi.Value "logic ClaMmrCdbgsignalsnapshotnode0Eap0Hi.Value[63:0]"
 Toggle ClaMmrCdbgsignalsnapshotnode0Eap1Hi.Value "logic ClaMmrCdbgsignalsnapshotnode0Eap1Hi.Value[63:0]"
@@ -25317,8 +25505,7 @@ Toggle ClaMmrCdbgclacounter1CfgWr.Data.UpperTarget "logic ClaMmrCdbgclacounter1C
 Toggle ClaMmrCdbgclacounter1CfgWr.Data.Rsvd "logic ClaMmrCdbgclacounter1CfgWr.Data.Rsvd[0:0]"
 Toggle ClaMmrCdbgclacounter2CfgWr.CounterWrEn "logic ClaMmrCdbgclacounter2CfgWr.CounterWrEn"
 Toggle ClaMmrCdbgclacounter2CfgWr.UpperCounterWrEn "logic ClaMmrCdbgclacounter2CfgWr.UpperCounterWrEn"
-Toggle ClaMmrCdbgclacounter2CfgWr.Data.Counter [15:10] "logic ClaMmrCdbgclacounter2CfgWr.Data.Counter[15:0]"
-Toggle 1to0 ClaMmrCdbgclacounter2CfgWr.Data.Counter [9] "logic ClaMmrCdbgclacounter2CfgWr.Data.Counter[15:0]"
+Toggle ClaMmrCdbgclacounter2CfgWr.Data.Counter [15:9] "logic ClaMmrCdbgclacounter2CfgWr.Data.Counter[15:0]"
 Toggle ClaMmrCdbgclacounter2CfgWr.Data.Target "logic ClaMmrCdbgclacounter2CfgWr.Data.Target[15:0]"
 Toggle ClaMmrCdbgclacounter2CfgWr.Data.ResetOnTarget "logic ClaMmrCdbgclacounter2CfgWr.Data.ResetOnTarget[0:0]"
 Toggle ClaMmrCdbgclacounter2CfgWr.Data.UpperCounter "logic ClaMmrCdbgclacounter2CfgWr.Data.UpperCounter[14:0]"
@@ -25458,8 +25645,8 @@ Toggle ClaMmrCdbgclatimestampWr.TimestampLowerWrEn "logic ClaMmrCdbgclatimestamp
 Toggle ClaMmrCdbgclatimestampWr.TimestampUpperWrEn "logic ClaMmrCdbgclatimestampWr.TimestampUpperWrEn"
 Toggle ClaMmrCdbgclatimestampWr.Data.TimestampUpper [55:33] "logic ClaMmrCdbgclatimestampWr.Data.TimestampUpper[55:0]"
 Toggle ClaMmrCdbgclatimestampWr.Data.TimestampUpper [31:26] "logic ClaMmrCdbgclatimestampWr.Data.TimestampUpper[55:0]"
-Toggle ClaMmrCdbgclatimestampWr.Data.TimestampUpper [24:13] "logic ClaMmrCdbgclatimestampWr.Data.TimestampUpper[55:0]"
-Toggle 1to0 ClaMmrCdbgclatimestampWr.Data.TimestampUpper [12] "logic ClaMmrCdbgclatimestampWr.Data.TimestampUpper[55:0]"
+Toggle ClaMmrCdbgclatimestampWr.Data.TimestampUpper [24:12] "logic ClaMmrCdbgclatimestampWr.Data.TimestampUpper[55:0]"
+Toggle 1to0 ClaMmrCdbgclatimestampWr.Data.TimestampUpper [11] "logic ClaMmrCdbgclatimestampWr.Data.TimestampUpper[55:0]"
 Toggle ClaMmrCdbgclatimestampconfigWr.ResyncWrEn "logic ClaMmrCdbgclatimestampconfigWr.ResyncWrEn"
 Toggle ClaMmrCdbgclatimestampconfigWr.TsCaptureWrEn "logic ClaMmrCdbgclatimestampconfigWr.TsCaptureWrEn"
 Toggle ClaMmrCdbgclatimestampconfigWr.Data.DebugMarker "logic ClaMmrCdbgclatimestampconfigWr.Data.DebugMarker[7:0]"
@@ -25508,8 +25695,7 @@ Toggle 1to0 MMR_CDbgClaCounter0Cfg [10] "logic MMR_CDbgClaCounter0Cfg[63:0]"
 Toggle MMR_CDbgClaCounter1Cfg [47:33] "logic MMR_CDbgClaCounter1Cfg[63:0]"
 Toggle MMR_CDbgClaCounter1Cfg [15:9] "logic MMR_CDbgClaCounter1Cfg[63:0]"
 Toggle MMR_CDbgClaCounter2Cfg [47:33] "logic MMR_CDbgClaCounter2Cfg[63:0]"
-Toggle MMR_CDbgClaCounter2Cfg [15:10] "logic MMR_CDbgClaCounter2Cfg[63:0]"
-Toggle 1to0 MMR_CDbgClaCounter2Cfg [9] "logic MMR_CDbgClaCounter2Cfg[63:0]"
+Toggle MMR_CDbgClaCounter2Cfg [15:9] "logic MMR_CDbgClaCounter2Cfg[63:0]"
 Toggle MMR_CDbgClaCounter3Cfg [47:33] "logic MMR_CDbgClaCounter3Cfg[63:0]"
 Toggle MMR_CDbgClaCounter3Cfg [15:9] "logic MMR_CDbgClaCounter3Cfg[63:0]"
 Toggle MMR_CDbgEapStatus [31:16] "logic MMR_CDbgEapStatus[63:0]"
@@ -25553,8 +25739,8 @@ Toggle MMR_CDbgSignalSnapshotNode3Eap3Lo [63:2] "logic MMR_CDbgSignalSnapshotNod
 Toggle 1to0 MMR_CDbgSignalSnapshotNode3Eap3Lo [1:0] "logic MMR_CDbgSignalSnapshotNode3Eap3Lo[63:0]"
 Toggle MMR_CDbgClaTimestamp [63:41] "logic MMR_CDbgClaTimestamp[63:0]"
 Toggle MMR_CDbgClaTimestamp [39:34] "logic MMR_CDbgClaTimestamp[63:0]"
-Toggle MMR_CDbgClaTimestamp [32:21] "logic MMR_CDbgClaTimestamp[63:0]"
-Toggle 1to0 MMR_CDbgClaTimestamp [20] "logic MMR_CDbgClaTimestamp[63:0]"
+Toggle MMR_CDbgClaTimestamp [32:20] "logic MMR_CDbgClaTimestamp[63:0]"
+Toggle 1to0 MMR_CDbgClaTimestamp [19] "logic MMR_CDbgClaTimestamp[63:0]"
 Toggle MMR_CDbgClaTimestampConfig [9] "logic MMR_CDbgClaTimestampConfig[63:0]"
 Toggle MMR_CDbgSignalSnapshotNode0Eap0Hi "logic MMR_CDbgSignalSnapshotNode0Eap0Hi[63:0]"
 Toggle MMR_CDbgSignalSnapshotNode0Eap1Hi "logic MMR_CDbgSignalSnapshotNode0Eap1Hi[63:0]"
@@ -25580,8 +25766,7 @@ Toggle 1to0 MMR_CDbgClaCounter0Cfg_F_Counter [10] "logic MMR_CDbgClaCounter0Cfg_
 Toggle MMR_CDbgClaCounter1Cfg_F_UpperCounter "logic MMR_CDbgClaCounter1Cfg_F_UpperCounter[14:0]"
 Toggle MMR_CDbgClaCounter1Cfg_F_Counter [15:9] "logic MMR_CDbgClaCounter1Cfg_F_Counter[15:0]"
 Toggle MMR_CDbgClaCounter2Cfg_F_UpperCounter "logic MMR_CDbgClaCounter2Cfg_F_UpperCounter[14:0]"
-Toggle MMR_CDbgClaCounter2Cfg_F_Counter [15:10] "logic MMR_CDbgClaCounter2Cfg_F_Counter[15:0]"
-Toggle 1to0 MMR_CDbgClaCounter2Cfg_F_Counter [9] "logic MMR_CDbgClaCounter2Cfg_F_Counter[15:0]"
+Toggle MMR_CDbgClaCounter2Cfg_F_Counter [15:9] "logic MMR_CDbgClaCounter2Cfg_F_Counter[15:0]"
 Toggle MMR_CDbgClaCounter3Cfg_F_UpperCounter "logic MMR_CDbgClaCounter3Cfg_F_UpperCounter[14:0]"
 Toggle MMR_CDbgClaCounter3Cfg_F_Counter [15:9] "logic MMR_CDbgClaCounter3Cfg_F_Counter[15:0]"
 Toggle MMR_CDbgEapStatus_F_Rsvd3116 "logic MMR_CDbgEapStatus_F_Rsvd3116[15:0]"
@@ -25625,8 +25810,8 @@ Toggle MMR_CDbgSignalSnapshotNode3Eap3Lo_F_Value [63:2] "logic MMR_CDbgSignalSna
 Toggle 1to0 MMR_CDbgSignalSnapshotNode3Eap3Lo_F_Value [1:0] "logic MMR_CDbgSignalSnapshotNode3Eap3Lo_F_Value[63:0]"
 Toggle MMR_CDbgClaTimestamp_F_TimestampUpper [55:33] "logic MMR_CDbgClaTimestamp_F_TimestampUpper[55:0]"
 Toggle MMR_CDbgClaTimestamp_F_TimestampUpper [31:26] "logic MMR_CDbgClaTimestamp_F_TimestampUpper[55:0]"
-Toggle MMR_CDbgClaTimestamp_F_TimestampUpper [24:13] "logic MMR_CDbgClaTimestamp_F_TimestampUpper[55:0]"
-Toggle 1to0 MMR_CDbgClaTimestamp_F_TimestampUpper [12] "logic MMR_CDbgClaTimestamp_F_TimestampUpper[55:0]"
+Toggle MMR_CDbgClaTimestamp_F_TimestampUpper [24:12] "logic MMR_CDbgClaTimestamp_F_TimestampUpper[55:0]"
+Toggle 1to0 MMR_CDbgClaTimestamp_F_TimestampUpper [11] "logic MMR_CDbgClaTimestamp_F_TimestampUpper[55:0]"
 Toggle MMR_CDbgClaTimestampConfig_F_TsCapture "logic MMR_CDbgClaTimestampConfig_F_TsCapture[0:0]"
 Toggle MMR_CDbgSignalSnapshotNode0Eap0Hi_F_Value "logic MMR_CDbgSignalSnapshotNode0Eap0Hi_F_Value[63:0]"
 Toggle MMR_CDbgSignalSnapshotNode0Eap1Hi_F_Value "logic MMR_CDbgSignalSnapshotNode0Eap1Hi_F_Value[63:0]"
@@ -25670,12 +25855,9 @@ Toggle MMR_CDbgClaCounter2Cfg_F_UpperCounter_Data "logic MMR_CDbgClaCounter2Cfg_
 Toggle MMR_CDbgClaCounter2Cfg_F_UpperCounter_Data_muxed "logic MMR_CDbgClaCounter2Cfg_F_UpperCounter_Data_muxed[14:0]"
 Toggle MMR_CDbgClaCounter2Cfg_F_UpperCounter_Data_prev "logic MMR_CDbgClaCounter2Cfg_F_UpperCounter_Data_prev[14:0]"
 Toggle MMR_CDbgClaCounter2Cfg_F_Counter_WrEn "logic MMR_CDbgClaCounter2Cfg_F_Counter_WrEn"
-Toggle MMR_CDbgClaCounter2Cfg_F_Counter_Data [15:10] "logic MMR_CDbgClaCounter2Cfg_F_Counter_Data[15:0]"
-Toggle 1to0 MMR_CDbgClaCounter2Cfg_F_Counter_Data [9] "logic MMR_CDbgClaCounter2Cfg_F_Counter_Data[15:0]"
-Toggle MMR_CDbgClaCounter2Cfg_F_Counter_Data_muxed [15:10] "logic MMR_CDbgClaCounter2Cfg_F_Counter_Data_muxed[15:0]"
-Toggle 1to0 MMR_CDbgClaCounter2Cfg_F_Counter_Data_muxed [9] "logic MMR_CDbgClaCounter2Cfg_F_Counter_Data_muxed[15:0]"
-Toggle MMR_CDbgClaCounter2Cfg_F_Counter_Data_prev [15:10] "logic MMR_CDbgClaCounter2Cfg_F_Counter_Data_prev[15:0]"
-Toggle 1to0 MMR_CDbgClaCounter2Cfg_F_Counter_Data_prev [9] "logic MMR_CDbgClaCounter2Cfg_F_Counter_Data_prev[15:0]"
+Toggle MMR_CDbgClaCounter2Cfg_F_Counter_Data [15:9] "logic MMR_CDbgClaCounter2Cfg_F_Counter_Data[15:0]"
+Toggle MMR_CDbgClaCounter2Cfg_F_Counter_Data_muxed [15:9] "logic MMR_CDbgClaCounter2Cfg_F_Counter_Data_muxed[15:0]"
+Toggle MMR_CDbgClaCounter2Cfg_F_Counter_Data_prev [15:9] "logic MMR_CDbgClaCounter2Cfg_F_Counter_Data_prev[15:0]"
 Toggle MMR_CDbgClaCounter3Cfg_F_UpperCounter_WrEn "logic MMR_CDbgClaCounter3Cfg_F_UpperCounter_WrEn"
 Toggle MMR_CDbgClaCounter3Cfg_F_UpperCounter_Data "logic MMR_CDbgClaCounter3Cfg_F_UpperCounter_Data[14:0]"
 Toggle MMR_CDbgClaCounter3Cfg_F_UpperCounter_Data_muxed "logic MMR_CDbgClaCounter3Cfg_F_UpperCounter_Data_muxed[14:0]"
@@ -25864,16 +26046,16 @@ Toggle 1to0 MMR_CDbgSignalSnapshotNode3Eap3Lo_F_Value_Data_prev [1:0] "logic MMR
 Toggle MMR_CDbgClaTimestamp_F_TimestampUpper_WrEn "logic MMR_CDbgClaTimestamp_F_TimestampUpper_WrEn"
 Toggle MMR_CDbgClaTimestamp_F_TimestampUpper_Data [55:33] "logic MMR_CDbgClaTimestamp_F_TimestampUpper_Data[55:0]"
 Toggle MMR_CDbgClaTimestamp_F_TimestampUpper_Data [31:26] "logic MMR_CDbgClaTimestamp_F_TimestampUpper_Data[55:0]"
-Toggle MMR_CDbgClaTimestamp_F_TimestampUpper_Data [24:13] "logic MMR_CDbgClaTimestamp_F_TimestampUpper_Data[55:0]"
-Toggle 1to0 MMR_CDbgClaTimestamp_F_TimestampUpper_Data [12] "logic MMR_CDbgClaTimestamp_F_TimestampUpper_Data[55:0]"
+Toggle MMR_CDbgClaTimestamp_F_TimestampUpper_Data [24:12] "logic MMR_CDbgClaTimestamp_F_TimestampUpper_Data[55:0]"
+Toggle 1to0 MMR_CDbgClaTimestamp_F_TimestampUpper_Data [11] "logic MMR_CDbgClaTimestamp_F_TimestampUpper_Data[55:0]"
 Toggle MMR_CDbgClaTimestamp_F_TimestampUpper_Data_muxed [55:33] "logic MMR_CDbgClaTimestamp_F_TimestampUpper_Data_muxed[55:0]"
 Toggle MMR_CDbgClaTimestamp_F_TimestampUpper_Data_muxed [31:26] "logic MMR_CDbgClaTimestamp_F_TimestampUpper_Data_muxed[55:0]"
-Toggle MMR_CDbgClaTimestamp_F_TimestampUpper_Data_muxed [24:13] "logic MMR_CDbgClaTimestamp_F_TimestampUpper_Data_muxed[55:0]"
-Toggle 1to0 MMR_CDbgClaTimestamp_F_TimestampUpper_Data_muxed [12] "logic MMR_CDbgClaTimestamp_F_TimestampUpper_Data_muxed[55:0]"
+Toggle MMR_CDbgClaTimestamp_F_TimestampUpper_Data_muxed [24:12] "logic MMR_CDbgClaTimestamp_F_TimestampUpper_Data_muxed[55:0]"
+Toggle 1to0 MMR_CDbgClaTimestamp_F_TimestampUpper_Data_muxed [11] "logic MMR_CDbgClaTimestamp_F_TimestampUpper_Data_muxed[55:0]"
 Toggle MMR_CDbgClaTimestamp_F_TimestampUpper_Data_prev [55:33] "logic MMR_CDbgClaTimestamp_F_TimestampUpper_Data_prev[55:0]"
 Toggle MMR_CDbgClaTimestamp_F_TimestampUpper_Data_prev [31:26] "logic MMR_CDbgClaTimestamp_F_TimestampUpper_Data_prev[55:0]"
-Toggle MMR_CDbgClaTimestamp_F_TimestampUpper_Data_prev [24:13] "logic MMR_CDbgClaTimestamp_F_TimestampUpper_Data_prev[55:0]"
-Toggle 1to0 MMR_CDbgClaTimestamp_F_TimestampUpper_Data_prev [12] "logic MMR_CDbgClaTimestamp_F_TimestampUpper_Data_prev[55:0]"
+Toggle MMR_CDbgClaTimestamp_F_TimestampUpper_Data_prev [24:12] "logic MMR_CDbgClaTimestamp_F_TimestampUpper_Data_prev[55:0]"
+Toggle 1to0 MMR_CDbgClaTimestamp_F_TimestampUpper_Data_prev [11] "logic MMR_CDbgClaTimestamp_F_TimestampUpper_Data_prev[55:0]"
 Toggle MMR_CDbgClaTimestamp_F_TimestampLower_WrEn "logic MMR_CDbgClaTimestamp_F_TimestampLower_WrEn"
 Toggle MMR_CDbgClaTimestampConfig_F_TsCapture_Data "logic MMR_CDbgClaTimestampConfig_F_TsCapture_Data[0:0]"
 Toggle MMR_CDbgClaTimestampConfig_F_TsCapture_Data_muxed "logic MMR_CDbgClaTimestampConfig_F_TsCapture_Data_muxed[0:0]"
@@ -25956,8 +26138,7 @@ Toggle 1to0 MMR_CDbgClaCounter0Cfg_muxed [10] "logic MMR_CDbgClaCounter0Cfg_muxe
 Toggle MMR_CDbgClaCounter1Cfg_muxed [47:33] "logic MMR_CDbgClaCounter1Cfg_muxed[63:0]"
 Toggle MMR_CDbgClaCounter1Cfg_muxed [15:9] "logic MMR_CDbgClaCounter1Cfg_muxed[63:0]"
 Toggle MMR_CDbgClaCounter2Cfg_muxed [47:33] "logic MMR_CDbgClaCounter2Cfg_muxed[63:0]"
-Toggle MMR_CDbgClaCounter2Cfg_muxed [15:10] "logic MMR_CDbgClaCounter2Cfg_muxed[63:0]"
-Toggle 1to0 MMR_CDbgClaCounter2Cfg_muxed [9] "logic MMR_CDbgClaCounter2Cfg_muxed[63:0]"
+Toggle MMR_CDbgClaCounter2Cfg_muxed [15:9] "logic MMR_CDbgClaCounter2Cfg_muxed[63:0]"
 Toggle MMR_CDbgClaCounter3Cfg_muxed [47:33] "logic MMR_CDbgClaCounter3Cfg_muxed[63:0]"
 Toggle MMR_CDbgClaCounter3Cfg_muxed [15:9] "logic MMR_CDbgClaCounter3Cfg_muxed[63:0]"
 Toggle MMR_CDbgEapStatus_muxed [31:16] "logic MMR_CDbgEapStatus_muxed[63:0]"
@@ -26001,8 +26182,8 @@ Toggle MMR_CDbgSignalSnapshotNode3Eap3Lo_muxed [63:2] "logic MMR_CDbgSignalSnaps
 Toggle 1to0 MMR_CDbgSignalSnapshotNode3Eap3Lo_muxed [1:0] "logic MMR_CDbgSignalSnapshotNode3Eap3Lo_muxed[63:0]"
 Toggle MMR_CDbgClaTimestamp_muxed [63:41] "logic MMR_CDbgClaTimestamp_muxed[63:0]"
 Toggle MMR_CDbgClaTimestamp_muxed [39:34] "logic MMR_CDbgClaTimestamp_muxed[63:0]"
-Toggle MMR_CDbgClaTimestamp_muxed [32:21] "logic MMR_CDbgClaTimestamp_muxed[63:0]"
-Toggle 1to0 MMR_CDbgClaTimestamp_muxed [20] "logic MMR_CDbgClaTimestamp_muxed[63:0]"
+Toggle MMR_CDbgClaTimestamp_muxed [32:20] "logic MMR_CDbgClaTimestamp_muxed[63:0]"
+Toggle 1to0 MMR_CDbgClaTimestamp_muxed [19] "logic MMR_CDbgClaTimestamp_muxed[63:0]"
 Toggle MMR_CDbgClaTimestampConfig_muxed [9] "logic MMR_CDbgClaTimestampConfig_muxed[63:0]"
 Toggle MMR_CDbgSignalSnapshotNode0Eap0Hi_muxed "logic MMR_CDbgSignalSnapshotNode0Eap0Hi_muxed[63:0]"
 Toggle MMR_CDbgSignalSnapshotNode0Eap1Hi_muxed "logic MMR_CDbgSignalSnapshotNode0Eap1Hi_muxed[63:0]"
@@ -26056,11 +26237,9 @@ Toggle out "logic out[14:0]"
 CHECKSUM: "1659362951 1126538377"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.mmrs.cla_csr_gen_blk.cla_csr_inst[0].u_cla_mmr.MMR_CDbgClaCounter2Cfg_F_Counter_ff
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle in [15:10] "logic in[15:0]"
-Toggle 1to0 in [9] "logic in[15:0]"
+Toggle in [15:9] "logic in[15:0]"
 Toggle en "logic en"
-Toggle out [15:10] "logic out[15:0]"
-Toggle 1to0 out [9] "logic out[15:0]"
+Toggle out [15:9] "logic out[15:0]"
 
 CHECKSUM: "1659362951 3711798543"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.mmrs.cla_csr_gen_blk.cla_csr_inst[0].u_cla_mmr.MMR_CDbgClaCounter2Cfg_F_UpperCounter_ff
@@ -26124,13 +26303,13 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_df
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle in [55:33] "logic in[55:0]"
 Toggle in [31:26] "logic in[55:0]"
-Toggle in [24:13] "logic in[55:0]"
-Toggle 1to0 in [12] "logic in[55:0]"
+Toggle in [24:12] "logic in[55:0]"
+Toggle 1to0 in [11] "logic in[55:0]"
 Toggle en "logic en"
 Toggle out [55:33] "logic out[55:0]"
 Toggle out [31:26] "logic out[55:0]"
-Toggle out [24:13] "logic out[55:0]"
-Toggle 1to0 out [12] "logic out[55:0]"
+Toggle out [24:12] "logic out[55:0]"
+Toggle 1to0 out [11] "logic out[55:0]"
 
 CHECKSUM: "1659362951 2011837486"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.mmrs.cla_csr_gen_blk.cla_csr_inst[0].u_cla_mmr.MMR_CDbgEapStatus_F_Node0Eap0_ff
@@ -26548,6 +26727,7 @@ Toggle DstMmrTrdstinstfeatures.Trdstinstnoaddrdiff "logic DstMmrTrdstinstfeature
 Toggle DstMmrTrdstinstfeatures.Trdstinstnotrapaddr "logic DstMmrTrdstinstfeatures.Trdstinstnotrapaddr[0:0]"
 Toggle DstMmrTrdstinstfeatures.Trdstinstenrepeatedhistory "logic DstMmrTrdstinstfeatures.Trdstinstenrepeatedhistory[0:0]"
 Toggle DstMmrTrdstinstfeatures.Trdstsrcbits [2] "logic DstMmrTrdstinstfeatures.Trdstsrcbits[3:0]"
+Toggle DstMmrCdbgdebugtracecfg.FrameModeEnable "logic DstMmrCdbgdebugtracecfg.FrameModeEnable[0:0]"
 Toggle DstMmrTrdstcontrolWr.TrdstemptyWrEn "logic DstMmrTrdstcontrolWr.TrdstemptyWrEn"
 Toggle DstMmrTrdstcontrolWr.Data.Trdstactive "logic DstMmrTrdstcontrolWr.Data.Trdstactive[0:0]"
 Toggle DstMmrTrdstcontrolWr.Data.Trdstenable "logic DstMmrTrdstcontrolWr.Data.Trdstenable[0:0]"
@@ -26566,11 +26746,21 @@ Toggle reg_wr_strb [1] "logic reg_wr_strb[1:0]"
 Toggle reg_addr [1:0] "logic reg_addr[11:0]"
 Toggle reg_addr_d1 [1:0] "logic reg_addr_d1[11:0]"
 Toggle MMR_Trdstinstfeatures [30] "logic MMR_Trdstinstfeatures[31:0]"
+Toggle MMR_CDbgDebugTraceCfg [20] "logic MMR_CDbgDebugTraceCfg[31:0]"
 Toggle MMR_Trdstinstfeatures_F_Trdstsrcbits [2] "logic MMR_Trdstinstfeatures_F_Trdstsrcbits[3:0]"
+Toggle MMR_CDbgDebugTraceCfg_F_FrameModeEnable "logic MMR_CDbgDebugTraceCfg_F_FrameModeEnable[0:0]"
 Toggle MMR_Trdstcontrol_F_Trdstempty_WrEn "logic MMR_Trdstcontrol_F_Trdstempty_WrEn"
 Toggle MMR_Trdstinstfeatures_F_Trdstsrcbits_Data_muxed [2] "logic MMR_Trdstinstfeatures_F_Trdstsrcbits_Data_muxed[3:0]"
 Toggle MMR_Trdstinstfeatures_F_Trdstsrcbits_Data_prev [2] "logic MMR_Trdstinstfeatures_F_Trdstsrcbits_Data_prev[3:0]"
+Toggle MMR_CDbgDebugTraceCfg_F_FrameModeEnable_Data_muxed "logic MMR_CDbgDebugTraceCfg_F_FrameModeEnable_Data_muxed[0:0]"
+Toggle MMR_CDbgDebugTraceCfg_F_FrameModeEnable_Data_prev "logic MMR_CDbgDebugTraceCfg_F_FrameModeEnable_Data_prev[0:0]"
 Toggle MMR_Trdstinstfeatures_muxed [30] "logic MMR_Trdstinstfeatures_muxed[31:0]"
+Toggle MMR_CDbgDebugTraceCfg_muxed [20] "logic MMR_CDbgDebugTraceCfg_muxed[31:0]"
+
+CHECKSUM: "1659362951 2011837486"
+INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.mmrs.dst_csr_gen_blk.dst_csr_inst[0].u_dst_mmr.MMR_CDbgDebugTraceCfg_F_FrameModeEnable_ff
+ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
+Toggle out "logic out[0:0]"
 
 CHECKSUM: "1659362951 2011837486"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.mmrs.dst_csr_gen_blk.dst_csr_inst[0].u_dst_mmr.MMR_Trdstcontrol_F_Trdstempty_ff
@@ -26614,8 +26804,8 @@ Toggle DstSinkMmrTrdstramimpl.Trdstramvendorframelength [0] "logic DstSinkMmrTrd
 Toggle DstSinkMmrTrdstramstartlow.Rsvd10 "logic DstSinkMmrTrdstramstartlow.Rsvd10[1:0]"
 Toggle DstSinkMmrTrdstramlimitlow.Rsvd10 "logic DstSinkMmrTrdstramlimitlow.Rsvd10[1:0]"
 Toggle DstSinkMmrTrdstramrplow.Rsvd10 "logic DstSinkMmrTrdstramrplow.Rsvd10[1:0]"
-Toggle DstSinkMmrTrdstramdata.Trdstramdata [22:18] "logic DstSinkMmrTrdstramdata.Trdstramdata[31:0]"
-Toggle DstSinkMmrTrdstramdata.Trdstramdata [6] "logic DstSinkMmrTrdstramdata.Trdstramdata[31:0]"
+Toggle DstSinkMmrTrdstramdata.Trdstramdata [22:17] "logic DstSinkMmrTrdstramdata.Trdstramdata[31:0]"
+Toggle DstSinkMmrTrdstramdata.Trdstramdata [6:3] "logic DstSinkMmrTrdstramdata.Trdstramdata[31:0]"
 Toggle DstSinkMmrTrdstramcontrolWr.TrdstramactiveWrEn "logic DstSinkMmrTrdstramcontrolWr.TrdstramactiveWrEn"
 Toggle DstSinkMmrTrdstramcontrolWr.TrdstramemptyWrEn "logic DstSinkMmrTrdstramcontrolWr.TrdstramemptyWrEn"
 Toggle DstSinkMmrTrdstramcontrolWr.TrdstrammodeWrEn "logic DstSinkMmrTrdstramcontrolWr.TrdstrammodeWrEn"
@@ -26633,36 +26823,36 @@ Toggle DstSinkMmrTrdstramlimitlowWr.Data.Rsvd10 "logic DstSinkMmrTrdstramlimitlo
 Toggle DstSinkMmrTrdstramlimitlowWr.Data.Trdstramlimitlow "logic DstSinkMmrTrdstramlimitlowWr.Data.Trdstramlimitlow[29:0]"
 Toggle DstSinkMmrTrdstramlimithighWr.TrdstramlimithighWrEn "logic DstSinkMmrTrdstramlimithighWr.TrdstramlimithighWrEn"
 Toggle DstSinkMmrTrdstramlimithighWr.Data.Trdstramlimithigh "logic DstSinkMmrTrdstramlimithighWr.Data.Trdstramlimithigh[31:0]"
-Toggle DstSinkMmrTrdstramwplowWr.Data.Trdstramwplow [29:13] "logic DstSinkMmrTrdstramwplowWr.Data.Trdstramwplow[29:0]"
+Toggle DstSinkMmrTrdstramwplowWr.Data.Trdstramwplow [29:12] "logic DstSinkMmrTrdstramwplowWr.Data.Trdstramwplow[29:0]"
 Toggle DstSinkMmrTrdstramwplowWr.Data.Trdstramwplow [3:0] "logic DstSinkMmrTrdstramwplowWr.Data.Trdstramwplow[29:0]"
 Toggle DstSinkMmrTrdstramwphighWr.Data.Trdstramwphigh [31:20] "logic DstSinkMmrTrdstramwphighWr.Data.Trdstramwphigh[31:0]"
 Toggle DstSinkMmrTrdstramrplowWr.Data.Rsvd10 "logic DstSinkMmrTrdstramrplowWr.Data.Rsvd10[1:0]"
 Toggle DstSinkMmrTrdstramrphighWr.TrdstramrphighWrEn "logic DstSinkMmrTrdstramrphighWr.TrdstramrphighWrEn"
 Toggle DstSinkMmrTrdstramrphighWr.Data.Trdstramrphigh "logic DstSinkMmrTrdstramrphighWr.Data.Trdstramrphigh[31:0]"
 Toggle DstSinkMmrTrdstramdataWr.Data.Trdstramdata [22:19] "logic DstSinkMmrTrdstramdataWr.Data.Trdstramdata[31:0]"
-Toggle DstSinkMmrTrdstramdataWr.Data.Trdstramdata [6] "logic DstSinkMmrTrdstramdataWr.Data.Trdstramdata[31:0]"
+Toggle DstSinkMmrTrdstramdataWr.Data.Trdstramdata [6:3] "logic DstSinkMmrTrdstramdataWr.Data.Trdstramdata[31:0]"
 Toggle MmrUpdateAddr [1:0] "logic MmrUpdateAddr[11:0]"
 Toggle reg_wr_strb [1] "logic reg_wr_strb[1:0]"
 Toggle reg_addr [1:0] "logic reg_addr[11:0]"
 Toggle reg_addr_d1 [1:0] "logic reg_addr_d1[11:0]"
 Toggle MMR_Trdstramimpl [24] "logic MMR_Trdstramimpl[31:0]"
-Toggle MMR_Trdstramdata [22:18] "logic MMR_Trdstramdata[31:0]"
-Toggle MMR_Trdstramdata [6] "logic MMR_Trdstramdata[31:0]"
+Toggle MMR_Trdstramdata [22:17] "logic MMR_Trdstramdata[31:0]"
+Toggle MMR_Trdstramdata [6:3] "logic MMR_Trdstramdata[31:0]"
 Toggle MMR_Trdstramimpl_F_Trdstramvendorframelength [0] "logic MMR_Trdstramimpl_F_Trdstramvendorframelength[3:0]"
-Toggle MMR_Trdstramdata_F_Trdstramdata [22:18] "logic MMR_Trdstramdata_F_Trdstramdata[31:0]"
-Toggle MMR_Trdstramdata_F_Trdstramdata [6] "logic MMR_Trdstramdata_F_Trdstramdata[31:0]"
+Toggle MMR_Trdstramdata_F_Trdstramdata [22:17] "logic MMR_Trdstramdata_F_Trdstramdata[31:0]"
+Toggle MMR_Trdstramdata_F_Trdstramdata [6:3] "logic MMR_Trdstramdata_F_Trdstramdata[31:0]"
 Toggle MMR_Trdstramcontrol_F_Trdstramempty_WrEn "logic MMR_Trdstramcontrol_F_Trdstramempty_WrEn"
 Toggle MMR_Trdstramimpl_F_Trdstramvendorframelength_Data_muxed [0] "logic MMR_Trdstramimpl_F_Trdstramvendorframelength_Data_muxed[3:0]"
 Toggle MMR_Trdstramimpl_F_Trdstramvendorframelength_Data_prev [0] "logic MMR_Trdstramimpl_F_Trdstramvendorframelength_Data_prev[3:0]"
 Toggle MMR_Trdstramdata_F_Trdstramdata_Data [22:19] "logic MMR_Trdstramdata_F_Trdstramdata_Data[31:0]"
-Toggle MMR_Trdstramdata_F_Trdstramdata_Data [6] "logic MMR_Trdstramdata_F_Trdstramdata_Data[31:0]"
-Toggle MMR_Trdstramdata_F_Trdstramdata_Data_muxed [22:18] "logic MMR_Trdstramdata_F_Trdstramdata_Data_muxed[31:0]"
-Toggle MMR_Trdstramdata_F_Trdstramdata_Data_muxed [6] "logic MMR_Trdstramdata_F_Trdstramdata_Data_muxed[31:0]"
-Toggle MMR_Trdstramdata_F_Trdstramdata_Data_prev [22:18] "logic MMR_Trdstramdata_F_Trdstramdata_Data_prev[31:0]"
-Toggle MMR_Trdstramdata_F_Trdstramdata_Data_prev [6] "logic MMR_Trdstramdata_F_Trdstramdata_Data_prev[31:0]"
+Toggle MMR_Trdstramdata_F_Trdstramdata_Data [6:3] "logic MMR_Trdstramdata_F_Trdstramdata_Data[31:0]"
+Toggle MMR_Trdstramdata_F_Trdstramdata_Data_muxed [22:17] "logic MMR_Trdstramdata_F_Trdstramdata_Data_muxed[31:0]"
+Toggle MMR_Trdstramdata_F_Trdstramdata_Data_muxed [6:3] "logic MMR_Trdstramdata_F_Trdstramdata_Data_muxed[31:0]"
+Toggle MMR_Trdstramdata_F_Trdstramdata_Data_prev [22:17] "logic MMR_Trdstramdata_F_Trdstramdata_Data_prev[31:0]"
+Toggle MMR_Trdstramdata_F_Trdstramdata_Data_prev [6:3] "logic MMR_Trdstramdata_F_Trdstramdata_Data_prev[31:0]"
 Toggle MMR_Trdstramimpl_muxed [24] "logic MMR_Trdstramimpl_muxed[31:0]"
-Toggle MMR_Trdstramdata_muxed [22:18] "logic MMR_Trdstramdata_muxed[31:0]"
-Toggle MMR_Trdstramdata_muxed [6] "logic MMR_Trdstramdata_muxed[31:0]"
+Toggle MMR_Trdstramdata_muxed [22:17] "logic MMR_Trdstramdata_muxed[31:0]"
+Toggle MMR_Trdstramdata_muxed [6:3] "logic MMR_Trdstramdata_muxed[31:0]"
 
 CHECKSUM: "1659362951 2011837486"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.mmrs.dst_sink_csr_gen_blk.u_dst_sink_mmr.MMR_Trdstramcontrol_F_Trdstramempty_ff
@@ -26673,9 +26863,9 @@ CHECKSUM: "1659362951 2154656998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.mmrs.dst_sink_csr_gen_blk.u_dst_sink_mmr.MMR_Trdstramdata_F_Trdstramdata_ff
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle in [22:19] "logic in[31:0]"
-Toggle in [6] "logic in[31:0]"
-Toggle out [22:18] "logic out[31:0]"
-Toggle out [6] "logic out[31:0]"
+Toggle in [6:3] "logic in[31:0]"
+Toggle out [22:17] "logic out[31:0]"
+Toggle out [6:3] "logic out[31:0]"
 
 CHECKSUM: "1659362951 3506641683"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.mmrs.dst_sink_csr_gen_blk.u_dst_sink_mmr.MMR_Trdstramimpl_F_Trdstramvendorframelength_ff
@@ -26791,24 +26981,66 @@ CHECKSUM: "1255329244 1482873278"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.tnif_wrapper
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle dst_tnif_data [0][118:115] "logic [0:0][127:0]dst_tnif_data"
+Toggle dst_tnif_data [0][102:99] "logic [0:0][127:0]dst_tnif_data"
+Toggle dst_tnif_data [0][86:83] "logic [0:0][127:0]dst_tnif_data"
 Toggle dst_tnif_data [0][70:67] "logic [0:0][127:0]dst_tnif_data"
+Toggle dst_tnif_data [0][54:51] "logic [0:0][127:0]dst_tnif_data"
+Toggle dst_tnif_data [0][38:35] "logic [0:0][127:0]dst_tnif_data"
+Toggle dst_tnif_data [0][22:19] "logic [0:0][127:0]dst_tnif_data"
+Toggle dst_tnif_data [0][6:3] "logic [0:0][127:0]dst_tnif_data"
 Toggle ntr_tnif_data "logic [0:0][127:0]ntr_tnif_data"
 Toggle tnif_tr_data [0][118:115] "logic [0:0][127:0]tnif_tr_data"
+Toggle tnif_tr_data [0][102:99] "logic [0:0][127:0]tnif_tr_data"
+Toggle tnif_tr_data [0][86:83] "logic [0:0][127:0]tnif_tr_data"
 Toggle tnif_tr_data [0][70:67] "logic [0:0][127:0]tnif_tr_data"
+Toggle tnif_tr_data [0][54:51] "logic [0:0][127:0]tnif_tr_data"
+Toggle tnif_tr_data [0][38:35] "logic [0:0][127:0]tnif_tr_data"
+Toggle tnif_tr_data [0][22:19] "logic [0:0][127:0]tnif_tr_data"
+Toggle tnif_tr_data [0][6:3] "logic [0:0][127:0]tnif_tr_data"
 Toggle tr_data_out_raw [0][118:115] "logic [0:0][127:0]tr_data_out_raw"
+Toggle tr_data_out_raw [0][102:99] "logic [0:0][127:0]tr_data_out_raw"
+Toggle tr_data_out_raw [0][86:83] "logic [0:0][127:0]tr_data_out_raw"
 Toggle tr_data_out_raw [0][70:67] "logic [0:0][127:0]tr_data_out_raw"
+Toggle tr_data_out_raw [0][54:51] "logic [0:0][127:0]tr_data_out_raw"
+Toggle tr_data_out_raw [0][38:35] "logic [0:0][127:0]tr_data_out_raw"
+Toggle tr_data_out_raw [0][22:19] "logic [0:0][127:0]tr_data_out_raw"
+Toggle tr_data_out_raw [0][6:3] "logic [0:0][127:0]tr_data_out_raw"
 Toggle tnif_tr_data_int [0][118:115] "logic [0:0][127:0]tnif_tr_data_int"
+Toggle tnif_tr_data_int [0][102:99] "logic [0:0][127:0]tnif_tr_data_int"
+Toggle tnif_tr_data_int [0][86:83] "logic [0:0][127:0]tnif_tr_data_int"
 Toggle tnif_tr_data_int [0][70:67] "logic [0:0][127:0]tnif_tr_data_int"
+Toggle tnif_tr_data_int [0][54:51] "logic [0:0][127:0]tnif_tr_data_int"
+Toggle tnif_tr_data_int [0][38:35] "logic [0:0][127:0]tnif_tr_data_int"
+Toggle tnif_tr_data_int [0][22:19] "logic [0:0][127:0]tnif_tr_data_int"
+Toggle tnif_tr_data_int [0][6:3] "logic [0:0][127:0]tnif_tr_data_int"
 Toggle tnif_gen_blk[0].dst_data_w [118:115] "logic tnif_gen_blk[0].dst_data_w[127:0]"
+Toggle tnif_gen_blk[0].dst_data_w [102:99] "logic tnif_gen_blk[0].dst_data_w[127:0]"
+Toggle tnif_gen_blk[0].dst_data_w [86:83] "logic tnif_gen_blk[0].dst_data_w[127:0]"
 Toggle tnif_gen_blk[0].dst_data_w [70:67] "logic tnif_gen_blk[0].dst_data_w[127:0]"
+Toggle tnif_gen_blk[0].dst_data_w [54:51] "logic tnif_gen_blk[0].dst_data_w[127:0]"
+Toggle tnif_gen_blk[0].dst_data_w [38:35] "logic tnif_gen_blk[0].dst_data_w[127:0]"
+Toggle tnif_gen_blk[0].dst_data_w [22:19] "logic tnif_gen_blk[0].dst_data_w[127:0]"
+Toggle tnif_gen_blk[0].dst_data_w [6:3] "logic tnif_gen_blk[0].dst_data_w[127:0]"
 
 CHECKSUM: "4226918805 3086129094"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.tnif_wrapper.tnif_gen_blk[0].i_tnif
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle dst_data_in [118:115] "logic dst_data_in[127:0]"
+Toggle dst_data_in [102:99] "logic dst_data_in[127:0]"
+Toggle dst_data_in [86:83] "logic dst_data_in[127:0]"
 Toggle dst_data_in [70:67] "logic dst_data_in[127:0]"
+Toggle dst_data_in [54:51] "logic dst_data_in[127:0]"
+Toggle dst_data_in [38:35] "logic dst_data_in[127:0]"
+Toggle dst_data_in [22:19] "logic dst_data_in[127:0]"
+Toggle dst_data_in [6:3] "logic dst_data_in[127:0]"
 Toggle tr_data_out [118:115] "logic tr_data_out[127:0]"
+Toggle tr_data_out [102:99] "logic tr_data_out[127:0]"
+Toggle tr_data_out [86:83] "logic tr_data_out[127:0]"
 Toggle tr_data_out [70:67] "logic tr_data_out[127:0]"
+Toggle tr_data_out [54:51] "logic tr_data_out[127:0]"
+Toggle tr_data_out [38:35] "logic tr_data_out[127:0]"
+Toggle tr_data_out [22:19] "logic tr_data_out[127:0]"
+Toggle tr_data_out [6:3] "logic tr_data_out[127:0]"
 Toggle prev_gnt "logic prev_gnt[0:0]"
 Toggle next_gnt "logic next_gnt[0:0]"
 
@@ -26822,15 +27054,33 @@ CHECKSUM: "1659362951 39665386"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.tnif_wrapper.tnif_gen_blk[0].tnif_tr_data_out_d1_ff
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle in [118:115] "logic in[127:0]"
+Toggle in [102:99] "logic in[127:0]"
+Toggle in [86:83] "logic in[127:0]"
 Toggle in [70:67] "logic in[127:0]"
+Toggle in [54:51] "logic in[127:0]"
+Toggle in [38:35] "logic in[127:0]"
+Toggle in [22:19] "logic in[127:0]"
+Toggle in [6:3] "logic in[127:0]"
 Toggle out [118:115] "logic out[127:0]"
+Toggle out [102:99] "logic out[127:0]"
+Toggle out [86:83] "logic out[127:0]"
 Toggle out [70:67] "logic out[127:0]"
+Toggle out [54:51] "logic out[127:0]"
+Toggle out [38:35] "logic out[127:0]"
+Toggle out [22:19] "logic out[127:0]"
+Toggle out [6:3] "logic out[127:0]"
 
 CHECKSUM: "3227266885 3059270007"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle tnif_tr_data [0][118:115] "logic [0:0][127:0]tnif_tr_data"
+Toggle tnif_tr_data [0][102:99] "logic [0:0][127:0]tnif_tr_data"
+Toggle tnif_tr_data [0][86:83] "logic [0:0][127:0]tnif_tr_data"
 Toggle tnif_tr_data [0][70:67] "logic [0:0][127:0]tnif_tr_data"
+Toggle tnif_tr_data [0][54:51] "logic [0:0][127:0]tnif_tr_data"
+Toggle tnif_tr_data [0][38:35] "logic [0:0][127:0]tnif_tr_data"
+Toggle tnif_tr_data [0][22:19] "logic [0:0][127:0]tnif_tr_data"
+Toggle tnif_tr_data [0][6:3] "logic [0:0][127:0]tnif_tr_data"
 Toggle NtrSinkMmrs.Scratchhi.Data "logic NtrSinkMmrs.Scratchhi.Data[31:0]"
 Toggle NtrSinkMmrs.Scratchlo.Data "logic NtrSinkMmrs.Scratchlo.Data[31:0]"
 Toggle NtrSinkMmrs.Trcustomramsmemlimitlow.Rsvd10 "logic NtrSinkMmrs.Trcustomramsmemlimitlow.Rsvd10[1:0]"
@@ -26892,8 +27142,8 @@ Toggle NtrSinkMmrsWr.TrramcontrolWr.Data.Trramenable "logic NtrSinkMmrsWr.Trramc
 Toggle NtrSinkMmrsWr.TrramcontrolWr.Data.Trramempty "logic NtrSinkMmrsWr.TrramcontrolWr.Data.Trramempty[0:0]"
 Toggle NtrSinkMmrsWr.TrramcontrolWr.Data.Trrammode "logic NtrSinkMmrsWr.TrramcontrolWr.Data.Trrammode[0:0]"
 Toggle NtrSinkMmrsWr.TrramcontrolWr.Data.Trramstoponwrap "logic NtrSinkMmrsWr.TrramcontrolWr.Data.Trramstoponwrap[0:0]"
-Toggle DstSinkMmrs.Trdstramdata.Trdstramdata [22:18] "logic DstSinkMmrs.Trdstramdata.Trdstramdata[31:0]"
-Toggle DstSinkMmrs.Trdstramdata.Trdstramdata [6] "logic DstSinkMmrs.Trdstramdata.Trdstramdata[31:0]"
+Toggle DstSinkMmrs.Trdstramdata.Trdstramdata [22:17] "logic DstSinkMmrs.Trdstramdata.Trdstramdata[31:0]"
+Toggle DstSinkMmrs.Trdstramdata.Trdstramdata [6:3] "logic DstSinkMmrs.Trdstramdata.Trdstramdata[31:0]"
 Toggle DstSinkMmrs.Trdstramrplow.Rsvd10 "logic DstSinkMmrs.Trdstramrplow.Rsvd10[1:0]"
 Toggle DstSinkMmrs.Trdstramlimitlow.Rsvd10 "logic DstSinkMmrs.Trdstramlimitlow.Rsvd10[1:0]"
 Toggle DstSinkMmrs.Trdstramstartlow.Rsvd10 "logic DstSinkMmrs.Trdstramstartlow.Rsvd10[1:0]"
@@ -26904,12 +27154,12 @@ Toggle DstSinkMmrs.Trdstramimpl.Trdstramhassram "logic DstSinkMmrs.Trdstramimpl.
 Toggle DstSinkMmrs.Trdstramimpl.Trdstramhassmem "logic DstSinkMmrs.Trdstramimpl.Trdstramhassmem[0:0]"
 Toggle DstSinkMmrs.Trdstramimpl.Trdstramvendorframelength [0] "logic DstSinkMmrs.Trdstramimpl.Trdstramvendorframelength[3:0]"
 Toggle DstSinkMmrsWr.TrdstramdataWr.Data.Trdstramdata [22:19] "logic DstSinkMmrsWr.TrdstramdataWr.Data.Trdstramdata[31:0]"
-Toggle DstSinkMmrsWr.TrdstramdataWr.Data.Trdstramdata [6] "logic DstSinkMmrsWr.TrdstramdataWr.Data.Trdstramdata[31:0]"
+Toggle DstSinkMmrsWr.TrdstramdataWr.Data.Trdstramdata [6:3] "logic DstSinkMmrsWr.TrdstramdataWr.Data.Trdstramdata[31:0]"
 Toggle DstSinkMmrsWr.TrdstramrphighWr.TrdstramrphighWrEn "logic DstSinkMmrsWr.TrdstramrphighWr.TrdstramrphighWrEn"
 Toggle DstSinkMmrsWr.TrdstramrphighWr.Data.Trdstramrphigh "logic DstSinkMmrsWr.TrdstramrphighWr.Data.Trdstramrphigh[31:0]"
 Toggle DstSinkMmrsWr.TrdstramrplowWr.Data.Rsvd10 "logic DstSinkMmrsWr.TrdstramrplowWr.Data.Rsvd10[1:0]"
 Toggle DstSinkMmrsWr.TrdstramwphighWr.Data.Trdstramwphigh [31:20] "logic DstSinkMmrsWr.TrdstramwphighWr.Data.Trdstramwphigh[31:0]"
-Toggle DstSinkMmrsWr.TrdstramwplowWr.Data.Trdstramwplow [29:13] "logic DstSinkMmrsWr.TrdstramwplowWr.Data.Trdstramwplow[29:0]"
+Toggle DstSinkMmrsWr.TrdstramwplowWr.Data.Trdstramwplow [29:12] "logic DstSinkMmrsWr.TrdstramwplowWr.Data.Trdstramwplow[29:0]"
 Toggle DstSinkMmrsWr.TrdstramwplowWr.Data.Trdstramwplow [3:0] "logic DstSinkMmrsWr.TrdstramwplowWr.Data.Trdstramwplow[29:0]"
 Toggle DstSinkMmrsWr.TrdstramlimithighWr.TrdstramlimithighWrEn "logic DstSinkMmrsWr.TrdstramlimithighWr.TrdstramlimithighWrEn"
 Toggle DstSinkMmrsWr.TrdstramlimithighWr.Data.Trdstramlimithigh "logic DstSinkMmrsWr.TrdstramlimithighWr.Data.Trdstramlimithigh[31:0]"
@@ -27007,31 +27257,39 @@ Toggle m_trc_axi_aruser "logic m_trc_axi_aruser[7:0]"
 Toggle m_trc_axi_arvalid "logic m_trc_axi_arvalid"
 Toggle m_trc_axi_rready "logic m_trc_axi_rready"
 Toggle o_sink_mem_req[0].mem_wr_data [54:51] "logic o_sink_mem_req[0].mem_wr_data[63:0]"
-Toggle o_sink_mem_req[0].mem_wr_data [22:21] "logic o_sink_mem_req[0].mem_wr_data[63:0]"
-Toggle o_sink_mem_req[0].mem_wr_data [19] "logic o_sink_mem_req[0].mem_wr_data[63:0]"
+Toggle o_sink_mem_req[0].mem_wr_data [38:35] "logic o_sink_mem_req[0].mem_wr_data[63:0]"
+Toggle o_sink_mem_req[0].mem_wr_data [22:19] "logic o_sink_mem_req[0].mem_wr_data[63:0]"
 Toggle o_sink_mem_req[0].mem_wr_data [6:3] "logic o_sink_mem_req[0].mem_wr_data[63:0]"
 Toggle o_sink_mem_req[0].mem_wr_mask_en "logic o_sink_mem_req[0].mem_wr_mask_en"
 Toggle o_sink_mem_req[1].mem_wr_data [54:51] "logic o_sink_mem_req[1].mem_wr_data[63:0]"
+Toggle o_sink_mem_req[1].mem_wr_data [38:35] "logic o_sink_mem_req[1].mem_wr_data[63:0]"
+Toggle o_sink_mem_req[1].mem_wr_data [22:19] "logic o_sink_mem_req[1].mem_wr_data[63:0]"
 Toggle o_sink_mem_req[1].mem_wr_data [6:3] "logic o_sink_mem_req[1].mem_wr_data[63:0]"
 Toggle o_sink_mem_req[1].mem_wr_mask_en "logic o_sink_mem_req[1].mem_wr_mask_en"
 Toggle o_sink_mem_req[2].mem_wr_data [54:51] "logic o_sink_mem_req[2].mem_wr_data[63:0]"
 Toggle o_sink_mem_req[2].mem_wr_data [38:35] "logic o_sink_mem_req[2].mem_wr_data[63:0]"
 Toggle o_sink_mem_req[2].mem_wr_data [22:19] "logic o_sink_mem_req[2].mem_wr_data[63:0]"
-Toggle o_sink_mem_req[2].mem_wr_data [3] "logic o_sink_mem_req[2].mem_wr_data[63:0]"
+Toggle o_sink_mem_req[2].mem_wr_data [6:3] "logic o_sink_mem_req[2].mem_wr_data[63:0]"
 Toggle o_sink_mem_req[2].mem_wr_mask_en "logic o_sink_mem_req[2].mem_wr_mask_en"
 Toggle o_sink_mem_req[3].mem_wr_data [54:51] "logic o_sink_mem_req[3].mem_wr_data[63:0]"
+Toggle o_sink_mem_req[3].mem_wr_data [38:35] "logic o_sink_mem_req[3].mem_wr_data[63:0]"
 Toggle o_sink_mem_req[3].mem_wr_data [22:19] "logic o_sink_mem_req[3].mem_wr_data[63:0]"
 Toggle o_sink_mem_req[3].mem_wr_data [6:3] "logic o_sink_mem_req[3].mem_wr_data[63:0]"
 Toggle o_sink_mem_req[3].mem_wr_mask_en "logic o_sink_mem_req[3].mem_wr_mask_en"
 Toggle o_sink_mem_req[4].mem_wr_data [54:51] "logic o_sink_mem_req[4].mem_wr_data[63:0]"
 Toggle o_sink_mem_req[4].mem_wr_data [38:35] "logic o_sink_mem_req[4].mem_wr_data[63:0]"
+Toggle o_sink_mem_req[4].mem_wr_data [22:19] "logic o_sink_mem_req[4].mem_wr_data[63:0]"
+Toggle o_sink_mem_req[4].mem_wr_data [6:3] "logic o_sink_mem_req[4].mem_wr_data[63:0]"
 Toggle o_sink_mem_req[4].mem_wr_mask_en "logic o_sink_mem_req[4].mem_wr_mask_en"
 Toggle o_sink_mem_req[5].mem_wr_data [54:51] "logic o_sink_mem_req[5].mem_wr_data[63:0]"
 Toggle o_sink_mem_req[5].mem_wr_data [38:35] "logic o_sink_mem_req[5].mem_wr_data[63:0]"
 Toggle o_sink_mem_req[5].mem_wr_data [22:19] "logic o_sink_mem_req[5].mem_wr_data[63:0]"
 Toggle o_sink_mem_req[5].mem_wr_data [6:3] "logic o_sink_mem_req[5].mem_wr_data[63:0]"
 Toggle o_sink_mem_req[5].mem_wr_mask_en "logic o_sink_mem_req[5].mem_wr_mask_en"
+Toggle o_sink_mem_req[6].mem_wr_data [54:51] "logic o_sink_mem_req[6].mem_wr_data[63:0]"
+Toggle o_sink_mem_req[6].mem_wr_data [38:35] "logic o_sink_mem_req[6].mem_wr_data[63:0]"
 Toggle o_sink_mem_req[6].mem_wr_data [22:19] "logic o_sink_mem_req[6].mem_wr_data[63:0]"
+Toggle o_sink_mem_req[6].mem_wr_data [6:3] "logic o_sink_mem_req[6].mem_wr_data[63:0]"
 Toggle o_sink_mem_req[6].mem_wr_mask_en "logic o_sink_mem_req[6].mem_wr_mask_en"
 Toggle o_sink_mem_req[7].mem_wr_data [54:51] "logic o_sink_mem_req[7].mem_wr_data[63:0]"
 Toggle o_sink_mem_req[7].mem_wr_data [38:35] "logic o_sink_mem_req[7].mem_wr_data[63:0]"
@@ -27039,8 +27297,8 @@ Toggle o_sink_mem_req[7].mem_wr_data [22:19] "logic o_sink_mem_req[7].mem_wr_dat
 Toggle o_sink_mem_req[7].mem_wr_data [6:3] "logic o_sink_mem_req[7].mem_wr_data[63:0]"
 Toggle o_sink_mem_req[7].mem_wr_mask_en "logic o_sink_mem_req[7].mem_wr_mask_en"
 Toggle i_sink_mem_rsp[0].mem_rd_data [55:51] "logic i_sink_mem_rsp[0].mem_rd_data[63:0]"
-Toggle i_sink_mem_rsp[0].mem_rd_data [39:38] "logic i_sink_mem_rsp[0].mem_rd_data[63:0]"
-Toggle i_sink_mem_rsp[0].mem_rd_data [22:19] "logic i_sink_mem_rsp[0].mem_rd_data[63:0]"
+Toggle i_sink_mem_rsp[0].mem_rd_data [39:35] "logic i_sink_mem_rsp[0].mem_rd_data[63:0]"
+Toggle i_sink_mem_rsp[0].mem_rd_data [23:19] "logic i_sink_mem_rsp[0].mem_rd_data[63:0]"
 Toggle i_sink_mem_rsp[0].mem_rd_data [7:3] "logic i_sink_mem_rsp[0].mem_rd_data[63:0]"
 Toggle i_sink_mem_rsp[1].mem_rd_data [54:50] "logic i_sink_mem_rsp[1].mem_rd_data[63:0]"
 Toggle i_sink_mem_rsp[1].mem_rd_data [38:35] "logic i_sink_mem_rsp[1].mem_rd_data[63:0]"
@@ -27216,31 +27474,39 @@ Toggle m_trc_axi_rsp.w_ready "logic m_trc_axi_rsp.w_ready"
 Toggle m_trc_axi_rsp.ar_ready "logic m_trc_axi_rsp.ar_ready"
 Toggle m_trc_axi_rsp.aw_ready "logic m_trc_axi_rsp.aw_ready"
 Toggle funnel_mem_SinkMemPktIn_ANY[0].mem_wr_data [54:51] "logic funnel_mem_SinkMemPktIn_ANY[0].mem_wr_data[63:0]"
-Toggle funnel_mem_SinkMemPktIn_ANY[0].mem_wr_data [22:21] "logic funnel_mem_SinkMemPktIn_ANY[0].mem_wr_data[63:0]"
-Toggle funnel_mem_SinkMemPktIn_ANY[0].mem_wr_data [19] "logic funnel_mem_SinkMemPktIn_ANY[0].mem_wr_data[63:0]"
+Toggle funnel_mem_SinkMemPktIn_ANY[0].mem_wr_data [38:35] "logic funnel_mem_SinkMemPktIn_ANY[0].mem_wr_data[63:0]"
+Toggle funnel_mem_SinkMemPktIn_ANY[0].mem_wr_data [22:19] "logic funnel_mem_SinkMemPktIn_ANY[0].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[0].mem_wr_data [6:3] "logic funnel_mem_SinkMemPktIn_ANY[0].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[0].mem_wr_mask_en "logic funnel_mem_SinkMemPktIn_ANY[0].mem_wr_mask_en"
 Toggle funnel_mem_SinkMemPktIn_ANY[1].mem_wr_data [54:51] "logic funnel_mem_SinkMemPktIn_ANY[1].mem_wr_data[63:0]"
+Toggle funnel_mem_SinkMemPktIn_ANY[1].mem_wr_data [38:35] "logic funnel_mem_SinkMemPktIn_ANY[1].mem_wr_data[63:0]"
+Toggle funnel_mem_SinkMemPktIn_ANY[1].mem_wr_data [22:19] "logic funnel_mem_SinkMemPktIn_ANY[1].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[1].mem_wr_data [6:3] "logic funnel_mem_SinkMemPktIn_ANY[1].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[1].mem_wr_mask_en "logic funnel_mem_SinkMemPktIn_ANY[1].mem_wr_mask_en"
 Toggle funnel_mem_SinkMemPktIn_ANY[2].mem_wr_data [54:51] "logic funnel_mem_SinkMemPktIn_ANY[2].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[2].mem_wr_data [38:35] "logic funnel_mem_SinkMemPktIn_ANY[2].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[2].mem_wr_data [22:19] "logic funnel_mem_SinkMemPktIn_ANY[2].mem_wr_data[63:0]"
-Toggle funnel_mem_SinkMemPktIn_ANY[2].mem_wr_data [3] "logic funnel_mem_SinkMemPktIn_ANY[2].mem_wr_data[63:0]"
+Toggle funnel_mem_SinkMemPktIn_ANY[2].mem_wr_data [6:3] "logic funnel_mem_SinkMemPktIn_ANY[2].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[2].mem_wr_mask_en "logic funnel_mem_SinkMemPktIn_ANY[2].mem_wr_mask_en"
 Toggle funnel_mem_SinkMemPktIn_ANY[3].mem_wr_data [54:51] "logic funnel_mem_SinkMemPktIn_ANY[3].mem_wr_data[63:0]"
+Toggle funnel_mem_SinkMemPktIn_ANY[3].mem_wr_data [38:35] "logic funnel_mem_SinkMemPktIn_ANY[3].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[3].mem_wr_data [22:19] "logic funnel_mem_SinkMemPktIn_ANY[3].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[3].mem_wr_data [6:3] "logic funnel_mem_SinkMemPktIn_ANY[3].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[3].mem_wr_mask_en "logic funnel_mem_SinkMemPktIn_ANY[3].mem_wr_mask_en"
 Toggle funnel_mem_SinkMemPktIn_ANY[4].mem_wr_data [54:51] "logic funnel_mem_SinkMemPktIn_ANY[4].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[4].mem_wr_data [38:35] "logic funnel_mem_SinkMemPktIn_ANY[4].mem_wr_data[63:0]"
+Toggle funnel_mem_SinkMemPktIn_ANY[4].mem_wr_data [22:19] "logic funnel_mem_SinkMemPktIn_ANY[4].mem_wr_data[63:0]"
+Toggle funnel_mem_SinkMemPktIn_ANY[4].mem_wr_data [6:3] "logic funnel_mem_SinkMemPktIn_ANY[4].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[4].mem_wr_mask_en "logic funnel_mem_SinkMemPktIn_ANY[4].mem_wr_mask_en"
 Toggle funnel_mem_SinkMemPktIn_ANY[5].mem_wr_data [54:51] "logic funnel_mem_SinkMemPktIn_ANY[5].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[5].mem_wr_data [38:35] "logic funnel_mem_SinkMemPktIn_ANY[5].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[5].mem_wr_data [22:19] "logic funnel_mem_SinkMemPktIn_ANY[5].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[5].mem_wr_data [6:3] "logic funnel_mem_SinkMemPktIn_ANY[5].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[5].mem_wr_mask_en "logic funnel_mem_SinkMemPktIn_ANY[5].mem_wr_mask_en"
+Toggle funnel_mem_SinkMemPktIn_ANY[6].mem_wr_data [54:51] "logic funnel_mem_SinkMemPktIn_ANY[6].mem_wr_data[63:0]"
+Toggle funnel_mem_SinkMemPktIn_ANY[6].mem_wr_data [38:35] "logic funnel_mem_SinkMemPktIn_ANY[6].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[6].mem_wr_data [22:19] "logic funnel_mem_SinkMemPktIn_ANY[6].mem_wr_data[63:0]"
+Toggle funnel_mem_SinkMemPktIn_ANY[6].mem_wr_data [6:3] "logic funnel_mem_SinkMemPktIn_ANY[6].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[6].mem_wr_mask_en "logic funnel_mem_SinkMemPktIn_ANY[6].mem_wr_mask_en"
 Toggle funnel_mem_SinkMemPktIn_ANY[7].mem_wr_data [54:51] "logic funnel_mem_SinkMemPktIn_ANY[7].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[7].mem_wr_data [38:35] "logic funnel_mem_SinkMemPktIn_ANY[7].mem_wr_data[63:0]"
@@ -27248,8 +27514,8 @@ Toggle funnel_mem_SinkMemPktIn_ANY[7].mem_wr_data [22:19] "logic funnel_mem_Sink
 Toggle funnel_mem_SinkMemPktIn_ANY[7].mem_wr_data [6:3] "logic funnel_mem_SinkMemPktIn_ANY[7].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[7].mem_wr_mask_en "logic funnel_mem_SinkMemPktIn_ANY[7].mem_wr_mask_en"
 Toggle mem_funnel_SinkMemPktOut_ANY[0].mem_rd_data [55:51] "logic mem_funnel_SinkMemPktOut_ANY[0].mem_rd_data[63:0]"
-Toggle mem_funnel_SinkMemPktOut_ANY[0].mem_rd_data [39:38] "logic mem_funnel_SinkMemPktOut_ANY[0].mem_rd_data[63:0]"
-Toggle mem_funnel_SinkMemPktOut_ANY[0].mem_rd_data [22:19] "logic mem_funnel_SinkMemPktOut_ANY[0].mem_rd_data[63:0]"
+Toggle mem_funnel_SinkMemPktOut_ANY[0].mem_rd_data [39:35] "logic mem_funnel_SinkMemPktOut_ANY[0].mem_rd_data[63:0]"
+Toggle mem_funnel_SinkMemPktOut_ANY[0].mem_rd_data [23:19] "logic mem_funnel_SinkMemPktOut_ANY[0].mem_rd_data[63:0]"
 Toggle mem_funnel_SinkMemPktOut_ANY[0].mem_rd_data [7:3] "logic mem_funnel_SinkMemPktOut_ANY[0].mem_rd_data[63:0]"
 Toggle mem_funnel_SinkMemPktOut_ANY[1].mem_rd_data [54:50] "logic mem_funnel_SinkMemPktOut_ANY[1].mem_rd_data[63:0]"
 Toggle mem_funnel_SinkMemPktOut_ANY[1].mem_rd_data [38:35] "logic mem_funnel_SinkMemPktOut_ANY[1].mem_rd_data[63:0]"
@@ -27316,12 +27582,12 @@ Toggle NtrSinkMmrsWr_int.TrramcontrolWr.Data.Trramempty "logic NtrSinkMmrsWr_int
 Toggle NtrSinkMmrsWr_int.TrramcontrolWr.Data.Trrammode "logic NtrSinkMmrsWr_int.TrramcontrolWr.Data.Trrammode[0:0]"
 Toggle NtrSinkMmrsWr_int.TrramcontrolWr.Data.Trramstoponwrap "logic NtrSinkMmrsWr_int.TrramcontrolWr.Data.Trramstoponwrap[0:0]"
 Toggle DstSinkMmrsWr_int.TrdstramdataWr.Data.Trdstramdata [22:19] "logic DstSinkMmrsWr_int.TrdstramdataWr.Data.Trdstramdata[31:0]"
-Toggle DstSinkMmrsWr_int.TrdstramdataWr.Data.Trdstramdata [6] "logic DstSinkMmrsWr_int.TrdstramdataWr.Data.Trdstramdata[31:0]"
+Toggle DstSinkMmrsWr_int.TrdstramdataWr.Data.Trdstramdata [6:3] "logic DstSinkMmrsWr_int.TrdstramdataWr.Data.Trdstramdata[31:0]"
 Toggle DstSinkMmrsWr_int.TrdstramrphighWr.TrdstramrphighWrEn "logic DstSinkMmrsWr_int.TrdstramrphighWr.TrdstramrphighWrEn"
 Toggle DstSinkMmrsWr_int.TrdstramrphighWr.Data.Trdstramrphigh "logic DstSinkMmrsWr_int.TrdstramrphighWr.Data.Trdstramrphigh[31:0]"
 Toggle DstSinkMmrsWr_int.TrdstramrplowWr.Data.Rsvd10 "logic DstSinkMmrsWr_int.TrdstramrplowWr.Data.Rsvd10[1:0]"
 Toggle DstSinkMmrsWr_int.TrdstramwphighWr.Data.Trdstramwphigh [31:20] "logic DstSinkMmrsWr_int.TrdstramwphighWr.Data.Trdstramwphigh[31:0]"
-Toggle DstSinkMmrsWr_int.TrdstramwplowWr.Data.Trdstramwplow [29:13] "logic DstSinkMmrsWr_int.TrdstramwplowWr.Data.Trdstramwplow[29:0]"
+Toggle DstSinkMmrsWr_int.TrdstramwplowWr.Data.Trdstramwplow [29:12] "logic DstSinkMmrsWr_int.TrdstramwplowWr.Data.Trdstramwplow[29:0]"
 Toggle DstSinkMmrsWr_int.TrdstramwplowWr.Data.Trdstramwplow [3:0] "logic DstSinkMmrsWr_int.TrdstramwplowWr.Data.Trdstramwplow[29:0]"
 Toggle DstSinkMmrsWr_int.TrdstramlimithighWr.TrdstramlimithighWrEn "logic DstSinkMmrsWr_int.TrdstramlimithighWr.TrdstramlimithighWrEn"
 Toggle DstSinkMmrsWr_int.TrdstramlimithighWr.Data.Trdstramlimithigh "logic DstSinkMmrsWr_int.TrdstramlimithighWr.Data.Trdstramlimithigh[31:0]"
@@ -27414,8 +27680,8 @@ Toggle NtrSinkMmrsWr.TrramcontrolWr.Data.Trramenable "logic NtrSinkMmrsWr.Trramc
 Toggle NtrSinkMmrsWr.TrramcontrolWr.Data.Trramempty "logic NtrSinkMmrsWr.TrramcontrolWr.Data.Trramempty[0:0]"
 Toggle NtrSinkMmrsWr.TrramcontrolWr.Data.Trrammode "logic NtrSinkMmrsWr.TrramcontrolWr.Data.Trrammode[0:0]"
 Toggle NtrSinkMmrsWr.TrramcontrolWr.Data.Trramstoponwrap "logic NtrSinkMmrsWr.TrramcontrolWr.Data.Trramstoponwrap[0:0]"
-Toggle DstSinkMmrs.Trdstramdata.Trdstramdata [22:18] "logic DstSinkMmrs.Trdstramdata.Trdstramdata[31:0]"
-Toggle DstSinkMmrs.Trdstramdata.Trdstramdata [6] "logic DstSinkMmrs.Trdstramdata.Trdstramdata[31:0]"
+Toggle DstSinkMmrs.Trdstramdata.Trdstramdata [22:17] "logic DstSinkMmrs.Trdstramdata.Trdstramdata[31:0]"
+Toggle DstSinkMmrs.Trdstramdata.Trdstramdata [6:3] "logic DstSinkMmrs.Trdstramdata.Trdstramdata[31:0]"
 Toggle DstSinkMmrs.Trdstramrplow.Rsvd10 "logic DstSinkMmrs.Trdstramrplow.Rsvd10[1:0]"
 Toggle DstSinkMmrs.Trdstramlimitlow.Rsvd10 "logic DstSinkMmrs.Trdstramlimitlow.Rsvd10[1:0]"
 Toggle DstSinkMmrs.Trdstramstartlow.Rsvd10 "logic DstSinkMmrs.Trdstramstartlow.Rsvd10[1:0]"
@@ -27426,12 +27692,12 @@ Toggle DstSinkMmrs.Trdstramimpl.Trdstramhassram "logic DstSinkMmrs.Trdstramimpl.
 Toggle DstSinkMmrs.Trdstramimpl.Trdstramhassmem "logic DstSinkMmrs.Trdstramimpl.Trdstramhassmem[0:0]"
 Toggle DstSinkMmrs.Trdstramimpl.Trdstramvendorframelength [0] "logic DstSinkMmrs.Trdstramimpl.Trdstramvendorframelength[3:0]"
 Toggle DstSinkMmrsWr.TrdstramdataWr.Data.Trdstramdata [22:19] "logic DstSinkMmrsWr.TrdstramdataWr.Data.Trdstramdata[31:0]"
-Toggle DstSinkMmrsWr.TrdstramdataWr.Data.Trdstramdata [6] "logic DstSinkMmrsWr.TrdstramdataWr.Data.Trdstramdata[31:0]"
+Toggle DstSinkMmrsWr.TrdstramdataWr.Data.Trdstramdata [6:3] "logic DstSinkMmrsWr.TrdstramdataWr.Data.Trdstramdata[31:0]"
 Toggle DstSinkMmrsWr.TrdstramrphighWr.TrdstramrphighWrEn "logic DstSinkMmrsWr.TrdstramrphighWr.TrdstramrphighWrEn"
 Toggle DstSinkMmrsWr.TrdstramrphighWr.Data.Trdstramrphigh "logic DstSinkMmrsWr.TrdstramrphighWr.Data.Trdstramrphigh[31:0]"
 Toggle DstSinkMmrsWr.TrdstramrplowWr.Data.Rsvd10 "logic DstSinkMmrsWr.TrdstramrplowWr.Data.Rsvd10[1:0]"
 Toggle DstSinkMmrsWr.TrdstramwphighWr.Data.Trdstramwphigh [31:20] "logic DstSinkMmrsWr.TrdstramwphighWr.Data.Trdstramwphigh[31:0]"
-Toggle DstSinkMmrsWr.TrdstramwplowWr.Data.Trdstramwplow [29:13] "logic DstSinkMmrsWr.TrdstramwplowWr.Data.Trdstramwplow[29:0]"
+Toggle DstSinkMmrsWr.TrdstramwplowWr.Data.Trdstramwplow [29:12] "logic DstSinkMmrsWr.TrdstramwplowWr.Data.Trdstramwplow[29:0]"
 Toggle DstSinkMmrsWr.TrdstramwplowWr.Data.Trdstramwplow [3:0] "logic DstSinkMmrsWr.TrdstramwplowWr.Data.Trdstramwplow[29:0]"
 Toggle DstSinkMmrsWr.TrdstramlimithighWr.TrdstramlimithighWrEn "logic DstSinkMmrsWr.TrdstramlimithighWr.TrdstramlimithighWrEn"
 Toggle DstSinkMmrsWr.TrdstramlimithighWr.Data.Trdstramlimithigh "logic DstSinkMmrsWr.TrdstramlimithighWr.Data.Trdstramlimithigh[31:0]"
@@ -27465,7 +27731,13 @@ Toggle FunnelMmrsWr.TrfunnelcontrolWr.Data.Trfunnelempty "logic FunnelMmrsWr.Trf
 Toggle TN_MS_Ntrace_Bp "logic TN_MS_Ntrace_Bp[0:0]"
 Toggle TN_MS_Ntrace_Flush "logic TN_MS_Ntrace_Flush[0:0]"
 Toggle tnif_tr_data [0][118:115] "logic [0:0][127:0]tnif_tr_data"
+Toggle tnif_tr_data [0][102:99] "logic [0:0][127:0]tnif_tr_data"
+Toggle tnif_tr_data [0][86:83] "logic [0:0][127:0]tnif_tr_data"
 Toggle tnif_tr_data [0][70:67] "logic [0:0][127:0]tnif_tr_data"
+Toggle tnif_tr_data [0][54:51] "logic [0:0][127:0]tnif_tr_data"
+Toggle tnif_tr_data [0][38:35] "logic [0:0][127:0]tnif_tr_data"
+Toggle tnif_tr_data [0][22:19] "logic [0:0][127:0]tnif_tr_data"
+Toggle tnif_tr_data [0][6:3] "logic [0:0][127:0]tnif_tr_data"
 Toggle trc_axi_req.r_ready "logic trc_axi_req.r_ready"
 Toggle trc_axi_req.ar_valid "logic trc_axi_req.ar_valid"
 Toggle trc_axi_req.ar.user "logic trc_axi_req.ar.user[7:0]"
@@ -27546,31 +27818,39 @@ Toggle trc_axi_rsp.w_ready "logic trc_axi_rsp.w_ready"
 Toggle trc_axi_rsp.ar_ready "logic trc_axi_rsp.ar_ready"
 Toggle trc_axi_rsp.aw_ready "logic trc_axi_rsp.aw_ready"
 Toggle funnel_mem_SinkMemPktIn_ANY[0].mem_wr_data [54:51] "logic funnel_mem_SinkMemPktIn_ANY[0].mem_wr_data[63:0]"
-Toggle funnel_mem_SinkMemPktIn_ANY[0].mem_wr_data [22:21] "logic funnel_mem_SinkMemPktIn_ANY[0].mem_wr_data[63:0]"
-Toggle funnel_mem_SinkMemPktIn_ANY[0].mem_wr_data [19] "logic funnel_mem_SinkMemPktIn_ANY[0].mem_wr_data[63:0]"
+Toggle funnel_mem_SinkMemPktIn_ANY[0].mem_wr_data [38:35] "logic funnel_mem_SinkMemPktIn_ANY[0].mem_wr_data[63:0]"
+Toggle funnel_mem_SinkMemPktIn_ANY[0].mem_wr_data [22:19] "logic funnel_mem_SinkMemPktIn_ANY[0].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[0].mem_wr_data [6:3] "logic funnel_mem_SinkMemPktIn_ANY[0].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[0].mem_wr_mask_en "logic funnel_mem_SinkMemPktIn_ANY[0].mem_wr_mask_en"
 Toggle funnel_mem_SinkMemPktIn_ANY[1].mem_wr_data [54:51] "logic funnel_mem_SinkMemPktIn_ANY[1].mem_wr_data[63:0]"
+Toggle funnel_mem_SinkMemPktIn_ANY[1].mem_wr_data [38:35] "logic funnel_mem_SinkMemPktIn_ANY[1].mem_wr_data[63:0]"
+Toggle funnel_mem_SinkMemPktIn_ANY[1].mem_wr_data [22:19] "logic funnel_mem_SinkMemPktIn_ANY[1].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[1].mem_wr_data [6:3] "logic funnel_mem_SinkMemPktIn_ANY[1].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[1].mem_wr_mask_en "logic funnel_mem_SinkMemPktIn_ANY[1].mem_wr_mask_en"
 Toggle funnel_mem_SinkMemPktIn_ANY[2].mem_wr_data [54:51] "logic funnel_mem_SinkMemPktIn_ANY[2].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[2].mem_wr_data [38:35] "logic funnel_mem_SinkMemPktIn_ANY[2].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[2].mem_wr_data [22:19] "logic funnel_mem_SinkMemPktIn_ANY[2].mem_wr_data[63:0]"
-Toggle funnel_mem_SinkMemPktIn_ANY[2].mem_wr_data [3] "logic funnel_mem_SinkMemPktIn_ANY[2].mem_wr_data[63:0]"
+Toggle funnel_mem_SinkMemPktIn_ANY[2].mem_wr_data [6:3] "logic funnel_mem_SinkMemPktIn_ANY[2].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[2].mem_wr_mask_en "logic funnel_mem_SinkMemPktIn_ANY[2].mem_wr_mask_en"
 Toggle funnel_mem_SinkMemPktIn_ANY[3].mem_wr_data [54:51] "logic funnel_mem_SinkMemPktIn_ANY[3].mem_wr_data[63:0]"
+Toggle funnel_mem_SinkMemPktIn_ANY[3].mem_wr_data [38:35] "logic funnel_mem_SinkMemPktIn_ANY[3].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[3].mem_wr_data [22:19] "logic funnel_mem_SinkMemPktIn_ANY[3].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[3].mem_wr_data [6:3] "logic funnel_mem_SinkMemPktIn_ANY[3].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[3].mem_wr_mask_en "logic funnel_mem_SinkMemPktIn_ANY[3].mem_wr_mask_en"
 Toggle funnel_mem_SinkMemPktIn_ANY[4].mem_wr_data [54:51] "logic funnel_mem_SinkMemPktIn_ANY[4].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[4].mem_wr_data [38:35] "logic funnel_mem_SinkMemPktIn_ANY[4].mem_wr_data[63:0]"
+Toggle funnel_mem_SinkMemPktIn_ANY[4].mem_wr_data [22:19] "logic funnel_mem_SinkMemPktIn_ANY[4].mem_wr_data[63:0]"
+Toggle funnel_mem_SinkMemPktIn_ANY[4].mem_wr_data [6:3] "logic funnel_mem_SinkMemPktIn_ANY[4].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[4].mem_wr_mask_en "logic funnel_mem_SinkMemPktIn_ANY[4].mem_wr_mask_en"
 Toggle funnel_mem_SinkMemPktIn_ANY[5].mem_wr_data [54:51] "logic funnel_mem_SinkMemPktIn_ANY[5].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[5].mem_wr_data [38:35] "logic funnel_mem_SinkMemPktIn_ANY[5].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[5].mem_wr_data [22:19] "logic funnel_mem_SinkMemPktIn_ANY[5].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[5].mem_wr_data [6:3] "logic funnel_mem_SinkMemPktIn_ANY[5].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[5].mem_wr_mask_en "logic funnel_mem_SinkMemPktIn_ANY[5].mem_wr_mask_en"
+Toggle funnel_mem_SinkMemPktIn_ANY[6].mem_wr_data [54:51] "logic funnel_mem_SinkMemPktIn_ANY[6].mem_wr_data[63:0]"
+Toggle funnel_mem_SinkMemPktIn_ANY[6].mem_wr_data [38:35] "logic funnel_mem_SinkMemPktIn_ANY[6].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[6].mem_wr_data [22:19] "logic funnel_mem_SinkMemPktIn_ANY[6].mem_wr_data[63:0]"
+Toggle funnel_mem_SinkMemPktIn_ANY[6].mem_wr_data [6:3] "logic funnel_mem_SinkMemPktIn_ANY[6].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[6].mem_wr_mask_en "logic funnel_mem_SinkMemPktIn_ANY[6].mem_wr_mask_en"
 Toggle funnel_mem_SinkMemPktIn_ANY[7].mem_wr_data [54:51] "logic funnel_mem_SinkMemPktIn_ANY[7].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[7].mem_wr_data [38:35] "logic funnel_mem_SinkMemPktIn_ANY[7].mem_wr_data[63:0]"
@@ -27578,8 +27858,8 @@ Toggle funnel_mem_SinkMemPktIn_ANY[7].mem_wr_data [22:19] "logic funnel_mem_Sink
 Toggle funnel_mem_SinkMemPktIn_ANY[7].mem_wr_data [6:3] "logic funnel_mem_SinkMemPktIn_ANY[7].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[7].mem_wr_mask_en "logic funnel_mem_SinkMemPktIn_ANY[7].mem_wr_mask_en"
 Toggle mem_funnel_SinkMemPktOut_ANY[0].mem_rd_data [55:51] "logic mem_funnel_SinkMemPktOut_ANY[0].mem_rd_data[63:0]"
-Toggle mem_funnel_SinkMemPktOut_ANY[0].mem_rd_data [39:38] "logic mem_funnel_SinkMemPktOut_ANY[0].mem_rd_data[63:0]"
-Toggle mem_funnel_SinkMemPktOut_ANY[0].mem_rd_data [22:19] "logic mem_funnel_SinkMemPktOut_ANY[0].mem_rd_data[63:0]"
+Toggle mem_funnel_SinkMemPktOut_ANY[0].mem_rd_data [39:35] "logic mem_funnel_SinkMemPktOut_ANY[0].mem_rd_data[63:0]"
+Toggle mem_funnel_SinkMemPktOut_ANY[0].mem_rd_data [23:19] "logic mem_funnel_SinkMemPktOut_ANY[0].mem_rd_data[63:0]"
 Toggle mem_funnel_SinkMemPktOut_ANY[0].mem_rd_data [7:3] "logic mem_funnel_SinkMemPktOut_ANY[0].mem_rd_data[63:0]"
 Toggle mem_funnel_SinkMemPktOut_ANY[1].mem_rd_data [54:50] "logic mem_funnel_SinkMemPktOut_ANY[1].mem_rd_data[63:0]"
 Toggle mem_funnel_SinkMemPktOut_ANY[1].mem_rd_data [38:35] "logic mem_funnel_SinkMemPktOut_ANY[1].mem_rd_data[63:0]"
@@ -27611,12 +27891,24 @@ Toggle mem_funnel_SinkMemPktOut_ANY[7].mem_rd_data [22:19] "logic mem_funnel_Sin
 Toggle mem_funnel_SinkMemPktOut_ANY[7].mem_rd_data [6:2] "logic mem_funnel_SinkMemPktOut_ANY[7].mem_rd_data[63:0]"
 Toggle TN_TR_North_Src "logic TN_TR_North_Src"
 Toggle TN_TR_North_Data [118:115] "logic TN_TR_North_Data[127:0]"
+Toggle TN_TR_North_Data [102:99] "logic TN_TR_North_Data[127:0]"
+Toggle TN_TR_North_Data [86:83] "logic TN_TR_North_Data[127:0]"
 Toggle TN_TR_North_Data [70:67] "logic TN_TR_North_Data[127:0]"
+Toggle TN_TR_North_Data [54:51] "logic TN_TR_North_Data[127:0]"
+Toggle TN_TR_North_Data [38:35] "logic TN_TR_North_Data[127:0]"
+Toggle TN_TR_North_Data [22:19] "logic TN_TR_North_Data[127:0]"
+Toggle TN_TR_North_Data [6:3] "logic TN_TR_North_Data[127:0]"
 Toggle TN_TR_Ntrace_Bp "logic TN_TR_Ntrace_Bp"
 Toggle TN_TR_Ntrace_Flush "logic TN_TR_Ntrace_Flush"
 Toggle MS_TN_Src_Internal_Active_Cores "logic MS_TN_Src_Internal_Active_Cores[0:0]"
 Toggle MS_TN_Data_Internal_Active_Cores [0][118:115] "logic [0:0][127:0]MS_TN_Data_Internal_Active_Cores"
+Toggle MS_TN_Data_Internal_Active_Cores [0][102:99] "logic [0:0][127:0]MS_TN_Data_Internal_Active_Cores"
+Toggle MS_TN_Data_Internal_Active_Cores [0][86:83] "logic [0:0][127:0]MS_TN_Data_Internal_Active_Cores"
 Toggle MS_TN_Data_Internal_Active_Cores [0][70:67] "logic [0:0][127:0]MS_TN_Data_Internal_Active_Cores"
+Toggle MS_TN_Data_Internal_Active_Cores [0][54:51] "logic [0:0][127:0]MS_TN_Data_Internal_Active_Cores"
+Toggle MS_TN_Data_Internal_Active_Cores [0][38:35] "logic [0:0][127:0]MS_TN_Data_Internal_Active_Cores"
+Toggle MS_TN_Data_Internal_Active_Cores [0][22:19] "logic [0:0][127:0]MS_TN_Data_Internal_Active_Cores"
+Toggle MS_TN_Data_Internal_Active_Cores [0][6:3] "logic [0:0][127:0]MS_TN_Data_Internal_Active_Cores"
 
 CHECKSUM: "1168747149 4118421388"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst
@@ -27683,8 +27975,8 @@ Toggle NtrSinkMmrsWr.TrramcontrolWr.Data.Trramenable "logic NtrSinkMmrsWr.Trramc
 Toggle NtrSinkMmrsWr.TrramcontrolWr.Data.Trramempty "logic NtrSinkMmrsWr.TrramcontrolWr.Data.Trramempty[0:0]"
 Toggle NtrSinkMmrsWr.TrramcontrolWr.Data.Trrammode "logic NtrSinkMmrsWr.TrramcontrolWr.Data.Trrammode[0:0]"
 Toggle NtrSinkMmrsWr.TrramcontrolWr.Data.Trramstoponwrap "logic NtrSinkMmrsWr.TrramcontrolWr.Data.Trramstoponwrap[0:0]"
-Toggle DstSinkMmrs.Trdstramdata.Trdstramdata [22:18] "logic DstSinkMmrs.Trdstramdata.Trdstramdata[31:0]"
-Toggle DstSinkMmrs.Trdstramdata.Trdstramdata [6] "logic DstSinkMmrs.Trdstramdata.Trdstramdata[31:0]"
+Toggle DstSinkMmrs.Trdstramdata.Trdstramdata [22:17] "logic DstSinkMmrs.Trdstramdata.Trdstramdata[31:0]"
+Toggle DstSinkMmrs.Trdstramdata.Trdstramdata [6:3] "logic DstSinkMmrs.Trdstramdata.Trdstramdata[31:0]"
 Toggle DstSinkMmrs.Trdstramrplow.Rsvd10 "logic DstSinkMmrs.Trdstramrplow.Rsvd10[1:0]"
 Toggle DstSinkMmrs.Trdstramlimitlow.Rsvd10 "logic DstSinkMmrs.Trdstramlimitlow.Rsvd10[1:0]"
 Toggle DstSinkMmrs.Trdstramstartlow.Rsvd10 "logic DstSinkMmrs.Trdstramstartlow.Rsvd10[1:0]"
@@ -27695,12 +27987,12 @@ Toggle DstSinkMmrs.Trdstramimpl.Trdstramhassram "logic DstSinkMmrs.Trdstramimpl.
 Toggle DstSinkMmrs.Trdstramimpl.Trdstramhassmem "logic DstSinkMmrs.Trdstramimpl.Trdstramhassmem[0:0]"
 Toggle DstSinkMmrs.Trdstramimpl.Trdstramvendorframelength [0] "logic DstSinkMmrs.Trdstramimpl.Trdstramvendorframelength[3:0]"
 Toggle DstSinkMmrsWr.TrdstramdataWr.Data.Trdstramdata [22:19] "logic DstSinkMmrsWr.TrdstramdataWr.Data.Trdstramdata[31:0]"
-Toggle DstSinkMmrsWr.TrdstramdataWr.Data.Trdstramdata [6] "logic DstSinkMmrsWr.TrdstramdataWr.Data.Trdstramdata[31:0]"
+Toggle DstSinkMmrsWr.TrdstramdataWr.Data.Trdstramdata [6:3] "logic DstSinkMmrsWr.TrdstramdataWr.Data.Trdstramdata[31:0]"
 Toggle DstSinkMmrsWr.TrdstramrphighWr.TrdstramrphighWrEn "logic DstSinkMmrsWr.TrdstramrphighWr.TrdstramrphighWrEn"
 Toggle DstSinkMmrsWr.TrdstramrphighWr.Data.Trdstramrphigh "logic DstSinkMmrsWr.TrdstramrphighWr.Data.Trdstramrphigh[31:0]"
 Toggle DstSinkMmrsWr.TrdstramrplowWr.Data.Rsvd10 "logic DstSinkMmrsWr.TrdstramrplowWr.Data.Rsvd10[1:0]"
 Toggle DstSinkMmrsWr.TrdstramwphighWr.Data.Trdstramwphigh [31:20] "logic DstSinkMmrsWr.TrdstramwphighWr.Data.Trdstramwphigh[31:0]"
-Toggle DstSinkMmrsWr.TrdstramwplowWr.Data.Trdstramwplow [29:13] "logic DstSinkMmrsWr.TrdstramwplowWr.Data.Trdstramwplow[29:0]"
+Toggle DstSinkMmrsWr.TrdstramwplowWr.Data.Trdstramwplow [29:12] "logic DstSinkMmrsWr.TrdstramwplowWr.Data.Trdstramwplow[29:0]"
 Toggle DstSinkMmrsWr.TrdstramwplowWr.Data.Trdstramwplow [3:0] "logic DstSinkMmrsWr.TrdstramwplowWr.Data.Trdstramwplow[29:0]"
 Toggle DstSinkMmrsWr.TrdstramlimithighWr.TrdstramlimithighWrEn "logic DstSinkMmrsWr.TrdstramlimithighWr.TrdstramlimithighWrEn"
 Toggle DstSinkMmrsWr.TrdstramlimithighWr.Data.Trdstramlimithigh "logic DstSinkMmrsWr.TrdstramlimithighWr.Data.Trdstramlimithigh[31:0]"
@@ -27733,7 +28025,13 @@ Toggle FunnelMmrsWr.TrfunnelcontrolWr.Data.Trfunnelenable "logic FunnelMmrsWr.Tr
 Toggle FunnelMmrsWr.TrfunnelcontrolWr.Data.Trfunnelempty "logic FunnelMmrsWr.TrfunnelcontrolWr.Data.Trfunnelempty[0:0]"
 Toggle TN_TR_North_Src "logic TN_TR_North_Src"
 Toggle TN_TR_North_Data [118:115] "logic TN_TR_North_Data[127:0]"
+Toggle TN_TR_North_Data [102:99] "logic TN_TR_North_Data[127:0]"
+Toggle TN_TR_North_Data [86:83] "logic TN_TR_North_Data[127:0]"
 Toggle TN_TR_North_Data [70:67] "logic TN_TR_North_Data[127:0]"
+Toggle TN_TR_North_Data [54:51] "logic TN_TR_North_Data[127:0]"
+Toggle TN_TR_North_Data [38:35] "logic TN_TR_North_Data[127:0]"
+Toggle TN_TR_North_Data [22:19] "logic TN_TR_North_Data[127:0]"
+Toggle TN_TR_North_Data [6:3] "logic TN_TR_North_Data[127:0]"
 Toggle TN_TR_Ntrace_Bp "logic TN_TR_Ntrace_Bp"
 Toggle TN_TR_Ntrace_Flush "logic TN_TR_Ntrace_Flush"
 Toggle TS_TR_SlvReq.r_ready "logic TS_TR_SlvReq.r_ready"
@@ -27816,31 +28114,39 @@ Toggle TR_TS_SlvResp.w_ready "logic TR_TS_SlvResp.w_ready"
 Toggle TR_TS_SlvResp.ar_ready "logic TR_TS_SlvResp.ar_ready"
 Toggle TR_TS_SlvResp.aw_ready "logic TR_TS_SlvResp.aw_ready"
 Toggle funnel_mem_SinkMemPktIn_ANY[0].mem_wr_data [54:51] "logic funnel_mem_SinkMemPktIn_ANY[0].mem_wr_data[63:0]"
-Toggle funnel_mem_SinkMemPktIn_ANY[0].mem_wr_data [22:21] "logic funnel_mem_SinkMemPktIn_ANY[0].mem_wr_data[63:0]"
-Toggle funnel_mem_SinkMemPktIn_ANY[0].mem_wr_data [19] "logic funnel_mem_SinkMemPktIn_ANY[0].mem_wr_data[63:0]"
+Toggle funnel_mem_SinkMemPktIn_ANY[0].mem_wr_data [38:35] "logic funnel_mem_SinkMemPktIn_ANY[0].mem_wr_data[63:0]"
+Toggle funnel_mem_SinkMemPktIn_ANY[0].mem_wr_data [22:19] "logic funnel_mem_SinkMemPktIn_ANY[0].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[0].mem_wr_data [6:3] "logic funnel_mem_SinkMemPktIn_ANY[0].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[0].mem_wr_mask_en "logic funnel_mem_SinkMemPktIn_ANY[0].mem_wr_mask_en"
 Toggle funnel_mem_SinkMemPktIn_ANY[1].mem_wr_data [54:51] "logic funnel_mem_SinkMemPktIn_ANY[1].mem_wr_data[63:0]"
+Toggle funnel_mem_SinkMemPktIn_ANY[1].mem_wr_data [38:35] "logic funnel_mem_SinkMemPktIn_ANY[1].mem_wr_data[63:0]"
+Toggle funnel_mem_SinkMemPktIn_ANY[1].mem_wr_data [22:19] "logic funnel_mem_SinkMemPktIn_ANY[1].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[1].mem_wr_data [6:3] "logic funnel_mem_SinkMemPktIn_ANY[1].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[1].mem_wr_mask_en "logic funnel_mem_SinkMemPktIn_ANY[1].mem_wr_mask_en"
 Toggle funnel_mem_SinkMemPktIn_ANY[2].mem_wr_data [54:51] "logic funnel_mem_SinkMemPktIn_ANY[2].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[2].mem_wr_data [38:35] "logic funnel_mem_SinkMemPktIn_ANY[2].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[2].mem_wr_data [22:19] "logic funnel_mem_SinkMemPktIn_ANY[2].mem_wr_data[63:0]"
-Toggle funnel_mem_SinkMemPktIn_ANY[2].mem_wr_data [3] "logic funnel_mem_SinkMemPktIn_ANY[2].mem_wr_data[63:0]"
+Toggle funnel_mem_SinkMemPktIn_ANY[2].mem_wr_data [6:3] "logic funnel_mem_SinkMemPktIn_ANY[2].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[2].mem_wr_mask_en "logic funnel_mem_SinkMemPktIn_ANY[2].mem_wr_mask_en"
 Toggle funnel_mem_SinkMemPktIn_ANY[3].mem_wr_data [54:51] "logic funnel_mem_SinkMemPktIn_ANY[3].mem_wr_data[63:0]"
+Toggle funnel_mem_SinkMemPktIn_ANY[3].mem_wr_data [38:35] "logic funnel_mem_SinkMemPktIn_ANY[3].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[3].mem_wr_data [22:19] "logic funnel_mem_SinkMemPktIn_ANY[3].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[3].mem_wr_data [6:3] "logic funnel_mem_SinkMemPktIn_ANY[3].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[3].mem_wr_mask_en "logic funnel_mem_SinkMemPktIn_ANY[3].mem_wr_mask_en"
 Toggle funnel_mem_SinkMemPktIn_ANY[4].mem_wr_data [54:51] "logic funnel_mem_SinkMemPktIn_ANY[4].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[4].mem_wr_data [38:35] "logic funnel_mem_SinkMemPktIn_ANY[4].mem_wr_data[63:0]"
+Toggle funnel_mem_SinkMemPktIn_ANY[4].mem_wr_data [22:19] "logic funnel_mem_SinkMemPktIn_ANY[4].mem_wr_data[63:0]"
+Toggle funnel_mem_SinkMemPktIn_ANY[4].mem_wr_data [6:3] "logic funnel_mem_SinkMemPktIn_ANY[4].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[4].mem_wr_mask_en "logic funnel_mem_SinkMemPktIn_ANY[4].mem_wr_mask_en"
 Toggle funnel_mem_SinkMemPktIn_ANY[5].mem_wr_data [54:51] "logic funnel_mem_SinkMemPktIn_ANY[5].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[5].mem_wr_data [38:35] "logic funnel_mem_SinkMemPktIn_ANY[5].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[5].mem_wr_data [22:19] "logic funnel_mem_SinkMemPktIn_ANY[5].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[5].mem_wr_data [6:3] "logic funnel_mem_SinkMemPktIn_ANY[5].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[5].mem_wr_mask_en "logic funnel_mem_SinkMemPktIn_ANY[5].mem_wr_mask_en"
+Toggle funnel_mem_SinkMemPktIn_ANY[6].mem_wr_data [54:51] "logic funnel_mem_SinkMemPktIn_ANY[6].mem_wr_data[63:0]"
+Toggle funnel_mem_SinkMemPktIn_ANY[6].mem_wr_data [38:35] "logic funnel_mem_SinkMemPktIn_ANY[6].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[6].mem_wr_data [22:19] "logic funnel_mem_SinkMemPktIn_ANY[6].mem_wr_data[63:0]"
+Toggle funnel_mem_SinkMemPktIn_ANY[6].mem_wr_data [6:3] "logic funnel_mem_SinkMemPktIn_ANY[6].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[6].mem_wr_mask_en "logic funnel_mem_SinkMemPktIn_ANY[6].mem_wr_mask_en"
 Toggle funnel_mem_SinkMemPktIn_ANY[7].mem_wr_data [54:51] "logic funnel_mem_SinkMemPktIn_ANY[7].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[7].mem_wr_data [38:35] "logic funnel_mem_SinkMemPktIn_ANY[7].mem_wr_data[63:0]"
@@ -27848,8 +28154,8 @@ Toggle funnel_mem_SinkMemPktIn_ANY[7].mem_wr_data [22:19] "logic funnel_mem_Sink
 Toggle funnel_mem_SinkMemPktIn_ANY[7].mem_wr_data [6:3] "logic funnel_mem_SinkMemPktIn_ANY[7].mem_wr_data[63:0]"
 Toggle funnel_mem_SinkMemPktIn_ANY[7].mem_wr_mask_en "logic funnel_mem_SinkMemPktIn_ANY[7].mem_wr_mask_en"
 Toggle mem_funnel_SinkMemPktOut_ANY[0].mem_rd_data [55:51] "logic mem_funnel_SinkMemPktOut_ANY[0].mem_rd_data[63:0]"
-Toggle mem_funnel_SinkMemPktOut_ANY[0].mem_rd_data [39:38] "logic mem_funnel_SinkMemPktOut_ANY[0].mem_rd_data[63:0]"
-Toggle mem_funnel_SinkMemPktOut_ANY[0].mem_rd_data [22:19] "logic mem_funnel_SinkMemPktOut_ANY[0].mem_rd_data[63:0]"
+Toggle mem_funnel_SinkMemPktOut_ANY[0].mem_rd_data [39:35] "logic mem_funnel_SinkMemPktOut_ANY[0].mem_rd_data[63:0]"
+Toggle mem_funnel_SinkMemPktOut_ANY[0].mem_rd_data [23:19] "logic mem_funnel_SinkMemPktOut_ANY[0].mem_rd_data[63:0]"
 Toggle mem_funnel_SinkMemPktOut_ANY[0].mem_rd_data [7:3] "logic mem_funnel_SinkMemPktOut_ANY[0].mem_rd_data[63:0]"
 Toggle mem_funnel_SinkMemPktOut_ANY[1].mem_rd_data [54:50] "logic mem_funnel_SinkMemPktOut_ANY[1].mem_rd_data[63:0]"
 Toggle mem_funnel_SinkMemPktOut_ANY[1].mem_rd_data [38:35] "logic mem_funnel_SinkMemPktOut_ANY[1].mem_rd_data[63:0]"
@@ -27883,8 +28189,7 @@ Toggle TR_TS_Ntrace_NumEnabled_Srcs [3:1] "logic TR_TS_Ntrace_NumEnabled_Srcs[3:
 Toggle TR_TS_Ntrace_NumEnabled_Srcs_stg [3:1] "logic TR_TS_Ntrace_NumEnabled_Srcs_stg[3:0]"
 Toggle TR_TS_Dst_NumEnabled_Srcs [3:1] "logic TR_TS_Dst_NumEnabled_Srcs[3:0]"
 Toggle TR_TS_Dst_NumEnabled_Srcs_stg [3:1] "logic TR_TS_Dst_NumEnabled_Srcs_stg[3:0]"
-Toggle TrMemAxiWrAddr_ANY [51:15] "logic TrMemAxiWrAddr_ANY[51:0]"
-Toggle TrMemAxiWrAddr_ANY [13] "logic TrMemAxiWrAddr_ANY[51:0]"
+Toggle TrMemAxiWrAddr_ANY [51:13] "logic TrMemAxiWrAddr_ANY[51:0]"
 Toggle TrMemAxiWrAddr_ANY [11:7] "logic TrMemAxiWrAddr_ANY[51:0]"
 Toggle TrMemAxiWrAddr_ANY [5:0] "logic TrMemAxiWrAddr_ANY[51:0]"
 Toggle TrMemAxiWrData_ANY [502:498] "logic TrMemAxiWrData_ANY[511:0]"
@@ -27965,7 +28270,13 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_df
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle TR_TS_North_Src "logic TR_TS_North_Src"
 Toggle TR_TS_North_Data [118:115] "logic TR_TS_North_Data[127:0]"
+Toggle TR_TS_North_Data [102:99] "logic TR_TS_North_Data[127:0]"
+Toggle TR_TS_North_Data [86:83] "logic TR_TS_North_Data[127:0]"
 Toggle TR_TS_North_Data [70:67] "logic TR_TS_North_Data[127:0]"
+Toggle TR_TS_North_Data [54:51] "logic TR_TS_North_Data[127:0]"
+Toggle TR_TS_North_Data [38:35] "logic TR_TS_North_Data[127:0]"
+Toggle TR_TS_North_Data [22:19] "logic TR_TS_North_Data[127:0]"
+Toggle TR_TS_North_Data [6:3] "logic TR_TS_North_Data[127:0]"
 Toggle TS_TR_Ntrace_Bp "logic TS_TR_Ntrace_Bp"
 Toggle TS_TR_Ntrace_Flush "logic TS_TR_Ntrace_Flush"
 Toggle TR_TS_Ntrace_NumEnabled_Srcs [3:1] "logic TR_TS_Ntrace_NumEnabled_Srcs[3:0]"
@@ -28034,16 +28345,15 @@ Toggle TrdstramcontrolWr.TrdstramstoponwrapWrEn "logic TrdstramcontrolWr.Trdstra
 Toggle TrdstramcontrolWr.Data.Trdstramactive "logic TrdstramcontrolWr.Data.Trdstramactive[0:0]"
 Toggle TrdstramcontrolWr.Data.Trdstrammode "logic TrdstramcontrolWr.Data.Trdstrammode[0:0]"
 Toggle TrdstramcontrolWr.Data.Trdstramstoponwrap "logic TrdstramcontrolWr.Data.Trdstramstoponwrap[0:0]"
-Toggle TrdstramwplowWr.Data.Trdstramwplow [29:13] "logic TrdstramwplowWr.Data.Trdstramwplow[29:0]"
+Toggle TrdstramwplowWr.Data.Trdstramwplow [29:12] "logic TrdstramwplowWr.Data.Trdstramwplow[29:0]"
 Toggle TrdstramwplowWr.Data.Trdstramwplow [3:0] "logic TrdstramwplowWr.Data.Trdstramwplow[29:0]"
 Toggle TrdstramwphighWr.Data.Trdstramwphigh [31:20] "logic TrdstramwphighWr.Data.Trdstramwphigh[31:0]"
 Toggle TrdstramrplowWr.Data.Rsvd10 "logic TrdstramrplowWr.Data.Rsvd10[1:0]"
 Toggle TrdstramrphighWr.TrdstramrphighWrEn "logic TrdstramrphighWr.TrdstramrphighWrEn"
 Toggle TrdstramrphighWr.Data.Trdstramrphigh "logic TrdstramrphighWr.Data.Trdstramrphigh[31:0]"
 Toggle TrdstramdataWr.Data.Trdstramdata [22:19] "logic TrdstramdataWr.Data.Trdstramdata[31:0]"
-Toggle TrdstramdataWr.Data.Trdstramdata [6] "logic TrdstramdataWr.Data.Trdstramdata[31:0]"
-Toggle TrMemAxiWrAddr_ANY [51:15] "logic TrMemAxiWrAddr_ANY[51:0]"
-Toggle TrMemAxiWrAddr_ANY [13] "logic TrMemAxiWrAddr_ANY[51:0]"
+Toggle TrdstramdataWr.Data.Trdstramdata [6:3] "logic TrdstramdataWr.Data.Trdstramdata[31:0]"
+Toggle TrMemAxiWrAddr_ANY [51:13] "logic TrMemAxiWrAddr_ANY[51:0]"
 Toggle TrMemAxiWrAddr_ANY [11:7] "logic TrMemAxiWrAddr_ANY[51:0]"
 Toggle TrMemAxiWrAddr_ANY [5:0] "logic TrMemAxiWrAddr_ANY[51:0]"
 Toggle TrMemAxiWrData_ANY [502:498] "logic TrMemAxiWrData_ANY[511:0]"
@@ -28079,31 +28389,39 @@ Toggle TrMemAxiWrData_ANY [39:35] "logic TrMemAxiWrData_ANY[511:0]"
 Toggle TrMemAxiWrData_ANY [23:19] "logic TrMemAxiWrData_ANY[511:0]"
 Toggle TrMemAxiWrData_ANY [7:3] "logic TrMemAxiWrData_ANY[511:0]"
 Toggle SinkMemPktIn[0].mem_wr_data [54:51] "logic SinkMemPktIn[0].mem_wr_data[63:0]"
-Toggle SinkMemPktIn[0].mem_wr_data [22:21] "logic SinkMemPktIn[0].mem_wr_data[63:0]"
-Toggle SinkMemPktIn[0].mem_wr_data [19] "logic SinkMemPktIn[0].mem_wr_data[63:0]"
+Toggle SinkMemPktIn[0].mem_wr_data [38:35] "logic SinkMemPktIn[0].mem_wr_data[63:0]"
+Toggle SinkMemPktIn[0].mem_wr_data [22:19] "logic SinkMemPktIn[0].mem_wr_data[63:0]"
 Toggle SinkMemPktIn[0].mem_wr_data [6:3] "logic SinkMemPktIn[0].mem_wr_data[63:0]"
 Toggle SinkMemPktIn[0].mem_wr_mask_en "logic SinkMemPktIn[0].mem_wr_mask_en"
 Toggle SinkMemPktIn[1].mem_wr_data [54:51] "logic SinkMemPktIn[1].mem_wr_data[63:0]"
+Toggle SinkMemPktIn[1].mem_wr_data [38:35] "logic SinkMemPktIn[1].mem_wr_data[63:0]"
+Toggle SinkMemPktIn[1].mem_wr_data [22:19] "logic SinkMemPktIn[1].mem_wr_data[63:0]"
 Toggle SinkMemPktIn[1].mem_wr_data [6:3] "logic SinkMemPktIn[1].mem_wr_data[63:0]"
 Toggle SinkMemPktIn[1].mem_wr_mask_en "logic SinkMemPktIn[1].mem_wr_mask_en"
 Toggle SinkMemPktIn[2].mem_wr_data [54:51] "logic SinkMemPktIn[2].mem_wr_data[63:0]"
 Toggle SinkMemPktIn[2].mem_wr_data [38:35] "logic SinkMemPktIn[2].mem_wr_data[63:0]"
 Toggle SinkMemPktIn[2].mem_wr_data [22:19] "logic SinkMemPktIn[2].mem_wr_data[63:0]"
-Toggle SinkMemPktIn[2].mem_wr_data [3] "logic SinkMemPktIn[2].mem_wr_data[63:0]"
+Toggle SinkMemPktIn[2].mem_wr_data [6:3] "logic SinkMemPktIn[2].mem_wr_data[63:0]"
 Toggle SinkMemPktIn[2].mem_wr_mask_en "logic SinkMemPktIn[2].mem_wr_mask_en"
 Toggle SinkMemPktIn[3].mem_wr_data [54:51] "logic SinkMemPktIn[3].mem_wr_data[63:0]"
+Toggle SinkMemPktIn[3].mem_wr_data [38:35] "logic SinkMemPktIn[3].mem_wr_data[63:0]"
 Toggle SinkMemPktIn[3].mem_wr_data [22:19] "logic SinkMemPktIn[3].mem_wr_data[63:0]"
 Toggle SinkMemPktIn[3].mem_wr_data [6:3] "logic SinkMemPktIn[3].mem_wr_data[63:0]"
 Toggle SinkMemPktIn[3].mem_wr_mask_en "logic SinkMemPktIn[3].mem_wr_mask_en"
 Toggle SinkMemPktIn[4].mem_wr_data [54:51] "logic SinkMemPktIn[4].mem_wr_data[63:0]"
 Toggle SinkMemPktIn[4].mem_wr_data [38:35] "logic SinkMemPktIn[4].mem_wr_data[63:0]"
+Toggle SinkMemPktIn[4].mem_wr_data [22:19] "logic SinkMemPktIn[4].mem_wr_data[63:0]"
+Toggle SinkMemPktIn[4].mem_wr_data [6:3] "logic SinkMemPktIn[4].mem_wr_data[63:0]"
 Toggle SinkMemPktIn[4].mem_wr_mask_en "logic SinkMemPktIn[4].mem_wr_mask_en"
 Toggle SinkMemPktIn[5].mem_wr_data [54:51] "logic SinkMemPktIn[5].mem_wr_data[63:0]"
 Toggle SinkMemPktIn[5].mem_wr_data [38:35] "logic SinkMemPktIn[5].mem_wr_data[63:0]"
 Toggle SinkMemPktIn[5].mem_wr_data [22:19] "logic SinkMemPktIn[5].mem_wr_data[63:0]"
 Toggle SinkMemPktIn[5].mem_wr_data [6:3] "logic SinkMemPktIn[5].mem_wr_data[63:0]"
 Toggle SinkMemPktIn[5].mem_wr_mask_en "logic SinkMemPktIn[5].mem_wr_mask_en"
+Toggle SinkMemPktIn[6].mem_wr_data [54:51] "logic SinkMemPktIn[6].mem_wr_data[63:0]"
+Toggle SinkMemPktIn[6].mem_wr_data [38:35] "logic SinkMemPktIn[6].mem_wr_data[63:0]"
 Toggle SinkMemPktIn[6].mem_wr_data [22:19] "logic SinkMemPktIn[6].mem_wr_data[63:0]"
+Toggle SinkMemPktIn[6].mem_wr_data [6:3] "logic SinkMemPktIn[6].mem_wr_data[63:0]"
 Toggle SinkMemPktIn[6].mem_wr_mask_en "logic SinkMemPktIn[6].mem_wr_mask_en"
 Toggle SinkMemPktIn[7].mem_wr_data [54:51] "logic SinkMemPktIn[7].mem_wr_data[63:0]"
 Toggle SinkMemPktIn[7].mem_wr_data [38:35] "logic SinkMemPktIn[7].mem_wr_data[63:0]"
@@ -28111,8 +28429,8 @@ Toggle SinkMemPktIn[7].mem_wr_data [22:19] "logic SinkMemPktIn[7].mem_wr_data[63
 Toggle SinkMemPktIn[7].mem_wr_data [6:3] "logic SinkMemPktIn[7].mem_wr_data[63:0]"
 Toggle SinkMemPktIn[7].mem_wr_mask_en "logic SinkMemPktIn[7].mem_wr_mask_en"
 Toggle SinkMemPktOut[0].mem_rd_data [55:51] "logic SinkMemPktOut[0].mem_rd_data[63:0]"
-Toggle SinkMemPktOut[0].mem_rd_data [39:38] "logic SinkMemPktOut[0].mem_rd_data[63:0]"
-Toggle SinkMemPktOut[0].mem_rd_data [22:19] "logic SinkMemPktOut[0].mem_rd_data[63:0]"
+Toggle SinkMemPktOut[0].mem_rd_data [39:35] "logic SinkMemPktOut[0].mem_rd_data[63:0]"
+Toggle SinkMemPktOut[0].mem_rd_data [23:19] "logic SinkMemPktOut[0].mem_rd_data[63:0]"
 Toggle SinkMemPktOut[0].mem_rd_data [7:3] "logic SinkMemPktOut[0].mem_rd_data[63:0]"
 Toggle SinkMemPktOut[1].mem_rd_data [54:50] "logic SinkMemPktOut[1].mem_rd_data[63:0]"
 Toggle SinkMemPktOut[1].mem_rd_data [38:35] "logic SinkMemPktOut[1].mem_rd_data[63:0]"
@@ -28142,11 +28460,17 @@ Toggle SinkMemPktOut[7].mem_rd_data [54:50] "logic SinkMemPktOut[7].mem_rd_data[
 Toggle SinkMemPktOut[7].mem_rd_data [38:35] "logic SinkMemPktOut[7].mem_rd_data[63:0]"
 Toggle SinkMemPktOut[7].mem_rd_data [22:19] "logic SinkMemPktOut[7].mem_rd_data[63:0]"
 Toggle SinkMemPktOut[7].mem_rd_data [6:2] "logic SinkMemPktOut[7].mem_rd_data[63:0]"
-Toggle trnorthcoreRamWpLow_ANY_stg [31:15] "logic trnorthcoreRamWpLow_ANY_stg[31:2]"
+Toggle trnorthcoreRamWpLow_ANY_stg [31:14] "logic trnorthcoreRamWpLow_ANY_stg[31:2]"
 Toggle trnorthcoreRamWpLow_ANY_stg [3:2] "logic trnorthcoreRamWpLow_ANY_stg[31:2]"
 Toggle trsouthcoreRamWpLow_ANY_stg "logic trsouthcoreRamWpLow_ANY_stg[31:2]"
 Toggle TR_TS_North_Data_stg [118:115] "logic TR_TS_North_Data_stg[127:0]"
+Toggle TR_TS_North_Data_stg [102:99] "logic TR_TS_North_Data_stg[127:0]"
+Toggle TR_TS_North_Data_stg [86:83] "logic TR_TS_North_Data_stg[127:0]"
 Toggle TR_TS_North_Data_stg [70:67] "logic TR_TS_North_Data_stg[127:0]"
+Toggle TR_TS_North_Data_stg [54:51] "logic TR_TS_North_Data_stg[127:0]"
+Toggle TR_TS_North_Data_stg [38:35] "logic TR_TS_North_Data_stg[127:0]"
+Toggle TR_TS_North_Data_stg [22:19] "logic TR_TS_North_Data_stg[127:0]"
+Toggle TR_TS_North_Data_stg [6:3] "logic TR_TS_North_Data_stg[127:0]"
 Toggle TR_TS_North_Src_stg "logic TR_TS_North_Src_stg"
 Toggle trntrnextlocaltoupdateRamWpWrap_ANY_stg "logic trntrnextlocaltoupdateRamWpWrap_ANY_stg"
 Toggle trntrnextlocaltoupdateRamWpWrap_ANY_stg_d1 "logic trntrnextlocaltoupdateRamWpWrap_ANY_stg_d1"
@@ -28160,11 +28484,11 @@ Toggle trntrNumFramesFilledInSRAM_ANY "logic trntrNumFramesFilledInSRAM_ANY[8:0]
 Toggle trntrNumFramesFilledInSRAM_ANY_d1 "logic trntrNumFramesFilledInSRAM_ANY_d1[8:0]"
 Toggle trntrNumFrameFillComplete_ANY "logic trntrNumFrameFillComplete_ANY[8:0]"
 Toggle trntrNumFrameFillComplete_ANY_d1 "logic trntrNumFrameFillComplete_ANY_d1[8:0]"
-Toggle trdstNumFramesFilledInSRAM_ANY [8] "logic trdstNumFramesFilledInSRAM_ANY[8:0]"
-Toggle trdstNumFramesFilledInSRAM_ANY_d1 [8] "logic trdstNumFramesFilledInSRAM_ANY_d1[8:0]"
+Toggle trdstNumFramesFilledInSRAM_ANY [8:5] "logic trdstNumFramesFilledInSRAM_ANY[8:0]"
+Toggle trdstNumFramesFilledInSRAM_ANY_d1 [8:5] "logic trdstNumFramesFilledInSRAM_ANY_d1[8:0]"
 Toggle trdstNumFrameFillComplete_ANY [8:1] "logic trdstNumFrameFillComplete_ANY[8:0]"
 Toggle trdstNumFrameFillComplete_ANY_d1 [8:1] "logic trdstNumFrameFillComplete_ANY_d1[8:0]"
-Toggle trnorthcoreRamWpLow_ANY [31:15] "logic trnorthcoreRamWpLow_ANY[31:2]"
+Toggle trnorthcoreRamWpLow_ANY [31:14] "logic trnorthcoreRamWpLow_ANY[31:2]"
 Toggle trnorthcoreRamWpLow_ANY [3:2] "logic trnorthcoreRamWpLow_ANY[31:2]"
 Toggle trsouthcoreRamWpLow_ANY "logic trsouthcoreRamWpLow_ANY[31:2]"
 Toggle TrRamPendPktWr_ANY[0].TrRamPendSrc_ANY "logic TrRamPendPktWr_ANY[0].TrRamPendSrc_ANY"
@@ -28201,7 +28525,13 @@ Toggle TrRamPendPktWr_ANY[7].TrRamPendAddr_ANY "logic TrRamPendPktWr_ANY[7].TrRa
 Toggle TrRamPendPktWr_ANY[7].TrRamPendWayIdx_ANY "logic TrRamPendPktWr_ANY[7].TrRamPendWayIdx_ANY[1:0]"
 Toggle TrRamPendPktNorthWr_TS0.TrRamPendSrc_ANY "logic TrRamPendPktNorthWr_TS0.TrRamPendSrc_ANY"
 Toggle TrRamPendPktNorthWr_TS0.TrRamPendData_ANY [118:115] "logic TrRamPendPktNorthWr_TS0.TrRamPendData_ANY[127:0]"
+Toggle TrRamPendPktNorthWr_TS0.TrRamPendData_ANY [102:99] "logic TrRamPendPktNorthWr_TS0.TrRamPendData_ANY[127:0]"
+Toggle TrRamPendPktNorthWr_TS0.TrRamPendData_ANY [86:83] "logic TrRamPendPktNorthWr_TS0.TrRamPendData_ANY[127:0]"
 Toggle TrRamPendPktNorthWr_TS0.TrRamPendData_ANY [70:67] "logic TrRamPendPktNorthWr_TS0.TrRamPendData_ANY[127:0]"
+Toggle TrRamPendPktNorthWr_TS0.TrRamPendData_ANY [54:51] "logic TrRamPendPktNorthWr_TS0.TrRamPendData_ANY[127:0]"
+Toggle TrRamPendPktNorthWr_TS0.TrRamPendData_ANY [38:35] "logic TrRamPendPktNorthWr_TS0.TrRamPendData_ANY[127:0]"
+Toggle TrRamPendPktNorthWr_TS0.TrRamPendData_ANY [22:19] "logic TrRamPendPktNorthWr_TS0.TrRamPendData_ANY[127:0]"
+Toggle TrRamPendPktNorthWr_TS0.TrRamPendData_ANY [6:3] "logic TrRamPendPktNorthWr_TS0.TrRamPendData_ANY[127:0]"
 Toggle TrRamPendPktSouthWr_TS0.TrRamPendSrc_ANY "logic TrRamPendPktSouthWr_TS0.TrRamPendSrc_ANY"
 Toggle TrRamPendPktSouthWr_TS0.TrRamPendData_ANY "logic TrRamPendPktSouthWr_TS0.TrRamPendData_ANY[127:0]"
 Toggle TrRamPendPktSouthWr_TS0.TrRamPendAddr_ANY "logic TrRamPendPktSouthWr_TS0.TrRamPendAddr_ANY[7:0]"
@@ -28312,8 +28642,7 @@ Toggle TrdstMemRamRdAddrFlop_ANY [8:1] "logic TrdstMemRamRdAddrFlop_ANY[8:0]"
 Toggle TrdstMemRamRdAddr_TS1 [7:1] "logic TrdstMemRamRdAddr_TS1[7:0]"
 Toggle TrdstMemRamRdAddr_TS1_stg [7:1] "logic TrdstMemRamRdAddr_TS1_stg[7:0]"
 Toggle TrdstMemRamRdAddrWrap_ANY "logic TrdstMemRamRdAddrWrap_ANY"
-Toggle TrdstMemAxiWrAddr_ANY [51:15] "logic TrdstMemAxiWrAddr_ANY[51:0]"
-Toggle TrdstMemAxiWrAddr_ANY [13] "logic TrdstMemAxiWrAddr_ANY[51:0]"
+Toggle TrdstMemAxiWrAddr_ANY [51:13] "logic TrdstMemAxiWrAddr_ANY[51:0]"
 Toggle TrdstMemAxiWrAddr_ANY [11:7] "logic TrdstMemAxiWrAddr_ANY[51:0]"
 Toggle TrdstMemAxiWrAddr_ANY [5:0] "logic TrdstMemAxiWrAddr_ANY[51:0]"
 Toggle TrdstMemAxiWrAddr_WpUpdate_ANY [1:0] "logic TrdstMemAxiWrAddr_WpUpdate_ANY[51:0]"
@@ -28349,6 +28678,7 @@ Toggle TrdstMemAxiWrData_ANY [55:51] "logic TrdstMemAxiWrData_ANY[511:0]"
 Toggle TrdstMemAxiWrData_ANY [39:35] "logic TrdstMemAxiWrData_ANY[511:0]"
 Toggle TrdstMemAxiWrData_ANY [23:19] "logic TrdstMemAxiWrData_ANY[511:0]"
 Toggle TrdstMemAxiWrData_ANY [7:3] "logic TrdstMemAxiWrData_ANY[511:0]"
+Toggle TrdstMemModeRamBackPressure_ANY "logic TrdstMemModeRamBackPressure_ANY"
 Toggle TrdstFlushTimeoutCntr_ANY [15:8] "logic TrdstFlushTimeoutCntr_ANY[15:0]"
 Toggle TrntrMemRdBuffer_TS3 "logic [7:0][63:0]TrntrMemRdBuffer_TS3"
 Toggle TrntrMemRdBufferVld_TS3 "logic TrntrMemRdBufferVld_TS3[7:0]"
@@ -28380,7 +28710,13 @@ Toggle TrntrFlushTimeoutCntrClr_ANY "logic TrntrFlushTimeoutCntrClr_ANY"
 Toggle TrRamSouthTraceWrWay_TS0 "logic TrRamSouthTraceWrWay_TS0[1:0]"
 Toggle TrRamSouthTraceWrAddr_TS0 "logic TrRamSouthTraceWrAddr_TS0[7:0]"
 Toggle TrRamNorthTraceWrData_TS0 [118:115] "logic TrRamNorthTraceWrData_TS0[127:0]"
+Toggle TrRamNorthTraceWrData_TS0 [102:99] "logic TrRamNorthTraceWrData_TS0[127:0]"
+Toggle TrRamNorthTraceWrData_TS0 [86:83] "logic TrRamNorthTraceWrData_TS0[127:0]"
 Toggle TrRamNorthTraceWrData_TS0 [70:67] "logic TrRamNorthTraceWrData_TS0[127:0]"
+Toggle TrRamNorthTraceWrData_TS0 [54:51] "logic TrRamNorthTraceWrData_TS0[127:0]"
+Toggle TrRamNorthTraceWrData_TS0 [38:35] "logic TrRamNorthTraceWrData_TS0[127:0]"
+Toggle TrRamNorthTraceWrData_TS0 [22:19] "logic TrRamNorthTraceWrData_TS0[127:0]"
+Toggle TrRamNorthTraceWrData_TS0 [6:3] "logic TrRamNorthTraceWrData_TS0[127:0]"
 Toggle TrRamNorthTraceWrSrc_TS0 "logic TrRamNorthTraceWrSrc_TS0"
 Toggle DataTraceWrEn_TS0 "logic DataTraceWrEn_TS0"
 Toggle InsnTraceWrEn_TS0 "logic InsnTraceWrEn_TS0"
@@ -28392,73 +28728,97 @@ Toggle DataTraceWrAddr_TS0 "logic DataTraceWrAddr_TS0[7:0]"
 Toggle InsnTraceWrData_TS0 "logic InsnTraceWrData_TS0[127:0]"
 Toggle DataTraceWrData_TS0 "logic DataTraceWrData_TS0[127:0]"
 Toggle TraceWrData_TS0_stg [0][54:51] "logic [7:0][63:0]TraceWrData_TS0_stg"
-Toggle TraceWrData_TS0_stg [0][22:21] "logic [7:0][63:0]TraceWrData_TS0_stg"
-Toggle TraceWrData_TS0_stg [0][19] "logic [7:0][63:0]TraceWrData_TS0_stg"
+Toggle TraceWrData_TS0_stg [0][38:35] "logic [7:0][63:0]TraceWrData_TS0_stg"
+Toggle TraceWrData_TS0_stg [0][22:19] "logic [7:0][63:0]TraceWrData_TS0_stg"
 Toggle TraceWrData_TS0_stg [0][6:3] "logic [7:0][63:0]TraceWrData_TS0_stg"
 Toggle TraceWrData_TS0_stg [1][54:51] "logic [7:0][63:0]TraceWrData_TS0_stg"
+Toggle TraceWrData_TS0_stg [1][38:35] "logic [7:0][63:0]TraceWrData_TS0_stg"
+Toggle TraceWrData_TS0_stg [1][22:19] "logic [7:0][63:0]TraceWrData_TS0_stg"
 Toggle TraceWrData_TS0_stg [1][6:3] "logic [7:0][63:0]TraceWrData_TS0_stg"
 Toggle TraceWrData_TS0_stg [2][54:51] "logic [7:0][63:0]TraceWrData_TS0_stg"
 Toggle TraceWrData_TS0_stg [2][38:35] "logic [7:0][63:0]TraceWrData_TS0_stg"
 Toggle TraceWrData_TS0_stg [2][22:19] "logic [7:0][63:0]TraceWrData_TS0_stg"
-Toggle TraceWrData_TS0_stg [2][3] "logic [7:0][63:0]TraceWrData_TS0_stg"
+Toggle TraceWrData_TS0_stg [2][6:3] "logic [7:0][63:0]TraceWrData_TS0_stg"
 Toggle TraceWrData_TS0_stg [3][54:51] "logic [7:0][63:0]TraceWrData_TS0_stg"
+Toggle TraceWrData_TS0_stg [3][38:35] "logic [7:0][63:0]TraceWrData_TS0_stg"
 Toggle TraceWrData_TS0_stg [3][22:19] "logic [7:0][63:0]TraceWrData_TS0_stg"
 Toggle TraceWrData_TS0_stg [3][6:3] "logic [7:0][63:0]TraceWrData_TS0_stg"
 Toggle TraceWrData_TS0_stg [4][54:51] "logic [7:0][63:0]TraceWrData_TS0_stg"
 Toggle TraceWrData_TS0_stg [4][38:35] "logic [7:0][63:0]TraceWrData_TS0_stg"
+Toggle TraceWrData_TS0_stg [4][22:19] "logic [7:0][63:0]TraceWrData_TS0_stg"
+Toggle TraceWrData_TS0_stg [4][6:3] "logic [7:0][63:0]TraceWrData_TS0_stg"
 Toggle TraceWrData_TS0_stg [5][54:51] "logic [7:0][63:0]TraceWrData_TS0_stg"
 Toggle TraceWrData_TS0_stg [5][38:35] "logic [7:0][63:0]TraceWrData_TS0_stg"
 Toggle TraceWrData_TS0_stg [5][22:19] "logic [7:0][63:0]TraceWrData_TS0_stg"
 Toggle TraceWrData_TS0_stg [5][6:3] "logic [7:0][63:0]TraceWrData_TS0_stg"
+Toggle TraceWrData_TS0_stg [6][54:51] "logic [7:0][63:0]TraceWrData_TS0_stg"
+Toggle TraceWrData_TS0_stg [6][38:35] "logic [7:0][63:0]TraceWrData_TS0_stg"
 Toggle TraceWrData_TS0_stg [6][22:19] "logic [7:0][63:0]TraceWrData_TS0_stg"
+Toggle TraceWrData_TS0_stg [6][6:3] "logic [7:0][63:0]TraceWrData_TS0_stg"
 Toggle TraceWrData_TS0_stg [7][54:51] "logic [7:0][63:0]TraceWrData_TS0_stg"
 Toggle TraceWrData_TS0_stg [7][38:35] "logic [7:0][63:0]TraceWrData_TS0_stg"
 Toggle TraceWrData_TS0_stg [7][22:19] "logic [7:0][63:0]TraceWrData_TS0_stg"
 Toggle TraceWrData_TS0_stg [7][6:3] "logic [7:0][63:0]TraceWrData_TS0_stg"
 Toggle TraceWrData_TS0_stg_d1 [0][54:51] "logic [7:0][63:0]TraceWrData_TS0_stg_d1"
-Toggle TraceWrData_TS0_stg_d1 [0][22:21] "logic [7:0][63:0]TraceWrData_TS0_stg_d1"
-Toggle TraceWrData_TS0_stg_d1 [0][19] "logic [7:0][63:0]TraceWrData_TS0_stg_d1"
+Toggle TraceWrData_TS0_stg_d1 [0][38:35] "logic [7:0][63:0]TraceWrData_TS0_stg_d1"
+Toggle TraceWrData_TS0_stg_d1 [0][22:19] "logic [7:0][63:0]TraceWrData_TS0_stg_d1"
 Toggle TraceWrData_TS0_stg_d1 [0][6:3] "logic [7:0][63:0]TraceWrData_TS0_stg_d1"
 Toggle TraceWrData_TS0_stg_d1 [1][54:51] "logic [7:0][63:0]TraceWrData_TS0_stg_d1"
+Toggle TraceWrData_TS0_stg_d1 [1][38:35] "logic [7:0][63:0]TraceWrData_TS0_stg_d1"
+Toggle TraceWrData_TS0_stg_d1 [1][22:19] "logic [7:0][63:0]TraceWrData_TS0_stg_d1"
 Toggle TraceWrData_TS0_stg_d1 [1][6:3] "logic [7:0][63:0]TraceWrData_TS0_stg_d1"
 Toggle TraceWrData_TS0_stg_d1 [2][54:51] "logic [7:0][63:0]TraceWrData_TS0_stg_d1"
 Toggle TraceWrData_TS0_stg_d1 [2][38:35] "logic [7:0][63:0]TraceWrData_TS0_stg_d1"
 Toggle TraceWrData_TS0_stg_d1 [2][22:19] "logic [7:0][63:0]TraceWrData_TS0_stg_d1"
-Toggle TraceWrData_TS0_stg_d1 [2][3] "logic [7:0][63:0]TraceWrData_TS0_stg_d1"
+Toggle TraceWrData_TS0_stg_d1 [2][6:3] "logic [7:0][63:0]TraceWrData_TS0_stg_d1"
 Toggle TraceWrData_TS0_stg_d1 [3][54:51] "logic [7:0][63:0]TraceWrData_TS0_stg_d1"
+Toggle TraceWrData_TS0_stg_d1 [3][38:35] "logic [7:0][63:0]TraceWrData_TS0_stg_d1"
 Toggle TraceWrData_TS0_stg_d1 [3][22:19] "logic [7:0][63:0]TraceWrData_TS0_stg_d1"
 Toggle TraceWrData_TS0_stg_d1 [3][6:3] "logic [7:0][63:0]TraceWrData_TS0_stg_d1"
 Toggle TraceWrData_TS0_stg_d1 [4][54:51] "logic [7:0][63:0]TraceWrData_TS0_stg_d1"
 Toggle TraceWrData_TS0_stg_d1 [4][38:35] "logic [7:0][63:0]TraceWrData_TS0_stg_d1"
+Toggle TraceWrData_TS0_stg_d1 [4][22:19] "logic [7:0][63:0]TraceWrData_TS0_stg_d1"
+Toggle TraceWrData_TS0_stg_d1 [4][6:3] "logic [7:0][63:0]TraceWrData_TS0_stg_d1"
 Toggle TraceWrData_TS0_stg_d1 [5][54:51] "logic [7:0][63:0]TraceWrData_TS0_stg_d1"
 Toggle TraceWrData_TS0_stg_d1 [5][38:35] "logic [7:0][63:0]TraceWrData_TS0_stg_d1"
 Toggle TraceWrData_TS0_stg_d1 [5][22:19] "logic [7:0][63:0]TraceWrData_TS0_stg_d1"
 Toggle TraceWrData_TS0_stg_d1 [5][6:3] "logic [7:0][63:0]TraceWrData_TS0_stg_d1"
+Toggle TraceWrData_TS0_stg_d1 [6][54:51] "logic [7:0][63:0]TraceWrData_TS0_stg_d1"
+Toggle TraceWrData_TS0_stg_d1 [6][38:35] "logic [7:0][63:0]TraceWrData_TS0_stg_d1"
 Toggle TraceWrData_TS0_stg_d1 [6][22:19] "logic [7:0][63:0]TraceWrData_TS0_stg_d1"
+Toggle TraceWrData_TS0_stg_d1 [6][6:3] "logic [7:0][63:0]TraceWrData_TS0_stg_d1"
 Toggle TraceWrData_TS0_stg_d1 [7][54:51] "logic [7:0][63:0]TraceWrData_TS0_stg_d1"
 Toggle TraceWrData_TS0_stg_d1 [7][38:35] "logic [7:0][63:0]TraceWrData_TS0_stg_d1"
 Toggle TraceWrData_TS0_stg_d1 [7][22:19] "logic [7:0][63:0]TraceWrData_TS0_stg_d1"
 Toggle TraceWrData_TS0_stg_d1 [7][6:3] "logic [7:0][63:0]TraceWrData_TS0_stg_d1"
 Toggle TraceWrData_TS0 [0][54:51] "logic [7:0][63:0]TraceWrData_TS0"
-Toggle TraceWrData_TS0 [0][22:21] "logic [7:0][63:0]TraceWrData_TS0"
-Toggle TraceWrData_TS0 [0][19] "logic [7:0][63:0]TraceWrData_TS0"
+Toggle TraceWrData_TS0 [0][38:35] "logic [7:0][63:0]TraceWrData_TS0"
+Toggle TraceWrData_TS0 [0][22:19] "logic [7:0][63:0]TraceWrData_TS0"
 Toggle TraceWrData_TS0 [0][6:3] "logic [7:0][63:0]TraceWrData_TS0"
 Toggle TraceWrData_TS0 [1][54:51] "logic [7:0][63:0]TraceWrData_TS0"
+Toggle TraceWrData_TS0 [1][38:35] "logic [7:0][63:0]TraceWrData_TS0"
+Toggle TraceWrData_TS0 [1][22:19] "logic [7:0][63:0]TraceWrData_TS0"
 Toggle TraceWrData_TS0 [1][6:3] "logic [7:0][63:0]TraceWrData_TS0"
 Toggle TraceWrData_TS0 [2][54:51] "logic [7:0][63:0]TraceWrData_TS0"
 Toggle TraceWrData_TS0 [2][38:35] "logic [7:0][63:0]TraceWrData_TS0"
 Toggle TraceWrData_TS0 [2][22:19] "logic [7:0][63:0]TraceWrData_TS0"
-Toggle TraceWrData_TS0 [2][3] "logic [7:0][63:0]TraceWrData_TS0"
+Toggle TraceWrData_TS0 [2][6:3] "logic [7:0][63:0]TraceWrData_TS0"
 Toggle TraceWrData_TS0 [3][54:51] "logic [7:0][63:0]TraceWrData_TS0"
+Toggle TraceWrData_TS0 [3][38:35] "logic [7:0][63:0]TraceWrData_TS0"
 Toggle TraceWrData_TS0 [3][22:19] "logic [7:0][63:0]TraceWrData_TS0"
 Toggle TraceWrData_TS0 [3][6:3] "logic [7:0][63:0]TraceWrData_TS0"
 Toggle TraceWrData_TS0 [4][54:51] "logic [7:0][63:0]TraceWrData_TS0"
 Toggle TraceWrData_TS0 [4][38:35] "logic [7:0][63:0]TraceWrData_TS0"
+Toggle TraceWrData_TS0 [4][22:19] "logic [7:0][63:0]TraceWrData_TS0"
+Toggle TraceWrData_TS0 [4][6:3] "logic [7:0][63:0]TraceWrData_TS0"
 Toggle TraceWrData_TS0 [5][54:51] "logic [7:0][63:0]TraceWrData_TS0"
 Toggle TraceWrData_TS0 [5][38:35] "logic [7:0][63:0]TraceWrData_TS0"
 Toggle TraceWrData_TS0 [5][22:19] "logic [7:0][63:0]TraceWrData_TS0"
 Toggle TraceWrData_TS0 [5][6:3] "logic [7:0][63:0]TraceWrData_TS0"
+Toggle TraceWrData_TS0 [6][54:51] "logic [7:0][63:0]TraceWrData_TS0"
+Toggle TraceWrData_TS0 [6][38:35] "logic [7:0][63:0]TraceWrData_TS0"
 Toggle TraceWrData_TS0 [6][22:19] "logic [7:0][63:0]TraceWrData_TS0"
+Toggle TraceWrData_TS0 [6][6:3] "logic [7:0][63:0]TraceWrData_TS0"
 Toggle TraceWrData_TS0 [7][54:51] "logic [7:0][63:0]TraceWrData_TS0"
 Toggle TraceWrData_TS0 [7][38:35] "logic [7:0][63:0]TraceWrData_TS0"
 Toggle TraceWrData_TS0 [7][22:19] "logic [7:0][63:0]TraceWrData_TS0"
@@ -28467,8 +28827,8 @@ Toggle TraceMemRdAddr_TS1 [7:1] "logic TraceMemRdAddr_TS1[7:0]"
 Toggle TraceMemRdAddr_TS1_stg "logic TraceMemRdAddr_TS1_stg[7:0]"
 Toggle TraceMemPerWayRdEn_TS1_stg "logic TraceMemPerWayRdEn_TS1_stg[7:0]"
 Toggle TraceRamData_TS2 [0][55:51] "logic [7:0][63:0]TraceRamData_TS2"
-Toggle TraceRamData_TS2 [0][39:38] "logic [7:0][63:0]TraceRamData_TS2"
-Toggle TraceRamData_TS2 [0][22:19] "logic [7:0][63:0]TraceRamData_TS2"
+Toggle TraceRamData_TS2 [0][39:35] "logic [7:0][63:0]TraceRamData_TS2"
+Toggle TraceRamData_TS2 [0][23:19] "logic [7:0][63:0]TraceRamData_TS2"
 Toggle TraceRamData_TS2 [0][7:3] "logic [7:0][63:0]TraceRamData_TS2"
 Toggle TraceRamData_TS2 [1][54:50] "logic [7:0][63:0]TraceRamData_TS2"
 Toggle TraceRamData_TS2 [1][38:35] "logic [7:0][63:0]TraceRamData_TS2"
@@ -28499,7 +28859,7 @@ Toggle TraceRamData_TS2 [7][38:35] "logic [7:0][63:0]TraceRamData_TS2"
 Toggle TraceRamData_TS2 [7][22:19] "logic [7:0][63:0]TraceRamData_TS2"
 Toggle TraceRamData_TS2 [7][6:2] "logic [7:0][63:0]TraceRamData_TS2"
 Toggle TraceRamData64b_TS2 [54:51] "logic TraceRamData64b_TS2[63:0]"
-Toggle TraceRamData64b_TS2 [38] "logic TraceRamData64b_TS2[63:0]"
+Toggle TraceRamData64b_TS2 [38:35] "logic TraceRamData64b_TS2[63:0]"
 Toggle TraceRamData64b_TS2 [22:19] "logic TraceRamData64b_TS2[63:0]"
 Toggle TraceRamData64b_TS2 [6:3] "logic TraceRamData64b_TS2[63:0]"
 Toggle TraceMemRdEn_ANY_stg "logic TraceMemRdEn_ANY_stg"
@@ -28549,32 +28909,34 @@ Toggle trntrMemRamRdEnFromCore_ANY_stg "logic trntrMemRamRdEnFromCore_ANY_stg[0:
 Toggle trdstMemMode_nextlocalWrapCond_WpLow_ANY [31:15] "logic trdstMemMode_nextlocalWrapCond_WpLow_ANY[31:2]"
 Toggle trdstMemMode_nextlocalWrapCond_WpLow_ANY [5:2] "logic trdstMemMode_nextlocalWrapCond_WpLow_ANY[31:2]"
 Toggle trdstRamMode_nextlocalWrapCond_WpLow_ANY [5:2] "logic trdstRamMode_nextlocalWrapCond_WpLow_ANY[31:2]"
-Toggle trdstramwplowSRAMWrdata [31:15] "logic trdstramwplowSRAMWrdata[31:2]"
+Toggle trdstramwplowSRAMWrdata [31:14] "logic trdstramwplowSRAMWrdata[31:2]"
 Toggle trdstramwplowSRAMWrdata [5:2] "logic trdstramwplowSRAMWrdata[31:2]"
-Toggle trdstcorefullRamWpLow_ANY [0][31:15] "logic [0:0][31:2]trdstcorefullRamWpLow_ANY"
+Toggle trdstcorefullRamWpLow_ANY [0][31:14] "logic [0:0][31:2]trdstcorefullRamWpLow_ANY"
 Toggle trdstcorefullRamWpLow_ANY [0][3:2] "logic [0:0][31:2]trdstcorefullRamWpLow_ANY"
-Toggle trdstcoreRamWpLow_ANY [0][31:15] "logic [0:0][31:2]trdstcoreRamWpLow_ANY"
+Toggle trdstcoreRamWpLow_ANY [0][31:14] "logic [0:0][31:2]trdstcoreRamWpLow_ANY"
 Toggle trdstcoreRamWpLow_ANY [0][3:2] "logic [0:0][31:2]trdstcoreRamWpLow_ANY"
-Toggle trdstcorenextRamWpLow_ANY [0][31:15] "logic [0:0][31:2]trdstcorenextRamWpLow_ANY"
+Toggle trdstcorenextRamWpLow_ANY [0][31:14] "logic [0:0][31:2]trdstcorenextRamWpLow_ANY"
 Toggle trdstcorenextRamWpLow_ANY [0][3:2] "logic [0:0][31:2]trdstcorenextRamWpLow_ANY"
 Toggle trdstcoretoFlushThreshold_ANY [8] "logic trdstcoretoFlushThreshold_ANY[8:0]"
 Toggle trdstcoretoFlushThreshold_ANY [6:0] "logic trdstcoretoFlushThreshold_ANY[8:0]"
-Toggle trdstlocalRamWpLow_ANY [31:15] "logic trdstlocalRamWpLow_ANY[31:2]"
+Toggle trdstcoreRamWpWrap_ANY "logic trdstcoreRamWpWrap_ANY[0:0]"
+Toggle trdstcoreRamWpWrap_ANY_d1 "logic trdstcoreRamWpWrap_ANY_d1[0:0]"
+Toggle trdstlocalRamWpLow_ANY [31:14] "logic trdstlocalRamWpLow_ANY[31:2]"
 Toggle trdstlocalRamWpLow_ANY [5:2] "logic trdstlocalRamWpLow_ANY[31:2]"
 Toggle trdstRamSMEMStartLow_ANY "logic trdstRamSMEMStartLow_ANY[31:2]"
 Toggle trdstRamSMEMSizeLow_ANY [31:15] "logic trdstRamSMEMSizeLow_ANY[31:2]"
 Toggle trdstRamSMEMSizeLow_ANY [13:2] "logic trdstRamSMEMSizeLow_ANY[31:2]"
 Toggle trdstRamSMEMStartAddr_ANY "logic trdstRamSMEMStartAddr_ANY[8:0]"
 Toggle trdstRamSMEMTotalSets_ANY [7:0] "logic trdstRamSMEMTotalSets_ANY[8:0]"
-Toggle trdstnextlocalRamWpLow_ANY [0][31:15] "logic [2:0][31:2]trdstnextlocalRamWpLow_ANY"
+Toggle trdstnextlocalRamWpLow_ANY [0][31:14] "logic [2:0][31:2]trdstnextlocalRamWpLow_ANY"
 Toggle trdstnextlocalRamWpLow_ANY [0][5:2] "logic [2:0][31:2]trdstnextlocalRamWpLow_ANY"
-Toggle trdstnextlocalRamWpLow_ANY [1][31:15] "logic [2:0][31:2]trdstnextlocalRamWpLow_ANY"
+Toggle trdstnextlocalRamWpLow_ANY [1][31:14] "logic [2:0][31:2]trdstnextlocalRamWpLow_ANY"
 Toggle trdstnextlocalRamWpLow_ANY [1][5:2] "logic [2:0][31:2]trdstnextlocalRamWpLow_ANY"
-Toggle trdstnextlocalRamWpLow_ANY [2][31:15] "logic [2:0][31:2]trdstnextlocalRamWpLow_ANY"
+Toggle trdstnextlocalRamWpLow_ANY [2][31:14] "logic [2:0][31:2]trdstnextlocalRamWpLow_ANY"
 Toggle trdstnextlocalRamWpLow_ANY [2][5:2] "logic [2:0][31:2]trdstnextlocalRamWpLow_ANY"
-Toggle trdstnextlocaltoupdateRamWpLow_ANY [31:15] "logic trdstnextlocaltoupdateRamWpLow_ANY[31:2]"
+Toggle trdstnextlocaltoupdateRamWpLow_ANY [31:14] "logic trdstnextlocaltoupdateRamWpLow_ANY[31:2]"
 Toggle trdstnextlocaltoupdateRamWpLow_ANY [5:2] "logic trdstnextlocaltoupdateRamWpLow_ANY[31:2]"
-Toggle trdstnextlocaltoupdateRamWpLow_ANY_stg [31:15] "logic trdstnextlocaltoupdateRamWpLow_ANY_stg[31:2]"
+Toggle trdstnextlocaltoupdateRamWpLow_ANY_stg [31:14] "logic trdstnextlocaltoupdateRamWpLow_ANY_stg[31:2]"
 Toggle trdstnextlocaltoupdateRamWpLow_ANY_stg [5:2] "logic trdstnextlocaltoupdateRamWpLow_ANY_stg[31:2]"
 Toggle trdstsouthcoresNewFrameStart_ANY "logic trdstsouthcoresNewFrameStart_ANY"
 Toggle trdstsouthcoresNewFrameStart_ANY_d1 "logic trdstsouthcoresNewFrameStart_ANY_d1"
@@ -28615,9 +28977,21 @@ CHECKSUM: "1659362951 39665386"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.TR_TS_North_Data_stg_ff
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle in [118:115] "logic in[127:0]"
+Toggle in [102:99] "logic in[127:0]"
+Toggle in [86:83] "logic in[127:0]"
 Toggle in [70:67] "logic in[127:0]"
+Toggle in [54:51] "logic in[127:0]"
+Toggle in [38:35] "logic in[127:0]"
+Toggle in [22:19] "logic in[127:0]"
+Toggle in [6:3] "logic in[127:0]"
 Toggle out [118:115] "logic out[127:0]"
+Toggle out [102:99] "logic out[127:0]"
+Toggle out [86:83] "logic out[127:0]"
 Toggle out [70:67] "logic out[127:0]"
+Toggle out [54:51] "logic out[127:0]"
+Toggle out [38:35] "logic out[127:0]"
+Toggle out [22:19] "logic out[127:0]"
+Toggle out [6:3] "logic out[127:0]"
 
 CHECKSUM: "1659362951 2011837486"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.TR_TS_North_Src_stg_ff
@@ -28674,40 +29048,48 @@ CHECKSUM: "1659362951 37599631"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.TrcSinkWayControl[0].TraceWrData_TS0_even_ff
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle in [54:51] "logic in[63:0]"
-Toggle in [22:21] "logic in[63:0]"
-Toggle in [19] "logic in[63:0]"
+Toggle in [38:35] "logic in[63:0]"
+Toggle in [22:19] "logic in[63:0]"
 Toggle in [6:3] "logic in[63:0]"
 Toggle out [54:51] "logic out[63:0]"
-Toggle out [22:21] "logic out[63:0]"
-Toggle out [19] "logic out[63:0]"
+Toggle out [38:35] "logic out[63:0]"
+Toggle out [22:19] "logic out[63:0]"
 Toggle out [6:3] "logic out[63:0]"
 
 CHECKSUM: "1659362951 37599631"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.TrcSinkWayControl[0].TraceWrData_TS0_even_stg_ff
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle in [54:51] "logic in[63:0]"
-Toggle in [22:21] "logic in[63:0]"
-Toggle in [19] "logic in[63:0]"
+Toggle in [38:35] "logic in[63:0]"
+Toggle in [22:19] "logic in[63:0]"
 Toggle in [6:3] "logic in[63:0]"
 Toggle out [54:51] "logic out[63:0]"
-Toggle out [22:21] "logic out[63:0]"
-Toggle out [19] "logic out[63:0]"
+Toggle out [38:35] "logic out[63:0]"
+Toggle out [22:19] "logic out[63:0]"
 Toggle out [6:3] "logic out[63:0]"
 
 CHECKSUM: "1659362951 37599631"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.TrcSinkWayControl[0].TraceWrData_TS0_odd_ff
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle in [54:51] "logic in[63:0]"
+Toggle in [38:35] "logic in[63:0]"
+Toggle in [22:19] "logic in[63:0]"
 Toggle in [6:3] "logic in[63:0]"
 Toggle out [54:51] "logic out[63:0]"
+Toggle out [38:35] "logic out[63:0]"
+Toggle out [22:19] "logic out[63:0]"
 Toggle out [6:3] "logic out[63:0]"
 
 CHECKSUM: "1659362951 37599631"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.TrcSinkWayControl[0].TraceWrData_TS0_odd_stg_ff
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle in [54:51] "logic in[63:0]"
+Toggle in [38:35] "logic in[63:0]"
+Toggle in [22:19] "logic in[63:0]"
 Toggle in [6:3] "logic in[63:0]"
 Toggle out [54:51] "logic out[63:0]"
+Toggle out [38:35] "logic out[63:0]"
+Toggle out [22:19] "logic out[63:0]"
 Toggle out [6:3] "logic out[63:0]"
 
 CHECKSUM: "1659362951 37599631"
@@ -28716,11 +29098,11 @@ ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet
 Toggle in [54:51] "logic in[63:0]"
 Toggle in [38:35] "logic in[63:0]"
 Toggle in [22:19] "logic in[63:0]"
-Toggle in [3] "logic in[63:0]"
+Toggle in [6:3] "logic in[63:0]"
 Toggle out [54:51] "logic out[63:0]"
 Toggle out [38:35] "logic out[63:0]"
 Toggle out [22:19] "logic out[63:0]"
-Toggle out [3] "logic out[63:0]"
+Toggle out [6:3] "logic out[63:0]"
 
 CHECKSUM: "1659362951 37599631"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.TrcSinkWayControl[1].TraceWrData_TS0_even_stg_ff
@@ -28728,19 +29110,21 @@ ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet
 Toggle in [54:51] "logic in[63:0]"
 Toggle in [38:35] "logic in[63:0]"
 Toggle in [22:19] "logic in[63:0]"
-Toggle in [3] "logic in[63:0]"
+Toggle in [6:3] "logic in[63:0]"
 Toggle out [54:51] "logic out[63:0]"
 Toggle out [38:35] "logic out[63:0]"
 Toggle out [22:19] "logic out[63:0]"
-Toggle out [3] "logic out[63:0]"
+Toggle out [6:3] "logic out[63:0]"
 
 CHECKSUM: "1659362951 37599631"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.TrcSinkWayControl[1].TraceWrData_TS0_odd_ff
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle in [54:51] "logic in[63:0]"
+Toggle in [38:35] "logic in[63:0]"
 Toggle in [22:19] "logic in[63:0]"
 Toggle in [6:3] "logic in[63:0]"
 Toggle out [54:51] "logic out[63:0]"
+Toggle out [38:35] "logic out[63:0]"
 Toggle out [22:19] "logic out[63:0]"
 Toggle out [6:3] "logic out[63:0]"
 
@@ -28748,9 +29132,11 @@ CHECKSUM: "1659362951 37599631"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.TrcSinkWayControl[1].TraceWrData_TS0_odd_stg_ff
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle in [54:51] "logic in[63:0]"
+Toggle in [38:35] "logic in[63:0]"
 Toggle in [22:19] "logic in[63:0]"
 Toggle in [6:3] "logic in[63:0]"
 Toggle out [54:51] "logic out[63:0]"
+Toggle out [38:35] "logic out[63:0]"
 Toggle out [22:19] "logic out[63:0]"
 Toggle out [6:3] "logic out[63:0]"
 
@@ -28759,16 +29145,24 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_df
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle in [54:51] "logic in[63:0]"
 Toggle in [38:35] "logic in[63:0]"
+Toggle in [22:19] "logic in[63:0]"
+Toggle in [6:3] "logic in[63:0]"
 Toggle out [54:51] "logic out[63:0]"
 Toggle out [38:35] "logic out[63:0]"
+Toggle out [22:19] "logic out[63:0]"
+Toggle out [6:3] "logic out[63:0]"
 
 CHECKSUM: "1659362951 37599631"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.TrcSinkWayControl[2].TraceWrData_TS0_even_stg_ff
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle in [54:51] "logic in[63:0]"
 Toggle in [38:35] "logic in[63:0]"
+Toggle in [22:19] "logic in[63:0]"
+Toggle in [6:3] "logic in[63:0]"
 Toggle out [54:51] "logic out[63:0]"
 Toggle out [38:35] "logic out[63:0]"
+Toggle out [22:19] "logic out[63:0]"
+Toggle out [6:3] "logic out[63:0]"
 
 CHECKSUM: "1659362951 37599631"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.TrcSinkWayControl[2].TraceWrData_TS0_odd_ff
@@ -28797,14 +29191,26 @@ Toggle out [6:3] "logic out[63:0]"
 CHECKSUM: "1659362951 37599631"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.TrcSinkWayControl[3].TraceWrData_TS0_even_ff
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
+Toggle in [54:51] "logic in[63:0]"
+Toggle in [38:35] "logic in[63:0]"
 Toggle in [22:19] "logic in[63:0]"
+Toggle in [6:3] "logic in[63:0]"
+Toggle out [54:51] "logic out[63:0]"
+Toggle out [38:35] "logic out[63:0]"
 Toggle out [22:19] "logic out[63:0]"
+Toggle out [6:3] "logic out[63:0]"
 
 CHECKSUM: "1659362951 37599631"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.TrcSinkWayControl[3].TraceWrData_TS0_even_stg_ff
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
+Toggle in [54:51] "logic in[63:0]"
+Toggle in [38:35] "logic in[63:0]"
 Toggle in [22:19] "logic in[63:0]"
+Toggle in [6:3] "logic in[63:0]"
+Toggle out [54:51] "logic out[63:0]"
+Toggle out [38:35] "logic out[63:0]"
 Toggle out [22:19] "logic out[63:0]"
+Toggle out [6:3] "logic out[63:0]"
 
 CHECKSUM: "1659362951 37599631"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.TrcSinkWayControl[3].TraceWrData_TS0_odd_ff
@@ -28853,10 +29259,24 @@ CHECKSUM: "1659362951 2417704469"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.TrdstMemAxiWrAddr_ff
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle in [1:0] "logic in[51:0]"
-Toggle out [51:15] "logic out[51:0]"
-Toggle out [13] "logic out[51:0]"
+Toggle out [51:13] "logic out[51:0]"
 Toggle out [11:7] "logic out[51:0]"
 Toggle out [5:0] "logic out[51:0]"
+
+CHECKSUM: "1202387303 1715028901"
+INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.TrdstMemModeRamBackPressure_ff
+ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
+Toggle en "logic en"
+Toggle clr "logic clr"
+Toggle out "logic out[0:0]"
+Toggle new_in "logic new_in[0:0]"
+
+CHECKSUM: "1659362951 2011837486"
+INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.TrdstMemModeRamBackPressure_ff.u_dff
+ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
+Toggle in "logic in[0:0]"
+Toggle en "logic en"
+Toggle out "logic out[0:0]"
 
 CHECKSUM: "1659362951 2486095554"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.TrdstMemRamRdAddrFlop_ANY_ff
@@ -29141,8 +29561,8 @@ CHECKSUM: "1659362951 37599631"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrdstMemRdBufferVld_TS5_ff[0].TrdstMemRdBuffer_ff
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle in [55:51] "logic in[63:0]"
-Toggle in [39:38] "logic in[63:0]"
-Toggle in [22:19] "logic in[63:0]"
+Toggle in [39:35] "logic in[63:0]"
+Toggle in [23:19] "logic in[63:0]"
 Toggle in [7:3] "logic in[63:0]"
 Toggle out [55:51] "logic out[63:0]"
 Toggle out [39:35] "logic out[63:0]"
@@ -29277,8 +29697,8 @@ CHECKSUM: "1659362951 37599631"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_TrntrMemRdBufferVld_TS5_ff[0].TrntrMemRdBuffer_ff
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle in [55:51] "logic in[63:0]"
-Toggle in [39:38] "logic in[63:0]"
-Toggle in [22:19] "logic in[63:0]"
+Toggle in [39:35] "logic in[63:0]"
+Toggle in [23:19] "logic in[63:0]"
 Toggle in [7:3] "logic in[63:0]"
 Toggle en "logic en"
 Toggle out "logic out[63:0]"
@@ -29633,6 +30053,12 @@ Toggle in [6:2] "logic in[63:0]"
 Toggle en "logic en"
 Toggle out "logic out[63:0]"
 
+CHECKSUM: "1659362951 2011837486"
+INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_trdstcoreNewFrameStart_ANY[0].trdstcoreRamWpWrap_ANY_d1_ff
+ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
+Toggle in "logic in[0:0]"
+Toggle out "logic out[0:0]"
+
 CHECKSUM: "1202387303 1715028901"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_trdstcoreNewFrameStart_ANY[0].trdstcoreframefillpendingwhileoverflow_ANY_ff
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
@@ -29649,9 +30075,9 @@ Toggle out "logic out[0:0]"
 CHECKSUM: "1659362951 3097250397"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.gen_trdstcoreNewFrameStart_ANY[0].trdstcorenextRamWpLow_ANY_ff
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle in [29:13] "logic in[29:0]"
+Toggle in [29:12] "logic in[29:0]"
 Toggle in [1:0] "logic in[29:0]"
-Toggle out [29:13] "logic out[29:0]"
+Toggle out [29:12] "logic out[29:0]"
 Toggle out [1:0] "logic out[29:0]"
 
 CHECKSUM: "1659362951 2486095554"
@@ -29729,21 +30155,21 @@ Toggle out [8:1] "logic out[8:0]"
 CHECKSUM: "1659362951 2486095554"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.trdstNumFramesFilledInSRAM_ANY_d1_ff
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle in [8] "logic in[8:0]"
-Toggle out [8] "logic out[8:0]"
+Toggle in [8:5] "logic in[8:0]"
+Toggle out [8:5] "logic out[8:0]"
 
 CHECKSUM: "1202387303 2099749525"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.trdstNumFramesFilledInSRAM_ANY_ff
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle in [8] "logic in[8:0]"
-Toggle out [8] "logic out[8:0]"
-Toggle new_in [8] "logic new_in[8:0]"
+Toggle in [8:5] "logic in[8:0]"
+Toggle out [8:5] "logic out[8:0]"
+Toggle new_in [8:5] "logic new_in[8:0]"
 
 CHECKSUM: "1659362951 2486095554"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.trdstNumFramesFilledInSRAM_ANY_ff.u_dff
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle in [8] "logic in[8:0]"
-Toggle out [8] "logic out[8:0]"
+Toggle in [8:5] "logic in[8:0]"
+Toggle out [8:5] "logic out[8:0]"
 
 CHECKSUM: "1659362951 3097250397"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.trdstRamMode_nextlocalWrapCond_WpLow_ANY_ff
@@ -29774,9 +30200,9 @@ Toggle out [6:0] "logic out[8:0]"
 CHECKSUM: "1659362951 3097250397"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.trdstnextlocaltoupdateRamWpLow_ANY_ff
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle in [29:13] "logic in[29:0]"
+Toggle in [29:12] "logic in[29:0]"
 Toggle in [3:0] "logic in[29:0]"
-Toggle out [29:13] "logic out[29:0]"
+Toggle out [29:12] "logic out[29:0]"
 Toggle out [3:0] "logic out[29:0]"
 
 CHECKSUM: "1659362951 2011837486"
@@ -29788,9 +30214,9 @@ Toggle out "logic out[0:0]"
 CHECKSUM: "1659362951 3097250397"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.trnorthcoreRamWpLow_ANY_stg_ff
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle in [29:13] "logic in[29:0]"
+Toggle in [29:12] "logic in[29:0]"
 Toggle in [1:0] "logic in[29:0]"
-Toggle out [29:13] "logic out[29:0]"
+Toggle out [29:12] "logic out[29:0]"
 Toggle out [1:0] "logic out[29:0]"
 
 CHECKSUM: "1659362951 171368260"
@@ -30025,8 +30451,7 @@ Toggle axi_resp_i.b_valid "logic axi_resp_i.b_valid"
 Toggle axi_resp_i.w_ready "logic axi_resp_i.w_ready"
 Toggle axi_resp_i.ar_ready "logic axi_resp_i.ar_ready"
 Toggle axi_resp_i.aw_ready "logic axi_resp_i.aw_ready"
-Toggle addr_i [51:15] "logic addr_i[51:0]"
-Toggle addr_i [13] "logic addr_i[51:0]"
+Toggle addr_i [51:13] "logic addr_i[51:0]"
 Toggle addr_i [11:7] "logic addr_i[51:0]"
 Toggle addr_i [5:0] "logic addr_i[51:0]"
 Toggle data_i [502:498] "logic data_i[511:0]"
@@ -30248,16 +30673,34 @@ Toggle TN_MS_Ntrace_Bp "logic TN_MS_Ntrace_Bp[0:0]"
 Toggle TN_MS_Ntrace_Flush "logic TN_MS_Ntrace_Flush[0:0]"
 Toggle MS_TN_Src "logic MS_TN_Src[0:0]"
 Toggle MS_TN_Data [0][118:115] "logic [0:0][127:0]MS_TN_Data"
+Toggle MS_TN_Data [0][102:99] "logic [0:0][127:0]MS_TN_Data"
+Toggle MS_TN_Data [0][86:83] "logic [0:0][127:0]MS_TN_Data"
 Toggle MS_TN_Data [0][70:67] "logic [0:0][127:0]MS_TN_Data"
+Toggle MS_TN_Data [0][54:51] "logic [0:0][127:0]MS_TN_Data"
+Toggle MS_TN_Data [0][38:35] "logic [0:0][127:0]MS_TN_Data"
+Toggle MS_TN_Data [0][22:19] "logic [0:0][127:0]MS_TN_Data"
+Toggle MS_TN_Data [0][6:3] "logic [0:0][127:0]MS_TN_Data"
 Toggle TN_TR_North_Src "logic TN_TR_North_Src"
 Toggle TN_TR_North_Data [118:115] "logic TN_TR_North_Data[127:0]"
+Toggle TN_TR_North_Data [102:99] "logic TN_TR_North_Data[127:0]"
+Toggle TN_TR_North_Data [86:83] "logic TN_TR_North_Data[127:0]"
 Toggle TN_TR_North_Data [70:67] "logic TN_TR_North_Data[127:0]"
+Toggle TN_TR_North_Data [54:51] "logic TN_TR_North_Data[127:0]"
+Toggle TN_TR_North_Data [38:35] "logic TN_TR_North_Data[127:0]"
+Toggle TN_TR_North_Data [22:19] "logic TN_TR_North_Data[127:0]"
+Toggle TN_TR_North_Data [6:3] "logic TN_TR_North_Data[127:0]"
 Toggle TN_TR_Ntrace_Bp "logic TN_TR_Ntrace_Bp"
 Toggle TN_TR_Ntrace_Flush "logic TN_TR_Ntrace_Flush"
 Toggle rep_core_tr_vld_north [1][0] "logic [1:0][0:0]rep_core_tr_vld_north"
 Toggle rep_core_tr_src_north "logic rep_core_tr_src_north[1:0]"
 Toggle rep_core_tr_data_north [0][118:115] "logic [1:0][127:0]rep_core_tr_data_north"
+Toggle rep_core_tr_data_north [0][102:99] "logic [1:0][127:0]rep_core_tr_data_north"
+Toggle rep_core_tr_data_north [0][86:83] "logic [1:0][127:0]rep_core_tr_data_north"
 Toggle rep_core_tr_data_north [0][70:67] "logic [1:0][127:0]rep_core_tr_data_north"
+Toggle rep_core_tr_data_north [0][54:51] "logic [1:0][127:0]rep_core_tr_data_north"
+Toggle rep_core_tr_data_north [0][38:35] "logic [1:0][127:0]rep_core_tr_data_north"
+Toggle rep_core_tr_data_north [0][22:19] "logic [1:0][127:0]rep_core_tr_data_north"
+Toggle rep_core_tr_data_north [0][6:3] "logic [1:0][127:0]rep_core_tr_data_north"
 Toggle rep_core_tr_data_north [1][127:0] "logic [1:0][127:0]rep_core_tr_data_north"
 Toggle core_rep_tr_ntrace_bp_north "logic core_rep_tr_ntrace_bp_north[1:0]"
 Toggle core_rep_tr_ntrace_flush_north "logic core_rep_tr_ntrace_flush_north[1:0]"
@@ -30283,7 +30726,13 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_df
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle fblk_tr_src "logic fblk_tr_src"
 Toggle fblk_tr_data [118:115] "logic fblk_tr_data[127:0]"
+Toggle fblk_tr_data [102:99] "logic fblk_tr_data[127:0]"
+Toggle fblk_tr_data [86:83] "logic fblk_tr_data[127:0]"
 Toggle fblk_tr_data [70:67] "logic fblk_tr_data[127:0]"
+Toggle fblk_tr_data [54:51] "logic fblk_tr_data[127:0]"
+Toggle fblk_tr_data [38:35] "logic fblk_tr_data[127:0]"
+Toggle fblk_tr_data [22:19] "logic fblk_tr_data[127:0]"
+Toggle fblk_tr_data [6:3] "logic fblk_tr_data[127:0]"
 Toggle fblk_tr_ntrace_bp "logic fblk_tr_ntrace_bp"
 Toggle fblk_tr_ntrace_flush "logic fblk_tr_ntrace_flush"
 Toggle upstrm_tr_vld "logic upstrm_tr_vld[0:0]"
@@ -30293,7 +30742,13 @@ Toggle upstrm_tr_ntrace_bp "logic upstrm_tr_ntrace_bp"
 Toggle upstrm_tr_ntrace_flush "logic upstrm_tr_ntrace_flush"
 Toggle dnstrm_tr_src "logic dnstrm_tr_src"
 Toggle dnstrm_tr_data [118:115] "logic dnstrm_tr_data[127:0]"
+Toggle dnstrm_tr_data [102:99] "logic dnstrm_tr_data[127:0]"
+Toggle dnstrm_tr_data [86:83] "logic dnstrm_tr_data[127:0]"
 Toggle dnstrm_tr_data [70:67] "logic dnstrm_tr_data[127:0]"
+Toggle dnstrm_tr_data [54:51] "logic dnstrm_tr_data[127:0]"
+Toggle dnstrm_tr_data [38:35] "logic dnstrm_tr_data[127:0]"
+Toggle dnstrm_tr_data [22:19] "logic dnstrm_tr_data[127:0]"
+Toggle dnstrm_tr_data [6:3] "logic dnstrm_tr_data[127:0]"
 Toggle dnstrm_tr_ntrace_bp "logic dnstrm_tr_ntrace_bp"
 Toggle dnstrm_tr_ntrace_flush "logic dnstrm_tr_ntrace_flush"
 Toggle tr_gnt_reset [11:1] "logic tr_gnt_reset[11:0]"
@@ -30305,17 +30760,41 @@ CHECKSUM: "1969802840 3216420842"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_network_inst.north_chan_gen[0].trace_hop_north_core_inst.tr_data_stg_ff
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle in [118:115] "logic in[127:0]"
+Toggle in [102:99] "logic in[127:0]"
+Toggle in [86:83] "logic in[127:0]"
 Toggle in [70:67] "logic in[127:0]"
+Toggle in [54:51] "logic in[127:0]"
+Toggle in [38:35] "logic in[127:0]"
+Toggle in [22:19] "logic in[127:0]"
+Toggle in [6:3] "logic in[127:0]"
 Toggle out [118:115] "logic out[127:0]"
+Toggle out [102:99] "logic out[127:0]"
+Toggle out [86:83] "logic out[127:0]"
 Toggle out [70:67] "logic out[127:0]"
+Toggle out [54:51] "logic out[127:0]"
+Toggle out [38:35] "logic out[127:0]"
+Toggle out [22:19] "logic out[127:0]"
+Toggle out [6:3] "logic out[127:0]"
 
 CHECKSUM: "1659362951 39665386"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_network_inst.north_chan_gen[0].trace_hop_north_core_inst.tr_data_stg_ff.genblk1.dff_flop
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle in [118:115] "logic in[127:0]"
+Toggle in [102:99] "logic in[127:0]"
+Toggle in [86:83] "logic in[127:0]"
 Toggle in [70:67] "logic in[127:0]"
+Toggle in [54:51] "logic in[127:0]"
+Toggle in [38:35] "logic in[127:0]"
+Toggle in [22:19] "logic in[127:0]"
+Toggle in [6:3] "logic in[127:0]"
 Toggle out [118:115] "logic out[127:0]"
+Toggle out [102:99] "logic out[127:0]"
+Toggle out [86:83] "logic out[127:0]"
 Toggle out [70:67] "logic out[127:0]"
+Toggle out [54:51] "logic out[127:0]"
+Toggle out [38:35] "logic out[127:0]"
+Toggle out [22:19] "logic out[127:0]"
+Toggle out [6:3] "logic out[127:0]"
 
 CHECKSUM: "1202387303 1758850843"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_network_inst.north_chan_gen[0].trace_hop_north_core_inst.tr_init_setup_cnt_ff
@@ -30726,7 +31205,7 @@ Toggle idma_rsp.pld.err_type "logic idma_rsp.pld.err_type[1:0]"
 Toggle idma_rsp.pld.cause "logic idma_rsp.pld.cause[1:0]"
 Toggle idma_rsp.error "logic idma_rsp.error"
 
-CHECKSUM: "768735472 2700249050"
+CHECKSUM: "2414266734 2700249050"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_dma_wrap.u_idma_backend_wrapper.gen_iDMA_to_axi_out[0].u_iDMA_backend.gen_hw_legalizer.i_idma_legalizer
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle r_tf_d.base_addr [55:32] "logic r_tf_d.base_addr[55:0]"
@@ -31246,7 +31725,7 @@ Toggle gen_core_regs[0].next_id_temp [14][31:0] "logic [15:0][31:0]gen_core_regs
 Toggle gen_core_regs[0].next_id_temp [15][31:0] "logic [15:0][31:0]gen_core_regs[0].next_id_temp"
 Toggle 1to0 gen_core_regs[0].next_id_temp [0][4] "logic [15:0][31:0]gen_core_regs[0].next_id_temp"
 
-CHECKSUM: "3355438513 3924745842"
+CHECKSUM: "628509044 3924745842"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_dma_wrap.u_idma_frontend_wrapper.gen_axi_to_iDMA_fe[0].u_iDMA_frontend.gen_core_regs[0].i_idma_reg64_2d_reg_top
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle reg_addr [1:0] "logic reg_addr[8:0]"
@@ -31340,7 +31819,7 @@ Toggle 1to0 completed_d [4] "logic completed_d[31:0]"
 Toggle completed_q [31:5] "logic completed_q[31:0]"
 Toggle 1to0 completed_q [4] "logic completed_q[31:0]"
 
-CHECKSUM: "3737304986 1690141417"
+CHECKSUM: "3660651998 1690141417"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_zeroer
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle zeroer_ctrl_axil_req.ar.prot [2] "logic zeroer_ctrl_axil_req.ar.prot[2:0]"
@@ -31413,7 +31892,7 @@ Toggle total_transfer_size_overflow [1:0] "logic total_transfer_size_overflow[64
 Toggle mst_awaddr [55:26] "logic mst_awaddr[55:0]"
 Toggle mst_awaddr [24:15] "logic mst_awaddr[55:0]"
 
-CHECKSUM: "3781890121 834308390"
+CHECKSUM: "1059230947 834308390"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_zeroer.u_zeroer_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle 1to0 cpuif_wr_data [29] "logic cpuif_wr_data[63:0]"
@@ -31464,7 +31943,7 @@ Toggle 1to0 readback_data [26] "logic readback_data[63:0]"
 Toggle 1to0 readback_data [21] "logic readback_data[63:0]"
 Toggle 1to0 readback_data [18] "logic readback_data[63:0]"
 
-CHECKSUM: "647317101 1743430667"
+CHECKSUM: "3149264321 711223219"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_alias_remap_wrap.u_smc_jtag_alias_remap
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle aw_remap_hit [7:1] "logic aw_remap_hit[7:0]"
@@ -32134,9 +32613,10 @@ Toggle mmio_axi_cpu_req.aw.addr [55:32] "logic mmio_axi_cpu_req.aw.addr[55:0]"
 Toggle mmio_axi_cpu_req.aw.addr [29:18] "logic mmio_axi_cpu_req.aw.addr[55:0]"
 Toggle mmio_axi_cpu_req.aw.addr [1:0] "logic mmio_axi_cpu_req.aw.addr[55:0]"
 Toggle mmio_axi_cpu_resp.r.user "logic mmio_axi_cpu_resp.r.user[11:0]"
-Toggle mmio_axi_cpu_resp.r.resp [0] "logic mmio_axi_cpu_resp.r.resp[1:0]"
+Toggle mmio_axi_cpu_resp.r.resp "logic mmio_axi_cpu_resp.r.resp[1:0]"
 Toggle mmio_axi_cpu_resp.r.data [62] "logic mmio_axi_cpu_resp.r.data[63:0]"
-Toggle mmio_axi_cpu_resp.r.data [60:57] "logic mmio_axi_cpu_resp.r.data[63:0]"
+Toggle mmio_axi_cpu_resp.r.data [60:58] "logic mmio_axi_cpu_resp.r.data[63:0]"
+Toggle mmio_axi_cpu_resp.r.data [54] "logic mmio_axi_cpu_resp.r.data[63:0]"
 Toggle mmio_axi_cpu_resp.r.id [0] "logic mmio_axi_cpu_resp.r.id[2:0]"
 Toggle mmio_axi_cpu_resp.b.user "logic mmio_axi_cpu_resp.b.user[11:0]"
 Toggle mmio_axi_cpu_resp.b.resp "logic mmio_axi_cpu_resp.b.resp[1:0]"
@@ -32156,8 +32636,6 @@ Toggle wb_reg_pc_raw [3][57:32] "logic [3:0][57:0]wb_reg_pc_raw"
 Toggle wb_reg_pc_raw [3][29:19] "logic [3:0][57:0]wb_reg_pc_raw"
 Toggle wb_reg_pc_raw [3][16:14] "logic [3:0][57:0]wb_reg_pc_raw"
 Toggle wb_reg_pc_raw [3][0] "logic [3:0][57:0]wb_reg_pc_raw"
-Toggle 1to0 wb_reg_pc_raw [0][17] "logic [3:0][57:0]wb_reg_pc_raw"
-Toggle 1to0 wb_reg_pc_raw [1][17] "logic [3:0][57:0]wb_reg_pc_raw"
 Toggle 1to0 wb_reg_pc_raw [1][13] "logic [3:0][57:0]wb_reg_pc_raw"
 Toggle 1to0 wb_reg_pc_raw [1][11] "logic [3:0][57:0]wb_reg_pc_raw"
 Toggle 1to0 wb_reg_pc_raw [2][13] "logic [3:0][57:0]wb_reg_pc_raw"
@@ -32398,45 +32876,101 @@ CHECKSUM: "2902110235 4159070744"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.tlDM.dmInner.dmInner.hartIsInResetSync_0_debug_hartReset_0.output_chain
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle 0to1 reset "net reset"
+Toggle io_q "net io_q"
+Toggle io_rstbypass "net io_rstbypass"
+Toggle io_rst_synced "net io_rst_synced"
 Toggle 1to0 reset_n "net reset_n"
 
 CHECKSUM: "3136957753 1722098560"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.tlDM.dmInner.dmInner.hartIsInResetSync_0_debug_hartReset_0.output_chain.u_prim_flop_3sync_r
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle 1to0 rst_ni "net rst_ni"
+Toggle q_o "net q_o"
+Toggle q_d "logic q_d"
+Toggle q_dd "logic q_dd"
+Toggle q_ddd "logic q_ddd"
+
+CHECKSUM: "2393566253 943148981"
+INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.tlDM.dmInner.dmInner.hartIsInResetSync_0_debug_hartReset_0.output_chain.u_rstbypass.u_mux
+ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
+Toggle b0_i "net b0_i"
+Toggle c0_i "net c0_i"
+Toggle out_o "net out_o"
 
 CHECKSUM: "2902110235 4159070744"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.tlDM.dmInner.dmInner.hartIsInResetSync_1_debug_hartReset_1.output_chain
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle 0to1 reset "net reset"
+Toggle io_q "net io_q"
+Toggle io_rstbypass "net io_rstbypass"
+Toggle io_rst_synced "net io_rst_synced"
 Toggle 1to0 reset_n "net reset_n"
 
 CHECKSUM: "3136957753 1722098560"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.tlDM.dmInner.dmInner.hartIsInResetSync_1_debug_hartReset_1.output_chain.u_prim_flop_3sync_r
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle 1to0 rst_ni "net rst_ni"
+Toggle q_o "net q_o"
+Toggle q_d "logic q_d"
+Toggle q_dd "logic q_dd"
+Toggle q_ddd "logic q_ddd"
+
+CHECKSUM: "2393566253 943148981"
+INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.tlDM.dmInner.dmInner.hartIsInResetSync_1_debug_hartReset_1.output_chain.u_rstbypass.u_mux
+ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
+Toggle b0_i "net b0_i"
+Toggle c0_i "net c0_i"
+Toggle out_o "net out_o"
 
 CHECKSUM: "2902110235 4159070744"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.tlDM.dmInner.dmInner.hartIsInResetSync_2_debug_hartReset_2.output_chain
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle 0to1 reset "net reset"
+Toggle io_q "net io_q"
+Toggle io_rstbypass "net io_rstbypass"
+Toggle io_rst_synced "net io_rst_synced"
 Toggle 1to0 reset_n "net reset_n"
 
 CHECKSUM: "3136957753 1722098560"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.tlDM.dmInner.dmInner.hartIsInResetSync_2_debug_hartReset_2.output_chain.u_prim_flop_3sync_r
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle 1to0 rst_ni "net rst_ni"
+Toggle q_o "net q_o"
+Toggle q_d "logic q_d"
+Toggle q_dd "logic q_dd"
+Toggle q_ddd "logic q_ddd"
+
+CHECKSUM: "2393566253 943148981"
+INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.tlDM.dmInner.dmInner.hartIsInResetSync_2_debug_hartReset_2.output_chain.u_rstbypass.u_mux
+ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
+Toggle b0_i "net b0_i"
+Toggle c0_i "net c0_i"
+Toggle out_o "net out_o"
 
 CHECKSUM: "2902110235 4159070744"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.tlDM.dmInner.dmInner.hartIsInResetSync_3_debug_hartReset_3.output_chain
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle 0to1 reset "net reset"
+Toggle io_q "net io_q"
+Toggle io_rstbypass "net io_rstbypass"
+Toggle io_rst_synced "net io_rst_synced"
 Toggle 1to0 reset_n "net reset_n"
 
 CHECKSUM: "3136957753 1722098560"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.tlDM.dmInner.dmInner.hartIsInResetSync_3_debug_hartReset_3.output_chain.u_prim_flop_3sync_r
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle 1to0 rst_ni "net rst_ni"
+Toggle q_o "net q_o"
+Toggle q_d "logic q_d"
+Toggle q_dd "logic q_dd"
+Toggle q_ddd "logic q_ddd"
+
+CHECKSUM: "2393566253 943148981"
+INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.tlDM.dmInner.dmInner.hartIsInResetSync_3_debug_hartReset_3.output_chain.u_rstbypass.u_mux
+ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
+Toggle b0_i "net b0_i"
+Toggle c0_i "net c0_i"
+Toggle out_o "net out_o"
 
 CHECKSUM: "2902110235 4159070744"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.tlDM.dmInner.dmactive_synced_dmInner_io_innerCtrl_sink.sink_valid_0.io_out_source_valid_0.output_chain
@@ -33339,41 +33873,40 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_avsbus_controller.u_readas
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle full_slots [4] "logic full_slots[4:0]"
 
-CHECKSUM: "376348732 2808765953"
+CHECKSUM: "1305403113 2808765953"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_core.u_i2c_bus_monitor
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle ctrl_det_count [13:8] "logic ctrl_det_count[13:0]"
 Toggle bus_release_cnt [30] "logic bus_release_cnt[30:0]"
 Toggle bus_release_cnt_sel [30] "logic bus_release_cnt_sel[30:0]"
 
-CHECKSUM: "1322761447 4097614446"
+CHECKSUM: "3384408495 4097614446"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_core.u_i2c_controller_fsm
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle stretch_idle_cnt [30:11] "logic stretch_idle_cnt[30:0]"
+Toggle stretch_idle_cnt [30:12] "logic stretch_idle_cnt[30:0]"
 Toggle unhandled_nak_cnt [30:11] "logic unhandled_nak_cnt[30:0]"
 Toggle byte_num [7] "logic byte_num[8:0]"
 Toggle byte_num [4] "logic byte_num[8:0]"
 Toggle stretch_cnt_threshold [30:11] "logic stretch_cnt_threshold[30:0]"
 Toggle stretch_cnt_threshold [9:6] "logic stretch_cnt_threshold[30:0]"
-Toggle stretch_cnt_threshold [4:3] "logic stretch_cnt_threshold[30:0]"
-Toggle 1to0 stretch_cnt_threshold [5] "logic stretch_cnt_threshold[30:0]"
+Toggle 1to0 stretch_cnt_threshold [5:3] "logic stretch_cnt_threshold[30:0]"
 
-CHECKSUM: "395370686 3077082318"
+CHECKSUM: "2631278932 3077082318"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_core.u_i2c_target_fsm
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle stretch_active_cnt [30:14] "logic stretch_active_cnt[30:0]"
+Toggle stretch_active_cnt [30:15] "logic stretch_active_cnt[30:0]"
 
-CHECKSUM: "376348732 2808765953"
+CHECKSUM: "1305403113 2808765953"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.u_i2c_bus_monitor
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle ctrl_det_count [13:8] "logic ctrl_det_count[13:0]"
 Toggle bus_release_cnt [30] "logic bus_release_cnt[30:0]"
 Toggle bus_release_cnt_sel [30] "logic bus_release_cnt_sel[30:0]"
 
-CHECKSUM: "1322761447 4097614446"
+CHECKSUM: "3384408495 4097614446"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.u_i2c_controller_fsm
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle stretch_idle_cnt [30:14] "logic stretch_idle_cnt[30:0]"
+Toggle stretch_idle_cnt [30:15] "logic stretch_idle_cnt[30:0]"
 Toggle unhandled_nak_cnt "logic unhandled_nak_cnt[30:0]"
 Toggle incr_nak_cnt "logic incr_nak_cnt"
 Toggle byte_num [8:1] "logic byte_num[8:0]"
@@ -33387,18 +33920,15 @@ Toggle auto_stop_q "logic auto_stop_q"
 Toggle ctrl_symbol_failed "logic ctrl_symbol_failed"
 Toggle stretch_cnt_threshold [30:11] "logic stretch_cnt_threshold[30:0]"
 Toggle stretch_cnt_threshold [9:6] "logic stretch_cnt_threshold[30:0]"
-Toggle stretch_cnt_threshold [4:3] "logic stretch_cnt_threshold[30:0]"
-Toggle 1to0 stretch_cnt_threshold [5] "logic stretch_cnt_threshold[30:0]"
-Toggle 1to0 stretch_cnt_threshold [2] "logic stretch_cnt_threshold[30:0]"
+Toggle 1to0 stretch_cnt_threshold [5:2] "logic stretch_cnt_threshold[30:0]"
 Toggle unhandled_nak_cnt_expired "logic unhandled_nak_cnt_expired"
 
-CHECKSUM: "395370686 3077082318"
+CHECKSUM: "2631278932 3077082318"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.u_i2c_target_fsm
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle stretch_active_cnt [30:11] "logic stretch_active_cnt[30:0]"
-Toggle 1to0 stretch_active_cnt [10] "logic stretch_active_cnt[30:0]"
+Toggle stretch_active_cnt [30:10] "logic stretch_active_cnt[30:0]"
 
-CHECKSUM: "4194998322 3193930190"
+CHECKSUM: "3297529274 3193930190"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle reg_in.TARGET_EVENTS.ARBITRATION_LOST.next "logic reg_in.TARGET_EVENTS.ARBITRATION_LOST.next"
@@ -33423,7 +33953,7 @@ Toggle reg_out.TARGET_ACK_CTRL.NACK.value "logic reg_out.TARGET_ACK_CTRL.NACK.va
 Toggle reg_out.TARGET_ACK_CTRL.NBYTES.value "logic reg_out.TARGET_ACK_CTRL.NBYTES.value[8:0]"
 Toggle reg_out.SMBUS_CTRL.SMBALERT.value "logic reg_out.SMBUS_CTRL.SMBALERT.value"
 
-CHECKSUM: "1206752896 2942663494"
+CHECKSUM: "2279933121 2942663494"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle reg_out_i.TARGET_EVENTS.ARBITRATION_LOST.value "logic reg_out_i.TARGET_EVENTS.ARBITRATION_LOST.value"
@@ -33490,14 +34020,14 @@ Toggle controller_dma_tx_fsm_state_next "logic controller_dma_tx_fsm_state_next[
 Toggle target_dma_tx_fsm_state "logic target_dma_tx_fsm_state[0:0]"
 Toggle target_dma_tx_fsm_state_next "logic target_dma_tx_fsm_state_next[0:0]"
 
-CHECKSUM: "376348732 2808765953"
+CHECKSUM: "1305403113 2808765953"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core.u_i2c_bus_monitor
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle ctrl_det_count [13:8] "logic ctrl_det_count[13:0]"
 Toggle bus_release_cnt [30] "logic bus_release_cnt[30:0]"
 Toggle bus_release_cnt_sel [30] "logic bus_release_cnt_sel[30:0]"
 
-CHECKSUM: "1322761447 4097614446"
+CHECKSUM: "3384408495 4097614446"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core.u_i2c_controller_fsm
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle 1to0 halt_controller_i "logic halt_controller_i"
@@ -33532,7 +34062,7 @@ Toggle 1to0 stretch_cnt_threshold [2] "logic stretch_cnt_threshold[30:0]"
 Toggle stretch_predict_cnt_expired "logic stretch_predict_cnt_expired"
 Toggle unhandled_nak_cnt_expired "logic unhandled_nak_cnt_expired"
 
-CHECKSUM: "395370686 3077082318"
+CHECKSUM: "2631278932 3077082318"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core.u_i2c_target_fsm
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle tx_fifo_rdata_i [6] "logic tx_fifo_rdata_i[7:0]"
@@ -33546,8 +34076,7 @@ Toggle sw_nack_i "logic sw_nack_i"
 Toggle event_unexp_stop_o "logic event_unexp_stop_o"
 Toggle event_tx_arbitration_lost_o "logic event_tx_arbitration_lost_o"
 Toggle event_tx_bus_timeout_o "logic event_tx_bus_timeout_o"
-Toggle stretch_active_cnt [30:11] "logic stretch_active_cnt[30:0]"
-Toggle 1to0 stretch_active_cnt [10] "logic stretch_active_cnt[30:0]"
+Toggle stretch_active_cnt [30:10] "logic stretch_active_cnt[30:0]"
 Toggle address1_match "logic address1_match"
 Toggle tx_fifo_rdata [4] "logic tx_fifo_rdata[7:0]"
 Toggle tx_fifo_rdata [1] "logic tx_fifo_rdata[7:0]"
@@ -33647,7 +34176,7 @@ Toggle rd_mux_addr [1:0] "logic rd_mux_addr[7:0]"
 Toggle pending_rd_addr [7] "logic pending_rd_addr[7:0]"
 Toggle pending_rd_addr [1:0] "logic pending_rd_addr[7:0]"
 
-CHECKSUM: "1250011607 288372904"
+CHECKSUM: "2469021223 288372904"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle axil_reqs_to_intf[0].ar.addr [29:14] "logic axil_reqs_to_intf[0].ar.addr[31:0]"
@@ -55683,7 +56212,7 @@ Toggle q_d "logic q_d"
 Toggle q_dd "logic q_dd"
 Toggle q_ddd "logic q_ddd"
 
-CHECKSUM: "2584146618 2763616911"
+CHECKSUM: "3266132440 3438420412"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle axil_reqs[0].ar.prot "logic axil_reqs[0].ar.prot[2:0]"
@@ -55878,7 +56407,7 @@ Toggle gen_telemetry_receivers[2].telemetry_receiver_axil_resp.ar_ready "logic g
 Toggle gen_telemetry_receivers[2].telemetry_receiver_axil_resp.b.resp "logic gen_telemetry_receivers[2].telemetry_receiver_axil_resp.b.resp[1:0]"
 Toggle gen_telemetry_receivers[2].telemetry_receiver_axil_resp.w_ready "logic gen_telemetry_receivers[2].telemetry_receiver_axil_resp.w_ready"
 
-CHECKSUM: "1867070274 1945649567"
+CHECKSUM: "1319975045 1945649567"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[0].u_telemetry_receiver
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle received_telemetry_packets[0].blocks[6].counter_val_partial [1:0] "logic received_telemetry_packets[0].blocks[6].counter_val_partial[7:0]"
@@ -56240,7 +56769,7 @@ Toggle reg_in.TELEMETRY_COUNTER[31].COUNTER.next "logic reg_in.TELEMETRY_COUNTER
 Toggle reg_in.TELEMETRY_COUNTER_VLDS.COUNTER_VLDS.next [31:3] "logic reg_in.TELEMETRY_COUNTER_VLDS.COUNTER_VLDS.next[31:0]"
 Toggle reg_in.TELEMETRY_COUNTER_VLDS.COUNTER_VLDS.next [1] "logic reg_in.TELEMETRY_COUNTER_VLDS.COUNTER_VLDS.next[31:0]"
 
-CHECKSUM: "4066092602 893385711"
+CHECKSUM: "2231104132 893385711"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[0].u_telemetry_receiver.u_telemetry_receiver_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle cpuif_addr [6:5] "logic cpuif_addr[7:0]"
@@ -56267,7 +56796,7 @@ Toggle field_combo.CTRL.TELEMETRY_RX_FLUSH.load_next "logic field_combo.CTRL.TEL
 Toggle field_combo.CTRL.BUFFER_POP.load_next "logic field_combo.CTRL.BUFFER_POP.load_next"
 Toggle rd_mux_addr [6:5] "logic rd_mux_addr[7:0]"
 
-CHECKSUM: "1867070274 1945649567"
+CHECKSUM: "1319975045 1945649567"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[1].u_telemetry_receiver
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle telemetry_receiver_flush "logic telemetry_receiver_flush"
@@ -56756,7 +57285,7 @@ Toggle reg_in.CTRL.TELEMETRY_TX_FLUSH.hwclr "logic reg_in.CTRL.TELEMETRY_TX_FLUS
 Toggle reg_out.CTRL.TELEMETRY_TX_FLUSH.value "logic reg_out.CTRL.TELEMETRY_TX_FLUSH.value"
 Toggle reg_out.CTRL.TELEMETRY_RX_FLUSH.value "logic reg_out.CTRL.TELEMETRY_RX_FLUSH.value"
 
-CHECKSUM: "4066092602 893385711"
+CHECKSUM: "2231104132 893385711"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[1].u_telemetry_receiver.u_telemetry_receiver_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle cpuif_addr [7:5] "logic cpuif_addr[7:0]"
@@ -56790,7 +57319,7 @@ Toggle readback_data [31:24] "logic readback_data[31:0]"
 Toggle readback_data [11:5] "logic readback_data[31:0]"
 Toggle readback_data [2] "logic readback_data[31:0]"
 
-CHECKSUM: "1867070274 1945649567"
+CHECKSUM: "1319975045 1945649567"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[2].u_telemetry_receiver
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle telemetry_receiver_flush "logic telemetry_receiver_flush"
@@ -57260,7 +57789,7 @@ Toggle reg_in.CTRL.TELEMETRY_TX_FLUSH.hwclr "logic reg_in.CTRL.TELEMETRY_TX_FLUS
 Toggle reg_out.CTRL.TELEMETRY_TX_FLUSH.value "logic reg_out.CTRL.TELEMETRY_TX_FLUSH.value"
 Toggle reg_out.CTRL.TELEMETRY_RX_FLUSH.value "logic reg_out.CTRL.TELEMETRY_RX_FLUSH.value"
 
-CHECKSUM: "4066092602 893385711"
+CHECKSUM: "2231104132 893385711"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[2].u_telemetry_receiver.u_telemetry_receiver_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle cpuif_addr [7:5] "logic cpuif_addr[7:0]"
@@ -57294,7 +57823,7 @@ Toggle readback_data [31:24] "logic readback_data[31:0]"
 Toggle readback_data [11:5] "logic readback_data[31:0]"
 Toggle readback_data [3:2] "logic readback_data[31:0]"
 
-CHECKSUM: "976806579 556424123"
+CHECKSUM: "3124638153 556424123"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle csr_axil_req.ar.prot [2] "logic csr_axil_req.ar.prot[2:0]"
@@ -57380,11 +57909,9 @@ Toggle csr_axil_resps[0].r.resp "logic csr_axil_resps[0].r.resp[1:0]"
 Toggle csr_axil_resps[0].r.data [31:8] "logic csr_axil_resps[0].r.data[31:0]"
 Toggle csr_axil_resps[0].b.resp "logic csr_axil_resps[0].b.resp[1:0]"
 Toggle csr_axil_resps[1].r.resp "logic csr_axil_resps[1].r.resp[1:0]"
-Toggle csr_axil_resps[1].ar_ready "logic csr_axil_resps[1].ar_ready"
 Toggle csr_axil_resps[1].b.resp "logic csr_axil_resps[1].b.resp[1:0]"
 Toggle csr_axil_resps[2].r.resp "logic csr_axil_resps[2].r.resp[1:0]"
 Toggle csr_axil_resps[2].r.data [31:1] "logic csr_axil_resps[2].r.data[31:0]"
-Toggle csr_axil_resps[2].ar_ready "logic csr_axil_resps[2].ar_ready"
 Toggle csr_axil_resps[2].b.resp "logic csr_axil_resps[2].b.resp[1:0]"
 Toggle csr_axil_resps[3].r_valid "logic csr_axil_resps[3].r_valid"
 Toggle csr_axil_resps[3].r.resp "logic csr_axil_resps[3].r.resp[1:0]"
@@ -57447,7 +57974,6 @@ Toggle gen_log_engine.log_engine_csr_axil_req.aw.prot [2] "logic gen_log_engine.
 Toggle gen_log_engine.log_engine_csr_axil_req.aw.prot [0] "logic gen_log_engine.log_engine_csr_axil_req.aw.prot[2:0]"
 Toggle 1to0 gen_log_engine.log_engine_csr_axil_req.aw.prot [1] "logic gen_log_engine.log_engine_csr_axil_req.aw.prot[2:0]"
 Toggle gen_log_engine.log_engine_csr_axil_resp.r.resp "logic gen_log_engine.log_engine_csr_axil_resp.r.resp[1:0]"
-Toggle gen_log_engine.log_engine_csr_axil_resp.ar_ready "logic gen_log_engine.log_engine_csr_axil_resp.ar_ready"
 Toggle gen_log_engine.log_engine_csr_axil_resp.b.resp "logic gen_log_engine.log_engine_csr_axil_resp.b.resp[1:0]"
 Toggle gen_log_engine.log_write_axil_req.r_ready "logic gen_log_engine.log_write_axil_req.r_ready"
 Toggle gen_log_engine.log_write_axil_req.ar_valid "logic gen_log_engine.log_write_axil_req.ar_valid"
@@ -57460,7 +57986,7 @@ Toggle gen_log_engine.log_write_axil_resp.r.resp "logic gen_log_engine.log_write
 Toggle gen_log_engine.log_write_axil_resp.r.data [31:8] "logic gen_log_engine.log_write_axil_resp.r.data[31:0]"
 Toggle gen_log_engine.log_write_axil_resp.b.resp "logic gen_log_engine.log_write_axil_resp.b.resp[1:0]"
 
-CHECKSUM: "2489373665 656641866"
+CHECKSUM: "3188872617 656641866"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle 1to0 csr_axil_req_i.aw.prot [1] "logic csr_axil_req_i.aw.prot[2:0]"
@@ -57752,7 +58278,6 @@ Toggle s_axil_awprot [2] "net s_axil_awprot[2:0]"
 Toggle s_axil_awprot [0] "net s_axil_awprot[2:0]"
 Toggle 1to0 s_axil_awprot [1] "net s_axil_awprot[2:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
-Toggle s_axil_arready "logic s_axil_arready"
 Toggle s_axil_araddr [1:0] "net s_axil_araddr[6:0]"
 Toggle s_axil_arprot [2] "net s_axil_arprot[2:0]"
 Toggle s_axil_arprot [0] "net s_axil_arprot[2:0]"
@@ -58381,7 +58906,7 @@ Toggle 1to0 field_storage.LOG_CTRL[15].LOG_LEN.value [5] "logic field_storage.LO
 Toggle 1to0 field_storage.LOG_CTRL[15].LOG_LEN.value [3] "logic field_storage.LOG_CTRL[15].LOG_LEN.value[15:0]"
 Toggle 1to0 field_storage.LOG_CTRL[15].LOG_LEN.value [1] "logic field_storage.LOG_CTRL[15].LOG_LEN.value[15:0]"
 
-CHECKSUM: "3766568554 4092204272"
+CHECKSUM: "210872566 4092204272"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.u_uart_16550
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle axil_req_i.ar.prot [2] "logic axil_req_i.ar.prot[2:0]"
@@ -58429,7 +58954,6 @@ Toggle axil_slv_reqs[2].aw.prot [2] "logic axil_slv_reqs[2].aw.prot[2:0]"
 Toggle axil_slv_reqs[2].aw.prot [0] "logic axil_slv_reqs[2].aw.prot[2:0]"
 Toggle axil_slv_resps[0].r.resp "logic axil_slv_resps[0].r.resp[1:0]"
 Toggle axil_slv_resps[0].r.data [31:8] "logic axil_slv_resps[0].r.data[31:0]"
-Toggle axil_slv_resps[0].ar_ready "logic axil_slv_resps[0].ar_ready"
 Toggle axil_slv_resps[0].b.resp "logic axil_slv_resps[0].b.resp[1:0]"
 Toggle axil_slv_resps[1].r_valid "logic axil_slv_resps[1].r_valid"
 Toggle axil_slv_resps[1].r.resp "logic axil_slv_resps[1].r.resp[1:0]"
@@ -58439,18 +58963,16 @@ Toggle axil_slv_resps[1].b.resp "logic axil_slv_resps[1].b.resp[1:0]"
 Toggle axil_slv_resps[1].w_ready "logic axil_slv_resps[1].w_ready"
 Toggle axil_slv_resps[2].r.resp "logic axil_slv_resps[2].r.resp[1:0]"
 Toggle axil_slv_resps[2].r.data [31:8] "logic axil_slv_resps[2].r.data[31:0]"
-Toggle axil_slv_resps[2].ar_ready "logic axil_slv_resps[2].ar_ready"
 Toggle axil_slv_resps[2].b.resp "logic axil_slv_resps[2].b.resp[1:0]"
 Toggle unused_alert_tx.alert_n "logic unused_alert_tx.alert_n"
 Toggle unused_alert_tx.alert_p "logic unused_alert_tx.alert_p"
 
-CHECKSUM: "3974971274 1931784286"
+CHECKSUM: "902851981 1931784286"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_dl_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle s_axil_awprot [2] "net s_axil_awprot[2:0]"
 Toggle s_axil_awprot [0] "net s_axil_awprot[2:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
-Toggle s_axil_arready "logic s_axil_arready"
 Toggle s_axil_araddr [1:0] "net s_axil_araddr[2:0]"
 Toggle s_axil_arprot [2] "net s_axil_arprot[2:0]"
 Toggle s_axil_arprot [0] "net s_axil_arprot[2:0]"
@@ -58465,13 +58987,12 @@ Toggle axil_wdata [31:8] "logic axil_wdata[31:0]"
 Toggle decoded_wr_data [31:8] "logic decoded_wr_data[31:0]"
 Toggle readback_data [31:8] "logic readback_data[31:0]"
 
-CHECKSUM: "2578676572 1633815824"
+CHECKSUM: "8204497 1633815824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle s_axil_awprot [2] "net s_axil_awprot[2:0]"
 Toggle s_axil_awprot [0] "net s_axil_awprot[2:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
-Toggle s_axil_arready "logic s_axil_arready"
 Toggle s_axil_araddr [1:0] "net s_axil_araddr[5:0]"
 Toggle s_axil_arprot [2] "net s_axil_arprot[2:0]"
 Toggle s_axil_arprot [0] "net s_axil_arprot[2:0]"
@@ -58489,7 +59010,7 @@ Toggle rd_mux_addr [1:0] "logic rd_mux_addr[5:0]"
 Toggle pending_rd_addr [1:0] "logic pending_rd_addr[5:0]"
 Toggle readback_data [31:8] "logic readback_data[31:0]"
 
-CHECKSUM: "1248967099 1393747205"
+CHECKSUM: "1638888483 1393747205"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_wo_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle s_axil_awprot [2] "net s_axil_awprot[2:0]"
@@ -58568,14 +59089,13 @@ ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet
 Toggle sreg_q [11:10] "logic sreg_q[11:0]"
 Toggle sreg_d [11:10] "logic sreg_d[11:0]"
 
-CHECKSUM: "2004843254 3744945504"
+CHECKSUM: "2439670790 3744945504"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.u_uart_log_engine_ctrl_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle s_axil_awprot [2] "net s_axil_awprot[2:0]"
 Toggle s_axil_awprot [0] "net s_axil_awprot[2:0]"
 Toggle 1to0 s_axil_awprot [1] "net s_axil_awprot[2:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
-Toggle s_axil_arready "logic s_axil_arready"
 Toggle s_axil_araddr [1:0] "net s_axil_araddr[2:0]"
 Toggle s_axil_arprot [2] "net s_axil_arprot[2:0]"
 Toggle s_axil_arprot [0] "net s_axil_arprot[2:0]"
@@ -58593,7 +59113,7 @@ Toggle decoded_wr_data [31:1] "logic decoded_wr_data[31:0]"
 Toggle rd_mux_addr [2] "logic rd_mux_addr[2:0]"
 Toggle readback_data [31:1] "logic readback_data[31:0]"
 
-CHECKSUM: "976806579 556424123"
+CHECKSUM: "3124638153 556424123"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle csr_axil_req.ar.prot [2] "logic csr_axil_req.ar.prot[2:0]"
@@ -58788,7 +59308,7 @@ Toggle gen_log_engine.log_write_axil_resp.r.resp "logic gen_log_engine.log_write
 Toggle gen_log_engine.log_write_axil_resp.r.data [31:8] "logic gen_log_engine.log_write_axil_resp.r.data[31:0]"
 Toggle gen_log_engine.log_write_axil_resp.b.resp "logic gen_log_engine.log_write_axil_resp.b.resp[1:0]"
 
-CHECKSUM: "2489373665 656641866"
+CHECKSUM: "3188872617 656641866"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle csr_axil_req_i.ar.prot [2] "logic csr_axil_req_i.ar.prot[2:0]"
@@ -59776,7 +60296,7 @@ Toggle 1to0 field_storage.LOG_CTRL[15].LOG_LEN.value [5] "logic field_storage.LO
 Toggle 1to0 field_storage.LOG_CTRL[15].LOG_LEN.value [3] "logic field_storage.LOG_CTRL[15].LOG_LEN.value[15:0]"
 Toggle 1to0 field_storage.LOG_CTRL[15].LOG_LEN.value [1] "logic field_storage.LOG_CTRL[15].LOG_LEN.value[15:0]"
 
-CHECKSUM: "3766568554 4092204272"
+CHECKSUM: "210872566 4092204272"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_16550
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle axil_req_i.ar.prot [2] "logic axil_req_i.ar.prot[2:0]"
@@ -59795,7 +60315,7 @@ Toggle out1_no "logic out1_no"
 Toggle out2_no "logic out2_no"
 Toggle err_o "logic err_o"
 Toggle 1to0 reg_in.main.LSR.ERROR_IN_RCVR_FIFO.next "logic reg_in.main.LSR.ERROR_IN_RCVR_FIFO.next"
-Toggle 1to0 reg_in.main.LSR.BI.next "logic reg_in.main.LSR.BI.next"
+Toggle reg_in.main.LSR.BI.next "logic reg_in.main.LSR.BI.next"
 Toggle 1to0 reg_in.main.LSR.FE.next "logic reg_in.main.LSR.FE.next"
 Toggle reg_in.main.LSR.PE.next "logic reg_in.main.LSR.PE.next"
 Toggle reg_in.main.LSR.OE.next "logic reg_in.main.LSR.OE.next"
@@ -59856,7 +60376,7 @@ Toggle axil_slv_resps[2].w_ready "logic axil_slv_resps[2].w_ready"
 Toggle unused_alert_tx.alert_n "logic unused_alert_tx.alert_n"
 Toggle unused_alert_tx.alert_p "logic unused_alert_tx.alert_p"
 
-CHECKSUM: "3974971274 1931784286"
+CHECKSUM: "902851981 1931784286"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_dl_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle s_axil_awaddr [0] "net s_axil_awaddr[2:0]"
@@ -59882,7 +60402,7 @@ Toggle decoded_wr_data [31:8] "logic decoded_wr_data[31:0]"
 Toggle 1to0 decoded_wr_biten "logic decoded_wr_biten[31:0]"
 Toggle readback_data [31:8] "logic readback_data[31:0]"
 
-CHECKSUM: "2578676572 1633815824"
+CHECKSUM: "8204497 1633815824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle s_axil_awaddr [0] "net s_axil_awaddr[5:0]"
@@ -59897,7 +60417,7 @@ Toggle s_axil_arprot [0] "net s_axil_arprot[2:0]"
 Toggle s_axil_rdata [31:8] "logic s_axil_rdata[31:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle 1to0 hwif_in.LSR.ERROR_IN_RCVR_FIFO.next "logic hwif_in.LSR.ERROR_IN_RCVR_FIFO.next"
-Toggle 1to0 hwif_in.LSR.BI.next "logic hwif_in.LSR.BI.next"
+Toggle hwif_in.LSR.BI.next "logic hwif_in.LSR.BI.next"
 Toggle 1to0 hwif_in.LSR.FE.next "logic hwif_in.LSR.FE.next"
 Toggle hwif_in.LSR.PE.next "logic hwif_in.LSR.PE.next"
 Toggle hwif_in.LSR.OE.next "logic hwif_in.LSR.OE.next"
@@ -59911,11 +60431,11 @@ Toggle axil_araddr [1:0] "logic axil_araddr[5:0]"
 Toggle axil_awaddr [0] "logic axil_awaddr[5:0]"
 Toggle external_pending "logic external_pending"
 Toggle external_wr_ack "logic external_wr_ack"
-Toggle 1to0 field_combo.LSR.BI.next "logic field_combo.LSR.BI.next"
+Toggle field_combo.LSR.BI.next "logic field_combo.LSR.BI.next"
 Toggle 1to0 field_combo.LSR.FE.next "logic field_combo.LSR.FE.next"
 Toggle field_combo.LSR.PE.next "logic field_combo.LSR.PE.next"
 Toggle field_combo.LSR.OE.next "logic field_combo.LSR.OE.next"
-Toggle 1to0 field_storage.LSR.BI.value "logic field_storage.LSR.BI.value"
+Toggle field_storage.LSR.BI.value "logic field_storage.LSR.BI.value"
 Toggle 1to0 field_storage.LSR.FE.value "logic field_storage.LSR.FE.value"
 Toggle field_storage.LSR.PE.value "logic field_storage.LSR.PE.value"
 Toggle field_storage.LSR.OE.value "logic field_storage.LSR.OE.value"
@@ -59923,7 +60443,7 @@ Toggle rd_mux_addr [1:0] "logic rd_mux_addr[5:0]"
 Toggle pending_rd_addr [1:0] "logic pending_rd_addr[5:0]"
 Toggle readback_data [31:8] "logic readback_data[31:0]"
 
-CHECKSUM: "1248967099 1393747205"
+CHECKSUM: "1638888483 1393747205"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_wo_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle s_axil_awaddr [0] "net s_axil_awaddr[3:0]"
@@ -59986,7 +60506,7 @@ Toggle 1to0 reg_out_i.main_wo.THR.wr_biten._reserved_31_8 "logic reg_out_i.main_
 Toggle reg_out_i.main_wo.THR.wr_data._reserved_31_8 "logic reg_out_i.main_wo.THR.wr_data._reserved_31_8[23:0]"
 Toggle 1to0 reg_out_i.main.LSR.intr "logic reg_out_i.main.LSR.intr"
 Toggle 1to0 reg_in_o.main.LSR.ERROR_IN_RCVR_FIFO.next "logic reg_in_o.main.LSR.ERROR_IN_RCVR_FIFO.next"
-Toggle 1to0 reg_in_o.main.LSR.BI.next "logic reg_in_o.main.LSR.BI.next"
+Toggle reg_in_o.main.LSR.BI.next "logic reg_in_o.main.LSR.BI.next"
 Toggle 1to0 reg_in_o.main.LSR.FE.next "logic reg_in_o.main.LSR.FE.next"
 Toggle reg_in_o.main.LSR.PE.next "logic reg_in_o.main.LSR.PE.next"
 Toggle reg_in_o.main.LSR.OE.next "logic reg_in_o.main.LSR.OE.next"
@@ -60000,7 +60520,7 @@ Toggle rx_fifo_depth_prev_q [5:4] "logic rx_fifo_depth_prev_q[5:0]"
 Toggle uart_rxto_val [1:0] "logic uart_rxto_val[5:0]"
 Toggle uart_fifo_rxilvl [1] "logic uart_fifo_rxilvl[3:0]"
 Toggle 1to0 frame_err "logic frame_err"
-Toggle 1to0 break_err "logic break_err"
+Toggle break_err "logic break_err"
 Toggle parity_err "logic parity_err"
 Toggle 1to0 rx_char_err "logic rx_char_err"
 Toggle event_rx_overflow "logic event_rx_overflow"
@@ -60023,7 +60543,7 @@ Toggle rbr_wdata.framing_err "logic rbr_wdata.framing_err"
 Toggle rbr_wdata.break_err "logic rbr_wdata.break_err"
 Toggle rx_fifo_rdata.parity_err "logic rx_fifo_rdata.parity_err"
 Toggle 1to0 rx_fifo_rdata.framing_err "logic rx_fifo_rdata.framing_err"
-Toggle 1to0 rx_fifo_rdata.break_err "logic rx_fifo_rdata.break_err"
+Toggle rx_fifo_rdata.break_err "logic rx_fifo_rdata.break_err"
 Toggle rbr_rdata.parity_err "logic rbr_rdata.parity_err"
 Toggle rbr_rdata.framing_err "logic rbr_rdata.framing_err"
 Toggle rbr_rdata.break_err "logic rbr_rdata.break_err"
@@ -60051,7 +60571,7 @@ Toggle word_length_i [1] "logic word_length_i[3:0]"
 Toggle sreg_q [11:9] "logic sreg_q[11:0]"
 Toggle sreg_d [11:9] "logic sreg_d[11:0]"
 
-CHECKSUM: "2004843254 3744945504"
+CHECKSUM: "2439670790 3744945504"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_log_engine_ctrl_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle s_axil_awaddr [0] "net s_axil_awaddr[2:0]"
@@ -60091,7 +60611,7 @@ Toggle rd_mux_addr [2] "logic rd_mux_addr[2:0]"
 Toggle readback_done "logic readback_done"
 Toggle readback_data [31:1] "logic readback_data[31:0]"
 
-CHECKSUM: "976806579 556424123"
+CHECKSUM: "3124638153 556424123"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle csr_axil_req.ar.prot [2] "logic csr_axil_req.ar.prot[2:0]"
@@ -60277,7 +60797,7 @@ Toggle gen_log_engine.log_write_axil_resp.r.resp "logic gen_log_engine.log_write
 Toggle gen_log_engine.log_write_axil_resp.r.data [31:8] "logic gen_log_engine.log_write_axil_resp.r.data[31:0]"
 Toggle gen_log_engine.log_write_axil_resp.b.resp "logic gen_log_engine.log_write_axil_resp.b.resp[1:0]"
 
-CHECKSUM: "2489373665 656641866"
+CHECKSUM: "3188872617 656641866"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle csr_axil_req_i.ar.prot "logic csr_axil_req_i.ar.prot[2:0]"
@@ -61275,7 +61795,7 @@ Toggle 1to0 field_storage.LOG_CTRL[15].LOG_LEN.value [5] "logic field_storage.LO
 Toggle 1to0 field_storage.LOG_CTRL[15].LOG_LEN.value [3] "logic field_storage.LOG_CTRL[15].LOG_LEN.value[15:0]"
 Toggle 1to0 field_storage.LOG_CTRL[15].LOG_LEN.value [1] "logic field_storage.LOG_CTRL[15].LOG_LEN.value[15:0]"
 
-CHECKSUM: "3766568554 4092204272"
+CHECKSUM: "210872566 4092204272"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_16550
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle axil_req_i.ar.prot "logic axil_req_i.ar.prot[2:0]"
@@ -61350,7 +61870,7 @@ Toggle axil_slv_resps[2].w_ready "logic axil_slv_resps[2].w_ready"
 Toggle unused_alert_tx.alert_n "logic unused_alert_tx.alert_n"
 Toggle unused_alert_tx.alert_p "logic unused_alert_tx.alert_p"
 
-CHECKSUM: "3974971274 1931784286"
+CHECKSUM: "902851981 1931784286"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_dl_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle s_axil_awaddr [0] "net s_axil_awaddr[2:0]"
@@ -61375,7 +61895,7 @@ Toggle decoded_wr_data [31:8] "logic decoded_wr_data[31:0]"
 Toggle 1to0 decoded_wr_biten "logic decoded_wr_biten[31:0]"
 Toggle readback_data [31:8] "logic readback_data[31:0]"
 
-CHECKSUM: "2578676572 1633815824"
+CHECKSUM: "8204497 1633815824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle s_axil_awaddr [0] "net s_axil_awaddr[5:0]"
@@ -61415,7 +61935,7 @@ Toggle rd_mux_addr [1:0] "logic rd_mux_addr[5:0]"
 Toggle pending_rd_addr [1:0] "logic pending_rd_addr[5:0]"
 Toggle readback_data [31:8] "logic readback_data[31:0]"
 
-CHECKSUM: "1248967099 1393747205"
+CHECKSUM: "1638888483 1393747205"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_wo_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle s_axil_awaddr [0] "net s_axil_awaddr[3:0]"
@@ -61547,7 +62067,7 @@ Toggle word_length_i [1] "logic word_length_i[3:0]"
 Toggle sreg_q [11:9] "logic sreg_q[11:0]"
 Toggle sreg_d [11:9] "logic sreg_d[11:0]"
 
-CHECKSUM: "2004843254 3744945504"
+CHECKSUM: "2439670790 3744945504"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_log_engine_ctrl_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle s_axil_awaddr [0] "net s_axil_awaddr[2:0]"
@@ -61584,7 +62104,7 @@ Toggle rd_mux_addr [2] "logic rd_mux_addr[2:0]"
 Toggle readback_done "logic readback_done"
 Toggle readback_data [31:1] "logic readback_data[31:0]"
 
-CHECKSUM: "976806579 556424123"
+CHECKSUM: "3124638153 556424123"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle csr_axil_req.ar.prot [2] "logic csr_axil_req.ar.prot[2:0]"
@@ -61760,7 +62280,7 @@ Toggle gen_log_engine.log_write_axil_resp.r.resp "logic gen_log_engine.log_write
 Toggle gen_log_engine.log_write_axil_resp.r.data [31:8] "logic gen_log_engine.log_write_axil_resp.r.data[31:0]"
 Toggle gen_log_engine.log_write_axil_resp.b.resp "logic gen_log_engine.log_write_axil_resp.b.resp[1:0]"
 
-CHECKSUM: "2489373665 656641866"
+CHECKSUM: "3188872617 656641866"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle csr_axil_req_i.ar.prot "logic csr_axil_req_i.ar.prot[2:0]"
@@ -62747,7 +63267,7 @@ Toggle 1to0 field_storage.LOG_CTRL[15].LOG_LEN.value [5] "logic field_storage.LO
 Toggle 1to0 field_storage.LOG_CTRL[15].LOG_LEN.value [3] "logic field_storage.LOG_CTRL[15].LOG_LEN.value[15:0]"
 Toggle 1to0 field_storage.LOG_CTRL[15].LOG_LEN.value [1] "logic field_storage.LOG_CTRL[15].LOG_LEN.value[15:0]"
 
-CHECKSUM: "3766568554 4092204272"
+CHECKSUM: "210872566 4092204272"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_16550
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle axil_req_i.ar.prot "logic axil_req_i.ar.prot[2:0]"
@@ -62764,8 +63284,10 @@ Toggle dtr_no "logic dtr_no"
 Toggle out1_no "logic out1_no"
 Toggle out2_no "logic out2_no"
 Toggle err_o "logic err_o"
+Toggle reg_in.main.LSR.ERROR_IN_RCVR_FIFO.next "logic reg_in.main.LSR.ERROR_IN_RCVR_FIFO.next"
 Toggle reg_in.main.LSR.BI.next "logic reg_in.main.LSR.BI.next"
 Toggle reg_in.main.LSR.FE.next "logic reg_in.main.LSR.FE.next"
+Toggle reg_in.main.LSR.PE.next "logic reg_in.main.LSR.PE.next"
 Toggle reg_in.main.LSR.OE.next "logic reg_in.main.LSR.OE.next"
 Toggle reg_in.main.RBR.rd_data._reserved_31_8 "logic reg_in.main.RBR.rd_data._reserved_31_8[23:0]"
 Toggle reg_out.main_wo.FCR.RCVR_TRIGGER.value [1] "logic reg_out.main_wo.FCR.RCVR_TRIGGER.value[1:0]"
@@ -62773,6 +63295,7 @@ Toggle reg_out.main_wo.FCR.XMIT_FIFO_RESET.value "logic reg_out.main_wo.FCR.XMIT
 Toggle 1to0 reg_out.main_wo.THR.wr_biten.DATA "logic reg_out.main_wo.THR.wr_biten.DATA[7:0]"
 Toggle 1to0 reg_out.main_wo.THR.wr_biten._reserved_31_8 "logic reg_out.main_wo.THR.wr_biten._reserved_31_8[23:0]"
 Toggle reg_out.main_wo.THR.wr_data._reserved_31_8 "logic reg_out.main_wo.THR.wr_data._reserved_31_8[23:0]"
+Toggle reg_out.main.LSR.intr "logic reg_out.main.LSR.intr"
 Toggle axil_mst_req.ar.prot "logic axil_mst_req.ar.prot[2:0]"
 Toggle axil_mst_req.ar.addr [1:0] "logic axil_mst_req.ar.addr[5:0]"
 Toggle axil_mst_req.aw.prot [2] "logic axil_mst_req.aw.prot[2:0]"
@@ -62819,7 +63342,7 @@ Toggle axil_slv_resps[2].w_ready "logic axil_slv_resps[2].w_ready"
 Toggle unused_alert_tx.alert_n "logic unused_alert_tx.alert_n"
 Toggle unused_alert_tx.alert_p "logic unused_alert_tx.alert_p"
 
-CHECKSUM: "3974971274 1931784286"
+CHECKSUM: "902851981 1931784286"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_dl_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle s_axil_awaddr [0] "net s_axil_awaddr[2:0]"
@@ -62844,7 +63367,7 @@ Toggle decoded_wr_data [31:8] "logic decoded_wr_data[31:0]"
 Toggle 1to0 decoded_wr_biten "logic decoded_wr_biten[31:0]"
 Toggle readback_data [31:8] "logic readback_data[31:0]"
 
-CHECKSUM: "2578676572 1633815824"
+CHECKSUM: "8204497 1633815824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle s_axil_awaddr [0] "net s_axil_awaddr[5:0]"
@@ -62857,10 +63380,13 @@ Toggle s_axil_araddr [1:0] "net s_axil_araddr[5:0]"
 Toggle s_axil_arprot "net s_axil_arprot[2:0]"
 Toggle s_axil_rdata [31:8] "logic s_axil_rdata[31:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
+Toggle hwif_in.LSR.ERROR_IN_RCVR_FIFO.next "logic hwif_in.LSR.ERROR_IN_RCVR_FIFO.next"
 Toggle hwif_in.LSR.BI.next "logic hwif_in.LSR.BI.next"
 Toggle hwif_in.LSR.FE.next "logic hwif_in.LSR.FE.next"
+Toggle hwif_in.LSR.PE.next "logic hwif_in.LSR.PE.next"
 Toggle hwif_in.LSR.OE.next "logic hwif_in.LSR.OE.next"
 Toggle hwif_in.RBR.rd_data._reserved_31_8 "logic hwif_in.RBR.rd_data._reserved_31_8[23:0]"
+Toggle hwif_out.LSR.intr "logic hwif_out.LSR.intr"
 Toggle cpuif_req_stall_wr "logic cpuif_req_stall_wr"
 Toggle cpuif_req_stall_rd "logic cpuif_req_stall_rd"
 Toggle cpuif_rd_data [31:8] "logic cpuif_rd_data[31:0]"
@@ -62871,15 +63397,17 @@ Toggle external_pending "logic external_pending"
 Toggle external_wr_ack "logic external_wr_ack"
 Toggle field_combo.LSR.BI.next "logic field_combo.LSR.BI.next"
 Toggle field_combo.LSR.FE.next "logic field_combo.LSR.FE.next"
+Toggle field_combo.LSR.PE.next "logic field_combo.LSR.PE.next"
 Toggle field_combo.LSR.OE.next "logic field_combo.LSR.OE.next"
 Toggle field_storage.LSR.BI.value "logic field_storage.LSR.BI.value"
 Toggle field_storage.LSR.FE.value "logic field_storage.LSR.FE.value"
+Toggle field_storage.LSR.PE.value "logic field_storage.LSR.PE.value"
 Toggle field_storage.LSR.OE.value "logic field_storage.LSR.OE.value"
 Toggle rd_mux_addr [1:0] "logic rd_mux_addr[5:0]"
 Toggle pending_rd_addr [1:0] "logic pending_rd_addr[5:0]"
 Toggle readback_data [31:8] "logic readback_data[31:0]"
 
-CHECKSUM: "1248967099 1393747205"
+CHECKSUM: "1638888483 1393747205"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_wo_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle s_axil_awaddr [0] "net s_axil_awaddr[3:0]"
@@ -62939,8 +63467,11 @@ Toggle reg_out_i.main_wo.FCR.XMIT_FIFO_RESET.value "logic reg_out_i.main_wo.FCR.
 Toggle 1to0 reg_out_i.main_wo.THR.wr_biten.DATA "logic reg_out_i.main_wo.THR.wr_biten.DATA[7:0]"
 Toggle 1to0 reg_out_i.main_wo.THR.wr_biten._reserved_31_8 "logic reg_out_i.main_wo.THR.wr_biten._reserved_31_8[23:0]"
 Toggle reg_out_i.main_wo.THR.wr_data._reserved_31_8 "logic reg_out_i.main_wo.THR.wr_data._reserved_31_8[23:0]"
+Toggle reg_out_i.main.LSR.intr "logic reg_out_i.main.LSR.intr"
+Toggle reg_in_o.main.LSR.ERROR_IN_RCVR_FIFO.next "logic reg_in_o.main.LSR.ERROR_IN_RCVR_FIFO.next"
 Toggle reg_in_o.main.LSR.BI.next "logic reg_in_o.main.LSR.BI.next"
 Toggle reg_in_o.main.LSR.FE.next "logic reg_in_o.main.LSR.FE.next"
+Toggle reg_in_o.main.LSR.PE.next "logic reg_in_o.main.LSR.PE.next"
 Toggle reg_in_o.main.LSR.OE.next "logic reg_in_o.main.LSR.OE.next"
 Toggle reg_in_o.main.RBR.rd_data._reserved_31_8 "logic reg_in_o.main.RBR.rd_data._reserved_31_8[23:0]"
 Toggle dtr_no "logic dtr_no"
@@ -62953,15 +63484,19 @@ Toggle uart_rxto_val [1:0] "logic uart_rxto_val[5:0]"
 Toggle uart_fifo_rxilvl [1] "logic uart_fifo_rxilvl[3:0]"
 Toggle frame_err "logic frame_err"
 Toggle break_err "logic break_err"
+Toggle parity_err "logic parity_err"
+Toggle rx_char_err "logic rx_char_err"
 Toggle allzero_err "logic allzero_err"
 Toggle event_rx_overflow "logic event_rx_overflow"
 Toggle event_rx_frame_err "logic event_rx_frame_err"
+Toggle event_rx_parity_err "logic event_rx_parity_err"
 Toggle rx_fifo_threshold [12:5] "logic rx_fifo_threshold[12:0]"
 Toggle rx_fifo_threshold [3] "logic rx_fifo_threshold[12:0]"
 Toggle rx_fifo_threshold [1] "logic rx_fifo_threshold[12:0]"
 Toggle fifo_thr_rbr_err "logic fifo_thr_rbr_err"
 Toggle rx_fifo_rbr_err "logic rx_fifo_rbr_err"
 Toggle tx_fifo_thr_err "logic tx_fifo_thr_err"
+Toggle intr_reqs.receiver_line_status "logic intr_reqs.receiver_line_status"
 Toggle intr_reqs.fifo_error "logic intr_reqs.fifo_error"
 Toggle word_length [1] "logic word_length[3:0]"
 Toggle baud_count [15:8] "logic baud_count[15:0]"
@@ -62970,11 +63505,13 @@ Toggle thr_err "logic thr_err"
 Toggle rx_fifo_wdata.parity_err "logic rx_fifo_wdata.parity_err"
 Toggle rx_fifo_wdata.framing_err "logic rx_fifo_wdata.framing_err"
 Toggle rx_fifo_wdata.break_err "logic rx_fifo_wdata.break_err"
+Toggle rbr_wdata.parity_err "logic rbr_wdata.parity_err"
 Toggle rbr_wdata.framing_err "logic rbr_wdata.framing_err"
 Toggle rbr_wdata.break_err "logic rbr_wdata.break_err"
 Toggle rx_fifo_rdata.parity_err "logic rx_fifo_rdata.parity_err"
 Toggle rx_fifo_rdata.framing_err "logic rx_fifo_rdata.framing_err"
 Toggle rx_fifo_rdata.break_err "logic rx_fifo_rdata.break_err"
+Toggle rbr_rdata.parity_err "logic rbr_rdata.parity_err"
 Toggle rbr_rdata.framing_err "logic rbr_rdata.framing_err"
 Toggle rbr_rdata.break_err "logic rbr_rdata.break_err"
 Toggle rx_fifo_err "logic rx_fifo_err"
@@ -62991,6 +63528,7 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_eng
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle word_length_i [1] "logic word_length_i[3:0]"
 Toggle frame_err_o "logic frame_err_o"
+Toggle rx_parity_err_o "logic rx_parity_err_o"
 Toggle sreg_q [2:0] "logic sreg_q[11:0]"
 Toggle sreg_d [2:0] "logic sreg_d[11:0]"
 
@@ -63001,7 +63539,7 @@ Toggle word_length_i [1] "logic word_length_i[3:0]"
 Toggle sreg_q [11:10] "logic sreg_q[11:0]"
 Toggle sreg_d [11:10] "logic sreg_d[11:0]"
 
-CHECKSUM: "2004843254 3744945504"
+CHECKSUM: "2439670790 3744945504"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_log_engine_ctrl_reg
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle s_axil_awaddr [0] "net s_axil_awaddr[2:0]"
@@ -63036,7 +63574,7 @@ Toggle rd_mux_addr [2] "logic rd_mux_addr[2:0]"
 Toggle readback_done "logic readback_done"
 Toggle readback_data [31:1] "logic readback_data[31:0]"
 
-CHECKSUM: "3238499240 1548896029"
+CHECKSUM: "438890927 1783862222"
 INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration
 ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
 Toggle efuse_model_otp_req.pstrb [3:2] "logic efuse_model_otp_req.pstrb[3:0]"
@@ -63194,8 +63732,8 @@ Toggle 0to1 ext_aw_select [2] "logic ext_aw_select[2:0]"
 Toggle straps_hwif_in.STRAPS_HI.straps.next "logic straps_hwif_in.STRAPS_HI.straps.next[28:0]"
 Toggle straps_hwif_in.STRAPS_LO.straps.next "logic straps_hwif_in.STRAPS_LO.straps.next[31:0]"
 Toggle gen_trace_mem_bank[0].macro_rdata [55:51] "logic gen_trace_mem_bank[0].macro_rdata[63:0]"
-Toggle gen_trace_mem_bank[0].macro_rdata [39:38] "logic gen_trace_mem_bank[0].macro_rdata[63:0]"
-Toggle gen_trace_mem_bank[0].macro_rdata [22:19] "logic gen_trace_mem_bank[0].macro_rdata[63:0]"
+Toggle gen_trace_mem_bank[0].macro_rdata [39:35] "logic gen_trace_mem_bank[0].macro_rdata[63:0]"
+Toggle gen_trace_mem_bank[0].macro_rdata [23:19] "logic gen_trace_mem_bank[0].macro_rdata[63:0]"
 Toggle gen_trace_mem_bank[0].macro_rdata [7:3] "logic gen_trace_mem_bank[0].macro_rdata[63:0]"
 Toggle gen_trace_mem_bank[1].macro_rdata [54:50] "logic gen_trace_mem_bank[1].macro_rdata[63:0]"
 Toggle gen_trace_mem_bank[1].macro_rdata [38:35] "logic gen_trace_mem_bank[1].macro_rdata[63:0]"
@@ -63225,1449 +63763,6 @@ Toggle gen_trace_mem_bank[7].macro_rdata [54:50] "logic gen_trace_mem_bank[7].ma
 Toggle gen_trace_mem_bank[7].macro_rdata [38:35] "logic gen_trace_mem_bank[7].macro_rdata[63:0]"
 Toggle gen_trace_mem_bank[7].macro_rdata [22:19] "logic gen_trace_mem_bank[7].macro_rdata[63:0]"
 Toggle gen_trace_mem_bank[7].macro_rdata [6:2] "logic gen_trace_mem_bank[7].macro_rdata[63:0]"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[0].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[10].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_i "logic core2pad_i"
-Toggle core2pad_en_i "logic core2pad_en_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_io "net pad_io"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-Toggle pad_in "logic pad_in"
-Toggle pad_in_raw "logic pad_in_raw"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[11].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_i "logic core2pad_i"
-Toggle core2pad_en_i "logic core2pad_en_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[12].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_io "net pad_io"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-Toggle pad_in "logic pad_in"
-Toggle pad_in_raw "logic pad_in_raw"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[13].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_io "net pad_io"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-Toggle pad_in "logic pad_in"
-Toggle pad_in_raw "logic pad_in_raw"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[14].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_i "logic core2pad_i"
-Toggle core2pad_en_i "logic core2pad_en_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[15].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_i "logic core2pad_i"
-Toggle core2pad_en_i "logic core2pad_en_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle 1to0 pad_io "net pad_io"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-Toggle 1to0 pad_in "logic pad_in"
-Toggle 1to0 pad_in_raw "logic pad_in_raw"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[16].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_io "net pad_io"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-Toggle pad_in "logic pad_in"
-Toggle pad_in_raw "logic pad_in_raw"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[17].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_io "net pad_io"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-Toggle pad_in "logic pad_in"
-Toggle pad_in_raw "logic pad_in_raw"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[18].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_i "logic core2pad_i"
-Toggle core2pad_en_i "logic core2pad_en_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_io "net pad_io"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-Toggle pad_in "logic pad_in"
-Toggle pad_in_raw "logic pad_in_raw"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[19].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_i "logic core2pad_i"
-Toggle core2pad_en_i "logic core2pad_en_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[1].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[20].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_io "net pad_io"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-Toggle pad_in "logic pad_in"
-Toggle pad_in_raw "logic pad_in_raw"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[21].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_io "net pad_io"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-Toggle pad_in "logic pad_in"
-Toggle pad_in_raw "logic pad_in_raw"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[22].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_i "logic core2pad_i"
-Toggle core2pad_en_i "logic core2pad_en_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_io "net pad_io"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-Toggle pad_in "logic pad_in"
-Toggle pad_in_raw "logic pad_in_raw"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[23].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_i "logic core2pad_i"
-Toggle core2pad_en_i "logic core2pad_en_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[24].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_io "net pad_io"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-Toggle pad_in "logic pad_in"
-Toggle pad_in_raw "logic pad_in_raw"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[25].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_io "net pad_io"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-Toggle pad_in "logic pad_in"
-Toggle pad_in_raw "logic pad_in_raw"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[26].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_i "logic core2pad_i"
-Toggle core2pad_en_i "logic core2pad_en_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_io "net pad_io"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-Toggle pad_in "logic pad_in"
-Toggle pad_in_raw "logic pad_in_raw"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[27].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_i "logic core2pad_i"
-Toggle pad2core_en_i "logic pad2core_en_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[28].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle pad2core_en_i "logic pad2core_en_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[29].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_i "logic core2pad_i"
-Toggle core2pad_en_i "logic core2pad_en_i"
-Toggle pad2core_o "logic pad2core_o"
-Toggle pad2core_en_i "logic pad2core_en_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_io "net pad_io"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-Toggle pad_in "logic pad_in"
-Toggle pad_in_raw "logic pad_in_raw"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[2].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[30].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_en_i "logic core2pad_en_i"
-Toggle pad2core_o "logic pad2core_o"
-Toggle pad2core_en_i "logic pad2core_en_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_io "net pad_io"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-Toggle pad_in "logic pad_in"
-Toggle pad_in_raw "logic pad_in_raw"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[31].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_i "logic core2pad_i"
-Toggle core2pad_en_i "logic core2pad_en_i"
-Toggle pad2core_o "logic pad2core_o"
-Toggle pad2core_en_i "logic pad2core_en_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_io "net pad_io"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-Toggle pad_in "logic pad_in"
-Toggle pad_in_raw "logic pad_in_raw"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[32].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_en_i "logic core2pad_en_i"
-Toggle pad2core_o "logic pad2core_o"
-Toggle pad2core_en_i "logic pad2core_en_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_io "net pad_io"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-Toggle pad_in "logic pad_in"
-Toggle pad_in_raw "logic pad_in_raw"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[33].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_i "logic core2pad_i"
-Toggle core2pad_en_i "logic core2pad_en_i"
-Toggle pad2core_o "logic pad2core_o"
-Toggle pad2core_en_i "logic pad2core_en_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_io "net pad_io"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-Toggle pad_in "logic pad_in"
-Toggle pad_in_raw "logic pad_in_raw"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[34].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_en_i "logic core2pad_en_i"
-Toggle pad2core_o "logic pad2core_o"
-Toggle pad2core_en_i "logic pad2core_en_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_io "net pad_io"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-Toggle pad_in "logic pad_in"
-Toggle pad_in_raw "logic pad_in_raw"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[35].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_i "logic core2pad_i"
-Toggle core2pad_en_i "logic core2pad_en_i"
-Toggle pad2core_o "logic pad2core_o"
-Toggle pad2core_en_i "logic pad2core_en_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_io "net pad_io"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-Toggle pad_in "logic pad_in"
-Toggle pad_in_raw "logic pad_in_raw"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[36].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_en_i "logic core2pad_en_i"
-Toggle pad2core_o "logic pad2core_o"
-Toggle pad2core_en_i "logic pad2core_en_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_io "net pad_io"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-Toggle pad_in "logic pad_in"
-Toggle pad_in_raw "logic pad_in_raw"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[37].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_i "logic core2pad_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[38].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_i "logic core2pad_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[39].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_i "logic core2pad_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-Toggle pad_in "logic pad_in"
-Toggle pad_in_raw "logic pad_in_raw"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[3].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_i "logic core2pad_i"
-Toggle core2pad_en_i "logic core2pad_en_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_io "net pad_io"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-Toggle pad_in "logic pad_in"
-Toggle pad_in_raw "logic pad_in_raw"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[40].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_i "logic core2pad_i"
-Toggle core2pad_en_i "logic core2pad_en_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[41].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_i "logic core2pad_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[42].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_i "logic core2pad_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[43].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_i "logic core2pad_i"
-Toggle core2pad_en_i "logic core2pad_en_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[44].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_i "logic core2pad_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-Toggle pad_in "logic pad_in"
-Toggle pad_in_raw "logic pad_in_raw"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[45].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_i "logic core2pad_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[46].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_i "logic core2pad_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[47].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_i "logic core2pad_i"
-Toggle core2pad_en_i "logic core2pad_en_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[48].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_i "logic core2pad_i"
-Toggle core2pad_en_i "logic core2pad_en_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[49].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_io "net pad_io"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-Toggle pad_in "logic pad_in"
-Toggle pad_in_raw "logic pad_in_raw"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[4].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_i "logic core2pad_i"
-Toggle core2pad_en_i "logic core2pad_en_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_io "net pad_io"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-Toggle pad_in "logic pad_in"
-Toggle pad_in_raw "logic pad_in_raw"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[50].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_io "net pad_io"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-Toggle pad_in "logic pad_in"
-Toggle pad_in_raw "logic pad_in_raw"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[51].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_i "logic core2pad_i"
-Toggle core2pad_en_i "logic core2pad_en_i"
-Toggle pad2core_en_i "logic pad2core_en_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[52].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[53].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_i "logic core2pad_i"
-Toggle core2pad_en_i "logic core2pad_en_i"
-Toggle pad2core_en_i "logic pad2core_en_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[54].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_i "logic core2pad_i"
-Toggle core2pad_en_i "logic core2pad_en_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_io "net pad_io"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-Toggle pad_in "logic pad_in"
-Toggle pad_in_raw "logic pad_in_raw"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[55].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[56].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[57].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_i "logic core2pad_i"
-Toggle core2pad_en_i "logic core2pad_en_i"
-Toggle pad2core_en_i "logic pad2core_en_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[58].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_i "logic core2pad_i"
-Toggle core2pad_en_i "logic core2pad_en_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_io "net pad_io"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-Toggle pad_in "logic pad_in"
-Toggle pad_in_raw "logic pad_in_raw"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[59].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_i "logic core2pad_i"
-Toggle core2pad_en_i "logic core2pad_en_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_io "net pad_io"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-Toggle pad_in "logic pad_in"
-Toggle pad_in_raw "logic pad_in_raw"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[5].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_i "logic core2pad_i"
-Toggle core2pad_en_i "logic core2pad_en_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_io "net pad_io"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-Toggle pad_in "logic pad_in"
-Toggle pad_in_raw "logic pad_in_raw"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[60].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[61].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_i "logic core2pad_i"
-Toggle core2pad_en_i "logic core2pad_en_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_io "net pad_io"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-Toggle pad_in "logic pad_in"
-Toggle pad_in_raw "logic pad_in_raw"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[62].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_i "logic core2pad_i"
-Toggle pad2core_o "logic pad2core_o"
-Toggle pad2core_en_i "logic pad2core_en_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_io "net pad_io"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-Toggle pad_in "logic pad_in"
-Toggle pad_in_raw "logic pad_in_raw"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[63].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_i "logic core2pad_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_io "net pad_io"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-Toggle pad_in "logic pad_in"
-Toggle pad_in_raw "logic pad_in_raw"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[64].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_io "net pad_io"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-Toggle pad_in "logic pad_in"
-Toggle pad_in_raw "logic pad_in_raw"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[6].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_i "logic core2pad_i"
-Toggle core2pad_en_i "logic core2pad_en_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_io "net pad_io"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-Toggle pad_in "logic pad_in"
-Toggle pad_in_raw "logic pad_in_raw"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[7].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle core2pad_i "logic core2pad_i"
-Toggle core2pad_en_i "logic core2pad_en_i"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_io "net pad_io"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-Toggle pad_in "logic pad_in"
-Toggle pad_in_raw "logic pad_in_raw"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[8].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-
-CHECKSUM: "1059888339 2695103042"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.gen_gpio_pad[9].u_prim_pad_shim
-ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff) whole-instance exclusion, reviewed with design engineering in that repository; the instance's ports stay graded and its internals are excluded while uncovered; retired when an enrolled leaf covers the object or design engineering withdraws the approval"
-Toggle gpio_ctrl_i.gpio_glitch_filter_enable "logic gpio_ctrl_i.gpio_glitch_filter_enable"
-Toggle gpio_ctrl_i.gpio_sps "logic gpio_ctrl_i.gpio_sps"
-Toggle gpio_ctrl_i.gpio_pull_sel "logic gpio_ctrl_i.gpio_pull_sel"
-Toggle gpio_ctrl_i.gpio_pull_en "logic gpio_ctrl_i.gpio_pull_en"
-Toggle gpio_ctrl_i.gpio_drive_strength "logic gpio_ctrl_i.gpio_drive_strength[2:0]"
-Toggle pad_io "net pad_io"
-Toggle pad_attr.invert "logic pad_attr.invert"
-Toggle pad_attr.virt_od_en "logic pad_attr.virt_od_en"
-Toggle pad_attr.pull_en "logic pad_attr.pull_en"
-Toggle pad_attr.pull_select "logic pad_attr.pull_select"
-Toggle pad_attr.keep_en "logic pad_attr.keep_en"
-Toggle pad_attr.schmitt_en "logic pad_attr.schmitt_en"
-Toggle pad_attr.od_en "logic pad_attr.od_en"
-Toggle pad_attr.input_disable "logic pad_attr.input_disable"
-Toggle pad_attr.slew_rate "logic pad_attr.slew_rate[1:0]"
-Toggle pad_attr.drive_strength "logic pad_attr.drive_strength[3:0]"
-Toggle pad_in "logic pad_in"
-Toggle pad_in_raw "logic pad_in_raw"
 
 CHECKSUM: "1698122930 601168459"
 INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.u_efuse_interface_shim
@@ -65183,9 +64278,11 @@ Toggle 1to0 l1_icache_tag_req[3].wdata [47] "logic l1_icache_tag_req[3].wdata[93
 Toggle 1to0 l1_icache_tag_req[3].wdata [2] "logic l1_icache_tag_req[3].wdata[93:0]"
 Toggle 1to0 l1_icache_tag_req[3].wdata [0] "logic l1_icache_tag_req[3].wdata[93:0]"
 Toggle l1_icache_tag_rsp[0].rdata [92:51] "logic l1_icache_tag_rsp[0].rdata[93:0]"
-Toggle l1_icache_tag_rsp[0].rdata [45:21] "logic l1_icache_tag_rsp[0].rdata[93:0]"
+Toggle l1_icache_tag_rsp[0].rdata [44:21] "logic l1_icache_tag_rsp[0].rdata[93:0]"
 Toggle l1_icache_tag_rsp[0].rdata [18:8] "logic l1_icache_tag_rsp[0].rdata[93:0]"
-Toggle l1_icache_tag_rsp[0].rdata [6:4] "logic l1_icache_tag_rsp[0].rdata[93:0]"
+Toggle l1_icache_tag_rsp[0].rdata [5:4] "logic l1_icache_tag_rsp[0].rdata[93:0]"
+Toggle 0to1 l1_icache_tag_rsp[0].rdata [45] "logic l1_icache_tag_rsp[0].rdata[93:0]"
+Toggle 0to1 l1_icache_tag_rsp[0].rdata [6] "logic l1_icache_tag_rsp[0].rdata[93:0]"
 Toggle l1_icache_tag_rsp[1].rdata [92:50] "logic l1_icache_tag_rsp[1].rdata[93:0]"
 Toggle l1_icache_tag_rsp[1].rdata [44:21] "logic l1_icache_tag_rsp[1].rdata[93:0]"
 Toggle l1_icache_tag_rsp[1].rdata [18:8] "logic l1_icache_tag_rsp[1].rdata[93:0]"
@@ -65202,6 +64299,7 @@ Toggle l1_icache_tag_rsp[2].rdata [5:2] "logic l1_icache_tag_rsp[2].rdata[93:0]"
 Toggle 1to0 l1_icache_tag_rsp[2].rdata [49] "logic l1_icache_tag_rsp[2].rdata[93:0]"
 Toggle 1to0 l1_icache_tag_rsp[2].rdata [47] "logic l1_icache_tag_rsp[2].rdata[93:0]"
 Toggle 1to0 l1_icache_tag_rsp[2].rdata [0] "logic l1_icache_tag_rsp[2].rdata[93:0]"
+Toggle 0to1 l1_icache_tag_rsp[2].rdata [45] "logic l1_icache_tag_rsp[2].rdata[93:0]"
 Toggle 0to1 l1_icache_tag_rsp[2].rdata [6] "logic l1_icache_tag_rsp[2].rdata[93:0]"
 Toggle l1_icache_tag_rsp[3].rdata [92:50] "logic l1_icache_tag_rsp[3].rdata[93:0]"
 Toggle l1_icache_tag_rsp[3].rdata [44:21] "logic l1_icache_tag_rsp[3].rdata[93:0]"
@@ -65210,6 +64308,7 @@ Toggle l1_icache_tag_rsp[3].rdata [5:2] "logic l1_icache_tag_rsp[3].rdata[93:0]"
 Toggle 1to0 l1_icache_tag_rsp[3].rdata [49] "logic l1_icache_tag_rsp[3].rdata[93:0]"
 Toggle 1to0 l1_icache_tag_rsp[3].rdata [47] "logic l1_icache_tag_rsp[3].rdata[93:0]"
 Toggle 1to0 l1_icache_tag_rsp[3].rdata [0] "logic l1_icache_tag_rsp[3].rdata[93:0]"
+Toggle 0to1 l1_icache_tag_rsp[3].rdata [45] "logic l1_icache_tag_rsp[3].rdata[93:0]"
 Toggle 0to1 l1_icache_tag_rsp[3].rdata [6] "logic l1_icache_tag_rsp[3].rdata[93:0]"
 Toggle l1_dcache_tag_req[0].wdata [98:75] "logic l1_dcache_tag_req[0].wdata[107:0]"
 Toggle l1_dcache_tag_req[0].wdata [72:64] "logic l1_dcache_tag_req[0].wdata[107:0]"
@@ -65452,9 +64551,11 @@ Toggle RW0_wdata [44:21] "net RW0_wdata[93:0]"
 Toggle RW0_wdata [18:8] "net RW0_wdata[93:0]"
 Toggle RW0_wdata [5:4] "net RW0_wdata[93:0]"
 Toggle RW0_rdata [92:51] "net RW0_rdata[93:0]"
-Toggle RW0_rdata [45:21] "net RW0_rdata[93:0]"
+Toggle RW0_rdata [44:21] "net RW0_rdata[93:0]"
 Toggle RW0_rdata [18:8] "net RW0_rdata[93:0]"
-Toggle RW0_rdata [6:4] "net RW0_rdata[93:0]"
+Toggle RW0_rdata [5:4] "net RW0_rdata[93:0]"
+Toggle 0to1 RW0_rdata [45] "net RW0_rdata[93:0]"
+Toggle 0to1 RW0_rdata [6] "net RW0_rdata[93:0]"
 Toggle mem_cfg_i "net mem_cfg_i[10:0]"
 
 CHECKSUM: "1961825601 1273865822"
@@ -65501,6 +64602,7 @@ Toggle RW0_rdata [5:2] "net RW0_rdata[93:0]"
 Toggle 1to0 RW0_rdata [49] "net RW0_rdata[93:0]"
 Toggle 1to0 RW0_rdata [47] "net RW0_rdata[93:0]"
 Toggle 1to0 RW0_rdata [0] "net RW0_rdata[93:0]"
+Toggle 0to1 RW0_rdata [45] "net RW0_rdata[93:0]"
 Toggle 0to1 RW0_rdata [6] "net RW0_rdata[93:0]"
 Toggle mem_cfg_i "net mem_cfg_i[10:0]"
 
@@ -65524,6 +64626,7 @@ Toggle RW0_rdata [5:2] "net RW0_rdata[93:0]"
 Toggle 1to0 RW0_rdata [49] "net RW0_rdata[93:0]"
 Toggle 1to0 RW0_rdata [47] "net RW0_rdata[93:0]"
 Toggle 1to0 RW0_rdata [0] "net RW0_rdata[93:0]"
+Toggle 0to1 RW0_rdata [45] "net RW0_rdata[93:0]"
 Toggle 0to1 RW0_rdata [6] "net RW0_rdata[93:0]"
 Toggle mem_cfg_i "net mem_cfg_i[10:0]"
 
