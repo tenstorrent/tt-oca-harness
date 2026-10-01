@@ -19,7 +19,7 @@ args = ["+skip_fuse_sense"]
 
 [[tests]]
 name = "sep_address_map_test"
-module = "system.sep_address_map_test"
+module = { cocotb = "system.sep_address_map_test", uvm = "sep_address_map_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["smoke", "system"]

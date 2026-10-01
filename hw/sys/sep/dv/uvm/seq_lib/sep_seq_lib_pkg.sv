@@ -41,5 +41,6 @@ package sep_seq_lib_pkg;
   `include "sep_base_test_seq.svh"
   `include "sep_axi_smoke_test_seq.svh"
   `include "sep_sram_smoke_test_seq.svh"
+  `include "sep_address_map_test_seq.svh"
 
 endpackage : sep_seq_lib_pkg

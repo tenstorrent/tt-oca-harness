@@ -22,6 +22,7 @@ import sep_seq_lib_pkg::*;
 
 // CSR scenarios on the CPU-LSU AXI4 splice.
 `include "sep_axi_smoke_test.svh"
+`include "sep_address_map_test.svh"
 
 // Memory scenarios on the CPU-LSU AXI4 splice.
 `include "sep_sram_smoke_test.svh"

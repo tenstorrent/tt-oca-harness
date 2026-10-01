@@ -7978,6 +7978,15 @@ beat to a seeded half and a full-word readback (CHK-RANDOM-STORE,
 CHK-RANDOM-LANE). CHK-RESP is the sequence's own check: every access returns
 `OKAY` and every read returns one beat. There is no aggregate CHK-SRAM-SMOKE
 record; each checker is its own record.
+|<<sep_address_map_test,`sep_address_map_test`>>
+|Same as the cocotb procedure, over sixteen passes by default
+(`+SEP_ADDRESS_MAP_TEST_LOOPS`). A table in the scenario sequence gives the
+access class of each `sep_cpu_ctrl` register, transcribed from
+`sep_cpu_ctrl.rdl`. CHK-ADDRMAP names the reset compares, and CHK-CSR-RESP the
+response of each sweep access. Adds CHK-FUSE-SENSE-DONE, `+SEP_RANDOM_COUNT`
+seeded random patterns per storage register, a readback after each restore,
+and a read of `0x10A3_0170` after the hole write that must return zero. The
+scoreboard check CHK-SB-CPU-CTRL-CSR is required.
 |===
 
 === Regression Groups
