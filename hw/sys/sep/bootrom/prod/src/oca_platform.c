@@ -595,12 +595,11 @@ static oca_secure_bool_t plat_is_secure_boot_active(void) {
     if (lc_state_enforces_secure_boot(lc)) {
         return OCA_SECURE_TRUE;
     }
-    // A TEST_DEV part with chiplet debug disabled enforces secure boot, so a
-    // locked debug posture cannot be bypassed by loading unsigned code. The RMA
-    // states stay manifest-optional whatever the disable vectors say.
+    // A TEST_DEV or RMA_SiP part with chiplet debug disabled enforces secure
+    // boot, so a locked debug posture cannot be bypassed by loading unsigned code.
     //
     // Latched at [S18] so the answer cannot move under the validator's re-checks.
-    if (lc == LC_STATE_TEST_DEV && chiplet_debug_disabled()) {
+    if (lc_state_follows_debug_lock(lc) && chiplet_debug_disabled()) {
         return OCA_SECURE_TRUE;
     }
     return OCA_SECURE_FALSE;

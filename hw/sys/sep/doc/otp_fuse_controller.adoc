@@ -217,7 +217,7 @@ terminal. Otherwise, LC_STATE[2:1] cannot be updated.
 
 |SBOOT_DIS |1 |32 (use only 1 bit) |true |true |Disables secure boot when
 set to 1, in any lifecycle state. It overrides lifecycle enforcement in PROD
-and PROD_END and the TEST_DEV debug-lock rule, but not a signed manifest's
+and PROD_END and the TEST_DEV / RMA_SiP debug-lock rule, but not a signed manifest's
 request for verification; see Secure-Boot Enforcement in the Life Cycle
 Controller section.
 
