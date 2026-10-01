@@ -20,7 +20,7 @@ S1: SMC fabric bridge: a distinct byte written at byte offsets 1, 2 and 3 of
     bytes over the byte at offset 0; the register is then restored. A
     zero-strobe write to 0x1000, outside the SMC map and inside the SEP
     aperture, completes.
-S2: adopter window (smc_addr.h SMC_EXTERNAL_REGION, 4 MiB at 0xC040_0000):
+S2: adopter window (smc_addr.h SMC_EXTERNAL, 4 MiB at 0xC040_0000):
     the SMC forwards every access to its AXI-Lite external bus except the
     eFuse SHIM range at the window base, which it diverts to the eFuse
     controller, and that reaches the SHIM on ``efuse_bank_ctrl_req_o``
@@ -66,8 +66,8 @@ from seq_lib.smu_tb_pins import smu_scope
 from smu_base_test import smu_base_test
 
 SCRATCH = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_BASE_ADDR")
-EXT_BASE = smc_addr("SMC_TOP_SMC_EXTERNAL_REGION_BASE_ADDR")
-EXT_SIZE = smc_addr("SMC_TOP_SMC_EXTERNAL_REGION_SIZE")
+EXT_BASE = smc_addr("SMC_TOP_SMC_EXTERNAL_BASE_ADDR")
+EXT_SIZE = smc_addr("SMC_TOP_SMC_EXTERNAL_SIZE")
 DTP_BASE = smc_addr("SMC_TOP_DTP_CTRL_REG_BASE_ADDR")
 DTP_SIZE = smc_addr("SMC_TOP_DTP_CTRL_REG_SIZE")
 SEP_APERTURE_ADDR = 0x1000

@@ -4,6 +4,7 @@
 #ifndef SMC_STRAP_H
 #define SMC_STRAP_H
 
+#include "smc_addr.h"
 #include "smc_reg_access.h"
 
 // SMC strap GPIO indices, ordered by index.
@@ -31,8 +32,8 @@ typedef enum {
 // Not smc_top_regs.h's SMC_RESET_UNIT_STRAPS_LO (0xC0002090). That register moved out of
 // the reset unit into the external supplementary region and no longer exists; the generated
 // header still carries the old macro.
-#define SMC_STRAPS_LO_REG_ADDR 0xC0405800u
-#define SMC_STRAPS_HI_REG_ADDR 0xC0405804u
+#define SMC_STRAPS_LO_REG_ADDR SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_STRAPS_STRAPS_LO_BASE_ADDR
+#define SMC_STRAPS_HI_REG_ADDR SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_STRAPS_STRAPS_HI_BASE_ADDR
 #define SMC_STRAPS_LO_BIT_COUNT 32
 
 // Reads the strap latched on one GPIO. `strap_bit` is the GPIO index.
