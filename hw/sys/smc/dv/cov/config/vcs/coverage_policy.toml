@@ -137,6 +137,18 @@ path = "smc_legacy_exclusions.el"
 apply_phase = "report"
 args = ["-elfile", "{path}"]
 
+# The whole-instance exclusions of the same legacy files (L2
+# LEGACY-INSTANCE-CHILDREN): each instance keeps its own ports graded and its
+# internals are excluded while the graded run leaves them uncovered. Written by
+# gen_smc_legacy_exclusions.py beside the L1 file and regenerated with it from
+# each graded run.
+[[native_files]]
+tool = "vcs"
+role = "exclude"
+path = "smc_legacy_children_exclusions.el"
+apply_phase = "report"
+args = ["-elfile", "{path}"]
+
 # urg reports the cov/sv cover properties under `user`; the runner grades the
 # family by the tool's own figure. This file carries no `[[holes]]` row for
 # it: every collected point is hit by an enrolled leaf, and a point this bench

@@ -108,10 +108,11 @@ the `OCAH_FCOV_COVER` points that populate the `user` metric family.
 
 ## Exclusion files
 
-`coverage_policy.toml` beside this file names seven `-elfile` files the report
+`coverage_policy.toml` beside this file names eight `-elfile` files the report
 applies, the form `hw/sys/sep/dv/cov/config/vcs/coverage_policy.toml` uses.
-The seventh, `smc_legacy_exclusions.el`, carries a provenance rather than a
-fact and has its own section below.
+The seventh and eighth, `smc_legacy_exclusions.el` and
+`smc_legacy_children_exclusions.el`, carry a provenance rather than a fact and
+have their own section below.
 The first four are written by `gen_smc_cov_exclusions.py` from urg's exclusion
 templates and the run's raw report (`cov/report_raw`, written without the
 exclusion files). Every entry lists a point that report marks uncovered, rows,
@@ -381,6 +382,7 @@ object comes from, not why it cannot be reached.
 | File | Class | Scope | Fact | Retired by | Reviewer |
 | --- | --- | --- | --- | --- | --- |
 | `smc_legacy_exclusions.el` | L1 LEGACY-DE-APPROVED | report-gated: the objects of the archived bench's exclusion files that this database still holds and the graded run leaves uncovered, at the scope the legacy file gave them | provenance: tt-oca-hw excluded the object in one of the eleven files of `dv/smc/tb/tb_uvm/exclusion_files/` at commit `cb678bff` that `gen_smc_legacy_exclusions.py` lists, and design engineering reviewed those files there; the ANNOTATION before each group names the file | an enrolled leaf that covers the object, or design engineering withdrawing the approval | design engineering + DV peer |
+| `smc_legacy_children_exclusions.el` | L2 LEGACY-INSTANCE-CHILDREN | report-gated: the internals of each instance a legacy file excluded whole that this database still holds, its internal signals and every instance beneath it, while the graded run leaves them uncovered; the instance's own ports stay graded, as T1 keeps an OpenTitan unit's ports, and an excluded instance inside another is part of the outer one's internals | provenance: the same eleven files excluded the instance whole, with the annotation that the wrapper hierarchy stays visible, and design engineering reviewed them there; the ANNOTATION before each group names the file | an enrolled leaf that covers the object, or design engineering withdrawing the approval | design engineering + DV peer |
 
 The legacy files are not in this repository. The generator reads them from a
 directory given on the command line and records only the repository, commit
@@ -397,8 +399,10 @@ one graded run, is regenerated from each graded run, and `--check` compares it
 against the run it is given. Its docstring gives every rule. Most legacy objects
 belong to units the scope now drops at compile time or to blocks this build no
 longer has, and are not written. A legacy INSTANCE line with no object under
-it excludes a whole instance and states no object, so it is not carried;
-`--stats` counts those and every object that does not map, by reason.
+it excluded a whole instance; L2 carries it as that instance's internals, in
+`smc_legacy_children_exclusions.el` under the same report gate, and keeps the
+instance's ports graded. `--stats` counts every object that does not map, by
+reason, and what each L2 instance contributed.
 
     cd <dir> && urg -dir <run dir>/cov/merged.vdb -dump full_exclusions tgl+line+fsm+cond -report rep
     python3 hw/sys/smc/dv/cov/config/vcs/gen_smc_legacy_exclusions.py <legacy dir> <dir> \

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Write smc_legacy_exclusions.el from the archived tt-oca-hw SMC exclusion files.
+"""Write the L1 and L2 exclusion files from the archived tt-oca-hw SMC exclusion files.
 
 L1 LEGACY-DE-APPROVED carries one fact, a provenance: the SMC bench of the
 archived tt-oca-hw repository excluded these objects in the files LEGACY_FILES
@@ -50,9 +50,17 @@ an older bench under `smc_uvm_top.tt_smc`; this bench names it
 * every entry is written with the checksum, identifier and text the current
   template gives it, never the legacy file's.
 
-An INSTANCE line with no object under it, which excludes a whole instance, is
-not an object of any metric and is not carried; `--stats` counts those, and
-every object that does not map or that the run covers, by reason.
+L2 LEGACY-INSTANCE-CHILDREN carries the legacy INSTANCE lines with no object
+under them, each of which excluded a whole instance, into
+smc_legacy_children_exclusions.el: the instance keeps its own ports graded, the
+ports being the signals the report lists under Port Details, and every
+uncovered toggle bit and direction, line block, FSM state or transition and
+condition row of its internal signals and of every instance beneath it is
+written, under the same report gate. An excluded instance inside another is
+part of the outer one's internals, so only the outermost keeps its ports. A
+point L1 already writes is not repeated. `--stats` counts, by file and reason,
+every object that does not map or that the run covers, and what each L2
+instance contributed and the port half-toggles it kept graded.
 
     urg -full64 -dir <run dir>/cov/merged.vdb -dump full_exclusions tgl+line+fsm+cond \\
         -report <dir>
@@ -73,6 +81,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 OUT = HERE / "smc_legacy_exclusions.el"
+CHILDREN_OUT = HERE / "smc_legacy_children_exclusions.el"
 SCOPE_FILE = HERE / "smc_cov_scope.hier"
 
 LEGACY_REPO = "tt-oca-hw"
@@ -111,9 +120,22 @@ METRIC_OF = {
 DIRECTIONS = ("1to0", "0to1")
 
 
-def annotation(name: str) -> str:
+# L1 rows are owned by a legacy file name, L2 rows by the same name behind CHILDREN.
+CHILDREN = "L2:"
+OWNERS: tuple[str, ...] = LEGACY_FILES + tuple(CHILDREN + name for name in LEGACY_FILES)
+
+
+def annotation(owner: str) -> str:
+    if owner.startswith(CHILDREN):
+        return (
+            f'ANNOTATION: "SMC-L2-LEGACY-INSTANCE-CHILDREN: carried from {LEGACY_REPO} '
+            f"{owner[len(CHILDREN) :]} ({LEGACY_COMMIT}) whole-instance exclusion, reviewed with "
+            "design engineering in that repository; the instance's ports stay graded and its "
+            "internals are excluded while uncovered; retired when an enrolled leaf covers the "
+            'object or design engineering withdraws the approval"'
+        )
     return (
-        f'ANNOTATION: "SMC-L1-LEGACY-DE-APPROVED: carried from {LEGACY_REPO} {name} '
+        f'ANNOTATION: "SMC-L1-LEGACY-DE-APPROVED: carried from {LEGACY_REPO} {owner} '
         f"({LEGACY_COMMIT}), reviewed with design engineering in that repository; retired "
         'when an enrolled leaf covers the object or design engineering withdraws the approval"'
     )
@@ -411,6 +433,12 @@ class Report:
                         break
                     self.owner[(key[0], path.strip())] = key[2]
         self._toggles: dict[tuple[str, str], dict[str, dict[Bit, set[str]]]] = {}
+        self._ports: dict[tuple[str, str], set[str]] = {}
+
+    def ports(self, kind: str, scope: str, sc: Scope, db: Database) -> set[str]:
+        """The signals the report lists under Port Details for one scope."""
+        self.toggles(kind, scope, sc, db)
+        return self._ports.get((kind, scope), set())
 
     def lines(self, metric: str, kind: str, scope: str, sc: Scope, db: Database) -> list[str]:
         """The report section of one scope; an only instance reads its module's."""
@@ -434,7 +462,12 @@ class Report:
         if (kind, scope) in self._toggles:
             return self._toggles[(kind, scope)]
         rows: dict[str, list[tuple[str | None, str, str]]] = defaultdict(list)
+        ports: set[str] = set()
+        in_ports = False
         for line in self.lines("tgl", kind, scope, sc, db):
+            if line.startswith(("Port Details", "Signal Details")):
+                in_ports = line.startswith("Port Details")
+                continue
             p = line.split()
             if p[:3] == ["Other", "bits", "of"] and len(p) >= 7:
                 name, t10, t01, other = p[3], p[5], p[6], True
@@ -450,6 +483,9 @@ class Report:
                 base = base[: m.start()]
             if base in sc.signals:
                 rows[base].append((None if other else name[len(base) :], t10, t01))
+                if in_ports:
+                    ports.add(base)
+        self._ports[(kind, scope)] = ports
         out: dict[str, dict[Bit, set[str]]] = {}
         for name, entries in rows.items():
             dims = declared(name, sc.signals[name])
@@ -593,6 +629,9 @@ class Plan:
         default_factory=lambda: defaultdict(lambda: defaultdict(set))
     )
 
+    # Per L2 root: what it contributed, and the port half-toggles it keeps graded.
+    children: dict[str, Counter] = field(default_factory=lambda: defaultdict(Counter))
+
     def add(self, kind: str, scope: str, metric: str, name: str, entry: str) -> bool:
         key = (kind, scope, metric, entry)
         if key in self.owner:
@@ -718,14 +757,68 @@ class Builder:
                     continue
                 self.write(name, kind, scope, sc, "fsm", f"{header}\n{members[key]}")
 
-    def write(self, name: str, kind: str, scope: str, sc: Scope, metric: str, entry: str) -> None:
+    def children(self, name: str, root: str) -> None:
+        """L2: every uncovered point inside one instance, its own ports excepted."""
+        db, plan, report = self.db, self.plan, self.report
+        owner = CHILDREN + name
+        tally = plan.children[root]
+        scopes = [root] + sorted(p for p in db.instances if p.startswith(root + "."))
+        for path in scopes:
+            sc = db.instances[path]
+            kept = report.ports("INSTANCE", path, sc, db) if path == root else set()
+            if "tgl" in sc.checksum:
+                up = db.module_scope(sc, "tgl")
+                above = plan.toggles.get(("MODULE", up), {}) if up else {}
+                for signal, bits in report.toggles("INSTANCE", path, sc, db).items():
+                    if signal in kept:
+                        tally["port half-toggles kept uncovered"] += sum(
+                            len(d) for d in bits.values()
+                        )
+                        continue
+                    owned = plan.toggles[("INSTANCE", path)][signal]
+                    for b, dirs in bits.items():
+                        for d in dirs:
+                            if (b, d) in owned or (b, d) in above.get(signal, {}):
+                                continue
+                            owned[(b, d)] = owner
+                            tally["tgl half-toggles"] += 1
+            if path == root:
+                for signal in kept:
+                    n = len(bits_of(declared(signal, sc.signals[signal]), "") or ())
+                    tally["port half-toggles kept"] += 2 * n
+            if "line" in sc.checksum:
+                unexecuted = report.unexecuted_lines("INSTANCE", path, sc, db)
+                for entry in sc.order["line"]:
+                    if BLOCK.match(entry) and sc.line_of.get(entry) in unexecuted:
+                        tally["line"] += self.write(owner, "INSTANCE", path, sc, "line", entry)
+            if "fsm" in sc.checksum:
+                points = report.fsm_points("INSTANCE", path, sc, db)
+                for fsm, (header, members) in sc.fsms.items():
+                    for key, member in members.items():
+                        if key in points.get(fsm, set()):
+                            entry = f"{header}\n{member}"
+                            tally["fsm"] += self.write(owner, "INSTANCE", path, sc, "fsm", entry)
+            if "cond" in sc.checksum:
+                rows = report.cond_rows("INSTANCE", path, sc, db)
+                for entry in sc.order["cond"]:
+                    m = COND.match(entry)
+                    if (
+                        m
+                        and m.group(5) is not None
+                        and rows.get((sc.line_of.get(entry), m.group(5)))
+                    ):
+                        tally["cond"] += self.write(owner, "INSTANCE", path, sc, "cond", entry)
+
+    def write(self, name: str, kind: str, scope: str, sc: Scope, metric: str, entry: str) -> bool:
         plan = self.plan
         if kind == "INSTANCE":
             up = self.db.module_scope(sc, metric)
             if up and ("MODULE", up, metric, entry) in plan.owner:
-                return
+                return False
         if plan.add(kind, scope, metric, name, entry):
             plan.stats[f"{name}\t{metric}\tentries"] += 1
+            return True
+        return False
 
 
 def legacy_sections(legacy_dir: Path) -> list[tuple[str, Section]]:
@@ -755,6 +848,17 @@ def build(legacy_dir: Path, db: Database, report: Report) -> Plan:
     for name, sec in sections:
         if sec.kind == "INSTANCE":
             builder.section(name, sec)
+    # L2 after every L1 object, so a point either class names is written once, as L1.
+    # An excluded instance inside another is part of the outer one's internals.
+    whole: dict[str, str] = {}
+    for name, sec in sections:
+        if sec.kind == "INSTANCE" and not sec.items:
+            path, _ = db.instance(sec.scope, sec.module)
+            if path:
+                whole.setdefault(path, name)
+    for path, name in sorted(whole.items()):
+        if not any(path.startswith(other + ".") for other in whole):
+            builder.children(name, path)
     return builder.plan
 
 
@@ -795,12 +899,24 @@ def toggle_rows(signal: str, signature: str, owned: dict[Bit, set[str]]) -> list
     return out
 
 
-def render(plan: Plan, db: Database) -> tuple[str, Counter]:
+L1_TEXT = ("// it and that run leaves it uncovered, with the template's checksum and text.",)
+L2_TEXT = (
+    "// it and that run leaves it uncovered, with the template's checksum and text.",
+    "// This file holds the whole-instance exclusions of those files: each instance",
+    "// keeps its own ports graded, and its internal signals and every instance",
+    "// beneath it are excluded while uncovered. An excluded instance inside another",
+    "// is part of the outer one's internals.",
+)
+
+
+def render(
+    plan: Plan, db: Database, owners: tuple[str, ...], title: str, text: tuple[str, ...]
+) -> tuple[str, Counter]:
     out = [
         "// SPDX-License-Identifier: Apache-2.0",
         "// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.",
         "//==================================================",
-        "// SMC VCS coverage exclusions -- L1 LEGACY-DE-APPROVED.",
+        f"// SMC VCS coverage exclusions -- {title}.",
         "// Format Version: 2",
         "// ExclMode: default",
         "//",
@@ -811,7 +927,7 @@ def render(plan: Plan, db: Database) -> tuple[str, Counter]:
         *(f"//   {name}" for name in LEGACY_FILES),
         "// Design engineering reviewed those files in that repository. Each object is",
         "// mapped onto this bench's hierarchy and written only where the database holds",
-        "// it and that run leaves it uncovered, with the template's checksum and text.",
+        *text,
         "// Regenerate from each graded run rather than edit. README.md states the",
         "// class; the ANNOTATION before each group names the legacy file.",
         "//==================================================",
@@ -826,7 +942,7 @@ def render(plan: Plan, db: Database) -> tuple[str, Counter]:
             if m:
                 order.setdefault(m.group(2), i)
         body: list[str] = []
-        for name in LEGACY_FILES:
+        for name in owners:
             rows: list[str] = []
             for signal in sorted(signals, key=lambda s: (order.get(s, 1 << 30), s)):
                 owned: dict[Bit, set[str]] = defaultdict(set)
@@ -845,7 +961,7 @@ def render(plan: Plan, db: Database) -> tuple[str, Counter]:
         sc = (db.modules if kind == "MODULE" else db.instances)[scope]
         order = sc.order[metric]
         body = []
-        for name in LEGACY_FILES:
+        for name in owners:
             if name not in files:
                 continue
             body.append(annotation(name))
@@ -863,7 +979,8 @@ def render(plan: Plan, db: Database) -> tuple[str, Counter]:
                     body.append(member)
             else:
                 body += rows
-        blocks.append(((kind, scope, metric), body))
+        if body:
+            blocks.append(((kind, scope, metric), body))
     for (kind, scope, metric), body in sorted(blocks, key=lambda b: (b[0][2], b[0][0], b[0][1])):
         sc = (db.modules if kind == "MODULE" else db.instances)[scope]
         out += ["", f"CHECKSUM: {sc.checksum[metric]}", f"{kind}: {scope}", *body]
@@ -882,7 +999,14 @@ def main() -> int:
     args = ap.parse_args()
     db = Database(args.template_dir)
     plan = build(args.legacy_dir, db, Report(args.modinfo))
-    text, counts = render(plan, db)
+    l2 = tuple(CHILDREN + name for name in LEGACY_FILES)
+    outputs = [
+        (OUT, *render(plan, db, LEGACY_FILES, "L1 LEGACY-DE-APPROVED", L1_TEXT)),
+        (CHILDREN_OUT, *render(plan, db, l2, "L2 LEGACY-INSTANCE-CHILDREN", L2_TEXT)),
+    ]
+    counts = Counter()
+    for path, _, c in outputs:
+        counts.update({f"{path.name} {k}": v for k, v in c.items()})
     if args.stats:
         covered = sum(len(v) for s in plan.covered.values() for v in s.values())
         args.stats.write_text(
@@ -892,19 +1016,25 @@ def main() -> int:
                     "unmapped": plan.unmapped,
                     "written": dict(counts),
                     "tgl covered half-toggles": covered,
+                    "children": {root: dict(c) for root, c in sorted(plan.children.items())},
                 },
                 indent=1,
                 sort_keys=True,
             )
         )
     if args.check:
-        if not OUT.is_file() or OUT.read_text() != text:
-            print(f"{OUT} is stale for this run; rerun without --check", file=sys.stderr)
+        stale = [
+            path for path, text, _ in outputs if not path.is_file() or path.read_text() != text
+        ]
+        for path in stale:
+            print(f"{path} is stale for this run; rerun without --check", file=sys.stderr)
+        if stale:
             return 1
-        print(f"{OUT} is current")
+        print(" and ".join(path.name for path, _, _ in outputs) + " are current")
         return 0
-    OUT.write_text(text)
-    print(f"wrote {OUT.name}: " + ", ".join(f"{k} {v}" for k, v in sorted(counts.items())))
+    for path, text, _ in outputs:
+        path.write_text(text)
+    print("wrote " + ", ".join(f"{k} {v}" for k, v in sorted(counts.items())))
     return 0
 
 
