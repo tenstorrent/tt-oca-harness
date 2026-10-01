@@ -82,6 +82,12 @@ string. The fixed order on this string is: PTAP, I/O STAP (if
 `JTAG_STAP_IO_ENABLE=1`), SMC debug STAP (if `JTAG_SMC_DBG_ENABLE=1`), SEP
 debug STAP (if `SEP=1` in the SMU), extra STAP[N-1:0], and return to PTAP.
 
+The string carries scans only while the PTAP 3DCR select bit is set. While the
+bit is clear, the scan-control strobes to every STAP stay low, so the STAP SIBs,
+3DCRs and any downstream TAPs hold their state through every PTAP scan. The
+select bit updates at Update-DR, so it is set in a TAP_3DCR scan of its own
+before a scan that opens STAP SIBs or writes STAP 3DCRs.
+
 Both the SMC and SEP debug STAP host interfaces are internal to the SMU and are
 not exported on the SMU boundary. The SMU wires the SMC debug STAP host outputs
 to the SMC CPU/system JTAG ports (`smc_cpu_jtag_*`) when

@@ -134,6 +134,8 @@ module jtag_intf_unit
 ) (
   input  logic clk_i,                   // System clock for the JTAG2AXI bridges.
   input  logic rst_n_i,                 // Active-low system reset for the JTAG2AXI bridges.
+  input  logic test_en_i,               // DFT test-mode enable, active-high, for the JTAG2AXI
+                                        // bridges.
 
   input  logic pwr_on_rst_ni,           // Active-low power-on reset, ANDed with TRST for the PTAP
                                         // and STAPs; sets the dbg_disable_i synchronizers to
@@ -149,7 +151,7 @@ module jtag_intf_unit
   input  logic            ptap_client_tdi_i,  // PTAP client serial test data input.
   output logic            ptap_client_tdo_o,  // PTAP client serial test data output, retimed on the
                                               // falling TCK edge except during a ZERO_LENGTH_BYPASS
-                                              // DR shift.
+                                              // DR shift with the PTAP 3DCR STAP-select bit clear.
   output logic            ptap_client_tdo_oen_o,  // PTAP client TDO output enable, active-high
                                                   // during Shift-IR and Shift-DR.
 
@@ -410,6 +412,7 @@ module jtag_intf_unit
     // System clock and reset (for jtag2axi modules)
     .clk_i                          (clk_i),
     .rst_n_i                        (rst_n_i),
+    .test_en_i                      (test_en_i),
 
     // Power-on reset (for JTAG logic)
     .pwr_on_rst_ni                  (pwr_on_rst_ni),
@@ -559,7 +562,7 @@ module jtag_intf_unit
       jtag_stap #(
         .SCAN_IN_PIPE        (0),
         .TDI_LOCKUP          (0),  // No lockup latch needed for on-chip connections
-        .SCAN_OUT_LOCKUP     (NUM_EXTRA_STAPS-1),
+        .SCAN_OUT_LOCKUP     (0),
         .jtag_scan_ctrl_t    (jtag_scan_ctrl_t),
         .jtag_tap_ctrl_t     (jtag_tap_ctrl_t)
       ) u_stap_extra (

@@ -32,13 +32,13 @@
  *     scratch7  SMC_GO           local 0xC00390B8  ext_in-global 0x020390B8
  *     scratch8  route data       local 0xC00390C0  ext_in-global 0x020390C0
  *     scratch9  ROUTE_DONE_SMC   local 0xC00390C8  ext_in-global 0x020390C8
- *     scratch10 SMU016_SMC_PASS  local 0xC00390D0  (0x000390D0 is the SMU
+ *     scratch10 EXTAXI_SMC_PASS  local 0xC00390D0  (0x000390D0 is the SMU
  *               post-remap monitor form of the same register; the SMC firmware
  *               writes its LOCAL register 0xC00390D0 per smc_top_regs.h.)
  *   SEP cold scratch (SEP-local base 0x10802000, 8-byte stride). The ext_in-global form is
  *   sep_global_base + local (0x04000000 + 0x108020xx = 0x148020xx); the SEP inbound
  *   axi_window_remap (target_base=0) subtracts sep_global_base back to the local register.
- *   (cold6 SMU016_SEP_PASS is SEP-local only -- the SEP writes it, DV reads it backdoor --
+ *   (cold6 EXTAXI_SEP_PASS is SEP-local only -- the SEP writes it, DV reads it backdoor --
  *    so it needs no ext_in-global form.):
  *     cold0     route data       local 0x10802000  ext_in-global 0x14802000
  *     cold4     SEP_READY        local 0x10802020  ext_in-global 0x14802020

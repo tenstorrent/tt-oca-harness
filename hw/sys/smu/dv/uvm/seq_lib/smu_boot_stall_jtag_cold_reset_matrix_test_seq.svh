@@ -31,8 +31,7 @@
 //   S8 the override forced low while the pad still drives 1 opens the gate:
 //      the SMC combines the two as ovrd ? jtag_val : pad
 //      (CHK-STALL-OVRD-MASKS-PAD);
-//   TIMEOUT the bounded-wait inventory (CHK-TIMEOUT-PATHS) and the ordered
-//      step fence (CHK-NONVAC).
+//   TIMEOUT the bounded-wait inventory (CHK-TIMEOUT-PATHS).
 //
 // Independently, the always-on scoreboard's debug_control_tdr feature
 // predicts the capture of every DEBUG_CONTROL scan from the register shadow

@@ -55,7 +55,7 @@ branch 75.9, expression 69.0 effective) |`--coverage-line`, `--coverage-expr`
 |===
 
 The coverage set is `--dut smc --items hosted fw`: the package regression
-`all` less the three `dual` leaves, whose second build target the coverage
+`all` less the three `sanity` leaves, whose second build target the coverage
 merge cannot combine with `default` (SEP names its set the same way, `all`
 less `rom_fw`). `hosted` alone is the toolchain-free nightly and weekly tier
 (`regress.yml`); the fw leaves need the RISC-V toolchain, so the run of record

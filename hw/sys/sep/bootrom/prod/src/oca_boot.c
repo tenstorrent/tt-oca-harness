@@ -250,7 +250,9 @@ static uint32_t try_manifest_slot(uint32_t src_addr, bool from_spi, int64_t regi
     }
     simputshex32("OCA_BODY=", (uint32_t)pk.body_size);
 
-    if (pk.body_size > SRAM_SIZE) {
+    // SEP_SRAM_USABLE_SIZE, not SRAM_SIZE: the top of SRAM holds sep_dma_zero()'s
+    // fill word, which the CPU rewrites before every fill.
+    if (pk.body_size > SEP_SRAM_USABLE_SIZE) {
         return OCA_BOOT_ERR_STAGE_OVERFLOW;
     }
 
@@ -330,7 +332,7 @@ static uint32_t try_manifest_slot(uint32_t src_addr, bool from_spi, int64_t regi
 
     // Stage the payload immediately after the body, 8-byte aligned.
     uint32_t payload_off = ((uint32_t)pk.body_size + 7u) & ~7u;
-    if (payload_span > (size_t)(SRAM_SIZE - payload_off)) {
+    if (payload_span > (size_t)(SEP_SRAM_USABLE_SIZE - payload_off)) {
         simputs("PAYLOAD_TOO_LARGE\n");
         return OCA_BOOT_ERR_STAGE_OVERFLOW;
     }

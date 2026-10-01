@@ -70,7 +70,7 @@ endif::backend-html5[]
 |`smc_fuse_sense_done_o` |`logic` |Output |1 |Fuse sense completion output. |eFuse controller → Memory repair logic |N/A
 |`smc_fuse_reset_n_delayed_o` |`logic` |Output |1 |Delayed fuse reset output (after 16 pipeline stages). |eFuse controller → External systems |N/A
 |`skip_mem_repair_o` |`logic` |Output |1 |Skip memory repair output. |Reset Unit → Memory repair logic |N/A
-|`ext_boot_seq_done_i` |`logic` |Input |1 |External boot sequence completion input (memory repair and shadow register override done); gates reset release. |External boot/repair controller → eFuse controller |N/A
+|`ext_boot_seq_done_i` |`logic` |Input |1 |Asynchronous external boot sequence completion (memory repair and shadow register override done). Qualified in `smc_peripherals` and routed to the SMC and SEP eFuse controllers. |External boot/repair controller → SMC peripherals |N/A
 |`lc_state_i` |`logic` |Input |`[2*LC_STATE_WIDTH-1:0]` (8 bits) |Lifecycle state input, differentially encoded. |Lifecycle controller → SMC Internal Registers |From SEP; tie to 8'hf0 if unused (encoded TEST_DEV)
 |`smc_ext_mailbox_interrupts_o` |`logic` |Output |`[NUM_MAILBOXES-1:0]` |External mailbox interrupt outputs (32 interrupts, mapped to IDs 156-187). |Mailbox controller → External targets |N/A
 |`cfg_flr_pf_active_i` |`logic` |Input |1 |Function Level Reset (FLR) PF active signal. |PCIe/System → Reset Unit |N/A, tie to '0 if unused

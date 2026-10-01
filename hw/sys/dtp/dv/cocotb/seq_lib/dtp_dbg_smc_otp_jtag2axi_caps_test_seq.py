@@ -14,9 +14,7 @@ class dtp_dbg_smc_otp_jtag2axi_caps_test_seq(dtp_debug_tdr_base_test_seq):
 
     async def body(self) -> None:
         self.log_banner("SMC_OTP_JTAG2AXI_CAPS")
-        await self.attach_family_checker(
-            {"CHK-TAP-RESET-TLR", "CHK-CAPS", "CHK-CAPS-RO"}, use_monitor=False
-        )
+        await self.attach_family_checker({"CHK-TAP-RESET-TLR", "CHK-CAPS", "CHK-CAPS-RO"})
 
         self.log_step(1, "Reset TAP before reading SMC_OTP_JTAG2AXI_CAPS")
         await self.reset_to_tlr()

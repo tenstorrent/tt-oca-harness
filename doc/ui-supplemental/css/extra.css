@@ -309,11 +309,6 @@
 .doc h5 { font-size: 1.1em; }
 .doc h6 { font-size: 1em; }
 
-.doc .block-references {
-    font-size: 0.85em;
-    color: var(--oca-text);
-}
-
 /* Body copy */
 .doc {
     font-family: var(--oca-font-body);

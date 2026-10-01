@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 `ifndef TRACE_MEM_PKG_SVH
 `define TRACE_MEM_PKG_SVH
 

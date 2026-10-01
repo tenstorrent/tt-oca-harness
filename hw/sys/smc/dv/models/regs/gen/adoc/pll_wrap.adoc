@@ -18,10 +18,10 @@ Adopter clock-control placeholder reserving the PLL map slot; no CSRs are modele
 [cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description
-| 0x0 - 0xEE4 | <<reg-{regmap-instance}-pll_wrap-footprint-mem_array-0-,mem_array[954]>> | R a| -
+| 0x0 - 0xEE4 | <<reg-{regmap-instance}-pll_wrap-footprint-mem_array-,mem_array[954]>> | R a| -
 |===
 
-[#reg-{regmap-instance}-pll_wrap-footprint-mem_array-0-]
+[#reg-{regmap-instance}-pll_wrap-footprint-mem_array-]
 === mem_array[954]
 
 [cols="1,3,1,1,6", options="header"]

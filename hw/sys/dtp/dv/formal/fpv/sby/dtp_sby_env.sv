@@ -25,6 +25,7 @@ module dtp_sby_env #(
   input logic pwr_on_rst_ni,
   input logic rst_ni,
   input logic scan_rst_ni,
+  input logic test_en_i,
   // Return data of the external scan chains and of the downstream TAPs
   input logic stap_scan_in_i,
   input logic bsr_scan_in_i,
@@ -47,6 +48,7 @@ module dtp_sby_env #(
     asm_env_resets_asserted : assume (released_q || !(trst_ni || pwr_on_rst_ni || rst_ni));
     asm_env_resets_released : assume (!released_q || (trst_ni && pwr_on_rst_ni && rst_ni));
     asm_env_scan_reset_inactive : assume (scan_rst_ni);
+    asm_env_test_mode_inactive : assume (!test_en_i);
   end
 
   logic [NumReturns-1:0] returns, returns_at_posedge_q;
@@ -88,6 +90,7 @@ bind dtp dtp_sby_env #(
   .pwr_on_rst_ni        (pwr_on_rst_ni),
   .rst_ni               (rst_n_i),
   .scan_rst_ni          (scan_rst_ni),
+  .test_en_i            (test_en_i),
   .stap_scan_in_i       (jtag_stap_host_scan_in_i),
   .bsr_scan_in_i        (jtag_bsr_host_scan_in_i),
   .dfd_scan_in_i        (jtag_dfd_host_scan_in_i),

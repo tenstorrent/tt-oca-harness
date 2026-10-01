@@ -2,9 +2,11 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[i3ccore-wrap-memory-map]]
-== Memory Map
+== Memory Map and Register Reference
 
-=== Integration Limits
+=== Memory Map
+
+==== Integration Limits
 
 The SoC Management Interface header at `0x300` reports `CAP_LENGTH = 0x1A`
 DWORDs. This is inconsistent with the next capability header at `0x398`: the

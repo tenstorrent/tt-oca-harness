@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-= Memory Map
+= Memory Map and Register Reference
 :description: SMC address-space organization, access control, and register reference.
 
 [[smc-memory-map]]
+
+== Memory Map
 
 This section provides a comprehensive overview of the SMC memory map.
 The SMC address space is organized to provide access to various
@@ -32,7 +34,7 @@ SMC Address Map Integration
 endif::backend-pdf[]
 section of the Integration Guide.
 
-== Address Space Organization
+=== Address Space Organization
 
 The generated component map reports each allocated aperture separately from
 the extent occupied by registers.
@@ -63,12 +65,7 @@ An address inside neither the local nor the global aperture answers `DECERR`
 to reads and writes. The M-mode and Xvisor remap regions forward accesses from
 SMC initiators only; an access to them from the inbound port answers `DECERR`.
 
-== Detailed Address Map
-
-The component-level assignments are generated in the preceding table. This
-avoids a second list of addresses drifting from the implemented decode.
-
-== AXI-Lite External Window
+=== AXI-Lite External Window
 
 The `smc_external` window at `BASE + 0x040_0000` is the adopter extension
 window. OCAH exposes this AXI-Lite bus so an adopter can attach their own
@@ -111,29 +108,7 @@ unclaimed accesses in this region with a DECERR response via the
 `prim_axi_lite_err_slv` helper; this is one integration choice, not a
 requirement.
 
-=== External Window Reference Maps
-
-The PLL and PVT maps below describe placeholder memory footprints used by the
-open verification models. Their memory words do not specify the control
-registers of an adopter's clock or sensor implementation. The straps map
-describes captured GPIO values. Placement of these blocks within the external
-window is integration-specific.
-
-ifdef::backend-html5[]
-++++
-include::partial$smc/dv/models/regs/gen/html/pll_wrap.html[]
-include::partial$smc/dv/models/regs/gen/html/pvt_wrap.html[]
-include::partial$smc/regs/gen/html/blocks/straps.html[]
-++++
-endif::backend-html5[]
-
-ifdef::backend-pdf[]
-include::../dv/models/regs/gen/adoc/pll_wrap.adoc[leveloffset=+2]
-include::../dv/models/regs/gen/adoc/pvt_wrap.adoc[leveloffset=+2]
-include::../regs/gen/adoc/blocks/straps.adoc[leveloffset=+2]
-endif::backend-pdf[]
-
-== Register Interface Standards
+=== Register Interface Standards
 
 All SMC components use standard AMBA interfaces. We summarize the
 interfaces in <<smc-register-interface-standards-table>>:
@@ -162,7 +137,7 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
-== Access Control and Security
+=== Access Control and Security
 
 <<smc-access-control-mechanisms-table>> summarises the SMC access-control mechanisms.
 
@@ -182,7 +157,45 @@ privileges
 reporting
 |=======================================================================
 
+== Detailed Register Map
+
+ifdef::backend-html5[]
+++++
+<span id="preamble"></span>
+<span id="detailed-address-map"></span>
+<span id="component-specific-register-documentation"></span>
+++++
+endif::backend-html5[]
+
+=== External Window Reference Maps
+
+The PLL and PVT maps below describe placeholder memory footprints used by the
+open verification models. Their memory words do not specify the control
+registers of an adopter's clock or sensor implementation. The straps map
+describes captured GPIO values. Placement of these blocks within the external
+window is integration-specific.
+
+ifdef::backend-html5[]
+++++
+include::partial$smc/dv/models/regs/gen/html/pll_wrap.html[]
+include::partial$smc/dv/models/regs/gen/html/pvt_wrap.html[]
+include::partial$smc/regs/gen/html/blocks/straps.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../dv/models/regs/gen/adoc/pll_wrap.adoc[leveloffset=+2]
+include::../dv/models/regs/gen/adoc/pvt_wrap.adoc[leveloffset=+2]
+include::../regs/gen/adoc/blocks/straps.adoc[leveloffset=+2]
+endif::backend-pdf[]
+
 == Spare SMC Register Blocks
+
+ifdef::backend-html5[]
+++++
+<span id="spare-smc-register-blocks"></span>
+++++
+endif::backend-html5[]
 
 The following shows the detailed register map of a set of
 programmer-visible spare SMC blocks. They are spare but essential: for
@@ -225,7 +238,7 @@ include::../regs/gen/adoc/blocks/dfx_ctrl_status.adoc[leveloffset=+2]
 include::../regs/gen/adoc/blocks/gpio_poc_pbias_ctrl.adoc[leveloffset=+2]
 endif::backend-pdf[]
 
-== Component-Specific Register Documentation
+=== Component Register References
 
 For detailed register-level documentation of each SMC component, refer
 to the individual component documentation (<<smc-component-documentation-table>>).

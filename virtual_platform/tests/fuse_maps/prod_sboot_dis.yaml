@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# PROD lifecycle, secure boot DISABLED (sboot_dis = 1) — the base efuse_vp.ini default.
+lc_state: PROD
+sboot_dis: 1
+locks_lo: 0xA800

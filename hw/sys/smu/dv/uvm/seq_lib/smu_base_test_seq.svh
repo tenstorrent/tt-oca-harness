@@ -20,7 +20,7 @@
 // (TCK-stepped or clock polled) that record one TIMEOUT-PATH line each with
 // a finite bound and the last state seen, the TRST, power-good and
 // cold-reset controls with the re-bring-up wait a reset needs before the
-// next pass, ordered step marks for the non-vacuity fence, the scoreboard
+// next pass, the STEP marks of the scenario's log, the scoreboard
 // activity floor, and the per-pass named evidence (CHK-*) through the
 // protocol-neutral ocah_checker, attached with the scenario's required IDs
 // and finalized after the scenario so a silently skipped check cannot
@@ -72,9 +72,6 @@ class smu_base_test_seq extends ocah_sequence;
   // count that expired (an expiry is also an error at the site).
   protected string       m_timeout_paths[$];
   protected int unsigned m_timeouts_expired;
-  // Ordered step marks (simulation time) for the non-vacuity fence.
-  protected string       m_step_order[$];
-  protected realtime     m_step_time[string];
   // Scoreboard activity floor: feature -> minimum comparisons this pass adds.
   protected int unsigned m_min_activity[string];
   protected int unsigned m_activity_baseline[string];
@@ -97,8 +94,6 @@ class smu_base_test_seq extends ocah_sequence;
     m_check.required_ids = required_ids;
     m_timeout_paths.delete();
     m_timeouts_expired = 0;
-    m_step_order.delete();
-    m_step_time.delete();
     m_min_activity.delete();
     m_activity_baseline.delete();
   endfunction
@@ -191,15 +186,7 @@ class smu_base_test_seq extends ocah_sequence;
 
   // Mark the start of a scenario step (cocotb STEP <id> parity).
   function void mark_step(string step_id, string detail);
-    m_step_order.push_back(step_id);
-    m_step_time[step_id] = $realtime;
     log_step(step_id, detail);
-  endfunction
-
-  function realtime step_time(string step_id);
-    if (!m_step_time.exists(step_id))
-      `uvm_fatal(get_type_name(), $sformatf("step %s was never marked", step_id))
-    return m_step_time[step_id];
   endfunction
 
   function int unsigned timeout_path_count();

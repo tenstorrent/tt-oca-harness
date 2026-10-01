@@ -19,7 +19,7 @@ import os
 import cocotb
 from cocotb.triggers import RisingEdge
 
-from seq_lib.sep_fw_common import addr_of, load_syms
+from seq_lib.sep_fw_common import addr_of, load_syms, sep_boot_order_from_hw
 
 SEP_BOOT_ROM_BASE = 0x1004_0000
 SEP_BOOT_ROM_END = 0x1005_0000
@@ -79,7 +79,19 @@ class SmuSepBootHealthSeq:
         first_pass = None
         pass_seen = False
         fail_seen = False
-        first_pc = None
+        # Seeded from the wrapper's first-cycle capture: a first retirement in
+        # the boot ROM followed by an ICCM fetch places both before this loop.
+        first_pc, hw_boot_rom, hw_iccm = sep_boot_order_from_hw(
+            self.dut, lambda s, n: self.test.read_int(s, n, allow_xz=True)
+        )
+        if (
+            hw_boot_rom
+            and first_pc is not None
+            and SEP_BOOT_ROM_BASE <= first_pc < SEP_BOOT_ROM_END
+        ):
+            first_boot_rom = -2
+        if hw_iccm:
+            first_iccm = -1
         traces = 0
         pcs: set[int] = set()
 

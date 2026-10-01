@@ -5,9 +5,11 @@
 // instruction: its Update-IR turns test-mode persistence on, its data
 // register is the one-bit bypass (CHK-BYPASS-DELAY), and TMP_STATUS bit 1
 // reads the persistence back (CHK-TMP-PERSIST). For each directed/random
-// preload pattern the persistence must survive an instruction switch to
-// BYPASS and CLAMP_RELEASE must clear it; a final TAP reset must leave it
-// clear. Mirrors the cocotb dtp_jtag_clamp_hold_test_seq.
+// preload pattern the persistence must be off before CLAMP_HOLD, survive an
+// instruction switch to BYPASS, and clear on CLAMP_RELEASE; after the sweep
+// CLAMP_HOLD's persistence must survive five TMS-high clocks into
+// Test-Logic-Reset and clear on a TRST reset. Mirrors the cocotb
+// dtp_jtag_clamp_hold_test_seq.
 
 class dtp_jtag_clamp_hold_test_seq extends dtp_jtag_base_test_seq;
   `uvm_object_utils(dtp_jtag_clamp_hold_test_seq)
@@ -28,6 +30,7 @@ class dtp_jtag_clamp_hold_test_seq extends dtp_jtag_base_test_seq;
   // clears it.
   protected task check_clamp_hold_cycle(bit [63:0] pattern);
     check_loopback_scan(6'(SAMPLE_PRELOAD_INSTR), pattern, DtpBsrModelLen);
+    check_persistence("before CLAMP_HOLD", 1'b0);
     check_bypass_delay(6'(CLAMP_HOLD_INSTR), random_pattern(64));
     check_persistence("CLAMP_HOLD", 1'b1);
     load_ir(6'(BYPASS_INSTR));
@@ -54,9 +57,16 @@ class dtp_jtag_clamp_hold_test_seq extends dtp_jtag_base_test_seq;
       check_clamp_hold_cycle(patterns[p]);
     end
 
-    // TAP reset must leave TMP persistence clear.
+    // Persistence survives a TMS-driven Test-Logic-Reset; a TRST reset
+    // clears it.
+    load_ir(6'(CLAMP_HOLD_INSTR));
+    check_persistence("CLAMP_HOLD before Test-Logic-Reset", 1'b1);
+    goto_tlr_via_tms();
+    step(1'b0);
+    check_state(RUN_TEST_IDLE, "jtag_clamp_hold_chk", "after TLR->RTI step");
+    check_persistence("after five TMS-high clocks", 1'b1);
     reset_to_tlr();
-    check_persistence("TAP reset", 1'b0);
+    check_persistence("TRST from Persistence-On", 1'b0);
 
     finalize_family_checker();
   endtask

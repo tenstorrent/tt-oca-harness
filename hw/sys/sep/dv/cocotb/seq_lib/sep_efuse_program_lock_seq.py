@@ -3,13 +3,14 @@
 """eFuse program x write-lock matrix config (spare/test field only).
 
 Every invocation walks unlocked-program then write-lock-reject on **each** of
-SPARE0..SPARE7, in order. Never LC_STATE. Lock slot n owns write-lock at bit 2n
+SPARE0..SPARE8, in order. Never LC_STATE. Lock slot n owns write-lock at bit 2n
 of the 96-bit LOCKS+LOCKS_SPARE vector (``hw/sys/sep/doc/otp_fuse_controller.adoc``:
 ``LOCKS`` slots 0–31, ``LOCKS_SPARE`` slots 32–40). Spare k is slot 32+k, so
 its write-lock is OTP bit (32+k)*2. The same slot map lives in
-``env/sep_locked_field_irq.py``.
+``env/sep_locked_field_irq.py``, which takes the spare count from the generated
+eFuse map.
 
-Walking all eight is what makes the slot numbering falsifiable. Selecting one
+Walking all nine is what makes the slot numbering falsifiable. Selecting one
 spare per seed samples the lane instead: a lock bit wired to the wrong slot is
 caught only on the run that happens to draw that spare, and reseeding widens the
 sample without ever guaranteeing the set. Ordering the walk also makes it a
@@ -90,9 +91,12 @@ class SepEfuseProgramLockCfg:
 def _selftest() -> None:
     assert spare_write_lock_bit(0) == 64
     assert spare_write_lock_bit(7) == 78
+    # Slot 40, the last LOCKS_SPARE slot in otp_fuse_controller.adoc.
+    assert spare_write_lock_bit(8) == 80
     fld = SepEfuseImage.field("SPARE0")
     assert field_bit_addr("SPARE0", 0) == fld.word * 32
     cfg = SepEfuseProgramLockCfg(1)
+    assert SPARE_COUNT == 9, f"walk covers {SPARE_COUNT} spares, spec gives SPARE0..SPARE8"
     # Every spare is visited, whatever the seed -- that is the point of the walk.
     assert [c.spare_idx for c in cfg.cells] == list(range(SPARE_COUNT))
     assert cfg.fields == [f"SPARE{i}" for i in range(SPARE_COUNT)]

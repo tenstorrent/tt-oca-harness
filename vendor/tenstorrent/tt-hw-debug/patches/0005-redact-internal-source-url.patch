@@ -1,0 +1,26 @@
+Redact an internal Tenstorrent GitLab URL from a source comment
+
+trace_axi_master.sv carried a comment citing the internal Tenstorrent GitLab
+mirror it was adapted from (hostname and repo path), plus an internal
+engineer's first name. Neither belongs in a public repository. The comment is
+reworded to keep the useful provenance note (this file derives from CVA6's
+corev_apu/clint/axi_lite_interface.sv) without the internal hostname or the
+personal attribution.
+
+diff --git a/rtl/trace/trace_axi_master.sv b/rtl/trace/trace_axi_master.sv
+index 6fffdaa0f..096884dfe 100644
+--- a/rtl/trace/trace_axi_master.sv
++++ b/rtl/trace/trace_axi_master.sv
+@@ -13,8 +13,10 @@
+ // Description: AXI Lite compatible interface
+ //
+ 
+-// Louis notes:
+-// This file is modified upon open source file: https://aus-gitlab.local.tenstorrent.com/riscv/forks/cva6/-/blob/master/corev_apu/clint/axi_lite_interface.sv
++// Notes:
++// This file is modified from the open-source corev_apu/clint/axi_lite_interface.sv
++// module in the CVA6 project (via an internal Tenstorrent fork; internal source
++// location omitted for public release).
+ // It is used as an AXI slave interface, it does:
+ 
+ // This open source module is used as an AXI master module, it does:

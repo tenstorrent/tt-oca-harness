@@ -6,19 +6,20 @@ TRST_N is asynchronous: the TAP is in Test-Logic-Reset as soon as the pin is
 low, before any TCK edge, and stays there through TCK cycles with TMS low,
 which would otherwise leave Test-Logic-Reset. After release a single TMS-low
 step reaches Run-Test/Idle and a DR scan with no instruction load reads the
-device-identification register the reset selected.
+device-identification register the reset selected over the instruction loaded
+before it. Every comparison lands as named ``CHK-*`` evidence through the
+family checker, finalized once per pass.
 """
 
 from __future__ import annotations
 
 import random
 
-import cocotb
 from env.dtp_tap_device import DTP_DEFAULT_IDCODE
-from env.dtp_types import DtpJtagInstr, DtpTapState
+from env.dtp_types import DtpTapState
 from ocah_jtag_vip import OcahJtagChecker
 
-from .dtp_jtag_base_test_seq import dtp_jtag_base_test_seq
+from .dtp_jtag_base_test_seq import NON_IDCODE_PRELOADS, dtp_jtag_base_test_seq
 
 IDCODE_MASK = 0xFFFF_FFFF
 
@@ -34,7 +35,7 @@ class dtp_jtag_trst_test_seq(dtp_jtag_base_test_seq):
     ) -> tuple[int, bool]:
         """From ``state``, assert TRST_N, judge the reset, release, and read IDCODE."""
         await self.reset_to_tlr()
-        await self.load_ir(rng.choice([DtpJtagInstr.BYPASS_3F, DtpJtagInstr.IDCODE]))
+        await self.load_ir(rng.choice(NON_IDCODE_PRELOADS))
         await self.goto_tap_state(state)
 
         cycles = rng.randint(2, 8)
@@ -55,20 +56,19 @@ class dtp_jtag_trst_test_seq(dtp_jtag_base_test_seq):
 
         await self.tms_expect(0, DtpTapState.RUN_TEST_IDLE)
         idcode = await self.shift_dr(0, 32)
-        checker.expect_equal(
+        self.family_check(
             "CHK-IDCODE-RAW",
+            "DR scan with no IR load after TRST release",
             idcode.result & IDCODE_MASK,
             DTP_DEFAULT_IDCODE,
-            context=f"DR scan with no IR load after TRST release {context}",
+            context=context,
         )
         return cycles, (idcode.result & IDCODE_MASK) == DTP_DEFAULT_IDCODE
 
     async def body(self) -> None:
         rng = self.rng("trst")
-        checker = OcahJtagChecker(
-            name=f"{self.get_name()}.checker",
-            logger=cocotb.log,
-            required_ids={
+        checker = await self.attach_family_checker(
+            {
                 "CHK-TAP-RESET-TLR",
                 "CHK-TAP-STATE",
                 "CHK-TAP-TRST-ASYNC",
@@ -77,7 +77,6 @@ class dtp_jtag_trst_test_seq(dtp_jtag_base_test_seq):
                 "CHK-NONVAC",
             },
         )
-        self.attach_tap_checker(checker)
 
         states = [
             DtpTapState.RUN_TEST_IDLE,
@@ -102,4 +101,4 @@ class dtp_jtag_trst_test_seq(dtp_jtag_base_test_seq):
                 f"trst_cycles={trst_cycles} idcode_recovered={idcode_ok}/{len(states)}"
             ),
         )
-        checker.finalize()
+        await self.finalize_family_checker()

@@ -107,7 +107,7 @@ python3 tools/dv/run_dv.py --dut smc --items smoke --tool verilator
 ### Nightly `all` group
 
 The nightly command for the `all` group (every test the VPLAN grades:
-`hosted` + `fw` + `dual`; `testlists/all.toml` defines the set), one
+`hosted` + `fw` + `sanity`; `testlists/all.toml` defines the set), one
 fresh seed per leaf:
 
 ```bash
@@ -140,8 +140,10 @@ Hosted GitHub nightly and weekly (`.github/workflows/regress.yml`) run
 runners have no RISC-V toolchain. `hosted` is `all` without twenty leaves: the
 fifteen `fw` leaves, the three dual-target leaves, and
 `smc_cpu_mmio_read_wedge_test` and `smc_cpu_mmio_write_wedge_test`.
-`testlists/holdout.toml` defines every leaf outside `all` and `docs/SMC_VPLAN.adoc` (Known Limitations)
-records each with the reason, its owner and its closing condition.
+`testlists/holdout.toml` defines the non-ROM leaves outside `all`;
+`testlists/smc_rom.toml` defines the ROM/OCCP cases selected through
+`occp_rom`. `docs/SMC_VPLAN.adoc` records the sign-off holdouts and their
+closing conditions.
 
 ```bash
 python3 tools/dv/run_dv.py --dut smc --items hosted --tool verilator --regress --reseed 1
@@ -217,7 +219,7 @@ The dual path has fewer escapes than the `smc_base_test` one: no
 `min_evidence` floor and no `NO_OWN_EVIDENCE` exemption, so a dual leaf that
 emits no `CHK-*` line of its own always fails. The one `target = "dual"` leaf
 outside `all` is `smc_occp_dual_unsecure_boot_test`, held out on runtime and
-run as `occp_dual`; it still builds the harness directly, so it prints no
+run as part of `occp_rom`; it still builds the harness directly, so it prints no
 `EVIDENCE_SUMMARY`.
 
 ## Code coverage
@@ -234,11 +236,11 @@ evidence, structural OUT versus waiver holes, waiver fields) are in
 
 ```bash
 # Coverage merge accepts one elaboration. `hosted` and `fw` build the default
-# model. `--target` over `all` would run the three `dual` leaves on that model.
+# model. `--target` over `all` would run the three `sanity` leaves on that model.
 python3 tools/dv/run_dv.py --dut smc --items hosted fw --tool vcs --regress --cov
 
 # SMC_DUAL is a separate pass and collects no coverage.
-python3 tools/dv/run_dv.py --dut smc --items dual --tool vcs --regress --target dual
+python3 tools/dv/run_dv.py --dut smc --items sanity --tool vcs --regress --target dual
 ```
 
 ## Run modes, targets, and groups
@@ -250,15 +252,22 @@ leaf set. Use `--dut smc --items all --list` for the catalog.
 | Group | Role |
 |---|---|
 | `smoke` | CI gate (`sim.yml`): `smc_canonical_smoke_test`, `smc_cold_reset_test`, `smc_register_sanity_test` |
-| `all` | every test the VPLAN grades: `hosted` ∪ `fw` ∪ `dual`; `expected_count` is the membership gate. The coverage set is `hosted fw`: `dual` elaborates a second build target the coverage merge cannot combine with `default` |
+| `all` | every test the VPLAN grades: `hosted` ∪ `fw` ∪ `sanity`; `expected_count` is the membership gate. The coverage set is `hosted fw`: `sanity` elaborates a second build target the coverage merge cannot combine with `default` |
 | `hosted` | toolchain-free class, single-instance model; the nightly and weekly tiers (one seed) |
 | `fw` | firmware class: the fifteen CPU-boot leaves whose image `c_compile` builds |
-| `dual` | SMC_DUAL class: the three `target = "dual"` leaves, each loading a ROM or firmware image |
+| `sanity` | SMC_DUAL class: the three `target = "dual"` leaves enrolled in `all`, each loading a ROM or firmware image |
 | `axil`, `clock`, `combined`, `gpio`, `i2c`, `irq`, `reset`, `uart` | feature subsets of `all` for a local run of one area |
-| `occp_boot`, `occp_dual`, `held_out` | on-demand hold-outs (runtime, or waiting on an RTL fix); not in `all` |
+| `occp_rom` | all 34 BL0/SMC ROM cases; includes the hours-long `smc_occp_dual_unsecure_boot_test` and is run on demand |
+| `occp_boot`, `held_out` | on-demand hold-outs (runtime, or waiting on an RTL fix); not in `all` |
 
-Every leaf outside `all` is defined in `testlists/holdout.toml`, which states
-why, and has its card under Known Limitations in `docs/SMC_VPLAN.adoc`.
+Non-ROM leaves outside `all` are defined in `testlists/holdout.toml`, which
+states why. ROM/OCCP leaves outside `all` are defined in
+`testlists/smc_rom.toml` and selected together with `--items occp_rom`.
+That group runs all 34 ROM cases, including the hours-long unsecure-boot leaf:
+
+```bash
+python3 tools/dv/run_dv.py --dut smc --items occp_rom --tool verilator --regress
+```
 
 | Run mode / target | Meaning |
 |---|---|
@@ -432,7 +441,8 @@ hw/sys/smc/dv/
 │                           #   smc_public_scope.vlt, verilator_stubs/
 ├── testlists/              # native TOML testlists: all.toml owns the groups
 │                           #   and includes the per-feature leaf files;
-│                           #   holdout.toml defines every leaf outside `all`
+│                           #   smc_rom.toml owns ROM/OCCP leaves and groups;
+│                           #   holdout.toml owns the other leaves outside `all`
 ├── smc_sim_cfg.toml        # sole launch config: build/filelist manifest, run
 │                           #   modes, tool knobs, [frameworks.cocotb] +
 │                           #   [frameworks.uvm]

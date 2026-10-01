@@ -255,6 +255,11 @@ python_paths = [
 results_dir = "{run_dir}/{item}/results"
 cocotb_log = "{run_dir}/{item}/logs/{item}.log"
 
+# The bench toggles the pll_wrap oscillators itself (tb_top.sv); the model's
+# own generators stay off.
+[frameworks.cocotb.sim]
+args = ["+pll_osc_bench"]
+
 [c_build.default]
 # Build the selected SMC C test and declare every time-zero preload consumed by
 # the firmware boot test. run_dv stages these basenames into the simulator cwd.

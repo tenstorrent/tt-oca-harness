@@ -14,6 +14,11 @@ Scenarios:
 3. Unmapped-address decode — an access past the last CTP window must return
    an error response, and the crossbar must still serve valid transactions
    afterwards.
+4. Window end decode — one-byte reads and writes at the last byte of the CTM
+   register extent and of the last CTP window must return OKAY.
+5. CTM aperture past the register extent — reads and writes between the end
+   of the CTM registers and the first CTP window must return an error
+   response and leave the CTM registers unchanged.
 """
 
 from __future__ import annotations
@@ -21,8 +26,12 @@ from __future__ import annotations
 import random
 
 import cocotb
+from cocotb.triggers import with_timeout
 from ctn_base_test import (
+    CTM_BASE_ADDR,
+    CTM_REG_END,
     CTM_SELECT_MASK,
+    CTP_BASE_ADDR,
     CTP_CONFIG_OFFSET,
     CTP_STATUS_OFFSET,
     CTP_STRETCH_OFFSET,
@@ -34,6 +43,7 @@ from ctn_base_test import (
     ctp_addr,
     random_seed,
 )
+from ocah_axi_vip import RESP_OKAY
 
 
 @cocotb.test()
@@ -137,6 +147,51 @@ async def ctn_sanity_test(dut) -> None:
     assert observed == 0x1, (
         f"crossbar wedged after unmapped access: CTM CT_SRC[0] readback 0x{observed:08x}"
     )
+    await tb.seq.write(ctm_src_cfg_addr(0), 0)
+
+    # ------------------------------------------------------------------
+    tb.log.info("=" * 70)
+    tb.log.info("TEST 4: last byte of the CTM register extent and of the last CTP window")
+    tb.log.info("=" * 70)
+    for last_byte in (CTM_REG_END - 1, UNMAPPED_ADDR - 1):
+        event = tb.seq.driver.init_read(last_byte, 1)
+        await with_timeout(event.wait(), 10, "us")
+        resp = int(event.data.resp)
+        tb.log.info("one-byte read at 0x%03x: resp=0x%x", last_byte, resp)
+        assert resp == RESP_OKAY, (
+            f"one-byte read at window end 0x{last_byte:03x}: expected OKAY, observed 0x{resp:x}"
+        )
+        write_result = await tb.seq.write_result(
+            last_byte & ~0x3, 0, strb=0x8, check_response=False
+        )
+        tb.log.info("one-byte write at 0x%03x: resp=0x%x", last_byte, write_result.resp)
+        assert write_result.ok, (
+            f"one-byte write at window end 0x{last_byte:03x}: expected OKAY, "
+            f"observed 0x{write_result.resp:x}"
+        )
+
+    # ------------------------------------------------------------------
+    tb.log.info("=" * 70)
+    tb.log.info(
+        "TEST 5: CTM aperture past the register extent (0x%03x-0x%03x)",
+        CTM_REG_END,
+        CTP_BASE_ADDR - 1,
+    )
+    tb.log.info("=" * 70)
+    sentinel = 0x1
+    await tb.seq.write(ctm_src_cfg_addr(0), sentinel)
+    for addr in (CTM_REG_END, CTM_BASE_ADDR + 0x100, CTP_BASE_ADDR - 4):
+        write_result = await tb.seq.write_result(addr, CTM_SELECT_MASK, check_response=False)
+        tb.log.info("write at 0x%03x: ok=%s resp=0x%x", addr, write_result.ok, write_result.resp)
+        assert not write_result.ok, f"write at 0x{addr:03x} past the CTM registers returned OKAY"
+        read_result = await tb.seq.read_result(addr, check_response=False)
+        tb.log.info("read at 0x%03x: ok=%s resp=0x%x", addr, read_result.ok, read_result.resp)
+        assert not read_result.ok, f"read at 0x{addr:03x} past the CTM registers returned OKAY"
+        observed = await tb.seq.read(ctm_src_cfg_addr(0))
+        assert observed == sentinel, (
+            f"write at 0x{addr:03x} reached CTM CT_SRC[0]: readback 0x{observed:08x}, "
+            f"expected 0x{sentinel:x}"
+        )
     await tb.seq.write(ctm_src_cfg_addr(0), 0)
 
     tb.log.info("ctn_sanity_test PASSED (seed=%d)", seed)

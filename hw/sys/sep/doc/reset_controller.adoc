@@ -5,10 +5,12 @@
 :description: SEP software reset requests, AXI isolation, and Key Manager and TRNG reset sequencing.
 
 ifdef::backend-html5[]
-:dtp-ic-reset-overrides-ref: xref:dtp:jtag.adoc#dtp-ic-reset-overrides[IC_RESET Overrides]
+:dtp-ic-reset-overrides-ref: xref:dtp:clk_rst.adoc#dtp-ic-reset-overrides[IC_RESET Overrides]
+:sep-crypto-reset-diagram-ref: xref:sep:crypto.adoc#sep-crypto-reset-diagram[SEP cryptographic subsystem resets]
 endif::backend-html5[]
 ifndef::backend-html5[]
 :dtp-ic-reset-overrides-ref: <<dtp-ic-reset-overrides>>
+:sep-crypto-reset-diagram-ref: <<sep-crypto-reset-diagram>>
 endif::backend-html5[]
 
 [[sep-reset-controller,SEP Reset Controller]]
@@ -20,7 +22,54 @@ Controller.
 
 [[sep-reset-domain-diagram]]
 .SEP reset domains and reset sequencing
-image::SEP_ResetDomains_FIG003.1.png[alt="SEP reset domains and reset sequencing",width=100%,pdfwidth=100%]
+image::sep-reset-distribution.svg[alt="SEP reset distribution from the boundary reset inputs through the SEP Reset Controller to each instance",width=100%,pdfwidth=100%]
+
+Boundary reset inputs enter on the left and the generated resets run in the
+channel on the right, each net in its own colour, with the port it drives named
+at the instance edge. Inside each instance the figure shows which sub-instances
+each reset reaches. <<sep-reset-ctrl-logic-diagram>> shows the logic inside
+`u_sep_efuse_wrapper` and `u_sep_reset_ctrl`, and
+{sep-crypto-reset-diagram-ref} shows the resets inside `u_sep_crypto`.
+
+`u_sep_efuse_wrapper`, part of `u_sep_crypto`, ANDs `rst_ni`,
+`ext_boot_seq_done_i` and fuse-sense done and synchronizes the result into
+`sep_intermediate_reset_n`. The Reset Controller builds its three outputs from
+it, as <<sep-reset-ctrl-logic-diagram>> shows. The stacked row repeats once for
+each `SW_RESET_N` bit.
+
+[[sep-reset-ctrl-logic-diagram]]
+.SEP Reset Controller reset logic
+image::sep-reset-ctrl-logic.svg[alt="Gates, muxes and synchronizers in the eFuse wrapper and the SEP Reset Controller that build sep_reset_no, sep_cpu_reset_no and sep_crypto_gated_rst_no",width=100%,pdfwidth=100%]
+
+* `sep_reset_no`: the JTAG `sep_reset_n` override mux (`u_sep_reset_ovrd_mux`)
+  selects `sep_intermediate_reset_n` or the JTAG value, and the 2-flop
+  `u_sep_reset_sync` asserts the result asynchronously and releases it
+  synchronously to `clk_i`. It resets the Reset Controller's own register block,
+  the Key Manager cold domain, the system peripherals, the SPI host, the DMA and
+  the SRAM and boot ROM interfaces.
+* `sep_cpu_reset_no`: `sep_reset_n` ANDed with `wdt_rst_ni`
+  (`u_sep_cpu_rst_and`), then the scan bypass `u_sep_cpu_rst_scan_bypass`. It
+  resets the EL2 core (`rst_l`) and the warm scratch registers.
+* `sep_crypto_gated_rst_no[6:0]`: for each bit, the output of
+  `u_<blk>_isolate_seq` ANDed with `sep_reset_n` (`u_<blk>_rst_and`), then the
+  per-IP JTAG override mux `u_<blk>_rst_ovrd_mux`, then the scan bypass
+  `u_<blk>_rst_scan_bypass`. The per-IP override bits reach the muxes through
+  the 2-flop synchronizers `u_jtag_ip_ovrd_sync` and `u_jtag_ip_val_sync`. The
+  seven bits reset OTBN, AES, HMAC, KMAC, the TRNG, Adams Bridge and the Key
+  Manager warm domain.
+
+`rst_ni` resets the isolation sequencers and the JTAG override synchronizers.
+It also resets, directly, the crypto interconnect, life cycle controller, eFuse
+shim mux, alert receivers, encoders and EDN AXIS adapters, the TRNG power-on
+reset `por_rst_ni`, the watchdog, the local crossbar, the eFuse shim demux and
+the entropy pool. When the build does not define `SEP_ABR_EN`, the Adams Bridge
+error responders take `rst_ni` in place of the Adams Bridge wrapper. The
+watchdog synchronizes `rst_ni` into `clk_wdt_i` for its counter, and its bite
+leaves the SEP on `wdt_timer_rst_req_o`. `dbg_rstb_i` resets the EL2 debug
+module and `u_mpc_reset_run_req_sync`, and `jtag_trst_ni` resets the EL2 JTAG
+TAP. While `test_en_i` is high, `scan_rst_ni` replaces the outputs of
+`u_sep_reset_sync`, each scan bypass mux, `u_rst_wdt_sync` and both Key Manager
+reset conditioner paths.
 
 == Software Reset Register
 
@@ -37,7 +86,7 @@ values.
 |2 |aes_sw_rst_n |RW |1 |AES reset (0=assert, 1=release)
 |3 |hmac_sw_rst_n |RW |1 |HMAC reset (0=assert, 1=release)
 |4 |kmac_sw_rst_n |RW |1 |KMAC reset (0=assert, 1=release)
-|5 |trng_sw_rst_n |RW |1 |Shared ESRC + CSRNG + EDN reset request (0=assert, 1=release)
+|5 |trng_sw_rst_n |RW |1 |Shared entropy-source (ESRC), CSRNG, EDN and internal DRBG endpoint reset request (0=assert, 1=release); excludes the KM sampler
 |6 |abr_sw_rst_n |RW |1 |Adams Bridge reset (0=assert, 1=release)
 |=======================================================================
 
@@ -50,11 +99,27 @@ reset.
 
 Each `SW_RESET_N` bit drives a per-domain sequencer that isolates the domain's
 AXI paths before asserting its reset, so no transaction is in flight when reset
-asserts. <<sep-axi-isolation-diagram>> shows the isolated paths.
+asserts. <<sep-crypto-axi-isolation-diagram>> shows every isolate stage in the
+crypto AXI interconnect and the sequencer that requests it.
 
-[[sep-axi-isolation-diagram]]
+[[sep-crypto-axi-isolation-diagram]]
 .SEP crypto AXI isolation
-image::SEP_AXIIsolation_FIG030.png[alt="SEP crypto AXI isolation",width=100%,pdfwidth=100%]
+image::sep-crypto-axi-isolation.svg[alt="Host and Key Manager AXI paths in sep_crypto, with the isolate stage on each path, the sequencer that requests it and the reset of each instance",width=100%,pdfwidth=100%]
+
+Host paths leave `u_axi_demux` on the left, with the bus type after conversion
+above each arrow. Key Manager paths leave `u_xbar` on the right. Both kinds of
+isolate stage sit in `u_sep_crypto_axi_interconnect`, whose outline wraps
+around the engine wrappers it serves. The italic line in an isolate stage names
+the `u_sep_reset_ctrl` sequencer that requests it: `otbn seq` is
+`u_otbn_isolate_seq`, and `otbn or km seq` means that either sequencer requests
+it. The eFuse, lifecycle, Key Manager mailbox and external TRNG ports have no
+isolate stage. The coloured bar at the left of each instance shows its reset.
+The interconnect and all its isolate stages run on `rst_ni`, so they stay out
+of reset while a domain behind them is reset. Each engine wrapper, `u_sep_trng`
+and the Key Manager crossbar are reset by their `gated_rst_ni` bit, and the
+mailbox by both the Key Manager cold reset `sep_reset_ni` and its warm reset.
+Without `SEP_ABR_EN`, error responders that return DECERR replace the Adams
+Bridge wrapper behind both of its isolate stages.
 
 A software reset proceeds as follows:
 
@@ -134,6 +199,31 @@ sampler can flag a stream error. The SEP host must keep the Key Manager idle
 before asserting the TRNG reset. Holding KM in software reset is sufficient;
 hardware does not enforce the ordering.
 
-Following reset release, software reprograms ESRC, waits for startup health
+Following reset release, software reprograms the entropy source, waits for startup health
 testing, locks the certified configuration, instantiates CSRNG, and enables EDN.
 Consumers are released only after fresh endpoint/pool progress is observed.
+
+== Memory Map and Register Reference
+
+ifdef::backend-html5[]
+++++
+<span id="register-reference"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
+
+Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.
+
+=== Detailed Register Map
+
+ifdef::backend-html5[]
+++++
+include::partial$sep/regs/gen/html/blocks/sep_reset_ctrl.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/sep_reset_ctrl.adoc[leveloffset=+2]
+endif::backend-pdf[]

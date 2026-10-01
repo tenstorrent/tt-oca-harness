@@ -66,7 +66,7 @@ class smc_primary_reset_scope_test(smc_base_test):
             f"scoreboard booked {sb.sys_axi_value_checks_seen} SEP_IN value compares, expected at "
             f"least {EXPECTED_VALUE_CHECKS}"
         )
-        assert seq.hold_samples > 0 and seq.fetch_delta_before, (
+        assert seq.hold_samples > 0 and seq.fetch_delta_after, (
             "the sequence ended without a held window or a fetching-core precondition"
         )
         cocotb.log.info(

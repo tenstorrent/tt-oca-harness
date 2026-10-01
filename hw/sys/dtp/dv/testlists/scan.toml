@@ -86,6 +86,14 @@ tags = ["scan"]
 run_modes = ["scan"]
 
 [[tests]]
+name = "dtp_stap_chain_hold_test"
+module = { cocotb = "dtp_stap_chain_hold_test", uvm = "dtp_stap_chain_hold_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["scan"]
+run_modes = ["scan"]
+
+[[tests]]
 name = "dtp_3dcr_config_hold_test"
 module = { cocotb = "dtp_3dcr_config_hold_test", uvm = "dtp_3dcr_config_hold_test" }
 seed = 1

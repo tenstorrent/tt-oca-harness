@@ -38,10 +38,12 @@ Checkers:
                      passes the data through writes a plaintext and fails
 
 KM-SRAM-RD-LAT is a measurement, not a checker. km_sram_interface descrambles a
-read response with the address it captures on the accepting edge, so it relies
-on a one-cycle SRAM read latency. No specification states that latency, so the
-accept, one-cycle-later and mismatch counts are logged as the measured
-precondition. The data round trip in CHK-KM-SRAM-SCR-RT is the verdict.
+read response with the address it captures on the accepting edge, so the KM
+SRAM must answer at least one cycle after the accept. The km_sram_interface
+assertion ReadCompletesAfterAccept_A checks that requirement in
+assertion-enabled (non-Verilator) builds. The accept, one-cycle-later and
+mismatch counts are logged as the measured precondition. The data round trip in
+CHK-KM-SRAM-SCR-RT is the verdict.
 """
 
 from __future__ import annotations

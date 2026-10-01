@@ -27,9 +27,9 @@ Program and read command, address, data, status, and timeout registers for the e
 |===
 | Bits | Field | Access | Reset | Description
 | 31:11 | `Reserved` | - | - a| Reserved
-| 10 | `efuse_read_addr_error_clear` | W | 0x0 a| Clears the read out of bounds error bit (efuse_read_addr_error) in efuse_ctrl_status
-| 9 | `efuse_program_addr_error_clear` | W | 0x0 a| Clears the program out of bounds error bit (efuse_program_addr_error) in efuse_ctrl_status
-| 8 | `efuse_req_error_clear` | W | 0x0 a| Clears the blocked request error bit in efuse_ctrl_status
+| 10 | `efuse_read_addr_error_clear` | W 1P | 0x0 a| Clears the read out of bounds error bit (efuse_read_addr_error) in efuse_ctrl_status
+| 9 | `efuse_program_addr_error_clear` | W 1P | 0x0 a| Clears the program out of bounds error bit (efuse_program_addr_error) in efuse_ctrl_status
+| 8 | `efuse_req_error_clear` | W 1P | 0x0 a| Clears the blocked request error bit in efuse_ctrl_status
 | 7 | `Reserved` | - | - a| Reserved
 | 6 | `efuse_read_addr_error` | R | 0x0 a| Indicates that an invalid eFuse read address was used (address exceeds the implemented eFuse size). The error must be cleared by writing 1 to efuse_read_addr_error_clear.
 | 5 | `efuse_program_addr_error` | R | 0x0 a| Indicates that an invalid eFuse program address was used (address exceeds the implemented eFuse size). The error must be cleared by writing 1 to efuse_program_addr_error_clear.
@@ -51,7 +51,7 @@ Program and read command, address, data, status, and timeout registers for the e
 | 24 | `program_busy` | R | 0x0 a| When set, the program is in progress
 | 23:19 | `Reserved` | - | - a| Reserved
 | 18 | `efuse_program_read_back` | RW | 0x0 a| When set, trigger a read back after a program
-| 17 | `efuse_program_go` | RW | 0x0 a| When set, triggers a program to the eFuse.  This will be ignored if the lock bit is set
+| 17 | `efuse_program_go` | RW 1P | 0x0 a| When set, triggers a program to the eFuse.  This will be ignored if the lock bit is set
 | 16 | `efuse_data` | RW | 0x0 a| Data to program to eFuse.  If this bit is 0, the program request will be ignored
 | 15:0 | `efuse_addr` | RW | 0x0 a| Bit address to program
 |===
@@ -69,7 +69,7 @@ Program and read command, address, data, status, and timeout registers for the e
 | 25 | `read_done` | R | 0x0 a| When set, the read has completed, the status of which is in read_status
 | 24 | `read_busy` | R | 0x0 a| When set, the read is in progress
 | 23:17 | `Reserved` | - | - a| Reserved
-| 16 | `efuse_read_go` | RW | 0x0 a| When set, triggers a read to efuse.
+| 16 | `efuse_read_go` | RW 1P | 0x0 a| When set, triggers a read to efuse.
 | 15:0 | `efuse_addr` | RW | 0x0 a| Bit address to read
 |===
 

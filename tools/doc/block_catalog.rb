@@ -3,7 +3,7 @@
 
 # Asciidoctor extension for the TRM PDF, enabled by the block-catalog attribute.
 # Numbers and captions figures and tables, fills the linked lists of figures and
-# tables, and adds references to each section's figures and tables.
+# tables.
 
 require 'asciidoctor/extensions'
 
@@ -13,7 +13,6 @@ module OCAH
       return document unless document.attr? 'block-catalog'
 
       catalogs = { image: [], table: [] }
-      owners = Hash.new { |hash, key| hash[key] = [] }
       document.find_by.each do |block|
         next unless catalogs.key? block.context
 
@@ -33,7 +32,6 @@ module OCAH
         end
         document.register :refs, [block.id, block]
         catalog << block
-        owners[owner] << block
       end
 
       catalogs.each do |context, blocks|
@@ -50,15 +48,6 @@ module OCAH
         section << list
       end
 
-      owners.each do |owner, blocks|
-        next unless owner
-
-        links = blocks.map { |block| "<<#{block.id},#{block.caption.delete_suffix('. ')}>>" }
-        paragraph = create_paragraph(owner, "Figures and tables: #{links.join('; ')}.",
-                                     { 'role' => 'block-references' }, subs: :normal)
-        position = owner.blocks.index { |block| block.context == :section } || owner.blocks.length
-        owner.blocks.insert(position, paragraph)
-      end
       document
     end
 

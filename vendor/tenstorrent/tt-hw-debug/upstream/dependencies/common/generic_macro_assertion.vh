@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 `ifndef GENERIC_MACRO_ASSERTION_VH
 `define GENERIC_MACRO_ASSERTION_VH
 

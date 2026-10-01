@@ -687,28 +687,41 @@ module sep_uvm_top
     // ROM presents, so a wrong SEP<->SMC offset is invisible to the boot flow
     // -- the testbench seeds the wrong address too and every test stays
     // green. This checker supplies the one property a flat memory lacks: an
-    // access outside a register window that exists is an ERROR. The windows
-    // below are transcribed from smc_addr.h (SMC-local 0xC000_XXXX seen as
-    // 0x4000_XXXX from SEP, the identity mapping this tb configures via
-    // smc_global_base_addr_i). Keep them in step with that header; when the
-    // ROM needs a new block, add its authoritative base/size here rather than
-    // widening an existing window.
+    // access outside a register window that exists is an ERROR. Block bases
+    // and sizes come from the generated SMC address map (smc_top_addrmap_pkg,
+    // hw/sys/smc/regs/gen/sv/smc_addrmap_pkg.sv). The package gives SMC-local
+    // addresses (0xC000_XXXX); SEP sees them at 0x4000_XXXX, the identity
+    // mapping this tb configures via smc_global_base_addr_i. When the ROM needs
+    // a new block, add its generated base/size here rather than widening an
+    // existing window.
+    localparam logic [63:0] SmcLocalBase = 64'hC000_0000;
+    localparam logic [63:0] SmcSepViewBase = 64'h4000_0000;
     localparam logic [55:0] SmcStrapsLoAddr = 56'h4040_5800;
     localparam logic [55:0] SmcStrapsHiAddr = SmcStrapsLoAddr + 4;
     localparam int unsigned SmcNumWindows = 7;
     // {base, size} pairs, SEP-side addresses.
     localparam logic [55:0] SmcWinBase [SmcNumWindows] = '{
-        56'h4000_2000,  // SMC_RESET_UNIT
-        56'h4000_2900,  // SMC_MISC_WRAP_CHIP_CONFIG (CHIP_ID, LC_STATE)
-        56'h4000_7000,  // SMC_EFUSE_MAP             (chiplet/package ID)
-        56'h4000_B800,  // DFX_CTRL                  (STATUS_SMU)
-        56'h4003_9000,  // SMC_CPU_CTRL              (scratch[0..15] at +0x80)
-        56'h4006_0000,  // SPM_MEMORY                (manifest + BL1)
-        SmcStrapsLoAddr // SMC_EXTERNAL straps      (STRAPS_LO/HI)
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_BASE_ADDR - SmcLocalBase + SmcSepViewBase),
+        // SMC_MISC_WRAP_CHIP_CONFIG: CHIP_ID, LC_STATE
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR - SmcLocalBase +
+            SmcSepViewBase),
+        // SMC_EFUSE_MAP: chiplet/package ID
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR - SmcLocalBase + SmcSepViewBase),
+        // DFX_CTRL: STATUS_SMU
+        56'(smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_BASE_ADDR - SmcLocalBase + SmcSepViewBase),
+        // SMC_CPU_CTRL: scratch[0..15] at +0x80
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_BASE_ADDR - SmcLocalBase + SmcSepViewBase),
+        // SPM_MEMORY: manifest + BL1
+        56'(smc_top_addrmap_pkg::SMC_TOP_SPM_MEMORY_BASE_ADDR - SmcLocalBase + SmcSepViewBase),
+        SmcStrapsLoAddr  // SMC_EXTERNAL straps (STRAPS_LO/HI)
     };
     localparam logic [55:0] SmcWinSize [SmcNumWindows] = '{
-        56'h0000_00CC, 56'h0000_0014, 56'h0000_0C00,
-        56'h0000_0018, 56'h0000_02C0, 56'h0010_0000,
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_SIZE),
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_SIZE),
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SIZE),
+        56'(smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_SIZE),
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_SIZE),
+        56'(smc_top_addrmap_pkg::SMC_TOP_SPM_MEMORY_SIZE),
         56'h0000_0008
     };
 
@@ -813,7 +826,11 @@ module sep_uvm_top
     initial begin : backdoor_default_fill_zero
         for (int i = 0; i < 32768; i++)
             `SEP_IPI.u_sep_sram.gen_ram_inst[0].u_mem.mem[i] = 64'h0;
-        for (int i = 0; i < 16384; i++)
+        for (
+            int i = 0;
+            i < sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_SIZE / 8;
+            i++
+        )
             `SEP_IPI.u_sep_boot_rom.mem[i] = 64'h0;
         for (int r = 0; r < 16384; r++) begin
             `BD_ICCM(0)[r] = 39'h0; `BD_ICCM(1)[r] = 39'h0;
@@ -1199,6 +1216,8 @@ module sep_uvm_top
         `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.host_hmac;
     assign hmac_km_isolated_probe_o =
         `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.km_hmac;
+    assign hmac_host_isolate_req_probe_o =
+        `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolate_req_i.host_hmac;
 
     // KMAC per-IP gated reset and its two isolate-completion bits.
     assign kmac_gated_rst_n_probe_o =
@@ -1207,6 +1226,8 @@ module sep_uvm_top
         `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.host_kmac;
     assign kmac_km_isolated_probe_o =
         `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.km_kmac;
+    assign kmac_host_isolate_req_probe_o =
+        `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolate_req_i.host_kmac;
 
     // Adams Bridge per-IP gated reset and the two isolate-completion bits its
     // domain waits on. host_abr is a full-AXI isolate; km_abr is shared with
@@ -1217,6 +1238,8 @@ module sep_uvm_top
         `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.host_abr;
     assign abr_km_isolated_probe_o =
         `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.km_abr;
+    assign abr_host_isolate_req_probe_o =
+        `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolate_req_i.host_abr;
 
     // Read-only XMRs observe the write-one-to-set demotion lock storage. The lock
     // bits have no DUT output, and firmware owns the AXI frontdoor while they are
@@ -1526,8 +1549,8 @@ module sep_uvm_top
     // command user code -- the engine always emits a matching pair. When
     // dma_host_intg_inject_i=1, force the host-adapter checker input
     // (tlul_cmd_intg_chk.u_chk.data_i) to 0 so the real decoder computes
-    // err_o. err_o stays gated on a_valid. STATUS / PIC [40] / CLEAR stay
-    // frontdoor or the aggregate interrupt probe. Re-issue every clock
+    // err_o. err_o stays gated on a_valid. STATUS / PIC source 42 (vector
+    // bit [41]) / CLEAR stay frontdoor or the aggregate interrupt probe. Re-issue every clock
     // (Verilator snapshots a force RHS). Release when the port drops.
     // Default 0; outside the AXI ready/valid cones.
 `define DMA_HOST_CMD_INTG_DI \
@@ -1541,6 +1564,47 @@ module sep_uvm_top
         end
     end
 `undef DMA_HOST_CMD_INTG_DI
+
+    // ------------------------------------------------------------------
+    // HMAC message-FIFO drain stall.
+    // ------------------------------------------------------------------
+    // hmac_fifo_drain_stall_i=1 holds the message FIFO's rready low, so the hash
+    // engine stops consuming and the FIFO fills: the wedge the ROM's bounded
+    // FIFO waits must turn into a hash failure. fifo_rready is the hmac-local
+    // net that drives the FIFO's read side. Re-issued every clock for Verilator,
+    // released when the port drops.
+`define HMAC_FIFO_RREADY `SEP_CORE.u_sep_crypto.u_hmac_wrapper_s3c_scan.u_tt_hmac.fifo_rready
+    always @(posedge clk_i) begin
+        if (hmac_fifo_drain_stall_i === 1'b1) begin
+            force `HMAC_FIFO_RREADY = 1'b0;
+        end else begin
+            release `HMAC_FIFO_RREADY;
+        end
+    end
+`undef HMAC_FIFO_RREADY
+
+    // ------------------------------------------------------------------
+    // DMA host-port stall.
+    // ------------------------------------------------------------------
+    // +sep_dma_host_stall holds the host TL-UL response idle -- a_ready and
+    // d_valid both 0 -- so the secure DMA can neither issue a request nor see a
+    // response: it stays busy and reports neither DONE nor ERROR, which is the
+    // wedge the ROM's bounded completion poll must turn into an error. The whole
+    // struct is forced, since d_valid=0 keeps its integrity fields unchecked.
+    // The force targets the wrapper-local net the adapter drives, not the
+    // engine's input port. Re-issued every clock for Verilator, as above.
+    logic dma_host_stall_on;
+    initial begin
+        dma_host_stall_on = $test$plusargs("sep_dma_host_stall");
+        if (dma_host_stall_on) begin
+            $display("[tb] +sep_dma_host_stall: secure DMA host port held idle");
+        end
+    end
+`define DMA_HOST_RSP `SEP_CORE.u_sep_dma_wrap.host_tl_h_i
+    always @(posedge clk_i) begin
+        if (dma_host_stall_on) force `DMA_HOST_RSP = '0;
+    end
+`undef DMA_HOST_RSP
 
     // ------------------------------------------------------------------
     // ESRC raw-noise force + entropy datapath probes.
@@ -1638,6 +1702,36 @@ module sep_uvm_top
 `undef OTBN_URND_RSP
 `undef OTBN_RND_REQ
 `undef OTBN_URND_REQ
+
+    // +sep_otbn_cmd_drop -- fault injection, off by default. Makes OTBN ignore
+    // every command write, leaving the block powered, idle and error-free while
+    // no program ever runs.
+    //
+    // This is the "the CMD store never landed" case: what an instruction-skip
+    // glitch on the store produces deliberately, and what clock or reset
+    // mis-sequencing produces by accident. It is worth injecting because the
+    // block is indistinguishable from a completed run on the two registers the
+    // ROM used to consult -- STATUS reads IDLE (the state it was already in) and
+    // ERR_BITS reads 0 (nothing ran to fail). INTR_STATE.done is the only signal
+    // that separates them, which is what otbn_execute() now requires.
+    logic otbn_cmd_drop_on;
+    initial begin
+        otbn_cmd_drop_on = $test$plusargs("sep_otbn_cmd_drop");
+        if (otbn_cmd_drop_on) begin
+            $display("[tb] *** FAULT INJECTION: +sep_otbn_cmd_drop -- OTBN command writes");
+            $display("[tb] *** are dropped; no OTBN program will execute.");
+        end
+    end
+
+// reg2hw.cmd.qe is the write-enable otbn.sv decodes CmdExecute from
+// (otbn.sv:852-854), so holding it low drops commands without disturbing
+// anything else the block reports.
+`define OTBN_CMD_QE \
+    `SEP_CORE.u_sep_crypto.u_sep_crypto_otbn_wrapper_s3c_scan.u_otbn.reg2hw.cmd.qe
+    always @(posedge clk_i) begin
+        if (otbn_cmd_drop_on) force `OTBN_CMD_QE = 1'b0;
+    end
+`undef OTBN_CMD_QE
 
     // Entropy datapath probe taps (compiled-in XMR reads; no --public-flat-rw).
     assign esrc_ro_enable_o     = `SEP_ESRC.u_generator_complex.jitter_ro_enable_i;
@@ -2278,6 +2372,28 @@ module sep_uvm_top
     always @(negedge rst_ni) rst_assert_count <= rst_assert_count + 32'd1;
     assign u_tb_if.rst_assert_count = rst_assert_count;
 
+    // Observation probes the sequences read through sep_tb_if.
+    assign u_tb_if.sep_internal_interrupts   = sep_internal_interrupts_probe_o;
+    assign u_tb_if.efuse_shadow              = efuse_shadow_probe_o;
+    assign u_tb_if.otbn_imem_req_count       = otbn_imem_req_count_o;
+    assign u_tb_if.otbn_imem_write_count     = otbn_imem_write_count_o;
+    assign u_tb_if.otbn_dmem_req_count       = otbn_dmem_req_count_o;
+    assign u_tb_if.otbn_dmem_write_count     = otbn_dmem_write_count_o;
+    assign u_tb_if.km_rom_req_count          = km_rom_req_count_o;
+    assign u_tb_if.km_sram_probe             = km_sram_probe_o;
+    assign u_tb_if.km_sram_rd_accept_count   = km_sram_rd_accept_count_o;
+    assign u_tb_if.km_sram_rd_b2b_diff_count = km_sram_rd_b2b_diff_count_o;
+    assign u_tb_if.km_sram_rd_lat1_count     = km_sram_rd_lat1_count_o;
+    assign u_tb_if.km_sram_rd_lat_err_count  = km_sram_rd_lat_err_count_o;
+    assign u_tb_if.km_sram_req_count         = km_sram_req_count_o;
+    assign u_tb_if.km_sram_scr_rd_count      = km_sram_scr_rd_count_o;
+    assign u_tb_if.km_sram_scr_wr_addr       = km_sram_scr_wr_addr_o;
+    assign u_tb_if.km_sram_scr_wr_cell       = km_sram_scr_wr_cell_o;
+    assign u_tb_if.km_sram_scr_wr_count      = km_sram_scr_wr_count_o;
+    assign u_tb_if.km_sram_scr_wr_data       = km_sram_scr_wr_data_o;
+    assign u_tb_if.km_sram_word0             = km_sram_word0_o;
+    assign u_tb_if.km_sram_write_count       = km_sram_write_count_o;
+
     // CPU-LSU initiator: the shared ocah_axi_vip UVM master agent drives the
     // s_axi_* request side (the agent's driver procedurally drives the
     // request payloads and valids plus bready/rready on the master
@@ -2460,6 +2576,7 @@ module sep_uvm_top
     assign token_cmp_fault_sel_i    = '0;
     assign token_digest_test_en_inject_i = 1'b0;
     assign dma_host_intg_inject_i   = 1'b0;
+    assign hmac_fifo_drain_stall_i  = 1'b0;
     assign rst_vec_i                = '0;
     assign i_cpu_run_req_i          = 1'b0;
     assign tcm_load_i               = 1'b0;

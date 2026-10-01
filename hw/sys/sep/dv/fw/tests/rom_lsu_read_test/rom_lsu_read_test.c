@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// SEP boot-ROM LSU data-read + write-ignored firmware test (OSS rep boot-ROM LSU read). reference
+// SEP boot-ROM LSU data-read + write-ignored firmware test. reference
 // suite provenance: uvm_tests/rom sep_rom_uvm_basic_read / sequential_read / content_verify /
 // addr_boundary / write_ignore.
 //

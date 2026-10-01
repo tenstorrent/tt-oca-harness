@@ -49,7 +49,7 @@ The JTAG interface unit uses 6-bit instruction encodings (<<jiu-instruction-enco
 |0x2A |SMC_AXI_SERIES_DATA_INCR |Variable |
 |0x2B |SMC_AXI_SERIES_DATA_NO_INCR |Variable |
 |0x2C |SMC_AXI_SERIES_DATA_WITH_ERROR_STATUS |Variable |
-|0x3D |ZERO_LENGTH_BYPASS |0 |
+|0x3D |ZERO_LENGTH_BYPASS |0; 1, as BYPASS, while the PTAP TAP_3DCR STAP-select bit is set |
 |0x3E |INV_BYPASS | |
 |0x3F |BYPASS (IEEE 1149.1, Section 8.4) |1 |
 |===
