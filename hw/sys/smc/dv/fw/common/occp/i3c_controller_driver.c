@@ -49,6 +49,7 @@ static inline uint32_t hr(uint8_t id, uint64_t abs0) {
 #define R_QTC (I3C0_CSR_BASE + 0x090u)
 #define R_DAT_BASE (I3C0_CSR_BASE + 0x400u)
 #define R_DCT_BASE (I3C0_CSR_BASE + 0x800u)
+#define OCCP_DAA_DEV_COUNT 1u
 /* SOC management interface bus-timing registers (open-drain init set) */
 #define R_T_R (I3C0_CSR_BASE + 0x32Cu)
 #define R_T_F (I3C0_CSR_BASE + 0x330u)
@@ -315,8 +316,7 @@ static I3C_Status I3C_IssueENTDAA(I3C_Driver *drv) {
     /* DAA assigns each responding target the dynamic address preloaded in DAT[i], or 0 without a
      * preload. dev_count must equal the number of targets: extra rounds end with SDA held low and
      * no STOP, so the next transfer cannot START. The OCCP bus has one target. */
-    const uint8_t daa_dev_count = 1u;
-    for (uint8_t i = 0; i < daa_dev_count; i++) {
+    for (uint8_t i = 0; i < OCCP_DAA_DEV_COUNT; i++) {
         /* IBI_PAYLOAD=0 here; it is rewritten from the discovered BCR[2] in I3C_ProcessDevices. */
         set_dat_entry(id, i, 0u, (uint8_t)(0x08u + i), 0u);
     }
@@ -324,7 +324,7 @@ static I3C_Status I3C_IssueENTDAA(I3C_Driver *drv) {
     /* AddrAssign descriptor: dev_count in DWORD0[29:26] (DWORD1 is reserved), wroc+toc set.
      * flow_active.sv returns NotSupported(0xA) if dev_count==0 | ~wroc | ~toc. */
     uint32_t cmd_lo = ATTR_ADDR_ASSIGN | CMD_CCC(0x07u) | CMD_DEVIDX(0u) |
-                      CMD_DEVCOUNT(daa_dev_count) | CMD_WROC | CMD_TOC;
+                      CMD_DEVCOUNT(OCCP_DAA_DEV_COUNT) | CMD_WROC | CMD_TOC;
     simputshex32("[I3C_HCI] ENTDAA command descriptor: ", cmd_lo);
     hw(id, R_CMD_PORT, cmd_lo);
     hw(id, R_CMD_PORT, 0u); /* DWORD1 reserved */
@@ -346,9 +346,9 @@ static I3C_Status I3C_ProcessDevices(I3C_Driver *drv, I3C_DeviceInfo *devices, s
         devices[0] = self;
     }
     drv->ctx.num_devices = 1;
-    /* DCT entry = 4 words: [PID_HI][PID_LO][BCR/DCR][dynamic_addr] (MIPI HCI). Entries with a
-     * zero dynamic address are skipped. */
-    for (uint8_t i = 0; i < I3C_MAX_DEVICES; i++) {
+    /* DCT entry = 4 words: [PID_HI][PID_LO][BCR/DCR][dynamic_addr] (MIPI HCI). ENTDAA writes
+     * exactly OCCP_DAA_DEV_COUNT entries; the remaining SRAM entries have no reset value. */
+    for (uint8_t i = 0; i < OCCP_DAA_DEV_COUNT; i++) {
         uint64_t e = I3C_A(id, R_DCT_BASE) + (uint64_t)i * 16u;
         uint32_t w3 = read_reg(e + 12u);
         /* DCT word3 = entry bits[127:96]; dct_entry_t.dynamic_address in controller_pkg.sv is
