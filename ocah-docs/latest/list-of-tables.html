@@ -225,6 +225,9 @@
     <a class="nav-link" href="ip/entropy_source/doc/index.html">Entropy Source</a>
   </li>
   <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/entropy_pool.html">Entropy Pool</a>
+  </li>
+  <li class="nav-item" data-depth="5">
     <a class="nav-link" href="sep/aes.html">AES Cipher</a>
   </li>
   <li class="nav-item" data-depth="5">
@@ -4364,8 +4367,12 @@ register lists, bit layouts, and field tables are included.</p>
 <li><a href="sep/dma.html#trm-table-27">Table 27. secure_dma.CLEAR_INTR_BUS fields</a></li>
 <li><a href="sep/dma.html#trm-table-28">Table 28. secure_dma.INTR_SRC_ADDR_0[11] fields</a></li>
 <li><a href="sep/dma.html#trm-table-29">Table 29. secure_dma.INTR_SRC_WR_VAL_0[11] fields</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-630">Interconnect</h2><div class="sectionbody"><ul><li><a href="sep/fabric.html#sep-axi-terms">Table 1. SEP AXI4 connectivity terms</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-631">HMAC-SHA2</h2><div class="sectionbody"><ul><li><a href="sep/hmac.html#trm-table-1">Table 1. HMAC Accelerator register list</a></li>
+<div class="sect1"><h2 id="catalog-topic-630">Entropy Pool</h2><div class="sectionbody"><ul><li><a href="sep/entropy_pool.html#trm-table-1">Table 1. SEP Entropy Pool register list</a></li>
+<li><a href="sep/entropy_pool.html#trm-table-2">Table 2. sep_entropy_pool.STATUS fields</a></li>
+<li><a href="sep/entropy_pool.html#trm-table-3">Table 3. sep_entropy_pool.IRQ_CAUSE fields</a></li>
+<li><a href="sep/entropy_pool.html#trm-table-4">Table 4. sep_entropy_pool.DATA fields</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-631">Interconnect</h2><div class="sectionbody"><ul><li><a href="sep/fabric.html#sep-axi-terms">Table 1. SEP AXI4 connectivity terms</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-632">HMAC-SHA2</h2><div class="sectionbody"><ul><li><a href="sep/hmac.html#trm-table-1">Table 1. HMAC Accelerator register list</a></li>
 <li><a href="sep/hmac.html#trm-table-2">Table 2. hmac.INTR_STATE fields</a></li>
 <li><a href="sep/hmac.html#trm-table-3">Table 3. hmac.INTR_ENABLE fields</a></li>
 <li><a href="sep/hmac.html#trm-table-4">Table 4. hmac.INTR_TEST fields</a></li>
@@ -4379,7 +4386,7 @@ register lists, bit layouts, and field tables are included.</p>
 <li><a href="sep/hmac.html#trm-table-12">Table 12. hmac.DIGEST[16] fields</a></li>
 <li><a href="sep/hmac.html#trm-table-13">Table 13. hmac.MSG_LENGTH_LOWER fields</a></li>
 <li><a href="sep/hmac.html#trm-table-14">Table 14. hmac.MSG_LENGTH_UPPER fields</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-632">Interrupts</h2><div class="sectionbody"><ul><li><a href="sep/interrupts.html#sep-pic-source-assignments-table">Table 1. SEP PIC source assignments</a></li>
+<div class="sect1"><h2 id="catalog-topic-633">Interrupts</h2><div class="sectionbody"><ul><li><a href="sep/interrupts.html#sep-pic-source-assignments-table">Table 1. SEP PIC source assignments</a></li>
 <li><a href="sep/interrupts.html#sep-correctable-error-counters-table">Table 2. SEP correctable-error counters</a></li>
 <li><a href="sep/interrupts.html#sep-uncorrectable-error-traps-table">Table 3. SEP uncorrectable-error traps</a></li>
 <li><a href="sep/interrupts.html#trm-table-4">Table 4. EL2_PIC register list</a></li>
@@ -4389,7 +4396,7 @@ register lists, bit layouts, and field tables are included.</p>
 <li><a href="sep/interrupts.html#trm-table-8">Table 8. el2_pic.mpiccfg fields</a></li>
 <li><a href="sep/interrupts.html#trm-table-9">Table 9. el2_pic.meigwctrl[256] fields</a></li>
 <li><a href="sep/interrupts.html#trm-table-10">Table 10. el2_pic.meigwclr[256] fields</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-633">KMAC-SHA3</h2><div class="sectionbody"><ul><li><a href="sep/kmac.html#trm-table-1">Table 1. KMAC Accelerator register list</a></li>
+<div class="sect1"><h2 id="catalog-topic-634">KMAC-SHA3</h2><div class="sectionbody"><ul><li><a href="sep/kmac.html#trm-table-1">Table 1. KMAC Accelerator register list</a></li>
 <li><a href="sep/kmac.html#trm-table-2">Table 2. kmac.INTR_STATE fields</a></li>
 <li><a href="sep/kmac.html#trm-table-3">Table 3. kmac.INTR_ENABLE fields</a></li>
 <li><a href="sep/kmac.html#trm-table-4">Table 4. kmac.INTR_TEST fields</a></li>
@@ -4407,7 +4414,7 @@ register lists, bit layouts, and field tables are included.</p>
 <li><a href="sep/kmac.html#trm-table-16">Table 16. kmac.KEY_LEN fields</a></li>
 <li><a href="sep/kmac.html#trm-table-17">Table 17. kmac.PREFIX[11] fields</a></li>
 <li><a href="sep/kmac.html#trm-table-18">Table 18. kmac.ERR_CODE fields</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-634">Life Cycle Controller (LCC)</h2><div class="sectionbody"><ul><li><a href="sep/lifecycle_controller.html#sep-lifecycle-state-encodings-table">Table 1. SEP lifecycle state encodings</a></li>
+<div class="sect1"><h2 id="catalog-topic-635">Life Cycle Controller (LCC)</h2><div class="sectionbody"><ul><li><a href="sep/lifecycle_controller.html#sep-lifecycle-state-encodings-table">Table 1. SEP lifecycle state encodings</a></li>
 <li><a href="sep/lifecycle_controller.html#sep-feature-disable-vector-table">Table 2. SEP feature-disable vector</a></li>
 <li><a href="sep/lifecycle_controller.html#sep-disable-vector-applicability-table">Table 3. SEP disable-vector applicability</a></li>
 <li><a href="sep/lifecycle_controller.html#feature-control-table">Table 4. Per-LC-state feature control profile</a></li>
@@ -4421,13 +4428,13 @@ register lists, bit layouts, and field tables are included.</p>
 <li><a href="sep/lifecycle_controller.html#trm-table-12">Table 12. sep_lifecycle_ctrl.FEAT_CTRL fields</a></li>
 <li><a href="sep/lifecycle_controller.html#trm-table-13">Table 13. sep_lifecycle_ctrl.DEMOTE_1 fields</a></li>
 <li><a href="sep/lifecycle_controller.html#trm-table-14">Table 14. sep_lifecycle_ctrl.DEMOTE_2 fields</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-635">Mailboxes</h2><div class="sectionbody"><ul><li><a href="sep/mailbox.html#sep-mailbox-qualification-table">Table 1. SEP mailbox qualification</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-636">Memory Map and Register Reference</h2><div class="sectionbody"><ul><li><a href="sep/memory_map.html#trm-table-1">Table 1. SEP CPU Logical Address Space</a></li>
+<div class="sect1"><h2 id="catalog-topic-636">Mailboxes</h2><div class="sectionbody"><ul><li><a href="sep/mailbox.html#sep-mailbox-qualification-table">Table 1. SEP mailbox qualification</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-637">Memory Map and Register Reference</h2><div class="sectionbody"><ul><li><a href="sep/memory_map.html#trm-table-1">Table 1. SEP CPU Logical Address Space</a></li>
 <li><a href="sep/memory_map.html#trm-table-2">Table 2. SEP EL2 CPU Resources</a></li>
 <li><a href="sep/memory_map.html#trm-table-3">Table 3. SEP Component Address Map</a></li>
 <li><a href="sep/memory_map.html#trm-table-4">Table 4. SEP External register list</a></li>
 <li><a href="sep/memory_map.html#trm-table-5">Table 5. sep_external.EFUSE_BANK_INIT_TIME fields</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-637">OTBN PKA Public Key Accelerator</h2><div class="sectionbody"><ul><li><a href="sep/otbn.html#trm-table-1">Table 1. OpenTitan Big Number Accelerator register list</a></li>
+<div class="sect1"><h2 id="catalog-topic-638">OTBN PKA Public Key Accelerator</h2><div class="sectionbody"><ul><li><a href="sep/otbn.html#trm-table-1">Table 1. OpenTitan Big Number Accelerator register list</a></li>
 <li><a href="sep/otbn.html#trm-table-2">Table 2. otbn.INTR_STATE fields</a></li>
 <li><a href="sep/otbn.html#trm-table-3">Table 3. otbn.INTR_ENABLE fields</a></li>
 <li><a href="sep/otbn.html#trm-table-4">Table 4. otbn.INTR_TEST fields</a></li>
@@ -4439,7 +4446,7 @@ register lists, bit layouts, and field tables are included.</p>
 <li><a href="sep/otbn.html#trm-table-10">Table 10. otbn.FATAL_ALERT_CAUSE fields</a></li>
 <li><a href="sep/otbn.html#trm-table-11">Table 11. otbn.INSN_CNT fields</a></li>
 <li><a href="sep/otbn.html#trm-table-12">Table 12. otbn.LOAD_CHECKSUM fields</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-638">OTP Fuse Controller</h2><div class="sectionbody"><ul><li><a href="sep/otp_fuse_controller.html#sep-fuse-fields-table">Table 1. SEP fuse fields</a></li>
+<div class="sect1"><h2 id="catalog-topic-639">OTP Fuse Controller</h2><div class="sectionbody"><ul><li><a href="sep/otp_fuse_controller.html#sep-fuse-fields-table">Table 1. SEP fuse fields</a></li>
 <li><a href="sep/otp_fuse_controller.html#trm-table-2">Table 2. SEP eFuse Map Address Map register list</a></li>
 <li><a href="sep/otp_fuse_controller.html#trm-table-3">Table 3. sep_efuse_map.LOCKS fields</a></li>
 <li><a href="sep/otp_fuse_controller.html#trm-table-4">Table 4. sep_efuse_map.LOCKS_SPARE fields</a></li>
@@ -4484,11 +4491,11 @@ register lists, bit layouts, and field tables are included.</p>
 <li><a href="sep/otp_fuse_controller.html#trm-table-43">Table 43. sep_efuse_map.spare6 fields</a></li>
 <li><a href="sep/otp_fuse_controller.html#trm-table-44">Table 44. sep_efuse_map.spare7 fields</a></li>
 <li><a href="sep/otp_fuse_controller.html#trm-table-45">Table 45. sep_efuse_map.spare8 fields</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-639">SEP Reset Controller</h2><div class="sectionbody"><ul><li><a href="sep/reset_controller.html#sep-sw-reset-n-fields-table">Table 1. SEP SW_RESET_N fields</a></li>
+<div class="sect1"><h2 id="catalog-topic-640">SEP Reset Controller</h2><div class="sectionbody"><ul><li><a href="sep/reset_controller.html#sep-sw-reset-n-fields-table">Table 1. SEP SW_RESET_N fields</a></li>
 <li><a href="sep/reset_controller.html#sep-isolation-paths-table">Table 2. Paths isolated before each software reset</a></li>
 <li><a href="sep/reset_controller.html#trm-table-3">Table 3. SEP Reset Control Address Map register list</a></li>
 <li><a href="sep/reset_controller.html#trm-table-4">Table 4. sep_reset_ctrl.SW_RESET_N fields</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-640">Serial Peripheral Interface (SPI)</h2><div class="sectionbody"><ul><li><a href="sep/spi.html#trm-table-1">Table 1. SPI Host register list</a></li>
+<div class="sect1"><h2 id="catalog-topic-641">Serial Peripheral Interface (SPI)</h2><div class="sectionbody"><ul><li><a href="sep/spi.html#trm-table-1">Table 1. SPI Host register list</a></li>
 <li><a href="sep/spi.html#trm-table-2">Table 2. spi_controller.INTR_STATE fields</a></li>
 <li><a href="sep/spi.html#trm-table-3">Table 3. spi_controller.INTR_ENABLE fields</a></li>
 <li><a href="sep/spi.html#trm-table-4">Table 4. spi_controller.INTR_TEST fields</a></li>
@@ -4501,12 +4508,12 @@ register lists, bit layouts, and field tables are included.</p>
 <li><a href="sep/spi.html#trm-table-11">Table 11. spi_controller.ERROR_ENABLE fields</a></li>
 <li><a href="sep/spi.html#trm-table-12">Table 12. spi_controller.ERROR_STATUS fields</a></li>
 <li><a href="sep/spi.html#trm-table-13">Table 13. spi_controller.EVENT_ENABLE fields</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-641">Test Mode Entry</h2><div class="sectionbody"><ul><li><a href="sep/test_mode.html#trm-table-1">Table 1. Secure test-mode sampling in the SEP wrapper</a></li>
+<div class="sect1"><h2 id="catalog-topic-642">Test Mode Entry</h2><div class="sectionbody"><ul><li><a href="sep/test_mode.html#trm-table-1">Table 1. Secure test-mode sampling in the SEP wrapper</a></li>
 <li><a href="sep/test_mode.html#trm-table-2">Table 2. Required secure-test protections</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-642">Token Processing</h2><div class="sectionbody"><ul><li><a href="sep/token_processing.html#trm-table-1">Table 1. Token roles and expected digests</a></li>
+<div class="sect1"><h2 id="catalog-topic-643">Token Processing</h2><div class="sectionbody"><ul><li><a href="sep/token_processing.html#trm-table-1">Table 1. Token roles and expected digests</a></li>
 <li><a href="sep/token_processing.html#trm-table-2">Table 2. Token submission registers</a></li>
 <li><a href="sep/token_processing.html#trm-table-3">Table 3. Token result encodings</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-643">TRNG and DRBG</h2><div class="sectionbody"><ul><li><a href="sep/trng.html#sep-entropy-endpoint-routing">Table 1. SEP entropy sink paths</a></li>
+<div class="sect1"><h2 id="catalog-topic-644">TRNG and DRBG</h2><div class="sectionbody"><ul><li><a href="sep/trng.html#sep-entropy-endpoint-routing">Table 1. SEP entropy sink paths</a></li>
 <li><a href="sep/trng.html#entropy-streaming-signals-table">Table 2. SEP random-data stream contract</a></li>
 <li><a href="sep/trng.html#sep-entropy-reset-boundaries">Table 3. TRNG reset effects outside the internal domain</a></li>
 <li><a href="sep/trng.html#drbg-external-interfaces-table">Table 4. DRBG external interfaces</a></li>
@@ -4554,7 +4561,7 @@ register lists, bit layouts, and field tables are included.</p>
 <li><a href="sep/trng.html#trm-table-46">Table 46. edn.ERR_CODE fields</a></li>
 <li><a href="sep/trng.html#trm-table-47">Table 47. edn.ERR_CODE_TEST fields</a></li>
 <li><a href="sep/trng.html#trm-table-48">Table 48. edn.MAIN_SM_STATE fields</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-644">Watchdog Timer (WDT)</h2><div class="sectionbody"><ul><li><a href="sep/watchdog.html#trm-table-1">Table 1. Always-On Timer register list</a></li>
+<div class="sect1"><h2 id="catalog-topic-645">Watchdog Timer (WDT)</h2><div class="sectionbody"><ul><li><a href="sep/watchdog.html#trm-table-1">Table 1. Always-On Timer register list</a></li>
 <li><a href="sep/watchdog.html#trm-table-2">Table 2. aon_timer.ALERT_TEST fields</a></li>
 <li><a href="sep/watchdog.html#trm-table-3">Table 3. aon_timer.WKUP_CTRL fields</a></li>
 <li><a href="sep/watchdog.html#trm-table-4">Table 4. aon_timer.WKUP_THOLD_HI fields</a></li>
@@ -4569,7 +4576,7 @@ register lists, bit layouts, and field tables are included.</p>
 <li><a href="sep/watchdog.html#trm-table-13">Table 13. aon_timer.INTR_STATE fields</a></li>
 <li><a href="sep/watchdog.html#trm-table-14">Table 14. aon_timer.INTR_TEST fields</a></li>
 <li><a href="sep/watchdog.html#trm-table-15">Table 15. aon_timer.WKUP_CAUSE fields</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-645">SMC Production ROM</h2><div class="sectionbody"><ul><li><a href="smc-bootrom-prod/index.html#trm-table-1">Table 1. Packet-header fields</a></li>
+<div class="sect1"><h2 id="catalog-topic-646">SMC Production ROM</h2><div class="sectionbody"><ul><li><a href="smc-bootrom-prod/index.html#trm-table-1">Table 1. Packet-header fields</a></li>
 <li><a href="smc-bootrom-prod/index.html#trm-table-2">Table 2. Implemented commands</a></li>
 <li><a href="smc-bootrom-prod/index.html#trm-table-3">Table 3. GetVersion response body</a></li>
 <li><a href="smc-bootrom-prod/index.html#trm-table-4">Table 4. Supported status IDs</a></li>
@@ -4588,7 +4595,7 @@ register lists, bit layouts, and field tables are included.</p>
 <li><a href="smc-bootrom-prod/index.html#trm-table-17">Table 17. OCCP ring-buffer status values</a></li>
 <li><a href="smc-bootrom-prod/index.html#trm-table-18">Table 18. OCCP status word</a></li>
 <li><a href="smc-bootrom-prod/index.html#trm-table-19">Table 19. POST fields</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-646">Clocks and Resets</h2><div class="sectionbody"><ul><li><a href="smc/clk_rst.html#trm-table-1">Table 1. SMC clock-domain responsibilities</a></li>
+<div class="sect1"><h2 id="catalog-topic-647">Clocks and Resets</h2><div class="sectionbody"><ul><li><a href="smc/clk_rst.html#trm-table-1">Table 1. SMC clock-domain responsibilities</a></li>
 <li><a href="smc/clk_rst.html#smc-reset-sources-and-characteristics-table">Table 2. SMC reset sources and effects</a></li>
 <li><a href="smc/clk_rst.html#reset-synchronization-domains-table">Table 3. Reset synchronization domains</a></li>
 <li><a href="smc/clk_rst.html#trm-table-4">Table 4. Reset Unit Address Map register list</a></li>
@@ -4611,7 +4618,7 @@ register lists, bit layouts, and field tables are included.</p>
 <li><a href="smc/clk_rst.html#trm-table-21">Table 21. reset_unit.ISOLATE_REQ_VIS fields</a></li>
 <li><a href="smc/clk_rst.html#trm-table-22">Table 22. reset_unit.ISOLATE_REQ_FLR_COUNTER_VALUE fields</a></li>
 <li><a href="smc/clk_rst.html#trm-table-23">Table 23. reset_unit.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE fields</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-647">CPU</h2><div class="sectionbody"><ul><li><a href="smc/cpu.html#smc-processor-core-features-table">Table 1. SMC processor core features</a></li>
+<div class="sect1"><h2 id="catalog-topic-648">CPU</h2><div class="sectionbody"><ul><li><a href="smc/cpu.html#smc-processor-core-features-table">Table 1. SMC processor core features</a></li>
 <li><a href="smc/cpu.html#smc-cache-and-memory-hierarchy-table">Table 2. SMC cache and memory hierarchy</a></li>
 <li><a href="smc/cpu.html#smc-cpu-system-interfaces-table">Table 3. SMC CPU system interfaces</a></li>
 <li><a href="smc/cpu.html#trm-table-4">Table 4. CPU Control Address Map register list</a></li>
@@ -4659,7 +4666,7 @@ register lists, bit layouts, and field tables are included.</p>
 <li><a href="smc/cpu.html#trm-table-46">Table 46. bus_error_unit.PLIC_ENABLE fields</a></li>
 <li><a href="smc/cpu.html#trm-table-47">Table 47. bus_error_unit.ACCRUED_ENABLE fields</a></li>
 <li><a href="smc/cpu.html#trm-table-48">Table 48. bus_error_unit.LOCAL_ENABLE fields</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-648">Design-for-Debug (DFD) and Core Logic Analyzer (CLA)</h2><div class="sectionbody"><ul><li><a href="smc/dfd.html#smc-cla-event-types-table">Table 1. SMC CLA event types</a></li>
+<div class="sect1"><h2 id="catalog-topic-649">Design-for-Debug (DFD) and Core Logic Analyzer (CLA)</h2><div class="sectionbody"><ul><li><a href="smc/dfd.html#smc-cla-event-types-table">Table 1. SMC CLA event types</a></li>
 <li><a href="smc/dfd.html#trm-table-2">Table 2. SMC DFD MMR Aperture Address Map register list</a></li>
 <li><a href="smc/dfd.html#trm-table-3">Table 3. smc_cla.Trdstramcontrol fields</a></li>
 <li><a href="smc/dfd.html#trm-table-4">Table 4. smc_cla.Trdstramimpl fields</a></li>
@@ -4798,7 +4805,7 @@ register lists, bit layouts, and field tables are included.</p>
 <li><a href="smc/dfd.html#trm-table-137">Table 137. smc_cla.CDbgDebugTraceCfg fields</a></li>
 <li><a href="smc/dfd.html#trm-table-138">Table 138. smc_cla.dst.ScratchLo fields</a></li>
 <li><a href="smc/dfd.html#trm-table-139">Table 139. smc_cla.dst.ScratchHi fields</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-649">Direct Memory Access (DMA) Engine</h2><div class="sectionbody"><ul><li><a href="smc/dma.html#smc-dma-controller-integration-table">Table 1. SMC DMA integration</a></li>
+<div class="sect1"><h2 id="catalog-topic-650">Direct Memory Access (DMA) Engine</h2><div class="sectionbody"><ul><li><a href="smc/dma.html#smc-dma-controller-integration-table">Table 1. SMC DMA integration</a></li>
 <li><a href="smc/dma.html#smc-dma-configuration-parameters-table">Table 2. SMC DMA elaboration settings</a></li>
 <li><a href="smc/dma.html#smc-dma-transfer-parameters-table">Table 3. DMA register storage and effective field widths</a></li>
 <li><a href="smc/dma.html#smc-dma-status-monitoring-and-control-table">Table 4. DMA status and notification</a></li>
@@ -4864,7 +4871,7 @@ register lists, bit layouts, and field tables are included.</p>
 <li><a href="smc/dma.html#trm-table-64">Table 64. dma_ctrl.SRC_STRIDE_HI fields</a></li>
 <li><a href="smc/dma.html#trm-table-65">Table 65. dma_ctrl.NUM_REPETITIONS_LO fields</a></li>
 <li><a href="smc/dma.html#trm-table-66">Table 66. dma_ctrl.NUM_REPETITIONS_HI fields</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-650">Interconnect</h2><div class="sectionbody"><ul><li><a href="smc/fabric.html#smc-fabric-configuration-parameters-table">Table 1. SMC Fabric Transaction Limits</a></li>
+<div class="sect1"><h2 id="catalog-topic-651">Interconnect</h2><div class="sectionbody"><ul><li><a href="smc/fabric.html#smc-fabric-configuration-parameters-table">Table 1. SMC Fabric Transaction Limits</a></li>
 <li><a href="smc/fabric.html#smc-network-characteristics-table">Table 2. SMC Network Characteristics</a></li>
 <li><a href="smc/fabric.html#fabric-axi-widths">Table 3. AXI Common Signal Widths</a></li>
 <li><a href="smc/fabric.html#fabric-axi-id-widths">Table 4. AXI ID Widths by Fabric Stage</a></li>
@@ -4882,7 +4889,7 @@ register lists, bit layouts, and field tables are included.</p>
 <li><a href="smc/fabric.html#trm-table-16">Table 16. filter_ctrl.FILTER_CONFIG fields</a></li>
 <li><a href="smc/fabric.html#trm-table-17">Table 17. filter_ctrl.START_ADDR fields</a></li>
 <li><a href="smc/fabric.html#trm-table-18">Table 18. filter_ctrl.END_ADDR fields</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-651">Interrupts</h2><div class="sectionbody"><ul><li><a href="smc/interrupts.html#smc-interrupt-controller-addresses-table">Table 1. SMC interrupt-controller addresses</a></li>
+<div class="sect1"><h2 id="catalog-topic-652">Interrupts</h2><div class="sectionbody"><ul><li><a href="smc/interrupts.html#smc-interrupt-controller-addresses-table">Table 1. SMC interrupt-controller addresses</a></li>
 <li><a href="smc/interrupts.html#trm-table-2">Table 2. PLIC input groups</a></li>
 <li><a href="smc/interrupts.html#smc-indexed-interrupt-map-table">Table 3. SMC indexed interrupt map</a></li>
 <li><a href="smc/interrupts.html#trm-table-4">Table 4. PLIC Address Map register list</a></li>
@@ -4912,7 +4919,7 @@ register lists, bit layouts, and field tables are included.</p>
 <li><a href="smc/interrupts.html#trm-table-28">Table 28. plic.CORE2_SEIP_CLAIM_COMPLETE fields</a></li>
 <li><a href="smc/interrupts.html#trm-table-29">Table 29. plic.CORE3_SEIP_THRESHOLD fields</a></li>
 <li><a href="smc/interrupts.html#trm-table-30">Table 30. plic.CORE3_SEIP_CLAIM_COMPLETE fields</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-652">Memory Map and Register Reference</h2><div class="sectionbody"><ul><li><a href="smc/memmap.html#trm-table-1">Table 1. SMC Functional Address-Space Organization</a></li>
+<div class="sect1"><h2 id="catalog-topic-653">Memory Map and Register Reference</h2><div class="sectionbody"><ul><li><a href="smc/memmap.html#trm-table-1">Table 1. SMC Functional Address-Space Organization</a></li>
 <li><a href="smc/memmap.html#trm-table-2">Table 2. SMC Component Address Map</a></li>
 <li><a href="smc/memmap.html#smc-register-interface-standards-table">Table 3. SMC Register Interface Standards</a></li>
 <li><a href="smc/memmap.html#smc-access-control-mechanisms-table">Table 4. SMC Access Control Mechanisms</a></li>
@@ -4963,7 +4970,7 @@ register lists, bit layouts, and field tables are included.</p>
 <li><a href="smc/memmap.html#trm-table-49">Table 49. gpio_poc_pbias_ctrl.CONTROL fields</a></li>
 <li><a href="smc/memmap.html#trm-table-50">Table 50. gpio_poc_pbias_ctrl.ACCESS_FILTER fields</a></li>
 <li><a href="smc/memmap.html#smc-component-documentation-table">Table 51. SMC Component Documentation</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-653">Peripherals</h2><div class="sectionbody"><ul><li><a href="smc/periphs.html#smc-peripheral-summary-table">Table 1. SMC Peripheral Summary</a></li>
+<div class="sect1"><h2 id="catalog-topic-654">Peripherals</h2><div class="sectionbody"><ul><li><a href="smc/periphs.html#smc-peripheral-summary-table">Table 1. SMC Peripheral Summary</a></li>
 <li><a href="smc/periphs.html#trm-table-2">Table 2. UART Wrapper Address Map register list</a></li>
 <li><a href="smc/periphs.html#trm-table-3">Table 3. uart_wrap.uart_log_engine_wrap[4].uart_log_engine_ctrl.CTRL fields</a></li>
 <li><a href="smc/periphs.html#trm-table-4">Table 4. uart_wrap.uart_log_engine_wrap[4].uart.RBR fields</a></li>
@@ -5007,16 +5014,16 @@ register lists, bit layouts, and field tables are included.</p>
 <li><a href="smc/periphs.html#trm-table-42">Table 42. uart_log_engine_wrap.INTR_TEST fields</a></li>
 <li><a href="smc/periphs.html#trm-table-43">Table 43. uart_log_engine_wrap.LOG_CTRL[16] fields</a></li>
 <li><a href="smc/periphs.html#smc-peripheral-parameter-overrides-table">Table 44. SMC Peripheral Parameter Overrides</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-654">eFuse Shadow Register Scan Protection</h2><div class="sectionbody"><ul><li><a href="smc/scan_protection.html#smc-efuse-shadow-register-classification-table">Table 1. SMC eFuse shadow register classification</a></li>
+<div class="sect1"><h2 id="catalog-topic-655">eFuse Shadow Register Scan Protection</h2><div class="sectionbody"><ul><li><a href="smc/scan_protection.html#smc-efuse-shadow-register-classification-table">Table 1. SMC eFuse shadow register classification</a></li>
 <li><a href="smc/scan_protection.html#smc-shadow-word-allocation-table">Table 2. SMC shadow word allocation</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-655">Watchdog Timers</h2><div class="sectionbody"><ul><li><a href="smc/watchdog.html#trm-table-1">Table 1. Watchdog Timer Address Map register list</a></li>
+<div class="sect1"><h2 id="catalog-topic-656">Watchdog Timers</h2><div class="sectionbody"><ul><li><a href="smc/watchdog.html#trm-table-1">Table 1. Watchdog Timer Address Map register list</a></li>
 <li><a href="smc/watchdog.html#trm-table-2">Table 2. wdt.CTRL fields</a></li>
 <li><a href="smc/watchdog.html#trm-table-3">Table 3. wdt.COUNT fields</a></li>
 <li><a href="smc/watchdog.html#trm-table-4">Table 4. wdt.SCALED_COUNT fields</a></li>
 <li><a href="smc/watchdog.html#trm-table-5">Table 5. wdt.FEED fields</a></li>
 <li><a href="smc/watchdog.html#trm-table-6">Table 6. wdt.KEY fields</a></li>
 <li><a href="smc/watchdog.html#trm-table-7">Table 7. wdt.CMP fields</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-656">Zeroer</h2><div class="sectionbody"><ul><li><a href="smc/zeroer.html#smc-memory-zeroer-integration-table">Table 1. SMC Memory Zeroer Integration</a></li>
+<div class="sect1"><h2 id="catalog-topic-657">Zeroer</h2><div class="sectionbody"><ul><li><a href="smc/zeroer.html#smc-memory-zeroer-integration-table">Table 1. SMC Memory Zeroer Integration</a></li>
 <li><a href="smc/zeroer.html#smc-zeroer-state-machine-table">Table 2. SMC zeroer state machine</a></li>
 <li><a href="smc/zeroer.html#smc-zeroer-axi4-master-characteristics-table">Table 3. SMC zeroer AXI4 Master Characteristics</a></li>
 <li><a href="smc/zeroer.html#smc-zeroer-clock-domain-characteristics-table">Table 4. SMC zeroer Clock Domain Characteristics</a></li>
@@ -5027,11 +5034,11 @@ register lists, bit layouts, and field tables are included.</p>
 <li><a href="smc/zeroer.html#trm-table-9">Table 9. zeroer_ctrl.DEST_ADDR fields</a></li>
 <li><a href="smc/zeroer.html#trm-table-10">Table 10. zeroer_ctrl.SIZE fields</a></li>
 <li><a href="smc/zeroer.html#trm-table-11">Table 11. zeroer_ctrl.CTRL_STATUS fields</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-657">SMU coverage targets and closure policy</h2><div class="sectionbody"><ul><li><a href="smu/dv/SMU_COVERAGE_POLICY.html#trm-table-1">Table 1. SMU coverage targets and closure policy</a></li>
+<div class="sect1"><h2 id="catalog-topic-658">SMU coverage targets and closure policy</h2><div class="sectionbody"><ul><li><a href="smu/dv/SMU_COVERAGE_POLICY.html#trm-table-1">Table 1. SMU coverage targets and closure policy</a></li>
 <li><a href="smu/dv/SMU_COVERAGE_POLICY.html#trm-table-2">Table 2. SMU coverage targets and closure policy</a></li>
 <li><a href="smu/dv/SMU_COVERAGE_POLICY.html#trm-table-3">Table 3. Public versus commercial evidence</a></li>
 <li><a href="smu/dv/SMU_COVERAGE_POLICY.html#trm-table-4">Table 4. Structural OUT versus a waiver hole</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-658">SMU deferred and OUT disposition</h2><div class="sectionbody"><ul><li><a href="smu/dv/SMU_DEFERRED_DISPOSITION.html#trm-table-1">Table 1. SMU deferred and OUT disposition</a></li>
+<div class="sect1"><h2 id="catalog-topic-659">SMU deferred and OUT disposition</h2><div class="sectionbody"><ul><li><a href="smu/dv/SMU_DEFERRED_DISPOSITION.html#trm-table-1">Table 1. SMU deferred and OUT disposition</a></li>
 <li><a href="smu/dv/SMU_DEFERRED_DISPOSITION.html#trm-table-2">Table 2. Bench stand-ins and exceptions</a></li>
 <li><a href="smu/dv/SMU_DEFERRED_DISPOSITION.html#trm-table-3">Table 3. Re-confirming a stand-in</a></li>
 <li><a href="smu/dv/SMU_DEFERRED_DISPOSITION.html#trm-table-4">Table 4. <code>+esrc_noise_force</code></a></li>
@@ -5043,7 +5050,7 @@ register lists, bit layouts, and field tables are included.</p>
 <li><a href="smu/dv/SMU_DEFERRED_DISPOSITION.html#trm-table-10">Table 10. CTP data-input tie-offs</a></li>
 <li><a href="smu/dv/SMU_DEFERRED_DISPOSITION.html#trm-table-11">Table 11. <code>prim_sync2</code> / <code>prim_sync3</code> stand-ins</a></li>
 <li><a href="smu/dv/SMU_DEFERRED_DISPOSITION.html#trm-table-12">Table 12. eFuse models in the product composition</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-659">System Management Unit (SMU)</h2><div class="sectionbody"><ul><li><a href="smu/index.html#smu-axi-crossbar-ports-table">Table 1. SMU AXI crossbar ports</a></li>
+<div class="sect1"><h2 id="catalog-topic-660">System Management Unit (SMU)</h2><div class="sectionbody"><ul><li><a href="smu/index.html#smu-axi-crossbar-ports-table">Table 1. SMU AXI crossbar ports</a></li>
 <li><a href="smu/index.html#smu-axi-crossbar-routing-table">Table 2. SMU AXI crossbar routing by initiator and decoded aperture</a></li>
 <li><a href="smu/index.html#smu-lifecycle-effects-table">Table 3. SEP lifecycle and feature-control effects</a></li></ul></div></div>
 <nav class="pagination">
