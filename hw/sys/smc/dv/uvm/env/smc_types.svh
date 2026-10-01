@@ -119,13 +119,14 @@ endfunction
 
 // ---------------------------------------------------------------------------
 // CSR reset epoch: the value every CSR reference model re-baselines its
-// shadow on. Both the cold reset and a de-glitched cool reset activate the
-// Primary Reset (clk_rst.adoc, Primary Reset Activation Sources), and Primary
-// Reset covers the "SMC control and configuration registers" (clk_rst.adoc,
-// Primary Reset) -- every CSR block reached over SEP_IN, both scratch windows
-// included (misc_wrap.rdl:20-21; the warm reset is cascaded from the primary
-// one). A model that watched only the cold counter would keep predicting
-// pre-cool-reset values.
+// shadow on. Both the cold reset and a de-glitched cool reset are terms of
+// the primary reset (clk_rst.adoc "Primary and Warm Reset": rst_primary_n =
+// stable_cold_rst_n AND stable_cool_rst_n AND rst_cool_from_flr_n), and
+// "Primary reset covers the main SMC functional fabric, peripheral control
+// and configuration paths" -- every CSR block reached over SEP_IN, both
+// scratch windows included (misc_wrap.rdl:20-21; the warm reset equation
+// takes rst_primary_n as a term). A model that watched only the cold counter
+// would keep predicting pre-cool-reset values.
 //
 // SPM memory is deliberately NOT on this epoch: it is an SRAM, and nothing
 // in this bench establishes that a reset clears its contents.
