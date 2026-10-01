@@ -40,9 +40,9 @@
 #include "sep_mailbox.h"
 #include "sep_dma.h"
 
-#define DMA_SRC_ADDR OCH_SEP_TOP_SEP_SRAM_BASE_ADDR
-#define DMA_DST_ADDR (OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + 0x4000u)
-#define CONT_ADDR (OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + 0x8000u)
+#define DMA_SRC_ADDR SEP_TOP_SEP_SRAM_BASE_ADDR
+#define DMA_DST_ADDR (SEP_TOP_SEP_SRAM_BASE_ADDR + 0x4000u)
+#define CONT_ADDR (SEP_TOP_SEP_SRAM_BASE_ADDR + 0x8000u)
 
 #define DMA_BYTES 0x800u // 2 KiB DMA copy (>> CPU loop)
 #define DMA_WORDS (DMA_BYTES / 4)
@@ -86,7 +86,7 @@ int main(void) {
     __asm__ volatile("fence" ::: "memory");
 
     // Non-vacuity: the DMA must still be in flight now (BUSY && !DONE).
-    uint32_t st_mid = sep_dma_rd(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
+    uint32_t st_mid = sep_dma_rd(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
     if (!((st_mid & SECURE_DMA__STATUS__BUSY_bm) && !(st_mid & SECURE_DMA__STATUS__DONE_bm))) {
         sep_mbx_puts("FAIL: no overlap (DMA not busy mid-CPU-loop) STATUS=");
         sep_mbx_puthex(st_mid);
@@ -98,12 +98,12 @@ int main(void) {
     uint32_t st = 0;
     int timeout = DMA_WAIT_ITERS;
     while (timeout-- > 0) {
-        st = sep_dma_rd(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
+        st = sep_dma_rd(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
         if (st & (SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__ERROR_bm)) {
             break;
         }
     }
-    uint32_t err_code = sep_dma_rd(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+    uint32_t err_code = sep_dma_rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
     if (st & SECURE_DMA__STATUS__ERROR_bm) {
         sep_mbx_puts("FAIL: DMA error, ERROR_CODE=");
         sep_mbx_puthex(err_code);
@@ -120,9 +120,9 @@ int main(void) {
     } else {
         // STATUS RW1C clear contract (the polled path must prove it too).
         uint32_t rw1c = SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__CHUNK_DONE_bm;
-        sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, rw1c);
+        sep_dma_wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, rw1c);
         __asm__ volatile("fence" ::: "memory");
-        uint32_t st_after = sep_dma_rd(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
+        uint32_t st_after = sep_dma_rd(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
         if (st_after & rw1c) {
             sep_mbx_puts("FAIL: DMA STATUS RW1C did not clear, STATUS=");
             sep_mbx_puthex(st_after);

@@ -64,6 +64,13 @@ LCR_WLS = _field_mask(_UART_H, "UART_16550_MAIN__LCR__WLS_bm")
 MCR_LOOP = _field_mask(_UART_H, "UART_16550_MAIN__MCR__LOOP_bm")
 MCR_RTS = _field_mask(_UART_H, "UART_16550_MAIN__MCR__RTS_bm")
 MCR_DTR = _field_mask(_UART_H, "UART_16550_MAIN__MCR__DTR_bm")
+MCR_OUT1 = _field_mask(_UART_H, "UART_16550_MAIN__MCR__OUT1_bm")
+MCR_OUT2 = _field_mask(_UART_H, "UART_16550_MAIN__MCR__OUT2_bm")
+MSR_DCTS = _field_mask(_UART_H, "UART_16550_MAIN__MSR__DCTS_bm")
+MSR_DDSR = _field_mask(_UART_H, "UART_16550_MAIN__MSR__DDSR_bm")
+MSR_TERI = _field_mask(_UART_H, "UART_16550_MAIN__MSR__TERI_bm")
+MSR_DDCD = _field_mask(_UART_H, "UART_16550_MAIN__MSR__DDCD_bm")
+MSR_DELTAS = MSR_DCTS | MSR_DDSR | MSR_TERI | MSR_DDCD
 LSR_DR = _field_mask(_UART_H, "UART_16550_MAIN__LSR__DR_bm")
 
 # IIR.INTERRUPT_ID encodings AND their priority ranking. Both come from the
@@ -123,6 +130,7 @@ class smc_uart_irq_sources_priority_test_seq(SmcCsrSeq):
         self.gate_map_ids: dict[str, tuple[int | None, int]] = {}
         # name -> (winner id observed, winner id the RDL ranking requires)
         self.priority_ids: dict[str, tuple[int, int]] = {}
+        self.single_deltas: dict[str, int] = {}
 
     async def _clear_status(self) -> None:
         await self.csr_write("IER_CLR", UART_IER, 0)
@@ -281,7 +289,45 @@ class smc_uart_irq_sources_priority_test_seq(SmcCsrSeq):
         await self.csr_read("MSR_POP", UART_MSR)
         await self._fail_if_id_still_pending("MSR_CLR", _INTR_MODEM)
         cocotb.log.info("CHK-UART-IRQ-CLR-MSR: MSR read clears modem status")
+        await self._single_deltas()
         await self._clear_status()
+
+    async def _single_deltas(self) -> None:
+        """Each modem-status delta raised on its own, from one MCR output in loopback.
+
+        The UART's programming guide (``uart_16550/doc/programming.adoc``) has
+        system loopback feed DSR from DTR, RI from OUT1 and DCD from OUT2. DDSR
+        and DDCD mark any change and TERI only RI's trailing edge, so OUT1 is
+        set first, which must raise no delta, and then cleared.
+        """
+        # (label, MCR bits set before the edge, MCR bits after it, the one delta)
+        steps = (
+            ("DDSR", MCR_DTR, 0, MSR_DDSR),
+            ("TERI_RISE", 0, MCR_OUT1, 0),
+            ("TERI", MCR_OUT1, 0, MSR_TERI),
+            ("DDCD", 0, MCR_OUT2, MSR_DDCD),
+        )
+        base = MCR_LOOP | MCR_RTS
+        for label, before, after, delta in steps:
+            await self.csr_write(f"MSR1_{label}_SETUP", UART_MCR, base | before)
+            await self.csr_read(f"MSR1_{label}_PRE", UART_MSR)
+            await self.csr_write(f"MSR1_{label}_EDGE", UART_MCR, base | after)
+            if delta:
+                await self._expect_id(f"MSR1_{label}_NAT", _INTR_MODEM, iters=4096)
+            msr = await self.csr_read(f"MSR1_{label}_POP", UART_MSR)
+            assert msr & MSR_DELTAS == delta, (
+                f"[{label}] MSR reads 0x{msr:02x} after changing MCR from 0x{base | before:02x} "
+                f"to 0x{base | after:02x}; the deltas (mask 0x{MSR_DELTAS:x}) must be exactly "
+                f"0x{delta:x}"
+            )
+            await self._fail_if_id_still_pending(f"MSR1_{label}_CLR", _INTR_MODEM)
+            self.single_deltas[label] = msr
+        cocotb.log.info(
+            "CHK-UART-MSR-SINGLE-DELTA: in loopback, DTR alone raised only DDSR, OUT1's "
+            "trailing edge alone only TERI (its rising edge none), and OUT2 alone only "
+            "DDCD; each raised the modem interrupt and each MSR read cleared it (%s)",
+            ", ".join(f"{k}=0x{v:02x}" for k, v in self.single_deltas.items()),
+        )
 
     async def _test_priority(self) -> None:
         await self._clear_status()

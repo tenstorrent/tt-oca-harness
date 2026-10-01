@@ -21,13 +21,4 @@ ocah_fw_reg_includes = $(OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_$(1)) \
   $(addprefix -I,$(wildcard $(OCAH_ROOT)/vendor/*/*/overlay/rdl/gen/c)) \
   $(addprefix -I,$(wildcard $(OCAH_ROOT)/vendor/*/*/overlay/regs/*/regs/gen/c))
 
-# A standalone build (no nonfree sub-make to export the overlay) still gets the
-# vendor view when it knows where the nonfree tree is.
-ocah_fw_nonfree_reg_includes = $(if $(NONFREE_ROOT), \
-  -I$(NONFREE_ROOT)/hw/sys/$(1)/regs/gen/c \
-  -I$(NONFREE_ROOT)/hw/sys/$(1)/regs/gen/c/blocks \
-  $(addprefix -I,$(wildcard $(NONFREE_ROOT)/hw/sys/$(1)/dv/shims/regs/gen/c)) \
-  $(addprefix -I,$(wildcard $(NONFREE_ROOT)/hw/sys/$(1)/dv/shims/regs/vendor/*/*/gen/c)) \
-  $(addprefix -I,$(wildcard $(NONFREE_ROOT)/hw/ip/*/dv/shims/vendor/*/regs/gen/c)))
-
 endif

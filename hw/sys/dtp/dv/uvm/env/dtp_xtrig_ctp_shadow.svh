@@ -37,4 +37,12 @@ class dtp_xtrig_ctp_shadow;
     return m_inverted;
   endfunction
 
+  // Rest level of every CTP's private wire: the pull of the board built for
+  // its INVERT.
+  function bit [31:0] wire_pull_mask();
+    bit [31:0] pulls = '0;
+    for (int unsigned i = 0; i < 32; i++) pulls[i] = DtpWireOrPull[m_inverted[i]];
+    return pulls;
+  endfunction
+
 endclass : dtp_xtrig_ctp_shadow

@@ -12,13 +12,12 @@ https://opentitan.org/book/hw/ip/aes/index.html[OpenTitan AES] design.
 Key sizes: 128, 192 and 256
 Modes: ECB, CBC, CFB, OFB, CTR, CTR-GCM
 
-The accelerator consumes 128-bit data blocks written into its CSR memory
-space and produces 128-bit output blocks _round_ number of cycles. The
-_round_ value depends on the key size used.
+[[sep-aes-reference-diagram]]
+.OpenTitan AES core reference architecture
+image::opentitan_aes.svg[alt="OpenTitan AES core reference architecture",width=100%,pdfwidth=100%]
 
-* 128 bit key: 10 rounds
-* 192 bit key: 12 rounds
-* 256 bit key: 14 rounds
+<<sep-aes-reference-diagram>> shows the upstream core. The OCAH bus, key-delivery, and entropy
+connections are described in the integration details below.
 
 [[och-modifications-2]]
 == OCAH Modifications
@@ -64,8 +63,33 @@ Consult the
 https://opentitan.org/book/hw/ip/aes/index.html[OpenTitan AES
 documentation] for the authoritative core functionality of the IP. The
 ifdef::backend-html5[]
-register map is reported in the xref:sep:memory_map.adoc#sep-detailed-register-map[Detailed Register Map].
+register map follows below.
 endif::backend-html5[]
 ifdef::backend-pdf[]
-register map is reported in the <<sep-detailed-register-map,Detailed Register Map>>.
+register map follows below.
+endif::backend-pdf[]
+
+== Memory Map and Register Reference
+
+ifdef::backend-html5[]
+++++
+<span id="register-reference"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
+
+Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.
+
+=== Detailed Register Map
+
+ifdef::backend-html5[]
+++++
+include::ip:partial$aes/regs/gen/html/aes.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/aes/regs/gen/adoc/aes.adoc[leveloffset=+2]
 endif::backend-pdf[]

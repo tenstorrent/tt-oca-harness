@@ -5,9 +5,10 @@
 // iterating all three JTAG2AXI bridges (smc_axi, smc_otp, sep_otp).
 // Single-cycle system-reset pulse while a write is held on the AW
 // channel of every bridge, with the bridge FSM observed mid-flight
-// through dtp_tb_if; the FSM's return to IDLE, the CDC's TCK-side clear,
-// the absence of an escaped write, and the recovery status are recorded
-// per bridge.
+// through dtp_tb_if, then a second pulse once the first clear has
+// completed; the FSM's return to IDLE, both CDC TCK-side clears, the
+// absence of an escaped write, and the recovery status are recorded per
+// bridge.
 
 class dtp_jtag2axi_cdc_clear_abort_narrow_reset_mid_xaction_test extends dtp_jtag2axi_robustness_base_test;
   `uvm_component_utils(dtp_jtag2axi_cdc_clear_abort_narrow_reset_mid_xaction_test)
@@ -23,6 +24,11 @@ class dtp_jtag2axi_cdc_clear_abort_narrow_reset_mid_xaction_test extends dtp_jta
 
   virtual function string specific_loops_knob();
     return "DTP_JTAG2AXI_CDC_CLEAR_ABORT_NARROW_RESET_MID_XACTION_TEST_LOOPS";
+  endfunction
+
+  virtual function void configure_test_cfg(dtp_test_cfg cfg);
+    super.configure_test_cfg(cfg);
+    cfg.require_jtag_ids('{"CHK-RESET-COUNT"});
   endfunction
 
   virtual function void add_required_axi_ids(ref string ids[$]);

@@ -4,7 +4,9 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-aon_timer]
-== Address Map: aon_timer
+== Always-On Timer
+
+Wakeup and watchdog timers running on a low-power, always-on clock
 
 [cols="1,4,1,6", options="header"]
 |===
@@ -89,7 +91,7 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `Reserved` | - | - a| Reserved
-| 0 | `regwen` | RW | 0x1 a| Once cleared, the watchdog configuration will be locked until the next reset.
+| 0 | `regwen` | RW0C | 0x1 a| Once cleared, the watchdog configuration will be locked until the next reset.
 |===
 
 [#reg-{regmap-instance}-aon_timer-WDOG_CTRL]
@@ -137,8 +139,8 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:2 | `Reserved` | - | - a| Reserved
-| 1 | `wdog_timer_bark` | RW | 0x0 a| Raised if the watchdog timer has hit the bark threshold.
-| 0 | `wkup_timer_expired` | RW | 0x0 a| Raised if the wakeup timer has hit the specified threshold.
+| 1 | `wdog_timer_bark` | RW1C | 0x0 a| Raised if the watchdog timer has hit the bark threshold.
+| 0 | `wkup_timer_expired` | RW1C | 0x0 a| Raised if the wakeup timer has hit the specified threshold.
 |===
 
 [#reg-{regmap-instance}-aon_timer-INTR_TEST]
@@ -159,5 +161,5 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `Reserved` | - | - a| Reserved
-| 0 | `cause` | RW | 0x0 a| AON timer requested wakeup, write 0 to clear.
+| 0 | `cause` | RW0C | 0x0 a| AON timer requested wakeup, write 0 to clear.
 |===

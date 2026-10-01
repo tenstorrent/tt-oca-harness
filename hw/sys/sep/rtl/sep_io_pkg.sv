@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SEP IO submodule typedefs and parameters
+// Define typedefs and parameters for the SEP IO subsystem.
+//
+// AXI-Lite and SPI request/response structs are shared by sep_io and sep_ot_spi_wrap.
 
 package sep_io_pkg;
 

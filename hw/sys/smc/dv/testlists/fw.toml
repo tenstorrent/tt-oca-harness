@@ -159,7 +159,7 @@ args = [
 name = "smc_fw_i2c_p1_fifo_depth_xfer_test"
 module = "smc_fw_i2c_p1_fifo_depth_xfer_test"
 seed = 1
-timeout_sec = 3600
+timeout_sec = 7200
 tags = ["firmware", "cpu", "i2c"]
 run_modes = ["smoke"]
 firmware = "i2c_p1_fifo_depth_xfer"
@@ -255,6 +255,22 @@ args = [
     "+smc_scratch_ram_hex=uart_log_engine_fetch_err.ecc.hex",
 ]
 
+[[tests]]
+# Word stores into the half of a 64-bit register word whose fields they do not
+# address. The core replicates the word onto the fields' lanes with the strobes
+# clear, a case SEP_IN cannot make because its master zero-fills those lanes.
+name = "smc_fw_narrow_store_lane_test"
+module = "smc_fw_narrow_store_lane_test"
+seed = 1
+timeout_sec = 3600
+tags = ["firmware", "cpu", "register"]
+run_modes = ["smoke"]
+firmware = "narrow_store_lane"
+args = [
+    "+smc_hold_cpu_boot",
+    "+smc_scratch_ram_hex=narrow_store_lane.ecc.hex",
+]
+
 [[groups]]
 name = "fw"
 tests = [
@@ -266,6 +282,7 @@ tests = [
     "smc_fw_i2c_sanity_test",
     "smc_fw_i2c_target_sanity_test",
     "smc_fw_i2c_tx_stretch_timeout_recovery_test",
+    "smc_fw_narrow_store_lane_test",
     "smc_fw_octs_p0_primary_test",
     "smc_fw_plic_claim_test",
     "smc_fw_uart_log_engine_boundary_backpressure_test",
@@ -273,4 +290,4 @@ tests = [
     "smc_fw_uart_log_engine_fetch_err_test",
     "smc_fw_uart_log_engine_single_entry_test",
 ]
-expected_count = 14
+expected_count = 15

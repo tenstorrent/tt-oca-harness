@@ -8,6 +8,11 @@ every rising TCK edge inside a window, so a gated operation can prove zero
 pulses over the full window and an enabled operation can prove the expected
 pulses occurred; it also counts the cycles the DUT's exported TAP state spent
 in Shift-DR or Shift-IR, the DUT-side witness that the window covered a scan.
+Each sample is also classified by that exported state: the samples in
+Capture-DR through Update-DR, and those in Run-Test/Idle, each with every
+observable's high count among them, so a scenario judges a control in the
+TAP states the specification ties it to; the window keeps the state and the
+observable values of its latest sample too.
 The shift monitor turns those Shift visits into episodes, one per scan, so the
 scan-length evidence compares the length the DUT performed with the width the
 sequence drove.
@@ -23,6 +28,20 @@ from cocotb.triggers import ReadOnly, RisingEdge
 from env.dtp_types import DtpTapState
 
 _SHIFT_STATES = frozenset({int(DtpTapState.SHIFT_DR), int(DtpTapState.SHIFT_IR)})
+# The DR-column states in which the selected data register captures, shifts,
+# and updates.
+_DR_SCAN_STATES = frozenset(
+    int(state)
+    for state in (
+        DtpTapState.CAPTURE_DR,
+        DtpTapState.SHIFT_DR,
+        DtpTapState.EXIT1_DR,
+        DtpTapState.PAUSE_DR,
+        DtpTapState.EXIT2_DR,
+        DtpTapState.UPDATE_DR,
+    )
+)
+_RUN_TEST_IDLE = int(DtpTapState.RUN_TEST_IDLE)
 
 
 class DtpScanControlWindowMonitor:
@@ -35,6 +54,15 @@ class DtpScanControlWindowMonitor:
         self.edges = 0
         # TCK cycles the DUT's exported TAP state was Shift-DR or Shift-IR.
         self.dut_shift_cycles = 0
+        # Samples whose exported TAP state is Capture-DR through Update-DR,
+        # or Run-Test/Idle, and each observable's high count among them.
+        self.dr_scan_edges = 0
+        self.dr_scan_high_counts: dict[str, int] = {name: 0 for name in self.signals}
+        self.rti_edges = 0
+        self.rti_high_counts: dict[str, int] = {name: 0 for name in self.signals}
+        # Exported TAP state and each observable's value at the latest sample.
+        self.last_state: int | None = None
+        self.last_high: dict[str, int] = {name: 0 for name in self.signals}
         self._task = None
         for name in self.signals:
             if not tb_if.has(name):
@@ -45,11 +73,20 @@ class DtpScanControlWindowMonitor:
             await RisingEdge(self.tb_if.jtag.tck)
             await ReadOnly()
             self.edges += 1
-            if self.tb_if.sample("jtag_ptap_state") in _SHIFT_STATES:
+            state = self.tb_if.sample("jtag_ptap_state")
+            if state in _SHIFT_STATES:
                 self.dut_shift_cycles += 1
+            in_dr_scan = state in _DR_SCAN_STATES
+            in_rti = state == _RUN_TEST_IDLE
+            self.dr_scan_edges += int(in_dr_scan)
+            self.rti_edges += int(in_rti)
+            self.last_state = state
             for name in self.signals:
-                if self.tb_if.sample(name):
-                    self.high_counts[name] += 1
+                high = int(bool(self.tb_if.sample(name)))
+                self.last_high[name] = high
+                self.high_counts[name] += high
+                self.dr_scan_high_counts[name] += high & int(in_dr_scan)
+                self.rti_high_counts[name] += high & int(in_rti)
 
     def start(self) -> "DtpScanControlWindowMonitor":
         if self._task is not None:
@@ -73,7 +110,8 @@ class DtpTapShiftMonitor:
     cycles the DUT spent there. The DUT moves one bit per cycle in a Shift
     state, so an episode is the scan length the DUT executed, whatever the
     driver requested. A TRST or power-on reset asserted at a TCK edge ends the
-    visit without an entry.
+    visit without an entry, and so does a power-on reset pulsed between two
+    edges, which the ``tb_top`` assertion counter records.
     """
 
     def __init__(self, tb_if) -> None:
@@ -85,6 +123,7 @@ class DtpTapShiftMonitor:
         self._task = None
 
     async def _run(self) -> None:
+        por_count = self.tb_if.sample("por_assert_count")
         while True:
             await RisingEdge(self.tb_if.jtag.tck)
             await ReadOnly()
@@ -92,6 +131,11 @@ class DtpTapShiftMonitor:
                 self._run_len = 0
                 self._in_state = None
                 continue
+            count = self.tb_if.sample("por_assert_count")
+            if count != por_count:
+                por_count = count
+                self._run_len = 0
+                self._in_state = None
             state = self.tb_if.sample("jtag_ptap_state")
             current = state if state in _SHIFT_STATES else None
             if self._in_state is not None and current != self._in_state:

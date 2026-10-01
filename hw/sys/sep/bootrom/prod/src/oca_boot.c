@@ -44,11 +44,11 @@
 #include "status_values.h"
 
 // SEP EXT SRAM: staging area for the manifest body and its payload.
-#define SRAM_BASE ((uint32_t)OCH_SEP_TOP_SEP_SRAM_BASE_ADDR) // 0x10000000
-#define SRAM_SIZE ((uint32_t)OCH_SEP_TOP_SEP_SRAM_SIZE)      // 0x00040000 (256 KiB)
+#define SRAM_BASE ((uint32_t)SEP_TOP_SEP_SRAM_BASE_ADDR) // 0x10000000
+#define SRAM_SIZE ((uint32_t)SEP_TOP_SEP_SRAM_SIZE)      // 0x00040000 (256 KiB)
 
 #ifndef SEP_SPI_MAX_SIZE
-#define SEP_SPI_MAX_SIZE ((uint32_t)OCH_SEP_TOP_SEP_EXTERNAL_XIP_REGION_SIZE)
+#define SEP_SPI_MAX_SIZE ((uint32_t)SEP_TOP_SEP_EXTERNAL_XIP_REGION_SIZE)
 #endif
 
 // Staged state, valid only after a successful rom_manifest_boot().
@@ -250,7 +250,9 @@ static uint32_t try_manifest_slot(uint32_t src_addr, bool from_spi, int64_t regi
     }
     simputshex32("OCA_BODY=", (uint32_t)pk.body_size);
 
-    if (pk.body_size > SRAM_SIZE) {
+    // SEP_SRAM_USABLE_SIZE, not SRAM_SIZE: the top of SRAM holds sep_dma_zero()'s
+    // fill word, which the CPU rewrites before every fill.
+    if (pk.body_size > SEP_SRAM_USABLE_SIZE) {
         return OCA_BOOT_ERR_STAGE_OVERFLOW;
     }
 
@@ -330,7 +332,7 @@ static uint32_t try_manifest_slot(uint32_t src_addr, bool from_spi, int64_t regi
 
     // Stage the payload immediately after the body, 8-byte aligned.
     uint32_t payload_off = ((uint32_t)pk.body_size + 7u) & ~7u;
-    if (payload_span > (size_t)(SRAM_SIZE - payload_off)) {
+    if (payload_span > (size_t)(SEP_SRAM_USABLE_SIZE - payload_off)) {
         simputs("PAYLOAD_TOO_LARGE\n");
         return OCA_BOOT_ERR_STAGE_OVERFLOW;
     }

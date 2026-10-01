@@ -50,9 +50,6 @@ module smu_wrapper
       (Cfg.JTAG_NUM_EXTRA_STAPS > 0) ? Cfg.JTAG_NUM_EXTRA_STAPS : 1
 ) (
   // Clock and Reset
-  input  logic  clk_smu_i,
-  input  logic  clk_ref_i,
-  input  logic  clk_periph_i,
   input  logic  rst_cold_ni,
 
   output logic  rst_cold_stable_ref_clk_no,
@@ -280,6 +277,10 @@ module smu_wrapper
   // Signal Declarations //
   /////////////////////////
 
+  logic clk_sys;
+  logic clk_ref;
+  logic clk_periph;
+
   // Single AXI-Lite window covering the whole smc_external map; PLL, PVT,
   // GPIO control and the extension slot are decoded inside
   // smc_ip_integration.
@@ -381,9 +382,9 @@ module smu_wrapper
     .EXT_TRNG_NUM_AXIS     (EXT_TRNG_NUM_AXIS),
     .ic_reset_ext_t         (ic_reset_ext_t)
   ) u_smu (
-    .clk_smu_i,
-    .clk_ref_i,
-    .clk_periph_i,
+    .clk_smu_i    (clk_sys),
+    .clk_ref_i    (clk_ref),
+    .clk_periph_i (clk_periph),
     .rst_cold_ni,
     .rst_cold_stable_ref_clk_no,
     .powergood_i,
@@ -586,7 +587,9 @@ module smu_wrapper
   /////////////////////////
 
   smc_ip_integration u_smc_ip_integration (
-    .clk_smc_i               (clk_smu_i),
+    .clk_ref_o    (clk_ref),
+    .clk_sys_o    (clk_sys),
+    .clk_periph_o (clk_periph),
     .rst_primary_smc_clk_ni  (rst_primary_smc_clk_no),
 
     .gated_clk_periph_i3c_i    (gated_clk_periph_i3c_o),
@@ -643,7 +646,7 @@ module smu_wrapper
     .EXT_TRNG_NUM_AXIS (EXT_TRNG_NUM_AXIS),
     .ABR_MASKING_EN    (Cfg.SEP_ABR_MASKING_EN)
   ) u_sep_ip_integration (
-    .clk_i  (clk_smu_i),
+    .clk_i  (clk_sys),
     .rst_ni (rst_primary_smc_clk_no),
 
     .test_en_i (test_en_i),

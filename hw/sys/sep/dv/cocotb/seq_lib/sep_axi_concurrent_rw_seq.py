@@ -258,6 +258,8 @@ class SepAxiConcurrentRw:
         self.presented: str | None = None
         self.observation: str = "not driven"
         self.covered: int = 0
+        # First handshake cycle of each channel at the adapter port, per cell.
+        self.hs: dict[str, int | None] = {"aw": None, "w": None, "ar": None}
         self.unreachable: str | None = None
         # Set once a lane adapter has stalled. It cannot be cleared without a
         # reset, so the walk stops rather than reporting later cells as
@@ -586,6 +588,7 @@ class SepAxiConcurrentRw:
 
         self.presented = obs.presented()
         self.observation = obs.summary()
+        self.hs = dict(obs.hs_cycle)
         self.test.logger.info(
             "CHK-CONCURRENT-STIM %s: requested=%s presented=%s %s.INTR_ENABLE %s",
             "OK " if self.presented == cfg.order else "DIFF",

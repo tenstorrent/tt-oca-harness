@@ -5,13 +5,15 @@
 // semantics on the shared ocah_jtag_vip agent:
 //   * deterministic 32-edge TAP FSM closure walk (16 states x tms in {0,1});
 //     the env's dtp_tap_fsm_checker model-checks every TCK cycle, and the
-//     test asserts full closure via check_fsm_closure() after this sequence
-//     completes. Randomized TMS walks and targeted goto_random_state() hops
-//     (VIP shortest-path navigation, landing state checked against the DUT
-//     one-hot observable) run IN ADDITION as stress stimulus, not as the
-//     closure mechanism, so pass/fail is seed-independent;
-//   * BYPASS (6-bit IR 0x00) 1-TCK TDI-to-TDO latency, fixed + random
-//     patterns (checked here from the DR_SCAN item responses);
+//     test asserts full closure via check_fsm_closure() once this pass's
+//     sequence completes (CHK-TAP-VISIT-ALL). Randomized TMS walks and
+//     targeted goto_random_state() hops (VIP shortest-path navigation,
+//     landing state checked against the DUT one-hot observable) run IN
+//     ADDITION as stress stimulus, not as the closure mechanism, so
+//     pass/fail is seed-independent;
+//   * BYPASS (6-bit IR 0x00) loaded once and decoded as itself, then its
+//     1-TCK TDI-to-TDO latency over fixed + random patterns (checked here
+//     from the DR_SCAN item responses);
 //   * clean scan-path returns to Run-Test/Idle, final Test-Logic-Reset via
 //     five consecutive TMS=1 cycles;
 //   * named TAP-contract evidence through env.m_jtag_checker:
@@ -19,7 +21,10 @@
 //     reconstructed scan lengths. +DTP_JTAG_TAP_CHECKER_NEGATIVE is the
 //     documented negative-validation hook: it arms a WRONG
 //     expected IDCODE so the run must FAIL, proving the named-evidence path
-//     rejects a bad expectation end to end.
+//     rejects a bad expectation end to end;
+//   * the goto landings (CHK-TAP-GOTO) and the BYPASS decode (CHK-IR-DECODE)
+//     on the per-pass family checker, whose expectations
+//     +DTP_JTAG_FAMILY_CHECKER_NEGATIVE corrupts.
 
 class dtp_sanity_test_seq extends dtp_jtag_base_test_seq;
   `uvm_object_utils(dtp_sanity_test_seq)
@@ -106,14 +111,9 @@ class dtp_sanity_test_seq extends dtp_jtag_base_test_seq;
       goto_random_state(reached);
       `uvm_info(get_type_name(), $sformatf(
                 "goto hop %0d/%0d: target=%s", h + 1, GotoHops, reached.name()), UVM_LOW)
-      if (evidence != null)
-        void'(evidence.expect_equal(
-            "CHK-TAP-GOTO",
-            64'(tb_vif.tap_state),
-            64'(16'h1 << int'(reached)),
-            $sformatf(
-                "hop=%0d/%0d target=%s", h + 1, GotoHops, reached.name())
-        ));
+      family_check("CHK-TAP-GOTO", "TAP state after goto", 64'(tb_vif.tap_state),
+                   64'(16'h1 << int'(reached)), $sformatf(
+                   "hop=%0d/%0d target=%s", h + 1, GotoHops, reached.name()));
       check_state(dtp_tap_state_e'(16'h1 << int'(reached)), "sanity_goto_state_chk", $sformatf(
                   "after goto hop %0d/%0d", h + 1, GotoHops));
     end
@@ -185,6 +185,9 @@ class dtp_sanity_test_seq extends dtp_jtag_base_test_seq;
     int unsigned delayed_observations = 0;
 
     seed_scenario_rng();
+    // The raw TMS walks visit Shift-x outside the scans this sequence
+    // issues, so the family checker skips the scan-count cross-check.
+    attach_family_checker('{"CHK-TAP-GOTO", "CHK-IR-DECODE"}, 1'b0);
     // Start-of-pass banner: intent, per-pass seed, and randomized volume.
     `uvm_info(get_type_name(),
               $sformatf({"DTP SV-UVM sanity (VPLAN 0.1): FSM 32-edge closure + BYPASS 1-TCK ",
@@ -209,6 +212,7 @@ class dtp_sanity_test_seq extends dtp_jtag_base_test_seq;
     // sanity_bypass_latency_chk: BYPASS via 6-bit IR 0x00, fixed + random patterns.
     step(1'b0);  // TLR -> RTI
     load_ir(BYPASS_ALT_INSTR);
+    expect_decoded_instruction(BYPASS_ALT_INSTR);
     bypass_patterns.push_back(64'hA5A5_5A5A_C3C3_3C3C);
     for (int unsigned p = 0; p < 2; p++) begin
       if (!std::randomize(rand_pattern))
@@ -216,11 +220,12 @@ class dtp_sanity_test_seq extends dtp_jtag_base_test_seq;
       bypass_patterns.push_back(rand_pattern);
     end
     foreach (bypass_patterns[p]) begin
-      check_bypass_latency(bypass_patterns[p], 64);
-      // Any pattern whose 1-TCK-delayed image differs from a direct
-      // passthrough proves the delay was actually observed.
-      if (ocah_jtag_checker::predict_bypass_tdo(bypass_patterns[p], 64) !== bypass_patterns[p])
-        delayed_observations++;
+      bit [63:0] observed, expected;
+      check_bypass_latency(bypass_patterns[p], 64, observed);
+      // A scan that returned the 1-TCK-delayed image, where that image
+      // differs from a direct passthrough, shows the DUT delayed TDI.
+      expected = ocah_jtag_checker::predict_bypass_tdo(bypass_patterns[p], 64);
+      if ((observed === expected) && (expected !== bypass_patterns[p])) delayed_observations++;
     end
 
     // CHK-TAP-TLR-IDCODE / CHK-IDCODE-*: identification-register contracts.
@@ -233,8 +238,8 @@ class dtp_sanity_test_seq extends dtp_jtag_base_test_seq;
     run_goto_state_hops();
 
     // sanity_scan_path_chk epilogue: TLR via five TMS=1 cycles. Full
-    // FSM closure is asserted by the test via env.m_fsm_checker after
-    // this sequence returns.
+    // FSM closure of this pass is asserted by the test via
+    // env.m_fsm_checker after this sequence returns.
     goto_tlr_via_tms();
 
     if (evidence != null)
@@ -242,10 +247,11 @@ class dtp_sanity_test_seq extends dtp_jtag_base_test_seq;
           "CHK-NONVAC",
           (bypass_patterns.size() >= 3) && (delayed_observations > 0),
           $sformatf(
-              "bypass_patterns=%0d delayed_observations=%0d idcode_reads=3",
+              "bypass_patterns=%0d delayed_observations=%0d",
               bypass_patterns.size(),
               delayed_observations)
       ));
+    finalize_family_checker();
   endtask
 
 endclass : dtp_sanity_test_seq

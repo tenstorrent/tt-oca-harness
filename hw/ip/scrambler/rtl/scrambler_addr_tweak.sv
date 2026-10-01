@@ -1,27 +1,21 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
-//-----------------------------------------------------------------------------
-// SRAM Scrambler Address Tweak Module
-//
-// This module takes an address of parameterized width and a 32-bit scrambler
-// key, and produces a 32-bit round key by XORing the expanded address with
-// the scrambler key.
-//
-// If the address is less than 32 bits, it is repeatedly concatenated with
-// itself until 32 bits are formed, dropping any excess bits.
-// The address must be 32 bits wide or less.
-//
 // Copyright 2026 Tenstorrent Inc.
+
+// Expand a narrow address and XOR it with the scrambler key to form a round key.
 //
-//-----------------------------------------------------------------------------
+// For ADDR_WIDTH 8 through 13 and 16 the address is concatenated with itself until 32 bits
+// are formed, the last copy keeping only its most significant bits; a 32-bit address is
+// used as is, and any other width is zero-extended.
+// The address must be 32 bits wide or less.
+// round_key_o is that expansion XORed with scrambler_key_i.
 
 module scrambler_addr_tweak #(
-  parameter int unsigned ADDR_WIDTH = 32
+  parameter int unsigned ADDR_WIDTH = 32  // Input address width; must be <= 32.
 ) (
-  input  logic [ADDR_WIDTH-1:0] addr_i,
-  input  logic [31:0]           scrambler_key_i,
-  output logic [31:0]           round_key_o
+  input  logic [ADDR_WIDTH-1:0] addr_i,                     // Plaintext address to expand.
+  input  logic [31:0]           scrambler_key_i,            // 32-bit scrambler key.
+  output logic [31:0]           round_key_o                 // Expanded address XOR key.
 );
   logic [31:0] expanded_addr;
 

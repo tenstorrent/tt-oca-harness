@@ -343,7 +343,8 @@ async def check_cpu_firmware_boot_contract(
 ) -> dict[str, int | bool | str]:
     """Check CPU firmware boot when a ROM or scratch image was preloaded.
 
-    ``poll_iterations`` bounds the verdict poll at 100 clk_smc_i cycles each.
+    ``poll_iterations`` bounds the verdict poll at 500 ns each (100 clk_smc_i
+    cycles at a 5 ns period; the count scales with the period in use).
     The default suits an image that goes straight to its verdict; raise it for
     one that does real setup first, and put the measured figure in the caller
     rather than picking a round number.
@@ -447,8 +448,9 @@ async def check_cpu_firmware_boot_contract(
     # (the snoop steps bit_base across the 144-bit beat), which would grant PASS
     # to a run whose firmware never reported one. It stays wired as
     # observability and is logged below, but it cannot decide the outcome.
+    poll_cycles = max(1, round(500 / seq.cfg.smc_clk_period_ns))
     for _ in range(poll_iterations):
-        await ClockCycles(dut.clk_smc_i, 100)
+        await ClockCycles(dut.clk_smc_i, poll_cycles)
         last_csr = await seq.csr_read("CPU_BOOT_SCRATCH0_POLL", CPU_CTRL_SCRATCH_0)
         # Sampled and reported, never used to decide -- see the note above.
         fw_valid = int(dut.tb_cpu_fw_mailbox_valid.value)

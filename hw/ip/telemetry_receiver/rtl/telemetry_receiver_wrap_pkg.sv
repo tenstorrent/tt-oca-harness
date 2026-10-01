@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// Telemetry Receiver Wrapper Package
+// Hold address-map and AXI-Lite typedefs for the telemetry receiver wrapper.
 //
-//-----------------------------------------------------------------------------
+// Defines the 32-bit REG_ADDR_WIDTH and REG_DATA_WIDTH and the axil types used by
+// telemetry_receiver_wrap, MAX_NUM_TELEMETRY_RECEIVERS (16) and at_req_t, the {atid, atdata}
+// word carried across the ATB clock crossing.
 
 package telemetry_receiver_wrap_pkg;
 

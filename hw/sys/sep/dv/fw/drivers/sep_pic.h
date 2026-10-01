@@ -18,7 +18,7 @@
 
 #include "sep.h"
 
-#define SEP_PIC_MEIP_0 OCH_SEP_TOP_PIC_MEIP_BASE_ADDR(0)
+#define SEP_PIC_MEIP_0 SEP_TOP_PIC_MEIP_BASE_ADDR(0)
 
 // The vector table base symbol from the linker script (1024-byte aligned, 256
 // 32-bit entries in DCCM).
@@ -41,22 +41,22 @@ static inline void pic_register_handler(uint32_t source_id, pic_handler_t handle
     __asm__ volatile("fence" ::: "memory");
 }
 
-// PeakRDL ``OCH_SEP_TOP_PIC_*_BASE_ADDR(idx)`` expands ``idx * stride`` without
+// PeakRDL ``SEP_TOP_PIC_*_BASE_ADDR(idx)`` expands ``idx * stride`` without
 // parenthesizing idx, so only an atomic argument is safe to pass.
 static inline uint32_t _pic_meipl_addr(uint32_t source_id) {
-    return OCH_SEP_TOP_PIC_MEIPL_BASE_ADDR(source_id);
+    return SEP_TOP_PIC_MEIPL_BASE_ADDR(source_id);
 }
 
 static inline uint32_t _pic_meie_addr(uint32_t source_id) {
-    return OCH_SEP_TOP_PIC_MEIE_BASE_ADDR(source_id);
+    return SEP_TOP_PIC_MEIE_BASE_ADDR(source_id);
 }
 
 static inline uint32_t _pic_meigwctrl_addr(uint32_t source_id) {
-    return OCH_SEP_TOP_PIC_MEIGWCTRL_BASE_ADDR(source_id);
+    return SEP_TOP_PIC_MEIGWCTRL_BASE_ADDR(source_id);
 }
 
 static inline uint32_t _pic_meigwclr_addr(uint32_t source_id) {
-    return OCH_SEP_TOP_PIC_MEIGWCLR_BASE_ADDR(source_id);
+    return SEP_TOP_PIC_MEIGWCLR_BASE_ADDR(source_id);
 }
 
 // Priority 0 disables; 1..15 enable at that level.
@@ -97,8 +97,7 @@ static inline void pic_clear_gateway(uint32_t source_id) {
 
 static inline uint32_t pic_source_pending(uint32_t source_id) {
     /* meip bitmap is indexed by raw source_id (bit0 unused); neighbours use source_id-1. */
-    uint32_t word =
-        *(volatile uint32_t *)(OCH_SEP_TOP_PIC_MEIP_BASE_ADDR(0) + (source_id / 32u) * 4u);
+    uint32_t word = *(volatile uint32_t *)(SEP_TOP_PIC_MEIP_BASE_ADDR(0) + (source_id / 32u) * 4u);
     return (word >> (source_id % 32u)) & 1u;
 }
 

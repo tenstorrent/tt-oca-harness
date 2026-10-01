@@ -15,9 +15,9 @@ adopter external port (``tb_axil_external_active`` pulses while the access is
 in flight; the bench PVT model answers OKAY with zero data).
 
 The DTP control window is not probed: ``tb_top`` leaves its AXI-Lite response
-idle, so an access there would never complete. The four bus error units sit
-behind the bit-25 fold of ``smc_local_fabric`` and are not reachable from
-SEP_IN (see ``smc_cluster_beu_test``).
+idle, so an access there would never complete. The four bus error units lie
+outside the local and global apertures at the reset ``REGION_SIZE`` and answer
+DECERR from SEP_IN (see ``smc_cluster_beu_test``); this leaf does not widen it.
 """
 
 from __future__ import annotations
@@ -148,9 +148,21 @@ PVT_MODEL_RDATA = 0
 
 _CLA_PATTERNS = (0x3C3C_C3C3, 0xC3C3_3C3C)
 
+# One word past the middle of each aperture, well beyond the unit's decoded
+# extent (smc_addr.h *_SIZE) and inside its aperture (memory_map.adoc Size).
+WDT0_BASE = smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR")
+WDT_DECODED_EXTENT = smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_SIZE")
+WDT0_PAST_EXTENT = WDT0_BASE + 0x200
+assert WDT_DECODED_EXTENT < 0x200 < 0x400
+WDT0_CMP = smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_CMP_BASE_ADDR")
+CPU_CTRL_BASE = smc_addr("SMC_TOP_SMC_CPU_CTRL_BASE_ADDR")
+CPU_CTRL_DECODED_EXTENT = smc_addr("SMC_TOP_SMC_CPU_CTRL_SIZE")
+CPU_CTRL_PAST_EXTENT = CPU_CTRL_BASE + 0x800
+assert CPU_CTRL_DECODED_EXTENT < 0x800 < 0x1000
+
 # Literal floors: exact-value compares and total accesses the body issues.
-EXPECTED_VALUE_CHECKS = 92
-EXPECTED_ACCESSES = 164
+EXPECTED_VALUE_CHECKS = 93
+EXPECTED_ACCESSES = 169
 
 
 class smc_peripheral_instance_decode_test_seq(SmcDecodeProbeSeq):
@@ -445,12 +457,41 @@ class smc_peripheral_instance_decode_test_seq(SmcDecodeProbeSeq):
         )
         self.pvt_external_hits = hits
         evidence = (
-            f"0x{PVT_WRAP_BASE:08x} drove smc_external_req_o for {hits} clk_smc_i cycle(s) and the "
+            f"0x{PVT_WRAP_BASE:08x} was presented on smc_external_req_o as a read request for "
+            f"{hits} clk_smc_i cycle(s) and the "
             f"bench PVT model answered OKAY 0x{rdata:08x}"
         )
         # One cell for one measurement: closing a second name on the same
         # routed read would inflate the printed cell count.
         self.close_cell("pvt-wrapper-decodes", evidence)
+
+    async def _past_decoded_extent(self) -> None:
+        """Offsets inside a unit's aperture but past its decoded extent are refused.
+
+        memmap.adoc (Address Space Organization): the fabric refuses an address
+        past a unit's decoded extent. The watchdog and CPU-control windows are
+        the units in their layout regions whose extent ends well short of the
+        aperture; a read and a write past each must answer an error, and the
+        unit's last decoded register must keep its value across them.
+        """
+        monitor = getattr(self.env, "axi_monitor", None)
+        for label, addr, live, restore in (
+            ("WDT0_PAST_EXTENT", WDT0_PAST_EXTENT, WDT0_CMP, WDT_CMP_REG_DEFAULT),
+            ("CPU_CTRL_PAST_EXTENT", CPU_CTRL_PAST_EXTENT, None, None),
+        ):
+            if monitor is not None:
+                monitor.expected_decerr_addrs.add(addr)
+            await self.csr_read_expect_error(f"{label}_RD", addr)
+            await self.csr_write_expect_error(f"{label}_WR", addr, 0xFFFF_FFFF)
+            if live is not None:
+                await self.csr_read(f"{label}_LIVE_AFTER", live, expected=restore)
+        self.close_cell(
+            "past-decoded-extent-refused",
+            f"reads and writes at 0x{WDT0_PAST_EXTENT:08x} (past the core 0 watchdog's "
+            f"0x{WDT_DECODED_EXTENT:x}-byte extent) and 0x{CPU_CTRL_PAST_EXTENT:08x} (past "
+            f"smc_cpu_ctrl's 0x{CPU_CTRL_DECODED_EXTENT:x}-byte extent) answered an error, and "
+            f"WDT0 CMP still read 0x{WDT_CMP_REG_DEFAULT:x}",
+        )
 
     async def body(self) -> None:
         await self.wait_fuse_sense_done()
@@ -464,6 +505,7 @@ class smc_peripheral_instance_decode_test_seq(SmcDecodeProbeSeq):
         await self._log_engines()
         await self._single_blocks()
         await self._pvt_wrapper()
+        await self._past_decoded_extent()
 
         self.leave_open(
             "dtp-ctrl-decode",
@@ -472,8 +514,8 @@ class smc_peripheral_instance_decode_test_seq(SmcDecodeProbeSeq):
         )
         self.leave_open(
             "beu-instance-3",
-            "the BEU window 0xC801_x000 folds onto the local base in smc_local_fabric; no SEP_IN "
-            "access reaches a bus error unit",
+            "the BEU window 0xC801_x000 lies outside the local and global apertures at the reset "
+            "REGION_SIZE and answers DECERR, so no SEP_IN access here reaches a bus error unit",
         )
 
         self.value_checks_measured = sb.sys_axi_value_checks_seen - value_checks_before

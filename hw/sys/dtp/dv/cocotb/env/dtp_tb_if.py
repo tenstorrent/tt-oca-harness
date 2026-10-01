@@ -185,6 +185,10 @@ class DtpTbIf:
         """Hold ``cdc_clear_seen_clear``: 1 clears every bridge's sticky clear-seen flag."""
         self.handle("cdc_clear_seen_clear").value = value
 
+    def set_error_rdata(self, prefix: str, value: int) -> None:
+        """Drive the errored-beat read word of the bridge port whose activity prefix is ``prefix``."""
+        self.handle(f"{prefix}_err_rdata").value = value
+
     # --- shared AXI VIP binding -----------------------------------------------
     def axi_bus(self, target: str, *, passive: bool = False) -> OcahAxiBus:
         """Shared-VIP bus handle over one DTP AXI interface at the bus's real geometry.

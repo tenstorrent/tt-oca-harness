@@ -12,12 +12,15 @@
       <ipxact:name>telemetry_receiver_wrap_mmap</ipxact:name>
       <ipxact:addressBlock>
         <ipxact:name>telemetry_receiver_wrap</ipxact:name>
+        <ipxact:displayName>Telemetry Receiver Wrapper Address Map</ipxact:displayName>
+        <ipxact:description>Wrapper address map instantiating the telemetry receiver channels.</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
         <ipxact:range>'h300</ipxact:range>
         <ipxact:width>32</ipxact:width>
         <ipxact:registerFile>
           <ipxact:name>telemetry_receiver</ipxact:name>
-          <ipxact:description>Telemetry Receiver</ipxact:description>
+          <ipxact:displayName>Telemetry Receiver Address Map</ipxact:displayName>
+          <ipxact:description>Configuration, status, and data-buffer registers for a single telemetry receiver channel.</ipxact:description>
           <ipxact:dim>3</ipxact:dim>
           <ipxact:addressOffset>'h0</ipxact:addressOffset>
           <ipxact:range>'h100</ipxact:range>
@@ -44,8 +47,10 @@ registers.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>TELEMETRY_RX_FLUSH</ipxact:name>
-              <ipxact:description>Telemetry Receiver Flush. Writing `1` flushes the Telemetry Receiver Buffer and
-all other storage elements in the Telemetry Receiver.</ipxact:description>
+              <ipxact:description>Telemetry Receiver Flush. Writing `1` discards queued messages and resets the assembly write
+pointer. Stored payload bytes are not cleared. In particular, a later short
+message can retain trailing counter values and validity from an earlier
+message. This operation does not erase storage.</ipxact:description>
               <ipxact:bitOffset>4</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>

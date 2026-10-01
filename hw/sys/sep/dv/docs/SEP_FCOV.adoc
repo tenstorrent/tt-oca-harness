@@ -76,7 +76,7 @@ fault paths, illegal encodings. Named below. Not collected.
 |Inbound filter |`sep_inbound_filter_allow_cg`
 |eFuse |`sep_efuse_sense_cg`
 |eFuse fail-closed |`sep_efuse_fail_closed_cg`
-|Lifecycle |`sep_lc_state_cg`, `sep_feat_ctrl_cg`
+|Lifecycle |`sep_lc_state_cg`, `sep_feat_ctrl_cg`, `sep_sec_dis_boot_cg`
 |Mailbox / PIC |`sep_mailbox_pic_cg`
 |WDT |`sep_wdt_bark_cg`
 |Warm / cold scratch |`sep_scratch_reset_cg`
@@ -125,6 +125,7 @@ human. Other members may fill a group in passing.
 |`sep_lc_transition_cg` |`sep_lcc_lc_state_w1s_prod_test` and `_prod_demote_test` (PROD to RMA_SIP_1), `_rma_sip_test` (RMA_SIP_1 to RMA_CHIP_1)
 |`sep_dma_completion_route_cg` |`sep_dma_basic_test` (STATUS poll), `sep_dma_hash_test` (interrupt), `sep_spi_ot_dma_rx_test` / `_tx_test` (handshake mode)
 |`sep_feat_ctrl_cg` |`sep_efuse_lcc_lc_state_stitch_test` (also both `SECURE_TM` polarities), the six W1S leaves, `sep_sec_dis_override_test` (SEC_DIS)
+|`sep_sec_dis_boot_cg` |`sep_sec_dis_override_test` (`cp_hold`, `cp_release`, `cp_rehold`, `cp_alone`, `cp_map_resp`). `cp_map_resp.okay` fills when the pre-sense `LC_STATE` read returns AXI OKAY. `sep_sec_dis_reset_reach_test` fills `cp_release`, `cp_rehold`, `cp_alone`, and `cp_reach`
 |`sep_lc_demote_cg` |`sep_lcc_demote_feat_ctrl_matrix_test`
 |`sep_mailbox_pic_cg` |SEP mailbox `sep_axil_mailbox_iface_rand_test`, `sep_mailbox_plic_test`; KM mailbox `sep_km_mailbox_protocol_rand_test`; `cp_peer_fill` `sep_mailbox_peer_rx_rirqt_test` (the only leaf that drives the peer aperture)
 |`sep_wdt_bark_cg` |threshold `sep_wdt_aon_timer_internals_test`; bark and NMI `sep_nmi_sanity_test`, `sep_reset_wdt_sanity_test`
@@ -133,11 +134,12 @@ human. Other members may fill a group in passing.
 
 Per-test detail is in link:SEP_VPLAN.adoc[SEP_VPLAN].
 
-Thirty-two Phase 1 covergroups, compiled and sampled for VCS only
+Thirty-three Phase 1 covergroups, compiled and sampled for VCS only
 (`ifndef VERILATOR`). Several IPs carry more than one group, because their
 Phase 1 contract has independent halves that different tests reach: the Key
 Manager splits generate from consume; lifecycle splits the sensed state, the
-transition taken, the `FEAT_CTRL` profile and demotion; eFuse splits sense from
+transition taken, the `FEAT_CTRL` profile, demotion, and the SEC_DIS window
+while sensing is still open; eFuse splits sense from
 the program/lock matrix; and the DMA splits the transfer from which completion
 route reported it. Phase 2 names are listed at the end of this document.
 
@@ -320,7 +322,7 @@ A `keyed_mac` hit fills `cp_kmac` as configuration only.
 [cols=",",options="header"]
 |===
 |Coverpoint |Bins
-|`cp_op` |`MLDSA_CTRL` = KEYGEN
+|`cp_op` |`MLDSA_CTRL.CTRL` = KEYGEN. The command is compared on the `CTRL` field mask from `sep_reg.svh` only, so a write that also sets `ZEROIZE` (bit 3) still scores
 |`cp_done` |`MLDSA_STATUS.VALID` after that KEYGEN -- the bit the KAT polls, not "STATUS non-zero"
 |===
 
@@ -333,7 +335,7 @@ The public-key-equals-KAT claim stays on `sep_abr_mldsa_keygen_kat_test`.
 [cols=",",options="header"]
 |===
 |Coverpoint |Bins
-|`cp_op` |`MLDSA_CTRL` = SIGNING, and `MLDSA_CTRL` = VERIFYING
+|`cp_op` |`MLDSA_CTRL.CTRL` = SIGNING, and `MLDSA_CTRL.CTRL` = VERIFYING, on the `CTRL` field mask only
 |`cp_sign_done` / `cp_verify_done` |`MLDSA_STATUS.VALID` after that command.
 Separate coverpoints, not one concatenated cell: the pending flags are
 independent, so a command that never completes would otherwise drop a later
@@ -591,9 +593,9 @@ once its write-lock is set.
 [cols=",",options="header"]
 |===
 |Coverpoint |Bins
-|`cp_field` |SPARE0..SPARE7
+|`cp_field` |SPARE0..SPARE8
 |`cp_lock` |The target's write-lock state when the program was issued: unlocked, locked
-|`x_field_lock` |16 cells
+|`x_field_lock` |18 cells
 |`cp_outcome` |`PROGRAM_DONE` (programmed) and `PROGRAM_STATUS` (refused)
 |===
 
@@ -601,22 +603,23 @@ Programming a write-locked field is a legal software action with a specified
 outcome, not a fault injection -- the same class as writing a read-only
 register -- so it is Phase 1 and not one of the Phase 2 error groups.
 
-All 16 cross cells are filled by a SINGLE seed:
+All 18 cross cells are filled by a SINGLE seed:
 `sep_efuse_program_lock_matrix_test` walks unlocked-program, then lock, then
-reject on each of SPARE0..SPARE7 in order, and only the bit offset inside a
+reject on each of SPARE0..SPARE8 in order, and only the bit offset inside a
 spare is seed-selected. Walking every spare is what makes the slot numbering
 falsifiable -- a lock bit wired to the wrong slot would otherwise be caught only
 on the seed that happened to draw that spare.
 
 The outcome is a separate coverpoint rather than a third cross dimension: a
-`field x lock x outcome` cross would declare 16 cells that only a broken DUT
+`field x lock x outcome` cross would declare 18 cells that only a broken DUT
 could fill, and the program-succeeds / lock-refuses contract belongs to the
 test's checker.
 
 Everything is decoded frontdoor from `EFUSE_PROGRAM_CTRL` -- `EFUSE_ADDR` plus
 `PROGRAM_GO` on the write, `PROGRAM_DONE` / `PROGRAM_STATUS` on the readback --
 and the spare index comes from the generated `SEP_EFUSE_MAP_SPARE*` offsets, not
-a literal.
+a literal. The spare count comes from the generated `LOCKS_SPARE` reserved-field
+shift.
 
 ==== `sep_efuse_fail_closed_cg`
 
@@ -741,6 +744,31 @@ read-only source cannot observe `RMA_SIP_0` or `RMA_CHIP_0` at all.
 The decode-matches-golden claim stays on `sep_lcc_golden`. Token faults and the
 `sigint` fail-closed matrix are Phase 2.
 
+==== `sep_sec_dis_boot_cg`
+
+*Description*: SEC_DIS while fuse sensing is still open. A match leaves
+`sep_reset_n` held. The `sep_reset_n` override releases it, and clearing the
+override holds it again. The `LC_STATE` shadow-map read in that window is
+recorded by its AXI response.
+
+[cols=",",options="header"]
+|===
+|Coverpoint |Bins
+|`cp_hold` |SEC_DIS rises while sensing is still open, `sep_cpu_reset_n` held, override clear
+|`cp_release` |Override select and value set, sensing still open, `sep_cpu_reset_n` rises
+|`cp_rehold` |Override clear after that release, sensing still open, `sep_cpu_reset_n` falls
+|`cp_alone` |That release while SEC_DIS is still off
+|`cp_map_resp` |`okay`, `slverr` on the `LC_STATE` shadow read while sensing is still open and SEC_DIS is on
+|`cp_reach` |OKAY read of `SW_RESET_N` while sensing is still open and `sep_cpu_reset_n` is released
+|===
+
+`sep_sec_dis_override_test` owns `cp_hold`, the match while the reset stays
+held, and `cp_map_resp`, the `LC_STATE` response in that window. `okay` fills
+when that read returns AXI OKAY. The same leaf walks `cp_release`, `cp_rehold`,
+and `cp_alone` from the override pins. `sep_sec_dis_reset_reach_test` walks
+those three from the IC_RESET TDR and fills `cp_reach`. Both probes of the
+reset pair stay on the checker; this group samples `sep_cpu_reset_n` only.
+
 ==== `sep_lc_demote_cg`
 
 *Description*: Volatile PROD debug demotion.
@@ -841,7 +869,8 @@ reseed / CTR DECRYPT), `sep_aes_op_status_cg`, `sep_kmac_cfg_cmd_cg`,
 
 `sep_aperture_reserved_access_cg` also owns the refused-access response codes:
 DECERR / SLVERR on a reserved or unmapped address, walked by
-`sep_axi_map_refuse_test` and `sep_fabric_deadspace_decode_test`. Those are an
+`sep_axi_map_refuse_test`, `sep_fabric_deadspace_decode_test`,
+`sep_unmapped_access_policy_test` and `sep_fabric_burst_wrap_test`. Those are an
 error path, so they stay out of `sep_axi_decode_cg`, whose `cp_resp` records
 only that a legal access completed OKAY.
 

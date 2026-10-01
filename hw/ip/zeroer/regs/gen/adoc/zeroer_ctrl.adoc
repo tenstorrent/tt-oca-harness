@@ -4,14 +4,16 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-zeroer_ctrl]
-== Address Map: zeroer_ctrl
+== Zeroer Control Address Map
+
+Control and status registers for the AXI memory-zeroing engine.
 
 [cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description
 | 0x0 | <<reg-{regmap-instance}-zeroer_ctrl-DEST_ADDR,DEST_ADDR>> | RW a| -
 | 0x8 | <<reg-{regmap-instance}-zeroer_ctrl-SIZE,SIZE>> | RW a| -
-| 0x10 | <<reg-{regmap-instance}-zeroer_ctrl-CTRL_STATUS,CTRL_STATUS>> | RW a| Writing this register will trigger start of zeroer
+| 0x10 | <<reg-{regmap-instance}-zeroer_ctrl-CTRL_STATUS,CTRL_STATUS>> | RW a| Writing this register will trigger start of zeroer. The write is ignored while SIZE is 0.
 |===
 
 [#reg-{regmap-instance}-zeroer_ctrl-DEST_ADDR]

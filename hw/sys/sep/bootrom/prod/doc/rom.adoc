@@ -253,7 +253,12 @@ boot flow. Addresses are as seen by the SEP CPU.
 |*Region* |*Base* |*Size* |*Boot-flow role*
 |SEP SRAM |`0x10000000` |256 KiB |Destination for the manifest and payload; BL1 may also
 execute from here when `BL1_SRAM_EXEC_ENABLE` permits it (<<sec:manifest>>). Cleared by the ROM
-before use ([S15]).
+before use ([S15]). The top 8 bytes are reserved: `sep_dma_zero()` fills from a source word
+the engine re-reads for every beat, and the CPU rewrites that word immediately before each
+fill, so the manifest body, the payload and BL1's permitted load span all stop short of it
+(`SEP_SRAM_USABLE_SIZE`). SEP has no zeroing engine and the secure DMA has no fill opcode, so
+a fill needs a real source address; ROM `.rodata` cannot serve as one, because the engine
+cannot read the ROM aperture.
 |Boot ROM |`0x10040000` |64 KiB |BL0 code, `.rodata`, ROM metadata (version + self-hash), and
 the load image (LMA) of `.data`. Execute/read only.
 |Secure DMA |`0x10800000` |4 KiB |DMA engine registers.
@@ -310,7 +315,7 @@ SEP↔SMC interface contract (`sep_smc_interface.h`).
 [frame=ends]
 |===
 |*Resource* |*Offset* |*ROM usage*
-|Reset-unit straps `STRAPS_LO` / `STRAPS_HI` |`0x2090` / `0x2094` |Latched hardware straps
+|Captured straps `STRAPS_LO` / `STRAPS_HI` |`0x40_5800` / `0x40_5804` |Latched hardware straps
 (<<sec:straps>>).
 |`CHIP_CONFIG_CHIP_ID` |`0x2908` |Chip identification, diagnostic only ([S12]).
 |`CHIP_CONFIG_LC_STATE` |`0x290C` |SMC-side lifecycle mirror (low 4 bits); informational.
@@ -321,7 +326,7 @@ usage-constraint identity checks ([S23]).
 |`DFX_CTRL_STATUS_SMU` |`0xF800` |Memory-repair/MBIST completion gate (<<sec:smc_sync>>).
 |SMC SRAM |`0x60000` |1 MiB shared memory: status ring buffer; manifest/payload staging for
 recovery and secondary boot.
-|SMC `CPU_CTRL_RESET_CTRL` |`0x0020` |Written only on invalid LC state to hold all SMC cores
+|SMC `CPU_CTRL_RESET_CTRL` |`0x39020` |Written only on invalid LC state to hold all SMC cores
 in reset (<<sec:fuses>>).
 |===
 
@@ -404,7 +409,7 @@ partition "Platform init, rom_main ([S04]-[S20])" {
   :[S14] SHA-256 self-test;
   :[S15] SEP SRAM clear, [S16] ICCM clear;
   :[S17] ROM self-hash -> measurement slot 0;
-  :[S18] SBOOT_DIS fuse;
+  :[S18] SBOOT_DIS, CHIPLET_DBG fuses;
   :[S19] stack canary write, [S20] secure DMA init;
 }
 :continues in part 2: boot source;<<#e6f0f8>>
@@ -533,7 +538,8 @@ read in the flow |<<sec:fuses>>
 |[S16] |ICCM clear |ICCM zeroed for deterministic ECC state |<<sec:cpu_init>>
 |[S17] |Measurement slot 0 |Verified ROM self-hash enrolled — soft PCR + raw record in
 `bl0_state` |<<sec:boot_measurement>>
-|[S18] |SBOOT_DIS fuse |Secure-boot chicken bit read into `bl0_state` |<<sec:fuses>>
+|[S18] |Secure-boot posture fuses |`SBOOT_DIS` chicken bit read into `bl0_state`; chiplet
+debug lock latched |<<sec:fuses>>
 |[S19] |Stack canary write |Canary placed at `__stack_bottom` |<<sec:handoff>>
 |[S20] |DMA init |Secure DMA engine enabled |<<sec:cpu_init>>
 |[S21] |Boot mode branch |SPI (primary) vs recovery vs secondary; SPI init when applicable
@@ -682,6 +688,12 @@ protocol (<<sec:warm_reset>>). Consequently every unbounded wait in the ROM (fus
 lock, SMC hand-shake spins) hangs the boot rather than triggering a retry — this is the
 accepted failure mode for BL0, observable through the status channel (<<sec:status>>).
 
+Waits on the secure-DMA engine and the HMAC message FIFO are outside that list and are
+bounded. A DMA transfer that neither completes nor errors within a budget scaled to its
+length is aborted and returns the DMA error its caller handles; a message FIFO that
+stops draining fails the hash. Either becomes a failed manifest attempt or a terminal error
+rather than a hang.
+
 ===== Early Platform Initialization ([S04]–[S20])
 
 After the entry checks, `rom_main()` performs the following platform bring-up, in order:
@@ -718,7 +730,8 @@ enrolled in soft measurement slot 0 (<<sec:boot_measurement>>). Fatal on mismatc
 Placed at the earliest point where both of its prerequisites hold: the SHA-256 engine has
 passed its known-answer self-test ([S14]) and `bl0_state` exists to receive the record
 ([S10]).
-|[S18] SBOOT_DIS |Secure-boot chicken bit read (<<sec:fuses>>).
+|[S18] SBOOT_DIS, CHIPLET_DBG |Secure-boot chicken bit and chiplet debug lock read
+(<<sec:fuses>>).
 |[S19] canary |Stack canary written (<<sec:handoff>>).
 |[S20] DMA |Secure DMA engine initialized.
 |===
@@ -1009,14 +1022,16 @@ before fuse sensing has completed. Completion is indicated by
 timeout (the accepted BL0 hang failure mode, SEP-ROM-CPU-080).
 
 The poll is a discrete stage ([S08]) that runs unconditionally, ahead of every fuse consumer:
-the `smu_pll_sysclk` read in [S09], the lifecycle state in [S11], `SBOOT_DIS` in [S18], and the
+the `smu_pll_sysclk` read in [S09], the lifecycle state in [S11], `SBOOT_DIS` and the disable
+vectors in [S18], and the
 key digests, revocation bits, security version and identity fields read during manifest
 validation. The ROM does not rely on sensing having completed before the SEP core reset
 released.
 
 A shadow read taken before sensing completes returns zero, and zero is a legal encoding for
-the fields that gate security — `LC_STATE` zero decodes as `TEST_DEV`, where secure boot is
-optional — so an early lifecycle read would fail open.
+the fields that gate security — `LC_STATE` zero decodes as `TEST_DEV`, and zero disable
+vectors leave chiplet debug open, so secure boot is optional — so an early lifecycle read would
+fail open.
 
 ===== Lifecycle State ([S11])
 
@@ -1030,21 +1045,23 @@ The 4-bit lifecycle state is read from the low nibble of `SEP_EFUSE_MAP_LC_STATE
 [frame=ends]
 |===
 |*State* |*Raw value* |*Manifest LC bit* |*Meaning*
-|`TEST_DEV` |`0x0` |0 |Development / test. Security optional (see <<sec:secure_boot>>).
+|`TEST_DEV` |`0x0` |0 |Development / test. Security optional unless chiplet debug is
+disabled (see <<sec:secure_boot>>).
 |`PROD` |`0x1` |1 |Production. Secure boot enforced.
 |`RMA_SiP` |`0x2`–`0x3` |3 |Return-material state, system-in-package scope.
-|`RMA_CHIPLET` |`0x4`–`0x7` |4 |Return-material state, chiplet scope.
+|`RMA_CHIPLET` |`0x6`–`0x7` |4 |Return-material state, chiplet scope.
 |`PROD_END` |`0x8` |2 |End-of-life production. Secure boot enforced; demotion permanently
 locked out (<<sec:demotion>>).
-|any other |`0x9`–`0xF` |— |*Invalid* — see below.
+|any other |`0x4`–`0x5`, `0x9`–`0xF` |— |*Invalid* — see below.
 |===
 
 [[req-SEP-ROM-FUSE-020]]*[SEP-ROM-FUSE-020]* The ROM shall validate the sensed LC state
-against the closed set above. On an invalid value the ROM shall (a) hold all SMC cores in
-reset (write `0xF` to the core reset bits of SMC `CPU_CTRL_RESET_CTRL`), rendering the SMU
-inoperative, and (b) fail fatally (`ROM_ERR_LIFECYCLE_INVALID`, `0xA002`). An invalid LC
-state may indicate a fuse attack or hardware fault; the system shall not run in an unknown
-lifecycle state.
+against the closed set above, which is the set the lifecycle controller decodes: any value it
+treats as INVALID, the ROM shall treat as invalid. On an invalid value the ROM shall (a) hold
+all SMC cores in reset (clear the active-low core reset bits `[3:0]` of SMC
+`CPU_CTRL_RESET_CTRL`, preserving the rest of the register), rendering the SMU inoperative,
+and (b) fail fatally (`ROM_ERR_LIFECYCLE_INVALID`, `0xA002`). An invalid LC state may indicate
+a fuse attack or hardware fault; the system shall not run in an unknown lifecycle state.
 
 [[req-SEP-ROM-FUSE-030]]*[SEP-ROM-FUSE-030]* The validated LC state shall be recorded in
 `bl0_state.lc_state` for consumption by later stages and by BL1, and shall be reported on the
@@ -1055,10 +1072,42 @@ The 64-bit `FEAT_CTRL` register of the lifecycle controller (`0x1091_8000`) is c
 
 ===== Secure-Boot Chicken Bit ([S18])
 
-`SEP_EFUSE_MAP_SBOOT_DIS` (`0x1093_000C`) bit 0 (`disable_secure_boot`) is the secure-boot
+`SEP_EFUSE_MAP_SBOOT_DIS` (`0x1093_0010`) bit 0 (`disable_secure_boot`) is the secure-boot
 chicken bit. It is read once, recorded in `bl0_state.sboot_dis`, and consumed by the
 secure-boot decision (<<sec:secure_boot>>) and the boot measurement
 (<<sec:boot_measurement>>).
+
+*Only bit 0 carries that meaning.* `rsvd[31:1]` is `hw=rw` in the RDL — driven from the fuse
+array rather than tied off — so the word can read non-zero on a real part without the chicken
+bit being blown. [S18] therefore masks to `disable_secure_boot`, and the single masked value it
+latches is what `bl0_state`, the boot measurement and the library's
+`is_secure_boot_disabled()` callback all consume. No later stage re-reads the shadow: one
+physical read means the policy input and the attestation of that input cannot disagree, either
+about which bit matters or about when it was sampled.
+
+A non-zero `rsvd` is a fuse-integrity fault. On a healthy part the field reads zero, so a set
+bit means the array is not what the ROM believes it to be; [S18] stops there with
+`ROM_ERR_SBOOT_DIS_RSVD_SET` rather than interpreting the rest of the word.
+
+[[sec:fuse_chiplet_dbg]]
+===== Chiplet Debug Lock ([S18])
+
+`CHIPLET_DBG` is bit 1 of the `SIP_DIS` (`0x1093_0018`) and `SYS_DIS` (`0x1093_0020`)
+disable vectors. Set in either, it closes external debug access to the chiplet and to the SEP,
+and on a `TEST_DEV` part it makes secure boot enforced (SEP-ROM-SB-025).
+
+[S18] reads the `SIP_DIS_READ_LOCK` / `SYS_DIS_READ_LOCK` bits of `LOCKS` and, when neither is
+set, both vectors, once, after the `SBOOT_DIS` read, and latches the result for the library's
+`is_secure_boot_active()` callback. A read-locked field returns a sentinel instead of its
+value, so a lock on either vector counts as debug disabled.
+
+The ROM reads the fuse shadows rather than `FEAT_CTRL`. `SEC_DIS` forces every `FEAT_CTRL`
+bit to 1, and `TEST_DEV` demotion forces the `DBG_1` group to 1, so either would report debug
+enabled on a part whose fuses disable it.
+
+When the lock is what makes a `TEST_DEV` part enforce secure boot, [S18] reports
+`SBOOT_DBG_LOCK`. It is not reported in `PROD` or `PROD_END`, which enforce regardless, or when
+`SBOOT_DIS` overrides the lock.
 
 ===== Fuse Fields Touched by the ROM
 
@@ -1070,9 +1119,12 @@ secure-boot decision (<<sec:secure_boot>>) and the boot measurement
 |===
 |*Field* |*Address* |*Size* |*ROM usage*
 |`LOCKS` |`0x10930000` |32 b |Read-lock control for the six protected fields; SET-only, and
-cleared by reset. Written + verified at [S25]/[S26] (<<sec:handoff>>).
+cleared by reset. Written + verified at [S25]/[S26] (<<sec:handoff>>). The `SIP_DIS` /
+`SYS_DIS` read-lock bits are read at [S18].
 |`LC_STATE` |`0x1093000C` |8 b (low 4 used) |Lifecycle state (this chapter).
 |`SBOOT_DIS` |`0x10930010` |1 b |Secure-boot chicken bit.
+|`SIP_DIS` / `SYS_DIS` |`0x10930018` / `0x10930020` |64 b each |Disable vectors; the ROM
+reads `CHIPLET_DBG` (bit 1) of each at [S18] (<<sec:fuse_chiplet_dbg>>).
 |`CLASS_KEY` |`0x10930068` |256 b |Pre-shared secret for payload-decryption KDF
 (<<sec:payload>>). Read-locked before hand-off.
 |`CHIPLET_PUBK_REVOKE` |`0x10930088` |32 b |Device-held root-key revocation bits
@@ -1224,8 +1276,9 @@ over I3C by the platform, per the SMC ROM specification):
 ==== Primary / Secondary Strap Handling
 
 An OCAH chiplet is either *primary* or *secondary*, selected by a hardware strap. Straps are
-sensed and latched by the SMC reset unit; the SEP reads the latched values over the SMC
-window (`STRAPS_LO` @ `0x2090`, `STRAPS_HI` @ `0x2094`). The strap bit positions are part of
+latched at cold reset and exposed in the supplementary region of the SMC adopter external
+window; the SEP reads them over the SMC window (`STRAPS_LO` @ `0x40_5800`, `STRAPS_HI` @
+`0x40_5804`). The strap bit positions are part of
 the SEP↔SMC interface contract.
 
 [[tbl:straps]]
@@ -1771,28 +1824,41 @@ shortcut than the whole-chain EDN grant it replaces.
 ===== Secure-Boot Decision
 
 Secure boot — the requirement that the manifest carry a valid signature from an authorized
-root key — is decided from four inputs: the lifecycle state, the `SBOOT_DIS` fuse, the signed
+root key — is decided from five inputs: the lifecycle state, the chiplet debug lock
+(`CHIPLET_DBG` in `SIP_DIS` / `SYS_DIS`), the `SBOOT_DIS` fuse, the signed
 `secure_boot_control` field, and the unauthenticated escalation flag. The decision is made
 once per manifest attempt, recorded in `bl0_state.secure_boot`, and feeds the validation
 gating, the boot measurement, and the hand-off self-check.
 
 1. [[req-SEP-ROM-SB-010]]*[SEP-ROM-SB-010]* In `PROD` and `PROD_END`, secure boot shall be
    enforced. No manifest content shall be able to disable it.
-2. [[req-SEP-ROM-SB-020]]*[SEP-ROM-SB-020]* In `TEST_DEV` and the RMA states, secure boot
-   shall be enabled when *either* trigger is set, and disabled otherwise:
+2. [[req-SEP-ROM-SB-020]]*[SEP-ROM-SB-020]* In `TEST_DEV` with chiplet debug enabled, and in
+   the RMA states, secure boot shall be enabled when *either* trigger is set, and disabled
+   otherwise:
    * the *signed* `secure_boot_control` bit 0 (`secure_boot_enforced`, offset 182) — the
      manifest's own declaration, authenticated once the signature verifies; or
    * the *unauthenticated* escalation flag, `unauthenticated_flags` bit 0 (offset 3756) —
      forces the secure-boot flow even against a manifest whose signed fields do not request
      it.
-3. [[req-SEP-ROM-SB-030]]*[SEP-ROM-SB-030]* The escalation flag shall be strictly
+3. [[req-SEP-ROM-SB-025]]*[SEP-ROM-SB-025]* In `TEST_DEV`, secure boot shall be enforced when
+   chiplet-scope debug is disabled: `CHIPLET_DBG` set in `SIP_DIS` or `SYS_DIS`, or either
+   vector read-locked. No manifest content shall be able to disable it.
++
+A locked debug posture is only a guarantee if unsigned code cannot be loaded in its place, so
+a debug-locked `TEST_DEV` part is treated as `PROD` is. The ROM reads the raw fuse shadows once
+at [S18] (<<sec:fuse_chiplet_dbg>>). The RMA states are unaffected: `RMA_CHIPLET` ignores both
+vectors and `RMA_SiP` ignores `SYS_DIS`, and both stay manifest-optional.
+
+4. [[req-SEP-ROM-SB-030]]*[SEP-ROM-SB-030]* The escalation flag shall be strictly
    escalation-only: it can turn secure boot *on*, never off. (It lives in the unsigned tail
    and is never authenticated; an attacker flipping it can only subject themselves to more
    verification.)
-4. [[req-SEP-ROM-SB-040]]*[SEP-ROM-SB-040]* The `SBOOT_DIS` fuse (chicken bit) set shall
+5. [[req-SEP-ROM-SB-040]]*[SEP-ROM-SB-040]* The `SBOOT_DIS` fuse (chicken bit) set shall
    disable secure boot *unless the signed* `secure_boot_control` bit 0 is set. It is a fused,
-   manufacturing-time escape hatch over the device's own inputs — the lifecycle state and the
-   fuse itself — and the *unauthenticated* escalation flag shall not override it.
+   manufacturing-time escape hatch over the device's own inputs — the lifecycle state, the
+   chiplet debug lock and the fuse itself — and the *unauthenticated* escalation flag shall
+   not override it. An owner relying on SEP-ROM-SB-010 or SEP-ROM-SB-025 must leave
+   `SBOOT_DIS` unburned and write-lock it.
 +
 An image that asks to be verified is verified. The precedence is
 `secure_boot_control` first, then the device's disable, then the device's enforcement view,
@@ -1802,6 +1868,17 @@ governs images that do not carry the signed request, which is what a manufacturi
 hatch needs to do. Every signed image this tree packs sets the bit, so on those the fuse has
 no effect.
 
+6. [[req-SEP-ROM-SB-041]]*[SEP-ROM-SB-041]* The `SBOOT_DIS` word shall be read exactly once,
+   masked to `disable_secure_boot` (bit 0), and that one masked value shall be what the
+   secure-boot decision consumes, what `bl0_state.sboot_dis` records, and what the boot-state
+   measurement attests. A non-zero `rsvd[31:1]` shall be terminal
+   (`ROM_ERR_SBOOT_DIS_RSVD_SET`).
++
+`rsvd[31:1]` is `hw=rw`, so a whole-word test would make 31 fuse-driven bits equivalent to the
+chicken bit, and a second reader applying a different predicate would let the device disable
+enforcement while the measurement attested that it had not. One read and one mask is what
+keeps the decision and the attestation of that decision the same fact.
+
 [[tbl:sb_truth]]
 .Secure-boot decision truth table
 [width="100%",cols="18%,14%,20%,22%,26%",options="header"]
@@ -1810,15 +1887,18 @@ no effect.
 |===
 |*LC state* |*`SBOOT_DIS`* |*signed `secure_boot_control[0]`* |*unauth escalation bit*
 |*Secure boot*
-|PROD / PROD_END |0 |— |— |*enforced*
-|PROD / PROD_END |1 |1 |— |*on* (manifest outranks the fuse)
-|PROD / PROD_END |1 |0 |— |off (chicken bit)
-|TEST_DEV / RMA |0 |1 |— |*on* (manifest-declared)
-|TEST_DEV / RMA |0 |0 |1 |*on* (forced by escalation flag)
-|TEST_DEV / RMA |0 |0 |0 |off
-|TEST_DEV / RMA |1 |1 |— |*on* (manifest outranks the fuse)
-|TEST_DEV / RMA |1 |0 |— |off
+|PROD / PROD_END / TEST_DEV (debug locked) |0 |— |— |*enforced*
+|PROD / PROD_END / TEST_DEV (debug locked) |1 |1 |— |*on* (manifest outranks the fuse)
+|PROD / PROD_END / TEST_DEV (debug locked) |1 |0 |— |off (chicken bit)
+|TEST_DEV (debug open) / RMA |0 |1 |— |*on* (manifest-declared)
+|TEST_DEV (debug open) / RMA |0 |0 |1 |*on* (forced by escalation flag)
+|TEST_DEV (debug open) / RMA |0 |0 |0 |off
+|TEST_DEV (debug open) / RMA |1 |1 |— |*on* (manifest outranks the fuse)
+|TEST_DEV (debug open) / RMA |1 |0 |— |off
 |===
+
+_Debug locked_ means `CHIPLET_DBG` is set in `SIP_DIS` or `SYS_DIS`, or either vector is
+read-locked (SEP-ROM-SB-025).
 
 [NOTE]
 ====
@@ -1837,22 +1917,27 @@ verification of any individual image via the escalation flag (SEP-ROM-SB-020/-03
 skinparam ActivityBackgroundColor #f0f8e6
 skinparam ActivityDiamondBackgroundColor #fdf6e3
 start
-if (SBOOT_DIS fuse set ?) then (yes)
-  :secure boot OFF;<<#ffe0e0>>
+if (signed secure_boot_control[0] ?) then (yes)
+  :secure boot ON;<<#e6f0f8>>
   detach
 else (no)
-  if (LC in {PROD, PROD_END} ?) then (yes)
-    :secure boot ENFORCED;<<#e6f0f8>>
+  if (SBOOT_DIS fuse set ?) then (yes)
+    :secure boot OFF;<<#ffe0e0>>
     detach
-  else (no: TEST_DEV / RMA)
-    if (signed secure_boot_control[0]\nOR unauth escalation bit ?) then (yes)
-      :secure boot ON;<<#e6f0f8>>
+  else (no)
+    if (LC in {PROD, PROD_END}, or\nTEST_DEV with chiplet debug locked ?) then (yes)
+      :secure boot ENFORCED;<<#e6f0f8>>
       detach
-    else (no)
-      :secure boot OFF
-      (manifest hash + payload
-      hashes still checked);
-      detach
+    else (no: TEST_DEV debug open / RMA)
+      if (unauth escalation bit ?) then (yes)
+        :secure boot ON;<<#e6f0f8>>
+        detach
+      else (no)
+        :secure boot OFF
+        (manifest hash + payload
+        hashes still checked);
+        detach
+      endif
     endif
   endif
 endif
@@ -1996,6 +2081,18 @@ protect, and routing it through the Key Manager would make secure boot depend on
 ROM otherwise does not use. An earlier specification described provisioning the manifest's
 public key `(n, e)` into the Key Manager through its software write port; that description
 is withdrawn and should not be reintroduced.
+
+[[req-SEP-ROM-SB-120]]*[SEP-ROM-SB-120]* Signature verification shall not report success
+unless OTBN is confirmed to have executed. The RSA application uses one DMEM buffer
+(`inout`) for both the signature and the modexp result, so a command the block never
+accepted leaves the caller's own signature bytes where the result belongs — and a signature
+authored as a well-formed PKCS#1 v1.5 block then verifies against itself, with no private
+key involved. Neither register the completion path would naturally consult distinguishes
+that case: `STATUS` reads idle, which is the state OTBN was already in, and `ERR_BITS` reads
+zero, because nothing ran to fail. `INTR_STATE.done`, cleared before the command and
+required after it, is the signal that separates "finished" from "never started". The ROM
+shall additionally reject a result bit-identical to the signature it supplied, since
+`sig^e mod n` cannot equal `sig` for a value that also parses as that block.
 
 [[fig:key_select_revoke]]
 .Key authorization, revocation, and verification
@@ -2824,7 +2921,12 @@ single-sourced from `hw/sys/sep/bootrom/prod/include/status_values.h` (values `0
 are generated from it; the table below is likewise generated — do not hand-edit code values
 anywhere, including here.
 
+ifdef::backend-pdf[]
 include::../../../doc/gen/status_values.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::sep:gen/status_values.adoc[]
+endif::backend-html5[]
 
 ===== Fatal ROM Error Codes
 
@@ -2862,6 +2964,8 @@ embedded hash) (<<sec:boot_measurement>>).
 |`ROM_ERR_BL0_STATE_OVERLAPS_STACK` |`0xF007` |`BL0_STATE_ADDR` sits below `__stack_top`,
 i.e. `__bl0_state_reserve` in `link/rom.ld` and `BL0_STATE_RESERVE_BYTES` in
 `include/bl0_state.h` have drifted apart (<<sec:handoff>>).
+|`ROM_ERR_SBOOT_DIS_RSVD_SET` |`0xF008` |`SBOOT_DIS.rsvd[31:1]` read non-zero: a fuse-integrity
+fault (<<sec:fuses>>).
 |===
 
 Manifest-path failures use the `MANIFEST_ERR_*` namespace and map from `oca_result_t`; the
@@ -2903,7 +3007,10 @@ denotes a following 16-bit payload word.
 |[S14] crypto self-test |`CRYPTO_INIT_CHECK` (DEBUG) |`ROM_ERR_CRYPTO_SELFTEST_FAILED`
 |[C9a/b] memory clear |`ICCM_CLEAR_START` / `ICCM_CLEAR_DONE` (+ SRAM-clear codes) |—
 |[S10] bl0_state |`BL0_STATE_INIT` (DEBUG) |—
-|[S18] SBOOT_DIS |`FUSE_SBOOT_DIS` → `INFO_EXT` (value) |—
+|[S18] SBOOT_DIS |`FUSE_SBOOT_DIS` → `INFO_EXT` (value) |`FUSE_SBOOT_DIS_RSVD` (ERROR) +
+`ROM_ERR_SBOOT_DIS_RSVD_SET`
+|[S18] CHIPLET_DBG |`SBOOT_DBG_LOCK` when the debug lock is what makes a `TEST_DEV` part
+enforce secure boot |—
 |[S20] DMA |`DMA_INIT_CHECK` (DEBUG) |—
 |[S21] boot mode |`BOOT_MODE` (DEBUG); `PRIMARY_CHIPLET` / `SECONDARY_CHIPLET` /
 `BOOT_RECOVERY`; `ROTATE_UPDATE` → `INFO_EXT`; `SPI_INIT_CHECK` (DEBUG)
@@ -3250,11 +3357,17 @@ region (ICCM always; SRAM per `BL1_SRAM_EXEC_ENABLE`, default on), entry < lengt
 validation only |<<sec:manifest>>
 |<<req-SEP-ROM-SB-010,SEP-ROM-SB-010>> |PROD/PROD_END enforce secure boot
 |<<sec:secure_boot>>
-|<<req-SEP-ROM-SB-020,SEP-ROM-SB-020>> |TEST_DEV/RMA: either trigger enables
+|<<req-SEP-ROM-SB-020,SEP-ROM-SB-020>> |TEST_DEV (debug open)/RMA: either trigger enables
+|<<sec:secure_boot>>
+|<<req-SEP-ROM-SB-025,SEP-ROM-SB-025>> |TEST_DEV with CHIPLET_DBG disabled or its vector
+read-locked enforces secure boot
 |<<sec:secure_boot>>
 |<<req-SEP-ROM-SB-030,SEP-ROM-SB-030>> |Escalation flag is escalation-only
 |<<sec:secure_boot>>
 |<<req-SEP-ROM-SB-040,SEP-ROM-SB-040>> |SBOOT_DIS disables unless signed secure_boot_control asks
+|<<sec:secure_boot>>
+|<<req-SEP-ROM-SB-041,SEP-ROM-SB-041>> |SBOOT_DIS read once and masked to bit 0; rsvd set is
+terminal
 |<<sec:secure_boot>>
 |<<req-SEP-ROM-SB-045,SEP-ROM-SB-045>> |Key selector must resolve to exactly one slot
 |<<sec:secure_boot>>
@@ -3272,6 +3385,8 @@ validation only |<<sec:manifest>>
 |<<sec:secure_boot>>
 |<<req-SEP-ROM-SB-110,SEP-ROM-SB-110>> |Public key goes straight to OTBN; Key Manager not
 involved |<<sec:secure_boot>>
+|<<req-SEP-ROM-SB-120,SEP-ROM-SB-120>> |No verified verdict unless OTBN is confirmed to have
+executed |<<sec:secure_boot>>
 |<<req-SEP-ROM-ENT-010,SEP-ROM-ENT-010>> |Entropy chain brought up lazily, once, before
 first use |<<sec:entropy>>
 |<<req-SEP-ROM-ENT-020,SEP-ROM-ENT-020>> |Entropy bring-up failure stops the boot; not a

@@ -17,18 +17,41 @@ Common conditioners are based on standard hash functions such as SHA256
 and ASCON as well as standard keyed hash functions such as AES-CMAC and
 HMAC.
 
-The goal of this test component is to assess the statistical properties
-of the raw entropy source, so we will not add a conditioner here.
+The source includes a configurable SHA-256 whitener. Software can bypass
+whitening to observe the unconditioned stream; health tests also monitor the
+individual noise generators and the combined stream.
 
-image::SEP_Entropy_Source.png[SEP_Entropy_Source,scaledwidth=90.0%]
+[[entropy-source-diagram]]
+.Entropy source microarchitecture
+image::entropy-source-architecture.svg[alt="Entropy source microarchitecture: twelve generator lanes feed the BIW extractor; a 32-bit health test and the main state machine gate the stream into the optional SHA-256 whitener, the output select and the main FIFO, whose write data also leaves towards the DRBG; observe FIFOs, the register block and the debug monitor sit beside the datapath",width=100%,pdfwidth=100%]
 
-The diagram below shows the entropy source component which implements
-the above concept. The client controls the component via the AXI4-Lite bus
+<<entropy-source-diagram>> shows the entropy source and its conditioning pipeline.
+The client controls the component via the AXI4-Lite bus
 interface which provides access to a set of memory mapped configuration
-and status registers (CSRs) described later in this document. The raw
-entropy stream is connected to the (optional) downstream conditioning
-unit mentioned above as well as the health statistics tester, debug
-monitor and entropy bits storage.
+and status registers (CSRs) described later in this document. The noise
+generators feed the decorrelation, mixing, health-test, and optional whitening
+stages. Each word written into the main FIFO also leaves the block as
+`entropy_stream_data_o`, qualified by `entropy_stream_vld_o`, towards the DRBG;
+the FIFO itself is drained through the `FIFO_RDATA` register.
+
+The main datapath in the figure runs left to right along the top row. The
+generator lane stands for all twelve lanes, and <<entropy-rosc-diagram>> shows its
+noise source and sample clock in detail. The boot gate passes entropy only after
+the main state machine has seen a passing boot health-test window; it qualifies
+the whitener input, the uncompressed-byte path and the BIW observe FIFO, while
+the 32-bit health test and the noise observe FIFO see the stream ungated. The
+output select takes the whitener output, or, when
+`CTRL.BYPASS_ENTROPY_COMPRESSOR` is set, the twelve uncompressed decorrelator
+bytes as three 32-bit words, downsampled by `CTRL.DOWNSAMPLE_RATE`. The 32-bit
+health test is clock-gated off in that mode. The register block configures every
+stage; its connections to individual stages are not drawn. The debug monitor
+routes one of 256 internal signals to `signal_monitor_o`.
+
+The health-test modules are OpenTitan's `entropy_src` repetition count, adaptive
+proportion and Markov tests, and the main state machine is OpenTitan's
+`entropy_src_main_sm`. Their internal structure is described in the
+https://opentitan.org/book/hw/ip/entropy_src/[OpenTitan entropy source]
+documentation.
 
 The entropy source is designed according to guidelines set forth in the
 NIST SP800-90B specification and is planned to be ready for FIPS 140-2
@@ -37,13 +60,47 @@ statistical requirements specified by the BSI agency.
 
 == Noise Generation
 
-The entropy source uses 12 independent ring oscillators as its noise source. Each ring oscillator is constructed from the shared OCAH primitives (`prim_clock_nand2`, `prim_stdbuf`, `prim_stdmux2`) to preserve the asynchronous feedback-loop structure through technology mapping. Each oscillator has two configurable lengths: a `TOTAL_LENGTH` and a `TAPPED_LENGTH`, where a multiplexer selects between the short and long feedback paths. The `entropy_rosc_tune_fsm` toggles between these two lengths on a rising edge of any health test failure, providing a rudimentary frequency detuning mechanism.
+The entropy source uses 12 independent ring oscillators as its noise source. Each ring oscillator is constructed from the shared OCAH primitives (`prim_clock_nand2`, `prim_buf`, `prim_stdmux2`) to preserve the asynchronous feedback-loop structure through technology mapping. Each oscillator has two configurable lengths: a `TOTAL_LENGTH` and a `TAPPED_LENGTH`, where a multiplexer selects between the short and long feedback paths. The `entropy_rosc_tune_fsm` toggles between these two lengths on a rising edge of any health test failure, providing a rudimentary frequency detuning mechanism.
 
-The oscillator output is sampled by a metastable D flip-flop (`prim_dffrxq`) clocked by a sampling clock. The sampled bit is then synchronized to the system clock domain through a two-stage synchronizer. Each lane can be clocked either by an external sampling clock (`rosc_sample_clk_i`) or by a shared internal ring oscillator (total length 109, tapped length 53). A per-lane ripple divider provides division ratios of 1, 2, 4, 8, 16, and 32, selected through the CSR. Both selects are clock mux cells. Software changes a lane's source or division only while that generator is disabled. A division value outside 0-5 selects divide-by-4.
+The oscillator output is sampled by a metastable D flip-flop (`prim_flop`) clocked by a sampling clock. The sampled bit is then synchronized to the system clock domain through a two-stage synchronizer. Each lane can be clocked either by an external sampling clock (`rosc_sample_clk_i`) or by a shared internal ring oscillator (total length 109, tapped length 53). A per-lane ripple divider provides division ratios of 1, 2, 4, 8, 16, and 32, selected through the CSR. Both selects are clock mux cells. Software changes a lane's source or division only while that generator is disabled. A division value outside 0-5 selects divide-by-4.
+
+<<entropy-rosc-diagram>> shows the ring oscillators, sampling paths, and clock selection
+used to generate noise.
+
+[[entropy-rosc-diagram]]
+.Entropy source ring-oscillator complex
+image::entropy-source-rosc-complex.svg[alt="Entropy source ring-oscillator complex: per-lane sample clock selection and division, the noise lane from ring oscillator through sampling, synchronization, decorrelation, health test and auto-tune, and the ring oscillator stage chain with its tap mux",width=100%,pdfwidth=100%]
+
+<<entropy-rosc-diagram>> has three bands. The top band builds one sample clock
+per lane: `RING_OSC_CTRL.SAMPLE_CLK_SELECT` bit _i_ chooses `rosc_sample_clk_i`
+(0) or the shared ring oscillator (1), and
+`GENERATOR_i_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE` picks one ripple-divider tap.
+The middle band is one of the twelve noise lanes; when `CTRL.AUTOTUNE_ENABLE` is
+set the lane detune follows the auto-tune FSM, otherwise
+`RING_OSC_TUNE.DETUNE` bit _i_. The bottom band is the ring oscillator used both
+in each lane and, with 109 and 53 stages, as the shared sampling oscillator. Green
+lines carry asynchronous oscillator signals, brown lines are in the sample-clock
+domain and grey lines are in the `clk_i` domain or are controls.
+<<entropy-rosc-lengths-table>> lists the lane ring lengths.
+
+[[entropy-rosc-lengths-table]]
+.Noise ring-oscillator lengths per lane
+[cols="<22%,^6%,^6%,^6%,^6%,^6%,^6%,^6%,^6%,^6%,^6%,^6%,^8%",options="header"]
+|===
+|Lane |0 |1 |2 |3 |4 |5 |6 |7 |8 |9 |10 |11
+|`TOTAL_LENGTH` (detune 1) |5 |7 |11 |13 |17 |19 |6 |8 |12 |15 |18 |23
+|`TAPPED_LENGTH` (detune 0) |3 |5 |9 |10 |14 |16 |4 |7 |11 |13 |15 |21
+|===
 
 == Decorrelation and BIW Mixing
 
-Each sampled noise bit enters a serial decorrelator (`entropy_decorrelator`), which shifts bits through a 29-stage shift register with XOR feedback. A downsample counter derived from the `sample_clk_div` CSR field determines how frequently the top 8 bits of the shift register are latched and emitted as an entropy byte. A per-byte mask allows individual bit lanes to be disabled. The decorrelator can be bypassed through a CSR control bit, in which case raw noise bits pass directly to the output.
+Each sampled noise bit enters a serial decorrelator (`entropy_decorrelator`), which shifts bits through a 29-stage shift register with XOR feedback from the last stage, as <<entropy-decorrelator-diagram>> shows. A downsample counter reloaded from `DECORRELATOR_CTRL.SAMPLE_CLK_DIV` latches the top 8 bits of the shift register as an entropy byte every `SAMPLE_CLK_DIV` + 1 `clk_i` cycles, 64 cycles at the reset value of 63, and pulses the byte-valid strobe for one cycle. The byte is ANDed with `DECORRELATOR_MASK.ENTROPY_BYTE_MASK`, so a cleared mask bit reads as zero; the mask and the divider are shared by all 12 lanes. Setting a lane's bit in `DECORRELATOR_CTRL.BYPASS` forces the feedback to zero, so raw noise bits shift through the chain unmixed; the byte is still taken from the top 8 stages, downsampled and masked.
+
+[[entropy-decorrelator-diagram]]
+.Entropy source decorrelator
+image::entropy-source-decorrelator.svg[alt="Entropy source decorrelator: noise_i is XORed with the gated feedback from ff_stage[28] into a 29-stage shift chain; ff_stage[28:21] is ANDed with byte_mask_i and captured by the output register when the downsample counter reaches zero",width=100%,pdfwidth=100%]
+
+<<entropy-decorrelator-diagram>> shows one lane's decorrelator. The chain shifts on every `clk_i` cycle while `enable_i` is high, and the eight taps from `ff_stage[21]` to `ff_stage[28]` join into one byte-wide bundle. The output register loads when the counter reaches zero. While `enable_i` is low, the chain holds its contents and the counter reloads from `sample_clk_div_i`.
 
 The 12 decorrelated byte streams are combined by the Barak-Impagliazzo-Wigderson (BIW) stage, which uses four `gf_muladd` instances performing y = a*b + c in GF(2^8) with the AES field polynomial (0x1B). The 12 input bytes are grouped into three sets of four and reduced to a single 32-bit word. This mixing step improves the statistical independence of the output without introducing significant latency.
 
@@ -75,7 +132,7 @@ When the SHA-256 whitener is enabled via the CSR, the 32-bit BIW output stream f
 
 The conditioned entropy stream is stored in a 64-entry FIFO (`entropy_fifo`). Each entry is 36 bits wide: 32 data bits plus 4 byte-wise odd parity bits. The FIFO includes pointer integrity checking (normal and inverted pointer pairs with mismatch detection) and parity verification on reads. An optional churn mode XORs the incoming data with a word read from the diametrically opposite FIFO position, improving entropy distribution. Overflow, underflow, parity error, and pointer error conditions are all reported to the CSR block and can trigger interrupts.
 
-The FIFO output drives the `entropy_stream_data_o` and `entropy_stream_vld_o` top-level ports. These connect to the DRBG ingress path and to the distribution network for entropy consumers such as cryptographic accelerators.
+The `entropy_stream_data_o` and `entropy_stream_vld_o` top-level ports carry each word as it is written into the FIFO, not the FIFO read data, and there is no backpressure. In SEP they connect to the DRBG seed path, which distributes the generated random data to the entropy consumers.
 
 == Reset
 
@@ -109,3 +166,31 @@ the block and no further gating is required there. An integration that routes
 the pin off-chip, for example muxed onto a GPIO, owns restricting `DEBUG_CTRL`
 to the lifecycle or debug-enable states in which observing pre-conditioning
 entropy is acceptable.
+
+== Memory Map and Register Reference
+
+ifdef::backend-html5[]
+++++
+<span id="register-reference"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
+
+Register offsets are relative to the block base in the subsystem memory map.
+ifdef::ocah-trm[]
+See xref:sep:memory_map.adoc[SEP Memory Map] for the entropy source base address and aperture.
+endif::ocah-trm[]
+The detailed map below defines each register and its fields.
+
+=== Detailed Register Map
+
+ifdef::backend-html5[]
+++++
+include::ip:partial$entropy_source/regs/gen/html/entropy_source.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/entropy_source.adoc[leveloffset=+2]
+endif::backend-pdf[]

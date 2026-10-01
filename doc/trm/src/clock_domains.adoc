@@ -13,11 +13,34 @@ the SMC controls the PLLs during early bring-up and generates the primary
 system clock (`clk_smu_i`) that is then distributed to the SMC itself, the
 SEP, and the DTP.
 
-The SMN lives in its own clock domain with respect to the SMU --- as highlighted
-by the clock domain crossing in the top level diagram --- and with respect
-to the application logic.
+The `clk_smn_i` input is architecturally independent of `clk_smu_i`; when they
+are asynchronous, CDCs at this boundary are an integration responsibility.
+OCAH does not supply synchronizer cells at the SMN interface.
 
-The following table summarises the clock domains present in OCAH.
+<<ocah-clock-domain-diagram>> overlays the clock domains on the
+ifdef::backend-html5[]
+xref:overview.adoc#ocah-top-block-diagram[OCAH top-level block diagram].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<ocah-top-block-diagram,OCAH top-level block diagram>>.
+endif::backend-pdf[]
+Each zone boundary runs through the CDCs that separate the domains. The AoU
+bridges, the D2D macros and the future safety monitor are not assigned a zone.
+The SMN reaches each AoU through its APB register port, whose clock is
+asynchronous to the AoU core clock; the CDC marker inside each AoU is the
+bridge's own APB synchroniser.
+The SMU zone marks `clk_smu_i`, which clocks the DTP, the crossbar, the SEP and
+the SMC. Pills inside the SEP and SMC list their clock inputs: both also use
+`clk_ref_i`. The SMC uses `clk_periph_i` for its peripherals and
+`clk_telemetry_i` for ATB telemetry. The SEP uses `entropy_rosc_sample_clk_i`,
+shown as "entropy rosc", for its entropy source and `clk_sep_wdt_i` for its
+watchdog.
+
+[[ocah-clock-domain-diagram]]
+.OCAH Clock-Domain Zones
+image::ocah_top_clocks.svg[OCAH Clock-Domain Zones,scaledwidth=100.0%]
+
+<<ocah-clock-domain-table>> summarises the clock domains present in OCAH.
 
 [[ocah-clock-domain-table]]
 .OCAH Clock Domains
@@ -33,16 +56,18 @@ fabric interconnect, peripheral controllers, and DTP cross-trigger / AXI
 bridges.
 
 |`clk_smn_i`
-|SMN
-|System Management Network clock. Independent of `clk_smu_i`; clock-domain
-crossings (CDCs) are used at the SMU-SMN boundary to isolate the management
-fabric timing from the SMU subsystem clock.
+|SMN (integration context)
+|System Management Network clock. An integration-level input independent of
+`clk_smu_i`; when the two are asynchronous, the integrator is responsible for
+placing CDCs at this boundary. OCAH does not supply synchronizer cells at the
+SMN interface. Not an SMU port.
 
 |`clk_ref_i`
-|SMC
+|SMC, SEP
 |Always-on reference clock, available before PLL lock. Used by the SMC for
 early bring-up, PLL control, reset synchronisation, and peripherals requiring
-a stable, lower-frequency source.
+a stable, lower-frequency source. The SEP also clocks its reference counter
+from this clock.
 
 |`clk_periph_i`
 |SMC
@@ -70,12 +95,6 @@ logic inside the DTP/SMC/SEP.
 |Ring-oscillator sample clock for the entropy source (TRNG). Must be
 asynchronous to `clk_i` and typically runs between 100 and 400 MHz.
 |===
-
-NOTE: The figure below will be provided as an annotated version of the
-top-level block diagram highlighting the clock domains.
-
-//.OCAH Clock Domains
-//image::ocah_clock_domains.png[OCAH Clock Domains,scaledwidth=100.0%]
 
 [[ocah-reference-counter]]
 == Reference Counter

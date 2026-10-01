@@ -19,8 +19,10 @@ class dtp_jtag2axi_smc_axi_series_write_no_incr_test(dtp_base_test):
     use_axi_scoreboard = True
     axi_checker_required_ids = (
         "CHK-AXI-RESP",
+        "CHK-AXI-WMEM",
         "CHK-AXI-COMPLETION",
         "CHK-AXI-STREAM-MIN",
+        "CHK-J2A-BUS-REQ",
     )
     axi_checker_stream_minimums = {"smc_axi": 2}
 

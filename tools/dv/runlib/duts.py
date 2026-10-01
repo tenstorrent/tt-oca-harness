@@ -8,6 +8,8 @@ A run selects its device-under-test with ``--dut <name>``. The name is resolved 
 directory convention (``hw/<name>/dv``, ``hw/{sys,ip,comp,periph}/<name>/dv``, or
 ``hw/common/prim/<name>/dv`` under the active DV root). Either way the resolved DUT DV root must contain
 a ``<name>_sim_cfg.toml``, which is loaded (and merged with its ``profile``) into a :class:`Dut`.
+The active site layer may name a DUT's simulation or formal config in its place, and may add
+simulation tools to the DUT's allowlist (see :func:`resolve_dut`).
 
 A registry entry may instead carry ``alias_of = "<canonical>"``, which makes the
 name a second way to select an existing DUT rather than a DUT of its own: the
@@ -25,7 +27,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from pathlib import Path
 
-from .config import load_dut, load_toml
+from .config import as_str_list, load_dut, load_simulators, load_toml
 from .models import ConfigError, Dut
 from .paths import configs_root, dv_path, repo_rel
 from .paths import dv_root as active_dv_root
@@ -119,14 +121,16 @@ _SOURCE_LABEL = {"site": "the site layer", "registry": "duts.toml", "convention"
 
 
 @dataclass(frozen=True)
-class FormalView:
-    """The formal config one DUT loads with ``--mode formal``, and the pointer that named it.
+class ConfigView:
+    """The config one DUT loads in one ``mode`` (``sim`` or ``formal``), and the pointer that
+    named it.
 
-    ``flow`` is the loaded config once :func:`load_formal_views` resolved it; a view whose
-    file is absent stays unavailable with ``flow`` None.
+    ``flow`` is the loaded config once resolved; a view whose file is absent stays unavailable
+    with ``flow`` None.
     """
 
     name: str
+    mode: str
     path: Path
     source: str
     flow: Dut | None = None
@@ -137,7 +141,7 @@ class FormalView:
 
     @property
     def reason(self) -> str:
-        return f"formal config not found: {self.path} (named by {_SOURCE_LABEL[self.source]})"
+        return f"{self.mode} config not found: {self.path} (named by {_SOURCE_LABEL[self.source]})"
 
 
 def _cfg_for(
@@ -146,13 +150,13 @@ def _cfg_for(
     mode: str,
     entry: dict,
     root: Path,
-    site_formal_cfg: str | None = None,
+    site_cfg: str | None = None,
 ) -> tuple[Path, str]:
     """(config path, source) for ``mode``; the path may not exist."""
     if mode not in {"sim", "formal"}:
         raise ConfigError(f"unsupported verification mode `{mode}`")
-    if mode == "formal" and site_formal_cfg:
-        return dv_path(root, site_formal_cfg), "site"
+    if site_cfg:
+        return dv_path(root, site_cfg), "site"
     override_key = "formal_cfg" if mode == "formal" else "sim_cfg"
     override = entry.get(override_key)
     if override:
@@ -179,6 +183,32 @@ def _locate(root: Path, name: str) -> tuple[str, Path, dict]:
     return canonical, discovered[name], {}
 
 
+def _site_cfg(site: SiteLayer | None, names: tuple[str, str], mode: str) -> str | None:
+    """The config the site layer names for ``mode``; the canonical name's entry serves an alias."""
+    if site is None:
+        return None
+    return site.formal_cfg(names) if mode == "formal" else site.sim_cfg(names)
+
+
+def _site_tools(root: Path, site: SiteLayer, names: tuple[str, str], framework: str) -> list[str]:
+    """The site-added tools that serve ``framework``.
+
+    A tool whose registry table names no frameworks serves every framework, as in the
+    framework check of flow validation, and a view without a framework takes every tool.
+    """
+    tools = site.dut_tools(names)
+    if not tools or not framework:
+        return tools
+    checked_in = load_simulators(root)
+
+    def serves(tool: str) -> bool:
+        table = checked_in.get(tool) or site.simulators.get(tool) or {}
+        frameworks = as_str_list(table.get("frameworks"), f"{tool}.frameworks")
+        return not frameworks or framework in frameworks
+
+    return [tool for tool in tools if serves(tool)]
+
+
 def resolve_dut(
     root: Path,
     name: str,
@@ -192,16 +222,19 @@ def resolve_dut(
     ``framework`` is the CLI ``--framework`` request; ``None`` selects the DUT's default.
     ``adopter_overlay`` is the resolved ``--overlay``/``OCAH_DV_OVERLAY`` path applied on top
     of the merged view (see :func:`runlib.config.apply_adopter_overlay`); ``None`` when the
-    layer is inactive. ``site`` is the active site layer; its ``[duts.<name>].formal_cfg``
-    wins over the registry's ``formal_cfg`` and the ``<name>_formal_cfg.toml`` convention.
+    layer is inactive. ``site`` is the active site layer: its ``[duts.<name>]`` ``sim_cfg`` or
+    ``formal_cfg`` wins over the registry's override and the ``<name>_<mode>_cfg.toml``
+    convention, and in ``sim`` mode its ``tools`` append to the view's allowlist (each tool
+    only where it serves the view's framework) and its ``exclude_files`` append to
+    ``[build].exclude_files`` so a site can drop sources its layered bender graph adds.
     """
     canonical, dv_root, entry = _locate(root, name)
-    site_formal_cfg = site.formal_cfg((name, canonical)) if site is not None else None
-    cfg, source = _cfg_for(dv_root, canonical, mode, entry, root, site_formal_cfg)
+    names = (name, canonical)
+    cfg, source = _cfg_for(dv_root, canonical, mode, entry, root, _site_cfg(site, names, mode))
     if not cfg.is_file():
         named = "" if source == "convention" else f" (named by {_SOURCE_LABEL[source]})"
         raise ConfigError(f"DUT `{name}`: {mode} config not found: {cfg}{named}")
-    return load_dut(
+    flow = load_dut(
         cfg,
         configs_root(root),
         root=root,
@@ -210,6 +243,23 @@ def resolve_dut(
         framework=framework,
         adopter_overlay=adopter_overlay,
     )
+    if mode == "sim" and site is not None:
+        added = [
+            tool
+            for tool in _site_tools(root, site, names, flow.framework)
+            if tool not in flow.tools
+        ]
+        if added:
+            flow = replace(flow, tools=[*flow.tools, *added])
+        site_excludes = site.dut_exclude_files(names)
+        if site_excludes:
+            build = flow.raw.setdefault("build", {})
+            existing = as_str_list(build.get("exclude_files"), "build.exclude_files")
+            build["exclude_files"] = [
+                *existing,
+                *(pat for pat in site_excludes if pat not in existing),
+            ]
+    return flow
 
 
 def list_dut_names(root: Path) -> list[str]:
@@ -222,28 +272,61 @@ def list_dut_names(root: Path) -> list[str]:
     return sorted(names)
 
 
-def load_duts(root: Path) -> dict[str, Dut]:
-    """Resolve and load every selectable DUT (used by --list / --validate-configs / --doctor)."""
-    return {name: resolve_dut(root, name) for name in list_dut_names(root)}
-
-
-def formal_view(root: Path, name: str, site: SiteLayer | None = None) -> FormalView | None:
-    """The formal view of one selectable DUT, or None when nothing names a formal config.
+def config_view(
+    root: Path, name: str, mode: str, site: SiteLayer | None = None
+) -> ConfigView | None:
+    """The ``mode`` view of one selectable DUT, or None when nothing names a config for it.
 
     A site or registry pointer yields a view whether or not its file exists; the naming
     convention yields one only for a file that exists.
     """
     canonical, dv_root, entry = _locate(root, name)
-    site_formal_cfg = site.formal_cfg((name, canonical)) if site is not None else None
-    path, source = _cfg_for(dv_root, canonical, "formal", entry, root, site_formal_cfg)
+    site_cfg = _site_cfg(site, (name, canonical), mode)
+    path, source = _cfg_for(dv_root, canonical, mode, entry, root, site_cfg)
     if source == "convention" and not path.is_file():
         return None
-    return FormalView(name=name, path=path, source=source)
+    return ConfigView(name=name, mode=mode, path=path, source=source)
 
 
-def discover_formal_views(root: Path, site: SiteLayer | None = None) -> dict[str, FormalView]:
+def unavailable_sim_views(root: Path, site: SiteLayer | None = None) -> dict[str, ConfigView]:
+    """Simulation views whose site-named config is absent.
+
+    The site file may point into a checkout this machine lacks, so such a view is listed as
+    unavailable and is an error only when its DUT is selected.
+    """
+    if site is None:
+        return {}
+    views: dict[str, ConfigView] = {}
+    for name in list_dut_names(root):
+        view = config_view(root, name, "sim", site)
+        if view is not None and view.source == "site" and not view.available:
+            views[name] = view
+    return views
+
+
+def load_duts(root: Path, site: SiteLayer | None = None) -> dict[str, Dut]:
+    """Resolve and load every selectable DUT's simulation view (used by --list /
+    --validate-configs / --doctor).
+
+    A DUT whose site-named simulation config is absent is left out; :func:`unavailable_sim_views`
+    reports it.
+    """
+    absent = unavailable_sim_views(root, site)
+    return {
+        name: resolve_dut(root, name, site=site)
+        for name in list_dut_names(root)
+        if name not in absent
+    }
+
+
+def formal_view(root: Path, name: str, site: SiteLayer | None = None) -> ConfigView | None:
+    """The formal view of one selectable DUT, or None when nothing names a formal config."""
+    return config_view(root, name, "formal", site)
+
+
+def discover_formal_views(root: Path, site: SiteLayer | None = None) -> dict[str, ConfigView]:
     """Every selectable DUT's formal view, unloaded (used by --validate-configs)."""
-    views: dict[str, FormalView] = {}
+    views: dict[str, ConfigView] = {}
     for name in list_dut_names(root):
         view = formal_view(root, name, site)
         if view is not None:
@@ -251,7 +334,7 @@ def discover_formal_views(root: Path, site: SiteLayer | None = None) -> dict[str
     return views
 
 
-def load_formal_views(root: Path, site: SiteLayer | None = None) -> dict[str, FormalView]:
+def load_formal_views(root: Path, site: SiteLayer | None = None) -> dict[str, ConfigView]:
     """Every formal view with the available ones loaded; an absent file stays unavailable."""
     return {
         name: (

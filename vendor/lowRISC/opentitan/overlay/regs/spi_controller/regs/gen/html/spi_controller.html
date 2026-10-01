@@ -6,7 +6,8 @@
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: spi_controller</h2>
+<h2 id="regmap-spi_controller">SPI Host</h2>
+<p>Serial peripheral interface for host mode, suitable for interfacing external serial NOR flash devices</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
@@ -29,7 +30,7 @@
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>1</td><td>SPI_EVENT</td><td>R</td><td>0x0</td><td>Event-related interrupts, see !!EVENT_ENABLE register for more<br>information.</td></tr>
-<tr><td>0</td><td>ERROR</td><td>RW</td><td>0x0</td><td>Error-related interrupts, see !!ERROR_ENABLE register for more<br>information.</td></tr>
+<tr><td>0</td><td>ERROR</td><td>RW1C</td><td>0x0</td><td>Error-related interrupts, see !!ERROR_ENABLE register for more<br>information.</td></tr>
 </table>
 <h3 id="INTR_ENABLE">INTR_ENABLE</h3>
 <table>
@@ -120,12 +121,12 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>5</td><td>ACCESSINVAL</td><td>RW</td><td>0x0</td><td>Indicates that TLUL attempted to write to TXDATA with no bytes enabled. Such<br>&#x27;zero byte&#x27; writes are not supported.</td></tr>
-<tr><td>4</td><td>CSIDINVAL</td><td>RW</td><td>0x0</td><td>Indicates a command was attempted with an invalid value for !!CSID.</td></tr>
-<tr><td>3</td><td>CMDINVAL</td><td>RW</td><td>0x0</td><td>Indicates an invalid command segment, meaning either an invalid value of<br>!!COMMAND.SPEED or a request for bidirectional data transfer at dual or quad<br>speed</td></tr>
-<tr><td>2</td><td>UNDERFLOW</td><td>RW</td><td>0x0</td><td>Indicates that firmware has attempted to read from<br>!!RXDATA when the RX FIFO is empty.</td></tr>
-<tr><td>1</td><td>OVERFLOW</td><td>RW</td><td>0x0</td><td>Indicates that firmware has overflowed the TX FIFO</td></tr>
-<tr><td>0</td><td>CMDBUSY</td><td>RW</td><td>0x0</td><td>Indicates a write to !!COMMAND when !!STATUS.READY = 0.</td></tr>
+<tr><td>5</td><td>ACCESSINVAL</td><td>RW1C</td><td>0x0</td><td>Indicates that TLUL attempted to write to TXDATA with no bytes enabled. Such<br>&#x27;zero byte&#x27; writes are not supported.</td></tr>
+<tr><td>4</td><td>CSIDINVAL</td><td>RW1C</td><td>0x0</td><td>Indicates a command was attempted with an invalid value for !!CSID.</td></tr>
+<tr><td>3</td><td>CMDINVAL</td><td>RW1C</td><td>0x0</td><td>Indicates an invalid command segment, meaning either an invalid value of<br>!!COMMAND.SPEED or a request for bidirectional data transfer at dual or quad<br>speed</td></tr>
+<tr><td>2</td><td>UNDERFLOW</td><td>RW1C</td><td>0x0</td><td>Indicates that firmware has attempted to read from<br>!!RXDATA when the RX FIFO is empty.</td></tr>
+<tr><td>1</td><td>OVERFLOW</td><td>RW1C</td><td>0x0</td><td>Indicates that firmware has overflowed the TX FIFO</td></tr>
+<tr><td>0</td><td>CMDBUSY</td><td>RW1C</td><td>0x0</td><td>Indicates a write to !!COMMAND when !!STATUS.READY = 0.</td></tr>
 </table>
 <h3 id="EVENT_ENABLE">EVENT_ENABLE</h3>
 <table>

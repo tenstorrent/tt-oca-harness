@@ -2,9 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * Large Data Transfer Test Module
- *
- * Tests for large data transfers (multiple 64-bit units)
+ * Writes and reads back a 16-byte buffer in one OCCP command and compares the data.
  */
 
 #include "occp_test_common.h"

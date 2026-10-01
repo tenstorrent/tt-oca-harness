@@ -4,6 +4,8 @@
 `include "opentitan_udps.rdl"
 
 addrmap csrng {
+    name = "Cryptographically Secure Random Number Generator";
+    desc = "Takes entropy bits to produce cryptographically secure random numbers for consumption by hardware blocks and by software";
     reg {
         field {
             sw = rw;

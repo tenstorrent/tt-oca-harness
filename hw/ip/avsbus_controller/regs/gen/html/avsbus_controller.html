@@ -6,7 +6,8 @@
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: avsbus_controller</h2>
+<h2 id="regmap-avsbus_controller">AVSBus Controller Address Map</h2>
+<p>Command, readback, status, and interrupt registers for the AVSBus (V1.3.1) controller.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
@@ -39,12 +40,12 @@
 <h3 id="AVS_READBACK">AVS_READBACK</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:30</td><td>SLAVE_ACK</td><td>R</td><td>0x0</td><td>Indicates whether command executed or not - codes 0x1 and 0x2 trigger automatic retries by hardware:  [list]<br>[*]0x0: Action Performed<br>[*]0x1: Good CRC received but resource unavailable - hardware will retry<br>[*]0x2: Bad CRC received - hardware will retry<br>[*]0x3: Good CRC received but bad data, data type or selector - no hardware retry<br>[/list]</td></tr>
-<tr><td>29</td><td>CONST0</td><td>R</td><td>0x0</td><td>Always 0</td></tr>
-<tr><td>28:24</td><td>STATUS_RESPONSE</td><td>R</td><td>0x0</td><td>5-bit field indicating general condition of the slave, per AVS spec StatusReponse field: [list]<br>[*]bit 4: VDone - AND of all VDone bits of active rails<br>[*]bit 3: StatusAlert - Indicates potential status issue, requiring AVSBus Status read cmd for details<br>[*]bit 2: AVS_Control - 1 if ABSBus is controlling at least 1 device output, 0 otherwise.<br>[*]bit 1: MfrSpcfc_Stts1 - Manufacturer-specific<br>[*]bit 0: MfrSpcfc_Stts2 - Manufacturer-specific<br>[/list]</td></tr>
-<tr><td>23:8</td><td>CMD_DATA</td><td>R</td><td>0x0</td><td>Read Cmd Data. Format depends on cmd_code in previous master subframe:[list]<br>[*]Voltage (cmd_code 0x0): 16-bit unsigned int, 1LSB=1mV<br>[*]Transition Rate (cmd_code 0x1): [list]<br>[*]MSByte: Rise Rate, 8-bit unsigned int, 1LSB=1mV/us<br>[*]LSByte: Fall Rate, 8-bit unsigned int, 1LSB=1mV/us [/list]<br>[*]Current (cmd_mode 0x2): 16-bit unsigned, 1LSB=10mA<br>[*]Temperature (cmd_code 0x3): 16-bit signed, 1LSB=0.1degC<br>[*]Power Mode (cmd_code 0x5): 3-bits, LSB aligned: [list]<br>[*]0x0 - Maximum Efficiency<br>[*]0x3 - Maximum Power<br>[*]0x4-0x7 - Manufacturer-specific  [/list]<br>[*]AVSBus Status (cmd_code 0xe): 16-bits, encoded per AVS Spec<br>[*]AVSBus Version (cmd_code 0xf): 4 bits encoded per AVS Spec, LSB-aligned<br>[*]If master issued a write (rw!=0x2) in previous master subframe, this field is 0xffff<br>[/list]</td></tr>
+<tr><td>31:30</td><td>SLAVE_ACK</td><td>R RMOD</td><td>0x0</td><td>Indicates whether command executed or not - codes 0x1 and 0x2 trigger automatic retries by hardware:  [list]<br>[*]0x0: Action Performed<br>[*]0x1: Good CRC received but resource unavailable - hardware will retry<br>[*]0x2: Bad CRC received - hardware will retry<br>[*]0x3: Good CRC received but bad data, data type or selector - no hardware retry<br>[/list]</td></tr>
+<tr><td>29</td><td>CONST0</td><td>R RMOD</td><td>0x0</td><td>Always 0</td></tr>
+<tr><td>28:24</td><td>STATUS_RESPONSE</td><td>R RMOD</td><td>0x0</td><td>5-bit field indicating general condition of the slave, per AVS spec StatusReponse field: [list]<br>[*]bit 4: VDone - AND of all VDone bits of active rails<br>[*]bit 3: StatusAlert - Indicates potential status issue, requiring AVSBus Status read cmd for details<br>[*]bit 2: AVS_Control - 1 if ABSBus is controlling at least 1 device output, 0 otherwise.<br>[*]bit 1: MfrSpcfc_Stts1 - Manufacturer-specific<br>[*]bit 0: MfrSpcfc_Stts2 - Manufacturer-specific<br>[/list]</td></tr>
+<tr><td>23:8</td><td>CMD_DATA</td><td>R RMOD</td><td>0x0</td><td>Read Cmd Data. Format depends on cmd_code in previous master subframe:[list]<br>[*]Voltage (cmd_code 0x0): 16-bit unsigned int, 1LSB=1mV<br>[*]Transition Rate (cmd_code 0x1): [list]<br>[*]MSByte: Rise Rate, 8-bit unsigned int, 1LSB=1mV/us<br>[*]LSByte: Fall Rate, 8-bit unsigned int, 1LSB=1mV/us [/list]<br>[*]Current (cmd_mode 0x2): 16-bit unsigned, 1LSB=10mA<br>[*]Temperature (cmd_code 0x3): 16-bit signed, 1LSB=0.1degC<br>[*]Power Mode (cmd_code 0x5): 3-bits, LSB aligned: [list]<br>[*]0x0 - Maximum Efficiency<br>[*]0x3 - Maximum Power<br>[*]0x4-0x7 - Manufacturer-specific  [/list]<br>[*]AVSBus Status (cmd_code 0xe): 16-bits, encoded per AVS Spec<br>[*]AVSBus Version (cmd_code 0xf): 4 bits encoded per AVS Spec, LSB-aligned<br>[*]If master issued a write (rw!=0x2) in previous master subframe, this field is 0xffff<br>[/list]</td></tr>
 <tr><td>7:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>2:0</td><td>CRC</td><td>R</td><td>0x0</td><td>The CRC-3 code received from slave</td></tr>
+<tr><td>2:0</td><td>CRC</td><td>R RMOD</td><td>0x0</td><td>The CRC-3 code received from slave</td></tr>
 </table>
 <h3 id="AVS_DEBUG_READBACK">AVS_DEBUG_READBACK</h3>
 <table>
@@ -121,15 +122,15 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>8</td><td>CLEAR_READBACK_OVERFLOW_INT</td><td>W</td><td>0x0</td><td>Clear readback_overflow interrupt</td></tr>
-<tr><td>7</td><td>CLEAR_READBACK_UNDERFLOW_INT</td><td>W</td><td>0x0</td><td>Clear readback_underflow interrupt</td></tr>
-<tr><td>6</td><td>CLEAR_CMD_FIFO_OVERFLOW_INT</td><td>W</td><td>0x0</td><td>Clear cmd_fifo_overflow interrupt</td></tr>
-<tr><td>5</td><td>CLEAR_MAX_RETRIES_ATTEMPTED_INT</td><td>W</td><td>0x0</td><td>Clear max_retries_attempted interrupt</td></tr>
-<tr><td>4</td><td>CLEAR_SLAVE_UNRESPONSIVE_INT</td><td>W</td><td>0x0</td><td>Clear slave_unresponsive interrupt</td></tr>
-<tr><td>3</td><td>CLEAR_READBACK_HAS_DATA_INT</td><td>W</td><td>0x0</td><td>Clear readback_has_data interrupt</td></tr>
-<tr><td>2</td><td>CLEAR_READBACK_FIFO_FULL_INT</td><td>W</td><td>0x0</td><td>Clear readback_fifo_full interrupt</td></tr>
-<tr><td>1</td><td>CLEAR_CMD_FIFO_FULL_INT</td><td>W</td><td>0x0</td><td>Clear cmd_fifo_full interrupt</td></tr>
-<tr><td>0</td><td>CLEAR_AVS_SLAVE_ISSUED_INTERRUPT</td><td>W</td><td>0x0</td><td>Clear avs_slave_issued_interrupt</td></tr>
+<tr><td>8</td><td>CLEAR_READBACK_OVERFLOW_INT</td><td>W 1P</td><td>0x0</td><td>Clear readback_overflow interrupt</td></tr>
+<tr><td>7</td><td>CLEAR_READBACK_UNDERFLOW_INT</td><td>W 1P</td><td>0x0</td><td>Clear readback_underflow interrupt</td></tr>
+<tr><td>6</td><td>CLEAR_CMD_FIFO_OVERFLOW_INT</td><td>W 1P</td><td>0x0</td><td>Clear cmd_fifo_overflow interrupt</td></tr>
+<tr><td>5</td><td>CLEAR_MAX_RETRIES_ATTEMPTED_INT</td><td>W 1P</td><td>0x0</td><td>Clear max_retries_attempted interrupt</td></tr>
+<tr><td>4</td><td>CLEAR_SLAVE_UNRESPONSIVE_INT</td><td>W 1P</td><td>0x0</td><td>Clear slave_unresponsive interrupt</td></tr>
+<tr><td>3</td><td>CLEAR_READBACK_HAS_DATA_INT</td><td>W 1P</td><td>0x0</td><td>Clear readback_has_data interrupt</td></tr>
+<tr><td>2</td><td>CLEAR_READBACK_FIFO_FULL_INT</td><td>W 1P</td><td>0x0</td><td>Clear readback_fifo_full interrupt</td></tr>
+<tr><td>1</td><td>CLEAR_CMD_FIFO_FULL_INT</td><td>W 1P</td><td>0x0</td><td>Clear cmd_fifo_full interrupt</td></tr>
+<tr><td>0</td><td>CLEAR_AVS_SLAVE_ISSUED_INTERRUPT</td><td>W 1P</td><td>0x0</td><td>Clear avs_slave_issued_interrupt</td></tr>
 </table>
 <h3 id="AVS_CFG_0">AVS_CFG_0</h3>
 <table>
@@ -145,7 +146,7 @@
 <tr><td>23:16</td><td>CLK_DIVIDER_VALUE</td><td>RW</td><td>0x0</td><td>Determines the divisor value used to generate the AVS clock (when avs_clock_select is set to select the divided APB clock or divided refclk clock).<br>The duty cycle of the divided clock depends both on the clk_divider_value together with the clk_divider_duty_cycle_numerator value. A 50%<br>duty cycle is only possible on even clk_divider_values with clk_divider_duty_cycle_numerator set to 128. This field requires a minimum value of<br>2 - for lower values, 2 will be assumed. This is set to 0 by default to trick the clock divider into maintaining the HW-default settings<br>(divider=0x4) by matching the FF default in the resynced version of the signal.</td></tr>
 <tr><td>15:11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>10</td><td>TURN_OFF_ALL_PREMUX_CLOCKS</td><td>RW</td><td>0x0</td><td>Gate off all clocks entering the AVS clock mux - do this before changing the mux selection or changing the clock divider settings, then turn back on afterwards</td></tr>
-<tr><td>9</td><td>FORCE_SLAVE_RESYNC_OPERATION</td><td>RW</td><td>0x0</td><td>Force master to issue a slave resync (34 clock cycles of holding the mdata signal high) at the next possible opportunity. NOTE: there is a 3 cycle delay for the resync flag to be seen by the avs controller due to synchronization.</td></tr>
+<tr><td>9</td><td>FORCE_SLAVE_RESYNC_OPERATION</td><td>RW 1P</td><td>0x0</td><td>Force master to issue a slave resync (34 clock cycles of holding the mdata signal high) at the next possible opportunity. NOTE: there is a 3 cycle delay for the resync flag to be seen by the avs controller due to synchronization.</td></tr>
 <tr><td>8</td><td>STOP_AVS_CLOCK_ON_IDLE</td><td>RW</td><td>0x0</td><td>When the AVS bus is idle, gate the avs_clock from running. Restart it when there are new commands to be run.<br>The master will always first issue 34 slave-resync cycles when the clock first restarts.</td></tr>
 <tr><td>7:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>1:0</td><td>AVS_CLOCK_SELECT</td><td>RW</td><td>0x3</td><td>Selects which clock to use for AVS Clock: [list]<br>[*] 00: Use the APB clock directly as the AVS clock<br>[*] 01: Use a divided version of APB clock as the AVS Clock. The clock divider settings are determined by AVS_CFG_1:clk_divider_value and AVS_CFG_1:clk_divider_duty_cycle_numerator<br>[*] 10: Use the refclk clock directly as the AVS clock<br>[*] 11: Use a divided version of refclk clock as the AVS Clock. The clock divider settings are determined by AVS_CFG_1:clk_divider_value and AVS_CFG_1:clk_divider_duty_cycle_numerator<br>[/list]</td></tr>

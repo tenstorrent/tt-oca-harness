@@ -47,8 +47,6 @@ jobs:
   # bender (only lint-sv-slang) and reviewdog (via the shared
   # .github/actions/reviewdog-report composite action).
   setup-tools:
-    needs: [diff-class]
-    if: needs.diff-class.outputs.run_hardware_ci == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Install bender
@@ -146,7 +144,10 @@ jobs:
             printf '%s\n' '{"version":"2.1.0","runs":[]}' > "$sarif"
           fi
           exit 0
+      # The Checks API post is advisory. Verilator's exit status, gated
+      # below, fails the job.
       - uses: ./.github/actions/reviewdog-report
+        continue-on-error: true
         with:
           log-file: verilator_${{ matrix.block }}.sarif
           format: sarif
@@ -187,7 +188,10 @@ jobs:
             printf '%s\n' '{"version":"2.1.0","runs":[]}' > "$sarif"
           fi
           exit 0
+      # The Checks API post is advisory. Ruff's exit status, gated below,
+      # fails the job.
       - uses: ./.github/actions/reviewdog-report
+        continue-on-error: true
         with:
           log-file: ruff.sarif
           format: sarif
@@ -258,11 +262,23 @@ jobs:
       - uses: ./.github/actions/reviewdog-report
         with: { log-file: lint_spelling.log, efm: '%f:%l: %m', level: error, name: lint-spelling }
 
+  lint-sv-comments:
+    needs: [diff-class, setup-tools]
+    if: needs.diff-class.outputs.run_hardware_ci == 'true'
+    runs-on: ubuntu-latest
+    permissions: { contents: read, checks: write, pull-requests: write }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Check SystemVerilog comments
+        run: make ocah-lint-sv-comments 2>&1 | tee lint_sv_comments.log || true
+      - uses: ./.github/actions/reviewdog-report
+        with: { log-file: lint_sv_comments.log, efm: '%f:%l: %m', level: error, name: lint-sv-comments }
+
   # Vale is a Go binary with no PyPI wheel; fetched here from a pinned
   # release the same way lint-make (checkmake) does (see flows/lint/vale.mk).
   lint-vale:
-    needs: [diff-class, setup-tools]
-    if: needs.diff-class.outputs.run_hardware_ci == 'true'
+    needs: [setup-tools]
     runs-on: ubuntu-latest
     permissions: { contents: read, checks: write, pull-requests: write }
     steps:
@@ -617,6 +633,27 @@ jobs:
       - name: Run the DV unit tests
         if: steps.scope.outputs.run == 'true'
         run: uv run --locked --group dv python -m unittest discover tools/dv/tests
+
+  doc-unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions: { contents: read }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+      - name: Install the converter the block catalog tests convert through
+        run: npm install -g @asciidoctor/core@3
+      - name: Run the documentation unit tests
+        run: |
+          NODE_PATH="$(npm root -g)" python3 -m unittest discover tools/doc/tests
 
   # Deletes and regenerates every register block's collateral from the RDLs,
   # then fails if the working tree changes. The shared checker forces every

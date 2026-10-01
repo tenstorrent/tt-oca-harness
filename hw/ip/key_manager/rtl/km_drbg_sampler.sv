@@ -3,52 +3,53 @@
 
 // Copyright 2026 Tenstorrent Inc.
 
-/**
- * @file km_drbg_sampler.sv
- * @brief DRBG sampler -- bridges KM CPU AXI4-Lite reads to a DRBG AXI-Stream.
- *
- * @details Mapped at base 0x0001_5000.  A CPU read of the DATA register
- *          either returns a prefetched random word or initiates a new DRBG
- *          request via the AXI-Stream handshake.  Configurable timeout
- *          (CFG.TIMEOUT) protects against DRBG stalls during active reads.
- *          An optional single-word prefetch (CFG.PREFETCH) reduces latency
- *          for the first DATA read after configuration.
- *
- *          Register map: DATA, CFG (PREFETCH, TIMEOUT), STATUS
- *          (DRBG_READY, PREFETCHED, TIMEOUT_ERR, STREAM_ERR, COUNT_GOOD,
- *          COUNT_BAD), PREFETCH_DATA (read-only).
- *
- * @param axil_req_t   AXI-Lite request struct type.
- * @param axil_resp_t  AXI-Lite response struct type.
- */
+// Bridge Key Manager CPU AXI4-Lite reads of the sampler registers to a DRBG AXI-Stream.
+//
+// Mapped at base 0x0001_5000. A CPU read of the DATA register either returns a prefetched
+// random word or initiates a new DRBG request via the AXI-Stream handshake, packing the
+// TSTRB-valid bytes of successive beats from lane 0 upward until four are collected. A
+// configurable timeout (CFG.TIMEOUT, 0 disables) protects against DRBG stalls during active
+// reads; a timeout or stream protocol violation answers the DATA read with SLVERR and zero
+// data. While CFG.PREFETCH is set, one word is kept prefetched and refilled after each use.
+// drbg_error_o pulses on a timeout or a stream protocol violation.
+//
+// Register map:
+//
+// - DATA
+// - CFG (PREFETCH, TIMEOUT)
+// - STATUS (DRBG_READY, PREFETCHED, TIMEOUT_ERR, STREAM_ERR, COUNT_GOOD, COUNT_BAD)
+// - PREFETCH_DATA (read-only)
+
 module km_drbg_sampler
   import km_intf_pkg::*;
   import axi_pkg::*;
   import km_drbg_sampler_reg_pkg::*;
   import km_drbg_sampler_addrmap_pkg::*;
 #(
-  parameter type axil_req_t  = km_axil_req_t,
-  parameter type axil_resp_t = km_axil_resp_t
+  parameter type axil_req_t  = km_axil_req_t,  // AXI-Lite request struct type.
+  parameter type axil_resp_t = km_axil_resp_t  // AXI-Lite response struct type.
 ) (
-  input  logic   clk_i,
-  input  logic   cold_rst_ni,   // Cold reset: AASD
-  input  logic   warm_rst_ni,   // Warm reset: fully synchronous
+  input  logic   clk_i,        // System clock.
+  input  logic   cold_rst_ni,  // Cold reset: AASD.
+  input  logic   warm_rst_ni,  // Warm reset: fully synchronous.
 
-  // AXI4-Lite Slave (from crossbar, base 0x0001_5000)
-  input  axil_req_t axil_req_i,
-  output axil_resp_t axil_resp_o,
+  input  axil_req_t axil_req_i,    // AXI4-Lite slave request from the crossbar (base
+                                   // 0x0001_5000); only address bits [3:0] are decoded, and
+                                   // one read is outstanding at a time.
+  output axil_resp_t axil_resp_o,  // AXI4-Lite slave response to the crossbar.
 
-  // DRBG AXI-Stream (KM is slave: TREADY out; TVALID, TDATA, TSTRB in)
-  input  km_drbg_axis_req_t drbg_axis_req_i,
-  output km_drbg_axis_resp_t drbg_axis_resp_o,
+  input  km_drbg_axis_req_t drbg_axis_req_i,    // DRBG AXI-Stream TVALID, TDATA, TSTRB in (KM
+                                                // is slave); TUSER is ignored.
+  output km_drbg_axis_resp_t drbg_axis_resp_o,  // DRBG AXI-Stream TREADY out; high while a DATA
+                                                // read or a prefetch is collecting bytes.
 
-  // Aggregated error pulse to KMCSR (sets IRQ_STATUS.DRBG_ERR)
-  output logic        drbg_error_o
+  output logic        drbg_error_o  // Aggregated error pulse to KMCSR (sets
+                                    // IRQ_STATUS.DRBG_ERR).
 );
 
   `include "prim_assert.sv"
 
-  /** @brief Register block address width, from the generated register map. */
+  // Register block address width, from the generated register map.
   localparam int unsigned ADDR_W = KM_DRBG_SAMPLER_REG_MIN_ADDR_WIDTH;
 
   //--------------------------------------------------------------------------
@@ -120,7 +121,6 @@ module km_drbg_sampler
   logic [1:0] data_read_rresp;
 
   // Slot state: slot_valid, slot_is_data, slot_done, slot_rresp are control and are reset.
-  // slot_rdata is datapath (holds random/response data) and must NOT be reset.
   always_ff @(posedge clk_i or negedge cold_rst_ni) begin
     if (!cold_rst_ni) begin
       slot_valid <= 1'b0;
@@ -143,17 +143,23 @@ module km_drbg_sampler
         slot_done <= 1'b0;
       end
       if (slot_valid && slot_is_data && data_read_done) begin
-        slot_rdata <= data_read_rdata;
         slot_rresp <= data_read_rresp;
         slot_done <= 1'b1;
       end
     end
   end
 
+  // slot_rdata is datapath (holds random/response data) and must NOT be reset.
+  always_ff @(posedge clk_i) begin
+    if (warm_rst_ni && slot_valid && slot_is_data && data_read_done) begin
+      slot_rdata <= data_read_rdata;
+    end
+  end
+
   //--------------------------------------------------------------------------
   // DATA read FSM and DRBG request
   //--------------------------------------------------------------------------
-  /** @brief DATA-read FSM states for the DRBG sampler request path. */
+  // DATA-read FSM states for the DRBG sampler request path.
   typedef enum logic [2:0] {
     StIdle,
     StRequest,
@@ -274,8 +280,6 @@ module km_drbg_sampler
   logic [31:0] prefetch_word_next;
   logic [2:0]  prefetch_bytes_next;
 
-  // FSM and counters are control and are reset. word_reg / prefetch_word_acc are datapath
-  // (hold DRBG data) and must NOT be reset.
   always_ff @(posedge clk_i or negedge cold_rst_ni) begin
     if (!cold_rst_ni) begin
       state_q              <= StIdle;
@@ -296,10 +300,7 @@ module km_drbg_sampler
         // underflow past zero on the cycle the FSM transitions to
         // StTimeout.
         if (timeout_en && (timeout_cnt != 16'h0)) timeout_cnt <= timeout_cnt - 1'b1;
-        if (tvalid && tready) begin
-          word_reg             <= data_word_next;
-          data_bytes_collected <= data_bytes_next;
-        end
+        if (tvalid && tready) data_bytes_collected <= data_bytes_next;
       end else begin
         // Load CFG.TIMEOUT-1 (when timeout_en) so that the active
         // states observe exactly CFG.TIMEOUT distinct counter values
@@ -327,6 +328,13 @@ module km_drbg_sampler
           if (count_bad != 8'hFF) count_bad <= count_bad + 1'b1;
         end
       end
+    end
+  end
+
+  always_ff @(posedge clk_i) begin
+    if (warm_rst_ni && (state_q == StRequest || state_q == StByteAssembly) &&
+        tvalid && tready) begin
+      word_reg <= data_word_next;
     end
   end
 
@@ -398,9 +406,6 @@ module km_drbg_sampler
   assign prefetch_consumed = slot_valid && slot_is_data && prefetched_valid &&
                                state_q == StIdle && state_d == StIdle;
 
-  // Prefetch FSM: prefetch_state_q, prefetched_valid, prefetch_pending, prefetch_bytes_collected
-  // are control and are reset.  prefetch_data_reg and prefetch_word_acc are datapath and must
-  // NOT be reset.
   always_ff @(posedge clk_i or negedge cold_rst_ni) begin
     if (!cold_rst_ni) begin
       prefetched_valid         <= 1'b0;
@@ -414,14 +419,12 @@ module km_drbg_sampler
       prefetch_bytes_collected <= 3'd0;
     end else begin
       if (!hwif_out.CFG.prefetch.value) begin
-        prefetch_data_reg        <= 32'h0;
         prefetched_valid         <= 1'b0;
         prefetch_pending         <= 1'b0;
         prefetch_state_q         <= StIdle;
         prefetch_bytes_collected <= 3'd0;
       end else if (stream_err_pulse && prefetch_state_q != StIdle) begin
         // AXI-Stream protocol violation: discard any in-progress prefetch transfer.
-        // prefetch_data_reg / prefetch_word_acc are datapath; NOT cleared.
         prefetched_valid         <= 1'b0;
         prefetch_pending         <= 1'b0;
         prefetch_state_q         <= StIdle;
@@ -434,10 +437,8 @@ module km_drbg_sampler
         prefetch_state_q <= prefetch_state_d;
         if ((prefetch_state_q == StRequest || prefetch_state_q == StByteAssembly) &&
                         tvalid && prefetch_tready) begin
-          prefetch_word_acc        <= prefetch_word_next;
           prefetch_bytes_collected <= prefetch_bytes_next;
           if (prefetch_bytes_next == 3'd4) begin
-            prefetch_data_reg <= prefetch_word_next;
             prefetched_valid  <= 1'b1;
             prefetch_pending  <= 1'b0;
             prefetch_bytes_collected <= 3'd0;
@@ -445,6 +446,23 @@ module km_drbg_sampler
         end else if (prefetch_state_q == StIdle && !prefetched_valid && !prefetch_pending) begin
           prefetch_pending         <= 1'b1;
           prefetch_bytes_collected <= 3'd0;
+        end
+      end
+    end
+  end
+
+  // An accepted prefetch beat never coincides with prefetch_consumed: prefetch_tready is
+  // gated off while a DATA read occupies the slot.
+  always_ff @(posedge clk_i) begin
+    if (warm_rst_ni) begin
+      if (!hwif_out.CFG.prefetch.value) begin
+        prefetch_data_reg <= 32'h0;
+      end else if (!(stream_err_pulse && prefetch_state_q != StIdle) &&
+                   (prefetch_state_q == StRequest || prefetch_state_q == StByteAssembly) &&
+                   tvalid && prefetch_tready) begin
+        prefetch_word_acc <= prefetch_word_next;
+        if (prefetch_bytes_next == 3'd4) begin
+          prefetch_data_reg <= prefetch_word_next;
         end
       end
     end

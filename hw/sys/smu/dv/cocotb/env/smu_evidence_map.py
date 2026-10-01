@@ -97,7 +97,175 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "responder holds the word and the B response returns OKAY",
         ),
     ],
+    "smu_aperture_map_walk_test": [
+        (
+            "CHK-SMCMAP-WALK-PORT",
+            "CHK-SMCMAP-WALK-PORT",
+            "every programmed GLOBAL_BASE and REGION_SIZE reaches smc_global_base_o and "
+            "smc_region_size_o and reads back over JTAG2AXI",
+        ),
+        (
+            "CHK-SMCMAP-WALK-INSIDE",
+            "CHK-SMCMAP-WALK-INSIDE",
+            "at every setting the rebased VERSION_LO read returns its RDL reset value and "
+            "the rebased SCRATCH_COLD write reads back, all OKAY",
+        ),
+        (
+            "CHK-SMCMAP-WALK-EDGE",
+            "CHK-SMCMAP-WALK-EDGE",
+            "at every setting the first address of the window reaches the SMC once and the word "
+            "below and the address past it do not and return DECERR",
+        ),
+        (
+            "CHK-SMCMAP-RESTORE",
+            "CHK-SMCMAP-RESTORE",
+            "GLOBAL_BASE and REGION_SIZE written back to LOCAL_BASE and the RDL reset "
+            "reach the ports and read back",
+        ),
+    ],
+    "smu_axi_out_addr_len_size_test": [
+        (
+            "CHK-AXIOUT-SIZE",
+            "CHK-AXIOUT-SIZE",
+            "each JTAG2AXI write and read of 1, 2, 4 and 8 bytes at two 56-bit addresses "
+            "crosses smu_axi_out once with its address and AxSIZE, and the bytes land and "
+            "read back",
+        ),
+        (
+            "CHK-AXIOUT-LEN",
+            "CHK-AXIOUT-LEN",
+            "a 2 KiB iDMA copy crosses smu_axi_out as bursts covering the block both ways, "
+            "and the destination holds the source",
+        ),
+        (
+            "CHK-AXIOUT-BACKPRESSURE",
+            "CHK-AXIOUT-BACKPRESSURE",
+            "the iDMA copy completes intact while the responder stalls every AW, W and AR, "
+            "and also with only the write handshakes stalled",
+        ),
+        (
+            "CHK-AXIOUT-ERROR-RESP",
+            "CHK-AXIOUT-ERROR-RESP",
+            "responder SLVERR and DECERR on a read and a write reach JTAG2AXI as that status",
+        ),
+        (
+            "CHK-AXIOUT-ZEROER",
+            "CHK-AXIOUT-ZEROER",
+            "the SMC zeroer clears 512 bytes at the responder and its busy bit returns low",
+        ),
+        (
+            "CHK-AXIOUT-OUTPUT-REMAP",
+            "CHK-AXIOUT-OUTPUT-REMAP",
+            "M-mode and Xvisor output-remap region 0 accesses reach the responder at the "
+            "programmed target, and a following access leaves by the default path",
+        ),
+    ],
+    "smu_smc_inbound_window_sweep_test": [
+        (
+            "CHK-SMC-WINDOW-PROT",
+            "CHK-SMC-WINDOW-PROT",
+            "under every AxPROT the SMC external window's base word and a DTP port CONFIG "
+            "word read and write back OKAY unchanged, and the external target and eFuse "
+            "SPARE[0] accesses complete",
+        ),
+        (
+            "CHK-SMC-WINDOW-EXTERNAL-SIZE",
+            "CHK-SMC-WINDOW-EXTERNAL-SIZE",
+            "every AxSIZE with each of address bits [6:0] set and cleared completes at the "
+            "SMC external target",
+        ),
+        (
+            "CHK-SMC-WINDOW-AWID-TRAIN",
+            "CHK-SMC-WINDOW-AWID-TRAIN",
+            "sixteen SPM writes under distinct AWIDs in flight with BREADY held are OKAY "
+            "and read back",
+        ),
+        (
+            "CHK-SMC-WINDOW-HELD-TRAIN",
+            "CHK-SMC-WINDOW-HELD-TRAIN",
+            "sixty-four reads and sixty-four writes launched together with responses held at "
+            "the external target and at the DTP CONFIG word all complete, and the DTP word "
+            "is unchanged",
+        ),
+        (
+            "CHK-SMC-WINDOW-COOL-RESET",
+            "CHK-SMC-WINDOW-COOL-RESET",
+            "the held cool reset pin holds the SMC primary reset asserted and its release "
+            "releases it",
+        ),
+    ],
+    "smu_cla_action_test": [
+        (
+            "CHK-CLA-CUSTOM-ACTION",
+            "CHK-CLA-CUSTOM-ACTION",
+            "each CLA custom action programmed alone drives exactly its bit of the custom "
+            "action bus, and a pair with no custom enable clears it",
+        ),
+        (
+            "CHK-CLA-XTRIGGER",
+            "CHK-CLA-XTRIGGER",
+            "with every halt mask bit clear the cross-trigger pair leaves both SMC "
+            "cross-trigger lanes into the DTP low",
+        ),
+        (
+            "CHK-CLA-CLOCK-HALT",
+            "CHK-CLA-CLOCK-HALT",
+            "with the clock-stop enable set and no action the report and DTP clock-stop "
+            "lane 0 are low, and with the enable clear lane 0 stays low under the action",
+        ),
+    ],
+    "smu_otp_prod_error_resp_test": [
+        (
+            "CHK-OTP-PROD-SMC-REFUSED",
+            "CHK-OTP-PROD-SMC-REFUSED",
+            "under PROD an SMC OTP read and write of MAP SPARE[0] are refused, the read "
+            "with 0xBADCAB1E, and a JTAG_PUBLIC_IDENTITY read returns SUCCESS",
+        ),
+        (
+            "CHK-OTP-PROD-SEP-REFUSED",
+            "CHK-OTP-PROD-SEP-REFUSED",
+            "under PROD a SEP OTP read and write of MAP SPARE0 are refused, the read with "
+            "0xBADCAB1E, and a write and read in the eFuse MMR token block return SUCCESS",
+        ),
+        (
+            "CHK-OTP-PROD-SMC-RESET",
+            "CHK-OTP-PROD-SMC-RESET",
+            "the SMC is in reset while the cool reset pin is held, and after it a "
+            "JTAG_PUBLIC_IDENTITY read over the SMC OTP bridge returns SUCCESS",
+        ),
+        (
+            "CHK-OTP-PROD-SMC-SERIES",
+            "CHK-OTP-PROD-SMC-SERIES",
+            "an SMC OTP series read of JTAG_PUBLIC_IDENTITY with pipeline depth 3 completes "
+            "with SUCCESS",
+        ),
+    ],
+    "smu_smc_fabric_test": [
+        (
+            "CHK-SEP-DMI-DMSTATUS",
+            "CHK-SEP-DMI-DMSTATUS",
+            "SEP TAP dmi read of dmstatus completes with status 0 and version 2 (spec 0.13)",
+        ),
+        (
+            "CHK-SMC-FW-FABRIC-PASS",
+            "CHK-SMC-FW-FABRIC-PASS",
+            "the SMC ROM image posts READY, and after GO every hart's SEP SRAM and ext_out "
+            "read-backs match and hart 0 posts TEST_PASS",
+        ),
+        (
+            "CHK-SMC-FW-FABRIC-CROSSCHECK",
+            "CHK-SMC-FW-FABRIC-CROSSCHECK",
+            "all four hart words pass, the responder and SEP SRAM hold each hart's words, "
+            "and ext_out carried writes and reads from every hart",
+        ),
+    ],
     "smu_axi_in_burst_outstanding_test": [
+        (
+            "CHK-AXIIN-SPM-SWEEP",
+            "CHK-AXIIN-SPM-SWEEP",
+            "every SPM size and address cell reads back, an INCR burst reads back its beats, "
+            "and an INCR write after a WRAP write is OKAY",
+        ),
         (
             "CHK-AXIIN-DEPTH",
             "CHK-AXIIN-DEPTH",
@@ -114,7 +282,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-AXIIN-BURST",
             "CHK-AXIIN-BURST",
-            "an inbound WRAP burst read at a register target is refused with SLVERR",
+            "INCR bursts at the register targets are OKAY and a WRAP burst read of the same "
+            "shape is refused with SLVERR",
         ),
         (
             "CHK-AXIIN-BURST-FIXED",
@@ -311,7 +480,258 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "SEP TAP dmi read of dmstatus completes with status 0 and version 2 (spec 0.13)",
         ),
     ],
+    "smu_axi_in_sep_aperture_test": [
+        (
+            "CHK-AXIIN-SEP-ROUND-TRIP",
+            "CHK-AXIIN-SEP-ROUND-TRIP",
+            "ext_in writes and reads SEP SRAM OKAY under every id, qualifier, AxPROT, AxSIZE "
+            "and byte offset swept, and every read returns the bytes written",
+        ),
+        (
+            "CHK-AXIIN-SEP-BURST",
+            "CHK-AXIIN-SEP-BURST",
+            "INCR bursts of AxLEN 0x00/0x55/0xAA/0xFF round-trip SEP SRAM, also under response "
+            "backpressure",
+        ),
+        (
+            "CHK-AXIIN-SEP-ERRORS",
+            "CHK-AXIIN-SEP-ERRORS",
+            "an entropy pool write is SLVERR and SEP-local 0x0 is not OKAY",
+        ),
+        (
+            "CHK-AXIIN-SEP-ADDRESS-BITS",
+            "CHK-AXIIN-SEP-ADDRESS-BITS",
+            "every walked SEP aperture address arrives at the SEP inbound port on both "
+            "channels and no other address does",
+        ),
+        (
+            "CHK-AXIIN-SEP-EXTERNAL",
+            "CHK-AXIIN-SEP-EXTERNAL",
+            "inbound writes to the SEP external aperture end in error responses and, per R "
+            "beat tapped on ext_in and paired with its AR, no external-aperture read beat is "
+            "OKAY and every TRNG-window read beat is DECERR; TRNG-window writes are recorded, "
+            "not graded",
+        ),
+        (
+            "CHK-AXIIN-SEP-ID-TRAIN",
+            "CHK-AXIIN-SEP-ID-TRAIN",
+            "reads and writes under distinct IDs in flight together complete and read back",
+        ),
+        (
+            "CHK-AXIIN-SEP-SMC-DMA",
+            "CHK-AXIIN-SEP-SMC-DMA",
+            "an ext_in read of the SMC returns VERSION_LO, an SMC iDMA copy from SEP SRAM to "
+            "ext_out lands, a copy back into SEP SRAM reads back, and a SEP egress follows",
+        ),
+        (
+            "CHK-AXIIN-SEP-SHIM",
+            "CHK-AXIIN-SEP-SHIM",
+            "the eFuse shim word reads and writes back OKAY under every AxPROT, in held "
+            "trains and in a read-against-lagged-write sweep, and a system-bus read and "
+            "write of a closed window return sberror",
+        ),
+    ],
+    "smu_efuse_command_test": [
+        (
+            "CHK-SEP-DMI-DMSTATUS",
+            "CHK-SEP-DMI-DMSTATUS",
+            "SEP TAP dmi read of dmstatus completes with status 0 and version 2 (spec 0.13)",
+        ),
+        (
+            "CHK-EFUSE-CMD-READ",
+            "CHK-EFUSE-CMD-READ",
+            "a read at bit 0 and at every address bit of the spare middle of the array completes",
+        ),
+        (
+            "CHK-EFUSE-CMD-PROGRAM",
+            "CHK-EFUSE-CMD-PROGRAM",
+            "programs of the middle fuse word complete and a read returns every programmed bit",
+        ),
+        (
+            "CHK-EFUSE-CMD-OOB",
+            "CHK-EFUSE-CMD-OOB",
+            "an out-of-range read and program fail, set the sticky address errors, and clear",
+        ),
+        (
+            "CHK-EFUSE-CMD-PROGRAM-FAIL",
+            "CHK-EFUSE-CMD-PROGRAM-FAIL",
+            "with the bank failing one program, a program with read-back reports error "
+            "status 1 and the word reads 0",
+        ),
+        (
+            "CHK-EFUSE-CMD-WORD",
+            "CHK-EFUSE-CMD-WORD",
+            "programming all 32 bits of a word reads back 0xFFFFFFFF and the next word reads 0",
+        ),
+    ],
+    "smu_sep_lsu_fabric_test": [
+        (
+            "CHK-SEP-DMI-DMSTATUS",
+            "CHK-SEP-DMI-DMSTATUS",
+            "SEP TAP dmi read of dmstatus completes with status 0 and version 2 (spec 0.13)",
+        ),
+        (
+            "CHK-SEP-LSU-HALT",
+            "CHK-SEP-LSU-HALT",
+            "a halt request halts the SEP hart",
+        ),
+        (
+            "CHK-SEP-LSU-OUT",
+            "CHK-SEP-LSU-OUT",
+            "the probe completes through a stalling responder, which holds every byte, and each load "
+            "returns the store word",
+        ),
+        (
+            "CHK-SEP-LSU-OUT-SIDE-EFFECT",
+            "CHK-SEP-LSU-OUT-SIDE-EFFECT",
+            "with the side-effect bit the probe completes and each load returns the store word",
+        ),
+        (
+            "CHK-SEP-LSU-SMC",
+            "CHK-SEP-LSU-SMC",
+            "the probe completes against the SEP view of the SMC SPM",
+        ),
+        (
+            "CHK-SEP-LSU-EXTERNAL",
+            "CHK-SEP-LSU-EXTERNAL",
+            "each external-aperture run halts at one of the two ebreaks and no load of any "
+            "run returns the store word",
+        ),
+        (
+            "CHK-SEP-LSU-SBA-MIX",
+            "CHK-SEP-LSU-SBA-MIX",
+            "system-bus accesses on each probe path complete before and after the probe runs",
+        ),
+    ],
+    "smu_sep_sba_fabric_sweep_test": [
+        (
+            "CHK-SEP-DMI-DMSTATUS",
+            "CHK-SEP-DMI-DMSTATUS",
+            "SEP TAP dmi read of dmstatus completes with status 0 and version 2 (spec 0.13)",
+        ),
+        (
+            "CHK-SEP-SBA-OUT-SWEEP",
+            "CHK-SEP-SBA-OUT-SWEEP",
+            "every size, offset and free SMU-aperture address bit is held by the responder and reads back",
+        ),
+        (
+            "CHK-SEP-SBA-REMAP-HIGH",
+            "CHK-SEP-SBA-REMAP-HIGH",
+            "an alias region offset of each power of two from 2^32 to 2^55 reaches the responder there",
+        ),
+        (
+            "CHK-SEP-SBA-REMAP-CACHEABLE",
+            "CHK-SEP-SBA-REMAP-CACHEABLE",
+            "cacheable raises AxCACHE[3:2] on the remapped write and read",
+        ),
+        (
+            "CHK-SEP-SBA-REMAP-SMC",
+            "CHK-SEP-SBA-REMAP-SMC",
+            "a wrapping offset moves a page into the SMC SPM view; the word reads back both ways",
+        ),
+        (
+            "CHK-SEP-SBA-OUTPUT-REMAP",
+            "CHK-SEP-SBA-OUTPUT-REMAP",
+            "AP and STEE output-remap region 0 accesses reach the responder at the programmed target",
+        ),
+        (
+            "CHK-SEP-SBA-OUT-ERROR",
+            "CHK-SEP-SBA-OUT-ERROR",
+            "responder SLVERR and DECERR on a read and a write each return a system-bus error",
+        ),
+        (
+            "CHK-SEP-SBA-SMC-WINDOW",
+            "CHK-SEP-SBA-SMC-WINDOW",
+            "every size, offset and SPM address bit reads back through the SEP view of the SMC window",
+        ),
+        (
+            "CHK-SEP-SBA-EXTERNAL-DECERR",
+            "CHK-SEP-SBA-EXTERNAL-DECERR",
+            "every external-aperture and TRNG-window access returns a system-bus error",
+        ),
+    ],
+    "smu_sep_sba_peripheral_test": [
+        (
+            "CHK-SEP-DMI-DMSTATUS",
+            "CHK-SEP-DMI-DMSTATUS",
+            "SEP TAP dmi read of dmstatus completes with status 0 and version 2 (spec 0.13)",
+        ),
+        (
+            "CHK-SEP-MBOX-IRQ",
+            "CHK-SEP-MBOX-IRQ",
+            "the mailbox interrupt vector is 0 with IRQEN set and the FIFO empty, a write into "
+            "each outbound mailbox raises only its own interrupt lane, and flush, acknowledge "
+            "and disable return every lane low",
+        ),
+        (
+            "CHK-SEP-SPI-QUAD",
+            "CHK-SEP-SPI-QUAD",
+            "quad-mode transmits drive all four data lanes high and off their pre-command "
+            "idle level, and raise their enables, a quad receive "
+            "fills one RX FIFO word and completes with every enable low, and "
+            "INTR_STATE.SPI_EVENT and the interrupt stay "
+            "high across a write to INTR_STATE and fall when EVENT_ENABLE.IDLE is cleared",
+        ),
+        (
+            "CHK-SEP-SECURITY-DISABLE",
+            "CHK-SEP-SECURITY-DISABLE",
+            "a token matching the digest reports the match code and raises the disable level, "
+            "a token one bit off reports the mismatch code, and the security-disable net reads "
+            "0 before the token and 1 after the match at the SEP eFuse controller's output, "
+            "the smu wire and the SMC input",
+        ),
+        (
+            "CHK-SEP-WDT-BITE",
+            "CHK-SEP-WDT-BITE",
+            "the SEP watchdog reset request is low before the watchdog is enabled and rises "
+            "when it bites",
+        ),
+    ],
+    "smu_dtp_sep_dm_sba_test": [
+        (
+            "CHK-SEP-DMI-DMSTATUS",
+            "CHK-SEP-DMI-DMSTATUS",
+            "SEP TAP dmi read of dmstatus completes with status 0 and version 2 (spec 0.13)",
+        ),
+        (
+            "CHK-SEP-SBA-GLOBAL-BASE",
+            "CHK-SEP-SBA-GLOBAL-BASE",
+            "system-bus write of SEP_GLOBAL_BASE_ADDR reaches sep_global_base_o and reads back",
+        ),
+        (
+            "CHK-SEP-SBA-GLOBAL-BASE-RESTORE",
+            "CHK-SEP-SBA-GLOBAL-BASE-RESTORE",
+            "writing the RDL reset value returns sep_global_base_o to it",
+        ),
+        (
+            "CHK-SEP-SBA-DEMOTE2-ALONE",
+            "CHK-SEP-SBA-DEMOTE2-ALONE",
+            "DEMOTE_2 alone complements lcc_demote_state_2_o while lane 1 and DEMOTE_1 hold",
+        ),
+        (
+            "CHK-SEP-SBA-EGRESS",
+            "CHK-SEP-SBA-EGRESS",
+            "a SEP read and write outside the SMC window each cross smu_axi_out once and "
+            "the read returns the written word",
+        ),
+        (
+            "CHK-SEP-SBA-APERTURE-WALK",
+            "CHK-SEP-SBA-APERTURE-WALK",
+            "SEP_GLOBAL_BASE_ADDR and SEP_REGION_SIZE walk to all-ones and back through "
+            "windows clear of the SMC window, each step on the ports and by readback",
+        ),
+        (
+            "CHK-SEP-SBA-DEMOTE-COLD-RESET",
+            "CHK-SEP-SBA-DEMOTE-COLD-RESET",
+            "a cold reset returns both demoted lanes to the codes they had before S5",
+        ),
+    ],
     "smu_ext_boot_seq_gate_test": [
+        (
+            "CHK-BOOT-SEQ-REGATE",
+            "CHK-BOOT-SEQ-REGATE",
+            "ext_boot_seq_done_i low across a cold reset holds the fuse reset until it rises",
+        ),
         ("CHK-BOOT-SEQ-GATE", "CHK-BOOT-SEQ-GATE", "gate holds then releases fuse_reset"),
         ("CHK-PRIMARY-NOT-GATED", "CHK-PRIMARY-NOT-GATED", "primary still releases while gated"),
         (
@@ -383,8 +803,82 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ),
     ],
     "smu_jtag_reset_override_test": [
-        ("CHK-IC-DEFAULT", "IC_RESET_DEFAULT", "IC_RESET default all-ones"),
-        ("CHK-IC-DOMAIN", "IC_RESET_DOMAIN_EXCL", "single domain override exclusive"),
+        (
+            "CHK-IC-DEFAULT",
+            "IC_RESET_DEFAULT",
+            "IC_RESET default all-ones, every driven TDO bit of the scan resolvable",
+        ),
+        (
+            "CHK-IC-EXT-STAGED",
+            "IC_RESET_EXT_STAGED",
+            "EXT control staged low reaches ctrl_n while the override stays off",
+        ),
+        (
+            "CHK-IC-EXT-RELEASE-STAGED",
+            "IC_RESET_EXT_RELEASE_STAGED",
+            "EXT control staged high reaches ctrl_n while the override stays on",
+        ),
+        (
+            "CHK-IC-DOMAIN",
+            "IC_RESET_DOMAIN_EXCL",
+            "an applied EXT or SMC cold override is the only bit set across the EXT override "
+            "and the whole SMC and SEP override halves",
+        ),
+        (
+            "CHK-IC-SS-SEP-WALK",
+            "IC_RESET_SS_SEP_WALK",
+            "every SS and SEP port staged, applied, released and cleared, with every "
+            "SMC and SEP slice port's override and value following",
+        ),
+    ],
+    "smu_dtp_jtag2axi_address_walk_test": [
+        (
+            "CHK-J2A-WALK-FABRIC",
+            "CHK-J2A-WALK-FABRIC",
+            "SMC fabric bridge bytes written at offsets 1-3 read back and land in the word; an "
+            "off-map write completes",
+        ),
+        (
+            "CHK-J2A-WALK-EXTERNAL",
+            "CHK-J2A-WALK-EXTERNAL",
+            "a write and a read at every address bit of the adopter window arrive at that "
+            "offset on the external bus or the eFuse SHIM link",
+        ),
+        (
+            "CHK-J2A-WALK-DTP-CSR",
+            "CHK-J2A-WALK-DTP-CSR",
+            "a read and a zero-strobe write at every address bit of the DTP CSR window arrive at "
+            "that offset on the DTP CSR link",
+        ),
+        (
+            "CHK-J2A-WALK-SMC-OTP",
+            "CHK-J2A-WALK-SMC-OTP",
+            "SMC OTP bridge reads and zero-strobe writes at every address bit arrive with that "
+            "address on the DTP-to-OTP link",
+        ),
+        (
+            "CHK-J2A-WALK-SEP-OTP",
+            "CHK-J2A-WALK-SEP-OTP",
+            "SEP OTP bridge reads and zero-strobe writes at every address bit arrive with that "
+            "address on the DTP-to-OTP link",
+        ),
+        (
+            "CHK-J2A-WALK-COLD-RESET",
+            "CHK-J2A-WALK-COLD-RESET",
+            "a cold reset takes the primary SMC reset low and releases it",
+        ),
+    ],
+    "smu_dtp_ptap_ir_walk_test": [
+        (
+            "CHK-PTAP-STATE-WALK",
+            "CHK-PTAP-STATE-WALK",
+            "Pause-DR, Exit2-DR, Pause-IR and Exit2-IR reach jtag_ptap_state_o",
+        ),
+        (
+            "CHK-PTAP-IR-DECODE-WALK",
+            "CHK-PTAP-IR-DECODE-WALK",
+            "each of the 64 IR encodings decodes to its own one-hot bit; TLR loads IDCODE",
+        ),
     ],
     "smu_otp_bridges_under_dbg_disable_test": [
         (
@@ -584,6 +1078,15 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-RST-PRIMARY", "RST_PRIMARY_SMC_1", "SMC primary reset released"),
         ("CHK-RST-COLD-STABLE", "RST_COLD_STABLE_1", "cold stable released"),
     ],
+    "smu_smc_gpio_pad_output_test": [
+        (
+            "CHK-SMU-LANE-GPIO-OUT",
+            "CHK-SMU-LANE-GPIO-OUT",
+            "every pad driven from its own DATA_CTRL with a per-pad code follows CORE2PAD and "
+            "loops it back to its own gpio_interrupt_o lane, and transmit alone drives the pad "
+            "with that lane low",
+        ),
+    ],
     "smu_smc_boundary_lane_sweep_test": [
         (
             "CHK-SMU-LANE-EXT-IRQ",
@@ -725,6 +1228,11 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     ],
     "smu_smc_wdt_boundary_timeout_test": [
         (
+            "CHK-SMU-WDT-RELEASE",
+            "CHK-SMU-WDT-RELEASE",
+            "the warm reset clears the first watchdog timeout",
+        ),
+        (
             "CHK-SMU-WDT-FIRST",
             "CHK-SMU-WDT-FIRST",
             "CORE0 armed with WDOGRSTEN as well as WDOGENALWAYS and WDOGZEROCMP "
@@ -735,7 +1243,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SMU-WDT-SECOND",
             "CHK-SMU-WDT-SECOND",
             "the held first timeout runs the CPU_CTRL.WDT_TIMEOUT counter out "
-            "to smc_wdt_second_timeout_o, and the SMC warm reset drops with it",
+            "to smc_wdt_second_timeout_o, and the SMC warm reset drops",
         ),
     ],
     "smu_smc_wdt_sanity_test": [
@@ -759,6 +1267,17 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     ],
     "smu_telemetry_atb_capture_test": [
         (
+            "CHK-SMU-TEL-EVERY-RECEIVER",
+            "CHK-SMU-TEL-EVERY-RECEIVER",
+            "each receiver takes a message on its own ATB lane and reports its probe id",
+        ),
+        (
+            "CHK-SMU-TEL-BACKPRESSURE",
+            "CHK-SMU-TEL-BACKPRESSURE",
+            "back-to-back beats on a faster telemetry clock make telemetry_atready_o fall and "
+            "rise, the RX flush empties a queued buffer, and the next message reads back whole",
+        ),
+        (
             "CHK-SMU-TEL-RESET",
             "CHK-SMU-TEL-RESET",
             "receiver 0 reads STATUS.BUFFER_EMPTY set with PROBE_ID and "
@@ -776,8 +1295,10 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SMU-TEL-FLUSH",
             "CHK-SMU-TEL-FLUSH",
             "CTRL.TELEMETRY_TX_FLUSH raises telemetry_afvalid_o and the request "
-            "holds while telemetry_afready_i is low; raising it retires the "
-            "request at the pin and clears the register field",
+            "holds while telemetry_afready_i is low, the pin still high when it "
+            "rises; raising it retires the "
+            "request at the pin and clears the register field, and lowering it "
+            "again at the wrapper pin leaves the request retired",
         ),
     ],
     "smu_system_timer_octs_test": [
@@ -796,6 +1317,12 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-OCTS-CSR-COUNT",
             "TIMER_COUNT_{HI,LO} read over J2A lands between the tb_timer_count "
             "samples taken either side of the read",
+        ),
+        (
+            "CHK-OCTS-PRESET-EXTREMES",
+            "CHK-OCTS-PRESET-EXTREMES",
+            "an all-high and a zero PRESET each load timer_count_o within the reload slack, "
+            "and the free run shows each of bits 0..12 at 0 and at 1",
         ),
     ],
     # --- P0 composition and bring-up leaves on the production wrapper ---
@@ -820,7 +1347,12 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SMU-XTRIG-CTP-S1",
             "all four CTP groups are 16 wide, the XTRIG_NUM_CTP default",
         ),
-        ("CHK-SMU-XTRIG-CTP-S6", "CHK-SMU-XTRIG-CTP-S6", "zero-tied CTP data inputs stay static"),
+        (
+            "CHK-SMU-XTRIG-CTP-S6",
+            "CHK-SMU-XTRIG-CTP-S6",
+            "bench-held resting CTP data inputs leave the CTP outputs static (live control: "
+            "smu_xtrig_ctp_pad_test)",
+        ),
         ("CHK-SMU-LC-STATE-S1", "CHK-SMU-LC-STATE-S1", "lc_state_o is 8 bits, 2*LC_STATE_WIDTH"),
         (
             "CHK-SMU-LC-DEMOTE-S1",
@@ -830,7 +1362,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SMU-EFUSE-SHIM-SMC-S3",
             "CHK-SMU-EFUSE-SHIM-SMC-S3",
-            "smc_shadow_regs reaches the boundary at full width and value",
+            "smc_shadow_regs reaches the smu_wrapper port and the boundary at full width and, "
+            "after the sense, carries the non-zero image",
         ),
         (
             "CHK-SMU-FUSE-SENSE-S4",
@@ -840,7 +1373,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SMU-SSRESET-S2",
             "CHK-SMU-SSRESET-S2",
-            "ss_reset_ctrl_o has 32 elements that share one width",
+            "ss_reset_ctrl_o has 32 elements",
         ),
         (
             "CHK-SMU-SSRESET-S4",
@@ -865,8 +1398,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "telemetry stays released and clocked while primary/periph fall",
         ),
     ],
-    # CHK-SMU-SEC-TOKEN-S1 and CHK-SMU-LC-SECDIS-S1 are logged by the body as
-    # observations the card does not claim, so they are not rows here.
+    # CHK-SMU-SEC-TOKEN-S1 is logged by the body as an observation the card does not
+    # claim, so it is not a row here.
     "smu_composition_parameter_test": [
         (
             "CHK-SMU-SEC-TOKEN-S2",
@@ -938,6 +1471,11 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     ],
     "smu_sram_auto_init_disabled_test": [
         (
+            "CHK-SMU-MEMINIT-RESTORED",
+            "CHK-SMU-MEMINIT-RESTORED",
+            "with the input lowered again a cold reset starts the zeroing sweep",
+        ),
+        (
             "CHK-SMU-MEMINIT-DISABLED",
             "CHK-SMU-MEMINIT-DISABLED",
             "with smc_disable_sram_auto_init_i high the zeroing sweep never "
@@ -981,6 +1519,21 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     ],
     "smu_xtrig_ctp_pad_test": [
         (
+            "CHK-SMU-CTM-EVERY-LANE",
+            "CHK-SMU-CTM-EVERY-LANE",
+            "a trigger routed into each DTP internal lane raises that lane once and no other",
+        ),
+        (
+            "CHK-SMU-CTP-EVERY-LANE",
+            "CHK-SMU-CTP-EVERY-LANE",
+            "each lane in point-to-point moves its pads, acknowledges and routes to its successor",
+        ),
+        (
+            "CHK-SMU-CTP-WIRE-RX-EVERY-LANE",
+            "CHK-SMU-CTP-WIRE-RX-EVERY-LANE",
+            "a pull of each lane's private wire raises that lane's ct_dst once at the latency",
+        ),
+        (
             "CHK-SMU-CTP-DEFAULT",
             "CHK-SMU-CTP-DEFAULT",
             "CONFIG.MODE reads its RDL reset value (wire-OR) and every CTP pad "
@@ -1017,7 +1570,30 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SMU-CTM-SRC",
             "routing lane 0's destination into the CTM port of the first "
             "SMU-exposed internal lane raises xtrig_ctm_src_req_o[0], and a "
-            "wire-OR edge on lane 2's request-out data input does the same",
+            "wire-OR pull of lane 2's shared wire routes the same way, the "
+            "pulse following the pull rather than the release",
+        ),
+        (
+            "CHK-SMU-CTP-WIRE-IDLE",
+            "CHK-SMU-CTP-WIRE-IDLE",
+            "with every CT_Req_out wire resting at its pull after reset, no "
+            "wire-OR lane's ct_dst rises and the wire-mismatch flag is 0",
+        ),
+        (
+            "CHK-SMU-CTP-WIRE-RX",
+            "CHK-SMU-CTP-WIRE-RX",
+            "a chiplet pull of lane 2's private wire raises tb_xtrig_ctp_ct_dst[2] "
+            "exactly CT_DST_LATENCY clocks after the wire is first seen asserted, "
+            "once, and the release raises nothing further",
+        ),
+        (
+            "CHK-SMU-CTP-WIRE-SHARED",
+            "CHK-SMU-CTP-WIRE-SHARED",
+            "three wire-OR lanes on one group wire: one chiplet pull reaches "
+            "every member's ct_dst once at the same latency and leaves every "
+            "non-member lane quiet; two members pulled in overlapping windows "
+            "still reach every member exactly once and leave every non-member "
+            "lane quiet",
         ),
     ],
     "smu_xtrig_ctm_illegal_phase_test": [

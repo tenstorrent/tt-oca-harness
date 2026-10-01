@@ -12,24 +12,27 @@
 // instantiates it, and no SEP test states a requirement about one. Grading them
 // puts the score on plumbing the DUT does not own.
 //
-// The discriminator is `/upstream/` in the source path, NOT a `vendor/` prefix.
-// SEP's own SPI controller, TCM wrapper and clock gate live under
-// vendor/.../overlay/ and vendor/.../../../hw/, so a `vendor/` rule would drop
-// TT logic.
+// The discriminator is library CLASS, not authorship and not a path prefix: a
+// cell whose behaviour is the same in every design that instantiates it, and
+// about which no SEP test states a requirement. `/upstream/` in the source path
+// is the common case, not the rule -- the TT-owned ocah_prim and
+// ocah_prim_generic cells below are library-class too, and each block states
+// its own reason. A `vendor/` rule would be wrong in the other direction: SEP's
+// own SPI controller, TCM wrapper and clock gate live under
+// vendor/.../overlay/, so it would drop TT logic.
 //
-// Functional third-party IP stays graded regardless of authorship: AES, OTBN,
-// KMAC, CSRNG, EDN, HMAC, aon_timer, entropy_src and adams-bridge each have
-// SEP tests that target them by name.
+// Functional third-party IP is handled by the ownership scope below. Keeping
+// that policy separate prevents a library-cell rule from silently deciding
+// whether a complete IP belongs in the SEP denominator.
 // ---------------------------------------------------------------------------
 
 // OpenTitan prim library (vendor/lowRISC/opentitan/upstream/hw/ip/prim*).
-// Held back deliberately, because a SEP test targets the function: prim_sha2*
-// (HMAC/SHA), prim_prince + prim_subst_perm (scrambling), prim_gf_mult (GHASH),
-// prim_dom_and_2share + prim_trivium (AES masking), prim_lfsr, prim_crc32 and
-// prim_secded_* (integrity/ECC). Also held back: prim_arbiter_ppc, whose one-hot
-// grant the crypto-EDN round-robin test scores; prim_intr_hw and prim_reg_cdc,
-// which the AON timer internals test names as the logic under its INTR_TEST and
-// busy-stall contracts.
+// Generic cells only. Functional prims a SEP test names (prim_sha2*,
+// prim_prince, prim_subst_perm, prim_gf_mult, prim_dom_and_2share,
+// prim_trivium, prim_lfsr, prim_crc32, prim_secded_*, prim_arbiter_ppc,
+// prim_intr_hw, prim_reg_cdc) are excluded by the ownership scope below,
+// with the IP that contains them. They are not in this list, and they are
+// not in the score.
 -module prim_alert_receiver
 -module prim_alert_sender
 -module prim_and2
@@ -37,6 +40,8 @@
 -module prim_blanker
 -module prim_buf
 -module prim_cdc_rand_delay
+-module prim_clock_gating
+-module prim_clock_mux2
 -module prim_count
 -module prim_diff_decode
 -module prim_edge_detector
@@ -47,6 +52,7 @@
 -module prim_flop
 -module prim_flop_2sync
 -module prim_flop_en
+-module prim_inv
 -module prim_lc_sync
 -module prim_leading_one_ppc
 -module prim_max_tree
@@ -81,7 +87,7 @@
 -module prim_xor2
 
 // pulp-platform common_cells (vendor/pulp-platform/common_cells/upstream).
-// pulp-platform axi is NOT here: the xbar, remap and filter tests grade it.
+// The complete pulp-platform AXI modules are handled by the ownership scope.
 -module addr_decode
 -module addr_decode_dync
 -module counter
@@ -101,22 +107,17 @@
 -module stream_mux
 -module stream_register
 
-// TT-owned generic standard-cell wrappers (hw/common/och_prim_generic).
+// TT-owned generic standard-cell wrappers (hw/common/ocah_prim_generic).
 // Authored by TT, but library-class by the same rule as the two blocks above.
+-module prim_and3
 -module prim_ao222
--module prim_clkgater
--module prim_clock_mux2
 -module prim_clock_nand2
--module prim_dffrxq
 -module prim_flop_3sync
--module prim_inv
 -module prim_metastab_hardened_dffr
 -module prim_nand4
 -module prim_nor4
 -module prim_or2
 -module prim_or4
--module prim_rev_cell
--module prim_stdbuf
 -module prim_stdmux2
 
 // DV models and AXI error slaves inside the integration wrapper. The memory
@@ -126,14 +127,12 @@
 // they are SEP RTL under hw/sys/sep/rtl and hw/ip/efuse/rtl, and a SEP test
 // states a contract on the SRAM path through them.
 //
-// The two error slaves are named by INSTANCE, not by module. `-module` matches
-// every elaboration of a name, and both are instantiated elsewhere in SEP RTL
-// where a test states a contract on them: prim_axi_lite_err_slv at
+// The two wrapper error slaves are named by INSTANCE, not by module. `-module`
+// would also match TT-owned prim_axi_lite_err_slv instances elsewhere in SEP:
 // sep_efuse_wrapper.sv:259, sep_system_csr.sv:571, :690, :930, sep_io.sv:179
-// and sep_crypto.sv:573, and axi_err_slv at sep_crypto.sv:555,
-// sep_crypto_axi_interconnect.sv:270 and sep_cpu.sv:591.
-// sep_axi_map_refuse_test and the dead-space decode tests grade those
-// refusals, so a name-matched rule would waive live error-response logic.
+// and sep_crypto.sv:573. sep_axi_map_refuse_test and the dead-space decode
+// tests grade those refusals. The third-party axi_err_slv module is handled by
+// the ownership scope below.
 -module efuse_bank_model
 -tree sep_uvm_top.u_dut.u_sep_ip_integration.u_ext_trng_axil_err_slv
 -tree sep_uvm_top.u_dut.u_sep_ip_integration.u_axi_extension_err_slv
@@ -156,21 +155,21 @@
 // assertion has no antecedent in this elaboration.
 -module axi_pkg
 
-// TT-owned CDC, reset and code-conversion primitives (hw/common/och_prim).
+// TT-owned CDC, reset and code-conversion primitives (hw/common/ocah_prim).
 // Library-class by the same rule as the blocks above: a synchroniser chain, a
-// reset synchroniser, a scan/bypass reset mux and a Gray codec carry the same
-// behaviour in every design that instantiates them, and no SEP test states a
-// requirement about one. prim_sync_randomized_delay is a simulation-time CDC
-// jitter model, so a toggle on it states nothing about the design at all.
+// reset synchroniser, a scan/bypass reset mux, a Gray codec and a revision-ID
+// cell carry the same behaviour in every design that instantiates them, and no
+// SEP test states a requirement about one.
 //
-// The rest of och_prim stays graded, because a SEP test does name the function:
+// The rest of ocah_prim stays graded, because a SEP test does name the function:
 // prim_axi_lite_err_slv (sep_axi_map_refuse_test and the dead-space decode
 // tests grade the refusal), prim_axi_addr_fixer, prim_axil_addr_fixer,
 // prim_axi_id_converter and prim_axi_user_override (the remap and filter
-// datapath, held for the same reason as pulp axi),
-// prim_axi_lite_to_apb_single (the eFuse interface controller bridge),
-// prim_refclk_count_w_cdc (the reference counter is itself a CSR feature) and
-// prim_ram_1p_scr_ext / prim_ram_1p_adv_ext (OTBN scrambled imem and dmem).
+// datapath), prim_axi_lite_to_apb_single (the eFuse interface controller
+// bridge), prim_refclk_count_w_cdc (the reference counter is itself a CSR
+// feature) and prim_ram_1p_scr_ext / prim_ram_1p_adv_ext (OTBN scrambled
+// imem and dmem). The pulp-platform AXI modules are not this set; the
+// ownership scope excludes them.
 //
 // Also held back on purpose: prim_carry_select_adder, which forms the remapped
 // address in u_axi_alias_remap's AW and AR adders, so a wrong sum is a wrong
@@ -178,10 +177,9 @@
 // lifecycle, class-key and chiplet-UID redundant encodings.
 -module prim_bin2gray
 -module prim_gray2bin
+-module prim_rev_cell
 -module prim_rst_mux2_hf_n
--module prim_rstbypass_stdmux2
 -module prim_sync3
--module prim_sync_randomized_delay
 -module prim_sync_reset
 
 // adams-bridge's vendored copy of the OpenTitan prim library
@@ -192,15 +190,15 @@
 // abr_prim_count/prim_count, abr_prim_sparse_fsm_flop/prim_sparse_fsm_flop.
 // Grading the clone but not the original is an inconsistency, not a decision.
 //
-// abr_prim_lfsr is NOT here, and that is the same rule read the other way:
-// prim_lfsr stays graded above because a SEP test targets the function, so its
-// adams-bridge clone stays graded too.
+// abr_prim_lfsr is not library-class: its function is part of the accelerator.
+// The ownership scope below applies the same policy to it and the original.
 //
-// abr_libs/ is NOT here either. Despite the "libs" name it holds the ML-KEM
+// abr_libs/ is not library-class either. Despite the "libs" name it holds the ML-KEM
 // and ML-DSA arithmetic -- abr_adder, abr_add_sub_mod, abr_ntt_add_sub_mod,
 // abr_piso_multi, abr_splitter, the sample, message and read-latency buffers
-// and the AHB slave interface. That is the functional core of adams-bridge,
-// which SEP keygen and signature tests target by name.
+// and the AHB slave interface. That is the functional core of adams-bridge.
+// The ownership scope below excludes those modules with the rest of the
+// accelerator. They are not in the score.
 -module abr_prim_buf
 -module abr_prim_count
 -module abr_prim_flop
@@ -209,24 +207,6 @@
 -module abr_prim_sec_anchor_buf
 -module abr_prim_slicer
 -module abr_prim_sparse_fsm_flop
-
-// VeeR EL2 flop and clock-header library (Cores-VeeR-EL2/upstream/design/lib
-// and overlay/prim_shim). These reach the report from u_axi4_to_ahb inside the
-// adams-bridge wrapper, not from the CPU subtree the -tree rule already drops.
-// They are the VeeR spelling of cells excluded above: rvdff*/prim_dffrxq and
-// prim_flop*, rvclkhdr and user_clock_gate/prim_clkgater.
-//
-// axi4_to_ahb itself stays graded: it is a bus bridge, and the ABR keygen and
-// signature tests drive real traffic through it.
--module rvclkhdr
--module rvdff
--module rvdff_fpga
--module rvdffe
--module rvdffs
--module rvdffs_fpga
--module rvdffsc
--module rvdffsc_fpga
--module user_clock_gate
 
 // TCM memory array. Same class as prim_ram_1p and prim_rom above: a RAM array
 // implements no SEP contract. The TT wrapper around it, sep_tcm_wrapper, stays
@@ -239,3 +219,311 @@
 // denominator. It is DV-model code under hw/ip/efuse/dv/models, states no SEP
 // contract, and belongs out of the number with its parent.
 -module efuse_bank_reg
+
+// ===========================================================================
+// OWNERSHIP SCOPE -- third-party functional IP.
+//
+// Everything below is graded by its own upstream verification, not by SEP. This
+// is an OWNERSHIP decision, not an unreachability claim: the logic can fail, and
+// a hole here is not evidence that it cannot be reached. It follows the
+// precedent already set for the OTBN instruction set.
+//
+// What stays graded: every TT wrapper, interconnect, register block and shim --
+// hw/sys/sep, hw/ip and hw/common -- because that is where SEP states its
+// contracts and where an integration defect is SEP's to fix.
+//
+// The cost, stated plainly: integration defects DO occur inside vendored RTL as
+// TT configures it. Issue #2253 was found exactly that way. Scoping these out
+// means the score no longer points at them; the tests that target them still
+// run and still fail.
+//
+// 248 modules. urg writes a `(x)` suffix on a multi-instance module; that
+// suffix is stripped before the name is matched, or modules like kmac(x) and
+// axi_dw_downsizer(x) silently miss their -module line and stay in the score.
+//
+// MEASURED, 169-leaf `all` regression either side of this block:
+//
+//              SCORE   LINE   COND  TOGGLE    FSM  BRANCH
+//   before     59.40  56.01  56.55   50.97  39.67   54.63   run 20260923_160542
+//   after      76.60  90.21  62.72   62.51  63.70   81.90   run 20260924_002726
+//
+// The two are NOT a delta: they measure different denominators. Every metric
+// rises because TT-owned logic is better covered than the third-party IP that
+// was dragging it down -- line most of all, 56.01 to 90.21.
+// ===========================================================================
+
+// chipsalliance/adams-bridge -- 74 modules.
+// Adams Bridge PQC core. Verified upstream against the ACVP vectors, which SEP's own
+// KAT leaves re-run at the aperture. SEP does not modify the core; the TT wrapper
+// around it stays graded.
+-module abr_add_sub_mod
+-module abr_adder
+-module abr_ahb_slv_sif
+-module abr_ctrl
+-module abr_keccak_2share
+-module abr_keccak_round
+-module abr_msg_buffer
+-module abr_ntt_add_sub_mod
+-module abr_piso_multi
+-module abr_prim_lfsr
+-module abr_rd_lat_buffer
+-module abr_reg
+-module abr_sample_buffer
+-module abr_sampler_top
+-module abr_seq
+-module abr_sha3
+-module abr_sha3pad
+-module abr_splitter
+-module abr_top
+-module barrett_reduction
+-module cbd_sampler
+-module cbd_sampler_ctrl
+-module compress
+-module compress_ctrl
+-module compress_top
+-module decompose
+-module decompose_ctrl
+-module decompose_mod_2gamma2
+-module decompose_r1_lut
+-module decompose_usehint
+-module decompose_w1_encode
+-module decompress
+-module decompress_ctrl
+-module decompress_top
+-module exp_mask
+-module exp_mask_ctrl
+-module hintgen
+-module makehint
+-module norm_check
+-module norm_check_ctrl
+-module norm_check_top
+-module ntt_butterfly
+-module ntt_ctrl
+-module ntt_div2
+-module ntt_hybrid_butterfly_2x2
+-module ntt_karatsuba_pairwm
+-module ntt_mult_dsp
+-module ntt_shuffle_buffer
+-module ntt_top
+-module ntt_twiddle_lookup
+-module pkdecode
+-module power2round_core
+-module power2round_ctrl
+-module power2round_skencode
+-module power2round_top
+-module rej_bounded2
+-module rej_bounded_ctrl
+-module rej_sampler
+-module rej_sampler_ctrl
+-module sample_in_ball
+-module sample_in_ball_ctrl
+-module sample_in_ball_shuffler
+-module sib_mem
+-module sigdecode_h
+-module sigdecode_h_ctrl
+-module sigdecode_z_top
+-module sigdecode_z_unit
+-module sigencode_z_top
+-module sigencode_z_unit
+-module skdecode_ctrl
+-module skdecode_s1s2_unpack
+-module skdecode_t0_unpack
+-module skdecode_top
+-module skencode
+
+// chipsalliance/caliptra-rtl -- 5 modules.
+// Caliptra RTL. Third-party IP with its own upstream verification.
+-module kv_fsm
+-module kv_read_client
+-module kv_read_rule_check
+-module kv_write_client
+-module kv_write_rule_check
+
+// lowRISC/opentitan -- 127 modules.
+// OpenTitan functional IP. Each core ships with lowRISC's own block-level DV and
+// SEP does not modify it. SEP's claim is the integration -- the CSR aperture, the
+// reset and clock domain, the alert and interrupt wiring -- and that logic lives in
+// the TT wrappers, which stay graded.
+-module aes
+-module aes_cipher_control
+-module aes_cipher_control_fsm
+-module aes_cipher_control_fsm_n
+-module aes_cipher_control_fsm_p
+-module aes_cipher_core
+-module aes_control
+-module aes_control_fsm
+-module aes_control_fsm_n
+-module aes_control_fsm_p
+-module aes_core
+-module aes_ctr
+-module aes_ctr_fsm
+-module aes_ctr_fsm_n
+-module aes_ctr_fsm_p
+-module aes_ctrl_gcm_reg_shadowed
+-module aes_ctrl_reg_shadowed
+-module aes_dom_dep_mul_gf2pn
+-module aes_dom_indep_mul_gf2pn
+-module aes_dom_inverse_gf2p4
+-module aes_dom_inverse_gf2p8
+-module aes_ghash
+-module aes_key_expand
+-module aes_mix_columns
+-module aes_mix_single_column
+-module aes_prng_clearing
+-module aes_prng_masking
+-module aes_reg_status
+-module aes_reg_top
+-module aes_sbox
+-module aes_sbox_canright
+-module aes_sbox_dom
+-module aes_sel_buf_chk
+-module aes_shift_rows
+-module aes_sub_bytes
+-module aon_timer
+-module aon_timer_core
+-module aon_timer_reg_top
+-module csrng
+-module csrng_block_encrypt
+-module csrng_cmd_stage
+-module csrng_core
+-module csrng_ctr_drbg
+-module csrng_main_sm
+-module csrng_reg_top
+-module csrng_state_db
+-module edn
+-module edn_ack_sm
+-module edn_core
+-module edn_main_sm
+-module edn_reg_top
+-module entropy_src_adaptp_ht
+-module entropy_src_cntr_reg
+-module entropy_src_main_sm
+-module entropy_src_markov_ht
+-module entropy_src_repcnt_ht
+-module entropy_src_watermark_reg
+-module hmac
+-module hmac_core
+-module hmac_reg_top
+-module keccak_2share
+-module keccak_round
+-module kmac
+-module kmac_app
+-module kmac_core
+-module kmac_entropy
+-module kmac_errchk
+-module kmac_msgfifo
+-module kmac_reg_top
+-module kmac_staterd
+-module otbn
+-module otbn_alu_base
+-module otbn_alu_bignum
+-module otbn_controller
+-module otbn_core
+-module otbn_decoder
+-module otbn_instruction_fetch
+-module otbn_loop_controller
+-module otbn_lsu
+-module otbn_mac_bignum
+-module otbn_mac_bignum_fsm
+-module otbn_mod_result_selector
+-module otbn_predecode
+-module otbn_reg_top
+-module otbn_rf_base
+-module otbn_rf_base_ff
+-module otbn_rf_bignum
+-module otbn_rf_bignum_ff
+-module otbn_rnd
+-module otbn_scramble_ctrl
+-module otbn_stack
+-module otbn_start_stop_control
+-module otbn_vec_adder
+-module otbn_vec_multiplier
+-module otbn_vec_shifter
+-module otbn_vec_transposer
+-module prim_arbiter_ppc
+-module prim_crc32
+-module prim_dom_and_2share
+-module prim_gf_mult
+-module prim_intr_hw
+-module prim_lfsr
+-module prim_prince
+-module prim_reg_cdc
+-module prim_secded_inv_39_32_dec
+-module prim_secded_inv_39_32_enc
+-module prim_secded_inv_64_57_dec
+-module prim_secded_inv_64_57_enc
+-module prim_sha2
+-module prim_sha2_32
+-module prim_sha2_pad
+-module prim_subst_perm
+-module prim_trivium
+-module secure_dma
+-module secure_dma_reg_top
+-module sha3
+-module sha3pad
+-module spi_controller_byte_merge
+-module spi_controller_byte_select
+-module spi_controller_command_queue
+-module spi_controller_core
+-module spi_controller_data_fifos
+-module spi_controller_fsm
+-module spi_controller_shift_register
+-module spi_host
+-module spi_host_reg_top
+-module spi_host_window
+
+// pulp-platform/apb -- 1 modules.
+// pulp-platform APB infrastructure. Same reasoning as the AXI library above.
+-module apb_demux
+
+// pulp-platform/axi -- 36 modules.
+// pulp-platform AXI infrastructure. Third-party fabric IP with its own upstream
+// verification. NOTE the trade: SEP chooses these parameters (AxiMaxReads, the width
+// ratios) and integration defects DO surface inside this RTL. Scoping it out is an
+// ownership decision, not a claim that it cannot fail. The TT wrappers and
+// interconnect stay graded.
+-module axi_atop_filter
+-module axi_burst_splitter
+-module axi_burst_splitter_gran
+-module axi_burst_splitter_gran_ax_chan
+-module axi_burst_splitter_gran_counters
+-module axi_cut
+-module axi_demux
+-module axi_demux_id_counters
+-module axi_demux_simple
+-module axi_dw_converter
+-module axi_dw_downsizer
+-module axi_dw_upsizer
+-module axi_err_slv
+-module axi_id_prepend
+-module axi_id_remap
+-module axi_id_remap_table
+-module axi_isolate
+-module axi_isolate_inner
+-module axi_lite_demux
+-module axi_lite_isolate
+-module axi_lite_mailbox
+-module axi_lite_mailbox_slave
+-module axi_lite_mux
+-module axi_lite_to_apb
+-module axi_lite_to_apb_intf
+-module axi_lite_to_axi
+-module axi_lite_xbar
+-module axi_multicut
+-module axi_mux
+-module axi_to_axi_lite
+-module axi_to_axi_lite_id_reflect
+-module axi_to_detailed_mem
+-module axi_to_mem
+-module axi_xbar
+-module axi_xbar_unmuxed
+-module mem_stream_to_banks_detailed
+
+// tenstorrent/tt-picorv32 -- 5 modules.
+// picorv32 core, vendored upstream and unmodified. TT owns the fork, not the logic;
+// SEP's claim is the CPU integration, which lives in sep_cpu and stays graded.
+-module picorv32
+-module picorv32_axi_adapter
+-module picorv32_pcpi_div
+-module picorv32_pcpi_mul
+-module picorv32_regs

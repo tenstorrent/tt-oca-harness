@@ -1,0 +1,480 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+"""The register blocks of the SMC peripherals no leaf writes.
+
+`smc_rdl_field_sweep_test` owns the software-owned blocks of the SMC core and
+`smc_gpio_intf_regblock_sweep_test`, `smc_filter_config_field_sweep_test`,
+`smc_i2c_intr_reg_sweep_test` and `smc_uart_log_engine_field_sweep_test` own
+four peripheral blocks. The rest of the peripherals have never had a write:
+the AVSBus controller, the three telemetry receivers, the OCTS system timer,
+the eFuse interface controller, the DMA controller's configuration and the
+four log engines' region and enable registers.
+
+Each register takes the cycle the other sweeps use -- read at reset, the
+all-ones and the all-zeros pattern of the fields the generated contract pins,
+each half written on its own so the byte lanes over the other half are
+deasserted, then the RDL reset restored -- and only fields the contract makes
+plain read-write are driven, so a `singlepulse` trigger, a `oneToClear` event
+or a hardware-driven status is never written by the generic cycle.
+
+Three registers need more than that, and say so at the call site:
+
+* `EFUSE_PROGRAM_CTRL` holds the address, the data and the arming bit of a fuse
+  burn. `efuse_program_go` is `singlepulse`, so the generic cycle already
+  cannot pull the trigger, and this leaf additionally holds `efuse_data` and
+  `program_enable` at their reset, so no combination it writes can arm one.
+  The address and the read-back select are driven normally.
+* `AVS_CFG_1` carries the AVS clock mux and divider.
+  `hw/ip/avsbus_controller/regs/avsbus_controller.rdl` says to gate the clocks
+  entering the mux before changing either and to turn them back on afterwards,
+  which is what the ones leg and the restore of this cycle do. The gate is on
+  the AVS protocol clock, not the register interface, so the block keeps
+  answering throughout.
+* The OCTS system timer's `CTRL` does not take the all-ones and all-zeros
+  patterns at all. `system_timer_octs.rdl` says `CREDIT_VAL` "must be greater
+  than PULSE_WIDTH" and `PULSE_WIDTH` "must be less than CREDIT_VAL", and the
+  RTL holds a run-time assertion to it. All ones makes the two equal and all
+  zeros makes `CREDIT_VAL` zero, so both would break the constraint. The
+  register therefore takes two constrained cycles instead, whose four patterns
+  between them drive every bit of all three fields to 0 and to 1 while keeping
+  `CREDIT_VAL` above `PULSE_WIDTH` in every word written, including the
+  rounding the RDL gives a `PULSE_WIDTH` of 0 ("a value of 0 will be rounded up
+  to 1"). Both constrained fields sit in the same half of the word, so the
+  half-register writes never leave an illegal pair resident either.
+* The telemetry `INTR_TEST` forces the two INTR_STATUS events, and the generic
+  cycle leaves the level one released and never pulses the other. Each receiver
+  therefore takes an interrupt leg afterwards. `telemetry_receiver.rdl` makes
+  `INTR_TEST.BUFFER_THRESHOLD` plain storage that forces the interrupt on 1 and
+  releases it on 0 over a read-only `INTR_STATUS.BUFFER_THRESHOLD`, so writing
+  it to 1 has to set exactly that status bit and writing it back to 0 has to
+  release it. `INTR_TEST.MISSING_LAST` is a write-only `singlepulse` over a
+  `oneToClear` `INTR_STATUS.MISSING_LAST`, so a pulse of it has to set exactly
+  that status bit, which then holds until a write of its own mask clears it.
+
+`log_engine/CTRL` is swept last of the log-engine registers, so the enable is
+only ever set while the region and write addresses are back at their reset and
+no LOG_CTRL element holds a length -- the engine has nothing to fetch and no
+transfer starts. `AVS_CMD`, `AVS_INTERRUPT_CLEAR`, the telemetry counters, the
+DMA transfer descriptors and the eFuse read/program data registers are not
+driven here: each is a command, an event clear or a hardware-owned value with
+a leaf of its own or no written-value expectation at all.
+"""
+
+from __future__ import annotations
+
+import cocotb
+
+from .smc_addr_map import efuse_ifc_u32
+from .smc_log_engine_utils import WRAP, WRAP_PY
+from .smc_rdl_regmap import RdlField
+from .smc_regblock_field_sweep_utils import (
+    RegInstance,
+    SmcRegblockFieldSweepSeq,
+    reg_instances,
+    single_reg_instance,
+)
+
+# Single-instance registers, by IP-XACT path. Each is cross-checked against its
+# own `*_REG_ADDR` symbol in the generated smc_reg.py before it is driven.
+_SINGLE: tuple[tuple[str, frozenset[str]], ...] = (
+    ("smc_avsbus_controller/AVS_INTERRUPT_MASK", frozenset()),
+    ("smc_avsbus_controller/AVS_CFG_0", frozenset()),
+    ("smc_avsbus_controller/AVS_CFG_1", frozenset()),
+    ("smc_avsbus_controller/AVS_CONFIG", frozenset()),
+    ("smc_system_timer_octs/TIMER_PRESET_LO", frozenset()),
+    ("smc_system_timer_octs/TIMER_PRESET_HI", frozenset()),
+    ("smc_system_timer_octs/TIMER_GPIO_ENABLE", frozenset()),
+    ("efuse_interface_ctrl/EFUSE_READ_CTRL", frozenset()),
+    ("efuse_interface_ctrl/EFUSE_READ_REQ_TIMEOUT", frozenset()),
+    ("efuse_interface_ctrl/EFUSE_PROGRAM_REQ_TIMEOUT", frozenset()),
+    # The data and the arming bit of a fuse burn stay at their reset.
+    ("efuse_interface_ctrl/EFUSE_PROGRAM_CTRL", frozenset({"efuse_data", "program_enable"})),
+)
+
+# The DMA controller's register block answers a sub-word write with an error
+# response, so its configuration takes the full-width cycle instead of the
+# half-register one. Its fields are still driven both ways.
+_WORD_ONLY: tuple[str, ...] = ("dma_ctrl/CONFIG",)
+
+# EFUSE_INTERFACE_CTRL_STATUS is the one register of the block no leaf reaches:
+# its four state fields are `sw = r; hw = w` and its three clears are
+# `singlepulse`, so the half-register cycle has nothing to drive. Every mask
+# here comes from the generated `efuse_interface_ctrl.h`.
+_EFUSE_STATUS = "efuse_interface_ctrl/EFUSE_INTERFACE_CTRL_STATUS"
+_EFUSE_STATUS_SYM = "EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__{field}_bm"
+_EFUSE_CLEARS = (
+    "EFUSE_REQ_ERROR_CLEAR",
+    "EFUSE_PROGRAM_ADDR_ERROR_CLEAR",
+    "EFUSE_READ_ADDR_ERROR_CLEAR",
+)
+_EFUSE_ERRORS = (
+    "EFUSE_REQ_ERROR",
+    "EFUSE_PROGRAM_ADDR_ERROR",
+    "EFUSE_READ_ADDR_ERROR",
+)
+
+
+def _efuse_mask(names: tuple[str, ...]) -> int:
+    mask = 0
+    for name in names:
+        mask |= efuse_ifc_u32(_EFUSE_STATUS_SYM.format(field=name))
+    return mask
+
+
+# The OCTS system timer CTRL cycles. Each pair is (ones-substitute,
+# low-substitute) in field terms; between them every bit of every field takes
+# both values, and every word keeps CREDIT_VAL above the effective PULSE_WIDTH
+# the RDL defines (0 rounds up to 1).
+_TIMER_CTRL = "smc_system_timer_octs/CTRL"
+_TIMER_CTRL_LEGS: tuple[tuple[dict[str, int], dict[str, int]], ...] = (
+    (
+        {"CREDIT_VAL": 0xFF, "PULSE_WIDTH": 0xFE, "STEP": 0xFF},
+        {"CREDIT_VAL": 0x02, "PULSE_WIDTH": 0x00, "STEP": 0x00},
+    ),
+    (
+        {"CREDIT_VAL": 0xFD, "PULSE_WIDTH": 0x01, "STEP": 0x00},
+        {"CREDIT_VAL": 0x02, "PULSE_WIDTH": 0x00, "STEP": 0x00},
+    ),
+)
+
+_TELEMETRY = "SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_"
+_TELEMETRY_PATH = "smc_telemetry_receiver_wrap/telemetry_receiver"
+_TELEMETRY_PY = "SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_{index}__"
+# INTR_ENABLE is swept before INTR_TEST, so the event the test field raises
+# cannot reach the interrupt output.
+_TELEMETRY_REGS = ("INTR_ENABLE", "INTR_TEST", "CTRL")
+# The two events, by the field name INTR_TEST and INTR_STATUS share.
+_TELEMETRY_LEVEL_EVENT = "BUFFER_THRESHOLD"
+_TELEMETRY_STICKY_EVENT = "MISSING_LAST"
+
+_LOG_ENGINE_PATH = "smc_uart_wrap/uart_log_engine_wrap/log_engine"
+# CTRL last: the enable is only set once the addresses are back at their reset.
+_LOG_ENGINE_REGS = ("LOG_REGION_SIZE", "LOG_REGION_ADDR", "LOG_WRITE_ADDR", "CTRL")
+
+_ACCESSES_PER_CYCLE = 12
+_ACCESSES_PER_WORD_CYCLE = 7
+# The telemetry interrupt leg: the idle read; the force write, its readback,
+# the release write, its readback; the pulse write, its readback, the clear
+# write, its readback.
+_ACCESSES_PER_INTR_LEG = 9
+_PREDICTED_PER_INTR_LEG = 5
+# The eFuse status leg: the idle read, the write of the three clears, the readback.
+_ACCESSES_PER_EFUSE_STATUS_LEG = 3
+
+
+def _timer_ctrl_words(inst: RegInstance) -> tuple[tuple[int, int], ...]:
+    """The constrained CTRL words, checked against the RDL relation host-side.
+
+    `system_timer_octs.rdl` makes CREDIT_VAL greater than PULSE_WIDTH a
+    software constraint, and gives a PULSE_WIDTH of 0 the effective value 1.
+    Every word this sweep writes -- both legs of both cycles and the RDL reset
+    it restores -- is held to that here, before any access is issued, so a
+    regenerated map with different resets cannot let an illegal word through.
+    """
+    by_name = {field.name: field for field in inst.reg.fields}
+    reset = {
+        name: (inst.reg.reset_word >> field.offset) & ((1 << field.width) - 1)
+        for name, field in by_name.items()
+    }
+
+    def legal(values: dict[str, int], tag: str) -> None:
+        credit = values["CREDIT_VAL"]
+        effective = values["PULSE_WIDTH"] or 1
+        assert credit > effective, (
+            f"{inst.label} [{tag}]: CREDIT_VAL {credit} is not greater than the effective "
+            f"PULSE_WIDTH {effective}, which the RDL requires"
+        )
+
+    legal(reset, "rdl reset")
+    out: list[tuple[int, int]] = []
+    for index, (ones, low) in enumerate(_TIMER_CTRL_LEGS):
+        legal(ones, f"leg {index} ones")
+        legal(low, f"leg {index} low")
+        out.append(
+            (
+                SmcRegblockFieldSweepSeq.pack_fields(inst, **ones),
+                SmcRegblockFieldSweepSeq.pack_fields(inst, **low),
+            )
+        )
+    covered_ones = 0
+    covered_zero = 0
+    for ones, low in out:
+        covered_ones |= ones | low
+        covered_zero |= (~ones | ~low) & inst.reg.rw_mask
+    assert covered_ones & inst.reg.rw_mask == inst.reg.rw_mask, (
+        f"{inst.label}: the constrained patterns never drive "
+        f"0x{inst.reg.rw_mask & ~covered_ones:x} of the writable bits to 1"
+    )
+    assert covered_zero == inst.reg.rw_mask, (
+        f"{inst.label}: the constrained patterns never drive "
+        f"0x{inst.reg.rw_mask & ~covered_zero:x} of the writable bits to 0"
+    )
+    return tuple(out)
+
+
+def _field(inst: RegInstance, name: str) -> RdlField:
+    for field in inst.reg.fields:
+        if field.name == name:
+            return field
+    raise AssertionError(f"{inst.label}: the generated map declares no field named {name}")
+
+
+def _telemetry_spec(register: str) -> tuple[str, str, str, str]:
+    return (
+        f"{_TELEMETRY_PATH}/{register}",
+        f"{_TELEMETRY}{register}_BASE_ADDR",
+        f"{_TELEMETRY}{register}_NUM",
+        f"{_TELEMETRY_PY}{register}_REG_ADDR",
+    )
+
+
+def _log_engine_spec(register: str) -> tuple[str, str, str, str]:
+    return (
+        f"{_LOG_ENGINE_PATH}/{register}",
+        f"{WRAP}LOG_ENGINE_{register}_BASE_ADDR",
+        f"{WRAP}LOG_ENGINE_{register}_NUM",
+        f"{WRAP_PY}LOG_ENGINE_{register}_REG_ADDR",
+    )
+
+
+class smc_periph_regblock_sweep_test_seq(SmcRegblockFieldSweepSeq):
+    """Cycle every unswept peripheral register against its RDL contract."""
+
+    def __init__(self, name: str = "smc_periph_regblock_sweep_test_seq") -> None:
+        super().__init__(name)
+        self.intr_status_cleared = 0
+        self.status_legs = 0
+
+    async def _telemetry_intr_leg(self, test: RegInstance, status: RegInstance) -> None:
+        """Force each INTR_STATUS event through INTR_TEST and take it back out.
+
+        Every INTR_STATUS read here is predicted exactly: with INTR_ENABLE and
+        CTRL back at their reset and no telemetry traffic, the only thing that
+        can set an event is the INTR_TEST word this leg has just written.
+        """
+        declared = status.reg.declared_mask
+        level_test = _field(test, _TELEMETRY_LEVEL_EVENT)
+        level_status = _field(status, _TELEMETRY_LEVEL_EVENT)
+        sticky_test = _field(test, _TELEMETRY_STICKY_EVENT)
+        sticky_status = _field(status, _TELEMETRY_STICKY_EVENT)
+        assert level_test.plain_rw and level_status.access == "read-only", (
+            f"{test.label}.{_TELEMETRY_LEVEL_EVENT}: the generated map no longer declares a "
+            f"plain read-write test field over a read-only status field"
+        )
+        assert (
+            sticky_test.access == "write-only" and sticky_status.modified_write == "oneToClear"
+        ), (
+            f"{test.label}.{_TELEMETRY_STICKY_EVENT}: the generated map no longer declares a "
+            f"write-only test field over a `oneToClear` status field"
+        )
+
+        idle = await self.csr_read(f"{status.label}:idle", status.addr, expected=0)
+        assert idle & declared == 0, (
+            f"{status.label} @ 0x{status.addr:08x}: reads 0x{idle:x} before this leg forced "
+            f"anything; every event it goes on to observe has to be one it raised itself"
+        )
+
+        await self.csr_write(f"{test.label}:force", test.addr, level_test.mask)
+        forced = await self.csr_read(
+            f"{status.label}:forced", status.addr, expected=level_status.mask
+        )
+        assert forced & declared == level_status.mask, (
+            f"{status.label} @ 0x{status.addr:08x}: reads 0x{forced:x} with "
+            f"INTR_TEST.{_TELEMETRY_LEVEL_EVENT} written to 1; the RDL forces exactly "
+            f"{_TELEMETRY_LEVEL_EVENT} (0x{level_status.mask:x})"
+        )
+        await self.csr_write(f"{test.label}:release", test.addr, test.reg.reset_word)
+        released = await self.csr_read(f"{status.label}:released", status.addr, expected=0)
+        assert released & declared == 0, (
+            f"{status.label} @ 0x{status.addr:08x}: reads 0x{released:x} with "
+            f"INTR_TEST.{_TELEMETRY_LEVEL_EVENT} written back to 0; the RDL releases the "
+            f"interrupt on that write and the status field is read-only, so nothing may stay set"
+        )
+
+        await self.csr_write(f"{test.label}:pulse", test.addr, sticky_test.mask)
+        raised = await self.csr_read(
+            f"{status.label}:raised", status.addr, expected=sticky_status.mask
+        )
+        assert raised & declared == sticky_status.mask, (
+            f"{status.label} @ 0x{status.addr:08x}: reads 0x{raised:x} after a pulse of the "
+            f"write-only INTR_TEST.{_TELEMETRY_STICKY_EVENT}; exactly {_TELEMETRY_STICKY_EVENT} "
+            f"(0x{sticky_status.mask:x}) has to be set and held"
+        )
+        await self.csr_write(f"{status.label}:clear", status.addr, sticky_status.mask)
+        cleared = await self.csr_read(f"{status.label}:cleared", status.addr, expected=0)
+        assert cleared & declared == 0, (
+            f"{status.label} @ 0x{status.addr:08x}: a write of 0x{sticky_status.mask:x} into "
+            f"the `oneToClear` event left the register at 0x{cleared:x} (0x{raised:x} was "
+            f"pending before the write)"
+        )
+        self.intr_status_cleared += 1
+
+    async def _efuse_status_leg(self) -> None:
+        """The one register of the eFuse block the sweep cannot express.
+
+        Four of its fields are `sw = r; hw = w` and the other three are
+        write-only `singlepulse` clears, so there is no value to write and read
+        back. What the register can be held to is that a read of it reports an
+        idle block, that a write of the three clears is accepted and leaves
+        none of them set, and that the read-only fields do not move under it.
+        """
+        inst = single_reg_instance(_EFUSE_STATUS)
+        clears = _efuse_mask(_EFUSE_CLEARS)
+        errors = _efuse_mask(_EFUSE_ERRORS)
+
+        before = await self.csr_read("EFUSE_STATUS_IDLE", inst.addr)
+        outside = before & ~inst.reg.declared_mask & self.word_mask(inst)
+        assert outside == 0, (
+            f"EFUSE_INTERFACE_CTRL_STATUS reads 0x{before:08x}, which drives 0x{outside:x} "
+            f"in bits no field of the register occupies"
+        )
+        assert before & errors == 0, (
+            f"EFUSE_INTERFACE_CTRL_STATUS reads 0x{before:08x} with one of its error bits "
+            f"set on an idle block; the clear written below would then have something to "
+            f"clear and the comparison after it would not mean what it claims"
+        )
+        assert before & clears == 0, (
+            f"EFUSE_INTERFACE_CTRL_STATUS reads 0x{before:08x} with one of its write-only "
+            f"clear bits set; the RDL makes all three `singlepulse`, so none of them reads "
+            f"back"
+        )
+
+        await self.csr_write("EFUSE_STATUS_CLEARS", inst.addr, clears)
+        after = await self.csr_read("EFUSE_STATUS_AFTER_CLEARS", inst.addr, expected=before)
+        assert after == before, (
+            f"EFUSE_INTERFACE_CTRL_STATUS read 0x{before:08x} before a write of its three "
+            f"clear bits (0x{clears:x}) and 0x{after:08x} after it; the clears are "
+            f"`singlepulse` so none may stay set, and the four state fields are "
+            f"`sw = r; hw = w` so a write may not move them"
+        )
+        self.status_legs += 1
+
+    async def body(self) -> None:
+        await self.wait_fuse_sense_done()
+
+        singles = [(single_reg_instance(path), hold) for path, hold in _SINGLE]
+        word_only = [single_reg_instance(path) for path in _WORD_ONLY]
+        timer_ctrl = single_reg_instance(_TIMER_CTRL)
+        timer_words = _timer_ctrl_words(timer_ctrl)
+        telemetry = {name: reg_instances(*_telemetry_spec(name)) for name in _TELEMETRY_REGS}
+        telemetry_status = reg_instances(*_telemetry_spec("INTR_STATUS"))
+        log_engine = {name: reg_instances(*_log_engine_spec(name)) for name in _LOG_ENGINE_REGS}
+
+        receivers = len(telemetry["CTRL"])
+        wraps = len(log_engine["CTRL"])
+        assert receivers and wraps, "the generated map declares no telemetry receiver or wrapper"
+        assert all(len(group) == receivers for group in telemetry.values()), (
+            "the generated map declares a different instance count for the telemetry registers"
+        )
+        assert all(len(group) == wraps for group in log_engine.values()), (
+            "the generated map declares a different instance count for the log-engine registers"
+        )
+        assert len(telemetry_status) == receivers
+        assert len({inst.addr for inst, _hold in singles}) == len(singles), (
+            "two of the single-instance registers resolve to the same address"
+        )
+
+        sb_before = self.env.scoreboard.sys_axi_value_checks_seen
+
+        for inst, hold in singles:
+            await self.granule_cycle(inst, hold_fields=hold)
+        for ones, low in timer_words:
+            await self.granule_cycle(timer_ctrl, low_value=low, ones_value=ones)
+        for inst in word_only:
+            await self.word_cycle(inst)
+        await self._efuse_status_leg()
+        cocotb.log.info(
+            "CHK-PERIPH-REGBLOCK-SINGLE-SWEEP: %d single-instance peripheral registers of the "
+            "AVSBus controller, the OCTS system timer, the eFuse interface controller and the "
+            "DMA controller each read their RDL reset, took the all-ones and all-zeros pattern "
+            "of the fields the contract pins through half-register writes whose byte lanes over "
+            "the other half were deasserted, drove no bit outside the declared fields, and were "
+            "restored; the eFuse data and program-enable bits were held at their reset "
+            "throughout, so nothing this leg wrote could arm a fuse burn; the OCTS system "
+            "timer CTRL took %d constrained cycles instead, every word of which keeps "
+            "CREDIT_VAL above the effective PULSE_WIDTH its RDL requires while the four "
+            "patterns between them still drive every writable bit both ways; and %d "
+            "register(s) whose block refuses a sub-word write took the cycle at full width",
+            len(singles),
+            len(_TIMER_CTRL_LEGS),
+            len(word_only),
+        )
+
+        for index in range(receivers):
+            for name in _TELEMETRY_REGS:
+                await self.granule_cycle(telemetry[name][index])
+            await self._telemetry_intr_leg(telemetry["INTR_TEST"][index], telemetry_status[index])
+        cocotb.log.info(
+            "CHK-PERIPH-TELEMETRY-SWEEP: %d telemetry receivers each cycled %s against their "
+            "RDL contract and were restored; on each, INTR_STATUS read clear at idle, "
+            "INTR_TEST.%s written to 1 set exactly INTR_STATUS.%s and written back to 0 "
+            "released it, and a pulse of the write-only INTR_TEST.%s set exactly "
+            "INTR_STATUS.%s, which held until a write of its own mask cleared it, the "
+            "`oneToClear` contract that field carries",
+            receivers,
+            ", ".join(_TELEMETRY_REGS),
+            _TELEMETRY_LEVEL_EVENT,
+            _TELEMETRY_LEVEL_EVENT,
+            _TELEMETRY_STICKY_EVENT,
+            _TELEMETRY_STICKY_EVENT,
+        )
+
+        for index in range(wraps):
+            for name in _LOG_ENGINE_REGS:
+                await self.granule_cycle(log_engine[name][index])
+        cocotb.log.info(
+            "CHK-PERIPH-LOG-ENGINE-SWEEP: %d log engines each cycled %s against their RDL "
+            "contract and were restored, with CTRL last so the enable was only ever set while "
+            "the region and write addresses were back at their reset and no element held a "
+            "length, and nothing was fetched",
+            wraps,
+            ", ".join(_LOG_ENGINE_REGS),
+        )
+
+        cycles = (
+            len(singles)
+            + len(_TIMER_CTRL_LEGS)
+            + receivers * len(_TELEMETRY_REGS)
+            + wraps * len(_LOG_ENGINE_REGS)
+        )
+        expected = (
+            cycles * _ACCESSES_PER_CYCLE
+            + len(word_only) * _ACCESSES_PER_WORD_CYCLE
+            + receivers * _ACCESSES_PER_INTR_LEG
+            + _ACCESSES_PER_EFUSE_STATUS_LEG
+        )
+        cycles += len(word_only)
+        self.assert_all_reachable(expected, "PERIPH_REGBLOCK_SWEEP")
+        assert self.registers_swept == cycles, (
+            f"the sweep completed {self.registers_swept} field cycles for {cycles} registers"
+        )
+        assert self.intr_status_cleared == receivers, (
+            f"{self.intr_status_cleared} of {receivers} telemetry INTR_STATUS registers cleared"
+        )
+        # Predicted words: every read of a register no field of which hardware
+        # drives, plus the INTR_STATUS reads of each receiver's interrupt leg.
+        predicted = sum(6 for inst, _hold in singles if self.volatile_mask(inst) == 0)
+        if self.volatile_mask(timer_ctrl) == 0:
+            predicted += 6 * len(_TIMER_CTRL_LEGS)
+        predicted += sum(
+            6 * receivers for name in _TELEMETRY_REGS if self.volatile_mask(telemetry[name][0]) == 0
+        )
+        predicted += sum(
+            6 * wraps for name in _LOG_ENGINE_REGS if self.volatile_mask(log_engine[name][0]) == 0
+        )
+        predicted += _PREDICTED_PER_INTR_LEG * receivers
+        self.assert_value_checks(sb_before, predicted, "PERIPH_REGBLOCK_SWEEP")
+        assert self.status_legs == 1, f"{self.status_legs} eFuse status legs; the leaf runs one"
+        cocotb.log.info(
+            "CHK-PERIPH-EFUSE-STATUS: EFUSE_INTERFACE_CTRL_STATUS read an idle block with "
+            "no error bit and no clear bit set, took a write of all three of its "
+            "write-only singlepulse clears, and read back exactly what it read before, so "
+            "no clear stayed set and the four `sw = r` state fields did not move under the "
+            "write",
+        )
+        cocotb.log.info(
+            "CHK-PERIPH-REGBLOCK-COMPARES: the scoreboard booked at least %d exact-value "
+            "compares of its own for the reads whose whole word the RDL contract predicts, "
+            "independently of this sequence's own counters",
+            predicted,
+        )

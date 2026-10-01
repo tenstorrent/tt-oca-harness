@@ -2,17 +2,14 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * OCCP Jump Test
- *
- * Reads the payload base (scratch 4) and the entry offset of main() (scratch 5)
- * that the loader publishes, issues an OCCP JUMP to base + offset, and waits for
- * the ROM to report completion.
+ * Reads the payload base (scratch 4) and main() offset (scratch 5) that the loader publishes,
+ * issues an OCCP JUMP to base + offset, and waits for the ROM to report completion.
  */
 
 #include "occp_test_common.h"
 #include "smc_defines.h"
 #include "smc_test.h"
-#include <string.h> // For memcpy
+#include <string.h>
 
 static void run_test_suite(test_context_t *ctx) {
     simputs("=== Starting OCCP Jump Test ===\n");
@@ -22,7 +19,7 @@ static void run_test_suite(test_context_t *ctx) {
 
     simputs("=== Jump Command Test ===\n");
 
-    // poll until binary loaded in slave and pointer in scratch 4
+    // Scratch 4 stays 0 until the loader has written the payload.
     uint32_t test_addr = 0;
     while (test_addr == 0) {
         retval = occp_send_read_command(ctx, ctx->slave_addr, SMC_CPU_CTRL_SCRATCH_4__REG_ADDR,
@@ -33,8 +30,7 @@ static void run_test_suite(test_context_t *ctx) {
         simputshex32("Test address: ", test_addr);
     }
 
-    // The loader publishes the offset of main() within the payload in scratch 5,
-    // written before the base address in scratch 4.
+    // The loader writes scratch 5 before scratch 4, so it is valid once scratch 4 is non-zero.
     uint32_t entry_offset = 0;
     retval = occp_send_read_command(ctx, ctx->slave_addr, SMC_CPU_CTRL_SCRATCH_5__REG_ADDR,
                                     (uint8_t *)&entry_offset, sizeof(entry_offset));
@@ -56,7 +52,7 @@ static void run_test_suite(test_context_t *ctx) {
 static void finalize_test_results(test_context_t *ctx) {
     uint32_t result_code;
 
-    // do nothing if pass since we are polling on ROM to complete program, end test if fail
+    // A pass is reported after the jump by the payload; only a failure ends the test here.
     if (ctx->overall_result) {
         simputs("Completed bfm test, waiting for ROM to complete!\n");
     } else {
@@ -78,7 +74,6 @@ int main(void) {
         return -1;
     }
 
-    // Set up test context
     test_ctx.test_base_addr = OCCP_TEST_BASE_ADDR;
     test_ctx.test_upper_addr_bound = OCCP_TEST_BUFFER_SAFE_UPPER_ADDR;
     test_ctx.overall_result = true;
@@ -86,10 +81,8 @@ int main(void) {
     test_ctx.cmd_count = 0;
     test_ctx.exp_occp_last_error = 0;
 
-    // Run the test suite
     run_test_suite(&test_ctx);
 
-    // Finalize and report results
     finalize_test_results(&test_ctx);
 
     simputs("Done\n");

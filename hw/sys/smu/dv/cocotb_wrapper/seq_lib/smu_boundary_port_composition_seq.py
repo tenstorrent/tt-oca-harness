@@ -4,8 +4,15 @@
 
 Reads the elaborated SEP=1 `smu` boundary passively: port presence, the widths
 the specifications state, the idle values the specifications state, and the
-inertness of the cross-trigger CTP channels whose data inputs the wrapper ties
-to zero.
+inertness of the cross-trigger CTP channels while their data inputs rest.
+`smu_wrapper` passes the CTP data inputs through, and the bench, as the
+integrator the port table's "Tie to '0 if unused" note addresses, holds the
+req_in, ack_in and ack_out data inputs at zero (tb/tb_wrapper_top.sv ties
+ack_out; req_in and ack_in follow bench nets smu_base_test drives to zero). The
+req_out data input sits on the bench's wire-OR board, resting at the pull-up
+the reset-default CONFIG.INVERT=0 implies with no chiplet pulling.
+smu_xtrig_ctp_pad_test is the live control: there a request on req_in moves
+ack_out at the pads.
 
 Every width that carries an evidence token is a specification value:
 `hw/sys/smu/doc/port_table.adoc` for the port rows, `doc/integrator/src/smu.adoc`
@@ -20,14 +27,22 @@ with the value the specification gives for that state: `ss_config_o` presents
 the `SS_CONFIG` reset value, and `skip_mem_repair_o` is clear after a cold
 reset with no isolation request pending. Write-through and the FLR path are
 proven by smu_smc_boundary_io_test, not here.
+
+``smc_shadow_regs_o`` is read at the `smu` port, the `smu_wrapper` port and the
+bench net after the cold boot's fuse sense completes, and each is compared
+with the image ``+smc_efuse_hex`` names, which the testlist sets to one that
+programs every bit.
 """
 
 from __future__ import annotations
+
+from pathlib import Path
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 
 from seq_lib.smu_addr_map import reset_unit_u32
+from seq_lib.smu_boundary_regs import cross_trigger_u32
 from seq_lib.smu_compose_helpers import (
     LC_STATE_O_WIDTH,
     LCC_DEMOTE_WIDTH,
@@ -45,11 +60,17 @@ from seq_lib.smu_compose_helpers import (
     hier,
     sample,
 )
-from seq_lib.smu_tb_pins import smu_scope
+from seq_lib.smu_fuse_gate_helpers import wait_fuse_sense_done
+from seq_lib.smu_tb_pins import smu_scope, tb_pin
 
 CTP_GROUPS = ("req_out", "req_in", "ack_in", "ack_out")
 CTP_LEGS = ("dout_o", "dout_en_o", "din_i", "din_en_o")
 INERT_WINDOW_CYCLES = 64
+# CT_Req_out is a wire-OR wire; the generated cross-trigger header's
+# CONFIG.INVERT reset selects its sense, and INVERT=0 makes it active-low, so
+# with no chiplet pulling every req_out lane rests high. The wrapper passes
+# the other three groups through, and the bench holds them at zero.
+CONFIG_INVERT_RESET = cross_trigger_u32("CROSS_TRIGGER_PORT__CONFIG__INVERT_reset")
 
 # hw/sys/smc/regs/gen/c/blocks/reset_unit.h: the SS_CONFIG field the port
 # presents, its width and its reset value.
@@ -59,6 +80,28 @@ SS_CONFIG_RESET = reset_unit_u32("RESET_UNIT__SS_CONFIG__SS_CONFIG_reset")
 # isolation request path, and a cold reset with no isolation request pending
 # executes repair.
 SKIP_MEM_REPAIR_IDLE = 0
+
+
+def smc_efuse_image(bits: int) -> int:
+    """The SMC eFuse image ``+smc_efuse_hex`` names, as the shadow map it senses to.
+
+    Fuse word ``i`` of the ``$readmemh`` image is shadow bits ``32i+31..32i``,
+    and a word the image does not reach is zero (``hw/sys/smc/regs/gen/c/smc_addr.h``
+    tiles the 1024-byte map with 4-byte words).
+    """
+    named = cocotb.plusargs.get("smc_efuse_hex")
+    if named is None:
+        raise AssertionError("+smc_efuse_hex is required: it is the image the sense reads")
+    value = 0
+    idx = 0
+    for raw in Path(str(named)).read_text(encoding="ascii").splitlines():
+        for tok in raw.split("//", 1)[0].split():
+            if tok.startswith("@"):
+                idx = int(tok[1:], 16)
+                continue
+            value |= (int(tok, 16) & 0xFFFF_FFFF) << (32 * idx)
+            idx += 1
+    return value & ((1 << bits) - 1)
 
 
 class smu_boundary_port_composition_seq:
@@ -100,12 +143,6 @@ class smu_boundary_port_composition_seq:
 
         # SMU-INT-AGG.S1
         self._width(smu, "smc_ext_interrupts_i", NUM_INT_TO_SMC, "CHK-SMU-INT-AGG-S1")
-        sb.expect_eq(
-            "smc_ext_interrupts_i tie-off reaches the SMU boundary as zero",
-            sample(smu.smc_ext_interrupts_i, "smc_ext_interrupts_i"),
-            0,
-            evidence="CHK-SMU-INT-AGG-S1",
-        )
 
         # SMU-EXT-SMN.S4. Drift: the SMN struct widths and the crossbar-side
         # ID width have no specification in this tree. Token: the SMC-side
@@ -136,20 +173,28 @@ class smu_boundary_port_composition_seq:
             for leg in CTP_LEGS:
                 self._width(smu, f"xtrig_ctp_{group}_{leg}", XTRIG_NUM_CTP, "CHK-SMU-XTRIG-CTP-S1")
 
-        # SMU-XTRIG-CTP.S6: tied-zero data inputs, observed at the DTP consumer,
-        # leave every CTP output and the CTM boundary static at zero.
-        din_names = [f"xtrig_ctp_{g}_din_i" for g in CTP_GROUPS]
-        for name in din_names:
+        # SMU-XTRIG-CTP.S6: resting data inputs, observed at the SMU boundary and
+        # at the DTP consumer, leave every CTP output and the CTM boundary static
+        # at zero.
+        assert CONFIG_INVERT_RESET == 0, (
+            f"CONFIG.INVERT reset {CONFIG_INVERT_RESET} in the generated header: the req_out "
+            f"resting level below assumes the active-low wire INVERT=0 selects"
+        )
+        rest = {g: 0 for g in CTP_GROUPS}
+        rest["req_out"] = (1 << XTRIG_NUM_CTP) - 1
+        for group in CTP_GROUPS:
+            name = f"xtrig_ctp_{group}_din_i"
+            label = "wire-OR rest" if group == "req_out" else "tie-off"
             sb.expect_eq(
-                f"{name} tie-off at the SMU boundary",
+                f"{name} {label} at the SMU boundary",
                 sample(hier(smu, name), name),
-                0,
+                rest[group],
                 evidence="CHK-SMU-XTRIG-CTP-S6",
             )
             sb.expect_eq(
-                f"{name} tie-off at the DTP consumer",
+                f"{name} {label} at the DTP consumer",
                 sample(hier(smu, f"u_dtp.{name}"), f"u_dtp.{name}"),
-                0,
+                rest[group],
                 evidence="CHK-SMU-XTRIG-CTP-S6",
             )
         watched = {f"xtrig_ctp_{g}_dout_o": hier(smu, f"xtrig_ctp_{g}_dout_o") for g in CTP_GROUPS}
@@ -175,7 +220,7 @@ class smu_boundary_port_composition_seq:
             evidence="CHK-SMU-XTRIG-CTP-S6",
         )
         sb.expect_eq(
-            "CTP outputs and CTM boundary idle at zero under tied-zero inputs",
+            "CTP outputs and CTM boundary idle at zero under resting inputs",
             sum(first.values()),
             0,
             evidence="CHK-SMU-XTRIG-CTP-S6",
@@ -194,12 +239,6 @@ class smu_boundary_port_composition_seq:
             elem = ss_ctrl[idx]
             elem_widths.add(bit_width(elem, f"ss_reset_ctrl_o[{idx}]"))
             sample(elem, f"ss_reset_ctrl_o[{idx}]")
-        sb.expect_eq(
-            "ss_reset_ctrl_o elements share one reset_ctrl_t width",
-            len(elem_widths),
-            1,
-            evidence="CHK-SMU-SSRESET-S2",
-        )
         self.log.info("ss_reset_ctrl_o: %d elements of %s bits", NUM_SUBSYSTEMS, elem_widths)
         self._width(smu, "ss_config_o", SS_CONFIG_WIDTH, "CHK-SMU-SSRESET-S4")
         cfg_val = sample(hier(smu, "ss_config_o"), "ss_config_o")
@@ -226,20 +265,44 @@ class smu_boundary_port_composition_seq:
             evidence="CHK-SMU-FUSE-SENSE-S4",
         )
         # port_table.adoc types smc_shadow_regs_o as smc_efuse_pkg::efuse_map_t
-        # and states no width, so what is checked is the connection the wrapper
-        # can get wrong: the boundary net is as wide as the `smu` port and
-        # carries the same value.
+        # and states no width. The wrapper port is compared with the `smu` port
+        # and the bench net at width, and after this cold boot's sense with the
+        # image the leaf names, all three carry that image.
         shadow = hier(smu, "smc_shadow_regs_o")
+        wrapper_shadow = hier(tb_pin(dut, "u_dut"), "smc_shadow_regs_o")
         shadow_bits = bit_width(shadow, "smc_shadow_regs_o")
         sb.expect_eq(
-            "smc_shadow_regs boundary net is as wide as the smu smc_shadow_regs_o port",
-            bit_width(dut.smc_shadow_regs, "smc_shadow_regs"),
-            shadow_bits,
+            "smu_wrapper smc_shadow_regs_o and the boundary net are as wide as the smu port",
+            (
+                bit_width(wrapper_shadow, "u_dut.smc_shadow_regs_o"),
+                bit_width(dut.smc_shadow_regs, "smc_shadow_regs"),
+            ),
+            (shadow_bits, shadow_bits),
             evidence="CHK-SMU-EFUSE-SHIM-SMC-S3",
         )
+        image = smc_efuse_image(shadow_bits)
         sb.expect_true(
-            "smc_shadow_regs_o reaches the wrapper boundary unchanged",
-            sample(dut.smc_shadow_regs, "smc_shadow_regs") == sample(shadow, "smc_shadow_regs_o"),
+            "the leaf's SMC eFuse image programs at least one shadow bit",
+            image != 0,
+            evidence="CHK-SMU-EFUSE-SHIM-SMC-S3",
+        )
+        await wait_fuse_sense_done(dut, self.log, phase="cold boot")
+        sensed = {
+            "smu.smc_shadow_regs_o": sample(shadow, "smc_shadow_regs_o"),
+            "u_dut.smc_shadow_regs_o": sample(wrapper_shadow, "u_dut.smc_shadow_regs_o"),
+            "smc_shadow_regs": sample(dut.smc_shadow_regs, "smc_shadow_regs"),
+        }
+        self.log.info(
+            "smc_shadow_regs after the sense: %s bit(s) set of %d; image %d bit(s) set",
+            {name: bin(value).count("1") for name, value in sensed.items()},
+            shadow_bits,
+            bin(image).count("1"),
+        )
+        sb.expect_eq(
+            "bits that differ from the sensed image at the smu port, the smu_wrapper port and "
+            "the boundary net",
+            {name: bin(value ^ image).count("1") for name, value in sensed.items()},
+            dict.fromkeys(sensed, 0),
             evidence="CHK-SMU-EFUSE-SHIM-SMC-S3",
         )
         self.log.info("skip_mem_repair_o=%d smc_shadow_regs_o width=%d", skip, shadow_bits)

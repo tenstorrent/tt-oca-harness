@@ -55,6 +55,13 @@ static inline uint32_t sep_get_smc_base(void) {
 // seeded at whatever address the ROM reads, so any offset "works" in simulation.
 #define SMC_SCRATCH_BASE_OFFSET 0x39080u
 
+// CPU_CTRL.RESET_CTRL: 0x39020 is SMC_TOP_SMC_CPU_CTRL_RESET_CTRL_BASE_ADDR
+// (smc_addr.h), 0xC0039020 SMC-local. A 64-bit register; the per-core resets
+// core0..3_reset_n_n0_scan are bits [3:0] of the low word, active low with reset
+// value 1, so clearing a bit holds that core in reset.
+#define SMC_CPU_CTRL_RESET_CTRL_OFFSET 0x39020u
+#define SMC_CPU_CTRL_RESET_CTRL_CORE_RESET_N_MASK 0xFu
+
 // Chip config block (VERSION_LO/HI, CHIP_ID, LC_STATE).
 #define SMC_CHIP_ID_OFFSET 0x2908u
 
@@ -205,7 +212,7 @@ static inline uint32_t smc_read_dft_status(void) {
 // secure boot is optional, so an early lifecycle read fails open. Polled without
 // timeout -- the hang is the accepted failure mode ([SEP-ROM-CPU-080]).
 static inline void smc_wait_fuse_sense(void) {
-    while ((mmio_read32(OCH_SEP_TOP_SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_BASE_ADDR) &
+    while ((mmio_read32(SEP_TOP_SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_BASE_ADDR) &
             SMC_FUSE_SENSE_DONE_MASK) == 0u) {
         // spin
     }

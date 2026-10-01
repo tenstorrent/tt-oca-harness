@@ -12,9 +12,16 @@ communication capabilities for the OCAH system, supporting various
 protocols and interfaces required for system operation and external
 connectivity.
 
-The following table summarizes the key peripherals, their communication
+ifdef::backend-html5[]
+* xref:dma.adoc[Direct Memory Access Engine]
+* xref:zeroer.adoc[Zeroer]
+* xref:watchdog.adoc[Watchdog Timers]
+endif::backend-html5[]
+
+<<smc-peripheral-summary-table>> summarizes the key peripherals, their communication
 protocols, and default instance counts:
 
+[[smc-peripheral-summary-table]]
 .SMC Peripheral Summary
 [width="100%",cols="25%,47%,17%,11%",options="header",]
 |=======================================================================
@@ -43,6 +50,10 @@ system for efficient transfer of log messages to UART interface.
 |xref:ip:i2c/doc/index.adoc[I2C] |Full I2C/SMBus/PMBus communication
 controller supporting both controller and target modes. |AXI4-Lite |3
 
+|xref:ip:i3ccore_wrap/doc/index.adoc[I3C] |CHIPS Alliance i3c-core with an
+OCAH AXI4-Lite wrapper. Integration verification remains a work in
+progress. |AXI4-Lite |6
+
 |xref:ip:avsbus_controller/doc/index.adoc[AVSBus Controller]
 |Adaptive voltage scaling communication controller for managing voltage
 rails and power conditions. |APB4/AXI4-Lite |1
@@ -54,10 +65,6 @@ with dual-mode operation and comprehensive interrupt system (61 bonded + 4 unbon
 |xref:ip:telemetry_receiver/doc/index.adoc[Telemetry Receiver]
 |Hardware component for decoding and processing telemetry data from
 multi-chiplet systems. |APB4/AXI4-Lite |3
-
-|xref:smc:memmap.adoc#smc-i3c-registers[I3C] |I3C controller for enhanced serial
-communication. The generated register map is provided; integration
-verification remains a work in progress. |AXI4-Lite |6
 
 |Reset Unit |Reset control and synchronization, deals with SMC resets (core, primary),
 subsystem (chiplet) resets, and the cool reset sequence. |AXI4-Lite |1
@@ -89,6 +96,9 @@ system for efficient transfer of log messages to UART interface.
 |I2C |Full I2C/SMBus/PMBus communication
 controller supporting both controller and target modes. |AXI4-Lite |3
 
+|<<i3c-controller,I3C>> |CHIPS Alliance i3c-core with an OCAH AXI4-Lite
+wrapper. Integration verification remains a work in progress. |AXI4-Lite |6
+
 |AVSBus Controller
 |Adaptive voltage scaling communication controller for managing voltage
 rails and power conditions. |APB4/AXI4-Lite |1
@@ -101,10 +111,6 @@ with dual-mode operation and comprehensive interrupt system (61 bonded + 4 unbon
 |Hardware component for decoding and processing telemetry data from
 multi-chiplet systems. |APB4/AXI4-Lite |3
 
-|<<smc-i3c-registers,I3C>> |I3C controller for enhanced serial communication.
-The generated register map is provided; integration verification remains a
-work in progress. |AXI4-Lite |6
-
 |Reset Unit |Reset control and synchronization, deals with SMC resets (core, primary),
 subsystem (chiplet) resets, and the cool reset sequence. |AXI4-Lite |1
 
@@ -114,6 +120,9 @@ endif::backend-pdf[]
 |=======================================================================
 
 ifdef::backend-pdf[]
+include::dma.adoc[leveloffset=+1]
+include::zeroer.adoc[leveloffset=+1]
+include::watchdog.adoc[leveloffset=+1]
 include::../../../ip/axi_lite_mailbox_unit/doc/index.adoc[leveloffset=+1]
 
 include::../../../ip/system_timer_octs/doc/index.adoc[leveloffset=+1]
@@ -125,6 +134,8 @@ include::../../../ip/uart/uart_16550/doc/index.adoc[leveloffset=+1]
 include::../../../ip/uart/log_engine/doc/index.adoc[leveloffset=+1]
 
 include::../../../ip/i2c/doc/index.adoc[leveloffset=+1]
+
+include::../../../ip/i3ccore_wrap/doc/index.adoc[leveloffset=+1]
 
 include::../../../ip/avsbus_controller/doc/index.adoc[leveloffset=+1]
 
@@ -159,6 +170,10 @@ The SMC sets peripheral parameters at instantiation from `smc_config_pkg`,
 Most values match the IP defaults, but the following differ from the default
 documented in the IP's own section.
 
+<<smc-peripheral-parameter-overrides-table>> compares the SMC parameter overrides with
+each peripheral's default values.
+
+[[smc-peripheral-parameter-overrides-table]]
 .SMC Peripheral Parameter Overrides
 [width="100%",cols="16%,38%,18%,28%",options="header",]
 |=======================================================================

@@ -4,7 +4,9 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-dma_ctrl]
-== Address Map: dma_ctrl
+== iDMA Controller Address Map
+
+Source, destination, length, and control registers for the iDMA data-mover engine.
 
 [cols="1,4,1,6", options="header"]
 |===
@@ -95,7 +97,7 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9:0 | `BUSY` | R | 0x0 a| DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response
+| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
 |===
 
 [#reg-{regmap-instance}-dma_ctrl-STATUS_1]
@@ -105,7 +107,7 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9:0 | `BUSY` | R | 0x0 a| DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response
+| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
 |===
 
 [#reg-{regmap-instance}-dma_ctrl-STATUS_2]
@@ -115,7 +117,7 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9:0 | `BUSY` | R | 0x0 a| DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response
+| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
 |===
 
 [#reg-{regmap-instance}-dma_ctrl-STATUS_3]
@@ -125,7 +127,7 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9:0 | `BUSY` | R | 0x0 a| DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response
+| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
 |===
 
 [#reg-{regmap-instance}-dma_ctrl-STATUS_4]
@@ -135,7 +137,7 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9:0 | `BUSY` | R | 0x0 a| DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response
+| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
 |===
 
 [#reg-{regmap-instance}-dma_ctrl-STATUS_5]
@@ -145,7 +147,7 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9:0 | `BUSY` | R | 0x0 a| DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response
+| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
 |===
 
 [#reg-{regmap-instance}-dma_ctrl-STATUS_6]
@@ -155,7 +157,7 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9:0 | `BUSY` | R | 0x0 a| DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response
+| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
 |===
 
 [#reg-{regmap-instance}-dma_ctrl-STATUS_7]
@@ -165,7 +167,7 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9:0 | `BUSY` | R | 0x0 a| DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response
+| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
 |===
 
 [#reg-{regmap-instance}-dma_ctrl-STATUS_8]
@@ -175,7 +177,7 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9:0 | `BUSY` | R | 0x0 a| DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response
+| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
 |===
 
 [#reg-{regmap-instance}-dma_ctrl-STATUS_9]
@@ -185,7 +187,7 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9:0 | `BUSY` | R | 0x0 a| DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response
+| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
 |===
 
 [#reg-{regmap-instance}-dma_ctrl-STATUS_10]
@@ -195,7 +197,7 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9:0 | `BUSY` | R | 0x0 a| DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response
+| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
 |===
 
 [#reg-{regmap-instance}-dma_ctrl-STATUS_11]
@@ -205,7 +207,7 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9:0 | `BUSY` | R | 0x0 a| DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response
+| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
 |===
 
 [#reg-{regmap-instance}-dma_ctrl-STATUS_12]
@@ -215,7 +217,7 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9:0 | `BUSY` | R | 0x0 a| DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response
+| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
 |===
 
 [#reg-{regmap-instance}-dma_ctrl-STATUS_13]
@@ -225,7 +227,7 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9:0 | `BUSY` | R | 0x0 a| DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response
+| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
 |===
 
 [#reg-{regmap-instance}-dma_ctrl-STATUS_14]
@@ -235,7 +237,7 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9:0 | `BUSY` | R | 0x0 a| DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response
+| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
 |===
 
 [#reg-{regmap-instance}-dma_ctrl-STATUS_15]
@@ -245,7 +247,7 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9:0 | `BUSY` | R | 0x0 a| DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response
+| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
 |===
 
 [#reg-{regmap-instance}-dma_ctrl-NEXT_ID_0]

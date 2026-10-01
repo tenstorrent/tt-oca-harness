@@ -39,6 +39,8 @@ common_bender_targets = [
 # The cross_trigger family target (Bender.yml): all three cross-trigger IPs'
 # packages and RTL plus the vendored OpenTitan prim closure.
 bender_targets = ["cross_trigger"]
+# The open-drain shared-wire model tb/tb_top.sv places on the CT_Req_out pad.
+sources = ["hw/common/dv/shims/analog/ocah_open_drain_bus.sv"]
 
 [frameworks.cocotb]
 python_root = "hw/ip/cross_trigger/cross_trigger_port/dv/cocotb"

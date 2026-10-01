@@ -1,36 +1,49 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//------------------------------------------------------------
-// AXI Alias Remap Interface
+// Remap AXI addresses that hit configured alias regions onto their target bases.
 //
-//------------------------------------------------------------
+// Each remap_regions_i entry supplies a valid bit, a region_start and exclusive region_end
+// bound, an offset, and a cacheable field. The module is combinational. When AW or AR hits
+// valid regions, the lowest-numbered one applies: a carry-select adder adds its offset to the
+// address bits from ALIAS_REMAP_IDX_START upward, modulo their width, the bits below pass
+// through, and AxCACHE is replaced by the region's cacheable value, bit for bit. Misses pass
+// through unchanged, and all other channels are wired straight through.
 
 module axi_alias_remap #(
-  parameter type          axi_req_t                       = logic,
-  parameter type          axi_resp_t                      = logic,
-  parameter type          remap_region_t                  = logic,
-  parameter type          remap_debug_t                   = logic,
-  parameter int unsigned  NUM_REGIONS                     = 4,
-  parameter int unsigned  DEBUG_OUTPUT                    = 0,
+  parameter type          axi_req_t                       = logic, // AXI request channel type.
+  parameter type          axi_resp_t                      = logic, // AXI response channel type.
+  parameter type          remap_region_t                  = logic, // Per-region configuration with
+                                                                   // region_valid, region_start,
+                                                                   // region_end, offset and
+                                                                   // cacheable fields.
+  parameter type          remap_debug_t                   = logic, // Debug type with
+                                                                   // aw_remap_hit_debug and
+                                                                   // ar_remap_hit_debug
+                                                                   // region-index fields.
+  parameter int unsigned  NUM_REGIONS                     = 4, // Number of alias regions.
+  parameter int unsigned  DEBUG_OUTPUT                    = 0, // remap_debug_o is driven when 1 and
+                                                               // tied to zero otherwise.
 
-  parameter int unsigned  ALIAS_REMAP_IDX_START           = 12,
-  parameter int unsigned  AXI_ADDR_WIDTH                  = 64,
+  parameter int unsigned  ALIAS_REMAP_IDX_START           = 12, // Lowest remapped address bit;
+                                                                // lower bits pass through
+                                                                // unchanged.
+  parameter int unsigned  AXI_ADDR_WIDTH                  = 64, // AXI address width.
 
-  parameter int unsigned  NUM_CHUNKS_CARRY_SELECT_ADDER   = 2,
+  parameter int unsigned  NUM_CHUNKS_CARRY_SELECT_ADDER   = 2, // Carry-select adder chunk count.
 
-  localparam int unsigned ALIAS_REMAP_OFFSET_WIDTH        = AXI_ADDR_WIDTH - ALIAS_REMAP_IDX_START
+  localparam int unsigned ALIAS_REMAP_OFFSET_WIDTH        = AXI_ADDR_WIDTH - ALIAS_REMAP_IDX_START // Width of the remapped upper address field.
 ) (
-  input   remap_region_t                      remap_regions_i [NUM_REGIONS-1:0],
-  output  remap_debug_t                       remap_debug_o,
+  input   remap_region_t                      remap_regions_i [NUM_REGIONS-1:0], // Per-region remap configuration.
+  output  remap_debug_t                       remap_debug_o, // Index of the lowest-numbered region
+                                                             // hit by the current AW and AR
+                                                             // addresses; zero when neither hits.
 
-  // AXI Input Interface
-  input   axi_req_t                           axi_in_req_i,
-  output  axi_resp_t                          axi_in_resp_o,
+  input   axi_req_t                           axi_in_req_i, // Pre-remap AXI request.
+  output  axi_resp_t                          axi_in_resp_o, // Pre-remap AXI response.
 
-  // AXI Output Interface (remapped)
-  output  axi_req_t                           axi_out_req_o,
-  input   axi_resp_t                          axi_out_resp_i
+  output  axi_req_t                           axi_out_req_o, // Post-remap AXI request.
+  input   axi_resp_t                          axi_out_resp_i // Post-remap AXI response.
 );
 
   localparam int unsigned RemapIndexW = $clog2(NUM_REGIONS);
@@ -46,7 +59,7 @@ module axi_alias_remap #(
 
   remap_addr_t aw_addr_modified, ar_addr_modified;
   addr_t aw_remapped_addr, ar_remapped_addr;
-  logic aw_remapped_cacheable, ar_remapped_cacheable;
+  axi_pkg::cache_t aw_remapped_cacheable, ar_remapped_cacheable;
 
   // Check if access is within a valid remap region
   always_comb begin
@@ -121,7 +134,7 @@ module axi_alias_remap #(
   assign axi_out_req_o.aw.size    = axi_in_req_i.aw.size;
   assign axi_out_req_o.aw.burst   = axi_in_req_i.aw.burst;
   assign axi_out_req_o.aw.lock    = axi_in_req_i.aw.lock;
-  assign axi_out_req_o.aw.cache   = no_write_hit ? axi_in_req_i.aw.cache : {(axi_pkg::CacheWidth){aw_remapped_cacheable}};
+  assign axi_out_req_o.aw.cache   = no_write_hit ? axi_in_req_i.aw.cache : aw_remapped_cacheable;
   assign axi_out_req_o.aw.prot    = axi_in_req_i.aw.prot;
   assign axi_out_req_o.aw.qos     = axi_in_req_i.aw.qos;
   assign axi_out_req_o.aw.region  = axi_in_req_i.aw.region;
@@ -146,7 +159,7 @@ module axi_alias_remap #(
   assign axi_out_req_o.ar.size    = axi_in_req_i.ar.size;
   assign axi_out_req_o.ar.burst   = axi_in_req_i.ar.burst;
   assign axi_out_req_o.ar.lock    = axi_in_req_i.ar.lock;
-  assign axi_out_req_o.ar.cache   = no_read_hit ? axi_in_req_i.ar.cache : {(axi_pkg::CacheWidth){ar_remapped_cacheable}};
+  assign axi_out_req_o.ar.cache   = no_read_hit ? axi_in_req_i.ar.cache : ar_remapped_cacheable;
   assign axi_out_req_o.ar.prot    = axi_in_req_i.ar.prot;
   assign axi_out_req_o.ar.qos     = axi_in_req_i.ar.qos;
   assign axi_out_req_o.ar.region  = axi_in_req_i.ar.region;

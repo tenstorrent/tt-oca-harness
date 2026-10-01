@@ -12,12 +12,15 @@
       <ipxact:name>smc_top_mmap</ipxact:name>
       <ipxact:addressBlock>
         <ipxact:name>smc_top</ipxact:name>
+        <ipxact:displayName>SMC Top-Level Address Map</ipxact:displayName>
+        <ipxact:description>Top-level SMC address map exposing the resources accessible to external agents.</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
-        <ipxact:range>'hc8013030</ipxact:range>
+        <ipxact:range>'hc8015000</ipxact:range>
         <ipxact:width>256</ipxact:width>
         <ipxact:registerFile>
           <ipxact:name>smc_cluster_core0_wdt</ipxact:name>
-          <ipxact:description></ipxact:description>
+          <ipxact:displayName>Watchdog Timer Address Map</ipxact:displayName>
+          <ipxact:description>Watchdog timer configuration, counter, compare, and feed and key registers.</ipxact:description>
           <ipxact:addressOffset>'hc0000000</ipxact:addressOffset>
           <ipxact:range>'h24</ipxact:range>
           <ipxact:register>
@@ -239,7 +242,8 @@ KEY reg must be written to before any other register in this addrmap can be writ
         </ipxact:registerFile>
         <ipxact:registerFile>
           <ipxact:name>smc_cluster_core1_wdt</ipxact:name>
-          <ipxact:description></ipxact:description>
+          <ipxact:displayName>Watchdog Timer Address Map</ipxact:displayName>
+          <ipxact:description>Watchdog timer configuration, counter, compare, and feed and key registers.</ipxact:description>
           <ipxact:addressOffset>'hc0000400</ipxact:addressOffset>
           <ipxact:range>'h24</ipxact:range>
           <ipxact:register>
@@ -461,7 +465,8 @@ KEY reg must be written to before any other register in this addrmap can be writ
         </ipxact:registerFile>
         <ipxact:registerFile>
           <ipxact:name>smc_cluster_core2_wdt</ipxact:name>
-          <ipxact:description></ipxact:description>
+          <ipxact:displayName>Watchdog Timer Address Map</ipxact:displayName>
+          <ipxact:description>Watchdog timer configuration, counter, compare, and feed and key registers.</ipxact:description>
           <ipxact:addressOffset>'hc0000800</ipxact:addressOffset>
           <ipxact:range>'h24</ipxact:range>
           <ipxact:register>
@@ -683,7 +688,8 @@ KEY reg must be written to before any other register in this addrmap can be writ
         </ipxact:registerFile>
         <ipxact:registerFile>
           <ipxact:name>smc_cluster_core3_wdt</ipxact:name>
-          <ipxact:description></ipxact:description>
+          <ipxact:displayName>Watchdog Timer Address Map</ipxact:displayName>
+          <ipxact:description>Watchdog timer configuration, counter, compare, and feed and key registers.</ipxact:description>
           <ipxact:addressOffset>'hc0000c00</ipxact:addressOffset>
           <ipxact:range>'h24</ipxact:range>
           <ipxact:register>
@@ -904,7 +910,195 @@ KEY reg must be written to before any other register in this addrmap can be writ
           </ipxact:register>
         </ipxact:registerFile>
         <ipxact:registerFile>
+          <ipxact:name>debug_module</ipxact:name>
+          <ipxact:displayName>Debug Module Hart Interface</ipxact:displayName>
+          <ipxact:description>Memory region through which a hart in Debug Mode exchanges state with the Debug Module: handshake mailboxes, generated instructions, program buffer, data registers, per-hart flags and the debug ROM. The debugger-facing Debug Module registers (dmcontrol, dmstatus, abstractcs, sbcs, ...) are reached over the Debug Module Interface and do not appear in this map.</ipxact:description>
+          <ipxact:addressOffset>'hc0001000</ipxact:addressOffset>
+          <ipxact:range>'h868</ipxact:range>
+          <ipxact:register>
+            <ipxact:name>HALTED</ipxact:name>
+            <ipxact:addressOffset>'h100</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>hartid</ipxact:name>
+              <ipxact:description>Debug ROM causes the hart to write its hart ID here when it is in Debug Mode.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:bitWidth>10</ipxact:bitWidth>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>GOING</ipxact:name>
+            <ipxact:addressOffset>'h104</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>hartid</ipxact:name>
+              <ipxact:description>Debug ROM causes the hart to write 0 here when it begins executing Debug Mode instructions.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:bitWidth>10</ipxact:bitWidth>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>RESUMING</ipxact:name>
+            <ipxact:addressOffset>'h108</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>hartid</ipxact:name>
+              <ipxact:description>Debug ROM causes the hart to write its hart ID here when it leaves Debug Mode.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:bitWidth>10</ipxact:bitWidth>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>EXCEPTION</ipxact:name>
+            <ipxact:addressOffset>'h10c</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>hartid</ipxact:name>
+              <ipxact:description>Debug ROM causes the hart to write 0 here if it takes an exception in Debug Mode.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:bitWidth>10</ipxact:bitWidth>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>WHERETO</ipxact:name>
+            <ipxact:addressOffset>'h300</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>instr</ipxact:name>
+              <ipxact:description>Jump instruction filled in by the Debug Module to direct the hart in Debug Mode.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>ABSTRACT</ipxact:name>
+            <ipxact:dim>5</ipxact:dim>
+            <ipxact:addressOffset>'h328</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>instr</ipxact:name>
+              <ipxact:description>Instruction generated by the Debug Module for the current abstract command.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>PROGBUF</ipxact:name>
+            <ipxact:dim>16</ipxact:dim>
+            <ipxact:addressOffset>'h33c</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>data</ipxact:name>
+              <ipxact:description>Program buffer word shared with the debugger. Byte accesses are supported.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>IMPEBREAK</ipxact:name>
+            <ipxact:addressOffset>'h37c</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>instr</ipxact:name>
+              <ipxact:description>Implicit EBREAK instruction following the program buffer.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h100073</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>DATA</ipxact:name>
+            <ipxact:dim>4</ipxact:dim>
+            <ipxact:addressOffset>'h380</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>data</ipxact:name>
+              <ipxact:description>Abstract command data word shared with the debugger. Byte accesses are supported.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>FLAGS</ipxact:name>
+            <ipxact:description>One flag byte per hart, at byte offset equal to the hart ID. Bit 0 is go (execute the command at WHERETO); bit 1 is resume (leave Debug Mode). Bits 7:2 read as 0.</ipxact:description>
+            <ipxact:addressOffset>'h400</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>flags_0</ipxact:name>
+              <ipxact:description>Hart 0 go/resume flags.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:bitWidth>8</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>flags_1</ipxact:name>
+              <ipxact:description>Hart 1 go/resume flags.</ipxact:description>
+              <ipxact:bitOffset>8</ipxact:bitOffset>
+              <ipxact:bitWidth>8</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>flags_2</ipxact:name>
+              <ipxact:description>Hart 2 go/resume flags.</ipxact:description>
+              <ipxact:bitOffset>16</ipxact:bitOffset>
+              <ipxact:bitWidth>8</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>flags_3</ipxact:name>
+              <ipxact:description>Hart 3 go/resume flags.</ipxact:description>
+              <ipxact:bitOffset>24</ipxact:bitOffset>
+              <ipxact:bitWidth>8</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>ROM</ipxact:name>
+            <ipxact:dim>26</ipxact:dim>
+            <ipxact:addressOffset>'h800</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>data</ipxact:name>
+              <ipxact:description>Debug ROM word. Holds the fixed Debug Mode entry, exception and resume handlers.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+        </ipxact:registerFile>
+        <ipxact:registerFile>
           <ipxact:name>smc_reset_unit</ipxact:name>
+          <ipxact:displayName>Reset Unit Address Map</ipxact:displayName>
+          <ipxact:description>Subsystem reset control, hold and isolation controls, and reset-sequencing status registers.</ipxact:description>
           <ipxact:addressOffset>'hc0002000</ipxact:addressOffset>
           <ipxact:range>'hcc</ipxact:range>
           <ipxact:register>
@@ -1270,11 +1464,14 @@ cannot be written to again</ipxact:description>
         </ipxact:registerFile>
         <ipxact:registerFile>
           <ipxact:name>smc_misc_wrap</ipxact:name>
-          <ipxact:description>Top-level addrmap for SMC misc registers including scratch and chip config</ipxact:description>
+          <ipxact:displayName>SMC Miscellaneous Wrapper Address Map</ipxact:displayName>
+          <ipxact:description>Aggregates the SMC scratch, chip-configuration, and NDM-reset register blocks.</ipxact:description>
           <ipxact:addressOffset>'hc0002800</ipxact:addressOffset>
           <ipxact:range>'h20c</ipxact:range>
           <ipxact:registerFile>
             <ipxact:name>scratch_cold</ipxact:name>
+            <ipxact:displayName>Scratch Address Map</ipxact:displayName>
+            <ipxact:description>General-purpose scratch register bank.</ipxact:description>
             <ipxact:addressOffset>'h0</ipxact:addressOffset>
             <ipxact:range>'h20</ipxact:range>
             <ipxact:register>
@@ -1298,6 +1495,8 @@ cannot be written to again</ipxact:description>
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>scratch_cold_warm</ipxact:name>
+            <ipxact:displayName>Scratch Address Map</ipxact:displayName>
+            <ipxact:description>General-purpose scratch register bank.</ipxact:description>
             <ipxact:addressOffset>'h80</ipxact:addressOffset>
             <ipxact:range>'h20</ipxact:range>
             <ipxact:register>
@@ -1321,6 +1520,8 @@ cannot be written to again</ipxact:description>
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>chip_config</ipxact:name>
+            <ipxact:displayName>Chip Configuration Address Map</ipxact:displayName>
+            <ipxact:description>Chip version, identification, and lifecycle-state registers.</ipxact:description>
             <ipxact:addressOffset>'h100</ipxact:addressOffset>
             <ipxact:range>'h10</ipxact:range>
             <ipxact:register>
@@ -1398,6 +1599,7 @@ cannot be written to again</ipxact:description>
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>ndm_reset</ipxact:name>
+            <ipxact:displayName>NDM Reset Control Address Map</ipxact:displayName>
             <ipxact:description>Per-cluster NDM reset handshake with an external CPU cluster debug module</ipxact:description>
             <ipxact:addressOffset>'h200</ipxact:addressOffset>
             <ipxact:range>'hc</ipxact:range>
@@ -1463,7 +1665,8 @@ Software masks those registers with this value. The maximum is 32.</ipxact:descr
         </ipxact:registerFile>
         <ipxact:registerFile>
           <ipxact:name>gpio_intf</ipxact:name>
-          <ipxact:description>GPIO Interface CSR</ipxact:description>
+          <ipxact:displayName>GPIO Interface Address Map</ipxact:displayName>
+          <ipxact:description>GPIO interface configuration: pad/core routing, receive and transmit enables, and interrupt control.</ipxact:description>
           <ipxact:dim>65</ipxact:dim>
           <ipxact:addressOffset>'hc0003000</ipxact:addressOffset>
           <ipxact:range>'h10</ipxact:range>
@@ -1638,7 +1841,7 @@ the filter may not update before your next transaction, causing unexpected behav
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>write_filter_enable</ipxact:name>
-              <ipxact:description>Filter Enable - when set, only SEP may access the GPIO register interface. This effectivley makes the GPIO a SEP-only interface.
+              <ipxact:description>Write Filter Enable. When set, writes require an exact match between AXI AWPROT and awprot_requirement. When clear, writes are unfiltered. PROT does not identify the initiator.
 WARNING: please read back this register to ensure the filter was written correctly. If you do not do so
 the filter may not update before your next transaction, causing unexpected behavior.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
@@ -1652,7 +1855,7 @@ the filter may not update before your next transaction, causing unexpected behav
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>read_filter_enable</ipxact:name>
-              <ipxact:description>Filter Value - the value that must be written to the filter register to allow access to the GPIO register interface.
+              <ipxact:description>Read Filter Enable. When set, reads require an exact match between AXI ARPROT and arprot_requirement. When clear, reads are unfiltered. PROT does not identify the initiator.
 WARNING: please read back this register to ensure the filter was written correctly. If you do not do so
 the filter may not update before your next transaction, causing unexpected behavior.</ipxact:description>
               <ipxact:bitOffset>1</ipxact:bitOffset>
@@ -1696,7 +1899,8 @@ the filter may not update before your next transaction, causing unexpected behav
         </ipxact:registerFile>
         <ipxact:registerFile>
           <ipxact:name>smc_avsbus_controller</ipxact:name>
-          <ipxact:description>AVSBus V1.3.1 Registers</ipxact:description>
+          <ipxact:displayName>AVSBus Controller Address Map</ipxact:displayName>
+          <ipxact:description>Command, readback, status, and interrupt registers for the AVSBus (V1.3.1) controller.</ipxact:description>
           <ipxact:addressOffset>'hc0004000</ipxact:addressOffset>
           <ipxact:range>'h5c</ipxact:range>
           <ipxact:register>
@@ -2667,10 +2871,14 @@ this is enabled as the AVSBus state machine immediately starts after reset deass
         </ipxact:registerFile>
         <ipxact:registerFile>
           <ipxact:name>smc_i2c_wrap</ipxact:name>
+          <ipxact:displayName>I2C Wrapper Address Map</ipxact:displayName>
+          <ipxact:description>Wrapper address map instantiating the per-controller I2C register blocks and shared control.</ipxact:description>
           <ipxact:addressOffset>'hc0005000</ipxact:addressOffset>
           <ipxact:range>'he0c</ipxact:range>
           <ipxact:registerFile>
             <ipxact:name>i2c</ipxact:name>
+            <ipxact:displayName>I2C Address Map</ipxact:displayName>
+            <ipxact:description>Interrupt status, enable, and test registers for a single I2C controller and target.</ipxact:description>
             <ipxact:dim>3</ipxact:dim>
             <ipxact:addressOffset>'h0</ipxact:addressOffset>
             <ipxact:range>'h200</ipxact:range>
@@ -4925,6 +5133,8 @@ detected while `CTRL.ENABLETARGET = 1`. Cleared when software writes 1.</ipxact:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>i2c_ctrl_regs</ipxact:name>
+            <ipxact:displayName>I2C Control Address Map</ipxact:displayName>
+            <ipxact:description>Top-level enable registers selecting I2C, controller-mode, and SMBus operation.</ipxact:description>
             <ipxact:addressOffset>'he00</ipxact:addressOffset>
             <ipxact:range>'hc</ipxact:range>
             <ipxact:register>
@@ -4974,15 +5184,21 @@ detected while `CTRL.ENABLETARGET = 1`. Cleared when software writes 1.</ipxact:
         </ipxact:registerFile>
         <ipxact:registerFile>
           <ipxact:name>smc_uart_wrap</ipxact:name>
+          <ipxact:displayName>UART Wrapper Address Map</ipxact:displayName>
+          <ipxact:description>Wrapper address map instantiating the per-UART log-engine blocks.</ipxact:description>
           <ipxact:addressOffset>'hc0006000</ipxact:addressOffset>
           <ipxact:range>'h1000</ipxact:range>
           <ipxact:registerFile>
             <ipxact:name>uart_log_engine_wrap</ipxact:name>
+            <ipxact:displayName>UART Log Engine Wrapper Address Map</ipxact:displayName>
+            <ipxact:description>Composes the UART 16550 core, log engine, and their control registers for one UART instance.</ipxact:description>
             <ipxact:dim>4</ipxact:dim>
             <ipxact:addressOffset>'h0</ipxact:addressOffset>
             <ipxact:range>'h400</ipxact:range>
             <ipxact:registerFile>
               <ipxact:name>uart_log_engine_ctrl</ipxact:name>
+              <ipxact:displayName>UART Log Engine Control Address Map</ipxact:displayName>
+              <ipxact:description>Top-level enable register for the UART log-engine block.</ipxact:description>
               <ipxact:addressOffset>'h0</ipxact:addressOffset>
               <ipxact:range>'h4</ipxact:range>
               <ipxact:register>
@@ -5734,7 +5950,8 @@ writing `0` releases it.</ipxact:description>
             </ipxact:registerFile>
             <ipxact:registerFile>
               <ipxact:name>log_engine</ipxact:name>
-              <ipxact:description>Log Engine</ipxact:description>
+              <ipxact:displayName>Log Engine Address Map</ipxact:displayName>
+              <ipxact:description>Configuration and status registers for the UART log engine, including the log region and write pointers.</ipxact:description>
               <ipxact:addressOffset>'h200</ipxact:addressOffset>
               <ipxact:range>'h80</ipxact:range>
               <ipxact:register>
@@ -6983,6 +7200,8 @@ RTL is frozen. Each element has its own write/read lock pair in LOCKS.</ipxact:d
         </ipxact:registerFile>
         <ipxact:registerFile>
           <ipxact:name>efuse_interface_ctrl</ipxact:name>
+          <ipxact:displayName>eFuse Interface Control Address Map</ipxact:displayName>
+          <ipxact:description>Program and read command, address, data, status, and timeout registers for the eFuse interface.</ipxact:description>
           <ipxact:addressOffset>'hc0008000</ipxact:addressOffset>
           <ipxact:range>'h1c</ipxact:range>
           <ipxact:register>
@@ -7366,11 +7585,14 @@ RTL is frozen. Each element has its own write/read lock pair in LOCKS.</ipxact:d
         </ipxact:registerFile>
         <ipxact:registerFile>
           <ipxact:name>smc_telemetry_receiver_wrap</ipxact:name>
+          <ipxact:displayName>Telemetry Receiver Wrapper Address Map</ipxact:displayName>
+          <ipxact:description>Wrapper address map instantiating the telemetry receiver channels.</ipxact:description>
           <ipxact:addressOffset>'hc0009000</ipxact:addressOffset>
           <ipxact:range>'h300</ipxact:range>
           <ipxact:registerFile>
             <ipxact:name>telemetry_receiver</ipxact:name>
-            <ipxact:description>Telemetry Receiver</ipxact:description>
+            <ipxact:displayName>Telemetry Receiver Address Map</ipxact:displayName>
+            <ipxact:description>Configuration, status, and data-buffer registers for a single telemetry receiver channel.</ipxact:description>
             <ipxact:dim>3</ipxact:dim>
             <ipxact:addressOffset>'h0</ipxact:addressOffset>
             <ipxact:range>'h100</ipxact:range>
@@ -7397,8 +7619,10 @@ registers.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>TELEMETRY_RX_FLUSH</ipxact:name>
-                <ipxact:description>Telemetry Receiver Flush. Writing `1` flushes the Telemetry Receiver Buffer and
-all other storage elements in the Telemetry Receiver.</ipxact:description>
+                <ipxact:description>Telemetry Receiver Flush. Writing `1` discards queued messages and resets the assembly write
+pointer. Stored payload bytes are not cleared. In particular, a later short
+message can retain trailing counter values and validity from an earlier
+message. This operation does not erase storage.</ipxact:description>
                 <ipxact:bitOffset>4</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -7635,6 +7859,7 @@ at the bottom of the Telemetry Message Buffer.</ipxact:description>
         </ipxact:registerFile>
         <ipxact:registerFile>
           <ipxact:name>smc_system_timer_octs</ipxact:name>
+          <ipxact:displayName>OCTS System Timer Address Map</ipxact:displayName>
           <ipxact:description>Open Chiplet Time Synchronization (OCTS) System Timer Registers</ipxact:description>
           <ipxact:addressOffset>'hc000a000</ipxact:addressOffset>
           <ipxact:range>'h24</ipxact:range>
@@ -7707,7 +7932,7 @@ both primary and secondary are out of reset.</ipxact:description>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>MODE</ipxact:name>
-              <ipxact:description>Timer mode: 0=PRIMARY, 1=SECONDARY (set by module parameter)</ipxact:description>
+              <ipxact:description>Timer mode driven by the is_primary_i input: 0=PRIMARY (is_primary_i=1), 1=SECONDARY (is_primary_i=0).</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -7849,6 +8074,8 @@ If PRIMARY, this field is always 0.</ipxact:description>
         </ipxact:registerFile>
         <ipxact:registerFile>
           <ipxact:name>dfx_ctrl</ipxact:name>
+          <ipxact:displayName>DFX Control and Status Address Map</ipxact:displayName>
+          <ipxact:description>Memory-repair and MBIST status, chiplet enable, clock and debug controls, and debug-mux selects.</ipxact:description>
           <ipxact:addressOffset>'hc000b800</ipxact:addressOffset>
           <ipxact:range>'h18</ipxact:range>
           <ipxact:register>
@@ -8177,6 +8404,8 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
         </ipxact:registerFile>
         <ipxact:registerFile>
           <ipxact:name>smc_base_config</ipxact:name>
+          <ipxact:displayName>SMC Base Configuration Address Map</ipxact:displayName>
+          <ipxact:description>Base-address, region-size, per-block clock-gating enable, and interrupt configuration registers.</ipxact:description>
           <ipxact:addressOffset>'hc0010000</ipxact:addressOffset>
           <ipxact:range>'h4c</ipxact:range>
           <ipxact:register>
@@ -8598,6 +8827,7 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
         </ipxact:registerFile>
         <ipxact:registerFile>
           <ipxact:name>smc_alias_remap</ipxact:name>
+          <ipxact:displayName>AXI Alias Remap Address Map</ipxact:displayName>
           <ipxact:description>TLB Registers for address remapping and attribute tagging</ipxact:description>
           <ipxact:dim>8</ipxact:dim>
           <ipxact:addressOffset>'hc0012000</ipxact:addressOffset>
@@ -8658,14 +8888,14 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>cacheable</ipxact:name>
-                <ipxact:description>If set, top two bits of a*cache will be tied high</ipxact:description>
-                <ipxact:bitOffset>62</ipxact:bitOffset>
+                <ipxact:description>Set to change the value of the axcache field of the transaction. This field will override all existing axcache bits.</ipxact:description>
+                <ipxact:bitOffset>56</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
                     <ipxact:value>'h0</ipxact:value>
                   </ipxact:reset>
                 </ipxact:resets>
-                <ipxact:bitWidth>1</ipxact:bitWidth>
+                <ipxact:bitWidth>4</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
               <ipxact:field>
@@ -8685,7 +8915,8 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
         </ipxact:registerFile>
         <ipxact:registerFile>
           <ipxact:name>smc_mmode_remap</ipxact:name>
-          <ipxact:description>TLB Registers for address remapping and attribute tagging</ipxact:description>
+          <ipxact:displayName>Output Remap Address Map</ipxact:displayName>
+          <ipxact:description>Address-translation registers that remap outbound transactions and tag their attributes.</ipxact:description>
           <ipxact:dim>8</ipxact:dim>
           <ipxact:addressOffset>'hc0013000</ipxact:addressOffset>
           <ipxact:range>'h8</ipxact:range>
@@ -8711,12 +8942,25 @@ e.g. SMC: 8 * 1MB regions --&gt; 20 bits of address space per region, 36 MSBs fr
                 <ipxact:bitWidth>56</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
+              <ipxact:field>
+                <ipxact:name>valid</ipxact:name>
+                <ipxact:description>If set, accesses to this region are remapped by offset; if clear, they pass through with their address unchanged</ipxact:description>
+                <ipxact:bitOffset>63</ipxact:bitOffset>
+                <ipxact:resets>
+                  <ipxact:reset>
+                    <ipxact:value>'h0</ipxact:value>
+                  </ipxact:reset>
+                </ipxact:resets>
+                <ipxact:bitWidth>1</ipxact:bitWidth>
+                <ipxact:access>read-write</ipxact:access>
+              </ipxact:field>
             </ipxact:register>
           </ipxact:registerFile>
         </ipxact:registerFile>
         <ipxact:registerFile>
           <ipxact:name>smc_xvisor_remap</ipxact:name>
-          <ipxact:description>TLB Registers for address remapping and attribute tagging</ipxact:description>
+          <ipxact:displayName>Output Remap Address Map</ipxact:displayName>
+          <ipxact:description>Address-translation registers that remap outbound transactions and tag their attributes.</ipxact:description>
           <ipxact:dim>8</ipxact:dim>
           <ipxact:addressOffset>'hc0014000</ipxact:addressOffset>
           <ipxact:range>'h8</ipxact:range>
@@ -8742,12 +8986,25 @@ e.g. SMC: 8 * 1MB regions --&gt; 20 bits of address space per region, 36 MSBs fr
                 <ipxact:bitWidth>56</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
+              <ipxact:field>
+                <ipxact:name>valid</ipxact:name>
+                <ipxact:description>If set, accesses to this region are remapped by offset; if clear, they pass through with their address unchanged</ipxact:description>
+                <ipxact:bitOffset>63</ipxact:bitOffset>
+                <ipxact:resets>
+                  <ipxact:reset>
+                    <ipxact:value>'h0</ipxact:value>
+                  </ipxact:reset>
+                </ipxact:resets>
+                <ipxact:bitWidth>1</ipxact:bitWidth>
+                <ipxact:access>read-write</ipxact:access>
+              </ipxact:field>
             </ipxact:register>
           </ipxact:registerFile>
         </ipxact:registerFile>
         <ipxact:registerFile>
           <ipxact:name>smc_inbound_filter_ctrl</ipxact:name>
-          <ipxact:description>Filter control registers. One per filter</ipxact:description>
+          <ipxact:displayName>AXI Filter Control Address Map</ipxact:displayName>
+          <ipxact:description>Per-filter access-control registers defining permitted address ranges and transaction attributes.</ipxact:description>
           <ipxact:dim>16</ipxact:dim>
           <ipxact:addressOffset>'hc0015000</ipxact:addressOffset>
           <ipxact:range>'h20</ipxact:range>
@@ -8863,7 +9120,11 @@ to that granule.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>locked</ipxact:name>
-              <ipxact:description>Lock filter configurations. Write once register</ipxact:description>
+              <ipxact:description>Lock filter configurations. Write once register.
+Once set, this bit cannot be cleared, and every subsequent write to this
+filter entry's FILTER_CONFIG, START_ADDR and END_ADDR registers is steered
+to the AXI error subordinate and terminates with a DECERR response; reads
+still return the locked configuration.</ipxact:description>
               <ipxact:bitOffset>63</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8924,7 +9185,8 @@ Defaults to 7 on reset to match the 8B granule that applies while bursts are dis
         </ipxact:registerFile>
         <ipxact:registerFile>
           <ipxact:name>smc_outbound_filter_ctrl</ipxact:name>
-          <ipxact:description>Filter control registers. One per filter</ipxact:description>
+          <ipxact:displayName>AXI Filter Control Address Map</ipxact:displayName>
+          <ipxact:description>Per-filter access-control registers defining permitted address ranges and transaction attributes.</ipxact:description>
           <ipxact:dim>16</ipxact:dim>
           <ipxact:addressOffset>'hc0016000</ipxact:addressOffset>
           <ipxact:range>'h20</ipxact:range>
@@ -9040,7 +9302,11 @@ to that granule.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>locked</ipxact:name>
-              <ipxact:description>Lock filter configurations. Write once register</ipxact:description>
+              <ipxact:description>Lock filter configurations. Write once register.
+Once set, this bit cannot be cleared, and every subsequent write to this
+filter entry's FILTER_CONFIG, START_ADDR and END_ADDR registers is steered
+to the AXI error subordinate and terminates with a DECERR response; reads
+still return the locked configuration.</ipxact:description>
               <ipxact:bitOffset>63</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -9101,12 +9367,18 @@ Defaults to 7 on reset to match the 8B granule that applies while bursts are dis
         </ipxact:registerFile>
         <ipxact:registerFile>
           <ipxact:name>smc_mailbox</ipxact:name>
-          <ipxact:description></ipxact:description>
+          <ipxact:displayName>SMC AXI-Lite Mailbox Wrapper Address Map</ipxact:displayName>
+          <ipxact:description>SMC-side wrapper instantiating the AXI-Lite mailbox pairs.
+Each outbound_mailbox_N / inbound_mailbox_N pair is the two apertures of one
+bidirectional mailbox and shares a single pair of FIFOs: data written through
+WRITE_DATA in one aperture is what READ_DATA in the other aperture returns.
+The outbound/inbound naming reflects intended use, not an access restriction.</ipxact:description>
           <ipxact:addressOffset>'hc0018000</ipxact:addressOffset>
           <ipxact:range>'h1f850</ipxact:range>
           <ipxact:registerFile>
             <ipxact:name>outbound_mailbox_0</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h0</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -9455,7 +9727,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>inbound_mailbox_0</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h800</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -9804,7 +10077,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>outbound_mailbox_1</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h1000</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -10153,7 +10427,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>inbound_mailbox_1</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h1800</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -10502,7 +10777,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>outbound_mailbox_2</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h2000</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -10851,7 +11127,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>inbound_mailbox_2</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h2800</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -11200,7 +11477,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>outbound_mailbox_3</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h3000</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -11549,7 +11827,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>inbound_mailbox_3</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h3800</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -11898,7 +12177,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>outbound_mailbox_4</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h4000</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -12247,7 +12527,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>inbound_mailbox_4</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h4800</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -12596,7 +12877,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>outbound_mailbox_5</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h5000</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -12945,7 +13227,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>inbound_mailbox_5</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h5800</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -13294,7 +13577,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>outbound_mailbox_6</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h6000</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -13643,7 +13927,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>inbound_mailbox_6</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h6800</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -13992,7 +14277,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>outbound_mailbox_7</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h7000</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -14341,7 +14627,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>inbound_mailbox_7</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h7800</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -14690,7 +14977,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>outbound_mailbox_8</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h8000</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -15039,7 +15327,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>inbound_mailbox_8</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h8800</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -15388,7 +15677,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>outbound_mailbox_9</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h9000</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -15737,7 +16027,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>inbound_mailbox_9</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h9800</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -16086,7 +16377,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>outbound_mailbox_10</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'ha000</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -16435,7 +16727,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>inbound_mailbox_10</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'ha800</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -16784,7 +17077,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>outbound_mailbox_11</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'hb000</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -17133,7 +17427,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>inbound_mailbox_11</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'hb800</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -17482,7 +17777,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>outbound_mailbox_12</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'hc000</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -17831,7 +18127,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>inbound_mailbox_12</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'hc800</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -18180,7 +18477,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>outbound_mailbox_13</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'hd000</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -18529,7 +18827,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>inbound_mailbox_13</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'hd800</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -18878,7 +19177,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>outbound_mailbox_14</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'he000</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -19227,7 +19527,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>inbound_mailbox_14</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'he800</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -19576,7 +19877,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>outbound_mailbox_15</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'hf000</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -19925,7 +20227,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>inbound_mailbox_15</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'hf800</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -20274,7 +20577,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>outbound_mailbox_16</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h10000</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -20623,7 +20927,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>inbound_mailbox_16</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h10800</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -20972,7 +21277,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>outbound_mailbox_17</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h11000</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -21321,7 +21627,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>inbound_mailbox_17</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h11800</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -21670,7 +21977,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>outbound_mailbox_18</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h12000</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -22019,7 +22327,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>inbound_mailbox_18</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h12800</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -22368,7 +22677,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>outbound_mailbox_19</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h13000</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -22717,7 +23027,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>inbound_mailbox_19</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h13800</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -23066,7 +23377,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>outbound_mailbox_20</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h14000</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -23415,7 +23727,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>inbound_mailbox_20</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h14800</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -23764,7 +24077,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>outbound_mailbox_21</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h15000</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -24113,7 +24427,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>inbound_mailbox_21</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h15800</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -24462,7 +24777,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>outbound_mailbox_22</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h16000</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -24811,7 +25127,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>inbound_mailbox_22</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h16800</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -25160,7 +25477,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>outbound_mailbox_23</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h17000</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -25509,7 +25827,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>inbound_mailbox_23</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h17800</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -25858,7 +26177,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>outbound_mailbox_24</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h18000</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -26207,7 +26527,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>inbound_mailbox_24</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h18800</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -26556,7 +26877,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>outbound_mailbox_25</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h19000</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -26905,7 +27227,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>inbound_mailbox_25</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h19800</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -27254,7 +27577,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>outbound_mailbox_26</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h1a000</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -27603,7 +27927,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>inbound_mailbox_26</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h1a800</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -27952,7 +28277,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>outbound_mailbox_27</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h1b000</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -28301,7 +28627,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>inbound_mailbox_27</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h1b800</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -28650,7 +28977,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>outbound_mailbox_28</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h1c000</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -28999,7 +29327,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>inbound_mailbox_28</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h1c800</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -29348,7 +29677,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>outbound_mailbox_29</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h1d000</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -29697,7 +30027,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>inbound_mailbox_29</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h1d800</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -30046,7 +30377,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>outbound_mailbox_30</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h1e000</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -30395,7 +30727,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>inbound_mailbox_30</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h1e800</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -30744,7 +31077,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>outbound_mailbox_31</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h1f000</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -31093,7 +31427,8 @@ On write:
           </ipxact:registerFile>
           <ipxact:registerFile>
             <ipxact:name>inbound_mailbox_31</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+            <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
             <ipxact:addressOffset>'h1f800</ipxact:addressOffset>
             <ipxact:range>'h50</ipxact:range>
             <ipxact:register>
@@ -31443,6 +31778,8 @@ On write:
         </ipxact:registerFile>
         <ipxact:registerFile>
           <ipxact:name>dma_ctrl</ipxact:name>
+          <ipxact:displayName>iDMA Controller Address Map</ipxact:displayName>
+          <ipxact:description>Source, destination, length, and control registers for the iDMA data-mover engine.</ipxact:description>
           <ipxact:addressOffset>'hc0038000</ipxact:addressOffset>
           <ipxact:range>'h138</ipxact:range>
           <ipxact:register>
@@ -31540,7 +31877,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31558,7 +31895,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31576,7 +31913,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31594,7 +31931,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31612,7 +31949,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31630,7 +31967,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31648,7 +31985,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31666,7 +32003,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31684,7 +32021,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31702,7 +32039,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31720,7 +32057,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31738,7 +32075,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31756,7 +32093,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31774,7 +32111,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31792,7 +32129,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31810,7 +32147,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -32605,7 +32942,8 @@ On write:
         </ipxact:registerFile>
         <ipxact:registerFile>
           <ipxact:name>zeroer_ctrl</ipxact:name>
-          <ipxact:description>AXI zeroer control register</ipxact:description>
+          <ipxact:displayName>Zeroer Control Address Map</ipxact:displayName>
+          <ipxact:description>Control and status registers for the AXI memory-zeroing engine.</ipxact:description>
           <ipxact:addressOffset>'hc0038200</ipxact:addressOffset>
           <ipxact:range>'h18</ipxact:range>
           <ipxact:register>
@@ -32644,7 +32982,7 @@ On write:
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>CTRL_STATUS</ipxact:name>
-            <ipxact:description>Writing this register will trigger start of zeroer</ipxact:description>
+            <ipxact:description>Writing this register will trigger start of zeroer. The write is ignored while SIZE is 0.</ipxact:description>
             <ipxact:addressOffset>'h10</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
@@ -32676,6 +33014,8 @@ On write:
         </ipxact:registerFile>
         <ipxact:registerFile>
           <ipxact:name>smc_cpu_ctrl</ipxact:name>
+          <ipxact:displayName>CPU Control Address Map</ipxact:displayName>
+          <ipxact:description>Per-core reset control and status, reset timing, chip configuration, mailbox, and boot-ROM stub registers for the SMC CPU cluster.</ipxact:description>
           <ipxact:addressOffset>'hc0039000</ipxact:addressOffset>
           <ipxact:range>'h2c0</ipxact:range>
           <ipxact:register>
@@ -33320,7 +33660,8 @@ The written value is treated as a signed number using 2s compliment.</ipxact:des
         </ipxact:registerFile>
         <ipxact:registerFile>
           <ipxact:name>oca_i3c_wrap</ipxact:name>
-          <ipxact:description>OCA I3C Controller wrapper</ipxact:description>
+          <ipxact:displayName>OCA I3C Controller Wrapper Address Map</ipxact:displayName>
+          <ipxact:description>Wrapper address map instantiating the per-controller I3C CSR blocks.</ipxact:description>
           <ipxact:addressOffset>'hc003a000</ipxact:addressOffset>
           <ipxact:range>'h6000</ipxact:range>
           <ipxact:registerFile>
@@ -41308,6 +41649,8 @@ reaches termination value.</ipxact:description>
         </ipxact:registerFile>
         <ipxact:registerFile>
           <ipxact:name>smc_cla</ipxact:name>
+          <ipxact:displayName>SMC DFD MMR Aperture Address Map</ipxact:displayName>
+          <ipxact:description>Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST blocks that smc_dfd_wrap instantiates.</ipxact:description>
           <ipxact:addressOffset>'hc0160000</ipxact:addressOffset>
           <ipxact:range>'h4000</ipxact:range>
           <ipxact:registerFile>
@@ -41583,7 +41926,7 @@ reaches termination value.</ipxact:description>
                 </ipxact:resets>
                 <ipxact:bitWidth>32</ipxact:bitWidth>
                 <ipxact:volatile>true</ipxact:volatile>
-                <ipxact:access>read-only</ipxact:access>
+                <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
             <ipxact:register>
@@ -41840,7 +42183,7 @@ reaches termination value.</ipxact:description>
                 </ipxact:resets>
                 <ipxact:bitWidth>16</ipxact:bitWidth>
                 <ipxact:volatile>true</ipxact:volatile>
-                <ipxact:access>read-only</ipxact:access>
+                <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Target</ipxact:name>
@@ -41875,7 +42218,7 @@ reaches termination value.</ipxact:description>
                 </ipxact:resets>
                 <ipxact:bitWidth>15</ipxact:bitWidth>
                 <ipxact:volatile>true</ipxact:volatile>
-                <ipxact:access>read-only</ipxact:access>
+                <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>UpperTarget</ipxact:name>
@@ -41897,7 +42240,7 @@ reaches termination value.</ipxact:description>
                   </ipxact:reset>
                 </ipxact:resets>
                 <ipxact:bitWidth>1</ipxact:bitWidth>
-                <ipxact:access>read-only</ipxact:access>
+                <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
             <ipxact:register>
@@ -41915,7 +42258,7 @@ reaches termination value.</ipxact:description>
                 </ipxact:resets>
                 <ipxact:bitWidth>16</ipxact:bitWidth>
                 <ipxact:volatile>true</ipxact:volatile>
-                <ipxact:access>read-only</ipxact:access>
+                <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Target</ipxact:name>
@@ -41930,7 +42273,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>ResetOnTarget</ipxact:name>
-                <ipxact:description>When Counter = {upper_targe,target}, reset to 0.  With this bit set, counter will provide a periodic tick w/ frequency of (target +1) if the action is set to Auto Incr. The periodic tick will continue till Stop Auto Incr or Clear Counter action.</ipxact:description>
+                <ipxact:description>When Counter = {upper_target,target}, reset to 0.  With this bit set, counter will provide a periodic tick w/ frequency of (target +1) if the action is set to Auto Incr. The periodic tick will continue till Stop Auto Incr or Clear Counter action.</ipxact:description>
                 <ipxact:bitOffset>32</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -41950,7 +42293,7 @@ reaches termination value.</ipxact:description>
                 </ipxact:resets>
                 <ipxact:bitWidth>15</ipxact:bitWidth>
                 <ipxact:volatile>true</ipxact:volatile>
-                <ipxact:access>read-only</ipxact:access>
+                <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>UpperTarget</ipxact:name>
@@ -41972,7 +42315,7 @@ reaches termination value.</ipxact:description>
                   </ipxact:reset>
                 </ipxact:resets>
                 <ipxact:bitWidth>1</ipxact:bitWidth>
-                <ipxact:access>read-only</ipxact:access>
+                <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
             <ipxact:register>
@@ -41990,7 +42333,7 @@ reaches termination value.</ipxact:description>
                 </ipxact:resets>
                 <ipxact:bitWidth>16</ipxact:bitWidth>
                 <ipxact:volatile>true</ipxact:volatile>
-                <ipxact:access>read-only</ipxact:access>
+                <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Target</ipxact:name>
@@ -42025,7 +42368,7 @@ reaches termination value.</ipxact:description>
                 </ipxact:resets>
                 <ipxact:bitWidth>15</ipxact:bitWidth>
                 <ipxact:volatile>true</ipxact:volatile>
-                <ipxact:access>read-only</ipxact:access>
+                <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>UpperTarget</ipxact:name>
@@ -42047,7 +42390,7 @@ reaches termination value.</ipxact:description>
                   </ipxact:reset>
                 </ipxact:resets>
                 <ipxact:bitWidth>1</ipxact:bitWidth>
-                <ipxact:access>read-only</ipxact:access>
+                <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
             <ipxact:register>
@@ -42065,7 +42408,7 @@ reaches termination value.</ipxact:description>
                 </ipxact:resets>
                 <ipxact:bitWidth>16</ipxact:bitWidth>
                 <ipxact:volatile>true</ipxact:volatile>
-                <ipxact:access>read-only</ipxact:access>
+                <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Target</ipxact:name>
@@ -42100,7 +42443,7 @@ reaches termination value.</ipxact:description>
                 </ipxact:resets>
                 <ipxact:bitWidth>15</ipxact:bitWidth>
                 <ipxact:volatile>true</ipxact:volatile>
-                <ipxact:access>read-only</ipxact:access>
+                <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>UpperTarget</ipxact:name>
@@ -42122,12 +42465,12 @@ reaches termination value.</ipxact:description>
                   </ipxact:reset>
                 </ipxact:resets>
                 <ipxact:bitWidth>1</ipxact:bitWidth>
-                <ipxact:access>read-only</ipxact:access>
+                <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgNode0Eap0</ipxact:name>
-              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
               <ipxact:addressOffset>'h120</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -42204,7 +42547,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction0</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>28</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -42216,7 +42559,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction1</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>32</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -42301,7 +42644,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgNode0Eap1</ipxact:name>
-              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
               <ipxact:addressOffset>'h128</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -42378,7 +42721,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction0</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>28</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -42390,7 +42733,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction1</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>32</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -42475,7 +42818,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgNode1Eap0</ipxact:name>
-              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
               <ipxact:addressOffset>'h130</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -42552,7 +42895,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction0</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>28</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -42564,7 +42907,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction1</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>32</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -42649,7 +42992,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgNode1Eap1</ipxact:name>
-              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
               <ipxact:addressOffset>'h138</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -42726,7 +43069,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction0</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>28</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -42738,7 +43081,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction1</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>32</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -42823,7 +43166,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgNode2Eap0</ipxact:name>
-              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
               <ipxact:addressOffset>'h140</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -42900,7 +43243,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction0</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>28</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -42912,7 +43255,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction1</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>32</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -42997,7 +43340,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgNode2Eap1</ipxact:name>
-              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
               <ipxact:addressOffset>'h148</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -43074,7 +43417,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction0</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>28</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -43086,7 +43429,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction1</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>32</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -43171,7 +43514,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgNode3Eap0</ipxact:name>
-              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
               <ipxact:addressOffset>'h150</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -43248,7 +43591,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction0</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>28</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -43260,7 +43603,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction1</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>32</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -43345,7 +43688,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgNode3Eap1</ipxact:name>
-              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
               <ipxact:addressOffset>'h158</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -43422,7 +43765,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction0</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>28</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -43434,7 +43777,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction1</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>32</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -43645,7 +43988,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgEapStatus</ipxact:name>
-              <ipxact:description>Register to indicate if EAP Pair was activated. Use the corresponding w2c register to reset the status. There are 2 bits for each EAP. The bit corresponds to action-0 and action-1 of the EAP. The register is used by SW to know if an action was taken (ex: NMI ISR needs to know which of the EAP triggered the NMI)</ipxact:description>
+              <ipxact:description>Register to indicate if an EAP was activated. There is one status bit per EAP in bits [15:0] (Node0Eap0..Node3Eap3, 4 EAPs per Node across 4 Nodes) and one write-to-clear bit per EAP in bits [47:32] (Node0Eap0W2C..Node3Eap3W2C); write the matching w2c bit to reset a status bit. The register is used by SW to know if an action was taken (ex: NMI ISR needs to know which of the EAP triggered the NMI)</ipxact:description>
               <ipxact:addressOffset>'h188</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -44077,7 +44420,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>EnableCla</ipxact:name>
-                <ipxact:description>Set this bit to 1 to enable CLA. If this bit is set, CLA is clock gated (save pwr)</ipxact:description>
+                <ipxact:description>Set this bit to 1 to enable the CLA functional clock; clear it to 0 to gate that clock (save pwr). The CLA register block runs on a clock whose functional enable is tied high, so this bit can still be written while the functional clock is gated</ipxact:description>
                 <ipxact:bitOffset>6</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -44137,7 +44480,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>ClaLock</ipxact:name>
-                <ipxact:description>If this bit is set, then CLA is locked and the enbale_cla is latched forever</ipxact:description>
+                <ipxact:description>If this bit is set, then CLA is locked and the enable_cla is latched forever</ipxact:description>
                 <ipxact:bitOffset>63</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -44665,7 +45008,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgNode0Eap2</ipxact:name>
-              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
               <ipxact:addressOffset>'h248</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -44742,7 +45085,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction0</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>28</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -44754,7 +45097,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction1</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>32</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -44839,7 +45182,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgNode0Eap3</ipxact:name>
-              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
               <ipxact:addressOffset>'h250</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -44916,7 +45259,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction0</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>28</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -44928,7 +45271,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction1</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>32</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -45013,7 +45356,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgNode1Eap2</ipxact:name>
-              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
               <ipxact:addressOffset>'h258</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -45090,7 +45433,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction0</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>28</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -45102,7 +45445,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction1</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>32</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -45187,7 +45530,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgNode1Eap3</ipxact:name>
-              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
               <ipxact:addressOffset>'h260</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -45264,7 +45607,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction0</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>28</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -45276,7 +45619,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction1</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>32</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -45361,7 +45704,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgNode2Eap2</ipxact:name>
-              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
               <ipxact:addressOffset>'h268</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -45438,7 +45781,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction0</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>28</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -45450,7 +45793,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction1</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>32</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -45535,7 +45878,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgNode2Eap3</ipxact:name>
-              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
               <ipxact:addressOffset>'h270</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -45612,7 +45955,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction0</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>28</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -45624,7 +45967,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction1</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>32</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -45709,7 +46052,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgNode3Eap2</ipxact:name>
-              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
               <ipxact:addressOffset>'h278</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -45786,7 +46129,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction0</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>28</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -45798,7 +46141,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction1</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>32</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -45883,7 +46226,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgNode3Eap3</ipxact:name>
-              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
               <ipxact:addressOffset>'h280</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -45960,7 +46303,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction0</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>28</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -45972,7 +46315,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction1</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>32</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -46462,7 +46805,7 @@ reaches termination value.</ipxact:description>
                 </ipxact:resets>
                 <ipxact:bitWidth>8</ipxact:bitWidth>
                 <ipxact:volatile>true</ipxact:volatile>
-                <ipxact:access>read-only</ipxact:access>
+                <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>TimestampUpper</ipxact:name>
@@ -46475,7 +46818,7 @@ reaches termination value.</ipxact:description>
                 </ipxact:resets>
                 <ipxact:bitWidth>56</ipxact:bitWidth>
                 <ipxact:volatile>true</ipxact:volatile>
-                <ipxact:access>read-only</ipxact:access>
+                <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
             <ipxact:register>
@@ -48034,12 +48377,15 @@ reaches termination value.</ipxact:description>
         </ipxact:registerFile>
         <ipxact:registerFile>
           <ipxact:name>smc_external</ipxact:name>
+          <ipxact:displayName>SMC External Window Address Map</ipxact:displayName>
+          <ipxact:description>Stubbed adopter extension window reserving the region as opaque external memory.</ipxact:description>
           <ipxact:addressOffset>'hc0400000</ipxact:addressOffset>
           <ipxact:range>'h400000</ipxact:range>
         </ipxact:registerFile>
         <ipxact:registerFile>
           <ipxact:name>smc_cluster_plic</ipxact:name>
-          <ipxact:description></ipxact:description>
+          <ipxact:displayName>PLIC Address Map</ipxact:displayName>
+          <ipxact:description>Platform-Level Interrupt Controller register interface.</ipxact:description>
           <ipxact:addressOffset>'hc4000000</ipxact:addressOffset>
           <ipxact:range>'h207008</ipxact:range>
           <ipxact:register>
@@ -48408,7 +48754,8 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
         </ipxact:registerFile>
         <ipxact:registerFile>
           <ipxact:name>smc_cluster_clint</ipxact:name>
-          <ipxact:description></ipxact:description>
+          <ipxact:displayName>CLINT Address Map</ipxact:displayName>
+          <ipxact:description>Core-Local Interruptor: software-interrupt, timer-compare, and machine-time registers.</ipxact:description>
           <ipxact:addressOffset>'hc8000000</ipxact:addressOffset>
           <ipxact:range>'hc000</ipxact:range>
           <ipxact:register>
@@ -48469,7 +48816,8 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
         </ipxact:registerFile>
         <ipxact:registerFile>
           <ipxact:name>smc_cluster_core0_beu</ipxact:name>
-          <ipxact:description></ipxact:description>
+          <ipxact:displayName>Bus Error Unit Address Map</ipxact:displayName>
+          <ipxact:description>Status registers reporting correctable and uncorrectable I-cache, D-cache, and TileLink bus errors.</ipxact:description>
           <ipxact:addressOffset>'hc8010000</ipxact:addressOffset>
           <ipxact:range>'h30</ipxact:range>
           <ipxact:register>
@@ -48537,11 +48885,11 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
               <ipxact:name>value</ipxact:name>
-              <ipxact:description>Physical address of error event. No reset value</ipxact:description>
+              <ipxact:description>Physical address captured with CAUSE when an enabled error arrives and CAUSE is zero. Software may overwrite the value; writes take priority over capture. No reset value</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:bitWidth>56</ipxact:bitWidth>
               <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-only</ipxact:access>
+              <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
           </ipxact:register>
           <ipxact:register>
@@ -48748,6 +49096,7 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>ACCRUED_ENABLE</ipxact:name>
+            <ipxact:description>Sticky accrued error status. The legacy name ACCRUED_ENABLE does not denote an enable mask. Error events set these bits independently of ENABLE. Ordinary software writes replace the bits (write zero to clear) and take priority over simultaneous events. PLIC_ENABLE and LOCAL_ENABLE mask this status for interrupt delivery.</ipxact:description>
             <ipxact:addressOffset>'h20</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
@@ -48760,11 +49109,12 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>icache_tlbus</ipxact:name>
-              <ipxact:description>Coarse grain interrupt enable mask for ICache Tilelink bus error.</ipxact:description>
+              <ipxact:description>Sticky accrued status for ICache Tilelink bus error.</ipxact:description>
               <ipxact:bitOffset>1</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -48772,11 +49122,12 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>icache_correctable</ipxact:name>
-              <ipxact:description>Coarse grain interrupt enable mask for ICache ECC correctable bus error.</ipxact:description>
+              <ipxact:description>Sticky accrued status for ICache ECC correctable bus error.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -48784,6 +49135,7 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
@@ -48796,6 +49148,7 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
@@ -48808,11 +49161,12 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>dcache_tlbus</ipxact:name>
-              <ipxact:description>Coarse grain interrupt enable mask for DCache Tilelink bus error.</ipxact:description>
+              <ipxact:description>Sticky accrued status for DCache Tilelink bus error.</ipxact:description>
               <ipxact:bitOffset>5</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -48820,11 +49174,12 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>dcache_correctable</ipxact:name>
-              <ipxact:description>Coarse grain interrupt enable mask for DCache ECC correctable bus error.</ipxact:description>
+              <ipxact:description>Sticky accrued status for DCache ECC correctable bus error.</ipxact:description>
               <ipxact:bitOffset>6</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -48832,11 +49187,12 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>dcache_uncorrectable</ipxact:name>
-              <ipxact:description>Coarse grain interrupt enable mask for DCache ECC uncorrectable bus error.</ipxact:description>
+              <ipxact:description>Sticky accrued status for DCache ECC uncorrectable bus error.</ipxact:description>
               <ipxact:bitOffset>7</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -48844,6 +49200,7 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
           </ipxact:register>
@@ -48951,7 +49308,8 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
         </ipxact:registerFile>
         <ipxact:registerFile>
           <ipxact:name>smc_cluster_core1_beu</ipxact:name>
-          <ipxact:description></ipxact:description>
+          <ipxact:displayName>Bus Error Unit Address Map</ipxact:displayName>
+          <ipxact:description>Status registers reporting correctable and uncorrectable I-cache, D-cache, and TileLink bus errors.</ipxact:description>
           <ipxact:addressOffset>'hc8011000</ipxact:addressOffset>
           <ipxact:range>'h30</ipxact:range>
           <ipxact:register>
@@ -49019,11 +49377,11 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
               <ipxact:name>value</ipxact:name>
-              <ipxact:description>Physical address of error event. No reset value</ipxact:description>
+              <ipxact:description>Physical address captured with CAUSE when an enabled error arrives and CAUSE is zero. Software may overwrite the value; writes take priority over capture. No reset value</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:bitWidth>56</ipxact:bitWidth>
               <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-only</ipxact:access>
+              <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
           </ipxact:register>
           <ipxact:register>
@@ -49230,6 +49588,7 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>ACCRUED_ENABLE</ipxact:name>
+            <ipxact:description>Sticky accrued error status. The legacy name ACCRUED_ENABLE does not denote an enable mask. Error events set these bits independently of ENABLE. Ordinary software writes replace the bits (write zero to clear) and take priority over simultaneous events. PLIC_ENABLE and LOCAL_ENABLE mask this status for interrupt delivery.</ipxact:description>
             <ipxact:addressOffset>'h20</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
@@ -49242,11 +49601,12 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>icache_tlbus</ipxact:name>
-              <ipxact:description>Coarse grain interrupt enable mask for ICache Tilelink bus error.</ipxact:description>
+              <ipxact:description>Sticky accrued status for ICache Tilelink bus error.</ipxact:description>
               <ipxact:bitOffset>1</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -49254,11 +49614,12 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>icache_correctable</ipxact:name>
-              <ipxact:description>Coarse grain interrupt enable mask for ICache ECC correctable bus error.</ipxact:description>
+              <ipxact:description>Sticky accrued status for ICache ECC correctable bus error.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -49266,6 +49627,7 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
@@ -49278,6 +49640,7 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
@@ -49290,11 +49653,12 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>dcache_tlbus</ipxact:name>
-              <ipxact:description>Coarse grain interrupt enable mask for DCache Tilelink bus error.</ipxact:description>
+              <ipxact:description>Sticky accrued status for DCache Tilelink bus error.</ipxact:description>
               <ipxact:bitOffset>5</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -49302,11 +49666,12 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>dcache_correctable</ipxact:name>
-              <ipxact:description>Coarse grain interrupt enable mask for DCache ECC correctable bus error.</ipxact:description>
+              <ipxact:description>Sticky accrued status for DCache ECC correctable bus error.</ipxact:description>
               <ipxact:bitOffset>6</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -49314,11 +49679,12 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>dcache_uncorrectable</ipxact:name>
-              <ipxact:description>Coarse grain interrupt enable mask for DCache ECC uncorrectable bus error.</ipxact:description>
+              <ipxact:description>Sticky accrued status for DCache ECC uncorrectable bus error.</ipxact:description>
               <ipxact:bitOffset>7</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -49326,6 +49692,7 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
           </ipxact:register>
@@ -49433,7 +49800,8 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
         </ipxact:registerFile>
         <ipxact:registerFile>
           <ipxact:name>smc_cluster_core2_beu</ipxact:name>
-          <ipxact:description></ipxact:description>
+          <ipxact:displayName>Bus Error Unit Address Map</ipxact:displayName>
+          <ipxact:description>Status registers reporting correctable and uncorrectable I-cache, D-cache, and TileLink bus errors.</ipxact:description>
           <ipxact:addressOffset>'hc8012000</ipxact:addressOffset>
           <ipxact:range>'h30</ipxact:range>
           <ipxact:register>
@@ -49501,11 +49869,11 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
               <ipxact:name>value</ipxact:name>
-              <ipxact:description>Physical address of error event. No reset value</ipxact:description>
+              <ipxact:description>Physical address captured with CAUSE when an enabled error arrives and CAUSE is zero. Software may overwrite the value; writes take priority over capture. No reset value</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:bitWidth>56</ipxact:bitWidth>
               <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-only</ipxact:access>
+              <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
           </ipxact:register>
           <ipxact:register>
@@ -49712,6 +50080,7 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>ACCRUED_ENABLE</ipxact:name>
+            <ipxact:description>Sticky accrued error status. The legacy name ACCRUED_ENABLE does not denote an enable mask. Error events set these bits independently of ENABLE. Ordinary software writes replace the bits (write zero to clear) and take priority over simultaneous events. PLIC_ENABLE and LOCAL_ENABLE mask this status for interrupt delivery.</ipxact:description>
             <ipxact:addressOffset>'h20</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
@@ -49724,11 +50093,12 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>icache_tlbus</ipxact:name>
-              <ipxact:description>Coarse grain interrupt enable mask for ICache Tilelink bus error.</ipxact:description>
+              <ipxact:description>Sticky accrued status for ICache Tilelink bus error.</ipxact:description>
               <ipxact:bitOffset>1</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -49736,11 +50106,12 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>icache_correctable</ipxact:name>
-              <ipxact:description>Coarse grain interrupt enable mask for ICache ECC correctable bus error.</ipxact:description>
+              <ipxact:description>Sticky accrued status for ICache ECC correctable bus error.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -49748,6 +50119,7 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
@@ -49760,6 +50132,7 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
@@ -49772,11 +50145,12 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>dcache_tlbus</ipxact:name>
-              <ipxact:description>Coarse grain interrupt enable mask for DCache Tilelink bus error.</ipxact:description>
+              <ipxact:description>Sticky accrued status for DCache Tilelink bus error.</ipxact:description>
               <ipxact:bitOffset>5</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -49784,11 +50158,12 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>dcache_correctable</ipxact:name>
-              <ipxact:description>Coarse grain interrupt enable mask for DCache ECC correctable bus error.</ipxact:description>
+              <ipxact:description>Sticky accrued status for DCache ECC correctable bus error.</ipxact:description>
               <ipxact:bitOffset>6</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -49796,11 +50171,12 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>dcache_uncorrectable</ipxact:name>
-              <ipxact:description>Coarse grain interrupt enable mask for DCache ECC uncorrectable bus error.</ipxact:description>
+              <ipxact:description>Sticky accrued status for DCache ECC uncorrectable bus error.</ipxact:description>
               <ipxact:bitOffset>7</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -49808,6 +50184,7 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
           </ipxact:register>
@@ -49915,7 +50292,8 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
         </ipxact:registerFile>
         <ipxact:registerFile>
           <ipxact:name>smc_cluster_core3_beu</ipxact:name>
-          <ipxact:description></ipxact:description>
+          <ipxact:displayName>Bus Error Unit Address Map</ipxact:displayName>
+          <ipxact:description>Status registers reporting correctable and uncorrectable I-cache, D-cache, and TileLink bus errors.</ipxact:description>
           <ipxact:addressOffset>'hc8013000</ipxact:addressOffset>
           <ipxact:range>'h30</ipxact:range>
           <ipxact:register>
@@ -49983,11 +50361,11 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
               <ipxact:name>value</ipxact:name>
-              <ipxact:description>Physical address of error event. No reset value</ipxact:description>
+              <ipxact:description>Physical address captured with CAUSE when an enabled error arrives and CAUSE is zero. Software may overwrite the value; writes take priority over capture. No reset value</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:bitWidth>56</ipxact:bitWidth>
               <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-only</ipxact:access>
+              <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
           </ipxact:register>
           <ipxact:register>
@@ -50194,6 +50572,7 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>ACCRUED_ENABLE</ipxact:name>
+            <ipxact:description>Sticky accrued error status. The legacy name ACCRUED_ENABLE does not denote an enable mask. Error events set these bits independently of ENABLE. Ordinary software writes replace the bits (write zero to clear) and take priority over simultaneous events. PLIC_ENABLE and LOCAL_ENABLE mask this status for interrupt delivery.</ipxact:description>
             <ipxact:addressOffset>'h20</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
@@ -50206,11 +50585,12 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>icache_tlbus</ipxact:name>
-              <ipxact:description>Coarse grain interrupt enable mask for ICache Tilelink bus error.</ipxact:description>
+              <ipxact:description>Sticky accrued status for ICache Tilelink bus error.</ipxact:description>
               <ipxact:bitOffset>1</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -50218,11 +50598,12 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>icache_correctable</ipxact:name>
-              <ipxact:description>Coarse grain interrupt enable mask for ICache ECC correctable bus error.</ipxact:description>
+              <ipxact:description>Sticky accrued status for ICache ECC correctable bus error.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -50230,6 +50611,7 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
@@ -50242,6 +50624,7 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
@@ -50254,11 +50637,12 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>dcache_tlbus</ipxact:name>
-              <ipxact:description>Coarse grain interrupt enable mask for DCache Tilelink bus error.</ipxact:description>
+              <ipxact:description>Sticky accrued status for DCache Tilelink bus error.</ipxact:description>
               <ipxact:bitOffset>5</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -50266,11 +50650,12 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>dcache_correctable</ipxact:name>
-              <ipxact:description>Coarse grain interrupt enable mask for DCache ECC correctable bus error.</ipxact:description>
+              <ipxact:description>Sticky accrued status for DCache ECC correctable bus error.</ipxact:description>
               <ipxact:bitOffset>6</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -50278,11 +50663,12 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>dcache_uncorrectable</ipxact:name>
-              <ipxact:description>Coarse grain interrupt enable mask for DCache ECC uncorrectable bus error.</ipxact:description>
+              <ipxact:description>Sticky accrued status for DCache ECC uncorrectable bus error.</ipxact:description>
               <ipxact:bitOffset>7</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -50290,6 +50676,7 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
           </ipxact:register>

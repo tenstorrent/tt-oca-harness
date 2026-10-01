@@ -4,8 +4,9 @@
 
 Programs one output-remap region so an AP or STEE window access is rewritten
 to a seed-selected outbound address, then programs one outbound-filter entry
-to allow only that remapped beat. A second region is left at offset 0 so its
-translated address misses the allow window (block-by-default DECERR).
+to allow only that remapped beat. A second region is left invalid, so its
+access passes through untranslated and misses the allow window
+(block-by-default DECERR).
 
 Address rewrite: ``{offset[55:IdxStart], adjusted[IdxStart-1:0]}``.
 IdxStart is log2(AP window / region count) from the generated map
@@ -38,7 +39,7 @@ from seq_lib.sep_fabric_csr_bank_seq import (
     STEE_BASE,
 )
 
-# och_sep_top_addrmap / hw/sys/sep/regs/gen/c/sep_addr.h
+# sep_top_addrmap / hw/sys/sep/regs/gen/c/sep_addr.h
 AP_REGION_BASE = sym("AP_REGION_MEM_BASE_ADDR")
 STEE_REGION_BASE = sym("STEE_REGION_MEM_BASE_ADDR")
 # Region count from fabric.adoc ("Sixteen remap regions") and the RDL array.
@@ -66,6 +67,7 @@ OUTFILT_N_ENTRIES = indexed_block_count("OUTBOUND_FILTER_CTRL")
 REMAP_TARGET_BASE = 0x8000_0000
 REMAP_ATTRS = AP_OUTPUT_REMAP_CTRL_0.offset("REGION_REGION_ATTRS")
 REMAP_OFFSET_MASK = AP_OUTPUT_REMAP_CTRL_0.field_mask("REGION_REGION_ATTRS", "offset")
+REMAP_VALID = AP_OUTPUT_REMAP_CTRL_0.field_mask("REGION_REGION_ATTRS", "valid")
 
 RESP_OKAY = 0
 RESP_DECERR = 3
@@ -98,8 +100,8 @@ class SepOutboundRemapCfg:
         self.intra = rng.randrange(0, 0x1000, 8)
         # Next beat of the same region. The allow entry covers one address,
         # so this beat translates to a non-zero address outside that entry.
-        # Offset 0 on the other region can also miss because the translated
-        # address is low; this beat cannot.
+        # The invalid region can also miss because its address is not
+        # translated at all; this beat cannot.
         self.neighbor_intra = self.intra + 8 if self.intra + 8 < _REGION_SPAN else self.intra - 8
         self.offset = REMAP_TARGET_BASE
         self.access_addr = remap_access_addr(self.region_base, self.region, self.intra)
@@ -107,7 +109,7 @@ class SepOutboundRemapCfg:
         self.neighbor_addr = remap_access_addr(self.region_base, self.region, self.neighbor_intra)
         self.neighbor_expect = remapped_addr(self.offset, self.neighbor_intra)
         self.forbidden_addr = remap_access_addr(self.region_base, self.forbidden_region, self.intra)
-        self.forbidden_expect = remapped_addr(0, self.intra)
+        self.forbidden_expect = self.forbidden_addr
         if self.expect_addr == self.access_addr:
             raise RuntimeError("remap target equals identity -- vacuous")
         if self.expect_addr == self.forbidden_expect:
@@ -136,7 +138,7 @@ class SepOutboundRemap(SepAxiRegDriver):
 
     async def program(self, cfg: SepOutboundRemapCfg) -> None:
         attrs = cfg.csr_base + cfg.region * REMAP_STRIDE + REMAP_ATTRS
-        masked = cfg.offset & REMAP_OFFSET_MASK
+        masked = (cfg.offset & REMAP_OFFSET_MASK) | REMAP_VALID
         await self._wr(attrs, masked & 0xFFFF_FFFF)
         await self._wr(attrs + 4, masked >> 32)
         rb_lo = await self._rd(attrs)

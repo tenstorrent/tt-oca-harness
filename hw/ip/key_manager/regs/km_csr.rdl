@@ -7,7 +7,7 @@
 //
 //
 // Base Address: 0x0001_4000
-// Size: 4KB (0x1000)
+// Size: 0x4C0 of registers in a 2KB (0x800) decode window
 
 addrmap km_csr {
     name = "Key Manager Control and Status Registers";
@@ -1656,4 +1656,7 @@ addrmap km_csr {
 
     debug_reg DEBUG @ 0x1FC;
 
+`ifdef OCAH_DOC_MEMORY_MAP
+    ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+`endif
 };

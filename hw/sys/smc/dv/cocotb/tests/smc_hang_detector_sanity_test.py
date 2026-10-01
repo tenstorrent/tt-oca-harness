@@ -8,8 +8,8 @@ import pyuvm
 from seq_lib.smc_hang_detector_sanity_test_seq import smc_hang_detector_sanity_test_seq
 from smc_base_test import smc_base_test
 
-# Poison (3) + per-source (7) + OR (3): every `_await_irqs` call in the body.
-_EXPECTED_IRQ_LEGS = 13
+# Poison (4) + per-source (7) + OR (3): every `_await_irqs` call in the body.
+_EXPECTED_IRQ_LEGS = 14
 
 
 @pyuvm.test()

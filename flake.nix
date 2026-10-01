@@ -1,5 +1,7 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 {
-  description = "Environment and Docker Container for OCAH";
+  description = "Environment, devShell and Docker Container for OCAH";
 
   inputs = {
     # Ensure git submodules are checked out when the flake is fetched.
@@ -51,14 +53,6 @@
         pkgs = lib.pkgsFor system;
         ocah_shell = {bundle_uv ? true}: let
           ocah = import ./ocah_deps.nix {inherit inputs pkgs bundle_uv;};
-          container = import ./nix/container.nix {
-            inherit
-              self
-              inputs
-              pkgs
-              ocah
-              ;
-          };
         in
           with ocah;
             pkgs.mkShell {
@@ -66,12 +60,13 @@
               packages = ocah_pkgs ++ (with pkgs; [fuse-overlayfs]);
               env =
                 ocah_env
-                // rec {
-                  OCAH_DOCKER_IMAGE = "localhost/${container.name}:${OCAH_CONTAINER_HASH}";
-                  OCAH_DOC_HTML_IMAGE = OCAH_DOCKER_IMAGE;
-                  OCAH_DOC_PDF_IMAGE = OCAH_DOCKER_IMAGE;
-                  OCAH_EDA_IMAGE = OCAH_DOCKER_IMAGE;
-                  OCAH_CONTAINER_HASH = container.hash;
+                // {
+                  # Match container to devShell
+                  OCAH_IMAGE_WITH_UV =
+                    if bundle_uv
+                    then "true"
+                    else "false";
+                  # Set DevShell only environment variables here
                 };
             };
       in rec {

@@ -1,103 +1,142 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SEP CPU Wrapper
-// Contains VeeR EL2 core complex (which itself contains the RV32 core, Data and Instruction TCMs, PIC and Debug Module)
-// The external interface is mostly not EL2-specific, which means the EL2 core can be replaced with another core relatively easily and transparently to other modules
+// Wrap the VeeR EL2 core complex behind a mostly core-agnostic SEP CPU boundary.
+//
+// Contains the RV32 core, PIC, and debug module with the ICCM and DCCM controllers; the TCM
+// RAM macros sit outside, in sep_tcm_wrapper. The core boots from the boot ROM base and
+// core_id is 0. The external
+// interface is mostly not EL2-specific so another core can replace EL2 with limited churn
+// above.
+//
+// VeeR reset bypass (scan_rst_n) is not exposed on the el2_veer_wrapper boundary. Lockstep
+// ctrl/status ports stay present even when RV_LOCKSTEP_ENABLE is off so the hierarchy
+// above keeps one footprint.
+//
+// The LSU, IFU and debug masters first pass through a window remap that rewrites addresses in
+// [sep_local_base_addr_i, sep_local_base_addr_i + 0x3000_0000) to 0x1000_0000 plus the
+// offset. An IFU demux then sends boot ROM addresses to the ROM port, SEP SRAM addresses to
+// the SRAM port, and everything else to a DECERR slave; an LSU demux sends boot ROM addresses
+// to the ROM port and everything else to the xbar port. Master AxUSER carries SEP_SOURCE_ID
+// and AtoP is 0. The TCM structs connect to sep_tcm_wrapper, instantiated in
+// sep_ip_integration.
+//
+// nmi_vec_i and jtag_id_i should be tied to constants or sourced from a CSR.
 
 module sep_cpu (
-  input logic clk_i,
-  input logic rst_ni,
-  input logic dbg_rstb_i,  // EL2 debugger reset
+  input logic clk_i,                          // System clock.
+  input logic rst_ni,                         // Active-low reset.
+  input logic dbg_rstb_i,                     // EL2 debug-module reset, active-low; also resets the
+                                              // mpc_reset_run_req_i synchronizer.
 
-  input  logic jtag_tck_i,   // JTAG clk
-  input  logic jtag_tms_i,   // JTAG TMS
-  input  logic jtag_tdi_i,   // JTAG tdi
-  input  logic jtag_trst_ni, // JTAG Reset
-  output logic jtag_tdo_o,   // JTAG TDO
-  output logic jtag_tdoEn_o, // JTAG Test Data Output enable
+  input  logic jtag_tck_i,                    // JTAG test clock of the core debug TAP.
+  input  logic jtag_tms_i,                    // JTAG test mode select, sampled on jtag_tck_i.
+  input  logic jtag_tdi_i,                    // JTAG test data input, sampled on jtag_tck_i.
+  input  logic jtag_trst_ni,                  // JTAG TAP reset, active-low.
+  output logic jtag_tdo_o,                    // JTAG test data output; valid while jtag_tdoEn_o is
+                                              // high.
+  output logic jtag_tdoEn_o,                  // JTAG Test Data Output enable.
 
-  // external MPC halt/run interface
-  input  logic mpc_debug_halt_req_i, // Async halt request
-  input  logic mpc_debug_run_req_i,  // Async run request
-  input  logic mpc_reset_run_req_i,  // Run/halt after reset
-  output logic mpc_debug_halt_ack_o, // Halt ack
-  output logic mpc_debug_run_ack_o,  // Run ack
-  output logic debug_brkpt_status_o, // debug breakpoint
+  input  logic mpc_debug_halt_req_i,          // Asynchronous multi-processor-controller debug halt
+                                              // request.
+  input  logic mpc_debug_run_req_i,           // Asynchronous multi-processor-controller debug run
+                                              // request.
+  input  logic mpc_reset_run_req_i,           // 1 to run and 0 to halt in debug mode after reset;
+                                              // synchronized to clk_i here.
+  output logic mpc_debug_halt_ack_o,          // Acknowledge of mpc_debug_halt_req_i.
+  output logic mpc_debug_run_ack_o,           // Acknowledge of mpc_debug_run_req_i.
+  output logic debug_brkpt_status_o,          // Debug breakpoint status from the core.
 
-  input  logic cpu_halt_req_i,      // Async halt req to CPU
-  output logic cpu_halt_ack_o,      // core response to halt
-  output logic cpu_halt_status_o,   // 1'b1 indicates core is halted
-  output logic debug_mode_status_o, // Core to the PMU that core is in debug mode. When core is in debug mode, the PMU should refrain from sendng a halt or run request
-  input  logic cpu_run_req_i,       // Async restart req to CPU
-  output logic cpu_run_ack_o,       // Core response to run req
+  input  logic cpu_halt_req_i,                // Async halt req to CPU.
+  output logic cpu_halt_ack_o,                // Core acknowledge of cpu_halt_req_i.
+  output logic cpu_halt_status_o,             // High while the core is halted.
+  output logic debug_mode_status_o,           // High while the core is in debug mode; the power
+                                              // manager must not send a halt or run request then.
+  input  logic cpu_run_req_i,                 // Async restart req to CPU.
+  output logic cpu_run_ack_o,                 // Core response to run req.
 
-  // Excluding from coverage as usage is determined by the integrator of the VeeR core.
-  // Note: VeeR reset bypass (scan_rst_n) not exposed on the el2_veer_wrapper boundary.
-  input logic test_en_i,  // DFT test-enable
+  input logic test_en_i,                      // DFT test-enable (scan-enable) to the core scan_mode
+                                              // and the demux test inputs.
 
-  // DMI port for uncore
-  input  logic        dmi_core_enable,
-  input  logic        dmi_uncore_enable,
-  output logic        dmi_uncore_en,
-  output logic        dmi_uncore_wr_en,
-  output logic [6:0]  dmi_uncore_addr,
-  output logic [31:0] dmi_uncore_wdata,
-  input  logic [31:0] dmi_uncore_rdata,
-  output logic        dmi_active,
+  input  logic        dmi_core_enable_i,      // Enables DMI accesses to the core debug module
+                                              // registers.
+  input  logic        dmi_uncore_enable_i,    // Enables DMI accesses to the uncore aperture of the
+                                              // DMI address space.
+  output logic        dmi_uncore_en_o,        // DMI access strobe to the uncore aperture, gated by
+                                              // dmi_uncore_enable_i.
+  output logic        dmi_uncore_wr_en_o,     // Write qualifier for the uncore DMI access; low for
+                                              // reads.
+  output logic [6:0]  dmi_uncore_addr_o,      // DMI register address of the uncore access.
+  output logic [31:0] dmi_uncore_wdata_o,     // Write data of the uncore DMI access.
+  input  logic [31:0] dmi_uncore_rdata_i,     // Read data returned by the uncore for the addressed
+                                              // DMI register.
+  output logic        dmi_active_o,           // High while the debug transport drives a DMI access
+                                              // to the core or uncore.
 
-  // These values should be tied to constants in the top level or sourced from a CSR
-  input logic [31:1] nmi_vec,  // PC to jump to @ NMI
-  input logic [31:1] jtag_id,
+  input logic [31:1] nmi_vec_i,               // PC bits [31:1] the core jumps to on an NMI.
+  input logic [31:1] jtag_id_i,               // JTAG IDCODE bits [31:1] reported by the core debug
+                                              // TAP; bit 0 is fixed at 1.
 
-  // IRQs
-  input logic                       nmi_int,
-  input logic                       timer_int,
-  input logic                       soft_int,
-  input logic [sep_pkg::SEP_CPU_IRQ_WIDTH-1:0] extintsrc_req,
+  input logic                       nmi_int_i,  // Non-maskable interrupt to the core; hold for at
+                                                // least two clk_i cycles.
+  input logic                       timer_int_i,  // Machine timer interrupt to the core.
+  input logic                       soft_int_i,  // Machine software interrupt to the core.
+  input logic [sep_pkg::SEP_CPU_IRQ_WIDTH-1:0] extintsrc_req_i,  // External interrupt requests to
+                                                                 // the core PIC; bit i is PIC
+                                                                 // source i+1.
 
-  output sep_pkg::sep_cpu_trace_t sep_cpu_trace,
+  output sep_pkg::sep_cpu_trace_t sep_cpu_trace_o,  // Core instruction trace: retired instruction,
+                                                    // address, valid, exception, cause, interrupt,
+                                                    // and tval.
 
-  output logic iccm_ecc_single_error,
-  output logic iccm_ecc_double_error,
-  output logic dccm_ecc_single_error,
-  output logic dccm_ecc_double_error,
+  output logic iccm_ecc_single_error_o,       // ICCM single-bit (corrected) ECC error indication
+                                              // from the core.
+  output logic iccm_ecc_double_error_o,       // ICCM double-bit (uncorrectable) ECC error
+                                              // indication from the core.
+  output logic dccm_ecc_single_error_o,       // DCCM single-bit (corrected) ECC error indication
+                                              // from the core.
+  output logic dccm_ecc_double_error_o,       // DCCM double-bit (uncorrectable) ECC error
+                                              // indication from the core.
 
-  output logic dec_tlu_perfcnt0, // toggles when slot0 perf counter 0 has an event inc
-  output logic dec_tlu_perfcnt1,
-  output logic dec_tlu_perfcnt2,
-  output logic dec_tlu_perfcnt3,
+  output logic dec_tlu_perfcnt0_o,            // Toggles when slot0 perf counter 0 has an event
+                                              // increment.
+  output logic dec_tlu_perfcnt1_o,            // Toggles when slot0 perf counter 1 has an event
+                                              // increment.
+  output logic dec_tlu_perfcnt2_o,            // Toggles when slot0 perf counter 2 has an event
+                                              // increment.
+  output logic dec_tlu_perfcnt3_o,            // Toggles when slot0 perf counter 3 has an event
+                                              // increment.
 
-  // Unconditional: the VeeR wrapper's lockstep ports only exist under
-  // RV_LOCKSTEP_ENABLE, but this module's do not, so the hierarchy above keeps one
-  // port footprint regardless of the define.
-  input  sep_pkg::sep_lockstep_ctrl_t   lockstep_ctrl_i,
-  output sep_pkg::sep_lockstep_status_t lockstep_status_o,
+  input  sep_pkg::sep_lockstep_ctrl_t   lockstep_ctrl_i,  // Lockstep corruption-detection disable
+                                                          // and error-injection enable; ignored
+                                                          // unless built with RV_LOCKSTEP_ENABLE.
+  output sep_pkg::sep_lockstep_status_t lockstep_status_o,  // Lockstep corruption-detected status;
+                                                            // held at zero unless built with
+                                                            // RV_LOCKSTEP_ENABLE.
 
-  // TCM (ICCM/DCCM) memory interface - routed to sep_wrapper for macro instantiation
-  output sep_pkg::sep_cpu_tcm_req_t sep_cpu_tcm_req_o,
-  input  sep_pkg::sep_cpu_tcm_rsp_t sep_cpu_tcm_rsp_i,
+  output sep_pkg::sep_cpu_tcm_req_t sep_cpu_tcm_req_o,  // Per-bank ICCM and DCCM macro requests,
+                                                        // with the macro clock, to sep_tcm_wrapper.
+  input  sep_pkg::sep_cpu_tcm_rsp_t sep_cpu_tcm_rsp_i,  // Per-bank ICCM and DCCM read data and ECC
+                                                        // from sep_tcm_wrapper.
 
-  // AXI interfaces (IFU split into ROM and SRAM via internal demux)
-  output sep_pkg::sep_32_64_3_12_axi_req_t      ifu_rom_axi_req_o,
-  input  sep_pkg::sep_32_64_3_12_axi_resp_t     ifu_rom_axi_resp_i,
-
-  output sep_pkg::sep_32_64_3_12_axi_req_t      ifu_sram_axi_req_o,
-  input  sep_pkg::sep_32_64_3_12_axi_resp_t     ifu_sram_axi_resp_i,
-
-  output sep_pkg::sep_32_64_3_12_axi_req_t      lsu_rom_axi_req_o,
-  input  sep_pkg::sep_32_64_3_12_axi_resp_t     lsu_rom_axi_resp_i,
-
-  output sep_pkg::sep_32_64_3_12_axi_req_t      lsu_xbar_axi_req_o,
-  input  sep_pkg::sep_32_64_3_12_axi_resp_t     lsu_xbar_axi_resp_i,
-
-  output sep_pkg::sep_32_64_3_12_axi_req_t      dbg_axi_req_o,
-  input  sep_pkg::sep_32_64_3_12_axi_resp_t     dbg_axi_resp_i,
-
-  input  sep_pkg::sep_32_64_6_12_axi_req_t      cpu_tcm_axi_req_i,
-  output sep_pkg::sep_32_64_6_12_axi_resp_t     cpu_tcm_axi_resp_o,
-
-  input  logic [31:0]                 sep_local_base_addr_i
+  output sep_pkg::sep_32_64_3_12_axi_req_t      ifu_rom_axi_req_o,  // IFU fetch request for boot ROM addresses.
+  input  sep_pkg::sep_32_64_3_12_axi_resp_t     ifu_rom_axi_resp_i,  // IFU fetch response from the boot ROM.
+  output sep_pkg::sep_32_64_3_12_axi_req_t      ifu_sram_axi_req_o,  // IFU fetch request for SEP SRAM addresses.
+  input  sep_pkg::sep_32_64_3_12_axi_resp_t     ifu_sram_axi_resp_i,  // IFU fetch response from the SEP SRAM.
+  output sep_pkg::sep_32_64_3_12_axi_req_t      lsu_rom_axi_req_o,  // LSU request for boot ROM addresses.
+  input  sep_pkg::sep_32_64_3_12_axi_resp_t     lsu_rom_axi_resp_i,  // LSU response from the boot ROM.
+  output sep_pkg::sep_32_64_3_12_axi_req_t      lsu_xbar_axi_req_o,  // LSU request for every address outside the boot ROM, to the SEP local xbar.
+  input  sep_pkg::sep_32_64_3_12_axi_resp_t     lsu_xbar_axi_resp_i,  // LSU response from the SEP local xbar.
+  output sep_pkg::sep_32_64_3_12_axi_req_t      dbg_axi_req_o,  // Debug-module system-bus request,
+                                                                // after the local alias remap.
+  input  sep_pkg::sep_32_64_3_12_axi_resp_t     dbg_axi_resp_i,  // Debug-module system-bus
+                                                                 // response.
+  input  sep_pkg::sep_32_64_6_12_axi_req_t      cpu_tcm_axi_req_i,  // Request into the core DMA slave port for ICCM and DCCM access.
+  output sep_pkg::sep_32_64_6_12_axi_resp_t     cpu_tcm_axi_resp_o,  // Response from the core DMA slave port; B and R USER carry SEP_SOURCE_ID.
+  input  logic [31:0]                 sep_local_base_addr_i  // Base of the SEP local alias window;
+                                                             // LSU, IFU, and debug addresses inside
+                                                             // it are remapped to 0x1000_0000 plus
+                                                             // the offset.
 );
 
   import el2_pkg::el2_param_t;
@@ -138,8 +177,8 @@ module sep_cpu (
   // dbg_rstb_i deasserts well before rst_ni, so the value is stable when sampled.
   logic mpc_reset_run_req_sync;
 
-  prim_sync2r #(
-    .WIDTH(1)
+  prim_flop_2sync #(
+    .Width(1)
   ) u_mpc_reset_run_req_sync (
     .clk_i  (clk_i),
     .d_i    (mpc_reset_run_req_i),
@@ -148,7 +187,7 @@ module sep_cpu (
   );
 
   el2_veer_wrapper #(
-    .RESET_VEC(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR)
+    .RESET_VEC(sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_BASE_ADDR)
   ) u_el2_veer_wrapper (
     .clk       (clk_i),
     .rst_l     (rst_ni),
@@ -180,50 +219,50 @@ module sep_cpu (
     .mbist_mode (1'b0),    // This is unused in the EL2, tie down
 
     // DMI port for uncore
-    .dmi_core_enable   (dmi_core_enable),
-    .dmi_uncore_enable (dmi_uncore_enable),
-    .dmi_uncore_en     (dmi_uncore_en),
-    .dmi_uncore_wr_en  (dmi_uncore_wr_en),
-    .dmi_uncore_addr   (dmi_uncore_addr),
-    .dmi_uncore_wdata  (dmi_uncore_wdata),
-    .dmi_uncore_rdata  (dmi_uncore_rdata),
-    .dmi_active        (dmi_active),
+    .dmi_core_enable   (dmi_core_enable_i),
+    .dmi_uncore_enable (dmi_uncore_enable_i),
+    .dmi_uncore_en     (dmi_uncore_en_o),
+    .dmi_uncore_wr_en  (dmi_uncore_wr_en_o),
+    .dmi_uncore_addr   (dmi_uncore_addr_o),
+    .dmi_uncore_wdata  (dmi_uncore_wdata_o),
+    .dmi_uncore_rdata  (dmi_uncore_rdata_i),
+    .dmi_active        (dmi_active_o),
 
     // jtag_id and nmi_vec should be tied to constant in the top level or sourced from a CSR
-    .nmi_vec (nmi_vec),
-    .jtag_id (jtag_id),
+    .nmi_vec (nmi_vec_i),
+    .jtag_id (jtag_id_i),
     .core_id ('0),      // drives register that controls mhartid, a single core el2 can safely tie this to 0
 
     // Non-maskable interrupt, should be asserted for at least 2 clock cycles
     //(Documentation section 3.16, https://chipsalliance.github.io/Cores-VeeR-EL2/html/main/docs_rendered/html/memory-map.html#non-maskable-interrupt-nmi-signal-and-vector)
-    .nmi_int       (nmi_int),
-    .timer_int     (timer_int),
-    .soft_int      (soft_int),
-    .extintsrc_req (extintsrc_req),
+    .nmi_int       (nmi_int_i),
+    .timer_int     (timer_int_i),
+    .soft_int      (soft_int_i),
+    .extintsrc_req (extintsrc_req_i),
 
     // Trace interface
-    .trace_rv_i_insn_ip      (sep_cpu_trace.trace_rv_i_insn_ip),
-    .trace_rv_i_address_ip   (sep_cpu_trace.trace_rv_i_address_ip),
-    .trace_rv_i_valid_ip     (sep_cpu_trace.trace_rv_i_valid_ip),
-    .trace_rv_i_exception_ip (sep_cpu_trace.trace_rv_i_exception_ip),
-    .trace_rv_i_ecause_ip    (sep_cpu_trace.trace_rv_i_ecause_ip),
-    .trace_rv_i_interrupt_ip (sep_cpu_trace.trace_rv_i_interrupt_ip),
-    .trace_rv_i_tval_ip      (sep_cpu_trace.trace_rv_i_tval_ip),
+    .trace_rv_i_insn_ip      (sep_cpu_trace_o.trace_rv_i_insn_ip),
+    .trace_rv_i_address_ip   (sep_cpu_trace_o.trace_rv_i_address_ip),
+    .trace_rv_i_valid_ip     (sep_cpu_trace_o.trace_rv_i_valid_ip),
+    .trace_rv_i_exception_ip (sep_cpu_trace_o.trace_rv_i_exception_ip),
+    .trace_rv_i_ecause_ip    (sep_cpu_trace_o.trace_rv_i_ecause_ip),
+    .trace_rv_i_interrupt_ip (sep_cpu_trace_o.trace_rv_i_interrupt_ip),
+    .trace_rv_i_tval_ip      (sep_cpu_trace_o.trace_rv_i_tval_ip),
 
     .lsu_bus_clk_en (1'b1), // Clock ratio b/w cpu core clk & AHB master interface
     .ifu_bus_clk_en (1'b1), // Clock ratio b/w cpu core clk & AHB master interface
     .dbg_bus_clk_en (1'b1), // Clock ratio b/w cpu core clk & AHB master interface
     .dma_bus_clk_en (1'b1), // Clock ratio b/w cpu core clk & AHB slave interface
 
-    .iccm_ecc_single_error (iccm_ecc_single_error),
-    .iccm_ecc_double_error (iccm_ecc_double_error),
-    .dccm_ecc_single_error (dccm_ecc_single_error),
-    .dccm_ecc_double_error (dccm_ecc_double_error),
+    .iccm_ecc_single_error (iccm_ecc_single_error_o),
+    .iccm_ecc_double_error (iccm_ecc_double_error_o),
+    .dccm_ecc_single_error (dccm_ecc_single_error_o),
+    .dccm_ecc_double_error (dccm_ecc_double_error_o),
 
-    .dec_tlu_perfcnt0 (dec_tlu_perfcnt0), // toggles when slot0 perf counter 0 has an event inc
-    .dec_tlu_perfcnt1 (dec_tlu_perfcnt1),
-    .dec_tlu_perfcnt2 (dec_tlu_perfcnt2),
-    .dec_tlu_perfcnt3 (dec_tlu_perfcnt3),
+    .dec_tlu_perfcnt0 (dec_tlu_perfcnt0_o), // toggles when slot0 perf counter 0 has an event inc
+    .dec_tlu_perfcnt1 (dec_tlu_perfcnt1_o),
+    .dec_tlu_perfcnt2 (dec_tlu_perfcnt2_o),
+    .dec_tlu_perfcnt3 (dec_tlu_perfcnt3_o),
 
 `ifdef RV_LOCKSTEP_ENABLE
     .disable_corruption_detection_i (lockstep_ctrl_i.disable_corruption_detection),
@@ -530,17 +569,17 @@ module sep_cpu (
   sep_pkg::sep_ifu_demux_port_t ifu_aw_select, ifu_ar_select;
 
   always_comb begin
-    if ((ifu_axi_req.aw.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR) && (ifu_axi_req.aw.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_SIZE)) begin
+    if ((ifu_axi_req.aw.addr >= sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_BASE_ADDR) && (ifu_axi_req.aw.addr < sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_SIZE)) begin
       ifu_aw_select = sep_pkg::SEP_IFU_DEMUX_PORT_ROM;
-    end else if ((ifu_axi_req.aw.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_BASE_ADDR) && (ifu_axi_req.aw.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_SIZE)) begin
+    end else if ((ifu_axi_req.aw.addr >= sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR) && (ifu_axi_req.aw.addr < sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_SIZE)) begin
       ifu_aw_select = sep_pkg::SEP_IFU_DEMUX_PORT_SRAM;
     end else begin
       ifu_aw_select = sep_pkg::SEP_IFU_DEMUX_PORT_ERR_SLV;
     end
 
-    if ((ifu_axi_req.ar.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR) && (ifu_axi_req.ar.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_SIZE)) begin
+    if ((ifu_axi_req.ar.addr >= sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_BASE_ADDR) && (ifu_axi_req.ar.addr < sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_SIZE)) begin
       ifu_ar_select = sep_pkg::SEP_IFU_DEMUX_PORT_ROM;
-    end else if ((ifu_axi_req.ar.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_BASE_ADDR) && (ifu_axi_req.ar.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_SIZE)) begin
+    end else if ((ifu_axi_req.ar.addr >= sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR) && (ifu_axi_req.ar.addr < sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_SIZE)) begin
       ifu_ar_select = sep_pkg::SEP_IFU_DEMUX_PORT_SRAM;
     end else begin
       ifu_ar_select = sep_pkg::SEP_IFU_DEMUX_PORT_ERR_SLV;
@@ -612,13 +651,13 @@ module sep_cpu (
   sep_pkg::sep_lsu_demux_port_t lsu_aw_select, lsu_ar_select;
 
   always_comb begin
-    if ((lsu_axi_req.aw.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR) && (lsu_axi_req.aw.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_SIZE)) begin
+    if ((lsu_axi_req.aw.addr >= sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_BASE_ADDR) && (lsu_axi_req.aw.addr < sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_SIZE)) begin
       lsu_aw_select = sep_pkg::SEP_LSU_DEMUX_PORT_ROM;
     end else begin
       lsu_aw_select = sep_pkg::SEP_LSU_DEMUX_PORT_XBAR;
     end
 
-    if ((lsu_axi_req.ar.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR) && (lsu_axi_req.ar.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_SIZE)) begin
+    if ((lsu_axi_req.ar.addr >= sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_BASE_ADDR) && (lsu_axi_req.ar.addr < sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_SIZE)) begin
       lsu_ar_select = sep_pkg::SEP_LSU_DEMUX_PORT_ROM;
     end else begin
       lsu_ar_select = sep_pkg::SEP_LSU_DEMUX_PORT_XBAR;

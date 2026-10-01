@@ -351,7 +351,7 @@ class SepEfuseImage:
           * LC_STATE is restricted to the 7 legal raw codes (never an illegal
             encoding) — pinned via ``lc_raw`` or drawn from the legal set.
           * The map has no reserved tail: the whole range is real registers
-            (PQC hashes, SEP_*_ID, SPARE0-7), and every one is randomized like
+            (PQC hashes, SEP_*_ID, SPARE0-8), and every one is randomized like
             any other data field. Nothing here is pinned to zero.
           * LOCKS stays unlocked unless ``lock_prob`` > 0, so every field reads
             back (read-locks would return 0xbadcab1e instead of data).
@@ -361,7 +361,7 @@ class SepEfuseImage:
         # LOCKS and LOCKS_SPARE are one 96-bit vector, not two independent
         # fields. Build it once, then slice each register by its bit offset
         # from the LOCKS base: LOCKS <- [63:0], LOCKS_SPARE <- [95:64]
-        # (slots 32-39 in [79:64]; [95:80] are unassigned and stay 0).
+        # (slots 32-40 in [81:64]; [95:82] are unassigned and stay 0).
         # Drawing per kind=="locks" field would write a fresh vector into each,
         # so LOCKS_SPARE would receive bits [31:0] of a second draw instead of
         # [95:64] of the first.

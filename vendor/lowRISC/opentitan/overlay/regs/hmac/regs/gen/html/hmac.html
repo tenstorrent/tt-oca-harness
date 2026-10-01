@@ -6,7 +6,8 @@
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: hmac</h2>
+<h2 id="regmap-hmac">HMAC Accelerator</h2>
+<p>Accelerator for SHA-2 256/384/512-based keyed HMAC and the hash function</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
 <li><strong>KEY[32]</strong>: 32 registers, base 0x24, stride 0x4</li>
@@ -34,9 +35,9 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>2</td><td>hmac_err</td><td>RW</td><td>0x0</td><td>HMAC error has occurred. ERR_CODE register shows which error occurred.</td></tr>
+<tr><td>2</td><td>hmac_err</td><td>RW1C</td><td>0x0</td><td>HMAC error has occurred. ERR_CODE register shows which error occurred.</td></tr>
 <tr><td>1</td><td>fifo_empty</td><td>R</td><td>0x0</td><td>The message FIFO is empty.<br>This interrupt is raised only if the message FIFO is actually writable by software, i.e., if all of the following conditions are met:<br>i) The HMAC block is not running in HMAC mode and performing the second round of computing the final hash of the outer key as well as the result of the first round using the inner key.<br>ii) Software has not yet written the Process or Stop command to finish the hashing operation.<br>For the interrupt to be raised, the message FIFO must also have been full previously.<br>Otherwise, the hardware empties the FIFO faster than software can fill it and there is no point in interrupting the software to inform it about the message FIFO being empty.</td></tr>
-<tr><td>0</td><td>hmac_done</td><td>RW</td><td>0x0</td><td>HMAC/SHA-2 has completed.</td></tr>
+<tr><td>0</td><td>hmac_done</td><td>RW1C</td><td>0x0</td><td>HMAC/SHA-2 has completed.</td></tr>
 </table>
 <h3 id="INTR_ENABLE">INTR_ENABLE</h3>
 <table>
@@ -76,10 +77,10 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>3</td><td>hash_continue</td><td>W</td><td>-</td><td>When 1 is written to this field, SHA-2 or HMAC will continue hashing based on the current hash in the digest registers and the message length, which both have to be restored to switch context.</td></tr>
-<tr><td>2</td><td>hash_stop</td><td>W</td><td>-</td><td>When 1 is written to this field, SHA-2 or HMAC will afterwards set the `hmac_done` interrupt as soon as the current block has been hashed.<br>The hash can then be read from the registers !!DIGEST_0 to !!DIGEST_15.<br>Together with the message length in !!MSG_LENGTH_LOWER and !!MSG_LENGTH_UPPER, this forms the information that has to be saved before switching context.</td></tr>
-<tr><td>1</td><td>hash_process</td><td>W</td><td>-</td><td>If 1 is written to this field, SHA-2 or HMAC calculates the digest or signing based on currently received message.</td></tr>
-<tr><td>0</td><td>hash_start</td><td>W</td><td>-</td><td>If 1 is written into this field, SHA-2 or HMAC begins its operation.<br>CPU must configure relative information first, such as the digest size, secret key and the key length.</td></tr>
+<tr><td>3</td><td>hash_continue</td><td>W1C</td><td>-</td><td>When 1 is written to this field, SHA-2 or HMAC will continue hashing based on the current hash in the digest registers and the message length, which both have to be restored to switch context.</td></tr>
+<tr><td>2</td><td>hash_stop</td><td>W1C</td><td>-</td><td>When 1 is written to this field, SHA-2 or HMAC will afterwards set the `hmac_done` interrupt as soon as the current block has been hashed.<br>The hash can then be read from the registers !!DIGEST_0 to !!DIGEST_15.<br>Together with the message length in !!MSG_LENGTH_LOWER and !!MSG_LENGTH_UPPER, this forms the information that has to be saved before switching context.</td></tr>
+<tr><td>1</td><td>hash_process</td><td>W1C</td><td>-</td><td>If 1 is written to this field, SHA-2 or HMAC calculates the digest or signing based on currently received message.</td></tr>
+<tr><td>0</td><td>hash_start</td><td>W1C</td><td>-</td><td>If 1 is written into this field, SHA-2 or HMAC begins its operation.<br>CPU must configure relative information first, such as the digest size, secret key and the key length.</td></tr>
 </table>
 <h3 id="STATUS">STATUS</h3>
 <table>

@@ -28,6 +28,10 @@
 `SMC_TB_IN(logic, rst_cold_ni)
 `SMC_TB_IN(logic, rst_cool_ni)
 
+`SMC_TB_OUT(logic, clk_smc_o)
+`SMC_TB_OUT(logic, clk_ref_o)
+`SMC_TB_OUT(logic, clk_periph_o)
+
 `SMC_TB_OUT(logic, powergood_stable_o)
 `SMC_TB_OUT(logic, rst_cold_stable_ref_clk_no)
 `SMC_TB_OUT(logic, rst_primary_ref_clk_no)
@@ -239,6 +243,9 @@
 // into u_dut.u_smc under smc_public_scope.vlt (TB-top public only).
 `SMC_TB_OUT(logic [smc_pkg::NUM_GPIO_WRAPS-1:0], tb_core2pad_o)
 `SMC_TB_OUT(logic [smc_pkg::NUM_GPIO_WRAPS-1:0], tb_core2pad_en_o)
+// Per-pad LSIO ownership: a pad an LSIO function selects takes that function's
+// direction instead of its INPUT_BY_DEFAULT.
+`SMC_TB_OUT(logic [smc_pkg::NUM_GPIO_WRAPS-1:0], tb_lsio_interface_select)
 // Per-pad input-buffer enable. gpio.sv drives core2pad_en from the CSRs only
 // (its default branch is 1'b0 for every instance) and carries
 // INPUT_BY_DEFAULT on pad2core_en, so this is the bus on which the padring's
@@ -415,6 +422,12 @@
 // on each of the SMC downstream AXI-Lite master interfaces).
 `SMC_TB_OUT(logic, tb_axil_dtp_csr_active)
 `SMC_TB_OUT(logic, tb_axil_external_active)
+// The adopter external port's request addresses with their valids, so a probe
+// can tie the port activity it sees to the address it issued.
+`SMC_TB_OUT(logic, tb_axil_external_arvalid)
+`SMC_TB_OUT(logic [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0], tb_axil_external_araddr)
+`SMC_TB_OUT(logic, tb_axil_external_awvalid)
+`SMC_TB_OUT(logic [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0], tb_axil_external_awaddr)
 `SMC_TB_OUT(logic, tb_axil_efuse_bank_active)
 `SMC_TB_OUT(logic, tb_axil_any_master_active)
 
@@ -567,6 +580,8 @@
 `SMC_TB_OUT(logic, tb_efuse_read_done)
 `SMC_TB_OUT(logic, tb_efuse_read_error)
 `SMC_TB_OUT(logic [31:0], tb_efuse_readback)
+`SMC_TB_OUT(logic [15:0], tb_efuse_read_addr)
+`SMC_TB_OUT(logic [15:0], tb_efuse_program_addr)
 `SMC_TB_OUT(logic [smc_efuse_pkg::NumEfuseBits-1:0], efuse_shadow_probe_o)
 
 // P2-15: drive product lc_state_i directly (diff {n,p}). No Force /

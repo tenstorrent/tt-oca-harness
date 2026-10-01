@@ -51,7 +51,7 @@
             this.offset = uvm_reg_field::type_id::create("offset");
             this.offset.configure(this, 44, 12, "RW", 0, 'h0, 1, 1, 0);
             this.cacheable = uvm_reg_field::type_id::create("cacheable");
-            this.cacheable.configure(this, 1, 62, "RW", 0, 'h0, 1, 1, 0);
+            this.cacheable.configure(this, 4, 56, "RW", 0, 'h0, 1, 1, 0);
             this.valid = uvm_reg_field::type_id::create("valid");
             this.valid.configure(this, 1, 63, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build

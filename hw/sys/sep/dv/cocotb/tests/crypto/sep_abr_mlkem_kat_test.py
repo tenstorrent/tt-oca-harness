@@ -64,13 +64,9 @@ from seq_lib.sep_abr_mlkem_seq import (
     KEM_DK_WORDS,
     KEM_EK_WORDS,
     KEM_K_WORDS,
-    KEM_NAME0_EXP,
-    KEM_NAME1_EXP,
     KEM_ST_ERROR,
     KEM_ST_READY,
     KEM_ST_VALID,
-    KEM_VER0_EXP,
-    KEM_VER1_EXP,
     MLKEM_CIPHERTEXT,
     MLKEM_CTRL,
     MLKEM_DECAPS_KEY,
@@ -169,23 +165,21 @@ class sep_abr_mlkem_kat_test(sep_base_test):
         await self.bring_up_no_cpu()
         kem = SepAbrMlkem(self)
 
-        # Identity gate. Every window compare below reads back over this same
-        # aperture, so a dead decode would make them all compares against zero.
+        # Logged for the record, not graded: abr_reg.rdl declares NAME and
+        # VERSION sw=r with no reset, and no SEP document gives their values.
+        # A dead decode fails the window compares against the ACVP vectors.
         name0 = await kem.rd32(MLKEM_NAME0)
         name1 = await kem.rd32(MLKEM_NAME1)
-        assert name0 == KEM_NAME0_EXP and name1 == KEM_NAME1_EXP, (
-            f"MLKEM NAME 0x{name0:08x}_0x{name1:08x}, "
-            f"expected 0x{KEM_NAME0_EXP:08x}_0x{KEM_NAME1_EXP:08x} (KEM-1024)"
-        )
-        self.logger.info("CHK-KEM-NAME PASS: NAME0=0x%08x NAME1=0x%08x (KEM-1024)", name0, name1)
-
         ver0 = await kem.rd32(MLKEM_VERSION0)
         ver1 = await kem.rd32(MLKEM_VERSION1)
-        assert ver0 == KEM_VER0_EXP and ver1 == KEM_VER1_EXP, (
-            f"MLKEM VERSION 0x{ver0:08x}_0x{ver1:08x}, "
-            f"expected 0x{KEM_VER0_EXP:08x}_0x{KEM_VER1_EXP:08x} (2.0.1)"
+        self.logger.info(
+            "ABR ML-KEM identity words (information only): NAME0=0x%08x NAME1=0x%08x "
+            "VERSION0=0x%08x VERSION1=0x%08x",
+            name0,
+            name1,
+            ver0,
+            ver1,
         )
-        self.logger.info("CHK-KEM-VERSION PASS: VER0=0x%08x VER1=0x%08x (2.0.1)", ver0, ver1)
 
         # --- CHK-KEM-KEYGEN ---------------------------------------------------
         await kem.write_words(MLKEM_SEED_D, list(NIST_KEM_KG_D))

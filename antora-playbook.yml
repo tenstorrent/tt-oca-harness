@@ -42,6 +42,7 @@ asciidoc:
     kroki-fetch-diagram: true
   extensions:
     - asciidoctor-kroki
+    - ./tools/doc/block-captions.js
 runtime:
   log:
     # A broken xref or a missing include target is logged at ERROR, but
@@ -62,5 +63,7 @@ ui:
 antora:
   extensions:
     - '@antora/lunr-extension'
+    - ./tools/doc/block-indexes.js
+    - ./tools/doc/preserve-smn-fragments.js
 output:
   dir: ./doc/_build/html_antora

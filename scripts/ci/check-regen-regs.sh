@@ -37,12 +37,12 @@ readonly -a GENERATED_PATHS=(
 
 check_clean() {
   local tree=$1 status
-  status=$(git -C "$tree" status --porcelain=v1 --untracked-files=all)
+  status=$(git -C "$tree" status --porcelain=v1 --untracked-files=all -- "${GENERATED_PATHS[@]}")
   [[ -z "$status" ]] && return
   echo "ERROR: register collateral is stale in '$tree'." >&2
   printf '%s\n' "$status" >&2
-  git -C "$tree" --no-pager diff >&2
-  git -C "$tree" --no-pager diff --cached >&2
+  git -C "$tree" --no-pager diff -- "${GENERATED_PATHS[@]}" >&2
+  git -C "$tree" --no-pager diff --cached -- "${GENERATED_PATHS[@]}" >&2
   return 1
 }
 

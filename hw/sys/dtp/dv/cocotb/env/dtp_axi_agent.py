@@ -20,6 +20,8 @@ from ocah_axi_vip import (
 )
 from pyuvm import ConfigDB, uvm_agent
 
+from .dtp_axi_port_history import DtpAxiPortHistory
+
 
 class DtpAxiAgent(uvm_agent):
     def build_phase(self) -> None:
@@ -81,13 +83,25 @@ class DtpAxiAgent(uvm_agent):
         assert scoreboard is not None, "DtpAxiScoreboard did not publish a scoreboard"
         monitors = {
             "smc_axi": OcahAxiMonitor(
-                tb.axi_bus("smc_axi", passive=True), tb.clk, name="dtp_smc_axi_monitor"
+                tb.axi_bus("smc_axi", passive=True),
+                tb.clk,
+                reset=tb.sys_rst_n,
+                reset_active_level=False,
+                name="dtp_smc_axi_monitor",
             ),
             "smc_otp": OcahAxiLiteMonitor(
-                tb.axi_bus("smc_otp", passive=True), tb.clk, name="dtp_smc_otp_monitor"
+                tb.axi_bus("smc_otp", passive=True),
+                tb.clk,
+                reset=tb.sys_rst_n,
+                reset_active_level=False,
+                name="dtp_smc_otp_monitor",
             ),
             "sep_otp": OcahAxiLiteMonitor(
-                tb.axi_bus("sep_otp", passive=True), tb.clk, name="dtp_sep_otp_monitor"
+                tb.axi_bus("sep_otp", passive=True),
+                tb.clk,
+                reset=tb.sys_rst_n,
+                reset_active_level=False,
+                name="dtp_sep_otp_monitor",
             ),
         }
         watchers = {
@@ -113,13 +127,16 @@ class DtpAxiAgent(uvm_agent):
                 name="dtp_sep_otp_watcher",
             ),
         }
+        histories = {target: DtpAxiPortHistory() for target in monitors}
         for target, monitor in monitors.items():
             scoreboard.attach_monitor(monitor, stream=target)
+            monitor.add_item_callback(histories[target].observe)
             await monitor.start()
         for watcher in watchers.values():
             await watcher.start()
         self.cfg.axi_monitors = monitors
         self.cfg.axi_watchers = watchers
+        self.cfg.axi_port_histories = histories
         self.logger.info("Shared AXI monitors/watchers attached to scoreboard")
 
     def backdoor_read64(self, addr: int) -> int:

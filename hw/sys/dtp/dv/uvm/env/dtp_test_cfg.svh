@@ -7,8 +7,8 @@
 // and 100..1000 ns, even so both half periods are whole nanoseconds),
 // carries the knob-derived controls (the cocotb environment knobs of the
 // same names), the negative-validation switches, the downstream STAP attach
-// mask, the scoreboard features a test requires, and the shared-VIP
-// evidence policy per recorder. The base test fills the knobs
+// mask and host segment attach, the scoreboard features a test requires, and
+// the shared-VIP evidence policy per recorder. The base test fills the knobs
 // (read_knobs), seeds and randomizes it once, then derives dtp_env_cfg from
 // it. The cocotb twin is env/dtp_test_cfg.py.
 
@@ -30,8 +30,6 @@ class dtp_test_cfg extends ocah_test_cfg;
   // --- knob-derived controls (cocotb env knob names) ---------------------
   // +DTP_IDCODE_READS_PER_LOOP: IDCODE reads per pass (minimum 2).
   int unsigned idcode_reads_per_loop = 4;
-  // +DTP_JTAG2AXI_RANDOM_OPS: write+readback pairs per single-op pass.
-  int unsigned jtag2axi_random_ops = 16;
   // +DTP_RAND_WALKS: random TMS walks per sanity pass.
   int unsigned rand_walks = 16;
   // +DTP_DBG_DISABLE_MULTI_HOT_ROWS: multi-hot rows of the dbg_disable
@@ -49,12 +47,16 @@ class dtp_test_cfg extends ocah_test_cfg;
   int unsigned xtrig_negative_check;
   bit j2a_geometry_negative;     // +DTP_J2A_GEOMETRY_NEGATIVE
   bit j2a_status_bit_negative;   // +DTP_J2A_STATUS_BIT_NEGATIVE
+  bit j2a_bus_req_negative;      // +DTP_J2A_BUS_REQ_NEGATIVE
   bit jtag2axi_ref_model_negative;  // +DTP_J2A_REF_MODEL_NEGATIVE
 
   // --- bench topology -------------------------------------------------------
   // Bit i splices the shared JTAG slave device behind STAP host port i
   // (dtp_stap_ds_name order: io, smc, sep, extra0); 0 keeps the loopback.
   bit [DtpStapCount-1:0] stap_ds_attach_mask = '0;
+  // 1 places the tb_top host segment behind the extended STAP host scan
+  // interface; 0 keeps the host scan loopback.
+  bit stap_host_segment_attach = 1'b0;
 
   // --- evidence policy -----------------------------------------------------
   // JTAG scenarios must show TCK activity; the cross-trigger group drives
@@ -73,7 +75,6 @@ class dtp_test_cfg extends ocah_test_cfg;
   // Fill the knob-derived controls through the one knob accessor.
   function void read_knobs();
     idcode_reads_per_loop = ocah_knobs::get_int_min("DTP_IDCODE_READS_PER_LOOP", 4, 2);
-    jtag2axi_random_ops   = ocah_knobs::get_int_min("DTP_JTAG2AXI_RANDOM_OPS", 16, 1);
     rand_walks            = ocah_knobs::get_int_min("DTP_RAND_WALKS", 16, 1);
     scan_matrix_multi_hot_rows =
             ocah_knobs::get_int_min("DTP_DBG_DISABLE_MULTI_HOT_ROWS", 6, 1);
@@ -86,6 +87,7 @@ class dtp_test_cfg extends ocah_test_cfg;
     xtrig_negative_check    = ocah_knobs::get_int("DTP_XTRIG_NEGATIVE_CHECK", 0);
     j2a_geometry_negative   = ocah_knobs::is_set("DTP_J2A_GEOMETRY_NEGATIVE");
     j2a_status_bit_negative = ocah_knobs::is_set("DTP_J2A_STATUS_BIT_NEGATIVE");
+    j2a_bus_req_negative    = ocah_knobs::is_set("DTP_J2A_BUS_REQ_NEGATIVE");
     jtag2axi_ref_model_negative = ocah_knobs::is_set("DTP_J2A_REF_MODEL_NEGATIVE");
   endfunction
 
@@ -109,6 +111,14 @@ class dtp_test_cfg extends ocah_test_cfg;
     foreach (ids[i]) axi_policy[target].required_ids.push_back(ids[i]);
     require_feature(DtpFeatureJtag2axiReq);
     require_feature(DtpFeatureJtag2axiStatus);
+  endfunction
+
+  // Whether the passive AXI recorder of `target` requires evidence ID `id`.
+  function bit requires_axi_id(string target, string id);
+    if (!axi_policy.exists(target)) return 1'b0;
+    foreach (axi_policy[target].required_ids[i])
+    if (axi_policy[target].required_ids[i] == id) return 1'b1;
+    return 1'b0;
   endfunction
 
   // Replace the default required scoreboard features (the cross-trigger

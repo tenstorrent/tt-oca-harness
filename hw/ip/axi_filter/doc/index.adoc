@@ -19,6 +19,10 @@ is one `filter_ctrl` register triple -- `FILTER_CONFIG`, `START_ADDR`,
 [[axi-traffic-filter-instances]]
 == Instances
 
+<<traffic-filter-instances-table>> compares the filter dimensions, unmatched-traffic
+behavior, and bypass controls.
+
+[[traffic-filter-instances-table]]
 .Traffic filter instances
 [width="100%",cols="20%,12%,12%,14%,20%,22%",options="header",]
 |=======================================================================
@@ -62,7 +66,7 @@ Second, the *lowest-numbered* matching entry wins, and only that entry's
 permission bit is consulted: `read_allowed` for AR, `write_allowed` for
 AW. If the bit is clear, the transaction is blocked. If no entry matches
 at all, the outcome is the instance's unmatched-traffic policy from the
-table above.
+<<traffic-filter-instances-table>>.
 
 The two steps therefore fail differently:
 
@@ -94,7 +98,7 @@ granule:
 * `allow_burst = 1`: the granule is 4 KB and address bits [11:0] are
 ignored.
 * `allow_burst = 0`: the granule is the data bus width -- 8 bytes on
-every instance in the table above -- and address bits [2:0] are
+every instance in the <<traffic-filter-instances-table>> -- and address bits [2:0] are
 ignored.
 
 `START_ADDR` consequently widens *down* to the base of its granule and
@@ -103,6 +107,10 @@ narrower than one granule. Programming `START_ADDR` equal to `END_ADDR`,
 or any range shorter than the granule, still admits the whole granule,
 and a range that straddles a granule boundary admits both granules.
 
+<<granule-widening-examples-table>> illustrates the address ranges admitted when burst
+filtering widens a programmed interval.
+
+[[granule-widening-examples-table]]
 .Granule widening examples
 [width="100%",cols="15%,20%,20%,45%",options="header",]
 |=======================================================================
@@ -132,5 +140,15 @@ suggest. Size protected regions in whole granules, and prefer
 
 A blocked transaction is not dropped. It is steered to an AXI error
 subordinate that terminates it with a `DECERR` response on `BRESP` or
-`RRESP`, so the initiator always receives a response and the fabric
-never stalls on a filter denial.
+`RRESP`, so the initiator always receives a response.
+
+[[axi-traffic-filter-lock]]
+== Locking a Filter Entry
+
+Setting `FILTER_CONFIG.locked` freezes a filter entry. The bit is
+write-once (`woset`): once set it cannot be cleared. While it is set,
+every write to that entry's `FILTER_CONFIG`, `START_ADDR` and `END_ADDR`
+registers is steered to the same AXI error subordinate as a blocked
+transaction and terminates with a `DECERR` response; reads still return
+the locked configuration. This holds for the SMC and SEP filter
+instances alike.

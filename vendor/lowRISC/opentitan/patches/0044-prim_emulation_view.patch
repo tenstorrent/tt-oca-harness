@@ -1,0 +1,87 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+# EMULATION keeps assertions compiled when SYNTHESIS is also set, drops the
+# #1ps settle in ASSERT_INIT_NET, and keeps memory-load messages while leaving
+# out the DPI exports that emulators cannot compile.
+
+--- a/hw/ip/prim/rtl/prim_assert.sv
++++ b/hw/ip/prim/rtl/prim_assert.sv
+@@ -103,9 +103,13 @@
+  `include "prim_assert_yosys_macros.svh"
+  `define OCAH_OT_INC_ASSERT
+ `else
+- // Enable assertions for every flow except synthesis and Verilator
++ // Enable assertions for every flow except synthesis and Verilator. EMULATION
++ // keeps them when SYNTHESIS is also set.
+  `ifndef VERILATOR
+- `ifndef SYNTHESIS
++ `ifdef EMULATION
++   `define OCAH_OT_INC_ASSERT
++ `elsif SYNTHESIS
++ `else
+    `define OCAH_OT_INC_ASSERT
+  `endif
+  `endif
+--- a/hw/ip/prim/rtl/prim_assert_standard_macros.svh
++++ b/hw/ip/prim/rtl/prim_assert_standard_macros.svh
+@@ -42,8 +42,10 @@
+   initial begin                                                                      \
+     // When a net is assigned with a value, the assignment is evaluated after        \
+     // initial in Xcelium. Add 1ps delay to check value after the assignment is      \
+-    // completed.                                                                    \
++    // completed. The emulation view has no procedural delays.                      \
++`ifndef EMULATION                                                                    \
+     #1ps;                                                                            \
++`endif                                                                               \
+     __name: assert (__prop)                                                          \
+       else begin                                                                     \
+         `OCAH_OT_ASSERT_ERROR(__name)                                                \
+--- a/hw/ip/prim/rtl/prim_util_get_scramble_params.svh
++++ b/hw/ip/prim/rtl/prim_util_get_scramble_params.svh
+@@ -3,6 +3,7 @@
+ // SPDX-License-Identifier: Apache-2.0
+ 
+ `ifndef SYNTHESIS
++`ifndef EMULATION
+   export "DPI-C" function simutil_get_scramble_key;
+ 
+   function int simutil_get_scramble_key(output bit [127:0] val);
+@@ -24,3 +25,4 @@
+     return valid;
+   endfunction
+ `endif
++`endif
+--- a/hw/ip/prim/rtl/prim_util_memload.svh
++++ b/hw/ip/prim/rtl/prim_util_memload.svh
+@@ -20,7 +20,9 @@
+  * git grep) and adjusted appropriately.
+  */
+ 
+-`ifndef SYNTHESIS
++`ifdef EMULATION
++`elsif SYNTHESIS
++`else
+   // Task for loading 'mem' with SystemVerilog system task $readmemh()
+   export "DPI-C" task simutil_memload;
+ 
+@@ -55,12 +57,19 @@
+ `endif
+ 
+ initial begin
+-`ifndef SYNTHESIS
++`ifdef EMULATION
++`define OCAH_OT_MEMLOAD_SHOW_PATHS
++`elsif SYNTHESIS
++`else
++`define OCAH_OT_MEMLOAD_SHOW_PATHS
++`endif
++`ifdef OCAH_OT_MEMLOAD_SHOW_PATHS
+   logic show_mem_paths;
+ 
+   // Print the hierarchical path to the memory to help make formal connectivity checks easy.
+   void'($value$plusargs("show_mem_paths=%0b", show_mem_paths));
+   if (show_mem_paths) $display("%m");
++`undef OCAH_OT_MEMLOAD_SHOW_PATHS
+ `endif
+ 
+   if (MemInitFile != "") begin : gen_meminit

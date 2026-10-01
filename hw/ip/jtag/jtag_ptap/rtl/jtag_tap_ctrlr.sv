@@ -1,38 +1,48 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// JTAG TAP FSM
+// Advance the IEEE 1149.1 TAP FSM and generate IR/DR scan controls.
 //
-//-----------------------------------------------------------------------------
+// Tracks tap_state_e from TMS on rising TCK, passes the TAP control through to the host,
+// and drives IR and DR scan controls.
+// Capture, shift and Test-Logic-Reset controls are registered on falling TCK; update and
+// Run-Test/Idle controls decode the current state.
+// With TMP_ENABLE, persistence_mode_i keeps the scan chrst_n released through
+// Test-Logic-Reset; runbist_i is forwarded to both scan controls.
+// tdo_oen_o enables TDO in Shift-IR and Shift-DR.
 
 module jtag_tap_ctrlr
   import prim_jtag_pkg::*;
   import jtag_tap_pkg::*;
 #(
-  parameter bit TMP_ENABLE = 1  // Enables TMP controller functionality and instructions
+  parameter bit TMP_ENABLE = 1          // Lets persistence_mode_i hold chrst_n released through
+                                        // Test-Logic-Reset.
 ) (
-  // Standard JTAG input interface
-  input  jtag_tap_ctrl_t          client_tap_ctrl_i,    // TAP control inputs (tms, trst_n, tck)
+  input  jtag_tap_ctrl_t          client_tap_ctrl_i,  // TAP control inputs (tms, trst_n, tck);
+                                                      // trst_n asynchronously resets the FSM to
+                                                      // Test-Logic-Reset.
 
-  // TMP controller inputs
-  input  logic                    persistence_mode_i,   // TMP persistence mode (1=On, 0=Off)
+  input  logic                    persistence_mode_i,  // TMP persistence mode (1=On, 0=Off); when
+                                                       // on with TMP_ENABLE, chrst_n stays high in
+                                                       // Test-Logic-Reset.
 
-  // RUNBIST instruction input
-  input  logic                    runbist_i,             // RUNBIST instruction decoded
+  input  logic                    runbist_i,  // RUNBIST instruction decoded; forwarded to the
+                                              // runbist field of both scan controls.
 
-  // Internal JTAG interface
-  output jtag_tap_ctrl_t          host_tap_ctrl_o,      // TAP control outputs (tms, trst_n, tck)
+  output jtag_tap_ctrl_t          host_tap_ctrl_o,  // TAP control outputs (tms, trst_n, tck),
+                                                    // passed through unchanged from
+                                                    // client_tap_ctrl_i.
 
-  // TDR scan interface
-  output jtag_scan_ctrl_t         host_dr_scan_ctrl_o,  // DR scan control outputs
-  output jtag_scan_ctrl_t         host_ir_scan_ctrl_o,  // IR scan control outputs
+  output jtag_scan_ctrl_t         host_dr_scan_ctrl_o,  // DR scan control outputs; rst_n is low in
+                                                        // Test-Logic-Reset.
+  output jtag_scan_ctrl_t         host_ir_scan_ctrl_o,  // IR scan control outputs; rst_n is low in
+                                                        // Test-Logic-Reset.
 
-  // Debug and status signals
-  output tap_state_e              current_state_o,
+  output tap_state_e              current_state_o,  // Current state (Debug and status signals).
 
-  // TDO output enable
-  output logic                    tdo_oen_o
+  output logic                    tdo_oen_o  // Active-high TDO output enable, set in Shift-DR and
+                                             // Shift-IR; registered on the falling TCK edge and
+                                             // cleared by trst_n.
 );
 
   //--------------------------------------------------------------------------
@@ -42,9 +52,6 @@ module jtag_tap_ctrlr
   logic [$bits(tap_state_e)-1:0] current_state_q_bits;
 
   assign current_state_q = tap_state_e'(current_state_q_bits);
-
-  // TMS reset counter for fault state recovery (IEEE 1149.1 compliance)
-  logic [2:0] tms_reset_counter_q, tms_reset_counter_d;
 
   // Internal control signals
   logic capture_dr, shift_dr, update_dr;
@@ -56,7 +63,7 @@ module jtag_tap_ctrlr
   // Three-Always Block Implementation (Moore State Machine)
   //--------------------------------------------------------------------------
 
-  // Always block 1: State register with fault state recovery
+  // Always block 1: State register
   prim_flop #(
     .Width($bits(tap_state_e)),
     .ResetValue(TEST_LOGIC_RESET)
@@ -67,30 +74,9 @@ module jtag_tap_ctrlr
     .q_o    (current_state_q_bits)
   );
 
-  prim_flop #(
-    .Width(3),
-    .ResetValue(3'b0)
-  ) u_tms_reset_counter_flop (
-    .clk_i  (client_tap_ctrl_i.tck),
-    .rst_ni (client_tap_ctrl_i.trst_n),
-    .d_i    (tms_reset_counter_d),
-    .q_o    (tms_reset_counter_q)
-  );
-
   // Always block 2: Next state logic (combinational)
   always_comb begin
     next_state = current_state_q;  // Default: stay in current state
-
-    // TMS reset counter logic (IEEE 1149.1: 5 consecutive TMS high -> TLR)
-    if (client_tap_ctrl_i.tms) begin
-      if (tms_reset_counter_q < 3'd5) begin
-        tms_reset_counter_d = tms_reset_counter_q + 1'b1;
-      end else begin
-        tms_reset_counter_d = 3'd5;  // Saturate at 5
-      end
-    end else begin
-      tms_reset_counter_d = 3'b0;  // Reset counter on TMS low
-    end
 
     case (current_state_q)
       TEST_LOGIC_RESET: begin

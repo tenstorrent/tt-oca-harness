@@ -58,7 +58,7 @@ Useful targets:
 | `make help` | List the basic build commands and options. |
 
 Set `ENABLE_RELEASE_PRINTS=1` to retain debug console calls in a release build.
-Set `I3C_CORE=swap` to compile the open HCI I3C driver. `EXTRA_DEFINES` provides
+Set `I3C_CORE=chipsalliance` to compile the open HCI I3C driver. `EXTRA_DEFINES` provides
 additional build-time definitions.
 
 Key implementation directories are:

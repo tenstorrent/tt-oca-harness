@@ -3,56 +3,68 @@
 
 [[i2c-controller]]
 = I2C Controller
+:description: OCAH I2C wrapper. The controller core is OpenTitan I2C.
 
-== Overview
+The I2C controller is based on the
+https://opentitan.org/book/hw/ip/i2c/index.html[OpenTitan I2C] design.
+Controller and target behavior, clock stretching, arbitration, timing setup,
+and programming sequences are specified in the
+https://opentitan.org/book/hw/ip/i2c/doc/theory_of_operation.html[OpenTitan theory of operation]
+and the
+https://opentitan.org/book/hw/ip/i2c/doc/programmers_guide.html[OpenTitan programmer's guide].
 
-The OCA I2C Interface Component is a comprehensive I2C/SMBus/PMBus
-communication controller that provides full-featured support for both
-controller (master) and target (slave) operation modes. Based on
-industry standards and featuring robust error handling, configurable
-FIFOs, and extensive interrupt support, this component enables reliable
-inter-chip communication in complex system-on-chip designs.
+[[i2c-core-diagram]]
+.OpenTitan I2C core reference architecture
+image::opentitan_i2c.svg[alt="OpenTitan I2C core reference architecture",width=100%,pdfwidth=100%]
 
-== Description and Features
+<<i2c-core-diagram>> shows the upstream core.
 
-* *Multi-Protocol Support*: Full compliance with I2C Rev. 7.0, SMBus
-Rev. 3.2, and PMBus Rev. 1.4 specifications
-* *Dual Operating Modes*: Configurable as controller-only, target-only,
-controller-target, or bus monitor
-* *High-Speed Operation*: Support for Standard-mode (100 kbaud),
-Fast-mode (400 kbaud), and Fast-mode Plus (1 Mbaud)
-* *Advanced Controller Features*: Clock stretching support, automatic
-ACK control, multi-controller arbitration
-* *Flexible Target Capabilities*: Automatic clock stretching,
-programmable ACK control, broadcast transfer support
-* *Configurable FIFO Architecture*: Independent TX/RX FIFO depths for
-both controller and target modes
+== OCAH Modifications
 
-ifdef::backend-pdf[]
-:imagesdir: assets
-endif::backend-pdf[]
+* AXI4-Lite register interface in place of the OpenTitan TileLink host port.
+* Wrapper register blocks `i2c_ctrl` and `i2c_wrap` around the OpenTitan register bank.
 
-ifdef::backend-html5[]
-include::partial$i2c/doc/architecture.adoc[]
-endif::backend-html5[]
-ifdef::backend-pdf[]
-include::architecture.adoc[]
-endif::backend-pdf[]
-ifdef::backend-html5[]
-include::partial$i2c/doc/interface.adoc[]
-endif::backend-html5[]
-ifdef::backend-pdf[]
-include::interface.adoc[]
-endif::backend-pdf[]
+[[i2c-wrapper-diagram]]
+.OCAH I2C wrapper and generated register interface
+image::i2c-wrapper.svg[alt="i2c_wrap: an AXI-Lite demux in front of NUM_I2CS I2C instances, each a PeakRDL register block driving the OpenTitan I2C core, plus the shared i2c_ctrl registers and an error subordinate",width=100%,pdfwidth=100%]
+
+<<i2c-wrapper-diagram>> shows the OCAH wrapper around that core. `i2c_wrap`
+has one AXI4-Lite slave port, with 32-bit address and data, and runs on a
+single clock, `clk_i`; in the SMC that is the gated peripheral clock, and the
+bus reaches it through `smc_peripherals_cdc`. Parentheses after an
+instance name give its module or, for a block taken from another project,
+that project. The demux
+`u_axi_lite_demux`, a PULP `axi_lite_demux`, compares the address against
+the base and size of each register map and selects one of `NUM_I2CS` + 2
+ports: one per instance, the shared control map, and an error slave that
+answers DECERR with read data `0xBADCAB1E`. The SMC sets `NUM_I2CS` to 3.
+
+Each instance, `gen_i2cs[i].u_i2c`, is the OpenTitan core `u_i2c_core` with
+its register bank replaced by `u_i2c_reg`, an AXI4-Lite register block that
+PeakRDL generates from `i2c.rdl`. The register block drives the core through
+`hwif_out` and takes status back through `hwif_in`. The core keeps the
+OpenTitan controller and target FSMs, bus monitor and FMT, RX, TX and ACQ
+FIFOs, sized by the `*_FIFO_DEPTH` parameters, and synchronizes the SCL,
+SDA, SMBus SUS and SMBus ALERT inputs to `clk_i` with two-flop synchronizers;
+the synchronizer badge on the edge of `u_i2c_core` marks them. The wrapper
+adds no synchronizers of its own.
+
+The shared block `u_i2c_ctrl_reg`, generated from `i2c_ctrl.rdl`, holds one
+`I2C_CTRL` register per instance. Its `SMBUS_EN` field drives that instance's
+`smbus_en` input, which masks `smbalert_ni` while low. Its `I2C_EN` and
+`I2C_CONTROLLER_MODE_EN` fields leave the wrapper on `i2c_en_o` and
+`i2c_controller_mode_en_o` without reaching the instance.
+
+Every per-instance port of `i2c_wrap` is a vector with one bit, or for
+`i2c_debug_o` one nibble, per instance. The figure labels the slice that
+instance 0 drives. The DMA ready outputs are `controller_tx_ready_o`,
+`controller_rx_ready_o`, `target_tx_ready_o` and `target_rx_ready_o`; the SMC
+leaves them unconnected. It routes `i2c_irq_o` to peripheral interrupts 23 to
+25.
+
 ifdef::backend-html5[]
 include::partial$i2c/doc/memmap.adoc[]
 endif::backend-html5[]
 ifdef::backend-pdf[]
 include::memmap.adoc[]
-endif::backend-pdf[]
-ifdef::backend-html5[]
-include::partial$i2c/doc/programming.adoc[]
-endif::backend-html5[]
-ifdef::backend-pdf[]
-include::programming.adoc[]
 endif::backend-pdf[]

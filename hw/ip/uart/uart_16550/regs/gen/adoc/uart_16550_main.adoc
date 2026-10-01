@@ -4,7 +4,10 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-uart_16550_main]
-== Address Map: uart_16550_main
+== UART 16550 Main Address Map
+
+Contains the mode-independent registers and the read-only registers accessible only
+when `DLAB = 0`.
 
 [cols="1,4,1,6", options="header"]
 |===
@@ -28,7 +31,7 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `DATA` | R | 0x0 a| Received Data. Contains a received character. If FIFOs are enabled, this field
+| 7:0 | `DATA` | R RMOD | 0x0 a| Received Data. Contains a received character. If FIFOs are enabled, this field
 points to the bottom of the RX FIFO. Otherwise, this field points to a single-
 byte Receiver Buffer Register.
 |===
@@ -133,19 +136,19 @@ the transmitter FIFO (or THR in non-FIFO mode) are empty.
 | 5 | `THRE` | R | 0x1 a| Transmitter Holding Register Empty. When set, indicates that the TX FIFO (or
 THR in non-FIFO mode) is empty. Clearing the Transmitter Holding Register Empty
 Interrupt does NOT clear this bit.
-| 4 | `BI` | R | 0x0 a| Break Interrupt. When set, indicates that the `rx_i` input is `0` for an entire
+| 4 | `BI` | R RC | 0x0 a| Break Interrupt. When set, indicates that the `rx_i` input is `0` for an entire
 frame's time (start + data + parity + stop bits). In FIFO mode, this bit set
 when the character reaches the top of the receiver FIFO. In non-FIFO mode, this
 bit is set when the character enters the RBR. This bit triggers the Receiver
 Line Status Interrupt.
-| 3 | `FE` | R | 0x0 a| Framing Error. When set, indicates that the received character is missing a
+| 3 | `FE` | R RC | 0x0 a| Framing Error. When set, indicates that the received character is missing a
 stop bit. In FIFO mode, this bit is set when the character reaches the top of
 the FIFO. In non-FIFO mode, this bit is set when the character enters the RBR.
 This bit triggers the Receiver Line Status Interrupt.
-| 2 | `PE` | R | 0x0 a| Parity Error. When set, indicates that the character at the top of the receiver
+| 2 | `PE` | R RC | 0x0 a| Parity Error. When set, indicates that the character at the top of the receiver
 FIFO (or RBR in non-FIFO mode) has a parity error. This bit triggers the
 Receiver Line Status Interrupt.
-| 1 | `OE` | R | 0x0 a| Overrun Error. When set, indicates that the RX FIFO (or Receiver Buffer
+| 1 | `OE` | R RC | 0x0 a| Overrun Error. When set, indicates that the RX FIFO (or Receiver Buffer
 Register in Non-FIFO Mode) is full when new character is received. In FIFO Mode, the new character
 is dropped. In non-FIFO mode, the existing character in the RBR is overwritten.
 This bit triggers the Receiver Line Status Interrupt.
@@ -168,15 +171,15 @@ it reads `1` while the remote modem signals an incoming call.
 so it reads `1` while the remote modem is connected and ready.
 | 4 | `CTS` | R | 0x0 a| Clear to Send. This bit reflects the `cts_ni` input in the opposite polarity, so
 it reads `1` while the remote device is ready to receive data.
-| 3 | `DDCD` | R | 0x0 a| Delta Data Carrier Detect. When set, indicates that the `DCD` bit has changed
+| 3 | `DDCD` | R RC | 0x0 a| Delta Data Carrier Detect. When set, indicates that the `DCD` bit has changed
 since the last time this register was read. This bit triggers the Modem Status
 Interrupt.
-| 2 | `TERI` | R | 0x0 a| Trailing Edge Ring Indicator. When set, indicates that the `RI` bit has changed
+| 2 | `TERI` | R RC | 0x0 a| Trailing Edge Ring Indicator. When set, indicates that the `RI` bit has changed
 from a `1` to a `0`. This bit triggers the Modem Status Interrupt.
-| 1 | `DDSR` | R | 0x0 a| Delta Data Set Ready. When set, indicates that the `DSR` bit has changed since
+| 1 | `DDSR` | R RC | 0x0 a| Delta Data Set Ready. When set, indicates that the `DSR` bit has changed since
 the last time this register was read. This bit triggers the Modem Status
 Interrupt.
-| 0 | `DCTS` | R | 0x0 a| Delta Clear to Send. When set, indicates that the `CTS` bit has changed since
+| 0 | `DCTS` | R RC | 0x0 a| Delta Clear to Send. When set, indicates that the `CTS` bit has changed since
 the last time this register was read. This bit triggers the Modem Status
 Interrupt.
 |===

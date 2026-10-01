@@ -154,9 +154,10 @@ def tally(record: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
 
 def run_id(path: str) -> str:
     """
-    CI run identifier an archive came from.
+    The run an archive came from, as its name records it.
 
-    Archives are named ``<date>-run<id>.result.json.gz``.
+    Publishers name archives ``<date>-run<id>`` or ``<date>-build<id>``. The
+    identifier tells two runs of one day apart and is not rendered.
 
     Args:
         path: Path to the archive within the data branch
@@ -164,7 +165,7 @@ def run_id(path: str) -> str:
     Returns:
         The identifier, or an empty string when the name does not carry one
     """
-    match = re.search(r"-run(\d+)\.", Path(path).name)
+    match = re.search(r"-(?:run|build)(\d+)\.", Path(path).name)
     return match.group(1) if match else ""
 
 
@@ -200,7 +201,8 @@ def run_stamp(record: dict[str, Any], path: str) -> datetime:
     Returns:
         A timezone-aware timestamp, assuming UTC where none is given
     """
-    meta = record.get("run_metadata") or {}
+    meta = record.get("run_metadata")
+    meta = meta if isinstance(meta, dict) else {}
     candidates = (meta.get("generated_at"), record.get("generated_at"), Path(path).name[:10])
     for raw in candidates:
         if not isinstance(raw, str) or not raw:
@@ -211,43 +213,6 @@ def run_stamp(record: dict[str, Any], path: str) -> datetime:
             continue
         return stamp if stamp.tzinfo else stamp.replace(tzinfo=timezone.utc)
     return datetime.min.replace(tzinfo=timezone.utc)
-
-
-def legacy(series: list[dict[str, Any]]) -> dict[str, Any]:
-    """
-    The single-axis shape, written alongside the series for one release.
-
-    The page that reads it shares one run axis across every flow and cannot
-    tell two series of one block apart, so a block verified twice keeps only
-    the series read last. Written so the page can be updated separately, and
-    removed once it is.
-
-    Args:
-        series: The aggregated series
-
-    Returns:
-        A document holding ``runs`` and ``flows``
-    """
-    # One column per archive, as the page expects; an archive carries no
-    # identifier of its own, so runs are not merged by date.
-    columns = sorted(
-        (
-            (run["date"], run["id"], index, position)
-            for index, entry in enumerate(series)
-            for position, run in enumerate(entry["runs"])
-        ),
-        key=lambda column: (column[0], column[1]),
-    )
-    axis = [{"date": date, "id": run_id} for date, run_id, _, _ in columns]
-
-    flows: dict[str, dict[str, list[Any]]] = {}
-    for column, (_, _, index, position) in enumerate(columns):
-        entry = series[index]
-        tests = flows.setdefault(str(entry["flow"]), {})
-        for name, cells in entry["tests"].items():
-            row: list[Any] = tests.setdefault(name, [None] * len(axis))
-            row[column] = cells[position]
-    return {"runs": axis, "flows": flows}
 
 
 def main() -> int:
@@ -325,10 +290,8 @@ def main() -> int:
 
     # Written compact rather than indented: it is machine-read only.
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    document = {"series": series}
-    document.update(legacy(series))
     args.output.write_text(
-        json.dumps(document, separators=(",", ":"), sort_keys=True) + "\n",
+        json.dumps({"series": series}, separators=(",", ":"), sort_keys=True) + "\n",
         encoding="utf-8",
     )
     return 0

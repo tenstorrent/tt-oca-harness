@@ -33,8 +33,10 @@ HERE = Path(__file__).resolve().parent
 OUTPUT = HERE / "smu_wrapper_toggle_exclusions.el"
 MODULE = "smu_wrapper"
 
-# (class name, matcher over the field name, reason). The first match wins.
+# (class name, matcher over the field name, reason). The first match wins. The comment
+# above each class names what retires it; README.md carries the same column.
 CLASSES: list[tuple[str, re.Pattern[str], str]] = [
+    # Retired by an SMU decode or remap that reads the user sideband.
     (
         "AXI-USER",
         re.compile(r"^smu_axi_(in|out)_(req|resp)_[io]\.(aw|ar|w|r|b)\.user$"),
@@ -43,6 +45,7 @@ CLASSES: list[tuple[str, re.Pattern[str], str]] = [
         "unchanged, so their bits toggle only when a master or the bench varies a field "
         "nothing in the SMU consumes.",
     ),
+    # Retired by an SMU unit that inspects or rewrites data or strobe.
     (
         "AXI-DATA",
         re.compile(r"^smu_axi_(in|out)_(req|resp)_[io]\.(w\.data|w\.strb|r\.data)$"),
@@ -52,26 +55,31 @@ CLASSES: list[tuple[str, re.Pattern[str], str]] = [
         "their own benches grade. Address and id words stay graded: the SMU decodes the "
         "one and remaps the other.",
     ),
+    # Retired by SMU logic that reads the ATB data or id, or the receivers moving out
+    # of the SMC.
     (
         "ATB-PAYLOAD",
         re.compile(r"^telemetry_(atdata|atid)_i$"),
         "ATB data and id words of the telemetry receivers. The receivers are SMC "
         "peripherals graded on the SMC bench; the wrapper passes the words through.",
     ),
+    # Bench scope: tb_wrapper_top.sv ties both pins to their functional values.
+    # Retired by a DFT bench that drives scan enable and scan reset.
     (
         "DFT",
         re.compile(r"^(test_en_i|scan_rst_ni)$"),
         "DFT pins. Functional simulation holds them at their functional value; scan "
         "insertion and scan-mode reset bypass are not exercised on this bench.",
     ),
+    # Retired by the SPI enable becoming programmable.
     (
         "RTL-CONSTANT",
-        re.compile(r"^(lcc_demote_state_[12]_o|lsio_interface_select_o)$"),
-        "outputs the SMU drives from a constant in this composition: the lifecycle demote "
-        "states are tied low and the LSIO interface select follows a fixed SPI enable. No "
-        "stimulus can move them; -cm_noconst does not drop them because the constant is "
-        "assigned inside the SMU rather than at the port.",
+        re.compile(r"^lsio_interface_select_o$"),
+        "an output the SMU drives from a constant in this composition: the LSIO interface "
+        "select follows a fixed SPI enable. No stimulus can move it; -cm_noconst does not "
+        "drop it because the constant is assigned inside the SMU rather than at the port.",
     ),
+    # Retired by efuse_map_t ceasing to be a union.
     (
         "UNION-ALIAS",
         re.compile(r"^smc_shadow_regs_o\.(locks|fields)(\.|\[|$)"),
@@ -79,29 +87,32 @@ CLASSES: list[tuple[str, re.Pattern[str], str]] = [
         "union, so urg lists the same 8192 flops three times; the `values` view stays graded "
         "and carries every bit once.",
     ),
+    # Retired by SMU logic that consumes one of these ports.
     (
         "SEP-OWNED",
         re.compile(
             r"^(sep_cpu_trace_o|sep_lockstep_ctrl_i|sep_lockstep_status_o|"
-            r"sep_global_base_o|sep_region_size_o|sep_ext_interrupts_i|"
-            r"entropy_rosc_sample_clk_i|lc_sigint_err_o)(\.|\[|$)"
+            r"sep_ext_interrupts_i|entropy_rosc_sample_clk_i|lc_sigint_err_o)(\.|\[|$)"
         ),
         "SEP passthroughs with no wrapper-level observable on this bench: the SEP CPU "
         "trace needs SEP firmware, the lockstep pair is inert without "
-        "RV_LOCKSTEP_ENABLE, the SEP aperture CSRs sit behind the reset aperture, the SEP "
-        "external interrupts and entropy sample clock terminate inside the SEP, and the "
-        "lifecycle signal-integrity error needs a fault injected inside it. The SEP bench "
-        "grades each of them.",
+        "RV_LOCKSTEP_ENABLE, the SEP external interrupts and entropy sample clock "
+        "terminate inside the SEP, and the lifecycle signal-integrity error needs a fault "
+        "injected inside it. The SEP bench grades each of them.",
     ),
 ]
 
-# Fields excluded on a bit range rather than whole: (field, "[msb:lsb]", reason).
-PARTIAL: list[tuple[str, str, str]] = [
+# Fields excluded on a bit range rather than whole:
+# (class name, field, "[msb:lsb]", reason ending in what would retire it).
+PARTIAL: list[tuple[str, str, str, str]] = [
     (
-        "timer_count_o",
-        "[63:20]",
-        "the OCTS system timer counts reference clocks; bit k first rises after 2^k cycles, "
-        "and no leaf runs the 2^20 cycles bit 20 needs. Bits [19:0] stay graded.",
+        "REGISTER-WIDTH",
+        "sep_region_size_o",
+        "[55:32]",
+        "sep_cpu_ctrl SEP_REGION_SIZE carries its size in bits [31:0] and reserves [63:32] "
+        "(the generated register description), so the 56-bit port is that field "
+        "zero-extended and bits [55:32] cannot move. Bits [31:0] stay graded. Retired by "
+        "SEP_REGION_SIZE.size widening past bit 31.",
     ),
 ]
 
@@ -163,12 +174,12 @@ def render(checksum: str, fields: list[tuple[str, str]]) -> str:
             sys.exit(f"class {name} matched no field; the template or the rules moved")
         out += ["", f'ANNOTATION: "SMU-WRAPPER-TGL-{name}: {reason}"']
         out += [f'Toggle {field} "{signature}"' for field, signature in rows]
-    for field, part, reason in PARTIAL:
+    for name, field, part, reason in PARTIAL:
         if field not in signatures:
             sys.exit(f"partial exclusion names `{field}`, which the template does not list")
         out += [
             "",
-            f'ANNOTATION: "SMU-WRAPPER-TGL-PARTIAL: {reason}"',
+            f'ANNOTATION: "SMU-WRAPPER-TGL-{name}: {reason}"',
             f'Toggle {field} {part} "{signatures[field]}"',
         ]
     return "\n".join(out) + "\n"

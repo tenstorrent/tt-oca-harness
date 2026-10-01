@@ -4,7 +4,11 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-key_manager]
-== Address Map: key_manager
+== Key Manager Top-Level Address Map
+
+Complete memory map for the Key Manager subsystem, including ROM, SRAM,
+control/status registers, mailbox, and external crypto engine ports.
+This address map is from the perspective of the KM CPU (PicoRV32).
 
 [NOTE]
 ======
@@ -13,12 +17,24 @@
 * *RMA_SIP_TOKEN_I[8]*: 8 registers, base 0x11500, stride 0x4
 * *RMA_CHIPLET_TOKEN_I[8]*: 8 registers, base 0x11520, stride 0x4
 * *SEC_DISABLE_TOKEN_I[8]*: 8 registers, base 0x11540, stride 0x4
-* *WORD[16]*: 16 registers, base 0x12000, stride 0x4
+* *KEY_ENTRY[64].WORD[16]*: 1024 registers, base 0x12000 (KEY_ENTRY x64 stride 0x40, WORD x16 stride 0x4)
 * *CTRL[64]*: 64 registers, base 0x13000, stride 0x4
 * *KEY_SHARE0[12]*: 12 registers, base 0x18000, stride 0x4
 * *KEY_SHARE1[12]*: 12 registers, base 0x18030, stride 0x4
-* *KEY_SHARE0[8]*: 8 registers, base 0x19000, stride 0x4
-* *KEY_SHARE1[8]*: 8 registers, base 0x19020, stride 0x4
+* *aes_wrapper_key.KEY_SHARE0[8]*: 8 registers, base 0x19000, stride 0x4
+* *aes_wrapper_key.KEY_SHARE1[8]*: 8 registers, base 0x19020, stride 0x4
+* *kmac_wrapper_key.KEY_SHARE0[8]*: 8 registers, base 0x1A000, stride 0x4
+* *kmac_wrapper_key.KEY_SHARE1[8]*: 8 registers, base 0x1A020, stride 0x4
+* *hmac_wrapper_key.KEY_SHARE0[8]*: 8 registers, base 0x1B000, stride 0x4
+* *hmac_wrapper_key.KEY_SHARE1[8]*: 8 registers, base 0x1B020, stride 0x4
+* *abr_wrapper_key.MLDSA_SEED.KEY_SHARE0[8]*: 8 registers, base 0x1C000, stride 0x4
+* *abr_wrapper_key.MLDSA_SEED.KEY_SHARE1[8]*: 8 registers, base 0x1C020, stride 0x4
+* *abr_wrapper_key.MLKEM_SEED_D.KEY_SHARE0[8]*: 8 registers, base 0x1C100, stride 0x4
+* *abr_wrapper_key.MLKEM_SEED_D.KEY_SHARE1[8]*: 8 registers, base 0x1C120, stride 0x4
+* *abr_wrapper_key.MLKEM_SEED_Z.KEY_SHARE0[8]*: 8 registers, base 0x1C200, stride 0x4
+* *abr_wrapper_key.MLKEM_SEED_Z.KEY_SHARE1[8]*: 8 registers, base 0x1C220, stride 0x4
+* *abr_wrapper_key.MLKEM_MSG.KEY_SHARE0[8]*: 8 registers, base 0x1C300, stride 0x4
+* *abr_wrapper_key.MLKEM_MSG.KEY_SHARE1[8]*: 8 registers, base 0x1C320, stride 0x4
 * *KEY[8]*: 8 registers, base 0x1C400, stride 0x4
 ======
 
@@ -82,23 +98,23 @@
 | 0x11410 | <<reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_READ_INTERFACE_READ_DATA,EFUSE_READ_INTERFACE_READ_DATA>> | R a| Read data returned through the eFuse read interface.
 | 0x11414 | <<reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_READ_REQ_TIMEOUT,EFUSE_READ_REQ_TIMEOUT>> | RW a| Read interface timeout configuration. Sets the number of cycles the read interface waits for a SHIM response and enables the read timeout.
 | 0x11418 | <<reg-{regmap-instance}-key_manager-otp_efuse_ctrl-EFUSE_PROGRAM_REQ_TIMEOUT,EFUSE_PROGRAM_REQ_TIMEOUT>> | RW a| Program interface timeout configuration. Sets the number of cycles the program interface waits for a SHIM response and enables the program timeout.
-| 0x11500 - 0x1151C | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-RMA_SIP_TOKEN_I-0-,RMA_SIP_TOKEN_I[8]>> | RW a| Software-writeable RMA token word. The assembled token is hashed and compared against the fused value to authorize lifecycle (LC) state transitions.
-| 0x11520 - 0x1153C | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-RMA_CHIPLET_TOKEN_I-0-,RMA_CHIPLET_TOKEN_I[8]>> | RW a| Software-writeable RMA token word. The assembled token is hashed and compared against the fused value to authorize lifecycle (LC) state transitions.
-| 0x11540 - 0x1155C | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-SEC_DISABLE_TOKEN_I-0-,SEC_DISABLE_TOKEN_I[8]>> | RW a| Software-writeable security-disable token word. The assembled token is hashed and compared against the post-silicon injected value to authorize security_disable.
+| 0x11500 - 0x1151C | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-RMA_SIP_TOKEN_I-,RMA_SIP_TOKEN_I[8]>> | RW a| Software-writeable RMA token word. The assembled token is hashed and compared against the fused value to authorize lifecycle (LC) state transitions.
+| 0x11520 - 0x1153C | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-RMA_CHIPLET_TOKEN_I-,RMA_CHIPLET_TOKEN_I[8]>> | RW a| Software-writeable RMA token word. The assembled token is hashed and compared against the fused value to authorize lifecycle (LC) state transitions.
+| 0x11540 - 0x1155C | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-SEC_DISABLE_TOKEN_I-,SEC_DISABLE_TOKEN_I[8]>> | RW a| Software-writeable security-disable token word. The assembled token is hashed and compared against the post-silicon injected value to authorize security_disable.
 | 0x11560 | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-TOKEN_EOP,TOKEN_EOP>> | W a| Token end-of-packet control. Writing the per-token go bit signals that all token words have been written and triggers a pulse to begin token hashing.
 | 0x11564 | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-RMA_SIP_TOKEN_MATCH,RMA_SIP_TOKEN_MATCH>> | R a| Token match status. Reports the result of the token hash comparison (match, mismatch, or error).
 | 0x11568 | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-RMA_CHIPLET_TOKEN_MATCH,RMA_CHIPLET_TOKEN_MATCH>> | R a| Token match status. Reports the result of the token hash comparison (match, mismatch, or error).
 | 0x1156C | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-SEC_DISABLE_TOKEN_MATCH,SEC_DISABLE_TOKEN_MATCH>> | R a| Token match status. Reports the result of the token hash comparison (match, mismatch, or error).
 | 0x11570 | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-TOKEN_MATCH_FAULT,TOKEN_MATCH_FAULT>> | R a| Token comparator redundancy fault status. The token match logic is triple redundant and is not a majority vote: all three comparators must agree and each must drive a legal differential pair. A bit sets when the comparators for that token disagree, which may indicate a fault injection or FIB attack. The corresponding token_match_status then reads the error code 6'b111111 and an interrupt is raised to the SEP CPU. Bits are sticky until reset.
-| 0x12000 - 0x1203C | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-0-WORD-0-,WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
-| 0x13000 - 0x130FC | <<reg-{regmap-instance}-key_manager-kpv-CTRL-0-,CTRL[64]>> | RW a| Per-slot control: lock bits (W1S) and the erase trigger
+| 0x12000 - 0x12FFC | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-WORD-,KEY_ENTRY[64].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x13000 - 0x130FC | <<reg-{regmap-instance}-key_manager-kpv-CTRL-,CTRL[64]>> | RW a| Per-slot control: lock bits (W1S) and the erase trigger
 | 0x13100 | <<reg-{regmap-instance}-key_manager-kpv-KPV_SCRAMBLER_KEY,KPV_SCRAMBLER_KEY>> | RW a| 32-bit key for KPV key entry scrambling. No reset; powers up random. Locked when KPV_SCRAMBLER_CTRL.LOCK=1.
 | 0x13104 | <<reg-{regmap-instance}-key_manager-kpv-KPV_SCRAMBLER_CTRL,KPV_SCRAMBLER_CTRL>> | RW a| KPV scrambler enable and lock. Reset to 0 on KM reset. LOCK is write-one-only.
 | 0x14000 | <<reg-{regmap-instance}-key_manager-kmcsr-VERSION,VERSION>> | R a| Hardware version register (semantic versioning: major.minor.patch)
 | 0x14004 | <<reg-{regmap-instance}-key_manager-kmcsr-CTRL,CTRL>> | R a| Control register (reserved for future use)
 | 0x14008 | <<reg-{regmap-instance}-key_manager-kmcsr-SOFT_RST_CODE,SOFT_RST_CODE>> | RW a| Software reset code register. Write 0x53525354 ('SRST') to trigger soft reset. Any other value has no effect.
-| 0x1400C | <<reg-{regmap-instance}-key_manager-kmcsr-IRQ_STATUS,IRQ_STATUS>> | RW a| Interrupt status register. Sticky bits cleared by writing 1.
-| 0x14010 | <<reg-{regmap-instance}-key_manager-kmcsr-IRQ_ENABLE,IRQ_ENABLE>> | RW a| Interrupt enable/mask register
+| 0x1400C | <<reg-{regmap-instance}-key_manager-kmcsr-IRQ_STATUS,kmcsr.IRQ_STATUS>> | RW a| Interrupt status register. Sticky bits cleared by writing 1.
+| 0x14010 | <<reg-{regmap-instance}-key_manager-kmcsr-IRQ_ENABLE,kmcsr.IRQ_ENABLE>> | RW a| Interrupt enable/mask register
 | 0x14014 | <<reg-{regmap-instance}-key_manager-kmcsr-SCRAMBLER_KEY,SCRAMBLER_KEY>> | RW a| 32-bit scrambler key for SRAM address/data scrambling. When locked: writes ignored, reads return 0. No reset; powers up random.
 | 0x14018 | <<reg-{regmap-instance}-key_manager-kmcsr-SCRAMBLER_CTRL,SCRAMBLER_CTRL>> | RW a| Scrambler control register
 | 0x1401C | <<reg-{regmap-instance}-key_manager-kmcsr-SRAM_LOCK,SRAM_LOCK>> | RW a| SRAM write-lock bits. Bit[i]=1 locks region i (1 KB each, 32 regions). Write-1-only: writing 1 sets the bit, writing 0 has no effect. Cleared by warm or cold reset (warm reset domain); ROM re-applies the lock policy on every boot before handover to mutable firmware.
@@ -242,19 +258,67 @@
 | 0x15004 | <<reg-{regmap-instance}-key_manager-drbg_sampler-CFG,CFG>> | RW a| Configuration: PREFETCH enable, TIMEOUT cycles for active CPU read.
 | 0x15008 | <<reg-{regmap-instance}-key_manager-drbg_sampler-STATUS,STATUS>> | RW a| Status: DRBG_READY, PREFETCHED, TIMEOUT_ERR (W1C), STREAM_ERR (W1C), COUNT_BAD, COUNT_GOOD.
 | 0x1500C | <<reg-{regmap-instance}-key_manager-drbg_sampler-PREFETCH_DATA,PREFETCH_DATA>> | R a| Prefetched word (read-only, for debugging). Cleared when PREFETCH=0. No reset; power-up undefined.
-| 0x18000 - 0x1802C | <<reg-{regmap-instance}-key_manager-otbn_wrapper_key-KEY_SHARE0-0-,KEY_SHARE0[12]>> | W a| One 32-bit word of key data. Write-only; reads return 0.
+| 0x18000 - 0x1802C | <<reg-{regmap-instance}-key_manager-otbn_wrapper_key-KEY_SHARE0-,KEY_SHARE0[12]>> | W a| One 32-bit word of key data. Write-only; reads return 0.
 No reset; powers up with undefined value.
-| 0x18030 - 0x1805C | <<reg-{regmap-instance}-key_manager-otbn_wrapper_key-KEY_SHARE1-0-,KEY_SHARE1[12]>> | W a| One 32-bit word of key data. Write-only; reads return 0.
+| 0x18030 - 0x1805C | <<reg-{regmap-instance}-key_manager-otbn_wrapper_key-KEY_SHARE1-,KEY_SHARE1[12]>> | W a| One 32-bit word of key data. Write-only; reads return 0.
 No reset; powers up with undefined value.
-| 0x18060 | <<reg-{regmap-instance}-key_manager-otbn_wrapper_key-KEY_CTRL,KEY_CTRL>> | RW a| Key control register. Writing KEY_VALID=1 asserts the sideload
+| 0x18060 | <<reg-{regmap-instance}-key_manager-otbn_wrapper_key-KEY_CTRL,otbn_wrapper_key.KEY_CTRL>> | RW a| Key control register. Writing KEY_VALID=1 asserts the sideload
 valid signal to the OTBN core.
-| 0x19000 - 0x1901C | <<reg-{regmap-instance}-key_manager-aes_wrapper_key-KEY_SHARE0-0-,KEY_SHARE0[8]>> | W a| One 32-bit word of key data. Write-only; reads return 0.
+| 0x19000 - 0x1901C | <<reg-{regmap-instance}-key_manager-aes_wrapper_key-KEY_SHARE0-,aes_wrapper_key.KEY_SHARE0[8]>> | W a| One 32-bit word of key data. Write-only; reads return 0.
 No reset; powers up with undefined value.
-| 0x19020 - 0x1903C | <<reg-{regmap-instance}-key_manager-aes_wrapper_key-KEY_SHARE1-0-,KEY_SHARE1[8]>> | W a| One 32-bit word of key data. Write-only; reads return 0.
+| 0x19020 - 0x1903C | <<reg-{regmap-instance}-key_manager-aes_wrapper_key-KEY_SHARE1-,aes_wrapper_key.KEY_SHARE1[8]>> | W a| One 32-bit word of key data. Write-only; reads return 0.
 No reset; powers up with undefined value.
-| 0x1C400 - 0x1C41C | <<reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SHARED_KEY-KEY-0-,KEY[8]>> | R a| One 32-bit word of ML-KEM shared key output. Written by hardware
+| 0x19040 | <<reg-{regmap-instance}-key_manager-aes_wrapper_key-KEY_CTRL,aes_wrapper_key.KEY_CTRL>> | RW a| Key control register. Writing KEY_VALID=1 asserts the sideload
+valid signal to the AES core.
+| 0x1A000 - 0x1A01C | <<reg-{regmap-instance}-key_manager-kmac_wrapper_key-KEY_SHARE0-,kmac_wrapper_key.KEY_SHARE0[8]>> | W a| One 32-bit word of key data. Write-only; reads return 0.
+No reset; powers up with undefined value.
+| 0x1A020 - 0x1A03C | <<reg-{regmap-instance}-key_manager-kmac_wrapper_key-KEY_SHARE1-,kmac_wrapper_key.KEY_SHARE1[8]>> | W a| One 32-bit word of key data. Write-only; reads return 0.
+No reset; powers up with undefined value.
+| 0x1A040 | <<reg-{regmap-instance}-key_manager-kmac_wrapper_key-KEY_CTRL,kmac_wrapper_key.KEY_CTRL>> | RW a| Key control register. Writing KEY_VALID=1 asserts the sideload
+valid signal to the KMAC core.
+| 0x1B000 - 0x1B01C | <<reg-{regmap-instance}-key_manager-hmac_wrapper_key-KEY_SHARE0-,hmac_wrapper_key.KEY_SHARE0[8]>> | W a| One 32-bit word of key data. Write-only; reads return 0.
+No reset; powers up with undefined value.
+| 0x1B020 - 0x1B03C | <<reg-{regmap-instance}-key_manager-hmac_wrapper_key-KEY_SHARE1-,hmac_wrapper_key.KEY_SHARE1[8]>> | W a| One 32-bit word of key data. Write-only; reads return 0.
+No reset; powers up with undefined value.
+| 0x1B040 | <<reg-{regmap-instance}-key_manager-hmac_wrapper_key-KEY_CTRL,hmac_wrapper_key.KEY_CTRL>> | RW a| Key control register. Writing KEY_VALID=1 asserts the sideload
+valid signal to the HMAC core.
+| 0x1C000 - 0x1C01C | <<reg-{regmap-instance}-key_manager-abr_wrapper_key-MLDSA_SEED-KEY_SHARE0-,abr_wrapper_key.MLDSA_SEED.KEY_SHARE0[8]>> | W a| One 32-bit word of key data. Write-only; reads return 0.
+No reset; powers up with undefined value.
+| 0x1C020 - 0x1C03C | <<reg-{regmap-instance}-key_manager-abr_wrapper_key-MLDSA_SEED-KEY_SHARE1-,abr_wrapper_key.MLDSA_SEED.KEY_SHARE1[8]>> | W a| One 32-bit word of key data. Write-only; reads return 0.
+No reset; powers up with undefined value.
+| 0x1C040 | <<reg-{regmap-instance}-key_manager-abr_wrapper_key-MLDSA_SEED-KEY_CTRL,abr_wrapper_key.MLDSA_SEED.KEY_CTRL>> | RW a| Seed control register. Writing KEY_VALID=1 marks the seed as loaded.
+Write 0 to invalidate. The KV shim gates the AB kv_read response
+on this bit.
+| 0x1C100 - 0x1C11C | <<reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SEED_D-KEY_SHARE0-,abr_wrapper_key.MLKEM_SEED_D.KEY_SHARE0[8]>> | W a| One 32-bit word of key data. Write-only; reads return 0.
+No reset; powers up with undefined value.
+| 0x1C120 - 0x1C13C | <<reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SEED_D-KEY_SHARE1-,abr_wrapper_key.MLKEM_SEED_D.KEY_SHARE1[8]>> | W a| One 32-bit word of key data. Write-only; reads return 0.
+No reset; powers up with undefined value.
+| 0x1C140 | <<reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SEED_D-KEY_CTRL,abr_wrapper_key.MLKEM_SEED_D.KEY_CTRL>> | RW a| Seed control register. Writing KEY_VALID=1 marks the seed as loaded.
+Write 0 to invalidate. The KV shim gates the AB kv_read response
+on this bit.
+| 0x1C200 - 0x1C21C | <<reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SEED_Z-KEY_SHARE0-,abr_wrapper_key.MLKEM_SEED_Z.KEY_SHARE0[8]>> | W a| One 32-bit word of key data. Write-only; reads return 0.
+No reset; powers up with undefined value.
+| 0x1C220 - 0x1C23C | <<reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SEED_Z-KEY_SHARE1-,abr_wrapper_key.MLKEM_SEED_Z.KEY_SHARE1[8]>> | W a| One 32-bit word of key data. Write-only; reads return 0.
+No reset; powers up with undefined value.
+| 0x1C240 | <<reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SEED_Z-KEY_CTRL,abr_wrapper_key.MLKEM_SEED_Z.KEY_CTRL>> | RW a| Seed control register. Writing KEY_VALID=1 marks the seed as loaded.
+Write 0 to invalidate. The KV shim gates the AB kv_read response
+on this bit.
+| 0x1C300 - 0x1C31C | <<reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_MSG-KEY_SHARE0-,abr_wrapper_key.MLKEM_MSG.KEY_SHARE0[8]>> | W a| One 32-bit word of key data. Write-only; reads return 0.
+No reset; powers up with undefined value.
+| 0x1C320 - 0x1C33C | <<reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_MSG-KEY_SHARE1-,abr_wrapper_key.MLKEM_MSG.KEY_SHARE1[8]>> | W a| One 32-bit word of key data. Write-only; reads return 0.
+No reset; powers up with undefined value.
+| 0x1C340 | <<reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_MSG-KEY_CTRL,abr_wrapper_key.MLKEM_MSG.KEY_CTRL>> | RW a| Seed control register. Writing KEY_VALID=1 marks the seed as loaded.
+Write 0 to invalidate. The KV shim gates the AB kv_read response
+on this bit.
+| 0x1C400 - 0x1C41C | <<reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SHARED_KEY-KEY-,KEY[8]>> | R a| One 32-bit word of ML-KEM shared key output. Written by hardware
 when key is ready; read by KM firmware to consume. Hardware clears
 all words to 0 when KEY_CTRL.KEY_VALID is cleared (via hwclr).
+| 0x1C420 | <<reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SHARED_KEY-KEY_CTRL,abr_wrapper_key.MLKEM_SHARED_KEY.KEY_CTRL>> | RW a| Shared-key control. HW sets KEY_VALID when a new key is ready.
+Firmware writes 0 to clear (consume and zeroize).
+| 0x1C424 | <<reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SHARED_KEY-IRQ_STATUS,abr_wrapper_key.MLKEM_SHARED_KEY.IRQ_STATUS>> | RW a| Interrupt status for ML-KEM shared key. Sticky bit set by
+hardware when a new shared key becomes valid; cleared by writing 1.
+| 0x1C428 | <<reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SHARED_KEY-IRQ_ENABLE,abr_wrapper_key.MLKEM_SHARED_KEY.IRQ_ENABLE>> | RW a| Interrupt enable for ML-KEM shared key. Mask for the
+PicoRV32 IRQ vector bit driven by the shared-key-valid event.
 |===
 
 [#reg-{regmap-instance}-key_manager-mailbox_km-KM_WRITE_DATA]
@@ -294,10 +358,10 @@ all words to 0 when KEY_CTRL.KEY_VALID is cleared (via hwclr).
 | 31:26 | `rsvd` | R | 0x0 a| Reserved
 | 25 | `outbound_separator` | R | 0x0 a| Message separator: 1 if the last word read from outbound FIFO had the separator bit set (last word of message). Read-only, not sticky.
 | 24 | `inbound_separator` | R | 0x0 a| Message separator: 1 if the last word read from inbound FIFO had the separator bit set (last word of message). Read-only, not sticky.
-| 23 | `outbound_underflow` | RW | 0x0 a| Outbound FIFO underflow detected (read attempted when empty). Sticky, write 1 to clear.
-| 22 | `inbound_underflow` | RW | 0x0 a| Inbound FIFO underflow detected (read attempted when empty). Sticky, write 1 to clear.
-| 21 | `outbound_overflow` | RW | 0x0 a| Outbound FIFO overflow detected (write attempted when full). Sticky, write 1 to clear.
-| 20 | `inbound_overflow` | RW | 0x0 a| Inbound FIFO overflow detected (write attempted when full). Sticky, write 1 to clear.
+| 23 | `outbound_underflow` | RW1C | 0x0 a| Outbound FIFO underflow detected (read attempted when empty). Sticky, write 1 to clear.
+| 22 | `inbound_underflow` | RW1C | 0x0 a| Inbound FIFO underflow detected (read attempted when empty). Sticky, write 1 to clear.
+| 21 | `outbound_overflow` | RW1C | 0x0 a| Outbound FIFO overflow detected (write attempted when full). Sticky, write 1 to clear.
+| 20 | `inbound_overflow` | RW1C | 0x0 a| Inbound FIFO overflow detected (write attempted when full). Sticky, write 1 to clear.
 | 19:12 | `outbound_depth` | R | 0x0 a| Outbound FIFO fill level (number of words in FIFO)
 | 11:4 | `inbound_depth` | R | 0x0 a| Inbound FIFO fill level (number of words in FIFO)
 | 3 | `outbound_full` | R | 0x0 a| Outbound FIFO is full (cannot write more data)
@@ -313,9 +377,9 @@ all words to 0 when KEY_CTRL.KEY_VALID is cleared (via hwclr).
 |===
 | Bits | Field | Access | Reset | Description
 | 31:5 | `rsvd` | R | 0x0 a| Reserved
-| 4 | `flushed_by_sep` | RW | 0x0 a| SEP performed a mailbox flush. Sticky, write 1 to clear.
-| 3 | `inbound_underflow` | RW | 0x0 a| Inbound FIFO underflow detected. Sticky, write 1 to clear.
-| 2 | `outbound_overflow` | RW | 0x0 a| Outbound FIFO overflow detected. Sticky, write 1 to clear.
+| 4 | `flushed_by_sep` | RW1C | 0x0 a| SEP performed a mailbox flush. Sticky, write 1 to clear.
+| 3 | `inbound_underflow` | RW1C | 0x0 a| Inbound FIFO underflow detected. Sticky, write 1 to clear.
+| 2 | `outbound_overflow` | RW1C | 0x0 a| Outbound FIFO overflow detected. Sticky, write 1 to clear.
 | 1 | `outbound_write_space_avail` | R | 0x0 a| Outbound FIFO has space available for KM to write (level-sensitive). 1 = space available, 0 = full.
 | 0 | `inbound_read_data_avail` | R | 0x0 a| Inbound FIFO has data available for KM to read (level-sensitive). 1 = data available, 0 = empty.
 |===
@@ -352,70 +416,70 @@ all words to 0 when KEY_CTRL.KEY_VALID is cleared (via hwclr).
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63 | `SEP_SYS_ID_READ_LOCK` | RW | 0x0 a| sep_sys_id_read_lock (slot 31): when set, SEP_SYS_ID is not read-able.
-| 62 | `SEP_SYS_ID_WRITE_LOCK` | RW | 0x0 a| sep_sys_id_write_lock (slot 31): when set, SEP_SYS_ID is not write-able.
-| 61 | `SEP_SIP_ID_READ_LOCK` | RW | 0x0 a| sep_sip_id_read_lock (slot 30): when set, SEP_SIP_ID is not read-able.
-| 60 | `SEP_SIP_ID_WRITE_LOCK` | RW | 0x0 a| sep_sip_id_write_lock (slot 30): when set, SEP_SIP_ID is not write-able.
-| 59 | `SEP_CHIPLET_ID_READ_LOCK` | RW | 0x0 a| sep_chiplet_id_read_lock (slot 29): when set, SEP_CHIPLET_ID is not read-able.
-| 58 | `SEP_CHIPLET_ID_WRITE_LOCK` | RW | 0x0 a| sep_chiplet_id_write_lock (slot 29): when set, SEP_CHIPLET_ID is not write-able.
-| 57 | `SIP_PUBK_PQC_HASH1_READ_LOCK` | RW | 0x0 a| sip_pubk_pqc_hash1_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
-| 56 | `SIP_PUBK_PQC_HASH1_WRITE_LOCK` | RW | 0x0 a| sip_pubk_pqc_hash1_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
-| 55 | `SIP_PUBK_HASH1_READ_LOCK` | RW | 0x0 a| sip_pubk_hash1_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
-| 54 | `SIP_PUBK_HASH1_WRITE_LOCK` | RW | 0x0 a| sip_pubk_hash1_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
-| 53 | `SYS_PUBK_PQC_HASH_READ_LOCK` | RW | 0x0 a| sys_pubk_pqc_hash_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
-| 52 | `SYS_PUBK_PQC_HASH_WRITE_LOCK` | RW | 0x0 a| sys_pubk_pqc_hash_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
-| 51 | `SIP_PUBK_PQC_HASH0_READ_LOCK` | RW | 0x0 a| sip_pubk_pqc_hash0_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
-| 50 | `SIP_PUBK_PQC_HASH0_WRITE_LOCK` | RW | 0x0 a| sip_pubk_pqc_hash0_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
-| 49 | `CHIPLET_PUBK_PQC_HASH1_READ_LOCK` | RW | 0x0 a| chiplet_pubk_pqc_hash1_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
-| 48 | `CHIPLET_PUBK_PQC_HASH1_WRITE_LOCK` | RW | 0x0 a| chiplet_pubk_pqc_hash1_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
-| 47 | `CHIPLET_PUBK_PQC_HASH0_READ_LOCK` | RW | 0x0 a| chiplet_pubk_pqc_hash0_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
-| 46 | `CHIPLET_PUBK_PQC_HASH0_WRITE_LOCK` | RW | 0x0 a| chiplet_pubk_pqc_hash0_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
-| 45 | `REQUIRED_ALGS_READ_LOCK` | RW | 0x0 a| required_algs_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
-| 44 | `REQUIRED_ALGS_WRITE_LOCK` | RW | 0x0 a| required_algs_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
-| 43 | `REQUIRED_SIGNERS_READ_LOCK` | RW | 0x0 a| required_signers_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
-| 42 | `REQUIRED_SIGNERS_WRITE_LOCK` | RW | 0x0 a| required_signers_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
-| 41 | `CHIPLET_PUBK_HASH1_READ_LOCK` | RW | 0x0 a| chiplet_pubk_hash1_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
-| 40 | `CHIPLET_PUBK_HASH1_WRITE_LOCK` | RW | 0x0 a| chiplet_pubk_hash1_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
-| 39 | `CHIPLET_PUBK_HASH0_READ_LOCK` | RW | 0x0 a| chiplet_pubk_hash0_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
-| 38 | `CHIPLET_PUBK_HASH0_WRITE_LOCK` | RW | 0x0 a| chiplet_pubk_hash0_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
-| 37 | `SYSCLK_FREQ_MHZ_READ_LOCK` | RW | 0x0 a| sysclk_freq_mhz_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
-| 36 | `SYSCLK_FREQ_MHZ_WRITE_LOCK` | RW | 0x0 a| sysclk_freq_mhz_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
-| 35 | `ROM_CTL_READ_LOCK` | RW | 0x0 a| rom_ctl_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
-| 34 | `ROM_CTL_WRITE_LOCK` | RW | 0x0 a| rom_ctl_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
-| 33 | `STATUS_RPT_READ_LOCK` | RW | 0x0 a| status_rpt_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
-| 32 | `STATUS_RPT_WRITE_LOCK` | RW | 0x0 a| status_rpt_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
-| 31 | `SYS_UID_READ_LOCK` | RW | 0x0 a| sys_uid_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
-| 30 | `SYS_UID_WRITE_LOCK` | RW | 0x0 a| sys_uid_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
-| 29 | `SYS_PUBK_HASH_READ_LOCK` | RW | 0x0 a| sys_pubk_hash_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
-| 28 | `SYS_PUBK_HASH_WRITE_LOCK` | RW | 0x0 a| sys_pubk_hash_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
-| 27 | `SIP_UID_READ_LOCK` | RW | 0x0 a| sip_uid_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
-| 26 | `SIP_UID_WRITE_LOCK` | RW | 0x0 a| sip_uid_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
-| 25 | `SIP_PUBK_HASH0_READ_LOCK` | RW | 0x0 a| sip_pubk_hash0_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
-| 24 | `SIP_PUBK_HASH0_WRITE_LOCK` | RW | 0x0 a| sip_pubk_hash0_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
-| 23 | `CHIPLET_UID_READ_LOCK` | RW | 0x0 a| chiplet_uid_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
-| 22 | `CHIPLET_UID_WRITE_LOCK` | RW | 0x0 a| chiplet_uid_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
-| 21 | `BL2_VERSION_READ_LOCK` | RW | 0x0 a| bl2_version_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
-| 20 | `BL2_VERSION_WRITE_LOCK` | RW | 0x0 a| bl2_version_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
-| 19 | `BL1_VERSION_READ_LOCK` | RW | 0x0 a| bl1_version_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
-| 18 | `BL1_VERSION_WRITE_LOCK` | RW | 0x0 a| bl1_version_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
-| 17 | `CHIPLET_PUBK_REVOKE_READ_LOCK` | RW | 0x0 a| chiplet_pubk_revoke_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
-| 16 | `CHIPLET_PUBK_REVOKE_WRITE_LOCK` | RW | 0x0 a| chiplet_pubk_revoke_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
-| 15 | `CLASS_KEY_READ_LOCK` | RW | 0x0 a| class_key_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
-| 14 | `CLASS_KEY_WRITE_LOCK` | RW | 0x0 a| class_key_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
-| 13 | `RMA_CHIPLET_TOKEN_DIGEST_READ_LOCK` | RW | 0x0 a| rma_chiplet_token_digest_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
-| 12 | `RMA_CHIPLET_TOKEN_DIGEST_WRITE_LOCK` | RW | 0x0 a| rma_chiplet_token_digest_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
-| 11 | `RMA_SIP_TOKEN_DIGEST_READ_LOCK` | RW | 0x0 a| rma_sip_token_digest_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
-| 10 | `RMA_SIP_TOKEN_DIGEST_WRITE_LOCK` | RW | 0x0 a| rma_sip_token_digest_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
-| 9 | `SYS_DIS_READ_LOCK` | RW | 0x0 a| sys_dis_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
-| 8 | `SYS_DIS_WRITE_LOCK` | RW | 0x0 a| sys_dis_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
-| 7 | `SIP_DIS_READ_LOCK` | RW | 0x0 a| sip_dis_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
-| 6 | `SIP_DIS_WRITE_LOCK` | RW | 0x0 a| sip_dis_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
-| 5 | `TRANSIENT_RMA_EN_READ_LOCK` | RW | 0x0 a| TRANSIENT_RMA_EN_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)
-| 4 | `TRANSIENT_RMA_EN_WRITE_LOCK` | RW | 0x0 a| TRANSIENT_RMA_EN_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)
-| 3 | `SBOOT_DIS_READ_LOCK` | RW | 0x0 a| sboot_dis_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
-| 2 | `SBOOT_DIS_WRITE_LOCK` | RW | 0x0 a| sboot_dis_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
-| 1 | `LC_STATE_READ_LOCK` | RW | 0x0 a| lc_state_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
-| 0 | `LC_STATE_WRITE_LOCK` | RW | 0x0 a| lc_state_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 63 | `SEP_SYS_ID_READ_LOCK` | RW1S | 0x0 a| sep_sys_id_read_lock (slot 31): when set, SEP_SYS_ID is not read-able.
+| 62 | `SEP_SYS_ID_WRITE_LOCK` | RW1S | 0x0 a| sep_sys_id_write_lock (slot 31): when set, SEP_SYS_ID is not write-able.
+| 61 | `SEP_SIP_ID_READ_LOCK` | RW1S | 0x0 a| sep_sip_id_read_lock (slot 30): when set, SEP_SIP_ID is not read-able.
+| 60 | `SEP_SIP_ID_WRITE_LOCK` | RW1S | 0x0 a| sep_sip_id_write_lock (slot 30): when set, SEP_SIP_ID is not write-able.
+| 59 | `SEP_CHIPLET_ID_READ_LOCK` | RW1S | 0x0 a| sep_chiplet_id_read_lock (slot 29): when set, SEP_CHIPLET_ID is not read-able.
+| 58 | `SEP_CHIPLET_ID_WRITE_LOCK` | RW1S | 0x0 a| sep_chiplet_id_write_lock (slot 29): when set, SEP_CHIPLET_ID is not write-able.
+| 57 | `SIP_PUBK_PQC_HASH1_READ_LOCK` | RW1S | 0x0 a| sip_pubk_pqc_hash1_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 56 | `SIP_PUBK_PQC_HASH1_WRITE_LOCK` | RW1S | 0x0 a| sip_pubk_pqc_hash1_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 55 | `SIP_PUBK_HASH1_READ_LOCK` | RW1S | 0x0 a| sip_pubk_hash1_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 54 | `SIP_PUBK_HASH1_WRITE_LOCK` | RW1S | 0x0 a| sip_pubk_hash1_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 53 | `SYS_PUBK_PQC_HASH_READ_LOCK` | RW1S | 0x0 a| sys_pubk_pqc_hash_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 52 | `SYS_PUBK_PQC_HASH_WRITE_LOCK` | RW1S | 0x0 a| sys_pubk_pqc_hash_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 51 | `SIP_PUBK_PQC_HASH0_READ_LOCK` | RW1S | 0x0 a| sip_pubk_pqc_hash0_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 50 | `SIP_PUBK_PQC_HASH0_WRITE_LOCK` | RW1S | 0x0 a| sip_pubk_pqc_hash0_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 49 | `CHIPLET_PUBK_PQC_HASH1_READ_LOCK` | RW1S | 0x0 a| chiplet_pubk_pqc_hash1_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 48 | `CHIPLET_PUBK_PQC_HASH1_WRITE_LOCK` | RW1S | 0x0 a| chiplet_pubk_pqc_hash1_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 47 | `CHIPLET_PUBK_PQC_HASH0_READ_LOCK` | RW1S | 0x0 a| chiplet_pubk_pqc_hash0_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 46 | `CHIPLET_PUBK_PQC_HASH0_WRITE_LOCK` | RW1S | 0x0 a| chiplet_pubk_pqc_hash0_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 45 | `REQUIRED_ALGS_READ_LOCK` | RW1S | 0x0 a| required_algs_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 44 | `REQUIRED_ALGS_WRITE_LOCK` | RW1S | 0x0 a| required_algs_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 43 | `REQUIRED_SIGNERS_READ_LOCK` | RW1S | 0x0 a| required_signers_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 42 | `REQUIRED_SIGNERS_WRITE_LOCK` | RW1S | 0x0 a| required_signers_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 41 | `CHIPLET_PUBK_HASH1_READ_LOCK` | RW1S | 0x0 a| chiplet_pubk_hash1_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 40 | `CHIPLET_PUBK_HASH1_WRITE_LOCK` | RW1S | 0x0 a| chiplet_pubk_hash1_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 39 | `CHIPLET_PUBK_HASH0_READ_LOCK` | RW1S | 0x0 a| chiplet_pubk_hash0_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 38 | `CHIPLET_PUBK_HASH0_WRITE_LOCK` | RW1S | 0x0 a| chiplet_pubk_hash0_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 37 | `SYSCLK_FREQ_MHZ_READ_LOCK` | RW1S | 0x0 a| sysclk_freq_mhz_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 36 | `SYSCLK_FREQ_MHZ_WRITE_LOCK` | RW1S | 0x0 a| sysclk_freq_mhz_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 35 | `ROM_CTL_READ_LOCK` | RW1S | 0x0 a| rom_ctl_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 34 | `ROM_CTL_WRITE_LOCK` | RW1S | 0x0 a| rom_ctl_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 33 | `STATUS_RPT_READ_LOCK` | RW1S | 0x0 a| status_rpt_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 32 | `STATUS_RPT_WRITE_LOCK` | RW1S | 0x0 a| status_rpt_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 31 | `SYS_UID_READ_LOCK` | RW1S | 0x0 a| sys_uid_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 30 | `SYS_UID_WRITE_LOCK` | RW1S | 0x0 a| sys_uid_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 29 | `SYS_PUBK_HASH_READ_LOCK` | RW1S | 0x0 a| sys_pubk_hash_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 28 | `SYS_PUBK_HASH_WRITE_LOCK` | RW1S | 0x0 a| sys_pubk_hash_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 27 | `SIP_UID_READ_LOCK` | RW1S | 0x0 a| sip_uid_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 26 | `SIP_UID_WRITE_LOCK` | RW1S | 0x0 a| sip_uid_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 25 | `SIP_PUBK_HASH0_READ_LOCK` | RW1S | 0x0 a| sip_pubk_hash0_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 24 | `SIP_PUBK_HASH0_WRITE_LOCK` | RW1S | 0x0 a| sip_pubk_hash0_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 23 | `CHIPLET_UID_READ_LOCK` | RW1S | 0x0 a| chiplet_uid_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 22 | `CHIPLET_UID_WRITE_LOCK` | RW1S | 0x0 a| chiplet_uid_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 21 | `BL2_VERSION_READ_LOCK` | RW1S | 0x0 a| bl2_version_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 20 | `BL2_VERSION_WRITE_LOCK` | RW1S | 0x0 a| bl2_version_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 19 | `BL1_VERSION_READ_LOCK` | RW1S | 0x0 a| bl1_version_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 18 | `BL1_VERSION_WRITE_LOCK` | RW1S | 0x0 a| bl1_version_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 17 | `CHIPLET_PUBK_REVOKE_READ_LOCK` | RW1S | 0x0 a| chiplet_pubk_revoke_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 16 | `CHIPLET_PUBK_REVOKE_WRITE_LOCK` | RW1S | 0x0 a| chiplet_pubk_revoke_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 15 | `CLASS_KEY_READ_LOCK` | RW1S | 0x0 a| class_key_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 14 | `CLASS_KEY_WRITE_LOCK` | RW1S | 0x0 a| class_key_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 13 | `RMA_CHIPLET_TOKEN_DIGEST_READ_LOCK` | RW1S | 0x0 a| rma_chiplet_token_digest_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 12 | `RMA_CHIPLET_TOKEN_DIGEST_WRITE_LOCK` | RW1S | 0x0 a| rma_chiplet_token_digest_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 11 | `RMA_SIP_TOKEN_DIGEST_READ_LOCK` | RW1S | 0x0 a| rma_sip_token_digest_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 10 | `RMA_SIP_TOKEN_DIGEST_WRITE_LOCK` | RW1S | 0x0 a| rma_sip_token_digest_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 9 | `SYS_DIS_READ_LOCK` | RW1S | 0x0 a| sys_dis_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 8 | `SYS_DIS_WRITE_LOCK` | RW1S | 0x0 a| sys_dis_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 7 | `SIP_DIS_READ_LOCK` | RW1S | 0x0 a| sip_dis_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 6 | `SIP_DIS_WRITE_LOCK` | RW1S | 0x0 a| sip_dis_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 5 | `TRANSIENT_RMA_EN_READ_LOCK` | RW1S | 0x0 a| TRANSIENT_RMA_EN_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 4 | `TRANSIENT_RMA_EN_WRITE_LOCK` | RW1S | 0x0 a| TRANSIENT_RMA_EN_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 3 | `SBOOT_DIS_READ_LOCK` | RW1S | 0x0 a| sboot_dis_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 2 | `SBOOT_DIS_WRITE_LOCK` | RW1S | 0x0 a| sboot_dis_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
+| 1 | `LC_STATE_READ_LOCK` | RW1S | 0x0 a| lc_state_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 0 | `LC_STATE_WRITE_LOCK` | RW1S | 0x0 a| lc_state_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 |===
 
 [#reg-{regmap-instance}-key_manager-otp_efuse_map-LOCKS_SPARE]
@@ -424,25 +488,25 @@ all words to 0 when KEY_CTRL.KEY_VALID is cleared (via hwclr).
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 31:18 | `SPARE_LOCK_RSVD` | RW | 0x0 a| Unassigned lock slots 41-47. Reserved for future field lock assignments.
-| 17 | `SPARE8_READ_LOCK` | RW | 0x0 a| spare8_read_lock (slot 40): when set, spare8 is not read-able.
-| 16 | `SPARE8_WRITE_LOCK` | RW | 0x0 a| spare8_write_lock (slot 40): when set, spare8 is not write-able.
-| 15 | `SPARE7_READ_LOCK` | RW | 0x0 a| spare7_read_lock (slot 39): when set, spare7 is not read-able.
-| 14 | `SPARE7_WRITE_LOCK` | RW | 0x0 a| spare7_write_lock (slot 39): when set, spare7 is not write-able.
-| 13 | `SPARE6_READ_LOCK` | RW | 0x0 a| spare6_read_lock (slot 38): when set, spare6 is not read-able.
-| 12 | `SPARE6_WRITE_LOCK` | RW | 0x0 a| spare6_write_lock (slot 38): when set, spare6 is not write-able.
-| 11 | `SPARE5_READ_LOCK` | RW | 0x0 a| spare5_read_lock (slot 37): when set, spare5 is not read-able.
-| 10 | `SPARE5_WRITE_LOCK` | RW | 0x0 a| spare5_write_lock (slot 37): when set, spare5 is not write-able.
-| 9 | `SPARE4_READ_LOCK` | RW | 0x0 a| spare4_read_lock (slot 36): when set, spare4 is not read-able.
-| 8 | `SPARE4_WRITE_LOCK` | RW | 0x0 a| spare4_write_lock (slot 36): when set, spare4 is not write-able.
-| 7 | `SPARE3_READ_LOCK` | RW | 0x0 a| spare3_read_lock (slot 35): when set, spare3 is not read-able.
-| 6 | `SPARE3_WRITE_LOCK` | RW | 0x0 a| spare3_write_lock (slot 35): when set, spare3 is not write-able.
-| 5 | `SPARE2_READ_LOCK` | RW | 0x0 a| spare2_read_lock (slot 34): when set, spare2 is not read-able.
-| 4 | `SPARE2_WRITE_LOCK` | RW | 0x0 a| spare2_write_lock (slot 34): when set, spare2 is not write-able.
-| 3 | `SPARE1_READ_LOCK` | RW | 0x0 a| spare1_read_lock (slot 33): when set, spare1 is not read-able.
-| 2 | `SPARE1_WRITE_LOCK` | RW | 0x0 a| spare1_write_lock (slot 33): when set, spare1 is not write-able.
-| 1 | `SPARE0_READ_LOCK` | RW | 0x0 a| spare0_read_lock (slot 32): when set, spare0 is not read-able.
-| 0 | `SPARE0_WRITE_LOCK` | RW | 0x0 a| spare0_write_lock (slot 32): when set, spare0 is not write-able.
+| 31:18 | `SPARE_LOCK_RSVD` | RW1S | 0x0 a| Unassigned lock slots 41-47. Reserved for future field lock assignments.
+| 17 | `SPARE8_READ_LOCK` | RW1S | 0x0 a| spare8_read_lock (slot 40): when set, spare8 is not read-able.
+| 16 | `SPARE8_WRITE_LOCK` | RW1S | 0x0 a| spare8_write_lock (slot 40): when set, spare8 is not write-able.
+| 15 | `SPARE7_READ_LOCK` | RW1S | 0x0 a| spare7_read_lock (slot 39): when set, spare7 is not read-able.
+| 14 | `SPARE7_WRITE_LOCK` | RW1S | 0x0 a| spare7_write_lock (slot 39): when set, spare7 is not write-able.
+| 13 | `SPARE6_READ_LOCK` | RW1S | 0x0 a| spare6_read_lock (slot 38): when set, spare6 is not read-able.
+| 12 | `SPARE6_WRITE_LOCK` | RW1S | 0x0 a| spare6_write_lock (slot 38): when set, spare6 is not write-able.
+| 11 | `SPARE5_READ_LOCK` | RW1S | 0x0 a| spare5_read_lock (slot 37): when set, spare5 is not read-able.
+| 10 | `SPARE5_WRITE_LOCK` | RW1S | 0x0 a| spare5_write_lock (slot 37): when set, spare5 is not write-able.
+| 9 | `SPARE4_READ_LOCK` | RW1S | 0x0 a| spare4_read_lock (slot 36): when set, spare4 is not read-able.
+| 8 | `SPARE4_WRITE_LOCK` | RW1S | 0x0 a| spare4_write_lock (slot 36): when set, spare4 is not write-able.
+| 7 | `SPARE3_READ_LOCK` | RW1S | 0x0 a| spare3_read_lock (slot 35): when set, spare3 is not read-able.
+| 6 | `SPARE3_WRITE_LOCK` | RW1S | 0x0 a| spare3_write_lock (slot 35): when set, spare3 is not write-able.
+| 5 | `SPARE2_READ_LOCK` | RW1S | 0x0 a| spare2_read_lock (slot 34): when set, spare2 is not read-able.
+| 4 | `SPARE2_WRITE_LOCK` | RW1S | 0x0 a| spare2_write_lock (slot 34): when set, spare2 is not write-able.
+| 3 | `SPARE1_READ_LOCK` | RW1S | 0x0 a| spare1_read_lock (slot 33): when set, spare1 is not read-able.
+| 2 | `SPARE1_WRITE_LOCK` | RW1S | 0x0 a| spare1_write_lock (slot 33): when set, spare1 is not write-able.
+| 1 | `SPARE0_READ_LOCK` | RW1S | 0x0 a| spare0_read_lock (slot 32): when set, spare0 is not read-able.
+| 0 | `SPARE0_WRITE_LOCK` | RW1S | 0x0 a| spare0_write_lock (slot 32): when set, spare0 is not write-able.
 |===
 
 [#reg-{regmap-instance}-key_manager-otp_efuse_map-LC_STATE]
@@ -481,14 +545,14 @@ all words to 0 when KEY_CTRL.KEY_VALID is cleared (via hwclr).
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:48 | `func_reserved` | RW | 0x0 a| Reserved for adopter-defined functional feature gating (bits 63:48).
-| 47:25 | `debug_reserved_dbg2` | RW | 0x0 a| Reserved for adopter-defined inter-chiplet-bypass (DBG_2) debug scan chains (bits 47:25).
-| 24 | `sip_debug` | RW | 0x0 a| SIP_DBG (bit 24): Coarse-grained debug enable for the SiP scope: the inter-chiplet debug-bypass gate that admits external (PTAP) debug traffic into this chiplet and forwards it onward to the next chiplet via the outbound JTAG PTAP. 1'b1: disabled. 1'b0: enabled.
-| 23:4 | `debug_reserved_dbg1` | RW | 0x0 a| Reserved for adopter-defined local (DBG_1) debug scan chains (bits 23:4).
-| 3 | `smc_fuse_dbg` | RW | 0x0 a| SMC_FUSE_DBG (bit 3): 1'b1: the DFT-inserted access path into the SMC OTP is disabled. 1'b0: enabled. Produced by SEP-LCC feat_ctrl_o, exported on the SEP boundary, and consumed by SMC to gate its own inserted fuse path.
-| 2 | `sep_fuse_dbg` | RW | 0x0 a| SEP_FUSE_DBG (bit 2): 1'b1: the DFT-inserted access path into the SEP OTP is disabled. 1'b0: enabled. Also covers the OTP IP-vendor test and calibration interface, which is reachable only over that inserted path. The functional JTAG2AXIL path to the OTP is always available and is not gated by this bit.
-| 1 | `chiplet_dbg` | RW | 0x0 a| CHIPLET_DBG (bit 1): Coarse-grained debug enable for the chiplet scope. 1'b1: chiplet-scope debug/scan-dump access disabled. 1'b0: enabled. Never acts alone: an external debugger reaches chiplet-internal resources only when SIP_DBG is open as well. Contributes to the reachability of the crypto/KM secure chain but never authorizes a dump from it.
-| 0 | `sep_debug` | RW | 0x0 a| SEP_DBG (bit 0): Coarse-grained debug enable for the SEP scope. 1'b1: SEP-scope debug/scan-dump access disabled and external inbound traffic is filtered. 1'b0: enabled. A local gate only: reaching SEP internal state from an external debugger additionally requires SIP_DBG and CHIPLET_DBG.
+| 63:48 | `func_reserved` | RW1S | 0x0 a| Reserved for adopter-defined functional feature gating (bits 63:48).
+| 47:25 | `debug_reserved_dbg2` | RW1S | 0x0 a| Reserved for adopter-defined inter-chiplet-bypass (DBG_2) debug scan chains (bits 47:25).
+| 24 | `sip_debug` | RW1S | 0x0 a| SIP_DBG (bit 24): Coarse-grained debug enable for the SiP scope: the inter-chiplet debug-bypass gate that admits external (PTAP) debug traffic into this chiplet and forwards it onward to the next chiplet via the outbound JTAG PTAP. 1'b1: disabled. 1'b0: enabled.
+| 23:4 | `debug_reserved_dbg1` | RW1S | 0x0 a| Reserved for adopter-defined local (DBG_1) debug scan chains (bits 23:4).
+| 3 | `smc_fuse_dbg` | RW1S | 0x0 a| SMC_FUSE_DBG (bit 3): 1'b1: the DFT-inserted access path into the SMC OTP is disabled. 1'b0: enabled. Produced by SEP-LCC feat_ctrl_o, exported on the SEP boundary, and consumed by SMC to gate its own inserted fuse path.
+| 2 | `sep_fuse_dbg` | RW1S | 0x0 a| SEP_FUSE_DBG (bit 2): 1'b1: the DFT-inserted access path into the SEP OTP is disabled. 1'b0: enabled. Also covers the OTP IP-vendor test and calibration interface, which is reachable only over that inserted path. The functional JTAG2AXIL path to the OTP is always available and is not gated by this bit.
+| 1 | `chiplet_dbg` | RW1S | 0x0 a| CHIPLET_DBG (bit 1): Coarse-grained debug enable for the chiplet scope. 1'b1: chiplet-scope debug/scan-dump access disabled. 1'b0: enabled. Never acts alone: an external debugger reaches chiplet-internal resources only when SIP_DBG is open as well. Contributes to the reachability of the crypto/KM secure chain but never authorizes a dump from it.
+| 0 | `sep_debug` | RW1S | 0x0 a| SEP_DBG (bit 0): Coarse-grained debug enable for the SEP scope. 1'b1: SEP-scope debug/scan-dump access disabled and external inbound traffic is filtered. 1'b0: enabled. A local gate only: reaching SEP internal state from an external debugger additionally requires SIP_DBG and CHIPLET_DBG.
 |===
 
 [#reg-{regmap-instance}-key_manager-otp_efuse_map-SYS_DIS]
@@ -497,14 +561,14 @@ all words to 0 when KEY_CTRL.KEY_VALID is cleared (via hwclr).
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:48 | `func_reserved` | RW | 0x0 a| Reserved for adopter-defined functional feature gating (bits 63:48).
-| 47:25 | `debug_reserved_dbg2` | RW | 0x0 a| Reserved for adopter-defined inter-chiplet-bypass (DBG_2) debug scan chains (bits 47:25).
-| 24 | `sip_debug` | RW | 0x0 a| SIP_DBG (bit 24): Coarse-grained debug enable for the SiP scope: the inter-chiplet debug-bypass gate that admits external (PTAP) debug traffic into this chiplet and forwards it onward to the next chiplet via the outbound JTAG PTAP. 1'b1: disabled. 1'b0: enabled.
-| 23:4 | `debug_reserved_dbg1` | RW | 0x0 a| Reserved for adopter-defined local (DBG_1) debug scan chains (bits 23:4).
-| 3 | `smc_fuse_dbg` | RW | 0x0 a| SMC_FUSE_DBG (bit 3): 1'b1: the DFT-inserted access path into the SMC OTP is disabled. 1'b0: enabled. Produced by SEP-LCC feat_ctrl_o, exported on the SEP boundary, and consumed by SMC to gate its own inserted fuse path.
-| 2 | `sep_fuse_dbg` | RW | 0x0 a| SEP_FUSE_DBG (bit 2): 1'b1: the DFT-inserted access path into the SEP OTP is disabled. 1'b0: enabled. Also covers the OTP IP-vendor test and calibration interface, which is reachable only over that inserted path. The functional JTAG2AXIL path to the OTP is always available and is not gated by this bit.
-| 1 | `chiplet_dbg` | RW | 0x0 a| CHIPLET_DBG (bit 1): Coarse-grained debug enable for the chiplet scope. 1'b1: chiplet-scope debug/scan-dump access disabled. 1'b0: enabled. Never acts alone: an external debugger reaches chiplet-internal resources only when SIP_DBG is open as well. Contributes to the reachability of the crypto/KM secure chain but never authorizes a dump from it.
-| 0 | `sep_debug` | RW | 0x0 a| SEP_DBG (bit 0): Coarse-grained debug enable for the SEP scope. 1'b1: SEP-scope debug/scan-dump access disabled and external inbound traffic is filtered. 1'b0: enabled. A local gate only: reaching SEP internal state from an external debugger additionally requires SIP_DBG and CHIPLET_DBG.
+| 63:48 | `func_reserved` | RW1S | 0x0 a| Reserved for adopter-defined functional feature gating (bits 63:48).
+| 47:25 | `debug_reserved_dbg2` | RW1S | 0x0 a| Reserved for adopter-defined inter-chiplet-bypass (DBG_2) debug scan chains (bits 47:25).
+| 24 | `sip_debug` | RW1S | 0x0 a| SIP_DBG (bit 24): Coarse-grained debug enable for the SiP scope: the inter-chiplet debug-bypass gate that admits external (PTAP) debug traffic into this chiplet and forwards it onward to the next chiplet via the outbound JTAG PTAP. 1'b1: disabled. 1'b0: enabled.
+| 23:4 | `debug_reserved_dbg1` | RW1S | 0x0 a| Reserved for adopter-defined local (DBG_1) debug scan chains (bits 23:4).
+| 3 | `smc_fuse_dbg` | RW1S | 0x0 a| SMC_FUSE_DBG (bit 3): 1'b1: the DFT-inserted access path into the SMC OTP is disabled. 1'b0: enabled. Produced by SEP-LCC feat_ctrl_o, exported on the SEP boundary, and consumed by SMC to gate its own inserted fuse path.
+| 2 | `sep_fuse_dbg` | RW1S | 0x0 a| SEP_FUSE_DBG (bit 2): 1'b1: the DFT-inserted access path into the SEP OTP is disabled. 1'b0: enabled. Also covers the OTP IP-vendor test and calibration interface, which is reachable only over that inserted path. The functional JTAG2AXIL path to the OTP is always available and is not gated by this bit.
+| 1 | `chiplet_dbg` | RW1S | 0x0 a| CHIPLET_DBG (bit 1): Coarse-grained debug enable for the chiplet scope. 1'b1: chiplet-scope debug/scan-dump access disabled. 1'b0: enabled. Never acts alone: an external debugger reaches chiplet-internal resources only when SIP_DBG is open as well. Contributes to the reachability of the crypto/KM secure chain but never authorizes a dump from it.
+| 0 | `sep_debug` | RW1S | 0x0 a| SEP_DBG (bit 0): Coarse-grained debug enable for the SEP scope. 1'b1: SEP-scope debug/scan-dump access disabled and external inbound traffic is filtered. 1'b0: enabled. A local gate only: reaching SEP internal state from an external debugger additionally requires SIP_DBG and CHIPLET_DBG.
 |===
 
 [#reg-{regmap-instance}-key_manager-otp_efuse_map-RMA_SIP_TOKEN_DIGEST]
@@ -662,7 +726,7 @@ all words to 0 when KEY_CTRL.KEY_VALID is cleared (via hwclr).
 |===
 | Bits | Field | Access | Reset | Description
 | 31:2 | `reserved` | R | 0x0 a| Reserved
-| 1:0 | `required_signers` | RW | 0x0 a| Owners whose signature is required to authenticate any image loadable by SEP ROM. Per owner, 1 = required, 0 = not-required; the default all-zero value requires no additional owner. [0] SiP owner, [1] system owner. The chiplet creator is the root of trust and always authenticates BL1, so it has no bit here.
+| 1:0 | `required_signers` | RW1S | 0x0 a| Owners whose signature is required to authenticate any image loadable by SEP ROM. Per owner, 1 = required, 0 = not-required; the default all-zero value requires no additional owner. [0] SiP owner, [1] system owner. The chiplet creator is the root of trust and always authenticates BL1, so it has no bit here.
 |===
 
 [#reg-{regmap-instance}-key_manager-otp_efuse_map-REQUIRED_ALGS]
@@ -672,9 +736,9 @@ all words to 0 when KEY_CTRL.KEY_VALID is cleared (via hwclr).
 |===
 | Bits | Field | Access | Reset | Description
 | 31:12 | `reserved` | R | 0x0 a| Reserved
-| 11:8 | `sys_algs` | RW | 0x0 a| Per-owner required signature algorithms for system owner. bit 0 = classical, bit 1 = post-quantum (ML-DSA), bits 3:2 reserved.
-| 7:4 | `sip_algs` | RW | 0x0 a| Per-owner required signature algorithms for SiP owner. bit 0 = classical, bit 1 = post-quantum (ML-DSA), bits 3:2 reserved.
-| 3:0 | `chiplet_algs` | RW | 0x0 a| Per-owner required signature algorithms for chiplet. Each nibble: bit 0 = classical (ECDSA P-384 or RSA), bit 1 = post-quantum (ML-DSA), bits 3:2 reserved.
+| 11:8 | `sys_algs` | RW1S | 0x0 a| Per-owner required signature algorithms for system owner. bit 0 = classical, bit 1 = post-quantum (ML-DSA), bits 3:2 reserved.
+| 7:4 | `sip_algs` | RW1S | 0x0 a| Per-owner required signature algorithms for SiP owner. bit 0 = classical, bit 1 = post-quantum (ML-DSA), bits 3:2 reserved.
+| 3:0 | `chiplet_algs` | RW1S | 0x0 a| Per-owner required signature algorithms for chiplet. Each nibble: bit 0 = classical (ECDSA P-384 or RSA), bit 1 = post-quantum (ML-DSA), bits 3:2 reserved.
 |===
 
 [#reg-{regmap-instance}-key_manager-otp_efuse_map-CHIPLET_PUBK_PQC_HASH0]
@@ -846,9 +910,9 @@ all words to 0 when KEY_CTRL.KEY_VALID is cleared (via hwclr).
 |===
 | Bits | Field | Access | Reset | Description
 | 31:11 | `Reserved` | - | - a| Reserved
-| 10 | `efuse_read_addr_error_clear` | W | 0x0 a| Clears the read out of bounds error bit (efuse_read_addr_error) in efuse_ctrl_status
-| 9 | `efuse_program_addr_error_clear` | W | 0x0 a| Clears the program out of bounds error bit (efuse_program_addr_error) in efuse_ctrl_status
-| 8 | `efuse_req_error_clear` | W | 0x0 a| Clears the blocked request error bit in efuse_ctrl_status
+| 10 | `efuse_read_addr_error_clear` | W 1P | 0x0 a| Clears the read out of bounds error bit (efuse_read_addr_error) in efuse_ctrl_status
+| 9 | `efuse_program_addr_error_clear` | W 1P | 0x0 a| Clears the program out of bounds error bit (efuse_program_addr_error) in efuse_ctrl_status
+| 8 | `efuse_req_error_clear` | W 1P | 0x0 a| Clears the blocked request error bit in efuse_ctrl_status
 | 7 | `Reserved` | - | - a| Reserved
 | 6 | `efuse_read_addr_error` | R | 0x0 a| Indicates that an invalid eFuse read address was used (address exceeds the implemented eFuse size). The error must be cleared by writing 1 to efuse_read_addr_error_clear.
 | 5 | `efuse_program_addr_error` | R | 0x0 a| Indicates that an invalid eFuse program address was used (address exceeds the implemented eFuse size). The error must be cleared by writing 1 to efuse_program_addr_error_clear.
@@ -870,7 +934,7 @@ all words to 0 when KEY_CTRL.KEY_VALID is cleared (via hwclr).
 | 24 | `program_busy` | R | 0x0 a| When set, the program is in progress
 | 23:19 | `Reserved` | - | - a| Reserved
 | 18 | `efuse_program_read_back` | RW | 0x0 a| When set, trigger a read back after a program
-| 17 | `efuse_program_go` | RW | 0x0 a| When set, triggers a program to the eFuse.  This will be ignored if the lock bit is set
+| 17 | `efuse_program_go` | RW 1P | 0x0 a| When set, triggers a program to the eFuse.  This will be ignored if the lock bit is set
 | 16 | `efuse_data` | RW | 0x0 a| Data to program to eFuse.  If this bit is 0, the program request will be ignored
 | 15:0 | `efuse_addr` | RW | 0x0 a| Bit address to program
 |===
@@ -888,7 +952,7 @@ all words to 0 when KEY_CTRL.KEY_VALID is cleared (via hwclr).
 | 25 | `read_done` | R | 0x0 a| When set, the read has completed, the status of which is in read_status
 | 24 | `read_busy` | R | 0x0 a| When set, the read is in progress
 | 23:17 | `Reserved` | - | - a| Reserved
-| 16 | `efuse_read_go` | RW | 0x0 a| When set, triggers a read to efuse.
+| 16 | `efuse_read_go` | RW 1P | 0x0 a| When set, triggers a read to efuse.
 | 15:0 | `efuse_addr` | RW | 0x0 a| Bit address to read
 |===
 
@@ -932,7 +996,7 @@ all words to 0 when KEY_CTRL.KEY_VALID is cleared (via hwclr).
 | 27:0 | `program_req_timeout_cycles` | RW | 0x800000 a| Number of cycles the program interface will wait for a response from the shim. At 100MHz this can count ~= 2.5 seconds.
 |===
 
-[#reg-{regmap-instance}-key_manager-otp_efuse_mmr-RMA_SIP_TOKEN_I-0-]
+[#reg-{regmap-instance}-key_manager-otp_efuse_mmr-RMA_SIP_TOKEN_I-]
 === RMA_SIP_TOKEN_I[8]
 
 [cols="1,3,1,1,6", options="header"]
@@ -941,7 +1005,7 @@ all words to 0 when KEY_CTRL.KEY_VALID is cleared (via hwclr).
 | 31:0 | `token` | RW | - a| Portion of writeable version of RMA_*_TOKEN, hashed, and compared with fused value to allow LC to change states.
 |===
 
-[#reg-{regmap-instance}-key_manager-otp_efuse_mmr-RMA_CHIPLET_TOKEN_I-0-]
+[#reg-{regmap-instance}-key_manager-otp_efuse_mmr-RMA_CHIPLET_TOKEN_I-]
 === RMA_CHIPLET_TOKEN_I[8]
 
 [cols="1,3,1,1,6", options="header"]
@@ -950,7 +1014,7 @@ all words to 0 when KEY_CTRL.KEY_VALID is cleared (via hwclr).
 | 31:0 | `token` | RW | - a| Portion of writeable version of RMA_*_TOKEN, hashed, and compared with fused value to allow LC to change states.
 |===
 
-[#reg-{regmap-instance}-key_manager-otp_efuse_mmr-SEC_DISABLE_TOKEN_I-0-]
+[#reg-{regmap-instance}-key_manager-otp_efuse_mmr-SEC_DISABLE_TOKEN_I-]
 === SEC_DISABLE_TOKEN_I[8]
 
 [cols="1,3,1,1,6", options="header"]
@@ -966,11 +1030,11 @@ all words to 0 when KEY_CTRL.KEY_VALID is cleared (via hwclr).
 |===
 | Bits | Field | Access | Reset | Description
 | 31:17 | `Reserved` | - | - a| Reserved
-| 16 | `secure_disable_token_go` | W | 0x0 a| Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.
+| 16 | `secure_disable_token_go` | W 1P | 0x0 a| Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.
 | 15:9 | `Reserved` | - | - a| Reserved
-| 8 | `rma_chiplet_token_go` | W | 0x0 a| Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.
+| 8 | `rma_chiplet_token_go` | W 1P | 0x0 a| Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.
 | 7:1 | `Reserved` | - | - a| Reserved
-| 0 | `rma_sip_token_go` | W | 0x0 a| Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.
+| 0 | `rma_sip_token_go` | W 1P | 0x0 a| Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.
 |===
 
 [#reg-{regmap-instance}-key_manager-otp_efuse_mmr-RMA_SIP_TOKEN_MATCH]
@@ -1017,8 +1081,8 @@ all words to 0 when KEY_CTRL.KEY_VALID is cleared (via hwclr).
 | 0 | `rma_sip_token_fault` | R | 0x0 a| A redundancy fault was detected in the RMA_SIP_TOKEN comparators.
 |===
 
-[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-0-WORD-0-]
-=== WORD[16]
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-WORD-]
+=== KEY_ENTRY[64].WORD[16]
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -1027,19 +1091,19 @@ all words to 0 when KEY_CTRL.KEY_VALID is cleared (via hwclr).
 Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
 |===
 
-[#reg-{regmap-instance}-key_manager-kpv-CTRL-0-]
+[#reg-{regmap-instance}-key_manager-kpv-CTRL-]
 === CTRL[64]
 
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:4 | `rsvd_31_4` | R | 0x0 a| Reserved
-| 3 | `seal` | RW | 0x0 a| Seals this key entry until warm reset. Read-any, write-1-only. Setting this
+| 3 | `seal` | RW1S | 0x0 a| Seals this key entry until warm reset. Read-any, write-1-only. Setting this
 bit also sets lock_write in hardware, so a single write seals the slot: its
 data can be read but not overwritten. Erase remains available, and erasing
 a sealed slot retires it rather than freeing it (see ERASE), so a sealed
 slot's material can be destroyed but its slot never reused.
-| 2 | `erase` | RW | 0x0 a| Write-1 to start hardware erase of this slot: an LFSR fills all 16 key
+| 2 | `erase` | RW1S | 0x0 a| Write-1 to start hardware erase of this slot: an LFSR fills all 16 key
 words (through the KPV scrambler). Hardware self-clears this bit when the
 erase completes. Never blocked: neither lock_write, lock_use nor seal
 prevents an erase. The slot's seal state when the erase completes decides
@@ -1048,10 +1112,10 @@ reusable. Sealed, lock_write stays set and lock_use is set, retiring the
 slot: its data is destroyed and it can be neither read, rewritten nor
 reused until warm reset. A seal taken while an erase is already in flight
 therefore still retires the slot.
-| 1 | `lock_use` | RW | 0x0 a| Prevents KM read of this key entry data until reset. Read-any, write-1-only.
+| 1 | `lock_use` | RW1S | 0x0 a| Prevents KM read of this key entry data until reset. Read-any, write-1-only.
 Hardware sets this bit when an erase of a sealed slot completes, retiring
 the slot: its destroyed contents cannot be read back.
-| 0 | `lock_write` | RW | 0x0 a| Prevents KM write to this key entry data until reset; this register stays
+| 0 | `lock_write` | RW1S | 0x0 a| Prevents KM write to this key entry data until reset; this register stays
 writable so that a locked slot can still be read-locked and erased.
 Read-any, write-1-only. Hardware holds this bit set for as long as SEAL is
 set, so sealing a slot write-locks it without a separate write here.
@@ -1073,7 +1137,7 @@ set, so sealing a slot write-locks it without a separate write here.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:2 | `rsvd` | R | 0x0 a| Reserved
-| 1 | `lock` | RW | 0x0 a| Write-one-only. When 1, key and ENABLE cannot be modified until KM reset.
+| 1 | `lock` | RW1S | 0x0 a| Write-one-only. When 1, key and ENABLE cannot be modified until KM reset.
 | 0 | `enable` | RW | 0x0 a| 1 = scramble key entry data on write, descramble on read; 0 = passthrough.
 |===
 
@@ -1108,28 +1172,28 @@ set, so sealing a slot write-locks it without a separate write here.
 |===
 
 [#reg-{regmap-instance}-key_manager-kmcsr-IRQ_STATUS]
-=== IRQ_STATUS
+=== kmcsr.IRQ_STATUS
 
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:12 | `rsvd` | R | 0x0 a| Reserved
-| 11 | `rom_access_violation` | RW | 0x0 a| KM ROM instruction fetch or data read attempted after the ROM lockout engaged. The lockout engages on the first committed instruction fetch from write-locked SRAM once SRAM_EXEC_MODE.enable is set, and clears only on warm or cold reset. Sticky, write 1 to clear.
-| 10 | `exec_violation` | RW | 0x0 a| Instruction fetch from a non-whitelisted (non-executable) memory region detected, excluding the KM ROM. Sticky, write 1 to clear.
-| 9 | `otp_sigint` | RW | 0x0 a| OTP dual-rail encoding integrity violation: value and complement are not complementary on at least one field. Sticky, write 1 to clear.
-| 8 | `otp_change` | RW | 0x0 a| An OTP readout field value changed (decoded value differs from prior cycle). Sticky, write 1 to clear. Check OTP_CHANGE_STATUS for the specific field(s).
-| 7 | `wipe_state` | RW | 0x0 a| Wipe state event (rising edge of wipe_state input). Sticky, write 1 to clear.
-| 6 | `drbg_err` | RW | 0x0 a| DRBG Sampler error (timeout or AXI-Stream error). Sticky, write 1 to clear.
-| 5 | `axi_decerr` | RW | 0x0 a| AXI DECERR (decode error) response detected on CPU bus transaction. Sticky, write 1 to clear.
-| 4 | `axi_slverr` | RW | 0x0 a| AXI SLVERR (slave error) response detected on CPU bus transaction. Sticky, write 1 to clear.
-| 3 | `sram_write_lock_err` | RW | 0x0 a| SRAM write attempt to a write-locked region detected. Sticky, write 1 to clear.
-| 2 | `rom_write_err` | RW | 0x0 a| ROM write attempt detected (ROM is read-only). Sticky, write 1 to clear.
-| 1 | `sram_parity_err` | RW | 0x0 a| SRAM parity error detected. Sticky, write 1 to clear.
-| 0 | `rom_parity_err` | RW | 0x0 a| ROM parity error detected. Sticky, write 1 to clear.
+| 11 | `rom_access_violation` | RW1C | 0x0 a| KM ROM instruction fetch or data read attempted after the ROM lockout engaged. The lockout engages on the first committed instruction fetch from write-locked SRAM once SRAM_EXEC_MODE.enable is set, and clears only on warm or cold reset. Sticky, write 1 to clear.
+| 10 | `exec_violation` | RW1C | 0x0 a| Instruction fetch from a non-whitelisted (non-executable) memory region detected, excluding the KM ROM. Sticky, write 1 to clear.
+| 9 | `otp_sigint` | RW1C | 0x0 a| OTP dual-rail encoding integrity violation: value and complement are not complementary on at least one field. Sticky, write 1 to clear.
+| 8 | `otp_change` | RW1C | 0x0 a| An OTP readout field value changed (decoded value differs from prior cycle). Sticky, write 1 to clear. Check OTP_CHANGE_STATUS for the specific field(s).
+| 7 | `wipe_state` | RW1C | 0x0 a| Wipe state event (rising edge of wipe_state input). Sticky, write 1 to clear.
+| 6 | `drbg_err` | RW1C | 0x0 a| DRBG Sampler error (timeout or AXI-Stream error). Sticky, write 1 to clear.
+| 5 | `axi_decerr` | RW1C | 0x0 a| AXI DECERR (decode error) response detected on CPU bus transaction. Sticky, write 1 to clear.
+| 4 | `axi_slverr` | RW1C | 0x0 a| AXI SLVERR (slave error) response detected on CPU bus transaction. Sticky, write 1 to clear.
+| 3 | `sram_write_lock_err` | RW1C | 0x0 a| SRAM write attempt to a write-locked region detected. Sticky, write 1 to clear.
+| 2 | `rom_write_err` | RW1C | 0x0 a| ROM write attempt detected (ROM is read-only). Sticky, write 1 to clear.
+| 1 | `sram_parity_err` | RW1C | 0x0 a| SRAM parity error detected. Sticky, write 1 to clear.
+| 0 | `rom_parity_err` | RW1C | 0x0 a| ROM parity error detected. Sticky, write 1 to clear.
 |===
 
 [#reg-{regmap-instance}-key_manager-kmcsr-IRQ_ENABLE]
-=== IRQ_ENABLE
+=== kmcsr.IRQ_ENABLE
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -1175,7 +1239,7 @@ set, so sealing a slot write-locks it without a separate write here.
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `lock_bits` | RW | 0x0 a| One bit per 1 KB SRAM region. Region 0 = 0x8000-0x83FF, region 31 = 0xFC00-0xFFFF. Write 1 to lock; 0 has no effect. Warm reset domain: cleared by warm or cold reset.
+| 31:0 | `lock_bits` | RW1S | 0x0 a| One bit per 1 KB SRAM region. Region 0 = 0x8000-0x83FF, region 31 = 0xFC00-0xFFFF. Write 1 to lock; 0 has no effect. Warm reset domain: cleared by warm or cold reset.
 |===
 
 [#reg-{regmap-instance}-key_manager-kmcsr-IRQ_SET]
@@ -1185,18 +1249,18 @@ set, so sealing a slot write-locks it without a separate write here.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:12 | `rsvd` | W | 0x0 a| Reserved (write-only; reads trigger SLVERR via err_if_bad_rw)
-| 11 | `rom_access_violation_set` | W | 0x0 a| Write 1 to set IRQ_STATUS.ROM_ACCESS_VIOLATION (triggers ROM lockout violation interrupt for testing)
-| 10 | `exec_violation_set` | W | 0x0 a| Write 1 to set IRQ_STATUS.EXEC_VIOLATION (triggers exec-permission violation interrupt for testing)
-| 9 | `otp_sigint_set` | W | 0x0 a| Write 1 to set IRQ_STATUS.OTP_SIGINT (triggers OTP sigint interrupt for testing)
-| 8 | `otp_change_set` | W | 0x0 a| Write 1 to set IRQ_STATUS.OTP_CHANGE (triggers OTP change interrupt for testing)
-| 7 | `wipe_state_set` | W | 0x0 a| Write 1 to set IRQ_STATUS.WIPE_STATE (triggers wipe state interrupt for testing)
-| 6 | `drbg_err_set` | W | 0x0 a| Write 1 to set IRQ_STATUS.DRBG_ERR (triggers DRBG Sampler interrupt for testing)
-| 5 | `axi_decerr_set` | W | 0x0 a| Write 1 to set IRQ_STATUS.AXI_DECERR (triggers AXI DECERR interrupt for testing)
-| 4 | `axi_slverr_set` | W | 0x0 a| Write 1 to set IRQ_STATUS.AXI_SLVERR (triggers AXI SLVERR interrupt for testing)
-| 3 | `sram_write_lock_err_set` | W | 0x0 a| Write 1 to set IRQ_STATUS.SRAM_WRITE_LOCK_ERR (triggers SRAM write-lock interrupt for testing)
-| 2 | `rom_write_err_set` | W | 0x0 a| Write 1 to set IRQ_STATUS.ROM_WRITE_ERR (triggers ROM write interrupt for testing)
-| 1 | `sram_parity_err_set` | W | 0x0 a| Write 1 to set IRQ_STATUS.SRAM_PARITY_ERR (triggers SRAM parity interrupt for testing)
-| 0 | `rom_parity_err_set` | W | 0x0 a| Write 1 to set IRQ_STATUS.ROM_PARITY_ERR (triggers ROM parity interrupt for testing)
+| 11 | `rom_access_violation_set` | W 1P | 0x0 a| Write 1 to set IRQ_STATUS.ROM_ACCESS_VIOLATION (triggers ROM lockout violation interrupt for testing)
+| 10 | `exec_violation_set` | W 1P | 0x0 a| Write 1 to set IRQ_STATUS.EXEC_VIOLATION (triggers exec-permission violation interrupt for testing)
+| 9 | `otp_sigint_set` | W 1P | 0x0 a| Write 1 to set IRQ_STATUS.OTP_SIGINT (triggers OTP sigint interrupt for testing)
+| 8 | `otp_change_set` | W 1P | 0x0 a| Write 1 to set IRQ_STATUS.OTP_CHANGE (triggers OTP change interrupt for testing)
+| 7 | `wipe_state_set` | W 1P | 0x0 a| Write 1 to set IRQ_STATUS.WIPE_STATE (triggers wipe state interrupt for testing)
+| 6 | `drbg_err_set` | W 1P | 0x0 a| Write 1 to set IRQ_STATUS.DRBG_ERR (triggers DRBG Sampler interrupt for testing)
+| 5 | `axi_decerr_set` | W 1P | 0x0 a| Write 1 to set IRQ_STATUS.AXI_DECERR (triggers AXI DECERR interrupt for testing)
+| 4 | `axi_slverr_set` | W 1P | 0x0 a| Write 1 to set IRQ_STATUS.AXI_SLVERR (triggers AXI SLVERR interrupt for testing)
+| 3 | `sram_write_lock_err_set` | W 1P | 0x0 a| Write 1 to set IRQ_STATUS.SRAM_WRITE_LOCK_ERR (triggers SRAM write-lock interrupt for testing)
+| 2 | `rom_write_err_set` | W 1P | 0x0 a| Write 1 to set IRQ_STATUS.ROM_WRITE_ERR (triggers ROM write interrupt for testing)
+| 1 | `sram_parity_err_set` | W 1P | 0x0 a| Write 1 to set IRQ_STATUS.SRAM_PARITY_ERR (triggers SRAM parity interrupt for testing)
+| 0 | `rom_parity_err_set` | W 1P | 0x0 a| Write 1 to set IRQ_STATUS.ROM_PARITY_ERR (triggers ROM parity interrupt for testing)
 |===
 
 [#reg-{regmap-instance}-key_manager-kmcsr-SRAM_WRITE_LOCK_VIOLATION]
@@ -1205,7 +1269,7 @@ set, so sealing a slot write-locks it without a separate write here.
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `violation_bits` | RW | 0x0 a| Bit[i]=1 if region i had attempted write while locked. Sticky, write 1 to clear each bit.
+| 31:0 | `violation_bits` | RW1C | 0x0 a| Bit[i]=1 if region i had attempted write while locked. Sticky, write 1 to clear each bit.
 |===
 
 [#reg-{regmap-instance}-key_manager-kmcsr-RECOVERABLE_ERR]
@@ -1225,7 +1289,7 @@ set, so sealing a slot write-locks it without a separate write here.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `rsvd` | R | 0x0 a| Reserved
-| 0 | `cold_boot_done` | RW | 0x0 a| Write-1-only: set by ROM firmware at end of cold boot. Reads 0 after cold reset; reads 1 after firmware sets it. Sticky until next cold reset (preserved across warm resets).
+| 0 | `cold_boot_done` | RW1S | 0x0 a| Write-1-only: set by ROM firmware at end of cold boot. Reads 0 after cold reset; reads 1 after firmware sets it. Sticky until next cold reset (preserved across warm resets).
 |===
 
 [#reg-{regmap-instance}-key_manager-kmcsr-OTP_LIFE_CYCLE]
@@ -1256,7 +1320,7 @@ set, so sealing a slot write-locks it without a separate write here.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `rsvd` | R | 0x0 a| Reserved
-| 0 | `enable` | RW | 0x0 a| Execute-permission mode: 0=ROM-only whitelist; 1=write-locked SRAM whitelist, arming the ROM lockout. Write 1 to set; write 0 has no effect. Warm reset domain: cleared by warm or cold reset.
+| 0 | `enable` | RW1S | 0x0 a| Execute-permission mode: 0=ROM-only whitelist; 1=write-locked SRAM whitelist, arming the ROM lockout. Write 1 to set; write 0 has no effect. Warm reset domain: cleared by warm or cold reset.
 |===
 
 [#reg-{regmap-instance}-key_manager-kmcsr-IRQ_ENTRY_ADDR]
@@ -1275,7 +1339,7 @@ set, so sealing a slot write-locks it without a separate write here.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `rsvd` | R | 0x0 a| Reserved; reads as zero.
-| 0 | `lock` | RW | 0x0 a| Write 1 to set; write 0 has no effect; sticky until reset.
+| 0 | `lock` | RW1S | 0x0 a| Write 1 to set; write 0 has no effect; sticky until reset.
 |===
 
 [#reg-{regmap-instance}-key_manager-kmcsr-VUART_TX]
@@ -1976,15 +2040,15 @@ set, so sealing a slot write-locks it without a separate write here.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:9 | `rsvd` | R | 0x0 a| Reserved
-| 8 | `sep_sys_id` | RW | 0x0 a| Lock OTP_SEP_SYS_ID_VAL/CPL reads (returns zero when locked)
-| 7 | `sep_sip_id` | RW | 0x0 a| Lock OTP_SEP_SIP_ID_VAL/CPL reads (returns zero when locked)
-| 6 | `sep_chiplet_id` | RW | 0x0 a| Lock OTP_SEP_CHIPLET_ID_VAL/CPL reads (returns zero when locked)
-| 5 | `class_key` | RW | 0x0 a| Lock OTP_CLASS_KEY_VAL/CPL reads (returns zero when locked)
-| 4 | `sys_uid` | RW | 0x0 a| Lock OTP_SYS_UID_VAL/CPL reads (returns zero when locked)
-| 3 | `sip_uid` | RW | 0x0 a| Lock OTP_SIP_UID_VAL/CPL reads (returns zero when locked)
-| 2 | `chiplet_uid` | RW | 0x0 a| Lock OTP_CHIPLET_UID_VAL/CPL reads (returns zero when locked)
-| 1 | `demotion` | RW | 0x0 a| Lock OTP_DEMOTION_STATE reads (returns zero when locked)
-| 0 | `life_cycle` | RW | 0x0 a| Lock OTP_LIFE_CYCLE reads (returns zero when locked)
+| 8 | `sep_sys_id` | RW1S | 0x0 a| Lock OTP_SEP_SYS_ID_VAL/CPL reads (returns zero when locked)
+| 7 | `sep_sip_id` | RW1S | 0x0 a| Lock OTP_SEP_SIP_ID_VAL/CPL reads (returns zero when locked)
+| 6 | `sep_chiplet_id` | RW1S | 0x0 a| Lock OTP_SEP_CHIPLET_ID_VAL/CPL reads (returns zero when locked)
+| 5 | `class_key` | RW1S | 0x0 a| Lock OTP_CLASS_KEY_VAL/CPL reads (returns zero when locked)
+| 4 | `sys_uid` | RW1S | 0x0 a| Lock OTP_SYS_UID_VAL/CPL reads (returns zero when locked)
+| 3 | `sip_uid` | RW1S | 0x0 a| Lock OTP_SIP_UID_VAL/CPL reads (returns zero when locked)
+| 2 | `chiplet_uid` | RW1S | 0x0 a| Lock OTP_CHIPLET_UID_VAL/CPL reads (returns zero when locked)
+| 1 | `demotion` | RW1S | 0x0 a| Lock OTP_DEMOTION_STATE reads (returns zero when locked)
+| 0 | `life_cycle` | RW1S | 0x0 a| Lock OTP_LIFE_CYCLE reads (returns zero when locked)
 |===
 
 [#reg-{regmap-instance}-key_manager-kmcsr-OTP_CHANGE_STATUS]
@@ -1994,15 +2058,15 @@ set, so sealing a slot write-locks it without a separate write here.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:9 | `rsvd` | R | 0x0 a| Reserved
-| 8 | `sep_sys_id` | RW | 0x0 a| OTP_SEP_SYS_ID value changed since last cycle. Sticky, write 1 to clear.
-| 7 | `sep_sip_id` | RW | 0x0 a| OTP_SEP_SIP_ID value changed since last cycle. Sticky, write 1 to clear.
-| 6 | `sep_chiplet_id` | RW | 0x0 a| OTP_SEP_CHIPLET_ID value changed since last cycle. Sticky, write 1 to clear.
-| 5 | `class_key` | RW | 0x0 a| OTP_CLASS_KEY value changed since last cycle. Sticky, write 1 to clear.
-| 4 | `sys_uid` | RW | 0x0 a| OTP_SYS_UID value changed since last cycle. Sticky, write 1 to clear.
-| 3 | `sip_uid` | RW | 0x0 a| OTP_SIP_UID value changed since last cycle. Sticky, write 1 to clear.
-| 2 | `chiplet_uid` | RW | 0x0 a| OTP_CHIPLET_UID value changed since last cycle. Sticky, write 1 to clear.
-| 1 | `demotion` | RW | 0x0 a| OTP_DEMOTION_STATE value changed since last cycle. Sticky, write 1 to clear.
-| 0 | `life_cycle` | RW | 0x0 a| OTP_LIFE_CYCLE value changed since last cycle. Sticky, write 1 to clear.
+| 8 | `sep_sys_id` | RW1C | 0x0 a| OTP_SEP_SYS_ID value changed since last cycle. Sticky, write 1 to clear.
+| 7 | `sep_sip_id` | RW1C | 0x0 a| OTP_SEP_SIP_ID value changed since last cycle. Sticky, write 1 to clear.
+| 6 | `sep_chiplet_id` | RW1C | 0x0 a| OTP_SEP_CHIPLET_ID value changed since last cycle. Sticky, write 1 to clear.
+| 5 | `class_key` | RW1C | 0x0 a| OTP_CLASS_KEY value changed since last cycle. Sticky, write 1 to clear.
+| 4 | `sys_uid` | RW1C | 0x0 a| OTP_SYS_UID value changed since last cycle. Sticky, write 1 to clear.
+| 3 | `sip_uid` | RW1C | 0x0 a| OTP_SIP_UID value changed since last cycle. Sticky, write 1 to clear.
+| 2 | `chiplet_uid` | RW1C | 0x0 a| OTP_CHIPLET_UID value changed since last cycle. Sticky, write 1 to clear.
+| 1 | `demotion` | RW1C | 0x0 a| OTP_DEMOTION_STATE value changed since last cycle. Sticky, write 1 to clear.
+| 0 | `life_cycle` | RW1C | 0x0 a| OTP_LIFE_CYCLE value changed since last cycle. Sticky, write 1 to clear.
 |===
 
 [#reg-{regmap-instance}-key_manager-kmcsr-OTP_READ_LOCK_COLD]
@@ -2012,15 +2076,15 @@ set, so sealing a slot write-locks it without a separate write here.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:9 | `rsvd` | R | 0x0 a| Reserved
-| 8 | `sep_sys_id` | RW | 0x0 a| Cold-reset read-lock for OTP_SEP_SYS_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_sys_id \| OTP_READ_LOCK_COLD.sep_sys_id.
-| 7 | `sep_sip_id` | RW | 0x0 a| Cold-reset read-lock for OTP_SEP_SIP_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_sip_id \| OTP_READ_LOCK_COLD.sep_sip_id.
-| 6 | `sep_chiplet_id` | RW | 0x0 a| Cold-reset read-lock for OTP_SEP_CHIPLET_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_chiplet_id \| OTP_READ_LOCK_COLD.sep_chiplet_id.
-| 5 | `class_key` | RW | 0x0 a| Cold-reset read-lock for OTP_CLASS_KEY_VAL/CPL. Effective lock = OTP_READ_LOCK.class_key \| OTP_READ_LOCK_COLD.class_key.
-| 4 | `sys_uid` | RW | 0x0 a| Cold-reset read-lock for OTP_SYS_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.sys_uid \| OTP_READ_LOCK_COLD.sys_uid.
-| 3 | `sip_uid` | RW | 0x0 a| Cold-reset read-lock for OTP_SIP_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.sip_uid \| OTP_READ_LOCK_COLD.sip_uid.
-| 2 | `chiplet_uid` | RW | 0x0 a| Cold-reset read-lock for OTP_CHIPLET_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.chiplet_uid \| OTP_READ_LOCK_COLD.chiplet_uid.
-| 1 | `demotion` | RW | 0x0 a| Cold-reset read-lock for OTP_DEMOTION_STATE. Effective lock = OTP_READ_LOCK.demotion \| OTP_READ_LOCK_COLD.demotion.
-| 0 | `life_cycle` | RW | 0x0 a| Cold-reset read-lock for OTP_LIFE_CYCLE. Effective lock = OTP_READ_LOCK.life_cycle \| OTP_READ_LOCK_COLD.life_cycle.
+| 8 | `sep_sys_id` | RW1S | 0x0 a| Cold-reset read-lock for OTP_SEP_SYS_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_sys_id \| OTP_READ_LOCK_COLD.sep_sys_id.
+| 7 | `sep_sip_id` | RW1S | 0x0 a| Cold-reset read-lock for OTP_SEP_SIP_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_sip_id \| OTP_READ_LOCK_COLD.sep_sip_id.
+| 6 | `sep_chiplet_id` | RW1S | 0x0 a| Cold-reset read-lock for OTP_SEP_CHIPLET_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_chiplet_id \| OTP_READ_LOCK_COLD.sep_chiplet_id.
+| 5 | `class_key` | RW1S | 0x0 a| Cold-reset read-lock for OTP_CLASS_KEY_VAL/CPL. Effective lock = OTP_READ_LOCK.class_key \| OTP_READ_LOCK_COLD.class_key.
+| 4 | `sys_uid` | RW1S | 0x0 a| Cold-reset read-lock for OTP_SYS_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.sys_uid \| OTP_READ_LOCK_COLD.sys_uid.
+| 3 | `sip_uid` | RW1S | 0x0 a| Cold-reset read-lock for OTP_SIP_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.sip_uid \| OTP_READ_LOCK_COLD.sip_uid.
+| 2 | `chiplet_uid` | RW1S | 0x0 a| Cold-reset read-lock for OTP_CHIPLET_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.chiplet_uid \| OTP_READ_LOCK_COLD.chiplet_uid.
+| 1 | `demotion` | RW1S | 0x0 a| Cold-reset read-lock for OTP_DEMOTION_STATE. Effective lock = OTP_READ_LOCK.demotion \| OTP_READ_LOCK_COLD.demotion.
+| 0 | `life_cycle` | RW1S | 0x0 a| Cold-reset read-lock for OTP_LIFE_CYCLE. Effective lock = OTP_READ_LOCK.life_cycle \| OTP_READ_LOCK_COLD.life_cycle.
 |===
 
 [#reg-{regmap-instance}-key_manager-kmcsr-OTP_SEP_CHIPLET_ID_VAL_0]
@@ -2481,11 +2545,11 @@ set, so sealing a slot write-locks it without a separate write here.
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 31:16 | `count_good` | RW | 0x0 a| Successful words transferred to CPU. Saturates at 0xFFFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.
+| 31:16 | `count_good` | RW | 0x0 a| Counts only reads completed through StRespond, excluding prefetched words. Saturates at 0xFFFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.
 | 15:8 | `count_bad` | RW | 0x0 a| Failed transactions (timeout or error). Saturates at 0xFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.
 | 7:4 | `rsvd` | R | 0x0 a| Reserved
-| 3 | `stream_err` | RW | 0x0 a| Set when there is an error on the DRBG AXI-Stream interface (e.g. TVALID deasserted before TREADY). Write 1 to clear.
-| 2 | `timeout_err` | RW | 0x0 a| Set when a DRBG read from the KM CPU times out. Write 1 to clear.
+| 3 | `stream_err` | RW1C | 0x0 a| Set when there is an error on the DRBG AXI-Stream interface (e.g. TVALID deasserted before TREADY). Write 1 to clear.
+| 2 | `timeout_err` | RW1C | 0x0 a| Set when a DRBG read from the KM CPU times out. Write 1 to clear.
 | 1 | `prefetched` | R | 0x0 a| Prefetched data available
 | 0 | `drbg_ready` | R | 0x0 a| TVALID asserted from DRBG
 |===
@@ -2499,7 +2563,7 @@ set, so sealing a slot write-locks it without a separate write here.
 | 31:0 | `data` | R | - a| Prefetched 32-bit random data. No reset for security; power-up value undefined.
 |===
 
-[#reg-{regmap-instance}-key_manager-otbn_wrapper_key-KEY_SHARE0-0-]
+[#reg-{regmap-instance}-key_manager-otbn_wrapper_key-KEY_SHARE0-]
 === KEY_SHARE0[12]
 
 [cols="1,3,1,1,6", options="header"]
@@ -2508,7 +2572,7 @@ set, so sealing a slot write-locks it without a separate write here.
 | 31:0 | `data` | W | - a| 32-bit key data word. Write-only for security.
 |===
 
-[#reg-{regmap-instance}-key_manager-otbn_wrapper_key-KEY_SHARE1-0-]
+[#reg-{regmap-instance}-key_manager-otbn_wrapper_key-KEY_SHARE1-]
 === KEY_SHARE1[12]
 
 [cols="1,3,1,1,6", options="header"]
@@ -2518,7 +2582,7 @@ set, so sealing a slot write-locks it without a separate write here.
 |===
 
 [#reg-{regmap-instance}-key_manager-otbn_wrapper_key-KEY_CTRL]
-=== KEY_CTRL
+=== otbn_wrapper_key.KEY_CTRL
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -2528,8 +2592,8 @@ set, so sealing a slot write-locks it without a separate write here.
 Write 0 to invalidate the current key.
 |===
 
-[#reg-{regmap-instance}-key_manager-aes_wrapper_key-KEY_SHARE0-0-]
-=== KEY_SHARE0[8]
+[#reg-{regmap-instance}-key_manager-aes_wrapper_key-KEY_SHARE0-]
+=== aes_wrapper_key.KEY_SHARE0[8]
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -2537,8 +2601,8 @@ Write 0 to invalidate the current key.
 | 31:0 | `data` | W | - a| 32-bit key data word. Write-only for security.
 |===
 
-[#reg-{regmap-instance}-key_manager-aes_wrapper_key-KEY_SHARE1-0-]
-=== KEY_SHARE1[8]
+[#reg-{regmap-instance}-key_manager-aes_wrapper_key-KEY_SHARE1-]
+=== aes_wrapper_key.KEY_SHARE1[8]
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -2546,7 +2610,192 @@ Write 0 to invalidate the current key.
 | 31:0 | `data` | W | - a| 32-bit key data word. Write-only for security.
 |===
 
-[#reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SHARED_KEY-KEY-0-]
+[#reg-{regmap-instance}-key_manager-aes_wrapper_key-KEY_CTRL]
+=== aes_wrapper_key.KEY_CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `rsvd` | R | 0x0 a| Reserved
+| 0 | `key_valid` | RW | 0x0 a| When 1, asserts keymgr_key_i.valid to indicate key is loaded.
+Write 0 to invalidate the current key.
+|===
+
+[#reg-{regmap-instance}-key_manager-kmac_wrapper_key-KEY_SHARE0-]
+=== kmac_wrapper_key.KEY_SHARE0[8]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | W | - a| 32-bit key data word. Write-only for security.
+|===
+
+[#reg-{regmap-instance}-key_manager-kmac_wrapper_key-KEY_SHARE1-]
+=== kmac_wrapper_key.KEY_SHARE1[8]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | W | - a| 32-bit key data word. Write-only for security.
+|===
+
+[#reg-{regmap-instance}-key_manager-kmac_wrapper_key-KEY_CTRL]
+=== kmac_wrapper_key.KEY_CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `rsvd` | R | 0x0 a| Reserved
+| 0 | `key_valid` | RW | 0x0 a| When 1, asserts keymgr_key_i.valid to indicate key is loaded.
+Write 0 to invalidate the current key.
+|===
+
+[#reg-{regmap-instance}-key_manager-hmac_wrapper_key-KEY_SHARE0-]
+=== hmac_wrapper_key.KEY_SHARE0[8]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | W | - a| 32-bit key data word. Write-only for security.
+|===
+
+[#reg-{regmap-instance}-key_manager-hmac_wrapper_key-KEY_SHARE1-]
+=== hmac_wrapper_key.KEY_SHARE1[8]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | W | - a| 32-bit key data word. Write-only for security.
+|===
+
+[#reg-{regmap-instance}-key_manager-hmac_wrapper_key-KEY_CTRL]
+=== hmac_wrapper_key.KEY_CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `rsvd` | R | 0x0 a| Reserved
+| 0 | `key_valid` | RW | 0x0 a| When 1, asserts keymgr_key_i.valid to indicate key is loaded.
+Write 0 to invalidate the current key.
+|===
+
+[#reg-{regmap-instance}-key_manager-abr_wrapper_key-MLDSA_SEED-KEY_SHARE0-]
+=== abr_wrapper_key.MLDSA_SEED.KEY_SHARE0[8]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | W | - a| 32-bit key data word. Write-only for security.
+|===
+
+[#reg-{regmap-instance}-key_manager-abr_wrapper_key-MLDSA_SEED-KEY_SHARE1-]
+=== abr_wrapper_key.MLDSA_SEED.KEY_SHARE1[8]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | W | - a| 32-bit key data word. Write-only for security.
+|===
+
+[#reg-{regmap-instance}-key_manager-abr_wrapper_key-MLDSA_SEED-KEY_CTRL]
+=== abr_wrapper_key.MLDSA_SEED.KEY_CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `rsvd` | R | 0x0 a| Reserved
+| 0 | `key_valid` | RW | 0x0 a| When 1, the seed is loaded and the KV shim will serve it to Adams Bridge.
+Write 0 to invalidate and allow a new seed to be written.
+|===
+
+[#reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SEED_D-KEY_SHARE0-]
+=== abr_wrapper_key.MLKEM_SEED_D.KEY_SHARE0[8]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | W | - a| 32-bit key data word. Write-only for security.
+|===
+
+[#reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SEED_D-KEY_SHARE1-]
+=== abr_wrapper_key.MLKEM_SEED_D.KEY_SHARE1[8]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | W | - a| 32-bit key data word. Write-only for security.
+|===
+
+[#reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SEED_D-KEY_CTRL]
+=== abr_wrapper_key.MLKEM_SEED_D.KEY_CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `rsvd` | R | 0x0 a| Reserved
+| 0 | `key_valid` | RW | 0x0 a| When 1, the seed is loaded and the KV shim will serve it to Adams Bridge.
+Write 0 to invalidate and allow a new seed to be written.
+|===
+
+[#reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SEED_Z-KEY_SHARE0-]
+=== abr_wrapper_key.MLKEM_SEED_Z.KEY_SHARE0[8]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | W | - a| 32-bit key data word. Write-only for security.
+|===
+
+[#reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SEED_Z-KEY_SHARE1-]
+=== abr_wrapper_key.MLKEM_SEED_Z.KEY_SHARE1[8]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | W | - a| 32-bit key data word. Write-only for security.
+|===
+
+[#reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SEED_Z-KEY_CTRL]
+=== abr_wrapper_key.MLKEM_SEED_Z.KEY_CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `rsvd` | R | 0x0 a| Reserved
+| 0 | `key_valid` | RW | 0x0 a| When 1, the seed is loaded and the KV shim will serve it to Adams Bridge.
+Write 0 to invalidate and allow a new seed to be written.
+|===
+
+[#reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_MSG-KEY_SHARE0-]
+=== abr_wrapper_key.MLKEM_MSG.KEY_SHARE0[8]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | W | - a| 32-bit key data word. Write-only for security.
+|===
+
+[#reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_MSG-KEY_SHARE1-]
+=== abr_wrapper_key.MLKEM_MSG.KEY_SHARE1[8]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | W | - a| 32-bit key data word. Write-only for security.
+|===
+
+[#reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_MSG-KEY_CTRL]
+=== abr_wrapper_key.MLKEM_MSG.KEY_CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `rsvd` | R | 0x0 a| Reserved
+| 0 | `key_valid` | RW | 0x0 a| When 1, the seed is loaded and the KV shim will serve it to Adams Bridge.
+Write 0 to invalidate and allow a new seed to be written.
+|===
+
+[#reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SHARED_KEY-KEY-]
 === KEY[8]
 
 [cols="1,3,1,1,6", options="header"]
@@ -2554,4 +2803,37 @@ Write 0 to invalidate the current key.
 | Bits | Field | Access | Reset | Description
 | 31:0 | `data` | R | 0x0 a| 32-bit shared-key word. Hardware writes on key-ready event;
 hardware clears to 0 on key-consume event (KEY_VALID cleared).
+|===
+
+[#reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SHARED_KEY-KEY_CTRL]
+=== abr_wrapper_key.MLKEM_SHARED_KEY.KEY_CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `rsvd` | R | 0x0 a| Reserved
+| 0 | `key_valid` | RW0C | 0x0 a| 1 = shared key is valid and ready for firmware consumption.
+Hardware sets this bit on key-ready event. Write 0 to clear;
+write 1 has no effect (software cannot set this bit).
+|===
+
+[#reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SHARED_KEY-IRQ_STATUS]
+=== abr_wrapper_key.MLKEM_SHARED_KEY.IRQ_STATUS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `rsvd` | R | 0x0 a| Reserved
+| 0 | `key_valid` | RW1C | 0x0 a| ML-KEM shared key valid. Sticky, write 1 to clear.
+|===
+
+[#reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SHARED_KEY-IRQ_ENABLE]
+=== abr_wrapper_key.MLKEM_SHARED_KEY.IRQ_ENABLE
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `rsvd` | R | 0x0 a| Reserved
+| 0 | `key_valid_en` | RW | 0x0 a| 1 = enable PicoRV32 IRQ when ML-KEM shared key is valid.
+0 = mask the interrupt (KEY_CTRL.KEY_VALID can still be polled).
 |===

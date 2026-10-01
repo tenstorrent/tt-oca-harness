@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// DEBUG_CONTROL randomized clock stop: a deterministic sweep of per-request
-// one-hots, all-ones, and checker patterns crossed with every
-// jtag_clock_stop / cla_clock_stop_en combination, then seeded random
-// combinations — stop_clks must always equal jtag_clock_stop OR
+// DEBUG_CONTROL randomized clock stop: a seeded request walk first counts
+// one stop_clks change per change of the request OR, then a deterministic
+// sweep of per-request one-hots, all-ones, and checker patterns crossed
+// with every jtag_clock_stop / cla_clock_stop_en combination, then seeded
+// random combinations — stop_clks must always equal jtag_clock_stop OR
 // (any CLA request), and the read-only CLA status must track the request
-// aggregate. Mirrors the cocotb
+// aggregate. Across the pass no stop_clks change falls off a clk_i rising
+// edge (CHK-DBG-STOP-EDGE). Mirrors the cocotb
 // dtp_dbg_ctrl_clk_stop_random_clock_stop_test_seq.
 
 class dtp_dbg_ctrl_clk_stop_random_clock_stop_test_seq extends dtp_debug_tdr_base_test_seq;
@@ -43,13 +45,16 @@ class dtp_dbg_ctrl_clk_stop_random_clock_stop_test_seq extends dtp_debug_tdr_bas
   endtask
 
   task body();
-    string required[$] = {"CHK-TAP-RESET-TLR", "CHK-DBG-TDR", "CHK-DBG-PIN"};
+    string required[$] = {"CHK-TAP-RESET-TLR", "CHK-DBG-TDR", "CHK-DBG-PIN", "CHK-DBG-STOP-EDGE"};
     bit [NumClkStopReq-1:0] directed_reqs[$];
     int unsigned iteration = 0;
+    int unsigned off_edge_start;
     seed_scenario_rng();
     attach_family_checker(required);
+    off_edge_start = stop_clks_off_edge_count();
 
     reset_to_tlr();
+    check_stop_clks_walk();
 
     directed_reqs.push_back('0);
     for (int unsigned idx = 0; idx < NumClkStopReq; idx++)
@@ -94,6 +99,7 @@ class dtp_dbg_ctrl_clk_stop_random_clock_stop_test_seq extends dtp_debug_tdr_bas
     write_debug_control(pack_debug_control());
     wait_sys_cycles();
     wait_for_signal_value("stop_clks", 1'b0, .context_s("cleanup"));
+    check_stop_clks_off_edge(off_edge_start, "whole pass");
 
     finalize_family_checker();
   endtask

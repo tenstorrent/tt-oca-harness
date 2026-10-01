@@ -87,16 +87,6 @@ class SmcCsrSeq(smc_base_test_seq):
         for name, addr, expected in regs:
             await self.csr_read(name, addr, expected)
 
-    async def csr_read_many_allow_error(self, regs: list[tuple[str, int, int | None]]) -> None:
-        """Read a list of windows that are terminated as AXI error
-        slaves. ``allow_error`` lets the DECERR/SLVERR response count as a
-        completed access, so the sequence still proves the fabric decodes/
-        routes to the window and the bus never hangs, without asserting a real
-        register value the terminator cannot provide. The per-entry ``expected``
-        field is ignored here (the reg tables stay uniform)."""
-        for name, addr, _expected in regs:
-            await self.csr_read_allow_error(name, addr)
-
     # Data word an AXI error slave returns alongside its error response. The
     # one place the value is specified is the eFuse architecture document
     # (``hw/ip/efuse/doc/architecture.adoc``, JTAG access control: "When a
@@ -192,32 +182,54 @@ class SmcCsrSeq(smc_base_test_seq):
         )
         return item.rdata
 
-    async def csr_read_allow_error(self, name: str, addr: int, length: int = 4) -> int:
-        item = SmcSysAxiItem(f"rd_{name}")
-        item.op = SmcSysAxiOp.READ
+    async def csr_write_expect_error(
+        self, name: str, addr: int, data: int, length: int = 4, prot: int = 0
+    ) -> int:
+        """Write a register that must refuse it with an AXI error response.
+
+        Returns the response code so the caller can report which refusal the
+        DUT gave. The caller pairs this with a readback proving the refused
+        write took no effect."""
+        item = SmcSysAxiItem(f"wr_{name}")
+        item.op = SmcSysAxiOp.WRITE
         item.addr = addr
         item.length = length
+        item.wdata = data
         item.allow_error = True
+        item.expect_error = True  # scoreboard also enforces the error response
+        item.prot = prot
         await self.start_item(item)
         await self.finish_item(item)
         self.accesses += 1
-        return item.rdata
+        assert item.resp_code is not None and item.resp_code > 1, (
+            f"{name} @ 0x{addr:08x}: expected an error response (SLVERR/DECERR), "
+            f"got resp={item.resp_code}"
+        )
+        return item.resp_code
 
     async def csr_read_bounded(
-        self, name: str, addr: int, length: int = 4, timeout_ns: int = 200
+        self,
+        name: str,
+        addr: int,
+        length: int = 4,
+        timeout_ns: int = 200,
+        allow_error: bool = True,
     ) -> int:
-        """Bounded read: tolerates DECERR **and** timeout (no-decode).
+        """Bounded read: tolerates timeout (no-decode), and DECERR unless
+        ``allow_error=False``.
 
         Intended for coverage-gap CSR probes where the block may be
         clock-gated or absent from this bench and there is no
         AXI responder to send back OKAY/DECERR. Increments `timeouts` on
-        no-response, `accesses` unconditionally.
+        no-response, `accesses` unconditionally. A positive control that must
+        be answered passes ``allow_error=False`` so the scoreboard holds the
+        completed read to OKAY.
         """
         item = SmcSysAxiItem(f"rd_{name}")
         item.op = SmcSysAxiOp.READ
         item.addr = addr
         item.length = length
-        item.allow_error = True
+        item.allow_error = allow_error
         # allow_timeout: helper for unreachable CSR windows; caller must score
         # timeouts/accesses (second evidence). Default csr_read stays strict.
         item.allow_timeout = True
@@ -333,8 +345,13 @@ class SmcCsrSeq(smc_base_test_seq):
     _I2C0_SCL_PAD = 37
     _GPIO_LSIO_SELECT = 1 << 17
 
-    async def _arm_i2c0_gpio_lsio(self, label: str) -> None:
-        """Force I2C0 pad mux onto LSIO via GPIO DATA_CTRL.lsio_select.
+    # Pads per I2C instance in the padring: SCL, SDA, SMBALERT#, SMBSUS#, with
+    # instance `i` starting at `_I2C0_SCL_PAD + 4 * i` (tb_top.sv records the
+    # same 37 + 4*i mapping over its I2C pad localparams).
+    _I2C_PADS_PER_INSTANCE = 4
+
+    async def arm_i2c_gpio_lsio(self, idx: int, label: str) -> None:
+        """Force the I2C``idx`` pad group onto LSIO via GPIO DATA_CTRL.lsio_select.
 
         Verilator codegen of ``i2c_wrap``'s ``MAX_NUM_I2CS`` always_comb writes
         OOB and then zeros ``i2c_en_o`` / ``i2c_controller_mode_en_o``, so the
@@ -342,7 +359,8 @@ class SmcCsrSeq(smc_base_test_seq):
         at 0. Software ``lsio_select`` is the supported override (same as
         gpio_intf.rdl) and restores pad sense without touching RTL.
         """
-        for pad in range(self._I2C0_SCL_PAD, self._I2C0_SCL_PAD + 4):
+        first = self._I2C0_SCL_PAD + idx * self._I2C_PADS_PER_INSTANCE
+        for pad in range(first, first + self._I2C_PADS_PER_INSTANCE):
             addr = self._GPIO_INTF0_DATA_CTRL + pad * self._GPIO_INTF_STRIDE
             cur = await self.csr_read(f"{label}_GPIO{pad}_SAVE", addr)
             await self.csr_write(
@@ -350,6 +368,28 @@ class SmcCsrSeq(smc_base_test_seq):
                 addr,
                 cur | self._GPIO_LSIO_SELECT,
             )
+
+    async def _arm_i2c0_gpio_lsio(self, label: str) -> None:
+        await self.arm_i2c_gpio_lsio(0, label)
+
+    async def wait_i2c_bus_released(self, label: str = "I2C_BUS", max_polls: int = 2000) -> None:
+        """Wait until the shared open-drain I2C bus reads high on both lines.
+
+        Under ``+smc_i2c_shared_bus`` every instance resolves onto the one net
+        the bench observes, so a released bus is the state every enabled
+        instance agrees on. Expiry is a failure, never a pass.
+        """
+        dut = cocotb.top
+        for _ in range(max_polls):
+            scl = dut.tb_i2c0_scl.value
+            sda = dut.tb_i2c0_sda.value
+            if scl.is_resolvable and sda.is_resolvable and int(scl) == 1 and int(sda) == 1:
+                return
+            await ClockCycles(dut.clk_smc_i, 4)
+        raise AssertionError(
+            f"{label}: the shared I2C bus never released "
+            f"(scl={dut.tb_i2c0_scl.value}, sda={dut.tb_i2c0_sda.value})"
+        )
 
     async def wait_i2c0_lsio_ready(self, label: str = "I2C0_LSIO") -> None:
         """Wait until I2C0 pad sense tracks the OD bus (host can leave idle).

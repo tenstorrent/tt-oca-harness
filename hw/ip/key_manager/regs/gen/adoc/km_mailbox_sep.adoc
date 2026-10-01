@@ -4,7 +4,9 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-km_mailbox_sep]
-== Address Map: km_mailbox_sep
+== Key Manager Mailbox SEP Side
+
+Register interface for SEP host to access mailbox (write to inbound FIFO, read from outbound FIFO)
 
 [cols="1,4,1,6", options="header"]
 |===
@@ -55,10 +57,10 @@
 | 31:26 | `rsvd` | R | 0x0 a| Reserved
 | 25 | `outbound_separator` | R | 0x0 a| Message separator: 1 if the last word read from outbound FIFO had the separator bit set (last word of message). Read-only, not sticky.
 | 24 | `inbound_separator` | R | 0x0 a| Message separator: 1 if the last word read from inbound FIFO had the separator bit set (last word of message). Read-only, not sticky.
-| 23 | `outbound_underflow` | RW | 0x0 a| Outbound FIFO underflow detected (read attempted when empty). Sticky, write 1 to clear.
-| 22 | `inbound_underflow` | RW | 0x0 a| Inbound FIFO underflow detected (read attempted when empty). Sticky, write 1 to clear.
-| 21 | `outbound_overflow` | RW | 0x0 a| Outbound FIFO overflow detected (write attempted when full). Sticky, write 1 to clear.
-| 20 | `inbound_overflow` | RW | 0x0 a| Inbound FIFO overflow detected (write attempted when full). Sticky, write 1 to clear.
+| 23 | `outbound_underflow` | RW1C | 0x0 a| Outbound FIFO underflow detected (read attempted when empty). Sticky, write 1 to clear.
+| 22 | `inbound_underflow` | RW1C | 0x0 a| Inbound FIFO underflow detected (read attempted when empty). Sticky, write 1 to clear.
+| 21 | `outbound_overflow` | RW1C | 0x0 a| Outbound FIFO overflow detected (write attempted when full). Sticky, write 1 to clear.
+| 20 | `inbound_overflow` | RW1C | 0x0 a| Inbound FIFO overflow detected (write attempted when full). Sticky, write 1 to clear.
 | 19:12 | `outbound_depth` | R | 0x0 a| Outbound FIFO fill level (number of words in FIFO)
 | 11:4 | `inbound_depth` | R | 0x0 a| Inbound FIFO fill level (number of words in FIFO)
 | 3 | `outbound_full` | R | 0x0 a| Outbound FIFO is full
@@ -74,9 +76,9 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:5 | `rsvd` | R | 0x0 a| Reserved
-| 4 | `flushed_by_km` | RW | 0x0 a| KM performed a mailbox flush. Sticky, write 1 to clear.
-| 3 | `outbound_underflow` | RW | 0x0 a| Outbound FIFO underflow detected. Sticky, write 1 to clear.
-| 2 | `inbound_overflow` | RW | 0x0 a| Inbound FIFO overflow detected. Sticky, write 1 to clear.
+| 4 | `flushed_by_km` | RW1C | 0x0 a| KM performed a mailbox flush. Sticky, write 1 to clear.
+| 3 | `outbound_underflow` | RW1C | 0x0 a| Outbound FIFO underflow detected. Sticky, write 1 to clear.
+| 2 | `inbound_overflow` | RW1C | 0x0 a| Inbound FIFO overflow detected. Sticky, write 1 to clear.
 | 1 | `inbound_write_space_avail` | R | 0x0 a| Inbound FIFO has space available for SEP to write (level-sensitive). 1 = space available, 0 = full.
 | 0 | `outbound_read_data_avail` | R | 0x0 a| Outbound FIFO has data available for SEP to read (level-sensitive). 1 = data available, 0 = empty.
 |===
