@@ -264,8 +264,11 @@ select bit that choose its input, and 0 or 1 at a mux input is the select value
 that picks it. The PTAP output then enters the STAP chain, which is scanned only
 while the <code>TAP_3DCR</code> STAP-select bit is set: the bit gates the chain&#8217;s scan strobes
 and selects its return onto TDO. Otherwise TDO takes the PTAP output directly. TDO is retimed on the falling edge of TCK except during a
-<code>ZERO_LENGTH_BYPASS</code> DR scan, when the last mux takes the TDO mux output ahead of
-the retimer and TDI reaches TDO combinationally. The figure counts the extra STAPs
+<code>ZERO_LENGTH_BYPASS</code> DR scan with the STAP-select bit clear, when the last mux
+takes the TDO mux output ahead of the retimer and TDI reaches TDO
+combinationally. While the bit is set, <code>ZERO_LENGTH_BYPASS</code> behaves exactly as
+<code>BYPASS</code>: the PTAP bypass register leads the STAP chain and the chain&#8217;s return
+is retimed. The figure counts the extra STAPs
 by the <code>jtag_intf_unit</code> parameter <code>NUM_EXTRA_STAPS</code>, which <code>dtp</code> sets from
 <code>JTAG_NUM_EXTRA_STAPS</code>. Each STAP and SIB carries, in italics, the
 <code>dbg_disable_i</code> field that closes it. Dashed blocks exist only when their enable

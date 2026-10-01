@@ -723,7 +723,7 @@
 <tr><td><code>dbg_disable_i</code></td><td>input</td><td><code>sep_lifecycle_ctrl_pkg::dbg_disable_t</code></td><td>Active-high per-path lifecycle disables, synchronized to TCK inside this module; all disabled out of reset.</td></tr>
 <tr><td><code>ptap_client_tap_ctrl_i</code></td><td>input</td><td><code>jtag_tap_ctrl_t</code></td><td>PTAP client TAP-control bundle: TCK, TMS, and active-low TRST.</td></tr>
 <tr><td><code>ptap_client_tdi_i</code></td><td>input</td><td><code>logic</code></td><td>PTAP client serial test data input.</td></tr>
-<tr><td><code>ptap_client_tdo_o</code></td><td>output</td><td><code>logic</code></td><td>PTAP client serial test data output, retimed on the falling TCK edge except during a ZERO_LENGTH_BYPASS DR shift.</td></tr>
+<tr><td><code>ptap_client_tdo_o</code></td><td>output</td><td><code>logic</code></td><td>PTAP client serial test data output, retimed on the falling TCK edge except during a ZERO_LENGTH_BYPASS DR shift with the PTAP 3DCR STAP-select bit clear.</td></tr>
 <tr><td><code>ptap_client_tdo_oen_o</code></td><td>output</td><td><code>logic</code></td><td>PTAP client TDO output enable, active-high during Shift-IR and Shift-DR.</td></tr>
 <tr><td><code>bsr_host_scan_ctrl_o</code></td><td>output</td><td><code>jtag_scan_ctrl_t</code></td><td>Boundary-scan DR control, selected under EXTEST and SAMPLE/PRELOAD and, when enabled, EXTEST_TRAIN, EXTEST_PULSE and INTEST.</td></tr>
 <tr><td><code>bsr_host_scan_in_i</code></td><td>input</td><td><code>logic</code></td><td>Boundary-scan return, used as the PTAP TDR under those instructions.</td></tr>

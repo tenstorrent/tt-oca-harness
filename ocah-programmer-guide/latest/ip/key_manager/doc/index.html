@@ -204,10 +204,8 @@
 <div class="sectionbody">
 <div id="key-manager-km-key-manager-km" class="paragraph">
 <p>The Key Manager provides isolated key storage, random key generation, explicit
-revocation, and delivery to the cryptographic accelerators. UID-derived key
-hierarchies and automatic configuration-bound revocation are design targets,
-not implemented firmware services. The following sections
-describe its hardware architecture and firmware interface.</p>
+revocation, and delivery to the cryptographic accelerators. The following
+sections describe its hardware architecture and firmware interface.</p>
 </div>
 <div class="paragraph">
 <p>The immutable ROM firmware first initializes the Key Manager, then remains
@@ -230,13 +228,13 @@ KM firmware validates requests, accesses the vault and writes accelerator
 sideload registers. The host has no direct bus access to KM key storage.</p>
 </div>
 <div id="km-implemented-services" class="paragraph">
-<p>The current ROM implements DRBG-based random key generation, key loading,
-vault storage, explicit revocation, accelerator transfer and shredding.
-It is the resident command processor as well as the startup firmware.
-UID-derived hierarchies, configuration-bound automatic revocation and PCR
-integration are <a href="#root-keys-and-hierarchy">design targets</a>, not current
-mailbox services. The firmware includes an HMAC-SHA256 KDF library; that
-library alone does not provide those services.</p>
+<p>The ROM is the resident command processor as well as the startup firmware.
+Its mailbox commands report the hardware, ROM and SRAM firmware versions and
+the recoverable-error status, generate keys from the DRBG, load SEP-supplied
+keys, revoke keys, transfer keys to the accelerators, shred accelerator
+sideload keys, capture the Adams Bridge ML-KEM shared key into the vault, set
+cold-domain OTP read-locks, and either load and execute mutable firmware in
+SRAM or keep the ROM running (<a href="#key-manager-command-summary-table">Key Manager command summary</a>).</p>
 </div>
 <div class="paragraph">
 <p>A single KM-mastered AXI4-Lite crossbar connects KMCSR, KPV, the DRBG sampler
@@ -1528,15 +1526,14 @@ at the SEP-to-KM boundary (<code>{~value, value}</code>) from the sensed eFuse s
 <ul>
 <li>
 <p>the fuse-provisioned secrets — <code>CHIPLET_UID</code>, <code>SIP_UID</code>, <code>SYS_UID</code>,
-<code>CLASS_KEY</code> — inputs intended for the root-key design described below;</p>
+<code>CLASS_KEY</code>;</p>
 </li>
 <li>
 <p>the three 256-bit public identities — <code>SEP_CHIPLET_ID</code>, <code>SEP_SIP_ID</code>,
-<code>SEP_SYS_ID</code> — per-owner values that personalize each owner&#8217;s identity root;</p>
+<code>SEP_SYS_ID</code> — one per owner;</p>
 </li>
 <li>
-<p>the life-cycle state, one of the contexts a derived key is bound to (see
-<a href="#chip-configuration">Chip configuration</a>).</p>
+<p>the life-cycle state.</p>
 </li>
 </ul>
 </div>
@@ -1558,21 +1555,19 @@ words only.</p>
 <div class="paragraph">
 <p><strong>Life-cycle state.</strong> The life-cycle state is hardwired into the KM as
 authoritative, software-readable status. Being non-secret it is neither locked
-nor wiped. The design target uses it for key bindings (see <a href="#key-revocation">Key revocation</a>);
-the current registry does not track such bindings.</p>
+nor wiped. The key registry does not bind keys to it.</p>
 </div>
 <div class="paragraph">
 <p><strong>eFuse access path.</strong> The KM also has a programmatic (AXI-Lite) path to the eFuse
 controller — for example to request a read or a program operation. That path is
 treated exactly like a system-host access: same access filtering, and it honors
 the eFuse controller&#8217;s native per-field read/write locks, so the KM gains no
-read privilege over the fuse array beyond the SEP host&#8217;s. The key-binding design target uses the hardwired life-cycle value above.</p>
+read privilege over the fuse array beyond the SEP host&#8217;s.</p>
 </div>
 <div class="paragraph">
 <p><strong>Demotion and PCR.</strong> The owner demotion state is hardwired from the Life Cycle
 Controller (LCC). A PCR Vault (PCRV) and PCR-change interrupt are not present
-in this integration. PCR binding in <a href="#chip-configuration">Chip configuration</a> requires additional
-hardware and firmware support.</p>
+in this integration.</p>
 </div>
 <div class="paragraph">
 <p><strong>KMCSR readout registers.</strong> The OTP-derived fields above are exposed to KM
@@ -1666,8 +1661,7 @@ Manager firmware.</p>
 <p><strong>Dual-rail integrity.</strong> The hardware continuously checks that each value word is
 the bitwise inverse of its complement word. Any violation raises the
 <code>OTP_SIGINT</code> interrupt, which ROM firmware treats as an unrecoverable fault.
-This applies to the public identity fields as much as to the secrets: a flipped
-bit there would silently personalize <code>ID_ROOT</code> with the wrong identity.</p>
+This applies to the public identity fields as much as to the secrets.</p>
 </div>
 <div class="paragraph">
 <p><strong>Change detection.</strong> When a monitored field&#8217;s decoded value changes, the hardware
@@ -1682,16 +1676,14 @@ after cold or warm reset.</p>
 <div class="paragraph">
 <p>The KM receives three fuse-provisioned Unique Identifiers — <code>CHIPLET_UID</code>,
 <code>SIP_UID</code>, and <code>SYS_UID</code> (256 bits each) — provisioned respectively by the
-chiplet creator, the SiP owner, and the system owner. The root-key design
-below proposes deriving each owner&#8217;s keys from its UID; the current firmware
-does not implement that derivation.</p>
+chiplet creator, the SiP owner, and the system owner. ROM does not derive keys
+from them.</p>
 </div>
 <div class="paragraph">
 <p>The CPU services mailbox commands from ROM and supports loading and executing
 SRAM firmware. Before handing control to that firmware, ROM applies the OTP
 read locks and wipes secrets from the shared execution environment. A warm
-reset returns the CPU to ROM, where the handover protections are re-established;
-it does not trigger an implemented UID-root derivation service.</p>
+reset returns the CPU to ROM, where the handover protections are re-established.</p>
 </div>
 <div class="paragraph">
 <p>Concretely, this safeguard is the <code>OTP_READ_LOCK</code> register: one
@@ -1704,8 +1696,7 @@ warm reset domain for the same reasons.</p>
 </div>
 <div class="paragraph">
 <p>ROM does not lock the public identity fields at handover, since concealing them
-buys nothing. Their lock bits suppress KMCSR readback like those of the secret fields;
-they do not implement an <code>ID_ROOT</code> derivation service.</p>
+buys nothing. Their lock bits suppress KMCSR readback like those of the secret fields.</p>
 </div>
 <div class="paragraph">
 <p>A parallel <strong>cold-reset-domain</strong> register, <code>OTP_READ_LOCK_COLD</code>, provides the
@@ -1997,8 +1988,9 @@ firmware at the KPV KM-port window.  During handover ROM walks every KPV slot,
 using the firmware key registry to distinguish live slots from free ones: each
 registered slot is read-locked (<code>lock_use</code>, which is independent of
 <code>lock_write</code>, so the hardware returns zero for KM-port key reads), and each free
-slot is overwritten with PRNG data (falling back to a read-lock if a free slot
-is already write-locked, such as a revoked key, and so cannot be shredded).</p>
+slot is shredded by <code>SHRED_ITER + 1</code> hardware erases through its <code>erase</code>
+trigger. The slot locks do not block an erase, so a write-locked free slot,
+such as a revoked key, is shredded as well.</p>
 </div>
 <div class="paragraph">
 <p><strong>Mailbox flush.</strong> After the outbound <code>RESP_CMD</code> confirmation has been sent and
@@ -2040,337 +2032,8 @@ ensures mutable firmware does not inherit spurious pending interrupts (in
 particular, the <code>sram_write_lock_err</code> that would otherwise be raised by the
 whole-SRAM scramble writing into locked firmware regions).</p>
 </div>
-</div>
-<div class="sect2">
-<h3 id="root-keys-and-hierarchy"><a class="anchor" href="#root-keys-and-hierarchy"></a><a class="link" href="#root-keys-and-hierarchy">1.21. Root Keys and Key Hierarchy (Design Target)</a></h3>
-<div class="paragraph">
-<p>The remainder of this design description, through ECC signing metadata,
-requires firmware and PCR integration beyond <a href="#km-implemented-services">Implemented services</a>.
-It specifies intended behavior, including automatic revocation, without
-providing a current software guarantee.</p>
-</div>
-<div class="paragraph">
-<p>The proposed deterministic service uses HMAC-SHA256 with UID/root material
-and a fixed context; it does not mix fresh DRBG entropy into UID-derived
-hierarchy keys. Requester-supplied randomness can be carried in <code>user_input</code>
-without changing reproducibility for the same inputs. The proposal collects
-arguments from management CSRs and root storage, writes the derived key to a
-KPV slot or crypto-engine sideload, and optionally repeats the computation
-to detect faults and report a mismatch through interrupt status. These are
-design targets, not services of the current ROM command dispatcher. Current
-random-key generation instead draws new material from the DRBG sampler.</p>
-</div>
-<div class="paragraph">
-<p>The proposed ROM service derives two domain-separated root keys from each UID.
-The current life-cycle state is an input to both derivations:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>a <strong>software root key</strong> — <code>SW_root = KDF(UID, "SW_ROOT", lc_state)</code></p>
-</li>
-<li>
-<p>a <strong>hardware root key</strong> — <code>HW_root = KDF(UID, "HW_ROOT", lc_state)</code></p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>The distinct domain-separation labels make the two roots cryptographically
-independent even though they share a UID, and the life-cycle binding makes the
-roots — and every key derived from them — specific to the life-cycle state they
-were derived under. The demotion state is deliberately <strong>not</strong> a root input: it
-is a volatile control, cleared on reset and set by firmware during boot, so it
-is undefined at root-derivation time. Keys that must be bound to demotion bind
-it at leaf-key derivation instead (see <a href="#chip-configuration">Chip configuration</a>). The roots are
-then used, with additional context, to derive the <strong>key hierarchy</strong>. A leaf key
-is <code>KDF(selected_root, context || user_input || label)</code>, where <code>||</code> denotes
-concatenation and <code>context</code> is the selected configuration (life-cycle state,
-demotion, PCR, &#8230;&#8203;).</p>
-</div>
-<div class="paragraph">
-<p>A core KM principle applies throughout: <strong>derived secret keys are never
-returned to the SEP requester. KM ROM necessarily handles the material;
-exposure to mutable KM firmware depends on the selected root policy.</strong> The KM side-loads each derived key into the
-engine&#8217;s write-only key registers; only non-secret results (for example a
-generated public key) are returned over the mailbox. Side-loading — not key
-return — is the reason the KM exists.</p>
-</div>
-<div class="paragraph">
-<p>Because ROM is the KM&#8217;s steady-state firmware, derivation runs on demand at
-run time, and both branches can bind to <strong>run-time</strong> inputs: PCR values, read by
-the KM directly from the PCR Vault, and <code>user_input</code>, supplied in the mailbox
-command that requests the derivation. After a warm reset ROM re-reads the UID
-and re-derives keys as needed; no cold reset is required in the ROM-only
-baseline.</p>
-</div>
-<div class="paragraph">
-<p>The two roots differ only in their exposure to <strong>mutable</strong> KM firmware (the
-optional SRAM-loaded extension):</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p><strong>Software root</strong> (<code>SW_root</code>) — may be read by KM software, including future
-mutable firmware, so an extension can derive further keys from it.</p>
-</li>
-<li>
-<p><strong>Hardware root</strong> (<code>HW_root</code>) — never readable by mutable firmware; it is used
-only by immutable ROM and side-loaded into crypto engines over a private
-hardware path into their write-only key registers (never returned to software).
-If the SRAM extension is ever used, before transferring control ROM wipes the
-hardware key from any downstream crypto engine still consuming it and read-locks
-the UID copy and the KPV slot(s) holding <code>HW_root</code> (a read-lock prevents KM-port readback; hardware erase is also available), preserving this property.</p>
-</li>
-</ul>
-</div>
-<div id="chip-configuration" class="paragraph">
-<p><strong>Chip configuration and key lifetime (design target)</strong></p>
-</div>
-<div class="paragraph">
-<p>The <strong>chip configuration</strong> is the named bundle of context that a derived key is
-bound to. The requester <strong>selects the chip configuration</strong> for a derivation;
-together with <code>user_input</code> it determines the key (<a href="#key-derivation-chip-configuration-fields-table">Key derivation chip-configuration fields</a>).</p>
-</div>
-<table id="key-derivation-chip-configuration-fields-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 16. Key derivation chip-configuration fields</caption>
-<colgroup>
-<col style="width: 22%;">
-<col style="width: 78%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Field</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>uid_select</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Which owner&#8217;s root is used: chiplet, SiP, or system.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>hw_only</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Hardware-only flag: selects the hardware root (a hardware-confined key) versus the software root, and sets the key&#8217;s confidentiality policy.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lc_state</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Life-cycle state the key is bound to. Always bound for UID-derived keys: the roots themselves bind the life-cycle state (see <a href="#root-keys-and-hierarchy">Root Keys and Key Hierarchy (Design Target)</a>), so explicit selection is meaningful only for keys derived from injected user-input keys.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>demote_1</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Demotion 1 (local-debug / DBG_1) state the key is bound to.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>demote_2</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Demotion 2 (inter-chiplet debug-bypass / DBG_2) state the key is bound to.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>pcr</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Which PCR(s), if any, the key is bound to; the KM reads their authentic digests from the PCR Vault. Omitted for keys that are not PCR-bound.</p></td>
-</tr>
-</tbody>
-</table>
-<div class="paragraph">
-<p><code>user_input</code> (a 512-bit value carried in the mailbox derivation command) is a
-further per-derivation input.</p>
-</div>
-<div class="paragraph">
-<p><strong>Selection.</strong> The requester chooses <strong>which configuration fields to bind</strong> — any
-subset of the fields above (for example a demotion state only, or a PCR plus
-both demotion states) — and there is no restriction on the values it may
-select (access control over <code>uid_select</code> is left open for a future revision).
-The KM derives the key bound to exactly that selected subset, and ROM records
-the binding so the key&#8217;s lifetime can be tracked. A UID-derived key is
-life-cycle-bound regardless of this selection, through its root ancestry.</p>
-</div>
-<div class="paragraph">
-<p><strong>Lifetime.</strong> The lifetime of every UID-derived key is tied to the specific
-fields it is bound to. When a bound demotion state or PCR changes, that key
-becomes stale and is revoked; keys that do not bind the changed field are
-unaffected. The life-cycle state is the exception: because the roots bind it,
-a life-cycle transition invalidates the roots and, with them, the entire
-UID-derived hierarchy — regardless of each key&#8217;s selected binding. A revoked
-key must be re-derived before use. The mechanism is described in
-<strong>Key revocation (design target)</strong> below.</p>
-</div>
-<div id="key-revocation" class="paragraph">
-<p><strong>Key revocation</strong></p>
-</div>
-<div class="paragraph">
-<p>ROM maintains a registry of every derived key, recording its configuration
-binding (the specific fields and values it was derived under), its KPV storage
-location, its crypto-engine binding, and its derivation parent.</p>
-</div>
-<div class="paragraph">
-<p><strong>Triggers.</strong> A key is revoked when either:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>any configuration field it is bound to changes value — a life-cycle
-transition, a demotion, or (for a PCR-bound key) an extend of the bound PCR; or</p>
-</li>
-<li>
-<p>its derivation parent is revoked — revocation cascades to every key derived
-from it. (This is also how an explicitly revoked user key takes its derived
-keys with it.)</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>A life-cycle transition additionally invalidates the roots themselves — the
-roots bind the life-cycle state — so it revokes the <strong>entire</strong> UID-derived
-hierarchy through the parent cascade, regardless of each key&#8217;s selected
-binding.</p>
-</div>
-<div class="paragraph">
-<p><strong>Action.</strong> Revoking a key erases it from its KPV slot — using the per-slot
-hardware Erase control, which overwrites the key data through the KPV scrambler
-and clears an unsealed slot&#8217;s CTRL register so it is reusable; a sealed slot
-is retired instead (see <a href="#key-and-policy-vault-kpv">Key and Policy Vault (KPV)</a>) — and shreds its crypto-engine binding (zeroes the
-side-loaded key and drops its valid indication). A revoked key must be
-re-derived before it can be used again.</p>
-</div>
-<div class="paragraph">
-<p><strong>Mechanism.</strong> Revocation is performed entirely by ROM firmware; there is no
-hardware key-use interlock. On <strong>any</strong> change to a bound configuration field, ROM
-walks its key registry and revokes the affected keys — hardware-erasing them
-from the KPV and shredding their crypto-engine bindings — together with any keys
-derived from them; the keys are re-derived on next use. Hardware support is the
-per-slot KPV Erase controller plus the interrupts that notify the KM CPU:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p><strong>Life-cycle state and demotion</strong> — typically configured per boot, but ROM does
-not assume they are immutable at run time: a change at any time triggers the
-same registry walk and revocation. A demotion change revokes only the keys
-that bound demotion; a life-cycle change sweeps the entire UID-derived
-hierarchy, roots included.</p>
-</li>
-<li>
-<p><strong>PCR</strong> — a run-time field. A PCR change raises an interrupt to the KM CPU,
-which then revokes the keys that bound that PCR.</p>
-</li>
-<li>
-<p><strong>Parent revocation</strong> — an explicit revoke (for example of a user input key,
-requested over the mailbox) raises the KM inbound interrupt and triggers the
-same sweep, cascading to derived keys.</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>Reset re-enters ROM. Key-data flops have no hardware reset value; any
-proposed boot-time destruction or re-derivation must be implemented by the
-boot policy, not inferred from reset assertion.</p>
-</div>
-<div id="user-input-keys" class="paragraph">
-<p><strong>User input keys</strong></p>
-</div>
-<div class="paragraph">
-<p>Besides the UID-derived hierarchy, the SEP host may <strong>inject</strong> its own keys —
-<strong>user input keys</strong> — for the KM to manage and derive from. Unlike the UID keys
-and hardware root keys, user input keys are <strong>software-visible</strong>: they are
-supplied by the host and live in the software-accessible key domain, not in the
-ROM-only secret class.</p>
-</div>
-<div class="paragraph">
-<p><strong>Injection.</strong> The host injects a user input key over the mailbox command
-protocol; KM firmware writes it into a KPV slot and registers the key (integrity
-check and slot write-lock) so it can be tracked, derived from, and revoked.</p>
-</div>
-<div class="paragraph">
-<p><strong>Derivation.</strong> A user input key may serve as a derivation root: the KM offers
-the same derivation support for user input keys as for UID roots, deriving
-child keys with the same chip-configuration context and domain-separation
-labels. Keys derived from a user input key bind to the selected configuration
-exactly as UID-derived keys do, and therefore carry the same configuration-tied
-lifetime. As with all derived keys, the resulting secret keys are side-loaded
-into the crypto engines and are never returned.</p>
-</div>
-<div class="paragraph">
-<p><strong>Revocation.</strong> The SEP host revokes a user input key by a request over the
-mailbox, which raises the KM inbound interrupt; ROM then removes the key and
-<strong>cascades</strong> to every key derived from it — those derived keys are wiped from KM
-key storage and shredded in the crypto engines — using the same parent-revoke
-mechanism as configuration-driven revocation (see <strong>Key revocation</strong> above).</p>
-</div>
-<div id="ecc-key-metadata" class="paragraph">
-<p><strong>ECC key metadata in signatures (design target)</strong></p>
-</div>
-<div class="paragraph">
-<p>The <strong>metadata</strong> associated with a derived ECC private key is the <strong>selected chip
-configuration</strong> under which that key was generated (the same configuration
-fields recorded for the key&#8217;s lifetime; see <strong>Chip configuration and key
-lifetime</strong>).</p>
-</div>
-<div class="paragraph">
-<p>When the key signs, this metadata may optionally be <strong>included in the hash that
-is signed</strong> — the KM hashes the message together with the metadata. This binds
-the configuration into the signature, so a relying party can determine from the
-signature how the signing key was generated (under which life-cycle state,
-demotion, PCR, and so on). Inclusion is selected per signing operation; only
-inclusion in the signed hash cryptographically attests the configuration.</p>
-</div>
-<div class="sect3">
-<h4 id="remote-attestation-support-in-kpv-and-pcrv"><a class="anchor" href="#remote-attestation-support-in-kpv-and-pcrv"></a><a class="link" href="#remote-attestation-support-in-kpv-and-pcrv">1.21.1. Remote Attestation Support in KPV and PCRV&#8201;&#8212;&#8201;Design Target</a></h4>
-<div class="paragraph">
-<p>Attestation provisioning and public-key generation below are proposals, not
-implemented ROM command services. PCRV is absent from this integration.
-The intended manufacturing model needs a separate protocol/algorithm review
-before it becomes a software contract.</p>
-</div>
-<div class="paragraph">
-<p>The proposed Endorsement Key (EK) is a public-private key pair. The
-proposal names ECDSA P256 and P384 and excludes RSA. The public and private keys are
-injected into the device (or generated on the device) and stored in OTP.
-The public key is recorded in the HSM database. The EK is intended for identity proof. Its algorithm and permitted operations
-require protocol review; no EK decryption or signing service is specified by
-the current ROM.</p>
-</div>
-<div class="paragraph">
-<p>The Attestation Key (AK) is also a ECDSA public-private key pair but is
-generated inside the device during device manufacturing. The private key
-is stored in the OTP while the public key is exported for recording in
-the HSM database. The private key is used as a limited signing key of
-internal device measurements such as PCR quotes.</p>
-</div>
-<div class="paragraph">
-<p>The EK and AK are stored in the KPV storage structure described above.</p>
-</div>
-<div class="paragraph">
-<p>The Platform Configuration Register (PCR) bank stores system integrity
-measurement data. These are stored in a dedicated
-component called the PCR Vault (PCRV). PCRV implementation is deferred to
-a future OCAH version.</p>
-</div>
-<div class="paragraph">
-<p>Another use case is loading the EK and AK attestation keys into the KPV. The
-SEP host provisions these keys over the mailbox command protocol; KM firmware
-validates the request and writes the supplied key material into KPV slots on
-the host&#8217;s behalf, then asserts the slot lock control field. The host has no
-direct write path into the KPV&#8201;&#8212;&#8201;all provisioning is mediated by KM
-firmware. Once the entries are in place, the KM can read them and derive
-further keys, populating other KPV slots with the KDF results.</p>
-</div>
-</div>
-<div class="sect3">
-<h4 id="pk-key-generation-support"><a class="anchor" href="#pk-key-generation-support"></a><a class="link" href="#pk-key-generation-support">1.21.2. PK Key Generation Support (Design Target)</a></h4>
-<div class="paragraph">
-<p>KM must be able to generate a public-private key pair during device test
-and provisioning manufacturing steps. RSA is a complicated process as
-two primes need to be generated and this requires running the
-Miller-Rabin test on large random numbers. It is also much larger than
-equivalent security ECC keys. The primary use case is TPM 2.0
-attestation signing keys and we primarily will be using ECDSA P256 and
-possibly P384. The keys are only 256 or 384 bits long and are relatively
-simple to generate. Once generated, the private key stays on the device
-and the public key is exported. Export is performed through the outbound
-mailbox path.</p>
-</div>
 <div class="paragraph">
 <p><a href="../../scrambler/doc/index.html" class="xref page">Scrambler</a></p>
-</div>
 </div>
 </div>
 </div>
@@ -2389,8 +2052,6 @@ and can hand control to mutable firmware in SRAM.</p>
 <a href="#km-firmware-common-sequences">common sequences</a>.
 The remaining sections describe the ROM implementation: initialization,
 message processing, interrupts, drivers, libraries and key management.
-The <a href="#km-firmware-kdf-library">Key Derivation Function Library</a> is a firmware library; the current command
-set exposes random key generation, not a deterministic UID-derived hierarchy.
 After SRAM handover, the mutable image owns the mailbox service.</p>
 </div>
 <div class="sect2">
@@ -2443,7 +2104,7 @@ and checksum placement.</p>
 <p><a href="#key-manager-command-message-fields-table">Key Manager command-message fields</a> defines the command container fields.</p>
 </div>
 <table id="key-manager-command-message-fields-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 17. Key Manager command-message fields</caption>
+<caption class="title">Table 16. Key Manager command-message fields</caption>
 <colgroup>
 <col style="width: 22%;">
 <col style="width: 78%;">
@@ -2494,7 +2155,7 @@ The full validation order is in <a href="#km-firmware-incoming-message-handler">
 <p><a href="#key-manager-command-summary-table">Key Manager command summary</a> lists the command IDs and their functions.</p>
 </div>
 <table id="key-manager-command-summary-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 18. Key Manager command summary</caption>
+<caption class="title">Table 17. Key Manager command summary</caption>
 <colgroup>
 <col style="width: 10%;">
 <col style="width: 40%;">
@@ -2721,7 +2382,7 @@ and a return argument containing the KM status information.</p>
 status bits.</p>
 </div>
 <table id="key-manager-status-fields-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 19. Key Manager status fields</caption>
+<caption class="title">Table 18. Key Manager status fields</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -2841,7 +2502,7 @@ CMD_SRAM_LOAD_EXEC.</p>
 reserved bits.</p>
 </div>
 <table id="key-manager-sram-load-payload-fields-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 20. Key Manager SRAM-load payload fields</caption>
+<caption class="title">Table 19. Key Manager SRAM-load payload fields</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -2875,7 +2536,7 @@ reserved bits.</p>
 mailbox frame with the following structure (<a href="#key-manager-sram-image-frame-table">Key Manager SRAM image frame</a>).</p>
 </div>
 <table id="key-manager-sram-image-frame-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 21. Key Manager SRAM image frame</caption>
+<caption class="title">Table 20. Key Manager SRAM image frame</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 75%;">
@@ -2980,7 +2641,7 @@ destination-policy words for CMD_KEY_GENERATE.</p>
 generated key.</p>
 </div>
 <table id="key-generation-destination-policy-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 22. Key-generation destination policy</caption>
+<caption class="title">Table 21. Key-generation destination policy</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -3159,7 +2820,7 @@ destination-engine mask.</p>
 transfer request.</p>
 </div>
 <table id="key-transfer-requested-engines-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 23. Key-transfer requested engines</caption>
+<caption class="title">Table 22. Key-transfer requested engines</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -3251,7 +2912,7 @@ returned on success.</p>
 transfer response.</p>
 </div>
 <table id="key-transfer-completed-engines-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 24. Key-transfer completed engines</caption>
+<caption class="title">Table 23. Key-transfer completed engines</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -3339,7 +3000,7 @@ request.</p>
 registers are to be purged.</p>
 </div>
 <table id="key-purge-requested-engines-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 25. Key-purge requested engines</caption>
+<caption class="title">Table 24. Key-purge requested engines</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -3428,7 +3089,7 @@ purge.</p>
 purged.</p>
 </div>
 <table id="key-purge-completed-engines-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 26. Key-purge completed engines</caption>
+<caption class="title">Table 25. Key-purge completed engines</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -3517,7 +3178,7 @@ sent with CMD_KEY_LOAD.</p>
 loaded key.</p>
 </div>
 <table id="key-load-destination-policy-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 27. Key-load destination policy</caption>
+<caption class="title">Table 26. Key-load destination policy</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -3595,7 +3256,7 @@ The return argument is the fixed header-word index of the offending field
 error returned at each failure.</p>
 </div>
 <table id="cmd-key-load-validation-order-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 28. CMD_KEY_LOAD Validation Order</caption>
+<caption class="title">Table 27. CMD_KEY_LOAD Validation Order</caption>
 <colgroup>
 <col style="width: 10%;">
 <col style="width: 55%;">
@@ -3714,7 +3375,7 @@ for the captured shared key.</p>
 for the captured shared key.</p>
 </div>
 <table id="adams-bridge-shared-key-destination-policy-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 29. Adams Bridge shared-key destination policy</caption>
+<caption class="title">Table 28. Adams Bridge shared-key destination policy</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -3848,7 +3509,7 @@ CMD_OTP_READ_LOCK_COLD.</p>
 reads it locks.</p>
 </div>
 <table id="otp-cold-read-lock-bit-encoding-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 30. OTP cold-read-lock bit encoding</caption>
+<caption class="title">Table 29. OTP cold-read-lock bit encoding</caption>
 <colgroup>
 <col style="width: 10%;">
 <col style="width: 20%;">
@@ -3965,7 +3626,7 @@ relationship between command IDs and response IDs.</p>
 generate them.</p>
 </div>
 <table id="key-manager-response-summary-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 31. Key Manager response summary</caption>
+<caption class="title">Table 30. Key Manager response summary</caption>
 <colgroup>
 <col style="width: 10%;">
 <col style="width: 40%;">
@@ -4040,7 +3701,7 @@ and optional return argument.</p>
 return arguments.</p>
 </div>
 <table id="key-manager-command-return-codes-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 32. Key Manager command return codes</caption>
+<caption class="title">Table 31. Key Manager command return codes</caption>
 <colgroup>
 <col style="width: 10%;">
 <col style="width: 18%;">
@@ -4181,7 +3842,7 @@ recoverable-fault code.</p>
 the SEP host.</p>
 </div>
 <table id="key-manager-recoverable-fault-codes-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 33. Key Manager recoverable-fault codes</caption>
+<caption class="title">Table 32. Key Manager recoverable-fault codes</caption>
 <colgroup>
 <col style="width: 12%;">
 <col style="width: 28%;">
@@ -4257,7 +3918,7 @@ unrecoverable-fault code.</p>
 to the SEP host.</p>
 </div>
 <table id="key-manager-unrecoverable-fault-codes-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 34. Key Manager unrecoverable-fault codes</caption>
+<caption class="title">Table 33. Key Manager unrecoverable-fault codes</caption>
 <colgroup>
 <col style="width: 12%;">
 <col style="width: 28%;">
@@ -5395,166 +5056,7 @@ for later deliveries (<a href="#km-irq-abr-sharedkey">Adams Bridge ML-KEM Shared
 </div>
 </div>
 <div class="sect2">
-<h3 id="km-firmware-kdf-library"><a class="anchor" href="#km-firmware-kdf-library"></a><a class="link" href="#km-firmware-kdf-library">2.15. Key Derivation Function Library</a></h3>
-<div id="hmac-kdf" class="paragraph">
-<p>The library is distinct from the SEP-facing command set: the current ROM
-dispatcher exposes random key generation, not the proposed deterministic
-UID-derived key-hierarchy service.</p>
-</div>
-<div class="paragraph">
-<p>The <code>rom_kdf</code> library implements the NIST SP 800-108r1 counter-mode key
-derivation function (KDF) with HMAC-SHA-256 as its pseudorandom function.
-The KDF is defined by the following construction, where <code>i</code> and <code>L</code> are
-unsigned 16-bit big-endian values and <code>L</code> is the requested output length
-in bits:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>K(i) = HMAC-SHA-256(key, BE16(i) || input[192] || BE16(L))
-out  = leftmost L bits of K(1) || K(2) || ...</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>The counter starts at 1. The library computes
-<code>ceil(L / 256)</code> HMAC iterations and copies <code>ceil(L / 8)</code> bytes to the
-caller&#8217;s output buffer. <code>L</code> is in the range 1 through 8192 bits. If <code>L</code>
-is not byte-aligned, the final output byte is copied in full and the
-caller ignores the bits beyond <code>L</code>. Because <code>L</code> is included in every HMAC
-message, outputs requested at different lengths are cryptographically
-separated; a shorter output is not a prefix of a longer output.</p>
-</div>
-<div class="paragraph">
-<p>The input is a fixed 192-byte <code>km_kdf_input_t</code>. The library copies this
-structure into the HMAC message verbatim. Structure fields use the
-PicoRV32 in-memory byte representation; only the surrounding counter and
-output-length fields are big-endian.</p>
-</div>
-<div class="paragraph">
-<p><a href="#kdf-fixed-input-layout-table">KDF Fixed Input Layout</a> defines the byte layout of the fixed input mixed into
-key derivation.</p>
-</div>
-<table id="kdf-fixed-input-layout-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 35. KDF Fixed Input Layout</caption>
-<colgroup>
-<col style="width: 15%;">
-<col style="width: 25%;">
-<col style="width: 60%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-center valign-top">Byte Offset</th>
-<th class="tableblock halign-left valign-top">Field</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-center valign-top"><p class="tableblock"><code>0-1</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>version</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">KM ABI version mixed into the derivation.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-center valign-top"><p class="tableblock"><code>2</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>out_class</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Class of the derived key.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-center valign-top"><p class="tableblock"><code>3</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>out_type</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Type of the derived key.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-center valign-top"><p class="tableblock"><code>4</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>out_owner</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Owner of the derived key.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-center valign-top"><p class="tableblock"><code>5</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>out_domain</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Parent-inherited domain, forged by the KM.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-center valign-top"><p class="tableblock"><code>6-7</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>flags</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Provenance and operational flags, forged by the KM.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-center valign-top"><p class="tableblock"><code>8-9</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>purpose</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Public purpose metadata.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-center valign-top"><p class="tableblock"><code>10-11</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>out_bits</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Requested derived-key size recorded in the input.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-center valign-top"><p class="tableblock"><code>12-15</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>caps</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Capabilities requested for the derived key.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-center valign-top"><p class="tableblock"><code>16-19</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>device_state</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Live life-cycle and demotion state sampled by the KM.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-center valign-top"><p class="tableblock"><code>20-31</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rsvd</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved; all bytes are zero.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-center valign-top"><p class="tableblock"><code>32-63</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>label</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Fixed operation label providing domain separation.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-center valign-top"><p class="tableblock"><code>64-127</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>context</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Caller- or ROM-provided derivation context.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-center valign-top"><p class="tableblock"><code>128-191</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>entropy</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DRBG input for ephemeral operations; otherwise all zero.</p></td>
-</tr>
-</tbody>
-</table>
-<div class="paragraph">
-<p><code>rom_kdf_800_108()</code> uses <code>rom_hmac_sha256()</code> for each counter iteration.
-An HMAC key of at most 64 bytes is passed directly to HMAC. A longer key is
-first reduced to a 32-byte SHA-256 digest as specified by RFC 2104. This
-normalization accepts a parent key of any length — comfortably including the
-512-byte KM symmetric-key limit of 128 words — while retaining the HMAC
-library&#8217;s 64-byte key limit. The KDF itself does not enforce the KM key-size
-limit; a caller that must respect it enforces it before calling.</p>
-</div>
-<div class="paragraph">
-<p>The requested output length is expressed in bits, and the supported range is
-<code>1</code>–<code>8192</code> bits (1024 bytes). A single derivation can therefore produce more
-material than one KM key can hold. The KDF rejects null required
-pointers, a null key with non-zero length, and an output length of zero or above
-that ceiling. Invalid arguments leave the output buffer unchanged. If SHA-256 or
-HMAC fails after validation, the KDF zeroes the complete requested output region
-before returning an error. The implementation also securely clears its
-normalized key, HMAC message, and digest scratch buffers before returning.</p>
-</div>
-<div class="paragraph">
-<p><code>rom_kdf_selftest()</code> provides the KDF power-on known-answer test. It
-derives a 512-bit output from an embedded 32-byte key and 192-byte input,
-thereby exercising two counter iterations, and compares the result with
-the embedded expected value.</p>
-</div>
-<div class="paragraph">
-<p>The shipped ROM does not call this self-test, and neither its boot sequence
-(<a href="#km-firmware-bootloader">ROM Initialization</a>) nor any command handler is gated on it. It is
-available for a caller that wants the check; a boot flow that derives real key
-material should run it and fail closed, but nothing in the current ROM enforces
-that.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="km-firmware-crc-library"><a class="anchor" href="#km-firmware-crc-library"></a><a class="link" href="#km-firmware-crc-library">2.16. CRC Function Library</a></h3>
+<h3 id="km-firmware-crc-library"><a class="anchor" href="#km-firmware-crc-library"></a><a class="link" href="#km-firmware-crc-library">2.15. CRC Function Library</a></h3>
 <div class="paragraph">
 <p><code>rom_crc8_rohc()</code> and <code>rom_crc32c()</code> use the hardware CRC accelerator. CRC-8
 updates one byte per instruction. CRC-32C updates full 32-bit words followed
@@ -5563,7 +5065,7 @@ The accelerator returns the running remainder before that XOR. The architecture
 CRC Accelerator reference gives instruction encodings and hardware behavior.</p>
 </div>
 <div class="sect3">
-<h4 id="km-crc8-rohc"><a class="anchor" href="#km-crc8-rohc"></a><a class="link" href="#km-crc8-rohc">2.16.1. CRC-8/ROHC</a></h4>
+<h4 id="km-crc8-rohc"><a class="anchor" href="#km-crc8-rohc"></a><a class="link" href="#km-crc8-rohc">2.15.1. CRC-8/ROHC</a></h4>
 <div class="paragraph">
 <p>Compute the CRC-8/ROHC for a given block of data.</p>
 </div>
@@ -5571,7 +5073,7 @@ CRC Accelerator reference gives instruction encodings and hardware behavior.</p>
 <p><a href="#crc-8-rohc-parameters-table">CRC-8/ROHC Parameters</a> specifies the CRC-8 parameters used for message headers.</p>
 </div>
 <table id="crc-8-rohc-parameters-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 36. CRC-8/ROHC Parameters</caption>
+<caption class="title">Table 34. CRC-8/ROHC Parameters</caption>
 <colgroup>
 <col style="width: 40%;">
 <col style="width: 60%;">
@@ -5619,7 +5121,7 @@ from least significant byte to most significant byte.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="km-crc32c"><a class="anchor" href="#km-crc32c"></a><a class="link" href="#km-crc32c">2.16.2. CRC-32C</a></h4>
+<h4 id="km-crc32c"><a class="anchor" href="#km-crc32c"></a><a class="link" href="#km-crc32c">2.15.2. CRC-32C</a></h4>
 <div class="paragraph">
 <p>Compute the CRC-32C (Castagnoli) for a given block of data.</p>
 </div>
@@ -5628,7 +5130,7 @@ from least significant byte to most significant byte.</p>
 integrity.</p>
 </div>
 <table id="crc-32c-parameters-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 37. CRC-32C Parameters</caption>
+<caption class="title">Table 35. CRC-32C Parameters</caption>
 <colgroup>
 <col style="width: 40%;">
 <col style="width: 60%;">
@@ -5681,7 +5183,7 @@ least significant byte to most significant byte.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="km-firmware-key-registry"><a class="anchor" href="#km-firmware-key-registry"></a><a class="link" href="#km-firmware-key-registry">2.17. Key Registry</a></h3>
+<h3 id="km-firmware-key-registry"><a class="anchor" href="#km-firmware-key-registry"></a><a class="link" href="#km-firmware-key-registry">2.16. Key Registry</a></h3>
 <div class="paragraph">
 <p>The registry maps handles to KPV extents and maintains the reverse slot map.
 A valid handle records the base slot, key length in 32-bit words, CRC-32C and
@@ -5720,7 +5222,7 @@ CRC remain but are inaccessible through validity-checked lookups. This operation
 </div>
 </div>
 <div class="sect2">
-<h3 id="km-firmware-key-management"><a class="anchor" href="#km-firmware-key-management"></a><a class="link" href="#km-firmware-key-management">2.18. Key Management</a></h3>
+<h3 id="km-firmware-key-management"><a class="anchor" href="#km-firmware-key-management"></a><a class="link" href="#km-firmware-key-management">2.17. Key Management</a></h3>
 <div class="paragraph">
 <p><code>rom_keymgmt</code> implements the shared lifecycle used by the command handlers.
 Keys contain <code>1</code>–<code>128</code> 32-bit words and occupy <code>ceil(words / 16)</code> consecutive
@@ -5777,7 +5279,7 @@ buffer on exit. The command succeeds only after all selected writes complete.</p
 </div>
 </div>
 <div class="sect2">
-<h3 id="km-firmware-main-event-loop"><a class="anchor" href="#km-firmware-main-event-loop"></a><a class="link" href="#km-firmware-main-event-loop">2.19. Main Event Loop</a></h3>
+<h3 id="km-firmware-main-event-loop"><a class="anchor" href="#km-firmware-main-event-loop"></a><a class="link" href="#km-firmware-main-event-loop">2.18. Main Event Loop</a></h3>
 <div class="paragraph">
 <p>After initialization, each iteration calls <code>rom_msg_rx_process()</code>, even without
 a complete frame, so partial-frame overflow and interrupt re-arming make
@@ -5792,7 +5294,7 @@ wait under the same mask avoids lost updates and lost wakeups; sending outside
 that window allows TX-buffer draining.</p>
 </div>
 <div class="sect3">
-<h4 id="km-main-fault-handling"><a class="anchor" href="#km-main-fault-handling"></a><a class="link" href="#km-main-fault-handling">2.19.1. Fault Handling</a></h4>
+<h4 id="km-main-fault-handling"><a class="anchor" href="#km-main-fault-handling"></a><a class="link" href="#km-main-fault-handling">2.18.1. Fault Handling</a></h4>
 <div class="paragraph">
 <p>The main loop continues after a recoverable fault, with command dispatch gated
 by <code>RECOVERABLE_ERR</code>. A fatal handler never returns to the loop. SEP recovery,
@@ -5825,7 +5327,7 @@ other offset in the window with SLVERR, so the KM CPU cannot reach the eFuse
 shim control registers.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 38. Key Manager CPU Memory Map</caption>
+<caption class="title">Table 36. Key Manager CPU Memory Map</caption>
 <colgroup>
 <col style="width: 12.5%;">
 <col style="width: 12.5%;">

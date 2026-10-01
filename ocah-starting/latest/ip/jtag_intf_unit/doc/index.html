@@ -277,8 +277,11 @@ input is the select value that picks it, and italic labels in the STAPs and SIBs
 name the <code>dbg_disable_i</code> field that closes each one. Dashed blocks exist only when
 their enable parameter is set; <code>NUM_EXTRA_STAPS</code> sets the number of <code>u_stap_extra</code>
 instances. TDO is retimed on the falling edge of TCK except during a
-<code>ZERO_LENGTH_BYPASS</code> DR scan, when the last mux takes the TDO mux output ahead of
-the retimer and TDI reaches TDO combinationally.</p>
+<code>ZERO_LENGTH_BYPASS</code> DR scan with the <code>TAP_3DCR</code> STAP-select bit clear, when the
+last mux takes the TDO mux output ahead of the retimer and TDI reaches TDO
+combinationally. While the bit is set, <code>ZERO_LENGTH_BYPASS</code> behaves exactly as
+<code>BYPASS</code>: the PTAP bypass register leads the STAP chain and the chain&#8217;s return
+is retimed, because the chain launches its last bit on the rising TCK edge.</p>
 </div>
 <div id="jtag-interface-unit-scan-chain-figure" class="imageblock">
 <div class="content">
@@ -842,7 +845,7 @@ fuse controller CSRs through an AXI4-lite-to-APB bridge.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x3D</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ZERO_LENGTH_BYPASS</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0; 1, as BYPASS, while the PTAP TAP_3DCR STAP-select bit is set</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>

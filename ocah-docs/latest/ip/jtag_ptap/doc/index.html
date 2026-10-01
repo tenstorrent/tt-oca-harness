@@ -791,7 +791,9 @@ while <code>stap_select</code>, the TAP_3DCR select bit, is set. The retimer reg
 result on the falling TCK edge, and <code>u_tdo_bypass_mux</code> bypasses the retimer during
 a ZERO_LENGTH_BYPASS DR scan. Both ZERO_LENGTH_BYPASS multiplexers take their
 select from <code>inst_decoded_o[3D]</code> ANDed with <code>dr_scan_select_reg</code>, the DR scan
-select registered on the falling TCK edge.</p>
+select registered on the falling TCK edge, and with the inverse of <code>stap_select</code>.
+While <code>stap_select</code> is set, ZERO_LENGTH_BYPASS therefore behaves exactly as
+BYPASS (<a href="#ptap-zero-length-bypass">Section 3.4.1</a>).</p>
 </div>
 <div class="paragraph">
 <p><code>pwr_on_rst_ni</code> is ANDed with the client TRST in <code>u_trst_n_and</code>. The result,
@@ -1086,9 +1088,7 @@ active and the required feature is enabled.</p>
 <div class="paragraph">
 <p>The scan path supports zero-length bypass through explicit <code>prim_stdmux2</code>
 multiplexer cells rather than behavioral multiplexing. This implementation
-prevents glitches on scan path selectors during instruction transitions. The
-zero-length bypass instruction connects TDI directly to TDO without intermediate
-register stages, providing minimum scan latency for hierarchical JTAG chains.</p>
+prevents glitches on scan path selectors during instruction transitions.</p>
 </div>
 <div class="paragraph">
 <p>STAP selection is implemented as a second-level multiplexer. When the 3DCR
@@ -1099,6 +1099,24 @@ operation during both IR and DR scan sequences as required by IEEE 1838. The
 select bit also gates the select, capture, shift and update strobes of the STAP
 scan interface, so they stay low while the bit is clear.</p>
 </div>
+<div class="sect3">
+<h4 id="ptap-zero-length-bypass"><a class="anchor" href="#ptap-zero-length-bypass"></a><a class="link" href="#ptap-zero-length-bypass">3.4.1. Zero-Length Bypass</a></h4>
+<div class="paragraph">
+<p>While the TAP_3DCR STAP-select bit is clear, the ZERO_LENGTH_BYPASS instruction
+connects TDI directly to TDO without intermediate register stages, providing
+minimum scan latency for hierarchical JTAG chains. The DR scan adds no bit, and
+TDO follows TDI combinationally rather than through the retimer.</p>
+</div>
+<div class="paragraph">
+<p>While the STAP-select bit is set, ZERO_LENGTH_BYPASS behaves exactly as BYPASS.
+The last stage of the STAP chain shifts on the rising TCK edge, so its return
+must reach TDO through the falling-edge retimer, and a path that skips the
+retimer cannot carry it. The bypass register is selected, captures 0 and leads
+the STAP chain, and TDO is retimed. A DR scan under ZERO_LENGTH_BYPASS is then
+one bit longer than the STAP chain and matches a DR scan under BYPASS bit for
+bit.</p>
+</div>
+</div>
 </div>
 <div class="sect2">
 <h3 id="tdo-retiming"><a class="anchor" href="#tdo-retiming"></a><a class="link" href="#tdo-retiming">3.5. TDO Retiming</a></h3>
@@ -1106,9 +1124,10 @@ scan interface, so they stay low while the bit is clear.</p>
 <p>The TDO output is retimed on the falling edge of TCK as required by IEEE 1149.1
 Section 4.5.2. The retiming register ensures that TDO transitions occur at the
 same clock edge that samples TDI at the receiving device, maintaining timing
-margins across board-level JTAG chains. For zero-length bypass operation, the
-retimer is bypassed using an explicit <code>prim_stdmux2</code> cell to minimize scan
-latency.</p>
+margins across board-level JTAG chains. For zero-length bypass operation with
+the TAP_3DCR STAP-select bit clear, the retimer is bypassed using an explicit
+<code>prim_stdmux2</code> cell to minimize scan latency. While the bit is set, TDO is
+retimed under every instruction, ZERO_LENGTH_BYPASS included.</p>
 </div>
 </div>
 <div class="sect2">
@@ -2616,8 +2635,8 @@ register lengths.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x3D</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ZERO_LENGTH_BYPASS</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
-<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0, or 1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TDI to TDO with no register; BYPASS, with its 1-bit register, while the TAP_3DCR STAP-select bit is set</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x3E</p></td>
