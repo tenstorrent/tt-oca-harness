@@ -25,14 +25,14 @@
 
 This repository is the entry point to the OCA Harness ecosystem — a family of
 Tenstorrent-owned repositories, each covering a distinct part of building and
-using OCAH:
+using the OCA Harness:
 
 | Package | Repository | Role in the ecosystem |
 | --- | --- | --- |
-| tt-oca-harness | [tenstorrent/tt-oca-harness](https://github.com/tenstorrent/tt-oca-harness) | This repository: OCAH's RTL, documentation, and register/IP-XACT tooling |
-| tt-oca-harness-aou | [tenstorrent/tt-oca-harness-aou](https://github.com/tenstorrent/tt-oca-harness-aou) | AXI-over-UCIe Bridge (AoU) RTL, a component of OCAH's RTL collateral |
+| tt-oca-harness | [tenstorrent/tt-oca-harness](https://github.com/tenstorrent/tt-oca-harness) | This repository: the OCA Harness RTL, documentation, and register/IP-XACT tooling |
+| tt-oca-harness-aou | [tenstorrent/tt-oca-harness-aou](https://github.com/tenstorrent/tt-oca-harness-aou) | AXI-over-UCIe Bridge (AoU) RTL, a component of the OCA Harness RTL collateral |
 | tt-oca-harness-model | [tenstorrent/tt-oca-harness-model](https://github.com/tenstorrent/tt-oca-harness-model) | Virtual platform of the harness for rapid prototyping |
-| tt-oca-manifest | [tenstorrent/tt-oca-manifest](https://github.com/tenstorrent/tt-oca-manifest) | OCA boot manifest format and producer/consumer tooling for the secure boot images OCAH's SEP subsystem loads |
+| tt-oca-manifest | [tenstorrent/tt-oca-manifest](https://github.com/tenstorrent/tt-oca-manifest) | OCA boot manifest format and producer/consumer tooling for the secure boot images the OCA Harness SEP subsystem loads |
 
 ## Documentation
 
@@ -42,10 +42,10 @@ which comprises:
 
 - **[Getting Started Guide](https://tenstorrent.github.io/tt-oca-harness/ocah-starting/latest/index.html)** — setup, workflows, and contribution.
 - **[Technical Reference Manual](https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/index.html)** — architecture and register reference.
-- **[Integrator Guide](https://tenstorrent.github.io/tt-oca-harness/ocah-integrator-guide/latest/index.html)** — integrating OCAH into a chiplet design.
+- **[Integrator Guide](https://tenstorrent.github.io/tt-oca-harness/ocah-integrator-guide/latest/index.html)** — integrating the OCA Harness into a chiplet design.
 - **[Programmer's Guide](https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html)** — register programming model and firmware interfaces.
 - **[Application Notes](https://tenstorrent.github.io/tt-oca-harness/ocah-appnotes/latest/index.html)** — task-focused how-to notes.
-- **[Verification Dashboard](https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/dashboard.html)** — single entry point for the DV status of every OCAH IP and subsystem.
+- **[Verification Dashboard](https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/dashboard.html)** — single entry point for the DV status of every OCA Harness IP and subsystem.
 - Per-subsystem datasheets (PDF): [SMC](https://tenstorrent.github.io/tt-oca-harness/downloads/ocah-smc-datasheet.pdf), [SEP](https://tenstorrent.github.io/tt-oca-harness/downloads/ocah-sep-datasheet.pdf), [SMU](https://tenstorrent.github.io/tt-oca-harness/downloads/ocah-smu-datasheet.pdf), [DTP](https://tenstorrent.github.io/tt-oca-harness/downloads/ocah-dtp-datasheet.pdf), and [AoU](https://tenstorrent.github.io/tt-oca-harness/downloads/ocah-aou-datasheet.pdf).
 
 Integrator-facing register and timing collateral is indexed under
