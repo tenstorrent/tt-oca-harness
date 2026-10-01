@@ -117,7 +117,7 @@ human. Other members may fill a group in passing.
 |`sep_km_host_cmd_cg` |`sep_km_command_set_rand_test` (`CMD_HW_VER` / `CMD_ROM_VER` / `CMD_SRAM_VER` / `CMD_RECOV_ACK` / `CMD_OTP_READ_LOCK_COLD`); `sep_km_handover_test` (`CMD_EXEC_ROM` / `CMD_SRAM_LOAD_EXEC` / `CMD_SRAM_EXEC`)
 |`sep_km_wipe_cg` |`sep_km_wipe_reset_test`
 |`sep_km_sw_reset_cg` |`sep_km_wipe_reset_test`, `sep_km_handover_test`
-|`sep_crypto_isolate_cg` |`sep_km_isolate_termination_test` (the three HMAC/KM bins: it parks HMAC with the KM released, so the KM path isolates under the HMAC request, and then reopens it). `cp_abr_rst_ordered` `sep_crypto_per_ip_reset_isolation_test` (`CHK-ABR-DRAIN-ORDER`, the host term). That leaf holds the KM in reset, so its KM path bits are high from time 0 and cannot fill the three HMAC/KM bins.
+|`sep_crypto_isolate_cg` |`sep_km_isolate_termination_test` (the three HMAC/KM bins: it parks HMAC with the KM released, so the KM path isolates under the HMAC request, and then reopens it). `sep_km_command_set_rand_test` also parks HMAC at bring-up with the KM released and fills `cp_km_iso` / `cp_rst_ordered`. `cp_abr_rst_ordered` `sep_crypto_per_ip_reset_isolation_test` (`CHK-ABR-DRAIN-ORDER`, the host term); `sep_reset_wdt_sanity_test` (its firmware pulses each crypto `SW_RESET_N` bit) and `sep_abr_mlkem_kat_test` also fill it. Those leaves hold the KM in reset, so their KM path bits are high from time 0 and cannot fill the three HMAC/KM bins.
 |`sep_dma_copy_hash_cg` |`sep_dma_basic_test` (copy), `sep_dma_hash_test` (hash; both `cp_hash_opcode` bins -- it is the only leaf that commands an inline hash, and it walks SHA-256 then SHA-384)
 |`sep_spi_flash_cg` |`sep_spi_flash_jedec_smoke_test`, `sep_spi_ot_host_csr_irq_rand_test`; DMA handshake `sep_spi_ot_dma_rx_test` / `sep_spi_ot_dma_tx_test`; `cp_opcode` `sep_spi_ot_flash_cmd_rand_test` (every opcode is in its fixed BFM sequence)
 |`sep_inbound_filter_allow_cg` |`sep_fabric_inbound_filter_rule_matrix_test`
@@ -132,11 +132,41 @@ human. Other members may fill a group in passing.
 |`sep_lc_demote_cg` |`sep_lcc_demote_feat_ctrl_matrix_test`
 |`sep_mailbox_pic_cg` |SEP mailbox `sep_mailbox_plic_test`, `sep_pic_irq_source_map_delivery_test`; KM mailbox `sep_km_mailbox_protocol_rand_test`; `cp_peer_fill` `sep_mailbox_peer_rx_rirqt_test` (the only leaf that drives the peer aperture). `sep_axil_mailbox_iface_rand_test` does not fill `cp_raise` / `cp_clear`: it is transmit side, and `sep_internal_interrupts[7:0]` carries the inbound interrupt
 |`sep_mailbox_channel_cg` |`sep_mailbox_plic_test` (it runs one channel at a time, all eight)
-|`sep_wdt_bark_cg` |threshold `sep_wdt_aon_timer_internals_test`; bark and NMI `sep_nmi_sanity_test`, `sep_reset_wdt_sanity_test`
+|`sep_wdt_bark_cg` |`sep_nmi_sanity_test`, `sep_reset_wdt_sanity_test` (threshold, bark and NMI). `sep_wdt_aon_timer_internals_test` writes the threshold but never lets the watchdog bark, so it does not fill `cp_thold`
 |`sep_scratch_reset_cg` |`sep_warm_cold_reset_scratch_test`
 |===
 
 Per-test detail is in link:SEP_VPLAN.adoc[SEP_VPLAN].
+
+==== Tests whose own contract has no Phase 1 bin
+
+Every other `all` test is an owner above or fills a group in passing. The
+tests below do not have a bin for the behaviour they exist to check. Each has
+the reason, or the planned bin and what it needs.
+
+[cols="2,3",options="header"]
+|===
+|Test |Reason
+|`sep_clock_uvm_wdt_rst_input_reset_path_test`, `sep_cpu_dbg_reset_independence_test` |Planned: a CPU-only reset bin (`sep_cpu_reset_n` falls while `sep_reset_n` stays high). Both nets are sampler inputs. These two leaves feed no group today
+|`sep_cpu_trace_diag_test` |Planned: an exception-not-interrupt retirement bin on the trace port. Fills `sep_cpu_boot_cg` in passing
+|`sep_cpu_ifu_lsu_alias_remap_matrix_test` |Planned: a retired PC in the `SEP_LOCAL` alias window (Phase 2 `sep_remap_alias_cg`)
+|`sep_km_mem_smoke_test` |Planned: KM ROM fetch and scrambled KM SRAM write bins; they need the `tb_top` KM memory monitors as sampler inputs (Phase 2 `sep_km_memory_boot_cg`)
+|`sep_efuse_jtag_window_allow_test`, `sep_efuse_jtag_axil_el2_cpu_mux_test` |Planned: the JTAG AXI-Lite port is not a sampler input. The deny leg is an error path (Phase 2)
+|`sep_efuse_km_axil_cpu_mux_coexist_test` |Planned: same-cycle requests at the KM/EL2 eFuse mux need a mux probe
+|`sep_lcc_uvm_inbound_filter_gating_test` |Planned: an inbound OKAY with the filter skipped (`FEAT_CTRL.sep_debug` = 1)
+|`sep_trng_reset_recovery_test` |Planned: a new seed after a TRNG domain reset (Phase 2 `sep_crypto_reset_cg`)
+|`sep_drbg_gen_segmentation_test` |Planned with `sep_csrng_cmd_cg` (Phase 2): the leaf issues one `glen`, so a length coverpoint would be half empty by construction
+|`sep_efuse_rma_token_rand_test` |Planned: token match and mismatch per channel need the token-status decode (Phase 2 `sep_token_channel_cg`)
+|`sep_km_ic_reset_release_test` |Planned: the `km_jtag_rst_n` override edges need a probe
+|`sep_hmac_kmac_cpu_crypto_smoke_test` |Fills the AES, HMAC and KMAC mode groups in passing. A CPU-source label on those cells is planned
+|`sep_esrc_fips_lock_test`, `sep_esrc_alert_delivery_test`, `sep_irq_ip_to_aggregator_test`, `sep_irq_simultaneous_fanin_no_alias_test`, `sep_efuse_token_match_fault_pic_test`, `sep_efuse_set_only_monotonicity_test`, `sep_efuse_digest_latch_fault_test`, `sep_locked_field_access_irq_path_test`, `sep_efuse_secure_tm_write_lock_test`, `sep_efuse_km_public_id_test` |Phase 2: FIPS lock, alerts, the 42-source map, token faults, set-only walks, lock refusals and the KM OTP readout are named Phase 2 groups
+|`sep_periph_bus_err_misaligned_test`, `sep_km_rom_write_err_test`, `sep_km_otp_shim_unreachable_test`, `sep_km_vrom_decerr_test`, `sep_axi_map_refuse_test`, `sep_fabric_deadspace_decode_test`, `sep_unmapped_access_policy_test`, `sep_fabric_burst_wrap_test` |Error paths (Phase 2 `sep_aperture_reserved_access_cg` and the KM error groups)
+|`sep_sram_burst_type_test` |FIXED and WRAP bursts: the data bins score single-beat transactions only, by the pairing rule above, and no Phase 2 group names burst type yet
+|`sep_fabric_outbound_remap_filter_walk_test`, `sep_fabric_inbound_filter_window_walk_test`, `sep_fabric_local_alias_offset_walk_test`, `sep_fabric_remap_filter_csr_bank_test`, `sep_fabric_output_remap_datapath_proxy_test`, `sep_fabric_local_alias_datapath_test` |Fill the bank cells of `cp_block`. The per-entry winner walk is Phase 2 (`sep_filter_match_cg`, `sep_remap_alias_cg`, `sep_remap_output_offset_cg`)
+|`sep_km_key_policy_vault_test`, `sep_km_crc_pcpi_kat_test`, `sep_km_kpv_scrambler_test` |The behaviour is on the KM CPU bus, which the sampler does not see (Phase 2 `sep_km_kpv_slot_cg`)
+|`sep_reg_bit_bash_rand_test`, `sep_clock_gate_control_test` |Not meaningful: per-register bins restate the RDL that the sweep checks, and the RTL does not consume `CLOCK_GATE_CTRL`. Both fill `sep_axi_decode_cg` in passing
+|`sep_drbg_axil_adapter_port_arbitration_test` |Not meaningful: it drives a TB-owned adapter instance outside the DUT
+|===
 
 Thirty-five deterministic Phase 1 covergroups and three seed-dependent
 `*_rand_cg` groups, compiled and sampled for VCS only (`ifndef VERILATOR`). Several IPs carry more than one group, because their
@@ -540,7 +570,7 @@ ordering bin exists to catch.
 |Coverpoint |Bins
 |`cp_km_iso` |The cycle the `km_hmac` path reports isolated while the HMAC isolate request is high. The host-side isolation entries never present a transaction on this path; that a KM master path reaches isolation under the HMAC request is what this bin records.
 |`cp_rst_ordered` |The cycle the HMAC gated reset falls under the HMAC isolate request, with both the host and Key Manager isolate bits high and the KM bit raised by that request (`cp_km_iso`). A reset that fell before either bit does not fill this bin.
-|`cp_abr_rst_ordered` |The cycle the Adams Bridge gated reset falls under the ABR isolate request, with both isolate bits high and the host bit (a full-AXI isolate) raised by that request. Every leaf that resets ABR holds the KM in reset, so `km_abr` is already high and only the host term is ordered; see below.
+|`cp_abr_rst_ordered` |The cycle the Adams Bridge gated reset falls under the ABR isolate request, with both isolate bits high and the host bit (a full-AXI isolate) raised by that request. The leaves that reset ABR hold the KM in reset, so `km_abr` is already high and only the host term is ordered; see below.
 |`cp_reopen` |The cycle `km_hmac` reports un-isolated again after a `cp_km_iso` edge, so the path was released rather than left isolated for the rest of the run.
 |===
 
@@ -905,7 +935,7 @@ cells for a walk that exercises the PROD rows only
 |===
 |Coverpoint |Bins
 |`cp_raise` / `cp_clear` |Rising and falling edge of any SEP AXI mailbox source, `sep_internal_interrupts[7:0]`, driven from `inbound_interrupt_o` in `sep.sv`
-|`cp_km_raise` / `cp_km_clear` |Rising and falling edge of the KM mailbox, `sep_internal_interrupts[14]`, after software wrote a non-zero `SEP_IRQ_ENABLE`. A leaf that never enables a KM mailbox interrupt does not exercise this path, so its edges do not count
+|`cp_km_raise` / `cp_km_clear` |Rising and falling edge of the KM mailbox, `sep_internal_interrupts[14]`, after software wrote a non-zero `SEP_IRQ_ENABLE`. A leaf that never enables a KM mailbox interrupt does not exercise this path, so its edges do not count. `sep_reg_bit_bash_rand_test` writes `SEP_IRQ_ENABLE` = 0x15 and then 0 in its storage walk; the inbound-space status is set at idle, so the line really falls, and that leaf fills `cp_km_clear` too
 |`cp_peer_fill` |A completed external-master write to the inbound mailbox `WRITE_DATA`. The SEP CPU can raise the same inbound source itself, so an IRQ edge alone does not show an external master drove the receive direction. Both 4-byte halves alias to the register, so the address compare masks bit 2.
 |===
 
@@ -999,9 +1029,9 @@ empty with a probability of about 4 %.
 [cols="1,1,2",options="header"]
 |===
 |Covergroup |Owner |Coverpoint and bins
-|`sep_spi_host_rand_cg` |`sep_spi_ot_host_csr_irq_rand_test` |`cp_tx_wm`: `CONTROL.TX_WATERMARK` as written, `low` 2-4 and `high` 5-8 (`sep_spi_host_csr_seq` draws 2-8)
-|`sep_mbox_rand_cg` |`sep_axil_mailbox_iface_rand_test` |`cp_wirqt`: a `WIRQT` write on any mailbox, `low` 1-3 and `high` 4-7 (`SepMboxCfg` draws 1 to `MAILBOX_DEPTH` - 1)
-|`sep_dma_rand_cg` |`sep_dma_basic_test` |`cp_len`: `TOTAL_DATA_SIZE` as written, 16 and 32 (the copy length the test draws)
+|`sep_spi_host_rand_cg` |`sep_spi_ot_host_csr_irq_rand_test` |`cp_tx_wm`: `CONTROL.TX_WATERMARK` as written, `low` 2-4 and `high` 5-8 (`sep_spi_host_csr_seq` draws 2-8). `sep_spi_ot_dma_tx_test` writes a fixed watermark in `low`
+|`sep_mbox_rand_cg` |`sep_axil_mailbox_iface_rand_test` |`cp_wirqt`: a `WIRQT` write on any mailbox, `low` 1-3 and `high` 4-7 (`SepMboxCfg` draws 1 to `MAILBOX_DEPTH` - 1). `sep_unmapped_access_policy_test` also writes `WIRQT` in `high`
+|`sep_dma_rand_cg` |`sep_dma_basic_test` |`cp_len`: `TOTAL_DATA_SIZE` as written, 16 and 32 (the copy length the test draws). `sep_spi_ot_dma_tx_test` also writes 32
 |===
 
 ==== Random factors and their bins
