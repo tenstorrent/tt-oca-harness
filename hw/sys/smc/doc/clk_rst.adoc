@@ -42,6 +42,16 @@ in `smc_config_pkg`. `u_debug_clock_gate` runs the debug module clock
 while the debugger holds `dmactive`. The I2C, UART, I3C, AVSBus and
 telemetry gates are controlled by `CLOCK_GATE_CONTROL` in `u_smc_base`;
 `u_smc_peripherals_cdc` synchronises each enable into the clock it gates.
+Each of those five enables also steers the peripheral's leg of the register
+crossbar into an error slave (`u_avsbus_access_gate`, `u_i2c_access_gate`,
+`u_uart_access_gate`, `u_telemetry_access_gate` and `u_i3c_access_gate` in
+`u_smc_peripherals`, all on `clk_smc_i`): while the enable is set, a read of
+the gated peripheral's window completes with `SLVERR` and data `0xBADCAB1E`
+and a write completes with `SLVERR`, instead of waiting on a register block
+whose clock has stopped. The leg is redirected as soon as the
+`CLOCK_GATE_CONTROL` write completes; an access the peripheral has already
+accepted finishes there, since its clock stops only after the enable has
+crossed into its domain.
 
 The AVSBus clock starts at `u_avs_clk_ref_gater` and
 `u_avs_clk_periph_gater`. Inside `u_avsbus_controller`, `u_refclk_clkgate`
@@ -398,7 +408,11 @@ SMC blocks have their own clock-gating enables, activity detection and hysteresi
 controls. For example, DMA uses a six-bit hysteresis input and bus-aware wakeup.
 A gate suppresses clock transitions; it does not itself create a power island or
 establish that outstanding bus traffic is drained. Follow the owning block's
-quiescence requirements before reset, isolation or clock changes.
+quiescence requirements before reset, isolation or clock changes. The I2C,
+UART, I3C, AVSBus and telemetry windows answer `SLVERR` with read data
+`0xBADCAB1E` while their `CLOCK_GATE_CONTROL` enable is set, so software can
+detect an access to a gated peripheral rather than stall on it; the other gated
+blocks wake on bus activity and need no such response.
 
 == Memory Map and Register Reference
 

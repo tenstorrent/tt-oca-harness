@@ -65,6 +65,10 @@ An address inside neither the local nor the global aperture answers `DECERR`
 to reads and writes. The M-mode and Xvisor remap regions forward accesses from
 SMC initiators only; an access to them from the inbound port answers `DECERR`.
 
+The I2C, UART, I3C, AVSBus and Telemetry Receiver windows answer `SLVERR`, with
+read data `0xBADCAB1E`, while the peripheral's `CLOCK_GATE_CONTROL` enable in
+SMC_BASE_CONFIG is set and its clock is stopped.
+
 === AXI-Lite External Window
 
 The `smc_external` window at `BASE + 0x040_0000` is the adopter extension

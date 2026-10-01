@@ -786,7 +786,7 @@ module sep_ip_integration
     .axi_resp_t (sep_pkg::sep_32_64_6_12_axi_resp_t),
     .Resp       (axi_pkg::RESP_DECERR),
     .RespWidth  (sep_pkg::SEP_32_64_6_12_DATA_WIDTH),
-    .RespData   ('0),
+    .RespData   (64'hBADCAB1EBADCAB1E),
     .ATOPs      (1'b0),
     .MaxTrans   (2)
   ) u_axi_extension_err_slv (
