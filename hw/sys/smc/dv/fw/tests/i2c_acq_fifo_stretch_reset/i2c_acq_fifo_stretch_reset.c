@@ -94,9 +94,10 @@ static i2c__STATUS_t get_i2c_status(uint32_t idx) {
 }
 
 /* The tlow the DUT is actually running, read back out of its own timing
- * register. The sequence turns this into nanoseconds and uses it as the
- * yardstick for "SCL was low longer than a bit period", so the threshold comes
- * from the programmed hardware rather than from a constant transcribed here. */
+ * register. The sequence turns this into nanoseconds and requires the target's
+ * contiguous SCL pull to outlast four of these clock-low phases, so the
+ * threshold comes from the programmed hardware rather than from a constant
+ * transcribed here. */
 static uint32_t get_timing_tlow(uint32_t idx) {
     uint32_t base = i2c_get_base(idx);
     i2c__TIMING0_t timing0 = {.w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TIMING0_BASE_ADDR(0) -
@@ -356,9 +357,9 @@ static int release_stretch_and_discard_long_write_tail(uint32_t acqlvl_at_stretc
      */
 
     /* Window 1: the target is out of room and holding SCL. The sequence samples
-     * i2c0_scl_ip_o across this window and requires a continuous low run longer
-     * than a programmed bit period; a level read cannot tell a stretch from an
-     * ordinary SCL low phase, and a duration can. */
+     * the target's own SCL pull across this window and requires a continuous run
+     * longer than four programmed clock-low phases; a level read cannot tell a
+     * stretch from an ordinary SCL low phase, and a duration can. */
     ret = publish_stretch_observation(acqlvl_at_stretch);
     if (ret != I2C_OK) {
         return ret;
@@ -450,14 +451,14 @@ static int release_stretch_and_discard_long_write_tail(uint32_t acqlvl_at_stretc
 
         /* Window 2: same measurement, immediately after the reset and before
          * the controller is disabled, where the sequence requires the absence
-         * of any such low run. Window 1 proves the probe can read 0 and
-         * window 2 proves it can read 1, so neither window can pass on a dead
+         * of any such pull. Window 1 proves the probe can read 1 (pulling) and
+         * window 2 proves it can read 0, so neither window can pass on a dead
          * or stuck net.
          *
          * The reset and the disable need not be back-to-back: the recovery
          * below force-disables the target when the tail is still in flight,
          * which is the path taken with ~24 us of simputs in the gap. The window
-         * costs ~282 us more, i.e. about 3 of the ~10 bytes still queued in FMT
+         * costs ~200 us more, i.e. about 2 of the ~10 bytes still queued in FMT
          * go out before the disable, and the discard path handles them the
          * same way. */
         ret = publish_release_observation(lvl_before, lvl_after);
