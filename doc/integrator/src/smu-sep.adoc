@@ -172,9 +172,61 @@ that path.
 == SPI Host Interface
 
 The SEP provides a SPI host controller through the `sep_io_spi` interface,
-supporting single and quad modes. The controller's own interrupt leaves the
-module as the `irq` field of `sep_io_spi_req_o`, so no separate interrupt
+supporting standard, dual and quad modes. The controller's own interrupt leaves
+the module as the `irq` field of `sep_io_spi_req_o`, so no separate interrupt
 output is needed.
+
+=== SEP SPI Host Pin Assignment
+
+When the SMU is built with the SEP, the SMU drives the SMC SPI port
+(`spi_*_i` of `smc.sv`) from `sep_io_spi_req_o` and returns the data-pad
+inputs to the SEP in `sep_io_spi_rsp_i.sd`. The SMC places these signals on
+GPIO 0-10 and 54. Inside `smc.sv`, no register selects another SPI source for
+these pads.
+
+[options="header", cols="1,2,4"]
+|===
+| GPIO | Function | SEP SPI host source
+
+| 0-3
+| SPI.DATA[0-3]
+| Lane n drives `sd[n]` with output enable `sd_oe[n]`; the pad input returns as `sd[n]`.
+
+| 4-7
+| SPI.DATA[4-7]
+| Not driven. Output disabled, input disabled.
+
+| 8
+| SPI.CS
+| `cs_n`, output enable `cs_oe`.
+
+| 9
+| SPI.CLK
+| `sck`, output enable `sck_oe`.
+
+| 10
+| SPI.DQS
+| Not driven. Output disabled, input disabled.
+
+| 54
+| SPI DQS Loopback
+| Not driven. Output disabled, input disabled.
+|===
+
+In standard mode, SPI.DATA[0] is the host output (COPI) and SPI.DATA[1] is the
+host input (CIPO).
+
+The SMC holds the SPI function select of these pads on whenever the SMU has
+the SEP. A pad follows the SEP SPI host once it is out of cold reset and while
+its GPIO `DATA_CTRL.lsio_disable` is clear; setting `lsio_disable` returns the
+pad to register control. A pad shim outside `smc.sv` can also hand a pad to a
+second function with its `CONTROL.hw2_ovrd`.
+
+On SPI.CS, SPI.CLK and SPI.DATA[0-3], the pad input is enabled only while the
+host does not drive that pad. The host drives a data lane only while chip
+select is asserted, and drives no pad until software sets its
+`CONTROL.OUTPUT_EN`. Until then SPI.CS is undriven, so its level comes from the
+pad pull; the GPIO pin table recommends a pull-up.
 
 == Bring-Up Considerations
 

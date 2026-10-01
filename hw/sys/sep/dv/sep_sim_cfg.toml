@@ -65,7 +65,7 @@ top_file = "hw/sys/sep/dv/tb/tb_top.sv"
 # monitor. The sep_wrapper DUT, its IP-integration models, and the eFuse
 # models come from the Bender closure (`sep_wrapper` plus the `any(sep, smc)`
 # groups). The companion checkout is outside this open filelist. The wrapper
-# SPI uses struct ports; the pad-mux shim is not in this filelist.
+# SPI uses struct ports, and the OT SPI host drives them with no select.
 sources = [
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32_regs.sv",
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32_pcpi_mul.sv",
