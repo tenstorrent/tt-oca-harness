@@ -85,29 +85,29 @@ addrmap sep_top #(
 
     // OTBN Cryptographic Accelerator
     // Base: 0x1090_0000, Size: 64 KB (0x10000)
-    // From sep_crypto_pkg.sv: otbn_rule
+    // From sep_crypto_pkg.sv: OTBN_RULE
     otbn                        otbn                     @BASE_ADDR + 0x1090_0000;
 
     // AES Accelerator
     // Base: 0x1091_0000, Size: 4 KB (0x1000)
-    // From sep_crypto_pkg.sv: aes_rule
+    // From sep_crypto_pkg.sv: AES_RULE
     aes                         aes                      @BASE_ADDR + 0x1091_0000;
 
     // HMAC Accelerator
     // Base: 0x1091_1000, Size: 8 KB (0x2000)
-    // From sep_crypto_pkg.sv: hmac_rule
+    // From sep_crypto_pkg.sv: HMAC_RULE
     hmac                        hmac                     @BASE_ADDR + 0x1091_1000;
 
     // KMAC/SHA3 Accelerator
     // Base: 0x1091_3000, Size: 4 KB (0x1000)
-    // From sep_crypto_pkg.sv: kmac_rule
+    // From sep_crypto_pkg.sv: KMAC_RULE
     kmac                        kmac                     @BASE_ADDR + 0x1091_3000;
 
     // DRBG: CSRNG + EDN share the 4 KB aperture at 0x1091_5000, split at 0x800.
-    // From sep_crypto_pkg.sv: csrng_rule
+    // From sep_crypto_pkg.sv: CSRNG_RULE
     csrng                       csrng                   @BASE_ADDR + 0x1091_5000;
 
-    // From sep_crypto_pkg.sv: edn_rule
+    // From sep_crypto_pkg.sv: EDN_RULE
     edn                         edn                     @BASE_ADDR + 0x1091_5800;
 
     // Entropy Source (ESRC)

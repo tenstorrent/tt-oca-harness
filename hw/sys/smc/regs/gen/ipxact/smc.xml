@@ -3876,8 +3876,8 @@ bit is:
         should rely on `TARGET_EVENTS.START_DETECT` and `TARGET_EVENTS.STOP_DETECT`
         flags to detect Start/Stop events.
 * `1` - Start/Stop symbols ARE written into the ACQ FIFO (legacy behavior).
-        When a START (or repeated START) is detected, an `AcqStart` or `AcqRestart`
-        entry is written. When a STOP is detected, an `AcqStop` or `AcqNackStop`
+        When a START (or repeated START) is detected, an `ACQ_START` or `ACQ_RESTART`
+        entry is written. When a STOP is detected, an `ACQ_STOP` or `ACQ_NACK_STOP`
         entry is written.</ipxact:description>
                 <ipxact:bitOffset>7</ipxact:bitOffset>
                 <ipxact:resets>

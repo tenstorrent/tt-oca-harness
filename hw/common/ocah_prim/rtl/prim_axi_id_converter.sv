@@ -63,11 +63,11 @@ module prim_axi_id_converter #(
     );
   end else if (AXI_ID_WIDTH_IN < AXI_ID_WIDTH_OUT) begin : gen_id_padding
     prim_axi_id_prepend_wrap #(
-      .AxiInIdWidth  (AXI_ID_WIDTH_IN),
-      .AxiOutIdWidth (AXI_ID_WIDTH_OUT),
-      .AxiDataWidth  (AXI_DATA_WIDTH),
-      .AxiAddrWidth  (AXI_ADDR_WIDTH),
-      .AxiUserWidth  (AXI_USER_WIDTH),
+      .AXI_IN_ID_WIDTH  (AXI_ID_WIDTH_IN),
+      .AXI_OUT_ID_WIDTH (AXI_ID_WIDTH_OUT),
+      .AXI_DATA_WIDTH   (AXI_DATA_WIDTH),
+      .AXI_ADDR_WIDTH   (AXI_ADDR_WIDTH),
+      .AXI_USER_WIDTH   (AXI_USER_WIDTH),
 
       .axi_in_req_t   (input_axi_req_t),
       .axi_in_resp_t  (input_axi_resp_t),

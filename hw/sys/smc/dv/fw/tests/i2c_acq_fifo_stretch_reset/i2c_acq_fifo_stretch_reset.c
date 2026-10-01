@@ -32,12 +32,12 @@
 #define VERIFY_WRITE_LEN 4
 
 /* Bounds are stated as a simulated-time budget and converted to loop iterations
- * here, in one place, instead of being bare counts nobody can check. One poll
- * iteration that performs a single MMIO read costs ~430 ns of simulated time on
- * this testbench (measured this campaign), so a budget in nanoseconds can be
- * compared against the bus timing this test programs: Standard mode off a 10 ns
- * core clock gives tlow=470, thigh=490, i.e. an SCL period of 1000 cycles =
- * 10 us per bit and ~90 us per byte. */
+ * here, in one place, instead of being bare counts nobody can check. The
+ * conversion takes one poll iteration that performs a single MMIO read as
+ * ~430 ns of simulated time; an iteration that costs less on a faster core
+ * clock shortens every bound in time by the same factor. The bus timing this
+ * test programs is standard mode computed for the 5 ns periph clock that times
+ * I2C: an SCL period of 2000 cycles = 10 us per bit and ~90 us per byte. */
 #define POLL_NS_PER_ITER 430u
 #define POLL_ITERS_FOR_NS(ns) (((ns) / POLL_NS_PER_ITER) + 1u)
 
@@ -48,17 +48,16 @@
 /* 20 ms. STATUS.ACQFULL asserts only after the target has accepted enough of
  * the long write to leave two ACQ entries free, i.e. after ~62 bytes have
  * crossed the bus. At standard mode that is 62 x 9 bit times of ~10 us, about
- * 5.6 ms at the nominal periph clock and ~6.7 ms at the slowest one the bench
- * randomises, so the 5 ms POLL_TIMEOUT above would expire inside a healthy
- * fill; this bound is ~3x the slowest fill and still expires inside a job. */
+ * 5.6 ms, so the 5 ms POLL_TIMEOUT above would expire inside a healthy fill;
+ * this bound is ~3.5x the fill and still expires inside a job. */
 #define ACQ_FILL_TIMEOUT POLL_ITERS_FOR_NS(20000000u)
 /* ~110 us, about 11 SCL periods. If the target has not returned to idle within
  * that many bit times the discarded long-write tail is still in flight, and the
  * target is force-disabled instead of waited on. */
 #define TARGET_IDLE_PROBE POLL_ITERS_FOR_NS(110000u)
-/* ~5 ms. The sequence notices a marker within its 5 us poll cadence and then
- * samples SCL across a window of ~3 byte times (~282 us), so its round trip is
- * a few hundred microseconds; 5 ms is >15x that and still fails closed. */
+/* ~5 ms. The sequence polls for a marker every 2000 core-clock cycles and then
+ * samples SCL across a 200 us window, so its round trip is a few hundred
+ * microseconds; 5 ms is >15x that and still fails closed. */
 #define TB_ACK_BOUND POLL_ITERS_FOR_NS(5000000u)
 
 /* Firmware <-> sequence handshake. scratch[4] carries the sequence's ACK.
@@ -95,9 +94,10 @@ static i2c__STATUS_t get_i2c_status(uint32_t idx) {
 }
 
 /* The tlow the DUT is actually running, read back out of its own timing
- * register. The sequence turns this into nanoseconds and uses it as the
- * yardstick for "SCL was low longer than a bit period", so the threshold comes
- * from the programmed hardware rather than from a constant transcribed here. */
+ * register. The sequence turns this into nanoseconds and requires the target's
+ * contiguous SCL pull to outlast four of these clock-low phases, so the
+ * threshold comes from the programmed hardware rather than from a constant
+ * transcribed here. */
 static uint32_t get_timing_tlow(uint32_t idx) {
     uint32_t base = i2c_get_base(idx);
     i2c__TIMING0_t timing0 = {.w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TIMING0_BASE_ADDR(0) -
@@ -357,9 +357,9 @@ static int release_stretch_and_discard_long_write_tail(uint32_t acqlvl_at_stretc
      */
 
     /* Window 1: the target is out of room and holding SCL. The sequence samples
-     * i2c0_scl_ip_o across this window and requires a continuous low run longer
-     * than a programmed bit period; a level read cannot tell a stretch from an
-     * ordinary SCL low phase, and a duration can. */
+     * the target's own SCL pull across this window and requires a continuous run
+     * longer than four programmed clock-low phases; a level read cannot tell a
+     * stretch from an ordinary SCL low phase, and a duration can. */
     ret = publish_stretch_observation(acqlvl_at_stretch);
     if (ret != I2C_OK) {
         return ret;
@@ -451,14 +451,14 @@ static int release_stretch_and_discard_long_write_tail(uint32_t acqlvl_at_stretc
 
         /* Window 2: same measurement, immediately after the reset and before
          * the controller is disabled, where the sequence requires the absence
-         * of any such low run. Window 1 proves the probe can read 0 and
-         * window 2 proves it can read 1, so neither window can pass on a dead
+         * of any such pull. Window 1 proves the probe can read 1 (pulling) and
+         * window 2 proves it can read 0, so neither window can pass on a dead
          * or stuck net.
          *
          * The reset and the disable need not be back-to-back: the recovery
          * below force-disables the target when the tail is still in flight,
          * which is the path taken with ~24 us of simputs in the gap. The window
-         * costs ~282 us more, i.e. about 3 of the ~10 bytes still queued in FMT
+         * costs ~200 us more, i.e. about 2 of the ~10 bytes still queued in FMT
          * go out before the disable, and the discard path handles them the
          * same way. */
         ret = publish_release_observation(lvl_before, lvl_after);

@@ -107,6 +107,8 @@ in {
       # Synthesis
       pdk-ciel
       yosys
+      # Formal DV
+      sby
       # Libraries
       lz4
       zlib

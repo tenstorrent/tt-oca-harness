@@ -161,13 +161,13 @@ module sep_crypto_abr_wrapper
   // writes are issued. Zero-strobe beats are the downsizer's untouched half of
   // a 64-bit write.
   axi_lite_to_ahb #(
-    .AXI_ADDR_WIDTH     (sep_pkg::SEP_32_32_6_12_ADDR_WIDTH),
-    .AXI_DATA_WIDTH     (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
-    .AHB_DATA_WIDTH     (64),
-    .axi_lite_req_t     (sep_pkg::sep_32_32_axil_req_t),
-    .axi_lite_rsp_t     (sep_pkg::sep_32_32_axil_resp_t),
-    .AllowSubWordWrite  (1'b0),
-    .AckZeroStrobeWrite (1'b1)
+    .AXI_ADDR_WIDTH        (sep_pkg::SEP_32_32_6_12_ADDR_WIDTH),
+    .AXI_DATA_WIDTH        (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
+    .AHB_DATA_WIDTH        (64),
+    .axi_lite_req_t        (sep_pkg::sep_32_32_axil_req_t),
+    .axi_lite_rsp_t        (sep_pkg::sep_32_32_axil_resp_t),
+    .ALLOW_SUB_WORD_WRITE  (1'b0),
+    .ACK_ZERO_STROBE_WRITE (1'b1)
   ) u_axi_lite_to_ahb (
     .clk_i           (clk_i),
     .rst_ni          (rst_ni),

@@ -26,6 +26,13 @@ selection, host TDO, and 3DCR updates are blocked.
 
 == Configuration Parameters
 
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="stap-configuration-parameters-table"></span>
+++++
+endif::backend-html5[]
+
 Three timing parameters are available to optimise the STAP for different
 physical topologies, particularly die-boundary crossings.
 

@@ -131,7 +131,7 @@ module smc_efuse_wrapper
   logic                               lc_sigint_err;
 
   prim_diff_decode_multi #(
-    .Width(smc_pkg::LC_STATE_WIDTH)
+    .WIDTH(smc_pkg::LC_STATE_WIDTH)
   ) u_lc_state_smc_dec (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),

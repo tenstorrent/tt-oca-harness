@@ -144,18 +144,18 @@ endfunction
 // together. The three access kinds mirror the cocotb
 // seq_lib/smc_csr_field_catalog.py SmcCsrAccessKind:
 //
-//   SmcRegKindRwRestore  RDL `sw=rw` (hw=r or hw=na): software owns the
-//                        storage, so it holds its reset value until software
-//                        writes it. Compared, and a write updates the shadow.
-//   SmcRegKindRoStatic   RDL `sw=r; hw=w` where the hardware side is an
-//                        integration constant or a TB tie-off, so the read is
-//                        deterministic in this bench. Compared; a write can
-//                        never change it, so the shadow ignores writes.
-//   SmcRegKindRoStatus   RDL `sw=r; hw=w` from live state or from a value the
-//                        harness drives to something other than the RDL
-//                        default. DECODE-ONLY: `has_default` is 0, no expected
-//                        item is published, and only the OKAY response and the
-//                        access count are evidence.
+//   SMC_REG_KIND_RW_RESTORE  RDL `sw=rw` (hw=r or hw=na): software owns the
+//                            storage, so it holds its reset value until software
+//                            writes it. Compared, and a write updates the shadow.
+//   SMC_REG_KIND_RO_STATIC   RDL `sw=r; hw=w` where the hardware side is an
+//                            integration constant or a TB tie-off, so the read is
+//                            deterministic in this bench. Compared; a write can
+//                            never change it, so the shadow ignores writes.
+//   SMC_REG_KIND_RO_STATUS   RDL `sw=r; hw=w` from live state or from a value the
+//                            harness drives to something other than the RDL
+//                            default. DECODE-ONLY: `has_default` is 0, no expected
+//                            item is published, and only the OKAY response and the
+//                            access count are evidence.
 //
 // A register whose read has a side effect must NOT appear here (CPU_CTRL
 // MUTEX acquires on read, so its second read legitimately differs from its
@@ -163,9 +163,9 @@ endfunction
 // ---------------------------------------------------------------------------
 
 typedef enum int unsigned {
-  SmcRegKindRwRestore,
-  SmcRegKindRoStatic,
-  SmcRegKindRoStatus
+  SMC_REG_KIND_RW_RESTORE,
+  SMC_REG_KIND_RO_STATIC,
+  SMC_REG_KIND_RO_STATUS
 } smc_reg_kind_e;
 
 typedef struct {
@@ -181,14 +181,14 @@ function automatic void smc_default_reg_catalog(ref smc_default_reg_entry_t entr
   entries.delete();
 
   // --- scratch.rdl: `sw=rw; hw=na`, pure software storage, 8 instances. ---
-  entries.push_back('{"SCRATCH_COLD_0", smc_scratch_cold_addr(0), SmcRegKindRwRestore, 1'b1,
+  entries.push_back('{"SCRATCH_COLD_0", smc_scratch_cold_addr(0), SMC_REG_KIND_RW_RESTORE, 1'b1,
                     32'(SCRATCH_SCRATCH_REG_DEFAULT), "scratch.rdl sw=rw hw=na"});
-  entries.push_back('{"SCRATCH_COLD_7", smc_scratch_cold_addr(7), SmcRegKindRwRestore, 1'b1,
+  entries.push_back('{"SCRATCH_COLD_7", smc_scratch_cold_addr(7), SMC_REG_KIND_RW_RESTORE, 1'b1,
                     32'(SCRATCH_SCRATCH_REG_DEFAULT), "scratch.rdl sw=rw hw=na (window top)"});
-  entries.push_back('{"SCRATCH_COLD_WARM_0", smc_scratch_cold_warm_addr(0), SmcRegKindRwRestore,
+  entries.push_back('{"SCRATCH_COLD_WARM_0", smc_scratch_cold_warm_addr(0), SMC_REG_KIND_RW_RESTORE,
                     1'b1, 32'(SCRATCH_SCRATCH_REG_DEFAULT),
                     "scratch.rdl sw=rw hw=na, warm reset domain"});
-  entries.push_back('{"SCRATCH_COLD_WARM_7", smc_scratch_cold_warm_addr(7), SmcRegKindRwRestore,
+  entries.push_back('{"SCRATCH_COLD_WARM_7", smc_scratch_cold_warm_addr(7), SMC_REG_KIND_RW_RESTORE,
                     1'b1, 32'(SCRATCH_SCRATCH_REG_DEFAULT),
                     "scratch.rdl sw=rw hw=na, warm domain window top"});
 
@@ -202,23 +202,23 @@ function automatic void smc_default_reg_catalog(ref smc_default_reg_entry_t entr
   entries.push_back(
       '{"CHIP_CONFIG_VERSION_LO",
       64'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_BASE_ADDR),
-      SmcRegKindRoStatic, 1'b1, 32'(CHIP_CONFIG_VERSION_LO_REG_DEFAULT),
+      SMC_REG_KIND_RO_STATIC, 1'b1, 32'(CHIP_CONFIG_VERSION_LO_REG_DEFAULT),
       "chip_config.rdl sw=r hw=w from integration constant (non-zero default)"});
   entries.push_back(
       '{"CHIP_CONFIG_VERSION_HI",
       64'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_HI_BASE_ADDR),
-      SmcRegKindRoStatic, 1'b1, 32'(CHIP_CONFIG_VERSION_HI_REG_DEFAULT),
+      SMC_REG_KIND_RO_STATIC, 1'b1, 32'(CHIP_CONFIG_VERSION_HI_REG_DEFAULT),
       "chip_config.rdl sw=r hw=w from integration constant"});
   entries.push_back('{"CHIP_CONFIG_CHIP_ID",
                     64'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_BASE_ADDR),
-                    SmcRegKindRoStatic, 1'b1, 32'(CHIP_CONFIG_CHIP_ID_REG_DEFAULT),
+                    SMC_REG_KIND_RO_STATIC, 1'b1, 32'(CHIP_CONFIG_CHIP_ID_REG_DEFAULT),
                     "chip_config.rdl sw=r hw=w from the CHIP_ID module parameter"});
   // LC_STATE is `sw=r; hw=w` and the UVM harness drives tb_lc_state with the
   // complementary TEST_DEV encoding rather than the RDL default, so its read
   // is an integration value with no default contract: decode-only.
   entries.push_back('{"CHIP_CONFIG_LC_STATE",
                     64'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_LC_STATE_BASE_ADDR),
-                    SmcRegKindRoStatus, 1'b0, 32'h0,
+                    SMC_REG_KIND_RO_STATUS, 1'b0, 32'h0,
                     "chip_config.rdl sw=r hw=w; harness drives tb_lc_state, not the RDL default"});
 
   // --- ndm_reset.rdl ---
@@ -228,12 +228,12 @@ function automatic void smc_default_reg_catalog(ref smc_default_reg_entry_t entr
   entries.push_back(
       '{"NDM_RESET_NDMRESET_REQUEST",
       64'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_REQUEST_BASE_ADDR),
-      SmcRegKindRoStatic, 1'b1, 32'(NDM_RESET_NDMRESET_REQUEST_REG_DEFAULT),
+      SMC_REG_KIND_RO_STATIC, 1'b1, 32'(NDM_RESET_NDMRESET_REQUEST_REG_DEFAULT),
       "ndm_reset.rdl sw=r hw=w; harness ties tb_ndmreset_request to '0"});
   entries.push_back(
       '{"NDM_RESET_NDMRESET_PROCESS",
       64'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_PROCESS_BASE_ADDR),
-      SmcRegKindRwRestore, 1'b1, 32'(NDM_RESET_NDMRESET_PROCESS_REG_DEFAULT),
+      SMC_REG_KIND_RW_RESTORE, 1'b1, 32'(NDM_RESET_NDMRESET_PROCESS_REG_DEFAULT),
       "ndm_reset.rdl sw=rw hw=r"});
   // CLUSTER_COUNT is `sw=r; hw=w` from a design-side count this bench does not
   // establish: decode-only.
@@ -243,7 +243,7 @@ function automatic void smc_default_reg_catalog(ref smc_default_reg_entry_t entr
                     smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_CLUSTER_COUNT_BASE_ADDR
                     // verilog_format: on
                     ),
-                    SmcRegKindRoStatus, 1'b0, 32'h0,
+                    SMC_REG_KIND_RO_STATUS, 1'b0, 32'h0,
                     "ndm_reset.rdl sw=r hw=w from a design-side count"});
 
   // --- reset_unit.rdl ---
@@ -253,7 +253,7 @@ function automatic void smc_default_reg_catalog(ref smc_default_reg_entry_t entr
   // ones, the second non-zero expectation in this catalogue.
   entries.push_back('{"RESET_UNIT_SS_WARM_RESET_N",
                     64'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_SS_WARM_RESET_N_BASE_ADDR),
-                    SmcRegKindRwRestore, 1'b1, 32'(RESET_UNIT_SS_WARM_RESET_N_REG_DEFAULT),
+                    SMC_REG_KIND_RW_RESTORE, 1'b1, 32'(RESET_UNIT_SS_WARM_RESET_N_REG_DEFAULT),
                     "reset_unit.rdl:44-49 sw=rw hw=r, default 0xFFFFFFFF (non-zero)"});
   // SS_CONFIG, SS_CONFIG_LOCK and SS_COLD_RESET_N belong to the lock_csr
   // feature, not here: the two locks are `onwrite=woset` (a written 0 is

@@ -847,10 +847,10 @@ module sep_crypto #(
   assign km_otp_data.demotion_state_2 = lcc_demote_state_2_o;
 
   // Dual-rail encode every 256-bit KM-routed OTP field.
-  // OutputFlop=0: purely combinational encode (no pipeline latency).
+  // OUTPUT_FLOP=0: purely combinational encode (no pipeline latency).
   prim_diff_encode_multi #(
-    .Width      (256),
-    .OutputFlop (1'b0)
+    .WIDTH       (256),
+    .OUTPUT_FLOP (1'b0)
   ) u_chiplet_uid_enc (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),
@@ -859,8 +859,8 @@ module sep_crypto #(
   );
 
   prim_diff_encode_multi #(
-    .Width      (256),
-    .OutputFlop (1'b0)
+    .WIDTH       (256),
+    .OUTPUT_FLOP (1'b0)
   ) u_class_key_enc (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),
@@ -869,8 +869,8 @@ module sep_crypto #(
   );
 
   prim_diff_encode_multi #(
-    .Width      (256),
-    .OutputFlop (1'b0)
+    .WIDTH       (256),
+    .OUTPUT_FLOP (1'b0)
   ) u_sip_uid_enc (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),
@@ -879,8 +879,8 @@ module sep_crypto #(
   );
 
   prim_diff_encode_multi #(
-    .Width      (256),
-    .OutputFlop (1'b0)
+    .WIDTH       (256),
+    .OUTPUT_FLOP (1'b0)
   ) u_sys_uid_enc (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),
@@ -889,8 +889,8 @@ module sep_crypto #(
   );
 
   prim_diff_encode_multi #(
-    .Width      (256),
-    .OutputFlop (1'b0)
+    .WIDTH       (256),
+    .OUTPUT_FLOP (1'b0)
   ) u_sep_chiplet_id_enc (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),
@@ -899,8 +899,8 @@ module sep_crypto #(
   );
 
   prim_diff_encode_multi #(
-    .Width      (256),
-    .OutputFlop (1'b0)
+    .WIDTH       (256),
+    .OUTPUT_FLOP (1'b0)
   ) u_sep_sip_id_enc (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),
@@ -909,8 +909,8 @@ module sep_crypto #(
   );
 
   prim_diff_encode_multi #(
-    .Width      (256),
-    .OutputFlop (1'b0)
+    .WIDTH       (256),
+    .OUTPUT_FLOP (1'b0)
   ) u_sep_sys_id_enc (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),

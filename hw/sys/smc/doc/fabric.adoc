@@ -383,6 +383,12 @@ privilege enforcement.
 
 == Filtering and Protection
 
+ifdef::backend-html5[]
+++++
+<span id="traffic-filtering"></span>
+++++
+endif::backend-html5[]
+
 The filtering system (`filter_ctrl.rdl`) provides security control for
 both inbound and outbound traffic, examining transaction attributes to
 enforce access policies.
@@ -431,7 +437,7 @@ permission bit, ANDed with the channel's valid, is evaluated separately. The
 lower part is one channel of `axi_filter_wrap`. A priority encoder picks the
 lowest-numbered entry that hits, a 16:1 mux selects that entry's permission
 bit, and the inverted bit requests a block. When no entry hits, the next mux
-takes `BlockByDefault` instead. The last mux forces the block bit to 0 when
+takes `BLOCK_BY_DEFAULT` instead. The last mux forces the block bit to 0 when
 `filter_skip_i` is set; `filter_skip_i` is tied low in both SMC instances.
 Group ID matching is not built into either instance. The block bit steers the
 transaction through a demux either to the filtered output or to an error
@@ -468,7 +474,7 @@ endif::backend-html5[]
 
 The outbound filter uses explicit matching entries to allow or block
 SMC-initiated requests. Unmatched requests pass because this instance uses
-`BlockByDefault = 0`. An allow entry is therefore not an allowlist: denying
+`BLOCK_BY_DEFAULT = 0`. An allow entry is therefore not an allowlist: denying
 traffic requires a matching entry whose read or write permission is clear.
 
 Address, source ID, and NS matching select an entry. The filter does not

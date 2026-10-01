@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[smu-deferred-disposition]]
-== SMU deferred and OUT disposition
+= SMU deferred and OUT disposition
 
 This chapter has two parts. The table below is the catalog of every SMU test
 name classified deferred or OUT, and none of those names is in the hosted
@@ -455,7 +455,7 @@ Enrolled names outside this catalog:
 |===
 
 [[smu-bench-standins]]
-=== Bench stand-ins and exceptions
+== Bench stand-ins and exceptions
 
 A stand-in is anything that answers in place of the mechanism a claim is
 about: a testbench force, a simulation-only path selected by a plusarg, a
@@ -491,7 +491,7 @@ ran.
 |===
 
 [[smu-standin-recheck]]
-==== Re-confirming a stand-in
+=== Re-confirming a stand-in
 
 Each row names one command and the string it prints when the entry above is
 still true of the tree in front of you. None of them needs a stored run: the
@@ -540,7 +540,7 @@ stale, and the entry -- not the run -- is what needs the edit.
 |One instantiation in each file; `6` and `2`, the eight sensing leaves the *Scope* field names; `Not skipping fuse sense` at time zero on those eight and `Skipping fuse sense` on every other leaf, which says which path the run took.
 |===
 
-==== `+esrc_noise_force`
+=== `+esrc_noise_force`
 
 [cols="1,4"]
 |===
@@ -558,7 +558,7 @@ stale, and the entry -- not the run -- is what needs the edit.
 |2026-12-17, or earlier the day the scoped file, plusarg or define named above changes; the re-confirm command is re-run at that review and the entry re-signed or withdrawn.
 |===
 
-==== `+skip_fuse_sense` with the shadow preload
+=== `+skip_fuse_sense` with the shadow preload
 
 [cols="1,4"]
 |===
@@ -576,7 +576,7 @@ stale, and the entry -- not the run -- is what needs the edit.
 |2026-12-21, or earlier the day the scoped file, plusarg or define named above changes; the re-confirm command is re-run at that review and the entry re-signed or withdrawn.
 |===
 
-==== `abr_reg.sv` external-ack waiver
+=== `abr_reg.sv` external-ack waiver
 
 [cols="1,4"]
 |===
@@ -594,7 +594,7 @@ stale, and the entry -- not the run -- is what needs the edit.
 |2026-12-21, or earlier the day the scoped file, plusarg or define named above changes; the re-confirm command is re-run at that review and the entry re-signed or withdrawn.
 |===
 
-==== SEP assertion-ignore patterns
+=== SEP assertion-ignore patterns
 
 [cols="1,4"]
 |===
@@ -612,7 +612,7 @@ stale, and the entry -- not the run -- is what needs the edit.
 |pending
 |===
 
-==== `+define+ASSERTS_OFF`
+=== `+define+ASSERTS_OFF`
 
 [cols="1,4"]
 |===
@@ -630,7 +630,7 @@ stale, and the entry -- not the run -- is what needs the edit.
 |2026-12-21, or earlier the day the scoped file, plusarg or define named above changes; the re-confirm command is re-run at that review and the entry re-signed or withdrawn.
 |===
 
-==== Scan-chain loopbacks
+=== Scan-chain loopbacks
 
 [cols="1,4"]
 |===
@@ -648,7 +648,7 @@ stale, and the entry -- not the run -- is what needs the edit.
 |2026-12-21, or earlier the day the scoped file, plusarg or define named above changes; the re-confirm command is re-run at that review and the entry re-signed or withdrawn.
 |===
 
-==== CTP data-input tie-offs
+=== CTP data-input tie-offs
 
 [cols="1,4"]
 |===
@@ -666,7 +666,7 @@ stale, and the entry -- not the run -- is what needs the edit.
 |pending
 |===
 
-==== `prim_sync2` / `prim_sync3` stand-ins
+=== `prim_sync2` / `prim_sync3` stand-ins
 
 [cols="1,4"]
 |===
@@ -684,7 +684,7 @@ stale, and the entry -- not the run -- is what needs the edit.
 |2026-12-21, or earlier the day the scoped file, plusarg or define named above changes; the re-confirm command is re-run at that review and the entry re-signed or withdrawn.
 |===
 
-==== eFuse models in the product composition
+=== eFuse models in the product composition
 
 [cols="1,4"]
 |===

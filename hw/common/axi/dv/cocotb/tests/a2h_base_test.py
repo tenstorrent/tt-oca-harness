@@ -5,12 +5,12 @@
 ``axi_lite_to_ahb_tb_top`` elaborates the converter three times, and ``Bench``
 builds one ``ConverterEnv`` per instance:
 
-* cfg A (``a_*`` pins): AHB_DATA_WIDTH = 64, AllowSubWordWrite = 0,
-  AckZeroStrobeWrite = 1, the SEP Adams Bridge parameter set;
-* cfg B (``b_*`` pins): AHB_DATA_WIDTH = 32, AllowSubWordWrite = 1,
-  AckZeroStrobeWrite = 0;
-* cfg C (``c_*`` pins): AHB_DATA_WIDTH = 64, AllowSubWordWrite = 1,
-  AckZeroStrobeWrite = 0, sub-word writes on either half of a 64-bit bus.
+* cfg A (``a_*`` pins): AHB_DATA_WIDTH = 64, ALLOW_SUB_WORD_WRITE = 0,
+  ACK_ZERO_STROBE_WRITE = 1, the SEP Adams Bridge parameter set;
+* cfg B (``b_*`` pins): AHB_DATA_WIDTH = 32, ALLOW_SUB_WORD_WRITE = 1,
+  ACK_ZERO_STROBE_WRITE = 0;
+* cfg C (``c_*`` pins): AHB_DATA_WIDTH = 64, ALLOW_SUB_WORD_WRITE = 1,
+  ACK_ZERO_STROBE_WRITE = 0, sub-word writes on either half of a 64-bit bus.
 
 Each env carries the AHB-Lite slave model, the passive AXI monitor and the
 scoreboard, which check every transaction of every test. The AXI side is

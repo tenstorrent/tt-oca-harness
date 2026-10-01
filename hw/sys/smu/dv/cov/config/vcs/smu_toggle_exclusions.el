@@ -11,7 +11,7 @@
 // file states each class's fact; the ANNOTATION before each class repeats it.
 //==================================================
 
-CHECKSUM: "69656921 3179025833"
+CHECKSUM: "1089586840 3179025833"
 MODULE: smu
 
 ANNOTATION: "SMU-TGL-MEM-MACRO: data, mask, strobe, parity and ECC words of the SMC and SEP RAM, ROM and TCM interfaces. smu.sv connects each such port of u_smc and u_sep straight to its own port, smu_wrapper.sv connects that to hw/top/smc_ip_integration.sv or hw/top/sep_ip_integration.sv, where the macros are, and no SMU logic reads or writes the words; the SMC and SEP benches grade the memories. Retired by an SMU process that reads or drives these words, or the macros moving under u_smu."
@@ -2410,7 +2410,7 @@ Toggle smc_end [16:0] "logic smc_end[56:0]"
 Toggle smc_region_size_i [16:0] "net smc_region_size_i[31:0]"
 Toggle smc_region_size_i [31] "net smc_region_size_i[31:0]"
 
-CHECKSUM: "69656921 626445231"
+CHECKSUM: "1089586840 626445231"
 MODULE: smu
 
 ANNOTATION: "SMU-CONDITION-LC-SIGINT-ENCODED: the lifecycle signal-integrity error. efuse_shadow_regs.sv (282-285, 350) keeps the raw 4-bit LC_STATE and re-encodes it with prim_diff_encode_multi, so the word the SEP exports is always a valid differential pair and the decoders in sep_lifecycle_ctrl.sv and smc_efuse_wrapper.sv fire only on corruption in flight. Retired by a fault-injection bench that corrupts the exported pair."

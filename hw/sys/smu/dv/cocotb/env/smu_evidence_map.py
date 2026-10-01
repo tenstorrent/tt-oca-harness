@@ -1256,7 +1256,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-AXI-FILTER-OKAY", "AXI_FILTER_OKAY", "after program window OKAY"),
     ],
     "smu_sys_in_filter_reprogram_shrink_test": [
-        ("CHK-AXI-FILTER-OKAY", "AXI_FILTER_OKAY", "shrink restores BlockByDefault"),
+        ("CHK-AXI-FILTER-OKAY", "AXI_FILTER_OKAY", "shrink restores BLOCK_BY_DEFAULT"),
     ],
     "smu_sys_in_filter_window_edge_test": [
         (
@@ -1414,7 +1414,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SMU-NOSEP-S4",
             "CHK-SMU-NOSEP-S4",
-            "Cfg reaches smu unchanged and each consumer parameter is its specified default",
+            "CFG reaches smu unchanged and each consumer parameter is its specified default",
         ),
     ],
     "smu_reset_release_sync_test": [

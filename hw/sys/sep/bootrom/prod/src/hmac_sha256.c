@@ -15,6 +15,7 @@
 
 #include <stdbool.h>
 
+#include "errors.h"
 #include "rom_mmio.h"
 #include "rom_virt_console.h"
 #include "sep.h"
@@ -181,6 +182,8 @@ static int fifo_feed(const uint8_t *data, uint32_t len) {
 // ---------------------------------------------------------------------------
 
 int sha256(const uint8_t *data, uint32_t len, uint8_t *digest) {
+    bool fifo_timed_out = false;
+
     // 1. Clear any pending interrupt state.
     mmio_write32(SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, 0x7u); // clear all 3 bits
 
@@ -204,6 +207,7 @@ int sha256(const uint8_t *data, uint32_t len, uint8_t *digest) {
 
     // 4. Feed message data into FIFO.
     if (fifo_feed(data, len) != 0) {
+        fifo_timed_out = true;
         simputs("SHA_FIFO_TIMEOUT\n");
         goto fail;
     }
@@ -241,11 +245,18 @@ fail:
     cfg.f.sha_en = 0;
     mmio_write32(SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
     mmio_write32(SEP_TOP_HMAC_WIPE_SECRET_BASE_ADDR, 0xFFFFFFFFu);
+    // Reported only once the engine is disabled and wiped, so the status store
+    // never happens while it still holds message state.
+    if (fifo_timed_out) {
+        report_status(STATUS_TYPE_WARN, SEP_MSG_HMAC_FIFO_TIMEOUT);
+    }
     return -1;
 }
 
 int hmac_sha256(const uint8_t *key, uint32_t key_len, const uint8_t *data, uint32_t data_len,
                 uint8_t *digest) {
+    bool fifo_timed_out = false;
+
     if (key_len > 32u) return -1; // IP supports 256-bit key max.
 
     // 1. Clear any pending interrupt state.
@@ -304,6 +315,7 @@ int hmac_sha256(const uint8_t *key, uint32_t key_len, const uint8_t *data, uint3
 
     // 5. Feed message data.
     if (fifo_feed(data, data_len) != 0) {
+        fifo_timed_out = true;
         simputs("HMAC_FIFO_TIMEOUT\n");
         goto fail;
     }
@@ -342,5 +354,10 @@ fail:
     cfg.f.sha_en = 0;
     mmio_write32(SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
     mmio_write32(SEP_TOP_HMAC_WIPE_SECRET_BASE_ADDR, 0xFFFFFFFFu);
+    // Reported only once the engine is disabled and the key wiped, so the
+    // status store never happens while the key is still loaded.
+    if (fifo_timed_out) {
+        report_status(STATUS_TYPE_WARN, SEP_MSG_HMAC_FIFO_TIMEOUT);
+    }
     return -1;
 }

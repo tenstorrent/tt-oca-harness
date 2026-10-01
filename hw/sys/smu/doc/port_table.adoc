@@ -53,7 +53,7 @@
 |`jtag_ptap_state_o` |`jtag_tap_pkg::tap_state_e` |Output |- |Current PTAP TAP state. |Debug infrastructure |N/A
 |`jtag_ptap_inst_decoded_o` |`jtag_inst_reg_pkg::jtag_instruction_decoded_e` |Output |- |Current decoded PTAP instruction. |Debug infrastructure |N/A
 
-|`jtag_ic_reset_ext_o` |`ic_reset_ext_t` |Output |`$bits(ic_reset_ext_t)` |External JTAG IC_RESET override slice. Integrator-defined packed struct with `.ovrd` override enables and `.val` active-low override values. Driven by the DTP's `jtag_ic_reset_ext_o` when `Cfg.JTAG_IC_RESET_ENABLE=1`, otherwise tied to '0. An integrator needing JTAG reset overrides for logic outside the SMU sets `ic_reset_ext_t` to their own override struct and routes this port to it; the SMU does not define that type. |Integrator-defined reset overrides |N/A
+|`jtag_ic_reset_ext_o` |`ic_reset_ext_t` |Output |`$bits(ic_reset_ext_t)` |External JTAG IC_RESET override slice. Integrator-defined packed struct with `.ovrd` override enables and `.val` active-low override values. Driven by the DTP's `jtag_ic_reset_ext_o` when `CFG.JTAG_IC_RESET_ENABLE=1`, otherwise tied to '0. An integrator needing JTAG reset overrides for logic outside the SMU sets `ic_reset_ext_t` to their own override struct and routes this port to it; the SMU does not define that type. |Integrator-defined reset overrides |N/A
 
 |`xtrig_ctm_src_req_o` |`logic` |Output |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger source requests. The SMU exposes DTP lanes above the SMC reservation (`smu_pkg::XTRIG_SMC_INT_CT_LANES`). |Cross trigger network |N/A
 |`xtrig_ctm_src_ack_i` |`logic` |Input |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger source acknowledges. Unused in pulse-sync mode (mode bit = 0). |Cross trigger network |Tie to '0 in pulse-sync mode
@@ -122,7 +122,7 @@
 |`smc_wdt_second_timeout_o` |`logic` |Output |1 |Second watchdog timeout signal. |External systems |N/A
 |`smc_region_size_o` |`logic` |Output |`[31:0]` |SMC address region size output. |External systems |N/A
 
-|`smc_ext_interrupts_i` |`logic` |Input |`[Cfg.NUM_INT_TO_SMC-1:0]` |External interrupt inputs to SMC. Active-high level or a pulse long enough to be sampled on `clk_smc`. |External interrupt sources |Tie to '0 if unused
+|`smc_ext_interrupts_i` |`logic` |Input |`[CFG.NUM_INT_TO_SMC-1:0]` |External interrupt inputs to SMC. Active-high level or a pulse long enough to be sampled on `clk_smc`. |External interrupt sources |Tie to '0 if unused
 |`smc_fuse_sense_done_o` |`logic` |Output |1 |SMC fuse sense completion output. |Memory repair logic |N/A
 |`smc_fuse_reset_n_delayed_o` |`logic` |Output |1 |Delayed fuse reset output. |External systems |N/A
 |`skip_mem_repair_o` |`logic` |Output |1 |Skip memory repair output. |Memory repair logic |N/A

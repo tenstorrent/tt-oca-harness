@@ -7,10 +7,12 @@
 ifdef::backend-html5[]
 :feature-control-vector-ref: xref:sep:lifecycle_controller.adoc#feature-control-vector-definition[Disable Vector Format (SIP_DIS / SYS_DIS)]
 :axi-traffic-filter-ref: xref:ip:axi_filter/doc/index.adoc#axi-traffic-filter[AXI Traffic Filter]
+:sep-register-single-beat-ref: xref:sep:memory_map.adoc#sep-register-single-beat[Single-Beat Register Access]
 endif::backend-html5[]
 ifndef::backend-html5[]
 :feature-control-vector-ref: <<feature-control-vector-definition>>
 :axi-traffic-filter-ref: <<axi-traffic-filter>>
+:sep-register-single-beat-ref: <<sep-register-single-beat>>
 endif::backend-html5[]
 
 [[sep-interconnect]]
@@ -18,7 +20,8 @@ endif::backend-html5[]
 SEP uses a hierarchical AXI4 crossbar fabric. Masters initiate transactions;
 slaves connect directly or through bridges for AXI4-Lite and OpenTitan TL-UL
 interfaces. The `axi_to_axi_lite` bridge splits bursts into individual
-transactions and retains the AXI IDs needed for responses. Write strobes
+transactions and retains the AXI IDs needed for responses; register regions
+accept single beats only ({sep-register-single-beat-ref}). Write strobes
 remain available on AXI4-Lite; `axi_lite_to_tlul` translates them into TL-UL
 byte masks. Each peripheral's register definition determines which writes
 are permitted.
@@ -32,7 +35,8 @@ xref:sep-axi-connectivity[xrefstyle=short] shows the crossbar connectivity imple
 `hw/sys/sep/rtl/crossbars/sep_local_axi_xbar.sv`, along with the dedicated
 Boot ROM path that lies outside the crossbar. The crossbar has five
 initiators (CPU IFU, CPU LSU, CPU DBG, DMA, and the System Interface)
-and ten targets.
+and ten targets. The CPU masters and the DMA issue single-beat transactions
+only; the System Interface may issue bursts.
 
 A few access paths are intentionally outside this crossbar:
 
@@ -54,6 +58,12 @@ read-only entropy drain aperture, filled autonomously by a native EDN
 endpoint on a separate hardware path (not this crossbar). Writes to it
 terminate with `BRESP=SLVERR`.
 
+[[sep-sram-target]]
+The *SRAM* target serves INCR bursts of every length and single-beat
+bursts of every type. A multi-beat FIXED or WRAP burst is refused before it
+reaches the memory: the write terminates with `BRESP=SLVERR` and leaves
+SRAM unchanged, and every beat of the read returns `RRESP=SLVERR`.
+
 The *System Interface* initiator is the external inbound master. It does
 not attach to this crossbar directly; it enters SEP through the dedicated
 `smn_inbound` port and the inbound traffic filter (block-by-default), then
@@ -70,21 +80,21 @@ after POR and configured by SEP firmware.
 |Label |Meaning
 |CPU IFU |CPU instruction-fetch unit; initiates instruction reads.
 |CPU LSU |CPU load/store unit; initiates data reads and writes.
-|CPU DBG |CPU debug access path.
+|CPU debug (`dbg`) |CPU debug access path.
 |DMA |Direct memory access engine; moves data without CPU load/store instructions.
 |CPU TCM |Tightly coupled memory backdoor: DMA access to the instruction
 closely coupled memory (ICCM) and data closely coupled memory (DCCM).
-|Scratch SRAM |Static random-access memory used for SEP working storage.
-|DMA CSR |DMA control and status registers.
-|WDT |Watchdog timer.
-|Reset Ctrl |SEP software reset controller.
-|Crypto Periph |Cryptographic accelerators (AES, HMAC, KMAC, OTBN), entropy-source registers, eFuse controller, lifecycle controller, Key Manager mailbox, and external TRNG window.
-|System Periph |System-peripheral routing, remapping, mailboxes and system registers.
-|IO Periph |Local input/output peripheral path, including SPI boot-flash access.
-|Entropy Pool |Read-only aperture for entropy supplied by the entropy distribution
+|SRAM (`sram`) |Static random-access memory used for SEP working storage.
+|DMA registers (`dma_csr`) |DMA control and status registers.
+|Watchdog (`sep_wdt`) |Watchdog timer.
+|Reset controller (`sep_reset_ctrl`) |SEP software reset controller.
+|Crypto (`sep_crypto`) |Cryptographic accelerators (AES, HMAC, KMAC, OTBN), entropy-source registers, eFuse controller, lifecycle controller, Key Manager mailbox, and external TRNG window.
+|System peripherals (`sep_system_peripherals`) |System-peripheral routing, remapping, mailboxes and system registers.
+|SPI host (`sep_io`) |Local input/output peripheral path, including SPI boot-flash access.
+|Entropy pool (`entropy_fifo`) |Read-only aperture for entropy supplied by the entropy distribution
 network (EDN).
-|AXI Extension |Outbound AXI4 port for resources outside the local crossbar; the eFuse shim CSR window is diverted by `u_efuse_shim_demux` to the eFuse wrapper.
-|System Interface |Filtered inbound path from the System Management Network (SMN).
+|Extension, eFuse shim (`sep_external`) |Outbound AXI4 port for resources outside the local crossbar; the eFuse shim CSR window is diverted by `u_efuse_shim_demux` to the eFuse wrapper.
+|SMN inbound (`ext`) |Filtered inbound path from the System Management Network (SMN).
 |Boot ROM |Read-only boot memory on the dedicated CPU fetch/load path.
 |===
 
@@ -99,10 +109,10 @@ The input fabric admits external traffic through the inbound filter and
 system-peripheral decode. The local fabric connects SEP initiators to local
 resources, while the output fabric selects remapped or direct outbound paths.
 
-In the fabric diagrams, mux/demux labels `ID a/b` give the input and output
+In the fabric diagrams, labels such as `ID 3 to 4` give the input and output
 AXI transaction-ID widths in bits; they do not count ports or data bits.
 The wider side of the symbol indicates the side with multiple ports.
-Bus tags give address/data/ID/user widths, in that order. The filter wrapper
+Bus labels identify address and ID widths where they change. The filter wrapper
 checks reads and writes independently, forwards permitted requests, and routes
 rejected requests to an AXI error responder.
 
@@ -231,6 +241,9 @@ traffic, while SEP-scope debug is enabled; see
 {feature-control-vector-ref} for the `SEP_DBG` control. The
 outbound filter has no bypass and is always in effect.
 
+Firmware must not set `allow_burst` on an inbound entry that covers a
+register region ({sep-register-single-beat-ref}).
+
 The decode algorithm -- entry priority, the match conditions, the
 address range granule and its widening direction, and the response
 returned to a blocked initiator -- is common to SEP and SMC. It is
@@ -244,8 +257,13 @@ documented once with the IP in {axi-traffic-filter-ref}.
 image::sep-system-peripherals.svg[alt="Overview of sep_system_peripherals: the outbound path through the alias remap, route demux, AP and STEE remaps and outbound filter, and the inbound path through the inbound filter, global-to-local remap and peripheral crossbar to the mailboxes, system CSRs and local crossbar",width=100%,pdfwidth=100%]
 
 <<sep-system-peripheral-traffic-management-figure>> illustrates the AXI4 traffic management performed by
-the Systems Peripheral block. The AXI4 slave port is driven by one of
-the local masters from the SEP i.e. the CPU or the DMA controller.
+the system peripherals block. Its left edge faces the SEP local crossbar and
+its right edge the SMU; the upper lane is the outbound path and the lower lane
+the inbound path, drawn in the notation of <<sep-fabric-topology>>. The figure
+is an overview: <<sep-output-fabric-diagram>> and <<sep-input-fabric-diagram>>
+give every element with its instance name and address window. The AXI4
+subordinate port on the left is driven by the local masters that the local
+crossbar connects to it: the CPU LSU, the CPU debug master and the secure DMA.
 Traffic may be local to the SEP or outbound to external resources either
 within the SMU or beyond the SMU. Traffic beyond the SMU to the rest of
 the chiplet or remote chiplets will bridge to the system NOC also known
@@ -271,19 +289,17 @@ SMN system NoC. Firmware selects the outbound path according to the resource:
   Inbound filter policy must restrict the STEE remapper to STEE access.
 * External private memory and system MMIO use the direct SMN path.
 
-SEP’s outbound traffic carries a source ID. Traffic destined to the SMN
-uses SEP’s unique source ID. Traffic that traverses through the AP
-controlled remapper uses the regular source ID termed "others".
-Traffic then traverses the outbound filter after traversing the
-remapper. SEP works with M-mode software to program the outbound filters
-so that traffic with source ID "others" cannot access M-mode assets.
-The outbound filter enables filtering based on address, NS and source
-ID.
+SEP outbound traffic carries a source ID in AxUSER. Both AP- and STEE-controlled
+remappers replace it with `OTHERS`. Other traffic retains the initiator's ID:
+the CPU masters drive SEP's ID, while the secure DMA master leaves AxUSER at
+zero (`OTHERS`). AxPROT, including NS, passes unchanged. The outbound filter
+checks address, NS and source ID after remapping; firmware must restrict
+`OTHERS` traffic from M-mode assets.
 
-The SEP’s inbound traffic filter is configured by default to block all
-traffic from entering the SEP. Only the SEP CPU can program these
-filters; their matching rules are described in
-<<sep-traffic-filter-decode,Filtering and Protection>>.
+The inbound filter blocks traffic by default. Its entries reside in the system
+CSRs, reached directly by local masters and by external masters only through
+an enabled inbound filter entry (or the stated SEP debug bypass). Matching
+rules are in <<sep-traffic-filter-decode,Filtering and Protection>>.
 
 ifdef::backend-html5[]
 [[mailboxes]]

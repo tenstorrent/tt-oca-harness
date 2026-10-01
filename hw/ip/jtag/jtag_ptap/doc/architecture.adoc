@@ -495,10 +495,11 @@ slices:
 
 Each slice's struct must contain `.ovrd` and `.val` sub-structs of identical
 width (checked via an elaboration-time assertion in `jtag_ptap`). Within
-`jtag_ic_reset_reg`, the override-enable and control bits remain interleaved as
-`{enable, control}` pairs per the JTAG specification; `jtag_ptap` packs the
-three struct slices into that interleaved bus and unpacks the outputs back into
-structured form. The TDR carries the SMC slice closest to TDI, then SEP, then
+`jtag_ic_reset_reg`, the reset-enable and reset-control bits are interleaved in
+IEEE 1149.1 §17 order: in each port's pair, `reset_enable` is nearer TDO and
+`reset_control` nearer TDI, so port _n_ occupies TDR bits `2*n+1` and `2*n+2`
+(<<ptap-ic-reset-fields-table>>). `jtag_ptap` packs the three struct slices into
+that interleaved bus and unpacks the outputs back into structured form. The TDR carries the SMC slice closest to TDI, then SEP, then
 the external slice, followed by the single `reset_hold` bit.
 
 The total length is `2 * (NUM_SMC_IC_RESET + NUM_SEP_IC_RESET +
@@ -547,6 +548,13 @@ iJTAG network and the network return drives TDO.
 
 [[ptap-jtag2axi-support]]
 === JTAG2AXI Support
+
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="jtag2axi-support"></span>
+++++
+endif::backend-html5[]
 
 ==== *_JTAG2AXI_CAPS
 

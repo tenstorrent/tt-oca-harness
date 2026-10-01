@@ -43,8 +43,8 @@ PORT_TABLE_SYS="smc sep dtp smu"
 MODULES="ROOT $SUBSYSTEMS aou ip"
 
 clean() {
-  rm -rf "$MOD/ROOT/pages" "$MOD/ROOT/partials/hw" "$MOD/ROOT/assets"
-  for m in smc sep dtp smu aou ip; do
+  rm -rf "$MOD/ROOT/pages" "$MOD/ROOT/partials/hw" "$MOD/ROOT/partials/meta" "$MOD/ROOT/assets"
+  for m in smc sep dtp smu aou ip smc-bootrom-prod sep-bootrom-prod; do
     rm -rf "${MOD:?}/$m"
   done
   rm -f "$ASSETS"/aou-*
@@ -125,9 +125,11 @@ done
 if [ "${OCAH_DOC_PRODUCT_INCLUDE_REVISION:-1}" != "1" ]; then
   rm -f "$MOD/ROOT/pages/revision.adoc" "$MOD/ROOT/pages/aou-records-of-changes.adoc"
 fi
-mkdir -p "$MOD/ROOT/pages/meta"
+# Meta tables are fragments that product pages include via partial$meta/.
+rm -rf "$MOD/ROOT/pages/meta" "$MOD/ROOT/partials/meta"
+mkdir -p "$MOD/ROOT/partials/meta"
 for f in "$META"/*.adoc; do
-  [ -f "$f" ] && cp -f "$f" "$MOD/ROOT/pages/meta/"
+  [ -f "$f" ] && cp -f "$f" "$MOD/ROOT/partials/meta/"
 done
 
 # --- ROOT: subsystem port_table partials (referenced from integration_guide) ---
@@ -148,8 +150,27 @@ for s in $SUBSYSTEMS; do
   stage_gen_adoc "$ROOT/hw/sys/$s/dv/models/regs/gen/adoc" "$MOD/$m/partials/$m/dv/models/regs/gen/adoc"
   stage_gen_html "$ROOT/hw/sys/$s/dv/models/regs/gen/html" "$MOD/$m/partials/$m/dv/models/regs/gen/html"
 done
-# DTP and SMU port tables are private ROOT partials included by their owning pages.
-rm -f "$MOD/dtp/pages/port_table.adoc" "$MOD/smu/pages/port_table.adoc"
+# Port tables are private ROOT partials included by their owning pages.
+for s in $PORT_TABLE_SYS; do
+  rm -f "$MOD/$s/pages/port_table.adoc"
+done
+# The SEP status table is a generated fragment the SEP ROM specification includes.
+if [ -f "$MOD/sep/pages/gen/status_values.adoc" ]; then
+  mkdir -p "$MOD/sep/partials/gen"
+  mv -f "$MOD/sep/pages/gen/status_values.adoc" "$MOD/sep/partials/gen/status_values.adoc"
+fi
+
+# --- production ROM manuals: index.adoc includes its untitled chapter
+#     fragments by relative path. They move to partials/ so they have no
+#     standalone URL, and the staged index includes them via partial$.
+for m in smc-bootrom-prod sep-bootrom-prod; do
+  idx="$MOD/$m/pages/index.adoc"
+  [ -f "$idx" ] || continue
+  for frag in $(sed -nE 's/^include::([^/$]+\.adoc)\[.*$/\1/p' "$idx"); do
+    [ -f "$MOD/$m/pages/$frag" ] && mv -f "$MOD/$m/pages/$frag" "$MOD/$m/partials/$frag"
+  done
+  sed -i -E 's/^include::([^/$]+\.adoc)\[/include::partial$\1[/' "$idx"
+done
 
 # --- aou: each product stages only the section it publishes ---
 rm -rf "$MOD/aou"
