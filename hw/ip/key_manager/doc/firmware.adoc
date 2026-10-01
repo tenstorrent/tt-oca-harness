@@ -14,8 +14,8 @@ For SEP callers, start with the <<km-firmware-command-message-reference,command 
 <<km-firmware-common-sequences,common sequences>>.
 The remaining sections describe the ROM implementation: initialization,
 message processing, interrupts, drivers, libraries and key management.
-The <<km-firmware-kdf-library,Key Derivation Function Library>> is a firmware library; the current command
-set exposes random key generation, not a deterministic UID-derived hierarchy.
+The <<km-firmware-kdf-library,Key Derivation Function Library>> is a firmware
+library; no command derives keys.
 After SRAM handover, the mutable image owns the mailbox service.
 
 [[km-firmware-global-parameters]]
@@ -1802,9 +1802,8 @@ for later deliveries (<<km-irq-abr-sharedkey>>).
 == Key Derivation Function Library
 
 [[hmac-kdf]]
-The library is distinct from the SEP-facing command set: the current ROM
-dispatcher exposes random key generation, not the proposed deterministic
-UID-derived key-hierarchy service.
+The library is not reachable from the SEP-facing command set: no command
+derives keys.
 
 The `rom_kdf` library implements the NIST SP 800-108r1 counter-mode key
 derivation function (KDF) with HMAC-SHA-256 as its pseudorandom function.
