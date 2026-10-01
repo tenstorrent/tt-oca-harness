@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# CHIPLET_PUBK_REVOKE with bit 0 set: the ROM key slot that
+# configs/oca_secure_boot_test.yaml selects (public_key_select_classic: 0x01).
+#
+# Revocation is checked after authorization and before the signature, so a run
+# with this map must report SEP_MSG_REVOKED_KEY and never reach RSA_VERIFY.
+# The bit map is documented on the register in sep_efuse_map.rdl: [7:0] are the
+# ROM chiplet-creator classical keys, bits 0 and 1 being the development keys.
+lc_state: TEST_DEV
+sboot_dis: 0
+chiplet_pubk_revoke: 0x00000001

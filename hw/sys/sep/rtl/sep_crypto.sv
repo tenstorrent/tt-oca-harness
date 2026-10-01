@@ -330,7 +330,7 @@ module sep_crypto #(
   drbg_pkg::drbg_axis_req_t [EXT_TRNG_NUM_AXIS-1:0] drbg_int_axis_req;
   drbg_pkg::drbg_axis_rsp_t [EXT_TRNG_NUM_AXIS-1:0] drbg_int_axis_rsp;
   logic trng_reset_active;
-  logic [sep_crypto_pkg::SEP_CRYPTO_AXIS_EDN_CLIENT_COUNT-1:0] crypto_edn_endpoint_rst_n;
+  logic [sep_crypto_pkg::SEP_CRYPTO_AXIS_EDN_CLIENT_COUNT-1:0] crypto_edn_endpoint_cancel;
 
   // Muxed AXI-Stream outputs (one per mux)
   drbg_pkg::drbg_axis_req_t [EXT_TRNG_NUM_AXIS-1:0] entropy_muxed_req;
@@ -961,22 +961,29 @@ module sep_crypto #(
   // These post-mux adapters also serve the external source, so they remain in
   // the POR reset domain. An internal-TRNG reset synchronously clears buffered
   // entropy and handshake state without exporting a generated reset domain.
-  // Client resets cancel only their own endpoint. OTBN owns both RND and URND.
-  assign crypto_edn_endpoint_rst_n = {
-    gated_rst_ni.otbn, gated_rst_ni.otbn, gated_rst_ni.kmac, gated_rst_ni.aes
+  // An engine reset cancels only that engine's endpoints. The engine reset
+  // asserts the cycle after its isolation completes and releases with the
+  // isolation request, so isolated-and-requested cancels the endpoint a cycle
+  // ahead of the reset and holds it throughout, while EDN keeps serving the
+  // engine during the drain. OTBN owns both RND and URND.
+  assign crypto_edn_endpoint_cancel = {
+    isolate_req_i.host_otbn & isolated_o.host_otbn & isolated_o.km_otbn,
+    isolate_req_i.host_otbn & isolated_o.host_otbn & isolated_o.km_otbn,
+    isolate_req_i.host_kmac & isolated_o.host_kmac & isolated_o.km_kmac,
+    isolate_req_i.host_aes & isolated_o.host_aes & isolated_o.km_aes
   };
 
   drbg_axis_edn_adapter #(
     .NUM_ENDPOINTS(sep_crypto_pkg::SEP_CRYPTO_AXIS_EDN_CLIENT_COUNT)
   ) u_axis_edn_crypto_s3c_scan (
-    .clk_i           (clk_i),
-    .rst_ni          (rst_ni),
-    .endpoint_rst_ni (crypto_edn_endpoint_rst_n),
-    .clear_i         (trng_reset_active),
-    .axis_req_i      (entropy_muxed_req[1]),
-    .axis_rsp_o      (entropy_muxed_rsp[1]),
-    .edn_req_i       (crypto_edn_req),
-    .edn_rsp_o       (crypto_edn_rsp)
+    .clk_i              (clk_i),
+    .rst_ni             (rst_ni),
+    .endpoint_cancel_i  (crypto_edn_endpoint_cancel),
+    .clear_i            (trng_reset_active),
+    .axis_req_i         (entropy_muxed_req[1]),
+    .axis_rsp_o         (entropy_muxed_rsp[1]),
+    .edn_req_i          (crypto_edn_req),
+    .edn_rsp_o          (crypto_edn_rsp)
   );
 
   //=========================================================================
@@ -993,14 +1000,14 @@ module sep_crypto #(
   drbg_axis_edn_adapter #(
     .NUM_ENDPOINTS(sep_crypto_pkg::SEP_CRYPTO_POOL_EDN_CLIENT_COUNT)
   ) u_axis_edn_pool_s3c_scan (
-    .clk_i           (clk_i),
-    .rst_ni          (rst_ni),
-    .endpoint_rst_ni ({sep_crypto_pkg::SEP_CRYPTO_POOL_EDN_CLIENT_COUNT{rst_ni}}),
-    .clear_i         (trng_reset_active),
-    .axis_req_i      (entropy_muxed_req[2]),
-    .axis_rsp_o      (entropy_muxed_rsp[2]),
-    .edn_req_i       (pool_edn_req),
-    .edn_rsp_o       (pool_edn_rsp)
+    .clk_i              (clk_i),
+    .rst_ni             (rst_ni),
+    .endpoint_cancel_i  ('0),
+    .clear_i            (trng_reset_active),
+    .axis_req_i         (entropy_muxed_req[2]),
+    .axis_rsp_o         (entropy_muxed_rsp[2]),
+    .edn_req_i          (pool_edn_req),
+    .edn_rsp_o          (pool_edn_rsp)
   );
 
   //=========================================================================

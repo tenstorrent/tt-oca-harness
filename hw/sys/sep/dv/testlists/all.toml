@@ -29,11 +29,11 @@ tests = ["sep_axi_smoke_test"]
 
 [[groups]]
 # Every test this VPLAN grades. `cpu_stub` (CPU-stub target) and `cpu`
-# (full-CPU target) are disjoint and together hold all 121. `rom_fw`
+# (full-CPU target) are disjoint and together hold all 124. `rom_fw`
 # is not a member: a different owner, a third RTL target, and firmware rather
-# than hardware contracts. `all` is the coverage set. expected_count is 121.
+# than hardware contracts. `all` is the coverage set. expected_count is 124.
 name = "all"
-expected_count = 121
+expected_count = 124
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
@@ -115,6 +115,9 @@ tests = [
     "sep_sec_dis_reset_reach_test",
     "sep_fabric_output_remap_datapath_proxy_test",
     "sep_fabric_local_alias_datapath_test",
+    "sep_fabric_outbound_remap_filter_walk_test",
+    "sep_fabric_inbound_filter_window_walk_test",
+    "sep_fabric_local_alias_offset_walk_test",
     "sep_km_key_policy_vault_test",
     "sep_km_isolate_termination_test",
     "sep_km_command_set_rand_test",
@@ -151,7 +154,7 @@ tests = [
     "sep_unmapped_access_policy_test",
     "sep_fabric_burst_wrap_test",
     "sep_sram_burst_type_test",
-    "sep_km_rom_write_slverr_test",
+    "sep_km_rom_write_err_test",
     "sep_km_otp_shim_unreachable_test",
     "sep_km_vrom_decerr_test",
     "sep_km_ic_reset_release_test",
@@ -250,6 +253,9 @@ tests = [
     "sep_sec_dis_reset_reach_test",
     "sep_fabric_output_remap_datapath_proxy_test",
     "sep_fabric_local_alias_datapath_test",
+    "sep_fabric_outbound_remap_filter_walk_test",
+    "sep_fabric_inbound_filter_window_walk_test",
+    "sep_fabric_local_alias_offset_walk_test",
     "sep_km_key_policy_vault_test",
     "sep_km_isolate_termination_test",
     "sep_km_command_set_rand_test",
@@ -286,7 +292,7 @@ tests = [
     "sep_unmapped_access_policy_test",
     "sep_fabric_burst_wrap_test",
     "sep_sram_burst_type_test",
-    "sep_km_rom_write_slverr_test",
+    "sep_km_rom_write_err_test",
     "sep_km_otp_shim_unreachable_test",
     "sep_km_vrom_decerr_test",
     "sep_km_ic_reset_release_test",
@@ -308,11 +314,18 @@ name = "rom_fw"
 tests = [
     "sep_rom_non_secure_boot_test",
     "sep_rom_ot_dma_boot_test",
+    "sep_manifest_magic_survives_handoff_test",
     "sep_rom_ot_pio_boot_test",
     "sep_rom_ot_secure_boot_test",
     "sep_firmware_mbist_fail_test",
     "sep_scratch_7_test",
     "sep_firmware_device_cntl_non_secure_boot_flow_test",
+    # The other half of SBOOT_DIS: a RESERVED bit set, which must be a
+    # fuse-integrity fault rather than a second chicken bit (SEP-ROM-SB-041).
+    "sep_firmware_sboot_dis_rsvd_terminal_test",
+    # Fault injection: OTBN command dropped, forged PKCS#1 block. Proves the
+    # verifier cannot report success on a modexp that never ran.
+    "sep_otbn_no_op_bypass_test",
     "sep_firmware_enforced_secure_boot_flow_test",
     "sep_firmware_cntl_secure_boot_flow_test",
     "sep_firmware_backup_invalid_signature_test",
@@ -443,4 +456,16 @@ tests = [
     "sep_rom_oca_encrypted_boot_test",
     "sep_rom_oca_otp_key_boot_test",
     "sep_rom_oca_tamper_test",
+    "sep_rom_lc_state_invalid_test",
+    # TEST_DEV chiplet debug lock (SEP-ROM-SB-025) and the LC_STATE decode
+    # (SEP-ROM-FUSE-020).
+    "sep_rom_dbg_lock_sip_dis_refuse_test",
+    "sep_rom_dbg_lock_sys_dis_refuse_test",
+    "sep_rom_dbg_lock_read_locked_refuse_test",
+    "sep_rom_dbg_lock_secure_boot_test",
+    "sep_rom_dbg_lock_sboot_dis_boot_test",
+    "sep_rom_lc_state_invalid_0x4_test",
+    "sep_rom_lc_state_invalid_0x5_test",
+    "sep_rom_dma_stall_terminal_test",
+    "sep_rom_hmac_fifo_stall_terminal_test",
 ]

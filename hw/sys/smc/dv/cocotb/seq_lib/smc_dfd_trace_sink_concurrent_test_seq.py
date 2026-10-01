@@ -77,6 +77,7 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
+from cocotb.utils import get_sim_time
 
 from .smc_cla_regmap import cla_field, cla_register
 from .smc_csr_seq_utils import SmcCsrSeq
@@ -119,6 +120,9 @@ _WRAP_WINDOW_BYTES = 0x2000
 
 _SETTLE_CYCLES = 16
 _DELIVER_POLLS = 32
+# The packetizer drains at the trace's own pace, not the core clock's, so the wait
+# for Trdstempty after the enable drops is bounded in time.
+_DRAIN_BOUND_NS = 4_000
 # Write-pointer samples that have to agree for the pointer to count as parked.
 _PARKED_SAMPLES = 3
 
@@ -414,14 +418,16 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
         empty = reg_field(control, "Trdstempty")
         stopped = {"Trdstactive": 1, "Trdstenable": 0, "Trdstformat": _DST_FORMAT_XOR_VLT}
         await self._write_check(control, stopped, "oddflush")
-        for poll in range(_DELIVER_POLLS):
-            if await self._read(control, f"oddflush{poll}") & empty.mask:
-                break
-        else:
-            raise AssertionError(
-                f"DST Trdstempty stayed 0 for {_DELIVER_POLLS} polls after the enable was "
-                f"cleared with the DST active, so the odd-offset run cannot start empty"
-            )
+        deadline_ns = get_sim_time("ns") + _DRAIN_BOUND_NS
+        poll = 0
+        while not await self._read(control, f"oddflush{poll}") & empty.mask:
+            poll += 1
+            if get_sim_time("ns") >= deadline_ns:
+                raise AssertionError(
+                    f"DST Trdstempty stayed 0 for {poll} polls over {_DRAIN_BOUND_NS} ns after "
+                    f"the enable was cleared with the DST active, so the odd-offset run cannot "
+                    f"start empty"
+                )
         await self._write_check(
             control,
             {"Trdstactive": 1, "Trdstenable": 1, "Trdstformat": _DST_FORMAT_XOR_VLT},
@@ -816,13 +822,19 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
             {"Trdstactive": 1, "Trdstenable": 0, "Trdstformat": _DST_FORMAT_NONE},
             "stop",
         )
-        for poll in range(_DELIVER_POLLS):
-            if await self._read(control, f"stop{poll}") & empty.mask:
-                self.stop_polls = poll + 1
+        deadline_ns = get_sim_time("ns") + _DRAIN_BOUND_NS
+        poll = 0
+        while True:
+            poll += 1
+            if await self._read(control, f"stop{poll - 1}") & empty.mask:
+                self.stop_polls = poll
+                break
+            if get_sim_time("ns") >= deadline_ns:
                 break
         assert self.stop_polls, (
-            f"DST Trdstempty stayed 0 for {_DELIVER_POLLS} polls after Trdstenable was cleared "
-            f"with Trdstactive held at 1, so the trace did not wind down to empty"
+            f"DST Trdstempty stayed 0 for {poll} polls over {_DRAIN_BOUND_NS} ns after "
+            f"Trdstenable was cleared with Trdstactive held at 1, so the trace did not wind "
+            f"down to empty"
         )
         self.value_checks += 2
         cocotb.log.info(

@@ -45,9 +45,9 @@ int main(void) {
     printf("Setting baud rate to %d, divisor = %d...\n", baud_rate, divisor);
     *((volatile uint32_t *)(0x44000000 + LCR_REG_OFFSET)) =
         0x83; // Mux to DL address map. 8 data bits, no parity, 1 stop bit.
-    *((volatile uint32_t *)(0x44000000 + DLL_REG_OFFSET)) =
-        divisor & 0xff; // divisor low byte
-    *((volatile uint32_t *)(0x44000000 + DLM_REG_OFFSET)) = divisor >> 8 & 0xff; // divisor high byte
+    *((volatile uint32_t *)(0x44000000 + DLL_REG_OFFSET)) = divisor & 0xff; // divisor low byte
+    *((volatile uint32_t *)(0x44000000 + DLM_REG_OFFSET)) =
+        divisor >> 8 & 0xff;                                      // divisor high byte
     *((volatile uint32_t *)(0x44000000 + LCR_REG_OFFSET)) = 0x03; // Return to main address map
     *((volatile uint32_t *)(0x44000000 + MCR_REG_OFFSET)) = 0x10; // Enable system loopback
     printf("Configuration complete!\n");

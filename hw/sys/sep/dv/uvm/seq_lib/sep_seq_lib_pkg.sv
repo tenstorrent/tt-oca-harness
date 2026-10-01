@@ -34,9 +34,19 @@ package sep_seq_lib_pkg;
   // Reusable operations (one agent, one operation).
   `include "sep_axi_csr_write_seq.svh"
   `include "sep_axi_csr_read_seq.svh"
+  `include "sep_axi_bus_write_seq.svh"
+  `include "sep_axi_bus_read_seq.svh"
 
   // Scenario layer: the base virtual sequence, then the scenarios.
   `include "sep_base_test_seq.svh"
   `include "sep_axi_smoke_test_seq.svh"
+  `include "sep_sram_smoke_test_seq.svh"
+  `include "sep_address_map_test_seq.svh"
+  `include "sep_periph_bus_err_misaligned_test_seq.svh"
+  `include "sep_clock_uvm_wdt_rst_input_reset_path_test_seq.svh"
+  `include "sep_irq_ip_to_aggregator_test_seq.svh"
+  `include "sep_otbn_mem_smoke_test_seq.svh"
+  `include "sep_efuse_sense_test_seq.svh"
+  `include "sep_km_mem_smoke_test_seq.svh"
 
 endpackage : sep_seq_lib_pkg

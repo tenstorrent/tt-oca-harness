@@ -4,50 +4,64 @@
 [[log-engine-programming]]
 == Programming
 
-=== Simple Log Transfer
+ifdef::backend-html5[]
+++++
+<span id="simple-log-transfer"></span>
+++++
+endif::backend-html5[]
 
-[source,sourceCode,c]
-----
-// Initialize log engine for 4KB region at 0x10000000
-// UART at 0x40001000
+[[log-engine-setup]]
+=== Configure the Engine
 
-#define LOG_ENGINE_BASE 0x50000000
-#define LOG_REGION_ADDR 0x10000000
-#define LOG_REGION_SIZE 0x1000
-#define UART_TX_ADDR    0x40001000
+. Start from reset or an idle engine with all pending lengths clear.
+  Clear `CTRL.EN` before changing shared configuration.
+. Allocate a readable region with an 8-byte-aligned base and a size that
+  is a multiple of 128 bytes, no larger than 512 KiB.
+. Write `LOG_REGION_SIZE` and both halves of `LOG_REGION_ADDR`. Only address
+  bits `[55:0]` are implemented; bits `[63:56]` are reserved zero.
+. Set `LOG_WRITE_ADDR` to the UART transmit register and configure the UART
+  and its readiness path.
+. Clear stale error status by writing `0x11` to `INTR_STATUS`. If required,
+  write `0x11` to `INTR_ENABLE` and configure the receiving interrupt controller.
+. Set `CTRL.EN = 1`.
 
-// Disable and configure
-write32(LOG_ENGINE_BASE + 0x00, 0);          // Disable
-write32(LOG_ENGINE_BASE + 0x04, LOG_REGION_SIZE);
-write32(LOG_ENGINE_BASE + 0x08, LOG_REGION_ADDR);
-write32(LOG_ENGINE_BASE + 0x0C, 0);          // High address
-write32(LOG_ENGINE_BASE + 0x10, UART_TX_ADDR);
-write32(LOG_ENGINE_BASE + 0x18, 0x11);       // Enable error interrupts
-write32(LOG_ENGINE_BASE + 0x00, 1);          // Enable
+For a 4 KiB region, each of the 16 slots has 256 bytes. Slot 0 begins at
+the region base, slot 1 at base+256, and so on. Use the system memory map
+for actual memory, engine and UART addresses.
 
-// Send 100-byte log via entry 0
-write32(LOG_ENGINE_BASE + 0x40, 100);
+ifdef::backend-html5[]
+++++
+<span id="multiple-entry-management"></span>
+++++
+endif::backend-html5[]
 
-// Wait for completion
-while (read32(LOG_ENGINE_BASE + 0x40) != 0);
-----
+[[log-engine-submit]]
+=== Submit and Complete a Message
 
-=== Multiple Entry Management
+. Wait for `LOG_CTRL[i].LOG_LEN` to become zero before reusing slot `i`.
+. Write the message into that slot. Keep its length within the slot capacity,
+  and make the complete final fetch word readable.
+. Make the data visible to the engine using the platform's cache-maintenance
+  and memory-ordering rules, then write the byte length to `LOG_CTRL[i]`.
+. Leave the buffer and length unchanged while pending. Poll for zero with a
+  timeout appropriate to UART speed and other pending messages, or use a
+  software scheduling mechanism that checks completion later.
+. Inspect error status before treating completion as successful. A slot
+  reaching zero does not mean the UART serial transmitter is empty.
 
-[source,sourceCode,c]
-----
-// Send logs via multiple entries simultaneously
-write32(LOG_ENGINE_BASE + 0x40, 50);   // Entry 0: 50 bytes
-write32(LOG_ENGINE_BASE + 0x44, 75);   // Entry 1: 75 bytes
-write32(LOG_ENGINE_BASE + 0x48, 120);  // Entry 2: 120 bytes
+Several slots can be pending at once. Assign slots to producers or serialize
+access in software; writing a new length to an active slot is not a queueing
+operation. A zero length submits no message.
 
-// Check completion status
-for (int i = 0; i < 3; i++) {
-    uint32_t len = read32(LOG_ENGINE_BASE + 0x40 + (i * 4));
-    if (len == 0) {
-        printf("Entry %d completed\n", i);
-    } else {
-        printf("Entry %d: %d bytes remaining\n", i, len);
-    }
-}
-----
+[[log-engine-recovery]]
+=== Handle an Error or Timeout
+
+Read `INTR_STATUS` to distinguish fetch and write errors, diagnose the
+memory or UART path, then clear the handled bits with write-one-to-clear.
+There is no automatic retransmission. Because status is shared, it does not
+identify which pending slot encountered the error.
+
+If progress stops, check UART readiness and outstanding bus responses.
+Do not free pending buffers solely because `CTRL.EN` was cleared;
+<<log-engine-reset>> describes the disable behavior. Recovery must account
+for any characters already sent, since restarting may duplicate output.

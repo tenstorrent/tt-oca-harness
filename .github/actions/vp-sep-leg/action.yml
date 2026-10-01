@@ -1,0 +1,345 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# One sep-vp leg on a hosted runner. Shared by the native and container jobs in
+# .github/workflows/vp.yml so the two cannot drift apart; each caller owns only
+# which mode it is. The container leg pulls its toolchain image from the
+# registry by the flake content hash; the native leg needs no image at all.
+#
+# The caller must check the repository out first and gate this action on the
+# submodule token: a local composite action is loaded from the checked-out tree,
+# and every step here needs the private submodules.
+name: 'Run a sep-vp leg'
+description: 'Build sep-vp for one environment and run the sepvp pytest suites against it'
+inputs:
+  mode:
+    required: true
+    description: 'native or container; selects where the build and the suites run'
+  vp_container:
+    required: true
+    description: 'VP_CONTAINER value: 1 forwards the goals into the OCAH image, 0 builds on the runner'
+  local_dir:
+    required: true
+    description: 'SystemC/CCI prefix for this environment (local/ natively, local-ctr/ in the image)'
+  build_dir:
+    required: true
+    description: 'VP build tree for this environment; the tag keeps container and native objects apart'
+  oca_pat:
+    required: true
+    description: 'PAT granting the private model and manifest submodules'
+runs:
+  using: composite
+  steps:
+    - name: Skip when the submodule token is unavailable
+      if: false  # caller handles the skip notice
+      shell: bash
+      run: |
+        {
+          echo "### sep-vp (${{ inputs.mode }}): skipped"
+          echo
+          echo 'The `OCA_BOOT_MANIFEST_OCA_MODEL_PAT` secret is not available to this run'
+          echo '(fork PR, or the secret is not configured yet). The VP needs the'
+          echo 'private `tt-oca-harness-model` and `tt-oca-manifest` submodules,'
+          echo 'which the default `GITHUB_TOKEN` cannot reach.'
+        } >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    # Both submodules are private: tt-oca-harness-model is the simulator, and
+    # the bootcode tests read tt-oca-manifest's src/oca/constants.py as the
+    # authority for the manifest layout.
+    #
+    # Deliberately NOT actions/checkout's `submodules`/`token` inputs. That
+    # `token` replaces the credential for the MAIN repository fetch too, and
+    # this PAT grants the two submodule repositories but NOT tt-oca-harness,
+    # so the repository's own checkout fails with
+    # "remote: Write access to repository not granted".
+    #
+    # .gitmodules addresses both over SSH, which a hosted runner has no key
+    # for, so rewrite that remote to HTTPS carrying the PAT. The rewrite is
+    # undone afterwards so the credential does not outlive the step.
+    - name: Check out the private submodules
+      env:
+        OCA_PAT: ${{ inputs.oca_pat }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        rewrite='url.https://x-access-token:'"${OCA_PAT}"'@github.com/'
+        cleanup() { git config --global --remove-section "$rewrite" >/dev/null 2>&1 || true; }
+        trap cleanup EXIT
+        git config --global "${rewrite}.insteadOf" 'git@github.com:'
+        git submodule update --init --recursive \
+          virtual_platform/tt-oca-harness-model \
+          hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
+        # Fail here rather than deep into a configure or a test import.
+        test -d virtual_platform/tt-oca-harness-model/vp
+        test -f hw/sys/sep/bootrom/prod/tools/tt-oca-manifest/src/oca/constants.py
+
+    # ocah_deps.nix builds openssl-merged and boost-merged from source -- they
+    # are overlay derivations, so no binary cache has them -- on top of the
+    # RISC-V toolchain, verilator and yosys. That does not fit a hosted
+    # runner's free space, and the failure surfaces deep inside a build as
+    #   ld.bfd: final link failed: No space left on device
+    # rather than as anything about disk. Reclaim the preinstalled toolchains
+    # this job never uses first. vp.yml is the only workflow that builds the
+    # image, which is why nothing else needs this.
+    - name: Free disk space for the nix build
+      shell: bash
+      run: |
+        echo "before:"; df -h / | tail -1
+        # Everything here is preinstalled runner content these jobs never use.
+        # hostedtoolcache goes entirely: the steps that want it run later and
+        # re-fetch, and the container carries its own python and node.
+        sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
+                    /usr/local/.ghcup /usr/local/share/boost \
+                    /usr/local/lib/node_modules /opt/hostedtoolcache \
+                    /usr/share/swift /usr/lib/jvm /usr/share/miniconda || true
+        sudo docker image prune -af >/dev/null 2>&1 || true
+        echo "after:"; df -h / | tail -1
+
+    # The image closure builds gcc, boost and openssl from source and outgrows
+    # the root volume. Relocate the store onto a larger volume where one exists;
+    # the current hosted image has only /, so there this prints the layout and
+    # moves nothing.
+    - name: Put the nix store on the largest volume
+      shell: bash
+      run: |
+        df -h
+        root_free=$(df --output=avail -k / | tail -1)
+        for cand in /mnt /datadisk; do
+          [ -d "$cand" ] || continue
+          cand_free=$(df --output=avail -k "$cand" | tail -1)
+          [ "$cand_free" -gt "$root_free" ] || continue
+          echo "nix store -> $cand (${cand_free}K free, / has ${root_free}K)"
+          sudo mkdir -p "$cand/nix" /nix
+          sudo mount --bind "$cand/nix" /nix
+          break
+        done
+        df -h /nix 2>/dev/null || true
+
+    # docker-run.sh runs nix locally when a nix binary is on PATH, and falls
+    # back to pulling docker.io/nixos/nix and building inside it otherwise.
+    # The fallback builds the whole closure from scratch on every job and does
+    # not finish inside the budget, so install nix on the runner -- the same
+    # step and action lint.yml uses. access-tokens lets nix reach the private
+    # submodule repositories when it resolves the flake's inputs.
+    - name: Install Nix
+      uses: cachix/install-nix-action@v31.11.1
+      with:
+        extra_nix_config: |
+          access-tokens = github.com=${{ inputs.oca_pat }}
+
+    - name: Install VP build dependencies
+      if: env.HAVE_SUBMODULE_TOKEN == 'true'
+      shell: bash
+      run: |
+        # Acquire options: the hosted-runner mirror list falls back from
+        # azure.archive.ubuntu.com to archive.ubuntu.com, but apt only fails over
+        # on a connection *error* -- a silently stalled mirror otherwise hangs apt
+        # until the job timeout. The Timeout option turns a stall into an error so
+        # the retry/failover machinery actually runs.
+        sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=15 update
+        sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=15 \
+          install -y --no-install-recommends \
+          g++ cmake autoconf automake wget zlib1g-dev \
+          libboost-iostreams-dev libboost-program-options-dev libboost-log-dev \
+          libssl-dev \
+          gcc-riscv64-unknown-elf picolibc-riscv64-unknown-elf
+
+    # The bootrom Makefile branches on RISCV_TOOLCHAIN, not on the picolibc
+    # probe below: left unset, its toolchain-images recipe dispatches to
+    # `docker-run.sh run-here` even though the runner's toolchain is usable.
+    # It wants a bin dir; RISCV_PREFIX resolves itself from what it finds there.
+    - name: Point the bootrom at the runner's RISC-V toolchain
+      if: env.HAVE_SUBMODULE_TOKEN == 'true' && inputs.mode == 'native'
+      shell: bash
+      run: echo "RISCV_TOOLCHAIN=/usr/bin" >> "$GITHUB_ENV"
+
+    # local*/ holds SystemC and CCI compiled by a specific g++, and
+    # VP_CONFIG_SIG invalidation only wipes build*/, never local*/. A local/
+    # restored from a cache built by a different compiler would be reused
+    # as-is and could ODR-mismatch, so the runner's g++ identity is part of
+    # the key. Only the native leg has a dependency cache -- see below.
+    - name: Compute dependency cache key
+      id: depkey
+      if: env.HAVE_SUBMODULE_TOKEN == 'true' && inputs.mode == 'native'
+      shell: bash
+      run: echo "cxx_id=$(g++ -dumpmachine)-$(g++ -dumpversion)" >> "$GITHUB_OUTPUT"
+
+    # Only the native leg builds dependencies, so only it has anything to
+    # cache. The container carries SystemC,
+    # CCI, Boost, OpenSSL and Whisper from ocah_deps.nix and exports their
+    # prefixes, so the container leg resolves every one as explicit and builds
+    # none of them.
+    - name: Cache VP dependencies
+      if: env.HAVE_SUBMODULE_TOKEN == 'true' && inputs.mode == 'native'
+      uses: actions/cache@v4
+      with:
+        path: |
+          ${{ inputs.local_dir }}
+          virtual_platform/downloads
+        key: vp-deps-${{ inputs.mode }}-${{ steps.depkey.outputs.cxx_id }}-${{ hashFiles('virtual_platform/Makefile') }}
+
+    # PYTHON defaults to $OCAH_ROOT/.venv/bin/python, which vp-py-deps
+    # populates. Doing it in its own step rather than letting vp-test's import
+    # guard trigger it keeps a dependency failure off the test step.
+    - name: Install uv
+      if: env.HAVE_SUBMODULE_TOKEN == 'true'
+      uses: astral-sh/setup-uv@v6
+      with:
+        python-version: "3.11"
+
+    - name: Sync harness Python deps
+      if: env.HAVE_SUBMODULE_TOKEN == 'true'
+      shell: bash
+      run: make -C virtual_platform vp-py-deps
+
+    # The published tag is the same flake content hash docker-run.sh computes,
+    # so a pull either matches this tree exactly or misses and falls through.
+    - name: Log in to GHCR
+      if: env.HAVE_SUBMODULE_TOKEN == 'true' && inputs.mode == 'container'
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ github.token }}
+
+    # Removing the precursor job made the registry the only source of this
+    # image; docker-run.sh would otherwise fall through a miss into a local
+    # build that outlives the job's timeout and produces nothing. Check the tag
+    # first, so a miss says which hash is unpublished instead of burning an hour.
+    - name: Provision toolchain image
+      if: env.HAVE_SUBMODULE_TOKEN == 'true' && inputs.mode == 'container'
+      shell: bash
+      run: |
+        hash="$(./scripts/docker-run.sh image-hash)"
+        ref="${OCAH_CONTAINER_REGISTRY_IMAGE}:${hash}"
+        if ! docker manifest inspect "$ref" >/dev/null 2>&1; then
+          echo "::error::$ref is not published"
+          {
+            echo "### Toolchain image not published"
+            echo
+            echo "This tree resolves to \`$hash\`, which the container workflow has"
+            echo "not published. It runs on changes to the flake, \`nix/\`,"
+            echo "\`ocah_deps.nix\` and the uv workspace; if it has not run for this"
+            echo "commit, run it before dispatching this one."
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 1
+        fi
+        ./scripts/docker-run.sh ensure
+
+    - name: Check toolchains
+      shell: bash
+      run: |
+        if [ "${{ inputs.mode }}" = "container" ]; then
+          ./scripts/docker-run.sh verify
+          ./scripts/docker-run.sh run-here sh -c 'g++ --version | head -1; cmake --version | head -1'
+        else
+          make -C virtual_platform check-cxx
+        fi
+        # The same probe fw_make uses, run where fw_make will run it: in the
+        # container for the container leg, on the runner for the native one.
+        # Reports whether this leg builds firmware in place or falls back to
+        # the container, rather than leaving it to a build log.
+        probe="echo 'int main(void){return 0;}' | riscv64-unknown-elf-gcc --specs=picolibc.specs -x c -c - -o /dev/null"
+        if [ "${{ inputs.mode }}" = "container" ]; then
+          run_probe() { ./scripts/docker-run.sh run-here sh -c "$probe"; }
+          where="in the container"
+        else
+          run_probe() { sh -c "$probe"; }
+          where="on the runner"
+        fi
+        if run_probe 2>/dev/null; then
+          echo "picolibc: riscv64-unknown-elf-gcc works $where; firmware builds there" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+        elif [ "${{ inputs.mode }}" = "native" ]; then
+          # A silent fallback costs an image build this leg otherwise skips.
+          echo "::error::no usable riscv64-unknown-elf-gcc on the runner; the native leg would fall back to the toolchain image"
+          exit 1
+        else
+          echo "picolibc: no usable riscv64-unknown-elf-gcc $where; fw_make falls back to \`docker-run.sh run-here\`" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+        fi
+        if [ "${{ inputs.mode }}" = "native" ]; then
+          test -x "${RISCV_TOOLCHAIN}/riscv64-unknown-elf-gcc" || {
+            echo "::error::RISCV_TOOLCHAIN=${RISCV_TOOLCHAIN} holds no riscv64-unknown-elf-gcc; the bootrom would dispatch to the container"
+            exit 1
+          }
+        fi
+
+    - name: Build sep-vp
+      shell: bash
+      run: make -C virtual_platform vp VP_CONTAINER=${{ inputs.vp_container }} NPROC="$(nproc)"
+
+    # Boost and OpenSSL must be provisioned: /usr natively, the Nix store in the
+    # container. A fallback to the local Boost build takes 1-2 h, so it is a job
+    # timeout rather than a slow success. Fail loudly instead.
+    - name: Assert Boost and OpenSSL came from a provisioned prefix
+      shell: bash
+      run: |
+        make -C virtual_platform deps-info VP_CONTAINER=${{ inputs.vp_container }} \
+          | tee "$RUNNER_TEMP/deps-info.txt"
+        # Lines look like:
+        #   [VP]   BOOST_ROOT   = /usr   [system install (BOOST_VERSION >= ...)]
+        # Requiring trailing whitespace keeps a local prefix such as
+        # virtual_platform/local-ctr/... from matching.
+        for dep in BOOST OPENSSL; do
+          if ! grep -qE "^\[VP\][[:space:]]+${dep}_ROOT[[:space:]]*=[[:space:]]*(/usr|/nix/store/[^[:space:]]+)([[:space:]]|$)" "$RUNNER_TEMP/deps-info.txt"; then
+            echo "::error::${dep}_ROOT is not a provisioned prefix (/usr or /nix/store); see deps-info above"
+            exit 1
+          fi
+        done
+
+    - name: Run the pytest suites
+      shell: bash
+      run: |
+        df -h / | tail -1
+        make -C virtual_platform vp-test VP_CONTAINER=${{ inputs.vp_container }} \
+          PYTEST_ARGS="--junitxml=$PWD/virtual_platform/pytest-results.xml"
+        df -h / | tail -1
+
+    # Firmware-dependent tests skip cleanly when no toolchain is available, so an
+    # all-skipped run would otherwise pass. Gate on tests having actually
+    # executed: a green check here must mean the VP really ran.
+    - name: Gate on tests having run
+      shell: bash
+      run: |
+        python3 - <<'PY'
+        import sys, xml.etree.ElementTree as ET
+        root = ET.parse("virtual_platform/pytest-results.xml").getroot()
+        # A list, not iter(): the totals pass below would exhaust a generator
+        # and leave the skip-reason scan with nothing to read.
+        suites = list(root.iter("testsuite")) if root.tag == "testsuites" else [root]
+        total = skipped = 0
+        for s in suites:
+            total += int(s.get("tests", 0))
+            skipped += int(s.get("skipped", 0))
+        ran = total - skipped
+        print(f"collected={total} skipped={skipped} ran={ran}")
+        if ran == 0:
+            sys.exit("no tests actually ran: every test was skipped or none collected")
+        # A skip whose reason is a failed build is breakage wearing a skip's
+        # clothing: the suite reports green while most of it never executed.
+        broken = [
+            m
+            for s in suites
+            for el in s.iter("skipped")
+            if "build failed" in (m := el.get("message") or "")
+        ]
+        if broken:
+            sys.exit(f"{len(broken)} tests skipped by a failed build, not by choice: {broken[0][:160]}")
+        PY
+
+    - name: Upload run artifacts
+      if: always() && env.HAVE_SUBMODULE_TOKEN == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: vp-${{ inputs.mode }}
+        path: |
+          virtual_platform/pytest-results.xml
+          ${{ runner.temp }}/deps-info.txt
+          ${{ inputs.build_dir }}/CMakeCache.txt
+          ${{ inputs.build_dir }}/CMakeFiles/CMakeConfigureLog.yaml
+        retention-days: 14
+        if-no-files-found: ignore

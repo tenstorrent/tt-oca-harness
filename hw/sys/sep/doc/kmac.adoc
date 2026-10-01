@@ -49,17 +49,41 @@ endif::backend-pdf[]
 to select the delivered key; while that bit is 0 the engine uses its software
 key registers. Unlike AES and HMAC, software does not declare a key length for
 a delivered key: the engine applies the delivered key's length automatically
-and ignores its key-length register for that operation. KMAC is also the only
-accelerator that fails loudly on a missing key -- beginning a keyed operation
-that uses the delivered key while `KEY_CTRL.KEY_VALID` is 0 raises an error
-instead of producing a digest.
+and ignores its key-length register for that operation. Beginning a keyed
+operation that uses the delivered key while `KEY_CTRL.KEY_VALID` is 0 raises an
+error instead of producing a digest; OTBN also reports an invalid key error.
 
 Consult the
 https://opentitan.org/book/hw/ip/kmac/index.html[OpenTitan KMAC
 documentation] for the authoritative core functionality of the IP. The
 ifdef::backend-html5[]
-register map is reported in the xref:sep:memory_map.adoc#sep-detailed-register-map[Detailed Register Map].
+register map follows below.
 endif::backend-html5[]
 ifdef::backend-pdf[]
-register map is reported in the <<sep-detailed-register-map,Detailed Register Map>>.
+register map follows below.
+endif::backend-pdf[]
+
+== Memory Map and Register Reference
+
+ifdef::backend-html5[]
+++++
+<span id="register-reference"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
+
+Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.
+
+=== Detailed Register Map
+
+ifdef::backend-html5[]
+++++
+include::ip:partial$kmac/regs/gen/html/kmac.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/kmac/regs/gen/adoc/kmac.adoc[leveloffset=+2]
 endif::backend-pdf[]

@@ -245,7 +245,7 @@ What the resulting number is not:
   right thing" stays with the checkers in
   [`docs/SEP_VPLAN.adoc`](docs/SEP_VPLAN.adoc).
 * **TT-owned SEP integration RTL, not the whole DUT.**
-  `cov/config/vcs/sep_cov_scope.hier` removes the testbench, CPU subtree,
+  `cov/config/vcs/sep_cov_scope.hier` removes the testbench, the VeeR core complex,
   library-class cells, DV models and complete third-party IP modules at compile
   time across code and assertion coverage (`-cm_hier` with
   `-cm_common_hier`). Quote that scope with the percentage; never call it bare

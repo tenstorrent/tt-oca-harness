@@ -25,8 +25,10 @@ class dtp_jtag2axi_sep_otp_axi_single_write_read_test extends dtp_base_test;
                             "CHK-AXI-WADDR",
                             "CHK-AXI-WDATA",
                             "CHK-AXI-RADDR",
+                            "CHK-AXI-WMEM",
                             "CHK-AXI-COMPLETION",
-                            "CHK-AXI-NONVAC"
+                            "CHK-AXI-NONVAC",
+                            "CHK-J2A-BUS-REQ"
                         });
   endfunction
 

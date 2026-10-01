@@ -35,12 +35,35 @@ register lengths.
 |0x0D |IC_RESET |Variable |IEEE 1149.1, Section 8.21
 |0x0E |TAP_3DCR |2 |IEEE 1838, Section 5.5.1
 |0x18 |DEBUG_CONTROL |5 |Debug and clock stop control
-|0x19 |JTAG_CAPS |40 |Capabilities readback
+|0x19 |JTAG_CAPS |60 |Capabilities readback
 |0x1A |SELECT_IJTAG |Variable |iJTAG network selection
-|0x3D |ZERO_LENGTH_BYPASS |0 |
+|0x1B |SMC_OTP_JTAG2AXI_CAPS |14 |SMC OTP bridge capabilities readback
+|0x1C |SMC_OTP_AXI_SINGLE_OP |Variable |SMC OTP bridge single transaction
+|0x1D |SMC_OTP_AXI_SERIES_CTRL |Variable |SMC OTP bridge series control
+|0x1E |SMC_OTP_AXI_SERIES_DATA_INCR |Variable |SMC OTP bridge series data, incrementing address
+|0x1F |SMC_OTP_AXI_SERIES_DATA_NO_INCR |Variable |SMC OTP bridge series data, fixed address
+|0x20 |SMC_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS |Variable |SMC OTP bridge series data with error status
+|0x21 |SEP_OTP_JTAG2AXI_CAPS |14 |SEP OTP bridge capabilities readback
+|0x22 |SEP_OTP_AXI_SINGLE_OP |Variable |SEP OTP bridge single transaction
+|0x23 |SEP_OTP_AXI_SERIES_CTRL |Variable |SEP OTP bridge series control
+|0x24 |SEP_OTP_AXI_SERIES_DATA_INCR |Variable |SEP OTP bridge series data, incrementing address
+|0x25 |SEP_OTP_AXI_SERIES_DATA_NO_INCR |Variable |SEP OTP bridge series data, fixed address
+|0x26 |SEP_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS |Variable |SEP OTP bridge series data with error status
+|0x27 |SMC_JTAG2AXI_CAPS |14 |SMC fabric bridge capabilities readback
+|0x28 |SMC_AXI_SINGLE_OP |Variable |SMC fabric bridge single transaction
+|0x29 |SMC_AXI_SERIES_CTRL |Variable |SMC fabric bridge series control
+|0x2A |SMC_AXI_SERIES_DATA_INCR |Variable |SMC fabric bridge series data, incrementing address
+|0x2B |SMC_AXI_SERIES_DATA_NO_INCR |Variable |SMC fabric bridge series data, fixed address
+|0x2C |SMC_AXI_SERIES_DATA_WITH_ERROR_STATUS |Variable |SMC fabric bridge series data with error status
+|0x3D |ZERO_LENGTH_BYPASS |0, or 1 |TDI to TDO with no register; BYPASS, with its 1-bit register, while the TAP_3DCR STAP-select bit is set
 |0x3E |INV_BYPASS | |
 |0x3F |BYPASS |1 |IEEE 1149.1, Section 8.4
 |===
+
+The length of each variable-length JTAG2AXI register follows from the bridge's
+address width, data width and pipeline depth, and for the series data registers
+from the size last written to `*_AXI_SERIES_CTRL`. <<ptap-jtag2axi-support>>
+defines each layout.
 
 **NOTE:** All instruction encodings _not_ explicitly defined in this table map
 to the BYPASS instruction.

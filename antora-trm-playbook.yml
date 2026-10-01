@@ -50,5 +50,6 @@ ui:
 antora:
   extensions:
     - ./tools/doc/block-indexes.js
+    - ./tools/doc/preserve-smn-fragments.js
 output:
   dir: ./doc/trm/_build/html_antora

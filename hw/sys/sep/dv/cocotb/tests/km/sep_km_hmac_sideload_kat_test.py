@@ -29,7 +29,7 @@ VPLAN-parity checkers:
   CHK0      boot KM on real DRBG -> RESP_KM_READY
   CHK-A     CMD_KEY_LOAD known key (frontdoor; wrapper shares are write-only)
   CHK-ISO   key-bus isolation by SW_RESET_N read-back: only HMAC of the four
-            sideload targets released; AES/KMAC/OTBN parked
+            non-ABR sideload engines released; AES/KMAC/OTBN parked
   CHK-B     CMD_KEY_TRANSFER rc=0 to HMAC
   PUB-OBS   HMAC public KEY CSRs read back zero after the sideload. NOT a checker:
             hmac.hjson declares KEY swaccess=wo, so the read returns zero whether the
@@ -110,7 +110,8 @@ class sep_km_hmac_sideload_kat_test(sep_base_test):
         self.km = SepKmMailbox(self)
         self.hmac = SepHmac(self)
 
-        # All four sideload targets JTAG-held across rst_ni release, then parked in SW_RESET_N. HMAC is not an EDN
+        # The four non-ABR sideload engines (OTBN, AES, HMAC, KMAC) are JTAG-held
+        # across rst_ni release, then parked in SW_RESET_N. HMAC is not an EDN
         # consumer; it stays parked through boot/load and is released only
         # before the transfer.
 
@@ -140,7 +141,7 @@ class sep_km_hmac_sideload_kat_test(sep_base_test):
         # never lands. (reference releases HMAC right after keygen, before the transfer.)
         await self.swrst.release("hmac")
 
-        # CHK-ISO: only HMAC (of the four sideload targets) is released; AES/KMAC/OTBN
+        # CHK-ISO: only HMAC (of the four non-ABR sideload engines) is released; AES/KMAC/OTBN
         # stay parked and cannot receive the key.
         rst = await self.swrst.read_back()
         parked = (

@@ -15,10 +15,13 @@
 // Per-bridge security_disable inputs are active-high (1 disables the bridge),
 // synchronized to TCK upstream.
 //
-// The STAP scan interface carries both IR and DR scans. While the 3DCR STAP-select bit is set,
-// TDO comes from stap_host_scan_in_i instead of the IR or selected TDR. TDO is retimed on the
-// falling TCK edge, except during a ZERO_LENGTH_BYPASS DR shift, where TDI reaches TDO
-// combinationally.
+// The STAP scan interface carries both IR and DR scans while the 3DCR STAP-select bit is set, and
+// TDO then comes from stap_host_scan_in_i instead of the IR or selected TDR. While the bit is
+// clear, the select, capture, shift and update strobes of the STAP scan interface stay low, so
+// the STAP chain holds its state through every scan. TDO is retimed on the
+// falling TCK edge, except during a ZERO_LENGTH_BYPASS DR shift with the bit clear, where TDI
+// reaches TDO combinationally. While the bit is set, ZERO_LENGTH_BYPASS behaves as BYPASS: the
+// bypass register leads the STAP chain and its return is retimed.
 //
 // System clk_i/rst_n_i clock jtag2axi; pwr_on_rst_ni is ANDed with trst_n for the JTAG logic
 // and for the TRST forwarded on host_tap_ctrl_o.
@@ -114,7 +117,8 @@ module jtag_ptap
                                                 // active-low TRST.
     input  logic            client_tdi_i,  // Client serial test data input.
     output logic            client_tdo_o,  // Client serial test data output, retimed on the falling
-                                           // TCK edge except during a ZERO_LENGTH_BYPASS DR shift.
+                                           // TCK edge except during a ZERO_LENGTH_BYPASS DR shift
+                                           // with the 3DCR STAP-select bit clear.
     output logic            client_tdo_oen_o,  // Client TDO output enable, active-high during
                                                // Shift-IR and Shift-DR.
 
@@ -137,11 +141,16 @@ module jtag_ptap
     output logic             ijtag_host_scan_out_o,  // Client TDI forwarded to the iJTAG network.
 
     output jtag_scan_ctrl_t  stap_host_scan_ctrl_o,  // DR scan control with select, capture, shift
-                                                     // and update ORed with the IR scan control.
+                                                     // and update ORed with the IR scan control,
+                                                     // and held low while the 3DCR STAP-select
+                                                     // bit is clear.
     input  logic             stap_host_scan_in_i,  // STAP chain return; drives TDO while the 3DCR
                                                    // STAP-select bit is set.
-    output logic             stap_host_scan_out_o,  // IR or selected TDR output, or TDI under
-                                                    // ZERO_LENGTH_BYPASS, toward the STAP chain.
+    output logic             stap_host_scan_out_o,  // IR or selected TDR output toward the STAP
+                                                    // chain; the bypass register under
+                                                    // ZERO_LENGTH_BYPASS while the 3DCR
+                                                    // STAP-select bit is set, and TDI while it
+                                                    // is clear.
 
     output jtag_instruction_decoded_e  inst_decoded_o,  // Decoded PTAP instruction.
 
@@ -166,6 +175,8 @@ module jtag_ptap
 
     input  logic                     clk_i,  // System clock for the JTAG2AXI bridges.
     input  logic                     rst_n_i,  // Active-low system reset for the JTAG2AXI bridges.
+    input  logic                     test_en_i,  // DFT test-mode enable, active-high, for the
+                                                 // JTAG2AXI bridges.
 
     input  logic                     pwr_on_rst_ni,  // Power-on reset (active low), ANDed with the
                                                      // client TRST.
@@ -254,6 +265,7 @@ module jtag_ptap
     logic zlb_tdr_mux;        // Zero-length bypass TDR multiplexer intermediate output
     logic tdo_retimed;        // Retimed TDO output
     logic dr_scan_select_reg; // Registered DR scan select to avoid glitches
+    logic zlb_select;         // ZERO_LENGTH_BYPASS DR scan with STAP select clear
 
     // jtag2axi scan chain outputs
     logic smc_otp_jtag2axi_scan_out;
@@ -380,8 +392,9 @@ module jtag_ptap
              inst_decoded_o[DEBUG_CONTROL_INSTR]: begin
                  byp_reg_scan_ctrl.select = 1'b0;
              end
+             // ZERO_LENGTH_BYPASS is BYPASS while STAP select is set.
              inst_decoded_o[ZERO_LENGTH_BYPASS_INSTR]: begin
-                 byp_reg_scan_ctrl.select = 1'b0;  // Zero-length bypass: no register, bypass handled at TDO output mux
+                 byp_reg_scan_ctrl.select = dr_scan_ctrl.select && stap_select;
              end
              inst_decoded_o[JTAG_CAPS_INSTR]: begin
                  byp_reg_scan_ctrl.select = 1'b0;
@@ -943,6 +956,7 @@ module jtag_ptap
             // AXI Interface (ACLK Domain)
             .aclk_i    (clk_i),
             .arst_ni   (rst_n_i),
+            .test_en_i (test_en_i),
 
             // AXI-Lite Write Address Channel
             .awid_o     (/* UNUSED */),
@@ -1034,6 +1048,7 @@ module jtag_ptap
             // AXI Interface (ACLK Domain)
             .aclk_i    (clk_i),
             .arst_ni   (rst_n_i),
+            .test_en_i (test_en_i),
 
             // AXI-Lite Write Address Channel
             .awid_o     (/* UNUSED */),
@@ -1125,6 +1140,7 @@ module jtag_ptap
             // AXI Interface (ACLK Domain)
             .aclk_i    (clk_i),
             .arst_ni   (rst_n_i),
+            .test_en_i (test_en_i),
 
             // AXI Write Address Channel
             .awid_o     (axi_smc_dbg_req_o.aw.id),
@@ -1295,13 +1311,19 @@ module jtag_ptap
 
     // Scan input mux: Implements zero-length bypass and STAP selection using explicit mux cells
     // to avoid glitches.
-    // Logic: stap_select ? stap_host_scan_in_i : ((inst_decoded_o[ZERO_LENGTH_BYPASS_INSTR] && dr_scan_select_reg) ? client_tdi_i : tdr_mux)
+    // Logic: stap_select ? stap_host_scan_in_i : (zlb_select ? client_tdi_i : tdr_mux)
+
+    // The zero-length path exists only while STAP select is clear. The STAP chain return must
+    // leave TDO through the falling-edge retimer, so with STAP select set a ZERO_LENGTH_BYPASS
+    // DR scan is a BYPASS scan.
+    assign zlb_select = inst_decoded_o[ZERO_LENGTH_BYPASS_INSTR] && dr_scan_select_reg &&
+                        !stap_select;
 
     // First mux: Select between client_tdi_i (zero-length bypass) and tdr_mux
     prim_stdmux2 u_zlb_tdr_mux (
         .i0_i  (tdr_mux),
         .i1_i  (client_tdi_i),
-        .sel_i (inst_decoded_o[ZERO_LENGTH_BYPASS_INSTR] && dr_scan_select_reg),
+        .sel_i (zlb_select),
         .y_o   (zlb_tdr_mux)
     );
 
@@ -1317,13 +1339,17 @@ module jtag_ptap
     // STAP Clock/Control Outputs (IEEE 1838 Section 5.4)
     //--------------------------------------------------------------------------
 
-    // STAP scan control signals (OR of IR and DR controls)
+    // STAP scan control signals (OR of IR and DR controls, gated by the 3DCR STAP-select bit)
     always_comb begin
         stap_host_scan_ctrl_o = dr_scan_ctrl;
-        stap_host_scan_ctrl_o.select     = dr_scan_ctrl.select     | ir_scan_ctrl.select;
-        stap_host_scan_ctrl_o.capture_en = dr_scan_ctrl.capture_en | ir_scan_ctrl.capture_en;
-        stap_host_scan_ctrl_o.shift_en   = dr_scan_ctrl.shift_en   | ir_scan_ctrl.shift_en;
-        stap_host_scan_ctrl_o.update_en  = dr_scan_ctrl.update_en  | ir_scan_ctrl.update_en;
+        stap_host_scan_ctrl_o.select     = stap_select &&
+                                           (dr_scan_ctrl.select     | ir_scan_ctrl.select);
+        stap_host_scan_ctrl_o.capture_en = stap_select &&
+                                           (dr_scan_ctrl.capture_en | ir_scan_ctrl.capture_en);
+        stap_host_scan_ctrl_o.shift_en   = stap_select &&
+                                           (dr_scan_ctrl.shift_en   | ir_scan_ctrl.shift_en);
+        stap_host_scan_ctrl_o.update_en  = stap_select &&
+                                           (dr_scan_ctrl.update_en  | ir_scan_ctrl.update_en);
     end
 
     // STAP scan data output (from zero-length bypass TDR multiplexer to STAP chain)
@@ -1351,13 +1377,13 @@ module jtag_ptap
     //--------------------------------------------------------------------------
 
     // Use explicit mux cell to bypass retimer for ZERO_LENGTH_BYPASS instruction
-    // For ZERO_LENGTH_BYPASS: select tdo_mux directly (bypass retimer) during data shift only
-    // For all other instructions: select retimed TDO
+    // ZERO_LENGTH_BYPASS DR scan with STAP select clear: select tdo_mux, bypassing the retimer
+    // Otherwise: select retimed TDO
     // Use registered DR scan select to avoid glitches
     prim_stdmux2 u_tdo_bypass_mux (
         .i0_i  (tdo_retimed),
         .i1_i  (tdo_mux),
-        .sel_i (inst_decoded_o[ZERO_LENGTH_BYPASS_INSTR] && dr_scan_select_reg),
+        .sel_i (zlb_select),
         .y_o   (client_tdo_o)
     );
 

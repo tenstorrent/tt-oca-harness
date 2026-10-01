@@ -32,7 +32,9 @@ interrupt to throttle traffic. See the Programming section.
 === DMA Interface
 
 The DMA interface provides signals for Direct Memory Access controllers
-to manage data transfers automatically.
+to manage data transfers automatically. The `rxrdy_o` and `txrdy_o` signals
+indicate when DMA operations can proceed, with behavior configurable through
+FIFO control modes.
 
 === Interface Timing Considerations
 

@@ -18,6 +18,10 @@ CHK-CONCURRENT-STIM: the ordering the ADAPTER PORT presented must be the
 named ordering. A different overlap, or a cell that missed its overlap, is
 reported unreachable and does not count as this leaf.
 
+CHK-CONCURRENT-ARB: at the adapter port, AR handshakes only after both AW
+and W have handshaken. The adapter accepts a read only when neither write
+half is pending.
+
 CHK-CONCURRENT-LAND: both accesses retire and the write lands. The check is
 a bounded timeout plus a data compare, so a hang that `ASSERT_KNOWN` would
 miss still fails the leaf.
@@ -81,6 +85,27 @@ class sep_drbg_axil_concurrent_base(sep_base_test):
             cfg.lane,
             cfg.order,
             walk.observation,
+        )
+        hs = walk.hs
+        assert all(hs[ch] is not None for ch in ("aw", "w", "ar")), (
+            f"CHK-CONCURRENT-ARB FAIL: {cfg.lane} {cfg.order} retired without "
+            f"all three handshakes recorded at the adapter port (AW={hs['aw']} "
+            f"W={hs['w']} AR={hs['ar']})"
+        )
+        assert hs["ar"] > max(hs["aw"], hs["w"]), (
+            f"CHK-CONCURRENT-ARB FAIL: {cfg.lane} {cfg.order} AR handshook at "
+            f"cycle {hs['ar']} while a write half was pending (AW={hs['aw']} "
+            f"W={hs['w']}); the adapter accepts a read only when neither write "
+            f"half is pending"
+        )
+        self.logger.info(
+            "CHK-CONCURRENT-ARB PASS: %s %s held AR until both write halves "
+            "handshook (AW=%d W=%d AR=%d)",
+            cfg.lane,
+            cfg.order,
+            hs["aw"],
+            hs["w"],
+            hs["ar"],
         )
         self.logger.info(
             "CHK-CONCURRENT-LAND PASS: %s %s retired both accesses and landed "

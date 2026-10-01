@@ -28,9 +28,11 @@ class dtp_jtag2axi_backpressure_long_stall_test extends dtp_jtag2axi_robustness_
     super.add_required_axi_ids(ids);
     ids.push_back("CHK-J2A-STALL-FSM");
     ids.push_back("CHK-J2A-STALL-BUSY");
+    ids.push_back("CHK-J2A-STALL-HOLD");
     ids.push_back("CHK-AXI-WADDR");
     ids.push_back("CHK-AXI-WDATA");
     ids.push_back("CHK-AXI-STRB");
+    ids.push_back("CHK-AXI-WMEM");
     ids.push_back("CHK-AXI-RADDR");
     ids.push_back("CHK-AXI-RDATA");
   endfunction

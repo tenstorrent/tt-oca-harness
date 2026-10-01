@@ -26,7 +26,7 @@
 
 
 localparam int unsigned SMC_TOP_REG_MAP_BASE_ADDR                                                                 = 32'hC0000000;
-localparam int unsigned SMC_TOP_REG_MAP_SIZE                                                                      = 32'h08013030;
+localparam int unsigned SMC_TOP_REG_MAP_SIZE                                                                      = 32'h08015000;
 
 
 
@@ -121,6 +121,133 @@ localparam int unsigned SMC_CLUSTER_CORE3_WDT_KEY_REG_OFFSET                    
 localparam int unsigned SMC_CLUSTER_CORE3_WDT_KEY_REG_ADDR                                                        = 32'hC0000C1C;
 localparam int unsigned SMC_CLUSTER_CORE3_WDT_CMP_REG_OFFSET                                                      = 32'h00000020;
 localparam int unsigned SMC_CLUSTER_CORE3_WDT_CMP_REG_ADDR                                                        = 32'hC0000C20;
+
+
+//==============================================================================
+// Addresses for Address Map: debug_module
+//==============================================================================
+
+
+localparam int unsigned DEBUG_MODULE_REG_MAP_BASE_ADDR                                                            = 32'hC0001000;
+localparam int unsigned DEBUG_MODULE_REG_MAP_SIZE                                                                 = 32'h00000868;
+
+
+localparam int unsigned DEBUG_MODULE_HALTED_REG_OFFSET                                                            = 32'h00000100;
+localparam int unsigned DEBUG_MODULE_HALTED_REG_ADDR                                                              = 32'hC0001100;
+localparam int unsigned DEBUG_MODULE_GOING_REG_OFFSET                                                             = 32'h00000104;
+localparam int unsigned DEBUG_MODULE_GOING_REG_ADDR                                                               = 32'hC0001104;
+localparam int unsigned DEBUG_MODULE_RESUMING_REG_OFFSET                                                          = 32'h00000108;
+localparam int unsigned DEBUG_MODULE_RESUMING_REG_ADDR                                                            = 32'hC0001108;
+localparam int unsigned DEBUG_MODULE_EXCEPTION_REG_OFFSET                                                         = 32'h0000010C;
+localparam int unsigned DEBUG_MODULE_EXCEPTION_REG_ADDR                                                           = 32'hC000110C;
+localparam int unsigned DEBUG_MODULE_WHERETO_REG_OFFSET                                                           = 32'h00000300;
+localparam int unsigned DEBUG_MODULE_WHERETO_REG_ADDR                                                             = 32'hC0001300;
+localparam int unsigned DEBUG_MODULE_ABSTRACT_0__REG_OFFSET                                                       = 32'h00000328;
+localparam int unsigned DEBUG_MODULE_ABSTRACT_0__REG_ADDR                                                         = 32'hC0001328;
+localparam int unsigned DEBUG_MODULE_ABSTRACT_1__REG_OFFSET                                                       = 32'h0000032C;
+localparam int unsigned DEBUG_MODULE_ABSTRACT_1__REG_ADDR                                                         = 32'hC000132C;
+localparam int unsigned DEBUG_MODULE_ABSTRACT_2__REG_OFFSET                                                       = 32'h00000330;
+localparam int unsigned DEBUG_MODULE_ABSTRACT_2__REG_ADDR                                                         = 32'hC0001330;
+localparam int unsigned DEBUG_MODULE_ABSTRACT_3__REG_OFFSET                                                       = 32'h00000334;
+localparam int unsigned DEBUG_MODULE_ABSTRACT_3__REG_ADDR                                                         = 32'hC0001334;
+localparam int unsigned DEBUG_MODULE_ABSTRACT_4__REG_OFFSET                                                       = 32'h00000338;
+localparam int unsigned DEBUG_MODULE_ABSTRACT_4__REG_ADDR                                                         = 32'hC0001338;
+localparam int unsigned DEBUG_MODULE_PROGBUF_0__REG_OFFSET                                                        = 32'h0000033C;
+localparam int unsigned DEBUG_MODULE_PROGBUF_0__REG_ADDR                                                          = 32'hC000133C;
+localparam int unsigned DEBUG_MODULE_PROGBUF_1__REG_OFFSET                                                        = 32'h00000340;
+localparam int unsigned DEBUG_MODULE_PROGBUF_1__REG_ADDR                                                          = 32'hC0001340;
+localparam int unsigned DEBUG_MODULE_PROGBUF_2__REG_OFFSET                                                        = 32'h00000344;
+localparam int unsigned DEBUG_MODULE_PROGBUF_2__REG_ADDR                                                          = 32'hC0001344;
+localparam int unsigned DEBUG_MODULE_PROGBUF_3__REG_OFFSET                                                        = 32'h00000348;
+localparam int unsigned DEBUG_MODULE_PROGBUF_3__REG_ADDR                                                          = 32'hC0001348;
+localparam int unsigned DEBUG_MODULE_PROGBUF_4__REG_OFFSET                                                        = 32'h0000034C;
+localparam int unsigned DEBUG_MODULE_PROGBUF_4__REG_ADDR                                                          = 32'hC000134C;
+localparam int unsigned DEBUG_MODULE_PROGBUF_5__REG_OFFSET                                                        = 32'h00000350;
+localparam int unsigned DEBUG_MODULE_PROGBUF_5__REG_ADDR                                                          = 32'hC0001350;
+localparam int unsigned DEBUG_MODULE_PROGBUF_6__REG_OFFSET                                                        = 32'h00000354;
+localparam int unsigned DEBUG_MODULE_PROGBUF_6__REG_ADDR                                                          = 32'hC0001354;
+localparam int unsigned DEBUG_MODULE_PROGBUF_7__REG_OFFSET                                                        = 32'h00000358;
+localparam int unsigned DEBUG_MODULE_PROGBUF_7__REG_ADDR                                                          = 32'hC0001358;
+localparam int unsigned DEBUG_MODULE_PROGBUF_8__REG_OFFSET                                                        = 32'h0000035C;
+localparam int unsigned DEBUG_MODULE_PROGBUF_8__REG_ADDR                                                          = 32'hC000135C;
+localparam int unsigned DEBUG_MODULE_PROGBUF_9__REG_OFFSET                                                        = 32'h00000360;
+localparam int unsigned DEBUG_MODULE_PROGBUF_9__REG_ADDR                                                          = 32'hC0001360;
+localparam int unsigned DEBUG_MODULE_PROGBUF_10__REG_OFFSET                                                       = 32'h00000364;
+localparam int unsigned DEBUG_MODULE_PROGBUF_10__REG_ADDR                                                         = 32'hC0001364;
+localparam int unsigned DEBUG_MODULE_PROGBUF_11__REG_OFFSET                                                       = 32'h00000368;
+localparam int unsigned DEBUG_MODULE_PROGBUF_11__REG_ADDR                                                         = 32'hC0001368;
+localparam int unsigned DEBUG_MODULE_PROGBUF_12__REG_OFFSET                                                       = 32'h0000036C;
+localparam int unsigned DEBUG_MODULE_PROGBUF_12__REG_ADDR                                                         = 32'hC000136C;
+localparam int unsigned DEBUG_MODULE_PROGBUF_13__REG_OFFSET                                                       = 32'h00000370;
+localparam int unsigned DEBUG_MODULE_PROGBUF_13__REG_ADDR                                                         = 32'hC0001370;
+localparam int unsigned DEBUG_MODULE_PROGBUF_14__REG_OFFSET                                                       = 32'h00000374;
+localparam int unsigned DEBUG_MODULE_PROGBUF_14__REG_ADDR                                                         = 32'hC0001374;
+localparam int unsigned DEBUG_MODULE_PROGBUF_15__REG_OFFSET                                                       = 32'h00000378;
+localparam int unsigned DEBUG_MODULE_PROGBUF_15__REG_ADDR                                                         = 32'hC0001378;
+localparam int unsigned DEBUG_MODULE_IMPEBREAK_REG_OFFSET                                                         = 32'h0000037C;
+localparam int unsigned DEBUG_MODULE_IMPEBREAK_REG_ADDR                                                           = 32'hC000137C;
+localparam int unsigned DEBUG_MODULE_DATA_0__REG_OFFSET                                                           = 32'h00000380;
+localparam int unsigned DEBUG_MODULE_DATA_0__REG_ADDR                                                             = 32'hC0001380;
+localparam int unsigned DEBUG_MODULE_DATA_1__REG_OFFSET                                                           = 32'h00000384;
+localparam int unsigned DEBUG_MODULE_DATA_1__REG_ADDR                                                             = 32'hC0001384;
+localparam int unsigned DEBUG_MODULE_DATA_2__REG_OFFSET                                                           = 32'h00000388;
+localparam int unsigned DEBUG_MODULE_DATA_2__REG_ADDR                                                             = 32'hC0001388;
+localparam int unsigned DEBUG_MODULE_DATA_3__REG_OFFSET                                                           = 32'h0000038C;
+localparam int unsigned DEBUG_MODULE_DATA_3__REG_ADDR                                                             = 32'hC000138C;
+localparam int unsigned DEBUG_MODULE_FLAGS_REG_OFFSET                                                             = 32'h00000400;
+localparam int unsigned DEBUG_MODULE_FLAGS_REG_ADDR                                                               = 32'hC0001400;
+localparam int unsigned DEBUG_MODULE_ROM_0__REG_OFFSET                                                            = 32'h00000800;
+localparam int unsigned DEBUG_MODULE_ROM_0__REG_ADDR                                                              = 32'hC0001800;
+localparam int unsigned DEBUG_MODULE_ROM_1__REG_OFFSET                                                            = 32'h00000804;
+localparam int unsigned DEBUG_MODULE_ROM_1__REG_ADDR                                                              = 32'hC0001804;
+localparam int unsigned DEBUG_MODULE_ROM_2__REG_OFFSET                                                            = 32'h00000808;
+localparam int unsigned DEBUG_MODULE_ROM_2__REG_ADDR                                                              = 32'hC0001808;
+localparam int unsigned DEBUG_MODULE_ROM_3__REG_OFFSET                                                            = 32'h0000080C;
+localparam int unsigned DEBUG_MODULE_ROM_3__REG_ADDR                                                              = 32'hC000180C;
+localparam int unsigned DEBUG_MODULE_ROM_4__REG_OFFSET                                                            = 32'h00000810;
+localparam int unsigned DEBUG_MODULE_ROM_4__REG_ADDR                                                              = 32'hC0001810;
+localparam int unsigned DEBUG_MODULE_ROM_5__REG_OFFSET                                                            = 32'h00000814;
+localparam int unsigned DEBUG_MODULE_ROM_5__REG_ADDR                                                              = 32'hC0001814;
+localparam int unsigned DEBUG_MODULE_ROM_6__REG_OFFSET                                                            = 32'h00000818;
+localparam int unsigned DEBUG_MODULE_ROM_6__REG_ADDR                                                              = 32'hC0001818;
+localparam int unsigned DEBUG_MODULE_ROM_7__REG_OFFSET                                                            = 32'h0000081C;
+localparam int unsigned DEBUG_MODULE_ROM_7__REG_ADDR                                                              = 32'hC000181C;
+localparam int unsigned DEBUG_MODULE_ROM_8__REG_OFFSET                                                            = 32'h00000820;
+localparam int unsigned DEBUG_MODULE_ROM_8__REG_ADDR                                                              = 32'hC0001820;
+localparam int unsigned DEBUG_MODULE_ROM_9__REG_OFFSET                                                            = 32'h00000824;
+localparam int unsigned DEBUG_MODULE_ROM_9__REG_ADDR                                                              = 32'hC0001824;
+localparam int unsigned DEBUG_MODULE_ROM_10__REG_OFFSET                                                           = 32'h00000828;
+localparam int unsigned DEBUG_MODULE_ROM_10__REG_ADDR                                                             = 32'hC0001828;
+localparam int unsigned DEBUG_MODULE_ROM_11__REG_OFFSET                                                           = 32'h0000082C;
+localparam int unsigned DEBUG_MODULE_ROM_11__REG_ADDR                                                             = 32'hC000182C;
+localparam int unsigned DEBUG_MODULE_ROM_12__REG_OFFSET                                                           = 32'h00000830;
+localparam int unsigned DEBUG_MODULE_ROM_12__REG_ADDR                                                             = 32'hC0001830;
+localparam int unsigned DEBUG_MODULE_ROM_13__REG_OFFSET                                                           = 32'h00000834;
+localparam int unsigned DEBUG_MODULE_ROM_13__REG_ADDR                                                             = 32'hC0001834;
+localparam int unsigned DEBUG_MODULE_ROM_14__REG_OFFSET                                                           = 32'h00000838;
+localparam int unsigned DEBUG_MODULE_ROM_14__REG_ADDR                                                             = 32'hC0001838;
+localparam int unsigned DEBUG_MODULE_ROM_15__REG_OFFSET                                                           = 32'h0000083C;
+localparam int unsigned DEBUG_MODULE_ROM_15__REG_ADDR                                                             = 32'hC000183C;
+localparam int unsigned DEBUG_MODULE_ROM_16__REG_OFFSET                                                           = 32'h00000840;
+localparam int unsigned DEBUG_MODULE_ROM_16__REG_ADDR                                                             = 32'hC0001840;
+localparam int unsigned DEBUG_MODULE_ROM_17__REG_OFFSET                                                           = 32'h00000844;
+localparam int unsigned DEBUG_MODULE_ROM_17__REG_ADDR                                                             = 32'hC0001844;
+localparam int unsigned DEBUG_MODULE_ROM_18__REG_OFFSET                                                           = 32'h00000848;
+localparam int unsigned DEBUG_MODULE_ROM_18__REG_ADDR                                                             = 32'hC0001848;
+localparam int unsigned DEBUG_MODULE_ROM_19__REG_OFFSET                                                           = 32'h0000084C;
+localparam int unsigned DEBUG_MODULE_ROM_19__REG_ADDR                                                             = 32'hC000184C;
+localparam int unsigned DEBUG_MODULE_ROM_20__REG_OFFSET                                                           = 32'h00000850;
+localparam int unsigned DEBUG_MODULE_ROM_20__REG_ADDR                                                             = 32'hC0001850;
+localparam int unsigned DEBUG_MODULE_ROM_21__REG_OFFSET                                                           = 32'h00000854;
+localparam int unsigned DEBUG_MODULE_ROM_21__REG_ADDR                                                             = 32'hC0001854;
+localparam int unsigned DEBUG_MODULE_ROM_22__REG_OFFSET                                                           = 32'h00000858;
+localparam int unsigned DEBUG_MODULE_ROM_22__REG_ADDR                                                             = 32'hC0001858;
+localparam int unsigned DEBUG_MODULE_ROM_23__REG_OFFSET                                                           = 32'h0000085C;
+localparam int unsigned DEBUG_MODULE_ROM_23__REG_ADDR                                                             = 32'hC000185C;
+localparam int unsigned DEBUG_MODULE_ROM_24__REG_OFFSET                                                           = 32'h00000860;
+localparam int unsigned DEBUG_MODULE_ROM_24__REG_ADDR                                                             = 32'hC0001860;
+localparam int unsigned DEBUG_MODULE_ROM_25__REG_OFFSET                                                           = 32'h00000864;
+localparam int unsigned DEBUG_MODULE_ROM_25__REG_ADDR                                                             = 32'hC0001864;
 
 
 //==============================================================================
@@ -9947,6 +10074,15 @@ localparam int unsigned SMC_CLUSTER_CORE3_BEU_LOCAL_ENABLE_REG_ADDR             
 
 
 //==============================================================================
+// Memory: smc_cluster_error_device
+//==============================================================================
+
+localparam int unsigned SMC_CLUSTER_ERROR_DEVICE_MEM_BASE_ADDR                                                    = 32'hC8014000;
+localparam int unsigned SMC_CLUSTER_ERROR_DEVICE_MEM_SIZE                                                         = 32'h00001000;
+
+
+
+//==============================================================================
 // Default values for registers
 //==============================================================================
 
@@ -9956,6 +10092,17 @@ localparam longint unsigned WDT_SCALED_COUNT_REG_DEFAULT                        
 localparam longint unsigned WDT_FEED_REG_DEFAULT                                                                  = 32'h00000000;
 localparam longint unsigned WDT_KEY_REG_DEFAULT                                                                   = 32'h00000000;
 localparam longint unsigned WDT_CMP_REG_DEFAULT                                                                   = 32'h00001000;
+localparam longint unsigned DEBUG_MODULE_HALTED_REG_DEFAULT                                                       = 32'h00000000;
+localparam longint unsigned DEBUG_MODULE_GOING_REG_DEFAULT                                                        = 32'h00000000;
+localparam longint unsigned DEBUG_MODULE_RESUMING_REG_DEFAULT                                                     = 32'h00000000;
+localparam longint unsigned DEBUG_MODULE_EXCEPTION_REG_DEFAULT                                                    = 32'h00000000;
+localparam longint unsigned DEBUG_MODULE_WHERETO_REG_DEFAULT                                                      = 32'h00000000;
+localparam longint unsigned DEBUG_MODULE_ABSTRACT_REG_DEFAULT                                                     = 32'h00000000;
+localparam longint unsigned DEBUG_MODULE_PROGBUF_REG_DEFAULT                                                      = 32'h00000000;
+localparam longint unsigned DEBUG_MODULE_IMPEBREAK_REG_DEFAULT                                                    = 32'h00100073;
+localparam longint unsigned DEBUG_MODULE_DATA_REG_DEFAULT                                                         = 32'h00000000;
+localparam longint unsigned DEBUG_MODULE_FLAGS_REG_DEFAULT                                                        = 32'h00000000;
+localparam longint unsigned DEBUG_MODULE_ROM_REG_DEFAULT                                                          = 32'h00000000;
 localparam longint unsigned RESET_UNIT_SS_CONFIG_REG_DEFAULT                                                      = 32'h00000000;
 localparam longint unsigned RESET_UNIT_SS_CONFIG_LOCK_REG_DEFAULT                                                 = 32'h00000000;
 localparam longint unsigned RESET_UNIT_SS_COLD_RESET_N_REG_DEFAULT                                                = 32'h00000000;
@@ -10456,6 +10603,7 @@ localparam longint unsigned BUS_ERROR_UNIT_ENABLE_REG_DEFAULT                   
 localparam longint unsigned BUS_ERROR_UNIT_PLIC_ENABLE_REG_DEFAULT                                                = 64'h0000000000000000;
 localparam longint unsigned BUS_ERROR_UNIT_ACCRUED_ENABLE_REG_DEFAULT                                             = 64'h0000000000000000;
 localparam longint unsigned BUS_ERROR_UNIT_LOCAL_ENABLE_REG_DEFAULT                                               = 64'h0000000000000000;
+localparam longint unsigned ERROR_DEVICE_MEM_WORD_REG_DEFAULT                                                     = 32'h00000000;
 
 
 
@@ -10507,6 +10655,48 @@ localparam int unsigned WDT_KEY_WDOGKEY_SHIFT                                   
 
 localparam int unsigned WDT_CMP_WDOGCMP0_MASK                                                                     = 32'hFFFF;
 localparam int unsigned WDT_CMP_WDOGCMP0_SHIFT                                                                    = 0;
+
+localparam int unsigned DEBUG_MODULE_HALTED_HARTID_MASK                                                           = 32'h3FF;
+localparam int unsigned DEBUG_MODULE_HALTED_HARTID_SHIFT                                                          = 0;
+
+localparam int unsigned DEBUG_MODULE_GOING_HARTID_MASK                                                            = 32'h3FF;
+localparam int unsigned DEBUG_MODULE_GOING_HARTID_SHIFT                                                           = 0;
+
+localparam int unsigned DEBUG_MODULE_RESUMING_HARTID_MASK                                                         = 32'h3FF;
+localparam int unsigned DEBUG_MODULE_RESUMING_HARTID_SHIFT                                                        = 0;
+
+localparam int unsigned DEBUG_MODULE_EXCEPTION_HARTID_MASK                                                        = 32'h3FF;
+localparam int unsigned DEBUG_MODULE_EXCEPTION_HARTID_SHIFT                                                       = 0;
+
+localparam int unsigned DEBUG_MODULE_WHERETO_INSTR_MASK                                                           = 32'hFFFFFFFF;
+localparam int unsigned DEBUG_MODULE_WHERETO_INSTR_SHIFT                                                          = 0;
+
+localparam int unsigned DEBUG_MODULE_ABSTRACT_INSTR_MASK                                                          = 32'hFFFFFFFF;
+localparam int unsigned DEBUG_MODULE_ABSTRACT_INSTR_SHIFT                                                         = 0;
+
+localparam int unsigned DEBUG_MODULE_PROGBUF_DATA_MASK                                                            = 32'hFFFFFFFF;
+localparam int unsigned DEBUG_MODULE_PROGBUF_DATA_SHIFT                                                           = 0;
+
+localparam int unsigned DEBUG_MODULE_IMPEBREAK_INSTR_MASK                                                         = 32'hFFFFFFFF;
+localparam int unsigned DEBUG_MODULE_IMPEBREAK_INSTR_SHIFT                                                        = 0;
+
+localparam int unsigned DEBUG_MODULE_DATA_DATA_MASK                                                               = 32'hFFFFFFFF;
+localparam int unsigned DEBUG_MODULE_DATA_DATA_SHIFT                                                              = 0;
+
+localparam int unsigned DEBUG_MODULE_FLAGS_FLAGS_0_MASK                                                           = 32'hFF;
+localparam int unsigned DEBUG_MODULE_FLAGS_FLAGS_0_SHIFT                                                          = 0;
+
+localparam int unsigned DEBUG_MODULE_FLAGS_FLAGS_1_MASK                                                           = 32'hFF00;
+localparam int unsigned DEBUG_MODULE_FLAGS_FLAGS_1_SHIFT                                                          = 8;
+
+localparam int unsigned DEBUG_MODULE_FLAGS_FLAGS_2_MASK                                                           = 32'hFF0000;
+localparam int unsigned DEBUG_MODULE_FLAGS_FLAGS_2_SHIFT                                                          = 16;
+
+localparam int unsigned DEBUG_MODULE_FLAGS_FLAGS_3_MASK                                                           = 32'hFF000000;
+localparam int unsigned DEBUG_MODULE_FLAGS_FLAGS_3_SHIFT                                                          = 24;
+
+localparam int unsigned DEBUG_MODULE_ROM_DATA_MASK                                                                = 32'hFFFFFFFF;
+localparam int unsigned DEBUG_MODULE_ROM_DATA_SHIFT                                                               = 0;
 
 localparam int unsigned RESET_UNIT_SS_CONFIG_SS_CONFIG_MASK                                                       = 32'hFFFFFFFF;
 localparam int unsigned RESET_UNIT_SS_CONFIG_SS_CONFIG_SHIFT                                                      = 0;
@@ -11993,14 +12183,17 @@ localparam     int unsigned REMAP_REGION_REGION_END_END_ADDR_SHIFT              
 localparam longint unsigned REMAP_REGION_REGION_ATTRS_OFFSET_MASK                                                 = 64'hFFFFFFFFFFF000;
 localparam     int unsigned REMAP_REGION_REGION_ATTRS_OFFSET_SHIFT                                                = 12;
 
-localparam longint unsigned REMAP_REGION_REGION_ATTRS_CACHEABLE_MASK                                              = 64'h4000000000000000;
-localparam     int unsigned REMAP_REGION_REGION_ATTRS_CACHEABLE_SHIFT                                             = 62;
+localparam longint unsigned REMAP_REGION_REGION_ATTRS_CACHEABLE_MASK                                              = 64'hF00000000000000;
+localparam     int unsigned REMAP_REGION_REGION_ATTRS_CACHEABLE_SHIFT                                             = 56;
 
 localparam longint unsigned REMAP_REGION_REGION_ATTRS_VALID_MASK                                                  = 64'h8000000000000000;
 localparam     int unsigned REMAP_REGION_REGION_ATTRS_VALID_SHIFT                                                 = 63;
 
 localparam longint unsigned OUTPUT_REMAP_REGION_REGION_ATTRS_OFFSET_MASK                                          = 64'hFFFFFFFFFFFFFF;
 localparam     int unsigned OUTPUT_REMAP_REGION_REGION_ATTRS_OFFSET_SHIFT                                         = 0;
+
+localparam longint unsigned OUTPUT_REMAP_REGION_REGION_ATTRS_VALID_MASK                                           = 64'h8000000000000000;
+localparam     int unsigned OUTPUT_REMAP_REGION_REGION_ATTRS_VALID_SHIFT                                          = 63;
 
 localparam longint unsigned FILTER_CTRL_FILTER_CONFIG_READ_ALLOWED_MASK                                           = 64'h1;
 localparam     int unsigned FILTER_CTRL_FILTER_CONFIG_READ_ALLOWED_SHIFT                                          = 0;
@@ -15404,6 +15597,12 @@ localparam     int unsigned BUS_ERROR_UNIT_LOCAL_ENABLE_DCACHE_CORRECTABLE_SHIFT
 localparam longint unsigned BUS_ERROR_UNIT_LOCAL_ENABLE_DCACHE_UNCORRECTABLE_MASK                                 = 64'h80;
 localparam     int unsigned BUS_ERROR_UNIT_LOCAL_ENABLE_DCACHE_UNCORRECTABLE_SHIFT                                = 7;
 
+localparam int unsigned ERROR_DEVICE_MEM_WORD_DATA_MASK                                                           = 32'hFFFFFFFF;
+localparam int unsigned ERROR_DEVICE_MEM_WORD_DATA_SHIFT                                                          = 0;
+
+
+
+
 
 
 
@@ -16200,6 +16399,75 @@ typedef struct packed {
 typedef struct packed {
     logic [15:0]   wdogcmp0 ;
 } wdt_cmp_reg_t;
+
+
+
+typedef struct packed {
+    logic [9:0]   hartid ;
+} debug_module_halted_reg_t;
+
+
+
+typedef struct packed {
+    logic [9:0]   hartid ;
+} debug_module_going_reg_t;
+
+
+
+typedef struct packed {
+    logic [9:0]   hartid ;
+} debug_module_resuming_reg_t;
+
+
+
+typedef struct packed {
+    logic [9:0]   hartid ;
+} debug_module_exception_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   instr ;
+} debug_module_whereto_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   instr ;
+} debug_module_abstract_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   data ;
+} debug_module_progbuf_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   instr ;
+} debug_module_impebreak_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   data ;
+} debug_module_data_reg_t;
+
+
+
+typedef struct packed {
+    logic [7:0]   flags_3 ;
+    logic [7:0]   flags_2 ;
+    logic [7:0]   flags_1 ;
+    logic [7:0]   flags_0 ;
+} debug_module_flags_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   data ;
+} debug_module_rom_reg_t;
 
 
 
@@ -17446,8 +17714,8 @@ typedef struct packed {
 
 typedef struct packed {
     logic [0:0]   valid ;
-    logic [0:0]   cacheable ;
-    logic [5:0]   rsvd_1 ;
+    logic [2:0]   rsvd_1 ;
+    logic [3:0]   cacheable ;
     logic [43:0]   offset ;
     logic [11:0]   rsvd_0 ;
 } remap_region_region_attrs_reg_t;
@@ -17455,6 +17723,8 @@ typedef struct packed {
 
 
 typedef struct packed {
+    logic [0:0]   valid ;
+    logic [6:0]   rsvd_0 ;
     logic [55:0]   offset ;
 } output_remap_region_region_attrs_reg_t;
 
@@ -20512,6 +20782,12 @@ typedef struct packed {
     logic [0:0]   icache_tlbus ;
     logic [0:0]   rsvd0 ;
 } bus_error_unit_local_enable_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   data ;
+} error_device_mem_word_reg_t;
 
 
 

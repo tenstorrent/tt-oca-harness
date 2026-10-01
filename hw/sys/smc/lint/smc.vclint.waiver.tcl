@@ -60,9 +60,9 @@ proc signal_any { sigs } {
 # Shared OCH primitives: CDC synchronisers, pulse/handshake cells, clock gaters, sync FIFOs and counters. The list is
 set SMC_OCH_PRIM_UNRESET_MODULES {
     prim_apb_arb prim_clk_counter prim_clk_counter_fifo_sync prim_clk_gater_hysteresis
-    prim_fair_rr_arb prim_fifo_sync_parity prim_flop_3sync prim_jtag_scan_reg
-    prim_prog_clk_div_posedge prim_pulse_signal prim_sync3_pulse_dest prim_sync3_pulse_src
-    prim_sync_data_autohs prim_updown_counter
+    prim_fair_rr_arb prim_fifo_sync_parity prim_flop_3sync prim_prog_clk_div_posedge
+    prim_pulse_signal prim_sync3_pulse_dest prim_sync3_pulse_src prim_sync_data_autohs
+    prim_updown_counter
 }
 
 # Vendored OpenTitan FIFO. Only one prim_fifo_sync exists in the tree

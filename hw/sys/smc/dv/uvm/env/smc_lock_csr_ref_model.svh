@@ -9,16 +9,17 @@
 // read of either register it publishes one expected ocah_axi_item carrying
 // the predicted value on the register's byte lanes.
 //
-// The two RDL/RTL rules being modelled -- and therefore independently
-// asserted, rather than restated by the sequence that drove them:
+// The two RDL rules being modelled -- and therefore independently asserted,
+// rather than restated by the sequence that drove them:
 //
 //   lock register   `onwrite = woset`: a written 1 sets a bit and a written 0
 //                   does nothing, so the shadow only ever ORs in what it sees.
 //                   Software cannot release a lock it has taken.
-//   guarded register the lock filters the write bit-enables before they reach
-//                   the storage flop (smc_subsystem_resets.sv:81 / :100), so
-//                   the shadow applies a write only to the bits that are both
-//                   strobed and unlocked and keeps the rest.
+//   guarded register once a lock bit is written, the same bit of the register
+//                   it guards "cannot be written to again" (reset_unit.rdl:20-27
+//                   for SS_CONFIG, :89-96 for SS cold reset), so the shadow
+//                   applies a write only to the bits that are both strobed
+//                   and unlocked and keeps the rest.
 //
 // Because the prediction is rebuilt from observed traffic, it stays correct
 // across the 16 scenario passes of one simulation even though `woset` makes

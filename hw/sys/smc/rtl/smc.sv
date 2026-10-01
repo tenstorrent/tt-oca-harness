@@ -247,8 +247,8 @@ module smc #(
 
   input logic clk_telemetry_i,          // Telemetry clock for the ATB inputs, gated by the
                                         // telemetry clock-gate enable.
-  input logic rst_telemetry_ni,         // Telemetry-domain reset, active-low, passed to the
-                                        // telemetry receivers without synchronization.
+  input logic rst_telemetry_ni,         // Telemetry-domain reset, active-low, for the
+                                        // telemetry receivers' ATB FIFOs.
 
   input  telemetry_receiver_pkg::telemetry_data_t [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0] telemetry_atdata_i,  // ATB telemetry data,
                                                                                                                      // one word per
@@ -312,6 +312,8 @@ module smc #(
                                         // memory repair and MBIST.
   input  logic ext_boot_seq_done_i,     // External boot sequence done, active-high; the
                                         // fuse-released reset stays low until it is set.
+  output logic ext_boot_seq_done_qual_o,  // ext_boot_seq_done_i synchronized to the SMC
+                                          // clock and held set until cold reset.
 
   input logic sep_security_disable_i,   // Security disable from the SEP eFuse
                                         // controller, active-high; skips automatic fuse
@@ -846,6 +848,7 @@ module smc #(
 
     // Efuse dft signal
     .ext_boot_seq_done_i                   (ext_boot_seq_done_i),
+    .ext_boot_seq_done_qual_o              (ext_boot_seq_done_qual_o),
 
     // SEP security disable
     .sep_security_disable_i                (sep_security_disable_i),

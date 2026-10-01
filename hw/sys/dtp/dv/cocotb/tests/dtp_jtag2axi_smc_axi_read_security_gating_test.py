@@ -24,6 +24,7 @@ class dtp_jtag2axi_smc_axi_read_security_gating_test(dtp_base_test):
         "CHK-AXI-COMPLETION",
         "CHK-AXI-STREAM-MIN",
         "CHK-AXI-NONVAC",
+        "CHK-J2A-GATE-TDR",
     )
     axi_checker_stream_minimums = {"smc_axi": 2}
 

@@ -10,8 +10,9 @@ The Watchdog timer is a component used to enhance reliability and ensure
 that the system is notified if the SEP subsystem is ``hanging''. The SEP
 CPU must periodically visit the WDT and reset its counter, proving that
 the CPU is still alive and well i.e. not hanging. If the WDT timer
-reaches zero in its countdown, it fires an external interrupt indicating
-that its timeout has expired and there is a problem within the SEP.
+counts up to its bark threshold it fires an external interrupt, and if it
+counts up to its bite threshold it requests a reset, both indicating a
+timeout has expired and there is a problem within the SEP.
 
 == Bus Interface
 
@@ -31,8 +32,33 @@ Consult the
 https://opentitan.org/book/hw/ip/aon_timer/[OpenTitan Always-On Timer
 documentation] for the authoritative core functionality of the IP. The
 ifdef::backend-html5[]
-register map is reported in the xref:sep:memory_map.adoc#sep-detailed-register-map[Detailed Register Map].
+register map follows below.
 endif::backend-html5[]
 ifdef::backend-pdf[]
-register map is reported in the <<sep-detailed-register-map,Detailed Register Map>>.
+register map follows below.
+endif::backend-pdf[]
+
+== Memory Map and Register Reference
+
+ifdef::backend-html5[]
+++++
+<span id="register-reference"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
+
+Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.
+
+=== Detailed Register Map
+
+ifdef::backend-html5[]
+++++
+include::ip:partial$aon_timer/regs/gen/html/aon_timer.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/aon_timer/regs/gen/adoc/aon_timer.adoc[leveloffset=+2]
 endif::backend-pdf[]

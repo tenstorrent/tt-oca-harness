@@ -38,14 +38,18 @@ class DtpEnvCfg(uvm_object):
         self.jtag2axi_responders: dict[str, Any] = {}
         # Shared AXI checker: opt-in per test via
         # dtp_base_test.use_axi_scoreboard. Populated by DtpAxiScoreboard
-        # (scoreboard/models) and DtpAxiAgent (monitors/watchers).
+        # (scoreboard/models/per-bridge checkers) and DtpAxiAgent
+        # (monitors/watchers/port histories).
         self.axi_scoreboard_enabled = False
         self.axi_checker_required_ids: set[str] = set()
+        self.axi_checker_target_required_ids: set[str] = set()
         self.axi_checker_stream_minimums: dict[str, int] = {}
         self.axi_scoreboard = None
         self.axi_models: dict[str, Any] = {}
+        self.axi_target_evidence: dict[str, Any] = {}
         self.axi_monitors: dict[str, Any] = {}
         self.axi_watchers: dict[str, Any] = {}
+        self.axi_port_histories: dict[str, Any] = {}
         self.xtrig_axil = None
         self.xtrig_bfm = None
         # Programmed CTP mode/polarity, written by the XTRIG sequences and kept
@@ -58,6 +62,9 @@ class DtpEnvCfg(uvm_object):
         # = every port keeps its wire loopback), plus the per-port slave
         # sequence and device map published by DtpStapDsAgent.
         self.stap_ds_attach: set[str] = set()
+        # Extended STAP host scan: True places the tb_top host segment
+        # between the host scan-out and scan-in (False keeps the loopback).
+        self.stap_host_segment = False
         # DtpTbIf handle published by the base test; agents and sequences bind
         # to the HDL top through it.
         self.tb_if: Any = None

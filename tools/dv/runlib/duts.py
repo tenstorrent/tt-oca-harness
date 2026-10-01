@@ -224,8 +224,9 @@ def resolve_dut(
     of the merged view (see :func:`runlib.config.apply_adopter_overlay`); ``None`` when the
     layer is inactive. ``site`` is the active site layer: its ``[duts.<name>]`` ``sim_cfg`` or
     ``formal_cfg`` wins over the registry's override and the ``<name>_<mode>_cfg.toml``
-    convention, and in ``sim`` mode its ``tools`` append to the view's allowlist, each tool
-    only where it serves the view's framework.
+    convention, and in ``sim`` mode its ``tools`` append to the view's allowlist (each tool
+    only where it serves the view's framework) and its ``exclude_files`` append to
+    ``[build].exclude_files`` so a site can drop sources its layered bender graph adds.
     """
     canonical, dv_root, entry = _locate(root, name)
     names = (name, canonical)
@@ -250,6 +251,14 @@ def resolve_dut(
         ]
         if added:
             flow = replace(flow, tools=[*flow.tools, *added])
+        site_excludes = site.dut_exclude_files(names)
+        if site_excludes:
+            build = flow.raw.setdefault("build", {})
+            existing = as_str_list(build.get("exclude_files"), "build.exclude_files")
+            build["exclude_files"] = [
+                *existing,
+                *(pat for pat in site_excludes if pat not in existing),
+            ]
     return flow
 
 

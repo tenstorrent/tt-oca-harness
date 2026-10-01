@@ -173,11 +173,28 @@ class SiteFileValidationTest(SiteCase):
 
     def test_dut_entry_keys_and_target(self) -> None:
         self.rejects('[duts.dtp]\nroot = "x"\n', "unsupported key(s): root")
-        self.rejects("[duts.dtp]\n", "[duts.dtp] sets none of: formal_cfg, sim_cfg, tools")
+        self.rejects(
+            "[duts.dtp]\n", "[duts.dtp] sets none of: exclude_files, formal_cfg, sim_cfg, tools"
+        )
         self.rejects("[duts.dtp]\nformal_cfg = 1\n", "formal_cfg must be a non-empty path")
         self.rejects('[duts.dtp]\nsim_cfg = ""\n', "sim_cfg must be a non-empty path")
         self.rejects('[duts.dtp]\ntools = "vcs"\n', "tools", "must be a list of strings")
         self.rejects("[duts.dtp]\ntools = []\n", "tools must be a non-empty list of tool names")
+        self.rejects(
+            '[duts.dtp]\nexclude_files = "x.sv"\n', "exclude_files", "must be a list of strings"
+        )
+        self.rejects(
+            "[duts.dtp]\nexclude_files = []\n",
+            "exclude_files must be a non-empty list of filelist patterns",
+        )
+
+    def test_site_exclude_files_append_to_the_build_drops(self) -> None:
+        layer = self.load('[duts.dtp]\nexclude_files = ["site_vendor_only.sv", "meta/models/x"]\n')
+        self.assertEqual(layer.dut_exclude_files(["dtp"]), ["site_vendor_only.sv", "meta/models/x"])
+        flow = resolve_dut(REPO_ROOT, "dtp", site=layer)
+        excludes = flow.raw.get("build", {}).get("exclude_files", [])
+        self.assertIn("site_vendor_only.sv", excludes)
+        self.assertIn("meta/models/x", excludes)
 
     def test_absent_sim_cfg_loads_and_fails_only_when_selected(self) -> None:
         layer = self.load('[duts.dtp]\nsim_cfg = "missing_sim_cfg.toml"\n')

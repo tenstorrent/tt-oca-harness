@@ -37,10 +37,24 @@ timeout_sec = 900
 tags = ["ctp", "p2p"]
 run_modes = ["functional"]
 
+[[tests]]
+name = "ctp_mode_switch_test"
+module = { cocotb = "ctp_mode_switch_test" }
+seed = 1
+timeout_sec = 900
+tags = ["ctp", "wire_or", "p2p"]
+run_modes = ["functional"]
+
 [[groups]]
 name = "smoke"
 tests = ["ctp_sanity_test"]
 
 [[groups]]
 name = "all"
-tests = ["ctp_sanity_test", "ctp_wire_or_test", "ctp_wire_or_bus_test", "ctp_p2p_test"]
+tests = [
+  "ctp_sanity_test",
+  "ctp_wire_or_test",
+  "ctp_wire_or_bus_test",
+  "ctp_p2p_test",
+  "ctp_mode_switch_test",
+]

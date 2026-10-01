@@ -86,7 +86,7 @@ both primary and secondary are out of reset.</ipxact:description>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>MODE</ipxact:name>
-            <ipxact:description>Timer mode: 0=PRIMARY, 1=SECONDARY (set by module parameter)</ipxact:description>
+            <ipxact:description>Timer mode driven by the is_primary_i input: 0=PRIMARY (is_primary_i=1), 1=SECONDARY (is_primary_i=0).</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>

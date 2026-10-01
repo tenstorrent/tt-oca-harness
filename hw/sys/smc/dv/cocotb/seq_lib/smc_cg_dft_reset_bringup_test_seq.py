@@ -40,8 +40,10 @@ from .smc_csr_seq_utils import SmcCsrSeq
 
 HYST = 8
 IDLE_OBSERVE = 16
-RESET_WAIT_BOUND_SMC = 400
-RESET_RECOVER_BOUND_SMC = 800
+# Reset-chain waits in time: the chain runs on the reference clock, whatever
+# the sys-clock period; the polls below convert to clk_smc_i cycles.
+RESET_WAIT_BOUND_NS = 2_000
+RESET_RECOVER_BOUND_NS = 4_000
 # Same bound the sibling smc_cg_test_mode_bypass_test_seq uses for its
 # gated-off / re-enabled polls. Every wait using it raises on expiry.
 GATE_OFF_TIMEOUT_SMC = 256
@@ -184,12 +186,16 @@ class smc_cg_dft_reset_bringup_test_seq(SmcCsrSeq):
         )
         await self._reset_op(SmcResetOp.COLD_RST_LO)
         await self._wait_reset_state(
-            want_asserted=True, bound_smc=RESET_WAIT_BOUND_SMC, label="BYPASS_ENTER_ASSERT"
+            want_asserted=True,
+            bound_smc=int(RESET_WAIT_BOUND_NS / self.cfg.smc_clk_period_ns),
+            label="BYPASS_ENTER_ASSERT",
         )
         dut.tb_test_en_i.value = 1
         await self._reset_op(SmcResetOp.COLD_RST_HI)
         await self._wait_reset_state(
-            want_asserted=False, bound_smc=RESET_RECOVER_BOUND_SMC, label="BYPASS_ENTER_RELEASE"
+            want_asserted=False,
+            bound_smc=int(RESET_RECOVER_BOUND_NS / self.cfg.smc_clk_period_ns),
+            label="BYPASS_ENTER_RELEASE",
         )
         await self._program_cg(dma_en=True, zeroer_en=True)
         # The window spans at least as many cycles as S1 took to see all three
@@ -253,7 +259,7 @@ class smc_cg_dft_reset_bringup_test_seq(SmcCsrSeq):
         dut.tb_test_en_i.value = 0
         rst_asserted = await self._wait_reset_state(
             want_asserted=True,
-            bound_smc=RESET_WAIT_BOUND_SMC,
+            bound_smc=int(RESET_WAIT_BOUND_NS / self.cfg.smc_clk_period_ns),
             label="RESET_OVERRIDE_ASSERT",
         )
         assert rst_asserted.rst_primary_smc_clk_n == 0, rst_asserted
@@ -304,7 +310,7 @@ class smc_cg_dft_reset_bringup_test_seq(SmcCsrSeq):
         await self._reset_op(SmcResetOp.COLD_RST_HI)
         await self._wait_reset_state(
             want_asserted=False,
-            bound_smc=RESET_RECOVER_BOUND_SMC,
+            bound_smc=int(RESET_RECOVER_BOUND_NS / self.cfg.smc_clk_period_ns),
             label="RESET_OVERRIDE_RELEASE",
         )
 

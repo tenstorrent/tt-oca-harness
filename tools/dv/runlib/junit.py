@@ -54,6 +54,12 @@ def is_generated_junit(path: Path) -> bool:
     )
 
 
+def discard_generated_junit(path: Path) -> None:
+    """Remove `path` when it carries the producer marker; a native file is left alone."""
+    if path.is_file() and is_generated_junit(path):
+        path.unlink()
+
+
 def _rel(root: Path, path: Path | str | None) -> str:
     if path is None:
         return ""

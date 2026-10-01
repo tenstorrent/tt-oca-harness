@@ -354,6 +354,11 @@ Callback signature: `fn(item: OcahAxiItem) -> None`.
 
 `OcahAxiLiteMonitor` has the same API for AXI4-Lite interfaces.
 
+The monitors and the cycle-level watchers sample at rising edges of the clock
+they are given, and sleep while every VALID is low until one rises or their
+reset asserts. VALID must therefore change only at a rising edge of that clock
+or while it is low, as it does when that clock domain drives it.
+
 Attach `OcahAxiChecker` to a monitor for protocol sanity checks:
 
 ```python
@@ -451,7 +456,7 @@ replay of failures.
 | Transfers | AXI4 single-beat and burst reads and writes (`INCR`, `FIXED`, `WRAP`, up to 256 beats) at any `size` up to the bus width; byte-granular ranges through `write_bytes_result` / `read_bytes_result`; AXI4-Lite single-beat access with a contiguous partial `strb` | An explicit partial or non-contiguous `strb` on the AXI4 master (`check_strb` rejects it); exclusive (`LOCK`) transactions; `QOS`, `CACHE`, `REGION`, and `USER` values other than their idle defaults; more than the two outstanding single-beat transactions of the pair operations on the SV-UVM master |
 | Responses | `OKAY`, `EXOKAY`, `SLVERR`, `DECERR` on every result; a typed exception or an inspectable `resp` per `raise_on_error`; responders inject a one-shot `SLVERR`/`DECERR` per address and, on AXI4, a one-shot response-ID corruption | Persistent error regions on a responder; address policy belongs to the adopter's reference model (`OcahAxiRegionExpectation`) |
 | Backpressure | Responder READY stalls per channel (`enable_backpressure`); master `b_ready_*` / `r_ready_*` delay knobs; every stall bounded and deterministic | Random delays (opt-in, logged as a warning) |
-| Reset | `reset_active_level`, `wait_for_reset()`, idle payload from construction (`init_signals()`), responder channels held in reset until the reset input reads inactive | A transaction cut by a mid-flight reset is the DUT bench's scenario; the VIP neither aborts nor replays it |
+| Reset | `reset_active_level`, `wait_for_reset()`, idle payload from construction (`init_signals()`), responder channels held in reset until the reset input reads inactive; monitors given a `reset` flush in-flight requests while it is active, and an attached `OcahAxiScoreboard` releases their commit slots | A transaction cut by a mid-flight reset is the DUT bench's scenario; the VIP neither aborts nor replays it |
 | Timeout | Every blocking operation is bounded (`timeout_ns`, else `DEFAULT_TIMEOUT_NS` or `+OCAH_AXI_TIMEOUT_NS`); `allow_timeout=True` returns `RESP_TIMEOUT` | — |
 | Protocol checking | `OcahAxiChecker` item rules, the cycle-level watchers, and `sva/ocah_axi_sva.sv`, which the `dv/` harness binds to every VIP-driven bundle; `sva/ocah_axi_fv.sv` carries the handshake, reset, burst and ordering rules in the boolean subset a formal environment binds, each side asserted or assumed by parameter | Rules beyond the IHI 0022 A3/A5/A7/B1 subset listed in `MANUAL.md` |
 | Coverage | `cov/ocah_axi_cov.sv` covergroups, sampled by the SV-UVM harness through one `ocah_axi_cov_if` (`--dut ocah_axi_vip --framework uvm --cov`) together with the `OCAH_AXI_C_*` cover properties; `--cov` on `--dut ocah_axi_vip` collects Verilator line and branch coverage of the SV collateral, graded by `dv/cov/config/verilator/coverage_policy.toml` | Python components carry no simulator coverage metric; their evidence is the `CHK-*` matrix of `dv/` and the scoreboard selftest |

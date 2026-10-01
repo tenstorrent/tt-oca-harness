@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 // Top level design for module:
 //  name: dfd_top_cla_dst_apb
 //  vendor: vendor

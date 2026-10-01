@@ -6,9 +6,9 @@
 // Address rules use the Key Manager interface constants defined in km_intf_pkg. Routes to
 // KPV, KMCSR, DRBG sampler, mailbox, OTBN, AES, KMAC, HMAC, Adams Bridge, and the
 // OTP/eFuse pass-through at index 8. Uses the PULP axi_lite_xbar in zero-latency mode.
-// OTP addresses leave this block unchanged; key_manager remaps addr[31:12] before driving
-// efuse_req_o. An address outside every rule is answered with DECERR by the xbar. The
-// channel type parameters must match the req/resp types.
+// OTP addresses leave this block unchanged; key_manager filters them to the eFuse register
+// maps and remaps them before driving efuse_req_o. An address outside every rule is answered
+// with DECERR by the xbar. The channel type parameters must match the req/resp types.
 
 module km_axi_lite_xbar
   import km_intf_pkg::*;
@@ -60,7 +60,8 @@ module km_axi_lite_xbar
 
   output axil_req_t  otp_req_o,  // OTP/eFuse pass-through port request (index 8,
                                  // OTP_BASE_ADDR-OTP_END_ADDR). Addresses are forwarded
-                                 // unchanged; key_manager.sv applies the OTP_EFUSE_REMAP_BASE
+                                 // unchanged; key_manager.sv refuses offsets outside the
+                                 // eFuse register maps and applies the OTP_EFUSE_REMAP_BASE
                                  // remap before driving efuse_req_o.
   input  axil_resp_t otp_resp_i  // OTP/eFuse pass-through port response.
 );

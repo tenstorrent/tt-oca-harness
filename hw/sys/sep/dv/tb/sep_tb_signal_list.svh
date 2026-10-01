@@ -109,6 +109,11 @@
 // still gates on a_valid, so a DMA-issued command is required. See the
 // force block below.
 `SEP_TB_IN(logic, dma_host_intg_inject_i)
+// HMAC message-FIFO drain stall. Default 0. When 1, tb holds the FIFO's read
+// side idle so the hash engine stops consuming and the FIFO fills. A port rather
+// than a plusarg so a test can raise it after the ROM's short self-test hash.
+// See the force block below.
+`SEP_TB_IN(logic, hmac_fifo_drain_stall_i)
 
 // ------------------------------------------------------------------
 // Flat CPU-LSU AXI manager (cocotbext-axi AxiMaster, prefix s_axi)
@@ -466,13 +471,23 @@
 `SEP_TB_OUT(logic, hmac_gated_rst_n_probe_o)
 `SEP_TB_OUT(logic, hmac_host_isolated_probe_o)
 `SEP_TB_OUT(logic, hmac_km_isolated_probe_o)
+// Host-path isolate request, high from the software reset request until
+// release. See "Crypto reset-sequencer probes" in
+// hw/sys/sep/dv/docs/SEP_TB_ARCH.adoc.
+`SEP_TB_OUT(logic, hmac_host_isolate_req_probe_o)
 `SEP_TB_OUT(logic, kmac_gated_rst_n_probe_o)
 `SEP_TB_OUT(logic, kmac_host_isolated_probe_o)
 `SEP_TB_OUT(logic, kmac_km_isolated_probe_o)
+`SEP_TB_OUT(logic, kmac_host_isolate_req_probe_o)
 `SEP_TB_OUT(logic, abr_gated_rst_n_probe_o)
 `SEP_TB_OUT(logic, abr_host_isolated_probe_o)
 `SEP_TB_OUT(logic, abr_km_isolated_probe_o)
-// IP-interrupt aggregator: observation-only mirror of the 34-bit
+`SEP_TB_OUT(logic, abr_host_isolate_req_probe_o)
+// AES and OTBN gated resets, for timing the crypto EDN endpoint cancel against
+// the reset it precedes.
+`SEP_TB_OUT(logic, aes_gated_rst_n_probe_o)
+`SEP_TB_OUT(logic, otbn_gated_rst_n_probe_o)
+// IP-interrupt aggregator: observation-only mirror of the NUM_INTERNAL_IRQS-bit
 // sep_internal_interrupts vector that sep.sv assembles and feeds to the VeeR
 // PIC. The IP->aggregator test injects each CSRNG/EDN INTR_TEST and watches the
 // mapped bit here. Mirrors the reference sep_irq_probe_if wire-tap of

@@ -98,9 +98,9 @@ ranges.
 |=================================================================
 |Quantity |Value
 
-|Fuse map size |3 KB (24576 bits, 768 x 32-bit words)
+|Fuse map size |1 KB (8192 bits, 256 x 32-bit words)
 |Class 1 words (`shadow_efuse_values_n0_scan`) |2 (words 0-1, `LOCKS`)
-|Class 3 words (`shadow_efuse_values`) |766
+|Class 3 words (`shadow_efuse_values`) |254
 |=================================================================
 
 Three `ASSERT_INIT` checks in `efuse_shadow_regs` verify at elaboration that the

@@ -5,10 +5,10 @@
 
 // tag::cross-trigger-network[]
 .Cross Trigger Network Address Map
-[cols="<,<,<,<,<,<,<,<",options="header"]
+[cols="<,<,<,<,<,<,<,<,<,<",options="header"]
 |===
-|Base Address |End Address |Size |Decoded Extent |Unit |Instances |Stride |Description
-|0x00000000 |0x000001FF |512 B |208 B |Cross Trigger Matrix Address Map |1 instance |- |Configuration registers for the cross trigger matrix
-|0x00000200 |0x000002FF |256 B |252 B |Cross Trigger Port Address Map |16 instances |16 B |Configuration and status registers for the cross trigger port
+|Base Address |End Address |Size |Decoded Extent |Unit |Instances |Stride |Description |Hole in Extent (R / W) |Past Extent (R / W)
+|0x00000000 |0x000001FF |512 B |208 B |Cross Trigger Matrix Address Map |1 instance |- |Configuration registers for the cross trigger matrix |OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E / DECERR
+|0x00000200 |0x000002FF |256 B |252 B |Cross Trigger Port Address Map |16 instances |16 B |Configuration and status registers for the cross trigger port |OKAY, 0x0 / OKAY |OKAY, 0x0 / OKAY
 |===
 // end::cross-trigger-network[]

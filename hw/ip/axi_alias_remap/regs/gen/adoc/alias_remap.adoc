@@ -45,8 +45,8 @@ TLB Registers for address remapping and attribute tagging
 |===
 | Bits | Field | Access | Reset | Description
 | 63 | `valid` | RW | 0x0 a| If set, this remap will be active
-| 62 | `cacheable` | RW | 0x0 a| If set, top two bits of a*cache will be tied high
-| 61:56 | `Reserved` | - | - a| Reserved
+| 62:60 | `Reserved` | - | - a| Reserved
+| 59:56 | `cacheable` | RW | 0x0 a| Set to change the value of the axcache field of the transaction. This field will override all existing axcache bits.
 | 55:12 | `offset` | RW | 0x0 a| The value of this field is added to bits [55:12] of the input address when it falls within the remap region. The lower 12 bits of the address are preserved unchanged.
 | 11:0 | `Reserved` | - | - a| Reserved
 |===
