@@ -354,6 +354,11 @@ Callback signature: `fn(item: OcahAxiItem) -> None`.
 
 `OcahAxiLiteMonitor` has the same API for AXI4-Lite interfaces.
 
+The monitors and the cycle-level watchers sample at rising edges of the clock
+they are given, and sleep while every VALID is low until one rises or their
+reset asserts. VALID must therefore change only at a rising edge of that clock
+or while it is low, as it does when that clock domain drives it.
+
 Attach `OcahAxiChecker` to a monitor for protocol sanity checks:
 
 ```python
