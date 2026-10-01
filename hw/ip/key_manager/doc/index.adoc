@@ -19,10 +19,12 @@ implemented services, command protocol and handover rules.
 
 ifdef::backend-html5[]
 include::partial$key_manager/doc/architecture.adoc[leveloffset=+1]
+include::partial$key_manager/doc/future-architecture.adoc[leveloffset=+1]
 include::partial$key_manager/doc/firmware.adoc[leveloffset=+1]
 endif::backend-html5[]
 ifdef::backend-pdf[]
 include::architecture.adoc[leveloffset=+1]
+include::future-architecture.adoc[leveloffset=+1]
 include::firmware.adoc[leveloffset=+1]
 endif::backend-pdf[]
 
