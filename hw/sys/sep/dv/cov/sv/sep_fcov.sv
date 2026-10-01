@@ -2271,7 +2271,10 @@ module sep_fcov (
     cp_alone: coverpoint sec_dis iff (released) {
       bins override_closed = {1'b0};
     }
-    cp_map_resp: coverpoint map_resp iff (map_hit) {bins okay = {AxiOkay}; bins slverr = {2'b10};}
+    // A refused read is an error path (Phase 2), so only OKAY is a cell.
+    cp_map_resp: coverpoint map_resp iff (map_hit) {
+      bins okay = {AxiOkay};
+    }
     cp_reach: coverpoint reach {bins sw_reset_n_while_open = {1'b1};}
   endgroup
 

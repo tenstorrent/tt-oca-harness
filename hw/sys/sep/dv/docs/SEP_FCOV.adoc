@@ -128,7 +128,7 @@ human. Other members may fill a group in passing.
 |`sep_lc_transition_cg` |`sep_lcc_lc_state_w1s_prod_test` and `_prod_demote_test` (PROD to RMA_SIP_1), `_rma_sip_test` (RMA_SIP_1 to RMA_CHIP_1)
 |`sep_dma_completion_route_cg` |`sep_dma_basic_test` (STATUS poll), `sep_dma_hash_test` (interrupt), `sep_spi_ot_dma_rx_test` / `_tx_test` (handshake mode)
 |`sep_feat_ctrl_cg` |`sep_efuse_lcc_lc_state_stitch_test` (also both `SECURE_TM` polarities), the seven W1S leaves, `sep_sec_dis_override_test` (SEC_DIS)
-|`sep_sec_dis_boot_cg` |`sep_sec_dis_override_test` (`cp_hold`, `cp_release`, `cp_rehold`, `cp_alone`, `cp_map_resp`). `cp_map_resp.okay` fills when the pre-sense `LC_STATE` read returns AXI OKAY; today the DUT returns SLVERR there (issue #2520), so `okay` is an open hole, not a sampler defect. `sep_sec_dis_reset_reach_test` fills `cp_release`, `cp_rehold`, `cp_alone`, and `cp_reach`
+|`sep_sec_dis_boot_cg` |`sep_sec_dis_override_test` (`cp_hold`, `cp_release`, `cp_rehold`, `cp_alone`, `cp_map_resp`). `cp_map_resp.okay` fills when the pre-sense `LC_STATE` read returns AXI OKAY. `sep_sec_dis_reset_reach_test` fills `cp_release`, `cp_rehold`, `cp_alone`, and `cp_reach`
 |`sep_lc_demote_cg` |`sep_lcc_demote_feat_ctrl_matrix_test`
 |`sep_mailbox_pic_cg` |SEP mailbox `sep_mailbox_plic_test`, `sep_pic_irq_source_map_delivery_test`; KM mailbox `sep_km_mailbox_protocol_rand_test`; `cp_peer_fill` `sep_mailbox_peer_rx_rirqt_test` (the only leaf that drives the peer aperture). `sep_axil_mailbox_iface_rand_test` does not fill `cp_raise` / `cp_clear`: it is transmit side, and `sep_internal_interrupts[7:0]` carries the inbound interrupt
 |`sep_mailbox_channel_cg` |`sep_mailbox_plic_test` (it runs one channel at a time, all eight)
@@ -899,7 +899,7 @@ recorded by its AXI response.
 |`cp_release` |Override select and value set, sensing still open, `sep_cpu_reset_n` rises
 |`cp_rehold` |Override clear after that release, sensing still open, `sep_cpu_reset_n` falls
 |`cp_alone` |That release while SEC_DIS is still off
-|`cp_map_resp` |`okay`, `slverr` on the `LC_STATE` shadow read while sensing is still open and SEC_DIS is on
+|`cp_map_resp` |`okay` on the `LC_STATE` shadow read while sensing is still open and SEC_DIS is on. A refused read is an error path (Phase 2), so it has no cell
 |`cp_reach` |OKAY read of `SW_RESET_N` while sensing is still open and `sep_cpu_reset_n` is released
 |===
 
@@ -1021,8 +1021,7 @@ These groups record a value that a RANDCFG leaf draws from its seed, so one
 regression can leave a cell empty, and merging the VDBs of later regressions
 fills it. Their names end in `_rand_cg`, so the report separates them from the
 deterministic groups. A deterministic group must be full in one VCS `all
---cov`, except an open DUT hole that this plan names (`cp_map_resp.okay`,
-issue #2520); a `_rand_cg` group is graded on a merge of regressions. Each
+--cov`; a `_rand_cg` group is graded on a merge of regressions. Each
 group has two bins, so one regression (three seeds of the owner) leaves a bin
 empty with a probability of about 4 %.
 
