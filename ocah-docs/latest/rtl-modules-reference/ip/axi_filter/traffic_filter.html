@@ -684,13 +684,13 @@
 <h2>Parameters</h2>
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
-<tr><td><code>EnSrcIdFilter</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Match on source ID.</td></tr>
-<tr><td><code>EnNsFilter</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Requires the beat NS flag to equal cfg_allow_ns_i.</td></tr>
-<tr><td><code>EnGroupIdFilter</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Match on group ID.</td></tr>
-<tr><td><code>AddrWidth</code></td><td><code>int unsigned</code></td><td><code>64</code></td><td>Address compare width.</td></tr>
-<tr><td><code>SrcIdWidth</code></td><td><code>int unsigned</code></td><td><code>4</code></td><td>Source ID width.</td></tr>
-<tr><td><code>GroupIdWidth</code></td><td><code>int unsigned</code></td><td><code>4</code></td><td>Width of the rule and beat group IDs compared under EnGroupIdFilter.</td></tr>
-<tr><td><code>DataBusWidthLog2</code></td><td><code>int unsigned</code></td><td><code>3</code></td><td>log2 of data-bus bytes; address compare granularity when bursts are disabled.</td></tr>
+<tr><td><code>EN_SRC_ID_FILTER</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Match on source ID.</td></tr>
+<tr><td><code>EN_NS_FILTER</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Requires the beat NS flag to equal cfg_allow_ns_i.</td></tr>
+<tr><td><code>EN_GROUP_ID_FILTER</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Match on group ID.</td></tr>
+<tr><td><code>ADDR_WIDTH</code></td><td><code>int unsigned</code></td><td><code>64</code></td><td>Address compare width.</td></tr>
+<tr><td><code>SRC_ID_WIDTH</code></td><td><code>int unsigned</code></td><td><code>4</code></td><td>Source ID width.</td></tr>
+<tr><td><code>GROUP_ID_WIDTH</code></td><td><code>int unsigned</code></td><td><code>4</code></td><td>Width of the rule and beat group IDs compared under EN_GROUP_ID_FILTER.</td></tr>
+<tr><td><code>DATA_BUS_WIDTH_LOG2</code></td><td><code>int unsigned</code></td><td><code>3</code></td><td>log2 of data-bus bytes; address compare granularity when bursts are disabled.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">
@@ -700,9 +700,9 @@
 <tr><td><code>cfg_end_addr_i</code></td><td>input</td><td><code>addr_t</code></td><td>Inclusive end of the address window, at the same granularity as cfg_start_addr_i; spyglass disable W240.</td></tr>
 <tr><td><code>cfg_entry_enabled_i</code></td><td>input</td><td><code>logic</code></td><td>Rule enable; when low, filter_hit_o stays low.</td></tr>
 <tr><td><code>cfg_burst_en_i</code></td><td>input</td><td><code>logic</code></td><td>Admits multi-beat bursts and coarsens the range compare to 4 KiB; when low, only single-beat transfers match.</td></tr>
-<tr><td><code>cfg_src_id_i</code></td><td>input</td><td><code>src_id_t</code></td><td>Source ID a beat must carry under EnSrcIdFilter; all zeros matches any source.</td></tr>
-<tr><td><code>cfg_group_id_i</code></td><td>input</td><td><code>group_id_t</code></td><td>Group ID a beat must carry under EnGroupIdFilter.</td></tr>
-<tr><td><code>cfg_allow_ns_i</code></td><td>input</td><td><code>logic</code></td><td>NS value a beat must carry under EnNsFilter: 1 matches non-secure, 0 secure initiators.</td></tr>
+<tr><td><code>cfg_src_id_i</code></td><td>input</td><td><code>src_id_t</code></td><td>Source ID a beat must carry under EN_SRC_ID_FILTER; all zeros matches any source.</td></tr>
+<tr><td><code>cfg_group_id_i</code></td><td>input</td><td><code>group_id_t</code></td><td>Group ID a beat must carry under EN_GROUP_ID_FILTER.</td></tr>
+<tr><td><code>cfg_allow_ns_i</code></td><td>input</td><td><code>logic</code></td><td>NS value a beat must carry under EN_NS_FILTER: 1 matches non-secure, 0 secure initiators.</td></tr>
 <tr><td><code>tx_valid_i</code></td><td>input</td><td><code>logic</code></td><td>Address-beat valid; gates tx_rule_pass_o but not filter_hit_o.</td></tr>
 <tr><td><code>tx_addr_i</code></td><td>input</td><td><code>addr_t</code></td><td>Address-beat address; spyglass disable W240.</td></tr>
 <tr><td><code>tx_src_id_i</code></td><td>input</td><td><code>src_id_t</code></td><td>Address-beat source ID.</td></tr>

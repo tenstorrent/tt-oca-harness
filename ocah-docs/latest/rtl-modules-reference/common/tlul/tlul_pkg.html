@@ -679,7 +679,7 @@
 </aside>
 <article class="doc">
 <h1 class="page">tlul_pkg</h1>
-<p>Hold TileLink Uncached Lightweight types, opcodes, and integrity widths.</p><p>Define the A/D opcodes, packed channel structs and their default values, integrity and reserved-user widths, and helpers that extract and compute command and data integrity.</p><p>Two constants give the data returned on a TL-UL error; responders return each with matching data integrity:</p><ul><li>DataWhenInstrError is returned for an instruction fetch.</li><li>DataWhenError is returned for any access that is not an instruction fetch.</li></ul>
+<p>Hold TileLink Uncached Lightweight types, opcodes, and integrity widths.</p><p>Define the A/D opcodes, packed channel structs and their default values, integrity and reserved-user widths, and helpers that extract and compute command and data integrity.</p><p>Two constants give the data returned on a TL-UL error; responders return each with matching data integrity:</p><ul><li>DATA_WHEN_INSTR_ERROR is returned for an instruction fetch.</li><li>DATA_WHEN_ERROR is returned for any access that is not an instruction fetch.</li></ul>
 <div class="ocah-reg-html">
 <h2 id="tl_a_op_e"><code>tl_a_op_e</code></h2>
 <p>Enum (<code>logic [2:0]</code>)</p>
@@ -700,10 +700,10 @@
 <p>Packed struct</p>
 <table id="trm-table-3">
 <caption class="title"><a href="#trm-table-3">Table 3</a>. <code>tl_a_user_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
-<tr><td><code>rsvd</code></td><td><code>logic [RsvdWidth-1:0]</code></td><td></td></tr>
+<tr><td><code>rsvd</code></td><td><code>logic [RSVD_WIDTH-1:0]</code></td><td></td></tr>
 <tr><td><code>instr_type</code></td><td><code>prim_mubi_pkg::mubi4_t</code></td><td></td></tr>
-<tr><td><code>cmd_intg</code></td><td><code>logic [H2DCmdIntgWidth-1:0]</code></td><td></td></tr>
-<tr><td><code>data_intg</code></td><td><code>logic [DataIntgWidth-1:0]</code></td><td></td></tr>
+<tr><td><code>cmd_intg</code></td><td><code>logic [H2D_CMD_INTG_WIDTH-1:0]</code></td><td></td></tr>
+<tr><td><code>data_intg</code></td><td><code>logic [DATA_INTG_WIDTH-1:0]</code></td><td></td></tr>
 </table>
 <h2 id="tl_h2d_cmd_intg_t"><code>tl_h2d_cmd_intg_t</code></h2>
 <p>Packed struct</p>
@@ -733,8 +733,8 @@
 <p>Packed struct</p>
 <table id="trm-table-6">
 <caption class="title"><a href="#trm-table-6">Table 6</a>. <code>tl_d_user_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
-<tr><td><code>rsp_intg</code></td><td><code>logic [D2HRspIntgWidth-1:0]</code></td><td></td></tr>
-<tr><td><code>data_intg</code></td><td><code>logic [DataIntgWidth-1:0]</code></td><td></td></tr>
+<tr><td><code>rsp_intg</code></td><td><code>logic [D2H_RSP_INTG_WIDTH-1:0]</code></td><td></td></tr>
+<tr><td><code>data_intg</code></td><td><code>logic [DATA_INTG_WIDTH-1:0]</code></td><td></td></tr>
 </table>
 <h2 id="tl_d2h_t"><code>tl_d2h_t</code></h2>
 <p>Packed struct</p>
@@ -782,28 +782,28 @@
 </table>
 <h2 id="get_cmd_intg"><code>get_cmd_intg</code></h2>
 <p>calculate ecc for command checking</p>
-<p>Function returning <code>logic [H2DCmdIntgWidth-1:0]</code></p>
+<p>Function returning <code>logic [H2D_CMD_INTG_WIDTH-1:0]</code></p>
 <table id="trm-table-12">
 <caption class="title"><a href="#trm-table-12">Table 12</a>. <code>get_cmd_intg</code></caption><tr><th>Name</th><th>Direction</th><th>Type</th><th>Description</th></tr>
 <tr><td><code>tl</code></td><td>input</td><td><code>tl_h2d_t</code></td><td></td></tr>
 </table>
 <h2 id="get_data_intg"><code>get_data_intg</code></h2>
 <p>calculate ecc for data checking</p>
-<p>Function returning <code>logic [DataIntgWidth-1:0]</code></p>
+<p>Function returning <code>logic [DATA_INTG_WIDTH-1:0]</code></p>
 <table id="trm-table-13">
 <caption class="title"><a href="#trm-table-13">Table 13</a>. <code>get_data_intg</code></caption><tr><th>Name</th><th>Direction</th><th>Type</th><th>Description</th></tr>
 <tr><td><code>data</code></td><td>input</td><td><code>logic [top_pkg::TL_DW-1:0]</code></td><td></td></tr>
 </table>
 <h2 id="get_bad_cmd_intg"><code>get_bad_cmd_intg</code></h2>
 <p>return inverted integrity for command payload</p>
-<p>Function returning <code>logic [H2DCmdIntgWidth-1:0]</code></p>
+<p>Function returning <code>logic [H2D_CMD_INTG_WIDTH-1:0]</code></p>
 <table id="trm-table-14">
 <caption class="title"><a href="#trm-table-14">Table 14</a>. <code>get_bad_cmd_intg</code></caption><tr><th>Name</th><th>Direction</th><th>Type</th><th>Description</th></tr>
 <tr><td><code>tl</code></td><td>input</td><td><code>tl_h2d_t</code></td><td></td></tr>
 </table>
 <h2 id="get_bad_data_intg"><code>get_bad_data_intg</code></h2>
 <p>return inverted integrity for data payload</p>
-<p>Function returning <code>logic [H2DCmdIntgWidth-1:0]</code></p>
+<p>Function returning <code>logic [H2D_CMD_INTG_WIDTH-1:0]</code></p>
 <table id="trm-table-15">
 <caption class="title"><a href="#trm-table-15">Table 15</a>. <code>get_bad_data_intg</code></caption><tr><th>Name</th><th>Direction</th><th>Type</th><th>Description</th></tr>
 <tr><td><code>data</code></td><td>input</td><td><code>logic [top_pkg::TL_DW-1:0]</code></td><td></td></tr>

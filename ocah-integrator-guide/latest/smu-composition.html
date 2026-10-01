@@ -414,7 +414,7 @@ address maps.</p>
 <div class="sectionbody">
 <div class="paragraph">
 <p>The DTP JTAG features, identification, cross trigger, and pipeline depths are
-fields of the <code>Cfg</code> parameter, of type <code>smu_pkg::smu_cfg_t</code> with default
+fields of the <code>CFG</code> parameter, of type <code>smu_pkg::smu_cfg_t</code> with default
 <code>smu_pkg::DefaultCfg</code>.</p>
 </div>
 <div class="paragraph">
@@ -789,21 +789,21 @@ Type parameters are set internally based on SMC package types.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>XTRIG_NUM_CTP</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">16</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Cfg</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CFG</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Yes</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">External CTP count</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>XTRIG_NUM_INT_CT</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Cfg + <code>XTRIG_SMC_INT_CT_LANES</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CFG + <code>XTRIG_SMC_INT_CT_LANES</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Yes</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU-exposed count; DTP adds the SMC-reserved lanes</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>XTRIG_NUM_CLK_STOP_REQ</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Cfg + <code>XTRIG_SMC_CLK_STOP_LANES</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CFG + <code>XTRIG_SMC_CLK_STOP_LANES</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Yes</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU-exposed count; DTP adds the SMC-reserved lane</p></td>
 </tr>
@@ -1756,7 +1756,7 @@ DTP lanes, so the SMU <code>XTRIG_NUM_CLK_STOP_REQ</code> field is
 <p>CTP signals from DTP are ported through the SMU and are direct
 <code>smu_wrapper</code> external ports (connected through the <code>.*</code> SMU instantiation).
 The adopter must connect them to GPIO pad logic; no tie-off or dangling is
-present in the wrapper itself. Widths follow <code>Cfg.XTRIG_NUM_CTP</code> (default 16).</p>
+present in the wrapper itself. Widths follow <code>CFG.XTRIG_NUM_CTP</code> (default 16).</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -3591,7 +3591,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>ic_reset_ext_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>$bits(ic_reset_ext_t)</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">External JTAG IC_RESET override slice. Integrator-defined packed struct with <code>.ovrd</code> override enables and <code>.val</code> active-low override values. Driven by the DTP&#8217;s <code>jtag_ic_reset_ext_o</code> when <code>Cfg.JTAG_IC_RESET_ENABLE=1</code>, otherwise tied to '0. An integrator needing JTAG reset overrides for logic outside the SMU sets <code>ic_reset_ext_t</code> to their own override struct and routes this port to it; the SMU does not define that type.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External JTAG IC_RESET override slice. Integrator-defined packed struct with <code>.ovrd</code> override enables and <code>.val</code> active-low override values. Driven by the DTP&#8217;s <code>jtag_ic_reset_ext_o</code> when <code>CFG.JTAG_IC_RESET_ENABLE=1</code>, otherwise tied to '0. An integrator needing JTAG reset overrides for logic outside the SMU sets <code>ic_reset_ext_t</code> to their own override struct and routes this port to it; the SMU does not define that type.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Integrator-defined reset overrides</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
@@ -4112,7 +4112,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_ext_interrupts_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[Cfg.NUM_INT_TO_SMC-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[CFG.NUM_INT_TO_SMC-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">External interrupt inputs to SMC. Active-high level or a pulse long enough to be sampled on <code>clk_smc</code>.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">External interrupt sources</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>

@@ -679,32 +679,32 @@
 </aside>
 <article class="doc">
 <h1 class="page">prim_fair_rr_arb</h1>
-<p>Arbitrate NumIn requesters round-robin through a combinational binary tree.</p><p>request_o, data_o, index_o and grant_o are combinational; only the round-robin pointer and the optional lock state are registered. With NumIn of 1 the module is a pass-through. Select the arbitration behaviour with these parameters:</p><ul><li>FairArb moves the pointer to the next requesting input after each grant, spreading grants evenly across inputs.</li><li>LockIn holds a winner until grant_i completes.</li><li>ExtPrio replaces the internal RR counter with rr_priority_i so multiple arbiters can share rotating priorities in lock-step; tie rr_priority_i to &#x27;0 for static priority, lowest index first. FairArb and LockIn apply only when ExtPrio is 0.</li><li>AxiVldRdy treats request/grant as AXI-style valid/ready, so upstream valid must not depend on ready; it reduces arbiter delay and area.</li></ul>
+<p>Arbitrate NUM_IN requesters round-robin through a combinational binary tree.</p><p>request_o, data_o, index_o and grant_o are combinational; only the round-robin pointer and the optional lock state are registered. With NUM_IN of 1 the module is a pass-through. Select the arbitration behaviour with these parameters:</p><ul><li>FAIR_ARB moves the pointer to the next requesting input after each grant, spreading grants evenly across inputs.</li><li>LOCK_IN holds a winner until grant_i completes.</li><li>EXT_PRIO replaces the internal RR counter with rr_priority_i so multiple arbiters can share rotating priorities in lock-step; tie rr_priority_i to &#x27;0 for static priority, lowest index first. FAIR_ARB and LOCK_IN apply only when EXT_PRIO is 0.</li><li>AXI_VLD_RDY treats request/grant as AXI-style valid/ready, so upstream valid must not depend on ready; it reduces arbiter delay and area.</li></ul>
 <div class="ocah-reg-html">
 <h2>Parameters</h2>
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
-<tr><td><code>NumIn</code></td><td><code>int unsigned</code></td><td><code>64</code></td><td>Number of inputs to arbitrate.</td></tr>
-<tr><td><code>DataWidth</code></td><td><code>int unsigned</code></td><td><code>32</code></td><td>Payload width in bits; unused when DataType is overridden.</td></tr>
-<tr><td><code>ExtPrio</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>1 overrides the internal RR counter with rr_priority_i. Share rr_priority_i across arbiters for lock-step rotation; tie to &#x27;0 for static priority.</td></tr>
-<tr><td><code>AxiVldRdy</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>1 treats request/grant as AXI valid/ready: upstream valid must not depend on ready, and grant_o may assert on the selected input without its request; reduces arbiter delay and area.</td></tr>
-<tr><td><code>LockIn</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>1 freezes the request vector, and so the winning index, while request_o is high and grant_i is low; ignored when ExtPrio is 1.</td></tr>
-<tr><td><code>FairArb</code></td><td><code>bit</code></td><td><code>1&#x27;b1</code></td><td>1 spreads throughput evenly across inputs; 0 advances the pointer by one per grant. Ignored when ExtPrio is 1.</td></tr>
-<tr><td><code>IdxWidth</code></td><td><code>int unsigned</code></td><td><code>(NumIn &gt; 32&#x27;d1) ? unsigned&#x27;($clog2(NumIn)) : 32&#x27;d1</code></td><td>Dependent width of priority and index; do not overwrite.</td></tr>
+<tr><td><code>NUM_IN</code></td><td><code>int unsigned</code></td><td><code>64</code></td><td>Number of inputs to arbitrate.</td></tr>
+<tr><td><code>DATA_WIDTH</code></td><td><code>int unsigned</code></td><td><code>32</code></td><td>Payload width in bits; unused when data_t is overridden.</td></tr>
+<tr><td><code>EXT_PRIO</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>1 overrides the internal RR counter with rr_priority_i. Share rr_priority_i across arbiters for lock-step rotation; tie to &#x27;0 for static priority.</td></tr>
+<tr><td><code>AXI_VLD_RDY</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>1 treats request/grant as AXI valid/ready: upstream valid must not depend on ready, and grant_o may assert on the selected input without its request; reduces arbiter delay and area.</td></tr>
+<tr><td><code>LOCK_IN</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>1 freezes the request vector, and so the winning index, while request_o is high and grant_i is low; ignored when EXT_PRIO is 1.</td></tr>
+<tr><td><code>FAIR_ARB</code></td><td><code>bit</code></td><td><code>1&#x27;b1</code></td><td>1 spreads throughput evenly across inputs; 0 advances the pointer by one per grant. Ignored when EXT_PRIO is 1.</td></tr>
+<tr><td><code>IdxWidth</code></td><td><code>int unsigned</code></td><td><code>(NUM_IN &gt; 32&#x27;d1) ? unsigned&#x27;($clog2(NUM_IN)) : 32&#x27;d1</code></td><td>Dependent width of priority and index; do not overwrite.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">
 <caption class="title"><a href="#trm-table-2">Table 2</a>. Ports</caption><tr><th>Name</th><th>Direction</th><th>Type</th><th>Description</th></tr>
 <tr><td><code>clk_i</code></td><td>input</td><td><code>logic</code></td><td>Clock, positive-edge triggered.</td></tr>
 <tr><td><code>rst_ni</code></td><td>input</td><td><code>logic</code></td><td>Active-low reset, sampled synchronously.</td></tr>
-<tr><td><code>flush_i</code></td><td>input</td><td><code>logic</code></td><td>Synchronously clears the RR pointer and, with LockIn, the lock state; no effect when ExtPrio is 1.</td></tr>
-<tr><td><code>rr_priority_i</code></td><td>input</td><td><code>idx_t</code></td><td>External RR priority; used only when ExtPrio is 1.</td></tr>
-<tr><td><code>request_i</code></td><td>input</td><td><code>logic [NumIn-1:0]</code></td><td>Per-port arbitration requests.</td></tr>
-<tr><td><code>grant_o</code></td><td>output</td><td><code>logic [NumIn-1:0]</code></td><td>Per-port grants.</td></tr>
-<tr><td><code>data_i</code></td><td>input</td><td><code>DataType [NumIn-1:0]</code></td><td>Per-port payloads.</td></tr>
+<tr><td><code>flush_i</code></td><td>input</td><td><code>logic</code></td><td>Synchronously clears the RR pointer and, with LOCK_IN, the lock state; no effect when EXT_PRIO is 1.</td></tr>
+<tr><td><code>rr_priority_i</code></td><td>input</td><td><code>idx_t</code></td><td>External RR priority; used only when EXT_PRIO is 1.</td></tr>
+<tr><td><code>request_i</code></td><td>input</td><td><code>logic [NUM_IN-1:0]</code></td><td>Per-port arbitration requests.</td></tr>
+<tr><td><code>grant_o</code></td><td>output</td><td><code>logic [NUM_IN-1:0]</code></td><td>Per-port grants.</td></tr>
+<tr><td><code>data_i</code></td><td>input</td><td><code>data_t [NUM_IN-1:0]</code></td><td>Per-port payloads.</td></tr>
 <tr><td><code>request_o</code></td><td>output</td><td><code>logic</code></td><td>Winning request toward the destination.</td></tr>
 <tr><td><code>grant_i</code></td><td>input</td><td><code>logic</code></td><td>Destination grant for the winner.</td></tr>
-<tr><td><code>data_o</code></td><td>output</td><td><code>DataType</code></td><td>Winning payload.</td></tr>
+<tr><td><code>data_o</code></td><td>output</td><td><code>data_t</code></td><td>Winning payload.</td></tr>
 <tr><td><code>index_o</code></td><td>output</td><td><code>idx_t</code></td><td>Index of the winning input; valid while request_o is high.</td></tr>
 </table>
 </div>

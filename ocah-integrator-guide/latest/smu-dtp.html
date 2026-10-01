@@ -233,7 +233,7 @@ and clock-stop counts). The generated Cross Trigger Matrix register map must
 have one <code>CT_Src</code> and one <code>CT_Dst</code> for every DTP port
 (<code>XTRIG_NUM_CTP + XTRIG_NUM_INT_CT</code> at the DTP, which is the SMU-exposed
 internal-CT count plus <code>smu_pkg::XTRIG_SMC_INT_CT_LANES</code>). Resizing is two
-steps: set the <code>Cfg</code> counts, and regenerate the CTM with matching PeakRDL
+steps: set the <code>CFG</code> counts, and regenerate the CTM with matching PeakRDL
 overrides:</p>
 </div>
 <div class="listingblock">
@@ -243,7 +243,7 @@ overrides:</p>
 </div>
 </div>
 <div class="paragraph">
-<p><code>&lt;n&gt;</code> is the DTP total (<code>Cfg.XTRIG_NUM_CTP + Cfg.XTRIG_NUM_INT_CT<br>
+<p><code>&lt;n&gt;</code> is the DTP total (<code>CFG.XTRIG_NUM_CTP + CFG.XTRIG_NUM_INT_CT<br>
 smu_pkg::XTRIG_SMC_INT_CT_LANES</code>). <code>cross_trigger_network</code> fails elaboration if
 the parameterized total disagrees with the generated map. Defaults remain 16
 external CTPs, 10 internal CTs (8 exposed), and 9 clock-stop requests (8

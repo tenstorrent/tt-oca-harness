@@ -679,20 +679,20 @@
 </aside>
 <article class="doc">
 <h1 class="page">prim_updown_counter</h1>
-<p>Count up or down with saturation, clear, set, and commit.</p><p>ResetValue can be nonzero so a down-counter need not start at 0. incr_en_i and decr_en_i together do not count; either alone steps by step_i. clear_i takes priority over set_i, which takes priority over counting. commit_i freezes cnt_after_commit_o into count_o; without it the next value stays speculative, so clear_i and set_i also take effect only with commit_i.</p>
+<p>Count up or down with saturation, clear, set, and commit.</p><p>RESET_VALUE can be nonzero so a down-counter need not start at 0. incr_en_i and decr_en_i together do not count; either alone steps by step_i. clear_i takes priority over set_i, which takes priority over counting. commit_i freezes cnt_after_commit_o into count_o; without it the next value stays speculative, so clear_i and set_i also take effect only with commit_i.</p>
 <div class="ocah-reg-html">
 <h2>Parameters</h2>
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
-<tr><td><code>Width</code></td><td><code>int</code></td><td><code>16</code></td><td>Counter width.</td></tr>
-<tr><td><code>ResetValue</code></td><td><code>logic [Width-1:0]</code></td><td><code>&#x27;0</code></td><td>Value loaded on reset or clear_i; may be nonzero when the counter is used as a down-counter.</td></tr>
+<tr><td><code>WIDTH</code></td><td><code>int</code></td><td><code>16</code></td><td>Counter width.</td></tr>
+<tr><td><code>RESET_VALUE</code></td><td><code>logic [WIDTH-1:0]</code></td><td><code>&#x27;0</code></td><td>Value loaded on reset or clear_i; may be nonzero when the counter is used as a down-counter.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">
 <caption class="title"><a href="#trm-table-2">Table 2</a>. Ports</caption><tr><th>Name</th><th>Direction</th><th>Type</th><th>Description</th></tr>
 <tr><td><code>clk_i</code></td><td>input</td><td><code></code></td><td>Counter clock.</td></tr>
-<tr><td><code>rst_ni</code></td><td>input</td><td><code></code></td><td>Active-low reset, sampled synchronously; loads ResetValue.</td></tr>
-<tr><td><code>clear_i</code></td><td>input</td><td><code></code></td><td>Loads ResetValue when committed.</td></tr>
+<tr><td><code>rst_ni</code></td><td>input</td><td><code></code></td><td>Active-low reset, sampled synchronously; loads RESET_VALUE.</td></tr>
+<tr><td><code>clear_i</code></td><td>input</td><td><code></code></td><td>Loads RESET_VALUE when committed.</td></tr>
 <tr><td><code>set_i</code></td><td>input</td><td><code></code></td><td>Loads set_cnt_i when committed.</td></tr>
 <tr><td><code>set_cnt_i</code></td><td>input</td><td><code>ctr_t</code></td><td>Value loaded when set_i is high.</td></tr>
 <tr><td><code>incr_en_i</code></td><td>input</td><td><code></code></td><td>Counts up by step_i.</td></tr>

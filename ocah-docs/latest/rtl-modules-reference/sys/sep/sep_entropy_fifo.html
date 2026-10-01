@@ -679,14 +679,14 @@
 </aside>
 <article class="doc">
 <h1 class="page">sep_entropy_fifo</h1>
-<p>Pack native EDN entropy into a fabric FIFO drained by a read-only AXI aperture.</p><p>Pull conditioned, FIPS-marked 32-bit words from a native OpenTitan EDN endpoint routed out of sep_crypto, pack 32 to 64, and buffer them in a synchronous FIFO. Software (EL2 host, debug, or an external agent) drains the pool through a 64-bit read-only AXI-Lite aperture on sep_local_axi_xbar. Datapath: EDN handshake adapter (req_pending_q) into prim_packer_fifo (InW=32, OutW=64, ClearOnRead=0), then prim_fifo_sync (Width=64, Depth=FifoDepth). AXI-Lite decode of the 16-bit offset is 0x00 status, 0x08 irq-cause, 0x10 data pop; a pop of an empty pool and any other offset return SLVERR with zero data. One read is outstanding at a time. The pool FIFO has no hardened pointers, so pool_err_o is always 0. The AXI connectivity matrix grants a (master, slave) pair as a single bit and cannot mask direction, so AW/W/B arrive whenever any master has read access. Every write terminates in place with BRESP=SLVERR and no state change; that SLVERR is the read-only enforcement because entropy enters only via the native EDN bus. FifoDepth defaults to 32 packed 64-bit entries. LowWatermark defaults to 8. StallThresh defaults to 4096 cycles (~20 us at 200 MHz) with a request outstanding and no EDN acknowledge, and clears on the next ack; the stall detector arms on the first acknowledge after reset or entropy_clear_i.</p>
+<p>Pack native EDN entropy into a fabric FIFO drained by a read-only AXI aperture.</p><p>Pull conditioned, FIPS-marked 32-bit words from a native OpenTitan EDN endpoint routed out of sep_crypto, pack 32 to 64, and buffer them in a synchronous FIFO. Software (EL2 host, debug, or an external agent) drains the pool through a 64-bit read-only AXI-Lite aperture on sep_local_axi_xbar. Datapath: EDN handshake adapter (req_pending_q) into prim_packer_fifo (InW=32, OutW=64, ClearOnRead=0), then prim_fifo_sync (Width=64, Depth=FIFO_DEPTH). AXI-Lite decode of the 16-bit offset is 0x00 status, 0x08 irq-cause, 0x10 data pop; a pop of an empty pool and any other offset return SLVERR with zero data. One read is outstanding at a time. The pool FIFO has no hardened pointers, so pool_err_o is always 0. The AXI connectivity matrix grants a (master, slave) pair as a single bit and cannot mask direction, so AW/W/B arrive whenever any master has read access. Every write terminates in place with BRESP=SLVERR and no state change; that SLVERR is the read-only enforcement because entropy enters only via the native EDN bus. FIFO_DEPTH defaults to 32 packed 64-bit entries. LOW_WATERMARK defaults to 8. STALL_THRESH defaults to 4096 cycles (~20 us at 200 MHz) with a request outstanding and no EDN acknowledge, and clears on the next ack; the stall detector arms on the first acknowledge after reset or entropy_clear_i.</p>
 <div class="ocah-reg-html">
 <h2>Parameters</h2>
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
-<tr><td><code>FifoDepth</code></td><td><code>int unsigned</code></td><td><code>32</code></td><td>Pool depth in packed 64-bit entries (default 32); at most 63 to fit the status occupancy field.</td></tr>
-<tr><td><code>LowWatermark</code></td><td><code>int unsigned</code></td><td><code>8</code></td><td>Occupancy below which pool_low_o asserts (default 8).</td></tr>
-<tr><td><code>StallThresh</code></td><td><code>int unsigned</code></td><td><code>4096</code></td><td>Outstanding EDN cycles before fill_stall_o (default 4096, ~20 us at 200 MHz); clears on next ack.</td></tr>
+<tr><td><code>FIFO_DEPTH</code></td><td><code>int unsigned</code></td><td><code>32</code></td><td>Pool depth in packed 64-bit entries (default 32); at most 63 to fit the status occupancy field.</td></tr>
+<tr><td><code>LOW_WATERMARK</code></td><td><code>int unsigned</code></td><td><code>8</code></td><td>Occupancy below which pool_low_o asserts (default 8).</td></tr>
+<tr><td><code>STALL_THRESH</code></td><td><code>int unsigned</code></td><td><code>4096</code></td><td>Outstanding EDN cycles before fill_stall_o (default 4096, ~20 us at 200 MHz); clears on next ack.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">
@@ -699,10 +699,10 @@
 <tr><td><code>edn_rsp_i</code></td><td>input</td><td><code>edn_rsp_t</code></td><td>Native EDN fill response; each acknowledge delivers one 32-bit word.</td></tr>
 <tr><td><code>entropy_fifo_axi_req_i</code></td><td>input</td><td><code>axi_req_t</code></td><td>Full AXI4 drain request from sep_local_axi_xbar; every write completes with SLVERR and no state change.</td></tr>
 <tr><td><code>entropy_fifo_axi_resp_o</code></td><td>output</td><td><code>axi_resp_t</code></td><td>Full AXI4 drain response to sep_local_axi_xbar.</td></tr>
-<tr><td><code>pool_low_o</code></td><td>output</td><td><code>logic</code></td><td>Occupancy below LowWatermark, and high during entropy_clear_i; routed to the SEP PIC.</td></tr>
-<tr><td><code>fill_stall_o</code></td><td>output</td><td><code>logic</code></td><td>EDN not acknowledging for more than StallThresh cycles; fault to the SEP PIC.</td></tr>
+<tr><td><code>pool_low_o</code></td><td>output</td><td><code>logic</code></td><td>Occupancy below LOW_WATERMARK, and high during entropy_clear_i; routed to the SEP PIC.</td></tr>
+<tr><td><code>fill_stall_o</code></td><td>output</td><td><code>logic</code></td><td>EDN not acknowledging for more than STALL_THRESH cycles; fault to the SEP PIC.</td></tr>
 <tr><td><code>pool_err_o</code></td><td>output</td><td><code>logic</code></td><td>Pool pointer-integrity fault; always 0 because the pool FIFO has no hardened pointers.</td></tr>
-<tr><td><code>fifo_level_o</code></td><td>output</td><td><code>logic [$clog2(FifoDepth+1)-1:0]</code></td><td>Current occupancy in packed 64-bit entries; 0 during entropy_clear_i.</td></tr>
+<tr><td><code>fifo_level_o</code></td><td>output</td><td><code>logic [$clog2(FIFO_DEPTH+1)-1:0]</code></td><td>Current occupancy in packed 64-bit entries; 0 during entropy_clear_i.</td></tr>
 </table>
 </div>
 </article>

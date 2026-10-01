@@ -679,21 +679,21 @@
 </aside>
 <article class="doc">
 <h1 class="page">prim_diff_encode_multi</h1>
-<p>Encode Width bits onto differential {diff_n, diff_p} pairs.</p><p>Pack data_o as {diff_n[W-1:0], diff_p[W-1:0]} for each bit of data_i. OutputFlop registers the pairs on clk_i when set; rst_ni resets each registered pair to the encoding of 0, diff_p low and diff_n high. Without OutputFlop the encode is combinational.</p>
+<p>Encode WIDTH bits onto differential {diff_n, diff_p} pairs.</p><p>Pack data_o as {diff_n[W-1:0], diff_p[W-1:0]} for each bit of data_i. OUTPUT_FLOP registers the pairs on clk_i when set; rst_ni resets each registered pair to the encoding of 0, diff_p low and diff_n high. Without OUTPUT_FLOP the encode is combinational.</p>
 <div class="ocah-reg-html">
 <h2>Parameters</h2>
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
-<tr><td><code>Width</code></td><td><code>int unsigned</code></td><td><code>4</code></td><td>Number of bits to encode.</td></tr>
-<tr><td><code>OutputFlop</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Registers data_o on clk_i when set.</td></tr>
+<tr><td><code>WIDTH</code></td><td><code>int unsigned</code></td><td><code>4</code></td><td>Number of bits to encode.</td></tr>
+<tr><td><code>OUTPUT_FLOP</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Registers data_o on clk_i when set.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">
 <caption class="title"><a href="#trm-table-2">Table 2</a>. Ports</caption><tr><th>Name</th><th>Direction</th><th>Type</th><th>Description</th></tr>
-<tr><td><code>clk_i</code></td><td>input</td><td><code>logic</code></td><td>Encode clock when OutputFlop is set.</td></tr>
-<tr><td><code>rst_ni</code></td><td>input</td><td><code>logic</code></td><td>Async reset, active-low; used only when OutputFlop is set.</td></tr>
-<tr><td><code>data_i</code></td><td>input</td><td><code>logic [Width-1:0]</code></td><td>Single-ended bits to encode.</td></tr>
-<tr><td><code>data_o</code></td><td>output</td><td><code>logic [2*Width-1:0]</code></td><td>Packed {diff_n[W-1:0], diff_p[W-1:0]}.</td></tr>
+<tr><td><code>clk_i</code></td><td>input</td><td><code>logic</code></td><td>Encode clock when OUTPUT_FLOP is set.</td></tr>
+<tr><td><code>rst_ni</code></td><td>input</td><td><code>logic</code></td><td>Async reset, active-low; used only when OUTPUT_FLOP is set.</td></tr>
+<tr><td><code>data_i</code></td><td>input</td><td><code>logic [WIDTH-1:0]</code></td><td>Single-ended bits to encode.</td></tr>
+<tr><td><code>data_o</code></td><td>output</td><td><code>logic [2*WIDTH-1:0]</code></td><td>Packed {diff_n[W-1:0], diff_p[W-1:0]}.</td></tr>
 </table>
 </div>
 </article>

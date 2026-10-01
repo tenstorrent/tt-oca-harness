@@ -679,30 +679,30 @@
 </aside>
 <article class="doc">
 <h1 class="page">axi_filter_wrap</h1>
-<p>Filter AXI traffic through programmable address, ID, and NS rules with an error-slave path.</p><p>Each filter_ctrl_i entry programs one write-path and one read-path traffic_filter. The lowest-index entry that hits decides whether AW or AR traffic is allowed. Denied traffic steers to an error slave that answers DECERR; filter_skip_i bypasses matching entirely. BlockByDefault denies traffic when no rule hits.</p>
+<p>Filter AXI traffic through programmable address, ID, and NS rules with an error-slave path.</p><p>Each filter_ctrl_i entry programs one write-path and one read-path traffic_filter. The lowest-index entry that hits decides whether AW or AR traffic is allowed. Denied traffic steers to an error slave that answers DECERR; filter_skip_i bypasses matching entirely. BLOCK_BY_DEFAULT denies traffic when no rule hits.</p>
 <div class="ocah-reg-html">
 <h2>Parameters</h2>
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
-<tr><td><code>NumFilters</code></td><td><code>int unsigned</code></td><td><code>16</code></td><td>Number of programmable filter entries.</td></tr>
-<tr><td><code>DebugOutput</code></td><td><code>int unsigned</code></td><td><code>0</code></td><td>Value 1 drives the hit indices onto the debug outputs; other values tie them to zero.</td></tr>
-<tr><td><code>BlockByDefault</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Deny traffic when no rule hits.</td></tr>
-<tr><td><code>EnSrcIdFilter</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Match on AXI user source ID.</td></tr>
-<tr><td><code>SrcIdUserBitStart</code></td><td><code>int unsigned</code></td><td><code>0</code></td><td>User-bit index of the source ID.</td></tr>
-<tr><td><code>SrcIdWidth</code></td><td><code>int unsigned</code></td><td><code>4</code></td><td>Source ID width in user bits.</td></tr>
-<tr><td><code>EnGroupIdFilter</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Match on AXI user group ID.</td></tr>
-<tr><td><code>GroupIdUserBitStart</code></td><td><code>int unsigned</code></td><td><code>4</code></td><td>User-bit index of the group ID.</td></tr>
-<tr><td><code>GroupIdWidth</code></td><td><code>int unsigned</code></td><td><code>4</code></td><td>Group ID width in user bits.</td></tr>
-<tr><td><code>EnNsFilter</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Match on the non-secure initiator flag, AxPROT[1].</td></tr>
-<tr><td><code>AxiAddrWidth</code></td><td><code>int unsigned</code></td><td><code>64</code></td><td>AXI address width.</td></tr>
-<tr><td><code>AxiIdWidth</code></td><td><code>int unsigned</code></td><td><code>5</code></td><td>ID width of the AXI ports, the demux and the error slave.</td></tr>
-<tr><td><code>AxiDataWidth</code></td><td><code>int unsigned</code></td><td><code>64</code></td><td>Data-bus width; sets the address granularity of single-beat rules.</td></tr>
-<tr><td><code>MaxTrans</code></td><td><code>int unsigned</code></td><td><code>4</code></td><td>Outstanding transactions in the demux.</td></tr>
-<tr><td><code>AxiLookBits</code></td><td><code>int unsigned</code></td><td><code>(AxiIdWidth &gt; 3) ? 3 : AxiIdWidth</code></td><td>ID bits used for outstanding tracking.</td></tr>
-<tr><td><code>ErrSlvMaxTrans</code></td><td><code>int unsigned</code></td><td><code>32</code></td><td>Error-slave outstanding capacity.</td></tr>
-<tr><td><code>FlopReqEn</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Adds spill registers on the demux AW, W and AR channels.</td></tr>
-<tr><td><code>FlopRespEn</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Adds spill registers on the demux B and R channels.</td></tr>
-<tr><td><code>AxiStrbWidth</code></td><td><code>int unsigned</code></td><td><code>AxiDataWidth / 8</code></td><td>Write-strobe width.</td></tr>
+<tr><td><code>NUM_FILTERS</code></td><td><code>int unsigned</code></td><td><code>16</code></td><td>Number of programmable filter entries.</td></tr>
+<tr><td><code>DEBUG_OUTPUT</code></td><td><code>int unsigned</code></td><td><code>0</code></td><td>Value 1 drives the hit indices onto the debug outputs; other values tie them to zero.</td></tr>
+<tr><td><code>BLOCK_BY_DEFAULT</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Deny traffic when no rule hits.</td></tr>
+<tr><td><code>EN_SRC_ID_FILTER</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Match on AXI user source ID.</td></tr>
+<tr><td><code>SRC_ID_USER_BIT_START</code></td><td><code>int unsigned</code></td><td><code>0</code></td><td>User-bit index of the source ID.</td></tr>
+<tr><td><code>SRC_ID_WIDTH</code></td><td><code>int unsigned</code></td><td><code>4</code></td><td>Source ID width in user bits.</td></tr>
+<tr><td><code>EN_GROUP_ID_FILTER</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Match on AXI user group ID.</td></tr>
+<tr><td><code>GROUP_ID_USER_BIT_START</code></td><td><code>int unsigned</code></td><td><code>4</code></td><td>User-bit index of the group ID.</td></tr>
+<tr><td><code>GROUP_ID_WIDTH</code></td><td><code>int unsigned</code></td><td><code>4</code></td><td>Group ID width in user bits.</td></tr>
+<tr><td><code>EN_NS_FILTER</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Match on the non-secure initiator flag, AxPROT[1].</td></tr>
+<tr><td><code>AXI_ADDR_WIDTH</code></td><td><code>int unsigned</code></td><td><code>64</code></td><td>AXI address width.</td></tr>
+<tr><td><code>AXI_ID_WIDTH</code></td><td><code>int unsigned</code></td><td><code>5</code></td><td>ID width of the AXI ports, the demux and the error slave.</td></tr>
+<tr><td><code>AXI_DATA_WIDTH</code></td><td><code>int unsigned</code></td><td><code>64</code></td><td>Data-bus width; sets the address granularity of single-beat rules.</td></tr>
+<tr><td><code>MAX_TRANS</code></td><td><code>int unsigned</code></td><td><code>4</code></td><td>Outstanding transactions in the demux.</td></tr>
+<tr><td><code>AXI_LOOK_BITS</code></td><td><code>int unsigned</code></td><td><code>(AXI_ID_WIDTH &gt; 3) ? 3 : AXI_ID_WIDTH</code></td><td>ID bits used for outstanding tracking.</td></tr>
+<tr><td><code>ERR_SLV_MAX_TRANS</code></td><td><code>int unsigned</code></td><td><code>32</code></td><td>Error-slave outstanding capacity.</td></tr>
+<tr><td><code>FLOP_REQ_EN</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Adds spill registers on the demux AW, W and AR channels.</td></tr>
+<tr><td><code>FLOP_RESP_EN</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Adds spill registers on the demux B and R channels.</td></tr>
+<tr><td><code>AxiStrbWidth</code></td><td><code>int unsigned</code></td><td><code>AXI_DATA_WIDTH / 8</code></td><td>Write-strobe width.</td></tr>
 <tr><td><code>DbusWidthLog2</code></td><td><code>bit [2:0]</code></td><td><code>AxiStrbWidth &gt; 1 ? $clog2(AxiStrbWidth) : 0</code></td><td>log2 of the data-bus byte width.</td></tr>
 </table>
 <h2>Ports</h2>
@@ -718,8 +718,8 @@
 <tr><td><code>axi_in_resp_o</code></td><td>output</td><td><code>filter_axi_resp_t</code></td><td>Unfiltered AXI response.</td></tr>
 <tr><td><code>axi_filtered_out_req_o</code></td><td>output</td><td><code>filter_axi_req_t</code></td><td>Allowed AXI request.</td></tr>
 <tr><td><code>axi_filtered_out_resp_i</code></td><td>input</td><td><code>filter_axi_resp_t</code></td><td>Allowed AXI response.</td></tr>
-<tr><td><code>write_filter_hit_debug_o</code></td><td>output</td><td><code>logic [$clog2(NumFilters)-1:0]</code></td><td>Lowest hitting entry index on the write path; zero when DebugOutput is not 1.</td></tr>
-<tr><td><code>read_filter_hit_debug_o</code></td><td>output</td><td><code>logic [$clog2(NumFilters)-1:0]</code></td><td>Lowest hitting entry index on the read path; zero when DebugOutput is not 1.</td></tr>
+<tr><td><code>write_filter_hit_debug_o</code></td><td>output</td><td><code>logic [$clog2(NUM_FILTERS)-1:0]</code></td><td>Lowest hitting entry index on the write path; zero when DEBUG_OUTPUT is not 1.</td></tr>
+<tr><td><code>read_filter_hit_debug_o</code></td><td>output</td><td><code>logic [$clog2(NUM_FILTERS)-1:0]</code></td><td>Lowest hitting entry index on the read path; zero when DEBUG_OUTPUT is not 1.</td></tr>
 </table>
 </div>
 </article>

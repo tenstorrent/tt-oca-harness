@@ -679,18 +679,18 @@
 </aside>
 <article class="doc">
 <h1 class="page">tlul_adapter_reg</h1>
-<p>Adapt TL-UL device traffic onto a register read/write interface.</p><p>Act as a TL-UL device. Accept Get, PutPartialData, and PutFullData on the A channel and pass each read or write to the register interface in the same cycle. Return the register response on the D channel in the next cycle, whatever AccessLatency is. One request is outstanding at a time: A_READY stays low until the response is accepted.</p><p>Forward a request only when every check passes:</p><ul><li>A_OPCODE is Get, PutPartialData, or PutFullData.</li><li>A_SIZE is 0, 1, or 2 (a 1-, 2-, or 4-byte operation).</li><li>A_ADDRESS is naturally aligned for the A_SIZE byte width, and word aligned for writes.</li><li>A_MASK is true only for active byte lanes. The first active lane is the address modulo the TL-UL data-bus width.</li><li>A_USER.INSTR_TYPE is a valid MuBi4 encoding.</li><li>A_OPCODE is Get when A_USER.INSTR_TYPE is MuBi4True.</li><li>A_USER.INSTR_TYPE is not MuBi4True, or en_ifetch_i is MuBi4True.</li><li>The command and A-channel data integrity checks pass, when CmdIntgCheck is set.</li></ul><p>A request that fails a check reaches no register and gets D_ERROR on the response. D_DATA is all ones for writes and errored requests.</p><p>Besides the generated reg_top modules, this adapter serves modules with special needs, such as the vendored prim_reg_cdc and spi_host_window, which is why its parameter set is broader than reg_top needs.</p>
+<p>Adapt TL-UL device traffic onto a register read/write interface.</p><p>Act as a TL-UL device. Accept Get, PutPartialData, and PutFullData on the A channel and pass each read or write to the register interface in the same cycle. Return the register response on the D channel in the next cycle, whatever ACCESS_LATENCY is. One request is outstanding at a time: A_READY stays low until the response is accepted.</p><p>Forward a request only when every check passes:</p><ul><li>A_OPCODE is Get, PutPartialData, or PutFullData.</li><li>A_SIZE is 0, 1, or 2 (a 1-, 2-, or 4-byte operation).</li><li>A_ADDRESS is naturally aligned for the A_SIZE byte width, and word aligned for writes.</li><li>A_MASK is true only for active byte lanes. The first active lane is the address modulo the TL-UL data-bus width.</li><li>A_USER.INSTR_TYPE is a valid MuBi4 encoding.</li><li>A_OPCODE is Get when A_USER.INSTR_TYPE is MuBi4True.</li><li>A_USER.INSTR_TYPE is not MuBi4True, or en_ifetch_i is MuBi4True.</li><li>The command and A-channel data integrity checks pass, when CMD_INTG_CHECK is set.</li></ul><p>A request that fails a check reaches no register and gets D_ERROR on the response. D_DATA is all ones for writes and errored requests.</p><p>Besides the generated reg_top modules, this adapter serves modules with special needs, such as the vendored prim_reg_cdc and spi_host_window, which is why its parameter set is broader than reg_top needs.</p>
 <div class="ocah-reg-html">
 <h2>Parameters</h2>
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
-<tr><td><code>CmdIntgCheck</code></td><td><code>bit</code></td><td><code>0</code></td><td>Check A-channel command integrity with tlul_cmd_intg_chk. On a mismatch, re_o and we_o stay low, D_ERROR is set, and intg_error_o rises the next cycle.</td></tr>
-<tr><td><code>EnableRspIntgGen</code></td><td><code>bit</code></td><td><code>0</code></td><td>Generate D_USER.RSP_INTG; zero when clear.</td></tr>
-<tr><td><code>EnableDataIntgGen</code></td><td><code>bit</code></td><td><code>0</code></td><td>Generate D_USER.DATA_INTG; zero when clear.</td></tr>
-<tr><td><code>RegAw</code></td><td><code>int</code></td><td><code>8</code></td><td>Register address width. Higher A_ADDRESS bits are ignored.</td></tr>
-<tr><td><code>RegDw</code></td><td><code>int</code></td><td><code>32</code></td><td>Register data width. Must match the TL-UL data width (MatchedWidth_A).</td></tr>
-<tr><td><code>AccessLatency</code></td><td><code>int</code></td><td><code>0</code></td><td>0 or 1. 0: the register response is combinatorial and is flopped here. 1: the response arrives the cycle after re_o/we_o and is forwarded combinatorially.</td></tr>
-<tr><td><code>RegBw</code></td><td><code>int</code></td><td><code>RegDw/8</code></td><td>Register byte-enable width from RegDw.</td></tr>
+<tr><td><code>CMD_INTG_CHECK</code></td><td><code>bit</code></td><td><code>0</code></td><td>Check A-channel command integrity with tlul_cmd_intg_chk. On a mismatch, re_o and we_o stay low, D_ERROR is set, and intg_error_o rises the next cycle.</td></tr>
+<tr><td><code>ENABLE_RSP_INTG_GEN</code></td><td><code>bit</code></td><td><code>0</code></td><td>Generate D_USER.RSP_INTG; zero when clear.</td></tr>
+<tr><td><code>ENABLE_DATA_INTG_GEN</code></td><td><code>bit</code></td><td><code>0</code></td><td>Generate D_USER.DATA_INTG; zero when clear.</td></tr>
+<tr><td><code>REG_AW</code></td><td><code>int</code></td><td><code>8</code></td><td>Register address width. Higher A_ADDRESS bits are ignored.</td></tr>
+<tr><td><code>REG_DW</code></td><td><code>int</code></td><td><code>32</code></td><td>Register data width. Must match the TL-UL data width (MatchedWidth_A).</td></tr>
+<tr><td><code>ACCESS_LATENCY</code></td><td><code>int</code></td><td><code>0</code></td><td>0 or 1. 0: the register response is combinatorial and is flopped here. 1: the response arrives the cycle after re_o/we_o and is forwarded combinatorially.</td></tr>
+<tr><td><code>RegBw</code></td><td><code>int</code></td><td><code>REG_DW/8</code></td><td>Register byte-enable width from REG_DW.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">
@@ -700,15 +700,15 @@
 <tr><td><code>tl_i</code></td><td>input</td><td><code>tl_h2d_t</code></td><td>TL-UL host-to-device request.</td></tr>
 <tr><td><code>tl_o</code></td><td>output</td><td><code>tl_d2h_t</code></td><td>TL-UL device-to-host response.</td></tr>
 <tr><td><code>en_ifetch_i</code></td><td>input</td><td><code>mubi4_t</code></td><td>MuBi4True allows Gets whose A_USER.INSTR_TYPE is MuBi4True (processor fetches).</td></tr>
-<tr><td><code>intg_error_o</code></td><td>output</td><td><code>logic</code></td><td>Integrity error, sticky until reset. Only rises when CmdIntgCheck is set.</td></tr>
+<tr><td><code>intg_error_o</code></td><td>output</td><td><code>logic</code></td><td>Integrity error, sticky until reset. Only rises when CMD_INTG_CHECK is set.</td></tr>
 <tr><td><code>re_o</code></td><td>output</td><td><code>logic</code></td><td>Register read enable.</td></tr>
 <tr><td><code>we_o</code></td><td>output</td><td><code>logic</code></td><td>Register write enable.</td></tr>
-<tr><td><code>addr_o</code></td><td>output</td><td><code>logic [RegAw-1:0]</code></td><td>A_ADDRESS[RegAw-1:0], bits 1:0 cleared; 0 if RegAw &lt;= 2.</td></tr>
-<tr><td><code>wdata_o</code></td><td>output</td><td><code>logic [RegDw-1:0]</code></td><td>Register write data.</td></tr>
+<tr><td><code>addr_o</code></td><td>output</td><td><code>logic [REG_AW-1:0]</code></td><td>A_ADDRESS[REG_AW-1:0], bits 1:0 cleared; 0 if REG_AW &lt;= 2.</td></tr>
+<tr><td><code>wdata_o</code></td><td>output</td><td><code>logic [REG_DW-1:0]</code></td><td>Register write data.</td></tr>
 <tr><td><code>be_o</code></td><td>output</td><td><code>logic [RegBw-1:0]</code></td><td>Register byte enables from the TL-UL mask.</td></tr>
 <tr><td><code>busy_i</code></td><td>input</td><td><code></code></td><td>Stall: A_READY drops and no new operation is accepted.</td></tr>
-<tr><td><code>rdata_i</code></td><td>input</td><td><code>[RegDw-1:0]</code></td><td>Register read data, AccessLatency cycles after re_o.</td></tr>
-<tr><td><code>error_i</code></td><td>input</td><td><code></code></td><td>Register read or write error, AccessLatency cycles after re_o/we_o. Sets D_ERROR and forces D_DATA to &#x27;1.</td></tr>
+<tr><td><code>rdata_i</code></td><td>input</td><td><code>[REG_DW-1:0]</code></td><td>Register read data, ACCESS_LATENCY cycles after re_o.</td></tr>
+<tr><td><code>error_i</code></td><td>input</td><td><code></code></td><td>Register read or write error, ACCESS_LATENCY cycles after re_o/we_o. Sets D_ERROR and forces D_DATA to &#x27;1.</td></tr>
 </table>
 </div>
 </article>

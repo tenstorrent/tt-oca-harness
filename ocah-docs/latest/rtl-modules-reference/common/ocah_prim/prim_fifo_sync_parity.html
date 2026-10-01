@@ -679,18 +679,18 @@
 </aside>
 <article class="doc">
 <h1 class="page">prim_fifo_sync_parity</h1>
-<p>Store Width-bit beats in a synchronous FIFO with optional pass-through and pointer hardening.</p><p>Pass forwards a write into an empty FIFO in the same cycle when set. OutputZeroIfEmpty forces rdata_o to zero when the FIFO is empty. Secure replaces pointer math with prim_count, stores an odd parity bit with each entry and checks it on read, and reports pointer or parity faults on err_o; NeverClears documents that clr_i stays low. Depth 0 is a combinational pass-through and requires Pass. Depth 1 uses a single register whose full flag Secure duplicates inverted. Deeper FIFOs hold wready_o and rvalid_o low for the first cycle after reset.</p><p>Evaluate prim_fifo_assert.svh whenever this file is included, even when the FIFO assertions are otherwise unused, so including the FIFO still pulls in that assert header.</p>
+<p>Store WIDTH-bit beats in a synchronous FIFO with optional pass-through and pointer hardening.</p><p>PASS forwards a write into an empty FIFO in the same cycle when set. OUTPUT_ZERO_IF_EMPTY forces rdata_o to zero when the FIFO is empty. SECURE replaces pointer math with prim_count, stores an odd parity bit with each entry and checks it on read, and reports pointer or parity faults on err_o; NEVER_CLEARS documents that clr_i stays low. DEPTH 0 is a combinational pass-through and requires PASS. DEPTH 1 uses a single register whose full flag SECURE duplicates inverted. Deeper FIFOs hold wready_o and rvalid_o low for the first cycle after reset.</p><p>Evaluate prim_fifo_assert.svh whenever this file is included, even when the FIFO assertions are otherwise unused, so including the FIFO still pulls in that assert header.</p>
 <div class="ocah-reg-html">
 <h2>Parameters</h2>
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
-<tr><td><code>Width</code></td><td><code>int unsigned</code></td><td><code>16</code></td><td>Datapath width.</td></tr>
-<tr><td><code>Pass</code></td><td><code>bit</code></td><td><code>1&#x27;b1</code></td><td>1 allows a write to pass through an empty FIFO in the same cycle.</td></tr>
-<tr><td><code>Depth</code></td><td><code>int unsigned</code></td><td><code>4</code></td><td>Storage depth.</td></tr>
-<tr><td><code>OutputZeroIfEmpty</code></td><td><code>bit</code></td><td><code>1&#x27;b1</code></td><td>1 forces rdata_o to 0 when the FIFO is empty.</td></tr>
-<tr><td><code>NeverClears</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Declares that clr_i stays low; checked by assertion, and with Secure it drops the clear from the pointers.</td></tr>
-<tr><td><code>Secure</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Uses prim_count for pointers and adds per-entry parity.</td></tr>
-<tr><td><code>DepthW</code></td><td><code>int</code></td><td><code>prim_util_pkg::vbits(Depth+1)</code></td><td>Width of depth_o; derived.</td></tr>
+<tr><td><code>WIDTH</code></td><td><code>int unsigned</code></td><td><code>16</code></td><td>Datapath width.</td></tr>
+<tr><td><code>PASS</code></td><td><code>bit</code></td><td><code>1&#x27;b1</code></td><td>1 allows a write to pass through an empty FIFO in the same cycle.</td></tr>
+<tr><td><code>DEPTH</code></td><td><code>int unsigned</code></td><td><code>4</code></td><td>Storage depth.</td></tr>
+<tr><td><code>OUTPUT_ZERO_IF_EMPTY</code></td><td><code>bit</code></td><td><code>1&#x27;b1</code></td><td>1 forces rdata_o to 0 when the FIFO is empty.</td></tr>
+<tr><td><code>NEVER_CLEARS</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Declares that clr_i stays low; checked by assertion, and with SECURE it drops the clear from the pointers.</td></tr>
+<tr><td><code>SECURE</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Uses prim_count for pointers and adds per-entry parity.</td></tr>
+<tr><td><code>DepthW</code></td><td><code>int</code></td><td><code>prim_util_pkg::vbits(DEPTH+1)</code></td><td>Width of depth_o; derived.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">
@@ -700,13 +700,13 @@
 <tr><td><code>clr_i</code></td><td>input</td><td><code></code></td><td>Synchronous clear / flush.</td></tr>
 <tr><td><code>wvalid_i</code></td><td>input</td><td><code></code></td><td>Write valid.</td></tr>
 <tr><td><code>wready_o</code></td><td>output</td><td><code></code></td><td>Write ready.</td></tr>
-<tr><td><code>wdata_i</code></td><td>input</td><td><code>[Width-1:0]</code></td><td>Write data.</td></tr>
+<tr><td><code>wdata_i</code></td><td>input</td><td><code>[WIDTH-1:0]</code></td><td>Write data.</td></tr>
 <tr><td><code>rvalid_o</code></td><td>output</td><td><code></code></td><td>Read valid.</td></tr>
 <tr><td><code>rready_i</code></td><td>input</td><td><code></code></td><td>Read ready.</td></tr>
-<tr><td><code>rdata_o</code></td><td>output</td><td><code>[Width-1:0]</code></td><td>Read data.</td></tr>
+<tr><td><code>rdata_o</code></td><td>output</td><td><code>[WIDTH-1:0]</code></td><td>Read data.</td></tr>
 <tr><td><code>full_o</code></td><td>output</td><td><code></code></td><td>FIFO full.</td></tr>
 <tr><td><code>depth_o</code></td><td>output</td><td><code>[DepthW-1:0]</code></td><td>Current occupancy.</td></tr>
-<tr><td><code>err_o</code></td><td>output</td><td><code></code></td><td>Pointer or parity integrity fault; always 0 unless Secure.</td></tr>
+<tr><td><code>err_o</code></td><td>output</td><td><code></code></td><td>Pointer or parity integrity fault; always 0 unless SECURE.</td></tr>
 </table>
 </div>
 </article>

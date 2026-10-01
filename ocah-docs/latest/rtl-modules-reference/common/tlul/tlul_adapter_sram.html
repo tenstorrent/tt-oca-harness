@@ -679,28 +679,28 @@
 </aside>
 <article class="doc">
 <h1 class="page">tlul_adapter_sram</h1>
-<p>Adapt TL-UL device traffic onto an SRAM-like memory port.</p><p>Translate Get/Put into req/we/addr/wdata/wmask transactions and track Outstanding responses. Responses return in request order: a write responds once accepted, a read once rvalid_i returns its data, and a rejected request without an SRAM access.</p><p>BaseAddr is intentionally omitted so multiple memory maps may be used in an SoC. Aliasing can happen if the TL-UL crossbar target size is bigger than the SRAM.</p><p>At most one of EnableDataIntgGen and EnableDataIntgPt may be enabled; there is no legal case where both are true. Both may be disabled when a non-security-critical memory has no stored integrity and an upstream entity already returns integrity. SramDw must be a multiple of the TL width.</p><p>The remaining parameters select optional features:</p><ul><li>ByteAccess enables sub-word writes and results in read-modify-write for integrity regeneration when EnableDataIntgPt is set and ErrOnWrite is clear.</li><li>ErrOnWrite and ErrOnRead automatically error disallowed accesses.</li><li>CmdIntgCheck enables command and A-channel data integrity checking.</li><li>EnableRspIntgGen and EnableDataIntgGen generate response and data integrity.</li><li>EnableDataIntgPt passes write data integrity to the SRAM and returns the stored integrity with read data.</li><li>SecFifoPtr uses redundant FIFO pointers.</li><li>EnableReadback reads back and checks written or read data.</li><li>DataXorAddr removes an address XOR that the memory applied to read data, so a faulted read address shows up as an integrity error; it takes effect only with EnableDataIntgPt.</li><li>SramBusBankAW is the SRAM bank address width, used only when DataXorAddr is set.</li></ul>
+<p>Adapt TL-UL device traffic onto an SRAM-like memory port.</p><p>Translate Get/Put into req/we/addr/wdata/wmask transactions and track outstanding responses. Responses return in request order: a write responds once accepted, a read once rvalid_i returns its data, and a rejected request without an SRAM access.</p><p>BaseAddr is intentionally omitted so multiple memory maps may be used in an SoC. Aliasing can happen if the TL-UL crossbar target size is bigger than the SRAM.</p><p>At most one of ENABLE_DATA_INTG_GEN and ENABLE_DATA_INTG_PT may be enabled; there is no legal case where both are true. Both may be disabled when a non-security-critical memory has no stored integrity and an upstream entity already returns integrity. SRAM_DW must be a multiple of the TL width.</p><p>The remaining parameters select optional features:</p><ul><li>BYTE_ACCESS enables sub-word writes and results in read-modify-write for integrity regeneration when ENABLE_DATA_INTG_PT is set and ERR_ON_WRITE is clear.</li><li>ERR_ON_WRITE and ERR_ON_READ automatically error disallowed accesses.</li><li>CMD_INTG_CHECK enables command and A-channel data integrity checking.</li><li>ENABLE_RSP_INTG_GEN and ENABLE_DATA_INTG_GEN generate response and data integrity.</li><li>ENABLE_DATA_INTG_PT passes write data integrity to the SRAM and returns the stored integrity with read data.</li><li>SEC_FIFO_PTR uses redundant FIFO pointers.</li><li>ENABLE_READBACK reads back and checks written or read data.</li><li>DATA_XOR_ADDR removes an address XOR that the memory applied to read data, so a faulted read address shows up as an integrity error; it takes effect only with ENABLE_DATA_INTG_PT.</li><li>SRAM_BUS_BANK_AW is the SRAM bank address width, used only when DATA_XOR_ADDR is set.</li></ul>
 <div class="ocah-reg-html">
 <h2>Parameters</h2>
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
-<tr><td><code>SramAw</code></td><td><code>int</code></td><td><code>12</code></td><td>SRAM word-address width.</td></tr>
-<tr><td><code>SramDw</code></td><td><code>int</code></td><td><code>32</code></td><td>SRAM data width; must be a multiple of TL_DW.</td></tr>
-<tr><td><code>Outstanding</code></td><td><code>int</code></td><td><code>1</code></td><td>Maximum outstanding SRAM transactions.</td></tr>
-<tr><td><code>SramBusBankAW</code></td><td><code>int</code></td><td><code>12</code></td><td>SRAM bank address width; used when DataXorAddr=1.</td></tr>
-<tr><td><code>ByteAccess</code></td><td><code>bit</code></td><td><code>1</code></td><td>Allow sub-word writes; may RMW if EnableDataIntgPt.</td></tr>
-<tr><td><code>ErrOnWrite</code></td><td><code>bit</code></td><td><code>0</code></td><td>Reject writes with a bus error.</td></tr>
-<tr><td><code>ErrOnRead</code></td><td><code>bit</code></td><td><code>0</code></td><td>Reject reads with a bus error.</td></tr>
-<tr><td><code>CmdIntgCheck</code></td><td><code>bit</code></td><td><code>0</code></td><td>Check A-channel command and data integrity.</td></tr>
-<tr><td><code>EnableRspIntgGen</code></td><td><code>bit</code></td><td><code>0</code></td><td>Generate D-channel response integrity.</td></tr>
-<tr><td><code>EnableDataIntgGen</code></td><td><code>bit</code></td><td><code>0</code></td><td>Generate D-channel data integrity.</td></tr>
-<tr><td><code>EnableDataIntgPt</code></td><td><code>bit</code></td><td><code>0</code></td><td>Pass data integrity through to the SRAM port.</td></tr>
-<tr><td><code>SecFifoPtr</code></td><td><code>bit</code></td><td><code>0</code></td><td>Use redundant pointers in all three FIFOs.</td></tr>
-<tr><td><code>EnableReadback</code></td><td><code>bit</code></td><td><code>0</code></td><td>Read back and check written or read data.</td></tr>
-<tr><td><code>DataXorAddr</code></td><td><code>bit</code></td><td><code>0</code></td><td>XOR read data with the SRAM bank address.</td></tr>
-<tr><td><code>WidthMult</code></td><td><code>int</code></td><td><code>SramDw / top_pkg::TL_DW</code></td><td>TL beats packed per SRAM word.</td></tr>
-<tr><td><code>IntgWidth</code></td><td><code>int</code></td><td><code>tlul_pkg::DataIntgWidth * WidthMult</code></td><td>Integrity bits per SRAM word with PT.</td></tr>
-<tr><td><code>DataOutW</code></td><td><code>int</code></td><td><code>EnableDataIntgPt ? SramDw + IntgWidth : SramDw</code></td><td>Width of wdata_o, wmask_o and rdata_i.</td></tr>
+<tr><td><code>SRAM_AW</code></td><td><code>int</code></td><td><code>12</code></td><td>SRAM word-address width.</td></tr>
+<tr><td><code>SRAM_DW</code></td><td><code>int</code></td><td><code>32</code></td><td>SRAM data width; must be a multiple of TL_DW.</td></tr>
+<tr><td><code>OUTSTANDING</code></td><td><code>int</code></td><td><code>1</code></td><td>Maximum outstanding SRAM transactions.</td></tr>
+<tr><td><code>SRAM_BUS_BANK_AW</code></td><td><code>int</code></td><td><code>12</code></td><td>SRAM bank address width; used when DATA_XOR_ADDR=1.</td></tr>
+<tr><td><code>BYTE_ACCESS</code></td><td><code>bit</code></td><td><code>1</code></td><td>Allow sub-word writes; may RMW if ENABLE_DATA_INTG_PT.</td></tr>
+<tr><td><code>ERR_ON_WRITE</code></td><td><code>bit</code></td><td><code>0</code></td><td>Reject writes with a bus error.</td></tr>
+<tr><td><code>ERR_ON_READ</code></td><td><code>bit</code></td><td><code>0</code></td><td>Reject reads with a bus error.</td></tr>
+<tr><td><code>CMD_INTG_CHECK</code></td><td><code>bit</code></td><td><code>0</code></td><td>Check A-channel command and data integrity.</td></tr>
+<tr><td><code>ENABLE_RSP_INTG_GEN</code></td><td><code>bit</code></td><td><code>0</code></td><td>Generate D-channel response integrity.</td></tr>
+<tr><td><code>ENABLE_DATA_INTG_GEN</code></td><td><code>bit</code></td><td><code>0</code></td><td>Generate D-channel data integrity.</td></tr>
+<tr><td><code>ENABLE_DATA_INTG_PT</code></td><td><code>bit</code></td><td><code>0</code></td><td>Pass data integrity through to the SRAM port.</td></tr>
+<tr><td><code>SEC_FIFO_PTR</code></td><td><code>bit</code></td><td><code>0</code></td><td>Use redundant pointers in all three FIFOs.</td></tr>
+<tr><td><code>ENABLE_READBACK</code></td><td><code>bit</code></td><td><code>0</code></td><td>Read back and check written or read data.</td></tr>
+<tr><td><code>DATA_XOR_ADDR</code></td><td><code>bit</code></td><td><code>0</code></td><td>XOR read data with the SRAM bank address.</td></tr>
+<tr><td><code>WidthMult</code></td><td><code>int</code></td><td><code>SRAM_DW / top_pkg::TL_DW</code></td><td>TL beats packed per SRAM word.</td></tr>
+<tr><td><code>IntgWidth</code></td><td><code>int</code></td><td><code>tlul_pkg::DATA_INTG_WIDTH * WidthMult</code></td><td>Integrity bits per SRAM word with PT.</td></tr>
+<tr><td><code>DataOutW</code></td><td><code>int</code></td><td><code>ENABLE_DATA_INTG_PT ? SRAM_DW + IntgWidth : SRAM_DW</code></td><td>Width of wdata_o, wmask_o and rdata_i.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">
@@ -714,16 +714,16 @@
 <tr><td><code>req_type_o</code></td><td>output</td><td><code>mubi4_t</code></td><td>A_USER.INSTR_TYPE of the request.</td></tr>
 <tr><td><code>gnt_i</code></td><td>input</td><td><code></code></td><td>SRAM grant.</td></tr>
 <tr><td><code>we_o</code></td><td>output</td><td><code>logic</code></td><td>SRAM write enable.</td></tr>
-<tr><td><code>addr_o</code></td><td>output</td><td><code>logic [SramAw-1:0]</code></td><td>SRAM word address.</td></tr>
+<tr><td><code>addr_o</code></td><td>output</td><td><code>logic [SRAM_AW-1:0]</code></td><td>SRAM word address.</td></tr>
 <tr><td><code>wdata_o</code></td><td>output</td><td><code>logic [DataOutW-1:0]</code></td><td>SRAM write data (and optional integrity).</td></tr>
 <tr><td><code>wmask_o</code></td><td>output</td><td><code>logic [DataOutW-1:0]</code></td><td>SRAM write mask (and optional integrity).</td></tr>
 <tr><td><code>intg_error_o</code></td><td>output</td><td><code>logic</code></td><td>Integrity or FIFO pointer error; sticky.</td></tr>
-<tr><td><code>user_rsvd_o</code></td><td>output</td><td><code>logic [RsvdWidth-1:0]</code></td><td>Reserved user bits toward the SRAM side.</td></tr>
+<tr><td><code>user_rsvd_o</code></td><td>output</td><td><code>logic [RSVD_WIDTH-1:0]</code></td><td>Reserved user bits toward the SRAM side.</td></tr>
 <tr><td><code>rdata_i</code></td><td>input</td><td><code>[DataOutW-1:0]</code></td><td>SRAM read data (and optional integrity).</td></tr>
 <tr><td><code>rvalid_i</code></td><td>input</td><td><code></code></td><td>SRAM read-data valid.</td></tr>
 <tr><td><code>rerror_i</code></td><td>input</td><td><code>[1:0]</code></td><td>[1] uncorrectable, sets D_ERROR; [0] unused.</td></tr>
 <tr><td><code>compound_txn_in_progress_o</code></td><td>output</td><td><code>logic</code></td><td>RMW write or readback request driven.</td></tr>
-<tr><td><code>readback_en_i</code></td><td>input</td><td><code>mubi4_t</code></td><td>MuBi4 readback enable; needs EnableReadback.</td></tr>
+<tr><td><code>readback_en_i</code></td><td>input</td><td><code>mubi4_t</code></td><td>MuBi4 readback enable; needs ENABLE_READBACK.</td></tr>
 <tr><td><code>readback_error_o</code></td><td>output</td><td><code>logic</code></td><td>Readback failure; sticky until reset.</td></tr>
 <tr><td><code>wr_collision_i</code></td><td>input</td><td><code>logic</code></td><td>SRAM write collision; assertions only.</td></tr>
 <tr><td><code>write_pending_i</code></td><td>input</td><td><code>logic</code></td><td>SRAM write pending; assertions only.</td></tr>

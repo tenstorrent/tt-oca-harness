@@ -679,14 +679,14 @@
 </aside>
 <article class="doc">
 <h1 class="page">tlul_sram_byte</h1>
-<p>Handle TL-UL byte writes with integrity-aware read-modify-write.</p><p>When a write with a partial mask arrives and EnableIntg is set, read the full word first, merge the written bytes, regenerate data integrity, and write the full word back. When RMW is not required, mux the incoming transaction straight through. compound_txn_in_progress_o is high while this module drives its own RMW write or readback request downstream.</p><p>If error_i is set on an incoming transaction, do not attempt byte-write handling. Feed the transaction through and allow the system to error back, and feed the error indication through on error_o.</p><p>EnableReadback enables readback checks on all transactions while readback_en_i is MuBi4True, and requires EnableIntg == 1. alert_o reports readback mismatches and invalid FSM states. When EnableIntg is clear, every signal passes straight through and alert_o and compound_txn_in_progress_o are 0.</p>
+<p>Handle TL-UL byte writes with integrity-aware read-modify-write.</p><p>When a write with a partial mask arrives and ENABLE_INTG is set, read the full word first, merge the written bytes, regenerate data integrity, and write the full word back. When RMW is not required, mux the incoming transaction straight through. compound_txn_in_progress_o is high while this module drives its own RMW write or readback request downstream.</p><p>If error_i is set on an incoming transaction, do not attempt byte-write handling. Feed the transaction through and allow the system to error back, and feed the error indication through on error_o.</p><p>ENABLE_READBACK enables readback checks on all transactions while readback_en_i is MuBi4True, and requires ENABLE_INTG == 1. alert_o reports readback mismatches and invalid FSM states. When ENABLE_INTG is clear, every signal passes straight through and alert_o and compound_txn_in_progress_o are 0.</p>
 <div class="ocah-reg-html">
 <h2>Parameters</h2>
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
-<tr><td><code>EnableIntg</code></td><td><code>bit</code></td><td><code>0</code></td><td>Handle partial-mask writes with integrity RMW.</td></tr>
-<tr><td><code>Outstanding</code></td><td><code>int</code></td><td><code>1</code></td><td>Maximum outstanding transactions tracked.</td></tr>
-<tr><td><code>EnableReadback</code></td><td><code>bit</code></td><td><code>0</code></td><td>Readback-check transactions; needs EnableIntg.</td></tr>
+<tr><td><code>ENABLE_INTG</code></td><td><code>bit</code></td><td><code>0</code></td><td>Handle partial-mask writes with integrity RMW.</td></tr>
+<tr><td><code>OUTSTANDING</code></td><td><code>int</code></td><td><code>1</code></td><td>Maximum outstanding transactions tracked.</td></tr>
+<tr><td><code>ENABLE_READBACK</code></td><td><code>bit</code></td><td><code>0</code></td><td>Readback-check transactions; needs ENABLE_INTG.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">

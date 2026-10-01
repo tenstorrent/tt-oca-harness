@@ -686,16 +686,16 @@
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
 <tr><td><code>REG_ADDR_WIDTH</code></td><td><code>int unsigned</code></td><td><code>32</code></td><td>Width of SECURE_DMA_REG_MAP_BASE_ADDR only; unused otherwise.</td></tr>
 <tr><td><code>SECURE_DMA_REG_MAP_BASE_ADDR</code></td><td><code>bit [REG_ADDR_WIDTH-1:0]</code></td><td><code>32&#x27;h20000000</code></td><td>Unused; the register path rebases with SEP_TOP_SECURE_DMA_BASE_ADDR instead.</td></tr>
-<tr><td><code>AlertAsyncOn</code></td><td><code>logic [secure_dma_reg_pkg::NumAlerts-1:0]</code></td><td><code>{secure_dma_reg_pkg::NumAlerts{1&#x27;b1}}</code></td><td>Per-alert async-on configuration of the secure_dma senders; the local receivers are synchronous.</td></tr>
-<tr><td><code>AlertSkewCycles</code></td><td><code>int unsigned</code></td><td><code>1</code></td><td>Alert skew cycle count.</td></tr>
-<tr><td><code>EnableDataIntgGen</code></td><td><code>bit</code></td><td><code>1&#x27;b1</code></td><td>Generate TL-UL integrity in secure_dma, command and data integrity on the register bridge, and response and data integrity on the host bridge.</td></tr>
-<tr><td><code>EnableRspDataIntgCheck</code></td><td><code>bit</code></td><td><code>1&#x27;b1</code></td><td>Check response data integrity in secure_dma and command integrity of its host requests in the host bridge.</td></tr>
-<tr><td><code>TlUserRsvd</code></td><td><code>logic [tlul_pkg::RsvdWidth-1:0]</code></td><td><code>&#x27;0</code></td><td>Reserved TL user bits.</td></tr>
-<tr><td><code>SysRaclRole</code></td><td><code>top_racl_pkg::racl_role_t</code></td><td><code>&#x27;0</code></td><td>System RACL role.</td></tr>
-<tr><td><code>OtAgentId</code></td><td><code>int unsigned</code></td><td><code>0</code></td><td>OpenTitan agent ID.</td></tr>
-<tr><td><code>EnableRacl</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Enable RACL checks.</td></tr>
-<tr><td><code>RaclErrorRsp</code></td><td><code>bit</code></td><td><code>EnableRacl</code></td><td>Return error responses on RACL fail.</td></tr>
-<tr><td><code>RaclPolicySelVec</code></td><td><code>top_racl_pkg::racl_policy_sel_t</code></td><td><code>&#x27;{secure_dma_reg_pkg::NumRegs{0}}</code></td><td>Per-register RACL policy select.</td></tr>
+<tr><td><code>ALERT_ASYNC_ON</code></td><td><code>logic [secure_dma_reg_pkg::NumAlerts-1:0]</code></td><td><code>{secure_dma_reg_pkg::NumAlerts{1&#x27;b1}}</code></td><td>Per-alert async-on configuration of the secure_dma senders; the local receivers are synchronous.</td></tr>
+<tr><td><code>ALERT_SKEW_CYCLES</code></td><td><code>int unsigned</code></td><td><code>1</code></td><td>Alert skew cycle count.</td></tr>
+<tr><td><code>ENABLE_DATA_INTG_GEN</code></td><td><code>bit</code></td><td><code>1&#x27;b1</code></td><td>Generate TL-UL integrity in secure_dma, command and data integrity on the register bridge, and response and data integrity on the host bridge.</td></tr>
+<tr><td><code>ENABLE_RSP_DATA_INTG_CHECK</code></td><td><code>bit</code></td><td><code>1&#x27;b1</code></td><td>Check response data integrity in secure_dma and command integrity of its host requests in the host bridge.</td></tr>
+<tr><td><code>TL_USER_RSVD</code></td><td><code>logic [tlul_pkg::RSVD_WIDTH-1:0]</code></td><td><code>&#x27;0</code></td><td>Reserved TL user bits.</td></tr>
+<tr><td><code>SYS_RACL_ROLE</code></td><td><code>top_racl_pkg::racl_role_t</code></td><td><code>&#x27;0</code></td><td>System RACL role.</td></tr>
+<tr><td><code>OT_AGENT_ID</code></td><td><code>int unsigned</code></td><td><code>0</code></td><td>OpenTitan agent ID.</td></tr>
+<tr><td><code>ENABLE_RACL</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Enable RACL checks.</td></tr>
+<tr><td><code>RACL_ERROR_RSP</code></td><td><code>bit</code></td><td><code>ENABLE_RACL</code></td><td>Return error responses on RACL fail.</td></tr>
+<tr><td><code>RACL_POLICY_SEL_VEC</code></td><td><code>top_racl_pkg::racl_policy_sel_t</code></td><td><code>&#x27;{secure_dma_reg_pkg::NumRegs{0}}</code></td><td>Per-register RACL policy select.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">

@@ -679,15 +679,15 @@
 </aside>
 <article class="doc">
 <h1 class="page">tlul_rsp_intg_gen</h1>
-<p>Generate TL-UL D-channel response integrity bits.</p><p>Fill rsp_intg and data_intg in tl_o.d_user:</p><ul><li>When EnableRspIntgGen is true, generate rsp_intg from the opcode, d_size, and d_error fields via tlul_pkg::extract_d2h_rsp_intg.</li><li>When EnableDataIntgGen is true, generate data_intg from d_data.</li></ul><p>When EnableRspIntgGen is false, rsp_intg is zero if RspIntgInIsZero is set and taken from tl_i otherwise. When EnableDataIntgGen is false, data_intg is zero if UserInIsZero is set and taken from tl_i otherwise.</p>
+<p>Generate TL-UL D-channel response integrity bits.</p><p>Fill rsp_intg and data_intg in tl_o.d_user:</p><ul><li>When ENABLE_RSP_INTG_GEN is true, generate rsp_intg from the opcode, d_size, and d_error fields via tlul_pkg::extract_d2h_rsp_intg.</li><li>When ENABLE_DATA_INTG_GEN is true, generate data_intg from d_data.</li></ul><p>When ENABLE_RSP_INTG_GEN is false, rsp_intg is zero if RSP_INTG_IN_IS_ZERO is set and taken from tl_i otherwise. When ENABLE_DATA_INTG_GEN is false, data_intg is zero if USER_IN_IS_ZERO is set and taken from tl_i otherwise.</p>
 <div class="ocah-reg-html">
 <h2>Parameters</h2>
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
-<tr><td><code>EnableRspIntgGen</code></td><td><code>bit</code></td><td><code>1&#x27;b1</code></td><td>Generate rsp_intg from opcode/size/error.</td></tr>
-<tr><td><code>EnableDataIntgGen</code></td><td><code>bit</code></td><td><code>1&#x27;b1</code></td><td>Generate data_intg from d_data.</td></tr>
-<tr><td><code>UserInIsZero</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Zero data_intg when not generated; simulation asserts d_user is zero.</td></tr>
-<tr><td><code>RspIntgInIsZero</code></td><td><code>bit</code></td><td><code>UserInIsZero</code></td><td>Zero rsp_intg when not generated; simulation asserts it is zero.</td></tr>
+<tr><td><code>ENABLE_RSP_INTG_GEN</code></td><td><code>bit</code></td><td><code>1&#x27;b1</code></td><td>Generate rsp_intg from opcode/size/error.</td></tr>
+<tr><td><code>ENABLE_DATA_INTG_GEN</code></td><td><code>bit</code></td><td><code>1&#x27;b1</code></td><td>Generate data_intg from d_data.</td></tr>
+<tr><td><code>USER_IN_IS_ZERO</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Zero data_intg when not generated; simulation asserts d_user is zero.</td></tr>
+<tr><td><code>RSP_INTG_IN_IS_ZERO</code></td><td><code>bit</code></td><td><code>USER_IN_IS_ZERO</code></td><td>Zero rsp_intg when not generated; simulation asserts it is zero.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">

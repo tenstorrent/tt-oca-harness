@@ -842,7 +842,7 @@ permission bit, ANDed with the channel&#8217;s valid, is evaluated separately. T
 lower part is one channel of <code>axi_filter_wrap</code>. A priority encoder picks the
 lowest-numbered entry that hits, a 16:1 mux selects that entry&#8217;s permission
 bit, and the inverted bit requests a block. When no entry hits, the next mux
-takes <code>BlockByDefault</code> instead. The last mux forces the block bit to 0 when
+takes <code>BLOCK_BY_DEFAULT</code> instead. The last mux forces the block bit to 0 when
 <code>filter_skip_i</code> is set; <code>filter_skip_i</code> is tied low in both SMC instances.
 Group ID matching is not built into either instance. The block bit steers the
 transaction through a demux either to the filtered output or to an error
@@ -888,7 +888,7 @@ protection attribute policies.</p>
 <div class="paragraph">
 <p>The outbound filter uses explicit matching entries to allow or block
 SMC-initiated requests. Unmatched requests pass because this instance uses
-<code>BlockByDefault = 0</code>. An allow entry is therefore not an allowlist: denying
+<code>BLOCK_BY_DEFAULT = 0</code>. An allow entry is therefore not an allowlist: denying
 traffic requires a matching entry whose read or write permission is clear.</p>
 </div>
 <div class="paragraph">

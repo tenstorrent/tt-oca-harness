@@ -679,13 +679,13 @@
 </aside>
 <article class="doc">
 <h1 class="page">prim_axi_lite_to_apb_single</h1>
-<p>Bridge one AXI-Lite manager to a single APB subordinate.</p><p>Complete addresses outside [ADDR_START, ADDR_END) with a decode error on AXI-Lite. PipelineRequest and PipelineResponse insert skid registers on the request and response paths. Hold only one APB transfer in flight at a time.</p>
+<p>Bridge one AXI-Lite manager to a single APB subordinate.</p><p>Complete addresses outside [ADDR_START, ADDR_END) with a decode error on AXI-Lite. PIPELINE_REQUEST and PIPELINE_RESPONSE insert skid registers on the request and response paths. Hold only one APB transfer in flight at a time.</p>
 <div class="ocah-reg-html">
 <h2>Parameters</h2>
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
-<tr><td><code>PipelineRequest</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Skid-registers the AXI-Lite to APB request path.</td></tr>
-<tr><td><code>PipelineResponse</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Skid-registers the APB to AXI-Lite response path.</td></tr>
+<tr><td><code>PIPELINE_REQUEST</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Skid-registers the AXI-Lite to APB request path.</td></tr>
+<tr><td><code>PIPELINE_RESPONSE</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Skid-registers the APB to AXI-Lite response path.</td></tr>
 <tr><td><code>AXI_DATA_WIDTH</code></td><td><code>int unsigned</code></td><td><code>32</code></td><td>Shared data width.</td></tr>
 <tr><td><code>AXI_ADDR_WIDTH</code></td><td><code>int unsigned</code></td><td><code>32</code></td><td>Shared address width.</td></tr>
 <tr><td><code>ADDR_START</code></td><td><code>bit [AXI_ADDR_WIDTH-1:0]</code></td><td><code>32&#x27;h0</code></td><td>Inclusive APB decode base.</td></tr>

@@ -686,11 +686,11 @@
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
 <tr><td><code>NO_ADDR_REMAP</code></td><td><code>bit</code></td><td><code>1&#x27;b1</code></td><td>Removes the output fabric&#x27;s M-mode and Xvisor output remap when the integration map is fixed, replacing it with an ID-width converter, which reduces area. The input fabric&#x27;s alias remap remains.</td></tr>
 <tr><td><code>SYS_IN_ID_WIDTH</code></td><td><code>int unsigned</code></td><td><code>9</code></td><td>Unused; the input fabric takes the system input ID width from smc_pkg::SYS_IN_ID_WIDTH.</td></tr>
-<tr><td><code>NumInboundFilters</code></td><td><code>int unsigned</code></td><td><code>16</code></td><td>Number of filter entries on the system AXI input; sizes the inbound filter CSR arrays and the input fabric hit-index outputs.</td></tr>
-<tr><td><code>NumOutboundFilters</code></td><td><code>int unsigned</code></td><td><code>16</code></td><td>Number of filter entries on the system AXI output; sizes the outbound filter CSR arrays and the output fabric hit-index outputs.</td></tr>
-<tr><td><code>MaxTrans</code></td><td><code>int unsigned</code></td><td><code>smc_pkg::FABRIC_MAX_TRANS</code></td><td>Outstanding transactions per ID bucket tracked by the output fabric remap demux and mux; unused when NO_ADDR_REMAP is set.</td></tr>
-<tr><td><code>FilterReqPipelineEnable</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Adds spill registers on the request channels at the inbound and outbound filter boundaries, trading a cycle of latency for easier timing closure.</td></tr>
-<tr><td><code>FilterRspPipelineEnable</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Adds spill registers on the response channels at the inbound and outbound filter boundaries, trading a cycle of latency for easier timing closure.</td></tr>
+<tr><td><code>NUM_INBOUND_FILTERS</code></td><td><code>int unsigned</code></td><td><code>16</code></td><td>Number of filter entries on the system AXI input; sizes the inbound filter CSR arrays and the input fabric hit-index outputs.</td></tr>
+<tr><td><code>NUM_OUTBOUND_FILTERS</code></td><td><code>int unsigned</code></td><td><code>16</code></td><td>Number of filter entries on the system AXI output; sizes the outbound filter CSR arrays and the output fabric hit-index outputs.</td></tr>
+<tr><td><code>MAX_TRANS</code></td><td><code>int unsigned</code></td><td><code>smc_pkg::FABRIC_MAX_TRANS</code></td><td>Outstanding transactions per ID bucket tracked by the output fabric remap demux and mux; unused when NO_ADDR_REMAP is set.</td></tr>
+<tr><td><code>FILTER_REQ_PIPELINE_ENABLE</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Adds spill registers on the request channels at the inbound and outbound filter boundaries, trading a cycle of latency for easier timing closure.</td></tr>
+<tr><td><code>FILTER_RSP_PIPELINE_ENABLE</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Adds spill registers on the response channels at the inbound and outbound filter boundaries, trading a cycle of latency for easier timing closure.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">
@@ -755,10 +755,10 @@
 <tr><td><code>remap_debug_jtag_o</code></td><td>output</td><td><code>smc_pkg::remap_debug_t</code></td><td>Alias region index hit by the JTAG path.</td></tr>
 <tr><td><code>remap_debug_log_o</code></td><td>output</td><td><code>smc_pkg::remap_debug_t</code></td><td>Alias region index hit by the log path.</td></tr>
 <tr><td><code>remap_debug_dma_o</code></td><td>output</td><td><code>smc_pkg::remap_debug_t</code></td><td>Alias region index hit by the data accelerator path.</td></tr>
-<tr><td><code>outbound_write_filter_hit_debug_o</code></td><td>output</td><td><code>logic [$clog2(NumInboundFilters)-1:0]</code></td><td>Write hit index of the system inbound filter in the input fabric; tied to zero.</td></tr>
-<tr><td><code>outbound_read_filter_hit_debug_o</code></td><td>output</td><td><code>logic [$clog2(NumInboundFilters)-1:0]</code></td><td>Read hit index of the system inbound filter in the input fabric; tied to zero.</td></tr>
-<tr><td><code>inbound_write_filter_hit_debug_o</code></td><td>output</td><td><code>logic [$clog2(NumOutboundFilters)-1:0]</code></td><td>Write hit index of the system outbound filter in the output fabric; tied to zero.</td></tr>
-<tr><td><code>inbound_read_filter_hit_debug_o</code></td><td>output</td><td><code>logic [$clog2(NumOutboundFilters)-1:0]</code></td><td>Read hit index of the system outbound filter in the output fabric; tied to zero.</td></tr>
+<tr><td><code>outbound_write_filter_hit_debug_o</code></td><td>output</td><td><code>logic [$clog2(NUM_INBOUND_FILTERS)-1:0]</code></td><td>Write hit index of the system inbound filter in the input fabric; tied to zero.</td></tr>
+<tr><td><code>outbound_read_filter_hit_debug_o</code></td><td>output</td><td><code>logic [$clog2(NUM_INBOUND_FILTERS)-1:0]</code></td><td>Read hit index of the system inbound filter in the input fabric; tied to zero.</td></tr>
+<tr><td><code>inbound_write_filter_hit_debug_o</code></td><td>output</td><td><code>logic [$clog2(NUM_OUTBOUND_FILTERS)-1:0]</code></td><td>Write hit index of the system outbound filter in the output fabric; tied to zero.</td></tr>
+<tr><td><code>inbound_read_filter_hit_debug_o</code></td><td>output</td><td><code>logic [$clog2(NUM_OUTBOUND_FILTERS)-1:0]</code></td><td>Read hit index of the system outbound filter in the output fabric; tied to zero.</td></tr>
 <tr><td><code>fabric_clk_active_o</code></td><td>output</td><td><code>logic</code></td><td>High while the output fabric remap clock runs; low when NO_ADDR_REMAP is set.</td></tr>
 <tr><td><code>fabric_bus_active_o</code></td><td>output</td><td><code>logic</code></td><td>High while the output fabric input has a request valid or a transaction outstanding; low when NO_ADDR_REMAP is set.</td></tr>
 <tr><td><code>sys_out_filter_clk_active_o</code></td><td>output</td><td><code>logic</code></td><td>High while the system outbound filter clock runs.</td></tr>

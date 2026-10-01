@@ -679,16 +679,16 @@
 </aside>
 <article class="doc">
 <h1 class="page">prim_axi_id_prepend_wrap</h1>
-<p>Zero-extend AW and AR IDs from AxiInIdWidth to AxiOutIdWidth on struct AXI ports.</p><p>Truncate response IDs back to the upstream width. Pass every non-ID channel field through unchanged; the module is purely combinational. AxiOutIdWidth must be at least AxiInIdWidth, checked by a simulation assertion at time zero.</p>
+<p>Zero-extend AW and AR IDs from AXI_IN_ID_WIDTH to AXI_OUT_ID_WIDTH on struct AXI ports.</p><p>Truncate response IDs back to the upstream width. Pass every non-ID channel field through unchanged; the module is purely combinational. AXI_OUT_ID_WIDTH must be at least AXI_IN_ID_WIDTH, checked by a simulation assertion at time zero.</p>
 <div class="ocah-reg-html">
 <h2>Parameters</h2>
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
-<tr><td><code>AxiInIdWidth</code></td><td><code>int unsigned</code></td><td><code>6</code></td><td>Upstream AXI ID width.</td></tr>
-<tr><td><code>AxiOutIdWidth</code></td><td><code>int unsigned</code></td><td><code>8</code></td><td>Downstream AXI ID width after prepend.</td></tr>
-<tr><td><code>AxiDataWidth</code></td><td><code>int unsigned</code></td><td><code>32</code></td><td>Data-channel width of both ports; declared but not used.</td></tr>
-<tr><td><code>AxiAddrWidth</code></td><td><code>int unsigned</code></td><td><code>32</code></td><td>Address width of both ports; declared but not used.</td></tr>
-<tr><td><code>AxiUserWidth</code></td><td><code>int unsigned</code></td><td><code>8</code></td><td>User-signal width of both ports; declared but not used.</td></tr>
+<tr><td><code>AXI_IN_ID_WIDTH</code></td><td><code>int unsigned</code></td><td><code>6</code></td><td>Upstream AXI ID width.</td></tr>
+<tr><td><code>AXI_OUT_ID_WIDTH</code></td><td><code>int unsigned</code></td><td><code>8</code></td><td>Downstream AXI ID width after prepend.</td></tr>
+<tr><td><code>AXI_DATA_WIDTH</code></td><td><code>int unsigned</code></td><td><code>32</code></td><td>Data-channel width of both ports; declared but not used.</td></tr>
+<tr><td><code>AXI_ADDR_WIDTH</code></td><td><code>int unsigned</code></td><td><code>32</code></td><td>Address width of both ports; declared but not used.</td></tr>
+<tr><td><code>AXI_USER_WIDTH</code></td><td><code>int unsigned</code></td><td><code>8</code></td><td>User-signal width of both ports; declared but not used.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">

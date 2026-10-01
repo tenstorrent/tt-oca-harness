@@ -679,17 +679,17 @@
 </aside>
 <article class="doc">
 <h1 class="page">tlul_fifo_sync</h1>
-<p>Buffer a TL-UL link with synchronous request and response FIFOs.</p><p>Instantiate separate request and response FIFOs to add elasticity on a TL-UL bus. The response FIFO stores d_data as zero for any opcode other than AccessAckData. ReqPass and RspPass allow fall-through when the corresponding FIFO is empty. SpareReqW and SpareRspW carry optional sideband bits alongside each channel.</p>
+<p>Buffer a TL-UL link with synchronous request and response FIFOs.</p><p>Instantiate separate request and response FIFOs to add elasticity on a TL-UL bus. The response FIFO stores d_data as zero for any opcode other than AccessAckData. REQ_PASS and RSP_PASS allow fall-through when the corresponding FIFO is empty. SPARE_REQ_W and SPARE_RSP_W carry optional sideband bits alongside each channel.</p>
 <div class="ocah-reg-html">
 <h2>Parameters</h2>
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
-<tr><td><code>ReqPass</code></td><td><code>bit</code></td><td><code>1&#x27;b1</code></td><td>Allow A-channel fall-through when empty.</td></tr>
-<tr><td><code>RspPass</code></td><td><code>bit</code></td><td><code>1&#x27;b1</code></td><td>Allow D-channel fall-through when empty.</td></tr>
-<tr><td><code>ReqDepth</code></td><td><code>int unsigned</code></td><td><code>2</code></td><td>Depth of the host-to-device request FIFO; 0 bypasses it and requires ReqPass.</td></tr>
-<tr><td><code>RspDepth</code></td><td><code>int unsigned</code></td><td><code>2</code></td><td>Depth of the device-to-host response FIFO; 0 bypasses it and requires RspPass.</td></tr>
-<tr><td><code>SpareReqW</code></td><td><code>int unsigned</code></td><td><code>1</code></td><td>Width of spare bits with each request.</td></tr>
-<tr><td><code>SpareRspW</code></td><td><code>int unsigned</code></td><td><code>1</code></td><td>Width of spare bits with each response.</td></tr>
+<tr><td><code>REQ_PASS</code></td><td><code>bit</code></td><td><code>1&#x27;b1</code></td><td>Allow A-channel fall-through when empty.</td></tr>
+<tr><td><code>RSP_PASS</code></td><td><code>bit</code></td><td><code>1&#x27;b1</code></td><td>Allow D-channel fall-through when empty.</td></tr>
+<tr><td><code>REQ_DEPTH</code></td><td><code>int unsigned</code></td><td><code>2</code></td><td>Depth of the host-to-device request FIFO; 0 bypasses it and requires REQ_PASS.</td></tr>
+<tr><td><code>RSP_DEPTH</code></td><td><code>int unsigned</code></td><td><code>2</code></td><td>Depth of the device-to-host response FIFO; 0 bypasses it and requires RSP_PASS.</td></tr>
+<tr><td><code>SPARE_REQ_W</code></td><td><code>int unsigned</code></td><td><code>1</code></td><td>Width of spare bits with each request.</td></tr>
+<tr><td><code>SPARE_RSP_W</code></td><td><code>int unsigned</code></td><td><code>1</code></td><td>Width of spare bits with each response.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">
@@ -700,10 +700,10 @@
 <tr><td><code>tl_h_o</code></td><td>output</td><td><code>tlul_pkg::tl_d2h_t</code></td><td>Host-side TL-UL response.</td></tr>
 <tr><td><code>tl_d_o</code></td><td>output</td><td><code>tlul_pkg::tl_h2d_t</code></td><td>Device-side TL-UL request.</td></tr>
 <tr><td><code>tl_d_i</code></td><td>input</td><td><code>tlul_pkg::tl_d2h_t</code></td><td>Device-side TL-UL response.</td></tr>
-<tr><td><code>spare_req_i</code></td><td>input</td><td><code>[SpareReqW-1:0]</code></td><td>Spare request bits entering with tl_h_i.</td></tr>
-<tr><td><code>spare_req_o</code></td><td>output</td><td><code>[SpareReqW-1:0]</code></td><td>Spare request bits leaving with tl_d_o.</td></tr>
-<tr><td><code>spare_rsp_i</code></td><td>input</td><td><code>[SpareRspW-1:0]</code></td><td>Spare response bits entering with tl_d_i.</td></tr>
-<tr><td><code>spare_rsp_o</code></td><td>output</td><td><code>[SpareRspW-1:0]</code></td><td>Spare response bits leaving with tl_h_o.</td></tr>
+<tr><td><code>spare_req_i</code></td><td>input</td><td><code>[SPARE_REQ_W-1:0]</code></td><td>Spare request bits entering with tl_h_i.</td></tr>
+<tr><td><code>spare_req_o</code></td><td>output</td><td><code>[SPARE_REQ_W-1:0]</code></td><td>Spare request bits leaving with tl_d_o.</td></tr>
+<tr><td><code>spare_rsp_i</code></td><td>input</td><td><code>[SPARE_RSP_W-1:0]</code></td><td>Spare response bits entering with tl_d_i.</td></tr>
+<tr><td><code>spare_rsp_o</code></td><td>output</td><td><code>[SPARE_RSP_W-1:0]</code></td><td>Spare response bits leaving with tl_h_o.</td></tr>
 </table>
 </div>
 </article>

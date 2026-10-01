@@ -688,10 +688,10 @@
 <tr><td><code>I3C_REG_ADDR_WIDTH</code></td><td><code>int unsigned</code></td><td><code>i3ccore_wrap_pkg::I3C_REG_ADDR_WIDTH</code></td><td>Width of the instance-relative address given to each i3c_wrapper.</td></tr>
 <tr><td><code>BASE_ADDR</code></td><td><code>int unsigned</code></td><td><code>0</code></td><td>Wrapper decode base address.</td></tr>
 <tr><td><code>INSTANCE_SPACING</code></td><td><code>int unsigned</code></td><td><code>i3ccore_wrap_pkg::I3C_INSTANCE_SPACING</code></td><td>Byte size of each instance&#x27;s address window.</td></tr>
-<tr><td><code>DatAw</code></td><td><code>int unsigned</code></td><td><code>i3c_pkg::DatAw</code></td><td>DAT memory address width.</td></tr>
-<tr><td><code>DctAw</code></td><td><code>int unsigned</code></td><td><code>i3c_pkg::DctAw</code></td><td>DCT memory address width.</td></tr>
-<tr><td><code>CsrAddrWidth</code></td><td><code>int unsigned</code></td><td><code>I3CCSR_pkg::I3CCSR_MIN_ADDR_WIDTH</code></td><td>CSR address width.</td></tr>
-<tr><td><code>CsrDataWidth</code></td><td><code>int unsigned</code></td><td><code>I3CCSR_pkg::I3CCSR_DATA_WIDTH</code></td><td>Data width of each I3C core&#x27;s internal CSR interface.</td></tr>
+<tr><td><code>DAT_AW</code></td><td><code>int unsigned</code></td><td><code>i3c_pkg::DatAw</code></td><td>DAT memory address width.</td></tr>
+<tr><td><code>DCT_AW</code></td><td><code>int unsigned</code></td><td><code>i3c_pkg::DctAw</code></td><td>DCT memory address width.</td></tr>
+<tr><td><code>CSR_ADDR_WIDTH</code></td><td><code>int unsigned</code></td><td><code>I3CCSR_pkg::I3CCSR_MIN_ADDR_WIDTH</code></td><td>CSR address width.</td></tr>
+<tr><td><code>CSR_DATA_WIDTH</code></td><td><code>int unsigned</code></td><td><code>I3CCSR_pkg::I3CCSR_DATA_WIDTH</code></td><td>Data width of each I3C core&#x27;s internal CSR interface.</td></tr>
 <tr><td><code>SelectWidth</code></td><td><code>int unsigned</code></td><td><code>(NUM_I3C &gt; 32&#x27;d1) ? $clog2(NUM_I3C) : 32&#x27;d1</code></td><td>Instance-select width.</td></tr>
 </table>
 <h2>Ports</h2>

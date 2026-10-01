@@ -679,22 +679,22 @@
 </aside>
 <article class="doc">
 <h1 class="page">tlul_socket_1n</h1>
-<p>Steer one TL-UL host onto N device ports.</p><p>Route each A-channel request to tl_d_o[dev_select_i] through optional host and per-device FIFOs; dev_select_i travels through the host FIFO with its request. Ports that are not selected see a_valid low, blanked a_data and deliberately bad integrity. Maximum N is 63.</p><p>Stall switching to another device until all outstanding responses from other devices have returned: keep a counter of outstanding requests and wait until it is zero before switching.</p><p>Return an error response from an internal tlul_err_resp when dev_select_i is outside 0..N-1. The instantiator may force an error with any illegal select; all ones is recommended for visibility. When ExplicitErrs is set, size dev_select_i as $clog2(N+1) bits so value N is always representable and can request that error.</p><p>FIFO parameters:</p><ul><li>HReqPass/HRspPass and DReqPass/DRspPass allow fall-through when the corresponding FIFO is empty.</li><li>HReqDepth/HRspDepth and DReqDepth/DRspDepth set FIFO depths; the D* depths pack one nibble per device.</li></ul>
+<p>Steer one TL-UL host onto N device ports.</p><p>Route each A-channel request to tl_d_o[dev_select_i] through optional host and per-device FIFOs; dev_select_i travels through the host FIFO with its request. Ports that are not selected see a_valid low, blanked a_data and deliberately bad integrity. Maximum N is 63.</p><p>Stall switching to another device until all outstanding responses from other devices have returned: keep a counter of outstanding requests and wait until it is zero before switching.</p><p>Return an error response from an internal tlul_err_resp when dev_select_i is outside 0..N-1. The instantiator may force an error with any illegal select; all ones is recommended for visibility. When EXPLICIT_ERRS is set, size dev_select_i as $clog2(N+1) bits so value N is always representable and can request that error.</p><p>FIFO parameters:</p><ul><li>H_REQ_PASS/H_RSP_PASS and D_REQ_PASS/D_RSP_PASS allow fall-through when the corresponding FIFO is empty.</li><li>H_REQ_DEPTH/H_RSP_DEPTH and D_REQ_DEPTH/D_RSP_DEPTH set FIFO depths; the D* depths pack one nibble per device.</li></ul>
 <div class="ocah-reg-html">
 <h2>Parameters</h2>
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
 <tr><td><code>N</code></td><td><code>int unsigned</code></td><td><code>4</code></td><td>Number of device ports (max 63).</td></tr>
-<tr><td><code>HReqPass</code></td><td><code>bit</code></td><td><code>1&#x27;b1</code></td><td>Host request FIFO fall-through.</td></tr>
-<tr><td><code>HRspPass</code></td><td><code>bit</code></td><td><code>1&#x27;b1</code></td><td>Host response FIFO fall-through.</td></tr>
-<tr><td><code>DReqPass</code></td><td><code>bit [N-1:0]</code></td><td><code>{N{1&#x27;b1}}</code></td><td>Per-device request FIFO fall-through.</td></tr>
-<tr><td><code>DRspPass</code></td><td><code>bit [N-1:0]</code></td><td><code>{N{1&#x27;b1}}</code></td><td>Per-device response FIFO fall-through.</td></tr>
-<tr><td><code>HReqDepth</code></td><td><code>bit [3:0]</code></td><td><code>4&#x27;h1</code></td><td>Host request FIFO depth.</td></tr>
-<tr><td><code>HRspDepth</code></td><td><code>bit [3:0]</code></td><td><code>4&#x27;h1</code></td><td>Host response FIFO depth.</td></tr>
-<tr><td><code>DReqDepth</code></td><td><code>bit [N*4-1:0]</code></td><td><code>{N{4&#x27;h1}}</code></td><td>Packed per-device request FIFO depths.</td></tr>
-<tr><td><code>DRspDepth</code></td><td><code>bit [N*4-1:0]</code></td><td><code>{N{4&#x27;h1}}</code></td><td>Packed per-device response FIFO depths.</td></tr>
-<tr><td><code>ExplicitErrs</code></td><td><code>bit</code></td><td><code>1&#x27;b1</code></td><td>Widen select so N can request an error.</td></tr>
-<tr><td><code>NWD</code></td><td><code>int unsigned</code></td><td><code>$clog2(ExplicitErrs ? N+1 : N)</code></td><td>Width of dev_select_i.</td></tr>
+<tr><td><code>H_REQ_PASS</code></td><td><code>bit</code></td><td><code>1&#x27;b1</code></td><td>Host request FIFO fall-through.</td></tr>
+<tr><td><code>H_RSP_PASS</code></td><td><code>bit</code></td><td><code>1&#x27;b1</code></td><td>Host response FIFO fall-through.</td></tr>
+<tr><td><code>D_REQ_PASS</code></td><td><code>bit [N-1:0]</code></td><td><code>{N{1&#x27;b1}}</code></td><td>Per-device request FIFO fall-through.</td></tr>
+<tr><td><code>D_RSP_PASS</code></td><td><code>bit [N-1:0]</code></td><td><code>{N{1&#x27;b1}}</code></td><td>Per-device response FIFO fall-through.</td></tr>
+<tr><td><code>H_REQ_DEPTH</code></td><td><code>bit [3:0]</code></td><td><code>4&#x27;h1</code></td><td>Host request FIFO depth.</td></tr>
+<tr><td><code>H_RSP_DEPTH</code></td><td><code>bit [3:0]</code></td><td><code>4&#x27;h1</code></td><td>Host response FIFO depth.</td></tr>
+<tr><td><code>D_REQ_DEPTH</code></td><td><code>bit [N*4-1:0]</code></td><td><code>{N{4&#x27;h1}}</code></td><td>Packed per-device request FIFO depths.</td></tr>
+<tr><td><code>D_RSP_DEPTH</code></td><td><code>bit [N*4-1:0]</code></td><td><code>{N{4&#x27;h1}}</code></td><td>Packed per-device response FIFO depths.</td></tr>
+<tr><td><code>EXPLICIT_ERRS</code></td><td><code>bit</code></td><td><code>1&#x27;b1</code></td><td>Widen select so N can request an error.</td></tr>
+<tr><td><code>NWD</code></td><td><code>int unsigned</code></td><td><code>$clog2(EXPLICIT_ERRS ? N+1 : N)</code></td><td>Width of dev_select_i.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">

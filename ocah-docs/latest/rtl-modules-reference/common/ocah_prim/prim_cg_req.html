@@ -679,13 +679,13 @@
 </aside>
 <article class="doc">
 <h1 class="page">prim_cg_req</h1>
-<p>Drive Q-Channel qreq_no from qactive_i, qaccept_ni, and qdeny_i.</p><p>qreq_no is the active-low quiescence request: it follows qactive_i, so it falls, asking for the clock to stop, once the device is idle. After a deny, hold qreq_no high (request withdrawn) for DenyDelay cycles before it follows qactive_i again; an accept clears the hold. HysteresisW sizes the deny-hold counter.</p>
+<p>Drive Q-Channel qreq_no from qactive_i, qaccept_ni, and qdeny_i.</p><p>qreq_no is the active-low quiescence request: it follows qactive_i, so it falls, asking for the clock to stop, once the device is idle. After a deny, hold qreq_no high (request withdrawn) for DENY_DELAY cycles before it follows qactive_i again; an accept clears the hold. HysteresisW sizes the deny-hold counter.</p>
 <div class="ocah-reg-html">
 <h2>Parameters</h2>
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
-<tr><td><code>DenyDelay</code></td><td><code>int unsigned</code></td><td><code>1</code></td><td>Cycles to hold after a deny before reasserting.</td></tr>
-<tr><td><code>HysteresisW</code></td><td><code>int unsigned</code></td><td><code>(DenyDelay &lt;= 1) ? 1 : $clog2(DenyDelay+1)</code></td><td>Deny-hold counter width.</td></tr>
+<tr><td><code>DENY_DELAY</code></td><td><code>int unsigned</code></td><td><code>1</code></td><td>Cycles to hold after a deny before reasserting.</td></tr>
+<tr><td><code>HysteresisW</code></td><td><code>int unsigned</code></td><td><code>(DENY_DELAY &lt;= 1) ? 1 : $clog2(DENY_DELAY+1)</code></td><td>Deny-hold counter width.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">

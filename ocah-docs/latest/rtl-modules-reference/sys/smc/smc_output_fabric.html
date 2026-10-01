@@ -685,12 +685,12 @@
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
 <tr><td><code>NO_ADDR_REMAP</code></td><td><code>bit</code></td><td><code>1&#x27;b1</code></td><td>Removes the M-mode and Xvisor output remap when the integration map is fixed, leaving an ID-width converter in its place.</td></tr>
-<tr><td><code>NumFilters</code></td><td><code>int unsigned</code></td><td><code>16</code></td><td>Number of system outbound filter entries; sizes the filter CSR arrays and the hit-index outputs.</td></tr>
-<tr><td><code>MaxTrans</code></td><td><code>int unsigned</code></td><td><code>smc_pkg::FABRIC_MAX_TRANS</code></td><td>Outstanding transactions per ID bucket in the remap demux and mux, which also sizes their clock-gate snoop; unused when NO_ADDR_REMAP is set.</td></tr>
-<tr><td><code>FilterReqPipelineEnable</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Adds spill registers on the request channels at the system outbound filter boundary.</td></tr>
-<tr><td><code>FilterRspPipelineEnable</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Adds spill registers on the response channels at the system outbound filter boundary.</td></tr>
-<tr><td><code>MmodeBaseAddr</code></td><td><code>int unsigned</code></td><td><code>smc_top_addrmap_pkg::SMC_TOP_MMODE_REGION_BASE_ADDR</code></td><td>Base of the M-mode remap region, subtracted from request addresses before the M-mode remap region lookup; unused when NO_ADDR_REMAP is set.</td></tr>
-<tr><td><code>XvisorBaseAddr</code></td><td><code>int unsigned</code></td><td><code>smc_top_addrmap_pkg::SMC_TOP_XVISOR_REGION_BASE_ADDR</code></td><td>Base of the Xvisor remap region, subtracted from request addresses before the Xvisor remap region lookup; unused when NO_ADDR_REMAP is set.</td></tr>
+<tr><td><code>NUM_FILTERS</code></td><td><code>int unsigned</code></td><td><code>16</code></td><td>Number of system outbound filter entries; sizes the filter CSR arrays and the hit-index outputs.</td></tr>
+<tr><td><code>MAX_TRANS</code></td><td><code>int unsigned</code></td><td><code>smc_pkg::FABRIC_MAX_TRANS</code></td><td>Outstanding transactions per ID bucket in the remap demux and mux, which also sizes their clock-gate snoop; unused when NO_ADDR_REMAP is set.</td></tr>
+<tr><td><code>FILTER_REQ_PIPELINE_ENABLE</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Adds spill registers on the request channels at the system outbound filter boundary.</td></tr>
+<tr><td><code>FILTER_RSP_PIPELINE_ENABLE</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Adds spill registers on the response channels at the system outbound filter boundary.</td></tr>
+<tr><td><code>MMODE_BASE_ADDR</code></td><td><code>int unsigned</code></td><td><code>smc_top_addrmap_pkg::SMC_TOP_MMODE_REGION_BASE_ADDR</code></td><td>Base of the M-mode remap region, subtracted from request addresses before the M-mode remap region lookup; unused when NO_ADDR_REMAP is set.</td></tr>
+<tr><td><code>XVISOR_BASE_ADDR</code></td><td><code>int unsigned</code></td><td><code>smc_top_addrmap_pkg::SMC_TOP_XVISOR_REGION_BASE_ADDR</code></td><td>Base of the Xvisor remap region, subtracted from request addresses before the Xvisor remap region lookup; unused when NO_ADDR_REMAP is set.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">
@@ -711,8 +711,8 @@
 <tr><td><code>filter_status_o</code></td><td>output</td><td><code>filter_ctrl_reg_pkg::filter_ctrl__in_t</code></td><td>Per-entry system outbound filter status returned to the register block.</td></tr>
 <tr><td><code>mR_ctrl_i</code></td><td>input</td><td><code>output_remap_reg_pkg::output_remap__out_t</code></td><td>M-mode output remap region configuration; unused when NO_ADDR_REMAP is set.</td></tr>
 <tr><td><code>xR_ctrl_i</code></td><td>input</td><td><code>output_remap_reg_pkg::output_remap__out_t</code></td><td>Xvisor output remap region configuration; unused when NO_ADDR_REMAP is set.</td></tr>
-<tr><td><code>write_filter_hit_debug_o</code></td><td>output</td><td><code>logic [$clog2(NumFilters)-1:0]</code></td><td>Filter entry index hit by outbound writes; tied to zero because the filter instance disables its debug output.</td></tr>
-<tr><td><code>read_filter_hit_debug_o</code></td><td>output</td><td><code>logic [$clog2(NumFilters)-1:0]</code></td><td>Filter entry index hit by outbound reads; tied to zero because the filter instance disables its debug output.</td></tr>
+<tr><td><code>write_filter_hit_debug_o</code></td><td>output</td><td><code>logic [$clog2(NUM_FILTERS)-1:0]</code></td><td>Filter entry index hit by outbound writes; tied to zero because the filter instance disables its debug output.</td></tr>
+<tr><td><code>read_filter_hit_debug_o</code></td><td>output</td><td><code>logic [$clog2(NUM_FILTERS)-1:0]</code></td><td>Filter entry index hit by outbound reads; tied to zero because the filter instance disables its debug output.</td></tr>
 <tr><td><code>fabric_clk_active_o</code></td><td>output</td><td><code>logic</code></td><td>High while the remap demux and mux clock runs; tied low when NO_ADDR_REMAP is set.</td></tr>
 <tr><td><code>fabric_bus_active_o</code></td><td>output</td><td><code>logic</code></td><td>High while axi_req_i has a request valid or a transaction outstanding; tied low when NO_ADDR_REMAP is set.</td></tr>
 <tr><td><code>sys_out_filter_clk_active_o</code></td><td>output</td><td><code>logic</code></td><td>High while the system outbound filter clock runs.</td></tr>

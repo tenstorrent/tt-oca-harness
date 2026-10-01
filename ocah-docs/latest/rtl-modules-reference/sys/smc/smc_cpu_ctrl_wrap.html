@@ -685,7 +685,7 @@
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
 <tr><td><code>NO_ADDR_REMAP</code></td><td><code>bit</code></td><td><code>1&#x27;b1</code></td><td>Reported in SMC_ATTRIBUTES.no_output_remap; no other effect in this module.</td></tr>
-<tr><td><code>NumCPUCores</code></td><td><code>int unsigned</code></td><td><code>4</code></td><td>Number of CPU cores this block drives resets, reset vectors and watchdog counters for; at most MaxCPUCores.</td></tr>
+<tr><td><code>NUM_CPU_CORES</code></td><td><code>int unsigned</code></td><td><code>4</code></td><td>Number of CPU cores this block drives resets, reset vectors and watchdog counters for; at most MaxCPUCores.</td></tr>
 <tr><td><code>MaxCPUCores</code></td><td><code>int unsigned</code></td><td><code>4</code></td><td>Number of cores the cpu_ctrl register map provides per-core fields for; sizes the internal per-core arrays.</td></tr>
 </table>
 <h2>Ports</h2>
@@ -699,13 +699,13 @@
 <tr><td><code>scan_rst_ni</code></td><td>input</td><td><code>logic</code></td><td>Active-low scan reset; not used in this module.</td></tr>
 <tr><td><code>axil_req_i</code></td><td>input</td><td><code>smc_pkg::smc_axil_32_64_req_t</code></td><td>AXI-Lite request to the cpu_ctrl CSR block from the SMC front-port demux.</td></tr>
 <tr><td><code>axil_resp_o</code></td><td>output</td><td><code>smc_pkg::smc_axil_32_64_resp_t</code></td><td>AXI-Lite response from the cpu_ctrl CSR block.</td></tr>
-<tr><td><code>wb_reg_pc_i</code></td><td>input</td><td><code>logic [NumCPUCores-1:0][57:0]</code></td><td>Per-core writeback program counter from the cluster, sampled on clk_smc_i into the eight-entry WB_PC_CORE history; a value equal to the newest entry is not added again.</td></tr>
-<tr><td><code>wb_pc_valid_i</code></td><td>input</td><td><code>logic [NumCPUCores-1:0]</code></td><td>Per-core qualifier for wb_reg_pc_i; a new PC enters the history only while this is high.</td></tr>
-<tr><td><code>wdt_timeout_cluster_i</code></td><td>input</td><td><code>logic [NumCPUCores-1:0]</code></td><td>Per-core first-stage watchdog timeout; while high, that core&#x27;s second-stage counter counts down, and while low it reloads from WDT_TIMEOUT.</td></tr>
+<tr><td><code>wb_reg_pc_i</code></td><td>input</td><td><code>logic [NUM_CPU_CORES-1:0][57:0]</code></td><td>Per-core writeback program counter from the cluster, sampled on clk_smc_i into the eight-entry WB_PC_CORE history; a value equal to the newest entry is not added again.</td></tr>
+<tr><td><code>wb_pc_valid_i</code></td><td>input</td><td><code>logic [NUM_CPU_CORES-1:0]</code></td><td>Per-core qualifier for wb_reg_pc_i; a new PC enters the history only while this is high.</td></tr>
+<tr><td><code>wdt_timeout_cluster_i</code></td><td>input</td><td><code>logic [NUM_CPU_CORES-1:0]</code></td><td>Per-core first-stage watchdog timeout; while high, that core&#x27;s second-stage counter counts down, and while low it reloads from WDT_TIMEOUT.</td></tr>
 <tr><td><code>chiplet_is_primary_i</code></td><td>input</td><td><code>logic</code></td><td>High on the primary chiplet; read back through SMC_ATTRIBUTES.</td></tr>
 <tr><td><code>wdt_second_timeout_o</code></td><td>output</td><td><code>logic</code></td><td>Registered second-stage watchdog timeout; high while any core&#x27;s counter is zero.</td></tr>
-<tr><td><code>core_reset_n_n0_scan_o</code></td><td>output</td><td><code>logic [NumCPUCores-1:0]</code></td><td>Active-low per-core reset from RESET_CTRL or a reset pulse, registered on clk_smc_i and low while warm reset is asserted; a software assertion waits for the cluster to drain or, in timeout mode, for the RESET_TIMEOUT timeout.</td></tr>
-<tr><td><code>core_reset_vector_o</code></td><td>output</td><td><code>logic [NumCPUCores-1:0][55:0]</code></td><td>Per-core boot address from the RESET_VECTOR registers; the default boot address while warm reset is asserted.</td></tr>
+<tr><td><code>core_reset_n_n0_scan_o</code></td><td>output</td><td><code>logic [NUM_CPU_CORES-1:0]</code></td><td>Active-low per-core reset from RESET_CTRL or a reset pulse, registered on clk_smc_i and low while warm reset is asserted; a software assertion waits for the cluster to drain or, in timeout mode, for the RESET_TIMEOUT timeout.</td></tr>
+<tr><td><code>core_reset_vector_o</code></td><td>output</td><td><code>logic [NUM_CPU_CORES-1:0][55:0]</code></td><td>Per-core boot address from the RESET_VECTOR registers; the default boot address while warm reset is asserted.</td></tr>
 <tr><td><code>cluster_uncore_reset_n_n0_scan_o</code></td><td>output</td><td><code>logic</code></td><td>Active-low uncore reset from RESET_CTRL, registered on clk_smc_i and low while warm reset is asserted; a software assertion waits for the cluster to drain or, in timeout mode, for the RESET_TIMEOUT timeout.</td></tr>
 <tr><td><code>debug_reset_n_o</code></td><td>output</td><td><code>logic</code></td><td>Active-low debug-module reset, driven directly from the RESET_CTRL debug reset field, which resets to 0 (asserted); not held by the drain handshake.</td></tr>
 <tr><td><code>isolate_req_o</code></td><td>output</td><td><code>logic</code></td><td>Drain request to the cluster: high while RESET_CTRL holds a core or the uncore in reset, or a core reset pulse is pending or in flight.</td></tr>

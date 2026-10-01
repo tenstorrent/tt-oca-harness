@@ -684,13 +684,13 @@
 <h2>Parameters</h2>
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
-<tr><td><code>InputOnly</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>1 instantiates InputStd; 0 instantiates BidirStd.</td></tr>
+<tr><td><code>INPUT_ONLY</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>1 instantiates InputStd; 0 instantiates BidirStd.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">
 <caption class="title"><a href="#trm-table-2">Table 2</a>. Ports</caption><tr><th>Name</th><th>Direction</th><th>Type</th><th>Description</th></tr>
-<tr><td><code>core2pad_i</code></td><td>input</td><td><code>logic</code></td><td>Core data driven toward the pad; unused when InputOnly.</td></tr>
-<tr><td><code>core2pad_en_i</code></td><td>input</td><td><code>logic</code></td><td>Output enable toward the pad; unused when InputOnly.</td></tr>
+<tr><td><code>core2pad_i</code></td><td>input</td><td><code>logic</code></td><td>Core data driven toward the pad; unused when INPUT_ONLY.</td></tr>
+<tr><td><code>core2pad_en_i</code></td><td>input</td><td><code>logic</code></td><td>Output enable toward the pad; unused when INPUT_ONLY.</td></tr>
 <tr><td><code>pad2core_o</code></td><td>output</td><td><code>logic</code></td><td>Pad data returned to the core.</td></tr>
 <tr><td><code>pad2core_en_i</code></td><td>input</td><td><code>logic</code></td><td>Pad input enable; pad2core_o reads 0 while low.</td></tr>
 <tr><td><code>gpio_ctrl_i</code></td><td>input</td><td><code>gpio_shim_pkg::gpio_model_ctrl_t</code></td><td>Pull, drive, and filter controls; the glitch-filter enable drives the pad Schmitt trigger.</td></tr>

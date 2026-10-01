@@ -684,9 +684,9 @@
 <h2>Parameters</h2>
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
-<tr><td><code>FilterReqPipelineEnable</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Adds spill registers on the request channels at the system inbound filter boundary.</td></tr>
-<tr><td><code>FilterRspPipelineEnable</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Adds spill registers on the response channels at the system inbound filter boundary.</td></tr>
-<tr><td><code>NumFilters</code></td><td><code>int unsigned</code></td><td><code>16</code></td><td>Number of system inbound filter entries; sizes the filter CSR arrays and the hit-index outputs.</td></tr>
+<tr><td><code>FILTER_REQ_PIPELINE_ENABLE</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Adds spill registers on the request channels at the system inbound filter boundary.</td></tr>
+<tr><td><code>FILTER_RSP_PIPELINE_ENABLE</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Adds spill registers on the response channels at the system inbound filter boundary.</td></tr>
+<tr><td><code>NUM_FILTERS</code></td><td><code>int unsigned</code></td><td><code>16</code></td><td>Number of system inbound filter entries; sizes the filter CSR arrays and the hit-index outputs.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">
@@ -727,8 +727,8 @@
 <tr><td><code>remap_debug_jtag_o</code></td><td>output</td><td><code>smc_pkg::remap_debug_t</code></td><td>Alias region index hit by the JTAG path.</td></tr>
 <tr><td><code>remap_debug_log_o</code></td><td>output</td><td><code>smc_pkg::remap_debug_t</code></td><td>Alias region index hit by the log path.</td></tr>
 <tr><td><code>remap_debug_dma_o</code></td><td>output</td><td><code>smc_pkg::remap_debug_t</code></td><td>Alias region index hit by the data accelerator path.</td></tr>
-<tr><td><code>write_filter_hit_debug_o</code></td><td>output</td><td><code>logic [$clog2(NumFilters)-1:0]</code></td><td>System inbound filter entry hit by writes; tied to zero because the filter instance disables its debug output.</td></tr>
-<tr><td><code>read_filter_hit_debug_o</code></td><td>output</td><td><code>logic [$clog2(NumFilters)-1:0]</code></td><td>System inbound filter entry hit by reads; tied to zero because the filter instance disables its debug output.</td></tr>
+<tr><td><code>write_filter_hit_debug_o</code></td><td>output</td><td><code>logic [$clog2(NUM_FILTERS)-1:0]</code></td><td>System inbound filter entry hit by writes; tied to zero because the filter instance disables its debug output.</td></tr>
+<tr><td><code>read_filter_hit_debug_o</code></td><td>output</td><td><code>logic [$clog2(NUM_FILTERS)-1:0]</code></td><td>System inbound filter entry hit by reads; tied to zero because the filter instance disables its debug output.</td></tr>
 <tr><td><code>sys_in_filter_clk_active_o</code></td><td>output</td><td><code>logic</code></td><td>High while the system inbound filter clock runs.</td></tr>
 <tr><td><code>sys_in_filter_bus_active_o</code></td><td>output</td><td><code>logic</code></td><td>High while the system AXI input has a request valid or a transaction outstanding.</td></tr>
 </table>

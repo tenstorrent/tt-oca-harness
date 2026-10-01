@@ -679,27 +679,27 @@
 </aside>
 <article class="doc">
 <h1 class="page">prim_ram_1p_scr_ext</h1>
-<p>Scramble a single-port SRAM front-end over prim_ram_1p_adv_ext tiles.</p><p>Refuse to grant req_i while key_valid_i is low. intg_error_i suppresses any real memory transaction on an upstream integrity fault.</p><p>Delay writes one cycle so reads and writes share the PRINCE keystream unit. Hold a pending write across a following read and detect address collisions; a colliding read returns the masked bytes of the pending write data. Read data returns one cycle after the grant. The inner RAM runs without ECC, so rerror_o can only report parity errors.</p><p>Keep cipher rounds low for latency. PRINCE&#x27;s original 5 half-rounds are 2*5+1 effective rounds; NumPrinceRoundsHalf of 3 is about 7 effective rounds and must be in [1..5].</p><p>NumDiffRounds of 0 disables diffusion because non-linear data diffusion can interact adversely with end-to-end ECC. Enable it only with full knowledge of that interaction, for example with byte parity.</p>
+<p>Scramble a single-port SRAM front-end over prim_ram_1p_adv_ext tiles.</p><p>Refuse to grant req_i while key_valid_i is low. intg_error_i suppresses any real memory transaction on an upstream integrity fault.</p><p>Delay writes one cycle so reads and writes share the PRINCE keystream unit. Hold a pending write across a following read and detect address collisions; a colliding read returns the masked bytes of the pending write data. Read data returns one cycle after the grant. The inner RAM runs without ECC, so rerror_o can only report parity errors.</p><p>Keep cipher rounds low for latency. PRINCE&#x27;s original 5 half-rounds are 2*5+1 effective rounds; NUM_PRINCE_ROUNDS_HALF of 3 is about 7 effective rounds and must be in [1..5].</p><p>NUM_DIFF_ROUNDS of 0 disables diffusion because non-linear data diffusion can interact adversely with end-to-end ECC. Enable it only with full knowledge of that interaction, for example with byte parity.</p>
 <div class="ocah-reg-html">
 <h2>Parameters</h2>
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
-<tr><td><code>Depth</code></td><td><code>int</code></td><td><code>16*1024</code></td><td>Logical depth; must be a power of 2 if NumAddrScrRounds &gt; 0.</td></tr>
-<tr><td><code>InstDepth</code></td><td><code>int</code></td><td><code>Depth</code></td><td>Per-tile depth for RAM tiling.</td></tr>
-<tr><td><code>Width</code></td><td><code>int</code></td><td><code>32</code></td><td>Data width; must be byte-aligned when byte parity is enabled.</td></tr>
-<tr><td><code>DataBitsPerMask</code></td><td><code>int</code></td><td><code>8</code></td><td>Must be 8 when byte parity is enabled.</td></tr>
-<tr><td><code>EnableParity</code></td><td><code>bit</code></td><td><code>0</code></td><td>Enables byte parity.</td></tr>
-<tr><td><code>NumPrinceRoundsHalf</code></td><td><code>int</code></td><td><code>3</code></td><td>PRINCE half-rounds in [1..5]; kept low for latency. Original PRINCE uses 5 half-rounds (2*5+1 effective); 3 is about 7 effective rounds.</td></tr>
-<tr><td><code>NumDiffRounds</code></td><td><code>int</code></td><td><code>0</code></td><td>Extra diffusion rounds; 0 disables diffusion. Default 0 because non-linear data diffusion can interact adversely with end-to-end ECC; enable only with full knowledge of that interaction (for example with byte parity).</td></tr>
-<tr><td><code>DiffWidth</code></td><td><code>int</code></td><td><code>DataBitsPerMask</code></td><td>Diffusion block width; at least 4, and 8 with parity. Use 8 for intra-byte diffusion.</td></tr>
-<tr><td><code>NumAddrScrRounds</code></td><td><code>int</code></td><td><code>2</code></td><td>Address scrambling rounds; 0 disables address scrambling.</td></tr>
-<tr><td><code>ReplicateKeyStream</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>1 replicates the same 64-bit keystream across a wider data port; 0 replicates the cipher with a wider nonce for a unique keystream across the full width.</td></tr>
-<tr><td><code>AddrWidth</code></td><td><code>int</code></td><td><code>prim_util_pkg::vbits(Depth)</code></td><td>Logical address width; derived.</td></tr>
-<tr><td><code>NumParScr</code></td><td><code>int</code></td><td><code>(ReplicateKeyStream) ? 1 : (Width + 63) / 64</code></td><td>Parallel PRINCE instances so the keystream covers Width; PRINCE block size is 64 bits.</td></tr>
-<tr><td><code>NumParKeystr</code></td><td><code>int</code></td><td><code>(ReplicateKeyStream) ? (Width + 63) / 64 : 1</code></td><td>Parallel keystream replicas when ReplicateKeyStream is set.</td></tr>
+<tr><td><code>DEPTH</code></td><td><code>int</code></td><td><code>16*1024</code></td><td>Logical depth; must be a power of 2 if NUM_ADDR_SCR_ROUNDS &gt; 0.</td></tr>
+<tr><td><code>INST_DEPTH</code></td><td><code>int</code></td><td><code>DEPTH</code></td><td>Per-tile depth for RAM tiling.</td></tr>
+<tr><td><code>WIDTH</code></td><td><code>int</code></td><td><code>32</code></td><td>Data width; must be byte-aligned when byte parity is enabled.</td></tr>
+<tr><td><code>DATA_BITS_PER_MASK</code></td><td><code>int</code></td><td><code>8</code></td><td>Must be 8 when byte parity is enabled.</td></tr>
+<tr><td><code>ENABLE_PARITY</code></td><td><code>bit</code></td><td><code>0</code></td><td>Enables byte parity.</td></tr>
+<tr><td><code>NUM_PRINCE_ROUNDS_HALF</code></td><td><code>int</code></td><td><code>3</code></td><td>PRINCE half-rounds in [1..5]; kept low for latency. Original PRINCE uses 5 half-rounds (2*5+1 effective); 3 is about 7 effective rounds.</td></tr>
+<tr><td><code>NUM_DIFF_ROUNDS</code></td><td><code>int</code></td><td><code>0</code></td><td>Extra diffusion rounds; 0 disables diffusion. Default 0 because non-linear data diffusion can interact adversely with end-to-end ECC; enable only with full knowledge of that interaction (for example with byte parity).</td></tr>
+<tr><td><code>DIFF_WIDTH</code></td><td><code>int</code></td><td><code>DATA_BITS_PER_MASK</code></td><td>Diffusion block width; at least 4, and 8 with parity. Use 8 for intra-byte diffusion.</td></tr>
+<tr><td><code>NUM_ADDR_SCR_ROUNDS</code></td><td><code>int</code></td><td><code>2</code></td><td>Address scrambling rounds; 0 disables address scrambling.</td></tr>
+<tr><td><code>REPLICATE_KEY_STREAM</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>1 replicates the same 64-bit keystream across a wider data port; 0 replicates the cipher with a wider nonce for a unique keystream across the full width.</td></tr>
+<tr><td><code>AddrWidth</code></td><td><code>int</code></td><td><code>prim_util_pkg::vbits(DEPTH)</code></td><td>Logical address width; derived.</td></tr>
+<tr><td><code>NumParScr</code></td><td><code>int</code></td><td><code>(REPLICATE_KEY_STREAM) ? 1 : (WIDTH + 63) / 64</code></td><td>Parallel PRINCE instances so the keystream covers WIDTH; PRINCE block size is 64 bits.</td></tr>
+<tr><td><code>NumParKeystr</code></td><td><code>int</code></td><td><code>(REPLICATE_KEY_STREAM) ? (WIDTH + 63) / 64 : 1</code></td><td>Parallel keystream replicas when REPLICATE_KEY_STREAM is set.</td></tr>
 <tr><td><code>DataKeyWidth</code></td><td><code>int</code></td><td><code>128</code></td><td>Scrambling key width from PRINCE; all parallel ciphers share the key with different IVs.</td></tr>
 <tr><td><code>NonceWidth</code></td><td><code>int</code></td><td><code>64 * NumParScr</code></td><td>Nonce width; each 64-bit scrambling primitive needs a 64-bit IV.</td></tr>
-<tr><td><code>NumRamInst</code></td><td><code>int</code></td><td><code>prim_util_pkg::ceil_div(Depth, InstDepth)</code></td><td>Number of tiled RAM instances.</td></tr>
+<tr><td><code>NumRamInst</code></td><td><code>int</code></td><td><code>prim_util_pkg::ceil_div(DEPTH, INST_DEPTH)</code></td><td>Number of tiled RAM instances.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">
@@ -713,10 +713,10 @@
 <tr><td><code>gnt_o</code></td><td>output</td><td><code>logic</code></td><td>Request grant; req_i gated combinationally by key_valid_i.</td></tr>
 <tr><td><code>write_i</code></td><td>input</td><td><code></code></td><td>Write when high, read when low.</td></tr>
 <tr><td><code>addr_i</code></td><td>input</td><td><code>[AddrWidth-1:0]</code></td><td>Logical address before scramble.</td></tr>
-<tr><td><code>wdata_i</code></td><td>input</td><td><code>[Width-1:0]</code></td><td>Plaintext write data.</td></tr>
-<tr><td><code>wmask_i</code></td><td>input</td><td><code>[Width-1:0]</code></td><td>Write mask; must be byte-aligned for parity.</td></tr>
+<tr><td><code>wdata_i</code></td><td>input</td><td><code>[WIDTH-1:0]</code></td><td>Plaintext write data.</td></tr>
+<tr><td><code>wmask_i</code></td><td>input</td><td><code>[WIDTH-1:0]</code></td><td>Write mask; must be byte-aligned for parity.</td></tr>
 <tr><td><code>intg_error_i</code></td><td>input</td><td><code></code></td><td>Suppresses any real memory transaction on an integrity fault and kills the matching read response.</td></tr>
-<tr><td><code>rdata_o</code></td><td>output</td><td><code>logic [Width-1:0]</code></td><td>Descrambled read data; 0 while rvalid_o is low.</td></tr>
+<tr><td><code>rdata_o</code></td><td>output</td><td><code>logic [WIDTH-1:0]</code></td><td>Descrambled read data; 0 while rvalid_o is low.</td></tr>
 <tr><td><code>rvalid_o</code></td><td>output</td><td><code>logic</code></td><td>Read response (rdata_o) is valid.</td></tr>
 <tr><td><code>rerror_o</code></td><td>output</td><td><code>logic [1:0]</code></td><td>Bit1 flags a parity error; bit0, correctable, is always 0.</td></tr>
 <tr><td><code>raddr_o</code></td><td>output</td><td><code>logic [AddrWidth-1:0]</code></td><td>Unscrambled address of the last granted read, for error reporting.</td></tr>

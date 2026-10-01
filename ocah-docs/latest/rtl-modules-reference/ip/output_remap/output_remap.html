@@ -679,17 +679,17 @@
 </aside>
 <article class="doc">
 <h1 class="page">output_remap</h1>
-<p>Remap AXI transactions onto target addresses selected by a per-region offset table.</p><p>remap_ctrl_i carries per-region PeakRDL outs. RegionBase is subtracted from every AW and AR address, and bits [IdxStart +: RemapIndexW] of the result select a region. If that region is valid, the address becomes its offset bits [55:IdxStart] above the base-relative bits below IdxStart; otherwise the original address passes through unchanged. The module is combinational. When UserOverrideEn is set, UserOverrideVal replaces the AW, AR and W user fields of every transaction.</p>
+<p>Remap AXI transactions onto target addresses selected by a per-region offset table.</p><p>remap_ctrl_i carries per-region PeakRDL outs. REGION_BASE is subtracted from every AW and AR address, and bits [IDX_START +: RemapIndexW] of the result select a region. If that region is valid, the address becomes its offset bits [55:IDX_START] above the base-relative bits below IDX_START; otherwise the original address passes through unchanged. The module is combinational. When USER_OVERRIDE_EN is set, USER_OVERRIDE_VAL replaces the AW, AR and W user fields of every transaction.</p>
 <div class="ocah-reg-html">
 <h2>Parameters</h2>
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
-<tr><td><code>NumRegions</code></td><td><code>int unsigned</code></td><td><code>8</code></td><td>Number of remap regions.</td></tr>
-<tr><td><code>RegionBase</code></td><td><code>int unsigned</code></td><td><code>0</code></td><td>Byte address subtracted from AW and AR addresses before indexing.</td></tr>
-<tr><td><code>IdxStart</code></td><td><code>int unsigned</code></td><td><code>20</code></td><td>Address bit where the region index begins; each region spans 2**IdxStart bytes.</td></tr>
-<tr><td><code>UserOverrideEn</code></td><td><code>bit</code></td><td><code>1&#x27;b1</code></td><td>Replace the AW, AR and W user fields on every transaction.</td></tr>
-<tr><td><code>UserOverrideVal</code></td><td><code>user_ovrd_t</code></td><td><code>&#x27;0</code></td><td>AxUSER value when overriding.</td></tr>
-<tr><td><code>RemapIndexW</code></td><td><code>int unsigned</code></td><td><code>$clog2(NumRegions)</code></td><td>Region-index width.</td></tr>
+<tr><td><code>NUM_REGIONS</code></td><td><code>int unsigned</code></td><td><code>8</code></td><td>Number of remap regions.</td></tr>
+<tr><td><code>REGION_BASE</code></td><td><code>int unsigned</code></td><td><code>0</code></td><td>Byte address subtracted from AW and AR addresses before indexing.</td></tr>
+<tr><td><code>IDX_START</code></td><td><code>int unsigned</code></td><td><code>20</code></td><td>Address bit where the region index begins; each region spans 2**IDX_START bytes.</td></tr>
+<tr><td><code>USER_OVERRIDE_EN</code></td><td><code>bit</code></td><td><code>1&#x27;b1</code></td><td>Replace the AW, AR and W user fields on every transaction.</td></tr>
+<tr><td><code>USER_OVERRIDE_VAL</code></td><td><code>user_ovrd_t</code></td><td><code>&#x27;0</code></td><td>AxUSER value when overriding.</td></tr>
+<tr><td><code>RemapIndexW</code></td><td><code>int unsigned</code></td><td><code>$clog2(NUM_REGIONS)</code></td><td>Region-index width.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">

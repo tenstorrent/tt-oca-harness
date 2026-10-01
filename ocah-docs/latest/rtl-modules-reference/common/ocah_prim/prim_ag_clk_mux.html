@@ -679,12 +679,12 @@
 </aside>
 <article class="doc">
 <h1 class="page">prim_ag_clk_mux</h1>
-<p>Mux clk0_i and clk1_i onto clk_o without glitches.</p><p>Synchronize sel_i into each source domain, gate the deselected clock off before enabling the other, and combine the gated clocks onto clk_o. SelectOnReset chooses which clock is enabled while reset is asserted: 0 selects clk0_i during reset, 1 selects clk1_i. test_en_i forces both clock gates open, so clk_o is the OR of clk0_i and clk1_i.</p>
+<p>Mux clk0_i and clk1_i onto clk_o without glitches.</p><p>Synchronize sel_i into each source domain, gate the deselected clock off before enabling the other, and combine the gated clocks onto clk_o. SELECT_ON_RESET chooses which clock is enabled while reset is asserted: 0 selects clk0_i during reset, 1 selects clk1_i. test_en_i forces both clock gates open, so clk_o is the OR of clk0_i and clk1_i.</p>
 <div class="ocah-reg-html">
 <h2>Parameters</h2>
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
-<tr><td><code>SelectOnReset</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>0 selects clk0_i during reset; 1 selects clk1_i.</td></tr>
+<tr><td><code>SELECT_ON_RESET</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>0 selects clk0_i during reset; 1 selects clk1_i.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">

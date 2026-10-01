@@ -679,14 +679,14 @@
 </aside>
 <article class="doc">
 <h1 class="page">tlul_adapter_host</h1>
-<p>Convert a host req/gnt/rvalid bus into TL-UL.</p><p>Requests and responses pass combinationally. When MAX_REQS &gt; 1 a counter assigns a_source IDs 0 to MAX_REQS-1 in rotation; when MAX_REQS == 1 a_source is always 0. The host must not have more requests in flight than MAX_REQS. d_ready is tied high, so the host must accept every response in the cycle it arrives.</p><p>The adapter does not reorder responses when MAX_REQS &gt; 1. The host must either target an address space that returns in order or not depend on order.</p><p>The outgoing address is always word aligned and the access size is always the TL word size (TL_DW). The A-channel opcode and mask follow the access:</p><ul><li>Full-lane writes use PutFullData.</li><li>Other writes use PutPartialData, with the mask generated from be_i.</li><li>Reads enable every lane in the mask as required by TL-UL.</li></ul><p>Integrity handling is optional:</p><ul><li>When EnableDataIntgGen is set, compute data integrity on host write data; otherwise send wdata_intg_i.</li><li>Response integrity is always checked. When EnableRspDataIntgCheck is set, also check integrity on returned read data.</li></ul>
+<p>Convert a host req/gnt/rvalid bus into TL-UL.</p><p>Requests and responses pass combinationally. When MAX_REQS &gt; 1 a counter assigns a_source IDs 0 to MAX_REQS-1 in rotation; when MAX_REQS == 1 a_source is always 0. The host must not have more requests in flight than MAX_REQS. d_ready is tied high, so the host must accept every response in the cycle it arrives.</p><p>The adapter does not reorder responses when MAX_REQS &gt; 1. The host must either target an address space that returns in order or not depend on order.</p><p>The outgoing address is always word aligned and the access size is always the TL word size (TL_DW). The A-channel opcode and mask follow the access:</p><ul><li>Full-lane writes use PutFullData.</li><li>Other writes use PutPartialData, with the mask generated from be_i.</li><li>Reads enable every lane in the mask as required by TL-UL.</li></ul><p>Integrity handling is optional:</p><ul><li>When ENABLE_DATA_INTG_GEN is set, compute data integrity on host write data; otherwise send wdata_intg_i.</li><li>Response integrity is always checked. When ENABLE_RSP_DATA_INTG_CHECK is set, also check integrity on returned read data.</li></ul>
 <div class="ocah-reg-html">
 <h2>Parameters</h2>
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
 <tr><td><code>MAX_REQS</code></td><td><code>int unsigned</code></td><td><code>2</code></td><td>Maximum outstanding host requests.</td></tr>
-<tr><td><code>EnableDataIntgGen</code></td><td><code>bit</code></td><td><code>0</code></td><td>Compute data integrity on write data.</td></tr>
-<tr><td><code>EnableRspDataIntgCheck</code></td><td><code>bit</code></td><td><code>0</code></td><td>Check integrity on returned read data.</td></tr>
+<tr><td><code>ENABLE_DATA_INTG_GEN</code></td><td><code>bit</code></td><td><code>0</code></td><td>Compute data integrity on write data.</td></tr>
+<tr><td><code>ENABLE_RSP_DATA_INTG_CHECK</code></td><td><code>bit</code></td><td><code>0</code></td><td>Check integrity on returned read data.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">
@@ -698,13 +698,13 @@
 <tr><td><code>addr_i</code></td><td>input</td><td><code>logic [top_pkg::TL_AW-1:0]</code></td><td>Host byte address; word-aligned on tl_o.</td></tr>
 <tr><td><code>we_i</code></td><td>input</td><td><code>logic</code></td><td>Host write enable.</td></tr>
 <tr><td><code>wdata_i</code></td><td>input</td><td><code>logic [top_pkg::TL_DW-1:0]</code></td><td>Host write data.</td></tr>
-<tr><td><code>wdata_intg_i</code></td><td>input</td><td><code>logic [DataIntgWidth-1:0]</code></td><td>Integrity bits sent with wdata_i when EnableDataIntgGen is clear.</td></tr>
+<tr><td><code>wdata_intg_i</code></td><td>input</td><td><code>logic [DATA_INTG_WIDTH-1:0]</code></td><td>Integrity bits sent with wdata_i when ENABLE_DATA_INTG_GEN is clear.</td></tr>
 <tr><td><code>be_i</code></td><td>input</td><td><code>logic [top_pkg::TL_DBW-1:0]</code></td><td>Host byte enables; form the TL-UL mask.</td></tr>
 <tr><td><code>instr_type_i</code></td><td>input</td><td><code>mubi4_t</code></td><td>MuBi4 instruction-type user bit.</td></tr>
-<tr><td><code>user_rsvd_i</code></td><td>input</td><td><code>logic [RsvdWidth-1:0]</code></td><td>Reserved A-channel user bits.</td></tr>
+<tr><td><code>user_rsvd_i</code></td><td>input</td><td><code>logic [RSVD_WIDTH-1:0]</code></td><td>Reserved A-channel user bits.</td></tr>
 <tr><td><code>valid_o</code></td><td>output</td><td><code>logic</code></td><td>Host response valid.</td></tr>
 <tr><td><code>rdata_o</code></td><td>output</td><td><code>logic [top_pkg::TL_DW-1:0]</code></td><td>Host read data.</td></tr>
-<tr><td><code>rdata_intg_o</code></td><td>output</td><td><code>logic [DataIntgWidth-1:0]</code></td><td>Integrity bits with rdata_o.</td></tr>
+<tr><td><code>rdata_intg_o</code></td><td>output</td><td><code>logic [DATA_INTG_WIDTH-1:0]</code></td><td>Integrity bits with rdata_o.</td></tr>
 <tr><td><code>err_o</code></td><td>output</td><td><code>logic</code></td><td>d_error or an integrity failure on this response.</td></tr>
 <tr><td><code>intg_err_o</code></td><td>output</td><td><code>logic</code></td><td>Integrity failure; sticky until reset.</td></tr>
 <tr><td><code>tl_o</code></td><td>output</td><td><code>tl_h2d_t</code></td><td>TL-UL host-to-device toward the fabric.</td></tr>

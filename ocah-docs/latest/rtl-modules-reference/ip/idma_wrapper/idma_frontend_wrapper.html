@@ -688,8 +688,8 @@
 <tr><td><code>NUM_CTRL_STREAMS</code></td><td><code>int unsigned</code></td><td><code>1</code></td><td>Register-frontend streams per control port; must be &gt;= 1. The stream index is unconnected, so all streams share one FIFO and midend.</td></tr>
 <tr><td><code>F2M_FIFO_DEPTH</code></td><td><code>int unsigned</code></td><td><code>4</code></td><td>Depth in requests of the FIFO between the register frontend and the 2-D midend; passed unchanged to stream_fifo DEPTH and must be &gt; 0.</td></tr>
 <tr><td><code>BYPASS_DMA_CTRL_FLOPS</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>When set, the control-port axi_cut is a pass-through with no registers.</td></tr>
-<tr><td><code>NumDim</code></td><td><code>int unsigned</code></td><td><code>2</code></td><td>Transfer dimension count of the midend; the 2-D register frontend and two-entry RepWidths match only 2.</td></tr>
-<tr><td><code>RepWidth</code></td><td><code>int unsigned</code></td><td><code>32</code></td><td>Width of each midend repetition counter.</td></tr>
+<tr><td><code>NUM_DIM</code></td><td><code>int unsigned</code></td><td><code>2</code></td><td>Transfer dimension count of the midend; the 2-D register frontend and two-entry RepWidths match only 2.</td></tr>
+<tr><td><code>REP_WIDTH</code></td><td><code>int unsigned</code></td><td><code>32</code></td><td>Width of each midend repetition counter.</td></tr>
 <tr><td><code>CTRL_ADDR_WIDTH</code></td><td><code>int unsigned</code></td><td><code>9</code></td><td>Ctrl AXI address width.</td></tr>
 <tr><td><code>CTRL_DATA_WIDTH</code></td><td><code>int unsigned</code></td><td><code>64</code></td><td>Ctrl AXI data width; axi_to_reg_v2 converts it to the 32-bit register interface.</td></tr>
 <tr><td><code>CTRL_ID_WIDTH</code></td><td><code>int unsigned</code></td><td><code>8</code></td><td>Ctrl AXI ID width.</td></tr>

@@ -679,24 +679,24 @@
 </aside>
 <article class="doc">
 <h1 class="page">prim_ram_1p_adv_ext</h1>
-<p>Wrap a single-port SRAM with optional ECC or parity, pipelines, and tiled external RAM ports.</p><p>InstDepth smaller than Depth tiles into ceil(Depth/InstDepth) external RAM instances, each InstDepth deep.</p><p>EnableECC and EnableParity select per-word ECC or per-byte parity. HammingECC switches from HSIAO to Hamming; HSIAO is more compact and faster. ECC supports Width of 16 or 32 and whole-word writes only; parity is odd per byte and needs DataBitsPerMask of 8.</p><p>Read data returns one cycle after the request; EnableInputPipeline and EnableOutputPipeline each add one cycle of read latency.</p><p>alert_o rises on an invalid multi-bit (MuBi4) encoding of the internal request, write or read-valid controls. rerror_o bit1 is uncorrectable and bit0 is correctable; parity errors set bit1.</p>
+<p>Wrap a single-port SRAM with optional ECC or parity, pipelines, and tiled external RAM ports.</p><p>INST_DEPTH smaller than DEPTH tiles into ceil(DEPTH/INST_DEPTH) external RAM instances, each INST_DEPTH deep.</p><p>ENABLE_ECC and ENABLE_PARITY select per-word ECC or per-byte parity. HAMMING_ECC switches from HSIAO to Hamming; HSIAO is more compact and faster. ECC supports WIDTH of 16 or 32 and whole-word writes only; parity is odd per byte and needs DATA_BITS_PER_MASK of 8.</p><p>Read data returns one cycle after the request; ENABLE_INPUT_PIPELINE and ENABLE_OUTPUT_PIPELINE each add one cycle of read latency.</p><p>alert_o rises on an invalid multi-bit (MuBi4) encoding of the internal request, write or read-valid controls. rerror_o bit1 is uncorrectable and bit0 is correctable; parity errors set bit1.</p>
 <div class="ocah-reg-html">
 <h2>Parameters</h2>
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
-<tr><td><code>Depth</code></td><td><code>int</code></td><td><code>512</code></td><td>Logical memory depth.</td></tr>
-<tr><td><code>InstDepth</code></td><td><code>int</code></td><td><code>Depth</code></td><td>Per-tile depth; smaller than Depth tiles into ceil(Depth/InstDepth) external RAM ports, each InstDepth deep.</td></tr>
-<tr><td><code>Width</code></td><td><code>int</code></td><td><code>32</code></td><td>Data width.</td></tr>
-<tr><td><code>DataBitsPerMask</code></td><td><code>int</code></td><td><code>1</code></td><td>Data bits covered by each write-mask bit; only checked to be 8 when EnableParity is set.</td></tr>
-<tr><td><code>MemInitFile</code></td><td><code></code></td><td><code>&quot;&quot;</code></td><td>Declared but unused; the external RAM owns initialization.</td></tr>
-<tr><td><code>EnableECC</code></td><td><code>bit</code></td><td><code>0</code></td><td>Enables per-word ECC.</td></tr>
-<tr><td><code>EnableParity</code></td><td><code>bit</code></td><td><code>0</code></td><td>Enables per-byte parity.</td></tr>
-<tr><td><code>EnableInputPipeline</code></td><td><code>bit</code></td><td><code>0</code></td><td>Adds an input register; read latency +1.</td></tr>
-<tr><td><code>EnableOutputPipeline</code></td><td><code>bit</code></td><td><code>0</code></td><td>Adds an output register; read latency +1.</td></tr>
-<tr><td><code>HammingECC</code></td><td><code>bit</code></td><td><code>0</code></td><td>Selects Hamming ECC instead of HSIAO; HSIAO is more compact and faster.</td></tr>
-<tr><td><code>Aw</code></td><td><code>int</code></td><td><code>prim_util_pkg::vbits(Depth)</code></td><td>Logical address width.</td></tr>
-<tr><td><code>NumRamInst</code></td><td><code>int</code></td><td><code>prim_util_pkg::ceil_div(Depth, InstDepth)</code></td><td>Number of tiled RAM instances.</td></tr>
-<tr><td><code>InstAw</code></td><td><code>int</code></td><td><code>prim_util_pkg::vbits(InstDepth)</code></td><td>Per-instance address width.</td></tr>
+<tr><td><code>DEPTH</code></td><td><code>int</code></td><td><code>512</code></td><td>Logical memory depth.</td></tr>
+<tr><td><code>INST_DEPTH</code></td><td><code>int</code></td><td><code>DEPTH</code></td><td>Per-tile depth; smaller than DEPTH tiles into ceil(DEPTH/INST_DEPTH) external RAM ports, each INST_DEPTH deep.</td></tr>
+<tr><td><code>WIDTH</code></td><td><code>int</code></td><td><code>32</code></td><td>Data width.</td></tr>
+<tr><td><code>DATA_BITS_PER_MASK</code></td><td><code>int</code></td><td><code>1</code></td><td>Data bits covered by each write-mask bit; only checked to be 8 when ENABLE_PARITY is set.</td></tr>
+<tr><td><code>MEM_INIT_FILE</code></td><td><code></code></td><td><code>&quot;&quot;</code></td><td>Declared but unused; the external RAM owns initialization.</td></tr>
+<tr><td><code>ENABLE_ECC</code></td><td><code>bit</code></td><td><code>0</code></td><td>Enables per-word ECC.</td></tr>
+<tr><td><code>ENABLE_PARITY</code></td><td><code>bit</code></td><td><code>0</code></td><td>Enables per-byte parity.</td></tr>
+<tr><td><code>ENABLE_INPUT_PIPELINE</code></td><td><code>bit</code></td><td><code>0</code></td><td>Adds an input register; read latency +1.</td></tr>
+<tr><td><code>ENABLE_OUTPUT_PIPELINE</code></td><td><code>bit</code></td><td><code>0</code></td><td>Adds an output register; read latency +1.</td></tr>
+<tr><td><code>HAMMING_ECC</code></td><td><code>bit</code></td><td><code>0</code></td><td>Selects Hamming ECC instead of HSIAO; HSIAO is more compact and faster.</td></tr>
+<tr><td><code>Aw</code></td><td><code>int</code></td><td><code>prim_util_pkg::vbits(DEPTH)</code></td><td>Logical address width.</td></tr>
+<tr><td><code>NumRamInst</code></td><td><code>int</code></td><td><code>prim_util_pkg::ceil_div(DEPTH, INST_DEPTH)</code></td><td>Number of tiled RAM instances.</td></tr>
+<tr><td><code>InstAw</code></td><td><code>int</code></td><td><code>prim_util_pkg::vbits(INST_DEPTH)</code></td><td>Per-instance address width.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">
@@ -706,9 +706,9 @@
 <tr><td><code>req_i</code></td><td>input</td><td><code></code></td><td>Access request.</td></tr>
 <tr><td><code>write_i</code></td><td>input</td><td><code></code></td><td>Write when high, read when low.</td></tr>
 <tr><td><code>addr_i</code></td><td>input</td><td><code>[Aw-1:0]</code></td><td>Logical word address.</td></tr>
-<tr><td><code>wdata_i</code></td><td>input</td><td><code>[Width-1:0]</code></td><td>Write data.</td></tr>
-<tr><td><code>wmask_i</code></td><td>input</td><td><code>[Width-1:0]</code></td><td>Per-bit write mask; must be all ones with ECC.</td></tr>
-<tr><td><code>rdata_o</code></td><td>output</td><td><code>logic [Width-1:0]</code></td><td>Read data.</td></tr>
+<tr><td><code>wdata_i</code></td><td>input</td><td><code>[WIDTH-1:0]</code></td><td>Write data.</td></tr>
+<tr><td><code>wmask_i</code></td><td>input</td><td><code>[WIDTH-1:0]</code></td><td>Per-bit write mask; must be all ones with ECC.</td></tr>
+<tr><td><code>rdata_o</code></td><td>output</td><td><code>logic [WIDTH-1:0]</code></td><td>Read data.</td></tr>
 <tr><td><code>rvalid_o</code></td><td>output</td><td><code>logic</code></td><td>Read response (rdata_o) is valid.</td></tr>
 <tr><td><code>rerror_o</code></td><td>output</td><td><code>logic [1:0]</code></td><td>Bit1 uncorrectable, bit0 correctable; 0 unless rvalid_o.</td></tr>
 <tr><td><code>alert_o</code></td><td>output</td><td><code>logic</code></td><td>Invalid MuBi4 encoding on an internal control signal.</td></tr>

@@ -679,18 +679,18 @@
 </aside>
 <article class="doc">
 <h1 class="page">i3c_wrapper</h1>
-<p>Wrap one I3C core with AXI-Lite CSRs and exported DAT/DCT/RLT memories.</p><p>Adapted from i3c-core/src/i3c_wrapper.sv and maintained in-tree for the full-AXI4 core with open-drain SCL. Each AXI-Lite access reaches the core as a single-beat AXI4 burst with ID and user zero. SCL is open-drain: scl_o is tied low and scl_oe_o pulls the line; SDA drives through sda_oe_o in push-pull mode or when low. DummyParam exists only for trailing-comma handling in the parameter list. The DAT, DCT, and RLT memory ports require the CONTROLLER_SUPPORT macro, since the core declares them only when it is defined.</p>
+<p>Wrap one I3C core with AXI-Lite CSRs and exported DAT/DCT/RLT memories.</p><p>Adapted from i3c-core/src/i3c_wrapper.sv and maintained in-tree for the full-AXI4 core with open-drain SCL. Each AXI-Lite access reaches the core as a single-beat AXI4 burst with ID and user zero. SCL is open-drain: scl_o is tied low and scl_oe_o pulls the line; SDA drives through sda_oe_o in push-pull mode or when low. DUMMY_PARAM exists only for trailing-comma handling in the parameter list. The DAT, DCT, and RLT memory ports require the CONTROLLER_SUPPORT macro, since the core declares them only when it is defined.</p>
 <div class="ocah-reg-html">
 <h2>Parameters</h2>
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
-<tr><td><code>AxiLiteDataWidth</code></td><td><code>int unsigned</code></td><td><code>32</code></td><td>Data width of the AXI-Lite CSR port; also sets the beat size given to the core.</td></tr>
-<tr><td><code>AxiLiteAddrWidth</code></td><td><code>int unsigned</code></td><td><code>32</code></td><td>AXI-Lite address width.</td></tr>
-<tr><td><code>DatAw</code></td><td><code>int unsigned</code></td><td><code>i3c_pkg::DatAw</code></td><td>DAT memory address width.</td></tr>
-<tr><td><code>DctAw</code></td><td><code>int unsigned</code></td><td><code>i3c_pkg::DctAw</code></td><td>DCT memory address width.</td></tr>
-<tr><td><code>CsrAddrWidth</code></td><td><code>int unsigned</code></td><td><code>I3CCSR_pkg::I3CCSR_MIN_ADDR_WIDTH</code></td><td>CSR address width.</td></tr>
-<tr><td><code>CsrDataWidth</code></td><td><code>int unsigned</code></td><td><code>I3CCSR_pkg::I3CCSR_DATA_WIDTH</code></td><td>Data width of the I3C core&#x27;s internal CSR interface.</td></tr>
-<tr><td><code>DummyParam</code></td><td><code>int unsigned</code></td><td><code>0</code></td><td>Trailing-comma placeholder.</td></tr>
+<tr><td><code>AXI_LITE_DATA_WIDTH</code></td><td><code>int unsigned</code></td><td><code>32</code></td><td>Data width of the AXI-Lite CSR port; also sets the beat size given to the core.</td></tr>
+<tr><td><code>AXI_LITE_ADDR_WIDTH</code></td><td><code>int unsigned</code></td><td><code>32</code></td><td>AXI-Lite address width.</td></tr>
+<tr><td><code>DAT_AW</code></td><td><code>int unsigned</code></td><td><code>i3c_pkg::DatAw</code></td><td>DAT memory address width.</td></tr>
+<tr><td><code>DCT_AW</code></td><td><code>int unsigned</code></td><td><code>i3c_pkg::DctAw</code></td><td>DCT memory address width.</td></tr>
+<tr><td><code>CSR_ADDR_WIDTH</code></td><td><code>int unsigned</code></td><td><code>I3CCSR_pkg::I3CCSR_MIN_ADDR_WIDTH</code></td><td>CSR address width.</td></tr>
+<tr><td><code>CSR_DATA_WIDTH</code></td><td><code>int unsigned</code></td><td><code>I3CCSR_pkg::I3CCSR_DATA_WIDTH</code></td><td>Data width of the I3C core&#x27;s internal CSR interface.</td></tr>
+<tr><td><code>DUMMY_PARAM</code></td><td><code>int unsigned</code></td><td><code>0</code></td><td>Trailing-comma placeholder.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">
@@ -699,22 +699,22 @@
 <tr><td><code>rst_ni</code></td><td>input</td><td><code></code></td><td>Async reset, active-low.</td></tr>
 <tr><td><code>awvalid_i</code></td><td>input</td><td><code>logic</code></td><td>Write-address valid.</td></tr>
 <tr><td><code>awready_o</code></td><td>output</td><td><code>logic</code></td><td>Write-address ready.</td></tr>
-<tr><td><code>awaddr_i</code></td><td>input</td><td><code>logic [AxiLiteAddrWidth-1:0]</code></td><td>Write byte address into the I3C core&#x27;s CSR space.</td></tr>
+<tr><td><code>awaddr_i</code></td><td>input</td><td><code>logic [AXI_LITE_ADDR_WIDTH-1:0]</code></td><td>Write byte address into the I3C core&#x27;s CSR space.</td></tr>
 <tr><td><code>awprot_i</code></td><td>input</td><td><code>logic [2:0]</code></td><td>Write-address protection; not used.</td></tr>
 <tr><td><code>wvalid_i</code></td><td>input</td><td><code>logic</code></td><td>Write-data valid.</td></tr>
 <tr><td><code>wready_o</code></td><td>output</td><td><code>logic</code></td><td>Write-data ready.</td></tr>
-<tr><td><code>wdata_i</code></td><td>input</td><td><code>logic [AxiLiteDataWidth-1:0]</code></td><td>Write data.</td></tr>
-<tr><td><code>wstrb_i</code></td><td>input</td><td><code>logic [AxiLiteDataWidth/8-1:0]</code></td><td>Write strobe.</td></tr>
+<tr><td><code>wdata_i</code></td><td>input</td><td><code>logic [AXI_LITE_DATA_WIDTH-1:0]</code></td><td>Write data.</td></tr>
+<tr><td><code>wstrb_i</code></td><td>input</td><td><code>logic [AXI_LITE_DATA_WIDTH/8-1:0]</code></td><td>Write strobe.</td></tr>
 <tr><td><code>bvalid_o</code></td><td>output</td><td><code>logic</code></td><td>Write-response valid.</td></tr>
 <tr><td><code>bready_i</code></td><td>input</td><td><code>logic</code></td><td>Write-response ready.</td></tr>
 <tr><td><code>bresp_o</code></td><td>output</td><td><code>logic [1:0]</code></td><td>Write response.</td></tr>
 <tr><td><code>arvalid_i</code></td><td>input</td><td><code>logic</code></td><td>Read-address valid.</td></tr>
 <tr><td><code>arready_o</code></td><td>output</td><td><code>logic</code></td><td>Read-address ready.</td></tr>
-<tr><td><code>araddr_i</code></td><td>input</td><td><code>logic [AxiLiteAddrWidth-1:0]</code></td><td>Read address.</td></tr>
+<tr><td><code>araddr_i</code></td><td>input</td><td><code>logic [AXI_LITE_ADDR_WIDTH-1:0]</code></td><td>Read address.</td></tr>
 <tr><td><code>arprot_i</code></td><td>input</td><td><code>logic [2:0]</code></td><td>Read-address protection; not used.</td></tr>
 <tr><td><code>rvalid_o</code></td><td>output</td><td><code>logic</code></td><td>Read-data valid.</td></tr>
 <tr><td><code>rready_i</code></td><td>input</td><td><code>logic</code></td><td>Read-data ready.</td></tr>
-<tr><td><code>rdata_o</code></td><td>output</td><td><code>logic [AxiLiteDataWidth-1:0]</code></td><td>Read data.</td></tr>
+<tr><td><code>rdata_o</code></td><td>output</td><td><code>logic [AXI_LITE_DATA_WIDTH-1:0]</code></td><td>Read data.</td></tr>
 <tr><td><code>rresp_o</code></td><td>output</td><td><code>logic [1:0]</code></td><td>Read response.</td></tr>
 <tr><td><code>scl_i</code></td><td>input</td><td><code>logic</code></td><td>SCL pad input, passed straight to the core.</td></tr>
 <tr><td><code>sda_i</code></td><td>input</td><td><code>logic</code></td><td>SDA pad input, passed straight to the core.</td></tr>

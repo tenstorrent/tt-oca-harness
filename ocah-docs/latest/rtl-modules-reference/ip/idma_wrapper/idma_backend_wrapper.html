@@ -690,7 +690,7 @@
 <tr><td><code>BUFFER_DEPTH</code></td><td><code>int unsigned</code></td><td><code>3</code></td><td>Realignment buffer depth in beats; must be &gt;= 2.</td></tr>
 <tr><td><code>EN_R_AW_COUPLING</code></td><td><code>bit</code></td><td><code>1</code></td><td>Makes the backend&#x27;s R-to-AW coupling hardware available; recommended.</td></tr>
 <tr><td><code>BYPASS_DMA_MST_FLOPS</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Bypasses the axi_cut registers on each master port.</td></tr>
-<tr><td><code>TFLenWidth</code></td><td><code>int unsigned</code></td><td><code>32</code></td><td>Transfer-length field width; the maximum transfer is 2**TFLenWidth bytes.</td></tr>
+<tr><td><code>TF_LEN_WIDTH</code></td><td><code>int unsigned</code></td><td><code>32</code></td><td>Transfer-length field width; the maximum transfer is 2**TF_LEN_WIDTH bytes.</td></tr>
 <tr><td><code>AXI_ADDR_WIDTH</code></td><td><code>int unsigned</code></td><td><code>56</code></td><td>AXI address width.</td></tr>
 <tr><td><code>AXI_DATA_WIDTH</code></td><td><code>int unsigned</code></td><td><code>64</code></td><td>Data width of the AXI master port and the backend transfer buffer.</td></tr>
 <tr><td><code>AXI_USER_WIDTH</code></td><td><code>int unsigned</code></td><td><code>12</code></td><td>User-signal width of the AXI master port.</td></tr>

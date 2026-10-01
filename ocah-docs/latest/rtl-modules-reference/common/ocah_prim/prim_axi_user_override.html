@@ -679,17 +679,17 @@
 </aside>
 <article class="doc">
 <h1 class="page">prim_axi_user_override</h1>
-<p>Pass an AXI port through while forcing AW, AR, and W user fields to AxiUserOverride.</p><p>Wire every other channel field straight across; the module is purely combinational. Pass response user fields through unchanged. AxiUserWidth must cover the override value; wider values are truncated. prim_axi_user_override_struct provides the same function on request and response structs and checks the struct field widths with simulation assertions at time zero.</p>
+<p>Pass an AXI port through while forcing AW, AR, and W user fields to AXI_USER_OVERRIDE.</p><p>Wire every other channel field straight across; the module is purely combinational. Pass response user fields through unchanged. AXI_USER_WIDTH must cover the override value; wider values are truncated. prim_axi_user_override_struct provides the same function on request and response structs and checks the struct field widths with simulation assertions at time zero.</p>
 <div class="ocah-reg-html">
 <h2>Parameters</h2>
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
-<tr><td><code>AxiAddrWidth</code></td><td><code>int unsigned</code></td><td><code>64</code></td><td>AXI address width.</td></tr>
-<tr><td><code>AxiDataWidth</code></td><td><code>int unsigned</code></td><td><code>64</code></td><td>Width of W and R data on both ports; sets the strobe width.</td></tr>
-<tr><td><code>AxiIdWidth</code></td><td><code>int unsigned</code></td><td><code>1</code></td><td>Width of the AW, AR, B and R IDs, identical on both ports.</td></tr>
-<tr><td><code>AxiUserWidth</code></td><td><code>int unsigned</code></td><td><code>1</code></td><td>Width of every user field on both ports; must hold AxiUserOverride.</td></tr>
-<tr><td><code>AxiUserOverride</code></td><td><code>int unsigned</code></td><td><code>0</code></td><td>Constant written onto outbound AW/AR/W user fields.</td></tr>
-<tr><td><code>AxiStrbWidth</code></td><td><code>int unsigned</code></td><td><code>AxiDataWidth / 8</code></td><td>Write-strobe width from AxiDataWidth.</td></tr>
+<tr><td><code>AXI_ADDR_WIDTH</code></td><td><code>int unsigned</code></td><td><code>64</code></td><td>AXI address width.</td></tr>
+<tr><td><code>AXI_DATA_WIDTH</code></td><td><code>int unsigned</code></td><td><code>64</code></td><td>Width of W and R data on both ports; sets the strobe width.</td></tr>
+<tr><td><code>AXI_ID_WIDTH</code></td><td><code>int unsigned</code></td><td><code>1</code></td><td>Width of the AW, AR, B and R IDs, identical on both ports.</td></tr>
+<tr><td><code>AXI_USER_WIDTH</code></td><td><code>int unsigned</code></td><td><code>1</code></td><td>Width of every user field on both ports; must hold AXI_USER_OVERRIDE.</td></tr>
+<tr><td><code>AXI_USER_OVERRIDE</code></td><td><code>int unsigned</code></td><td><code>0</code></td><td>Constant written onto outbound AW/AR/W user fields.</td></tr>
+<tr><td><code>AxiStrbWidth</code></td><td><code>int unsigned</code></td><td><code>AXI_DATA_WIDTH / 8</code></td><td>Write-strobe width from AXI_DATA_WIDTH.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">
@@ -706,13 +706,13 @@
 <tr><td><code>axi_in_awqos_i</code></td><td>input</td><td><code>axi_pkg::qos_t</code></td><td>Forwarded unchanged to axi_out_awqos_o.</td></tr>
 <tr><td><code>axi_in_awregion_i</code></td><td>input</td><td><code>axi_pkg::region_t</code></td><td>Forwarded unchanged to axi_out_awregion_o.</td></tr>
 <tr><td><code>axi_in_awatop_i</code></td><td>input</td><td><code>axi_pkg::atop_t</code></td><td>Forwarded unchanged to axi_out_awatop_o.</td></tr>
-<tr><td><code>axi_in_awuser_i</code></td><td>input</td><td><code>user_t</code></td><td>Not used; axi_out_awuser_o carries AxiUserOverride instead.</td></tr>
+<tr><td><code>axi_in_awuser_i</code></td><td>input</td><td><code>user_t</code></td><td>Not used; axi_out_awuser_o carries AXI_USER_OVERRIDE instead.</td></tr>
 <tr><td><code>axi_in_awready_o</code></td><td>output</td><td><code>logic</code></td><td>Driven unchanged from axi_out_awready_i.</td></tr>
 <tr><td><code>axi_in_wvalid_i</code></td><td>input</td><td><code>logic</code></td><td>Forwarded unchanged to axi_out_wvalid_o.</td></tr>
 <tr><td><code>axi_in_wdata_i</code></td><td>input</td><td><code>data_t</code></td><td>Forwarded unchanged to axi_out_wdata_o.</td></tr>
 <tr><td><code>axi_in_wstrb_i</code></td><td>input</td><td><code>strb_t</code></td><td>Forwarded unchanged to axi_out_wstrb_o.</td></tr>
 <tr><td><code>axi_in_wlast_i</code></td><td>input</td><td><code>logic</code></td><td>Forwarded unchanged to axi_out_wlast_o.</td></tr>
-<tr><td><code>axi_in_wuser_i</code></td><td>input</td><td><code>user_t</code></td><td>Not used; axi_out_wuser_o carries AxiUserOverride instead.</td></tr>
+<tr><td><code>axi_in_wuser_i</code></td><td>input</td><td><code>user_t</code></td><td>Not used; axi_out_wuser_o carries AXI_USER_OVERRIDE instead.</td></tr>
 <tr><td><code>axi_in_wready_o</code></td><td>output</td><td><code>logic</code></td><td>Driven unchanged from axi_out_wready_i.</td></tr>
 <tr><td><code>axi_in_bvalid_o</code></td><td>output</td><td><code>logic</code></td><td>Driven unchanged from axi_out_bvalid_i.</td></tr>
 <tr><td><code>axi_in_bid_o</code></td><td>output</td><td><code>id_t</code></td><td>Driven unchanged from axi_out_bid_i.</td></tr>
@@ -730,7 +730,7 @@
 <tr><td><code>axi_in_arprot_i</code></td><td>input</td><td><code>axi_pkg::prot_t</code></td><td>Forwarded unchanged to axi_out_arprot_o.</td></tr>
 <tr><td><code>axi_in_arqos_i</code></td><td>input</td><td><code>axi_pkg::qos_t</code></td><td>Forwarded unchanged to axi_out_arqos_o.</td></tr>
 <tr><td><code>axi_in_arregion_i</code></td><td>input</td><td><code>axi_pkg::region_t</code></td><td>Forwarded unchanged to axi_out_arregion_o.</td></tr>
-<tr><td><code>axi_in_aruser_i</code></td><td>input</td><td><code>user_t</code></td><td>Not used; axi_out_aruser_o carries AxiUserOverride instead.</td></tr>
+<tr><td><code>axi_in_aruser_i</code></td><td>input</td><td><code>user_t</code></td><td>Not used; axi_out_aruser_o carries AXI_USER_OVERRIDE instead.</td></tr>
 <tr><td><code>axi_in_arready_o</code></td><td>output</td><td><code>logic</code></td><td>Driven unchanged from axi_out_arready_i.</td></tr>
 <tr><td><code>axi_in_rvalid_o</code></td><td>output</td><td><code>logic</code></td><td>Driven unchanged from axi_out_rvalid_i.</td></tr>
 <tr><td><code>axi_in_rid_o</code></td><td>output</td><td><code>id_t</code></td><td>Driven unchanged from axi_out_rid_i.</td></tr>
@@ -751,13 +751,13 @@
 <tr><td><code>axi_out_awqos_o</code></td><td>output</td><td><code>axi_pkg::qos_t</code></td><td>Driven unchanged from axi_in_awqos_i.</td></tr>
 <tr><td><code>axi_out_awregion_o</code></td><td>output</td><td><code>axi_pkg::region_t</code></td><td>Driven unchanged from axi_in_awregion_i.</td></tr>
 <tr><td><code>axi_out_awatop_o</code></td><td>output</td><td><code>axi_pkg::atop_t</code></td><td>Driven unchanged from axi_in_awatop_i.</td></tr>
-<tr><td><code>axi_out_awuser_o</code></td><td>output</td><td><code>user_t</code></td><td>Driven with AxiUserOverride in place of axi_in_awuser_i.</td></tr>
+<tr><td><code>axi_out_awuser_o</code></td><td>output</td><td><code>user_t</code></td><td>Driven with AXI_USER_OVERRIDE in place of axi_in_awuser_i.</td></tr>
 <tr><td><code>axi_out_awready_i</code></td><td>input</td><td><code>logic</code></td><td>Forwarded unchanged to axi_in_awready_o.</td></tr>
 <tr><td><code>axi_out_wvalid_o</code></td><td>output</td><td><code>logic</code></td><td>Driven unchanged from axi_in_wvalid_i.</td></tr>
 <tr><td><code>axi_out_wdata_o</code></td><td>output</td><td><code>data_t</code></td><td>Driven unchanged from axi_in_wdata_i.</td></tr>
 <tr><td><code>axi_out_wstrb_o</code></td><td>output</td><td><code>strb_t</code></td><td>Driven unchanged from axi_in_wstrb_i.</td></tr>
 <tr><td><code>axi_out_wlast_o</code></td><td>output</td><td><code>logic</code></td><td>Driven unchanged from axi_in_wlast_i.</td></tr>
-<tr><td><code>axi_out_wuser_o</code></td><td>output</td><td><code>user_t</code></td><td>Driven with AxiUserOverride in place of axi_in_wuser_i.</td></tr>
+<tr><td><code>axi_out_wuser_o</code></td><td>output</td><td><code>user_t</code></td><td>Driven with AXI_USER_OVERRIDE in place of axi_in_wuser_i.</td></tr>
 <tr><td><code>axi_out_wready_i</code></td><td>input</td><td><code>logic</code></td><td>Forwarded unchanged to axi_in_wready_o.</td></tr>
 <tr><td><code>axi_out_bvalid_i</code></td><td>input</td><td><code>logic</code></td><td>Forwarded unchanged to axi_in_bvalid_o.</td></tr>
 <tr><td><code>axi_out_bid_i</code></td><td>input</td><td><code>id_t</code></td><td>Forwarded unchanged to axi_in_bid_o.</td></tr>
@@ -775,7 +775,7 @@
 <tr><td><code>axi_out_arprot_o</code></td><td>output</td><td><code>axi_pkg::prot_t</code></td><td>Driven unchanged from axi_in_arprot_i.</td></tr>
 <tr><td><code>axi_out_arqos_o</code></td><td>output</td><td><code>axi_pkg::qos_t</code></td><td>Driven unchanged from axi_in_arqos_i.</td></tr>
 <tr><td><code>axi_out_arregion_o</code></td><td>output</td><td><code>axi_pkg::region_t</code></td><td>Driven unchanged from axi_in_arregion_i.</td></tr>
-<tr><td><code>axi_out_aruser_o</code></td><td>output</td><td><code>user_t</code></td><td>Driven with AxiUserOverride in place of axi_in_aruser_i.</td></tr>
+<tr><td><code>axi_out_aruser_o</code></td><td>output</td><td><code>user_t</code></td><td>Driven with AXI_USER_OVERRIDE in place of axi_in_aruser_i.</td></tr>
 <tr><td><code>axi_out_arready_i</code></td><td>input</td><td><code>logic</code></td><td>Forwarded unchanged to axi_in_arready_o.</td></tr>
 <tr><td><code>axi_out_rvalid_i</code></td><td>input</td><td><code>logic</code></td><td>Forwarded unchanged to axi_in_rvalid_o.</td></tr>
 <tr><td><code>axi_out_rid_i</code></td><td>input</td><td><code>id_t</code></td><td>Forwarded unchanged to axi_in_rid_o.</td></tr>
