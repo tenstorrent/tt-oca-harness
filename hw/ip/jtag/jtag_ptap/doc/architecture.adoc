@@ -166,15 +166,16 @@ TAP-controller states.
 |UPDATE_IR |16'h8000 |State 15: Update IR, decode new instruction
 |===
 
-The state machine includes an automatic fault recovery mechanism. A 3-bit TMS
-reset counter tracks consecutive TMS high assertions. When the counter reaches
-5, the state machine automatically transitions to TEST_LOGIC_RESET regardless of
-current state, providing recovery from corrupted or invalid states.
+Five consecutive TCK cycles with TMS high bring the state machine to
+TEST_LOGIC_RESET from any state, as the IEEE 1149.1 state graph defines. A state
+register value that is not one of the sixteen one-hot encodings also moves to
+TEST_LOGIC_RESET on the next rising edge of TCK.
 
-Control signals are generated using a split approach. Update, run-test-idle, and
-test-logic-reset signals are generated combinationally as Moore machine outputs.
-Capture and shift signals are registered on the falling edge of TCK to ensure
-stable control windows before the rising edge samples data.
+Control signals are generated using a split approach. The update and
+run-test-idle signals are decoded combinationally from the current state as
+Moore machine outputs. The capture, shift, test-logic-reset and TDO output
+enable signals are decoded from the current state and registered on the falling
+edge of TCK, so they are stable before the next rising edge samples data.
 
 === Reset Hierarchy
 
@@ -506,9 +507,10 @@ For each of the resets defined in the TDR, the PTAP exposes two logical signals
 
 === iJTAG Support
 
-The PTAP has optional support for a IEEE 1687-2014-compliant hierarchical iJTAG
-network, and support is enabled by default. When the _SELECT_IJTAG_ instruction
-is enabled, the iJTAG network is selected for scan.
+The PTAP provides a scan port for an IEEE 1687-2014-compliant hierarchical iJTAG
+network. The _SELECT_IJTAG_ instruction is always decoded; no configuration
+parameter removes it. While it is the current instruction, a DR scan selects the
+iJTAG network and the network return drives TDO.
 
 [[ptap-jtag2axi-support]]
 === JTAG2AXI Support
