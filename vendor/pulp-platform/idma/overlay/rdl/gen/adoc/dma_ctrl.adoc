@@ -97,7 +97,7 @@ Source, destination, length, and control registers for the iDMA data-mover engin
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
+| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
 |===
 
 [#reg-{regmap-instance}-dma_ctrl-STATUS_1]
@@ -107,7 +107,7 @@ Source, destination, length, and control registers for the iDMA data-mover engin
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
+| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
 |===
 
 [#reg-{regmap-instance}-dma_ctrl-STATUS_2]
@@ -117,7 +117,7 @@ Source, destination, length, and control registers for the iDMA data-mover engin
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
+| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
 |===
 
 [#reg-{regmap-instance}-dma_ctrl-STATUS_3]
@@ -127,7 +127,7 @@ Source, destination, length, and control registers for the iDMA data-mover engin
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
+| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
 |===
 
 [#reg-{regmap-instance}-dma_ctrl-STATUS_4]
@@ -137,7 +137,7 @@ Source, destination, length, and control registers for the iDMA data-mover engin
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
+| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
 |===
 
 [#reg-{regmap-instance}-dma_ctrl-STATUS_5]
@@ -147,7 +147,7 @@ Source, destination, length, and control registers for the iDMA data-mover engin
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
+| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
 |===
 
 [#reg-{regmap-instance}-dma_ctrl-STATUS_6]
@@ -157,7 +157,7 @@ Source, destination, length, and control registers for the iDMA data-mover engin
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
+| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
 |===
 
 [#reg-{regmap-instance}-dma_ctrl-STATUS_7]
@@ -167,7 +167,7 @@ Source, destination, length, and control registers for the iDMA data-mover engin
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
+| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
 |===
 
 [#reg-{regmap-instance}-dma_ctrl-STATUS_8]
@@ -177,7 +177,7 @@ Source, destination, length, and control registers for the iDMA data-mover engin
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
+| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
 |===
 
 [#reg-{regmap-instance}-dma_ctrl-STATUS_9]
@@ -187,7 +187,7 @@ Source, destination, length, and control registers for the iDMA data-mover engin
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
+| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
 |===
 
 [#reg-{regmap-instance}-dma_ctrl-STATUS_10]
@@ -197,7 +197,7 @@ Source, destination, length, and control registers for the iDMA data-mover engin
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
+| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
 |===
 
 [#reg-{regmap-instance}-dma_ctrl-STATUS_11]
@@ -207,7 +207,7 @@ Source, destination, length, and control registers for the iDMA data-mover engin
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
+| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
 |===
 
 [#reg-{regmap-instance}-dma_ctrl-STATUS_12]
@@ -217,7 +217,7 @@ Source, destination, length, and control registers for the iDMA data-mover engin
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
+| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
 |===
 
 [#reg-{regmap-instance}-dma_ctrl-STATUS_13]
@@ -227,7 +227,7 @@ Source, destination, length, and control registers for the iDMA data-mover engin
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
+| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
 |===
 
 [#reg-{regmap-instance}-dma_ctrl-STATUS_14]
@@ -237,7 +237,7 @@ Source, destination, length, and control registers for the iDMA data-mover engin
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
+| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
 |===
 
 [#reg-{regmap-instance}-dma_ctrl-STATUS_15]
@@ -247,7 +247,7 @@ Source, destination, length, and control registers for the iDMA data-mover engin
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
+| 9:0 | `BUSY` | R | 0x0 a| Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
 |===
 
 [#reg-{regmap-instance}-dma_ctrl-NEXT_ID_0]

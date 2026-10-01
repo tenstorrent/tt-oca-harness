@@ -106,192 +106,34 @@ endif::backend-pdf[]
 [[sep-detailed-register-map]]
 == Detailed Register Map
 
-The following register tables are generated from the SEP register description
-(RDL) sub-blocks under `hw/sys/sep/regs/`, plus the eFuse MMR and Entropy Source
-IP blocks under `hw/ip/efuse/regs/` and `hw/ip/entropy_source/regs/`. Each entry
-corresponds to a unit in the SEP memory map above.
-
-=== CPU Control and Interrupts
+The address tables above identify each aperture. Detailed registers are
+published with the owning block:
 
 ifdef::backend-html5[]
-++++
-include::partial$sep/regs/gen/html/blocks/sep_cpu_ctrl.html[]
-++++
+* xref:cpu.adoc[CPU] — sep_cpu_ctrl.
+* xref:interrupts.adoc[Interrupts] — el2_pic.
+* xref:reset_controller.adoc[SEP Reset Controller] — sep_reset_ctrl.
+* xref:lifecycle_controller.adoc[Life Cycle Controller (LCC)] — sep_lifecycle_ctrl.
+* xref:otp_fuse_controller.adoc[OTP Fuse Controller] — sep_efuse_map.
+* xref:watchdog.adoc[Watchdog Timer (WDT)] — aon_timer.
+* xref:aes.adoc[AES Cipher] — aes.
+* xref:hmac.adoc[HMAC-SHA2] — hmac.
+* xref:kmac.adoc[KMAC-SHA3] — kmac.
+* xref:otbn.adoc[OTBN PKA Public Key Accelerator] — otbn.
+* xref:trng.adoc[TRNG and DRBG] — csrng, edn.
+* xref:dma.adoc[Direct Memory Access (DMA)] — secure_dma.
+* xref:spi.adoc[Serial Peripheral Interface (SPI)] — spi_controller.
+* xref:cpu.adoc#dual-scratch-register-banks[CPU scratch banks] — sep_scratch.
+* xref:ip:entropy_source/doc/index.adoc[Entropy Source].
+* xref:ip:key_manager/doc/index.adoc[Key Manager] — controller, KPV, sampler, mailboxes and key wrappers.
+* xref:ip:efuse/doc/index.adoc[Shared eFuse IP] — eFuse MMR and interface registers.
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/blocks/sep_cpu_ctrl.adoc[leveloffset=+2]
-endif::backend-pdf[]
-
-ifdef::backend-html5[]
-++++
-include::partial$sep/regs/gen/html/blocks/el2_pic.html[]
-++++
-endif::backend-html5[]
-
-ifdef::backend-pdf[]
-include::../regs/gen/adoc/blocks/el2_pic.adoc[leveloffset=+2]
-endif::backend-pdf[]
-
-=== Reset and Lifecycle
-
-ifdef::backend-html5[]
-++++
-include::partial$sep/regs/gen/html/blocks/sep_reset_ctrl.html[]
-include::partial$sep/regs/gen/html/blocks/sep_lifecycle_ctrl.html[]
-++++
-endif::backend-html5[]
-
-ifdef::backend-pdf[]
-include::../regs/gen/adoc/blocks/sep_reset_ctrl.adoc[leveloffset=+2]
-include::../regs/gen/adoc/blocks/sep_lifecycle_ctrl.adoc[leveloffset=+2]
-endif::backend-pdf[]
-
-=== Scratch and eFuse
-
-The eFuse MMR block is an IP-level block (`hw/ip/efuse/regs/`); its register map
-is generated from the IP RDL rather than the SEP aggregate.
-
-ifdef::backend-html5[]
-++++
-include::partial$sep/regs/gen/html/blocks/sep_scratch.html[]
-include::partial$sep/regs/gen/html/blocks/sep_efuse_map.html[]
-include::ip:partial$efuse/regs/gen/html/efuse_mmr.html[]
-++++
-endif::backend-html5[]
-
-ifdef::backend-pdf[]
-include::../regs/gen/adoc/blocks/sep_scratch.adoc[leveloffset=+2]
-include::../regs/gen/adoc/blocks/sep_efuse_map.adoc[leveloffset=+2]
-include::../../../ip/efuse/regs/gen/adoc/efuse_mmr.adoc[leveloffset=+2]
-endif::backend-pdf[]
-
-=== Timers
-
-ifdef::backend-html5[]
-++++
-include::ip:partial$aon_timer/regs/gen/html/aon_timer.html[]
-++++
-endif::backend-html5[]
-
-ifdef::backend-pdf[]
-include::../../../../vendor/lowRISC/opentitan/overlay/regs/aon_timer/regs/gen/adoc/aon_timer.adoc[leveloffset=+2]
-endif::backend-pdf[]
-
-=== Cryptographic Accelerators
-
-ifdef::backend-html5[]
-++++
-include::ip:partial$aes/regs/gen/html/aes.html[]
-include::ip:partial$hmac/regs/gen/html/hmac.html[]
-include::ip:partial$kmac/regs/gen/html/kmac.html[]
-include::ip:partial$otbn/regs/gen/html/otbn.html[]
-++++
-endif::backend-html5[]
-
-ifdef::backend-pdf[]
-include::../../../../vendor/lowRISC/opentitan/overlay/regs/aes/regs/gen/adoc/aes.adoc[leveloffset=+2]
-include::../../../../vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc[leveloffset=+2]
-include::../../../../vendor/lowRISC/opentitan/overlay/regs/kmac/regs/gen/adoc/kmac.adoc[leveloffset=+2]
-include::../../../../vendor/lowRISC/opentitan/overlay/regs/otbn/regs/gen/adoc/otbn.adoc[leveloffset=+2]
-endif::backend-pdf[]
-
-=== Entropy Source
-
-The entropy source is an IP-level block (`hw/ip/entropy_source/regs/`) that
-feeds the DRBG. Its register map is generated from the IP RDL rather than the
-SEP aggregate.
-
-ifdef::backend-html5[]
-++++
-include::ip:partial$entropy_source/regs/gen/html/entropy_source.html[]
-++++
-endif::backend-html5[]
-
-ifdef::backend-pdf[]
-include::../../../ip/entropy_source/regs/gen/adoc/entropy_source.adoc[leveloffset=+2]
-endif::backend-pdf[]
-
-=== DRBG
-
-The DRBG wraps a CSRNG (AES-CTR-DRBG per NIST SP 800-90A) and an EDN
-(see {sep-drbg-architecture-ref}). Their register maps are reported here.
-
-ifdef::backend-html5[]
-++++
-include::ip:partial$csrng/regs/gen/html/csrng.html[]
-include::ip:partial$edn/regs/gen/html/edn.html[]
-++++
-endif::backend-html5[]
-
-ifdef::backend-pdf[]
-include::../../../../vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/adoc/csrng.adoc[leveloffset=+2]
-include::../../../../vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/adoc/edn.adoc[leveloffset=+2]
-endif::backend-pdf[]
-
-=== Key Manager
-
-The generated maps live with the IP.
-
-ifdef::backend-html5[]
-++++
-include::ip:partial$key_manager/regs/gen/html/key_manager.html[]
-include::ip:partial$key_manager/regs/gen/html/km_csr.html[]
-include::ip:partial$key_manager/regs/gen/html/km_kpv.html[]
-include::ip:partial$key_manager/regs/gen/html/km_drbg_sampler.html[]
-include::ip:partial$key_manager/regs/gen/html/km_mailbox_km.html[]
-include::ip:partial$key_manager/regs/gen/html/km_mailbox_sep.html[]
-include::ip:partial$key_manager/regs/gen/html/abr_wrapper_key.html[]
-include::ip:partial$key_manager/regs/gen/html/aes_wrapper_key.html[]
-include::ip:partial$key_manager/regs/gen/html/hmac_wrapper_key.html[]
-include::ip:partial$key_manager/regs/gen/html/kmac_wrapper_key.html[]
-include::ip:partial$key_manager/regs/gen/html/otbn_wrapper_key.html[]
-++++
-endif::backend-html5[]
-
-ifdef::backend-pdf[]
-include::../../../ip/key_manager/regs/gen/adoc/key_manager.adoc[leveloffset=+2]
-include::../../../ip/key_manager/regs/gen/adoc/km_csr.adoc[leveloffset=+2]
-include::../../../ip/key_manager/regs/gen/adoc/km_kpv.adoc[leveloffset=+2]
-include::../../../ip/key_manager/regs/gen/adoc/km_drbg_sampler.adoc[leveloffset=+2]
-include::../../../ip/key_manager/regs/gen/adoc/km_mailbox_km.adoc[leveloffset=+2]
-include::../../../ip/key_manager/regs/gen/adoc/km_mailbox_sep.adoc[leveloffset=+2]
-include::../../../ip/key_manager/regs/gen/adoc/abr_wrapper_key.adoc[leveloffset=+2]
-include::../../../ip/key_manager/regs/gen/adoc/aes_wrapper_key.adoc[leveloffset=+2]
-include::../../../ip/key_manager/regs/gen/adoc/hmac_wrapper_key.adoc[leveloffset=+2]
-include::../../../ip/key_manager/regs/gen/adoc/kmac_wrapper_key.adoc[leveloffset=+2]
-include::../../../ip/key_manager/regs/gen/adoc/otbn_wrapper_key.adoc[leveloffset=+2]
-endif::backend-pdf[]
-
-=== Secure DMA
-
-The secure DMA controller register map follows.
-
-ifdef::backend-html5[]
-++++
-include::ip:partial$secure_dma/regs/gen/html/secure_dma.html[]
-++++
-endif::backend-html5[]
-
-ifdef::backend-pdf[]
-include::../../../../vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/gen/adoc/secure_dma.adoc[leveloffset=+2]
-endif::backend-pdf[]
-
-=== SPI Controller
-
-Consult the
-https://opentitan.org/book/hw/ip/spi_host/index.html[OpenTitan SPI Host
-documentation] for the authoritative core functionality of the IP. The
-register map follows.
-
-ifdef::backend-html5[]
-++++
-include::ip:partial$spi_controller/regs/gen/html/spi_controller.html[]
-++++
-endif::backend-html5[]
-
-ifdef::backend-pdf[]
-include::../../../../vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/gen/adoc/spi_controller.adoc[leveloffset=+2]
+See the register references in the CPU, Interrupts, SEP Reset Controller, Life Cycle
+Controller, OTP Fuse Controller, Watchdog Timer, Cryptographic Subsystem (including AES Cipher,
+HMAC-SHA2, KMAC-SHA3, OTBN and TRNG and DRBG), DMA, Serial Peripheral Interface,
+Key Manager and Entropy Source chapters. The shared eFuse IP chapter owns the eFuse MMR reference.
 endif::backend-pdf[]
 
 === External Window Reference Model

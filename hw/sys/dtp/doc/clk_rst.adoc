@@ -1,16 +1,118 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-= Clock Stop / Reset
-:description: DTP clock stop integration — combined JTAG and CLA halt path, CLA-only readback, exported enable policy.
+= Clocks and Resets
+:page-aliases: clock_stop.adoc
+
+[[dtp-clocks-and-resets]]
+
+== Clock Domains
+
+The DTP operates in two clock domains (<<dtp-clock-domains-table>>).
+
+[[dtp-clock-domains-table]]
+[cols="<25%,<25%,<50%",options="header"]
+.DTP clock domains
+|===
+|Domain |Signal |Description
+
+|System clock
+|`clk_i`
+|Main clock for cross-trigger logic and AXI interfaces. All CTN and CSR
+logic runs in this domain.
+
+|JTAG clock
+|TCK
+|JTAG test clock for all TAP controller and scan logic. Clocks the PTAP,
+STAP state machines, and scan registers. Asynchronous to `clk_i`.
+|===
+
+The combined JTAG and CLA clock-stop request crosses into `clk_i` through
+two synchronizer stages in `ctn_clock_stop_ctrl`, followed by an output
+register. The CLA clock-stop status also crosses into TCK through the DEBUG_CONTROL
+TDR's two-flop `u_cla_clock_stop_sync` synchronizer before bit 4 captures it.
+The CTP handshake crossings are described in the
+ifdef::backend-html5[]
+xref:ip:cross_trigger_port/doc/index.adoc#ctp-interface[port reference].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+CTP interface.
+endif::backend-pdf[]
+
+[[reset-architecture]]
+== Reset Architecture
+
+<<dtp-reset-signals-table>> identifies the reset inputs and the logic they reset.
+
+[[dtp-reset-signals-table]]
+[cols="<30%,<70%",options="header"]
+.DTP reset signals
+|===
+|Signal |Description
+
+|`rst_n_i`
+|Active-low asynchronous reset for cross-trigger logic and AXI interfaces.
+Resets all CTN and CSR state; clock-stop output resets to 0 (clocks running).
+
+|`pwr_on_rst_ni`
+|Active-low asynchronous power-on reset for JTAG logic. Combined internally
+with TRST_n; resets the PTAP to Test-Logic-Reset state and clears all TDRs.
+
+|TRST_n (JTAG pin)
+|Optional external active-low TAP reset. When asserted, drives the PTAP
+to Test-Logic-Reset regardless of the TCK or TMS state.
+|===
+
+All registers reset to safe states. The JTAG TAP returns to Test-Logic-Reset
+on either TRST_n or power-on reset.
+
+[[dtp-ic-reset-overrides]]
+== IC_RESET Overrides
+
+ifdef::backend-html5[]
+++++
+<span id="ic_reset-overrides"></span>
+++++
+endif::backend-html5[]
+
+The primary TAP exposes a reset-selection test data register (TDR) through
+`IC_RESET`. IEEE 1149.1-2013 defines the instruction in Clause 8.21 and the
+reset-selection register in Clause 17. The
+https://grouper.ieee.org/groups/1149/1/ieee-1149-1-2013-changes.pdf[IEEE working-group summary of the 2013 changes]
+identifies both clauses. In this implementation, per reset
+port it holds `reset_control`, the active-low reset value to drive, and
+`reset_enable`, which selects it. One `reset_hold` bit sits nearest TDO.
+
+`reset_enable` is active low despite the name: it resets to 1, leaving the
+port's functional reset connected, and writing 0 hands the port over to
+`reset_control`. The overrides leave the DTP on
+`jtag_ic_reset_{smc,sep,ext}_o`, whose `.ovrd` member is active high and whose
+`.val` carries `reset_control`.
+
+`reset_hold` also resets to 1, which lets Test-Logic-Reset clear the
+enable/control bits. Write 0 to keep an override asserted across TLR; only TRST
+clears `reset_hold` itself.
+
+Consumers select between the two sources with a hazard-free multiplexer, which
+holds its output while the select alone moves. Write `reset_control` first and
+clear `reset_enable` in a second Update-DR: moving both in one update changes
+the select and a data input together, which can pulse a reset on a port that
+neither source is resetting.
+
+At the SMU the TDR concatenates three slices from TDI to TDO: SMC, SEP, then
+the external slice, followed by `reset_hold`. The SMC and SEP port lists are
+OCAH-defined. The external slice is adopter-defined: its width and fields come
+from the SMU type parameter `ic_reset_ext_t`. The Integrator Guide records the
+SMU-composed port map.
 
 [[dtp-clock-stop]]
+== Clock Stop
 
 The DTP combines JTAG DEBUG_CONTROL and CLA clock-stop request sources into
 one functional chiplet halt path, while keeping the CLA-only status separate
 for debugger readback.
 
-== Halt Path Architecture
+=== Halt Path Architecture
 
 <<dtp-clock-stop-diagram>> shows how JTAG and CLA requests contribute to the chiplet
 halt path, with the DTP as the SMU instantiates it. The DEBUG_CONTROL TDR is drawn
@@ -45,7 +147,7 @@ combinational, so the DEBUG_CONTROL TDR passes it through a two-flop TCK
 synchronizer before bit 4 captures it in Capture-DR. A debugger reads it there to
 observe whether any CLA clock-stop source is active.
 
-== Signal Flow
+=== Signal Flow
 
 . The JTAG Interface Unit captures DEBUG_CONTROL bits in the TCK domain.
   The `jtag_clock_stop` bit is routed to the CTN clock-stop controller;

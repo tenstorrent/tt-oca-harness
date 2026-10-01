@@ -5,7 +5,7 @@
 :description: SEP software reset requests, AXI isolation, and Key Manager and TRNG reset sequencing.
 
 ifdef::backend-html5[]
-:dtp-ic-reset-overrides-ref: xref:dtp:jtag.adoc#dtp-ic-reset-overrides[IC_RESET Overrides]
+:dtp-ic-reset-overrides-ref: xref:dtp:clk_rst.adoc#dtp-ic-reset-overrides[IC_RESET Overrides]
 :sep-crypto-reset-diagram-ref: xref:sep:crypto.adoc#sep-crypto-reset-diagram[SEP cryptographic subsystem resets]
 endif::backend-html5[]
 ifndef::backend-html5[]
@@ -86,7 +86,7 @@ values.
 |2 |aes_sw_rst_n |RW |1 |AES reset (0=assert, 1=release)
 |3 |hmac_sw_rst_n |RW |1 |HMAC reset (0=assert, 1=release)
 |4 |kmac_sw_rst_n |RW |1 |KMAC reset (0=assert, 1=release)
-|5 |trng_sw_rst_n |RW |1 |Shared ESRC + CSRNG + EDN reset request (0=assert, 1=release)
+|5 |trng_sw_rst_n |RW |1 |Shared entropy-source (ESRC), CSRNG, EDN and internal DRBG endpoint reset request (0=assert, 1=release); excludes the KM sampler
 |6 |abr_sw_rst_n |RW |1 |Adams Bridge reset (0=assert, 1=release)
 |=======================================================================
 
@@ -199,6 +199,31 @@ sampler can flag a stream error. The SEP host must keep the Key Manager idle
 before asserting the TRNG reset. Holding KM in software reset is sufficient;
 hardware does not enforce the ordering.
 
-Following reset release, software reprograms ESRC, waits for startup health
+Following reset release, software reprograms the entropy source, waits for startup health
 testing, locks the certified configuration, instantiates CSRNG, and enables EDN.
 Consumers are released only after fresh endpoint/pool progress is observed.
+
+== Memory Map and Register Reference
+
+ifdef::backend-html5[]
+++++
+<span id="register-reference"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
+
+Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.
+
+=== Detailed Register Map
+
+ifdef::backend-html5[]
+++++
+include::partial$sep/regs/gen/html/blocks/sep_reset_ctrl.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/sep_reset_ctrl.adoc[leveloffset=+2]
+endif::backend-pdf[]

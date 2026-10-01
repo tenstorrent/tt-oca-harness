@@ -20,30 +20,21 @@ endif::backend-pdf[]
 
 [[cryptographic-subsystem]]
 
-The cryptographic subsystem is composed of hardware and software. The
-hardware subsystem has a number of accelerators interconnected by two
-distinct buses:
+The cryptographic accelerators use separate paths for data and secret keys:
 
-* AXI4 data and CSR bus
-** Mastered by the SEP system fabric
-* AXI4-lite secret key buses
-** Mastered by Key Manager
+* The SEP system fabric drives the AXI4 data and CSR bus.
+* Key Manager drives the AXI4-Lite secret-key buses.
 
-Apart from the Adams Bridge, a Post-Quantum Cryptography (PQC) accelerator vendored
-from Caliptra, the subsystem’s hardware components are modified versions
-of the OpenTitan components, and the firmware is also based on the
+The accelerators are derived from OpenTitan, except for the Adams Bridge
+post-quantum accelerator from Caliptra. The firmware is based on the
 https://opentitan.org/book/doc/security/cryptolib/cryptolib_api.html[OpenTitan
-cryptographic library]. Generated PeakRDL maps for the Key Manager,
-entropy source, and the other crypto CSRs are included in
-the {sep-register-map}.
+cryptographic library]. Each block's reference page includes its available
+register maps; the {sep-register-map} links to those pages.
 
-The primary modifications to the hardware is the separation of the key
-and data bus interfaces and the switch from TL-UL interface protocol to
-AXI4-lite. In OpenTitan, keys are transferred from the Key Manager to
-the Cryptographic accelerators via dedicated ``side loading''
-interfaces. While this does physically separate key and data transport
-it is not scalable and requires modifications to the Key Manager
-whenever a new accelerator is added to the subsystem.
+OCAH adds bus adapters and separate key-delivery paths to the accelerator
+wrappers. Key Manager writes keys through AXI4-Lite interfaces; the wrappers
+connect them to the accelerators' key inputs. The following sections describe
+the shared integration rules and accelerator-specific differences.
 
 Adams Bridge requires 13 SRAM macros with masking enabled (default), or 9
 with masking disabled.

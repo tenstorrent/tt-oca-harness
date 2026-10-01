@@ -6,25 +6,24 @@
 
 == Overview
 
-This document specifies the UART 16550 hardware Component functionality.
-The UART 16550 implements the National Semiconductor UART 16550 standard
-with additional enhancements including independently-configurable
-Transmitter and Receiver FIFO depths and FIFO data and pointer parity
-protection. It provides a full-featured serial communication interface
-compatible with industry-standard UART protocols.
+ifdef::backend-html5[]
+// Preserve incoming links to the consolidated sections.
+++++
+<span id="description-and-features"></span>
+++++
+endif::backend-html5[]
 
-== Description and Features
+The UART provides a 16550-style programming interface over 32-bit AXI4-Lite.
+It transmits and receives serial characters, buffers them in independently
+sized FIFOs, and reports line, modem and FIFO-integrity events. Extensions
+include larger FIFO depths, FIFO data/pointer parity protection, extended
+receive thresholds and a FIFO-error interrupt.
 
-* Full UART 16550 compatibility and functionality
-* 32-bit AXI4-Lite register interface
-* Independently-configurable Transmitter and Receiver FIFO depths (4 to
-4096 entries)
-* FIFO parity protection for data and pointers with error reporting
-* Comprehensive interrupt support with 6 priority levels
-* Direct Memory Access (DMA) signaling with immediate and hysteresis
-modes
-* Modem control interface (CTS, DSR, RI, DCD, RTS, DTR, OUT1, OUT2) with
-change detection and interrupt; flow control is performed by software
+The TX and RX FIFOs default to 16 entries each. Software selects FIFO or
+single-character operation, frame format, baud divisor and interrupt enables.
+Modem signals provide status and software-controlled outputs; CTS does not
+stop transmission and RTS does not automatically throttle reception.
+DMA-ready outputs indicate service conditions but do not themselves move data.
 
 [[uart-wrapper-diagram]]
 .SMC UART wrapper
@@ -67,14 +66,14 @@ ifdef::backend-pdf[]
 include::interface.adoc[]
 endif::backend-pdf[]
 ifdef::backend-html5[]
-include::partial$uart_16550/doc/memmap.adoc[]
-endif::backend-html5[]
-ifdef::backend-pdf[]
-include::memmap.adoc[]
-endif::backend-pdf[]
-ifdef::backend-html5[]
 include::partial$uart_16550/doc/programming.adoc[]
 endif::backend-html5[]
 ifdef::backend-pdf[]
 include::programming.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::partial$uart_16550/doc/memmap.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+include::memmap.adoc[]
 endif::backend-pdf[]
