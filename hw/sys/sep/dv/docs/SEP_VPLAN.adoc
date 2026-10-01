@@ -862,7 +862,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_nmi_sanity_test`, `sep_reset_wdt_sanity_test`, `sep_wdt_aon_timer_internals_test`
 
 |Per-IP `SW_RESET_N` isolation
-|`sep_crypto_per_ip_reset_isolation_test`. Each engine holds a golden-checked result; a neighbour reset leaves it bit-exact. While HMAC is held, the same `DIGEST_0` read and a `CFG` write complete SLVERR, the read does not return the live digest, and AES stays OKAY. A reset of OTBN, AES, or KMAC clears only that engine's EDN endpoint: its outstanding `edn_req` drops with no `edn_ack`, and a sibling client is still granted afterwards. Once URND is being granted, a KMAC reset stepped across one acknowledge period keeps the KMAC endpoint's `edn_ack` and `edn_bus` at 0, from `SW_RESET_N` and from the JTAG override while `SW_RESET_N` still shows KMAC released, and URND may complete its own beat. Drain-before-reset is claimed for the HMAC, KMAC and Adams Bridge domains — see the detail entry; it is not claimed for AES or OTBN. The ABR domain also carries the JTAG `IC_RESET` override check, and its live-result behaviour is graded on `sep_abr_mlkem_kat_test`. Drain-before-reset for the shared TRNG domain is on the `Coordinated TRNG reset and ordered recovery` row.
+|`sep_crypto_per_ip_reset_isolation_test`. Each engine holds a golden-checked result; a neighbour reset leaves it bit-exact. While HMAC is held, the same `DIGEST_0` read and a `CFG` write complete SLVERR, the read does not return the live digest, and AES stays OKAY. A software reset of OTBN, AES, or KMAC cancels only that engine's EDN endpoints: its outstanding `edn_req` drops with no `edn_ack`, and a sibling client is still granted afterwards. The cancel precedes the engine's gated reset by at least one cycle, a word the endpoint held is never acknowledged to any client afterwards, and a KMAC reset stepped across one URND acknowledge period keeps the KMAC endpoint's `edn_ack` and `edn_bus` at 0 while URND completes its own beat. Drain-before-reset is claimed for the HMAC, KMAC and Adams Bridge domains — see the detail entry; it is not claimed for AES or OTBN. The ABR domain also carries the JTAG `IC_RESET` override check, and its live-result behaviour is graded on `sep_abr_mlkem_kat_test`. Drain-before-reset for the shared TRNG domain is on the `Coordinated TRNG reset and ordered recovery` row.
 
 |Scratch bank reset domains (warm vs cold)
 |`sep_warm_cold_reset_scratch_test`. The graded contract is the reset-domain split across every implemented register: a warm reset clears all eight warm registers while all eight cold registers retain, and only a cold reset clears both banks. Distinct per-index patterns prove the registers do not alias. Read over the CPU-LSU AXI splice with a `scratch_cold_probe_o` cross-check; the cross-check catches a read-mux fault and is not an independent confirmation, since both sides come from the same flops. The bank *size* the specification asks for is not graded here — see <<known-limitations>>.
@@ -3127,9 +3127,9 @@ one word and parks, which is enough for the legality check to execute.
 
 *BFM / Model*: ocah_axi_vip
 
-*Objective*: Proves the per-IP software reset domains are isolated, using live crypto results rather than a poked status bit: each engine computes a golden-checked value, then one engine is reset and the other's held result must survive bit-exact. A reset of OTBN, AES, or KMAC cancels that engine's outstanding EDN request and leaves the other endpoints alone. The HMAC, KMAC and Adams Bridge domains also grade drain-before-reset. ABR grades the JTAG `IC_RESET` override on this leaf; its live-result isolation is on <<sep_abr_mlkem_kat_test>>.
+*Objective*: Proves the per-IP software reset domains are isolated, using live crypto results rather than a poked status bit: each engine computes a golden-checked value, then one engine is reset and the other's held result must survive bit-exact. A software reset of OTBN, AES, or KMAC cancels that engine's EDN endpoints one cycle before its gated reset and leaves the other endpoints alone. The HMAC, KMAC and Adams Bridge domains also grade drain-before-reset. ABR grades the JTAG `IC_RESET` override on this leaf; its live-result isolation is on <<sep_abr_mlkem_kat_test>>.
 
-*Test Coverage*: Per-IP software reset; neighbour crypto result survives bit-exact; crypto EDN request cancelled on OTBN, AES, and KMAC reset; a KMAC reset from software and from the JTAG override keeps the KMAC EDN response at 0 while URND completes its own beat; HMAC, KMAC and ABR drain-before-reset; ABR JTAG override.
+*Test Coverage*: Per-IP software reset; neighbour crypto result survives bit-exact; crypto EDN endpoints cancelled ahead of an OTBN, AES, or KMAC software reset, with the held word never acknowledged afterwards; a KMAC software reset keeps the KMAC EDN response at 0 while URND completes its own beat; HMAC, KMAC and ABR drain-before-reset; ABR JTAG override.
 
 *Test Procedure*:
 
@@ -3140,8 +3140,10 @@ one word and parks, which is enough for the legality check to execute.
 . Hold the KMAC reset and prove the gated reset waits for both its host and Key Manager paths to isolate, and that a read arriving inside the host-path drain window resolves. Accepted-traffic drain is not claimed for KMAC; see *Drain-before-reset* below.
 . Hold the Adams Bridge reset and prove the gated reset waits for both the full-AXI host path and the shared Key Manager path to isolate, that in-flight host reads resolve, and that the JTAG override holds the domain while `SW_RESET_N` still shows it released.
 . Before EDN is enabled, hold an OTBN URND request and an AES request. Resetting the requester drops that request with `edn_ack` low. A KMAC reset in the same window leaves the AES request high. With OTBN then held in reset, enabling EDN still grants AES, and releasing OTBN lets URND be granted.
-. Once URND is being granted, re-arm that stream and step a KMAC reset across one measured acknowledge period. On each gated-reset edge the KMAC endpoint's `edn_ack` and `edn_bus` are 0. URND may acknowledge on an edge; the word it presents is the word it had staged. A quiet edge does not drop URND `edn_req` unless the previous cycle already acknowledged, and does not replace a requested word with a different word. The software-reset write outlasts one KMAC seed, so this step does not require the cycle before the edge to be an outstanding request. The override step samples that request when the pin rises.
-. Repeat that walk with the JTAG KMAC override. `SW_RESET_N` still shows KMAC released. The override is synchronized into `clk_i`: the gated reset stays released for a picosecond after the pin rises, and it falls on a later edge. KMAC `edn_req` is outstanding when the pin rises; on the gated-reset edge the endpoint response is 0 and the request is low, and it stays quiet afterwards. A pulse narrower than one `clk_i` period is `EDN-GLITCH-OBS`: inside that pulse the gated reset stays released and URND's staged word is unchanged on the next edge.
+. Once URND is being granted, re-arm that stream and step a KMAC software reset across one measured acknowledge period. On each gated-reset edge the KMAC endpoint's `edn_ack` and `edn_bus` are 0. URND may acknowledge on an edge; the word it presents is the word it had staged. A quiet edge does not drop URND `edn_req` unless the previous cycle already acknowledged, and does not replace a requested word with a different word.
+. Software-reset KMAC and AES twice each while their endpoint holds the word of its last acknowledge with `edn_req` low, and OTBN six times at a different offset from a URND acknowledge each time. On the last cycle before the engine's gated reset falls, while it is still released, the engine's endpoints show `edn_ack` and `edn_bus` at 0, and they stay 0 until the gated reset releases.
+. Step a KMAC software reset across the phase at which URND holds a staged word, and require that word to survive the edge and be the word URND is acknowledged with.
+. Record every crypto EDN acknowledge through these steps. No word an endpoint held when its engine was reset is acknowledged to any client afterwards.
 
 *Checkers*:
 
@@ -3224,17 +3226,19 @@ releases. Both mux directions are graded.
 |CHK-EDN-REARM
 |Releasing OTBN lets URND assert `edn_req` again and receive `edn_ack`.
 |CHK-EDN-EDGE
-|After that grant stream is up, OTBN is re-armed and a KMAC software reset is stepped one cycle at a time across one measured URND acknowledge period. On each falling edge of the KMAC gated reset, KMAC `edn_ack` and `edn_bus` are 0. The walk includes at least one edge where URND `edn_ack` is high, and the bus on that edge is URND's own staged word. An edge with URND `edn_ack` low does not drop URND `edn_req` unless the previous cycle already acknowledged, and does not replace a requested word with a different word. The software-reset write is an AXI transaction and outlasts one KMAC seed, so this row does not sample the cycle before the edge as an outstanding request. That sample is `CHK-EDN-JTAG`. The armed staged-word hold is `CHK-EDN-HOLD`.
-|CHK-EDN-JTAG
-|The same step, driven by the JTAG KMAC override. On each edge `SW_RESET_N` still shows KMAC released. The override pin is synchronized into `clk_i`: the gated reset is still released a picosecond after the pin rises, and the fall is a later `clk_i` edge. KMAC `edn_req` is high, with `edn_ack` low, when the pin rises. On the gated-reset edge `edn_req`, `edn_ack` and `edn_bus` are 0, and they stay 0 for the quiet window. A sub-cycle pulse is not this row.
+|After that grant stream is up, OTBN is re-armed and a KMAC software reset is stepped one cycle at a time across one measured URND acknowledge period. On each falling edge of the KMAC gated reset, KMAC `edn_ack` and `edn_bus` are 0. The walk includes at least one edge where URND `edn_ack` is high, and the bus on that edge is URND's own staged word. An edge with URND `edn_ack` low does not drop URND `edn_req` unless the previous cycle already acknowledged, and does not replace a requested word with a different word. The software-reset write is an AXI transaction and outlasts one KMAC seed, so an outstanding KMAC request on the edge is graded only when one occurs; `CHK-EDN-LEAD` grades the cancel ahead of the reset. The armed staged-word hold is `CHK-EDN-HOLD`.
+|CHK-EDN-LEAD
+|A software reset of KMAC, AES or OTBN cancels that engine's crypto EDN endpoints before its gated reset asserts. Each reset is requested while the endpoint holds a word with `edn_ack` low. For KMAC and AES the engine's `edn_req` is also low, so the acknowledge state machine has no request to pop that word for and only the cancel can clear it. On the last cycle before the gated reset falls, sampled from the gated-reset TB probe while it is still released, `edn_ack` and `edn_bus` are 0 on every endpoint of the engine (OTBN RND and URND together), and they stay 0 on every cycle the gated reset is asserted. OTBN URND requests continuously and its endpoint reads 0 on the cycle a word is popped, so its six trials start at a different offset from a URND acknowledge and every one must show the quiet cycle. A design that clears the endpoint with its reset, instead of ahead of it, fails here.
+|CHK-EDN-DISCARD
+|Every crypto EDN acknowledge through the EDN steps is recorded as client and word. No word an endpoint held when its engine's reset was requested is acknowledged to any client after that request. Fails if no reset endpoint held a word, so it cannot pass on an empty set.
 |CHK-EDN-HOLD
-|A reset of KMAC must not rewrite a sibling's in-flight EDN data. Armed on an edge where URND held `edn_req` with a word on `edn_bus` and no acknowledge yet, and that same word is still present on the edge. The acknowledge state machine pops its endpoint FIFO on some cycles where `edn_ack` is already low; the next cycle reads 0 because the FIFO is empty, and that gap is not the arm. An edge that presents a different word fails. If every candidate edge zeroes the staged word, the check fails. It also fails if no attempt arms, so it cannot pass on an idle bus. `prim_edn_req` feeds `{edn_fips, edn_bus}` into `prim_sync_reqack_data` with `DataSrc2Dst=0`, whose `SyncReqAckDataHoldDst2Src` contract requires that data to hold across the handshake window.
+|A software reset of KMAC must not rewrite a sibling's in-flight EDN data. Armed on an edge where URND held `edn_req` with a word on `edn_bus` and no acknowledge yet, and that same word is still present on the edge. The acknowledge state machine pops its endpoint FIFO on some cycles where `edn_ack` is already low; the next cycle reads 0 because the FIFO is empty, and that gap is not the arm. An edge that presents a different word fails. If every candidate edge zeroes the staged word, the check fails. It also fails if no attempt arms, so it cannot pass on an idle bus. `prim_edn_req` feeds `{edn_fips, edn_bus}` into `prim_sync_reqack_data` with `DataSrc2Dst=0`, whose `SyncReqAckDataHoldDst2Src` contract requires that data to hold across the handshake window.
 |CHK-EDN-HOLD-KEEP
 |The word URND had staged when the unrelated engine was reset must be the word URND is acknowledged with, within a bounded recovery window. The acknowledge may be the reset-edge cycle itself.
 |===
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Not claimed*: `EDN-GLITCH-OBS` drives a JTAG pulse narrower than one `clk_i` period. Inside the pulse, before another `clk_i` edge, the KMAC gated reset stays released, and URND's staged word is unchanged on the next edge. The observation stays outside the `CHK-` namespace. The arbiter `req_chk_i` is low while `clear_i` is high or any endpoint reset is low; a request dropped inside that window does not fail the arbiter assume. `AxisEdnReqStableUnlessEndpointReset_A` is the per-endpoint request-stability check. Every assertion-based contract here needs VCS -- `prim_assert.sv` withholds `OCAH_OT_INC_ASSERT` when `VERILATOR` is defined, so the arbiter and adapter assertions do not exist in the default Verilator build.
+*Not claimed*: the JTAG `IC_RESET` override of OTBN, AES or KMAC. It bypasses the endpoint cancel along with the isolation sequencing, so the EDN checks above take their resets from `SW_RESET_N` only. A word committed to an endpoint in the cycle its cancel rises is not targeted at SoC level: the software-reset write outlasts one engine seed. The adapter waives the arbiter request checks only on the first cycle of an endpoint flush; `AxisEdnCancelledEndpointIdle_A` and `AxisEdnReqStableUnlessEndpointCancelled_A` are the per-endpoint cancel and request-stability checks, enabled for all four crypto endpoints. Every assertion-based contract here needs VCS -- `prim_assert.sv` withholds `OCAH_OT_INC_ASSERT` when `VERILATOR` is defined, so the arbiter and adapter assertions do not exist in the default Verilator build.
 
 *Scope limit*: live-result isolation walks AES, HMAC, KMAC and OTBN. Drain-before-reset and the JTAG override walk Adams Bridge on this leaf; ABR live-result isolation is on <<sep_abr_mlkem_kat_test>>. The Key Manager bit stays at its reset default (a different mechanism) and is not claimed.
 
@@ -3252,8 +3256,9 @@ rises, so it grades traffic the isolate has to retire. The shared TRNG domain gr
 *Not claimed*: drain-before-reset for the AES and OTBN domains — the
 mechanism is shared, but a per-domain demonstration is not made here. Key
 Manager isolate termination is not claimed here: `CHK-DRAIN-ORDER` reads the
-`km_hmac` isolate bit, so it shows the KM path reaching isolation, not what a
-KM transaction receives. That response is graded for `km_hmac` in
+`km_hmac` isolate bit, which is already isolated while the Key Manager is held
+at its reset default, so it grades neither the KM path reaching isolation nor
+what a KM transaction receives. That response is graded for `km_hmac` in
 <<sep_km_isolate_termination_test>>, which runs a KM CPU image so the
 transaction comes from the master that owns the path. SMC CPU-MMIO isolate is
 out of this subsystem.
@@ -6847,7 +6852,7 @@ error path works.
 
 *Bucket*: eFuse, lifecycle, SEC_DIS, locked-field
 
-*Run mode*: `no_cpu`; omit `+skip_fuse_sense`
+*Run mode*: `no_cpu`; omit `+skip_fuse_sense`; `+sep_edn_jtag_reset_waive`. The JTAG `sep_reset_n` override resets the crypto engines without isolation, so an engine can drop an ungranted EDN request with no endpoint cancel; `tb_top` turns off the crypto EDN arbiter and adapter request-hold assertions for this leaf.
 
 *Source Module*: `sep_sec_dis_override_test`
 
@@ -6933,7 +6938,7 @@ error path works.
 
 *Bucket*: eFuse, lifecycle, SEC_DIS, locked-field
 
-*Run mode*: `no_cpu`; omit `+skip_fuse_sense`
+*Run mode*: `no_cpu`; omit `+skip_fuse_sense`; `+sep_edn_jtag_reset_waive`. The JTAG `sep_reset_n` override resets the crypto engines without isolation, so an engine can drop an ungranted EDN request with no endpoint cancel; `tb_top` turns off the crypto EDN arbiter and adapter request-hold assertions for this leaf.
 
 *Source Module*: `sep_sec_dis_reset_reach_test`
 
