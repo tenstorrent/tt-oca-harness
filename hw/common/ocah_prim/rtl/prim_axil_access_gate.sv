@@ -18,7 +18,7 @@ module prim_axil_access_gate #(
   parameter int unsigned           MAX_TRANS  = 1,  // Outstanding transactions per channel
                                                     // through the gate.
   parameter axi_pkg::resp_t        RESP       = axi_pkg::RESP_SLVERR,  // Response code while
-                                                                        // blocked.
+                                                                       // blocked.
   parameter int unsigned           RESP_WIDTH = 32'd64,  // Width of RESP_DATA only.
   parameter logic [RESP_WIDTH-1:0] RESP_DATA  = 64'hBADCAB1EBADCAB1E,  // Read data while
                                                                        // blocked.
@@ -45,7 +45,7 @@ module prim_axil_access_gate #(
 );
 
   localparam logic PassPort = 1'b0;
-  localparam logic ErrPort  = 1'b1;
+  localparam logic ErrPort = 1'b1;
 
   axil_req_t  [1:0] axil_reqs;
   axil_resp_t [1:0] axil_resps;

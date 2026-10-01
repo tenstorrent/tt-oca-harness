@@ -207,10 +207,12 @@ def _selftest() -> None:
     assert len(rows) >= 30, len(rows)
     assert rows[0].base == 0x1000_0000
     cells = [c for r in rows for c in (r.hole, r.past) if c is not None]
-    # Both modeled notes must parse somewhere, or a reworded note would silently
-    # drop the bit-2 read word or the write-code override.
-    assert any(c.hi_noted for c in cells)
+    # The modeled write-code note must parse somewhere, or a reworded note
+    # would silently drop the write-code override. Every error slave answers
+    # the same word on both halves of the bus, so the map states 32-bit rdata
+    # throughout and no cell carries an upper word.
     assert any(c.write_ranges for c in cells)
+    assert not any(c.hi_noted for c in cells), [c.text for c in cells if c.hi_noted]
 
 
 _selftest()
