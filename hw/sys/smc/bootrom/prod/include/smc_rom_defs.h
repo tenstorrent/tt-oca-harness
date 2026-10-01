@@ -27,15 +27,6 @@
 #define SMC_STRAPS_HI_REG_ADDR 0xC0404804
 
 /*
- * Base of the per-pad gpio_ctrl array in the external window, one pad every 0x20. The
- * registers/smc_top_regs.h base is stale.
- *
- * Mirror of the generated regs/gen/c/smc_addr.h symbol
- * SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_BASE_ADDR.
- */
-#define SMC_GPIO_CTRL_BASE_ADDR 0xC0401000
-
-/*
  * eFuse map addresses that registers/smc_top_regs.h gets wrong. That header still describes the
  * previous fuse map and its generator is missing from the tree, so every eFuse register the ROM
  * reads is defined here instead. Only LOCKS is still correct there.

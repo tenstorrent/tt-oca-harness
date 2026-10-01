@@ -40,7 +40,7 @@ from pathlib import Path
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 
-from .smc_addr_map import _REPO, _field_mask, smc_addr
+from .smc_addr_map import _REPO, _field_mask, smc_addr, smc_bootrom_addr
 
 # --- eFuse preload asset (authoritative source for map-read expectations) ---
 #
@@ -125,7 +125,9 @@ EFUSE_BLOCKED_READ_DATA = 0xBADCAB1E
 # to the eFuse leg, and ``efuse_interface_controller.sv`` decodes anything
 # outside [SMC_EFUSE_MAP .. EFUSE_INTERFACE_CTRL] to ``SHIM_SEL``, i.e. straight
 # out on ``efuse_bank_ctrl_req_o``.
-EFUSE_SHIM_CTRL_WINDOW = smc_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_EFUSE_SHIM_CTRL_BASE_ADDR")
+EFUSE_SHIM_CTRL_WINDOW = smc_bootrom_addr(
+    "SMC_TOP_SMC_EXTERNAL_MANDATORY_EFUSE_SHIM_CTRL_BASE_ADDR"
+)
 
 # Offset 0 of that window is implemented by ``efuse_shim_ctrl_reg``
 # (``hw/ip/efuse/dv/models/regs/efuse_shim_ctrl.rdl``) as EFUSE_BANK_INIT_TIME,

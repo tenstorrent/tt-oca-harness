@@ -183,9 +183,6 @@ EXTERNAL_MANDATORY_BASE = smc_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_BASE_ADDR")
 EXTERNAL_SUPPLEMENTARY_BASE = smc_addr("SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_BASE_ADDR")
 assert EXTERNAL_MANDATORY_BASE == smc_addr("SMC_TOP_SMC_EXTERNAL_BASE_ADDR")
 assert EFUSE_SHIM_CTRL_WINDOW == EXTERNAL_MANDATORY_BASE
-# The captured straps sit in the supplementary region, STRAPS_HI after STRAPS_LO.
-# The block's size is the generated straps header's; the first word past it is
-# claimed by nothing in the window.
 _STRAPS_H = _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "straps.h"
 
 

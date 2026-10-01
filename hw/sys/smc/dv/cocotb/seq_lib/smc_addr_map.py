@@ -122,13 +122,25 @@ def smc_bootrom_addr(symbol: str) -> int:
 
 
 def external_gpio_ctrl_addr(idx: int) -> int:
-    """EXTERNAL_MANDATORY GPIO_CTRL[idx]; its CONTROL register sits at the element base."""
-    return smc_indexed_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_BASE_ADDR", idx)
+    """EXTERNAL_MANDATORY GPIO_CTRL_N CONTROL (bootrom map; not in PeakRDL)."""
+    return smc_bootrom_addr(f"SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_{idx}__CONTROL_BASE_ADDR")
 
 
+@lru_cache(maxsize=1)
 def external_gpio_ctrl_indices() -> tuple[int, ...]:
-    """GPIO_CTRL instance indices in the SMC map."""
-    return tuple(range(smc_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_NUM")))
+    """Sorted GPIO_CTRL instance indices present in the bootrom map."""
+    table = _parse_paren_defines(_BOOTROM_REGS_H)
+    prefix = "SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_"
+    suffix = "__CONTROL_BASE_ADDR"
+    idxs: list[int] = []
+    for name in table:
+        if name.startswith(prefix) and name.endswith(suffix):
+            mid = name[len(prefix) : -len(suffix)]
+            if mid.isdigit():
+                idxs.append(int(mid))
+    if not idxs:
+        raise RuntimeError("no EXTERNAL_MANDATORY GPIO_CTRL_* in bootrom map")
+    return tuple(sorted(idxs))
 
 
 def dma_ctrl_offset(symbol: str) -> int:
