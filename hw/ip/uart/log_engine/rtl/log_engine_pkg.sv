@@ -110,12 +110,12 @@ package log_engine_pkg;
     ST_LOG_FETCH_IDLE = 2'd0,
     ST_LOG_FETCH_REQ  = 2'd1,
     ST_LOG_FETCH_WAIT = 2'd2
-  } log_fetch_fsm_state_t;
+  } log_fetch_fsm_state_e;
 
   typedef enum logic [1:0] {
     ST_LOG_WRITE_IDLE = 2'd0,
     ST_LOG_WRITE_REQ  = 2'd1,
     ST_LOG_WRITE_WAIT = 2'd2
-  } log_write_fsm_state_t;
+  } log_write_fsm_state_e;
 
 endpackage

@@ -131,8 +131,8 @@ module zeroer #(
     ST_IDLE       = 3'b001,
     ST_ISSUE_ADDR = 3'b010,
     ST_ISSUE_DATA = 3'b100
-  } state_t;
-  state_t cur_state, nxt_state;
+  } state_e;
+  state_e cur_state, nxt_state;
 
   // ----------
 

@@ -75,7 +75,7 @@ module smc_data_accelerator_wrap #(
   smc_pkg::smc_cpu_mmio_axi_resp_t [NumAccelerators-1:0] axi_mst_mux_resp;
 
   // Address decode logic for DMA/Zeroer selection
-  smc_pkg::data_accelerator_type_t aw_select_dma_zeroer, ar_select_dma_zeroer;
+  smc_pkg::data_accelerator_type_e aw_select_dma_zeroer, ar_select_dma_zeroer;
 
   always_comb begin
     // Default to DMA (index 0)
