@@ -641,6 +641,6 @@ run_modes = ["jtag2axi"]
 name = "dtp_jtag2axi_dbg_disable_matrix_test"
 module = { cocotb = "dtp_jtag2axi_dbg_disable_matrix_test", uvm = "dtp_jtag2axi_dbg_disable_matrix_test" }
 seed = 1
-timeout_sec = 4800
+timeout_sec = 2400
 tags = ["jtag2axi", "dbg_disable"]
 run_modes = ["jtag2axi"]

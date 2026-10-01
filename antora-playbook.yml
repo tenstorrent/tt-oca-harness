@@ -64,5 +64,6 @@ antora:
   extensions:
     - '@antora/lunr-extension'
     - ./tools/doc/block-indexes.js
+    - ./tools/doc/preserve-smn-fragments.js
 output:
   dir: ./doc/_build/html_antora

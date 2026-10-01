@@ -64,3 +64,12 @@ ifdef::backend-pdf[]
   <<cross-trigger-network,Cross-Trigger Network>>
 endif::backend-pdf[]
   page.
+
+== Address Map
+
+ifdef::backend-html5[]
+xref:ip:cross_trigger_network/doc/index.adoc#ctn-memory-map[CTN Register Map]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<ctn-memory-map,CTN Register Map>>
+endif::backend-pdf[]

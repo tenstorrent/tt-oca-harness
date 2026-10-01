@@ -11,8 +11,7 @@ OUTPUT_ARCH("riscv")
 ENTRY(_start)
 
 MEMORY {
-  /* Boot ROM: 64KiB read-only instruction memory.  The prim_rom macro is 128KiB
-   * physically, but the IFU demux decodes only SEP_BOOT_ROM_MEM_SIZE = 64KiB. */
+  /* Boot ROM: 64KiB read-only instruction memory. */
   rom  (rx)  : ORIGIN = 0x10040000, LENGTH = 0x00010000  /* 64KiB */
 
   /* DCCM (aka DTCM) window from EL2 snapshot.

@@ -83,6 +83,12 @@ endif::backend-pdf[]
 == Memory Map
 
 ifdef::backend-html5[]
+++++
+<span id="memory-map"></span>
+++++
+endif::backend-html5[]
+
+ifdef::backend-html5[]
 include::partial$cross_trigger_network/doc/memmap.adoc[]
 endif::backend-html5[]
 ifdef::backend-pdf[]

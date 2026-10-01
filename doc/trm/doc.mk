@@ -91,7 +91,7 @@ ocah-doc-trm-pdf: ocah-doc-trm-setup
 		-r "$(OCAH_ROOT)/tools/doc/block_catalog.rb" \
 		-a register-map-manifest="$(OCAH_TRM_BUILD)/register-maps.txt" \
 		-a pdf-theme="$(OCAH_DOC_PDF_THEME)" -a pdf-themesdir="$(OCAH_DOC_PDF_THEMESDIR)" \
-		-a toc -a toclevels=9 -a outlinelevels=9 \
+		-a toc -a toclevels=11 -a outlinelevels=11 \
 		$(OCAH_DOC_ASCIIDOCTOR_RELEASE_ARG) \
 		-o "$(OCAH_TRM_BUILD)/latex/$(OCAH_TRM_PDF)" src/index.adoc
 	@echo "Done: $(OCAH_TRM_BUILD)/latex/$(OCAH_TRM_PDF)"

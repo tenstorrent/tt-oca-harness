@@ -134,21 +134,60 @@ infrastructure.
 == GPIO Pad Integration
 
 GPIO pad integration requires careful attention to function assignment and pull
-requirements. The GPIO table below lists each signal, bump location, function,
-recommended pull, and integration notes. Default input/output direction is
-defined by `smc_padring_pkg::DefaultDirectionMap`, not by the table.
+requirements. The GPIO table below lists each pad's index, function, recommended
+pull, and integration notes. Default input/output direction is defined by
+`smc_padring_pkg::DefaultDirectionMap`, not by the table.
 
 The public `hw/top/smc_wrapper.sv` and `hw/top/smc_ip_integration.sv` examples
-show the pad connections. For bidirectional pins, implement proper tri-state
+show the pad connections. For bi-directional pins, implement proper tri-state
 buffers controlled by the `core2pad_en_o` signals. Connect multiplexed UART,
 I2C, I3C, and SPI pins to external devices according to the function assignments
 in the GPIO table.
 
-Configuration straps are captured separately from the GPIO table. Establish
-them before cold reset deassertion and keep them stable during capture. The
+The SMC padring drives one GPIO pad per `u_gpio_interface` instance, so the
+adopter must integrate `smc_pkg::NUM_GPIO_WRAPS` pads:
+`smc_pkg::NUM_BONDED_GPIO` bonded pads plus `smc_pkg::NUM_UNBONDED_GPIO`
+unbonded pads. If the adopter chooses to capture configuration straps from GPIO
+pads, this can only be done from the bonded pads. The pads for the SDA and SCL
+lines of I3C[1] must be unbonded for security when transmitting OCCP traffic.
+The pads for Cool Reset In/Out must also be unbonded as they are meant only to
+interface with other chiplets within a package. All of these pads must be
+bi-directional, except for Cool Reset In which must use an input-only pad.
+
+The adopter must instantiate 10 additional pads to support the JTAG PTAP and
+STAP. This consists of two groups of TCK, TRSTN, TDI, TDO, and TMS -- one group
+for the PTAP and one for the STAP. The TDO for both the PTAP and STAP must use
+tri-state capable bi-directional pads. The TDI for both the STAP and PTAP must
+use input-only pads. The remaining PTAP pads must be capable of input, and the
+remaining STAP pads must be capable of output.
+
+The adopter must connect every cross trigger port (CTP) that `smu` exposes. A
+CTP that leaves the chiplet must instantiate a group of 4 pads (request out,
+request in, acknowledge in, acknowledge out). The two inputs must use input-only
+pads and the two outputs must use bi-directional pads capable of open-drain
+drive to conform with the cross-trigger methodology described in
+ifdef::backend-html5[]
+xref:ocah-docs:ip:cross_trigger_port/doc/index.adoc[Cross-Trigger Port].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+the _Cross-Trigger Port_ section of the Technical Reference Manual.
+endif::backend-pdf[]
+
+See <<xtrig-ctp-gpio-interface>> for the SMU-level ports.
+
+OCAH also requires a reference clock, a cold reset, and a powergood indication
+(`clk_ref_i`, `rst_cold_ni`, and `powergood_i` on `smu`). These must be driven,
+but not necessarily from pads. The adopter may source them from dedicated pads
+as the GPIO table shows, or from another stable source.
+
+The adopter may choose to instantiate additional pads (with or without
+supporting instances of the OCAH `gpio` module) to support custom features.
+
+Configuration straps are captured separately from the GPIO table. Establish them
+before cold reset deassertion and keep them stable during capture. The
 `STRAPS_LO` and `STRAPS_HI` registers in the adopter peripheral window (see
-<<smc-external-supplementary>>) define the decoded bit assignments, including `BYPASS_SRAM_REPAIR` at
-`STRAPS_LO[13]` and `TEST_EN` at `STRAPS_LO[14]`.
+<<smc-external-supplementary>>) define the decoded bit assignments, including
+`BYPASS_SRAM_REPAIR` at `STRAPS_LO[13]` and `TEST_EN` at `STRAPS_LO[14]`.
 
 [[smc-peripheral-connections]]
 == Peripheral Interface Connections
@@ -649,8 +688,8 @@ endif::backend-pdf[]
 == GPIO Pin Requirements
 
 The SMC provides GPIO functionality with multiplexed peripheral functions and
-test interfaces. The following table lists the signal and bump location,
-assigned function, recommended pull, and GPIO-specific notes. It does not define
+test interfaces. The following table lists each pad's index, assigned
+function, recommended pull, and GPIO-specific notes. It does not define
 default direction or decode configuration straps; use
 `smc_padring_pkg::DefaultDirectionMap` and the `STRAPS_LO` and `STRAPS_HI`
 register descriptions (see <<smc-external-supplementary>>) for those.

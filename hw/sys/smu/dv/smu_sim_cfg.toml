@@ -103,24 +103,6 @@ incdirs = [
   # ocah_fcov_macros.svh, included by the cov/sv functional-coverage modules.
   "hw/common/assert",
 ]
-# Vendor simulation collateral that an overlay of the sep bender graph can pull
-# in and that the smu_wrapper hierarchy never instantiates: a licensed SPI
-# controller wrapper and its DLL PHY, the pad and ESD libraries,
-# padring_dv_wrapper and the SPI flash models. Excluded so Verilator is not
-# made to parse their switch-level primitives.
-exclude_files = [
-  "sep_cdns_spi_wrap.sv",
-  "cdn_ip6184_19e8_dll_phy",
-  "cdn_xspi",
-  "ln04lpp_gpio_lib_t12.v",
-  "ln04lpp_gpio_lib_t18.v",
-  "ln04lpp_esd_lib_t12.v",
-  "ln04lpp_esd_lib_t18.v",
-  "padring_dv_wrapper.sv",
-  "tt_spi_devices.sv",
-  "tt_bidir_delay.sv",
-  "meta/models/spi",
-]
 stubs = [
   # Stand-in for the ocah_prim prim_sync3 cell, emitted ahead of the Bender
   # filelist so -Wno-MODDUP first-definition-wins picks it on Verilator. On

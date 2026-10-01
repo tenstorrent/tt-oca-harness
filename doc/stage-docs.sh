@@ -77,6 +77,8 @@ stage_gen_adoc() {
 
 # Copy generated single-file HTML register docs if present. These are intended
 # for Antora backend-html5 includes and are not the native PeakRDL mini-site.
+# Fragment ids are namespaced at build time by tools/doc/block-captions.js, so
+# the fragments are staged verbatim.
 stage_gen_html() {
   local src="$1" dst="$2"
   [ -d "$src" ] || return 0

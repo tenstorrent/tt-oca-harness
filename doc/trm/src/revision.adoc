@@ -200,4 +200,10 @@ reports activity only through STATUS.ACTIVE.
 cross-trigger network address maps how each unit answers an access that no
 register or memory backs, inside its decoded extent and past it, and how an
 address between unit apertures answers.
+|0.5.36 |2026-09-29 |Noah Betik |Reworked `ocah_gpio_table.adoc` to key each
+row by pad index instead of harness signal name, and marked the PTAP/STAP JTAG,
+reference clock, reset and powergood rows as having no dedicated interface in
+the harness. Added GPIO pad integration guidance on the bonded and unbonded pad
+counts, the pad types for the JTAG PTAP/STAP, cross trigger ports and the
+clock/reset/powergood inputs.
 |=======================================================================

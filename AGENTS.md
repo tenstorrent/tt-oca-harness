@@ -252,6 +252,24 @@ companion's `OCAH_DOCKER_CACHE_DIR` set, it next checks the shared tarball cache
 builds locally from the flake. `scripts/docker.md` is authoritative for the source selection
 controls.
 
+> **Any container command can start a full image build.** `run`, `run-here`, `shell`, `verify`
+> and the doc subcommands all go through that same selection, so a routine `make regen-regs`,
+> doc build or lint run falls back to building the image from source when no image with the
+> tree's tag is loaded, pullable or cached. The fallback announces itself with:
+>
+> ```
+> docker-run: <image>:<tag> (hash <tag>) absent locally and in cache; building
+> ```
+>
+> The build occupies many cores for a long time, and nothing serialises it: every worktree or
+> agent on the host that hits the fallback starts its own. The tag is a hash of the image
+> inputs, so a change to them on `main` leaves every checkout based on it without an image until
+> CI publishes the new tag. An agent that sees this message stops the command and asks the user
+> rather than letting the build run. Interrupting `docker-run.sh` does not necessarily stop the
+> build container, so check `podman ps` (or `docker ps`) afterwards. Once one pull or build has
+> loaded a tag, every checkout at that tag using the same engine reuses it. The bubblewrap
+> backend below never builds.
+
 A testbench that builds firmware as part of its own flow dispatches those builds through
 `scripts/docker-run.sh run-here`, so the container is used automatically while the simulator
 runs natively on the host. Not every testbench does this — check its Makefile rather than
@@ -465,6 +483,24 @@ issues (see `SECURITY.md`).
 
 Read `.github/ISSUE_TEMPLATE/` and `.github/PULL_REQUEST_TEMPLATE.md` rather than
 restating them. Allowed taxonomy values live in `.github/issue-taxonomy.yml`.
+
+### Answer questions about the tree from current `main`
+
+Whether an issue is still open work, whether a bug still exists, or what an audit finds
+are questions about the shared tree, not about your checkout. The working branch — and a
+`nonfree/` clone, which has its own branch — can be many commits behind, so findings made
+there can describe code `main` has already changed. Fetch both repositories and inspect
+`origin/main` of each:
+
+```bash
+git -C <repo> fetch origin && git -C <repo>/nonfree fetch origin
+git -C <repo> grep -n <pattern> origin/main -- <paths>
+git -C <repo>/nonfree grep -n <pattern> origin/main -- <paths>
+```
+
+Pass paths explicitly (`git -C`) rather than relying on the shell's current directory:
+inside `nonfree/`, a bare `git` command operates on the companion repository. State the
+commit each finding was made against.
 
 ### Issues
 

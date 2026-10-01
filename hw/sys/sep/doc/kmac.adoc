@@ -57,8 +57,33 @@ Consult the
 https://opentitan.org/book/hw/ip/kmac/index.html[OpenTitan KMAC
 documentation] for the authoritative core functionality of the IP. The
 ifdef::backend-html5[]
-register map is reported in the xref:sep:memory_map.adoc#sep-detailed-register-map[Detailed Register Map].
+register map follows below.
 endif::backend-html5[]
 ifdef::backend-pdf[]
-register map is reported in the <<sep-detailed-register-map,Detailed Register Map>>.
+register map follows below.
+endif::backend-pdf[]
+
+== Memory Map and Register Reference
+
+ifdef::backend-html5[]
+++++
+<span id="register-reference"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
+
+Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.
+
+=== Detailed Register Map
+
+ifdef::backend-html5[]
+++++
+include::ip:partial$kmac/regs/gen/html/kmac.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/kmac/regs/gen/adoc/kmac.adoc[leveloffset=+2]
 endif::backend-pdf[]
