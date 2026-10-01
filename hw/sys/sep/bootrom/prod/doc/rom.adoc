@@ -687,15 +687,39 @@ and hang in `wfi`. The ROM shall never attempt to resume from a trap.
 
 [[req-SEP-ROM-CPU-080]]*[SEP-ROM-CPU-080]* The ROM shall not arm the watchdog timer. WDT
 ownership belongs to BL1; the ROM's only WDT-related obligation is the warm-reset re-entry
-protocol (<<sec:warm_reset>>). Consequently every unbounded wait in the ROM (fuse sense, PLL
-lock, SMC hand-shake spins) hangs the boot rather than triggering a retry — this is the
-accepted failure mode for BL0, observable through the status channel (<<sec:status>>).
+protocol (<<sec:warm_reset>>).
 
-Waits on the secure-DMA engine and the HMAC message FIFO are outside that list and are
-bounded. A DMA transfer that neither completes nor errors within a budget scaled to its
-length is aborted and returns the DMA error its caller handles; a message FIFO that
-stops draining fails the hash. Either becomes a failed manifest attempt or a terminal error
-rather than a hang.
+The waits below are unbounded. Each depends on another agent or on analog hardware with no
+deadline the ROM can know, so a part on which one never completes hangs: the accepted failure
+mode for BL0. Each shall report a status immediately before it starts waiting, so a hung part
+is left showing which wait it is in (<<sec:status>>).
+
+[cols="34%,12%,54%",options="header",grid=rows,frame=ends]
+|===
+|Unbounded wait |Stage |Status left in `cold_scratch[1]`
+|SMC status buffer ready |[S07] |`STATUS_REPORTING_ENABLED` (DEBUG)
+|Fuse sense complete |[S08] |`FUSE_SENSE_WAIT` (DEBUG)
+|PLL lock |[S09] |`WAIT_FOR_PLL_LOCK`
+|SMC manifest ready (recovery and secondary boot) |[S23] |`WAIT_FOR_SMC_MANIFEST_READY`
+|===
+
+Every other wait on hardware is bounded. The two below report a status only when their bound
+expires, so a boot that completes writes no status near a cryptographic operation;
+the status is a WARN because the caller decides whether the failure is terminal.
+
+[cols="26%,30%,20%,24%",options="header",grid=rows,frame=ends]
+|===
+|Bounded wait |Bound |Status on expiry |Outcome
+|Secure-DMA completion (`sep_dma_copy()` / `sep_dma_zero()`) |a budget scaled to the transfer
+length |`DMA_TIMEOUT` (WARN) |the transfer is aborted and returns the DMA error
+|HMAC message-FIFO room |`HMAC_FIFO_POLL_MAX` STATUS reads |`HMAC_FIFO_TIMEOUT` (WARN) |the
+hash fails
+|===
+
+The remaining waits are bounded too and fail through their callers' error paths: the OpenTitan
+SPI host polls, including its secure-DMA drain; the HMAC completion wait; the AES, OTBN and
+entropy-source waits; and the MBIST-done wait in `vector.S`. Either way, a stalled block becomes
+a failed manifest attempt or a terminal error rather than a hang.
 
 === Early Platform Initialization ([S04]–[S20])
 
@@ -3000,7 +3024,9 @@ denotes a following 16-bit payload word.
 |[S07] status init |`STATUS_REPORTING_ENABLED` / `_DISABLED` (DEBUG), `STATUS_REPORTING_READY`
 (DEBUG) |`STATUS_REPORTING_INVALID`
 |[S08] fuse sense |`FUSE_SENSE_WAIT` (DEBUG) |— (unbounded poll; hang is the failure mode)
-|[S09] clocks |`PLL_CLK_INIT` → `INFO_EXT` (MHz); `REF_CLK_SELECTED` |`PLL_FUSES_BLANK` (WARN)
+|[S09] clocks |`PLL_CLK_INIT`; then `WAIT_FOR_PLL_LOCK` before the lock poll, or
+`PLL_FUSES_BLANK` and `REF_CLK_SELECTED`; then `INFO_EXT` (MHz) |`PLL_FUSES_BLANK` (WARN); — for
+the lock poll (unbounded; hang is the failure mode)
 |[S11] lifecycle |`FUSE_LC_STATE` → `INFO_EXT` (state); `LIFECYCLE_VALID`
 |`LIFECYCLE_INVALID` (ERROR) + `ROM_ERR_LIFECYCLE_INVALID`
 |[S12] chip ID |`CHIP_ID_CHECK` (DEBUG) → `INFO_EXT` (ID) |—
@@ -3026,6 +3052,10 @@ enforce secure boot |—
 |[S24] crypto |`VALIDATE_CHECK`; `READ_BL1_SECURITY_VERSION` |`OCA_FAIL_*`
 (rollback / revoked / key unauthorized / signature / decrypt)
 |payload hashes |— |`OCA_FAIL_PAYLOAD_HASH`
+|any SHA-256 or HMAC |— |`HMAC_FIFO_TIMEOUT` (WARN, the engine stopped consuming), then the
+caller's error
+|any secure-DMA copy or fill |— |`DMA_TIMEOUT` (WARN, a transfer that never completed), then the
+caller's error
 |[S25] demotion + locks |`FUSE_SECRETS_LOCK`; `FUSE_SECRETS_LOCKED`
 |`FUSE_SECRETS_NOT_LOCKED` (ERROR) + `ROM_ERR_FUSE_SECRETS_NOT_LOCKED`
 |[S17] slot 0 (post-[S10]) |`RECORD_MEASUREMENT` → `INFO_EXT` (slot 0) |`0xF005`
