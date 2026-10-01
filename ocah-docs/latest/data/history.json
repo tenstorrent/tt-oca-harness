@@ -2663,6 +2663,30 @@
         }
       ],
       "test_pass_rate": 98.33
+    },
+    {
+      "failed_tests": 12,
+      "flaky_tests": 0,
+      "flow_pass_rate": 0.0,
+      "generated_at": "2026-10-01T18:59:22+00:00",
+      "per_dut": [
+        {
+          "coverage_status": "PASS",
+          "effective_metrics": {
+            "assertion": 100.0,
+            "branch": 100.0,
+            "condition": 100.0,
+            "functional": 99.11,
+            "line": 100.0,
+            "toggle": 86.15,
+            "user": 100.0
+          },
+          "flow": "smu",
+          "framework": "cocotb",
+          "tool": "vcs"
+        }
+      ],
+      "test_pass_rate": 90.0
     }
   ]
 }

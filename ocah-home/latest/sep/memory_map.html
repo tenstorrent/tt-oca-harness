@@ -363,9 +363,18 @@ slave. Intra-aperture decode is an integrator constraint: an address that owns
 no register must return SLVERR and must not alias onto a live register. See the
 <a href="../../../ocah-docs/latest/referenced-documents.html#ref-ocah-integrator-guide" class="xref page">Integrator Guide</a>.</p>
 </div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sep-register-single-beat"><a class="anchor" href="#sep-register-single-beat"></a><a class="link" href="#sep-register-single-beat">Single-Beat Register Access</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
-<p>The crypto region, 0x1090_0000 - 0x1094_FFFF (OTBN through ABR), accepts
-single-beat transactions only; see <a href="crypto.html#crypto-single-beat-only" class="xref page">Single-Beat Access Only</a>.</p>
+<p>Register regions support single-beat transactions only. Bursts are supported
+into ICCM, DCCM, SRAM, the extension port and the outbound SMN windows. The
+fabric routes a burst on its first address only, so the later beats of a burst
+to a register region may be answered with errors or alias onto other
+registers. The crypto region, which spans OTBN through ABR in the generated
+memory map below, refuses bursts (<a href="crypto.html#crypto-single-beat-only" class="xref page">Single-Beat Access Only</a>).</p>
 </div>
 </div>
 </div>

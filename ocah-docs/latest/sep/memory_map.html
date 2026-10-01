@@ -863,14 +863,23 @@ slave. Intra-aperture decode is an integrator constraint: an address that owns
 no register must return SLVERR and must not alias onto a live register. See the
 <a href="../referenced-documents.html#ref-ocah-integrator-guide" class="xref page">Integrator Guide</a>.</p>
 </div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sep-register-single-beat"><a class="anchor" href="#sep-register-single-beat"></a><a class="link" href="#sep-register-single-beat">2. Single-Beat Register Access</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
-<p>The crypto region, 0x1090_0000 - 0x1094_FFFF (OTBN through ABR), accepts
-single-beat transactions only; see <a href="crypto.html#crypto-single-beat-only" class="xref page">Single-Beat Access Only</a>.</p>
+<p>Register regions support single-beat transactions only. Bursts are supported
+into ICCM, DCCM, SRAM, the extension port and the outbound SMN windows. The
+fabric routes a burst on its first address only, so the later beats of a burst
+to a register region may be answered with errors or alias onto other
+registers. The crypto region, which spans OTBN through ABR in the generated
+memory map below, refuses bursts (<a href="crypto.html#crypto-single-beat-only" class="xref page">Single-Beat Access Only</a>).</p>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="units-unreachable-from-the-inbound-port"><a class="anchor" href="#units-unreachable-from-the-inbound-port"></a><a class="link" href="#units-unreachable-from-the-inbound-port">2. Units Unreachable from the Inbound Port</a></h2>
+<h2 id="units-unreachable-from-the-inbound-port"><a class="anchor" href="#units-unreachable-from-the-inbound-port"></a><a class="link" href="#units-unreachable-from-the-inbound-port">3. Units Unreachable from the Inbound Port</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>Several SEP units are not connected to the external inbound port and answer
@@ -1430,7 +1439,7 @@ reachable through this external path and receive error responses from the
 </div>
 </div>
 <div class="sect1">
-<h2 id="sep-detailed-register-map"><a class="anchor" href="#sep-detailed-register-map"></a><a class="link" href="#sep-detailed-register-map">3. Detailed Register Map</a></h2>
+<h2 id="sep-detailed-register-map"><a class="anchor" href="#sep-detailed-register-map"></a><a class="link" href="#sep-detailed-register-map">4. Detailed Register Map</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>The address tables above identify each aperture. Detailed registers are
@@ -1492,7 +1501,7 @@ published with the owning block:</p>
 </ul>
 </div>
 <div class="sect2">
-<h3 id="external-window-reference-model"><a class="anchor" href="#external-window-reference-model"></a><a class="link" href="#external-window-reference-model">3.1. External Window Reference Model</a></h3>
+<h3 id="external-window-reference-model"><a class="anchor" href="#external-window-reference-model"></a><a class="link" href="#external-window-reference-model">4.1. External Window Reference Model</a></h3>
 <div class="paragraph">
 <p>The SEP external-window model supplies the eFuse SHIM control register below.
 The <code>efuse_shim_ctrl</code> instance at offset <code>0x0</code> fixes where that block sits.

@@ -3,7 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1040" height="888" viewBox="0 0 1040 888" role="img" aria-labelledby="title desc">
 <title id="title">SEP local fabric</title>
-<desc id="desc">The SEP local crossbar u_sep_local_axi_xbar joins five initiators to ten targets with 32-bit addresses and 64-bit data; initiator IDs are 3 bits and target IDs 6 bits. Inside sep_cpu the IFU, LSU and debug masters of the VeeR EL2 core each pass a local alias remap that rewrites the 768 MiB window at SEP_LOCAL_BASE_ADDR to 0x1000_0000. The IFU demux sends boot ROM addresses to the boot ROM mux, SEP SRAM addresses to the ifu_sram initiator and everything else to a DECERR slave; the LSU demux sends boot ROM addresses to the boot ROM mux and everything else to the lsu initiator; the debug master connects directly. The boot ROM mux feeds the boot ROM memory interface outside the crossbar. The secure DMA master passes TL-UL to AXI-Lite, AXI-Lite to AXI4 and 32 to 64-bit conversion and its own alias remap. The ext initiator is traffic from sep_system_peripherals. Targets: cpu_tcm, the ICCM and DCCM backdoor into the core DMA port; sram, through the SRAM memory interface to the 256 KiB SRAM macro; dma_csr and sep_wdt, each downsized to 32 bits and converted to AXI-Lite and TL-UL for the secure DMA registers and the watchdog aon_timer; sep_reset_ctrl through an AXI to AXI-Lite converter; sep_crypto with its own interconnect; sep_system_peripherals, the output fabric; sep_io, downsized, converted to AXI-Lite and demultiplexed to the SPI host or DECERR; entropy_fifo through an AXI to AXI-Lite converter; and sep_external, whose demux sends the eFuse shim CSR window to the eFuse wrapper and the rest to the AXI extension port.</desc>
+<desc id="desc">The SEP local crossbar u_sep_local_axi_xbar joins five initiators to ten targets with 32-bit addresses and 64-bit data; initiator IDs are 3 bits and target IDs 6 bits. Inside sep_cpu the IFU, LSU and debug masters of the VeeR EL2 core each pass a local alias remap that rewrites the 768 MiB window at SEP_LOCAL_BASE_ADDR to 0x1000_0000. The IFU demux sends boot ROM addresses to the boot ROM mux, SEP SRAM addresses to the ifu_sram initiator and everything else to a DECERR slave; the LSU demux sends boot ROM addresses to the boot ROM mux and everything else to the lsu initiator; the debug master connects directly. The boot ROM mux feeds the boot ROM memory interface outside the crossbar. The secure DMA master passes TL-UL to AXI-Lite, AXI-Lite to AXI4 and 32 to 64-bit conversion and its own alias remap. The ext initiator is traffic from sep_system_peripherals. Targets: cpu_tcm, the ICCM and DCCM backdoor into the core DMA port; sram, whose burst demux u_sram_burst_demux sends INCR bursts and single-beat bursts through the SRAM memory interface to the 256 KiB SRAM macro and answers a multi-beat FIXED or WRAP burst with SLVERR from u_sram_burst_err_slv; dma_csr and sep_wdt, each downsized to 32 bits and converted to AXI-Lite and TL-UL for the secure DMA registers and the watchdog aon_timer; sep_reset_ctrl through an AXI to AXI-Lite converter; sep_crypto with its own interconnect; sep_system_peripherals, the output fabric; sep_io, downsized, converted to AXI-Lite and demultiplexed to the SPI host or DECERR; entropy_fifo through an AXI to AXI-Lite converter; and sep_external, whose demux sends the eFuse shim CSR window to the eFuse wrapper and the rest to the AXI extension port.</desc>
 <defs>
 <marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
 <marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
@@ -105,10 +105,14 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="t" x="735" y="211" text-anchor="middle">Core DMA port</text>
 <text class="s" x="735" y="227" text-anchor="middle">ICCM, DCCM backdoor in sep_cpu</text>
 <path class="axi" d="M580,269 L600,269"/>
-<rect class="network" x="600" y="249" width="210" height="40" rx="4"/>
-<text class="t" x="705" y="266" text-anchor="middle">AXI4 to memory</text>
-<text class="s" x="705" y="282" text-anchor="middle">u_sram_memory_interface</text>
-<path class="sigo" d="M810,269 L950,269"/>
+<path class="fabric" d="M600,257 L630,245 L630,293 L600,281 Z"/>
+<path class="axi" d="M630,257 L646,257"/>
+<rect class="network" x="646" y="246" width="184" height="22" rx="4"/>
+<text class="s" x="738" y="261.5" text-anchor="middle">AXI4 to memory</text>
+<path class="sigo" d="M830,257 L950,257"/>
+<path class="axi" d="M630,281 L646,281"/>
+<rect class="external" x="646" y="270" width="184" height="22" rx="4"/>
+<text class="s" x="738" y="285.5" text-anchor="middle">SLVERR, non-INCR burst</text>
 <rect class="external" x="950" y="249" width="76" height="40" rx="6"/>
 <text class="s" x="988" y="266.5" text-anchor="middle">SRAM</text>
 <text class="s" x="988" y="281.5" text-anchor="middle">256 KiB</text>

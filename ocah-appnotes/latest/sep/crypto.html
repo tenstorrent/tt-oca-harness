@@ -398,10 +398,10 @@ infrastructure, and combinational entropy muxes are not Class 2 roots.</p>
 <h2 id="crypto-single-beat-only"><a class="anchor" href="#crypto-single-beat-only"></a><a class="link" href="#crypto-single-beat-only">2. Single-Beat Access Only</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>The <code>sep_crypto</code> demux accepts single-beat transactions only. Any access whose
-<code>AxLEN</code> is non-zero is routed to the internal error slave and answered with
-DECERR on every beat, whatever its address; no beat reaches an accelerator.
-Software must access the whole crypto region with single-beat transactions.</p>
+<p>The <code>sep_crypto</code> demux enforces single-beat access to the crypto region
+(<a href="memory_map.html#sep-register-single-beat" class="xref page">Single-Beat Register Access</a>). Any access whose <code>AxLEN</code> is non-zero is
+routed to the internal error slave and answered with DECERR on every beat,
+whatever its address; no beat reaches an accelerator.</p>
 </div>
 </div>
 </div>

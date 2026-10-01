@@ -206,7 +206,8 @@
 <p>SEP uses a hierarchical AXI4 crossbar fabric. Masters initiate transactions;
 slaves connect directly or through bridges for AXI4-Lite and OpenTitan TL-UL
 interfaces. The <code>axi_to_axi_lite</code> bridge splits bursts into individual
-transactions and retains the AXI IDs needed for responses. Write strobes
+transactions and retains the AXI IDs needed for responses; register regions
+accept single beats only (<a href="memory_map.html#sep-register-single-beat" class="xref page">Single-Beat Register Access</a>). Write strobes
 remain available on AXI4-Lite; <code>axi_lite_to_tlul</code> translates them into TL-UL
 byte masks. Each peripheral&#8217;s register definition determines which writes
 are permitted.</p>
@@ -223,7 +224,8 @@ are permitted.</p>
 <code>hw/sys/sep/rtl/crossbars/sep_local_axi_xbar.sv</code>, along with the dedicated
 Boot ROM path that lies outside the crossbar. The crossbar has five
 initiators (CPU IFU, CPU LSU, CPU DBG, DMA, and the System Interface)
-and ten targets.</p>
+and ten targets. The CPU masters and the DMA issue single-beat transactions
+only; the System Interface may issue bursts.</p>
 </div>
 <div class="paragraph">
 <p>A few access paths are intentionally outside this crossbar:</p>
@@ -256,6 +258,12 @@ routing to SMC/SMN resources.</p>
 read-only entropy drain aperture, filled autonomously by a native EDN
 endpoint on a separate hardware path (not this crossbar). Writes to it
 terminate with <code>BRESP=SLVERR</code>.</p>
+</div>
+<div id="sep-sram-target" class="paragraph">
+<p>The <strong>SRAM</strong> target serves INCR bursts of every length and single-beat
+bursts of every type. A multi-beat FIXED or WRAP burst is refused before it
+reaches the memory: the write terminates with <code>BRESP=SLVERR</code> and leaves
+SRAM unchanged, and every beat of the read returns <code>RRESP=SLVERR</code>.</p>
 </div>
 <div class="paragraph">
 <p>The <strong>System Interface</strong> initiator is the external inbound master. It does
@@ -548,6 +556,10 @@ entry.</p>
 traffic, while SEP-scope debug is enabled; see
 <a href="lifecycle_controller.html#feature-control-vector-definition" class="xref page">Disable Vector Format (SIP_DIS / SYS_DIS)</a> for the <code>SEP_DBG</code> control. The
 outbound filter has no bypass and is always in effect.</p>
+</div>
+<div class="paragraph">
+<p>Firmware must not set <code>allow_burst</code> on an inbound entry that covers a
+register region (<a href="memory_map.html#sep-register-single-beat" class="xref page">Single-Beat Register Access</a>).</p>
 </div>
 <div class="paragraph">
 <p>The decode algorithm&#8201;&#8212;&#8201;entry priority, the match conditions, the
