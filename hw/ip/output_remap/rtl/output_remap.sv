@@ -3,10 +3,11 @@
 
 // Remap AXI transactions onto target addresses selected by a per-region offset table.
 //
-// remap_ctrl_i carries per-region PeakRDL outs. Every AW and AR address is remapped; there is
-// no hit check. RegionBase is subtracted, bits [IdxStart +: RemapIndexW] of the result select
-// a region, and the address becomes that region's offset bits [55:IdxStart] above the
-// base-relative bits below IdxStart. The module is combinational.
+// remap_ctrl_i carries per-region PeakRDL outs. RegionBase is subtracted from every AW and AR
+// address, and bits [IdxStart +: RemapIndexW] of the result select a region. If that region is
+// valid, the address becomes its offset bits [55:IdxStart] above the base-relative bits below
+// IdxStart; otherwise the original address passes through unchanged. The module is
+// combinational.
 // When UserOverrideEn is set, UserOverrideVal replaces the AW, AR and W user fields of every
 // transaction.
 
@@ -33,7 +34,8 @@ module output_remap #(
   input  logic                                       test_en_i, // DFT test enable; unused.
 
   input  output_remap_reg_pkg::output_remap__out_t   remap_ctrl_i [NumRegions-1:0], // Per-region PeakRDL configuration; only
-                                                                                    // REGION.region_attrs.offset is used.
+                                                                                    // REGION.region_attrs.offset and
+                                                                                    // .valid are used.
 
   input  axi_req_t           axi_req_i,                     // Pre-remap AXI request.
   output axi_resp_t          axi_resp_o,                    // Pre-remap AXI response.
@@ -54,12 +56,16 @@ module output_remap #(
   // Convert struct to array
   /////
 
-  typedef struct packed {logic [55:0] offset;} remap_attrs_t;
+  typedef struct packed {
+    logic        valid;
+    logic [55:0] offset;
+  } remap_attrs_t;
   remap_attrs_t remap_table[NumRegions];
 
 
   // Connect register outputs to remap_table array
   for (genvar i = 0; i < NumRegions; i++) begin : gen_remap_table
+    assign remap_table[i].valid  = remap_ctrl_i[i].REGION.region_attrs.valid.value;
     assign remap_table[i].offset = remap_ctrl_i[i].REGION.region_attrs.offset.value;
   end
 
@@ -76,13 +82,19 @@ module output_remap #(
     remap_ar_idx = adjusted_ar_addr[IdxStart+:RemapIndexW];
 
     // Remap address: replace upper bits with table offset, preserve lower bits
-    remapped_aw_addr = {
-            remap_table[remap_aw_idx].offset[55:IdxStart], adjusted_aw_addr[IdxStart-1:0]
-        };
+    remapped_aw_addr = axi_req_i.aw.addr;
+    if (remap_table[remap_aw_idx].valid) begin
+      remapped_aw_addr = {
+        remap_table[remap_aw_idx].offset[55:IdxStart], adjusted_aw_addr[IdxStart-1:0]
+      };
+    end
 
-    remapped_ar_addr = {
-            remap_table[remap_ar_idx].offset[55:IdxStart], adjusted_ar_addr[IdxStart-1:0]
-        };
+    remapped_ar_addr = axi_req_i.ar.addr;
+    if (remap_table[remap_ar_idx].valid) begin
+      remapped_ar_addr = {
+        remap_table[remap_ar_idx].offset[55:IdxStart], adjusted_ar_addr[IdxStart-1:0]
+      };
+    end
   end
 
   /////////////////////

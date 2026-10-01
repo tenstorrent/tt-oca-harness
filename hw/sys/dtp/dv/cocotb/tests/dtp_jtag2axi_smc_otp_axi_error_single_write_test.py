@@ -19,12 +19,15 @@ class dtp_jtag2axi_smc_otp_axi_error_single_write_test(dtp_base_test):
         "CHK-AXI-RESP",
         "CHK-AXI-RESP-EXPECTED",
         "CHK-AXI-STRB",
+        "CHK-AXI-WMEM",
         "CHK-AXI-COMPLETION",
         "CHK-AXI-CREDITS",
         "CHK-AXI-STREAM-MIN",
         "CHK-AXI-NONVAC",
+        "CHK-J2A-BUS-REQ",
+        "CHK-J2A-FAULT-STATUS",
     )
-    axi_checker_stream_minimums = {"smc_otp": 2}
+    axi_checker_stream_minimums = {"smc_otp": 4}
 
     async def run_scenario(self) -> None:
         sequences = await self.start_looped_seq(

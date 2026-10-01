@@ -169,7 +169,27 @@ int rsa_3072_verify(const uint8_t *digest, const uint8_t *signature, const uint8
     uint32_t result[RSA_3072_NUM_WORDS];
     otbn_dmem_read(DMEM_INOUT_OFFSET, result, RSA_3072_NUM_WORDS);
 
-    // 7. Verify PKCS#1 v1.5 padding and digest match.
+    // 7. The result shares `inout` with the signature, so a modexp that did not
+    //    happen leaves the caller's own signature bytes in `result`, and a
+    //    signature authored as a well-formed PKCS#1 v1.5 block would verify
+    //    against itself. sig^e mod n cannot equal sig for a value that also
+    //    parses as that block, so an unchanged buffer means no modexp ran.
+    //    otbn_execute() already rejects a command that never started; this is
+    //    the same conclusion drawn from the data rather than from the block.
+    //
+    //    Both operands are public, so the fold is not for secrecy. It is one
+    //    exit instead of a return per word, leaving no early branch for a fault
+    //    to skip.
+    uint32_t diff = 0;
+    for (int i = 0; i < RSA_3072_NUM_WORDS; ++i) {
+        diff |= result[i] ^ sig_words[i];
+    }
+    if (diff == 0u) {
+        simputs("RSA_INOUT_UNCHANGED\n");
+        return -1;
+    }
+
+    // 8. Verify PKCS#1 v1.5 padding and digest match.
     rc = verify_pkcs1_v15(result, digest);
     if (rc != 0) {
         simputs("RSA_PKCS1_FAIL\n");

@@ -56,3 +56,59 @@ other chiplets access these resources. The apertures must not overlap.
 The hardware does not derive these CSR values from a chiplet ID: any
 chiplet-ID-based address assignment is a platform policy that firmware
 must implement.
+
+Register tables throughout this manual report each field's software access as a
+compact token in their *Access* column; xref:register-field-access.adoc#trm-register-field-access[Register Field Access Notation]
+decodes that notation.
+
+[[ocah-decode-response-codes]]
+== Decode Response Codes
+
+The SMC, SEP, Key Manager and cross-trigger network address maps state, for
+each unit, how a 32-bit access that no register or memory backs is answered.
+A cell reads _read response, read data / write response_, for example
+`DECERR, 0xBADCAB1E / SLVERR`. `OKAY`, `SLVERR` and `DECERR` are the AXI
+response codes returned on `RRESP` and `BRESP`.
+The read data is the word a 32-bit read returns in either half of a 64-bit
+data bus. Where the two halves differ, a note on the cell gives the word
+returned when address bit 2 is set.
+
+* The _Hole in Extent_ column covers an unbacked offset inside the unit's
+  decoded extent. Where the space between a wrapper's sub-blocks, or the
+  padding after each element of an array, answers differently, the cell names
+  it separately as `between sub-blocks` or `between instances`.
+* The _Past Extent_ column covers the rest of the unit's aperture, the range
+  its Size column gives.
+* A `Reserved` row is an address between unit apertures.
+
+[[ocah-decode-response-codes-table]]
+.Decode response codes
+[cols="<24%,<76%",options="header"]
+|===
+|Code |Meaning
+
+|`OKAY`
+|The access completes. A read returns the listed data, and a write has no
+effect.
+
+|`SLVERR`
+|The access reaches a component that refuses it.
+
+|`DECERR`
+|No unit or sub-block claims the address, and a decoder refuses the access
+before it reaches one.
+
+|Aliases registers
+|The access reaches a live register at another offset, which answers it.
+
+|Forwarded
+|The subsystem passes the access on without decoding it, and its target
+answers.
+
+|Adopter-defined
+|The adopter's implementation answers.
+
+|`-`
+|The region does not exist: the unit is memory, its registers fill its
+extent, or its aperture ends at its extent.
+|===

@@ -22,6 +22,10 @@ buffer), `ATB_DATA_WIDTH` (default 8 bits), `PACKET_WIDTH` (default 64
 bits), `ADDR_WIDTH` (default 32-bit register address) and `DATA_WIDTH`
 (default 32-bit data bus).
 
+The ATB beat width (8 bits), packet width (64 bits), counter width (32 bits)
+and ATB ID width (7 bits) are package constants.
+The core register port has an 8-bit address and 32-bit data path.
+
 === Signal Interfaces
 
 === Global Interface
@@ -69,3 +73,20 @@ notification.
 threshold or its test bit is set; it cannot be cleared by writing status.
 * *Latency*: Interrupt assertion within 2 clock cycles of triggering
 condition
+
+=== Subsystem Wrapper
+
+`telemetry_receiver_wrap` defaults to three receivers. It configures their queue
+depth with `TELEMETRY_RECEIVER_BUFFER_DEPTH` (default 8) and counter counts with
+`TELEMETRY_RECEIVER_MAX_NUM_COUNTERS_PER_MESSAGE` (default 4 per receiver).
+Actual subsystem values and aperture assignments come from the integration.
+
+The wrapper receives ATB traffic on `clk_telemetry_i` / `rst_telemetry_ni` and
+crosses it into `clk_i` / `rst_ni` through an eight-entry asynchronous FIFO per
+receiver. Its external ready signal reflects crossing-FIFO capacity. This does
+not turn the core's decoded-message queue into a lossless backpressured queue.
+The wrapper also contains flush-handshake synchronizers and returns a decode
+error for register addresses outside its configured receiver apertures.
+
+Clock frequency, jitter, reset duration and physical timing constraints must
+come from the integration timing specification.

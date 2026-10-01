@@ -13,9 +13,10 @@
 // (direction, address, size, strobes, data) per launched transaction on
 // the lane of the port that will carry it. The scoreboard pairs those in
 // order with the observed transactions of the same port. Gating is read
-// from dtp_tb_if.dbg_disable at the scan; a TAP reset (TRST, TMS, power-on)
-// resets the bridge model, a system reset aborts its in-flight
-// transactions. `negative` (+DTP_J2A_REF_MODEL_NEGATIVE) corrupts every
+// from dtp_tb_if.dbg_disable at the scan and at each completion, which drops
+// the requests queued behind it while the bridge is disabled; a TAP reset
+// (TRST, TMS, power-on) resets the bridge model, a system reset aborts its
+// in-flight transactions. `negative` (+DTP_J2A_REF_MODEL_NEGATIVE) corrupts every
 // predicted address so the pairing must fail. No comparison, no reporting.
 // The cocotb realization has no twin (DTP_TB_ARCH).
 
@@ -93,9 +94,11 @@ class dtp_jtag2axi_req_ref_model extends ocah_ref_model #(ocah_jtag_scan_item, o
   endfunction
 
   function void write_dtp_j2a_req_axi(ocah_axi_item t);
+    dtp_j2a_target_t target;
     if (!m_target_by_source.exists(t.source))
       `uvm_fatal(get_type_name(), $sformatf("AXI item from unbound port `%s`", t.source))
-    m_bridge.complete(m_target_by_source[t.source], t);
+    target = dtp_j2a_target_by_name(m_target_by_source[t.source]);
+    m_bridge.complete(target.name, t, dtp_dbg_path_disabled(tb_vif.dbg_disable, target.dbg_path));
   endfunction
 
   // Power-on reset resets the TAP and with it every bridge; a system

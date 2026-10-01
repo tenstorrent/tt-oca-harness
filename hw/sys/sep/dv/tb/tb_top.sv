@@ -687,28 +687,41 @@ module sep_uvm_top
     // ROM presents, so a wrong SEP<->SMC offset is invisible to the boot flow
     // -- the testbench seeds the wrong address too and every test stays
     // green. This checker supplies the one property a flat memory lacks: an
-    // access outside a register window that exists is an ERROR. The windows
-    // below are transcribed from smc_addr.h (SMC-local 0xC000_XXXX seen as
-    // 0x4000_XXXX from SEP, the identity mapping this tb configures via
-    // smc_global_base_addr_i). Keep them in step with that header; when the
-    // ROM needs a new block, add its authoritative base/size here rather than
-    // widening an existing window.
+    // access outside a register window that exists is an ERROR. Block bases
+    // and sizes come from the generated SMC address map (smc_top_addrmap_pkg,
+    // hw/sys/smc/regs/gen/sv/smc_addrmap_pkg.sv). The package gives SMC-local
+    // addresses (0xC000_XXXX); SEP sees them at 0x4000_XXXX, the identity
+    // mapping this tb configures via smc_global_base_addr_i. When the ROM needs
+    // a new block, add its generated base/size here rather than widening an
+    // existing window.
+    localparam logic [63:0] SmcLocalBase = 64'hC000_0000;
+    localparam logic [63:0] SmcSepViewBase = 64'h4000_0000;
     localparam logic [55:0] SmcStrapsLoAddr = 56'h4040_5800;
     localparam logic [55:0] SmcStrapsHiAddr = SmcStrapsLoAddr + 4;
     localparam int unsigned SmcNumWindows = 7;
     // {base, size} pairs, SEP-side addresses.
     localparam logic [55:0] SmcWinBase [SmcNumWindows] = '{
-        56'h4000_2000,  // SMC_RESET_UNIT
-        56'h4000_2900,  // SMC_MISC_WRAP_CHIP_CONFIG (CHIP_ID, LC_STATE)
-        56'h4000_7000,  // SMC_EFUSE_MAP             (chiplet/package ID)
-        56'h4000_B800,  // DFX_CTRL                  (STATUS_SMU)
-        56'h4003_9000,  // SMC_CPU_CTRL              (scratch[0..15] at +0x80)
-        56'h4006_0000,  // SPM_MEMORY                (manifest + BL1)
-        SmcStrapsLoAddr // SMC_EXTERNAL straps      (STRAPS_LO/HI)
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_BASE_ADDR - SmcLocalBase + SmcSepViewBase),
+        // SMC_MISC_WRAP_CHIP_CONFIG: CHIP_ID, LC_STATE
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR - SmcLocalBase +
+            SmcSepViewBase),
+        // SMC_EFUSE_MAP: chiplet/package ID
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR - SmcLocalBase + SmcSepViewBase),
+        // DFX_CTRL: STATUS_SMU
+        56'(smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_BASE_ADDR - SmcLocalBase + SmcSepViewBase),
+        // SMC_CPU_CTRL: scratch[0..15] at +0x80
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_BASE_ADDR - SmcLocalBase + SmcSepViewBase),
+        // SPM_MEMORY: manifest + BL1
+        56'(smc_top_addrmap_pkg::SMC_TOP_SPM_MEMORY_BASE_ADDR - SmcLocalBase + SmcSepViewBase),
+        SmcStrapsLoAddr  // SMC_EXTERNAL straps (STRAPS_LO/HI)
     };
     localparam logic [55:0] SmcWinSize [SmcNumWindows] = '{
-        56'h0000_00CC, 56'h0000_0014, 56'h0000_0C00,
-        56'h0000_0018, 56'h0000_02C0, 56'h0010_0000,
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_SIZE),
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_SIZE),
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SIZE),
+        56'(smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_SIZE),
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_SIZE),
+        56'(smc_top_addrmap_pkg::SMC_TOP_SPM_MEMORY_SIZE),
         56'h0000_0008
     };
 
@@ -813,7 +826,11 @@ module sep_uvm_top
     initial begin : backdoor_default_fill_zero
         for (int i = 0; i < 32768; i++)
             `SEP_IPI.u_sep_sram.gen_ram_inst[0].u_mem.mem[i] = 64'h0;
-        for (int i = 0; i < 16384; i++)
+        for (
+            int i = 0;
+            i < sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_SIZE / 8;
+            i++
+        )
             `SEP_IPI.u_sep_boot_rom.mem[i] = 64'h0;
         for (int r = 0; r < 16384; r++) begin
             `BD_ICCM(0)[r] = 39'h0; `BD_ICCM(1)[r] = 39'h0;
@@ -1199,6 +1216,8 @@ module sep_uvm_top
         `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.host_hmac;
     assign hmac_km_isolated_probe_o =
         `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.km_hmac;
+    assign hmac_host_isolate_req_probe_o =
+        `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolate_req_i.host_hmac;
 
     // KMAC per-IP gated reset and its two isolate-completion bits.
     assign kmac_gated_rst_n_probe_o =
@@ -1207,6 +1226,8 @@ module sep_uvm_top
         `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.host_kmac;
     assign kmac_km_isolated_probe_o =
         `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.km_kmac;
+    assign kmac_host_isolate_req_probe_o =
+        `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolate_req_i.host_kmac;
 
     // Adams Bridge per-IP gated reset and the two isolate-completion bits its
     // domain waits on. host_abr is a full-AXI isolate; km_abr is shared with
@@ -1217,6 +1238,8 @@ module sep_uvm_top
         `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.host_abr;
     assign abr_km_isolated_probe_o =
         `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.km_abr;
+    assign abr_host_isolate_req_probe_o =
+        `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolate_req_i.host_abr;
 
     // Read-only XMRs observe the write-one-to-set demotion lock storage. The lock
     // bits have no DUT output, and firmware owns the AXI frontdoor while they are
@@ -1526,8 +1549,8 @@ module sep_uvm_top
     // command user code -- the engine always emits a matching pair. When
     // dma_host_intg_inject_i=1, force the host-adapter checker input
     // (tlul_cmd_intg_chk.u_chk.data_i) to 0 so the real decoder computes
-    // err_o. err_o stays gated on a_valid. STATUS / PIC [40] / CLEAR stay
-    // frontdoor or the aggregate interrupt probe. Re-issue every clock
+    // err_o. err_o stays gated on a_valid. STATUS / PIC source 42 (vector
+    // bit [41]) / CLEAR stay frontdoor or the aggregate interrupt probe. Re-issue every clock
     // (Verilator snapshots a force RHS). Release when the port drops.
     // Default 0; outside the AXI ready/valid cones.
 `define DMA_HOST_CMD_INTG_DI \
@@ -1638,6 +1661,36 @@ module sep_uvm_top
 `undef OTBN_URND_RSP
 `undef OTBN_RND_REQ
 `undef OTBN_URND_REQ
+
+    // +sep_otbn_cmd_drop -- fault injection, off by default. Makes OTBN ignore
+    // every command write, leaving the block powered, idle and error-free while
+    // no program ever runs.
+    //
+    // This is the "the CMD store never landed" case: what an instruction-skip
+    // glitch on the store produces deliberately, and what clock or reset
+    // mis-sequencing produces by accident. It is worth injecting because the
+    // block is indistinguishable from a completed run on the two registers the
+    // ROM used to consult -- STATUS reads IDLE (the state it was already in) and
+    // ERR_BITS reads 0 (nothing ran to fail). INTR_STATE.done is the only signal
+    // that separates them, which is what otbn_execute() now requires.
+    logic otbn_cmd_drop_on;
+    initial begin
+        otbn_cmd_drop_on = $test$plusargs("sep_otbn_cmd_drop");
+        if (otbn_cmd_drop_on) begin
+            $display("[tb] *** FAULT INJECTION: +sep_otbn_cmd_drop -- OTBN command writes");
+            $display("[tb] *** are dropped; no OTBN program will execute.");
+        end
+    end
+
+// reg2hw.cmd.qe is the write-enable otbn.sv decodes CmdExecute from
+// (otbn.sv:852-854), so holding it low drops commands without disturbing
+// anything else the block reports.
+`define OTBN_CMD_QE \
+    `SEP_CORE.u_sep_crypto.u_sep_crypto_otbn_wrapper_s3c_scan.u_otbn.reg2hw.cmd.qe
+    always @(posedge clk_i) begin
+        if (otbn_cmd_drop_on) force `OTBN_CMD_QE = 1'b0;
+    end
+`undef OTBN_CMD_QE
 
     // Entropy datapath probe taps (compiled-in XMR reads; no --public-flat-rw).
     assign esrc_ro_enable_o     = `SEP_ESRC.u_generator_complex.jitter_ro_enable_i;

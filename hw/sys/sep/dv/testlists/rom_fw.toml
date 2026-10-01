@@ -98,6 +98,34 @@ args = [
 ]
 
 [[tests]]
+# The manifest BL0 vouched for must still parse at hand-off.
+#
+# Same stimulus as sep_rom_ot_dma_boot_test -- an ordinary successful
+# non-secure boot -- with one added check: SEP SRAM word 0 must still hold the
+# OCA magic once the run completes. bl0_state.sep_sram_manifest_addr points BL1
+# there, and nothing in the ROM re-reads it, so the [S29] ICCM ECC pad filling
+# from the staged body went unnoticed until BL1 tried to parse what it was given.
+#
+# ICCM_PAD= is a required marker, not decoration: it is printed only when that
+# pad runs, so without it the testcase would pass on a build where the
+# destructive path was compiled out.
+#
+# Non-secure on purpose. The defect is in the hand-off fill, so the signed image
+# would add an RSA-3072 modexp to a run that does not exercise one.
+name = "sep_manifest_magic_survives_handoff_test"
+module = "rom_fw.sep_manifest_magic_survives_handoff_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "spi", "handoff", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_from_spi",
+]
+
+[[tests]]
 # The drain-method sibling of sep_rom_ot_dma_boot_test: same OpenTitan spi_host,
 # same flash image, same PASS criteria -- but the ROM is built with
 # BOOT_OT_SPI_USE_PIO=1 (build_ot_pio/) so boot_flash.h calls ot_spi_flash_read()
@@ -283,6 +311,72 @@ args = [
   # up for real; the ring oscillators do not self-oscillate in simulation, so
   # the noise source has to be forced or the ESRC health test fails and the
   # boot stops after PUBK_AUTHORIZED.
+  "+esrc_noise_force",
+]
+
+[[tests]]
+# SBOOT_DIS reserved bits are a fuse-integrity fault, not a second chicken bit.
+#
+# The companion to the entry above, on the other half of the same register:
+# there the chicken bit is blown and must be honoured, here a RESERVED bit is
+# set and must not be mistaken for it. rsvd[31:1] is hw=rw in the RDL, so a real
+# part can present a non-zero word without disable_secure_boot being blown, and
+# [S18] stops on it (SEP-ROM-SB-041).
+#
+# +sep_efuse_preload carries an explicit path for the same reason as the entry
+# above: a bare plusarg resolves to the committed default, which is TEST_DEV with
+# an all-zero SBOOT_DIS and would make this vacuous.
+#
+# Neither +sep_boot_from_spi nor +esrc_noise_force: [S18] precedes boot-mode
+# selection and SPI bring-up ([S21]) and entropy is brought up lazily by the
+# first crypto callback, so no transport is chosen and no EDN handshake is owed.
+# If this test ever needs either plusarg, the fault has stopped being terminal.
+#
+# Budget matches sep_firmware_mbist_fail_test: this run halts before any RSA
+# work, and the ROM self-hash at [S17] is the expensive part in front of it.
+name = "sep_firmware_sboot_dis_rsvd_terminal_test"
+module = "rom_fw.sep_firmware_sboot_dis_rsvd_terminal_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "rom", "efuse", "secure", "lifecycle", "error", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_sboot_dis_rsvd.toml",
+]
+
+[[tests]]
+# An OTBN that never executed must not report a verified signature.
+#
+# +sep_otbn_cmd_drop holds reg2hw.cmd.qe low so OTBN ignores every command while
+# staying powered and idle, and the test forges the literal PKCS#1 v1.5 block
+# into both slots' signature fields. The modexp result shares its DMEM buffer
+# with the signature, so a block that never runs leaves the forgery in place for
+# the checker to accept -- an unverified boot reported as a verified one. The
+# ROM must refuse it on INTR_STATE.done instead.
+#
+# +esrc_noise_force is load-bearing: the signature path establishes entropy
+# before OTBN, and without injected noise the health test stops the boot short
+# of the verifier this entry exists to exercise.
+#
+# No +sep_efuse_preload: the packed image carries secure_boot_control, so
+# verification is in force under the default TEST_DEV OTP, the same way
+# sep_rom_ot_secure_boot_test relies on it.
+name = "sep_otbn_no_op_bypass_test"
+module = "rom_fw.sep_otbn_no_op_bypass_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+# No modexp runs on either slot, so this is far short of the full-RSA entries.
+timeout_sec = 7200
+tags = ["boot", "rom", "secure", "crypto", "otbn", "error", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_otbn_cmd_drop",
   "+esrc_noise_force",
 ]
 
@@ -2346,4 +2440,28 @@ run_modes = ["cpu"]
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
+]
+
+[[tests]]
+# An invalid LC_STATE holds the SMC cores in reset and halts (SEP-ROM-FUSE-020).
+#
+# Raw 0x9 is outside every encoding the lifecycle controller decodes. The test
+# seeds SMC CPU_CTRL.RESET_CTRL and requires the ROM to clear exactly the four
+# active-low core resets at that register's address, with the testbench's SMC
+# address-decode counter still at zero.
+#
+# [S11] halts before boot-mode selection, so no SPI transport or entropy plusarg
+# is needed. Budget matches sep_firmware_sboot_dis_rsvd_terminal_test, which
+# halts later.
+name = "sep_rom_lc_state_invalid_test"
+module = "rom_fw.sep_rom_lc_state_invalid_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "rom", "efuse", "lifecycle", "error", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_invalid_0x9.toml",
 ]

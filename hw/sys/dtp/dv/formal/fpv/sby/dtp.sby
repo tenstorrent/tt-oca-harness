@@ -47,8 +47,8 @@ ir_bmc:       depth 40
 ir_cover:     depth 40
 reset_bmc:    depth 75
 reset_cover:  depth 75
-stap_bmc:     depth 55
-stap_cover:   depth 55
+stap_bmc:     depth 75
+stap_cover:   depth 75
 sib_bmc:      depth 55
 sib_cover:    depth 55
 dbgctl_bmc:   depth 55

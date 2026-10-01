@@ -83,3 +83,22 @@ def format_pc_profile(
         lines.append(f"  0x{pc:08x}  {count:7d}  {pct:5.1f}%  {sym_for(syms, pc)}")
     lines.append(f"SEP PC span: 0x{min(pc_hist):08x} .. 0x{max(pc_hist):08x}")
     return lines
+
+
+def sep_boot_order_from_hw(dut, rd) -> tuple[int | None, bool, bool]:
+    """Return the SEP boot facts the wrapper latched from its first cycle.
+
+    ``(first_pc, boot_rom_seen, iccm_seen)``: the first retired PC (None while
+    the SEP has not retired anything) and whether a retirement fell in the
+    boot-ROM and ICCM windows. A sequence that starts sampling the trace only
+    after bring-up seeds its own bookkeeping from these, since the SEP can
+    boot and reach its ICCM entry before that point.
+    """
+    first_pc = None
+    if rd(dut.sep_first_pc_valid_o, "sep_first_pc_valid_o"):
+        first_pc = rd(dut.sep_first_pc_o, "sep_first_pc_o") & 0xFFFF_FFFF
+    return (
+        first_pc,
+        bool(rd(dut.sep_boot_rom_fetch_seen_o, "sep_boot_rom_fetch_seen_o")),
+        bool(rd(dut.sep_iccm_fetch_seen_o, "sep_iccm_fetch_seen_o")),
+    )

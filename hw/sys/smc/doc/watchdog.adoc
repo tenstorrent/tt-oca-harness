@@ -1,0 +1,50 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Watchdog Timers
+
+[[smc-watchdog]]
+
+== Operation
+
+Each CPU core includes a dedicated watchdog timer (at 0xC000_0000 + N *
+0x400), providing per-core timeout monitoring. Reset effects are described in
+Clocks and Resets. Base addresses and interrupt-related context for the WDT are
+summarized in
+ifdef::backend-html5[]
+xref:smc:interrupts.adoc#interrupts[Interrupts].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<interrupts,Interrupts>>.
+endif::backend-pdf[]
+
+Timeouts are configurable to suit different workloads, and staged
+warnings (followed by reset) allow software intervention before hardware
+reset is triggered.
+
+Watchdog monitoring can be disabled during debugging to prevent false
+triggers, supporting uninterrupted development and troubleshooting.
+
+== Memory Map and Register Reference
+
+ifdef::backend-html5[]
+++++
+<span id="register-reference"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
+
+Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.
+
+=== Detailed Register Map
+
+ifdef::backend-html5[]
+++++
+include::partial$smc/regs/gen/html/blocks/wdt.html[]
+++++
+endif::backend-html5[]
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/wdt.adoc[leveloffset=+2]
+endif::backend-pdf[]

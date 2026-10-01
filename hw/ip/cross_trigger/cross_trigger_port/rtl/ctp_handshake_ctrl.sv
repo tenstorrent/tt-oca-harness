@@ -119,11 +119,10 @@ module ctp_handshake_ctrl (
       end
 
       RECEIVER_ACK_ASSERTED: begin
+        ct_dst_d = 1'b0;  // Pulse is one cycle
         if (!ct_req_in_sync_i) begin
           receiver_state_d = RECEIVER_WAIT_REQ_DEASSERT;
           ct_ack_out_d     = 1'b0;
-        end else begin
-          ct_dst_d = 1'b0;  // Pulse is one cycle
         end
       end
 

@@ -2,131 +2,91 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[mailbox-unit-interface]]
-== Interface
+== Interface and Programming
 
-The Mailbox Unit exposes a single struct-based AXI4-Lite slave port. All
-mailbox apertures are decoded from this one port by an internal demux.
+=== External Interface
 
-=== AXI4-Lite Interface
+ifdef::backend-html5[]
+++++
+<span id="axi4-lite-interface"></span>
+<span id="mailbox-interface-characteristics-table"></span>
+<span id="timing-characteristics"></span>
+<span id="mailbox-timing-characteristics-table"></span>
+<span id="transaction-processing"></span>
+++++
+endif::backend-html5[]
 
-[source,sourceCode,systemverilog]
-----
-input  axi_req_t  mailbox_axi_req_i,
-output axi_resp_t mailbox_axi_resp_o
-----
+A single AXI4-Lite slave (`mailbox_axi_req_i` / `mailbox_axi_resp_o`) serves all
+apertures; its address/data widths and channel/aggregate struct types are
+elaboration parameters. The `inbound_interrupt_o` and `outbound_interrupt_o`
+vectors each carry `NUM_MAILBOXES` active-high level interrupts, one per aperture.
 
-The request and response struct types are supplied by the integrator through
-the `axi_req_t`/`axi_resp_t` parameters, together with the per-channel types
-`aw_chan_t`, `w_chan_t`, `b_chan_t`, `ar_chan_t` and `r_chan_t`.
+ifdef::backend-html5[]
+The full parameter and port list of `axi_lite_mailbox_unit` is in xref:ocah-docs:ROOT:rtl-modules-reference/ip/axi_lite_mailbox_unit/axi_lite_mailbox_unit.adoc[axi_lite_mailbox_unit].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The full parameter and port list of `axi_lite_mailbox_unit` is in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
 
-<<mailbox-interface-characteristics-table>> summarises the AXI4-Lite register interface
-characteristics.
+The per-aperture B and R responses pass through spill registers. Request
+arbitration, arrival of both write channels, and response backpressure also
+affect observed latency; software must not assume a fixed completion cycle.
+Reads and writes use separate AXI4-Lite channels but operate on the same FIFO
+and status state.
 
-[[mailbox-interface-characteristics-table]]
-.Mailbox Interface Characteristics
-[width="100%",cols="30%,70%",options="header",]
-|==============================================================
-|Parameter |Value
-|Address Width |`ADDR_WIDTH` parameter
-|Data Width |`DATA_WIDTH` parameter
-|Strobe Width |`DATA_WIDTH`/8
-|Total Address Space |2 × `MAILBOX_SIZE` × `NUM_MAILBOXES`
-|Protocol |Standard AXI4-Lite with separate read/write channels
-|==============================================================
+=== Access Results
 
-=== Interrupt Outputs
-
-[source,sourceCode,systemverilog]
-----
-output logic [NUM_MAILBOXES-1:0] inbound_interrupt_o,
-output logic [NUM_MAILBOXES-1:0] outbound_interrupt_o
-----
-
-<<mailbox-interrupt-characteristics-table>> describes the triggering and configuration
-of mailbox interrupts.
-
-[[mailbox-interrupt-characteristics-table]]
-.Mailbox Interrupt Characteristics
-[width="100%",cols="30%,70%",options="header",]
-|=============================================================
-|Parameter |Value
-|Type |Level-triggered (the unit ties the underlying `IrqEdgeTrig` to 0)
-|Polarity |Active high
-|Sources |Write threshold, read threshold, and a single shared error bit
-(read from empty or write to full)
-|=============================================================
-
-=== Control Signals
-
-[source,sourceCode,systemverilog]
-----
-input logic clk_i,       // System clock
-input logic rst_ni,      // Active-low asynchronous reset
-input logic test_en_i    // Test enable for DFT
-----
-
-=== Timing Characteristics
-
-<<mailbox-timing-characteristics-table>> summarises latency, throughput, and
-outstanding-transaction capacity.
-
-[[mailbox-timing-characteristics-table]]
-[width="100%",cols="30%,70%",options="header",]
-.Mailbox timing characteristics
-|========================================================
-|Parameter |Value
-|Latency |One clock cycle; the R and B responses pass through spill registers
-|Throughput |One 64-bit transfer per clock cycle
-|Outstanding Transactions |`MAX_TRANS` per demux port (default: 32)
-|========================================================
-
-=== Error Handling
-
-<<mailbox-error-handling-table>> describes how empty reads, full writes, and interrupt
-conditions are handled.
+ifdef::backend-html5[]
+++++
+<span id="error-handling"></span>
+++++
+endif::backend-html5[]
 
 [[mailbox-error-handling-table]]
-[width="100%",cols="30%,70%",options="header",]
-.Mailbox error handling
-|===================================================================
-|Error Condition |Behavior
-|Read from empty FIFO (`READ_DATA`) |Sets `read_error` in ERROR_FLAGS and the
-error bit in IRQS; returns `0xFEEDDEAD` with SLVERR
+[cols="2,3",options="header"]
+.Mailbox access results
+|===
+|Access |Result
+|Read `READ_DATA` while empty |`SLVERR`, data `0xFEEDDEAD`; sets the read-error
+flag and `IRQS[2]`.
+|Write `WRITE_DATA` while full |`SLVERR`; data discarded; sets the write-error
+flag and `IRQS[2]`.
+|Read write-only `WRITE_DATA` |`OKAY`, data `0xFEEDC0DE`; no FIFO access or error flag.
+|Write `READ_DATA`, `STATUS`, `ERROR_FLAGS` or `IRQP` |Ignored with `SLVERR`.
+|Access to an unmapped offset inside an aperture (`0x50` and above) |Stated in the
+ifdef::backend-html5[]
+xref:smc:memmap.adoc#smc-memory-map[SMC] and
+xref:sep:memory_map.adoc#sep-memory-map[SEP] memory maps
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<smc-memory-map,SMC>> and <<sep-memory-map,SEP>> memory maps
+endif::backend-pdf[]
+|Read `ERROR_FLAGS` |Returns and clears both detailed error flags. A new error
+in the same cycle is retained.
+|Write `CTRL` flush bits |Pulses the selected FIFO flush; the bits are not stored
+configuration and read back as zero.
+|===
 
-|Write to full FIFO (`WRITE_DATA`) |Sets `write_error` in ERROR_FLAGS and the
-error bit in IRQS; discards the data and responds SLVERR
+=== Sending and Receiving
 
-|Read from write-only `WRITE_DATA` |Returns `0xFEEDC0DE` with OKAY; no FIFO
-access and no error flag
+ifdef::backend-html5[]
+++++
+<span id="integration-requirements"></span>
+<span id="mailbox-integration-requirements-table"></span>
+++++
+endif::backend-html5[]
 
-|Write to a read-only register (`READ_DATA`, `STATUS`, `ERROR_FLAGS`, `IRQP`)
-|Write is ignored, responds SLVERR
+. Assign one software producer and consumer per direction, or serialize shared
+  access. The register interface does not allocate FIFO ownership to clients.
+. Before sending, check the aperture's write-full status, then write `WRITE_DATA`.
+  Handle `SLVERR` if another writer consumed the space in between.
+. Before receiving, check read-empty status, then read `READ_DATA`. Each successful
+  read consumes one word; status and data accesses are not one atomic operation.
+. Read `ERROR_FLAGS` once to capture any access errors, then separately acknowledge
+  `IRQS[2]` if interrupt status was set. Avoid diagnostic reads that unintentionally
+  consume data or clear error information.
 
-|Access to an unmapped offset inside an aperture (0x50 and above) |Read returns
-0 with SLVERR; write is ignored with SLVERR
-
-|Read of ERROR_FLAGS |Both flags clear on read; an error raised in the same cycle as
-the clearing read is retained
-
-|Interrupt Generation |Triggered if enabled via IRQEN register
-|===================================================================
-
-=== Integration Requirements
-
-<<mailbox-integration-requirements-table>> lists the address-space and
-system-integration requirements.
-
-[[mailbox-integration-requirements-table]]
-[width="100%",cols="30%,70%",options="header",]
-.Mailbox integration requirements
-|=======================================================================
-|Requirement |Description
-|*Address Space* |`MAILBOX_SIZE` (2KB) per aperture, 4KB per mailbox pair;
-Total = 4KB × NUM_MAILBOXES
-
-|*Software* |Poll STATUS or use interrupts for data availability;
-configure WIRQT/RIRQT thresholds; check ERROR register
-
-|*Hardware* |Connect interrupts to system controller; proper reset
-sequencing; single clock domain (no CDC required)
-|=======================================================================
+To receive an interrupt for any available data, program `RIRQT=0`, service or
+acknowledge old status, and enable `IRQEN[1]`. Drain received words before
+acknowledging `IRQS[1]`; a remaining live condition can set it again. Coordinate
+FIFO flushes with the peer because a flush discards words already queued for it.

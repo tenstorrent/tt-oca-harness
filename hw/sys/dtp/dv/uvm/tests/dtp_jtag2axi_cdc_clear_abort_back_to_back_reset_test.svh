@@ -23,6 +23,11 @@ class dtp_jtag2axi_cdc_clear_abort_back_to_back_reset_test extends dtp_jtag2axi_
     return "DTP_JTAG2AXI_CDC_CLEAR_ABORT_BACK_TO_BACK_RESET_TEST_LOOPS";
   endfunction
 
+  virtual function void configure_test_cfg(dtp_test_cfg cfg);
+    super.configure_test_cfg(cfg);
+    cfg.require_jtag_ids('{"CHK-RESET-COUNT"});
+  endfunction
+
   virtual function void add_required_axi_ids(ref string ids[$]);
     super.add_required_axi_ids(ids);
     ids.push_back("CHK-AXI-WADDR");
@@ -31,6 +36,7 @@ class dtp_jtag2axi_cdc_clear_abort_back_to_back_reset_test extends dtp_jtag2axi_
     ids.push_back("CHK-AXI-RADDR");
     ids.push_back("CHK-AXI-RDATA");
     ids.push_back("CHK-AXI-WMEM");
+    ids.push_back(DtpJ2aCdcClearCheckId);
   endfunction
 
 endclass : dtp_jtag2axi_cdc_clear_abort_back_to_back_reset_test

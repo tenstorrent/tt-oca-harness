@@ -20,10 +20,12 @@ class dtp_jtag2axi_smc_axi_write_security_gating_test(dtp_base_test):
     axi_checker_required_ids = (
         "CHK-AXI-RESP",
         "CHK-AXI-STRB",
+        "CHK-AXI-WMEM",
         "CHK-AXI-NOACT",
         "CHK-AXI-COMPLETION",
         "CHK-AXI-STREAM-MIN",
         "CHK-AXI-NONVAC",
+        "CHK-J2A-GATE-TDR",
     )
     axi_checker_stream_minimums = {"smc_axi": 2}
 

@@ -17,7 +17,8 @@ coincidence.
 `[RANDCFG]` — ``SepAxiPartialLaneReadCfg`` owns stimulus + goldens. Required
 cells run on every seed; the seed varies order, addresses, and data only.
 
-  CHK-CSR-LANE   : 32-bit CSR (SW_DEBUG) write -> two 4-byte readbacks with a
+  CHK-CSR-LANE   : SEP_SW_DEBUG (64-bit register, one field [31:0]) write ->
+                   two 4-byte readbacks with a
                    checked RO-register disturb between them; both exact, both
                    identical. All-zeros and all-ones always run.
   CHK-SRAM-SLICE : all 36 contiguous (offset, length) byte-run reads of a
@@ -100,7 +101,7 @@ class sep_axi_partial_lane_read_test(sep_base_test):
         )
 
     async def _chk_csr_lane(self) -> None:
-        """4-byte reads of a 32-bit CSR: only RDATA[31:0] is driven by the DUT."""
+        """4-byte reads of SEP_SW_DEBUG, a 64-bit register whose only field is [31:0]."""
         for pattern in self.cfg_lane.csr_patterns:
             await self.lane.write(SW_DEBUG_ADDR, pattern, 4)
             first = await self.lane.read(SW_DEBUG_ADDR, 4)

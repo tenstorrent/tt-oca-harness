@@ -20,6 +20,7 @@ class dtp_jtag2axi_sep_otp_axi_read_random_ops_test(dtp_base_test):
         "CHK-AXI-RDATA",
         "CHK-AXI-COMPLETION",
         "CHK-AXI-STREAM-MIN",
+        "CHK-J2A-BUS-REQ",
     )
     axi_checker_stream_minimums = {"sep_otp": 2}
 

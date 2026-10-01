@@ -17,8 +17,14 @@ class dtp_jtag2axi_cdc_clear_abort_narrow_reset_mid_xaction_test(dtp_base_test):
     use_axi_scoreboard = True
     axi_checker_required_ids = (
         "CHK-AXI-RESP",
+        "CHK-AXI-STRB",
+        "CHK-AXI-WMEM",
         "CHK-AXI-COMPLETION",
+        "CHK-AXI-CREDITS",
         "CHK-AXI-STREAM-MIN",
+        "CHK-RESET-COUNT",
+    )
+    axi_checker_target_required_ids = (
         "CHK-J2A-ABORT-MIDFLIGHT",
         "CHK-J2A-ABORT-FSM",
         "CHK-J2A-CDC-CLEAR",

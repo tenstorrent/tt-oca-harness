@@ -4,10 +4,10 @@
 
 Firmware test: `fw/tests/i2c_p1_fifo_depth_xfer` is loaded into scratch by the firmware
 loader and runs I2C_0 and I2C_1 against each other on the shared pad bus.
-The image moves a 64-byte payload -- the FIFO depth -- one byte per controller
-write while the target drains its ACQ FIFO concurrently, then compares the
-length and every byte, classifying entries by ACQ signal so a NACKed byte
-cannot pass as payload.
+The image moves a 64-byte payload -- the FIFO depth -- as one write frame fed
+to the FMT FIFO one entry at a time while the target drains its ACQ FIFO
+between entries, then compares the length and every byte, classifying entries
+by ACQ signal so a NACKed byte cannot pass as payload.
 
 Bench observation: the transfer has to cross the pads. A passive decoder on
 tb_i2c0_scl/sda records every START, address byte, direction, acknowledge,
@@ -49,9 +49,10 @@ class smc_fw_i2c_p1_fifo_depth_xfer_test(smc_base_test):
         seq = smc_fw_i2c_pair_test_seq(
             "fw_i2c_p1_fifo_depth_xfer_seq",
             tag="I2C-FIFO-DEPTH",
-            # PASS landed 10.2 ms after release at a 5 ns clk_smc_i and 12.7 ms at a
-            # 4 ns one (~20,400 and ~31,700 polls): 64 single-byte transactions at
-            # standard-mode speed. 150_000 is ~5x the slower figure.
+            # PASS landed 4.9 ms after release at an 8 ns clk_periph_i and 6.0 ms at
+            # a 10 ns one (~12,100 and ~15,100 polls at a 4 ns clk_smc_i): one
+            # 64-byte write frame at standard-mode speed. 150_000 is ~10x the
+            # slower figure.
             poll_iterations=150_000,
             floors=(WireFloor(TARGET_ADDR, read=False, min_frames=1, min_data_bytes=64),),
         )

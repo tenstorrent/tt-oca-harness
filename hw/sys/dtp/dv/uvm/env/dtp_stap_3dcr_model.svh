@@ -11,11 +11,23 @@
 // IR (IR scans) or selected data register (DR scans) when a device is
 // attached, and one extra full-cycle flop on ports with a TDI lockup latch
 // (the I/O STAP). The PTAP forwards its scan controls to the STAP chain on
-// every IR and DR scan and, with the PTAP 3DCR select set, routes the
-// instruction register's scan-out into the chain, so an IR scan is the
-// 6-bit PTAP IR followed by the STAP chain and Update-IR commits SIB/3DCR
-// fields and the downstream IRs exactly as Update-DR does. Plain model
-// class, built with new(); no reporting. Types come from dtp_types.svh.
+// every IR and DR scan only while the PTAP 3DCR select is set, and then
+// routes the instruction register's scan-out into the chain, so an IR scan
+// is the 6-bit PTAP IR followed by the STAP chain and Update-IR commits
+// SIB/3DCR fields and the downstream IRs exactly as Update-DR does. A data
+// scan under any other PTAP instruction runs through the STAP chain as well
+// while the select is set, and its Update-DR commits the chain fields
+// without reaching the PTAP 3DCR: under ZERO_LENGTH_BYPASS TDI enters the
+// chain directly (DTP_SCAN_ZLB, the STAP chain alone); under BYPASS the
+// one-bit bypass register, which captures 0, precedes the chain
+// (DTP_SCAN_BYPASS). An attached host segment (tb_top) follows the last
+// STAP, at the TDO end of every scan, while stap_host is enabled; with
+// stap_host disabled the last STAP's scan-out is the chain return and the
+// segment holds its value. While the PTAP select is clear the chain, host
+// segment included, holds through every scan and a scan covers only the
+// PTAP segment, so the select must be set by a scan of its own before a
+// scan can write the chain. Plain model class, built with new(); no
+// reporting. Types come from dtp_types.svh.
 
 // Reference state for the PTAP 3DCR, the STAP 3DCRs, and downstream TAPs.
 class dtp_stap_3dcr_model;
@@ -26,14 +38,19 @@ class dtp_stap_3dcr_model;
     FLD_TMS_HOLD,
     FLD_SIB,
     FLD_SPLICE,
-    FLD_IR,     // PTAP instruction register bit (IR scans)
-    FLD_DS      // downstream TAP segment bit
+    FLD_IR,           // PTAP instruction register bit (IR scans)
+    FLD_DS,           // downstream TAP segment bit
+    FLD_HOST_SEGMENT, // host segment bit
+    FLD_BYPASS        // PTAP bypass register bit (BYPASS data scans)
   } field_e;
 
+  // layout_entry_t.owner of the host segment's flops.
+  localparam int HostSegmentOwner = int'(DtpStapCount);
+
   typedef struct {
-    int          owner;    // -1 = PTAP, otherwise dtp_stap_e index
+    int          owner;    // -1 = PTAP, HostSegmentOwner, otherwise dtp_stap_e index
     field_e      field;
-    int unsigned bit_idx;  // FLD_IR / FLD_DS: bit of the segment value
+    int unsigned bit_idx;  // FLD_IR / FLD_DS / FLD_HOST_SEGMENT: bit of the segment value
   } layout_entry_t;
 
   // Extra full-cycle flops a STAP's selected splice inserts into the chain.
@@ -47,9 +64,33 @@ class dtp_stap_3dcr_model;
   bit sib_en[DtpStapCount];
   // Downstream TAPs (null = no device behind that STAP host port).
   dtp_stap_ds_state ds[DtpStapCount];
+  bit host_segment_attached;
+  // The host segment's update register; every capture presents it.
+  bit [DtpStapHostSegmentWidth-1:0] host_segment;
 
   function new();
     trst();
+  endfunction
+
+  // --- extended STAP host segment ---------------------------------------------
+  // Place the bench's host segment behind the extended STAP host scan
+  // interface.
+  function void attach_host_segment();
+    host_segment_attached = 1'b1;
+    host_segment          = '0;
+  endfunction
+
+  // True while the host segment is the chain return: attached and stap_host
+  // enabled.
+  function bit host_segment_in_chain(sep_lifecycle_ctrl_pkg::dbg_disable_t d);
+    return host_segment_attached && !dtp_dbg_path_disabled(d, DTP_DBG_PATH_STAP_HOST);
+  endfunction
+
+  // Update-x for the host segment: a new value (non-negative) lands only when
+  // the segment was in the chain during the scan.
+  protected function void latch_host_segment(bit in_chain, int new_host_segment);
+    if (in_chain && new_host_segment >= 0)
+      host_segment = DtpStapHostSegmentWidth'(new_host_segment);
   endfunction
 
   // Per-STAP gate state from the direct disables (1 = STAP gated).
@@ -95,8 +136,24 @@ class dtp_stap_3dcr_model;
       ds[s].reset_instruction();
   endfunction
 
+  // True when the next scan moves the STAP chain (PTAP select set). A STAP
+  // left selected while the PTAP select is clear still forwards the live TMS
+  // and scan data to its downstream TAP, whose registers the model does not
+  // predict, so such a scan is fatal.
+  protected function bit chain_live(sep_lifecycle_ctrl_pkg::dbg_disable_t d);
+    int unsigned spliced_list[$];
+    if (ptap_select) return 1'b1;
+    spliced_downstream(d, spliced_list);
+    if (spliced_list.size() != 0)
+      `uvm_fatal(
+          "dtp_stap_3dcr_model", $sformatf(
+          "scan with the PTAP select clear while downstream TAPs %p are spliced", spliced_list))
+    return 1'b0;
+  endfunction
+
   // --- composed-chain layout -------------------------------------------------
   // (owner, field, bit) per chain flop in TDI-to-TDO order, current state.
+  // With the PTAP select clear the chain is out of the scan path.
   function void chain_layout(sep_lifecycle_ctrl_pkg::dbg_disable_t d, ref layout_entry_t layout[$],
                              input dtp_scan_kind_e kind = DTP_SCAN_DR);
     bit g[DtpStapCount];
@@ -104,10 +161,13 @@ class dtp_stap_3dcr_model;
     layout.delete();
     if (kind == DTP_SCAN_IR) begin
       for (int b = DtpPtapIrWidth - 1; b >= 0; b--) layout.push_back('{-1, FLD_IR, b});
-    end else begin
+    end else if (kind == DTP_SCAN_DR) begin
       layout.push_back('{-1, FLD_STAP_SEL, 0});
       layout.push_back('{-1, FLD_CONFIG_HOLD, 0});
+    end else if (kind == DTP_SCAN_BYPASS) begin
+      layout.push_back('{-1, FLD_BYPASS, 0});
     end
+    if (!ptap_select) return;
     for (int unsigned s = 0; s < DtpStapCount; s++) begin
       if (staps[s].stap_sel && !g[s]) begin
         if (ds[s] != null)
@@ -122,12 +182,15 @@ class dtp_stap_3dcr_model;
       end
       layout.push_back('{int'(s), FLD_SIB, 0});
     end
+    if (host_segment_in_chain(d))
+      for (int b = DtpStapHostSegmentWidth - 1; b >= 0; b--)
+      layout.push_back('{HostSegmentOwner, FLD_HOST_SEGMENT, b});
   endfunction
 
   protected function bit field_value(
       layout_entry_t entry, dtp_scan_kind_e kind, int new_ptap_select, int new_ptap_config_hold,
       bit [63:0] ptap_instr, int new_sib_en[int], dtp_stap_3dcr_state_t new_payloads[int],
-      bit [63:0] new_ds_values[int]);
+      bit [63:0] new_ds_values[int], int new_host_segment);
     bit eff_ptap_sel  = (new_ptap_select < 0) ? ptap_select
                                                   : bit'(new_ptap_select);
     bit eff_ptap_hold = (new_ptap_config_hold < 0) ? ptap_config_hold
@@ -135,7 +198,12 @@ class dtp_stap_3dcr_model;
     bit [63:0] seg;
     if (entry.owner < 0) begin
       if (entry.field == FLD_IR) return ptap_instr[entry.bit_idx];
+      if (entry.field == FLD_BYPASS) return 1'b0;
       return (entry.field == FLD_STAP_SEL) ? eff_ptap_sel : eff_ptap_hold;
+    end
+    if (entry.field == FLD_HOST_SEGMENT) begin
+      seg = (new_host_segment < 0) ? 64'(host_segment) : 64'(new_host_segment);
+      return seg[entry.bit_idx];
     end
     case (entry.field)
       FLD_SIB:
@@ -167,7 +235,7 @@ class dtp_stap_3dcr_model;
       ref layout_entry_t layout[$], input int unsigned width, input dtp_scan_kind_e kind,
       input int new_ptap_select, input int new_ptap_config_hold, input bit [63:0] ptap_instr,
       input int new_sib_en[int], input dtp_stap_3dcr_state_t new_payloads[int],
-      input bit [63:0] new_ds_values[int]);
+      input bit [63:0] new_ds_values[int], input int new_host_segment);
     bit [63:0] value = '0;
     if (width < layout.size())
       `uvm_fatal("dtp_stap_3dcr_model", $sformatf(
@@ -181,33 +249,38 @@ class dtp_stap_3dcr_model;
             ptap_instr,
             new_sib_en,
             new_payloads,
-            new_ds_values
+            new_ds_values,
+            new_host_segment
         ))
       value |= 64'h1 << (width - 1 - depth);
     return value;
   endfunction
 
-  // TAP_3DCR data scan value that writes the given end-state through the
-  // current chain. Negative ptap args and absent associative entries keep
-  // stored values; a spliced downstream register re-latches its stored
-  // value unless new_ds_values names a new one. The layout is the chain as
-  // it exists during the scan (updates land at Update-DR).
-  function bit [63:0] compose_scan_ds(int unsigned width, sep_lifecycle_ctrl_pkg::dbg_disable_t d,
-                                      int new_ptap_select, int new_ptap_config_hold,
-                                      int new_sib_en[int], dtp_stap_3dcr_state_t new_payloads[int],
-                                      bit [63:0] new_ds_values[int]);
+  // Data scan value that writes the given end-state through the current
+  // chain: a TAP_3DCR scan, or with kind DTP_SCAN_ZLB or DTP_SCAN_BYPASS a
+  // scan under that PTAP instruction, whose layout holds no PTAP 3DCR
+  // field. Negative ptap args, a negative new_host_segment, and absent
+  // associative entries keep stored values; a spliced downstream register
+  // re-latches its stored value unless new_ds_values names a new one. The
+  // layout is the chain as it exists during the scan (updates land at
+  // Update-DR).
+  function bit [63:0] compose_scan_ds(
+      int unsigned width, sep_lifecycle_ctrl_pkg::dbg_disable_t d, int new_ptap_select,
+      int new_ptap_config_hold, int new_sib_en[int], dtp_stap_3dcr_state_t new_payloads[int],
+      bit [63:0] new_ds_values[int], int new_host_segment = -1, dtp_scan_kind_e kind = DTP_SCAN_DR);
     layout_entry_t layout[$];
-    chain_layout(d, layout, DTP_SCAN_DR);
+    chain_layout(d, layout, kind);
     return compose(
         layout,
         width,
-        DTP_SCAN_DR,
+        kind,
         new_ptap_select,
         new_ptap_config_hold,
         '0,
         new_sib_en,
         new_payloads,
-        new_ds_values
+        new_ds_values,
+        new_host_segment
     );
   endfunction
 
@@ -225,11 +298,21 @@ class dtp_stap_3dcr_model;
   // (new_ds_ir names new instructions; others keep the active one).
   function bit [63:0] compose_ir_scan(int unsigned width, sep_lifecycle_ctrl_pkg::dbg_disable_t d,
                                       bit [63:0] ptap_instr, bit [63:0] new_ds_ir[int],
-                                      int new_sib_en[int], dtp_stap_3dcr_state_t new_payloads[int]);
+                                      int new_sib_en[int], dtp_stap_3dcr_state_t new_payloads[int],
+                                      int new_host_segment = -1);
     layout_entry_t layout[$];
     chain_layout(d, layout, DTP_SCAN_IR);
     return compose(
-        layout, width, DTP_SCAN_IR, -1, -1, ptap_instr, new_sib_en, new_payloads, new_ds_ir
+        layout,
+        width,
+        DTP_SCAN_IR,
+        -1,
+        -1,
+        ptap_instr,
+        new_sib_en,
+        new_payloads,
+        new_ds_ir,
+        new_host_segment
     );
   endfunction
 
@@ -244,26 +327,35 @@ class dtp_stap_3dcr_model;
     if (s >= 0 && s < int'(DtpStapCount) && !g[s] && in_chain[s]) staps[s] = new_payloads[s];
   endfunction
 
-  // Commit a composed data scan's Update-DR: the PTAP 3DCR always
-  // updates; SIB/3DCR fields per the gating rules; a spliced downstream
-  // TAP latches its (writable) selected register; deselected or gated
-  // ports park their downstream TAP.
-  function void apply_scan_ds(
-      sep_lifecycle_ctrl_pkg::dbg_disable_t d, int new_ptap_select, int new_ptap_config_hold,
-      int new_sib_en[int], dtp_stap_3dcr_state_t new_payloads[int], bit [63:0] new_ds_values[int]);
+  // Commit a composed data scan's Update-DR: a TAP_3DCR scan updates the
+  // PTAP 3DCR, and a scan under another instruction passes negative ptap
+  // args and leaves the PTAP 3DCR as it is; SIB/3DCR fields per the gating
+  // rules; a spliced downstream TAP latches its (writable) selected
+  // register, and the host segment its value; deselected or gated ports
+  // park their downstream TAP. The chain fields, downstream TAPs and host
+  // segment take part only when the PTAP select was set before the scan.
+  function void apply_scan_ds(sep_lifecycle_ctrl_pkg::dbg_disable_t d, int new_ptap_select,
+                              int new_ptap_config_hold, int new_sib_en[int],
+                              dtp_stap_3dcr_state_t new_payloads[int],
+                              bit [63:0] new_ds_values[int], int new_host_segment = -1);
     bit g[DtpStapCount];
     bit in_chain[DtpStapCount];
     int unsigned spliced_list[$];
+    bit segment_in_chain = host_segment_in_chain(d);
+    bit live = chain_live(d);
     gates(d, g);
     for (int unsigned s = 0; s < DtpStapCount; s++) in_chain[s] = sib_en[s];
     spliced_downstream(d, spliced_list);
     if (new_ptap_select >= 0) ptap_select = bit'(new_ptap_select);
     if (new_ptap_config_hold >= 0) ptap_config_hold = bit'(new_ptap_config_hold);
-    apply_chain_update(g, in_chain, new_sib_en, new_payloads);
-    foreach (spliced_list[i]) begin
-      int unsigned s = spliced_list[i];
-      ds[s].latch(new_ds_values.exists(int'(s)) ? new_ds_values[int'(s)] : ds[s].shift_default(
-                  DTP_SCAN_DR));
+    if (live) begin
+      apply_chain_update(g, in_chain, new_sib_en, new_payloads);
+      foreach (spliced_list[i]) begin
+        int unsigned s = spliced_list[i];
+        ds[s].latch(new_ds_values.exists(int'(s)) ? new_ds_values[int'(s)] : ds[s].shift_default(
+                    DTP_SCAN_DR));
+      end
+      latch_host_segment(segment_in_chain, new_host_segment);
     end
     park_downstream(g);
   endfunction
@@ -277,35 +369,46 @@ class dtp_stap_3dcr_model;
 
   // Commit a composed instruction scan's Update-IR: SIB/3DCR fields per
   // the gating rules (the PTAP 3DCR is untouched), each spliced downstream
-  // TAP takes its new instruction, then parking as for a data scan.
+  // TAP takes its new instruction, the host segment latches as for a data
+  // scan, then parking as for a data scan.
   function void apply_ir_scan(sep_lifecycle_ctrl_pkg::dbg_disable_t d, bit [63:0] new_ds_ir[int],
-                              int new_sib_en[int], dtp_stap_3dcr_state_t new_payloads[int]);
+                              int new_sib_en[int], dtp_stap_3dcr_state_t new_payloads[int],
+                              int new_host_segment = -1);
     bit g[DtpStapCount];
     bit in_chain[DtpStapCount];
     int unsigned spliced_list[$];
+    bit segment_in_chain = host_segment_in_chain(d);
     gates(d, g);
-    for (int unsigned s = 0; s < DtpStapCount; s++) in_chain[s] = sib_en[s];
-    spliced_downstream(d, spliced_list);
-    apply_chain_update(g, in_chain, new_sib_en, new_payloads);
-    foreach (spliced_list[i]) begin
-      int unsigned s = spliced_list[i];
-      if (new_ds_ir.exists(int'(s))) ds[s].update_ir(new_ds_ir[int'(s)]);
+    if (chain_live(d)) begin
+      for (int unsigned s = 0; s < DtpStapCount; s++) in_chain[s] = sib_en[s];
+      spliced_downstream(d, spliced_list);
+      apply_chain_update(g, in_chain, new_sib_en, new_payloads);
+      foreach (spliced_list[i]) begin
+        int unsigned s = spliced_list[i];
+        if (new_ds_ir.exists(int'(s))) ds[s].update_ir(new_ds_ir[int'(s)]);
+      end
+      latch_host_segment(segment_in_chain, new_host_segment);
     end
     park_downstream(g);
   endfunction
 
-  // Commit an all-zero over-length data scan: every in-chain field
-  // cleared, a spliced downstream's writable register latched to zero.
+  // Commit an all-zero over-length data scan: the PTAP 3DCR cleared and,
+  // when the PTAP select was set before the scan, every in-chain field
+  // cleared and a spliced downstream's writable register and the host
+  // segment latched to zero.
   function void flush_scan(sep_lifecycle_ctrl_pkg::dbg_disable_t d = '0);
     int unsigned spliced_list[$];
-    spliced_downstream(d, spliced_list);
-    foreach (spliced_list[i]) ds[spliced_list[i]].latch('0);
+    if (chain_live(d)) begin
+      spliced_downstream(d, spliced_list);
+      foreach (spliced_list[i]) ds[spliced_list[i]].latch('0);
+      latch_host_segment(host_segment_in_chain(d), 0);
+      for (int unsigned s = 0; s < DtpStapCount; s++) begin
+        sib_en[s] = 1'b0;
+        staps[s]  = '{1'b0, 1'b0, 1'b0};
+      end
+    end
     ptap_select      = 1'b0;
     ptap_config_hold = 1'b0;
-    for (int unsigned s = 0; s < DtpStapCount; s++) begin
-      sib_en[s] = 1'b0;
-      staps[s]  = '{1'b0, 1'b0, 1'b0};
-    end
   endfunction
 
   // (expected, care_mask, chain_len) for a readback with PTAP select=1.
@@ -313,9 +416,10 @@ class dtp_stap_3dcr_model;
   // Splice flops capture unknown data and the PTAP IR capture is
   // design-specific: both are masked out. A downstream segment captures
   // the device's IDCODE, its stored register, zero for BYPASS, or the
-  // IEEE 1149.1 IR capture on an IR scan. A STAP captures its masked
-  // stap_sel: 0 while its disable is asserted, even though the stored bit
-  // survives the gate.
+  // IEEE 1149.1 IR capture on an IR scan; the host segment captures its
+  // update register, and the PTAP bypass register 0. A STAP captures its
+  // masked stap_sel: 0 while its disable is asserted, even though the
+  // stored bit survives the gate.
   function void expected_capture(
       sep_lifecycle_ctrl_pkg::dbg_disable_t d, output bit [63:0] expected, output bit [63:0] care,
       output int unsigned chain_len, input dtp_scan_kind_e kind = DTP_SCAN_DR);
@@ -340,7 +444,7 @@ class dtp_stap_3dcr_model;
       care |= 64'h1 << bit_pos;
       if (layout[depth].field == FLD_DS) value = ds_cap[layout[depth].owner][layout[depth].bit_idx];
       else begin
-        value = field_value(layout[depth], kind, -1, -1, '0, no_sib, no_pl, no_ds);
+        value = field_value(layout[depth], kind, -1, -1, '0, no_sib, no_pl, no_ds, -1);
         if (layout[depth].owner >= 0 &&
                     layout[depth].field == FLD_STAP_SEL && g[layout[depth].owner])
           value = 1'b0;
@@ -383,7 +487,9 @@ class dtp_stap_3dcr_model;
   // SIB bits have no config_hold protection and clear in Test-Logic-Reset;
   // a 3DCR survives when its config_hold is set. A downstream TAP that
   // follows the live TMS (selected) or is parked high reaches
-  // Test-Logic-Reset as well and re-selects IDCODE.
+  // Test-Logic-Reset as well and re-selects IDCODE. The host segment's
+  // update register resets on the host scan control's rst_n, which the
+  // stap_host gate leaves live.
   function void tlr();
     for (int unsigned s = 0; s < DtpStapCount; s++)
     if (ds[s] != null && (staps[s].stap_sel || staps[s].tms_hold)) ds[s].reset_instruction();
@@ -395,6 +501,7 @@ class dtp_stap_3dcr_model;
         staps[s].tms_hold = 1'b0;
       end
     end
+    host_segment = '0;
   endfunction
 
   // TRST is forwarded to every STAP host port: the downstream TAPs reset
@@ -407,6 +514,7 @@ class dtp_stap_3dcr_model;
       staps[s]  = '{1'b0, 1'b0, 1'b0};
       if (ds[s] != null) ds[s].reset_instruction();
     end
+    host_segment = '0;
   endfunction
 
 endclass : dtp_stap_3dcr_model

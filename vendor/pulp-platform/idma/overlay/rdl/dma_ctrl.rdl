@@ -104,7 +104,7 @@ addrmap dma_ctrl {
         field {
             sw=r;
             hw=w;
-            desc="Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.";
+            desc="Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.";
         } BUSY [9:0] = 0x0;
     };
 
@@ -237,6 +237,11 @@ addrmap dma_ctrl {
     SRC_STRIDE_HI       SRC_STRIDE_HI       ;
     NUM_REPETITIONS_LO  NUM_REPETITIONS_LO  ;
     NUM_REPETITIONS_HI  NUM_REPETITIONS_HI  ;
+
+`ifdef OCAH_DOC_MEMORY_MAP
+    ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::OKAY, rdata: 0xFFFFFFFF, bresp: ocah_resp_e::OKAY};
+    ocah_hole_note = "A read fetches the whole 8-byte word, so a read of 0x4C also reads NEXT_ID_0 at 0x48 and launches a transfer.";
+`endif
 };
 
 `endif

@@ -100,6 +100,10 @@ addrmap plic {
 
     THRESHOLD       CORE3_SEIP_THRESHOLD        @0x207000;
     CLAIM_COMPLETE  CORE3_SEIP_CLAIM_COMPLETE   @0x207004;
+
+`ifdef OCAH_DOC_MEMORY_MAP
+    ocah_hole_note = "0x544, 0x102C and 0x202C are the upper halves of live 64-bit words, so a 64-bit read there returns live data.";
+`endif
 };
 
 `endif
