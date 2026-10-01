@@ -13,6 +13,15 @@ if {![array exists ::clock_periods]} {
     error "smc_io_delays.sdc: clock_periods() is empty; source the flow's clock-period definitions first"
 }
 
+if {[info procs cdc_is_block_top] eq ""} {
+    source [file normalize [file join [file dirname [info script]] \
+        ../../../../flows/synth/constraints/hier_reuse_procs.tcl]]
+}
+
+# Block-top only: these delays anchor the block's own ports. Replayed under a parent
+# they are internal nets whose launch and capture domains come from the real fabric.
+if {[cdc_is_block_top]} {
+
 # resets
 set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports powergood_i] -add_delay
 set_output_delay [expr $clock_periods(REFCLK_PERIOD)*0.5]       -clock [get_clock REFCLK] [get_ports powergood_stable_o] -add_delay
@@ -95,7 +104,7 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_cloc
 
 # DFT
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports skip_mem_repair_o] -add_delay
-set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports ext_boot_seq_done_i] -add_delay
+cdc_pinned_port_delay set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports ext_boot_seq_done_i] -add_delay
 
 # LC
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports {lc_state_i*}] -add_delay
@@ -151,8 +160,8 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_cloc
 set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports ext_debug_bus_i] -add_delay
 
 # Test
-set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports test_en_i] -add_delay
-set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports scan_rst_ni] -add_delay
+cdc_pinned_port_delay set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports test_en_i] -add_delay
+cdc_pinned_port_delay set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports scan_rst_ni] -add_delay
 
 
 # DFT
@@ -225,5 +234,8 @@ set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_cloc
 set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports {smc_cpu_jtag_part_number_i*}] -add_delay
 set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports {smc_cpu_jtag_version_i*}] -add_delay
 
-set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports {jtag_reset_ctrl_i.val*}] -add_delay
-set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports {jtag_reset_ctrl_i.ovrd*}] -add_delay
+cdc_pinned_port_delay set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports {jtag_reset_ctrl_i.val*}] -add_delay
+cdc_pinned_port_delay set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports {jtag_reset_ctrl_i.ovrd*}] -add_delay
+
+}
+# end of block-top-only smc_io_delays

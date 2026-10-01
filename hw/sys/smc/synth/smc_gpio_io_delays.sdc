@@ -60,6 +60,15 @@ if {![array exists ::clock_periods]} {
     error "smc_gpio_io_delays.sdc: clock_periods() is empty; source the flow's clock-period definitions first"
 }
 
+if {[info procs cdc_is_block_top] eq ""} {
+    source [file normalize [file join [file dirname [info script]] \
+        ../../../../flows/synth/constraints/hier_reuse_procs.tcl]]
+}
+
+# Block-top only: these delays anchor the block's own ports. Replayed under a parent
+# they are internal nets whose launch and capture domains come from the real fabric.
+if {[cdc_is_block_top]} {
+
 # Budget reserved outside the block, per interface.
 set spi_ext_max        [expr $clock_periods(SPICLK_PERIOD)        * 0.4]
 set uart_ext_max       [expr $clock_periods(PERIPHERALCLK_PERIOD) * 0.4]
@@ -353,3 +362,6 @@ set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5] -clock [get_clock SMCC
 # the SMCCLK plane; the unbonded pads (61-62) have no known source clock.
 set_input_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK]     [smc_gpio_ports pad2core_i $misc_smc_in_bits] -add_delay
 set_input_delay [expr $clock_periods(ck_feedthru_PERIOD)*0.5] -clock [get_clock ck_feedthru] [smc_gpio_ports pad2core_i $misc_feedthru_in_bits] -add_delay
+
+}
+# end of block-top-only smc_gpio_io_delays

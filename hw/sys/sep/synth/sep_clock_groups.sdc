@@ -14,6 +14,11 @@
 source [file normalize [file join [file dirname [info script]] \
     ../../../../flows/synth/constraints/async_clock_groups.tcl]]
 
+if {[info procs cdc_is_block_top] eq ""} {
+    source [file normalize [file join [file dirname [info script]] \
+        ../../../../flows/synth/constraints/hier_reuse_procs.tcl]]
+}
+
 # Asynchronous groups, declared with `-allow_paths` plus a loose default bound
 # on every inter-group clock pair. The per-instance bounds sourced at the end of
 # this file refine that default; without `-allow_paths` they would be masked.
@@ -23,15 +28,24 @@ source [file normalize [file join [file dirname [info script]] \
 # dropped, so the entropy groups cost nothing while `entropy_source` is
 # blackboxed.
 
-set_async_clock_groups {
-    {SEPCLK SEPCLK_PKA_IMEM SEPCLK_PKA_DMEM SEPCLK_CPU_TCM}
-    {REFCLK}
-    {WDTCLK}
-    {JTAG_TCK}
-    {ENTROPY_ROSC_CLK  ENTROPY_SCLK_FROM_ROSC_*}
-    {ENTROPY_SHARED_RO ENTROPY_SCLK_FROM_SHARED_RO_*}
-    {ENTROPY_DBG_MON_*}
-    {ck_feedthru}
-} -exclude {{ENTROPY_*ROSC* ENTROPY_*SHARED_RO*}}
+# Register the generated clocks SEP defines against their canonical domains, so a
+# parent run that replays these constraints merges them into its own grouping. The
+# registration is level-independent; only the grouping itself is block-top work.
+cdc_group_extra SEPCLK            {SEPCLK_PKA_IMEM SEPCLK_PKA_DMEM SEPCLK_CPU_TCM}
+cdc_group_extra ENTROPY_ROSC_CLK  {ENTROPY_SCLK_FROM_ROSC_*}
+cdc_group_extra ENTROPY_SHARED_RO {ENTROPY_SCLK_FROM_SHARED_RO_*}
+
+if {[cdc_is_block_top]} {
+    cdc_apply_async_groups {
+        SEPCLK
+        REFCLK
+        WDTCLK
+        JTAG_TCK
+        ENTROPY_ROSC_CLK
+        ENTROPY_SHARED_RO
+        ENTROPY_DBG_MON_*
+        ck_feedthru
+    } -exclude {{ENTROPY_*ROSC* ENTROPY_*SHARED_RO*}}
+}
 
 

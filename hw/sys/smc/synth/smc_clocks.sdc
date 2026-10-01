@@ -12,12 +12,26 @@
 if {![array exists ::clock_periods]} {
     error "smc_clocks.sdc: clock_periods() is empty; source the flow's clock-period definitions first"
 }
+
+# Hierarchy-reusable: boundary constraints apply at block top only -- replayed under a
+# parent (SMU) these nets carry the parent's clocks via ::cdc_clock_alias -- while the
+# AVS clock tree re-anchors through cdc_inst. Identity when no parent has opted in.
+if {[info procs cdc_is_block_top] eq ""} {
+    source [file normalize [file join [file dirname [info script]] \
+        ../../../../flows/synth/constraints/hier_reuse_procs.tcl]]
+}
+# Boundary clocks: block-top only. At the parent these nets carry the parent's clocks.
+if {[cdc_is_block_top]} {
 create_clock -add -name REFCLK                  -period $clock_periods(REFCLK_PERIOD)                [get_ports "clk_ref_i"]
 create_clock -add -name SMCCLK                  -period $clock_periods(SYSCLK_PERIOD)                [get_ports "clk_smc_i"]
 create_clock -add -name PERIPHERALCLK           -period $clock_periods(PERIPHERALCLK_PERIOD)         [get_ports "clk_periph_i"]
 create_clock -add -name TELEMETRYCLK            -period $clock_periods(TELEMETRYCLK_PERIOD)          [get_ports "clk_telemetry_i"]
 create_clock -add -name JTAG_TCK                -period $clock_periods(JTAG_TCK_PERIOD)              [get_ports "smc_cpu_jtag_TCK_i"]
+}
 
+# Memory-interface output clocks: block-top only. The parent stamps its own
+# identically shaped generated clocks on its own exported memory ports.
+if {[cdc_is_block_top]} {
 # memories
 create_generated_clock [get_ports smc_rom_intf_req_o*clk] -name SMCCLK_ROM -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
 
@@ -55,10 +69,12 @@ create_generated_clock [get_ports smc_l1_dcache_data_intf_req_o*3*clk]  -name SM
 
 
 # ----------------------
+}
+
 # AVS Clock Constraints
 # ----------------------
 # Note: For STA you need to care about the divided value (it is a programmable clock divider), but for CDC setup the fact its a divided value is all that matters
-set avs_hier u_smc_peripherals/u_avsbus_controller
+set avs_hier [cdc_inst u_smc_peripherals/u_avsbus_controller]
 
 # `set_clock_sense` needs a leaf pin, and every pin on an RTL module boundary is
 # hierarchical, so the stops below only apply once technology mapping has turned
@@ -225,10 +241,12 @@ set_clock_groups -logically_exclusive \
     -group {AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK AVS_CLK_FROM_PERIPHERALCLK AVS_CLK_DIV_CLK_O_FROM_PERIPHERALCLK AVS_DIV_TOGGLE_FROM_PERIPHERALCLK AVS_DIV_CLK_Q_FROM_PERIPHERALCLK AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK_GPIO AVS_CLK_FROM_PERIPHERALCLK_GPIO}
 
 # SPI
-create_clock -add -name SPICLK            -period $clock_periods(SPICLK_PERIOD)                [get_ports "spi_clk_i"]
+# SPICLK has no parent-level equivalent (at SMU, spi_clk_i is driven internally by SEP),
+# so it is created at both levels: on the port at block top, on the instance pin above.
+create_clock -add -name SPICLK            -period $clock_periods(SPICLK_PERIOD)                [cdc_port_or_pin "spi_clk_i"]
 
-create_generated_clock [get_ports {pad2core_i[9]}] -name SPICLK_IN_GPIO  -master_clock SPICLK -divide_by 1 -source [get_ports "spi_clk_i"]
-create_generated_clock [get_ports {core2pad_o[9]}] -name SPICLK_OUT_GPIO -master_clock SPICLK -divide_by 1 -source [get_ports "spi_clk_i"]
+create_generated_clock [get_ports {pad2core_i[9]}] -name SPICLK_IN_GPIO  -master_clock SPICLK -divide_by 1 -source [cdc_port_or_pin "spi_clk_i"]
+create_generated_clock [get_ports {core2pad_o[9]}] -name SPICLK_OUT_GPIO -master_clock SPICLK -divide_by 1 -source [cdc_port_or_pin "spi_clk_i"]
 
 # I2C
 # controller uses PERIPHCLK + a counter to create output SCL, there is no logic based on SCL output
@@ -245,4 +263,6 @@ create_generated_clock [get_ports {core2pad_o[9]}] -name SPICLK_OUT_GPIO -master
 # input SCL is also not used as a clock
 
 # feedthrough clock for any async input/outputs
-create_clock -add -name ck_feedthru -period $clock_periods(ck_feedthru_PERIOD)
+if {[cdc_is_block_top]} {
+    create_clock -add -name ck_feedthru -period $clock_periods(ck_feedthru_PERIOD)
+}
