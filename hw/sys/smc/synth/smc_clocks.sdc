@@ -61,6 +61,16 @@ create_generated_clock [get_ports smc_l1_dcache_data_intf_req_o*3*clk]  -name SM
 # Note: For STA you need to care about the divided value (it is a programmable clock divider), but for CDC setup the fact its a divided value is all that matters
 set avs_hier u_smc_peripherals/avsbus_controller
 
+# `set_clock_sense` needs a leaf pin, and every pin on an RTL module boundary is
+# hierarchical, so the stops below only apply once technology mapping has turned
+# the gater and the post-divider mux into library cells. DC reports that failure
+# without raising a Tcl error, so an unguarded call fails in silence -- hence the
+# check. One gater pin stands for all of them: they become leaves together.
+set avs_gate_cell [get_cells -quiet -of_objects \
+    [get_pins -quiet "${avs_hier}/u_refclk_apbclk_mux/clk1_gate/clk_o"]]
+set avs_mapped [expr { [sizeof_collection $avs_gate_cell] \
+                       && [get_attribute -quiet $avs_gate_cell is_hierarchical] ne "true" }]
+
 # Stamp each source's generated clock on its gater output.
 # `prim_ag_clk_mux` takes the peripheral clock on clk0_i and the reference clock
 # on clk1_i, so clk1_gate is the REFCLK branch and clk0_gate the PERIPHERALCLK one.
@@ -77,12 +87,17 @@ create_generated_clock -add -name AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK \
     [get_pins "${avs_hier}/u_refclk_apbclk_mux/clk0_gate/clk_o"]
 
 # Raw primaries stop at their gater outputs before the OR
-set_clock_sense -stop_propagation \
-    [get_pins "${avs_hier}/u_refclk_apbclk_mux/clk1_gate/clk_o"] \
-    -clocks {REFCLK}
-set_clock_sense -stop_propagation \
-    [get_pins "${avs_hier}/u_refclk_apbclk_mux/clk0_gate/clk_o"] \
-    -clocks {PERIPHERALCLK}
+if { $avs_mapped } {
+    set_clock_sense -stop_propagation \
+        [get_pins "${avs_hier}/u_refclk_apbclk_mux/clk1_gate/clk_o"] \
+        -clocks {REFCLK}
+    set_clock_sense -stop_propagation \
+        [get_pins "${avs_hier}/u_refclk_apbclk_mux/clk0_gate/clk_o"] \
+        -clocks {PERIPHERALCLK}
+} else {
+    puts "INFO: smc_clocks: gater outputs are still hierarchical pins; the REFCLK and\
+          PERIPHERALCLK clock-sense stops are not applied"
+}
 
 # Now the clock mux output is fed into a clock divider.
 # For CDC setup, the exact divide ratio is less important than the
@@ -138,17 +153,22 @@ create_generated_clock -add -name AVS_DIV_TOGGLE_FROM_PERIPHERALCLK \
 # `div_clk/Q` caveat in the file header: this pin only exists post-synthesis,
 # once technology mapping has assigned a concrete cell/pin name to the
 # `always_ff`-inferred `div_clk` register in prim_prog_clk_div_posedge.
-create_generated_clock -add -name AVS_DIV_CLK_Q_FROM_REFCLK \
-    -master_clock REFCLK \
-    -divide_by 2 \
-    -source [get_ports "clk_ref_i"] \
-    [get_pins "${avs_hier}/u_clk_div/div_clk/Q"]
+if { [sizeof_collection [get_pins -quiet "${avs_hier}/u_clk_div/div_clk/Q"]] } {
+    create_generated_clock -add -name AVS_DIV_CLK_Q_FROM_REFCLK \
+        -master_clock REFCLK \
+        -divide_by 2 \
+        -source [get_ports "clk_ref_i"] \
+        [get_pins "${avs_hier}/u_clk_div/div_clk/Q"]
 
-create_generated_clock -add -name AVS_DIV_CLK_Q_FROM_PERIPHERALCLK \
-    -master_clock PERIPHERALCLK \
-    -divide_by 4 \
-    -source [get_ports "clk_periph_i"] \
-    [get_pins "${avs_hier}/u_clk_div/div_clk/Q"]
+    create_generated_clock -add -name AVS_DIV_CLK_Q_FROM_PERIPHERALCLK \
+        -master_clock PERIPHERALCLK \
+        -divide_by 4 \
+        -source [get_ports "clk_periph_i"] \
+        [get_pins "${avs_hier}/u_clk_div/div_clk/Q"]
+} else {
+    puts "INFO: smc_clocks: u_clk_div/div_clk/Q does not exist yet; AVS_DIV_CLK_Q_FROM_REFCLK\
+          and AVS_DIV_CLK_Q_FROM_PERIPHERALCLK are not stamped"
+}
 
 # apply generated clock to the final gpio output pin as well
 create_generated_clock -add -name AVS_CLKMUX_OUTPUT_FROM_REFCLK_GPIO \
@@ -191,9 +211,14 @@ create_generated_clock -add -name AVS_CLK_FROM_PERIPHERALCLK_GPIO \
 # see only `AVS_CLK_FROM_REFCLK` / `AVS_CLK_FROM_PERIPHERALCLK`, which are
 # already declared `-logically_exclusive` below (only one source-mode is
 # active at a time).
-set_clock_sense -stop_propagation \
-    [get_pins "${avs_hier}/u_clk_div/postdiv_mux/clk_o"] \
-    -clocks {AVS_CLKMUX_OUTPUT_FROM_REFCLK AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK}
+if { $avs_mapped } {
+    set_clock_sense -stop_propagation \
+        [get_pins "${avs_hier}/u_clk_div/postdiv_mux/clk_o"] \
+        -clocks {AVS_CLKMUX_OUTPUT_FROM_REFCLK AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK}
+} else {
+    puts "INFO: smc_clocks: postdiv_mux/clk_o is still a hierarchical pin; the AVS_CLKMUX_OUTPUT\
+          clock-sense stop is not applied, so those clocks propagate downstream"
+}
 
 # These two can never be active simultaneously (muxed sources)
 set_clock_groups -logically_exclusive \
