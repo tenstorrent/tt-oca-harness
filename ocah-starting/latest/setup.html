@@ -477,7 +477,17 @@ pip install uv</code></pre>
 <div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">sudo apt install asciidoctor asciidoctor-pdf verilator gcc \
-ccache picolibc-riscv64-unknown-elf cmake</code></pre>
+ccache picolibc-riscv64-unknown-elf cmake default-jre-headless</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>default-jre-headless</code> provides the Java runtime that renders PlantUML diagrams in
+the PDF builds. The <code>asciidoctor-diagram</code> extension those builds require is not
+packaged for Ubuntu; install it as a gem:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">gem install asciidoctor-diagram</code></pre>
 </div>
 </div>
 <div class="paragraph">

@@ -268,7 +268,20 @@ installation/setup options.</p>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Asciidoctor</strong>: AsciiDoc documentation processing and PDF generation - Requires <code>asciidoctor-pdf</code> Version 2.3.24+</p>
+<p><strong>Asciidoctor</strong>: AsciiDoc documentation processing and PDF generation</p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>asciidoctor-pdf</code> Version 2.3.24+</p>
+</li>
+<li>
+<p><code>asciidoctor-diagram</code> — renders diagrams during the PDF builds; the Integrator
+and Programmer guides require it. PlantUML diagrams are drawn by its bundled jar,
+so a Java runtime is also needed. The HTML builds instead render diagrams through
+the <code>asciidoctor-kroki</code> Antora extension and need no Java.</p>
+</li>
+</ul>
+</div>
 </li>
 <li>
 <p><strong>Antora</strong>: Multi-repository documentation site generator for AsciiDoc - Version 3.1.10+</p>
