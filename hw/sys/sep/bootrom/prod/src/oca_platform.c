@@ -601,10 +601,15 @@ static oca_secure_bool_t plat_is_secure_boot_active(void) {
 }
 
 static oca_secure_bool_t plat_is_secure_boot_disabled(void) {
-    // Same SBOOT_DIS shadow rom_main.c latches into bl0_state, read directly so
-    // this stays usable no matter the order callbacks are first invoked in.
-    uint32_t sboot_dis = mmio_read32(SEP_TOP_SEP_EFUSE_MAP_SBOOT_DIS_BASE_ADDR);
-    return (sboot_dis != 0u) ? OCA_SECURE_TRUE : OCA_SECURE_FALSE;
+    // The value [S18] latched, not a fresh read of the shadow. rsvd[31:1] is
+    // driven from the fuse array, so a whole-word test here would let any of 31
+    // bits disable enforcement while bl0_state and the boot measurement -- which
+    // mask -- recorded that it had not been disabled.
+    //
+    // Latched rather than re-read so this answer cannot move mid-validation:
+    // the library rejects a determination that changes under it, and the [S18]
+    // sample is the one taken before any untrusted input was staged.
+    return sboot_dis_disabled() ? OCA_SECURE_TRUE : OCA_SECURE_FALSE;
 }
 
 // -- device-stored secure-boot state (reads only) ---------------------------

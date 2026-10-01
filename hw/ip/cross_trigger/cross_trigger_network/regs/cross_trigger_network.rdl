@@ -23,10 +23,7 @@ addrmap cross_trigger_network #(
     ctp->ocah_aperture_size = NUM_CTP * 0x10;
     ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::OKAY, rdata: 0x0, bresp: ocah_resp_e::OKAY};
     ocah_gap_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
-    ctm->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::ALIAS, rdata: 0x0, bresp: ocah_resp_e::ALIAS};
-    ctm->ocah_past_extent_note = "0x100-0x1CC aliases CT_SRC[k].CONFIG_0, because the matrix decodes only address bits [7:0]. The rest answers OKAY, 0x0 / OKAY, except byte address 0x1FF, which answers DECERR, 0xBADCAB1E / DECERR.";
-    ctp->ocah_hole_note = "The last byte of each port's 16-byte window answers DECERR, 0xBADCAB1E / DECERR.";
+    ctm->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
     ctp->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::OKAY, rdata: 0x0, bresp: ocah_resp_e::OKAY};
-    ctp->ocah_past_extent_note = "The last byte of each port's 16-byte window answers DECERR, 0xBADCAB1E / DECERR.";
 `endif
 };

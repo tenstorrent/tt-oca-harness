@@ -128,7 +128,7 @@ module dtp_debug_tdr_fcov (
   `OCAH_FCOV_COVER(c_tmp_escape_armed, tmp_escape_armed_e, tck_i, in_reset)
   `OCAH_FCOV_COVER(c_tmp_escape_observed, tmp_escape_observed_e, tck_i, in_reset)
 
-  // TMP persistence across chip reset: the state survives a system-reset
+  // TMP persistence across the system reset: the state survives a system-reset
   // assertion (sampled in the system-clock domain).
   logic sys_rst_nq;
   always_ff @(posedge clk_i) sys_rst_nq <= rst_ni;

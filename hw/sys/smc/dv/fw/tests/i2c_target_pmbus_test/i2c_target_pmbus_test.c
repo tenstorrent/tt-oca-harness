@@ -537,7 +537,7 @@ static void check_final_state(void) {
 int main(void) {
     int ret;
     i2c_timing_physical_t physical_params = {.speed = I2C_SPEED_STANDARD,
-                                             .clock_period_nanos = 10, /* 100 MHz */
+                                             .clock_period_nanos = 5, /* 200 MHz peripheral clock */
                                              .sda_rise_nanos = 300,
                                              .sda_fall_nanos = 100,
                                              .scl_period_nanos = 0};

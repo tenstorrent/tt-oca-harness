@@ -81,8 +81,8 @@ class smu_reset_release_sync_seq:
             sample(dut.rst_primary_smc_clk_n_o, "rst_primary_smc_clk_n_o"),
         )
 
-        ref_period_ps = cfg.ref_clk_period_ns * 1000
-        smu_period_ps = cfg.smu_clk_period_ns * 1000
+        ref_period_ps = int(round(cfg.ref_clk_period_ns * 1000))
+        smu_period_ps = int(round(cfg.smu_clk_period_ns * 1000))
         rises: dict[str, int] = {}
         t_release = None
         ref_edges: list[int] = []

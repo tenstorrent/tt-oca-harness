@@ -12,356 +12,88 @@ endif::backend-pdf[]
 
 [[life-cycle-controller-lcc-life-cycle-controller-lcc]]
 
-The Life Cycle Controller (LCC) supports multiple security domains in
-chiplet-based systems. It manages the device life cycle: it decodes the
-life-cycle state and generates the debug/test/function feature control vector
-that corresponds to that state.
+The Life Cycle Controller (LCC) converts the OTP lifecycle state and owner
+restrictions into `feat_ctrl_o`, the 64-bit vector that enables debug and
+functional features. Two volatile demotion controls can change the debug
+profile for the current boot without changing OTP.
 
-The LCC performs the following actions to support life cycle management:
+The OTP controller supplies `LC_STATE`, `SIP_DIS` and `SYS_DIS` after fuse
+sensing. The LCC checks the differentially encoded state and disables features
+on an integrity error, except when the final `SEC_DIS` override forces them on.
+Downstream logic uses these outputs to gate debug, test and functional paths.
 
-* Receive inputs from the SEP OTP (fuse) shadow registers (populated by the
-OTP sense FSM at power-on)
-** LC_STATE[3:0]
-** Disable vectors: SIP_DIS and SYS_DIS
-* Generate the per-LC-state debug/test/function feature control vector
-(`feat_ctrl_o`) and send it to its downstream destinations (TAP, DAP,
-DFT, peripherals, Key Manager).
-* Maintain volatile in-field debug demotion state via the DEMOTE_1 and DEMOTE_2
-registers (each with demote and lock fields), and apply the resulting demotion
-feature-control profile to `feat_ctrl_o`. See
-<<demote-1-2-in-field-debug-demotion>>.
-* Detect signal-integrity errors on the differentially encoded LC_STATE
-input arriving from the OTP shadow register; fail closed (force
-`feat_ctrl_o = 0`) on detection.
+The sections below explain states and security domains, feature-control rules,
+demotion, scan protection and firmware authorization. Hardware gating is
+implemented; the multi-owner signing model in <<demote-signing-model>> is a
+deferred firmware design. Do not use that model as a description of current
+ROM verification.
 
 <<sep-lifecycle-controller-figure>> shows a high-level view of the Life Cycle Controller
 components.
 
 [[sep-lifecycle-controller-figure]]
 .SEP lifecycle controller
-image::SEP_LC_Block.png[SEP_LC_Block,scaledwidth=100.0%]
+image::sep-lifecycle-controller.svg[alt="sep_lifecycle_ctrl: LC_STATE decoder, feature control decode, security-disable override, debug and DFT disable derivation, register block and demotion encoders",width=100%,pdfwidth=100%]
 
-[[demote-1-2-in-field-debug-demotion]]
-== Demotion 1 and Demotion 2 -- In-Field Debug Demotion
+In <<sep-lifecycle-controller-figure>>, the inputs enter on the left and the
+outputs leave on the right, each labelled with its consumer. `u_lc_state_dec`
+decodes the differentially encoded LC_STATE from the eFuse shadow registers and
+raises `lc_sigint_err` on a non-complementary codeword, which forces the feature
+control decode to all zeros. While `security_disable_i` is high, the
+multiplexer replaces the decoded vector with all ones, even on an integrity
+error. The `lc_sigint_err` line crosses the `security_disable_i` line without
+connecting; the gap marks the crossing.
 
-In addition to the LC state stored in OTP, SEP implements two volatile
-demotion registers (DEMOTE_1, DEMOTE_2), each with a demote[0] field and a
-lock[1] field. When the demote bit is asserted, the demotion grants
-additional in-field debug access without changing the OTP-stored LC state. SEP
-cold reset clears both registers, restoring the device to its OTP-stored LC
-state.
-
-Demotion 1 and Demotion 2 are two independent controls that differ only in which
-feature-control bits they gate. Demotion 1 (DEMOTE_1) gates the *local* debug
-group (DBG_1) -- debug of the chiplet's own logic. Demotion 2 (DEMOTE_2) gates
-the *inter-chiplet debug-bypass* group (DBG_2) -- the SiP-owner debug-access
-path at this chiplet, which admits external (PTAP) debug traffic into the
-chiplet and forwards it onward to the next chiplet in the chain (see
-<<multiple-security-domains>>). There is no ordering or dependency between the
-two demotion bits: either may be asserted without the other. The controls are
-independent even though their effects compose: opening the local debug group
-(DBG_1) alone does not make local debug externally reachable until the SIP_DBG
-access path (DBG_2) is also open. Each control selects a per-LC-state
-feature-control profile (see <<feature-control-table>>), and its authorization
-is governed by the <<demote-signing-model>>.
-
-[[secure-boot-enforcement]]
-=== Secure-Boot Enforcement
-
-The production ROM and manifest validator decide whether signature verification
-is required in this order:
-
-. A manifest with its secure-boot enforcement bit set requires verification,
-including when `SBOOT_DIS` is set.
-. Otherwise, a set `SBOOT_DIS` fuse disables secure boot.
-. Otherwise, the lifecycle policy requires secure boot in `PROD` and
-`PROD_END`, and does not require it in `TEST_DEV` or the RMA states.
-
-`CHIPLET_DBG`, `SIP_DIS`, and `SYS_DIS` do not participate in this firmware
-decision. Disabling debug in `TEST_DEV` therefore does not prevent an unsigned
-image whose manifest leaves enforcement clear from booting. Provisioning must
-not treat a locked debug path as a secure-boot guarantee.
-
-An owner relying on lifecycle-enforced secure boot must leave `SBOOT_DIS`
-unburned and write-lock it via the LOCK field. `SBOOT_DIS` does not override
-a manifest's own requirement for verification.
-
-[[demote-signing-model]]
-=== Secure-Boot Signing Model
-
-NOTE: Implementation status -- *deferred to a later release, not abandoned.*
-This release verifies a single classical RSA-3072 signature; everything beyond
-that is deferred. The multi-owner model described below -- `REQUIRED_SIGNERS`,
-`REQUIRED_ALGS`, per-owner co-signatures and the demotion authorization that
-rides on them -- is therefore *not implemented in SEP ROM today*: BL0 reads
-neither fuse field, and while the OCA boot manifest defines verifier-key and
-co-signer entries, the validation library BL0 links does not verify them. What
-BL0 enforces today is a single root key -- the manifest names one key slot, that
-slot's digest is matched against a ROM-embedded digest or an OTP hash bank, and
-one RSA-3072 signature is verified against it (see the CPU Subsystem chapter's
-BL0 Secure Boot section). A later release adds combined classical + PQC
-signatures together with the verifier and co-signer keys that populate
-`REQUIRED_SIGNERS` and `REQUIRED_ALGS`. The fuse fields are provisioned for that
-release; the model below is the target design, and describes intended rather
-than current behaviour.
-
-SEP secure boot decides, for each manifest it verifies, which owners must sign it
-and with which algorithms. Enforcement -- including the demotion authorization
-that rides on it -- is delegated to the SEP boot firmware; the LCC hardware does
-not check signing authority or inspect manifest contents. The one hardware-rooted
-anchor is SEP ROM, which reads the fuse-provided requirement to verify the first
-manifest (BL1). Up to three owners participate: the chiplet creator (root of
-trust; its classical and PQC root digests are embedded in SEP ROM), the SiP
-owner, and the system owner.
-
-Two eFuse policy fields govern the model (see the _OTP fuse controller_
-fuse-field table for field details):
-
-* *`REQUIRED_SIGNERS`* -- owners whose signature a manifest must carry, one bit
-each for the SiP owner and the system owner. Per owner, 1 = required, 0 =
-not-required; the default all-zero value requires no additional owner. The
-chiplet creator is the root of trust and always authenticates BL1, so it has no
-bit -- it is implicitly always required. Burning a bit only ever adds a required
-signer (the fuse is monotonic), so the standard LOCK bits exist but are not
-needed here.
-
-* *`REQUIRED_ALGS`* -- per owner, which algorithms (classical: ECDSA P-384 or
-RSA; post-quantum: ML-DSA) that owner must sign with, applied only when the
-owner is required.
-
-Key provisioning is implicit: there is no separate provisioning fuse. If an
-owner's key is not provisioned, its `REQUIRED_SIGNERS` bit is simply left
-unburned so that owner is not required.
-
-*Requirement rule.* For the manifest being verified, an owner must sign if it is
-marked required in the shadow -- the chiplet creator always, and the SiP or
-system owner when its `REQUIRED_SIGNERS` bit is set. If so, the manifest must
-carry a valid signature for each REQUIRED_ALGS-selected algorithm, verified
-against that owner's burned, non-revoked key of that type. Signatures from
-non-required owners are ignored.
-
-*Propagation.* SEP ROM verifies the BL1 manifest against the shadow value loaded
-from the fuse at cold reset. Thereafter, each successfully verified -- and
-therefore trusted -- boot stage sets the required signers for the next manifest
-by writing the shadow: because a stage runs only once it has been authenticated,
-it is by definition authorized to make the change, and may freely add or drop
-owners. Because verification is performed by firmware, this propagation is
-enforced by the authenticated firmware itself -- a chain of trust rooted in SEP
-ROM and the fuse-provided requirement that ROM uses to admit BL1; no additional
-hardware gate is required, since a compromised stage would bypass its own
-verification regardless.
-
-Like the SiP owner, the system owner is required exactly when its
-`REQUIRED_SIGNERS` bit is set: if the bit is burned, the shadow register reloads that
-requirement at every cold reset and BL1 -- and each later stage -- must carry the
-system-owner signature; if that is not wanted, the bit is left unburned.
-
-*Post-quantum signing.* Motivated by the NIST standardization of post-quantum
-signatures (FIPS 204, ML-DSA), each owner may be provisioned with both a
-classical and a post-quantum root key, and `REQUIRED_ALGS` selects, per owner,
-whether one or both must sign. Requiring both yields a combined
-classical-plus-post-quantum signature for that owner, neither part of which
-alone is sufficient.
-
-*Demotion authorization.* Demotion is carried in a boot manifest and is
-authorized by this same signing model rather than by a hardware-ordered
-transition. Demotion 1 and Demotion 2 are authorized identically; Demotion 2 also
-drives the dedicated inter-chiplet debug-bypass field, but this adds no special
-policy. By default -- with no `REQUIRED_SIGNERS` bit burned -- any boot stage
-whose manifest authenticates under the current required-signer set may assert a
-demotion, so a later, already-authenticated stage that asserts one is implicitly
-authorized through the chain of trust. Because the inter-chiplet bypass is a
-SiP-owner concern, the SiP owner is given the option to gate Demotion 2: by
-burning its own `REQUIRED_SIGNERS` bit it forces every demotion-asserting
-manifest to carry the SiP-owner signature, and it can then lock Demotion 2 (see
-<<demote-lock-behavior>>) to prevent demotion outright. This is distinct from RMA,
-whose state transitions are hardware-ordered. The LCC
-hardware does not check any of this; it simply applies the feature control
-profile that corresponds to the DEMOTE_1 / DEMOTE_2 register bits. The demotion
-assertion is not tied to a specific boot stage: any bootloader stage may carry
-it, because what authorizes it is the set of signing authorities on the manifest,
-not which stage performs the write.
-
-NOTE: Public keys themselves are never stored in eFuse -- only their hash
-digests are. The chiplet creator's root public-key digests (classical and PQC)
-are *embedded in SEP ROM*; `SIP_PUBK_HASH0/1` / `SIP_PUBK_PQC_HASH0/1` (two
-slots, so the SiP owner retains a usable root after revoking one) and
-`SYS_PUBK_HASH` / `SYS_PUBK_PQC_HASH` hold the SiP- and system-owner digests in
-eFuse; and `CHIPLET_PUBK_HASH0/1` / `CHIPLET_PUBK_PQC_HASH0/1` hold additional
-*chiplet-owner* authentication-key hashes that supplement the chiplet-creator
-digests in SEP ROM. Every such key entry can be revoked individually through
-`CHIPLET_PUBK_REVOKE` (see the _OTP fuse controller_ fuse-field table in this
-chapter).
-
-[[signing-model-examples]]
-=== Signing-Model Examples
-
-These examples show which signers are required *when secure boot is enforced for
-a manifest*. Whether it is enforced at all is a separate decision, governed by
-the rules in <<secure-boot-enforcement>>; the signing model governs only the
-required-signer set once enforcement applies.
-
-*No REQUIRED_SIGNERS bits burned.* BL1 requires the chiplet-creator signature
-only (the chiplet creator is always required; no additional owner is).
-
-*SiP owner required.* `REQUIRED_SIGNERS[SiP]` is burned, typically at ownership
-transfer. BL1 requires the chiplet creator and the SiP owner. BL1, having been
-signed by both, may drop the chiplet requirement for BL2 (handoff), so BL2
-requires only the SiP owner.
-
-*System owner added downstream.* With the SiP owner required, a downstream stage
-adds the system owner in the shadow for its successor, so that manifest requires
-the system owner (or the SiP owner plus the system owner, if the SiP owner
-co-signs it).
-
-In every case the shadow register reloads from the `REQUIRED_SIGNERS` fuse at the
-next cold reset, so the chain restarts from the fuse-provided requirement.
-
-[[demote-lock-behavior]]
-=== Lock Behavior
-
-* When DEMOTE_LOCK_1/2 = 0, firmware can assert DEMOTE_1/2 = 1.
-* Once DEMOTE_LOCK_1/2 = 1, DEMOTE_1/2 can no longer be changed until SEP
-cold reset clears both registers.
-* A signed boot image whose manifest *takes ownership* of the demotion
-decision for this boot programs `DEMOTE_LOCK_1/2 = 1` as part of
-committing the decision. The locked value may be `DEMOTE_1/2 = 0`
-(commit non-demoted state) or `DEMOTE_1/2 = 1` (commit demoted state)
--- in either case, locking commits the decision and prevents any
-later boot stage from modifying it until cold reset.
-* If the manifest instead *defers* the demotion decision to a later
-boot stage, it leaves `DEMOTE_LOCK_1/2 = 0` so the next stage can
-complete the programming. The demotion-decision protocol a manifest uses
-across boot stages (selector / value / deferral hint) is described in the
-OCAH SEP boot specification.
-
-[[demote-reset-behavior]]
-=== Reset Behavior
-
-SEP cold reset clears all four demote registers (DEMOTE_1, DEMOTE_2,
-DEMOTE_LOCK_1, DEMOTE_LOCK_2), restoring the device to its
-OTP-stored LC state.
-
-[[multiple-security-domains]]
-== Multiple Security Domains
-
-OCAH defines two *types* of security domain, distinguished by which owner
-controls debug/test access to the assets in that domain:
-
-* *SiP-owner domain* -- controlled by the *SiP owner*. Governs debug
-access to SiP-owned assets and the debug-access path into every chiplet
-(the PTAP chain), including onward access to downstream (secondary)
-chiplets.
-
-* *Chiplet-owner domain* -- controlled by a *chiplet owner*. Governs debug
-access to that chiplet's own internal assets.
-
-A system instantiates *one* SiP-owner domain (shared) plus *one
-chiplet-owner domain per chiplet* that has its own protected assets. <<sep-security-domains-figure>> shows three chiplets -- one primary and two secondaries --
-giving three security domains: the SiP-owner domain, chiplet domain 1
-(primary), and chiplet domain 2 (secondary). A chiplet may or may not have
-a local SEP and life-cycle state.
-
-[[sep-security-domains-figure]]
-.SEP security domains
-image::SEP_Security_Domains.png[SEP_Security_Domains,scaledwidth=90.0%]
-
-Access is structured as follows:
-
-* *The SiP-owner domain is the debug-access network.* SIP_DBG gates the
-SiP-owner domain at each chiplet that implements its own SEP/LCC: it admits
-external (PTAP) debug traffic into that chiplet and passes it onward toward
-downstream chiplets. Debugging a chiplet's assets requires SIP_DBG to be
-enabled on each LCC-bearing chiplet along the debug path, including the target
-chiplet itself when it has its own LCC. A chiplet without a local SEP/LCC has
-no disable vectors of its own. Instead, the primary chiplet's SiP-owner
-feature control gates the DFT traffic before it is forwarded downstream, so
-the chiplet is governed by the SiP-owner domain (see
-<<non-primary-chiplets>>).
-
-* *Chiplet-owner domains gate each chiplet's local assets.* A chiplet's own
-protected assets additionally require that chiplet's local gate (CHIPLET_DBG);
-the SEP's own internal state has a further local gate, SEP_DBG (see
-<<feature-control-vector-definition>>). Chiplet-owner domains are mutually
-independent -- each is opened separately under its own chiplet owner's control,
-and opening one chiplet's domain does not require any other chiplet's domain to
-be open.
-
-For the three-chiplet system in the diagram (chiplet 1 primary, chiplet 2
-intermediate secondary without a SEP, chiplet 3 secondary):
-
-* Debugging chiplet 1's local assets requires SIP_DBG(1) and CHIPLET_DBG(1).
-* Debugging chiplet 2 requires only SIP_DBG(1): chiplet 2 has no local
-SEP/LCC and therefore contributes no local gate. SIP_DBG(1) gates the DFT
-traffic before the primary chiplet forwards it downstream (see
-<<non-primary-chiplets>>).
-* Debugging chiplet 3's local assets requires SIP_DBG(1), SIP_DBG(3), and
-CHIPLET_DBG(3): chiplet 2 contributes no gate on the path, and the primary
-chiplet's CHIPLET_DBG(1) is not required.
-
-Local access control is therefore exercised by *both* owners: the SiP owner
-controls the debug path to every chiplet (the SiP-owner domain), and each
-chiplet owner controls its own chiplet-owner domain.
+The debug and DFT disable derivation turns the `sip_debug`, `chiplet_dbg`,
+`sep_debug`, `sep_fuse_dbg` and `smc_fuse_dbg` bits of the result into the 11
+debug disables for the DTP and the two fuse DFT disables. No functional logic
+consumes the fuse DFT disables; they leave the SMU for adopter DFT insertion.
+The `demote` and `lock` bits of DEMOTE_1 and DEMOTE_2 are set-only: firmware
+can set `demote` only while `lock` is clear, and both hold until SEP cold
+reset. The demote bits feed the feature control decode and, through the
+differential encoders, the Key Manager KDF and the SEP outputs.
 
 [[lc-state-machine]]
-== LC State Machine
+== Lifecycle States
 
-The LC controller is a stateless decoder of the `LC_STATE` shadow
-register provided by the OTP/Fuse controller. The OTP controller
-initializes the shadow-register *output* to the INVALID encoding
-(4'b1111) and only drives it to the OTP-stored LC state value once
-fuse sensing is complete (see _OTP fuse controller_ in this chapter).
-The LCC's output therefore tracks fuse sensing automatically: it produces the
-INVALID feature-control profile before fuse sensing completes and the
-per-LC-state profile (TEST_DEV / PROD / PROD_END / RMA_SIP / RMA_CHIPLET)
-afterward.
+The LCC decodes the OTP controller's `LC_STATE` shadow output; it does not
+sequence lifecycle transitions itself. Before fuse sensing completes, that
+output holds INVALID (`4'b1111`). The LCC then follows the sensed state and
+its feature-control profile.
 
-Field debugging of production packages is supported by the two volatile
-demotion CSRs (DEMOTE_1, DEMOTE_2) rather than by a separate LC encoding.
-Demotion acts in TEST_DEV and PROD, opening the corresponding debug group
-(DBG_1 for Demotion 1, DBG_2 for Demotion 2) as given in
-<<feature-control-table>>; it does not affect DFT or Function, and does not
-change the RMA_SIP or RMA_CHIPLET profiles, which are fixed by the LC state. A
-chiplet cold reset resets the DEMOTE_1/2 and DEMOTE_LOCK_1/2 bits.
+The raw four-bit OTP value is carried as a complementary code in the shadow
+path. A failed integrity check sets `lc_sigint_err` and forces the base feature
+vector to zero. `SEC_DIS` is applied afterward and can override that result;
+see <<feat-ctrl-overrides-and-gates>>.
 
-Demotion 1 and Demotion 2 are independent (see
-<<demote-1-2-in-field-debug-demotion>>): DEMOTE_1 opens the local debug group
-(DBG_1) and DEMOTE_2 opens the inter-chiplet debug-bypass group (DBG_2). Any
-combination of the two is legal; there is no ordering between them, and neither
-is tied to an owner level or to an RMA state. Their authorization is governed by
-the firmware signing model (see <<demote-signing-model>>).
+Hardware orders the RMA token transitions: `RMA_SIP_TOKEN` first admits
+RMA_SIP, then `RMA_CHIPLET_TOKEN` admits RMA_CHIPLET. Volatile demotion is
+separate from those transitions and does not change the OTP state.
 
-Entering RMA_CHIPLET requires two successive token matches: the device
-must first enter RMA_SIP via the RMA_SIP_TOKEN, then transition to
-RMA_CHIPLET via the RMA_CHIPLET_TOKEN. Unlike demotion, this RMA ordering is
-enforced by hardware.
-
-The Key Manager's key derivation function (KDF) uses the DEMOTE_1/2 bits
-in addition to CHIPLET_UID, SIP_UID, SYS_UID, and LC_STATE as inputs.
-Mixing the DEMOTE_1/2 bits into the KDF ensures that the derived keys in a
-demoted (debug) state are distinct from the live keys in the non-demoted PROD
-state.
+Key Manager includes DEMOTE_1/2 with CHIPLET_UID, SIP_UID, SYS_UID and LC_STATE
+in key derivation, separating demoted-state keys from non-demoted production
+keys.
 
 <<sep-lifecycle-state-machine-figure>> shows the lifecycle states and transition paths.
 
 [[sep-lifecycle-state-machine-figure]]
 .SEP lifecycle state machine
-image::SEP_LC_FSM.png[SEP_LC_FSM,scaledwidth=90.0%]
+image::sep-lifecycle-state-machine.svg[alt="Lifecycle states TEST_DEV, PROD, PROD_END, RMA_SIP and RMA_CHIPLET with their encodings and the LC_STATE bit that each transition sets, the in-field demotion overlay, and the INVALID end-of-life state",width=100%,pdfwidth=100%]
 
-During normal chiplet operation, the current LC state is retrieved from OTP and
-stored differentially in shadow registers, then propagated to the rest of the
-chiplet -- and, from a primary chiplet, potentially onward to secondary chiplets.
+Each rounded box in <<sep-lifecycle-state-machine-figure>> is a lifecycle state
+with its raw OTP encoding, where X marks a bit that does not change the state.
+LC_STATE bits can only be set, so each arrow names the bit that it sets.
+Setting LC_STATE[1] requires an RMA_SIP token match. Setting LC_STATE[2]
+requires an RMA_CHIPLET token match and a state that already has LC_STATE[1]
+set. Every other encoding is INVALID and permanent: for example, setting
+LC_STATE[3] in any state other than TEST_DEV, or setting any further bit in
+PROD_END. Before fuse sensing completes, the shadow output holds the INVALID
+encoding 4'b1111. The dashed box is the volatile demotion overlay, which acts
+in TEST_DEV and PROD without changing the encoding.
 
-The encodings shown in this table are the raw 4-bit LC_STATE values as
-programmed in OTP. When the fuses are sensed, each value is differentially
-(complementary) encoded into the shadow registers noted
-above; the LCC decodes that shadow value with a signal-integrity check
-that fails closed (forces `feat_ctrl_o = 0`) on any non-complementary
-codeword, guarding the LC_STATE path against fault injection (e.g. laser
-or FIB modification).
-
-<<sep-lifecycle-state-encodings-table>> defines the raw OTP encodings and meaning of
-each lifecycle state.
+<<sep-lifecycle-state-encodings-table>> lists the raw OTP encodings. The
+complementary shadow encoding is a transport integrity check, not an
+additional lifecycle state.
 
 [[sep-lifecycle-state-encodings-table]]
 [width="100%",cols="<22%,<16%,<62%",options="header",]
@@ -410,23 +142,52 @@ TEST_DEV, which still honors SIP_DIS/SYS_DIS.
 The secret token (RMA_CHIPLET_TOKEN) must be presented to enable the
 transition from RMA_SIP.
 
-|INVALID |All other values |Silicon with an invalid OTP state. This is the
-end-of-life state: the chip is permanently inoperable.
+|INVALID |All other values |Disables all features unless SEC_DIS overrides it.
+Also used before fuse sensing completes; observing this profile alone does
+not establish that the OTP has been programmed to an end-of-life state.
 |=======================================================================
+
+[[multiple-security-domains]]
+== Multiple Security Domains
+
+The SiP owner controls the debug-access network between chiplets. Each chiplet
+owner controls access to its own local assets. A system has one shared
+SiP-owner domain and a local domain for each chiplet with independently
+protected assets.
+
+`SIP_DBG` admits and forwards external debug traffic at each chiplet with a
+local SEP/LCC. Access to local resources additionally requires `CHIPLET_DBG`;
+SEP resources also require `SEP_DBG`. Opening another chiplet's local debug
+gate is unnecessary when traffic only passes through it.
+
+A chiplet without a local SEP/LCC contributes no local disable vector.
+The preceding LCC-bearing chiplet controls forwarding to it, as described
+in <<non-primary-chiplets>>.
+
+[[sep-security-domains-figure]]
+.SEP security domains
+image::sep-security-domains.svg[alt="Three chiplets on one JTAG chain inside a SiP: the primary chiplet and a secondary chiplet with a SEP each gate debug traffic with SIP_DBG, CHIPLET_DBG and SEP_DBG, and a secondary chiplet without a SEP has no gate of its own",width=100%,pdfwidth=100%]
+
+In <<sep-security-domains-figure>>, chiplet 1 is primary, chiplet 2 has no SEP,
+and chiplet 3 has its own LCC:
+
+* Chiplet 1 local debug requires `SIP_DBG(1)` and `CHIPLET_DBG(1)`.
+* Chiplet 2 access requires `SIP_DBG(1)`; chiplet 2 adds no local gate.
+* Chiplet 3 local debug requires `SIP_DBG(1)`, `SIP_DBG(3)` and
+  `CHIPLET_DBG(3)`. It does not require `CHIPLET_DBG(1)`.
+
+The per-path conjunctions are listed in <<dtp-path-gating>>.
 
 [[debug-test-and-functional-feature-control-vectors-debug-test-and-functional-feature-control-vectors]]
 == Debug and Functional Feature Control
 
-Debug and functional features are gated at runtime by the feature
-control vector `feat_ctrl_o`. This vector is not stored directly: it is
-*derived* from two 64-bit *disable* vectors held in OTP *shadow registers*
--- *SIP_DIS* and *SYS_DIS* -- as the inverted OR of the two, gated per LC
-state, then
-overridden by SEC_DIS:
+`feat_ctrl_o` uses positive logic: 1 enables a feature. The 64-bit
+`SIP_DIS` and `SYS_DIS` shadows use negative logic: 1 restricts a feature.
+The applicable masks depend on lifecycle state and demotion. Where both
+apply, the enable is `~(SIP_DIS | SYS_DIS)`.
 
-  `feat_ctrl_o = ~(SIP_DIS | SYS_DIS)`   (per-LC-state gating; then SEC_DIS, see below)
-
-In other words, each feature's enable is the inverse of its disable bits.
+<<feature-control-table>> gives the complete state-dependent formulas.
+The final `SEC_DIS` override is described in <<feat-ctrl-overrides-and-gates>>.
 
 [[feature-control-vector-definition]]
 === Disable Vector Format (SIP_DIS / SYS_DIS)
@@ -437,16 +198,12 @@ feature or its associated scan chain; the remaining bits are
 reserved for adopter extension (see <<asset-and-scan-chain-protection>> and
 <<adopter-extension>>).
 
-Throughout this chapter `T` (True) means a feature is *enabled* and `F` (False)
-means it is *disabled*. The `SIP_DIS` / `SYS_DIS` bits are disable masks: a bit
-value of `1'b1` disables its feature and `1'b0` enables it (so a feature is in
-the `T`/enabled state exactly when its DIS bit is `1'b0`).
+In the policy tables, `T` means enabled and `F` means disabled.
+A clear disable bit permits a feature only where the lifecycle profile
+allows it; it does not by itself open a production debug path.
 
-For demotion, the 48-bit debug group is split into two sub-groups: *DBG_1* --
-bits `[23:0]` (local debug) -- gated by Demotion 1, and *DBG_2* -- bits `[47:24]`
-(the inter-chiplet debug-bypass path) -- gated by Demotion 2. The demotion
-profile in <<feature-control-table>> refers to these sub-groups as
-SIP_DIS.DBG_1 / DBG_2 and SYS_DIS.DBG_1 / DBG_2.
+DBG_1 covers `[23:0]` and is controlled by Demotion 1. DBG_2 covers `[47:24]`
+and is controlled by Demotion 2. Function bits occupy `[63:48]`.
 
 ifdef::backend-html5[]
 ++++
@@ -489,58 +246,34 @@ endif::backend-html5[]
 [[dis-vector-ownership]]
 === DIS Vector Ownership: Predecessor-Programs-Disables
 
-OCAH uses a *predecessor-programs-disables* convention. Each X_DIS
-vector specifies restrictions imposed by an earlier owner that should
-apply for the rest of the part's life (until the chiplet creator
-itself regains full access via RMA_CHIPLET):
+The vector name identifies the receiving owner, not the programmer:
 
-* *SIP_DIS* -- programmed by the *chiplet creator* before the part is
-transferred to the SiP integrator. A bit value of 1 disables the
-corresponding feature for everyone below the chiplet owner -- it remains
-in force through SiP-owner access and is cleared only at chiplet-owner
-access (RMA_CHIPLET).
+* The chiplet creator programs `SIP_DIS` before SiP handoff. Its restrictions
+  remain effective in RMA_SIP and are bypassed in RMA_CHIPLET.
+* The SiP owner programs `SYS_DIS` before system handoff. Its restrictions
+  are bypassed in RMA_SIP and RMA_CHIPLET.
 
-* *SYS_DIS* -- programmed by the *SiP owner* before the part is
-transferred to the system integrator. A bit value of 1 disables the
-corresponding feature for the system owner only -- it does not bind the
-SiP owner or chiplet owner, and is cleared once SiP-owner access
-(RMA_SIP) is reached.
-
-The system owner has no successor in the OCAH ownership chain, so
-there is no third DIS vector restricting it. The system owner's
-own fuse fields (`SYS_PUBK_HASH`, `SYS_UID`) are provisioned by
-the system owner directly before transitioning the part from
-TEST_DEV to PROD. See the _OTP fuse controller_ section in this
-chapter for the full multi-owner provisioning sequence.
+RMA bypass does not erase either fuse vector. The system owner has no
+successor and therefore no third disable vector. It provisions its own
+`SYS_PUBK_HASH` and `SYS_UID` before TEST_DEV-to-PROD transition; see the
+OTP Fuse Controller chapter for the provisioning sequence.
 
 [[dis-vector-or-rationale]]
 === Combining Rule: OR then Invert
 
-The per-LC-state formulas combine SIP_DIS and SYS_DIS with bitwise
-OR, then invert (`~(SIP_DIS | SYS_DIS)`) to produce the
-positive-logic `feat_ctrl_o` output ("1 = feature enabled"). The OR
-is the natural fuse-level combiner:
-
-* DIS bits live in OTP fuses, which are write-once: a fuse bit can
-only transition from 0 to 1, never from 1 to 0.
-* The DIS convention is "1 = disabled," so each owner's restriction
-is expressed as a 1 fused into their vector.
-* Combining multiple owners' restrictions therefore uses *OR*: a
-feature is disabled if *any* owner has fused a 1 in that bit
-position. There is no way for a later owner to "undo" an earlier
-owner's restriction once fused.
-* The output `feat_ctrl_o` uses positive logic ("1 = feature
-enabled"), so the combined disable is inverted: `~(SIP_DIS | SYS_DIS)`.
+Where both owner masks apply, a feature is disabled if either mask has its
+bit set. OR combines the restrictions; inversion produces the positive-logic
+enable. Since an OTP bit can only change from 0 to 1, a later owner cannot
+erase an earlier owner's programmed restriction. Lifecycle profiles can
+bypass masks for RMA access without changing OTP.
 
 [[dis-vector-applicability]]
 === When Each DIS Vector Applies
 
-Both SIP_DIS and SYS_DIS apply at TEST_DEV, PROD, and PROD_END -- including
-under demotion in PROD, where a demoted debug group still honors the DIS
-vectors. At *SiP-owner* access (RMA_SIP) only SIP_DIS applies; at
-*chiplet-owner* access (RMA_CHIPLET) neither applies, because the chiplet
-creator has full access and no predecessor has authority to restrict them. The
-SEC_DIS override sits on top of this; see <<feat-ctrl-overrides-and-gates>>.
+The table below gives mask applicability before demotion and the final
+overrides. In TEST_DEV, demotion can bypass the masks for its debug group;
+in PROD, demotion opens that group only subject to both masks. See
+<<feature-control-table>> for those exceptions.
 
 <<sep-disable-vector-applicability-table>> identifies which disable vectors apply in
 each lifecycle state.
@@ -599,15 +332,9 @@ than on feature control -- see <<secure-tm-vs-scandump>>.
 [[per-lc-state-feature-control-profile-section]]
 === Per-LC-state Feature Control Profile
 
-Each LC state has a feature control profile that determines which features are
-enabled on the chiplet. <<feature-control-table>> gives, for each combination of LC state,
-SEC_DIS, and demotion (DEMOTE_1 / DEMOTE_2), the resulting feature control
-vector as a tuple of three fields: DBG_1 / DBG_2 / Function. DBG_1 (local
-debug) is gated by Demotion 1 and DBG_2 (inter-chiplet debug bypass) by
-Demotion 2; Function is not affected by demotion. True (T) indicates that a
-feature is enabled and False (F) indicates that it is disabled. The disable vectors
-(SIP_DIS / SYS_DIS), defined above, act as masks: a bit value of 1'b0 enables
-the corresponding feature, and 1'b1 disables it.
+The output is shown as DBG_1 / DBG_2 / Function. `T` enables all bits of a
+group; `F` disables them. A formula applies the indicated disable masks.
+Demotion has no effect on Function.
 
 ifdef::backend-html5[]
 ++++
@@ -661,12 +388,56 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
-In the DEMOTE column, a dash means demotion has no effect in that state, and X
-means it is irrelevant because SEC_DIS forces all features on. Demotion acts in
-TEST_DEV and PROD: in TEST_DEV a demotion forces its debug group fully open
-(overriding SIP_DIS / SYS_DIS), while in PROD it relaxes its debug group to
-honor the DIS vectors (one level down). The two demotions are independent --
-DEMOTE_1 gates DBG_1 and DEMOTE_2 gates DBG_2 -- and neither affects Function.
+In the DEMOTE column, a dash means the state ignores demotion; X means
+SEC_DIS makes its value irrelevant. The two demotions act independently.
+
+[[demote-1-2-in-field-debug-demotion]]
+== In-Field Debug Demotion
+
+`DEMOTE_1` and `DEMOTE_2` each contain a `demote` bit and a `lock` bit.
+They are two registers, not separate demotion and lock register banks.
+Cold reset clears both and removes the volatile debug profile.
+
+[cols="1,1,3",options="header"]
+.SEP demotion controls
+|===
+|Register |Feature group |Scope
+|`DEMOTE_1` |DBG_1, bits `[23:0]` |Local debug, including SEP and chiplet gates.
+|`DEMOTE_2` |DBG_2, bits `[47:24]` |Inter-chiplet debug access and forwarding, including `SIP_DBG`.
+|===
+
+The controls are independent: either may be set first or used alone.
+In TEST_DEV, demotion forces its group open; in PROD, it enables the group
+subject to the disable vectors. Other lifecycle profiles and function bits
+are unchanged. The complete formulas are in <<feature-control-table>>.
+
+Opening local debug does not open the external access path. For example,
+a Case 3 SEP debug path requires both groups; see <<dtp-path-gating>>.
+The LCC applies register values without authenticating the writer or a
+manifest. Firmware authorization is discussed under <<secure-boot-enforcement>>
+and <<demote-signing-model>>.
+
+[[demote-lock-behavior]]
+=== Programming and Locking
+
+Both `demote` (bit 0) and `lock` (bit 1) are write-one-to-set fields.
+Writing zero does not clear them. While `lock` is zero, firmware can set
+`demote`; once locked, the demotion decision cannot change until cold reset.
+
+. Decide whether to enable demotion for this boot.
+. Set `demote` if required, then set `lock` to commit the decision. The lock
+  can commit either a demoted or a non-demoted state.
+. Leave `lock` clear only when a later boot stage is to decide.
+
+This is the hardware mechanism. The current ROM's manifest handling is
+documented in the Boot ROM chapter; the multi-owner authorization model
+above remains deferred.
+
+[[demote-reset-behavior]]
+=== Reset Behavior
+
+SEP cold reset clears the `demote` and `lock` fields in both registers.
+The LCC then applies the profile of the sensed OTP state without demotion.
 
 [[asset-and-scan-chain-protection]]
 == Asset and Scan-Chain Protection
@@ -678,9 +449,9 @@ treats them differently:
 two cycles, then shift the result out. Used for manufacturing / DFT coverage.
 * *Scan dump* -- shift the live internal state out directly. Used for debug.
 
-The design goal is to *maximize* DFT coverage (keep as many flops on the scan
-chain as possible) while ensuring secrets can never be *dumped*. This section
-maps SEP asset classes to scan chains and to the gates that control each.
+The integration must preserve test coverage without exposing live secrets.
+The rules below define the required scan partitioning and command gates;
+feature-vector generation alone does not implement or verify DFT insertion.
 
 [[asset-classes]]
 === Asset Classes
@@ -776,78 +547,29 @@ the internal `SECURE_TM` signal. It is latched when SEP fuse sensing completes
 if `SEC_DIS` is not asserted, or on chiplet cold-reset release if `SEC_DIS` is
 asserted (see the Test Mode section).
 
-`secure_tm` is deliberately *not* an authorization signal -- it carries no owner
-identity and proves nothing about who is attached to the JTAG port. It is a
-*coercion*: it forces the part into a configuration in which no secret is
-present and no fuse can be programmed, and the secure chain may be shifted only
-in that configuration. Authorization is carried by the `*_DBG` feature control
-bits and the LC state, which decide whether the chain is reachable at all.
+`secure_tm` establishes the required test configuration; it does not identify
+or authenticate the owner at the JTAG port. The protection rules require it to:
 
-`secure_tm` has four uses. The last three are what make the first one safe:
+. Admit test commands on the secure chain only while asserted.
+. Block updates to `LOCKS`, `LC_STATE`, `SIP_DIS` and `SYS_DIS` from SEP,
+  OTP, JTAG and TRoot while the part is shiftable.
+. Hold OTP write-enable inputs inactive.
+. Disconnect UID and `CLASS_KEY` shadow outputs from downstream consumers.
 
-. *Gates test commands on the secure scan chain*, as described below.
+Secure-chain access requires both an open SIB, under the feature gates in
+<<dtp-path-gating>>, and an allowed command. Test commands require
+`secure_tm = 1`; dump commands are never allowed, for any owner or lifecycle
+state. With `secure_tm = 0`, no command is admitted on that chain.
 
-. *Blocks lifecycle shadow-register updates.* `LOCKS`, `LC_STATE`, `SIP_DIS`,
-and `SYS_DIS` are locked against updates from every source -- SEP, OTP, JTAG,
-and TRoot -- so a disabled feature cannot be enabled while the part is shiftable
-(see _OTP fuse controller_).
+These conditions distinguish Class 1 from Class 2. Class 1 registers contain
+secrets or state that directly controls protection, so they are excluded from
+scan. Class 2 consumers and fuse-program controls may be scanned only with
+their secret sources disconnected and the fuse-write path blocked. The
+feature bits control reachability; they do not waive these command rules.
 
-. *Ties off the fuse program path.* The OTP fuse-write enable inputs are held
-inactive, so no shift sequence can reach the fuse array or trip the program
-sequencer.
-
-. *Disconnects the secret sources.* The secret-bearing shadow-register outputs
-(`CHIPLET_UID` / `SIP_UID` / `SYS_UID`, `CLASS_KEY`) are cut from downstream
-logic, so Class 2 consumers can be shifted and tested with no real secret
-present in them.
-
-Access to the secure scan chain is governed by two independent conditions, both
-of which must hold:
-
-* *Reachability* -- the DFT secure chain SIB must be open, which requires the
-same feature control conditions as the SEP debug S-TAP (see
-<<feature-bit-to-scan-chain-mapping>>). This is the authorization question, and
-`secure_tm` plays no part in it.
-
-* *Command class* -- with the SIB open, the DFT controller admits a *test*
-command on the secure chain only when `secure_tm = 1`. At `secure_tm = 0` no
-command is admitted on that chain at all. A *dump* command is never admitted, at
-either value of `secure_tm`, for any owner or LC state.
-
-Gating at the command, rather than masking the chain output, is what makes the
-guarantee hold when debug and test share one chain. An attacker who can reach
-the chain cannot simply declare "test" and shift the live state out: at
-`secure_tm = 0` the controller refuses the command outright, and at
-`secure_tm = 1` the shift is permitted only because uses 2 through 4 have
-already removed everything worth extracting.
-
-The Class 1 vs Class 2 split follows from *where each asset sits*:
-
-* *Class 2 can be scannable* because the damage is reachable only over a
-functional path that `secure_tm = 1` cuts. Class 2a registers are *consumers* of
-secrets whose source is disconnected during test; the Class 2b fuse program MMRs
-can only burn a fuse through the OTP write-enable inputs, which are tied inactive
-during test.
-* *Class 1 cannot be scannable* because its registers *are* the secrets
-(Class 1a) or the integrity-critical control fields (Class 1b) -- the data lives
-in the registers themselves, so they are excluded from every scan chain.
-
-Class 2b is distinguished from Class 1b by whether a *second* gate stands between
-a perturbed register and the damage. Shifting `LOCKS` or `LC_STATE` (Class 1b)
-enables a disabled feature directly, with nothing further in the way, so those
-registers must leave every chain. Shifting a fuse program control register
-accomplishes nothing unless the write-enable path into the array is also live,
-and `secure_tm` holds it inactive whenever the chain may be shifted.
-
-The `*_DBG` feature control bits are the coarser, authorization-side control.
-`SEP_DBG` and `CHIPLET_DBG` are local gates for their scopes' logic; `SIP_DBG`
-gates the debug-access path into the chiplet, so an external debugger reaches a
-scope's logic only when `SIP_DBG` and that scope's local gate are both open (see
-<<multiple-security-domains>>). These bits decide *reachability* for every
-chain, the secure chain included -- they determine whether its SIB opens. What
-they do not do is authorize extraction: once the SIB is open the command-class
-rule still applies, so the secure chain stays undumpable whatever the `*_DBG`
-bits say.
+The adopter's DFT implementation must enforce this separation. General
+Class 3 chains follow their debug gates and do not use `secure_tm` as an
+additional gate.
 
 [[feature-bit-to-scan-chain-mapping]]
 === Feature-Bit to Scan-Chain Mapping
@@ -903,9 +625,9 @@ Reserved-bit ranges available for adopter-defined scan chains (see
 [[dtp-path-gating]]
 === Debug and Test Port Path Gating
 
-This section is *authoritative* for which feature control bits gate which Debug
-and Test Ports (DTP) path. It formalizes the layered model of
-<<multiple-security-domains>> as a three-case ladder built only from debug bits.
+DTP reachability uses three nested combinations of feature bits.
+A granular fuse-debug bit adds another AND term; it never replaces the
+case's required bits.
 
 <<dtp-access-cases-table>> defines the three cases used to determine debug-path access.
 
@@ -929,16 +651,9 @@ resources.
 |Paths reaching the SEP or the secure domain.
 |=======================================================================
 
-The cases are strictly nested (3 within 2 within 1). `SIP_DBG` is the baseline
-admission gate for every debug path, because it is the SiP-owner domain's gate on
-chiplet ingress; a path reaching chiplet-internal resources adds `CHIPLET_DBG`;
-a path touching SEP or secure-domain assets adds `SEP_DBG`.
-
-*Composition rule.* Each path enable is an explicit AND of *all* the bits its
-case requires, and a granular bit is an *additional* AND term on top of its case
-rather than a substitute for it. Because the composition is an AND, partial burns
-*fail safe*: `SEP_DBG` left open while `CHIPLET_DBG` is burned closed grants
-nothing.
+Case 1 admits traffic, Case 2 reaches chiplet resources, and Case 3 reaches
+SEP resources. Every bit in the applicable case must be enabled. For example,
+leaving SEP_DBG open while CHIPLET_DBG is closed does not grant SEP access.
 
 <<dtp-path-feature-gates-table>> lists the feature-control terms required for each DTP
 path.
@@ -994,21 +709,13 @@ it admits no writes at all and only reads of `CHIPLET_ID` and `PACKAGE_ID`; on a
 integrity error it admits nothing.
 |=======================================================================
 
-Two consequences are worth stating explicitly.
+Case 3 spans both demotion groups: SEP_DBG and CHIPLET_DBG are in DBG_1,
+while SIP_DBG is in DBG_2. In PROD, enabling only one demotion leaves a
+Case 3 path closed.
 
-*Case 3 spans both demotion sub-groups.* `SEP_DBG` and `CHIPLET_DBG` are DBG_1
-bits (opened by Demotion 1) while `SIP_DBG` is a DBG_2 bit (opened by
-Demotion 2), so no single demotion opens a Case 3 path. This is deliberate, but
-it means a debug session enabled by one demotion alone will find every Case 3
-path shut.
-
-*There is no `SMC_DBG` bit.* The SMC debug S-TAP reuses Case 2, so opening
-`CHIPLET_DBG` for any other Case 2 path also opens SMC debug. Separating the two
-would require allocating a dedicated bit from the reserved DBG_1 range.
-
-The SEP debug S-TAP host path shall be gated on the full Case 3 conjunction,
-`SIP_DBG & CHIPLET_DBG & SEP_DBG`. `SEP_DBG` alone is not sufficient: the
-layered model deliberately does not map a path to the like-named bit.
+There is no separate SMC_DBG bit. SMC debug shares Case 2, so opening
+CHIPLET_DBG also admits SMC debug when SIP_DBG is open. A separate SMC
+policy would require an adopter-defined bit and corresponding path gating.
 
 [[non-primary-chiplets]]
 == Non-Primary Chiplets
@@ -1085,3 +792,124 @@ NOTE: The specific bit-allocation convention -- which reserved bits
 are reserved for which adopters, and how bit assignments are advertised
 in the RDL / package outputs -- is currently *open* and will be defined
 in a future revision of this specification.
+
+[[lcc-firmware-policy]]
+== Firmware Authorization
+
+[[secure-boot-enforcement]]
+=== Secure-Boot Enforcement
+
+The production ROM and manifest validator decide whether signature verification
+is required in this order:
+
+. A manifest with its secure-boot enforcement bit set requires verification,
+including when `SBOOT_DIS` is set.
+. Otherwise, a set `SBOOT_DIS` fuse disables secure boot.
+. Otherwise, the lifecycle policy requires secure boot in `PROD` and
+`PROD_END`, and does not require it in `TEST_DEV` or the RMA states.
+
+`CHIPLET_DBG`, `SIP_DIS`, and `SYS_DIS` do not participate in this firmware
+decision. Disabling debug in `TEST_DEV` therefore does not prevent an unsigned
+image whose manifest leaves enforcement clear from booting. Provisioning must
+not treat a locked debug path as a secure-boot guarantee.
+
+An owner relying on lifecycle-enforced secure boot must leave `SBOOT_DIS`
+unburned and write-lock it via the LOCK field. `SBOOT_DIS` does not override
+a manifest's own requirement for verification.
+
+[[demote-signing-model]]
+=== Deferred Multi-Owner Signing Model
+
+NOTE: The model in this section is not implemented by the current SEP ROM.
+Current verification uses one RSA-3072 signature and a selected key whose
+digest matches a ROM digest or OTP hash bank. BL0 does not read
+`REQUIRED_SIGNERS` or `REQUIRED_ALGS`, and its validation library does not
+verify the manifest's verifier-key and co-signer entries. See the Boot ROM
+chapter for implemented boot behavior.
+
+The target model allows the chiplet creator, SiP owner and system owner to
+participate in manifest authorization. Firmware performs the checks; the LCC
+does not inspect manifests or signatures.
+
+[cols="1,3",options="header"]
+.Deferred signing policy fields
+|===
+|Field |Intended meaning
+|`REQUIRED_SIGNERS` |One bit each for SiP and system owners. A set bit requires
+that owner's signature. All-zero adds no owner to the chiplet creator's BL1
+root requirement. Burning a bit adds a requirement; leaving it clear does
+not require that owner's key to be provisioned.
+|`REQUIRED_ALGS` |Algorithms required for each required owner: classical
+(ECDSA P-384 or RSA), post-quantum (ML-DSA), or both.
+|===
+
+For each required owner, the manifest must carry a valid signature for every
+selected algorithm, using a provisioned, non-revoked key. Requiring both
+classical and post-quantum algorithms requires both signatures; neither alone
+suffices. Signatures from owners outside the required set are ignored.
+
+At cold reset, the fuse fields reload the shadow policy for BL1. In the target
+model, each authenticated stage may change the shadow signer set for the next
+manifest, adding or dropping owners. Firmware enforces this propagation; there
+is no additional hardware signer-policy gate. The initial fuse requirement is
+restored at the next cold reset.
+
+Demotion authorization follows the manifest's required-signer set and is not
+tied to a particular boot stage. Both demotions use the same signing rules;
+the additional inter-chiplet effect of Demotion 2 does not add a hardware
+signer check. A SiP owner can require its signature for the initial manifest
+and commit a non-demoted decision with the demotion lock. Later-stage policy
+changes remain part of the deferred firmware model.
+
+Only public-key digests, not public keys, are stored in eFuse. The target
+provisioning layout distinguishes these roots:
+
+* Chiplet-creator classical and PQC digests are embedded in ROM.
+* `SIP_PUBK_HASH0/1` and `SIP_PUBK_PQC_HASH0/1` provide two SiP slots,
+  allowing one root to remain after the other is revoked.
+* `SYS_PUBK_HASH` and `SYS_PUBK_PQC_HASH` hold system-owner digests.
+* `CHIPLET_PUBK_HASH0/1` and `CHIPLET_PUBK_PQC_HASH0/1` provide additional
+  chiplet-owner digests alongside the ROM roots.
+
+Key entries have individual revocation controls through `CHIPLET_PUBK_REVOKE`.
+The OTP Fuse Controller chapter defines those fields and their locks.
+
+[[signing-model-examples]]
+=== Signing-Model Examples
+
+These examples describe the deferred model, and apply only when secure boot
+is enforced for the manifest:
+
+* No additional signer bits: BL1 requires the chiplet creator only.
+* SiP bit set: BL1 requires the chiplet creator and SiP owner. An authenticated
+  BL1 may hand off to a BL2 policy requiring only the SiP owner.
+* System owner added downstream: an authenticated stage adds that owner to the
+  shadow policy for its successor, alone or alongside the SiP owner.
+
+Cold reset restores the fuse-provided initial policy. These examples are not
+current ROM capabilities.
+
+== Memory Map and Register Reference
+
+ifdef::backend-html5[]
+++++
+<span id="register-reference"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
+
+Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.
+
+=== Detailed Register Map
+
+ifdef::backend-html5[]
+++++
+include::partial$sep/regs/gen/html/blocks/sep_lifecycle_ctrl.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/sep_lifecycle_ctrl.adoc[leveloffset=+2]
+endif::backend-pdf[]

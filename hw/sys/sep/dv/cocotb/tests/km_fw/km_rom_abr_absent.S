@@ -15,7 +15,8 @@
 #   leg 1  store to the ABR wrapper key aperture
 #   leg 2  load from the ABR wrapper key aperture
 #   leg 3  load from KMCSR base + KMCSR size, the first address after the
-#          generated KMCSR register block and inside its 4 KB page
+#          generated KMCSR register block and inside its 2 KB (0x800) decode
+#          window (hw/ip/key_manager/regs/key_manager.rdl)
 #
 # The host grades every code. The image publishes them in KM SRAM word0 (the
 # km_sram_word0_o probe) and blocks on an inbound mailbox word before each

@@ -21,5 +21,5 @@ class dtp_sanity_test(dtp_base_test):
             "sanity_seq",
             specific_knob="DTP_SANITY_TEST_LOOPS",
             default_loops=16,
-            random_walks=OcahKnobs.get_int_min("DTP_SANITY_RANDOM_WALKS", 16, 1),
+            random_walks=OcahKnobs.get_int_min("DTP_RAND_WALKS", 16, 1),
         )

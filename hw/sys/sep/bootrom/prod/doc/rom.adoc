@@ -253,7 +253,12 @@ boot flow. Addresses are as seen by the SEP CPU.
 |*Region* |*Base* |*Size* |*Boot-flow role*
 |SEP SRAM |`0x10000000` |256 KiB |Destination for the manifest and payload; BL1 may also
 execute from here when `BL1_SRAM_EXEC_ENABLE` permits it (<<sec:manifest>>). Cleared by the ROM
-before use ([S15]).
+before use ([S15]). The top 8 bytes are reserved: `sep_dma_zero()` fills from a source word
+the engine re-reads for every beat, and the CPU rewrites that word immediately before each
+fill, so the manifest body, the payload and BL1's permitted load span all stop short of it
+(`SEP_SRAM_USABLE_SIZE`). SEP has no zeroing engine and the secure DMA has no fill opcode, so
+a fill needs a real source address; ROM `.rodata` cannot serve as one, because the engine
+cannot read the ROM aperture.
 |Boot ROM |`0x10040000` |64 KiB |BL0 code, `.rodata`, ROM metadata (version + self-hash), and
 the load image (LMA) of `.data`. Execute/read only.
 |Secure DMA |`0x10800000` |4 KiB |DMA engine registers.
@@ -321,7 +326,7 @@ usage-constraint identity checks ([S23]).
 |`DFX_CTRL_STATUS_SMU` |`0xF800` |Memory-repair/MBIST completion gate (<<sec:smc_sync>>).
 |SMC SRAM |`0x60000` |1 MiB shared memory: status ring buffer; manifest/payload staging for
 recovery and secondary boot.
-|SMC `CPU_CTRL_RESET_CTRL` |`0x0020` |Written only on invalid LC state to hold all SMC cores
+|SMC `CPU_CTRL_RESET_CTRL` |`0x39020` |Written only on invalid LC state to hold all SMC cores
 in reset (<<sec:fuses>>).
 |===
 
@@ -1041,10 +1046,10 @@ locked out (<<sec:demotion>>).
 
 [[req-SEP-ROM-FUSE-020]]*[SEP-ROM-FUSE-020]* The ROM shall validate the sensed LC state
 against the closed set above. On an invalid value the ROM shall (a) hold all SMC cores in
-reset (write `0xF` to the core reset bits of SMC `CPU_CTRL_RESET_CTRL`), rendering the SMU
-inoperative, and (b) fail fatally (`ROM_ERR_LIFECYCLE_INVALID`, `0xA002`). An invalid LC
-state may indicate a fuse attack or hardware fault; the system shall not run in an unknown
-lifecycle state.
+reset (clear the active-low core reset bits `[3:0]` of SMC `CPU_CTRL_RESET_CTRL`, preserving
+the rest of the register), rendering the SMU inoperative, and (b) fail fatally
+(`ROM_ERR_LIFECYCLE_INVALID`, `0xA002`). An invalid LC state may indicate a fuse attack or
+hardware fault; the system shall not run in an unknown lifecycle state.
 
 [[req-SEP-ROM-FUSE-030]]*[SEP-ROM-FUSE-030]* The validated LC state shall be recorded in
 `bl0_state.lc_state` for consumption by later stages and by BL1, and shall be reported on the
@@ -1055,10 +1060,22 @@ The 64-bit `FEAT_CTRL` register of the lifecycle controller (`0x1091_8000`) is c
 
 ===== Secure-Boot Chicken Bit ([S18])
 
-`SEP_EFUSE_MAP_SBOOT_DIS` (`0x1093_000C`) bit 0 (`disable_secure_boot`) is the secure-boot
+`SEP_EFUSE_MAP_SBOOT_DIS` (`0x1093_0010`) bit 0 (`disable_secure_boot`) is the secure-boot
 chicken bit. It is read once, recorded in `bl0_state.sboot_dis`, and consumed by the
 secure-boot decision (<<sec:secure_boot>>) and the boot measurement
 (<<sec:boot_measurement>>).
+
+*Only bit 0 carries that meaning.* `rsvd[31:1]` is `hw=rw` in the RDL — driven from the fuse
+array rather than tied off — so the word can read non-zero on a real part without the chicken
+bit being blown. [S18] therefore masks to `disable_secure_boot`, and the single masked value it
+latches is what `bl0_state`, the boot measurement and the library's
+`is_secure_boot_disabled()` callback all consume. No later stage re-reads the shadow: one
+physical read means the policy input and the attestation of that input cannot disagree, either
+about which bit matters or about when it was sampled.
+
+A non-zero `rsvd` is a fuse-integrity fault. On a healthy part the field reads zero, so a set
+bit means the array is not what the ROM believes it to be; [S18] stops there with
+`ROM_ERR_SBOOT_DIS_RSVD_SET` rather than interpreting the rest of the word.
 
 ===== Fuse Fields Touched by the ROM
 
@@ -1803,6 +1820,17 @@ governs images that do not carry the signed request, which is what a manufacturi
 hatch needs to do. Every signed image this tree packs sets the bit, so on those the fuse has
 no effect.
 
+5. [[req-SEP-ROM-SB-041]]*[SEP-ROM-SB-041]* The `SBOOT_DIS` word shall be read exactly once,
+   masked to `disable_secure_boot` (bit 0), and that one masked value shall be what the
+   secure-boot decision consumes, what `bl0_state.sboot_dis` records, and what the boot-state
+   measurement attests. A non-zero `rsvd[31:1]` shall be terminal
+   (`ROM_ERR_SBOOT_DIS_RSVD_SET`).
++
+`rsvd[31:1]` is `hw=rw`, so a whole-word test would make 31 fuse-driven bits equivalent to the
+chicken bit, and a second reader applying a different predicate would let the device disable
+enforcement while the measurement attested that it had not. One read and one mask is what
+keeps the decision and the attestation of that decision the same fact.
+
 [[tbl:sb_truth]]
 .Secure-boot decision truth table
 [width="100%",cols="18%,14%,20%,22%,26%",options="header"]
@@ -1997,6 +2025,18 @@ protect, and routing it through the Key Manager would make secure boot depend on
 ROM otherwise does not use. An earlier specification described provisioning the manifest's
 public key `(n, e)` into the Key Manager through its software write port; that description
 is withdrawn and should not be reintroduced.
+
+[[req-SEP-ROM-SB-120]]*[SEP-ROM-SB-120]* Signature verification shall not report success
+unless OTBN is confirmed to have executed. The RSA application uses one DMEM buffer
+(`inout`) for both the signature and the modexp result, so a command the block never
+accepted leaves the caller's own signature bytes where the result belongs — and a signature
+authored as a well-formed PKCS#1 v1.5 block then verifies against itself, with no private
+key involved. Neither register the completion path would naturally consult distinguishes
+that case: `STATUS` reads idle, which is the state OTBN was already in, and `ERR_BITS` reads
+zero, because nothing ran to fail. `INTR_STATE.done`, cleared before the command and
+required after it, is the signal that separates "finished" from "never started". The ROM
+shall additionally reject a result bit-identical to the signature it supplied, since
+`sig^e mod n` cannot equal `sig` for a value that also parses as that block.
 
 [[fig:key_select_revoke]]
 .Key authorization, revocation, and verification
@@ -2868,6 +2908,8 @@ embedded hash) (<<sec:boot_measurement>>).
 |`ROM_ERR_BL0_STATE_OVERLAPS_STACK` |`0xF007` |`BL0_STATE_ADDR` sits below `__stack_top`,
 i.e. `__bl0_state_reserve` in `link/rom.ld` and `BL0_STATE_RESERVE_BYTES` in
 `include/bl0_state.h` have drifted apart (<<sec:handoff>>).
+|`ROM_ERR_SBOOT_DIS_RSVD_SET` |`0xF008` |`SBOOT_DIS.rsvd[31:1]` read non-zero: a fuse-integrity
+fault (<<sec:fuses>>).
 |===
 
 Manifest-path failures use the `MANIFEST_ERR_*` namespace and map from `oca_result_t`; the
@@ -2909,7 +2951,8 @@ denotes a following 16-bit payload word.
 |[S14] crypto self-test |`CRYPTO_INIT_CHECK` (DEBUG) |`ROM_ERR_CRYPTO_SELFTEST_FAILED`
 |[C9a/b] memory clear |`ICCM_CLEAR_START` / `ICCM_CLEAR_DONE` (+ SRAM-clear codes) |—
 |[S10] bl0_state |`BL0_STATE_INIT` (DEBUG) |—
-|[S18] SBOOT_DIS |`FUSE_SBOOT_DIS` → `INFO_EXT` (value) |—
+|[S18] SBOOT_DIS |`FUSE_SBOOT_DIS` → `INFO_EXT` (value) |`FUSE_SBOOT_DIS_RSVD` (ERROR) +
+`ROM_ERR_SBOOT_DIS_RSVD_SET`
 |[S20] DMA |`DMA_INIT_CHECK` (DEBUG) |—
 |[S21] boot mode |`BOOT_MODE` (DEBUG); `PRIMARY_CHIPLET` / `SECONDARY_CHIPLET` /
 `BOOT_RECOVERY`; `ROTATE_UPDATE` → `INFO_EXT`; `SPI_INIT_CHECK` (DEBUG)
@@ -3262,6 +3305,9 @@ validation only |<<sec:manifest>>
 |<<sec:secure_boot>>
 |<<req-SEP-ROM-SB-040,SEP-ROM-SB-040>> |SBOOT_DIS disables unless signed secure_boot_control asks
 |<<sec:secure_boot>>
+|<<req-SEP-ROM-SB-041,SEP-ROM-SB-041>> |SBOOT_DIS read once and masked to bit 0; rsvd set is
+terminal
+|<<sec:secure_boot>>
 |<<req-SEP-ROM-SB-045,SEP-ROM-SB-045>> |Key selector must resolve to exactly one slot
 |<<sec:secure_boot>>
 |<<req-SEP-ROM-SB-050,SEP-ROM-SB-050>> |Key digest must match an authorized slot
@@ -3278,6 +3324,8 @@ validation only |<<sec:manifest>>
 |<<sec:secure_boot>>
 |<<req-SEP-ROM-SB-110,SEP-ROM-SB-110>> |Public key goes straight to OTBN; Key Manager not
 involved |<<sec:secure_boot>>
+|<<req-SEP-ROM-SB-120,SEP-ROM-SB-120>> |No verified verdict unless OTBN is confirmed to have
+executed |<<sec:secure_boot>>
 |<<req-SEP-ROM-ENT-010,SEP-ROM-ENT-010>> |Entropy chain brought up lazily, once, before
 first use |<<sec:entropy>>
 |<<req-SEP-ROM-ENT-020,SEP-ROM-ENT-020>> |Entropy bring-up failure stops the boot; not a

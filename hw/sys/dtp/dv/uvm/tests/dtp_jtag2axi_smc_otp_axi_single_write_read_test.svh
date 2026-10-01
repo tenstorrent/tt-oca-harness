@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// dtp_jtag2axi_smc_otp_axi_single_write_read_test: JTAG2AXI
-// single-op traffic on the SMC OTP AXI-Lite port through the shared
-// ocah_axi_vip passive env — randomized write/readback, armed SLVERR/DECERR
-// classified as EXPECTED, security-gating no-activity, and required CHK-*
-// evidence.
+// dtp_jtag2axi_smc_otp_axi_single_write_read_test — JTAG2AXI single-op
+// write-plus-readback traffic on the SMC OTP AXI-Lite port through the shared
+// ocah_axi_vip passive env and slave agent: the written word must read back
+// exactly after a write to the neighbouring word, with the observed bus
+// transactions matching the stimulus intents.
 
 class dtp_jtag2axi_smc_otp_axi_single_write_read_test extends dtp_base_test;
   `uvm_component_utils(dtp_jtag2axi_smc_otp_axi_single_write_read_test)
@@ -21,22 +21,23 @@ class dtp_jtag2axi_smc_otp_axi_single_write_read_test extends dtp_base_test;
                         '{
                             "CHK-AXI-RESP",
                             "CHK-AXI-RDATA",
-                            "CHK-AXI-ERR-INJ",
                             "CHK-AXI-STRB",
                             "CHK-AXI-WADDR",
                             "CHK-AXI-WDATA",
                             "CHK-AXI-RADDR",
-                            "CHK-AXI-GATE-AW",
-                            "CHK-AXI-GATE-AR"
+                            "CHK-AXI-WMEM",
+                            "CHK-AXI-COMPLETION",
+                            "CHK-AXI-NONVAC",
+                            "CHK-J2A-BUS-REQ"
                         });
   endfunction
 
   virtual function ocah_sequence create_scenario_seq();
-    dtp_jtag2axi_single_write_read_test_seq seq =
-            dtp_jtag2axi_single_write_read_test_seq::type_id::create(
-        "seq"
+    dtp_jtag2axi_otp_axi_test_seq seq = dtp_jtag2axi_otp_axi_test_seq::type_id::create(
+        "smc_otp_single_write_read_seq"
     );
     seq.target_name = "smc_otp";
+    seq.scenario    = "single_write_read";
     return seq;
   endfunction
 
@@ -49,14 +50,13 @@ class dtp_jtag2axi_smc_otp_axi_single_write_read_test extends dtp_base_test;
   endfunction
 
   virtual function void plumb_scenario_seq(ocah_sequence seq);
-    dtp_jtag2axi_single_write_read_test_seq wr_rd;
+    dtp_jtag2axi_otp_axi_test_seq t_seq;
     super.plumb_scenario_seq(seq);
-    if (!$cast(wr_rd, seq))
-      `uvm_fatal(get_type_name(),
-                 "scenario sequence is not a dtp_jtag2axi_single_write_read_test_seq")
-    wr_rd.axi_cfg       = m_env.m_smc_otp_axi_cfg;
-    wr_rd.axi_evidence  = m_env.m_smc_otp_axi_env.m_checker;
-    wr_rd.axi_ref_model = m_env.m_smc_otp_axi_env.m_ref_model;
+    if (!$cast(t_seq, seq))
+      `uvm_fatal(get_type_name(), "scenario sequence is not a dtp_jtag2axi_otp_axi_test_seq")
+    t_seq.axi_cfg       = m_env.m_smc_otp_axi_cfg;
+    t_seq.axi_evidence  = m_env.m_smc_otp_axi_env.m_checker;
+    t_seq.axi_ref_model = m_env.m_smc_otp_axi_env.m_ref_model;
   endfunction
 
 endclass : dtp_jtag2axi_smc_otp_axi_single_write_read_test

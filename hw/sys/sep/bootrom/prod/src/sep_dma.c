@@ -185,9 +185,15 @@ uint32_t sep_dma_copy(uint32_t dest, uint32_t src, size_t len) {
 uint32_t sep_dma_zero(uint32_t dest, size_t len) {
     // The engine needs a source address even for a fill, so one word of SEP SRAM
     // is zeroed by the CPU and then read back for every beat.  SRAM is chosen
-    // because it is CPU-writable and already an allowed DMA source; the word is
-    // consumed before any payload is staged there.
-    const uint32_t zero_word = (uint32_t)SEP_EXT_SRAM_BASE;
+    // because it is CPU-writable and already an allowed DMA source; a word in
+    // ROM .rodata would need no write at all, but the engine cannot read the ROM
+    // aperture -- an ICCM fill sourced from it bus-errors with ERROR_CODE 0x10.
+    //
+    // It is the reserved word above SEP_SRAM_USABLE_SIZE, not the base of SRAM:
+    // the base is where oca_boot.c stages the manifest body, and the ICCM ECC
+    // pad at [S29] fills long after that body has been authenticated, so
+    // sourcing from there overwrote the OCA magic in the manifest handed to BL1.
+    const uint32_t zero_word = SEP_SRAM_FILL_WORD_ADDR;
     *(volatile uint32_t *)(uintptr_t)zero_word = 0u;
 
     return dma_transfer(dest, zero_word, (uint32_t)len, 0);

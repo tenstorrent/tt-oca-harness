@@ -180,10 +180,15 @@ class SmuWrapperElaborationSeq:
         seen_top: set[int] = set()
         mismatches = 0
         last_levels: dict = {}
+        # clk_smu_o is the clock pll_wrap delivers to the core: with +pll_osc_bench
+        # it is the bench-driven sys oscillator at every instant, mux chain
+        # bypassed, so the consumers are compared against it a quarter period
+        # after each edge.
+        quarter_ps = int(self.test.cfg.smu_clk_period_ns * 250)
         for _ in range(samples_per_edge):
-            await RisingEdge(dut.clk_smu_i)
-            await Timer(1, unit="ns")
-            top = self._sample(dut.clk_smu_i, "clk_smu_i")
+            await RisingEdge(dut.clk_smu_o)
+            await Timer(quarter_ps, unit="ps")
+            top = self._sample(dut.clk_smu_o, "clk_smu_o")
             seen_top.add(top)
             levels = {
                 "top": top,
@@ -196,9 +201,9 @@ class SmuWrapperElaborationSeq:
             self._dut_checks += 1
             if not (levels["smc"] == levels["sep"] == levels["dtp"] == levels["xbar"] == top):
                 mismatches += 1
-            await FallingEdge(dut.clk_smu_i)
-            await Timer(1, unit="ns")
-            top = self._sample(dut.clk_smu_i, "clk_smu_i")
+            await FallingEdge(dut.clk_smu_o)
+            await Timer(quarter_ps, unit="ps")
+            top = self._sample(dut.clk_smu_o, "clk_smu_o")
             seen_top.add(top)
             levels = {
                 "top": top,
@@ -289,9 +294,9 @@ class SmuWrapperElaborationSeq:
         clk_mismatch = 0
         last_levels = {}
         for _ in range(8):
-            await RisingEdge(dut.clk_smu_i)
-            await Timer(1, unit="ns")
-            top_clk = self._sample(dut.clk_smu_i, "clk_smu_i")
+            await RisingEdge(dut.clk_smu_o)
+            await Timer(int(self.test.cfg.smu_clk_period_ns * 250), unit="ps")
+            top_clk = self._sample(dut.clk_smu_o, "clk_smu_o")
             smc_clk = self._sample(dut.obs_smc_clk_o, "obs_smc_clk_o")
             sep_clk = self._sample(dut.obs_sep_clk_o, "obs_sep_clk_o")
             dtp_clk = self._sample(dut.obs_dtp_clk_o, "obs_dtp_clk_o")
@@ -473,10 +478,10 @@ class SmuWrapperElaborationSeq:
             wdt_hier == wdt_now,
             f"SEP WDT consumer not on clk_sep_wdt_i: hier={wdt_hier} pin={wdt_now}",
         )
-        await RisingEdge(dut.clk_smu_i)
-        await Timer(1, unit="ns")
+        await RisingEdge(dut.clk_smu_o)
+        await Timer(int(cfg.smu_clk_period_ns * 250), unit="ps")
         smu_hier = self._sample(dut.obs_smc_clk_o, "obs_smc_clk_o")
-        smu_now = self._sample(dut.clk_smu_i, "clk_smu_i")
+        smu_now = self._sample(dut.clk_smu_o, "clk_smu_o")
         self._check(
             smu_hier == smu_now,
             f"SMC primary clk consumer mismatch: hier={smu_hier} pin={smu_now}",

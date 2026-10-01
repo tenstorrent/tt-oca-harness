@@ -48,11 +48,17 @@ labelled as such.
 
 The TRM builds linked lists of figures and tables, including generated
 register tables. Prefer an explicit block title and stable anchor for each
-authored figure or table, and reference that anchor from the explanatory text.
+authored figure or table, and reference that anchor where the explanatory text needs it.
 Use automatic cross-reference text instead of hard-coded figure or table
 numbers. Untitled figures use their alternative text; untitled tables use
 their containing section and, for register tables, the table's purpose.
-Each section also provides local links to its figures and tables.
+Do not add automatic section-local figure/table lists or prose that only repeats
+a caption. Keep useful explanations and explicit cross-references.
+
+End each block reference with "Memory Map and Register Reference", containing
+"Memory Map" (address placement and access rules) and "Detailed Register Map"
+(register definitions or links to the owning blocks). Keep subsystem summaries
+and peripheral register ownership distinct.
 
 `tools/doc/block_catalog.rb` numbers and indexes blocks across the PDF book.
 The Antora extensions `tools/doc/block-captions.js` and

@@ -12,6 +12,12 @@ communication capabilities for the OCAH system, supporting various
 protocols and interfaces required for system operation and external
 connectivity.
 
+ifdef::backend-html5[]
+* xref:dma.adoc[Direct Memory Access Engine]
+* xref:zeroer.adoc[Zeroer]
+* xref:watchdog.adoc[Watchdog Timers]
+endif::backend-html5[]
+
 <<smc-peripheral-summary-table>> summarizes the key peripherals, their communication
 protocols, and default instance counts:
 
@@ -114,6 +120,9 @@ endif::backend-pdf[]
 |=======================================================================
 
 ifdef::backend-pdf[]
+include::dma.adoc[leveloffset=+1]
+include::zeroer.adoc[leveloffset=+1]
+include::watchdog.adoc[leveloffset=+1]
 include::../../../ip/axi_lite_mailbox_unit/doc/index.adoc[leveloffset=+1]
 
 include::../../../ip/system_timer_octs/doc/index.adoc[leveloffset=+1]

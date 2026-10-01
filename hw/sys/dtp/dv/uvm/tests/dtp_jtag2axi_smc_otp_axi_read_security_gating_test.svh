@@ -21,13 +21,15 @@ class dtp_jtag2axi_smc_otp_axi_read_security_gating_test extends dtp_base_test;
     cfg.require_axi_ids("smc_otp",
                         '{
                             "CHK-AXI-RESP",
+                            "CHK-AXI-RADDR",
                             "CHK-AXI-RDATA",
                             "CHK-AXI-COMPLETION",
                             "CHK-AXI-GATE-AW",
                             "CHK-AXI-GATE-W",
                             "CHK-AXI-GATE-AR",
                             "CHK-AXI-GATE-EXACT",
-                            "CHK-AXI-NONVAC"
+                            "CHK-AXI-NONVAC",
+                            DtpJ2aGateTdrCheckId
                         });
   endfunction
 

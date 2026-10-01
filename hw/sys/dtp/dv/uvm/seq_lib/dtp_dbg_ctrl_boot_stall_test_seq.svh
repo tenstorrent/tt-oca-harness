@@ -5,7 +5,9 @@
 // track every write of the 2x2 boot_stall_ovrd x boot_stall matrix (in a
 // shuffled per-pass order), boot_stall must toggle freely while the
 // override stays asserted, and the pair must be independent of the
-// clock-stop bits. Mirrors the cocotb dtp_dbg_ctrl_boot_stall_test_seq.
+// clock-stop bits. A TAP reset over a seeded nonzero DEBUG_CONTROL[3:0]
+// deasserts both pins and reads back 0x00. Mirrors the cocotb
+// dtp_dbg_ctrl_boot_stall_test_seq.
 
 class dtp_dbg_ctrl_boot_stall_test_seq extends dtp_debug_tdr_base_test_seq;
   `uvm_object_utils(dtp_dbg_ctrl_boot_stall_test_seq)
@@ -49,7 +51,8 @@ class dtp_dbg_ctrl_boot_stall_test_seq extends dtp_debug_tdr_base_test_seq;
     string required[$] = {"CHK-TAP-RESET-TLR", "CHK-DBG-TDR", "CHK-DBG-PIN"};
     bit [1:0] combos[4] = '{2'b00, 2'b01, 2'b10, 2'b11};  // {ovrd, stall}
     bit toggle_seq[4] = '{1'b0, 1'b1, 1'b0, 1'b1};
-    bit [63:0] readback;
+    bit [63:0] readback, stale;
+    string stale_ctx;
     seed_scenario_rng();
     attach_family_checker(required);
 
@@ -90,6 +93,17 @@ class dtp_dbg_ctrl_boot_stall_test_seq extends dtp_debug_tdr_base_test_seq;
     check_boot_stall_combo(1'b1, 1'b1, 1'b1, 1'b0, "interaction#1");
     check_boot_stall_combo(1'b1, 1'b1, 1'b0, 1'b1, "interaction#2");
     check_boot_stall_combo(1'b1, 1'b1, 1'b1, 1'b1, "interaction#3");
+
+    // TAP reset over a seeded nonzero DEBUG_CONTROL[3:0]. Capture-DR returns
+    // the reset register, 0x00, not the stale value last shifted in.
+    stale = 64'($urandom_range(15, 1));
+    stale_ctx = $sformatf("stale=0x%0h", stale);
+    write_debug_control(stale);
+    reset_to_tlr();
+    expect_dbg_signal("jtag_boot_stall_ovrd", 1'b0, {"after TAP reset ", stale_ctx});
+    expect_dbg_signal("jtag_boot_stall", 1'b0, {"after TAP reset ", stale_ctx});
+    read_debug_control(readback);
+    family_check("CHK-DBG-TDR", "DEBUG_CONTROL after TAP reset", readback, 64'd0, stale_ctx);
 
     // Cleanup.
     write_debug_control('0);

@@ -586,10 +586,20 @@ policy has classified the log:
   their status.
 
 The parser's `FAIL` says only that the leaf failed, not why. The leaf record
-therefore carries `observed_failures`: the message of every failure/error node
-in the leaf's `results/results.xml` (cocotb's `error_msg`, JUnit's `message`,
-or the node text), so a reader can compare what failed with the recorded
-reason. To make that comparison part of the grade, add `expect_fail_match`:
+therefore carries `observed_failures`, so a reader can compare what failed
+with the recorded reason. The messages come from the source the leaf's parser
+policy grades by:
+
+* a policy with structured results, such as `cocotb-default`, gives the
+  first line of every failure/error node's message in those files (cocotb's
+  `error_msg`, JUnit's `message`, or the node text);
+* any other policy, such as `uvm-log`, gives every log line that holds a
+  `fail_patterns` match no `ignore_patterns` entry covers, with the flow's and
+  the simulator's extensions, in log order.
+
+The parser's own reason, such as `process exited 1` or a missing required
+pattern, is not a failure message and stays in `observed_reason`. To make that
+comparison part of the grade, add `expect_fail_match`:
 
 [source,toml]
 ----
@@ -598,22 +608,25 @@ expect_fail_match = "wrap_to_live=[1-9]"
 ----
 
 With it, an observed `FAIL` grades `PASS` only when some observed failure
-message matches the regex (`re.search`); otherwise the leaf failed for a
-different reason than the one recorded and grades `FAIL` in the
-`expected_fail_mismatch` bucket, naming the first observed message. A leaf
-that recorded no failure message is a mismatch too. The key requires
+message matches the regex (`re.search`, on each message whole); otherwise the
+leaf failed for a different reason than the one recorded and grades `FAIL` in
+the `expected_fail_mismatch` bucket, naming the first observed message. A leaf
+that recorded no failure message is a mismatch too, such as a `uvm-log` leaf
+whose simulator stopped before it reported an error. The key requires
 `expect_fail` and must compile as a Python regex.
 
 The leaf record carries `expected_fail` (`reason`, `observed_status`,
 `observed_reason`, `observed_failures`, `observed_buckets` -- the parser's
-failure bucket kinds and signatures -- and `match` when set) in its metadata
-and in the regression leaf summary, and the run-level `tests` summary counts
-graded leaves under `expected_failing`.
-The framework's own `results/results.xml` still records the observed
-failure; `result.json` is the graded, authoritative result. Keep such tests
-in a group of their own (for example `rtl_issue`) so they never feed a
-coverage regression as passes, and so the flip is visible as that group
-going red.
+failure bucket kinds and signatures -- `match` when set, and
+`matched_failure`, the first message it matched, when one did) in its
+metadata and in the regression leaf summary, and the run-level `tests`
+summary counts graded leaves under `expected_failing`. The record keeps the
+first eight observed messages, each cut to 400 characters.
+A framework-written `results/results.xml` records the observed failure, and
+a synthesized one the graded result; `result.json` is the graded,
+authoritative result. Keep such tests in a group of their own (for example
+`rtl_issue`) so they never feed a coverage regression as passes, and so the
+flip is visible as that group going red.
 
 === Targets and run modes
 
@@ -790,7 +803,8 @@ the file and the table or entry:
 . The test catalog loads after include expansion: each test's `run_modes`
   and `tools` name declared entries, each scenario binds or excludes every
   framework the DUT implements, `firmware` is a string or a table,
-  `expect_fail` carries a reason, every group member names a test, and each
+  `expect_fail` carries a reason and any `expect_fail_match` beside it
+  compiles as a regex, every group member names a test, and each
   `expected_count` matches its list.
 . The flow's parser policy extensions are registered.
 
@@ -1169,10 +1183,18 @@ the stages drive `verilator`, `vcs` and `xcelium` only: a tool under another
 name is selectable but fails at `hdl_compile`, so the list adds one of those
 three to a view that lists fewer. `--list` marks a licensed one `(licensed)`
 from its `license_env`. A formal view takes its tools from its formal config.
+
+|`[duts.<dut>]` `exclude_files = ["<pattern>", ...]`
+|appends
+|Filelist drops added to that DUT's `[build].exclude_files`, after the DUT's
+own, so a site removes sources its layered bender graph adds that the checked-in
+graph never carries -- vendor simulation collateral a checkout cannot compile,
+say. Each is a substring matched against the generated bender filelist, like a
+config-owned drop, and applies to every target. A formal view is unaffected.
 |===
 
 Any other key fails validation, as does a `[duts.<dut>]` table that sets none
-of the three, or a checked-in registry that carries `launcher`, `extra_env`,
+of the four, or a checked-in registry that carries `launcher`, `extra_env`,
 or `setup_hook`. Inside one command the stage's own
 variables (`PYTHONPATH`, `RANDOM_SEED`, the coverage and wave knobs) keep
 their values; below them the `setup_hook` exports win over `extra_env`,
@@ -3061,10 +3083,11 @@ and the attempt. Either way the path is recorded as `artifacts.results_xml`
 on the leaf.
 
 A synthesized file is a reporting artifact, written after grading, atomically,
-and never read back as evidence. Its suite carries a `producer` property
-with the value `run_dv.py junit-fallback`, and only a file carrying that
-marker is ever removed or replaced; a file without it is left alone even
-when it sits where the runner would write.
+and never read back as evidence; before a leaf runs, the runner removes one
+that an earlier invocation into the same directory left. Its suite carries a
+`producer` property with the value `run_dv.py junit-fallback`, and only a
+file carrying that marker is ever removed or replaced; a file without it is
+left alone even when it sits where the runner would write.
 
 Two run-level files follow the same rule. A handled interruption writes
 `<run>/results/results.xml` with one errored testcase of type `interruption`

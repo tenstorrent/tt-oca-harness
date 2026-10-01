@@ -47,22 +47,34 @@ When not selected, the STAP interface TMS signal is tied to the constant value
 specified by the TMS-Hold bit of the 3DCR, otherwise it follows the PTAP TMS
 signal.
 
-<<stap-scan-and-control-paths-figure>> separates the serial scan path, host TDO path, and
-combinational control logic. Repeated signal names refer to the same signal;
-in particular, `stap_scan_in` feeds both the scan-in mux and the TDO lockup flop.
-The SIB inserts or bypasses the 3DCR while remaining in the client scan path.
-Optional input pipeline stages are not shown: SCAN_IN_PIPE on
-`client_scan_in_i` defaults to disabled for all DTP instances; TDI_LOCKUP on
-`host_tdi_i` defaults to disabled but is enabled for the I/O STAP
-(`gen_stap_io`) to provide timing margin for the die boundary crossing. The
-security gate masks `stap_sel`, `host_tdo_o`, and `update_en` when
-`security_disable_i` is asserted. `host_tdo_oen_o` and `host_tap_ctrl_o` are
-independent combinational outputs derived from `stap_sel` and TAP control
-signals, not outputs of the security gate.
+<<stap-scan-and-control-paths-figure>> shows the scan path, the host TDO path and the
+gating logic of one STAP. Blue lines carry scan data and grey lines carry control. A
+small circle marks an inverted gate input, and a name at the tail of a short arrow
+(`stap_sel`, `security_disable_i` and `client_scan_ctrl_i.shift_en`) is the same
+signal drawn elsewhere in the figure. `stap_scan_in` feeds both the scan-in mux and
+the TDO lockup flop, whose output leaves on `host_tdo_o` toward the secondary TAP.
+While `stap_sel` is set, the scan-in mux passes the secondary TAP's return on
+`host_tdi_i`, which splices that TAP into the chain; otherwise it passes
+`stap_scan_in`. The SIB inserts the 3DCR into the client scan path or bypasses it,
+and its one-bit register drives `client_scan_out_o`. The dashed input stages are
+optional: SCAN_IN_PIPE on `client_scan_in_i` defaults to disabled for all DTP
+instances, and TDI_LOCKUP on `host_tdi_i` defaults to disabled but is enabled for
+the I/O STAP (`gen_stap_io`) to provide timing margin for the die boundary crossing.
 
 [[stap-scan-and-control-paths-figure]]
 .STAP scan and control paths
-image::stap_module_diagram.svg["STAP scan-in mux and SIB with a 3DCR scan loop, separate falling-edge host TDO path, and security-masked control relationships",scaledwidth=100%]
+image::stap-architecture.svg[alt="STAP with the optional input pipeline, the TDO lockup flop and security mask to host_tdo_o, the optional TDI lockup on host_tdi_i, the scan-in mux into the SIB and 3DCR, the security-gated stap_sel and 3DCR update enable, the 3DCR reset, the host TMS mux that switches only client TMS while TCK and TRST bypass it, and the TDO output enable",width=100%,pdfwidth=100%]
+
+`security_disable_i` gates three signals through AND gates with an inverted input:
+`stap_sel`, from the 3DCR `stap_sel_int` bit; the 3DCR update enable, from the SIB's
+`update_en`; and `host_tdo_o`. Because the TMS mux and the TDO output enable take
+the gated `stap_sel`, a disabled STAP also parks the host TMS at `tms_hold` and holds
+`host_tdo_oen_o` low. `host_tap_ctrl_o` carries TCK and TRST from
+`client_tap_ctrl_i` unchanged; only its TMS passes through the mux. Where the TCK
+and TRST line crosses the shift-enable input, the gap in the shift-enable line marks
+that the two do not connect. The SIB itself is
+not gated. The 3DCR reset combines the client TRST, `config_hold_sticky` and the scan
+reset as <<stap-3dcr-fields-table>> describes.
 
 === 3DCR Register
 
@@ -167,6 +179,9 @@ lockup is enabled only for the I/O STAP that crosses between chiplets.
 
 The scan output lockup latch is optional and controlled by the `SCAN_OUT_LOCKUP`
 parameter (default = 0). This latch is implemented within the
-`prim_jtag_sib_mux_pre` module and adds a register stage to the client scan
-output path. This is typically enabled only on the final STAP in an extended
-chain to provide additional output timing margin.
+`prim_jtag_sib_mux_pre` module and retimes the client scan output on the falling
+edge of TCK. Enable it where the client scan output feeds a rising-edge stage
+clocked by a later TCK branch. Leave it disabled where the output reaches a
+falling-edge stage, such as the PTAP TDO retimer: two falling-edge stages in
+series add one TCK of scan latency. The DTP integration leaves it disabled on
+every STAP.

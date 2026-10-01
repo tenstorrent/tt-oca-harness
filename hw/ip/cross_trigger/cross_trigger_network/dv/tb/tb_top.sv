@@ -178,6 +178,7 @@ module cross_trigger_network_tb_top
   ) u_dut (
     .clk_i                 (clk),
     .rst_ni                (rst_n),
+    .test_en_i             (1'b0),
 
     .axil_req_i            (axil_req),
     .axil_resp_o           (axil_resp),

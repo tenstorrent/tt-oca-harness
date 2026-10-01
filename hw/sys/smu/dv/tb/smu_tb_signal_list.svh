@@ -76,6 +76,11 @@
 `SMU_TB_OUT(logic [31:0], dtp_smc_dbg_b_count_o)
 `SMU_TB_IN(logic, clk_ref_i)
 `SMU_TB_IN(logic, clk_periph_i)
+// The clocks pll_wrap delivers to the SMU: the model's own outputs, so a
+// test measures the tree the core runs on rather than the bench stimulus.
+`SMU_TB_OUT(logic, clk_smu_o)
+`SMU_TB_OUT(logic, clk_ref_o)
+`SMU_TB_OUT(logic, clk_periph_o)
 `SMU_TB_IN(logic, clk_sep_wdt_i)
 // ESRC ring-oscillator sample clock. A separate, faster clock than clk_smu:
 // the entropy source samples its noise lanes on this one, so with it static

@@ -49,6 +49,53 @@ See <<fixed-figure>>.
 
 
 class BlockCatalogTests(unittest.TestCase):
+    def test_register_maps_keep_one_legacy_fragment(self):
+        source = """= Registers
+:ocah-trm:
+
+++++
+<h2 id="regmap-csrng">CSRNG</h2>
+<h3 id="INTR_STATE">CSRNG status</h3>
+++++
+
+++++
+<h2 id="regmap-edn">EDN</h2>
+<h3 id="INTR_STATE">EDN status</h3>
+++++
+"""
+        html, _ = self.convert("javascript", source)
+        # block-captions.js namespaces each map's field ids from its regmap-<ns>
+        # heading, then keeps a single legacy unscoped anchor at the first map.
+        for fragment in ("INTR_STATE", "csrng-INTR_STATE", "edn-INTR_STATE"):
+            self.assertEqual(html.count(f'id="{fragment}"'), 1)
+
+    def test_scoped_register_ids(self):
+        source = """= Registers
+:ocah-trm:
+
+++++
+<h2 id="regmap-csrng">CSRNG</h2>
+<a href="#INTR_STATE">status</a>
+<a href="other.html#INTR_STATE">other</a>
+<h3 id="INTR_STATE">Status</h3>
+<a href="#regmap-csrng">top</a>
+<h2 id="regmap-edn">EDN</h2>
+<h3 id="INTR_STATE">Status</h3>
+++++
+"""
+        html, _ = self.convert("javascript", source)
+        # Two maps in one passthrough: each INTR_STATE scopes to its own regmap.
+        self.assertIn('id="csrng-INTR_STATE"', html)
+        self.assertIn('id="edn-INTR_STATE"', html)
+        self.assertIn('data-register-alias="INTR_STATE"', html)
+        # Local hrefs follow the scoped id; regmap- anchors and cross-file links
+        # stay unscoped.
+        self.assertIn('href="#csrng-INTR_STATE"', html)
+        self.assertIn('id="regmap-csrng"', html)
+        self.assertIn('href="#regmap-csrng"', html)
+        self.assertIn('href="other.html#INTR_STATE"', html)
+        self.assertNotIn("csrng-regmap-", html)
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
@@ -116,23 +163,13 @@ console.log(JSON.stringify(file.blockCatalog || []))
         ):
             self.assertIn(f'href="#{target}">{label}.', index)
 
-    def test_html_reference_fragments_encode_special_characters(self):
-        for attributes, fragment in (
-            ('[id="control%20port"]', "control%2520port"),
-            (
-                "[id='figure\"onmouseover=\"alert(1)']",
-                "figure%22onmouseover%3D%22alert(1)",
-            ),
-            ('[id="figure&<>\'/Δ?"]', "figure%26%3C%3E'%2F%CE%94%3F"),
-        ):
-            with self.subTest(attributes=attributes):
-                source = f"= Fixture\n:ocah-trm:\n\n{attributes}\nimage::figure.svg[Figure]\n"
-                html, _ = self.convert("javascript", source)
-                self.assertIn(
-                    '<p class="block-references">Figures and tables: '
-                    f'<a href="#{fragment}">Figure 1</a>.</p>',
-                    html,
-                )
+    def test_no_automatic_section_annotations(self):
+        for backend in ("ruby", "javascript"):
+            with self.subTest(backend=backend):
+                html, _ = self.convert(backend)
+                self.assertNotIn("Figures and tables:", html)
+                self.assertNotIn('class="block-references"', html)
+                self.assertIn('href="#fixed-figure">Figure 1</a>', html)
 
     def test_opt_in_leaves_other_books_unchanged(self):
         source = SOURCE.replace(":block-catalog:\n", "").replace(":ocah-trm:\n", "")

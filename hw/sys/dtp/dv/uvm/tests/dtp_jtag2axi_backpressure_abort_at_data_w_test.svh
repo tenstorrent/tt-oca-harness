@@ -24,6 +24,11 @@ class dtp_jtag2axi_backpressure_abort_at_data_w_test extends dtp_jtag2axi_robust
     return "DTP_JTAG2AXI_BACKPRESSURE_ABORT_AT_DATA_W_TEST_LOOPS";
   endfunction
 
+  virtual function void configure_test_cfg(dtp_test_cfg cfg);
+    super.configure_test_cfg(cfg);
+    cfg.require_jtag_ids('{"CHK-RESET-COUNT"});
+  endfunction
+
   virtual function void add_required_axi_ids(ref string ids[$]);
     super.add_required_axi_ids(ids);
     ids.push_back("CHK-AXI-WADDR");

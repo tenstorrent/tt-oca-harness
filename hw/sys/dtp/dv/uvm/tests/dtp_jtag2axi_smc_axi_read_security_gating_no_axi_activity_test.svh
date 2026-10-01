@@ -27,8 +27,11 @@ class dtp_jtag2axi_smc_axi_read_security_gating_no_axi_activity_test extends dtp
                             "CHK-AXI-GATE-AR",
                             "CHK-AXI-GATE-EXACT",
                             "CHK-AXI-RESP",
+                            "CHK-AXI-RADDR",
                             "CHK-AXI-RDATA",
-                            "CHK-AXI-NONVAC"
+                            "CHK-AXI-COMPLETION",
+                            "CHK-AXI-NONVAC",
+                            DtpJ2aGateTdrCheckId
                         });
   endfunction
 

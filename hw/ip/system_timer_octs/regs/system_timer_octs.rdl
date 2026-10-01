@@ -52,7 +52,7 @@ addrmap system_timer_octs {
         field {
             sw = r;
             hw = w;
-            desc = "Timer mode: 0=PRIMARY, 1=SECONDARY (set by module parameter)";
+            desc = "Timer mode driven by the is_primary_i input: 0=PRIMARY (is_primary_i=1), 1=SECONDARY (is_primary_i=0).";
         } MODE[0:0] = 0x0;
 
         field {

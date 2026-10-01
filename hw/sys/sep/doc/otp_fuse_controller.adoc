@@ -5,25 +5,66 @@
 :description: SEP OTP fuse fields, access policy, anti-rollback counters, and RTL integration.
 
 [[fuse-controller-otp-fuse-controller-otp,OTP Fuse Controller]]
-<<sep-otp-fuse-bank-diagram>> shows the OTP fuse-bank organization.
+The One-Time Programmable (OTP) fuse controller stores persistent chiplet
+policy. At cold reset it senses the fuse bank into shadow registers for
+software access and hardware policy enforcement. Programming a fuse and
+updating its shadow are separate operations.
+
+<<sep-otp-fuse-bank-diagram>> shows the fuse-bank organization.
 
 [[sep-otp-fuse-bank-diagram]]
 .SEP OTP fuse bank
-image::SEP_OTP_Fuse_Bank.png[SEP_OTP_Fuse_Bank,scaledwidth=90.0%]
+image::sep-otp-fuse-map.svg[alt="SEP fuse map: 256 32-bit words drawn eight per row with each field at its offset, coloured by storage class, and the nine spare fields compressed into one band",width=100%,pdfwidth=100%]
 
-The One-Time Programmable (OTP) fuse controller stores persistent
-chiplet policy.
+Each row of <<sep-otp-fuse-bank-diagram>> is 32 bytes, eight 32-bit words, at
+the offset given on the left from the base of the MAP window; a field that
+crosses a row boundary continues at the start of the next row. The shading
+gives the storage class of each field's shadow register. The lock field, the
+lifecycle state, the two disable vectors and the two RMA token digests are held
+in non-scannable storage. CLASS_KEY, CHIPLET_UID, SIP_UID and SYS_UID are
+non-scannable as well and read as zero downstream while SECURE_TM is 1. The
+nine spare fields fill the last nine rows and are drawn as one band.
 
 <<sep-efuse-interface-diagram>> shows the controller boundary and the
 technology-specific fuse interface.
 
 [[sep-efuse-interface-diagram]]
 .eFuse controller and technology-specific interface shim
-image::SEP_eFuse_Interface_Block_Diagram_FIG023.png[alt="eFuse controller and technology-specific interface shim",width=100%,pdfwidth=100%]
+image::sep-efuse-interface.svg[alt="eFuse wrapper front end, efuse_interface_controller with its register windows, command path and guard, and the interface shim in front of the fuse bank, with the SEP-only logic outlined dashed",width=100%,pdfwidth=100%]
 
-The SMC reuses the eFuse interface with `HAS_LC_STATE=0` and no secret-shadow
-ranges. It has no local lifecycle controller; its wrapper receives lifecycle
-state and security-disable policy from SEP.
+The figure reads from the bus ports on the left to the fuse bank at the
+bottom. Thick arrows are AXI4, AXI-Lite or APB, and thin double-headed arrows
+carry a fuse command and its response. The dashed line separates the OCAH
+controller from the interface shim, which an adopter replaces with one for its
+fuse technology.
+
+Both wrappers pass the OTP JTAG port through a lifecycle filter that answers a
+blocked access with an error response. Inside the controller, an AXI-Lite
+multiplexer merges the functional and JTAG ports. Addresses from the MAP window
+to the end of the last register window go through the AXI-Lite to APB bridge,
+and all others go to the shim's bank control registers. The APB decode answers
+any address in that span outside the register windows with SLVERR. The command
+multiplexer gives automatic sensing priority until it completes, then gives
+programming priority over reading, and `efuse_guard` filters every command
+before it reaches the shim.
+
+The SMC reuses the controller in `smc_efuse_wrapper` with `HAS_LC_STATE=0`, so
+the logic with a dashed outline is absent there:
+
+* The MMR window and `efuse_token_processing`: the SMC address map has no MMR
+window, and `security_disable_o` and `token_match_fault_o` are tied low.
+* The LC_STATE handling in `efuse_shadow_regs`: the held INVALID output before
+sensing, the token-gated LC_STATE writes and the secret masking in secure test
+mode. The SMC has no secret-shadow ranges and ties `secure_tm_i` low.
+* The RMA token-bit gate in `efuse_guard`.
+* The width converter and the Key Manager port of `sep_efuse_wrapper`: the SMC
+functional port is a 32-bit AXI-Lite port connected to the controller
+directly.
+
+The SMC has no local lifecycle controller. Its JTAG lifecycle filter decodes
+the lifecycle state received from SEP, and its `security_disable_i` input takes
+the SEP security-disable status, which skips fuse sensing and opens the shadow
+registers to software.
 
 == Fuse Sensing and Boot Sequencing
 
@@ -31,7 +72,7 @@ When SEP is released from reset (chiplet_cold_reset), the sensing FSM
 automatically copies each fuse field into its dedicated memory-mapped
 shadow register.
 
-The _output_ of the LC_STATE shadow register shall remain 4’b1111 until fuse
+The logical `LC_STATE` output remains `4'b1111` until fuse
 sensing completes; only then is the LC_STATE value sensed from the fuses driven
 to downstream logic such as the lifecycle controller. <<sep-fuse-fields-table>>
 defines whether software can read and write the shadow register of each fuse
@@ -48,17 +89,30 @@ enabled and fetches its first instruction from the SEP ROM.
 
 [[sep-efuse-sense-diagram]]
 .eFuse sensing state machine and shadow-register timing
-image::SEP_eFuse_Sense_FSM_FIG029.png[alt="eFuse sensing state machine and shadow-register timing",width=100%,pdfwidth=100%]
+image::sep-efuse-sensing.svg[alt="Sensing FSM states StIdle, StRead, StWait and StFinished, above a timing diagram of the response strobes, the word counter and the shadow words they fill",width=100%,pdfwidth=100%]
+
+The upper part of <<sep-efuse-sense-diagram>> shows the four states of the
+sensing FSM in `efuse_shadow_regs`, and the lower part shows one sensing run
+cycle by cycle. StRead issues a single READ command for all 256 shadow words.
+The shim then returns one `fuse_command_resp.valid` strobe per word, and
+strobes may arrive on consecutive cycles. Each strobe stores its data in the
+shadow word indexed by `words_received_q` and increments the counter; a strobe
+with its status bit set still advances the counter but leaves that word
+unwritten. The strobe that arrives while the counter is 255 stores the last
+word and moves the FSM to StFinished, and `fuse_sense_done_o` rises one cycle
+later. Until then, APB accesses to the MAP window return SLVERR.
 
 == Shadow Register and JTAG Access Control
 
-Every fuse field has two lock bits in the LOCKS field: one write-lock bit and
-one read-lock bit. When the write-lock bit is set to 1, the corresponding fuse
-field can no longer be programmed, and its shadow register is no longer
-writable. When the read-lock bit is set to 1, neither the shadow register nor
-the corresponding OTP field is readable by software or by JTAG. The lock field is
-itself the exception: LOCK has no lock-bit pair, and no lock bit may write-lock
-or read-lock LOCKS or LOCKS_SPARE.
+Each assigned lock slot contains an independent write-lock and read-lock bit.
+A write-lock blocks fuse programming and shadow writes; a read-lock blocks
+software and JTAG reads of both the fuse field and its shadow. The sensing FSM
+can still read locked fuses to populate the shadows.
+
+There are two exceptions: the `LOCKS` and `LOCKS_SPARE` registers have no lock
+slot of their own, and `LC_STATE` ignores its assigned lock bits. Lifecycle
+transition and token checks still apply to `LC_STATE`. The slot numbers and
+bit positions are defined in <<sep-fuse-fields-table>>.
 
 The fuse block’s internal space, including the fuse-programming configuration
 space, is accessible through both a JTAG interface and an AXI interface, as
@@ -130,66 +184,67 @@ downstream logic during test.
 [[fuse-fields]]
 == Fuse Fields
 
-<<sep-fuse-fields-table>> lists the fuse-field indices, sizes, access permissions, and
-purposes.
+<<sep-fuse-fields-table>> lists lock slots, field sizes, shadow access permissions and purposes.
+Slot numbers select lock bits; they are neither OTP word offsets nor register
+addresses. Access permissions remain subject to the lock and lifecycle rules above.
 
 [[sep-fuse-fields-table]]
 [width="100%",cols="<15%,<10%,<10%,<10%,<10%,<45%",options="header",]
 .SEP fuse fields
 |=======================================================================
-|Field |Field index |Size (bits) |SW writable |SW readable |Description
-|LOCK |0 |96 |set-only |true |Lock control for each fuse field. The 96-bit lock
-field is split across two RDL registers because PeakRDL requires power-of-2
-`regwidth`; all 96 bits are physically fused and mapped 1-to-1 to OTP words 0–2:
+|Field |Lock slot |Size (bits) |SW writable |SW readable |Description
+|LOCK |— |96 |set-only |true |Lock state occupies OTP words 0–2:
 
-* `LOCKS` (64-bit `@0x0`): slots 0–31 — two bits per field, write-lock at bit 2n, read-lock at 2n+1
-* `LOCKS_SPARE` (32-bit `@0x8`): slots 32–40 in bits [17:0]; slots 41–47 (unassigned) in bits [31:18]
+`LOCKS` (64 bits at `0x0`) covers slots 0–31: write-lock at bit `2n`,
+read-lock at bit `2n+1` for slot `n`.
 
-Firmware reads the complete 96-bit lock state as three consecutive 32-bit APB words.
-There are 41 lockable fields (slots 0–40). LOCK is not one of them: *_the 96-bit
-lock field has no lock-bit pair of its own_*, and no lock bit may write-lock or
-read-lock `LOCKS` or `LOCKS_SPARE`. When write-locked, the corresponding
-shadow register is not writable. When read-locked, neither software nor JTAG can
-read the corresponding shadow register or fuse field. The fuse-sensing FSM is
-_always_ able to read the fuses in order to populate the shadow registers.
+`LOCKS_SPARE` (32 bits at `0x8`) covers slots 32–40: write-lock at bit
+`2(n-32)`, read-lock at bit `2(n-32)+1`. Bits [31:18] are unassigned slots 41–47.
 
-|LC_STATE |1 |32 (use only 4 bits) |set-only |true |Life-cycle state of the
-chiplet. *_LC_STATE shall never be write-locked or read-locked by the
+Firmware reads the complete state as three consecutive 32-bit words.
+There are 41 assigned slots (0–40); slot 0 belongs to `LC_STATE`, which ignores
+both lock bits. LOCK has no lock-bit pair and cannot lock itself.
+
+|LC_STATE |0 |32 (4-bit state, 8-bit encoding) |set-only |true |Life-cycle state of the
+chiplet. The shadow encodes the logical state as `{~raw[3:0], raw[3:0]}`
+in bits [7:0]; the bit numbers below refer to the logical state.
+*_LC_STATE shall never be write-locked or read-locked by the
 corresponding LOCKS bits_*. LC_STATE[3] and LC_STATE[0] are set-only.
 LC_STATE[2:1] shall be set-only when the corresponding *_TOKEN has a
-match. Otherwise, LC_STATE[2:1] cannot be updated.
+match. Setting bit 2 also requires bit 1 to be set in the pre-write state;
+one write cannot establish both RMA stages. Invalid lifecycle encodings are
+terminal. Otherwise, LC_STATE[2:1] cannot be updated.
 
-|SBOOT_DIS |2 |32 (use only 1 bit) |true |true |Disables secure boot when
+|SBOOT_DIS |1 |32 (use only 1 bit) |true |true |Disables secure boot when
 set to 1, in any lifecycle state (global override, including the
 otherwise-mandatory enforcement in PROD and PROD_END); see Secure-Boot
 Enforcement in the Life Cycle Controller section.
 
-|TRANS_RMA_EN |3 |32 (use only 1 bit) |true |true |When TRANS_RMA_EN == 1,
-a token match automatically updates the LC_STATE shadow-register bits to place
-the chip into the corresponding RMA state, with no chip reset required. A match on
-RMA_CHIPLET_TOKEN takes priority. The user decides whether to reset the
-chip after entering the RMA state. Token-matching operations themselves occur
-regardless of TRANS_RMA_EN; this bit controls only whether a match results in
-automatic LC_STATE shadow-register update. When TRANS_RMA_EN == 0, a match on
-the *_TOKENs does not change the LC_STATE shadow register.
+|TRANSIENT_RMA_EN |2 |32 (use only 1 bit) |true |true |Enables automatic
+RMA shadow-state updates after token matching, without requiring a reset.
+It does not enable the token matcher itself. The chiplet-token path has
+priority and requires an already established RMA_SIP state; a chiplet match
+without that state blocks the transition rather than falling through to a
+simultaneous SiP match. When 0, token matches do not automatically update
+`LC_STATE`; explicit shadow writes remain subject to token and transition checks.
 
-|SIP_DIS |4 |64 |set-only |true |SiP owner’s feature-control disable vector,
+|SIP_DIS |3 |64 |set-only |true |SiP owner’s feature-control disable vector,
 provisioned by the chiplet owner. A bit set to 1 disables the corresponding
 feature.
 
-|SYS_DIS |5 |64 |set-only |true |System owner’s feature-control disable vector,
+|SYS_DIS |4 |64 |set-only |true |System owner’s feature-control disable vector,
 provisioned by the SiP owner. A bit set to 1 disables the corresponding
 feature.
 
-|RMA_SIP_TOKEN_DIGEST |6 |256 |true |true |Hash digest of the secret
+|RMA_SIP_TOKEN_DIGEST |5 |256 |true |true |Hash digest of the secret
 RMA_SIP_TOKEN, that enables entering RMA_SIP Life Cycle state
 
-|RMA_CHIPLET_TOKEN_DIGEST |7 |256 |true |true |Hash digest of the secret
+|RMA_CHIPLET_TOKEN_DIGEST |6 |256 |true |true |Hash digest of the secret
 RMA_CHIPLET_TOKEN that enables entering RMA_CHIPLET Life Cycle state
 
-|CLASS_KEY |8 |256 |true |true |Can be used for firmware encryption and decryption.
+|CLASS_KEY |7 |256 |true |true |Can be used for firmware encryption and decryption.
 
-|CHIPLET_PUBK_REVOKE |9 |32 |set-only |true |Global public-key revocation
+|CHIPLET_PUBK_REVOKE |8 |32 |set-only |true |Global public-key revocation
 vector covering every boot-verification key of every owner (classical and
 PQC). SEP ROM embeds a set of public-key hash digests and accesses
 additional fused key hashes; each key entry maps to one bit here. Once set,
@@ -202,63 +257,63 @@ reserved. Before the chiplet owner transfers a
 part to the customer, the development-key bits shall be set (revoked).
 (Name retained for compatibility; scope is now all owners.)
 
-|BL1_VERSION |10 |256 |set-only |true |BL1 anti-rollback storage. The
+|BL1_VERSION |9 |256 |set-only |true |BL1 anti-rollback storage. The
 production ROM supplies the low 128 raw bits as security-version flags to
 the manifest validator; the upper 128 bits do not participate in that check.
 See <<anti-rollback-counter-arbc-anti-rollback-counter-arbc>>.
 
-|BL2_VERSION |11 |256 |set-only |true |BL2 anti-rollback storage for later-stage
+|BL2_VERSION |10 |256 |set-only |true |BL2 anti-rollback storage for later-stage
 firmware policy. This bank is not the production ROM's BL1 security-version
 input; software using it must define its encoding and enforcement policy.
 
-|CHIPLET_UID |12 |256 |true |true |Silicon creator’s _secret_ device unique
+|CHIPLET_UID |11 |256 |true |true |Silicon creator’s _secret_ device unique
 ID (also referred to as the UDS, Unique Device Secret). The
 chiplet creator is responsible for CHIPLET_UID provisioning and public
-identity enrollment. _FUTURE IMPROVEMENT: HW enforced key provisioning
-measurement recording. When locked, both writability and software
-visibility are disabled._
+identity enrollment. Write-lock and read-lock independently control
+modification and software visibility. Hardware recording of provisioning
+measurements is a proposed enhancement.
 
-|SIP_PUBK_HASH0 |13 |256 |true |true |Hash digest of SiP owner’s root
+|SIP_PUBK_HASH0 |12 |256 |true |true |Hash digest of SiP owner’s root
 public key for secure boot (slot 0). Note: The chiplet creator’s actual root
 public key is embedded in the SEPROM. The digest is used to validate
 that public key.
 
-|SIP_UID |14 |256 |true |true |SiP owner’s _secret_ device unique ID. The
+|SIP_UID |13 |256 |true |true |SiP owner’s _secret_ device unique ID. The
 SiP owner is responsible for SIP_UID provisioning and public identity
-enrollment. When locked, both writability and software visibility are
-disabled. _FUTURE IMPROVEMENT: HW enforced key provisioning measurement
-recording; keep previous owners’ PUBK and UID pair(s) still valid but
-reflected in the key derivation hierarchy._
+enrollment. Write-lock and read-lock independently control modification
+and software visibility. Hardware recording of provisioning measurements
+and retention of prior-owner key/UID pairs in the derivation hierarchy
+are proposed enhancements.
 
-|SYS_PUBK_HASH |15 |256 |true |true |Hash digest of system owner’s root
+|SYS_PUBK_HASH |14 |256 |true |true |Hash digest of system owner’s root
 public key for secure boot.
 
-|SYS_UID |16 |256 |true |true |System owner’s _secret_ device unique ID. The
+|SYS_UID |15 |256 |true |true |System owner’s _secret_ device unique ID. The
 system owner is responsible for SYS_UID provisioning and public identity
-enrollment. When locked, both writability and software visibility are
-disabled.
+enrollment. Write-lock and read-lock independently control modification
+and software visibility.
 
-|STATUS_RPT |17 |32 (2 used) |true |true |When STATUS_RPT[1:0] == 2'b00, the
+|STATUS_RPT |16 |32 (2 used) |true |true |When STATUS_RPT[1:0] == 2'b00, the
 boot ROM samples an SMC GPIO (STATUS_RPT) to determine whether to report
 status. When STATUS_RPT[1:0] == 2'b01, the boot ROM reports status; otherwise,
 it does not.
 
-|ROM_CTL |18 |32 |true |true |ROM_CTL[0]: 0 = little-endian, 1 = big-endian.
+|ROM_CTL |17 |32 |true |true |ROM_CTL[0]: 0 = little-endian, 1 = big-endian.
 ROM_CTL[5:1]: row-swap control; swaps ROM slices when set. ROM_CTL[31:6]:
 reserved.
 
-|SYSCLK_FREQ_MHZ |19 |32 (11 used) |true |true |Configured sysclk PLL frequency
+|SYSCLK_FREQ_MHZ |18 |32 (11 used) |true |true |Configured sysclk PLL frequency
 in MHz (`sysclk_freq_mhz[10:0]`). Ignored when 0. Consumed by boot ROM clock
 math (PLL selection and SPI `CLKDIV` derivation).
 
-|CHIPLET_PUBK_HASH0 |20 |256 |true |true |Hash of chiplet-owner authentication
+|CHIPLET_PUBK_HASH0 |19 |256 |true |true |Hash of chiplet-owner authentication
 key 0, fused. These fused chiplet-owner key hashes can be used in addition to
 the hashes embedded in the ROM to authenticate manifests.
 
-|CHIPLET_PUBK_HASH1 |21 |256 |true |true |Hash of chiplet-owner authentication
+|CHIPLET_PUBK_HASH1 |20 |256 |true |true |Hash of chiplet-owner authentication
 key 1, fused.
 
-|REQUIRED_SIGNERS |22 |32 (use only 2 bits) |true |true |Owners whose signature
+|REQUIRED_SIGNERS |21 |32 (use only 2 bits) |true |true |Owners whose signature
 a manifest must carry to be authenticated by SEP ROM. Per owner, 1 = required,
 0 = not-required; the default all-zero value requires no additional owner. [0]
 SiP owner, [1] system owner, [31:2] reserved. The chiplet creator is the root of
@@ -271,7 +326,7 @@ SW-writable): firmware may update the shadow to set the required signers for eac
 manifest it verifies (BL1, BL2, runtime, ...). See Secure-Boot Signing Model in
 the Life Cycle Controller section.
 
-|REQUIRED_ALGS |23 |32 (use only 12 bits) |set-only |true |Per-owner required
+|REQUIRED_ALGS |22 |32 (use only 12 bits) |set-only |true |Per-owner required
 signature algorithms, applied only when that owner is required. Each owner has a
 4-bit nibble; bit 0 = classical (ECDSA P-384 or RSA), bit 1 = post-quantum
 (ML-DSA), bits 3:2 reserved. The specific classical scheme and ML-DSA parameter
@@ -281,60 +336,58 @@ each required (owner, algorithm) the manifest must carry a signature verified
 against that owner's burned, non-revoked key of that type; all required pairs
 must verify, and any signature from a non-required owner is ignored.
 
-|CHIPLET_PUBK_PQC_HASH0 |24 |256 |true |true |Chiplet owner ML-DSA PQC
+|CHIPLET_PUBK_PQC_HASH0 |23 |256 |true |true |Chiplet owner ML-DSA PQC
 authentication key 0 hash, fused. PQC counterpart of CHIPLET_PUBK_HASH0.
 
-|CHIPLET_PUBK_PQC_HASH1 |25 |256 |true |true |Chiplet owner ML-DSA PQC
+|CHIPLET_PUBK_PQC_HASH1 |24 |256 |true |true |Chiplet owner ML-DSA PQC
 authentication key 1 hash, fused. PQC counterpart of CHIPLET_PUBK_HASH1.
 
-|SIP_PUBK_PQC_HASH0 |26 |256 |true |true |Hash digest of the SiP owner's
+|SIP_PUBK_PQC_HASH0 |25 |256 |true |true |Hash digest of the SiP owner's
 ML-DSA PQC root public key for secure boot (slot 0). PQC counterpart of
 SIP_PUBK_HASH0.
 
-|SYS_PUBK_PQC_HASH |27 |256 |true |true |Hash digest of the system owner's
+|SYS_PUBK_PQC_HASH |26 |256 |true |true |Hash digest of the system owner's
 ML-DSA PQC root public key for secure boot. PQC counterpart of
 SYS_PUBK_HASH.
 
-|SIP_PUBK_HASH1 |28 |256 |true |true |Hash digest of the SiP owner's root
+|SIP_PUBK_HASH1 |27 |256 |true |true |Hash digest of the SiP owner's root
 public key for secure boot, slot 1. Second slot so the SiP owner retains a
 usable root key after revoking slot 0 via CHIPLET_PUBK_REVOKE[24].
 
-|SIP_PUBK_PQC_HASH1 |29 |256 |true |true |Hash digest of the SiP owner's ML-DSA
+|SIP_PUBK_PQC_HASH1 |28 |256 |true |true |Hash digest of the SiP owner's ML-DSA
 PQC root public key for secure boot, slot 1. PQC counterpart of
 SIP_PUBK_HASH1; revocable via CHIPLET_PUBK_REVOKE[25].
 
-|SEP_CHIPLET_ID |30 |256 |true |true |Per-owner chiplet public identity fuse
-(v0.5.22). Personalization input for the Key Manager identity root. Public;
-no read protection required. Lock slot 29 in LOCKS.
+|SEP_CHIPLET_ID |29 |256 |true |true |Per-owner chiplet public identity fuse
+used as a public identity input to the Key Manager. No read protection
+is required.
 
-|SEP_SIP_ID |31 |256 |true |true |SiP-owner public identity fuse (v0.5.22).
-Personalization input for the Key Manager identity root. Public; no read
-protection required. Lock slot 30 in LOCKS.
+|SEP_SIP_ID |30 |256 |true |true |SiP-owner public identity fuse used as a public identity
+input to the Key Manager. No read protection is required.
 
-|SEP_SYS_ID |32 |256 |true |true |System-owner public identity fuse (v0.5.22).
-Personalization input for the Key Manager identity root. Public; no read
-protection required. Lock slot 31 in LOCKS.
+|SEP_SYS_ID |31 |256 |true |true |System-owner public identity fuse used as a public identity
+input to the Key Manager. No read protection is required.
 
-|spare0 |33 |256 |true |true |Spare field 0 for future use.
+|spare0 |32 |256 |true |true |Spare field 0 for future use.
 
-|spare1 |34 |256 |true |true |Spare field 1 for future use.
+|spare1 |33 |256 |true |true |Spare field 1 for future use.
 
-|spare2 |35 |256 |true |true |Spare field 2 for future use.
+|spare2 |34 |256 |true |true |Spare field 2 for future use.
 
-|spare3 |36 |256 |true |true |Spare field 3 for future use.
+|spare3 |35 |256 |true |true |Spare field 3 for future use.
 
-|spare4 |37 |256 |true |true |Spare field 4 for future use.
+|spare4 |36 |256 |true |true |Spare field 4 for future use.
 
-|spare5 |38 |256 |true |true |Spare field 5 for future use.
+|spare5 |37 |256 |true |true |Spare field 5 for future use.
 
-|spare6 |39 |256 |true |true |Spare field 6 for future use.
+|spare6 |38 |256 |true |true |Spare field 6 for future use.
 
-|spare7 |40 |256 |true |true |Spare field 7 for future use.
+|spare7 |39 |256 |true |true |Spare field 7 for future use.
 
-|spare8 |41 |256 |true |true |Spare field 8 for future use.
+|spare8 |40 |256 |true |true |Spare field 8 for future use.
 |=======================================================================
 
-The fuse map is exactly 8192 bits ending at `0x400` (1024 bytes, 256 × 32-bit words).
+The fuse map is exactly 8192 bits with exclusive end address `0x400` (1024 bytes, 256 × 32-bit words).
 
 The JTAG_ID field has been removed from the fuse map and will be implemented as a top-level port.
 
@@ -356,16 +409,57 @@ interpretation belongs to later-stage firmware.
 
 == RTL Integration
 
-The eFuse subsystem in the SEP is implemented by `sep_efuse_wrapper`, which is instantiated inside `sep_crypto`. The wrapper converts the SEP-side AXI bus (64-bit) to AXI-Lite (32-bit) through an `axi_dw_converter` and `axi_to_axi_lite` bridge, and then connects to the shared `efuse_interface_controller` IP from `hw/ip/efuse/`. A separate JTAG AXI-Lite port provides debug and manufacturing access.
+`sep_crypto` instantiates `sep_efuse_wrapper`. The wrapper converts the
+64-bit SEP AXI interface to 32-bit AXI4-Lite through `axi_dw_converter`
+and `axi_to_axi_lite`, then connects to the shared `efuse_interface_controller`.
+A separate JTAG AXI4-Lite port provides manufacturing and lifecycle-restricted
+access.
 
-The `efuse_interface_controller` is instantiated with the `HAS_LC_STATE` parameter set to `1'b1`. When this parameter is asserted, the controller implements special handling for the `LC_STATE` fuse field: the shadow register output for `LC_STATE` is driven to `4'b1111` (invalid) until fuse sensing completes, preventing downstream logic from acting on an incorrect life-cycle state during the boot sequence. The life-cycle state width is 4 bits (`sep_pkg::LC_STATE_BIT_WIDTH`), starting at bit position 96 in the shadow register map (`sep_pkg::LC_STATE_BIT_POSITION`).
+The controller uses `HAS_LC_STATE=1`. Its four-bit logical lifecycle state
+starts at bit 96 in the shadow map and uses an eight-bit differential encoding.
+`sep_lifecycle_ctrl` decodes that state with `prim_diff_decode_multi`, derives
+feature controls from `SIP_DIS` and `SYS_DIS`, and differentially encodes its
+two demotion outputs. The pre-sense invalid-state behavior is described under
+Fuse Sensing and Boot Sequencing above.
 
-After sensing, the shadow register map (`sep_efuse_pkg::efuse_map_t`) is exposed to the `sep_lifecycle_ctrl` module. The lifecycle controller decodes the differentially-encoded `LC_STATE` field using `prim_diff_decode_multi` and derives feature control vectors from the `SIP_DIS` and `SYS_DIS` fields. It also generates two demotion state outputs (`lcc_demote_state_1_o`, `lcc_demote_state_2_o`) through differential encoders.
+`sep_crypto` assembles the Key Manager's `km_otp_data_t` input from:
 
-The Key Manager receives a subset of the OTP data through the `km_otp_data_t` structure, which is assembled in `sep_crypto.sv`. The `life_cycle` field comes from the differentially-encoded `LC_STATE` shadow register, the `demotion_state_*` fields come from the lifecycle controller outputs (not directly from fuses), the four secret fields (`chiplet_uid`, `sip_uid`, `sys_uid`, `class_key`) come from the corresponding shadow registers, and the three public identity fields (`sep_chiplet_id`, `sep_sip_id`, `sep_sys_id`) come from `SEP_CHIPLET_ID`, `SEP_SIP_ID`, and `SEP_SYS_ID`. The ARBC fields (`BL1_VERSION`, `BL2_VERSION`), RMA tokens, and public key hashes are not wired into the Key Manager; they remain accessible only through the eFuse shadow register interface and are consumed by the SEP boot firmware.
+* The encoded lifecycle shadow and the lifecycle controller's two demotion
+  outputs; demotion is not read directly from fuses.
+* The secret shadows `chiplet_uid`, `sip_uid`, `sys_uid` and `class_key`.
+* The public identity shadows `sep_chiplet_id`, `sep_sip_id` and `sep_sys_id`.
+
+`BL1_VERSION`, `BL2_VERSION`, RMA token digests and public-key hashes are not
+part of that Key Manager interface. SEP firmware accesses them through the
+shadow interface; the token matcher also consumes the RMA digests internally.
 
 For simulation, adopters need to provide an external eFuse macro model behind the
 shim interface. Only the generic controller and the shim interfaces are defined
 here.
 
 For the canonical eFuse IP documentation covering the `efuse_interface_controller` internals, sensing FSM, and programming protocol, see `hw/ip/efuse/doc/index.adoc` (included in the SMC documentation via `hw/sys/smc/doc/periphs.adoc`).
+
+== Memory Map and Register Reference
+
+ifdef::backend-html5[]
+++++
+<span id="register-reference"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
+
+Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.
+
+=== Detailed Register Map
+
+ifdef::backend-html5[]
+++++
+include::partial$sep/regs/gen/html/blocks/sep_efuse_map.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/sep_efuse_map.adoc[leveloffset=+2]
+endif::backend-pdf[]

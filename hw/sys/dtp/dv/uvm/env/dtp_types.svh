@@ -307,10 +307,21 @@ localparam string DtpJ2aGeometryCheckId = "CHK-J2A-GEOMETRY";
 localparam string DtpJ2aStatusBitCheckId = "CHK-J2A-STATUS-BIT";
 localparam string DtpJ2aErrRdataCheckId = "CHK-J2A-ERR-RDATA";
 localparam string DtpJ2aSeriesAddrCheckId = "CHK-J2A-SERIES-ADDR";
+// Per-operation bus request: exactly one completed transaction per bridge
+// operation, the one the request asked for.
+localparam string DtpJ2aBusReqCheckId = "CHK-J2A-BUS-REQ";
 // A READY stall observed from the DUT side: the bridge FSM dwells on the
 // stalled path and the first status poll reads BUSY_OR_FULL.
 localparam string DtpJ2aStallFsmCheckId = "CHK-J2A-STALL-FSM";
 localparam string DtpJ2aStallBusyCheckId = "CHK-J2A-STALL-BUSY";
+// The READY stall observed on the bridge port: the tb_top stall counter of
+// each channel the operation stalls advanced across it, and a channel of the
+// operation the stall leaves alone counted no stall cycle.
+localparam string DtpJ2aStallHoldCheckId = "CHK-J2A-STALL-HOLD";
+// A gated bridge's SINGLE_OP register stays in the scan path and latches no
+// update: every capture while gated equals the NOP capture taken before the
+// disable, field by field.
+localparam string DtpJ2aGateTdrCheckId = "CHK-J2A-GATE-TDR";
 // The op-status or SERIES_CTRL status carries the injected error code, and
 // the WITH_ERROR_STATUS bit follows the faulted beat.
 localparam string DtpJ2aFaultStatusCheckId = "CHK-J2A-FAULT-STATUS";
@@ -333,6 +344,12 @@ localparam bit [DtpJ2aSeriesStatusBeats-1:0] DtpJ2aSeriesStatusIncrements = 4'b1
 // *_JTAG2AXI_CAPS data_size: the beat width in bytes as a power of two.
 function automatic int unsigned dtp_j2a_data_size(dtp_j2a_target_t t);
   return $clog2(t.data_width / 8);
+endfunction
+
+// The transfer size the bridge uses for a scanned size field: a size above
+// data_size transfers one full beat (PTAP document, "*_AXI_SINGLE_OP").
+function automatic int unsigned dtp_j2a_axsize(dtp_j2a_target_t t, int unsigned size);
+  return (size > dtp_j2a_data_size(t)) ? dtp_j2a_data_size(t) : size;
 endfunction
 
 // Width of the SINGLE_OP and SERIES_CTRL size field: the smallest width that
@@ -516,6 +533,13 @@ endfunction
 
 function automatic bit [7:0] dtp_j2a_full_wstrb(int unsigned size);
   return 8'((1 << dtp_j2a_size_bytes(size)) - 1);
+endfunction
+
+// The data bits of the byte lanes a strobe enables.
+function automatic bit [63:0] dtp_j2a_strobe_lanes(bit [7:0] strb);
+  bit [63:0] lanes = '0;
+  for (int unsigned lane = 0; lane < 8; lane++) if (strb[lane]) lanes[8*lane+:8] = 8'hFF;
+  return lanes;
 endfunction
 
 // SINGLE_OP DR packing, the *_AXI_SINGLE_OP table order LSB-first:
@@ -758,15 +782,22 @@ localparam int unsigned DtpIjtagChainLenMax = DtpIjtagSibCount + 4 + 5 + 6;
 localparam int unsigned DtpScanMarkerWidth = 16;
 localparam int unsigned DtpIjtagObserveScanWidth = 40;
 localparam int unsigned DtpStapCount = 4;
+// Host segment behind the extended STAP host scan interface (tb_top): a scan
+// register that captures its own update register.
+localparam int unsigned DtpStapHostSegmentWidth = 7;
 localparam int unsigned DtpPtapIrWidth = DtpIrWidth;
 // IEEE 1149.1: a TAP's IR capture presents 01 in its two LSBs.
 localparam bit [63:0] DtpStapDsIrCapture = 64'h1;
 
-// Composed-scan kind: TAP_3DCR data scan (PTAP 3DCR first) or instruction
-// scan (PTAP IR first, PTAP 3DCR absent).
+// Composed-scan kind: TAP_3DCR data scan (PTAP 3DCR first), instruction
+// scan (PTAP IR first, PTAP 3DCR absent), or a data scan under
+// ZERO_LENGTH_BYPASS (no PTAP flop) or BYPASS (the PTAP bypass register
+// first).
 typedef enum int unsigned {
-  DTP_SCAN_DR = 0,
-  DTP_SCAN_IR = 1
+  DTP_SCAN_DR     = 0,
+  DTP_SCAN_IR     = 1,
+  DTP_SCAN_ZLB    = 2,
+  DTP_SCAN_BYPASS = 3
 } dtp_scan_kind_e;
 
 // What a window over one host chain's scan controls shows across a DR scan:
@@ -830,10 +861,10 @@ function automatic int unsigned dtp_stap_ds_tdr_width(int unsigned idx);
 endfunction
 
 // ---------------------------------------------------------------------------
-// Cross-trigger CSR block (dtp_xtrig_types.py parity). The port counts and
-// the CSR windows are transcribed from the cross-trigger network document,
-// register offsets come from the generated address-map packages, and field
-// masks from the generated cross_trigger_port_reg.svh and
+// Cross-trigger CSR block (dtp_xtrig_types.py parity). The port counts come
+// from the bench configuration, the CSR windows and register offsets from the
+// generated address-map packages, and the field masks, field positions, and
+// reset values from the generated cross_trigger_port_reg.svh and
 // cross_trigger_matrix_reg.svh headers. dtp_env cross-checks the port count
 // against the generated CT_DST_SELECT field width, and the JTAG_CAPS scenario
 // compares both counts with the values the DUT publishes.
@@ -846,19 +877,20 @@ localparam int unsigned DtpXtrigNumCtp = dtp_dv_cfg_pkg::NumCtp;
 localparam int unsigned DtpXtrigNumIntCt = dtp_dv_cfg_pkg::NumIntCt;
 localparam int unsigned DtpXtrigNumCtmPorts = DtpXtrigNumCtp + DtpXtrigNumIntCt;
 localparam int unsigned DtpNumClkStopReq = dtp_dv_cfg_pkg::NumClkStopReq;
+// Bit per internal cross-trigger lane: 0 = pulse mode, where the lane
+// acknowledge is unused.
+localparam logic [DtpXtrigNumIntCt-1:0] DtpXtrigIntCtMode = dtp_dv_cfg_pkg::IntCtMode;
 // Shared-wire polarity per CONFIG.INVERT (bit index = INVERT) and the receive
 // latency of a port, from the bench configuration.
 localparam logic [1:0] DtpWireOrPull = dtp_dv_cfg_pkg::WireOrPull;
 localparam logic [1:0] DtpWireOrAssert = dtp_dv_cfg_pkg::WireOrAssert;
 localparam int unsigned DtpCtDstLatency = dtp_dv_cfg_pkg::CtDstLatency;
 
-localparam bit [63:0] DtpXtrigCtmBase = 64'h0;
+localparam bit [63:0] DtpXtrigCtmBase = 64'(CROSS_TRIGGER_NETWORK_CTM_BASE_ADDR);
 localparam int unsigned DtpXtrigCtmStride =
     int'(cross_trigger_matrix_addrmap_pkg::CROSS_TRIGGER_MATRIX_CT_SRC_STRIDE);
-// "0x0200 - 0x02FF: Cross Trigger Ports (CTP[0-15]) - 16 bytes each"
-// (hw/ip/cross_trigger/cross_trigger_network/doc/memmap.adoc).
-localparam bit [63:0] DtpXtrigCtpBase = 64'h200;
-localparam int unsigned DtpXtrigCtpStride = 16;
+localparam bit [63:0] DtpXtrigCtpBase = 64'(CROSS_TRIGGER_NETWORK_CTP_BASE_ADDR(0));
+localparam int unsigned DtpXtrigCtpStride = int'(CROSS_TRIGGER_NETWORK_CTP_STRIDE);
 localparam bit [63:0] DtpXtrigUnmappedBase = DtpXtrigCtpBase + DtpXtrigNumCtp * DtpXtrigCtpStride;
 
 localparam int unsigned DtpCtpConfigOffset  =
@@ -868,7 +900,8 @@ localparam int unsigned DtpCtpStatusOffset  =
 localparam int unsigned DtpCtpStretchOffset =
     int'(cross_trigger_port_addrmap_pkg::CROSS_TRIGGER_PORT_STRETCH_MULT_BASE_ADDR);
 
-// CONFIG, STRETCH_MULT, and CT_SRC CONFIG_0 field masks from the generated headers.
+// CONFIG, STRETCH_MULT, and CT_SRC CONFIG_0 field masks and the CONFIG field
+// positions from the generated headers.
 localparam bit [31:0] DtpCtpConfigModeMask = 32'(CROSS_TRIGGER_PORT_CONFIG_MODE_MASK);
 localparam bit [31:0] DtpCtpConfigInvertMask = 32'(CROSS_TRIGGER_PORT_CONFIG_INVERT_MASK);
 localparam bit [31:0] DtpCtpConfigResetMask = 32'(CROSS_TRIGGER_PORT_CONFIG_RESET_MASK);
@@ -876,6 +909,15 @@ localparam bit [31:0] DtpCtpConfigMask =
     DtpCtpConfigModeMask | DtpCtpConfigInvertMask | DtpCtpConfigResetMask;
 localparam bit [31:0] DtpCtpStretchMask = 32'(CROSS_TRIGGER_PORT_STRETCH_MULT_STRETCH_MULT_MASK);
 localparam bit [31:0] DtpCtmSelectMask = 32'(CT_SRC_CONFIG_0_CT_DST_SELECT_MASK);
+localparam int unsigned DtpCtpConfigModeShift = CROSS_TRIGGER_PORT_CONFIG_MODE_SHIFT;
+localparam int unsigned DtpCtpConfigInvertShift = CROSS_TRIGGER_PORT_CONFIG_INVERT_SHIFT;
+localparam int unsigned DtpCtpConfigResetShift = CROSS_TRIGGER_PORT_CONFIG_RESET_SHIFT;
+
+// Register reset values from the generated headers.
+localparam bit [31:0] DtpCtpConfigDefault = 32'(CROSS_TRIGGER_PORT_CONFIG_REG_DEFAULT);
+localparam bit [31:0] DtpCtpStatusDefault = 32'(CROSS_TRIGGER_PORT_STATUS_REG_DEFAULT);
+localparam bit [31:0] DtpCtpStretchDefault = 32'(CROSS_TRIGGER_PORT_STRETCH_MULT_REG_DEFAULT);
+localparam bit [31:0] DtpCtmSelectDefault = 32'(CT_SRC_CONFIG_0_REG_DEFAULT);
 
 // CONFIG.MODE encoding (cross_trigger_port.rdl): 0 wire-OR, 1 point-to-point.
 localparam int unsigned DtpCtpModeWireOr = 0;
@@ -896,8 +938,26 @@ typedef enum int unsigned {
   DTP_XTRIG_CSR_CTP_STRETCH = 4
 } dtp_xtrig_csr_kind_e;
 
+// Reset value of the register a CSR kind names; UNMAPPED reads 0.
+function automatic bit [31:0] dtp_xtrig_csr_default(dtp_xtrig_csr_kind_e kind);
+  case (kind)
+    DTP_XTRIG_CSR_CTM_SELECT:  return DtpCtmSelectDefault;
+    DTP_XTRIG_CSR_CTP_CONFIG:  return DtpCtpConfigDefault;
+    DTP_XTRIG_CSR_CTP_STATUS:  return DtpCtpStatusDefault;
+    DTP_XTRIG_CSR_CTP_STRETCH: return DtpCtpStretchDefault;
+    default:                   return '0;
+  endcase
+endfunction
+
+// CONFIG word of the given fields, each at its generated position.
+function automatic bit [31:0] dtp_xtrig_pack_ctp_config(int unsigned mode, bit invert, bit rst);
+  return ((32'(mode) << DtpCtpConfigModeShift) & DtpCtpConfigModeMask) |
+      ((32'(invert) << DtpCtpConfigInvertShift) & DtpCtpConfigInvertMask) |
+      ((32'(rst) << DtpCtpConfigResetShift) & DtpCtpConfigResetMask);
+endfunction
+
 function automatic bit [63:0] dtp_xtrig_ctm_config_addr(int unsigned src_idx);
-  return DtpXtrigCtmBase + src_idx * DtpXtrigCtmStride;
+  return 64'(CROSS_TRIGGER_NETWORK_CTM_CT_SRC_CONFIG_0_BASE_ADDR(src_idx));
 endfunction
 
 function automatic bit [63:0] dtp_xtrig_ctp_config_addr(int unsigned ctp_idx);
@@ -917,9 +977,12 @@ endfunction
 function automatic dtp_xtrig_csr_kind_e dtp_xtrig_csr_decode(bit [63:0] addr,
                                                              output bit [31:0] mask);
   bit [63:0] offset;
+  bit [63:0] ctm_first = dtp_xtrig_ctm_config_addr(0);
   mask = '0;
   if (addr < DtpXtrigCtpBase) begin
-    if ((addr % DtpXtrigCtmStride) != 0 || (addr / DtpXtrigCtmStride) >= DtpXtrigNumCtmPorts)
+    offset = addr - ctm_first;
+    if (addr < ctm_first || (offset % DtpXtrigCtmStride) != 0 ||
+        (offset / DtpXtrigCtmStride) >= DtpXtrigNumCtmPorts)
       return DTP_XTRIG_CSR_UNMAPPED;
     mask = DtpCtmSelectMask;
     return DTP_XTRIG_CSR_CTM_SELECT;

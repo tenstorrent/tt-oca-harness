@@ -8,7 +8,9 @@ instrument stub in, so a DR scan returns the chain's capture bits followed by
 the pattern one TCK per chain flop behind TDI. The RUNBIST
 strobe reaches the non-secure DFT host whatever the SIB state and the
 ``dft_nonsecure`` disable; that disable holds the DFT SIB closed and silences
-its host scan controls without touching the instruction decode.
+its host scan controls without touching the instruction decode, and the gated
+SIB ignores the Update-DR of a scan that shifts 0 into it, so the stored open
+state is effective again once the disable clears.
 """
 
 from __future__ import annotations
@@ -22,8 +24,10 @@ from .dtp_jtag_base_test_seq import DFT_SCAN_CTRL, SCAN_CTRL_CHECK_IDS, dtp_jtag
 
 # Wider than the SIB chain, so the retimed pattern is visible above the captures.
 RUNBIST_SCAN_WIDTH = 8
-# Stored SIB bits that open the non-secure DFT SIB alone.
+# Stored SIB bits that open the non-secure DFT SIB alone, and that close
+# every SIB.
 DFT_SIB_OPEN = {"dft_secure": 0, "dft": 1, "dfd": 0}
+SIBS_CLOSED = {"dft_secure": 0, "dft": 0, "dfd": 0}
 RUNBIST_STROBE_CHECK_ID = "CHK-DFT-RUNBIST"
 RUNBIST_DR_CHECK_ID = "CHK-RUNBIST-DR-LEN"
 
@@ -90,6 +94,16 @@ class dtp_jtag_runbist_test_seq(dtp_jtag_base_test_seq):
             RUNBIST_SCAN_WIDTH,
             pattern=self.sib_model.pattern_value(DFT_SIB_OPEN),
             inst_values={"dft": rng.getrandbits(IJTAG_INSTRUMENT_WIDTHS["dft"])},
+            dbg_disable=self.dbg_disable,
+        )
+        free = RUNBIST_SCAN_WIDTH - self.sib_model.chain_len(self.dbg_disable)
+        return value | self.random_pattern(free, rng)
+
+    def dft_gated_pattern(self, rng: random.Random) -> int:
+        """RUNBIST scan value that shifts 0 into every SIB flop and randomizes the rest."""
+        value = self.sib_model.compose_scan(
+            RUNBIST_SCAN_WIDTH,
+            pattern=self.sib_model.pattern_value(SIBS_CLOSED),
             dbg_disable=self.dbg_disable,
         )
         free = RUNBIST_SCAN_WIDTH - self.sib_model.chain_len(self.dbg_disable)
@@ -172,7 +186,7 @@ class dtp_jtag_runbist_test_seq(dtp_jtag_base_test_seq):
         self.dbg_disable = {"dft_nonsecure": 1}
         await self.load_runbist("RUNBIST under the dft_nonsecure disable")
         await self.runbist_scan_windowed(
-            self.dft_open_pattern(rng), mode=DtpScanCtrlExpect.GATED, context="dft disabled"
+            self.dft_gated_pattern(rng), mode=DtpScanCtrlExpect.GATED, context="dft disabled"
         )
 
         self.log_step(5, "Clearing the disable restores the stored DFT SIB open state")

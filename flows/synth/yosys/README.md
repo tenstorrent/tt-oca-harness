@@ -44,7 +44,8 @@ Outputs are written below each block's
 - `scripts/synth.tcl` elaborates SystemVerilog, performs generic synthesis,
   maps to the selected technology with ABC, and writes netlists and reports.
 - `scripts/readiness.tcl` provides a technology-independent structural driver
-  that rejects inferred latches and unresolved blackboxes.
+  that rejects latches outside the modules allowlisted in the script
+  (clock gates and the retained eFuse token digest) and unresolved blackboxes.
 - `tech/ihp-sg13g2/` contains the only current technology configuration.
 - Block SDC files and the helpers in `flows/synth/constraints/` exist, but the
   Yosys flow does not read them.

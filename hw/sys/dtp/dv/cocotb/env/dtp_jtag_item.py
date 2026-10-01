@@ -38,6 +38,7 @@ class DtpJtagItem(uvm_sequence_item):
         self.width: int = 0
         self.back_to_rti: bool = True
         self.tms: int = 0
+        self.tdi: int = 0  # TDI of a TMS_STEP cycle
         self.cycles: int = 1
         # JTAG2AXI fields
         self.axi_addr: int = 0

@@ -31,7 +31,7 @@ class dtp_jtag2axi_series_data_seq extends dtp_jtag_op_seq;
   endfunction
 
   virtual task do_op();
-    int unsigned payload_bits = 8 * dtp_j2a_size_bytes(size);
+    int unsigned payload_bits = 8 * dtp_j2a_size_bytes(dtp_j2a_axsize(target, size));
     int unsigned width = payload_bits + ((increment >= 0) ? 1 : 0);
     bit pattern[] = new[width];
     bit rbits[];

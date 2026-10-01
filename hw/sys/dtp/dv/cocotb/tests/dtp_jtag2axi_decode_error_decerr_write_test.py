@@ -23,6 +23,8 @@ class dtp_jtag2axi_decode_error_decerr_write_test(dtp_base_test):
     axi_checker_required_ids = (
         "CHK-AXI-RESP",
         "CHK-AXI-RESP-EXPECTED",
+        "CHK-AXI-STRB",
+        "CHK-AXI-WMEM",
         "CHK-AXI-COMPLETION",
         "CHK-AXI-CREDITS",
         "CHK-AXI-STREAM-MIN",

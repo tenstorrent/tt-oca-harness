@@ -3,15 +3,18 @@
 """JTAG2AXI error and error-path security scenarios.
 
 Every fault beat is judged: the SINGLE_OP or SERIES_CTRL status the bridge
-reports is compared with the injected response, the SINGLE_OP read data with
-the RDATA the responder drove on the errored beat, the with-status capture
-bit with the previous beat's outcome, the SERIES_CTRL address with the
-per-beat increment, and the responder memory with the committed or dropped
-expectation. ``status`` is the scenario verdict.
+reports is compared with the injected response, the read data with the
+seeded word the errored beat carried, the with-status capture bit with the
+previous beat's outcome, the SERIES_CTRL address with the per-beat
+increment, and the responder memory with the committed or dropped
+expectation. Outside security gating, every operation's port transaction,
+the fault beat's included, is the one its request carried
+(``CHK-J2A-BUS-REQ``). ``status`` is the scenario verdict.
 """
 
 from __future__ import annotations
 
+import random
 from dataclasses import dataclass
 
 from env.dtp_types import (
@@ -22,7 +25,7 @@ from env.dtp_types import (
     unpack_series_data,
 )
 
-from .dtp_jtag2axi_base_test_seq import dtp_jtag2axi_base_test_seq
+from .dtp_jtag2axi_base_test_seq import STATUS_BIT_CHECK_ID, dtp_jtag2axi_base_test_seq
 
 AXI_SLVERR = 2
 AXI_DECERR = 3
@@ -30,6 +33,8 @@ ERROR_RESPONSES = (AXI_SLVERR, AXI_DECERR)
 ERROR_BASE = 0x1800
 RECOVERY_BASE = 0x2800
 SERIES_BEATS = 3
+# The middle beat: a committed good beat precedes and follows the fault.
+SERIES_FAULT_BEAT = 1
 
 
 def _series_mode(*, increment: bool, with_status: bool) -> str:
@@ -80,6 +85,9 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
         self.status = DtpJtag2AxiStatus.SUCCESS
         self.operation_count = 0
 
+    def bus_ledger_target(self) -> str | None:
+        return None if "security_gating" in self.scenario else self.target
+
     def _addr(self, base: int, idx: int) -> int:
         cfg = self.target_cfg(self.target)
         return base + idx * max(cfg.beat_bytes, 0x20)
@@ -106,7 +114,7 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
         scoreboard = self.axi_scoreboard
         if scoreboard is not None:
             scoreboard.expect_equal(
-                FAULT_STATUS_CHECK_ID,
+                STATUS_BIT_CHECK_ID,
                 observed,
                 expected,
                 context=f"{name} target={self.target} {context}".strip(),
@@ -132,6 +140,15 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
         status, rdata = await self.poll_target_single_status(self.target)
         self.scoreboard_expect_completion(self.target, status, context=context)
         self._check_status(f"{context}.status", status, expected, f"addr=0x{addr:x}")
+        await self.expect_bus_request(
+            self.target,
+            read=op == DtpJtag2AxiOp.READ,
+            addr=addr,
+            size=size,
+            context=context,
+            data=data,
+            wstrb=wstrb,
+        )
         return status, rdata
 
     def _emit_error_nonvacuity(self, label: str) -> None:
@@ -176,24 +193,34 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
         )
         self.operation_count += 1
 
-    async def _expect_error_read(self, addr: int, data: int, resp: int, context: str) -> None:
+    async def _expect_error_read(
+        self, addr: int, data: int, resp: int, errored: int, context: str
+    ) -> int:
+        """One errored SINGLE_OP read and its recovery read; returns the recovery word."""
         size = self.target_cfg(self.target).default_size
         self.write_target_mem_int(self.target, addr, data, size)
-        expected = self.configure_target_error(self.target, addr, resp, read=True, write=False)
+        expected = self.configure_target_error(
+            self.target, addr, resp, read=True, write=False, err_rdata=errored
+        )
         _, rdata = await self._single_op_status(
             DtpJtag2AxiOp.READ, addr, 0, expected=expected, context=context
         )
         self.check_error_rdata(
-            self.target, addr, rdata, resp=resp, preload=data, size=size, context=context
-        )
-        await self.verify_target_recovery(
             self.target,
-            addr=addr + 0x400,
-            data=data ^ 0x00FF_00FF_00FF_00FF,
-            read=True,
+            addr,
+            rdata,
+            resp=resp,
+            preload=data,
+            errored=errored,
+            size=size,
             context=context,
         )
+        recovery = (data ^ 0x00FF_00FF_00FF_00FF) & self.data_mask(size)
+        await self.verify_target_recovery(
+            self.target, addr=addr + 0x400, data=recovery, read=True, context=context
+        )
         self.operation_count += 1
+        return recovery
 
     async def run_error_single_write(self) -> None:
         self.log_banner(f"{self.target} SINGLE_OP write error")
@@ -213,15 +240,26 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
         await self.reset_tap()
         rng = self.rng(f"{self.target}.error_single_read")
         width = self.target_cfg(self.target).data_width
+        # Every word a read of this pass returned: an errored beat's word avoids
+        # them, so a stale capture cannot pass for it.
+        returned: list[int] = []
         for idx, resp in enumerate(ERROR_RESPONSES, start=1):
             addr = self._addr(ERROR_BASE + 0x100, idx)
-            # A nonzero preload keeps the slot's word distinguishable from the
-            # errored beat's RDATA.
             data = rng.randrange(1, 1 << width)
+            errored = self.random_distinct_word(rng, self.target, data, *returned)
             self.log_iteration(
-                idx, len(ERROR_RESPONSES), "read error addr=0x%08x resp=%d", addr, resp
+                idx,
+                len(ERROR_RESPONSES),
+                "read error addr=0x%08x resp=%d preload=0x%x errored=0x%x",
+                addr,
+                resp,
+                data,
+                errored,
             )
-            await self._expect_error_read(addr, data, resp, f"single_read_error#{idx}")
+            recovery = await self._expect_error_read(
+                addr, data, resp, errored, f"single_read_error#{idx}"
+            )
+            returned += [errored, recovery]
         self._emit_error_nonvacuity("error_single_read")
 
     # --- series error flows (the fault armed on one beat) --------------------
@@ -249,32 +287,39 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
         data, _ = unpack_series_data(raw, size)
         return data & self.data_mask(size)
 
-    def _arm_series_fault(
-        self, *, increment: bool, with_status: bool, base: int, resp: int, read: bool
+    def _plan_series_fault(
+        self, *, increment: bool, with_status: bool, base: int, resp: int
     ) -> _SeriesFault:
-        """Arm the one-shot fault on the stream's fault beat and return the stream plan."""
+        """The stream plan: its geometry and the middle beat that carries the fault."""
         cfg = self.target_cfg(self.target)
-        stride = cfg.beat_bytes if increment else 0
-        fault_idx = 1 if increment else 0
-        first = self._addr(base, 1)
-        expected = self.configure_target_error(
-            self.target, first + fault_idx * stride, resp, read=read, write=not read
-        )
         return _SeriesFault(
             increment=increment,
             with_status=with_status,
             size=cfg.default_size,
-            stride=stride,
-            base=first,
-            fault_idx=fault_idx,
-            expected=expected,
+            stride=cfg.beat_bytes if increment else 0,
+            base=self._addr(base, 1),
+            fault_idx=SERIES_FAULT_BEAT,
+            expected=self.axi_resp_to_jtag_status(resp),
             resp=resp,
         )
 
-    async def _series_write_beat(
-        self, plan: _SeriesFault, idx: int, data: int, fault_before: int
-    ) -> None:
+    def _arm_fault_beat(self, plan: _SeriesFault, *, read: bool, err_rdata: int = 0) -> None:
+        """Arm the one-shot fault at the fault beat's address.
+
+        A fixed-address stream revisits that address on every beat, so the
+        fault is armed only once the previous beat's transaction is published.
+        """
+        self.configure_target_error(
+            self.target, plan.fault_addr, plan.resp, read=read, write=not read, err_rdata=err_rdata
+        )
+
+    async def _series_write_beat(self, plan: _SeriesFault, idx: int, data: int) -> None:
         addr = plan.addr(idx)
+        fault_before = 0
+        if idx == plan.fault_idx:
+            fault_before = self.read_target_mem_int(self.target, addr, plan.size)
+            self._arm_fault_beat(plan, read=False)
+        completed = self.port_history(self.target).count(read=False)
         before = await self.target_activity_counts(self.target)
         self.log_iteration(
             idx + 1,
@@ -298,21 +343,55 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
         await self.wait_for_target_activity(
             self.target, before=before, read=False, context=f"series_write_error.axi#{idx}"
         )
+        if not await self.wait_port_completion(self.target, read=False, above=completed):
+            raise AssertionError(
+                f"series_write_error.commit#{idx}: {self.target} write did not complete"
+            )
+        await self.expect_bus_request(
+            self.target,
+            read=False,
+            addr=addr,
+            size=plan.size,
+            context=f"series_write_error#{idx}",
+            data=data,
+            wstrb=self.full_wstrb(plan.size),
+        )
         observed = self.read_target_mem_int(self.target, addr, plan.size)
         if idx != plan.fault_idx:
             self.assert_equal(f"series_write_error.mem#{idx}", observed, data, f"addr=0x{addr:x}")
+        else:
+            # The responder drops the armed beat, so the slot keeps its prior value.
+            self.assert_equal(
+                f"series_write_error.mem_dropped#{idx}", observed, fault_before, f"addr=0x{addr:x}"
+            )
+        if idx > plan.fault_idx or (plan.with_status and idx < plan.fault_idx):
             return
-        # The responder drops the armed beat, so the slot keeps its prior value.
-        self.assert_equal(
-            f"series_write_error.mem_dropped#{idx}", observed, fault_before, f"addr=0x{addr:x}"
+        # The write advances the captured address by one stride, errored or not.
+        status = await self.check_series_addr(
+            self.target,
+            addr + plan.stride,
+            size=plan.size,
+            context=f"series_write_error.addr#{idx}",
         )
-        _, _, _, _, status = await self.read_series_ctrl(size=plan.size, target=self.target)
-        self._check_status(
-            "series_write_error.fault_status", status, plan.expected, f"beat={idx} addr=0x{addr:x}"
-        )
+        if idx < plan.fault_idx:
+            self._check_status(
+                "series_write_error.pre_fault_status",
+                status,
+                DtpJtag2AxiStatus.SUCCESS,
+                f"beat={idx} addr=0x{addr:x}",
+            )
+        else:
+            self._check_status(
+                "series_write_error.fault_status",
+                status,
+                plan.expected,
+                f"beat={idx} addr=0x{addr:x}",
+            )
 
     async def _series_write_final_capture(self, plan: _SeriesFault) -> None:
         """A capture-only shift returns the last beat's outcome; it writes zero one slot past the stream."""
+        addr = plan.addr(SERIES_BEATS)
+        completed = self.port_history(self.target).count(read=False)
         before = await self.target_activity_counts(self.target)
         _, status_bit = await self.series_data_with_status(
             0, size=plan.size, increment=0, target=self.target, back_to_rti=True
@@ -320,11 +399,23 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
         await self.wait_for_target_activity(
             self.target, before=before, read=False, context="series_write_error.axi#final"
         )
+        if not await self.wait_port_completion(self.target, read=False, above=completed):
+            raise AssertionError(
+                f"series_write_error.commit#final: {self.target} write did not complete"
+            )
+        await self.expect_bus_request(
+            self.target,
+            read=False,
+            addr=addr,
+            size=plan.size,
+            context="series_write_error#final",
+            wstrb=self.full_wstrb(plan.size),
+        )
         self._check_status_bit(
             f"series_write_error.status_bit#{SERIES_BEATS}",
             status_bit,
             int(SERIES_BEATS - 1 == plan.fault_idx),
-            f"addr=0x{plan.addr(SERIES_BEATS):x}",
+            f"addr=0x{addr:x}",
         )
 
     async def run_error_series_write(self, *, increment: bool, with_status: bool) -> None:
@@ -332,21 +423,19 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
         self.log_banner(f"{self.target} series {mode} write error")
         await self.reset_tap()
         rng = self.rng(f"{self.target}.series_write_error.{mode}")
-        plan = self._arm_series_fault(
+        plan = self._plan_series_fault(
             increment=increment,
             with_status=with_status,
             base=ERROR_BASE + 0x300,
             resp=rng.choice(ERROR_RESPONSES),
-            read=False,
         )
-        fault_before = self.read_target_mem_int(self.target, plan.fault_addr, plan.size)
         await self.jtag2axi_series_ctrl(
             DtpJtag2AxiOp.WRITE, plan.base, size=plan.size, target=self.target
         )
         width = self.target_cfg(self.target).data_width
         for idx in range(SERIES_BEATS):
             data = rng.getrandbits(width) & self.data_mask(plan.size)
-            await self._series_write_beat(plan, idx, data, fault_before)
+            await self._series_write_beat(plan, idx, data)
         if with_status:
             await self._series_write_final_capture(plan)
         await self.verify_target_recovery(
@@ -358,11 +447,16 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
         )
         self.operation_count += SERIES_BEATS
 
-    async def _series_read_beat(self, plan: _SeriesFault, idx: int, mem_expected: int) -> None:
+    async def _series_read_beat(
+        self, plan: _SeriesFault, idx: int, mem_expected: int, errored: int
+    ) -> None:
         addr = plan.addr(idx)
+        if idx == plan.fault_idx:
+            self._arm_fault_beat(plan, read=True, err_rdata=errored)
         await self.jtag2axi_series_ctrl(
             DtpJtag2AxiOp.READ, addr, size=plan.size, target=self.target
         )
+        completed = self.port_history(self.target).count(read=True)
         before = await self.target_activity_counts(self.target)
         self.log_iteration(
             idx + 1, SERIES_BEATS, "series read addr=0x%08x resp=%s", addr, plan.beat_resp_name(idx)
@@ -374,6 +468,11 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
             self.target, before=before, read=True, context=f"series_read_error.axi#{idx}"
         )
         rdata = await self._series_plain_read_shift(size=plan.size, increment=plan.increment)
+        if not await self.wait_port_completion(self.target, read=True, above=completed):
+            raise AssertionError(f"series_read_error.r#{idx}: {self.target} read did not complete")
+        await self.expect_bus_request(
+            self.target, read=True, addr=addr, size=plan.size, context=f"series_read_error#{idx}"
+        )
         if idx == plan.fault_idx:
             self.check_error_rdata(
                 self.target,
@@ -381,6 +480,7 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
                 rdata,
                 resp=plan.resp,
                 preload=mem_expected,
+                errored=errored,
                 size=plan.size,
                 context=f"series_read_error.fault#{idx}",
             )
@@ -396,7 +496,14 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
             size=plan.size,
             context=f"series_read_error.addr#{idx}",
         )
-        if idx == plan.fault_idx:
+        if idx < plan.fault_idx:
+            self._check_status(
+                "series_read_error.pre_fault_status",
+                status,
+                DtpJtag2AxiStatus.SUCCESS,
+                f"beat={idx} addr=0x{addr:x}",
+            )
+        elif idx == plan.fault_idx:
             self._check_status(
                 "series_read_error.fault_status",
                 status,
@@ -424,12 +531,26 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
                     plan.addr(shift),
                     plan.beat_resp_name(shift),
                 )
+            if shift == plan.fault_idx:
+                self._arm_fault_beat(plan, read=True)
+            completed = self.port_history(self.target).count(read=True)
             before = await self.target_activity_counts(self.target)
             rdata, status_bit = await self.series_data_with_status(
                 0, size=plan.size, increment=int(launching), target=self.target, back_to_rti=True
             )
             await self.wait_for_target_activity(
                 self.target, before=before, read=True, context=f"series_read_error.axi#{shift}"
+            )
+            if not await self.wait_port_completion(self.target, read=True, above=completed):
+                raise AssertionError(
+                    f"series_read_error.r#{shift}: {self.target} read did not complete"
+                )
+            await self.expect_bus_request(
+                self.target,
+                read=True,
+                addr=plan.addr(shift),
+                size=plan.size,
+                context=f"series_read_error#{shift}",
             )
             if shift == plan.fault_idx:
                 _, _, _, _, status = await self.read_series_ctrl(size=plan.size, target=self.target)
@@ -461,16 +582,13 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
         self.log_banner(f"{self.target} series {mode} read error")
         await self.reset_tap()
         rng = self.rng(f"{self.target}.series_read_error.{mode}")
-        plan = self._arm_series_fault(
+        plan = self._plan_series_fault(
             increment=increment,
             with_status=with_status,
             base=ERROR_BASE + 0x600,
             resp=rng.choice(ERROR_RESPONSES),
-            read=True,
         )
         width = self.target_cfg(self.target).data_width
-        # A nonzero preload keeps each slot's word distinguishable from the
-        # errored beat's RDATA.
         preload = [
             rng.randrange(1, 1 << width) & self.data_mask(plan.size) for _ in range(SERIES_BEATS)
         ]
@@ -479,9 +597,15 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
         if with_status:
             await self._series_read_with_status_stream(plan, preload)
         else:
+            # The errored beat's word differs from zero and from every preload,
+            # so a zeroed or stale capture cannot pass for it.
+            errored = self.random_distinct_word(rng, self.target, *preload)
+            self.log.info("series read errored-beat word=0x%x", errored)
             for idx in range(SERIES_BEATS):
                 # Without increment every beat reads the one slot the last preload filled.
-                await self._series_read_beat(plan, idx, preload[idx] if increment else preload[-1])
+                await self._series_read_beat(
+                    plan, idx, preload[idx] if increment else preload[-1], errored
+                )
         await self.verify_target_recovery(
             self.target,
             addr=RECOVERY_BASE + 0x100,
@@ -492,8 +616,12 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
         self.operation_count += SERIES_BEATS
 
     # --- error-path security gating ------------------------------------------
-    async def _gated_error_attempt(self, cfg, addr: int, data: int, bit_name: str) -> None:
-        """Assert the target's disable, attempt an armed error write, and prove no bus activity."""
+    async def _gated_error_attempt(
+        self, cfg, addr: int, data: int, bit_name: str, image_rng: random.Random
+    ) -> dict[str, int]:
+        """Assert the target's disable, attempt an armed error write, and prove no bus
+        activity and no TDR update; returns the request counters before the attempt."""
+        reference = await self.gate_image_reference(self.target, image_rng, request_addr=addr)
         await self.disable_debug_bits(cfg.dbg_disable_bit)
         # arm=False: the gated op must never reach the bus, so no model
         # expectation or scoreboard credit may be armed for it (an armed
@@ -513,7 +641,7 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
             size=cfg.default_size,
             target=cfg,
         )
-        await self.write_tdr(cfg.single_op_reg, raw)
+        gated = await self.read_tdr(cfg.single_op_reg, raw)
         await self.expect_no_target_activity(
             self.target, 8, context=f"error_gate.{bit_name}.no_axi"
         )
@@ -527,10 +655,20 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
                     f"source=tb_pulse_counters window=gated_attempt+8cyc"
                 ),
             )
+        post = await self.read_tdr(cfg.single_op_reg)
+        self.check_gated_tdr(
+            self.target,
+            reference,
+            raw,
+            request_capture=gated,
+            post_capture=post,
+            context=f"error_gate.{bit_name}",
+        )
         self.clear_target_errors(self.target)
         await self.enable_all_debug()
         await self.wait_sys_cycles(8)
         self.scoreboard_end_blocked(self.target, context=f"error_gate.{bit_name}")
+        return gate_before
 
     async def run_error_security_gating(self) -> None:
         self.log_banner(f"{self.target} error-path security gating")
@@ -540,8 +678,15 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
         addr = self._addr(ERROR_BASE + 0x900, 1)
         # Seeded per-pass payload for the gated/ungated/recovery writes.
         data = self.rng(f"{self.target}_error_gate").getrandbits(64) & self.data_mask(size)
+        # The ungated error of each pass, SLVERR and DECERR in seeded order.
+        ungated = self.rng(f"{self.target}_error_gate_resp").sample(ERROR_RESPONSES, 2)
+        self.log.info(
+            "error gate ungated responses per pass: %s",
+            ", ".join(self.axi_resp_to_jtag_status(resp).name for resp in ungated),
+        )
         # Two assert/release passes of the target's direct disable prove the
         # gate is repeatable, not a one-shot POR effect.
+        image_rng = self.rng(f"{self.target}_error_gate_image")
         for idx in (1, 2):
             bit_name = f"{cfg.dbg_disable_bit}_pass{idx}"
             self.log_step(
@@ -551,9 +696,9 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
                 cfg.dbg_disable_bit,
                 idx,
             )
-            await self._gated_error_attempt(cfg, addr, data, bit_name)
+            gate_before = await self._gated_error_attempt(cfg, addr, data, bit_name, image_rng)
             expected = self.configure_target_error(
-                self.target, addr, AXI_DECERR, read=False, write=True
+                self.target, addr, ungated[idx - 1], read=False, write=True
             )
             await self._single_op_status(
                 DtpJtag2AxiOp.WRITE,
@@ -569,7 +714,25 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
                 read=False,
                 context=f"error_gate.{bit_name}",
             )
+            if self.axi_scoreboard is not None:
+                # Exact delta from before the gated attempt: only the ungated
+                # error write and the recovery write reach the bus (aw/w +2,
+                # ar +0), so a replay of the gated write fails here.
+                self.axi_scoreboard.expect_no_activity(
+                    before={
+                        "aw": gate_before["aw"] + 2,
+                        "w": gate_before["w"] + 2,
+                        "ar": gate_before["ar"],
+                    },
+                    after=await self.target_activity_counts(self.target),
+                    context=(
+                        f"error_gate.{bit_name} target={self.target} "
+                        f"source=tb_pulse_counters window=exact_delta "
+                        f"sanctioned=ungated_error_write+recovery_write(aw+2,w+2)"
+                    ),
+                )
             self.operation_count += 1
+        self._emit_error_nonvacuity("error_security_gating")
 
     async def body(self) -> None:
         await self.enable_all_debug()

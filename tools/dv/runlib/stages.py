@@ -90,8 +90,8 @@ from .coverage_policy import (
     native_policy_manifest,
 )
 from .formal import grade_formal_stage
-from .junit import ensure_leaf_junit
-from .logparse import parse_stage_result, xunit_failure_messages
+from .junit import discard_generated_junit, ensure_leaf_junit, results_xml_path
+from .logparse import observed_failure_messages, parse_stage_result
 from .models import ConfigError, Flow, StageResult, StageTimeoutError, TestCatalog, TestEntry
 from .paths import repo_path, repo_rel
 from .site import ToolLaunch, launch_argv, launch_env, tool_launch
@@ -440,6 +440,11 @@ def _is_cocotb_prebuilt(args: argparse.Namespace, target_name: str) -> bool:
     return target_name in _prebuilt_targets(args)
 
 
+# The expected-failure record keeps at most this many failure messages, each cut to this width.
+FAILURE_MESSAGE_LIMIT = 8
+FAILURE_MESSAGE_WIDTH = 400
+
+
 def grade_expected_fail(
     status: str,
     reason: str,
@@ -454,7 +459,9 @@ def grade_expected_fail(
     An observed FAIL is the recorded outcome and grades PASS -- unless the entry also carries
     `expect_fail_match` and no observed failure message matches it, in which case the leaf
     failed for a reason other than the recorded one and grades FAIL in the
-    `expected_fail_mismatch` bucket. An observed PASS means the defect the entry records is
+    `expected_fail_mismatch` bucket. The regex is tried on every message given; the record
+    keeps the first `FAILURE_MESSAGE_LIMIT` of them and the one that matched, each cut to
+    `FAILURE_MESSAGE_WIDTH`. An observed PASS means the defect the entry records is
     no longer there, and grades FAIL so the entry cannot outlive its reason. ERROR, TIMEOUT
     and UNKNOWN are not the recorded failure -- the leaf proved nothing either way -- and
     keep their status. The returned record goes into the leaf metadata under `expected_fail`
@@ -465,7 +472,9 @@ def grade_expected_fail(
         "reason": expect_fail,
         "observed_status": status,
         "observed_reason": reason,
-        "observed_failures": failures,
+        "observed_failures": [
+            message[:FAILURE_MESSAGE_WIDTH] for message in failures[:FAILURE_MESSAGE_LIMIT]
+        ],
         "observed_buckets": [
             {"kind": bucket.get("kind"), "signature": bucket.get("signature")}
             for bucket in buckets or []
@@ -474,10 +483,17 @@ def grade_expected_fail(
     if expect_fail_match is not None:
         record["match"] = expect_fail_match
     if status == "FAIL":
-        if expect_fail_match is not None and not any(
-            re.search(expect_fail_match, message) for message in failures
-        ):
-            first = failures[0] if failures else "no failure message recorded"
+        matched = (
+            next((message for message in failures if re.search(expect_fail_match, message)), None)
+            if expect_fail_match is not None
+            else None
+        )
+        if matched is not None:
+            record["matched_failure"] = matched[:FAILURE_MESSAGE_WIDTH]
+        elif expect_fail_match is not None:
+            first = (
+                failures[0][:FAILURE_MESSAGE_WIDTH] if failures else "no failure message recorded"
+            )
             graded_reason = (
                 f"expected to fail ({expect_fail}) but failed for another reason: {first}"
             )
@@ -3911,7 +3927,10 @@ def run_stage(
         metadata["debug_only"] = bool(getattr(args, "_wave_debug_rerun", False))
     if stage_name in {"flist", "hdl_compile", "elaborate", "sim", "regress"}:
         metadata["target"] = target_name
+    observed_failures: list[str] = []
     try:
+        if stage_name in {"sim", "regress"} and item is not None and not args.dry_run:
+            discard_generated_junit(results_xml_path(stage_dir))
         if kind == "noop":
             note = str(stage.get("note", "no operation"))
             console.event("note", note)
@@ -4362,6 +4381,16 @@ def run_stage(
                     if rel_log and rel_log not in examples:
                         examples.append(rel_log)
             parser = decision.parser
+            entry = catalog.tests.get(item) if item is not None else None
+            if status == "FAIL" and entry is not None and entry.expect_fail:
+                observed_failures = observed_failure_messages(
+                    flow=flow,
+                    tool=tool,
+                    policies=policies,
+                    simulators=simulators,
+                    log_path=log_path,
+                    results_dir=stage_dir / "results",
+                )
     except StageTimeoutError as exc:
         rc = 124
         status = "TIMEOUT"
@@ -4412,7 +4441,7 @@ def run_stage(
             reason,
             buckets,
             expect_fail,
-            observed_failures=xunit_failure_messages(stage_dir / "results" / "results.xml"),
+            observed_failures=observed_failures,
             expect_fail_match=catalog.tests[item].expect_fail_match,
         )
         for bucket in buckets or []:
