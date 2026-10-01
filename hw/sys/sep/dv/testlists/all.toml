@@ -452,4 +452,5 @@ tests = [
     "sep_rom_oca_tamper_test",
     "sep_rom_lc_state_invalid_test",
     "sep_rom_dma_stall_terminal_test",
+    "sep_rom_hmac_fifo_stall_terminal_test",
 ]

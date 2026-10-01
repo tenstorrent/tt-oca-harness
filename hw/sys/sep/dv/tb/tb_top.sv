@@ -1562,6 +1562,24 @@ module sep_uvm_top
 `undef DMA_HOST_CMD_INTG_DI
 
     // ------------------------------------------------------------------
+    // HMAC message-FIFO drain stall.
+    // ------------------------------------------------------------------
+    // hmac_fifo_drain_stall_i=1 holds the message FIFO's rready low, so the hash
+    // engine stops consuming and the FIFO fills: the wedge the ROM's bounded
+    // FIFO waits must turn into a hash failure. fifo_rready is the hmac-local
+    // net that drives the FIFO's read side. Re-issued every clock for Verilator,
+    // released when the port drops.
+`define HMAC_FIFO_RREADY `SEP_CORE.u_sep_crypto.u_hmac_wrapper_s3c_scan.u_tt_hmac.fifo_rready
+    always @(posedge clk_i) begin
+        if (hmac_fifo_drain_stall_i === 1'b1) begin
+            force `HMAC_FIFO_RREADY = 1'b0;
+        end else begin
+            release `HMAC_FIFO_RREADY;
+        end
+    end
+`undef HMAC_FIFO_RREADY
+
+    // ------------------------------------------------------------------
     // DMA host-port stall.
     // ------------------------------------------------------------------
     // +sep_dma_host_stall holds the host TL-UL response idle -- a_ready and
@@ -2532,6 +2550,7 @@ module sep_uvm_top
     assign token_cmp_fault_sel_i    = '0;
     assign token_digest_test_en_inject_i = 1'b0;
     assign dma_host_intg_inject_i   = 1'b0;
+    assign hmac_fifo_drain_stall_i  = 1'b0;
     assign rst_vec_i                = '0;
     assign i_cpu_run_req_i          = 1'b0;
     assign tcm_load_i               = 1'b0;

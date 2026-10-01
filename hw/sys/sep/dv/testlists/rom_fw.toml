@@ -2487,3 +2487,24 @@ args = [
   "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
   "+sep_dma_host_stall",
 ]
+
+[[tests]]
+# A stalled HMAC message FIFO fails the ROM self-hash instead of hanging it.
+#
+# The test raises hmac_fifo_drain_stall_i once the ROM prints
+# CRYPTO_SELFTEST_OK, just before the [S17] self-hash, so the FIFO fills and
+# fifo_feed()'s bounded credit wait expires. The ROM must report SHA_FIFO_TIMEOUT and halt on
+# ROM_ERR_ROM_HASH_MISMATCH. [S17] precedes boot-mode selection, so no SPI
+# transport or entropy plusarg is needed. Budget matches
+# sep_firmware_sboot_dis_rsvd_terminal_test, which halts just after it.
+name = "sep_rom_hmac_fifo_stall_terminal_test"
+module = "rom_fw.sep_rom_hmac_fifo_stall_terminal_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "rom", "crypto", "negative", "error", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+]
