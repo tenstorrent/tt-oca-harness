@@ -569,6 +569,7 @@ command is subsequently rejected (<<km-resp-cmd>>).
 
 The rest of this section describes all valid commands and their payloads.
 
+[[key-manager-command-summary-table]]
 .KM Command Summary
 [cols="^15%,<40%,<45%",options="header"]
 |===
