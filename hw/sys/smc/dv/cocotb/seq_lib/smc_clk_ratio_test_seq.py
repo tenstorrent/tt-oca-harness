@@ -5,9 +5,14 @@
 ``clk_rst.adoc`` constrains one input clock only: ``clk_periph_i`` runs at
 100 MHz or faster. It states no relation between ``clk_smc_i`` and
 ``clk_ref_i``, nor between ``clk_smc_i`` and ``clk_periph_i``, so every ratio
-between them is a legal configuration. The base test draws each period from a
-narrow set in which the SMC clock is always the fastest; the leaves that drive
-this sequence pin the periods to a relation that draw never produces.
+between them is a legal configuration. The bench drives ref / periph at
+10 / 5 ns and the SMC clock at the ``+pll_sys_period_ns`` period (1.25 ns by
+default), so the SMC clock is the fastest and the peripheral clock twice the
+reference. The leaves that drive this sequence pin relations those periods
+never produce: ``smc_clk_smc_slower_than_ref_test`` 10 / 12 / 8 ns,
+``smc_clk_smc_equal_ref_test`` 10 / 10 / 10 ns and
+``smc_clk_periph_slower_than_ref_test`` 8 ns ref against a 10 ns periph
+(ref / smc / periph).
 
 The sequence first measures each clock's period over its own rising edges
 and requires the configured value, so the leaf is known to run at the

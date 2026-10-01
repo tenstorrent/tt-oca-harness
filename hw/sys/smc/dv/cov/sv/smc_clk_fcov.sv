@@ -406,12 +406,15 @@ module smc_clk_fcov #(
       logic [31:0] ref_edges, logic [31:0] smc_edges, logic [31:0] periph_edges
   );
     option.per_instance = 1;
-    // The base test draws ref 8/10/12 ns, smc 4/5/6 ns and periph 8/10 ns, so
-    // the SMC core clock runs between 1.3 and 3 times the reference and the
-    // peripheral clock between 0.8 and 1.5 times it. The two clock-ratio
-    // leaves pin an SMC clock no faster than the reference; the flat
-    // c_clk_ratio_* points record those. A clock that stops within a window is
-    // the clock-gate groups' subject.
+    // The bench drives ref 10 ns, periph 5 ns and the SMC clock at 1.25 ns, or
+    // 10 ns under +pll_sys_period_ns=10, so the SMC clock runs at eight times
+    // or one times the reference and the peripheral clock at twice it. Leaves
+    // that pin other periods: smc_clk_smc_slower_than_ref_test (ref / smc /
+    // periph 10 / 12 / 8 ns), smc_clk_smc_equal_ref_test (10 / 10 / 10 ns) and
+    // smc_clk_periph_slower_than_ref_test (8 / 1.25 / 10 ns). The flat
+    // c_clk_ratio_* points record the relations the ignore bins below leave
+    // out. A clock that stops within a window is the clock-gate groups'
+    // subject.
     cp_smc_bucket: coverpoint (smc_edges * 4) / (ref_edges == 0 ? 1 : ref_edges) {
       bins stalled = {0};
       bins slower = {[1 : 3]};
@@ -431,9 +434,10 @@ module smc_clk_fcov #(
       ignore_bins periph_stalled = {0};
       ignore_bins periph_beyond_1p5x_ref = {[9 : 32]};
     }
-    // The peripheral clock is slower than the reference only against the
-    // 8 ns reference, where the fastest SMC clock (4 ns) is twice the
-    // reference, faster but not much faster.
+    // The peripheral clock is slower than the reference only in
+    // smc_clk_periph_slower_than_ref_test, where the SMC clock is 6.4 times
+    // the reference and falls in much_faster, so the bin this ignores is
+    // reached there and not graded.
     x_smc_periph: cross cp_smc_bucket, cp_periph_bucket{
       ignore_bins periph_slower_only_at_8ns_ref = binsof (cp_smc_bucket.much_faster) &&
           binsof (cp_periph_bucket.slower);
