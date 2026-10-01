@@ -11,8 +11,8 @@
 // On top of the operations it keeps the SEP-local helpers: the bounded
 // fuse-sense-done wait every CSR scenario starts with (the local fabric
 // answers only after it), the system-clock waits derived from the env
-// period, the CSR access counter behind the non-vacuity evidence, and the
-// per-pass named evidence (CHK-*) through the protocol-neutral
+// period, the scoreboard compare count behind the non-vacuity evidence, and
+// the per-pass named evidence (CHK-*) through the protocol-neutral
 // ocah_checker, attached with the scenario's required IDs and finalized
 // after the scenario so a silently skipped check cannot report PASS. Every
 // draw in a pass follows seed_scenario_rng() (first statement of body()).
@@ -33,9 +33,10 @@ class sep_base_test_seq extends ocah_sequence;
   sep_test_cfg      test_cfg;
   sep_env_cfg       env_cfg;
 
-  // Per-pass named evidence and the CSR access count it certifies.
+  // Per-pass named evidence, and the scoreboard compare counts at attach
+  // time (per feature) that the non-vacuity check measures from.
   ocah_checker m_check;
-  int unsigned csr_accesses;
+  int unsigned m_sb_compares_at_attach[string];
 
   function new(string name = "sep_base_test_seq");
     super.new(name);
@@ -51,8 +52,30 @@ class sep_base_test_seq extends ocah_sequence;
     m_check = ocah_checker::type_id::create({get_name(), ".csr"});
     m_check.name_tag     = "sep_csr";
     m_check.required_ids = required_ids;
-    csr_accesses = 0;
+    m_sb_compares_at_attach.delete();
   endfunction
+
+  // Mark the start of a pass for the scoreboard non-vacuity check of one
+  // feature.
+  function void mark_scoreboard_feature(string feature);
+    m_sb_compares_at_attach[feature] = p_sequencer.m_scoreboard.compare_count(feature);
+  endfunction
+
+  // Non-vacuity on the DUT side: the scoreboard compares this pass added for
+  // the feature must equal the predicted reads the pass issued. The count
+  // only grows when the passive monitor observes an OKAY read on the DUT
+  // bus and the reference model predicts it, so a read that never reached
+  // the bus, or that the predictor dropped, makes this fail. The wait lets
+  // the monitor publish the last read of the pass.
+  task check_scoreboard_compares(string check_id, string feature, int unsigned expected_reads);
+    int unsigned delta;
+    if (!m_sb_compares_at_attach.exists(feature))
+      `uvm_fatal(get_type_name(), {"mark_scoreboard_feature() not called for ", feature})
+    wait_sys_cycles(2);
+    delta = p_sequencer.m_scoreboard.compare_count(feature) - m_sb_compares_at_attach[feature];
+    check_evidence(check_id, {feature, "_compares"}, 64'(delta), 64'(expected_reads),
+                   "scoreboard compares this pass vs predicted reads issued");
+  endtask
 
   function void finalize_evidence();
     if (m_check == null) `uvm_fatal(get_type_name(), "evidence checker was never attached")
@@ -80,9 +103,7 @@ class sep_base_test_seq extends ocah_sequence;
   // sep_fuse_sense_done_o rises (a cycle after reset release under
   // +skip_fuse_sense, after the full OTP sense otherwise), so the poll is
   // bounded by test_cfg.fuse_sense_timeout_cycles system clocks and
-  // followed by the cocotb settle window; the OTP JTAG2AXIL disable bits
-  // must both read 0 once sense is done (the fuse controller enforces
-  // access, the lifecycle controller ties both to 0).
+  // followed by the cocotb settle window.
   // ------------------------------------------------------------------
   task wait_fuse_sense_done();
     int unsigned cycles = 0;
@@ -109,7 +130,7 @@ class sep_base_test_seq extends ocah_sequence;
 
   // ------------------------------------------------------------------
   // CSR operations: one reusable sequence per operation on the CPU-LSU
-  // sequencer. Both record CHK-CSR-RESP and count toward csr_accesses.
+  // sequencer. Both record CHK-CSR-RESP.
   // ------------------------------------------------------------------
 
   task csr_write(bit [63:0] addr, bit [31:0] data, string label = "");
@@ -117,7 +138,6 @@ class sep_base_test_seq extends ocah_sequence;
     op.addr = addr;
     op.data = data;
     op.start(p_sequencer.m_lsu_seqr);
-    csr_accesses++;
     check_evidence(ChkCsrResp, label.len() ? label : $sformatf("wr_0x%0h", addr),
                    64'(op.result.worst_resp()), 64'(OCAH_AXI_RESP_OKAY), $sformatf(
                    "write addr=0x%0h data=0x%08h", addr, data));
@@ -130,7 +150,6 @@ class sep_base_test_seq extends ocah_sequence;
     sep_axi_csr_read_seq op = sep_axi_csr_read_seq::type_id::create("csr_read");
     op.addr = addr;
     op.start(p_sequencer.m_lsu_seqr);
-    csr_accesses++;
     data = op.data;
     check_evidence(ChkCsrResp, label.len() ? label : $sformatf("rd_0x%0h", addr),
                    64'(op.result.worst_resp()), 64'(OCAH_AXI_RESP_OKAY), $sformatf(

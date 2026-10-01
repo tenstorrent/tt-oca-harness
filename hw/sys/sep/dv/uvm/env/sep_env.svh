@@ -71,6 +71,7 @@ class sep_env extends ocah_env;
   function void connect_phase(uvm_phase phase);
     super.connect_phase(phase);
     m_vseqr.m_lsu_seqr = m_lsu_master_env.m_sequencer;
+    m_vseqr.m_scoreboard = m_scoreboard;
     // cpu_ctrl_csr: the monitor stream feeds the reference model and the
     // scoreboard's observed side; the model's expected_ap feeds the other.
     m_lsu_axi_env.item_ap.connect(m_cpu_ctrl_csr_ref_model.analysis_export);

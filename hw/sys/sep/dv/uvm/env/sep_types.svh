@@ -10,7 +10,13 @@
 // No class lives here: everything is a package-scope type, constant, or
 // `function automatic`. The cocotb twin is env/sep_reg_meta.py plus the
 // SepAxiItem access contract.
+//
+// The TB modules compiled ahead of this package (tb/sep_outbound_mbx.sv,
+// cov/sv/sep_fcov.sv) include sep_reg.svh first, which defines its include
+// guard and puts the symbols in $unit. A package cannot reference $unit, so
+// the guard is cleared here and the package declares its own copy.
 
+`undef SEP_TOP_REG_SVH
 `include "sep_reg.svh"
 
 // ---------------------------------------------------------------------------
