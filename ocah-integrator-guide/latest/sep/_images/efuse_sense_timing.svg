@@ -3,7 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="980" height="440" viewBox="0 0 980 440" role="img" aria-labelledby="title desc">
   <title id="title">eFuse sensing response stream</title>
-  <desc id="desc">Timing of automatic fuse sensing. The sense FSM issues one READ for the whole bank, moves from StRead to StWait, and counts each single-cycle fuse_command_resp.valid strobe. Each strobe stores fuse_command_resp.data into the shadow register indexed by words_received_q and increments the counter, including back-to-back strobes on consecutive cycles. On the last word, when words_received_q equals NumShadowWords minus one, the FSM stores the final word, moves to StFinished without incrementing, and fuse_sense_done rises one cycle later.</desc>
+  <desc id="desc">Timing of automatic fuse sensing. The sense FSM issues one READ for the whole bank, moves from ST_READ to ST_WAIT, and counts each single-cycle fuse_command_resp.valid strobe. Each strobe stores fuse_command_resp.data into the shadow register indexed by words_received_q and increments the counter, including back-to-back strobes on consecutive cycles. On the last word, when words_received_q equals NumShadowWords minus one, the FSM stores the final word, moves to ST_FINISHED without incrementing, and fuse_sense_done rises one cycle later.</desc>
   <defs>
     <marker id="red-end" markerWidth="7" markerHeight="7" refX="7" refY="3.5" orient="auto" markerUnits="strokeWidth">
       <path d="M0,0 L7,3.5 L0,7 z" fill="#b91c1c"/>
@@ -31,7 +31,7 @@
   <text x="585" y="30" text-anchor="middle" class="title">eFuse sensing FSM</text>
 
   <text x="970" y="62" text-anchor="end" class="anno">last word: words_received_q == 255 (NumShadowWords - 1)</text>
-  <text x="970" y="78" text-anchor="end" class="anno">store values[255], go to StFinished, no further increment</text>
+  <text x="970" y="78" text-anchor="end" class="anno">store values[255], go to ST_FINISHED, no further increment</text>
   <path d="M820 84 V166" class="cause"/>
 
   <!-- Cycle grid -->
@@ -74,13 +74,13 @@
 
   <!-- efuse_sense_state_q -->
   <polygon points="210,181.5 215,169 275,169 280,181.5 275,194 215,194" class="bus"/>
-  <text x="245" y="185" text-anchor="middle" class="val">StRead</text>
+  <text x="245" y="185" text-anchor="middle" class="val">ST_READ</text>
   <polygon points="280,181.5 285,169 625,169 630,181.5 625,194 285,194" class="bus"/>
-  <text x="455" y="185" text-anchor="middle" class="val">StWait</text>
+  <text x="455" y="185" text-anchor="middle" class="val">ST_WAIT</text>
   <polygon points="680,181.5 685,169 815,169 820,181.5 815,194 685,194" class="bus"/>
-  <text x="750" y="185" text-anchor="middle" class="val">StWait</text>
+  <text x="750" y="185" text-anchor="middle" class="val">ST_WAIT</text>
   <polygon points="820,181.5 825,169 955,169 960,181.5 955,194 825,194" class="bus"/>
-  <text x="890" y="185" text-anchor="middle" class="val">StFinished</text>
+  <text x="890" y="185" text-anchor="middle" class="val">ST_FINISHED</text>
 
   <!-- fuse_command_resp.valid -->
   <path d="M210 238 H350 V213 H420 V238 H490 V213 H630 V238" class="valid"/>

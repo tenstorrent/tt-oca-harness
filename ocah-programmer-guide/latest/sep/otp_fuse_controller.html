@@ -316,20 +316,20 @@ enabled and fetches its first instruction from the SEP ROM.</p>
 </div>
 <div id="sep-efuse-sense-diagram" class="imageblock">
 <div class="content">
-<img src="_images/sep-efuse-sensing.svg" alt="Sensing FSM states StIdle, StRead, StWait and StFinished, above a timing diagram of the response strobes, the word counter and the shadow words they fill" width="100%">
+<img src="_images/sep-efuse-sensing.svg" alt="Sensing FSM states ST_IDLE, ST_READ, ST_WAIT and ST_FINISHED, above a timing diagram of the response strobes, the word counter and the shadow words they fill" width="100%">
 </div>
 <div class="title">Figure 3. eFuse sensing state machine and shadow-register timing</div>
 </div>
 <div class="paragraph">
 <p>The upper part of <a href="#sep-efuse-sense-diagram">eFuse sensing state machine and shadow-register timing</a> shows the four states of the
 sensing FSM in <code>efuse_shadow_regs</code>, and the lower part shows one sensing run
-cycle by cycle. StRead issues a single READ command for all 256 shadow words.
+cycle by cycle. ST_READ issues a single READ command for all 256 shadow words.
 The shim then returns one <code>fuse_command_resp.valid</code> strobe per word, and
 strobes may arrive on consecutive cycles. Each strobe stores its data in the
 shadow word indexed by <code>words_received_q</code> and increments the counter; a strobe
 with its status bit set still advances the counter but leaves that word
 unwritten. The strobe that arrives while the counter is 255 stores the last
-word and moves the FSM to StFinished, and <code>fuse_sense_done_o</code> rises one cycle
+word and moves the FSM to ST_FINISHED, and <code>fuse_sense_done_o</code> rises one cycle
 later. Until then, APB accesses to the MAP window return SLVERR.</p>
 </div>
 </div>

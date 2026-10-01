@@ -905,13 +905,13 @@ that <code>valid</code> is high, advancing to the next eFuse word on each assert
 </div>
 <div class="paragraph">
 <p><a href="#efuse-sense-timing-fig">eFuse sensing response stream</a> shows the stream for the 256-word bank. The sense FSM
-leaves <code>StRead</code> after one cycle and waits in <code>StWait</code>. Each <code>valid</code> strobe
+leaves <code>ST_READ</code> after one cycle and waits in <code>ST_WAIT</code>. Each <code>valid</code> strobe
 stores <code>data</code> into shadow word <code>words_received_q</code> and increments the count one
 cycle later. Gaps between strobes are allowed, as between cycles 2 and 4, and
 so are strobes on consecutive cycles, as in cycles 4 and 5, provided each
 cycle carries a new word. <code>data</code> is sampled only while <code>valid</code> is high. The
 strobe for word 255 (<code>NumShadowWords - 1</code>) stores the last word and moves the
-FSM to <code>StFinished</code> without incrementing. <code>fuse_sense_done</code> rises one cycle
+FSM to <code>ST_FINISHED</code> without incrementing. <code>fuse_sense_done</code> rises one cycle
 after that.</p>
 </div>
 <div id="efuse-sense-timing-fig" class="imageblock">

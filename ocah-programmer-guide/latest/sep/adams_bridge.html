@@ -271,7 +271,7 @@ design, so its bus pipeline ends in AHB-lite rather than TL-UL.
 converts it to AXI4-lite, and drives <code>abr_top</code> through <code>axi_lite_to_ahb</code>, which
 issues one single AHB transfer at a time and returns its response before it
 accepts the next access. The wrapper occupies a 64 kB aperture at
-<code>0x1094_0000</code>, decoded as port <code>SepCryptoAxiAbr</code> of the crypto demux.</p>
+<code>0x1094_0000</code>, decoded as port <code>SEP_CRYPTO_AXI_ABR</code> of the crypto demux.</p>
 </div>
 <div id="abr-access-size" class="paragraph">
 <p>Every ABR register is 32 bits wide, and the aperture is accessed in words:</p>

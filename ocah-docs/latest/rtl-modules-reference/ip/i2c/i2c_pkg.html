@@ -751,20 +751,20 @@
 <p>Enum (<code>logic [I2C_ACQ_BYTE_ID_WIDTH-1:0]</code>)</p>
 <table id="trm-table-8">
 <caption class="title"><a href="#trm-table-8">Table 8</a>. <code>i2c_acq_byte_id_e</code></caption><tr><th>Value</th><th>Number</th><th>Description</th></tr>
-<tr><td><code>AcqData</code></td><td>3&#x27;b000</td><td></td></tr>
-<tr><td><code>AcqStart</code></td><td>3&#x27;b001</td><td></td></tr>
-<tr><td><code>AcqStop</code></td><td>3&#x27;b010</td><td></td></tr>
-<tr><td><code>AcqRestart</code></td><td>3&#x27;b011</td><td>AcqNack means one of two things:</td></tr>
-<tr><td><code>AcqNack</code></td><td>3&#x27;b100</td><td>AcqNackStart means that we were addressed on this item, but we timed</td></tr>
-<tr><td><code>AcqNackStart</code></td><td>3&#x27;b101</td><td>AcqNackStop means that we were addressed during the transaction, but we</td></tr>
-<tr><td><code>AcqNackStop</code></td><td>3&#x27;b110</td><td></td></tr>
+<tr><td><code>ACQ_DATA</code></td><td>3&#x27;b000</td><td></td></tr>
+<tr><td><code>ACQ_START</code></td><td>3&#x27;b001</td><td></td></tr>
+<tr><td><code>ACQ_STOP</code></td><td>3&#x27;b010</td><td></td></tr>
+<tr><td><code>ACQ_RESTART</code></td><td>3&#x27;b011</td><td>ACQ_NACK means one of two things:</td></tr>
+<tr><td><code>ACQ_NACK</code></td><td>3&#x27;b100</td><td>ACQ_NACK_START means that we were addressed on this item, but we timed</td></tr>
+<tr><td><code>ACQ_NACK_START</code></td><td>3&#x27;b101</td><td>ACQ_NACK_STOP means that we were addressed during the transaction, but we</td></tr>
+<tr><td><code>ACQ_NACK_STOP</code></td><td>3&#x27;b110</td><td></td></tr>
 </table>
 <h2 id="i2c_timeout_mode_e"><code>i2c_timeout_mode_e</code></h2>
 <p>Enum (<code>logic</code>)</p>
 <table id="trm-table-9">
 <caption class="title"><a href="#trm-table-9">Table 9</a>. <code>i2c_timeout_mode_e</code></caption><tr><th>Value</th><th>Number</th><th>Description</th></tr>
-<tr><td><code>StretchTimeoutMode</code></td><td>1&#x27;b0</td><td></td></tr>
-<tr><td><code>BusTimeoutMode</code></td><td>1&#x27;b1</td><td></td></tr>
+<tr><td><code>STRETCH_TIMEOUT_MODE</code></td><td>1&#x27;b0</td><td></td></tr>
+<tr><td><code>BUS_TIMEOUT_MODE</code></td><td>1&#x27;b1</td><td></td></tr>
 </table>
 <h2 id="rw_e"><code>rw_e</code></h2>
 <p>Enum (<code>bit</code>)</p>

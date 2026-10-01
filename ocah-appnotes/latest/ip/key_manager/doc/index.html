@@ -1402,7 +1402,7 @@ consume it, so repeated debug reads are not fresh random samples.</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>STATUS.COUNT_GOOD[31:16]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Counts only reads completed through <code>StRespond</code>, excluding prefetched words, saturating at <code>0xFFFF</code>. Write nonzero to clear; zero has no effect.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Counts only reads completed through <code>ST_RESPOND</code>, excluding prefetched words, saturating at <code>0xFFFF</code>. Write nonzero to clear; zero has no effect.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>PREFETCH_DATA</code></p></td>
@@ -1411,7 +1411,7 @@ consume it, so repeated debug reads are not fresh random samples.</p>
 </tbody>
 </table>
 <div class="paragraph">
-<p>Because prefetched reads bypass <code>StRespond</code>, <code>COUNT_GOOD</code> is not a total of
+<p>Because prefetched reads bypass <code>ST_RESPOND</code>, <code>COUNT_GOOD</code> is not a total of
 all <code>DATA</code> reads when prefetch is enabled.</p>
 </div>
 </div>
@@ -1453,27 +1453,27 @@ their control state is not a guaranteed data scrub.</p>
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>StIdle</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Returns an available prefetch without entering <code>StRespond</code>; otherwise enters <code>StRequest</code> for a pending read.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ST_IDLE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Returns an available prefetch without entering <code>ST_RESPOND</code>; otherwise enters <code>ST_REQUEST</code> for a pending read.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>StRequest</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Asserts <code>TREADY</code>. A full word advances to <code>StRespond</code>; partial data advances to <code>StByteAssembly</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ST_REQUEST</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Asserts <code>TREADY</code>. A full word advances to <code>ST_RESPOND</code>; partial data advances to <code>ST_BYTE_ASSEMBLY</code>.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>StByteAssembly</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ST_BYTE_ASSEMBLY</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Keeps <code>TREADY</code> asserted and packs valid bytes until four are available.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>StRespond</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ST_RESPOND</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Completes the assembled read with OKAY and increments <code>COUNT_GOOD</code>; returns to idle.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>StTimeout</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ST_TIMEOUT</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Completes with SLVERR and zero data after the active wait budget expires; returns to idle.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>StStreamErr</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ST_STREAM_ERR</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Completes with SLVERR and zero data after a detected withdrawal during request/assembly; returns to idle.</p></td>
 </tr>
 </tbody>
@@ -7202,7 +7202,7 @@ shim control registers.</p>
 <span id="STATUS"></span><h3 id="key_manager-STATUS" data-register-alias="STATUS">STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:16</td><td>count_good</td><td>RW</td><td>0x0</td><td>Counts only reads completed through StRespond, excluding prefetched words. Saturates at 0xFFFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.</td></tr>
+<tr><td>31:16</td><td>count_good</td><td>RW</td><td>0x0</td><td>Counts only reads completed through ST_RESPOND, excluding prefetched words. Saturates at 0xFFFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.</td></tr>
 <tr><td>15:8</td><td>count_bad</td><td>RW</td><td>0x0</td><td>Failed transactions (timeout or error). Saturates at 0xFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.</td></tr>
 <tr><td>7:4</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
 <tr><td>3</td><td>stream_err</td><td>RW1C</td><td>0x0</td><td>Set when there is an error on the DRBG AXI-Stream interface (e.g. TVALID deasserted before TREADY). Write 1 to clear.</td></tr>
@@ -8424,7 +8424,7 @@ shim control registers.</p>
 <h3 id="km_drbg_sampler-STATUS" data-register-alias="STATUS">STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:16</td><td>count_good</td><td>RW</td><td>0x0</td><td>Counts only reads completed through StRespond, excluding prefetched words. Saturates at 0xFFFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.</td></tr>
+<tr><td>31:16</td><td>count_good</td><td>RW</td><td>0x0</td><td>Counts only reads completed through ST_RESPOND, excluding prefetched words. Saturates at 0xFFFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.</td></tr>
 <tr><td>15:8</td><td>count_bad</td><td>RW</td><td>0x0</td><td>Failed transactions (timeout or error). Saturates at 0xFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.</td></tr>
 <tr><td>7:4</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
 <tr><td>3</td><td>stream_err</td><td>RW1C</td><td>0x0</td><td>Set when there is an error on the DRBG AXI-Stream interface (e.g. TVALID deasserted before TREADY). Write 1 to clear.</td></tr>
