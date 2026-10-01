@@ -123,9 +123,10 @@ immediately after loading a zero preset. It is not a synchronization check.
 
 The secondary core counts cycles spent without credit. Load and credit
 edges clear this interval counter. The register wrapper retains the largest
-observed value in `CREDIT_EXPIRED`; writing any value clears both the saved
-maximum and the current interval count. Normal credit reception does not
-clear the saved maximum. In a primary configured from reset, it stays zero.
+observed value in `CREDIT_EXPIRED`; writing any value clears the saved
+maximum, while only a load or credit pulse clears the running interval
+counter in the core. Normal credit reception does not clear the saved
+maximum. In a primary configured from reset, it stays zero.
 
 Use this value to detect waiting for credit, with thresholds derived from
 the clock ratio and pulse interval. It does not directly measure timestamp
