@@ -8,6 +8,8 @@
 # templates of a graded run and keeps only the points that run's raw report
 # leaves uncovered; gen_smc_cov_exclusions.py and
 # gen_smc_ports_only_exclusions.py write them into the file each class names.
+# The toggle nets of a [[unit]] are the exception: smc_toggle_exclusions.py
+# takes them whole and gen_smc_toggle_exclusions.py writes them.
 # README.md states every class.
 #
 # [[object]]: a module or an instance (`[*]` for any index) and the toggle
@@ -15,7 +17,8 @@
 #   bit or part selects with their direction, line blocks by statement text,
 #   FSM states or transitions (`*` for all) and condition rows it covers.
 # [[unit]]: an instance graded on its ports: its own ports stay graded, and
-#   its internal signals and every instance beneath it are excluded.
+#   its internal signals and every instance beneath it are excluded (toggle
+#   whole, line and condition while uncovered).
 # Every entry carries its class, whose fact, retiring condition and reviewer
 # apply to it, and the reviewed file it comes from.
 
@@ -54,7 +57,7 @@ reviewer = "DE + DV peer"
 [[class]]
 id = "A13-REGBLOCK-IN-PORTS-ONLY-UNIT"
 file = "smc_regblock_exclusions.el"
-fact = "this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its points are excluded while uncovered."
+fact = "this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's."
 retired_by = "an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit"
 reviewer = "DE + DV peer"
 
@@ -75,78 +78,78 @@ reviewer = "DE + DV peer"
 [[class]]
 id = "T2-DFD-PORTS-ONLY"
 file = "smc_ports_only_exclusions.el"
-fact = "the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while its internal signals and every instance beneath it are excluded while uncovered."
-retired_by = "an enrolled leaf that covers the point, or design engineering withdrawing the review"
+fact = "the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded from toggle whole, and their line blocks and condition rows while uncovered."
+retired_by = "design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its line or condition points drops that point at the next regeneration"
 reviewer = "DE + DV peer"
 
 [[class]]
 id = "T3-PADRING-PORTS-ONLY"
 file = "smc_ports_only_exclusions.el"
-fact = "the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while its internal signals and every instance beneath it are excluded while uncovered."
-retired_by = "an enrolled leaf that covers the point, or design engineering withdrawing the review"
+fact = "the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded from toggle whole, and their line blocks and condition rows while uncovered."
+retired_by = "design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its line or condition points drops that point at the next regeneration"
 reviewer = "DE + DV peer"
 
 [[class]]
 id = "T4-UART-I2C-PORTS-ONLY"
 file = "smc_ports_only_exclusions.el"
-fact = "the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while its internal signals and every instance beneath it are excluded while uncovered."
-retired_by = "an enrolled leaf that covers the point, or design engineering withdrawing the review"
+fact = "the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded from toggle whole, and their line blocks and condition rows while uncovered."
+retired_by = "design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its line or condition points drops that point at the next regeneration"
 reviewer = "DE + DV peer"
 
 [[class]]
 id = "T5-FILTER-PORTS-ONLY"
 file = "smc_ports_only_exclusions.el"
-fact = "the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while its internal signals and every instance beneath it are excluded while uncovered."
-retired_by = "an enrolled leaf that covers the point, or design engineering withdrawing the review"
+fact = "the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded from toggle whole, and their line blocks and condition rows while uncovered."
+retired_by = "design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its line or condition points drops that point at the next regeneration"
 reviewer = "DE + DV peer"
 
 [[class]]
 id = "T6-TELEMETRY-PORTS-ONLY"
 file = "smc_ports_only_exclusions.el"
-fact = "the telemetry receiver wrapper is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while its internal signals and every instance beneath it are excluded while uncovered."
-retired_by = "an enrolled leaf that covers the point, or design engineering withdrawing the review"
+fact = "the telemetry receiver wrapper is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded from toggle whole, and their line blocks and condition rows while uncovered."
+retired_by = "design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its line or condition points drops that point at the next regeneration"
 reviewer = "DE + DV peer"
 
 [[class]]
 id = "T7-CPU-PORTS-ONLY"
 file = "smc_ports_only_exclusions.el"
-fact = "the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while its internal signals and every instance beneath it are excluded while uncovered."
-retired_by = "an enrolled leaf that covers the point, or design engineering withdrawing the review"
+fact = "the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded from toggle whole, and their line blocks and condition rows while uncovered."
+retired_by = "design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its line or condition points drops that point at the next regeneration"
 reviewer = "DE + DV peer"
 
 [[class]]
 id = "T8-DMA-ZEROER-PORTS-ONLY"
 file = "smc_ports_only_exclusions.el"
-fact = "the iDMA wrapper and the zeroer is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while its internal signals and every instance beneath it are excluded while uncovered."
-retired_by = "an enrolled leaf that covers the point, or design engineering withdrawing the review"
+fact = "the iDMA wrapper and the zeroer is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded from toggle whole, and their line blocks and condition rows while uncovered."
+retired_by = "design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its line or condition points drops that point at the next regeneration"
 reviewer = "DE + DV peer"
 
 [[class]]
 id = "T9-IP-INTEGRATION-PORTS-ONLY"
 file = "smc_ports_only_exclusions.el"
-fact = "the IP integration shell (memories, eFuse shim, I3C and PLL models it hosts) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while its internal signals and every instance beneath it are excluded while uncovered."
-retired_by = "an enrolled leaf that covers the point, or design engineering withdrawing the review"
+fact = "the IP integration shell (memories, eFuse shim, I3C and PLL models it hosts) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded from toggle whole, and their line blocks and condition rows while uncovered."
+retired_by = "design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its line or condition points drops that point at the next regeneration"
 reviewer = "DE + DV peer"
 
 [[class]]
 id = "T10-CDC-SYNC-PORTS-ONLY"
 file = "smc_ports_only_exclusions.el"
-fact = "the peripheral clock-domain crossings and the synchronizer cells is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while its internal signals and every instance beneath it are excluded while uncovered."
-retired_by = "an enrolled leaf that covers the point, or design engineering withdrawing the review"
+fact = "the peripheral clock-domain crossings and the synchronizer cells is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded from toggle whole, and their line blocks and condition rows while uncovered."
+retired_by = "design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its line or condition points drops that point at the next regeneration"
 reviewer = "DE + DV peer"
 
 [[class]]
 id = "T11-AVS-PORTS-ONLY"
 file = "smc_ports_only_exclusions.el"
-fact = "the AVS bus CRC units and register block is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while its internal signals and every instance beneath it are excluded while uncovered."
-retired_by = "an enrolled leaf that covers the point, or design engineering withdrawing the review"
+fact = "the AVS bus CRC units and register block is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded from toggle whole, and their line blocks and condition rows while uncovered."
+retired_by = "design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its line or condition points drops that point at the next regeneration"
 reviewer = "DE + DV peer"
 
 [[class]]
 id = "T12-FABRIC-PORTS-ONLY"
 file = "smc_ports_only_exclusions.el"
-fact = "the peripheral AXI-Lite crossbar and the clock-gate snoopers is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while its internal signals and every instance beneath it are excluded while uncovered."
-retired_by = "an enrolled leaf that covers the point, or design engineering withdrawing the review"
+fact = "the peripheral AXI-Lite crossbar and the clock-gate snoopers is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded from toggle whole, and their line blocks and condition rows while uncovered."
+retired_by = "design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its line or condition points drops that point at the next regeneration"
 reviewer = "DE + DV peer"
 
 [[class]]

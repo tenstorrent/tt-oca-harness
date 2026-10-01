@@ -315,7 +315,7 @@ import sys
 from pathlib import Path
 from typing import NamedTuple
 
-import smc_reviewed_exclusions as reviewed
+import smc_toggle_exclusions as toggles
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[6]
@@ -4342,7 +4342,7 @@ def main() -> int:
         },
         written_entries(reg_text),
     )
-    planner = reviewed.plan(args.template_dir, args.modinfo)
+    _, planner = toggles.plan(args.template_dir, args.modinfo)
     classes = planner.manifest.classes_in
     reg_text += "\n".join(planner.blocks(classes(REGBLOCK_OUT.name))[0]) + "\n"
     fsm_text += "\n".join(planner.blocks(classes(FSM_OUT.name))[0]) + "\n"

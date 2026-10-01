@@ -23,9 +23,11 @@ scope_epoch = "smc-vcs-cov-v1"
 # write from the same agent and keeps those rows graded.
 # B7 DFX-INPUTS-TIED is the bench's too: it ties the four DFX status inputs the
 # boot sequencer waits on high, so their input-low arms have no stimulus.
-# The file header and the generator's docstring state them. A12 and A13 hold
-# the register-block points design engineering reviewed, and those inside a unit
-# graded on its ports, from smc_reviewed_exclusions.toml, report-gated.
+# The file header and the generator's docstring state them. A12 holds the
+# register-block points design engineering reviewed, report-gated per bit and
+# direction, and A13 the line and condition points of a register block inside a
+# unit graded on its ports, report-gated; both come from
+# smc_reviewed_exclusions.toml, and A13's toggle points are in the toggle files.
 [[native_files]]
 tool = "vcs"
 role = "exclude"
@@ -103,15 +105,31 @@ path = "smc_disabled_feature_exclusions.el"
 apply_phase = "report"
 args = ["-elfile", "{path}"]
 
-# Units graded on their ports (T-series): the unit's own ports stay in the
-# score and the points inside it leave. T1 OPENTITAN-PORTS-ONLY takes the nets
-# of units of OpenTitan origin, whose internals are verified upstream;
-# `-cm_tgl portsonly` is a whole-run option and cannot say that per unit, so the
-# nets are excluded at report time instead. T2 to T12 take the uncovered points
-# inside the units design engineering reviewed excluding whole, which
-# smc_reviewed_exclusions.toml records. gen_smc_ports_only_exclusions.py writes
-# the file, checks each T1 unit's copyright line and is rerun from each graded
-# run; README.md lists the units.
+# Toggle rows whose fact holds for a whole signal or a fixed bit window, split
+# by scope: smc_toggle_module_exclusions.el holds the rows true of every
+# instance of a module, smc_toggle_instance_exclusions.el those true of one
+# instance. T1 OPENTITAN-PORTS-ONLY and T2 to T12 grade a unit on its ports and
+# take every net inside it. The rows come from urg's templates alone, so they
+# do not change with the run's seeds. gen_smc_toggle_exclusions.py writes
+# both files; README.md gives each class's fact and granularity.
+[[native_files]]
+tool = "vcs"
+role = "exclude"
+path = "smc_toggle_module_exclusions.el"
+apply_phase = "report"
+args = ["-elfile", "{path}"]
+
+[[native_files]]
+tool = "vcs"
+role = "exclude"
+path = "smc_toggle_instance_exclusions.el"
+apply_phase = "report"
+args = ["-elfile", "{path}"]
+
+# The line blocks and condition rows inside the ports-only units T2 to T12,
+# which smc_reviewed_exclusions.toml records, while the run leaves them
+# uncovered; their toggle points are in the two files above.
+# gen_smc_ports_only_exclusions.py writes the file from each graded run.
 [[native_files]]
 tool = "vcs"
 role = "exclude"
@@ -131,8 +149,9 @@ apply_phase = "report"
 args = ["-elfile", "{path}"]
 
 # Fields design engineering reviewed as not exercised by this bench (R1 to R9,
-# by family), recorded in smc_reviewed_exclusions.toml. Report-gated: only the
-# points the graded run leaves uncovered are written, so gen_smc_cov_exclusions.py
+# by family), recorded in smc_reviewed_exclusions.toml. Report-gated per bit
+# and direction: only the points the graded run leaves uncovered, and that no
+# toggle-file class takes, are written, so gen_smc_cov_exclusions.py
 # regenerates the file from each graded run; README.md states the classes.
 [[native_files]]
 tool = "vcs"

@@ -14,19 +14,22 @@ every instance beneath it are excluded. Each entry carries the class it belongs
 to and the reviewed file it comes from; the class carries the fact, the
 retiring condition and the reviewer.
 
-Every point is report-gated: it is written only where urg's templates of the
-merged database hold it and the run's raw report (written without exclusion
-files) marks it uncovered, so nothing a leaf covers is waived, and the output
-belongs to one graded run. A toggle is decided per bit and direction, a line
-block by its source line, an FSM state or transition by name and a condition
-row by source line and vector. A module entry is written at module scope where
+Every point of an object entry, and every line, FSM and condition point of a
+unit, is report-gated: it is written only where urg's templates of the merged
+database hold it and the run's raw report (written without exclusion files)
+marks it uncovered, so nothing a leaf covers is waived, and the output belongs
+to one graded run. A unit's toggle points are not planned here: a ports-only
+unit loses every internal net whole, which smc_toggle_exclusions.py plans, and
+an object entry leaves alone the bits that plan already takes. A toggle is
+decided per bit and direction, a line block by its source line, an FSM state
+or transition by name and a condition row by source line and vector. A module entry is written at module scope where
 the module's report section, the union of its instances, marks the point
 uncovered, and on each instance that still leaves it uncovered otherwise; urg
 takes no toggle exclusion on a parameterised MODULE section, so a toggle there
 is written on each instance of the section. Inside a unit, a PeakRDL register
-block's points go to the unit register-block class and FSM points to the unit
-FSM class the manifest names, so each lands in the file of its category. A
-point is written once, to the first entry that names it.
+block's line and condition points go to the unit register-block class and FSM
+points to the unit FSM class the manifest names, so each lands in the file of
+its category. A point is written once, to the first entry that names it.
 """
 
 from __future__ import annotations
@@ -37,6 +40,7 @@ import tomllib
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Callable
 
 HERE = Path(__file__).resolve().parent
 MANIFEST = HERE / "smc_reviewed_exclusions.toml"
@@ -467,16 +471,6 @@ def toggle_rows(signal: str, signature: str, owned: dict[Bit, set[str]]) -> list
     return out
 
 
-L1_TEXT = ("// it and that run leaves it uncovered, with the template's checksum and text.",)
-L2_TEXT = (
-    "// it and that run leaves it uncovered, with the template's checksum and text.",
-    "// This file holds the whole-instance exclusions of those files: each instance",
-    "// keeps its own ports graded, and its internal signals and every instance",
-    "// beneath it are excluded while uncovered. An excluded instance inside another",
-    "// is part of the outer one's internals.",
-)
-
-
 def glob(pattern: str) -> re.Pattern[str]:
     """A manifest pattern: `[*]` any index, a trailing `.*` any field below, `*` anything."""
     if pattern == "*":
@@ -542,8 +536,15 @@ class Manifest:
 class Planner:
     """Resolves the manifest against the templates and keeps what the report leaves uncovered."""
 
-    def __init__(self, db: Database, report: Report, manifest: Manifest) -> None:
+    def __init__(
+        self,
+        db: Database,
+        report: Report,
+        manifest: Manifest,
+        taken: Callable[[str, str, Scope, str], set[Bit]] | None = None,
+    ) -> None:
         self.db, self.report, self.manifest, self.plan = db, report, manifest, Plan()
+        self.taken = taken or (lambda kind, scope, sc, signal: set())
         for entry in manifest.objects:
             self.object(entry)
         for entry in manifest.units:
@@ -617,15 +618,19 @@ class Planner:
             dims = declared(signal, sc.signals[signal])
             have = uncovered.get(signal, {})
             owned = plan.toggles[(kind, scope)][signal]
+            taken = self.taken(kind, scope, sc, signal)
             for select, dirs in picks:
-                for b in bits_of(dims, select) or set():
+                for b in (bits_of(dims, select) or set()) - taken:
                     for d in dirs:
                         if d in have.get(b, ()) and (b, d) not in above.get(signal, {}):
                             owned.setdefault((b, d), owner)
 
     def unit(self, entry: dict, root: str) -> None:
-        """Every uncovered point inside one instance, its own ports excepted."""
-        db, plan, report = self.db, self.plan, self.report
+        """Every uncovered line, FSM and condition point inside one instance.
+
+        A unit's toggle points are whole-signal and smc_toggle_exclusions.py plans them.
+        """
+        db, report = self.db, self.report
         review = self.manifest.review
         own = (entry["class"], entry["source"])
         regblock = (review["unit_regblock_class"], entry["source"])
@@ -634,18 +639,6 @@ class Planner:
         for path in scopes:
             sc = db.instances[path]
             owner = regblock if "/regs/gen/" in sc.source else own
-            kept = report.ports("INSTANCE", path, sc, db) if path == root else set()
-            if "tgl" in sc.checksum:
-                up = db.module_scope(sc, "tgl")
-                above = plan.toggles.get(("MODULE", up), {}) if up else {}
-                for signal, bits in report.toggles("INSTANCE", path, sc, db).items():
-                    if signal in kept:
-                        continue
-                    owned = plan.toggles[("INSTANCE", path)][signal]
-                    for b, dirs in bits.items():
-                        for d in dirs:
-                            if (b, d) not in owned and (b, d) not in above.get(signal, {}):
-                                owned[(b, d)] = owner
             if "line" in sc.checksum:
                 unexecuted = report.unexecuted_lines("INSTANCE", path, sc, db)
                 for item in sc.order["line"]:
@@ -744,8 +737,3 @@ class Planner:
             sc = (db.modules if kind == "MODULE" else db.instances)[scope]
             out += ["", f"CHECKSUM: {sc.checksum[metric]}", f"{kind}: {scope}", *body]
         return out, counts
-
-
-def plan(template_dir: Path, modinfo: Path) -> Planner:
-    """The manifest's points for one graded run."""
-    return Planner(Database(template_dir), Report(modinfo), Manifest())
