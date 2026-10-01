@@ -2380,7 +2380,7 @@ attempt is the leaf's final result.
   final failure buckets (a leaf without a classified bucket gets one
   `unknown` bucket carrying its `reason`), the `expected_fail` record when
   the entry carries one, and a `rerun` command that reproduces the final
-  attempt with its seed.
+  attempt with its framework and seed.
 * `flaky_tests` lists every leaf whose final attempt is `PASS` after an
   earlier non-passing attempt: `flaky_reason` is `passed_after_retry`,
   `failing_attempts`, `first_fail_attempt`, `first_failure_reason`, and
