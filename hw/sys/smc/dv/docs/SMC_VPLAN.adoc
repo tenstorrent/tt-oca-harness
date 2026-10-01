@@ -336,14 +336,15 @@ feature rows.
 |`smc_cg_zeroer_activity_bringup_test` |LIVE Zeroer axi_clk + reg_clk activity-driven gate/ungate, single zero operation.
 |`smc_clk_multi_window_test` |LIVE hysteresis-window scaling.
 |`smc_clk_periph_slower_than_ref_test` |Register traffic into the SMC and peripheral clock domains with the peripheral clock slower than the reference clock.
-|`smc_clk_smc_equal_periph_faster_test` |Register traffic into the SMC and peripheral clock domains with the SMC clock at the same period as the reference and the peripheral clock faster than, up to twice, it.
+|`smc_clk_smc_equal_periph_faster_test` |Register traffic into the SMC and peripheral clock domains with the SMC clock at the same period as the reference and the peripheral clock between one and two times as fast as it.
 |`smc_clk_smc_equal_periph_much_faster_test` |Register traffic into the SMC and peripheral clock domains with the SMC clock at the same period as the reference and the peripheral clock more than twice as fast as it.
 |`smc_clk_smc_equal_periph_slower_test` |Register traffic into the SMC and peripheral clock domains with the SMC clock at the same period as the reference and the peripheral clock slower than it.
-|`smc_clk_smc_faster_periph_equal_test` |Register traffic into the SMC and peripheral clock domains with the SMC clock faster than, up to twice, the reference and the peripheral clock at the same period as it.
-|`smc_clk_smc_faster_periph_faster_test` |Register traffic into the SMC and peripheral clock domains with the SMC clock faster than, up to twice, the reference and the peripheral clock faster than, up to twice, it.
-|`smc_clk_smc_faster_periph_much_faster_test` |Register traffic into the SMC and peripheral clock domains with the SMC clock faster than, up to twice, the reference and the peripheral clock more than twice as fast as it.
-|`smc_clk_smc_faster_periph_slower_test` |Register traffic into the SMC and peripheral clock domains with the SMC clock faster than, up to twice, the reference and the peripheral clock slower than it.
+|`smc_clk_smc_faster_periph_equal_test` |Register traffic into the SMC and peripheral clock domains with the SMC clock between one and two times as fast as the reference and the peripheral clock at the same period as it.
+|`smc_clk_smc_faster_periph_faster_test` |Register traffic into the SMC and peripheral clock domains with the SMC clock between one and two times as fast as the reference and the peripheral clock between one and two times as fast as it.
+|`smc_clk_smc_faster_periph_much_faster_test` |Register traffic into the SMC and peripheral clock domains with the SMC clock between one and two times as fast as the reference and the peripheral clock more than twice as fast as it.
+|`smc_clk_smc_faster_periph_slower_test` |Register traffic into the SMC and peripheral clock domains with the SMC clock between one and two times as fast as the reference and the peripheral clock slower than it.
 |`smc_clk_smc_much_faster_periph_equal_test` |Register traffic into the SMC and peripheral clock domains with the SMC clock more than twice as fast as the reference and the peripheral clock at the same period as it.
+|`smc_clk_smc_much_faster_periph_faster_test` |Register traffic into the SMC and peripheral clock domains at the bench's default periods, pinned: the SMC clock more than twice the reference and the peripheral clock between one and two times it.
 |`smc_clk_smc_much_faster_periph_much_faster_test` |Register traffic into the SMC and peripheral clock domains with the SMC clock more than twice as fast as the reference and the peripheral clock more than twice as fast as it.
 |`smc_clk_smc_slower_periph_equal_test` |Register traffic into the SMC and peripheral clock domains with the SMC clock slower than the reference and the peripheral clock at the same period as it.
 |`smc_clk_smc_slower_periph_much_faster_test` |Register traffic into the SMC and peripheral clock domains with the SMC clock slower than the reference and the peripheral clock more than twice as fast as it.
@@ -3485,7 +3486,7 @@ Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below i
 
 *BFM / Model*: SEP_IN AXI driver (no external VIP); the leaf's own period measurement and edge count on the three input clocks
 
-*Objective*: SEP_IN register traffic into the SMC and peripheral clock domains completes with the expected words while the SMC clock slower than the reference clock and the peripheral clock slower than it.
+*Objective*: SEP_IN register traffic into the SMC and peripheral clock domains completes with the expected words while the SMC clock runs slower than the reference clock and the peripheral clock runs slower than it.
 
 *Test Coverage*:
 
@@ -3516,7 +3517,7 @@ Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below i
 
 *BFM / Model*: SEP_IN AXI driver (no external VIP); the leaf's own period measurement and edge count on the three input clocks
 
-*Objective*: SEP_IN register traffic into the SMC and peripheral clock domains completes with the expected words while the SMC clock slower than the reference clock and the peripheral clock at the same period as it.
+*Objective*: SEP_IN register traffic into the SMC and peripheral clock domains completes with the expected words while the SMC clock runs slower than the reference clock and the peripheral clock runs at the same period as it.
 
 *Test Coverage*:
 
@@ -3547,7 +3548,7 @@ Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below i
 
 *BFM / Model*: SEP_IN AXI driver (no external VIP); the leaf's own period measurement and edge count on the three input clocks
 
-*Objective*: SEP_IN register traffic into the SMC and peripheral clock domains completes with the expected words while the SMC clock slower than the reference clock and the peripheral clock more than twice as fast as it.
+*Objective*: SEP_IN register traffic into the SMC and peripheral clock domains completes with the expected words while the SMC clock runs slower than the reference clock and the peripheral clock runs more than twice as fast as it.
 
 *Test Coverage*:
 
@@ -3578,7 +3579,7 @@ Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below i
 
 *BFM / Model*: SEP_IN AXI driver (no external VIP); the leaf's own period measurement and edge count on the three input clocks
 
-*Objective*: SEP_IN register traffic into the SMC and peripheral clock domains completes with the expected words while the SMC clock at the same period as the reference clock and the peripheral clock slower than it.
+*Objective*: SEP_IN register traffic into the SMC and peripheral clock domains completes with the expected words while the SMC clock runs at the same period as the reference clock and the peripheral clock runs slower than it.
 
 *Test Coverage*:
 
@@ -3609,7 +3610,7 @@ Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below i
 
 *BFM / Model*: SEP_IN AXI driver (no external VIP); the leaf's own period measurement and edge count on the three input clocks
 
-*Objective*: SEP_IN register traffic into the SMC and peripheral clock domains completes with the expected words while the SMC clock at the same period as the reference clock and the peripheral clock faster than, up to twice, it.
+*Objective*: SEP_IN register traffic into the SMC and peripheral clock domains completes with the expected words while the SMC clock runs at the same period as the reference clock and the peripheral clock runs between one and two times as fast as it.
 
 *Test Coverage*:
 
@@ -3640,7 +3641,7 @@ Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below i
 
 *BFM / Model*: SEP_IN AXI driver (no external VIP); the leaf's own period measurement and edge count on the three input clocks
 
-*Objective*: SEP_IN register traffic into the SMC and peripheral clock domains completes with the expected words while the SMC clock at the same period as the reference clock and the peripheral clock more than twice as fast as it.
+*Objective*: SEP_IN register traffic into the SMC and peripheral clock domains completes with the expected words while the SMC clock runs at the same period as the reference clock and the peripheral clock runs more than twice as fast as it.
 
 *Test Coverage*:
 
@@ -3671,7 +3672,7 @@ Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below i
 
 *BFM / Model*: SEP_IN AXI driver (no external VIP); the leaf's own period measurement and edge count on the three input clocks
 
-*Objective*: SEP_IN register traffic into the SMC and peripheral clock domains completes with the expected words while the SMC clock faster than, up to twice, the reference clock and the peripheral clock slower than it.
+*Objective*: SEP_IN register traffic into the SMC and peripheral clock domains completes with the expected words while the SMC clock runs between one and two times as fast as the reference clock and the peripheral clock runs slower than it.
 
 *Test Coverage*:
 
@@ -3702,7 +3703,7 @@ Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below i
 
 *BFM / Model*: SEP_IN AXI driver (no external VIP); the leaf's own period measurement and edge count on the three input clocks
 
-*Objective*: SEP_IN register traffic into the SMC and peripheral clock domains completes with the expected words while the SMC clock faster than, up to twice, the reference clock and the peripheral clock at the same period as it.
+*Objective*: SEP_IN register traffic into the SMC and peripheral clock domains completes with the expected words while the SMC clock runs between one and two times as fast as the reference clock and the peripheral clock runs at the same period as it.
 
 *Test Coverage*:
 
@@ -3733,7 +3734,7 @@ Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below i
 
 *BFM / Model*: SEP_IN AXI driver (no external VIP); the leaf's own period measurement and edge count on the three input clocks
 
-*Objective*: SEP_IN register traffic into the SMC and peripheral clock domains completes with the expected words while the SMC clock faster than, up to twice, the reference clock and the peripheral clock faster than, up to twice, it.
+*Objective*: SEP_IN register traffic into the SMC and peripheral clock domains completes with the expected words while the SMC clock runs between one and two times as fast as the reference clock and the peripheral clock runs between one and two times as fast as it.
 
 *Test Coverage*:
 
@@ -3764,7 +3765,7 @@ Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below i
 
 *BFM / Model*: SEP_IN AXI driver (no external VIP); the leaf's own period measurement and edge count on the three input clocks
 
-*Objective*: SEP_IN register traffic into the SMC and peripheral clock domains completes with the expected words while the SMC clock faster than, up to twice, the reference clock and the peripheral clock more than twice as fast as it.
+*Objective*: SEP_IN register traffic into the SMC and peripheral clock domains completes with the expected words while the SMC clock runs between one and two times as fast as the reference clock and the peripheral clock runs more than twice as fast as it.
 
 *Test Coverage*:
 
@@ -3795,7 +3796,7 @@ Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below i
 
 *BFM / Model*: SEP_IN AXI driver (no external VIP); the leaf's own period measurement and edge count on the three input clocks
 
-*Objective*: SEP_IN register traffic into the SMC and peripheral clock domains completes with the expected words while the SMC clock more than twice as fast as the reference clock and the peripheral clock at the same period as it.
+*Objective*: SEP_IN register traffic into the SMC and peripheral clock domains completes with the expected words while the SMC clock runs more than twice as fast as the reference clock and the peripheral clock runs at the same period as it.
 
 *Test Coverage*:
 
@@ -3826,12 +3827,43 @@ Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below i
 
 *BFM / Model*: SEP_IN AXI driver (no external VIP); the leaf's own period measurement and edge count on the three input clocks
 
-*Objective*: SEP_IN register traffic into the SMC and peripheral clock domains completes with the expected words while the SMC clock more than twice as fast as the reference clock and the peripheral clock more than twice as fast as it.
+*Objective*: SEP_IN register traffic into the SMC and peripheral clock domains completes with the expected words while the SMC clock runs more than twice as fast as the reference clock and the peripheral clock runs more than twice as fast as it.
 
 *Test Coverage*:
 
 * `clk_rst.adoc` constrains one input clock: `clk_periph_i` runs at 100 MHz or faster. It states no frequency for `clk_ref_i` and no relation between the input clocks, so every ratio between them is legal. The bench drives the `pll_wrap` oscillators at ref / smc / periph 10 / 1.25 / 5 ns by default, so this relation never runs otherwise.
 * The leaf pins ref / smc / periph to 10 / 1.25 / 4 ns after the base test resolves its periods, measures each clock's period over 64 of its own rising edges, and counts the SMC and peripheral rising edges together across 1024 reference edges, one `smc_clk_fcov` ratio window, before any traffic. Each period must equal its pinned value and each count must be within one edge of what the periods give, so the run is known to have the relation it is named for.
+* Register traffic crosses into both domains: the generated resets of `GLOBAL_BASE`, core 0 watchdog `CMP`, `AVS_CFG_0` and every UART `LSR`, then distinct patterns written to every UART `SCR` and every I2C `TARGET_ID` before any is read back, each restored and read back.
+
+*Test Procedure*:
+
+Drive `smc_clk_ratio_test_seq` on the SEP_IN AXI sequencer. Each checker below is a named compare the DUT or the configuration can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CLK-RATIO-PERIODS` |Each input clock measured its pinned period, and the SMC and peripheral edge counts across 1024 reference edges are within one of what the periods give. A configuration check: it fails on a bench that did not apply the pinned periods, not on the DUT
+|`CHK-CLK-RATIO-CSR` |Every reset read returned its generated value and every co-resident pattern read back exactly, with the scoreboard booking at least `EXPECTED_VALUE_CHECKS` exact compares and the leaf issuing exactly `EXPECTED_ACCESSES` accesses
+|===
+
+*Pass Criteria*: both checkers hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
+'''''
+
+[[sec-319-smc_clk_smc_much_faster_periph_faster_test]]
+===== 319 `smc_clk_smc_much_faster_periph_faster_test`
+
+*Source Module*: `smc_clk_smc_much_faster_periph_faster_test`
+
+*BFM / Model*: SEP_IN AXI driver (no external VIP); the leaf's own period measurement and edge count on the three input clocks
+
+*Objective*: SEP_IN register traffic into the SMC and peripheral clock domains completes with the expected words while the SMC clock runs more than twice as fast as the reference clock and the peripheral clock runs between one and two times as fast as it, the bench's default relation.
+
+*Test Coverage*:
+
+* `clk_rst.adoc` constrains one input clock: `clk_periph_i` runs at 100 MHz or faster. It states no frequency for `clk_ref_i` and no relation between the input clocks, so every ratio between them is legal. These are the periods the bench drives the `pll_wrap` oscillators at by default; the leaf pins them so the ratio leaves give every cell of the `smc_clk_fcov` ratio cross a driver of their own in the `clock` group, where the other leaves end before a ratio window closes.
+* The leaf pins ref / smc / periph to 10 / 1.25 / 5 ns after the base test resolves its periods, measures each clock's period over 64 of its own rising edges, and counts the SMC and peripheral rising edges together across 1024 reference edges, one `smc_clk_fcov` ratio window, before any traffic. Each period must equal its pinned value and each count must be within one edge of what the periods give, so the run is known to have the relation it is named for.
 * Register traffic crosses into both domains: the generated resets of `GLOBAL_BASE`, core 0 watchdog `CMP`, `AVS_CFG_0` and every UART `LSR`, then distinct patterns written to every UART `SCR` and every I2C `TARGET_ID` before any is read back, each restored and read back.
 
 *Test Procedure*:

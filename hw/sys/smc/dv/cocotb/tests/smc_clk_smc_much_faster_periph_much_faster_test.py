@@ -1,6 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP_IN register traffic with the SMC clock more than twice as fast as the reference and the peripheral clock more than twice as fast as it.
+"""SEP_IN register traffic at ref / smc / periph 10 / 1.25 / 4 ns.
+
+The SMC clock runs more than twice as fast as the reference and the peripheral
+clock runs more than twice as fast as it.
 
 `clk_rst.adoc` constrains `clk_periph_i` to 100 MHz or faster and states no
 other relation between the three input clocks, so this is a legal
