@@ -7,10 +7,8 @@
 [[key-manager-km-key-manager-km]]
 
 The Key Manager provides isolated key storage, random key generation, explicit
-revocation, and delivery to the cryptographic accelerators. UID-derived key
-hierarchies and automatic configuration-bound revocation are design targets,
-not implemented firmware services. The following sections
-describe its hardware architecture and firmware interface.
+revocation, and delivery to the cryptographic accelerators. The following
+sections describe its hardware architecture and firmware interface.
 
 The immutable ROM firmware first initializes the Key Manager, then remains
 active to process SEP mailbox commands and service interrupts. It is both
@@ -21,10 +19,12 @@ implemented services, command protocol and handover rules.
 
 ifdef::backend-html5[]
 include::partial$key_manager/doc/architecture.adoc[leveloffset=+1]
+include::partial$key_manager/doc/future-architecture.adoc[leveloffset=+1]
 include::partial$key_manager/doc/firmware.adoc[leveloffset=+1]
 endif::backend-html5[]
 ifdef::backend-pdf[]
 include::architecture.adoc[leveloffset=+1]
+include::future-architecture.adoc[leveloffset=+1]
 include::firmware.adoc[leveloffset=+1]
 endif::backend-pdf[]
 
