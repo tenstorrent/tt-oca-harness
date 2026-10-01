@@ -192,9 +192,10 @@ TDI → SMC slice → SEP slice → external slice → reset_hold → TDO
 The SMU enables the SMC slice unconditionally, the SEP slice when `SEP=1`
 (otherwise that slice has width 0 and is omitted), and the external slice when
 `JTAG_IC_RESET_ENABLE` is set. Each slice is a packed struct with `.ovrd` and
-`.val` halves of equal width; `jtag_ptap` sizes the slice from `$bits(type)/2`
-and interleaves the halves into the `{reset_enable, reset_control}` pair IEEE
-§17 requires per port. Declaration order within each half is the TDI-to-TDO
+`.val` halves of equal width; `jtag_ptap` sizes the slice from `$bits(type)/2`.
+Each port has the reset-enable and reset-control pair IEEE §17 requires, with
+`reset_enable` nearer TDO. `.val` carries `reset_control`, and `.ovrd` carries
+the inverse of `reset_enable`. Declaration order within each half is the TDI-to-TDO
 scan order: the first field is nearest TDI.
 
 [cols="<18%,<12%,<28%,<42%",options="header"]
