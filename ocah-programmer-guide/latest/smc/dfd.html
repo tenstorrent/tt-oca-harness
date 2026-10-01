@@ -601,8 +601,8 @@ read/write state when programming or testing them, not read-only status.</p>
 <tr><td>0x3004</td><td><a href="#smc_cla-Trdstimpl">Trdstimpl</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x3008</td><td><a href="#smc_cla-Trdstinstfeatures">Trdstinstfeatures</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x31A0</td><td><a href="#smc_cla-CDbgDebugTraceCfg">CDbgDebugTraceCfg</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x3FF8</td><td><a href="#smc_cla-dst_0_.ScratchLo">dst[0].ScratchLo</a></td><td>RW</td><td>Scratch register (low) for DV and potential ECO usage</td></tr>
-<tr><td>0x3FFC</td><td><a href="#smc_cla-dst_0_.ScratchHi">dst[0].ScratchHi</a></td><td>RW</td><td>Scratch register (high) for DV and potential ECO usage</td></tr>
+<tr><td>0x3FF8</td><td><a href="#smc_cla-dst.ScratchLo">dst.ScratchLo</a></td><td>RW</td><td>Scratch register (low) for DV and potential ECO usage</td></tr>
+<tr><td>0x3FFC</td><td><a href="#smc_cla-dst.ScratchHi">dst.ScratchHi</a></td><td>RW</td><td>Scratch register (high) for DV and potential ECO usage</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
 <span id="Trdstramcontrol"></span><h3 id="smc_cla-Trdstramcontrol" data-register-alias="Trdstramcontrol">Trdstramcontrol</h3>
@@ -1663,12 +1663,12 @@ read/write state when programming or testing them, not read-only status.</p>
 <tr><td>11:4</td><td>TraceFrameFillByte</td><td>RW</td><td>0x81</td><td>Use &quot;Filler Packet&quot; to align a stream of trace packets within a frame boundary.</td></tr>
 <tr><td>3:0</td><td>TraceSourceId</td><td>RW</td><td>0x0</td><td>Trace Source ID</td></tr>
 </table>
-<span id="dst_0_.ScratchLo"></span><h3 id="smc_cla-dst_0_.ScratchLo" data-register-alias="dst_0_.ScratchLo">dst[0].ScratchLo</h3>
+<span id="dst.ScratchLo"></span><h3 id="smc_cla-dst.ScratchLo" data-register-alias="dst.ScratchLo">dst.ScratchLo</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>Data</td><td>RW</td><td>0x0</td><td>-</td></tr>
 </table>
-<span id="dst_0_.ScratchHi"></span><h3 id="smc_cla-dst_0_.ScratchHi" data-register-alias="dst_0_.ScratchHi">dst[0].ScratchHi</h3>
+<span id="dst.ScratchHi"></span><h3 id="smc_cla-dst.ScratchHi" data-register-alias="dst.ScratchHi">dst.ScratchHi</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>Data</td><td>RW</td><td>0x0</td><td>-</td></tr>

@@ -9,27 +9,27 @@
       "tool": "vcs"
     },
     {
-      "coverage_total_percent": 89.36,
+      "coverage_total_percent": 89.09,
       "flow": "dtp",
       "framework": "cocotb",
-      "pass_rate": 96.73,
-      "tests_total": 153,
+      "pass_rate": 97.4,
+      "tests_total": 154,
       "tool": "vcs"
     },
     {
-      "coverage_total_percent": 89.46,
+      "coverage_total_percent": 88.92,
       "flow": "dtp",
       "framework": "uvm",
-      "pass_rate": 97.39,
-      "tests_total": 153,
+      "pass_rate": 98.05,
+      "tests_total": 154,
       "tool": "vcs"
     },
     {
-      "coverage_total_percent": 90.19,
+      "coverage_total_percent": 89.62,
       "flow": "dtp",
       "framework": "",
-      "pass_rate": 97.06,
-      "tests_total": 306,
+      "pass_rate": 97.73,
+      "tests_total": 308,
       "tool": "vcs"
     },
     {
@@ -57,7 +57,7 @@
       "tool": "vcs"
     }
   ],
-  "generated_at": "2026-09-30T19:50:06+00:00",
+  "generated_at": "2026-10-01T06:49:41+00:00",
   "results": [
     {
       "coverage": {
@@ -78,12 +78,12 @@
       "coverage": {
         "effective_metrics": {
           "assertion": 95.53,
-          "branch": 86.23,
-          "condition": 83.54,
-          "fsm_state": 73.37,
+          "branch": 86.14,
+          "condition": 83.69,
+          "fsm_state": 71.19,
           "functional": 100.0,
-          "line": 94.1,
-          "toggle": 92.78,
+          "line": 94.0,
+          "toggle": 93.1,
           "user": 96.4361
         }
       },
@@ -95,12 +95,12 @@
       "coverage": {
         "effective_metrics": {
           "assertion": 94.5,
-          "branch": 86.88,
-          "condition": 84.0,
-          "fsm_state": 75.05,
+          "branch": 86.83,
+          "condition": 83.91,
+          "fsm_state": 71.68,
           "functional": 98.43,
-          "line": 94.77,
-          "toggle": 92.58,
+          "line": 94.69,
+          "toggle": 92.4,
           "user": 94.5493
         }
       },
@@ -112,12 +112,12 @@
       "coverage": {
         "effective_metrics": {
           "assertion": 95.53,
-          "branch": 87.21,
-          "condition": 84.91,
-          "fsm_state": 75.25,
+          "branch": 87.13,
+          "condition": 84.75,
+          "fsm_state": 71.78,
           "functional": 100.0,
-          "line": 94.9,
-          "toggle": 93.51,
+          "line": 94.81,
+          "toggle": 93.36,
           "user": 96.4361
         }
       },

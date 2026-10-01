@@ -838,110 +838,68 @@ composed register banks. Offsets are relative to each wrapper&#8217;s base addre
 <p>Wrapper address map instantiating the per-UART log-engine blocks.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
-<li><strong>uart_log_engine_wrap[0].log_engine.LOG_CTRL[16]</strong>: 16 registers, base 0x240, stride 0x4</li>
-<li><strong>uart_log_engine_wrap[1].log_engine.LOG_CTRL[16]</strong>: 16 registers, base 0x640, stride 0x4</li>
-<li><strong>uart_log_engine_wrap[2].log_engine.LOG_CTRL[16]</strong>: 16 registers, base 0xA40, stride 0x4</li>
-<li><strong>uart_log_engine_wrap[3].log_engine.LOG_CTRL[16]</strong>: 16 registers, base 0xE40, stride 0x4</li>
+<li><strong>uart_log_engine_wrap[4].uart_log_engine_ctrl.CTRL</strong>: 4 registers, base 0x0, stride 0x400</li>
+<li><strong>uart_log_engine_wrap[4].uart.RBR</strong>: 4 registers, base 0x100, stride 0x400</li>
+<li><strong>uart_log_engine_wrap[4].uart.IER</strong>: 4 registers, base 0x104, stride 0x400</li>
+<li><strong>uart_log_engine_wrap[4].uart.IIR</strong>: 4 registers, base 0x108, stride 0x400</li>
+<li><strong>uart_log_engine_wrap[4].uart.LCR</strong>: 4 registers, base 0x10C, stride 0x400</li>
+<li><strong>uart_log_engine_wrap[4].uart.MCR</strong>: 4 registers, base 0x110, stride 0x400</li>
+<li><strong>uart_log_engine_wrap[4].uart.LSR</strong>: 4 registers, base 0x114, stride 0x400</li>
+<li><strong>uart_log_engine_wrap[4].uart.MSR</strong>: 4 registers, base 0x118, stride 0x400</li>
+<li><strong>uart_log_engine_wrap[4].uart.SCR</strong>: 4 registers, base 0x11C, stride 0x400</li>
+<li><strong>uart_log_engine_wrap[4].uart.ECR</strong>: 4 registers, base 0x120, stride 0x400</li>
+<li><strong>uart_log_engine_wrap[4].uart.ITR</strong>: 4 registers, base 0x124, stride 0x400</li>
+<li><strong>uart_log_engine_wrap[4].log_engine.CTRL</strong>: 4 registers, base 0x200, stride 0x400</li>
+<li><strong>uart_log_engine_wrap[4].log_engine.LOG_REGION_SIZE</strong>: 4 registers, base 0x204, stride 0x400</li>
+<li><strong>uart_log_engine_wrap[4].log_engine.LOG_REGION_ADDR</strong>: 4 registers, base 0x208, stride 0x400</li>
+<li><strong>uart_log_engine_wrap[4].log_engine.LOG_WRITE_ADDR</strong>: 4 registers, base 0x210, stride 0x400</li>
+<li><strong>uart_log_engine_wrap[4].log_engine.INTR_STATUS</strong>: 4 registers, base 0x214, stride 0x400</li>
+<li><strong>uart_log_engine_wrap[4].log_engine.INTR_ENABLE</strong>: 4 registers, base 0x218, stride 0x400</li>
+<li><strong>uart_log_engine_wrap[4].log_engine.INTR_TEST</strong>: 4 registers, base 0x21C, stride 0x400</li>
+<li><strong>uart_log_engine_wrap[4].log_engine.LOG_CTRL[16]</strong>: 64 registers, base 0x240 (uart_log_engine_wrap x4 stride 0x400, LOG_CTRL x16 stride 0x4)</li>
 </ul>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-2">
 <caption class="title"><a href="#trm-table-2">Table 2</a>. UART Wrapper Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0</td><td><a href="#uart_wrap-uart_log_engine_wrap_0_.uart_log_engine_ctrl.CTRL">uart_log_engine_wrap[0].uart_log_engine_ctrl.CTRL</a></td><td>RW</td><td>Control Register</td></tr>
-<tr><td>0x100</td><td><a href="#uart_wrap-uart_log_engine_wrap_0_.uart.RBR">uart_log_engine_wrap[0].uart.RBR</a></td><td>R</td><td>Receiver Buffer Register</td></tr>
-<tr><td>0x104</td><td><a href="#uart_wrap-uart_log_engine_wrap_0_.uart.IER">uart_log_engine_wrap[0].uart.IER</a></td><td>RW</td><td>Interrupt Enable Register</td></tr>
-<tr><td>0x108</td><td><a href="#uart_wrap-uart_log_engine_wrap_0_.uart.IIR">uart_log_engine_wrap[0].uart.IIR</a></td><td>R</td><td>Interrupt Identification Register</td></tr>
-<tr><td>0x10C</td><td><a href="#uart_wrap-uart_log_engine_wrap_0_.uart.LCR">uart_log_engine_wrap[0].uart.LCR</a></td><td>RW</td><td>Line Control Register</td></tr>
-<tr><td>0x110</td><td><a href="#uart_wrap-uart_log_engine_wrap_0_.uart.MCR">uart_log_engine_wrap[0].uart.MCR</a></td><td>RW</td><td>Modem Control Register</td></tr>
-<tr><td>0x114</td><td><a href="#uart_wrap-uart_log_engine_wrap_0_.uart.LSR">uart_log_engine_wrap[0].uart.LSR</a></td><td>R</td><td>Line Status Register</td></tr>
-<tr><td>0x118</td><td><a href="#uart_wrap-uart_log_engine_wrap_0_.uart.MSR">uart_log_engine_wrap[0].uart.MSR</a></td><td>R</td><td>Modem Status Register</td></tr>
-<tr><td>0x11C</td><td><a href="#uart_wrap-uart_log_engine_wrap_0_.uart.SCR">uart_log_engine_wrap[0].uart.SCR</a></td><td>RW</td><td>Scratch Register</td></tr>
-<tr><td>0x120</td><td><a href="#uart_wrap-uart_log_engine_wrap_0_.uart.ECR">uart_log_engine_wrap[0].uart.ECR</a></td><td>RW</td><td>Extended Control Register</td></tr>
-<tr><td>0x124</td><td><a href="#uart_wrap-uart_log_engine_wrap_0_.uart.ITR">uart_log_engine_wrap[0].uart.ITR</a></td><td>RW</td><td>Interrupt Test Register</td></tr>
-<tr><td>0x200</td><td><a href="#uart_wrap-uart_log_engine_wrap_0_.log_engine.CTRL">uart_log_engine_wrap[0].log_engine.CTRL</a></td><td>RW</td><td>Control Register</td></tr>
-<tr><td>0x204</td><td><a href="#uart_wrap-uart_log_engine_wrap_0_.log_engine.LOG_REGION_SIZE">uart_log_engine_wrap[0].log_engine.LOG_REGION_SIZE</a></td><td>RW</td><td>Log Region Size Register</td></tr>
-<tr><td>0x208</td><td><a href="#uart_wrap-uart_log_engine_wrap_0_.log_engine.LOG_REGION_ADDR">uart_log_engine_wrap[0].log_engine.LOG_REGION_ADDR</a></td><td>RW</td><td>Log Region Address Register</td></tr>
-<tr><td>0x210</td><td><a href="#uart_wrap-uart_log_engine_wrap_0_.log_engine.LOG_WRITE_ADDR">uart_log_engine_wrap[0].log_engine.LOG_WRITE_ADDR</a></td><td>RW</td><td>Log Write Address Register</td></tr>
-<tr><td>0x214</td><td><a href="#uart_wrap-uart_log_engine_wrap_0_.log_engine.INTR_STATUS">uart_log_engine_wrap[0].log_engine.INTR_STATUS</a></td><td>RW</td><td>Interrupt Status Register</td></tr>
-<tr><td>0x218</td><td><a href="#uart_wrap-uart_log_engine_wrap_0_.log_engine.INTR_ENABLE">uart_log_engine_wrap[0].log_engine.INTR_ENABLE</a></td><td>RW</td><td>Interrupt Enable Register</td></tr>
-<tr><td>0x21C</td><td><a href="#uart_wrap-uart_log_engine_wrap_0_.log_engine.INTR_TEST">uart_log_engine_wrap[0].log_engine.INTR_TEST</a></td><td>W</td><td>Interrupt Test Register</td></tr>
-<tr><td>0x240 - 0x27C</td><td><a href="#uart_wrap-uart_log_engine_wrap_0_.log_engine.LOG_CTRL_16_">uart_log_engine_wrap[0].log_engine.LOG_CTRL[16]</a></td><td>RW</td><td>Log Control Register</td></tr>
-<tr><td>0x400</td><td><a href="#uart_wrap-uart_log_engine_wrap_1_.uart_log_engine_ctrl.CTRL">uart_log_engine_wrap[1].uart_log_engine_ctrl.CTRL</a></td><td>RW</td><td>Control Register</td></tr>
-<tr><td>0x500</td><td><a href="#uart_wrap-uart_log_engine_wrap_1_.uart.RBR">uart_log_engine_wrap[1].uart.RBR</a></td><td>R</td><td>Receiver Buffer Register</td></tr>
-<tr><td>0x504</td><td><a href="#uart_wrap-uart_log_engine_wrap_1_.uart.IER">uart_log_engine_wrap[1].uart.IER</a></td><td>RW</td><td>Interrupt Enable Register</td></tr>
-<tr><td>0x508</td><td><a href="#uart_wrap-uart_log_engine_wrap_1_.uart.IIR">uart_log_engine_wrap[1].uart.IIR</a></td><td>R</td><td>Interrupt Identification Register</td></tr>
-<tr><td>0x50C</td><td><a href="#uart_wrap-uart_log_engine_wrap_1_.uart.LCR">uart_log_engine_wrap[1].uart.LCR</a></td><td>RW</td><td>Line Control Register</td></tr>
-<tr><td>0x510</td><td><a href="#uart_wrap-uart_log_engine_wrap_1_.uart.MCR">uart_log_engine_wrap[1].uart.MCR</a></td><td>RW</td><td>Modem Control Register</td></tr>
-<tr><td>0x514</td><td><a href="#uart_wrap-uart_log_engine_wrap_1_.uart.LSR">uart_log_engine_wrap[1].uart.LSR</a></td><td>R</td><td>Line Status Register</td></tr>
-<tr><td>0x518</td><td><a href="#uart_wrap-uart_log_engine_wrap_1_.uart.MSR">uart_log_engine_wrap[1].uart.MSR</a></td><td>R</td><td>Modem Status Register</td></tr>
-<tr><td>0x51C</td><td><a href="#uart_wrap-uart_log_engine_wrap_1_.uart.SCR">uart_log_engine_wrap[1].uart.SCR</a></td><td>RW</td><td>Scratch Register</td></tr>
-<tr><td>0x520</td><td><a href="#uart_wrap-uart_log_engine_wrap_1_.uart.ECR">uart_log_engine_wrap[1].uart.ECR</a></td><td>RW</td><td>Extended Control Register</td></tr>
-<tr><td>0x524</td><td><a href="#uart_wrap-uart_log_engine_wrap_1_.uart.ITR">uart_log_engine_wrap[1].uart.ITR</a></td><td>RW</td><td>Interrupt Test Register</td></tr>
-<tr><td>0x600</td><td><a href="#uart_wrap-uart_log_engine_wrap_1_.log_engine.CTRL">uart_log_engine_wrap[1].log_engine.CTRL</a></td><td>RW</td><td>Control Register</td></tr>
-<tr><td>0x604</td><td><a href="#uart_wrap-uart_log_engine_wrap_1_.log_engine.LOG_REGION_SIZE">uart_log_engine_wrap[1].log_engine.LOG_REGION_SIZE</a></td><td>RW</td><td>Log Region Size Register</td></tr>
-<tr><td>0x608</td><td><a href="#uart_wrap-uart_log_engine_wrap_1_.log_engine.LOG_REGION_ADDR">uart_log_engine_wrap[1].log_engine.LOG_REGION_ADDR</a></td><td>RW</td><td>Log Region Address Register</td></tr>
-<tr><td>0x610</td><td><a href="#uart_wrap-uart_log_engine_wrap_1_.log_engine.LOG_WRITE_ADDR">uart_log_engine_wrap[1].log_engine.LOG_WRITE_ADDR</a></td><td>RW</td><td>Log Write Address Register</td></tr>
-<tr><td>0x614</td><td><a href="#uart_wrap-uart_log_engine_wrap_1_.log_engine.INTR_STATUS">uart_log_engine_wrap[1].log_engine.INTR_STATUS</a></td><td>RW</td><td>Interrupt Status Register</td></tr>
-<tr><td>0x618</td><td><a href="#uart_wrap-uart_log_engine_wrap_1_.log_engine.INTR_ENABLE">uart_log_engine_wrap[1].log_engine.INTR_ENABLE</a></td><td>RW</td><td>Interrupt Enable Register</td></tr>
-<tr><td>0x61C</td><td><a href="#uart_wrap-uart_log_engine_wrap_1_.log_engine.INTR_TEST">uart_log_engine_wrap[1].log_engine.INTR_TEST</a></td><td>W</td><td>Interrupt Test Register</td></tr>
-<tr><td>0x640 - 0x67C</td><td><a href="#uart_wrap-uart_log_engine_wrap_1_.log_engine.LOG_CTRL_16_">uart_log_engine_wrap[1].log_engine.LOG_CTRL[16]</a></td><td>RW</td><td>Log Control Register</td></tr>
-<tr><td>0x800</td><td><a href="#uart_wrap-uart_log_engine_wrap_2_.uart_log_engine_ctrl.CTRL">uart_log_engine_wrap[2].uart_log_engine_ctrl.CTRL</a></td><td>RW</td><td>Control Register</td></tr>
-<tr><td>0x900</td><td><a href="#uart_wrap-uart_log_engine_wrap_2_.uart.RBR">uart_log_engine_wrap[2].uart.RBR</a></td><td>R</td><td>Receiver Buffer Register</td></tr>
-<tr><td>0x904</td><td><a href="#uart_wrap-uart_log_engine_wrap_2_.uart.IER">uart_log_engine_wrap[2].uart.IER</a></td><td>RW</td><td>Interrupt Enable Register</td></tr>
-<tr><td>0x908</td><td><a href="#uart_wrap-uart_log_engine_wrap_2_.uart.IIR">uart_log_engine_wrap[2].uart.IIR</a></td><td>R</td><td>Interrupt Identification Register</td></tr>
-<tr><td>0x90C</td><td><a href="#uart_wrap-uart_log_engine_wrap_2_.uart.LCR">uart_log_engine_wrap[2].uart.LCR</a></td><td>RW</td><td>Line Control Register</td></tr>
-<tr><td>0x910</td><td><a href="#uart_wrap-uart_log_engine_wrap_2_.uart.MCR">uart_log_engine_wrap[2].uart.MCR</a></td><td>RW</td><td>Modem Control Register</td></tr>
-<tr><td>0x914</td><td><a href="#uart_wrap-uart_log_engine_wrap_2_.uart.LSR">uart_log_engine_wrap[2].uart.LSR</a></td><td>R</td><td>Line Status Register</td></tr>
-<tr><td>0x918</td><td><a href="#uart_wrap-uart_log_engine_wrap_2_.uart.MSR">uart_log_engine_wrap[2].uart.MSR</a></td><td>R</td><td>Modem Status Register</td></tr>
-<tr><td>0x91C</td><td><a href="#uart_wrap-uart_log_engine_wrap_2_.uart.SCR">uart_log_engine_wrap[2].uart.SCR</a></td><td>RW</td><td>Scratch Register</td></tr>
-<tr><td>0x920</td><td><a href="#uart_wrap-uart_log_engine_wrap_2_.uart.ECR">uart_log_engine_wrap[2].uart.ECR</a></td><td>RW</td><td>Extended Control Register</td></tr>
-<tr><td>0x924</td><td><a href="#uart_wrap-uart_log_engine_wrap_2_.uart.ITR">uart_log_engine_wrap[2].uart.ITR</a></td><td>RW</td><td>Interrupt Test Register</td></tr>
-<tr><td>0xA00</td><td><a href="#uart_wrap-uart_log_engine_wrap_2_.log_engine.CTRL">uart_log_engine_wrap[2].log_engine.CTRL</a></td><td>RW</td><td>Control Register</td></tr>
-<tr><td>0xA04</td><td><a href="#uart_wrap-uart_log_engine_wrap_2_.log_engine.LOG_REGION_SIZE">uart_log_engine_wrap[2].log_engine.LOG_REGION_SIZE</a></td><td>RW</td><td>Log Region Size Register</td></tr>
-<tr><td>0xA08</td><td><a href="#uart_wrap-uart_log_engine_wrap_2_.log_engine.LOG_REGION_ADDR">uart_log_engine_wrap[2].log_engine.LOG_REGION_ADDR</a></td><td>RW</td><td>Log Region Address Register</td></tr>
-<tr><td>0xA10</td><td><a href="#uart_wrap-uart_log_engine_wrap_2_.log_engine.LOG_WRITE_ADDR">uart_log_engine_wrap[2].log_engine.LOG_WRITE_ADDR</a></td><td>RW</td><td>Log Write Address Register</td></tr>
-<tr><td>0xA14</td><td><a href="#uart_wrap-uart_log_engine_wrap_2_.log_engine.INTR_STATUS">uart_log_engine_wrap[2].log_engine.INTR_STATUS</a></td><td>RW</td><td>Interrupt Status Register</td></tr>
-<tr><td>0xA18</td><td><a href="#uart_wrap-uart_log_engine_wrap_2_.log_engine.INTR_ENABLE">uart_log_engine_wrap[2].log_engine.INTR_ENABLE</a></td><td>RW</td><td>Interrupt Enable Register</td></tr>
-<tr><td>0xA1C</td><td><a href="#uart_wrap-uart_log_engine_wrap_2_.log_engine.INTR_TEST">uart_log_engine_wrap[2].log_engine.INTR_TEST</a></td><td>W</td><td>Interrupt Test Register</td></tr>
-<tr><td>0xA40 - 0xA7C</td><td><a href="#uart_wrap-uart_log_engine_wrap_2_.log_engine.LOG_CTRL_16_">uart_log_engine_wrap[2].log_engine.LOG_CTRL[16]</a></td><td>RW</td><td>Log Control Register</td></tr>
-<tr><td>0xC00</td><td><a href="#uart_wrap-uart_log_engine_wrap_3_.uart_log_engine_ctrl.CTRL">uart_log_engine_wrap[3].uart_log_engine_ctrl.CTRL</a></td><td>RW</td><td>Control Register</td></tr>
-<tr><td>0xD00</td><td><a href="#uart_wrap-uart_log_engine_wrap_3_.uart.RBR">uart_log_engine_wrap[3].uart.RBR</a></td><td>R</td><td>Receiver Buffer Register</td></tr>
-<tr><td>0xD04</td><td><a href="#uart_wrap-uart_log_engine_wrap_3_.uart.IER">uart_log_engine_wrap[3].uart.IER</a></td><td>RW</td><td>Interrupt Enable Register</td></tr>
-<tr><td>0xD08</td><td><a href="#uart_wrap-uart_log_engine_wrap_3_.uart.IIR">uart_log_engine_wrap[3].uart.IIR</a></td><td>R</td><td>Interrupt Identification Register</td></tr>
-<tr><td>0xD0C</td><td><a href="#uart_wrap-uart_log_engine_wrap_3_.uart.LCR">uart_log_engine_wrap[3].uart.LCR</a></td><td>RW</td><td>Line Control Register</td></tr>
-<tr><td>0xD10</td><td><a href="#uart_wrap-uart_log_engine_wrap_3_.uart.MCR">uart_log_engine_wrap[3].uart.MCR</a></td><td>RW</td><td>Modem Control Register</td></tr>
-<tr><td>0xD14</td><td><a href="#uart_wrap-uart_log_engine_wrap_3_.uart.LSR">uart_log_engine_wrap[3].uart.LSR</a></td><td>R</td><td>Line Status Register</td></tr>
-<tr><td>0xD18</td><td><a href="#uart_wrap-uart_log_engine_wrap_3_.uart.MSR">uart_log_engine_wrap[3].uart.MSR</a></td><td>R</td><td>Modem Status Register</td></tr>
-<tr><td>0xD1C</td><td><a href="#uart_wrap-uart_log_engine_wrap_3_.uart.SCR">uart_log_engine_wrap[3].uart.SCR</a></td><td>RW</td><td>Scratch Register</td></tr>
-<tr><td>0xD20</td><td><a href="#uart_wrap-uart_log_engine_wrap_3_.uart.ECR">uart_log_engine_wrap[3].uart.ECR</a></td><td>RW</td><td>Extended Control Register</td></tr>
-<tr><td>0xD24</td><td><a href="#uart_wrap-uart_log_engine_wrap_3_.uart.ITR">uart_log_engine_wrap[3].uart.ITR</a></td><td>RW</td><td>Interrupt Test Register</td></tr>
-<tr><td>0xE00</td><td><a href="#uart_wrap-uart_log_engine_wrap_3_.log_engine.CTRL">uart_log_engine_wrap[3].log_engine.CTRL</a></td><td>RW</td><td>Control Register</td></tr>
-<tr><td>0xE04</td><td><a href="#uart_wrap-uart_log_engine_wrap_3_.log_engine.LOG_REGION_SIZE">uart_log_engine_wrap[3].log_engine.LOG_REGION_SIZE</a></td><td>RW</td><td>Log Region Size Register</td></tr>
-<tr><td>0xE08</td><td><a href="#uart_wrap-uart_log_engine_wrap_3_.log_engine.LOG_REGION_ADDR">uart_log_engine_wrap[3].log_engine.LOG_REGION_ADDR</a></td><td>RW</td><td>Log Region Address Register</td></tr>
-<tr><td>0xE10</td><td><a href="#uart_wrap-uart_log_engine_wrap_3_.log_engine.LOG_WRITE_ADDR">uart_log_engine_wrap[3].log_engine.LOG_WRITE_ADDR</a></td><td>RW</td><td>Log Write Address Register</td></tr>
-<tr><td>0xE14</td><td><a href="#uart_wrap-uart_log_engine_wrap_3_.log_engine.INTR_STATUS">uart_log_engine_wrap[3].log_engine.INTR_STATUS</a></td><td>RW</td><td>Interrupt Status Register</td></tr>
-<tr><td>0xE18</td><td><a href="#uart_wrap-uart_log_engine_wrap_3_.log_engine.INTR_ENABLE">uart_log_engine_wrap[3].log_engine.INTR_ENABLE</a></td><td>RW</td><td>Interrupt Enable Register</td></tr>
-<tr><td>0xE1C</td><td><a href="#uart_wrap-uart_log_engine_wrap_3_.log_engine.INTR_TEST">uart_log_engine_wrap[3].log_engine.INTR_TEST</a></td><td>W</td><td>Interrupt Test Register</td></tr>
-<tr><td>0xE40 - 0xE7C</td><td><a href="#uart_wrap-uart_log_engine_wrap_3_.log_engine.LOG_CTRL_16_">uart_log_engine_wrap[3].log_engine.LOG_CTRL[16]</a></td><td>RW</td><td>Log Control Register</td></tr>
+<tr><td>0x0 - 0xC00</td><td><a href="#uart_wrap-uart_log_engine_wrap_4_.uart_log_engine_ctrl.CTRL">uart_log_engine_wrap[4].uart_log_engine_ctrl.CTRL</a></td><td>RW</td><td>Control Register</td></tr>
+<tr><td>0x100 - 0xD00</td><td><a href="#uart_wrap-uart_log_engine_wrap_4_.uart.RBR">uart_log_engine_wrap[4].uart.RBR</a></td><td>R</td><td>Receiver Buffer Register</td></tr>
+<tr><td>0x104 - 0xD04</td><td><a href="#uart_wrap-uart_log_engine_wrap_4_.uart.IER">uart_log_engine_wrap[4].uart.IER</a></td><td>RW</td><td>Interrupt Enable Register</td></tr>
+<tr><td>0x108 - 0xD08</td><td><a href="#uart_wrap-uart_log_engine_wrap_4_.uart.IIR">uart_log_engine_wrap[4].uart.IIR</a></td><td>R</td><td>Interrupt Identification Register</td></tr>
+<tr><td>0x10C - 0xD0C</td><td><a href="#uart_wrap-uart_log_engine_wrap_4_.uart.LCR">uart_log_engine_wrap[4].uart.LCR</a></td><td>RW</td><td>Line Control Register</td></tr>
+<tr><td>0x110 - 0xD10</td><td><a href="#uart_wrap-uart_log_engine_wrap_4_.uart.MCR">uart_log_engine_wrap[4].uart.MCR</a></td><td>RW</td><td>Modem Control Register</td></tr>
+<tr><td>0x114 - 0xD14</td><td><a href="#uart_wrap-uart_log_engine_wrap_4_.uart.LSR">uart_log_engine_wrap[4].uart.LSR</a></td><td>R</td><td>Line Status Register</td></tr>
+<tr><td>0x118 - 0xD18</td><td><a href="#uart_wrap-uart_log_engine_wrap_4_.uart.MSR">uart_log_engine_wrap[4].uart.MSR</a></td><td>R</td><td>Modem Status Register</td></tr>
+<tr><td>0x11C - 0xD1C</td><td><a href="#uart_wrap-uart_log_engine_wrap_4_.uart.SCR">uart_log_engine_wrap[4].uart.SCR</a></td><td>RW</td><td>Scratch Register</td></tr>
+<tr><td>0x120 - 0xD20</td><td><a href="#uart_wrap-uart_log_engine_wrap_4_.uart.ECR">uart_log_engine_wrap[4].uart.ECR</a></td><td>RW</td><td>Extended Control Register</td></tr>
+<tr><td>0x124 - 0xD24</td><td><a href="#uart_wrap-uart_log_engine_wrap_4_.uart.ITR">uart_log_engine_wrap[4].uart.ITR</a></td><td>RW</td><td>Interrupt Test Register</td></tr>
+<tr><td>0x200 - 0xE00</td><td><a href="#uart_wrap-uart_log_engine_wrap_4_.log_engine.CTRL">uart_log_engine_wrap[4].log_engine.CTRL</a></td><td>RW</td><td>Control Register</td></tr>
+<tr><td>0x204 - 0xE04</td><td><a href="#uart_wrap-uart_log_engine_wrap_4_.log_engine.LOG_REGION_SIZE">uart_log_engine_wrap[4].log_engine.LOG_REGION_SIZE</a></td><td>RW</td><td>Log Region Size Register</td></tr>
+<tr><td>0x208 - 0xE08</td><td><a href="#uart_wrap-uart_log_engine_wrap_4_.log_engine.LOG_REGION_ADDR">uart_log_engine_wrap[4].log_engine.LOG_REGION_ADDR</a></td><td>RW</td><td>Log Region Address Register</td></tr>
+<tr><td>0x210 - 0xE10</td><td><a href="#uart_wrap-uart_log_engine_wrap_4_.log_engine.LOG_WRITE_ADDR">uart_log_engine_wrap[4].log_engine.LOG_WRITE_ADDR</a></td><td>RW</td><td>Log Write Address Register</td></tr>
+<tr><td>0x214 - 0xE14</td><td><a href="#uart_wrap-uart_log_engine_wrap_4_.log_engine.INTR_STATUS">uart_log_engine_wrap[4].log_engine.INTR_STATUS</a></td><td>RW</td><td>Interrupt Status Register</td></tr>
+<tr><td>0x218 - 0xE18</td><td><a href="#uart_wrap-uart_log_engine_wrap_4_.log_engine.INTR_ENABLE">uart_log_engine_wrap[4].log_engine.INTR_ENABLE</a></td><td>RW</td><td>Interrupt Enable Register</td></tr>
+<tr><td>0x21C - 0xE1C</td><td><a href="#uart_wrap-uart_log_engine_wrap_4_.log_engine.INTR_TEST">uart_log_engine_wrap[4].log_engine.INTR_TEST</a></td><td>W</td><td>Interrupt Test Register</td></tr>
+<tr><td>0x240 - 0xE7C</td><td><a href="#uart_wrap-uart_log_engine_wrap_4_.log_engine.LOG_CTRL_16_">uart_log_engine_wrap[4].log_engine.LOG_CTRL[16]</a></td><td>RW</td><td>Log Control Register</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
-<span id="uart_log_engine_wrap_0_.uart_log_engine_ctrl.CTRL"></span><h3 id="uart_wrap-uart_log_engine_wrap_0_.uart_log_engine_ctrl.CTRL" data-register-alias="uart_log_engine_wrap_0_.uart_log_engine_ctrl.CTRL">uart_log_engine_wrap[0].uart_log_engine_ctrl.CTRL</h3>
+<span id="uart_log_engine_wrap_4_.uart_log_engine_ctrl.CTRL"></span><h3 id="uart_wrap-uart_log_engine_wrap_4_.uart_log_engine_ctrl.CTRL" data-register-alias="uart_log_engine_wrap_4_.uart_log_engine_ctrl.CTRL">uart_log_engine_wrap[4].uart_log_engine_ctrl.CTRL</h3>
 <table id="trm-table-3">
-<caption class="title"><a href="#trm-table-3">Table 3</a>. uart_wrap.uart_log_engine_wrap[0].uart_log_engine_ctrl.CTRL fields</caption>
+<caption class="title"><a href="#trm-table-3">Table 3</a>. uart_wrap.uart_log_engine_wrap[4].uart_log_engine_ctrl.CTRL fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>UART_EN</td><td>RW</td><td>0x0</td><td>UART Enable. When set, the pad-mux downstream will be forced to accept UART<br>traffic.</td></tr>
 </table>
-<span id="uart_log_engine_wrap_0_.uart.RBR"></span><h3 id="uart_wrap-uart_log_engine_wrap_0_.uart.RBR" data-register-alias="uart_log_engine_wrap_0_.uart.RBR">uart_log_engine_wrap[0].uart.RBR</h3>
+<span id="uart_log_engine_wrap_4_.uart.RBR"></span><h3 id="uart_wrap-uart_log_engine_wrap_4_.uart.RBR" data-register-alias="uart_log_engine_wrap_4_.uart.RBR">uart_log_engine_wrap[4].uart.RBR</h3>
 <table id="trm-table-4">
-<caption class="title"><a href="#trm-table-4">Table 4</a>. uart_wrap.uart_log_engine_wrap[0].uart.RBR fields</caption>
+<caption class="title"><a href="#trm-table-4">Table 4</a>. uart_wrap.uart_log_engine_wrap[4].uart.RBR fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>7:0</td><td>DATA</td><td>R RMOD</td><td>0x0</td><td>Received Data. Contains a received character. If FIFOs are enabled, this field<br>points to the bottom of the RX FIFO. Otherwise, this field points to a single-<br>byte Receiver Buffer Register.</td></tr>
 </table>
-<span id="uart_log_engine_wrap_0_.uart.IER"></span><h3 id="uart_wrap-uart_log_engine_wrap_0_.uart.IER" data-register-alias="uart_log_engine_wrap_0_.uart.IER">uart_log_engine_wrap[0].uart.IER</h3>
+<span id="uart_log_engine_wrap_4_.uart.IER"></span><h3 id="uart_wrap-uart_log_engine_wrap_4_.uart.IER" data-register-alias="uart_log_engine_wrap_4_.uart.IER">uart_log_engine_wrap[4].uart.IER</h3>
 <table id="trm-table-5">
-<caption class="title"><a href="#trm-table-5">Table 5</a>. uart_wrap.uart_log_engine_wrap[0].uart.IER fields</caption>
+<caption class="title"><a href="#trm-table-5">Table 5</a>. uart_wrap.uart_log_engine_wrap[4].uart.IER fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>4</td><td>EFEI</td><td>RW</td><td>0x0</td><td>Enable FIFO Error Interrupt.</td></tr>
@@ -950,9 +908,9 @@ composed register banks. Offsets are relative to each wrapper&#8217;s base addre
 <tr><td>1</td><td>ETBEI</td><td>RW</td><td>0x0</td><td>Enable Transmitter Buffer Empty (Transmitter Holding Register Empty)<br>Interrupt.</td></tr>
 <tr><td>0</td><td>ERBFI</td><td>RW</td><td>0x0</td><td>Enable Receiver Buffer Full (Received Data Ready) Interrupt.</td></tr>
 </table>
-<span id="uart_log_engine_wrap_0_.uart.IIR"></span><h3 id="uart_wrap-uart_log_engine_wrap_0_.uart.IIR" data-register-alias="uart_log_engine_wrap_0_.uart.IIR">uart_log_engine_wrap[0].uart.IIR</h3>
+<span id="uart_log_engine_wrap_4_.uart.IIR"></span><h3 id="uart_wrap-uart_log_engine_wrap_4_.uart.IIR" data-register-alias="uart_log_engine_wrap_4_.uart.IIR">uart_log_engine_wrap[4].uart.IIR</h3>
 <table id="trm-table-6">
-<caption class="title"><a href="#trm-table-6">Table 6</a>. uart_wrap.uart_log_engine_wrap[0].uart.IIR fields</caption>
+<caption class="title"><a href="#trm-table-6">Table 6</a>. uart_wrap.uart_log_engine_wrap[4].uart.IIR fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>7:6</td><td>FIFOS_ENABLED</td><td>R</td><td>0x0</td><td>FIFOs Enabled:<br>* `0x0` - FIFOs are disabled<br>* `0x3` - FIFOs are enabled</td></tr>
@@ -960,9 +918,9 @@ composed register banks. Offsets are relative to each wrapper&#8217;s base addre
 <tr><td>3:1</td><td>INTERRUPT_ID</td><td>R</td><td>0x0</td><td>Interrupt ID:<br>* `0x7` - FIFO Error Interrupt                         (priority 0)<br>* `0x3` - Receiver Line Status Interrupt               (priority 1)<br>* `0x6` - Reception Timeout Interrupt                  (priority 2)<br>* `0x2` - Received Data Ready Interrupt                (priority 3)<br>* `0x1` - Transmitter Holding Register Empty Interrupt (priority 4)<br>* `0x0` - Modem Status Interrupt                       (priority 5)</td></tr>
 <tr><td>0</td><td>INTERRUPT_PENDING</td><td>R</td><td>0x1</td><td>Interrupt Pending. Active-low.</td></tr>
 </table>
-<span id="uart_log_engine_wrap_0_.uart.LCR"></span><h3 id="uart_wrap-uart_log_engine_wrap_0_.uart.LCR" data-register-alias="uart_log_engine_wrap_0_.uart.LCR">uart_log_engine_wrap[0].uart.LCR</h3>
+<span id="uart_log_engine_wrap_4_.uart.LCR"></span><h3 id="uart_wrap-uart_log_engine_wrap_4_.uart.LCR" data-register-alias="uart_log_engine_wrap_4_.uart.LCR">uart_log_engine_wrap[4].uart.LCR</h3>
 <table id="trm-table-7">
-<caption class="title"><a href="#trm-table-7">Table 7</a>. uart_wrap.uart_log_engine_wrap[0].uart.LCR fields</caption>
+<caption class="title"><a href="#trm-table-7">Table 7</a>. uart_wrap.uart_log_engine_wrap[4].uart.LCR fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>7</td><td>DLAB</td><td>RW</td><td>0x0</td><td>Divisor Latch Access Bit. If set, allows access to the `DLL` and `DLM` registers<br>when accessing addresses `0x0` and `0x4`, respectively. If unset, allows access<br>to the `THR`, `RBR`, and `IIR` registers.</td></tr>
@@ -973,9 +931,9 @@ composed register banks. Offsets are relative to each wrapper&#8217;s base addre
 <tr><td>2</td><td>STB</td><td>RW</td><td>0x0</td><td>Stop Bits:<br>* `0` - 1 stop bit.<br>* `1` - 2 stop bits (or 1.5 stop bits if word length is set to 5 bits)</td></tr>
 <tr><td>1:0</td><td>WLS</td><td>RW</td><td>0x0</td><td>Word Length Select:<br>* `0x0` - 5 bits per character<br>* `0x1` - 6 bits per character<br>* `0x2` - 7 bits per character<br>* `0x3` - 8 bits per character</td></tr>
 </table>
-<span id="uart_log_engine_wrap_0_.uart.MCR"></span><h3 id="uart_wrap-uart_log_engine_wrap_0_.uart.MCR" data-register-alias="uart_log_engine_wrap_0_.uart.MCR">uart_log_engine_wrap[0].uart.MCR</h3>
+<span id="uart_log_engine_wrap_4_.uart.MCR"></span><h3 id="uart_wrap-uart_log_engine_wrap_4_.uart.MCR" data-register-alias="uart_log_engine_wrap_4_.uart.MCR">uart_log_engine_wrap[4].uart.MCR</h3>
 <table id="trm-table-8">
-<caption class="title"><a href="#trm-table-8">Table 8</a>. uart_wrap.uart_log_engine_wrap[0].uart.MCR fields</caption>
+<caption class="title"><a href="#trm-table-8">Table 8</a>. uart_wrap.uart_log_engine_wrap[4].uart.MCR fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>5</td><td>LINE_LOOPBACK</td><td>RW</td><td>0x0</td><td>Line Loopback. If set, the `rx_i` input is internally connected to the<br>`tx_o` output.</td></tr>
@@ -985,9 +943,9 @@ composed register banks. Offsets are relative to each wrapper&#8217;s base addre
 <tr><td>1</td><td>RTS</td><td>RW</td><td>0x0</td><td>Request to Send. Writing to this bit drives the `rts_no` output in the opposite<br>polarity.</td></tr>
 <tr><td>0</td><td>DTR</td><td>RW</td><td>0x0</td><td>Data Terminal Ready. Writing to this bit drives the `dtr_no` output in the<br>opposite polarity.</td></tr>
 </table>
-<span id="uart_log_engine_wrap_0_.uart.LSR"></span><h3 id="uart_wrap-uart_log_engine_wrap_0_.uart.LSR" data-register-alias="uart_log_engine_wrap_0_.uart.LSR">uart_log_engine_wrap[0].uart.LSR</h3>
+<span id="uart_log_engine_wrap_4_.uart.LSR"></span><h3 id="uart_wrap-uart_log_engine_wrap_4_.uart.LSR" data-register-alias="uart_log_engine_wrap_4_.uart.LSR">uart_log_engine_wrap[4].uart.LSR</h3>
 <table id="trm-table-9">
-<caption class="title"><a href="#trm-table-9">Table 9</a>. uart_wrap.uart_log_engine_wrap[0].uart.LSR fields</caption>
+<caption class="title"><a href="#trm-table-9">Table 9</a>. uart_wrap.uart_log_engine_wrap[4].uart.LSR fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>7</td><td>ERROR_IN_RCVR_FIFO</td><td>R</td><td>0x0</td><td>Error in Receiver FIFO. When set, indicates that the receiver FIFO or (RBR in<br>non-FIFO mode) has the parity, framing, or break error. In other words, at<br>least one of the PE, FE, and BI bits is set.</td></tr>
@@ -999,9 +957,9 @@ composed register banks. Offsets are relative to each wrapper&#8217;s base addre
 <tr><td>1</td><td>OE</td><td>R RC</td><td>0x0</td><td>Overrun Error. When set, indicates that the RX FIFO (or Receiver Buffer<br>Register in Non-FIFO Mode) is full when new character is received. In FIFO Mode, the new character<br>is dropped. In non-FIFO mode, the existing character in the RBR is overwritten.<br>This bit triggers the Receiver Line Status Interrupt.</td></tr>
 <tr><td>0</td><td>DR</td><td>R</td><td>0x0</td><td>Data Ready. When set, indicates that the RX FIFO (or RBR in non-FIFO<br>mode) contains data.</td></tr>
 </table>
-<span id="uart_log_engine_wrap_0_.uart.MSR"></span><h3 id="uart_wrap-uart_log_engine_wrap_0_.uart.MSR" data-register-alias="uart_log_engine_wrap_0_.uart.MSR">uart_log_engine_wrap[0].uart.MSR</h3>
+<span id="uart_log_engine_wrap_4_.uart.MSR"></span><h3 id="uart_wrap-uart_log_engine_wrap_4_.uart.MSR" data-register-alias="uart_log_engine_wrap_4_.uart.MSR">uart_log_engine_wrap[4].uart.MSR</h3>
 <table id="trm-table-10">
-<caption class="title"><a href="#trm-table-10">Table 10</a>. uart_wrap.uart_log_engine_wrap[0].uart.MSR fields</caption>
+<caption class="title"><a href="#trm-table-10">Table 10</a>. uart_wrap.uart_log_engine_wrap[4].uart.MSR fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>7</td><td>DCD</td><td>R</td><td>0x0</td><td>Data Carrier Detect. This bit reflects the `dcd_ni` input in the opposite<br>polarity, so it reads `1` while a carrier is detected.</td></tr>
@@ -1013,23 +971,23 @@ composed register banks. Offsets are relative to each wrapper&#8217;s base addre
 <tr><td>1</td><td>DDSR</td><td>R RC</td><td>0x0</td><td>Delta Data Set Ready. When set, indicates that the `DSR` bit has changed since<br>the last time this register was read. This bit triggers the Modem Status<br>Interrupt.</td></tr>
 <tr><td>0</td><td>DCTS</td><td>R RC</td><td>0x0</td><td>Delta Clear to Send. When set, indicates that the `CTS` bit has changed since<br>the last time this register was read. This bit triggers the Modem Status<br>Interrupt.</td></tr>
 </table>
-<span id="uart_log_engine_wrap_0_.uart.SCR"></span><h3 id="uart_wrap-uart_log_engine_wrap_0_.uart.SCR" data-register-alias="uart_log_engine_wrap_0_.uart.SCR">uart_log_engine_wrap[0].uart.SCR</h3>
+<span id="uart_log_engine_wrap_4_.uart.SCR"></span><h3 id="uart_wrap-uart_log_engine_wrap_4_.uart.SCR" data-register-alias="uart_log_engine_wrap_4_.uart.SCR">uart_log_engine_wrap[4].uart.SCR</h3>
 <table id="trm-table-11">
-<caption class="title"><a href="#trm-table-11">Table 11</a>. uart_wrap.uart_log_engine_wrap[0].uart.SCR fields</caption>
+<caption class="title"><a href="#trm-table-11">Table 11</a>. uart_wrap.uart_log_engine_wrap[4].uart.SCR fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>7:0</td><td>SCR</td><td>RW</td><td>0x0</td><td>Scratch. Holds user data.</td></tr>
 </table>
-<span id="uart_log_engine_wrap_0_.uart.ECR"></span><h3 id="uart_wrap-uart_log_engine_wrap_0_.uart.ECR" data-register-alias="uart_log_engine_wrap_0_.uart.ECR">uart_log_engine_wrap[0].uart.ECR</h3>
+<span id="uart_log_engine_wrap_4_.uart.ECR"></span><h3 id="uart_wrap-uart_log_engine_wrap_4_.uart.ECR" data-register-alias="uart_log_engine_wrap_4_.uart.ECR">uart_log_engine_wrap[4].uart.ECR</h3>
 <table id="trm-table-12">
-<caption class="title"><a href="#trm-table-12">Table 12</a>. uart_wrap.uart_log_engine_wrap[0].uart.ECR fields</caption>
+<caption class="title"><a href="#trm-table-12">Table 12</a>. uart_wrap.uart_log_engine_wrap[4].uart.ECR fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>1:0</td><td>RCVR_TRIGGER_MS2B</td><td>RW</td><td>0x0</td><td>Receiver FIFO Trigger Level Most Significant 2 Bits. To configure the least<br>significant 2 bits, use the `FCR.RCVR_TRIGGER` register field. The<br>configurations for the trigger levels are:<br>* `0x0` -    1 character<br>* `0x1` -    4 characters<br>* `0x2` -    8 characters<br>* `0x3` -   14 characters<br>* `0x4` -   32 characters<br>* `0x5` -   64 characters<br>* `0x6` -  128 characters<br>* `0x7` -  256 characters<br>* `0x8` -  512 characters<br>* `0x9` - 1024 characters<br>* `0xA` - 2048 characters<br>* `0xB` - 4096 characters</td></tr>
 </table>
-<span id="uart_log_engine_wrap_0_.uart.ITR"></span><h3 id="uart_wrap-uart_log_engine_wrap_0_.uart.ITR" data-register-alias="uart_log_engine_wrap_0_.uart.ITR">uart_log_engine_wrap[0].uart.ITR</h3>
+<span id="uart_log_engine_wrap_4_.uart.ITR"></span><h3 id="uart_wrap-uart_log_engine_wrap_4_.uart.ITR" data-register-alias="uart_log_engine_wrap_4_.uart.ITR">uart_log_engine_wrap[4].uart.ITR</h3>
 <table id="trm-table-13">
-<caption class="title"><a href="#trm-table-13">Table 13</a>. uart_wrap.uart_log_engine_wrap[0].uart.ITR fields</caption>
+<caption class="title"><a href="#trm-table-13">Table 13</a>. uart_wrap.uart_log_engine_wrap[4].uart.ITR fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>5</td><td>TRTI</td><td>RW</td><td>0x0</td><td>Test Reception Timeout Interrupt. Writing a `1` forces the interrupt and<br>writing `0` releases it.</td></tr>
@@ -1039,592 +997,64 @@ composed register banks. Offsets are relative to each wrapper&#8217;s base addre
 <tr><td>1</td><td>TTBEI</td><td>RW</td><td>0x0</td><td>Test Transmitter Buffer Empty (Transmitter Holding Register Empty) Interrupt.<br>Writing `1` forces the interrupt and writing `0` releases it.</td></tr>
 <tr><td>0</td><td>TRBFI</td><td>RW</td><td>0x0</td><td>Test Receiver Buffer Full (Received Data Ready) Interrupt. Writing `1` forces<br>the interrupt and writing `0` releases it.</td></tr>
 </table>
-<span id="uart_log_engine_wrap_0_.log_engine.CTRL"></span><h3 id="uart_wrap-uart_log_engine_wrap_0_.log_engine.CTRL" data-register-alias="uart_log_engine_wrap_0_.log_engine.CTRL">uart_log_engine_wrap[0].log_engine.CTRL</h3>
+<span id="uart_log_engine_wrap_4_.log_engine.CTRL"></span><h3 id="uart_wrap-uart_log_engine_wrap_4_.log_engine.CTRL" data-register-alias="uart_log_engine_wrap_4_.log_engine.CTRL">uart_log_engine_wrap[4].log_engine.CTRL</h3>
 <table id="trm-table-14">
-<caption class="title"><a href="#trm-table-14">Table 14</a>. uart_wrap.uart_log_engine_wrap[0].log_engine.CTRL fields</caption>
+<caption class="title"><a href="#trm-table-14">Table 14</a>. uart_wrap.uart_log_engine_wrap[4].log_engine.CTRL fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>EN</td><td>RW</td><td>0x0</td><td>Log Engine Enable. When set, enables the Log Engine. When unset, disables the<br>Log Engine and resets all FSMs, flops, and FIFOs.</td></tr>
 </table>
-<span id="uart_log_engine_wrap_0_.log_engine.LOG_REGION_SIZE"></span><h3 id="uart_wrap-uart_log_engine_wrap_0_.log_engine.LOG_REGION_SIZE" data-register-alias="uart_log_engine_wrap_0_.log_engine.LOG_REGION_SIZE">uart_log_engine_wrap[0].log_engine.LOG_REGION_SIZE</h3>
+<span id="uart_log_engine_wrap_4_.log_engine.LOG_REGION_SIZE"></span><h3 id="uart_wrap-uart_log_engine_wrap_4_.log_engine.LOG_REGION_SIZE" data-register-alias="uart_log_engine_wrap_4_.log_engine.LOG_REGION_SIZE">uart_log_engine_wrap[4].log_engine.LOG_REGION_SIZE</h3>
 <table id="trm-table-15">
-<caption class="title"><a href="#trm-table-15">Table 15</a>. uart_wrap.uart_log_engine_wrap[0].log_engine.LOG_REGION_SIZE fields</caption>
+<caption class="title"><a href="#trm-table-15">Table 15</a>. uart_wrap.uart_log_engine_wrap[4].log_engine.LOG_REGION_SIZE fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>19:0</td><td>LOG_REGION_SIZE</td><td>RW</td><td>0x0</td><td>Log region size in bytes. Supported values are at most 512 KiB and aligned<br>to 128 bytes (16 slots times the 8-byte fetch beat). If software programs a<br>larger value, RTL clamps the effective region to 512 KiB. For a value that is<br>not 128-byte aligned, RTL divides the effective region among the 16 slots and<br>rounds each slot&#x27;s transferable capacity down to complete 8-byte fetch beats.<br>A requested LOG_LEN above that capacity is clamped to the capacity.</td></tr>
 </table>
-<span id="uart_log_engine_wrap_0_.log_engine.LOG_REGION_ADDR"></span><h3 id="uart_wrap-uart_log_engine_wrap_0_.log_engine.LOG_REGION_ADDR" data-register-alias="uart_log_engine_wrap_0_.log_engine.LOG_REGION_ADDR">uart_log_engine_wrap[0].log_engine.LOG_REGION_ADDR</h3>
+<span id="uart_log_engine_wrap_4_.log_engine.LOG_REGION_ADDR"></span><h3 id="uart_wrap-uart_log_engine_wrap_4_.log_engine.LOG_REGION_ADDR" data-register-alias="uart_log_engine_wrap_4_.log_engine.LOG_REGION_ADDR">uart_log_engine_wrap[4].log_engine.LOG_REGION_ADDR</h3>
 <table id="trm-table-16">
-<caption class="title"><a href="#trm-table-16">Table 16</a>. uart_wrap.uart_log_engine_wrap[0].log_engine.LOG_REGION_ADDR fields</caption>
+<caption class="title"><a href="#trm-table-16">Table 16</a>. uart_wrap.uart_log_engine_wrap[4].log_engine.LOG_REGION_ADDR fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:56</td><td>RESERVED</td><td>R</td><td>0x0</td><td>Reserved. Reads as zero; writes are ignored.</td></tr>
 <tr><td>55:32</td><td>LOG_REGION_ADDR_HI</td><td>RW</td><td>0x0</td><td>Log Region Start Address High. Contains fabric address bits [55:32].</td></tr>
 <tr><td>31:0</td><td>LOG_REGION_ADDR_LO</td><td>RW</td><td>0x0</td><td>Log Region Start Address Low.</td></tr>
 </table>
-<span id="uart_log_engine_wrap_0_.log_engine.LOG_WRITE_ADDR"></span><h3 id="uart_wrap-uart_log_engine_wrap_0_.log_engine.LOG_WRITE_ADDR" data-register-alias="uart_log_engine_wrap_0_.log_engine.LOG_WRITE_ADDR">uart_log_engine_wrap[0].log_engine.LOG_WRITE_ADDR</h3>
+<span id="uart_log_engine_wrap_4_.log_engine.LOG_WRITE_ADDR"></span><h3 id="uart_wrap-uart_log_engine_wrap_4_.log_engine.LOG_WRITE_ADDR" data-register-alias="uart_log_engine_wrap_4_.log_engine.LOG_WRITE_ADDR">uart_log_engine_wrap[4].log_engine.LOG_WRITE_ADDR</h3>
 <table id="trm-table-17">
-<caption class="title"><a href="#trm-table-17">Table 17</a>. uart_wrap.uart_log_engine_wrap[0].log_engine.LOG_WRITE_ADDR fields</caption>
+<caption class="title"><a href="#trm-table-17">Table 17</a>. uart_wrap.uart_log_engine_wrap[4].log_engine.LOG_WRITE_ADDR fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>LOG_WRITE_ADDR</td><td>RW</td><td>0x0</td><td>Log Write Address. This is the address where the log data is written to.</td></tr>
 </table>
-<span id="uart_log_engine_wrap_0_.log_engine.INTR_STATUS"></span><h3 id="uart_wrap-uart_log_engine_wrap_0_.log_engine.INTR_STATUS" data-register-alias="uart_log_engine_wrap_0_.log_engine.INTR_STATUS">uart_log_engine_wrap[0].log_engine.INTR_STATUS</h3>
+<span id="uart_log_engine_wrap_4_.log_engine.INTR_STATUS"></span><h3 id="uart_wrap-uart_log_engine_wrap_4_.log_engine.INTR_STATUS" data-register-alias="uart_log_engine_wrap_4_.log_engine.INTR_STATUS">uart_log_engine_wrap[4].log_engine.INTR_STATUS</h3>
 <table id="trm-table-18">
-<caption class="title"><a href="#trm-table-18">Table 18</a>. uart_wrap.uart_log_engine_wrap[0].log_engine.INTR_STATUS fields</caption>
+<caption class="title"><a href="#trm-table-18">Table 18</a>. uart_wrap.uart_log_engine_wrap[4].log_engine.INTR_STATUS fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>4</td><td>LOG_WRITE_ERR</td><td>RW1C</td><td>0x0</td><td>Log Write Error Interrupt. Asserted when the bus for writing log data returns<br>an error.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>LOG_FETCH_ERR</td><td>RW1C</td><td>0x0</td><td>Log Fetch Error Interrupt. Asserted when the bus for fetching log data returns<br>an error.</td></tr>
 </table>
-<span id="uart_log_engine_wrap_0_.log_engine.INTR_ENABLE"></span><h3 id="uart_wrap-uart_log_engine_wrap_0_.log_engine.INTR_ENABLE" data-register-alias="uart_log_engine_wrap_0_.log_engine.INTR_ENABLE">uart_log_engine_wrap[0].log_engine.INTR_ENABLE</h3>
+<span id="uart_log_engine_wrap_4_.log_engine.INTR_ENABLE"></span><h3 id="uart_wrap-uart_log_engine_wrap_4_.log_engine.INTR_ENABLE" data-register-alias="uart_log_engine_wrap_4_.log_engine.INTR_ENABLE">uart_log_engine_wrap[4].log_engine.INTR_ENABLE</h3>
 <table id="trm-table-19">
-<caption class="title"><a href="#trm-table-19">Table 19</a>. uart_wrap.uart_log_engine_wrap[0].log_engine.INTR_ENABLE fields</caption>
+<caption class="title"><a href="#trm-table-19">Table 19</a>. uart_wrap.uart_log_engine_wrap[4].log_engine.INTR_ENABLE fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>4</td><td>LOG_WRITE_ERR</td><td>RW</td><td>0x0</td><td>Log Write Error Interrupt Enable.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>LOG_FETCH_ERR</td><td>RW</td><td>0x0</td><td>Log Fetch Error Interrupt Enable.</td></tr>
 </table>
-<span id="uart_log_engine_wrap_0_.log_engine.INTR_TEST"></span><h3 id="uart_wrap-uart_log_engine_wrap_0_.log_engine.INTR_TEST" data-register-alias="uart_log_engine_wrap_0_.log_engine.INTR_TEST">uart_log_engine_wrap[0].log_engine.INTR_TEST</h3>
+<span id="uart_log_engine_wrap_4_.log_engine.INTR_TEST"></span><h3 id="uart_wrap-uart_log_engine_wrap_4_.log_engine.INTR_TEST" data-register-alias="uart_log_engine_wrap_4_.log_engine.INTR_TEST">uart_log_engine_wrap[4].log_engine.INTR_TEST</h3>
 <table id="trm-table-20">
-<caption class="title"><a href="#trm-table-20">Table 20</a>. uart_wrap.uart_log_engine_wrap[0].log_engine.INTR_TEST fields</caption>
+<caption class="title"><a href="#trm-table-20">Table 20</a>. uart_wrap.uart_log_engine_wrap[4].log_engine.INTR_TEST fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>4</td><td>LOG_WRITE_ERR</td><td>W 1P</td><td>0x0</td><td>Log Write Error Interrupt Test. Writing `1` forces the interrupt.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>LOG_FETCH_ERR</td><td>W 1P</td><td>0x0</td><td>Log Fetch Error Interrupt Test. Writing `1` forces the interrupt.</td></tr>
 </table>
-<span id="uart_log_engine_wrap_0_.log_engine.LOG_CTRL_16_"></span><h3 id="uart_wrap-uart_log_engine_wrap_0_.log_engine.LOG_CTRL_16_" data-register-alias="uart_log_engine_wrap_0_.log_engine.LOG_CTRL_16_">uart_log_engine_wrap[0].log_engine.LOG_CTRL[16]</h3>
+<span id="uart_log_engine_wrap_4_.log_engine.LOG_CTRL_16_"></span><h3 id="uart_wrap-uart_log_engine_wrap_4_.log_engine.LOG_CTRL_16_" data-register-alias="uart_log_engine_wrap_4_.log_engine.LOG_CTRL_16_">uart_log_engine_wrap[4].log_engine.LOG_CTRL[16]</h3>
 <table id="trm-table-21">
-<caption class="title"><a href="#trm-table-21">Table 21</a>. uart_wrap.uart_log_engine_wrap[0].log_engine.LOG_CTRL[16] fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>15:0</td><td>LOG_LEN</td><td>RW</td><td>0x0</td><td>Log Length. Writing a nonzero value representing the log length in bytes to this field<br>starts the log transfer process. There are 16 copies of this register, each representing<br>a log entry. The log entries go through round robin arbitration.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_1_.uart_log_engine_ctrl.CTRL"></span><h3 id="uart_wrap-uart_log_engine_wrap_1_.uart_log_engine_ctrl.CTRL" data-register-alias="uart_log_engine_wrap_1_.uart_log_engine_ctrl.CTRL">uart_log_engine_wrap[1].uart_log_engine_ctrl.CTRL</h3>
-<table id="trm-table-22">
-<caption class="title"><a href="#trm-table-22">Table 22</a>. uart_wrap.uart_log_engine_wrap[1].uart_log_engine_ctrl.CTRL fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>UART_EN</td><td>RW</td><td>0x0</td><td>UART Enable. When set, the pad-mux downstream will be forced to accept UART<br>traffic.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_1_.uart.RBR"></span><h3 id="uart_wrap-uart_log_engine_wrap_1_.uart.RBR" data-register-alias="uart_log_engine_wrap_1_.uart.RBR">uart_log_engine_wrap[1].uart.RBR</h3>
-<table id="trm-table-23">
-<caption class="title"><a href="#trm-table-23">Table 23</a>. uart_wrap.uart_log_engine_wrap[1].uart.RBR fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7:0</td><td>DATA</td><td>R RMOD</td><td>0x0</td><td>Received Data. Contains a received character. If FIFOs are enabled, this field<br>points to the bottom of the RX FIFO. Otherwise, this field points to a single-<br>byte Receiver Buffer Register.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_1_.uart.IER"></span><h3 id="uart_wrap-uart_log_engine_wrap_1_.uart.IER" data-register-alias="uart_log_engine_wrap_1_.uart.IER">uart_log_engine_wrap[1].uart.IER</h3>
-<table id="trm-table-24">
-<caption class="title"><a href="#trm-table-24">Table 24</a>. uart_wrap.uart_log_engine_wrap[1].uart.IER fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>4</td><td>EFEI</td><td>RW</td><td>0x0</td><td>Enable FIFO Error Interrupt.</td></tr>
-<tr><td>3</td><td>EDSSI</td><td>RW</td><td>0x0</td><td>Enable (Delta Status of) Modem Status Interrupt.</td></tr>
-<tr><td>2</td><td>ELSI</td><td>RW</td><td>0x0</td><td>Enable (Receiver) Line Status Interrupt.</td></tr>
-<tr><td>1</td><td>ETBEI</td><td>RW</td><td>0x0</td><td>Enable Transmitter Buffer Empty (Transmitter Holding Register Empty)<br>Interrupt.</td></tr>
-<tr><td>0</td><td>ERBFI</td><td>RW</td><td>0x0</td><td>Enable Receiver Buffer Full (Received Data Ready) Interrupt.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_1_.uart.IIR"></span><h3 id="uart_wrap-uart_log_engine_wrap_1_.uart.IIR" data-register-alias="uart_log_engine_wrap_1_.uart.IIR">uart_log_engine_wrap[1].uart.IIR</h3>
-<table id="trm-table-25">
-<caption class="title"><a href="#trm-table-25">Table 25</a>. uart_wrap.uart_log_engine_wrap[1].uart.IIR fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7:6</td><td>FIFOS_ENABLED</td><td>R</td><td>0x0</td><td>FIFOs Enabled:<br>* `0x0` - FIFOs are disabled<br>* `0x3` - FIFOs are enabled</td></tr>
-<tr><td>5:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>3:1</td><td>INTERRUPT_ID</td><td>R</td><td>0x0</td><td>Interrupt ID:<br>* `0x7` - FIFO Error Interrupt                         (priority 0)<br>* `0x3` - Receiver Line Status Interrupt               (priority 1)<br>* `0x6` - Reception Timeout Interrupt                  (priority 2)<br>* `0x2` - Received Data Ready Interrupt                (priority 3)<br>* `0x1` - Transmitter Holding Register Empty Interrupt (priority 4)<br>* `0x0` - Modem Status Interrupt                       (priority 5)</td></tr>
-<tr><td>0</td><td>INTERRUPT_PENDING</td><td>R</td><td>0x1</td><td>Interrupt Pending. Active-low.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_1_.uart.LCR"></span><h3 id="uart_wrap-uart_log_engine_wrap_1_.uart.LCR" data-register-alias="uart_log_engine_wrap_1_.uart.LCR">uart_log_engine_wrap[1].uart.LCR</h3>
-<table id="trm-table-26">
-<caption class="title"><a href="#trm-table-26">Table 26</a>. uart_wrap.uart_log_engine_wrap[1].uart.LCR fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7</td><td>DLAB</td><td>RW</td><td>0x0</td><td>Divisor Latch Access Bit. If set, allows access to the `DLL` and `DLM` registers<br>when accessing addresses `0x0` and `0x4`, respectively. If unset, allows access<br>to the `THR`, `RBR`, and `IIR` registers.</td></tr>
-<tr><td>6</td><td>SET_BREAK</td><td>RW</td><td>0x0</td><td>Set Break. If set, forces the `tx_o` output to `0` to cause a break condition<br>on the receiving UART.</td></tr>
-<tr><td>5</td><td>STICK_PARITY</td><td>RW</td><td>0x0</td><td>Stick Parity. If set, forces the transmit and received parity bits to be `0` if<br>even parity is selected and `1` if odd parity is selected.</td></tr>
-<tr><td>4</td><td>EPS</td><td>RW</td><td>0x0</td><td>Even Parity Select:<br>* `1` - even parity<br>* `0` - odd parity</td></tr>
-<tr><td>3</td><td>PEN</td><td>RW</td><td>0x0</td><td>Parity Enable.</td></tr>
-<tr><td>2</td><td>STB</td><td>RW</td><td>0x0</td><td>Stop Bits:<br>* `0` - 1 stop bit.<br>* `1` - 2 stop bits (or 1.5 stop bits if word length is set to 5 bits)</td></tr>
-<tr><td>1:0</td><td>WLS</td><td>RW</td><td>0x0</td><td>Word Length Select:<br>* `0x0` - 5 bits per character<br>* `0x1` - 6 bits per character<br>* `0x2` - 7 bits per character<br>* `0x3` - 8 bits per character</td></tr>
-</table>
-<span id="uart_log_engine_wrap_1_.uart.MCR"></span><h3 id="uart_wrap-uart_log_engine_wrap_1_.uart.MCR" data-register-alias="uart_log_engine_wrap_1_.uart.MCR">uart_log_engine_wrap[1].uart.MCR</h3>
-<table id="trm-table-27">
-<caption class="title"><a href="#trm-table-27">Table 27</a>. uart_wrap.uart_log_engine_wrap[1].uart.MCR fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>5</td><td>LINE_LOOPBACK</td><td>RW</td><td>0x0</td><td>Line Loopback. If set, the `rx_i` input is internally connected to the<br>`tx_o` output.</td></tr>
-<tr><td>4</td><td>LOOP</td><td>RW</td><td>0x0</td><td>System Loopback. If set, the transmitter is internally connected to the<br>receiver. The `tx_o` output is set to `1`.</td></tr>
-<tr><td>3</td><td>OUT2</td><td>RW</td><td>0x0</td><td>User Output 2. Writing to this bit drives the `out2_no` in the opposite<br>polarity.</td></tr>
-<tr><td>2</td><td>OUT1</td><td>RW</td><td>0x0</td><td>User Output 1. Writing to this bit drives the `out1_no` in the opposite<br>polarity.</td></tr>
-<tr><td>1</td><td>RTS</td><td>RW</td><td>0x0</td><td>Request to Send. Writing to this bit drives the `rts_no` output in the opposite<br>polarity.</td></tr>
-<tr><td>0</td><td>DTR</td><td>RW</td><td>0x0</td><td>Data Terminal Ready. Writing to this bit drives the `dtr_no` output in the<br>opposite polarity.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_1_.uart.LSR"></span><h3 id="uart_wrap-uart_log_engine_wrap_1_.uart.LSR" data-register-alias="uart_log_engine_wrap_1_.uart.LSR">uart_log_engine_wrap[1].uart.LSR</h3>
-<table id="trm-table-28">
-<caption class="title"><a href="#trm-table-28">Table 28</a>. uart_wrap.uart_log_engine_wrap[1].uart.LSR fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7</td><td>ERROR_IN_RCVR_FIFO</td><td>R</td><td>0x0</td><td>Error in Receiver FIFO. When set, indicates that the receiver FIFO or (RBR in<br>non-FIFO mode) has the parity, framing, or break error. In other words, at<br>least one of the PE, FE, and BI bits is set.</td></tr>
-<tr><td>6</td><td>TEMT</td><td>R</td><td>0x1</td><td>Transmitter Empty. When set, indicates that the transmitter shift register and<br>the transmitter FIFO (or THR in non-FIFO mode) are empty.</td></tr>
-<tr><td>5</td><td>THRE</td><td>R</td><td>0x1</td><td>Transmitter Holding Register Empty. When set, indicates that the TX FIFO (or<br>THR in non-FIFO mode) is empty. Clearing the Transmitter Holding Register Empty<br>Interrupt does NOT clear this bit.</td></tr>
-<tr><td>4</td><td>BI</td><td>R RC</td><td>0x0</td><td>Break Interrupt. When set, indicates that the `rx_i` input is `0` for an entire<br>frame&#x27;s time (start + data + parity + stop bits). In FIFO mode, this bit set<br>when the character reaches the top of the receiver FIFO. In non-FIFO mode, this<br>bit is set when the character enters the RBR. This bit triggers the Receiver<br>Line Status Interrupt.</td></tr>
-<tr><td>3</td><td>FE</td><td>R RC</td><td>0x0</td><td>Framing Error. When set, indicates that the received character is missing a<br>stop bit. In FIFO mode, this bit is set when the character reaches the top of<br>the FIFO. In non-FIFO mode, this bit is set when the character enters the RBR.<br>This bit triggers the Receiver Line Status Interrupt.</td></tr>
-<tr><td>2</td><td>PE</td><td>R RC</td><td>0x0</td><td>Parity Error. When set, indicates that the character at the top of the receiver<br>FIFO (or RBR in non-FIFO mode) has a parity error. This bit triggers the<br>Receiver Line Status Interrupt.</td></tr>
-<tr><td>1</td><td>OE</td><td>R RC</td><td>0x0</td><td>Overrun Error. When set, indicates that the RX FIFO (or Receiver Buffer<br>Register in Non-FIFO Mode) is full when new character is received. In FIFO Mode, the new character<br>is dropped. In non-FIFO mode, the existing character in the RBR is overwritten.<br>This bit triggers the Receiver Line Status Interrupt.</td></tr>
-<tr><td>0</td><td>DR</td><td>R</td><td>0x0</td><td>Data Ready. When set, indicates that the RX FIFO (or RBR in non-FIFO<br>mode) contains data.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_1_.uart.MSR"></span><h3 id="uart_wrap-uart_log_engine_wrap_1_.uart.MSR" data-register-alias="uart_log_engine_wrap_1_.uart.MSR">uart_log_engine_wrap[1].uart.MSR</h3>
-<table id="trm-table-29">
-<caption class="title"><a href="#trm-table-29">Table 29</a>. uart_wrap.uart_log_engine_wrap[1].uart.MSR fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7</td><td>DCD</td><td>R</td><td>0x0</td><td>Data Carrier Detect. This bit reflects the `dcd_ni` input in the opposite<br>polarity, so it reads `1` while a carrier is detected.</td></tr>
-<tr><td>6</td><td>RI</td><td>R</td><td>0x0</td><td>Ring Indicator. This bit reflects the `ri_ni` input in the opposite polarity, so<br>it reads `1` while the remote modem signals an incoming call.</td></tr>
-<tr><td>5</td><td>DSR</td><td>R</td><td>0x0</td><td>Data Set Ready. This bit reflects the `dsr_ni` input in the opposite polarity,<br>so it reads `1` while the remote modem is connected and ready.</td></tr>
-<tr><td>4</td><td>CTS</td><td>R</td><td>0x0</td><td>Clear to Send. This bit reflects the `cts_ni` input in the opposite polarity, so<br>it reads `1` while the remote device is ready to receive data.</td></tr>
-<tr><td>3</td><td>DDCD</td><td>R RC</td><td>0x0</td><td>Delta Data Carrier Detect. When set, indicates that the `DCD` bit has changed<br>since the last time this register was read. This bit triggers the Modem Status<br>Interrupt.</td></tr>
-<tr><td>2</td><td>TERI</td><td>R RC</td><td>0x0</td><td>Trailing Edge Ring Indicator. When set, indicates that the `RI` bit has changed<br>from a `1` to a `0`. This bit triggers the Modem Status Interrupt.</td></tr>
-<tr><td>1</td><td>DDSR</td><td>R RC</td><td>0x0</td><td>Delta Data Set Ready. When set, indicates that the `DSR` bit has changed since<br>the last time this register was read. This bit triggers the Modem Status<br>Interrupt.</td></tr>
-<tr><td>0</td><td>DCTS</td><td>R RC</td><td>0x0</td><td>Delta Clear to Send. When set, indicates that the `CTS` bit has changed since<br>the last time this register was read. This bit triggers the Modem Status<br>Interrupt.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_1_.uart.SCR"></span><h3 id="uart_wrap-uart_log_engine_wrap_1_.uart.SCR" data-register-alias="uart_log_engine_wrap_1_.uart.SCR">uart_log_engine_wrap[1].uart.SCR</h3>
-<table id="trm-table-30">
-<caption class="title"><a href="#trm-table-30">Table 30</a>. uart_wrap.uart_log_engine_wrap[1].uart.SCR fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7:0</td><td>SCR</td><td>RW</td><td>0x0</td><td>Scratch. Holds user data.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_1_.uart.ECR"></span><h3 id="uart_wrap-uart_log_engine_wrap_1_.uart.ECR" data-register-alias="uart_log_engine_wrap_1_.uart.ECR">uart_log_engine_wrap[1].uart.ECR</h3>
-<table id="trm-table-31">
-<caption class="title"><a href="#trm-table-31">Table 31</a>. uart_wrap.uart_log_engine_wrap[1].uart.ECR fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1:0</td><td>RCVR_TRIGGER_MS2B</td><td>RW</td><td>0x0</td><td>Receiver FIFO Trigger Level Most Significant 2 Bits. To configure the least<br>significant 2 bits, use the `FCR.RCVR_TRIGGER` register field. The<br>configurations for the trigger levels are:<br>* `0x0` -    1 character<br>* `0x1` -    4 characters<br>* `0x2` -    8 characters<br>* `0x3` -   14 characters<br>* `0x4` -   32 characters<br>* `0x5` -   64 characters<br>* `0x6` -  128 characters<br>* `0x7` -  256 characters<br>* `0x8` -  512 characters<br>* `0x9` - 1024 characters<br>* `0xA` - 2048 characters<br>* `0xB` - 4096 characters</td></tr>
-</table>
-<span id="uart_log_engine_wrap_1_.uart.ITR"></span><h3 id="uart_wrap-uart_log_engine_wrap_1_.uart.ITR" data-register-alias="uart_log_engine_wrap_1_.uart.ITR">uart_log_engine_wrap[1].uart.ITR</h3>
-<table id="trm-table-32">
-<caption class="title"><a href="#trm-table-32">Table 32</a>. uart_wrap.uart_log_engine_wrap[1].uart.ITR fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>5</td><td>TRTI</td><td>RW</td><td>0x0</td><td>Test Reception Timeout Interrupt. Writing a `1` forces the interrupt and<br>writing `0` releases it.</td></tr>
-<tr><td>4</td><td>TFEI</td><td>RW</td><td>0x0</td><td>Test FIFO Error Interrupt. Writing `1` forces the interrupt and writing `0`<br>releases it.</td></tr>
-<tr><td>3</td><td>TDSSI</td><td>RW</td><td>0x0</td><td>Test (Delta Status of) Modem Status Interrupt. Writing `1` forces the<br>interrupt and writing `0` releases it.</td></tr>
-<tr><td>2</td><td>TLSI</td><td>RW</td><td>0x0</td><td>Test (Receiver) Line Status Interrupt. Writing `1` forces the interrupt and<br>writing `0` releases it.</td></tr>
-<tr><td>1</td><td>TTBEI</td><td>RW</td><td>0x0</td><td>Test Transmitter Buffer Empty (Transmitter Holding Register Empty) Interrupt.<br>Writing `1` forces the interrupt and writing `0` releases it.</td></tr>
-<tr><td>0</td><td>TRBFI</td><td>RW</td><td>0x0</td><td>Test Receiver Buffer Full (Received Data Ready) Interrupt. Writing `1` forces<br>the interrupt and writing `0` releases it.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_1_.log_engine.CTRL"></span><h3 id="uart_wrap-uart_log_engine_wrap_1_.log_engine.CTRL" data-register-alias="uart_log_engine_wrap_1_.log_engine.CTRL">uart_log_engine_wrap[1].log_engine.CTRL</h3>
-<table id="trm-table-33">
-<caption class="title"><a href="#trm-table-33">Table 33</a>. uart_wrap.uart_log_engine_wrap[1].log_engine.CTRL fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>EN</td><td>RW</td><td>0x0</td><td>Log Engine Enable. When set, enables the Log Engine. When unset, disables the<br>Log Engine and resets all FSMs, flops, and FIFOs.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_1_.log_engine.LOG_REGION_SIZE"></span><h3 id="uart_wrap-uart_log_engine_wrap_1_.log_engine.LOG_REGION_SIZE" data-register-alias="uart_log_engine_wrap_1_.log_engine.LOG_REGION_SIZE">uart_log_engine_wrap[1].log_engine.LOG_REGION_SIZE</h3>
-<table id="trm-table-34">
-<caption class="title"><a href="#trm-table-34">Table 34</a>. uart_wrap.uart_log_engine_wrap[1].log_engine.LOG_REGION_SIZE fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>19:0</td><td>LOG_REGION_SIZE</td><td>RW</td><td>0x0</td><td>Log region size in bytes. Supported values are at most 512 KiB and aligned<br>to 128 bytes (16 slots times the 8-byte fetch beat). If software programs a<br>larger value, RTL clamps the effective region to 512 KiB. For a value that is<br>not 128-byte aligned, RTL divides the effective region among the 16 slots and<br>rounds each slot&#x27;s transferable capacity down to complete 8-byte fetch beats.<br>A requested LOG_LEN above that capacity is clamped to the capacity.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_1_.log_engine.LOG_REGION_ADDR"></span><h3 id="uart_wrap-uart_log_engine_wrap_1_.log_engine.LOG_REGION_ADDR" data-register-alias="uart_log_engine_wrap_1_.log_engine.LOG_REGION_ADDR">uart_log_engine_wrap[1].log_engine.LOG_REGION_ADDR</h3>
-<table id="trm-table-35">
-<caption class="title"><a href="#trm-table-35">Table 35</a>. uart_wrap.uart_log_engine_wrap[1].log_engine.LOG_REGION_ADDR fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:56</td><td>RESERVED</td><td>R</td><td>0x0</td><td>Reserved. Reads as zero; writes are ignored.</td></tr>
-<tr><td>55:32</td><td>LOG_REGION_ADDR_HI</td><td>RW</td><td>0x0</td><td>Log Region Start Address High. Contains fabric address bits [55:32].</td></tr>
-<tr><td>31:0</td><td>LOG_REGION_ADDR_LO</td><td>RW</td><td>0x0</td><td>Log Region Start Address Low.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_1_.log_engine.LOG_WRITE_ADDR"></span><h3 id="uart_wrap-uart_log_engine_wrap_1_.log_engine.LOG_WRITE_ADDR" data-register-alias="uart_log_engine_wrap_1_.log_engine.LOG_WRITE_ADDR">uart_log_engine_wrap[1].log_engine.LOG_WRITE_ADDR</h3>
-<table id="trm-table-36">
-<caption class="title"><a href="#trm-table-36">Table 36</a>. uart_wrap.uart_log_engine_wrap[1].log_engine.LOG_WRITE_ADDR fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>LOG_WRITE_ADDR</td><td>RW</td><td>0x0</td><td>Log Write Address. This is the address where the log data is written to.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_1_.log_engine.INTR_STATUS"></span><h3 id="uart_wrap-uart_log_engine_wrap_1_.log_engine.INTR_STATUS" data-register-alias="uart_log_engine_wrap_1_.log_engine.INTR_STATUS">uart_log_engine_wrap[1].log_engine.INTR_STATUS</h3>
-<table id="trm-table-37">
-<caption class="title"><a href="#trm-table-37">Table 37</a>. uart_wrap.uart_log_engine_wrap[1].log_engine.INTR_STATUS fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>4</td><td>LOG_WRITE_ERR</td><td>RW1C</td><td>0x0</td><td>Log Write Error Interrupt. Asserted when the bus for writing log data returns<br>an error.</td></tr>
-<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>LOG_FETCH_ERR</td><td>RW1C</td><td>0x0</td><td>Log Fetch Error Interrupt. Asserted when the bus for fetching log data returns<br>an error.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_1_.log_engine.INTR_ENABLE"></span><h3 id="uart_wrap-uart_log_engine_wrap_1_.log_engine.INTR_ENABLE" data-register-alias="uart_log_engine_wrap_1_.log_engine.INTR_ENABLE">uart_log_engine_wrap[1].log_engine.INTR_ENABLE</h3>
-<table id="trm-table-38">
-<caption class="title"><a href="#trm-table-38">Table 38</a>. uart_wrap.uart_log_engine_wrap[1].log_engine.INTR_ENABLE fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>4</td><td>LOG_WRITE_ERR</td><td>RW</td><td>0x0</td><td>Log Write Error Interrupt Enable.</td></tr>
-<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>LOG_FETCH_ERR</td><td>RW</td><td>0x0</td><td>Log Fetch Error Interrupt Enable.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_1_.log_engine.INTR_TEST"></span><h3 id="uart_wrap-uart_log_engine_wrap_1_.log_engine.INTR_TEST" data-register-alias="uart_log_engine_wrap_1_.log_engine.INTR_TEST">uart_log_engine_wrap[1].log_engine.INTR_TEST</h3>
-<table id="trm-table-39">
-<caption class="title"><a href="#trm-table-39">Table 39</a>. uart_wrap.uart_log_engine_wrap[1].log_engine.INTR_TEST fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>4</td><td>LOG_WRITE_ERR</td><td>W 1P</td><td>0x0</td><td>Log Write Error Interrupt Test. Writing `1` forces the interrupt.</td></tr>
-<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>LOG_FETCH_ERR</td><td>W 1P</td><td>0x0</td><td>Log Fetch Error Interrupt Test. Writing `1` forces the interrupt.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_1_.log_engine.LOG_CTRL_16_"></span><h3 id="uart_wrap-uart_log_engine_wrap_1_.log_engine.LOG_CTRL_16_" data-register-alias="uart_log_engine_wrap_1_.log_engine.LOG_CTRL_16_">uart_log_engine_wrap[1].log_engine.LOG_CTRL[16]</h3>
-<table id="trm-table-40">
-<caption class="title"><a href="#trm-table-40">Table 40</a>. uart_wrap.uart_log_engine_wrap[1].log_engine.LOG_CTRL[16] fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>15:0</td><td>LOG_LEN</td><td>RW</td><td>0x0</td><td>Log Length. Writing a nonzero value representing the log length in bytes to this field<br>starts the log transfer process. There are 16 copies of this register, each representing<br>a log entry. The log entries go through round robin arbitration.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_2_.uart_log_engine_ctrl.CTRL"></span><h3 id="uart_wrap-uart_log_engine_wrap_2_.uart_log_engine_ctrl.CTRL" data-register-alias="uart_log_engine_wrap_2_.uart_log_engine_ctrl.CTRL">uart_log_engine_wrap[2].uart_log_engine_ctrl.CTRL</h3>
-<table id="trm-table-41">
-<caption class="title"><a href="#trm-table-41">Table 41</a>. uart_wrap.uart_log_engine_wrap[2].uart_log_engine_ctrl.CTRL fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>UART_EN</td><td>RW</td><td>0x0</td><td>UART Enable. When set, the pad-mux downstream will be forced to accept UART<br>traffic.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_2_.uart.RBR"></span><h3 id="uart_wrap-uart_log_engine_wrap_2_.uart.RBR" data-register-alias="uart_log_engine_wrap_2_.uart.RBR">uart_log_engine_wrap[2].uart.RBR</h3>
-<table id="trm-table-42">
-<caption class="title"><a href="#trm-table-42">Table 42</a>. uart_wrap.uart_log_engine_wrap[2].uart.RBR fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7:0</td><td>DATA</td><td>R RMOD</td><td>0x0</td><td>Received Data. Contains a received character. If FIFOs are enabled, this field<br>points to the bottom of the RX FIFO. Otherwise, this field points to a single-<br>byte Receiver Buffer Register.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_2_.uart.IER"></span><h3 id="uart_wrap-uart_log_engine_wrap_2_.uart.IER" data-register-alias="uart_log_engine_wrap_2_.uart.IER">uart_log_engine_wrap[2].uart.IER</h3>
-<table id="trm-table-43">
-<caption class="title"><a href="#trm-table-43">Table 43</a>. uart_wrap.uart_log_engine_wrap[2].uart.IER fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>4</td><td>EFEI</td><td>RW</td><td>0x0</td><td>Enable FIFO Error Interrupt.</td></tr>
-<tr><td>3</td><td>EDSSI</td><td>RW</td><td>0x0</td><td>Enable (Delta Status of) Modem Status Interrupt.</td></tr>
-<tr><td>2</td><td>ELSI</td><td>RW</td><td>0x0</td><td>Enable (Receiver) Line Status Interrupt.</td></tr>
-<tr><td>1</td><td>ETBEI</td><td>RW</td><td>0x0</td><td>Enable Transmitter Buffer Empty (Transmitter Holding Register Empty)<br>Interrupt.</td></tr>
-<tr><td>0</td><td>ERBFI</td><td>RW</td><td>0x0</td><td>Enable Receiver Buffer Full (Received Data Ready) Interrupt.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_2_.uart.IIR"></span><h3 id="uart_wrap-uart_log_engine_wrap_2_.uart.IIR" data-register-alias="uart_log_engine_wrap_2_.uart.IIR">uart_log_engine_wrap[2].uart.IIR</h3>
-<table id="trm-table-44">
-<caption class="title"><a href="#trm-table-44">Table 44</a>. uart_wrap.uart_log_engine_wrap[2].uart.IIR fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7:6</td><td>FIFOS_ENABLED</td><td>R</td><td>0x0</td><td>FIFOs Enabled:<br>* `0x0` - FIFOs are disabled<br>* `0x3` - FIFOs are enabled</td></tr>
-<tr><td>5:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>3:1</td><td>INTERRUPT_ID</td><td>R</td><td>0x0</td><td>Interrupt ID:<br>* `0x7` - FIFO Error Interrupt                         (priority 0)<br>* `0x3` - Receiver Line Status Interrupt               (priority 1)<br>* `0x6` - Reception Timeout Interrupt                  (priority 2)<br>* `0x2` - Received Data Ready Interrupt                (priority 3)<br>* `0x1` - Transmitter Holding Register Empty Interrupt (priority 4)<br>* `0x0` - Modem Status Interrupt                       (priority 5)</td></tr>
-<tr><td>0</td><td>INTERRUPT_PENDING</td><td>R</td><td>0x1</td><td>Interrupt Pending. Active-low.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_2_.uart.LCR"></span><h3 id="uart_wrap-uart_log_engine_wrap_2_.uart.LCR" data-register-alias="uart_log_engine_wrap_2_.uart.LCR">uart_log_engine_wrap[2].uart.LCR</h3>
-<table id="trm-table-45">
-<caption class="title"><a href="#trm-table-45">Table 45</a>. uart_wrap.uart_log_engine_wrap[2].uart.LCR fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7</td><td>DLAB</td><td>RW</td><td>0x0</td><td>Divisor Latch Access Bit. If set, allows access to the `DLL` and `DLM` registers<br>when accessing addresses `0x0` and `0x4`, respectively. If unset, allows access<br>to the `THR`, `RBR`, and `IIR` registers.</td></tr>
-<tr><td>6</td><td>SET_BREAK</td><td>RW</td><td>0x0</td><td>Set Break. If set, forces the `tx_o` output to `0` to cause a break condition<br>on the receiving UART.</td></tr>
-<tr><td>5</td><td>STICK_PARITY</td><td>RW</td><td>0x0</td><td>Stick Parity. If set, forces the transmit and received parity bits to be `0` if<br>even parity is selected and `1` if odd parity is selected.</td></tr>
-<tr><td>4</td><td>EPS</td><td>RW</td><td>0x0</td><td>Even Parity Select:<br>* `1` - even parity<br>* `0` - odd parity</td></tr>
-<tr><td>3</td><td>PEN</td><td>RW</td><td>0x0</td><td>Parity Enable.</td></tr>
-<tr><td>2</td><td>STB</td><td>RW</td><td>0x0</td><td>Stop Bits:<br>* `0` - 1 stop bit.<br>* `1` - 2 stop bits (or 1.5 stop bits if word length is set to 5 bits)</td></tr>
-<tr><td>1:0</td><td>WLS</td><td>RW</td><td>0x0</td><td>Word Length Select:<br>* `0x0` - 5 bits per character<br>* `0x1` - 6 bits per character<br>* `0x2` - 7 bits per character<br>* `0x3` - 8 bits per character</td></tr>
-</table>
-<span id="uart_log_engine_wrap_2_.uart.MCR"></span><h3 id="uart_wrap-uart_log_engine_wrap_2_.uart.MCR" data-register-alias="uart_log_engine_wrap_2_.uart.MCR">uart_log_engine_wrap[2].uart.MCR</h3>
-<table id="trm-table-46">
-<caption class="title"><a href="#trm-table-46">Table 46</a>. uart_wrap.uart_log_engine_wrap[2].uart.MCR fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>5</td><td>LINE_LOOPBACK</td><td>RW</td><td>0x0</td><td>Line Loopback. If set, the `rx_i` input is internally connected to the<br>`tx_o` output.</td></tr>
-<tr><td>4</td><td>LOOP</td><td>RW</td><td>0x0</td><td>System Loopback. If set, the transmitter is internally connected to the<br>receiver. The `tx_o` output is set to `1`.</td></tr>
-<tr><td>3</td><td>OUT2</td><td>RW</td><td>0x0</td><td>User Output 2. Writing to this bit drives the `out2_no` in the opposite<br>polarity.</td></tr>
-<tr><td>2</td><td>OUT1</td><td>RW</td><td>0x0</td><td>User Output 1. Writing to this bit drives the `out1_no` in the opposite<br>polarity.</td></tr>
-<tr><td>1</td><td>RTS</td><td>RW</td><td>0x0</td><td>Request to Send. Writing to this bit drives the `rts_no` output in the opposite<br>polarity.</td></tr>
-<tr><td>0</td><td>DTR</td><td>RW</td><td>0x0</td><td>Data Terminal Ready. Writing to this bit drives the `dtr_no` output in the<br>opposite polarity.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_2_.uart.LSR"></span><h3 id="uart_wrap-uart_log_engine_wrap_2_.uart.LSR" data-register-alias="uart_log_engine_wrap_2_.uart.LSR">uart_log_engine_wrap[2].uart.LSR</h3>
-<table id="trm-table-47">
-<caption class="title"><a href="#trm-table-47">Table 47</a>. uart_wrap.uart_log_engine_wrap[2].uart.LSR fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7</td><td>ERROR_IN_RCVR_FIFO</td><td>R</td><td>0x0</td><td>Error in Receiver FIFO. When set, indicates that the receiver FIFO or (RBR in<br>non-FIFO mode) has the parity, framing, or break error. In other words, at<br>least one of the PE, FE, and BI bits is set.</td></tr>
-<tr><td>6</td><td>TEMT</td><td>R</td><td>0x1</td><td>Transmitter Empty. When set, indicates that the transmitter shift register and<br>the transmitter FIFO (or THR in non-FIFO mode) are empty.</td></tr>
-<tr><td>5</td><td>THRE</td><td>R</td><td>0x1</td><td>Transmitter Holding Register Empty. When set, indicates that the TX FIFO (or<br>THR in non-FIFO mode) is empty. Clearing the Transmitter Holding Register Empty<br>Interrupt does NOT clear this bit.</td></tr>
-<tr><td>4</td><td>BI</td><td>R RC</td><td>0x0</td><td>Break Interrupt. When set, indicates that the `rx_i` input is `0` for an entire<br>frame&#x27;s time (start + data + parity + stop bits). In FIFO mode, this bit set<br>when the character reaches the top of the receiver FIFO. In non-FIFO mode, this<br>bit is set when the character enters the RBR. This bit triggers the Receiver<br>Line Status Interrupt.</td></tr>
-<tr><td>3</td><td>FE</td><td>R RC</td><td>0x0</td><td>Framing Error. When set, indicates that the received character is missing a<br>stop bit. In FIFO mode, this bit is set when the character reaches the top of<br>the FIFO. In non-FIFO mode, this bit is set when the character enters the RBR.<br>This bit triggers the Receiver Line Status Interrupt.</td></tr>
-<tr><td>2</td><td>PE</td><td>R RC</td><td>0x0</td><td>Parity Error. When set, indicates that the character at the top of the receiver<br>FIFO (or RBR in non-FIFO mode) has a parity error. This bit triggers the<br>Receiver Line Status Interrupt.</td></tr>
-<tr><td>1</td><td>OE</td><td>R RC</td><td>0x0</td><td>Overrun Error. When set, indicates that the RX FIFO (or Receiver Buffer<br>Register in Non-FIFO Mode) is full when new character is received. In FIFO Mode, the new character<br>is dropped. In non-FIFO mode, the existing character in the RBR is overwritten.<br>This bit triggers the Receiver Line Status Interrupt.</td></tr>
-<tr><td>0</td><td>DR</td><td>R</td><td>0x0</td><td>Data Ready. When set, indicates that the RX FIFO (or RBR in non-FIFO<br>mode) contains data.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_2_.uart.MSR"></span><h3 id="uart_wrap-uart_log_engine_wrap_2_.uart.MSR" data-register-alias="uart_log_engine_wrap_2_.uart.MSR">uart_log_engine_wrap[2].uart.MSR</h3>
-<table id="trm-table-48">
-<caption class="title"><a href="#trm-table-48">Table 48</a>. uart_wrap.uart_log_engine_wrap[2].uart.MSR fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7</td><td>DCD</td><td>R</td><td>0x0</td><td>Data Carrier Detect. This bit reflects the `dcd_ni` input in the opposite<br>polarity, so it reads `1` while a carrier is detected.</td></tr>
-<tr><td>6</td><td>RI</td><td>R</td><td>0x0</td><td>Ring Indicator. This bit reflects the `ri_ni` input in the opposite polarity, so<br>it reads `1` while the remote modem signals an incoming call.</td></tr>
-<tr><td>5</td><td>DSR</td><td>R</td><td>0x0</td><td>Data Set Ready. This bit reflects the `dsr_ni` input in the opposite polarity,<br>so it reads `1` while the remote modem is connected and ready.</td></tr>
-<tr><td>4</td><td>CTS</td><td>R</td><td>0x0</td><td>Clear to Send. This bit reflects the `cts_ni` input in the opposite polarity, so<br>it reads `1` while the remote device is ready to receive data.</td></tr>
-<tr><td>3</td><td>DDCD</td><td>R RC</td><td>0x0</td><td>Delta Data Carrier Detect. When set, indicates that the `DCD` bit has changed<br>since the last time this register was read. This bit triggers the Modem Status<br>Interrupt.</td></tr>
-<tr><td>2</td><td>TERI</td><td>R RC</td><td>0x0</td><td>Trailing Edge Ring Indicator. When set, indicates that the `RI` bit has changed<br>from a `1` to a `0`. This bit triggers the Modem Status Interrupt.</td></tr>
-<tr><td>1</td><td>DDSR</td><td>R RC</td><td>0x0</td><td>Delta Data Set Ready. When set, indicates that the `DSR` bit has changed since<br>the last time this register was read. This bit triggers the Modem Status<br>Interrupt.</td></tr>
-<tr><td>0</td><td>DCTS</td><td>R RC</td><td>0x0</td><td>Delta Clear to Send. When set, indicates that the `CTS` bit has changed since<br>the last time this register was read. This bit triggers the Modem Status<br>Interrupt.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_2_.uart.SCR"></span><h3 id="uart_wrap-uart_log_engine_wrap_2_.uart.SCR" data-register-alias="uart_log_engine_wrap_2_.uart.SCR">uart_log_engine_wrap[2].uart.SCR</h3>
-<table id="trm-table-49">
-<caption class="title"><a href="#trm-table-49">Table 49</a>. uart_wrap.uart_log_engine_wrap[2].uart.SCR fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7:0</td><td>SCR</td><td>RW</td><td>0x0</td><td>Scratch. Holds user data.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_2_.uart.ECR"></span><h3 id="uart_wrap-uart_log_engine_wrap_2_.uart.ECR" data-register-alias="uart_log_engine_wrap_2_.uart.ECR">uart_log_engine_wrap[2].uart.ECR</h3>
-<table id="trm-table-50">
-<caption class="title"><a href="#trm-table-50">Table 50</a>. uart_wrap.uart_log_engine_wrap[2].uart.ECR fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1:0</td><td>RCVR_TRIGGER_MS2B</td><td>RW</td><td>0x0</td><td>Receiver FIFO Trigger Level Most Significant 2 Bits. To configure the least<br>significant 2 bits, use the `FCR.RCVR_TRIGGER` register field. The<br>configurations for the trigger levels are:<br>* `0x0` -    1 character<br>* `0x1` -    4 characters<br>* `0x2` -    8 characters<br>* `0x3` -   14 characters<br>* `0x4` -   32 characters<br>* `0x5` -   64 characters<br>* `0x6` -  128 characters<br>* `0x7` -  256 characters<br>* `0x8` -  512 characters<br>* `0x9` - 1024 characters<br>* `0xA` - 2048 characters<br>* `0xB` - 4096 characters</td></tr>
-</table>
-<span id="uart_log_engine_wrap_2_.uart.ITR"></span><h3 id="uart_wrap-uart_log_engine_wrap_2_.uart.ITR" data-register-alias="uart_log_engine_wrap_2_.uart.ITR">uart_log_engine_wrap[2].uart.ITR</h3>
-<table id="trm-table-51">
-<caption class="title"><a href="#trm-table-51">Table 51</a>. uart_wrap.uart_log_engine_wrap[2].uart.ITR fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>5</td><td>TRTI</td><td>RW</td><td>0x0</td><td>Test Reception Timeout Interrupt. Writing a `1` forces the interrupt and<br>writing `0` releases it.</td></tr>
-<tr><td>4</td><td>TFEI</td><td>RW</td><td>0x0</td><td>Test FIFO Error Interrupt. Writing `1` forces the interrupt and writing `0`<br>releases it.</td></tr>
-<tr><td>3</td><td>TDSSI</td><td>RW</td><td>0x0</td><td>Test (Delta Status of) Modem Status Interrupt. Writing `1` forces the<br>interrupt and writing `0` releases it.</td></tr>
-<tr><td>2</td><td>TLSI</td><td>RW</td><td>0x0</td><td>Test (Receiver) Line Status Interrupt. Writing `1` forces the interrupt and<br>writing `0` releases it.</td></tr>
-<tr><td>1</td><td>TTBEI</td><td>RW</td><td>0x0</td><td>Test Transmitter Buffer Empty (Transmitter Holding Register Empty) Interrupt.<br>Writing `1` forces the interrupt and writing `0` releases it.</td></tr>
-<tr><td>0</td><td>TRBFI</td><td>RW</td><td>0x0</td><td>Test Receiver Buffer Full (Received Data Ready) Interrupt. Writing `1` forces<br>the interrupt and writing `0` releases it.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_2_.log_engine.CTRL"></span><h3 id="uart_wrap-uart_log_engine_wrap_2_.log_engine.CTRL" data-register-alias="uart_log_engine_wrap_2_.log_engine.CTRL">uart_log_engine_wrap[2].log_engine.CTRL</h3>
-<table id="trm-table-52">
-<caption class="title"><a href="#trm-table-52">Table 52</a>. uart_wrap.uart_log_engine_wrap[2].log_engine.CTRL fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>EN</td><td>RW</td><td>0x0</td><td>Log Engine Enable. When set, enables the Log Engine. When unset, disables the<br>Log Engine and resets all FSMs, flops, and FIFOs.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_2_.log_engine.LOG_REGION_SIZE"></span><h3 id="uart_wrap-uart_log_engine_wrap_2_.log_engine.LOG_REGION_SIZE" data-register-alias="uart_log_engine_wrap_2_.log_engine.LOG_REGION_SIZE">uart_log_engine_wrap[2].log_engine.LOG_REGION_SIZE</h3>
-<table id="trm-table-53">
-<caption class="title"><a href="#trm-table-53">Table 53</a>. uart_wrap.uart_log_engine_wrap[2].log_engine.LOG_REGION_SIZE fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>19:0</td><td>LOG_REGION_SIZE</td><td>RW</td><td>0x0</td><td>Log region size in bytes. Supported values are at most 512 KiB and aligned<br>to 128 bytes (16 slots times the 8-byte fetch beat). If software programs a<br>larger value, RTL clamps the effective region to 512 KiB. For a value that is<br>not 128-byte aligned, RTL divides the effective region among the 16 slots and<br>rounds each slot&#x27;s transferable capacity down to complete 8-byte fetch beats.<br>A requested LOG_LEN above that capacity is clamped to the capacity.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_2_.log_engine.LOG_REGION_ADDR"></span><h3 id="uart_wrap-uart_log_engine_wrap_2_.log_engine.LOG_REGION_ADDR" data-register-alias="uart_log_engine_wrap_2_.log_engine.LOG_REGION_ADDR">uart_log_engine_wrap[2].log_engine.LOG_REGION_ADDR</h3>
-<table id="trm-table-54">
-<caption class="title"><a href="#trm-table-54">Table 54</a>. uart_wrap.uart_log_engine_wrap[2].log_engine.LOG_REGION_ADDR fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:56</td><td>RESERVED</td><td>R</td><td>0x0</td><td>Reserved. Reads as zero; writes are ignored.</td></tr>
-<tr><td>55:32</td><td>LOG_REGION_ADDR_HI</td><td>RW</td><td>0x0</td><td>Log Region Start Address High. Contains fabric address bits [55:32].</td></tr>
-<tr><td>31:0</td><td>LOG_REGION_ADDR_LO</td><td>RW</td><td>0x0</td><td>Log Region Start Address Low.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_2_.log_engine.LOG_WRITE_ADDR"></span><h3 id="uart_wrap-uart_log_engine_wrap_2_.log_engine.LOG_WRITE_ADDR" data-register-alias="uart_log_engine_wrap_2_.log_engine.LOG_WRITE_ADDR">uart_log_engine_wrap[2].log_engine.LOG_WRITE_ADDR</h3>
-<table id="trm-table-55">
-<caption class="title"><a href="#trm-table-55">Table 55</a>. uart_wrap.uart_log_engine_wrap[2].log_engine.LOG_WRITE_ADDR fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>LOG_WRITE_ADDR</td><td>RW</td><td>0x0</td><td>Log Write Address. This is the address where the log data is written to.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_2_.log_engine.INTR_STATUS"></span><h3 id="uart_wrap-uart_log_engine_wrap_2_.log_engine.INTR_STATUS" data-register-alias="uart_log_engine_wrap_2_.log_engine.INTR_STATUS">uart_log_engine_wrap[2].log_engine.INTR_STATUS</h3>
-<table id="trm-table-56">
-<caption class="title"><a href="#trm-table-56">Table 56</a>. uart_wrap.uart_log_engine_wrap[2].log_engine.INTR_STATUS fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>4</td><td>LOG_WRITE_ERR</td><td>RW1C</td><td>0x0</td><td>Log Write Error Interrupt. Asserted when the bus for writing log data returns<br>an error.</td></tr>
-<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>LOG_FETCH_ERR</td><td>RW1C</td><td>0x0</td><td>Log Fetch Error Interrupt. Asserted when the bus for fetching log data returns<br>an error.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_2_.log_engine.INTR_ENABLE"></span><h3 id="uart_wrap-uart_log_engine_wrap_2_.log_engine.INTR_ENABLE" data-register-alias="uart_log_engine_wrap_2_.log_engine.INTR_ENABLE">uart_log_engine_wrap[2].log_engine.INTR_ENABLE</h3>
-<table id="trm-table-57">
-<caption class="title"><a href="#trm-table-57">Table 57</a>. uart_wrap.uart_log_engine_wrap[2].log_engine.INTR_ENABLE fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>4</td><td>LOG_WRITE_ERR</td><td>RW</td><td>0x0</td><td>Log Write Error Interrupt Enable.</td></tr>
-<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>LOG_FETCH_ERR</td><td>RW</td><td>0x0</td><td>Log Fetch Error Interrupt Enable.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_2_.log_engine.INTR_TEST"></span><h3 id="uart_wrap-uart_log_engine_wrap_2_.log_engine.INTR_TEST" data-register-alias="uart_log_engine_wrap_2_.log_engine.INTR_TEST">uart_log_engine_wrap[2].log_engine.INTR_TEST</h3>
-<table id="trm-table-58">
-<caption class="title"><a href="#trm-table-58">Table 58</a>. uart_wrap.uart_log_engine_wrap[2].log_engine.INTR_TEST fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>4</td><td>LOG_WRITE_ERR</td><td>W 1P</td><td>0x0</td><td>Log Write Error Interrupt Test. Writing `1` forces the interrupt.</td></tr>
-<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>LOG_FETCH_ERR</td><td>W 1P</td><td>0x0</td><td>Log Fetch Error Interrupt Test. Writing `1` forces the interrupt.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_2_.log_engine.LOG_CTRL_16_"></span><h3 id="uart_wrap-uart_log_engine_wrap_2_.log_engine.LOG_CTRL_16_" data-register-alias="uart_log_engine_wrap_2_.log_engine.LOG_CTRL_16_">uart_log_engine_wrap[2].log_engine.LOG_CTRL[16]</h3>
-<table id="trm-table-59">
-<caption class="title"><a href="#trm-table-59">Table 59</a>. uart_wrap.uart_log_engine_wrap[2].log_engine.LOG_CTRL[16] fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>15:0</td><td>LOG_LEN</td><td>RW</td><td>0x0</td><td>Log Length. Writing a nonzero value representing the log length in bytes to this field<br>starts the log transfer process. There are 16 copies of this register, each representing<br>a log entry. The log entries go through round robin arbitration.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_3_.uart_log_engine_ctrl.CTRL"></span><h3 id="uart_wrap-uart_log_engine_wrap_3_.uart_log_engine_ctrl.CTRL" data-register-alias="uart_log_engine_wrap_3_.uart_log_engine_ctrl.CTRL">uart_log_engine_wrap[3].uart_log_engine_ctrl.CTRL</h3>
-<table id="trm-table-60">
-<caption class="title"><a href="#trm-table-60">Table 60</a>. uart_wrap.uart_log_engine_wrap[3].uart_log_engine_ctrl.CTRL fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>UART_EN</td><td>RW</td><td>0x0</td><td>UART Enable. When set, the pad-mux downstream will be forced to accept UART<br>traffic.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_3_.uart.RBR"></span><h3 id="uart_wrap-uart_log_engine_wrap_3_.uart.RBR" data-register-alias="uart_log_engine_wrap_3_.uart.RBR">uart_log_engine_wrap[3].uart.RBR</h3>
-<table id="trm-table-61">
-<caption class="title"><a href="#trm-table-61">Table 61</a>. uart_wrap.uart_log_engine_wrap[3].uart.RBR fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7:0</td><td>DATA</td><td>R RMOD</td><td>0x0</td><td>Received Data. Contains a received character. If FIFOs are enabled, this field<br>points to the bottom of the RX FIFO. Otherwise, this field points to a single-<br>byte Receiver Buffer Register.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_3_.uart.IER"></span><h3 id="uart_wrap-uart_log_engine_wrap_3_.uart.IER" data-register-alias="uart_log_engine_wrap_3_.uart.IER">uart_log_engine_wrap[3].uart.IER</h3>
-<table id="trm-table-62">
-<caption class="title"><a href="#trm-table-62">Table 62</a>. uart_wrap.uart_log_engine_wrap[3].uart.IER fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>4</td><td>EFEI</td><td>RW</td><td>0x0</td><td>Enable FIFO Error Interrupt.</td></tr>
-<tr><td>3</td><td>EDSSI</td><td>RW</td><td>0x0</td><td>Enable (Delta Status of) Modem Status Interrupt.</td></tr>
-<tr><td>2</td><td>ELSI</td><td>RW</td><td>0x0</td><td>Enable (Receiver) Line Status Interrupt.</td></tr>
-<tr><td>1</td><td>ETBEI</td><td>RW</td><td>0x0</td><td>Enable Transmitter Buffer Empty (Transmitter Holding Register Empty)<br>Interrupt.</td></tr>
-<tr><td>0</td><td>ERBFI</td><td>RW</td><td>0x0</td><td>Enable Receiver Buffer Full (Received Data Ready) Interrupt.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_3_.uart.IIR"></span><h3 id="uart_wrap-uart_log_engine_wrap_3_.uart.IIR" data-register-alias="uart_log_engine_wrap_3_.uart.IIR">uart_log_engine_wrap[3].uart.IIR</h3>
-<table id="trm-table-63">
-<caption class="title"><a href="#trm-table-63">Table 63</a>. uart_wrap.uart_log_engine_wrap[3].uart.IIR fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7:6</td><td>FIFOS_ENABLED</td><td>R</td><td>0x0</td><td>FIFOs Enabled:<br>* `0x0` - FIFOs are disabled<br>* `0x3` - FIFOs are enabled</td></tr>
-<tr><td>5:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>3:1</td><td>INTERRUPT_ID</td><td>R</td><td>0x0</td><td>Interrupt ID:<br>* `0x7` - FIFO Error Interrupt                         (priority 0)<br>* `0x3` - Receiver Line Status Interrupt               (priority 1)<br>* `0x6` - Reception Timeout Interrupt                  (priority 2)<br>* `0x2` - Received Data Ready Interrupt                (priority 3)<br>* `0x1` - Transmitter Holding Register Empty Interrupt (priority 4)<br>* `0x0` - Modem Status Interrupt                       (priority 5)</td></tr>
-<tr><td>0</td><td>INTERRUPT_PENDING</td><td>R</td><td>0x1</td><td>Interrupt Pending. Active-low.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_3_.uart.LCR"></span><h3 id="uart_wrap-uart_log_engine_wrap_3_.uart.LCR" data-register-alias="uart_log_engine_wrap_3_.uart.LCR">uart_log_engine_wrap[3].uart.LCR</h3>
-<table id="trm-table-64">
-<caption class="title"><a href="#trm-table-64">Table 64</a>. uart_wrap.uart_log_engine_wrap[3].uart.LCR fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7</td><td>DLAB</td><td>RW</td><td>0x0</td><td>Divisor Latch Access Bit. If set, allows access to the `DLL` and `DLM` registers<br>when accessing addresses `0x0` and `0x4`, respectively. If unset, allows access<br>to the `THR`, `RBR`, and `IIR` registers.</td></tr>
-<tr><td>6</td><td>SET_BREAK</td><td>RW</td><td>0x0</td><td>Set Break. If set, forces the `tx_o` output to `0` to cause a break condition<br>on the receiving UART.</td></tr>
-<tr><td>5</td><td>STICK_PARITY</td><td>RW</td><td>0x0</td><td>Stick Parity. If set, forces the transmit and received parity bits to be `0` if<br>even parity is selected and `1` if odd parity is selected.</td></tr>
-<tr><td>4</td><td>EPS</td><td>RW</td><td>0x0</td><td>Even Parity Select:<br>* `1` - even parity<br>* `0` - odd parity</td></tr>
-<tr><td>3</td><td>PEN</td><td>RW</td><td>0x0</td><td>Parity Enable.</td></tr>
-<tr><td>2</td><td>STB</td><td>RW</td><td>0x0</td><td>Stop Bits:<br>* `0` - 1 stop bit.<br>* `1` - 2 stop bits (or 1.5 stop bits if word length is set to 5 bits)</td></tr>
-<tr><td>1:0</td><td>WLS</td><td>RW</td><td>0x0</td><td>Word Length Select:<br>* `0x0` - 5 bits per character<br>* `0x1` - 6 bits per character<br>* `0x2` - 7 bits per character<br>* `0x3` - 8 bits per character</td></tr>
-</table>
-<span id="uart_log_engine_wrap_3_.uart.MCR"></span><h3 id="uart_wrap-uart_log_engine_wrap_3_.uart.MCR" data-register-alias="uart_log_engine_wrap_3_.uart.MCR">uart_log_engine_wrap[3].uart.MCR</h3>
-<table id="trm-table-65">
-<caption class="title"><a href="#trm-table-65">Table 65</a>. uart_wrap.uart_log_engine_wrap[3].uart.MCR fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>5</td><td>LINE_LOOPBACK</td><td>RW</td><td>0x0</td><td>Line Loopback. If set, the `rx_i` input is internally connected to the<br>`tx_o` output.</td></tr>
-<tr><td>4</td><td>LOOP</td><td>RW</td><td>0x0</td><td>System Loopback. If set, the transmitter is internally connected to the<br>receiver. The `tx_o` output is set to `1`.</td></tr>
-<tr><td>3</td><td>OUT2</td><td>RW</td><td>0x0</td><td>User Output 2. Writing to this bit drives the `out2_no` in the opposite<br>polarity.</td></tr>
-<tr><td>2</td><td>OUT1</td><td>RW</td><td>0x0</td><td>User Output 1. Writing to this bit drives the `out1_no` in the opposite<br>polarity.</td></tr>
-<tr><td>1</td><td>RTS</td><td>RW</td><td>0x0</td><td>Request to Send. Writing to this bit drives the `rts_no` output in the opposite<br>polarity.</td></tr>
-<tr><td>0</td><td>DTR</td><td>RW</td><td>0x0</td><td>Data Terminal Ready. Writing to this bit drives the `dtr_no` output in the<br>opposite polarity.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_3_.uart.LSR"></span><h3 id="uart_wrap-uart_log_engine_wrap_3_.uart.LSR" data-register-alias="uart_log_engine_wrap_3_.uart.LSR">uart_log_engine_wrap[3].uart.LSR</h3>
-<table id="trm-table-66">
-<caption class="title"><a href="#trm-table-66">Table 66</a>. uart_wrap.uart_log_engine_wrap[3].uart.LSR fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7</td><td>ERROR_IN_RCVR_FIFO</td><td>R</td><td>0x0</td><td>Error in Receiver FIFO. When set, indicates that the receiver FIFO or (RBR in<br>non-FIFO mode) has the parity, framing, or break error. In other words, at<br>least one of the PE, FE, and BI bits is set.</td></tr>
-<tr><td>6</td><td>TEMT</td><td>R</td><td>0x1</td><td>Transmitter Empty. When set, indicates that the transmitter shift register and<br>the transmitter FIFO (or THR in non-FIFO mode) are empty.</td></tr>
-<tr><td>5</td><td>THRE</td><td>R</td><td>0x1</td><td>Transmitter Holding Register Empty. When set, indicates that the TX FIFO (or<br>THR in non-FIFO mode) is empty. Clearing the Transmitter Holding Register Empty<br>Interrupt does NOT clear this bit.</td></tr>
-<tr><td>4</td><td>BI</td><td>R RC</td><td>0x0</td><td>Break Interrupt. When set, indicates that the `rx_i` input is `0` for an entire<br>frame&#x27;s time (start + data + parity + stop bits). In FIFO mode, this bit set<br>when the character reaches the top of the receiver FIFO. In non-FIFO mode, this<br>bit is set when the character enters the RBR. This bit triggers the Receiver<br>Line Status Interrupt.</td></tr>
-<tr><td>3</td><td>FE</td><td>R RC</td><td>0x0</td><td>Framing Error. When set, indicates that the received character is missing a<br>stop bit. In FIFO mode, this bit is set when the character reaches the top of<br>the FIFO. In non-FIFO mode, this bit is set when the character enters the RBR.<br>This bit triggers the Receiver Line Status Interrupt.</td></tr>
-<tr><td>2</td><td>PE</td><td>R RC</td><td>0x0</td><td>Parity Error. When set, indicates that the character at the top of the receiver<br>FIFO (or RBR in non-FIFO mode) has a parity error. This bit triggers the<br>Receiver Line Status Interrupt.</td></tr>
-<tr><td>1</td><td>OE</td><td>R RC</td><td>0x0</td><td>Overrun Error. When set, indicates that the RX FIFO (or Receiver Buffer<br>Register in Non-FIFO Mode) is full when new character is received. In FIFO Mode, the new character<br>is dropped. In non-FIFO mode, the existing character in the RBR is overwritten.<br>This bit triggers the Receiver Line Status Interrupt.</td></tr>
-<tr><td>0</td><td>DR</td><td>R</td><td>0x0</td><td>Data Ready. When set, indicates that the RX FIFO (or RBR in non-FIFO<br>mode) contains data.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_3_.uart.MSR"></span><h3 id="uart_wrap-uart_log_engine_wrap_3_.uart.MSR" data-register-alias="uart_log_engine_wrap_3_.uart.MSR">uart_log_engine_wrap[3].uart.MSR</h3>
-<table id="trm-table-67">
-<caption class="title"><a href="#trm-table-67">Table 67</a>. uart_wrap.uart_log_engine_wrap[3].uart.MSR fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7</td><td>DCD</td><td>R</td><td>0x0</td><td>Data Carrier Detect. This bit reflects the `dcd_ni` input in the opposite<br>polarity, so it reads `1` while a carrier is detected.</td></tr>
-<tr><td>6</td><td>RI</td><td>R</td><td>0x0</td><td>Ring Indicator. This bit reflects the `ri_ni` input in the opposite polarity, so<br>it reads `1` while the remote modem signals an incoming call.</td></tr>
-<tr><td>5</td><td>DSR</td><td>R</td><td>0x0</td><td>Data Set Ready. This bit reflects the `dsr_ni` input in the opposite polarity,<br>so it reads `1` while the remote modem is connected and ready.</td></tr>
-<tr><td>4</td><td>CTS</td><td>R</td><td>0x0</td><td>Clear to Send. This bit reflects the `cts_ni` input in the opposite polarity, so<br>it reads `1` while the remote device is ready to receive data.</td></tr>
-<tr><td>3</td><td>DDCD</td><td>R RC</td><td>0x0</td><td>Delta Data Carrier Detect. When set, indicates that the `DCD` bit has changed<br>since the last time this register was read. This bit triggers the Modem Status<br>Interrupt.</td></tr>
-<tr><td>2</td><td>TERI</td><td>R RC</td><td>0x0</td><td>Trailing Edge Ring Indicator. When set, indicates that the `RI` bit has changed<br>from a `1` to a `0`. This bit triggers the Modem Status Interrupt.</td></tr>
-<tr><td>1</td><td>DDSR</td><td>R RC</td><td>0x0</td><td>Delta Data Set Ready. When set, indicates that the `DSR` bit has changed since<br>the last time this register was read. This bit triggers the Modem Status<br>Interrupt.</td></tr>
-<tr><td>0</td><td>DCTS</td><td>R RC</td><td>0x0</td><td>Delta Clear to Send. When set, indicates that the `CTS` bit has changed since<br>the last time this register was read. This bit triggers the Modem Status<br>Interrupt.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_3_.uart.SCR"></span><h3 id="uart_wrap-uart_log_engine_wrap_3_.uart.SCR" data-register-alias="uart_log_engine_wrap_3_.uart.SCR">uart_log_engine_wrap[3].uart.SCR</h3>
-<table id="trm-table-68">
-<caption class="title"><a href="#trm-table-68">Table 68</a>. uart_wrap.uart_log_engine_wrap[3].uart.SCR fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7:0</td><td>SCR</td><td>RW</td><td>0x0</td><td>Scratch. Holds user data.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_3_.uart.ECR"></span><h3 id="uart_wrap-uart_log_engine_wrap_3_.uart.ECR" data-register-alias="uart_log_engine_wrap_3_.uart.ECR">uart_log_engine_wrap[3].uart.ECR</h3>
-<table id="trm-table-69">
-<caption class="title"><a href="#trm-table-69">Table 69</a>. uart_wrap.uart_log_engine_wrap[3].uart.ECR fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1:0</td><td>RCVR_TRIGGER_MS2B</td><td>RW</td><td>0x0</td><td>Receiver FIFO Trigger Level Most Significant 2 Bits. To configure the least<br>significant 2 bits, use the `FCR.RCVR_TRIGGER` register field. The<br>configurations for the trigger levels are:<br>* `0x0` -    1 character<br>* `0x1` -    4 characters<br>* `0x2` -    8 characters<br>* `0x3` -   14 characters<br>* `0x4` -   32 characters<br>* `0x5` -   64 characters<br>* `0x6` -  128 characters<br>* `0x7` -  256 characters<br>* `0x8` -  512 characters<br>* `0x9` - 1024 characters<br>* `0xA` - 2048 characters<br>* `0xB` - 4096 characters</td></tr>
-</table>
-<span id="uart_log_engine_wrap_3_.uart.ITR"></span><h3 id="uart_wrap-uart_log_engine_wrap_3_.uart.ITR" data-register-alias="uart_log_engine_wrap_3_.uart.ITR">uart_log_engine_wrap[3].uart.ITR</h3>
-<table id="trm-table-70">
-<caption class="title"><a href="#trm-table-70">Table 70</a>. uart_wrap.uart_log_engine_wrap[3].uart.ITR fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>5</td><td>TRTI</td><td>RW</td><td>0x0</td><td>Test Reception Timeout Interrupt. Writing a `1` forces the interrupt and<br>writing `0` releases it.</td></tr>
-<tr><td>4</td><td>TFEI</td><td>RW</td><td>0x0</td><td>Test FIFO Error Interrupt. Writing `1` forces the interrupt and writing `0`<br>releases it.</td></tr>
-<tr><td>3</td><td>TDSSI</td><td>RW</td><td>0x0</td><td>Test (Delta Status of) Modem Status Interrupt. Writing `1` forces the<br>interrupt and writing `0` releases it.</td></tr>
-<tr><td>2</td><td>TLSI</td><td>RW</td><td>0x0</td><td>Test (Receiver) Line Status Interrupt. Writing `1` forces the interrupt and<br>writing `0` releases it.</td></tr>
-<tr><td>1</td><td>TTBEI</td><td>RW</td><td>0x0</td><td>Test Transmitter Buffer Empty (Transmitter Holding Register Empty) Interrupt.<br>Writing `1` forces the interrupt and writing `0` releases it.</td></tr>
-<tr><td>0</td><td>TRBFI</td><td>RW</td><td>0x0</td><td>Test Receiver Buffer Full (Received Data Ready) Interrupt. Writing `1` forces<br>the interrupt and writing `0` releases it.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_3_.log_engine.CTRL"></span><h3 id="uart_wrap-uart_log_engine_wrap_3_.log_engine.CTRL" data-register-alias="uart_log_engine_wrap_3_.log_engine.CTRL">uart_log_engine_wrap[3].log_engine.CTRL</h3>
-<table id="trm-table-71">
-<caption class="title"><a href="#trm-table-71">Table 71</a>. uart_wrap.uart_log_engine_wrap[3].log_engine.CTRL fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>EN</td><td>RW</td><td>0x0</td><td>Log Engine Enable. When set, enables the Log Engine. When unset, disables the<br>Log Engine and resets all FSMs, flops, and FIFOs.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_3_.log_engine.LOG_REGION_SIZE"></span><h3 id="uart_wrap-uart_log_engine_wrap_3_.log_engine.LOG_REGION_SIZE" data-register-alias="uart_log_engine_wrap_3_.log_engine.LOG_REGION_SIZE">uart_log_engine_wrap[3].log_engine.LOG_REGION_SIZE</h3>
-<table id="trm-table-72">
-<caption class="title"><a href="#trm-table-72">Table 72</a>. uart_wrap.uart_log_engine_wrap[3].log_engine.LOG_REGION_SIZE fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>19:0</td><td>LOG_REGION_SIZE</td><td>RW</td><td>0x0</td><td>Log region size in bytes. Supported values are at most 512 KiB and aligned<br>to 128 bytes (16 slots times the 8-byte fetch beat). If software programs a<br>larger value, RTL clamps the effective region to 512 KiB. For a value that is<br>not 128-byte aligned, RTL divides the effective region among the 16 slots and<br>rounds each slot&#x27;s transferable capacity down to complete 8-byte fetch beats.<br>A requested LOG_LEN above that capacity is clamped to the capacity.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_3_.log_engine.LOG_REGION_ADDR"></span><h3 id="uart_wrap-uart_log_engine_wrap_3_.log_engine.LOG_REGION_ADDR" data-register-alias="uart_log_engine_wrap_3_.log_engine.LOG_REGION_ADDR">uart_log_engine_wrap[3].log_engine.LOG_REGION_ADDR</h3>
-<table id="trm-table-73">
-<caption class="title"><a href="#trm-table-73">Table 73</a>. uart_wrap.uart_log_engine_wrap[3].log_engine.LOG_REGION_ADDR fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:56</td><td>RESERVED</td><td>R</td><td>0x0</td><td>Reserved. Reads as zero; writes are ignored.</td></tr>
-<tr><td>55:32</td><td>LOG_REGION_ADDR_HI</td><td>RW</td><td>0x0</td><td>Log Region Start Address High. Contains fabric address bits [55:32].</td></tr>
-<tr><td>31:0</td><td>LOG_REGION_ADDR_LO</td><td>RW</td><td>0x0</td><td>Log Region Start Address Low.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_3_.log_engine.LOG_WRITE_ADDR"></span><h3 id="uart_wrap-uart_log_engine_wrap_3_.log_engine.LOG_WRITE_ADDR" data-register-alias="uart_log_engine_wrap_3_.log_engine.LOG_WRITE_ADDR">uart_log_engine_wrap[3].log_engine.LOG_WRITE_ADDR</h3>
-<table id="trm-table-74">
-<caption class="title"><a href="#trm-table-74">Table 74</a>. uart_wrap.uart_log_engine_wrap[3].log_engine.LOG_WRITE_ADDR fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>LOG_WRITE_ADDR</td><td>RW</td><td>0x0</td><td>Log Write Address. This is the address where the log data is written to.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_3_.log_engine.INTR_STATUS"></span><h3 id="uart_wrap-uart_log_engine_wrap_3_.log_engine.INTR_STATUS" data-register-alias="uart_log_engine_wrap_3_.log_engine.INTR_STATUS">uart_log_engine_wrap[3].log_engine.INTR_STATUS</h3>
-<table id="trm-table-75">
-<caption class="title"><a href="#trm-table-75">Table 75</a>. uart_wrap.uart_log_engine_wrap[3].log_engine.INTR_STATUS fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>4</td><td>LOG_WRITE_ERR</td><td>RW1C</td><td>0x0</td><td>Log Write Error Interrupt. Asserted when the bus for writing log data returns<br>an error.</td></tr>
-<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>LOG_FETCH_ERR</td><td>RW1C</td><td>0x0</td><td>Log Fetch Error Interrupt. Asserted when the bus for fetching log data returns<br>an error.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_3_.log_engine.INTR_ENABLE"></span><h3 id="uart_wrap-uart_log_engine_wrap_3_.log_engine.INTR_ENABLE" data-register-alias="uart_log_engine_wrap_3_.log_engine.INTR_ENABLE">uart_log_engine_wrap[3].log_engine.INTR_ENABLE</h3>
-<table id="trm-table-76">
-<caption class="title"><a href="#trm-table-76">Table 76</a>. uart_wrap.uart_log_engine_wrap[3].log_engine.INTR_ENABLE fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>4</td><td>LOG_WRITE_ERR</td><td>RW</td><td>0x0</td><td>Log Write Error Interrupt Enable.</td></tr>
-<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>LOG_FETCH_ERR</td><td>RW</td><td>0x0</td><td>Log Fetch Error Interrupt Enable.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_3_.log_engine.INTR_TEST"></span><h3 id="uart_wrap-uart_log_engine_wrap_3_.log_engine.INTR_TEST" data-register-alias="uart_log_engine_wrap_3_.log_engine.INTR_TEST">uart_log_engine_wrap[3].log_engine.INTR_TEST</h3>
-<table id="trm-table-77">
-<caption class="title"><a href="#trm-table-77">Table 77</a>. uart_wrap.uart_log_engine_wrap[3].log_engine.INTR_TEST fields</caption>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>4</td><td>LOG_WRITE_ERR</td><td>W 1P</td><td>0x0</td><td>Log Write Error Interrupt Test. Writing `1` forces the interrupt.</td></tr>
-<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>LOG_FETCH_ERR</td><td>W 1P</td><td>0x0</td><td>Log Fetch Error Interrupt Test. Writing `1` forces the interrupt.</td></tr>
-</table>
-<span id="uart_log_engine_wrap_3_.log_engine.LOG_CTRL_16_"></span><h3 id="uart_wrap-uart_log_engine_wrap_3_.log_engine.LOG_CTRL_16_" data-register-alias="uart_log_engine_wrap_3_.log_engine.LOG_CTRL_16_">uart_log_engine_wrap[3].log_engine.LOG_CTRL[16]</h3>
-<table id="trm-table-78">
-<caption class="title"><a href="#trm-table-78">Table 78</a>. uart_wrap.uart_log_engine_wrap[3].log_engine.LOG_CTRL[16] fields</caption>
+<caption class="title"><a href="#trm-table-21">Table 21</a>. uart_wrap.uart_log_engine_wrap[4].log_engine.LOG_CTRL[16] fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>15:0</td><td>LOG_LEN</td><td>RW</td><td>0x0</td><td>Log Length. Writing a nonzero value representing the log length in bytes to this field<br>starts the log transfer process. There are 16 copies of this register, each representing<br>a log entry. The log entries go through round robin arbitration.</td></tr>
@@ -1641,15 +1071,15 @@ composed register banks. Offsets are relative to each wrapper&#8217;s base addre
 <h2 id="regmap-uart_log_engine_ctrl">UART Log Engine Control Address Map</h2>
 <p>Top-level enable register for the UART log-engine block.</p>
 <p><strong>Register List:</strong></p>
-<table id="trm-table-79">
-<caption class="title"><a href="#trm-table-79">Table 79</a>. UART Log Engine Control Address Map register list</caption>
+<table id="trm-table-22">
+<caption class="title"><a href="#trm-table-22">Table 22</a>. UART Log Engine Control Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#uart_log_engine_ctrl-CTRL">CTRL</a></td><td>RW</td><td>Control Register</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
 <span id="CTRL"></span><h3 id="uart_log_engine_ctrl-CTRL" data-register-alias="CTRL">CTRL</h3>
-<table id="trm-table-80">
-<caption class="title"><a href="#trm-table-80">Table 80</a>. uart_log_engine_ctrl.CTRL fields</caption>
+<table id="trm-table-23">
+<caption class="title"><a href="#trm-table-23">Table 23</a>. uart_log_engine_ctrl.CTRL fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>UART_EN</td><td>RW</td><td>0x0</td><td>UART Enable. When set, the pad-mux downstream will be forced to accept UART<br>traffic.</td></tr>
@@ -1670,8 +1100,8 @@ composed register banks. Offsets are relative to each wrapper&#8217;s base addre
 <li><strong>LOG_CTRL[16]</strong>: 16 registers, base 0x240, stride 0x4</li>
 </ul>
 <p><strong>Register List:</strong></p>
-<table id="trm-table-81">
-<caption class="title"><a href="#trm-table-81">Table 81</a>. UART Log Engine Wrapper Address Map register list</caption>
+<table id="trm-table-24">
+<caption class="title"><a href="#trm-table-24">Table 24</a>. UART Log Engine Wrapper Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#uart_log_engine_wrap-uart_log_engine_ctrl.CTRL">uart_log_engine_ctrl.CTRL</a></td><td>RW</td><td>Control Register</td></tr>
 <tr><td>0x100</td><td><a href="#uart_log_engine_wrap-RBR">RBR</a></td><td>R</td><td>Receiver Buffer Register</td></tr>
@@ -1695,22 +1125,22 @@ composed register banks. Offsets are relative to each wrapper&#8217;s base addre
 </table>
 <p><strong>Register Details:</strong></p>
 <span id="uart_log_engine_ctrl.CTRL"></span><h3 id="uart_log_engine_wrap-uart_log_engine_ctrl.CTRL" data-register-alias="uart_log_engine_ctrl.CTRL">uart_log_engine_ctrl.CTRL</h3>
-<table id="trm-table-82">
-<caption class="title"><a href="#trm-table-82">Table 82</a>. uart_log_engine_wrap.uart_log_engine_ctrl.CTRL fields</caption>
+<table id="trm-table-25">
+<caption class="title"><a href="#trm-table-25">Table 25</a>. uart_log_engine_wrap.uart_log_engine_ctrl.CTRL fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>UART_EN</td><td>RW</td><td>0x0</td><td>UART Enable. When set, the pad-mux downstream will be forced to accept UART<br>traffic.</td></tr>
 </table>
 <span id="RBR"></span><h3 id="uart_log_engine_wrap-RBR" data-register-alias="RBR">RBR</h3>
-<table id="trm-table-83">
-<caption class="title"><a href="#trm-table-83">Table 83</a>. uart_log_engine_wrap.RBR fields</caption>
+<table id="trm-table-26">
+<caption class="title"><a href="#trm-table-26">Table 26</a>. uart_log_engine_wrap.RBR fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>7:0</td><td>DATA</td><td>R RMOD</td><td>0x0</td><td>Received Data. Contains a received character. If FIFOs are enabled, this field<br>points to the bottom of the RX FIFO. Otherwise, this field points to a single-<br>byte Receiver Buffer Register.</td></tr>
 </table>
 <span id="IER"></span><h3 id="uart_log_engine_wrap-IER" data-register-alias="IER">IER</h3>
-<table id="trm-table-84">
-<caption class="title"><a href="#trm-table-84">Table 84</a>. uart_log_engine_wrap.IER fields</caption>
+<table id="trm-table-27">
+<caption class="title"><a href="#trm-table-27">Table 27</a>. uart_log_engine_wrap.IER fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>4</td><td>EFEI</td><td>RW</td><td>0x0</td><td>Enable FIFO Error Interrupt.</td></tr>
@@ -1720,8 +1150,8 @@ composed register banks. Offsets are relative to each wrapper&#8217;s base addre
 <tr><td>0</td><td>ERBFI</td><td>RW</td><td>0x0</td><td>Enable Receiver Buffer Full (Received Data Ready) Interrupt.</td></tr>
 </table>
 <span id="IIR"></span><h3 id="uart_log_engine_wrap-IIR" data-register-alias="IIR">IIR</h3>
-<table id="trm-table-85">
-<caption class="title"><a href="#trm-table-85">Table 85</a>. uart_log_engine_wrap.IIR fields</caption>
+<table id="trm-table-28">
+<caption class="title"><a href="#trm-table-28">Table 28</a>. uart_log_engine_wrap.IIR fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>7:6</td><td>FIFOS_ENABLED</td><td>R</td><td>0x0</td><td>FIFOs Enabled:<br>* `0x0` - FIFOs are disabled<br>* `0x3` - FIFOs are enabled</td></tr>
@@ -1730,8 +1160,8 @@ composed register banks. Offsets are relative to each wrapper&#8217;s base addre
 <tr><td>0</td><td>INTERRUPT_PENDING</td><td>R</td><td>0x1</td><td>Interrupt Pending. Active-low.</td></tr>
 </table>
 <span id="LCR"></span><h3 id="uart_log_engine_wrap-LCR" data-register-alias="LCR">LCR</h3>
-<table id="trm-table-86">
-<caption class="title"><a href="#trm-table-86">Table 86</a>. uart_log_engine_wrap.LCR fields</caption>
+<table id="trm-table-29">
+<caption class="title"><a href="#trm-table-29">Table 29</a>. uart_log_engine_wrap.LCR fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>7</td><td>DLAB</td><td>RW</td><td>0x0</td><td>Divisor Latch Access Bit. If set, allows access to the `DLL` and `DLM` registers<br>when accessing addresses `0x0` and `0x4`, respectively. If unset, allows access<br>to the `THR`, `RBR`, and `IIR` registers.</td></tr>
@@ -1743,8 +1173,8 @@ composed register banks. Offsets are relative to each wrapper&#8217;s base addre
 <tr><td>1:0</td><td>WLS</td><td>RW</td><td>0x0</td><td>Word Length Select:<br>* `0x0` - 5 bits per character<br>* `0x1` - 6 bits per character<br>* `0x2` - 7 bits per character<br>* `0x3` - 8 bits per character</td></tr>
 </table>
 <span id="MCR"></span><h3 id="uart_log_engine_wrap-MCR" data-register-alias="MCR">MCR</h3>
-<table id="trm-table-87">
-<caption class="title"><a href="#trm-table-87">Table 87</a>. uart_log_engine_wrap.MCR fields</caption>
+<table id="trm-table-30">
+<caption class="title"><a href="#trm-table-30">Table 30</a>. uart_log_engine_wrap.MCR fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>5</td><td>LINE_LOOPBACK</td><td>RW</td><td>0x0</td><td>Line Loopback. If set, the `rx_i` input is internally connected to the<br>`tx_o` output.</td></tr>
@@ -1755,8 +1185,8 @@ composed register banks. Offsets are relative to each wrapper&#8217;s base addre
 <tr><td>0</td><td>DTR</td><td>RW</td><td>0x0</td><td>Data Terminal Ready. Writing to this bit drives the `dtr_no` output in the<br>opposite polarity.</td></tr>
 </table>
 <span id="LSR"></span><h3 id="uart_log_engine_wrap-LSR" data-register-alias="LSR">LSR</h3>
-<table id="trm-table-88">
-<caption class="title"><a href="#trm-table-88">Table 88</a>. uart_log_engine_wrap.LSR fields</caption>
+<table id="trm-table-31">
+<caption class="title"><a href="#trm-table-31">Table 31</a>. uart_log_engine_wrap.LSR fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>7</td><td>ERROR_IN_RCVR_FIFO</td><td>R</td><td>0x0</td><td>Error in Receiver FIFO. When set, indicates that the receiver FIFO or (RBR in<br>non-FIFO mode) has the parity, framing, or break error. In other words, at<br>least one of the PE, FE, and BI bits is set.</td></tr>
@@ -1769,8 +1199,8 @@ composed register banks. Offsets are relative to each wrapper&#8217;s base addre
 <tr><td>0</td><td>DR</td><td>R</td><td>0x0</td><td>Data Ready. When set, indicates that the RX FIFO (or RBR in non-FIFO<br>mode) contains data.</td></tr>
 </table>
 <span id="MSR"></span><h3 id="uart_log_engine_wrap-MSR" data-register-alias="MSR">MSR</h3>
-<table id="trm-table-89">
-<caption class="title"><a href="#trm-table-89">Table 89</a>. uart_log_engine_wrap.MSR fields</caption>
+<table id="trm-table-32">
+<caption class="title"><a href="#trm-table-32">Table 32</a>. uart_log_engine_wrap.MSR fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>7</td><td>DCD</td><td>R</td><td>0x0</td><td>Data Carrier Detect. This bit reflects the `dcd_ni` input in the opposite<br>polarity, so it reads `1` while a carrier is detected.</td></tr>
@@ -1783,22 +1213,22 @@ composed register banks. Offsets are relative to each wrapper&#8217;s base addre
 <tr><td>0</td><td>DCTS</td><td>R RC</td><td>0x0</td><td>Delta Clear to Send. When set, indicates that the `CTS` bit has changed since<br>the last time this register was read. This bit triggers the Modem Status<br>Interrupt.</td></tr>
 </table>
 <span id="SCR"></span><h3 id="uart_log_engine_wrap-SCR" data-register-alias="SCR">SCR</h3>
-<table id="trm-table-90">
-<caption class="title"><a href="#trm-table-90">Table 90</a>. uart_log_engine_wrap.SCR fields</caption>
+<table id="trm-table-33">
+<caption class="title"><a href="#trm-table-33">Table 33</a>. uart_log_engine_wrap.SCR fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>7:0</td><td>SCR</td><td>RW</td><td>0x0</td><td>Scratch. Holds user data.</td></tr>
 </table>
 <span id="ECR"></span><h3 id="uart_log_engine_wrap-ECR" data-register-alias="ECR">ECR</h3>
-<table id="trm-table-91">
-<caption class="title"><a href="#trm-table-91">Table 91</a>. uart_log_engine_wrap.ECR fields</caption>
+<table id="trm-table-34">
+<caption class="title"><a href="#trm-table-34">Table 34</a>. uart_log_engine_wrap.ECR fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>1:0</td><td>RCVR_TRIGGER_MS2B</td><td>RW</td><td>0x0</td><td>Receiver FIFO Trigger Level Most Significant 2 Bits. To configure the least<br>significant 2 bits, use the `FCR.RCVR_TRIGGER` register field. The<br>configurations for the trigger levels are:<br>* `0x0` -    1 character<br>* `0x1` -    4 characters<br>* `0x2` -    8 characters<br>* `0x3` -   14 characters<br>* `0x4` -   32 characters<br>* `0x5` -   64 characters<br>* `0x6` -  128 characters<br>* `0x7` -  256 characters<br>* `0x8` -  512 characters<br>* `0x9` - 1024 characters<br>* `0xA` - 2048 characters<br>* `0xB` - 4096 characters</td></tr>
 </table>
 <span id="ITR"></span><h3 id="uart_log_engine_wrap-ITR" data-register-alias="ITR">ITR</h3>
-<table id="trm-table-92">
-<caption class="title"><a href="#trm-table-92">Table 92</a>. uart_log_engine_wrap.ITR fields</caption>
+<table id="trm-table-35">
+<caption class="title"><a href="#trm-table-35">Table 35</a>. uart_log_engine_wrap.ITR fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>5</td><td>TRTI</td><td>RW</td><td>0x0</td><td>Test Reception Timeout Interrupt. Writing a `1` forces the interrupt and<br>writing `0` releases it.</td></tr>
@@ -1809,36 +1239,36 @@ composed register banks. Offsets are relative to each wrapper&#8217;s base addre
 <tr><td>0</td><td>TRBFI</td><td>RW</td><td>0x0</td><td>Test Receiver Buffer Full (Received Data Ready) Interrupt. Writing `1` forces<br>the interrupt and writing `0` releases it.</td></tr>
 </table>
 <span id="log_engine.CTRL"></span><h3 id="uart_log_engine_wrap-log_engine.CTRL" data-register-alias="log_engine.CTRL">log_engine.CTRL</h3>
-<table id="trm-table-93">
-<caption class="title"><a href="#trm-table-93">Table 93</a>. uart_log_engine_wrap.log_engine.CTRL fields</caption>
+<table id="trm-table-36">
+<caption class="title"><a href="#trm-table-36">Table 36</a>. uart_log_engine_wrap.log_engine.CTRL fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>EN</td><td>RW</td><td>0x0</td><td>Log Engine Enable. When set, enables the Log Engine. When unset, disables the<br>Log Engine and resets all FSMs, flops, and FIFOs.</td></tr>
 </table>
 <span id="LOG_REGION_SIZE"></span><h3 id="uart_log_engine_wrap-LOG_REGION_SIZE" data-register-alias="LOG_REGION_SIZE">LOG_REGION_SIZE</h3>
-<table id="trm-table-94">
-<caption class="title"><a href="#trm-table-94">Table 94</a>. uart_log_engine_wrap.LOG_REGION_SIZE fields</caption>
+<table id="trm-table-37">
+<caption class="title"><a href="#trm-table-37">Table 37</a>. uart_log_engine_wrap.LOG_REGION_SIZE fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>19:0</td><td>LOG_REGION_SIZE</td><td>RW</td><td>0x0</td><td>Log region size in bytes. Supported values are at most 512 KiB and aligned<br>to 128 bytes (16 slots times the 8-byte fetch beat). If software programs a<br>larger value, RTL clamps the effective region to 512 KiB. For a value that is<br>not 128-byte aligned, RTL divides the effective region among the 16 slots and<br>rounds each slot&#x27;s transferable capacity down to complete 8-byte fetch beats.<br>A requested LOG_LEN above that capacity is clamped to the capacity.</td></tr>
 </table>
 <span id="LOG_REGION_ADDR"></span><h3 id="uart_log_engine_wrap-LOG_REGION_ADDR" data-register-alias="LOG_REGION_ADDR">LOG_REGION_ADDR</h3>
-<table id="trm-table-95">
-<caption class="title"><a href="#trm-table-95">Table 95</a>. uart_log_engine_wrap.LOG_REGION_ADDR fields</caption>
+<table id="trm-table-38">
+<caption class="title"><a href="#trm-table-38">Table 38</a>. uart_log_engine_wrap.LOG_REGION_ADDR fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:56</td><td>RESERVED</td><td>R</td><td>0x0</td><td>Reserved. Reads as zero; writes are ignored.</td></tr>
 <tr><td>55:32</td><td>LOG_REGION_ADDR_HI</td><td>RW</td><td>0x0</td><td>Log Region Start Address High. Contains fabric address bits [55:32].</td></tr>
 <tr><td>31:0</td><td>LOG_REGION_ADDR_LO</td><td>RW</td><td>0x0</td><td>Log Region Start Address Low.</td></tr>
 </table>
 <span id="LOG_WRITE_ADDR"></span><h3 id="uart_log_engine_wrap-LOG_WRITE_ADDR" data-register-alias="LOG_WRITE_ADDR">LOG_WRITE_ADDR</h3>
-<table id="trm-table-96">
-<caption class="title"><a href="#trm-table-96">Table 96</a>. uart_log_engine_wrap.LOG_WRITE_ADDR fields</caption>
+<table id="trm-table-39">
+<caption class="title"><a href="#trm-table-39">Table 39</a>. uart_log_engine_wrap.LOG_WRITE_ADDR fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>LOG_WRITE_ADDR</td><td>RW</td><td>0x0</td><td>Log Write Address. This is the address where the log data is written to.</td></tr>
 </table>
 <span id="INTR_STATUS"></span><h3 id="uart_log_engine_wrap-INTR_STATUS" data-register-alias="INTR_STATUS">INTR_STATUS</h3>
-<table id="trm-table-97">
-<caption class="title"><a href="#trm-table-97">Table 97</a>. uart_log_engine_wrap.INTR_STATUS fields</caption>
+<table id="trm-table-40">
+<caption class="title"><a href="#trm-table-40">Table 40</a>. uart_log_engine_wrap.INTR_STATUS fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>4</td><td>LOG_WRITE_ERR</td><td>RW1C</td><td>0x0</td><td>Log Write Error Interrupt. Asserted when the bus for writing log data returns<br>an error.</td></tr>
@@ -1846,8 +1276,8 @@ composed register banks. Offsets are relative to each wrapper&#8217;s base addre
 <tr><td>0</td><td>LOG_FETCH_ERR</td><td>RW1C</td><td>0x0</td><td>Log Fetch Error Interrupt. Asserted when the bus for fetching log data returns<br>an error.</td></tr>
 </table>
 <span id="INTR_ENABLE"></span><h3 id="uart_log_engine_wrap-INTR_ENABLE" data-register-alias="INTR_ENABLE">INTR_ENABLE</h3>
-<table id="trm-table-98">
-<caption class="title"><a href="#trm-table-98">Table 98</a>. uart_log_engine_wrap.INTR_ENABLE fields</caption>
+<table id="trm-table-41">
+<caption class="title"><a href="#trm-table-41">Table 41</a>. uart_log_engine_wrap.INTR_ENABLE fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>4</td><td>LOG_WRITE_ERR</td><td>RW</td><td>0x0</td><td>Log Write Error Interrupt Enable.</td></tr>
@@ -1855,8 +1285,8 @@ composed register banks. Offsets are relative to each wrapper&#8217;s base addre
 <tr><td>0</td><td>LOG_FETCH_ERR</td><td>RW</td><td>0x0</td><td>Log Fetch Error Interrupt Enable.</td></tr>
 </table>
 <span id="INTR_TEST"></span><h3 id="uart_log_engine_wrap-INTR_TEST" data-register-alias="INTR_TEST">INTR_TEST</h3>
-<table id="trm-table-99">
-<caption class="title"><a href="#trm-table-99">Table 99</a>. uart_log_engine_wrap.INTR_TEST fields</caption>
+<table id="trm-table-42">
+<caption class="title"><a href="#trm-table-42">Table 42</a>. uart_log_engine_wrap.INTR_TEST fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>4</td><td>LOG_WRITE_ERR</td><td>W 1P</td><td>0x0</td><td>Log Write Error Interrupt Test. Writing `1` forces the interrupt.</td></tr>
@@ -1864,8 +1294,8 @@ composed register banks. Offsets are relative to each wrapper&#8217;s base addre
 <tr><td>0</td><td>LOG_FETCH_ERR</td><td>W 1P</td><td>0x0</td><td>Log Fetch Error Interrupt Test. Writing `1` forces the interrupt.</td></tr>
 </table>
 <span id="LOG_CTRL_16_"></span><h3 id="uart_log_engine_wrap-LOG_CTRL_16_" data-register-alias="LOG_CTRL_16_">LOG_CTRL[16]</h3>
-<table id="trm-table-100">
-<caption class="title"><a href="#trm-table-100">Table 100</a>. uart_log_engine_wrap.LOG_CTRL[16] fields</caption>
+<table id="trm-table-43">
+<caption class="title"><a href="#trm-table-43">Table 43</a>. uart_log_engine_wrap.LOG_CTRL[16] fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>15:0</td><td>LOG_LEN</td><td>RW</td><td>0x0</td><td>Log Length. Writing a nonzero value representing the log length in bytes to this field<br>starts the log transfer process. There are 16 copies of this register, each representing<br>a log entry. The log entries go through round robin arbitration.</td></tr>
@@ -1883,11 +1313,11 @@ Most values match the IP defaults, but the following differ from the default
 documented in the IP&#8217;s own section.</p>
 </div>
 <div class="paragraph">
-<p><a href="#smc-peripheral-parameter-overrides-table">Table 101</a> compares the SMC parameter overrides with
+<p><a href="#smc-peripheral-parameter-overrides-table">Table 44</a> compares the SMC parameter overrides with
 each peripheral&#8217;s default values.</p>
 </div>
 <table id="smc-peripheral-parameter-overrides-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 101. SMC Peripheral Parameter Overrides</caption>
+<caption class="title">Table 44. SMC Peripheral Parameter Overrides</caption>
 <colgroup>
 <col style="width: 16%;">
 <col style="width: 38%;">
