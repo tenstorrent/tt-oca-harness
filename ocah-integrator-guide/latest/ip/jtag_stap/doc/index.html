@@ -332,7 +332,10 @@ Note that the STAP 3DCRs take a distributed segment approach to improve timing,
 as opposed to the single monolithic PTAP 3DCR approach detailed in the IEEE 1838
 standard. This 3DCR is connected inline within each STAP&#8217;s scan chain. A SIB is
 inserted at the end of the 3DCR to exclude it from the scan chain when not
-needed.</p>
+needed. The one-bit SIB is always in the scan chain, so a STAP adds one bit to
+the chain while its SIB is closed and four bits while it is open. While the
+STAP is selected, the downstream TAP&#8217;s scan path is also in the chain, between
+the STAP&#8217;s scan input and the SIB.</p>
 </div>
 <div class="paragraph">
 <p>When not selected, the STAP interface TMS signal is tied to the constant value
@@ -412,7 +415,7 @@ register.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Select (stap_sel)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enables the STAP scan interface. When <code>stap_sel=1</code>, the STAP routes scan data through the downstream TAP. When <code>stap_sel=0</code>, the STAP acts as a simple 3-bit TDR and the downstream TAP&#8217;s TMS is held at the TMS-Hold value.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enables the STAP scan interface. When <code>stap_sel=1</code>, the STAP routes scan data through the downstream TAP. When <code>stap_sel=0</code>, the downstream TAP is not in the scan path and its TMS is held at the TMS-Hold value.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
@@ -517,10 +520,11 @@ setup time margin for the next rising edge.</p>
 <div class="sect3">
 <h4 id="tdo-lockup-latch"><a class="anchor" href="#tdo-lockup-latch"></a><a class="link" href="#tdo-lockup-latch">3.6.1. TDO Lockup Latch</a></h4>
 <div class="paragraph">
-<p>The TDO lockup latch is always present and cannot be disabled. This latch
-captures the scan data propagating from client to host on the falling edge of
-TCK. The latch ensures that data from the downstream TAP&#8217;s TDO has sufficient
-setup time before being sampled by the upstream TAP on the rising edge of TCK.</p>
+<p>The TDO lockup latch is always present and cannot be disabled. On every falling
+edge of TCK it captures the client scan data entering the STAP and drives it on
+<code>host_tdo_o</code> to the downstream TAP&#8217;s TDI. The downstream TAP samples TDI on the
+rising edge of TCK, so the latch gives that path half a TCK period of setup
+margin.</p>
 </div>
 </div>
 <div class="sect3">
@@ -580,8 +584,8 @@ members are not separate scalar ports.</p>
 <p>TMS is sampled on the rising edge of TCK</p>
 </li>
 <li>
-<p>The lockup latch captures data on the falling edge of TCK when transitioning
-out of Shift-DR/IR states</p>
+<p>The TDO lockup latch captures the client scan data on every falling edge of
+TCK</p>
 </li>
 </ul>
 </div>

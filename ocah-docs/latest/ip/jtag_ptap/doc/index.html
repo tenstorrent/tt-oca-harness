@@ -1013,16 +1013,17 @@ TAP-controller states.</p>
 </tbody>
 </table>
 <div class="paragraph">
-<p>The state machine includes an automatic fault recovery mechanism. A 3-bit TMS
-reset counter tracks consecutive TMS high assertions. When the counter reaches
-5, the state machine automatically transitions to TEST_LOGIC_RESET regardless of
-current state, providing recovery from corrupted or invalid states.</p>
+<p>Five consecutive TCK cycles with TMS high bring the state machine to
+TEST_LOGIC_RESET from any state, as the IEEE 1149.1 state graph defines. A state
+register value that is not one of the sixteen one-hot encodings also moves to
+TEST_LOGIC_RESET on the next rising edge of TCK.</p>
 </div>
 <div class="paragraph">
-<p>Control signals are generated using a split approach. Update, run-test-idle, and
-test-logic-reset signals are generated combinationally as Moore machine outputs.
-Capture and shift signals are registered on the falling edge of TCK to ensure
-stable control windows before the rising edge samples data.</p>
+<p>Control signals are generated using a split approach. The update and
+run-test-idle signals are decoded combinationally from the current state as
+Moore machine outputs. The capture, shift, test-logic-reset and TDO output
+enable signals are decoded from the current state and registered on the falling
+edge of TCK, so they are stable before the next rising edge samples data.</p>
 </div>
 </div>
 <div class="sect2">
@@ -1767,9 +1768,10 @@ reset passes through.</p>
 <div class="sect2">
 <h3 id="ijtag-support"><a class="anchor" href="#ijtag-support"></a><a class="link" href="#ijtag-support">3.14. iJTAG Support</a></h3>
 <div class="paragraph">
-<p>The PTAP has optional support for a IEEE 1687-2014-compliant hierarchical iJTAG
-network, and support is enabled by default. When the <em>SELECT_IJTAG</em> instruction
-is enabled, the iJTAG network is selected for scan.</p>
+<p>The PTAP provides a scan port for an IEEE 1687-2014-compliant hierarchical iJTAG
+network. The <em>SELECT_IJTAG</em> instruction is always decoded; no configuration
+parameter removes it. While it is the current instruction, a DR scan selects the
+iJTAG network and the network return drives TDO.</p>
 </div>
 </div>
 <div class="sect2">
