@@ -688,6 +688,12 @@ protocol (<<sec:warm_reset>>). Consequently every unbounded wait in the ROM (fus
 lock, SMC hand-shake spins) hangs the boot rather than triggering a retry — this is the
 accepted failure mode for BL0, observable through the status channel (<<sec:status>>).
 
+Waits on the secure-DMA engine and the HMAC message FIFO are outside that list and are
+bounded. A DMA transfer that neither completes nor errors within a budget scaled to its
+length is aborted and returns the DMA error its caller handles; a message FIFO that
+stops draining fails the hash. Either becomes a failed manifest attempt or a terminal error
+rather than a hang.
+
 ===== Early Platform Initialization ([S04]–[S20])
 
 After the entry checks, `rom_main()` performs the following platform bring-up, in order:

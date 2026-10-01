@@ -460,4 +460,6 @@ tests = [
     "sep_rom_dbg_lock_sboot_dis_boot_test",
     "sep_rom_lc_state_invalid_0x4_test",
     "sep_rom_lc_state_invalid_0x5_test",
+    "sep_rom_dma_stall_terminal_test",
+    "sep_rom_hmac_fifo_stall_terminal_test",
 ]
