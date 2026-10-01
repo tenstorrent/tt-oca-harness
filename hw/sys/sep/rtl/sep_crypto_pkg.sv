@@ -120,10 +120,7 @@ package sep_crypto_pkg;
   parameter axi_pkg::xbar_rule_32_t ABR_RULE = '{
       idx: 11,
       start_addr: sep_top_addrmap_pkg::SEP_TOP_ABR_BASE_ADDR,
-      end_addr:
-      sep_top_addrmap_pkg::SEP_TOP_ABR_BASE_ADDR
-      +
-      sep_top_addrmap_pkg::SEP_TOP_ABR_SIZE
+      end_addr: sep_top_addrmap_pkg::SEP_TOP_ABR_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_ABR_SIZE
   };
 
   // AXI demux port indices (must match axi_demux master port order in sep_crypto.sv).
