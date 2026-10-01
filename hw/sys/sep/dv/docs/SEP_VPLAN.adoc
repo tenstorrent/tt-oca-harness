@@ -7948,27 +7948,25 @@ entry binds both implementations
 scenario. The class library and run recipes are in
 link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_TB_ARCH].
 
-Each bound scenario proves the contract of its cocotb procedure. The table
-below gives only what the SV-UVM pass adds or names differently.
+Each bound scenario proves the contract of its cocotb procedure. A row names
+only what the SV-UVM pass adds or names differently; a row with nothing to add
+reads "Same as the cocotb procedure."
 
 [cols="2,5",options="header"]
 |===
 |Scenario |SV-UVM contract
 
 |<<sep_axi_smoke_test,`sep_axi_smoke_test`>>
-|Sixteen seeded passes by default (`+SEP_TEST_LOOPS`, `+SEP_SYSTEM_TEST_LOOPS`,
-`+SEP_AXI_SMOKE_TEST_LOOPS`). Each pass reads `SEP_LOCAL_BASE_ADDR` at its reset
-value (CHK-CSR-RESET-VALUE), writes and reads back `SEP_SW_DEBUG`,
-`SEP_NMI_VEC`, `PKA_CTRL` and `SEP_REGION_SIZE` with the directed patterns
-(CHK-CSR-READBACK) and with `+SEP_RANDOM_COUNT` seeded random patterns, five by
-default (CHK-CSR-RANDOM-READBACK), each masked to the implemented field bits,
-then restores and reads back every reset value (CHK-CSR-RESTORE). Every access
-completes OKAY (CHK-CSR-RESP) after fuse sense is done (CHK-FUSE-SENSE-DONE).
-The always-on scoreboard predicts every read from the writes the passive
-monitor observed and must compare with no mismatch (CHK-SB-CPU-CTRL-CSR). The
-scoreboard compares a pass adds must equal the predicted reads it issued
-(CHK-NONVAC). `+SEP_CSR_SCOREBOARD_NEGATIVE` corrupts the prediction, and the
-run must FAIL.
+|Same as the cocotb procedure, over sixteen seeded passes by default
+(`+SEP_TEST_LOOPS`, `+SEP_SYSTEM_TEST_LOOPS`, `+SEP_AXI_SMOKE_TEST_LOOPS`).
+Adds a fuse-sense-done check before the first access (CHK-FUSE-SENSE-DONE),
+`+SEP_RANDOM_COUNT` seeded random patterns per register (five by default), and a
+restore readback of each reset value (CHK-CSR-RANDOM-READBACK,
+CHK-CSR-RESTORE). CHK-DECODE, CHK-WR-RB and CHK-RESP are named
+CHK-CSR-RESET-VALUE, CHK-CSR-READBACK and CHK-CSR-RESP. The scoreboard check is
+CHK-SB-CPU-CTRL-CSR, and CHK-NONVAC requires the scoreboard compares of a pass
+to equal the predicted reads it issued. `+SEP_CSR_SCOREBOARD_NEGATIVE` corrupts
+the prediction, and the run must FAIL.
 |===
 
 === Regression Groups
