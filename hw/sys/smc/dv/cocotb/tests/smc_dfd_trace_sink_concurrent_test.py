@@ -62,7 +62,8 @@ from smc_base_test import smc_base_test
 #     8 x (an action write and 4 data-port reads)                            284
 #   software stop: long-frame write + readback, restart write + readback,
 #     16 action writes, short-frame write + readback, 16 action writes, the
-#     running read, the stop write + readback and one empty poll             42
+#     running read, two write-pointer reads, the stop write + readback, three
+#     write-pointer reads and one empty poll                                 47
 #   frame mode off: frame config write + readback, run write + readback, 8
 #     held action writes, stop write + readback, one empty poll              15
 #   stop on wrap: DST enable write + readback, 8 x (16 action writes and a
@@ -74,8 +75,8 @@ from smc_base_test import smc_base_test
 #   restore: DST control, DST impl, frame config, EAP, CLA control, CLA
 #     mux, funnel, sink control, DEBUG_BUS_MUX, DEBUG_CTRL                   10
 #                                                                         ------
-#                                                                          1748
-TRACE_SINK_CONCURRENT_MIN_CSR_ACCESSES = 1748
+#                                                                          1753
+TRACE_SINK_CONCURRENT_MIN_CSR_ACCESSES = 1753
 
 
 @pyuvm.test()

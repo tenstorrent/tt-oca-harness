@@ -48,9 +48,11 @@ Two ways of stopping the trace close the leaf:
 * **Clearing ``Trdstenable`` alone.** The DST is kept active, so its clock keeps
   running while the trace winds down, and the uncompressed stream is running
   with packets in flight when the enable drops. ``Trdstempty`` has to read 0
-  while that stream runs and come back to 1, its reset value, once the enable
-  has been cleared. Before the stop the stream runs at the longest frame length
-  the field offers and then at the shortest frame and stream lengths.
+  and the sink write pointer has to move while that stream runs, and the
+  pointer has to park once the enable has been cleared. ``Trdstempty`` after
+  the stop is recorded, not required. Before the stop the stream runs at the
+  longest frame length the field offers and then at the shortest frame and
+  stream lengths.
 * **The sink's stop-on-wrap setting.** With ``Trdstramstoponwrap`` set, the write
   pointer has to advance and then park inside the window while the trace is
   still being driven, rather than come round again. The sink enable is then
@@ -77,7 +79,6 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
-from cocotb.utils import get_sim_time
 
 from .smc_cla_regmap import cla_field, cla_register
 from .smc_csr_seq_utils import SmcCsrSeq
@@ -120,9 +121,6 @@ _WRAP_WINDOW_BYTES = 0x2000
 
 _SETTLE_CYCLES = 16
 _DELIVER_POLLS = 32
-# The packetizer drains at the trace's own pace, not the core clock's, so the wait
-# for Trdstempty after the enable drops is bounded in time.
-_DRAIN_BOUND_NS = 4_000
 # Write-pointer samples that have to agree for the pointer to count as parked.
 _PARKED_SAMPLES = 3
 
@@ -173,6 +171,7 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
         self.fill_bursts = 0
         self.sync_modes: list[tuple[int, int]] = []
         self.stop_polls = 0
+        self.stop_wp_samples: list[int] = []
         self.wrap_samples: list[int] = []
         self.sampled_mux = -1
         self.odd_bytes = 0
@@ -408,26 +407,25 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
     async def _restart_compressed(self, logical_op: int, modes: tuple[int, int]) -> None:
         """Empty the DST, re-enable it compressed, and find an action that restarts the trace.
 
-        Clearing the enable alone with the DST active empties the packetizer, so
-        ``Trdstempty`` reads 1 before the restart. Which action code starts a trace
-        is not published, so the action field is walked, the bus switched twice
-        under each value, and the first value that makes ``Trdstempty`` read 0 is
-        held: packets are arriving, so the trace is running.
+        The enable is cleared alone with the DST active, and ``Trdstempty`` has
+        to read 1 within ``_DELIVER_POLLS`` polls before the restart. Which
+        action code starts a trace is not published, so the action field is
+        walked, the bus switched twice under each value, and the first value
+        that makes ``Trdstempty`` read 0 is held: packets are arriving, so the
+        trace is running.
         """
         control = dst_register("Trdstcontrol")
         empty = reg_field(control, "Trdstempty")
         stopped = {"Trdstactive": 1, "Trdstenable": 0, "Trdstformat": _DST_FORMAT_XOR_VLT}
         await self._write_check(control, stopped, "oddflush")
-        deadline_ns = get_sim_time("ns") + _DRAIN_BOUND_NS
-        poll = 0
-        while not await self._read(control, f"oddflush{poll}") & empty.mask:
-            poll += 1
-            if get_sim_time("ns") >= deadline_ns:
-                raise AssertionError(
-                    f"DST Trdstempty stayed 0 for {poll} polls over {_DRAIN_BOUND_NS} ns after "
-                    f"the enable was cleared with the DST active, so the odd-offset run cannot "
-                    f"start empty"
-                )
+        for poll in range(_DELIVER_POLLS):
+            if await self._read(control, f"oddflush{poll}") & empty.mask:
+                break
+        else:
+            raise AssertionError(
+                f"DST Trdstempty stayed 0 for {_DELIVER_POLLS} polls after the enable was "
+                f"cleared with the DST active, so the odd-offset run cannot start empty"
+            )
         await self._write_check(
             control,
             {"Trdstactive": 1, "Trdstenable": 1, "Trdstformat": _DST_FORMAT_XOR_VLT},
@@ -778,12 +776,27 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
     # -- stopping the trace -----------------------------------------------
 
     async def _stop_in_software(self, logical_op: int) -> None:
-        """Run the uncompressed stream, then clear the enable with the DST kept active."""
+        """Run the uncompressed stream, then clear the enable with the DST kept active.
+
+        While the stream runs, ``Trdstempty`` has to read 0 and the sink write
+        pointer has to move between two back-to-back reads. Once the enable is
+        cleared, the pointer has to park: ``_PARKED_SAMPLES`` back-to-back reads
+        agree within ``_DELIVER_POLLS`` reads. A read takes a fixed number of
+        core-clock cycles and the DST, the sink and the read path all run on
+        that clock, so the bound holds at every sys-clock period. ``Trdstempty``
+        is then read over ``_DELIVER_POLLS`` polls and recorded, not required:
+        whether this stop empties the packetizer depends on where the stop
+        falls against a frame boundary (see the card's open observations).
+        """
         control = dst_register("Trdstcontrol")
         empty = reg_field(control, "Trdstempty")
+        enable = reg_field(control, "Trdstenable")
+        active = reg_field(control, "Trdstactive")
         impl = dst_register("Trdstimpl")
         length = reg_field(impl, "Trdstvendorframelength")
         stream = reg_field(impl, "Trdstvendorstreamlength")
+        wp = sink_register("Trdstramwplow")
+        pointer = reg_field(wp, "Trdstramwplow")
         # The longest frame the field offers first. Uncompressed packets are a
         # fixed size, so a 64-byte frame closes after a handful of them and
         # only a long frame carries the running offset through every even
@@ -817,31 +830,59 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
             f"Trdstempty is already 1, so there is nothing in flight for the stop below to "
             f"wind down and clearing the enable would prove nothing"
         )
+        live = [await self._read(wp, f"live{i}") & pointer.mask for i in range(2)]
+        assert live[0] != live[1], (
+            f"the sink write pointer read 0x{live[0]:x} twice back to back with the "
+            f"uncompressed stream running, so the trace was not reaching the sink and a "
+            f"pointer that parks after the stop would prove nothing"
+        )
         await self._write_check(
             control,
             {"Trdstactive": 1, "Trdstenable": 0, "Trdstformat": _DST_FORMAT_NONE},
             "stop",
         )
-        deadline_ns = get_sim_time("ns") + _DRAIN_BOUND_NS
-        poll = 0
-        while True:
-            poll += 1
-            if await self._read(control, f"stop{poll - 1}") & empty.mask:
-                self.stop_polls = poll
+        self.stop_wp_samples = []
+        for poll in range(_DELIVER_POLLS):
+            self.stop_wp_samples.append(await self._read(wp, f"stopwp{poll}") & pointer.mask)
+            tail = self.stop_wp_samples[-_PARKED_SAMPLES:]
+            if len(tail) == _PARKED_SAMPLES and len(set(tail)) == 1:
                 break
-            if get_sim_time("ns") >= deadline_ns:
-                break
-        assert self.stop_polls, (
-            f"DST Trdstempty stayed 0 for {poll} polls over {_DRAIN_BOUND_NS} ns after "
-            f"Trdstenable was cleared with Trdstactive held at 1, so the trace did not wind "
-            f"down to empty"
+        tail = self.stop_wp_samples[-_PARKED_SAMPLES:]
+        assert len(tail) == _PARKED_SAMPLES and len(set(tail)) == 1, (
+            f"the sink write pointer read {[hex(w) for w in self.stop_wp_samples]} over "
+            f"{len(self.stop_wp_samples)} reads after Trdstenable was cleared with Trdstactive "
+            f"held at 1, never {_PARKED_SAMPLES} equal reads in a row, so the trace kept "
+            f"writing the sink"
         )
-        self.value_checks += 2
+        self.stop_polls = 0
+        word = running
+        for poll in range(_DELIVER_POLLS):
+            word = await self._read(control, f"stop{poll}")
+            if word & empty.mask:
+                self.stop_polls = poll + 1
+                break
+        assert not word & enable.mask and word & active.mask, (
+            f"DST Trdstcontrol reads 0x{word:08x} after the stop: Trdstenable has to read 0 "
+            f"and Trdstactive 1, as written"
+        )
+        self.value_checks += 4
         cocotb.log.info(
             "CHK-DST-CONCURRENT-STOP: with the uncompressed stream running, first at the "
             "longest frame length and then at the shortest frame and stream lengths, "
-            "Trdstempty read 0; clearing Trdstenable alone with the DST kept active brought "
-            "it back to 1 on poll %d of at most %d",
+            "Trdstempty read 0 and the sink write pointer moved from 0x%x to 0x%x between two "
+            "back-to-back reads; once Trdstenable was cleared with Trdstactive held at 1 the "
+            "pointer parked at 0x%x, %d equal reads in a row after %d reads (%s) of at most %d",
+            live[0],
+            live[1],
+            tail[-1],
+            _PARKED_SAMPLES,
+            len(self.stop_wp_samples),
+            ", ".join(hex(w) for w in self.stop_wp_samples),
+            _DELIVER_POLLS,
+        )
+        cocotb.log.info(
+            "Software stop: after the pointer parked Trdstempty read 1 on poll %d (0 means "
+            "not within %d polls)",
             self.stop_polls,
             _DELIVER_POLLS,
         )
