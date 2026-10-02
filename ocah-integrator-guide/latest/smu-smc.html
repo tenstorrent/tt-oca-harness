@@ -687,7 +687,7 @@ banks are never shared. Each controller also drives its own sense-done output
 to the <code>smu.sv</code> boundary, <code>smc_fuse_sense_done_o</code> and <code>sep_fuse_sense_done_o</code>,
 and holds the sensed bank in its own shadow registers.
 <a href="#efuse-smu-instances-fig">eFuse connections at the smu.sv boundary</a> shows these connections. When the SMU is built with
-<code>SEP = 0</code>, only the SMC instance is needed.</p>
+<code>CFG.SEP = 0</code>, only the SMC instance is needed.</p>
 </div>
 <div id="efuse-smu-instances-fig" class="imageblock">
 <div class="content">
@@ -740,13 +740,13 @@ subsystem&#8217;s external port as usual.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_external</code> base, SMC-local <code>0xC040_0000</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SMC_EFUSE_SHIM_SIZE</code> (<code>0x4</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>CFG.SMC_EFUSE_SHIM_SIZE</code> (<code>0x4</code>)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_external_req_o</code> / <code>smc_external_resp_i</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_external</code> base, SEP-local <code>0x2000_0000</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEP_EFUSE_SHIM_SIZE</code> (<code>0x4</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>CFG.SEP_EFUSE_SHIM_SIZE</code> (<code>0x4</code>)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_external_req_o</code> / <code>sep_external_resp_i</code></p></td>
 </tr>
 </tbody>

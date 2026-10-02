@@ -713,7 +713,7 @@ elaboration leaves — are not in this table: each is carded in
 <p><code>SEP1-blocked</code> — written against the wrapper bench, enrolled in no testlist: the SEP-driven SMC bring-up polls SMC SRAM that no sys-inbound master can reach, so the leaf cannot pass by construction. Re-enrols in <code>all</code> the day the SMC SRAM path exists.</p>
 </li>
 <li>
-<p><code>not-runnable</code> — has a body in git history, enrolled in no testlist: the claim it checks is not met by the RTL as built, the bench cannot produce the condition it needs, or it needs the <code>smu #(.SEP(0))</code> elaboration, which this package does not build. The row names the condition.</p>
+<p><code>not-runnable</code> — has a body in git history, enrolled in no testlist: the claim it checks is not met by the RTL as built, the bench cannot produce the condition it needs, or it needs the <code>smu #(.CFG(smu_pkg::NoSepCfg))</code> elaboration, which this package does not build. The row names the condition.</p>
 </li>
 <li>
 <p><code>OUT-until-SEP1</code> — no body; a scenario driven by SEP firmware. The bench elaborates the real SEP and <code>smu_sep_smoke_test</code> retires its instructions, so a leaf written for one of these names runs SEP firmware, needs the RISC-V toolchain for its <code>c_build</code> stage, and joins the groups outside <code>hosted</code> (<code>fw_boot</code>, <code>sep_real_fw</code>) that no workflow schedules.</p>
@@ -1105,7 +1105,7 @@ elaboration leaves — are not in this table: each is carded in
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu_fabric_smc_dtp_cross_domain_test</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">OUT-until-SEP1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Needs the SEP=1 lifecycle controller: <code>smu #(.SEP(0))</code> instantiates no LCC (<code>gen_no_sep</code> in <code>smu.sv</code>), so lifecycle-driven debug feature control cannot be exercised.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Needs the SEP=1 lifecycle controller: <code>smu #(.CFG(smu_pkg::NoSepCfg))</code> instantiates no LCC (<code>gen_no_sep</code> in <code>smu.sv</code>), so lifecycle-driven debug feature control cannot be exercised.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu_fabric_id_remap_stress_test</p></td>
@@ -1260,12 +1260,12 @@ elaboration leaves — are not in this table: each is carded in
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smc_cpu_traffic_ext_axi_test</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">OUT-until-SEP1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Needs the SEP=1 lifecycle controller: <code>smu #(.SEP(0))</code> instantiates no LCC (<code>gen_no_sep</code> in <code>smu.sv</code>), so lifecycle-driven debug feature control cannot be exercised.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Needs the SEP=1 lifecycle controller: <code>smu #(.CFG(smu_pkg::NoSepCfg))</code> instantiates no LCC (<code>gen_no_sep</code> in <code>smu.sv</code>), so lifecycle-driven debug feature control cannot be exercised.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smc_efuse_reg_sanity_test</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">OUT-until-SEP1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Needs the SEP=1 lifecycle controller: <code>smu #(.SEP(0))</code> instantiates no LCC (<code>gen_no_sep</code> in <code>smu.sv</code>), so lifecycle-driven debug feature control cannot be exercised.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Needs the SEP=1 lifecycle controller: <code>smu #(.CFG(smu_pkg::NoSepCfg))</code> instantiates no LCC (<code>gen_no_sep</code> in <code>smu.sv</code>), so lifecycle-driven debug feature control cannot be exercised.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smc_efuse_secure_tm_force_test</p></td>
@@ -1290,7 +1290,7 @@ elaboration leaves — are not in this table: each is carded in
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu_dtp_csr_access_test</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">OUT-until-SEP1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Needs the SEP=1 lifecycle controller: <code>smu #(.SEP(0))</code> instantiates no LCC (<code>gen_no_sep</code> in <code>smu.sv</code>), so lifecycle-driven debug feature control cannot be exercised.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Needs the SEP=1 lifecycle controller: <code>smu #(.CFG(smu_pkg::NoSepCfg))</code> instantiates no LCC (<code>gen_no_sep</code> in <code>smu.sv</code>), so lifecycle-driven debug feature control cannot be exercised.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu_dtp_dtm_local_axi_test</p></td>
@@ -1300,7 +1300,7 @@ elaboration leaves — are not in this table: each is carded in
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu_dtp_feat_ctrl_gate_matrix_test</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">OUT-until-SEP1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Needs the SEP=1 lifecycle controller: <code>smu #(.SEP(0))</code> instantiates no LCC (<code>gen_no_sep</code> in <code>smu.sv</code>), so lifecycle-driven debug feature control cannot be exercised.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Needs the SEP=1 lifecycle controller: <code>smu #(.CFG(smu_pkg::NoSepCfg))</code> instantiates no LCC (<code>gen_no_sep</code> in <code>smu.sv</code>), so lifecycle-driven debug feature control cannot be exercised.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu_dtp_otp_debug_access_test</p></td>
@@ -1310,52 +1310,52 @@ elaboration leaves — are not in this table: each is carded in
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu_dtp_otp_sep0_err_slv_test</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">OUT-until-SEP1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Needs the SEP=1 lifecycle controller: <code>smu #(.SEP(0))</code> instantiates no LCC (<code>gen_no_sep</code> in <code>smu.sv</code>), so lifecycle-driven debug feature control cannot be exercised.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Needs the SEP=1 lifecycle controller: <code>smu #(.CFG(smu_pkg::NoSepCfg))</code> instantiates no LCC (<code>gen_no_sep</code> in <code>smu.sv</code>), so lifecycle-driven debug feature control cannot be exercised.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu_feat_ctrl_flip_mid_jtag2axi_test</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">OUT-until-SEP1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Needs the SEP=1 lifecycle controller: <code>smu #(.SEP(0))</code> instantiates no LCC (<code>gen_no_sep</code> in <code>smu.sv</code>), so lifecycle-driven debug feature control cannot be exercised.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Needs the SEP=1 lifecycle controller: <code>smu #(.CFG(smu_pkg::NoSepCfg))</code> instantiates no LCC (<code>gen_no_sep</code> in <code>smu.sv</code>), so lifecycle-driven debug feature control cannot be exercised.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu_feat_ctrl_partial_bit_corner_test</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">OUT-until-SEP1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Needs the SEP=1 lifecycle controller: <code>smu #(.SEP(0))</code> instantiates no LCC (<code>gen_no_sep</code> in <code>smu.sv</code>), so lifecycle-driven debug feature control cannot be exercised.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Needs the SEP=1 lifecycle controller: <code>smu #(.CFG(smu_pkg::NoSepCfg))</code> instantiates no LCC (<code>gen_no_sep</code> in <code>smu.sv</code>), so lifecycle-driven debug feature control cannot be exercised.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu_hier_ctn_vs_jtag2axi_concurrent_test</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">OUT-until-SEP1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Needs the SEP=1 lifecycle controller: <code>smu #(.SEP(0))</code> instantiates no LCC (<code>gen_no_sep</code> in <code>smu.sv</code>), so lifecycle-driven debug feature control cannot be exercised.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Needs the SEP=1 lifecycle controller: <code>smu #(.CFG(smu_pkg::NoSepCfg))</code> instantiates no LCC (<code>gen_no_sep</code> in <code>smu.sv</code>), so lifecycle-driven debug feature control cannot be exercised.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu_lifecycle_debug_policy_test</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">OUT-until-SEP1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Needs the SEP=1 lifecycle controller: <code>smu #(.SEP(0))</code> instantiates no LCC (<code>gen_no_sep</code> in <code>smu.sv</code>), so lifecycle-driven debug feature control cannot be exercised.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Needs the SEP=1 lifecycle controller: <code>smu #(.CFG(smu_pkg::NoSepCfg))</code> instantiates no LCC (<code>gen_no_sep</code> in <code>smu.sv</code>), so lifecycle-driven debug feature control cannot be exercised.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu_macro_axil_pll_pvt_route_test</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">OUT-until-SEP1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Needs the SEP=1 lifecycle controller: <code>smu #(.SEP(0))</code> instantiates no LCC (<code>gen_no_sep</code> in <code>smu.sv</code>), so lifecycle-driven debug feature control cannot be exercised.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Needs the SEP=1 lifecycle controller: <code>smu #(.CFG(smu_pkg::NoSepCfg))</code> instantiates no LCC (<code>gen_no_sep</code> in <code>smu.sv</code>), so lifecycle-driven debug feature control cannot be exercised.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu_octs_timer_count_csr_test</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">OUT-until-SEP1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Needs the SEP=1 lifecycle controller: <code>smu #(.SEP(0))</code> instantiates no LCC (<code>gen_no_sep</code> in <code>smu.sv</code>), so lifecycle-driven debug feature control cannot be exercised.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Needs the SEP=1 lifecycle controller: <code>smu #(.CFG(smu_pkg::NoSepCfg))</code> instantiates no LCC (<code>gen_no_sep</code> in <code>smu.sv</code>), so lifecycle-driven debug feature control cannot be exercised.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu_smc_dtp_jtag2axi_security_test</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">OUT-until-SEP1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Needs the SEP=1 lifecycle controller: <code>smu #(.SEP(0))</code> instantiates no LCC (<code>gen_no_sep</code> in <code>smu.sv</code>), so lifecycle-driven debug feature control cannot be exercised.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Needs the SEP=1 lifecycle controller: <code>smu #(.CFG(smu_pkg::NoSepCfg))</code> instantiates no LCC (<code>gen_no_sep</code> in <code>smu.sv</code>), so lifecycle-driven debug feature control cannot be exercised.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu_smc_global_base_remap_test</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">OUT-until-SEP1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Needs the SEP=1 lifecycle controller: <code>smu #(.SEP(0))</code> instantiates no LCC (<code>gen_no_sep</code> in <code>smu.sv</code>), so lifecycle-driven debug feature control cannot be exercised.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Needs the SEP=1 lifecycle controller: <code>smu #(.CFG(smu_pkg::NoSepCfg))</code> instantiates no LCC (<code>gen_no_sep</code> in <code>smu.sv</code>), so lifecycle-driven debug feature control cannot be exercised.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu_telemetry_atb_handshake_test</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">OUT-until-SEP1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Needs the SEP=1 lifecycle controller: <code>smu #(.SEP(0))</code> instantiates no LCC (<code>gen_no_sep</code> in <code>smu.sv</code>), so lifecycle-driven debug feature control cannot be exercised.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Needs the SEP=1 lifecycle controller: <code>smu #(.CFG(smu_pkg::NoSepCfg))</code> instantiates no LCC (<code>gen_no_sep</code> in <code>smu.sv</code>), so lifecycle-driven debug feature control cannot be exercised.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smc_wdt_ip0_isolate_clamp_test</p></td>
@@ -1405,37 +1405,37 @@ elaboration leaves — are not in this table: each is carded in
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu_dtp_jtag2axi_abort_mid_op_test</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">not-runnable</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enrolled in no testlist; the body is in git history. Needs an OTP interface that holds SINGLE_OP in BUSY, which only the <code>smu #(.SEP(0))</code> elaboration with its eFuse shim responses tied off provides, and this package does not build it. On the wrapper the real SMC eFuse model answers a SINGLE_OP in tens of <code>clk_smu</code> against a 39-bit DR shift, so the BUSY window the abort needs never exists; a wrapper enrolment needs a stallable eFuse hook in <code>tb/tb_wrapper_top.sv</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enrolled in no testlist; the body is in git history. Needs an OTP interface that holds SINGLE_OP in BUSY, which only the <code>smu #(.CFG(smu_pkg::NoSepCfg))</code> elaboration with its eFuse shim responses tied off provides, and this package does not build it. On the wrapper the real SMC eFuse model answers a SINGLE_OP in tens of <code>clk_smu</code> against a 39-bit DR shift, so the BUSY window the abort needs never exists; a wrapper enrolment needs a stallable eFuse hook in <code>tb/tb_wrapper_top.sv</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu_axi_external_port_connectivity_test</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">not-runnable</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enrolled in no testlist; the body is in git history. Needs the <code>smu #(.SEP(0))</code> elaboration, which this package does not build: it proves the direct SMN-to-SMC ID-width converters that replace the crossbar, and the wrapper&#8217;s single profile elaborates SEP=1.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enrolled in no testlist; the body is in git history. Needs the <code>smu #(.CFG(smu_pkg::NoSepCfg))</code> elaboration, which this package does not build: it proves the direct SMN-to-SMC ID-width converters that replace the crossbar, and the wrapper&#8217;s single profile elaborates SEP=1.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu_axi_xbar_structure_test</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">not-runnable</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enrolled in no testlist; the body is in git history. Needs the <code>smu #(.SEP(0))</code> elaboration, which this package does not build: it proves <code>smu_axi_xbar</code> absent, and the wrapper&#8217;s single profile elaborates SEP=1.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enrolled in no testlist; the body is in git history. Needs the <code>smu #(.CFG(smu_pkg::NoSepCfg))</code> elaboration, which this package does not build: it proves <code>smu_axi_xbar</code> absent, and the wrapper&#8217;s single profile elaborates SEP=1.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu_dtp_ptap_otp_instr_scan_test</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">not-runnable</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enrolled in no testlist; the body is in git history. Needs the <code>smu #(.SEP(0))</code> elaboration, which this package does not build: it scans the PTAP OTP CAPS and SINGLE_OP instructions against the SEP=0 OTP error slave.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enrolled in no testlist; the body is in git history. Needs the <code>smu #(.CFG(smu_pkg::NoSepCfg))</code> elaboration, which this package does not build: it scans the PTAP OTP CAPS and SINGLE_OP instructions against the SEP=0 OTP error slave.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu_no_sep_configuration_test</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">not-runnable</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enrolled in no testlist; the body is in git history. Needs the <code>smu #(.SEP(0))</code> elaboration, which this package does not build: it proves <code>lc_state_o</code> carries the no-LCC word of <code>seq_lib/smu_lifecycle_table.py</code> and the SEP aperture is tied off.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enrolled in no testlist; the body is in git history. Needs the <code>smu #(.CFG(smu_pkg::NoSepCfg))</code> elaboration, which this package does not build: it proves <code>lc_state_o</code> carries the no-LCC word of <code>seq_lib/smu_lifecycle_table.py</code> and the SEP aperture is tied off.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu_smc_security_demote_pm_test</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">not-runnable</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enrolled in no testlist; the body is in git history. Needs the <code>smu #(.SEP(0))</code> elaboration, which this package does not build: it observes the SEP=0 <code>lcc_demote_state_1/2_o</code> tie-offs and the default <code>lc_state</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enrolled in no testlist; the body is in git history. Needs the <code>smu #(.CFG(smu_pkg::NoSepCfg))</code> elaboration, which this package does not build: it observes the SEP=0 <code>lcc_demote_state_1/2_o</code> tie-offs and the default <code>lc_state</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu_dtp_jtag_smoke_bare_test</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">not-runnable</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enrolled in no testlist; the body is in git history. Needs the <code>smu #(.SEP(0))</code> elaboration, which this package does not build; the same PTAP IDCODE / BYPASS / TRST scenario runs on the wrapper as <code>smu_dtp_jtag_smoke_test</code> (<code>smoke</code>, <code>hosted</code>).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enrolled in no testlist; the body is in git history. Needs the <code>smu #(.CFG(smu_pkg::NoSepCfg))</code> elaboration, which this package does not build; the same PTAP IDCODE / BYPASS / TRST scenario runs on the wrapper as <code>smu_dtp_jtag_smoke_test</code> (<code>smoke</code>, <code>hosted</code>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">smu_ext_axi_global_addr_smoke_test</p></td>

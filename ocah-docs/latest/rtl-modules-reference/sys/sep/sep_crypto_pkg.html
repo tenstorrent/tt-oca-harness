@@ -766,12 +766,12 @@
 <p>Packed struct</p>
 <table id="trm-table-8">
 <caption class="title"><a href="#trm-table-8">Table 8</a>. <code>abr_mem_req_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
-<tr><td><code>clk</code></td><td><code>logic</code></td><td>w1_mem uses its own narrow addr/data; kept in dedicated fields.</td></tr>
+<tr><td><code>clk</code></td><td><code>logic</code></td><td></td></tr>
 <tr><td><code>w1_we</code></td><td><code>logic</code></td><td></td></tr>
 <tr><td><code>w1_waddr</code></td><td><code>logic [SEP_CRYPTO_ABR_W1_ADDR_W-1:0]</code></td><td></td></tr>
 <tr><td><code>w1_wdata</code></td><td><code>logic [SEP_CRYPTO_ABR_W1_DATA_W-1:0]</code></td><td></td></tr>
 <tr><td><code>w1_re</code></td><td><code>logic</code></td><td></td></tr>
-<tr><td><code>w1_raddr</code></td><td><code>logic [SEP_CRYPTO_ABR_W1_ADDR_W-1:0]</code></td><td>sk banks use narrow 32-bit data.</td></tr>
+<tr><td><code>w1_raddr</code></td><td><code>logic [SEP_CRYPTO_ABR_W1_ADDR_W-1:0]</code></td><td></td></tr>
 <tr><td><code>sk_bank0_we</code></td><td><code>logic</code></td><td></td></tr>
 <tr><td><code>sk_bank0_waddr</code></td><td><code>logic [SEP_CRYPTO_ABR_SK_ADDR_W-1:0]</code></td><td></td></tr>
 <tr><td><code>sk_bank0_wdata</code></td><td><code>logic [SEP_CRYPTO_ABR_SK_DATA_W-1:0]</code></td><td></td></tr>
@@ -781,7 +781,7 @@
 <tr><td><code>sk_bank1_waddr</code></td><td><code>logic [SEP_CRYPTO_ABR_SK_ADDR_W-1:0]</code></td><td></td></tr>
 <tr><td><code>sk_bank1_wdata</code></td><td><code>logic [SEP_CRYPTO_ABR_SK_DATA_W-1:0]</code></td><td></td></tr>
 <tr><td><code>sk_bank1_re</code></td><td><code>logic</code></td><td></td></tr>
-<tr><td><code>sk_bank1_raddr</code></td><td><code>logic [SEP_CRYPTO_ABR_SK_ADDR_W-1:0]</code></td><td>96-bit coefficient memories (share abr_mem_ch_req_t geometry).</td></tr>
+<tr><td><code>sk_bank1_raddr</code></td><td><code>logic [SEP_CRYPTO_ABR_SK_ADDR_W-1:0]</code></td><td></td></tr>
 <tr><td><code>mem_inst0_bank0</code></td><td><code>abr_mem_ch_req_t</code></td><td></td></tr>
 <tr><td><code>mem_inst0_bank1</code></td><td><code>abr_mem_ch_req_t</code></td><td></td></tr>
 <tr><td><code>mem_inst1</code></td><td><code>abr_mem_ch_req_t</code></td><td></td></tr>
@@ -789,7 +789,7 @@
 <tr><td><code>mem_inst0_bank0_masked</code></td><td><code>abr_mem_ch_req_t</code></td><td></td></tr>
 <tr><td><code>mem_inst0_bank1_masked</code></td><td><code>abr_mem_ch_req_t</code></td><td></td></tr>
 <tr><td><code>mem_inst1_masked</code></td><td><code>abr_mem_ch_req_t</code></td><td></td></tr>
-<tr><td><code>mem_inst2_masked</code></td><td><code>abr_mem_ch_req_t</code></td><td>Byte-enabled memories.</td></tr>
+<tr><td><code>mem_inst2_masked</code></td><td><code>abr_mem_ch_req_t</code></td><td></td></tr>
 <tr><td><code>sig_z_we</code></td><td><code>logic</code></td><td></td></tr>
 <tr><td><code>sig_z_waddr</code></td><td><code>logic [SEP_CRYPTO_ABR_SIGZ_ADDR_W-1:0]</code></td><td></td></tr>
 <tr><td><code>sig_z_wdata</code></td><td><code>logic [SEP_CRYPTO_ABR_SIGZ_DATA_W-1:0]</code></td><td></td></tr>

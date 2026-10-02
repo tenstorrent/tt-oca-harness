@@ -729,7 +729,7 @@ Platform-wide clock, power and reset behaviour is described in the
 <div class="paragraph">
 <p>The SMU composition is shown in <a href="#smu-composition-diagram">Figure 1</a>.
 The dashed SEP boundary denotes the optional subsystem controlled by the
-<code>SEP</code> integration parameter. Memory capacities in the diagram describe the
+<code>CFG.SEP</code> field. Memory capacities in the diagram describe the
 illustrated configuration. Hatched blocks are future: the safety bus and the
 safety monitor, whose connections to the SEP and SMC are drawn dashed.</p>
 </div>
@@ -901,8 +901,8 @@ leave on the right; nets generated inside the SMU run in the channel to the
 right of the instances. A dot marks fan-out, and a gap in a line marks a
 crossing without a connection. Labels at an instance&#8217;s right edge name the
 net it drives or the port that receives a generated net. Instance names match
-the SMU RTL hierarchy, and paths to the SEP exist only when the <code>SEP</code>
-parameter is non-zero.</p>
+the SMU RTL hierarchy, and paths to the SEP exist only when <code>CFG.SEP</code>
+is 1.</p>
 </div>
 <div class="paragraph">
 <p>Active-low resets use the <code>_ni</code>, <code>_no</code> or <code>trst_n</code> suffixes; the SMC CPU JTAG

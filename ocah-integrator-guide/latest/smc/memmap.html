@@ -907,7 +907,7 @@ by boot firmware.</p>
 <div class="paragraph">
 <p>The eFuse SHIM control block is the exception. Its placement is fixed at the
 base of the window, <code>BASE + 0x040_0000</code>, and its size is the
-<code>EFUSE_SHIM_SIZE</code> parameter (<code>SMC_EFUSE_SHIM_SIZE</code> at the SMU). The peripheral
+<code>EFUSE_SHIM_SIZE</code> parameter (<code>CFG.SMC_EFUSE_SHIM_SIZE</code> at the SMU). The peripheral
 crossbar routes that range to the eFuse controller,
 which forwards it unchanged on <code>efuse_bank_ctrl</code> to the adopter&#8217;s SHIM. It
 never appears on the external port. The adopter defines the SHIM&#8217;s control

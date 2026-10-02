@@ -331,9 +331,9 @@ reference source. The DTP operates on TCK for JTAG logic and on the system clock
 for cross-trigger and AXI bridges. Reset sequencing follows the SMC flow; the
 DTP JTAG state machine uses <code>pwr_on_rst_ni</code>, which the SMU connects to the SMC
 <code>powergood_stable_o</code> output. The SMU internally connects DTP debug paths to the
-SMC and optionally instantiates the SEP when the <code>SEP</code> parameter is set to 1.
-The full interconnection details are described in <a href="#smc-dtp-interconnection">SMC-DTP Internal Interconnection</a>
-and <a href="#sep-conditional-wiring">SEP-Conditional Wiring</a> below.</p>
+SMC and optionally instantiates the SEP when <code>CFG.SEP</code> is set to 1. The full
+interconnection details are described in <a href="#smc-dtp-interconnection">SMC-DTP Internal Interconnection</a> and
+<a href="#sep-conditional-wiring">SEP-Conditional Wiring</a> below.</p>
 </div>
 </div>
 </div>
@@ -374,7 +374,7 @@ the SEP system CSR; the xbar input takes only the lower 32 bits.
 routing and SEP inbound global-to-local remap. It is distinct from the
 SEP CPU&#8217;s architectural local-alias span. <code>SEP_REGION_SIZE</code> currently
 resets to <code>0x0100_0000</code> (16 MiB). Tied to <code>'0</code> at the <code>smu.sv</code>
-boundary when the <code>SEP</code> parameter is <code>0</code>.</p>
+boundary when <code>CFG.SEP</code> is <code>0</code>.</p>
 </li>
 <li>
 <p><code>smc_global_base_addr_i</code> / <code>smc_region_size_i</code> come from the <code>smc_base_config</code>
@@ -414,16 +414,20 @@ address maps.</p>
 <div class="sectionbody">
 <div class="paragraph">
 <p>The DTP JTAG features, identification, cross trigger, and pipeline depths are
-fields of the <code>CFG</code> parameter, of type <code>smu_pkg::smu_cfg_t</code> with default
-<code>smu_pkg::DefaultCfg</code>.</p>
+fields of the <code>CFG</code> parameter, of type <code>smu_pkg::smu_cfg_t</code>. <code>CFG</code> defaults to
+the <code>smu_pkg::SmuConfigs</code> preset that the <code>CFG_IDX</code> parameter selects:
+<code>smu_pkg::DefaultCfg</code> at the default index 0, or <code>smu_pkg::NoSepCfg</code>, which
+differs only in <code>SEP</code>, at index 1. A <code>CFG</code> passed directly takes precedence over
+<code>CFG_IDX</code>. Flows that override parameters with <code>elaborate -param</code>, which cannot
+set a struct, select the preset through <code>CFG_IDX</code>.</p>
 </div>
 <div class="paragraph">
 <p>The parameters of <code>smu</code> are listed in <a href="../../ocah-docs/latest/rtl-modules-reference/sys/smu/smu.html" class="xref page">smu</a>.</p>
 </div>
 <div class="paragraph">
-<p>SEP-related DTP configuration is not exposed as an SMU config-struct field.
-The SMU derives SEP debug/STAP enablement from the module parameter <code>SEP</code> and
-wires the corresponding DTP interfaces internally to the SEP block when <code>SEP=1</code>.</p>
+<p>SEP-related DTP configuration has no <code>smu_cfg_t</code> field of its own.
+The SMU derives SEP debug/STAP enablement from <code>CFG.SEP</code> and
+wires the corresponding DTP interfaces internally to the SEP block when <code>CFG.SEP=1</code>.</p>
 </div>
 </div>
 </div>
@@ -441,7 +445,7 @@ SMU the scan order from TDI to TDO is:</p>
 </div>
 </div>
 <div class="paragraph">
-<p>The SMU enables the SMC slice unconditionally, the SEP slice when <code>SEP=1</code>
+<p>The SMU enables the SMC slice unconditionally, the SEP slice when <code>CFG.SEP=1</code>
 (otherwise that slice has width 0 and is omitted), and the external slice when
 <code>JTAG_IC_RESET_ENABLE</code> is set. Each slice is a packed struct with <code>.ovrd</code> and
 <code>.val</code> halves of equal width; <code>jtag_ptap</code> sizes the slice from <code>$bits(type)/2</code>.
@@ -474,7 +478,7 @@ scan order: the first field is nearest TDI.</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">8 when <code>SEP=1</code>, else 0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 when <code>CFG.SEP=1</code>, else 0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">OCAH (<code>sep_pkg::jtag_sep_reset_ctrl_t</code>)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP reset controller; SMU-internal, no SMU port</p></td>
 </tr>
@@ -546,7 +550,7 @@ cold and warm resets. Vector index <code>[31]</code> of each SS field is nearer 
 <div class="sect2">
 <h3 id="sep-slice-tdi-to-tdo"><a class="anchor" href="#sep-slice-tdi-to-tdo"></a><a class="link" href="#sep-slice-tdi-to-tdo">5.2. SEP slice (TDI to TDO)</a></h3>
 <div class="paragraph">
-<p>When <code>SEP=1</code> the SEP slice covers the SEP main reset and the crypto, Key
+<p>When <code>CFG.SEP=1</code> the SEP slice covers the SEP main reset and the crypto, Key
 Manager, and TRNG resets consumed by <code>sep_reset_ctrl</code>. <code>abr_jtag_rst_n</code> is
 nearest TDI.</p>
 </div>
@@ -692,7 +696,7 @@ Type parameters are set internally based on SMC package types.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>JTAG_IC_RESET_ENABLE</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMU routes this to the DTP&#8217;s <code>JTAG_IC_RESET_EXT_ENABLE</code>; SMC and SEP slices are enabled inside the SMU instantiation (SMC unconditionally, SEP when <code>SEP=1</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU routes this to the DTP&#8217;s <code>JTAG_IC_RESET_EXT_ENABLE</code>; SMC and SEP slices are enabled inside the SMU instantiation (SMC unconditionally, SEP when <code>CFG.SEP=1</code>)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>JTAG_SMC_DBG_ENABLE</code></p></td>
@@ -702,9 +706,9 @@ Type parameters are set internally based on SMC package types.</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>JTAG_SEP_DBG_ENABLE</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1 (<code>SEP=1</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 (<code>CFG.SEP=1</code>)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Derived internally from the SMU module parameter <code>SEP</code>; not exposed in <code>smu_cfg_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Derived internally from <code>CFG.SEP</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>JTAG_STAP_IO_ENABLE</code></p></td>
@@ -856,13 +860,13 @@ exposes the remaining DTP lanes.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEP_OTP_RD_PL_DEPTH</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>2&#8217;h3</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Fixed to <code>2&#8217;h3</code> in SMU; used when <code>SEP=1</code>, ignored when <code>SEP=0</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fixed to <code>2&#8217;h3</code> in SMU; used when <code>CFG.SEP=1</code>, ignored when <code>CFG.SEP=0</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEP_OTP_WR_PL_DEPTH</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>2&#8217;h3</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Fixed to <code>2&#8217;h3</code> in SMU; used when <code>SEP=1</code>, ignored when <code>SEP=0</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fixed to <code>2&#8217;h3</code> in SMU; used when <code>CFG.SEP=1</code>, ignored when <code>CFG.SEP=0</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>SMC_RD_PL_DEPTH</code></p></td>
@@ -942,12 +946,12 @@ for integrator configuration.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_otp_axil_req_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pkg::smc_axil_32_32_req_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SEP OTP AXI-Lite request (error slave when <code>SEP=0</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP OTP AXI-Lite request (error slave when <code>CFG.SEP=0</code>)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_otp_axil_resp_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pkg::smc_axil_32_32_resp_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SEP OTP AXI-Lite response (error slave when <code>SEP=0</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP OTP AXI-Lite response (error slave when <code>CFG.SEP=0</code>)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_axil_req_t</code></p></td>
@@ -1208,19 +1212,19 @@ wired internally within the SMU.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_stap_sep_host_tap_ctrl_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_tap_ctrl_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SEP <code>jtag_{tck_i,tms_i,trst_ni}</code> when <code>SEP=1</code>, else unused</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP <code>jtag_{tck_i,tms_i,trst_ni}</code> when <code>CFG.SEP=1</code>, else unused</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_stap_sep_host_tdi_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SEP <code>jtag_tdo_o</code> when <code>SEP=1</code>, else <code>1&#8217;b0</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP <code>jtag_tdo_o</code> when <code>CFG.SEP=1</code>, else <code>1&#8217;b0</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_stap_sep_host_tdo_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SEP <code>jtag_tdi_i</code> when <code>SEP=1</code>, else unused</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP <code>jtag_tdi_i</code> when <code>CFG.SEP=1</code>, else unused</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_stap_sep_host_tdo_oen_o</code></p></td>
@@ -1480,8 +1484,8 @@ wired internally within the SMU.</p>
 <div class="sect2">
 <h3 id="sep-otp-debug-axi-lite-interface"><a class="anchor" href="#sep-otp-debug-axi-lite-interface"></a><a class="link" href="#sep-otp-debug-axi-lite-interface">7.13. SEP OTP Debug AXI-Lite Interface</a></h3>
 <div class="paragraph">
-<p>When <code>SEP=1</code>, this interface connects to the SEP <code>axil_sep_otp_jtag_*</code> ports.
-When <code>SEP=0</code>, the SMU instantiates <code>u_sep_otp_axil_err_slv</code>, which responds
+<p>When <code>CFG.SEP=1</code>, this interface connects to the SEP <code>axil_sep_otp_jtag_*</code> ports.
+When <code>CFG.SEP=0</code>, the SMU instantiates <code>u_sep_otp_axil_err_slv</code>, which responds
 with DECERR to all transactions.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
@@ -1504,13 +1508,13 @@ with DECERR to all transactions.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_sep_otp_jtag_req_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_otp_axil_req_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SEP <code>axil_sep_otp_jtag_req_i</code> when <code>SEP=1</code>, else AXI-Lite error slave (<code>u_sep_otp_axil_err_slv</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP <code>axil_sep_otp_jtag_req_i</code> when <code>CFG.SEP=1</code>, else AXI-Lite error slave (<code>u_sep_otp_axil_err_slv</code>)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_sep_otp_jtag_resp_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_otp_axil_resp_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SEP <code>axil_sep_otp_jtag_resp_o</code> when <code>SEP=1</code>, else AXI-Lite error slave (<code>u_sep_otp_axil_err_slv</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP <code>axil_sep_otp_jtag_resp_o</code> when <code>CFG.SEP=1</code>, else AXI-Lite error slave (<code>u_sep_otp_axil_err_slv</code>)</p></td>
 </tr>
 </tbody>
 </table>
@@ -2081,8 +2085,8 @@ marked with "DTP" or "SEP" are wired internally.</p>
 <div class="sect2">
 <h3 id="sep-axi-input"><a class="anchor" href="#sep-axi-input"></a><a class="link" href="#sep-axi-input">8.6. SEP AXI Input</a></h3>
 <div class="paragraph">
-<p>When <code>SEP=0</code>, the SEP AXI subordinate input is tied off to <code>'0</code> and the
-response output is left unconnected. When <code>SEP=1</code>, the SMU drives this path from
+<p>When <code>CFG.SEP=0</code>, the SEP AXI subordinate input is tied off to <code>'0</code> and the
+response output is left unconnected. When <code>CFG.SEP=1</code>, the SMU drives this path from
 the SEP-to-SMC dedicated AXI connection.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
@@ -2507,13 +2511,13 @@ the SEP-to-SMC dedicated AXI connection.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_mailbox_interrupts_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[7:0]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Internal: from SEP <code>smc_mailbox_interrupt_o</code> when <code>SEP=1</code>, else tied to <code>'0</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Internal: from SEP <code>smc_mailbox_interrupt_o</code> when <code>CFG.SEP=1</code>, else tied to <code>'0</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_wdt_reset_n_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Internal: <code>~sep_wdt_timer_rst_req</code> when <code>SEP=1</code>, else tied to <code>1&#8217;b1</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Internal: <code>~sep_wdt_timer_rst_req</code> when <code>CFG.SEP=1</code>, else tied to <code>1&#8217;b1</code></p></td>
 </tr>
 </tbody>
 </table>
@@ -2585,7 +2589,7 @@ the SEP-to-SMC dedicated AXI connection.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>ext_boot_seq_done_qual_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Internal: drives SEP <code>ext_boot_seq_done_i</code> when <code>SEP=1</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Internal: drives SEP <code>ext_boot_seq_done_i</code> when <code>CFG.SEP=1</code></p></td>
 </tr>
 </tbody>
 </table>
@@ -2612,13 +2616,13 @@ the SEP-to-SMC dedicated AXI connection.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>lc_state_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[2*LcStateWidth-1:0]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SEP lifecycle state when <code>SEP=1</code>, else <code>8&#8217;hf0</code>; ported through SMU</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP lifecycle state when <code>CFG.SEP=1</code>, else <code>8&#8217;hf0</code>; ported through SMU</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>lc_sigint_err_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Differential encoding error reported by the SEP (when SEP=1) or the SMC efuse interface.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Differential encoding error reported by the SEP (when <code>CFG.SEP=1</code>) or the SMC efuse interface.</p></td>
 </tr>
 </tbody>
 </table>
@@ -3172,7 +3176,7 @@ SMC within the SMU. These connections are not visible on the SMU boundary.</p>
 <div class="sectionbody">
 <div class="paragraph">
 <p>SEP-related interfaces are handled internally within the SMU. Their behavior
-depends on the module parameter <code>SEP</code>.</p>
+depends on <code>CFG.SEP</code>.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -3190,27 +3194,27 @@ depends on the module parameter <code>SEP</code>.</p>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC SEP AXI Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_axi_in_req_i</code> = SEP traffic when <code>SEP=1</code>, else <code>'0</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_axi_in_req_i</code> = SEP traffic when <code>CFG.SEP=1</code>, else <code>'0</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Dedicated SEP-to-SMC subordinate path</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DTP SEP OTP JTAG</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SEP <code>axil_sep_otp_jtag_*</code> when <code>SEP=1</code>, else <code>u_sep_otp_axil_err_slv</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP <code>axil_sep_otp_jtag_*</code> when <code>CFG.SEP=1</code>, else <code>u_sep_otp_axil_err_slv</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP OTP debug AXI-Lite path</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DTP SEP STAP return</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SEP <code>jtag_tdo_o</code> when <code>SEP=1</code>, else <code>sep_stap_tdo_to_dtp = 1&#8217;b0</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP <code>jtag_tdo_o</code> when <code>CFG.SEP=1</code>, else <code>sep_stap_tdo_to_dtp = 1&#8217;b0</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP JTAG STAP return path</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_mailbox_interrupts</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Internal SEP-to-SMC mailbox interrupts when <code>SEP=1</code>, else <code>'0</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Internal SEP-to-SMC mailbox interrupts when <code>CFG.SEP=1</code>, else <code>'0</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_wdt_reset_n_i = ~sep_wdt_timer_rst_req</code> when <code>SEP=1</code>, else <code>1&#8217;b1</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_wdt_reset_n_i = ~sep_wdt_timer_rst_req</code> when <code>CFG.SEP=1</code>, else <code>1&#8217;b1</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP watchdog reset input to SMC</p></td>
 </tr>
 </tbody>
@@ -3260,7 +3264,7 @@ at the chip or chiplet level. The following table defines all SMU top-level
 ports including clock, reset, JTAG, cross trigger, SMC-originated interfaces
 (AXI, GPIO, eFuse, PLL, PVT, memory), and SEP passthrough interfaces
 (memory macros, eFuse, crypto SRAM, SPI, AXI extension). Ports prefixed
-with <code>sep_</code> are only active when the module parameter <code>SEP=1</code>.</p>
+with <code>sep_</code> are only active when <code>CFG.SEP=1</code>.</p>
 </div>
 <div class="paragraph">
 <p>The generated module and port pages are in the TRM under RTL Modules Reference.
@@ -4176,7 +4180,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[2*LcStateWidth-1:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle state output (driven by SEP when <code>SEP=1</code>, else <code>8&#8217;hf0</code>).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle state output (driven by SEP when <code>CFG.SEP=1</code>, else <code>8&#8217;hf0</code>).</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">External systems</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
@@ -4725,7 +4729,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_pkg::sep_lockstep_status_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SEP CPU lockstep status. Reads 0 when the SEP is absent (<code>SEP=0</code>) or the core is built without <code>RV_LOCKSTEP_ENABLE</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP CPU lockstep status. Reads 0 when the SEP is absent (<code>CFG.SEP=0</code>) or the core is built without <code>RV_LOCKSTEP_ENABLE</code>.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Chip-level RAS aggregation</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>

@@ -699,8 +699,8 @@
 <tr><td><code>JTAG_IC_RESET_EXT_ENABLE</code></td><td><code>bit</code></td><td><code>1</code></td><td>Enable the external slice of the IC_RESET TDR.</td></tr>
 <tr><td><code>JTAG_SMC_DBG_ENABLE</code></td><td><code>bit</code></td><td><code>1</code></td><td>Enable optional JTAG2AXI ports for the SMC debug interface.</td></tr>
 <tr><td><code>JTAG_STAP_IO_ENABLE</code></td><td><code>bit</code></td><td><code>1</code></td><td>Enable the STAP for chiplet-to-chiplet connectivity.</td></tr>
-<tr><td><code>JTAG_IC_RESET_SEP_ENABLE</code></td><td><code>int unsigned</code></td><td><code>1</code></td><td>Bit 0 enables the SEP slice of the IC_RESET TDR. int unsigned so SpyGlass elaborate -param can override it; in smu it follows SEP.</td></tr>
-<tr><td><code>JTAG_SEP_DBG_ENABLE</code></td><td><code>int unsigned</code></td><td><code>1</code></td><td>Bit 0 enables the SEP debug STAP and the JTAG2AXI bridge to the SEP OTP. int unsigned so SpyGlass elaborate -param can override it; in smu it follows SEP.</td></tr>
+<tr><td><code>JTAG_IC_RESET_SEP_ENABLE</code></td><td><code>int unsigned</code></td><td><code>1</code></td><td>Bit 0 enables the SEP slice of the IC_RESET TDR. int unsigned so SpyGlass elaborate -param can override it; in smu it follows CFG.SEP.</td></tr>
+<tr><td><code>JTAG_SEP_DBG_ENABLE</code></td><td><code>int unsigned</code></td><td><code>1</code></td><td>Bit 0 enables the SEP debug STAP and the JTAG2AXI bridge to the SEP OTP. int unsigned so SpyGlass elaborate -param can override it; in smu it follows CFG.SEP.</td></tr>
 <tr><td><code>JTAG_NUM_EXTRA_STAPS</code></td><td><code>int unsigned</code></td><td><code>1</code></td><td>Number of additional STAPs for local connectivity.</td></tr>
 <tr><td><code>JTAG_IDCODE_MFR_ID</code></td><td><code>logic [10:0]</code></td><td><code>11&#x27;h000</code></td><td>JTAG IDCODE manufacturer ID.</td></tr>
 <tr><td><code>JTAG_IDCODE_PART_NUM</code></td><td><code>logic [15:0]</code></td><td><code>16&#x27;h0000</code></td><td>JTAG IDCODE part number.</td></tr>

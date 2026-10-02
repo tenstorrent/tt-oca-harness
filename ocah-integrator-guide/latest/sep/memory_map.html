@@ -1047,7 +1047,7 @@ published with the owning block:</p>
 <div class="paragraph">
 <p>The SEP external-window model supplies the eFuse SHIM control register below.
 The <code>efuse_shim_ctrl</code> instance at offset <code>0x0</code> fixes where that block sits.
-<code>EFUSE_SHIM_SIZE</code> bytes from that base (<code>SEP_EFUSE_SHIM_SIZE</code> at the SMU,
+<code>EFUSE_SHIM_SIZE</code> bytes from that base (<code>CFG.SEP_EFUSE_SHIM_SIZE</code> at the SMU,
 default <code>0x4</code>) are routed to the eFuse controller, which forwards them
 unchanged on <code>efuse_bank_ctrl</code> to the adopter&#8217;s SHIM rather than out the
 external port. An adopter external map must keep an <code>efuse_shim_ctrl</code>
