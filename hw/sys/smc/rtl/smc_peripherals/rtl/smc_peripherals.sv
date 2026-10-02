@@ -565,11 +565,11 @@ module smc_peripherals #(
   // Gated peripherals return SLVERR to prevent hangs upon attempted access
 
   prim_axil_access_gate #(
-    .ADDR_WIDTH     (smc_pkg::SMC_LOCAL_ADDR_WIDTH),
-    .DATA_WIDTH     (smc_pkg::AXI_LITE_32_DATA_WIDTH),
+    .ADDR_WIDTH     (smc_pkg::SmcLocalAddrWidth),
+    .DATA_WIDTH     (smc_pkg::AxiLite32DataWidth),
     .MAX_TRANS      (smc_periph_axi_lite_xbar_pkg::XbarCfg.MaxMstTrans),
     .RESP           (axi_pkg::RESP_SLVERR),
-    .RESP_WIDTH     (smc_pkg::AXI_LITE_32_DATA_WIDTH),
+    .RESP_WIDTH     (smc_pkg::AxiLite32DataWidth),
     .RESP_DATA      (32'hBADCAB1E),
     .axil_req_t     (smc_pkg::smc_axil_32_32_req_t),
     .axil_resp_t    (smc_pkg::smc_axil_32_32_resp_t),
@@ -590,11 +590,11 @@ module smc_peripherals #(
   );
 
   prim_axil_access_gate #(
-    .ADDR_WIDTH     (smc_pkg::SMC_LOCAL_ADDR_WIDTH),
-    .DATA_WIDTH     (smc_pkg::AXI_LITE_32_DATA_WIDTH),
+    .ADDR_WIDTH     (smc_pkg::SmcLocalAddrWidth),
+    .DATA_WIDTH     (smc_pkg::AxiLite32DataWidth),
     .MAX_TRANS      (smc_periph_axi_lite_xbar_pkg::XbarCfg.MaxMstTrans),
     .RESP           (axi_pkg::RESP_SLVERR),
-    .RESP_WIDTH     (smc_pkg::AXI_LITE_32_DATA_WIDTH),
+    .RESP_WIDTH     (smc_pkg::AxiLite32DataWidth),
     .RESP_DATA      (32'hBADCAB1E),
     .axil_req_t     (smc_pkg::smc_axil_32_32_req_t),
     .axil_resp_t    (smc_pkg::smc_axil_32_32_resp_t),
@@ -615,11 +615,11 @@ module smc_peripherals #(
   );
 
   prim_axil_access_gate #(
-    .ADDR_WIDTH     (smc_pkg::SMC_LOCAL_ADDR_WIDTH),
-    .DATA_WIDTH     (smc_pkg::AXI_LITE_32_DATA_WIDTH),
+    .ADDR_WIDTH     (smc_pkg::SmcLocalAddrWidth),
+    .DATA_WIDTH     (smc_pkg::AxiLite32DataWidth),
     .MAX_TRANS      (smc_periph_axi_lite_xbar_pkg::XbarCfg.MaxMstTrans),
     .RESP           (axi_pkg::RESP_SLVERR),
-    .RESP_WIDTH     (smc_pkg::AXI_LITE_32_DATA_WIDTH),
+    .RESP_WIDTH     (smc_pkg::AxiLite32DataWidth),
     .RESP_DATA      (32'hBADCAB1E),
     .axil_req_t     (smc_pkg::smc_axil_32_32_req_t),
     .axil_resp_t    (smc_pkg::smc_axil_32_32_resp_t),
@@ -640,11 +640,11 @@ module smc_peripherals #(
   );
 
   prim_axil_access_gate #(
-    .ADDR_WIDTH     (smc_pkg::SMC_LOCAL_ADDR_WIDTH),
-    .DATA_WIDTH     (smc_pkg::AXI_LITE_32_DATA_WIDTH),
+    .ADDR_WIDTH     (smc_pkg::SmcLocalAddrWidth),
+    .DATA_WIDTH     (smc_pkg::AxiLite32DataWidth),
     .MAX_TRANS      (smc_periph_axi_lite_xbar_pkg::XbarCfg.MaxMstTrans),
     .RESP           (axi_pkg::RESP_SLVERR),
-    .RESP_WIDTH     (smc_pkg::AXI_LITE_32_DATA_WIDTH),
+    .RESP_WIDTH     (smc_pkg::AxiLite32DataWidth),
     .RESP_DATA      (32'hBADCAB1E),
     .axil_req_t     (smc_pkg::smc_axil_32_32_req_t),
     .axil_resp_t    (smc_pkg::smc_axil_32_32_resp_t),
@@ -665,11 +665,11 @@ module smc_peripherals #(
   );
 
   prim_axil_access_gate #(
-    .ADDR_WIDTH     (smc_pkg::SMC_LOCAL_ADDR_WIDTH),
-    .DATA_WIDTH     (smc_pkg::AXI_LITE_32_DATA_WIDTH),
+    .ADDR_WIDTH     (smc_pkg::SmcLocalAddrWidth),
+    .DATA_WIDTH     (smc_pkg::AxiLite32DataWidth),
     .MAX_TRANS      (smc_periph_axi_lite_xbar_pkg::XbarCfg.MaxMstTrans),
     .RESP           (axi_pkg::RESP_SLVERR),
-    .RESP_WIDTH     (smc_pkg::AXI_LITE_32_DATA_WIDTH),
+    .RESP_WIDTH     (smc_pkg::AxiLite32DataWidth),
     .RESP_DATA      (32'hBADCAB1E),
     .axil_req_t     (smc_pkg::smc_axil_32_32_req_t),
     .axil_resp_t    (smc_pkg::smc_axil_32_32_resp_t),
