@@ -11,8 +11,12 @@ import, so a lock added or dropped in the RDL fails here instead of silently
 leaving the walk short. Continuous
 knobs (which legal pre-lock value and which rejected poke) come from the
 run seed. ``SepEsrcFipsLockCfg`` is the SSOT for both programming and
-the post-lock golden. Observe FIFOs stay writable. Reserved ``CTRL.RSVD0``
-is RAZ/WI; the shared TRNG reset and ``rst_ni`` clear the lock.
+the post-lock golden. The observe-tap enables and the debug-pin mux are also
+frozen by the lock; the raw/BIW observe enables are single-bit, so their lock is
+proven by ``CHK-OBS-ENABLE-LOCKED`` rather than the two-value walk, and the
+debug-pin fields are excluded as observation access outside the certified-config
+scope. Reserved ``CTRL.RSVD0`` is RAZ/WI; the shared TRNG reset and ``rst_ni``
+clear the lock.
 """
 
 from __future__ import annotations
@@ -114,6 +118,22 @@ _WALK_EXCLUDED: dict[tuple[str, str], str] = {
     ("CTRL", "MODULE_ENABLE"): (
         "clearing it idles the main state machine for the rest of the walk; its "
         "lock is proven by the reset-recovery vehicle instead"
+    ),
+    ("BIW_OBS_CTRL", "RAW_ENABLE"): (
+        "single-bit observe-tap enable; the two-distinct-value walk cannot move a "
+        "lone 1-bit field to a second off-reset value. Its lock is proven by "
+        "CHK-OBS-ENABLE-LOCKED instead"
+    ),
+    ("NOISE_OBS_CTRL", "RAW_ENABLE"): (
+        "single-bit observe-tap enable on the same swwel path as "
+        "BIW_OBS_CTRL.RAW_ENABLE, whose lock CHK-OBS-ENABLE-LOCKED proves"
+    ),
+    ("DEBUG_CTRL", "SELECT_SIGNAL"): (
+        "debug observation-pin mux, not certified noise-source configuration; "
+        "locked for observation-access control, outside this certified-config walk"
+    ),
+    ("DEBUG_CTRL", "SELECT_FREQ_DIV"): (
+        "debug observation-pin divider; same scope as DEBUG_CTRL.SELECT_SIGNAL"
     ),
 }
 
