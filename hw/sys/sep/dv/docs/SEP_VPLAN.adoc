@@ -1683,7 +1683,7 @@ starved it to a handful of writes fails.
 . Configure the SPI host: receive watermark, clock divider, enable, watermark event.
 . Issue a flash read command and address, then request the payload.
 . Program the DMA: source is the receive register in wrapping mode, destination is SRAM incrementing, hardware handshake enabled; start.
-. Poll to completion, then write-one-to-clear the status bits.
+. Poll to completion, read the status again and require done still set, then write-one-to-clear the status bits.
 . Check every DMA-written SRAM word against the pattern.
 
 *Checkers*:
@@ -1694,7 +1694,7 @@ starved it to a handful of writes fails.
 |CHK-DATAPATH
 |Every word the DMA wrote to SRAM carries the preloaded pattern, proving the chain from flash model through receive queue and trigger to SRAM. The compare is exclusive: all-ones is rejected, since that is what a mis-wired MISO, a garbled address phase and an unrecognised opcode all produce.
 |CHK-RW1C
-|The DMA done status bit clears on write-one-to-clear and reads back clear. `ERROR` and `CHUNK_DONE` are never set in hardware-handshake mode, so their clear is not exercised.
+|The DMA done status bit still reads set on a second read after the poll, so a read does not clear it and it does not drop by itself; it then clears on write-one-to-clear and reads back clear. Both status values are logged. `ERROR` and `CHUNK_DONE` are never set in hardware-handshake mode, so their clear is not exercised.
 |CHK-NOERR
 |The DMA reports no error and the SPI controller reaches idle with clean error status.
 |===
