@@ -48,6 +48,7 @@ from sep_reg_meta import (
     ot_reg_offsets,
     reg_hw_updating,
     reg_write_destructive,
+    register_fields,
     sym,
 )
 
@@ -112,12 +113,33 @@ class DeadWindow:
     watch_from: str = ""
 
     @property
+    def store_visible(self) -> frozenset[int]:
+        """Watched addresses on which a stored write can show.
+
+        A register qualifies when the generated IP-XACT gives it at least one
+        ``read-write`` field. A ``read-only`` field has no bus write path and a
+        ``write-only`` field reads back nothing, so a register made only of
+        those is compared but cannot show a store.
+        """
+        return _store_visible(self.watch)
+
+    def armed(self, snap: dict[int, int]) -> int:
+        """Snapshot registers the change compare reads that can show a store."""
+        return sum(1 for a in snap if a not in self.hw_updating and a in self.store_visible)
+
+    @property
     def dead_lo(self) -> int:
         return self.base + self.alloc
 
     @property
     def dead_hi(self) -> int:
         return self.window_end
+
+
+def _store_visible(watch: tuple[int, ...]) -> frozenset[int]:
+    return frozenset(
+        addr for addr in watch if any(f.access == "read-write" for f in register_fields(addr)[1])
+    )
 
 
 def _watch_skip(name: str) -> bool:

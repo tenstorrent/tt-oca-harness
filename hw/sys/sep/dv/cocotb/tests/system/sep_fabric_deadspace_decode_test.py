@@ -97,24 +97,31 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
             assert snaps[win.name], (
                 f"{win.name}: watch snapshot is empty; the no-alias checker cannot fail"
             )
-            # Both numbers, because they differ and the smaller one is the real
-            # coverage: readable is what the read-alias compare uses, armed is
-            # what the per-probe change compare can actually fail on. Printing
-            # only the first reads as more coverage than the change compare has.
-            hw_updating = sum(1 for addr in snaps[win.name] if addr in win.hw_updating)
-            assert len(snaps[win.name]) - hw_updating > 0, (
+            # Readable is what the read-alias compare uses. Armed is what the
+            # per-probe change compare can fail on for a stored write: a
+            # compared register with a software read-write field. A sw=r or
+            # write-only register is compared too, but a store cannot show
+            # there, so it does not count toward armed.
+            snap = snaps[win.name]
+            hw_updating = sum(1 for addr in snap if addr in win.hw_updating)
+            compared = len(snap) - hw_updating
+            armed = win.armed(snap)
+            assert armed > 0, (
                 f"CHK-WINDOW-LIVE FAIL: {win.name} has no register armed for the change "
-                f"compare ({len(snaps[win.name])} readable, all hardware-updating); the "
+                f"compare ({len(snap)} readable, {hw_updating} hardware-updating, "
+                f"{compared} compared, none with a software read-write field); the "
                 "no-store-alias check cannot fail there"
             )
             self.logger.info(
-                "CHK-WINDOW-LIVE PASS: %s %d %s register(s) readable, "
-                "%d armed for the change compare (%d hardware-updating)",
+                "CHK-WINDOW-LIVE PASS: %s %d %s register(s) readable, %d compared per "
+                "probe (%d hardware-updating skipped), %d armed with a software "
+                "read-write field",
                 win.name,
-                len(snaps[win.name]),
+                len(snap),
                 f"neighbouring {win.watch_from}" if win.watch_from else "allocated",
-                len(snaps[win.name]) - hw_updating,
+                compared,
                 hw_updating,
+                armed,
             )
 
         refused = 0
