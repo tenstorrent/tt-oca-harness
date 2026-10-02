@@ -128,10 +128,7 @@ The default `build/` may also contain:
 
 | File | Purpose |
 |---|---|
-| `oca_<name>.bin` / `.spi_preload` | Flash image for each entry in `OCA_IMAGES`, with the bundle at both boot slots, as raw binary and Verilog hex. |
-| `oca_non_secure_boot.bin` / `.spi_preload` | Unsigned manifest and BL1. |
-| `oca_secure_boot.bin` / `.spi_preload` | RSA-3072 signed test image. |
-| `oca_encrypted_boot.bin` / `.spi_preload` | Signed, AES-CBC encrypted test image. |
+| `oca_<name>.bin` / `.spi_preload` | Flash image for each entry in `OCA_IMAGES`, with the bundle at both boot slots, as raw binary and Verilog hex. For example, `oca_non_secure_boot` is unsigned, `oca_secure_boot` is RSA-3072 signed, and `oca_encrypted_boot` is signed and AES-CBC encrypted. |
 | `oca_smc_mem.hex` | `oca_non_secure_boot.bin` rebased to the SEP-visible SMC SRAM address. |
 | `oca_smc_bundle.bin` | Bare signed bundle the virtual platform stages in SMC SRAM. |
 | `invalid_class_key.bin` | Decryption negative image, from `decrypt_negative_images`. |

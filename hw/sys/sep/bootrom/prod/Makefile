@@ -287,7 +287,7 @@ DTCM_ELF_SECTIONS := --only-section=.data --only-section=.data.* --only-section=
 .PHONY: all clean bl1_test ensure-pack-deps toolchain-images toolchain-images-build \
         pio-toolchain-images debug release decrypt_negative_images
 
-# Release stops at the ROM: oca-images signs its flash images with the private
+# Release stops at the ROM: oca-images emits flash images signed with the private
 # test keys the configs name, which a release build must never emit.
 ifeq ($(BUILD_TYPE),release)
 all: toolchain-images
