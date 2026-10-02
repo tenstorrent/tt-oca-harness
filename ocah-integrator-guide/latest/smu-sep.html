@@ -354,8 +354,18 @@ inside that window: the endpoint is an adopter-defined IP.</p>
 </div>
 <div class="paragraph">
 <p>The adopter must perform the intra-aperture decode. An address that owns no
-register must return SLVERR and must not alias onto a live register. When no
-external TRNG is connected, terminate <code>ext_trng_axil</code> with a DECERR slave.</p>
+register must return an error response and must not alias onto a live register.
+When no external TRNG is connected, terminate <code>ext_trng_axil</code> with a DECERR
+slave.</p>
+</div>
+<div class="paragraph">
+<p>The TRNG path reaches <code>ext_trng_axil</code> through an AXI4-to-AXI-Lite conversion
+(64-to-32 downsizer and burst splitter). On that path an errored read returns
+the slave&#8217;s response verbatim, but an errored write is reported as SLVERR
+regardless of the slave&#8217;s response. A DECERR slave therefore answers errored
+reads with DECERR and errored writes with SLVERR; both still refuse the access.
+An adopter whose endpoint returns DECERR for an unowned offset sees the same
+asymmetry.</p>
 </div>
 </div>
 </div>
