@@ -99,6 +99,37 @@ jobs:
           path: ~/verilator/
           retention-days: 1
 
+  # The ocah-container image takes verilator from the nixpkgs revision that
+  # flake.lock pins, so a flake update can move it without touching any
+  # workflow. Every per-push VERILATOR_VERSION must name that same release.
+  verilator-version:
+    needs: [diff-class]
+    if: needs.diff-class.outputs.run_hardware_ci == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions: { contents: read }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31.11.1
+      - name: Compare with the container's Verilator
+        run: |
+          set -euo pipefail
+          rev=$(jq -r '.nodes[.nodes.root.inputs.nixpkgs].locked.rev' flake.lock)
+          container="v$(nix eval --raw "github:nixos/nixpkgs/${rev}#verilator.version")"
+          echo "ocah-container (nixpkgs ${rev}): ${container}"
+          status=0
+          for wf in .github/workflows/lint.yml .github/workflows/sim.yml; do
+            pinned=$(sed -n 's/^  VERILATOR_VERSION: *//p' "$wf")
+            echo "${wf}: ${pinned:-unset}"
+            if [ "$pinned" != "$container" ]; then
+              echo "::error file=${wf}::VERILATOR_VERSION is ${pinned:-unset}; the ocah-container image ships ${container}"
+              status=1
+            fi
+          done
+          exit "$status"
+
   lint-sv-verilator:
     name: lint-sv-verilator/${{ matrix.block }}
     needs: [diff-class, setup-tools, setup-verilator]

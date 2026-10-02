@@ -20,6 +20,12 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# Must match the Verilator in the ocah-container image; the verilator-version
+# job in lint.yml fails when they differ. regress.yml keeps the dv-run default
+# instead, because the weekly DTP coverage build needs a newer release.
+env:
+  VERILATOR_VERSION: v5.050
+
 jobs:
   diff-class:
     runs-on: ubuntu-latest
@@ -169,6 +175,7 @@ jobs:
         with:
           dut: ${{ matrix.dut }}
           tool: verilator
+          verilator-version: ${{ env.VERILATOR_VERSION }}
           tier: smoke
           items: ${{ matrix.items || 'smoke' }}
           sim-jobs: 2
