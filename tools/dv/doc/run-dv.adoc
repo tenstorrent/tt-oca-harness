@@ -624,9 +624,11 @@ summary counts graded leaves under `expected_failing`. The record keeps the
 first eight observed messages, each cut to 400 characters.
 A framework-written `results/results.xml` records the observed failure, and
 a synthesized one the graded result; `result.json` is the graded,
-authoritative result. Keep such tests in a group of their own (for example
-`rtl_issue`) so they never feed a coverage regression as passes, and so the
-flip is visible as that group going red.
+authoritative result. A test that unexpectedly passes also gets its graded
+failure in `results/graded.xml` beside the framework's file
+(<<runner-junit-ownership>>). Keep such tests in a group of their own (for
+example `rtl_issue`) so they never feed a coverage regression as passes, and
+so the flip is visible as that group going red.
 
 === Targets and run modes
 
@@ -3001,10 +3003,10 @@ The failure-bucket `kind` is the shared enum: `sim_failure`, `tool_error`,
 that could not run or left no result of its own,
 <<runner-executor-registry>>), and `dependency_blocked` (a leaf whose
 scheduler-managed target build failed, <<runner-cluster-dispatch>>); the
-first bucket's kind is the JUnit `type` of a failed or errored leaf. A
-stage that fails without a
-parser decision takes its stage's default kind (`flist` `config_error`,
-`hdl_compile` and `c_compile` `compile_error`, `elaborate`
+first bucket's kind is the JUnit `type` of a failed or errored leaf, in a
+synthesized `results.xml` and in a `graded.xml` alike. A stage that fails
+without a parser decision takes its stage's default kind (`flist`
+`config_error`, `hdl_compile` and `c_compile` `compile_error`, `elaborate`
 `elaboration_error`, `sim` and `regress` `sim_failure`, the coverage stages
 and `clean` `tool_error`, `formal` `formal_fail`), and a `ConfigError` is
 `config_error` whichever stage raised it.
@@ -3105,13 +3107,27 @@ file names the leaf's `result.json`, or the run's when the leaf has none, and
 an earlier attempt of a retried leaf that left no result gets no file. A leaf
 that ran records the path as `artifacts.results_xml` in its `result.json`.
 
-A synthesized file is a reporting artifact, written after grading, atomically,
-and never read back as evidence; before a leaf runs, the runner removes one
-that an earlier invocation into the same directory left, and a leaf the
-coordinator grades replaces one in its attempt's directory. Its suite carries
-a `producer` property with the value `run_dv.py junit-fallback`, and only a
-file carrying that marker is ever removed or replaced; a file without it is
-left alone even when it sits where the runner would write.
+A framework's file can read as a pass for a leaf the runner grades otherwise:
+a log pattern, the simulator's exit status, or a missing coverage artifact
+fails the leaf after cocotb recorded a passing test, or the attempt times out
+or ends without a result after cocotb wrote its file. When the graded status
+is `FAIL`, `ERROR`, `TIMEOUT`, or `UNKNOWN` and the framework's file records
+no failure or error node, or does not parse, the runner writes
+`<leaf>/results/graded.xml` beside it, the single-testcase file it would
+otherwise have synthesized, so a consumer that reads every `results/*.xml`
+sees the grade; `result.json` does not name it. A leaf that grades `PASS`
+gets no `graded.xml`, even an `expect_fail` leaf whose framework file records
+the failure it expected (<<runner-expected-failures>>).
+
+A synthesized file, `graded.xml` included, is a reporting artifact, written
+after grading, atomically, and never read back as evidence; before a leaf
+runs, the runner removes one that an earlier invocation into the same
+directory left, a leaf the coordinator grades replaces one in its attempt's
+directory, and a `graded.xml` is removed once the grade agrees with the
+framework's file. Its suite carries a `producer` property with the value
+`run_dv.py junit-fallback`, and only a file carrying that marker is ever
+removed or replaced; a file without it is left alone even when it sits where
+the runner would write.
 
 Two run-level files follow the same rule. A handled interruption writes
 `<run>/results/results.xml` with one errored testcase of type `interruption`

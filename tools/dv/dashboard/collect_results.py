@@ -369,6 +369,17 @@ def _junit_beside_result(
     return _repo_rel(repo_root, xml_path) if xml_path.is_file() else ""
 
 
+def _graded_beside(repo_root: Path, junit_path: str) -> str:
+    """The runner's `graded.xml` beside a located `results.xml`, when it exists."""
+    path = Path(junit_path)
+    if not path.is_absolute():
+        path = repo_root / path
+    graded = path.parent / "graded.xml"
+    if path.name != "results.xml" or not graded.is_file():
+        return ""
+    return _repo_rel(repo_root, graded)
+
+
 def _read_leaf_result(
     repo_root: Path,
     run_root: Path,
@@ -433,6 +444,8 @@ def _test_detail_from_record(
         )
         if guessed:
             junit_paths.append(guessed)
+    graded = [_graded_beside(repo_root, path) for path in junit_paths]
+    junit_paths.extend(path for path in graded if path)
 
     detail = {
         "name": meta["name"],

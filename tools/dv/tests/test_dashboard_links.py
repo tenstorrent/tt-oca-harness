@@ -359,6 +359,13 @@ class CoordinatorGradedLeaf(unittest.TestCase):
             record["warnings"],
         )
 
+    def test_a_graded_xml_beside_the_leaf_file_counts_as_recorded(self):
+        results = self.run_root / self.LEAF / "attempt_1" / "results"
+        (results / "graded.xml").write_text("<testsuites/>\n")
+        record = collect_flow_result(self.root, self.flow, self.run_root)
+        self.assertEqual(record["junit_xml"], {"total": 2, "missing": 0})
+        self.assertFalse([w for w in record["warnings"] if "graded.xml" in w], record["warnings"])
+
     def test_a_regression_leaf_bucket_counts_once_with_its_example(self):
         record = collect_flow_result(self.root, self.flow, self.run_root)
         (bucket,) = record["failure_buckets"]

@@ -1327,13 +1327,15 @@ class CoordinatorTest(unittest.TestCase):
     def leaf_statuses(self, summary: dict[str, Any]) -> dict[str, str]:
         return {leaf["item"]: leaf["status"] for leaf in self.leaves(summary)}
 
-    def junit_path(self, leaf: dict[str, Any], attempt: int) -> Path:
+    def junit_path(self, leaf: dict[str, Any], attempt: int, name: str = "results.xml") -> Path:
         seed_dir = self.run_dir / leaf["item"] / f"seed_{leaf['metadata']['seed']}"
-        return seed_dir / f"attempt_{attempt}" / "results" / "results.xml"
+        return seed_dir / f"attempt_{attempt}" / "results" / name
 
-    def coordinator_case(self, leaf: dict[str, Any], attempt: int = 0) -> ET.Element:
-        """The one testcase of the marked file the coordinator wrote for ``leaf``."""
-        path = self.junit_path(leaf, attempt)
+    def coordinator_case(
+        self, leaf: dict[str, Any], attempt: int = 0, name: str = "results.xml"
+    ) -> ET.Element:
+        """The one testcase of the marked file `name` the coordinator wrote for ``leaf``."""
+        path = self.junit_path(leaf, attempt, name)
         self.assertTrue(path.is_file(), path)
         self.assertTrue(is_generated_junit(path))
         suites = ET.parse(path).getroot()
@@ -1500,6 +1502,12 @@ class CoordinatorTest(unittest.TestCase):
         self.assertEqual(code, 2, summary.get("status"))
         lost = next(leaf for leaf in self.leaves(summary) if leaf["status"] == "ERROR")
         self.assertEqual(self.junit_path(lost, 0).read_text(encoding="utf-8"), native)
+        case = self.coordinator_case(lost, name="graded.xml")
+        self.assertEqual(case.get("name"), f"{lost['item']}[seed={lost['metadata']['seed']}]")
+        error = case.find("error")
+        assert error is not None
+        self.assertEqual(error.get("type"), "environment_error")
+        self.assertEqual(error.get("message"), lost["reason"])
 
     def test_a_leaf_with_its_own_record_is_named_in_its_junit(self) -> None:
         self.scenario()
