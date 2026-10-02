@@ -340,8 +340,11 @@ debug STAP (if <code>SEP=1</code> in the SMU), extra STAP[N-1:0], and return to 
 </div>
 <div class="paragraph">
 <p>The string carries scans only while the PTAP 3DCR select bit is set. While the
-bit is clear, the scan-control strobes to every STAP stay low, so the STAP SIBs,
-3DCRs and any downstream TAPs hold their state through every PTAP scan. The
+bit is clear, the scan-control strobes to every STAP stay low, so the STAP SIBs
+and 3DCRs hold their state through every PTAP scan, as does the downstream TAP
+of every deselected STAP. A STAP whose own select bit is set still forwards TCK
+and the live TMS, so its downstream TAP follows every PTAP scan; clear each
+STAP&#8217;s select bit, or reset the chain, before clearing the PTAP select bit. The
 select bit updates at Update-DR, so it is set in a TAP_3DCR scan of its own
 before a scan that opens STAP SIBs or writes STAP 3DCRs.</p>
 </div>
