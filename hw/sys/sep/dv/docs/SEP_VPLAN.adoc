@@ -75,7 +75,13 @@ One DUT. Three phases on cocotb, plus a SystemVerilog UVM smoke set
   register export and architecture docs.
 . *Bring-up*: drive `ext_boot_seq_done_i`; use `+skip_fuse_sense` only
   when the test does not need real OTP sense; hold the CPU off for
-  `no_cpu` runs.
+  `no_cpu` runs. With `+skip_fuse_sense` and no
+  `+sep_shadow_reg_preload`, the eFuse shadow is all zero except
+  `LC_STATE` raw `4'hF`, which is INVALID. `FEAT_CTRL` is then zero, so
+  `sep_debug` is 0 and the inbound filter is in the SMN-inbound path. A
+  skip-mode card that sends SMN-inbound traffic programs a filter window,
+  and a deny check that `FEAT_CTRL` = 0 would also produce does not prove
+  a filter rule.
 . *Coverage*: iconic feature scorecard (<<iconic-scorecard>>) for the
   cocotb phases. VCS Phase 1 functional-coverage bins live in
   link:SEP_FCOV.adoc[SEP_FCOV] (`u_sep_fcov`). SystemVerilog covergroups

@@ -46,8 +46,9 @@ CHK-SRAM-IN-XPATH that saw a mismatch, with its count and first mismatch. A
 fault in one byte lane then shows on every data checker it reaches.
 
 RUN-MODE: no_cpu (CPU-LSU master) + external SMN master. FUSE-MODE:
-+skip_fuse_sense (SRAM has no OTP/LC dependency; the filter window is
-programmed explicitly). RAND: window, lengths, starts, data, overlay, CPU-LSU
++skip_fuse_sense with no shadow preload, so LC_STATE is INVALID, FEAT_CTRL is
+zero and the inbound filter is in the m_axi path; that is why the test
+programs the filter window. RAND: window, lengths, starts, data, overlay, CPU-LSU
 words and every inbound request attribute come from SepSeededRng.
 """
 
