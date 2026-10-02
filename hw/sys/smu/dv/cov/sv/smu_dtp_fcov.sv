@@ -29,10 +29,10 @@ module smu_dtp_fcov (
   input wire jtag_ic_reset_ext_ctrl_n_i,
 
   // CTP pad-group data outputs, with their inputs tied to zero by the bench.
-  input wire [dtp_pkg::DEFAULT_NUM_CTP-1:0] ctp_req_out_dout_i,
-  input wire [dtp_pkg::DEFAULT_NUM_CTP-1:0] ctp_req_in_dout_i,
-  input wire [dtp_pkg::DEFAULT_NUM_CTP-1:0] ctp_ack_in_dout_i,
-  input wire [dtp_pkg::DEFAULT_NUM_CTP-1:0] ctp_ack_out_dout_i
+  input wire [dtp_pkg::DefaultNumCtp-1:0] ctp_req_out_dout_i,
+  input wire [dtp_pkg::DefaultNumCtp-1:0] ctp_req_in_dout_i,
+  input wire [dtp_pkg::DefaultNumCtp-1:0] ctp_ack_in_dout_i,
+  input wire [dtp_pkg::DefaultNumCtp-1:0] ctp_ack_out_dout_i
 );
 
   localparam logic [7:0] InertWindow = 8'd255;

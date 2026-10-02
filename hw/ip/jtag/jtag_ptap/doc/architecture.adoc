@@ -105,7 +105,7 @@ endif::backend-html5[]
 |When `TMP_ENABLE=1`
 
 |`jtag_ic_reset_reg`
-|IC_RESET control register (2*(NUM_SMC_IC_RESET+NUM_SEP_IC_RESET+NUM_EXT_IC_RESET)+1 bits)
+|IC_RESET control register (2*(NumSmcIcReset+NumSepIcReset+NumExtIcReset)+1 bits)
 |When any of `IC_RESET_SMC_ENABLE`, `IC_RESET_SEP_ENABLE`, `IC_RESET_EXT_ENABLE` is 1
 
 |`jtag_debug_ctrl_reg`
@@ -502,8 +502,8 @@ IEEE 1149.1 §17 order: in each port's pair, `reset_enable` is nearer TDO and
 that interleaved bus and unpacks the outputs back into structured form. The TDR carries the SMC slice closest to TDI, then SEP, then
 the external slice, followed by the single `reset_hold` bit.
 
-The total length is `2 * (NUM_SMC_IC_RESET + NUM_SEP_IC_RESET +
-NUM_EXT_IC_RESET) + 1` bits, where each `NUM_*_IC_RESET` is half the width of
+The total length is `2 * (NumSmcIcReset + NumSepIcReset +
+NumExtIcReset) + 1` bits, where each `NUM_*_IC_RESET` is half the width of
 its corresponding struct type when the matching enable parameter is set
 (otherwise 0).
 

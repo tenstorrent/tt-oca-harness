@@ -15,9 +15,9 @@ module i3ccore_wrapper
   import i3c_pkg::*;
 #(
   parameter int unsigned NUM_I3C = 2,                       // Number of I3C instances.
-  parameter int unsigned I3C_REG_ADDR_WIDTH = i3ccore_wrap_pkg::I3C_REG_ADDR_WIDTH, // Width of the instance-relative address given to each i3c_wrapper.
+  parameter int unsigned I3C_REG_ADDR_WIDTH = i3ccore_wrap_pkg::I3cRegAddrWidth, // Width of the instance-relative address given to each i3c_wrapper.
   parameter int unsigned BASE_ADDR = 0,                     // Wrapper decode base address.
-  parameter int unsigned INSTANCE_SPACING = i3ccore_wrap_pkg::I3C_INSTANCE_SPACING, // Byte size of each instance's address window.
+  parameter int unsigned INSTANCE_SPACING = i3ccore_wrap_pkg::I3cInstanceSpacing, // Byte size of each instance's address window.
 
   parameter int unsigned DAT_AW = i3c_pkg::DatAw,           // DAT memory address width.
   parameter int unsigned DCT_AW = i3c_pkg::DctAw,           // DCT memory address width.

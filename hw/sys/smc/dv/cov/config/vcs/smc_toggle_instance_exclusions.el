@@ -116,7 +116,7 @@
 // drives AWATOP.
 //
 // EXT-IRQ-TIED (bench, bit window): bench scope: hw/sys/smc/dv/tb/tb_top.sv:1294 drives
-// smc_ext_interrupts_i[255:17] with {(NUM_EXT_INTERRUPTS-17){1'b0}}, so external interrupt sources
+// smc_ext_interrupts_i[255:17] with {(NumExtInterrupts-17){1'b0}}, so external interrupt sources
 // 17 to 255 are zero; smc_base.sv:351-364 synchronizes them through u_ext_interrupts_sync3 into
 // cpu_interrupts_o[255:0], which reaches the CPU unchanged. Bits [255:17] of those nets and the
 // data nets of the synchronizer cells for those bits are left out; their clocks and resets, and

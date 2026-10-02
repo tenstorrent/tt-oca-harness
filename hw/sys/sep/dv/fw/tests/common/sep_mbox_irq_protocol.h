@@ -33,7 +33,7 @@
 #ifndef SEP_MBOX_IRQ_PROTOCOL_H
 #define SEP_MBOX_IRQ_PROTOCOL_H
 
-/* Number of mailbox channels exercised (sep_pkg::NUM_MAILBOXES). */
+/* Number of mailbox channels exercised (sep_pkg::NumMailboxes). */
 #define SMU015_NUM_CHANNELS 8
 
 /* Per-channel token the SEP pushes: 0x15000000 | ch (ch in bits [2:0]). */

@@ -21,7 +21,7 @@ module sep_wrapper
   parameter bit KM_LATCHED_MEM_RDATA = 1'b1,
   parameter bit ABR_MASKING_EN = 1'b1,
   parameter int unsigned ABR_SRAM_LATENCY = 1,
-  parameter int unsigned EXT_TRNG_NUM_AXIS = sep_crypto_pkg::SEP_CRYPTO_EDN_ENDPOINT_COUNT,
+  parameter int unsigned EXT_TRNG_NUM_AXIS = sep_crypto_pkg::SepCryptoEdnEndpointCount,
   parameter bit [255:0] SEP_SEC_DISABLE_TOKEN = 256'b0
 ) (
   input  logic clk_i,
@@ -96,14 +96,14 @@ module sep_wrapper
   output sep_io_spi_req_t sep_io_spi_req_o,
   input  sep_io_spi_rsp_t sep_io_spi_rsp_i,
 
-  output logic [2*sep_pkg::LC_STATE_BIT_WIDTH-1:0] lc_state_o,
+  output logic [2*sep_pkg::LcStateBitWidth-1:0] lc_state_o,
   output sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable_o,
   output logic sep_fuse_dft_disable_o,
   output logic smc_fuse_dft_disable_o,
   output logic lc_sigint_err_o,
   output logic security_disable_o,
 
-  output logic [sep_pkg::NUM_MAILBOXES-1:0] smc_mailbox_interrupt_o,
+  output logic [sep_pkg::NumMailboxes-1:0] smc_mailbox_interrupt_o,
 
   input  logic smc_fuse_sense_done_i,
   output logic sep_fuse_sense_done_o,

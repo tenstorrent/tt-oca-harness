@@ -182,7 +182,7 @@ module sep #(
                                                          // plus the SPI interrupt and DMA trigger.
   input  sep_io_pkg::sep_io_spi_rsp_t sep_io_spi_rsp_i,  // SPI data-lane inputs from the pads.
 
-  output logic [2*sep_pkg::LC_STATE_BIT_WIDTH-1:0] lc_state_o,  // Differentially encoded lifecycle
+  output logic [2*sep_pkg::LcStateBitWidth-1:0] lc_state_o,     // Differentially encoded lifecycle
                                                                 // state from the eFuse shadow
                                                                 // registers.
   output sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable_o,  // Per-interface debug disables for
@@ -202,7 +202,7 @@ module sep #(
                                               // security is disabled, otherwise when fuse sensing
                                               // finishes.
 
-  output logic [sep_pkg::NUM_MAILBOXES-1:0] smc_mailbox_interrupt_o,  // Per-mailbox outbound-data interrupts to the SMC.
+  output logic [sep_pkg::NumMailboxes-1:0] smc_mailbox_interrupt_o,  // Per-mailbox outbound-data interrupts to the SMC.
 
   input  logic smc_fuse_sense_done_i,         // SMC fuse sense completion, reflected in
                                               // SMC_FUSE_SENSE_STATUS; requests to the SMC hang
@@ -265,9 +265,9 @@ module sep #(
   logic [5:0] sep_efuse_token_match_chiplet_debug;
 
   sep_pkg::remap_debug_t         local_masters_remap_debug;
-  logic [$clog2(sep_pkg::OUTBOUND_FILTER_NUM_FILTERS)-1:0]
+  logic [$clog2(sep_pkg::OutboundFilterNumFilters)-1:0]
       outbound_write_filter_hit_debug, outbound_read_filter_hit_debug;
-  logic [$clog2(sep_pkg::INBOUND_FILTER_NUM_FILTERS)-1:0]
+  logic [$clog2(sep_pkg::InboundFilterNumFilters)-1:0]
       inbound_write_filter_hit_debug, inbound_read_filter_hit_debug;
 
 
@@ -326,7 +326,7 @@ module sep #(
   // WDT sleep mode - tie low for normal operation (watchdog always counts)
   assign wdt_debug_sleep_mode = 1'b0;
 
-  logic [sep_pkg::NUM_MAILBOXES-1:0] sep_mailbox_interrupt;
+  logic [sep_pkg::NumMailboxes-1:0] sep_mailbox_interrupt;
   logic km_mbox_irq;
   logic entropy_source_irq;
   logic ext_trng_irq;
@@ -471,25 +471,25 @@ module sep #(
   // eFuse shim CSR lives in sep_external addr map but must pass through efuse controller before reaching ip_integration
   // Added demux to reroute eFuse shim traffic from xbar external to efuse_wrapper
 
-  localparam logic [31:0] EFUSE_SHIM_BASE =
+  localparam logic [31:0] EfuseShimBase =
         32'(sep_top_addrmap_pkg::SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_BASE_ADDR);
 
-  localparam int unsigned NUM_EXT_DEMUX_PORTS = 2;
+  localparam int unsigned NumExtDemuxPorts = 2;
   typedef enum logic [$clog2(
-NUM_EXT_DEMUX_PORTS
+NumExtDemuxPorts
 )-1:0] {
     EXT_DEMUX_EXTERNAL   = 1'd0,
     EXT_DEMUX_EFUSE_SHIM = 1'd1
   } ext_demux_target_e;
 
-  sep_pkg::sep_32_64_6_12_axi_req_t  [NUM_EXT_DEMUX_PORTS-1:0] ext_demux_req;
-  sep_pkg::sep_32_64_6_12_axi_resp_t [NUM_EXT_DEMUX_PORTS-1:0] ext_demux_resp;
+  sep_pkg::sep_32_64_6_12_axi_req_t  [NumExtDemuxPorts-1:0]    ext_demux_req;
+  sep_pkg::sep_32_64_6_12_axi_resp_t [NumExtDemuxPorts-1:0]    ext_demux_resp;
   ext_demux_target_e                                           ext_demux_aw_select;
   ext_demux_target_e                                           ext_demux_ar_select;
 
   function automatic ext_demux_target_e ext_demux_decode(
       input logic [sep_pkg::SEP_32_64_6_12_ADDR_WIDTH-1:0] addr);
-    if (addr >= EFUSE_SHIM_BASE && addr < EFUSE_SHIM_BASE + EFUSE_SHIM_SIZE) begin
+    if (addr >= EfuseShimBase && addr < EfuseShimBase + EFUSE_SHIM_SIZE) begin
       return EXT_DEMUX_EFUSE_SHIM;
     end else begin
       return EXT_DEMUX_EXTERNAL;
@@ -511,7 +511,7 @@ NUM_EXT_DEMUX_PORTS
     .r_chan_t    (sep_pkg::sep_32_64_6_12_axi_r_chan_t),
     .axi_req_t   (sep_pkg::sep_32_64_6_12_axi_req_t),
     .axi_resp_t  (sep_pkg::sep_32_64_6_12_axi_resp_t),
-    .NoMstPorts  (NUM_EXT_DEMUX_PORTS),
+    .NoMstPorts  (NumExtDemuxPorts),
     .MaxTrans    (4),
     .AxiLookBits (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
     .UniqueIds   (1'b0),
@@ -702,16 +702,16 @@ NUM_EXT_DEMUX_PORTS
   ///////////////////////////
 
 
-  localparam int unsigned NUM_SRAM_DEMUX_PORTS = 2;
+  localparam int unsigned NumSramDemuxPorts = 2;
   typedef enum logic [$clog2(
-NUM_SRAM_DEMUX_PORTS
+NumSramDemuxPorts
 )-1:0] {
     SRAM_DEMUX_MEM     = 1'd0,
     SRAM_DEMUX_ERR_SLV = 1'd1
   } sram_demux_target_e;
 
-  sep_pkg::sep_32_64_6_12_axi_req_t  [NUM_SRAM_DEMUX_PORTS-1:0]  sram_demux_req;
-  sep_pkg::sep_32_64_6_12_axi_resp_t [NUM_SRAM_DEMUX_PORTS-1:0]  sram_demux_resp;
+  sep_pkg::sep_32_64_6_12_axi_req_t  [NumSramDemuxPorts-1:0]     sram_demux_req;
+  sep_pkg::sep_32_64_6_12_axi_resp_t [NumSramDemuxPorts-1:0]     sram_demux_resp;
   sram_demux_target_e                                            sram_demux_aw_select;
   sram_demux_target_e                                            sram_demux_ar_select;
 
@@ -739,7 +739,7 @@ NUM_SRAM_DEMUX_PORTS
     .r_chan_t    (sep_pkg::sep_32_64_6_12_axi_r_chan_t),
     .axi_req_t   (sep_pkg::sep_32_64_6_12_axi_req_t),
     .axi_resp_t  (sep_pkg::sep_32_64_6_12_axi_resp_t),
-    .NoMstPorts  (NUM_SRAM_DEMUX_PORTS),
+    .NoMstPorts  (NumSramDemuxPorts),
     .MaxTrans    (4),
     .AxiLookBits (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
     .UniqueIds   (1'b0),
@@ -1249,11 +1249,11 @@ NUM_SRAM_DEMUX_PORTS
                                     ({8'b0, local_masters_remap_debug}) == 16)
   `OCAH_OT_ASSERT_STATIC_LINT_ERROR(
       ExtDebugOutboundFilterLaneWidth_A, $bits
-      ({{(16 - 2 * $clog2(sep_pkg::OUTBOUND_FILTER_NUM_FILTERS)
+      ({{(16 - 2 * $clog2(sep_pkg::OutboundFilterNumFilters)
        ) {1'b0}}, outbound_write_filter_hit_debug, outbound_read_filter_hit_debug}) == 16)
   `OCAH_OT_ASSERT_STATIC_LINT_ERROR(
       ExtDebugInboundFilterLaneWidth_A, $bits
-      ({{(16 - 2 * $clog2(sep_pkg::INBOUND_FILTER_NUM_FILTERS)
+      ({{(16 - 2 * $clog2(sep_pkg::InboundFilterNumFilters)
        ) {1'b0}}, inbound_write_filter_hit_debug, inbound_read_filter_hit_debug}) == 16)
   `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugReservedLanesWidth_A, $bits(160'b0) == 10 * 16)
 
@@ -1333,14 +1333,14 @@ NUM_SRAM_DEMUX_PORTS
 
     // [191:176] Outbound filter hit debug
     {(16 - 2 * $clog2(
-        sep_pkg::OUTBOUND_FILTER_NUM_FILTERS
+        sep_pkg::OutboundFilterNumFilters
     )) {1'b0}},
     outbound_write_filter_hit_debug,
     outbound_read_filter_hit_debug,
 
     // [175:160] Inbound filter hit debug
     {(16 - 2 * $clog2(
-        sep_pkg::INBOUND_FILTER_NUM_FILTERS
+        sep_pkg::InboundFilterNumFilters
     )) {1'b0}},
     inbound_write_filter_hit_debug,
     inbound_read_filter_hit_debug,

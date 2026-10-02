@@ -5,9 +5,9 @@
 
 /**
  * @file i2c_target_sanity.c
- * @brief SMC_I2C_005 — target ADDR0/dual, ACQ write, TX read, stretch-ctrl, unexp_stop
+ * @brief I2C target: address match, write capture, read data, TX stretch, unexpected STOP
  *
- * I2C_0 = Controller, I2C_1 = Target. AXI CSR frontdoor only; no Force/deposit.
+ * I2C_0 is the controller and I2C_1 the target; the testbench host drives the unexpected STOP.
  */
 
 #include <stdint.h>
@@ -24,9 +24,9 @@
 #define MISMATCH_ADDR 0x55u
 
 #define WAIT_BOUND 20000u
-/* VIP handshake + illegal STOP needs headroom beyond peer-FMT poll. */
+/* The testbench host's illegal-STOP read needs a longer bound than the
+ * controller-driven steps. */
 #define S6_WAIT_BOUND 50000u
-#define TX_DEPTH 64u
 
 static uint32_t g_phase;
 static uint32_t g_ts_addr0;
@@ -222,7 +222,7 @@ static void ctrl_write_bytes_flags(uint8_t addr, const uint8_t *data, uint32_t l
         fdata_write(data[i], false, stop, false, false, nakok);
     }
     if (nakok) {
-        /* Unmatched addr NACK may halt; wait FMT drain only then clear halt. */
+        /* A NACKed address halts the controller: drain FMT, clear the halt, then wait for idle. */
         wait_fmtempty("CTRL_WR_NAKOK", false);
         {
             i2c__INTR_STATE_t ist = {
@@ -393,7 +393,8 @@ static void step_s4_tx_read(void) {
     preload_tx(expect, sizeof(expect));
     i2c_clear_target_events(TARGET_IDX, 0xFFFFFFFFu);
 
-    /* START+addr+R, READB=4 STOP — burst push (fmt depth==1 IDLE workaround). */
+    /* Queue the addressed read and the 4-byte read command back to back
+     * (workaround for the controller idling with a single FMT entry). */
     {
         uint32_t a = fdata_pack((uint8_t)((ADDR0 << 1) | 1u), true, false, false, false, false);
         uint32_t r = fdata_pack(4, false, true, true, false, false);
@@ -439,7 +440,8 @@ static void step_s5_stretch_ctrl(void) {
     drain_acq();
     reset_fifos_both();
 
-    /* Enable stretch-ctrl + TX_STRETCH interrupt (INTR_ENABLE masks irq_o only). */
+    /* Enable TX stretch control and its interrupt; the interrupt enable gates
+     * only the interrupt line, not the latched status. */
     tctrl.w = read_reg(tgt_base() + i2c_off(SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0)));
     tctrl.f.TX_STRETCH_CTRL_EN = 1;
     tctrl.f.ENABLEHOST = 0;
@@ -486,7 +488,6 @@ static void step_s5_stretch_ctrl(void) {
         if (!ist.f.TX_STRETCH) {
             fail_with(0xBAD00061, "S5 TX_STRETCH irq missing with enable");
         }
-        saw_tx_stretch = true;
     }
 
     wait_rxlvl(2, "S5_RX");
@@ -509,10 +510,10 @@ static void step_s5_stretch_ctrl(void) {
     simputs("  CHK-TX-STRETCH-CTRL: tx_pending=1 stretch_irq=1 confirmed=1\n");
 }
 
-/* ---- S6: STOP without prior NACK on target read → UNEXP_STOP lifecycle ----
- * Peer OT controller always NACK+STOP on read end, so it cannot raise
- * unexp_stop. Contract producer is external VIP: disable I2C_0, keep I2C_1
- * target live, handshake scratch[1]=0xEBEDEBE3 for TB illegal STOP. */
+/* ---- S6: STOP without prior NACK on target read -> UNEXP_STOP lifecycle ----
+ * The on-chip controller always ends a read with NACK then STOP, so it cannot
+ * raise UNEXP_STOP. Release it, keep the target live and signal the testbench
+ * host, which ends a read with a STOP and no NACK. */
 static void step_s6_unexp_stop(void) {
     const uint8_t expect[2] = {0x77, 0x88};
     uint32_t i;
@@ -534,7 +535,7 @@ static void step_s6_unexp_stop(void) {
     simputs("  S6: tx preloaded\n");
     i2c_clear_target_events(TARGET_IDX, 0xFFFFFFFFu);
 
-    /* Release peer controller so VIP owns SCL/SDA on shared pads. */
+    /* Release the controller so the testbench host owns SCL/SDA on the shared pads. */
     i2c_controller_disable(CONTROLLER_IDX);
     i2c_wrapper_set(CONTROLLER_IDX, false, true);
     simputs("  S6: controller released; waiting VIP (scratch=EBEDEBE3)\n");
@@ -594,9 +595,8 @@ static void emit_integrity(void) {
         fail_with(0xBAD00081, "CHK-NONVAC out of order");
     }
     if (g_timeout_paths_logged == 0) {
-        /* At least one bounded wait must have logged a bound on the success path
-         * via TIMEOUT_DIAG only on expiry; emit success token after finite waits
-         * were used on every step (bound constant logged once). */
+        /* An expired bounded wait fails the test, so reaching here means every
+         * wait finished within its bound. */
         simputs("  TIMEOUT_BOUND_OK bound=");
         simputshex32("", WAIT_BOUND);
         simputs("\n");
@@ -688,9 +688,4 @@ int main(void) {
     simputs("##           ALL TESTS PASSED                ##\n");
     simputs("################################################\n");
     test_pass(0);
-
-    while (true) {
-        __asm__("wfi");
-    }
-    return 0;
 }

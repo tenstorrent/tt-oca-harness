@@ -27,13 +27,13 @@ module jtag_tmp_status_reg
   //--------------------------------------------------------------------------
   // Local Parameters
   //--------------------------------------------------------------------------
-  localparam int unsigned REG_WIDTH = 2;  // TMP status register: 2 bits per IEEE 1149.1 Section 16.1
+  localparam int unsigned RegWidth = 2;  // TMP status register: 2 bits per IEEE 1149.1 Section 16.1
 
   //--------------------------------------------------------------------------
   // Internal Signals
   //--------------------------------------------------------------------------
 
-  logic [REG_WIDTH-1:0] tmp_status_reg_q;  // TMP status register output (update register)
+  logic [RegWidth-1:0] tmp_status_reg_q;  // TMP status register output (update register)
 
   //--------------------------------------------------------------------------
   // TMP Status Register
@@ -43,7 +43,7 @@ module jtag_tmp_status_reg
   // - Bit [0]: bypass-escape bit (closest to TDO) - user programmable
   // On capture: TMP-status captures persistence_mode_i, bypass-escape retains its value
   prim_jtag_scan_reg #(
-    .WIDTH(REG_WIDTH),
+    .WIDTH(RegWidth),
     .RESET_VAL(2'b10),  // bypass_escape (bit 0) resets to 0; bit 1 is overwritten at Capture-DR
     .jtag_scan_ctrl_t(jtag_scan_ctrl_t)
   ) u_tmp_status_scan_reg (

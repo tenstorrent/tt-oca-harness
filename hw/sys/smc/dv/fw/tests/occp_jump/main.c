@@ -2,14 +2,13 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * Reads the payload base (scratch 4) and main() offset (scratch 5) that the loader publishes,
- * issues an OCCP JUMP to base + offset, and waits for the ROM to report completion.
+ * Reads the payload base and entry offset that the loader publishes and issues an OCCP JUMP to
+ * the entry point. The payload reports the pass after the jump; this image reports only a failure.
  */
 
 #include "occp_test_common.h"
 #include "smc_defines.h"
 #include "smc_test.h"
-#include <string.h>
 
 static void run_test_suite(test_context_t *ctx) {
     simputs("=== Starting OCCP Jump Test ===\n");
@@ -19,7 +18,7 @@ static void run_test_suite(test_context_t *ctx) {
 
     simputs("=== Jump Command Test ===\n");
 
-    // Scratch 4 stays 0 until the loader has written the payload.
+    // The payload base reads as zero until the loader has written the payload.
     uint32_t test_addr = 0;
     while (test_addr == 0) {
         retval = occp_send_read_command(ctx, ctx->slave_addr, SMC_CPU_CTRL_SCRATCH_4__REG_ADDR,
@@ -30,7 +29,7 @@ static void run_test_suite(test_context_t *ctx) {
         simputshex32("Test address: ", test_addr);
     }
 
-    // The loader writes scratch 5 before scratch 4, so it is valid once scratch 4 is non-zero.
+    // The loader publishes the entry offset before the base, so it is valid once the base is set.
     uint32_t entry_offset = 0;
     retval = occp_send_read_command(ctx, ctx->slave_addr, SMC_CPU_CTRL_SCRATCH_5__REG_ADDR,
                                     (uint8_t *)&entry_offset, sizeof(entry_offset));
@@ -50,8 +49,6 @@ static void run_test_suite(test_context_t *ctx) {
 }
 
 static void finalize_test_results(test_context_t *ctx) {
-    uint32_t result_code;
-
     // A pass is reported after the jump by the payload; only a failure ends the test here.
     if (ctx->overall_result) {
         simputs("Completed bfm test, waiting for ROM to complete!\n");
@@ -84,13 +81,6 @@ int main(void) {
     run_test_suite(&test_ctx);
 
     finalize_test_results(&test_ctx);
-
-    simputs("Done\n");
-    while (true) {
-        __asm__("wfi");
-    }
-
-    return 0;
 }
 
 int other_main(int hartid) {

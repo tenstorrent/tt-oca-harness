@@ -6,15 +6,13 @@
 #include "smc_io.h"
 #include "smc_test.h"
 
-// Phase completion signals
+// Scratch handshake values shared with the TB
 #define TEST_COMPLETE_PHASE1 0xC0FFEE // Clock gating enabled
 #define COCOTB_PROCEED_SIGNAL 0x77777777
 #define TEST_COMPLETE_PHASE2 0xDECAFE // Clock gating disabled
 
-/* Bound on the scratch[6] handshake.
- *
- * The TB half that answers this handshake may be absent from a run, so the
- * wait is bounded and expiry is a failure.
+/* The TB half that answers the proceed handshake may be absent from a run, so
+ * the wait is bounded and expiry is a failure.
  */
 #define PROCEED_BOUND 200000u
 
@@ -30,8 +28,8 @@ static void fail_cg(uint32_t code, const char *msg) {
     test_fail(0);
 }
 
-/* CLOCK_GATE_CONTROL is sw=rw storage, so a written word must read back bit for
- * bit.
+/* The clock gate control is plain read/write storage, so a written word must
+ * read back bit for bit.
  */
 static void check_gate_ctrl(uint32_t wrote, uint32_t code, const char *msg) {
     uint32_t got = read_reg(SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR);
@@ -47,10 +45,9 @@ int main(void) {
     // Signal firmware ready
     write_scratch(5, 0x55555555);
 
-    // Enable all peripheral clock gating simultaneously (static and dynamic)
+    // Enable the static peripheral clock gaters together
     smc_base_config__CLOCK_GATE_CONTROL_t clock_gate_ctrl;
 
-    // Enable static clock gaters (peripheral clocks)
     clock_gate_ctrl.f.avs_cg_en = 0x1;
     clock_gate_ctrl.f.i2c_cg_en = 0x1;
     clock_gate_ctrl.f.uart_cg_en = 0x1;
@@ -61,10 +58,10 @@ int main(void) {
     check_gate_ctrl(clock_gate_ctrl.w, ERR_GATE_READBACK,
                     "CLOCK_GATE_CONTROL did not hold the gate-enable word");
 
-    // Clocks should now be gated
+    // Tell the TB that clock gating is enabled
     write_scratch(5, TEST_COMPLETE_PHASE1);
 
-    // Wait for the TB half to signal phase 2. Bounded: expiry is a failure.
+    // Wait, bounded, for the TB to signal phase 2
     uint32_t cocotb_signal = 0;
     uint32_t i;
 
@@ -79,8 +76,8 @@ int main(void) {
         fail_cg(ERR_NO_PROCEED, "TB never wrote the phase-2 proceed signal to scratch[6]");
     }
 
-    // Disable all peripheral clock gating (static and dynamic)
-    clock_gate_ctrl.w = 0; // Clear all clock gating enables
+    // Disable all clock gating
+    clock_gate_ctrl.w = 0;
     write_reg(SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR, clock_gate_ctrl.w);
     check_gate_ctrl(0u, ERR_UNGATE_READBACK,
                     "CLOCK_GATE_CONTROL did not clear on the ungate write");
@@ -89,12 +86,9 @@ int main(void) {
 
     test_pass(0);
 
-    // Wait forever
     while (1) {
         __asm__("wfi");
     }
-
-    return 0;
 }
 
 int secondary_main(void) {

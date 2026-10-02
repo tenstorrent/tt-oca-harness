@@ -2,14 +2,12 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * OCCP Validate and Boot Command Rejection Test
- *
- * This test verifies that the VALIDATE_AND_BOOT command is rejected
- * when the device is in non-secure mode.
+ * Sends VALIDATE_AND_BOOT in non-secure mode and checks that the ROM answers it without an error
+ * response, that GET_STATUS reports the expected command count and interface status, and that
+ * the ROM keeps serving OCCP commands.
  */
 
 #include "occp_test_common.h"
-#include <string.h>
 
 static void run_validate_boot_rejection_test(test_context_t *ctx) {
     simputs("=== Starting OCCP Validate and Boot Rejection Test ===\n");
@@ -87,6 +85,4 @@ int main(void) {
     while (1) {
         __asm__("wfi");
     }
-
-    return 0;
 }

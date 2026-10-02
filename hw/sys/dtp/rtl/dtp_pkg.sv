@@ -17,16 +17,16 @@ package dtp_pkg;
   //-------------------------------------------------------------------------
 
   // Number of external Cross Trigger Ports
-  localparam int unsigned DEFAULT_NUM_CTP = 16;
+  localparam int unsigned DefaultNumCtp = 16;
 
   // Number of internal cross trigger interfaces
-  localparam int unsigned DEFAULT_NUM_INT_CT = 10;
+  localparam int unsigned DefaultNumIntCt = 10;
 
   // Number of clock stop request inputs
-  localparam int unsigned DEFAULT_NUM_CLK_STOP_REQ = 9;
+  localparam int unsigned DefaultNumClkStopReq = 9;
 
   // Total number of CTM ports
-  localparam int unsigned DEFAULT_NUM_CTM_PORTS = DEFAULT_NUM_CTP + DEFAULT_NUM_INT_CT;
+  localparam int unsigned DefaultNumCtmPorts = DefaultNumCtp + DefaultNumIntCt;
 
   //-------------------------------------------------------------------------
   // Cross Trigger Configuration Checks
@@ -37,42 +37,42 @@ package dtp_pkg;
   //-------------------------------------------------------------------------
 
   `OCAH_OT_ASSERT_STATIC_IN_PACKAGE(NumCtpMatchesCtn_A,
-                                    DEFAULT_NUM_CTP == cross_trigger_network_pkg::DEFAULT_NUM_CTP)
-  `OCAH_OT_ASSERT_STATIC_IN_PACKAGE(
-      NumIntCtMatchesCtn_A, DEFAULT_NUM_INT_CT == cross_trigger_network_pkg::DEFAULT_NUM_INT_CT)
+                                    DefaultNumCtp == cross_trigger_network_pkg::DefaultNumCtp)
+  `OCAH_OT_ASSERT_STATIC_IN_PACKAGE(NumIntCtMatchesCtn_A,
+                                    DefaultNumIntCt == cross_trigger_network_pkg::DefaultNumIntCt)
   `OCAH_OT_ASSERT_STATIC_IN_PACKAGE(
       NumClkStopReqMatchesCtn_A,
-      DEFAULT_NUM_CLK_STOP_REQ == cross_trigger_network_pkg::DEFAULT_NUM_CLK_STOP_REQ)
+      DefaultNumClkStopReq == cross_trigger_network_pkg::DefaultNumClkStopReq)
 
   //-------------------------------------------------------------------------
   // Derived Parameters
   //-------------------------------------------------------------------------
 
-  localparam logic [DEFAULT_NUM_INT_CT-1:0] DEFAULT_INT_CT_MODE = {DEFAULT_NUM_INT_CT{1'b0}};
+  localparam logic [DefaultNumIntCt-1:0] DefaultIntCtMode = {DefaultNumIntCt{1'b0}};
 
   //-------------------------------------------------------------------------
   // AXI-Lite Parameters
   //-------------------------------------------------------------------------
 
-  localparam int unsigned DTP_AXIL_ADDR_WIDTH = 32;
-  localparam int unsigned DTP_AXIL_DATA_WIDTH = 32;
+  localparam int unsigned DtpAxilAddrWidth = 32;
+  localparam int unsigned DtpAxilDataWidth = 32;
 
-  localparam int unsigned JTAG_DBG_AXI_ADDR_WIDTH = 56;
-  localparam int unsigned JTAG_DBG_AXI_DATA_WIDTH = 64;
-  localparam int unsigned JTAG_DBG_AXI_ID_WIDTH = 2;
-  localparam int unsigned JTAG_DBG_AXI_USER_WIDTH = 12;
+  localparam int unsigned JtagDbgAxiAddrWidth = 56;
+  localparam int unsigned JtagDbgAxiDataWidth = 64;
+  localparam int unsigned JtagDbgAxiIdWidth = 2;
+  localparam int unsigned JtagDbgAxiUserWidth = 12;
 
   // AXI-Lite Typedefs
-  typedef logic [DTP_AXIL_ADDR_WIDTH-1:0] dtp_axi_lite_32_addr_t;
-  typedef logic [DTP_AXIL_DATA_WIDTH-1:0] dtp_axi_lite_32_data_t;
-  typedef logic [DTP_AXIL_DATA_WIDTH/8-1:0] dtp_axi_lite_32_strb_t;
+  typedef logic [DtpAxilAddrWidth-1:0] dtp_axi_lite_32_addr_t;
+  typedef logic [DtpAxilDataWidth-1:0] dtp_axi_lite_32_data_t;
+  typedef logic [DtpAxilDataWidth/8-1:0] dtp_axi_lite_32_strb_t;
 
   // JTAG Debug AXI Typedefs
-  typedef logic [JTAG_DBG_AXI_ADDR_WIDTH-1:0] jtag_dbg_axi_addr_t;
-  typedef logic [JTAG_DBG_AXI_DATA_WIDTH-1:0] jtag_dbg_axi_data_t;
-  typedef logic [JTAG_DBG_AXI_ID_WIDTH-1:0] jtag_dbg_axi_id_t;
-  typedef logic [JTAG_DBG_AXI_DATA_WIDTH/8-1:0] jtag_dbg_axi_strb_t;
-  typedef logic [JTAG_DBG_AXI_USER_WIDTH-1:0] jtag_dbg_axi_user_t;
+  typedef logic [JtagDbgAxiAddrWidth-1:0] jtag_dbg_axi_addr_t;
+  typedef logic [JtagDbgAxiDataWidth-1:0] jtag_dbg_axi_data_t;
+  typedef logic [JtagDbgAxiIdWidth-1:0] jtag_dbg_axi_id_t;
+  typedef logic [JtagDbgAxiDataWidth/8-1:0] jtag_dbg_axi_strb_t;
+  typedef logic [JtagDbgAxiUserWidth-1:0] jtag_dbg_axi_user_t;
 
 
   // 32_32_0_0

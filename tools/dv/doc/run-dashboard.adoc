@@ -543,11 +543,17 @@ Collection performs these steps:
 . Load the native run-level result.
 . Load `stages/regress/regression.json` when present.
 . Rebase recorded run-tree paths onto the selected run root.
-. Load leaf fragments and test metadata to build `tests_detail`.
+. Build `tests_detail` from each leaf's run or regression record and the
+  test metadata. The record decides the status and reason; the leaf fragment
+  supplies only the fields the record lacks.
 . Prefer each leaf's `artifacts.results_xml`, then parser evidence, then the
   `results/results.xml` beside the leaf's recorded `result.json`, then
   log-layout inference from a leaf log, when locating JUnit/xUnit files.
-. Count the resolved JUnit/xUnit files and how many are missing.
+. Count the resolved JUnit/xUnit files, with any runner `graded.xml` beside
+  them, and how many are missing.
+. Warn, naming the test, seed, and attempt, for each resolved file that is
+  missing and for each graded attempt that names none. An earlier attempt of a
+  retried leaf that left no result is not a warning.
 . Convert the native result to dashboard schema version `"0.2"`.
 . Copy selected coverage output beside the normalized result.
 . Write the normalized result.

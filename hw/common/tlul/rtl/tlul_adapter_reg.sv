@@ -72,8 +72,8 @@ module tlul_adapter_reg
 );
   `OCAH_OT_ASSERT_INIT(AllowedLatency_A, ACCESS_LATENCY inside {0, 1})
 
-  localparam int IW  = $bits(tl_i.a_source);
-  localparam int SZW = $bits(tl_i.a_size);
+  localparam int Iw  = $bits(tl_i.a_source);
+  localparam int Szw = $bits(tl_i.a_size);
 
   logic outstanding_q;    // Indicates current request is pending
   logic a_ack, d_ack;
@@ -84,8 +84,8 @@ module tlul_adapter_reg
   logic addr_align_err;     // Size and alignment
   logic tl_err;             // Common TL-UL error checker
 
-  logic [IW-1:0]  reqid_q;
-  logic [SZW-1:0] reqsz_q;
+  logic [Iw-1:0]  reqid_q;
+  logic [Szw-1:0] reqsz_q;
   tl_d_op_e       rspop_q;
 
   logic rd_req, wr_req;

@@ -20,14 +20,14 @@ module cross_trigger_network
     `include "axi/typedef.svh"
     `include "prim_assert.sv"
 #(
-    parameter int unsigned NUM_CTP          = DEFAULT_NUM_CTP,  // Number of external CTPs, from 1
+    parameter int unsigned NUM_CTP          = DefaultNumCtp,    // Number of external CTPs, from 1
                                                                 // to 32. NUM_CTP + NUM_INT_CT must
-                                                                // equal the NUM_CT_SRC and
-                                                                // NUM_CT_DST of the generated
+                                                                // equal the NumCtSrc and
+                                                                // NumCtDst of the generated
                                                                 // cross-trigger matrix.
-    parameter int unsigned NUM_INT_CT       = DEFAULT_NUM_INT_CT,  // Number of internal CTPs, at
+    parameter int unsigned NUM_INT_CT       = DefaultNumIntCt,     // Number of internal CTPs, at
                                                                    // most 32.
-    parameter int unsigned NUM_CLK_STOP_REQ = DEFAULT_NUM_CLK_STOP_REQ,  // Width of clk_stop_req_i; at least 1.
+    parameter int unsigned NUM_CLK_STOP_REQ = DefaultNumClkStopReq,  // Width of clk_stop_req_i; at least 1.
 
     parameter logic [NUM_INT_CT-1:0] INT_CT_MODE = '0,  // Mode of each internal CTP, one bit per
                                                         // CTP. 0 selects wire-OR pulse sync and 1 a
@@ -127,23 +127,23 @@ module cross_trigger_network
 
     // Total number of CTM ports (external CTPs + internal CTPs). The generated
     // matrix register map has one CT_Src and one CT_Dst for each of these.
-    localparam int unsigned NUM_CTM_PORTS = NUM_CTP + NUM_INT_CT;
+    localparam int unsigned NumCtmPorts = NUM_CTP + NUM_INT_CT;
 
     `OCAH_OT_ASSERT_STATIC_IN_PACKAGE(
-        CtmSrcMatchesElaboratedPorts_A, NUM_CTM_PORTS == cross_trigger_matrix_pkg::NUM_CT_SRC)
+        CtmSrcMatchesElaboratedPorts_A, NumCtmPorts == cross_trigger_matrix_pkg::NumCtSrc)
     `OCAH_OT_ASSERT_STATIC_IN_PACKAGE(
-        CtmDstMatchesElaboratedPorts_A, NUM_CTM_PORTS == cross_trigger_matrix_pkg::NUM_CT_DST)
+        CtmDstMatchesElaboratedPorts_A, NumCtmPorts == cross_trigger_matrix_pkg::NumCtDst)
 
     // Number of AXI-Lite master ports (external CTPs + CTM)
     // Internal CTPs don't have CSRs
-    localparam int unsigned NUM_XBAR_MST_PORTS = NUM_CTP + 1;
+    localparam int unsigned NumXbarMstPorts = NUM_CTP + 1;
 
     // Address space sizes
-    localparam int unsigned ADDR_CTM_SIZE = CSR_ADDR_CTM_SIZE;  // 512 bytes for CTM
-    localparam int unsigned ADDR_CTM_REG_SIZE = CSR_ADDR_CTM_REG_SIZE;
-    localparam int unsigned ADDR_CTP_SIZE = CSR_ADDR_CTP_SIZE;  // 16 bytes per CTP
+    localparam int unsigned AddrCtmSize = CsrAddrCtmSize;  // 512 bytes for CTM
+    localparam int unsigned AddrCtmRegSize = CsrAddrCtmRegSize;
+    localparam int unsigned AddrCtpSize = CsrAddrCtpSize;  // 16 bytes per CTP
 
-    `OCAH_OT_ASSERT_STATIC_IN_PACKAGE(CtmRegsFitAperture_A, ADDR_CTM_REG_SIZE <= ADDR_CTM_SIZE)
+    `OCAH_OT_ASSERT_STATIC_IN_PACKAGE(CtmRegsFitAperture_A, AddrCtmRegSize <= AddrCtmSize)
 
     //--------------------------------------------------------------------------
     // AXI-Lite Crossbar Type Definitions
@@ -159,8 +159,8 @@ module cross_trigger_network
     // Address map rule type
     typedef struct packed {
         int unsigned idx;
-        logic [AXI_LITE_ADDR_WIDTH-1:0] start_addr;
-        logic [AXI_LITE_ADDR_WIDTH-1:0] end_addr;
+        logic [AxiLiteAddrWidth-1:0] start_addr;
+        logic [AxiLiteAddrWidth-1:0] end_addr;
     } xbar_rule_t;
 
     //--------------------------------------------------------------------------
@@ -168,15 +168,15 @@ module cross_trigger_network
     //--------------------------------------------------------------------------
 
     // Cross trigger signals between CTPs and CTM
-    logic [NUM_CTM_PORTS-1:0] ctm_ct_dst;  // CTP ct_dst -> CTM ct_dst_i
-    logic [NUM_CTM_PORTS-1:0] ctm_ct_src;  // CTM ct_src_o -> CTP ct_src
+    logic [NumCtmPorts-1:0] ctm_ct_dst;  // CTP ct_dst -> CTM ct_dst_i
+    logic [NumCtmPorts-1:0] ctm_ct_src;  // CTM ct_src_o -> CTP ct_src
 
     // AXI-Lite signals from crossbar to subordinates
-    axil_req_t  [NUM_XBAR_MST_PORTS-1:0] xbar_mst_req;
-    axil_resp_t [NUM_XBAR_MST_PORTS-1:0] xbar_mst_resp;
+    axil_req_t  [NumXbarMstPorts-1:0] xbar_mst_req;
+    axil_resp_t [NumXbarMstPorts-1:0] xbar_mst_resp;
 
     // Address map for crossbar
-    xbar_rule_t [NUM_XBAR_MST_PORTS-1:0] addr_map;
+    xbar_rule_t [NumXbarMstPorts-1:0] addr_map;
 
     //--------------------------------------------------------------------------
     // Address Map Generation
@@ -187,13 +187,13 @@ module cross_trigger_network
     // rest of its 512-byte aperture decodes as unmapped.
     assign addr_map[0].idx        = 0;
     assign addr_map[0].start_addr = 0;
-    assign addr_map[0].end_addr   = ADDR_CTM_REG_SIZE;
+    assign addr_map[0].end_addr   = AddrCtmRegSize;
 
     // External CTPs follow (indices 1 to NUM_CTP, starting at 0x0200)
     for (genvar i = 0; i < NUM_CTP; i++) begin : gen_ctp_addr_map
         assign addr_map[i + 1].idx        = i + 1;
-        assign addr_map[i + 1].start_addr = ADDR_CTM_SIZE + (i * ADDR_CTP_SIZE);
-        assign addr_map[i + 1].end_addr   = ADDR_CTM_SIZE + ((i + 1) * ADDR_CTP_SIZE);
+        assign addr_map[i + 1].start_addr = AddrCtmSize + (i * AddrCtpSize);
+        assign addr_map[i + 1].end_addr   = AddrCtmSize + ((i + 1) * AddrCtpSize);
     end
 
     //--------------------------------------------------------------------------
@@ -202,7 +202,7 @@ module cross_trigger_network
 
     localparam axi_pkg::xbar_cfg_t XbarCfg = '{
         NoSlvPorts:         1,                       // Single subordinate port from DTP
-        NoMstPorts:         NUM_XBAR_MST_PORTS,      // CTM + CTPs
+        NoMstPorts:         NumXbarMstPorts,         // CTM + CTPs
         MaxMstTrans:        1,                       // Single outstanding transaction
         MaxSlvTrans:        1,
         FallThrough:        1'b0,
@@ -212,9 +212,9 @@ module cross_trigger_network
         AxiIdUsedSlvPorts:  1,
         UniqueIds:          1'b0,
         SelHashIds:         1'b0,
-        AxiAddrWidth:       AXI_LITE_ADDR_WIDTH,
-        AxiDataWidth:       AXI_LITE_DATA_WIDTH,
-        NoAddrRules:        NUM_XBAR_MST_PORTS
+        AxiAddrWidth:       AxiLiteAddrWidth,
+        AxiDataWidth:       AxiLiteDataWidth,
+        NoAddrRules:        NumXbarMstPorts
     };
 
     //--------------------------------------------------------------------------
@@ -308,7 +308,7 @@ module cross_trigger_network
         // Configuration is static via parameters
 
         // Mode configuration: pulse sync (0) or handshake (1)
-        localparam logic MODE_WIRE_OR = ~INT_CT_MODE[i];
+        localparam logic ModeWireOr = ~INT_CT_MODE[i];
 
         // Signals for internal CTP GPIO interface (directly connected to internal signals)
         logic int_ct_req_out_dout, int_ct_req_out_dout_en;
@@ -322,7 +322,7 @@ module cross_trigger_network
             .rst_ni                 (rst_ni),
 
             // Static configuration (no CSRs)
-            .mode_wire_or_i         (MODE_WIRE_OR),
+            .mode_wire_or_i         (ModeWireOr),
             .invert_i               (1'b0),           // No inversion for internal
             .handshake_reset_i      (1'b0),           // No handshake reset
             .stretch_mult_i         (16'h0001),       // Minimal stretch for internal
@@ -361,7 +361,7 @@ module cross_trigger_network
 
         // Map internal CTP GPIO signals to internal cross trigger interface
         // Mode-specific signal routing
-        if (MODE_WIRE_OR) begin : gen_wire_or_signals
+        if (ModeWireOr) begin : gen_wire_or_signals
             // Wire-OR mode:
             // - CTP sends stretched pulses to CLAs on ct_req_out_dout_en (dout is static)
             // - CTP receives stretched pulses from CLAs on ct_req_out_din

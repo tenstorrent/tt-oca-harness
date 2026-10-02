@@ -6,7 +6,7 @@
 // Captures 6'b000001 and shifts the IR on the IR scan path between scan_in_i and scan_out_o.
 // inst_decoded_o is the decoded instruction enum consumed by PTAP muxes, one-hot in the
 // opcode, loaded on the falling TCK edge while update_en is high and reset to
-// DEFAULT_INSTRUCTION (IDCODE).
+// DefaultInstruction (IDCODE).
 
 module jtag_inst_reg
   import prim_jtag_pkg::*;
@@ -51,7 +51,7 @@ module jtag_inst_reg
   // Instruction register - updated on update_ir (negative edge for parallel output)
   prim_flop #(
     .Width($bits(jtag_instruction_decoded_e)),
-    .ResetValue(DEFAULT_INSTRUCTION),
+    .ResetValue(DefaultInstruction),
     .Negedge(1'b1)
   ) u_instruction_reg_flop (
     .clk_i  (scan_ctrl_i.tck),
@@ -71,7 +71,7 @@ module jtag_inst_reg
       // Shift: Shift in new instruction bit from scan input
       // Per IEEE 1149.1, LSB is shifted in first
       instruction_shift_reg_d = jtag_instruction_e'({
-        scan_in_i, instruction_shift_reg_q[IR_WIDTH-1:1]
+        scan_in_i, instruction_shift_reg_q[IrWidth-1:1]
       });
     end else begin
       instruction_shift_reg_d = instruction_shift_reg_q;
@@ -79,7 +79,7 @@ module jtag_inst_reg
   end
 
   prim_flop #(
-    .Width(IR_WIDTH),
+    .Width(IrWidth),
     .ResetValue(BYPASS_ALT_INSTR)
   ) u_instruction_shift_reg_flop (
     .clk_i  (scan_ctrl_i.tck),

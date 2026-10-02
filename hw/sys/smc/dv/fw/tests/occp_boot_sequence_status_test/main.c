@@ -3,8 +3,8 @@
 
 /*
  * Drains the ROM status ring buffer over OCCP and checks that the required boot status codes
- * are present, carry the SMC BL0 firmware ID and the right message type, and that neither
- * OCCP_INIT_FAILED nor UNEXPECTED_EXIT was reported.
+ * are present with the SMC BL0 firmware ID, that no OCCP init failure or unexpected exit was
+ * reported, and that SMC BL0 entries read after the drain carry the right message type.
  */
 
 #include "occp_test_common.h"
@@ -135,7 +135,7 @@ static bool collect_boot_status_messages(boot_status_test_context_t *ctx) {
                     uint32_t expected_code = ctx->status_codes[j].status_code;
                     bool matches = false;
 
-                    // BOOT_START carries strap bits in its low nibble (0x010-0x01F).
+                    // BOOT_START carries strap bits, so any value in its code range matches.
                     if (expected_code == SMC_STATUS_BOOT_START && msg_value >= 0x010 &&
                         msg_value <= 0x01F) {
                         uint32_t base_code = msg_value & 0xFF0;
@@ -630,7 +630,6 @@ int main(void) {
     if (!initialize_interface(&occp_ctx)) {
         simputs("FAIL: Interface initialization failed\n");
         test_fail(0);
-        return -1;
     }
 
     occp_ctx.test_base_addr = OCCP_TEST_BASE_ADDR;
@@ -660,13 +659,6 @@ int main(void) {
         simputs("SPECIFICATION DISCREPANCY: Boot status code reporting issues detected\n");
         test_fail(0);
     }
-
-    simputs("Done\n");
-    while (true) {
-        __asm__("wfi");
-    }
-
-    return 0;
 }
 
 int other_main(int hartid) {

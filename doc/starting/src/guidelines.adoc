@@ -161,8 +161,9 @@ few deviations from the OpenTitan rules. If there is a conflict between
 the two, the specification here takes precedence.
 
 * Use two spaces for indentation, matching the lowRISC style guide.
-* Use all upper case letters to name enums, constants (localparam), and
-parameters instead of UpperCamelCase.
+* Use all upper case letters to name enums and parameters instead of
+UpperCamelCase, and UpperCamelCase to name constants (localparam).
+* Name enum types in lower_snake_case with an `_e` suffix.
 * TT-owned RTL uses postfix *_i / *_o / *_io; active-low _n sits immediately
 before the direction suffix so resets are rst_ni.
 * As stated in the lowRISC guidelines, SystemVerilog Interfaces can be

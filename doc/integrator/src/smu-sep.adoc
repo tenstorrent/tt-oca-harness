@@ -12,13 +12,26 @@ procedures for adopters integrating the SEP as part of the SMU or as a
 standalone out-of-context IP.
 
 For detailed architectural documentation about the SEP internal design, refer to
-the dedicated SEP documentation located in `hw/sys/sep/doc/`. The SEP hardware
-overview and interconnect fabric are described in
-`hw/sys/sep/doc/overview.adoc` and `hw/sys/sep/doc/fabric.adoc` respectively.
+the dedicated documentation located in the SEP reference manual. The SEP
+hardware overview and interconnect fabric are described in the SEP
+ifdef::backend-html5[]
+xref:sep:overview.adoc[Overview]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+_Overview_
+endif::backend-pdf[]
+and
+ifdef::backend-html5[]
+xref:sep:fabric.adoc[Interconnect]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+_Interconnect_
+endif::backend-pdf[]
+sections.
 
 == Module Overview
 
-The `sep.sv` module provides the complete SEP functionality with logic-level
+The module in `sep.sv` provides the complete SEP functionality with logic-level
 interfaces. Technology-specific components -- SRAM, ROM, and eFuse shims -- are
 instantiated by the adopter outside SEP, following the same vendor-neutral
 philosophy used for the SMC.
@@ -120,13 +133,14 @@ asymmetry.
 
 == eFuse and Lifecycle
 
-SEP has its own eFuse bank. Instantiate a separate SHIM and physical
-eFuse bank; do not share the SMC's. The SHIM contract is
-<<smc-efuse-connection>>. On `sep.sv` connect `efuse_bank_ctrl_*` and
-`efuse_shim_command_*`. Through the SMU those ports appear as
-`sep_efuse_bank_ctrl_*` and `sep_efuse_shim_command_*`. The SEP SHIM control
-CSRs sit at the base of `sep_external`; see <<efuse-bank-ctrl-window>>.
-SEP routes a burst on its first address, so a burst that begins in that window
+SEP has its own eFuse bank. Instantiate a separate SHIM and physical eFuse bank;
+do not share the SMC's. The SHIM contract is the
+xref:smu-smc.adoc#smc-efuse-connection[eFuse Interface]. On `sep.sv`, connect
+`efuse_bank_ctrl_*` and `efuse_shim_command_*`. Through the SMU those ports
+appear as `sep_efuse_bank_ctrl_*` and `sep_efuse_shim_command_*`. The SEP SHIM
+control CSRs sit at the base of `sep_external`; see the
+xref:smu-smc.adoc#efuse-bank-ctrl-window[SHIM control address window]. SEP
+routes a burst on its first address, so a burst that begins in that window
 carries its later beats to the SHIM. An address that owns no SHIM register must
 return SLVERR and must not alias onto a live register.
 
@@ -143,21 +157,41 @@ SEP latches it into `secure_tm_o` when fuse sensing completes, or at
 cold-reset release if SEC_DIS is already asserted. Secure test mode
 forces a no-secret, no-fuse-program configuration; it is not an
 authorization bit. See
+ifdef::backend-html5[]
 xref:ocah-docs:sep:test_mode.adoc#test-mode-entry[Test Mode Entry]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+_Test Mode Entry_
+endif::backend-pdf[]
 and
+ifdef::backend-html5[]
 xref:ocah-docs:sep:lifecycle_controller.adoc#secure-tm-vs-scandump[`secure_tm` and the Secure Scan Chain]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+_`secure_tm` and the Secure Scan Chain_
+endif::backend-pdf[]
 in the TRM. `secure_tm_o` is also an SMU output.
 
 * `security_disable_o` is the SEC_DIS token-match result (emergency
 A0 unlock). On `sep.sv`, route it to SMC `sep_security_disable_i`; the
 SMU does that internally. See
+ifdef::backend-html5[]
 xref:ocah-docs:sep:security_disable.adoc#security-disable-sec_dis[Security Disable]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+_Security Disable_
+endif::backend-pdf[]
 in the TRM.
 
 * `lc_state_o` is the differentially encoded LC_STATE shadow.
 `lc_sigint_err_o` is the decode integrity error (fail-closed). Both
 are SMU outputs. See
+ifdef::backend-html5[]
 xref:ocah-docs:sep:lifecycle_controller.adoc#life-cycle-controller-lcc-life-cycle-controller-lcc[Life Cycle Controller]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+_Life Cycle Controller_
+endif::backend-pdf[]
 in the TRM.
 
 * `dbg_disable_o` is the typed per-path debug/test disable vector
@@ -167,7 +201,12 @@ in the TRM.
 * `lcc_demote_state_1_o` / `lcc_demote_state_2_o` are differentially
 encoded in-field debug demotion. They leave the SMU for adopter
 lifecycle logic and are not connected to the SMC. See
+ifdef::backend-html5[]
 xref:ocah-docs:sep:lifecycle_controller.adoc#demote-1-2-in-field-debug-demotion[in-field debug demotion]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+_in-field debug demotion_
+endif::backend-pdf[]
 in the TRM.
 
 * `sep_fuse_dft_disable_o` / `smc_fuse_dft_disable_o` gate DFT-inserted

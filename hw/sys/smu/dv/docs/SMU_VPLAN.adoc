@@ -1833,7 +1833,7 @@ TAP resets it observes, and the always-on scoreboard pairs the two.
 |`CHK-SMU-INT-AGG-S1` |smc_ext_interrupts_i is 256 wide, the SMC external interrupt count
 |`CHK-SMU-XTRIG-CTP-S1` |all four CTP groups are 16 wide, the XTRIG_NUM_CTP default
 |`CHK-SMU-XTRIG-CTP-S6` |bench-held resting CTP data inputs leave the CTP outputs static (live control: `smu_xtrig_ctp_pad_test`)
-|`CHK-SMU-LC-STATE-S1` |lc_state_o is 8 bits, 2*LC_STATE_WIDTH
+|`CHK-SMU-LC-STATE-S1` |lc_state_o is 8 bits, 2*LcStateWidth
 |`CHK-SMU-LC-DEMOTE-S1` |both lcc_demote_state outputs are 2 bits
 |`CHK-SMU-EFUSE-SHIM-SMC-S3` |the smu_wrapper smc_shadow_regs_o port and the bench net are as wide as the smu port, and after the sense completes all three carry the non-zero image +smc_efuse_hex names
 |`CHK-SMU-FUSE-SENSE-S4` |skip_mem_repair_o is one bit and clear with no isolation request pending
@@ -2954,7 +2954,7 @@ with the completion the bus returned.
 *Test Coverage*:
 
 * Sequence for smu_smc_mailbox_int_test (SMU_ALL_004).
-* SMU_ALL_004 owns SMC-MBX-IRQ-EXT.S2 — Width equals NUM_MAILBOXES (32) at the SMU boundary, measured on the DUT's own `smc_ext_mailbox_interrupts_o` output port rather than on the testbench net it drives.
+* SMU_ALL_004 owns SMC-MBX-IRQ-EXT.S2 — Width equals NumMailboxes (32) at the SMU boundary, measured on the DUT's own `smc_ext_mailbox_interrupts_o` output port rather than on the testbench net it drives.
 * Mailbox 0 and mailbox 31 raise their outbound write-threshold IRQ over the JTAG2AXI frontdoor, and the boundary vector must equal `baseline | 1<<idx` and return to baseline when the enable is cleared.
 * CHANNELS.S2/S3 and EXT.S1 are owned by SMU_ALL_008 — out of scope.
 * No mailbox MMIO; no Force/deposit on smc_ext_mailbox_interrupts_o.

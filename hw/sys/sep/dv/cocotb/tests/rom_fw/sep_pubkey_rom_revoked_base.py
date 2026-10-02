@@ -110,7 +110,7 @@ def select_backup_rom_slot(buf: bytearray, slot_index: int) -> tuple[int, bool]:
     # right check and needs no override -- and it is what separates an authorized
     # manifest the fuse refuses from one the ROM would have refused anyway.
     mm.verify_public_key(buf, "backup")
-    # Fully sealed, every slot: payload hash, TOC digests, manifest_hash over the TBS
+    # Fully sealed, every slot: payload hash, TOC digests, manifest_hash over the signed region
     # and a signature that verifies under the key the slot carries.
     pm.verify_sealed(buf, "backup")
     return got, grafted

@@ -3,8 +3,7 @@
 
 #include <stdint.h>
 
-#include "metal/atomic.h"
-#include "metal/lock.h"
+#include "metal/cpu.h"
 #include "smc_io.h"
 #include "smc_test.h"
 #include "virt_console.h"
@@ -20,11 +19,7 @@ int main(void) {
     info_msg_hex32_s(hartid, "Running reset_ctrl_sequence with loop_count: ", loop_count);
 
     for (uint32_t i = 0; i < loop_count; i++) {
-        // The reset_ctrl_sequence will read/write to the reset
-        // ctrl registers and check the values from the CPU
-        // side.  The cocotb side will check the output of the
-        // signals at the top-level pins
-        int result = reset_ctrl_sequence(hartid);
+        reset_ctrl_sequence(hartid);
     }
 
     end_test(hartid);

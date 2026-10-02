@@ -172,6 +172,14 @@ def expected_unbacked(addr: int, op: str) -> Expected:
     return Expected(RESP_CODE[cell.bresp], None, row.unit, column, cell.text)
 
 
+def logical_region(key: str) -> tuple[int, int]:
+    """``(base, end)`` of the ``sep-cpu-logical`` view row ``key``."""
+    for r in sep_memory_map.VIEWS["sep-cpu-logical"]["rows"]:
+        if r["key"] == key:
+            return r["base"], r["end"]
+    raise KeyError(f"sep_memory_map.py: sep-cpu-logical has no row {key}")
+
+
 def _selftest() -> None:
     rows = sep_map_rows()
     # A parse that silently matched nothing would leave every lookup to raise.

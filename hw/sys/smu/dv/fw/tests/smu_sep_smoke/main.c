@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-// Real SEP boot-readiness smoke firmware: execute from ICCM and store a
+// SEP boot-readiness smoke firmware: execute from ICCM and store a
 // deterministic result trail into DCCM, with no external-bus dependency.
 
 #include <stdint.h>
 
-// Result window in DCCM, below the startup mailbox at 0xC005FF00.
+// Result window in DCCM, clear of the startup mailbox.
 #define RESULT_BASE ((volatile uint32_t *)0xC005F000u)
 #define RESULT_WORDS 16u
 #define DONE_MARKER 0xC0DEF00Du

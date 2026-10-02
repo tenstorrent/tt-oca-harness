@@ -36,7 +36,7 @@ module sep_efuse_wrapper #(
   output logic                               security_disable_o,  // Security-disable status from
                                                                   // eFuse token processing,
                                                                   // active-high.
-  output logic [2*sep_pkg::LC_STATE_BIT_WIDTH-1:0] lc_state_o,  // Differentially encoded lifecycle
+  output logic [2*sep_pkg::LcStateBitWidth-1:0] lc_state_o,     // Differentially encoded lifecycle
                                                                 // state from the eFuse shadow
                                                                 // registers.
   output sep_efuse_pkg::efuse_map_t          shadow_regs_o,  // eFuse shadow register contents;
@@ -91,10 +91,10 @@ module sep_efuse_wrapper #(
 );
 
   // Intermediate 32-bit AXI (after data-width conversion)
-  localparam int unsigned SEP_EFUSE_AXI32_DATA_WIDTH = 32;
-  localparam int unsigned SEP_EFUSE_AXI32_STRB_WIDTH = SEP_EFUSE_AXI32_DATA_WIDTH / 8;
-  typedef logic [SEP_EFUSE_AXI32_DATA_WIDTH-1:0] sep_efuse_axi32_data_t;
-  typedef logic [SEP_EFUSE_AXI32_STRB_WIDTH-1:0] sep_efuse_axi32_strb_t;
+  localparam int unsigned SepEfuseAxi32DataWidth = 32;
+  localparam int unsigned SepEfuseAxi32StrbWidth = SepEfuseAxi32DataWidth / 8;
+  typedef logic [SepEfuseAxi32DataWidth-1:0] sep_efuse_axi32_data_t;
+  typedef logic [SepEfuseAxi32StrbWidth-1:0] sep_efuse_axi32_strb_t;
   `AXI_TYPEDEF_ALL(sep_efuse_axi32, sep_pkg::sep_crypto_axi_addr_t, sep_pkg::sep_crypto_axi_id_t,
                    sep_efuse_axi32_data_t, sep_efuse_axi32_strb_t, sep_pkg::sep_crypto_axi_user_t)
 
@@ -116,12 +116,12 @@ module sep_efuse_wrapper #(
   // JTAG access control policy signals
   logic is_wr_access_token;
   logic is_rd_access_token;
-  logic [sep_pkg::LC_STATE_BIT_WIDTH-1:0] lc_state_local_raw;
+  logic [sep_pkg::LcStateBitWidth-1:0] lc_state_local_raw;
   logic lc_sigint_err;
   logic lc_restricted_state;
-  localparam sep_efuse_pkg::addr_t EFUSE_MMR_BASE_ADDR =
+  localparam sep_efuse_pkg::addr_t EfuseMmrBaseAddr =
       sep_efuse_pkg::addr_t'(sep_top_addrmap_pkg::SEP_TOP_EFUSE_MMR_BASE_ADDR);
-  localparam sep_efuse_pkg::addr_t EFUSE_MMR_SIZE =
+  localparam sep_efuse_pkg::addr_t EfuseMmrSize =
       sep_efuse_pkg::addr_t'(sep_top_addrmap_pkg::SEP_TOP_EFUSE_MMR_SIZE);
 
   // Efuse signals
@@ -138,7 +138,7 @@ module sep_efuse_wrapper #(
   axi_dw_converter #(
     .AxiMaxReads         (8),
     .AxiSlvPortDataWidth (sep_pkg::SEP_CRYPTO_AXI_DATA_WIDTH),
-    .AxiMstPortDataWidth (SEP_EFUSE_AXI32_DATA_WIDTH),
+    .AxiMstPortDataWidth (SepEfuseAxi32DataWidth),
     .AxiAddrWidth        (sep_pkg::SEP_CRYPTO_AXI_ADDR_WIDTH),
     .AxiIdWidth          (sep_pkg::SEP_CRYPTO_AXI_ID_WIDTH),
     .aw_chan_t           (sep_pkg::sep_crypto_axi_aw_chan_t),
@@ -164,7 +164,7 @@ module sep_efuse_wrapper #(
   // Convert downsized AXI4 to AXI4-Lite
   axi_to_axi_lite #(
     .AxiAddrWidth   (sep_pkg::SEP_CRYPTO_AXI_ADDR_WIDTH),
-    .AxiDataWidth   (SEP_EFUSE_AXI32_DATA_WIDTH),
+    .AxiDataWidth   (SepEfuseAxi32DataWidth),
     .AxiIdWidth     (sep_pkg::SEP_CRYPTO_AXI_ID_WIDTH),
     .AxiUserWidth   (sep_pkg::SEP_CRYPTO_AXI_USER_WIDTH),
     .AxiMaxWriteTxns(16),
@@ -224,27 +224,27 @@ module sep_efuse_wrapper #(
   ///////////////////////////////////////////////////////////////
 
   prim_diff_decode_multi #(
-    .WIDTH(sep_pkg::LC_STATE_BIT_WIDTH)
+    .WIDTH(sep_pkg::LcStateBitWidth)
   ) u_lc_state_jtag_dec (
     .clk_i,
     .rst_ni,
-    .data_i  (shadow_regs_o.fields.lc_state.lc_state[2*sep_pkg::LC_STATE_BIT_WIDTH-1:0]),
+    .data_i  (shadow_regs_o.fields.lc_state.lc_state[2*sep_pkg::LcStateBitWidth-1:0]),
     .data_o  (lc_state_local_raw),
     .sigint_o(lc_sigint_err)
   );
 
   // Additional control shall be applied to the JTAG port, such that, in PROD and RMA_SIP states, it can only access the MMR registers.
   assign is_wr_access_token = axil_sep_otp_jtag_req_i.aw.addr inside
-      {[EFUSE_MMR_BASE_ADDR:
-        EFUSE_MMR_BASE_ADDR + EFUSE_MMR_SIZE - sep_efuse_pkg::addr_t'(1)]};
+      {[EfuseMmrBaseAddr:
+        EfuseMmrBaseAddr + EfuseMmrSize - sep_efuse_pkg::addr_t'(1)]};
   assign is_rd_access_token = axil_sep_otp_jtag_req_i.ar.addr inside
-      {[EFUSE_MMR_BASE_ADDR:
-        EFUSE_MMR_BASE_ADDR + EFUSE_MMR_SIZE - sep_efuse_pkg::addr_t'(1)]};
+      {[EfuseMmrBaseAddr:
+        EfuseMmrBaseAddr + EfuseMmrSize - sep_efuse_pkg::addr_t'(1)]};
 
   // A differential-decode integrity error (lc_sigint_err) is treated as a restricted state, exactly like PROD / RMA_SiP.
   assign lc_restricted_state = lc_sigint_err ||
                                  (lc_state_local_raw == 4'b0001) ||                               // PROD STATE
-                                 (lc_state_local_raw[sep_pkg::LC_STATE_BIT_WIDTH-1:1] == 3'b001); // RMA_SIP STATE
+                                 (lc_state_local_raw[sep_pkg::LcStateBitWidth-1:1] == 3'b001);    // RMA_SIP STATE
 
   axi_lite_demux #(
     .aw_chan_t(sep_efuse_pkg::efuse_axil_aw_chan_t),
@@ -275,11 +275,11 @@ module sep_efuse_wrapper #(
   );
 
   prim_axi_lite_err_slv #(
-    .AXI_ADDR_WIDTH(sep_efuse_pkg::ADDR_WIDTH),
-    .AXI_DATA_WIDTH(sep_efuse_pkg::DATA_WIDTH),
+    .AXI_ADDR_WIDTH(sep_efuse_pkg::AddrWidth),
+    .AXI_DATA_WIDTH(sep_efuse_pkg::DataWidth),
     .axil_req_t    (sep_efuse_pkg::efuse_axil_req_t),
     .axil_resp_t   (sep_efuse_pkg::efuse_axil_resp_t),
-    .RESP_WIDTH    (sep_efuse_pkg::DATA_WIDTH),
+    .RESP_WIDTH    (sep_efuse_pkg::DataWidth),
     .RESP_DATA     (32'hbadcab1e),
     .MAX_TRANS     (2)
   ) u_prim_axi_lite_err_slv_jtag_access_ctrl (
@@ -322,8 +322,8 @@ module sep_efuse_wrapper #(
   /////////////////////////////////////////////////////////////
 
   efuse_interface_controller #(
-    .ADDR_WIDTH                 (sep_efuse_pkg::ADDR_WIDTH),
-    .DATA_WIDTH                 (sep_efuse_pkg::DATA_WIDTH),
+    .ADDR_WIDTH                 (sep_efuse_pkg::AddrWidth),
+    .DATA_WIDTH                 (sep_efuse_pkg::DataWidth),
 
     .addr_t                     (sep_efuse_pkg::addr_t),
     .data_t                     (sep_efuse_pkg::data_t),
@@ -356,15 +356,15 @@ module sep_efuse_wrapper #(
     .EFUSE_CTRL_REG_MAP_BASE_ADDR(32'(sep_top_addrmap_pkg::SEP_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR)),
     .EFUSE_CTRL_REG_MAP_SIZE     (32'(sep_top_addrmap_pkg::SEP_TOP_EFUSE_INTERFACE_CTRL_SIZE)),
 
-    .SHADOW_REG_BITS            (sep_efuse_pkg::SHADOW_REG_BITS),
+    .SHADOW_REG_BITS            (sep_efuse_pkg::ShadowRegBits),
     .EFUSE_MACRO_WORD_WIDTH     (sep_efuse_pkg::NumFuseWordWidth),
 
-    .EFUSE_FIELDS               (sep_efuse_pkg::NUM_EFUSE_FIELDS),
+    .EFUSE_FIELDS               (sep_efuse_pkg::NumEfuseFields),
 
     .HAS_LC_STATE               (1'b1), // SEP has LC state
     .CLASS1_SHADOW_RANGES       (sep_efuse_pkg::Class1ShadowRanges),
     .SECRET_SHADOW_RANGES       (sep_efuse_pkg::SecretShadowRanges),
-    .LC_STATE_BIT_POSITION      (sep_pkg::LC_STATE_BIT_POSITION),
+    .LC_STATE_BIT_POSITION      (sep_pkg::LcStateBitPosition),
 
     .efuse_map_t                (sep_efuse_pkg::efuse_map_t)
 
