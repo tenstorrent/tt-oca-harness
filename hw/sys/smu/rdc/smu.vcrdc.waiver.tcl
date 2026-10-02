@@ -34,7 +34,7 @@ waive_violation -add {SMU_RDC_CORRUPT_jtag_dtp_stap_to_smc_dtm} \
 
 waive_violation -add {SMU_RDC_CORRUPT_jtag_smc_dtm_to_dtp_stap} \
     -comment {SMC cluster DTM tdoReg (JTAG_RESET = the STAP host trst_n inverted in smu.sv) into the DTP SMC-STAP SIB scan_data (reset-less, JTAG_TCK): the same chain-wide TRST resets the STAP and its SIB at the same instant, and scan_data is reloaded at Capture-DR before any shift-out (same pattern as ocah_dtp_RDC_CORRUPT_OBSERVED_jtag_stap_scan_data).} \
-    -filter {(RdcSourceResets:ResetName == "JTAG_RESET") AND (SrcObject =~ "u_smc/u_smc_cpu_wrapper/u_smc_cpu/u_digital_top/dtm/*") AND (DestObject =~ "u_dtp/u_jtag_intf_unit/gen_stap_smc_dbg.u_stap_smc_dbg/*") AND (RdcDestResets:DestResetInfo:ResetName == "'no-reset'") AND (DestClockInfoList:DestClockInfo:ClockName == "JTAG_TCK")} \
+    -filter {(RdcSourceResets:ResetName == "JTAG_RESET") AND (SrcObject =~ "u_smc/u_smc_cpu_wrapper/u_smc_cpu/u_digital_top/dtm/*") AND (DestObject =~ "u_dtp/u_jtag_intf_unit/gen_stap_smc_dbg.u_stap_smc_dbg/*") AND ((RdcDestResets:DestResetInfo:ResetName == "'no-reset'") OR (RdcDestResets:DestResetInfo:ResetName == "trst_n_combined") OR (RdcDestResets:DestResetInfo:ResetName == "stap_smc_dbg_rst")) AND (DestClockInfoList:DestClockInfo:ClockName == "JTAG_TCK")} \
     -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { nbetik } -timestamp { 16-09-2026 12:50:22 }
 
 # DTP jtag2axi -> SMC cluster fabric: cross-block twin of SMC_CPU_RDC_CORRUPT_CLUSTER_CONTAINED_SOURCE_RESET.

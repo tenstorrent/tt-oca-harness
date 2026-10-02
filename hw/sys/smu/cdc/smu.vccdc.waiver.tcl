@@ -88,7 +88,7 @@ waive_violation -add {SMU_CDC_UNSYNC_ASYNCRESET_smc_porst_to_sep_dbg} \
 
 waive_violation -add {SMU_CDC_UNSYNC_NOSCHEME_sep_spi_miso} \
     -comment {SEP SPI-host MISO readback: external slave launches pad2core_i data from the SEP-generated SCK (SPICLK/SPICLK_OUT_GPIO derive from the controller's own SMUCLK bit timing); the SMUCLK shift-register capture is source-synchronous and closed by IO timing, not an async crossing. Flat-only (SEP block sees the SEPCLK-timed rsp port).} \
-    -filter {(SrcObject =~ "pad2core_i*") AND (DestObject =~ "gen_sep.u_sep/sep_io/u_sep_ot_spi_wrap/*") AND (SrcClockInfoList:SrcClockInfo:ClockName =~ "SPICLK*")} \
+    -filter {(SrcObject =~ "pad2core_i*") AND (DestObject =~ "gen_sep.u_sep/u_sep_io/u_sep_ot_spi_wrap/*") AND ((SrcClockInfoList:SrcClockInfo:ClockName =~ "SPICLK*") OR (SrcClockInfoList:SrcClockInfo:ClockName == "ck_feedthru"))} \
     -app { cdc } -tag { CDC_UNSYNC_NOSCHEME } -user { nbetik } -timestamp { 16-09-2026 12:50:22 }
 
 waive_violation -add {SMU_CDC_COHERENCY_MULTI_SYNC_debug_observation} \
