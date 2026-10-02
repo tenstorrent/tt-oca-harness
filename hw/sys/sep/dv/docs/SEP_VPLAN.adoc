@@ -138,7 +138,7 @@ appears.
 |Rule |Requirement
 |Test case name |`sep_<feature>_<scenario>_test` in lower snake case
 |Single-scenario module |Module name matches the test case
-|Plusarg-selected variant |Several testlist entries may share one module when each selects its scenario with a plusarg. The entry name then does NOT end the module name, so the entry must carry the plusarg in `args` and a comment naming the scenario. The seven in the tree are `sep_efuse_secure_tm_write_lock_test` (`efuse.sep_locked_field_access_irq_path_test`, `+secure_tm_lock`) and the seven `sep_lcc_lc_state_w1s_*_test` (`lcc.sep_lcc_lc_state_transition_matrix_test`, `+lc_start=N`). Use it to avoid copying one implementation per scenario, not to hide a missing module
+|Plusarg-selected variant |Several testlist entries may share one module when each selects its scenario with a plusarg. The entry name then does NOT end the module name, so the entry must carry the plusarg in `args` and a comment naming the scenario. The variants in the tree are `sep_efuse_secure_tm_write_lock_test` (`efuse.sep_locked_field_access_irq_path_test`, `+secure_tm_lock`), `sep_esrc_e2e_fifo_closed_test` (`system.sep_esrc_e2e_smoke_test`, `+esrc_fifo_closed`) and the seven `sep_lcc_lc_state_w1s_*_test` (`lcc.sep_lcc_lc_state_transition_matrix_test`, `+lc_start=N`). Use it to avoid copying one implementation per scenario, not to hide a missing module
 |Multi-scenario / RAND-REP |One leaf test walks every required discrete cell in one invocation; do not silently ship a one-point stand-in for a matrix
 |Open-source files |PyUVM test under `cocotb/tests/`, stimulus in `cocotb/seq_lib/`, shared helpers on `sep_base_test` / `cocotb/env/`
 |Testlist enrollment |Leaf entry in the owning `testlists/*.toml` and in `testlists/all.toml`
@@ -406,6 +406,10 @@ never when it was written.
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, entropy golden
 |The FIPS lock makes ESRC configuration write-once: a pre-lock write moves the field off reset, the same field rejects a poke after `LOCK=1`, write-0 cannot clear the lock, and `rst_ni` is the only way back. The lock also freezes the debug-pin mux and both observe-tap enables: one tap held at 1 rejects a clear, the other held at 0 rejects a set, while `NOISE_OBS_CTRL.LANE_SEL` stays writable. `FIFO_CTRL.ENABLE`, cleared before the lock, rejects a set under it, so software cannot re-open the `FIFO_RDATA` read path of the DRBG seed words. The advisory RCT/APT cutoffs derived from `MIN_ENTROPY_H` are graded against an SP 800-90B oracle. Scope: health-test *quality* is not claimed.
+|`sep_esrc_e2e_fifo_closed_test`
+|no_cpu, +skip_fuse_sense, +esrc_noise_force, +esrc_fifo_closed
+|ocah_axi_vip, entropy golden
+|`FIFO_CTRL.ENABLE=0` closes the `FIFO_RDATA` read path but not the DRBG seed path. The seed and genbits still match the golden, `FIFO_STATUS.LEVEL` stays 0 and no `FIFO_RDATA` pop returns a seed word while seed words cross, and under `FIPS_LOCK` a write of ENABLE=1 is refused.
 |`sep_esrc_alert_delivery_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, entropy golden
@@ -822,7 +826,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_km_key_policy_vault_test`. The seal walk lives here rather than on the command set: no mailbox command seals a slot, so over the command set an erase always frees and the retire path has no vehicle there.
 
 |ESRC → DRBG → EDN consume
-|`sep_esrc_e2e_smoke_test`, `sep_drbg_gen_segmentation_test`, pool sink coverage
+|`sep_esrc_e2e_smoke_test`, `sep_drbg_gen_segmentation_test`, pool sink coverage. `sep_esrc_e2e_fifo_closed_test` runs the same chain with the `FIFO_RDATA` read path closed.
 
 |ESRC lock and alert delivery
 |`sep_esrc_fips_lock_test`, `sep_esrc_alert_delivery_test`. HT quality is not claimed, nor is the health-test counter-redundancy countermeasure (`es_cntr_err` -> `MAIN_SM_STATUS.ERR`), which no stimulus can reach and which needs fault injection.
@@ -2782,6 +2786,8 @@ entry requires exactly two.
 |Mux endpoint [2] (entropy-pool adapter): each post-adapter pool beat equals the next AXIS2 word, and `pool_edn_fips_o=1` on every completed beat, so the adapter forwarded the DRBG FIPS bit. Does not drain `0x1095_0000`.
 |===
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Variant*: `sep_esrc_e2e_fifo_closed_test` runs this module with `+esrc_fifo_closed` and `FIFO_CTRL.ENABLE=0`; see <<sep_esrc_e2e_fifo_closed_test>>.
 
 [[esrc-noise-exception]]
 *What `+esrc_noise_force` is, and what it costs*: a ring oscillator is a
@@ -6711,7 +6717,68 @@ mask is never left unwritten.
 block for the rest of the walk, so its lock belongs to the reset-recovery
 vehicle. The observe FIFOs' data path under the lock: `BIW_OBS_STATUS`,
 `NOISE_OBS_STATUS` and the `*_OBS_RDATA` ports are not read, so a locked-off
-tap and a locked-off main FIFO are graded at the control bit only.
+tap is graded at the control bit only. The main-FIFO data path with
+`FIFO_CTRL.ENABLE` locked off is graded by <<sep_esrc_e2e_fifo_closed_test>>.
+
+'''''
+
+[[sep_esrc_e2e_fifo_closed_test]]
+===== `sep_esrc_e2e_fifo_closed_test`
+
+*Phase*: 2
+
+*Bucket*: Crypto and entropy
+
+*Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense +esrc_noise_force +km_rom_hex=km_rom_entropy.parhex +esrc_fifo_closed`
+
+*Source Module*: `sep_esrc_e2e_smoke_test`, selected by `+esrc_fifo_closed`
+
+*BFM / Model*: ocah_axi_vip, entropy golden
+
+*Randomization*: RAND-NONE -- directed, with the same deterministic noise as `sep_esrc_e2e_smoke_test`.
+
+*Objective*: `hw/ip/entropy_source/doc/architecture.adoc` gives `FIFO_CTRL.ENABLE` one job: it gates the main-FIFO write. The words offered to the FIFO also seed the DRBG, and that seed stream does not depend on ENABLE. With ENABLE=0 from the ESRC configuration on, the DRBG must still seed and generate bit-exact against the golden, `FIFO_RDATA` must return no seed word, and under `FIPS_LOCK` software must not be able to set ENABLE again.
+
+*Test Coverage*: DRBG seeding with the `FIFO_RDATA` read path closed, and the lock on that read path.
+
+*Test Procedure*:
+
+[arabic]
+. Same bring-up as `sep_esrc_e2e_smoke_test`, with `SepEntropyCfg.fifo_enable=0`. The ESRC configuration writes `FIFO_CTRL.ENABLE=0` before the generators start and before `FIPS_LOCK.LOCK`.
+. Wait for a seed, set the lock, enable EDN, release the Key Manager, and wait for genbits and the Key Manager consume, as in the smoke.
+. Over that phase, read `FIFO_STATUS` and pop `FIFO_RDATA` twice per sample. Keep sampling until a full seed of words (12) crosses the seed port after the lock and the DRBG packs a new seed.
+. Under the lock, write `FIFO_CTRL.ENABLE=1` and read it back. Wait for 12 more seed-port words, then read `FIFO_STATUS`.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK1
+|Decorrelated output matches the golden model.
+|CHK2
+|Compressed output matches golden, scored at the FIFO input tap (`entropy_stream_data_o`, the DRBG seed port). The FIFO stays empty, so the front-door drain of the smoke has nothing to read.
+|CHK3
+|The seed that CSRNG accepts matches golden. Each word in it crossed the seed port with ENABLE=0.
+|CHK4
+|Generated bits match golden.
+|CHK5
+|The Key Manager consumes an entropy word and it matches golden.
+|CHK5_pool
+|As in `sep_esrc_e2e_smoke_test`.
+|CHK-ALERTS-ZERO
+|As in `sep_esrc_e2e_smoke_test`.
+|CHK-FIFO-CLOSED
+|`INTR_STATUS.FIFO_UNDERFLOW` and `FIFO_OVERFLOW` read 0 before the first pop. Each `FIFO_STATUS` sample reads LEVEL=0 and WPTR at its reset, so no word went into the FIFO after the TRNG reset. No `FIFO_RDATA` pop returns a word seen on the seed port. The pops set `FIFO_UNDERFLOW`, which shows they reached the FIFO, and a W1C clears it. The PASS line gives the seed-port words, the seeds the DRBG packed and the seeds CSRNG accepted in the window. A window with fewer than 12 words or no packed seed fails, because an idle window cannot show a closed read path.
+|CHK-FIFO-ENABLE-LOCKED
+|Under `FIPS_LOCK` a write of ENABLE=1 reads back ENABLE=0. After 12 more seed-port words, LEVEL is 0 and WPTR is at its reset.
+|===
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*What a broken design does here*: if ENABLE also gated the seed port, no seed would reach CSRNG. CHK3 would have no seed, and the bounded seed wait fails the leaf.
+
+*Not claimed*: the drain step of the certified sequence (clear ENABLE, read `FIFO_RDATA` until LEVEL is 0, then lock) with words already in the FIFO. This leaf clears ENABLE before a word reaches the FIFO, so that drain has nothing to read. The data an empty-FIFO read returns: the RDL calls it undefined, and only "not a seed-port word" is claimed.
 
 '''''
 
