@@ -59,50 +59,25 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions: { contents: read }
-    env:
-      HAVE_SUBMODULE_TOKEN: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT != '' && 'true' || 'false' }}
     steps:
-      - name: Skip when the submodule token is unavailable
-        if: env.HAVE_SUBMODULE_TOKEN != 'true'
-        run: |
-          {
-            echo "### vp host tests: skipped"
-            echo
-            echo 'The `OCA_BOOT_MANIFEST_OCA_MODEL_PAT` secret is not available to this'
-            echo 'run (fork PR, or the secret is not configured yet). The uv workspace'
-            echo 'names `tt-oca-manifest` as a member, so `uv sync` cannot parse the'
-            echo 'project until that private submodule is populated.'
-          } >> "$GITHUB_STEP_SUMMARY"
-
       - name: Checkout
-        if: env.HAVE_SUBMODULE_TOKEN == 'true'
         uses: actions/checkout@v4
 
       # Both, for different reasons: the uv workspace names tt-oca-manifest as a
       # member, so `uv sync` cannot parse the project without it, and
       # test_efuse_map_drift reads the model's eFuse header.
-      - name: Check out the private submodules
-        if: env.HAVE_SUBMODULE_TOKEN == 'true'
-        env:
-          OCA_PAT: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
+      - name: Check out the submodules
         run: |
-          set -euo pipefail
-          rewrite='url.https://x-access-token:'"${OCA_PAT}"'@github.com/'
-          cleanup() { git config --global --remove-section "$rewrite" >/dev/null 2>&1 || true; }
-          trap cleanup EXIT
-          git config --global "${rewrite}.insteadOf" 'git@github.com:'
           git submodule update --init \
             virtual_platform/tt-oca-harness-model \
             hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
 
       - name: Install uv
-        if: env.HAVE_SUBMODULE_TOKEN == 'true'
         uses: astral-sh/setup-uv@v6
 
       # pytest exits 5 when the marker selects nothing, so a mis-marked suite
       # fails here rather than passing silently on an empty run.
       - name: Run the host-only tests
-        if: env.HAVE_SUBMODULE_TOKEN == 'true'
         run: make -C virtual_platform vp-test-host
 
   sep-vp-native:
@@ -114,34 +89,19 @@ jobs:
     env:
       OCAH_ENGINE: docker
       OCAH_IMAGE_WITH_UV: "true"
-      HAVE_SUBMODULE_TOKEN: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT != '' && 'true' || 'false' }}
     steps:
-      - name: Skip when the submodule token is unavailable
-        if: env.HAVE_SUBMODULE_TOKEN != 'true'
-        run: |
-          {
-            echo "### sep-vp (native): skipped"
-            echo
-            echo 'The `OCA_BOOT_MANIFEST_OCA_MODEL_PAT` secret is not available to this run'
-            echo '(fork PR, or the secret is not configured yet). The VP needs the'
-            echo 'private `tt-oca-harness-model` and `tt-oca-manifest` submodules.'
-          } >> "$GITHUB_STEP_SUMMARY"
-
       # A local composite action is loaded from the checked-out tree, so the
       # checkout cannot live inside it.
       - name: Checkout
-        if: env.HAVE_SUBMODULE_TOKEN == 'true'
         uses: actions/checkout@v4
 
       - name: Run the native leg
-        if: env.HAVE_SUBMODULE_TOKEN == 'true'
         uses: ./.github/actions/vp-sep-leg
         with:
           mode: native
           vp_container: "0"
           local_dir: virtual_platform/local
           build_dir: virtual_platform/tt-oca-harness-model/vp/build
-          oca_pat: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
 
   sep-vp-container:
     name: sep-vp (container)
@@ -153,34 +113,19 @@ jobs:
       OCAH_ENGINE: docker
       OCAH_IMAGE_WITH_UV: "true"
       OCAH_CONTAINER_REGISTRY_IMAGE: ghcr.io/tenstorrent/ocah-container
-      HAVE_SUBMODULE_TOKEN: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT != '' && 'true' || 'false' }}
     steps:
-      - name: Skip when the submodule token is unavailable
-        if: env.HAVE_SUBMODULE_TOKEN != 'true'
-        run: |
-          {
-            echo "### sep-vp (container): skipped"
-            echo
-            echo 'The `OCA_BOOT_MANIFEST_OCA_MODEL_PAT` secret is not available to this run'
-            echo '(fork PR, or the secret is not configured yet). The VP needs the'
-            echo 'private `tt-oca-harness-model` and `tt-oca-manifest` submodules.'
-          } >> "$GITHUB_STEP_SUMMARY"
-
       # A local composite action is loaded from the checked-out tree, so the
       # checkout cannot live inside it.
       - name: Checkout
-        if: env.HAVE_SUBMODULE_TOKEN == 'true'
         uses: actions/checkout@v4
 
       - name: Run the container leg
-        if: env.HAVE_SUBMODULE_TOKEN == 'true'
         uses: ./.github/actions/vp-sep-leg
         with:
           mode: container
           vp_container: "1"
           local_dir: virtual_platform/local-ctr
           build_dir: virtual_platform/tt-oca-harness-model/vp/build-ctr
-          oca_pat: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
 
   # ---------------------------------------------------------------------------
   # smc-vp + smu-vp. Separate jobs from sep-vp: they need their own disk for the
@@ -206,34 +151,19 @@ jobs:
     env:
       OCAH_ENGINE: docker
       OCAH_IMAGE_WITH_UV: "true"
-      HAVE_SUBMODULE_TOKEN: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT != '' && 'true' || 'false' }}
     steps:
-      - name: Skip when the submodule token is unavailable
-        if: env.HAVE_SUBMODULE_TOKEN != 'true'
-        run: |
-          {
-            echo "### smc-vp + smu-vp (native): skipped"
-            echo
-            echo 'The `OCA_BOOT_MANIFEST_OCA_MODEL_PAT` secret is not available to this run'
-            echo '(fork PR, or the secret is not configured yet). The VP needs the'
-            echo 'private `tt-oca-harness-model` and `tt-oca-manifest` submodules.'
-          } >> "$GITHUB_STEP_SUMMARY"
-
       # A local composite action is loaded from the checked-out tree, so the
       # checkout cannot live inside it.
       - name: Checkout
-        if: env.HAVE_SUBMODULE_TOKEN == 'true'
         uses: actions/checkout@v4
 
       - name: Run the native leg
-        if: env.HAVE_SUBMODULE_TOKEN == 'true'
         uses: ./.github/actions/vp-smc-smu-leg
         with:
           mode: native
           vp_container: "0"
           local_dir: virtual_platform/local
           build_dir: virtual_platform/tt-oca-harness-model/vp/build_smc
-          oca_pat: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
 
   smc-smu-container:
     name: smc-vp + smu-vp (container)
@@ -245,31 +175,16 @@ jobs:
       OCAH_ENGINE: docker
       OCAH_IMAGE_WITH_UV: "true"
       OCAH_CONTAINER_REGISTRY_IMAGE: ghcr.io/tenstorrent/ocah-container
-      HAVE_SUBMODULE_TOKEN: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT != '' && 'true' || 'false' }}
     steps:
-      - name: Skip when the submodule token is unavailable
-        if: env.HAVE_SUBMODULE_TOKEN != 'true'
-        run: |
-          {
-            echo "### smc-vp + smu-vp (container): skipped"
-            echo
-            echo 'The `OCA_BOOT_MANIFEST_OCA_MODEL_PAT` secret is not available to this run'
-            echo '(fork PR, or the secret is not configured yet). The VP needs the'
-            echo 'private `tt-oca-harness-model` and `tt-oca-manifest` submodules.'
-          } >> "$GITHUB_STEP_SUMMARY"
-
       # A local composite action is loaded from the checked-out tree, so the
       # checkout cannot live inside it.
       - name: Checkout
-        if: env.HAVE_SUBMODULE_TOKEN == 'true'
         uses: actions/checkout@v4
 
       - name: Run the container leg
-        if: env.HAVE_SUBMODULE_TOKEN == 'true'
         uses: ./.github/actions/vp-smc-smu-leg
         with:
           mode: container
           vp_container: "1"
           local_dir: virtual_platform/local-ctr
           build_dir: virtual_platform/tt-oca-harness-model/vp/build_smc-ctr
-          oca_pat: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}

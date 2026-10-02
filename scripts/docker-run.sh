@@ -61,53 +61,16 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 NIXOS_IMAGE="${OCAH_NIXOS_IMAGE:-docker.io/nixos/nix:latest}"
 IMAGE_WITH_UV="${OCAH_IMAGE_WITH_UV:-false}"
 NETWORK="${OCAH_NETWORK:-ocah-docs-net}"
-MANIFEST_SUBMODULE="hw/sys/sep/bootrom/prod/tools/tt-oca-manifest"
 REGISTRY_IMAGE="${OCAH_CONTAINER_REGISTRY_IMAGE:-}"
-
-# Private submodules, as "<path>:<repository name>". A flake input is fetched
-# with submodules=1, so nix resolves every one of these from .gitmodules -- over
-# SSH, which no hosted runner has a key for. Each is rewritten below to the copy
-# already checked out on disk, so the build reads them locally and needs no
-# credential. A submodule that is not checked out is skipped rather than
-# rewritten to a path that does not exist.
-PRIVATE_SUBMODULES=(
-  "${MANIFEST_SUBMODULE}:tt-oca-manifest"
-  "virtual_platform/tt-oca-harness-model:tt-oca-harness-model"
-)
-
-# Emit GIT_CONFIG_* assignments, one line each, rewriting every checked-out
-# private submodule. $1 is the repository root as nix will see it: the host path
-# when nix runs locally, /work when it runs in the container. Returns non-zero
-# when none are checked out, so callers can skip the env entirely.
-submodule_git_config() {
-  local base="$1" entry path repo st i=1
-  local out=(GIT_CONFIG_KEY_0=protocol.file.allow GIT_CONFIG_VALUE_0=always)
-  for entry in "${PRIVATE_SUBMODULES[@]}"; do
-    path="${entry%%:*}"
-    repo="${entry##*:}"
-    st="$(git -C "$ROOT" submodule status -- "$path" 2>/dev/null || true)"
-    # A leading "-" means registered but not checked out.
-    [[ -n "$st" && "$st" != -* ]] || continue
-    out+=("GIT_CONFIG_KEY_${i}=url.file://${base}/${path}.insteadOf"
-      "GIT_CONFIG_VALUE_${i}=git@github.com:tenstorrent/${repo}.git")
-    i=$((i + 1))
-    out+=("GIT_CONFIG_KEY_${i}=url.file://${base}/${path}.insteadOf"
-      "GIT_CONFIG_VALUE_${i}=ssh://git@github.com/tenstorrent/${repo}.git")
-    i=$((i + 1))
-  done
-  [[ $i -gt 1 ]] || return 1
-  printf '%s\n' "GIT_CONFIG_COUNT=${i}" "${out[@]}"
-}
 
 # safe.directory lines for the container branch: the repo is owned by root
 # there, so git refuses to read it or any submodule without them.
 submodule_safe_dirs() {
-  local entry path
+  local path
   printf '%s' 'git config --global --add safe.directory $(pwd) &&'
-  for entry in "${PRIVATE_SUBMODULES[@]}"; do
-    path="${entry%%:*}"
+  while read -r _ path; do
     printf '\n            %s' "git config --global --add safe.directory \$(pwd)/${path} &&"
-  done
+  done < <(git -C "$ROOT" config -f .gitmodules --get-regexp '^submodule\..*\.path$' || true)
 }
 
 NIX_IMAGE_NAME=$([[ "${IMAGE_WITH_UV:-false}" == true ]] && echo "ocah-uv-container" || echo "ocah-container")
@@ -326,25 +289,13 @@ run_image() {
 nixos_run() {
   # Nix Flakes and Nix-Command are required for this - enable them
   local NIX_CONFIG="experimental-features = nix-command flakes"
-  local -a sub_env=()
-  mapfile -t sub_env < <(submodule_git_config "$ROOT" || true)
   if command -v nix >/dev/null 2>&1; then
-    if [[ ${#sub_env[@]} -gt 0 ]]; then
-      NIX_CONFIG="$NIX_CONFIG" env "${sub_env[@]}" bash -c "$*"
-    else
-      NIX_CONFIG="$NIX_CONFIG" bash -c "$*"
-    fi
+    NIX_CONFIG="$NIX_CONFIG" bash -c "$*"
   else
     # The repo in the container is owned by root, so nix/git will by default give untrusted errors when interacting with it.
     local GIT_ALLOW_CMD
     GIT_ALLOW_CMD="$(submodule_safe_dirs)"
-    local -a ctr_sub_env=()
-    mapfile -t ctr_sub_env < <(submodule_git_config "$RUN_ROOT" || true)
-    local nix_git_env=()
-    if [[ ${#ctr_sub_env[@]} -gt 0 ]]; then
-      nix_git_env=(env "${ctr_sub_env[@]}")
-    fi
-    run_image "$NIXOS_IMAGE" "${nix_git_env[@]}" sh -c "
+    run_image "$NIXOS_IMAGE" sh -c "
             export NIX_CONFIG=\"$NIX_CONFIG\"
             export PS1=\"\[\e[1;36m\]NixOS >\[\e[0m\] \"
             $GIT_ALLOW_CMD
