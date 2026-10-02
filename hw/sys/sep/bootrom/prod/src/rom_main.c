@@ -351,8 +351,8 @@ static uint32_t rom_spi_init(const struct boot_straps *straps, uint16_t sysclk_m
     }
 
 #if !BOOT_SPI_CONTROLLER_OT
-    // The Cadence path caches a PHY-tuning TLV whose primary slot may fail to
-    // load; the OpenTitan controller has no TLV, so this only applies there.
+    // An XIP controller driver may read a configuration TLV whose primary slot
+    // fails to load; the OpenTitan controller has no TLV, so the check is XIP-only.
     if (spi_primary_tlv_failed()) {
         simputs("SPI_PRIMARY_TLV_FAILED\n");
     }

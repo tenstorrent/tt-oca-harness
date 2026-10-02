@@ -8,7 +8,7 @@
  * which SPI controller is fitted. This header selects the controller at build
  * time (BOOT_SPI_CONTROLLER_OT) and presents one small interface in flash-offset
  * terms:
- *   - Cadence xSPI (default): flash is memory-mapped (XIP); a read is a DMA copy
+ *   - XIP controller (default): flash is memory-mapped; a read is a DMA copy
  *     from SEP_SPI_BASE + offset.
  *   - OpenTitan SPI host: no memory-mapped window; a read is a command/FIFO
  *     transfer that streams into SRAM.
@@ -32,7 +32,7 @@
  * Flash carries two independent boot slots, so a primary that fails validation
  * -- bad signature, revoked key, corrupt payload -- can be recovered from a
  * complete second copy. The `rotate_update` strap swaps which is tried first.
- * A slot opens with the SPI configuration TLV the Cadence controller reads
+ * A slot opens with the SPI configuration TLV an XIP controller driver reads
  * during bring-up; the manifest follows it, and the manifest's own
  * payload_offset field locates the payload after that.
  *
@@ -88,7 +88,7 @@ _Static_assert(BOOT_SLOT_MANIFEST_OFFSET < BOOT_SLOT_SIZE,
 #else
 #include "sep_spi.h"
 #include "sep_dma.h"
-/* Cadence xSPI XIP window (memory-mapped flash), matching sep_dma.c. */
+/* XIP window (memory-mapped flash), matching sep_dma.c. */
 #ifndef SEP_SPI_BASE
 #define SEP_SPI_BASE ((uint32_t)SEP_TOP_SEP_EXTERNAL_XIP_REGION_BASE_ADDR)
 #endif
@@ -196,7 +196,7 @@ static inline bool boot_flash_bounds_ok(uint32_t flash_off, uint32_t len, uint32
     }
     return ok_first;
 #else
-    /* Cadence: flash is memory-mapped; the read source must lie within the XIP
+    /* XIP: flash is memory-mapped; the read source must lie within the XIP
      * region. (Destination is checked by sep_dma_copy.) */
     (void)dst;
     (void)dst_len;
