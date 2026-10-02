@@ -389,8 +389,11 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SMU-IJTAG-GATE",
             "CHK-SMU-IJTAG-GATE",
-            "none of the three iJTAG host selects asserts over a whole IDCODE "
-            "IR+DR scan, counted on jtag_tck",
+            "under SELECT_IJTAG with all three SIBs open every host select "
+            "asserts for at least the DR shift TCKs and the enables read back "
+            "open; loading IDCODE, none of the three selects asserts over its "
+            "whole IR+DR scan, counted on jtag_tck, and the SIBs read back "
+            "still open afterwards",
         ),
         (
             "CHK-SMU-IJTAG-CHAIN",
