@@ -445,10 +445,6 @@ never when it was written.
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
 |Negative control on intra-block dead space. Each block owns an address window and populates only part of it; an access past the allocated size owns no register and must be refused. Window ends come from `hw/sys/sep/doc/memory_map.adoc`, which states the rule: the fabric refuses an address past the extent a unit allocates, and such an access never reaches a unit. Landing on a live register instead is a hard failure. A later beat of a burst that ends past the window's extent must be refused on the same terms as a single beat. The TRNG window, forwarded whole to an adopter endpoint and terminated in the reference integration, must refuse every access and alias no neighbouring ESRC register; its response code is logged for the document owner, not graded.
-|`sep_fabric_burst_wrap_test`
-|no_cpu, +skip_fuse_sense
-|ocah_axi_vip
-|A write burst that starts on the last live word of `sep_reset_ctrl`, `wdt_timer` or `secure_dma` and runs past the extent must leave every live register of that block unchanged (`hw/sys/sep/doc/memory_map.adoc`: an access past the extent never reaches a unit). Red on the current RTL; see <<known-limitations>>.
 |`sep_fabric_local_alias_datapath_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -919,7 +915,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_unmapped_access_policy_test` — system-CSR holes, the system-bus reserved row, the mailbox page's upper half, past each eFuse sibling and the SPI host: the response code and read data the SEP memory map states, and never an alias. Every remap / filter slot tail, the last one included, reads zero with OKAY inside the RDL allocation (base + `TOTAL_SIZE`).
 
 |Dead-space decode
-|`sep_fabric_deadspace_decode_test` — single-beat refuse, no-alias, and per-beat refusal inside a burst. `CHK-DEADSPACE-BEAT` reads each beat's `RRESP` off the bus and fails any beat past an extent that answers OKAY. It also requires at least one window that serves its in-extent beats and refuses only the tail, which is what shows the refusal is per beat rather than per burst. The counts a given run reaches are reported, not graded. Read bursts only — one `BRESP` covers a write burst, so per-beat write refusal is not observable at the protocol level; see <<known-limitations>>. The write side is graded by what the burst leaves behind in `sep_fabric_burst_wrap_test`.
+|`sep_fabric_deadspace_decode_test` — single-beat refuse, no-alias, and per-beat refusal inside a burst. `CHK-DEADSPACE-BEAT` reads each beat's `RRESP` off the bus and fails any beat past an extent that answers OKAY. It also requires at least one window that serves its in-extent beats and refuses only the tail, which is what shows the refusal is per beat rather than per burst. The counts a given run reaches are reported, not graded. Read bursts only — one `BRESP` covers a write burst, so per-beat write refusal is not observable at the protocol level; see <<known-limitations>>.
 
 |Adams Bridge ML-DSA-87 keyGen
 |`sep_abr_mldsa_keygen_kat_test`. The key-vault seed path is not claimed. ML-KEM is a separate vehicle, `sep_abr_mlkem_kat_test`.
@@ -6487,54 +6483,6 @@ reported as such rather than counted as a pass.
 
 '''''
 
-[[sep_fabric_burst_wrap_test]]
-===== `sep_fabric_burst_wrap_test`
-
-*Phase*: 2
-
-*Bucket*: Fabric and remap
-
-*Run mode*: `no_cpu`, `+skip_fuse_sense`
-
-*Source Module*: `sep_fabric_burst_wrap_test`
-
-*BFM / Model*: ocah_axi_vip
-
-*Tracking*: #2493
-
-*Randomization*: RAND-NONE — one directed write burst per block.
-
-*Objective*: `hw/sys/sep/doc/memory_map.adoc` says the fabric refuses an address past the extent a unit allocates, and such an access never reaches a unit. The crossbar routes a burst on its first address, so a write burst that starts on a block's last live word carries its later beats past the extent into the same block. Those beats must not reach the unit, so no live register may change.
-
-*Test Coverage*: `sep_reset_ctrl` (extent 8 B), `wdt_timer` (56 B) and `secure_dma` (336 B), extents from the generated SystemRDL export.
-
-*Test Procedure*:
-
-[arabic]
-. Snapshot every watched register of the block, the way `sep_fabric_deadspace_decode_test` does.
-. Write the toggled value to the target register with a single beat, read it back, and restore it.
-. Issue one INCR write burst from the last live word to `base + span + offset(target)`, where `span` is the smallest power of two above the allocated size. Beats inside the extent write back what they read, beats past it carry zero, and the final beat carries the toggled target value. Targets: `SW_RESET_N` (AES reset bit), `WKUP_THOLD_HI`, `SRC_ADDR_LO`.
-. Read every watched register back and compare it with the snapshot. Restore on a change.
-
-*Checkers*:
-
-[cols="2,5",options="header"]
-|===
-|Checker |Contract
-|CHK-WRAP-CONTROL
-|The target register stores a single-beat write of the toggled value and returns to its original value, so the no-change compare can fail on it.
-|CHK-WRAP-STIM
-|The AW handshake on the testbench port is one INCR burst with the anchor's start address, AxLEN and AxSIZE, so the burst was not split into bursts that stay inside the extent.
-|CHK-WRAP-NO-ALIAS
-|After the burst every watched register of the block reads its snapshot value. A change is a burst beat past the extent that reached the unit, and fails whatever the response. The BRESP is logged, not graded: one BRESP covers the burst, and this checker grades what the burst reached, not the code. In all three blocks the burst changes the target register, so this checker fails.
-|===
-
-*Pass Criteria*: Every named checker PASSes. `UVM_ERROR` is 0.
-
-*Current status*: red on the current RTL. `CHK-WRAP-NO-ALIAS` fails, and every other named checker PASSes. See <<known-limitations>>.
-
-'''''
-
 [[sep_unmapped_access_policy_test]]
 ===== `sep_unmapped_access_policy_test`
 
@@ -8277,7 +8225,7 @@ constraint is not an open defect.
 |`sep_km_mailbox_protocol_rand_test` holds the Key Manager in software reset so fill, overflow and underflow are deterministic. Only the KM CPU pushes into the outbound FIFO, so that FIFO is empty when `CTRL.FLUSH` runs, and CHK-FLUSH proves the inbound flush only. A flush of a non-empty outbound FIFO needs the KM running and is not claimed.
 
 |Dead-space per-beat refusal on writes (AXI)
-|Read bursts are proven per beat: the bus monitor keeps each beat's `RRESP` in order, so `CHK-DEADSPACE-BEAT` can name the beat that answered. Write bursts cannot be, and no tooling will change it — AXI returns one `BRESP` for a whole write burst, so a write burst that refused only its tail is indistinguishable from one that refused every beat. The write contract stays at burst granularity: the burst is refused and no live register moves. Where the refusing block's own decode is observed, the refusal is named per word: `sep_km_mailbox_protocol_rand_test` CHK-CTRL-EP shows the KM mailbox register block refuses the upper word of a 64-bit beat at `SEP_CTRL`, at the first offset past its window.
+|Read bursts are proven per beat: the bus monitor keeps each beat's `RRESP` in order, so `CHK-DEADSPACE-BEAT` can name the beat that answered. Write bursts cannot be, and no tooling will change it — AXI returns one `BRESP` for a whole write burst, so a write burst that refused only its tail is indistinguishable from one that refused every beat. Where the refusing block's own decode is observed, the refusal is named per word: `sep_km_mailbox_protocol_rand_test` CHK-CTRL-EP shows the KM mailbox register block refuses the upper word of a 64-bit beat at `SEP_CTRL`, at the first offset past its window.
 
 |Inbound global-to-local remap consume (outside this DUT)
 |`fabric.adoc` names `SEP_GLOBAL_BASE_ADDR` and `SEP_REGION_SIZE` as the global SEP aperture "used by the SMU crossbar and by SEP inbound global-to-local remap", which reads as a datapath this suite could drive. It is not one here. Bare SEP exports both CSR values on output ports (`sep_global_base_addr_o`, `sep_region_size_o` in `hw/sys/sep/rtl/sep.sv`) and nothing inside the DUT consumes them to translate an address; the remapper is in the SMU integration logic above this level. Measured rather than assumed: with the reset aperture programmed, an external read at the aperture-relative address of a scratch CSR returns DECERR while the same register answers at its own address, so the external master presents SEP-local addresses and no in-DUT remap stands between them. The CSR read/write path is graded by `sep_fabric_remap_filter_csr_bank_test`; the consume belongs to whoever integrates SEP, and a leaf here could only re-prove the register. The sixteen programmable `axi_alias_remap` regions are a different mechanism and are graded by `sep_fabric_local_alias_datapath_test`.
@@ -8285,8 +8233,8 @@ constraint is not an open defect.
 |Entropy pool pointer fault, PIC source 39 (hardware not built)
 |`sep_internal_interrupts[38]` is reserved for the entropy pool FIFO's pointer-integrity error. The check is not built in this configuration, so the source is tied to zero, can never assert, and no vehicle grades it. `interrupts.adoc` documents the same. A built check is level-sensitive with no write-one-to-clear, so firmware must mask the source or scrub the pool rather than acknowledge it.
 
-|Write burst past a block extent (hardware)
-|`sep_fabric_burst_wrap_test` is red. A write burst that starts on the last live word of `sep_reset_ctrl`, `wdt_timer` or `secure_dma` is routed on its first address, and a later beat past the extent lands on a live register: `SW_RESET_N` answers OKAY and changes; `WKUP_THOLD_HI` and `SRC_ADDR_LO` answer SLVERR and still change. `hw/sys/sep/doc/memory_map.adoc` says an access past the extent never reaches a unit. Do not XFAIL.
+|Single-beat register access (firmware and integrator constraint)
+|`hw/sys/sep/doc/memory_map.adoc` ("Single-Beat Register Access") limits register regions to single-beat transactions. The later beats of a burst to a register region may be answered with errors or alias onto other registers; only the crypto region refuses bursts in hardware. The SEP CPU and the secure DMA issue single beats only, so the system interface is the one initiator that can burst into a register region: through an inbound filter entry with `allow_burst` set, or while `SEP_DBG` bypasses the inbound filter. Firmware must not set `allow_burst` on an entry that covers a register region, and system masters must use single beats. No checker grades a burst into a non-crypto register region.
 
 |Dead-space refusal flavour (specification)
 |`memory_map.adoc` says the fabric refuses an address past the extent a unit allocates, and names no response flavour for it. `spi_controller` refuses a dead-space write with SLVERR. The access is refused either way, which is the contract `sep_fabric_deadspace_decode_test` asserts, so the flavour is reported as `DEADSPACE-FLAVOUR` for the design owner and is not failed. Which error responses are permitted is the open question.

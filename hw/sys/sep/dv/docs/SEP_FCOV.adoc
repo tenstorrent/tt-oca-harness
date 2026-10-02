@@ -870,10 +870,10 @@ reseed / CTR DECRYPT), `sep_aes_op_status_cg`, `sep_kmac_cfg_cmd_cg`,
 
 `sep_aperture_reserved_access_cg` also owns the refused-access response codes:
 DECERR / SLVERR on a reserved or unmapped address, walked by
-`sep_axi_map_refuse_test`, `sep_fabric_deadspace_decode_test`,
-`sep_unmapped_access_policy_test` and `sep_fabric_burst_wrap_test`. Those are an
-error path, so they stay out of `sep_axi_decode_cg`, whose `cp_resp` records
-only that a legal access completed OKAY.
+`sep_axi_map_refuse_test`, `sep_fabric_deadspace_decode_test` and
+`sep_unmapped_access_policy_test`. Those are an error path, so they stay out of
+`sep_axi_decode_cg`, whose `cp_resp` records only that a legal access completed
+OKAY.
 
 `sep_pic_reg_map_cg`, `sep_pic_source_map_cg`,
 `sep_pic_enable_priority_cg`, `sep_pic_gateway_cg`, `sep_pic_delivery_cg`,
