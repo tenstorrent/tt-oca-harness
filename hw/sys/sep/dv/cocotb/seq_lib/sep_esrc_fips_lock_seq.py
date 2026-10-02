@@ -328,7 +328,7 @@ class SepEsrcFipsLockCfg:
                 # window is SAMPLE_CLK_DIV together with BYPASS.
                 ENTROPY_SOURCE.fields("DECORRELATOR_CTRL")["SAMPLE_CLK_DIV"]["bm"]
                 | ENTROPY_SOURCE.fields("DECORRELATOR_CTRL")["BYPASS"]["bm"],
-                DECOR_CTRL_DIV64,
+                ENTROPY_SOURCE.reset("DECORRELATOR_CTRL"),
             ),
             SepEsrcFipsLockTarget(
                 "RING_OSC", ESRC_RING_OSC_ENABLE, ring_pre, ring_poke, RING_OSC_MASK, RING_OSC_RESET
