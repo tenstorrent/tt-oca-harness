@@ -3,7 +3,7 @@
 """Primary's ENCRYPTED TOC payload_length disagrees with the manifest; the backup boots.
 
 The value must sit within one AES block below the manifest's, but the library does not
-compare the decrypted length, so the DUT accepts 0x2000 and this row fails.
+compare the decrypted length, so the DUT accepts 0x2000 and this test fails.
 Needs ``+esrc_noise_force``: two RSA-3072 modexps and AES decryptions.
 """
 

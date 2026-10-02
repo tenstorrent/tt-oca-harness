@@ -3,23 +3,17 @@
 #
 # sep_drbg_scoreboard.py
 #
-# Cocotb scoreboard for the SEP entropy datapath CHK1..CHK5 golden-vs-probe
-# comparison.
+# Cocotb scoreboard for the SEP entropy datapath CHK1..CHK5 golden-vs-probe comparison.
 #
-# CHAINED (default): the scoreboard DRIVES deterministic per-lane noise into the
-# DUT via esrc_noise_ext_i AND feeds the identical sequence into a golden chain
-# (sep_entropy_golden). Because one noise source feeds both, the decorrelator
-# golden aligns by construction -- no LFSR-phase reverse-engineering.
-# Each CHKn expected value is the golden's output of CHKn-1; the only DUT input to
-# the chain is the noise. The golden decor's per-lane enable mirrors
-# esrc_ro_enable_o each cycle, so the model only shifts on the cycles the DUT does.
+# The scoreboard drives deterministic per-lane noise into esrc_noise_ext_i and feeds the
+# same sequence into a golden chain (sep_entropy_golden), so the decorrelator golden is
+# aligned by construction. Each CHKn expected value is the golden output of CHKn-1, and
+# the golden decorrelator shifts a lane only on cycles esrc_ro_enable_o enables it.
 #
-# Comparison is ordered-FIFO at each DUT valid event (a stage is correct iff its
-# Nth DUT item equals the golden's Nth item), with a small warmup skip for the
-# decorrelator SR-fill / enable-edge transient (reference warmup_samples).
+# Each stage compares its Nth DUT item to the golden's Nth item, after a short CHK1 warmup
+# for the decorrelator SR-fill / enable-edge transient.
 #
-# strict=False: mismatches logged, test not failed, first-N pairs dumped for
-# offline alignment. strict=True: report() raises.
+# strict=False logs mismatches and dumps the first N pairs; strict=True makes report() raise.
 
 from __future__ import annotations
 
@@ -159,10 +153,8 @@ class SepDrbgScoreboard:
         # check_fifo_frontdoor); set chk2_backdoor=True to instead score CHK2 from
         # the live entropy_stream_data_o wire-tap monitor.
         self.chk2_backdoor = chk2_backdoor
-        # Minimum-evidence floor per enabled stream: a strict run FAILS if a
-        # checkpoint scored fewer than this many matches: a stream that never fired
-        # is a silent hole, not a pass. Override via set_min_matches() for a longer
-        # coverage test that demands deeper streams.
+        # Minimum matches per enabled stream; a strict run fails a checkpoint below it,
+        # because a stream that never fired is a hole, not a pass. See set_min_matches().
         self._min_matches = {
             "CHK1_decor": 8,
             "CHK2_compress": 4,
@@ -1034,16 +1026,10 @@ class SepDrbgScoreboard:
         self.log.info("==== sep_drbg_scoreboard CHK1..CHK5 report ====")
         any_fail = False
 
-        # CHK5 genbits-chain membership: every word delivered to KM (membership
-        # mode) and every crypto-leg AXIS1 word
-        # must be a genuine CHK4 genbits-golden word, drawn from the SAME verified
-        # multiset -- proving the one DRBG stream partitions into the two sinks. The pool
-        # is built from DUT genbits, but CHK4 (strict) fails on any genbits!=golden, so a
-        # passing run guarantees pool==CTR_DRBG-golden -> the chain is to the golden, not
-        # circular. Tally
-        # KM then AXIS1 against a working copy (removal), so over-consumption shows as a
-        # miss. KM "membership" populates the CHK5_km result here (rom_main pull order
-        # is firmware-driven -> not bit-exact ORDER, but each word IS a genbits word).
+        # CHK5 membership: KM (membership mode) and crypto-leg AXIS1 words must come from
+        # the verified genbits multiset, and removal from a working copy shows
+        # over-consumption as a miss. The pool is DUT genbits, so it is golden only when
+        # CHK4 passes.
         crypto_membership = [
             n for n in ("aes", "kmac", "otbn_rnd", "otbn_urnd") if self.sink_mode[n] == "membership"
         ]
@@ -1278,13 +1264,9 @@ class SepDrbgScoreboard:
                 self.log.info(
                     "CHK5 crypto FIPS PASS: %d beats with crypto_edn_fips_o=1", self._crypto_fips_ok
                 )
-        # Generate segmentation. gen_last IS a per-Generate-command terminator:
-        # csrng_cmd_stage sets cmd_gen_cnt_last when the genbits down-counter
-        # reaches its final beat (csrng_cmd_stage.sv), ships it as
-        # acmd_bus[16] ("glast"), and csrng_core latches it into gen_last_q at
-        # acmd_sop (csrng_core.sv) to drive ctr_drbg_gen.req_glast_i. So each
-        # Generate command ends with exactly one glast beat, and that is where its
-        # single trailing Update lands.
+        # Generate segmentation: csrng_cmd_stage marks the final genbits beat of each
+        # Generate as glast (acmd_bus[16]) and csrng_core drives it to req_glast_i, so
+        # each command ends with exactly one gen_last beat, where its trailing Update lands.
         self.log.info(
             "CHK4 Generate segmentation: %d completed commands, blocks/cmd %s, "
             "%d block(s) in the open command (seq-commanded glen=%d, legal=%s)",

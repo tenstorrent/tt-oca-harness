@@ -173,7 +173,7 @@ class sep_warm_reset_invalid_hang_test(sep_base_test):
         # The console is empty on this path, so retirement is the only liveness evidence.
         assert retired, "core retired no instructions; the ROM never ran"
 
-        # Without the seed the ROM cold boots, and every absence check below holds vacuously.
+        # Without the seed the ROM cold boots, and every absence check below passes for no reason.
         assert _INVALID_HANDLER in cold7_seq, (
             f"cold_scratch[7] never held the seeded handler address "
             f"0x{_INVALID_HANDLER:08x}; observed {cold7_hex}. The tb deposit did "

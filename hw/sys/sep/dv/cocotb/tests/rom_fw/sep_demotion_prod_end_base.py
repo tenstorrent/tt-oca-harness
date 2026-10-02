@@ -82,10 +82,7 @@ class sep_demotion_prod_end_base(sep_demotion_decision_base):
         assert (sel, auth, bl2) == (self._SEL, self._AUTH, self._BL2), (
             f"primary demotion_control=0x{dc:04x} decodes as BL1_VALID={sel}, "
             f"BL1_ENABLE={auth}, BL2 request={bl2}; this testcase plants "
-            f"({self._SEL}, {self._AUTH}, {self._BL2}). The ROM ignores all three "
-            f"at PROD_END, so no console line reflects it and a wrong triple "
-            f"would still produce a green run. The other channel that can see it "
-            f"is the device record, asserted by _check_stimulus_served()"
+            f"({self._SEL}, {self._AUTH}, {self._BL2}). Fix mutate_manifest()"
         )
         assert lcs == LC_STATES_PROD_END_ONLY, (
             f"primary life_cycle_states is 0x{lcs:08x}, expected "

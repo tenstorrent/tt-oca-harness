@@ -164,11 +164,9 @@ _start:
     csrw    0x7C0, t0
 
     /* ── [S01]: Warm reset detection ──────────────────────────────────
-     * A watchdog reset keeps ICCM/DCCM and cold_scratch but clears warm_scratch,
-     * so BL1 writes its re-entry address to cold_scratch[7] before enabling the WDT.
-     * 0 -> cold boot; in SRAM or ICCM -> write 0 to the slot, then jump; else hang.
-     * The cold path writes -1, so an unarmed warm reset hangs instead of cold booting.
-     * This runs before any DCCM access (sp/gp/scrub/.data/.bss) to keep BL1 state.
+     * BL1 parks its re-entry address in cold_scratch[7] before arming the WDT. 0 -> cold boot;
+     * in ICCM or (if allowed) SRAM -> clear the slot and jump; else hang. Runs before any DCCM
+     * access so BL1 state survives.
      */
     li      t0, SEP_COLD_SCRATCH_7
     lw      t1, 0(t0)              /* t1 = warm handler address */

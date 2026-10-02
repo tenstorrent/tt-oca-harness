@@ -7,64 +7,33 @@
 # Stimulus for sep_firmware_chiplet_pubkey_0_wrong_digest_test, and the ONE
 # preload in this family whose SELECTED digest fuse is WRONG.
 #
-# WHAT THIS CLOSES, AND WHY IT NEEDS NO SECOND PRIVATE KEY.
-# sep_efuse_lc_prod_chiplet_key0.toml programs the dev0 digest into
-# CHIPLET_PUBK_HASH0 because dev0 is the only RSA-3072 key this tree ships, so
-# that fuse value is byte-identical to the ROM's compiled-in
-# public_key_digests[0] (key_digests.c). A ROM that took the fused arm,
-# tested the right revocation bit and read the right fuse address, and then
-# compared the manifest modulus against public_key_digests[0] instead of the
-# fuse it had just read, would boot in sep_firmware_chiplet_pubkey_0_test and be
-# refused in sep_firmware_chiplet_pubkey_0_revoke_test -- exactly as expected --
-# and nothing in that family could see it (the residual
-# rom_fw/sep_chiplet_pubkey_base.py discloses).
+# The selected fuse differs from the ROM's compiled-in public_key_digests[0]
+# (key_digests.h), which the dev0 digest in sep_efuse_lc_prod_chiplet_key0.toml
+# equals, so a ROM that compares the modulus against that table instead of the fuse
+# it read is detected:
 #
-# Distinguishing the digest SOURCE needs the SELECTED FUSE to differ from
-# public_key_digests[0] plus a NEGATIVE assertion, not a second signing key:
-#
-#   * correct ROM: read_fuse_key() returns the HASH0 decoy, check_pubkey_hash()
-#     fails on it (oca_platform.c), both slots refused,
-#     MANIFEST_ALL_FAILED, CRYPTO_FAIL=0x00030016;
+#   * correct ROM: plat_is_key_authorized() (oca_platform.c) reads the HASH0 decoy,
+#     prints PUBK_UNAUTHORIZED, both slots are refused, MANIFEST_ALL_FAILED;
 #   * ROM comparing against public_key_digests[0]: BOOTS, and the testcase fails.
 #
-# THESE THREE FUSE VALUES ARE IDENTICAL TO
-# sep_efuse_lc_prod_chiplet_key1.toml's, AND THAT IS THE POINT. With HASH0 =
-# decoy and HASH1 = the real dev0 digest, this one fuse image makes a MATCHED PAIR
-# out of two testcases that differ only in the manifest's public_key_sel:
+# These fuse values equal sep_efuse_lc_prod_chiplet_key1.toml's (HASH0 decoy, HASH1
+# real dev0 digest), so with sep_firmware_chiplet_pubkey_1_test this is a matched pair
+# that differs only in public_key_sel. A ROM that read HASH1 where HASH0 was selected
+# would also boot, so this testcase detects that class too; the sibling
+# sep_firmware_chiplet_pubkey_0_test (HASH0 real, HASH1 decoy) separates the two.
 #
-#   * sep_firmware_chiplet_pubkey_1_test  selects FUSE_KEY_1 -> reads HASH1 ->
-#     matches -> BOOTS;
-#   * sep_firmware_chiplet_pubkey_0_wrong_digest_test selects FUSE_KEY_0 ->
-#     reads HASH0 -> mismatch -> REFUSED.
-#
-# and it makes this testcase detect TWO defect classes rather than one. A ROM that
-# read the WRONG chiplet fuse -- HASH1 where HASH0 was selected -- would find the
-# real digest, verify, and BOOT, so this testcase fails on that defect too. Two
-# different decoys would have caught only the compiled-in-table class; leaving the
-# real digest in the unselected fuse is strictly more sensitive. The cost is
-# attribution, not detection: a failure here does not by itself say WHICH wrong
-# source was used, and the sibling sep_firmware_chiplet_pubkey_0_test (HASH0 real,
-# HASH1 decoy) is what separates them.
-#
-# Both digest values are the LITTLE-ENDIAN serialisation of a 32-byte digest,
-# because read_fuse_key() (oca_platform.c) rebuilds the key from eight
-# mmio_read32() results, byte 0 first, and SepEfuseImage.set_int()
-# (sep_efuse_image.py) fills word i from bits [32i+31:32i]. The decoy is
-# non-zero: a zero fuse would fail read_fuse_key()'s non-zero test
-# (oca_platform.c) and produce FUSE_KEY_EMPTY (the token is at
-# oca_platform.c), which is a different rejection reason and a different
-# testcase.
+# Both digest values are the LITTLE-ENDIAN serialisation of a 32-byte digest, because
+# fuse_read_bytes() (oca_platform.c) takes byte 0 from the LSB of word 0, and
+# SepEfuseImage.set_int() (sep_efuse_image.py) fills word i from bits [32i+31:32i].
+# The decoy is non-zero: a zero fuse would produce PUBK_OTP_EMPTY, a different
+# rejection reason and a different testcase.
 #
 # CHIPLET_PUBK_REVOKE bit 0 revokes ROM development key 0, exactly as in every
 # other member of this family: it is the ROM-key-arm counterfactual, inert on a
 # correct ROM because the manifest selects a fused key. Bits 16 and 17
-# (CHIPLET_PUBK_HASH0/1, sep_efuse_map.rdl:727) stay CLEAR -- revocation must not
-# be what refuses this image, or the digest comparison is never reached
-# (oca_platform.c precedes).
+# (CHIPLET_PUBK_HASH0/1) stay CLEAR so the digest comparison is the only refusal.
 #
-# BL1_VERSION and SBOOT_DIS stay 0, for the same reasons as in the sibling
-# preloads: the rollback check runs before key selection and SBOOT_DIS would skip
-# the crypto chain altogether.
+# BL1_VERSION and SBOOT_DIS stay 0, for the same reasons as in the sibling preloads.
 
 [LC_STATE]
   [LC_STATE.fields.lc_state]

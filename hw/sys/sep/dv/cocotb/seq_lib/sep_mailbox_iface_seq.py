@@ -2,16 +2,12 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """axil_mailbox interface driver (outbound aperture, CPU-LSU, TX path).
 
-Drives the SEP outbound_mailbox_0 aperture (0x10A0_0000) over the CPU-LSU master --
-the SEP/CPU side of the two-port cross-FIFO, reachable with NO inbound filter. This
-is the TX-path test: WRITE_DATA pushes the TX FIFO; READ_DATA
-pops the RX FIFO, which is empty on bare-sep (no peer port wired) -> read returns
-the 0xFEEDDEAD sentinel + SLVERR. Over the CPU-LSU master WRITE_DATA is accessed as
-a single native 64-bit beat = one FIFO entry (``memory_map.adoc`` / mailbox
-docs: WRITE_DATA is 64-bit). The push side is addressed at +0x00. 32-bit CSRs
-use 4-byte beats.
+Drives the SEP outbound_mailbox_0 aperture (0x10A0_0000) over the CPU-LSU master, the SEP side
+of the two-port cross-FIFO, with no inbound filter. WRITE_DATA pushes the TX FIFO as one native
+64-bit beat per entry (``memory_map.adoc``). READ_DATA pops the RX FIFO; with no peer port wired
+it is empty and returns the 0xFEEDDEAD sentinel with SLVERR. 32-bit CSRs use 4-byte beats.
 
-Register constants + the golden depth model live in env/sep_mbox_golden.py.
+Register constants and the golden depth model are in env/sep_mbox_golden.py.
 """
 
 from __future__ import annotations

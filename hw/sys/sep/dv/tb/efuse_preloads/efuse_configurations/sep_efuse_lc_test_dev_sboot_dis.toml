@@ -1,14 +1,15 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 # TEST_DEV lifecycle with the secure-boot chicken bit blown.
 #
-# The TEST_DEV twin of sep_efuse_lc_prod_sboot_dis. Both cells of the fuse-lock
-# 2x2 that blow SBOOT_DIS need one, and the lifecycle is the only thing that
-# separates them: secure_boot_enabled() short-circuits on the fuse before it
-# reads either the lifecycle or the manifest flag (oca_boot.c), so the two
-# rows reach the same non-secure boot and the LC= console echo is what attributes
-# each run to its own cell.
+# The TEST_DEV twin of sep_efuse_lc_prod_sboot_dis.toml. A blown SBOOT_DIS
+# disables secure boot whatever the lifecycle or manifest flag says
+# (plat_is_secure_boot_disabled(), oca_platform.c), so both fuse-lock cells reach
+# the same non-secure boot and only the LC= console echo tells them apart.
 #
-# TEST_DEV cannot be had by omitting the preload here. An unprogrammed OTP does
-# sense TEST_DEV, but it also senses SBOOT_DIS = 0, which is the OTHER cell.
+# Omitting the preload does not give this cell: a blank OTP senses TEST_DEV but
+# also SBOOT_DIS = 0, the other cell.
 #
 # LC_STATE is the differentially encoded byte {~raw, raw}; 0xF0 is raw 0x0. See
 # README.md.

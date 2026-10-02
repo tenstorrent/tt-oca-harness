@@ -2,51 +2,31 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP eFuse JTAG-AXIL + EL2-CPU mux arbitration test (PyUVM).
 
-Boots the VeeR EL2 core running the efuse_jtag_el2_mux firmware (a continuous eFuse-MMR
-read loop) and, CONCURRENTLY, drives the DUT's real SEP-OTP JTAG AXI-Lite port
-(``axil_sep_otp_jtag``, brought out as ``j_axi_*`` in tb_top) via
-``ocah_axi_vip.OcahAxiLiteMasterSequence``. Both masters arbitrate at the eFuse
-interface controller's
-AXI-Lite mux -- proving CPU + JTAG coexistence with no corruption.
+Boots VeeR EL2 with the efuse_jtag_el2_mux firmware (a continuous eFuse-MMR read loop) while
+``ocah_axi_vip.OcahAxiLiteMasterSequence`` drives the real SEP-OTP JTAG AXI-Lite port
+(``axil_sep_otp_jtag``, ``j_axi_*`` in tb_top). Both masters arbitrate at the eFuse interface
+controller's AXI-Lite mux.
 
-The OTP image is real-sensed at LC_STATE=PROD, which makes the JTAG path
-LC-restricted: a JTAG access to the MMR token region is allowed, but a JTAG
-access to the shadow map / interface CSRs is denied (an AXI error response
-with the error-slave data ``hw/ip/efuse/doc/architecture.adoc`` specifies). So the single PROD image exercises BOTH the
-allowed-MMR coexistence AND the LC-gated deny -- with no backdoor lc_state force
-(the reference suite ``force_jtag_lc_state``).
+The OTP image is real-sensed at LC_STATE=PROD, which restricts the JTAG path: MMR token accesses
+are allowed, and shadow-map and interface-CSR accesses get the error response and data that
+``hw/ip/efuse/doc/architecture.adoc`` specifies. One PROD image covers both the allowed
+coexistence and the LC-gated deny without forcing lc_state.
 
 Checkers (each logged):
-  * CHK-SENSE / firmware self-checks: real fuse-sense completed, the CPU eFuse-MMR
-    seeded its resetless token word, the read loop ran, and the CPU-published MMR
-    read error count stayed zero.
-  * CHK-JTAG-MMR: all JTAG MMR ops (a token1 seed write then per-round reads that
-    must return the seeded word, token3 writes + readbacks, token-last reads)
-    return OKAY -- the JTAG path reaches the eFuse through the mux. token1 is
-    seeded because TOKEN_I is an ``external`` sw=rw word with no reset, so an
-    unwritten read returns X.
-  * CHK-JTAG-DENY: a JTAG shadow-map read at PROD is DENIED -- an error
-    response (SLVERR or DECERR) with data 0xbadcab1e (the LC-gated demux).
-  * CHK-JTAG-ALLOW: a JTAG MMR read right after the deny still returns OKAY (MMR is
-    allowed even in the restricted state).
-  * CHK-JTAG-TOKEN-BLOCK: in PROD/RMA_SIP, JTAG may reach the MMR token
-    block. This checker seeds ``SEC_DISABLE_TOKEN_I[0]`` (unreset, as above) and
-    then samples it, ``TOKEN_EOP`` and ``SEC_DISABLE_TOKEN_MATCH`` by read. No
-    ``TOKEN_EOP`` write is issued: that, and only that, would start a compare.
-    ``CHK-JTAG-MMR`` already walks RMA ``TOKEN_I``.
-    It is a sample of the allow class, not every TOKEN_I word and MATCH.
-  * CHK-JTAG-IFACE-DENY: a JTAG read of the program/read interface
-    (`EFUSE_PROGRAM_CTRL`) gets the same error response and data -- same class
-    as shadow.
-  * CHK-COEXIST: the CPU loop counter (scratch-cold[2], read via the read-only
-    scratch_cold_probe_o) advances across the JTAG burst -- the CPU was not stalled
-    by the JTAG master.
-    The CPU loop requires its distinct nonzero token0 seed on every iteration,
-    while JTAG operates on token1 and token3, so cross-port corruption fails.
-
-Deltas vs the reference suite: real PROD-sense replaces its backdoor
-``force_jtag_lc_state``; a live CPU loop window replaces its backdoor
-``uvm_hdl_deposit`` UVM_DONE release.
+  * CHK-SENSE / firmware self-checks: fuse sense completed, the CPU seeded its token0 word, the
+    read loop ran, and the CPU MMR read error count stayed zero.
+  * CHK-JTAG-MMR: every JTAG MMR op returns OKAY (token1 seed write, per-round token1 reads of
+    the seeded word, token3 writes + readbacks). TOKEN_I is an ``external`` sw=rw word with no
+    reset, so it is seeded before any read.
+  * CHK-JTAG-DENY: a JTAG shadow-map read at PROD gets SLVERR or DECERR with data 0xbadcab1e.
+  * CHK-JTAG-ALLOW: a JTAG MMR read right after the deny still returns OKAY.
+  * CHK-JTAG-TOKEN-BLOCK: JTAG reads of a seeded ``SEC_DISABLE_TOKEN_I[0]``, ``TOKEN_EOP`` and
+    ``SEC_DISABLE_TOKEN_MATCH`` return OKAY. No ``TOKEN_EOP`` write is issued, since that starts
+    a compare. This samples the allow class; it does not walk every token word.
+  * CHK-JTAG-IFACE-DENY: a JTAG read of ``EFUSE_PROGRAM_CTRL`` gets the same deny as shadow.
+  * CHK-COEXIST: the CPU loop counter (scratch-cold[2], via scratch_cold_probe_o) advances across
+    the JTAG burst, and the CPU loop checks its token0 seed every iteration while JTAG uses
+    token1 and token3, so a stall or cross-port corruption fails.
 """
 
 from __future__ import annotations

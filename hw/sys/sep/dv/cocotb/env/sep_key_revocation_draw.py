@@ -1,77 +1,37 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Seed -> (revocation bitmap, primary slot, backup slot) for TP074.
+"""Seed -> (revocation bitmap, primary slot, backup slot) for the key-revocation random test.
 
-ONE function, imported by BOTH readers of the stimulus. The cocotb testcase calls
-it to build the golden eFuse image the DUT senses and to predict an outcome
-class; the pre-sim hook ``dv_sim_prestage.py`` calls it to write its own copy of
-that image before the simulator starts.
+The testcase and the pre-sim hook ``dv_sim_prestage.py`` both call :func:`draw`, so the
+two cannot drift. The efuse bank model waits for ``rst_ni`` before its ``$readmemh``,
+so the DUT senses the testcase's golden image; the testcase asserts that the golden
+matches the hook's pre-staged copy word for word, which proves both processes ran the
+same draw.
 
-WHICH COPY THE DUT ACTUALLY SENSES, because the answer is not the obvious one.
-The efuse bank model's ``$readmemh`` is gated on reset -- ``wait (rst_ni)`` at
-``hw/ip/efuse/dv/models/efuse_bank_model.sv:137-156`` -- and reset releases at
-287.00 ns, while the testcase writes its golden at 0.00 ns. So the DUT senses the
-TESTCASE's image, and the hook's copy is overwritten before it is ever read. The
-hook's file earns its place as the CROSS-PROCESS CHECK instead: the testcase
-loads it first and asserts the golden reproduces it word for word, which is what
-proves the two processes ran the SAME draw.
+Bare sibling imports only (``sep_seeded_rng``, not ``env.sep_seeded_rng``): the pre-sim
+process loads this module by file path, where cocotb and the ``env`` package do not
+import.
 
-That check is why the draw lives here and neither side owns a copy. The hook
-cannot import a test module -- test modules import cocotb, which does not exist in
-``run_dv.py``'s interpreter -- and its registry otherwise duplicates each test's
-image parameters by hand. A hand-duplicated draw is exactly the thing that drifts
-silently.
+The draw picks one of four outcome classes first and then solves for a stimulus in it,
+so no seed repeats what the directed ``pubkey_rom_{0..5}_revoked_key`` rows prove:
 
-Bare sibling imports only (``sep_seeded_rng``, not ``env.sep_seeded_rng``): this
-module is loaded by file path in the pre-sim process, where the ``env`` package
-does not import.
+  * ``clean_proceed`` -- ``bitmap == 0``: a part with nothing revoked is not refused;
+  * ``noisy_proceed`` -- ``bitmap[p] == 0`` and ``bitmap != 0``: a set bit that is not
+    the selected slot's must not block the boot;
+  * ``primary_failover`` -- ``bitmap[p] == 1``, ``bitmap[b] == 0``: the selected slot is
+    refused and a different unrevoked slot still boots;
+  * ``both_revoked_terminal`` -- ``bitmap[p] == 1`` and ``bitmap[b] == 1``: the backup
+    path also applies the revocation check.
 
-WHY THE DRAW PICKS THE OUTCOME CLASS FIRST. A uniform 8-bit bitmap crossed with
-two uniform slot indices spends most of its seeds reproducing what the twelve
-directed ``pubkey_rom_{0..5}_revoked_key`` rows already prove, at roughly 26
-minutes per seed. The draw therefore selects one of the four behaviourally
-distinct classes and only then solves for a stimulus inside it, so every seed
-lands somewhere that discriminates:
+Clean and noisy proceed share one outcome; they are separate classes only for coverage.
 
-  * ``clean_proceed``  -- ``bitmap == 0``: a part with nothing revoked is not refused;
-  * ``noisy_proceed``  -- ``bitmap[p] == 0`` and ``bitmap != 0``: a set bit that is
-    NOT the selected slot's must not block the boot, which is the arm a
-    ``revoke != 0`` implementation fails;
-  * ``primary_failover`` -- ``bitmap[p] == 1``, ``bitmap[b] == 0``: the selected
-    slot is refused and a different unrevoked slot still boots;
-  * ``both_revoked_terminal`` -- ``bitmap[p] == 1`` and ``bitmap[b] == 1``: the
-    revocation check is applied on the backup path too.
+Bits 6 and 7 carry no ROM key slot: the ROM rejects an index at or above
+``PUBK_SEL_NUM_ROM_KEYS`` before the revocation check, so setting them must change
+nothing. The noisy class draws an inert-bits-only sub-mode half the time, because a
+uniform draw over the seven non-primary bits reaches it on only 3 of 127 seeds.
 
-Clean and noisy proceed share one OUTCOME but prove different things, so they are
-separate classes for the coverage bins and NOT a separate branch of the outcome
-prediction. :func:`classify` derives the class from two booleans -- is the
-primary's bit set, is the backup's bit set -- plus ``bitmap != 0`` purely as a
-label.
-
-BITS 6 AND 7 CARRY NO ROM KEY SLOT. ``CHIPLET_PUBK_REVOKE.select[7:0]`` is the
-ROM-key bitmap but the ROM rejects an index at or above ``PUBK_SEL_NUM_ROM_KEYS``
-(6) before the revocation check runs, so bits 6 and 7 can never refuse anything.
-They stay in the draw as deliberate noise: setting them must change nothing, and
-the coverage model carries one bin that proves it rather than assuming it.
-
-THE INERT-NOISE SUB-DRAW IS EXPLICIT, NOT INCIDENTAL. Drawing the noisy-proceed
-noise uniformly over the seven non-primary bits reaches "bits 6/7 only" on 3 of
-127 draws, so that coverage bin would need several hundred seeds at 26 minutes
-each. The noisy class therefore draws a sub-mode first, exactly as the top-level
-draw picks a class first. This changes which stimuli appear, never which outcome
-is expected: both sub-modes satisfy the same ``noisy_proceed`` constraint.
-
-KNOWN LIMITATION OF THE BIN MODEL, FOR WHOEVER CLAIMS CLOSURE. A
-``noisy_proceed__pN`` bin can be closed by a seed whose only set bits are 6 and
-7. Those bits carry no ROM slot, so such a seed does NOT exercise what the noisy
-class exists for -- that a set bit belonging to a DIFFERENT ROM slot must not
-block the boot -- and six of the 24 grid bins can therefore be closed by weaker
-stimuli than intended. This never affects a per-seed verdict, only a
-``regression_stable`` closure claim. Two remedies, either sufficient: split the
-noisy bins by sub-mode (27 bins becomes 33), or require ``bitmap & 0x3f != 0``
-for a ``noisy_proceed__pN`` bin to count. The model is left as approved until
-one is chosen; a closure claim made before then has to say which six bins were
-closed by inert-noise stimuli.
+Limitation: an inert-bits-only seed can close a ``noisy_proceed__pN`` bin without
+showing that another ROM slot's bit is ignored; see :data:`CLOSURE_CAVEATS`.
 """
 
 from __future__ import annotations
@@ -147,11 +107,10 @@ def bit_set(bitmap: int, slot: int) -> bool:
 
 
 def classify(bitmap: int, primary_slot: int, backup_slot: int) -> str:
-    """The class a stimulus lands in. Total over every (bitmap, p, b).
+    """Return the class of a stimulus; total over every (bitmap, p, b).
 
-    The OUTCOME rests on two booleans only -- the primary's bit and the backup's
-    bit. ``bitmap != 0`` splits the proceed outcome into two classes for the
-    coverage bins and must never add a third outcome; see :func:`outcome_of`.
+    Only the primary's and backup's bits decide the outcome; ``bitmap != 0`` only
+    splits proceed into two coverage classes (see :func:`outcome_of`).
     """
     _check_slot(primary_slot, "primary_slot")
     _check_slot(backup_slot, "backup_slot")
@@ -174,7 +133,7 @@ def outcome_of(cls: str) -> str:
 
 
 def coverage_bins(bitmap: int, primary_slot: int, backup_slot: int) -> Tuple[str, ...]:
-    """Bins a stimulus covers, out of the 27 that gate ``regression_stable``."""
+    """Bins a stimulus covers, out of the 27 in :func:`all_bins`."""
     cls = classify(bitmap, primary_slot, backup_slot)
     hit = [f"{cls}__p{primary_slot}"]
     if cls == CLASS_BOTH_REVOKED_TERMINAL:
@@ -213,26 +172,19 @@ def all_bins() -> Tuple[str, ...]:
 def efuse_fixed(bitmap: int) -> Dict[str, int]:
     """eFuse fields this stimulus pins, for ``SepEfuseImage.randomize(fixed=)``.
 
-    Both readers take these from here so the pre-staged image and the test's
-    golden are identical by construction rather than by convention.
+    Both readers take these from here, so the pre-staged image and the golden match.
+    Every extra pin narrows the randomization this test exists to perform:
 
-    THIS SET IS EXACTLY THE APPROVED ONE, and adding to it is not a local
-    decision: every extra pin silently narrows the randomization this row exists
-    to perform.
+      * ``CHIPLET_PUBK_REVOKE`` is the stimulus;
+      * ``BL1_VERSION`` 0 keeps the rollback check, which runs before key selection,
+        from rejecting a slot first;
+      * ``SBOOT_DIS`` 0 keeps the crypto chain from being skipped.
 
-      * ``CHIPLET_PUBK_REVOKE`` is the stimulus itself;
-      * ``BL1_VERSION`` 0 keeps the rollback check, which runs BEFORE key
-        selection, from rejecting a slot first;
-      * ``SBOOT_DIS`` 0 keeps the crypto chain from being skipped entirely.
-
-    Lifecycle PROD is pinned by the caller's ``lc_raw``, for the same reason.
-
-    Every other one of the 256 words stays random, the fused key digests,
-    ``STATUS_RPT`` and ``SEP_SPI_CTRL_FIELD_EN`` included: the ROM reads them only
-    on arms this stimulus never selects. ``SEP_SPI_CTRL_FIELD_EN`` in particular
-    is read at ``pll_init.c:49``, which ``pll_init.c:33-37`` returns before
-    whenever the ``bl0_pll_clk`` strap is clear -- it is clear in this TB, and the
-    run prints ``pllclk=0`` and ``CLK_REFCLK`` and never ``PLL_WAIT_FUSE``.
+    The caller pins lifecycle PROD through ``lc_raw``. Every other word stays random,
+    the fused key digests and ``STATUS_RPT`` included: the ROM reads them only on
+    paths this stimulus never selects. ``pll_init()`` reads its fuse only when the
+    ``bl0_pll_clk`` strap is set; this TB leaves it clear, so the run prints
+    ``CLK_REFCLK``.
     """
     _check_bitmap(bitmap)
     return {
@@ -267,9 +219,8 @@ def draw(seed: int) -> KeyRevocationDraw:
         bitmap |= _subset(rng, _bits_except((primary, backup)))
 
     landed = classify(bitmap, primary, backup)
-    # The constraint solver and the classifier are separate code paths on purpose:
-    # if they ever disagree the seed is unusable, and failing here beats running a
-    # 26-minute simulation whose expectation was wrong from the start.
+    # The solver and classify() are independent; a disagreement means this seed's
+    # expectation is wrong, so fail before the simulation starts.
     assert landed == cls, (
         f"seed {seed}: the draw asked for class {cls} but bitmap=0x{bitmap:02x} "
         f"with primary_slot={primary} backup_slot={backup} classifies as {landed}"
@@ -327,12 +278,7 @@ def _other_slot(rng: SepSeededRng, taken: int) -> int:
 
 
 def _selftest() -> None:
-    """Prove the classifier, the bins and the draw agree before any run uses them.
-
-    The outcome prediction is a truth table over two booleans, so it is small
-    enough to check exhaustively here. A silent change to it would otherwise
-    surface as a 26-minute simulation asserting the wrong shape.
-    """
+    """Check exhaustively that the classifier, bins and draw agree at import time."""
     # Exhaustive over the whole stimulus space, not a sample: 256 x 6 x 6.
     seen = {c: 0 for c in CLASSES}
     known = set(all_bins())

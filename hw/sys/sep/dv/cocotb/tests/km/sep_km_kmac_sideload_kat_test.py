@@ -8,14 +8,10 @@ then CMD_KEY_TRANSFERs it to the OpenTitan KMAC engine. KMAC computes a keyed
 KMAC-256 (cSHAKE, PREFIX="KMAC") over a fixed message; the test proves KMAC
 consumed exactly the sideloaded key.
 
-KMAC DOES have a CFG.sideload bit, so (like AES, unlike HMAC) the consume-proof is
-a sideload-vs-SW cross-check rather than a comparison against a known answer
-(env/sep_kmac_golden.py holds a bit-exact KMAC model; sep_kmac_mode_strength_rand_test
-compares it against this engine). The OSS port is a FRONTDOOR
-known-key variant: it loads a KNOWN distinct-word key, so the cross-check ties the
-sideload output to that specific key via the SW path, and the dummy-key negative
-reference proves the key actually drives the output. Consume-proof is
-sideload-vs-SW plus decoy difference, not a KMAC golden.
+KMAC has a CFG.sideload bit, so (like AES, unlike HMAC) the consume-proof is a
+sideload-vs-SW cross-check with a KNOWN distinct-word key, plus a dummy-key
+negative reference that proves the key drives the output. The SW-key digest is
+also compared against the bit-exact KMAC golden (env/sep_kmac_golden.py).
 
 Checkers:
   CHK0      boot KM on real DRBG -> RESP_KM_READY
@@ -119,11 +115,9 @@ class sep_km_kmac_sideload_kat_test(sep_base_test):
         # across rst_ni release, then parked in SW_RESET_N. KMAC is released only
         # before the transfer so its keyed ops pull EDN masking entropy.
 
-        # Strict entropy bring-up: CHK1..CHK4 bit-exact golden; CHK5_km observed
-        # (KM boot/load consumer). score_sinks kmac="observe": prove KMAC pulls real
-        # post-adapter crypto-EDN masking beats during its keyed ops, measured
-        # frontdoor (CHK-ENT). The drain keeps the
-        # ESRC FIFO from overflowing during the long entropy phase.
+        # Strict bring-up: CHK1..CHK4 golden; CHK5_km observed. CHK5_kmac (CHK-ENT)
+        # proves KMAC pulls real crypto-EDN masking beats during its keyed ops. The
+        # drain keeps the ESRC FIFO from overflowing during the long entropy phase.
         await self.bring_up_entropy(
             strict=True, score_km="observe", score_sinks={"kmac": "observe"}
         )

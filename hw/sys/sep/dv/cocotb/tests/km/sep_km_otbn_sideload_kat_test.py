@@ -126,24 +126,15 @@ class sep_km_otbn_sideload_kat_test(sep_base_test):
         handle = await self.km.key_load(key_words=list(KAT_KEY), dest=KM_DEST_OTBN)
         self.logger.info("CHK-A CMD_KEY_LOAD PASS: known key staged, handle=0x%02x", handle)
 
-        # Release OTBN from SW reset BEFORE the transfer: CMD_KEY_TRANSFER has the
-        # KM CPU write the OTBN wrapper KEY_SHARE registers, and the wrapper (incl.
-        # its key CSR block) is in the otbn sw-reset domain (sep.sv otbn_sw_rst_ni).
-        # If OTBN stays parked the KM's wrapper write never completes and the KM
-        # hangs with no mailbox response. OTBN is held parked through KM boot/load
-        # so KM owns the entropy stream, then released here to receive the key and
-        # run the key-dump: the target engine is released only when it is ready to
-        # receive the key and run the consume op. Wait for OTBN's post-reset secure
-        # wipe to finish (STATUS IDLE) BEFORE transferring, else the wipe can clobber
-        # the just-sideloaded key.
+        # The OTBN wrapper KEY_SHARE registers are in the otbn sw-reset domain, so
+        # OTBN must be released before CMD_KEY_TRANSFER or the KM write never
+        # completes and the KM hangs. Wait for the post-reset secure wipe (IDLE)
+        # first, or the wipe can clobber the sideloaded key.
         await self.swrst.release("otbn")
         await self.otbn.wait_idle("post-reset")
 
-        # CHK-ISO: key-bus isolation, positive evidence (not just by-construction).
-        # Read back SW_RESET_N and prove the other sideload engines (AES/KMAC/HMAC)
-        # are HELD in reset -- they physically cannot receive the key -- while OTBN
-        # is released. Combined with the OTBN-only transfer dest mask and CHK-D
-        # (OTBN got the exact key), this pins the key to the intended target.
+        # CHK-ISO: AES/KMAC/HMAC are held in reset and OTBN is released; with the
+        # OTBN-only dest mask and CHK-D this pins the key to the intended target.
         rst = await self.swrst.read_back()
         parked = (
             (1 << SW_RESET_N_BIT["aes"])

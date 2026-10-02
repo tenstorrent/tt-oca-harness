@@ -121,13 +121,10 @@ def _set_only_fixed(seed: int) -> dict[str, int]:
 
 
 def _key_revocation_fixed(seed: int) -> dict[str, int]:
-    """Pins for ``sep_key_revocation_bitmap_random_test``, from the SHARED draw.
+    """Pins for ``sep_key_revocation_bitmap_random_test``.
 
-    The exception to this file's duplicate-and-compare convention, and
-    deliberately so: the revocation bitmap is the stimulus under test, and a
-    hand-copied constraint that drifted would stage a different bitmap than the
-    testcase predicts an outcome for. The draw therefore lives in
-    ``env/sep_key_revocation_draw.py`` and both readers call it.
+    The bitmap comes from ``env/sep_key_revocation_draw.py``, which the test also calls, so the
+    staged bitmap and the predicted outcome cannot drift.
     """
     mod = _load_env_module("sep_key_revocation_draw", "sep_key_revocation_draw.py")
     fixed: dict[str, int] = mod.efuse_fixed(mod.draw(seed).bitmap)

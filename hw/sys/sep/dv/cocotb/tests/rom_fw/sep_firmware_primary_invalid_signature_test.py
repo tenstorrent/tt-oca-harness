@@ -130,9 +130,7 @@ class sep_firmware_primary_invalid_signature_test(sep_primary_fail_backup_boot_b
         mm.flip_signature_byte(buf, "primary", byte_index=0, xor_mask=0x01)
         after = bytes(buf[base : base + 8])
         assert before != after, "signature flip was a no-op"
-        # The hash must still verify: if this mutation had invalidated the signed region hash,
-        # the primary would be rejected as HASH_MISMATCH in the manifest loop and
-        # RSA would never run -- a different test wearing this test's name.
+        # A mutation that broke the manifest hash would be refused before RSA runs.
         mm.verify_layout(buf, "primary")
         # And the modulus is untouched, so the key bind still passes and the only
         # thing wrong with the primary is the signature value.

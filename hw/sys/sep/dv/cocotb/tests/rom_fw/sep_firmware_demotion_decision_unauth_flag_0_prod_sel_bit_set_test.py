@@ -2,8 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """PROD with BL1 valid/disabled and BL2 requested -> BL1 wins, not demoted.
 
-Only the signed OCA BL1 decision may reach DEMOTE_1: a ROM that ORs the two
-requests or falls through to the BL2 arm fails. The BL2 request is still recorded,
+Only the signed OCA BL1 decision reaches DEMOTE_1. The BL2 request is still recorded,
 so the boot measurement carries demotion bits 0x6.
 """
 

@@ -1,92 +1,29 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Primary manifest names a VALID ROM key index and boots -> success.
+"""Primary names valid ROM key slot 0 and boots without failover.
 
-The positive member of the primary-side ROM-key family. The primary's
-``public_key_sel`` names ROM key slot 0 -- populated, unrevoked, and the slot the
-image is signed against -- and the ROM must complete the boot from the PRIMARY
-without ever reading the backup. There is no failover in this scenario at all,
-which is what makes it the primary-side twin of
-``sep_firmware_backup_rom_key_valid_test`` rather than a copy of it.
+Boot completion alone does not prove that key selection ran, so four channels are required:
 
-A POSITIVE TEST THAT PASSES BECAUSE KEY SELECTION NEVER RAN WOULD PROVE NOTHING,
-so "it booted" is not accepted as the result here. Four independent channels are
-required, and none of them is boot completion:
+  * ``PUBK_SEL=0x00000000`` exactly once: the ROM read slot 0 from the primary manifest.
+  * ``PUBK_REVOKE=0x00000000`` exactly once: the revocation check ran and permitted the
+    slot. ``PUBK_SEL_AMBIGUOUS`` and ``PUBK_OTP_EMPTY`` are forbidden, so the ROM-key arm
+    was taken.
+  * ``RSA_EXEC``, ``RSA_VERIFY_OK`` and ``MANIFEST_OK`` in that order after the selector echo.
+  * No SPI read inside the backup slot span: a silent failover also reaches ``MANIFEST_OK``.
 
-  * ``PUBK_SEL=0x00000000`` -- the selector the ROM read out of the primary
-    manifest, pinned to EXACTLY ONE occurrence. Be
-    honest about what that count is worth: with a single slot attempt and no retry
-    it is structurally guaranteed by the ROM's control flow, so it is redundant
-    insurance rather than the load-bearing check. The failure mode it names -- a
-    second slot reaching key selection -- is already caught independently by the
-    forbidden backup ``MANIFEST_SRC`` and by the device-side backup-span check
-    below. The weight here sits on the ORDERING and on the device record;
-  * ``PUBK_REVOKE=0x00000000`` -- the fuse word the revocation check read, also exactly once, proving the revocation
-    check ran and PERMITTED this slot rather than being skipped. This marker alone
-    does NOT prove the ROM-key arm was taken: the revocation check is called
-    from the fuse-key arm too. What excludes that arm is
-    the ``PUBK_SEL=0x00000000`` value -- slot 0 is ROM classical key 0,
-    index=0" -- together with ``PUBK_SEL_AMBIGUOUS`` and ``PUBK_OTP_EMPTY`` being
-    forbidden;
-  * ``RSA_EXEC`` then ``RSA_VERIFY_OK`` then ``MANIFEST_OK``, in that
-    order and after the selector echo -- the modulus reached the verifier and the
-    signature really verified (,), which only
-    happens once the index bound, the revocation check and the digest bind have all
-    passed;
-  * the DEVICE side: not one read inside the backup slot's span. The console says
-    which address the ROM intended to read; the BFM's transaction record is the half
-    the ROM cannot fake, and it is the only channel that can say "the PRIMARY is
-    what booted". A silent failover also reaches ``MANIFEST_OK``.
+The flash image is byte-identical to that of
+``sep_firmware_primary_pubkey_rom_0_revoked_key_test``: ``select_primary_rom_slot(buf, 0)``
+is a no-op on the shipped primary, so the only difference is bit 0 of ``CHIPLET_PUBK_REVOKE``.
 
-Matched pair, And it is byte-Identical by construction. This testcase and
-``sep_firmware_primary_pubkey_rom_0_revoked_key_test`` build their flash image from the
-SAME single call, ``select_primary_rom_slot(buf, 0)``, which is a no-op because the
-shipped primary already selects slot 0 (``configs/secure_boot_test.yaml:43-45``). Both
-therefore run bytes identical to the shipped ``bootrom/prod/build/oca_secure_boot.bin``, and
-the ONLY difference between them is one bit of ``CHIPLET_PUBK_REVOKE``. Fuse clear
-boots; bit 0 set refuses BOTH manifests with the revocation error code and never reaches
-``RSA_EXEC``. Nothing else about revocation needs arguing.
+Compared with ``sep_rom_ot_secure_boot_test``, this run uses a PROD preload and adds the
+key-selection echoes and the backup-span check. The shipped primary also sets the manifest's
+secure-boot enforced bit, so enforcement is not attributed to the lifecycle;
+``sep_firmware_enforced_secure_boot_flow_test`` covers that.
 
-WHAT THIS SHARES WITH ``sep_rom_ot_secure_boot_test``, And what it adds. The flash image
-is the same golden ``oca_secure_boot.bin``, so the overlap is stated rather than hidden.
-Three things differ. That test runs under the default zero OTP, i.e. lifecycle TEST_DEV,
-where secure boot is enforced only because the manifest asks
-(``sep_rom_ot_secure_boot_test.py``); this one runs under a committed PROD preload,
-where enforcement no longer DEPENDS on the manifest flag. It does not attribute
-enforcement to the lifecycle, and must not claim to: the shipped primary also sets
-the signed OCA ``secure_boot_control`` enforced bit, so under PROD the lifecycle
-and the manifest both ask for secure boot at once and no observable separates them.
-Attributing enforcement to the lifecycle alone needs the manifest control cleared,
-which is ``sep_firmware_enforced_secure_boot_flow_test``'s job,
-not this one's. Second, ``sep_rom_ot_secure_boot_test`` asserts that the crypto chain
-reached ``RSA_VERIFY_OK`` and nothing at all about key selection; this one adds the
-selector and revocation echoes with exact counts and their ordering against the
-verifier. Third, that test has no device-side assertion; this one requires the backup
-span to be untouched. The narrowing is real and is disclosed: slot 0 is the index this
-member covers because it is the one the shipped image is signed against, so it needs no
-graft. Slots 1-5 have their own keys
-(``bootrom/prod/tests/signing_keys/rsa_private_key.rom_key{1..5}.pem``) and their own
-digests, and the revoke family covers them by grafting; a positive counterpart for each
-would add a second image per slot and prove the same property six times.
+The ROM emits no architected status code for the ROM-key path, so the console echoes carry
+the key-selection evidence.
 
-Markers. This ROM *defines* ``SEP_MSG_USING_ROM_KEY``
-(``bootrom/prod/include/status_values.h:97``,
-0x7f) and never emits it -- no ``report_status`` call for it exists anywhere under
-``bootrom/prod/src`` -- so there is no UNIQUE architected code for the ROM-key path,
-which is exactly what a positive key-selection testcase needs. The precise
-statement, because "no architected evidence at all" would be too strong:
-``report_status(STATUS_TYPE_INFO, SEP_MSG_VALIDATE_CHECK)`` is emitted ONLY on the ROM-key arm, so an INFO 0x207
-count could distinguish the two arms indirectly -- but 0x207 is also reported
-unconditionally and again as DEBUG, so it is a count
-argument rather than a marker, and this testcase does not use it. The console
-echoes above carry it instead. ``SEP_MSG_START_MANIFEST_VALIDATION``,
-``SEP_MSG_START_PAYLOAD_VALIDATION`` and ``SEP_MSG_PAYLOAD_VALIDATED`` likewise
-have zero emitters here.
-
-Needs ``+esrc_noise_force``: the primary is valid, so the full RSA-3072 modexp
-runs on OTBN, which parks in UrndRefresh until EDN grants entropy. The shortcut
-grants OTBN's EDN handshakes only; the RSA assertions are untouched, so
-``RSA_VERIFY_OK`` still means the signature really verified.
+Needs ``+esrc_noise_force``: the primary runs a full RSA-3072 modexp.
 """
 
 from __future__ import annotations
@@ -215,9 +152,7 @@ class sep_firmware_primary_rom_key_valid_test(sep_rom_ot_dma_boot_test):
             f"now stale and this positive test could not boot for the reason it "
             f"claims"
         )
-        # select_primary_rom_slot already ran verify_sealed + verify_public_key on
-        # the untouched-signed region branch. Log what that established, because it is the
-        # claim the matched pair rests on.
+        # select_primary_rom_slot already ran verify_sealed and verify_public_key.
         self.logger.info(
             "CHK-STIMULUS-VALID-SLOT: primary public_key_sel=0x%04x (ROM key slot "
             "%d, populated and unrevoked); signed region unchanged, so the primary keeps its "

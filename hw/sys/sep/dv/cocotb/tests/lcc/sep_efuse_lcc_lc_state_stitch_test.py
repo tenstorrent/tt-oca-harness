@@ -2,10 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP eFuse -> Lifecycle-Controller lc_state stitch test (OSS).
 
-Walks the
-lifecycle state up the monotonic OTP W1S chain TEST_DEV -> PROD -> RMA_SIP_1 ->
-RMA_CHIP_1 and, at each step, proves the eFuse-sensed lc_state is stitched into
-the lifecycle controller and decoded into the right feature-control vector:
+Walks the lifecycle state up the monotonic OTP W1S chain TEST_DEV -> PROD ->
+RMA_SIP_1 -> RMA_CHIP_1 and, at each step, proves the eFuse-sensed lc_state is
+stitched into the lifecycle controller and decoded into the right feature-control
+vector:
 
   * the LC_STATE shadow register reads back the differential-encoded state, and
   * FEAT_CTRL reads back exactly ``feat_ctrl_expected(...)`` from the LCC golden

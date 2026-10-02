@@ -1,25 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Self-contained AES encryption golden: ECB, CBC and CTR at 128/192/256.
+"""Pure-Python AES golden: ECB/CBC/CTR encrypt and ECB/CBC decrypt at 128/192/256 bits.
 
-Serves the KM->AES sideload KAT and the AES mode x key-size breadth test.
+Used by the KM->AES sideload KAT and the AES mode x key-size test. Derived from FIPS-197, not
+from DUT output; it self-tests at import against FIPS-197 Appendix C and SP800-38A vectors.
 
-Pure-Python, with no third-party crypto dependency so the environment stays
-self-contained. A reference implementation of AES block encryption that
-value-checks the ciphertext the OpenTitan AES core produces. Derived from FIPS-197,
-not from observed DUT output: the module self-tests at import against the FIPS-197
-Appendix C known vectors (AES-128/192/256) and the SP800-38A CBC/CTR vectors, so a
-transcription error in the S-box / key schedule / round math fails loudly here
-rather than silently agreeing with a broken DUT.
-
-Register byte/word convention (OpenTitan AES, vendor/lowRISC/opentitan/overlay/regs/aes/regs/gen/adoc/aes.adoc
-"all registers are little-endian", programmers_guide.md):
-  * The 256-bit key is KEY_SHARE0_0..7 (8 words); KEY_SHARE0_0 holds key bytes
-    [3:0] little-endian (byte 0 = LSB), KEY_SHARE0_1 holds bytes [7:4], etc.
-  * The 128-bit data block is DATA_IN_0..3 (4 words), same little-endian word
-    packing; DATA_OUT_0..3 the ciphertext in the same layout.
-`aes256_ecb_encrypt_words` maps the register words <-> byte stream with exactly
-this convention so its output can be compared word-for-word against DATA_OUT.
+Register packing (OpenTitan AES, little-endian words): KEY_SHARE0_0 holds key bytes [3:0] with
+byte 0 as LSB, and DATA_IN/DATA_OUT/IV pack the same way. The ``*_words`` functions apply it.
 """
 
 from __future__ import annotations

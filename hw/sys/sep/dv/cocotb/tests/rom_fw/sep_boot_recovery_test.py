@@ -2,34 +2,25 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Recovery boot: PRIMARY_CHIPLET=1 + BOOT_RECOVERY=1 takes the SMC-SRAM path.
 
-FEATURE. ``boot_from_spi()`` is ``primary_chiplet && !boot_recovery``
-(``boot_straps.h:46``), so asserting recovery on a part that would otherwise boot
-from flash diverts it to the SMC-SRAM manifest. ``rom_main.c:616-641`` is a
-three-way branch and this testcase pins the middle arm::
+``boot_from_spi()`` is ``primary_chiplet && !boot_recovery``, so the recovery strap
+diverts a primary chiplet from flash to the SMC-SRAM manifest. The ROM's boot-mode
+branch has three arms and this testcase pins the middle one::
 
     if (boot_from_spi(&straps))                                -> BOOT_SPI
     else if (straps.primary_chiplet && straps.boot_recovery)   -> BOOT_RECOVERY
     else                                                       -> BOOT_SECONDARY
 
-The captured-GPIO contract places ``primary_chiplet`` at ``STRAPS_LO[25]`` and
-``boot_recovery`` at ``STRAPS_LO[19]``. The testbench combines
-``+sep_boot_from_spi`` and ``+sep_straps_lo`` in that word, and the ROM echoes it
-back, so ``STRAPS_LO=0x02080000`` plus ``STRAP primary=1 recovery=1`` is direct
-evidence that the ROM saw the intended combination.
+``primary_chiplet`` is ``STRAPS_LO[25]`` and ``boot_recovery`` is ``STRAPS_LO[19]``. The
+testbench builds that word from ``+sep_boot_from_spi`` and ``+sep_straps_lo``, and the ROM
+echoes it, so ``STRAPS_LO=0x02080000`` and ``STRAP primary=1 recovery=1`` show that the
+ROM saw the intended combination.
 
-WHY BOTH ARMS IT IS NOT MUST BE FORBIDDEN. ``BOOT_RECOVERY`` and
-``BOOT_SECONDARY`` converge immediately: both set a boot_mode and then fall into
-the same ``WAIT_SMC_MANIFEST`` loop. A recovery run
-and a secondary run therefore produce nearly identical consoles, and without
-forbidding ``BOOT_SECONDARY`` a testcase whose recovery strap silently did
-nothing would still boot and still pass. That marker, not the successful boot, is
-what makes this a recovery test.
+``BOOT_SECONDARY`` is forbidden because both non-SPI arms wait for the same SMC manifest
+and print nearly identical consoles; without it, a recovery strap that did nothing would
+still pass.
 
-WHY THE OT ROM AND A LOADED FLASH. The ``build`` ROM can drive the SPI host,
-and ``OcahSpiFlash`` is attached and preloaded with a bootable image. So "no SPI
-flash reads attempted" -- the procedure's third expected result -- is a real
-claim about a capable ROM declining to use a working, populated device, measured
-at the device. Running the SPI-stub ROM instead would make it vacuous.
+The ROM can drive the SPI host and the flash holds a bootable image, so zero flash reads
+shows that the ROM declined a working device.
 """
 
 from __future__ import annotations

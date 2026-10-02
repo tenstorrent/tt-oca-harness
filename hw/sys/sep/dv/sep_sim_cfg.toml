@@ -328,7 +328,8 @@ outputs = [
 #   toolchain-images  needs the RISC-V toolchain WITH picolibc (the generated
 #                     register headers close their packing checks with
 #                     static_assert, i.e. <assert.h>, which is not freestanding).
-#   oca-images        is pure Python and must run on the HOST: the packer's deps
+#   oca-images and decrypt_negative_images
+#                     are pure Python and must run on the HOST: the packer's deps
 #                     come from the tt-oca-manifest submodule's pyproject.toml via
 #                     uv, and the ocah-toolchain image carries neither.
 #

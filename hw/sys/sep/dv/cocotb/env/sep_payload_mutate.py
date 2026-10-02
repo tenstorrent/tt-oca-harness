@@ -600,7 +600,7 @@ def corrupt_ciphertext(buf: bytearray, slot: str, *, offset: int = 0) -> int:
 
 
 # ---------------------------------------------------------------------------
-# Structural TOC mutators used by the branch-only negative tests
+# Structural TOC mutators for the negative tests
 # ---------------------------------------------------------------------------
 OFF_PAYLOAD_HASHED_LEN = OFF_PAYLOAD_HASHED_LENGTH
 OFF_BOOT_PAYLOAD_OFFSET = OFF_PAYLOAD_OFFSET
@@ -1049,7 +1049,7 @@ def plaintext_diff(golden: bytes, buf: bytes, slot: str) -> list[range]:
     return out
 
 
-# TOC structural rules follow boot-manifest.adoc, not payload.c, to stay an independent oracle.
+# TOC structural rules follow the boot manifest specification, not the validator's parser.
 _U64_MAX = 0xFFFF_FFFF_FFFF_FFFF
 
 

@@ -2,9 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Host-side Key Manager (KM) mailbox command driver.
 
-Reproduces the SEP<->KM mailbox wire protocol that the real KM ROM firmware
-(`hw/ip/key_manager/approm/prod`, `rom_main`) implements, so a cocotb test can drive the
-KM directly: send CMD_KEY_GENERATE / CMD_KEY_TRANSFER framed messages and parse
+Implements the SEP<->KM mailbox wire protocol of the KM ROM firmware
+(`hw/ip/key_manager/approm/prod`, `rom_main`): sends framed commands and parses
 the responses.
 
 Frame format (32-bit words, little-endian on the wire):
@@ -15,8 +14,6 @@ Frame format (32-bit words, little-endian on the wire):
 The separator bit is applied to the LAST written word (write WRITE_SEPARATOR=1
 immediately before writing that word). A response is read word-by-word until the
 STATUS OUTBOUND_SEPARATOR bit marks the final word.
-
-All AXI accesses go through the SEP AXI agent via SepAxiAccessSeq.
 """
 
 from __future__ import annotations

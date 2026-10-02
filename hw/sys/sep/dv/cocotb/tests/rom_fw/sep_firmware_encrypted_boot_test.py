@@ -2,9 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Signed and encrypted OCA payload: RSA-3072, then AES-256-CBC.
 
-``sep_rom_oca_encrypted_boot_test`` writes CLASS_KEY itself; this test boots from the
-``sep_efuse_class_key.toml`` preload and asserts that it holds the packer's 32-byte
-encryption secret, so a drifted preload fails before the run.
+Boots from the ``sep_efuse_class_key.toml`` preload and checks that it holds the packer's
+32-byte encryption secret, so a drifted preload fails before the run.
 Needs ``+esrc_noise_force``: the ROM runs the real entropy chain before RSA and decryption.
 """
 
@@ -85,10 +84,8 @@ class sep_firmware_encrypted_boot_test(sep_rom_ot_secure_boot_test):
         key = image.field_int("CLASS_KEY")
         assert key == _EXPECTED_CLASS_KEY, (
             f"OTP CLASS_KEY is 0x{key:064x}, expected 0x{_EXPECTED_CLASS_KEY:064x} "
-            f"(= {_CLASS_KEY_HEX} in packing order) "
-            f"(configs/oca_encrypted_boot_test.yaml encryption_secret). The ROM "
-            f"derives its AES-256 key from this fuse, so a mismatch decrypts the "
-            f"payload to garbage and the run would fail for the wrong reason"
+            f"(= {_CLASS_KEY_HEX} in packing order). Make the preload's CLASS_KEY match "
+            f"encryption_secret in configs/oca_encrypted_boot_test.yaml"
         )
         self.logger.info("CHK-CLASS-KEY: OTP CLASS_KEY matches the packing key")
         return image

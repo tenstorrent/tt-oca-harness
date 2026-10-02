@@ -2,22 +2,15 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Bind either manifest slot to any ROM public-key slot 0-5, and re-sign it.
 
-The ROM binds a manifest's own modulus to the digest compiled in for the slot the
-manifest selects (``check_pubkey_hash``), so pointing a selector at slot N while
-leaving another key's modulus in place is refused at ``PUBK_HASH_MISMATCH`` --
-a different verdict from whatever the testcase meant to reach. Any manifest that
-must BOOT therefore needs three writes, not one: the selector, that slot's
-modulus, and a signature by that slot's private key.
+The ROM checks a manifest's modulus against the digest compiled in for the slot it
+selects (``check_pubkey_hash``), so a manifest that must boot needs three writes: the
+selector, that slot's modulus, and a signature by that slot's private key. Otherwise
+the ROM stops at ``PUBK_HASH_MISMATCH``.
 
-``sep_firmware_primary_rom_key_slot1_valid_test`` and
-``sep_key_revocation_bitmap_random_test`` share this binding path so one slot's
-handling cannot drift from the full six-slot case.
-
-The debug ROM generates its digest table from
-``bootrom/prod/tests/signing_keys/rsa_private_key.rom_key<N>.pem``. This helper
-uses those same keys and checks each modulus against the generated table under
-``build/`` or ``build_pio/`` before constructing stimulus. Release builds use
-externally provisioned public keys and do not run these test-key scenarios.
+Keys come from ``bootrom/prod/tests/signing_keys/rsa_private_key.rom_key<N>.pem``, the
+PEMs the debug ROM's digest table is generated from; each modulus is checked against
+that table under ``build/`` or ``build_pio/`` first. Release builds use externally
+provisioned keys, so these scenarios do not apply to them.
 """
 
 from __future__ import annotations
@@ -51,11 +44,10 @@ def slot_key_path(index: int) -> Path:
 
 
 def load_slot_key(index: int) -> Tuple[int, int, int, bytes]:
-    """``(n, e, d, modulus_bytes)`` for ROM slot ``index``, digest cross-checked.
+    """``(n, e, d, modulus_bytes)`` for ROM slot ``index``.
 
-    The cross-check is what makes a later ``PUBK_HASH_MISMATCH`` impossible to
-    blame on the stimulus: the PEM and the compiled-in table are proved to agree
-    before a single byte of the image moves.
+    Raises if the PEM modulus does not hash to the compiled-in digest, so a later
+    ``PUBK_HASH_MISMATCH`` cannot come from the stimulus.
     """
     pem = slot_key_path(index)
     n, e_pub, d = pm.load_rsa_private_key(pem)
@@ -74,27 +66,19 @@ def load_slot_key(index: int) -> Tuple[int, int, int, bytes]:
 def bind_manifest_to_rom_slot(buf: bytearray, slot: str, index: int) -> Dict[str, object]:
     """Make ``slot``'s manifest select, carry and be signed by ROM key ``index``.
 
-    Returns the measured facts a caller logs or asserts on: the encoded selector
-    read back from the image, whether the selector write changed the TBS, and the
-    slot's digest.
-
-    The payload is deliberately untouched, so ``payload_hash`` and the TOC digests
-    stay valid and are not recomputed. Nothing here can therefore repair a damaged
-    payload, and ``verify_sealed`` before the writes is what proves there was none.
+    Returns the selector read back, whether the TBS changed, and the slot's digest. The
+    payload is not touched, so ``payload_hash`` and the TOC digests stay valid. Pass a
+    fresh copy of the packed image: the checks below need the as-shipped bytes.
     """
     _check_index(index)
     base = mm.slot_base(slot)
     n, e_pub, d, modulus = load_slot_key(index)
 
-    # The shipped slot must be completely sealed BEFORE anything moves: magic,
-    # payload_hash, every TOC image digest, manifest_hash over the TBS and a dev0
-    # signature that verifies. Without this a pre-existing defect would surface
-    # later as a rejection the caller would read as its own result.
+    # Prove the shipped slot is fully sealed first, so a pre-existing defect cannot
+    # surface later as a rejection the caller reads as its own result.
     pm.verify_sealed(buf, slot)
-    # And OFF_PUBLIC_KEY must really address the modulus, which is what makes the
-    # write below land where this claims. Proved by reproducing the ROM's own
-    # comparison against the slot-0 digest on the AS-SHIPPED image; the caller
-    # therefore passes a fresh copy of the packed image, not an already-bound one.
+    # Prove OFF_PUBLIC_KEY addresses the modulus by repeating the ROM's slot-0 digest
+    # compare on the as-shipped image.
     mm.verify_public_key(buf, slot)
     # And the local signer must reproduce the packer's signature byte for byte,
     # or the signature written below is not a genuine one and the ROM's rejection
@@ -109,10 +93,8 @@ def bind_manifest_to_rom_slot(buf: bytearray, slot: str, index: int) -> Dict[str
     tbs_changed = tbs_before != tbs_after
 
     if tbs_changed:
-        # The writes landed inside the SIGNED region, which is the only reason the
-        # ROM will read this selector and this modulus. Measured through the
-        # shipped dev0 signature going stale rather than assumed: a signature that
-        # still verified would mean the bytes moved outside the TBS.
+        # The writes must land inside the signed region; a shipped dev0 signature that
+        # still verifies would mean they did not.
         dev0_n, dev0_e, _dev0_d = pm.load_rsa_private_key(pm.rom_signing_key(0))
         stale = bytes(buf[base + mm.OFF_SIGNATURE : base + mm.OFF_SIGNATURE + pm.RSA_KEY_BYTES])
         if pm.verify_pkcs1v15_sha256(tbs_after, stale, dev0_n, dev0_e):

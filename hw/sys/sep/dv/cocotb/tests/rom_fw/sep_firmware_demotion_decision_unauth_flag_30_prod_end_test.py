@@ -2,10 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """PROD_END with a signed OCA BL1 demotion request (valid and enabled) -> ignored, both locked.
 
-The primary plants BL1_VALID = 1, BL1_ENABLE = 1 and no BL2 request. Outside PROD_END this
-demotes BL1; at PROD_END the ROM prints ``DEMOTE: PROD_END lock`` instead of ``BL1_DEMOTE=``,
-locks both DEMOTE registers non-demoted, leaves FEAT_CTRL at the non-demoted profile and
-records no demotion in the boot PCR. Needs ``+esrc_noise_force``: PROD_END enforces secure boot.
+The ROM prints ``DEMOTE: PROD_END lock`` instead of ``BL1_DEMOTE=``, locks both DEMOTE
+registers non-demoted, leaves FEAT_CTRL at the non-demoted profile and records no demotion
+in the boot PCR. Needs ``+esrc_noise_force``: PROD_END enforces secure boot.
 """
 
 from __future__ import annotations

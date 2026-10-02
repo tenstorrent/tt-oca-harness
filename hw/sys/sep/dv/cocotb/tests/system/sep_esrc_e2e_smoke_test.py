@@ -2,31 +2,22 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP ESRC -> DRBG -> CSRNG -> EDN -> KM entropy alive smoke (PyUVM).
 
-Proves the real entropy datapath produces genbits that the Key Manager actually
-CONSUMES, with NO force on the DRBG/EDN -- only the permitted ESRC raw-noise force
-(+esrc_noise_force) that makes the ring oscillators alive under Verilator. Bring-up
-follows the required order via the reusable sep_esrc_bringup_seq API: select internal DRBG,
-configure ESRC (generators off), enable CSRNG, stage EDN commands, start the
-generators, wait for a seed, then enable EDN last.
+Proves the real entropy datapath produces genbits that the Key Manager consumes, with
+no force on the DRBG/EDN; only the ESRC raw-noise force (+esrc_noise_force) that makes
+the ring oscillators run under Verilator. Bring-up order, via sep_esrc_bringup_seq:
+select internal DRBG, configure ESRC with generators off, enable CSRNG, stage EDN
+commands, start the generators, wait for a seed, enable EDN.
 
-The KM only pulls from the EDN->KM stream when its own PicoRV32 requests entropy
-(km_drbg_sampler asserts TREADY on a CPU DATA read or an enabled prefetch -- never
-autonomously). After the TRNG reset and reinitialization sequence completes, this
-test releases the KM CPU and runs a tiny KM ROM image (km_rom_entropy.parhex,
-loaded via +km_rom_hex in crypto.toml) that disables the sampler read-timeout and
-issues a single blocking DRBG DATA read -- making the KM genuinely consume one
-genbits word (a real tvalid && tready handshake) and store it to KM SRAM word0.
+The KM pulls entropy only on a PicoRV32 DRBG DATA read or an enabled prefetch, so
+after TRNG reinitialization the test releases the KM CPU running km_rom_entropy.parhex
+(+km_rom_hex in crypto.toml), which disables the sampler read-timeout, does one
+blocking DRBG DATA read and stores the word to KM SRAM word0.
 
-This is a positive-evidence alive smoke (no vacuous pass): the force is proven to
-have taken (lane-0 DUT noise_i tracks the driven bit), a seed is accumulated, the
-CSRNG CTR_DRBG produces genbits, the KM consumes a word (post-mux tvalid && tready
-handshake) AND lands it in KM SRAM, and CSRNG/EDN err_code + recov_alert are zero.
-On top of the alive checks, the CHK1..CHK5 golden-vs-probe scoreboard
-(sep_drbg_scoreboard + sep_entropy_golden) runs bit-exact and STRICT: decorrelator
-SR -> BIW+SHA whitener -> 384b seed -> CTR_DRBG genbits -> EDN/KM beats, each stage
-the golden input to the next, every stage compared against its DUT probe. CHK5_pool
-scores mux endpoint [2] (AXIS2 == pool native EDN beats). The 0x1095 FIFO drain is
-not this smoke.
+Checks: the force takes (lane-0 noise_i tracks the driven bit), genbits are produced,
+the KM handshakes and stores one word, CSRNG/EDN err_code and recov_alert stay zero,
+and the strict CHK1..CHK5 scoreboard (sep_drbg_scoreboard + sep_entropy_golden)
+matches every stage bit-exact, including CHK5_pool on mux endpoint [2]. The EPOOL
+aperture (0x1095_0000) is not drained.
 """
 
 from __future__ import annotations
@@ -43,12 +34,9 @@ class sep_esrc_e2e_smoke_test(sep_base_test):
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu()
 
-        # Shared entropy bring-up: starts the STRICT CHK1..CHK5 scoreboard (report()
-        # fails on any stage mismatch; CHK2 actual data = AXI frontdoor FIFO_RDATA),
-        # drives the ESRC noise, and runs the config order through EDN-enable.
-        # CHK5_pool golden: the entropy FIFO already pulls mux endpoint [2] from
-        # reset, so this smoke also proves AXIS2==pool native routing. This smoke
-        # does not drain the 0x1095_0000 FIFO aperture.
+        # Starts the strict CHK1..CHK5 scoreboard (CHK2 data from AXI FIFO_RDATA),
+        # drives the ESRC noise and configures through EDN-enable. The entropy FIFO
+        # pulls mux endpoint [2] from reset, so CHK5_pool also proves AXIS2 routing.
         await self.bring_up_entropy(strict=True, score_sinks={"pool": "golden"})
 
         # Release the KM only after the initial TRNG reset/reinitialization. Its

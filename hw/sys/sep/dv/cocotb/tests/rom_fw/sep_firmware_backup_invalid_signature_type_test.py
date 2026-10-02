@@ -1,47 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Backup manifest declares an unsupported signature TYPE -> terminal.
+"""Backup manifest declares unsupported signature type 0; the ROM halts.
 
-The primary's ``manifest_identifier`` is corrupted to force failover, then the
-backup's ``signature_type`` is set to 0. The signature path accepts only
-``MANIFEST_SIG_TYPE_RSA_3072`` (1, ) and refuses anything else
-with ``PUBK_ALGO_UNSUPPORTED``.
-
-WHY 0, And why A Fixed value. The ROM's check is a single ``!=`` against RSA-3072, so
-every value in that set exercises the identical arm, and fixing it is what lets this
-testcase assert the exact ``PUBK_ALGO_UNSUPPORTED`` the ROM echoed rather than accepting
-any value at all -- the same reason
-``sep_firmware_backup_invalid_public_key_selection_test`` fixes its selection.
-
-THE ROM DOES VALIDATE TYPE SEPARATELY FROM VALUE, AND THIS TEST PROVES IT RATHER
-THAN ASSUMING IT. The type check is the FIRST arm of the signature path,
-ahead even of the ``PUBK_SEL=`` echo. So ``PUBK_SEL=``
-is forbidden below: the primary died at BAD_MAGIC before any crypto ran, so if the
-selector is echoed at all it can only be the backup's, which would mean the type
-check did not preempt key selection. That single forbid is what turns "the ROM
-rejected it" into "the ROM rejected it AT the type check".
-
-WHY THIS IS NOT THE SAME TESTCASE AS ``sep_firmware_backup_invalid_signature_test``.
-The two end at DIFFERENT codes, and that is the first discriminator. A
-``signature_type`` that disagrees with the declared crypto field sizes is refused
-structurally by ``oca_check_crypto_field_sizes()`` as
-``MANIFEST_ERR_SIG_TYPE_INVALID``; a bad signature VALUE survives the structural
-checks, reaches the verifier, and returns ``MANIFEST_ERR_SIG_FAILED``.
-
-The console carries the ordering evidence the code cannot. The structural refusal
-lands before ``plat_is_key_authorized()`` is called at all, so this run shows NO
-``PUBK_*`` token for the backup -- not even the algorithm arm, which is why
-``PUBK_ALGO_UNSUPPORTED`` is forbidden below rather than required -- and never
-reaches ``RSA_EXEC`` or ``RSA_PKCS1_FAIL``, which its sibling requires.
-
-``signature_type`` is one byte at manifest offset 165, INSIDE the signed region, so the
-helper re-hashes. It cannot be a signature-region patch: the field is covered by
-``manifest_hash``, so an un-rehashed write dies in the manifest loop as a hash
-mismatch and never reaches the type check at all. No re-sign is needed or possible
--- the type is rejected before ``rsa_3072_verify``, so
-the now-stale signature is never examined, and ``RSA_EXEC`` being
-forbidden is what checks that ordering instead of assuming it.
-
+The primary fails on magic. ``oca_check_crypto_field_sizes()`` refuses the backup with
+``MANIFEST_ERR_SIG_TYPE_INVALID`` before key selection, so no ``PUBK_*`` or RSA token appears.
+``signature_type`` is in the signed region, so the helper re-hashes; the stale signature is unread.
 No ``+esrc_noise_force``: OTBN is never driven on either slot.
 """
 
@@ -116,9 +79,7 @@ class sep_firmware_backup_invalid_signature_type_test(sep_backup_manifest_fail_b
             f"signature_type is 0x{got:02x} after the write, expected "
             f"0x{_BAD_SIG_TYPE:02x}; the mutation did not land"
         )
-        # The re-hash must have restored a valid signed region hash, or the backup is thrown
-        # out in the manifest loop as a hash mismatch and the type check -- the
-        # only thing this testcase is about -- never runs.
+        # A stale signed-region hash would refuse the backup before the type check runs.
         mm.verify_layout(buf, "backup")
         self.logger.info(
             "CHK-STIMULUS-SIGTYPE: backup signature_type %d (MANIFEST_SIG_TYPE_"

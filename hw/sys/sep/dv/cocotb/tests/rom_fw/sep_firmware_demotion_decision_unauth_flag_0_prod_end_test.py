@@ -1,10 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""PROD_END with signed OCA BL2 demotion requested -> ignored and locked.
+"""PROD_END with a signed OCA BL2 demotion request -> ignored, both registers locked.
 
-A ROM that consumes ``demotion_control`` before applying the lifecycle rule leaves
-DEMOTE_1 unlocked and records the BL2 decision in the boot measurement, which the
-base's ``BL0S_BOOT_PCR=`` check refuses.
+A ROM that reads ``demotion_control`` before the lifecycle rule leaves DEMOTE_1 unlocked and
+changes the ``BL0S_BOOT_PCR=`` measurement, which the base checks.
 """
 
 from __future__ import annotations

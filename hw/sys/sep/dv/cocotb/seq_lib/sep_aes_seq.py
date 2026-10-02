@@ -2,10 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """OpenTitan AES run-control driver (direct AXI on the SEP CPU-LSU bus).
 
-Configures the AES core for ECB-256 encryption, writes the key shares / data,
-triggers the masking-PRNG reseed, and runs one block. Direct AXI, like SepOtbn.
-All accesses are 32-bit beats (size=2): the AES register
-block is 32-bit behind the wrapper's 64->32 dw-converter.
+Programs CTRL_SHADOWED (ECB/CBC/CTR, 128/192/256-bit keys), writes key shares, IV and
+data, reseeds the masking PRNG and runs blocks over direct AXI. All accesses are 32-bit
+beats (size=2) because the AES register block sits behind the wrapper's 64->32
+data-width converter.
 
 AES register map (base from the generated SEP header; offsets from aes.adoc):
   KEY_SHARE0_0..7 @ 0x04..0x20   KEY_SHARE1_0..7 @ 0x24..0x40

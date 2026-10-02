@@ -1,17 +1,14 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
-// SEP entropy chain bring-up (ESRC -> DRBG/CSRNG -> EDN) for the boot ROM.
+// SEP entropy chain bring-up (ESRC -> CSRNG -> EDN) for the boot ROM.
 //
-// Several crypto blocks (OTBN and AES) the ROM drives do not work without it.
-// OTBN parks in its URND reseed state and never executes; the AES masking
-// PRNG never reports STATUS.IDLE. The ESRC module and whitening are enabled at
-// reset, but the crypto stream selects the external source and the downstream
-// chain is not configured. BL0 pulses the shared TRNG reset, selects the
-// internal source, and configures ESRC, CSRNG, and EDN before any crypto operation.
+// OTBN (parks in its URND reseed state) and the AES masking PRNG (never reports STATUS.IDLE)
+// need this chain. At reset ESRC and whitening are enabled, but the crypto stream selects the
+// external source and CSRNG/EDN are unconfigured, so BL0 pulses the shared TRNG reset, selects
+// the internal source, and configures ESRC, CSRNG and EDN before any crypto operation.
 //
-// Scope: the INTERNAL entropy source only. Selecting an external TRNG is a
-// stub here on purpose -- see sep_entropy_select_external_source().
+// Only the internal source is supported here; see sep_entropy_bringup_external().
 
 #pragma once
 

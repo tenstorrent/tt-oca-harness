@@ -74,11 +74,8 @@ class sep_firmware_demotion_decision_auth_flag_0_prod_end_test(sep_demotion_deci
         bit = (dc >> mm.DEMOTION_BITS["BL1_DEMOTION_ENABLE"]) & 1
         assert bit == 1, (
             f"primary demotion_control is 0x{dc:04x} with the BL1 demotion enable "
-            f"bit clear. This testcase's entire content is 'the manifest REQUESTS "
-            f"demotion and PROD_END refuses it', and the ROM never echoes this field "
-            f"on the PROD_END path, so a "
-            f"stimulus that failed to land would produce exactly the log a correct "
-            f"run produces"
+            f"bit clear. The ROM does not echo this field at PROD_END, so a missing "
+            f"stimulus would give the same log as a correct run"
         )
         sel_bit = (dc >> mm.DEMOTION_BITS["BL1_DEMOTION_VALID"]) & 1
         bl2 = ((dc >> mm.DEMOTION_BITS["BL2_DEMOTION_VALID"]) & 1) & (

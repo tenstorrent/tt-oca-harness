@@ -35,9 +35,8 @@ _NO_ROOM_TOKEN = f"PAYLOAD_NO_ROOM=0x{WINDOW_SIZE:08x}"
 
 _OTHER_TOKENS = tuple(t for t in td.OTHER_PAYLOAD_TOKENS if t != "PAYLOAD_NO_ROOM=")
 assert len(_OTHER_TOKENS) == len(td.OTHER_PAYLOAD_TOKENS) - 1, (
-    "'PAYLOAD_NO_ROOM=' is no longer in sep_toc_defect.OTHER_PAYLOAD_TOKENS, so "
-    "this arm's token would be neither required by this row nor forbidden by its "
-    "neighbours; the swap-test defence has silently lapsed"
+    "'PAYLOAD_NO_ROOM=' is missing from sep_toc_defect.OTHER_PAYLOAD_TOKENS; add it "
+    "back so the other payload rows forbid this row's refusal token"
 )
 _OTHER_SMC_REFUSALS = tuple(t for t in ues.SMC_REFUSALS if t != "PAYLOAD_NO_ROOM=")
 _LOCATION_TOKENS = ("PAYLOAD_LOC_OT_OOB", "PAYLOAD_LOC_SMC_OOB",
@@ -93,8 +92,7 @@ class sep_firmware_payload_incorrect_smc_test(sep_primary_fail_backup_boot_base)
 
         assert declared > WINDOW_SIZE, (
             f"declared {declared} does not exceed the {WINDOW_SIZE}-byte window, so "
-            f"the ROM would STAGE it and this row would prove the opposite of its "
-            f"name"
+            f"the ROM would stage it; raise _EXCESS_KIB_MIN above 0"
         )
         assert declared <= capacity, (
             f"declared {declared} exceeds the {capacity}-byte SEP SRAM capacity at "

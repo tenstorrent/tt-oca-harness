@@ -203,27 +203,18 @@ int rsa_3072_verify(const uint8_t *digest, const uint8_t *signature, const uint8
         return -1;
     }
 
-    // 8. Verify PKCS#1 v1.5 padding and digest match.
-    //
-    // This comparison decides the whole chain of trust: the modexp result can
-    // only be forged by a fault that reproduces a valid PKCS#1 structure, but a
-    // fault on the comparison turns any signature into a pass. So it is
-    // evaluated twice over an independent DMEM read, over laundered operands so
-    // the two evaluations cannot be merged, and rejects on disagreement.
+    // 8. Verify PKCS#1 v1.5 padding and digest match. A fault on this comparison accepts any
+    //    signature, so it runs twice over independent DMEM reads and laundered operands.
     const uint32_t cmp1 = verify_pkcs1_v15(rp, digest, PKCS1_PASS_TOKEN_A);
     simputs("RSA_CMP1\n");
 
     otbn_dmem_read(DMEM_INOUT_OFFSET, harden_ptr(rp), RSA_3072_NUM_WORDS);
-    const uint32_t cmp2 = verify_pkcs1_v15(harden_ptr(rp), harden_ptr(digest),
-                                           PKCS1_PASS_TOKEN_B);
+    const uint32_t cmp2 = verify_pkcs1_v15(harden_ptr(rp), harden_ptr(digest), PKCS1_PASS_TOKEN_B);
     simputs("RSA_CMP2\n");
 
-    // Both must pass, and the accept value is a constant neither a cleared
-    // register nor a skipped instruction can synthesise. The branch is still
-    // single, so this changes what a fault must achieve -- not how many are
-    // needed. Any other value, including all-zero, falls through to reject.
-    if ((harden_u32(cmp1) ^ harden_u32(cmp2)) !=
-        (PKCS1_PASS_TOKEN_A ^ PKCS1_PASS_TOKEN_B)) {
+    // Both passes must return their tokens; any other value, including zero, rejects. A single
+    // branch remains, so this raises what one fault must achieve, not how many are needed.
+    if ((harden_u32(cmp1) ^ harden_u32(cmp2)) != (PKCS1_PASS_TOKEN_A ^ PKCS1_PASS_TOKEN_B)) {
         simputs("RSA_PKCS1_FAIL\n");
         return -1;
     }

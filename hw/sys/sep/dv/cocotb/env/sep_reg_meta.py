@@ -2,31 +2,17 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Register metadata accessor over the generated SystemRDL Python header.
 
-Tests and sequences must NOT keep their own copies of register offsets, reset
-values, or field masks: expected values are source-derived, never hardcoded
-literals. ``hw/sys/sep/regs/gen/py/sep_reg.py`` is the authoritative
-machine-readable export of ``hw/sys/sep/regs/**/*.rdl``, so this module wraps it
-and hands out three things per register:
+Wraps ``hw/sys/sep/regs/gen/py/sep_reg.py`` so tests take offsets, resets and field
+masks from the RDL instead of hardcoded literals. Per register it returns:
 
-* ``offset`` / ``addr`` — from ``<BLOCK>_<REG>_REG_OFFSET`` / ``_REG_ADDR``
-* ``reset``  — from ``<BLOCK>_<REG>_REG_DEFAULT``
-* ``mask``   — the union of the register's implemented field bits, probed from
-  the generated ctypes bitfield struct. Probing (rather than summing widths)
-  keeps the mask correct for registers whose fields are not bit-0-contiguous.
+* ``offset`` / ``addr`` -- from ``<BLOCK>_<REG>_REG_OFFSET`` / ``_REG_ADDR``
+* ``reset``  -- from ``<BLOCK>_<REG>_REG_DEFAULT``
+* ``mask()``     -- software-usable field bits; RDL ``reserved`` fields excluded
+* ``mask_all()`` -- every field bit, reserved included: the storage mask
 
-The mask matters because a write/readback check must compare against
-``pattern & mask``: RDL placeholder registers (``TIMEOUT_COUNT``,
-``TIMEOUT_ENABLE``, ``CLOCK_GATE_CTRL``, …) carry a single implemented bit, so a
-32-bit pattern reads back as just that bit.
-
-Two masks:
-  ``mask()``     — software-usable fields only; RDL ``reserved`` fields excluded.
-  ``mask_all()`` — every field bit, reserved included: the STORAGE mask.
-They differ wherever a placeholder field is declared ``sw=rw`` yet named
-``reserved`` (``TIMEOUT_COUNT``/``TIMEOUT_ENABLE``, sep_cpu_ctrl.rdl): real
-read/write storage that software must not treat as an implemented field. Use
-``mask()`` to ask "what may software use", ``mask_all()`` to ask "did the write
-reach storage" — a write/readback check wants the latter.
+Masks are probed from the generated ctypes bitfield struct, so non-contiguous fields
+are correct. The two masks differ where a ``sw=rw`` field is named ``reserved``
+(``TIMEOUT_COUNT``, ``TIMEOUT_ENABLE``); a write/readback check wants ``mask_all()``.
 
 Usage:
     from sep_reg_meta import SEP_CPU_CTRL as CPU_CTRL
@@ -239,14 +225,10 @@ class RegBlock:
         return bin(mask).count("1")
 
     def mask_all(self, name: str) -> int:
-        """Union of EVERY field bit, reserved included -- the storage mask.
+        """Union of every field bit, reserved included: the storage mask.
 
-        Distinct from mask(), which reports only software-usable fields. Use this
-        when the question is "did the write reach storage", not "what may software
-        use". TIMEOUT_COUNT is the case that forces the distinction: its lone
-        field is declared `sw=rw; hw=r` yet named `reserved`
-        (sep_cpu_ctrl.rdl), so it is real read/write storage that mask()
-        must not count as implemented but a storage proof still can.
+        Use it to ask "did the write reach storage"; mask() answers "what may software
+        use". They differ where a `sw=rw` field is named `reserved` (TIMEOUT_COUNT).
         """
         struct = self._sym(name, "reg_t", alias_ok=True)
         union = getattr(sep_reg, struct.__name__.replace("_reg_t", "_reg_u"))

@@ -179,10 +179,8 @@ BOOTCODE_DIR  := $(OCAH_ROOT)/hw/sys/sep/bootrom/prod
 # checked-in bootrom header is the table the boot ROM itself compiles against.
 # Changing this value triggers a clean reconfigure (see the config stamp below).
 STATUS_VALUES_PATH ?= $(BOOTCODE_DIR)/include/status_values.h
-# The SEP VP models the OpenTitan SPI host only: the open SEP fits no
-# memory-mapped (XIP) flash controller, so none is modeled. VP boot therefore
-# builds the bootrom's default OpenTitan controller profile (toolchain-images ->
-# build/), never a BOOT_SPI_CONTROLLER_OT=0 build.
+# The SEP VP models only the OpenTitan SPI host (no XIP flash controller), so it
+# boots the bootrom's default BOOT_SPI_CONTROLLER_OT=1 build in build/.
 BOOT_OT_BUILD_DIR := build
 BOOT_ELF          := $(BOOTCODE_DIR)/$(BOOT_OT_BUILD_DIR)/boot_rom.elf
 # Pass-through args: `make boot-run BOOT_ARGS="--boot primary --until SEP_MSG_PRIMARY_CHIPLET"`
@@ -1003,16 +1001,13 @@ vp-py-deps:
 	@echo "[VP] Syncing harness Python deps (uv sync --inexact --group vp)..."
 	cd $(OCAH_ROOT) && $(UV) sync --inexact --group vp
 
-# The bootrom's toolchain-images target builds the default OpenTitan profile;
-# it does NOT run oca-images (which needs uv + the tt-oca-manifest
-# submodule — the ELF the VP boots does not).
+# toolchain-images builds only the ELF the VP boots; oca-images also needs uv and the
+# tt-oca-manifest submodule.
 #
-# It is not wrapped in fw_make. The bootrom runs key-digests on the host and
-# dispatches only the compile into the toolchain sandbox itself, and a sandbox
-# has no engine to dispatch to again. The bootrom builds natively only when
-# RISCV_TOOLCHAIN names a bin dir, so a picolibc toolchain found on PATH is
-# passed that way; otherwise RISCV_TOOLCHAIN is cleared so that a prefix given
-# to this Makefile does not reach the bootrom, which reads it as a bin dir.
+# Not wrapped in fw_make: the bootrom runs key-digests on the host and dispatches its own
+# compile into the toolchain sandbox, which cannot dispatch again. The bootrom reads
+# RISCV_TOOLCHAIN as a bin dir, so pass the picolibc toolchain's bin dir when PATH has
+# one, and otherwise clear it so this Makefile's prefix value does not reach the bootrom.
 ## Build the SEP boot ROM, OpenTitan SPI variant (-> build/boot_rom.elf).
 boot-build:
 	@echo "[VP] Building the SEP boot ROM, OpenTitan SPI variant..."

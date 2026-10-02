@@ -2,9 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """An OCA payload one KiB past fixed SEP-SRAM staging is refused; the backup boots.
 
-The size is derived from the generated SEP SRAM map and the OCA body size. That
-payload also ends past the slot window, so the ROM must report
-``OCA_FAIL_PAYLOAD_LOCATION`` before fetching the primary payload.
+The payload also ends past the slot window, so the ROM must report
+``OCA_FAIL_PAYLOAD_LOCATION`` before it fetches the primary payload.
 """
 
 from __future__ import annotations

@@ -2,31 +2,28 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP dual-CPU eFuse AXI-lite mux coexistence test (PyUVM).
 
-Two REAL CPUs contend at the SEP eFuse AXI-lite mux ``u_km_efuse_axi_lite_mux``:
+Two CPUs contend at the SEP eFuse AXI-lite mux ``u_km_efuse_axi_lite_mux``:
 
-  * the VeeR EL2 host boots ``km_efuse_coexist`` firmware: it senses CHIPLET_UID,
-    releases the Key Manager (KM) from warm reset, handshakes with it over the
-    KM<->SEP mailbox, then loops host CHIPLET_UID reads (integrity) plus KM-owned
-    MMR reads (tag/ordering/monotonicity) while the KM contends; and
-  * the KM PicoRV32 boots ``km_rom_coexist`` (the ``+km_rom_hex`` image) and
-    free-runs eFuse MMR writes through the same mux.
+  * the VeeR EL2 host boots ``km_efuse_coexist``: it senses CHIPLET_UID, releases
+    the Key Manager (KM) from warm reset, handshakes over the KM<->SEP mailbox,
+    then loops host CHIPLET_UID reads (integrity) and KM-owned MMR reads
+    (tag/ordering/monotonicity) while the KM contends; and
+  * the KM PicoRV32 boots ``km_rom_coexist`` (``+km_rom_hex``) and free-runs
+    eFuse MMR writes through the same mux.
 
 Two independent verdicts are required:
-  1. the EL2 firmware self-check (``fw_pass`` via the PASS/FAIL magic + banner,
-     gated by ``SepBootScoreboard``); and
-  2. an independent passive observer that backdoor-reads the SEP scratch-cold
-     registers (the EL2 publishes its measured summary there). The scratch words
-     are surfaced as the tb_top probe
-     ``scratch_cold_probe_o`` (cocotb runs no AXI master while the EL2 owns the
-     LSU bus). Plus the base test's automatic post-sense shadow compare proves the
-     sensed CHIPLET_UID actually equals the staged image (0xDEADBEEF).
+  1. the EL2 firmware self-check (PASS/FAIL magic + banner, gated by
+     ``SepBootScoreboard``); and
+  2. a read-only observer of the summary the EL2 publishes in the SEP scratch-cold
+     registers, read through the tb_top ``scratch_cold_probe_o`` because cocotb
+     runs no AXI master while the EL2 owns the LSU bus.
+The base test's post-sense shadow compare also proves the sensed CHIPLET_UID
+equals the staged image.
 
-Delta vs the reference suite: its observer deposits a UVM_DONE marker to release a
-waiting host loop; cocotb cannot deposit an internal register without a force
-port, so here the host loop is a FIXED contended window and the observer is
-read-only. Mutual non-starvation is proven by the host completing all
-CONTENDED_LOOPS (final COUNT) AND the KM making progress (CHANGES > 0) in the same
-window.
+cocotb cannot deposit an internal register without a force port, so the host loop
+is a fixed contended window. Non-starvation is proven by the host completing all
+CONTENDED_LOOPS (COUNT) while the KM makes at least CONTENDED_LOOPS/2 payload
+changes (CHANGES) in the same window.
 """
 
 from __future__ import annotations

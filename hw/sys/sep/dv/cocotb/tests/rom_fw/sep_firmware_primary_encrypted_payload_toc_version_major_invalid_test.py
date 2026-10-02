@@ -2,8 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Primary's ENCRYPTED TOC declares major_version 2; the backup boots.
 
-The spec rejects a TOC major version above 1, but neither the library nor the ROM
-compares the field, so the DUT accepts the slot and this row fails.
+The spec rejects a TOC major version above 1, but neither the library nor the ROM compares
+the field, so the DUT accepts the slot and this test fails.
 Needs ``+esrc_noise_force``: two RSA-3072 modexps and AES decryptions.
 """
 

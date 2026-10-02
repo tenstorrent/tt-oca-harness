@@ -1990,7 +1990,6 @@ args = [
 
 [[tests]]
 # Primary encrypted TOC major_version 2 must be refused with OCA_FAIL_PAYLOAD_TOC; the backup boots.
-# Known failure; the expectation follows the spec.
 name = "sep_firmware_primary_encrypted_payload_toc_version_major_invalid_test"
 module = "rom_fw.sep_firmware_primary_encrypted_payload_toc_version_major_invalid_test"
 target = "rom_boot"
@@ -2010,7 +2009,6 @@ args = [
 
 [[tests]]
 # Backup encrypted TOC major_version 2 must be refused with OCA_FAIL_PAYLOAD_TOC; the primary is refused on its magic word. Terminal.
-# Known failure; the expectation follows the spec.
 name = "sep_firmware_backup_encrypted_payload_toc_version_major_invalid_test"
 module = "rom_fw.sep_firmware_backup_encrypted_payload_toc_version_major_invalid_test"
 target = "rom_boot"
@@ -2030,7 +2028,6 @@ args = [
 
 [[tests]]
 # Primary plaintext TOC major_version 2 must be refused with OCA_FAIL_PAYLOAD_TOC; the backup boots.
-# Known failure; the expectation follows the spec.
 name = "sep_firmware_primary_non_encrypted_payload_toc_version_major_invalid_test"
 module = "rom_fw.sep_firmware_primary_non_encrypted_payload_toc_version_major_invalid_test"
 target = "rom_boot"
@@ -2050,7 +2047,6 @@ args = [
 
 [[tests]]
 # Backup plaintext TOC major_version 2 must be refused with OCA_FAIL_PAYLOAD_TOC; the primary is refused on its magic word. Terminal.
-# Known failure; the expectation follows the spec.
 name = "sep_firmware_backup_non_encrypted_payload_toc_version_major_invalid_test"
 module = "rom_fw.sep_firmware_backup_non_encrypted_payload_toc_version_major_invalid_test"
 target = "rom_boot"
@@ -2359,7 +2355,6 @@ args = [
 
 [[tests]]
 # Primary encrypted TOC entry 0 starts inside the TOC and must be refused with OCA_FAIL_PAYLOAD_TOC; the backup boots.
-# Known failure; the expectation follows the spec.
 name = "sep_firmware_primary_encrypted_payload_image_exceeds_bound_test"
 module = "rom_fw.sep_firmware_primary_encrypted_payload_image_exceeds_bound_test"
 target = "rom_boot"
@@ -2379,7 +2374,6 @@ args = [
 
 [[tests]]
 # Backup encrypted TOC entry 0 starts inside the TOC and must be refused with OCA_FAIL_PAYLOAD_TOC; the primary is refused on its magic word. Terminal.
-# Known failure; the expectation follows the spec.
 name = "sep_firmware_backup_encrypted_payload_image_exceeds_bound_test"
 module = "rom_fw.sep_firmware_backup_encrypted_payload_image_exceeds_bound_test"
 target = "rom_boot"
@@ -2399,7 +2393,6 @@ args = [
 
 [[tests]]
 # Primary plaintext TOC entry 0 starts inside the TOC and must be refused with OCA_FAIL_PAYLOAD_TOC; the backup boots.
-# Known failure; the expectation follows the spec.
 name = "sep_firmware_primary_non_encrypted_payload_image_exceeds_bound_test"
 module = "rom_fw.sep_firmware_primary_non_encrypted_payload_image_exceeds_bound_test"
 target = "rom_boot"
@@ -2419,7 +2412,6 @@ args = [
 
 [[tests]]
 # Backup plaintext TOC entry 0 starts inside the TOC and must be refused with OCA_FAIL_PAYLOAD_TOC; the primary is refused on its magic word. Terminal.
-# Known failure; the expectation follows the spec.
 name = "sep_firmware_backup_non_encrypted_payload_image_exceeds_bound_test"
 module = "rom_fw.sep_firmware_backup_non_encrypted_payload_image_exceeds_bound_test"
 target = "rom_boot"
@@ -2439,7 +2431,6 @@ args = [
 
 [[tests]]
 # Primary encrypted TOC payload_length 0x2000 disagrees with the manifest and must be refused with OCA_FAIL_PAYLOAD_TOC; the backup boots.
-# Known failure; the expectation follows the spec.
 name = "sep_firmware_primary_encrypted_toc_payload_size_mismatch_test"
 module = "rom_fw.sep_firmware_primary_encrypted_toc_payload_size_mismatch_test"
 target = "rom_boot"
@@ -2459,7 +2450,6 @@ args = [
 
 [[tests]]
 # Backup encrypted TOC payload_length 0x2000 disagrees with the manifest and must be refused with OCA_FAIL_PAYLOAD_TOC; the primary is refused on its magic word. Terminal.
-# Known failure; the expectation follows the spec.
 name = "sep_firmware_backup_encrypted_toc_payload_size_mismatch_test"
 module = "rom_fw.sep_firmware_backup_encrypted_toc_payload_size_mismatch_test"
 target = "rom_boot"

@@ -1,24 +1,22 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""ESRC -> DRBG -> CSRNG -> EDN entropy bring-up sequences + reusable helpers.
+"""ESRC -> DRBG -> CSRNG -> EDN entropy bring-up sequences and register helpers.
 
-Real-entropy bring-up order.
 PHASE-A applies the shared TRNG reset, configures ESRC with the generators off,
-enables CSRNG, and stages the EDN commands but does NOT enable EDN; the caller then
+enables CSRNG and stages the EDN commands without enabling EDN. The caller then
 enables the generators and waits for a seed; PHASE-B enables EDN last. CSRNG/EDN
-registers sit behind a 64-bit lane adapter -- a 4-byte write at the register's
-byte address lands on the correct lane automatically.
+registers sit behind a 64-bit lane adapter, so a 4-byte write at the register's
+byte address lands on the correct lane.
 
-Reusable across every entropy-consumer test (KM/AES/KMAC/OTBN). The canonical
-flow is:
+Typical flow from a test:
 
-    await self.start_seq(SepEsrcConfigSeq(...))         # PHASE-A (parameterized)
-    await self.start_seq(SepEsrcEnableGeneratorsSeq())  # start ring-osc generators
-    assert await wait_seed_ready(self)
+    await self.start_seq(SepEsrcConfigSeq(...))         # PHASE-A
+    await self.start_seq(SepEsrcEnableGeneratorsSeq())
+    assert await self.wait_seed_ready()
     await self.start_seq(SepEsrcEnableEdnSeq())          # PHASE-B
-    assert await wait_genbits(self)
-    assert await wait_km_handshake(self)
-    await check_alerts_zero(self)
+    assert await self.wait_genbits()
+    assert await self.wait_km_entropy_handshake()
+    await self.check_entropy_alerts_zero()
 """
 
 from __future__ import annotations
@@ -347,14 +345,11 @@ class SepEsrcEnableEdnSeq(uvm_sequence):
 
 
 class SepEsrcFifoDrainSeq(uvm_sequence):
-    """Drain the entropy FIFO via the AXI frontdoor (FIFO_RDATA), collecting every
-    word into ``self.words`` in pop (= push) order for the CHK2 compare.
+    """Drain the entropy FIFO through FIFO_RDATA into ``self.words`` in pop order.
 
-    This is the CHK2 observation point: FIFO_RDATA is the ONLY thing
-    that pops the FIFO, and the DRBG seed taps the pre-FIFO whitener output, so the
-    frontdoor read is non-invasive to the CHK3..CHK5 chain AND reflects any FIFO
-    churn the backdoor wire-tap would miss. Reads exactly FIFO_STATUS.LEVEL words so
-    it never underflows."""
+    FIFO_RDATA is the only FIFO pop, and the DRBG seed taps the whitener before the
+    FIFO, so the drain does not disturb CHK3..CHK5. Reads FIFO_STATUS.LEVEL words,
+    so it never underflows."""
 
     def __init__(self, name: str = "esrc_fifo_drain", *, max_words: int = 128) -> None:
         super().__init__(name)

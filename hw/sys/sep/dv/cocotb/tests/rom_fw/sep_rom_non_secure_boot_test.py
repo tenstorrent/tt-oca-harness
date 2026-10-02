@@ -2,19 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP ROM non-secure boot test (PyUVM) -- real Boot ROM, SMC-SRAM manifest.
 
-Boots the VeeR EL2 core from the REAL production Boot ROM
-(`hw/sys/sep/bootrom/prod`) at ROM_BASE. The test does not set
-`+sep_boot_from_spi`, so the ROM never brings up the SPI host and takes
-its non-SPI (SMC-SRAM) manifest path. The manifest + BL1 payload are provided by
-a behavioral SMC responder in the testbench; BL1 signals PASS on the mailbox.
-
-Boot images (built by hw/sys/sep/bootrom/prod/Makefile):
-  boot_rom.vmem      -> Boot ROM responder (+sep_boot_rom_hex), 64-bit words
-  boot_rom.dtcm.hex  -> DCCM (.rodata/.data/.bss), backdoor-loaded to the TCM
-                        responder (ROM .text executes from the ROM responder).
-
-The CPU reset vector points at ROM_BASE (0x10040000), so the core fetches and
-runs the real ROM -- not a backdoored payload.
+The core resets to ``SEP_BOOT_ROM_MEM_BASE_ADDR`` and runs the production Boot ROM from
+``boot_rom.vmem`` (``+sep_boot_rom_hex``). Without ``+sep_boot_from_spi`` the ROM takes
+its SMC-SRAM manifest path; a behavioral SMC responder supplies the manifest and BL1
+payload, and BL1 reports its verdict in ``cold_scratch[0]``.
 """
 
 from __future__ import annotations

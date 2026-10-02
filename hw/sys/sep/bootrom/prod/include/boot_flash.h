@@ -2,14 +2,10 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * Boot flash transport shim.
- *
- * The manifest loader reads the manifest and payload from flash without caring
- * which SPI controller is fitted. This header selects the controller at build
- * time (BOOT_SPI_CONTROLLER_OT) and presents one small interface in flash-offset
- * terms:
- *   - OpenTitan SPI host (default): no memory-mapped window; a read is a
- *     command/FIFO transfer that streams into SRAM.
+ * Boot flash transport shim: one flash-offset read interface over the SPI controller
+ * that BOOT_SPI_CONTROLLER_OT selects at build time.
+ *   - OpenTitan SPI host (default): no memory-mapped window; a read is a command/FIFO
+ *     transfer into SRAM.
  *   - XIP controller: flash is memory-mapped; a read is a DMA copy from
  *     SEP_SPI_BASE + offset.
  *

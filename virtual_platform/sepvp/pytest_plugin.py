@@ -189,13 +189,11 @@ def build_type(request):
 
 @pytest.fixture(scope="session")
 def bootcode_elf(request):
-    """Build (unless --no-build) and return the OpenTitan boot ROM (build/boot_rom.elf).
+    """Build (unless --no-build) and return build/boot_rom.elf, the OpenTitan SPI host build.
 
-    The SEP VP models the OpenTitan SPI host only, so all VP bootcode tests use the
-    OpenTitan controller build (the bootrom Makefile's toolchain-images target);
-    a BOOT_SPI_CONTROLLER_OT=0 build is not runnable on the VP (its flash controller
-    is not modeled). toolchain-images is used instead of `all` because oca-images
-    needs uv + the tt-oca-manifest submodule, which the ELF does not."""
+    The VP models no XIP flash controller, so a BOOT_SPI_CONTROLLER_OT=0 build cannot run
+    on it. toolchain-images builds the ELF without oca-images, which needs uv and the
+    tt-oca-manifest submodule."""
     if request.config.getoption("build"):
         # container_ok=False because the bootrom Makefile splits the work itself:
         # key-digests reads PEMs with cryptography on the host, then it dispatches

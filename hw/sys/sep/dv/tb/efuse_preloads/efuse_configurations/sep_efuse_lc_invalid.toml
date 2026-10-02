@@ -1,18 +1,12 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 # Invalid lifecycle state, everything else at zero.
 #
-# lc_state_is_valid() (bootrom/prod/src/lifecycle.c) accepts raw 0x0..0x8:
-# TEST_DEV, PROD, RMA_SiP (0x2-0x3), RMA_CHIPLET (0x4-0x7), PROD_END. Raw 0x9 is
-# the first code outside that set, so it is the cheapest stimulus for the
-# invalid-LC arm and the one furthest from an accidental near-miss on PROD_END.
-#
-# The field is {~raw, raw} in 8 bits, as the sibling preloads show (0xE1 -> raw
-# 0x1 PROD, 0x78 -> raw 0x8 PROD_END). 0x69 is therefore raw 0x9, well-formed so
-# the RTL's diff decode passes it through rather than failing on the encoding --
-# the ROM's own validity check is what has to reject it.
-#
-# Used by sep_lifecycle_invalid_smc_reset_test. This arm is terminal: the ROM
-# refuses to boot, so nothing downstream of the LC check runs and no other fuse
-# in this file matters.
+# The field is {~raw, raw}; 0x69 is raw 0x9, well-formed so the RTL's diff decode passes
+# it through and lc_state_is_valid() (bootrom/prod/src/lifecycle.c) must reject it.
+# Used by sep_lifecycle_invalid_smc_reset_test. The ROM refuses to boot, so no other
+# fuse in this file matters.
 
 [LC_STATE]
   [LC_STATE.fields.lc_state]

@@ -6,16 +6,12 @@ SHELL := /usr/bin/env
 #
 # SEP Boot ROM.
 #
-# Flash is reached over the OpenTitan SPI host (src/sep_ot_spi.c) by default,
-# with secure-DMA RX draining. BOOT_SPI_CONTROLLER_OT=0 instead reads
-# memory-mapped flash through the XIP window; its controller driver is supplied
-# by an integrator, and the open src/sep_spi.c reports the controller absent.
+# Flash is read through the OpenTitan SPI host (src/sep_ot_spi.c) by default.
+# BOOT_SPI_CONTROLLER_OT=0 selects memory-mapped flash through the XIP window, whose
+# controller driver an integrator supplies; the open src/sep_spi.c reports it absent.
 #
-# The manifest+BL1 images the ROM boots are built entirely from source in this
-# tree: bl1_pass_test (<sep>/dv/fw/tests/bl1_pass_test) is compiled and packed by
-# the real tt-oca-manifest packer from the tools/tt-oca-manifest submodule,
-# using the configs/oca_*.yaml pairs -- see OCA_IMAGES below. The SMC-SRAM path
-# takes build/oca_smc_mem.hex, the same image rebased to the SMC-SRAM base.
+# The boot images are built from source: bl1_pass_test is packed by the
+# tools/tt-oca-manifest submodule from the configs/oca_*.yaml pairs (OCA_IMAGES).
 #
 # Read-only sections (.text/.metadata/.rodata) link into Boot ROM and are loaded
 # through +sep_boot_rom_hex. Writable sections (.data/.bss) link into DCCM and
@@ -103,10 +99,9 @@ ifeq ($(filter $(BUILD_TYPE),debug release),)
 $(error Invalid BUILD_TYPE: $(BUILD_TYPE). Use 'debug' or 'release')
 endif
 
-# Flash transport: 1 = OpenTitan SPI host (default, command/FIFO transfers),
-# 0 = memory-mapped flash through the XIP window, controller init supplied by an
-# override of the src/sep_spi.c hooks. The unused driver is dropped by
-# --gc-sections at link time.
+# Flash transport: 1 = OpenTitan SPI host (default), 0 = memory-mapped flash through
+# the XIP window, with controller init from an override of the src/sep_spi.c hooks.
+# --gc-sections drops the unused driver.
 BOOT_SPI_CONTROLLER_OT ?= 1
 # OpenTitan RX-FIFO drain method (used only when BOOT_SPI_CONTROLLER_OT=1):
 # 0 = secure DMA (default), 1 = CPU programmed I/O.
@@ -230,10 +225,9 @@ OBJS += $(OCA_LIB_OBJS)
 OTBN_APP_DIR := $(DV_ROOT)/fw/build/otbn/rsa_3072_app
 OTBN_APP_C   := $(OTBN_APP_DIR)/rsa_3072_app_otbn.c
 
-# Optional extra sources injected by an adopter overlay build (absolute .c paths).
-# Their strong symbols override the weak stubs in src/ at link time, such as the
-# external flash controller hooks in src/sep_spi.c, or ot_spi_select_pad_mux()
-# for a wrapper whose SPI pads are shared.
+# Optional absolute .c paths from an adopter overlay build. Their strong symbols
+# override the weak stubs in src/, such as the external flash controller hooks in
+# src/sep_spi.c or ot_spi_select_pad_mux() for a wrapper with shared SPI pads.
 SEP_FW_OVERLAY_SOURCES := $(OCAH_FW_OVERLAY_SOURCES_sep)
 SEP_FW_OVERLAY_OBJS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(notdir $(SEP_FW_OVERLAY_SOURCES)))
 OBJS += $(SEP_FW_OVERLAY_OBJS)

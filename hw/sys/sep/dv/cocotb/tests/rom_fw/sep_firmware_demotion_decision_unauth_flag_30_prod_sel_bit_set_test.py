@@ -104,10 +104,8 @@ class sep_firmware_demotion_bl1_disable_secure_prod_test(
         )
         assert sigtype == mm.SIG_TYPE_RSA_3072, (
             f"primary signature_type is {sigtype}, expected "
-            f"{mm.SIG_TYPE_RSA_3072}: this row's primary must stay genuinely signed, "
-            f"because PROD enforces secure boot and an unsigned slot would be refused "
-            f"and the boot would come from the backup, which carries no demotion "
-            f"stimulus"
+            f"{mm.SIG_TYPE_RSA_3072}: PROD refuses an unsigned primary and boots the "
+            f"backup, which carries no demotion stimulus"
         )
         assert lcs == LC_STATES_PROD_ONLY, (
             f"primary life_cycle_states is 0x{lcs:08x}, expected "

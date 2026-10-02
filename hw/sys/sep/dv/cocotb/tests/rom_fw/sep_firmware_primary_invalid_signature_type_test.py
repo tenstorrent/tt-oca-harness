@@ -2,63 +2,21 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Primary manifest declares an unsupported signature TYPE; the backup boots.
 
-The PRIMARY's ``signature_type`` is set to 0. Only
-``MANIFEST_SIG_TYPE_RSA_3072`` (1) agrees with the declared crypto field sizes, so
-``oca_check_crypto_field_sizes()`` refuses the slot structurally -- before
-``plat_is_key_authorized()`` runs -- returning ``MANIFEST_ERR_SIG_TYPE_INVALID``
-with no ``PUBK_*`` token printed for the primary at all.
+The primary's ``signature_type`` is set to 0. Only RSA-3072 (1) agrees with the declared crypto
+field sizes, so ``oca_check_crypto_field_sizes()`` refuses the slot with
+``OCA_FAIL_CRYPTO_FIELD_SIZE`` before ``plat_is_key_authorized()`` runs, and the primary prints
+no ``PUBK_*`` token. The primary keeps its complete, stale dev0 signature, so the refusal rests
+on the declared type alone. The check is a single ``!=`` against RSA-3072, so one fixed value
+covers it.
 
-THE PRIMARY MUST NOT BE BROKEN ANY OTHER WAY. So there is no BAD_MAGIC failover trigger
-here.
+This differs from ``sep_firmware_primary_invalid_signature_test`` in its error code and on the
+console: ``PUBK_SEL=0x00000000`` appears once, the backup's, where the signature test reaches
+key selection on both slots, and ``RSA_PKCS1_FAIL`` is forbidden here and required there.
 
-``generate_verified_signature`` then returns an EMPTY bytearray, and
-``min_signature_size`` stayed 0 so the size check accepts it. Note also that 0 is
-literally ``ManifestSignatureType.NO_SIGNATURE``. THIS port keeps the shipped,
-syntactically complete, merely stale dev0 signature, which is the harder case: the ROM
-must refuse on the declared TYPE alone with a plausible signature sitting right there.
-Both are refused before the signature is read at all, so the outcome is the same and the
-stimulus here is strictly less forgiving.
-
-The expected outcome is A Completed boot.
-
-WHY 0, And why A Fixed value. The ROM's check is a single ``!=`` against RSA-3072, so
-every value in that set exercises the identical arm, and fixing it is what lets this
-testcase assert the exact ``PUBK_ALGO_UNSUPPORTED`` the ROM echoed rather than accepting
-any value at all.
-
-**HOW THIS IS TOLD APART FROM ``sep_firmware_primary_invalid_signature_test``.**
-The error code now does most of the work: this member ends at
-``MANIFEST_ERR_SIG_TYPE_INVALID`` from the structural check, its sibling at
-``MANIFEST_ERR_SIG_FAILED`` from the verifier. The console separates them in BOTH
-directions on top of that, and both halves are asserted here:
-
-  * the type check is the FIRST arm of the signature path, ahead even of the ``PUBK_SEL=`` echo at
-. So this run must show the primary's selector NEVER echoed: with the
-    backup booting from ROM slot 0, ``PUBK_SEL=0x00000000`` is pinned to exactly
-    **one** occurrence, the backup's. Its sibling pins the same token to **two**,
-    because there both manifests reach key selection. That single count makes the
-    two mutually exclusive on one log;
-  * ``RSA_PKCS1_FAIL`` is forbidden here and required there, and
-    ``PUBK_ALGO_UNSUPPORTED0x00000000`` is required here and forbidden there.
-
-Platform adaptation -- MARKER. This ROM *defines* that code
-(``bootrom/prod/include/status_values.h:11``) but never EMITS it: there is no
-``report_status`` call for it anywhere under ``bootrom/prod/src``, so the architected
-status ring carries only the generic terminal code and the debug console token is the
-only per-reason evidence available.
-
-``signature_type`` is one byte at manifest offset 165, INSIDE the hashed signed region
-(field order; ``sep_manifest_mutate.OFF_SIGNATURE_TYPE``), so the
-helper re-hashes. It cannot be a signature-region patch: the field is covered by
-``manifest_hash``, so an un-rehashed write dies in the manifest loop as a hash
-mismatch and never reaches the type check. No re-sign is needed or possible -- the
-type is rejected before ``rsa_3072_verify``, so the
-now-stale signature is never examined, and the base's ``primary_expected_rsa_starts
-= 0`` is what checks that ordering instead of assuming it.
-
-Needs ``+esrc_noise_force``: the backup is valid, so the full RSA-3072 modexp
-runs on OTBN, which parks in UrndRefresh until EDN grants entropy. The RSA
-assertions are untouched, so ``RSA_VERIFY_OK`` still means the signature verified.
+``signature_type`` is inside the signed region, so the helper re-hashes; an un-rehashed write
+would fail as a hash mismatch first. The refusal precedes ``rsa_3072_verify``, so the stale
+signature is never examined, and ``primary_expected_rsa_starts = 0`` checks that ordering.
+Needs ``+esrc_noise_force``: the backup's RSA-3072 modexp stalls OTBN until EDN grants entropy.
 """
 
 from __future__ import annotations
@@ -152,8 +110,8 @@ class sep_firmware_primary_invalid_signature_type_test(sep_primary_fail_backup_b
         )
 
     def check_efuse(self, image) -> None:
-        # Both are evaluated before the signature path is entered, so either being non-zero would end the
-        # run with a different verdict and make this testcase vacuous.
+        # Both precede the signature path, so either being non-zero would end the run with a
+        # different verdict.
         bl1_ver = image.field_int("BL1_VERSION")
         assert bl1_ver == 0, (
             f"BL1_VERSION is 0x{bl1_ver:x}, expected 0: anti-rollback cannot reject a "

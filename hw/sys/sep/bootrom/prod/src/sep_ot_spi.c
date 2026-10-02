@@ -29,7 +29,7 @@
 #include "sep_ot_spi.h"
 #include "sep_ot_flash_opcodes.h"
 #include "sep_ot_spi_profiles.h"
-#include "sep_helpers.h" /* contains_range: 32-bit bounded-memory check   */
+#include "sep_helpers.h"       /* contains_range: 32-bit bounded-memory check   */
 #include "sep_smc_interface.h" /* sep_get_smc_sram_base, SMC_SRAM_SIZE_BYTES */
 
 /* CMD.direction encodings. */
@@ -249,20 +249,12 @@ static uint32_t ot_spi_error_status(void) {
     return v;
 }
 
-/* ── Destination policy (extension point) ─────────────────────────────────────
+/* ── Destination policy ───────────────────────────────────────────────────────
  *
- * The single place that knows which SEP locations a flash read may target and how
- * the DMA reaches each one. Two are declared: SEP SRAM, and SMC SRAM for the
- * manifest's use_ext_sram=0 staging choice. To repurpose the driver for another
- * destination (ICCM, a SoC window, …):
- *   1. add its {base, size, dst_asid} row to ot_spi_dst_regions[]; and
- *   2. if the target needs bus-specific DMA handling beyond range + ASID — e.g. a
- *      non-OtInternal ASID (whose enabled-range IS hardware-enforced), or the ICCM
- *      address-remap workaround in sep_dma.c — add its case to ot_spi_dma_dst_setup().
- *
- * The transport code below is destination-agnostic: both the PIO and DMA paths
- * validate dst against this table before touching any CSR, and the DMA path drives
- * the hardware from the matched row. */
+ * Declares which SEP locations a flash read may target: SEP SRAM, and SMC SRAM for a
+ * manifest with use_ext_sram=0. Both PIO and DMA paths validate dst here before any CSR
+ * write. A new destination needs a row in ot_spi_dst_regions[] and, if it needs more than
+ * range + ASID (e.g. the ICCM address remap in sep_dma.c), a case in ot_spi_dma_dst_setup(). */
 
 /* SECURE_DMA address-space-id nibble. The flash-read source is always the fixed
  * OT-internal RXDATA FIFO; only the destination nibble varies per region. */
@@ -280,14 +272,9 @@ static const ot_spi_dst_region_t ot_spi_dst_regions[] = {
 };
 #define OT_SPI_DST_REGION_COUNT (sizeof(ot_spi_dst_regions) / sizeof(ot_spi_dst_regions[0]))
 
-/* SMC SRAM is the second destination, for a manifest that asks for use_ext_sram=0.
- * Its base comes from the straps, so the row cannot be a build-time constant like
- * the table above; it is recomputed on every lookup and its address is stable, so
- * the hardened double evaluation in ot_spi_dst_valid() still compares equal
- * pointers and the second evaluation rewrites whatever the first wrote.
- *
- * The ASID is the same nibble SEP SRAM uses: address space 0x7 spans SEP SRAM,
- * SMC SRAM and ICCM, which is why sep_dma.c drives all three with DST_ASID=0x7. */
+/* SMC SRAM destination. Its base comes from the straps, so it is filled in on each lookup;
+ * the address is stable, so both hardened lookups in ot_spi_dst_valid() return the same
+ * pointer. ASID 0x7 covers SEP SRAM, SMC SRAM and ICCM. */
 static ot_spi_dst_region_t ot_spi_dst_smc = {0u, 0u, OT_DMA_ASID_OT_INTERNAL};
 
 /* Return the declared destination region wholly containing [dst, dst+len), or NULL
@@ -528,9 +515,6 @@ static void ot_spi_dma_dst_setup(const ot_spi_dst_region_t *region, uint32_t dst
     mmio_write32(SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, 0u);
     mmio_write32(SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR,
                  ((uint32_t)region->dst_asid << 4) | OT_DMA_ASID_OT_INTERNAL);
-
-    /* Destination-specific setup keyed on `region` -- e.g. the ICCM address-remap
-     * workaround (SEP_REGION_SIZE=0) from sep_dma.c -- would go here. */
 }
 
 /* Stream `dma_len` bytes (a whole multiple of `chunk_bytes`) from flash into SRAM

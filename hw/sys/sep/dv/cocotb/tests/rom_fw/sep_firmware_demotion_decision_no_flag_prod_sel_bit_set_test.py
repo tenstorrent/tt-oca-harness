@@ -2,46 +2,23 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """PROD, BL1_DEMOTION_VALID set, ENABLE clear -> not demoted, locked.
 
-Outcome **O3a** of the [S25] decision table in
-``rom_fw/sep_demotion_decision_base.py``; the PROD stimulus it shares with the
-other three PROD members is in ``rom_fw/sep_demotion_prod_base.py``.
-
-This is the arm where the manifest decides, deciding NOT to demote.
-BL1_DEMOTION_VALID is set, so ``rom_main.c`` takes the first arm and
-copies ``demotion_control`` BL1_DEMOTION_ENABLE -- which is clear -- into
-``demotion_reg``, printing ``BL1_DEMOTE=0``.
-``lock_demotion`` keeps its initialiser, so writes DEMOTE_1
-**not demoted but LOCKED**.
-
-**It is the exact complement of R3's O2a member on the value channel and its
-partner on the lock channel**, which is what makes the pair a real test of the
-copy rather than of the branch:
+Outcome **O3a** of the decision table in ``rom_fw/sep_demotion_decision_base.py``; the shared PROD
+stimulus is in ``rom_fw/sep_demotion_prod_base.py``. BL1_DEMOTION_VALID is set, so the ROM copies
+the clear BL1_DEMOTION_ENABLE bit into ``demotion_reg``, prints ``BL1_DEMOTE=0`` and writes
+DEMOTE_1 not demoted but locked. With the O2a member it tests the copy, not the branch:
 
   ==========================================  ==========  ==========  ==========
-  testcase                                    flags[0]    BL1_DEMOTE  DEMOTE_1
+  testcase                                    BL1_ENABLE  BL1_DEMOTE  DEMOTE_1
                                                                       (dem, lock)
   ==========================================  ==========  ==========  ==========
   ``..._auth_flag_0_prod_sel_bit_set`` (O2a)  1           1           (1, 1)
   this one (O3a)                              0           0           **(0, 1)**
   ==========================================  ==========  ==========  ==========
 
-One stimulus bit, one echoed value, one register bit, all three moving together.
-A ROM that latched a constant into ``demotion_reg``, or that wrote the register
-from the wrong local, passes one of the two and fails the other.
-
-**The lock half is the part the console cannot check.** ``DEMOTE_LOCKED`` is
-printed from ``lock_demotion`` (``rom_main.c``), a local computed 30 lines
-earlier, so only ``lcc_demote_lock_1_probe_o`` can say the ROM actually locked the
-register. Here the lock is set while ``demote`` stays 0, which is the one
-combination that separates "locked, not demoted" from "never written" -- and
-"never written" is what the O4 sibling produces. Those two rows differ on the
-register channel in exactly the ``lock`` bit.
-
-``sep_firmware_demotion_bl1_disable_secure_prod_test`` covers the same O3a
-demotion input under enforced secure boot with a signed primary. This member
-keeps secure boot disabled to cover the unsigned OCA path independently.
-``sep_firmware_demotion_bl1_disable_over_bl2_request_prod_test`` covers O3b,
-where the same BL1 decision overrides a simultaneous BL2 request.
+``DEMOTE_LOCKED`` echoes a local in ``rom_main.c``, so only ``lcc_demote_lock_1_probe_o`` proves
+the lock; the lock bit alone separates this row from O4, where DEMOTE_1 is never written.
+``sep_firmware_demotion_bl1_disable_secure_prod_test`` covers O3a with a signed primary, and
+``sep_firmware_demotion_bl1_disable_over_bl2_request_prod_test`` covers O3b.
 
 No ``+esrc_noise_force``: secure boot is off, so the ROM never drives OTBN.
 """

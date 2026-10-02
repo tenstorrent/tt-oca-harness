@@ -100,10 +100,7 @@ class _EvidenceFilter(logging.Filter):
     # `own`, which is what a floor grades. Empty: bring-up logs no named CHK.
     BASE_IDS: frozenset[str] = frozenset()
 
-    # Empty: firmware-console leaves emit CHK-FW-CONSOLE from poll_boot after
-    # the mailbox PASS magic is observed. That ID is intentionally not in
-    # BASE_IDS, so it counts as the leaf's own evidence. This list may only
-    # shrink. A new exemption is a logging gap, not a verification gap.
+    # Leaves allowed to pass with no own CHK record. A new entry hides a logging gap.
     NO_OWN_EVIDENCE: dict[str, str] = {}
 
     def __init__(self) -> None:
@@ -1224,16 +1221,11 @@ class sep_base_test(uvm_test):
         score_km: bool | str = True,
         score_sinks: dict | None = None,
     ):
-        """Bring up the real ESRC->DRBG->CSRNG->EDN entropy stack and return the
-        started CHK1..CHK5 scoreboard (also stored as ``self.drbg_sb``).
+        """Bring up the ESRC->DRBG->CSRNG->EDN stack and return the started CHK1..CHK5
+        scoreboard (also ``self.drbg_sb``), which drives deterministic ESRC noise.
 
-        Shared by every entropy-consumer test: starts the golden-vs-probe
-        scoreboard (which drives the deterministic ESRC noise so the ring
-        oscillators are alive under Verilator), proves the noise force took, then
-        runs the bring-up order (configure ESRC generators-off, enable CSRNG,
-        stage EDN, enable generators, wait for a seed, enable EDN). The caller does
-        the consumer-specific steps afterwards (fork the FIFO drain, wait_genbits,
-        release/boot its consumer). ``cfg`` defaults to ``SepEntropyCfg()``.
+        The caller does the consumer-specific steps afterwards: FIFO drain, ``wait_genbits``,
+        and consumer release. ``cfg`` defaults to ``SepEntropyCfg()``.
 
         ``strict=True`` makes the scoreboard ``report()`` raise on any golden
         mismatch or under-evidence stream. ``score_km`` defaults to True for

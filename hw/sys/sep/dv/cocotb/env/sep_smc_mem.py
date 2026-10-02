@@ -99,6 +99,7 @@ def preload_smc_mem(
     plusargs: Mapping[str, object],
     log: logging.Logger,
 ) -> None:
+    """Write the ROM's default SMC words, then the hex image, then plusarg overrides."""
     mem.write32(SMC_SCRATCH9_ADDR, SMC_SEP_STATUS_DEFAULT)
     mem.write32(SMC_SCRATCH8_ADDR, SMC_MANIFEST_OFFSET_DEFAULT)
     mem.write32(SMC_DFT_STATUS_ADDR, SMC_DFT_STATUS_DEFAULT)

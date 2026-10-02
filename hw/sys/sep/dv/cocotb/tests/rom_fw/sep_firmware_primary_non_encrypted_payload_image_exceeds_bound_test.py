@@ -17,7 +17,7 @@ from rom_fw.sep_primary_toc_fail_base import sep_primary_toc_fail_base
 class sep_firmware_primary_non_encrypted_payload_image_exceeds_bound_test(
     sep_primary_toc_fail_base
 ):
-    """Plaintext primary TOC entry 0 starts at offset 240, inside the TOC -> refused -> the backup boots."""
+    """Plaintext primary TOC entry 0 starts at offset 240, inside the TOC -> backup boots."""
 
     toc_field = td.IMAGE_IN_TOC
     encrypted = False

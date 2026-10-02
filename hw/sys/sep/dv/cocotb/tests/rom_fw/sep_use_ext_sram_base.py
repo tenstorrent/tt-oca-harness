@@ -84,8 +84,8 @@ def assert_destination(logger, console: list[str], *, expect_smc: bool) -> None:
         f"Console: {console}"
     )
     assert i_branch < i_dst, (
-        f"{chosen}@{i_branch} must precede {want_dst}@{i_dst}: manifest_load.c "
-        f"announces the branch before it transfers. Console: {console}"
+        f"{chosen}@{i_branch} must precede {want_dst}@{i_dst}: the ROM announces the "
+        f"branch before it transfers. Console: {console}"
     )
 
     if expect_smc:

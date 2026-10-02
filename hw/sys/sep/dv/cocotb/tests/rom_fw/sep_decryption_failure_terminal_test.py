@@ -31,7 +31,6 @@ _EFUSE_PRELOAD = (
 
 _ERR_PAYLOAD_TOC = mm.boot_err("OCA_FAIL_PAYLOAD_TOC")
 _DECRYPT_OK = "DECRYPT_OK"
-# Every decrypt outcome other than DECRYPT_OK.
 
 
 @pyuvm.test()

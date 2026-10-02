@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """The ROM repeats the RSA signature comparison over one modexp result; both passes must succeed.
 
-No random delay separates the two comparisons: BL0 has no entropy source.
+No random delay separates the two comparisons.
 A single ``RSA_EXEC`` pins the reading that only the comparison repeats, not the modexp.
 """
 
@@ -58,12 +58,12 @@ class sep_rsa_verify_redundant_compare_test(sep_rom_ot_secure_boot_test):
             f"compared the recovered digest. Console: {console}"
         )
 
-        # A comparison before RSA_EXEC would read stale DMEM.
         attempts = oc.split_attempts(console)
         assert [a.src for a in attempts] == [mm.PRIMARY_MANIFEST_OFFSET], (
             f"slot attempts read {[hex(a.src) for a in attempts]}, expected the primary "
             f"only. Console: {console}"
         )
+        # A comparison before RSA_EXEC would read stale DMEM, so RSA_EXEC must come first.
         oc.assert_attempt(
             attempts[0],
             error=None,

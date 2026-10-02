@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Backup's PLAINTEXT TOC declares exactly the ROM's cap of images; the cap lets it through.
+"""Backup's PLAINTEXT TOC declares exactly the ROM's image cap; the cap passes and the ROM halts.
 
-The cap is the build-time ``OCA_TOC_MAX_IMAGES``; zero-length entries 1.. must fail with
-``OCA_FAIL_PAYLOAD_TOC``, never ``OCA_FAIL_PAYLOAD_TOO_MANY_IMAGES``. Needs ``+esrc_noise_force``.
+The cap is the build-time ``OCA_TOC_MAX_IMAGES``; entries 1 and up are zero-length, so the slot
+fails with ``OCA_FAIL_PAYLOAD_TOC``, never ``OCA_FAIL_PAYLOAD_TOO_MANY_IMAGES``.
+Needs ``+esrc_noise_force``.
 """
 
 from __future__ import annotations

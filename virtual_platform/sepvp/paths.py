@@ -36,10 +36,8 @@ BOOTCODE_DIR = OCAH_ROOT / "hw" / "sys" / "sep" / "bootrom" / "prod"
 # Private submodule: absent in a checkout without access, which is what
 # separates "cannot build the OCA images" from "the build is broken".
 MANIFEST_DIR = BOOTCODE_DIR / "tools" / "tt-oca-manifest"
-# The SEP VP models the OpenTitan SPI host only (the open SEP fits no
-# memory-mapped (XIP) flash controller, so none is modeled), so the VP always
-# uses the default OpenTitan boot-ROM build in build/ (the Makefile's
-# toolchain-images target), never a BOOT_SPI_CONTROLLER_OT=0 build.
+# The SEP VP models only the OpenTitan SPI host (no XIP flash controller), so it boots
+# the bootrom's default BOOT_SPI_CONTROLLER_OT=1 build in build/.
 BOOTCODE_OT_BUILD_DIR = "build"
 BOOTCODE_ELF = BOOTCODE_DIR / BOOTCODE_OT_BUILD_DIR / "boot_rom.elf"
 # Generated into the build dir, not tracked: the digests follow BUILD_TYPE.

@@ -4,8 +4,8 @@
 # PROD lifecycle with ROM public-key slot 1 revoked.
 #
 # CHIPLET_PUBK_REVOKE.select[7:0] is the ROM chiplet-creator classical key
-# bitmap (sep_efuse_map.rdl:721-729); SEP ROM tests bit N for a manifest that
-# selects ROM key slot N (oca_platform.c). 0x02 revokes slot 1 and
+# bitmap (CHIPLET_PUBK_REVOKE in sep_efuse_map.rdl); the ROM refuses a manifest that
+# selects ROM key slot N when bit N is set. 0x02 revokes slot 1 and
 # nothing else, so a rejection can only be attributed to the selected slot.
 #
 # Everything else matches sep_efuse_lc_prod.toml: PROD so secure boot is

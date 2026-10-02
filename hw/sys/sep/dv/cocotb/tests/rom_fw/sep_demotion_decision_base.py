@@ -143,10 +143,8 @@ class sep_demotion_decision_base(sep_rom_ot_dma_boot_test):
         lc = image.lc_raw()
         sboot_dis = image.field_int("SBOOT_DIS") & 0x1
         assert lc == self.expected_lc_raw, (
-            f"LC_STATE raw is 0x{lc:x}, expected 0x{self.expected_lc_raw:x}. The "
-            f"lifecycle IS the first demotion input, so running "
-            f"under the wrong one measures a different row of the decision table "
-            f"under this testcase's name"
+            f"LC_STATE raw is 0x{lc:x}, expected 0x{self.expected_lc_raw:x}; fix "
+            f"efuse_preload or expected_lc_raw"
         )
         assert sboot_dis == self.expected_sboot_dis, (
             f"SBOOT_DIS is {sboot_dis}, expected {self.expected_sboot_dis}"
@@ -288,9 +286,7 @@ class sep_demotion_decision_base(sep_rom_ot_dma_boot_test):
             hits = [i for i, line in enumerate(console) if token in line]
             assert len(hits) == 1, (
                 f"demotion token {token!r} appeared {len(hits)} times at {hits}, "
-                f"expected exactly 1. The demotion block runs once per boot, "
-                f"so any other count means it ran twice or not "
-                f"at all. Console: {console}"
+                f"expected exactly 1: the demotion block runs once per boot. Console: {console}"
             )
         for token in forbidden:
             assert not any(token in line for line in console), (
@@ -302,8 +298,7 @@ class sep_demotion_decision_base(sep_rom_ot_dma_boot_test):
             hits = [i for i, line in enumerate(console) if valued in line]
             assert len(hits) == 1, (
                 f"demotion {valued!r} appeared {len(hits)} times at {hits}, expected "
-                f"exactly 1. The token alone says the branch ran; this says what it "
-                f"decided. Console: {console}"
+                f"exactly 1. Console: {console}"
             )
         i_ok = next((i for i, line in enumerate(console) if "MANIFEST_OK" in line), -1)
         assert i_ok >= 0, f"ROM never printed MANIFEST_OK. Console: {console}"
@@ -333,52 +328,39 @@ class sep_demotion_decision_base(sep_rom_ot_dma_boot_test):
             ],
         )
         assert self._demote_changes, (
-            "no DEMOTE probe transition was recorded at all. Either the probes are "
-            "not wired (lcc_demote_state_{1,2}_probe_o / lcc_demote_lock_{1,2}_probe_o "
-            "in dv/tb/tb_top.sv) or the monitor never sampled, in which case the "
-            "end-of-run values below are not evidence of anything BL0 did"
+            "no DEMOTE probe transition was recorded; check that "
+            "lcc_demote_state_{1,2}_probe_o and lcc_demote_lock_{1,2}_probe_o are wired in "
+            "dv/tb/tb_top.sv and that _demote_monitor() ran"
         )
         first = self._demote_changes[0][1]
         assert first == (0b10, 0, 0b10, 0), (
             f"first recorded DEMOTE sample is st1=0b{first[0]:02b} lk1={first[1]} "
             f"st2=0b{first[2]:02b} lk2={first[3]}, expected the reset state "
             f"(0b10, 0, 0b10, 0) -- demote 0 on both rails, both locks clear "
-            f"(sep_lifecycle_ctrl.rdl). If the run STARTS at the expected final "
-            f"value then the value proves nothing about this boot"
+            f"(sep_lifecycle_ctrl.rdl)"
         )
         n_changes = len(self._demote_changes)
         assert n_changes >= self.demote_changes_min, (
             f"only {n_changes} DEMOTE sample(s) recorded, expected at least "
-            f"{self.demote_changes_min}, so the registers never moved off their reset "
-            f"value. Every outcome of the demotion block except O4 writes DEMOTE_1, so no "
-            f"transition means BL0 did not reach the DEMOTE_1 write. O4 is the one member "
-            f"entitled to a single sample and it declares demote_changes_min = 1"
+            f"{self.demote_changes_min}: BL0 never reached the DEMOTE_1 write (only O4 "
+            f"writes nothing, and it sets demote_changes_min = 1)"
         )
         assert self.demote_changes_max is None or n_changes <= self.demote_changes_max, (
             f"{n_changes} DEMOTE sample(s) recorded, expected at most "
-            f"{self.demote_changes_max}. A member that pins the count exactly is "
-            f"asserting that the registers moved that many times and no more; an extra "
-            f"transition means something other than the single demotion write reached the "
-            f"lifecycle controller"
+            f"{self.demote_changes_max}: a write other than the demotion decision "
+            f"reached the lifecycle controller"
         )
         got_1 = (_decode_demote(st1), lk1)
         got_2 = (_decode_demote(st2), lk2)
         assert got_1 == self.expect_demote_1, (
             f"DEMOTE_1 reads (demote={got_1[0]}, lock={got_1[1]}), expected "
-            f"(demote={self.expect_demote_1[0]}, lock={self.expect_demote_1[1]}). "
-            f"This is the value BL0 actually retired into the lifecycle controller, "
-            f"not the value it printed -- the console string is formatted from a "
-            f"local and cannot detect a write that "
-            f"went to the wrong place or carried the wrong value"
+            f"(demote={self.expect_demote_1[0]}, lock={self.expect_demote_1[1]})"
         )
         assert got_2 == self.expect_demote_2, (
             f"DEMOTE_2 reads (demote={got_2[0]}, lock={got_2[1]}), expected "
-            f"(demote={self.expect_demote_2[0]}, lock={self.expect_demote_2[1]}). "
-            f"BL0 writes DEMOTE_2 on exactly one path -- lc_write_demotion_2(false, "
-            f"true) in rom_main.c, reached only at PROD_END -- so lock=0 here "
-            f"means it was never written, which is sound because the field is "
-            f"write-one-to-set and hardware never clears it "
-            f"(sep_lifecycle_ctrl.rdl)"
+            f"(demote={self.expect_demote_2[0]}, lock={self.expect_demote_2[1]}). BL0 "
+            f"writes DEMOTE_2 only at PROD_END (lc_write_demotion_2() in rom_main.c), and "
+            f"the W1S lock never clears (sep_lifecycle_ctrl.rdl)"
         )
         # DEMOTE_2 (0, 0) equals reset; only the PROD_END members prove the lock_2 probe is live.
         self.logger.info(
@@ -499,7 +481,7 @@ class sep_demotion_decision_base(sep_rom_ot_dma_boot_test):
         pbase = mm.slot_base("primary")
         for off, want in self._planted.items():
             addr = pbase + off
-            # Each field must sit in one read; if the transport splits one, stitch the reads.
+            # Each field must sit in one read; a field split across reads fails here.
             hit = ev.covering_read(rds, addr)
             assert hit is not None, (
                 f"no single SPI read covered {names[off]} at flash 0x{addr:x}, so "
@@ -509,10 +491,8 @@ class sep_demotion_decision_base(sep_rom_ot_dma_boot_test):
             got = ev.bytes_at(txn, addr, len(want))
             assert got == want, (
                 f"the device served {got.hex()} for {names[off]} at flash "
-                f"0x{addr:x}, but this testcase planted {want.hex()}. The offline "
-                f"artefact check passed, so the difference is in the transport, not "
-                f"in the mutation -- the DUT was given a different stimulus from the "
-                f"one this testcase's name describes"
+                f"0x{addr:x}, but this testcase planted {want.hex()}; the offline check "
+                f"passed, so the transport changed the stimulus"
             )
             served[names[off]] = got.hex()
         self.logger.info(

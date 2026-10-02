@@ -222,10 +222,7 @@ def rom_key_image(index: int) -> Path:
     name = "oca_secure_boot.bin" if index == 0 else f"oca_rom_key{index}_boot.bin"
     p = BUILD_DIR / name
     if not p.is_file():
-        raise AssertionError(
-            f"{p} not found; run `make oca-images` in bootrom/prod. It is declared in "
-            f"[c_build.boot_rom].outputs, so --stage sim should have failed first"
-        )
+        raise AssertionError(f"{p} not found; run `make oca-images` in bootrom/prod")
     return p
 
 

@@ -2,9 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """A randomly oversized OCA payload is refused; the backup boots.
 
-The seed draws 1 to 100 KiB past fixed SEP-SRAM staging capacity. Every draw also
-ends past the slot window, so the ROM must report ``OCA_FAIL_PAYLOAD_LOCATION``
-before the primary payload fetch.
+Every seeded size also ends past the slot window, so the ROM must report
+``OCA_FAIL_PAYLOAD_LOCATION`` before the primary payload fetch.
 """
 
 from __future__ import annotations

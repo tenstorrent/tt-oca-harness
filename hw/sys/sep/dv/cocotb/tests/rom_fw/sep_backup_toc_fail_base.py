@@ -8,7 +8,7 @@ and on the bytes the flash device served.
 
 from __future__ import annotations
 
-import pyuvm  # noqa: F401  (members register themselves with @pyuvm.test)
+import pyuvm  # noqa: F401
 from env import sep_manifest_mutate as mm
 from env import sep_payload_mutate as pm
 from rom_fw import sep_manifest_field_defect as fd

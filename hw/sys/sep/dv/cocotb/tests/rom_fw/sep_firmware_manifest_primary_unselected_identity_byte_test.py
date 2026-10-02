@@ -1,10 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Primary holds a non-0xA5 byte at an unselected package_id position; the backup boots.
+"""Primary holds 0x5A at an unselected package_id byte; the backup boots.
 
-``boot-manifest.adoc`` requires the Consumer to reject any value other than
-MANIFEST_UNUSED_BYTE in an unselected identity byte, so ``oca_check_identity`` refuses
-the primary with ``OCA_FAIL_PACKAGE_ID`` before key selection.
+``boot-manifest.adoc`` requires an unselected identity byte to be MANIFEST_UNUSED_BYTE, so
+``oca_check_identity`` refuses the primary with ``OCA_FAIL_PACKAGE_ID`` before key selection.
 """
 
 from __future__ import annotations

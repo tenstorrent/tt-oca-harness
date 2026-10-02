@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Primary's ENCRYPTED TOC is stored in descending order and entry 1 overlaps entry 2; the backup boots.
+"""Primary's ENCRYPTED TOC is descending and entry 1 overlaps entry 2; the backup boots.
 
 The permutation alone is legal; the overlap is the one broken rule (``OCA_FAIL_PAYLOAD_TOC``).
 Needs ``+esrc_noise_force``: two RSA-3072 modexps and AES decryptions.

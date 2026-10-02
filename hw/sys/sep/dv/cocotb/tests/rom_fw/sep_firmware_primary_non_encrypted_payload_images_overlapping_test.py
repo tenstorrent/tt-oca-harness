@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Primary's PLAINTEXT TOC is stored in descending order and entry 1 overlaps entry 2; the backup boots.
+"""Primary's PLAINTEXT TOC is descending and entry 1 overlaps entry 2; the backup boots.
 
 The permutation alone is legal; the overlap is refused with ``OCA_FAIL_PAYLOAD_TOC``.
 Needs ``+esrc_noise_force``: two RSA-3072 modexps.

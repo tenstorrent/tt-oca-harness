@@ -147,9 +147,8 @@ def assert_served_field(logger, flash, slot: str, offset: int, expected: bytes, 
     got = ev.bytes_at(txn, addr, len(expected))
     assert got == expected, (
         f"the device served {got.hex()} for {what} at flash 0x{addr:x}, but this "
-        f"testcase planted {expected.hex()}. The offline artefact check passed, so "
-        f"the difference is in the transport, not in the mutation -- the DUT was "
-        f"given a different stimulus from the one this testcase's name describes"
+        f"testcase planted {expected.hex()}: the flash model or SPI transport "
+        f"altered the planted bytes"
     )
     logger.info(
         "CHK-STIMULUS-SERVED: read[%d] returned %s for %s at flash 0x%06x, exactly "

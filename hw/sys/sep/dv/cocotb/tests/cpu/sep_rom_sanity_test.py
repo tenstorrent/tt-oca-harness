@@ -2,19 +2,14 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP boot-ROM IFU sanity test (PyUVM).
 
-Edge: CPU IFU -> boot-ROM. Boots
-the VeeR EL2 core from ICCM and runs the rom_sanity firmware, which calls seven
-hand-assembled functions resident in the boot-ROM (0x1004_0000) via function
-pointers, forcing the IFU to fetch and execute their bodies from ROM. Each call's
-return value is checked (42/123/100/0xDEADBEEF/55/77/42), covering I/U/R/J-type
-and NOP-sled sequential fetch.
+Boots VeeR EL2 from ICCM with the rom_sanity firmware, which calls seven hand-assembled functions
+in the boot-ROM (0x1004_0000) through function pointers, so the IFU fetches and executes them from
+ROM. Each return value is checked (42/123/100/0xDEADBEEF/55/77/42), covering I/U/R/J-type and
+NOP-sled sequential fetch.
 
-The boot-ROM responder is preloaded with the function encodings via
-``+sep_boot_rom_hex=rom_sanity_rom.hex`` (the committed ROM image is staged into
-the run dir). Firmware-self-checking: main() returns its error count and start.S
-emits the PASS (0xCAFEBABE) / FAIL (0xDEADBEEF) magic on the 0x8000_0000
-mailbox, which the boot scoreboard gates on, plus the banner + ICCM-execution
-checks.
+``+sep_boot_rom_hex=rom_sanity_rom.hex`` preloads the boot-ROM responder with the committed ROM
+image. start.S emits PASS/FAIL magic from main()'s error count, which the boot scoreboard gates on
+with the banner and ICCM-execution checks.
 
 No fuse data is read, so the testlist entry uses ``+skip_fuse_sense``.
 """

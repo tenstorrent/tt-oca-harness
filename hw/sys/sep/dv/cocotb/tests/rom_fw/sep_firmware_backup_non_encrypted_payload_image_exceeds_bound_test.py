@@ -3,7 +3,7 @@
 """Backup's PLAINTEXT TOC entry 0 starts inside the TOC; the ROM halts.
 
 The payload format puts every image after the TOC, so ``OCA_FAIL_PAYLOAD_TOC`` is expected;
-no ROM rule checks this, so the DUT accepts the slot and the row fails. Needs ``+esrc_noise_force``.
+the ROM does not check this placement and accepts the slot. Needs ``+esrc_noise_force``.
 """
 
 from __future__ import annotations

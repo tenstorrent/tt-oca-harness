@@ -179,8 +179,8 @@ class sep_fuse_lock_base(sep_rom_ot_dma_boot_test):
 
     def build_efuse_image(self):
         assert self.efuse_preload is not None and os.path.isfile(self.efuse_preload), (
-            f"eFuse preload missing: {self.efuse_preload}. Every cell names one, so "
-            f"the t=0 staged image and this test's golden come from one file"
+            f"eFuse preload missing: {self.efuse_preload}; set efuse_preload on the "
+            f"subclass to a file under {EFUSE_DIR}"
         )
         image = self.select_efuse_image(default_preload=self.efuse_preload)
         self.check_efuse(image)
@@ -191,9 +191,8 @@ class sep_fuse_lock_base(sep_rom_ot_dma_boot_test):
         lc = image.lc_raw()
         sboot_dis = image.field_int("SBOOT_DIS") & 0x1
         assert lc == self.expected_lc_raw, (
-            f"LC_STATE raw is 0x{lc:x}, expected 0x{self.expected_lc_raw:x}: this "
-            f"cell's whole identity is its lifecycle, and the testlist must pass "
-            f"+sep_efuse_preload={self.efuse_preload}"
+            f"LC_STATE raw is 0x{lc:x}, expected 0x{self.expected_lc_raw:x}: the "
+            f"testlist must pass +sep_efuse_preload={self.efuse_preload}"
         )
         assert sboot_dis == self.expected_sboot_dis, (
             f"SBOOT_DIS is {sboot_dis}, expected {self.expected_sboot_dis}: the "
@@ -340,7 +339,7 @@ class sep_fuse_lock_base(sep_rom_ot_dma_boot_test):
         )
         self.logger.info(
             "CHK-FUSE-LOCK-REGISTER: LOCKS[31:0]=0x%08x, read locks set for %s "
-            "(the reference's four plus %s)",
+            "(key and UID locks plus %s)",
             locks_lo,
             ", ".join(sorted(ALL_LOCK_BITS)),
             ", ".join(sorted(EXTRA_LOCK_BITS)),

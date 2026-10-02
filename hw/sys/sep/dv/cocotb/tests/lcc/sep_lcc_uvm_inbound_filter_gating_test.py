@@ -245,15 +245,10 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
 
         # ---- CHK-DEMOTE-INDEP: DEMOTE_2 alone must open DBG_2 and NOT DBG_1 ----
         #
-        # DEMOTE_1 and DEMOTE_2 are independent and act only on their own debug
-        # group: DEMOTE_1 on DBG_1 [23:0], DEMOTE_2 on DBG_2 [47:24].
-        # DEMOTE_2 is driven FIRST: the demote field is `onwrite=woset`
-        # (sep_lifecycle_ctrl.rdl), so it cannot be cleared once set. Driving
-        # DEMOTE_2 while DEMOTE_1 is still 0 is the only order in which this DUT
-        # can show one group opening without the other. sep_debug is bit 0, inside
-        # DBG_1, so it must still read 0 here -- and the external port must still
-        # be blocked, which is a second, independent consequence of the same
-        # property.
+        # DEMOTE_1 acts only on DBG_1 [23:0] and DEMOTE_2 only on DBG_2 [47:24]. The
+        # demote field is onwrite=woset (sep_lifecycle_ctrl.rdl), so DEMOTE_2 must be
+        # written first to show one group opening without the other. sep_debug is in
+        # DBG_1, so it stays 0 and the external port stays blocked.
         demote2 = SepLccDemoteSeq(group=2)
         mark = self.sb_mark()
         await self.start_seq(demote2)

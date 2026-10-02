@@ -1,25 +1,18 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""axil_mailbox config + golden depth model (outbound aperture, TX path).
+"""axil_mailbox config and golden depth model (outbound aperture, TX path).
 
-The SEP axil_mailbox (vendor/pulp-platform/axi/.../axi_lite_mailbox.sv, wrapped by
-hw/ip/axi_lite_mailbox_unit) is a two-port cross-FIFO. This test drives the SEP/CPU
-side over the CPU-LSU master (NO inbound filter): the OUTBOUND aperture
-(outbound_mailbox_0 @ 0x10A0_0000). WRITE_DATA(+0x00) pushes the TX FIFO (SEP->peer);
-READ_DATA(+0x08) pops the RX FIFO (peer->SEP), which stays EMPTY here because the
-peer (SMC) side is not driven -> read returns the 0xFEEDDEAD sentinel + SLVERR. So
-this is the TX-path test: with no CPU running the RX side is always empty.
+The SEP axil_mailbox is a two-port cross-FIFO. The test drives the SEP/CPU side through the
+CPU-LSU master (no inbound filter) on outbound_mailbox_0: WRITE_DATA pushes the TX FIFO
+(SEP->peer) and READ_DATA pops the RX FIFO (peer->SEP). The peer (SMC) side is not driven,
+so the RX FIFO stays empty and a read returns the 0xFEEDDEAD sentinel with SLVERR.
 
-STATUS has no exact-depth field (only empty/full/write_level_above/read_level_above),
-so the golden keeps the TX occupancy internally and predicts the visible bits.
-Thresholds compare with STRICT >. The config object is the single source of
-truth for DUT programming + golden.
+STATUS has no exact-depth field, so the golden keeps the TX occupancy and predicts the
+visible bits. Thresholds compare with strict >.
 
-Scope: data round-trip readback and the read threshold (RIRQT/read_level_above)
-both need the RX FIFO filled from the peer side, which this aperture cannot do, so
-the model covers outbound TX occupancy only and predicts read_level_above as
-constant False. The peer path is reachable only through the external smn_inbound
-master (inbound_mailbox_0 @ 0x10A0_0800, MAILBOX_SIZE=0x800).
+Data round-trip and the read threshold need the RX FIFO filled from the peer side, which
+only the external smn_inbound master (inbound_mailbox_0) can do, so read_level_above is
+predicted as constant False.
 """
 
 from __future__ import annotations

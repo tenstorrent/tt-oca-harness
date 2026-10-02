@@ -4,16 +4,11 @@
 /*
  * OCAH SEP ROM — OpenTitan SPI Host driver (public API).
  *
- * Flash is not memory-mapped: it is reached only through command/FIFO
- * transactions (see src/sep_ot_spi.c). The boot path links only the bring-up +
- * read entry points; --gc-sections drops the optional flash write/erase code
- * (and PIO read when the DMA path is built).
+ * Flash is not memory-mapped: it is reached only through command/FIFO transactions.
+ * The boot path links only bring-up and read; --gc-sections drops the optional
+ * write/erase code (and PIO read when the DMA path is built).
  *
- * Register bindings: the sep.h umbrella (SPI_CONTROLLER_* + SECURE_DMA_*),
- * already on the ROM include path. There is no pad mux in this open DUT, so
- * ot_spi_select_pad_mux() is a weak empty stub: a wrapper build whose pads are
- * shared may override it.
- * Freestanding: no libc, no heap. MMIO via include/rom_mmio.h.
+ * Register bindings come from sep.h. Freestanding: no libc, no heap.
  */
 #ifndef SEP_OT_SPI_H
 #define SEP_OT_SPI_H

@@ -1,40 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-# PROD lifecycle with a rollback floor of 36, spread across ALL EIGHT fuse words
-# with a DISTINCT popcount in each.
+# PROD lifecycle with BL1_VERSION security-version flags spread across the four words
+# the ROM reads.
 #
-# BL1_VERSION is a THERMOMETER field: the ROM's minimum security version is the
-# POPCOUNT of the whole 256-bit register, summed word by word over eight
-# mmio_read32() calls (oca_platform.c). Every other preload here puts its
-# bits in word 0 -- sep_efuse_lc_prod_secver1.toml uses 0x1 and
-# sep_efuse_lc_prod_secver8.toml uses 0xff -- so a ROM that read only the first
-# word would decode both of them correctly and no test would notice.
-#
-# THE DISTRIBUTION IS THE POINT, AND SO IS THE FACT THAT EVERY WORD DIFFERS.
-# Word i holds i+1 set bits, so the total is 1+2+...+8 = 36 and NO other
-# combination of these eight words sums to 36. One bit in each word (total 8)
-# would be weaker: eight reads of the SAME word also sum to 8, catching a wrong
-# loop bound but not a wrong index expression. With distinct per-word popcounts,
-# ANY omitted, repeated or mis-indexed word changes the sum.
-#
-# Its user, sep_firmware_bl1_ver_test, requires the exact console echo
-# FUSE_VER=0x00000024 (oca_platform.c). Some worked examples of what a broken
-# decode would print instead: word 0 only -> 0x00000001; word 0 read eight times ->
-# 0x00000008; the first four words -> 0x0000000a; the last word only -> 0x00000008.
-# That exact-value marker, not the boot, is where this testcase's thermometer
-# coverage lives -- the accept boundary ALONE cannot catch a truncated decode,
-# because a SMALLER floor is still satisfied by the same manifest and the ROM still
-# boots.
-#
-# The reference burns a floor of 8 (popcount of 256'hFF),
-# all of it in the low byte. This file uses a different VALUE, because
-# matching the reference's 8 and distinguishing the eight words cannot both be done:
-# eight non-zero words with distinct popcounts need at least 36 bits. The testcase
-# raises its manifest security_version to match, so the accept boundary is
-# preserved; only the scale differs.
-#
-# Not a variant of sep_efuse_lc_prod.toml: it is that file plus this one field.
+# plat_get_security_version() (oca_platform.c) reads the low 16 bytes of the 32-byte
+# BL1_VERSION bank as a 128-bit flag set; a manifest is refused when it omits a device
+# flag. Words 0-3 carry distinct non-empty flags, so a truncated, repeated or mis-indexed
+# read changes the verdict. Words 4-7 are not read. Used by sep_firmware_bl1_ver_test.
+# Otherwise identical to sep_efuse_lc_prod.toml.
 
 [LC_STATE]
   [LC_STATE.fields.lc_state]
