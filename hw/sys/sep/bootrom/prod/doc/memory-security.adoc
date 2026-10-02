@@ -108,8 +108,9 @@ salt, and derivation buffers are explicitly cleared.
 
 After decryption, the ROM validates the TOC and every image extent, requires a
 usable SEP BL1 entry, and verifies each image SHA-256. It does not clear the
-bytes in gaps between described images or after the final image; `rom.adoc`
-lists payload gap zeroing as an open gap.
+bytes in gaps between described images or after the final image; payload gap
+zeroing is an open gap in the
+xref:rom.adoc#sec:impl_matrix[implementation-status table].
 
 === Secret locking, demotion, and measurement
 
