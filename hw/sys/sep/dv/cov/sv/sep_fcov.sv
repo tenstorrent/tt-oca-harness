@@ -382,34 +382,34 @@ module sep_fcov (
   // block, so neither has a value. TRNG has none either: no all leaf makes an
   // OKAY read of it.
   typedef enum logic [4:0] {
-    BlkNone,
-    BlkCpuCtrl,
-    BlkDma,
-    BlkWdt,
-    BlkScratchCold,
-    BlkScratchWarm,
-    BlkResetCtrl,
-    BlkOtbn,
-    BlkAes,
-    BlkHmac,
-    BlkKmac,
-    BlkCsrng,
-    BlkEdn,
-    BlkEsrc,
-    BlkLifecycle,
-    BlkKmMbox,
-    BlkEfuseMap,
-    BlkEfuseCtrl,
-    BlkEfuseMmr,
-    BlkAbr,
-    BlkPool,
-    BlkAxilMbox,
-    BlkAliasRemap,
-    BlkApRemap,
-    BlkSteeRemap,
-    BlkOutFilter,
-    BlkInFilter,
-    BlkSpi
+    BLK_NONE,
+    BLK_CPU_CTRL,
+    BLK_DMA,
+    BLK_WDT,
+    BLK_SCRATCH_COLD,
+    BLK_SCRATCH_WARM,
+    BLK_RESET_CTRL,
+    BLK_OTBN,
+    BLK_AES,
+    BLK_HMAC,
+    BLK_KMAC,
+    BLK_CSRNG,
+    BLK_EDN,
+    BLK_ESRC,
+    BLK_LIFECYCLE,
+    BLK_KM_MBOX,
+    BLK_EFUSE_MAP,
+    BLK_EFUSE_CTRL,
+    BLK_EFUSE_MMR,
+    BLK_ABR,
+    BLK_POOL,
+    BLK_AXIL_MBOX,
+    BLK_ALIAS_REMAP,
+    BLK_AP_REMAP,
+    BLK_STEE_REMAP,
+    BLK_OUT_FILTER,
+    BLK_IN_FILTER,
+    BLK_SPI
   } blk_e;
 
   // The remap and filter banks are arrays of RDL entries; each window runs
@@ -432,37 +432,39 @@ module sep_fcov (
   endfunction
 
   function automatic blk_e blk_of(logic [31:0] a);
-    if (in_blk(a, SEP_CPU_CTRL_REG_MAP_BASE_ADDR, SEP_CPU_CTRL_REG_MAP_SIZE)) return BlkCpuCtrl;
-    if (in_blk(a, SECURE_DMA_REG_MAP_BASE_ADDR, SECURE_DMA_REG_MAP_SIZE)) return BlkDma;
-    if (in_blk(a, WDT_TIMER_REG_MAP_BASE_ADDR, WDT_TIMER_REG_MAP_SIZE)) return BlkWdt;
-    if (in_blk(a, ColdBase, SEP_SCRATCH_COLD_REG_MAP_SIZE)) return BlkScratchCold;
-    if (in_blk(a, WarmBase, SEP_SCRATCH_WARM_REG_MAP_SIZE)) return BlkScratchWarm;
+    if (in_blk(a, SEP_CPU_CTRL_REG_MAP_BASE_ADDR, SEP_CPU_CTRL_REG_MAP_SIZE)) return BLK_CPU_CTRL;
+    if (in_blk(a, SECURE_DMA_REG_MAP_BASE_ADDR, SECURE_DMA_REG_MAP_SIZE)) return BLK_DMA;
+    if (in_blk(a, WDT_TIMER_REG_MAP_BASE_ADDR, WDT_TIMER_REG_MAP_SIZE)) return BLK_WDT;
+    if (in_blk(a, ColdBase, SEP_SCRATCH_COLD_REG_MAP_SIZE)) return BLK_SCRATCH_COLD;
+    if (in_blk(a, WarmBase, SEP_SCRATCH_WARM_REG_MAP_SIZE)) return BLK_SCRATCH_WARM;
     if (in_blk(a, SEP_RESET_CTRL_REG_MAP_BASE_ADDR, SEP_RESET_CTRL_REG_MAP_SIZE))
-      return BlkResetCtrl;
-    if (in_blk(a, OTBN_REG_MAP_BASE_ADDR, OTBN_REG_MAP_SIZE)) return BlkOtbn;
-    if (in_blk(a, AES_REG_MAP_BASE_ADDR, AES_REG_MAP_SIZE)) return BlkAes;
-    if (in_blk(a, HMAC_REG_MAP_BASE_ADDR, HMAC_REG_MAP_SIZE)) return BlkHmac;
-    if (in_blk(a, KMAC_REG_MAP_BASE_ADDR, KMAC_REG_MAP_SIZE)) return BlkKmac;
-    if (in_blk(a, CSRNG_REG_MAP_BASE_ADDR, CSRNG_REG_MAP_SIZE)) return BlkCsrng;
-    if (in_blk(a, EDN_REG_MAP_BASE_ADDR, EDN_REG_MAP_SIZE)) return BlkEdn;
-    if (in_blk(a, ENTROPY_SOURCE_REG_MAP_BASE_ADDR, ENTROPY_SOURCE_REG_MAP_SIZE)) return BlkEsrc;
+      return BLK_RESET_CTRL;
+    if (in_blk(a, OTBN_REG_MAP_BASE_ADDR, OTBN_REG_MAP_SIZE)) return BLK_OTBN;
+    if (in_blk(a, AES_REG_MAP_BASE_ADDR, AES_REG_MAP_SIZE)) return BLK_AES;
+    if (in_blk(a, HMAC_REG_MAP_BASE_ADDR, HMAC_REG_MAP_SIZE)) return BLK_HMAC;
+    if (in_blk(a, KMAC_REG_MAP_BASE_ADDR, KMAC_REG_MAP_SIZE)) return BLK_KMAC;
+    if (in_blk(a, CSRNG_REG_MAP_BASE_ADDR, CSRNG_REG_MAP_SIZE)) return BLK_CSRNG;
+    if (in_blk(a, EDN_REG_MAP_BASE_ADDR, EDN_REG_MAP_SIZE)) return BLK_EDN;
+    if (in_blk(a, ENTROPY_SOURCE_REG_MAP_BASE_ADDR, ENTROPY_SOURCE_REG_MAP_SIZE)) return BLK_ESRC;
     if (in_blk(a, SEP_LIFECYCLE_CTRL_REG_MAP_BASE_ADDR, SEP_LIFECYCLE_CTRL_REG_MAP_SIZE))
-      return BlkLifecycle;
-    if (in_blk(a, KM_MAILBOX_SEP_REG_MAP_BASE_ADDR, KM_MAILBOX_SEP_REG_MAP_SIZE)) return BlkKmMbox;
-    if (in_blk(a, SEP_EFUSE_MAP_REG_MAP_BASE_ADDR, SEP_EFUSE_MAP_REG_MAP_SIZE)) return BlkEfuseMap;
+      return BLK_LIFECYCLE;
+    if (in_blk(a, KM_MAILBOX_SEP_REG_MAP_BASE_ADDR, KM_MAILBOX_SEP_REG_MAP_SIZE))
+      return BLK_KM_MBOX;
+    if (in_blk(a, SEP_EFUSE_MAP_REG_MAP_BASE_ADDR, SEP_EFUSE_MAP_REG_MAP_SIZE))
+      return BLK_EFUSE_MAP;
     if (in_blk(a, EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR, EFUSE_INTERFACE_CTRL_REG_MAP_SIZE))
-      return BlkEfuseCtrl;
-    if (in_blk(a, EFUSE_MMR_REG_MAP_BASE_ADDR, EFUSE_MMR_REG_MAP_SIZE)) return BlkEfuseMmr;
-    if (in_blk(a, ABR_REG_MAP_BASE_ADDR, ABR_REG_MAP_SIZE)) return BlkAbr;
-    if (in_blk(a, ENTROPY_POOL_REG_MAP_BASE_ADDR, ENTROPY_POOL_REG_MAP_SIZE)) return BlkPool;
-    if (in_blk(a, AXIL_MAILBOX_REG_MAP_BASE_ADDR, AXIL_MAILBOX_REG_MAP_SIZE)) return BlkAxilMbox;
-    if (in_win(a, AliasBankBase, AliasBankEnd)) return BlkAliasRemap;
-    if (in_win(a, ApBankBase, ApBankEnd)) return BlkApRemap;
-    if (in_win(a, SteeBankBase, SteeBankEnd)) return BlkSteeRemap;
-    if (in_win(a, OutFiltBankBase, OutFiltBankEnd)) return BlkOutFilter;
-    if (in_win(a, FiltBase, FiltEnd)) return BlkInFilter;
-    if (in_blk(a, SpiBase, SPI_CONTROLLER_REG_MAP_SIZE)) return BlkSpi;
-    return BlkNone;
+      return BLK_EFUSE_CTRL;
+    if (in_blk(a, EFUSE_MMR_REG_MAP_BASE_ADDR, EFUSE_MMR_REG_MAP_SIZE)) return BLK_EFUSE_MMR;
+    if (in_blk(a, ABR_REG_MAP_BASE_ADDR, ABR_REG_MAP_SIZE)) return BLK_ABR;
+    if (in_blk(a, ENTROPY_POOL_REG_MAP_BASE_ADDR, ENTROPY_POOL_REG_MAP_SIZE)) return BLK_POOL;
+    if (in_blk(a, AXIL_MAILBOX_REG_MAP_BASE_ADDR, AXIL_MAILBOX_REG_MAP_SIZE)) return BLK_AXIL_MBOX;
+    if (in_win(a, AliasBankBase, AliasBankEnd)) return BLK_ALIAS_REMAP;
+    if (in_win(a, ApBankBase, ApBankEnd)) return BLK_AP_REMAP;
+    if (in_win(a, SteeBankBase, SteeBankEnd)) return BLK_STEE_REMAP;
+    if (in_win(a, OutFiltBankBase, OutFiltBankEnd)) return BLK_OUT_FILTER;
+    if (in_win(a, FiltBase, FiltEnd)) return BLK_IN_FILTER;
+    if (in_blk(a, SpiBase, SPI_CONTROLLER_REG_MAP_SIZE)) return BLK_SPI;
+    return BLK_NONE;
   endfunction
 
   blk_e rd_blk;
@@ -1678,33 +1680,33 @@ module sep_fcov (
     cp_resp_rd: coverpoint rd_ev {bins okay_read = {1'b1};}
     // An OKAY read decoded in each LSU-reachable register block.
     cp_block: coverpoint rd_blk iff (rd_ev) {
-      bins cpu_ctrl = {BlkCpuCtrl};
-      bins dma = {BlkDma};
-      bins wdt = {BlkWdt};
-      bins scratch_cold = {BlkScratchCold};
-      bins scratch_warm = {BlkScratchWarm};
-      bins reset_ctrl = {BlkResetCtrl};
-      bins otbn = {BlkOtbn};
-      bins aes = {BlkAes};
-      bins hmac = {BlkHmac};
-      bins kmac = {BlkKmac};
-      bins csrng = {BlkCsrng};
-      bins edn = {BlkEdn};
-      bins esrc = {BlkEsrc};
-      bins lifecycle = {BlkLifecycle};
-      bins km_mailbox = {BlkKmMbox};
-      bins efuse_map = {BlkEfuseMap};
-      bins efuse_ctrl = {BlkEfuseCtrl};
-      bins efuse_mmr = {BlkEfuseMmr};
-      bins abr = {BlkAbr};
-      bins entropy_pool = {BlkPool};
-      bins axil_mailbox = {BlkAxilMbox};
-      bins alias_remap = {BlkAliasRemap};
-      bins ap_remap = {BlkApRemap};
-      bins stee_remap = {BlkSteeRemap};
-      bins outbound_filter = {BlkOutFilter};
-      bins inbound_filter = {BlkInFilter};
-      bins spi = {BlkSpi};
+      bins cpu_ctrl = {BLK_CPU_CTRL};
+      bins dma = {BLK_DMA};
+      bins wdt = {BLK_WDT};
+      bins scratch_cold = {BLK_SCRATCH_COLD};
+      bins scratch_warm = {BLK_SCRATCH_WARM};
+      bins reset_ctrl = {BLK_RESET_CTRL};
+      bins otbn = {BLK_OTBN};
+      bins aes = {BLK_AES};
+      bins hmac = {BLK_HMAC};
+      bins kmac = {BLK_KMAC};
+      bins csrng = {BLK_CSRNG};
+      bins edn = {BLK_EDN};
+      bins esrc = {BLK_ESRC};
+      bins lifecycle = {BLK_LIFECYCLE};
+      bins km_mailbox = {BLK_KM_MBOX};
+      bins efuse_map = {BLK_EFUSE_MAP};
+      bins efuse_ctrl = {BLK_EFUSE_CTRL};
+      bins efuse_mmr = {BLK_EFUSE_MMR};
+      bins abr = {BLK_ABR};
+      bins entropy_pool = {BLK_POOL};
+      bins axil_mailbox = {BLK_AXIL_MBOX};
+      bins alias_remap = {BLK_ALIAS_REMAP};
+      bins ap_remap = {BLK_AP_REMAP};
+      bins stee_remap = {BLK_STEE_REMAP};
+      bins outbound_filter = {BLK_OUT_FILTER};
+      bins inbound_filter = {BLK_IN_FILTER};
+      bins spi = {BLK_SPI};
     }
     // Which VALID the master raised first for a write that completed OKAY.
     cp_aw_w_order: coverpoint wr_order_q iff (wr_ev && wr_order_valid_q) {
