@@ -5011,12 +5011,13 @@ reset landed.
 CPU observable is live under a real reset source. `dbg_rstb_i` isolation is not
 claimed: the pin has no netlist path to either observable in this build.
 
-*Test Coverage*: CPU and system reset observables at rest; debug-reset independence.
+*Test Coverage*: CPU and system reset observables at rest; CPU reset observable liveness under `wdt_rst_ni_i` (`dbg_rstb_i` isolation not claimed).
 
 *Test Procedure*:
 
 [arabic]
 . Both reset observables released at rest with `dbg_rstb_i` high.
+. Drive `wdt_rst_ni_i` low: `sep_cpu_reset_n` falls and `sep_reset_n` stays high. Release it: `sep_cpu_reset_n` is restored.
 
 *Checkers*:
 
