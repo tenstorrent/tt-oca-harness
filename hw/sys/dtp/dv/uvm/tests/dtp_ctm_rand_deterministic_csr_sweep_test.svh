@@ -12,6 +12,13 @@ class dtp_ctm_rand_deterministic_csr_sweep_test extends dtp_xtrig_base_test;
     super.new(name, parent);
   endfunction
 
+  // The sweep also writes and reads the hole of every CT_SRC slot; the
+  // decode feature judges its OKAY response.
+  virtual function void configure_test_cfg(dtp_test_cfg cfg);
+    super.configure_test_cfg(cfg);
+    cfg.set_required_features('{DtpFeatureXtrigCsr, DtpFeatureXtrigDecode});
+  endfunction
+
   virtual function ocah_sequence create_scenario_seq();
     dtp_xtrig_csr_test_seq seq = dtp_xtrig_csr_test_seq::type_id::create("seq");
     seq.scenario = "ctm_csr_sweep";

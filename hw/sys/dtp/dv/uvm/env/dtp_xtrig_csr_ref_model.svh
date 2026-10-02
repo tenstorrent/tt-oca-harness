@@ -8,11 +8,11 @@
 // mask, cleared on every system or power-on reset (dtp_tb_if reset
 // counters). Consumes the XTRIG monitor stream (write) through a
 // dtp_xtrig_csr_model and publishes one dtp_expected_item per observed
-// transaction so the scoreboard pairs the two streams in lockstep: writes,
-// STATUS reads, unmapped accesses, and non-OKAY completions carry no
-// contract. No comparison, no reporting. In the cocotb realization the
-// scenarios record each CSR readback against the written value as
-// CHK-XTRIG-CSR evidence.
+// transaction so the scoreboard pairs the two streams in lockstep. An OKAY
+// read of a hole reads 0 across the full word; writes, STATUS reads,
+// unmapped accesses, and non-OKAY completions carry no contract, and a
+// write to a hole leaves the shadow unchanged. No comparison, no reporting.
+// The cocotb twin is env/dtp_xtrig_csr_ref_model.py.
 
 class dtp_xtrig_csr_ref_model extends ocah_ref_model #(ocah_axi_item, dtp_expected_item);
   `uvm_component_utils(dtp_xtrig_csr_ref_model)
@@ -43,6 +43,16 @@ class dtp_xtrig_csr_ref_model extends ocah_ref_model #(ocah_axi_item, dtp_expect
     kind = dtp_xtrig_csr_decode(t.address, mask);
     if ((kind == DTP_XTRIG_CSR_UNMAPPED) || (kind == DTP_XTRIG_CSR_CTP_STATUS) ||
             !t.is_ok() || (t.data_words.size() == 0)) begin
+      expected_ap.write(exp);
+      return;
+    end
+    if (kind == DTP_XTRIG_CSR_HOLE) begin
+      if (t.direction != OCAH_AXI_DIR_WRITE) begin
+        exp.compare   = 1'b1;
+        exp.mask      = 64'hFFFF_FFFF;
+        exp.expected  = '0;
+        exp.context_s = $sformatf("%s addr=0x%03h", kind.name(), t.address);
+      end
       expected_ap.write(exp);
       return;
     end

@@ -422,9 +422,11 @@ ifdef::backend-html5[]
 endif::backend-html5[]
 
 The generated memory map below describes the hart-facing Debug Module memory
-region. Debugger-facing registers such as `dmcontrol`, `dmstatus`, `abstractcs`
-and `sbcs` are accessed through the Debug Module Interface (DMI), not through
-that memory region.
+region. Only the harts of the CPU cluster reach it, over the cluster's own control
+bus. The SMC fabric does not route it, so system, SEP and other SMC initiators
+receive DECERR at every address in the region. Debugger-facing registers such as
+`dmcontrol`, `dmstatus`, `abstractcs` and `sbcs` are accessed through the Debug
+Module Interface (DMI), not through that memory region.
 
 Debugging is facilitated by JTAG, through the cluster's debug transport module and
 debug module, enabling

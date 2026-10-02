@@ -41,7 +41,7 @@ module tlul_err_resp #(
     if (!rst_ni) begin
       err_rsp_pending <= 1'b0;
       err_source      <= {top_pkg::TL_AIW{1'b0}};
-      err_opcode      <= Get;
+      err_opcode      <= GET;
       err_size        <= '0;
       err_instr_type  <= MuBi4False;
     end else if (err_rsp_pending && tl_h_i.d_ready) begin
@@ -68,7 +68,7 @@ module tlul_err_resp #(
   assign tl_h_o_int.d_sink   = '0;
   assign tl_h_o_int.d_param  = '0;
   assign tl_h_o_int.d_size   = err_size;
-  assign tl_h_o_int.d_opcode = (err_opcode == Get) ? AccessAckData : AccessAck;
+  assign tl_h_o_int.d_opcode = (err_opcode == GET) ? ACCESS_ACK_DATA : ACCESS_ACK;
   assign tl_h_o_int.d_user   = '0;
   assign tl_h_o_int.d_error  = ~RETURN_BLANK_RESP;
 

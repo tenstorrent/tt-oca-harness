@@ -121,7 +121,7 @@ addrmap smc_top #(
     smc_cluster_core3_wdt->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
     smc_cluster_core3_wdt->desc = "Core 3 watchdog timer.";
     debug_module->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
-    debug_module->ocah_hole_note = "The inbound port does not reach this unit, so every address in its aperture answers the same.";
+    debug_module->ocah_hole_note = "Only the harts of the CPU cluster reach this unit. An access from outside the cluster answers the same at every address in its aperture.";
     smc_reset_unit->ocah_aperture_size = 0x800;
     smc_reset_unit->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
     smc_reset_unit->desc = "System reset control.";
@@ -215,7 +215,7 @@ addrmap smc_top #(
     smc_cluster_core3_beu->desc = "Core 3 bus-error unit.";
     smc_cluster_error_device->desc = "Error responder for unmapped cluster-bus accesses.";
     smc_cluster_error_device->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
-    smc_cluster_error_device->ocah_hole_note = "The inbound port does not reach this unit, so every address in its aperture answers the same.";
+    smc_cluster_error_device->ocah_hole_note = "Only the harts of the CPU cluster reach this unit. An access from outside the cluster answers the same at every address in its aperture.";
 `endif
 `endif
 

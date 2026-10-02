@@ -75,9 +75,13 @@ module dtp_xtrig_fcov (
       aw_seen_q <= 1'b0;
     end
   end
-  wire ctp_csr_write = w_hs && aw_seen_q && (awaddr_q >= CtpBase)
-      && (awaddr_q < CtpEnd);
-  wire [31:0] ctp_csr_off = (awaddr_q - CtpBase) % CtpStride;
+  // The CSR word a write addresses. Every AXI4-Lite access uses the full
+  // 32-bit data bus (AMBA AXI protocol specification, AXI4-Lite), so the
+  // address selects the word that contains it and WSTRB the bytes within it.
+  wire [31:0] aw_word_addr = {awaddr_q[31:2], 2'b00};
+  wire ctp_csr_write = w_hs && aw_seen_q && (aw_word_addr >= CtpBase)
+      && (aw_word_addr < CtpEnd);
+  wire [31:0] ctp_csr_off = (aw_word_addr - CtpBase) % CtpStride;
   wire ctp_config_write = ctp_csr_write && (ctp_csr_off == CtpConfigOff);
   wire ctp_stretch_write = ctp_csr_write && (ctp_csr_off == CtpStretchOff);
   // CONFIG.MODE, INVERT, and RESET sit in byte 0 and STRETCH_MULT in bytes 0
@@ -395,7 +399,7 @@ module dtp_xtrig_fcov (
   localparam logic [31:0] CtmBase = 32'(CROSS_TRIGGER_NETWORK_CTM_BASE_ADDR);
   localparam int unsigned RouteWindowCycles = 32;
 
-  wire [31:0] ctm_csr_off = awaddr_q - CtmBase;
+  wire [31:0] ctm_csr_off = aw_word_addr - CtmBase;
   wire ctm_select_write = w_hs && aw_seen_q && (ctm_csr_off < 32'(CtmPorts * CtmStride))
       && ((ctm_csr_off % CtmStride) == 0);
   wire [31:0] axil_wbiten = {{8{axil_wstrb_i[3]}}, {8{axil_wstrb_i[2]}}, {8{axil_wstrb_i[1]}},

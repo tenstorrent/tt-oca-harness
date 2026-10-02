@@ -3,7 +3,9 @@
 #
 # SMC eFuse map layout for generate_efuse_preload.py, copied from smc_efuse_map.rdl.
 # The generator lays blocks out in file order, so the order must match the RDL
-# address map; nothing checks this file against the RDL.
+# address map. The smc_efuse_image_*_test leaves check every block's order, bit
+# offset and width, and its LOCKS bit positions, against the generated RDL
+# headers.
 
 [LOCKS]
 regwidth = 64

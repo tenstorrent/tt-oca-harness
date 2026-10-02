@@ -37,7 +37,7 @@
 // dtp_jtag2axi_status_ref_model; no reporting. Not modelled: the series
 // read-data FIFO a SERIES_DATA capture returns (and so the DECERR a system
 // reset reports for its unread entries), and true request-FIFO
-// backpressure. No cocotb twin.
+// backpressure. The cocotb twin is env/dtp_jtag2axi_model.py.
 
 class dtp_jtag2axi_model;
 

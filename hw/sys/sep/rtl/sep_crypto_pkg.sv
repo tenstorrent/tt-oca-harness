@@ -117,33 +117,28 @@ package sep_crypto_pkg;
       end_addr: TRNG_END_ADDR
   };
 
-  // Adams Bridge (PQC: ML-DSA-87 / ML-KEM-1024): OCH spec 0x1094_0000-0x1094_FFFF
-  // (64 kB register aperture; AB's secret sk_ram is internal to the block).
-  localparam logic [31:0] ABR_REG_MAP_BASE_ADDR = 32'h1094_0000;
-  localparam logic [31:0] ABR_REG_MAP_END_ADDR = 32'h1095_0000;
-
   parameter axi_pkg::xbar_rule_32_t ABR_RULE = '{
       idx: 11,
-      start_addr: ABR_REG_MAP_BASE_ADDR,
-      end_addr: ABR_REG_MAP_END_ADDR
+      start_addr: sep_top_addrmap_pkg::SEP_TOP_ABR_BASE_ADDR,
+      end_addr: sep_top_addrmap_pkg::SEP_TOP_ABR_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_ABR_SIZE
   };
 
   // AXI demux port indices (must match axi_demux master port order in sep_crypto.sv).
   // Highest enum value must equal SEP_CRYPTO_NUM_AXI_MST - 1.
   typedef enum int unsigned {
-    SepCryptoAxiErrSlv       = 0,
-    SepCryptoAxiOtbn         = 1,
-    SepCryptoAxiHmac         = 2,
-    SepCryptoAxiAes          = 3,
-    SepCryptoAxiKmac         = 4,
-    SepCryptoAxiFuse         = 5,
-    SepCryptoAxiLifecycle    = 6,
-    SepCryptoAxiKm           = 7,
-    SepCryptoAxiCsrng        = 8,
-    SepCryptoAxiEdn          = 9,
-    SepCryptoAxiEntropySrc   = 10,
-    SepCryptoAxiTrng         = 11,
-    SepCryptoAxiAbr          = 12
+    SEP_CRYPTO_AXI_ERR_SLV       = 0,
+    SEP_CRYPTO_AXI_OTBN          = 1,
+    SEP_CRYPTO_AXI_HMAC          = 2,
+    SEP_CRYPTO_AXI_AES           = 3,
+    SEP_CRYPTO_AXI_KMAC          = 4,
+    SEP_CRYPTO_AXI_FUSE          = 5,
+    SEP_CRYPTO_AXI_LIFECYCLE     = 6,
+    SEP_CRYPTO_AXI_KM            = 7,
+    SEP_CRYPTO_AXI_CSRNG         = 8,
+    SEP_CRYPTO_AXI_EDN           = 9,
+    SEP_CRYPTO_AXI_ENTROPY_SRC   = 10,
+    SEP_CRYPTO_AXI_TRNG          = 11,
+    SEP_CRYPTO_AXI_ABR           = 12
   } sep_crypto_axi_port_e;
 
   localparam int unsigned SEP_CRYPTO_NUM_AXI_MST = 13;

@@ -23,7 +23,7 @@
  *        - a sample at ACQLVL == N with the interrupt deasserted, and
  *        - the interrupt asserted only at ACQLVL > N.
  *   3. Assert the *entry* count exactly: with ACQ_START_STOP_EN set the FSM
- *      pushes an AcqStart entry (i2c_target_fsm.sv:434) and an AcqStop entry
+ *      pushes an ACQ_START entry (i2c_target_fsm.sv:434) and an ACQ_STOP entry
  *      (:644) around the payload, so 5 data bytes produce 7 entries -- and the
  *      interrupt therefore fires on the 5th data byte (level 6), not on the
  *      Nth byte of payload.
@@ -63,7 +63,7 @@
 #define RX_FIRST_DATA_BYTE 0xAAu
 /* START entry + payload + STOP entry (ACQ_START_STOP_EN is set in main). */
 #define RX_EXPECTED_ACQ_ENTRIES (1u + RX_BYTE_COUNT + 1u)
-/* The AcqStart entry carries the address byte the FSM shifted in, i.e. the
+/* The ACQ_START entry carries the address byte the FSM shifted in, i.e. the
  * 7-bit address with the R/W bit appended (i2c_target_fsm.sv:434). */
 #define RX_START_ACQ_BYTE ((TARGET_ADDR << 1) | 0u)
 
@@ -389,8 +389,8 @@ static int rx_observe(uint32_t idx, uint32_t threshold_n) {
             expected_signal = I2C_ACQ_SIGNAL_DATA;
             expected_byte = (RX_FIRST_DATA_BYTE + (i - 1)) & 0xFFu;
         } else {
-            /* The AcqStop entry carries whatever byte was last shifted in
-             * (i2c_target_fsm.sv:644 writes {AcqStop, input_byte}), so only the
+            /* The ACQ_STOP entry carries whatever byte was last shifted in
+             * (i2c_target_fsm.sv:644 writes {ACQ_STOP, input_byte}), so only the
              * signal field is specified. */
             expected_signal = I2C_ACQ_SIGNAL_STOP;
             expected_byte = 0;

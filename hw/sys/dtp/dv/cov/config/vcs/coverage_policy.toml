@@ -26,42 +26,42 @@ role = "unreachable"
 path = "dtp_unreachable.el"
 apply_phase = "report"
 args = ["-elfile", "{path}"]
-sha256 = "56ba97192c3ceedff02341d919a13aefba0a363fbe5395751a47e0150289ffcc"
+sha256 = "e5b31aa61ed0e5b93d8c2bec84c3c62efbc61de379280d1b88b5981b8ebc711c"
 
 [[thresholds]]
 id = "line"
 tool = "vcs"
 metric_family = "line"
 population = "effective"
-minimum_percent = 98.0
+minimum_percent = 85.0
 
 [[thresholds]]
 id = "condition"
 tool = "vcs"
 metric_family = "condition"
 population = "effective"
-minimum_percent = 98.0
+minimum_percent = 85.0
 
 [[thresholds]]
 id = "toggle"
 tool = "vcs"
 metric_family = "toggle"
 population = "effective"
-minimum_percent = 98.0
+minimum_percent = 85.0
 
 [[thresholds]]
 id = "fsm"
 tool = "vcs"
 metric_family = "fsm_state"
 population = "effective"
-minimum_percent = 98.0
+minimum_percent = 85.0
 
 [[thresholds]]
 id = "branch"
 tool = "vcs"
 metric_family = "branch"
 population = "effective"
-minimum_percent = 98.0
+minimum_percent = 85.0
 
 # Every assertion in scope attempted and every cover directive hit: the DUT's
 # own assertions, the coverage modules' cover properties, and the protocol

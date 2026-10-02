@@ -12,8 +12,8 @@
 // Must be called before spi_init() if rotate is needed.
 void spi_set_rotate(bool rotate);
 
-// Initialise SPI (Cadence xSPI). To be called once before using the SPI flash
-// memory space.
+// Initialise the memory-mapped (XIP) flash controller. To be called once before
+// using the SPI flash memory space.
 //
 // Returns 0 on success, non-zero on failure.
 uint32_t spi_init(void);

@@ -87,14 +87,12 @@ module axi_alias_remap #(
     .empty_o(no_read_hit)
   );
 
-  generate
-    if (DEBUG_OUTPUT == 1) begin : gen_remap_debug
-      assign remap_debug_o.aw_remap_hit_debug = aw_remap_idx;
-      assign remap_debug_o.ar_remap_hit_debug = ar_remap_idx;
-    end else begin : gen_no_remap_debug
-      assign remap_debug_o = '0;
-    end
-  endgenerate
+  if (DEBUG_OUTPUT == 1) begin : gen_remap_debug
+    assign remap_debug_o.aw_remap_hit_debug = aw_remap_idx;
+    assign remap_debug_o.ar_remap_hit_debug = ar_remap_idx;
+  end else begin : gen_no_remap_debug
+    assign remap_debug_o = '0;
+  end
 
   prim_carry_select_adder #(
     .DATA_WIDTH (ALIAS_REMAP_OFFSET_WIDTH+1),

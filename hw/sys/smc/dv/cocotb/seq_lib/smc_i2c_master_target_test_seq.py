@@ -113,7 +113,7 @@ I2C_FDATA_STOP = _i2c_u32("I2C__FDATA__STOP_bm")
 I2C_FDATA_READB = _i2c_u32("I2C__FDATA__READB_bm")
 
 # W1C of every controller event (sticky NACK / timeouts / arbitration loss), so a
-# prior attempt cannot leave the host halted in Idle with SCL held.
+# prior attempt cannot leave the host halted in IDLE with SCL held.
 I2C_CONTROLLER_EVENTS_ALL = (
     _i2c_u32("I2C__CONTROLLER_EVENTS__NACK_bm")
     | _i2c_u32("I2C__CONTROLLER_EVENTS__UNHANDLED_NACK_TIMEOUT_bm")
@@ -257,7 +257,7 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
 
     async def _wait_hostidle(self, label: str) -> None:
         status = 0
-        # Ensure the host actually left Idle (FMT accepted) before waiting for
+        # Ensure the host actually left IDLE (FMT accepted) before waiting for
         # completion — otherwise a no-op FIFO write looks like instant success.
         left_idle = False
         for _ in range(200):
@@ -291,7 +291,7 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
         await self.csr_write("I2C0_OVRD_OFF", I2C0_OVRD, I2C_OVRD_OFF)
         await self._program_i2c0_timing()
         await self.csr_write("I2C0_FIFO_RST", I2C0_FIFO_CTRL, I2C_FIFO_CTRL_RXRST_FMTRST)
-        # W1C: clear sticky NACK/halt so a prior attempt cannot freeze Idle+SCL.
+        # W1C: clear sticky NACK/halt so a prior attempt cannot freeze IDLE+SCL.
         await self.csr_write(
             "I2C0_CONTROLLER_EVENTS_CLR",
             I2C0_CONTROLLER_EVENTS,
@@ -451,7 +451,7 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
 
         # Transfer may already be back in hostidle by the time RX is readable, so
         # busy is not always sampled. Either way the FMT entries must be proven
-        # to have run on the bus: `saw_busy` (the host left Idle) or the ARA
+        # to have run on the bus: `saw_busy` (the host left IDLE) or the ARA
         # responder framing a START addressed to it. Both are DUT observations,
         # and the CSR poll alone is not accepted as proof.
         ara_starts = ara_slave.starts

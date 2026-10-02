@@ -544,8 +544,9 @@ Collection performs these steps:
 . Load `stages/regress/regression.json` when present.
 . Rebase recorded run-tree paths onto the selected run root.
 . Load leaf fragments and test metadata to build `tests_detail`.
-. Prefer each leaf's `artifacts.results_xml`, then parser evidence, then
-  log-layout inference when locating JUnit/xUnit files.
+. Prefer each leaf's `artifacts.results_xml`, then parser evidence, then the
+  `results/results.xml` beside the leaf's recorded `result.json`, then
+  log-layout inference from a leaf log, when locating JUnit/xUnit files.
 . Count the resolved JUnit/xUnit files and how many are missing.
 . Convert the native result to dashboard schema version `"0.2"`.
 . Copy selected coverage output beside the normalized result.
@@ -891,7 +892,8 @@ described below.
 |`artifacts` |object |Paths to source material, described below.
 
 |`failure_buckets` |array |Merged native buckets: `kind`, `signature`,
-`count`, and optional `affected` and `examples` lists.
+`count`, and optional `affected` and `examples` lists. A regression's leaves
+count once, from `regression.json`.
 
 |`source` |object |`collector` (`run_dv-result`, or `none` when no native
 result was found), `label`, and `native_status`.
@@ -1501,7 +1503,17 @@ did not pass carries its `reason`. `id` is the CI run the archive came from,
 and is empty when the publisher recorded none.
 
 The overview shows `coverage_total_percent`. The block page shows
-`results[].coverage.effective_metrics`.
+`results[].coverage.effective_metrics`, one column per metric family. A
+column is headed by the family's `FAMILY_HEADINGS` entry in
+`doc/ui-supplemental/js/dashboard.js`, such as `FSM` for `fsm_state` or
+`Cover` for `user`, so that eight families fit the page column; a family it
+does not list is headed by its name. On a table whose series all ran on one
+tool, `TOOL_FAMILY_HEADINGS` replaces that heading where the tool's own
+reports use another name, such as `User` on Verilator.
+
+Percentages on the pages and on the badges share three colour bands, set by
+`PASS_AT` and `WARN_AT` in both `doc/ui-supplemental/js/dashboard.js` and
+`tools/doc/render_badges.py`. The two pairs must agree.
 
 === Charts
 

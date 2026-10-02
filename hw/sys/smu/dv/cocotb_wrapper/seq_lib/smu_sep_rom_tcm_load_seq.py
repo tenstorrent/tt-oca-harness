@@ -17,8 +17,7 @@ zeroes when the CPU starts. The image then:
   * writes and reads back DCCM from ROM-fetched code,
   * stages a short routine into SEP SRAM as raw instruction words (the EL2 LSU
     cannot write ICCM directly),
-  * opens the secure-DMA range, disables local-alias remap, and DMAs
-    SRAM -> ICCM,
+  * opens the secure-DMA range and DMAs SRAM -> ICCM,
   * jumps to the ICCM copy, which reports through the STDOUT mailbox.
 
 So a PASS here proves the SEP moved code into its own ICCM and executed it. The

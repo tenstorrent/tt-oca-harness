@@ -83,16 +83,14 @@ module tlul_to_axi_lite
 	// TL-UL Incoming Command Integrity Checking
 	// --------------------------------------------------
 	logic intg_err;
-	generate
-		if (CMD_INTG_CHECK) begin : gen_cmd_intg_check
-			tlul_cmd_intg_chk u_cmd_intg_chk (
-				.tl_i(tl_i),
-				.err_o(intg_err)
-			);
-		end else begin : gen_no_intg_check
-			assign intg_err = 1'b0;
-		end
-	endgenerate
+	if (CMD_INTG_CHECK) begin : gen_cmd_intg_check
+		tlul_cmd_intg_chk u_cmd_intg_chk (
+			.tl_i(tl_i),
+			.err_o(intg_err)
+		);
+	end else begin : gen_no_intg_check
+		assign intg_err = 1'b0;
+	end
 
 	// --------------------------------------------------
 	// FSM Sequential Logic
@@ -103,7 +101,7 @@ module tlul_to_axi_lite
 			req_addr_q   <= '0;
 			req_data_q   <= '0;
 			req_mask_q   <= '0;
-			req_opcode_q <= tlul_pkg::Get;
+			req_opcode_q <= tlul_pkg::GET;
 			req_source_q <= '0;
 			req_size_q   <= '0;
 			aw_done_q    <= 1'b0;
@@ -183,7 +181,7 @@ module tlul_to_axi_lite
 					aw_done_d    = 1'b0;
 					w_done_d     = 1'b0;
 
-					if (tl_i.a_opcode == tlul_pkg::Get) begin
+					if (tl_i.a_opcode == tlul_pkg::GET) begin
 						state_d = AXI_AR_REQ;
 					end else begin
 						state_d = AXI_AW_W_REQ;
@@ -260,10 +258,10 @@ module tlul_to_axi_lite
 				tl_o.d_error  = resp_error_q;
 				tl_o.d_data   = resp_data_q;
 
-				if (req_opcode_q == tlul_pkg::Get) begin
-					tl_o.d_opcode = tlul_pkg::AccessAckData;
+				if (req_opcode_q == tlul_pkg::GET) begin
+					tl_o.d_opcode = tlul_pkg::ACCESS_ACK_DATA;
 				end else begin
-					tl_o.d_opcode = tlul_pkg::AccessAck;
+					tl_o.d_opcode = tlul_pkg::ACCESS_ACK;
 				end
 
 				if (tl_i.d_ready) begin

@@ -104,111 +104,109 @@ module axi_filter_wrap #(
   logic [NUM_FILTERS-1:0] write_filter_hit;
   logic [NUM_FILTERS-1:0] read_filter_hit;
 
-  generate
-    for (genvar f = 0; f < NUM_FILTERS; f = f + 1) begin : gen_filter_config
+  for (genvar f = 0; f < NUM_FILTERS; f = f + 1) begin : gen_filter_config
 
-      logic [AXI_ADDR_WIDTH-1:0] start_addr_converted;
-      logic [AXI_ADDR_WIDTH-1:0] end_addr_converted;
+    logic [AXI_ADDR_WIDTH-1:0] start_addr_converted;
+    logic [AXI_ADDR_WIDTH-1:0] end_addr_converted;
 
-      // always adjust the start and end address such that the range matches the granularity
-      // i.e. if bursts are enabled, the finest granularity is 4KB.
-      //      so if the range is programmed to be 0x1001 to 0x1002,
-      //      adjust the range to be 0x1000 to 0x1FFF instead
-      always_comb begin
-        start_addr_converted = filters[f].start_addr;
-        end_addr_converted = filters[f].end_addr;
+    // always adjust the start and end address such that the range matches the granularity
+    // i.e. if bursts are enabled, the finest granularity is 4KB.
+    //      so if the range is programmed to be 0x1001 to 0x1002,
+    //      adjust the range to be 0x1000 to 0x1FFF instead
+    always_comb begin
+      start_addr_converted = filters[f].start_addr;
+      end_addr_converted = filters[f].end_addr;
 
-        if (filters[f].allow_burst) begin
-          if (filters[f].start_addr[AXI_ADDR_WIDTH-1:12] == filters[f].end_addr[AXI_ADDR_WIDTH-1:12]) begin
-            start_addr_converted = {filters[f].start_addr[AXI_ADDR_WIDTH-1:12], 12'h0};
-            end_addr_converted   = {filters[f].end_addr[AXI_ADDR_WIDTH-1:12], 12'hFFF};
-          end
-        end else begin
-          if (filters[f].start_addr[AXI_ADDR_WIDTH-1:DbusWidthLog2] == filters[f].end_addr[AXI_ADDR_WIDTH-1:DbusWidthLog2]) begin
-            start_addr_converted = {filters[f].start_addr[AXI_ADDR_WIDTH-1:DbusWidthLog2], {DbusWidthLog2{1'b0}}};
-            end_addr_converted   = {filters[f].end_addr[AXI_ADDR_WIDTH-1:DbusWidthLog2], {DbusWidthLog2{1'b1}}};
-          end
+      if (filters[f].allow_burst) begin
+        if (filters[f].start_addr[AXI_ADDR_WIDTH-1:12] == filters[f].end_addr[AXI_ADDR_WIDTH-1:12]) begin
+          start_addr_converted = {filters[f].start_addr[AXI_ADDR_WIDTH-1:12], 12'h0};
+          end_addr_converted   = {filters[f].end_addr[AXI_ADDR_WIDTH-1:12], 12'hFFF};
+        end
+      end else begin
+        if (filters[f].start_addr[AXI_ADDR_WIDTH-1:DbusWidthLog2] == filters[f].end_addr[AXI_ADDR_WIDTH-1:DbusWidthLog2]) begin
+          start_addr_converted = {filters[f].start_addr[AXI_ADDR_WIDTH-1:DbusWidthLog2], {DbusWidthLog2{1'b0}}};
+          end_addr_converted   = {filters[f].end_addr[AXI_ADDR_WIDTH-1:DbusWidthLog2], {DbusWidthLog2{1'b1}}};
         end
       end
-
-      always_comb begin
-        filter_status_o[f].FILTER_CONFIG.data_bus_width.next  = DbusWidthLog2;
-
-        filter_status_o[f].START_ADDR.start_addr.next         = start_addr_converted;
-        filter_status_o[f].END_ADDR.end_addr.next             = end_addr_converted;
-
-        filters[f].start_addr[AXI_ADDR_WIDTH-1:0]         = filter_ctrl_i[f].START_ADDR.start_addr.value;
-        filters[f].end_addr[AXI_ADDR_WIDTH-1:0]           = filter_ctrl_i[f].END_ADDR.end_addr.value;
-        filters[f].read_allowed                           = filter_ctrl_i[f].FILTER_CONFIG.read_allowed.value;
-        filters[f].write_allowed                          = filter_ctrl_i[f].FILTER_CONFIG.write_allowed.value;
-        filters[f].entry_enabled                          = filter_ctrl_i[f].FILTER_CONFIG.entry_enabled.value;
-        filters[f].allow_ns                               = filter_ctrl_i[f].FILTER_CONFIG.allow_ns.value;
-        filters[f].src_id                                 = filter_ctrl_i[f].FILTER_CONFIG.src_id.value;
-        filters[f].group_id                               = filter_ctrl_i[f].FILTER_CONFIG.group_id.value;
-        filters[f].allow_burst                            = filter_ctrl_i[f].FILTER_CONFIG.allow_burst.value;
-        filters[f].locked                                 = filter_ctrl_i[f].FILTER_CONFIG.locked.value;
-      end
-
-      //////////////////////
-      // Filter Detection //
-      //////////////////////
-
-      traffic_filter #(
-        .EN_SRC_ID_FILTER    (EN_SRC_ID_FILTER),
-        .EN_NS_FILTER        (EN_NS_FILTER),
-        .EN_GROUP_ID_FILTER  (EN_GROUP_ID_FILTER),
-        .ADDR_WIDTH          (AXI_ADDR_WIDTH),
-        .SRC_ID_WIDTH        (SRC_ID_WIDTH),
-        .GROUP_ID_WIDTH      (GROUP_ID_WIDTH),
-        .DATA_BUS_WIDTH_LOG2 (DbusWidthLog2)
-      ) u_write_traffic_filter (
-        .cfg_allow_traffic_type_i (filters[f].write_allowed),
-        .cfg_start_addr_i         (filters[f].start_addr),
-        .cfg_end_addr_i           (filters[f].end_addr),
-        .cfg_entry_enabled_i      (filters[f].entry_enabled),
-        .cfg_src_id_i             (filters[f].src_id),
-        .cfg_group_id_i           (filters[f].group_id),
-        .cfg_allow_ns_i           (filters[f].allow_ns),
-        .cfg_burst_en_i           (filters[f].allow_burst),
-        .tx_valid_i               (axi_in_req_i.aw_valid),
-        .tx_addr_i                (axi_in_req_i.aw.addr),
-        .tx_src_id_i              (axi_in_req_i.aw.user[SRC_ID_USER_BIT_START+:SRC_ID_WIDTH]),
-        .tx_group_id_i            (axi_in_req_i.aw.user[GROUP_ID_USER_BIT_START+:GROUP_ID_WIDTH]),
-        .tx_ns_initiator_i        (axi_in_req_i.aw.prot[1]),
-        .tx_len_i                 (axi_in_req_i.aw.len),
-        .filter_hit_o             (write_filter_hit[f]),
-        .tx_rule_pass_o           (allow_write[f])
-      );
-
-      traffic_filter #(
-        .EN_SRC_ID_FILTER    (EN_SRC_ID_FILTER),
-        .EN_NS_FILTER        (EN_NS_FILTER),
-        .EN_GROUP_ID_FILTER  (EN_GROUP_ID_FILTER),
-        .ADDR_WIDTH          (AXI_ADDR_WIDTH),
-        .SRC_ID_WIDTH        (SRC_ID_WIDTH),
-        .GROUP_ID_WIDTH      (GROUP_ID_WIDTH),
-        .DATA_BUS_WIDTH_LOG2 (DbusWidthLog2)
-      ) u_read_traffic_filter (
-        .cfg_allow_traffic_type_i (filters[f].read_allowed),
-        .cfg_start_addr_i         (filters[f].start_addr),
-        .cfg_end_addr_i           (filters[f].end_addr),
-        .cfg_entry_enabled_i      (filters[f].entry_enabled),
-        .cfg_src_id_i             (filters[f].src_id),
-        .cfg_group_id_i           (filters[f].group_id),
-        .cfg_allow_ns_i           (filters[f].allow_ns),
-        .cfg_burst_en_i           (filters[f].allow_burst),
-        .tx_valid_i               (axi_in_req_i.ar_valid),
-        .tx_addr_i                (axi_in_req_i.ar.addr),
-        .tx_src_id_i              (axi_in_req_i.ar.user[SRC_ID_USER_BIT_START+:SRC_ID_WIDTH]),
-        .tx_group_id_i            (axi_in_req_i.ar.user[GROUP_ID_USER_BIT_START+:GROUP_ID_WIDTH]),
-        .tx_ns_initiator_i        (axi_in_req_i.ar.prot[1]),
-        .tx_len_i                 (axi_in_req_i.ar.len),
-        .filter_hit_o             (read_filter_hit[f]),
-        .tx_rule_pass_o           (allow_read[f])
-      );
-
     end
-  endgenerate
+
+    always_comb begin
+      filter_status_o[f].FILTER_CONFIG.data_bus_width.next  = DbusWidthLog2;
+
+      filter_status_o[f].START_ADDR.start_addr.next         = start_addr_converted;
+      filter_status_o[f].END_ADDR.end_addr.next             = end_addr_converted;
+
+      filters[f].start_addr[AXI_ADDR_WIDTH-1:0]         = filter_ctrl_i[f].START_ADDR.start_addr.value;
+      filters[f].end_addr[AXI_ADDR_WIDTH-1:0]           = filter_ctrl_i[f].END_ADDR.end_addr.value;
+      filters[f].read_allowed                           = filter_ctrl_i[f].FILTER_CONFIG.read_allowed.value;
+      filters[f].write_allowed                          = filter_ctrl_i[f].FILTER_CONFIG.write_allowed.value;
+      filters[f].entry_enabled                          = filter_ctrl_i[f].FILTER_CONFIG.entry_enabled.value;
+      filters[f].allow_ns                               = filter_ctrl_i[f].FILTER_CONFIG.allow_ns.value;
+      filters[f].src_id                                 = filter_ctrl_i[f].FILTER_CONFIG.src_id.value;
+      filters[f].group_id                               = filter_ctrl_i[f].FILTER_CONFIG.group_id.value;
+      filters[f].allow_burst                            = filter_ctrl_i[f].FILTER_CONFIG.allow_burst.value;
+      filters[f].locked                                 = filter_ctrl_i[f].FILTER_CONFIG.locked.value;
+    end
+
+    //////////////////////
+    // Filter Detection //
+    //////////////////////
+
+    traffic_filter #(
+      .EN_SRC_ID_FILTER    (EN_SRC_ID_FILTER),
+      .EN_NS_FILTER        (EN_NS_FILTER),
+      .EN_GROUP_ID_FILTER  (EN_GROUP_ID_FILTER),
+      .ADDR_WIDTH          (AXI_ADDR_WIDTH),
+      .SRC_ID_WIDTH        (SRC_ID_WIDTH),
+      .GROUP_ID_WIDTH      (GROUP_ID_WIDTH),
+      .DATA_BUS_WIDTH_LOG2 (DbusWidthLog2)
+    ) u_write_traffic_filter (
+      .cfg_allow_traffic_type_i (filters[f].write_allowed),
+      .cfg_start_addr_i         (filters[f].start_addr),
+      .cfg_end_addr_i           (filters[f].end_addr),
+      .cfg_entry_enabled_i      (filters[f].entry_enabled),
+      .cfg_src_id_i             (filters[f].src_id),
+      .cfg_group_id_i           (filters[f].group_id),
+      .cfg_allow_ns_i           (filters[f].allow_ns),
+      .cfg_burst_en_i           (filters[f].allow_burst),
+      .tx_valid_i               (axi_in_req_i.aw_valid),
+      .tx_addr_i                (axi_in_req_i.aw.addr),
+      .tx_src_id_i              (axi_in_req_i.aw.user[SRC_ID_USER_BIT_START+:SRC_ID_WIDTH]),
+      .tx_group_id_i            (axi_in_req_i.aw.user[GROUP_ID_USER_BIT_START+:GROUP_ID_WIDTH]),
+      .tx_ns_initiator_i        (axi_in_req_i.aw.prot[1]),
+      .tx_len_i                 (axi_in_req_i.aw.len),
+      .filter_hit_o             (write_filter_hit[f]),
+      .tx_rule_pass_o           (allow_write[f])
+    );
+
+    traffic_filter #(
+      .EN_SRC_ID_FILTER    (EN_SRC_ID_FILTER),
+      .EN_NS_FILTER        (EN_NS_FILTER),
+      .EN_GROUP_ID_FILTER  (EN_GROUP_ID_FILTER),
+      .ADDR_WIDTH          (AXI_ADDR_WIDTH),
+      .SRC_ID_WIDTH        (SRC_ID_WIDTH),
+      .GROUP_ID_WIDTH      (GROUP_ID_WIDTH),
+      .DATA_BUS_WIDTH_LOG2 (DbusWidthLog2)
+    ) u_read_traffic_filter (
+      .cfg_allow_traffic_type_i (filters[f].read_allowed),
+      .cfg_start_addr_i         (filters[f].start_addr),
+      .cfg_end_addr_i           (filters[f].end_addr),
+      .cfg_entry_enabled_i      (filters[f].entry_enabled),
+      .cfg_src_id_i             (filters[f].src_id),
+      .cfg_group_id_i           (filters[f].group_id),
+      .cfg_allow_ns_i           (filters[f].allow_ns),
+      .cfg_burst_en_i           (filters[f].allow_burst),
+      .tx_valid_i               (axi_in_req_i.ar_valid),
+      .tx_addr_i                (axi_in_req_i.ar.addr),
+      .tx_src_id_i              (axi_in_req_i.ar.user[SRC_ID_USER_BIT_START+:SRC_ID_WIDTH]),
+      .tx_group_id_i            (axi_in_req_i.ar.user[GROUP_ID_USER_BIT_START+:GROUP_ID_WIDTH]),
+      .tx_ns_initiator_i        (axi_in_req_i.ar.prot[1]),
+      .tx_len_i                 (axi_in_req_i.ar.len),
+      .filter_hit_o             (read_filter_hit[f]),
+      .tx_rule_pass_o           (allow_read[f])
+    );
+
+  end
 
   localparam int unsigned HitIndexWidth = $clog2(NUM_FILTERS);
   logic [HitIndexWidth-1:0] write_filter_hit_idx, read_filter_hit_idx;
@@ -235,15 +233,13 @@ module axi_filter_wrap #(
   );
   assign isolate_read  = filter_skip_i ? 1'b0 : (no_read_filter_matches ? BLOCK_BY_DEFAULT : !allow_read[read_filter_hit_idx]);
 
-  generate
-    if (DEBUG_OUTPUT == 1) begin : gen_filter_hit_debug
-      assign write_filter_hit_debug_o = write_filter_hit_idx;
-      assign read_filter_hit_debug_o  = read_filter_hit_idx;
-    end else begin : gen_no_filter_hit_debug
-      assign write_filter_hit_debug_o = '0;
-      assign read_filter_hit_debug_o  = '0;
-    end
-  endgenerate
+  if (DEBUG_OUTPUT == 1) begin : gen_filter_hit_debug
+    assign write_filter_hit_debug_o = write_filter_hit_idx;
+    assign read_filter_hit_debug_o  = read_filter_hit_idx;
+  end else begin : gen_no_filter_hit_debug
+    assign write_filter_hit_debug_o = '0;
+    assign read_filter_hit_debug_o  = '0;
+  end
 
   ////////////////////////////////////
   // AXI Demux for Filtering Output //

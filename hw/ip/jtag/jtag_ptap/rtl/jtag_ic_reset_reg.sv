@@ -148,25 +148,23 @@ module jtag_ic_reset_reg
   //--------------------------------------------------------------------------
   // Extract Control Bits from Registers
   //--------------------------------------------------------------------------
-  generate
-    for (genvar i = 0; i < NUM_IC_RESET_PORTS; i++) begin : gen_reset_control
-      // Bit ordering in reset_enable_control_data:
-      // - Bit [2*i]: reset_enable[i] (closer to TDO)
-      // - Bit [2*i + 1]: reset_control[i] (further from TDO)
-      localparam int unsigned RESET_ENABLE_BIT = 2 * i;
-      localparam int unsigned RESET_CONTROL_BIT = 2 * i + 1;
+  for (genvar i = 0; i < NUM_IC_RESET_PORTS; i++) begin : gen_reset_control
+    // Bit ordering in reset_enable_control_data:
+    // - Bit [2*i]: reset_enable[i] (closer to TDO)
+    // - Bit [2*i + 1]: reset_control[i] (further from TDO)
+    localparam int unsigned RESET_ENABLE_BIT = 2 * i;
+    localparam int unsigned RESET_CONTROL_BIT = 2 * i + 1;
 
-      assign reset_enable[i]  = reset_enable_control_data[RESET_ENABLE_BIT];
-      assign reset_control[i] = reset_enable_control_data[RESET_CONTROL_BIT];
+    assign reset_enable[i]  = reset_enable_control_data[RESET_ENABLE_BIT];
+    assign reset_control[i] = reset_enable_control_data[RESET_CONTROL_BIT];
 
-      // Convert the IEEE §17 active-low `reset_enable` TDR field into
-      // the natural active-high override signal expected by downstream
-      // struct consumers: ic_reset_ovrd_o == 1 ⇔ JTAG is overriding.
-      // See the module header for a full explanation of the polarity.
-      assign ic_reset_ovrd_o[i]    = !reset_enable[i];
-      // `reset_control` is already active-low (match consumer `_n` resets).
-      assign ic_reset_ctrl_n_o[i]  = reset_control[i];
-    end
-  endgenerate
+    // Convert the IEEE §17 active-low `reset_enable` TDR field into
+    // the natural active-high override signal expected by downstream
+    // struct consumers: ic_reset_ovrd_o == 1 ⇔ JTAG is overriding.
+    // See the module header for a full explanation of the polarity.
+    assign ic_reset_ovrd_o[i]    = !reset_enable[i];
+    // `reset_control` is already active-low (match consumer `_n` resets).
+    assign ic_reset_ctrl_n_o[i]  = reset_control[i];
+  end
 
 endmodule : jtag_ic_reset_reg

@@ -14,9 +14,8 @@ access that no register or memory backs, as seen at the SEP inbound AXI port:
 
 A response gives the read code, the RDL read data and the write code
 (``doc/trm/src/memory_map.adoc``, Decode Response Codes). A row with no
-response has no such offset. The RDL notes on a row qualify its responses; this
-module models one of them through a strict pattern, the write-code note "A
-write to a reserved address in <range> or <range> answers <code>."
+response has no such offset. The RDL notes on a row qualify its responses, and
+this module models none of them.
 
 ``rdata`` in ``sep.rdl`` is a 64-bit field (``ocah_resp`` in
 ``hw/common/regs/regblock_udps.rdl``). A 64-bit RDL rdata states both words:
@@ -26,14 +25,13 @@ An RDL rdata that carries no upper word (a 32-bit value such as
 (the ``ocah_resp.rdata`` definition and Decode Response Codes in
 ``doc/trm/src/memory_map.adoc``), so every read has one stated word.
 
-A lookup that meets any other note, a row with more than one hole response, or
+A lookup that meets a note, a row with more than one hole response, or
 a response that is not a bus response (``FORWARD``, ``ADOPTER``) raises: the
 expectation is not modeled, so the caller must not probe there.
 """
 
 from __future__ import annotations
 
-import re
 import sys
 from dataclasses import dataclass
 from functools import lru_cache
@@ -50,18 +48,11 @@ _VIEW = "sep-components"
 # AMBA AXI4 (IHI 0022) response codes.
 RESP_CODE = {"OKAY": 0, "SLVERR": 2, "DECERR": 3}
 
-_CODE = r"(OKAY|SLVERR|DECERR)"
-_RANGE = r"0x[0-9A-Fa-f_]+-0x[0-9A-Fa-f_]+"
-_NOTE_WRITE = re.compile(
-    rf"^A write to a reserved address in ({_RANGE}(?: or {_RANGE})*) answers {_CODE}\.$"
-)
-
 
 @dataclass(frozen=True)
 class Cell:
     """One response: the RDL read data as ``rdata_hi:rdata_lo``, where
-    ``hi_noted`` says the RDL rdata states ``rdata_hi``; ``write_ranges`` and
-    ``write_code`` override ``bresp`` there."""
+    ``hi_noted`` says the RDL rdata states ``rdata_hi``."""
 
     text: str
     rresp: str | None = None
@@ -69,8 +60,6 @@ class Cell:
     rdata_hi: int = 0
     hi_noted: bool = False
     bresp: str | None = None
-    write_ranges: tuple[tuple[int, int], ...] = ()
-    write_code: str | None = None
     unmodeled: str = ""
 
 
@@ -106,20 +95,7 @@ def _cell(parts: tuple, notes: tuple[str, ...]) -> Cell | None:
     if resp["rresp"] not in RESP_CODE or resp["bresp"] not in RESP_CODE:
         return Cell(text, unmodeled=f"cell {text!r} is not a bus response")
     rdata = int(resp["rdata"])
-    ranges: tuple[tuple[int, int], ...] = ()
-    wcode = None
-    unmodeled = ""
-    for note in notes:
-        n = _NOTE_WRITE.match(note)
-        if n and wcode is None:
-            spans = []
-            for r in n.group(1).split(" or "):
-                lo, hi_end = (int(x.replace("_", ""), 16) for x in r.split("-"))
-                spans.append((lo, hi_end))
-            ranges = tuple(spans)
-            wcode = n.group(2)
-        else:
-            unmodeled = f"note {note!r}"
+    unmodeled = f"note {notes[0]!r}" if notes else ""
     return Cell(
         text,
         resp["rresp"],
@@ -127,8 +103,6 @@ def _cell(parts: tuple, notes: tuple[str, ...]) -> Cell | None:
         rdata >> 32,
         bool(rdata >> 32),
         resp["bresp"],
-        ranges,
-        wcode,
         unmodeled,
     )
 
@@ -195,10 +169,7 @@ def expected_unbacked(addr: int, op: str) -> Expected:
         # word for address bit 2.
         rdata = cell.rdata_hi if addr & 0x4 and cell.hi_noted else cell.rdata_lo
         return Expected(RESP_CODE[cell.rresp], rdata, row.unit, column, cell.text)
-    code = cell.bresp
-    if cell.write_code and any(lo <= addr <= hi for lo, hi in cell.write_ranges):
-        code = cell.write_code
-    return Expected(RESP_CODE[code], None, row.unit, column, cell.text)
+    return Expected(RESP_CODE[cell.bresp], None, row.unit, column, cell.text)
 
 
 def _selftest() -> None:
@@ -207,11 +178,8 @@ def _selftest() -> None:
     assert len(rows) >= 30, len(rows)
     assert rows[0].base == 0x1000_0000
     cells = [c for r in rows for c in (r.hole, r.past) if c is not None]
-    # The modeled write-code note must parse somewhere, or a reworded note
-    # would silently drop the write-code override. Every error slave answers
-    # the same word on both halves of the bus, so the map states 32-bit rdata
-    # throughout and no cell carries an upper word.
-    assert any(c.write_ranges for c in cells)
+    # Every error slave answers the same word on both halves of the bus, so the
+    # map states 32-bit rdata throughout and no cell carries an upper word.
     assert not any(c.hi_noted for c in cells), [c.text for c in cells if c.hi_noted]
 
 

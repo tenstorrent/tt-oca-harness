@@ -283,5 +283,104 @@ class RelocatedRunTree(unittest.TestCase):
         self.assertNotIn("source_report", record["coverage"])
 
 
+class CoordinatorGradedLeaf(unittest.TestCase):
+    """A leaf whose job left no result: the coordinator's JUnit sits in the graded attempt."""
+
+    LEAF = "t_alpha/seed_3"
+    JOB_LOGS = ("stages/regress/logs/sim-000000-a0.log", "stages/regress/logs/sim-000000-a1.log")
+    SIGNATURE = "ended failed: failed reported with exit code 127 but no result.json appeared"
+
+    def setUp(self):
+        self.root = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
+        self.run_root = self.root / "build" / "runs" / "r"
+        self.flow = make_flow(self.root)
+        for log in self.JOB_LOGS:
+            (self.run_root / log).parent.mkdir(parents=True, exist_ok=True)
+            (self.run_root / log).write_text("exec: python3: not found\n")
+        xml_path = self.run_root / self.LEAF / "attempt_1" / "results" / "results.xml"
+        xml_path.parent.mkdir(parents=True)
+        xml_path.write_text("<testsuites/>\n")
+        bucket = {"kind": "environment_error", "signature": self.SIGNATURE, "count": 1}
+        graded = {
+            "name": "sim",
+            "item": "t_alpha",
+            "status": "ERROR",
+            "log": self.rel(self.JOB_LOGS[1]),
+            "failure_buckets": [bucket],
+            "metadata": {"seed": 3, "attempt": 1},
+            "result_json": self.rel(f"{self.LEAF}/attempt_1/result.json"),
+        }
+        result = {
+            "schema_version": 1,
+            "flow": "fixture",
+            "status": "ERROR",
+            "run_dir": self.rel(""),
+            "stages": [graded],
+            "tests": {"total": 1, "passing": 0, "completed": True},
+        }
+        (self.run_root / "result.json").write_text(json.dumps(result))
+        jobs = [
+            {
+                "stage": "sim",
+                "item": "t_alpha",
+                "seed": 3,
+                "attempt": attempt,
+                "status": "ERROR",
+                "log": self.rel(log),
+                "failure_buckets": [bucket],
+                "result_json": self.rel(f"{self.LEAF}/attempt_{attempt}/result.json"),
+            }
+            for attempt, log in enumerate(self.JOB_LOGS)
+        ]
+        regression = {
+            "schema_version": 1,
+            "flow": "fixture",
+            "run_dir": self.rel(""),
+            "jobs": jobs,
+            "failed_tests": [],
+            "flaky_tests": [],
+            "failure_buckets": [
+                {**bucket, "affected": ["t_alpha"], "examples": [self.rel(self.JOB_LOGS[1])]}
+            ],
+        }
+        (self.run_root / "stages" / "regress" / "regression.json").write_text(
+            json.dumps(regression)
+        )
+
+    def rel(self, relative: str) -> str:
+        return str((self.run_root / relative).relative_to(self.root))
+
+    def test_the_graded_attempt_junit_is_found_and_no_job_log_path_is_guessed(self):
+        record = collect_flow_result(self.root, self.flow, self.run_root)
+        self.assertEqual(record["junit_xml"], {"total": 1, "missing": 0})
+        self.assertFalse(
+            [w for w in record["warnings"] if w.startswith("JUnit XML missing")],
+            record["warnings"],
+        )
+
+    def test_a_regression_leaf_bucket_counts_once_with_its_example(self):
+        record = collect_flow_result(self.root, self.flow, self.run_root)
+        (bucket,) = record["failure_buckets"]
+        self.assertEqual((bucket["kind"], bucket["count"]), ("environment_error", 1))
+        self.assertEqual(bucket["examples"], [self.rel(self.JOB_LOGS[1])])
+
+    def test_a_formal_regression_leaf_bucket_counts_once(self):
+        formal = {"kind": "formal_fail", "signature": "assert_p", "count": 1}
+        result_path = self.run_root / "result.json"
+        result = json.loads(result_path.read_text())
+        result["stages"].append(
+            {"name": "formal", "item": "t_alpha", "status": "FAIL", "failure_buckets": [formal]}
+        )
+        result_path.write_text(json.dumps(result))
+        regression_path = self.run_root / "stages" / "regress" / "regression.json"
+        regression = json.loads(regression_path.read_text())
+        regression["failure_buckets"].append({**formal, "affected": ["t_alpha"]})
+        regression_path.write_text(json.dumps(regression))
+        record = collect_flow_result(self.root, self.flow, self.run_root)
+        counts = {bucket["kind"]: bucket["count"] for bucket in record["failure_buckets"]}
+        self.assertEqual(counts, {"environment_error": 1, "formal_fail": 1})
+
+
 if __name__ == "__main__":
     unittest.main()

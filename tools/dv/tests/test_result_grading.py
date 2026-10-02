@@ -396,6 +396,36 @@ class JunitOwnership(unittest.TestCase):
         node = ET.parse(self.synthesize(result)).getroot().find("./testsuite/testcase/error")
         self.assertEqual(node.get("type"), "compile_error")
 
+    def test_the_named_record_defaults_to_the_leaf_and_can_be_the_run(self):
+        result = stage("t_a", "ERROR", metadata={"seed": 7}, reason="environment_error: lost")
+        for override, expected in (
+            (None, "dut/build/runs/r/t_a/seed_7/attempt_0/result.json"),
+            (self.run_dir / "result.json", "dut/build/runs/r/result.json"),
+        ):
+            with self.subTest(expected=expected):
+                shutil.rmtree(self.leaf / "results", ignore_errors=True)
+                path = ensure_leaf_junit(
+                    flow=self.flow,
+                    root=self.root,
+                    run_dir=self.run_dir,
+                    tool=TOOL,
+                    result=result,
+                    leaf_dir=self.leaf,
+                    result_json=override,
+                )
+                assert path is not None
+                suites = ET.parse(path).getroot()
+                recorded = [
+                    prop.get("value")
+                    for prop in suites.iter("property")
+                    if prop.get("name") == "result_json"
+                ]
+                self.assertEqual(recorded, [expected])
+                self.assertIn(
+                    f"result_json: {expected}",
+                    suites.findtext("./testsuite/testcase/system-out", ""),
+                )
+
     def test_leafless_failing_run_gets_a_stage_file_in_precedence_order(self):
         stages = [
             stage(None, "FAIL", stage="flist"),

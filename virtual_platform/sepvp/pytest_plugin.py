@@ -193,7 +193,7 @@ def bootcode_elf(request):
 
     The SEP VP models the OpenTitan SPI host only, so all VP bootcode tests use the
     OpenTitan controller build (the bootrom Makefile's ot-toolchain-images target);
-    the default Cadence build is not runnable on the VP (its xSPI controller is not
+    the default XIP build is not runnable on the VP (its flash controller is not
     modeled). The named variant target is used instead of `all` because oca-images
     needs uv + the tt-oca-manifest submodule, which the ELF does not."""
     if request.config.getoption("build"):

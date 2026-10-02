@@ -209,7 +209,7 @@ class AdapterPortObserver:
         Valid-arrival order alone cannot name a partially committed state.
         `aw_pending_q` is set by the AW HANDSHAKE, so a cell where AW and AR
         merely asserted in the same cycle never entered that state: it hit the
-        StIdle interlock, where nothing was accepted at all. Classifying the
+        ST_IDLE interlock, where nothing was accepted at all. Classifying the
         second as the first would claim a scenario the cell never reached, and
         on this fabric plain traffic arrives with aw == ar, so that is the
         common case rather than a corner. The two get different names.
@@ -225,7 +225,7 @@ class AdapterPortObserver:
         if w_hs is not None and w_hs < ar:
             return "w-then-ar"
         # Nothing accepted. An AR that overlapped the write at all means the
-        # StIdle interlock, every ready gated by the other side's valid.
+        # ST_IDLE interlock, every ready gated by the other side's valid.
         if self.overlap_cycles:
             return "interlock"
         return f"other(aw={aw},w={w},ar={ar})"

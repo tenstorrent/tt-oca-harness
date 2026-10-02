@@ -716,8 +716,9 @@ class ClusterExecutor(Executor):
                     )
             return self._finish(tracked, seen)
         if now - tracked.terminal_since >= self.artifact_grace_sec:
+            code = "" if seen.exit_code is None else f" with exit code {seen.exit_code}"
             reason = (
-                f"{seen.state.value.lower()} reported but no result.json appeared within "
+                f"{seen.state.value.lower()} reported{code} but no result.json appeared within "
                 f"{self.artifact_grace_sec:g}s"
             )
             return self._finish(
@@ -967,6 +968,7 @@ class ClusterExecutor(Executor):
             )
         if seen.state is JobState.TIMED_OUT:
             ended = seen.observed_at or now_iso()
+            expired = f"scheduler wall time expired: {seen.reason or 'no detail'}"
             result = StageResult(
                 stage=task.stage,
                 item=task.item,
@@ -976,7 +978,9 @@ class ClusterExecutor(Executor):
                 started_at=handle.submitted_at or ended,
                 ended_at=ended,
                 log=joblog,
-                reason=f"scheduler wall time expired: {seen.reason or 'no detail'}",
+                artifacts={"executor_log": joblog} if joblog else {},
+                failure_buckets=[{"kind": "timeout", "signature": expired[:120], "count": 1}],
+                reason=expired,
                 metadata={
                     "seed": task.seed,
                     "attempt": task.attempt,

@@ -768,12 +768,15 @@ module entropy_source
     // lockable-asset inventory (SP 800-90B 4.3/4.4, 3.1.5.1.1, 3.2.2-6) is:
     //   Group A - health-test config; Group B - conditioning/digitisation;
     //   Group C - noise-source physical config; plus master enable +
-    //   ALERT_THRESHOLD/MIN_ENTROPY_H.
-    // Left writable by design: BIW_OBS_CTRL.RAW_ENABLE and
-    //   NOISE_OBS_CTRL.{RAW_ENABLE,LANE_SEL} (diagnostic copy-only observe
-    //   taps), INTR_*, and the W1C status/fail-count fields — these
-    //   support interrupt servicing and the on-demand health-test trigger
-    //   (4.3 req 5) without altering the certified configuration.
+    //   ALERT_THRESHOLD/MIN_ENTROPY_H; Group D - pre-conditioning observation
+    //   taps (GetNoise-class) and the debug pin, which SP 800-90B 2.3.2/3.2.1
+    //   allow disabling outside validation; Group E - FIFO_CTRL.ENABLE, whose
+    //   FIFO holds the words that also seed the DRBG.
+    // Left writable by design: NOISE_OBS_CTRL.{FLUSH,LANE_SEL} (inert while
+    //   RAW_ENABLE is locked off), INTR_*, and the W1C status/fail-count
+    //   fields — these support interrupt servicing and the on-demand
+    //   health-test trigger (4.3 req 5) without altering the certified
+    //   configuration.
     // ----------------------------------------------------------------------
     assign fips_lock = reg_out.FIPS_LOCK.LOCK.value;
 
@@ -817,6 +820,16 @@ module entropy_source
     assign reg_in.GENERATOR_9_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.swwel  = fips_lock;
     assign reg_in.GENERATOR_10_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.swwel = fips_lock;
     assign reg_in.GENERATOR_11_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.swwel = fips_lock;
+
+    // Group D — pre-conditioning observation taps and debug pin.
+    assign reg_in.BIW_OBS_CTRL.RAW_ENABLE.swwel                  = fips_lock;
+    assign reg_in.NOISE_OBS_CTRL.RAW_ENABLE.swwel                = fips_lock;
+    assign reg_in.DEBUG_CTRL.SELECT_SIGNAL.swwel                 = fips_lock;
+    assign reg_in.DEBUG_CTRL.SELECT_FREQ_DIV.swwel              = fips_lock;
+
+    // Group E — software read path of the conditioned output. FIFO_CTRL.ENABLE
+    // gates only the main-FIFO push, so the DRBG seed stream is unaffected.
+    assign reg_in.FIFO_CTRL.ENABLE.swwel                         = fips_lock;
 
     // ----------------------------------------------------------------------
     // SP 800-90B recommended-threshold LUT.

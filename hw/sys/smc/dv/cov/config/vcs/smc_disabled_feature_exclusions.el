@@ -16,7 +16,7 @@ ANNOTATION: "SMC-P10-PACKET-SHORTER-THAN-BANK: a bank spans BANK_DATA_WIDTH_IN_B
 MODULE: accumulator_bank
 Condition 1 "2655277331" "(target_write_byte_boundary_equals_range_end || target_write_byte_boundary_crosses_bank_range || target_write_byte_wraparound) 1 -1" (3 "010")
 
-CHECKSUM: "3869168330 760173647"
+CHECKSUM: "254295559 3808596618"
 ANNOTATION: "SMC-D1-SINGLE-OUTSTANDING-DEMUX: each of these register blocks sits directly behind an axi_lite_demux with MaxTrans of one. The demux raises a port's AR valid only while its R FIFO is not full, pushes that FIFO at the AR handshake and pops it at the R handshake, and raises W valid only while its B FIFO, pushed at the W handshake and popped at B, is not full. The block answers R or B only after the accept that empties its AR or W holding register, so each AR and W arrives with the register empty and ready high: the valid-without-ready rows of AR and W cannot occur. The write-only UART map takes no reads, and its demux's W FIFO holds an AW's select until that AW's W is taken while its B FIFO holds each W back until the previous B, so when the next AW can first arrive the block holds the previous AW and W with no response in flight and accepts them that cycle, and an accept never meets a response ack. The zeroer's axi_to_axi_lite gates AW and AR on depth-one ID FIFOs, pushed at the handshake and popped at B or R, so its second AW or AR arrives only after the block answered the first. Behind two or more MaxTrans-1 stages in series, the filter, log-engine and UART blocks see the next AW only two cycles after W is taken, while a held read defers the write accept by one cycle at most. In front of cpu_ctrl and the zeroer, axi_to_axi_lite's burst splitter demux sizes its per-ID counters as idx_width(MaxTrans), one bit for a MaxTrans of two or less, so it admits one transaction at a time and passes the next AW, AR or W only after the previous response, when the block's holding registers are empty."
 ANNOTATION: "SMC-D2-W-FOLLOWS-AW: each of these register blocks is driven directly by an axi_lite_demux master port, which raises W valid only once the select its AW pushed is in the W FIFO and holds that AW valid until its handshake. The block keeps awready and wready equal except while it holds an AW without its W, so a W is never taken before its AW and the W holding register is never full with the AW register empty. cpu_ctrl and the zeroer take W only with its AW: the splitter demux routes W when that AW is handled, the ID FIFO in front of the block clears on the same B, and the block, empty by then, takes the AW in that cycle."
 MODULE: alias_remap_reg
@@ -25,7 +25,6 @@ Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "3532153177 2090497106"
-ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes. Every instance takes one value for both its clamp and its fuse disable, the NTR sink's clock-disable value and control are tied to one as well, so its clock-enable select is zero, and the funnel's zero clamp enables every source it maps. The NTR sink is absent, so every block of mmrs's clamp vector is a zero clamp, clamp_hit is zero, and mmr_req_ctrl never returns rsp_err."
 ANNOTATION: "SMC-C8-APB-PHASE-ORDER: the APB bridges in front of these blocks, axi_lite_to_apb in the local crossbar and in avsbus_controller and prim_axi_lite_to_apb_single ahead of the eFuse demux, drive penable only together with psel and hold the request from setup through access until pready; apb_demux gates psel and penable with one select, and mmrs passes psel through the MMR interface clamp P13 holds at zero. apb2mmr raises pready only from psel, penable and rsp_vld, and mmr_req_ctrl answers MMR_PIPE_LAT cycles after a grant the setup phase raises at the earliest and grants nothing more until then, so no response meets a setup phase. A row that needs penable without psel, pready without penable, or a response in the setup phase cannot occur."
 MODULE: apb2mmr
 Condition 1 "2974504196" "(psel && penable && ( ~ ((paddr_base >= 23'(BASE_ADDR)) && (paddr_base < 23'(MMR_END_ADDR))) )) 1 -1" (1 "011")
@@ -33,53 +32,28 @@ Condition 4 "2760227610" "(psel && penable && rsp_vld) 1 -1" (1 "011")
 Condition 4 "2760227610" "(psel && penable && rsp_vld) 1 -1" (2 "101")
 Condition 6 "2679841428" "(psel && penable && pready && (rsp_err || decode_miss)) 1 -1" (1 "0111")
 Condition 6 "2679841428" "(psel && penable && pready && (rsp_err || decode_miss)) 1 -1" (2 "1011")
-Condition 7 "4224431006" "(rsp_err || decode_miss) 1 -1" (3 "10")
 
 CHECKSUM: "3898876563 2769723830"
 ANNOTATION: "SMC-C12-POP-ONLY-NONEMPTY: the AVSBus readback FIFO is popped only with its empty flag low, and the command FIFO only one cycle after a launch decision that tests it non-empty, with no other pop between and every popping state followed by a non-popping one; a read-side empty flag only falls without a pop, so neither FIFO is read while empty."
 MODULE: avsbus_async_fifo
 Condition 4 "2759218582" "(rd_en_i & ((~rd_empty_o))) 1 -1" (2 "10")
 
-CHECKSUM: "3564686069 3785605357"
-ANNOTATION: "SMC-P18-TDR-OVERRIDE-TIED: avsbus_controller.sv assigns its TDR post-divider override i_tdr_peripherals_apb2avsbus_postdiv_override a constant zero, so each ternary it selects takes the register value and the TDR arm never executes."
-ANNOTATION: "SMC-P24-DIVIDER-INIT-NEVER-SET: avsbus_controller assigns do_initial_divider_setting only 1'b0, under reset and on a divider update, so it is zero for the life of the design and a row that needs it high cannot occur."
-ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here. A consumer that ORs the block's pslverr into its own, as avsbus_controller does, sees it zero."
+CHECKSUM: "2347466248 1735571216"
 ANNOTATION: "SMC-REGBLOCK-C4-STROBE-CARRIES-DIRECTION: PeakRDL folds the access direction into the decode strobe of a read-only or write-only register, and into the req it presents for an external one, so the strobe or req is never high in the other direction. A row that needs it high in that direction, in the block or in the logic that consumes the req, cannot occur. avsbus_controller ANDs its AVS_CMD and AVS_READBACK reqs with req_is_wr and its negation, which PeakRDL latches from pwrite in the setup phase, and its AXI-Lite bridge holds pwrite from setup through access, so those enables carry the pwrite of the transfer in flight. The test rewrites each strobe, req or enable as itself and its direction, and takes a row only when that makes it unsatisfiable."
 ANNOTATION: "SMC-C6-EARLIER-ARM-TAKES: an else arm or a later else-if runs only when the tests before it fail, and a statement inside an arm only when that arm's test holds, so a row of its condition that an earlier or enclosing test already decides is never evaluated. smc_cpu_ctrl_wrap reloads each core's second-stage watchdog count while reset_wdt_count is high, and reset_wdt_count includes the negated first-stage timeout, so the decrement test runs only with that timeout high; vlt_packet_compression takes a timestamp packet without a grant first and sets packet_lost only inside its timestamp-retry arm; avsbus_controller takes a retry with a countdown above zero first; efuse_shadow_regs takes a setup-only write outside the lifecycle-state field first; the I2C controller takes a disabled host, a lost start and a disable mid-transaction first, and the bus monitor a disabled monitor; and the iDMA channel coupler takes a ready first AW, and the read path a non-last beat, first."
 ANNOTATION: "SMC-C8-APB-PHASE-ORDER: the APB bridges in front of these blocks, axi_lite_to_apb in the local crossbar and in avsbus_controller and prim_axi_lite_to_apb_single ahead of the eFuse demux, drive penable only together with psel and hold the request from setup through access until pready; apb_demux gates psel and penable with one select, and mmrs passes psel through the MMR interface clamp P13 holds at zero. apb2mmr raises pready only from psel, penable and rsp_vld, and mmr_req_ctrl answers MMR_PIPE_LAT cycles after a grant the setup phase raises at the earliest and grants nothing more until then, so no response meets a setup phase. A row that needs penable without psel, pready without penable, or a response in the setup phase cannot occur."
 ANNOTATION: "SMC-C11-AVS-IRQ-DETECT-REARM: avsbus_controller shifts the slave-interrupt detector only on negedges and changes state only on posedges, sets the interrupt flag at any posedge that sees an idle or resync state with the detector at 00, and re-arms the detector to 11 at the next negedge once the state has left those states with the flag set; so no posedge sees the detector at 00 outside them."
 MODULE: avsbus_controller
-Condition 3 "2211674544" "((do_initial_divider_setting == 1'b1) || (R_avs_cfg_1_F_clk_divider_value_resync != previous_clk_divider_value_q) || (R_avs_cfg_1_F_clk_divider_duty_cycle_numerator_resync != previous_clk_divider_duty_cycle_numerator_q)) 1 -1" (4 "100")
-Condition 4 "30701402" "(do_initial_divider_setting == 1'b1) 1 -1" (2 "1")
 Condition 16 "45492393" "(avs_retry_condition_detected && (avs_retry_countdown == 8'b0)) 1 -1" (2 "10")
 Condition 46 "855346021" "(((cur_state == AVS_IDLE) || (cur_state == AVS_SLAVE_RESYNC) || (cur_state == AVS_LAUNCH_FRAME_POST_RESYNC)) && (avs_sdata_interrupt_detect == 2'b0)) 1 -1" (1 "01")
 Condition 69 "688776685" "(psel & penable) 1 -1" (1 "01")
 Condition 71 "1133592924" "(pwrite & R_avs_normal_status_F_cmd_fifo_full & R_avs_cmd_wr_en) 1 -1" (1 "011")
 Condition 72 "4077019754" "(((~pwrite)) & apb_readback_buf_empty & R_avs_readback_rd_en) 1 -1" (1 "011")
-Condition 73 "2122482897" "(i_tdr_peripherals_apb2avsbus_postdiv_override ? i_tdr_peripherals_apb2avsbus_update_clk_divider_value : update_clk_divider_value) 1 -1" (2 "1")
-Condition 74 "1200842655" "(i_tdr_peripherals_apb2avsbus_postdiv_override ? i_tdr_peripherals_apb2avsbus_R_avs_cfg_1_F_clk_divider_value_resync : R_avs_cfg_1_F_clk_divider_value_resync) 1 -1" (2 "1")
-Condition 75 "1242591211" "(i_tdr_peripherals_apb2avsbus_postdiv_override ? i_tdr_peripherals_apb2avsbus_R_avs_cfg_1_F_clk_divider_duty_cycle_numerator_resync : R_avs_cfg_1_F_clk_divider_duty_cycle_numerator_resync) 1 -1" (2 "1")
-Condition 76 "715597411" "(i_tdr_peripherals_apb2avsbus_postdiv_override ? i_tdr_peripherals_apb2avsbus_postdiv_mux_sel : postdiv_mux_sel) 1 -1" (2 "1")
-Condition 98 "816972098" "(access_error | reg_pslverr) 1 -1" (2 "01")
-
-CHECKSUM: "3564686069 976103321"
-ANNOTATION: "SMC-P18-TDR-OVERRIDE-TIED: avsbus_controller.sv assigns its TDR post-divider override i_tdr_peripherals_apb2avsbus_postdiv_override a constant zero, so each ternary it selects takes the register value and the TDR arm never executes."
-MODULE: avsbus_controller
-Branch 0 "1350802132" "i_tdr_peripherals_apb2avsbus_postdiv_override" (0) "i_tdr_peripherals_apb2avsbus_postdiv_override 1"
-Branch 1 "1350802132" "i_tdr_peripherals_apb2avsbus_postdiv_override" (0) "i_tdr_peripherals_apb2avsbus_postdiv_override 1"
-Branch 2 "1350802132" "i_tdr_peripherals_apb2avsbus_postdiv_override" (0) "i_tdr_peripherals_apb2avsbus_postdiv_override 1"
-Branch 3 "1350802132" "i_tdr_peripherals_apb2avsbus_postdiv_override" (0) "i_tdr_peripherals_apb2avsbus_postdiv_override 1"
 
 CHECKSUM: "3896755233 3909592511"
 ANNOTATION: "SMC-REGBLOCK-A11-APB-ACK-FIRST-ACTIVE-CYCLE: the APB cpuif raises is_active and its request on the same edge, and these blocks ack every request in that cycle: the eFuse interface block has no external register and no stall, and the AVSBus block's external registers ack from their own request with external_pending never set (A8). is_active is therefore never high without an ack."
 MODULE: avsbus_controller_reg
 Condition 1 "612230268" "(cpuif_rd_ack || cpuif_wr_ack) 1 -1" (1 "00")
-
-CHECKSUM: "1557237986 59696504"
-ANNOTATION: "SMC-P2-SKIP-TIED-OFF: smc_input_fabric and smc_output_fabric both instantiate the AXI filter with filter_skip_i tied to zero, so the skip arm of the filter decision never runs and no access can produce a condition over it."
-MODULE: axi_filter_wrap
-Condition 33 "1848364127" "(filter_skip_i ? 1'b0 : (no_write_filter_matches ? BLOCK_BY_DEFAULT : ((!allow_write[write_filter_hit_idx])))) 1 -1" (2 "1")
-Condition 35 "2709885922" "(filter_skip_i ? 1'b0 : (no_read_filter_matches ? BLOCK_BY_DEFAULT : ((!allow_read[read_filter_hit_idx])))) 1 -1" (2 "1")
 
 CHECKSUM: "3619095557 1034725017"
 ANNOTATION: "SMC-D1-SINGLE-OUTSTANDING-DEMUX: each of these register blocks sits directly behind an axi_lite_demux with MaxTrans of one. The demux raises a port's AR valid only while its R FIFO is not full, pushes that FIFO at the AR handshake and pops it at the R handshake, and raises W valid only while its B FIFO, pushed at the W handshake and popped at B, is not full. The block answers R or B only after the accept that empties its AR or W holding register, so each AR and W arrives with the register empty and ready high: the valid-without-ready rows of AR and W cannot occur. The write-only UART map takes no reads, and its demux's W FIFO holds an AW's select until that AW's W is taken while its B FIFO holds each W back until the previous B, so when the next AW can first arrive the block holds the previous AW and W with no response in flight and accepts them that cycle, and an accept never meets a response ack. The zeroer's axi_to_axi_lite gates AW and AR on depth-one ID FIFOs, pushed at the handshake and popped at B or R, so its second AW or AR arrives only after the block answered the first. Behind two or more MaxTrans-1 stages in series, the filter, log-engine and UART blocks see the next AW only two cycles after W is taken, while a held read defers the write accept by one cycle at most. In front of cpu_ctrl and the zeroer, axi_to_axi_lite's burst splitter demux sizes its per-ID counters as idx_width(MaxTrans), one bit for a MaxTrans of two or less, so it admits one transaction at a time and passes the next AW, AR or W only after the previous response, when the block's holding registers are empty."
@@ -232,64 +206,6 @@ ANNOTATION: "SMC-C9-W2C-PULSE: cla_node_eap asserts reset_eap_status_w2c on the 
 MODULE: cla_node_eap
 Condition 16 "1362647026" "((eap_status_w2c == 1'b1) && (eap_status_w2c_dly == 1'b0)) 1 -1" (2 "10")
 
-CHECKSUM: "40131737 3263069872"
-ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes. Every instance takes one value for both its clamp and its fuse disable, the NTR sink's clock-disable value and control are tied to one as well, so its clock-enable select is zero, and the funnel's zero clamp enables every source it maps. The NTR sink is absent, so every block of mmrs's clamp vector is a zero clamp, clamp_hit is zero, and mmr_req_ctrl never returns rsp_err."
-MODULE: cla_wrapper
-Condition 1 "2319685587" "(cla_gated_func_clamp[0] ? '0 : debug_bus_aligned[0]) 1 -1" (2 "1")
-Condition 2 "3176255836" "(cla_gated_func_clamp[0] ? '0 : xtrigger_out_int[0]) 1 -1" (2 "1")
-Condition 3 "3068957808" "(cla_gated_func_clamp[0] ? '0 : cla_debug_marker_int[0]) 1 -1" (2 "1")
-Condition 4 "264622201" "(cla_gated_func_clamp[0] ? '0 : external_action_trace_start_int[0]) 1 -1" (2 "1")
-Condition 5 "2334110376" "(cla_gated_func_clamp[0] ? '0 : external_action_trace_stop_int[0]) 1 -1" (2 "1")
-Condition 6 "4131367700" "(cla_gated_func_clamp[0] ? '0 : external_action_trace_pulse_int[0]) 1 -1" (2 "1")
-Condition 7 "335171173" "(cla_gated_func_clamp[0] ? '0 : external_action_halt_clock_out_int[0]) 1 -1" (2 "1")
-Condition 8 "2237368492" "(cla_gated_func_clamp[0] ? '0 : external_action_halt_clock_local_out_int[0]) 1 -1" (2 "1")
-Condition 9 "3508722613" "(cla_gated_func_clamp[0] ? '0 : external_action_debug_interrupt_out_int[0]) 1 -1" (2 "1")
-Condition 10 "2465274575" "(cla_gated_func_clamp[0] ? '0 : external_action_toggle_gpio_out_int[0]) 1 -1" (2 "1")
-Condition 11 "3860552601" "(cla_gated_func_clamp[0] ? '0 : external_action_custom_int[0]) 1 -1" (2 "1")
-Condition 12 "464764905" "(cla_gated_func_clamp[0] ? '0 : cla_timestamp_muxed[0]) 1 -1" (2 "1")
-Condition 13 "2068185434" "(cla_gated_func_clamp[0] ? '0 : ClaMmrsWr_int[0]) 1 -1" (2 "1")
-Condition 14 "1149897855" "(cla_gated_func_clamp[0] ? '0 : DebugMuxSelMmr[0]) 1 -1" (2 "1")
-
-CHECKSUM: "40131737 2335395861"
-ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes. Every instance takes one value for both its clamp and its fuse disable, the NTR sink's clock-disable value and control are tied to one as well, so its clock-enable select is zero, and the funnel's zero clamp enables every source it maps. The NTR sink is absent, so every block of mmrs's clamp vector is a zero clamp, clamp_hit is zero, and mmr_req_ctrl never returns rsp_err."
-MODULE: cla_wrapper
-Branch 0 "3318605108" "cla_gated_func_clamp[0]" (0) "cla_gated_func_clamp[0] 1"
-Branch 1 "3318605108" "cla_gated_func_clamp[0]" (0) "cla_gated_func_clamp[0] 1"
-Branch 2 "3318605108" "cla_gated_func_clamp[0]" (0) "cla_gated_func_clamp[0] 1"
-Branch 3 "3318605108" "cla_gated_func_clamp[0]" (0) "cla_gated_func_clamp[0] 1"
-Branch 4 "3318605108" "cla_gated_func_clamp[0]" (0) "cla_gated_func_clamp[0] 1"
-Branch 5 "3318605108" "cla_gated_func_clamp[0]" (0) "cla_gated_func_clamp[0] 1"
-Branch 6 "3318605108" "cla_gated_func_clamp[0]" (0) "cla_gated_func_clamp[0] 1"
-Branch 7 "3318605108" "cla_gated_func_clamp[0]" (0) "cla_gated_func_clamp[0] 1"
-Branch 8 "3318605108" "cla_gated_func_clamp[0]" (0) "cla_gated_func_clamp[0] 1"
-Branch 9 "3318605108" "cla_gated_func_clamp[0]" (0) "cla_gated_func_clamp[0] 1"
-Branch 10 "3318605108" "cla_gated_func_clamp[0]" (0) "cla_gated_func_clamp[0] 1"
-Branch 11 "3318605108" "cla_gated_func_clamp[0]" (0) "cla_gated_func_clamp[0] 1"
-Branch 12 "3318605108" "cla_gated_func_clamp[0]" (0) "cla_gated_func_clamp[0] 1"
-Branch 13 "3318605108" "cla_gated_func_clamp[0]" (0) "cla_gated_func_clamp[0] 1"
-
-CHECKSUM: "705672635 932150476"
-ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero, save five the tie-off leaves at one: the flush-timeout done flag, which resets to one and is cleared only by the N-trace RAM enable start, the two backpressure flags, which compare an N-trace space of zero against an N-trace threshold of zero with <=, and the frame-fill-complete flag and its delayed copy, which a write count held at zero keeps at one. The read and write interleave flops, enabled only on an N-trace term, hold their reset value of zero. The NTR sink register block is absent, so every register-derived N-trace term follows, mmrs's Trntrissrammode, the negation of that block's zero RAM mode, reads one, the north source flag never selects N-trace, the flush-timeout counter never counts, and the TNIF arbiter's previous grant holds its N-trace reset value. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs, whose block index is the funnel's."
-ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes. Every instance takes one value for both its clamp and its fuse disable, the NTR sink's clock-disable value and control are tied to one as well, so its clock-enable select is zero, and the funnel's zero clamp enables every source it maps. The NTR sink is absent, so every block of mmrs's clamp vector is a zero clamp, clamp_hit is zero, and mmr_req_ctrl never returns rsp_err."
-ANNOTATION: "SMC-P22-DFD-CONTROL-TIED: smc_dfd_wrap ties the DFD top's i_critical_signal_hold, i_timestamp and every CLA, DST, DST-sink and funnel fuse and clock disable to zero, and its i_sdtrig_control to TRIG_TRACE_NONE. So the warm-reset override terms, the fuse and clock-disable terms and extensions, the CLA time-match event (a timestamp of zero never reaches a nonzero match value) and the DST sdtrig start and stop hold zero, and a row or path that needs one of them high cannot occur."
-MODULE: clk_rst_wrapper
-Condition 1 "2056512603" "(({CLA_W {i_critical_signal_hold}}) | cla_gated_reset_n) 1 -1" (3 "10")
-Condition 2 "3497547431" "(({DST_W {i_critical_signal_hold}}) | dst_gated_reset_n) 1 -1" (3 "10")
-Condition 3 "3252498558" "(({NTR_W {i_critical_signal_hold}}) | ntr_gated_reset_n) 1 -1" (2 "01")
-Condition 3 "3252498558" "(({NTR_W {i_critical_signal_hold}}) | ntr_gated_reset_n) 1 -1" (3 "10")
-Condition 4 "4130516192" "(({TNIF_W {i_critical_signal_hold}}) | tnif_gated_reset_n) 1 -1" (3 "10")
-Condition 5 "1481059577" "(i_critical_signal_hold | dst_sink_gated_reset_n) 1 -1" (3 "10")
-Condition 6 "2917113816" "(i_critical_signal_hold | ntr_sink_gated_reset_n) 1 -1" (3 "10")
-Condition 7 "1554427744" "(i_critical_signal_hold | funnel_gated_reset_n) 1 -1" (3 "10")
-Condition 16 "4099891087" "(tnif_crc_gen.dst_clk_dis_ext & tnif_crc_gen.ntr_clk_dis_ext) 1 -1" (2 "10")
-Condition 16 "4099891087" "(tnif_crc_gen.dst_clk_dis_ext & tnif_crc_gen.ntr_clk_dis_ext) 1 -1" (3 "11")
-Condition 17 "210518932" "(tnif_crc_gen.dst_clk_dis_ctrl_ext & tnif_crc_gen.ntr_clk_dis_ctrl_ext) 1 -1" (2 "10")
-Condition 18 "2054392430" "(tnif_crc_gen.dst_func_clamp_ext & tnif_crc_gen.ntr_func_clamp_ext) 1 -1" (2 "10")
-Condition 18 "2054392430" "(tnif_crc_gen.dst_func_clamp_ext & tnif_crc_gen.ntr_func_clamp_ext) 1 -1" (3 "11")
-Condition 19 "3329123790" "(tnif_crc_gen.dst_fuse_dis_ext & tnif_crc_gen.ntr_fuse_dis_ext) 1 -1" (2 "10")
-Condition 19 "3329123790" "(tnif_crc_gen.dst_fuse_dis_ext & tnif_crc_gen.ntr_fuse_dis_ext) 1 -1" (3 "11")
-Condition 20 "995581807" "((1'(dst_func_enable)) | (1'(ntr_func_enable))) 1 -1" (2 "01")
-
 CHECKSUM: "724319045 3392260149"
 ANNOTATION: "SMC-P22-DFD-CONTROL-TIED: smc_dfd_wrap ties the DFD top's i_critical_signal_hold, i_timestamp and every CLA, DST, DST-sink and funnel fuse and clock disable to zero, and its i_sdtrig_control to TRIG_TRACE_NONE. So the warm-reset override terms, the fuse and clock-disable terms and extensions, the CLA time-match event (a timestamp of zero never reaches a nonzero match value) and the DST sdtrig start and stop hold zero, and a row or path that needs one of them high cannot occur."
 ANNOTATION: "SMC-B8-DFD-BENCH-INPUTS-TIED: a property of this bench, not of the design. The testbench ties the SMC's xtrigger_ss_i and tdr_dbg_ctrl_clock_stop_en_i to zero in both instances, and they reach the CLA crosstrigger input and the DFD clock-stop gate unchanged. The CLA crosstrigger edge, the timestamp load it arms and the TDR clock-stop term therefore hold zero here. Bench ports that drive those inputs retire the class."
@@ -305,7 +221,7 @@ Condition 11 "267506247" "(xtrigger_in[0] && ((~i_xtrigger_ff))) 1 -1" (3 "11")
 Condition 60 "2354949710" "(gen_timestamp_sync_scheme_0.timestamp_resync && xtrigger_posedge) 1 -1" (1 "01")
 Condition 60 "2354949710" "(gen_timestamp_sync_scheme_0.timestamp_resync && xtrigger_posedge) 1 -1" (3 "11")
 
-CHECKSUM: "4071069113 1776738744"
+CHECKSUM: "2949011289 1776738744"
 ANNOTATION: "SMC-D1-SINGLE-OUTSTANDING-DEMUX: each of these register blocks sits directly behind an axi_lite_demux with MaxTrans of one. The demux raises a port's AR valid only while its R FIFO is not full, pushes that FIFO at the AR handshake and pops it at the R handshake, and raises W valid only while its B FIFO, pushed at the W handshake and popped at B, is not full. The block answers R or B only after the accept that empties its AR or W holding register, so each AR and W arrives with the register empty and ready high: the valid-without-ready rows of AR and W cannot occur. The write-only UART map takes no reads, and its demux's W FIFO holds an AW's select until that AW's W is taken while its B FIFO holds each W back until the previous B, so when the next AW can first arrive the block holds the previous AW and W with no response in flight and accepts them that cycle, and an accept never meets a response ack. The zeroer's axi_to_axi_lite gates AW and AR on depth-one ID FIFOs, pushed at the handshake and popped at B or R, so its second AW or AR arrives only after the block answered the first. Behind two or more MaxTrans-1 stages in series, the filter, log-engine and UART blocks see the next AW only two cycles after W is taken, while a held read defers the write accept by one cycle at most. In front of cpu_ctrl and the zeroer, axi_to_axi_lite's burst splitter demux sizes its per-ID counters as idx_width(MaxTrans), one bit for a MaxTrans of two or less, so it admits one transaction at a time and passes the next AW, AR or W only after the previous response, when the block's holding registers are empty."
 ANNOTATION: "SMC-D2-W-FOLLOWS-AW: each of these register blocks is driven directly by an axi_lite_demux master port, which raises W valid only once the select its AW pushed is in the W FIFO and holds that AW valid until its handshake. The block keeps awready and wready equal except while it holds an AW without its W, so a W is never taken before its AW and the W holding register is never full with the AW register empty. cpu_ctrl and the zeroer take W only with its AW: the splitter demux routes W when that AW is handled, the ID FIFO in front of the block clears on the same B, and the block, empty by then, takes the AW in that cycle."
 MODULE: cpu_ctrl_reg
@@ -356,7 +272,6 @@ Branch 32 "2747705060" "(instr_type == 2'b1)" (0) "(instr_type == 2'b1) 1,-"
 Branch 32 "2747705060" "(instr_type == 2'b1)" (1) "(instr_type == 2'b1) 0,1"
 
 CHECKSUM: "2746040415 2271697718"
-ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes. Every instance takes one value for both its clamp and its fuse disable, the NTR sink's clock-disable value and control are tied to one as well, so its clock-enable select is zero, and the funnel's zero clamp enables every source it maps. The NTR sink is absent, so every block of mmrs's clamp vector is a zero clamp, clamp_hit is zero, and mmr_req_ctrl never returns rsp_err."
 ANNOTATION: "SMC-P22-DFD-CONTROL-TIED: smc_dfd_wrap ties the DFD top's i_critical_signal_hold, i_timestamp and every CLA, DST, DST-sink and funnel fuse and clock disable to zero, and its i_sdtrig_control to TRIG_TRACE_NONE. So the warm-reset override terms, the fuse and clock-disable terms and extensions, the CLA time-match event (a timestamp of zero never reaches a nonzero match value) and the DST sdtrig start and stop hold zero, and a row or path that needs one of them high cannot occur."
 MODULE: dst_wrapper
 Condition 1 "3720933200" "((((0 < NUM_CLA_INST) ? cla_trigger_trace_start[0] : 1'b0)) | (dst_inst[0].sdtrig_dst_trace_start & dst_inst[0].Trdstcontrol.Trdstinsttriggerenable)) 1 -1" (2 "01")
@@ -367,265 +282,89 @@ Condition 4 "3950667315" "(dst_inst[0].sdtrig_dst_trace_stop & dst_inst[0].Trdst
 Condition 4 "3950667315" "(dst_inst[0].sdtrig_dst_trace_stop & dst_inst[0].Trdstcontrol.Trdstinsttriggerenable) 1 -1" (3 "11")
 Condition 7 "2549274228" "(dst_inst[0].trig_control_e == TRIG_TRACE_ON) 1 -1" (2 "1")
 Condition 8 "2297543608" "(dst_inst[0].trig_control_e == TRIG_TRACE_OFF) 1 -1" (2 "1")
-Condition 20 "3792509132" "(dst_gated_func_clamp[0] ? 1'b0 : dst_inst[0].dst_tnif_req_w) 1 -1" (2 "1")
-Condition 21 "713795741" "(dst_gated_func_clamp[0] ? '0 : dst_inst[0].dst_tnif_data_w) 1 -1" (2 "1")
-Condition 22 "341128059" "(dst_gated_func_clamp[0] ? '0 : dst_inst[0].DstMmrsWr_int) 1 -1" (2 "1")
-
-CHECKSUM: "2746040415 3906711782"
-ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes. Every instance takes one value for both its clamp and its fuse disable, the NTR sink's clock-disable value and control are tied to one as well, so its clock-enable select is zero, and the funnel's zero clamp enables every source it maps. The NTR sink is absent, so every block of mmrs's clamp vector is a zero clamp, clamp_hit is zero, and mmr_req_ctrl never returns rsp_err."
-MODULE: dst_wrapper
-Branch 1 "2275614227" "dst_gated_func_clamp[0]" (0) "dst_gated_func_clamp[0] 1"
-Branch 2 "2275614227" "dst_gated_func_clamp[0]" (0) "dst_gated_func_clamp[0] 1"
-Branch 3 "2275614227" "dst_gated_func_clamp[0]" (0) "dst_gated_func_clamp[0] 1"
 
 CHECKSUM: "671687310 1858521928"
 ANNOTATION: "SMC-P6-LC-STATE-OFF: smc_efuse_wrapper instantiates the eFuse with HAS_LC_STATE = 0, so the lifecycle-state arms of the interface controller, the shadow registers, their access control and the guard are never entered and the RMA token comparisons they hold have no access that can reach them. The fuse-sense, security-disable and image-lock terms outside those arms stay graded."
 MODULE: efuse_guard
-Condition 3 "998874561" "((program_target_addr_i == SIP_TOKEN_BIT_ADDR) && (rma_sip_token_match_i != TOKEN_MATCH_CODE)) 1 -1" (1 "01")
-Condition 3 "998874561" "((program_target_addr_i == SIP_TOKEN_BIT_ADDR) && (rma_sip_token_match_i != TOKEN_MATCH_CODE)) 1 -1" (2 "10")
-Condition 3 "998874561" "((program_target_addr_i == SIP_TOKEN_BIT_ADDR) && (rma_sip_token_match_i != TOKEN_MATCH_CODE)) 1 -1" (3 "11")
-Condition 6 "2989801452" "((program_target_addr_i == CHIPLET_TOKEN_BIT_ADDR) && (rma_chiplet_token_match_i != TOKEN_MATCH_CODE)) 1 -1" (1 "01")
-Condition 6 "2989801452" "((program_target_addr_i == CHIPLET_TOKEN_BIT_ADDR) && (rma_chiplet_token_match_i != TOKEN_MATCH_CODE)) 1 -1" (2 "10")
-Condition 6 "2989801452" "((program_target_addr_i == CHIPLET_TOKEN_BIT_ADDR) && (rma_chiplet_token_match_i != TOKEN_MATCH_CODE)) 1 -1" (3 "11")
-Condition 9 "247465763" "((pro_read_intf_wr_index == '0) ? 1'b0 : efuse_guard.entry_write_locked(pro_read_intf_wr_index, shadow_regs_i)) 1 -1" (1 "0")
-Condition 9 "247465763" "((pro_read_intf_wr_index == '0) ? 1'b0 : efuse_guard.entry_write_locked(pro_read_intf_wr_index, shadow_regs_i)) 1 -1" (2 "1")
-Condition 11 "1814251451" "((pro_read_intf_rd_index == '0) ? 1'b0 : efuse_guard.entry_read_locked(pro_read_intf_rd_index, shadow_regs_i)) 1 -1" (1 "0")
-Condition 11 "1814251451" "((pro_read_intf_rd_index == '0) ? 1'b0 : efuse_guard.entry_read_locked(pro_read_intf_rd_index, shadow_regs_i)) 1 -1" (2 "1")
 Condition 13 "1172051810" "(pro_read_intf_rm_lc_state_write_lock || pro_read_intf_lock_lc_state_write) 1 -1" (2 "01")
-Condition 4 "3891361775" "(program_target_addr_i == SIP_TOKEN_BIT_ADDR) 1 -1" (1 "0")
-Condition 4 "3891361775" "(program_target_addr_i == SIP_TOKEN_BIT_ADDR) 1 -1" (2 "1")
-Condition 5 "2347181330" "(rma_sip_token_match_i != TOKEN_MATCH_CODE) 1 -1" (1 "0")
-Condition 5 "2347181330" "(rma_sip_token_match_i != TOKEN_MATCH_CODE) 1 -1" (2 "1")
-Condition 7 "825618400" "(program_target_addr_i == CHIPLET_TOKEN_BIT_ADDR) 1 -1" (1 "0")
-Condition 7 "825618400" "(program_target_addr_i == CHIPLET_TOKEN_BIT_ADDR) 1 -1" (2 "1")
-Condition 8 "2060243040" "(rma_chiplet_token_match_i != TOKEN_MATCH_CODE) 1 -1" (1 "0")
-Condition 8 "2060243040" "(rma_chiplet_token_match_i != TOKEN_MATCH_CODE) 1 -1" (2 "1")
-Condition 10 "3086908092" "(pro_read_intf_wr_index == '0) 1 -1" (1 "0")
-Condition 10 "3086908092" "(pro_read_intf_wr_index == '0) 1 -1" (2 "1")
-Condition 12 "1660249500" "(pro_read_intf_rd_index == '0) 1 -1" (1 "0")
-Condition 12 "1660249500" "(pro_read_intf_rd_index == '0) 1 -1" (2 "1")
 
 CHECKSUM: "671687310 829883966"
 ANNOTATION: "SMC-P6-LC-STATE-OFF: smc_efuse_wrapper instantiates the eFuse with HAS_LC_STATE = 0, so the lifecycle-state arms of the interface controller, the shadow registers, their access control and the guard are never entered and the RMA token comparisons they hold have no access that can reach them. The fuse-sense, security-disable and image-lock terms outside those arms stay graded."
-ANNOTATION: "SMC-P15-SECURE-TM-TIED: smc_efuse_wrapper ties the eFuse's secure_tm_i to zero, so the secure-test-mode arms of the shadow registers, their access control and the guard never execute, and the guard's secure_tm_blocked, which the program interface reads, holds zero. The program-lock and read-lock arms beside them stay graded."
 MODULE: efuse_guard
-Branch 0 "1329950090" "HAS_LC_STATE" (0) "HAS_LC_STATE 1,1,-"
-Branch 0 "1329950090" "HAS_LC_STATE" (1) "HAS_LC_STATE 1,0,1"
 Branch 0 "1329950090" "HAS_LC_STATE" (2) "HAS_LC_STATE 1,0,0"
-Branch 1 "4285556711" "HAS_LC_STATE" (0) "HAS_LC_STATE 1,1,-"
-Branch 1 "4285556711" "HAS_LC_STATE" (1) "HAS_LC_STATE 1,0,-"
-Branch 1 "4285556711" "HAS_LC_STATE" (2) "HAS_LC_STATE 1,-,1"
-Branch 1 "4285556711" "HAS_LC_STATE" (3) "HAS_LC_STATE 1,-,0"
-Branch 2 "1963251078" "secure_tm_i" (0) "secure_tm_i 1,-,-"
 
-CHECKSUM: "2334538941 2073859018"
-ANNOTATION: "SMC-B9-SECURITY-DISABLE-TIED: a property of this bench, not of the design. The testbench ties sep_security_disable_i to zero in both instances, and it reaches the eFuse interface controller and its shadow registers unchanged, so the security-disable terms of the requester mux, the sense-done status and the fuse-sense load hold zero here. A bench port that drives the input retires the class."
-MODULE: efuse_interface_controller
-Condition 1 "1643123182" "(((!fuse_sense_done)) && ((!security_disable_i))) 1 -1" (2 "10")
-Condition 6 "1090176586" "(fuse_sense_done || security_disable_i) 1 -1" (2 "01")
-
-CHECKSUM: "2334538941 2171588946"
-ANNOTATION: "SMC-P6-LC-STATE-OFF: smc_efuse_wrapper instantiates the eFuse with HAS_LC_STATE = 0, so the lifecycle-state arms of the interface controller, the shadow registers, their access control and the guard are never entered and the RMA token comparisons they hold have no access that can reach them. The fuse-sense, security-disable and image-lock terms outside those arms stay graded."
-MODULE: efuse_interface_controller
-Branch 1 "3889967684" "HAS_LC_STATE" (0) "HAS_LC_STATE 1,1,-"
-Branch 1 "3889967684" "HAS_LC_STATE" (1) "HAS_LC_STATE 1,0,-"
-Branch 2 "1844371870" "HAS_LC_STATE" (0) "HAS_LC_STATE 1,1,-"
-Branch 2 "1844371870" "HAS_LC_STATE" (1) "HAS_LC_STATE 1,0,-"
-Branch 3 "1184457743" "HAS_LC_STATE" (0) "HAS_LC_STATE 1,1,-,-,-,-"
-Branch 3 "1184457743" "HAS_LC_STATE" (1) "HAS_LC_STATE 1,0,1,-,-,-"
-Branch 3 "1184457743" "HAS_LC_STATE" (2) "HAS_LC_STATE 1,0,0,1,-,-"
-Branch 3 "1184457743" "HAS_LC_STATE" (3) "HAS_LC_STATE 1,0,0,0,-,-"
-
-CHECKSUM: "2345381840 1625737755"
+CHECKSUM: "3705669176 1625737755"
 ANNOTATION: "SMC-REGBLOCK-A11-APB-ACK-FIRST-ACTIVE-CYCLE: the APB cpuif raises is_active and its request on the same edge, and these blocks ack every request in that cycle: the eFuse interface block has no external register and no stall, and the AVSBus block's external registers ack from their own request with external_pending never set (A8). is_active is therefore never high without an ack."
 MODULE: efuse_interface_ctrl_reg
 Condition 1 "612230268" "(cpuif_rd_ack || cpuif_wr_ack) 1 -1" (1 "00")
 
-CHECKSUM: "1698122930 1130749731"
-ANNOTATION: "SMC-C7-ENUM-MEMBERS-ONLY: a variable is assigned only members of its enum, so a case default or an arm that needs a non-member never runs. efuse_shadow_regs' sense state resets to StIdle and every assignment names one of its four members, and the fuse command the program, read and sense requesters drive is READ, PROGRAM, PROGRAM_READ_BACK or the all-zero READ default, never the unused 2'b11 that efuse_interface_shim's last arms need."
+CHECKSUM: "1114926396 1130749731"
 ANNOTATION: "SMC-C10-VALID-WITH-COMMAND: efuse_program_interface sets the request's program command and its valid on the same cycle and clears both together to the all-zero default, and the read and sense requesters issue only READ, so efuse_interface_shim never sees a program command without valid."
 ANNOTATION: "SMC-B12-BANK-MODEL-NO-SLVERR: a property of this bench, not of the design. smc_ip_integration answers the eFuse shim with efuse_bank_model, whose register block drives pslverr from cpuif errors tied to zero, so no read, program or read-back returns SLVERR and the sense status stays zero; the model's injected program failures corrupt the data, which the read-back mismatch term still grades. A bank model or macro that can return SLVERR retires the class."
 MODULE: efuse_interface_shim
-Condition 12 "2953569792" "((fuse_command_req_i.command == FUSE_COMMAND_PROGRAM) || (fuse_command_req_i.command == FUSE_COMMAND_PROGRAM_READ_BACK)) 1 -1" (1 "00")
-Condition 18 "3037674975" "((fuse_command_req_i.command == FUSE_COMMAND_PROGRAM) || (fuse_command_req_i.command == FUSE_COMMAND_PROGRAM_READ_BACK)) 1 -1" (1 "00")
-Condition 4 "3748480020" "(fuse_command_req_i.valid && ((fuse_command_req_i.command == FUSE_COMMAND_PROGRAM) || (fuse_command_req_i.command == FUSE_COMMAND_PROGRAM_READ_BACK))) 1 -1" (1 "01")
-Condition 9 "1462769144" "(apb_fuse_bank_resp_w_readback.pslverr || ((apb_fuse_bank_resp_w_readback.prdata & efuse_write_word) != efuse_write_word)) 1 -1" (3 "10")
-Condition 17 "3700849439" "(((fuse_command_req_i.command == FUSE_COMMAND_PROGRAM) || (fuse_command_req_i.command == FUSE_COMMAND_PROGRAM_READ_BACK)) ? fuse_command_resp_w : 34'b0) 1 -1" (1 "0")
+Condition 4 "1965672997" "(fuse_command_req_i.valid && ((fuse_command_req_i.command == FUSE_COMMAND_PROGRAM) || (fuse_command_req_i.command == FUSE_COMMAND_PROGRAM_READ_BACK))) 1 -1" (1 "01")
+Condition 9 "3774810071" "(apb_fuse_bank_resp_w_readback.pslverr || ((apb_fuse_bank_resp_w_readback.prdata & efuse_write_word) != efuse_write_word)) 1 -1" (3 "10")
 
-CHECKSUM: "1705828286 2700233996"
+CHECKSUM: "705541431 2700233996"
 ANNOTATION: "SMC-P15-SECURE-TM-TIED: smc_efuse_wrapper ties the eFuse's secure_tm_i to zero, so the secure-test-mode arms of the shadow registers, their access control and the guard never execute, and the guard's secure_tm_blocked, which the program interface reads, holds zero. The program-lock and read-lock arms beside them stay graded."
 MODULE: efuse_program_interface
 Condition 4 "2745518814" "(efuse_req_err_i || (fuse_command_resp_i.status == 1'b1) || secure_tm_blocked_i) 1 -1" (2 "001")
 
-CHECKSUM: "2470957733 3469611085"
-ANNOTATION: "SMC-P6-LC-STATE-OFF: smc_efuse_wrapper instantiates the eFuse with HAS_LC_STATE = 0, so the lifecycle-state arms of the interface controller, the shadow registers, their access control and the guard are never entered and the RMA token comparisons they hold have no access that can reach them. The fuse-sense, security-disable and image-lock terms outside those arms stay graded."
-ANNOTATION: "SMC-P15-SECURE-TM-TIED: smc_efuse_wrapper ties the eFuse's secure_tm_i to zero, so the secure-test-mode arms of the shadow registers, their access control and the guard never execute, and the guard's secure_tm_blocked, which the program interface reads, holds zero. The program-lock and read-lock arms beside them stay graded."
+CHECKSUM: "1105447049 3469611085"
 ANNOTATION: "SMC-P29-FIELD-MAP-LOCKS: smc_efuse_pkg's field map gives every field WRITE_UNLOCK and READ_UNLOCK save the LOCKS meta-field, which is WRITE_SET_ONLY under the all-ones index the lock lookups never lock, and an unmapped address reads a lock of zero. No address carries the write-lock or read-lock code or lock bit 3, and a set-only address is never hardware write-locked."
 ANNOTATION: "SMC-C8-APB-PHASE-ORDER: the APB bridges in front of these blocks, axi_lite_to_apb in the local crossbar and in avsbus_controller and prim_axi_lite_to_apb_single ahead of the eFuse demux, drive penable only together with psel and hold the request from setup through access until pready; apb_demux gates psel and penable with one select, and mmrs passes psel through the MMR interface clamp P13 holds at zero. apb2mmr raises pready only from psel, penable and rsp_vld, and mmr_req_ctrl answers MMR_PIPE_LAT cycles after a grant the setup phase raises at the earliest and grants nothing more until then, so no response meets a setup phase. A row that needs penable without psel, pready without penable, or a response in the setup phase cannot occur."
 MODULE: efuse_shadow_reg_access_control
-Condition 3 "2094635369" "((field_index == '0) ? 1'b0 : efuse_shadow_reg_access_control.write_locked(field_index)) 1 -1" (1 "0")
-Condition 3 "2094635369" "((field_index == '0) ? 1'b0 : efuse_shadow_reg_access_control.write_locked(field_index)) 1 -1" (2 "1")
-Condition 5 "1601616447" "((field_index == '0) ? 1'b0 : efuse_shadow_reg_access_control.read_locked(field_index)) 1 -1" (1 "0")
-Condition 5 "1601616447" "((field_index == '0) ? 1'b0 : efuse_shadow_reg_access_control.read_locked(field_index)) 1 -1" (2 "1")
-Condition 4 "3098952961" "(field_index == '0) 1 -1" (1 "0")
-Condition 4 "3098952961" "(field_index == '0) 1 -1" (2 "1")
-Condition 6 "3741109779" "(field_index == '0) 1 -1" (1 "0")
-Condition 6 "3741109779" "(field_index == '0) 1 -1" (2 "1")
 Condition 7 "3341583605" "(apb_req_penable_i && apb_req_psel_i) 1 -1" (2 "10")
 Condition 10 "3408752146" "(((!is_write_locked)) & (sw_lock_bits[2:1] == 2'b10)) 1 -1" (1 "01")
-Condition 12 "2044479785" "(secure_tm_i ? (is_write_locked | (sw_lock_bits[2:1] == 2'b11) | sw_lock_bits[3]) : (is_write_locked | (sw_lock_bits[2:1] == 2'b11))) 1 -1" (2 "1")
-Condition 13 "3957149935" "(is_write_locked | (sw_lock_bits[2:1] == 2'b11) | sw_lock_bits[3]) 1 -1" (1 "000")
-Condition 13 "3957149935" "(is_write_locked | (sw_lock_bits[2:1] == 2'b11) | sw_lock_bits[3]) 1 -1" (2 "001")
-Condition 13 "3957149935" "(is_write_locked | (sw_lock_bits[2:1] == 2'b11) | sw_lock_bits[3]) 1 -1" (3 "010")
-Condition 13 "3957149935" "(is_write_locked | (sw_lock_bits[2:1] == 2'b11) | sw_lock_bits[3]) 1 -1" (4 "100")
-Condition 14 "1024332690" "(sw_lock_bits[2:1] == 2'b11) 1 -1" (1 "0")
-Condition 14 "1024332690" "(sw_lock_bits[2:1] == 2'b11) 1 -1" (2 "1")
 Condition 15 "57363498" "(is_write_locked | (sw_lock_bits[2:1] == 2'b11)) 1 -1" (2 "01")
 Condition 16 "1432529323" "(sw_lock_bits[2:1] == 2'b11) 1 -1" (2 "1")
 Condition 17 "2025791036" "(is_read_locked | sw_lock_bits[0]) 1 -1" (2 "01")
 
-CHECKSUM: "2470957733 3321935136"
+CHECKSUM: "1655169995 3124404934"
 ANNOTATION: "SMC-P6-LC-STATE-OFF: smc_efuse_wrapper instantiates the eFuse with HAS_LC_STATE = 0, so the lifecycle-state arms of the interface controller, the shadow registers, their access control and the guard are never entered and the RMA token comparisons they hold have no access that can reach them. The fuse-sense, security-disable and image-lock terms outside those arms stay graded."
-ANNOTATION: "SMC-P15-SECURE-TM-TIED: smc_efuse_wrapper ties the eFuse's secure_tm_i to zero, so the secure-test-mode arms of the shadow registers, their access control and the guard never execute, and the guard's secure_tm_blocked, which the program interface reads, holds zero. The program-lock and read-lock arms beside them stay graded."
-MODULE: efuse_shadow_reg_access_control
-Branch 0 "3091259679" "secure_tm_i" (0) "secure_tm_i 1"
-Branch 1 "465878905" "HAS_LC_STATE" (0) "HAS_LC_STATE 1,1,-"
-Branch 1 "465878905" "HAS_LC_STATE" (1) "HAS_LC_STATE 1,0,-"
-Branch 1 "465878905" "HAS_LC_STATE" (2) "HAS_LC_STATE 1,-,1"
-Branch 1 "465878905" "HAS_LC_STATE" (3) "HAS_LC_STATE 1,-,0"
-Branch 2 "2952040438" "(HAS_LC_STATE && (field_index == '0))" (0) "(HAS_LC_STATE && (field_index == '0)) 1"
-
-CHECKSUM: "3035079037 1696817153"
-ANNOTATION: "SMC-P6-LC-STATE-OFF: smc_efuse_wrapper instantiates the eFuse with HAS_LC_STATE = 0, so the lifecycle-state arms of the interface controller, the shadow registers, their access control and the guard are never entered and the RMA token comparisons they hold have no access that can reach them. The fuse-sense, security-disable and image-lock terms outside those arms stay graded."
-ANNOTATION: "SMC-C5-SIGNAL-IDENTITY: the source defines one signal from another, so a row that needs them apart cannot occur. A pair is taken only where VCS cannot score it in a zero-time delta: either one process writes both sides, or the condition sits in a clocked process, which samples settled values. cla_arithmetic_compare derives compare_equal and below_compare_int in one always_comb from the same masked value, so they are never high together; efuse_shadow_reg_access_control raises write_locked_o in the same always_comb only on the arm that forwards no request, so the shadow registers never see a forwarded write with it high. In clocked processes, uart_core assigns tx_enable and rx_enable the same expression and forms thr_rready from a term that includes thr_rvalid, and system_timer_octs_core forms credit_gen_pulse with enable as one of its terms. The test rewrites the dependent signal in those terms and takes a row only when that makes it unsatisfiable."
-ANNOTATION: "SMC-C6-EARLIER-ARM-TAKES: an else arm or a later else-if runs only when the tests before it fail, and a statement inside an arm only when that arm's test holds, so a row of its condition that an earlier or enclosing test already decides is never evaluated. smc_cpu_ctrl_wrap reloads each core's second-stage watchdog count while reset_wdt_count is high, and reset_wdt_count includes the negated first-stage timeout, so the decrement test runs only with that timeout high; vlt_packet_compression takes a timestamp packet without a grant first and sets packet_lost only inside its timestamp-retry arm; avsbus_controller takes a retry with a countdown above zero first; efuse_shadow_regs takes a setup-only write outside the lifecycle-state field first; the I2C controller takes a disabled host, a lost start and a disable mid-transaction first, and the bus monitor a disabled monitor; and the iDMA channel coupler takes a ready first AW, and the read path a non-last beat, first."
-ANNOTATION: "SMC-C7-ENUM-MEMBERS-ONLY: a variable is assigned only members of its enum, so a case default or an arm that needs a non-member never runs. efuse_shadow_regs' sense state resets to StIdle and every assignment names one of its four members, and the fuse command the program, read and sense requesters drive is READ, PROGRAM, PROGRAM_READ_BACK or the all-zero READ default, never the unused 2'b11 that efuse_interface_shim's last arms need."
 ANNOTATION: "SMC-B6-SIM-ONLY-FUSE-BYPASS: a property of this bench and its policy, not of the design. efuse_shadow_regs reads the +skip_fuse_sense plusarg in simulation-only initial blocks and ties sim_skip_fuse_sense to zero outside simulation; with the plusarg set, the shadow registers take a preload file or zeros in place of the sensed fuse image. The DV policy (section 1.6) forbids a skipped fuse sense as evidence, and no SMC testlist entry passes the plusarg, so the plusarg arms, the preload flag the initial block sets only with sim_skip_fuse_sense high, and every row or path that needs either high never run here. A policy change admitting the plusarg retires the class."
-ANNOTATION: "SMC-B9-SECURITY-DISABLE-TIED: a property of this bench, not of the design. The testbench ties sep_security_disable_i to zero in both instances, and it reaches the eFuse interface controller and its shadow registers unchanged, so the security-disable terms of the requester mux, the sense-done status and the fuse-sense load hold zero here. A bench port that drives the input retires the class."
-ANNOTATION: "SMC-B12-BANK-MODEL-NO-SLVERR: a property of this bench, not of the design. smc_ip_integration answers the eFuse shim with efuse_bank_model, whose register block drives pslverr from cpuif errors tied to zero, so no read, program or read-back returns SLVERR and the sense status stays zero; the model's injected program failures corrupt the data, which the read-back mismatch term still grades. A bank model or macro that can return SLVERR retires the class."
 MODULE: efuse_shadow_regs
 Condition 1 "2693873921" "((sim_skip_fuse_sense == 1'b1) && (preload_plusarg_found == 1'b0)) 1 -1" (2 "10")
 Condition 1 "2693873921" "((sim_skip_fuse_sense == 1'b1) && (preload_plusarg_found == 1'b0)) 1 -1" (3 "11")
-Condition 4 "516759797" "(sim_skip_fuse_sense && ((!fuse_sense_done))) 1 -1" (1 "01")
 Condition 4 "516759797" "(sim_skip_fuse_sense && ((!fuse_sense_done))) 1 -1" (2 "10")
 Condition 4 "516759797" "(sim_skip_fuse_sense && ((!fuse_sense_done))) 1 -1" (3 "11")
-Condition 5 "2119063415" "(((!fuse_sense_done)) && ((!security_disable_i))) 1 -1" (1 "01")
-Condition 5 "2119063415" "(((!fuse_sense_done)) && ((!security_disable_i))) 1 -1" (2 "10")
-Condition 5 "2119063415" "(((!fuse_sense_done)) && ((!security_disable_i))) 1 -1" (3 "11")
-Condition 6 "735688330" "(fuse_command_resp.valid && ((!fuse_command_resp.status)) && (words_received_q < efuse_word_counter_t'(NumShadowWords)) && (words_received_q == efuse_word_counter_t'(efuse_pkg::SHADOW_IDX_LC_STATE))) 1 -1" (1 "0111")
-Condition 6 "735688330" "(fuse_command_resp.valid && ((!fuse_command_resp.status)) && (words_received_q < efuse_word_counter_t'(NumShadowWords)) && (words_received_q == efuse_word_counter_t'(efuse_pkg::SHADOW_IDX_LC_STATE))) 1 -1" (2 "1011")
-Condition 6 "735688330" "(fuse_command_resp.valid && ((!fuse_command_resp.status)) && (words_received_q < efuse_word_counter_t'(NumShadowWords)) && (words_received_q == efuse_word_counter_t'(efuse_pkg::SHADOW_IDX_LC_STATE))) 1 -1" (3 "1101")
-Condition 6 "735688330" "(fuse_command_resp.valid && ((!fuse_command_resp.status)) && (words_received_q < efuse_word_counter_t'(NumShadowWords)) && (words_received_q == efuse_word_counter_t'(efuse_pkg::SHADOW_IDX_LC_STATE))) 1 -1" (4 "1110")
-Condition 6 "735688330" "(fuse_command_resp.valid && ((!fuse_command_resp.status)) && (words_received_q < efuse_word_counter_t'(NumShadowWords)) && (words_received_q == efuse_word_counter_t'(efuse_pkg::SHADOW_IDX_LC_STATE))) 1 -1" (5 "1111")
-Condition 8 "1196167266" "(apb_req_from_ac.pwrite && ((!write_locked)) && write_setup_only && is_lc_state_access && apb_req_from_ac.pstrb[0]) 1 -1" (1 "01111")
-Condition 8 "1196167266" "(apb_req_from_ac.pwrite && ((!write_locked)) && write_setup_only && is_lc_state_access && apb_req_from_ac.pstrb[0]) 1 -1" (2 "10111")
-Condition 8 "1196167266" "(apb_req_from_ac.pwrite && ((!write_locked)) && write_setup_only && is_lc_state_access && apb_req_from_ac.pstrb[0]) 1 -1" (3 "11011")
-Condition 8 "1196167266" "(apb_req_from_ac.pwrite && ((!write_locked)) && write_setup_only && is_lc_state_access && apb_req_from_ac.pstrb[0]) 1 -1" (4 "11101")
-Condition 8 "1196167266" "(apb_req_from_ac.pwrite && ((!write_locked)) && write_setup_only && is_lc_state_access && apb_req_from_ac.pstrb[0]) 1 -1" (5 "11110")
-Condition 8 "1196167266" "(apb_req_from_ac.pwrite && ((!write_locked)) && write_setup_only && is_lc_state_access && apb_req_from_ac.pstrb[0]) 1 -1" (6 "11111")
-Condition 9 "1915092119" "(apb_req_from_ac.pwdata[0] | lc_state_cur[0]) 1 -1" (1 "00")
-Condition 9 "1915092119" "(apb_req_from_ac.pwdata[0] | lc_state_cur[0]) 1 -1" (2 "01")
-Condition 9 "1915092119" "(apb_req_from_ac.pwdata[0] | lc_state_cur[0]) 1 -1" (3 "10")
-Condition 10 "522092114" "((rma_sip_token_match_i == TOKEN_MATCH_CODE) ? (apb_req_from_ac.pwdata[1] | lc_state_cur[1]) : lc_state_cur[1]) 1 -1" (1 "0")
-Condition 10 "522092114" "((rma_sip_token_match_i == TOKEN_MATCH_CODE) ? (apb_req_from_ac.pwdata[1] | lc_state_cur[1]) : lc_state_cur[1]) 1 -1" (2 "1")
-Condition 11 "3858718990" "(rma_sip_token_match_i == TOKEN_MATCH_CODE) 1 -1" (1 "0")
-Condition 11 "3858718990" "(rma_sip_token_match_i == TOKEN_MATCH_CODE) 1 -1" (2 "1")
-Condition 13 "275687302" "((lc_state_cur[1] && (rma_chiplet_token_match_i == TOKEN_MATCH_CODE)) ? (apb_req_from_ac.pwdata[2] | lc_state_cur[2]) : lc_state_cur[2]) 1 -1" (1 "0")
-Condition 13 "275687302" "((lc_state_cur[1] && (rma_chiplet_token_match_i == TOKEN_MATCH_CODE)) ? (apb_req_from_ac.pwdata[2] | lc_state_cur[2]) : lc_state_cur[2]) 1 -1" (2 "1")
-Condition 15 "1470581215" "(rma_chiplet_token_match_i == TOKEN_MATCH_CODE) 1 -1" (1 "0")
-Condition 15 "1470581215" "(rma_chiplet_token_match_i == TOKEN_MATCH_CODE) 1 -1" (2 "1")
-Condition 17 "712546842" "(apb_req_from_ac.pwdata[3] | lc_state_cur[3]) 1 -1" (1 "00")
-Condition 17 "712546842" "(apb_req_from_ac.pwdata[3] | lc_state_cur[3]) 1 -1" (2 "01")
-Condition 17 "712546842" "(apb_req_from_ac.pwdata[3] | lc_state_cur[3]) 1 -1" (3 "10")
-Condition 18 "737362037" "(shadow_efuse.values[efuse_pkg::SHADOW_IDX_TRANSIENT_RMA_EN][0] == 1'b1) 1 -1" (1 "0")
-Condition 18 "737362037" "(shadow_efuse.values[efuse_pkg::SHADOW_IDX_TRANSIENT_RMA_EN][0] == 1'b1) 1 -1" (2 "1")
-Condition 19 "173520734" "((rma_chiplet_token_match_i == TOKEN_MATCH_CODE) && lc_state_cur[1]) 1 -1" (1 "01")
-Condition 19 "173520734" "((rma_chiplet_token_match_i == TOKEN_MATCH_CODE) && lc_state_cur[1]) 1 -1" (2 "10")
-Condition 19 "173520734" "((rma_chiplet_token_match_i == TOKEN_MATCH_CODE) && lc_state_cur[1]) 1 -1" (3 "11")
-Condition 20 "4237421861" "(rma_chiplet_token_match_i == TOKEN_MATCH_CODE) 1 -1" (1 "0")
-Condition 20 "4237421861" "(rma_chiplet_token_match_i == TOKEN_MATCH_CODE) 1 -1" (2 "1")
-Condition 21 "720021776" "(rma_chiplet_token_match_i == TOKEN_MATCH_CODE) 1 -1" (1 "0")
-Condition 21 "720021776" "(rma_chiplet_token_match_i == TOKEN_MATCH_CODE) 1 -1" (2 "1")
-Condition 22 "714165230" "(rma_sip_token_match_i == TOKEN_MATCH_CODE) 1 -1" (1 "0")
-Condition 22 "714165230" "(rma_sip_token_match_i == TOKEN_MATCH_CODE) 1 -1" (2 "1")
-Condition 23 "330204192" "(fuse_sense_done ? StFinished : StIdle) 1 -1" (1 "0")
-Condition 23 "330204192" "(fuse_sense_done ? StFinished : StIdle) 1 -1" (2 "1")
 Condition 26 "3258283642" "(sim_skip_fuse_sense && ((!fuse_sense_done))) 1 -1" (2 "10")
 Condition 26 "3258283642" "(sim_skip_fuse_sense && ((!fuse_sense_done))) 1 -1" (3 "11")
-Condition 33 "2190871633" "(apb_req_from_ac.pstrb[0] && ((!apb_resp_from_ac.pready))) 1 -1" (1 "01")
-Condition 33 "2190871633" "(apb_req_from_ac.pstrb[0] && ((!apb_resp_from_ac.pready))) 1 -1" (2 "10")
-Condition 33 "2190871633" "(apb_req_from_ac.pstrb[0] && ((!apb_resp_from_ac.pready))) 1 -1" (3 "11")
-Condition 34 "582550207" "(shadow_efuse.values[efuse_pkg::SHADOW_IDX_TRANSIENT_RMA_EN][0] == 1'b1) 1 -1" (1 "0")
-Condition 34 "582550207" "(shadow_efuse.values[efuse_pkg::SHADOW_IDX_TRANSIENT_RMA_EN][0] == 1'b1) 1 -1" (2 "1")
-Condition 35 "2651110473" "((rma_chiplet_token_match_i == TOKEN_MATCH_CODE) && ((!chiplet_state_change_completed_n0_scan))) 1 -1" (1 "01")
-Condition 35 "2651110473" "((rma_chiplet_token_match_i == TOKEN_MATCH_CODE) && ((!chiplet_state_change_completed_n0_scan))) 1 -1" (2 "10")
-Condition 35 "2651110473" "((rma_chiplet_token_match_i == TOKEN_MATCH_CODE) && ((!chiplet_state_change_completed_n0_scan))) 1 -1" (3 "11")
-Condition 36 "313211475" "(rma_chiplet_token_match_i == TOKEN_MATCH_CODE) 1 -1" (1 "0")
-Condition 36 "313211475" "(rma_chiplet_token_match_i == TOKEN_MATCH_CODE) 1 -1" (2 "1")
-Condition 37 "2519050848" "((rma_sip_token_match_i == TOKEN_MATCH_CODE) && ((!sop_state_change_completed_n0_scan))) 1 -1" (1 "01")
-Condition 37 "2519050848" "((rma_sip_token_match_i == TOKEN_MATCH_CODE) && ((!sop_state_change_completed_n0_scan))) 1 -1" (2 "10")
-Condition 37 "2519050848" "((rma_sip_token_match_i == TOKEN_MATCH_CODE) && ((!sop_state_change_completed_n0_scan))) 1 -1" (3 "11")
-Condition 38 "128110367" "(rma_sip_token_match_i == TOKEN_MATCH_CODE) 1 -1" (1 "0")
-Condition 38 "128110367" "(rma_sip_token_match_i == TOKEN_MATCH_CODE) 1 -1" (2 "1")
-Condition 2 "4011173503" "(sim_skip_fuse_sense == 1'b1) 1 -1" (2 "1")
-Condition 3 "1907892326" "(preload_plusarg_found == 1'b0) 1 -1" (1 "0")
-Condition 7 "4235087075" "(words_received_q == efuse_word_counter_t'(efuse_pkg::SHADOW_IDX_LC_STATE)) 1 -1" (1 "0")
-Condition 7 "4235087075" "(words_received_q == efuse_word_counter_t'(efuse_pkg::SHADOW_IDX_LC_STATE)) 1 -1" (2 "1")
-Condition 12 "3491961324" "(apb_req_from_ac.pwdata[1] | lc_state_cur[1]) 1 -1" (1 "00")
-Condition 12 "3491961324" "(apb_req_from_ac.pwdata[1] | lc_state_cur[1]) 1 -1" (2 "01")
-Condition 12 "3491961324" "(apb_req_from_ac.pwdata[1] | lc_state_cur[1]) 1 -1" (3 "10")
-Condition 14 "3463265527" "(lc_state_cur[1] && (rma_chiplet_token_match_i == TOKEN_MATCH_CODE)) 1 -1" (1 "01")
-Condition 14 "3463265527" "(lc_state_cur[1] && (rma_chiplet_token_match_i == TOKEN_MATCH_CODE)) 1 -1" (2 "10")
-Condition 14 "3463265527" "(lc_state_cur[1] && (rma_chiplet_token_match_i == TOKEN_MATCH_CODE)) 1 -1" (3 "11")
-Condition 16 "651734236" "(apb_req_from_ac.pwdata[2] | lc_state_cur[2]) 1 -1" (1 "00")
-Condition 16 "651734236" "(apb_req_from_ac.pwdata[2] | lc_state_cur[2]) 1 -1" (2 "01")
-Condition 16 "651734236" "(apb_req_from_ac.pwdata[2] | lc_state_cur[2]) 1 -1" (3 "10")
-Condition 27 "3307276254" "(((!fuse_sense_done)) && ((!security_disable_i))) 1 -1" (2 "10")
-Condition 28 "1181535201" "(fuse_command_resp.valid && (fuse_command_resp.status == 1'b0)) 1 -1" (2 "10")
-Condition 29 "3557066554" "(fuse_command_resp.status == 1'b0) 1 -1" (1 "0")
 Condition 30 "1343183551" "(apb_req_from_ac.pwrite && ((!write_locked))) 1 -1" (2 "10")
 Condition 31 "3715707245" "(write_setup_only && ((!is_lc_state_access))) 1 -1" (2 "10")
 Condition 32 "1161017333" "(write_setup_only && is_lc_state_access) 1 -1" (1 "01")
 Condition 32 "1161017333" "(write_setup_only && is_lc_state_access) 1 -1" (2 "10")
 Condition 32 "1161017333" "(write_setup_only && is_lc_state_access) 1 -1" (3 "11")
+Condition 33 "2190871633" "(apb_req_from_ac.pstrb[0] && ((!apb_resp_from_ac.pready))) 1 -1" (1 "01")
+Condition 33 "2190871633" "(apb_req_from_ac.pstrb[0] && ((!apb_resp_from_ac.pready))) 1 -1" (2 "10")
+Condition 33 "2190871633" "(apb_req_from_ac.pstrb[0] && ((!apb_resp_from_ac.pready))) 1 -1" (3 "11")
+Condition 2 "4011173503" "(sim_skip_fuse_sense == 1'b1) 1 -1" (2 "1")
+Condition 3 "1907892326" "(preload_plusarg_found == 1'b0) 1 -1" (1 "0")
 
-CHECKSUM: "3035079037 2392609755"
+CHECKSUM: "1655169995 333976586"
 ANNOTATION: "SMC-P6-LC-STATE-OFF: smc_efuse_wrapper instantiates the eFuse with HAS_LC_STATE = 0, so the lifecycle-state arms of the interface controller, the shadow registers, their access control and the guard are never entered and the RMA token comparisons they hold have no access that can reach them. The fuse-sense, security-disable and image-lock terms outside those arms stay graded."
 ANNOTATION: "SMC-P15-SECURE-TM-TIED: smc_efuse_wrapper ties the eFuse's secure_tm_i to zero, so the secure-test-mode arms of the shadow registers, their access control and the guard never execute, and the guard's secure_tm_blocked, which the program interface reads, holds zero. The program-lock and read-lock arms beside them stay graded."
 ANNOTATION: "SMC-B6-SIM-ONLY-FUSE-BYPASS: a property of this bench and its policy, not of the design. efuse_shadow_regs reads the +skip_fuse_sense plusarg in simulation-only initial blocks and ties sim_skip_fuse_sense to zero outside simulation; with the plusarg set, the shadow registers take a preload file or zeros in place of the sensed fuse image. The DV policy (section 1.6) forbids a skipped fuse sense as evidence, and no SMC testlist entry passes the plusarg, so the plusarg arms, the preload flag the initial block sets only with sim_skip_fuse_sense high, and every row or path that needs either high never run here. A policy change admitting the plusarg retires the class."
 MODULE: efuse_shadow_regs
 Branch 0 "372284962" "secure_tm_i" (0) "secure_tm_i 1"
 Branch 1 "3274679000" "$test$plusargs(\"skip_fuse_sense\")" (0) "$test$plusargs(\"skip_fuse_sense\") 1"
-Branch 2 "3908413232" "HAS_LC_STATE" (0) "HAS_LC_STATE 1,1,-"
 Branch 2 "3908413232" "HAS_LC_STATE" (1) "HAS_LC_STATE 1,0,-"
 Branch 2 "3908413232" "HAS_LC_STATE" (2) "HAS_LC_STATE 0,-,1"
 Branch 3 "1280424184" "((sim_skip_fuse_sense == 1'b1) && (preload_plusarg_found == 1'b0))" (0) "((sim_skip_fuse_sense == 1'b1) && (preload_plusarg_found == 1'b0)) 1"
-Branch 4 "712423355" "HAS_LC_STATE" (0) "HAS_LC_STATE 1,1,-,-,-,-,-,-,-,-,-,-,-"
-Branch 4 "712423355" "HAS_LC_STATE" (1) "HAS_LC_STATE 1,0,1,1,-,-,-,-,-,-,-,-,-"
-Branch 4 "712423355" "HAS_LC_STATE" (2) "HAS_LC_STATE 1,0,1,0,-,-,-,-,-,-,-,-,-"
-Branch 4 "712423355" "HAS_LC_STATE" (3) "HAS_LC_STATE 1,0,0,-,1,-,-,-,-,-,-,-,-"
-Branch 4 "712423355" "HAS_LC_STATE" (4) "HAS_LC_STATE 1,0,0,-,0,1,1,1,-,-,-,-,-"
-Branch 4 "712423355" "HAS_LC_STATE" (5) "HAS_LC_STATE 1,0,0,-,0,1,1,0,-,-,-,-,-"
-Branch 4 "712423355" "HAS_LC_STATE" (6) "HAS_LC_STATE 1,0,0,-,0,1,1,-,1,-,-,-,-"
-Branch 4 "712423355" "HAS_LC_STATE" (7) "HAS_LC_STATE 1,0,0,-,0,1,1,-,0,-,-,-,-"
-Branch 4 "712423355" "HAS_LC_STATE" (8) "HAS_LC_STATE 1,0,0,-,0,1,0,-,-,-,-,-,-"
-Branch 4 "712423355" "HAS_LC_STATE" (9) "HAS_LC_STATE 1,0,0,-,0,0,-,-,-,1,1,-,-"
-Branch 4 "712423355" "HAS_LC_STATE" (10) "HAS_LC_STATE 1,0,0,-,0,0,-,-,-,1,0,1,-"
-Branch 4 "712423355" "HAS_LC_STATE" (11) "HAS_LC_STATE 1,0,0,-,0,0,-,-,-,1,0,0,1"
-Branch 4 "712423355" "HAS_LC_STATE" (12) "HAS_LC_STATE 1,0,0,-,0,0,-,-,-,1,0,0,0"
-Branch 4 "712423355" "HAS_LC_STATE" (13) "HAS_LC_STATE 1,0,0,-,0,0,-,-,-,0,-,-,-"
-Branch 7 "4076424298" "(!rst_ni)" (1) "(!rst_ni) 0,1,-"
-Branch 8 "1283278657" "(!rst_ni)" (1) "(!rst_ni) 0,1,1,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-"
-Branch 8 "1283278657" "(!rst_ni)" (2) "(!rst_ni) 0,1,0,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-"
-Branch 8 "1283278657" "(!rst_ni)" (13) "(!rst_ni) 0,0,-,0,-,-,-,-,-,1,0,1,0,-,1,1,1,-,-,-,-,-,-,-"
-Branch 8 "1283278657" "(!rst_ni)" (14) "(!rst_ni) 0,0,-,0,-,-,-,-,-,1,0,1,0,-,1,1,0,-,-,-,-,-,-,-"
-Branch 8 "1283278657" "(!rst_ni)" (15) "(!rst_ni) 0,0,-,0,-,-,-,-,-,1,0,1,0,-,1,0,-,-,-,-,-,-,-,-"
-Branch 8 "1283278657" "(!rst_ni)" (16) "(!rst_ni) 0,0,-,0,-,-,-,-,-,1,0,1,0,-,1,-,-,1,-,-,-,-,-,-"
-Branch 8 "1283278657" "(!rst_ni)" (17) "(!rst_ni) 0,0,-,0,-,-,-,-,-,1,0,1,0,-,1,-,-,0,-,-,-,-,-,-"
-Branch 8 "1283278657" "(!rst_ni)" (22) "(!rst_ni) 0,0,-,0,-,-,-,-,-,0,-,-,-,-,-,-,-,-,-,-,1,1,1,-"
-Branch 8 "1283278657" "(!rst_ni)" (23) "(!rst_ni) 0,0,-,0,-,-,-,-,-,0,-,-,-,-,-,-,-,-,-,-,1,1,0,1"
-Branch 8 "1283278657" "(!rst_ni)" (24) "(!rst_ni) 0,0,-,0,-,-,-,-,-,0,-,-,-,-,-,-,-,-,-,-,1,1,0,0"
-Branch 8 "1283278657" "(!rst_ni)" (25) "(!rst_ni) 0,0,-,0,-,-,-,-,-,0,-,-,-,-,-,-,-,-,-,-,1,0,-,-"
+Branch 4 "3031313403" "HAS_LC_STATE" (2) "HAS_LC_STATE 1,0,1,0,-,-,-,-,-,-,-,-,-"
+Branch 4 "3031313403" "HAS_LC_STATE" (8) "HAS_LC_STATE 1,0,0,-,0,1,0,-,-,-,-,-,-"
+Branch 4 "3031313403" "HAS_LC_STATE" (10) "HAS_LC_STATE 1,0,0,-,0,0,-,-,-,1,0,1,-"
+Branch 4 "3031313403" "HAS_LC_STATE" (12) "HAS_LC_STATE 1,0,0,-,0,0,-,-,-,1,0,0,0"
+Branch 4 "3031313403" "HAS_LC_STATE" (13) "HAS_LC_STATE 1,0,0,-,0,0,-,-,-,0,-,-,-"
+Branch 7 "1973957639" "(!rst_ni)" (1) "(!rst_ni) 0,1,-"
+Branch 8 "3492058410" "(!rst_ni)" (1) "(!rst_ni) 0,1,1,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-"
+Branch 8 "3492058410" "(!rst_ni)" (2) "(!rst_ni) 0,1,0,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-"
+Branch 8 "3492058410" "(!rst_ni)" (13) "(!rst_ni) 0,0,-,0,-,-,-,-,-,1,0,1,0,-,1,1,1,-,-,-,-,-,-,-"
+Branch 8 "3492058410" "(!rst_ni)" (14) "(!rst_ni) 0,0,-,0,-,-,-,-,-,1,0,1,0,-,1,1,0,-,-,-,-,-,-,-"
+Branch 8 "3492058410" "(!rst_ni)" (15) "(!rst_ni) 0,0,-,0,-,-,-,-,-,1,0,1,0,-,1,0,-,-,-,-,-,-,-,-"
+Branch 8 "3492058410" "(!rst_ni)" (16) "(!rst_ni) 0,0,-,0,-,-,-,-,-,1,0,1,0,-,1,-,-,1,-,-,-,-,-,-"
+Branch 8 "3492058410" "(!rst_ni)" (17) "(!rst_ni) 0,0,-,0,-,-,-,-,-,1,0,1,0,-,1,-,-,0,-,-,-,-,-,-"
+Branch 8 "3492058410" "(!rst_ni)" (25) "(!rst_ni) 0,0,-,0,-,-,-,-,-,0,-,-,-,-,-,-,-,-,-,-,1,0,-,-"
 
 CHECKSUM: "1147255362 2271730998"
 ANNOTATION: "SMC-D1-SINGLE-OUTSTANDING-DEMUX: each of these register blocks sits directly behind an axi_lite_demux with MaxTrans of one. The demux raises a port's AR valid only while its R FIFO is not full, pushes that FIFO at the AR handshake and pops it at the R handshake, and raises W valid only while its B FIFO, pushed at the W handshake and popped at B, is not full. The block answers R or B only after the accept that empties its AR or W holding register, so each AR and W arrives with the register empty and ready high: the valid-without-ready rows of AR and W cannot occur. The write-only UART map takes no reads, and its demux's W FIFO holds an AW's select until that AW's W is taken while its B FIFO holds each W back until the previous B, so when the next AW can first arrive the block holds the previous AW and W with no response in flight and accepts them that cycle, and an accept never meets a response ack. The zeroer's axi_to_axi_lite gates AW and AR on depth-one ID FIFOs, pushed at the handshake and popped at B or R, so its second AW or AR arrives only after the block answered the first. Behind two or more MaxTrans-1 stages in series, the filter, log-engine and UART blocks see the next AW only two cycles after W is taken, while a held read defers the write accept by one cycle at most. In front of cpu_ctrl and the zeroer, axi_to_axi_lite's burst splitter demux sizes its per-ID counters as idx_width(MaxTrans), one bit for a MaxTrans of two or less, so it admits one transaction at a time and passes the next AW, AR or W only after the previous response, when the block's holding registers are empty."
@@ -655,58 +394,43 @@ Branch 0 "2316299915" "MMR_Trfunnelcontrol_F_Trfunnelempty_WrEn" (0) "MMR_Trfunn
 Branch 11 "2747705060" "(instr_type == 2'b1)" (0) "(instr_type == 2'b1) 1,-"
 Branch 11 "2747705060" "(instr_type == 2'b1)" (1) "(instr_type == 2'b1) 0,1"
 
-CHECKSUM: "2884589361 570709842"
-ANNOTATION: "SMC-P30-CCG-HYST-OFF: both generic_ccg instances, the DFD clock gate and the debug-bus mux gate, set HYST_EN to zero, so hyst_on is a constant zero and the row that needs it high cannot occur."
-MODULE: generic_ccg
-Condition 1 "1064322695" "(en[0] | ((~rst_n)) | force_en | hyst_on[0]) 1 -1" (2 "0001")
-
-CHECKSUM: "2595659922 289259634"
-ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes. Every instance takes one value for both its clamp and its fuse disable, the NTR sink's clock-disable value and control are tied to one as well, so its clock-enable select is zero, and the funnel's zero clamp enables every source it maps. The NTR sink is absent, so every block of mmrs's clamp vector is a zero clamp, clamp_hit is zero, and mmr_req_ctrl never returns rsp_err."
-MODULE: generic_ipx_clk_rst_ctrl
-Condition 2 "1402065661" "(clk_en_sel & ((~i_fuse_dis))) 1 -1" (2 "10")
-Condition 3 "136713991" "(i_func_clamp | i_fuse_dis) 1 -1" (2 "01")
-Condition 3 "136713991" "(i_func_clamp | i_fuse_dis) 1 -1" (3 "10")
-
-CHECKSUM: "2582788748 4026430701"
+CHECKSUM: "1495589902 3045344841"
 ANNOTATION: "SMC-C6-EARLIER-ARM-TAKES: an else arm or a later else-if runs only when the tests before it fail, and a statement inside an arm only when that arm's test holds, so a row of its condition that an earlier or enclosing test already decides is never evaluated. smc_cpu_ctrl_wrap reloads each core's second-stage watchdog count while reset_wdt_count is high, and reset_wdt_count includes the negated first-stage timeout, so the decrement test runs only with that timeout high; vlt_packet_compression takes a timestamp packet without a grant first and sets packet_lost only inside its timestamp-retry arm; avsbus_controller takes a retry with a countdown above zero first; efuse_shadow_regs takes a setup-only write outside the lifecycle-state field first; the I2C controller takes a disabled host, a lost start and a disable mid-transaction first, and the bus monitor a disabled monitor; and the iDMA channel coupler takes a ready first AW, and the read path a non-last beat, first."
 MODULE: i2c_bus_monitor
 Condition 14 "3557830633" "(monitor_enable && ((!monitor_enable_q))) 1 -1" (1 "01")
 
-CHECKSUM: "287342404 1438595411"
+CHECKSUM: "4121512156 549783544"
 ANNOTATION: "SMC-C6-EARLIER-ARM-TAKES: an else arm or a later else-if runs only when the tests before it fail, and a statement inside an arm only when that arm's test holds, so a row of its condition that an earlier or enclosing test already decides is never evaluated. smc_cpu_ctrl_wrap reloads each core's second-stage watchdog count while reset_wdt_count is high, and reset_wdt_count includes the negated first-stage timeout, so the decrement test runs only with that timeout high; vlt_packet_compression takes a timestamp packet without a grant first and sets packet_lost only inside its timestamp-retry arm; avsbus_controller takes a retry with a countdown above zero first; efuse_shadow_regs takes a setup-only write outside the lifecycle-state field first; the I2C controller takes a disabled host, a lost start and a disable mid-transaction first, and the bus monitor a disabled monitor; and the iDMA channel coupler takes a ready first AW, and the read path a non-last beat, first."
 MODULE: i2c_controller_fsm
-Condition 37 "2457751507" "(trans_started && ((!host_enable_i))) 1 -1" (2 "10")
-Condition 39 "3890143846" "(trans_started && ((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (1 "0111")
-Condition 40 "4193061578" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (1 "011")
-Condition 88 "2337000403" "(((!host_enable_i)) || (fmt_fifo_depth_i == 7'b1) || unhandled_unexp_nak_i || ((!trans_started))) 1 -1" (5 "1000")
+Condition 37 "3850361113" "(trans_started && ((!host_enable_i))) 1 -1" (2 "10")
+Condition 39 "3879430109" "(trans_started && ((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (1 "0111")
+Condition 40 "1002741326" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (1 "011")
+Condition 88 "2998605995" "(((!host_enable_i)) || (fmt_fifo_depth_i == 7'b1) || unhandled_unexp_nak_i || ((!trans_started))) 1 -1" (5 "1000")
 
-CHECKSUM: "287342404 4182007552"
-ANNOTATION: "SMC-P20-TCOUNT-SELECT-PAIRED: the I2C FSMs pick a counter reload with tcount_sel only under load_tcount, assign tcount_sel nothing but its named values, and the target assigns tNoDelay only beside load_tcount = 0 (its defaults at the top of the next-state block and in its default arm), every reload pairing tSetupData or tHoldData. The case's default item, and the target's tNoDelay item, never execute. The controller reloads with tNoDelay on purpose, so that item stays graded there."
+CHECKSUM: "4121512156 3655462183"
+ANNOTATION: "SMC-P20-TCOUNT-SELECT-PAIRED: the I2C FSMs pick a counter reload with tcount_sel only under load_tcount, assign tcount_sel nothing but its named values, and the target assigns T_NO_DELAY only beside load_tcount = 0 (its defaults at the top of the next-state block and in its default arm), every reload pairing T_SETUP_DATA or T_HOLD_DATA. The case's default item, and the target's T_NO_DELAY item, never execute. The controller reloads with T_NO_DELAY on purpose, so that item stays graded there."
 MODULE: i2c_controller_fsm
-Branch 0 "3901164169" "load_tcount" (10) "load_tcount 1,default,-"
+Branch 0 "1166353581" "load_tcount" (10) "load_tcount 1,default,-"
 
-CHECKSUM: "3754834557 640076495"
+CHECKSUM: "1584876630 2977940430"
 ANNOTATION: "SMC-P11-UART-SELF-CHECK: each UART holding register stores its data with the parity bit ~^data beside it, written together with the valid flag and cleared together with it, and each parity FIFO stores {~^data, data} and guards its pointers with a redundant count, so a valid stored entry always has odd parity and the check ~^{parity, data} reads one only on corrupted storage. The I2C core's four FIFOs are the same secure parity FIFO, so their err_o reads one only on corruption too. No access produces that, so the rows that need a self-check or FIFO error at one have no stimulus."
 ANNOTATION: "SMC-B13-LANE-ZERO-FILL: a property of this bench, not of the design alone. These 32-bit peripheral blocks are reached only through the local crossbar's 64-to-32 downsizer, which starts each narrow beat at zero and copies only the lanes inside the transfer size. Within that size no master of this bench leaves a one on an unstrobed lane: a CPU store strobes every lane of its size, the iDMA is built to mask unstrobed lanes to zero, the zeroer writes zero, and the cocotb AXI masters on the system and SEP ports write contiguous bytes with every other lane zero. A write-data bit high with its enable low therefore never arrives. A master that drives data on an unstrobed lane inside its transfer size retires the class."
-ANNOTATION: "SMC-B14-STROBE-FOLLOWS-ADDRESS: a property of this bench, not of the design alone. The UART's write-only map is selected only on an exact match of the write address with THR, so a THR write starts at the register's own address, and every master of this bench strobes the lane at its start address: the cocotb AXI masters write contiguous bytes from it, a CPU store is sized and aligned, and the iDMA and the zeroer build their first strobe from the address offset. A THR write with its data lane unstrobed never arrives, and no write arrives with no strobe at all, which the I2C FDATA and TXDATA pushes would need since their enables OR the whole strobe. A master that issues sparse or empty strobes retires the class."
 MODULE: i2c_core
 Condition 11 "3152547532" "(controller_tx_fifo_error || controller_rx_fifo_error || target_tx_fifo_error || target_rx_fifo_error) 1 -1" (2 "0001")
 Condition 11 "3152547532" "(controller_tx_fifo_error || controller_rx_fifo_error || target_tx_fifo_error || target_rx_fifo_error) 1 -1" (3 "0010")
 Condition 11 "3152547532" "(controller_tx_fifo_error || controller_rx_fifo_error || target_tx_fifo_error || target_rx_fifo_error) 1 -1" (4 "0100")
 Condition 11 "3152547532" "(controller_tx_fifo_error || controller_rx_fifo_error || target_tx_fifo_error || target_rx_fifo_error) 1 -1" (5 "1000")
-Condition 24 "1991555225" "(reg_out_i.FDATA.req && reg_out_i.FDATA.req_is_wr && ((|reg_out_i.FDATA.wr_biten))) 1 -1" (3 "110")
 Condition 25 "1393178295" "(reg_out_i.FDATA.wr_data.START && reg_out_i.FDATA.wr_biten.START) 1 -1" (2 "10")
 Condition 26 "4170824193" "(reg_out_i.FDATA.wr_data.STOP && reg_out_i.FDATA.wr_biten.STOP) 1 -1" (2 "10")
 Condition 27 "1794860990" "(reg_out_i.FDATA.wr_data.READB && reg_out_i.FDATA.wr_biten.READB) 1 -1" (2 "10")
 Condition 28 "2424853549" "(reg_out_i.FDATA.wr_data.RCONT && reg_out_i.FDATA.wr_biten.RCONT) 1 -1" (2 "10")
 Condition 29 "3573619060" "(reg_out_i.FDATA.wr_data.NAKOK && reg_out_i.FDATA.wr_biten.NAKOK) 1 -1" (2 "10")
-Condition 43 "1244734509" "(reg_out_i.TXDATA.req && reg_out_i.TXDATA.req_is_wr && ((|reg_out_i.TXDATA.wr_biten))) 1 -1" (3 "110")
 Condition 97 "715861344" "(controller_tx_fifo_error || controller_tx_fifo_error_intr_test) 1 -1" (3 "10")
 Condition 98 "1371919471" "(controller_rx_fifo_error || controller_rx_fifo_error_intr_test) 1 -1" (3 "10")
 Condition 99 "4062216539" "(target_tx_fifo_error || target_tx_fifo_error_intr_test) 1 -1" (3 "10")
 Condition 100 "2062372808" "(target_rx_fifo_error || target_rx_fifo_error_intr_test) 1 -1" (3 "10")
 
-CHECKSUM: "1461514841 2927016927"
+CHECKSUM: "3929405118 2927016927"
 ANNOTATION: "SMC-D1-SINGLE-OUTSTANDING-DEMUX: each of these register blocks sits directly behind an axi_lite_demux with MaxTrans of one. The demux raises a port's AR valid only while its R FIFO is not full, pushes that FIFO at the AR handshake and pops it at the R handshake, and raises W valid only while its B FIFO, pushed at the W handshake and popped at B, is not full. The block answers R or B only after the accept that empties its AR or W holding register, so each AR and W arrives with the register empty and ready high: the valid-without-ready rows of AR and W cannot occur. The write-only UART map takes no reads, and its demux's W FIFO holds an AW's select until that AW's W is taken while its B FIFO holds each W back until the previous B, so when the next AW can first arrive the block holds the previous AW and W with no response in flight and accepts them that cycle, and an accept never meets a response ack. The zeroer's axi_to_axi_lite gates AW and AR on depth-one ID FIFOs, pushed at the handshake and popped at B or R, so its second AW or AR arrives only after the block answered the first. Behind two or more MaxTrans-1 stages in series, the filter, log-engine and UART blocks see the next AW only two cycles after W is taken, while a held read defers the write accept by one cycle at most. In front of cpu_ctrl and the zeroer, axi_to_axi_lite's burst splitter demux sizes its per-ID counters as idx_width(MaxTrans), one bit for a MaxTrans of two or less, so it admits one transaction at a time and passes the next AW, AR or W only after the previous response, when the block's holding registers are empty."
 ANNOTATION: "SMC-D2-W-FOLLOWS-AW: each of these register blocks is driven directly by an axi_lite_demux master port, which raises W valid only once the select its AW pushed is in the W FIFO and holds that AW valid until its handshake. The block keeps awready and wready equal except while it holds an AW without its W, so a W is never taken before its AW and the W holding register is never full with the AW register empty. cpu_ctrl and the zeroer take W only with its AW: the splitter demux routes W when that AW is handled, the ID FIFO in front of the block clears on the same B, and the block, empty by then, takes the AW in that cycle."
 MODULE: i2c_ctrl_reg
@@ -714,7 +438,7 @@ Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
-CHECKSUM: "1943968615 3380696541"
+CHECKSUM: "3452964890 3380696541"
 ANNOTATION: "SMC-D1-SINGLE-OUTSTANDING-DEMUX: each of these register blocks sits directly behind an axi_lite_demux with MaxTrans of one. The demux raises a port's AR valid only while its R FIFO is not full, pushes that FIFO at the AR handshake and pops it at the R handshake, and raises W valid only while its B FIFO, pushed at the W handshake and popped at B, is not full. The block answers R or B only after the accept that empties its AR or W holding register, so each AR and W arrives with the register empty and ready high: the valid-without-ready rows of AR and W cannot occur. The write-only UART map takes no reads, and its demux's W FIFO holds an AW's select until that AW's W is taken while its B FIFO holds each W back until the previous B, so when the next AW can first arrive the block holds the previous AW and W with no response in flight and accepts them that cycle, and an accept never meets a response ack. The zeroer's axi_to_axi_lite gates AW and AR on depth-one ID FIFOs, pushed at the handshake and popped at B or R, so its second AW or AR arrives only after the block answered the first. Behind two or more MaxTrans-1 stages in series, the filter, log-engine and UART blocks see the next AW only two cycles after W is taken, while a held read defers the write accept by one cycle at most. In front of cpu_ctrl and the zeroer, axi_to_axi_lite's burst splitter demux sizes its per-ID counters as idx_width(MaxTrans), one bit for a MaxTrans of two or less, so it admits one transaction at a time and passes the next AW, AR or W only after the previous response, when the block's holding registers are empty."
 ANNOTATION: "SMC-D2-W-FOLLOWS-AW: each of these register blocks is driven directly by an axi_lite_demux master port, which raises W valid only once the select its AW pushed is in the W FIFO and holds that AW valid until its handshake. The block keeps awready and wready equal except while it holds an AW without its W, so a W is never taken before its AW and the W holding register is never full with the AW register empty. cpu_ctrl and the zeroer take W only with its AW: the splitter demux routes W when that AW is handled, the ID FIFO in front of the block clears on the same B, and the block, empty by then, takes the AW in that cycle."
 ANNOTATION: "SMC-B13-LANE-ZERO-FILL: a property of this bench, not of the design alone. These 32-bit peripheral blocks are reached only through the local crossbar's 64-to-32 downsizer, which starts each narrow beat at zero and copies only the lanes inside the transfer size. Within that size no master of this bench leaves a one on an unstrobed lane: a CPU store strobes every lane of its size, the iDMA is built to mask unstrobed lanes to zero, the zeroer writes zero, and the cocotb AXI masters on the system and SEP ports write contiguous bytes with every other lane zero. A write-data bit high with its enable low therefore never arrives. A master that drives data on an unstrobed lane inside its transfer size retires the class."
@@ -745,11 +469,11 @@ Condition 444 "1513541481" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 
 Condition 448 "2545097252" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (2 "10")
 Condition 452 "2691227685" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
 
-CHECKSUM: "66702530 4067735016"
-ANNOTATION: "SMC-P20-TCOUNT-SELECT-PAIRED: the I2C FSMs pick a counter reload with tcount_sel only under load_tcount, assign tcount_sel nothing but its named values, and the target assigns tNoDelay only beside load_tcount = 0 (its defaults at the top of the next-state block and in its default arm), every reload pairing tSetupData or tHoldData. The case's default item, and the target's tNoDelay item, never execute. The controller reloads with tNoDelay on purpose, so that item stays graded there."
+CHECKSUM: "2664491312 571373665"
+ANNOTATION: "SMC-P20-TCOUNT-SELECT-PAIRED: the I2C FSMs pick a counter reload with tcount_sel only under load_tcount, assign tcount_sel nothing but its named values, and the target assigns T_NO_DELAY only beside load_tcount = 0 (its defaults at the top of the next-state block and in its default arm), every reload pairing T_SETUP_DATA or T_HOLD_DATA. The case's default item, and the target's T_NO_DELAY item, never execute. The controller reloads with T_NO_DELAY on purpose, so that item stays graded there."
 MODULE: i2c_target_fsm
-Branch 0 "2471614216" "load_tcount" (2) "load_tcount 1,tNoDelay ,-"
-Branch 0 "2471614216" "load_tcount" (3) "load_tcount 1,default,-"
+Branch 0 "3014248919" "load_tcount" (2) "load_tcount 1,T_NO_DELAY ,-"
+Branch 0 "3014248919" "load_tcount" (3) "load_tcount 1,default,-"
 
 CHECKSUM: "4041267351 1933431332"
 ANNOTATION: "SMC-C6-EARLIER-ARM-TAKES: an else arm or a later else-if runs only when the tests before it fail, and a statement inside an arm only when that arm's test holds, so a row of its condition that an earlier or enclosing test already decides is never evaluated. smc_cpu_ctrl_wrap reloads each core's second-stage watchdog count while reset_wdt_count is high, and reset_wdt_count includes the negated first-stage timeout, so the decrement test runs only with that timeout high; vlt_packet_compression takes a timestamp packet without a grant first and sets packet_lost only inside its timestamp-retry arm; avsbus_controller takes a retry with a countdown above zero first; efuse_shadow_regs takes a setup-only write outside the lifecycle-state field first; the I2C controller takes a disabled host, a lost start and a disable mid-transaction first, and the bus monitor a disabled monitor; and the iDMA channel coupler takes a ready first AW, and the read path a non-last beat, first."
@@ -757,12 +481,10 @@ MODULE: idma_axi_read
 Condition 5 "3690119896" "(read_rsp_i.r.last & read_rsp_i.r_valid & read_req_o.r_ready) 1 -1" (1 "011")
 
 CHECKSUM: "2274786375 3175097258"
-ANNOTATION: "SMC-P7-NO-ERROR-CAP: idma_backend_wrapper elaborates the backend with ErrorCap = NO_ERROR_HANDLING, whose bypass assigns the legalizer's flush and kill inputs and the write datapath's poison a constant zero, so a term that needs one of them asserted is false for the life of the design. The read and write backpressure rows of the same expressions stay graded."
 ANNOTATION: "SMC-C13-COUNTER-VALID-PAIRED: the iDMA write unit resets its beat counter and its valid flag together, loads them together, and clears the flag in the cycle the counter steps from one to zero, so with the flag low the counter is zero. The system timer holds its count at zero until a start or sync load, and either one sets its sticky enable on the same edge, so with the enable low the count is zero too."
 ANNOTATION: "SMC-C14-STROBE-MASK-NONZERO: the iDMA write unit's first-beat mask is all ones shifted by an offset below the strobe width, and a beat that is both first and last covers the bytes from its offset to its tailer, the offset plus a burst length of at least one, so neither mask is zero and an empty buffer never covers it."
 MODULE: idma_axi_write
 Condition 5 "671903146" "(w_cnt_valid_q & (w_num_beats_q == 8'b1)) 1 -1" (1 "01")
-Condition 10 "2958787609" "((ready_to_write == 1'b1) & ((!dp_poison_i))) 1 -1" (2 "10")
 Condition 12 "2367116148" "(w_dp_valid_i & ((buffer_out_valid_i & mask_out) == mask_out) & (buffer_out_valid_i != '0)) 1 -1" (3 "110")
 Condition 15 "724343310" "(((buffer_out_valid_i & w_first_mask) == w_first_mask) & (buffer_out_valid_i != '0)) 1 -1" (2 "10")
 
@@ -782,36 +504,14 @@ ANNOTATION: "SMC-P27-PAGE-WIDTH-BOUND: the iDMA page splitter forms page_addr_wi
 MODULE: idma_legalizer_page_splitter
 Branch 0 "3110941386" "not_bursting_i" (1) "not_bursting_i 0,1"
 
-CHECKSUM: "768735472 3557211807"
-ANNOTATION: "SMC-P7-NO-ERROR-CAP: idma_backend_wrapper elaborates the backend with ErrorCap = NO_ERROR_HANDLING, whose bypass assigns the legalizer's flush and kill inputs and the write datapath's poison a constant zero, so a term that needs one of them asserted is false for the life of the design. The read and write backpressure rows of the same expressions stay graded."
-MODULE: idma_legalizer_rw_axi
-Condition 3 "1004549731" "((r_ready_i & ((!flush_i))) | kill_i) 1 -1" (2 "01")
-Condition 5 "2025270838" "((w_ready_i & ((!flush_i))) | kill_i) 1 -1" (2 "01")
-Condition 7 "622690179" "(r_tf_q.valid & r_ready_i & ((!flush_i))) 1 -1" (3 "110")
-Condition 8 "1876838491" "(w_tf_q.valid & w_ready_i & ((!flush_i))) 1 -1" (3 "110")
-Condition 9 "2076660534" "((r_ready_i & w_ready_i & ((!flush_i))) | kill_i) 1 -1" (2 "01")
-Condition 11 "1365128112" "((r_ready_i & w_ready_i & ((!flush_i))) | kill_i) 1 -1" (2 "01")
-Condition 13 "3221125229" "(r_tf_q.valid & w_ready_i & r_ready_i & ((!flush_i))) 1 -1" (4 "1110")
-Condition 14 "168225130" "(w_tf_q.valid & r_ready_i & w_ready_i & ((!flush_i))) 1 -1" (4 "1110")
-Condition 16 "1766034539" "(r_done & w_done & r_ready_i & w_ready_i & ((!flush_i))) 1 -1" (5 "11110")
-Condition 4 "1767126548" "(r_ready_i & ((!flush_i))) 1 -1" (2 "10")
-Condition 6 "1055243132" "(w_ready_i & ((!flush_i))) 1 -1" (2 "10")
-Condition 10 "2147812021" "(r_ready_i & w_ready_i & ((!flush_i))) 1 -1" (3 "110")
-Condition 12 "3283239150" "(r_ready_i & w_ready_i & ((!flush_i))) 1 -1" (3 "110")
-
-CHECKSUM: "768735472 2441372980"
-ANNOTATION: "SMC-P7-NO-ERROR-CAP: idma_backend_wrapper elaborates the backend with ErrorCap = NO_ERROR_HANDLING, whose bypass assigns the legalizer's flush and kill inputs and the write datapath's poison a constant zero, so a term that needs one of them asserted is false for the life of the design. The read and write backpressure rows of the same expressions stay graded."
-MODULE: idma_legalizer_rw_axi
-Branch 4 "3737172707" "kill_i" (0) "kill_i 1"
-
-CHECKSUM: "370854006 1734903030"
+CHECKSUM: "3188872617 1734903030"
 ANNOTATION: "SMC-P28-LOG-WRITE-OKAY: uart_log_engine_wrap wires the log engine's write port only to its own UART, whose demux sends every write to one of three PeakRDL register blocks generated with cpuif_wr_err at zero, and axi_lite_from_mem reports an error only on SLVERR or DECERR, so log_write_mem_resp_error and log_write_err hold zero and a row that needs either high cannot occur. The INTR_TEST path still sets the status bit, and its rows stay graded."
 MODULE: log_engine
 Condition 11 "3674367730" "(log_write_mem_resp_valid && log_write_mem_resp_error) 1 -1" (1 "01")
 Condition 11 "3674367730" "(log_write_mem_resp_valid && log_write_mem_resp_error) 1 -1" (3 "11")
 Condition 13 "2864378118" "(log_write_err || reg_out.INTR_TEST.LOG_WRITE_ERR.value) 1 -1" (3 "10")
 
-CHECKSUM: "2067798497 84113796"
+CHECKSUM: "2278098036 84113796"
 ANNOTATION: "SMC-D1-SINGLE-OUTSTANDING-DEMUX: each of these register blocks sits directly behind an axi_lite_demux with MaxTrans of one. The demux raises a port's AR valid only while its R FIFO is not full, pushes that FIFO at the AR handshake and pops it at the R handshake, and raises W valid only while its B FIFO, pushed at the W handshake and popped at B, is not full. The block answers R or B only after the accept that empties its AR or W holding register, so each AR and W arrives with the register empty and ready high: the valid-without-ready rows of AR and W cannot occur. The write-only UART map takes no reads, and its demux's W FIFO holds an AW's select until that AW's W is taken while its B FIFO holds each W back until the previous B, so when the next AW can first arrive the block holds the previous AW and W with no response in flight and accepts them that cycle, and an accept never meets a response ack. The zeroer's axi_to_axi_lite gates AW and AR on depth-one ID FIFOs, pushed at the handshake and popped at B or R, so its second AW or AR arrives only after the block answered the first. Behind two or more MaxTrans-1 stages in series, the filter, log-engine and UART blocks see the next AW only two cycles after W is taken, while a held read defers the write accept by one cycle at most. In front of cpu_ctrl and the zeroer, axi_to_axi_lite's burst splitter demux sizes its per-ID counters as idx_width(MaxTrans), one bit for a MaxTrans of two or less, so it admits one transaction at a time and passes the next AW, AR or W only after the previous response, when the block's holding registers are empty."
 ANNOTATION: "SMC-D2-W-FOLLOWS-AW: each of these register blocks is driven directly by an axi_lite_demux master port, which raises W valid only once the select its AW pushed is in the W FIFO and holds that AW valid until its handshake. The block keeps awready and wready equal except while it holds an AW without its W, so a W is never taken before its AW and the W holding register is never full with the AW register empty. cpu_ctrl and the zeroer take W only with its AW: the splitter demux routes W when that AW is handled, the ID FIFO in front of the block clears on the same B, and the block, empty by then, takes the AW in that cycle."
 ANNOTATION: "SMC-B13-LANE-ZERO-FILL: a property of this bench, not of the design alone. These 32-bit peripheral blocks are reached only through the local crossbar's 64-to-32 downsizer, which starts each narrow beat at zero and copies only the lanes inside the transfer size. Within that size no master of this bench leaves a one on an unstrobed lane: a CPU store strobes every lane of its size, the iDMA is built to mask unstrobed lanes to zero, the zeroer writes zero, and the cocotb AXI masters on the system and SEP ports write contiguous bytes with every other lane zero. A write-data bit high with its enable low therefore never arrives. A master that drives data on an unstrobed lane inside its transfer size retires the class."
@@ -823,114 +523,23 @@ Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 43 "3120704077" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
 Condition 47 "4158049255" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
 
-CHECKSUM: "3895468110 949337104"
-ANNOTATION: "SMC-P14-JTAG-MMR-TIED: smc_dfd_wrap ties i_jtag_mmr_req_vld to zero, mmrs tests it directly, and mmr_req_ctrl grants the JTAG requester exactly when it is high (gnt_is_jtag = jt_req_vld), so no arm that selects the JTAG request executes."
-ANNOTATION: "SMC-P16-SINK-ENABLE-CONST: the DFD top elaborates mmrs with NTRACE_SUPPORT(0) and the default TRACE_SINK_SUPPORT and DST_SUPPORT of one, so mmrs derives NTR_SINK_EN as zero and DST_SINK_EN as one, with CLA_EN, DST_EN and TRACE_SINK_SUPPORT at one and NTR_EN at zero; the arm of each if or ternary on those enables that the constant does not select never executes."
-MODULE: mmr_req_ctrl
-Condition 1 "463493103" "(MmrCs[NTR_SINK_BLK_IDX] | (ram_cs & ram_cs_is_ntr)) 1 -1" (1 "00")
-Condition 1 "463493103" "(MmrCs[NTR_SINK_BLK_IDX] | (ram_cs & ram_cs_is_ntr)) 1 -1" (2 "01")
-Condition 1 "463493103" "(MmrCs[NTR_SINK_BLK_IDX] | (ram_cs & ram_cs_is_ntr)) 1 -1" (3 "10")
-Condition 2 "1378508001" "(ram_cs & ram_cs_is_ntr) 1 -1" (1 "01")
-Condition 2 "1378508001" "(ram_cs & ram_cs_is_ntr) 1 -1" (2 "10")
-Condition 2 "1378508001" "(ram_cs & ram_cs_is_ntr) 1 -1" (3 "11")
-Condition 4 "2904522137" "(ram_cs & ((~ram_cs_is_ntr))) 1 -1" (2 "10")
-Condition 6 "3082891033" "(fabric_rdy & ((~jt_req_vld))) 1 -1" (2 "10")
-Condition 8 "3124866079" "(jt_req_vld | bus_req_vld) 1 -1" (3 "10")
-Condition 9 "260715249" "(gnt_is_jtag ? jt_req_blk_sel : bus_req_blk_sel) 1 -1" (2 "1")
-Condition 10 "280341080" "(gnt_is_jtag ? jt_req_addr : bus_req_addr) 1 -1" (2 "1")
-Condition 11 "2052308069" "(gnt_is_jtag ? jt_req_data : bus_req_data) 1 -1" (2 "1")
-Condition 12 "2691816795" "(gnt_is_jtag ? jt_req_we : bus_req_we) 1 -1" (2 "1")
-Condition 13 "1362727685" "(gnt_is_jtag ? ({1'b0, jt_req_we}) : bus_req_strb) 1 -1" (2 "1")
-Condition 14 "27178933" "(gnt_is_jtag ? 1'b0 : bus_req_err) 1 -1" (2 "1")
-Condition 17 "723246314" "(gnt_ram_rd_ntr | gnt_ram_rd_dst) 1 -1" (3 "10")
-Condition 19 "843985812" "(ram_rd_en & ram_cs_is_ntr) 1 -1" (1 "01")
-Condition 19 "843985812" "(ram_rd_en & ram_cs_is_ntr) 1 -1" (3 "11")
-Condition 20 "3612687964" "(ram_rd_en & ((~ram_cs_is_ntr))) 1 -1" (2 "10")
-Condition 23 "1338289722" "(ram_cs_is_ntr ? NTR_RAMDATA_OFFSET : DST_RAMDATA_OFFSET) 1 -1" (2 "1")
-Condition 29 "2974441888" "(rsp_done & ((~rsp_is_jtag))) 1 -1" (2 "10")
-Condition 30 "3052420147" "(rsp_done & rsp_is_jtag) 1 -1" (1 "01")
-Condition 30 "3052420147" "(rsp_done & rsp_is_jtag) 1 -1" (3 "11")
-
 CHECKSUM: "3895468110 1001217158"
-ANNOTATION: "SMC-P14-JTAG-MMR-TIED: smc_dfd_wrap ties i_jtag_mmr_req_vld to zero, mmrs tests it directly, and mmr_req_ctrl grants the JTAG requester exactly when it is high (gnt_is_jtag = jt_req_vld), so no arm that selects the JTAG request executes."
 ANNOTATION: "SMC-P16-SINK-ENABLE-CONST: the DFD top elaborates mmrs with NTRACE_SUPPORT(0) and the default TRACE_SINK_SUPPORT and DST_SUPPORT of one, so mmrs derives NTR_SINK_EN as zero and DST_SINK_EN as one, with CLA_EN, DST_EN and TRACE_SINK_SUPPORT at one and NTR_EN at zero; the arm of each if or ternary on those enables that the constant does not select never executes."
 MODULE: mmr_req_ctrl
-Branch 0 "1629411845" "gnt_is_jtag" (0) "gnt_is_jtag 1"
-Branch 1 "1629411845" "gnt_is_jtag" (0) "gnt_is_jtag 1"
-Branch 2 "1629411845" "gnt_is_jtag" (0) "gnt_is_jtag 1"
-Branch 3 "1629411845" "gnt_is_jtag" (0) "gnt_is_jtag 1"
-Branch 4 "1629411845" "gnt_is_jtag" (0) "gnt_is_jtag 1"
-Branch 5 "1629411845" "gnt_is_jtag" (0) "gnt_is_jtag 1"
-Branch 6 "2169810066" "(~ram_cs)" (1) "(~ram_cs) 0,1"
-Branch 10 "1128284310" "NTR_SINK_EN" (0) "NTR_SINK_EN 1"
 Branch 11 "1891817966" "DST_SINK_EN" (1) "DST_SINK_EN 0"
 
 CHECKSUM: "3001181867 1671278051"
 ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero, save five the tie-off leaves at one: the flush-timeout done flag, which resets to one and is cleared only by the N-trace RAM enable start, the two backpressure flags, which compare an N-trace space of zero against an N-trace threshold of zero with <=, and the frame-fill-complete flag and its delayed copy, which a write count held at zero keeps at one. The read and write interleave flops, enabled only on an N-trace term, hold their reset value of zero. The NTR sink register block is absent, so every register-derived N-trace term follows, mmrs's Trntrissrammode, the negation of that block's zero RAM mode, reads one, the north source flag never selects N-trace, the flush-timeout counter never counts, and the TNIF arbiter's previous grant holds its N-trace reset value. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs, whose block index is the funnel's."
-ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes. Every instance takes one value for both its clamp and its fuse disable, the NTR sink's clock-disable value and control are tied to one as well, so its clock-enable select is zero, and the funnel's zero clamp enables every source it maps. The NTR sink is absent, so every block of mmrs's clamp vector is a zero clamp, clamp_hit is zero, and mmr_req_ctrl never returns rsp_err."
 ANNOTATION: "SMC-P22-DFD-CONTROL-TIED: smc_dfd_wrap ties the DFD top's i_critical_signal_hold, i_timestamp and every CLA, DST, DST-sink and funnel fuse and clock disable to zero, and its i_sdtrig_control to TRIG_TRACE_NONE. So the warm-reset override terms, the fuse and clock-disable terms and extensions, the CLA time-match event (a timestamp of zero never reaches a nonzero match value) and the DST sdtrig start and stop hold zero, and a row or path that needs one of them high cannot occur."
 MODULE: mmrs
-Condition 1 "1850206575" "(((&i_cla_clk_dis)) & ((&i_dst_clk_dis)) & ((&i_ntr_clk_dis)) & i_dst_sink_clk_dis & i_ntr_sink_clk_dis & i_funnel_clk_dis) 1 -1" (1 "011111")
-Condition 1 "1850206575" "(((&i_cla_clk_dis)) & ((&i_dst_clk_dis)) & ((&i_ntr_clk_dis)) & i_dst_sink_clk_dis & i_ntr_sink_clk_dis & i_funnel_clk_dis) 1 -1" (2 "101111")
-Condition 1 "1850206575" "(((&i_cla_clk_dis)) & ((&i_dst_clk_dis)) & ((&i_ntr_clk_dis)) & i_dst_sink_clk_dis & i_ntr_sink_clk_dis & i_funnel_clk_dis) 1 -1" (3 "110111")
-Condition 1 "1850206575" "(((&i_cla_clk_dis)) & ((&i_dst_clk_dis)) & ((&i_ntr_clk_dis)) & i_dst_sink_clk_dis & i_ntr_sink_clk_dis & i_funnel_clk_dis) 1 -1" (4 "111011")
-Condition 1 "1850206575" "(((&i_cla_clk_dis)) & ((&i_dst_clk_dis)) & ((&i_ntr_clk_dis)) & i_dst_sink_clk_dis & i_ntr_sink_clk_dis & i_funnel_clk_dis) 1 -1" (5 "111101")
-Condition 1 "1850206575" "(((&i_cla_clk_dis)) & ((&i_dst_clk_dis)) & ((&i_ntr_clk_dis)) & i_dst_sink_clk_dis & i_ntr_sink_clk_dis & i_funnel_clk_dis) 1 -1" (6 "111110")
-Condition 1 "1850206575" "(((&i_cla_clk_dis)) & ((&i_dst_clk_dis)) & ((&i_ntr_clk_dis)) & i_dst_sink_clk_dis & i_ntr_sink_clk_dis & i_funnel_clk_dis) 1 -1" (7 "111111")
 Condition 2 "2169280412" "(((&i_cla_clk_dis_ctrl)) & ((&i_dst_clk_dis_ctrl)) & ((&i_ntr_clk_dis_ctrl)) & i_dst_sink_clk_dis_ctrl & i_ntr_sink_clk_dis_ctrl & i_funnel_clk_dis_ctrl) 1 -1" (1 "011111")
 Condition 2 "2169280412" "(((&i_cla_clk_dis_ctrl)) & ((&i_dst_clk_dis_ctrl)) & ((&i_ntr_clk_dis_ctrl)) & i_dst_sink_clk_dis_ctrl & i_ntr_sink_clk_dis_ctrl & i_funnel_clk_dis_ctrl) 1 -1" (2 "101111")
-Condition 2 "2169280412" "(((&i_cla_clk_dis_ctrl)) & ((&i_dst_clk_dis_ctrl)) & ((&i_ntr_clk_dis_ctrl)) & i_dst_sink_clk_dis_ctrl & i_ntr_sink_clk_dis_ctrl & i_funnel_clk_dis_ctrl) 1 -1" (3 "110111")
 Condition 2 "2169280412" "(((&i_cla_clk_dis_ctrl)) & ((&i_dst_clk_dis_ctrl)) & ((&i_ntr_clk_dis_ctrl)) & i_dst_sink_clk_dis_ctrl & i_ntr_sink_clk_dis_ctrl & i_funnel_clk_dis_ctrl) 1 -1" (4 "111011")
-Condition 2 "2169280412" "(((&i_cla_clk_dis_ctrl)) & ((&i_dst_clk_dis_ctrl)) & ((&i_ntr_clk_dis_ctrl)) & i_dst_sink_clk_dis_ctrl & i_ntr_sink_clk_dis_ctrl & i_funnel_clk_dis_ctrl) 1 -1" (5 "111101")
 Condition 2 "2169280412" "(((&i_cla_clk_dis_ctrl)) & ((&i_dst_clk_dis_ctrl)) & ((&i_ntr_clk_dis_ctrl)) & i_dst_sink_clk_dis_ctrl & i_ntr_sink_clk_dis_ctrl & i_funnel_clk_dis_ctrl) 1 -1" (6 "111110")
-Condition 3 "993832504" "(psel & ((~intf_gated_func_clamp))) 1 -1" (2 "10")
-Condition 4 "3194642097" "(MmrCs[dst_csr_gen_blk.dst_csr_inst[0].BLK_IDX] & ((~dst_gated_func_clamp[0]))) 1 -1" (2 "10")
-Condition 5 "338747363" "(MmrCs[DST_SINK_BLK_IDX] & ((~dst_sink_gated_func_clamp))) 1 -1" (2 "10")
-Condition 6 "3814467214" "(MmrCs[cla_csr_gen_blk.cla_csr_inst[0].BLK_IDX] & ((~cla_gated_func_clamp[0]))) 1 -1" (2 "10")
-Condition 7 "4294591102" "(MmrCs[FUNNEL_BLK_IDX] & ((~funnel_gated_func_clamp))) 1 -1" (2 "10")
-Condition 8 "2717019605" "(((&cla_gated_func_clamp)) & ((&dst_gated_func_clamp)) & ((&ntr_gated_func_clamp)) & ((DST_SINK_EN ? dst_sink_gated_func_clamp : 1'b1)) & ((NTR_SINK_EN ? ntr_sink_gated_func_clamp : 1'b1)) & ((TRACE_SINK_SUPPORT ? funnel_gated_func_clamp : 1'b1))) 1 -1" (1 "011111")
-Condition 8 "2717019605" "(((&cla_gated_func_clamp)) & ((&dst_gated_func_clamp)) & ((&ntr_gated_func_clamp)) & ((DST_SINK_EN ? dst_sink_gated_func_clamp : 1'b1)) & ((NTR_SINK_EN ? ntr_sink_gated_func_clamp : 1'b1)) & ((TRACE_SINK_SUPPORT ? funnel_gated_func_clamp : 1'b1))) 1 -1" (2 "101111")
-Condition 8 "2717019605" "(((&cla_gated_func_clamp)) & ((&dst_gated_func_clamp)) & ((&ntr_gated_func_clamp)) & ((DST_SINK_EN ? dst_sink_gated_func_clamp : 1'b1)) & ((NTR_SINK_EN ? ntr_sink_gated_func_clamp : 1'b1)) & ((TRACE_SINK_SUPPORT ? funnel_gated_func_clamp : 1'b1))) 1 -1" (3 "110111")
-Condition 8 "2717019605" "(((&cla_gated_func_clamp)) & ((&dst_gated_func_clamp)) & ((&ntr_gated_func_clamp)) & ((DST_SINK_EN ? dst_sink_gated_func_clamp : 1'b1)) & ((NTR_SINK_EN ? ntr_sink_gated_func_clamp : 1'b1)) & ((TRACE_SINK_SUPPORT ? funnel_gated_func_clamp : 1'b1))) 1 -1" (4 "111011")
-Condition 8 "2717019605" "(((&cla_gated_func_clamp)) & ((&dst_gated_func_clamp)) & ((&ntr_gated_func_clamp)) & ((DST_SINK_EN ? dst_sink_gated_func_clamp : 1'b1)) & ((NTR_SINK_EN ? ntr_sink_gated_func_clamp : 1'b1)) & ((TRACE_SINK_SUPPORT ? funnel_gated_func_clamp : 1'b1))) 1 -1" (5 "111101")
-Condition 8 "2717019605" "(((&cla_gated_func_clamp)) & ((&dst_gated_func_clamp)) & ((&ntr_gated_func_clamp)) & ((DST_SINK_EN ? dst_sink_gated_func_clamp : 1'b1)) & ((NTR_SINK_EN ? ntr_sink_gated_func_clamp : 1'b1)) & ((TRACE_SINK_SUPPORT ? funnel_gated_func_clamp : 1'b1))) 1 -1" (6 "111110")
-Condition 8 "2717019605" "(((&cla_gated_func_clamp)) & ((&dst_gated_func_clamp)) & ((&ntr_gated_func_clamp)) & ((DST_SINK_EN ? dst_sink_gated_func_clamp : 1'b1)) & ((NTR_SINK_EN ? ntr_sink_gated_func_clamp : 1'b1)) & ((TRACE_SINK_SUPPORT ? funnel_gated_func_clamp : 1'b1))) 1 -1" (7 "111111")
-Condition 9 "3282649791" "(((CLA_EN ? (&i_cla_fuse_dis) : 1'b1)) & ((DST_EN ? (&i_dst_fuse_dis) : 1'b1)) & ((NTR_EN ? (&i_ntr_fuse_dis) : 1'b1)) & ((DST_SINK_EN ? i_dst_sink_fuse_dis : 1'b1)) & ((NTR_SINK_EN ? i_ntr_sink_fuse_dis : 1'b1)) & ((TRACE_SINK_SUPPORT ? i_funnel_fuse_dis : 1'b1))) 1 -1" (1 "011111")
-Condition 9 "3282649791" "(((CLA_EN ? (&i_cla_fuse_dis) : 1'b1)) & ((DST_EN ? (&i_dst_fuse_dis) : 1'b1)) & ((NTR_EN ? (&i_ntr_fuse_dis) : 1'b1)) & ((DST_SINK_EN ? i_dst_sink_fuse_dis : 1'b1)) & ((NTR_SINK_EN ? i_ntr_sink_fuse_dis : 1'b1)) & ((TRACE_SINK_SUPPORT ? i_funnel_fuse_dis : 1'b1))) 1 -1" (2 "101111")
-Condition 9 "3282649791" "(((CLA_EN ? (&i_cla_fuse_dis) : 1'b1)) & ((DST_EN ? (&i_dst_fuse_dis) : 1'b1)) & ((NTR_EN ? (&i_ntr_fuse_dis) : 1'b1)) & ((DST_SINK_EN ? i_dst_sink_fuse_dis : 1'b1)) & ((NTR_SINK_EN ? i_ntr_sink_fuse_dis : 1'b1)) & ((TRACE_SINK_SUPPORT ? i_funnel_fuse_dis : 1'b1))) 1 -1" (3 "110111")
-Condition 9 "3282649791" "(((CLA_EN ? (&i_cla_fuse_dis) : 1'b1)) & ((DST_EN ? (&i_dst_fuse_dis) : 1'b1)) & ((NTR_EN ? (&i_ntr_fuse_dis) : 1'b1)) & ((DST_SINK_EN ? i_dst_sink_fuse_dis : 1'b1)) & ((NTR_SINK_EN ? i_ntr_sink_fuse_dis : 1'b1)) & ((TRACE_SINK_SUPPORT ? i_funnel_fuse_dis : 1'b1))) 1 -1" (4 "111011")
-Condition 9 "3282649791" "(((CLA_EN ? (&i_cla_fuse_dis) : 1'b1)) & ((DST_EN ? (&i_dst_fuse_dis) : 1'b1)) & ((NTR_EN ? (&i_ntr_fuse_dis) : 1'b1)) & ((DST_SINK_EN ? i_dst_sink_fuse_dis : 1'b1)) & ((NTR_SINK_EN ? i_ntr_sink_fuse_dis : 1'b1)) & ((TRACE_SINK_SUPPORT ? i_funnel_fuse_dis : 1'b1))) 1 -1" (5 "111101")
-Condition 9 "3282649791" "(((CLA_EN ? (&i_cla_fuse_dis) : 1'b1)) & ((DST_EN ? (&i_dst_fuse_dis) : 1'b1)) & ((NTR_EN ? (&i_ntr_fuse_dis) : 1'b1)) & ((DST_SINK_EN ? i_dst_sink_fuse_dis : 1'b1)) & ((NTR_SINK_EN ? i_ntr_sink_fuse_dis : 1'b1)) & ((TRACE_SINK_SUPPORT ? i_funnel_fuse_dis : 1'b1))) 1 -1" (6 "111110")
-Condition 9 "3282649791" "(((CLA_EN ? (&i_cla_fuse_dis) : 1'b1)) & ((DST_EN ? (&i_dst_fuse_dis) : 1'b1)) & ((NTR_EN ? (&i_ntr_fuse_dis) : 1'b1)) & ((DST_SINK_EN ? i_dst_sink_fuse_dis : 1'b1)) & ((NTR_SINK_EN ? i_ntr_sink_fuse_dis : 1'b1)) & ((TRACE_SINK_SUPPORT ? i_funnel_fuse_dis : 1'b1))) 1 -1" (7 "111111")
-Condition 10 "2210533721" "(({NUM_CLA_INST_SAFE {i_critical_signal_hold}}) | cla_gated_reset_n) 1 -1" (3 "10")
-Condition 11 "3880404188" "(({NUM_DST_INST_SAFE {i_critical_signal_hold}}) | dst_gated_reset_n) 1 -1" (3 "10")
-Condition 12 "1992160571" "(({NUM_NTRACE_INST_SAFE {i_critical_signal_hold}}) | ntr_gated_reset_n) 1 -1" (2 "01")
-Condition 12 "1992160571" "(({NUM_NTRACE_INST_SAFE {i_critical_signal_hold}}) | ntr_gated_reset_n) 1 -1" (3 "10")
-Condition 13 "2586339335" "(i_critical_signal_hold | dst_sink_gated_reset_n) 1 -1" (3 "10")
-Condition 14 "173698312" "(i_critical_signal_hold | ntr_sink_gated_reset_n) 1 -1" (3 "10")
-Condition 15 "1723289713" "(i_critical_signal_hold | funnel_gated_reset_n) 1 -1" (3 "10")
 Condition 30 "4219737160" "((Trramstarthigh_Warl_Check_ANY | Trramlimithigh_Warl_Check_ANY) & MmrWrEn & Trntrissrammode) 1 -1" (3 "110")
 Condition 34 "544945129" "((Trramstartlow_Warl_Check_ANY | Trramlimitlow_Warl_Check_ANY) & MmrWrEn & Trntrissrammode) 1 -1" (3 "110")
-Condition 36 "2840195561" "(intf_gated_func_clamp ? (psel & penable) : gen_apb_inf_blk.apb_conv_pready) 1 -1" (2 "1")
-Condition 37 "4214449727" "(psel & penable) 1 -1" (1 "01")
-Condition 37 "4214449727" "(psel & penable) 1 -1" (2 "10")
-Condition 37 "4214449727" "(psel & penable) 1 -1" (3 "11")
-Condition 38 "2553916146" "(intf_gated_func_clamp ? (psel & penable) : gen_apb_inf_blk.apb_conv_pslverr) 1 -1" (2 "1")
-Condition 39 "2767787333" "(psel & penable) 1 -1" (1 "01")
-Condition 39 "2767787333" "(psel & penable) 1 -1" (2 "10")
-Condition 39 "2767787333" "(psel & penable) 1 -1" (3 "11")
-Condition 40 "138770619" "(intf_gated_func_clamp ? '0 : gen_apb_inf_blk.apb_conv_prdata) 1 -1" (2 "1")
 
-CHECKSUM: "3001181867 707411587"
-ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes. Every instance takes one value for both its clamp and its fuse disable, the NTR sink's clock-disable value and control are tied to one as well, so its clock-enable select is zero, and the funnel's zero clamp enables every source it maps. The NTR sink is absent, so every block of mmrs's clamp vector is a zero clamp, clamp_hit is zero, and mmr_req_ctrl never returns rsp_err."
-ANNOTATION: "SMC-P14-JTAG-MMR-TIED: smc_dfd_wrap ties i_jtag_mmr_req_vld to zero, mmrs tests it directly, and mmr_req_ctrl grants the JTAG requester exactly when it is high (gnt_is_jtag = jt_req_vld), so no arm that selects the JTAG request executes."
-MODULE: mmrs
-Branch 7 "905896149" "intf_gated_func_clamp" (0) "intf_gated_func_clamp 1"
-Branch 8 "905896149" "intf_gated_func_clamp" (0) "intf_gated_func_clamp 1"
-Branch 9 "905896149" "intf_gated_func_clamp" (0) "intf_gated_func_clamp 1"
-Branch 11 "1454664243" "i_jtag_mmr_req_vld" (0) "i_jtag_mmr_req_vld 1"
-
-CHECKSUM: "677483531 442683581"
+CHECKSUM: "346538436 442683581"
 ANNOTATION: "SMC-D1-SINGLE-OUTSTANDING-DEMUX: each of these register blocks sits directly behind an axi_lite_demux with MaxTrans of one. The demux raises a port's AR valid only while its R FIFO is not full, pushes that FIFO at the AR handshake and pops it at the R handshake, and raises W valid only while its B FIFO, pushed at the W handshake and popped at B, is not full. The block answers R or B only after the accept that empties its AR or W holding register, so each AR and W arrives with the register empty and ready high: the valid-without-ready rows of AR and W cannot occur. The write-only UART map takes no reads, and its demux's W FIFO holds an AW's select until that AW's W is taken while its B FIFO holds each W back until the previous B, so when the next AW can first arrive the block holds the previous AW and W with no response in flight and accepts them that cycle, and an accept never meets a response ack. The zeroer's axi_to_axi_lite gates AW and AR on depth-one ID FIFOs, pushed at the handshake and popped at B or R, so its second AW or AR arrives only after the block answered the first. Behind two or more MaxTrans-1 stages in series, the filter, log-engine and UART blocks see the next AW only two cycles after W is taken, while a held read defers the write accept by one cycle at most. In front of cpu_ctrl and the zeroer, axi_to_axi_lite's burst splitter demux sizes its per-ID counters as idx_width(MaxTrans), one bit for a MaxTrans of two or less, so it admits one transaction at a time and passes the next AW, AR or W only after the previous response, when the block's holding registers are empty."
 ANNOTATION: "SMC-D2-W-FOLLOWS-AW: each of these register blocks is driven directly by an axi_lite_demux master port, which raises W valid only once the select its AW pushed is in the W FIFO and holds that AW valid until its handshake. The block keeps awready and wready equal except while it holds an AW without its W, so a W is never taken before its AW and the W holding register is never full with the AW register empty. cpu_ctrl and the zeroer take W only with its AW: the splitter demux routes W when that AW is handled, the ID FIFO in front of the block clears on the same B, and the block, empty by then, takes the AW in that cycle."
 MODULE: ndm_reset_reg
@@ -938,7 +547,7 @@ Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
-CHECKSUM: "4060298550 1539976365"
+CHECKSUM: "1675336020 2525155830"
 ANNOTATION: "SMC-D1-SINGLE-OUTSTANDING-DEMUX: each of these register blocks sits directly behind an axi_lite_demux with MaxTrans of one. The demux raises a port's AR valid only while its R FIFO is not full, pushes that FIFO at the AR handshake and pops it at the R handshake, and raises W valid only while its B FIFO, pushed at the W handshake and popped at B, is not full. The block answers R or B only after the accept that empties its AR or W holding register, so each AR and W arrives with the register empty and ready high: the valid-without-ready rows of AR and W cannot occur. The write-only UART map takes no reads, and its demux's W FIFO holds an AW's select until that AW's W is taken while its B FIFO holds each W back until the previous B, so when the next AW can first arrive the block holds the previous AW and W with no response in flight and accepts them that cycle, and an accept never meets a response ack. The zeroer's axi_to_axi_lite gates AW and AR on depth-one ID FIFOs, pushed at the handshake and popped at B or R, so its second AW or AR arrives only after the block answered the first. Behind two or more MaxTrans-1 stages in series, the filter, log-engine and UART blocks see the next AW only two cycles after W is taken, while a held read defers the write accept by one cycle at most. In front of cpu_ctrl and the zeroer, axi_to_axi_lite's burst splitter demux sizes its per-ID counters as idx_width(MaxTrans), one bit for a MaxTrans of two or less, so it admits one transaction at a time and passes the next AW, AR or W only after the previous response, when the block's holding registers are empty."
 ANNOTATION: "SMC-D2-W-FOLLOWS-AW: each of these register blocks is driven directly by an axi_lite_demux master port, which raises W valid only once the select its AW pushed is in the W FIFO and holds that AW valid until its handshake. The block keeps awready and wready equal except while it holds an AW without its W, so a W is never taken before its AW and the W holding register is never full with the AW register empty. cpu_ctrl and the zeroer take W only with its AW: the splitter demux routes W when that AW is handled, the ID FIFO in front of the block clears on the same B, and the block, empty by then, takes the AW in that cycle."
 MODULE: output_remap_reg
@@ -946,7 +555,7 @@ Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
-CHECKSUM: "2083532214 1989962094"
+CHECKSUM: "3502264770 1989962094"
 ANNOTATION: "SMC-D1-SINGLE-OUTSTANDING-DEMUX: each of these register blocks sits directly behind an axi_lite_demux with MaxTrans of one. The demux raises a port's AR valid only while its R FIFO is not full, pushes that FIFO at the AR handshake and pops it at the R handshake, and raises W valid only while its B FIFO, pushed at the W handshake and popped at B, is not full. The block answers R or B only after the accept that empties its AR or W holding register, so each AR and W arrives with the register empty and ready high: the valid-without-ready rows of AR and W cannot occur. The write-only UART map takes no reads, and its demux's W FIFO holds an AW's select until that AW's W is taken while its B FIFO holds each W back until the previous B, so when the next AW can first arrive the block holds the previous AW and W with no response in flight and accepts them that cycle, and an accept never meets a response ack. The zeroer's axi_to_axi_lite gates AW and AR on depth-one ID FIFOs, pushed at the handshake and popped at B or R, so its second AW or AR arrives only after the block answered the first. Behind two or more MaxTrans-1 stages in series, the filter, log-engine and UART blocks see the next AW only two cycles after W is taken, while a held read defers the write accept by one cycle at most. In front of cpu_ctrl and the zeroer, axi_to_axi_lite's burst splitter demux sizes its per-ID counters as idx_width(MaxTrans), one bit for a MaxTrans of two or less, so it admits one transaction at a time and passes the next AW, AR or W only after the previous response, when the block's holding registers are empty."
 ANNOTATION: "SMC-D2-W-FOLLOWS-AW: each of these register blocks is driven directly by an axi_lite_demux master port, which raises W valid only once the select its AW pushed is in the W FIFO and holds that AW valid until its handshake. The block keeps awready and wready equal except while it holds an AW without its W, so a W is never taken before its AW and the W holding register is never full with the AW register empty. cpu_ctrl and the zeroer take W only with its AW: the splitter demux routes W when that AW is handled, the ID FIFO in front of the block clears on the same B, and the block, empty by then, takes the AW in that cycle."
 MODULE: scratch_reg
@@ -962,13 +571,7 @@ Condition 6 "2554685946" "(wdt_timeout_cluster_i[1] && (cycle_count[1] != 32'b0)
 Condition 8 "1916832996" "(wdt_timeout_cluster_i[2] && (cycle_count[2] != 32'b0)) 1 -1" (1 "01")
 Condition 10 "442641941" "(wdt_timeout_cluster_i[3] && (cycle_count[3] != 32'b0)) 1 -1" (1 "01")
 
-CHECKSUM: "3685564638 3131932856"
-ANNOTATION: "SMC-B8-DFD-BENCH-INPUTS-TIED: a property of this bench, not of the design. The testbench ties the SMC's xtrigger_ss_i and tdr_dbg_ctrl_clock_stop_en_i to zero in both instances, and they reach the CLA crosstrigger input and the DFD clock-stop gate unchanged. The CLA crosstrigger edge, the timestamp load it arms and the TDR clock-stop term therefore hold zero here. Bench ports that drive those inputs retire the class."
-MODULE: smc_dfd_wrap
-Condition 2 "795375981" "(tdr_dbg_ctrl_clock_stop_en_i && halt_clock_global_or_o) 1 -1" (2 "10")
-Condition 2 "795375981" "(tdr_dbg_ctrl_clock_stop_en_i && halt_clock_global_or_o) 1 -1" (3 "11")
-
-CHECKSUM: "971393395 3278115879"
+CHECKSUM: "2469021223 3278115879"
 ANNOTATION: "SMC-C15-UNSIGNED-WRAP-DECODE: the padring decodes its GPIO window with a 32-bit subtraction from a base of 0xC0003000, so an address below the base wraps to at least 0x3FFFD000 and its index is far above the 65 GPIO wraps; the in-window test never passes below the base."
 MODULE: smc_padring
 Condition 1 "1405087489" "((axil_req_i.aw.addr >= GPIO_INTF_BASE_ADDR) && (((axil_req_i.aw.addr - GPIO_INTF_BASE_ADDR) >> 4) < smc_pkg::NUM_GPIO_WRAPS)) 1 -1" (1 "01")
@@ -982,17 +585,15 @@ Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
-CHECKSUM: "2716617997 3184480883"
+CHECKSUM: "2684995546 3184480883"
 ANNOTATION: "SMC-P31-OCTS-CREDIT-SPEC: the system timer's register specification requires CREDIT_VAL to exceed PULSE_WIDTH, a PULSE_WIDTH of zero counts as one, and the RTL asserts the same bound on that effective width, so CREDIT_VAL is at least two and above the pulse width. The timer's enable only ever sets, and until it does the credit counter is held at zero, so the counter never meets CREDIT_VAL minus one with the enable low. A pulse lasts its width, a credit follows the last credit or counter reset by CREDIT_VAL cycles, a start resets the counter, and both values change in one register write, so no credit arrives while a pulse is active. A specification that admits a CREDIT_VAL at or below the pulse width retires the class."
-ANNOTATION: "SMC-C5-SIGNAL-IDENTITY: the source defines one signal from another, so a row that needs them apart cannot occur. A pair is taken only where VCS cannot score it in a zero-time delta: either one process writes both sides, or the condition sits in a clocked process, which samples settled values. cla_arithmetic_compare derives compare_equal and below_compare_int in one always_comb from the same masked value, so they are never high together; efuse_shadow_reg_access_control raises write_locked_o in the same always_comb only on the arm that forwards no request, so the shadow registers never see a forwarded write with it high. In clocked processes, uart_core assigns tx_enable and rx_enable the same expression and forms thr_rready from a term that includes thr_rvalid, and system_timer_octs_core forms credit_gen_pulse with enable as one of its terms. The test rewrites the dependent signal in those terms and takes a row only when that makes it unsatisfiable."
 ANNOTATION: "SMC-C13-COUNTER-VALID-PAIRED: the iDMA write unit resets its beat counter and its valid flag together, loads them together, and clears the flag in the cycle the counter steps from one to zero, so with the flag low the counter is zero. The system timer holds its count at zero until a start or sync load, and either one sets its sticky enable on the same edge, so with the enable low the count is zero too."
 MODULE: system_timer_octs_core
-Condition 8 "932262737" "(enable && credit_gen_pulse && (pulse_active == PULSE_IDLE)) 1 -1" (1 "011")
 Condition 8 "932262737" "(enable && credit_gen_pulse && (pulse_active == PULSE_IDLE)) 1 -1" (3 "110")
 Condition 14 "2786861643" "(is_primary_i && enable && (credit_counter_q == (reg_credit_val_i - 1))) 1 -1" (2 "101")
 Condition 23 "3308100124" "(enable && (timer_count_q > 64'b0)) 1 -1" (1 "01")
 
-CHECKSUM: "656852128 1067758899"
+CHECKSUM: "2231104132 1067758899"
 ANNOTATION: "SMC-D1-SINGLE-OUTSTANDING-DEMUX: each of these register blocks sits directly behind an axi_lite_demux with MaxTrans of one. The demux raises a port's AR valid only while its R FIFO is not full, pushes that FIFO at the AR handshake and pops it at the R handshake, and raises W valid only while its B FIFO, pushed at the W handshake and popped at B, is not full. The block answers R or B only after the accept that empties its AR or W holding register, so each AR and W arrives with the register empty and ready high: the valid-without-ready rows of AR and W cannot occur. The write-only UART map takes no reads, and its demux's W FIFO holds an AW's select until that AW's W is taken while its B FIFO holds each W back until the previous B, so when the next AW can first arrive the block holds the previous AW and W with no response in flight and accepts them that cycle, and an accept never meets a response ack. The zeroer's axi_to_axi_lite gates AW and AR on depth-one ID FIFOs, pushed at the handshake and popped at B or R, so its second AW or AR arrives only after the block answered the first. Behind two or more MaxTrans-1 stages in series, the filter, log-engine and UART blocks see the next AW only two cycles after W is taken, while a held read defers the write accept by one cycle at most. In front of cpu_ctrl and the zeroer, axi_to_axi_lite's burst splitter demux sizes its per-ID counters as idx_width(MaxTrans), one bit for a MaxTrans of two or less, so it admits one transaction at a time and passes the next AW, AR or W only after the previous response, when the block's holding registers are empty."
 ANNOTATION: "SMC-D2-W-FOLLOWS-AW: each of these register blocks is driven directly by an axi_lite_demux master port, which raises W valid only once the select its AW pushed is in the W FIFO and holds that AW valid until its handshake. The block keeps awready and wready equal except while it holds an AW without its W, so a W is never taken before its AW and the W holding register is never full with the AW register empty. cpu_ctrl and the zeroer take W only with its AW: the splitter demux routes W when that AW is handled, the ID FIFO in front of the block clears on the same B, and the block, empty by then, takes the AW in that cycle."
 ANNOTATION: "SMC-B13-LANE-ZERO-FILL: a property of this bench, not of the design alone. These 32-bit peripheral blocks are reached only through the local crossbar's 64-to-32 downsizer, which starts each narrow beat at zero and copies only the lanes inside the transfer size. Within that size no master of this bench leaves a one on an unstrobed lane: a CPU store strobes every lane of its size, the iDMA is built to mask unstrobed lanes to zero, the zeroer writes zero, and the cocotb AXI masters on the system and SEP ports write contiguous bytes with every other lane zero. A write-data bit high with its enable low therefore never arrives. A master that drives data on an unstrobed lane inside its transfer size retires the class."
@@ -1005,47 +606,10 @@ Condition 46 "206586213" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "1
 CHECKSUM: "4226918805 2330986106"
 ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero, save five the tie-off leaves at one: the flush-timeout done flag, which resets to one and is cleared only by the N-trace RAM enable start, the two backpressure flags, which compare an N-trace space of zero against an N-trace threshold of zero with <=, and the frame-fill-complete flag and its delayed copy, which a write count held at zero keeps at one. The read and write interleave flops, enabled only on an N-trace term, hold their reset value of zero. The NTR sink register block is absent, so every register-derived N-trace term follows, mmrs's Trntrissrammode, the negation of that block's zero RAM mode, reads one, the north source flag never selects N-trace, the flush-timeout counter never counts, and the TNIF arbiter's previous grant holds its N-trace reset value. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs, whose block index is the funnel's."
 MODULE: tnif
-Condition 1 "117586802" "(tr_gnt_in & ntr_req_in & dst_req_in) 1 -1" (1 "011")
-Condition 1 "117586802" "(tr_gnt_in & ntr_req_in & dst_req_in) 1 -1" (3 "110")
-Condition 1 "117586802" "(tr_gnt_in & ntr_req_in & dst_req_in) 1 -1" (4 "111")
-Condition 2 "3372887460" "(tr_gnt_in & ( ~ (dst_bp_in & ((~dst_flush_in))) ) & dst_req_in & ((ntr_req_in & ( ~ (ntr_bp_in & ((~ntr_flush_in))) )) ? (prev_gnt == tnifState_e'(DST_GNT)) : 1'b1)) 1 -1" (4 "1110")
-Condition 5 "3193926140" "((ntr_req_in & ( ~ (ntr_bp_in & ((~ntr_flush_in))) )) ? (prev_gnt == tnifState_e'(DST_GNT)) : 1'b1) 1 -1" (2 "1")
-Condition 6 "1933900385" "(ntr_req_in & ( ~ (ntr_bp_in & ((~ntr_flush_in))) )) 1 -1" (2 "10")
-Condition 6 "1933900385" "(ntr_req_in & ( ~ (ntr_bp_in & ((~ntr_flush_in))) )) 1 -1" (3 "11")
-Condition 8 "2128817207" "(ntr_bp_in & ((~ntr_flush_in))) 1 -1" (2 "10")
-Condition 8 "2128817207" "(ntr_bp_in & ((~ntr_flush_in))) 1 -1" (3 "11")
 Condition 9 "4289729232" "(prev_gnt == tnifState_e'(DST_GNT)) 1 -1" (1 "0")
 Condition 9 "4289729232" "(prev_gnt == tnifState_e'(DST_GNT)) 1 -1" (2 "1")
-Condition 10 "351636543" "(tr_gnt_in & ( ~ (ntr_bp_in & ((~ntr_flush_in))) ) & ntr_req_in & ((dst_req_in & ( ~ (dst_bp_in & ((~dst_flush_in))) )) ? (prev_gnt == tnifState_e'(NTR_GNT)) : 1'b1)) 1 -1" (1 "0111")
-Condition 10 "351636543" "(tr_gnt_in & ( ~ (ntr_bp_in & ((~ntr_flush_in))) ) & ntr_req_in & ((dst_req_in & ( ~ (dst_bp_in & ((~dst_flush_in))) )) ? (prev_gnt == tnifState_e'(NTR_GNT)) : 1'b1)) 1 -1" (2 "1011")
-Condition 10 "351636543" "(tr_gnt_in & ( ~ (ntr_bp_in & ((~ntr_flush_in))) ) & ntr_req_in & ((dst_req_in & ( ~ (dst_bp_in & ((~dst_flush_in))) )) ? (prev_gnt == tnifState_e'(NTR_GNT)) : 1'b1)) 1 -1" (4 "1110")
-Condition 10 "351636543" "(tr_gnt_in & ( ~ (ntr_bp_in & ((~ntr_flush_in))) ) & ntr_req_in & ((dst_req_in & ( ~ (dst_bp_in & ((~dst_flush_in))) )) ? (prev_gnt == tnifState_e'(NTR_GNT)) : 1'b1)) 1 -1" (5 "1111")
-Condition 12 "2866831169" "(ntr_bp_in & ((~ntr_flush_in))) 1 -1" (2 "10")
-Condition 12 "2866831169" "(ntr_bp_in & ((~ntr_flush_in))) 1 -1" (3 "11")
 Condition 17 "1611113724" "(prev_gnt == tnifState_e'(NTR_GNT)) 1 -1" (1 "0")
 Condition 18 "191604408" "((prev_gnt inside {NTR_GNT}) ? DST_GNT : NTR_GNT) 1 -1" (1 "0")
-Condition 19 "4168576200" "(dst_pull_out | ntr_pull_out) 1 -1" (2 "01")
-Condition 20 "220599304" "(ntr_pull_out == 1'b1) 1 -1" (2 "1")
-
-CHECKSUM: "1255329244 2573646565"
-ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes. Every instance takes one value for both its clamp and its fuse disable, the NTR sink's clock-disable value and control are tied to one as well, so its clock-enable select is zero, and the funnel's zero clamp enables every source it maps. The NTR sink is absent, so every block of mmrs's clamp vector is a zero clamp, clamp_hit is zero, and mmr_req_ctrl never returns rsp_err."
-MODULE: tnif_wrapper
-Condition 1 "3014164906" "(dst_gated_func_clamp[0] ? 1'b0 : tnif_gen_blk[0].dst_pull_out_w) 1 -1" (2 "1")
-Condition 2 "4059522878" "(dst_gated_func_clamp[0] ? 1'b0 : tnif_gen_blk[0].dst_flush_out_w) 1 -1" (2 "1")
-Condition 3 "393759502" "(dst_gated_func_clamp[0] ? 1'b0 : tnif_gen_blk[0].dst_bp_out_w) 1 -1" (2 "1")
-Condition 4 "3510830807" "(tnif_gated_func_clamp[0] ? 1'b0 : tnif_tr_valid_int[0]) 1 -1" (2 "1")
-Condition 5 "2824346823" "(tnif_gated_func_clamp[0] ? 1'b0 : tnif_tr_src_int[0]) 1 -1" (2 "1")
-Condition 6 "1323528358" "(tnif_gated_func_clamp[0] ? '0 : tnif_tr_data_int[0]) 1 -1" (2 "1")
-
-CHECKSUM: "1255329244 4012058925"
-ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes. Every instance takes one value for both its clamp and its fuse disable, the NTR sink's clock-disable value and control are tied to one as well, so its clock-enable select is zero, and the funnel's zero clamp enables every source it maps. The NTR sink is absent, so every block of mmrs's clamp vector is a zero clamp, clamp_hit is zero, and mmr_req_ctrl never returns rsp_err."
-MODULE: tnif_wrapper
-Branch 0 "2275614227" "dst_gated_func_clamp[0]" (0) "dst_gated_func_clamp[0] 1"
-Branch 1 "2275614227" "dst_gated_func_clamp[0]" (0) "dst_gated_func_clamp[0] 1"
-Branch 2 "2275614227" "dst_gated_func_clamp[0]" (0) "dst_gated_func_clamp[0] 1"
-Branch 3 "159930838" "tnif_gated_func_clamp[0]" (0) "tnif_gated_func_clamp[0] 1"
-Branch 4 "159930838" "tnif_gated_func_clamp[0]" (0) "tnif_gated_func_clamp[0] 1"
-Branch 5 "159930838" "tnif_gated_func_clamp[0]" (0) "tnif_gated_func_clamp[0] 1"
 
 CHECKSUM: "404099673 59558564"
 ANNOTATION: "SMC-FSM-F3-TIEOFF: smc_dfd_wrap ties every m_trc_axi_* response input to zero, so the trace write master never completes a response handshake and cannot pass REQ_HANDSHAKE; the states an aw_ready, w_ready or b_valid is needed to enter, and the edges touching them, have no stimulus. The request the master issues on valid_i is reachable, so RESET_VALUE, REQ_HANDSHAKE and the edge between them stay graded."
@@ -1073,9 +637,7 @@ Branch 0 "1918024820" "state" (11) "state RESP_HANDSHAKE ,-,-,-,-,-,-,0"
 
 CHECKSUM: "1168747149 380188313"
 ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero, save five the tie-off leaves at one: the flush-timeout done flag, which resets to one and is cleared only by the N-trace RAM enable start, the two backpressure flags, which compare an N-trace space of zero against an N-trace threshold of zero with <=, and the frame-fill-complete flag and its delayed copy, which a write count held at zero keeps at one. The read and write interleave flops, enabled only on an N-trace term, hold their reset value of zero. The NTR sink register block is absent, so every register-derived N-trace term follows, mmrs's Trntrissrammode, the negation of that block's zero RAM mode, reads one, the north source flag never selects N-trace, the flush-timeout counter never counts, and the TNIF arbiter's previous grant holds its N-trace reset value. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs, whose block index is the funnel's."
-ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes. Every instance takes one value for both its clamp and its fuse disable, the NTR sink's clock-disable value and control are tied to one as well, so its clock-enable select is zero, and the funnel's zero clamp enables every source it maps. The NTR sink is absent, so every block of mmrs's clamp vector is a zero clamp, clamp_hit is zero, and mmr_req_ctrl never returns rsp_err."
 MODULE: trace_funnel
-Condition 1 "2314194356" "(({NUM_CORES {{(~i_func_clamp)}}}) & (Trfunnel_enable_input_ntrace_Pid_vector | Trfunnel_enable_input_dst_Pid_vector)) 1 -1" (1 "01")
 Condition 2 "1731932076" "(Trfunnel_enable_input_ntrace_Pid_vector | Trfunnel_enable_input_dst_Pid_vector) 1 -1" (3 "10")
 
 CHECKSUM: "3643492222 1006470345"
@@ -1098,7 +660,6 @@ CHECKSUM: "3354362860 3417673543"
 ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero, save five the tie-off leaves at one: the flush-timeout done flag, which resets to one and is cleared only by the N-trace RAM enable start, the two backpressure flags, which compare an N-trace space of zero against an N-trace threshold of zero with <=, and the frame-fill-complete flag and its delayed copy, which a write count held at zero keeps at one. The read and write interleave flops, enabled only on an N-trace term, hold their reset value of zero. The NTR sink register block is absent, so every register-derived N-trace term follows, mmrs's Trntrissrammode, the negation of that block's zero RAM mode, reads one, the north source flag never selects N-trace, the flush-timeout counter never counts, and the TNIF arbiter's previous grant holds its N-trace reset value. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs, whose block index is the funnel's."
 ANNOTATION: "SMC-P4-SINGLE-SOURCE: with NUM_NTRACE_INST(0) the trace sink has one source, so the two-source term of TrRamPendPkt*WrEn is always false and the per-way pending count, which only increments from those enables, stays at zero for the life of the design; every pending valid, write and read enable, and every south-port valid, reads zero. The pending entries are flops reset to zero and written only by a pending write, so their source, way and address fields, and the read inhibits set from them, never read one. A row is taken only where the report's own term list shows it out of reach with those held at zero and within reach with them free, save the frame-start guard whose first term conjoins the south valid with the second, which the south valid alone rules out."
 ANNOTATION: "SMC-P17-ONE-TRACE-CORE: the DFD top passes the trace wrapper NUM_CORES as the larger of NUM_DST_INST(1) and NUM_NTRACE_INST(0), and the wrapper passes it on to the trace sink, so NUM_CORES > 1 is false, its then arm never executes, and the south-channel frame start it guards stays at its zero default. The south write pointer is an OR over no cores, so the south write way and its staged copies read zero; a core's pointer never matches its own pending frame, so with one core the overflow-pending flop never sets; and the north write way is the staged OR of each valid core's pointer, staged with the valid, so a non-zero way comes with the north write enable. Each trace hop has one core in its path and zero upstream repeaters and hops to the tail, so at most one core is enabled and its setup counter never leaves its target of zero."
-ANNOTATION: "SMC-P19-NTR-RAM-READ-TIED: the DFD top connects the trace wrapper's trRamDataRdEn to a constant zero, so the trace sink's trRamDataRdEn_ANY is zero for the life of the design and the N-trace RAM data read never occurs; a row or arm that needs it high cannot."
 ANNOTATION: "SMC-C16-DST-READ-WRAP-BOUND: three facts hold together. The trace write master waits for a response the F3 tie never gives, so its ready falls after the first request and the DST read-address flop, which advances only on a write-out, moves at most once per reset; the memory-mode start is the absent NTR sink's custom-RAM limit, which P1 holds at zero; and the set count is then the constant TRC_SIZE >> 5 over the 64-byte set, 64 for the 16 KB trace RAM. The flop reads only 0 or 1, so the read-address wrap, the flop's offset ANDed with the set count, never sets. A B response on the trace write port retires the first fact, an NTR sink build or a writable memory-mode start the second, and a trace RAM whose set count is odd, which no whole-kilobyte size gives, the third."
 MODULE: trace_sink
 Condition 1 "2350228744" "(((~|TrRamPendNtracePktVld_ANY)) & TrntrFlushTimeoutDone_ANY & (((~trntrRamMode_ANY)) | (trntrRamMode_ANY & ((~|trntrNumFramesFilledInSRAM_ANY))))) 1 -1" (1 "011")
@@ -1256,19 +817,12 @@ Condition 166 "399169780" "(TrntrMemRamRdRdy_TS1 & TrntrMemRamRdEn_TS1[7]) 1 -1"
 Condition 166 "399169780" "(TrntrMemRamRdRdy_TS1 & TrntrMemRamRdEn_TS1[7]) 1 -1" (3 "11")
 Condition 167 "1342976092" "(trntrRamMode_ANY ? InsnTraceWrEnPerCore_TS0 : (InsnTraceWrEnPerCore_TS0 & ((~trntrcoreframefillpendingwhileoverflow_ANY)))) 1 -1" (2 "1")
 Condition 171 "2582696343" "(((~TrRamPendPktNorthWrEn_TS0)) & ((|Eff_TR_TS_North_Vld_stg))) 1 -1" (1 "01")
-Condition 172 "1140082796" "(((~TrRamPendPktSouthWrEn_TS0)) & ((|Eff_TR_TS_South_Vld_stg))) 1 -1" (1 "01")
-Condition 172 "1140082796" "(((~TrRamPendPktSouthWrEn_TS0)) & ((|Eff_TR_TS_South_Vld_stg))) 1 -1" (3 "11")
 Condition 173 "3759830687" "((((|Eff_TR_TS_North_Vld_stg)) & ((|Eff_TR_TS_South_Vld_stg)) & (TrRamNorthTraceWrWay_TS0 == TrRamSouthTraceWrWay_TS0) & ((|TrRamPerWayPendToWriteCnt_TS1[TrRamNorthTraceWrWay_TS0]))) | (((|Eff_TR_TS_North_Vld_stg)) & ((|TrRamPerWayPendToWriteCnt_TS1[TrRamNorthTraceWrWay_TS0])))) 1 -1" (2 "01")
-Condition 177 "737624233" "((((|Eff_TR_TS_North_Vld_stg)) & ((|Eff_TR_TS_South_Vld_stg)) & (TrRamNorthTraceWrWay_TS0 == TrRamSouthTraceWrWay_TS0)) | (((|Eff_TR_TS_South_Vld_stg)) & ((|TrRamPerWayPendToWriteCnt_TS1[TrRamSouthTraceWrWay_TS0])))) 1 -1" (2 "01")
-Condition 177 "737624233" "((((|Eff_TR_TS_North_Vld_stg)) & ((|Eff_TR_TS_South_Vld_stg)) & (TrRamNorthTraceWrWay_TS0 == TrRamSouthTraceWrWay_TS0)) | (((|Eff_TR_TS_South_Vld_stg)) & ((|TrRamPerWayPendToWriteCnt_TS1[TrRamSouthTraceWrWay_TS0])))) 1 -1" (3 "10")
 Condition 199 "3977695566" "((trntrnextlocaltoupdateRamWpWrapOneNewFrame_ANY & (((|trntrnorthcoresNewFrameStart_ANY_d1)) | ((|trntrsouthcoresNewFrameStart_ANY_d1)))) | (trntrnextlocaltoupdateRamWpWrapTwoNewFrame_ANY & ((|trntrnorthcoresNewFrameStart_ANY_d1)) & ((|trntrsouthcoresNewFrameStart_ANY_d1)))) 1 -1" (2 "01")
 Condition 199 "3977695566" "((trntrnextlocaltoupdateRamWpWrapOneNewFrame_ANY & (((|trntrnorthcoresNewFrameStart_ANY_d1)) | ((|trntrsouthcoresNewFrameStart_ANY_d1)))) | (trntrnextlocaltoupdateRamWpWrapTwoNewFrame_ANY & ((|trntrnorthcoresNewFrameStart_ANY_d1)) & ((|trntrsouthcoresNewFrameStart_ANY_d1)))) 1 -1" (3 "10")
-Condition 207 "1031576379" "((TrRamPendPktNorthWrEn_TS0 & TrRamPendPktSouthWrEn_TS0) ? TrRamPendWrEn_Select_ANY[1] : TrRamPendWrEn_Select_ANY[0]) 1 -1" (2 "1")
 Condition 209 "1914242843" "(trdstRamWrEn_TS0_stg | trntrRamWrEn_TS0_stg) 1 -1" (2 "01")
 Condition 210 "447919583" "((TrRamNorthTraceWrEn_TS0 & ((~TrRamNorthTraceWrSrc_TS0))) | (TrRamSouthTraceWrEn_TS0 & ((~TrRamSouthTraceWrSrc_TS0))) | ((|(TrRamPendRdEn_ANY & TrRamPendDstPktVld_ANY)))) 1 -1" (2 "001")
-Condition 210 "447919583" "((TrRamNorthTraceWrEn_TS0 & ((~TrRamNorthTraceWrSrc_TS0))) | (TrRamSouthTraceWrEn_TS0 & ((~TrRamSouthTraceWrSrc_TS0))) | ((|(TrRamPendRdEn_ANY & TrRamPendDstPktVld_ANY)))) 1 -1" (3 "010")
 Condition 213 "333783216" "((TrRamNorthTraceWrEn_TS0 & TrRamNorthTraceWrSrc_TS0) | (TrRamSouthTraceWrEn_TS0 & TrRamSouthTraceWrSrc_TS0) | ((|(TrRamPendRdEn_ANY & TrRamPendNtracePktVld_ANY)))) 1 -1" (2 "001")
-Condition 213 "333783216" "((TrRamNorthTraceWrEn_TS0 & TrRamNorthTraceWrSrc_TS0) | (TrRamSouthTraceWrEn_TS0 & TrRamSouthTraceWrSrc_TS0) | ((|(TrRamPendRdEn_ANY & TrRamPendNtracePktVld_ANY)))) 1 -1" (3 "010")
 Condition 251 "2211361253" "(TrMemAxiWrRdy_ANY & TrntrMemRdBufferFull_ANY & (TrdstMemRdBufferFull_ANY ? (TrMemAxiWrVld_NtraceOrDst_ANY == 1'b1) : 1'b1)) 1 -1" (1 "011")
 Condition 251 "2211361253" "(TrMemAxiWrRdy_ANY & TrntrMemRdBufferFull_ANY & (TrdstMemRdBufferFull_ANY ? (TrMemAxiWrVld_NtraceOrDst_ANY == 1'b1) : 1'b1)) 1 -1" (3 "110")
 Condition 251 "2211361253" "(TrMemAxiWrRdy_ANY & TrntrMemRdBufferFull_ANY & (TrdstMemRdBufferFull_ANY ? (TrMemAxiWrVld_NtraceOrDst_ANY == 1'b1) : 1'b1)) 1 -1" (4 "111")
@@ -1324,37 +878,13 @@ Condition 343 "3654637363" "(TrRamPendPktVld_ANY[7] & TrRamPendPktRd_ANY[7].TrRa
 Condition 343 "3654637363" "(TrRamPendPktVld_ANY[7] & TrRamPendPktRd_ANY[7].TrRamPendSrc_ANY) 1 -1" (3 "11")
 Condition 344 "1521288229" "(TrRamPendPktVld_ANY[7] & ((~TrRamPendPktRd_ANY[7].TrRamPendSrc_ANY))) 1 -1" (2 "10")
 Condition 344 "1521288229" "(TrRamPendPktVld_ANY[7] & ((~TrRamPendPktRd_ANY[7].TrRamPendSrc_ANY))) 1 -1" (3 "11")
-Condition 433 "542349036" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 0[2:0])) 1 -1" (1 "011")
-Condition 433 "542349036" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 0[2:0])) 1 -1" (3 "110")
-Condition 433 "542349036" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 0[2:0])) 1 -1" (4 "111")
-Condition 443 "645287319" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 1[2:0])) 1 -1" (1 "011")
 Condition 443 "645287319" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 1[2:0])) 1 -1" (2 "101")
-Condition 443 "645287319" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 1[2:0])) 1 -1" (3 "110")
-Condition 443 "645287319" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 1[2:0])) 1 -1" (4 "111")
-Condition 453 "2191003982" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 2[2:0])) 1 -1" (1 "011")
 Condition 453 "2191003982" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 2[2:0])) 1 -1" (2 "101")
-Condition 453 "2191003982" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 2[2:0])) 1 -1" (3 "110")
-Condition 453 "2191003982" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 2[2:0])) 1 -1" (4 "111")
-Condition 463 "2227030581" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 3[2:0])) 1 -1" (1 "011")
 Condition 463 "2227030581" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 3[2:0])) 1 -1" (2 "101")
-Condition 463 "2227030581" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 3[2:0])) 1 -1" (3 "110")
-Condition 463 "2227030581" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 3[2:0])) 1 -1" (4 "111")
-Condition 473 "3859864642" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 4[2:0])) 1 -1" (1 "011")
 Condition 473 "3859864642" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 4[2:0])) 1 -1" (2 "101")
-Condition 473 "3859864642" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 4[2:0])) 1 -1" (3 "110")
-Condition 473 "3859864642" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 4[2:0])) 1 -1" (4 "111")
-Condition 483 "3761571641" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 5[2:0])) 1 -1" (1 "011")
 Condition 483 "3761571641" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 5[2:0])) 1 -1" (2 "101")
-Condition 483 "3761571641" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 5[2:0])) 1 -1" (3 "110")
-Condition 483 "3761571641" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 5[2:0])) 1 -1" (4 "111")
-Condition 493 "1155226592" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 6[2:0])) 1 -1" (1 "011")
 Condition 493 "1155226592" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 6[2:0])) 1 -1" (2 "101")
-Condition 493 "1155226592" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 6[2:0])) 1 -1" (3 "110")
-Condition 493 "1155226592" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 6[2:0])) 1 -1" (4 "111")
-Condition 503 "1123975323" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 7[2:0])) 1 -1" (1 "011")
 Condition 503 "1123975323" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 7[2:0])) 1 -1" (2 "101")
-Condition 503 "1123975323" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 7[2:0])) 1 -1" (3 "110")
-Condition 503 "1123975323" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 7[2:0])) 1 -1" (4 "111")
 Condition 521 "2743047216" "(TrntrMemRamRdRamEn_ANY & TrRamFreeWayMaskPend_ANY_stg[(0 / 2)] & ((~TrntrRamPendPktInhibitRamRd_ANY_stg[(0 / 2)])) & ((~TrntrMemRamRdEn_TS2[0])) & ((~TrntrMemRdBufferVld_TS3[0])) & ((~TrntrMemRdBufferVld_TS4[0])) & ((~TrntrMemRdBufferVld_TS5[0])) & ((&trntrMemRamRdEnFromCore_ANY)) & ((|trntrNumFramesFilledInSRAM_ANY_d1))) 1 -1" (1 "011111111")
 Condition 521 "2743047216" "(TrntrMemRamRdRamEn_ANY & TrRamFreeWayMaskPend_ANY_stg[(0 / 2)] & ((~TrntrRamPendPktInhibitRamRd_ANY_stg[(0 / 2)])) & ((~TrntrMemRamRdEn_TS2[0])) & ((~TrntrMemRdBufferVld_TS3[0])) & ((~TrntrMemRdBufferVld_TS4[0])) & ((~TrntrMemRdBufferVld_TS5[0])) & ((&trntrMemRamRdEnFromCore_ANY)) & ((|trntrNumFramesFilledInSRAM_ANY_d1))) 1 -1" (2 "101111111")
 Condition 521 "2743047216" "(TrntrMemRamRdRamEn_ANY & TrRamFreeWayMaskPend_ANY_stg[(0 / 2)] & ((~TrntrRamPendPktInhibitRamRd_ANY_stg[(0 / 2)])) & ((~TrntrMemRamRdEn_TS2[0])) & ((~TrntrMemRdBufferVld_TS3[0])) & ((~TrntrMemRdBufferVld_TS4[0])) & ((~TrntrMemRdBufferVld_TS5[0])) & ((&trntrMemRamRdEnFromCore_ANY)) & ((|trntrNumFramesFilledInSRAM_ANY_d1))) 1 -1" (3 "110111111")
@@ -1479,20 +1009,10 @@ Condition 86 "473197811" "(((|trntrcoreptrmatchesanypendingframeafteroverflow_AN
 Condition 168 "391229778" "(InsnTraceWrEnPerCore_TS0 & ((~trntrcoreframefillpendingwhileoverflow_ANY))) 1 -1" (2 "10")
 Condition 168 "391229778" "(InsnTraceWrEnPerCore_TS0 & ((~trntrcoreframefillpendingwhileoverflow_ANY))) 1 -1" (3 "11")
 Condition 170 "1348239468" "(DataTraceWrEnPerCore_TS0 & ((~trdstcoreframefillpendingwhileoverflow_ANY))) 1 -1" (2 "10")
-Condition 173 "3759830687" "((((|Eff_TR_TS_North_Vld_stg)) & ((|Eff_TR_TS_South_Vld_stg)) & (TrRamNorthTraceWrWay_TS0 == TrRamSouthTraceWrWay_TS0) & ((|TrRamPerWayPendToWriteCnt_TS1[TrRamNorthTraceWrWay_TS0]))) | (((|Eff_TR_TS_North_Vld_stg)) & ((|TrRamPerWayPendToWriteCnt_TS1[TrRamNorthTraceWrWay_TS0])))) 1 -1" (3 "10")
-Condition 174 "3529384326" "(((|Eff_TR_TS_North_Vld_stg)) & ((|Eff_TR_TS_South_Vld_stg)) & (TrRamNorthTraceWrWay_TS0 == TrRamSouthTraceWrWay_TS0) & ((|TrRamPerWayPendToWriteCnt_TS1[TrRamNorthTraceWrWay_TS0]))) 1 -1" (1 "0111")
 Condition 174 "3529384326" "(((|Eff_TR_TS_North_Vld_stg)) & ((|Eff_TR_TS_South_Vld_stg)) & (TrRamNorthTraceWrWay_TS0 == TrRamSouthTraceWrWay_TS0) & ((|TrRamPerWayPendToWriteCnt_TS1[TrRamNorthTraceWrWay_TS0]))) 1 -1" (2 "1011")
-Condition 174 "3529384326" "(((|Eff_TR_TS_North_Vld_stg)) & ((|Eff_TR_TS_South_Vld_stg)) & (TrRamNorthTraceWrWay_TS0 == TrRamSouthTraceWrWay_TS0) & ((|TrRamPerWayPendToWriteCnt_TS1[TrRamNorthTraceWrWay_TS0]))) 1 -1" (3 "1101")
-Condition 174 "3529384326" "(((|Eff_TR_TS_North_Vld_stg)) & ((|Eff_TR_TS_South_Vld_stg)) & (TrRamNorthTraceWrWay_TS0 == TrRamSouthTraceWrWay_TS0) & ((|TrRamPerWayPendToWriteCnt_TS1[TrRamNorthTraceWrWay_TS0]))) 1 -1" (4 "1110")
-Condition 174 "3529384326" "(((|Eff_TR_TS_North_Vld_stg)) & ((|Eff_TR_TS_South_Vld_stg)) & (TrRamNorthTraceWrWay_TS0 == TrRamSouthTraceWrWay_TS0) & ((|TrRamPerWayPendToWriteCnt_TS1[TrRamNorthTraceWrWay_TS0]))) 1 -1" (5 "1111")
 Condition 176 "2749151530" "(((|Eff_TR_TS_North_Vld_stg)) & ((|TrRamPerWayPendToWriteCnt_TS1[TrRamNorthTraceWrWay_TS0]))) 1 -1" (1 "01")
 Condition 176 "2749151530" "(((|Eff_TR_TS_North_Vld_stg)) & ((|TrRamPerWayPendToWriteCnt_TS1[TrRamNorthTraceWrWay_TS0]))) 1 -1" (3 "11")
-Condition 178 "4113069550" "(((|Eff_TR_TS_North_Vld_stg)) & ((|Eff_TR_TS_South_Vld_stg)) & (TrRamNorthTraceWrWay_TS0 == TrRamSouthTraceWrWay_TS0)) 1 -1" (1 "011")
-Condition 178 "4113069550" "(((|Eff_TR_TS_North_Vld_stg)) & ((|Eff_TR_TS_South_Vld_stg)) & (TrRamNorthTraceWrWay_TS0 == TrRamSouthTraceWrWay_TS0)) 1 -1" (3 "110")
-Condition 178 "4113069550" "(((|Eff_TR_TS_North_Vld_stg)) & ((|Eff_TR_TS_South_Vld_stg)) & (TrRamNorthTraceWrWay_TS0 == TrRamSouthTraceWrWay_TS0)) 1 -1" (4 "111")
 Condition 180 "1025732124" "(((|Eff_TR_TS_South_Vld_stg)) & ((|TrRamPerWayPendToWriteCnt_TS1[TrRamSouthTraceWrWay_TS0]))) 1 -1" (1 "01")
-Condition 180 "1025732124" "(((|Eff_TR_TS_South_Vld_stg)) & ((|TrRamPerWayPendToWriteCnt_TS1[TrRamSouthTraceWrWay_TS0]))) 1 -1" (2 "10")
-Condition 180 "1025732124" "(((|Eff_TR_TS_South_Vld_stg)) & ((|TrRamPerWayPendToWriteCnt_TS1[TrRamSouthTraceWrWay_TS0]))) 1 -1" (3 "11")
 Condition 186 "2269833293" "((trdstnextlocaltoupdateRamWpWrapOneNewFrame_ANY & (((|trdstnorthcoresNewFrameStart_ANY_d1)) | ((|trdstsouthcoresNewFrameStart_ANY_d1)))) | (trdstnextlocaltoupdateRamWpWrapTwoNewFrame_ANY & ((|trdstnorthcoresNewFrameStart_ANY_d1)) & ((|trdstsouthcoresNewFrameStart_ANY_d1)))) 1 -1" (2 "01")
 Condition 188 "877010333" "(((|trdstnorthcoresNewFrameStart_ANY_d1)) | ((|trdstsouthcoresNewFrameStart_ANY_d1))) 1 -1" (2 "01")
 Condition 189 "3854493019" "(trdstnextlocaltoupdateRamWpWrapTwoNewFrame_ANY & ((|trdstnorthcoresNewFrameStart_ANY_d1)) & ((|trdstsouthcoresNewFrameStart_ANY_d1))) 1 -1" (1 "011")
@@ -1522,19 +1042,11 @@ Condition 204 "487623278" "(trntrnorthcoresNewFrameStart_ANY & trntrsouthcoresNe
 Condition 205 "3600901328" "((trntrnorthcoresNewFrameStart_ANY | trntrsouthcoresNewFrameStart_ANY) ? trntrnextlocalRamWpLow_ANY[1] : trntrnextlocalRamWpLow_ANY[0]) 1 -1" (2 "1")
 Condition 206 "3382680641" "(trntrnorthcoresNewFrameStart_ANY | trntrsouthcoresNewFrameStart_ANY) 1 -1" (2 "01")
 Condition 206 "3382680641" "(trntrnorthcoresNewFrameStart_ANY | trntrsouthcoresNewFrameStart_ANY) 1 -1" (3 "10")
-Condition 208 "3197379096" "(TrRamPendPktNorthWrEn_TS0 & TrRamPendPktSouthWrEn_TS0) 1 -1" (1 "01")
 Condition 208 "3197379096" "(TrRamPendPktNorthWrEn_TS0 & TrRamPendPktSouthWrEn_TS0) 1 -1" (2 "10")
-Condition 208 "3197379096" "(TrRamPendPktNorthWrEn_TS0 & TrRamPendPktSouthWrEn_TS0) 1 -1" (3 "11")
 Condition 211 "3517823297" "(TrRamNorthTraceWrEn_TS0 & ((~TrRamNorthTraceWrSrc_TS0))) 1 -1" (2 "10")
-Condition 212 "1497109905" "(TrRamSouthTraceWrEn_TS0 & ((~TrRamSouthTraceWrSrc_TS0))) 1 -1" (2 "10")
-Condition 212 "1497109905" "(TrRamSouthTraceWrEn_TS0 & ((~TrRamSouthTraceWrSrc_TS0))) 1 -1" (3 "11")
 Condition 213 "333783216" "((TrRamNorthTraceWrEn_TS0 & TrRamNorthTraceWrSrc_TS0) | (TrRamSouthTraceWrEn_TS0 & TrRamSouthTraceWrSrc_TS0) | ((|(TrRamPendRdEn_ANY & TrRamPendNtracePktVld_ANY)))) 1 -1" (4 "100")
 Condition 214 "3774167124" "(TrRamNorthTraceWrEn_TS0 & TrRamNorthTraceWrSrc_TS0) 1 -1" (1 "01")
 Condition 214 "3774167124" "(TrRamNorthTraceWrEn_TS0 & TrRamNorthTraceWrSrc_TS0) 1 -1" (3 "11")
-Condition 215 "1427848943" "(TrRamSouthTraceWrEn_TS0 & TrRamSouthTraceWrSrc_TS0) 1 -1" (1 "01")
-Condition 215 "1427848943" "(TrRamSouthTraceWrEn_TS0 & TrRamSouthTraceWrSrc_TS0) 1 -1" (2 "10")
-Condition 215 "1427848943" "(TrRamSouthTraceWrEn_TS0 & TrRamSouthTraceWrSrc_TS0) 1 -1" (3 "11")
-Condition 217 "2484997170" "(trRamDataRdEn_ANY ? trntrRamRpLow_ANY[6+:TRC_RAM_INDEX_WIDTH] : trdstRamRpLow_ANY[6+:TRC_RAM_INDEX_WIDTH]) 1 -1" (2 "1")
 Condition 218 "3330478163" "((((~trntrRamMode_ANY)) & trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrRamModeBP_ANY)) | (trntrRamMode_ANY & ((TrntrMemModeRamBackPressure_ANY & ((~TrntrMemModeRamFlush_ANY))) | (trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY))))) 1 -1" (2 "01")
 Condition 218 "3330478163" "((((~trntrRamMode_ANY)) & trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrRamModeBP_ANY)) | (trntrRamMode_ANY & ((TrntrMemModeRamBackPressure_ANY & ((~TrntrMemModeRamFlush_ANY))) | (trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY))))) 1 -1" (3 "10")
 Condition 219 "1349485583" "(((~trntrRamMode_ANY)) & trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrRamModeBP_ANY)) 1 -1" (1 "011")
@@ -1593,26 +1105,14 @@ Condition 276 "3548495666" "(((~TR_TS_North_Src)) & Eff_DataTraceWrEnPerCore_TS0
 Condition 277 "685580104" "(TR_TS_North_Vld[0] & ((~TR_TS_North_Src))) 1 -1" (2 "10")
 Condition 278 "19802203" "(TR_TS_North_Vld[0] & TR_TS_North_Src) 1 -1" (1 "01")
 Condition 278 "19802203" "(TR_TS_North_Vld[0] & TR_TS_North_Src) 1 -1" (3 "11")
-Condition 280 "1456887507" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 0[1:0])) | (TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 0[1:0]))) 1 -1" (2 "01")
-Condition 283 "4175957272" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 0[1:0])) 1 -1" (2 "10")
-Condition 283 "4175957272" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 0[1:0])) 1 -1" (3 "11")
-Condition 286 "2256558271" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 1[1:0])) | (TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 1[1:0]))) 1 -1" (2 "01")
 Condition 287 "4259321149" "(TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 1[1:0])) 1 -1" (1 "01")
 Condition 289 "607568580" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 1[1:0])) 1 -1" (1 "01")
-Condition 289 "607568580" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 1[1:0])) 1 -1" (2 "10")
-Condition 289 "607568580" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 1[1:0])) 1 -1" (3 "11")
 Condition 290 "4236336466" "(TrRamSouthTraceWrWay_TS0 == 1[1:0]) 1 -1" (2 "1")
-Condition 292 "3097719592" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 2[1:0])) | (TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 2[1:0]))) 1 -1" (2 "01")
 Condition 293 "1906905296" "(TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 2[1:0])) 1 -1" (1 "01")
 Condition 295 "2826946345" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 2[1:0])) 1 -1" (1 "01")
-Condition 295 "2826946345" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 2[1:0])) 1 -1" (2 "10")
-Condition 295 "2826946345" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 2[1:0])) 1 -1" (3 "11")
 Condition 296 "4265150923" "(TrRamSouthTraceWrWay_TS0 == 2[1:0]) 1 -1" (2 "1")
-Condition 298 "1760918852" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 3[1:0])) | (TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 3[1:0]))) 1 -1" (2 "01")
 Condition 299 "2910314252" "(TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 3[1:0])) 1 -1" (1 "01")
 Condition 301 "1956710645" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 3[1:0])) 1 -1" (1 "01")
-Condition 301 "1956710645" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 3[1:0])) 1 -1" (2 "10")
-Condition 301 "1956710645" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 3[1:0])) 1 -1" (3 "11")
 Condition 302 "450405283" "(TrRamSouthTraceWrWay_TS0 == 3[1:0]) 1 -1" (2 "1")
 Condition 310 "1399830620" "(TrdstMemRamRdAddrWrap_ANY ^ trdstcoreRamWpWrap_ANY_d1[0]) 1 -1" (3 "10")
 Condition 310 "1399830620" "(TrdstMemRamRdAddrWrap_ANY ^ trdstcoreRamWpWrap_ANY_d1[0]) 1 -1" (4 "11")
@@ -1652,9 +1152,6 @@ Condition 345 "1950638914" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS
 Condition 345 "1950638914" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 0[1:0])) | (TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 0[1:0])) | (TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 0[1:0]))) 1 -1" (7 "0000100000")
 Condition 345 "1950638914" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 0[1:0])) | (TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 0[1:0])) | (TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 0[1:0]))) 1 -1" (8 "0001000000")
 Condition 345 "1950638914" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 0[1:0])) | (TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 0[1:0])) | (TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 0[1:0]))) 1 -1" (9 "0010000000")
-Condition 345 "1950638914" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 0[1:0])) | (TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 0[1:0])) | (TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 0[1:0]))) 1 -1" (10 "0100000000")
-Condition 348 "938001971" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 0[1:0])) 1 -1" (2 "10")
-Condition 348 "938001971" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 0[1:0])) 1 -1" (3 "11")
 Condition 350 "1253287201" "(TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 0[1:0])) 1 -1" (2 "10")
 Condition 350 "1253287201" "(TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 0[1:0])) 1 -1" (3 "11")
 Condition 352 "2368131127" "(TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 0[1:0])) 1 -1" (2 "10")
@@ -1679,11 +1176,8 @@ Condition 367 "3698977707" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS
 Condition 367 "3698977707" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 1[1:0])) | (TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 1[1:0])) | (TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 1[1:0]))) 1 -1" (7 "0000100000")
 Condition 367 "3698977707" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 1[1:0])) | (TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 1[1:0])) | (TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 1[1:0]))) 1 -1" (8 "0001000000")
 Condition 367 "3698977707" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 1[1:0])) | (TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 1[1:0])) | (TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 1[1:0]))) 1 -1" (9 "0010000000")
-Condition 367 "3698977707" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 1[1:0])) | (TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 1[1:0])) | (TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 1[1:0]))) 1 -1" (10 "0100000000")
 Condition 368 "2683461616" "(TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 1[1:0])) 1 -1" (1 "01")
 Condition 370 "3901754353" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 1[1:0])) 1 -1" (1 "01")
-Condition 370 "3901754353" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 1[1:0])) 1 -1" (2 "10")
-Condition 370 "3901754353" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 1[1:0])) 1 -1" (3 "11")
 Condition 371 "2149653968" "(TrRamSouthTraceWrWay_TS0 == 1[1:0]) 1 -1" (2 "1")
 Condition 372 "2513135843" "(TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (1 "01")
 Condition 372 "2513135843" "(TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (2 "10")
@@ -1725,11 +1219,8 @@ Condition 389 "2390646387" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS
 Condition 389 "2390646387" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 2[1:0])) | (TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 2[1:0])) | (TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 2[1:0]))) 1 -1" (7 "0000100000")
 Condition 389 "2390646387" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 2[1:0])) | (TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 2[1:0])) | (TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 2[1:0]))) 1 -1" (8 "0001000000")
 Condition 389 "2390646387" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 2[1:0])) | (TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 2[1:0])) | (TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 2[1:0]))) 1 -1" (9 "0010000000")
-Condition 389 "2390646387" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 2[1:0])) | (TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 2[1:0])) | (TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 2[1:0]))) 1 -1" (10 "0100000000")
 Condition 390 "1674586973" "(TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 2[1:0])) 1 -1" (1 "01")
 Condition 392 "347242332" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 2[1:0])) 1 -1" (1 "01")
-Condition 392 "347242332" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 2[1:0])) 1 -1" (2 "10")
-Condition 392 "347242332" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 2[1:0])) 1 -1" (3 "11")
 Condition 393 "3932140440" "(TrRamSouthTraceWrWay_TS0 == 2[1:0]) 1 -1" (2 "1")
 Condition 394 "1776884814" "(TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (1 "01")
 Condition 394 "1776884814" "(TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (2 "10")
@@ -1771,11 +1262,8 @@ Condition 411 "641980058" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0
 Condition 411 "641980058" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 3[1:0])) | (TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 3[1:0])) | (TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 3[1:0]))) 1 -1" (7 "0000100000")
 Condition 411 "641980058" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 3[1:0])) | (TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 3[1:0])) | (TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 3[1:0]))) 1 -1" (8 "0001000000")
 Condition 411 "641980058" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 3[1:0])) | (TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 3[1:0])) | (TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 3[1:0]))) 1 -1" (9 "0010000000")
-Condition 411 "641980058" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 3[1:0])) | (TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 3[1:0])) | (TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 3[1:0]))) 1 -1" (10 "0100000000")
 Condition 412 "3165185695" "(TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 3[1:0])) 1 -1" (1 "01")
 Condition 414 "3419058846" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 3[1:0])) 1 -1" (1 "01")
-Condition 414 "3419058846" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 3[1:0])) 1 -1" (2 "10")
-Condition 414 "3419058846" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 3[1:0])) 1 -1" (3 "11")
 Condition 415 "21041530" "(TrRamSouthTraceWrWay_TS0 == 3[1:0]) 1 -1" (2 "1")
 Condition 416 "3063009676" "(TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (1 "01")
 Condition 416 "3063009676" "(TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (2 "10")
@@ -1814,42 +1302,34 @@ Condition 434 "1900598036" "((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwpl
 Condition 434 "1900598036" "((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) 1 -1" (3 "10")
 Condition 435 "998335826" "(trntrRamWpLow_ANY != trntrRamRpLow_ANY) 1 -1" (2 "1")
 Condition 436 "873998737" "(trntrRamRpLow_ANY[5:3] == 0[2:0]) 1 -1" (1 "0")
-Condition 442 "784684440" "(trRamDataRdEn_ANY ? InsnTraceRdEn_TS1[0] : DataTraceRdEn_TS1[0]) 1 -1" (2 "1")
 Condition 444 "957751200" "((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) 1 -1" (2 "01")
 Condition 444 "957751200" "((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) 1 -1" (3 "10")
 Condition 445 "637954613" "(trntrRamWpLow_ANY != trntrRamRpLow_ANY) 1 -1" (2 "1")
 Condition 446 "722206741" "(trntrRamRpLow_ANY[5:3] == 1[2:0]) 1 -1" (2 "1")
-Condition 452 "2460586056" "(trRamDataRdEn_ANY ? InsnTraceRdEn_TS1[1] : DataTraceRdEn_TS1[1]) 1 -1" (2 "1")
 Condition 454 "2199611769" "((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) 1 -1" (2 "01")
 Condition 454 "2199611769" "((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) 1 -1" (3 "10")
 Condition 455 "279645716" "(trntrRamWpLow_ANY != trntrRamRpLow_ANY) 1 -1" (2 "1")
 Condition 456 "437522193" "(trntrRamRpLow_ANY[5:3] == 2[2:0]) 1 -1" (2 "1")
-Condition 462 "53870428" "(trRamDataRdEn_ANY ? InsnTraceRdEn_TS1[2] : DataTraceRdEn_TS1[2]) 1 -1" (2 "1")
 Condition 464 "3410339277" "((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) 1 -1" (2 "01")
 Condition 464 "3410339277" "((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) 1 -1" (3 "10")
 Condition 465 "220987763" "(trntrRamWpLow_ANY != trntrRamRpLow_ANY) 1 -1" (2 "1")
 Condition 466 "83895957" "(trntrRamRpLow_ANY[5:3] == 3[2:0]) 1 -1" (2 "1")
-Condition 472 "3210295948" "(trRamDataRdEn_ANY ? InsnTraceRdEn_TS1[3] : DataTraceRdEn_TS1[3]) 1 -1" (2 "1")
 Condition 474 "3971979962" "((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) 1 -1" (2 "01")
 Condition 474 "3971979962" "((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) 1 -1" (3 "10")
 Condition 475 "1585725338" "(trntrRamWpLow_ANY != trntrRamRpLow_ANY) 1 -1" (2 "1")
 Condition 476 "849271409" "(trntrRamRpLow_ANY[5:3] == 4[2:0]) 1 -1" (2 "1")
-Condition 482 "3440639060" "(trRamDataRdEn_ANY ? InsnTraceRdEn_TS1[4] : DataTraceRdEn_TS1[4]) 1 -1" (2 "1")
 Condition 484 "2766231054" "((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) 1 -1" (2 "01")
 Condition 484 "2766231054" "((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) 1 -1" (3 "10")
 Condition 485 "1124282621" "(trntrRamWpLow_ANY != trntrRamRpLow_ANY) 1 -1" (2 "1")
 Condition 486 "764081141" "(trntrRamRpLow_ANY[5:3] == 5[2:0]) 1 -1" (2 "1")
-Condition 492 "1904163204" "(trRamDataRdEn_ANY ? InsnTraceRdEn_TS1[5] : DataTraceRdEn_TS1[5]) 1 -1" (2 "1")
 Condition 494 "518791383" "((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) 1 -1" (2 "01")
 Condition 494 "518791383" "((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) 1 -1" (3 "10")
 Condition 495 "1974359260" "(trntrRamWpLow_ANY != trntrRamRpLow_ANY) 1 -1" (2 "1")
 Condition 496 "479395057" "(trntrRamRpLow_ANY[5:3] == 6[2:0]) 1 -1" (2 "1")
-Condition 502 "3772995216" "(trRamDataRdEn_ANY ? InsnTraceRdEn_TS1[6] : DataTraceRdEn_TS1[6]) 1 -1" (2 "1")
 Condition 504 "1454566499" "((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) 1 -1" (2 "01")
 Condition 504 "1454566499" "((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) 1 -1" (3 "10")
 Condition 505 "1747540923" "(trntrRamWpLow_ANY != trntrRamRpLow_ANY) 1 -1" (2 "1")
 Condition 506 "59168117" "(trntrRamRpLow_ANY[5:3] == 7[2:0]) 1 -1" (2 "1")
-Condition 512 "1552913216" "(trRamDataRdEn_ANY ? InsnTraceRdEn_TS1[7] : DataTraceRdEn_TS1[7]) 1 -1" (2 "1")
 Condition 513 "3615367999" "(TrdstMemRamRdRamEn_ANY & TrRamFreeWayMaskPend_ANY_stg[(0 / 2)] & ((~TrdstRamPendPktInhibitRamRd_ANY_stg[(0 / 2)])) & ((~TrdstMemRamRdEn_TS2[0])) & ((~TrdstMemRdBufferVld_TS3[0])) & ((~TrdstMemRdBufferVld_TS4[0])) & ((~TrdstMemRdBufferVld_TS5[0])) & ((&trdstMemRamRdEnFromCore_ANY)) & ((|trdstNumFramesFilledInSRAM_ANY_d1))) 1 -1" (3 "110111111")
 Condition 514 "4190099991" "(TrdstMemRamRdRamEn_ANY & TrRamFreeWayMaskPend_ANY_stg[(1 / 2)] & ((~TrdstRamPendPktInhibitRamRd_ANY_stg[(1 / 2)])) & ((~TrdstMemRamRdEn_TS2[1])) & ((~TrdstMemRdBufferVld_TS3[1])) & ((~TrdstMemRdBufferVld_TS4[1])) & ((~TrdstMemRdBufferVld_TS5[1])) & ((&trdstMemRamRdEnFromCore_ANY)) & ((|trdstNumFramesFilledInSRAM_ANY_d1))) 1 -1" (3 "110111111")
 Condition 515 "1600252041" "(TrdstMemRamRdRamEn_ANY & TrRamFreeWayMaskPend_ANY_stg[(2 / 2)] & ((~TrdstRamPendPktInhibitRamRd_ANY_stg[(2 / 2)])) & ((~TrdstMemRamRdEn_TS2[2])) & ((~TrdstMemRdBufferVld_TS3[2])) & ((~TrdstMemRdBufferVld_TS4[2])) & ((~TrdstMemRdBufferVld_TS5[2])) & ((&trdstMemRamRdEnFromCore_ANY)) & ((|trdstNumFramesFilledInSRAM_ANY_d1))) 1 -1" (3 "110111111")
@@ -1861,9 +1341,7 @@ Condition 520 "3216549117" "(TrdstMemRamRdRamEn_ANY & TrRamFreeWayMaskPend_ANY_s
 
 CHECKSUM: "3354362860 1334787416"
 ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero, save five the tie-off leaves at one: the flush-timeout done flag, which resets to one and is cleared only by the N-trace RAM enable start, the two backpressure flags, which compare an N-trace space of zero against an N-trace threshold of zero with <=, and the frame-fill-complete flag and its delayed copy, which a write count held at zero keeps at one. The read and write interleave flops, enabled only on an N-trace term, hold their reset value of zero. The NTR sink register block is absent, so every register-derived N-trace term follows, mmrs's Trntrissrammode, the negation of that block's zero RAM mode, reads one, the north source flag never selects N-trace, the flush-timeout counter never counts, and the TNIF arbiter's previous grant holds its N-trace reset value. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs, whose block index is the funnel's."
-ANNOTATION: "SMC-P4-SINGLE-SOURCE: with NUM_NTRACE_INST(0) the trace sink has one source, so the two-source term of TrRamPendPkt*WrEn is always false and the per-way pending count, which only increments from those enables, stays at zero for the life of the design; every pending valid, write and read enable, and every south-port valid, reads zero. The pending entries are flops reset to zero and written only by a pending write, so their source, way and address fields, and the read inhibits set from them, never read one. A row is taken only where the report's own term list shows it out of reach with those held at zero and within reach with them free, save the frame-start guard whose first term conjoins the south valid with the second, which the south valid alone rules out."
 ANNOTATION: "SMC-P17-ONE-TRACE-CORE: the DFD top passes the trace wrapper NUM_CORES as the larger of NUM_DST_INST(1) and NUM_NTRACE_INST(0), and the wrapper passes it on to the trace sink, so NUM_CORES > 1 is false, its then arm never executes, and the south-channel frame start it guards stays at its zero default. The south write pointer is an OR over no cores, so the south write way and its staged copies read zero; a core's pointer never matches its own pending frame, so with one core the overflow-pending flop never sets; and the north write way is the staged OR of each valid core's pointer, staged with the valid, so a non-zero way comes with the north write enable. Each trace hop has one core in its path and zero upstream repeaters and hops to the tail, so at most one core is enabled and its setup counter never leaves its target of zero."
-ANNOTATION: "SMC-P19-NTR-RAM-READ-TIED: the DFD top connects the trace wrapper's trRamDataRdEn to a constant zero, so the trace sink's trRamDataRdEn_ANY is zero for the life of the design and the N-trace RAM data read never occurs; a row or arm that needs it high cannot."
 MODULE: trace_sink
 Branch 0 "127462735" "trntrRamMode_ANY" (0) "trntrRamMode_ANY 1"
 Branch 3 "2247757869" "(trdstnorthcoresNewFrameStart_ANY & trdstsouthcoresNewFrameStart_ANY)" (0) "(trdstnorthcoresNewFrameStart_ANY & trdstsouthcoresNewFrameStart_ANY) 1,-"
@@ -1871,8 +1349,6 @@ Branch 4 "4011877369" "(~trntrRamMode_ANY)" (2) "(~trntrRamMode_ANY) 0,-,1"
 Branch 4 "4011877369" "(~trntrRamMode_ANY)" (3) "(~trntrRamMode_ANY) 0,-,0"
 Branch 5 "4232888735" "(trntrnorthcoresNewFrameStart_ANY & trntrsouthcoresNewFrameStart_ANY)" (0) "(trntrnorthcoresNewFrameStart_ANY & trntrsouthcoresNewFrameStart_ANY) 1,-"
 Branch 5 "4232888735" "(trntrnorthcoresNewFrameStart_ANY & trntrsouthcoresNewFrameStart_ANY)" (1) "(trntrnorthcoresNewFrameStart_ANY & trntrsouthcoresNewFrameStart_ANY) 0,1"
-Branch 6 "133615400" "(TrRamPendPktNorthWrEn_TS0 & TrRamPendPktSouthWrEn_TS0)" (0) "(TrRamPendPktNorthWrEn_TS0 & TrRamPendPktSouthWrEn_TS0) 1"
-Branch 7 "2462516503" "TraceMemRdEn_ANY" (1) "TraceMemRdEn_ANY 0,1"
 Branch 8 "3433112996" "TrntrMemRamRdRdy_TS1" (0) "TrntrMemRamRdRdy_TS1 1"
 Branch 9 "3433112996" "TrntrMemRamRdRdy_TS1" (0) "TrntrMemRamRdRdy_TS1 1"
 Branch 10 "3513402957" "TrntrMemAxiWrVld_ANY" (0) "TrntrMemAxiWrVld_ANY 1"
@@ -1882,14 +1358,6 @@ Branch 16 "703101902" "trntrcoreNewFrameStart_ANY[0]" (1) "trntrcoreNewFrameStar
 Branch 17 "1385722517" "trntrRamMode_ANY" (0) "trntrRamMode_ANY 1"
 Branch 18 "3037034392" "trntrRamEnableStart_ANY_d1" (0) "trntrRamEnableStart_ANY_d1 1,-"
 Branch 18 "3037034392" "trntrRamEnableStart_ANY_d1" (1) "trntrRamEnableStart_ANY_d1 0,1"
-Branch 24 "1117085537" "TraceMemRdEn_ANY" (1) "TraceMemRdEn_ANY 0,1"
-Branch 25 "1568427950" "TraceMemRdEn_ANY" (1) "TraceMemRdEn_ANY 0,1"
-Branch 26 "2101837567" "TraceMemRdEn_ANY" (1) "TraceMemRdEn_ANY 0,1"
-Branch 27 "1655598640" "TraceMemRdEn_ANY" (1) "TraceMemRdEn_ANY 0,1"
-Branch 28 "1026628701" "TraceMemRdEn_ANY" (1) "TraceMemRdEn_ANY 0,1"
-Branch 29 "584584338" "TraceMemRdEn_ANY" (1) "TraceMemRdEn_ANY 0,1"
-Branch 30 "48446915" "TraceMemRdEn_ANY" (1) "TraceMemRdEn_ANY 0,1"
-Branch 31 "487206156" "TraceMemRdEn_ANY" (1) "TraceMemRdEn_ANY 0,1"
 Branch 54 "1388915620" "(NUM_CORES > 1)" (0) "(NUM_CORES > 1) 1"
 Branch 55 "1388915620" "(NUM_CORES > 1)" (0) "(NUM_CORES > 1) 1"
 Branch 56 "1388915620" "(NUM_CORES > 1)" (0) "(NUM_CORES > 1) 1"
@@ -1910,76 +1378,7 @@ Branch 51 "3513402957" "TrntrMemAxiWrVld_ANY" (0) "TrntrMemAxiWrVld_ANY 1"
 Branch 52 "3513402957" "TrntrMemAxiWrVld_ANY" (0) "TrntrMemAxiWrVld_ANY 1"
 Branch 53 "3513402957" "TrntrMemAxiWrVld_ANY" (0) "TrntrMemAxiWrVld_ANY 1"
 
-CHECKSUM: "3227266885 3872669934"
-ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes. Every instance takes one value for both its clamp and its fuse disable, the NTR sink's clock-disable value and control are tied to one as well, so its clock-enable select is zero, and the funnel's zero clamp enables every source it maps. The NTR sink is absent, so every block of mmrs's clamp vector is a zero clamp, clamp_hit is zero, and mmr_req_ctrl never returns rsp_err."
-MODULE: trace_wrapper
-Condition 1 "3805417146" "(({NUM_DST_INST_SAFE {(~dst_sink_gated_func_clamp)}}) & ((~dst_gated_func_clamp))) 1 -1" (1 "01")
-Condition 1 "3805417146" "(({NUM_DST_INST_SAFE {(~dst_sink_gated_func_clamp)}}) & ((~dst_gated_func_clamp))) 1 -1" (2 "10")
-Condition 2 "473899374" "(({NUM_NTRACE_INST_SAFE {(~ntr_sink_gated_func_clamp)}}) & ((~ntr_gated_func_clamp))) 1 -1" (1 "01")
-Condition 2 "473899374" "(({NUM_NTRACE_INST_SAFE {(~ntr_sink_gated_func_clamp)}}) & ((~ntr_gated_func_clamp))) 1 -1" (2 "10")
-Condition 2 "473899374" "(({NUM_NTRACE_INST_SAFE {(~ntr_sink_gated_func_clamp)}}) & ((~ntr_gated_func_clamp))) 1 -1" (3 "11")
-Condition 3 "3979228174" "((dst_sink_gated_func_clamp && ntr_sink_gated_func_clamp) ? '0 : TN_MS_Gnt_int) 1 -1" (2 "1")
-Condition 4 "3871415065" "(dst_sink_gated_func_clamp && ntr_sink_gated_func_clamp) 1 -1" (2 "10")
-Condition 4 "3871415065" "(dst_sink_gated_func_clamp && ntr_sink_gated_func_clamp) 1 -1" (3 "11")
-Condition 5 "1308450810" "(ntr_sink_gated_func_clamp ? '0 : TN_MS_Ntrace_Bp_int) 1 -1" (1 "0")
-Condition 6 "815388895" "(dst_sink_gated_func_clamp ? '0 : TN_MS_Dst_Bp_int) 1 -1" (2 "1")
-Condition 7 "23757109" "(ntr_sink_gated_func_clamp ? '0 : TN_MS_Ntrace_Flush_int) 1 -1" (1 "0")
-Condition 8 "1785154983" "(dst_sink_gated_func_clamp ? '0 : TN_MS_Dst_Flush_int) 1 -1" (2 "1")
-Condition 9 "955680890" "(ntr_sink_gated_func_clamp ? '0 : NtrSinkMmrsWr_int) 1 -1" (1 "0")
-Condition 10 "879037063" "(dst_sink_gated_func_clamp ? '0 : DstSinkMmrsWr_int) 1 -1" (2 "1")
-Condition 11 "539313021" "(funnel_gated_func_clamp ? '0 : FunnelMmrsWr_int) 1 -1" (2 "1")
-Condition 12 "1721060743" "(funnel_gated_func_clamp ? '0 : m_trc_axi_req_int) 1 -1" (2 "1")
-
-CHECKSUM: "3227266885 1401209627"
-ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes. Every instance takes one value for both its clamp and its fuse disable, the NTR sink's clock-disable value and control are tied to one as well, so its clock-enable select is zero, and the funnel's zero clamp enables every source it maps. The NTR sink is absent, so every block of mmrs's clamp vector is a zero clamp, clamp_hit is zero, and mmr_req_ctrl never returns rsp_err."
-MODULE: trace_wrapper
-Branch 0 "1580568819" "(dst_sink_gated_func_clamp && ntr_sink_gated_func_clamp)" (0) "(dst_sink_gated_func_clamp && ntr_sink_gated_func_clamp) 1"
-Branch 1 "2572674655" "ntr_sink_gated_func_clamp" (1) "ntr_sink_gated_func_clamp 0"
-Branch 2 "763729257" "dst_sink_gated_func_clamp" (0) "dst_sink_gated_func_clamp 1"
-Branch 3 "2572674655" "ntr_sink_gated_func_clamp" (1) "ntr_sink_gated_func_clamp 0"
-Branch 4 "763729257" "dst_sink_gated_func_clamp" (0) "dst_sink_gated_func_clamp 1"
-Branch 5 "2572674655" "ntr_sink_gated_func_clamp" (1) "ntr_sink_gated_func_clamp 0"
-Branch 6 "763729257" "dst_sink_gated_func_clamp" (0) "dst_sink_gated_func_clamp 1"
-Branch 7 "1389124165" "funnel_gated_func_clamp" (0) "funnel_gated_func_clamp 1"
-Branch 8 "1389124165" "funnel_gated_func_clamp" (0) "funnel_gated_func_clamp 1"
-
-CHECKSUM: "2078871858 2490058488"
-ANNOTATION: "SMC-P26-OUTPUT-FLOP-PARAM: each tt_debug_bus_mux section urg reports is one parameter set whose members agree on DISABLE_OUTPUT_FLOP: the L3 muxes elaborate it at 1 and the L2 and CLA muxes at 0. In each section the comparisons on the parameter are constant, so the row that needs the other value cannot occur, and with the parameter at 1 the toggle-mode arm that tests it at 0 never executes."
-MODULE: tt_debug_bus_mux ( parameter DEBUG_MUX_OUTPUT_WIDTH=64,LANE_WIDTH=16,NUM_INPUT_LANES=17,DEBUG_MUX_ID=0,DISABLE_OUTPUT_FLOP=0,NUM_OUTPUT_LANES=4,MUX_SEL_WIDTH=6 + DEBUG_MUX_OUTPUT_WIDTH=64,LANE_WIDTH=16,NUM_INPUT_LANES=8,DEBUG_MUX_ID=3,DISABLE_OUTPUT_FLOP=0,NUM_OUTPUT_LANES=4,MUX_SEL_WIDTH=6 + DEBUG_MUX_OUTPUT_WIDTH=64,LANE_WIDTH=16,NUM_INPUT_LANES=8,DEBUG_MUX_ID=4,DISABLE_OUTPUT_FLOP=0,NUM_OUTPUT_LANES=4,MUX_SEL_WIDTH=6 + DEBUG_MUX_OUTPUT_WIDTH=64,LANE_WIDTH=16,NUM_INPUT_LANES=8,DEBUG_MUX_ID=5,DISABLE_OUTPUT_FLOP=0,NUM_OUTPUT_LANES=4,MUX_SEL_WIDTH=6 + DEBUG_MUX_OUTPUT_WIDTH=64,LANE_WIDTH=16,NUM_INPUT_LANES=8,DEBUG_MUX_ID=6,DISABLE_OUTPUT_FLOP=0,NUM_OUTPUT_LANES=4,MUX_SEL_WIDTH=6 ) 
-Condition 2 "3151685355" "((enable_mode_d1 == 2'b10) || (((enable_mode_d1 == 2'b11) && (DISABLE_OUTPUT_FLOP == 1)))) 1 -1" (2 "01")
-Condition 6 "3691080703" "(DISABLE_OUTPUT_FLOP == '0) 1 -1" (1 "0")
-Condition 10 "1915277040" "((enable_mode_d1 == 2'b10) || (((enable_mode_d1 == 2'b11) && (DISABLE_OUTPUT_FLOP == 1)))) 1 -1" (2 "01")
-Condition 14 "2016040840" "(DISABLE_OUTPUT_FLOP == '0) 1 -1" (1 "0")
-Condition 18 "754953066" "((enable_mode_d1 == 2'b10) || (((enable_mode_d1 == 2'b11) && (DISABLE_OUTPUT_FLOP == 1)))) 1 -1" (2 "01")
-Condition 22 "2425753254" "(DISABLE_OUTPUT_FLOP == '0) 1 -1" (1 "0")
-Condition 26 "3842868081" "((enable_mode_d1 == 2'b10) || (((enable_mode_d1 == 2'b11) && (DISABLE_OUTPUT_FLOP == 1)))) 1 -1" (2 "01")
-Condition 30 "884814545" "(DISABLE_OUTPUT_FLOP == '0) 1 -1" (1 "0")
-
-CHECKSUM: "2078871858 4074834647"
-ANNOTATION: "SMC-P26-OUTPUT-FLOP-PARAM: each tt_debug_bus_mux section urg reports is one parameter set whose members agree on DISABLE_OUTPUT_FLOP: the L3 muxes elaborate it at 1 and the L2 and CLA muxes at 0. In each section the comparisons on the parameter are constant, so the row that needs the other value cannot occur, and with the parameter at 1 the toggle-mode arm that tests it at 0 never executes."
-MODULE: tt_debug_bus_mux ( parameter DEBUG_MUX_OUTPUT_WIDTH=64,LANE_WIDTH=16,NUM_INPUT_LANES=8,DEBUG_MUX_ID=7,DISABLE_OUTPUT_FLOP=1,NUM_OUTPUT_LANES=4,MUX_SEL_WIDTH=6 + DEBUG_MUX_OUTPUT_WIDTH=64,LANE_WIDTH=16,NUM_INPUT_LANES=8,DEBUG_MUX_ID=8,DISABLE_OUTPUT_FLOP=1,NUM_OUTPUT_LANES=4,MUX_SEL_WIDTH=6 + DEBUG_MUX_OUTPUT_WIDTH=64,LANE_WIDTH=16,NUM_INPUT_LANES=8,DEBUG_MUX_ID=9,DISABLE_OUTPUT_FLOP=1,NUM_OUTPUT_LANES=4,MUX_SEL_WIDTH=6 + DEBUG_MUX_OUTPUT_WIDTH=64,LANE_WIDTH=16,NUM_INPUT_LANES=8,DEBUG_MUX_ID=10,DISABLE_OUTPUT_FLOP=1,NUM_OUTPUT_LANES=4,MUX_SEL_WIDTH=6 + DEBUG_MUX_OUTPUT_WIDTH=64,LANE_WIDTH=16,NUM_INPUT_LANES=8,DEBUG_MUX_ID=11,DISABLE_OUTPUT_FLOP=1,NUM_OUTPUT_LANES=4,MUX_SEL_WIDTH=6 + DEBUG_MUX_OUTPUT_WIDTH=64,LANE_WIDTH=16,NUM_INPUT_LANES=8,DEBUG_MUX_ID=12,DISABLE_OUTPUT_FLOP=1,NUM_OUTPUT_LANES=4,MUX_SEL_WIDTH=6 + DEBUG_MUX_OUTPUT_WIDTH=64,LANE_WIDTH=16,NUM_INPUT_LANES=8,DEBUG_MUX_ID=13,DISABLE_OUTPUT_FLOP=1,NUM_OUTPUT_LANES=4,MUX_SEL_WIDTH=6 + DEBUG_MUX_OUTPUT_WIDTH=64,LANE_WIDTH=16,NUM_INPUT_LANES=8,DEBUG_MUX_ID=14,DISABLE_OUTPUT_FLOP=1,NUM_OUTPUT_LANES=4,MUX_SEL_WIDTH=6 ) 
-Condition 6 "2740153241" "(DISABLE_OUTPUT_FLOP == 1) 1 -1" (1 "0")
-Condition 7 "198242192" "((enable_mode_d2 != 2'b11) ? (((0 == 0) ? 16'(DEBUG_MUX_ID) : 16'(0))) : ((~debug_bus_q[0]))) 1 -1" (1 "0")
-Condition 7 "198242192" "((enable_mode_d2 != 2'b11) ? (((0 == 0) ? 16'(DEBUG_MUX_ID) : 16'(0))) : ((~debug_bus_q[0]))) 1 -1" (2 "1")
-Condition 8 "4276634619" "(enable_mode_d2 != 2'b11) 1 -1" (1 "0")
-Condition 8 "4276634619" "(enable_mode_d2 != 2'b11) 1 -1" (2 "1")
-Condition 14 "2210644695" "(DISABLE_OUTPUT_FLOP == 1) 1 -1" (1 "0")
-Condition 15 "2735224258" "((enable_mode_d2 != 2'b11) ? (((1 == 0) ? 16'(DEBUG_MUX_ID) : 16'(0))) : ((~debug_bus_q[1]))) 1 -1" (1 "0")
-Condition 15 "2735224258" "((enable_mode_d2 != 2'b11) ? (((1 == 0) ? 16'(DEBUG_MUX_ID) : 16'(0))) : ((~debug_bus_q[1]))) 1 -1" (2 "1")
-Condition 16 "1446025641" "(enable_mode_d2 != 2'b11) 1 -1" (1 "0")
-Condition 16 "1446025641" "(enable_mode_d2 != 2'b11) 1 -1" (2 "1")
-Condition 22 "3799136517" "(DISABLE_OUTPUT_FLOP == 1) 1 -1" (1 "0")
-Condition 23 "194475037" "((enable_mode_d2 != 2'b11) ? (((2 == 0) ? 16'(DEBUG_MUX_ID) : 16'(0))) : ((~debug_bus_q[2]))) 1 -1" (1 "0")
-Condition 23 "194475037" "((enable_mode_d2 != 2'b11) ? (((2 == 0) ? 16'(DEBUG_MUX_ID) : 16'(0))) : ((~debug_bus_q[2]))) 1 -1" (2 "1")
-Condition 24 "4272937078" "(enable_mode_d2 != 2'b11) 1 -1" (1 "0")
-Condition 24 "4272937078" "(enable_mode_d2 != 2'b11) 1 -1" (2 "1")
-Condition 30 "3269627979" "(DISABLE_OUTPUT_FLOP == 1) 1 -1" (1 "0")
-Condition 31 "2739908175" "((enable_mode_d2 != 2'b11) ? (((3 == 0) ? 16'(DEBUG_MUX_ID) : 16'(0))) : ((~debug_bus_q[3]))) 1 -1" (1 "0")
-Condition 31 "2739908175" "((enable_mode_d2 != 2'b11) ? (((3 == 0) ? 16'(DEBUG_MUX_ID) : 16'(0))) : ((~debug_bus_q[3]))) 1 -1" (2 "1")
-Condition 32 "1450639908" "(enable_mode_d2 != 2'b11) 1 -1" (1 "0")
-Condition 32 "1450639908" "(enable_mode_d2 != 2'b11) 1 -1" (2 "1")
-
-CHECKSUM: "427703398 1889139731"
+CHECKSUM: "902851981 1889139731"
 ANNOTATION: "SMC-D1-SINGLE-OUTSTANDING-DEMUX: each of these register blocks sits directly behind an axi_lite_demux with MaxTrans of one. The demux raises a port's AR valid only while its R FIFO is not full, pushes that FIFO at the AR handshake and pops it at the R handshake, and raises W valid only while its B FIFO, pushed at the W handshake and popped at B, is not full. The block answers R or B only after the accept that empties its AR or W holding register, so each AR and W arrives with the register empty and ready high: the valid-without-ready rows of AR and W cannot occur. The write-only UART map takes no reads, and its demux's W FIFO holds an AW's select until that AW's W is taken while its B FIFO holds each W back until the previous B, so when the next AW can first arrive the block holds the previous AW and W with no response in flight and accepts them that cycle, and an accept never meets a response ack. The zeroer's axi_to_axi_lite gates AW and AR on depth-one ID FIFOs, pushed at the handshake and popped at B or R, so its second AW or AR arrives only after the block answered the first. Behind two or more MaxTrans-1 stages in series, the filter, log-engine and UART blocks see the next AW only two cycles after W is taken, while a held read defers the write accept by one cycle at most. In front of cpu_ctrl and the zeroer, axi_to_axi_lite's burst splitter demux sizes its per-ID counters as idx_width(MaxTrans), one bit for a MaxTrans of two or less, so it admits one transaction at a time and passes the next AW, AR or W only after the previous response, when the block's holding registers are empty."
 ANNOTATION: "SMC-D2-W-FOLLOWS-AW: each of these register blocks is driven directly by an axi_lite_demux master port, which raises W valid only once the select its AW pushed is in the W FIFO and holds that AW valid until its handshake. The block keeps awready and wready equal except while it holds an AW without its W, so a W is never taken before its AW and the W holding register is never full with the AW register empty. cpu_ctrl and the zeroer take W only with its AW: the splitter demux routes W when that AW is handled, the ID FIFO in front of the block clears on the same B, and the block, empty by then, takes the AW in that cycle."
 MODULE: uart_16550_dl_reg
@@ -1988,7 +1387,7 @@ Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
-CHECKSUM: "3055559241 4290674178"
+CHECKSUM: "8204497 4290674178"
 ANNOTATION: "SMC-P12-BREAK-IMPLIES-FRAMING: uart_core forms break_err as the framing error of a frame whose data is all zeros and stores it in the same entry as that framing error, in the FIFO and in the holding register alike, so an entry carrying break_err always carries framing_err as well. The main register block's LSR.BI and LSR.FE latch those two bits on the same cycle and the same LSR read clears both, so LSR.BI is never set without LSR.FE either; the rows that need break_err or LSR.BI alone have no stimulus."
 ANNOTATION: "SMC-REGBLOCK-C4-STROBE-CARRIES-DIRECTION: PeakRDL folds the access direction into the decode strobe of a read-only or write-only register, and into the req it presents for an external one, so the strobe or req is never high in the other direction. A row that needs it high in that direction, in the block or in the logic that consumes the req, cannot occur. avsbus_controller ANDs its AVS_CMD and AVS_READBACK reqs with req_is_wr and its negation, which PeakRDL latches from pwrite in the setup phase, and its AXI-Lite bridge holds pwrite from setup through access, so those enables carry the pwrite of the transfer in flight. The test rewrites each strobe, req or enable as itself and its direction, and takes a row only when that makes it unsatisfiable."
 ANNOTATION: "SMC-D1-SINGLE-OUTSTANDING-DEMUX: each of these register blocks sits directly behind an axi_lite_demux with MaxTrans of one. The demux raises a port's AR valid only while its R FIFO is not full, pushes that FIFO at the AR handshake and pops it at the R handshake, and raises W valid only while its B FIFO, pushed at the W handshake and popped at B, is not full. The block answers R or B only after the accept that empties its AR or W holding register, so each AR and W arrives with the register empty and ready high: the valid-without-ready rows of AR and W cannot occur. The write-only UART map takes no reads, and its demux's W FIFO holds an AW's select until that AW's W is taken while its B FIFO holds each W back until the previous B, so when the next AW can first arrive the block holds the previous AW and W with no response in flight and accepts them that cycle, and an accept never meets a response ack. The zeroer's axi_to_axi_lite gates AW and AR on depth-one ID FIFOs, pushed at the handshake and popped at B or R, so its second AW or AR arrives only after the block answered the first. Behind two or more MaxTrans-1 stages in series, the filter, log-engine and UART blocks see the next AW only two cycles after W is taken, while a held read defers the write accept by one cycle at most. In front of cpu_ctrl and the zeroer, axi_to_axi_lite's burst splitter demux sizes its per-ID counters as idx_width(MaxTrans), one bit for a MaxTrans of two or less, so it admits one transaction at a time and passes the next AW, AR or W only after the previous response, when the block's holding registers are empty."
@@ -2001,7 +1400,7 @@ Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 161 "3763558957" "(((|field_storage.LSR.OE.value)) || ((|field_storage.LSR.PE.value)) || ((|field_storage.LSR.FE.value)) || ((|field_storage.LSR.BI.value))) 1 -1" (2 "0001")
 Condition 165 "3163379521" "(decoded_req & decoded_req_is_wr & ((~decoded_req_is_external))) 1 -1" (3 "110")
 
-CHECKSUM: "2964910200 3918030293"
+CHECKSUM: "1638888483 3918030293"
 ANNOTATION: "SMC-REGBLOCK-A3-NOREADCHANNEL: uart_16550.sv selects the write-only register map on the write channel only -- its read-channel select has no branch for that map -- and the AXI-Lite demux raises a port's AR valid only when that port is selected, so this block's arvalid is never asserted. Its arvalid register and ar_accept therefore stay low, every request it sees is a write, and its read acks never rise; a row or branch path that needs any of them high cannot occur. A row with ar_accept low and aw_accept high stays graded, as the write channel produces it."
 ANNOTATION: "SMC-D1-SINGLE-OUTSTANDING-DEMUX: each of these register blocks sits directly behind an axi_lite_demux with MaxTrans of one. The demux raises a port's AR valid only while its R FIFO is not full, pushes that FIFO at the AR handshake and pops it at the R handshake, and raises W valid only while its B FIFO, pushed at the W handshake and popped at B, is not full. The block answers R or B only after the accept that empties its AR or W holding register, so each AR and W arrives with the register empty and ready high: the valid-without-ready rows of AR and W cannot occur. The write-only UART map takes no reads, and its demux's W FIFO holds an AW's select until that AW's W is taken while its B FIFO holds each W back until the previous B, so when the next AW can first arrive the block holds the previous AW and W with no response in flight and accepts them that cycle, and an accept never meets a response ack. The zeroer's axi_to_axi_lite gates AW and AR on depth-one ID FIFOs, pushed at the handshake and popped at B or R, so its second AW or AR arrives only after the block answered the first. Behind two or more MaxTrans-1 stages in series, the filter, log-engine and UART blocks see the next AW only two cycles after W is taken, while a held read defers the write accept by one cycle at most. In front of cpu_ctrl and the zeroer, axi_to_axi_lite's burst splitter demux sizes its per-ID counters as idx_width(MaxTrans), one bit for a MaxTrans of two or less, so it admits one transaction at a time and passes the next AW, AR or W only after the previous response, when the block's holding registers are empty."
 ANNOTATION: "SMC-D2-W-FOLLOWS-AW: each of these register blocks is driven directly by an axi_lite_demux master port, which raises W valid only once the select its AW pushed is in the W FIFO and holds that AW valid until its handshake. The block keeps awready and wready equal except while it holds an AW without its W, so a W is never taken before its AW and the W holding register is never full with the AW register empty. cpu_ctrl and the zeroer take W only with its AW: the splitter demux routes W when that AW is handled, the ID FIFO in front of the block clears on the same B, and the block, empty by then, takes the AW in that cycle."
@@ -2018,12 +1417,8 @@ Condition 20 "3139053667" "(cpuif_req_masked & (cpuif_addr == 4'h8) & cpuif_req_
 CHECKSUM: "716831743 656965095"
 ANNOTATION: "SMC-P11-UART-SELF-CHECK: each UART holding register stores its data with the parity bit ~^data beside it, written together with the valid flag and cleared together with it, and each parity FIFO stores {~^data, data} and guards its pointers with a redundant count, so a valid stored entry always has odd parity and the check ~^{parity, data} reads one only on corrupted storage. The I2C core's four FIFOs are the same secure parity FIFO, so their err_o reads one only on corruption too. No access produces that, so the rows that need a self-check or FIFO error at one have no stimulus."
 ANNOTATION: "SMC-P12-BREAK-IMPLIES-FRAMING: uart_core forms break_err as the framing error of a frame whose data is all zeros and stores it in the same entry as that framing error, in the FIFO and in the holding register alike, so an entry carrying break_err always carries framing_err as well. The main register block's LSR.BI and LSR.FE latch those two bits on the same cycle and the same LSR read clears both, so LSR.BI is never set without LSR.FE either; the rows that need break_err or LSR.BI alone have no stimulus."
-ANNOTATION: "SMC-C5-SIGNAL-IDENTITY: the source defines one signal from another, so a row that needs them apart cannot occur. A pair is taken only where VCS cannot score it in a zero-time delta: either one process writes both sides, or the condition sits in a clocked process, which samples settled values. cla_arithmetic_compare derives compare_equal and below_compare_int in one always_comb from the same masked value, so they are never high together; efuse_shadow_reg_access_control raises write_locked_o in the same always_comb only on the arm that forwards no request, so the shadow registers never see a forwarded write with it high. In clocked processes, uart_core assigns tx_enable and rx_enable the same expression and forms thr_rready from a term that includes thr_rvalid, and system_timer_octs_core forms credit_gen_pulse with enable as one of its terms. The test rewrites the dependent signal in those terms and takes a row only when that makes it unsatisfiable."
 ANNOTATION: "SMC-B14-STROBE-FOLLOWS-ADDRESS: a property of this bench, not of the design alone. The UART's write-only map is selected only on an exact match of the write address with THR, so a THR write starts at the register's own address, and every master of this bench strobes the lane at its start address: the cocotb AXI masters write contiguous bytes from it, a CPU store is sized and aligned, and the iDMA and the zeroer build their first strobe from the address offset. A THR write with its data lane unstrobed never arrives, and no write arrives with no strobe at all, which the I2C FDATA and TXDATA pushes would need since their enables OR the whole strobe. A master that issues sparse or empty strobes retires the class."
 MODULE: uart_core
-Condition 1 "636464552" "(((!tx_enable)) && ((!rx_enable))) 1 -1" (1 "01")
-Condition 1 "636464552" "(((!tx_enable)) && ((!rx_enable))) 1 -1" (2 "10")
-Condition 3 "3867028423" "(thr_rready && thr_rvalid) 1 -1" (2 "10")
 Condition 5 "3926131334" "(rx_fifo_rdata.break_err || rx_fifo_rdata.framing_err || rx_fifo_rdata.parity_err) 1 -1" (4 "100")
 Condition 6 "1576871296" "(rbr_rdata.break_err || rbr_rdata.framing_err || rbr_rdata.parity_err) 1 -1" (4 "100")
 Condition 20 "2137222570" "(thr_rvalid && ((~^{thr_parity, thr_rdata}))) 1 -1" (3 "11")
@@ -2033,7 +1428,7 @@ Condition 30 "3531289681" "(tx_fifo_thr_err || rx_fifo_rbr_err) 1 -1" (3 "10")
 Condition 49 "3934623659" "(fifo_thr_rbr_err || fifo_error_intr_test) 1 -1" (3 "10")
 Condition 53 "1284311563" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr && ((|reg_out_i.main_wo.THR.wr_biten[7:0]))) 1 -1" (3 "110")
 
-CHECKSUM: "225643378 1423410759"
+CHECKSUM: "2439670790 1423410759"
 ANNOTATION: "SMC-D1-SINGLE-OUTSTANDING-DEMUX: each of these register blocks sits directly behind an axi_lite_demux with MaxTrans of one. The demux raises a port's AR valid only while its R FIFO is not full, pushes that FIFO at the AR handshake and pops it at the R handshake, and raises W valid only while its B FIFO, pushed at the W handshake and popped at B, is not full. The block answers R or B only after the accept that empties its AR or W holding register, so each AR and W arrives with the register empty and ready high: the valid-without-ready rows of AR and W cannot occur. The write-only UART map takes no reads, and its demux's W FIFO holds an AW's select until that AW's W is taken while its B FIFO holds each W back until the previous B, so when the next AW can first arrive the block holds the previous AW and W with no response in flight and accepts them that cycle, and an accept never meets a response ack. The zeroer's axi_to_axi_lite gates AW and AR on depth-one ID FIFOs, pushed at the handshake and popped at B or R, so its second AW or AR arrives only after the block answered the first. Behind two or more MaxTrans-1 stages in series, the filter, log-engine and UART blocks see the next AW only two cycles after W is taken, while a held read defers the write accept by one cycle at most. In front of cpu_ctrl and the zeroer, axi_to_axi_lite's burst splitter demux sizes its per-ID counters as idx_width(MaxTrans), one bit for a MaxTrans of two or less, so it admits one transaction at a time and passes the next AW, AR or W only after the previous response, when the block's holding registers are empty."
 ANNOTATION: "SMC-D2-W-FOLLOWS-AW: each of these register blocks is driven directly by an axi_lite_demux master port, which raises W valid only once the select its AW pushed is in the W FIFO and holds that AW valid until its handshake. The block keeps awready and wready equal except while it holds an AW without its W, so a W is never taken before its AW and the W holding register is never full with the AW register empty. cpu_ctrl and the zeroer take W only with its AW: the splitter demux routes W when that AW is handled, the ID FIFO in front of the block clears on the same B, and the block, empty by then, takes the AW in that cycle."
 MODULE: uart_log_engine_ctrl_reg
@@ -2050,7 +1445,7 @@ Condition 28 "1510768139" "(incoming_packet | retry_data_packet_tx | retry_ts_pa
 Condition 28 "1510768139" "(incoming_packet | retry_data_packet_tx | retry_ts_packet_tx) 1 -1" (3 "010")
 Condition 28 "1510768139" "(incoming_packet | retry_data_packet_tx | retry_ts_packet_tx) 1 -1" (4 "100")
 
-CHECKSUM: "1361930843 1317082537"
+CHECKSUM: "1059230947 1317082537"
 ANNOTATION: "SMC-D1-SINGLE-OUTSTANDING-DEMUX: each of these register blocks sits directly behind an axi_lite_demux with MaxTrans of one. The demux raises a port's AR valid only while its R FIFO is not full, pushes that FIFO at the AR handshake and pops it at the R handshake, and raises W valid only while its B FIFO, pushed at the W handshake and popped at B, is not full. The block answers R or B only after the accept that empties its AR or W holding register, so each AR and W arrives with the register empty and ready high: the valid-without-ready rows of AR and W cannot occur. The write-only UART map takes no reads, and its demux's W FIFO holds an AW's select until that AW's W is taken while its B FIFO holds each W back until the previous B, so when the next AW can first arrive the block holds the previous AW and W with no response in flight and accepts them that cycle, and an accept never meets a response ack. The zeroer's axi_to_axi_lite gates AW and AR on depth-one ID FIFOs, pushed at the handshake and popped at B or R, so its second AW or AR arrives only after the block answered the first. Behind two or more MaxTrans-1 stages in series, the filter, log-engine and UART blocks see the next AW only two cycles after W is taken, while a held read defers the write accept by one cycle at most. In front of cpu_ctrl and the zeroer, axi_to_axi_lite's burst splitter demux sizes its per-ID counters as idx_width(MaxTrans), one bit for a MaxTrans of two or less, so it admits one transaction at a time and passes the next AW, AR or W only after the previous response, when the block's holding registers are empty."
 ANNOTATION: "SMC-D2-W-FOLLOWS-AW: each of these register blocks is driven directly by an axi_lite_demux master port, which raises W valid only once the select its AW pushed is in the W FIFO and holds that AW valid until its handshake. The block keeps awready and wready equal except while it holds an AW without its W, so a W is never taken before its AW and the W holding register is never full with the AW register empty. cpu_ctrl and the zeroer take W only with its AW: the splitter demux routes W when that AW is handled, the ID FIFO in front of the block clears on the same B, and the block, empty by then, takes the AW in that cycle."
 MODULE: zeroer_ctrl_reg

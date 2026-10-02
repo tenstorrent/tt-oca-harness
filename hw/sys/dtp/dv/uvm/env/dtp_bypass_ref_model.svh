@@ -2,16 +2,16 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // bypass reference model: every DR scan of at most 64 bits while a
-// bypass-class instruction is active returns TDI delayed by one TCK
-// (the one-bit bypass register, both IEEE encodings and every undefined
-// opcode), INV_BYPASS the inverted delayed image behind a captured 1, and
+// bypass-class instruction is active and the PTAP 3DCR select is clear
+// returns TDI delayed by one TCK (the one-bit bypass register, both IEEE
+// encodings and every opcode with no register of its own), INV_BYPASS the
+// inverted delayed image behind a captured 1, and
 // ZERO_LENGTH_BYPASS TDI itself. Consumes the reconstructed scan stream
 // (write) and the per-TCK event stream (event_export) through a
 // dtp_jtag_ir_model, re-baselines on power-on reset through dtp_tb_if, and
 // publishes one dtp_expected_item per scan item so the scoreboard pairs
 // the two streams in lockstep; scans outside the contract carry none. No
-// comparison, no reporting. The cocotb twin of the prediction is
-// env/dtp_jtag_bypass_model.py.
+// comparison, no reporting. The cocotb twin is env/dtp_bypass_ref_model.py.
 
 `uvm_analysis_imp_decl(_dtp_bypass_event)
 
@@ -41,7 +41,10 @@ class dtp_bypass_ref_model extends ocah_ref_model #(ocah_jtag_scan_item, dtp_exp
     exp.timestamp = t.end_time;
     exp.compare   = 1'b0;
     if (t.is_ir) m_model.on_ir_scan(t);
-    else predict_dr_scan(t, exp);
+    else begin
+      m_model.on_dr_scan(t);
+      predict_dr_scan(t, exp);
+    end
     expected_ap.write(exp);
   endfunction
 
@@ -53,7 +56,8 @@ class dtp_bypass_ref_model extends ocah_ref_model #(ocah_jtag_scan_item, dtp_exp
   protected function void predict_dr_scan(ocah_jtag_scan_item t, dtp_expected_item exp);
     bit [DtpIrWidth-1:0] ir = m_model.ir();
     bit [63:0]           expected;
-    if (!m_model.ir_known() || t.bit_count == 0 || t.bit_count > 64) return;
+    if (!m_model.ir_known() || !m_model.ptap_select_clear() || t.bit_count == 0 || t.bit_count > 64)
+      return;
     if (is_bypass_instruction(ir))
       expected = ocah_jtag_checker::predict_bypass_tdo(t.tdi_value(), t.bit_count);
     else if (ir == INV_BYPASS_INSTR) expected = inverted_bypass_tdo(t.tdi_value(), t.bit_count);
@@ -65,12 +69,15 @@ class dtp_bypass_ref_model extends ocah_ref_model #(ocah_jtag_scan_item, dtp_exp
     exp.context_s = $sformatf("ir=0x%02h bits=%0d", ir, t.bit_count);
   endfunction
 
-  // The one-bit bypass register: both IEEE encodings and every undefined
-  // opcode (dtp_jtag_instr_e UNDEFINED_BYPASS_*).
+  // The one-bit bypass register: both IEEE encodings and every opcode with
+  // no register of its own (dtp_jtag_instr_e UNDEFINED_BYPASS_* and
+  // RISCV_RESERVED_*).
   protected function bit is_bypass_instruction(bit [DtpIrWidth-1:0] ir);
     return (ir == BYPASS_ALT_INSTR) ||
                (ir == BYPASS_INSTR) ||
                (ir == UNDEFINED_BYPASS_0F_INSTR) ||
+               (ir >= RISCV_RESERVED_0_INSTR &&
+                ir <= RISCV_RESERVED_7_INSTR) ||
                (ir >= UNDEFINED_BYPASS_2D_INSTR &&
                 ir <= UNDEFINED_BYPASS_3C_INSTR);
   endfunction
