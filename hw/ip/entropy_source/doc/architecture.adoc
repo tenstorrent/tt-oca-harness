@@ -134,6 +134,8 @@ The conditioned entropy stream is stored in a 64-entry FIFO (`entropy_fifo`). Ea
 
 The `entropy_stream_data_o` and `entropy_stream_vld_o` top-level ports carry each word as it is written into the FIFO, not the FIFO read data, and there is no backpressure. In SEP they connect to the DRBG seed path, which distributes the generated random data to the entropy consumers.
 
+Because the FIFO holds the same words that seed the DRBG, `FIFO_CTRL.ENABLE` is covered by `FIPS_LOCK`. The field gates only the FIFO write, so the DRBG seed stream continues whatever its value. It resets to one, keeping the `FIFO_RDATA` read path live out of reset. To close that path on a locked part, software clears `FIFO_CTRL.ENABLE`, reads `FIFO_RDATA` until `FIFO_STATUS.LEVEL` is zero, and then sets `FIPS_LOCK.LOCK`. Reads remain available while writes are disabled, so words already in the FIFO stay readable until they are drained.
+
 == Reset
 
 The entropy source `rst_ni` input resets its register block, health-test/FSM

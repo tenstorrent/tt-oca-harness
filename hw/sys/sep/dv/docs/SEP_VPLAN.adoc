@@ -405,7 +405,7 @@ never when it was written.
 |`sep_esrc_fips_lock_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, entropy golden
-|The FIPS lock makes ESRC configuration write-once: a pre-lock write moves the field off reset, the same field rejects a poke after `LOCK=1`, write-0 cannot clear the lock, and `rst_ni` is the only way back, with the BIW observe enable still writable under the lock. The advisory RCT/APT cutoffs derived from `MIN_ENTROPY_H` are graded against an SP 800-90B oracle. Scope: health-test *quality* is not claimed.
+|The FIPS lock makes ESRC configuration write-once: a pre-lock write moves the field off reset, the same field rejects a poke after `LOCK=1`, write-0 cannot clear the lock, and `rst_ni` is the only way back. The lock also freezes the debug-pin mux and both observe-tap enables: one tap held at 1 rejects a clear, the other held at 0 rejects a set, while `NOISE_OBS_CTRL.LANE_SEL` stays writable. `FIFO_CTRL.ENABLE`, cleared before the lock, rejects a set under it, so software cannot re-open the `FIFO_RDATA` read path of the DRBG seed words. The advisory RCT/APT cutoffs derived from `MIN_ENTROPY_H` are graded against an SP 800-90B oracle. Scope: health-test *quality* is not claimed.
 |`sep_esrc_alert_delivery_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, entropy golden
@@ -444,11 +444,7 @@ never when it was written.
 |`sep_fabric_deadspace_decode_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|Negative control on intra-block dead space. Each block owns an address window and populates only part of it; an access past the allocated size owns no register and must be refused. Window ends come from `hw/sys/sep/doc/memory_map.adoc`, which states the rule: the fabric refuses an address past the extent a unit allocates, and such an access never reaches a unit. Landing on a live register instead is a hard failure. A later beat of a burst that ends past the window's extent must be refused on the same terms as a single beat. The TRNG window, forwarded whole to an adopter endpoint and terminated in the reference integration, must refuse every access and alias no neighbouring ESRC register; its response code is logged for the document owner, not graded.
-|`sep_fabric_burst_wrap_test`
-|no_cpu, +skip_fuse_sense
-|ocah_axi_vip
-|A write burst that starts on the last live word of `sep_reset_ctrl`, `wdt_timer` or `secure_dma` and runs past the extent must leave every live register of that block unchanged (`hw/sys/sep/doc/memory_map.adoc`: an access past the extent never reaches a unit). Red on the current RTL; see <<known-limitations>>.
+|Negative control on intra-block dead space. Each block owns an address window and populates only part of it; an access past the allocated size owns no register and must be refused. Window ends come from `hw/sys/sep/doc/memory_map.adoc`, which states the rule: the fabric refuses an address past the extent a unit allocates, and such an access never reaches a unit. Landing on a live register instead is a hard failure. Bursts are graded in the crypto region only: `hw/sys/sep/doc/crypto.adoc` ("Single-Beat Access Only") answers every beat of a burst there DECERR, and no beat reaches an accelerator. A burst into any other register region is outside the specification (`hw/sys/sep/doc/memory_map.adoc`, "Single-Beat Register Access") and is not graded. The TRNG window, forwarded whole to an adopter endpoint and terminated in the reference integration, must refuse every access and alias no neighbouring ESRC register; its response code is logged for the document owner, not graded.
 |`sep_fabric_local_alias_datapath_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -919,7 +915,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_unmapped_access_policy_test` — system-CSR holes, the system-bus reserved row, the mailbox page's upper half, past each eFuse sibling and the SPI host: the response code and read data the SEP memory map states, and never an alias. Every remap / filter slot tail, the last one included, reads zero with OKAY inside the RDL allocation (base + `TOTAL_SIZE`).
 
 |Dead-space decode
-|`sep_fabric_deadspace_decode_test` — single-beat refuse, no-alias, and per-beat refusal inside a burst. `CHK-DEADSPACE-BEAT` reads each beat's `RRESP` off the bus and fails any beat past an extent that answers OKAY. It also requires at least one window that serves its in-extent beats and refuses only the tail, which is what shows the refusal is per beat rather than per burst. The counts a given run reaches are reported, not graded. Read bursts only — one `BRESP` covers a write burst, so per-beat write refusal is not observable at the protocol level; see <<known-limitations>>. The write side is graded by what the burst leaves behind in `sep_fabric_burst_wrap_test`.
+|`sep_fabric_deadspace_decode_test` — single-beat refuse and no-alias in every block window, and the crypto-region burst rule. `CHK-DEADSPACE-BEAT` reads each beat's `RRESP` off the bus and requires DECERR on every beat of a read burst into the crypto region. `CHK-DEADSPACE-BURST` requires the write burst there to answer DECERR and move no register, and no read beat to return a live value. Bursts into other register regions are outside the specification and are not graded; see <<known-limitations>>.
 
 |Adams Bridge ML-DSA-87 keyGen
 |`sep_abr_mldsa_keygen_kat_test`. The key-vault seed path is not claimed. ML-KEM is a separate vehicle, `sep_abr_mlkem_kat_test`.
@@ -6449,7 +6445,7 @@ reported as such rather than counted as a pass.
 
 *Randomization*: RANDCFG — the twelve directed wrap offsets, four directed ABR probes and six directed TRNG-window probes on every seed, plus two seed-selected dead offsets per block window.
 
-*Objective*: Negative control on intra-block dead space. Each block owns an address window and populates only part of it; an access past the allocated size owns no register and must be refused. Window ends come from `hw/sys/sep/doc/memory_map.adoc`, which states the rule: the fabric refuses an address past the extent a unit allocates, and such an access never reaches a unit. Landing on a live register instead is a hard failure. A later beat of a burst that ends past the window's extent must be refused on the same terms as a single beat. The TRNG window, forwarded whole to an adopter endpoint and terminated in the reference integration, must refuse every access and alias no neighbouring ESRC register; its response code is logged for the document owner, not graded.
+*Objective*: Negative control on intra-block dead space. Each block owns an address window and populates only part of it; an access past the allocated size owns no register and must be refused. Window ends come from `hw/sys/sep/doc/memory_map.adoc`, which states the rule: the fabric refuses an address past the extent a unit allocates, and such an access never reaches a unit. Landing on a live register instead is a hard failure. Bursts are graded in the crypto region only: `hw/sys/sep/doc/crypto.adoc` ("Single-Beat Access Only") answers every beat of a burst there DECERR, and no beat reaches an accelerator. A burst into any other register region is outside the specification (`hw/sys/sep/doc/memory_map.adoc`, "Single-Beat Register Access") and is not graded. The TRNG window, forwarded whole to an adopter endpoint and terminated in the reference integration, must refuse every access and alias no neighbouring ESRC register; its response code is logged for the document owner, not graded.
 
 *Test Coverage*: Dead-space accesses are refused and do not alias live register data or state.
 
@@ -6460,7 +6456,7 @@ reported as such rather than counted as a pass.
 . An access past the allocated size owns no register and must be refused.
 . Window ends come from `hw/sys/sep/doc/memory_map.adoc`, which states the rule: the fabric refuses an address past the extent a unit allocates, and such an access never reaches a unit.
 . A refusal that still writes the register is a failure, so every probe reads back the window's live registers as well as the response.
-. A later beat of a burst that ends past the extent is held to the same rule as a single beat.
+. In each crypto-region window (OTBN through ABR in the generated memory map: aes, otbn, abr, csrng, edn, entropy_src, km_mailbox, lifecycle and trng), issue a four-beat INCR read burst and, where the window takes writes, a four-beat INCR write burst. The burst starts two words before the extent where a legal burst can cross it, and at the window base otherwise. secure_dma, wdt_timer and spi_controller lie outside the crypto region and get no burst.
 . The ABR window is probed every seed at the first word past the register map (read and write), at `error_intr_en_r` with offset bit 14 set, and at the last word of the window.
 . The TRNG window (`TRNG_REG_MAP_BASE_ADDR` up to the lifecycle base) allocates no SEP register. Its first, middle and last word are read and written every seed, plus two seeded offsets. The no-alias snapshot for this window is the neighbouring ESRC register set, which an access that drops address bit 12 reaches.
 
@@ -6478,62 +6474,14 @@ reported as such rather than counted as a pass.
 |CHK-DEADSPACE-NO-ALIAS
 |No allocated register in that window changes across a probe, the directed wrap anchors included, and a read of a dead offset never returns a live register's value. The alias compare is not gated on the response: `memory_map.adoc` says an access past a unit's extent never reaches a unit, so a refused read that still hands back live data has reached it. Inside the extent the same passage grounds non-aliasing in exact-match register decode rather than in refusal, so an accepted read that returns a live value is the failure there. A single aliased probe fails the checker.
 |CHK-DEADSPACE-BURST
-|A burst that ends past the window's allocated extent and answers OKAY, where the same address is refused as a single beat, fails. A beat inside the extent is also compared against the value the single-beat path reads. A beat past the extent is held to the single-beat no-alias rule: its data must not equal a value in the window snapshot, whatever its response code, and every audited window must have its past-extent beat data compared. A burst that times out fails the audit rather than passing. A window whose dead space is 4KB-aligned, or that has no live words before it, carries no legal burst into it: it is named as not auditable rather than counted as a pass, and a run where no window was auditable fails.
+|In every crypto-region window, no beat of the read burst returns the value of a register in the window snapshot, the write burst answers DECERR, and no armed register moves. A burst that times out fails. At least one window must answer a single beat at a burst address OKAY, so the refusal is the burst rule and not a dead address.
 |CHK-DEADSPACE-BEAT
-|Each beat of the burst carries its own `RRESP`, kept in order by the bus monitor, so the refusal can be attributed to a beat rather than to the burst. No beat past a block extent may answer OKAY. The rule is asserted in that direction only: refusing the whole burst is legal AXI and stricter than the specification, so a window that refuses every beat is recorded, not failed. A second assertion requires at least one window that serves its in-extent beats and refuses only the tail — without one, the checker shows that nothing past an extent is served but not that the fabric can tell the beats apart. A captured vector whose length does not match the beats issued is treated as no evidence, since unrelated traffic on the bus would lengthen it. Read bursts only; see <<known-limitations>> for why writes cannot be.
+|In every crypto-region window, the bus monitor's per-beat `RRESP` vector for the read burst is DECERR on every beat, inside the extent as well as past it. A missing vector, or one whose length does not match the beats issued, fails, since unrelated traffic on the bus would lengthen it. A write burst has one `BRESP`, so it is graded under CHK-DEADSPACE-BURST.
 |CHK-TRNG-UNOWNED
-|Every TRNG-window probe is refused (never OKAY, no timeout), a refused read returns no neighbouring ESRC register value, and no ESRC register moves; at least one read and one write are refused. The reference integration connects no external TRNG, so no offset owns a register: `hw/sys/sep/doc/memory_map.adoc` requires SLVERR for an offset that owns no register, and `doc/integrator/src/smu.adoc` requires a DECERR slave when no external TRNG is connected. Both require a refusal, which is what is asserted. They name different flavours, so the read and write response codes are logged as `TRNG-UNOWNED-RESP` lines and in the PASS line for the document owner and are not graded. The window has no burst leg: its dead span starts on a 4 KB boundary.
+|Every TRNG-window probe is refused (never OKAY, no timeout), a refused read returns no neighbouring ESRC register value, and no ESRC register moves; at least one read and one write are refused. The reference integration connects no external TRNG, so no offset owns a register: `hw/sys/sep/doc/memory_map.adoc` requires SLVERR for an offset that owns no register, and `doc/integrator/src/smu.adoc` requires a DECERR slave when no external TRNG is connected. Both require a refusal, which is what is asserted. They name different flavours, so the read and write response codes are logged as `TRNG-UNOWNED-RESP` lines and in the PASS line for the document owner and are not graded. The window lies in the crypto region, so its burst leg, issued at the window base, is graded under CHK-DEADSPACE-BEAT and CHK-DEADSPACE-BURST.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
-
-'''''
-
-[[sep_fabric_burst_wrap_test]]
-===== `sep_fabric_burst_wrap_test`
-
-*Phase*: 2
-
-*Bucket*: Fabric and remap
-
-*Run mode*: `no_cpu`, `+skip_fuse_sense`
-
-*Source Module*: `sep_fabric_burst_wrap_test`
-
-*BFM / Model*: ocah_axi_vip
-
-*Tracking*: #2493
-
-*Randomization*: RAND-NONE — one directed write burst per block.
-
-*Objective*: `hw/sys/sep/doc/memory_map.adoc` says the fabric refuses an address past the extent a unit allocates, and such an access never reaches a unit. The crossbar routes a burst on its first address, so a write burst that starts on a block's last live word carries its later beats past the extent into the same block. Those beats must not reach the unit, so no live register may change.
-
-*Test Coverage*: `sep_reset_ctrl` (extent 8 B), `wdt_timer` (56 B) and `secure_dma` (336 B), extents from the generated SystemRDL export.
-
-*Test Procedure*:
-
-[arabic]
-. Snapshot every watched register of the block, the way `sep_fabric_deadspace_decode_test` does.
-. Write the toggled value to the target register with a single beat, read it back, and restore it.
-. Issue one INCR write burst from the last live word to `base + span + offset(target)`, where `span` is the smallest power of two above the allocated size. Beats inside the extent write back what they read, beats past it carry zero, and the final beat carries the toggled target value. Targets: `SW_RESET_N` (AES reset bit), `WKUP_THOLD_HI`, `SRC_ADDR_LO`.
-. Read every watched register back and compare it with the snapshot. Restore on a change.
-
-*Checkers*:
-
-[cols="2,5",options="header"]
-|===
-|Checker |Contract
-|CHK-WRAP-CONTROL
-|The target register stores a single-beat write of the toggled value and returns to its original value, so the no-change compare can fail on it.
-|CHK-WRAP-STIM
-|The AW handshake on the testbench port is one INCR burst with the anchor's start address, AxLEN and AxSIZE, so the burst was not split into bursts that stay inside the extent.
-|CHK-WRAP-NO-ALIAS
-|After the burst every watched register of the block reads its snapshot value. A change is a burst beat past the extent that reached the unit, and fails whatever the response. The BRESP is logged, not graded: one BRESP covers the burst, and this checker grades what the burst reached, not the code. In all three blocks the burst changes the target register, so this checker fails.
-|===
-
-*Pass Criteria*: Every named checker PASSes. `UVM_ERROR` is 0.
-
-*Current status*: red on the current RTL. `CHK-WRAP-NO-ALIAS` fails, and every other named checker PASSes. See <<known-limitations>>.
 
 '''''
 
@@ -6680,9 +6628,9 @@ The `UNMAPPED-CODE` lines tally the codes `CHK-UNMAPPED-CODE` graded, per group 
 
 *BFM / Model*: ocah_axi_vip, entropy golden
 
-*Randomization*: RANDCFG — every certified-configuration class every seed; pre-lock value and rejected poke come from the run seed, and each field's poke is selected to differ from that field's pre-lock value.
+*Randomization*: RANDCFG — every certified-configuration class every seed; pre-lock value and rejected poke come from the run seed, and each field's poke is selected to differ from that field's pre-lock value. The seed also picks which observe tap is held at 1 and which at 0 across the lock, and the `NOISE_OBS_CTRL.LANE_SEL` values before and under the lock.
 
-*Objective*: The FIPS lock makes ESRC configuration write-once: a pre-lock write moves the field off reset, the same field rejects a poke after `LOCK=1`, write-0 cannot clear the lock, and `rst_ni` is the only way back, with the BIW observe enable still writable under the lock. The advisory RCT/APT cutoffs derived from `MIN_ENTROPY_H` are graded against an SP 800-90B oracle. Scope: health-test *quality* is not claimed.
+*Objective*: The FIPS lock makes ESRC configuration write-once: a pre-lock write moves the field off reset, the same field rejects a poke after `LOCK=1`, write-0 cannot clear the lock, and `rst_ni` is the only way back. The lock also freezes the debug-pin mux (`DEBUG_CTRL`) and both observe-tap enables (`BIW_OBS_CTRL.RAW_ENABLE`, `NOISE_OBS_CTRL.RAW_ENABLE`), so a locked part cannot capture or route pre-conditioning entropy. Each conditioned word goes to the DRBG and into the main FIFO in parallel, so `FIFO_CTRL.ENABLE` gates the software copy of the DRBG seed words: the walk clears it before the lock, as a certified configuration does, and the lock must hold it at 0. The advisory RCT/APT cutoffs derived from `MIN_ENTROPY_H` are graded against an SP 800-90B oracle. Scope: health-test *quality* is not claimed.
 
 *Test Coverage*: FIPS lock and the matching entropy-source status.
 
@@ -6692,7 +6640,7 @@ The `UNMAPPED-CODE` lines tally the codes `CHK-UNMAPPED-CODE` graded, per group 
 . One of two vehicles on the ESRC lock-and-alert scorecard row.
 . Health-test *quality* is not claimed.
 . `FIPS_LOCK.LOCK` is write-1-only.
-. Observe FIFOs stay writable under lock.
+. The observe-tap enables and the debug-pin mux are locked; `NOISE_OBS_CTRL.LANE_SEL` is not.
 . Walks every field `entropy_source.rdl` marks `swwel` -- the
 certified-configuration inventory `FIPS_LOCK` freezes -- one target per
 register, except `CTRL.MODULE_ENABLE`. The sequence declares its coverage and
@@ -6723,20 +6671,32 @@ leaves `FIPS_LOCK.LOCK=1`.
 |After `rst_ni` the released target reads its register reset, then takes the
 poke that the lock rejected. The target is chosen so its poke differs from the
 reset, otherwise the reset value alone would satisfy the readback.
-|CHK-OBS-ENABLE-WRITABLE
-|`BIW_OBS_CTRL.RAW_ENABLE` stays writable under lock. This is the control bit
-only. `BIW_OBS_STATUS` and `BIW_OBS_RDATA` are not read, so the observe FIFO
-itself is not claimed live.
+|CHK-OBS-PRE-LOCK
+|Before the lock, `BIW_OBS_CTRL.RAW_ENABLE` and `NOISE_OBS_CTRL.RAW_ENABLE`
+each take both values on readback, so a bit stuck at either value fails here.
+|CHK-OBS-ENABLE-LOCKED
+|Under the lock each tap enable rejects a write of the opposite value. One tap
+is held at 1 and rejects a clear, the other is held at 0 and rejects a set,
+picked by the seed, so every seed grades both directions on both taps over
+the reseeds.
+|CHK-OBS-LANE-SEL
+|The same `NOISE_OBS_CTRL` write under the lock moves `LANE_SEL`, which is not
+locked. The lane moving while `RAW_ENABLE` holds shows the write reached the
+register and the lock is per field.
+|CHK-OBS-POST-UNLOCK
+|After `rst_ni` the tap that held 0 reads 0 and takes the set the lock rejected.
 |CHK-REC-THRESH
 |`RECOMMENDED_THRESHOLDS.RCT_LIMIT` tracks `MIN_ENTROPY_H` across a sweep of
 eight Q4.4 points, compared against SP 800-90B 4.4.1 `C = 1 + ceil(20/H)`
 re-derived in the test. The oracle is the standard, not
 `entropy_source_rec_thresh_lut.sv`, which the checker never reads. `APT_LIMIT` is
 an exact binomial cutoff with no closed form; what is claimed for it is that it
-stays inside the 1024-sample window and falls as the assessed min-entropy rises.
+stays inside the 1024-sample window, never rises between sweep points, and is
+lower at the Q4.4 maximum than at `MIN_ENTROPY_H=0x00`.
 |CHK-RANDCFG
-|26 locked registers walked in one invocation, covering 34 of the 35 fields
-`entropy_source.rdl` marks `swwel`. Every register that locks two
+|27 locked registers walked in one invocation, covering 37 of the 40 fields
+`entropy_source.rdl` marks `swwel`. The two observe-tap enables are graded by
+the `CHK-OBS-*` checkers. Every register that locks two
 fields moves both off reset in the pre-lock write, so a field inside the compare
 mask is never left unwritten.
 |===
@@ -6745,7 +6705,9 @@ mask is never left unwritten.
 
 *Not claimed*: `CTRL.MODULE_ENABLE`. It is locked too, but clearing it stops the
 block for the rest of the walk, so its lock belongs to the reset-recovery
-vehicle.
+vehicle. The observe FIFOs' data path under the lock: `BIW_OBS_STATUS`,
+`NOISE_OBS_STATUS` and the `*_OBS_RDATA` ports are not read, so a locked-off
+tap and a locked-off main FIFO are graded at the control bit only.
 
 '''''
 
@@ -6859,6 +6821,8 @@ error path works.
 *Source Module*: `sep_sec_dis_override_test`
 
 *BFM / Model*: ocah_axi_vip
+
+*Tracking*: #2520
 
 *Randomization*: RAND-NONE — directed match / mismatch / restore.
 
@@ -8281,7 +8245,7 @@ constraint is not an open defect.
 |`sep_km_mailbox_protocol_rand_test` holds the Key Manager in software reset so fill, overflow and underflow are deterministic. Only the KM CPU pushes into the outbound FIFO, so that FIFO is empty when `CTRL.FLUSH` runs, and CHK-FLUSH proves the inbound flush only. A flush of a non-empty outbound FIFO needs the KM running and is not claimed.
 
 |Dead-space per-beat refusal on writes (AXI)
-|Read bursts are proven per beat: the bus monitor keeps each beat's `RRESP` in order, so `CHK-DEADSPACE-BEAT` can name the beat that answered. Write bursts cannot be, and no tooling will change it — AXI returns one `BRESP` for a whole write burst, so a write burst that refused only its tail is indistinguishable from one that refused every beat. The write contract stays at burst granularity: the burst is refused and no live register moves. Where the refusing block's own decode is observed, the refusal is named per word: `sep_km_mailbox_protocol_rand_test` CHK-CTRL-EP shows the KM mailbox register block refuses the upper word of a 64-bit beat at `SEP_CTRL`, at the first offset past its window.
+|Read bursts are proven per beat: the bus monitor keeps each beat's `RRESP` in order, so `CHK-DEADSPACE-BEAT` can name the beat that answered. Write bursts cannot be, and no tooling will change it — AXI returns one `BRESP` for a whole write burst, so a write burst that refused only its tail is indistinguishable from one that refused every beat. In the crypto region the write contract is the burst rule: the burst answers DECERR and no register moves (`CHK-DEADSPACE-BURST`). Where the refusing block's own decode is observed, the refusal is named per word: `sep_km_mailbox_protocol_rand_test` CHK-CTRL-EP shows the KM mailbox register block refuses the upper word of a 64-bit beat at `SEP_CTRL`, at the first offset past its window.
 
 |Inbound global-to-local remap consume (outside this DUT)
 |`fabric.adoc` names `SEP_GLOBAL_BASE_ADDR` and `SEP_REGION_SIZE` as the global SEP aperture "used by the SMU crossbar and by SEP inbound global-to-local remap", which reads as a datapath this suite could drive. It is not one here. Bare SEP exports both CSR values on output ports (`sep_global_base_addr_o`, `sep_region_size_o` in `hw/sys/sep/rtl/sep.sv`) and nothing inside the DUT consumes them to translate an address; the remapper is in the SMU integration logic above this level. Measured rather than assumed: with the reset aperture programmed, an external read at the aperture-relative address of a scratch CSR returns DECERR while the same register answers at its own address, so the external master presents SEP-local addresses and no in-DUT remap stands between them. The CSR read/write path is graded by `sep_fabric_remap_filter_csr_bank_test`; the consume belongs to whoever integrates SEP, and a leaf here could only re-prove the register. The sixteen programmable `axi_alias_remap` regions are a different mechanism and are graded by `sep_fabric_local_alias_datapath_test`.
@@ -8289,11 +8253,11 @@ constraint is not an open defect.
 |Entropy pool pointer fault, PIC source 39 (hardware not built)
 |`sep_internal_interrupts[38]` is reserved for the entropy pool FIFO's pointer-integrity error. The check is not built in this configuration, so the source is tied to zero, can never assert, and no vehicle grades it. `interrupts.adoc` documents the same. A built check is level-sensitive with no write-one-to-clear, so firmware must mask the source or scrub the pool rather than acknowledge it.
 
-|Write burst past a block extent (hardware)
-|`sep_fabric_burst_wrap_test` is red. A write burst that starts on the last live word of `sep_reset_ctrl`, `wdt_timer` or `secure_dma` is routed on its first address, and a later beat past the extent lands on a live register: `SW_RESET_N` answers OKAY and changes; `WKUP_THOLD_HI` and `SRC_ADDR_LO` answer SLVERR and still change. `hw/sys/sep/doc/memory_map.adoc` says an access past the extent never reaches a unit. Do not XFAIL.
+|Single-beat register access (firmware and integrator constraint)
+|`hw/sys/sep/doc/memory_map.adoc` ("Single-Beat Register Access") limits register regions to single-beat transactions. The later beats of a burst to a register region may be answered with errors or alias onto other registers; only the crypto region refuses bursts in hardware. The SEP CPU and the secure DMA issue single beats only, so the system interface is the one initiator that can burst into a register region: through an inbound filter entry with `allow_burst` set, or while `SEP_DBG` bypasses the inbound filter. Firmware must not set `allow_burst` on an entry that covers a register region, and system masters must use single beats. No checker grades a burst into a non-crypto register region; `sep_fabric_deadspace_decode_test` grades the crypto-region refusal.
 
-|Dead-space refusal flavour (specification)
-|`memory_map.adoc` says the fabric refuses an address past the extent a unit allocates, and names no response flavour for it. `spi_controller` refuses a dead-space write with SLVERR. The access is refused either way, which is the contract `sep_fabric_deadspace_decode_test` asserts, so the flavour is reported as `DEADSPACE-FLAVOUR` for the design owner and is not failed. Which error responses are permitted is the open question.
+|Dead-space refusal flavour (reported, not graded)
+|`memory_map.adoc` says the fabric refuses an address past the extent a unit allocates. `hw/sys/sep/regs/sep.rdl` publishes each unit's past-extent response, and the generated SEP memory map renders it in its Past Extent column. `sep_fabric_deadspace_decode_test` asserts the refusal, not the code: a refusal with any code other than DECERR is reported as `DEADSPACE-FLAVOUR` and is not failed. On the current RTL every dead-space refusal the test walks answers DECERR.
 
 |TRNG unowned-offset response flavour (specification)
 |`hw/sys/sep/doc/memory_map.adoc` requires SLVERR for a TRNG-window offset that owns no register. `doc/integrator/src/smu.adoc` requires a DECERR slave when no external TRNG is connected. The reference integration terminates `ext_trng_axil` with an error slave. `sep_fabric_deadspace_decode_test` `CHK-TRNG-UNOWNED` asserts the refusal both documents require and logs the read and write response codes; which flavour is correct is for the document owner to reconcile. Do not XFAIL.

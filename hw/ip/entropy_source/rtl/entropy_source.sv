@@ -770,7 +770,8 @@ module entropy_source
     //   Group C - noise-source physical config; plus master enable +
     //   ALERT_THRESHOLD/MIN_ENTROPY_H; Group D - pre-conditioning observation
     //   taps (GetNoise-class) and the debug pin, which SP 800-90B 2.3.2/3.2.1
-    //   allow disabling outside validation.
+    //   allow disabling outside validation; Group E - FIFO_CTRL.ENABLE, whose
+    //   FIFO holds the words that also seed the DRBG.
     // Left writable by design: NOISE_OBS_CTRL.{FLUSH,LANE_SEL} (inert while
     //   RAW_ENABLE is locked off), INTR_*, and the W1C status/fail-count
     //   fields — these support interrupt servicing and the on-demand
@@ -825,6 +826,10 @@ module entropy_source
     assign reg_in.NOISE_OBS_CTRL.RAW_ENABLE.swwel                = fips_lock;
     assign reg_in.DEBUG_CTRL.SELECT_SIGNAL.swwel                 = fips_lock;
     assign reg_in.DEBUG_CTRL.SELECT_FREQ_DIV.swwel              = fips_lock;
+
+    // Group E — software read path of the conditioned output. FIFO_CTRL.ENABLE
+    // gates only the main-FIFO push, so the DRBG seed stream is unaffected.
+    assign reg_in.FIFO_CTRL.ENABLE.swwel                         = fips_lock;
 
     // ----------------------------------------------------------------------
     // SP 800-90B recommended-threshold LUT.
