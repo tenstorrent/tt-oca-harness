@@ -48,7 +48,7 @@ class sep_axi_order_sweep_m_axi_test(_s_axi.sep_axi_order_sweep_test):
     TB-driven buses, not only the CPU-LSU splice.
 
     The inbound filter blocks by default (axi_filter_wrap.sv
-    BlockByDefault=1), so the CPU-LSU master programs coarse read+write allow
+    BLOCK_BY_DEFAULT=1), so the CPU-LSU master programs coarse read+write allow
     windows over the swept span before the walk starts. The windows leave the
     filter rule bank itself outside every window, and the rule-bank registers
     are excluded from this walk, so the sweep cannot rewrite the gate it is

@@ -126,64 +126,62 @@ module ocah_jtag_sva #(
   end
 `endif  // SIMULATION
 
-  generate
-    if (EN_STATE_RULES) begin : gen_state_rules
+  if (EN_STATE_RULES) begin : gen_state_rules
 
-      // --------------------------------------------------------------
-      // State encoding and controller-diagram legality (§6.1.1).
-      // --------------------------------------------------------------
-      // A reset pulse that falls between two rising TCK edges is invisible
-      // both to the sampled trst_n and to a clock-sampled disable iff, so
-      // trst_seen_q latches it until the next rising edge; the transition
-      // rule then expects Test-Logic-Reset instead of the diagram successor.
-      logic trst_seen_q;
-      always @(negedge trst_n or posedge tck) begin
-        if (!trst_n) trst_seen_q <= 1'b1;
-        else trst_seen_q <= 1'b0;
-      end
-
-      `OCAH_SVA_RULE(ASSUME_SLAVE_RULES, OCAH_JTAG_STATE_ONEHOT,
-                     en_i |-> (!$isunknown(
-                         tap_state_i
-                     ) && ($countones(
-                         tap_state_i
-                     ) == 1) && (jtag_next_onehot(
-                         tap_state_i, 1'b0
-                     ) != '0)),
-                     tck, !trst_n)
-      `OCAH_SVA_RULE(ASSUME_SLAVE_RULES, OCAH_JTAG_STATE_NEXT_LEGAL,
-                     en_i |=> (tap_state_i == (trst_seen_q ? TlrOnehot : jtag_next_onehot(
-                         $past(tap_state_i), $past(tms)
-                     ))),
-                     tck, !trst_n)
-
-      // TRST forces Test-Logic-Reset (§6.1.1). Not reset-disabled (the rule
-      // checks reset itself); qualified on a resolved-low trst_n.
-      `OCAH_SVA_RULE(ASSUME_SLAVE_RULES, OCAH_JTAG_TRST_TLR,
-                     (en_i && (trst_n === 1'b0)) |-> (tap_state_i == TlrOnehot), tck, 1'b0)
-
-      // Five TMS-high rising edges reach TLR from any state (§6.1.1.1).
-      `OCAH_SVA_RULE(ASSUME_SLAVE_RULES, OCAH_JTAG_TLR_TMS5,
-                     ((en_i && tms) [* 5]) |=> (tap_state_i == TlrOnehot), tck, !trst_n)
-
-      // TDO driver active only while shifting (§4.5.1): the enable,
-      // re-registered on the falling edge, tracks Shift-DR/Shift-IR
-      // occupancy as sampled at the next rising edge.
-      `OCAH_SVA_ASSERT(
-          OCAH_JTAG_TDO_OEN_SHIFT_ONLY,
-          en_i |-> (tdo_oen == ((tap_state_i == ShiftDrOnehot) || (tap_state_i == ShiftIrOnehot))),
-          tck, !trst_n)
-
-      `OCAH_COVER(OCAH_JTAG_C_SHIFT_DR, en_i && (tap_state_i == ShiftDrOnehot), tck, !trst_n)
-      `OCAH_COVER(OCAH_JTAG_C_SHIFT_IR, en_i && (tap_state_i == ShiftIrOnehot), tck, !trst_n)
-      `OCAH_COVER(OCAH_JTAG_C_DR_RESHIFT, en_i && (tap_state_i == ShiftDrOnehot) && ($past(
-                  tap_state_i) == Exit2DrOnehot), tck, !trst_n)
-      `OCAH_COVER(OCAH_JTAG_C_IR_RESHIFT, en_i && (tap_state_i == ShiftIrOnehot) && ($past(
-                  tap_state_i) == Exit2IrOnehot), tck, !trst_n)
-      `OCAH_COVER(OCAH_JTAG_C_TLR_VIA_TMS, en_i && (tap_state_i == TlrOnehot) && ($past(tap_state_i
-                  ) != TlrOnehot), tck, !trst_n)
-
+    // --------------------------------------------------------------
+    // State encoding and controller-diagram legality (§6.1.1).
+    // --------------------------------------------------------------
+    // A reset pulse that falls between two rising TCK edges is invisible
+    // both to the sampled trst_n and to a clock-sampled disable iff, so
+    // trst_seen_q latches it until the next rising edge; the transition
+    // rule then expects Test-Logic-Reset instead of the diagram successor.
+    logic trst_seen_q;
+    always @(negedge trst_n or posedge tck) begin
+      if (!trst_n) trst_seen_q <= 1'b1;
+      else trst_seen_q <= 1'b0;
     end
-  endgenerate
+
+    `OCAH_SVA_RULE(ASSUME_SLAVE_RULES, OCAH_JTAG_STATE_ONEHOT,
+                   en_i |-> (!$isunknown(
+                       tap_state_i
+                   ) && ($countones(
+                       tap_state_i
+                   ) == 1) && (jtag_next_onehot(
+                       tap_state_i, 1'b0
+                   ) != '0)),
+                   tck, !trst_n)
+    `OCAH_SVA_RULE(ASSUME_SLAVE_RULES, OCAH_JTAG_STATE_NEXT_LEGAL,
+                   en_i |=> (tap_state_i == (trst_seen_q ? TlrOnehot : jtag_next_onehot(
+                       $past(tap_state_i), $past(tms)
+                   ))),
+                   tck, !trst_n)
+
+    // TRST forces Test-Logic-Reset (§6.1.1). Not reset-disabled (the rule
+    // checks reset itself); qualified on a resolved-low trst_n.
+    `OCAH_SVA_RULE(ASSUME_SLAVE_RULES, OCAH_JTAG_TRST_TLR,
+                   (en_i && (trst_n === 1'b0)) |-> (tap_state_i == TlrOnehot), tck, 1'b0)
+
+    // Five TMS-high rising edges reach TLR from any state (§6.1.1.1).
+    `OCAH_SVA_RULE(ASSUME_SLAVE_RULES, OCAH_JTAG_TLR_TMS5,
+                   ((en_i && tms) [* 5]) |=> (tap_state_i == TlrOnehot), tck, !trst_n)
+
+    // TDO driver active only while shifting (§4.5.1): the enable,
+    // re-registered on the falling edge, tracks Shift-DR/Shift-IR
+    // occupancy as sampled at the next rising edge.
+    `OCAH_SVA_ASSERT(
+        OCAH_JTAG_TDO_OEN_SHIFT_ONLY,
+        en_i |-> (tdo_oen == ((tap_state_i == ShiftDrOnehot) || (tap_state_i == ShiftIrOnehot))),
+        tck, !trst_n)
+
+    `OCAH_COVER(OCAH_JTAG_C_SHIFT_DR, en_i && (tap_state_i == ShiftDrOnehot), tck, !trst_n)
+    `OCAH_COVER(OCAH_JTAG_C_SHIFT_IR, en_i && (tap_state_i == ShiftIrOnehot), tck, !trst_n)
+    `OCAH_COVER(OCAH_JTAG_C_DR_RESHIFT, en_i && (tap_state_i == ShiftDrOnehot) && ($past(tap_state_i
+                ) == Exit2DrOnehot), tck, !trst_n)
+    `OCAH_COVER(OCAH_JTAG_C_IR_RESHIFT, en_i && (tap_state_i == ShiftIrOnehot) && ($past(tap_state_i
+                ) == Exit2IrOnehot), tck, !trst_n)
+    `OCAH_COVER(OCAH_JTAG_C_TLR_VIA_TMS, en_i && (tap_state_i == TlrOnehot) && ($past(tap_state_i
+                ) != TlrOnehot), tck, !trst_n)
+
+  end
 
 endmodule : ocah_jtag_sva

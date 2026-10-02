@@ -37,17 +37,17 @@ module smu_wrapper
   import sep_io_pkg::*;
   import km_intf_pkg::*;
 #(
-  parameter smu_pkg::smu_cfg_t Cfg = smu_pkg::DefaultCfg,
+  parameter smu_pkg::smu_cfg_t CFG = smu_pkg::DefaultCfg,
   parameter bit           SEP                   = 1'b1,
   parameter bit [255:0]   SEP_SEC_DISABLE_TOKEN = 256'b0,
   parameter int unsigned  EXT_TRNG_NUM_AXIS     = 3,
   parameter type  ic_reset_ext_t = jtag_tap_pkg::jtag_ic_reset_default_t,
 
-  localparam int unsigned  XTRIG_NUM_CTP          = Cfg.XTRIG_NUM_CTP,
-  localparam int unsigned  XTRIG_NUM_INT_CT       = Cfg.XTRIG_NUM_INT_CT,
-  localparam int unsigned  XTRIG_NUM_CLK_STOP_REQ = Cfg.XTRIG_NUM_CLK_STOP_REQ,
+  localparam int unsigned  XTRIG_NUM_CTP          = CFG.XTRIG_NUM_CTP,
+  localparam int unsigned  XTRIG_NUM_INT_CT       = CFG.XTRIG_NUM_INT_CT,
+  localparam int unsigned  XTRIG_NUM_CLK_STOP_REQ = CFG.XTRIG_NUM_CLK_STOP_REQ,
   localparam int unsigned  JTAG_NUM_EXTRA_STAP_PORTS =
-      (Cfg.JTAG_NUM_EXTRA_STAPS > 0) ? Cfg.JTAG_NUM_EXTRA_STAPS : 1
+      (CFG.JTAG_NUM_EXTRA_STAPS > 0) ? CFG.JTAG_NUM_EXTRA_STAPS : 1
 ) (
   // Clock and Reset
   input  logic  rst_cold_ni,
@@ -180,7 +180,7 @@ module smu_wrapper
   output logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0] sep_region_size_o,
 
   // External Interrupts
-  input  logic [Cfg.NUM_INT_TO_SMC-1:0]  smc_ext_interrupts_i,
+  input  logic [CFG.NUM_INT_TO_SMC-1:0]  smc_ext_interrupts_i,
 
   // Fuse Signals
   output logic  smc_fuse_sense_done_o,
@@ -230,9 +230,6 @@ module smu_wrapper
   input  logic mbist_done_i,
   input  logic mbist_pass_i,
   input  logic mbist_abort_i,
-
-  // OpenTitan SPI request, surfaced for observation; the loop closes in smu.sv
-  output sep_io_pkg::sep_io_spi_req_t  sep_io_spi_req_o,
 
   output logic  secure_tm_o,
 
@@ -379,7 +376,7 @@ module smu_wrapper
   /////////////////////
 
   smu #(
-    .Cfg                   (Cfg),
+    .CFG                   (CFG),
     .SEP                   (SEP),
     .SEP_SEC_DISABLE_TOKEN (SEP_SEC_DISABLE_TOKEN),
     .EXT_TRNG_NUM_AXIS     (EXT_TRNG_NUM_AXIS),
@@ -496,7 +493,6 @@ module smu_wrapper
     .mbist_pass_i,
     .mbist_abort_i,
     .entropy_rosc_sample_clk_i,
-    .sep_io_spi_req_o,
     .sep_cpu_trace_o,
     .sep_lockstep_ctrl_i,
     .sep_lockstep_status_o,
@@ -648,7 +644,7 @@ module smu_wrapper
 
   sep_ip_integration #(
     .EXT_TRNG_NUM_AXIS (EXT_TRNG_NUM_AXIS),
-    .ABR_MASKING_EN    (Cfg.SEP_ABR_MASKING_EN)
+    .ABR_MASKING_EN    (CFG.SEP_ABR_MASKING_EN)
   ) u_sep_ip_integration (
     .clk_i  (clk_sys),
     .rst_ni (rst_primary_smc_clk_no),

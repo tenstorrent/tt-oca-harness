@@ -14,7 +14,8 @@ This module builds the address sets that sit next to live registers but own
 none, and that no other leaf probes:
 
 * system-CSR holes: the gaps between the remap, filter and SEP CPU control
-  blocks, and the space past the SEP CPU control extent;
+  blocks, the space past the SEP CPU control extent, and the gaps around the
+  cold and warm scratch banks;
 * the reserved row above SEP CPU control, walked one 64 KiB page at a time;
 * the upper half of the mailbox page, past the mailbox extent;
 * the space past each eFuse sibling block (interface control, token MMR);
@@ -125,6 +126,17 @@ def _slot_base(prefix: str, i: int) -> int:
 
 def _slot_size(prefix: str, i: int) -> int:
     return block_size(f"{prefix}_{i}_")
+
+
+def _scratch_count(bank: str) -> int:
+    """How many SCRATCH_<n> registers the export gives ``bank``, from 0 up."""
+    n = 0
+    while True:
+        try:
+            sym(f"{bank}_SCRATCH_{n}__REG_ADDR")
+        except KeyError:
+            return n
+        n += 1
 
 
 @dataclass(frozen=True)
@@ -335,13 +347,44 @@ class SepUnmappedCfg:
             ),
         ):
             self.live.append(LiveWord(label, base + REMAP_ATTRS, value & REMAP_OFFSET_LO_MASK))
-        self.live.append(
-            LiveWord(
-                "sep_cpu_ctrl.SEP_NMI_VEC",
-                cpu_base + nmi_off,
-                0x1357_9BDE & SEP_CPU_CTRL.mask32("SEP_NMI_VEC"),
-            )
+        # SEP_NMI_VEC is also the Lite-port watcher's control word.
+        self.lite_ctrl = LiveWord(
+            "sep_cpu_ctrl.SEP_NMI_VEC",
+            cpu_base + nmi_off,
+            0x1357_9BDE & SEP_CPU_CTRL.mask32("SEP_NMI_VEC"),
         )
+        self.live.append(self.lite_ctrl)
+
+        # Scratch banks: the first and last SCRATCH word of each bank. A bank's
+        # extent is its RDL size, so the word one extent up from SCRATCH_0 is
+        # the first word past that bank.
+        cold = RegBlock("SEP_SCRATCH_COLD")
+        warm = RegBlock("SEP_SCRATCH_WARM")
+        cold_base = sym("SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR")
+        warm_base = sym("SEP_SCRATCH_WARM_REG_MAP_BASE_ADDR")
+        cold_end = cold_base + block_size("SEP_SCRATCH_COLD")
+        warm_end = warm_base + block_size("SEP_SCRATCH_WARM")
+        scratch_img = cold_base + _pow2_ceil(warm_end - cold_base)
+        scratch_last = _scratch_count("SEP_SCRATCH_COLD") - 1
+        if _scratch_count("SEP_SCRATCH_WARM") - 1 != scratch_last:
+            raise RuntimeError("cold and warm scratch banks differ in SCRATCH count")
+        for label, blk, reg, value in (
+            ("sep_scratch_cold.SCRATCH_0", cold, "SCRATCH_0_", 0x5C01_D000),
+            (
+                f"sep_scratch_cold.SCRATCH_{scratch_last}",
+                cold,
+                f"SCRATCH_{scratch_last}_",
+                0x5C01_D0F7,
+            ),
+            ("sep_scratch_warm.SCRATCH_0", warm, "SCRATCH_0_", 0x5CA2_3000),
+            (
+                f"sep_scratch_warm.SCRATCH_{scratch_last}",
+                warm,
+                f"SCRATCH_{scratch_last}_",
+                0x5CA2_30F7,
+            ),
+        ):
+            self.live.append(LiveWord(label, blk.addr(reg), value & blk.mask32(reg)))
 
         for addr, note in (
             (ap_end, "first word past the AP output-remap array"),
@@ -355,6 +398,10 @@ class SepUnmappedCfg:
             (cpu_base - 4, "last word before SEP CPU control"),
             (cpu_base + cpu_size, "first word past the SEP CPU control extent"),
             (self.cpu_img + nmi_off, "SEP_NMI_VEC, one SEP CPU control image up"),
+            (cold_end, "cold scratch SCRATCH_0, one bank extent up"),
+            (warm_base - 4, "last word before the warm scratch bank"),
+            (warm_end, "warm scratch SCRATCH_0, one bank extent up"),
+            (scratch_img - 4, "last word below one scratch-pair image up"),
         ):
             for op in ("r", "w"):
                 self.probes.append(Probe(g, addr, op, note))
@@ -672,6 +719,28 @@ class SepUnmappedAccess:
             else:
                 self.decerr_reported += 1
         return seq.resp_code, seq.rdata & 0xFFFF_FFFF, seq.timed_out
+
+    async def lite_control(self) -> list[str]:
+        """Watch one write and one read of a programmed system-CSR word.
+
+        Each must show its handshake at the system-CSR AXI-Lite port, so a
+        watcher that sees nothing cannot pass CHK-SYSCSR-HOLE-DECODE. The write
+        carries the word's programmed value, so the snapshot holds.
+        """
+        w = self.cfg.lite_ctrl
+        fails: list[str] = []
+        for op in ("w", "r"):
+            task, lite = self.test.watch_sys_csr_lite(write=op == "w")
+            try:
+                resp, _d, to = await self.access(op, w.addr, wdata=w.value, may_refuse=False)
+            finally:
+                task.kill()
+            where = f"control {op} {w.name} 0x{w.addr:08x}"
+            if to or resp != RESP_OKAY:
+                fails.append(f"{where} resp={resp} timed_out={to}")
+            elif not any((a & ~0x7) == (w.addr & ~0x7) for a in lite):
+                fails.append(f"{where} was not seen at the system-CSR AXI-Lite port")
+        return fails
 
     async def program_live(self) -> list[str]:
         """Write every programmed word, then snapshot every live word.

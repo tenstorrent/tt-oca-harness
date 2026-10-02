@@ -94,8 +94,8 @@ module spi_host_reg_top
   // outgoing integrity generation
   tlul_pkg::tl_d2h_t tl_o_pre;
   tlul_rsp_intg_gen #(
-    .EnableRspIntgGen(1),
-    .EnableDataIntgGen(1)
+    .ENABLE_RSP_INTG_GEN(1),
+    .ENABLE_DATA_INTG_GEN(1)
   ) u_rsp_intg_gen (
     .tl_i(tl_o_pre),
     .tl_o(tl_o)
@@ -117,16 +117,16 @@ module spi_host_reg_top
 
   // Create Socket_1n
   tlul_socket_1n #(
-    .N            (3),
-    .HReqPass     (1'b1),
-    .HRspPass     (1'b1),
-    .DReqPass     ({3{1'b1}}),
-    .DRspPass     ({3{1'b1}}),
-    .HReqDepth    (4'h0),
-    .HRspDepth    (4'h0),
-    .DReqDepth    ({3{4'h0}}),
-    .DRspDepth    ({3{4'h0}}),
-    .ExplicitErrs (1'b0)
+    .N             (3),
+    .H_REQ_PASS    (1'b1),
+    .H_RSP_PASS    (1'b1),
+    .D_REQ_PASS    ({3{1'b1}}),
+    .D_RSP_PASS    ({3{1'b1}}),
+    .H_REQ_DEPTH   (4'h0),
+    .H_RSP_DEPTH   (4'h0),
+    .D_REQ_DEPTH   ({3{4'h0}}),
+    .D_RSP_DEPTH   ({3{4'h0}}),
+    .EXPLICIT_ERRS (1'b0)
   ) u_socket (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),
@@ -152,9 +152,9 @@ module spi_host_reg_top
   end
 
   tlul_adapter_reg #(
-    .RegAw(AW),
-    .RegDw(DW),
-    .EnableDataIntgGen(0)
+    .REG_AW(AW),
+    .REG_DW(DW),
+    .ENABLE_DATA_INTG_GEN(0)
   ) u_reg_if (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),
@@ -1789,7 +1789,7 @@ module spi_host_reg_top
 
   if (EnableRacl) begin : gen_racl_log
     assign racl_error_o.ctn_uid     = top_racl_pkg::tlul_extract_ctn_uid_bits(tl_i.a_user.rsvd);
-    assign racl_error_o.read_access = tl_i.a_opcode == tlul_pkg::Get;
+    assign racl_error_o.read_access = tl_i.a_opcode == tlul_pkg::GET;
   end else begin : gen_no_racl_log
     assign racl_error_o.ctn_uid     = '0;
     assign racl_error_o.read_access = 1'b0;

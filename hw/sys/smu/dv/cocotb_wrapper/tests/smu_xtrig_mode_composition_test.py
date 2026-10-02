@@ -6,7 +6,7 @@
 Ports (DTP) Integration") states the lane geometry: 8 SMU-exposed internal CT
 lanes, 10 at the DTP, the low 2 reserved for the SMC with their mode bits at
 zero. Those counts size the tokened mask compare and the lane walk. Reading
-the elaborated mode vector back against the Cfg field or the +xtrig_int_ct_mode
+the elaborated mode vector back against the CFG field or the +xtrig_int_ct_mode
 plusarg is a drift check and carries no evidence token. What the tokens rest
 on is the live leg: `hw/sys/smu/doc/port_table.adoc` states that the CTM ack
 ports are "Unused in pulse-sync mode (mode bit = 0)", and each external CTM

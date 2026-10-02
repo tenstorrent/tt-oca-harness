@@ -190,10 +190,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # hw/sys/sep/bootrom/prod/tools/tt-oca-manifest is a PRIVATE submodule and
-      # the only one in the tree. The SEP DV env reads its src/oca/constants.py
-      # as the authority for the OCA manifest layout, so without it 54 of 162
-      # test modules fail to import and the run dies before any simulation.
+      # hw/sys/sep/bootrom/prod/tools/tt-oca-manifest is a PRIVATE submodule and a
+      # uv workspace member (pyproject.toml), so without it `uv sync` cannot parse
+      # the project and every DUT's run dies at setup. The SEP DV env also reads
+      # its src/oca/constants.py as the authority for the OCA manifest layout.
       #
       # Deliberately NOT actions/checkout's `submodules`/`token` inputs. That
       # `token` replaces the credential for the MAIN repository fetch too, and
@@ -207,7 +207,6 @@ jobs:
       # rewrite is undone afterwards so the credential does not outlive the
       # step.
       - name: Check out the tt-oca-manifest submodule
-        if: matrix.dut == 'sep'
         env:
           OCA_PAT: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
         run: |
@@ -366,10 +365,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # hw/sys/sep/bootrom/prod/tools/tt-oca-manifest is a PRIVATE submodule and
-      # the only one in the tree. The SEP DV env reads its src/oca/constants.py
-      # as the authority for the OCA manifest layout, so without it 54 of 162
-      # test modules fail to import and the run dies before any simulation.
+      # hw/sys/sep/bootrom/prod/tools/tt-oca-manifest is a PRIVATE submodule and a
+      # uv workspace member (pyproject.toml), so without it `uv sync` cannot parse
+      # the project and every DUT's run dies at setup. The SEP DV env also reads
+      # its src/oca/constants.py as the authority for the OCA manifest layout.
       #
       # Deliberately NOT actions/checkout's `submodules`/`token` inputs. That
       # `token` replaces the credential for the MAIN repository fetch too, and
@@ -383,7 +382,6 @@ jobs:
       # rewrite is undone afterwards so the credential does not outlive the
       # step.
       - name: Check out the tt-oca-manifest submodule
-        if: matrix.dut == 'sep'
         env:
           OCA_PAT: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
         run: |

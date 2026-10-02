@@ -134,6 +134,8 @@ The conditioned entropy stream is stored in a 64-entry FIFO (`entropy_fifo`). Ea
 
 The `entropy_stream_data_o` and `entropy_stream_vld_o` top-level ports carry each word as it is written into the FIFO, not the FIFO read data, and there is no backpressure. In SEP they connect to the DRBG seed path, which distributes the generated random data to the entropy consumers.
 
+Because the FIFO holds the same words that seed the DRBG, `FIFO_CTRL.ENABLE` is covered by `FIPS_LOCK`. The field gates only the FIFO write, so the DRBG seed stream continues whatever its value. It resets to one, keeping the `FIFO_RDATA` read path live out of reset. To close that path on a locked part, software clears `FIFO_CTRL.ENABLE`, reads `FIFO_RDATA` until `FIFO_STATUS.LEVEL` is zero, and then sets `FIPS_LOCK.LOCK`. Reads remain available while writes are disabled, so words already in the FIFO stay readable until they are drained.
+
 == Reset
 
 The entropy source `rst_ni` input resets its register block, health-test/FSM
@@ -157,15 +159,17 @@ external observation. Some selections expose entropy ahead of conditioning: the
 raw per-generator noise bits, the compressed 32-bit entropy stream, and the
 uncompressed per-generator entropy bytes.
 
-Neither field is covered by `FIPS_LOCK`, and that is deliberate. The lock
-freezes the certified health-test configuration; it does not govern what is
-routed to an observation pin. Gating the pin is therefore an integration-time
-decision rather than a property of this block. SEP leaves `signal_monitor_o`
-unconnected and false-paths the port in synthesis, so the signal stops inside
-the block and no further gating is required there. An integration that routes
-the pin off-chip, for example muxed onto a GPIO, owns restricting `DEBUG_CTRL`
-to the lifecycle or debug-enable states in which observing pre-conditioning
-entropy is acceptable.
+Both fields are covered by `FIPS_LOCK`: once `FIPS_LOCK.LOCK` is set, software can
+no longer retarget the pin or change its divider, so a locked, certified part
+cannot route pre-conditioning entropy to the observation pin. The raw and BIW
+observe-FIFO capture enables (`NOISE_OBS_CTRL.RAW_ENABLE`,
+`BIW_OBS_CTRL.RAW_ENABLE`) are held under the lock the same way. SP 800-90B treats
+this pre-conditioning observation as a validation-time interface that may be
+disabled in the field, which the lock enforces. As defense in depth, SEP also
+leaves `signal_monitor_o` unconnected and false-paths the port in synthesis; an
+integration that routes the pin off-chip still owns restricting access to the
+lifecycle or debug states in which observing pre-conditioning entropy is
+acceptable.
 
 == Memory Map and Register Reference
 

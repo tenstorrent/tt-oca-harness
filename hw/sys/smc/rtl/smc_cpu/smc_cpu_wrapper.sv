@@ -277,7 +277,7 @@ module smc_cpu_wrapper #(
 
   smc_cpu_ctrl_wrap #(
     .NO_ADDR_REMAP   (NO_ADDR_REMAP),
-    .NumCPUCores     (NUM_CPU_CORES)
+    .NUM_CPU_CORES   (NUM_CPU_CORES)
   ) u_smc_cpu_ctrl_wrap (
     .clk_ref_i                          (clk_ref_i),
     .clk_smc_i                          (clk_i),

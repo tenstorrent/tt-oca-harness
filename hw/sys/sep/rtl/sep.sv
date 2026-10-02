@@ -701,6 +701,81 @@ NUM_EXT_DEMUX_PORTS
   // SRAM Memory Interface //
   ///////////////////////////
 
+
+  localparam int unsigned NUM_SRAM_DEMUX_PORTS = 2;
+  typedef enum logic [$clog2(
+NUM_SRAM_DEMUX_PORTS
+)-1:0] {
+    SRAM_DEMUX_MEM     = 1'd0,
+    SRAM_DEMUX_ERR_SLV = 1'd1
+  } sram_demux_target_e;
+
+  sep_pkg::sep_32_64_6_12_axi_req_t  [NUM_SRAM_DEMUX_PORTS-1:0]  sram_demux_req;
+  sep_pkg::sep_32_64_6_12_axi_resp_t [NUM_SRAM_DEMUX_PORTS-1:0]  sram_demux_resp;
+  sram_demux_target_e                                            sram_demux_aw_select;
+  sram_demux_target_e                                            sram_demux_ar_select;
+
+  function automatic sram_demux_target_e sram_demux_decode(input axi_pkg::len_t len,
+                                                           input axi_pkg::burst_t burst);
+    if ((len != '0) && (burst != axi_pkg::BURST_INCR)) begin
+      return SRAM_DEMUX_ERR_SLV;
+    end else begin
+      return SRAM_DEMUX_MEM;
+    end
+  endfunction
+
+  always_comb begin
+    sram_demux_aw_select = sram_demux_decode(sram_req.aw.len, sram_req.aw.burst);
+    sram_demux_ar_select = sram_demux_decode(sram_req.ar.len, sram_req.ar.burst);
+  end
+
+  axi_demux #(
+    .AxiIdWidth  (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
+    .AtopSupport (1'b0),
+    .aw_chan_t   (sep_pkg::sep_32_64_6_12_axi_aw_chan_t),
+    .w_chan_t    (sep_pkg::sep_32_64_6_12_axi_w_chan_t),
+    .b_chan_t    (sep_pkg::sep_32_64_6_12_axi_b_chan_t),
+    .ar_chan_t   (sep_pkg::sep_32_64_6_12_axi_ar_chan_t),
+    .r_chan_t    (sep_pkg::sep_32_64_6_12_axi_r_chan_t),
+    .axi_req_t   (sep_pkg::sep_32_64_6_12_axi_req_t),
+    .axi_resp_t  (sep_pkg::sep_32_64_6_12_axi_resp_t),
+    .NoMstPorts  (NUM_SRAM_DEMUX_PORTS),
+    .MaxTrans    (4),
+    .AxiLookBits (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
+    .UniqueIds   (1'b0),
+    .SpillAw     (1'b0),
+    .SpillW      (1'b0),
+    .SpillB      (1'b0),
+    .SpillAr     (1'b0),
+    .SpillR      (1'b0)
+  ) u_sram_burst_demux (
+    .clk_i           (clk_i),
+    .rst_ni          (rst_ni),
+    .test_i          (test_en_i),
+    .slv_req_i       (sram_req),
+    .slv_resp_o      (sram_rsp),
+    .slv_aw_select_i (sram_demux_aw_select),
+    .slv_ar_select_i (sram_demux_ar_select),
+    .sel_hash_i      ('0),
+    .mst_reqs_o      (sram_demux_req),
+    .mst_resps_i     (sram_demux_resp)
+  );
+
+  axi_err_slv #(
+    .AxiIdWidth (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
+    .axi_req_t  (sep_pkg::sep_32_64_6_12_axi_req_t),
+    .axi_resp_t (sep_pkg::sep_32_64_6_12_axi_resp_t),
+    .Resp       (axi_pkg::RESP_SLVERR),
+    .ATOPs      (1'b0),
+    .MaxTrans   (4)
+  ) u_sram_burst_err_slv (
+    .clk_i      (clk_i),
+    .rst_ni     (rst_ni),
+    .test_i     (test_en_i),
+    .slv_req_i  (sram_demux_req[SRAM_DEMUX_ERR_SLV]),
+    .slv_resp_o (sram_demux_resp[SRAM_DEMUX_ERR_SLV])
+  );
+
   memory_interface #(
     .MEM_ADDR_WIDTH   (sep_pkg::SEP_MEM_ADDR_WIDTH),
     .MEM_DATA_WIDTH   (sep_pkg::SEP_MEM_DATA_WIDTH),
@@ -719,8 +794,8 @@ NUM_EXT_DEMUX_PORTS
   ) u_sram_memory_interface (
     .clk_i                (clk_i),
     .rst_ni               (sep_reset_n),
-    .mem_axi_req_i        (sram_req),
-    .mem_axi_resp_o       (sram_rsp),
+    .mem_axi_req_i        (sram_demux_req[SRAM_DEMUX_MEM]),
+    .mem_axi_resp_o       (sram_demux_resp[SRAM_DEMUX_MEM]),
     .csr_in_axil_req_i    ('0),
     .csr_in_axil_resp_o   (/* UNUSED */),
     .csr_out_axil_req_o   (/* UNUSED */),
@@ -1107,16 +1182,16 @@ NUM_EXT_DEMUX_PORTS
 
   sep_dma_wrap #(
     .SECURE_DMA_REG_MAP_BASE_ADDR (32'(sep_top_addrmap_pkg::SEP_TOP_SECURE_DMA_BASE_ADDR)),
-    .AlertAsyncOn           ({secure_dma_reg_pkg::NumAlerts{1'b0}}),
-    .AlertSkewCycles        (1'b0),
-    .EnableDataIntgGen      (1'b1),  // ENABLE integrity generation (was 1'b0)
-    .EnableRspDataIntgCheck (1'b1),  // ENABLE integrity checking (was 1'b0)
-    .TlUserRsvd             ('0),
-    .SysRaclRole            ('0),
-    .OtAgentId              ('0),
-    .EnableRacl             (1'b0),
-    .RaclErrorRsp           (1'b0),
-    .RaclPolicySelVec       ('{secure_dma_reg_pkg::NumRegs{0}})
+    .ALERT_ASYNC_ON             ({secure_dma_reg_pkg::NumAlerts{1'b0}}),
+    .ALERT_SKEW_CYCLES          (1'b0),
+    .ENABLE_DATA_INTG_GEN       (1'b1),  // ENABLE integrity generation (was 1'b0)
+    .ENABLE_RSP_DATA_INTG_CHECK (1'b1),  // ENABLE integrity checking (was 1'b0)
+    .TL_USER_RSVD               ('0),
+    .SYS_RACL_ROLE              ('0),
+    .OT_AGENT_ID                ('0),
+    .ENABLE_RACL                (1'b0),
+    .RACL_ERROR_RSP             (1'b0),
+    .RACL_POLICY_SEL_VEC        ('{secure_dma_reg_pkg::NumRegs{0}})
   ) u_sep_dma_wrap (
     .clk_i,
     .rst_ni                 (sep_reset_n),

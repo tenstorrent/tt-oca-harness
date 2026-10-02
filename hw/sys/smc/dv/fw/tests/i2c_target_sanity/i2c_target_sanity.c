@@ -393,7 +393,7 @@ static void step_s4_tx_read(void) {
     preload_tx(expect, sizeof(expect));
     i2c_clear_target_events(TARGET_IDX, 0xFFFFFFFFu);
 
-    /* START+addr+R, READB=4 STOP — burst push (fmt depth==1 Idle workaround). */
+    /* START+addr+R, READB=4 STOP — burst push (fmt depth==1 IDLE workaround). */
     {
         uint32_t a = fdata_pack((uint8_t)((ADDR0 << 1) | 1u), true, false, false, false, false);
         uint32_t r = fdata_pack(4, false, true, true, false, false);

@@ -10,10 +10,10 @@
 // Export req_count_q_o for downstream hang detectors such as axi_hang_detector.
 
 module prim_axi_snoop #(
-  parameter int unsigned OutstandingTx = 1,  // Max outstanding transactions tracked; sizes the
-                                             // counter.
+  parameter int unsigned OUTSTANDING_TX = 1,  // Max outstanding transactions tracked; sizes the
+                                              // counter.
 
-  localparam int unsigned OutstandingTxW = OutstandingTx > 1 ? $clog2(OutstandingTx) + 1 : 1  // Derived from OutstandingTx; the counter is one bit wider.
+  localparam int unsigned OutstandingTxW = OUTSTANDING_TX > 1 ? $clog2(OUTSTANDING_TX) + 1 : 1  // Derived from OUTSTANDING_TX; the counter is one bit wider.
 ) (
   input  logic        clk_i,  // AXI clock.
   input  logic        rst_ni,  // Async reset, active-low.
@@ -124,7 +124,7 @@ module prim_axi_snoop #(
   ////////////////////////////////////////////////////////////////////////////////
 
   // Parameter Validation
-  `OCAH_OT_ASSERT_INIT(ValidOutstandingTx_A, OutstandingTx >= 1)
+  `OCAH_OT_ASSERT_INIT(ValidOutstandingTx_A, OUTSTANDING_TX >= 1)
 
   // Check for request counter underflow
   `OCAH_OT_ASSERT_NEVER(ReqCountUnderflow_A, ~|req_count_q && ($countones

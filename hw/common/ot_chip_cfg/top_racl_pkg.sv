@@ -74,7 +74,7 @@ package top_racl_pkg;
   } racl_error_log_t;
 
   // Extract RACL role bits from the TLUL reserved user bits
-  function automatic racl_role_t tlul_extract_racl_role_bits(logic [tlul_pkg::RsvdWidth-1:0] rsvd);
+  function automatic racl_role_t tlul_extract_racl_role_bits(logic [tlul_pkg::RSVD_WIDTH-1:0] rsvd);
     // Waive unused bits
     logic unused_rsvd_bits;
     unused_rsvd_bits = ^{rsvd};
@@ -83,7 +83,7 @@ package top_racl_pkg;
   endfunction
 
   // Extract CTN UID bits from the TLUL reserved user bits
-  function automatic ctn_uid_t tlul_extract_ctn_uid_bits(logic [tlul_pkg::RsvdWidth-1:0] rsvd);
+  function automatic ctn_uid_t tlul_extract_ctn_uid_bits(logic [tlul_pkg::RSVD_WIDTH-1:0] rsvd);
     // Waive unused bits
     logic unused_rsvd_bits;
     unused_rsvd_bits = ^{rsvd};
@@ -92,9 +92,9 @@ package top_racl_pkg;
   endfunction
 
   // Build a TLUL reserved user bit vector based on RACL role and CTN UID
-  function automatic logic [tlul_pkg::RsvdWidth-1:0] tlul_build_user_rsvd_vec(racl_role_t racl_role,
-                                                                              ctn_uid_t ctn_uid);
-    logic [tlul_pkg::RsvdWidth-1:0] rsvd;
+  function automatic logic [tlul_pkg::RSVD_WIDTH-1:0] tlul_build_user_rsvd_vec(racl_role_t racl_role,
+                                                                               ctn_uid_t ctn_uid);
+    logic [tlul_pkg::RSVD_WIDTH-1:0] rsvd;
     rsvd = '0;
     rsvd[8:5] = racl_role;
     rsvd[4:0] = ctn_uid;

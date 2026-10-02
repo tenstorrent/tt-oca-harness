@@ -19,6 +19,7 @@
 #include "sep.h"
 
 #include "sep_dma.h"
+#include "errors.h"
 #include "rom_virt_console.h"
 
 // SMC interface (for dynamic SMC SRAM range checks).
@@ -28,7 +29,7 @@
 #define BIT(n) (1u << (n))
 #endif
 
-// Cadence xSPI direct flash access / XIP window (OCAH address map):
+// XIP window for direct (memory-mapped) flash access (OCAH address map):
 //   0x3000_0000 - 0x3FFF_FFFF (256 MiB).
 #ifndef SEP_SPI_BASE
 #define SEP_SPI_BASE ((uint32_t)SEP_TOP_SEP_EXTERNAL_XIP_REGION_BASE_ADDR)
@@ -63,8 +64,8 @@
 
 // Minimal local error codes for the ROM DMA path.
 enum {
-    SEP_MSG_OUT_OF_RANGE_ERROR = 0x00020001u,
-    SEP_MSG_DMA_ERROR = 0x00020002u,
+    SEP_DMA_ERR_OUT_OF_RANGE = 0x00020001u,
+    SEP_DMA_ERR_TRANSFER = 0x00020002u,
 };
 
 static inline uint32_t dma_read(uint32_t addr) {
@@ -110,7 +111,8 @@ static uint32_t dma_transfer(uint32_t dest, uint32_t src, uint32_t n, int src_in
     const uint32_t smc_sram = sep_get_smc_sram_base();
     if (!contains_range_u32(SEP_EXT_SRAM_BASE, SEP_SRAM_SIZE, dest, n) &&
         !contains_range_u32(smc_sram, SMC_SRAM_SIZE_BYTES, dest, n) && !dest_is_iccm(dest, n)) {
-        return SEP_MSG_OUT_OF_RANGE_ERROR;
+        report_status(STATUS_TYPE_WARN, SEP_MSG_DMA_OUT_OF_RANGE);
+        return SEP_DMA_ERR_OUT_OF_RANGE;
     }
 
     // Source can be in SPI window, SMC SRAM, or SEP SRAM.  A non-incrementing
@@ -119,7 +121,8 @@ static uint32_t dma_transfer(uint32_t dest, uint32_t src, uint32_t n, int src_in
     if (!contains_range_u32(SEP_SPI_BASE, SEP_SPI_MAX_SIZE, src, src_span) &&
         !contains_range_u32(smc_sram, SMC_SRAM_SIZE_BYTES, src, src_span) &&
         !contains_range_u32(SEP_EXT_SRAM_BASE, SEP_SRAM_SIZE, src, src_span)) {
-        return SEP_MSG_OUT_OF_RANGE_ERROR;
+        report_status(STATUS_TYPE_WARN, SEP_MSG_DMA_OUT_OF_RANGE);
+        return SEP_DMA_ERR_OUT_OF_RANGE;
     }
 
     // The DMA master's AXI path includes an axi_local_alias_remap that
@@ -175,7 +178,7 @@ static uint32_t dma_transfer(uint32_t dest, uint32_t src, uint32_t n, int src_in
     // errors becomes a DMA error rather than a hang. n is range-checked above,
     // so the budget cannot overflow.
     const uint32_t poll_max = DMA_POLLS_SETUP + (n / 4u) * DMA_POLLS_PER_BEAT;
-    uint32_t result = SEP_MSG_DMA_ERROR;
+    uint32_t result = SEP_DMA_ERR_TRANSFER;
     uint32_t status = 0u;
     uint32_t polls = 0u;
     for (; polls < poll_max; ++polls) {
@@ -185,6 +188,7 @@ static uint32_t dma_transfer(uint32_t dest, uint32_t src, uint32_t n, int src_in
             break;
         }
         if (status & DMA_STATUS_ERROR) {
+            report_status(STATUS_TYPE_WARN, SEP_MSG_DMA_ERROR);
             uint32_t ecode = dma_read(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
             simputshex32("DMA_STS=", status);
             simputshex32("DMA_EC=", ecode);
@@ -195,11 +199,14 @@ static uint32_t dma_transfer(uint32_t dest, uint32_t src, uint32_t n, int src_in
         }
     }
     if (polls == poll_max) {
-        // Stop the engine before returning, so it issues no further beats into
-        // memory the caller goes on to reuse -- the next manifest slot, for one.
+        // A WARN, since the caller decides whether the failure is terminal: a
+        // manifest read can still fail over to the backup slot.
+        report_status(STATUS_TYPE_WARN, SEP_MSG_DMA_TIMEOUT);
         simputshex32("DMA_TIMEOUT_STS=", status);
         simputshex32("DMA_DST=", dest);
         simputshex32("DMA_LEN=", n);
+        // Stop the engine before returning, so it issues no further beats into
+        // memory the caller goes on to reuse -- the next manifest slot, for one.
         dma_write(SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, DMA_CTRL_ABORT);
         for (uint32_t i = 0u; i < DMA_POLLS_SETUP; ++i) {
             if (!(dma_read(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR) & DMA_STATUS_BUSY)) {

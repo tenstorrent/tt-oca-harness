@@ -29,7 +29,7 @@ separated by the same gap the overlap cells use, all retire AND answer OKAY.
 The gapped leg is what excludes the channel separation itself as the cause of
 an overlap-cell failure; without it that exclusion would rest on reading the
 RTL. Both halves matter: an access the adapter rejects as unsupported is
-answered SLVERR straight out of StIdle with nothing forwarded, and retires
+answered SLVERR straight out of ST_IDLE with nothing forwarded, and retires
 just as promptly as a real one, so the response code is what shows the
 forwarding leg is alive. Without the controls every ordering would report as
 stalled on a broken driver.
@@ -109,7 +109,7 @@ class sep_drbg_axil_adapter_port_arbitration_test(sep_base_test):
                 f"nothing"
             )
         # Retiring is not enough. An access the adapter rejects as unsupported
-        # is answered SLVERR out of StIdle with nothing forwarded, and retires
+        # is answered SLVERR out of ST_IDLE with nothing forwarded, and retires
         # just as promptly -- so a control that only watched the valid would
         # accept a dead forwarding path. The response code is what separates
         # them, and OKAY can only come from the far side.

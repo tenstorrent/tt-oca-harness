@@ -13,7 +13,7 @@ Entropy-source configuration, status, and data registers.
 | Address | Name | Access | Description
 | 0x0 | <<reg-{regmap-instance}-entropy_source-COMPONENT_ID,COMPONENT_ID>> | R a| Identifies the entropy-source register interface.
 | 0x4 | <<reg-{regmap-instance}-entropy_source-CTRL,CTRL>> | RW a| Controls entropy generation and conditioning.
-| 0xC | <<reg-{regmap-instance}-entropy_source-DEBUG_CTRL,DEBUG_CTRL>> | RW a| Controls the external debug observation pin. These fields remain writable after FIPS_LOCK.LOCK; system integration controls access to exposed pre-conditioning entropy.
+| 0xC | <<reg-{regmap-instance}-entropy_source-DEBUG_CTRL,DEBUG_CTRL>> | RW a| Controls the external debug observation pin. FIPS_LOCK.LOCK prevents software changes to the signal selection and divider.
 | 0x10 | <<reg-{regmap-instance}-entropy_source-INTR_STATUS,INTR_STATUS>> | RW a| Reports latched interrupt status; write one to clear a bit.
 | 0x14 | <<reg-{regmap-instance}-entropy_source-INTR_ENABLE,INTR_ENABLE>> | RW a| Enables individual interrupt sources.
 | 0x18 | <<reg-{regmap-instance}-entropy_source-INTR_TEST,INTR_TEST>> | W a| Triggers individual interrupt sources for testing.
@@ -120,8 +120,8 @@ Entropy-source configuration, status, and data registers.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:11 | `Reserved` | - | - a| Reserved
-| 10:8 | `SELECT_FREQ_DIV` | RW | 0x0 a| Selects observation division by 1, 2, 4, 8, 16, 32, 64, or 128.
-| 7:0 | `SELECT_SIGNAL` | RW | 0x0 a| Selects the observed signal: generator noise bits [11:0], sample clocks [27:16], BIW data [63:32], FIFO input [95:64], or generator bytes [223:128]. Other selections drive the divider input low.
+| 10:8 | `SELECT_FREQ_DIV` | RW | 0x0 a| Selects observation division by 1, 2, 4, 8, 16, 32, 64, or 128. FIPS_LOCK.LOCK prevents software changes.
+| 7:0 | `SELECT_SIGNAL` | RW | 0x0 a| Selects the observed signal: generator noise bits [11:0], sample clocks [27:16], BIW data [63:32], FIFO input [95:64], or generator bytes [223:128]. Other selections drive the divider input low. FIPS_LOCK.LOCK prevents software changes.
 |===
 
 [#reg-{regmap-instance}-entropy_source-INTR_STATUS]
@@ -218,7 +218,7 @@ Entropy-source configuration, status, and data registers.
 | 31:5 | `Reserved` | - | - a| Reserved
 | 4 | `ENTROPY_CHURN_ENABLE` | RW | 0x0 a| XORs each incoming word with the FIFO entry 32 positions ahead of the write pointer. FIPS_LOCK.LOCK prevents software changes.
 | 3:1 | `Reserved` | - | - a| Reserved
-| 0 | `ENABLE` | RW | 0x1 a| Enables FIFO writes. Reads remain available while writes are disabled.
+| 0 | `ENABLE` | RW | 0x1 a| Enables FIFO writes. Reads remain available while writes are disabled. Words offered to the FIFO are also the DRBG seed stream, which this field does not gate. FIPS_LOCK.LOCK prevents software changes.
 |===
 
 [#reg-{regmap-instance}-entropy_source-FIFO_STATUS]
@@ -789,7 +789,7 @@ Entropy-source configuration, status, and data registers.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `Reserved` | - | - a| Reserved
-| 0 | `RAW_ENABLE` | RW | 0x0 a| Enables capture after startup health testing completes. This copy-only control remains writable after FIPS_LOCK.LOCK.
+| 0 | `RAW_ENABLE` | RW | 0x0 a| Enables capture after startup health testing completes. FIPS_LOCK.LOCK prevents software changes.
 |===
 
 [#reg-{regmap-instance}-entropy_source-BIW_OBS_STATUS]
@@ -825,7 +825,7 @@ Entropy-source configuration, status, and data registers.
 | 7:4 | `LANE_SEL` | RW | 0x0 a| Selects generator lane 0 through 11; other values select lane 0. Changing lanes restarts packing and flushes buffered words.
 | 3:2 | `Reserved` | - | - a| Reserved
 | 1 | `FLUSH` | W 1P | 0x0 a| Write one to discard buffered raw-noise words. Changing LANE_SEL also flushes the FIFO.
-| 0 | `RAW_ENABLE` | RW | 0x0 a| Enables LSB-first packing of selected-lane samples into 32-bit observe words. This copy-only control remains writable after FIPS_LOCK.LOCK.
+| 0 | `RAW_ENABLE` | RW | 0x0 a| Enables LSB-first packing of selected-lane samples into 32-bit observe words. FIPS_LOCK.LOCK prevents software changes.
 |===
 
 [#reg-{regmap-instance}-entropy_source-NOISE_OBS_STATUS]

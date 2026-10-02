@@ -7,8 +7,9 @@ SHELL := /usr/bin/env
 # SEP Boot ROM.
 #
 # A trimmed copy of fw/sep/bootcode adapted for the OSS DV flow:
-#   * SPI is stubbed (src/sep_spi.c) -- the OSS `sep` DUT has no Cadence xSPI, so
-#     the ROM skips the SPI manifest and boots from the SMC-SRAM manifest path.
+#   * SPI is stubbed (src/sep_spi.c) -- the OSS `sep` DUT fits no memory-mapped
+#     (XIP) flash controller, so the ROM skips the SPI manifest and boots from
+#     the SMC-SRAM manifest path.
 #
 # The manifest+BL1 images the ROM boots are built entirely from source in this
 # tree: bl1_pass_test (<sep>/dv/fw/tests/bl1_pass_test) is compiled and packed by
@@ -106,8 +107,8 @@ ifeq ($(filter $(BUILD_TYPE),debug release),)
 $(error Invalid BUILD_TYPE: $(BUILD_TYPE). Use 'debug' or 'release')
 endif
 
-# SPI flash transport selection. 0 = integrated xSPI controller (memory-mapped
-# XIP), 1 = OpenTitan SPI host (command/FIFO transfers). The unused driver is
+# SPI flash transport selection. 0 = memory-mapped (XIP) flash controller,
+# 1 = OpenTitan SPI host (command/FIFO transfers). The unused driver is
 # dropped by --gc-sections at link time.
 BOOT_SPI_CONTROLLER_OT ?= 0
 # OpenTitan RX-FIFO drain method (used only when BOOT_SPI_CONTROLLER_OT=1):

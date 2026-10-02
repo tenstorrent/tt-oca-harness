@@ -149,7 +149,7 @@ async def program_inbound0_window(
 
 
 async def clear_inbound0_config(jtag, *, scoreboard: Any = None) -> None:
-    """Clear INBOUND0 CONFIG (restore BlockByDefault deny for unprogrammed)."""
+    """Clear INBOUND0 CONFIG (restore BLOCK_BY_DEFAULT deny for unprogrammed)."""
     st, _ = await jtag2axi_single_write(jtag, INBOUND0_FILTER_CONFIG, 0, require_complete=True)
     require_jtag_tdo_resolved("J2A WR INBOUND0_CONFIG clear")
     if scoreboard is not None:
