@@ -1,0 +1,1 @@
+../../../../hw/sys/sep/synth/sep_io_delays.sdc

@@ -1,0 +1,1 @@
+../../../../hw/sys/smc/synth/smc_io_delays.sdc

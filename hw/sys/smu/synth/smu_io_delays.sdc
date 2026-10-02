@@ -59,7 +59,7 @@ set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_cloc
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {smc_global_base_o*}] -add_delay
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {smc_region_size_o*}] -add_delay
 # Addition: `sep_global_base_o*` / `sep_region_size_o*` mirror the SMC apertures
-# above; tied to '0 when SEP=0 but still SMUCLK-domain CSR outputs when SEP=1.
+# above; tied to '0 when CFG.SEP=0 but still SMUCLK-domain CSR outputs when CFG.SEP=1.
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {sep_global_base_o*}] -add_delay
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {sep_region_size_o*}] -add_delay
 
@@ -170,7 +170,10 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.1]       -clock [get_cloc
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {trace_mem_resp_i*}] -add_delay
 
 # OCTS
-set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports chiplet_is_primary_i] -add_delay
+# Quasi-static: a chiplet identity strap, settled before the timer comes out of
+# reset and constant thereafter, so no arrival window needs reserving. Zero
+# keeps the port timed rather than exempted.
+set_input_delay 0 -clock [get_clock ck_feedthru] [get_ports chiplet_is_primary_i] -add_delay
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {timer_count_o*}] -add_delay
 
 # External Debug Bus
@@ -379,7 +382,9 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_cloc
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {ext_trng_axil_resp_i*}] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {ext_trng_axis_req_i*}] -add_delay
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {ext_trng_axis_rsp_o*}] -add_delay
-set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports ext_trng_irq_i] -add_delay
+# An asynchronous interrupt, resynchronized inside the block, so almost none
+# of the period is owed to its arrival.
+set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.1]  -clock [get_clock ck_feedthru] [get_ports ext_trng_irq_i] -add_delay
 
 # LCC Demote States
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {lcc_demote_state_1_o*}] -add_delay

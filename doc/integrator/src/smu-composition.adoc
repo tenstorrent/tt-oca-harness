@@ -81,9 +81,9 @@ reference source. The DTP operates on TCK for JTAG logic and on the system clock
 for cross-trigger and AXI bridges. Reset sequencing follows the SMC flow; the
 DTP JTAG state machine uses `pwr_on_rst_ni`, which the SMU connects to the SMC
 `powergood_stable_o` output. The SMU internally connects DTP debug paths to the
-SMC and optionally instantiates the SEP when the `SEP` parameter is set to 1.
-The full interconnection details are described in <<smc-dtp-interconnection>>
-and <<sep-conditional-wiring>> below.
+SMC and optionally instantiates the SEP when `CFG.SEP` is set to 1. The full
+interconnection details are described in <<smc-dtp-interconnection>> and
+<<sep-conditional-wiring>> below.
 
 [[smu-axi-xbar-address-map]]
 == SMU AXI Crossbar Address Map
@@ -123,7 +123,7 @@ rule. The apertures are driven as follows:
   routing and SEP inbound global-to-local remap. It is distinct from the
   SEP CPU's architectural local-alias span. `SEP_REGION_SIZE` currently
   resets to `0x0100_0000` (16 MiB). Tied to `'0` at the `smu.sv`
-  boundary when the `SEP` parameter is `0`.
+  boundary when `CFG.SEP` is `0`.
 * `smc_global_base_addr_i` / `smc_region_size_i` come from the `smc_base_config`
   CSRs `GLOBAL_BASE` / `REGION_SIZE`, exposed at both the `smc.sv` and `smu.sv`
   boundaries as `smc_global_base_o` (56-bit) / `smc_region_size_o` (32-bit).
@@ -163,8 +163,12 @@ endif::backend-pdf[]
 == SMU Default Parameters
 
 The DTP JTAG features, identification, cross trigger, and pipeline depths are
-fields of the `CFG` parameter, of type `smu_pkg::smu_cfg_t` with default
-`smu_pkg::DefaultCfg`.
+fields of the `CFG` parameter, of type `smu_pkg::smu_cfg_t`. `CFG` defaults to
+the `smu_pkg::SmuConfigs` preset that the `CFG_IDX` parameter selects:
+`smu_pkg::DefaultCfg` at the default index 0, or `smu_pkg::NoSepCfg`, which
+differs only in `SEP`, at index 1. A `CFG` passed directly takes precedence over
+`CFG_IDX`. Flows that override parameters with `elaborate -param`, which cannot
+set a struct, select the preset through `CFG_IDX`.
 
 ifdef::backend-html5[]
 The parameters of `smu` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/sys/smu/smu.adoc[smu].
@@ -173,9 +177,9 @@ ifndef::backend-html5[]
 The parameters of `smu` are listed in the HTML edition of the Technical Reference Manual, under RTL Modules Reference.
 endif::backend-html5[]
 
-SEP-related DTP configuration is not exposed as an SMU config-struct field.
-The SMU derives SEP debug/STAP enablement from the module parameter `SEP` and
-wires the corresponding DTP interfaces internally to the SEP block when `SEP=1`.
+SEP-related DTP configuration has no `smu_cfg_t` field of its own.
+The SMU derives SEP debug/STAP enablement from `CFG.SEP` and
+wires the corresponding DTP interfaces internally to the SEP block when `CFG.SEP=1`.
 
 [[ic-reset-tdr-structure]]
 == IC_RESET TDR Structure
@@ -189,7 +193,7 @@ SMU the scan order from TDI to TDO is:
 TDI → SMC slice → SEP slice → external slice → reset_hold → TDO
 ----
 
-The SMU enables the SMC slice unconditionally, the SEP slice when `SEP=1`
+The SMU enables the SMC slice unconditionally, the SEP slice when `CFG.SEP=1`
 (otherwise that slice has width 0 and is omitted), and the external slice when
 `JTAG_IC_RESET_ENABLE` is set. Each slice is a packed struct with `.ovrd` and
 `.val` halves of equal width; `jtag_ptap` sizes the slice from `$bits(type)/2`.
@@ -202,7 +206,7 @@ scan order: the first field is nearest TDI.
 |===
 |Slice |Ports |Defined by |Consumed by
 |SMC |68 |OCAH (`smc_pkg::jtag_smc_reset_ctrl_t`) |SMC reset unit; SMU-internal, no SMU port
-|SEP |8 when `SEP=1`, else 0 |OCAH (`sep_pkg::jtag_sep_reset_ctrl_t`) |SEP reset controller; SMU-internal, no SMU port
+|SEP |8 when `CFG.SEP=1`, else 0 |OCAH (`sep_pkg::jtag_sep_reset_ctrl_t`) |SEP reset controller; SMU-internal, no SMU port
 |External |`$bits(ic_reset_ext_t)/2` |Adopter (`ic_reset_ext_t`) |SMU output `jtag_ic_reset_ext_o`
 |`reset_hold` |1 bit |IEEE 1149.1 §17 |Nearest TDO; not a reset port
 |===
@@ -230,7 +234,7 @@ cold and warm resets. Vector index `[31]` of each SS field is nearer TDI than
 
 === SEP slice (TDI to TDO)
 
-When `SEP=1` the SEP slice covers the SEP main reset and the crypto, Key
+When `CFG.SEP=1` the SEP slice covers the SEP main reset and the crypto, Key
 Manager, and TRNG resets consumed by `sep_reset_ctrl`. `abr_jtag_rst_n` is
 nearest TDI.
 
@@ -279,9 +283,9 @@ Type parameters are set internally based on SMC package types.
 |`JTAG_HIGHZ_ENABLE` |1 |Yes |
 |`JTAG_RUNBIST_ENABLE` |1 |Yes |
 |`JTAG_TMP_ENABLE` |1 |Yes |
-|`JTAG_IC_RESET_ENABLE` |1 |No |SMU routes this to the DTP's `JTAG_IC_RESET_EXT_ENABLE`; SMC and SEP slices are enabled inside the SMU instantiation (SMC unconditionally, SEP when `SEP=1`)
+|`JTAG_IC_RESET_ENABLE` |1 |No |SMU routes this to the DTP's `JTAG_IC_RESET_EXT_ENABLE`; SMC and SEP slices are enabled inside the SMU instantiation (SMC unconditionally, SEP when `CFG.SEP=1`)
 |`JTAG_SMC_DBG_ENABLE` |1 |Yes |
-|`JTAG_SEP_DBG_ENABLE` |1 (`SEP=1`) |No |Derived internally from the SMU module parameter `SEP`; not exposed in `smu_cfg_t`
+|`JTAG_SEP_DBG_ENABLE` |1 (`CFG.SEP=1`) |No |Derived internally from `CFG.SEP`
 |`JTAG_STAP_IO_ENABLE` |1 |Yes |
 |`JTAG_NUM_EXTRA_STAPS` |1 |Yes |Port array size equals parameter value; when set to 0, array size is 1 (tie-off required)
 |===
@@ -322,8 +326,8 @@ exposes the remaining DTP lanes.
 
 |`SMC_OTP_RD_PL_DEPTH` |`2'h3` |Yes |SMC OTP read pipeline depth
 |`SMC_OTP_WR_PL_DEPTH` |`2'h3` |Yes |SMC OTP write pipeline depth
-|`SEP_OTP_RD_PL_DEPTH` |`2'h3` |No |Fixed to `2'h3` in SMU; used when `SEP=1`, ignored when `SEP=0`
-|`SEP_OTP_WR_PL_DEPTH` |`2'h3` |No |Fixed to `2'h3` in SMU; used when `SEP=1`, ignored when `SEP=0`
+|`SEP_OTP_RD_PL_DEPTH` |`2'h3` |No |Fixed to `2'h3` in SMU; used when `CFG.SEP=1`, ignored when `CFG.SEP=0`
+|`SEP_OTP_WR_PL_DEPTH` |`2'h3` |No |Fixed to `2'h3` in SMU; used when `CFG.SEP=1`, ignored when `CFG.SEP=0`
 |`SMC_RD_PL_DEPTH` |`2'h3` |Yes |SMC fabric read pipeline depth
 |`SMC_WR_PL_DEPTH` |`2'h3` |Yes |SMC fabric write pipeline depth
 |===
@@ -345,8 +349,8 @@ for integrator configuration.
 |`ic_reset_sep_t` |`sep_pkg::jtag_sep_reset_ctrl_t` |SEP IC_RESET TDR slice
 |`smc_otp_axil_req_t` |`smc_pkg::smc_axil_32_32_req_t` |SMC OTP AXI-Lite request
 |`smc_otp_axil_resp_t` |`smc_pkg::smc_axil_32_32_resp_t` |SMC OTP AXI-Lite response
-|`sep_otp_axil_req_t` |`smc_pkg::smc_axil_32_32_req_t` |SEP OTP AXI-Lite request (error slave when `SEP=0`)
-|`sep_otp_axil_resp_t` |`smc_pkg::smc_axil_32_32_resp_t` |SEP OTP AXI-Lite response (error slave when `SEP=0`)
+|`sep_otp_axil_req_t` |`smc_pkg::smc_axil_32_32_req_t` |SEP OTP AXI-Lite request (error slave when `CFG.SEP=0`)
+|`sep_otp_axil_resp_t` |`smc_pkg::smc_axil_32_32_resp_t` |SEP OTP AXI-Lite response (error slave when `CFG.SEP=0`)
 |`xtrig_axil_req_t` |`smc_pkg::smc_axil_32_32_req_t` |Cross trigger CSR request
 |`xtrig_axil_resp_t` |`smc_pkg::smc_axil_32_32_resp_t` |Cross trigger CSR response
 |===
@@ -422,9 +426,9 @@ wired internally within the SMU.
 |===
 |Port |Direction |Width |SMU Connection
 
-|`jtag_stap_sep_host_tap_ctrl_o` |output |`jtag_tap_ctrl_t` |SEP `jtag_{tck_i,tms_i,trst_ni}` when `SEP=1`, else unused
-|`jtag_stap_sep_host_tdi_i` |input |1 |SEP `jtag_tdo_o` when `SEP=1`, else `1'b0`
-|`jtag_stap_sep_host_tdo_o` |output |1 |SEP `jtag_tdi_i` when `SEP=1`, else unused
+|`jtag_stap_sep_host_tap_ctrl_o` |output |`jtag_tap_ctrl_t` |SEP `jtag_{tck_i,tms_i,trst_ni}` when `CFG.SEP=1`, else unused
+|`jtag_stap_sep_host_tdi_i` |input |1 |SEP `jtag_tdo_o` when `CFG.SEP=1`, else `1'b0`
+|`jtag_stap_sep_host_tdo_o` |output |1 |SEP `jtag_tdi_i` when `CFG.SEP=1`, else unused
 |`jtag_stap_sep_host_tdo_oen_o` |output |1 |Internal only; not consumed by SEP at SMU level
 |===
 
@@ -498,16 +502,16 @@ wired internally within the SMU.
 
 === SEP OTP Debug AXI-Lite Interface
 
-When `SEP=1`, this interface connects to the SEP `axil_sep_otp_jtag_*` ports.
-When `SEP=0`, the SMU instantiates `u_sep_otp_axil_err_slv`, which responds
+When `CFG.SEP=1`, this interface connects to the SEP `axil_sep_otp_jtag_*` ports.
+When `CFG.SEP=0`, the SMU instantiates `u_sep_otp_axil_err_slv`, which responds
 with DECERR to all transactions.
 
 [cols="<30%,<10%,<20%,<40%",options="header"]
 |===
 |Port |Direction |Width |SMU Connection
 
-|`axil_sep_otp_jtag_req_o` |output |`sep_otp_axil_req_t` |SEP `axil_sep_otp_jtag_req_i` when `SEP=1`, else AXI-Lite error slave (`u_sep_otp_axil_err_slv`)
-|`axil_sep_otp_jtag_resp_i` |input |`sep_otp_axil_resp_t` |SEP `axil_sep_otp_jtag_resp_o` when `SEP=1`, else AXI-Lite error slave (`u_sep_otp_axil_err_slv`)
+|`axil_sep_otp_jtag_req_o` |output |`sep_otp_axil_req_t` |SEP `axil_sep_otp_jtag_req_i` when `CFG.SEP=1`, else AXI-Lite error slave (`u_sep_otp_axil_err_slv`)
+|`axil_sep_otp_jtag_resp_i` |input |`sep_otp_axil_resp_t` |SEP `axil_sep_otp_jtag_resp_o` when `CFG.SEP=1`, else AXI-Lite error slave (`u_sep_otp_axil_err_slv`)
 |===
 
 === Clock Control
@@ -686,8 +690,8 @@ marked with "DTP" or "SEP" are wired internally.
 
 === SEP AXI Input
 
-When `SEP=0`, the SEP AXI subordinate input is tied off to `'0` and the
-response output is left unconnected. When `SEP=1`, the SMU drives this path from
+When `CFG.SEP=0`, the SEP AXI subordinate input is tied off to `'0` and the
+response output is left unconnected. When `CFG.SEP=1`, the SMU drives this path from
 the SEP-to-SMC dedicated AXI connection.
 
 [cols="<30%,<10%,<25%,<35%",options="header"]
@@ -806,8 +810,8 @@ the SEP-to-SMC dedicated AXI connection.
 |Port |Direction |Width |SMU Connection
 
 |`smc_ext_interrupts_i` |input |[NUM_EXT_INTERRUPTS-1:0] |SMU external port
-|`sep_mailbox_interrupts_i` |input |[7:0] |Internal: from SEP `smc_mailbox_interrupt_o` when `SEP=1`, else tied to `'0`
-|`sep_wdt_reset_n_i` |input |1 |Internal: `~sep_wdt_timer_rst_req` when `SEP=1`, else tied to `1'b1`
+|`sep_mailbox_interrupts_i` |input |[7:0] |Internal: from SEP `smc_mailbox_interrupt_o` when `CFG.SEP=1`, else tied to `'0`
+|`sep_wdt_reset_n_i` |input |1 |Internal: `~sep_wdt_timer_rst_req` when `CFG.SEP=1`, else tied to `1'b1`
 |===
 
 === Fuse Signals
@@ -828,7 +832,7 @@ the SEP-to-SMC dedicated AXI connection.
 
 |`skip_mem_repair_o` |output |1 |SMU external port
 |`ext_boot_seq_done_i` |input |1 |SMU external port
-|`ext_boot_seq_done_qual_o` |output |1 |Internal: drives SEP `ext_boot_seq_done_i` when `SEP=1`
+|`ext_boot_seq_done_qual_o` |output |1 |Internal: drives SEP `ext_boot_seq_done_i` when `CFG.SEP=1`
 |===
 
 [[smu-lc-state]]
@@ -838,8 +842,8 @@ the SEP-to-SMC dedicated AXI connection.
 |===
 |Port |Direction |Width |SMU Connection
 
-|`lc_state_o` |output |[2*LcStateWidth-1:0] |SEP lifecycle state when `SEP=1`, else `8'hf0`; ported through SMU
-|`lc_sigint_err_o` |output |1 |Differential encoding error reported by the SEP (when SEP=1) or the SMC efuse interface.
+|`lc_state_o` |output |[2*LcStateWidth-1:0] |SEP lifecycle state when `CFG.SEP=1`, else `8'hf0`; ported through SMU
+|`lc_sigint_err_o` |output |1 |Differential encoding error reported by the SEP (when `CFG.SEP=1`) or the SMC efuse interface.
 |===
 
 === Mailbox Interrupts
@@ -991,17 +995,17 @@ SMC within the SMU. These connections are not visible on the SMU boundary.
 == SEP-Conditional Wiring
 
 SEP-related interfaces are handled internally within the SMU. Their behavior
-depends on the module parameter `SEP`.
+depends on `CFG.SEP`.
 
 [cols="<20%,<35%,<45%",options="header"]
 |===
 |Module/Signal |Implementation |Description
 
-|SMC SEP AXI Input |`sep_axi_in_req_i` = SEP traffic when `SEP=1`, else `'0` |Dedicated SEP-to-SMC subordinate path
-|DTP SEP OTP JTAG |SEP `axil_sep_otp_jtag_*` when `SEP=1`, else `u_sep_otp_axil_err_slv` |SEP OTP debug AXI-Lite path
-|DTP SEP STAP return |SEP `jtag_tdo_o` when `SEP=1`, else `sep_stap_tdo_to_dtp = 1'b0` |SEP JTAG STAP return path
-|SMU |`sep_mailbox_interrupts` |Internal SEP-to-SMC mailbox interrupts when `SEP=1`, else `'0`
-|SMC |`sep_wdt_reset_n_i = ~sep_wdt_timer_rst_req` when `SEP=1`, else `1'b1` |SEP watchdog reset input to SMC
+|SMC SEP AXI Input |`sep_axi_in_req_i` = SEP traffic when `CFG.SEP=1`, else `'0` |Dedicated SEP-to-SMC subordinate path
+|DTP SEP OTP JTAG |SEP `axil_sep_otp_jtag_*` when `CFG.SEP=1`, else `u_sep_otp_axil_err_slv` |SEP OTP debug AXI-Lite path
+|DTP SEP STAP return |SEP `jtag_tdo_o` when `CFG.SEP=1`, else `sep_stap_tdo_to_dtp = 1'b0` |SEP JTAG STAP return path
+|SMU |`sep_mailbox_interrupts` |Internal SEP-to-SMC mailbox interrupts when `CFG.SEP=1`, else `'0`
+|SMC |`sep_wdt_reset_n_i = ~sep_wdt_timer_rst_req` when `CFG.SEP=1`, else `1'b1` |SEP watchdog reset input to SMC
 |===
 
 === Other Internal Tie-offs
@@ -1026,7 +1030,7 @@ at the chip or chiplet level. The following table defines all SMU top-level
 ports including clock, reset, JTAG, cross trigger, SMC-originated interfaces
 (AXI, GPIO, eFuse, PLL, PVT, memory), and SEP passthrough interfaces
 (memory macros, eFuse, crypto SRAM, SPI, AXI extension). Ports prefixed
-with `sep_` are only active when the module parameter `SEP=1`.
+with `sep_` are only active when `CFG.SEP=1`.
 
 ifdef::backend-html5[]
 The generated module and port pages are in the TRM under RTL Modules Reference.

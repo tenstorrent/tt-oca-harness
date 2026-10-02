@@ -231,7 +231,7 @@ feature rows.
 [cols="2,3",options="header",]
 |===
 |Testcase |Objective
-|`smc_avsbus_clock_config_proxy_test` |AVS_CFG answers with AVS_CG_EN cleared and stops answering when set.
+|`smc_avsbus_clock_config_proxy_test` |AVS_CFG answers OKAY with AVS_CG_EN cleared and SLVERR with 0xBADCAB1E when set, then answers its recorded words again once cleared.
 |`smc_avsbus_frame_transaction_test` |Three queued AVS_CMD words walk the AVSBus command path against a responding pad and land one readback entry each.
 |`smc_avsbus_interrupt_sources_test` |Each AVSBus FIFO interrupt source raised, observed, cleared through the write-only clear register and observed gone.
 |`smc_avsbus_retry_exhaust_test` |Two unanswered AVS_CMD words walk the AVSBus retry states and exhaust the programmed retry budget.
@@ -242,6 +242,7 @@ feature rows.
 |`smc_dma_sanity_test` |Run DMA copy over output-fabric payload bytes and check the model.
 |`smc_octs_dual_sync_test` |U4-5: SECONDARY pad inject + PRIMARY sync/credit pad edges.
 |`smc_octs_sanity_test` |AVSBus status-CSR decode plus the sideband observability probe, a recorded SUBSTITUTE for a pad-level OCTS checker; touches no OCTS register or pad.
+|`smc_periph_cg_access_error_test` |Each CLOCK_GATE_CONTROL peripheral enable (AVSBus, I2C, UART, telemetry, I3C) set in turn: the gated window answers SLVERR with 0xBADCAB1E on read and SLVERR on write, and its recorded word again once ungated.
 |`smc_sideband_protocol_smoke_test` |Run the AVSBus sideband CSR representative precheck.
 |`smc_telemetry_atb_capture_test` |One ATB message captured on telemetry receiver 0, read back through its registers, then the receiver and transmitter flush paths.
 |`smc_telemetry_receiver_csr_test` |U4-6: TELEMETRY CSR reset + INTR_TEST -> tb_telemetry_irq_any.
@@ -972,12 +973,13 @@ Drive `smc_register_sanity_test_seq`. Each checker below is a named compare the 
 
 *BFM / Model*: ocah_axi_vip (AXI)
 
-*Objective*: AVS_CFG answers with AVS_CG_EN cleared and stops answering when set.
+*Objective*: AVS_CFG answers OKAY with AVS_CG_EN cleared and SLVERR with 0xBADCAB1E when set, then answers its recorded words again once cleared.
 
 *Test Coverage*:
 
-* **Positive control** -- with the gate CLEARED, all three AVS_CFG windows must COMPLETE, and their real round-trip latency is *measured* here rather than assumed ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).
-* **Negative leg** -- with the gate SET, the same three reads must fail to answer within a bound DERIVED from that measurement (`_GATED_BOUND_FACTOR` x the slowest healthy round-trip, floored at `_MIN_GATED_BOUND_NS`). A fixed bound shorter than a healthy CSR round-trip would hold on a fully awake AVSBus -- it would measure latency, not decode ([NO-ALWAYS-PASS-CHECKER]) -- which is why the bound is measured, and why the same-bound ungated control below shows a responsive window satisfies it.
+* **Positive control** -- with the gate CLEARED, all three AVS_CFG windows must complete OKAY, and the word each returns is recorded ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).
+* **Negative leg** -- with the gate SET, the same three reads must complete SLVERR carrying the error-slave word `0xBADCAB1E`, and a write into AVS_CFG_0 must complete SLVERR. The access gate in front of the AVSBus controller answers these on the SMC clock, so a no-response is a failure of this leg, never a pass: the driver raises on a timeout ([TIMEOUT-MUST-FAIL]).
+* **Recovery** -- with the gate CLEARED again, the three windows answer OKAY with the words the positive control recorded, so the refused write took no effect and the AVSBus controller is reachable again.
 
 *Test Procedure*:
 
@@ -989,7 +991,7 @@ Drive `smc_avsbus_clock_config_proxy_test_seq`. Each checker below is a named co
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-AVSBUS-CG` |Named compare in `smc_avsbus_clock_config_proxy_test_seq.py`; the run fails if it mismatches
+|`CHK-AVSBUS-CG` |All three AVS_CFG windows answered OKAY with AVS_CG_EN cleared, all three answered SLVERR with 0xBADCAB1E and the write into AVS_CFG_0 was refused with SLVERR while it was set, and all three returned the recorded word once it was cleared; the scoreboard booked the three CLOCK_GATE_CONTROL readbacks and the three recovery compares. A timeout, an OKAY while gated, a DECERR, another data word or a changed word after recovery fails it
 |`CHK-SIDEBAND-OBSERVABILITY` |Named compare in `smc_sideband_vip_utils.py`; the run fails if it mismatches
 |===
 
@@ -1409,6 +1411,36 @@ Drive `smc_dma_reserved_stream_banks_test_seq` on the SEP_IN AXI sequencer: unga
 
 '''''
 
+[[sec-320-smc_periph_cg_access_error_test]]
+===== 320 `smc_periph_cg_access_error_test`
+
+*Source Module*: `smc_periph_cg_access_error_test`
+
+*BFM / Model*: ocah_axi_vip (AXI)
+
+*Objective*: Each CLOCK_GATE_CONTROL peripheral enable (AVSBus, I2C, UART, telemetry, I3C) set in turn: the gated window answers SLVERR with 0xBADCAB1E on read and SLVERR on write, and its recorded word again once ungated.
+
+*Test Coverage*:
+
+* `CLOCK_GATE_CONTROL` stops the AVSBus, I2C, UART, telemetry and I3C clocks with one enable each. In front of each of those peripherals an access gate on the SMC clock steers the crossbar leg into an error slave while the enable is set, so software reads an error instead of waiting on a register block whose clock has stopped.
+* For each peripheral the same three-step experiment runs on its own enable, with the other four enables cleared: gate CLEARED -- a probe register answers OKAY and its word is recorded ([NEGATIVE-NEEDS-POSITIVE-CONTROL]); gate SET -- a read of the probe completes SLVERR with `0xBADCAB1E` and a write of the complemented word completes SLVERR, and a no-response raises in the driver ([TIMEOUT-MUST-FAIL]); gate CLEARED -- the probe answers OKAY with the recorded word, so the refused write took no effect and the peripheral is reachable again.
+* The probes are AVS_CFG_0, I2C_CTRL_0, UART0 LOG_ENGINE_CTRL, telemetry receiver 0 CTRL and I3C0 HCI_VERSION, each from the generated map; where the register is writable the recovery read also shows the refused write landed nowhere.
+
+*Test Procedure*:
+
+Drive `smc_periph_cg_access_error_test_seq` on the SEP_IN AXI sequencer: save CLOCK_GATE_CONTROL, clear all five peripheral enables, run the three-step experiment on each peripheral, restore CLOCK_GATE_CONTROL and reconcile the access count and the value-compare count against the scoreboard. The leaf then requires every peripheral to appear in the positive-control, refused and recovered sets.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-PERIPH-CG-ACCESS-ERROR-<periph>` |One line per peripheral (AVSBUS, I2C, UART, TELEMETRY, I3C): its probe answered OKAY ungated, SLVERR with 0xBADCAB1E on read and SLVERR on write while its enable was set, and OKAY with the recorded word once the enable was cleared; a timeout, an OKAY while gated, a DECERR, another data word or a changed word after recovery fails it
+|`CHK-PERIPH-CG-ACCESS-ERROR-SWEEP` |Summary line: all five peripherals passed the three steps, CLOCK_GATE_CONTROL was restored and read back, and the scoreboard booked at least the expected number of value compares
+|===
+
+*Pass Criteria*: all six checkers hold and every sequence assert holds. Enrolled in: `all`, `hosted`.
+'''''
 
 ==== FABRIC
 
@@ -2263,21 +2295,21 @@ Drive `smc_sep_in_axi_flow_control_test_seq` on the SEP_IN AXI sequencer with a 
 
 *Test Coverage*:
 
-* The two windows answer differently in both response code and data -- the eFuse shim register with OKAY and its generated reset, the mandatory external window with the terminator's DECERR and zero data -- so a crossed route fails on the response code and on the data rather than only on a count.
-* The eFuse half is compared by the scoreboard against the generated reset; the external half is required to carry the terminator's zero data, which a neighbouring responder answering in its place would not.
+* The two windows answer differently in both response code and data -- the eFuse shim register with OKAY and its generated reset, the mandatory external window with the terminator's DECERR and the error-slave word 0xBADCAB1E -- so a crossed route fails on the response code and on the data rather than only on a count.
+* The eFuse half is compared by the scoreboard against the generated reset; the external half is required to carry the terminator's 0xBADCAB1E, which a neighbouring responder answering in its place would not.
 * The cycles in which two of the three activity probes were high together are counted and required to be non-zero, so a group the fabric serialised after all fails instead of passing.
 * The SEP_IN monitor attributes a response beat to the last address it saw accepted, which cannot name the transaction while two reads are outstanding; both addresses of the group are registered with it for that reason, and the per-access verdict is the scoreboard's exact expected response code.
 
 *Test Procedure*:
 
-Drive `smc_axil_downstream_concurrency_test_seq` on the SEP_IN AXI sequencer with a clocked observer on the three downstream activity probes: issue sixteen eFuse-shim reads alternated with sixteen external-window reads as one outstanding group, then require each external read to carry zero data, each eFuse read to have answered OKAY, and at least one cycle with two ports active together. The leaf requires the scoreboard's exact-value compare count to have reached its floor.
+Drive `smc_axil_downstream_concurrency_test_seq` on the SEP_IN AXI sequencer with a clocked observer on the three downstream activity probes: issue sixteen eFuse-shim reads alternated with sixteen external-window reads as one outstanding group, then require each external read to carry 0xBADCAB1E, each eFuse read to have answered OKAY, and at least one cycle with two ports active together. The leaf requires the scoreboard's exact-value compare count to have reached its floor.
 
 *Checkers*:
 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-AXIL-DOWNSTREAM-CONCURRENCY` |Every eFuse-shim read answered OKAY with the generated reset and every external-window read answered DECERR with zero data while both accesses were outstanding together, and two downstream manager ports were observed active in the same cycle at least once. The per-probe active-cycle counts are printed on the same line as reported, not asserted
+|`CHK-AXIL-DOWNSTREAM-CONCURRENCY` |Every eFuse-shim read answered OKAY with the generated reset and every external-window read answered DECERR with 0xBADCAB1E while both accesses were outstanding together, and two downstream manager ports were observed active in the same cycle at least once. The per-probe active-cycle counts are printed on the same line as reported, not asserted
 |===
 
 *Pass Criteria*: every access is answered by its own window with that window's response code and data, at least one cycle had two downstream manager ports active together, and the scoreboard books at least the expected number of value compares. Enrolled in: `all`, `hosted`, `axil`.
@@ -6370,7 +6402,7 @@ Drive `smc_efuse_image_pattern_test_seq`. Each checker below is a named compare 
 
 * GPIO_CTRL window routing sweep.
 * Sweeps every bootrom `EXTERNAL_MANDATORY_GPIO_CTRL_N` CONTROL address.
-* The OSS tree carries no GPIO pad block behind that window (`memmap.adoc` lists it as technology-specific), so every address must answer with an AXI error response and the all-zero word `csr_read_decerr_zero` expects.
+* The OSS tree carries no GPIO pad block behind that window (`memmap.adoc` lists it as technology-specific), so every address must answer with an AXI error response and the error-slave word `csr_read_err_signature` expects.
 
 *Test Procedure*:
 
@@ -6382,7 +6414,7 @@ Drive `smc_gpio_ctrl_full_sweep_test_seq`. Each checker below is a named compare
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-GPIO-CTRL-WINDOW-ERROR-SWEEP` |Every bootrom EXTERNAL_MANDATORY GPIO_CTRL window address answered with an AXI error response (SLVERR/DECERR) and an all-zero data word, and the scoreboard checked every access the sequence issued; an OKAY response, a non-zero word (a neighbouring register or stale bus data) or traffic that never reached the scoreboard fails it
+|`CHK-GPIO-CTRL-WINDOW-ERROR-SWEEP` |Every bootrom EXTERNAL_MANDATORY GPIO_CTRL window address answered with an AXI error response (SLVERR/DECERR) and the error-slave word 0xBADCAB1E, and the scoreboard checked every access the sequence issued; an OKAY response, another word (a neighbouring register or stale bus data) or traffic that never reached the scoreboard fails it
 |===
 
 
@@ -6705,7 +6737,7 @@ Drive `smc_gpio_p0_mux_test_seq`. Each checker below is a named compare the DUT 
 *Test Coverage*:
 
 * Addresses come from the generated bootrom register header, the same map the boot ROM is built against.
-* The adopter's implementation of these blocks is outside this repository, so nothing behind the window is specified or credited here. What the SMC side owns, and what is measured here, is the decode into the window: every access must drive the external port while it is in flight and must complete with a decode error (DECERR, the AMBA code for an address nobody decodes) carrying zero data. The zero-data requirement is DV-owned, the same rule `csr_read_decerr_zero` applies to every unmapped SMC hole: an error response carries no payload, so non-zero data means a live block answered in the window's place. An access that wedges or is answered by another block fails.
+* The adopter's implementation of these blocks is outside this repository, so nothing behind the window is specified or credited here. What the SMC side owns, and what is measured here, is the decode into the window: every access must drive the external port while it is in flight and must complete with a decode error (DECERR, the AMBA code for an address nobody decodes) carrying the error-slave word 0xBADCAB1E that every error slave in the design returns, so another word means a live block answered in the window's place. An access that wedges or is answered by another block fails.
 * The activity sampler keeps running for a few cycles after the access completes, so a request still being drained is not missed; a zero active-cycle count fails.
 * The per-pad instance list and stride are checked against the chapter's 65 instances and 0x20 stride, and the last instance's address is checked to equal base plus index times stride, before the first, second and last instance are probed.
 * Every probe is credited only for cycles on which the external port presents a request on the matching channel carrying the probed address, so activity from another master or at another address in the same window does not count. A write into the first per-pad block must likewise reach the port as a write request for that address and be refused, so the terminator's write channel is shown as its read channel is. The error code is reported, not asserted.
@@ -6719,12 +6751,12 @@ Drive `smc_external_window_pad_ctrl_decode_test_seq` on the SEP_IN AXI sequencer
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-EXTWIN-PAD-CTRL` |The cell ledger: one line per control block and per-pad instance closed, naming the number of `clk_smc_i` cycles `smc_external_req_o` presented a read request carrying the probed address and the DECERR-with-zero-data answer it received. A cell is entered only after both of those held
+|`CHK-EXTWIN-PAD-CTRL` |The cell ledger: one line per control block and per-pad instance closed, naming the number of `clk_smc_i` cycles `smc_external_req_o` presented a read request carrying the probed address and the DECERR/0xBADCAB1E answer it received. A cell is entered only after both of those held
 |`CHK-EXTERNAL-WINDOW-PAD-CTRL-DECODE` |Summary line: the control-block and per-pad probe counts, the per-probe active-cycle counts, the measured per-pad stride and the instance count, and the refused per-pad write with its active cycles and response. Logged after every probe's routing and response compare and the stimulus floor have held
 |`CHK-EXTWIN-PAD-CTRL-FLOOR` |The leaf requires one external-port activity record per expected probe and a non-zero active-cycle count on every one of them before this token is logged, so a run that stopped probing part-way fails
 |===
 
-*Pass Criteria*: all nine probes drive the adopter external AXI-Lite port for at least one cycle while in flight and complete DECERR with zero data, the generated per-pad geometry matches the chapter, and the leaf's per-probe activity check holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: all nine probes drive the adopter external AXI-Lite port for at least one cycle while in flight and complete DECERR with 0xBADCAB1E, the generated per-pad geometry matches the chapter, and the leaf's per-probe activity check holds. Enrolled in: `all`, `hosted`.
 
 '''''
 

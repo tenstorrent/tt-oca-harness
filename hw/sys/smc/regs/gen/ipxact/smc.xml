@@ -8573,7 +8573,7 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>i3c_cg_en</ipxact:name>
-              <ipxact:description>Clock gate enable for i3c</ipxact:description>
+              <ipxact:description>Clock gate enable for I3C. While set, the I3C peripheral clock is stopped and every access to the OCA_I3C_WRAP window answers SLVERR with read data 0xBADCAB1E.</ipxact:description>
               <ipxact:bitOffset>9</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8585,7 +8585,7 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>avs_cg_en</ipxact:name>
-              <ipxact:description>Clock gate enable for AVSBus</ipxact:description>
+              <ipxact:description>Clock gate enable for AVSBus. While set, the AVSBus controller clocks are stopped and every access to the SMC_AVSBUS_CONTROLLER window answers SLVERR with read data 0xBADCAB1E.</ipxact:description>
               <ipxact:bitOffset>10</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8597,7 +8597,7 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>i2c_cg_en</ipxact:name>
-              <ipxact:description>Clock gate enable for i2c</ipxact:description>
+              <ipxact:description>Clock gate enable for I2C. While set, the I2C peripheral clock is stopped and every access to the SMC_I2C_WRAP window answers SLVERR with read data 0xBADCAB1E.</ipxact:description>
               <ipxact:bitOffset>11</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8609,7 +8609,7 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>uart_cg_en</ipxact:name>
-              <ipxact:description>Clock gate enable for UART</ipxact:description>
+              <ipxact:description>Clock gate enable for UART. While set, the UART peripheral clock is stopped and every access to the SMC_UART_WRAP window answers SLVERR with read data 0xBADCAB1E.</ipxact:description>
               <ipxact:bitOffset>12</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8621,7 +8621,7 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>telemetry_cg_en</ipxact:name>
-              <ipxact:description>Clock gate enable for telemetry</ipxact:description>
+              <ipxact:description>Clock gate enable for telemetry. While set, the telemetry receiver clocks are stopped and every access to the SMC_TELEMETRY_RECEIVER_WRAP window answers SLVERR with read data 0xBADCAB1E.</ipxact:description>
               <ipxact:bitOffset>13</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>

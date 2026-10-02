@@ -648,6 +648,7 @@ sources:
       - hw/common/ocah_prim/rtl/prim_axi_lite_err_slv.sv
       - hw/common/ocah_prim/rtl/prim_axi_lite_to_apb_single.sv
       - hw/common/ocah_prim/rtl/prim_axi_user_override.sv
+      - hw/common/ocah_prim/rtl/prim_axil_access_gate.sv
       - hw/common/ocah_prim/rtl/prim_axil_addr_fixer.sv
       - hw/common/ocah_prim/rtl/prim_axil_prot_filter.sv
       - hw/common/ocah_prim/rtl/prim_bin2gray.sv
