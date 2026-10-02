@@ -98,11 +98,11 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_cloc
 # interrupts
 set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {smc_ext_interrupts_i*}] -add_delay
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {smc_ext_mailbox_interrupts_o*}] -add_delay
-# `gpio_interrupt_o*` / `uart_interrupt_o*` are real `smu` top-level
-# interrupt outputs, modeled the same as the other SMUCLK-domain interrupt
-# outputs above.
+# `gpio_interrupt_o*` comes from the SMUCLK register plane like the interrupt
+# outputs above; `uart_interrupt_o*` is the UART's own interrupt, which the
+# PERIPHERALCLK UART core drives directly.
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {gpio_interrupt_o*}] -add_delay
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {uart_interrupt_o*}] -add_delay
+set_output_delay [expr $clock_periods(PERIPHERALCLK_PERIOD)*0.5] -clock [get_clock PERIPHERALCLK] [get_ports {uart_interrupt_o*}] -add_delay
 
 # efuse
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {smc_shadow_regs_o*}] -add_delay
@@ -132,7 +132,7 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_cloc
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports sync_irq_o] -add_delay
 
 # will transition once to indicate status of POR DFX logic
-set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {ext_boot_seq_done_i}] -add_delay
+cdc_pinned_port_delay set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {ext_boot_seq_done_i}] -add_delay
 set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {mem_repair_done_i}] -add_delay
 set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {mem_repair_success_i}] -add_delay
 set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {mem_repair_abort_i}] -add_delay
@@ -180,8 +180,8 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_cloc
 set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {ext_debug_bus_i*}] -add_delay
 
 # Test
-set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports test_en_i] -add_delay
-set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports scan_rst_ni] -add_delay
+cdc_pinned_port_delay set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports test_en_i] -add_delay
+cdc_pinned_port_delay set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports scan_rst_ni] -add_delay
 
 # Memory Init
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports smc_init_mem_done_o] -add_delay
@@ -205,6 +205,14 @@ if {[sizeof_collection $i3c_dctmem_src_ports] > 0} {
 set i3c_dctmem_sink_ports [get_ports -quiet "i3c_dct_mem_sink_o*"]
 if {[sizeof_collection $i3c_dctmem_sink_ports] > 0} {
     set_output_delay [expr $clock_periods(PERIPHERALCLK_PERIOD)*0.5] -clock [get_clock PERIPHERALCLK] $i3c_dctmem_sink_ports -add_delay
+}
+set i3c_rltmem_src_ports [get_ports -quiet "i3c_rlt_mem_src_i*"]
+if {[sizeof_collection $i3c_rltmem_src_ports] > 0} {
+    set_input_delay  [expr $clock_periods(PERIPHERALCLK_PERIOD)*0.5] -clock [get_clock PERIPHERALCLK] $i3c_rltmem_src_ports -add_delay
+}
+set i3c_rltmem_sink_ports [get_ports -quiet "i3c_rlt_mem_sink_o*"]
+if {[sizeof_collection $i3c_rltmem_sink_ports] > 0} {
+    set_output_delay [expr $clock_periods(PERIPHERALCLK_PERIOD)*0.5] -clock [get_clock PERIPHERALCLK] $i3c_rltmem_sink_ports -add_delay
 }
 
 
@@ -411,7 +419,10 @@ set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_cloc
 # exposes neither spi_clk_i nor the spi_rxd_o / spi_rxds_o read ports the SPI
 # sections reference, so those pads fall through to the generic ck_feedthru
 # model that file applies.
-if {$smu_owns_child_copies} {
+# Applied whenever SMC is elaborated: that file anchors the block's own ports, so
+# a flat replay of the SMC child under its prefix skips it and this is the one place
+# the pads are timed.
+if {$smu_full_hier} {
     set gpio_sys_clk SMUCLK
     source [file normalize [file join [file dirname [info script]] \
         ../../smc/synth/smc_gpio_io_delays.sdc]]

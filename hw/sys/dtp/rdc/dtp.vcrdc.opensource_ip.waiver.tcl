@@ -3,10 +3,30 @@
 #
 # tclint-disable line-length
 #
-# DTP SpyGlass RDC waivers for open-source PULP IP used by jtag2axi.
-# Tenstorrent-owned jtag2axi / prim_fifo_sync waivers live in
-# dtp.vcrdc.waiver.tcl.
-#
+# DTP VC SpyGlass RDC waivers for third-party IP (PULP common_cells and axi).
+
+# For waiving RDC violations on open-source 3rd party IP
+
+# --- hierarchy-reuse tokens -------------------------------------------------------
+# ${PREFIX} re-anchors hierarchical filter fields at the parent instance path. A parent
+# run that replays this block predefines PREFIX and apply_prefix before sourcing this
+# file; in the block's own run PREFIX is "". ${BLOCKINST} is the containing instance of a
+# block-top violation (the design name here, the instance path at the parent).
+if { ![info exists PREFIX] } { set PREFIX "" }
+if { [info procs apply_prefix] eq "" } {
+    proc apply_prefix { filter } {
+        set out [string map [list {${PREFIX}} $::PREFIX] $filter]
+        if { $::PREFIX eq "" } {
+            set bi $::env(DESIGN_NAME)
+        } else {
+            set bi [string trimright $::PREFIX "/."]
+        }
+        set out [string map [list {${BLOCKINST}} $bi] $out]
+        return $out
+    }
+}
+# ----------------------------------------------------------------------------------
+
 #=======================================================================================================================
 # RULE INFO:
 #=======================================================================================================================
@@ -30,8 +50,8 @@
 # visible at a register that has no matching reset, even though the 4-phase handshake guarantees those
 # registers are quiescent. Same justification pattern as the cdc_fifo_gray_clearable / cdc_reset_ctrlr /
 # axi_cdc_clearable module-scoped CDC waivers in
-# block_flow_customizations/dtp/vccdc/inputs/waivers/opensource_ip_waiver.tcl, and the W146 / PragmaComments
-# lint waivers in block_flow_customizations/dtp/vclint/inputs/waivers/opensource_ip_waiver.tcl.
+# hw/sys/dtp/cdc/dtp.vccdc.opensource_ip.waiver.tcl, and the W146 / PragmaComments
+# lint waivers in hw/sys/dtp/lint/dtp.vclint.opensource_ip.waiver.tcl.
 #
 # Filter naming convention:
 #   `cdc_gray_data_q_<field>` waivers use `*data_q*<field>*` and intentionally catch BOTH the source-FIFO
@@ -40,7 +60,7 @@
 #   `data_q` substring in its hierarchical name. Both ends share the same clearable-protocol justification.
 #
 # Violations inside Tenstorrent-owned jtag2axi RTL that involve these primitives at the boundary are waived
-# separately in dtp.vcrdc.waiver.tcl (jtag2axi command-processor state, series_*_fifo storage, etc.).
+# separately in general_waiver.tcl (jtag2axi command-processor state, series_*_fifo storage, etc.).
 #=======================================================================================================================
 
 #-----------------------------------------------------------------------------------------------------------------------
@@ -112,10 +132,6 @@ waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_cdc_gray_data_q_burst} \
 #   future PULP AXI struct field addition (len, lock, prot, qos, atop, region, ...)
 #   is absorbed under the same clearable-protocol justification rather than
 #   surfacing as a surprise unwaived violation.
-waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_cdc_gray_data_q_other_fields} \
-    -comment {cdc_fifo_gray_clearable: tripwire catch-all for any AXI payload field in data_q entries not covered by an individually named waiver above (e.g. len, lock, prot, qos, atop, region — none observed in current RTL). All such fields share the same 4-phase clearable-reset protocol justification: both source and destination ends are idle on reset before the field can affect active logic.} \
-    -filter {(Tag == "RDC_CORRUPT_OBSERVED") AND (Module == "cdc_fifo_gray_clearable") AND (DestObject =~ "*data_q*")} \
-    -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { bmelton } -timestamp { 17-05-2026 21:00:00 }
 
 #-----------------------------------------------------------------------------------------------------------------------
 # cdc_fifo_gray_clearable: destination spill-register status flop (FIFO slot valid)
@@ -125,7 +141,7 @@ waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_cdc_gray_data_q_other_fields
 # Same dest can be attributed to Module axi_cdc_clearable when the path crosses
 # channel-instance boundaries inside the wrapper (RDC:1444).
 waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_cdc_gray_spill_reg_full_q} \
-    -comment {cdc_fifo_gray_clearable destination spill register: gen_spill_reg.{a,b}_full_q slot-valid status flop (DTPCLK, rst_n_i). Toggled when the 4-phase clearable reset controller marks the slot invalid; the status flop is reset by rst_n_i on the DTPCLK domain so cannot enter a corrupt state. Separated from the data_q payload waivers because full_q tracks slot validity rather than AXI payload content. Also matches Module==axi_cdc_clearable when VC Static attributes the same dest to the wrapper.} \
+    -comment {cdc_fifo_gray_clearable destination spill register: gen_spill_reg.{a,b}_full_q slot-valid status flop (DTPCLK, rst_n_i). Toggled when the 4-phase clearable reset controller marks the slot invalid; the status flop is reset by rst_n_i on the DTPCLK domain so cannot enter a corrupt state. Separated from the data_q payload waivers because full_q tracks slot validity rather than AXI payload content.} \
     -filter {(Tag == "RDC_CORRUPT_OBSERVED") AND ((Module == "cdc_fifo_gray_clearable") OR (Module == "axi_cdc_clearable")) AND (DestObject =~ "*spill_reg*full_q*")} \
     -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { bmelton } -timestamp { 17-05-2026 21:00:00 }
 
@@ -149,27 +165,27 @@ waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_cdc_gray_fifo_ptr_regs} \
 # cdc_reset_ctrlr: internal 4-phase handshake fabric
 #-----------------------------------------------------------------------------------------------------------------------
 
-# RDC:1040 — half_a data_src_q -> half_b ack_dst_q (cross-domain acknowledgment)
+# half_a data_src_q -> half_b ack_dst_q (cross-domain acknowledgment)
 waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_cdc_reset_ctrlr_ack_dst_q} \
-    -comment {RDC:1040 — cdc_reset_ctrlr: JTAG-domain half_a data_src_q (trst_n_combined/tlr_reset) reaches DTPCLK-domain half_b ack_dst_q (rst_n_i). ack_dst_q is the acknowledgment handshake register of the 4-phase clearable protocol; the protocol is designed to be robust against concurrent reset assertion in either domain, and ack_dst_q is reset by rst_n_i on the DTPCLK side independently. Cross-domain reset observation is the intended signaling mechanism.} \
+    -comment {cdc_reset_ctrlr: JTAG-domain half_a data_src_q (trst_n_combined/tlr_reset) reaches DTPCLK-domain half_b ack_dst_q (rst_n_i). ack_dst_q is the acknowledgment handshake register of the 4-phase clearable protocol; the protocol is designed to be robust against concurrent reset assertion in either domain, and ack_dst_q is reset by rst_n_i on the DTPCLK side independently. Cross-domain reset observation is the intended signaling mechanism.} \
     -filter {(Tag == "RDC_CORRUPT_OBSERVED") AND (Module == "cdc_reset_ctrlr") AND (DestObject =~ "*ack_dst_q*")} \
     -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { bmelton } -timestamp { 17-05-2026 21:00:00 }
 
-# RDC:1291 — half_a data_src_q -> half_b state_q (destination FSM state)
+# half_a data_src_q -> half_b state_q (destination FSM state)
 waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_cdc_reset_ctrlr_state_q} \
-    -comment {RDC:1291 — cdc_reset_ctrlr: JTAG-domain half_a data_src_q (trst_n_combined/tlr_reset) reaches DTPCLK-domain half_b state_q (rst_n_i). state_q is the destination-half FSM register of the 4-phase clearable protocol; observing a cross-domain reset toggle is the intended signaling mechanism. state_q is reset by rst_n_i on the DTPCLK side independently, so it cannot enter a corrupt state.} \
+    -comment {cdc_reset_ctrlr: JTAG-domain half_a data_src_q (trst_n_combined/tlr_reset) reaches DTPCLK-domain half_b state_q (rst_n_i). state_q is the destination-half FSM register of the 4-phase clearable protocol; observing a cross-domain reset toggle is the intended signaling mechanism. state_q is reset by rst_n_i on the DTPCLK side independently, so it cannot enter a corrupt state.} \
     -filter {(Tag == "RDC_CORRUPT_OBSERVED") AND (Module == "cdc_reset_ctrlr") AND (DestObject =~ "*state_q*")} \
     -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { bmelton } -timestamp { 17-05-2026 21:00:00 }
 
-# RDC:1135 — half_a data_src_q -> half_b receiver_phase_q (handshake phase tracker)
+# half_a data_src_q -> half_b receiver_phase_q (handshake phase tracker)
 waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_cdc_reset_ctrlr_receiver_phase_q} \
-    -comment {RDC:1135 — cdc_reset_ctrlr: JTAG-domain half_a data_src_q (trst_n_combined/tlr_reset) reaches DTPCLK-domain half_b receiver_phase_q (rst_n_i). receiver_phase_q tracks the 4-phase handshake phase on the destination half; cross-domain reset visibility is its intended input. Reset by rst_n_i on the DTPCLK side independently.} \
+    -comment {cdc_reset_ctrlr: JTAG-domain half_a data_src_q (trst_n_combined/tlr_reset) reaches DTPCLK-domain half_b receiver_phase_q (rst_n_i). receiver_phase_q tracks the 4-phase handshake phase on the destination half; cross-domain reset visibility is its intended input. Reset by rst_n_i on the DTPCLK side independently.} \
     -filter {(Tag == "RDC_CORRUPT_OBSERVED") AND (Module == "cdc_reset_ctrlr") AND (DestObject =~ "*receiver_phase_q*")} \
     -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { bmelton } -timestamp { 17-05-2026 21:00:00 }
 
-# RDC:1640 — half_b ack_dst_q -> half_a sync2r (ack return synchronizer first stage)
+# half_b ack_dst_q -> half_a sync2r (ack return synchronizer first stage)
 waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_cdc_reset_ctrlr_ack_sync} \
-    -comment {RDC:1640 — cdc_reset_ctrlr internal: half_b ack_dst_q (dst-side acknowledgment) drives the half_a sync2r synchronizer first stage returning the ack to the source domain. This is the internal 4-phase handshake fabric of cdc_reset_ctrlr; the path is correct-by-construction within the clearable-reset protocol. No external data is corrupted; this is the ack return path of the protocol itself.} \
+    -comment {cdc_reset_ctrlr internal: half_b ack_dst_q (dst-side acknowledgment) drives the half_a sync2r synchronizer first stage returning the ack to the source domain. This is the internal 4-phase handshake fabric of cdc_reset_ctrlr; the path is correct-by-construction within the clearable-reset protocol. No external data is corrupted; this is the ack return path of the protocol itself.} \
     -filter {(Tag == "RDC_CORRUPT_OBSERVED") AND (Module == "cdc_reset_ctrlr") AND (DestObject =~ "*sync2r*")} \
     -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { bmelton } -timestamp { 17-05-2026 21:00:00 }
 
@@ -185,15 +201,15 @@ waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_cdc_reset_ctrlr_ack_sync} \
 # justification.
 #-----------------------------------------------------------------------------------------------------------------------
 
-# RDC:2772 — s_src_isolate_ack_q / s_dst_isolate_ack_q (paired isolate-handshake flops)
+# s_src_isolate_ack_q / s_dst_isolate_ack_q (paired isolate-handshake flops)
 waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_cdc_gray_isolate_ack_q} \
-    -comment {RDC:2772 — cdc_fifo_gray_clearable: JTAG-domain half_a data_src_q (trst_n_combined/tlr_reset) reaches the paired isolate-acknowledge flops s_dst_isolate_ack_q (DTPCLK, rst_n_i) and s_src_isolate_ack_q (TCK, trst_n_combined/tlr_reset) at the FIFO top level. Each register latches the matching domain side of the 4-phase clearable-reset isolate handshake — capturing the cross-domain reset signal is exactly their intended function. Each is reset by its native-domain reset independently, so neither can enter a corrupt state.} \
+    -comment {cdc_fifo_gray_clearable: JTAG-domain half_a data_src_q (trst_n_combined/tlr_reset) reaches the paired isolate-acknowledge flops s_dst_isolate_ack_q (DTPCLK, rst_n_i) and s_src_isolate_ack_q (TCK, trst_n_combined/tlr_reset) at the FIFO top level. Each register latches the matching domain side of the 4-phase clearable-reset isolate handshake — capturing the cross-domain reset signal is exactly their intended function. Each is reset by its native-domain reset independently, so neither can enter a corrupt state.} \
     -filter {(Tag == "RDC_CORRUPT_OBSERVED") AND (Module == "cdc_fifo_gray_clearable") AND (DestObject =~ "*isolate_ack_q*")} \
     -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { bmelton } -timestamp { 17-05-2026 21:00:00 }
 
-# RDC:2771 — s_src_clear_ack_q / s_dst_clear_ack_q (paired clear-handshake flops)
+# s_src_clear_ack_q / s_dst_clear_ack_q (paired clear-handshake flops)
 waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_cdc_gray_clear_ack_q} \
-    -comment {RDC:2771 — cdc_fifo_gray_clearable: JTAG-domain half_a data_src_q (trst_n_combined/tlr_reset) reaches the paired clear-acknowledge flops s_dst_clear_ack_q (DTPCLK, rst_n_i) and s_src_clear_ack_q (TCK, trst_n_combined/tlr_reset) at the FIFO top level. Each register latches the matching domain side of the 4-phase clearable-reset clear handshake (sibling of the isolate_ack_q pair) — capturing the cross-domain reset signal is exactly their intended function. Each is reset by its native-domain reset independently.} \
+    -comment {cdc_fifo_gray_clearable: JTAG-domain half_a data_src_q (trst_n_combined/tlr_reset) reaches the paired clear-acknowledge flops s_dst_clear_ack_q (DTPCLK, rst_n_i) and s_src_clear_ack_q (TCK, trst_n_combined/tlr_reset) at the FIFO top level. Each register latches the matching domain side of the 4-phase clearable-reset clear handshake (sibling of the isolate_ack_q pair) — capturing the cross-domain reset signal is exactly their intended function. Each is reset by its native-domain reset independently.} \
     -filter {(Tag == "RDC_CORRUPT_OBSERVED") AND (Module == "cdc_fifo_gray_clearable") AND (DestObject =~ "*clear_ack_q*")} \
     -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { bmelton } -timestamp { 17-05-2026 21:00:00 }
 
@@ -201,8 +217,8 @@ waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_cdc_gray_clear_ack_q} \
 # axi_cdc_clearable: top-wrapper attribution (same paths reported under the wrapper Module)
 #-----------------------------------------------------------------------------------------------------------------------
 
-# RDC:2673 — DTPCLK controller state -> source FIFO data_q payload (wrapper attribution)
+# DTPCLK controller state -> source FIFO data_q payload (wrapper attribution)
 waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_axi_cdc_clearable_wrapper_data_q} \
-    -comment {RDC:2673 — axi_cdc_clearable (top wrapper): DTPCLK-domain reset controller half_b state (rst_n_i) reaches TCK-domain source FIFO data_q payload fields (data, last, strb, ...) reported under Module=="axi_cdc_clearable" because the path crosses channel-instance boundaries within the wrapper. All such fields are quiescent when rst_n_i asserts due to the 4-phase clearable protocol; the TCK side is also in reset-idle so no active JTAG transaction can misuse stale field values.} \
+    -comment {axi_cdc_clearable (top wrapper): DTPCLK-domain reset controller half_b state (rst_n_i) reaches TCK-domain source FIFO data_q payload fields (data, last, strb, ...) reported under Module=="axi_cdc_clearable" because the path crosses channel-instance boundaries within the wrapper. All such fields are quiescent when rst_n_i asserts due to the 4-phase clearable protocol; the TCK side is also in reset-idle so no active JTAG transaction can misuse stale field values.} \
     -filter {(Tag == "RDC_CORRUPT_OBSERVED") AND (Module == "axi_cdc_clearable") AND (DestObject =~ "*data_q*")} \
     -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { bmelton } -timestamp { 17-05-2026 21:00:00 }

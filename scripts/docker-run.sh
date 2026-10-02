@@ -25,6 +25,9 @@
 #                               (default: docker.io/nixos/nix:latest)
 #      OCAH_IMAGE_WITH_UV      bundle uv-installed dependencies into nix-built
 #                               image (true/false, default: false)
+#      OCAH_NIX_MAX_JOBS       derivations nix builds in parallel; NIX_CONFIG
+#                               overrides nix.conf, so lower it here on a
+#                               shared host (default: auto, one per CPU)
 #      OCAH_DOCKER_CACHE_DIR   optional shared tarball cache dir for the nix
 #                               container image; unset disables the cache
 #                               (site CI sets this, e.g. in its env setup)
@@ -62,6 +65,8 @@ NIXOS_IMAGE="${OCAH_NIXOS_IMAGE:-docker.io/nixos/nix:latest}"
 IMAGE_WITH_UV="${OCAH_IMAGE_WITH_UV:-false}"
 NETWORK="${OCAH_NETWORK:-ocah-docs-net}"
 REGISTRY_IMAGE="${OCAH_CONTAINER_REGISTRY_IMAGE:-}"
+NIX_CONFIG="experimental-features = nix-command flakes
+max-jobs = ${OCAH_NIX_MAX_JOBS:-auto}"
 
 # safe.directory lines for the container branch: the repo is owned by root
 # there, so git refuses to read it or any submodule without them.
@@ -287,8 +292,6 @@ run_image() {
 # hosts without nix installed, it will use NIXOS_IMAGE, which defaults to
 # docker.io/nixos/nix
 nixos_run() {
-  # Nix Flakes and Nix-Command are required for this - enable them
-  local NIX_CONFIG="experimental-features = nix-command flakes"
   if command -v nix >/dev/null 2>&1; then
     NIX_CONFIG="$NIX_CONFIG" bash -c "$*"
   else
@@ -312,7 +315,6 @@ image_hash() {
 
 # Open a shell in the Nix Container - even on a nix-enabled host
 nixos_shell() {
-  local NIX_CONFIG="experimental-features = nix-command flakes"
   local GIT_ALLOW_CMD="git config --global --add safe.directory \$(pwd) &&
         git config --global --add safe.directory \$(pwd)/hw/sys/sep/bootrom/prod/tools/tt-oca-manifest &&"
   run_image $NIXOS_IMAGE -it sh -c "

@@ -33272,7 +33272,10 @@ timeout_value and remains high until the request is deasserted. Set in both mode
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
               <ipxact:name>rc</ipxact:name>
-              <ipxact:description>Reference counter for the CPU</ipxact:description>
+              <ipxact:description>Reference counter for the CPU. Write once, then poll this register until
+the readback reflects the written value before writing again. The counter
+keeps advancing, so the readback is at or just above the written value
+rather than equal to it.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>

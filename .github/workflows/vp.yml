@@ -107,8 +107,10 @@ jobs:
     name: sep-vp (container)
     if: github.event_name != 'pull_request'
     runs-on: ${{ vars.VP_CI_RUNNER || 'ubuntu-latest' }}
-    timeout-minutes: 60
-    permissions: { contents: read, packages: read }
+    # push and schedule wait up to three hours for a container run on main to
+    # publish this tree's tag, then still have the original hour to build.
+    timeout-minutes: ${{ (github.event_name == 'push' || github.event_name == 'schedule') && 240 || 60 }}
+    permissions: { contents: read, packages: read, actions: read }
     env:
       OCAH_ENGINE: docker
       OCAH_IMAGE_WITH_UV: "true"
@@ -169,8 +171,10 @@ jobs:
     name: smc-vp + smu-vp (container)
     if: github.event_name != 'pull_request'
     runs-on: ${{ vars.VP_CI_RUNNER || 'ubuntu-latest' }}
-    timeout-minutes: 60
-    permissions: { contents: read, packages: read }
+    # push and schedule wait up to three hours for a container run on main to
+    # publish this tree's tag, then still have the original hour to build.
+    timeout-minutes: ${{ (github.event_name == 'push' || github.event_name == 'schedule') && 240 || 60 }}
+    permissions: { contents: read, packages: read, actions: read }
     env:
       OCAH_ENGINE: docker
       OCAH_IMAGE_WITH_UV: "true"
