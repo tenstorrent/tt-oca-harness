@@ -3,7 +3,7 @@
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 REPO_ROOT=$(cd -- $SCRIPT_DIR/../.. &>/dev/null && pwd)
 
-_ALL_BLOCKS="smc sep smu aou dtp"
+_ALL_BLOCKS=$(make -s --eval='print-%: ; @echo $($*)' print-OCAH_FLOW_TARGETS)
 
 usage() {
   cat <<EOF
