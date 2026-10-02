@@ -377,6 +377,14 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
     return XtrigCtpBase + ctp_idx * XtrigCtpStride + CtpStretchOffset;
   endfunction
 
+  static function bit [63:0] ctm_hole_addr(int unsigned src_idx);
+    return dtp_xtrig_ctm_hole_addr(src_idx);
+  endfunction
+
+  static function bit [63:0] ctp_hole_addr(int unsigned ctp_idx);
+    return dtp_xtrig_ctp_hole_addr(ctp_idx);
+  endfunction
+
   // CTM port numbering: external CTP[i] occupies port i, internal CT[i]
   // occupies port XtrigNumCtp + i.
   static function int unsigned external_ctp_port(int unsigned ctp_idx);

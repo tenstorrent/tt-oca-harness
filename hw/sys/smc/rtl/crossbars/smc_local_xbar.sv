@@ -64,7 +64,8 @@ module smc_local_xbar
   // Address Map Configuration
   // ===========================================================================
   // Direct CPU-cluster resources use separate rules so gaps between them
-  // decode-error here instead of reaching the cluster.
+  // decode-error here instead of reaching the cluster. The debug module's
+  // hart-facing window has no rule: only the cluster's harts may reach it.
   localparam addr_rule_t [NumAddrRules-1:0] AddrMap = '{
     '{idx: 0,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR),

@@ -2,8 +2,6 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 // OCAH SEP Top-Level Address Map
-// This file defines the complete address map for the OCAH SEP subsystem
-// Base addresses are derived from hw/sep/sep_crypto_pkg.sv and hw/sep/sep_pkg.sv
 
 // Include all peripheral RDL files
 `include "otbn.rdl"
@@ -52,129 +50,98 @@ addrmap sep_top #(
     desc = "Complete address map for OCAH Security Processor subsystem";
 
     // =========================================================================
-    // System Resources (0x1010_0000 - 0x1090_0000)
+    // System Resources (0x1000_0000 - 0x108F_FFFF)
     // =========================================================================
 
-    // Base: 0x1000_0000, Size: 256 KB (0x40000)
+    // Scratch SRAM
     external sep_sram          sep_sram                 @BASE_ADDR + 0x1000_0000;
 
     // Boot ROM
-    // Base: 0x1004_0000, Size: 64 KB (0x10000)
     external sep_boot_rom      sep_boot_rom             @BASE_ADDR + 0x1004_0000;
 
     // Secure DMA
-    // Base: 0x1080_0000, Size: 4 KB (0x1000)
     secure_dma                 secure_dma               @BASE_ADDR + 0x1080_0000;
 
     // WDT Timer
-    // Base: 0x1080_1000, Size: 4 KB (0x1000)
     aon_timer                  wdt_timer                @BASE_ADDR + 0x1080_1000;
 
     // SEP Scratch Registers
-    // Base: 0x1080_A000, Size: 128 B (0x80)
     sep_scratch               sep_scratch_cold          @BASE_ADDR + 0x1080_2000;
     sep_scratch               sep_scratch_warm          @BASE_ADDR + 0x1080_2080;
 
     // SEP Reset Controller
-    // Base: 0x1080_3000, Size: 8 B (0x8)
     sep_reset_ctrl             sep_reset_ctrl           @BASE_ADDR + 0x1080_3000;
 
     // =========================================================================
-    // Crypto Subsystem Peripherals (0x1090_0000 - 0x10A0_0000)
+    // Crypto Subsystem Peripherals (0x1090_0000 - 0x109F_FFFF)
     // =========================================================================
 
     // OTBN Cryptographic Accelerator
-    // Base: 0x1090_0000, Size: 64 KB (0x10000)
-    // From sep_crypto_pkg.sv: OTBN_RULE
     otbn                        otbn                     @BASE_ADDR + 0x1090_0000;
 
     // AES Accelerator
-    // Base: 0x1091_0000, Size: 4 KB (0x1000)
-    // From sep_crypto_pkg.sv: AES_RULE
     aes                         aes                      @BASE_ADDR + 0x1091_0000;
 
     // HMAC Accelerator
-    // Base: 0x1091_1000, Size: 8 KB (0x2000)
-    // From sep_crypto_pkg.sv: HMAC_RULE
     hmac                        hmac                     @BASE_ADDR + 0x1091_1000;
 
     // KMAC/SHA3 Accelerator
-    // Base: 0x1091_3000, Size: 4 KB (0x1000)
-    // From sep_crypto_pkg.sv: KMAC_RULE
     kmac                        kmac                     @BASE_ADDR + 0x1091_3000;
 
-    // DRBG: CSRNG + EDN share the 4 KB aperture at 0x1091_5000, split at 0x800.
-    // From sep_crypto_pkg.sv: CSRNG_RULE
+    // DRBG: CSRNG and EDN share one aperture
     csrng                       csrng                   @BASE_ADDR + 0x1091_5000;
-
-    // From sep_crypto_pkg.sv: EDN_RULE
     edn                         edn                     @BASE_ADDR + 0x1091_5800;
 
     // Entropy Source (ESRC)
     entropy_source              entropy_source          @BASE_ADDR + 0x1091_6000;
 
     // External TRNG register passthrough
-    // Base: 0x1091_7000, Size: 4 KB (0x1000)
     external sep_trng           trng                     @BASE_ADDR + 0x1091_7000;
 
     // Lifecycle Controller
-    // Base: 0x1091_8000, Size: 32 kB (spec: LC at 0x1091_8000-0x1091_FFFF)
     sep_lifecycle_ctrl          sep_lifecycle_ctrl      @BASE_ADDR + 0x1091_8000;
 
     // Key Manager (SEP side)
-    // Base: 0x1092_0000, Size: 4 KB (0x1000) (spec: KM at 0x1092_0000-0x1092_0FFF)
     km_mailbox_sep              km_mailbox_sep          @BASE_ADDR + 0x1092_0000;
 
     // Efuse Map (OTP Shadow Memory)
-    // Base: 0x1093_0000 (spec: OTP at 0x1093_0000-0x1093_7FFF)
     sep_efuse_map               sep_efuse_map           @BASE_ADDR + 0x1093_0000;
 
     // Efuse Interface
-    // Base: 0x1093_0400, Size: 28 B (0x1C)
     efuse_interface_ctrl        efuse_interface_ctrl    @BASE_ADDR + 0x1093_0400;
 
     // Efuse MMR
-    // Base: 0x1093_0500, Size: 112 B (0x70)
     efuse_mmr                   efuse_mmr               @BASE_ADDR + 0x1093_0500;
 
     // Adams Bridge post-quantum cryptographic accelerator
-    // Base: 0x1094_0000, Size: 64 KB (0x10000)
     external abr_reg            abr                     @BASE_ADDR + 0x1094_0000;
 
     // Fabric entropy pool
-    // Base: 0x1095_0000, Size: 64 KB (0x10000)
     external sep_entropy_pool   entropy_pool            @BASE_ADDR + 0x1095_0000;
 
     // =========================================================================
-    // System Peripherals (0x10A0_0000 - 0x10A5_0FFF)
+    // System Peripherals (0x10A0_0000 - 0x10A3_FFFF)
     // =========================================================================
 
     // Mailbox
-    // Base: 0x10A0_0000, Size: 64 KB (0x10000)
     axil_mailbox_sep_wrap       axil_mailbox             @BASE_ADDR + 0x10A0_0000;
 
     // Local Master Alias Remap
-    // Base: 0x10A1_0000, Size: 256 B (0x200)
     alias_remap        local_master_alias_remap_ctrl[16] @BASE_ADDR + 0x10A1_0000 += 0x20;
 
     // AP Output Remap
-    // Base: 0x10A1_0200, Size: 128 B (0x80)
     output_remap       ap_output_remap_ctrl[16]          @BASE_ADDR + 0x10A1_0200 += 0x08;
 
     // STEE Output Remap
-    // Base: 0x10A1_0300, Size: 128 B (0x80)
     output_remap       stee_output_remap_ctrl[16]        @BASE_ADDR + 0x10A1_0300 += 0x08;
 
-    // Filter Control
-    // Base: 0x10A2_0000, Size: 1 KB (0x400)
+    // Outbound Filter Control
     filter_ctrl        outbound_filter_ctrl[32]          @BASE_ADDR + 0x10A2_0000 += 0x20;
 
-    // Filter Control
-    // Base: 0x10A2_1000, Size: 512 B (0x200)
+    // Inbound Filter Control
     filter_ctrl        inbound_filter_ctrl[16]           @BASE_ADDR + 0x10A2_1000 += 0x20;
 
     // SEP CPU Control
-    // Base: 0x10A3_0000, Size: 8 KB (0x2000)
     sep_cpu_ctrl       sep_cpu_ctrl                      @BASE_ADDR + 0x10A3_0000;
 
     // =========================================================================
@@ -185,15 +152,15 @@ addrmap sep_top #(
     spi_controller       spi_controller                  @BASE_ADDR + 0x10B0_0000;
 
     // =========================================================================
-    // Dedicated Remap Regions (0x1100_0000 - 0x1200_0000)
+    // Dedicated Remap Regions (0x1100_0000 - 0x11FF_FFFF)
     // =========================================================================
 
     external remapped_region       ap_region        @BASE_ADDR + 0x1100_0000;
     external remapped_region       stee_region      @BASE_ADDR + 0x1180_0000;
 
     // =========================================================================
-    // SEP External Region (adopter/vendor window: Cadence SPI et al)
-    // Base: 0x2000_0000, Size: 512 MB (0x2000_0000)
+    // SEP External Region (0x2000_0000 - 0x3FFF_FFFF, adopter-defined window,
+    // e.g. a memory-mapped flash controller)
     // =========================================================================
     // Open-source builds reserve the region; an adopter overlay may override
     // sep_external.rdl to instantiate external peripherals.
@@ -201,21 +168,16 @@ addrmap sep_top #(
     sep_external                sep_external             @BASE_ADDR + 0x2000_0000;
 
     // =========================================================================
-    // EL2 CPU Resources (0xC000_0000 - 0xD000_0000)
+    // EL2 CPU Resources (0xC000_0000 - 0xCFFF_FFFF)
     // =========================================================================
 
     // ITCM
-    // Base: 0xC000_0000, Size: 256 KB (0x40000)
-    // TODO: Add ITCM RDL file
     external sep_iccm          sep_iccm                  @BASE_ADDR + 0xC000_0000;
 
     // DTCM
-    // Base: 0xC004_0000, Size: 128 KB (0x20000)
-    // TODO: Add DTCM RDL file
     external sep_dccm          sep_dccm                  @BASE_ADDR + 0xC004_0000;
 
     // PIC
-    // Base: 0xC008_0000, Size: 32 KB (0x8000)
     el2_pic                    pic                       @BASE_ADDR + 0xC008_0000;
 
 `ifdef OCAH_DOC_MEMORY_MAP
@@ -284,7 +246,7 @@ addrmap sep_top #(
     sep_cpu_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xCA11AB1EBADCAB1E, bresp: ocah_resp_e::SLVERR};
     sep_cpu_ctrl->desc = "SEP CPU control and interrupt registers.";
     spi_controller->ocah_aperture_size = 0x100000;
-    spi_controller->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
+    spi_controller->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xCA11AB1EBADCAB1E, bresp: ocah_resp_e::DECERR};
     spi_controller->desc = "External I/O SPI controller bridge.";
     sep_external->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::ADOPTER, rdata: 0x0, bresp: ocah_resp_e::ADOPTER};
     pic->ocah_aperture_size = 0x8000;
