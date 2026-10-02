@@ -1,129 +1,186 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""DTP UVM scoreboard.
+"""DTP scoreboard: always on, in every test, and comparing only.
 
-Subscribes to the JTAG agent's completed-transaction stream and checks:
-  * IDCODE reads return exactly the DTP IDCODE (full 32-bit compare, which
-    subsumes the IEEE 1149.1 LSB == 1 rule).
-  * JTAG2AXI writes report SUCCESS and land in the OCAH AXI RAM.
-  * JTAG2AXI reads report SUCCESS and return the OCAH AXI RAM contents.
+Every reference-model feature is judged on two streams the env wires in
+``connect_phase``: the observed monitor stream (``observed_export``) and
+the expected items its ``Dtp<Feature>RefModel`` publishes
+(``expected_export``). The base pairs the two in order and hands each pair
+to ``compare_pair()``, which extracts the observed value and records the
+verdict; an expected item without a contract pairs and drops silently, so a
+reference model can publish one item per observed item. Expected values
+never originate here.
 
-check_phase() fails on any recorded error and reports the per-category check
-counts; a test whose checkable traffic produced zero comparisons is reported
-so a vacuous run is visible in the log even when it cannot be failed here
-(most scenarios land their evidence in the per-feature OcahChecker ledgers).
+  ir_decode        expected: ``DtpIrDecodeRefModel`` on the JTAG event and
+                   IR-scan streams. Observed: ``jtag_ptap_inst_decoded``,
+                   sampled when the expected item arrives (the cycle the
+                   instruction becomes active).
+  idcode, bypass   expected: ``DtpIdcodeRefModel``, ``DtpBypassRefModel``.
+                   Observed: the reconstructed DR scan's TDO bits.
+  jtag2axi_op      the JTAG agent's completed JTAG2AXI single operations:
+                   a write reports SUCCESS and lands its strobed bytes in
+                   the responder memory, and a read reports SUCCESS and
+                   returns the memory's bytes.
+
+A required feature (``DtpEnvCfg.required_features``, set by the test) that
+ends with zero comparisons fails the run. The scan monitor swallows a
+subscriber exception and counts it, so the count is recorded as
+``CHK-JTAG-MON-CALLBACKS`` and must be zero. The SV-UVM twin is
+``dtp_scoreboard``.
 """
 
 from __future__ import annotations
 
-from pyuvm import ConfigDB, uvm_subscriber
+from ocah_jtag_vip import OcahJtagScanItem
+from ocah_lib import OcahScoreboard
+from pyuvm import ConfigDB
 
+from .dtp_expected_item import DtpAnalysisImp, DtpExpectedItem
 from .dtp_jtag_item import DtpJtagItem, DtpJtagOp
-from .dtp_tap_device import DTP_DEFAULT_IDCODE
-from .dtp_types import DtpJtag2AxiStatus, get_jtag2axi_target
+from .dtp_jtag_scan_builder import DtpJtagScanBuilder
+from .dtp_types import (
+    DTP_FEATURE_BYPASS,
+    DTP_FEATURE_IDCODE,
+    DTP_FEATURE_IR_DECODE,
+    DtpJtag2AxiStatus,
+    get_jtag2axi_target,
+)
+
+__all__ = ["DtpScoreboard"]
+
+JTAG2AXI_OP_FEATURE = "jtag2axi_op"
 
 
-class DtpScoreboard(uvm_subscriber):
+class DtpScoreboard(OcahScoreboard):
+    def __init__(self, name: str, parent: object) -> None:
+        super().__init__(name, parent)
+        self.name_tag = "dtp_scoreboard"
+        # Set by the env: the scan builder whose monitor feeds the reference models.
+        self.scan_builder: DtpJtagScanBuilder | None = None
+
     def build_phase(self) -> None:
+        super().build_phase()
         self.cfg = ConfigDB().get(self, "", "cfg")
-        self.errors: list[str] = []
-        self.checks = 0
-        self.items_seen = 0
-        self.checks_by_kind: dict[str, int] = {"idcode": 0, "j2a_write": 0, "j2a_read": 0}
-
-    def _fail(self, msg: str) -> None:
-        self.errors.append(msg)
-        self.logger.error("SCOREBOARD FAIL: %s", msg)
-
-    def write(self, item: DtpJtagItem) -> None:
-        self.items_seen += 1
-        if item.op is DtpJtagOp.READ and item.reg == "IDCODE":
-            self.checks += 1
-            self.checks_by_kind["idcode"] += 1
-            if (item.result & 0xFFFF_FFFF) != DTP_DEFAULT_IDCODE:
-                self._fail(
-                    f"IDCODE mismatch: expected 0x{DTP_DEFAULT_IDCODE:08x}, got 0x{item.result:08x}"
-                )
-            else:
-                self.logger.info("IDCODE check OK: 0x%08x", item.result)
-
-        elif item.op is DtpJtagOp.J2A_WRITE:
-            self.checks += 1
-            self.checks_by_kind["j2a_write"] += 1
-            if item.status != DtpJtag2AxiStatus.SUCCESS:
-                self._fail(f"J2A write status {DtpJtag2AxiStatus(item.status).name}")
-            elif self.cfg.axi_ram is not None:
-                # The TDR data and wstrb fields are the bus lanes of the
-                # beat holding the address.
-                beat_bytes = get_jtag2axi_target("smc_axi").beat_bytes
-                beat_addr = item.axi_addr - item.axi_addr % beat_bytes
-                mem = self.cfg.axi_ram.read(beat_addr % self.cfg.axi_mem_size, beat_bytes)
-                expected = item.axi_data.to_bytes(beat_bytes, "little")
-                for idx in range(beat_bytes):
-                    if ((item.axi_wstrb >> idx) & 0x1) and mem[idx] != expected[idx]:
-                        self._fail(
-                            f"J2A write lane {idx} mismatch at 0x{beat_addr + idx:x}: "
-                            f"expected 0x{expected[idx]:02x}, got 0x{mem[idx]:02x} "
-                            f"(wstrb=0x{item.axi_wstrb:02x}, size={item.axi_size})"
-                        )
-                        break
-                else:
-                    self.logger.info(
-                        "J2A write OK: addr=0x%x size=%d wstrb=0x%02x data=0x%016x",
-                        item.axi_addr,
-                        item.axi_size,
-                        item.axi_wstrb,
-                        item.axi_data,
-                    )
-
-        elif item.op is DtpJtagOp.J2A_READ:
-            self.checks += 1
-            self.checks_by_kind["j2a_read"] += 1
-            if item.status != DtpJtag2AxiStatus.SUCCESS:
-                self._fail(f"J2A read status {DtpJtag2AxiStatus(item.status).name}")
-            elif self.cfg.axi_ram is not None:
-                byte_count = 1 << item.axi_size
-                mem = int.from_bytes(
-                    self.cfg.axi_ram.read(item.axi_addr % self.cfg.axi_mem_size, byte_count),
-                    "little",
-                )
-                mask = (1 << (8 * byte_count)) - 1
-                # The data field returns the whole beat; the addressed bytes
-                # sit on the lanes the address selects.
-                lane = item.axi_addr % get_jtag2axi_target("smc_axi").beat_bytes
-                rdata = (item.rdata >> (8 * lane)) & mask
-                if rdata != mem:
-                    self._fail(
-                        f"J2A read 0x{rdata:0{byte_count * 2}x} != "
-                        f"AxiRam[0x{item.axi_addr:x}]=0x{mem:0{byte_count * 2}x} "
-                        f"(size={item.axi_size})"
-                    )
-                else:
-                    self.logger.info(
-                        "J2A read OK: addr=0x%x size=%d data=0x%x",
-                        item.axi_addr,
-                        item.axi_size,
-                        rdata,
-                    )
+        self.tb_if = ConfigDB().get(self, "", "tb_if")
+        for feature in (
+            DTP_FEATURE_IR_DECODE,
+            DTP_FEATURE_IDCODE,
+            DTP_FEATURE_BYPASS,
+            JTAG2AXI_OP_FEATURE,
+        ):
+            self.add_feature(feature)
+        for feature in sorted(self.cfg.required_features):
+            self.require_feature(feature)
+        self.ir_decode_expected_export = DtpAnalysisImp(
+            "ir_decode_expected_export", self, self.write_ir_decode_expected
+        )
+        self.op_export = DtpAnalysisImp("op_export", self, self.write_op)
 
     def check_phase(self) -> None:
-        assert not self.errors, f"DTP scoreboard found {len(self.errors)} error(s): " + "; ".join(
-            self.errors
+        monitor = self.scan_builder.monitor if self.scan_builder is not None else None
+        if monitor is not None and self.evidence is not None:
+            self.evidence.expect_equal(
+                "CHK-JTAG-MON-CALLBACKS",
+                monitor.callback_errors,
+                0,
+                context="reference-model exceptions the scan monitor swallowed",
+            )
+        super().check_phase()
+
+    # ------------------------------------------------------------------
+    # ir_decode: the observation is a TB-interface observable, sampled in
+    # the time step the instruction became active.
+    # ------------------------------------------------------------------
+    def write_ir_decode_expected(self, expected: DtpExpectedItem) -> None:
+        try:
+            observed = self.tb_if.sample("jtag_ptap_inst_decoded")
+        except ValueError:
+            self.record_compare(
+                DTP_FEATURE_IR_DECODE,
+                passed=False,
+                expected=f"0x{expected.expected & expected.mask:x}",
+                observed="X",
+                context=expected.context,
+            )
+            return
+        self.compare_equal(
+            DTP_FEATURE_IR_DECODE,
+            observed & expected.mask,
+            expected.expected & expected.mask,
+            expected.context,
         )
-        breakdown = " ".join(f"{kind}={count}" for kind, count in self.checks_by_kind.items())
-        if self.items_seen and not self.checks:
-            # Visible-but-not-fatal: JTAG traffic flowed and none of it was a
-            # kind this scoreboard compares. The per-feature evidence ledgers
-            # (TAP checker, AXI scoreboard, XTRIG checker) own those scenarios.
-            self.logger.info(
-                "DTP scoreboard: %d items observed, no scoreboard-checkable ops (%s)",
-                self.items_seen,
-                breakdown,
-            )
+
+    # ------------------------------------------------------------------
+    # Pair verdicts.
+    # ------------------------------------------------------------------
+    def compare_pair(self, feature: str, observed: object, expected: object) -> None:
+        if feature in (DTP_FEATURE_IDCODE, DTP_FEATURE_BYPASS):
+            self._compare_scan_value(feature, observed, expected)
         else:
-            self.logger.info(
-                "DTP scoreboard: %d checks (%s) over %d items, 0 errors",
-                self.checks,
-                breakdown,
-                self.items_seen,
-            )
+            super().compare_pair(feature, observed, expected)
+
+    def _compare_scan_value(self, feature: str, observed: object, expected: object) -> None:
+        """The scan's shifted-out bits under the expected mask."""
+        if not isinstance(observed, OcahJtagScanItem) or not isinstance(expected, DtpExpectedItem):
+            raise TypeError(f"{feature}: unexpected pair {type(observed)}, {type(expected)}")
+        if not expected.compare:
+            return
+        self.compare_equal(
+            feature,
+            observed.tdo_value & expected.mask,
+            expected.expected & expected.mask,
+            expected.context,
+        )
+
+    # ------------------------------------------------------------------
+    # jtag2axi_op: completed single operations against the responder memory.
+    # ------------------------------------------------------------------
+    def write_op(self, item: DtpJtagItem) -> None:
+        if item.op is DtpJtagOp.J2A_WRITE:
+            self._check_j2a_write(item)
+        elif item.op is DtpJtagOp.J2A_READ:
+            self._check_j2a_read(item)
+
+    def _check_j2a_write(self, item: DtpJtagItem) -> None:
+        context = (
+            f"write addr=0x{item.axi_addr:x} size={item.axi_size} wstrb=0x{item.axi_wstrb:02x}"
+        )
+        if item.status != DtpJtag2AxiStatus.SUCCESS or self.cfg.axi_ram is None:
+            self._record_status(item, context)
+            return
+        # The TDR data and wstrb fields are the bus lanes of the beat holding
+        # the address.
+        beat_bytes = get_jtag2axi_target("smc_axi").beat_bytes
+        beat_addr = item.axi_addr - item.axi_addr % beat_bytes
+        mem = self.cfg.axi_ram.read(beat_addr % self.cfg.axi_mem_size, beat_bytes)
+        expected = item.axi_data.to_bytes(beat_bytes, "little")
+        lanes = [idx for idx in range(beat_bytes) if (item.axi_wstrb >> idx) & 0x1]
+        self.compare_equal(
+            JTAG2AXI_OP_FEATURE,
+            bytes(mem[idx] for idx in lanes).hex(),
+            bytes(expected[idx] for idx in lanes).hex(),
+            context,
+        )
+
+    def _check_j2a_read(self, item: DtpJtagItem) -> None:
+        context = f"read addr=0x{item.axi_addr:x} size={item.axi_size}"
+        if item.status != DtpJtag2AxiStatus.SUCCESS or self.cfg.axi_ram is None:
+            self._record_status(item, context)
+            return
+        byte_count = 1 << item.axi_size
+        mem = int.from_bytes(
+            self.cfg.axi_ram.read(item.axi_addr % self.cfg.axi_mem_size, byte_count), "little"
+        )
+        # The data field returns the whole beat; the addressed bytes sit on
+        # the lanes the address selects.
+        lane = item.axi_addr % get_jtag2axi_target("smc_axi").beat_bytes
+        rdata = (item.rdata >> (8 * lane)) & ((1 << (8 * byte_count)) - 1)
+        self.compare_equal(JTAG2AXI_OP_FEATURE, rdata, mem, context)
+
+    def _record_status(self, item: DtpJtagItem, context: str) -> None:
+        self.compare_equal(
+            JTAG2AXI_OP_FEATURE,
+            DtpJtag2AxiStatus(item.status).name,
+            DtpJtag2AxiStatus.SUCCESS.name,
+            context,
+        )

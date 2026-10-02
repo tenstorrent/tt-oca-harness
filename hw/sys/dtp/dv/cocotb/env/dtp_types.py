@@ -24,6 +24,17 @@ from enum import Enum, IntEnum
 # `hw/ip/jtag/jtag_ptap/doc/interface.adoc`, both "Instruction Encodings").
 DTP_IR_WIDTH = 6
 
+# The value Capture-IR loads into the instruction shift register: 01 in the
+# two LSBs and zeros above (IEEE 1149.1 7.1.1, `jtag_inst_reg`), which is the
+# IDCODE opcode.
+DTP_IR_CAPTURE_PATTERN = 0b01
+
+# Scoreboard feature names: one Dtp<Feature>RefModel each (a test names the
+# ones it must exercise in required_features).
+DTP_FEATURE_IR_DECODE = "ir_decode"
+DTP_FEATURE_IDCODE = "idcode"
+DTP_FEATURE_BYPASS = "bypass"
+
 
 class DtpJtagInstr(IntEnum):
     """DTP primary TAP (PTAP) instruction opcodes, one member per 6-bit encoding.

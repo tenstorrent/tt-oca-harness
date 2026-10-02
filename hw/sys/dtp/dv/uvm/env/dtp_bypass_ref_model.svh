@@ -11,8 +11,7 @@
 // dtp_jtag_ir_model, re-baselines on power-on reset through dtp_tb_if, and
 // publishes one dtp_expected_item per scan item so the scoreboard pairs
 // the two streams in lockstep; scans outside the contract carry none. No
-// comparison, no reporting. The cocotb twin of the prediction is
-// env/dtp_jtag_bypass_model.py.
+// comparison, no reporting. The cocotb twin is env/dtp_bypass_ref_model.py.
 
 `uvm_analysis_imp_decl(_dtp_bypass_event)
 

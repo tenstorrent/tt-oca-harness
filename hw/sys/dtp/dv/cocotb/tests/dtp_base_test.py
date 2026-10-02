@@ -25,6 +25,7 @@ from env.dtp_env import DtpEnv
 from env.dtp_env_cfg import DtpEnvCfg
 from env.dtp_scan_ref_model import STAP_ORDER
 from env.dtp_tb_if import DtpTbIf
+from env.dtp_types import DTP_FEATURE_IR_DECODE
 
 
 class dtp_base_test(OcahTest):
@@ -35,6 +36,11 @@ class dtp_base_test(OcahTest):
     class binds the DTP knob names, the JTAG agent sequencer every scenario
     runs on, and the reset ladder.
     """
+
+    # Scoreboard features this test must exercise; a required feature that
+    # ends with zero comparisons fails the run. Every JTAG scenario loads an
+    # instruction, so ir_decode is the default.
+    required_features: tuple[str, ...] = (DTP_FEATURE_IR_DECODE,)
 
     # Shared-VIP AXI scoreboard adoption: opt-in per test.
     # Tests that enable it declare the CHK-* IDs that must execute and the
@@ -75,6 +81,7 @@ class dtp_base_test(OcahTest):
             self.cfg.sys_clk_period_ns,
             self.base_seed(),
         )
+        self.cfg.required_features = set(self.required_features)
         self.cfg.axi_scoreboard_enabled = self.use_axi_scoreboard
         self.cfg.axi_checker_required_ids = set(self.axi_checker_required_ids)
         self.cfg.axi_checker_target_required_ids = set(self.axi_checker_target_required_ids)
