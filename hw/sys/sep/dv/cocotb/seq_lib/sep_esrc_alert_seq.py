@@ -100,6 +100,9 @@ GENERATOR_HEALTH_ADDR = tuple(
     sym(f"ENTROPY_SOURCE_GENERATOR_{n}_HEALTH_STATUS_REG_ADDR") for n in range(12)
 )
 assert len(GENERATOR_HEALTH_ADDR) == 12
+GENERATOR_HEALTH_MASK = tuple(
+    ENTROPY_SOURCE.fields(f"GENERATOR_{n}_HEALTH_STATUS")["STATUS"]["bm"] for n in range(12)
+)
 
 
 class SepEsrcAlert(SepAxiRegDriver):
@@ -157,7 +160,10 @@ class SepEsrcAlert(SepAxiRegDriver):
 
     async def read_generator_health(self) -> list[int]:
         """The twelve per-generator latched health-status bytes."""
-        return [(await self._rd(addr)) & 0xFF for addr in GENERATOR_HEALTH_ADDR]
+        return [
+            (await self._rd(addr)) & mask
+            for addr, mask in zip(GENERATOR_HEALTH_ADDR, GENERATOR_HEALTH_MASK)
+        ]
 
     async def disable_health_tests(self) -> None:
         """Clear HEALTH_TEST_CTRL.ENABLE so no test can re-latch HEALTH_STATUS.
