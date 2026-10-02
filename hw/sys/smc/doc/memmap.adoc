@@ -70,6 +70,10 @@ The inbound port reaches a unit only while its whole aperture lies below
 beyond it and answer `DECERR`. The SMC harts reach the PLIC and CLINT inside the
 CPU cluster regardless of `REGION_SIZE`.
 
+The I2C, UART, I3C, AVSBus and Telemetry Receiver windows answer `SLVERR`, with
+read data `0xBADCAB1E`, while the peripheral's `CLOCK_GATE_CONTROL` enable in
+SMC_BASE_CONFIG is set and its clock is stopped.
+
 === AXI-Lite External Window
 
 The `smc_external` window at `BASE + 0x040_0000` is the adopter extension

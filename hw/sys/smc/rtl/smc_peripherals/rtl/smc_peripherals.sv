@@ -10,7 +10,9 @@
 // interrupts, the gated I3C clock, and debug buses.
 //
 // EFUSE_SHIM_SIZE is the vendor eFuse shim CSR carve-out at the base of the opaque
-// smc_external window. Each peripheral clock-gate enable stops its clock when high.
+// smc_external window. Each peripheral clock-gate enable stops its clock when high and
+// steers that peripheral's crossbar leg into an error slave, so an access to a gated
+// peripheral completes with SLVERR and read data 0xBADCAB1E instead of stalling.
 
 module smc_peripherals #(
   parameter int unsigned MAX_TRANS = 2,  // Maximum outstanding transactions of the padring
@@ -39,13 +41,18 @@ module smc_peripherals #(
                                         // telemetry receivers' ATB FIFOs.
 
   input  logic i3c_cg_en_i,             // Stops the I3C peripheral clock when high;
-                                        // synchronized to the peripheral clock.
+                                        // synchronized to the peripheral clock. I3C
+                                        // accesses answer SLVERR while high.
   input  logic avs_cg_en_i,             // Stops the AVSBus controller peripheral and
-                                        // reference clocks when high.
-  input  logic i2c_cg_en_i,             // Stops the I2C peripheral clock when high.
-  input  logic uart_cg_en_i,            // Stops the UART peripheral clock when high.
+                                        // reference clocks when high. AVSBus accesses
+                                        // answer SLVERR while high.
+  input  logic i2c_cg_en_i,             // Stops the I2C peripheral clock when high. I2C
+                                        // accesses answer SLVERR while high.
+  input  logic uart_cg_en_i,            // Stops the UART peripheral clock when high. UART
+                                        // accesses answer SLVERR while high.
   input  logic tel_cg_en_i,             // Stops the telemetry receivers' gated SMC and
-                                        // telemetry clocks when high.
+                                        // telemetry clocks when high. Telemetry accesses
+                                        // answer SLVERR while high.
 
   input  smc_pkg::smc_axil_32_32_req_t  axil_peripherals_req_i,  // Request from the local
                                                                  // crossbar into the
@@ -358,6 +365,18 @@ module smc_peripherals #(
   smc_pkg::smc_axil_32_32_req_t  axil_padring_req;
   smc_pkg::smc_axil_32_32_resp_t axil_padring_resp;
 
+  // Crossbar legs of the clock-gated peripherals, before their access gates
+  smc_pkg::smc_axil_32_32_req_t  axil_avsbus_controller_req_xbar;
+  smc_pkg::smc_axil_32_32_resp_t axil_avsbus_controller_resp_xbar;
+  smc_pkg::smc_axil_32_32_req_t  axil_i2c_req_xbar;
+  smc_pkg::smc_axil_32_32_resp_t axil_i2c_resp_xbar;
+  smc_pkg::smc_axil_32_32_req_t  axil_uart_req_xbar;
+  smc_pkg::smc_axil_32_32_resp_t axil_uart_resp_xbar;
+  smc_pkg::smc_axil_32_32_req_t  axil_telemetry_req_xbar;
+  smc_pkg::smc_axil_32_32_resp_t axil_telemetry_resp_xbar;
+  smc_pkg::smc_axil_32_32_req_t  axil_i3c_req_xbar;
+  smc_pkg::smc_axil_32_32_resp_t axil_i3c_resp_xbar;
+
   smc_pkg::smc_axil_32_32_req_t  axil_avsbus_controller_req_smc_clk;
   smc_pkg::smc_axil_32_32_resp_t axil_avsbus_controller_resp_smc_clk;
   smc_pkg::smc_axil_32_32_req_t  axil_avsbus_controller_req_periph_clk;
@@ -515,28 +534,159 @@ module smc_peripherals #(
     // Output ports
     .gpio_req_o                       (axil_padring_req),
     .gpio_resp_i                      (axil_padring_resp),
-    .apb2avsbus_req_o                 (axil_avsbus_controller_req_smc_clk),
-    .apb2avsbus_resp_i                (axil_avsbus_controller_resp_smc_clk),
-    .i2c_req_o                        (axil_i2c_req_smc_clk),
-    .i2c_resp_i                       (axil_i2c_resp_smc_clk),
-    .uart_req_o                       (axil_uart_req_smc_clk),
-    .uart_resp_i                      (axil_uart_resp_smc_clk),
+    .apb2avsbus_req_o                 (axil_avsbus_controller_req_xbar),
+    .apb2avsbus_resp_i                (axil_avsbus_controller_resp_xbar),
+    .i2c_req_o                        (axil_i2c_req_xbar),
+    .i2c_resp_i                       (axil_i2c_resp_xbar),
+    .uart_req_o                       (axil_uart_req_xbar),
+    .uart_resp_i                      (axil_uart_resp_xbar),
     .efuse_req_o                      (axil_efuse_req),
     .efuse_resp_i                     (axil_efuse_resp),
-    .telemetry_req_o                  (axil_telemetry_req),
-    .telemetry_resp_i                 (axil_telemetry_resp),
+    .telemetry_req_o                  (axil_telemetry_req_xbar),
+    .telemetry_resp_i                 (axil_telemetry_resp_xbar),
     .system_timer_octs_req_o          (axil_system_timer_octs_req),
     .system_timer_octs_resp_i         (axil_system_timer_octs_resp),
     .dtp_csr_req_o                    (axil_dtp_csr_req),
     .dtp_csr_resp_i                   (axil_dtp_csr_resp_i),
-    .i3c_req_o                        (axil_i3c_req_smc_clk),
-    .i3c_resp_i                       (axil_i3c_resp_smc_clk),
+    .i3c_req_o                        (axil_i3c_req_xbar),
+    .i3c_resp_i                       (axil_i3c_resp_xbar),
     .reset_unit_req_o                 (axil_reset_unit_req),
     .reset_unit_resp_i                (axil_reset_unit_resp),
     .misc_req_o                       (axil_misc_req),
     .misc_resp_i                      (axil_misc_resp),
     .external_req_o                   (axil_external_req),
     .external_resp_i                  (axil_external_resp)
+  );
+
+  ///////////////////////////////////
+  // Clock-gated peripheral access //
+  ///////////////////////////////////
+
+  // Gated peripherals return SLVERR to prevent hangs upon attempted access
+
+  prim_axil_access_gate #(
+    .ADDR_WIDTH     (smc_pkg::SmcLocalAddrWidth),
+    .DATA_WIDTH     (smc_pkg::AxiLite32DataWidth),
+    .MAX_TRANS      (smc_periph_axi_lite_xbar_pkg::XbarCfg.MaxMstTrans),
+    .RESP           (axi_pkg::RESP_SLVERR),
+    .RESP_WIDTH     (smc_pkg::AxiLite32DataWidth),
+    .RESP_DATA      (32'hBADCAB1E),
+    .axil_req_t     (smc_pkg::smc_axil_32_32_req_t),
+    .axil_resp_t    (smc_pkg::smc_axil_32_32_resp_t),
+    .axil_aw_chan_t (smc_pkg::smc_axil_32_32_aw_chan_t),
+    .axil_w_chan_t  (smc_pkg::smc_axil_32_32_w_chan_t),
+    .axil_b_chan_t  (smc_pkg::smc_axil_32_32_b_chan_t),
+    .axil_ar_chan_t (smc_pkg::smc_axil_32_32_ar_chan_t),
+    .axil_r_chan_t  (smc_pkg::smc_axil_32_32_r_chan_t)
+  ) u_avsbus_access_gate (
+    .clk_i       (clk_smc_i),
+    .rst_ni      (rst_primary_smc_clk_no),
+    .test_en_i   (test_en_i),
+    .block_i     (avs_cg_en_i),
+    .axil_req_i  (axil_avsbus_controller_req_xbar),
+    .axil_resp_o (axil_avsbus_controller_resp_xbar),
+    .axil_req_o  (axil_avsbus_controller_req_smc_clk),
+    .axil_resp_i (axil_avsbus_controller_resp_smc_clk)
+  );
+
+  prim_axil_access_gate #(
+    .ADDR_WIDTH     (smc_pkg::SmcLocalAddrWidth),
+    .DATA_WIDTH     (smc_pkg::AxiLite32DataWidth),
+    .MAX_TRANS      (smc_periph_axi_lite_xbar_pkg::XbarCfg.MaxMstTrans),
+    .RESP           (axi_pkg::RESP_SLVERR),
+    .RESP_WIDTH     (smc_pkg::AxiLite32DataWidth),
+    .RESP_DATA      (32'hBADCAB1E),
+    .axil_req_t     (smc_pkg::smc_axil_32_32_req_t),
+    .axil_resp_t    (smc_pkg::smc_axil_32_32_resp_t),
+    .axil_aw_chan_t (smc_pkg::smc_axil_32_32_aw_chan_t),
+    .axil_w_chan_t  (smc_pkg::smc_axil_32_32_w_chan_t),
+    .axil_b_chan_t  (smc_pkg::smc_axil_32_32_b_chan_t),
+    .axil_ar_chan_t (smc_pkg::smc_axil_32_32_ar_chan_t),
+    .axil_r_chan_t  (smc_pkg::smc_axil_32_32_r_chan_t)
+  ) u_i2c_access_gate (
+    .clk_i       (clk_smc_i),
+    .rst_ni      (rst_primary_smc_clk_no),
+    .test_en_i   (test_en_i),
+    .block_i     (i2c_cg_en_i),
+    .axil_req_i  (axil_i2c_req_xbar),
+    .axil_resp_o (axil_i2c_resp_xbar),
+    .axil_req_o  (axil_i2c_req_smc_clk),
+    .axil_resp_i (axil_i2c_resp_smc_clk)
+  );
+
+  prim_axil_access_gate #(
+    .ADDR_WIDTH     (smc_pkg::SmcLocalAddrWidth),
+    .DATA_WIDTH     (smc_pkg::AxiLite32DataWidth),
+    .MAX_TRANS      (smc_periph_axi_lite_xbar_pkg::XbarCfg.MaxMstTrans),
+    .RESP           (axi_pkg::RESP_SLVERR),
+    .RESP_WIDTH     (smc_pkg::AxiLite32DataWidth),
+    .RESP_DATA      (32'hBADCAB1E),
+    .axil_req_t     (smc_pkg::smc_axil_32_32_req_t),
+    .axil_resp_t    (smc_pkg::smc_axil_32_32_resp_t),
+    .axil_aw_chan_t (smc_pkg::smc_axil_32_32_aw_chan_t),
+    .axil_w_chan_t  (smc_pkg::smc_axil_32_32_w_chan_t),
+    .axil_b_chan_t  (smc_pkg::smc_axil_32_32_b_chan_t),
+    .axil_ar_chan_t (smc_pkg::smc_axil_32_32_ar_chan_t),
+    .axil_r_chan_t  (smc_pkg::smc_axil_32_32_r_chan_t)
+  ) u_uart_access_gate (
+    .clk_i       (clk_smc_i),
+    .rst_ni      (rst_primary_smc_clk_no),
+    .test_en_i   (test_en_i),
+    .block_i     (uart_cg_en_i),
+    .axil_req_i  (axil_uart_req_xbar),
+    .axil_resp_o (axil_uart_resp_xbar),
+    .axil_req_o  (axil_uart_req_smc_clk),
+    .axil_resp_i (axil_uart_resp_smc_clk)
+  );
+
+  prim_axil_access_gate #(
+    .ADDR_WIDTH     (smc_pkg::SmcLocalAddrWidth),
+    .DATA_WIDTH     (smc_pkg::AxiLite32DataWidth),
+    .MAX_TRANS      (smc_periph_axi_lite_xbar_pkg::XbarCfg.MaxMstTrans),
+    .RESP           (axi_pkg::RESP_SLVERR),
+    .RESP_WIDTH     (smc_pkg::AxiLite32DataWidth),
+    .RESP_DATA      (32'hBADCAB1E),
+    .axil_req_t     (smc_pkg::smc_axil_32_32_req_t),
+    .axil_resp_t    (smc_pkg::smc_axil_32_32_resp_t),
+    .axil_aw_chan_t (smc_pkg::smc_axil_32_32_aw_chan_t),
+    .axil_w_chan_t  (smc_pkg::smc_axil_32_32_w_chan_t),
+    .axil_b_chan_t  (smc_pkg::smc_axil_32_32_b_chan_t),
+    .axil_ar_chan_t (smc_pkg::smc_axil_32_32_ar_chan_t),
+    .axil_r_chan_t  (smc_pkg::smc_axil_32_32_r_chan_t)
+  ) u_telemetry_access_gate (
+    .clk_i       (clk_smc_i),
+    .rst_ni      (rst_primary_smc_clk_no),
+    .test_en_i   (test_en_i),
+    .block_i     (tel_cg_en_i),
+    .axil_req_i  (axil_telemetry_req_xbar),
+    .axil_resp_o (axil_telemetry_resp_xbar),
+    .axil_req_o  (axil_telemetry_req),
+    .axil_resp_i (axil_telemetry_resp)
+  );
+
+  prim_axil_access_gate #(
+    .ADDR_WIDTH     (smc_pkg::SmcLocalAddrWidth),
+    .DATA_WIDTH     (smc_pkg::AxiLite32DataWidth),
+    .MAX_TRANS      (smc_periph_axi_lite_xbar_pkg::XbarCfg.MaxMstTrans),
+    .RESP           (axi_pkg::RESP_SLVERR),
+    .RESP_WIDTH     (smc_pkg::AxiLite32DataWidth),
+    .RESP_DATA      (32'hBADCAB1E),
+    .axil_req_t     (smc_pkg::smc_axil_32_32_req_t),
+    .axil_resp_t    (smc_pkg::smc_axil_32_32_resp_t),
+    .axil_aw_chan_t (smc_pkg::smc_axil_32_32_aw_chan_t),
+    .axil_w_chan_t  (smc_pkg::smc_axil_32_32_w_chan_t),
+    .axil_b_chan_t  (smc_pkg::smc_axil_32_32_b_chan_t),
+    .axil_ar_chan_t (smc_pkg::smc_axil_32_32_ar_chan_t),
+    .axil_r_chan_t  (smc_pkg::smc_axil_32_32_r_chan_t)
+  ) u_i3c_access_gate (
+    .clk_i       (clk_smc_i),
+    .rst_ni      (rst_primary_smc_clk_no),
+    .test_en_i   (test_en_i),
+    .block_i     (i3c_cg_en_i),
+    .axil_req_i  (axil_i3c_req_xbar),
+    .axil_resp_o (axil_i3c_resp_xbar),
+    .axil_req_o  (axil_i3c_req_smc_clk),
+    .axil_resp_i (axil_i3c_resp_smc_clk)
   );
 
   assign smc_external_req_o = axil_external_req;
