@@ -321,9 +321,9 @@ module smc_base #(
   smc_pkg::remap_debug_t  remap_debug_log;
   smc_pkg::remap_debug_t  remap_debug_dma;
   logic [$clog2(smc_pkg::NumInboundFilters)-1:0]
-      outbound_write_filter_hit_debug, outbound_read_filter_hit_debug;
-  logic [$clog2(smc_pkg::NumOutboundFilters)-1:0]
       inbound_write_filter_hit_debug, inbound_read_filter_hit_debug;
+  logic [$clog2(smc_pkg::NumOutboundFilters)-1:0]
+      outbound_write_filter_hit_debug, outbound_read_filter_hit_debug;
 
   // DMA busy signal
   logic dma_frontend_clk_active;
@@ -439,8 +439,8 @@ module smc_base #(
                                                 remap_debug_jtag.aw_remap_hit_debug, remap_debug_jtag.ar_remap_hit_debug};
   assign debug_bus[16*31-1:16*30]     = {4'h0, remap_debug_log.aw_remap_hit_debug, remap_debug_log.ar_remap_hit_debug,
                                                 remap_debug_dma.aw_remap_hit_debug, remap_debug_dma.ar_remap_hit_debug};
-  assign debug_bus[16*32-1:16*31]     = {outbound_write_filter_hit_debug, outbound_read_filter_hit_debug,
-                                          inbound_write_filter_hit_debug, inbound_read_filter_hit_debug};
+  assign debug_bus[16*32-1:16*31]     = {inbound_write_filter_hit_debug, inbound_read_filter_hit_debug,
+                                          outbound_write_filter_hit_debug, outbound_read_filter_hit_debug};
 
   // The remaining 512 bits are reserved for adopter to use, Note: Ensure signals are 16-bit aligned
   assign debug_bus[16*64-1:16*32]     = ext_debug_bus_smc_clk;
@@ -538,10 +538,10 @@ module smc_base #(
     .remap_debug_jtag_o                     (remap_debug_jtag),
     .remap_debug_log_o                      (remap_debug_log),
     .remap_debug_dma_o                      (remap_debug_dma),
-    .outbound_write_filter_hit_debug_o      (outbound_write_filter_hit_debug),
-    .outbound_read_filter_hit_debug_o       (outbound_read_filter_hit_debug),
     .inbound_write_filter_hit_debug_o       (inbound_write_filter_hit_debug),
     .inbound_read_filter_hit_debug_o        (inbound_read_filter_hit_debug),
+    .outbound_write_filter_hit_debug_o      (outbound_write_filter_hit_debug),
+    .outbound_read_filter_hit_debug_o       (outbound_read_filter_hit_debug),
 
     // Clock gater activity indicators
     .fabric_clk_active_o                    (fabric_clk_active),

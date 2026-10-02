@@ -91,14 +91,10 @@ module smc_output_fabric #(
                                                                                                               // unused when
                                                                                                               // NO_ADDR_REMAP is set.
 
-  output logic [$clog2(NUM_FILTERS)-1:0] write_filter_hit_debug_o,  // Filter entry index hit by
-                                                                    // outbound writes; tied to zero
-                                                                    // because the filter instance
-                                                                    // disables its debug output.
-  output logic [$clog2(NUM_FILTERS)-1:0] read_filter_hit_debug_o,  // Filter entry index hit by
-                                                                   // outbound reads; tied to zero
-                                                                   // because the filter instance
-                                                                   // disables its debug output.
+  output logic [$clog2(NUM_FILTERS)-1:0] write_filter_hit_debug_o,  // Lowest system outbound filter
+                                                                    // entry hit by a write.
+  output logic [$clog2(NUM_FILTERS)-1:0] read_filter_hit_debug_o,  // Lowest system outbound filter
+                                                                   // entry hit by a read.
 
   output logic fabric_clk_active_o,     // High while the remap demux and mux clock runs; tied low
                                         // when NO_ADDR_REMAP is set.
@@ -406,7 +402,7 @@ module smc_output_fabric #(
 
   axi_filter_wrap #(
     .NUM_FILTERS             (NUM_FILTERS),
-    .DEBUG_OUTPUT            (0),
+    .DEBUG_OUTPUT            (1),
     .BLOCK_BY_DEFAULT        (1'b0),
     .EN_SRC_ID_FILTER        (1'b1),
     .SRC_ID_USER_BIT_START   (0),

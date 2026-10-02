@@ -2,9 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Writes queued behind the write that locks a filter must be refused.
 
-Locks outbound filter 15 and queues two `FILTER_CONFIG` writes behind the
-locking write in one outstanding group. `locked` is `woset`, so both must be
-refused and the register must keep the locked reset word.
+Locks filter 15 of the outbound and inbound banks and queues two
+`FILTER_CONFIG` writes behind each locking write in one outstanding group.
+`locked` is `woset`, so both writes must be refused and the register must
+keep the locked reset word.
 """
 
 from __future__ import annotations

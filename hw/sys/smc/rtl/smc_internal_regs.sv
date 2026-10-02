@@ -418,8 +418,38 @@ module smc_internal_regs #(
     smc_pkg::smc_axil_32_64_req_t filter_reg_req, locked_reg_req;
     smc_pkg::smc_axil_32_64_resp_t filter_reg_resp, locked_reg_resp;
 
+    // The demux spill stores the port select with the AW. locked updates on the
+    // clock edge that arms B, so the next AW waits until that B is accepted and
+    // the select is sampled with locked already set. Reads are not held.
+    smc_pkg::smc_axil_32_64_req_t  outbound_filter_gated_req;
+    smc_pkg::smc_axil_32_64_resp_t outbound_filter_gated_resp;
+    logic outbound_write_outstanding_q;
+    wire outbound_aw_hs = outbound_filter_gated_req.aw_valid && outbound_filter_gated_resp.aw_ready;
+    wire outbound_b_hs  = outbound_filter_gated_resp.b_valid && outbound_filter_gated_req.b_ready;
+
+    always_ff @(posedge outbound_filter_clk or negedge rst_primary_smc_clk_ni) begin
+      if (!rst_primary_smc_clk_ni) begin
+        outbound_write_outstanding_q <= 1'b0;
+      end else begin
+        case ({outbound_aw_hs, outbound_b_hs})
+          2'b10:   outbound_write_outstanding_q <= 1'b1;
+          2'b01:   outbound_write_outstanding_q <= 1'b0;
+          default: outbound_write_outstanding_q <= outbound_write_outstanding_q;
+        endcase
+      end
+    end
+
+    always_comb begin
+      outbound_filter_gated_req          = outbound_filter_axi_lite_reqs[f];
+      outbound_filter_gated_req.aw_valid = outbound_filter_axi_lite_reqs[f].aw_valid
+                                         && !outbound_write_outstanding_q;
+      outbound_filter_axi_lite_resps[f]           = outbound_filter_gated_resp;
+      outbound_filter_axi_lite_resps[f].aw_ready  = outbound_filter_gated_resp.aw_ready
+                                                  && !outbound_write_outstanding_q;
+    end
+
     // If filter is locked, block writes but allow reads
-    wire filter_reg_aw_select = outbound_filter_ctrl_o[f].FILTER_CONFIG.locked.value && (outbound_filter_axi_lite_reqs[f].aw_valid || outbound_filter_axi_lite_reqs[f].w_valid);
+    wire filter_reg_aw_select = outbound_filter_ctrl_o[f].FILTER_CONFIG.locked.value && (outbound_filter_gated_req.aw_valid || outbound_filter_gated_req.w_valid);
 
     // Demux between filter control register and axilite error slave (for locked filters)
     axi_lite_demux #(
@@ -444,8 +474,8 @@ module smc_internal_regs #(
       .clk_i            (outbound_filter_clk),
       .rst_ni           (rst_primary_smc_clk_ni),
       .test_i           (test_en_i),
-      .slv_req_i        (outbound_filter_axi_lite_reqs[f]),
-      .slv_resp_o       (outbound_filter_axi_lite_resps[f]),
+      .slv_req_i        (outbound_filter_gated_req),
+      .slv_resp_o       (outbound_filter_gated_resp),
 
       .slv_aw_select_i  (filter_reg_aw_select),
       .slv_ar_select_i  (1'b0), // Always pass through reads
@@ -582,7 +612,37 @@ module smc_internal_regs #(
     smc_pkg::smc_axil_32_64_req_t filter_reg_req, locked_reg_req;
     smc_pkg::smc_axil_32_64_resp_t filter_reg_resp, locked_reg_resp;
 
-    wire filter_reg_aw_select = inbound_filter_ctrl_o[f].FILTER_CONFIG.locked.value && (inbound_filter_axi_lite_reqs[f].aw_valid || inbound_filter_axi_lite_reqs[f].w_valid);
+    // The demux spill stores the port select with the AW. locked updates on the
+    // clock edge that arms B, so the next AW waits until that B is accepted and
+    // the select is sampled with locked already set. Reads are not held.
+    smc_pkg::smc_axil_32_64_req_t  inbound_filter_gated_req;
+    smc_pkg::smc_axil_32_64_resp_t inbound_filter_gated_resp;
+    logic inbound_write_outstanding_q;
+    wire inbound_aw_hs = inbound_filter_gated_req.aw_valid && inbound_filter_gated_resp.aw_ready;
+    wire inbound_b_hs  = inbound_filter_gated_resp.b_valid && inbound_filter_gated_req.b_ready;
+
+    always_ff @(posedge inbound_filter_clk or negedge rst_primary_smc_clk_ni) begin
+      if (!rst_primary_smc_clk_ni) begin
+        inbound_write_outstanding_q <= 1'b0;
+      end else begin
+        case ({inbound_aw_hs, inbound_b_hs})
+          2'b10:   inbound_write_outstanding_q <= 1'b1;
+          2'b01:   inbound_write_outstanding_q <= 1'b0;
+          default: inbound_write_outstanding_q <= inbound_write_outstanding_q;
+        endcase
+      end
+    end
+
+    always_comb begin
+      inbound_filter_gated_req          = inbound_filter_axi_lite_reqs[f];
+      inbound_filter_gated_req.aw_valid = inbound_filter_axi_lite_reqs[f].aw_valid
+                                        && !inbound_write_outstanding_q;
+      inbound_filter_axi_lite_resps[f]          = inbound_filter_gated_resp;
+      inbound_filter_axi_lite_resps[f].aw_ready = inbound_filter_gated_resp.aw_ready
+                                                && !inbound_write_outstanding_q;
+    end
+
+    wire filter_reg_aw_select = inbound_filter_ctrl_o[f].FILTER_CONFIG.locked.value && (inbound_filter_gated_req.aw_valid || inbound_filter_gated_req.w_valid);
 
     // Demux between filter control register and axilite error slave (for locked filters)
     axi_lite_demux #(
@@ -607,8 +667,8 @@ module smc_internal_regs #(
       .clk_i            (inbound_filter_clk),
       .rst_ni           (rst_primary_smc_clk_ni),
       .test_i           (test_en_i),
-      .slv_req_i        (inbound_filter_axi_lite_reqs[f]),
-      .slv_resp_o       (inbound_filter_axi_lite_resps[f]),
+      .slv_req_i        (inbound_filter_gated_req),
+      .slv_resp_o       (inbound_filter_gated_resp),
 
       .slv_aw_select_i  (filter_reg_aw_select),
       .slv_ar_select_i  (1'b0), // Always pass through reads
