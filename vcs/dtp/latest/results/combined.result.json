@@ -8,16 +8,16 @@
     "run_dir": "vcs/dtp/runs/combined"
   },
   "coverage": {
-    "comparison_key": "COVCMP-c269a1e4fcaf6a2c",
+    "comparison_key": "COVCMP-44d37bf8781d910c",
     "details_available": true,
     "effective_metrics": {
       "assertion": 95.54,
       "branch": 87.12,
-      "condition": 84.54,
+      "condition": 84.43,
       "fsm_state": 70.87,
       "functional": 100.0,
       "line": 94.82,
-      "toggle": 93.48,
+      "toggle": 93.38,
       "user": 96.4361
     },
     "holes_summary": {
@@ -56,7 +56,7 @@
         "unclassified_points": 0
       },
       {
-        "actual_percent": 84.54,
+        "actual_percent": 84.43,
         "id": "condition",
         "max_unclassified_points": null,
         "met": false,
@@ -67,7 +67,7 @@
         "unclassified_points": 0
       },
       {
-        "actual_percent": 93.48,
+        "actual_percent": 93.38,
         "id": "toggle",
         "max_unclassified_points": null,
         "met": false,
@@ -125,11 +125,11 @@
     "raw_metrics": {
       "assertion": 95.54,
       "branch": 83.55,
-      "condition": 82.57,
+      "condition": 82.47,
       "fsm_state": 52.64,
       "functional": 100.0,
       "line": 93.05,
-      "toggle": 65.9,
+      "toggle": 65.83,
       "user": 96.4361
     },
     "report": "artifacts/dtp/coverage/report",
@@ -142,7 +142,7 @@
     "target": "default",
     "threshold": 0.0,
     "threshold_met": false,
-    "total_percent": 89.48
+    "total_percent": 89.45
   },
   "failure_buckets": [
     {
@@ -156,11 +156,11 @@
   ],
   "flow": "dtp",
   "framework": "",
-  "generated_at": "2026-10-02T02:31:25+00:00",
+  "generated_at": "2026-10-02T11:33:06+00:00",
   "git": {
     "branch": "HEAD",
-    "sha": "419e1207da86b6d6afdf61a324419c3c08dbadc6",
-    "short_sha": "419e1207d"
+    "sha": "9712dfcb5076749017a29d30b09b5a2b1515018a",
+    "short_sha": "9712dfcb5"
   },
   "junit_xml": {
     "missing": 0,
@@ -169,10 +169,10 @@
   "kind": "dv",
   "run_metadata": {
     "executor": "local",
-    "generated_at": "2026-10-02T02:31:23.293750+00:00",
+    "generated_at": "2026-10-02T11:33:03.361401+00:00",
     "git": {
       "branch": "HEAD",
-      "commit": "419e1207da86b6d6afdf61a324419c3c08dbadc6",
+      "commit": "9712dfcb5076749017a29d30b09b5a2b1515018a",
       "dirty": "false"
     },
     "label": "combine",
@@ -190,16 +190,16 @@
   "status": "FAIL",
   "tests": {
     "completed": true,
-    "failing": 1,
-    "pass_rate": 99.89,
-    "passing": 923,
-    "total": 924
+    "failing": 0,
+    "pass_rate": 100.0,
+    "passing": 308,
+    "total": 308
   },
   "tests_detail": [],
   "timing": {
-    "duration_sec": 27.548,
-    "end_time": "2026-10-02T02:31:23.087825+00:00",
-    "start_time": "2026-10-02T02:30:55.532737+00:00"
+    "duration_sec": 20.166,
+    "end_time": "2026-10-02T11:33:02.981490+00:00",
+    "start_time": "2026-10-02T11:32:42.796880+00:00"
   },
   "tool": "vcs"
 }
