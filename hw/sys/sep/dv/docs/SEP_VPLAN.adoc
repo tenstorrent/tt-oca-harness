@@ -1990,8 +1990,8 @@ and `fw/drivers/sep_efuse.h` use the same derived table.
 *Test Procedure*:
 
 [arabic]
-. HMAC: configure for SHA-256; start; feed the message with queue backpressure; process; poll done; read and byte-swap the digest. Repeat for three messages.
-. KMAC: poll idle; configure for the customisable mode with software-supplied entropy; set the entropy-ready bit (it is set, never read back); load the seed and prefix; start; feed the message with its length encoding; process; read the unmasked digest.
+. HMAC: configure for SHA-256; start; feed the message with queue backpressure; process; poll done; read done again and require it still set; write-one-to-clear it and require it read clear; read and byte-swap the digest. Repeat for three messages.
+. KMAC: poll idle; configure for the customisable mode with software-supplied entropy; set the entropy-ready bit (it is set, never read back); load the seed and prefix; start; feed the message with its length encoding; process; poll done; read done again and require it still set; write-one-to-clear it and require it read clear; read the unmasked digest.
 . Entropy first: AES masking reseeds its PRNG from the crypto-EDN leg, and `STATUS.IDLE`, `INPUT_READY` and `OUTPUT_VALID` all stay low until that reseed completes, so the firmware programs the ESRC/CSRNG/EDN stack before touching AES. The HMAC and KMAC legs above do not need it -- KMAC is driven with software entropy -- so a failure here is reported as a missing prerequisite rather than as an AES defect. Under Verilator the ring oscillators do not self-oscillate, so the testbench supplies the raw noise (`+esrc_noise_force`).
 . AES: release the engine's software reset; stage the FIPS-197 C.1 plaintext block into SRAM; read it back out of SRAM into the engine; configure AES-128-ECB encrypt; run; store the ciphertext to SRAM; compare it against the published vector.
 . Reconfigure the same engine for decrypt, feed the ciphertext back from SRAM, run, store the recovered block to SRAM, and compare it against the original plaintext read from SRAM.
@@ -2008,7 +2008,7 @@ and `fw/drivers/sep_efuse.h` use the same derived table.
 |CHK-HMAC-MULTI
 |A longer message digest equals the software value.
 |CHK-RW1C
-|Both engines' done events clear on write-one-to-clear.
+|Both engines' done events still read set on a second read after the poll, so a read does not clear them and they do not drop by themselves; they then clear on write-one-to-clear.
 |CHK-KMAC-LIVE
 |KMAC completes with clean error status and a non-zero digest. Golden-checked KMAC is `sep_kmac_mode_strength_rand_test`.
 |CHK-CPU-AES-ENC
