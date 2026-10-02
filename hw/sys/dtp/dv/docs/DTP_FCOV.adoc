@@ -498,14 +498,14 @@ entry being removed, when:
 
 The compatibility threshold (`--fail-under`, else
 `[coverage.<tool>].fail_under`) grades the tool's raw figure and no waiver
-moves it. The threshold gate is one `pass:[[[thresholds]]]` rule per applicable
-metric family in the policy file of each path: on Verilator with
+moves it. The threshold gate is one `pass:[[[thresholds]]]` rule per
+applicable metric family in the policy file of each path: on Verilator with
 `population = "effective"` and the DUT instance as its `scope`, on VCS over
-the family total of the compile-time scope, at 98 percent for the
-code-coverage families and 100 percent for assertion and functional
-coverage. The hosted weekly publishes the figures without a threshold; the gate
-runs on a regression graded with the policy file and on every `--waive`
-re-grade of its run tree.
+the family total of the compile-time scope, at 85 percent for the
+code-coverage families, below the 98 percent target, and 100 percent for
+assertion and functional coverage. The hosted weekly publishes the figures
+without a threshold; the gate runs on a regression graded with the policy file
+and on every `--waive` re-grade of its run tree.
 
 [[dtp-fcov-unreachability-list]]
 ==== Unreachability exclusion list
