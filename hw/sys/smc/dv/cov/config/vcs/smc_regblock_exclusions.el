@@ -23,11 +23,11 @@ Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (3) "(axil_n_in_flight < 2'd2)
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,0"
 Branch 2 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
-CHECKSUM: "4293784997 3785605357"
+CHECKSUM: "2347466248 1735571216"
 ANNOTATION: "SMC-REGBLOCK-C4-STROBE-CARRIES-DIRECTION: PeakRDL folds the access direction into the decode strobe of a read-only or write-only register, and into the req it presents for an external one, so the strobe or req is never high in the other direction. A row that needs it high in that direction, in the block or in the logic that consumes the req, cannot occur. avsbus_controller ANDs its AVS_CMD and AVS_READBACK reqs with req_is_wr and its negation, which PeakRDL latches from pwrite in the setup phase, and its AXI-Lite bridge holds pwrite from setup through access, so those enables carry the pwrite of the transfer in flight. The test rewrites each strobe, req or enable as itself and its direction, and takes a row only when that makes it unsatisfiable."
 MODULE: avsbus_controller
-Condition 79 "3153649340" "(hwif_out.AVS_CMD.req && hwif_out.AVS_CMD.req_is_wr) 1 -1" (2 "10")
-Condition 80 "2470372776" "(hwif_out.AVS_READBACK.req && ((!hwif_out.AVS_READBACK.req_is_wr))) 1 -1" (2 "10")
+Condition 81 "3153649340" "(hwif_out.AVS_CMD.req && hwif_out.AVS_CMD.req_is_wr) 1 -1" (2 "10")
+Condition 82 "2470372776" "(hwif_out.AVS_READBACK.req && ((!hwif_out.AVS_READBACK.req_is_wr))) 1 -1" (2 "10")
 
 CHECKSUM: "3896755233 3909592511"
 ANNOTATION: "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the storage holds a written one for a single cycle and the cpuif accepts no second write in that cycle, which leaves the storage at zero at every write the block accepts. The retain row of the write-data ternary, and each row of its retain operand that asks for the storage at one, needs the storage at one during a write, and no access produces it. Fields of the same block that keep their value between writes stay graded."
@@ -274,7 +274,7 @@ Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (3) "(axil_n_in_flight < 2'd2)
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,0"
 Branch 2 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
-CHECKSUM: "2279933121 482332505"
+CHECKSUM: "1584876630 2977940430"
 ANNOTATION: "SMC-REGBLOCK-C4-STROBE-CARRIES-DIRECTION: PeakRDL folds the access direction into the decode strobe of a read-only or write-only register, and into the req it presents for an external one, so the strobe or req is never high in the other direction. A row that needs it high in that direction, in the block or in the logic that consumes the req, cannot occur. avsbus_controller ANDs its AVS_CMD and AVS_READBACK reqs with req_is_wr and its negation, which PeakRDL latches from pwrite in the setup phase, and its AXI-Lite bridge holds pwrite from setup through access, so those enables carry the pwrite of the transfer in flight. The test rewrites each strobe, req or enable as itself and its direction, and takes a row only when that makes it unsatisfiable."
 MODULE: i2c_core
 Condition 23 "2316705117" "(reg_out_i.FDATA.req && reg_out_i.FDATA.req_is_wr) 1 -1" (2 "10")
@@ -283,7 +283,7 @@ Condition 37 "3365045754" "(reg_out_i.RDATA.req && ((!reg_out_i.RDATA.req_is_wr)
 Condition 40 "2297625995" "(reg_out_i.TXDATA.req && reg_out_i.TXDATA.req_is_wr) 1 -1" (2 "10")
 Condition 43 "2145444778" "(reg_out_i.TXDATA.req && reg_out_i.TXDATA.req_is_wr && ((|reg_out_i.TXDATA.wr_biten.DATA))) 1 -1" (2 "101")
 Condition 45 "1859700326" "(reg_out_i.ACQDATA.req && ((!reg_out_i.ACQDATA.req_is_wr))) 1 -1" (2 "10")
-Condition 47 "1170022099" "(reg_out_i.ACQDATA.req && ((!reg_out_i.ACQDATA.req_is_wr))) 1 -1" (2 "10")
+Condition 47 "1505661065" "(reg_out_i.ACQDATA.req && ((!reg_out_i.ACQDATA.req_is_wr))) 1 -1" (2 "10")
 
 CHECKSUM: "3929405118 2927016927"
 ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent takes a one- or two-byte length, but no leaf of the measured run writes a register block whose cpuif carries no more than 32 bits with a lane off. A row of a field's software-write branch that needs some lane off, the retain row, a row of the retain operand or of the write-data operand, is reachable in the design and uncovered for want of a partial write; a leaf that issues one covers it, and the next re-pin drops the rows it reaches. A block whose cpuif is wider takes a half-word write from this same agent, so its rows stay graded. The clear-on-write form of a W1C field is left out, and a leaf covers it."
@@ -873,7 +873,7 @@ Branch 4 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 Branch 11 "1764768895" "(~arst_n)" (2) "(~arst_n) 0,0"
 Branch 13 "2429376722" "(~arst_n)" (2) "(~arst_n) 0,0"
 
-CHECKSUM: "2535161971 656965095"
+CHECKSUM: "716831743 656965095"
 ANNOTATION: "SMC-REGBLOCK-C4-STROBE-CARRIES-DIRECTION: PeakRDL folds the access direction into the decode strobe of a read-only or write-only register, and into the req it presents for an external one, so the strobe or req is never high in the other direction. A row that needs it high in that direction, in the block or in the logic that consumes the req, cannot occur. avsbus_controller ANDs its AVS_CMD and AVS_READBACK reqs with req_is_wr and its negation, which PeakRDL latches from pwrite in the setup phase, and its AXI-Lite bridge holds pwrite from setup through access, so those enables carry the pwrite of the transfer in flight. The test rewrites each strobe, req or enable as itself and its direction, and takes a row only when that makes it unsatisfiable."
 MODULE: uart_core
 Condition 50 "616401281" "(reg_out_i.main.RBR.req && ((!reg_out_i.main.RBR.req_is_wr))) 1 -1" (2 "10")
@@ -9712,11 +9712,11 @@ Toggle hwif_out.SCRATCH[2].data.value [31] "logic hwif_out.SCRATCH[2].data.value
 Toggle hwif_out.SCRATCH[2].data.value [6] "logic hwif_out.SCRATCH[2].data.value[31:0]"
 Toggle hwif_out.SCRATCH[2].data.value [4:3] "logic hwif_out.SCRATCH[2].data.value[31:0]"
 Toggle hwif_out.SCRATCH[3].data.value [31] "logic hwif_out.SCRATCH[3].data.value[31:0]"
+Toggle 1to0 hwif_out.SCRATCH[3].data.value [29] "logic hwif_out.SCRATCH[3].data.value[31:0]"
 Toggle 1to0 hwif_out.SCRATCH[3].data.value [24] "logic hwif_out.SCRATCH[3].data.value[31:0]"
-Toggle 1to0 hwif_out.SCRATCH[3].data.value [20] "logic hwif_out.SCRATCH[3].data.value[31:0]"
 Toggle 1to0 hwif_out.SCRATCH[3].data.value [17] "logic hwif_out.SCRATCH[3].data.value[31:0]"
-Toggle 1to0 hwif_out.SCRATCH[3].data.value [15:11] "logic hwif_out.SCRATCH[3].data.value[31:0]"
-Toggle 1to0 hwif_out.SCRATCH[3].data.value [4:3] "logic hwif_out.SCRATCH[3].data.value[31:0]"
+Toggle 1to0 hwif_out.SCRATCH[3].data.value [12:11] "logic hwif_out.SCRATCH[3].data.value[31:0]"
+Toggle 1to0 hwif_out.SCRATCH[3].data.value [4] "logic hwif_out.SCRATCH[3].data.value[31:0]"
 Toggle 1to0 hwif_out.SCRATCH[3].data.value [0] "logic hwif_out.SCRATCH[3].data.value[31:0]"
 Toggle hwif_out.SCRATCH[4].data.value [31] "logic hwif_out.SCRATCH[4].data.value[31:0]"
 Toggle hwif_out.SCRATCH[4].data.value [29] "logic hwif_out.SCRATCH[4].data.value[31:0]"

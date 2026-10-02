@@ -38,7 +38,7 @@ ANNOTATION: "SMC-C12-POP-ONLY-NONEMPTY: the AVSBus readback FIFO is popped only 
 MODULE: avsbus_async_fifo
 Condition 4 "2759218582" "(rd_en_i & ((~rd_empty_o))) 1 -1" (2 "10")
 
-CHECKSUM: "4293784997 3785605357"
+CHECKSUM: "2347466248 1735571216"
 ANNOTATION: "SMC-REGBLOCK-C4-STROBE-CARRIES-DIRECTION: PeakRDL folds the access direction into the decode strobe of a read-only or write-only register, and into the req it presents for an external one, so the strobe or req is never high in the other direction. A row that needs it high in that direction, in the block or in the logic that consumes the req, cannot occur. avsbus_controller ANDs its AVS_CMD and AVS_READBACK reqs with req_is_wr and its negation, which PeakRDL latches from pwrite in the setup phase, and its AXI-Lite bridge holds pwrite from setup through access, so those enables carry the pwrite of the transfer in flight. The test rewrites each strobe, req or enable as itself and its direction, and takes a row only when that makes it unsatisfiable."
 ANNOTATION: "SMC-C6-EARLIER-ARM-TAKES: an else arm or a later else-if runs only when the tests before it fail, and a statement inside an arm only when that arm's test holds, so a row of its condition that an earlier or enclosing test already decides is never evaluated. smc_cpu_ctrl_wrap reloads each core's second-stage watchdog count while reset_wdt_count is high, and reset_wdt_count includes the negated first-stage timeout, so the decrement test runs only with that timeout high; vlt_packet_compression takes a timestamp packet without a grant first and sets packet_lost only inside its timestamp-retry arm; avsbus_controller takes a retry with a countdown above zero first; efuse_shadow_regs takes a setup-only write outside the lifecycle-state field first; the I2C controller takes a disabled host, a lost start and a disable mid-transaction first, and the bus monitor a disabled monitor; and the iDMA channel coupler takes a ready first AW, and the read path a non-last beat, first."
 ANNOTATION: "SMC-C8-APB-PHASE-ORDER: the APB bridges in front of these blocks, axi_lite_to_apb in the local crossbar and in avsbus_controller and prim_axi_lite_to_apb_single ahead of the eFuse demux, drive penable only together with psel and hold the request from setup through access until pready; apb_demux gates psel and penable with one select, and mmrs passes psel through the MMR interface clamp P13 holds at zero. apb2mmr raises pready only from psel, penable and rsp_vld, and mmr_req_ctrl answers MMR_PIPE_LAT cycles after a grant the setup phase raises at the earliest and grants nothing more until then, so no response meets a setup phase. A row that needs penable without psel, pready without penable, or a response in the setup phase cannot occur."
@@ -298,12 +298,12 @@ ANNOTATION: "SMC-REGBLOCK-A11-APB-ACK-FIRST-ACTIVE-CYCLE: the APB cpuif raises i
 MODULE: efuse_interface_ctrl_reg
 Condition 1 "612230268" "(cpuif_rd_ack || cpuif_wr_ack) 1 -1" (1 "00")
 
-CHECKSUM: "1698122930 1130749731"
+CHECKSUM: "1114926396 1130749731"
 ANNOTATION: "SMC-C10-VALID-WITH-COMMAND: efuse_program_interface sets the request's program command and its valid on the same cycle and clears both together to the all-zero default, and the read and sense requesters issue only READ, so efuse_interface_shim never sees a program command without valid."
 ANNOTATION: "SMC-B12-BANK-MODEL-NO-SLVERR: a property of this bench, not of the design. smc_ip_integration answers the eFuse shim with efuse_bank_model, whose register block drives pslverr from cpuif errors tied to zero, so no read, program or read-back returns SLVERR and the sense status stays zero; the model's injected program failures corrupt the data, which the read-back mismatch term still grades. A bank model or macro that can return SLVERR retires the class."
 MODULE: efuse_interface_shim
-Condition 4 "3748480020" "(fuse_command_req_i.valid && ((fuse_command_req_i.command == FUSE_COMMAND_PROGRAM) || (fuse_command_req_i.command == FUSE_COMMAND_PROGRAM_READ_BACK))) 1 -1" (1 "01")
-Condition 9 "1462769144" "(apb_fuse_bank_resp_w_readback.pslverr || ((apb_fuse_bank_resp_w_readback.prdata & efuse_write_word) != efuse_write_word)) 1 -1" (3 "10")
+Condition 4 "1965672997" "(fuse_command_req_i.valid && ((fuse_command_req_i.command == FUSE_COMMAND_PROGRAM) || (fuse_command_req_i.command == FUSE_COMMAND_PROGRAM_READ_BACK))) 1 -1" (1 "01")
+Condition 9 "3774810071" "(apb_fuse_bank_resp_w_readback.pslverr || ((apb_fuse_bank_resp_w_readback.prdata & efuse_write_word) != efuse_write_word)) 1 -1" (3 "10")
 
 CHECKSUM: "705541431 2700233996"
 ANNOTATION: "SMC-P15-SECURE-TM-TIED: smc_efuse_wrapper ties the eFuse's secure_tm_i to zero, so the secure-test-mode arms of the shadow registers, their access control and the guard never execute, and the guard's secure_tm_blocked, which the program interface reads, holds zero. The program-lock and read-lock arms beside them stay graded."
@@ -320,7 +320,7 @@ Condition 15 "57363498" "(is_write_locked | (sw_lock_bits[2:1] == 2'b11)) 1 -1" 
 Condition 16 "1432529323" "(sw_lock_bits[2:1] == 2'b11) 1 -1" (2 "1")
 Condition 17 "2025791036" "(is_read_locked | sw_lock_bits[0]) 1 -1" (2 "01")
 
-CHECKSUM: "4060549009 2643042621"
+CHECKSUM: "1655169995 3124404934"
 ANNOTATION: "SMC-P6-LC-STATE-OFF: smc_efuse_wrapper instantiates the eFuse with HAS_LC_STATE = 0, so the lifecycle-state arms of the interface controller, the shadow registers, their access control and the guard are never entered and the RMA token comparisons they hold have no access that can reach them. The fuse-sense, security-disable and image-lock terms outside those arms stay graded."
 ANNOTATION: "SMC-B6-SIM-ONLY-FUSE-BYPASS: a property of this bench and its policy, not of the design. efuse_shadow_regs reads the +skip_fuse_sense plusarg in simulation-only initial blocks and ties sim_skip_fuse_sense to zero outside simulation; with the plusarg set, the shadow registers take a preload file or zeros in place of the sensed fuse image. The DV policy (section 1.6) forbids a skipped fuse sense as evidence, and no SMC testlist entry passes the plusarg, so the plusarg arms, the preload flag the initial block sets only with sim_skip_fuse_sense high, and every row or path that needs either high never run here. A policy change admitting the plusarg retires the class."
 MODULE: efuse_shadow_regs
@@ -341,7 +341,7 @@ Condition 33 "2190871633" "(apb_req_from_ac.pstrb[0] && ((!apb_resp_from_ac.prea
 Condition 2 "4011173503" "(sim_skip_fuse_sense == 1'b1) 1 -1" (2 "1")
 Condition 3 "1907892326" "(preload_plusarg_found == 1'b0) 1 -1" (1 "0")
 
-CHECKSUM: "4060549009 1077015306"
+CHECKSUM: "1655169995 333976586"
 ANNOTATION: "SMC-P6-LC-STATE-OFF: smc_efuse_wrapper instantiates the eFuse with HAS_LC_STATE = 0, so the lifecycle-state arms of the interface controller, the shadow registers, their access control and the guard are never entered and the RMA token comparisons they hold have no access that can reach them. The fuse-sense, security-disable and image-lock terms outside those arms stay graded."
 ANNOTATION: "SMC-P15-SECURE-TM-TIED: smc_efuse_wrapper ties the eFuse's secure_tm_i to zero, so the secure-test-mode arms of the shadow registers, their access control and the guard never execute, and the guard's secure_tm_blocked, which the program interface reads, holds zero. The program-lock and read-lock arms beside them stay graded."
 ANNOTATION: "SMC-B6-SIM-ONLY-FUSE-BYPASS: a property of this bench and its policy, not of the design. efuse_shadow_regs reads the +skip_fuse_sense plusarg in simulation-only initial blocks and ties sim_skip_fuse_sense to zero outside simulation; with the plusarg set, the shadow registers take a preload file or zeros in place of the sensed fuse image. The DV policy (section 1.6) forbids a skipped fuse sense as evidence, and no SMC testlist entry passes the plusarg, so the plusarg arms, the preload flag the initial block sets only with sim_skip_fuse_sense high, and every row or path that needs either high never run here. A policy change admitting the plusarg retires the class."
@@ -356,7 +356,7 @@ Branch 4 "3031313403" "HAS_LC_STATE" (8) "HAS_LC_STATE 1,0,0,-,0,1,0,-,-,-,-,-,-
 Branch 4 "3031313403" "HAS_LC_STATE" (10) "HAS_LC_STATE 1,0,0,-,0,0,-,-,-,1,0,1,-"
 Branch 4 "3031313403" "HAS_LC_STATE" (12) "HAS_LC_STATE 1,0,0,-,0,0,-,-,-,1,0,0,0"
 Branch 4 "3031313403" "HAS_LC_STATE" (13) "HAS_LC_STATE 1,0,0,-,0,0,-,-,-,0,-,-,-"
-Branch 7 "4076424298" "(!rst_ni)" (1) "(!rst_ni) 0,1,-"
+Branch 7 "1973957639" "(!rst_ni)" (1) "(!rst_ni) 0,1,-"
 Branch 8 "3492058410" "(!rst_ni)" (1) "(!rst_ni) 0,1,1,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-"
 Branch 8 "3492058410" "(!rst_ni)" (2) "(!rst_ni) 0,1,0,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-"
 Branch 8 "3492058410" "(!rst_ni)" (13) "(!rst_ni) 0,0,-,0,-,-,-,-,-,1,0,1,0,-,1,1,1,-,-,-,-,-,-,-"
@@ -394,25 +394,25 @@ Branch 0 "2316299915" "MMR_Trfunnelcontrol_F_Trfunnelempty_WrEn" (0) "MMR_Trfunn
 Branch 11 "2747705060" "(instr_type == 2'b1)" (0) "(instr_type == 2'b1) 1,-"
 Branch 11 "2747705060" "(instr_type == 2'b1)" (1) "(instr_type == 2'b1) 0,1"
 
-CHECKSUM: "1305403113 4026430701"
+CHECKSUM: "1495589902 3045344841"
 ANNOTATION: "SMC-C6-EARLIER-ARM-TAKES: an else arm or a later else-if runs only when the tests before it fail, and a statement inside an arm only when that arm's test holds, so a row of its condition that an earlier or enclosing test already decides is never evaluated. smc_cpu_ctrl_wrap reloads each core's second-stage watchdog count while reset_wdt_count is high, and reset_wdt_count includes the negated first-stage timeout, so the decrement test runs only with that timeout high; vlt_packet_compression takes a timestamp packet without a grant first and sets packet_lost only inside its timestamp-retry arm; avsbus_controller takes a retry with a countdown above zero first; efuse_shadow_regs takes a setup-only write outside the lifecycle-state field first; the I2C controller takes a disabled host, a lost start and a disable mid-transaction first, and the bus monitor a disabled monitor; and the iDMA channel coupler takes a ready first AW, and the read path a non-last beat, first."
 MODULE: i2c_bus_monitor
 Condition 14 "3557830633" "(monitor_enable && ((!monitor_enable_q))) 1 -1" (1 "01")
 
-CHECKSUM: "3384408495 1438595411"
+CHECKSUM: "4121512156 549783544"
 ANNOTATION: "SMC-C6-EARLIER-ARM-TAKES: an else arm or a later else-if runs only when the tests before it fail, and a statement inside an arm only when that arm's test holds, so a row of its condition that an earlier or enclosing test already decides is never evaluated. smc_cpu_ctrl_wrap reloads each core's second-stage watchdog count while reset_wdt_count is high, and reset_wdt_count includes the negated first-stage timeout, so the decrement test runs only with that timeout high; vlt_packet_compression takes a timestamp packet without a grant first and sets packet_lost only inside its timestamp-retry arm; avsbus_controller takes a retry with a countdown above zero first; efuse_shadow_regs takes a setup-only write outside the lifecycle-state field first; the I2C controller takes a disabled host, a lost start and a disable mid-transaction first, and the bus monitor a disabled monitor; and the iDMA channel coupler takes a ready first AW, and the read path a non-last beat, first."
 MODULE: i2c_controller_fsm
-Condition 37 "2457751507" "(trans_started && ((!host_enable_i))) 1 -1" (2 "10")
-Condition 39 "3890143846" "(trans_started && ((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (1 "0111")
-Condition 40 "4193061578" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (1 "011")
-Condition 88 "2337000403" "(((!host_enable_i)) || (fmt_fifo_depth_i == 7'b1) || unhandled_unexp_nak_i || ((!trans_started))) 1 -1" (5 "1000")
+Condition 37 "3850361113" "(trans_started && ((!host_enable_i))) 1 -1" (2 "10")
+Condition 39 "3879430109" "(trans_started && ((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (1 "0111")
+Condition 40 "1002741326" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (1 "011")
+Condition 88 "2998605995" "(((!host_enable_i)) || (fmt_fifo_depth_i == 7'b1) || unhandled_unexp_nak_i || ((!trans_started))) 1 -1" (5 "1000")
 
-CHECKSUM: "3384408495 4182007552"
-ANNOTATION: "SMC-P20-TCOUNT-SELECT-PAIRED: the I2C FSMs pick a counter reload with tcount_sel only under load_tcount, assign tcount_sel nothing but its named values, and the target assigns tNoDelay only beside load_tcount = 0 (its defaults at the top of the next-state block and in its default arm), every reload pairing tSetupData or tHoldData. The case's default item, and the target's tNoDelay item, never execute. The controller reloads with tNoDelay on purpose, so that item stays graded there."
+CHECKSUM: "4121512156 3655462183"
+ANNOTATION: "SMC-P20-TCOUNT-SELECT-PAIRED: the I2C FSMs pick a counter reload with tcount_sel only under load_tcount, assign tcount_sel nothing but its named values, and the target assigns T_NO_DELAY only beside load_tcount = 0 (its defaults at the top of the next-state block and in its default arm), every reload pairing T_SETUP_DATA or T_HOLD_DATA. The case's default item, and the target's T_NO_DELAY item, never execute. The controller reloads with T_NO_DELAY on purpose, so that item stays graded there."
 MODULE: i2c_controller_fsm
-Branch 0 "3901164169" "load_tcount" (10) "load_tcount 1,default,-"
+Branch 0 "1166353581" "load_tcount" (10) "load_tcount 1,default,-"
 
-CHECKSUM: "2279933121 482332505"
+CHECKSUM: "1584876630 2977940430"
 ANNOTATION: "SMC-P11-UART-SELF-CHECK: each UART holding register stores its data with the parity bit ~^data beside it, written together with the valid flag and cleared together with it, and each parity FIFO stores {~^data, data} and guards its pointers with a redundant count, so a valid stored entry always has odd parity and the check ~^{parity, data} reads one only on corrupted storage. The I2C core's four FIFOs are the same secure parity FIFO, so their err_o reads one only on corruption too. No access produces that, so the rows that need a self-check or FIFO error at one have no stimulus."
 ANNOTATION: "SMC-B13-LANE-ZERO-FILL: a property of this bench, not of the design alone. These 32-bit peripheral blocks are reached only through the local crossbar's 64-to-32 downsizer, which starts each narrow beat at zero and copies only the lanes inside the transfer size. Within that size no master of this bench leaves a one on an unstrobed lane: a CPU store strobes every lane of its size, the iDMA is built to mask unstrobed lanes to zero, the zeroer writes zero, and the cocotb AXI masters on the system and SEP ports write contiguous bytes with every other lane zero. A write-data bit high with its enable low therefore never arrives. A master that drives data on an unstrobed lane inside its transfer size retires the class."
 MODULE: i2c_core
@@ -469,11 +469,11 @@ Condition 444 "1513541481" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 
 Condition 448 "2545097252" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (2 "10")
 Condition 452 "2691227685" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
 
-CHECKSUM: "2631278932 4067735016"
-ANNOTATION: "SMC-P20-TCOUNT-SELECT-PAIRED: the I2C FSMs pick a counter reload with tcount_sel only under load_tcount, assign tcount_sel nothing but its named values, and the target assigns tNoDelay only beside load_tcount = 0 (its defaults at the top of the next-state block and in its default arm), every reload pairing tSetupData or tHoldData. The case's default item, and the target's tNoDelay item, never execute. The controller reloads with tNoDelay on purpose, so that item stays graded there."
+CHECKSUM: "2664491312 571373665"
+ANNOTATION: "SMC-P20-TCOUNT-SELECT-PAIRED: the I2C FSMs pick a counter reload with tcount_sel only under load_tcount, assign tcount_sel nothing but its named values, and the target assigns T_NO_DELAY only beside load_tcount = 0 (its defaults at the top of the next-state block and in its default arm), every reload pairing T_SETUP_DATA or T_HOLD_DATA. The case's default item, and the target's T_NO_DELAY item, never execute. The controller reloads with T_NO_DELAY on purpose, so that item stays graded there."
 MODULE: i2c_target_fsm
-Branch 0 "2471614216" "load_tcount" (2) "load_tcount 1,tNoDelay ,-"
-Branch 0 "2471614216" "load_tcount" (3) "load_tcount 1,default,-"
+Branch 0 "3014248919" "load_tcount" (2) "load_tcount 1,T_NO_DELAY ,-"
+Branch 0 "3014248919" "load_tcount" (3) "load_tcount 1,default,-"
 
 CHECKSUM: "4041267351 1933431332"
 ANNOTATION: "SMC-C6-EARLIER-ARM-TAKES: an else arm or a later else-if runs only when the tests before it fail, and a statement inside an arm only when that arm's test holds, so a row of its condition that an earlier or enclosing test already decides is never evaluated. smc_cpu_ctrl_wrap reloads each core's second-stage watchdog count while reset_wdt_count is high, and reset_wdt_count includes the negated first-stage timeout, so the decrement test runs only with that timeout high; vlt_packet_compression takes a timestamp packet without a grant first and sets packet_lost only inside its timestamp-retry arm; avsbus_controller takes a retry with a countdown above zero first; efuse_shadow_regs takes a setup-only write outside the lifecycle-state field first; the I2C controller takes a disabled host, a lost start and a disable mid-transaction first, and the bus monitor a disabled monitor; and the iDMA channel coupler takes a ready first AW, and the read path a non-last beat, first."
@@ -563,7 +563,7 @@ Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
-CHECKSUM: "3666106679 2225543826"
+CHECKSUM: "712776189 1633000443"
 ANNOTATION: "SMC-C6-EARLIER-ARM-TAKES: an else arm or a later else-if runs only when the tests before it fail, and a statement inside an arm only when that arm's test holds, so a row of its condition that an earlier or enclosing test already decides is never evaluated. smc_cpu_ctrl_wrap reloads each core's second-stage watchdog count while reset_wdt_count is high, and reset_wdt_count includes the negated first-stage timeout, so the decrement test runs only with that timeout high; vlt_packet_compression takes a timestamp packet without a grant first and sets packet_lost only inside its timestamp-retry arm; avsbus_controller takes a retry with a countdown above zero first; efuse_shadow_regs takes a setup-only write outside the lifecycle-state field first; the I2C controller takes a disabled host, a lost start and a disable mid-transaction first, and the bus monitor a disabled monitor; and the iDMA channel coupler takes a ready first AW, and the read path a non-last beat, first."
 MODULE: smc_cpu_ctrl_wrap
 Condition 4 "4033334027" "(wdt_timeout_cluster_i[0] && (cycle_count[0] != 32'b0)) 1 -1" (1 "01")
@@ -1414,7 +1414,7 @@ Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 20 "3139053667" "(cpuif_req_masked & (cpuif_addr == 4'h8) & cpuif_req_is_wr) 1 -1" (3 "110")
 
-CHECKSUM: "2535161971 656965095"
+CHECKSUM: "716831743 656965095"
 ANNOTATION: "SMC-P11-UART-SELF-CHECK: each UART holding register stores its data with the parity bit ~^data beside it, written together with the valid flag and cleared together with it, and each parity FIFO stores {~^data, data} and guards its pointers with a redundant count, so a valid stored entry always has odd parity and the check ~^{parity, data} reads one only on corrupted storage. The I2C core's four FIFOs are the same secure parity FIFO, so their err_o reads one only on corruption too. No access produces that, so the rows that need a self-check or FIFO error at one have no stimulus."
 ANNOTATION: "SMC-P12-BREAK-IMPLIES-FRAMING: uart_core forms break_err as the framing error of a frame whose data is all zeros and stores it in the same entry as that framing error, in the FIFO and in the holding register alike, so an entry carrying break_err always carries framing_err as well. The main register block's LSR.BI and LSR.FE latch those two bits on the same cycle and the same LSR read clears both, so LSR.BI is never set without LSR.FE either; the rows that need break_err or LSR.BI alone have no stimulus."
 ANNOTATION: "SMC-B14-STROBE-FOLLOWS-ADDRESS: a property of this bench, not of the design alone. The UART's write-only map is selected only on an exact match of the write address with THR, so a THR write starts at the register's own address, and every master of this bench strobes the lane at its start address: the cocotb AXI masters write contiguous bytes from it, a CPU store is sized and aligned, and the iDMA and the zeroer build their first strobe from the address offset. A THR write with its data lane unstrobed never arrives, and no write arrives with no strobe at all, which the I2C FDATA and TXDATA pushes would need since their enables OR the whole strobe. A master that issues sparse or empty strobes retires the class."

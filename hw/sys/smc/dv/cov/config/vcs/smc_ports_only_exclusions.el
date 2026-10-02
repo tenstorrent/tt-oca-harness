@@ -368,7 +368,6 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_df
 ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 2 "2321781715" "(dst_inst[0].sdtrig_dst_trace_start & dst_inst[0].Trdstcontrol.Trdstinsttriggerenable) 1 -1" (3 "11")
 Condition 4 "3950667315" "(dst_inst[0].sdtrig_dst_trace_stop & dst_inst[0].Trdstcontrol.Trdstinsttriggerenable) 1 -1" (3 "11")
-Condition 6 "375788308" "(tnif_dst_flush[0] & tnif_dst_bp[0]) 1 -1" (1 "01")
 Condition 7 "2549274228" "(dst_inst[0].trig_control_e == TRIG_TRACE_ON) 1 -1" (2 "1")
 Condition 8 "2297543608" "(dst_inst[0].trig_control_e == TRIG_TRACE_OFF) 1 -1" (2 "1")
 
@@ -376,7 +375,6 @@ CHECKSUM: "2480363511 1038873943"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.dst_wrapper.dst_inst[0].debug_sig_trace_gen
 ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 23 "1651327698" "(((~trace_stop_from_hw_flush)) & trace_stop_from_hw_flush_d1) 1 -1" (1 "01")
-Condition 26 "3578000669" "(trace_start & ((~trace_hardware_stop))) 1 -1" (2 "10")
 
 CHECKSUM: "243658460 2303570125"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.dst_wrapper.dst_inst[0].debug_sig_trace_gen.vlt_packet_compression
@@ -413,14 +411,6 @@ Condition 4 "3012564814" "((target_write_byte_boundary != write_byte_boundary) &
 Condition 6 "1199935182" "((target_write_byte_boundary < write_byte_boundary) && (target_write_byte_boundary_in_range == 1'b0) && (write_byte_boundary <= 6'(WRITE_BYTE_POINTER_RANGE_END))) 1 -1" (3 "110")
 Condition 9 "1194554766" "((write_byte_boundary <= 6'(WRITE_BYTE_POINTER_RANGE_START)) && (target_write_byte_boundary > 6'(WRITE_BYTE_POINTER_RANGE_END))) 1 -1" (1 "01")
 Condition 9 "1194554766" "((write_byte_boundary <= 6'(WRITE_BYTE_POINTER_RANGE_START)) && (target_write_byte_boundary > 6'(WRITE_BYTE_POINTER_RANGE_END))) 1 -1" (3 "11")
-
-CHECKSUM: "3168562659 3354666806"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.dst_wrapper.dst_inst[0].debug_sig_trace_packetizer.frame_filler_instance
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 9 "424692085" "((frame_closure_mode == 1'b0) && (frame_mode_enable || flush_mode_enable) && (10'(request_packet_space_in_bytes) > frame_length_minus_bytes_in_current_frame)) 1 -1" (2 "101")
-Condition 11 "1306576003" "(frame_mode_enable || flush_mode_enable) 1 -1" (1 "00")
-Condition 11 "1306576003" "(frame_mode_enable || flush_mode_enable) 1 -1" (2 "01")
-Condition 14 "2621529588" "(frame_mode_enable || flush_mode_enable) 1 -1" (1 "00")
 
 CHECKSUM: "3001181867 1671278051"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.mmrs
@@ -557,19 +547,10 @@ Condition 6 "2679841428" "(psel && penable && pready && (rsp_err || decode_miss)
 Condition 6 "2679841428" "(psel && penable && pready && (rsp_err || decode_miss)) 1 -1" (5 "1111")
 Condition 7 "4224431006" "(rsp_err || decode_miss) 1 -1" (2 "01")
 
-CHECKSUM: "3895468110 949337104"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.mmrs.u_mmr_req_ctrl
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 18 "502553976" "(ram_req_active & ((~TraceRamWrEn)) & ((~ram_launched_q))) 1 -1" (2 "101")
-
 CHECKSUM: "4226918805 2330986106"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.tnif_wrapper.tnif_gen_blk[0].i_tnif
 ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 2 "3372887460" "(tr_gnt_in & ( ~ (dst_bp_in & ((~dst_flush_in))) ) & dst_req_in & ((ntr_req_in & ( ~ (ntr_bp_in & ((~ntr_flush_in))) )) ? (prev_gnt == tnifState_e'(DST_GNT)) : 1'b1)) 1 -1" (2 "1011")
-Condition 4 "80944167" "(dst_bp_in & ((~dst_flush_in))) 1 -1" (3 "11")
 Condition 5 "3193926140" "((ntr_req_in & ( ~ (ntr_bp_in & ((~ntr_flush_in))) )) ? (prev_gnt == tnifState_e'(DST_GNT)) : 1'b1) 1 -1" (2 "1")
-Condition 6 "1933900385" "(ntr_req_in & ( ~ (ntr_bp_in & ((~ntr_flush_in))) )) 1 -1" (3 "11")
-Condition 8 "2128817207" "(ntr_bp_in & ((~ntr_flush_in))) 1 -1" (3 "11")
 Condition 9 "4289729232" "(prev_gnt == tnifState_e'(DST_GNT)) 1 -1" (2 "1")
 Condition 18 "191604408" "((prev_gnt inside {NTR_GNT}) ? DST_GNT : NTR_GNT) 1 -1" (1 "0")
 
@@ -617,8 +598,6 @@ Condition 21 "1679181820" "((trntrRamRpLow_ANY[31:2] == trntrRamLimitLow_ANY[31:
 Condition 22 "126718797" "(trntrRamRpLow_ANY[31:2] == trntrRamLimitLow_ANY[31:2]) 1 -1" (1 "0")
 Condition 23 "2139922978" "(trntrRamRpLow_ANY[2] ? TraceRamData64b_TS2[63:32] : TraceRamData64b_TS2[31:0]) 1 -1" (2 "1")
 Condition 24 "3747907426" "(((~|TrRamPendDstPktVld_ANY)) & TrdstFlushTimeoutDone_ANY & (((~trdstRamMode_ANY)) | (trdstRamMode_ANY & ((~|trdstNumFramesFilledInSRAM_ANY))))) 1 -1" (1 "011")
-Condition 24 "3747907426" "(((~|TrRamPendDstPktVld_ANY)) & TrdstFlushTimeoutDone_ANY & (((~trdstRamMode_ANY)) | (trdstRamMode_ANY & ((~|trdstNumFramesFilledInSRAM_ANY))))) 1 -1" (3 "110")
-Condition 29 "3386698653" "(TS_TR_Dst_Bp_int & TS_TR_Dst_Flush_int) 1 -1" (2 "10")
 Condition 49 "3173394396" "(trntrRamMode_ANY & (((|trntrNumFrameFillComplete_ANY_d1)) | TrntrMemAxiWrVld_ANY)) 1 -1" (1 "01")
 Condition 49 "3173394396" "(trntrRamMode_ANY & (((|trntrNumFrameFillComplete_ANY_d1)) | TrntrMemAxiWrVld_ANY)) 1 -1" (2 "10")
 Condition 49 "3173394396" "(trntrRamMode_ANY & (((|trntrNumFrameFillComplete_ANY_d1)) | TrntrMemAxiWrVld_ANY)) 1 -1" (3 "11")
@@ -626,8 +605,6 @@ Condition 50 "3219102058" "(((|trntrNumFrameFillComplete_ANY_d1)) | TrntrMemAxiW
 Condition 50 "3219102058" "(((|trntrNumFrameFillComplete_ANY_d1)) | TrntrMemAxiWrVld_ANY) 1 -1" (3 "10")
 Condition 51 "1335075051" "(((~TrntrMemModeRamFlush_ANY)) & (9'((trntrNumFramesFilledInSRAM_ANY * InsnTrace_NumSetsPerFrame_ANY)) > trntrcoretoFlushThreshold_ANY)) 1 -1" (1 "01")
 Condition 51 "1335075051" "(((~TrntrMemModeRamFlush_ANY)) & (9'((trntrNumFramesFilledInSRAM_ANY * InsnTrace_NumSetsPerFrame_ANY)) > trntrcoretoFlushThreshold_ANY)) 1 -1" (3 "11")
-Condition 52 "325462764" "(((~TrdstMemModeRamFlush_ANY)) & (9'((trdstNumFramesFilledInSRAM_ANY * DataTrace_NumSetsPerFrame_ANY)) > trdstcoretoFlushThreshold_ANY)) 1 -1" (1 "01")
-Condition 52 "325462764" "(((~TrdstMemModeRamFlush_ANY)) & (9'((trdstNumFramesFilledInSRAM_ANY * DataTrace_NumSetsPerFrame_ANY)) > trdstcoretoFlushThreshold_ANY)) 1 -1" (3 "11")
 Condition 63 "460339696" "(trntrRamEnableStart_ANY_d1 | TrntrMemAxiWrVld_ANY) 1 -1" (2 "01")
 Condition 63 "460339696" "(trntrRamEnableStart_ANY_d1 | TrntrMemAxiWrVld_ANY) 1 -1" (3 "10")
 Condition 64 "794883189" "(trntrRamEnableStart_ANY_d1 ? trntrRamSMEMStartAddr_ANY : (9'((TrntrMemRamRdAddrFlop_ANY + 1'b1)))) 1 -1" (2 "1")
@@ -799,8 +776,6 @@ Condition 223 "1104102604" "(TrntrMemModeRamBackPressure_ANY & ((~TrntrMemModeRa
 Condition 224 "765035039" "(trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY)) 1 -1" (2 "10")
 Condition 224 "765035039" "(trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY)) 1 -1" (3 "11")
 Condition 225 "177503260" "(((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY) 1 -1" (3 "10")
-Condition 227 "1626401631" "(((~trdstRamMode_ANY)) & trdstStoponWrap_ANY & (((~trdstRamActiveEnable_ANY)) | trdstRamModeBP_ANY)) 1 -1" (1 "011")
-Condition 227 "1626401631" "(((~trdstRamMode_ANY)) & trdstStoponWrap_ANY & (((~trdstRamActiveEnable_ANY)) | trdstRamModeBP_ANY)) 1 -1" (3 "110")
 Condition 234 "3814235686" "((((~trntrRamMode_ANY)) & trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrRamModeBP_ANY)) | (trntrRamMode_ANY & (TrntrMemModeRamFlush_ANY | (trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY))))) 1 -1" (3 "10")
 Condition 235 "183357726" "(((~trntrRamMode_ANY)) & trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrRamModeBP_ANY)) 1 -1" (1 "011")
 Condition 235 "183357726" "(((~trntrRamMode_ANY)) & trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrRamModeBP_ANY)) 1 -1" (3 "110")
@@ -812,8 +787,6 @@ Condition 238 "2740983506" "(TrntrMemModeRamFlush_ANY | (trntrStoponWrap_ANY & (
 Condition 239 "2874380621" "(trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY)) 1 -1" (2 "10")
 Condition 239 "2874380621" "(trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY)) 1 -1" (3 "11")
 Condition 240 "2086714443" "(((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY) 1 -1" (3 "10")
-Condition 242 "429247782" "(((~trdstRamMode_ANY)) & trdstStoponWrap_ANY & (((~trdstRamActiveEnable_ANY)) | trdstRamModeBP_ANY)) 1 -1" (1 "011")
-Condition 242 "429247782" "(((~trdstRamMode_ANY)) & trdstStoponWrap_ANY & (((~trdstRamActiveEnable_ANY)) | trdstRamModeBP_ANY)) 1 -1" (3 "110")
 Condition 248 "2541592002" "(TrMemAxiWrRdy_ANY & TrdstMemRdBufferFull_ANY & (TrntrMemRdBufferFull_ANY ? (TrMemAxiWrVld_NtraceOrDst_ANY == 1'b0) : 1'b1)) 1 -1" (3 "110")
 Condition 249 "2223440153" "(TrntrMemRdBufferFull_ANY ? (TrMemAxiWrVld_NtraceOrDst_ANY == 1'b0) : 1'b1) 1 -1" (2 "1")
 Condition 250 "600193053" "(TrMemAxiWrVld_NtraceOrDst_ANY == 1'b0) 1 -1" (2 "1")
@@ -842,11 +815,8 @@ Condition 272 "2599483927" "(TrntrFlushTimeoutCntr_ANY == TR_SINK_FLUSH_TIMEOUT)
 Condition 277 "685580104" "(TR_TS_North_Vld[0] & ((~TR_TS_North_Src))) 1 -1" (2 "10")
 Condition 278 "19802203" "(TR_TS_North_Vld[0] & TR_TS_North_Src) 1 -1" (1 "01")
 Condition 278 "19802203" "(TR_TS_North_Vld[0] & TR_TS_North_Src) 1 -1" (3 "11")
-Condition 309 "1029620672" "((TrdstMemRamRdAddrWrap_ANY ^ trdstcoreRamWpWrap_ANY_d1[0]) ? (9'((trdstRamSMEMTotalSets_ANY - (TrdstMemRamRdAddr_TS1 - trdstcoreRamWpAddr_ANY_d1[0])))) : (9'((trdstcoreRamWpAddr_ANY_d1[0] - TrdstMemRamRdAddr_TS1)))) 1 -1" (2 "1")
-Condition 310 "1399830620" "(TrdstMemRamRdAddrWrap_ANY ^ trdstcoreRamWpWrap_ANY_d1[0]) 1 -1" (2 "01")
 Condition 310 "1399830620" "(TrdstMemRamRdAddrWrap_ANY ^ trdstcoreRamWpWrap_ANY_d1[0]) 1 -1" (3 "10")
 Condition 310 "1399830620" "(TrdstMemRamRdAddrWrap_ANY ^ trdstcoreRamWpWrap_ANY_d1[0]) 1 -1" (4 "11")
-Condition 314 "1853558963" "((TrdstMemRamRdAddrWrap_ANY ^ trdstcoreRamWpWrap_ANY_d1[0]) ? (9'((trdstcoreRamWpAddr_ANY_d1[0] - TrdstMemRamRdAddr_TS1)) > trdstRamSMEMTotalSets_ANY) : (trdstcoreRamWpAddr_ANY_d1[0] > TrdstMemRamRdAddr_TS1)) 1 -1" (2 "1")
 Condition 316 "191140502" "(((~|(trntrFrameLength_ANY[9] ? trntrcorenextwritecnt_ANY[0][4:0] : (trntrFrameLength_ANY[8] ? trntrcorenextwritecnt_ANY[0][3:0] : (trntrFrameLength_ANY[7] ? trntrcorenextwritecnt_ANY[0][2:0] : trntrcorenextwritecnt_ANY[0][1:0]))))) & InsnTraceWrEnPerCore_TS0[0]) 1 -1" (1 "01")
 Condition 316 "191140502" "(((~|(trntrFrameLength_ANY[9] ? trntrcorenextwritecnt_ANY[0][4:0] : (trntrFrameLength_ANY[8] ? trntrcorenextwritecnt_ANY[0][3:0] : (trntrFrameLength_ANY[7] ? trntrcorenextwritecnt_ANY[0][2:0] : trntrcorenextwritecnt_ANY[0][1:0]))))) & InsnTraceWrEnPerCore_TS0[0]) 1 -1" (3 "11")
 Condition 317 "1889701566" "(trntrcoreNewFrameStart_ANY[0] ? (trntrfirstcoreNewFrameStart_ANY[0] ? trntrnextlocalRamWpLow_ANY[0] : trntrnextlocalRamWpLow_ANY[1]) : ({(trntrcorenextRamWpLow_ANY[0][31:4] + 28'b1), 2'b0})) 1 -1" (2 "1")
@@ -1061,12 +1031,7 @@ Condition 1 "1049626380" "(en | clr) 1 -1" (2 "01")
 CHECKSUM: "1202387303 2652479517"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.TrdstMemModeRamBackPressure_ff
 ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "1049626380" "(en | clr) 1 -1" (1 "00")
-Condition 1 "1049626380" "(en | clr) 1 -1" (3 "10")
-Condition 2 "289541705" "(({WIDTH {(~clr)}}) & (en ? in : out)) 1 -1" (1 "01")
 Condition 2 "289541705" "(({WIDTH {(~clr)}}) & (en ? in : out)) 1 -1" (2 "10")
-Condition 2 "289541705" "(({WIDTH {(~clr)}}) & (en ? in : out)) 1 -1" (3 "11")
-Condition 3 "751045846" "(en ? in : out) 1 -1" (2 "1")
 
 CHECKSUM: "1202387303 877334790"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0.TrntrFlushTimeoutCntr_ANY_ff
@@ -1279,7 +1244,7 @@ Condition 5 "671903146" "(w_cnt_valid_q & (w_num_beats_q == 8'b1)) 1 -1" (1 "01"
 Condition 12 "2367116148" "(w_dp_valid_i & ((buffer_out_valid_i & mask_out) == mask_out) & (buffer_out_valid_i != '0)) 1 -1" (3 "110")
 Condition 15 "724343310" "(((buffer_out_valid_i & w_first_mask) == w_first_mask) & (buffer_out_valid_i != '0)) 1 -1" (2 "10")
 
-CHECKSUM: "963428073 1400344415"
+CHECKSUM: "1334413042 1400344415"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_dma_wrap.u_idma_frontend_wrapper
 ANNOTATION: "SMC-T8-DMA-ZEROER-PORTS-ONLY: the iDMA wrapper and the zeroer is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 2 "1965931545" "(((|fe_busy)) | ((|f2m_req_valid)) | ((|me_busy))) 1 -1" (3 "010")
@@ -1348,552 +1313,552 @@ ANNOTATION: "SMC-T8-DMA-ZEROER-PORTS-ONLY: the iDMA wrapper and the zeroer is gr
 Condition 1 "1782633341" "(next_q == '1) 1 -1" (2 "1")
 Condition 2 "121455226" "(completed_q == '1) 1 -1" (2 "1")
 
-CHECKSUM: "3660651998 2005796970"
+CHECKSUM: "134859043 2005796970"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_zeroer
 ANNOTATION: "SMC-T8-DMA-ZEROER-PORTS-ONLY: the iDMA wrapper and the zeroer is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 5 "2491476611" "((cur_size < (axi_data_t'(AXI_STRB_WIDTH) - axi_data_t'(cur_dest_addr[(AXI_DATA_SIZE - 1):0]))) ? cur_size[(AXI_DATA_WIDTH - 1):0] : ((axi_data_t'(AXI_STRB_WIDTH) - axi_data_t'(cur_dest_addr[(AXI_DATA_SIZE - 1):0])))) 1 -1" (2 "1")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[0].u_read_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (1 "01")
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 2 "2784694337" "((tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] >= cfg_start_addr_i[(AddrWidth - 1):DataBusWidthLog2]) && (tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] <= cfg_end_addr_i[(AddrWidth - 1):DataBusWidthLog2])) 1 -1" (1 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (1 "00")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[0].u_write_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (1 "01")
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 2 "2784694337" "((tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] >= cfg_start_addr_i[(AddrWidth - 1):DataBusWidthLog2]) && (tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] <= cfg_end_addr_i[(AddrWidth - 1):DataBusWidthLog2])) 1 -1" (1 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (1 "00")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (1 "01")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[10].u_read_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (1 "01")
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 2 "2784694337" "((tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] >= cfg_start_addr_i[(AddrWidth - 1):DataBusWidthLog2]) && (tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] <= cfg_end_addr_i[(AddrWidth - 1):DataBusWidthLog2])) 1 -1" (1 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[10].u_write_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (1 "01")
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 2 "2784694337" "((tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] >= cfg_start_addr_i[(AddrWidth - 1):DataBusWidthLog2]) && (tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] <= cfg_end_addr_i[(AddrWidth - 1):DataBusWidthLog2])) 1 -1" (1 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[11].u_read_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (1 "01")
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 2 "2784694337" "((tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] >= cfg_start_addr_i[(AddrWidth - 1):DataBusWidthLog2]) && (tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] <= cfg_end_addr_i[(AddrWidth - 1):DataBusWidthLog2])) 1 -1" (1 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[11].u_write_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (1 "01")
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 2 "2784694337" "((tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] >= cfg_start_addr_i[(AddrWidth - 1):DataBusWidthLog2]) && (tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] <= cfg_end_addr_i[(AddrWidth - 1):DataBusWidthLog2])) 1 -1" (1 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[12].u_read_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (1 "01")
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 2 "2784694337" "((tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] >= cfg_start_addr_i[(AddrWidth - 1):DataBusWidthLog2]) && (tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] <= cfg_end_addr_i[(AddrWidth - 1):DataBusWidthLog2])) 1 -1" (1 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[12].u_write_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (1 "01")
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 2 "2784694337" "((tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] >= cfg_start_addr_i[(AddrWidth - 1):DataBusWidthLog2]) && (tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] <= cfg_end_addr_i[(AddrWidth - 1):DataBusWidthLog2])) 1 -1" (1 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[13].u_read_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (1 "01")
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 2 "2784694337" "((tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] >= cfg_start_addr_i[(AddrWidth - 1):DataBusWidthLog2]) && (tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] <= cfg_end_addr_i[(AddrWidth - 1):DataBusWidthLog2])) 1 -1" (1 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[13].u_write_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (1 "01")
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 2 "2784694337" "((tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] >= cfg_start_addr_i[(AddrWidth - 1):DataBusWidthLog2]) && (tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] <= cfg_end_addr_i[(AddrWidth - 1):DataBusWidthLog2])) 1 -1" (1 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[14].u_read_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (1 "01")
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 2 "2784694337" "((tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] >= cfg_start_addr_i[(AddrWidth - 1):DataBusWidthLog2]) && (tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] <= cfg_end_addr_i[(AddrWidth - 1):DataBusWidthLog2])) 1 -1" (1 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[14].u_write_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (1 "01")
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 2 "2784694337" "((tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] >= cfg_start_addr_i[(AddrWidth - 1):DataBusWidthLog2]) && (tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] <= cfg_end_addr_i[(AddrWidth - 1):DataBusWidthLog2])) 1 -1" (1 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[1].u_read_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (1 "01")
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 2 "2784694337" "((tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] >= cfg_start_addr_i[(AddrWidth - 1):DataBusWidthLog2]) && (tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] <= cfg_end_addr_i[(AddrWidth - 1):DataBusWidthLog2])) 1 -1" (1 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[1].u_write_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (1 "01")
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 2 "2784694337" "((tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] >= cfg_start_addr_i[(AddrWidth - 1):DataBusWidthLog2]) && (tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] <= cfg_end_addr_i[(AddrWidth - 1):DataBusWidthLog2])) 1 -1" (1 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[2].u_read_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (1 "01")
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 2 "2784694337" "((tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] >= cfg_start_addr_i[(AddrWidth - 1):DataBusWidthLog2]) && (tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] <= cfg_end_addr_i[(AddrWidth - 1):DataBusWidthLog2])) 1 -1" (1 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[2].u_write_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (1 "01")
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 2 "2784694337" "((tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] >= cfg_start_addr_i[(AddrWidth - 1):DataBusWidthLog2]) && (tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] <= cfg_end_addr_i[(AddrWidth - 1):DataBusWidthLog2])) 1 -1" (1 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[3].u_read_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (1 "01")
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 2 "2784694337" "((tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] >= cfg_start_addr_i[(AddrWidth - 1):DataBusWidthLog2]) && (tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] <= cfg_end_addr_i[(AddrWidth - 1):DataBusWidthLog2])) 1 -1" (1 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[3].u_write_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (1 "01")
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 2 "2784694337" "((tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] >= cfg_start_addr_i[(AddrWidth - 1):DataBusWidthLog2]) && (tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] <= cfg_end_addr_i[(AddrWidth - 1):DataBusWidthLog2])) 1 -1" (1 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[4].u_read_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (1 "01")
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 2 "2784694337" "((tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] >= cfg_start_addr_i[(AddrWidth - 1):DataBusWidthLog2]) && (tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] <= cfg_end_addr_i[(AddrWidth - 1):DataBusWidthLog2])) 1 -1" (1 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[4].u_write_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (1 "01")
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 2 "2784694337" "((tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] >= cfg_start_addr_i[(AddrWidth - 1):DataBusWidthLog2]) && (tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] <= cfg_end_addr_i[(AddrWidth - 1):DataBusWidthLog2])) 1 -1" (1 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[5].u_read_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (1 "01")
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 2 "2784694337" "((tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] >= cfg_start_addr_i[(AddrWidth - 1):DataBusWidthLog2]) && (tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] <= cfg_end_addr_i[(AddrWidth - 1):DataBusWidthLog2])) 1 -1" (1 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[5].u_write_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (1 "01")
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 2 "2784694337" "((tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] >= cfg_start_addr_i[(AddrWidth - 1):DataBusWidthLog2]) && (tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] <= cfg_end_addr_i[(AddrWidth - 1):DataBusWidthLog2])) 1 -1" (1 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[6].u_read_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (1 "01")
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 2 "2784694337" "((tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] >= cfg_start_addr_i[(AddrWidth - 1):DataBusWidthLog2]) && (tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] <= cfg_end_addr_i[(AddrWidth - 1):DataBusWidthLog2])) 1 -1" (1 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[6].u_write_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (1 "01")
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 2 "2784694337" "((tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] >= cfg_start_addr_i[(AddrWidth - 1):DataBusWidthLog2]) && (tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] <= cfg_end_addr_i[(AddrWidth - 1):DataBusWidthLog2])) 1 -1" (1 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[7].u_read_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (1 "01")
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 2 "2784694337" "((tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] >= cfg_start_addr_i[(AddrWidth - 1):DataBusWidthLog2]) && (tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] <= cfg_end_addr_i[(AddrWidth - 1):DataBusWidthLog2])) 1 -1" (1 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[7].u_write_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (1 "01")
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 2 "2784694337" "((tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] >= cfg_start_addr_i[(AddrWidth - 1):DataBusWidthLog2]) && (tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] <= cfg_end_addr_i[(AddrWidth - 1):DataBusWidthLog2])) 1 -1" (1 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[8].u_read_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (1 "01")
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 2 "2784694337" "((tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] >= cfg_start_addr_i[(AddrWidth - 1):DataBusWidthLog2]) && (tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] <= cfg_end_addr_i[(AddrWidth - 1):DataBusWidthLog2])) 1 -1" (1 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[8].u_write_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (1 "01")
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 2 "2784694337" "((tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] >= cfg_start_addr_i[(AddrWidth - 1):DataBusWidthLog2]) && (tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] <= cfg_end_addr_i[(AddrWidth - 1):DataBusWidthLog2])) 1 -1" (1 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[9].u_read_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (1 "01")
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 2 "2784694337" "((tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] >= cfg_start_addr_i[(AddrWidth - 1):DataBusWidthLog2]) && (tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] <= cfg_end_addr_i[(AddrWidth - 1):DataBusWidthLog2])) 1 -1" (1 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[9].u_write_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (1 "01")
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 2 "2784694337" "((tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] >= cfg_start_addr_i[(AddrWidth - 1):DataBusWidthLog2]) && (tx_addr_i[(AddrWidth - 1):DataBusWidthLog2] <= cfg_end_addr_i[(AddrWidth - 1):DataBusWidthLog2])) 1 -1" (1 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 2 "681202345" "((tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2]) && (tx_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[(ADDR_WIDTH - 1):DATA_BUS_WIDTH_LOG2])) 1 -1" (1 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (3 "10")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[0].u_read_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (1 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[0].u_write_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (1 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[10].u_read_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[10].u_write_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[11].u_read_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[11].u_write_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[12].u_read_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[12].u_write_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[13].u_read_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[13].u_write_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[14].u_read_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[14].u_write_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[1].u_write_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[2].u_read_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[2].u_write_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[3].u_read_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[3].u_write_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[4].u_read_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[4].u_write_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[5].u_read_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[5].u_write_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[6].u_read_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[6].u_write_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[7].u_read_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[7].u_write_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[8].u_read_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[8].u_write_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[9].u_read_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3990118930 2189762317"
+CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[9].u_write_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2942471291" "((tx_addr_i[(AddrWidth - 1):12] >= cfg_start_addr_i[(AddrWidth - 1):12]) && (tx_addr_i[(AddrWidth - 1):12] <= cfg_end_addr_i[(AddrWidth - 1):12])) 1 -1" (2 "10")
-Condition 6 "458421502" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
+Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "3868945950 3460463107"
+CHECKSUM: "1036002057 3460463107"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu
 ANNOTATION: "SMC-T7-CPU-PORTS-ONLY: the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1171358220" "(mem_init_reset_ni == 1'b0) 1 -1" (2 "1")
@@ -6561,151 +6526,151 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_avsbus_controller.u_readas
 ANNOTATION: "SMC-T10-CDC-SYNC-PORTS-ONLY: the peripheral clock-domain crossings and the synchronizer cells is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 4 "2759218582" "(rd_en_i & ((~rd_empty_o))) 1 -1" (2 "10")
 
-CHECKSUM: "1305403113 4026430701"
+CHECKSUM: "1495589902 3045344841"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_core.u_i2c_bus_monitor
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 14 "3557830633" "(monitor_enable && ((!monitor_enable_q))) 1 -1" (1 "01")
 
-CHECKSUM: "3384408495 1438595411"
+CHECKSUM: "4121512156 549783544"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_core.u_i2c_controller_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 34 "3859925586" "(unhandled_unexp_nak_i || unhandled_nak_timeout_i || halt_controller_i) 1 -1" (3 "010")
-Condition 34 "3859925586" "(unhandled_unexp_nak_i || unhandled_nak_timeout_i || halt_controller_i) 1 -1" (4 "100")
-Condition 37 "2457751507" "(trans_started && ((!host_enable_i))) 1 -1" (2 "10")
-Condition 39 "3890143846" "(trans_started && ((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (1 "0111")
-Condition 40 "4193061578" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (1 "011")
-Condition 88 "2337000403" "(((!host_enable_i)) || (fmt_fifo_depth_i == 7'b1) || unhandled_unexp_nak_i || ((!trans_started))) 1 -1" (5 "1000")
+Condition 34 "3377508725" "(unhandled_unexp_nak_i || unhandled_nak_timeout_i || halt_controller_i) 1 -1" (3 "010")
+Condition 34 "3377508725" "(unhandled_unexp_nak_i || unhandled_nak_timeout_i || halt_controller_i) 1 -1" (4 "100")
+Condition 37 "3850361113" "(trans_started && ((!host_enable_i))) 1 -1" (2 "10")
+Condition 39 "3879430109" "(trans_started && ((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (1 "0111")
+Condition 40 "1002741326" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (1 "011")
+Condition 88 "2998605995" "(((!host_enable_i)) || (fmt_fifo_depth_i == 7'b1) || unhandled_unexp_nak_i || ((!trans_started))) 1 -1" (5 "1000")
 
-CHECKSUM: "1305403113 4026430701"
+CHECKSUM: "1495589902 3045344841"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.u_i2c_bus_monitor
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 12 "937541305" "(((!scl_i)) || ((!sda_i))) 1 -1" (3 "10")
+Condition 12 "3716218854" "(((!scl_i)) || ((!sda_i))) 1 -1" (3 "10")
 Condition 14 "3557830633" "(monitor_enable && ((!monitor_enable_q))) 1 -1" (1 "01")
 Condition 22 "1286515773" "(monitor_enable && start_det_pending && (ctrl_det_count >= 14'(thd_dat_i))) 1 -1" (1 "011")
 Condition 27 "3393594469" "(monitor_enable && stop_det_pending && (ctrl_det_count >= 14'(thd_dat_i))) 1 -1" (1 "011")
 Condition 31 "2016545571" "(((!target_idle_i)) && bus_inactive_timeout_det) 1 -1" (1 "01")
 
-CHECKSUM: "3384408495 1438595411"
+CHECKSUM: "4121512156 549783544"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.u_i2c_controller_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 5 "1904410187" "(fmt_byte_i == '0) 1 -1" (2 "1")
 Condition 8 "3296887397" "(pend_restart && ((!host_enable_i))) 1 -1" (2 "10")
 Condition 8 "3296887397" "(pend_restart && ((!host_enable_i))) 1 -1" (3 "11")
-Condition 9 "3789019311" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (1 "011")
-Condition 9 "3789019311" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (2 "101")
-Condition 9 "3789019311" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (3 "110")
-Condition 9 "3789019311" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (4 "111")
-Condition 11 "3083435931" "(scl_i_q && ((!scl_i))) 1 -1" (1 "01")
-Condition 11 "3083435931" "(scl_i_q && ((!scl_i))) 1 -1" (3 "11")
-Condition 12 "370104072" "(scl_i_q && ((!scl_i))) 1 -1" (3 "11")
-Condition 13 "2018963844" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
-Condition 13 "2018963844" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
-Condition 15 "2543658888" "(((!scl_i_q)) && scl_i && sda_i && ((!fmt_flag_nak_ok_i))) 1 -1" (1 "0111")
-Condition 15 "2543658888" "(((!scl_i_q)) && scl_i && sda_i && ((!fmt_flag_nak_ok_i))) 1 -1" (4 "1110")
-Condition 15 "2543658888" "(((!scl_i_q)) && scl_i && sda_i && ((!fmt_flag_nak_ok_i))) 1 -1" (5 "1111")
-Condition 16 "70012529" "(scl_i_q && ((!scl_i))) 1 -1" (3 "11")
-Condition 17 "1786112253" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (1 "011")
-Condition 17 "1786112253" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
-Condition 17 "1786112253" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
-Condition 19 "659932413" "(scl_i_q && ((!scl_i))) 1 -1" (3 "11")
-Condition 20 "1225548401" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (1 "011")
-Condition 20 "1225548401" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
-Condition 20 "1225548401" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
-Condition 25 "996604304" "(byte_index == 9'b1) 1 -1" (1 "0")
-Condition 26 "624845099" "(byte_index == 9'b1) 1 -1" (1 "0")
-Condition 27 "450363675" "(scl_i_q && ((!scl_i))) 1 -1" (3 "11")
-Condition 28 "1954654103" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (1 "011")
-Condition 28 "1954654103" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
-Condition 28 "1954654103" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
-Condition 29 "3885228597" "(sda_i_q != sda_i) 1 -1" (2 "1")
-Condition 30 "2192961798" "(byte_index == 9'b1) 1 -1" (1 "0")
-Condition 31 "668771990" "(((!scl_i)) && scl_i_q) 1 -1" (3 "11")
-Condition 32 "2683428589" "(((!sda_i)) && ((!scl_i))) 1 -1" (1 "01")
-Condition 32 "2683428589" "(((!sda_i)) && ((!scl_i))) 1 -1" (3 "11")
-Condition 33 "3151215570" "(fmt_flag_start_before_i && ((!trans_started))) 1 -1" (1 "01")
-Condition 34 "3859925586" "(unhandled_unexp_nak_i || unhandled_nak_timeout_i || halt_controller_i) 1 -1" (3 "010")
-Condition 34 "3859925586" "(unhandled_unexp_nak_i || unhandled_nak_timeout_i || halt_controller_i) 1 -1" (4 "100")
-Condition 35 "2422715710" "(trans_started && unhandled_nak_cnt_expired) 1 -1" (1 "01")
-Condition 35 "2422715710" "(trans_started && unhandled_nak_cnt_expired) 1 -1" (2 "10")
-Condition 35 "2422715710" "(trans_started && unhandled_nak_cnt_expired) 1 -1" (3 "11")
-Condition 36 "3883399177" "(trans_started || bus_free_i) 1 -1" (3 "10")
-Condition 37 "2457751507" "(trans_started && ((!host_enable_i))) 1 -1" (2 "10")
-Condition 37 "2457751507" "(trans_started && ((!host_enable_i))) 1 -1" (3 "11")
-Condition 38 "4210263852" "(((!trans_started)) && ((!scl_i))) 1 -1" (1 "01")
-Condition 38 "4210263852" "(((!trans_started)) && ((!scl_i))) 1 -1" (3 "11")
-Condition 39 "3890143846" "(trans_started && ((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (1 "0111")
-Condition 39 "3890143846" "(trans_started && ((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (2 "1011")
-Condition 39 "3890143846" "(trans_started && ((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (3 "1101")
-Condition 39 "3890143846" "(trans_started && ((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (4 "1110")
-Condition 39 "3890143846" "(trans_started && ((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (5 "1111")
-Condition 40 "4193061578" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (1 "011")
-Condition 40 "4193061578" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (2 "101")
-Condition 40 "4193061578" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (3 "110")
-Condition 40 "4193061578" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (4 "111")
-Condition 44 "902545430" "(((!scl_i)) && scl_i_q) 1 -1" (3 "11")
-Condition 47 "3894018605" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (1 "011")
-Condition 47 "3894018605" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (2 "101")
-Condition 47 "3894018605" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (4 "111")
-Condition 48 "985271527" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
-Condition 48 "985271527" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
-Condition 52 "3661433373" "(((!scl_i)) && scl_i_q) 1 -1" (3 "11")
-Condition 56 "4198046548" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (2 "101")
-Condition 57 "3276576861" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (1 "011")
-Condition 57 "3276576861" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
-Condition 57 "3276576861" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
-Condition 58 "763200672" "(sda_i_q != sda_i) 1 -1" (2 "1")
-Condition 61 "3484567210" "(((!scl_i)) && scl_i_q) 1 -1" (3 "11")
-Condition 64 "3644887512" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (2 "101")
-Condition 65 "3493628165" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (1 "011")
-Condition 65 "3493628165" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
-Condition 65 "3493628165" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
-Condition 66 "1987935821" "(sda_i_q != sda_i) 1 -1" (2 "1")
-Condition 69 "2157052345" "(((!scl_i)) && scl_i_q) 1 -1" (3 "11")
-Condition 73 "3838661694" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (1 "011")
-Condition 73 "3838661694" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (2 "101")
-Condition 73 "3838661694" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (4 "111")
-Condition 74 "1473120968" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (1 "011")
-Condition 74 "1473120968" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
-Condition 74 "1473120968" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
-Condition 75 "4016721892" "(sda_i_q != sda_i) 1 -1" (2 "1")
-Condition 78 "374221239" "(((!scl_i)) && scl_i_q) 1 -1" (3 "11")
-Condition 80 "1634467054" "(byte_index == 9'b1) 1 -1" (1 "0")
-Condition 82 "610885967" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (1 "011")
-Condition 82 "610885967" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (2 "101")
-Condition 82 "610885967" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (4 "111")
-Condition 83 "3108273782" "(((!scl_i)) && scl_i_q) 1 -1" (3 "11")
-Condition 85 "2683428589" "(((!sda_i)) && ((!scl_i))) 1 -1" (1 "01")
-Condition 85 "2683428589" "(((!sda_i)) && ((!scl_i))) 1 -1" (3 "11")
-Condition 86 "1446882557" "(fmt_flag_start_before_i && ((!trans_started))) 1 -1" (1 "01")
-Condition 87 "3575627342" "(((!host_enable_i)) && trans_started) 1 -1" (3 "11")
-Condition 88 "2337000403" "(((!host_enable_i)) || (fmt_fifo_depth_i == 7'b1) || unhandled_unexp_nak_i || ((!trans_started))) 1 -1" (2 "0001")
-Condition 88 "2337000403" "(((!host_enable_i)) || (fmt_fifo_depth_i == 7'b1) || unhandled_unexp_nak_i || ((!trans_started))) 1 -1" (3 "0010")
-Condition 88 "2337000403" "(((!host_enable_i)) || (fmt_fifo_depth_i == 7'b1) || unhandled_unexp_nak_i || ((!trans_started))) 1 -1" (4 "0100")
-Condition 88 "2337000403" "(((!host_enable_i)) || (fmt_fifo_depth_i == 7'b1) || unhandled_unexp_nak_i || ((!trans_started))) 1 -1" (5 "1000")
+Condition 9 "3224839733" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (1 "011")
+Condition 9 "3224839733" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (2 "101")
+Condition 9 "3224839733" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (3 "110")
+Condition 9 "3224839733" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (4 "111")
+Condition 11 "4115405389" "(scl_i_q && ((!scl_i))) 1 -1" (1 "01")
+Condition 11 "4115405389" "(scl_i_q && ((!scl_i))) 1 -1" (3 "11")
+Condition 12 "4080702731" "(scl_i_q && ((!scl_i))) 1 -1" (3 "11")
+Condition 13 "2640524167" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
+Condition 13 "2640524167" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
+Condition 15 "423011453" "(((!scl_i_q)) && scl_i && sda_i && ((!fmt_flag_nak_ok_i))) 1 -1" (1 "0111")
+Condition 15 "423011453" "(((!scl_i_q)) && scl_i && sda_i && ((!fmt_flag_nak_ok_i))) 1 -1" (4 "1110")
+Condition 15 "423011453" "(((!scl_i_q)) && scl_i && sda_i && ((!fmt_flag_nak_ok_i))) 1 -1" (5 "1111")
+Condition 16 "2324155780" "(scl_i_q && ((!scl_i))) 1 -1" (3 "11")
+Condition 17 "3839781640" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (1 "011")
+Condition 17 "3839781640" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
+Condition 17 "3839781640" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
+Condition 19 "2959126639" "(scl_i_q && ((!scl_i))) 1 -1" (3 "11")
+Condition 20 "3728283363" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (1 "011")
+Condition 20 "3728283363" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
+Condition 20 "3728283363" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
+Condition 25 "2090648350" "(byte_index == 9'b1) 1 -1" (1 "0")
+Condition 26 "3715465210" "(byte_index == 9'b1) 1 -1" (1 "0")
+Condition 27 "2321408698" "(scl_i_q && ((!scl_i))) 1 -1" (3 "11")
+Condition 28 "3825484854" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (1 "011")
+Condition 28 "3825484854" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
+Condition 28 "3825484854" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
+Condition 29 "954284296" "(sda_i_q != sda_i) 1 -1" (2 "1")
+Condition 30 "4034944222" "(byte_index == 9'b1) 1 -1" (1 "0")
+Condition 31 "4093426772" "(((!scl_i)) && scl_i_q) 1 -1" (3 "11")
+Condition 32 "2138412975" "(((!sda_i)) && ((!scl_i))) 1 -1" (1 "01")
+Condition 32 "2138412975" "(((!sda_i)) && ((!scl_i))) 1 -1" (3 "11")
+Condition 33 "51920182" "(fmt_flag_start_before_i && ((!trans_started))) 1 -1" (1 "01")
+Condition 34 "3377508725" "(unhandled_unexp_nak_i || unhandled_nak_timeout_i || halt_controller_i) 1 -1" (3 "010")
+Condition 34 "3377508725" "(unhandled_unexp_nak_i || unhandled_nak_timeout_i || halt_controller_i) 1 -1" (4 "100")
+Condition 35 "3882230772" "(trans_started && unhandled_nak_cnt_expired) 1 -1" (1 "01")
+Condition 35 "3882230772" "(trans_started && unhandled_nak_cnt_expired) 1 -1" (2 "10")
+Condition 35 "3882230772" "(trans_started && unhandled_nak_cnt_expired) 1 -1" (3 "11")
+Condition 36 "4078688379" "(trans_started || bus_free_i) 1 -1" (3 "10")
+Condition 37 "3850361113" "(trans_started && ((!host_enable_i))) 1 -1" (2 "10")
+Condition 37 "3850361113" "(trans_started && ((!host_enable_i))) 1 -1" (3 "11")
+Condition 38 "3675486646" "(((!trans_started)) && ((!scl_i))) 1 -1" (1 "01")
+Condition 38 "3675486646" "(((!trans_started)) && ((!scl_i))) 1 -1" (3 "11")
+Condition 39 "3879430109" "(trans_started && ((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (1 "0111")
+Condition 39 "3879430109" "(trans_started && ((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (2 "1011")
+Condition 39 "3879430109" "(trans_started && ((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (3 "1101")
+Condition 39 "3879430109" "(trans_started && ((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (4 "1110")
+Condition 39 "3879430109" "(trans_started && ((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (5 "1111")
+Condition 40 "1002741326" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (1 "011")
+Condition 40 "1002741326" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (2 "101")
+Condition 40 "1002741326" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (3 "110")
+Condition 40 "1002741326" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (4 "111")
+Condition 44 "1340840389" "(((!scl_i)) && scl_i_q) 1 -1" (3 "11")
+Condition 47 "221233198" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (1 "011")
+Condition 47 "221233198" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (2 "101")
+Condition 47 "221233198" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (4 "111")
+Condition 48 "1398363877" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
+Condition 48 "1398363877" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
+Condition 52 "1273831875" "(((!scl_i)) && scl_i_q) 1 -1" (3 "11")
+Condition 56 "1955764385" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (2 "101")
+Condition 57 "2656230352" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (1 "011")
+Condition 57 "2656230352" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
+Condition 57 "2656230352" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
+Condition 58 "788030742" "(sda_i_q != sda_i) 1 -1" (2 "1")
+Condition 61 "1101197365" "(((!scl_i)) && scl_i_q) 1 -1" (3 "11")
+Condition 64 "1316349258" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (2 "101")
+Condition 65 "2762408491" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (1 "011")
+Condition 65 "2762408491" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
+Condition 65 "2762408491" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
+Condition 66 "3851682301" "(sda_i_q != sda_i) 1 -1" (2 "1")
+Condition 69 "4001853600" "(((!scl_i)) && scl_i_q) 1 -1" (3 "11")
+Condition 73 "1950922655" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (1 "011")
+Condition 73 "1950922655" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (2 "101")
+Condition 73 "1950922655" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (4 "111")
+Condition 74 "2944734233" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (1 "011")
+Condition 74 "2944734233" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
+Condition 74 "2944734233" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
+Condition 75 "1822068796" "(sda_i_q != sda_i) 1 -1" (2 "1")
+Condition 78 "2253434275" "(((!scl_i)) && scl_i_q) 1 -1" (3 "11")
+Condition 80 "2468915623" "(byte_index == 9'b1) 1 -1" (1 "0")
+Condition 82 "4031347597" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (1 "011")
+Condition 82 "4031347597" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (2 "101")
+Condition 82 "4031347597" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (4 "111")
+Condition 83 "2970338691" "(((!scl_i)) && scl_i_q) 1 -1" (3 "11")
+Condition 85 "2138412975" "(((!sda_i)) && ((!scl_i))) 1 -1" (1 "01")
+Condition 85 "2138412975" "(((!sda_i)) && ((!scl_i))) 1 -1" (3 "11")
+Condition 86 "871016146" "(fmt_flag_start_before_i && ((!trans_started))) 1 -1" (1 "01")
+Condition 87 "3163058696" "(((!host_enable_i)) && trans_started) 1 -1" (3 "11")
+Condition 88 "2998605995" "(((!host_enable_i)) || (fmt_fifo_depth_i == 7'b1) || unhandled_unexp_nak_i || ((!trans_started))) 1 -1" (2 "0001")
+Condition 88 "2998605995" "(((!host_enable_i)) || (fmt_fifo_depth_i == 7'b1) || unhandled_unexp_nak_i || ((!trans_started))) 1 -1" (3 "0010")
+Condition 88 "2998605995" "(((!host_enable_i)) || (fmt_fifo_depth_i == 7'b1) || unhandled_unexp_nak_i || ((!trans_started))) 1 -1" (4 "0100")
+Condition 88 "2998605995" "(((!host_enable_i)) || (fmt_fifo_depth_i == 7'b1) || unhandled_unexp_nak_i || ((!trans_started))) 1 -1" (5 "1000")
 Condition 90 "1604829381" "(trans_started && (sda_interference_i || ctrl_symbol_failed)) 1 -1" (1 "01")
 Condition 91 "3712663858" "(sda_interference_i || ctrl_symbol_failed) 1 -1" (2 "01")
 Condition 92 "836924109" "(event_sda_unstable_o || sda_interference_i || ctrl_symbol_failed) 1 -1" (2 "001")
 Condition 92 "836924109" "(event_sda_unstable_o || sda_interference_i || ctrl_symbol_failed) 1 -1" (4 "100")
-Condition 93 "1198624123" "(unhandled_unexp_nak_i && host_enable_i && (state_q == Idle) && host_nack_handler_timeout_en_i && ((!unhandled_nak_timeout_i))) 1 -1" (1 "01111")
-Condition 93 "1198624123" "(unhandled_unexp_nak_i && host_enable_i && (state_q == Idle) && host_nack_handler_timeout_en_i && ((!unhandled_nak_timeout_i))) 1 -1" (2 "10111")
-Condition 93 "1198624123" "(unhandled_unexp_nak_i && host_enable_i && (state_q == Idle) && host_nack_handler_timeout_en_i && ((!unhandled_nak_timeout_i))) 1 -1" (3 "11011")
-Condition 93 "1198624123" "(unhandled_unexp_nak_i && host_enable_i && (state_q == Idle) && host_nack_handler_timeout_en_i && ((!unhandled_nak_timeout_i))) 1 -1" (4 "11101")
-Condition 93 "1198624123" "(unhandled_unexp_nak_i && host_enable_i && (state_q == Idle) && host_nack_handler_timeout_en_i && ((!unhandled_nak_timeout_i))) 1 -1" (5 "11110")
-Condition 93 "1198624123" "(unhandled_unexp_nak_i && host_enable_i && (state_q == Idle) && host_nack_handler_timeout_en_i && ((!unhandled_nak_timeout_i))) 1 -1" (6 "11111")
+Condition 93 "170447471" "(unhandled_unexp_nak_i && host_enable_i && (state_q == IDLE) && host_nack_handler_timeout_en_i && ((!unhandled_nak_timeout_i))) 1 -1" (1 "01111")
+Condition 93 "170447471" "(unhandled_unexp_nak_i && host_enable_i && (state_q == IDLE) && host_nack_handler_timeout_en_i && ((!unhandled_nak_timeout_i))) 1 -1" (2 "10111")
+Condition 93 "170447471" "(unhandled_unexp_nak_i && host_enable_i && (state_q == IDLE) && host_nack_handler_timeout_en_i && ((!unhandled_nak_timeout_i))) 1 -1" (3 "11011")
+Condition 93 "170447471" "(unhandled_unexp_nak_i && host_enable_i && (state_q == IDLE) && host_nack_handler_timeout_en_i && ((!unhandled_nak_timeout_i))) 1 -1" (4 "11101")
+Condition 93 "170447471" "(unhandled_unexp_nak_i && host_enable_i && (state_q == IDLE) && host_nack_handler_timeout_en_i && ((!unhandled_nak_timeout_i))) 1 -1" (5 "11110")
+Condition 93 "170447471" "(unhandled_unexp_nak_i && host_enable_i && (state_q == IDLE) && host_nack_handler_timeout_en_i && ((!unhandled_nak_timeout_i))) 1 -1" (6 "11111")
 Condition 95 "3363717873" "(stretch_en && timeout_enable_i && (stretch_idle_cnt > 31'(stretch_timeout_i))) 1 -1" (1 "011")
 
-CHECKSUM: "2631278932 3250664004"
+CHECKSUM: "2664491312 467777835"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.u_i2c_target_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 10 "3575893764" "(sw_nack_i && ((!can_auto_ack))) 1 -1" (3 "11")
+Condition 10 "3032809540" "(sw_nack_i && ((!can_auto_ack))) 1 -1" (3 "11")
 Condition 13 "3891145760" "(bus_timeout_i && rw_bit_q) 1 -1" (3 "11")
 Condition 14 "2035580751" "(acq_start_stop_en_i && xact_for_us_q && ((!acq_fifo_wvalid_o))) 1 -1" (3 "110")
-Condition 26 "3575893764" "(sw_nack_i && ((!can_auto_ack))) 1 -1" (3 "11")
+Condition 26 "3032809540" "(sw_nack_i && ((!can_auto_ack))) 1 -1" (3 "11")
 Condition 31 "2216297856" "(((!ack_ctrl_mode_i)) || (auto_ack_cnt_i > '0)) 1 -1" (2 "01")
 Condition 40 "2934249426" "(target_enable_i & xfer_for_us_q & rw_bit_q & stop_detect_i & ((!expect_stop))) 1 -1" (1 "01111")
 Condition 40 "2934249426" "(target_enable_i & xfer_for_us_q & rw_bit_q & stop_detect_i & ((!expect_stop))) 1 -1" (2 "10111")
 
-CHECKSUM: "2279933121 482332505"
+CHECKSUM: "1584876630 2977940430"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "2635010072" "(fmt_fifo_depth == 7'(CONTROLLER_TX_FIFO_DEPTH)) 1 -1" (2 "1")
@@ -6716,9 +6681,9 @@ Condition 11 "3152547532" "(controller_tx_fifo_error || controller_rx_fifo_error
 Condition 11 "3152547532" "(controller_tx_fifo_error || controller_rx_fifo_error || target_tx_fifo_error || target_rx_fifo_error) 1 -1" (5 "1000")
 Condition 12 "1647206969" "(smbalert_ni | ((~smbus_en_i))) 1 -1" (3 "10")
 Condition 16 "379368309" "(target_enable && line_loopback) 1 -1" (3 "11")
-Condition 17 "2360029544" "(reg_out_i.TIMEOUT_CTRL.EN.value && (reg_out_i.TIMEOUT_CTRL.MODE.value == StretchTimeoutMode)) 1 -1" (3 "11")
-Condition 19 "2891161445" "(reg_out_i.TIMEOUT_CTRL.EN.value && (reg_out_i.TIMEOUT_CTRL.MODE.value == BusTimeoutMode)) 1 -1" (1 "01")
-Condition 19 "2891161445" "(reg_out_i.TIMEOUT_CTRL.EN.value && (reg_out_i.TIMEOUT_CTRL.MODE.value == BusTimeoutMode)) 1 -1" (2 "10")
+Condition 17 "717392554" "(reg_out_i.TIMEOUT_CTRL.EN.value && (reg_out_i.TIMEOUT_CTRL.MODE.value == STRETCH_TIMEOUT_MODE)) 1 -1" (3 "11")
+Condition 19 "3544958608" "(reg_out_i.TIMEOUT_CTRL.EN.value && (reg_out_i.TIMEOUT_CTRL.MODE.value == BUS_TIMEOUT_MODE)) 1 -1" (1 "01")
+Condition 19 "3544958608" "(reg_out_i.TIMEOUT_CTRL.EN.value && (reg_out_i.TIMEOUT_CTRL.MODE.value == BUS_TIMEOUT_MODE)) 1 -1" (2 "10")
 Condition 21 "2493607134" "(rx_fifo_wvalid && ((!rx_fifo_wready))) 1 -1" (3 "11")
 Condition 23 "2316705117" "(reg_out_i.FDATA.req && reg_out_i.FDATA.req_is_wr) 1 -1" (2 "10")
 Condition 24 "818086773" "(reg_out_i.FDATA.req && reg_out_i.FDATA.req_is_wr && ((|{reg_out_i.FDATA.wr_biten.NAKOK, reg_out_i.FDATA.wr_biten.RCONT, reg_out_i.FDATA.wr_biten.READB, reg_out_i.FDATA.wr_biten.STOP, reg_out_i.FDATA.wr_biten.START, reg_out_i.FDATA.wr_biten.FBYTE}))) 1 -1" (2 "101")
@@ -6781,16 +6746,16 @@ Condition 107 "2301913467" "(event_nak | event_controller_arbitration_lost | eve
 Condition 107 "2301913467" "(event_nak | event_controller_arbitration_lost | event_scl_interference | event_sda_interference | event_stretch_timeout | event_bus_active_timeout | event_sda_unstable | event_unhandled_nak_timeout) 1 -1" (8 "01000000")
 Condition 107 "2301913467" "(event_nak | event_controller_arbitration_lost | event_scl_interference | event_sda_interference | event_stretch_timeout | event_bus_active_timeout | event_sda_unstable | event_unhandled_nak_timeout) 1 -1" (9 "10000000")
 
-CHECKSUM: "1305403113 4026430701"
+CHECKSUM: "1495589902 3045344841"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core.u_i2c_bus_monitor
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 12 "937541305" "(((!scl_i)) || ((!sda_i))) 1 -1" (3 "10")
+Condition 12 "3716218854" "(((!scl_i)) || ((!sda_i))) 1 -1" (3 "10")
 Condition 14 "3557830633" "(monitor_enable && ((!monitor_enable_q))) 1 -1" (1 "01")
 Condition 22 "1286515773" "(monitor_enable && start_det_pending && (ctrl_det_count >= 14'(thd_dat_i))) 1 -1" (1 "011")
 Condition 27 "3393594469" "(monitor_enable && stop_det_pending && (ctrl_det_count >= 14'(thd_dat_i))) 1 -1" (1 "011")
 Condition 31 "2016545571" "(((!target_idle_i)) && bus_inactive_timeout_det) 1 -1" (1 "01")
 
-CHECKSUM: "3384408495 1438595411"
+CHECKSUM: "4121512156 549783544"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core.u_i2c_controller_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 2 "1898423200" "(((!host_idle_o)) && ((!host_enable_i))) 1 -1" (3 "11")
@@ -6798,124 +6763,124 @@ Condition 4 "1875588218" "(stretch_idle_cnt == stretch_cnt_threshold) 1 -1" (2 "
 Condition 5 "1904410187" "(fmt_byte_i == '0) 1 -1" (2 "1")
 Condition 8 "3296887397" "(pend_restart && ((!host_enable_i))) 1 -1" (2 "10")
 Condition 8 "3296887397" "(pend_restart && ((!host_enable_i))) 1 -1" (3 "11")
-Condition 9 "3789019311" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (1 "011")
-Condition 9 "3789019311" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (2 "101")
-Condition 9 "3789019311" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (3 "110")
-Condition 9 "3789019311" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (4 "111")
-Condition 11 "3083435931" "(scl_i_q && ((!scl_i))) 1 -1" (1 "01")
-Condition 11 "3083435931" "(scl_i_q && ((!scl_i))) 1 -1" (3 "11")
-Condition 12 "370104072" "(scl_i_q && ((!scl_i))) 1 -1" (3 "11")
-Condition 13 "2018963844" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
-Condition 13 "2018963844" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
-Condition 15 "2543658888" "(((!scl_i_q)) && scl_i && sda_i && ((!fmt_flag_nak_ok_i))) 1 -1" (1 "0111")
-Condition 15 "2543658888" "(((!scl_i_q)) && scl_i && sda_i && ((!fmt_flag_nak_ok_i))) 1 -1" (2 "1011")
-Condition 15 "2543658888" "(((!scl_i_q)) && scl_i && sda_i && ((!fmt_flag_nak_ok_i))) 1 -1" (4 "1110")
-Condition 15 "2543658888" "(((!scl_i_q)) && scl_i && sda_i && ((!fmt_flag_nak_ok_i))) 1 -1" (5 "1111")
-Condition 16 "70012529" "(scl_i_q && ((!scl_i))) 1 -1" (3 "11")
-Condition 17 "1786112253" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (1 "011")
-Condition 17 "1786112253" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
-Condition 17 "1786112253" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
-Condition 18 "3991730857" "(sda_i_q != sda_i) 1 -1" (2 "1")
-Condition 19 "659932413" "(scl_i_q && ((!scl_i))) 1 -1" (3 "11")
-Condition 20 "1225548401" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (1 "011")
-Condition 20 "1225548401" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
-Condition 20 "1225548401" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
-Condition 21 "3438133654" "(sda_i_q != sda_i) 1 -1" (2 "1")
-Condition 27 "450363675" "(scl_i_q && ((!scl_i))) 1 -1" (3 "11")
-Condition 28 "1954654103" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (1 "011")
-Condition 28 "1954654103" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
-Condition 28 "1954654103" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
-Condition 29 "3885228597" "(sda_i_q != sda_i) 1 -1" (2 "1")
-Condition 31 "668771990" "(((!scl_i)) && scl_i_q) 1 -1" (3 "11")
-Condition 32 "2683428589" "(((!sda_i)) && ((!scl_i))) 1 -1" (1 "01")
-Condition 32 "2683428589" "(((!sda_i)) && ((!scl_i))) 1 -1" (3 "11")
-Condition 33 "3151215570" "(fmt_flag_start_before_i && ((!trans_started))) 1 -1" (1 "01")
-Condition 34 "3859925586" "(unhandled_unexp_nak_i || unhandled_nak_timeout_i || halt_controller_i) 1 -1" (3 "010")
-Condition 34 "3859925586" "(unhandled_unexp_nak_i || unhandled_nak_timeout_i || halt_controller_i) 1 -1" (4 "100")
-Condition 35 "2422715710" "(trans_started && unhandled_nak_cnt_expired) 1 -1" (1 "01")
-Condition 35 "2422715710" "(trans_started && unhandled_nak_cnt_expired) 1 -1" (2 "10")
-Condition 35 "2422715710" "(trans_started && unhandled_nak_cnt_expired) 1 -1" (3 "11")
-Condition 36 "3883399177" "(trans_started || bus_free_i) 1 -1" (1 "00")
-Condition 36 "3883399177" "(trans_started || bus_free_i) 1 -1" (3 "10")
-Condition 37 "2457751507" "(trans_started && ((!host_enable_i))) 1 -1" (2 "10")
-Condition 37 "2457751507" "(trans_started && ((!host_enable_i))) 1 -1" (3 "11")
-Condition 38 "4210263852" "(((!trans_started)) && ((!scl_i))) 1 -1" (1 "01")
-Condition 38 "4210263852" "(((!trans_started)) && ((!scl_i))) 1 -1" (3 "11")
-Condition 39 "3890143846" "(trans_started && ((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (1 "0111")
-Condition 39 "3890143846" "(trans_started && ((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (2 "1011")
-Condition 39 "3890143846" "(trans_started && ((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (3 "1101")
-Condition 39 "3890143846" "(trans_started && ((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (4 "1110")
-Condition 39 "3890143846" "(trans_started && ((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (5 "1111")
-Condition 40 "4193061578" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (1 "011")
-Condition 40 "4193061578" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (2 "101")
-Condition 40 "4193061578" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (3 "110")
-Condition 40 "4193061578" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (4 "111")
-Condition 44 "902545430" "(((!scl_i)) && scl_i_q) 1 -1" (3 "11")
-Condition 47 "3894018605" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (1 "011")
-Condition 47 "3894018605" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (2 "101")
-Condition 47 "3894018605" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (4 "111")
-Condition 48 "985271527" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
-Condition 48 "985271527" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
-Condition 52 "3661433373" "(((!scl_i)) && scl_i_q) 1 -1" (3 "11")
-Condition 56 "4198046548" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (1 "011")
-Condition 56 "4198046548" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (2 "101")
-Condition 56 "4198046548" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (4 "111")
-Condition 57 "3276576861" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (1 "011")
-Condition 57 "3276576861" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
-Condition 57 "3276576861" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
-Condition 58 "763200672" "(sda_i_q != sda_i) 1 -1" (2 "1")
-Condition 61 "3484567210" "(((!scl_i)) && scl_i_q) 1 -1" (3 "11")
-Condition 64 "3644887512" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (1 "011")
-Condition 64 "3644887512" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (2 "101")
-Condition 64 "3644887512" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (4 "111")
-Condition 65 "3493628165" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (1 "011")
-Condition 65 "3493628165" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
-Condition 65 "3493628165" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
-Condition 66 "1987935821" "(sda_i_q != sda_i) 1 -1" (2 "1")
-Condition 69 "2157052345" "(((!scl_i)) && scl_i_q) 1 -1" (3 "11")
-Condition 73 "3838661694" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (1 "011")
-Condition 73 "3838661694" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (2 "101")
-Condition 73 "3838661694" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (4 "111")
-Condition 74 "1473120968" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (1 "011")
-Condition 74 "1473120968" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
-Condition 74 "1473120968" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
-Condition 75 "4016721892" "(sda_i_q != sda_i) 1 -1" (2 "1")
-Condition 78 "374221239" "(((!scl_i)) && scl_i_q) 1 -1" (3 "11")
-Condition 82 "610885967" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (1 "011")
-Condition 82 "610885967" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (2 "101")
-Condition 82 "610885967" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (4 "111")
-Condition 83 "3108273782" "(((!scl_i)) && scl_i_q) 1 -1" (3 "11")
-Condition 85 "2683428589" "(((!sda_i)) && ((!scl_i))) 1 -1" (1 "01")
-Condition 85 "2683428589" "(((!sda_i)) && ((!scl_i))) 1 -1" (3 "11")
-Condition 86 "1446882557" "(fmt_flag_start_before_i && ((!trans_started))) 1 -1" (1 "01")
-Condition 87 "3575627342" "(((!host_enable_i)) && trans_started) 1 -1" (2 "10")
-Condition 87 "3575627342" "(((!host_enable_i)) && trans_started) 1 -1" (3 "11")
-Condition 88 "2337000403" "(((!host_enable_i)) || (fmt_fifo_depth_i == 7'b1) || unhandled_unexp_nak_i || ((!trans_started))) 1 -1" (2 "0001")
-Condition 88 "2337000403" "(((!host_enable_i)) || (fmt_fifo_depth_i == 7'b1) || unhandled_unexp_nak_i || ((!trans_started))) 1 -1" (3 "0010")
-Condition 88 "2337000403" "(((!host_enable_i)) || (fmt_fifo_depth_i == 7'b1) || unhandled_unexp_nak_i || ((!trans_started))) 1 -1" (4 "0100")
-Condition 88 "2337000403" "(((!host_enable_i)) || (fmt_fifo_depth_i == 7'b1) || unhandled_unexp_nak_i || ((!trans_started))) 1 -1" (5 "1000")
+Condition 9 "3224839733" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (1 "011")
+Condition 9 "3224839733" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (2 "101")
+Condition 9 "3224839733" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (3 "110")
+Condition 9 "3224839733" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (4 "111")
+Condition 11 "4115405389" "(scl_i_q && ((!scl_i))) 1 -1" (1 "01")
+Condition 11 "4115405389" "(scl_i_q && ((!scl_i))) 1 -1" (3 "11")
+Condition 12 "4080702731" "(scl_i_q && ((!scl_i))) 1 -1" (3 "11")
+Condition 13 "2640524167" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
+Condition 13 "2640524167" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
+Condition 15 "423011453" "(((!scl_i_q)) && scl_i && sda_i && ((!fmt_flag_nak_ok_i))) 1 -1" (1 "0111")
+Condition 15 "423011453" "(((!scl_i_q)) && scl_i && sda_i && ((!fmt_flag_nak_ok_i))) 1 -1" (2 "1011")
+Condition 15 "423011453" "(((!scl_i_q)) && scl_i && sda_i && ((!fmt_flag_nak_ok_i))) 1 -1" (4 "1110")
+Condition 15 "423011453" "(((!scl_i_q)) && scl_i && sda_i && ((!fmt_flag_nak_ok_i))) 1 -1" (5 "1111")
+Condition 16 "2324155780" "(scl_i_q && ((!scl_i))) 1 -1" (3 "11")
+Condition 17 "3839781640" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (1 "011")
+Condition 17 "3839781640" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
+Condition 17 "3839781640" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
+Condition 18 "3355076762" "(sda_i_q != sda_i) 1 -1" (2 "1")
+Condition 19 "2959126639" "(scl_i_q && ((!scl_i))) 1 -1" (3 "11")
+Condition 20 "3728283363" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (1 "011")
+Condition 20 "3728283363" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
+Condition 20 "3728283363" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
+Condition 21 "3115813224" "(sda_i_q != sda_i) 1 -1" (2 "1")
+Condition 27 "2321408698" "(scl_i_q && ((!scl_i))) 1 -1" (3 "11")
+Condition 28 "3825484854" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (1 "011")
+Condition 28 "3825484854" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
+Condition 28 "3825484854" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
+Condition 29 "954284296" "(sda_i_q != sda_i) 1 -1" (2 "1")
+Condition 31 "4093426772" "(((!scl_i)) && scl_i_q) 1 -1" (3 "11")
+Condition 32 "2138412975" "(((!sda_i)) && ((!scl_i))) 1 -1" (1 "01")
+Condition 32 "2138412975" "(((!sda_i)) && ((!scl_i))) 1 -1" (3 "11")
+Condition 33 "51920182" "(fmt_flag_start_before_i && ((!trans_started))) 1 -1" (1 "01")
+Condition 34 "3377508725" "(unhandled_unexp_nak_i || unhandled_nak_timeout_i || halt_controller_i) 1 -1" (3 "010")
+Condition 34 "3377508725" "(unhandled_unexp_nak_i || unhandled_nak_timeout_i || halt_controller_i) 1 -1" (4 "100")
+Condition 35 "3882230772" "(trans_started && unhandled_nak_cnt_expired) 1 -1" (1 "01")
+Condition 35 "3882230772" "(trans_started && unhandled_nak_cnt_expired) 1 -1" (2 "10")
+Condition 35 "3882230772" "(trans_started && unhandled_nak_cnt_expired) 1 -1" (3 "11")
+Condition 36 "4078688379" "(trans_started || bus_free_i) 1 -1" (1 "00")
+Condition 36 "4078688379" "(trans_started || bus_free_i) 1 -1" (3 "10")
+Condition 37 "3850361113" "(trans_started && ((!host_enable_i))) 1 -1" (2 "10")
+Condition 37 "3850361113" "(trans_started && ((!host_enable_i))) 1 -1" (3 "11")
+Condition 38 "3675486646" "(((!trans_started)) && ((!scl_i))) 1 -1" (1 "01")
+Condition 38 "3675486646" "(((!trans_started)) && ((!scl_i))) 1 -1" (3 "11")
+Condition 39 "3879430109" "(trans_started && ((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (1 "0111")
+Condition 39 "3879430109" "(trans_started && ((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (2 "1011")
+Condition 39 "3879430109" "(trans_started && ((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (3 "1101")
+Condition 39 "3879430109" "(trans_started && ((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (4 "1110")
+Condition 39 "3879430109" "(trans_started && ((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (5 "1111")
+Condition 40 "1002741326" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (1 "011")
+Condition 40 "1002741326" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (2 "101")
+Condition 40 "1002741326" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (3 "110")
+Condition 40 "1002741326" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (4 "111")
+Condition 44 "1340840389" "(((!scl_i)) && scl_i_q) 1 -1" (3 "11")
+Condition 47 "221233198" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (1 "011")
+Condition 47 "221233198" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (2 "101")
+Condition 47 "221233198" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (4 "111")
+Condition 48 "1398363877" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
+Condition 48 "1398363877" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
+Condition 52 "1273831875" "(((!scl_i)) && scl_i_q) 1 -1" (3 "11")
+Condition 56 "1955764385" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (1 "011")
+Condition 56 "1955764385" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (2 "101")
+Condition 56 "1955764385" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (4 "111")
+Condition 57 "2656230352" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (1 "011")
+Condition 57 "2656230352" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
+Condition 57 "2656230352" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
+Condition 58 "788030742" "(sda_i_q != sda_i) 1 -1" (2 "1")
+Condition 61 "1101197365" "(((!scl_i)) && scl_i_q) 1 -1" (3 "11")
+Condition 64 "1316349258" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (1 "011")
+Condition 64 "1316349258" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (2 "101")
+Condition 64 "1316349258" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (4 "111")
+Condition 65 "2762408491" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (1 "011")
+Condition 65 "2762408491" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
+Condition 65 "2762408491" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
+Condition 66 "3851682301" "(sda_i_q != sda_i) 1 -1" (2 "1")
+Condition 69 "4001853600" "(((!scl_i)) && scl_i_q) 1 -1" (3 "11")
+Condition 73 "1950922655" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (1 "011")
+Condition 73 "1950922655" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (2 "101")
+Condition 73 "1950922655" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (4 "111")
+Condition 74 "2944734233" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (1 "011")
+Condition 74 "2944734233" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
+Condition 74 "2944734233" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
+Condition 75 "1822068796" "(sda_i_q != sda_i) 1 -1" (2 "1")
+Condition 78 "2253434275" "(((!scl_i)) && scl_i_q) 1 -1" (3 "11")
+Condition 82 "4031347597" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (1 "011")
+Condition 82 "4031347597" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (2 "101")
+Condition 82 "4031347597" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (4 "111")
+Condition 83 "2970338691" "(((!scl_i)) && scl_i_q) 1 -1" (3 "11")
+Condition 85 "2138412975" "(((!sda_i)) && ((!scl_i))) 1 -1" (1 "01")
+Condition 85 "2138412975" "(((!sda_i)) && ((!scl_i))) 1 -1" (3 "11")
+Condition 86 "871016146" "(fmt_flag_start_before_i && ((!trans_started))) 1 -1" (1 "01")
+Condition 87 "3163058696" "(((!host_enable_i)) && trans_started) 1 -1" (2 "10")
+Condition 87 "3163058696" "(((!host_enable_i)) && trans_started) 1 -1" (3 "11")
+Condition 88 "2998605995" "(((!host_enable_i)) || (fmt_fifo_depth_i == 7'b1) || unhandled_unexp_nak_i || ((!trans_started))) 1 -1" (2 "0001")
+Condition 88 "2998605995" "(((!host_enable_i)) || (fmt_fifo_depth_i == 7'b1) || unhandled_unexp_nak_i || ((!trans_started))) 1 -1" (3 "0010")
+Condition 88 "2998605995" "(((!host_enable_i)) || (fmt_fifo_depth_i == 7'b1) || unhandled_unexp_nak_i || ((!trans_started))) 1 -1" (4 "0100")
+Condition 88 "2998605995" "(((!host_enable_i)) || (fmt_fifo_depth_i == 7'b1) || unhandled_unexp_nak_i || ((!trans_started))) 1 -1" (5 "1000")
 Condition 90 "1604829381" "(trans_started && (sda_interference_i || ctrl_symbol_failed)) 1 -1" (1 "01")
 Condition 91 "3712663858" "(sda_interference_i || ctrl_symbol_failed) 1 -1" (2 "01")
 Condition 92 "836924109" "(event_sda_unstable_o || sda_interference_i || ctrl_symbol_failed) 1 -1" (2 "001")
 Condition 92 "836924109" "(event_sda_unstable_o || sda_interference_i || ctrl_symbol_failed) 1 -1" (4 "100")
-Condition 93 "1198624123" "(unhandled_unexp_nak_i && host_enable_i && (state_q == Idle) && host_nack_handler_timeout_en_i && ((!unhandled_nak_timeout_i))) 1 -1" (1 "01111")
-Condition 93 "1198624123" "(unhandled_unexp_nak_i && host_enable_i && (state_q == Idle) && host_nack_handler_timeout_en_i && ((!unhandled_nak_timeout_i))) 1 -1" (2 "10111")
-Condition 93 "1198624123" "(unhandled_unexp_nak_i && host_enable_i && (state_q == Idle) && host_nack_handler_timeout_en_i && ((!unhandled_nak_timeout_i))) 1 -1" (3 "11011")
-Condition 93 "1198624123" "(unhandled_unexp_nak_i && host_enable_i && (state_q == Idle) && host_nack_handler_timeout_en_i && ((!unhandled_nak_timeout_i))) 1 -1" (4 "11101")
-Condition 93 "1198624123" "(unhandled_unexp_nak_i && host_enable_i && (state_q == Idle) && host_nack_handler_timeout_en_i && ((!unhandled_nak_timeout_i))) 1 -1" (5 "11110")
-Condition 93 "1198624123" "(unhandled_unexp_nak_i && host_enable_i && (state_q == Idle) && host_nack_handler_timeout_en_i && ((!unhandled_nak_timeout_i))) 1 -1" (6 "11111")
+Condition 93 "170447471" "(unhandled_unexp_nak_i && host_enable_i && (state_q == IDLE) && host_nack_handler_timeout_en_i && ((!unhandled_nak_timeout_i))) 1 -1" (1 "01111")
+Condition 93 "170447471" "(unhandled_unexp_nak_i && host_enable_i && (state_q == IDLE) && host_nack_handler_timeout_en_i && ((!unhandled_nak_timeout_i))) 1 -1" (2 "10111")
+Condition 93 "170447471" "(unhandled_unexp_nak_i && host_enable_i && (state_q == IDLE) && host_nack_handler_timeout_en_i && ((!unhandled_nak_timeout_i))) 1 -1" (3 "11011")
+Condition 93 "170447471" "(unhandled_unexp_nak_i && host_enable_i && (state_q == IDLE) && host_nack_handler_timeout_en_i && ((!unhandled_nak_timeout_i))) 1 -1" (4 "11101")
+Condition 93 "170447471" "(unhandled_unexp_nak_i && host_enable_i && (state_q == IDLE) && host_nack_handler_timeout_en_i && ((!unhandled_nak_timeout_i))) 1 -1" (5 "11110")
+Condition 93 "170447471" "(unhandled_unexp_nak_i && host_enable_i && (state_q == IDLE) && host_nack_handler_timeout_en_i && ((!unhandled_nak_timeout_i))) 1 -1" (6 "11111")
 Condition 95 "3363717873" "(stretch_en && timeout_enable_i && (stretch_idle_cnt > 31'(stretch_timeout_i))) 1 -1" (1 "011")
 Condition 95 "3363717873" "(stretch_en && timeout_enable_i && (stretch_idle_cnt > 31'(stretch_timeout_i))) 1 -1" (3 "110")
 Condition 95 "3363717873" "(stretch_en && timeout_enable_i && (stretch_idle_cnt > 31'(stretch_timeout_i))) 1 -1" (4 "111")
 
-CHECKSUM: "2631278932 3250664004"
+CHECKSUM: "2664491312 467777835"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core.u_i2c_target_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 10 "3575893764" "(sw_nack_i && ((!can_auto_ack))) 1 -1" (3 "11")
+Condition 10 "3032809540" "(sw_nack_i && ((!can_auto_ack))) 1 -1" (3 "11")
 Condition 13 "3891145760" "(bus_timeout_i && rw_bit_q) 1 -1" (3 "11")
 Condition 14 "2035580751" "(acq_start_stop_en_i && xact_for_us_q && ((!acq_fifo_wvalid_o))) 1 -1" (1 "011")
 Condition 14 "2035580751" "(acq_start_stop_en_i && xact_for_us_q && ((!acq_fifo_wvalid_o))) 1 -1" (3 "110")
-Condition 26 "3575893764" "(sw_nack_i && ((!can_auto_ack))) 1 -1" (3 "11")
+Condition 26 "3032809540" "(sw_nack_i && ((!can_auto_ack))) 1 -1" (3 "11")
 Condition 31 "2216297856" "(((!ack_ctrl_mode_i)) || (auto_ack_cnt_i > '0)) 1 -1" (2 "01")
 Condition 36 "4088634449" "(((input_byte[7:1] & target_mask1_i) == target_address1_i) && (target_mask1_i != '0)) 1 -1" (3 "11")
 Condition 39 "2261252917" "(address0_match || address1_match) 1 -1" (2 "01")
@@ -8532,7 +8497,7 @@ Condition 11 "3674367730" "(log_write_mem_resp_valid && log_write_mem_resp_error
 Condition 11 "3674367730" "(log_write_mem_resp_valid && log_write_mem_resp_error) 1 -1" (3 "11")
 Condition 13 "2864378118" "(log_write_err || reg_out.INTR_TEST.LOG_WRITE_ERR.value) 1 -1" (3 "10")
 
-CHECKSUM: "2535161971 656965095"
+CHECKSUM: "716831743 656965095"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.u_uart_16550.u_uart_core
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "636464552" "(((!tx_enable)) && ((!rx_enable))) 1 -1" (1 "01")
@@ -8565,7 +8530,7 @@ Condition 11 "3674367730" "(log_write_mem_resp_valid && log_write_mem_resp_error
 Condition 11 "3674367730" "(log_write_mem_resp_valid && log_write_mem_resp_error) 1 -1" (3 "11")
 Condition 13 "2864378118" "(log_write_err || reg_out.INTR_TEST.LOG_WRITE_ERR.value) 1 -1" (3 "10")
 
-CHECKSUM: "2535161971 656965095"
+CHECKSUM: "716831743 656965095"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_16550.u_uart_core
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "636464552" "(((!tx_enable)) && ((!rx_enable))) 1 -1" (1 "01")
@@ -8632,7 +8597,7 @@ Condition 13 "2864378118" "(log_write_err || reg_out.INTR_TEST.LOG_WRITE_ERR.val
 Condition 15 "2434494202" "(reg_out.INTR_STATUS.LOG_FETCH_ERR.value && reg_out.INTR_ENABLE.LOG_FETCH_ERR.value) 1 -1" (3 "11")
 Condition 16 "3705290924" "(reg_out.INTR_STATUS.LOG_WRITE_ERR.value && reg_out.INTR_ENABLE.LOG_WRITE_ERR.value) 1 -1" (3 "11")
 
-CHECKSUM: "2535161971 656965095"
+CHECKSUM: "716831743 656965095"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_16550.u_uart_core
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "636464552" "(((!tx_enable)) && ((!rx_enable))) 1 -1" (1 "01")
@@ -8707,7 +8672,7 @@ Condition 13 "2864378118" "(log_write_err || reg_out.INTR_TEST.LOG_WRITE_ERR.val
 Condition 15 "2434494202" "(reg_out.INTR_STATUS.LOG_FETCH_ERR.value && reg_out.INTR_ENABLE.LOG_FETCH_ERR.value) 1 -1" (3 "11")
 Condition 16 "3705290924" "(reg_out.INTR_STATUS.LOG_WRITE_ERR.value && reg_out.INTR_ENABLE.LOG_WRITE_ERR.value) 1 -1" (3 "11")
 
-CHECKSUM: "2535161971 656965095"
+CHECKSUM: "716831743 656965095"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_16550.u_uart_core
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "636464552" "(((!tx_enable)) && ((!rx_enable))) 1 -1" (1 "01")
@@ -8756,7 +8721,7 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_eng
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1794617131" "(((!tx_enable_i)) || (bit_cnt_q == 4'b0)) 1 -1" (3 "10")
 
-CHECKSUM: "438890927 193996585"
+CHECKSUM: "2476875544 193996585"
 INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration
 ANNOTATION: "SMC-T9-IP-INTEGRATION-PORTS-ONLY: the IP integration shell (memories, eFuse shim, I3C and PLL models it hosts) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 6 "371092708" "(i3c_dct_mem_sink_i[0].req & ((~i3c_dct_mem_sink_i[0].write))) 1 -1" (2 "10")
@@ -8766,10 +8731,10 @@ Condition 12 "2159592749" "(i3c_dct_mem_sink_i[3].req & ((~i3c_dct_mem_sink_i[3]
 Condition 14 "702031098" "(i3c_dct_mem_sink_i[4].req & ((~i3c_dct_mem_sink_i[4].write))) 1 -1" (2 "10")
 Condition 16 "1873174509" "(i3c_dct_mem_sink_i[5].req & ((~i3c_dct_mem_sink_i[5].write))) 1 -1" (2 "10")
 
-CHECKSUM: "1698122930 1130749731"
+CHECKSUM: "1114926396 1130749731"
 INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.u_efuse_interface_shim
 ANNOTATION: "SMC-T9-IP-INTEGRATION-PORTS-ONLY: the IP integration shell (memories, eFuse shim, I3C and PLL models it hosts) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 9 "1462769144" "(apb_fuse_bank_resp_w_readback.pslverr || ((apb_fuse_bank_resp_w_readback.prdata & efuse_write_word) != efuse_write_word)) 1 -1" (3 "10")
+Condition 9 "3774810071" "(apb_fuse_bank_resp_w_readback.pslverr || ((apb_fuse_bank_resp_w_readback.prdata & efuse_write_word) != efuse_write_word)) 1 -1" (3 "10")
 Condition 12 "2953569792" "((fuse_command_req_i.command == FUSE_COMMAND_PROGRAM) || (fuse_command_req_i.command == FUSE_COMMAND_PROGRAM_READ_BACK)) 1 -1" (1 "00")
 Condition 18 "3037674975" "((fuse_command_req_i.command == FUSE_COMMAND_PROGRAM) || (fuse_command_req_i.command == FUSE_COMMAND_PROGRAM_READ_BACK)) 1 -1" (1 "00")
 
@@ -9370,38 +9335,32 @@ Block 9 "379044390" "if (retire_i)"
 Block 10 "2836492767" "completed_d = 'h00000002;"
 Block 11 "2204045824" "completed_d = 'b1;"
 
-CHECKSUM: "3868945950 2052389552"
+CHECKSUM: "1036002057 407725234"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu
 ANNOTATION: "SMC-T7-CPU-PORTS-ONLY: the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 17 "1626659636" "if (disable_sram_auto_init_i)"
 Block 18 "2390191028" "nxt_state = MEM_ZERO_DONE;"
 
-CHECKSUM: "4170504346 4009853343"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_tilelink_to_rom_memory_convert
-ANNOTATION: "SMC-T7-CPU-PORTS-ONLY: the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Block 17 "2679859476" "return {data[7:0], data[15:8], data[23:16], data[31:24], data[39:32], data[47:40], data[55:48], data[63:56]};"
-Block 19 "2014165686" "auto_in_d_bits_data = flip_endianness(rom_bank_data_i);"
-
-CHECKSUM: "3384408495 2992148394"
+CHECKSUM: "4121512156 1218059355"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_core.u_i2c_controller_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 13 "623845184" "tcount_d = 14'b1;"
 
-CHECKSUM: "2631278932 2148495424"
+CHECKSUM: "2664491312 3820941057"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_core.u_i2c_target_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Block 5 "1124555975" "tcount_d = 14'b1;"
+Block 5 "2778305497" "tcount_d = 14'b1;"
 Block 6 "623845184" "tcount_d = 14'b1;"
-Block 101 "2617917286" "nack_transaction_d = 1'b1;"
-Block 105 "2568835811" "nack_transaction_d = 1'b1;"
-Block 106 "436584272" "acq_fifo_wvalid_o = (!acq_fifo_full_or_last_space);"
-Block 112 "1682926892" "acq_fifo_wdata_o = {AcqStart, input_byte};"
-Block 142 "1428519754" "state_d = WaitForStop;"
-Block 200 "1540518245" "state_d = WaitForStop;"
-Block 215 "1753508764" "state_d = WaitForStop;"
-Block 223 "113246427" "state_d = WaitForStop;"
+Block 101 "3275852885" "nack_transaction_d = 1'b1;"
+Block 105 "1750805257" "nack_transaction_d = 1'b1;"
+Block 106 "2160090931" "acq_fifo_wvalid_o = (!acq_fifo_full_or_last_space);"
+Block 112 "2577368389" "acq_fifo_wdata_o = {ACQ_START, input_byte};"
+Block 142 "285953071" "state_d = WAIT_FOR_STOP;"
+Block 200 "1986623432" "state_d = WAIT_FOR_STOP;"
+Block 215 "920463520" "state_d = WAIT_FOR_STOP;"
+Block 223 "3865376767" "state_d = WAIT_FOR_STOP;"
 
-CHECKSUM: "3384408495 2992148394"
+CHECKSUM: "4121512156 1218059355"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.u_i2c_controller_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 13 "623845184" "tcount_d = 14'b1;"
@@ -9410,65 +9369,65 @@ Block 36 "3252250877" "unhandled_nak_cnt_expired <= 1'b1;"
 Block 63 "4118609300" "byte_index <= (byte_index - 1'b1);"
 Block 80 "4247418309" "pend_restart <= '0;"
 Block 82 "2728439058" "pend_restart <= 1'b1;"
-Block 91 "3853680919" "host_idle_o = 1'b0;"
-Block 94 "1345623944" "ctrl_symbol_failed = 1'b1;"
-Block 99 "3297625941" "event_scl_interference_o = 1'b1;"
-Block 103 "1885925171" "sda_d = 1'b1;"
-Block 107 "1224001391" "event_scl_interference_o = 1'b1;"
-Block 110 "4181708047" "event_sda_unstable_o = 1'b1;"
-Block 115 "190761651" "event_nak_o = 1'b1;"
-Block 118 "2969260809" "event_scl_interference_o = 1'b1;"
-Block 121 "19945833" "event_sda_unstable_o = 1'b1;"
-Block 126 "2449106998" "event_scl_interference_o = 1'b1;"
-Block 129 "540107350" "event_sda_unstable_o = 1'b1;"
-Block 135 "4034725508" "sda_d = 1'b0;"
-Block 138 "1965638086" "sda_d = 1'b0;"
-Block 140 "120844927" "sda_d = 1'b0;"
-Block 143 "229418065" "sda_d = 1'b0;"
-Block 145 "3129232277" "event_scl_interference_o = 1'b1;"
-Block 148 "189743605" "event_sda_unstable_o = 1'b1;"
-Block 151 "2048989250" "sda_d = 1'b0;"
-Block 154 "446142321" "sda_d = 1'b0;"
-Block 158 "55799743" "ctrl_symbol_failed = 1'b1;"
-Block 161 "1120608020" "ctrl_symbol_failed = 1'b1;"
-Block 175 "1020492337" "auto_stop_d = 1'b1;"
-Block 183 "2113195315" "auto_stop_d = 1'b1;"
-Block 186 "2032625145" "state_d = Idle;"
-Block 188 "4089916807" "state_d = SetupStart;"
-Block 190 "1310359737" "state_d = Idle;"
-Block 202 "4274375277" "state_d = SetupStart;"
-Block 206 "156382022" "load_tcount = 1'b1;"
-Block 208 "2064301615" "state_d = Idle;"
-Block 223 "3388576448" "state_d = Idle;"
-Block 238 "2465818669" "state_d = Idle;"
-Block 251 "1680225641" "load_tcount = 1'b1;"
-Block 253 "200169860" "state_d = Idle;"
-Block 261 "3234326017" "state_d = PopFmtFifo;"
-Block 262 "1862661927" "state_d = ReadClockLow;"
-Block 268 "3515841860" "load_tcount = 1'b1;"
-Block 270 "4227202553" "state_d = Idle;"
-Block 275 "374249837" "state_d = Idle;"
-Block 278 "4015693119" "state_d = Idle;"
-Block 287 "3303788013" "auto_stop_d = 1'b1;"
+Block 91 "2461210589" "host_idle_o = 1'b0;"
+Block 94 "1374269747" "ctrl_symbol_failed = 1'b1;"
+Block 99 "3199049350" "event_scl_interference_o = 1'b1;"
+Block 103 "2459708225" "sda_d = 1'b1;"
+Block 107 "992915565" "event_scl_interference_o = 1'b1;"
+Block 110 "2330311181" "event_sda_unstable_o = 1'b1;"
+Block 115 "558389376" "event_nak_o = 1'b1;"
+Block 118 "2599272762" "event_scl_interference_o = 1'b1;"
+Block 121 "723962714" "event_sda_unstable_o = 1'b1;"
+Block 126 "3835699400" "event_scl_interference_o = 1'b1;"
+Block 129 "1433086632" "event_sda_unstable_o = 1'b1;"
+Block 135 "3826837943" "sda_d = 1'b0;"
+Block 138 "4168362003" "sda_d = 1'b0;"
+Block 140 "3628149058" "sda_d = 1'b0;"
+Block 143 "777037132" "sda_d = 1'b0;"
+Block 145 "1710657704" "event_scl_interference_o = 1'b1;"
+Block 148 "3560807112" "event_sda_unstable_o = 1'b1;"
+Block 151 "2288143627" "sda_d = 1'b0;"
+Block 154 "321209334" "sda_d = 1'b0;"
+Block 158 "2863783432" "ctrl_symbol_failed = 1'b1;"
+Block 161 "284205290" "ctrl_symbol_failed = 1'b1;"
+Block 175 "2454778447" "auto_stop_d = 1'b1;"
+Block 183 "3547809101" "auto_stop_d = 1'b1;"
+Block 186 "3104050706" "state_d = IDLE;"
+Block 188 "457095188" "state_d = SETUP_START;"
+Block 190 "3723682871" "state_d = IDLE;"
+Block 202 "1557403420" "state_d = SETUP_START;"
+Block 206 "2233879721" "load_tcount = 1'b1;"
+Block 208 "1973891363" "state_d = IDLE;"
+Block 223 "193084966" "state_d = IDLE;"
+Block 238 "3236846285" "state_d = IDLE;"
+Block 251 "2046430805" "load_tcount = 1'b1;"
+Block 253 "1239468812" "state_d = IDLE;"
+Block 261 "1159103748" "state_d = POP_FMT_FIFO;"
+Block 262 "3073982878" "state_d = READ_CLOCK_LOW;"
+Block 268 "3972923122" "load_tcount = 1'b1;"
+Block 270 "1789187456" "state_d = IDLE;"
+Block 275 "627521164" "state_d = IDLE;"
+Block 278 "625914487" "state_d = IDLE;"
+Block 287 "78779006" "auto_stop_d = 1'b1;"
 
-CHECKSUM: "2631278932 2148495424"
+CHECKSUM: "2664491312 3820941057"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.u_i2c_target_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Block 5 "1124555975" "tcount_d = 14'b1;"
+Block 5 "2778305497" "tcount_d = 14'b1;"
 Block 6 "623845184" "tcount_d = 14'b1;"
-Block 101 "2617917286" "nack_transaction_d = 1'b1;"
-Block 105 "2568835811" "nack_transaction_d = 1'b1;"
-Block 106 "436584272" "acq_fifo_wvalid_o = (!acq_fifo_full_or_last_space);"
-Block 112 "1682926892" "acq_fifo_wdata_o = {AcqStart, input_byte};"
+Block 101 "3275852885" "nack_transaction_d = 1'b1;"
+Block 105 "1750805257" "nack_transaction_d = 1'b1;"
+Block 106 "2160090931" "acq_fifo_wvalid_o = (!acq_fifo_full_or_last_space);"
+Block 112 "2577368389" "acq_fifo_wdata_o = {ACQ_START, input_byte};"
 Block 133 "1067304823" "nack_transaction_d = 1'b1;"
-Block 150 "1361664" "state_d = WaitForStop;"
-Block 163 "2287156850" "state_d = WaitForStop;"
-Block 200 "1540518245" "state_d = WaitForStop;"
-Block 215 "1753508764" "state_d = WaitForStop;"
-Block 223 "113246427" "state_d = WaitForStop;"
-Block 251 "3177756689" "state_d = WaitForStop;"
+Block 150 "2816309024" "state_d = WAIT_FOR_STOP;"
+Block 163 "2381415490" "state_d = WAIT_FOR_STOP;"
+Block 200 "1986623432" "state_d = WAIT_FOR_STOP;"
+Block 215 "920463520" "state_d = WAIT_FOR_STOP;"
+Block 223 "3865376767" "state_d = WAIT_FOR_STOP;"
+Block 251 "248185479" "state_d = WAIT_FOR_STOP;"
 
-CHECKSUM: "2279933121 631037930"
+CHECKSUM: "1584876630 631037930"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 19 "2351103625" "controller_tx_ready_o = 1'b0;"
@@ -9480,73 +9439,73 @@ Block 43 "351329269" "if (tx_lt_threshold)"
 Block 44 "2869887708" "target_tx_ready_o = 1'b1;"
 Block 45 "1155078305" "target_tx_ready_o = 1'b0;"
 
-CHECKSUM: "3384408495 2992148394"
+CHECKSUM: "4121512156 1218059355"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core.u_i2c_controller_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Block 8 "1861052629" "tcount_d = 14'(thigh_i);"
+Block 8 "93300480" "tcount_d = 14'(thigh_i);"
 Block 13 "623845184" "tcount_d = 14'b1;"
 Block 28 "1460411861" "stretch_predict_cnt_expired <= 1'b1;"
 Block 35 "1289397273" "unhandled_nak_cnt <= (unhandled_nak_cnt + 1'b1);"
 Block 36 "3252250877" "unhandled_nak_cnt_expired <= 1'b1;"
 Block 80 "4247418309" "pend_restart <= '0;"
 Block 82 "2728439058" "pend_restart <= 1'b1;"
-Block 91 "3853680919" "host_idle_o = 1'b0;"
-Block 94 "1345623944" "ctrl_symbol_failed = 1'b1;"
-Block 99 "3297625941" "event_scl_interference_o = 1'b1;"
-Block 103 "1885925171" "sda_d = 1'b1;"
-Block 107 "1224001391" "event_scl_interference_o = 1'b1;"
-Block 110 "4181708047" "event_sda_unstable_o = 1'b1;"
-Block 115 "190761651" "event_nak_o = 1'b1;"
-Block 118 "2969260809" "event_scl_interference_o = 1'b1;"
-Block 121 "19945833" "event_sda_unstable_o = 1'b1;"
-Block 126 "2449106998" "event_scl_interference_o = 1'b1;"
-Block 129 "540107350" "event_sda_unstable_o = 1'b1;"
-Block 135 "4034725508" "sda_d = 1'b0;"
-Block 140 "120844927" "sda_d = 1'b0;"
-Block 145 "3129232277" "event_scl_interference_o = 1'b1;"
-Block 148 "189743605" "event_sda_unstable_o = 1'b1;"
-Block 151 "2048989250" "sda_d = 1'b0;"
-Block 158 "55799743" "ctrl_symbol_failed = 1'b1;"
-Block 161 "1120608020" "ctrl_symbol_failed = 1'b1;"
-Block 175 "1020492337" "auto_stop_d = 1'b1;"
-Block 183 "2113195315" "auto_stop_d = 1'b1;"
-Block 186 "2032625145" "state_d = Idle;"
-Block 188 "4089916807" "state_d = SetupStart;"
-Block 190 "1310359737" "state_d = Idle;"
-Block 202 "4274375277" "state_d = SetupStart;"
-Block 206 "156382022" "load_tcount = 1'b1;"
-Block 208 "2064301615" "state_d = Idle;"
-Block 221 "4037322748" "load_tcount = 1'b1;"
-Block 223 "3388576448" "state_d = Idle;"
-Block 236 "3822368420" "load_tcount = 1'b1;"
-Block 238 "2465818669" "state_d = Idle;"
-Block 251 "1680225641" "load_tcount = 1'b1;"
-Block 253 "200169860" "state_d = Idle;"
-Block 261 "3234326017" "state_d = PopFmtFifo;"
-Block 268 "3515841860" "load_tcount = 1'b1;"
-Block 270 "4227202553" "state_d = Idle;"
-Block 275 "374249837" "state_d = Idle;"
-Block 278 "4015693119" "state_d = Idle;"
-Block 287 "3303788013" "auto_stop_d = 1'b1;"
+Block 91 "2461210589" "host_idle_o = 1'b0;"
+Block 94 "1374269747" "ctrl_symbol_failed = 1'b1;"
+Block 99 "3199049350" "event_scl_interference_o = 1'b1;"
+Block 103 "2459708225" "sda_d = 1'b1;"
+Block 107 "992915565" "event_scl_interference_o = 1'b1;"
+Block 110 "2330311181" "event_sda_unstable_o = 1'b1;"
+Block 115 "558389376" "event_nak_o = 1'b1;"
+Block 118 "2599272762" "event_scl_interference_o = 1'b1;"
+Block 121 "723962714" "event_sda_unstable_o = 1'b1;"
+Block 126 "3835699400" "event_scl_interference_o = 1'b1;"
+Block 129 "1433086632" "event_sda_unstable_o = 1'b1;"
+Block 135 "3826837943" "sda_d = 1'b0;"
+Block 140 "3628149058" "sda_d = 1'b0;"
+Block 145 "1710657704" "event_scl_interference_o = 1'b1;"
+Block 148 "3560807112" "event_sda_unstable_o = 1'b1;"
+Block 151 "2288143627" "sda_d = 1'b0;"
+Block 158 "2863783432" "ctrl_symbol_failed = 1'b1;"
+Block 161 "284205290" "ctrl_symbol_failed = 1'b1;"
+Block 175 "2454778447" "auto_stop_d = 1'b1;"
+Block 183 "3547809101" "auto_stop_d = 1'b1;"
+Block 186 "3104050706" "state_d = IDLE;"
+Block 188 "457095188" "state_d = SETUP_START;"
+Block 190 "3723682871" "state_d = IDLE;"
+Block 202 "1557403420" "state_d = SETUP_START;"
+Block 206 "2233879721" "load_tcount = 1'b1;"
+Block 208 "1973891363" "state_d = IDLE;"
+Block 221 "1210958236" "load_tcount = 1'b1;"
+Block 223 "193084966" "state_d = IDLE;"
+Block 236 "1926764647" "load_tcount = 1'b1;"
+Block 238 "3236846285" "state_d = IDLE;"
+Block 251 "2046430805" "load_tcount = 1'b1;"
+Block 253 "1239468812" "state_d = IDLE;"
+Block 261 "1159103748" "state_d = POP_FMT_FIFO;"
+Block 268 "3972923122" "load_tcount = 1'b1;"
+Block 270 "1789187456" "state_d = IDLE;"
+Block 275 "627521164" "state_d = IDLE;"
+Block 278 "625914487" "state_d = IDLE;"
+Block 287 "78779006" "auto_stop_d = 1'b1;"
 
-CHECKSUM: "2631278932 2148495424"
+CHECKSUM: "2664491312 3820941057"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core.u_i2c_target_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Block 5 "1124555975" "tcount_d = 14'b1;"
+Block 5 "2778305497" "tcount_d = 14'b1;"
 Block 6 "623845184" "tcount_d = 14'b1;"
-Block 101 "2617917286" "nack_transaction_d = 1'b1;"
-Block 105 "2568835811" "nack_transaction_d = 1'b1;"
-Block 106 "436584272" "acq_fifo_wvalid_o = (!acq_fifo_full_or_last_space);"
-Block 112 "1682926892" "acq_fifo_wdata_o = {AcqStart, input_byte};"
+Block 101 "3275852885" "nack_transaction_d = 1'b1;"
+Block 105 "1750805257" "nack_transaction_d = 1'b1;"
+Block 106 "2160090931" "acq_fifo_wvalid_o = (!acq_fifo_full_or_last_space);"
+Block 112 "2577368389" "acq_fifo_wdata_o = {ACQ_START, input_byte};"
 Block 133 "1067304823" "nack_transaction_d = 1'b1;"
-Block 150 "1361664" "state_d = WaitForStop;"
-Block 163 "2287156850" "state_d = WaitForStop;"
-Block 172 "625075846" "state_d = TransmitSetup;"
-Block 189 "706678646" "state_d = TransmitWait;"
-Block 200 "1540518245" "state_d = WaitForStop;"
-Block 215 "1753508764" "state_d = WaitForStop;"
-Block 223 "113246427" "state_d = WaitForStop;"
-Block 251 "3177756689" "state_d = WaitForStop;"
+Block 150 "2816309024" "state_d = WAIT_FOR_STOP;"
+Block 163 "2381415490" "state_d = WAIT_FOR_STOP;"
+Block 172 "3587825937" "state_d = TRANSMIT_SETUP;"
+Block 189 "3237253361" "state_d = TRANSMIT_WAIT;"
+Block 200 "1986623432" "state_d = WAIT_FOR_STOP;"
+Block 215 "920463520" "state_d = WAIT_FOR_STOP;"
+Block 223 "3865376767" "state_d = WAIT_FOR_STOP;"
+Block 251 "248185479" "state_d = WAIT_FOR_STOP;"
 
 CHECKSUM: "2049897907 1232228262"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[10].u_gpio_interface
@@ -10492,7 +10451,7 @@ ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2
 Block 24 "3833313036" "log_fetch_done_status_next = 1'b0;"
 Block 46 "1882518305" "log_bytes_written_cnt_next = log_bytes_written_cnt_t'(0);"
 
-CHECKSUM: "2535161971 3052798972"
+CHECKSUM: "716831743 3052798972"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.u_uart_16550.u_uart_core
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 89 "2875201528" "rx_fifo_threshold = rx_fifo_threshold_t'(8);"
@@ -10509,7 +10468,7 @@ ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2
 Block 24 "3833313036" "log_fetch_done_status_next = 1'b0;"
 Block 46 "1882518305" "log_bytes_written_cnt_next = log_bytes_written_cnt_t'(0);"
 
-CHECKSUM: "2535161971 3052798972"
+CHECKSUM: "716831743 3052798972"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_16550.u_uart_core
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 60 "2883360406" "dma_mode_1_txrdy = 1'b0;"
@@ -10547,7 +10506,7 @@ ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2
 Block 24 "3833313036" "log_fetch_done_status_next = 1'b0;"
 Block 46 "1882518305" "log_bytes_written_cnt_next = log_bytes_written_cnt_t'(0);"
 
-CHECKSUM: "2535161971 3052798972"
+CHECKSUM: "716831743 3052798972"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_16550.u_uart_core
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 60 "2883360406" "dma_mode_1_txrdy = 1'b0;"
@@ -10584,7 +10543,7 @@ ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2
 Block 24 "3833313036" "log_fetch_done_status_next = 1'b0;"
 Block 46 "1882518305" "log_bytes_written_cnt_next = log_bytes_written_cnt_t'(0);"
 
-CHECKSUM: "2535161971 3052798972"
+CHECKSUM: "716831743 3052798972"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_16550.u_uart_core
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 60 "2883360406" "dma_mode_1_txrdy = 1'b0;"
@@ -10610,11 +10569,11 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_eng
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 13 "2822615368" "idle_d = 1'b1;"
 
-CHECKSUM: "1698122930 4241451179"
+CHECKSUM: "1114926396 1239783294"
 INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.u_efuse_interface_shim
 ANNOTATION: "SMC-T9-IP-INTEGRATION-PORTS-ONLY: the IP integration shell (memories, eFuse shim, I3C and PLL models it hosts) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Block 16 "16079179" "efuse_read_state_d = StReadIdle;"
-Block 43 "2255745250" "efuse_write_state_d = StWriteIdle;"
+Block 16 "797960070" "efuse_read_state_d = ST_READ_IDLE;"
+Block 43 "740864126" "efuse_write_state_d = ST_WRITE_IDLE;"
 Block 54 "1374024879" "efuse_model_otp_req_o = 74'b0;"
 
 CHECKSUM: "521771762 822323760"
