@@ -16,7 +16,7 @@
 |BASE + 0x39000 – BASE + 0x3FFFF |28 KiB |CPU and I/O Control |CPU-cluster control and OCA I3C controller.
 |BASE + 0x40000 – BASE + 0x15FFFF |1152 KiB |Local Memories |Scratchpad ROM and RAM.
 |BASE + 0x160000 – BASE + 0x163FFF |16 KiB |CLA |Core Logic Analyzer debug and trace.
-|BASE + 0x400000 – BASE + 0x7FFFFF |4 MiB |Adopter External |Adopter-owned technology-specific and supplementary peripherals.
+|BASE + 0x400000 – BASE + 0x406547 |25928 B |Adopter External |Adopter-owned technology-specific and supplementary peripherals.
 |BASE + 0x800000 – BASE + 0x1FFFFFF |24 MiB |Address Remapping |ECAM, machine-mode, and hypervisor remapped regions.
 |BASE + 0x4000000 – BASE + 0x7FFFFFF |64 MiB |PLIC |Platform-Level Interrupt Controller aperture.
 |BASE + 0x8000000 – BASE + 0x8013FFF |80 KiB |Core-Local Timer and Errors |Core-local timer and per-core bus-error units.
@@ -59,7 +59,7 @@
 |BASE + 0x40000 – BASE + 0x5FFFF |128 KiB |128 KiB |spm_rom_memory |1 instance |- |Scratchpad ROM memory, present only in non-CPL configurations. |-^<<smc-components-note-6,[6]>>^ |-
 |BASE + 0x60000 – BASE + 0x15FFFF |1 MiB |1 MiB |spm_memory |1 instance |- |Scratch RAM Memory - only present for non-CPL configurations |- |-
 |BASE + 0x160000 – BASE + 0x163FFF |16 KiB |16 KiB |SMC DFD MMR Aperture Address Map |1 instance |- |Core Logic Analyzer debug and trace aperture. |OKAY, 0x0 / OKAY |-
-|BASE + 0x400000 – BASE + 0x7FFFFF |4 MiB |4 MiB |SMC External Window Address Map |1 instance |- |Adopter-owned external peripheral aperture. |Adopter-defined |-
+|BASE + 0x400000 – BASE + 0x406547 |25928 B |25928 B |SMC External Window Address Map |1 instance |- |Adopter-owned external peripheral aperture. |Adopter-defined |-
 |BASE + 0x800000 – BASE + 0xFFFFFF |8 MiB |8 MiB |ecam_region |1 instance |- |Remapped regions, either ECAM, M-Mode or XVisor |DECERR, 0xBADCAB1E^<<smc-components-note-2,[2]>>^ / DECERR^<<smc-components-note-7,[7]>>^ |-
 |BASE + 0x1000000 – BASE + 0x17FFFFF |8 MiB |8 MiB |mmode_region |1 instance |- |Remapped regions, either ECAM, M-Mode or XVisor |Forwarded |-
 |BASE + 0x1800000 – BASE + 0x1FFFFFF |8 MiB |8 MiB |xvisor_region |1 instance |- |Remapped regions, either ECAM, M-Mode or XVisor |Forwarded |-
