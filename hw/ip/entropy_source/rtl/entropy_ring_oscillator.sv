@@ -31,14 +31,12 @@ module entropy_ring_oscillator #(
   );
 
   // remaining buffer delay chain TOTAL_LENGTH-1
-  generate
-    for (genvar i = 1; i < TOTAL_LENGTH; i++) begin : gen_dly
-      entropy_ring_buf_wrapper u_bf (
-        .a_i (stage_o[i-1]),
-        .y_o (stage_o[i])
-      );
-    end
-  endgenerate
+  for (genvar i = 1; i < TOTAL_LENGTH; i++) begin : gen_dly
+    entropy_ring_buf_wrapper u_bf (
+      .a_i (stage_o[i-1]),
+      .y_o (stage_o[i])
+    );
+  end
 
   // select full length or tapped length for feedback
   entropy_ring_mux2_wrapper u_tap (

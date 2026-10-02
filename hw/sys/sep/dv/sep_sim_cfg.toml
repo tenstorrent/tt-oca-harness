@@ -516,8 +516,14 @@ outputs = []
 # scratch directory and compares the result byte for byte with the committed
 # blob. A mismatch (STALE), a missing blob, or a failed assembly exits nonzero,
 # c_compile fails, and the sim stage does not run. The blob itself is never
-# rewritten here. The declared output is the committed blob, which c_compile
-# stages into the sim CWD.
+# rewritten here. After the verify, argv copies the committed blob to
+# hw/sys/sep/dv/build/km_rom/, and that copy is the declared output, which
+# c_compile stages into the sim CWD under the same file name. The committed
+# blob is not an output: `--rebuild` deletes every declared output before the
+# build, and nothing in this step can regenerate a committed blob. The copy is
+# written to a temporary name and moved into place, so leaves that share a blob
+# never read a partial file. The output path does not use {build_dir}, which
+# the runlib renders differently at c_compile and at staging.
 #
 # Toolchain: $RISCV_TOOLCHAIN/$RISCV_PREFIX gcc when present, else the OCAH
 # container via scripts/docker-run.sh run-here. The blobs link with -nostdlib,
@@ -526,10 +532,10 @@ cwd = "."
 argv = [
   "bash",
   "-lc",
-  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; KM_FW=hw/sys/sep/dv/cocotb/tests/km_fw; if [ -n \"$RV_TC\" ] && [ -x \"$RV_TC/$RV_PFX\"gcc ]; then GCC_P=$(printf %s \"$RV_PFX\" | sed 's/-$//'); make -C \"$KM_FW\" verify ROMS={fw_target} GCC_PREFIX=\"$RV_TC/$GCC_P\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; verifying the KM ROM blob in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here make -C \"$KM_FW\" verify ROMS={fw_target} PYTHON=python3; else echo \"error: no RISC-V toolchain and no scripts/docker-run.sh\" >&2; exit 1; fi; echo \"[c_compile] KM-ROM-IDENTITY: image=hw/sys/sep/dv/cocotb/tests/{fw_target}.parhex sha256=$(sha256sum hw/sys/sep/dv/cocotb/tests/{fw_target}.parhex | cut -d\" \" -f1) matches {fw_target}.S\"",
+  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; KM_FW=hw/sys/sep/dv/cocotb/tests/km_fw; if [ -n \"$RV_TC\" ] && [ -x \"$RV_TC/$RV_PFX\"gcc ]; then GCC_P=$(printf %s \"$RV_PFX\" | sed 's/-$//'); make -C \"$KM_FW\" verify ROMS={fw_target} GCC_PREFIX=\"$RV_TC/$GCC_P\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; verifying the KM ROM blob in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here make -C \"$KM_FW\" verify ROMS={fw_target} PYTHON=python3; else echo \"error: no RISC-V toolchain and no scripts/docker-run.sh\" >&2; exit 1; fi; echo \"[c_compile] KM-ROM-IDENTITY: image=hw/sys/sep/dv/cocotb/tests/{fw_target}.parhex sha256=$(sha256sum hw/sys/sep/dv/cocotb/tests/{fw_target}.parhex | cut -d\" \" -f1) matches {fw_target}.S\"; KM_STAGE=hw/sys/sep/dv/build/km_rom; mkdir -p \"$KM_STAGE\"; cp hw/sys/sep/dv/cocotb/tests/{fw_target}.parhex \"$KM_STAGE/{fw_target}.parhex.tmp.$$\"; mv -f \"$KM_STAGE/{fw_target}.parhex.tmp.$$\" \"$KM_STAGE/{fw_target}.parhex\"",
 ]
 outputs = [
-  "hw/sys/sep/dv/cocotb/tests/{fw_target}.parhex",
+  "hw/sys/sep/dv/build/km_rom/{fw_target}.parhex",
 ]
 
 [c_build.el2_km_rom_coexist]
@@ -539,19 +545,20 @@ outputs = [
 # both: argv first runs `make verify ROMS=km_rom_coexist` (a stale, missing or
 # unassemblable blob fails c_compile before sim) and then the
 # [c_build.default] EL2 build of {fw_target}. The toolchain rules of both
-# blocks apply unchanged.
+# blocks apply unchanged, and the blob is staged from the same
+# hw/sys/sep/dv/build/km_rom/ copy, for the same reason.
 cwd = "."
 argv = [
   "bash",
   "-lc",
-  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; KM_FW=hw/sys/sep/dv/cocotb/tests/km_fw; if [ -n \"$RV_TC\" ] && [ -x \"$RV_TC/$RV_PFX\"gcc ]; then GCC_P=$(printf %s \"$RV_PFX\" | sed 's/-$//'); make -C \"$KM_FW\" verify ROMS=km_rom_coexist GCC_PREFIX=\"$RV_TC/$GCC_P\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; verifying the KM ROM blob in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here make -C \"$KM_FW\" verify ROMS=km_rom_coexist PYTHON=python3; else echo \"error: no RISC-V toolchain and no scripts/docker-run.sh\" >&2; exit 1; fi; echo \"[c_compile] KM-ROM-IDENTITY: image=hw/sys/sep/dv/cocotb/tests/km_rom_coexist.parhex sha256=$(sha256sum hw/sys/sep/dv/cocotb/tests/km_rom_coexist.parhex | cut -d\" \" -f1) matches km_rom_coexist.S\"; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; MK=\"dv-fw-tests TEST={fw_target}\"; if [ -n \"$RV_TC\" ] && \"$RV_TC/$RV_PFX\"gcc -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then exec make -C hw/sys/sep/dv/fw -f fw.mk $MK OCAH_ROOT=\"$PWD\" RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] no caller RISCV_TOOLCHAIN with picolibc; building in the OCAH toolchain container\"; exec env -u RISCV_TOOLCHAIN -u RISCV_PREFIX ./scripts/docker-run.sh run-here make -C hw/sys/sep/dv/fw -f fw.mk $MK OCAH_ROOT=\"$PWD\"; else echo \"error: set RISCV_TOOLCHAIN to a picolibc-enabled RISC-V toolchain, or provide scripts/docker-run.sh\" >&2; exit 1; fi",
+  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; KM_FW=hw/sys/sep/dv/cocotb/tests/km_fw; if [ -n \"$RV_TC\" ] && [ -x \"$RV_TC/$RV_PFX\"gcc ]; then GCC_P=$(printf %s \"$RV_PFX\" | sed 's/-$//'); make -C \"$KM_FW\" verify ROMS=km_rom_coexist GCC_PREFIX=\"$RV_TC/$GCC_P\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; verifying the KM ROM blob in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here make -C \"$KM_FW\" verify ROMS=km_rom_coexist PYTHON=python3; else echo \"error: no RISC-V toolchain and no scripts/docker-run.sh\" >&2; exit 1; fi; echo \"[c_compile] KM-ROM-IDENTITY: image=hw/sys/sep/dv/cocotb/tests/km_rom_coexist.parhex sha256=$(sha256sum hw/sys/sep/dv/cocotb/tests/km_rom_coexist.parhex | cut -d\" \" -f1) matches km_rom_coexist.S\"; KM_STAGE=hw/sys/sep/dv/build/km_rom; mkdir -p \"$KM_STAGE\"; cp hw/sys/sep/dv/cocotb/tests/km_rom_coexist.parhex \"$KM_STAGE/km_rom_coexist.parhex.tmp.$$\"; mv -f \"$KM_STAGE/km_rom_coexist.parhex.tmp.$$\" \"$KM_STAGE/km_rom_coexist.parhex\"; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; MK=\"dv-fw-tests TEST={fw_target}\"; if [ -n \"$RV_TC\" ] && \"$RV_TC/$RV_PFX\"gcc -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then exec make -C hw/sys/sep/dv/fw -f fw.mk $MK OCAH_ROOT=\"$PWD\" RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] no caller RISCV_TOOLCHAIN with picolibc; building in the OCAH toolchain container\"; exec env -u RISCV_TOOLCHAIN -u RISCV_PREFIX ./scripts/docker-run.sh run-here make -C hw/sys/sep/dv/fw -f fw.mk $MK OCAH_ROOT=\"$PWD\"; else echo \"error: set RISCV_TOOLCHAIN to a picolibc-enabled RISC-V toolchain, or provide scripts/docker-run.sh\" >&2; exit 1; fi",
 ]
 outputs = [
   "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.itcm.hex",
   "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.dtcm.hex",
   "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.tcm.elf",
   "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.tcm.sym",
-  "hw/sys/sep/dv/cocotb/tests/km_rom_coexist.parhex",
+  "hw/sys/sep/dv/build/km_rom/km_rom_coexist.parhex",
 ]
 
 [defaults]

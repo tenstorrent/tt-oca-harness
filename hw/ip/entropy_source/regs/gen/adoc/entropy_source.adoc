@@ -218,7 +218,7 @@ Entropy-source configuration, status, and data registers.
 | 31:5 | `Reserved` | - | - a| Reserved
 | 4 | `ENTROPY_CHURN_ENABLE` | RW | 0x0 a| XORs each incoming word with the FIFO entry 32 positions ahead of the write pointer. FIPS_LOCK.LOCK prevents software changes.
 | 3:1 | `Reserved` | - | - a| Reserved
-| 0 | `ENABLE` | RW | 0x1 a| Enables FIFO writes. Reads remain available while writes are disabled.
+| 0 | `ENABLE` | RW | 0x1 a| Enables FIFO writes. Reads remain available while writes are disabled. Words offered to the FIFO are also the DRBG seed stream, which this field does not gate. FIPS_LOCK.LOCK prevents software changes.
 |===
 
 [#reg-{regmap-instance}-entropy_source-FIFO_STATUS]

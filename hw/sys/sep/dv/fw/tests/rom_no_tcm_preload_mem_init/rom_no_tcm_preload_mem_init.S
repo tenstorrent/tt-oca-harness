@@ -31,8 +31,9 @@
 .equ SECURE_DMA_STATUS_REG_ADDR,                      0x10800050
 .equ SEP_CPU_CTRL_SEP_REGION_SIZE_REG_ADDR,           0x10A300D0
 
-/* SEP outbound egress filter, entry 0. The layout and the open-window
- * encoding match drivers/sep_outbound_filter.h. */
+/* SEP outbound egress filter, entry 0. Offsets and the open-window encoding
+ * match drivers/sep_outbound_filter.h: CONFIG @0x0, START @0x8, END @0x10;
+ * CONFIG = read|write|entry_enabled|allow_burst plus the reserved bit 32. */
 .equ OUTBOUND_FILTER_CTRL_BASE, 0x10A20000
 .equ FILTER_CONFIG_OFF,         0x0
 .equ FILTER_START_OFF,          0x8
@@ -52,10 +53,13 @@ _start:
     csrw    mtvec, t0
 
     /*
-     * Open the outbound egress window over STDOUT before the first report. The
-     * outbound filter blocks by default and answers a store to an unopened
-     * window with an error, which the CPU takes as a store access fault, so
-     * neither the PASS routine nor trap_fail could report a verdict.
+     * Open the outbound egress window over STDOUT before anything writes there.
+     * The SEP outbound filter is BLOCK_BY_DEFAULT=1, so an unopened window does
+     * not silently drop the store -- it isolates it and answers with an error,
+     * which the EL2 takes as a store access fault. Both the PASS routine and
+     * trap_fail report through STDOUT, so without this the image cannot report
+     * at all: it faults on the first mailbox write and lands in fail_hang with
+     * no verdict, whatever actually happened earlier.
      *
      * START/END before CONFIG so the entry enables over the final range.
      */
@@ -164,26 +168,17 @@ _start:
 dma_poll:
     lw      t1, 0(t0)
     andi    t2, t1, 0x8
-    bnez    t2, fail_restore_remap
+    bnez    t2, fail
     andi    t2, t1, 0x2
     bnez    t2, dma_done
     addi    t3, t3, -1
     bnez    t3, dma_poll
-    j       fail_restore_remap
+    j       fail
 
 dma_done:
-    li      t0, SEP_CPU_CTRL_SEP_REGION_SIZE_REG_ADDR
-    sw      s0, 0(t0)
-    fence   ow, ow
-
     fence.i
     li      t0, ICCM_PROG_ADDR
     jalr    zero, 0(t0)
-
-fail_restore_remap:
-    li      t0, SEP_CPU_CTRL_SEP_REGION_SIZE_REG_ADDR
-    sw      s0, 0(t0)
-    fence   ow, ow
 
 fail:
 trap_fail:
