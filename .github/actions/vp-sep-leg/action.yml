@@ -212,21 +212,15 @@ runs:
     - name: Provision toolchain image
       if: env.HAVE_SUBMODULE_TOKEN == 'true' && inputs.mode == 'container'
       shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        # A merge starts this workflow and the container build together, and the
+        # build takes about two hours, so push and nightly runs wait for the tag.
+        # A dispatch is started once the image is published and checks once.
+        WAIT_FLAG: ${{ (github.event_name == 'push' || github.event_name == 'schedule') && '--wait' || '' }}
       run: |
         hash="$(./scripts/docker-run.sh image-hash)"
-        ref="${OCAH_CONTAINER_REGISTRY_IMAGE}:${hash}"
-        if ! docker manifest inspect "$ref" >/dev/null 2>&1; then
-          echo "::error::$ref is not published"
-          {
-            echo "### Toolchain image not published"
-            echo
-            echo "This tree resolves to \`$hash\`, which the container workflow has"
-            echo "not published. It runs on changes to the flake, \`nix/\`,"
-            echo "\`ocah_deps.nix\` and the uv workspace; if it has not run for this"
-            echo "commit, run it before dispatching this one."
-          } >> "$GITHUB_STEP_SUMMARY"
-          exit 1
-        fi
+        ./scripts/ci/wait_for_image.sh $WAIT_FLAG "${OCAH_CONTAINER_REGISTRY_IMAGE}:${hash}"
         ./scripts/docker-run.sh ensure
 
     - name: Check toolchains
