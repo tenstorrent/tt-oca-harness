@@ -8,31 +8,31 @@
       "unknown": 0
     },
     "history": "/proj_soc_scratch/regr/workspace/tt-oca-harness/smu/dashboard/vcs/smu/dashboard-data/history.json",
-    "history_points": 14,
+    "history_points": 15,
     "summary": "/proj_soc_scratch/regr/workspace/tt-oca-harness/smu/dashboard/vcs/smu/dashboard-data/summary.json",
     "tests": {
-      "failing": 12,
+      "failing": 10,
       "incomplete_runs": 0,
-      "pass_rate": 90.0,
-      "passing": 108,
+      "pass_rate": 91.67,
+      "passing": 110,
       "skipped": 0,
       "total": 120,
       "unknown": 0
     }
   },
   "errors": [
-    "smu: runner rc=2",
-    "smu: native status=ERROR",
+    "smu: runner rc=124",
+    "smu: native status=TIMEOUT",
     "smu: normalized status=FAIL"
   ],
-  "generated_at": "2026-10-01T18:59:23.357309+00:00",
+  "generated_at": "2026-10-02T16:07:18.229680+00:00",
   "git": {
-    "commit": "0c6f196a413a7c7a7032acde6b2663e7821a0f78",
-    "requested_ref": "0c6f196a413a7c7a7032acde6b2663e7821a0f78"
+    "commit": "dbf89ccf8ec7ba768e42448580e8621ef0727dfb",
+    "requested_ref": "dbf89ccf8ec7ba768e42448580e8621ef0727dfb"
   },
   "jenkins": {
-    "build_number": "26",
-    "build_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/smu/job/dashboard/26/",
+    "build_number": "27",
+    "build_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/smu/job/dashboard/27/",
     "job_name": "tt-oca-harness/smu/dashboard",
     "job_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/smu/job/dashboard/"
   },
@@ -43,12 +43,12 @@
       "group": "all",
       "mode": "regression",
       "native_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/smu/dashboard/vcs/smu/runs/result.json",
-      "native_status": "ERROR",
+      "native_status": "TIMEOUT",
       "normalized_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/smu/dashboard/vcs/smu/dashboard-data/result.json",
       "normalized_status": "FAIL",
       "profile": "smu",
       "run_dir": "/proj_soc_scratch/regr/workspace/tt-oca-harness/smu/dashboard/vcs/smu/runs",
-      "runner_rc": 2,
+      "runner_rc": 124,
       "tool": "vcs"
     }
   ],
