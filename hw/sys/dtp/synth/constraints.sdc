@@ -1,36 +1,43 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 #
+# tclint-disable line-length
 #-----------------------------------------------------------------------------
 # DTP (Debug and Test Ports) block-level timing constraints.
 #
-# Clock periods, generated clocks, and I/O delays for the `dtp` top-level
-# port list (hw/sys/dtp/rtl/dtp.sv).
+# Clocks, generated clocks, and I/O delays for the `dtp` top-level port list
+# (hw/sys/dtp/rtl/dtp.sv).
 #
-# This is reference/documentation-level SDC: the current Yosys-based synth
-# flow (flows/synth/yosys) drives ABC with a minimal driving-cell/load model
-# (tech/ihp-sg13g2/abc.constr) rather than a full SDC. A full SDC like this one
-# only becomes a real input once a place-and-route or standalone STA stage
-# (e.g. OpenROAD/OpenSTA) is added to the flow. See
-# flows/synth/yosys/README.md for the rationale.
+# Read by synthesis as the block SDC, by the CDC/RDC sign-off run through
+# cdc/dtp.cdc_rdc.tcl, and by any parent that replays this block under a
+# hierarchy prefix (hw/sys/smu). Clock periods come from
+# flows/synth/constraints/clock_periods.tcl; the hooks from cdc_hier_procs.tcl.
+#
+# Hierarchy-reusable: boundary constraints (create_clock on ports, the generated
+# TCK output-port clocks, IO delays, clock groups) apply at block top only. At
+# the SMU top these nets carry SMU's clocks (DTPCLK -> SMUCLK via
+# ::cdc_clock_alias); the TCK feedthrough pins are covered by JTAG_TCK
+# propagation and SMU's own port stampings.
 #
 # Caveats, called out explicitly:
 #   - `dtp` exposes three typed per-slice IC-reset ports,
 #     `jtag_ic_reset_smc_o`, `jtag_ic_reset_sep_o`, and `jtag_ic_reset_ext_o`
 #     (each with `.ovrd`/`.val` sub-structs); the constraints below cover all
 #     three.
-#   - `cla_clock_stop_en_o` and the DFT ports `test_en_i`/`scan_rst_ni` are
-#     real `dtp` top-level ports; constraints below are modeled on their
-#     nearest siblings (`stop_clks_o` and the SMC block's JTAG_TCK-domain DFT
-#     ports, respectively).
-#   - CDC crossings are bounded in two layers, both included from this file.
-#     `set_async_clock_groups` below declares the asynchronous groups with
-#     `-allow_paths` and applies a loose default max_delay per inter-group
-#     clock pair; `dtp_cdc_max_delay.tcl`, sourced at the end, tightens each
-#     synchronizer and async FIFO individually. The `-allow_paths` is not
-#     optional: `set_false_path` outranks `set_max_delay` in exception
-#     priority, so a bare `set_clock_groups -asynchronous` would silently mask
-#     every per-instance bound.
+#   - The DFT ports `test_en_i`/`scan_rst_ni` take a JTAG_TCK input delay in
+#     the synth scenario only; the functional scenario leaves them unpinned
+#     and undelayed, since `dtp` carries no case analysis of its own.
+#   - `cla_clock_stop_en_o` carries no output delay.
+#   - CDC crossings are bounded in two layers. `cdc_apply_async_groups` below
+#     declares the asynchronous groups; in the synth scenario it goes through
+#     `set_async_clock_groups`, which adds `-allow_paths` and a loose default
+#     max_delay per inter-group clock pair, and `dtp_cdc_max_delay.tcl`,
+#     sourced at the end, tightens each synchronizer and async FIFO
+#     individually. The `-allow_paths` is not optional: `set_false_path`
+#     outranks `set_max_delay` in exception priority, so a bare
+#     `set_clock_groups -asynchronous` would silently mask every per-instance
+#     bound. The functional (sign-off) scenario emits the bare form and skips
+#     the bounds.
 #   - `dtp_cdc_max_delay_generated.tcl` enumerates this block's CDC elements.
 #     It is produced once, offline, against an elaborated design and checked
 #     in; nothing discovers instances when this file is read. Its paths and
@@ -44,7 +51,7 @@
 #     See "CDC Timing Constraints" in the Integrator Guide.
 #-----------------------------------------------------------------------------
 
-# Directory holding this file, so the CDC collateral below resolves regardless
+# Directory holding this file, so the shared collateral below resolves regardless
 # of the invoking tool's working directory. `info script` is the file currently
 # being read; GIT_ROOT covers tools that do not set it.
 if {[info script] ne ""} {
@@ -56,28 +63,18 @@ if {[info script] ne ""} {
 }
 set ocah_flow_constraints_dir [file normalize $ocah_sdc_dir/../../../../flows/synth/constraints]
 
-##################
-# CLOCK PERIODS
-##################
+# Clock periods and the hierarchy-reuse hooks every constraint below goes through.
+source [file join $ocah_flow_constraints_dir clock_periods.tcl]
+if {[info procs cdc_is_block_top] eq ""} {
+    source [file join $ocah_flow_constraints_dir cdc_hier_procs.tcl]
+}
 
-# Units are picoseconds.
-global clock_periods
-set clock_periods(REFCLK_PERIOD)            10000
-set clock_periods(SYSCLK_PERIOD)            1000
-set clock_periods(PERIPHERALCLK_PERIOD)     5000
-set clock_periods(SPICLK_PERIOD)            5000
-set clock_periods(TELEMETRYCLK_PERIOD)      2000
-set clock_periods(JTAG_TCK_PERIOD)          10000
-set clock_periods(ck_feedthru_PERIOD)       10000
-set clock_periods(WDTCLK_PERIOD)            10000
-# Entropy periods below are non-functional; entropy_source is currently blackboxed.
-set clock_periods(ENTROPY_ROSC_PERIOD)      2500
-set clock_periods(ENTROPY_SHARED_RO_PERIOD) 2300
 
 ##################
 # CLOCK STAMPINGS
 ##################
 
+if {[cdc_is_block_top]} {
 # System clock
 create_clock -add -name DTPCLK -period $clock_periods(SYSCLK_PERIOD) [get_ports "clk_i"]
 
@@ -163,36 +160,34 @@ create_generated_clock -name JTAG_TCK_DFT_OUT \
     -combinational \
     [get_ports "jtag_dft_host_scan_ctrl_o*tck"]
 
+}
+# end of block-top-only clock stampings
 
-########################################################
-# Async clock groups
-########################################################
-# Declared with `-allow_paths` plus a loose default bound on every inter-group
-# clock pair. The per-instance bounds sourced at the end of this file refine
-# that default; without `-allow_paths` they would be masked.
-#
-# This has to come after the TCK passthroughs above: the `JTAG_TCK_*` glob is
-# resolved when the call runs, so a generated clock created later would be left
-# out of the group and end up timed against DTPCLK as an unrelated domain.
-source [file join $ocah_flow_constraints_dir async_clock_groups.tcl]
+# Async-domain membership: the generated TCK output clocks are feedthrough copies of
+# JTAG_TCK and belong in its group. cdc_apply_async_groups emits the groups once and drops
+# any name that does not exist in this configuration.
+cdc_group_extra JTAG_TCK {JTAG_TCK_BSR_OUT JTAG_TCK_STAP_IO_OUT JTAG_TCK_STAP_SEP_OUT \
+                          JTAG_TCK_STAP_SMC_OUT JTAG_TCK_STAP_EXTRA_OUT0 JTAG_TCK_STAP_OUT \
+                          JTAG_TCK_DFD_OUT JTAG_TCK_DFT_SECURE_OUT JTAG_TCK_DFT_OUT}
 
-set_async_clock_groups {
-    {DTPCLK DTPCLK_*}
-    {JTAG_TCK JTAG_TCK_*}
-    {ck_feedthru}
+if {[cdc_is_block_top]} {
+    cdc_apply_async_groups {DTPCLK JTAG_TCK ck_feedthru}
 }
 
 
 ########################################################
 # Input and Output delays
 ########################################################
+# Block-top only: IO delays anchor the block's own ports; at the parent these are internal
+# nets whose launch/capture domains come from the real fabric.
+if {[cdc_is_block_top]} {
 
 # resets
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock DTPCLK] [get_ports rst_n_i] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock DTPCLK] [get_ports pwr_on_rst_ni] -add_delay
 
-# feature control (OTP/fuse bits) -- quasi-static
-set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.25]      -clock [get_clock DTPCLK] [get_ports {feat_ctrl_i*}] -add_delay
+# debug-disable straps (fuse/CSR sourced) -- quasi-static
+set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.25]      -clock [get_clock DTPCLK] [get_ports {dbg_disable_i*}] -add_delay
 
 # JTAG interfaces
 # Each input delay follows the TCK edge that launches the signal and each output
@@ -271,9 +266,6 @@ set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_cloc
 
 # Clock control
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock DTPCLK] [get_ports stop_clks_o] -add_delay
-# `cla_clock_stop_en_o` is a real `dtp` top-level output; constrained the
-# same as its `stop_clks_o` sibling.
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock DTPCLK] [get_ports cla_clock_stop_en_o] -add_delay
 
 # JTAG boot stall control (driven from JTAG_TCK-domain scan register; use TCK output delay)
 set_output_delay $jtag_io_ext -clock [get_clock JTAG_TCK] [get_ports jtag_boot_stall_ovrd_o] -add_delay
@@ -327,18 +319,23 @@ set_output_delay [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_cloc
 set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {xtrig_ctp_ack_out_din_i*}] -add_delay
 set_output_delay [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {xtrig_ctp_ack_out_din_en_o*}] -add_delay
 
-# DFT
-# `test_en_i`/`scan_rst_ni` are real `dtp` top-level ports; constrained on
-# JTAG_TCK, matching the pattern used for the equivalent DFT ports on the
-# SMC block.
-set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports test_en_i] -add_delay
-set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports scan_rst_ni] -add_delay
+# DFT (pinned by case analysis in the functional scenario, so the delay applies only where they are not pinned)
+cdc_pinned_port_delay set_input_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports test_en_i] -add_delay
+cdc_pinned_port_delay set_input_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports scan_rst_ni] -add_delay
+
+}
+# end of block-top-only Input and Output delays
+
 ########################################################
 # CDC max_delay bounds
 ########################################################
-# Layer 2: a per-instance bound on every synchronizer and async FIFO, tighter
-# than the inter-group default applied by set_async_clock_groups above. Loaded
-# last so these exceptions are the ones the tool keeps where both apply, and so
-# the primary-input relaxation at the end sees every constrained pin.
-source [file join $ocah_flow_constraints_dir cdc_max_delay_procs.tcl]
-source [file join $ocah_sdc_dir dtp_cdc_max_delay.tcl]
+# Layer 2 of the synthesis CDC constraints: a per-instance bound on every
+# synchronizer and async FIFO, tighter than the inter-group default that
+# cdc_apply_async_groups applies in the bounded synth scenario. Loaded last so
+# these exceptions are the ones the tool keeps where both apply, and so the
+# primary-input relaxation at the end sees every constrained pin. Block top
+# only, synth scenario only, and only while ::cdc_bound_crossings is set.
+if {[cdc_is_block_top] && $::cdc_scenario eq "synth" && $::cdc_bound_crossings} {
+    source [file join $ocah_flow_constraints_dir cdc_max_delay_procs.tcl]
+    source [file join $ocah_sdc_dir dtp_cdc_max_delay.tcl]
+}

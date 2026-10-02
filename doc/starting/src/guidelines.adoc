@@ -78,8 +78,12 @@ xref:workflows.adoc#linting[Linting].
 A subsystem (`hw/sys/<sys>/`) additionally carries the full-chip elements a
 leaf IP does not need on its own:
 
-* `synth/` -- synthesis and timing constraints
-* `cdc/`, `rdc/` -- clock- and reset-domain-crossing waivers
+* `synth/` -- the block SDC (clocks, I/O delays, asynchronous clock groups)
+  and its CDC max-delay bounds
+* `cdc/` -- clock- and reset-domain-crossing sign-off constraints (the
+  `<sys>.cdc_rdc.tcl` entry, resets, case analysis, quasi-static signals,
+  synchronizer setup) and the CDC waivers
+* `rdc/` -- reset-domain-crossing waivers
 * `bootrom/` -- immutable ROM firmware sources, where the subsystem has one
 * `build/` -- local build scratch, not checked in
 * `flow.mk` -- the subsystem's entry point into the shared lint/synth flows
