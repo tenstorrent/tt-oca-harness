@@ -175,7 +175,6 @@ Common build variables include:
 | `ROM_ICCM_CLEAR_ENABLE` | `1` | Establish ICCM ECC during BL1 handoff. |
 | `ROM_ICCM_CLEAR_FULL` | `0` | Clear the entire ICCM before loading BL1. |
 | `PMP_ENABLE` | `1` | Program the BL0 PMP entries. |
-| `PMP_LOCK` | `0` | Lock the programmed PMP entries until reset. |
 | `BOOT_SPI_CONTROLLER_OT` | `1` | Use the OpenTitan SPI host; set to `0` for memory-mapped flash through the XIP window, with an integrator-supplied controller driver. |
 | `BOOT_OT_SPI_USE_PIO` | `0` | Use CPU PIO instead of secure DMA for OpenTitan RX. |
 | `BOOT_OT_SPI_PROFILE` | `0` | Select the OpenTitan timing profile. |
@@ -185,8 +184,9 @@ Common build variables include:
 The default build is debug-oriented. Its zero-length SEP SRAM scrub reduces RTL
 simulation cost. ICCM ECC establishment is enabled, while the full-region clear
 is disabled; an adopter requiring full ICCM residue clearing sets
-`ROM_ICCM_CLEAR_FULL=1`. A release image must also apply the adopter's final
-memory-sanitization, PMP-lock, SPI-controller, and version policy.
+`ROM_ICCM_CLEAR_FULL=1`. PMP rules are locked and bound to machine mode whenever
+`PMP_ENABLE=1`. A release image must also apply the adopter's final
+memory-sanitization, SPI-controller, and version policy.
 
 `BUILD_TYPE=release` covers key provisioning and debug output: it generates the
 ROM's trust anchors from public keys that are not in this repository, and drops

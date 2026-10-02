@@ -58,15 +58,14 @@ scratch-register access. It then configures the outbound filter window used by
 later firmware status traffic and programs PMP regions for the Boot ROM, DCCM,
 status mailbox, SEP SRAM, SEP peripherals, and ICCM.
 
-The current `vector.S` labels PMP entry 6 as SMC MMIO, but programs
-`0xC000_0000` through `0xCFFF_FFFF`. SEP actually accesses SMC through
-`0x4000_0000`, so this entry does not protect the SEP-visible SMC aperture. The
-PMP table must be corrected before it can be treated as the final SMC access
-policy.
+The cold policy grants the SEP-visible SMC boot aperture at `0x4000_0000`
+through `0x407F_FFFF`. This covers every SMC register and SRAM location the ROM
+uses without granting the separate SMU aperture.
 
-`PMP_ENABLE` controls whether these entries are programmed. `PMP_LOCK` controls
-their lock bits. The production Makefile defaults to PMP enabled and unlocked;
-an integrator must select the final lock policy for the immutable image.
+`PMP_ENABLE` controls whether these entries are programmed. Enabled entries are
+locked, bound to machine mode with Smepmp `MMWP`, and remain non-executable
+except for the Boot ROM until the selected BL1 destination is released at
+hand-off.
 
 === Memory-health gate
 

@@ -992,41 +992,31 @@ literal CSR values.
 [frame=ends]
 |===
 |*Entry* |*Region* |*Base* |*Size* |*Perms (code)* |*`pmpaddr`* |*Note*
-|0 |Boot ROM |`0x10040000` |64 KiB |R-X |`0x04017FFF` |BL0 itself
+|0 |Boot ROM |`0x10040000` |64 KiB |R-X |`0x04011FFF` |BL0 itself
 |1 |DCCM |`0xC0040000` |128 KiB |RW- |`0x30013FFF` |runtime data, stack, `bl0_state`
 |2 |Unused | | | | |
-|3 |SEP SRAM |`0x10000000` |256 KiB |RWX |`0x0401FFFF` |manifest/payload staging; a BL1 launch
-region when `BL1_SRAM_EXEC_ENABLE` permits — *this specification requires RW- until hand-off*
-|4 |Peripherals |`0x10800000` |4 MiB |RW- |`0x0421FFFF` |DMA, scratch, crypto, lifecycle,
+|3 |SEP SRAM |`0x10000000` |256 KiB |RW- |`0x04007FFF` |manifest/payload staging; changed to
+RWX at hand-off when `BL1_SRAM_EXEC_ENABLE` permits and BL1 targets SRAM
+|4 |Peripherals |`0x10800000` |4 MiB |RW- |`0x0427FFFF` |DMA, scratch, crypto, lifecycle,
 efuse, SPI hosts
-|5 |ICCM |`0xC0000000` |256 KiB |RWX |`0x30007FFF` |the secure BL1 code region, always a
-launch target — *this specification
-requires RW- until hand-off*
-|6 |SMC/local window |`0xC0000000` |256 MiB |RW- |`0x31FFFFFF` |overlaps entries 1/5; the
-lower-numbered entry takes precedence for its sub-range
+|5 |ICCM |`0xC0000000` |256 KiB |RW- |`0x30007FFF` |changed to RWX at hand-off when BL1
+targets ICCM
+|6 |SMC boot aperture |`0x40000000` |8 MiB |RW- |`0x100FFFFF` |SMC registers and SRAM used
+by BL0; does not grant the separate SMU aperture
 |===
 
-`pmpcfg0` = `0x1F001B1D` and `pmpcfg1` = `0x001B1F1B` (with `PMP_LOCK=1`, the same values
-with `L` set: `0x9F009B9D` / `0x009B9F9B`). Entries 2 and 7 are unused.
+The locked cold values are `pmpcfg0 = 0x9B009B9D` and
+`pmpcfg1 = 0x009B9B9B`. Entries 2 and 7 are unused. `vector.S` sets
+`mseccfg.RLB` before these rules and `mseccfg.MMWP` after their readback.
 
 [WARNING]
 ====
-*IMPLEMENTATION GAP* — the current region set does not yet implement the normative fence
-policy:
-
-* Entries 3 (SEP SRAM) and 5 (ICCM) are `RWX` from cold boot, so next-stage regions are
-  executable throughout validation (violates SEP-ROM-PMP-010/-030).
-* `PMP_LOCK` defaults to 0, and unlocked entries do not constrain machine mode — as
-  programmed, the PMP fences the ROM against nothing (violates SEP-ROM-PMP-020). The
-  ratified Smepmp sequence (<<sec:pmp_mechanism>>: RLB → locked rules → MMWP, release by
-  rule rewrite) is not yet implemented; `mseccfg` is never written.
-* Entry 6's covered range (`0xC000_0000`–`0xCFFF_FFFF`) does not match the actual SMC window
-  at `0x4000_0000`; the XIP window (`0x3000_0000`) and SMC window have no entry. This
-  is currently masked by the entries being unlocked (M-mode unconstrained), but must be fixed
-  before the fences can bind (SEP-ROM-PMP-040).
-
-The pre-hand-off *software* self-check (gate ledger) is implemented but not yet on `main`;
-the PMP release step it gates is not yet implemented.
+*IMPLEMENTATION GAP* — the default OpenTitan-SPI build has a complete cold allowlist and
+releases only the selected BL1 destination. The XIP build still requires entries for the
+`0x3000_0000` flash window and its integrator-defined controller registers before it can run
+under `MMWP`. The full pre-hand-off gate ledger is also not yet wired into `main`; the release
+currently follows the checks implemented by the boot flow, including the final stack-canary
+check.
 ====
 
 [[sec:fuses]]
@@ -3241,14 +3231,14 @@ released-by-default reset value (`HMAC_SW_RST_N` resets to 1) and the ROM never 
 The AES release had no call site until the
 encrypted-payload path was exercised in RTL, where the block never reported idle.
 |<<sec:payload>>
-|PMP fence policy |*gap* |SRAM/ICCM are RWX from cold boot; entries unlocked (don't bind
-M-mode); release-at-hand-off unimplemented; window set doesn't match data-window needs.
+|PMP fence policy |*partial* |The OpenTitan-SPI build grants the required cold data windows,
+keeps SRAM/ICCM non-executable during validation and releases only the selected BL1 region.
+The integrator-defined XIP-controller aperture remains open.
 |<<sec:pmp>>
-|PMP binding/release mechanism |*ratified, not implemented* |Smepmp ratified 2026-07-23
-(<<sec:pmp_mechanism>>): RLB → locked rules → MMWP at cold boot; release = one rule rewrite
-at hand-off (SEP-ROM-PMP-060/-070/-080). Code writes neither `mseccfg` nor lock bits yet.
-RLB disposition at the jump is a deferred sub-decision (BL1 spec); `MML` deferred as
-optional hardening. |<<sec:pmp_mechanism>>
+|PMP binding/release mechanism |*partial* |The ROM programs RLB → locked rules → MMWP at
+cold boot and adds execute permission to one BL1 rule at hand-off
+(SEP-ROM-PMP-060/-070/-080). RLB disposition at the jump is a deferred sub-decision
+(BL1 spec); `MML` and the full hand-off gate ledger remain deferred. |<<sec:pmp_mechanism>>
 |Exponent constraint |*by design* |Ratified: SEP secure boot accepts F4 (e = 65537) RSA keys
 only. A permanent constraint, not a consequence of the OTBN program build; any other
 exponent is rejected (SEP-ROM-SB-100). |<<sec:secure_boot>>

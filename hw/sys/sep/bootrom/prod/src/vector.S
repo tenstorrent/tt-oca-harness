@@ -29,10 +29,6 @@
 #define PMP_ENABLE 1
 #endif
 
-#ifndef PMP_LOCK
-#define PMP_LOCK 0
-#endif
-
 /* Warm-handler slot: SEP COLD scratch 7.
  *
  * The COLD bank, because the value has to survive the warm/watchdog reset it is
@@ -275,67 +271,68 @@ cold_boot:
     csrci   mstatus, 0x8        /* clear MIE */
 
     /* PMP init:
-     * Program a simple region-based policy (NAPOT).
+     * Bind the cold-boot allowlist to M-mode with Smepmp. RLB must be set
+     * before the first locked rule; MMWP is set only after every rule has
+     * been programmed and read back.
      *
-     * Optional knobs:
      * - PMP_ENABLE=0: skip PMP programming
-     * - PMP_LOCK=1: set L bit on programmed entries (locked until reset)
      *
      * Regions:
      * - entry0: Boot ROM  0x1004_0000 .. 0x1004_FFFF (64KiB)  : R-X
      * - entry1: DCCM      0xC004_0000 .. 0xC005_FFFF (128KiB) : RW-
      * - entry2: unused
-     * - entry3: SRAM      0x1000_0000 .. 0x1003_FFFF (256KiB) : RWX (BL1 code+data)
-     * - entry4: Periph    0x1090_0000 .. 0x10BF_FFFF (3MiB)   : RW-
-     * - entry5: ICCM      0xC000_0000 .. 0xC003_FFFF (256KiB) : RWX (BL1)
-     * - entry6: SMC MMIO  0xC000_0000 .. 0xCFFF_FFFF (256MiB) : RW-
+     * - entry3: SRAM      0x1000_0000 .. 0x1003_FFFF (256KiB) : RW-
+     * - entry4: Periph    0x1080_0000 .. 0x10BF_FFFF (4MiB)   : RW-
+     * - entry5: ICCM      0xC000_0000 .. 0xC003_FFFF (256KiB) : RW-
+     * - entry6: SMC       0x4000_0000 .. 0x407F_FFFF (8MiB)   : RW-
      */
 #if PMP_ENABLE
-    /* Boot ROM 64KiB @ 0x1004_0000: pmpaddr0 = (0x10040000>>2) | ((64KiB/2)-1) = 0x0401_7FFF */
-    li      t0, 0x04017fff
+    /* Permit rewriting locked rules at hand-off. This write must precede L=1. */
+    li      t0, 0x4
+    csrw    0x747, t0                 /* mseccfg.RLB */
+
+    /* NAPOT: pmpaddr = (base >> 2) | ((size >> 3) - 1). */
+    li      t0, 0x04011fff             /* Boot ROM: 64KiB @ 0x1004_0000 */
     csrw    pmpaddr0, t0
-    /* DCCM 128KiB @ 0xC004_0000: pmpaddr1 = (0xC0040000>>2) | ((128KiB>>3)-1) = 0x3001_3FFF */
     li      t0, 0x30013fff
-    csrw    pmpaddr1, t0
-    /* SRAM 256KiB @ 0x1000_0000: pmpaddr3 = (0x10000000>>2) | ((256KiB/2)-1) = 0x0401_FFFF */
-    li      t0, 0x0401ffff
-    csrw    pmpaddr3, t0
-    /* Periph 4MiB @ 0x1080_0000: pmpaddr4 = (0x10800000>>2) | ((4MiB/2)-1) = 0x0421_FFFF */
-    li      t0, 0x0421ffff
-    csrw    pmpaddr4, t0
-    /* ICCM 256KiB @ 0xC000_0000: pmpaddr5 = (0xC0000000>>2) | ((256KiB>>3)-1) = 0x3000_7FFF */
+    csrw    pmpaddr1, t0               /* DCCM: 128KiB @ 0xC004_0000 */
+    li      t0, 0x04007fff
+    csrw    pmpaddr3, t0               /* SEP SRAM: 256KiB @ 0x1000_0000 */
+    li      t0, 0x0427ffff
+    csrw    pmpaddr4, t0               /* Peripherals: 4MiB @ 0x1080_0000 */
     li      t0, 0x30007fff
-    csrw    pmpaddr5, t0
-    /* SMC MMIO 256MiB @ 0xC000_0000: pmpaddr6 = (0xC0000000>>2) | ((256MiB>>3)-1) = 0x31FF_FFFF */
-    li      t0, 0x31ffffff
-    csrw    pmpaddr6, t0
+    csrw    pmpaddr5, t0               /* ICCM: 256KiB @ 0xC000_0000 */
+    li      t0, 0x100fffff
+    csrw    pmpaddr6, t0               /* SMC boot aperture: 8MiB @ 0x4000_0000 */
 
     /* pmpcfg0 bytes: [entry3][entry2][entry1][entry0]
      * - NAPOT=0x18; R=0x1; W=0x2; X=0x4; L=0x80
      * - entry0 ROM  R-X: 0x18|0x05 = 0x1D
      * - entry1 DCCM RW-: 0x18|0x03 = 0x1B
      * - entry2 unused:   0x00
-     * - entry3 SRAM RWX: 0x18|0x07 = 0x1F
+     * - entry3 SRAM RW-: 0x18|0x03 = 0x1B
      */
-#if PMP_LOCK
-    li      t0, 0x9f009b9d      /* set L bit on entries 0,1,3; entry2 stays unused and unlocked */
-#else
-    li      t0, 0x1f001b1d
-#endif
+    li      t0, 0x9b009b9d
     csrw    pmpcfg0, t0
+    csrr    t1, pmpcfg0
+    bne     t0, t1, pmp_fail_hang
 
     /* pmpcfg1 bytes: [entry7][entry6][entry5][entry4]
      * - entry4 Periph RW-: 0x18|0x03 = 0x1B
-     * - entry5 ICCM   RWX: 0x18|0x07 = 0x1F
+     * - entry5 ICCM   RW-: 0x18|0x03 = 0x1B
      * - entry6 SMC    RW-: 0x18|0x03 = 0x1B
      * - entry7: unused (0x00)
      */
-#if PMP_LOCK
-    li      t0, 0x009b9f9b      /* set L bit on entries 4..6 */
-#else
-    li      t0, 0x001b1f1b
-#endif
+    li      t0, 0x009b9b9b
     csrw    pmpcfg1, t0
+    csrr    t1, pmpcfg1
+    bne     t0, t1, pmp_fail_hang
+
+    /* Deny every unmatched M-mode access while retaining RLB for hand-off. */
+    li      t0, 0x6
+    csrw    0x747, t0                 /* mseccfg.RLB | mseccfg.MMWP */
+    csrr    t1, 0x747
+    bne     t0, t1, pmp_fail_hang
 
     /* Status: PMP configured → scratch[1]
      * STATUS_ENCODE(STATUS_TYPE_DEBUG, SEP_MSG_BOOTROM_PRESTART_DONE)
@@ -468,6 +465,16 @@ mem_repair_fail_hang:
 
 5:  wfi
     j       5b
+
+#if PMP_ENABLE
+pmp_fail_hang:
+    /* The PMP policy did not become active exactly as programmed. */
+    li      t0, SEP_COLD_SCRATCH_1
+    li      t1, 0x0f01f004
+    sw      t1, 0(t0)
+6:  wfi
+    j       6b
+#endif
 4:
     /* Memory scrub (DCCM):
      * Clear DCCM before initializing runtime sections.
