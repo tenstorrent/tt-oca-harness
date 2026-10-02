@@ -1,14 +1,14 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
-// smc_uart_log_engine_single_entry_test
-//
-// Engine golden path: pre-load SRAM, configure engine to feed the UART via
-// system loopback (MCR.LOOP=1 internally connects TX → RX), trigger
-// LOG_CTRL[0], read every transmitted byte from RBR, and verify byte order
-// matches the SRAM pattern.  Also asserts:
-//   * LOG_CTRL[0] hwclr to 0 after transfer completes
-//   * INTR_STATUS = 0 throughout (no error injected)
+/**
+ * @brief UART Log Engine Single Entry Test
+ *
+ * Verifies the log engine golden path: one 16-byte entry in SPM reaches the
+ * UART, which loops it back internally so every byte is checked in order.
+ * After the transfer the entry's length self-clears and no engine interrupt
+ * is pending.
+ */
 
 #include <stdint.h>
 
@@ -63,34 +63,34 @@
 #define XFER_LEN 16u
 
 static void setup_uart_loopback(void) {
-    // Pad-mux enable so UART CSR access is granted by the wrapper
+    // The wrapper grants UART register access only while the UART is enabled
     write_reg(WRAP0_CTRL_REG, 1u);
 
-    // LCR: set DLAB=1, program divisor=1 (fastest), DLAB=0 with WLS=3 (8 bits)
+    // Fastest baud divisor, then 8-bit characters; the divisor latch shares the
+    // receive and interrupt-enable addresses
     write_reg(WRAP0_UART_BASE + UART_LCR_OFF, 0x80u);
-    write_reg(WRAP0_UART_BASE + UART_RBR_OFF, 0x01u); // DLL
-    write_reg(WRAP0_UART_BASE + UART_IER_OFF, 0x00u); // DLM
-    write_reg(WRAP0_UART_BASE + UART_LCR_OFF, 0x03u); // DLAB=0, WLS=8 bits
+    write_reg(WRAP0_UART_BASE + UART_RBR_OFF, 0x01u);
+    write_reg(WRAP0_UART_BASE + UART_IER_OFF, 0x00u);
+    write_reg(WRAP0_UART_BASE + UART_LCR_OFF, 0x03u);
 
-    // MCR.LOOP = 1 (system loopback: TX → RX inside the core, tx_o = 1)
+    // Internal loopback returns transmitted bytes to the receiver inside the core
     write_reg(WRAP0_UART_BASE + UART_MCR_OFF, 0x10u);
 
-    // FCR: enable FIFOs (write to IIR offset; bit 0 = FIFO enable)
+    // Enable the FIFOs; the FIFO control register shares the interrupt-identification address
     write_reg(WRAP0_UART_BASE + UART_IIR_OFF, 0x01u);
 
-    // IER: enable Received Data Ready interrupt so IIR reports it
+    // Enable the received-data interrupt so the interrupt identification reports it
     write_reg(WRAP0_UART_BASE + UART_IER_OFF, 0x01u);
 }
 
 static int read_byte_with_timeout(uint8_t *out) {
-    // Poll IIR for Received Data Ready (ID = 0x2 → IIR[3:0] = 0x4)
+    // A received byte shows up in either the interrupt identification or the line status
     for (uint32_t t = 0; t < 1000000u; t++) {
         uint32_t iir = read_reg(WRAP0_UART_BASE + UART_IIR_OFF) & 0xFu;
         if (iir == 0x4u) {
             *out = (uint8_t)(read_reg(WRAP0_UART_BASE + UART_RBR_OFF) & 0xFFu);
             return 0;
         }
-        // Or check LSR.DR directly
         if (read_reg(WRAP0_UART_BASE + UART_LSR_OFF) & 0x1u) {
             *out = (uint8_t)(read_reg(WRAP0_UART_BASE + UART_RBR_OFF) & 0xFFu);
             return 0;
@@ -103,7 +103,7 @@ int main(void) {
     info_msg_s(0, "smc_uart_log_engine_single_entry_test start");
 
     //--------------------------------------------------------------------------
-    // Pre-load SRAM at slot 0 (LOG_BUFFER_BASE + 0..15)
+    // Load the entry 0 pattern into SPM
     //--------------------------------------------------------------------------
     volatile uint8_t *buf = (volatile uint8_t *)(uintptr_t)LOG_BUFFER_BASE;
     const uint8_t expected[XFER_LEN] = {0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7,
@@ -120,7 +120,7 @@ int main(void) {
     write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF, LOG_BUFFER_BASE);
     write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF + 4, 0u);
     write_reg(WRAP0_LE_BASE + LE_WRITE_ADDR_OFF, WRAP0_UART_BASE + UART_RBR_OFF);
-    write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, 0x11u); // W1C any stale
+    write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, 0x11u); // Clear stale interrupt status
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);
 
     //--------------------------------------------------------------------------
@@ -129,7 +129,7 @@ int main(void) {
     write_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF, XFER_LEN);
 
     //--------------------------------------------------------------------------
-    // Read XFER_LEN bytes via loopback and verify against expected pattern
+    // Read every looped-back byte and compare it with the pattern
     //--------------------------------------------------------------------------
     for (uint32_t i = 0; i < XFER_LEN; i++) {
         uint8_t b;
@@ -148,7 +148,7 @@ int main(void) {
     }
 
     //--------------------------------------------------------------------------
-    // Verify LOG_CTRL[0] hwclr to 0
+    // The entry's length field self-clears once the transfer completes
     //--------------------------------------------------------------------------
     {
         uint32_t t = 200000u;
@@ -162,7 +162,7 @@ int main(void) {
     }
 
     //--------------------------------------------------------------------------
-    // INTR_STATUS = 0 (no error injected)
+    // An error-free transfer leaves no engine interrupt pending
     //--------------------------------------------------------------------------
     {
         uint32_t s = read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & 0x11u;
@@ -172,14 +172,11 @@ int main(void) {
         }
     }
 
-    // Cleanup
+    // Return the engine, loopback and UART to their disabled state
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
     write_reg(WRAP0_UART_BASE + UART_MCR_OFF, 0u);
     write_reg(WRAP0_CTRL_REG, 0u);
 
     info_msg_s(0, "smc_uart_log_engine_single_entry_test done");
     test_pass(0);
-
-    while (1) __asm__("wfi");
-    return 0;
 }

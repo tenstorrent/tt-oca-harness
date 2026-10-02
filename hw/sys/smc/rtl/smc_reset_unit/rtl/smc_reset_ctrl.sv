@@ -84,7 +84,7 @@ module smc_reset_ctrl (
 );
 
   // Reset de-glitcher parameters
-  localparam int unsigned RESET_DEGLITCH_WIDTH = 32;
+  localparam int unsigned ResetDeglitchWidth = 32;
 
   logic powergood_stable;
   logic cold_rst_pre_extend;
@@ -116,7 +116,7 @@ module smc_reset_ctrl (
   // COLD reset de-glitcher circuit
   // Only assert reset downstream when it has been seen for at least 32 refclk cycles == 320ns
   /////////////////////////////////////////////////////////////////////////////////////////////
-  logic [RESET_DEGLITCH_WIDTH-1:0] cold_rst_deglitch_shift_reg_n0_scan;
+  logic [ResetDeglitchWidth-1:0] cold_rst_deglitch_shift_reg_n0_scan;
 
   always @(posedge clk_ref_i or negedge powergood_stable) begin
     if (~powergood_stable) begin
@@ -124,10 +124,10 @@ module smc_reset_ctrl (
       cold_rst_deglitch_to_rstbypass      <= 1'b0;
     end else begin
       cold_rst_deglitch_shift_reg_n0_scan <= {
-        cold_rst_deglitch_shift_reg_n0_scan[RESET_DEGLITCH_WIDTH-2:0], rst_cold_ni
+        cold_rst_deglitch_shift_reg_n0_scan[ResetDeglitchWidth-2:0], rst_cold_ni
       };
       cold_rst_deglitch_to_rstbypass <= |{
-        cold_rst_deglitch_shift_reg_n0_scan[RESET_DEGLITCH_WIDTH-2:0], rst_cold_ni
+        cold_rst_deglitch_shift_reg_n0_scan[ResetDeglitchWidth-2:0], rst_cold_ni
       };
     end
   end
@@ -141,16 +141,16 @@ module smc_reset_ctrl (
 
   // Cold reset extender circuit
   // When powergood_stable is 1, hold reset_n to 0 for 255 cycles after it is de-asserted
-  localparam int unsigned RESET_EXTEND_DURATION = 255;
-  localparam int unsigned EXTEND_COUNT_WIDTH = $clog2(RESET_EXTEND_DURATION + 1);
-  logic [EXTEND_COUNT_WIDTH-1:0] extend_count_n0_scan;
+  localparam int unsigned ResetExtendDuration = 255;
+  localparam int unsigned ExtendCountWidth = $clog2(ResetExtendDuration + 1);
+  logic [ExtendCountWidth-1:0] extend_count_n0_scan;
 
   always @(posedge clk_ref_i or negedge cold_rst_pre_extend) begin
     if (~cold_rst_pre_extend) begin
-      extend_count_n0_scan <= RESET_EXTEND_DURATION;
+      extend_count_n0_scan <= ResetExtendDuration;
     end else begin
       if (powergood_stable && (|extend_count_n0_scan)) begin
-        extend_count_n0_scan <= extend_count_n0_scan - {{(EXTEND_COUNT_WIDTH - 1) {1'b0}}, 1'b1};
+        extend_count_n0_scan <= extend_count_n0_scan - {{(ExtendCountWidth - 1) {1'b0}}, 1'b1};
       end
     end
   end
@@ -167,7 +167,7 @@ module smc_reset_ctrl (
   /////////////////////////////////////////////////////////////////////////////////////////////
   // COOL reset de-glitcher circuit
   /////////////////////////////////////////////////////////////////////////////////////////////
-  logic [RESET_DEGLITCH_WIDTH-1:0] cool_rst_deglitch_shift_reg_n0_scan;
+  logic [ResetDeglitchWidth-1:0] cool_rst_deglitch_shift_reg_n0_scan;
 
   always @(posedge clk_ref_i or negedge powergood_stable) begin
     if (~powergood_stable) begin
@@ -175,10 +175,10 @@ module smc_reset_ctrl (
       stable_cool_rst_n                   <= 1'b0;
     end else begin
       cool_rst_deglitch_shift_reg_n0_scan <= {
-        cool_rst_deglitch_shift_reg_n0_scan[RESET_DEGLITCH_WIDTH-2:0], rst_cool_from_pin_ni
+        cool_rst_deglitch_shift_reg_n0_scan[ResetDeglitchWidth-2:0], rst_cool_from_pin_ni
       };
       stable_cool_rst_n <= |{
-        cool_rst_deglitch_shift_reg_n0_scan[RESET_DEGLITCH_WIDTH-2:0],
+        cool_rst_deglitch_shift_reg_n0_scan[ResetDeglitchWidth-2:0],
         rst_cool_from_pin_ni
       };
     end

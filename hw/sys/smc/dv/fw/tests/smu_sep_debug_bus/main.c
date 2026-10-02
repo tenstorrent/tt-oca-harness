@@ -9,15 +9,13 @@
 #include "sep_debug_bus_symbols.h"
 
 /*
- * smu_sep_debug_bus -- SMC DFD-arm (CONSUMER) firmware.
+ * SMU-SEP debug bus: SMC debug bus consumer firmware.
  *
- * Card S3: clear scratch2/3, publish PH_CLEARED, then wait for SEP_WAIT.
- * Programs DFX L3/L2 DBM + DFD CDbgMuxSel + CLA mask/match (bogus negative,
- * then exact marker PC), then writes GO.
- * Closure values are read back here; the cocotb checker also observes the
- * CLA CSRs passively. Stackless: no function calls in main().
- *
- * DFX DBM uses generated 0xC000B810 (card text 0xC000F810 is map drift).
+ * Checks that the SEP core trace PC reaches the SMC CLA through the DFX and DFD
+ * debug bus muxes: a wrong match pattern must not trigger the CLA, and the SEP
+ * marker PC must trigger it and appear in the CLA snapshot. The firmware reads
+ * back the mux, mask and match settings it programs; the DV also observes the
+ * CLA passively. Stackless: main() makes no function calls.
  */
 SMC_STACKLESS_ENTRY(smu_sep_debug_bus_entry)
 
@@ -25,7 +23,7 @@ SMC_STACKLESS_ENTRY(smu_sep_debug_bus_entry)
 #define DEBUG_BUS_MATCH_EXACT ((uint64_t)DEBUG_BUS_MARKER_TRACE16 << 48)
 
 #define DFX_DBM SMC_TOP_DFX_CTRL_DEBUG_BUS_MUX_BASE_ADDR
-/* Generated map splits the 64-bit CLA mux/mask/match/snapshot words. */
+/* The CLA mux select, mask, match and snapshot words are split into 32-bit halves. */
 #define DFD_MUX_LO SMC_TOP_SMC_CLA_CLA_CDBGMUXSELLO_BASE_ADDR(0)
 #define DFD_MUX_HI SMC_TOP_SMC_CLA_CLA_CDBGMUXSELHI_BASE_ADDR(0)
 #define CLA_MASK0_LO SMC_TOP_SMC_CLA_CLA_CDBGSIGNALMASK0LO_BASE_ADDR(0)
@@ -45,7 +43,8 @@ SMC_STACKLESS_ENTRY(smu_sep_debug_bus_entry)
     } while (0)
 #define SMC_RD64_LOHI(lo, hi) ((uint64_t)SMC_RD32(lo) | ((uint64_t)SMC_RD32(hi) << 32))
 
-/* W2C is rise-edge only. Drop bit32 first so a later write of bit32 pulses. */
+/* The CLA status clear acts on a rising edge only, so drop the clear request
+ * before it is raised again. */
 #define DEBUG_BUS_W2C_PULSE() \
     do { \
         SMC_WR64(CLA_STATUS, 0ULL); \
@@ -66,8 +65,9 @@ int main(void) {
     uint64_t st = 0;
     uint64_t snap = 0;
 
-    /* CPU_CTRL scratch is 64-bit; 32-bit sw/lw can read X in the unused
-     * half right after the SEP reset pulse. */
+    /* The scratch registers are 64 bits wide. Clear them with full-width
+     * writes: right after the SEP reset pulse, the half that a 32-bit access
+     * does not touch can read X. */
     SMC_DELAY_ITERS(1024);
     SMC_WR64(DEBUG_BUS_SMC_SCRATCH2, 0ULL);
     SMC_WR64(DEBUG_BUS_SMC_SCRATCH3, 0ULL);
@@ -93,7 +93,8 @@ int main(void) {
     SMC_WAIT_EQ(DEBUG_BUS_SMC_SCRATCH3, DEBUG_BUS_SEP_WAIT, DEBUG_BUS_HANDSHAKE_POLL_LIMIT, ok);
     if (!ok) goto fail;
 
-    /* CLA powers up enabled; CDBGCLACTRLSTATUS is the remaining gate. */
+    /* The CLA is enabled out of reset; its control register is the only
+     * remaining gate. */
     SMC_WR64(DFX_DBM, (uint64_t)DEBUG_BUS_DFX_DBM_ID13);
     SMC_FENCE();
     if (SMC_RD64(DFX_DBM) != (uint64_t)DEBUG_BUS_DFX_DBM_ID13) goto fail;
@@ -160,12 +161,10 @@ int main(void) {
 
     SMC_WAIT_EQ(DEBUG_BUS_SMC_SCRATCH3, DEBUG_BUS_GO_SEEN, DEBUG_BUS_HANDSHAKE_POLL_LIMIT, ok);
     if (!ok) goto fail;
-    /* Marker PC crosses a 3FF CDC + DFX/DFD mux before CLA. A 512-poll
-     * loop finishes before the match flop sees the marker; hold, then
-     * sample. */
+    /* The marker PC crosses a clock-domain synchronizer and the debug bus
+     * muxes before it reaches the CLA, so hold before sampling. A short poll
+     * alone ends before the CLA sees the marker. */
     SMC_DELAY_ITERS(DEBUG_BUS_EXACT_HOLD_ITERS);
-    st = 0;
-    snap = 0;
     for (uint32_t i = 0; i < 16; ++i) {
         st = SMC_RD64(CLA_STATUS);
         snap = SMC_RD64_LOHI(CLA_SNAP_LO, CLA_SNAP_HI);
@@ -176,8 +175,8 @@ int main(void) {
         SMC_DELAY_ITERS(256);
     }
     if ((st & 1ULL) == 0ULL || (((snap >> 48) & 0xFFFFULL) != (uint64_t)DEBUG_BUS_MARKER_TRACE16)) {
-        /* Exact match missed after CDC hold. Dump live CLA + MATCH/MASK; do
-         * not re-arm always-on (that is not CHK-BUS-UPDATE). */
+        /* Publish the live CLA state, match and mask for diagnosis. Do not
+         * re-arm an always-on match: that would no longer check the marker PC. */
         uint64_t match_rb = SMC_RD64_LOHI(CLA_MATCH0_LO, CLA_MATCH0_HI);
         uint64_t mask_rb = SMC_RD64_LOHI(CLA_MASK0_LO, CLA_MASK0_HI);
         SMC_WR32(DEBUG_BUS_SMC_SCRATCH9, (uint32_t)((snap >> 48) & 0xFFFFULL));
@@ -190,8 +189,9 @@ int main(void) {
         SMC_FENCE();
         goto fail;
     }
-    /* Publish CLA results on wrap-visible GPI scratch before W2C. After the
-     * marker self-loop, hierarchical CLA/XMR probes stall VCS. */
+    /* Publish the CLA result on scratch before the clear. The DV reads it
+     * there because hierarchical probes into the CLA stall the simulator once
+     * the SEP reaches its marker loop. */
     SMC_WR32(DEBUG_BUS_SMC_SCRATCH9, (uint32_t)((snap >> 48) & 0xFFFFULL));
     SMC_WR32(DEBUG_BUS_SMC_SCRATCH11, (uint32_t)st);
     SMC_WR32(DEBUG_BUS_SMC_SCRATCH12, (uint32_t)snap);
@@ -215,5 +215,4 @@ fail:
     SMC_WR32(DEBUG_BUS_SMC_SCRATCH10, DEBUG_BUS_SMC_FAIL);
     SMC_FENCE();
     __asm__ volatile("j smu_sep_debug_bus_smc_fail_loop");
-    return 0;
 }

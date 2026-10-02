@@ -129,7 +129,7 @@ build tree predating a file's move still lists the old path and make reports a
 missing prerequisite that was never yours:
 
 ```
-No rule to make target 'src/key_digests.c', needed by 'build_ot/key_digests.o'
+No rule to make target 'src/key_digests.c', needed by 'build/key_digests.o'
 ```
 
 `key_digests.c` is generated into the build directory now, not tracked under
@@ -152,7 +152,7 @@ ELF is checked in, so this only helps when one is already present:
 ```bash
 cd virtual_platform
 SEP_VP_BIN=<abs path to sep-vp> python -m sepvp.cli \
-  --bin ../hw/sys/sep/bootrom/prod/build_ot/boot_rom.elf \
+  --bin ../hw/sys/sep/bootrom/prod/build/boot_rom.elf \
   --boot primary --until SEP_MSG_FUSE_SBOOT_DIS
 ```
 

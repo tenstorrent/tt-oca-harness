@@ -19,10 +19,8 @@ limitations under the License.
 Original Author: Shay Gal-on
 */
 
-/* File: core_main.c
-        This file contains the framework to acquire a block of memory, seed
-   initial parameters, tun t he benchmark and report the results.
-*/
+/* Runs the CoreMark list, matrix and state-machine kernels on hart 0 and fails
+ * if any kernel produces no result. */
 #include "coremark.h"
 #include "smc_test.h"
 #include "smc_io.h"
@@ -33,19 +31,12 @@ Original Author: Shay Gal-on
         Run the benchmark for a specified number of iterations.
 
         Operation:
-        For each type of benchmarked algorithm:
-                a - Initialize the data block for the algorithm.
-                b - Execute the algorithm N times.
+        Each iteration runs the list benchmark forward and backward; the list
+        benchmark also drives the matrix and state benchmarks.
 
         Returns:
         NULL.
 */
-static ee_u16 list_known_crc[] = {(ee_u16)0xd4b0, (ee_u16)0x3340, (ee_u16)0x6a79, (ee_u16)0xe714,
-                                  (ee_u16)0xe3c1};
-static ee_u16 matrix_known_crc[] = {(ee_u16)0xbe52, (ee_u16)0x1199, (ee_u16)0x5608, (ee_u16)0x1fd7,
-                                    (ee_u16)0x0747};
-static ee_u16 state_known_crc[] = {(ee_u16)0x5e47, (ee_u16)0x39bf, (ee_u16)0xe5a4, (ee_u16)0x8e3a,
-                                   (ee_u16)0x8d84};
 void *iterate(void *pres) {
     ee_u32 i;
     ee_u16 crc;
@@ -80,24 +71,16 @@ ee_s32 get_seed_32(int i);
 #if (MEM_METHOD == MEM_STATIC)
 ee_u8 static_memblk[TOTAL_DATA_SIZE];
 #endif
-char *mem_name[3] = {"Static", "Heap", "Stack"};
 /* Function: main
         Main entry routine for the benchmark.
         This function is responsible for the following steps:
 
         1 - Initialize input seeds from a source that cannot be determined at
-   compile time. 2 - Initialize memory block for use. 3 - Run and time the
-   benchmark. 4 - Report results, testing the validity of the output if the
-   seeds are known.
-
-        Arguments:
-        1 - first seed  : Any value
-        2 - second seed : Must be identical to first for iterations to be
-   identical 3 - third seed  : Any value, should be at least an order of
-   magnitude less then the input size, but bigger then 32. 4 - Iterations  :
-   Special, if set to 0, iterations will be automatically determined such that
-   the benchmark will run between 10 to 100 secs
-
+            compile time.
+        2 - Initialize the memory block for each algorithm.
+        3 - Run and time the benchmark. An iteration count of 0 is replaced
+            by one that makes the run take about 10 seconds.
+        4 - Fail if any CRC accumulator is zero, then print the CRCs.
 */
 
 void main(void);
@@ -124,9 +107,6 @@ MAIN_RETURN_TYPE
 main(int argc, char *argv[]) {
 #endif
     ee_u16 i, j = 0, num_algorithms = 0;
-    ee_s16 known_id = -1, total_errors = 0;
-    ee_u16 seedcrc = 0;
-    CORE_TICKS total_time;
     core_results results[MULTITHREAD];
 #if (MEM_METHOD == MEM_STACK)
     ee_u8 stack_memblock[TOTAL_DATA_SIZE * MULTITHREAD];
@@ -270,20 +250,9 @@ for (i = 0; i < MULTITHREAD; i++) {
     end_counter();
     stop_time();
 
-    /* Gate the verdict on the CRCs the run just produced.
-     *
-     * core_init_state / core_bench_list / core_bench_state / core_bench_matrix
-     * each fold their return value into one of these accumulators, and the
-     * `if (res->crcX == 0)` guards above mean an accumulator that is still zero
-     * is one whose kernel produced nothing. Requiring all four non-zero is
-     * therefore evidence that each of the three benchmark kernels ran and
-     * returned data.
-     *
-     * What this does NOT do is validate against CoreMark's published golden
-     * CRCs for the seed set: those values are not in this tree, so a wrong
-     * answer that is wrong consistently would still pass. Closing that needs
-     * the reference validation block and its expected values, which is a
-     * separate piece of work. */
+    /* An accumulator that is still zero means its kernel produced no result.
+     * The CRCs are not compared with the CoreMark reference values for the
+     * seed set, so a result that is consistently wrong still passes. */
     if (results[0].crc == 0 || results[0].crclist == 0 || results[0].crcmatrix == 0 ||
         results[0].crcstate == 0) {
         simputs("[ERROR] CoreMark produced a zero CRC accumulator:\n");
@@ -300,10 +269,6 @@ for (i = 0; i < MULTITHREAD; i++) {
     simputshex32("CoreMark crcstate  = ", results[0].crcstate);
 
     test_pass(0);
-
-    while (1) {
-        __asm__ __volatile__("wfi");
-    }
 }
 
 /*
@@ -693,10 +658,9 @@ list_head *core_list_find(list_head *list, list_data *info) {
 
         Parameters:
         list - list head
-        info - idx or data to find
 
         Returns:
-        Found item, or NULL if not found.
+        New head of the reversed list.
 */
 
 list_head *core_list_reverse(list_head *list) {
@@ -856,7 +820,6 @@ void matrix_mul_matrix(ee_u32 N, MATRES *C, MATDAT *A, MATDAT *B);
 void matrix_mul_matrix_bitextract(ee_u32 N, MATRES *C, MATDAT *A, MATDAT *B);
 void matrix_add_const(ee_u32 N, MATDAT *A, MATDAT val);
 
-#define matrix_test_next(x) (x + 1)
 #define matrix_clip(x, y) ((y) ? (x)&0x0ff : (x)&0x0ffff)
 #define matrix_big(x) (0xf000 | (x))
 #define bit_extract(x, from, to) (((x) >> (from)) & (~(0xffffffff << (to))))
@@ -960,7 +923,7 @@ ee_s16 matrix_test(ee_u32 N, MATRES *C, MATDAT *A, MATDAT *B, MATDAT val) {
     return crc;
 }
 
-/* Function : matrix_init
+/* Function: core_init_matrix
         Initialize the memory block for matrix benchmarking.
 
         Parameters:
@@ -1156,7 +1119,6 @@ the switch/if behaviour, we are using a small moore machine.
 
         In particular, this machine tests type of string input,
         trying to determine whether the input is a number or something else.
-        (see core_state.png).
 */
 
 /* Function: core_bench_state
@@ -1207,11 +1169,10 @@ ee_u16 core_bench_state(ee_u32 blksize, ee_u8 *memblock, ee_s16 seed1, ee_s16 se
     }
 #endif
     p = memblock;
-    while (p < (memblock + blksize)) { /* undo corruption is seed1 and seed2 are equal */
+    while (p < (memblock + blksize)) { /* undo corruption if seed1 and seed2 are equal */
         if (*p != ',') *p ^= (ee_u8)seed2;
         p += step;
     }
-    /* end timing */
     for (i = 0; i < NUM_CORE_STATES; i++) {
         crc = crcu32(final_counts[i], crc);
         crc = crcu32(track_counts[i], crc);
@@ -1566,36 +1527,4 @@ ee_u16 crcu32(ee_u32 newval, ee_u16 crc) {
 }
 ee_u16 crc16(ee_s16 newval, ee_u16 crc) {
     return crcu16((ee_u16)newval, crc);
-}
-
-ee_u8 check_data_types() {
-    ee_u8 retval = 0;
-    if (sizeof(ee_u8) != 1) {
-        ee_printf("ERROR: ee_u8 is not an 8b datatype!\n");
-        retval++;
-    }
-    if (sizeof(ee_u16) != 2) {
-        ee_printf("ERROR: ee_u16 is not a 16b datatype!\n");
-        retval++;
-    }
-    if (sizeof(ee_s16) != 2) {
-        ee_printf("ERROR: ee_s16 is not a 16b datatype!\n");
-        retval++;
-    }
-    if (sizeof(ee_s32) != 4) {
-        ee_printf("ERROR: ee_s32 is not a 32b datatype!\n");
-        retval++;
-    }
-    if (sizeof(ee_u32) != 4) {
-        ee_printf("ERROR: ee_u32 is not a 32b datatype!\n");
-        retval++;
-    }
-    if (sizeof(ee_ptr_int) != sizeof(int *)) {
-        ee_printf("ERROR: ee_ptr_int is not a datatype that holds an int pointer!\n");
-        retval++;
-    }
-    if (retval > 0) {
-        ee_printf("ERROR: Please modify the datatypes in core_portme.h!\n");
-    }
-    return retval;
 }

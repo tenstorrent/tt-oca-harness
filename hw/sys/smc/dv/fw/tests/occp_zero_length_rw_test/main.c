@@ -2,12 +2,11 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * OCCP Invalid Message Length (Zero-Length Body) Test
+ * OCCP Zero-Length Request Test
  *
- * Sends READ and WRITE commands while forcing the OCCP header length field to 0
- * using the test context length injection. Expects the target to return an
- * error response with code INVALID_MESSAGE_LENGTH. The command helpers treat
- * that as success under injection, mirroring the unsupported status ID test style.
+ * Verifies that the target answers READ and WRITE requests whose data length
+ * is forced to zero with an invalid-header error response. The command
+ * helpers return success when the expected error response arrives.
  */
 
 #include "occp_test_common.h"
@@ -91,5 +90,4 @@ int main(void) {
     while (true) {
         __asm__("wfi");
     }
-    return 0;
 }

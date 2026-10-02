@@ -13,7 +13,7 @@
 `timescale 1ns / 1ps
 
 module axi_hang_detector_tb_top #(
-  parameter int unsigned OutstandingTx = 6
+  parameter int unsigned OUTSTANDING_TX = 6
 ) (
   input  logic        clk,
   input  logic        rst_n,
@@ -42,7 +42,7 @@ module axi_hang_detector_tb_top #(
 );
 
   axi_hang_detector #(
-    .OutstandingTx(OutstandingTx)
+    .OUTSTANDING_TX(OUTSTANDING_TX)
   ) u_axi_hang_detector (
     .clk_i           (clk),
     .rst_ni          (rst_n),

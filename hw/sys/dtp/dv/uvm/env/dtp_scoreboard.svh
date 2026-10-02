@@ -35,9 +35,8 @@
 //                    field, of the SINGLE_OP or SERIES_CTRL capture.
 //
 // A required feature (dtp_test_cfg.required_features through the env cfg)
-// that ends with zero comparisons fails the run. The cocotb DtpScoreboard
-// checks inline on the driver's completed-item stream (DTP_TB_ARCH,
-// realization table).
+// that ends with zero comparisons fails the run. The cocotb twin is
+// DtpScoreboard, which judges every feature the same way.
 
 `uvm_analysis_imp_decl(_dtp_ir_decode_expected)
 `uvm_analysis_imp_decl(_dtp_idcode_observed)

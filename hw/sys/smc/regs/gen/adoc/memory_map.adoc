@@ -32,7 +32,7 @@
 |BASE + 0x400 – BASE + 0x7FF |1 KiB |36 B |Watchdog Timer Address Map |1 instance |- |Core 1 watchdog timer. |OKAY, 0x0 / OKAY^<<smc-components-note-1,[1]>>^ |DECERR, 0xBADCAB1E^<<smc-components-note-2,[2]>>^ / DECERR
 |BASE + 0x800 – BASE + 0xBFF |1 KiB |36 B |Watchdog Timer Address Map |1 instance |- |Core 2 watchdog timer. |OKAY, 0x0 / OKAY^<<smc-components-note-1,[1]>>^ |DECERR, 0xBADCAB1E^<<smc-components-note-2,[2]>>^ / DECERR
 |BASE + 0xC00 – BASE + 0xFFF |1 KiB |36 B |Watchdog Timer Address Map |1 instance |- |Core 3 watchdog timer. |OKAY, 0x0 / OKAY^<<smc-components-note-1,[1]>>^ |DECERR, 0xBADCAB1E^<<smc-components-note-2,[2]>>^ / DECERR
-|BASE + 0x1000 – BASE + 0x1867 |2152 B |2152 B |Debug Module Hart Interface |1 instance |- |Memory region through which a hart in Debug Mode exchanges state with the Debug Module: handshake mailboxes, generated instructions, program buffer, data registers, per-hart flags and the debug ROM. The debugger-facing Debug Module registers (dmcontrol, dmstatus, abstractcs, sbcs, ...) are reached over the Debug Module Interface and do not appear in this map. |DECERR, 0xBADCAB1E^<<smc-components-note-2,[2]>>^ / DECERR^<<smc-components-note-3,[3]>>^ |-
+|BASE + 0x1000 – BASE + 0x1867 |2152 B |2152 B |Debug Module Hart Interface |1 instance |- |Memory region through which a hart in Debug Mode exchanges state with the Debug Module: handshake mailboxes, generated instructions, program buffer, data registers, per-hart flags and the debug ROM. Only the harts of the CPU cluster reach this region; SMC bus initiators outside the cluster do not. The debugger-facing Debug Module registers (dmcontrol, dmstatus, abstractcs, sbcs, ...) are reached over the Debug Module Interface and do not appear in this map. |DECERR, 0xBADCAB1E^<<smc-components-note-2,[2]>>^ / DECERR^<<smc-components-note-3,[3]>>^ |-
 |BASE + 0x2000 – BASE + 0x27FF |2 KiB |204 B |Reset Unit Address Map |1 instance |- |System reset control. |OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E / SLVERR
 |BASE + 0x2800 – BASE + 0x2FFF |2 KiB |524 B |SMC Miscellaneous Wrapper Address Map |1 instance |- |Aggregates the SMC scratch, chip-configuration, and NDM-reset register blocks. |DECERR, 0xBADCAB1E / SLVERR |DECERR, 0xBADCAB1E / SLVERR
 |BASE + 0x3000 – BASE + 0x3FFF |4 KiB |1040 B |GPIO Interface Address Map |65 instances |16 B |GPIO interface configuration: pad/core routing, receive and transmit enables, and interrupt control. |OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E / SLVERR
@@ -75,7 +75,7 @@
 .Notes
 [[smc-components-note-1]]^[1]^ Offset 0xC holds the watchdog's countHi register, which this map does not list; a 32-bit write there locks the watchdog key again. +
 [[smc-components-note-2]]^[2]^ A 32-bit read with address bit 2 set returns 0xCA11AB1E. +
-[[smc-components-note-3]]^[3]^ The inbound port does not reach this unit, so every address in its aperture answers the same. +
+[[smc-components-note-3]]^[3]^ Only the harts of the CPU cluster reach this unit. An access from outside the cluster answers the same at every address in its aperture. +
 [[smc-components-note-4]]^[4]^ A read fetches the whole 8-byte word, so a read of 0x4C also reads NEXT_ID_0 at 0x48 and launches a transfer. +
 [[smc-components-note-5]]^[5]^ Each instance implements 16 DAT and 16 DCT entries: the DAT at 0x400-0x7FF repeats every 0x80 bytes, the DCT at 0x800-0xFFF repeats every 0x100 bytes, and DCT writes are dropped. +
 [[smc-components-note-6]]^[6]^ A write answers SLVERR and leaves the ROM unchanged. +

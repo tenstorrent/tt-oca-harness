@@ -36,11 +36,11 @@ module dtp
   parameter int unsigned JTAG_IC_RESET_SEP_ENABLE = 1,  // Bit 0 enables the SEP slice of the
                                                         // IC_RESET TDR. int unsigned so SpyGlass
                                                         // elaborate -param can override it; in smu
-                                                        // it follows SEP.
+                                                        // it follows CFG.SEP.
   parameter int unsigned JTAG_SEP_DBG_ENABLE      = 1,  // Bit 0 enables the SEP debug STAP and the
                                                         // JTAG2AXI bridge to the SEP OTP. int
                                                         // unsigned so SpyGlass elaborate -param can
-                                                        // override it; in smu it follows SEP.
+                                                        // override it; in smu it follows CFG.SEP.
 
   parameter int unsigned  JTAG_NUM_EXTRA_STAPS = 1,  // Number of additional STAPs for local
                                                      // connectivity.
@@ -51,11 +51,11 @@ module dtp
   parameter logic [7:0]   JTAG_OCH_VER         = 8'h00,  // DTP IP major version number reported in
                                                          // JTAG_CAPS.
 
-  localparam int unsigned  JTAG_NUM_EXTRA_STAP_PORTS = (JTAG_NUM_EXTRA_STAPS > 0) ? JTAG_NUM_EXTRA_STAPS : 1,  // Extra STAP port count; at least one for tie-off.
+  localparam int unsigned  JtagNumExtraStapPorts = (JTAG_NUM_EXTRA_STAPS > 0) ? JTAG_NUM_EXTRA_STAPS : 1,  // Extra STAP port count; at least one for tie-off.
 
-  parameter int unsigned  XTRIG_NUM_CTP          = dtp_pkg::DEFAULT_NUM_CTP,  // Number of external cross-trigger ports.
-  parameter int unsigned  XTRIG_NUM_INT_CT       = dtp_pkg::DEFAULT_NUM_INT_CT,  // Number of internal cross-trigger interfaces.
-  parameter int unsigned  XTRIG_NUM_CLK_STOP_REQ = dtp_pkg::DEFAULT_NUM_CLK_STOP_REQ,  // Number of clock-stop request inputs.
+  parameter int unsigned  XTRIG_NUM_CTP          = dtp_pkg::DefaultNumCtp,  // Number of external cross-trigger ports.
+  parameter int unsigned  XTRIG_NUM_INT_CT       = dtp_pkg::DefaultNumIntCt,  // Number of internal cross-trigger interfaces.
+  parameter int unsigned  XTRIG_NUM_CLK_STOP_REQ = dtp_pkg::DefaultNumClkStopReq,  // Number of clock-stop request inputs.
 
   parameter logic [XTRIG_NUM_INT_CT-1:0]  XTRIG_INT_CT_MODE = '0,  // Per-lane CTM protocol: 0 =
                                                                    // pulse sync (ack unused), 1 =
@@ -141,11 +141,11 @@ module dtp
   output logic            jtag_stap_sep_host_tdo_o,  // SEP debug STAP TDO.
   output logic            jtag_stap_sep_host_tdo_oen_o,  // SEP debug STAP TDO output enable.
 
-  output jtag_tap_ctrl_t  jtag_stap_extra_host_tap_ctrl_o [JTAG_NUM_EXTRA_STAP_PORTS-1:0],  // Extra STAP host TAP controls
+  output jtag_tap_ctrl_t  jtag_stap_extra_host_tap_ctrl_o [JtagNumExtraStapPorts-1:0],      // Extra STAP host TAP controls
                                                                                             // Tie off with 0 if JTAG_NUM_EXTRA_STAPS == 0.
-  input  logic            jtag_stap_extra_host_tdi_i      [JTAG_NUM_EXTRA_STAP_PORTS-1:0],  // Extra STAP TDI bits.
-  output logic            jtag_stap_extra_host_tdo_o      [JTAG_NUM_EXTRA_STAP_PORTS-1:0],  // Extra STAP TDO bits.
-  output logic            jtag_stap_extra_host_tdo_oen_o  [JTAG_NUM_EXTRA_STAP_PORTS-1:0],  // Extra STAP TDO output enables.
+  input  logic            jtag_stap_extra_host_tdi_i      [JtagNumExtraStapPorts-1:0],      // Extra STAP TDI bits.
+  output logic            jtag_stap_extra_host_tdo_o      [JtagNumExtraStapPorts-1:0],      // Extra STAP TDO bits.
+  output logic            jtag_stap_extra_host_tdo_oen_o  [JtagNumExtraStapPorts-1:0],      // Extra STAP TDO output enables.
 
   output jtag_scan_ctrl_t  jtag_stap_host_scan_ctrl_o,  // Extended STAP scan control
                                                         // Tie scan in to scan out if unused.

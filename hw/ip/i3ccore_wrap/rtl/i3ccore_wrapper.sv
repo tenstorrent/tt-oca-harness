@@ -15,15 +15,15 @@ module i3ccore_wrapper
   import i3c_pkg::*;
 #(
   parameter int unsigned NUM_I3C = 2,                       // Number of I3C instances.
-  parameter int unsigned I3C_REG_ADDR_WIDTH = i3ccore_wrap_pkg::I3C_REG_ADDR_WIDTH, // Width of the instance-relative address given to each i3c_wrapper.
+  parameter int unsigned I3C_REG_ADDR_WIDTH = i3ccore_wrap_pkg::I3cRegAddrWidth, // Width of the instance-relative address given to each i3c_wrapper.
   parameter int unsigned BASE_ADDR = 0,                     // Wrapper decode base address.
-  parameter int unsigned INSTANCE_SPACING = i3ccore_wrap_pkg::I3C_INSTANCE_SPACING, // Byte size of each instance's address window.
+  parameter int unsigned INSTANCE_SPACING = i3ccore_wrap_pkg::I3cInstanceSpacing, // Byte size of each instance's address window.
 
-  parameter int unsigned DatAw = i3c_pkg::DatAw,            // DAT memory address width.
-  parameter int unsigned DctAw = i3c_pkg::DctAw,            // DCT memory address width.
+  parameter int unsigned DAT_AW = i3c_pkg::DatAw,           // DAT memory address width.
+  parameter int unsigned DCT_AW = i3c_pkg::DctAw,           // DCT memory address width.
 
-  parameter int unsigned CsrAddrWidth = I3CCSR_pkg::I3CCSR_MIN_ADDR_WIDTH, // CSR address width.
-  parameter int unsigned CsrDataWidth = I3CCSR_pkg::I3CCSR_DATA_WIDTH, // Data width of each I3C core's internal CSR interface.
+  parameter int unsigned CSR_ADDR_WIDTH = I3CCSR_pkg::I3CCSR_MIN_ADDR_WIDTH, // CSR address width.
+  parameter int unsigned CSR_DATA_WIDTH = I3CCSR_pkg::I3CCSR_DATA_WIDTH, // Data width of each I3C core's internal CSR interface.
 
   localparam int unsigned SelectWidth = (NUM_I3C > 32'd1) ? $clog2(NUM_I3C) : 32'd1, // Instance-select width.
   localparam type select_t = logic [SelectWidth-1:0]        // Instance-select type.
@@ -206,11 +206,11 @@ module i3ccore_wrapper
     assign araddr_offset = axil_req_demuxed[idx].ar.addr - idx * INSTANCE_SPACING;
 
     i3c_wrapper #(
-      .AxiLiteAddrWidth(I3C_REG_ADDR_WIDTH),
-      .DatAw(DatAw),
-      .DctAw(DctAw),
-      .CsrAddrWidth(CsrAddrWidth),
-      .CsrDataWidth(CsrDataWidth)
+      .AXI_LITE_ADDR_WIDTH(I3C_REG_ADDR_WIDTH),
+      .DAT_AW(DAT_AW),
+      .DCT_AW(DCT_AW),
+      .CSR_ADDR_WIDTH(CSR_ADDR_WIDTH),
+      .CSR_DATA_WIDTH(CSR_DATA_WIDTH)
     ) u_i3c_wrapper (
       .clk_i(clk_i),
       .rst_ni(rst_ni),

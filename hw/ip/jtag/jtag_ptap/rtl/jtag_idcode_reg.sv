@@ -24,7 +24,7 @@ module jtag_idcode_reg
   //--------------------------------------------------------------------------
   // Local Parameters
   //--------------------------------------------------------------------------
-  localparam int unsigned REG_WIDTH = 32;  // IDCODE register is always 32 bits per IEEE 1149.1 Section 12
+  localparam int unsigned RegWidth = 32;  // IDCODE register is always 32 bits per IEEE 1149.1 Section 12
 
   //--------------------------------------------------------------------------
   // IDCODE Value Construction (IEEE 1149.1 Section 12)
@@ -33,7 +33,7 @@ module jtag_idcode_reg
   //         [27:12] = Part Number (16 bits)
   //         [11:1]  = Manufacturer ID (11 bits)
   //         [0]     = Always 1
-  localparam logic [REG_WIDTH-1:0] IDCODE_VALUE = {
+  localparam logic [RegWidth-1:0] IdcodeValue = {
     IDCODE_SI_REV,  // Bits [31:28] - Silicon revision/version
     IDCODE_PART_NUM,  // Bits [27:12] - Part number
     IDCODE_MFR_ID,  // Bits [11:1]  - Manufacturer ID
@@ -47,14 +47,14 @@ module jtag_idcode_reg
   // 32-bit read-only IDCODE register
   // Per IEEE 1149.1 Section 12: captures IDCODE value on capture, shifts on shift
   prim_jtag_scan_reg #(
-    .WIDTH(REG_WIDTH),
-    .RESET_VAL(IDCODE_VALUE),
+    .WIDTH(RegWidth),
+    .RESET_VAL(IdcodeValue),
     .jtag_scan_ctrl_t(jtag_scan_ctrl_t)
   ) u_idcode_scan_reg (
     .scan_ctrl_i   (scan_ctrl_i),
     .scan_in_i     (scan_in_i),
     .scan_out_o    (scan_out_o),
-    .data_in_i     (IDCODE_VALUE),  // Always capture the IDCODE value (read-only)
+    .data_in_i     (IdcodeValue),  // Always capture the IDCODE value (read-only)
     /* verilator lint_off PINCONNECTEMPTY */
     .data_out_o    (/* UNUSED */)   // No update register needed for read-only IDCODE
     /* verilator lint_on PINCONNECTEMPTY */

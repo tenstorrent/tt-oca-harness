@@ -90,7 +90,13 @@ from .coverage_policy import (
     native_policy_manifest,
 )
 from .formal import grade_formal_stage
-from .junit import discard_generated_junit, ensure_leaf_junit, results_xml_path
+from .junit import (
+    discard_generated_junit,
+    ensure_graded_junit,
+    ensure_leaf_junit,
+    graded_xml_path,
+    results_xml_path,
+)
 from .logparse import observed_failure_messages, parse_stage_result
 from .models import ConfigError, Flow, StageResult, StageTimeoutError, TestCatalog, TestEntry
 from .paths import repo_path, repo_rel
@@ -826,6 +832,15 @@ def artifact_root(
     if item is None:
         return run_dir / "stages" / stage
     return item_artifact_dir(run_dir, item, seed=seed, attempt=attempt, nest=nest)
+
+
+def framework_results_dir(leaf_dir: Path, args: argparse.Namespace) -> Path:
+    """Where a leaf's framework writes its structured results and its parser reads them.
+
+    A wave-debug rerun uses ``debug/``, so nothing it writes sits under the ``results/`` a
+    JUnit consumer reads.
+    """
+    return leaf_dir / ("debug" if getattr(args, "_wave_debug_rerun", False) else "results")
 
 
 def seed_for_item(
@@ -2264,7 +2279,7 @@ def cocotb_sim(
     test = catalog.tests[item]
     run_mode = selected_run_mode(sim_cfg, test, args)
 
-    results_dir = item_dir / "results"
+    results_dir = framework_results_dir(item_dir, args)
     waves_dir = item_dir / "waves"
     cov_dir = item_dir / "coverage"
     results_xml = results_dir / "results.xml"
@@ -2992,7 +3007,7 @@ def vcs_sim(
     vcs_cfg = info["vcs_cfg"]
     test = catalog.tests[item]
     run_mode = selected_run_mode(sim_cfg, test, args)
-    results_dir = item_dir / "results"
+    results_dir = framework_results_dir(item_dir, args)
     waves_dir = item_dir / "waves"
     uvm_test = test.module or test.name
 
@@ -3266,7 +3281,7 @@ def xcelium_sim(
     xcelium_cfg = info["xcelium_cfg"]
     test = catalog.tests[item]
     run_mode = selected_run_mode(sim_cfg, test, args)
-    results_dir = item_dir / "results"
+    results_dir = framework_results_dir(item_dir, args)
     waves_dir = item_dir / "waves"
     uvm_test = test.module or test.name
 
@@ -4010,6 +4025,7 @@ def run_stage(
     try:
         if stage_name in {"sim", "regress"} and item is not None and not args.dry_run:
             discard_generated_junit(results_xml_path(stage_dir))
+            discard_generated_junit(graded_xml_path(stage_dir))
         if kind == "noop":
             note = str(stage.get("note", "no operation"))
             console.event("note", note)
@@ -4447,7 +4463,7 @@ def run_stage(
                 simulators=simulators,
                 root=root,
                 log_path=log_path,
-                results_dir=stage_dir / "results",
+                results_dir=framework_results_dir(stage_dir, args),
                 return_code=rc,
             )
             status = decision.status
@@ -4468,7 +4484,7 @@ def run_stage(
                     policies=policies,
                     simulators=simulators,
                     log_path=log_path,
-                    results_dir=stage_dir / "results",
+                    results_dir=framework_results_dir(stage_dir, args),
                 )
     except StageTimeoutError as exc:
         rc = 124
@@ -4673,12 +4689,19 @@ def run_stage(
         else None,
         formal=formal_report,
     )
-    # Structured-result guarantee: every executed leaf ends with results/results.xml —
-    # the framework's own file when it wrote one, a synthesized single-testcase file
-    # otherwise. Runs after classification and must never affect status or exit.
-    if stage_name in {"sim", "regress"} and item is not None and not args.dry_run:
+    # Structured-result guarantee: every executed leaf ends with results/results.xml, the
+    # framework's own file when it wrote one and a synthesized single-testcase file
+    # otherwise, plus results/graded.xml when the framework's file reads as a pass for a
+    # leaf that did not pass. A wave-debug rerun never grades the leaf and gets neither. Runs
+    # after classification and must never affect status or exit.
+    if (
+        stage_name in {"sim", "regress"}
+        and item is not None
+        and not args.dry_run
+        and not getattr(args, "_wave_debug_rerun", False)
+    ):
         try:
-            native_xml = stage_dir / "results" / "results.xml"
+            native_xml = results_xml_path(stage_dir)
             if native_xml.is_file():
                 artifacts["results_xml"] = repo_rel(root, native_xml)
             else:
@@ -4692,6 +4715,14 @@ def run_stage(
                 )
                 if generated is not None:
                     artifacts["results_xml"] = repo_rel(root, generated)
+            ensure_graded_junit(
+                flow=flow,
+                root=root,
+                run_dir=run_dir,
+                tool=tool,
+                result=result,
+                leaf_dir=stage_dir,
+            )
         except Exception as exc:  # noqa: BLE001
             console.event("warning", f"junit synthesis failed for {item}: {exc}", force=True)
     return result

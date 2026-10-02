@@ -77,7 +77,7 @@ passthrough; these generic arbitration features add no extra SMC streams.
 |Parameter |SMC value |Meaning
 |`NUM_CTRL_INTERFACES`, `NUM_CTRL_STREAMS`, `NUM_MST_INTERFACES` |1 each
 |One shared configuration, one functional stream and one DMA master.
-|`DMA_MST_MAX_TXNS` |32 |Backend in-flight AXI limit, from `FABRIC_MAX_TRANS`.
+|`DMA_MST_MAX_TXNS` |32 |Backend in-flight AXI limit, from `FabricMaxTrans`.
 The generic DMA wrapper default is 16.
 |`F2M_FIFO_DEPTH` |4 |Request FIFO between frontend and 2D midend.
 |`M2B_FIFO_DEPTH` |0 |Midend-to-backend FIFO bypassed.

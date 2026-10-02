@@ -262,6 +262,64 @@ module dtp_uvm_top
   logic [31:0] xtrig_axil_aw_open_accept_count;
   logic [31:0] xtrig_axil_ar_open_stall_count;
   logic [31:0] xtrig_axil_ar_open_accept_count;
+  // Handshakes of the crossbar demux behind the XTRIG CSR port's spill
+  // registers: AW, W and AR leave their spill registers there, and B and R
+  // enter theirs.
+  wire xtrig_dmx_aw_valid = u_dut.u_cross_trigger_network.u_axil_xbar.gen_slv_port_demux[0].i_axi_lite_demux.gen_demux.slv_aw_valid;
+  wire xtrig_dmx_aw_ready = u_dut.u_cross_trigger_network.u_axil_xbar.gen_slv_port_demux[0].i_axi_lite_demux.gen_demux.slv_aw_ready;
+  wire xtrig_dmx_w_valid  = u_dut.u_cross_trigger_network.u_axil_xbar.gen_slv_port_demux[0].i_axi_lite_demux.gen_demux.slv_w_valid;
+  wire xtrig_dmx_w_ready  = u_dut.u_cross_trigger_network.u_axil_xbar.gen_slv_port_demux[0].i_axi_lite_demux.gen_demux.slv_w_ready;
+  wire xtrig_dmx_b_valid  = u_dut.u_cross_trigger_network.u_axil_xbar.gen_slv_port_demux[0].i_axi_lite_demux.gen_demux.slv_b_valid;
+  wire xtrig_dmx_b_ready  = u_dut.u_cross_trigger_network.u_axil_xbar.gen_slv_port_demux[0].i_axi_lite_demux.gen_demux.slv_b_ready;
+  wire xtrig_dmx_ar_valid = u_dut.u_cross_trigger_network.u_axil_xbar.gen_slv_port_demux[0].i_axi_lite_demux.gen_demux.slv_ar_valid;
+  wire xtrig_dmx_ar_ready = u_dut.u_cross_trigger_network.u_axil_xbar.gen_slv_port_demux[0].i_axi_lite_demux.gen_demux.slv_ar_ready;
+  wire xtrig_dmx_r_valid  = u_dut.u_cross_trigger_network.u_axil_xbar.gen_slv_port_demux[0].i_axi_lite_demux.gen_demux.slv_r_valid;
+  wire xtrig_dmx_r_ready  = u_dut.u_cross_trigger_network.u_axil_xbar.gen_slv_port_demux[0].i_axi_lite_demux.gen_demux.slv_r_ready;
+  wire xtrig_dmx_aw_hs = xtrig_dmx_aw_valid & xtrig_dmx_aw_ready;
+  wire xtrig_dmx_w_hs  = xtrig_dmx_w_valid & xtrig_dmx_w_ready;
+  wire xtrig_dmx_b_hs  = xtrig_dmx_b_valid & xtrig_dmx_b_ready;
+  wire xtrig_dmx_ar_hs = xtrig_dmx_ar_valid & xtrig_dmx_ar_ready;
+  wire xtrig_dmx_r_hs  = xtrig_dmx_r_valid & xtrig_dmx_r_ready;
+  wire xtrig_port_aw_hs = xtrig_axil_awvalid & xtrig_axil_awready;
+  wire xtrig_port_w_hs  = xtrig_axil_wvalid & xtrig_axil_wready;
+  wire xtrig_port_b_hs  = xtrig_axil_bvalid & xtrig_axil_bready;
+  wire xtrig_port_ar_hs = xtrig_axil_arvalid & xtrig_axil_arready;
+  wire xtrig_port_r_hs  = xtrig_axil_rvalid & xtrig_axil_rready;
+  // Beats each CSR port spill register holds: those that entered it minus
+  // those that left it.
+  int xtrig_spill_aw_occ;
+  int xtrig_spill_w_occ;
+  int xtrig_spill_b_occ;
+  int xtrig_spill_ar_occ;
+  int xtrig_spill_r_occ;
+  // A spill register whose input READY differs from holding fewer than two
+  // beats, or whose output VALID differs from holding a beat.
+  wire xtrig_spill_err =
+      (xtrig_axil_awready != (xtrig_spill_aw_occ < 2))
+      || (xtrig_dmx_aw_valid != (xtrig_spill_aw_occ > 0))
+      || (xtrig_axil_wready != (xtrig_spill_w_occ < 2))
+      || (xtrig_dmx_w_valid != (xtrig_spill_w_occ > 0))
+      || (xtrig_dmx_b_ready != (xtrig_spill_b_occ < 2))
+      || (xtrig_axil_bvalid != (xtrig_spill_b_occ > 0))
+      || (xtrig_axil_arready != (xtrig_spill_ar_occ < 2))
+      || (xtrig_dmx_ar_valid != (xtrig_spill_ar_occ > 0))
+      || (xtrig_dmx_r_ready != (xtrig_spill_r_occ < 2))
+      || (xtrig_axil_rvalid != (xtrig_spill_r_occ > 0));
+  // Accepted AWs awaiting their W beat and accepted ARs awaiting their R beat
+  // at the demux handshake. The demux queues a locked AW's port selection
+  // before its handshake, so a W that passes ahead of its AW counts negative.
+  int xtrig_demux_aw_open;
+  int xtrig_demux_ar_open;
+  logic [31:0] xtrig_axil_spill_err_count;
+  logic [31:0] xtrig_axil_w_spill_full_count;
+  logic [31:0] xtrig_axil_r_spill_full_count;
+  logic [31:0] xtrig_demux_aw_stall_count;
+  logic [31:0] xtrig_demux_w_stall_count;
+  logic [31:0] xtrig_demux_ar_stall_count;
+  logic [31:0] xtrig_demux_aw_open_stall_count;
+  logic [31:0] xtrig_demux_aw_open_accept_count;
+  logic [31:0] xtrig_demux_ar_open_stall_count;
+  logic [31:0] xtrig_demux_ar_open_accept_count;
 
   // XTRIG CTM and CTP GPIO stimulus and observables, from dtp_xtrig_if.
   logic [dtp_dv_cfg_pkg::NumIntCt-1:0] xtrig_ctm_src_req;
@@ -796,6 +854,23 @@ module dtp_uvm_top
       xtrig_axil_aw_open_accept_count <= '0;
       xtrig_axil_ar_open_stall_count  <= '0;
       xtrig_axil_ar_open_accept_count <= '0;
+      xtrig_spill_aw_occ <= 0;
+      xtrig_spill_w_occ  <= 0;
+      xtrig_spill_b_occ  <= 0;
+      xtrig_spill_ar_occ <= 0;
+      xtrig_spill_r_occ  <= 0;
+      xtrig_demux_aw_open <= 0;
+      xtrig_demux_ar_open <= 0;
+      xtrig_axil_spill_err_count <= '0;
+      xtrig_axil_w_spill_full_count <= '0;
+      xtrig_axil_r_spill_full_count <= '0;
+      xtrig_demux_aw_stall_count <= '0;
+      xtrig_demux_w_stall_count  <= '0;
+      xtrig_demux_ar_stall_count <= '0;
+      xtrig_demux_aw_open_stall_count  <= '0;
+      xtrig_demux_aw_open_accept_count <= '0;
+      xtrig_demux_ar_open_stall_count  <= '0;
+      xtrig_demux_ar_open_accept_count <= '0;
     end else begin
       smc_otp_axil_awvalid_count <=
                 smc_otp_axil_awvalid_count + {31'b0, smc_otp_axil_awvalid};
@@ -847,6 +922,32 @@ module dtp_uvm_top
       xtrig_axil_ar_open_accept_count <= xtrig_axil_ar_open_accept_count
                 + {31'b0, xtrig_axil_arvalid & xtrig_axil_arready
                    & (xtrig_axil_ar_open - int'(xtrig_axil_rvalid & xtrig_axil_rready) > 0)};
+      xtrig_spill_aw_occ <= xtrig_spill_aw_occ + int'(xtrig_port_aw_hs) - int'(xtrig_dmx_aw_hs);
+      xtrig_spill_w_occ  <= xtrig_spill_w_occ + int'(xtrig_port_w_hs) - int'(xtrig_dmx_w_hs);
+      xtrig_spill_b_occ  <= xtrig_spill_b_occ + int'(xtrig_dmx_b_hs) - int'(xtrig_port_b_hs);
+      xtrig_spill_ar_occ <= xtrig_spill_ar_occ + int'(xtrig_port_ar_hs) - int'(xtrig_dmx_ar_hs);
+      xtrig_spill_r_occ  <= xtrig_spill_r_occ + int'(xtrig_dmx_r_hs) - int'(xtrig_port_r_hs);
+      xtrig_axil_spill_err_count <= xtrig_axil_spill_err_count + {31'b0, xtrig_spill_err};
+      xtrig_axil_w_spill_full_count <=
+                xtrig_axil_w_spill_full_count + {31'b0, xtrig_spill_w_occ == 2};
+      xtrig_axil_r_spill_full_count <=
+                xtrig_axil_r_spill_full_count + {31'b0, xtrig_spill_r_occ == 2};
+      xtrig_demux_aw_stall_count <=
+                xtrig_demux_aw_stall_count + {31'b0, xtrig_dmx_aw_valid & ~xtrig_dmx_aw_ready};
+      xtrig_demux_w_stall_count <=
+                xtrig_demux_w_stall_count + {31'b0, xtrig_dmx_w_valid & ~xtrig_dmx_w_ready};
+      xtrig_demux_ar_stall_count <=
+                xtrig_demux_ar_stall_count + {31'b0, xtrig_dmx_ar_valid & ~xtrig_dmx_ar_ready};
+      xtrig_demux_aw_open <= xtrig_demux_aw_open + int'(xtrig_dmx_aw_hs) - int'(xtrig_dmx_w_hs);
+      xtrig_demux_ar_open <= xtrig_demux_ar_open + int'(xtrig_dmx_ar_hs) - int'(xtrig_dmx_r_hs);
+      xtrig_demux_aw_open_stall_count <= xtrig_demux_aw_open_stall_count
+                + {31'b0, xtrig_dmx_aw_valid & ~xtrig_dmx_aw_ready & (xtrig_demux_aw_open > 0)};
+      xtrig_demux_aw_open_accept_count <= xtrig_demux_aw_open_accept_count
+                + {31'b0, xtrig_dmx_aw_hs & (xtrig_demux_aw_open - int'(xtrig_dmx_w_hs) > 0)};
+      xtrig_demux_ar_open_stall_count <= xtrig_demux_ar_open_stall_count
+                + {31'b0, xtrig_dmx_ar_valid & ~xtrig_dmx_ar_ready & (xtrig_demux_ar_open > 0)};
+      xtrig_demux_ar_open_accept_count <= xtrig_demux_ar_open_accept_count
+                + {31'b0, xtrig_dmx_ar_hs & (xtrig_demux_ar_open - int'(xtrig_dmx_r_hs) > 0)};
     end
   end
 
@@ -1816,6 +1917,16 @@ module dtp_uvm_top
   assign u_tb_if.xtrig_axil_aw_open_accept_count = xtrig_axil_aw_open_accept_count;
   assign u_tb_if.xtrig_axil_ar_open_stall_count  = xtrig_axil_ar_open_stall_count;
   assign u_tb_if.xtrig_axil_ar_open_accept_count = xtrig_axil_ar_open_accept_count;
+  assign u_tb_if.xtrig_axil_spill_err_count = xtrig_axil_spill_err_count;
+  assign u_tb_if.xtrig_axil_w_spill_full_count = xtrig_axil_w_spill_full_count;
+  assign u_tb_if.xtrig_axil_r_spill_full_count = xtrig_axil_r_spill_full_count;
+  assign u_tb_if.xtrig_demux_aw_stall_count = xtrig_demux_aw_stall_count;
+  assign u_tb_if.xtrig_demux_w_stall_count  = xtrig_demux_w_stall_count;
+  assign u_tb_if.xtrig_demux_ar_stall_count = xtrig_demux_ar_stall_count;
+  assign u_tb_if.xtrig_demux_aw_open_stall_count  = xtrig_demux_aw_open_stall_count;
+  assign u_tb_if.xtrig_demux_aw_open_accept_count = xtrig_demux_aw_open_accept_count;
+  assign u_tb_if.xtrig_demux_ar_open_stall_count  = xtrig_demux_ar_open_stall_count;
+  assign u_tb_if.xtrig_demux_ar_open_accept_count = xtrig_demux_ar_open_accept_count;
 
   // XTRIG crossbar demux state (the single subordinate port's AXI-Lite
   // demux) and the external CTP busy flops, sampled from the DUT.
@@ -1838,7 +1949,7 @@ module dtp_uvm_top
   // opposite its wire's pull; a pad in the group leaves its private wire.
   for (genvar ctp = 0; ctp < dtp_dv_cfg_pkg::NumCtp; ctp++) begin : gen_xtrig_ctp_wire
     ocah_open_drain_bus #(
-      .NumDrivers (2)
+      .NUM_DRIVERS (2)
     ) u_wire (
       .pull_i     (u_xtrig_if.xtrig_ctp_wire_pull[ctp]),
       .dout_i     ({~u_xtrig_if.xtrig_ctp_wire_pull[ctp], xtrig_ctp_req_out_dout[ctp]}),
@@ -1856,7 +1967,7 @@ module dtp_uvm_top
   end
 
   ocah_open_drain_bus #(
-    .NumDrivers (2 * dtp_dv_cfg_pkg::NumCtp)
+    .NUM_DRIVERS (2 * dtp_dv_cfg_pkg::NumCtp)
   ) u_xtrig_ctp_group_wire (
     .pull_i     (u_xtrig_if.xtrig_ctp_wire_group_pull),
     .dout_i     ({{dtp_dv_cfg_pkg::NumCtp{~u_xtrig_if.xtrig_ctp_wire_group_pull}},

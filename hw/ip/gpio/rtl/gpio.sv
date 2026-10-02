@@ -25,7 +25,7 @@ module gpio
                                                             // and when no source owns the input
                                                             // enable.
 
-  parameter bit [ADDR_WIDTH-1:0] GPIO_INTF_REG_MAP_SIZE      = 0  // Interface register-map size in
+  parameter bit [AddrWidth-1:0] GPIO_INTF_REG_MAP_SIZE      = 0   // Interface register-map size in
                                                                   // bytes; its clog2 is the address
                                                                   // width passed to the register
                                                                   // block.
@@ -71,7 +71,7 @@ module gpio
                                                             // active-high.
 );
 
-  localparam int unsigned GPIO_INTF_ADDR_WIDTH = $clog2(GPIO_INTF_REG_MAP_SIZE);
+  localparam int unsigned GpioIntfAddrWidth = $clog2(GPIO_INTF_REG_MAP_SIZE);
 
   /////////////////////////
   // Signal Declarations //
@@ -156,7 +156,7 @@ module gpio
 
     .s_axil_awready(gpio_intf_axil_resp.aw_ready),
     .s_axil_awvalid(gpio_intf_axil_req.aw_valid),
-    .s_axil_awaddr (gpio_intf_axil_req.aw.addr[GPIO_INTF_ADDR_WIDTH-1:0]),
+    .s_axil_awaddr (gpio_intf_axil_req.aw.addr[GpioIntfAddrWidth-1:0]),
     .s_axil_awprot (gpio_intf_axil_req.aw.prot),
     .s_axil_wready (gpio_intf_axil_resp.w_ready),
     .s_axil_wvalid (gpio_intf_axil_req.w_valid),
@@ -167,7 +167,7 @@ module gpio
     .s_axil_bresp  (gpio_intf_axil_resp.b.resp),
     .s_axil_arready(gpio_intf_axil_resp.ar_ready),
     .s_axil_arvalid(gpio_intf_axil_req.ar_valid),
-    .s_axil_araddr (gpio_intf_axil_req.ar.addr[GPIO_INTF_ADDR_WIDTH-1:0]),
+    .s_axil_araddr (gpio_intf_axil_req.ar.addr[GpioIntfAddrWidth-1:0]),
     .s_axil_arprot (gpio_intf_axil_req.ar.prot),
     .s_axil_rready (gpio_intf_axil_req.r_ready),
     .s_axil_rvalid (gpio_intf_axil_resp.r_valid),
@@ -289,7 +289,7 @@ module gpio
     ACTIVE_LOW   = 2'b01,
     RISING_EDGE  = 2'b10,
     FALLING_EDGE = 2'b11
-  } interrupt_type_t;
+  } interrupt_type_e;
 
   always_comb begin
     unique case (reg__interrupt_type)

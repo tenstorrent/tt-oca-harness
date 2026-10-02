@@ -18,8 +18,8 @@
   var TEST_HISTORY_URL = './data/test-history.json';
 
   // Bands shared by pass rate and every coverage column.
-  var PASS_AT = 95;
-  var WARN_AT = 70;
+  var PASS_AT = 98;
+  var WARN_AT = 85;
 
   var GRID_LINE = '#e6e6e6';
 
@@ -45,6 +45,20 @@
   var CHIP_ROWS = ['chip_ocah'];
   var BLOCK_ROWS = ['dtp', 'sep', 'smc', 'smu', 'aou'];
   var LINKABLE_ROWS = CHIP_ROWS.concat(BLOCK_ROWS);
+
+  // The name a block is shown under, where it differs from its flow. Queries,
+  // links and the published data keep the flow.
+  var BLOCK_NAMES = { dtp: 'DTP', sep: 'SEP', smc: 'SMC', smu: 'SMU', aou: 'AoU' };
+
+  // The heading a coverage family is shown under, where its full name would
+  // widen the block summary past the page column. The published data keeps the
+  // family.
+  var FAMILY_HEADINGS = { assertion: 'Assert', condition: 'Cond', fsm_state: 'FSM', user: 'Cover' };
+
+  // Headings that replace a FAMILY_HEADINGS entry for one simulator, where its
+  // own reports know the family by another name: Verilator reports cover
+  // properties as user coverage.
+  var TOOL_FAMILY_HEADINGS = { verilator: { user: 'User' } };
 
   /**
    * Read a value from the page theme.
@@ -154,7 +168,16 @@
   }
 
   /**
-   * Name one series for a heading, e.g. "dtp (uvm, vcs)".
+   * The name a block is shown under.
+   * @param {string} flow The block as the publisher names it.
+   * @return {string} Its BLOCK_NAMES entry, or the flow itself when it has none.
+   */
+  function blockName(flow) {
+    return Object.prototype.hasOwnProperty.call(BLOCK_NAMES, flow) ? BLOCK_NAMES[flow] : flow;
+  }
+
+  /**
+   * Name one series for a heading, e.g. "DTP (uvm, vcs)".
    *
    * Where the framework and simulator are absent, the block name stands alone.
    * @param {!Object} entry Any entry carrying the identity fields.
@@ -168,7 +191,7 @@
       .map(function (field) {
         return entry[field];
       });
-    return entry.flow + (ran.length ? ' (' + ran.join(', ') + ')' : '');
+    return blockName(entry.flow) + (ran.length ? ' (' + ran.join(', ') + ')' : '');
   }
 
   /**
@@ -201,11 +224,22 @@
   }
 
   /**
-   * A coverage family as a column heading, e.g. "fsm_state" to "Fsm state".
+   * A coverage family as a column heading, e.g. "fsm_state" to "FSM" or
+   * "fsm_transition" to "Fsm transition".
    * @param {string} family The family as the publisher names it.
-   * @return {string} The heading.
+   * @param {?string} tool The simulator every series in the table ran on, or
+   *     null when they differ.
+   * @return {string} The tool's TOOL_FAMILY_HEADINGS entry, else the
+   *     FAMILY_HEADINGS entry, else the family capitalised.
    */
-  function familyHeading(family) {
+  function familyHeading(family, tool) {
+    var own = Object.prototype.hasOwnProperty.call(TOOL_FAMILY_HEADINGS, tool)
+      ? TOOL_FAMILY_HEADINGS[tool]
+      : {};
+    if (Object.prototype.hasOwnProperty.call(own, family)) return own[family];
+    if (Object.prototype.hasOwnProperty.call(FAMILY_HEADINGS, family)) {
+      return FAMILY_HEADINGS[family];
+    }
     return (family.charAt(0).toUpperCase() + family.slice(1)).replace(/_/g, ' ');
   }
 
@@ -255,7 +289,8 @@
   /**
    * Build one row of an overview table, naming the series and linking to its
    * block page.
-   * @param {string} name Block name, used when nothing was published for it.
+   * @param {string} name The block's flow as its table declares it, shown
+   *     through blockName() when nothing was published for it.
    * @param {?Object} dut The series' dut_status entry, or null when the block
    *     published none; every measurement then reads n/a.
    * @return {!HTMLTableRowElement} The populated row.
@@ -274,7 +309,7 @@
       link.textContent = seriesLabel(dut);
       td.appendChild(link);
     } else {
-      td.textContent = dut ? seriesLabel(dut) : name;
+      td.textContent = dut ? seriesLabel(dut) : blockName(name);
     }
     row.appendChild(td);
 
@@ -353,7 +388,9 @@
       .then(function (summary) {
         /**
          * Fill a table, giving a block one row per series it published. A
-         * block that published none still gets a row, reading n/a.
+         * series without a framework that reports tests stands for the whole
+         * block on its simulator and replaces the block's other series there.
+         * A block that published none still gets a row, reading n/a.
          * @param {!HTMLTableSectionElement} body The table body to fill.
          * @param {!Array<string>} names The blocks that table declares.
          */
@@ -366,9 +403,20 @@
               body.appendChild(summaryRow(name, null));
               return;
             }
-            series.forEach(function (dut) {
-              body.appendChild(summaryRow(name, dut));
-            });
+            var merged = series
+              .filter(function (dut) {
+                return !dut.framework && dut.tests_total > 0;
+              })
+              .map(function (dut) {
+                return dut.tool;
+              });
+            series
+              .filter(function (dut) {
+                return !dut.framework || merged.indexOf(dut.tool) === -1;
+              })
+              .forEach(function (dut) {
+                body.appendChild(summaryRow(name, dut));
+              });
           });
         }
 
@@ -425,7 +473,15 @@
       if (!series.length) return false;
 
       var families = coverageFamilies(summary, series);
-      var headings = METRIC_HEADINGS.concat(families.map(familyHeading));
+      var oneTool = series.every(function (dut) {
+        return dut.tool === series[0].tool;
+      });
+      var tool = oneTool ? series[0].tool : null;
+      var headings = METRIC_HEADINGS.concat(
+        families.map(function (family) {
+          return familyHeading(family, tool);
+        })
+      );
       fillHead(document.getElementById('dashboard-block-summary-head'), headings);
       series.forEach(function (dut) {
         // The page heading names the series; only several need telling apart.
@@ -1210,8 +1266,11 @@
         document.title = (wanted.flow ? seriesLabel(wanted) : 'Test') + ' — Test History';
         wrapEl.hidden = false;
 
+        var drawable = series.filter(function (entry) {
+          return (entry.runs || []).length && Object.keys(entry.tests || {}).length;
+        });
         var drawn = [];
-        series.forEach(function (entry) {
+        drawable.forEach(function (entry) {
           // Each series gets its own element, so several stack down the page
           // rather than one overwriting another.
           var host = chartEl;

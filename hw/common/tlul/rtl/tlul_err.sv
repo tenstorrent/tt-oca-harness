@@ -21,18 +21,18 @@ module tlul_err
 );
   `include "prim_assert.sv"
 
-  localparam int IW = $bits(tl_i.a_source);
-  localparam int SZW = $bits(tl_i.a_size);
-  localparam int DW = $bits(tl_i.a_data);
-  localparam int MW = $bits(tl_i.a_mask);
-  localparam int SubAW = $clog2(DW / 8);
+  localparam int Iw = $bits(tl_i.a_source);
+  localparam int Szw = $bits(tl_i.a_size);
+  localparam int Dw = $bits(tl_i.a_data);
+  localparam int Mw = $bits(tl_i.a_mask);
+  localparam int SubAW = $clog2(Dw / 8);
 
   logic opcode_allowed, a_config_allowed;
 
   logic op_full, op_partial, op_get;
-  assign op_full    = (tl_i.a_opcode == PutFullData);
-  assign op_partial = (tl_i.a_opcode == PutPartialData);
-  assign op_get     = (tl_i.a_opcode == Get);
+  assign op_full    = (tl_i.a_opcode == PUT_FULL_DATA);
+  assign op_partial = (tl_i.a_opcode == PUT_PARTIAL_DATA);
+  assign op_get     = (tl_i.a_opcode == GET);
 
   // An instruction type transaction cannot be write
   logic instr_wr_err;
@@ -47,24 +47,24 @@ module tlul_err
   assign err_o = ~(opcode_allowed & a_config_allowed) | instr_wr_err | instr_type_err;
 
   // opcode check
-  assign opcode_allowed = (tl_i.a_opcode == PutFullData)
-                        | (tl_i.a_opcode == PutPartialData)
-                        | (tl_i.a_opcode == Get);
+  assign opcode_allowed = (tl_i.a_opcode == PUT_FULL_DATA)
+                        | (tl_i.a_opcode == PUT_PARTIAL_DATA)
+                        | (tl_i.a_opcode == GET);
 
   // a channel configuration check
   logic addr_sz_chk;    // address and size alignment check
   logic mask_chk;       // inactive lane a_mask check
-  logic fulldata_chk;   // PutFullData should have size match to mask
+  logic fulldata_chk;   // PUT_FULL_DATA should have size match to mask
 
-  localparam bit [MW-1:0] MaskOne = 1;
-  logic [MW-1:0] mask;
+  localparam bit [Mw-1:0] MaskOne = 1;
+  logic [Mw-1:0] mask;
 
   assign mask = MaskOne << tl_i.a_address[SubAW-1:0];
 
   always_comb begin
     addr_sz_chk  = 1'b0;
     mask_chk     = 1'b0;
-    fulldata_chk = 1'b0; // Only valid when opcode is PutFullData
+    fulldata_chk = 1'b0; // Only valid when opcode is PUT_FULL_DATA
 
     if (tl_i.a_valid) begin
       unique case (tl_i.a_size)
@@ -100,6 +100,6 @@ module tlul_err
   assign a_config_allowed = addr_sz_chk & mask_chk & (op_get | op_partial | fulldata_chk);
 
   // Only 32 bit data width for current tlul_err
-  `OCAH_OT_ASSERT_INIT(dataWidthOnly32_A, DW == 32)
+  `OCAH_OT_ASSERT_INIT(dataWidthOnly32_A, Dw == 32)
 
 endmodule

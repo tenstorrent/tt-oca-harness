@@ -45,13 +45,13 @@ module prim_pulse_signal #(
     IDLE        = 2'b00,
     PRE_RESET   = 2'b01,
     POST_RESET  = 2'b10
-  } pulse_state_t;
+  } pulse_state_e;
 
-  pulse_state_t pulse_state, pulse_state_nxt;
+  pulse_state_e pulse_state, pulse_state_nxt;
 
   prim_updown_counter #(
-    .Width(COUNT_WIDTH),
-    .ResetValue({COUNT_WIDTH{1'b0}})
+    .WIDTH(COUNT_WIDTH),
+    .RESET_VALUE({COUNT_WIDTH{1'b0}})
   ) u_pulse_pulse_counter (
     .clk_i(clk_i),
     .rst_ni(rst_ni),

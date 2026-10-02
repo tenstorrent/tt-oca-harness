@@ -49,13 +49,13 @@ module log_engine_tb_top
 
   // AXI4-Lite log-fetch master port (flattened, VIP responder side)
   output wire                             log_fetch_awvalid,
-  output wire [LOG_FETCH_ADDR_WIDTH-1:0]  log_fetch_awaddr,
+  output wire [LogFetchAddrWidth-1:0]     log_fetch_awaddr,
   output wire [2:0]                       log_fetch_awprot,
   input  wire                             log_fetch_awready,
 
   output wire                             log_fetch_wvalid,
-  output wire [LOG_FETCH_DATA_WIDTH-1:0]  log_fetch_wdata,
-  output wire [LOG_FETCH_STRB_WIDTH-1:0]  log_fetch_wstrb,
+  output wire [LogFetchDataWidth-1:0]     log_fetch_wdata,
+  output wire [LogFetchStrbWidth-1:0]     log_fetch_wstrb,
   input  wire                             log_fetch_wready,
 
   output wire                             log_fetch_bready,
@@ -63,24 +63,24 @@ module log_engine_tb_top
   input  wire [1:0]                       log_fetch_bresp,
 
   output wire                             log_fetch_arvalid,
-  output wire [LOG_FETCH_ADDR_WIDTH-1:0]  log_fetch_araddr,
+  output wire [LogFetchAddrWidth-1:0]     log_fetch_araddr,
   output wire [2:0]                       log_fetch_arprot,
   input  wire                             log_fetch_arready,
 
   output wire                             log_fetch_rready,
   input  wire                             log_fetch_rvalid,
-  input  wire [LOG_FETCH_DATA_WIDTH-1:0]  log_fetch_rdata,
+  input  wire [LogFetchDataWidth-1:0]     log_fetch_rdata,
   input  wire [1:0]                       log_fetch_rresp,
 
   // AXI4-Lite log-write master port (flattened, VIP responder side)
   output wire                             log_write_awvalid,
-  output wire [LOG_WRITE_ADDR_WIDTH-1:0]  log_write_awaddr,
+  output wire [LogWriteAddrWidth-1:0]     log_write_awaddr,
   output wire [2:0]                       log_write_awprot,
   input  wire                             log_write_awready,
 
   output wire                             log_write_wvalid,
-  output wire [LOG_WRITE_DATA_WIDTH-1:0]  log_write_wdata,
-  output wire [LOG_WRITE_STRB_WIDTH-1:0]  log_write_wstrb,
+  output wire [LogWriteDataWidth-1:0]     log_write_wdata,
+  output wire [LogWriteStrbWidth-1:0]     log_write_wstrb,
   input  wire                             log_write_wready,
 
   output wire                             log_write_bready,
@@ -88,13 +88,13 @@ module log_engine_tb_top
   input  wire [1:0]                       log_write_bresp,
 
   output wire                             log_write_arvalid,
-  output wire [LOG_WRITE_ADDR_WIDTH-1:0]  log_write_araddr,
+  output wire [LogWriteAddrWidth-1:0]     log_write_araddr,
   output wire [2:0]                       log_write_arprot,
   input  wire                             log_write_arready,
 
   output wire                             log_write_rready,
   input  wire                             log_write_rvalid,
-  input  wire [LOG_WRITE_DATA_WIDTH-1:0]  log_write_rdata,
+  input  wire [LogWriteDataWidth-1:0]     log_write_rdata,
   input  wire [1:0]                       log_write_rresp,
 
   // UART transmit-ready pacing input and interrupt output
@@ -106,7 +106,7 @@ module log_engine_tb_top
   csr_axil_resp_t csr_axil_resp;
 
   assign csr_axil_req.aw_valid = axil_awvalid;
-  assign csr_axil_req.aw.addr  = axil_awaddr[REG_ADDR_WIDTH-1:0];
+  assign csr_axil_req.aw.addr  = axil_awaddr[RegAddrWidth-1:0];
   assign csr_axil_req.aw.prot  = axil_awprot;
   assign axil_awready          = csr_axil_resp.aw_ready;
 
@@ -120,7 +120,7 @@ module log_engine_tb_top
   assign axil_bresp            = csr_axil_resp.b.resp;
 
   assign csr_axil_req.ar_valid = axil_arvalid;
-  assign csr_axil_req.ar.addr  = axil_araddr[REG_ADDR_WIDTH-1:0];
+  assign csr_axil_req.ar.addr  = axil_araddr[RegAddrWidth-1:0];
   assign csr_axil_req.ar.prot  = axil_arprot;
   assign axil_arready          = csr_axil_resp.ar_ready;
 

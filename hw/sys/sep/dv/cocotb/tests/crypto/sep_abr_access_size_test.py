@@ -37,14 +37,19 @@ read-write register in each half, and the 32-bit ``error_internal_intr_count_r``
 counter, whose upper neighbour owns no register. Every register written here is
 restored to the value it held on entry.
 
-``[[abr-aperture-decode]]`` states what an unpopulated offset inside the 64 KB
-window does: ``abr_reg.rdl`` places its last register 4 bytes below
-``0xC018``, a word access past that end completes OKAY (a write is discarded, a
-read returns 0), and a partial-word write is answered SLVERR wherever it lands.
-``CHK-ABR-UNPOP-RD`` / ``-WR`` / ``-PARTIAL`` probe the directed end words, the
-high-bit mirrors of the graded registers that fall past the end, and seeded
-dead words. Every live register is primed with a nonzero value first, so a
-read that aliases returns data and a write that aliases moves a readback.
+``[[abr-aperture-decode]]`` states how the 64 KB window decodes past the
+register map: the map ends 4 bytes past the last register ``abr_reg.rdl``
+places, and the crypto demux refuses every access past that end. The SEP
+memory map (``hw/sys/sep/regs/gen/py/sep_memory_map.py``, read through
+``env/sep_decode_resp.py``) states the response for a word access there, and
+``CHK-ABR-UNPOP-RD`` / ``-WR`` grade against it. ``CHK-ABR-UNPOP-PARTIAL``
+requires a partial-word write there to be refused with the map's write code;
+where the map answers a word write OKAY the write reaches ABR, and a partial
+strobe is refused with SLVERR (``[[abr-access-size]]``). The probes are the
+directed end words, the high-bit mirrors of the graded registers that fall past
+the end, and seeded dead words. Every live register is primed with a nonzero
+value first, so a read that aliases returns data and a write that aliases moves
+a readback.
 
 RANDCFG: the data values and two dead word offsets come from the run seed;
 every size, offset and strobe pattern is walked on every seed.
@@ -57,6 +62,7 @@ from typing import Any
 import cocotb
 import pyuvm
 from cocotb.triggers import RisingEdge
+from env.sep_decode_resp import Expected, expected_unbacked, sep_map_row
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_spec_tables import abr_offsets, window
 from sep_base_test import sep_base_test
@@ -68,6 +74,8 @@ from seq_lib.sep_abr_bus_seq import (
     IDENTITY_WORDS,
     NOTIF_COUNT,
     NOTIF_INTR_EN,
+    RESP_DECERR,
+    RESP_NAME,
     RESP_OKAY,
     RESP_SLVERR,
     RW_WORDS,
@@ -103,10 +111,10 @@ ABR_BASE = window("ABR").base
 ABR_WINDOW_SIZE = window("ABR").size
 # End of the register map abr_reg.rdl places: 4 bytes past its highest register.
 ABR_MAP_END = max(abr_offsets().values()) + 4
-# adams_bridge.adoc [[abr-aperture-decode]]: "the map ends at 0xC018".
-if ABR_MAP_END != 0xC018:
+if ABR_MAP_END != sep_map_row(ABR_BASE).extent:
     raise RuntimeError(
-        f"abr_reg.rdl map ends at +0x{ABR_MAP_END:x}; adams_bridge.adoc names 0xC018"
+        f"abr_reg.rdl map ends at +0x{ABR_MAP_END:x}; the SEP memory map's ABR extent is "
+        f"0x{sep_map_row(ABR_BASE).extent:x}"
     )
 # Offset bit that a decode dropping it folds the upper quarter onto the
 # populated map: every graded register at or above 0x8000 mirrors past the end.
@@ -136,6 +144,22 @@ def _in_lanes(addr: int, value: int) -> int:
     return value << (8 * (addr & 7))
 
 
+def _unbacked(addr: int, op: str) -> Expected:
+    """The SEP memory map's response for a word ``op`` ("r" | "w") on the word at ``addr``."""
+    return expected_unbacked(addr & ~0x3, op)
+
+
+def _partial_resp(addr: int) -> int:
+    """The response to a partial-word write at ``addr``.
+
+    Where the map answers a word write OKAY, the write reaches ABR and the
+    partial strobe is refused with SLVERR ([[abr-access-size]]). Elsewhere the
+    access is refused before ABR with the map's write code.
+    """
+    code = _unbacked(addr, "w").resp
+    return RESP_SLVERR if code == RESP_OKAY else code
+
+
 def _beat_txt(beat: int | None) -> str:
     if beat is None:
         return "no single R beat recorded"
@@ -153,6 +177,7 @@ def _selftest() -> None:
     assert _in_lanes(0x1094_000D, 0xA5) == 0x0000_A500_0000_0000
     assert all(ABR_BASE + ABR_MAP_END <= a < ABR_BASE + ABR_WINDOW_SIZE for a in DEAD_WORDS)
     assert len(DEAD_WORDS) == len(set(DEAD_WORDS)) and len(DEAD_WORDS) > 3
+    assert all(_unbacked(a, "r").column == "Past Extent" for a in DEAD_WORDS)
 
 
 _selftest()
@@ -210,25 +235,37 @@ class sep_abr_access_size_test(sep_base_test):
         "CHK-ABR-SIZE-RESTORE",
     )
 
-    async def _rd(self, addr: int, nbytes: int = 4, size: int = 2) -> AbrAccess:
-        acc = await self.abr.one(AbrAccess(BUS, "rd", addr, nbytes, size))
+    async def _one(self, acc: AbrAccess, expect: int) -> AbrAccess:
+        """Issue ``acc``, tolerating exactly one monitor DECERR when ``expect`` is DECERR."""
+        mon = self.env.axi_monitor
+        if expect == RESP_DECERR:
+            mon.arm_expected_decerr(1)
+        acc = await self.abr.one(acc, refused=expect != RESP_OKAY)
+        if expect == RESP_DECERR and acc.resp != RESP_DECERR:
+            mon.release_expected_decerr(1)
+        return acc
+
+    async def _rd(
+        self, addr: int, nbytes: int = 4, size: int = 2, *, expect: int = RESP_OKAY
+    ) -> AbrAccess:
+        acc = await self._one(AbrAccess(BUS, "rd", addr, nbytes, size), expect)
         self.logger.info("ABR-SIZE %s", acc.describe())
         return acc
 
     async def _wr(
-        self, addr: int, data: int, nbytes: int = 4, size: int = 2, *, refused: bool = False
+        self, addr: int, data: int, nbytes: int = 4, size: int = 2, *, expect: int = RESP_OKAY
     ) -> AbrAccess:
-        acc = await self.abr.one(
-            AbrAccess(BUS, "wr", addr, nbytes, size, wdata=data), refused=refused
-        )
+        acc = await self._one(AbrAccess(BUS, "wr", addr, nbytes, size, wdata=data), expect)
         self.logger.info("ABR-SIZE %s strb=0x%02x", acc.describe(), _strobe(addr, nbytes))
         return acc
 
-    async def _rd_beat(self, addr: int, nbytes: int, size: int) -> tuple[AbrAccess, int | None]:
+    async def _rd_beat(
+        self, addr: int, nbytes: int, size: int, *, expect: int = RESP_OKAY
+    ) -> tuple[AbrAccess, int | None]:
         """A read, and the whole 64-bit R beat the ``s_axi`` pins carried for it."""
         rec = self.watch.rec[BUS]
         seen = len(rec.r)
-        acc = await self._rd(addr, nbytes=nbytes, size=size)
+        acc = await self._rd(addr, nbytes=nbytes, size=size, expect=expect)
         # The test can resume on the R handshake edge before the watch has
         # recorded that edge.
         for _ in range(BEAT_WAIT_CYCLES):
@@ -478,7 +515,7 @@ class sep_abr_access_size_test(sep_base_test):
             for off, nbytes, size in PARTIAL_RUNS:
                 addr = reg.addr + off
                 chunk = (data >> (8 * off)) & ((1 << (8 * nbytes)) - 1)
-                acc = await self._wr(addr, chunk, nbytes=nbytes, size=size, refused=True)
+                acc = await self._wr(addr, chunk, nbytes=nbytes, size=size, expect=RESP_SLVERR)
                 got = await self._word(reg)
                 assert acc.resp == RESP_SLVERR and got == prime, (
                     f"CHK-ABR-SIZE-WR-PARTIAL FAIL: {nbytes}-byte write at 0x{addr:08x} "
@@ -501,7 +538,7 @@ class sep_abr_access_size_test(sep_base_test):
         lo_reg, hi_reg = GLOBAL_INTR_EN, ERROR_INTR_EN
         await self._set(lo_reg, 0)
         await self._set(hi_reg, hi_reg.mask)
-        acc = await self._wr(lo_reg.addr, lo_reg.mask, nbytes=7, size=3, refused=True)
+        acc = await self._wr(lo_reg.addr, lo_reg.mask, nbytes=7, size=3, expect=RESP_SLVERR)
         pair = await self._pair()
         assert acc.resp == RESP_SLVERR and pair == (lo_reg.mask, hi_reg.mask), (
             f"CHK-ABR-SIZE-WR64-MIXED FAIL: WSTRB=0x7F write answered {acc.resp_name}, "
@@ -509,7 +546,7 @@ class sep_abr_access_size_test(sep_base_test):
             f"lo=0x{lo_reg.mask:x} (whole word written) hi=0x{hi_reg.mask:x} (refused)"
         )
         await self._set(lo_reg, lo_reg.mask)
-        acc = await self._wr(lo_reg.addr + 2, 0, nbytes=6, size=3, refused=True)
+        acc = await self._wr(lo_reg.addr + 2, 0, nbytes=6, size=3, expect=RESP_SLVERR)
         pair = await self._pair()
         assert acc.resp == RESP_SLVERR and pair == (lo_reg.mask, 0), (
             f"CHK-ABR-SIZE-WR64-MIXED FAIL: WSTRB=0xFC write answered {acc.resp_name}, "
@@ -584,52 +621,63 @@ class sep_abr_access_size_test(sep_base_test):
         )
 
         # --- CHK-ABR-UNPOP-RD -------------------------------------------------
+        stated: set[str] = set()
         for addr in dead:
-            acc, beat = await self._rd_beat(addr, 4, 2)
-            assert acc.resp == RESP_OKAY and acc.data == 0 and beat == 0, (
+            exp = _unbacked(addr, "r")
+            stated.add(exp.cell)
+            refused = exp.resp != RESP_OKAY
+            acc, beat = await self._rd_beat(addr, 4, 2, expect=exp.resp)
+            # The map states every lane of an OKAY beat (zero) but only the
+            # addressed word of a refused one.
+            assert acc.resp == exp.resp and acc.data == exp.rdata and (refused or beat == 0), (
                 f"CHK-ABR-UNPOP-RD FAIL: 32-bit read at unpopulated 0x{addr:08x} returned "
-                f"{acc.resp_name} 0x{acc.data:08x} in {_beat_txt(beat)}; "
-                f"adams_bridge.adoc [[abr-aperture-decode]] requires OKAY with 0x0000_0000"
+                f"{acc.resp_name} 0x{acc.data:08x} in {_beat_txt(beat)}; the SEP memory map "
+                f"states {exp.cell} ({exp.row}, {exp.column})"
             )
         self.logger.info(
-            "CHK-ABR-UNPOP-RD PASS: %d 32-bit reads past the register map returned OKAY "
-            "with every byte lane of the R beat zero, while every read-write register "
-            "held a nonzero value",
+            "CHK-ABR-UNPOP-RD PASS: %d 32-bit reads past the register map answered as the "
+            "SEP memory map states (%s), while every read-write register held a nonzero value",
             len(dead),
+            "; ".join(sorted(stated)),
         )
 
         # --- CHK-ABR-UNPOP-WR -------------------------------------------------
         for addr in dead:
-            acc = await self._wr(addr, 0xFFFF_FFFF)
-            back = await self._rd(addr)
+            exp_wr, exp_rd = _unbacked(addr, "w"), _unbacked(addr, "r")
+            acc = await self._wr(addr, 0xFFFF_FFFF, expect=exp_wr.resp)
+            back = await self._rd(addr, expect=exp_rd.resp)
             moved = await self._live_image(primes)
-            assert acc.resp == RESP_OKAY and back.resp == RESP_OKAY and back.data == 0, (
+            assert (
+                acc.resp == exp_wr.resp and back.resp == exp_rd.resp and back.data == exp_rd.rdata
+            ), (
                 f"CHK-ABR-UNPOP-WR FAIL: word write at unpopulated 0x{addr:08x} answered "
-                f"{acc.resp_name} and reads back {back.resp_name} 0x{back.data:08x}; "
-                f"[[abr-aperture-decode]] requires OKAY with the write discarded"
+                f"{acc.resp_name} and reads back {back.resp_name} 0x{back.data:08x}; the SEP "
+                f"memory map states {exp_wr.cell} ({exp_wr.row}, {exp_wr.column})"
             )
             assert not moved, (
                 f"CHK-ABR-UNPOP-WR FAIL: word write at unpopulated 0x{addr:08x} moved "
                 f"live register(s): {', '.join(moved)}"
             )
         self.logger.info(
-            "CHK-ABR-UNPOP-WR PASS: %d word writes past the register map answered OKAY, "
-            "read back 0, and left all %d read-write and %d identity registers unchanged",
+            "CHK-ABR-UNPOP-WR PASS: %d word writes past the register map answered and read "
+            "back as the SEP memory map states, and left all %d read-write and %d identity "
+            "registers unchanged",
             len(dead),
             len(RW_WORDS),
             len(IDENTITY_WORDS),
         )
 
         # --- CHK-ABR-UNPOP-PARTIAL --------------------------------------------
-        # [[abr-aperture-decode]]: "A partial-word write is answered with SLVERR
-        # wherever it lands" (and [[abr-access-size]] for a populated word).
         fails: list[str] = []
+        codes: set[int] = set()
         cells = 0
         for base in (ABR_BASE + ABR_MAP_END, ABR_BASE + ABR_WINDOW_SIZE - 4):
             for off, nbytes, size in DEAD_PARTIAL:
                 addr = base + off
+                want = _partial_resp(addr)
+                codes.add(want)
                 acc = await self._wr(
-                    addr, (1 << (8 * nbytes)) - 1, nbytes=nbytes, size=size, refused=True
+                    addr, (1 << (8 * nbytes)) - 1, nbytes=nbytes, size=size, expect=want
                 )
                 moved = await self._live_image(primes)
                 cells += 1
@@ -640,19 +688,21 @@ class sep_abr_access_size_test(sep_base_test):
                     _strobe(addr, nbytes),
                     acc.resp_name,
                 )
-                if acc.resp != RESP_SLVERR:
+                if acc.resp != want:
                     fails.append(
                         f"{nbytes}-byte write at 0x{addr:08x} "
-                        f"(WSTRB=0x{_strobe(addr, nbytes):02x}) answered {acc.resp_name}"
+                        f"(WSTRB=0x{_strobe(addr, nbytes):02x}) answered {acc.resp_name}, "
+                        f"expected {RESP_NAME.get(want, str(want))}"
                     )
                 if moved:
                     fails.append(f"{nbytes}-byte write at 0x{addr:08x} moved {', '.join(moved)}")
         assert not fails, (
-            "CHK-ABR-UNPOP-PARTIAL FAIL: adams_bridge.adoc [[abr-aperture-decode]] requires "
-            "SLVERR for a partial-word write wherever it lands: " + "; ".join(fails)
+            "CHK-ABR-UNPOP-PARTIAL FAIL: adams_bridge.adoc [[abr-aperture-decode]] refuses a "
+            "partial-word write past the register map: " + "; ".join(fails)
         )
         self.logger.info(
             "CHK-ABR-UNPOP-PARTIAL PASS: %d partial-word writes past the register map "
-            "answered SLVERR and left every graded register unchanged",
+            "were refused with %s and left every graded register unchanged",
             cells,
+            "/".join(sorted(RESP_NAME.get(c, str(c)) for c in codes)),
         )

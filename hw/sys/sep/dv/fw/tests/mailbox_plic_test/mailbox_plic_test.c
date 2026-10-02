@@ -2,35 +2,23 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * SEP inbound-mailbox -> PIC -> CPU interrupt-delivery firmware test (OSS port
- * of the reference sep_mailbox_plic_test). The EL2 CPU walks all eight inbound
- * mailbox channels. Each channel raises its threshold interrupt by pushing one
- * word into that channel's FIFO and proves the interrupt reaches the CPU:
+ * SEP inbound-mailbox -> PIC -> CPU interrupt-delivery firmware test. For each
+ * of the eight inbound mailbox channels, the CPU pushes one word into the
+ * channel FIFO to raise its write-threshold interrupt, with no testbench
+ * injection, and checks that:
+ *   * the ISR fires on a WFI wake, claimed as that channel's own PIC source,
+ *     so a miswired source fails rather than any interrupt passing;
+ *   * the mailbox shows the write-threshold interrupt latched and pending;
+ *   * after the threshold is raised above the FIFO usage and the status is
+ *     written 1-to-clear, status and pending both read back clear while the
+ *     enable is still set; and
+ *   * the ISR runs exactly once and does not re-fire.
  *
- *     axil_mailbox inbound channel ch
- *       -> interrupts.adoc PIC source (ch + 1) (Mailbox interrupt ch)
- *       -> mip.MEIP -> mailbox_isr
+ * A last leg pushes one word into the outbound channel-0 aperture with every
+ * mailbox PIC source enabled and checks that no interrupt reaches the CPU.
  *
- * all internal to bare `sep` (no testbench injection).
- *
- * Checks (every failure increments errors; main() returns it and start.S turns
- * 0 -> PASS magic / non-zero -> FAIL magic on the 0x8000_0000 mailbox):
- *   * the ISR actually fired (WFI wakes, no poll fallback);
- *   * it was claimed as PIC source (ch + 1) -- proves the exact wire,
- *     not merely "some interrupt arrived";
- *   * the mailbox asserted the WRITE-threshold IRQ (IRQP & IRQS write bit set
- *     when the ISR captured them);
- *   * full clear contract: after raising WIRQT above the FIFO usage and writing
- *     1-to-clear IRQS, both IRQS and IRQP read back 0 (W1C); and
- *   * no interrupt storm -- the ISR count stays put once the line is deasserted.
- *
- * Delta vs the reference suite:
- * the reference suite sprays a candidate PIC-source set {1,2,3} and passes if ANY fires; this
- * port registers ONE source per channel and asserts the claim id == ch+1, so a regression of
- * the mailbox->PIC wiring fails the test. the reference suite deasserts by masking IRQEN and
- * only checks for no re-fire; this port additionally proves the IRQS/IRQP W1C
- * readback is 0 (the RW1C contract, which applies to polled and ISR
- * status paths alike).
+ * main() returns the error count; crt0.s turns 0 into the PASS magic and any
+ * other value into the FAIL magic.
  */
 
 #include <stdint.h>
@@ -40,8 +28,8 @@
 #include "sep_axil_mailbox.h"
 #include "sep_pic.h"
 
-// VeeR EL2 meihap (external-interrupt handler address pointer): claim id is
-// bits [9:2]. Matches the extraction start.S's _dummy_int_handler uses.
+// VeeR EL2 external-interrupt handler address pointer, which carries the claim
+// id; decoded the same way as crt0.s's _dummy_int_handler.
 #define CSR_MEIHAP 0xFC8
 
 #define MBOX_TRIGGER_WORD 0x4700CAFEu // arbitrary payload pushed to fire the IRQ
@@ -63,9 +51,8 @@ static volatile uint32_t g_irqs_before = 0;
 static volatile uint32_t g_irqs_after = 0;
 static volatile uint32_t g_irqp_after = 0;
 
-// Inbound mailbox ISR: record the claim id and the asserted IRQ state, clear
-// the interrupt at the source (raise WIRQT past the FIFO usage so the level
-// condition drops, then W1C IRQS), and re-read to prove the clear stuck.
+// Inbound mailbox ISR: record the claim id and interrupt state, clear the
+// interrupt at the source, and read the clear back.
 void __attribute__((interrupt("machine"))) mailbox_isr(void) {
     uint32_t ch = g_ch;
     uint32_t meihap;
@@ -75,19 +62,17 @@ void __attribute__((interrupt("machine"))) mailbox_isr(void) {
     g_irqp_before = sep_axil_mbox_rd(sep_axil_mbox_ch(ch, SEP_AXIL_MBOX0_IRQP));
     g_irqs_before = sep_axil_mbox_rd(sep_axil_mbox_ch(ch, SEP_AXIL_MBOX0_IRQS));
 
-    // Raise the write threshold above the (depth-8) FIFO occupancy so
-    // (usage > WIRQT) is false, then write-1-to-clear the latched IRQ status;
-    // with the level removed the status stays clear.
+    // Raise the write threshold above the FIFO occupancy so the level condition
+    // drops, then clear the latched status; with the level gone it stays clear.
     sep_axil_mbox_wr(sep_axil_mbox_ch(ch, SEP_AXIL_MBOX0_WIRQT), 0xFFu);
     sep_axil_mbox_wr(sep_axil_mbox_ch(ch, SEP_AXIL_MBOX0_IRQS), SEP_AXIL_MBOX_IRQ_ALL);
 
-    // Read the clear back BEFORE masking IRQEN, so IRQP (= IRQS & IRQEN, IRQEN
-    // still fully enabled here) is an independent witness that the status truly
-    // cleared -- not an artifact of masking the enable.
+    // Read the clear back before masking the enable, so the pending state is an
+    // independent witness that the status cleared, not an artifact of the mask.
     g_irqs_after = sep_axil_mbox_rd(sep_axil_mbox_ch(ch, SEP_AXIL_MBOX0_IRQS));
     g_irqp_after = sep_axil_mbox_rd(sep_axil_mbox_ch(ch, SEP_AXIL_MBOX0_IRQP));
 
-    // Now also mask IRQEN (reference suite-parity deassert belt; harmless once IRQS is 0).
+    // Also mask the enable; harmless once the status is clear.
     sep_axil_mbox_wr(sep_axil_mbox_ch(ch, SEP_AXIL_MBOX0_IRQEN), 0u);
 
     g_isr_count++;
@@ -204,13 +189,12 @@ static int run_channel(uint32_t ch) {
     return errors;
 }
 
-// Direction leg. PIC sources 1-8 are the SMC-to-SEP (inbound) mailbox channel
+// Direction leg. The mailbox PIC sources carry only the inbound channel
 // interrupts (hw/sys/sep/doc/interrupts.adoc); the interrupts toward the SMC
 // leave on smc_mailbox_interrupt_o (hw/sys/sep/doc/port_table.adoc). Arm the
-// OUTBOUND channel-0 aperture with every mailbox PIC source enabled and push one
-// word. The ISR must stay silent: an outbound interrupt routed to the PIC makes
-// it fire. The entry is left pending on purpose so the testbench can read
-// smc_mailbox_interrupt_o[0] asserted at end of run.
+// outbound channel-0 aperture with every mailbox PIC source enabled and push one
+// word; the ISR must stay silent. The entry is left pending on purpose so the
+// testbench can see the outbound interrupt asserted at end of run.
 static int run_outbound_no_cpu_delivery(void) {
     uint32_t pic_src = SEP_AXIL_MBOX0_PIC_SRC;
 
@@ -257,12 +241,12 @@ static int run_outbound_no_cpu_delivery(void) {
 int main(void) {
     int errors = 0;
 
-    sep_outbound_filter_init(); // open the 0x8000_0000 mailbox window
+    sep_outbound_filter_init(); // open the mailbox window
     sep_mbx_puts("SEP mailbox PLIC test\n");
     sep_mbx_puts("STEP filter init done; mailbox CSR clock ungate written\n");
 
-    // CLOCK_GATE_CTRL bit 2 is not a defined field (map has only pka_cg_enable).
-    // Written for sequence parity; not on the proof path.
+    // This clock-enable write targets no defined register field; it is not on
+    // the checked path.
     sep_axil_mbox_clock_enable();
 
     pic_enable_interrupts();

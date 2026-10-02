@@ -15,13 +15,13 @@ package avsbus_controller_pkg;
   // Register Bus Definitions //
   //////////////////////////////
 
-  localparam int unsigned ADDR_WIDTH = 32;
-  localparam int unsigned DATA_WIDTH = 32;
-  localparam int unsigned STRB_WIDTH = DATA_WIDTH / 8;
+  localparam int unsigned AddrWidth = 32;
+  localparam int unsigned DataWidth = 32;
+  localparam int unsigned StrbWidth = DataWidth / 8;
 
-  typedef logic [ADDR_WIDTH-1:0] addr_t;
-  typedef logic [DATA_WIDTH-1:0] data_t;
-  typedef logic [STRB_WIDTH-1:0] strb_t;
+  typedef logic [AddrWidth-1:0] addr_t;
+  typedef logic [DataWidth-1:0] data_t;
+  typedef logic [StrbWidth-1:0] strb_t;
 
   `AXI_LITE_TYPEDEF_ALL(avsbus_axil, addr_t, data_t, strb_t)
   `APB_TYPEDEF_ALL(avsbus_apb, addr_t, data_t, strb_t)

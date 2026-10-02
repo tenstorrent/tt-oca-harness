@@ -46,8 +46,8 @@ XTRIG_SMC_CLK_STOP_LANES = 1
 DTP_NUM_INT_CT = XTRIG_NUM_INT_CT + XTRIG_SMC_INT_CT_LANES
 DTP_NUM_CLK_STOP_REQ = XTRIG_NUM_CLK_STOP_REQ + XTRIG_SMC_CLK_STOP_LANES
 # hw/sys/smc/doc/port_table.adoc `smc_ext_interrupts_i` ("Width is 256") and
-# hw/sys/smc/doc/interrupts.adoc (`NUM_EXT_INTERRUPTS = 256`): the SMC port that
-# the SMU `smc_ext_interrupts_i` row (`[Cfg.NUM_INT_TO_SMC-1:0]`) feeds.
+# hw/sys/smc/doc/interrupts.adoc (`NumExtInterrupts = 256`): the SMC port that
+# the SMU `smc_ext_interrupts_i` row (`[CFG.NUM_INT_TO_SMC-1:0]`) feeds.
 NUM_INT_TO_SMC = 256
 # hw/sys/smu/doc/port_table.adoc `lc_state_o` (`[2*LC_STATE_WIDTH-1:0]`, tie
 # value `8'hf0`); hw/sys/smc/doc/port_table.adoc `lc_state_i` "(8 bits)";
@@ -132,7 +132,7 @@ def axi_resp_bits(id_width: int) -> int:
 
 # Drift table: no specification in this tree states the packed field order or
 # the field widths of the SMU build-configuration struct. Decoding an
-# elaborated `Cfg` with this layout and comparing the fields detects unintended
+# elaborated `CFG` with this layout and comparing the fields detects unintended
 # change in the elaborated build parameters and proves no requirement; no
 # compare that goes through `decode_cfg` carries an evidence token.
 CFG_LAYOUT: tuple[tuple[str, int], ...] = (
@@ -161,6 +161,12 @@ CFG_LAYOUT: tuple[tuple[str, int], ...] = (
     ("SMC_OTP_WR_PL_DEPTH", 2),
     ("SMC_RD_PL_DEPTH", 2),
     ("SMC_WR_PL_DEPTH", 2),
+    ("MAX_TRANS", 32),
+    ("SMC_EFUSE_SHIM_SIZE", 32),
+    ("SEP", 1),
+    ("SEP_EFUSE_SHIM_SIZE", 32),
+    ("SEP_SEC_DISABLE_TOKEN", SEP_SEC_DISABLE_TOKEN_WIDTH),
+    ("EXT_TRNG_NUM_AXIS", 32),
     ("SEP_KM_LATCHED_MEM_RDATA", 1),
     ("SEP_ABR_MASKING_EN", 1),
     ("SEP_ABR_SRAM_LATENCY", 32),
@@ -168,10 +174,14 @@ CFG_LAYOUT: tuple[tuple[str, int], ...] = (
 CFG_TOTAL_BITS = sum(width for _, width in CFG_LAYOUT)
 
 # doc/integrator/src/smu.adoc "SMU Default Parameters", field for field, with
-# NUM_INT_TO_SMC from the SMC port it sizes. XTRIG_INT_CT_MODE is absent
-# because the wrapper testbench elaborates it from +xtrig_int_ct_mode and the
-# leaf supplies that expectation; SEP_KM_LATCHED_MEM_RDATA is absent because
-# no specification states its default, so it is decoded and logged, not
+# NUM_INT_TO_SMC from the SMC port it sizes, MAX_TRANS from the GPIO row of
+# hw/sys/smc/doc/periphs.adoc "SMC Peripheral Parameter Overrides", and the two
+# eFuse shim sizes from doc/integrator/src/smu-smc.adoc "SHIM control address
+# window". XTRIG_INT_CT_MODE, SEP and SEP_SEC_DISABLE_TOKEN are absent because
+# the wrapper testbench elaborates them and the leaf supplies those
+# expectations, from +xtrig_int_ct_mode, +expected_sep and the digest the bench
+# binds; SEP_KM_LATCHED_MEM_RDATA and EXT_TRNG_NUM_AXIS are absent because no
+# specification states their defaults, so they are decoded and logged, not
 # compared.
 CFG_SPEC_DEFAULTS: dict[str, int] = {
     "NUM_INT_TO_SMC": NUM_INT_TO_SMC,
@@ -198,6 +208,9 @@ CFG_SPEC_DEFAULTS: dict[str, int] = {
     "SMC_OTP_WR_PL_DEPTH": SMC_OTP_PL_DEPTH,
     "SMC_RD_PL_DEPTH": 3,
     "SMC_WR_PL_DEPTH": 3,
+    "MAX_TRANS": 2,
+    "SMC_EFUSE_SHIM_SIZE": 0x4,
+    "SEP_EFUSE_SHIM_SIZE": 0x4,
     "SEP_ABR_MASKING_EN": 1,
     "SEP_ABR_SRAM_LATENCY": 1,
 }

@@ -3,7 +3,7 @@
 
 ## Goal
 
-`dv/tb/tb_i3ccore.sv` instantiates `NUM_I3C=2` copies of the same vendored
+`dv/tb/tb_i3ccore.sv` instantiates `NumI3c=2` copies of the same vendored
 i3ccore RTL: instance 0 is the controller under test, instance 1 is the bus
 partner acting as target. Every bus-traffic result is therefore produced and
 checked by the same RTL on both sides, so a protocol-level defect that is

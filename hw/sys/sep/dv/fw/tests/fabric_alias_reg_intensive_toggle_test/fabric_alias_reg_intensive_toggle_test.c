@@ -2,25 +2,16 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * fabric_alias_reg_intensive_toggle_test
- *
- * Strategy: Deep CSR-field toggle stress across all 16 alias entries
- *
- * Focus on full toggle coverage of all 16 alias_remap_reg entries
+ * Alias-remap CSR field toggle stress across all 16 alias entries.
  */
 
 #include "sep_test_common.h"
 #include "sep_fabric.h"
 
-// Number of alias CSR-toggle scenarios
-#define ALIAS_CSR_SCENARIOS 128
-
-// Alias configuration pattern definitions
 #define ALIAS_SRC_BASE 0x10000000
 #define ALIAS_DEST_BASE 0x20000000
-#define ALIAS_SIZE_PATTERNS 16
 
-// High-intensity toggle modes
+// Walking-one and toggle patterns for address, mask and attribute fields.
 static const uint32_t intensive_patterns[] = {
     0x00000001, 0x00000002, 0x00000004, 0x00000008, 0x00000010, 0x00000020, 0x00000040, 0x00000080,
     0x00000100, 0x00000200, 0x00000400, 0x00000800, 0x00001000, 0x00002000, 0x00004000, 0x00008000,
@@ -30,7 +21,6 @@ static const uint32_t intensive_patterns[] = {
 static int test_all_16_alias_entries_comprehensive(void) {
     printf("Starting comprehensive 16 alias entries test...\n");
 
-    // Scenario 1: Full scan of all 16 alias entries
     for (int entry = 0; entry < 16; entry++) {
         for (int pattern_idx = 0; pattern_idx < 8; pattern_idx++) {
             uint32_t src_pattern = intensive_patterns[pattern_idx];
@@ -70,7 +60,6 @@ static int test_all_16_alias_entries_comprehensive(void) {
 static int test_enable_disable_state_transitions(void) {
     printf("Starting enable/disable state transitions test...\n");
 
-    // Scenario 2: Enable/disable state transitions
     for (int cycle = 0; cycle < 32; cycle++) {
         for (int entry = 0; entry < 16; entry++) {
             uint32_t addr_offset = cycle * 0x10000 + entry * 0x1000;
@@ -102,14 +91,12 @@ static int test_enable_disable_state_transitions(void) {
 static int test_region_validity_combinations(void) {
     printf("Starting region validity combinations test...\n");
 
-    // Scenario 3: Region-validity combinations
     for (int validity_pattern = 0; validity_pattern < 256; validity_pattern++) {
         for (int entry = 0; entry < 16; entry++) {
             int is_valid = (validity_pattern >> (entry % 8)) & 1;
             uint32_t test_addr = ALIAS_SRC_BASE + validity_pattern * 0x10000 + entry * 0x1000;
 
             if (is_valid) {
-                // Set valid configuration
                 if (setup_output_remap_region_extended(entry, test_addr, test_addr + 0x200000,
                                                        1, // enable
                                                        entry % 2,
@@ -139,13 +126,11 @@ static int test_region_validity_combinations(void) {
 static int test_source_destination_address_patterns(void) {
     printf("Starting source/destination address patterns test...\n");
 
-    // Scenario 4: Source/destination address patterns
     for (int addr_test = 0; addr_test < 64; addr_test++) {
         for (int entry = 0; entry < 16; entry++) {
             uint32_t src_pattern = intensive_patterns[addr_test % 32];
             uint32_t dest_pattern = intensive_patterns[(addr_test + 16) % 32];
 
-            // Different address-alignment modes
             uint32_t src_addr = (src_pattern & 0xFFFFF000) + (entry * 0x100000);   // 4KB aligned
             uint32_t dest_addr = (dest_pattern & 0xFFFFF000) + (entry * 0x100000); // 4KB aligned
 
@@ -154,7 +139,6 @@ static int test_source_destination_address_patterns(void) {
                 return -1;
             }
 
-            // Verify address-field toggles
             uint32_t readback_src, readback_dest;
             read_output_remap_reg(entry, OUTPUT_REMAP_SRC_ADDR_LOW_OFFSET, &readback_src);
             read_output_remap_reg(entry, OUTPUT_REMAP_SRC_ADDR_LOW_OFFSET + 4, &readback_dest);
@@ -168,12 +152,10 @@ static int test_source_destination_address_patterns(void) {
 static int test_cross_field_dependency_scenarios(void) {
     printf("Starting cross-field dependency scenarios test...\n");
 
-    // Scenario 5: Cross-field dependency scenarios
     for (int scenario = 0; scenario < 32; scenario++) {
         for (int entry = 0; entry < 16; entry++) {
             uint32_t field_combo = scenario * 0x10000 + entry * 0x1000;
 
-            // Complex field-combination setup
             uint32_t enable_val = (scenario >> entry) & 1;
             uint32_t channel_val = (scenario >> ((entry + 8) % 16)) & 1;
             uint32_t mask_val = intensive_patterns[scenario % 32] >> entry;
@@ -185,12 +167,10 @@ static int test_cross_field_dependency_scenarios(void) {
                 return -1;
             }
 
-            // Test field dependencies
             if (enable_val) {
                 test_axi_transaction(ALIAS_SRC_BASE + field_combo + (entry * 64), 4, entry % 2);
             }
 
-            // Dynamically change enable to test dependencies
             toggle_output_remap_region_enable(entry);
             toggle_output_remap_channel(entry);
             toggle_output_remap_region_enable(entry);
@@ -210,7 +190,6 @@ int main(void) {
         return TEST_FAIL;
     }
 
-    // Run all intensive toggle scenarios
     if (test_all_16_alias_entries_comprehensive() != 0) {
         test_fail("16 Alias Entries Comprehensive");
         return TEST_FAIL;

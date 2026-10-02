@@ -14,7 +14,7 @@ arm prints ``PUBK_SEL_AMBIGUOUS`` and returns ``MANIFEST_ERR_KEY_UNAUTHORIZED``;
 *index* is a different arm printing ``PUBK_SLOT_RESERVED``. This test follows the stimulus
 (a bad source, not a bad index) and requires ``PUBK_SEL_AMBIGUOUS``.
 
-``public_key_sel`` is at offset 166, inside the TBS, so the helper re-hashes. No
+``public_key_sel`` is at offset 166, inside the signed region, so the helper re-hashes. No
 re-sign: the selection is rejected before the signature is verified, and
 ``RSA_EXEC`` is forbidden so that ordering is checked rather than assumed.
 """

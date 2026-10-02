@@ -7,13 +7,13 @@
 
 package sep_io_pkg;
 
-  localparam int unsigned ADDR_WIDTH = 32;
-  localparam int unsigned DATA_WIDTH = 32;
-  localparam int unsigned STRB_WIDTH = DATA_WIDTH / 8;
+  localparam int unsigned AddrWidth = 32;
+  localparam int unsigned DataWidth = 32;
+  localparam int unsigned StrbWidth = DataWidth / 8;
 
-  typedef logic [ADDR_WIDTH-1:0] addr_t;
-  typedef logic [DATA_WIDTH-1:0] data_t;
-  typedef logic [STRB_WIDTH-1:0] strb_t;
+  typedef logic [AddrWidth-1:0] addr_t;
+  typedef logic [DataWidth-1:0] data_t;
+  typedef logic [StrbWidth-1:0] strb_t;
 
   `AXI_TYPEDEF_ALL(axi, addr_t, sep_pkg::sep_io_axi_id_t, data_t, strb_t,
                    sep_pkg::sep_io_axi_user_t)
@@ -50,5 +50,50 @@ package sep_io_pkg;
     // Data input from pad (4 lanes, Quad SPI)
     logic [3:0] sd;
   } sep_io_spi_rsp_t;
+
+  //=========================================================================
+  // Pad-facing SPI signals
+  // ot_spi_pad_map maps the OT SPI host request (sep_io_spi_req_t) onto the
+  // SPI signals of the SMC LSIO primary plane (GPIO 0-10 and 54). smu.sv
+  // drives the SEP SPI pad signals it passes to the SMC from this function.
+  //=========================================================================
+
+  typedef struct packed {
+    logic       enable;
+    logic       clk;
+    logic [7:0] txd;
+    logic       cs_n;
+    logic       cs_oe_n;
+    logic       cs_ie_n;
+    logic       clk_oe_n;
+    logic       clk_ie_n;
+    logic       dqs_oe_n;
+    logic       dqs_ie_n;
+    logic [7:0] dq_oe_n;
+    logic [7:0] dq_ie_n;
+    logic       mem_rebar_oepad;
+    logic       mem_rebar_opad;
+    logic       mem_rebar_iepad;
+  } sep_io_spi_pads_t;
+
+  function automatic sep_io_spi_pads_t ot_spi_pad_map(input sep_io_spi_req_t req);
+    ot_spi_pad_map = '{
+        enable          : 1'b1,
+        clk             : req.sck,
+        txd             : {4'b0, req.sd},
+        cs_n            : req.cs_n,
+        cs_oe_n         : ~req.cs_oe,
+        cs_ie_n         : req.cs_oe,
+        clk_oe_n        : ~req.sck_oe,
+        clk_ie_n        : req.sck_oe,
+        dqs_oe_n        : 1'b1,
+        dqs_ie_n        : 1'b1,
+        dq_oe_n         : {4'hF, ~req.sd_oe},
+        dq_ie_n         : {4'hF, req.sd_oe},
+        mem_rebar_oepad : 1'b0,
+        mem_rebar_opad  : 1'b0,
+        mem_rebar_iepad : 1'b0
+    };
+  endfunction
 
 endpackage

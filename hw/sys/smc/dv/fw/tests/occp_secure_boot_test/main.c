@@ -3,14 +3,13 @@
 
 /*
  * Transfers a bootcode image from the master BFM to the DUT with OCCP WRITE, then sends
- * VALIDATE_BOOT at its entry point. Image parameters come from scratch registers 4-7, set by
- * the harness.
+ * VALIDATE_BOOT at its entry point. The harness supplies the image parameters through scratch
+ * registers, and the DUT side reports the verdict after the boot.
  */
 
 #include "occp_test_common.h"
 #include "smc_defines.h"
 #include "smc_test.h"
-#include <string.h>
 
 #define MAX_TRANSFER_CHUNK_SIZE 248
 
@@ -119,8 +118,6 @@ int main(void) {
     while (1) {
         __asm__("wfi");
     }
-
-    return 0;
 }
 
 int other_main(int hartid) {

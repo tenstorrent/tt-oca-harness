@@ -129,7 +129,7 @@ endif::backend-pdf[]
 === FIPS Provenance
 
 The internal seed adapter attaches the provisional constant
-`DRBG_CSRNG_SEED_FIPS_PROVISIONAL = 1`. CSRNG/EDN output provenance is retained
+`DrbgCsrngSeedFipsProvisional = 1`. CSRNG/EDN output provenance is retained
 in each endpoint FIFO and forwarded through `tuser` into the native client's
 `edn_fips`. OTBN RND checks the returned tag and can report `rnd_fips_chk_fail`.
 The external mux also attaches 1 unconditionally. Neither constant measures
@@ -154,7 +154,7 @@ state while the internal TRNG reset is active, even if external inputs are selec
 state. Its AXI responder remains accessible; this is not a reset of that responder.
 |AES, KMAC and OTBN |Not reset by the TRNG coordinator. Native requests receive
 no acknowledgement during adapter clear and can resume after fresh data arrives.
-Their own resets cancel the corresponding adapter endpoints; OTBN owns RND and URND.
+Their software resets cancel the corresponding adapter endpoints; OTBN owns RND and URND.
 |Key Manager sampler |Not scrubbed by TRNG reset: there is no post-mux adapter
 on this path. Keep KM idle before asserting TRNG reset; holding KM in software
 reset is sufficient. Hardware does not enforce this ordering.

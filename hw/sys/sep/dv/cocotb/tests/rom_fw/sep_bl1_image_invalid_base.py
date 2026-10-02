@@ -1,35 +1,15 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Shared scenario for the BL1-image-validity testcases (TP053-S, TP053-E).
+"""Shared scenario: both slots carry the same BL1 TOC-entry defect; the ROM halts.
 
-Both testcases plant a defect in the SEP BL1 entry of the payload TOC -- one in
-its size, one in its entry point -- in BOTH manifest slots, and require the ROM to
-reject each slot before any BL1 copy or jump and then terminate. Only the
-mutation and the console marker differ, so everything else lives here.
+Each member plants a defect in the SEP BL1 entry's size or entry point in BOTH slots,
+because a healthy backup would boot and hide the terminal outcome. The defect is in the
+payload, which ``try_manifest_slot`` validates after the crypto chain passes, so
+:meth:`_check` replaces the base's verdict with one that requires ``MANIFEST_OK`` and the
+defect marker on each slot.
 
-WHY BOTH SLOTS. The procedures say so: TP053-S step 1 plants the defect in the
-primary and step 4 requires "backup also has invalid BL1 size -> terminal";
-TP053-E is worded the same way. A defect in the primary alone would fail over to a
-healthy backup and boot, which proves the failover works but says nothing about
-the terminal outcome the procedure asks for.
-
-WHY THIS SUBCLASSES ``sep_backup_manifest_fail_base`` BUT REPLACES ITS VERDICT.
-The run machinery -- flash BFM, console capture, the PROD/secure-boot eFuse
-assertions, the post-terminal quiescence window -- is exactly what is wanted and is
-inherited unchanged. The CHECKS are not: that base is written for defects the
-CRYPTO chain rejects, so it requires a ``MANIFEST_ERR=`` line and forbids
-``MANIFEST_OK``. These defects are the opposite. They sit in the payload,
-which ``try_manifest_slot`` validates AFTER the crypto chain has PASSED, so a correct run here must show
-``MANIFEST_OK`` -- twice, once per slot -- and then fail. Overriding
-:meth:`_check` rather than adding hooks to the shared base keeps six passing
-testcases untouched.
-
-THE CRYPTO CHAIN IS LEFT ON, AND THAT IS THE POINT. Because the payload is
-mutated, ``payload_hash`` (inside the TBS) changes, so the slot must be re-hashed
-and re-signed with the dev0 key -- see ``env/sep_payload_mutate.py``. The
-alternative, running with secure boot disabled, would reach the same BL1 check
-through a path production never takes. ``CHK-CRYPTO-RAN`` below is what turns
-"the signature still verified" from an assumption into an observation.
+Secure boot stays on: the mutated payload changes ``payload_hash``, so each slot is
+re-hashed and re-signed with the dev0 key (``env/sep_payload_mutate.py``).
 """
 
 from __future__ import annotations

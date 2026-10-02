@@ -13,7 +13,7 @@
 //
 // - SEP_SEC_DISABLE_TOKEN is the rev-cell default of the expected security-disable digest.
 // - TOKEN_MATCH_CODE is the success encoding.
-// - LC_STATE_INVALID encodes an invalid lifecycle value.
+// - LcStateInvalid encodes an invalid lifecycle value.
 //
 // Status outputs:
 //
@@ -28,8 +28,8 @@ module efuse_token_processing #(
                                                        // security disable; must equal the
                                                        // comparator's fixed 6'b010101 match code.
 
-  localparam int unsigned LC_STATE_WIDTH = efuse_pkg::LC_STATE_RAW_WIDTH,  // Lifecycle-state field width.
-  localparam logic [2*LC_STATE_WIDTH-1:0] LC_STATE_INVALID = (2*LC_STATE_WIDTH)'({{LC_STATE_WIDTH{1'b0}}, {LC_STATE_WIDTH{1'b1}}}),  // Differentially encoded lifecycle state driven on shadow_regs_o while the map is withheld.
+  localparam int unsigned LcStateWidth = efuse_pkg::LcStateRawWidth,  // Lifecycle-state field width.
+  localparam logic [2*LcStateWidth-1:0] LcStateInvalid = (2*LcStateWidth)'({{LcStateWidth{1'b0}}, {LcStateWidth{1'b1}}}),  // Differentially encoded lifecycle state driven on shadow_regs_o while the map is withheld.
 
   parameter type efuse_apb_req_t = logic,  // eFuse APB request type.
   parameter type efuse_apb_resp_t = logic,  // eFuse APB response type.
@@ -265,8 +265,7 @@ module efuse_token_processing #(
   // expected value is configurable at top metal via a metal-only ECO without a full re-spin.
   // SEP_SEC_DISABLE_TOKEN encodes the real first-silicon value; PD can flip individual bits
   // by re-routing the per-bit IN tap from the LO rail to HI (or vice versa) at top metal.
-  genvar g;
-  for (g = 0; g < 256; g++) begin : gen_sec_disable_in_sel
+  for (genvar g = 0; g < 256; g++) begin : gen_sec_disable_in_sel
     if (SEP_SEC_DISABLE_TOKEN[g]) begin : gen_hi
       assign sec_disable_rev_in_sel[g] = sec_disable_rev_hi[g];
     end else begin : gen_lo
@@ -335,7 +334,7 @@ module efuse_token_processing #(
   always_comb begin
     // Default: zero the output and set LC state to invalid
     shadow_regs_o = efuse_map_t'(0);
-    shadow_regs_o.fields.lc_state.lc_state = LC_STATE_INVALID;
+    shadow_regs_o.fields.lc_state.lc_state = LcStateInvalid;
 
     // Guard shadow registers from being exposed downstream until fuse sensing is complete,
     // Unless we are in security disable mode, then expose the shadow registers downstream.

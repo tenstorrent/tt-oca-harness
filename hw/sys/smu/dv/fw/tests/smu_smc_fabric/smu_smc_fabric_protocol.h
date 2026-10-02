@@ -4,7 +4,7 @@
  * smu_smc_fabric_test protocol, shared by the SMC ROM image and the cocotb
  * sequence. Plain integer #defines only: the sequence parses this file.
  *
- * Scratch words are the SMC CPU_CTRL scratch array (8-byte stride).
+ * Scratch words are the SMC CPU scratch registers.
  */
 #ifndef SMU_SMC_FABRIC_PROTOCOL_H
 #define SMU_SMC_FABRIC_PROTOCOL_H
@@ -23,10 +23,9 @@
 #define SMCFAB_HART_PASS 0x0DA00000
 #define SMCFAB_HART_FAIL 0x0BAD0000
 
-/* SEP SRAM at the global address the sequence opens the SEP aperture to
- * (SEP_GLOBAL_BASE_ADDR 0x04000000 plus SEP SRAM local 0x10000000), and an
- * address outside that aperture (0x04000000-0x14FFFFFF) and the SMC one at its
- * RDL reset (0x40000000-0x40FFFFFF), which leaves on ext_out. */
+/* SEP SRAM at the global address the sequence opens the SEP aperture to, and
+ * an address outside both that aperture and the SMC aperture at reset, which
+ * leaves on ext_out. */
 #define SMCFAB_SEP_TARGET 0x14002000
 #define SMCFAB_EXT_TARGET 0x2A000000
 #define SMCFAB_HART_STRIDE 0x40

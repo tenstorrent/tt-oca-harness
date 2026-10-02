@@ -39,7 +39,7 @@ module smc_efuse_wrapper
   output smc_pkg::smc_axil_32_32_resp_t              axil_smc_otp_jtag_resp_o,  // JTAG AXI4-Lite slave
                                                                                 // response.
 
-  input  logic [2*smc_pkg::LC_STATE_WIDTH-1:0]       lc_state_i,  // LC state from SEP
+  input  logic [2*smc_pkg::LcStateWidth-1:0]       lc_state_i,    // LC state from SEP
                                                                   // (differentially
                                                                   // encoded); PROD and
                                                                   // RMA_SiP restrict JTAG
@@ -127,11 +127,11 @@ module smc_efuse_wrapper
         {[smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR :
           (smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR + 'h1F)]});
 
-  logic [smc_pkg::LC_STATE_WIDTH-1:0] lc_state_smc_raw;
+  logic [smc_pkg::LcStateWidth-1:0]   lc_state_smc_raw;
   logic                               lc_sigint_err;
 
   prim_diff_decode_multi #(
-    .Width(smc_pkg::LC_STATE_WIDTH)
+    .WIDTH(smc_pkg::LcStateWidth)
   ) u_lc_state_smc_dec (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
@@ -142,7 +142,7 @@ module smc_efuse_wrapper
 
   // On integrity error, restrict JTAG access (safe default)
   assign is_prod_or_rma_sip = (lc_state_smc_raw == 4'b0001) ||  // PROD
-      (lc_state_smc_raw[smc_pkg::LC_STATE_WIDTH-1:1] == 3'b001);  // RMA_SIP
+      (lc_state_smc_raw[smc_pkg::LcStateWidth-1:1] == 3'b001);  // RMA_SIP
 
   axi_lite_demux #(
     .aw_chan_t  (smc_pkg::smc_axil_32_32_aw_chan_t),
@@ -176,11 +176,11 @@ module smc_efuse_wrapper
 
   // Blocked path: return a slverr with a tagged data pattern.
   prim_axi_lite_err_slv #(
-    .AXI_ADDR_WIDTH(smc_pkg::SMC_LOCAL_ADDR_WIDTH),
-    .AXI_DATA_WIDTH(smc_pkg::AXI_LITE_32_DATA_WIDTH),
+    .AXI_ADDR_WIDTH(smc_pkg::SmcLocalAddrWidth),
+    .AXI_DATA_WIDTH(smc_pkg::AxiLite32DataWidth),
     .axil_req_t    (smc_pkg::smc_axil_32_32_req_t),
     .axil_resp_t   (smc_pkg::smc_axil_32_32_resp_t),
-    .RESP_WIDTH    (smc_pkg::AXI_LITE_32_DATA_WIDTH),
+    .RESP_WIDTH    (smc_pkg::AxiLite32DataWidth),
     .RESP_DATA     (32'hbadcab1e),
     .MAX_TRANS     (2)
   ) u_prim_axi_lite_err_slv_jtag_access_ctrl (
@@ -195,8 +195,8 @@ module smc_efuse_wrapper
   /////////////////////////////////////////////////////////////////////////
 
   efuse_interface_controller #(
-    .ADDR_WIDTH                  (smc_pkg::SMC_LOCAL_ADDR_WIDTH),
-    .DATA_WIDTH                  (smc_pkg::AXI_LITE_32_DATA_WIDTH),
+    .ADDR_WIDTH                  (smc_pkg::SmcLocalAddrWidth),
+    .DATA_WIDTH                  (smc_pkg::AxiLite32DataWidth),
 
     .addr_t                      (smc_pkg::smc_axi_lite_32_addr_t),
     .data_t                      (smc_pkg::smc_axi_lite_32_data_t),
@@ -229,10 +229,10 @@ module smc_efuse_wrapper
     .EFUSE_CTRL_REG_MAP_BASE_ADDR(32'(smc_top_addrmap_pkg::SMC_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR)),
     .EFUSE_CTRL_REG_MAP_SIZE     (32'(smc_top_addrmap_pkg::SMC_TOP_EFUSE_INTERFACE_CTRL_SIZE)),
 
-    .SHADOW_REG_BITS             (smc_efuse_pkg::SHADOW_REG_BITS),
+    .SHADOW_REG_BITS             (smc_efuse_pkg::ShadowRegBits),
     .EFUSE_MACRO_WORD_WIDTH      (smc_efuse_pkg::NumFuseWordWidth),
 
-    .EFUSE_FIELDS                (smc_efuse_pkg::NUM_EFUSE_FIELDS),
+    .EFUSE_FIELDS                (smc_efuse_pkg::NumEfuseFields),
 
     .HAS_LC_STATE                (1'b0), // SMC does not have LC state
     .CLASS1_SHADOW_RANGES        (smc_efuse_pkg::Class1ShadowRanges),

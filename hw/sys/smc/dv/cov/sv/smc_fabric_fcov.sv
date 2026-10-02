@@ -24,7 +24,7 @@ module smc_fabric_fcov #(
   // 1 when the bench answers the SMC's DTP CSR AXI-Lite port. The SMC bench
   // ties that response port off, so no access to it completes and none is
   // issued; the DTP-active bins are dropped rather than carried unhittable.
-  parameter bit DtpCsrResponder = 1'b0
+  parameter bit DTP_CSR_RESPONDER = 1'b0
 ) (
   input wire clk_smc_i,
   input wire rst_cold_ni,
@@ -419,7 +419,7 @@ module smc_fabric_fcov #(
   // ------------------------------------------------------------------
   covergroup cg_axil_masters with function sample (logic dtp_csr, logic external, logic efuse_bank);
     option.per_instance = 1;
-    cp_dtp_csr: coverpoint dtp_csr {ignore_bins no_responder = {1'b1} with (!DtpCsrResponder);}
+    cp_dtp_csr: coverpoint dtp_csr {ignore_bins no_responder = {1'b1} with (!DTP_CSR_RESPONDER);}
     cp_external: coverpoint external;
     cp_efuse_bank: coverpoint efuse_bank;
     x_concurrency: cross cp_dtp_csr, cp_external, cp_efuse_bank;

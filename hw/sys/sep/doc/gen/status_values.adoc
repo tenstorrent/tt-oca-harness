@@ -4,7 +4,7 @@
 // Source: hw/sys/sep/bootrom/prod/include/status_values.h
 
 [[tbl:sep_msg_codes]]
-.SEP_MSG_* status codes (151 defined)
+.SEP_MSG_* status codes (156 defined)
 [width="100%",cols="25%,75%",options="header"]
 [grid=rows]
 [frame=ends]
@@ -159,6 +159,11 @@
 |`0x0224` |`SEP_MSG_SPI_OT_BOUNDS_ERROR`
 |`0x0225` |`SEP_MSG_ENTROPY_INIT_START`
 |`0x0226` |`SEP_MSG_ENTROPY_INIT_FAILED`
+|`0x0227` |`SEP_MSG_FUSE_SBOOT_DIS_RSVD`
+|`0x0228` |`SEP_MSG_SBOOT_DBG_LOCK`
+|`0x0229` |`SEP_MSG_DMA_TIMEOUT`
+|`0x022A` |`SEP_MSG_HMAC_FIFO_TIMEOUT`
+|`0x022B` |`SEP_MSG_DMA_OUT_OF_RANGE`
 |`0xFFFE` |`SEP_MSG_INFO_OVERFLOW`
 |`0xFFFF` |`SEP_MSG_WARNING_OVERFLOW`
 |===

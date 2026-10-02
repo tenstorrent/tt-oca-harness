@@ -55,13 +55,13 @@ module uart_log_engine_wrap_tb_top
 
   // AXI4-Lite log-fetch master port (flattened, VIP responder side)
   output wire                                             log_fetch_awvalid,
-  output wire [log_engine_pkg::LOG_FETCH_ADDR_WIDTH-1:0]  log_fetch_awaddr,
+  output wire [log_engine_pkg::LogFetchAddrWidth-1:0]     log_fetch_awaddr,
   output wire [2:0]                                       log_fetch_awprot,
   input  wire                                             log_fetch_awready,
 
   output wire                                             log_fetch_wvalid,
-  output wire [log_engine_pkg::LOG_FETCH_DATA_WIDTH-1:0]  log_fetch_wdata,
-  output wire [log_engine_pkg::LOG_FETCH_STRB_WIDTH-1:0]  log_fetch_wstrb,
+  output wire [log_engine_pkg::LogFetchDataWidth-1:0]     log_fetch_wdata,
+  output wire [log_engine_pkg::LogFetchStrbWidth-1:0]     log_fetch_wstrb,
   input  wire                                             log_fetch_wready,
 
   output wire                                             log_fetch_bready,
@@ -69,13 +69,13 @@ module uart_log_engine_wrap_tb_top
   input  wire [1:0]                                       log_fetch_bresp,
 
   output wire                                             log_fetch_arvalid,
-  output wire [log_engine_pkg::LOG_FETCH_ADDR_WIDTH-1:0]  log_fetch_araddr,
+  output wire [log_engine_pkg::LogFetchAddrWidth-1:0]     log_fetch_araddr,
   output wire [2:0]                                       log_fetch_arprot,
   input  wire                                             log_fetch_arready,
 
   output wire                                             log_fetch_rready,
   input  wire                                             log_fetch_rvalid,
-  input  wire [log_engine_pkg::LOG_FETCH_DATA_WIDTH-1:0]  log_fetch_rdata,
+  input  wire [log_engine_pkg::LogFetchDataWidth-1:0]     log_fetch_rdata,
   input  wire [1:0]                                       log_fetch_rresp,
 
   // Pad-mux control

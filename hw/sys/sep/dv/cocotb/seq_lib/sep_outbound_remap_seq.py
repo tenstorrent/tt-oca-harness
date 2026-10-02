@@ -8,8 +8,8 @@ to allow only that remapped beat. A second region is left invalid, so its
 access passes through untranslated and misses the allow window
 (block-by-default DECERR).
 
-Address rewrite: ``{offset[55:IdxStart], adjusted[IdxStart-1:0]}``.
-IdxStart is log2(AP window / region count) from the generated map
+Address rewrite: ``{offset[55:IDX_START], adjusted[IDX_START-1:0]}``.
+IDX_START is log2(AP window / region count) from the generated map
 and fabric.adoc. Region bases are ``AP_REGION_MEM_BASE_ADDR`` /
 ``STEE_REGION_MEM_BASE_ADDR``.
 """
@@ -43,7 +43,7 @@ from seq_lib.sep_fabric_csr_bank_seq import (
 AP_REGION_BASE = sym("AP_REGION_MEM_BASE_ADDR")
 STEE_REGION_BASE = sym("STEE_REGION_MEM_BASE_ADDR")
 # Region count from fabric.adoc ("Sixteen remap regions") and the RDL array.
-# IdxStart is log2(AP window / N), so a size or count change fails import.
+# IDX_START is log2(AP window / N), so a size or count change fails import.
 N_REGIONS = indexed_block_count("AP_OUTPUT_REMAP_CTRL")
 _AP_WINDOW = sym("AP_REGION_MEM_SIZE")
 if _AP_WINDOW % N_REGIONS:

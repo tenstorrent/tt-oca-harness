@@ -32,7 +32,7 @@ module smu_ext_fcov #(
   // driven from the SEP subsystem, so smu.sv's gen_no_sep branch ties the
   // request port to '0 and the bench ties the response pins off; the two
   // points on that shim are dropped rather than carried unhittable.
-  parameter bit SepPresent = 1'b1
+  parameter bit SEP_PRESENT = 1'b1
 ) (
   input wire clk_smu_i,
   input wire rst_cold_ni,
@@ -62,13 +62,13 @@ module smu_ext_fcov #(
   input wire sep_efuse_bank_ctrl_rready_i,
 
   // Outputs to external systems.
-  input wire [smc_pkg::NUM_MAILBOXES-1:0] ext_mailbox_interrupts_i,
+  input wire [smc_pkg::NumMailboxes-1:0] ext_mailbox_interrupts_i,
   input wire [31:0] ss_config_i,
   input smc_reset_unit_pkg::reset_ctrl_t ss_reset_ctrl_i[31:0],
   input smc_efuse_pkg::efuse_map_t smc_shadow_regs_i
 );
 
-  localparam int unsigned MbxMsb = smc_pkg::NUM_MAILBOXES - 1;
+  localparam int unsigned MbxMsb = smc_pkg::NumMailboxes - 1;
 
   wire in_reset = (rst_cold_ni !== 1'b1);
 
@@ -103,16 +103,16 @@ module smu_ext_fcov #(
   `OCAH_FCOV_COVER(c_inbound_id_width_8, inbound_id_width_8_e, clk_smu_i, in_reset)
   // The 10-bit outbound ID is the SEP=0 converter path; with SEP present the
   // crossbar widens it.
-  if (!SepPresent) begin : g_nosep
+  if (!SEP_PRESENT) begin : g_nosep
     wire outbound_id_width_10_e = aw_out_fire_e && ($bits(axi_out_aw_id_i) == 10);
     `OCAH_FCOV_COVER(c_outbound_id_width_10, outbound_id_width_10_e, clk_smu_i, in_reset)
   end
 
   // ------------------------------------------------------------------
-  // Mailbox interrupt vector: its top bit, index NUM_MAILBOXES-1, rising.
+  // Mailbox interrupt vector: its top bit, index NumMailboxes-1, rising.
   // ------------------------------------------------------------------
   wire mailbox_irq_out_width_32_e = (ext_mailbox_interrupts_i[MbxMsb] === 1'b1)
-      && (mbx_msb_q === 1'b0) && (smc_pkg::NUM_MAILBOXES == 32);
+      && (mbx_msb_q === 1'b0) && (smc_pkg::NumMailboxes == 32);
   `OCAH_FCOV_COVER(c_mailbox_irq_out_width_32, mailbox_irq_out_width_32_e, clk_smu_i, in_reset)
 
   // ------------------------------------------------------------------
@@ -143,7 +143,7 @@ module smu_ext_fcov #(
   // The SEP-side shim, observed the same way. Only elaborated with SEP
   // present: the request port is tied to '0 without it, so nothing is ever
   // launched and nothing comes back.
-  if (SepPresent) begin : g_sep
+  if (SEP_PRESENT) begin : g_sep
     wire sep_efuse_req = (sep_efuse_bank_ctrl_awvalid_i === 1'b1)
         || (sep_efuse_bank_ctrl_arvalid_i === 1'b1);
 

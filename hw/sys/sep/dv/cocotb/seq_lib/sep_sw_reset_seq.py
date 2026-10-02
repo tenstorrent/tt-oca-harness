@@ -2,15 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP per-engine software reset control (SW_RESET_N).
 
-Active-low: a set bit releases the engine, a clear bit holds it in reset. This
-helper keeps a shadow of the register so a test can release / park individual
-engines without a read-modify-write race, the way the reference consume base sequence
-releases KM first and the target crypto engine later.
-
-The shadow is seeded with the generated HW reset default:
-km_sw_rst_n=0 (held), otbn/aes/hmac/kmac/trng/abr=1 (released) => 0x7E.
-A test that wants the crypto engines parked (e.g. to dedicate entropy to the KM)
-must park() them explicitly; the reset default leaves them released.
+Active-low: a set bit releases the engine, a clear bit holds it in reset. A shadow of the
+register lets a test release or park single engines without a read-modify-write race. The shadow
+starts at the generated reset default 0x7E (KM held, every crypto engine released), so a test
+that wants engines parked must call park().
 
 Bit map (hw/sys/sep/regs/blocks/sep_reset_ctrl/sep_reset_ctrl.rdl):
   km=0, otbn=1, aes=2, hmac=3, kmac=4, trng=5, abr=6
@@ -73,10 +68,10 @@ class SepSwReset:
     async def park(self, *engines: str) -> None:
         """Hold engines in SW reset.
 
-        A reset of AES, KMAC, or OTBN pulses the shared crypto EDN adapter
-        clear for one cycle. That clear drops every endpoint's staged word,
-        not only the engine being parked. The arbiter hold-until-grant
-        assumption is a separate check, and this write does not grade it."""
+        A reset of AES, KMAC, or OTBN cancels only that engine's crypto EDN
+        endpoints, from one cycle before its gated reset until the reset
+        releases. The other endpoints keep their staged words. This write
+        does not grade that cancel."""
         for eng in engines:
             self.value &= ~(1 << SW_RESET_N_BIT[eng])
         await self._write()

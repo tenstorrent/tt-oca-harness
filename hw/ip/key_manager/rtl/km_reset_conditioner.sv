@@ -52,7 +52,7 @@ module km_reset_conditioner
   //=========================================================================
 
   // Counter width sized to hold MIN_RESET_CYCLES.
-  localparam int unsigned COUNT_WIDTH = $clog2(MIN_RESET_CYCLES + 1);
+  localparam int unsigned CountWidth = $clog2(MIN_RESET_CYCLES + 1);
 
   //=========================================================================
   // Cold Path — single prim_rst_sync (AASD)
@@ -88,16 +88,16 @@ module km_reset_conditioner
   logic warm_trigger;
   assign warm_trigger = !warm_rst_ni | !soft_rst_ni;
 
-  logic [COUNT_WIDTH-1:0] warm_count;
+  logic [CountWidth-1:0] warm_count;
   logic warm_hold_active;
 
   always_ff @(posedge clk_i or negedge rst_cold_aasd_no) begin
     if (!rst_cold_aasd_no) begin
-      warm_count       <= MIN_RESET_CYCLES[COUNT_WIDTH-1:0];
+      warm_count       <= MIN_RESET_CYCLES[CountWidth-1:0];
       warm_hold_active <= 1'b1;
     end else if (warm_trigger) begin
       // Reload counter every cycle that trigger is active.
-      warm_count       <= MIN_RESET_CYCLES[COUNT_WIDTH-1:0];
+      warm_count       <= MIN_RESET_CYCLES[CountWidth-1:0];
       warm_hold_active <= 1'b1;
     end else if (warm_hold_active) begin
       if (warm_count > 0) begin

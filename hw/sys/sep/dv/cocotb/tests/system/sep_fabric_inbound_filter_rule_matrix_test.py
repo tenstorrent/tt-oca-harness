@@ -46,7 +46,7 @@ not walked.
 CHK-PAGE-WIDEN / CHK-PAGE-BOUND / CHK-CONFIG-LOCK cover the same-page
 allow_burst=1 window on entry 15. An 8-byte window inside the
 dual-scratch page (0x1080_2000) is rewritten by axi_filter_wrap.sv to the
-whole page, and traffic_filter.sv then compares only addr[AddrWidth-1:12].
+whole page, and traffic_filter.sv then compares only addr[ADDR_WIDTH-1:12].
 CHK-PAGE-WIDEN proves the 4 KB page grant ON THE BUS
 (hw/ip/axi_filter/doc/index.adoc: START down, END up):
 an external access to an address inside the granted page but OUTSIDE the

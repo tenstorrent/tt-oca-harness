@@ -4,8 +4,8 @@
 # SEP Boot ROM firmware coverage
 
 This tool converts VeeR EL2 retired-PC traces from a SEP `rom_fw` simulation
-into separate Coverview reports for the `boot_rom`, `boot_rom_ot`, and
-`boot_rom_ot_pio` firmware variants. Each variant is retraced with the exact
+into separate Coverview reports for the `boot_rom` and `boot_rom_pio`
+firmware variants. Each variant is retraced with the exact
 `boot_rom.elf` staged into its passing simulation leaves; PCs from different
 ELFs are never merged.
 

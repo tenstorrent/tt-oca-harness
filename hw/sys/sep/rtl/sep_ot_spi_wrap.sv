@@ -72,10 +72,10 @@ module sep_ot_spi_wrap #(
   /////////////////////////////////////////////////////////////////////////////
 
   localparam int unsigned SpiBlockAw = spi_host_reg_pkg::BlockAw;
-  localparam logic [sep_io_pkg::ADDR_WIDTH-1:0] SpiAddrMask =
-      sep_io_pkg::ADDR_WIDTH'((1 << SpiBlockAw) - 1);
-  localparam logic [sep_io_pkg::ADDR_WIDTH-1:0] SpiBaseLower =
-      sep_io_pkg::ADDR_WIDTH'(sep_top_addrmap_pkg::SEP_TOP_SPI_CONTROLLER_BASE_ADDR)
+  localparam logic [sep_io_pkg::AddrWidth-1:0] SpiAddrMask =
+      sep_io_pkg::AddrWidth'((1 << SpiBlockAw) - 1);
+  localparam logic [sep_io_pkg::AddrWidth-1:0] SpiBaseLower =
+      sep_io_pkg::AddrWidth'(sep_top_addrmap_pkg::SEP_TOP_SPI_CONTROLLER_BASE_ADDR)
       & SpiAddrMask;
 
   sep_io_pkg::axil_req_t axil_req_masked;
@@ -89,7 +89,7 @@ module sep_ot_spi_wrap #(
   /////////////////////////////////////////////////////////////////////////////
   // AXI-Lite to TL-UL conversion
   //
-  // AckZeroStrobeWrite: the SEP crossbar is 64 bits wide and this block sits
+  // ACK_ZERO_STROBE_WRITE: the SEP crossbar is 64 bits wide and this block sits
   // behind the 64-to-32 downsizer in sep_io. A master that writes a 32-bit
   // register with a full-width (AxSIZE = 8 bytes) beat and byte strobes -- the
   // inbound port from the SoC, the debug master, or a verification master --
@@ -108,11 +108,11 @@ module sep_ot_spi_wrap #(
   tlul_pkg::tl_d2h_t tl_resp;
 
   axi_lite_to_tlul #(
-    .AXI_ADDR_WIDTH     (sep_io_pkg::ADDR_WIDTH),
-    .AXI_DATA_WIDTH     (sep_io_pkg::DATA_WIDTH),
-    .axi_lite_req_t     (sep_io_pkg::axil_req_t),
-    .axi_lite_rsp_t     (sep_io_pkg::axil_resp_t),
-    .AckZeroStrobeWrite (1'b1)
+    .AXI_ADDR_WIDTH        (sep_io_pkg::AddrWidth),
+    .AXI_DATA_WIDTH        (sep_io_pkg::DataWidth),
+    .axi_lite_req_t        (sep_io_pkg::axil_req_t),
+    .axi_lite_rsp_t        (sep_io_pkg::axil_resp_t),
+    .ACK_ZERO_STROBE_WRITE (1'b1)
   ) u_spi_axi_lite_to_tlul (
     .clk_i          (clk_i),
     .rst_ni         (rst_ni),

@@ -2,74 +2,14 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /**
- * @file main.c
- * @brief I2C Target SMBus Alert Test - External Master VIP Test
+ * @file i2c_target_smbus_test.c
+ * @brief I2C target SMBus alert and suspend test with an external host
  *
- * =============================================================================
- * Test Purpose
- * =============================================================================
- *
- * This test verifies I2C Target (Slave) mode SMBus Alert functionality:
- *   - Configure I2C_0 as Target mode with address 0x10
- *   - Configure secondary address 0x0C (ARA - Alert Response Address)
- *   - Assert SMBus Alert signal (SMBALERT#)
- *   - Verify VIP detects alert and performs ARA read
- *   - Verify alert is automatically cleared after ARA ACK
- *
- * =============================================================================
- * Test Architecture
- * =============================================================================
- *
- * LEVEL 1: Wrapper Control (0xC0009E00)
- *   - Enable GPIO pad multiplexing
- *   - Configure I2C_0 as Target mode
- *
- * LEVEL 2: OpenTitan I2C IP Control (0xC0009000)
- *   - Configure Target address and timing
- *   - Configure secondary address for ARA (0x0C)
- *   - Enable Target mode reception
- *   - Configure SMBUS_CTRL to assert SMBALERT#
- *
- * =============================================================================
- * Test Flow
- * =============================================================================
- *
- * 1. System Initialization
- *    - Peripheral reset and clock setup
- *
- * 2. LEVEL 1 - Enable I2C Wrapper (Target mode)
- *    - Enable I2C_0 wrapper control
- *
- * 3. LEVEL 2 - Initialize I2C IP as Target
- *    - Set Target address to 0x10 (primary)
- *    - Set Target address to 0x0C (secondary, ARA)
- *    - Configure timing and FIFO thresholds
- *    - Enable Target mode
- *
- * 4. Assert SMBus Alert
- *    - Configure SMBUS_CTRL.SMBALERT = 1
- *    - Verify SMBALERT# signal is driven low
- *
- * 5. Wait for VIP ARA Read
- *    - VIP detects alert and reads from ARA address (0x0C)
- *    - Target responds with its address (0x20 = 0x10 << 1)
- *    - Alert is automatically cleared after ARA ACK
- *
- * 6. Verify Alert Cleared
- *    - Check SMBUS_STATUS.SMBALERT = 0
- *    - Verify SMBALERT# signal is released (high)
- *
- * =============================================================================
- * SMBus Alert Protocol
- * =============================================================================
- *
- * 1. Target asserts SMBALERT# by setting SMBUS_CTRL.SMBALERT = 1
- * 2. Controller (VIP) detects alert via interrupt or polling
- * 3. Controller reads from Alert Response Address (0x0C)
- * 4. Target with active alert responds with its address (7-bit << 1)
- * 5. Target automatically clears SMBALERT# after ACK
- *
- * =============================================================================
+ * Firmware raises the SMBus alert on I2C_0 in target mode, with this target's
+ * address preloaded as the Alert Response Address (ARA) reply, and checks that
+ * the alert request clears after the testbench host's ARA read without
+ * firmware clearing it. It then waits for the host to assert and deassert the
+ * suspend input. The testbench checks the alert pad itself.
  */
 
 #include <stdint.h>
@@ -147,12 +87,6 @@ int main(void) {
     const uint8_t ARA_ADDR = 0x0C;    // Alert Response Address (7-bit)
     int ret;
 
-    //-------------//
-    // RESET & PLL //
-    //-------------//
-
-    // Hardware releases the peripherals from reset.
-
     simputs("\n");
     simputs("################################################\n");
     simputs("##      I2C Target SMBus Alert Test         ##\n");
@@ -160,28 +94,17 @@ int main(void) {
     simputs("################################################\n");
     simputs("\n");
 
-    //=========================================================================
-    // Step 1: System Initialization
-    //=========================================================================
     write_scratch(1, 0x00000010);
     simputs("Step 1: System Initialization\n");
     simputs("  System ready\n");
     write_scratch(1, 0x00000011);
 
-    //=========================================================================
-    // Step 2: LEVEL 1 - Wrapper Control Enable
-    //         Enable GPIO pad mux (MUST be done FIRST)
-    //=========================================================================
+    // The wrapper must be enabled before the I2C IP is configured.
     write_scratch(1, 0x00000020);
     simputs("\nStep 2: LEVEL 1 - Wrapper Control Enable\n");
-
-    // Enable I2C_0 Wrapper (Target mode)
     i2c_wrapper_enable(TARGET_IDX, false);
     write_scratch(1, 0x00000021);
 
-    //=========================================================================
-    // Step 3: LEVEL 2 - I2C IP Initialization (Target Mode)
-    //=========================================================================
     write_scratch(1, 0x00000030);
     simputs("\nStep 3: LEVEL 2 - I2C Target Initialization\n");
 
@@ -203,7 +126,6 @@ int main(void) {
         test_fail(0);
     }
 
-    // Initialize I2C_0 as Target (address 0x10, secondary address 0x0C for ARA)
     simputshex32("  Initializing I2C_0 Target (addr=0x", TARGET_ADDR);
     simputs(", ARA=0x");
     simputshex32("", ARA_ADDR);
@@ -232,7 +154,6 @@ int main(void) {
         simputs("\n");
     }
 
-    // Configure Target with primary address (0x10) and secondary address (0x0C for ARA)
     i2c_target_config_t tgt_cfg = {
         .address0 = TARGET_ADDR,
         .mask0 = 0x7F,        // Exact match
@@ -258,7 +179,6 @@ int main(void) {
     simputs("    Primary address: 0x");
     simputshex32("", TARGET_ADDR);
 
-    // Explicitly set ACQ_START_STOP_EN bit to 1
     uint32_t base = i2c_get_base(TARGET_IDX);
     i2c__CTRL_t ctrl = {.w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) -
                                               SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
@@ -276,16 +196,10 @@ int main(void) {
     i2c_reset_fifos(TARGET_IDX, false, false, true, true);
     simputs("  FIFOs reset after target enable\n");
 
-    //=========================================================================
-    // Step 4: Assert SMBus Alert
-    //=========================================================================
     write_scratch(1, 0x00000040);
     simputs("\nStep 4: Asserting SMBus Alert\n");
 
-    // Pre-load TX FIFO with target address for ARA response
-    // When VIP reads from ARA address (0x0C), target responds with its address
-    // Format: 7-bit address << 1 (I2C format)
-    // Example: 0x10 << 1 = 0x20
+    // The ARA response is this target's address byte, preloaded into the TX FIFO.
     uint8_t ara_response = (TARGET_ADDR << 1);
     uint32_t bytes_sent = i2c_target_transmit(TARGET_IDX, &ara_response, 1);
     if (bytes_sent != 1) {
@@ -299,16 +213,14 @@ int main(void) {
     simputshex32("", TARGET_ADDR);
     simputs(" << 1)\n");
 
-    // Assert SMBus Alert by setting SMBUS_CTRL.SMBALERT = 1
     simputs("  Asserting SMBALERT# signal...\n");
     i2c_smbus_alert(TARGET_IDX, true);
 
-    // Add delay to allow signal to propagate to GPIO pad
-    // GPIO39 should be driven low by hardware after SMBUS_CTRL.SMBALERT is set
+    // Give the alert time to reach its pad.
     for (volatile uint32_t i = 0; i < 1000; i++)
         ;
 
-    // Fail-closed: SMBUS_CTRL.SMBALERT must read back asserted before the ARA clear wait
+    // The alert request must read back as set before the wait for it to clear.
     bool alert_status = smbus_get_alert_ctrl(TARGET_IDX);
     if (!alert_status) {
         simputs("  ERROR: SMBUS_CTRL.SMBALERT not set after i2c_smbus_alert(true)\n");
@@ -316,10 +228,8 @@ int main(void) {
         test_fail(0);
     }
     simputs("  SMBALERT# asserted successfully (CTRL.SMBALERT=1)\n");
-    bool alert_was_asserted = true;
 
-    // Signal to testbench that alert assertion is complete
-    // Testbench will verify GPIO39 signal directly
+    // Tell the testbench the alert is raised; the testbench checks the pad itself.
     write_scratch(1, 0x00000041);
     simputs("  Signal sent to testbench: scratch[1] = 0x00000041\n");
 
@@ -327,28 +237,17 @@ int main(void) {
     write_scratch(1, 0xEBEDEBE2);
     simputs("  Setup complete - SMBALERT# asserted, waiting for VIP ARA read...\n");
 
-    //=========================================================================
-    // Step 5: Wait for VIP ARA Read
-    //=========================================================================
     write_scratch(1, 0x00000050);
     simputs("\nStep 5: Waiting for VIP ARA Read\n");
 
-    // Wait for VIP to perform ARA read
-    // After ARA read with ACK, target automatically clears SMBALERT#
+    // The target clears its alert request once the host's ARA read is acknowledged.
     uint32_t wait_count = 0;
     const uint32_t ARA_WAIT_TIMEOUT = I2C_TIMEOUT_DEFAULT;
     bool alert_cleared = false;
 
-    if (!alert_was_asserted) {
-        simputs("  ERROR: Cannot wait for ARA clear without prior asserted status\n");
-        write_scratch(0, 0xBAD00052);
-        test_fail(0);
-    }
-
     while (wait_count < ARA_WAIT_TIMEOUT) {
         alert_status = smbus_get_alert_ctrl(TARGET_IDX);
         if (!alert_status) {
-            /* asserted → cleared edge after ARA ACK */
             alert_cleared = true;
             break;
         }
@@ -370,13 +269,9 @@ int main(void) {
     simputs("  Alert cleared after ARA read (expected behavior)\n");
     write_scratch(1, 0x00000051);
 
-    //=========================================================================
-    // Step 6: Verify Alert Cleared
-    //=========================================================================
     write_scratch(1, 0x00000060);
     simputs("\nStep 6: Verifying Alert Cleared\n");
 
-    // Verify alert status is cleared
     alert_status = smbus_get_alert_ctrl(TARGET_IDX);
     if (alert_status) {
         simputs("  ERROR: SMBUS_CTRL.SMBALERT still set after ARA read\n");
@@ -388,9 +283,6 @@ int main(void) {
     simputs("  Alert was automatically cleared after ARA ACK (SMBus protocol)\n");
     write_scratch(1, 0x00000061);
 
-    //=========================================================================
-    // Step 7: Wait for VIP to assert SMBSUS# and verify DUT receives it
-    //=========================================================================
     write_scratch(1, 0x00000070);
     simputs("\nStep 7: Waiting for VIP to assert SMBSUS#\n");
     simputs("  VIP will assert SMBSUS# after ARA read completion\n");
@@ -425,7 +317,7 @@ int main(void) {
     simputs("  DUT successfully received SMBSUS# signal from VIP\n");
     write_scratch(1, 0x00000071);
 
-    // Wait a bit for VIP to deassert SMBSUS#
+    // Wait for the host to deassert SMBSUS#
     simputs("  Waiting for VIP to deassert SMBSUS#...\n");
     suspend_wait_count = 0;
     bool suspend_cleared = false;
@@ -453,12 +345,8 @@ int main(void) {
     simputs("  SMBSUS# cleared successfully (status=0, signal is high)\n");
     write_scratch(1, 0x00000072);
 
-    //=========================================================================
-    // Test Complete - Signal to testbench
-    //=========================================================================
     write_scratch(1, 0x00000090);
 
-    // Signal test complete to testbench
     write_scratch(1, 0xEBEDEBE4);
     simputs("\n");
     simputs("################################################\n");
@@ -476,11 +364,4 @@ int main(void) {
     simputs("\n################################################\n");
 
     test_pass(0);
-
-    simputs("\n=== Test Complete ===\n");
-    while (true) {
-        __asm__("wfi");
-    }
-
-    return 0;
 }

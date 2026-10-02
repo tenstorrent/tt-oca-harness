@@ -9,6 +9,7 @@ ifdef::backend-html5[]
 :sep-trng-reset-ref: xref:sep:reset_controller.adoc#sep-trng-reset[Resetting the TRNG]
 :km-reset-diagram-ref: xref:ip:key_manager/doc/index.adoc#key-manager-reset-diagram[Key Manager cold and warm reset conditioning]
 :sep-interrupt-map-ref: xref:sep:interrupts.adoc#sep-cpu-interrupt-vector-map[SEP CPU Interrupt Vector Map]
+:sep-register-single-beat-ref: xref:sep:memory_map.adoc#sep-register-single-beat[Single-Beat Register Access]
 endif::backend-html5[]
 ifdef::backend-pdf[]
 :sep-register-map: <<sep-detailed-register-map,Detailed Register Map>>
@@ -16,6 +17,7 @@ ifdef::backend-pdf[]
 :sep-trng-reset-ref: <<sep-trng-reset>>
 :km-reset-diagram-ref: <<key-manager-reset-diagram>>
 :sep-interrupt-map-ref: <<sep-cpu-interrupt-vector-map>>
+:sep-register-single-beat-ref: <<sep-register-single-beat>>
 endif::backend-pdf[]
 
 [[cryptographic-subsystem]]
@@ -73,10 +75,10 @@ The integrator must instantiate the Adams Bridge working SRAMs outside SEP and
 connect them through the dedicated `abr_mem` request/response interface.
 For the memory interface and configuration requirements, see
 ifdef::backend-html5[]
-xref:ocah-integrator-guide:ROOT:smu.adoc#sep-memory-interfaces[SEP Memory Interfaces in the Integrator Guide].
+xref:ocah-integrator-guide:ROOT:smu-sep.adoc#sep-memory-interfaces[SEP Memory Interfaces in the Integrator Guide].
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-integrator-guide/latest/smu.html#sep-memory-interfaces[SEP Memory Interfaces in the Integrator Guide].
+https://tenstorrent.github.io/tt-oca-harness/ocah-integrator-guide/latest/smu-sep.html#sep-memory-interfaces[SEP Memory Interfaces in the Integrator Guide].
 endif::backend-pdf[]
 
 The `sep_crypto` module implements the integration layer, with
@@ -108,9 +110,9 @@ image::sep-crypto-resets.svg[alt="Resets inside u_sep_crypto, including the TRNG
 Inside `u_sep_trng`, `por_rst_ni` resets a 2-flop synchronizer that samples the
 inverted TRNG reset and drives `trng_reset_active`. That signal synchronously
 clears both EDN AXIS adapters and, as `trng_entropy_clear_o`, the entropy pool.
-The crypto EDN adapter also takes per-endpoint resets from the gated OTBN, AES
-and KMAC resets, so a client's reset cancels only its own endpoint. The Key
-Manager conditions `sep_reset_n` into its cold domain through
+Both adapters take `rst_ni`. An OTBN, AES or KMAC software reset cancels that
+engine's endpoints in the crypto adapter (see {sep-reset-controller-ref}). The
+Key Manager conditions `sep_reset_n` into its cold domain through
 `u_cold_rst_sync`, and the gated Key Manager reset or its software reset
 `soft_rst_n` into a warm reset held for at least 10 cycles, as
 {km-reset-diagram-ref} shows in more detail.
@@ -168,10 +170,10 @@ infrastructure, and combinational entropy muxes are not Class 2 roots.
 [[crypto-single-beat-only]]
 == Single-Beat Access Only
 
-The `sep_crypto` demux accepts single-beat transactions only. Any access whose
-`AxLEN` is non-zero is routed to the internal error slave and answered with
-DECERR on every beat, whatever its address; no beat reaches an accelerator.
-Software must access the whole crypto region with single-beat transactions.
+The `sep_crypto` demux enforces single-beat access to the crypto region
+({sep-register-single-beat-ref}). Any access whose `AxLEN` is non-zero is
+routed to the internal error slave and answered with DECERR on every beat,
+whatever its address; no beat reaches an accelerator.
 
 [[km-key-delivery]]
 == Key Manager Key Delivery

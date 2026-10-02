@@ -209,15 +209,16 @@ class OcahScoreboard(uvm_scoreboard):
         self._expected_q.setdefault(key, deque()).append(item)
         self._try_pair(key)
 
-    def flush_expected(self, feature: str) -> int:
-        """Drop every expected item of a feature still waiting, on every lane.
+    def flush_expected(self, feature: str, lane: str | None = None) -> int:
+        """Drop every pending expected item of a feature, on every lane or on one.
 
         A reset cancels the transactions they predicted. Returns how many
         were dropped.
         """
+        only = None if lane is None else self._pair_key(feature, lane)
         dropped = 0
         for key, queue in self._expected_q.items():
-            if self._key_feature[key] != feature:
+            if self._key_feature[key] != feature or (only is not None and key != only):
                 continue
             dropped += len(queue)
             queue.clear()

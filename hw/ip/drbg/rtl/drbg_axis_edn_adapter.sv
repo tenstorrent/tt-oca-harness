@@ -19,10 +19,10 @@
 // - External streams should drive it from the producer's FIPS policy, commonly tied low
 //   when the source is not NIST SP 800-90A approved.
 //
-// clear_i synchronously flushes staged entropy and every endpoint. endpoint_rst_ni
-// cancels only the corresponding endpoint and does not disturb another client's in-flight
-// response. Each endpoint reset must assert whenever rst_ni asserts.
-
+// clear_i synchronously flushes staged entropy and every endpoint. endpoint_cancel_i
+// synchronously cancels only the corresponding endpoint and does not disturb another client's
+// in-flight response. It must assert before the client's reset asserts and hold until that
+// reset deasserts.
 module drbg_axis_edn_adapter
   import drbg_pkg::*;
 #(
@@ -31,9 +31,9 @@ module drbg_axis_edn_adapter
 ) (
   input  wire logic clk_i,                                  // System clock.
   input  wire logic rst_ni,                                 // Async reset, active-low.
-  input  wire logic [NUM_ENDPOINTS-1:0] endpoint_rst_ni,    // Per-client cancel, active-low
-                                                            // asynchronous reset of that endpoint.
-                                                            // Must assert whenever rst_ni asserts;
+  input  wire logic [NUM_ENDPOINTS-1:0] endpoint_cancel_i,  // Per-client synchronous cancel.
+                                                            // Must assert before its reset and
+                                                            // hold until the reset deasserts;
                                                             // does not disturb other clients.
   input  wire logic clear_i,                                // Synchronous flush of staged entropy
                                                             // and every endpoint, active-high.
@@ -57,7 +57,7 @@ module drbg_axis_edn_adapter
 
   `include "prim_assert.sv"
 
-  localparam int unsigned DataWidth = DRBG_AXIS_DATA_WIDTH;
+  localparam int unsigned DataWidth = DrbgAxisDataWidth;
   localparam int unsigned StageWidth = DataWidth + 1;  // {tuser, tdata}
   localparam int unsigned StageDepth = 4;
 
@@ -109,6 +109,11 @@ module drbg_axis_edn_adapter
   // -------------------------------------------------------------------------
   logic [NUM_ENDPOINTS-1:0] arb_req;
   logic [NUM_ENDPOINTS-1:0] arb_gnt;
+  logic                     arb_req_chk;
+  logic [NUM_ENDPOINTS-1:0] ep_flush;
+  logic [NUM_ENDPOINTS-1:0] ep_flush_q;
+  logic [NUM_ENDPOINTS-1:0] ep_live;
+  logic [NUM_ENDPOINTS-1:0] ep_flush_start;
   logic                     arb_valid;
   logic                     arb_ready;
   logic [0:0]               arb_data_i [NUM_ENDPOINTS];
@@ -118,6 +123,10 @@ module drbg_axis_edn_adapter
     assign arb_data_i[k] = 1'b0;
   end
 
+  // A flush withdraws an ungranted request on its first cycle. Waive the
+  // arbiter's request checks only then, so sibling requests remain checked.
+  assign arb_req_chk = !(|ep_flush_start);
+
   prim_arbiter_ppc #(
     .N          (NUM_ENDPOINTS),
     .DW         (1),
@@ -125,7 +134,7 @@ module drbg_axis_edn_adapter
   ) u_arbiter (
     .clk_i     (clk_i),
     .rst_ni    (rst_ni),
-    .req_chk_i (!clear_i && (&endpoint_rst_ni)),
+    .req_chk_i (arb_req_chk),
     .req_i     (arb_req),
     .data_i    (arb_data_i),
     .gnt_o     (arb_gnt),
@@ -151,25 +160,32 @@ module drbg_axis_edn_adapter
   logic [NUM_ENDPOINTS-1:0] ep_ack;
   logic [NUM_ENDPOINTS-1:0] ep_err;
   logic [NUM_ENDPOINTS-1:0] ack_sm_err;
-  logic [NUM_ENDPOINTS-1:0] endpoint_active;
 
   for (genvar i = 0; i < NUM_ENDPOINTS; i++) begin : gen_ep
-    // Hold arbitration off while edn_ack_sm performs its post-reset FIFO clear.
-    always_ff @(posedge clk_i or negedge endpoint_rst_ni[i]) begin
-      if (!endpoint_rst_ni[i]) begin
-        endpoint_active[i] <= 1'b0;
-      end else if (clear_i) begin
-        endpoint_active[i] <= 1'b0;
+    // Global clear or this endpoint's cancel flushes the endpoint.
+    assign ep_flush[i] = clear_i || endpoint_cancel_i[i];
+
+    // edn_ack_sm clears the holding FIFO on the first cycle after a flush ends,
+    // so the endpoint rejoins arbitration a cycle later to keep a granted word
+    // from being cleared.
+    always_ff @(posedge clk_i or negedge rst_ni) begin
+      if (!rst_ni) begin
+        ep_flush_q[i] <= 1'b1;
       end else begin
-        endpoint_active[i] <= 1'b1;
+        ep_flush_q[i] <= ep_flush[i];
       end
     end
 
+    // Every use of edn_req_i is gated by ep_live, so a client reset that
+    // follows its cancel cannot reach a flop in this rst_ni domain.
+    assign ep_live[i]        = !ep_flush[i] && !ep_flush_q[i];
+    assign ep_flush_start[i] = ep_flush[i] && !ep_flush_q[i];
+
     // Only request when the client asks and we don't already hold a word.
-    assign arb_req[i] = endpoint_active[i] && edn_req_i[i].edn_req && !ep_rvalid[i];
+    assign arb_req[i] = ep_live[i] && edn_req_i[i].edn_req && !ep_rvalid[i];
 
     // Push the staged word into the winning endpoint's holding FIFO.
-    assign ep_push[i] = endpoint_active[i] && stage_rready && arb_gnt[i];
+    assign ep_push[i] = ep_live[i] && stage_rready && arb_gnt[i];
 
     prim_fifo_sync #(
       .Width             (StageWidth),
@@ -178,8 +194,8 @@ module drbg_axis_edn_adapter
       .OutputZeroIfEmpty (1'b1)
     ) u_ep_fifo (
       .clk_i    (clk_i),
-      .rst_ni   (endpoint_rst_ni[i]),
-      .clr_i    (ep_clr[i] | clear_i),
+      .rst_ni   (rst_ni),
+      .clr_i    (ep_clr[i] | ep_flush[i]),
       .wvalid_i (ep_push[i]),
       .wready_o (ep_wready[i]),
       .wdata_i  ({stage_rfips, stage_rdata}),
@@ -193,9 +209,9 @@ module drbg_axis_edn_adapter
 
     edn_ack_sm u_edn_ack_sm (
       .clk_i            (clk_i),
-      .rst_ni           (endpoint_rst_ni[i]),
-      .enable_i         (!clear_i && endpoint_rst_ni[i]),
-      .req_i            (edn_req_i[i].edn_req),
+      .rst_ni           (rst_ni),
+      .enable_i         (!ep_flush[i]),
+      .req_i            (edn_req_i[i].edn_req && ep_live[i]),
       .ack_o            (ep_ack[i]),
       .fifo_not_empty_i (ep_rvalid[i]),
       .fifo_pop_o       (ep_pop[i]),
@@ -204,17 +220,16 @@ module drbg_axis_edn_adapter
       .ack_sm_err_o     (ack_sm_err[i])
     );
 
-    assign edn_rsp_o[i].edn_ack = ep_ack[i] & ~clear_i & endpoint_rst_ni[i];
-    assign edn_rsp_o[i].edn_bus =
-        (clear_i || !endpoint_rst_ni[i]) ? '0 : ep_rdata_raw[i][DataWidth-1:0];
+    assign edn_rsp_o[i].edn_ack = ep_ack[i] & ~ep_flush[i];
+    assign edn_rsp_o[i].edn_bus = ep_flush[i] ? '0 : ep_rdata_raw[i][DataWidth-1:0];
     // FIPS forwarded per-beat from the AXI-Stream tuser sideband.
-    assign edn_rsp_o[i].edn_fips =
-        (clear_i || !endpoint_rst_ni[i]) ? 1'b0 : ep_rdata_raw[i][DataWidth];
+    assign edn_rsp_o[i].edn_fips = ep_flush[i] ? 1'b0 : ep_rdata_raw[i][DataWidth];
 
     `OCAH_OT_ASSERT(AxisEdnNoAckDuringClear_A, clear_i |-> !edn_rsp_o[i].edn_ack)
-    `OCAH_OT_ASSERT(AxisEdnReqStableUnlessEndpointReset_A,
-                    arb_req[i] && !arb_gnt[i] && endpoint_rst_ni[i] |=>
-                    arb_req[i] || !endpoint_rst_ni[i] || clear_i)
+    `OCAH_OT_ASSERT(AxisEdnCancelledEndpointIdle_A,
+                    endpoint_cancel_i[i] |-> !arb_req[i] && !ep_push[i] && !edn_rsp_o[i].edn_ack)
+    `OCAH_OT_ASSERT(AxisEdnReqStableUnlessEndpointCancelled_A,
+                    arb_req[i] && !arb_gnt[i] |=> arb_req[i] || ep_flush[i])
   end
 
   logic unused_ep_wready;

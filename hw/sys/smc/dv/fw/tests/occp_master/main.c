@@ -117,8 +117,6 @@ int main(void) {
     while (true) {
         __asm__("wfi");
     }
-
-    return 0;
 }
 
 int other_main(int hartid) {

@@ -24,7 +24,7 @@ Signature verification would still report success and the boot would proceed on 
 key that was never trusted.
 
 WHAT MAKES THIS ATTRIBUTABLE. Nothing about the backup is invalid except the slot
-number: it carries a real signature over a correctly hashed TBS, and the slot
+number: it carries a real signature over a correctly hashed signed region, and the slot
 passes the revocation check. It is distinct from the out-of-range arm, which
 ``sep_firmware_backup_rom_key_index_invalid_test`` drives at
 ``KEY_SLOT_FIRST_RESERVED`` in ``[31:26]``; the two share a console token, so the
@@ -89,7 +89,7 @@ class sep_firmware_backup_unpopulated_rom_key_slot_test(sep_backup_manifest_fail
         mm.verify_layout(buf, "backup")
         self.logger.info(
             "CHK-STIMULUS-EMPTY-SLOT: backup public_key_sel=0x%04x "
-            "(ROM key slot %d, no compiled-in digest), TBS re-hashed",
+            "(ROM key slot %d, no compiled-in digest), signed region re-hashed",
             got,
             _RESERVED_SLOT,
         )

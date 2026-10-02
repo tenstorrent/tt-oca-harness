@@ -5,7 +5,8 @@
 // periods, the test-sequenced primary reset and boot/run controls, the
 // fabric-release and reset observables the sequences and the scoreboard
 // read, the reset assertion counter the scoreboard predictors re-baseline
-// on, and the AXI SVA enable. Separate from the shared ocah_axi_if, which
+// on, the observation probes the scenario checks read, and the AXI SVA
+// enable. Separate from the shared ocah_axi_if, which
 // carries generic AXI pins only. Sequences, checkers, and the scoreboard
 // reach DUT-local signals only through this interface. The cocotb
 // realization exposes the same pins as tb_top ports driven from
@@ -49,6 +50,33 @@ interface sep_tb_if;
 
   // Primary-reset assertion counter (driven by tb_top).
   logic [31:0] rst_assert_count;
+
+  // Observation probes mirrored from the shared tb_top probe outputs (driven
+  // by tb_top; observation-only, see SEP_TB_ARCH "Observation probes").
+  // Interrupt aggregate.
+  logic [sep_pkg::NUM_INTERNAL_IRQS-1:0] sep_internal_interrupts;
+  // eFuse sensed shadow.
+  logic [sep_efuse_pkg::NumEfuseBits-1:0] efuse_shadow;
+  // OTBN instruction and data memory request and write counters.
+  logic [31:0] otbn_imem_req_count;
+  logic [31:0] otbn_imem_write_count;
+  logic [31:0] otbn_dmem_req_count;
+  logic [31:0] otbn_dmem_write_count;
+  // Key Manager ROM and SRAM probes and counters.
+  logic [31:0]        km_rom_req_count;
+  logic [98*32-1:0]   km_sram_probe;
+  logic [31:0]        km_sram_rd_accept_count;
+  logic [31:0]        km_sram_rd_b2b_diff_count;
+  logic [31:0]        km_sram_rd_lat1_count;
+  logic [31:0]        km_sram_rd_lat_err_count;
+  logic [31:0]        km_sram_req_count;
+  logic [31:0]        km_sram_scr_rd_count;
+  logic [4*13-1:0]    km_sram_scr_wr_addr;
+  logic [4*32-1:0]    km_sram_scr_wr_cell;
+  logic [31:0]        km_sram_scr_wr_count;
+  logic [4*32-1:0]    km_sram_scr_wr_data;
+  logic [31:0]        km_sram_word0;
+  logic [31:0]        km_sram_write_count;
 
   // Runtime enable for the shared AXI protocol SVA checker on the CPU-LSU
   // splice; tb_top ANDs it with the run-mode gate of u_s_axi_sva.

@@ -1,22 +1,17 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
+// Verifies that the UART scratch register holds every written pattern without
+// changing the line, modem or extended control registers, and that the
+// receiver reports no data and no error while the line is idle.
+
 #include <stdint.h>
 
-#include "metal/uart.h"
 #include "smc_io.h"
 #include "smc_test.h"
-#include "virt_console.h"
 
-// Test focus:
-// - Verify SCR scratch register read/write correctness without affecting other registers.
-// - Confirm no RX data or error flag appears during an idle window.
-
-// FCR bit definitions (write-only, sharing the address with IIR)
+// FCR shares its address with IIR and is write-only.
 #define UART_FCR_FIFO_ENABLE (1u << 0)
-#define UART_FCR_RCVR_FIFO_RESET (1u << 1)
-#define UART_FCR_XMIT_FIFO_RESET (1u << 2)
-#define UART_FCR_DMA_MODE_SELECT (1u << 3)
 
 static inline uint32_t get_uart_reg_base(uint32_t idx) {
     if (idx == 0) return SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0);
@@ -47,8 +42,8 @@ static void uart_enable_single(uint32_t idx) {
 
 // Configure a single UART as 8N1 with loopback and basic interrupt/FIFO enabled.
 static void uart_init_8n1_loopback(uint32_t uart_base) {
-    const uint32_t divisor =
-        1u; // Any non-zero value can start TX/RX (smaller values shorten simulation time).
+    // Any non-zero divisor starts TX/RX; the smallest keeps simulation time short.
+    const uint32_t divisor = 1u;
     uart_16550_main__LCR_t lcr;
     uart_16550_main__MCR_t mcr;
     uart_16550_main__IER_t ier;
@@ -60,7 +55,7 @@ static void uart_init_8n1_loopback(uint32_t uart_base) {
     ier.w = read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR(0) -
                                   SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
 
-    // First program the divisor (DLL/DLM) to start the TX/RX baud generator.
+    // Program the divisor first to start the baud generator.
     lcr.f.DLAB = 0x1u;
     write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LCR_BASE_ADDR(0) -
                            SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
@@ -108,17 +103,7 @@ static void uart_init_8n1_loopback(uint32_t uart_base) {
               fcr);
 }
 
-// Clear existing LSR/IIR/RBR status to avoid residue from previous tests.
-static void uart_clear_status(uint32_t uart_base) {
-    (void)read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR(0) -
-                                SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
-    (void)read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IIR_BASE_ADDR(0) -
-                                SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
-    (void)read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RBR_BASE_ADDR(0) -
-                                SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
-}
-
-// SCR read/write and side-effect test.
+// Check scratch register read/write and that it leaves other registers unchanged.
 static int uart_test_scr(uint32_t uart_base) {
     static const uint8_t patterns[] = {0x00u, 0xFFu, 0xA5u, 0x5Au, 0x01u, 0x02u, 0x04u, 0x08u};
 
@@ -159,7 +144,7 @@ static int uart_test_scr(uint32_t uart_base) {
         }
     }
 
-    // Confirm that writing SCR does not affect LCR/MCR/ECR.
+    // Writing SCR must not change LCR/MCR/ECR.
     lcr_after.w =
         read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LCR_BASE_ADDR(0) -
                               SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
@@ -187,23 +172,21 @@ static int uart_test_scr(uint32_t uart_base) {
     return 0;
 }
 
-// RX idle check: publish a phase marker in SCR for the testbench, then poll LSR over an idle
-// window and fail on any data-ready or error flag.
+// RX idle check: write a phase marker to SCR, then poll LSR over an idle window and fail on any
+// data-ready or error flag.
 static int uart_test_rx_noise_filter(uint32_t uart_base) {
     uart_16550_main__LSR_t lsr;
     uart_16550_main__SCR_t scr;
 
     simputs("UART_EXT: Entering RX noise filter idle phase...\n");
 
-    // SCR phase marker for the testbench: 0xA1 marks entry into the idle-noise check.
+    // Phase marker: entry into the idle check.
     scr.w = 0u;
     scr.f.SCR = 0xA1u;
     write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_SCR_BASE_ADDR(0) -
                            SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
               scr.w);
 
-    // Simply poll for a period of time to confirm that there is no unexpected RX data or error
-    // flags.
     for (int iter = 0; iter < 1024; iter++) {
         lsr.w =
             read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR(0) -
@@ -241,6 +224,4 @@ int main(void) {
     while (1) {
         __asm__("wfi");
     }
-
-    return 0;
 }

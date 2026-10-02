@@ -3,7 +3,7 @@
 """SEP eFuse image + shadow-readout + W1S-persistence test (OSS).
 
 Before sense-done, AXI-reads ``FEAT_CTRL`` and requires the fail-closed
-zero vector (downstream shadow stays ``LC_STATE_INVALID``). After sense,
+zero vector (downstream shadow stays ``LcStateInvalid``). After sense,
 the same register must follow the image golden and the software-visible
 shadow must match field-by-field. Then programs ten random fuse bits
 through the frontdoor and resenses to prove the shadow tracks the
