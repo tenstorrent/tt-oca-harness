@@ -14,6 +14,10 @@ from .dtp_env_cfg import DtpEnvCfg
 from .dtp_expected_item import DtpExpectedItem
 from .dtp_idcode_ref_model import DtpIdcodeRefModel
 from .dtp_ir_decode_ref_model import DtpIrDecodeRefModel
+from .dtp_jtag2axi_model import DtpJtag2AxiModel
+from .dtp_jtag2axi_req_ref_model import DtpJtag2AxiReqRefModel
+from .dtp_jtag2axi_status_item import DtpJtag2AxiStatusItem
+from .dtp_jtag2axi_status_ref_model import DtpJtag2AxiStatusRefModel
 from .dtp_jtag_agent import DtpJtagAgent, DtpJtagDriver
 from .dtp_jtag_ir_model import DtpJtagIrModel
 from .dtp_jtag_item import DtpJtagItem, DtpJtagOp
@@ -32,6 +36,9 @@ from .dtp_types import (
     pack_single_op,
     unpack_single_op,
 )
+from .dtp_xtrig_csr_model import DtpXtrigCsrModel
+from .dtp_xtrig_csr_ref_model import DtpXtrigCsrRefModel
+from .dtp_xtrig_decode_ref_model import DtpXtrigDecodeRefModel
 
 __all__ = [
     "DtpEnv",
@@ -46,6 +53,13 @@ __all__ = [
     "DtpIrDecodeRefModel",
     "DtpIdcodeRefModel",
     "DtpBypassRefModel",
+    "DtpXtrigCsrModel",
+    "DtpXtrigCsrRefModel",
+    "DtpXtrigDecodeRefModel",
+    "DtpJtag2AxiModel",
+    "DtpJtag2AxiStatusItem",
+    "DtpJtag2AxiReqRefModel",
+    "DtpJtag2AxiStatusRefModel",
     "DtpJtagItem",
     "DtpJtagOp",
     "DtpTapDevice",

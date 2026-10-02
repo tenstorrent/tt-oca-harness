@@ -4,11 +4,14 @@
 
 import pyuvm
 from dtp_xtrig_base_test import dtp_xtrig_base_test
+from env.dtp_types import DTP_FEATURE_XTRIG_CSR, DTP_FEATURE_XTRIG_DECODE
 from seq_lib.dtp_xtrig_base_test_seq import dtp_xtrig_base_test_seq
 
 
 @pyuvm.test()
 class dtp_ctm_rand_deterministic_csr_sweep_test(dtp_xtrig_base_test):
+    required_features = (DTP_FEATURE_XTRIG_CSR, DTP_FEATURE_XTRIG_DECODE)
+
     async def run_scenario(self) -> None:
         await self.start_looped_seq(
             dtp_xtrig_base_test_seq,

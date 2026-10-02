@@ -18,7 +18,7 @@
 // (TRST, TMS, power-on) resets the bridge model, a system reset aborts its
 // in-flight transactions. `negative` (+DTP_J2A_REF_MODEL_NEGATIVE) corrupts every
 // predicted address so the pairing must fail. No comparison, no reporting.
-// The cocotb realization has no twin (DTP_TB_ARCH).
+// The cocotb twin is env/dtp_jtag2axi_req_ref_model.py.
 
 `uvm_analysis_imp_decl(_dtp_j2a_req_event)
 `uvm_analysis_imp_decl(_dtp_j2a_req_axi)

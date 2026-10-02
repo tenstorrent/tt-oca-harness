@@ -36,8 +36,7 @@
 //
 // A required feature (dtp_test_cfg.required_features through the env cfg)
 // that ends with zero comparisons fails the run. The cocotb twin is
-// DtpScoreboard, which judges ir_decode, idcode and bypass the same way
-// (DTP_TB_ARCH, realization table).
+// DtpScoreboard, which judges every feature the same way.
 
 `uvm_analysis_imp_decl(_dtp_ir_decode_expected)
 `uvm_analysis_imp_decl(_dtp_idcode_observed)

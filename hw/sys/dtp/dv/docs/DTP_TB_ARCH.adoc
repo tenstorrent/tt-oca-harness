@@ -169,7 +169,7 @@ tb/tb_top.sv                  one framework-neutral core: interface instances, D
 |Primary TAP stimulus |`DtpJtagAgent`: sequencer plus `DtpJtagDriver` over the shared `ocah_jtag_vip` engine |`ocah_jtag_master_env` composed by `dtp_env`; operations are `dtp_jtag_<op>_seq` on its sequencer
 |Scenario coordination |Scenario sequences run on the JTAG agent's sequencer; the XTRIG AXI-Lite master is reached through the env cfg |`dtp_virtual_sequencer` with typed handles; every scenario is a virtual sequence on `dtp_base_test_seq`
 |Configuration |`DtpEnvCfg` with `randomize_timing(seed)` |`dtp_test_cfg` (randomized from the seed) and the derived `dtp_env_cfg`
-|Scoreboard |`DtpScoreboard` pairing the ir_decode, idcode and bypass reference models with `DtpJtagScanBuilder` and `DtpTbIf`, always on, and checking the driver's JTAG2AXI single operations inline; shared AXI scoreboard per test |`dtp_scoreboard` pairing one `dtp_<feature>_ref_model` per feature with the VIP monitor streams and `dtp_tb_if`, always on
+|Scoreboard |`DtpScoreboard` pairing one `Dtp<Feature>RefModel` per feature with the monitor streams and `DtpTbIf`, always on; shared AXI scoreboard per test |`dtp_scoreboard` pairing one `dtp_<feature>_ref_model` per feature with the VIP monitor streams and `dtp_tb_if`, always on
 |Interface handoff |`DtpTbIf` hands the agents the interface scopes; the AXI scopes are bound through `OcahAxiConfig.bus()` at the real bus geometry |`uvm_config_db#(virtual ocah_<proto>_if)` set on the VIP config by `dtp_env`
 |TB interface |`DtpTbIf` over `cocotb.top`, published through ConfigDB and the env cfg |`virtual dtp_tb_if`, `dtp_scan_if`, `dtp_xtrig_if` from `uvm_config_db`
 |Clock |`Clock(...)` on `dtp_tb_if.clk` in the base test bring-up, period from the env cfg |`always` in the harness block toggling `dtp_tb_if.clk`, period from `dtp_tb_if.clk_period_ns` set by `dtp_env`
@@ -324,20 +324,21 @@ FIFO is not predicted. Each feature ends the run as one `CHK-SB-<FEATURE>`
 record through the shared evidence recorder; a required feature with zero
 comparisons fails, and so does any item left unpaired.
 
-The cocotb `DtpScoreboard` judges ir_decode, idcode and bypass on the same
-contracts. `DtpJtagScanBuilder` runs the shared passive monitor on the primary
-TAP and publishes its reconstructed scans and per-TCK events, and
-`DtpIrDecodeRefModel`, `DtpIdcodeRefModel` and `DtpBypassRefModel` predict
-from them through `DtpJtagIrModel`, the twin of `dtp_jtag_ir_model`. A cocotb
-test names the features it must exercise in `required_features`: ir_decode by
-default, none in the cross-trigger tests (`dtp_xtrig_base_test`), and idcode or
-bypass where the SV-UVM twin requires them. The cross-trigger and JTAG2AXI
-features have no cocotb reference model. `DtpScoreboard` instead checks the
-JTAG agent's completed JTAG2AXI single operations against the responder memory
-(`jtag2axi_op`), and every cocotb JTAG2AXI test also enables the shared
-`ocah_axi_vip` scoreboard with required evidence IDs and per-stream minimum
-counts; a test that drives the three bridges in one pass requires its scenario
-IDs on each bridge.
+The cocotb `DtpScoreboard` judges the same seven features on the same
+contracts, through reference models of the same basenames:
+`DtpJtagScanBuilder` runs the shared passive monitor on the primary TAP and
+publishes its reconstructed scans and per-TCK events, `DtpXtrigAgent` runs a
+passive monitor on the XTRIG AXI-Lite port, and `DtpAxiAgent` runs one on each
+bridge port in every test. A cocotb test names the features it must exercise
+in `required_features`: ir_decode by default, xtrig_csr in the cross-trigger
+tests (`dtp_xtrig_base_test`), idcode, bypass or xtrig_decode where the SV-UVM
+twin requires them, and both JTAG2AXI features in every test that enables the
+shared `ocah_axi_vip` scoreboard. Each monitor's swallowed subscriber
+exceptions are recorded as `CHK-JTAG-MON-CALLBACKS`, `CHK-XTRIG-MON-CALLBACKS`
+and `CHK-J2A-MON-CALLBACKS` and must be zero. Every cocotb JTAG2AXI test also
+enables the shared `ocah_axi_vip` scoreboard with required evidence IDs and
+per-stream minimum counts; a test that drives the three bridges in one pass
+requires its scenario IDs on each bridge.
 
 ==== `dtp_tap_fsm_checker` and `dtp_scan_window_monitor`
 
@@ -489,7 +490,7 @@ value of one cross-trigger evidence ID wherever the scenario records it (1
 `CHK-XTRIG-CSR`, 2 `CHK-XTRIG-SIGNAL`, 3 `CHK-XTRIG-ROUTE-MODEL`, 4
 `CHK-XTRIG-ISOLATION`, 5 `CHK-XTRIG-QUIET`, 6 `CHK-XTRIG-STRETCH`, 7
 `CHK-XTRIG-AXIL`, 8 `CHK-XTRIG-AW-LOCK`, 9 `CHK-XTRIG-AR-STALL`, 10
-`CHK-XTRIG-WIRE`), (SV-UVM)
+`CHK-XTRIG-WIRE`),
 `DTP_J2A_REF_MODEL_NEGATIVE` makes the bridge request reference model predict
 corrupted addresses so the scoreboard pairing fails against the observed bus,
 `DTP_J2A_GEOMETRY_NEGATIVE` corrupts the expected address size of the per-pass
@@ -607,12 +608,12 @@ below; each row states what each realization does.
 |Primary TAP agent |DUT-local `DtpJtagAgent`: a sequencer and `DtpJtagDriver` over the shared `OcahJtagMasterDriver` engine, with `DtpJtagItem` carrying the TAP, TDR, and JTAG2AXI operations |Shared `ocah_jtag_master_env`; the operations are `dtp_jtag_<op>_seq` and `dtp_jtag2axi_<op>_seq` on its sequencer
 |Scenario coordination |Every scenario runs on the JTAG agent's sequencer; the XTRIG CSR master and the CTP/CTM pin BFM are reached through `DtpEnvCfg` handles; the command libraries are helper objects held by the sequence |`dtp_virtual_sequencer` with typed handles; every scenario is a virtual sequence
 |Configuration |One `DtpEnvCfg` with `randomize_timing(seed)` |`dtp_test_cfg` randomized from the seed and the derived `dtp_env_cfg`
-|Scoreboard |`DtpScoreboard` pairing the ir_decode, idcode and bypass reference models with `DtpJtagScanBuilder` streams, always on; a required feature with zero comparisons fails. It also checks the driver's completed JTAG2AXI single operations against the responder memory backdoor (`jtag2axi_op`). `DtpAxiScoreboard` builds the shared `ocah_axi_vip` reference models and scoreboard when a test opts in (`use_axi_scoreboard`, required IDs, stream minimums); every JTAG2AXI test does. A record from any bridge stream meets a required ID of the shared scoreboard, and the stream minimums hold each bridge to compared transactions; a test that drives the three bridges in one pass names its scenario IDs per bridge (`axi_checker_target_required_ids`), and `DtpAxiScoreboard` gives each bridge a checker that must record every one of them. No feature pairs a bridge transaction with its decoded JTAG request: the JTAG2AXI write and read scenarios of VPLAN sections 2 and 3, security gating excepted, and the section 4 error single-operation and series scenarios judge each operation's transaction from the scenario sequence (`CHK-J2A-BUS-REQ`), as their SV-UVM twins also do |`dtp_scoreboard` pairing seven `dtp_<feature>_ref_model` streams, always on; a required feature with zero comparisons fails. Each bridge's passive recorder requires the IDs the test names for that bridge
+|Scoreboard |`DtpScoreboard` pairing seven `Dtp<Feature>RefModel` streams, always on; a required feature with zero comparisons fails. `DtpAxiScoreboard` builds the shared `ocah_axi_vip` reference models and scoreboard when a test opts in (`use_axi_scoreboard`, required IDs, stream minimums); every JTAG2AXI test does. A record from any bridge stream meets a required ID of the shared scoreboard, and the stream minimums hold each bridge to compared transactions; a test that drives the three bridges in one pass names its scenario IDs per bridge (`axi_checker_target_required_ids`), and `DtpAxiScoreboard` gives each bridge a checker that must record every one of them. No feature pairs a bridge transaction with its decoded JTAG request: the JTAG2AXI write and read scenarios of VPLAN sections 2 and 3, security gating excepted, and the section 4 error single-operation and series scenarios judge each operation's transaction from the scenario sequence (`CHK-J2A-BUS-REQ`), as their SV-UVM twins also do |`dtp_scoreboard` pairing seven `dtp_<feature>_ref_model` streams, always on; a required feature with zero comparisons fails. Each bridge's passive recorder requires the IDs the test names for that bridge
 |Debug-disable ledger |The two matrix tests fill the 22-cell `DtpDbgDisableFcov` ledger (`env/dtp_fcov.py`), and `require_cells` fails a run with a missing cell |No ledger: every matrix pass runs each field's one-hot row and both boundary rows
 |TAP reference model |`DtpTapFsm` in `env/dtp_types.py`, a DUT-local next-state and TMS-path model; the `OcahJtagChecker` is attached per scenario |`dtp_tap_fsm_checker`, an env subscriber on the VIP next-state model
 |Reset-count evidence |`CHK-RESET-COUNT` on the scenario's evidence checker: the attached `OcahJtagChecker` in the basic JTAG, debug-TDR, and scan scenarios, the cross-trigger checker in the cross-trigger scenarios, and the shared AXI scoreboard in the JTAG2AXI scenarios; an inline assertion where the scenario attaches none |`CHK-RESET-COUNT` on the cross-trigger checker in the cross-trigger scenarios, and elsewhere on the env `ocah_jtag_checker`, which judges its required IDs once per run
 |Per-scan length evidence |`CHK-SCAN-IR-LEN` and `CHK-SCAN-DR-LEN` for each issued scan in `dtp_sanity_test` only |`CHK-SCAN-IR-LEN` and `CHK-SCAN-DR-LEN` for each issued scan on the env `ocah_jtag_checker` in every scenario that keeps the env scan builder
-|Plain-model basenames |`env/dtp_jtag_ir_model.py` holds the instruction and 3DCR model; `env/dtp_scan_ref_model.py` and `env/dtp_xtrig_types.py` hold the plain scan and cross-trigger models |`dtp_jtag_ir_model.svh`, `dtp_stap_3dcr_model.svh`, `dtp_ijtag_sib_model.svh`, `dtp_xtrig_ctm_model.svh`
+|Plain-model basenames |`env/dtp_jtag_ir_model.py`, `env/dtp_jtag2axi_model.py` and `env/dtp_xtrig_csr_model.py` hold the reference models' state; `env/dtp_scan_ref_model.py` and `env/dtp_xtrig_types.py` hold the plain scan and cross-trigger models |`dtp_jtag_ir_model.svh`, `dtp_jtag2axi_model.svh`, `dtp_xtrig_csr_model.svh`, `dtp_stap_3dcr_model.svh`, `dtp_ijtag_sib_model.svh`, `dtp_xtrig_ctm_model.svh`
 |===
 
 === Adding a Scenario to the SV-UVM Realization
