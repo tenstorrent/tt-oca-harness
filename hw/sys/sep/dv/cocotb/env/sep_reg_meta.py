@@ -474,28 +474,40 @@ def _ipxact_access() -> dict[int, RegAccess]:
 
 
 @lru_cache(maxsize=1)
-def _ipxact_unreset_words() -> dict[int, bool]:
-    """32-bit word address -> whether a field in that word has no RDL reset.
+def _ipxact_unreset_words() -> dict[int, int]:
+    """32-bit word address -> bits of that word held by fields with no RDL reset.
 
     PeakRDL IP-XACT emits a ``resets`` element exactly for a field that the RDL
     gives a reset value. The generated ``_REG_DEFAULT`` reads 0 for a field with
     none (``tools/regs/common/regcollect.py``), so it cannot answer this.
     """
-    out: dict[int, bool] = {}
+    out: dict[int, int] = {}
     for addr, width, fields in _iter_ipxact_registers():
-        spans = []
+        bits = 0
         for one in fields:
+            if one.find(_IPXACT_NS + "resets") is not None:
+                continue
             lsb = _ipxact_num(one.findtext(_IPXACT_NS + "bitOffset")) or 0
             width_f = _ipxact_num(one.findtext(_IPXACT_NS + "bitWidth")) or 1
-            spans.append((lsb, lsb + width_f, one.find(_IPXACT_NS + "resets") is None))
+            bits |= ((1 << width_f) - 1) << lsb
         for word in range(max(width // 32, 1)):
-            lo = word * 32
-            out[addr + 4 * word] = any(
-                unreset for lsb, msb, unreset in spans if lsb < lo + 32 and msb > lo
-            )
+            out[addr + 4 * word] = (bits >> (32 * word)) & 0xFFFF_FFFF
     if not out:
         raise RuntimeError(f"{_GEN_IPXACT} yielded no registers")
     return out
+
+
+def word_unreset_mask(addr: int) -> int:
+    """Bits of the 32-bit word at ``addr`` held by fields with no RDL reset value.
+
+    Those bits have no defined value before their first write, and the generated
+    ``_REG_DEFAULT`` holds a 0 placeholder for them, so a reset compare must leave
+    them out. Raises ``KeyError`` for an address the IP-XACT gives no register.
+    """
+    words = _ipxact_unreset_words()
+    if addr not in words:
+        raise KeyError(f"0x{addr:08x} is not a register word in {_GEN_IPXACT.name}")
+    return words[addr]
 
 
 def word_has_unreset_field(addr: int) -> bool:
@@ -505,10 +517,7 @@ def word_has_unreset_field(addr: int) -> bool:
     that write grades nothing and reads X on a 4-state simulator. Raises
     ``KeyError`` for an address the IP-XACT gives no register.
     """
-    words = _ipxact_unreset_words()
-    if addr not in words:
-        raise KeyError(f"0x{addr:08x} is not a register word in {_GEN_IPXACT.name}")
-    return words[addr]
+    return word_unreset_mask(addr) != 0
 
 
 @dataclass(frozen=True)
@@ -619,6 +628,9 @@ class RegInfo:
     mask_all: int
     # Access shape from the IP-XACT; see _STORAGE_ACCESS for the default.
     access: RegAccess = _STORAGE_ACCESS
+    # Bits held by fields with no RDL reset (word_unreset_mask). ``reset`` is a
+    # 0 placeholder on these bits, not a POR value.
+    unreset: int = 0
 
     @property
     def reserved(self) -> int:
@@ -889,7 +901,9 @@ def iter_register_walk() -> RegisterWalk:
         if shape is None:
             unjoined.append(f"{block}.{reg} @{addr:#010x}")
             continue
-        found.append(RegInfo(block, reg, addr, reset, mask, mask_all, shape))
+        found.append(
+            RegInfo(block, reg, addr, reset, mask, mask_all, shape, word_unreset_mask(addr))
+        )
     if unjoined:
         raise RuntimeError(
             f"{len(unjoined)} inventory register(s) have no IP-XACT entry at their "
@@ -1230,6 +1244,19 @@ def _selftest() -> int:
         shape = readable.get(name)
         if shape is None or shape.access != frozenset({"read-only"}) or not shape.declared_reset:
             failures.append(f"{name} is no longer read-only with a declared reset: {shape}")
+
+    # Unreset-field masks, read off the IP-XACT `resets` elements. HMAC CFG
+    # leaves hmac_en/sha_en without a reset and resets its other fields;
+    # DIGEST_0 is one 32-bit field with none. A reset sweep masks the first and
+    # skips the second, so a generator change that moves either fails here.
+    unreset = {f"{i.block}.{i.name}": i.unreset for i in shapes}
+    for name, want in (
+        ("HMAC.CFG", 0x3),
+        ("HMAC.DIGEST_0_", 0xFFFF_FFFF),
+        ("SEP_CPU_CTRL.SEP_VERSION_ID", 0x0),
+    ):
+        if unreset.get(name) != want:
+            failures.append(f"{name} unreset mask {unreset.get(name)} != 0x{want:x}")
 
     if failures:
         for line in failures:

@@ -401,17 +401,34 @@ def reset_reason(info: RegInfo) -> str | None:
     generator. Both shapes read back 0 against a default of 0 far more often
     than not, so leaving them in makes the compare pass without the DUT having
     demonstrated anything.
+
+    The third arm applies the same rule bit by bit: a field with no RDL reset
+    has no POR value, and ``_REG_DEFAULT`` holds a 0 placeholder for it. A word
+    whose every storage bit is such a field has nothing to compare, so it is
+    skipped; a word with only some such bits stays a row, and ``check_reset``
+    masks those bits out (``reset_compare_mask``).
     """
     if info.access.write_only:
         return "sw=w; a read does not return storage"
     if info.access.hw_driven:
         return "sw=r with no declared reset; the export DEFAULT is not a POR value"
+    if info.unreset and (info.mask_all & ~info.unreset) == 0:
+        return "no field with an RDL reset; the export DEFAULT is a placeholder"
     hit = _lookup(RESET_EXCLUDE, info.block, info.name) or _suffix_reason(info.name)
     if hit is not None:
         return hit
     if info.block == "ENTROPY_SOURCE" and info.name in esrc_reset_skip():
         return "hw-owned; read value is not the POR value"
     return None
+
+
+def reset_compare_mask(info: RegInfo) -> int:
+    """Bits a reset read-compare grades: every bit except unreset-field bits.
+
+    Reserved bits stay in the compare (they read 0). Fields with no RDL reset
+    leave it, because ``info.reset`` holds a generator placeholder for them.
+    """
+    return ~info.unreset & 0xFFFF_FFFF
 
 
 def side_effect_reason(info: RegInfo) -> str | None:
@@ -583,6 +600,9 @@ class SepRegBitBash:
         self.test = test
         self.log = test.logger
         self.reset_ok = 0
+        # Reset rows compared with unreset-field bits masked out; a subset of
+        # reset_ok, reported so the PASS line does not claim a full-word match.
+        self.reset_masked = 0
         self.write_ok = 0
         self.lands_ok = 0
         self.touch_ok = 0
@@ -628,12 +648,26 @@ class SepRegBitBash:
                 f"CHK-RESET FAIL: {info.block}.{info.name} @0x{info.addr:08x} "
                 f"resp={resp}, expected OKAY"
             )
-        if got != info.reset:
+        keep = reset_compare_mask(info)
+        if (got & keep) != (info.reset & keep):
             return (
                 f"CHK-RESET FAIL: {info.block}.{info.name} @0x{info.addr:08x} "
-                f"read 0x{got:08x} != reset 0x{info.reset:08x}"
+                f"read 0x{got:08x} != reset 0x{info.reset:08x} under mask 0x{keep:08x}"
             )
         self.reset_ok += 1
+        if keep != 0xFFFF_FFFF:
+            self.reset_masked += 1
+            self.log.info(
+                "CHK-RESET masked: %s.%s @0x%08x read 0x%08x, reset 0x%08x under "
+                "mask 0x%08x (unreset-field bits 0x%08x not graded)",
+                info.block,
+                info.name,
+                info.addr,
+                got,
+                info.reset,
+                keep,
+                info.unreset,
+            )
         return None
 
     async def bash_write(self, info: RegInfo, *, ones_first: bool) -> None:
@@ -869,6 +903,29 @@ def _selftest() -> None:
     )
     # Read-only WITH a reset stays a reset row, and only the touch refuses it.
     assert reset_reason(read_only) is None
+
+    # Unreset fields. A word made only of fields with no RDL reset is skipped;
+    # a word with some is a reset row compared under a mask that drops those
+    # bits and keeps reserved bits.
+    def unreset_probe(unreset: int, mask_all: int) -> RegInfo:
+        return RegInfo(
+            block="HMAC",
+            name="UNRESET_PROBE",
+            addr=0,
+            reset=0x4100,
+            mask=mask_all,
+            mask_all=mask_all,
+            unreset=unreset,
+        )
+
+    all_unreset = unreset_probe(0xFFFF_FFFF, 0xFFFF_FFFF)
+    part_unreset = unreset_probe(0x3, 0xFF_FF03)
+    assert reset_reason(all_unreset) == (
+        "no field with an RDL reset; the export DEFAULT is a placeholder"
+    )
+    assert reset_reason(part_unreset) is None
+    assert reset_compare_mask(part_unreset) == 0xFFFF_FFFC
+    assert reset_compare_mask(scratch) == 0xFFFF_FFFF
     assert touch_reason(read_only) == "sw=r; a write does not reach storage"
     assert touch_reason(scratch) is None
 
