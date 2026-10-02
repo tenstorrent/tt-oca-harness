@@ -593,6 +593,11 @@ make lint-verilator-all BLOCK=smu \
   2>&1 | tee "$TMPDIR/verilator-smu-unwaived.log"
 ```
 
+cocotb's Verilator runner always passes `--public-flat-rw`, and some package
+parameters under it fail only in the generated C++, which lint never compiles.
+`make lint-verilator-public-all BLOCK=smu` builds the block's packages under
+the flag; CI runs it for `smu`, whose filelist includes SEP and SMC.
+
 ==== Style and Lint checking with Slang
 
 To run the slang linter on each `flow.mk` top, use the following command:
@@ -868,7 +873,8 @@ Scheduled and manually dispatched pipelines always run in full.
 
 | `lint-sv-verilator`
 | `lint-sv-verilator/<block>` for `aou`, `dtp`, `sep`, `smc`, and `smu`
-| `make lint-verilator-all [BLOCK=<block>]`
+| `make lint-verilator-all [BLOCK=<block>]`, plus
+`make lint-verilator-public-all BLOCK=smu` on the `smu` row
 
 | `lint-sv-verible` (disabled in CI)
 | `lint-sv-verible`

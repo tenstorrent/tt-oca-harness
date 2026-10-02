@@ -10,9 +10,9 @@
 // every bridge-register DR scan and every observed bridge completion
 // (axi_export) to a dtp_jtag2axi_model, and publishes one
 // dtp_jtag2axi_status_item per scan item so the scoreboard pairs the two
-// streams in lockstep; scans that are not a bridge capture, captures inside
-// the CDC settle window after a completion, and the captures
-// dtp_jtag2axi_model exempts carry no contract.
+// streams in lockstep; scans that are not a bridge capture, captures while
+// the PTAP 3DCR select is set, captures inside the CDC settle window after a
+// completion, and the captures dtp_jtag2axi_model exempts carry no contract.
 // Series-data captures (the pipelined read FIFO) are not predicted. No
 // comparison, no reporting. The cocotb realization has no twin
 // (DTP_TB_ARCH).
@@ -77,9 +77,11 @@ class dtp_jtag2axi_status_ref_model
       expected_ap.write(exp);
       return;
     end
+    m_ir.on_dr_scan(t);
     kind = m_ir.ir_known() ? m_bridge.decode(m_ir.ir(), t, target, req) : DTP_J2A_SCAN_NONE;
     if (kind != DTP_J2A_SCAN_NONE) begin
-      if ((kind == DTP_J2A_SCAN_SINGLE_OP) || (kind == DTP_J2A_SCAN_SERIES_CTRL)) begin
+      if (((kind == DTP_J2A_SCAN_SINGLE_OP) || (kind == DTP_J2A_SCAN_SERIES_CTRL)) &&
+          m_ir.ptap_select_clear()) begin
         m_bridge.predict_capture(target, kind, t.start_time, exp);
         exp.context_s = $sformatf("%s %s bits=%0d", target.name, kind.name(), t.bit_count);
       end

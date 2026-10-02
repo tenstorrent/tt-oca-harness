@@ -4,7 +4,9 @@
 // Define types and configuration for the SEP system-peripherals AXI crossbar.
 //
 // Address decode rules live in sep_system_peripherals_xbar rather than this package; the
-// named address-range constants here mirror them and are not referenced by the crossbar.
+// named address-range constants here mirror its smn_inbound_from_xbar and mailbox rules and
+// are not referenced by the crossbar. Its system_csr rules take each register block's bounds
+// from sep_top_addrmap_pkg.
 // Both initiators connect to all three targets.
 
 `include "axi/typedef.svh"
@@ -18,7 +20,7 @@ package sep_system_peripherals_xbar_pkg;
   // ===========================================================================
   localparam int unsigned NumInputs     = 2;
   localparam int unsigned NumOutputs    = 3;
-  localparam int unsigned NumAddrRules  = 6;
+  localparam int unsigned NumAddrRules  = 12;
   localparam int unsigned MaxInputIdW   = 6;
   localparam int unsigned XbarOutputIdW = 7;
 
@@ -195,14 +197,6 @@ package sep_system_peripherals_xbar_pkg;
   localparam logic [55:0] MAILBOX_MAIN_BASE = 56'h10a00000;
   localparam logic [55:0] MAILBOX_MAIN_SIZE = 56'h10000;
   localparam logic [56:0] MAILBOX_MAIN_END  = 57'h10a10000;
-
-  // Output: system_csr
-  localparam logic [55:0] SYSTEM_CSR_MAIN_BASE = 56'h10a10000;
-  localparam logic [55:0] SYSTEM_CSR_MAIN_SIZE = 56'h40000;
-  localparam logic [56:0] SYSTEM_CSR_MAIN_END  = 57'h10a50000;
-  localparam logic [55:0] SYSTEM_CSR_SCRATCH_REGION_BASE = 56'h10802000;
-  localparam logic [55:0] SYSTEM_CSR_SCRATCH_REGION_SIZE = 56'h100;
-  localparam logic [56:0] SYSTEM_CSR_SCRATCH_REGION_END  = 57'h10802100;
 
   // ===========================================================================
   // Crossbar Configuration

@@ -28,12 +28,9 @@ module ctm_src_selector #(
 
   // Generate AND gates for each CT_Dst with its select bit
   logic [NUM_CT_DST-1:0] selected_pulses;
-  genvar i;
-  generate
-    for (i = 0; i < NUM_CT_DST; i++) begin : gen_select
-      assign selected_pulses[i] = ct_dst_i[i] & select_i[i];
-    end
-  endgenerate
+  for (genvar i = 0; i < NUM_CT_DST; i++) begin : gen_select
+    assign selected_pulses[i] = ct_dst_i[i] & select_i[i];
+  end
 
   // OR all selected pulses together
   assign ct_src_comb = |selected_pulses;
