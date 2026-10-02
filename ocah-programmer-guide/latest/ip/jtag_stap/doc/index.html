@@ -395,7 +395,7 @@ register.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Select (stap_sel)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enables the STAP scan interface. When <code>stap_sel=1</code>, the STAP routes scan data through the downstream TAP. When <code>stap_sel=0</code>, the downstream TAP is not in the scan path and its TMS is held at the TMS-Hold value.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enables the STAP scan interface. When <code>stap_sel=1</code>, the STAP routes scan data through the downstream TAP. When <code>stap_sel=0</code>, the downstream TAP is not in the scan path and its TMS is held at the TMS-Hold value. While <code>security_disable_i</code> is high, a capture of the 3DCR reads this bit as 0 whatever its stored value (<a href="#stap-debug-disable-behavior-table">STAP debug-disable behavior</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
@@ -472,7 +472,7 @@ asserted, three aspects of STAP operation are blocked (<a href="#stap-debug-disa
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>stap_sel</code> (internal)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Forced to 0 regardless of the 3DCR Select bit, so scan data is not routed through the downstream TAP.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Forced to 0 regardless of the 3DCR Select bit, so scan data is not routed through the downstream TAP. The 3DCR captures this forced value, so a scan through the 3DCR reads Select as 0.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>host_tdo_o</code></p></td>
@@ -480,7 +480,7 @@ asserted, three aspects of STAP operation are blocked (<a href="#stap-debug-disa
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>client_reg_scan_ctrl.update_en</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Forced to 0, so the 3DCR cannot be updated while the STAP is disabled.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Forced to 0, so the 3DCR cannot be updated while the STAP is disabled. The stored Select bit keeps its value: when <code>security_disable_i</code> clears, a STAP whose stored Select bit is 1 is selected again without a 3DCR write. The disable does not block the 3DCR reset, so TRST clears the stored bit, and so does the scan reset while Config-Hold is 0.</p></td>
 </tr>
 </tbody>
 </table>

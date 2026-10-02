@@ -529,11 +529,12 @@ pulse on <em>CT_Dst</em> and asserts <em>CT_Ack_out</em>. Deassertion proceeds i
 same sequence.</p>
 </div>
 <div class="paragraph">
-<p>The timing of the request/acknowledge handshake is shown in <a href="#ctp-request-acknowledge-timing-figure">CTP request-acknowledge timing</a>:</p>
+<p>The timing of the request/acknowledge handshake is shown in <a href="#ctp-request-acknowledge-timing-figure">CTP request-acknowledge timing</a>.
+The timing is illustrative, and the delays are not to scale:</p>
 </div>
 <div id="ctp-request-acknowledge-timing-figure" class="imageblock">
 <div class="content">
-<img src="../../_images/p2p_timing_diagram.svg" alt="Point-to-Point Request/Acknowledge Timing">
+<img src="../../_images/p2p_timing_diagram.svg" alt="Four-phase handshake: Source CT_Req_out rises, Target CT_Req_in follows after the wire delay, Target CT_Ack_out rises after the target-domain delay, Source CT_Ack_in follows after the wire delay, and the same sequence repeats for deassertion after the source response delay">
 </div>
 <div class="title">Figure 6. CTP request-acknowledge timing</div>
 </div>

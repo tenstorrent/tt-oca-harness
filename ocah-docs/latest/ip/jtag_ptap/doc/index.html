@@ -1682,10 +1682,10 @@ that interleaved bus and unpacks the outputs back into structured form. The TDR 
 the external slice, followed by the single <code>reset_hold</code> bit.</p>
 </div>
 <div class="paragraph">
-<p>The total length is <code>2 * (NumSmcIcReset + NumSepIcReset<br>
-NumExtIcReset) + 1</code> bits, where each <code>NUM_*_IC_RESET</code> is half the width of
-its corresponding struct type when the matching enable parameter is set
-(otherwise 0).</p>
+<p>The total length is <code>2 * (NumSmcIcReset + NumSepIcReset + NumExtIcReset) + 1</code>
+bits. Each <code>Num*IcReset</code> is half the width of its slice&#8217;s struct type,
+<code>$bits(ic_reset_*_t) / 2</code>, when the matching <code>IC_RESET_*_ENABLE</code> parameter is
+set, and 0 otherwise.</p>
 </div>
 <div class="paragraph">
 <p><a href="#ptap-ic-reset-fields-table">Table 9</a> defines the reset-control, reset-enable, and bypass

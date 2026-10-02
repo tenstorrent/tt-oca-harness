@@ -353,7 +353,7 @@ connections.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_tap_ctrl_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">I/O STAP TAP control for chiplet-to-chiplet connectivity. <code>.tck</code> remains driven when the STAP generate is off. Default: TMS/TRST idle if <code>JTAG_STAP_IO_ENABLE=0</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I/O STAP TAP control for chiplet-to-chiplet connectivity. If <code>JTAG_STAP_IO_ENABLE=0</code>, only <code>.tck</code> is driven; <code>.tms</code> is 0 and <code>.trst_n</code> is 0, so TRST is asserted and a TAP connected to the port is held in Test-Logic-Reset.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I/O STAP host</p></td>
 </tr>
 <tr>
@@ -385,7 +385,7 @@ connections.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_tap_ctrl_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC debug STAP TAP control. <code>.tck</code> remains driven when the STAP generate is off. Default: TMS/TRST idle if <code>JTAG_SMC_DBG_ENABLE=0</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC debug STAP TAP control. If <code>JTAG_SMC_DBG_ENABLE=0</code>, only <code>.tck</code> is driven; <code>.tms</code> is 0 and <code>.trst_n</code> is 0, so TRST is asserted and a TAP connected to the port is held in Test-Logic-Reset.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC JTAG port</p></td>
 </tr>
 <tr>
@@ -417,7 +417,7 @@ connections.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_tap_ctrl_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SEP debug STAP TAP control. <code>.tck</code> remains driven when the STAP generate is off. Default: TMS/TRST idle if <code>JTAG_SEP_DBG_ENABLE=0</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP debug STAP TAP control. If <code>JTAG_SEP_DBG_ENABLE=0</code>, only <code>.tck</code> is driven; <code>.tms</code> is 0 and <code>.trst_n</code> is 0, so TRST is asserted and a TAP connected to the port is held in Test-Logic-Reset.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP JTAG port</p></td>
 </tr>
 <tr>
@@ -449,7 +449,7 @@ connections.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_tap_ctrl_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[JtagNumExtraStapPorts-1:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Extra STAP TAP control array. <code>.tck</code> remains driven when the STAP generate is off. Default: TMS/TRST idle if <code>JTAG_NUM_EXTRA_STAPS=0</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Extra STAP TAP control array. If <code>JTAG_NUM_EXTRA_STAPS=0</code>, the single padded element drives only <code>.tck</code>; its <code>.tms</code> is 0 and its <code>.trst_n</code> is 0, so TRST is asserted and a TAP connected to it is held in Test-Logic-Reset.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Extra STAP hosts</p></td>
 </tr>
 <tr>
