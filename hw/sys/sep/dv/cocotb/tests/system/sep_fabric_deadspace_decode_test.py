@@ -159,7 +159,7 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
             # also carries beats past the extent; otherwise at the window base.
             crosses = win.dead_lo % 0x1000 != 0 and win.dead_lo > win.base + 8
             start = None if crosses else win.base
-            start, resps, timed_out, words, singles, beat_resps = await dead.burst_across_extent(
+            start, _resps, timed_out, words, singles, beat_resps = await dead.burst_across_extent(
                 win, start
             )
             for i, (word, (sresp, sdata)) in enumerate(zip(words, singles)):
