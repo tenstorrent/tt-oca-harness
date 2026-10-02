@@ -3,93 +3,92 @@
 """Sequence for smu_dtp_scan_chain_boundary_test. SEP=1 wrapper, no Force.
 
 The three iJTAG SIB hosts and the secondary-TAP hosts leave the wrapper as
-scan_out/TDO and come back as scan_in/TDI. The DTP port table ties an unused
-chain's scan_in to its scan_out; the bench closes each loop the same way, so
-the shift path under test runs through the boundary pins.
+scan_out/TDO and come back as scan_in/TDI. The bench closes each iJTAG loop
+through one bench scan cell and each STAP and the BSR loop with a bare net
+(``tb/tb_wrapper_top.sv``), so the shift path under test runs through the
+boundary pins.
 
 Expected behaviour comes from the JTAG specification pages:
 
 * ``hw/ip/jtag/jtag_intf_unit/doc/architecture.adoc`` "iJTAG Network": three
-  cascaded Segment Insertion Bits, listed DFT secure, DFT non-secure, DFD;
-  the scan-chain figure draws them TDI first in that order.
-* ``hw/ip/jtag/jtag_ptap/doc/architecture.adoc`` "Scan Path", "TDO Retiming"
-  and "iJTAG Support": a TDR is selected only while its instruction is
-  active, SELECT_IJTAG (and RUNBIST) select the iJTAG network, and TDO is
-  retimed on the falling edge of TCK as IEEE 1149.1 Section 4.5.2 requires.
-* ``hw/ip/jtag/jtag_stap/doc/architecture.adoc`` "STAP Module" and "3DCR
-  Register": ``host_tdo_oen_o`` and ``host_tap_ctrl_o`` derive from
-  ``stap_sel`` and the TAP controls; an unselected STAP parks its host TMS at
-  TMS-Hold and a selected one follows the PTAP TMS.
-* ``hw/sys/dtp/doc/jtag.adoc`` "STAP Secondary Scan Path" and the Integrator
-  Guide's "STAP Scan Chain Topology" for the STAP order
-  (``smu_boundary_regs.SMU_SEP_STAP_ORDER``).
+  cascaded Segment Insertion Bits, DFT secure, DFT non-secure, DFD from TDI;
+  each SIB is one bit, and an open SIB inserts its segment on the TDO side of
+  its bit, the SIB bit driving the segment's scan input. The STAP chain
+  hierarchy table: the I/O STAP is built with TDI lockup, the others without.
+* ``hw/ip/jtag/jtag_ptap/doc/architecture.adoc`` "Scan Path", "TDO Retiming",
+  "iJTAG Support" and "STAP selection": a TDR is selected only while its
+  instruction is active, SELECT_IJTAG (and RUNBIST) select the iJTAG network,
+  TDO is retimed on the falling edge of TCK, and with the 3DCR select set the
+  STAP chain input replaces the TDR multiplexer output on IR and DR scans.
+* ``hw/ip/jtag/jtag_stap/doc/architecture.adoc`` "STAP Module", "3DCR
+  Register" and "Lockup Latches": ``host_tdo_oen_o`` and ``host_tap_ctrl_o``
+  derive from ``stap_sel`` and the TAP controls; an unselected STAP parks its
+  host TMS at TMS-Hold (reset value 0) and a selected one follows the PTAP
+  TMS; the TDO lockup captures the client scan data on every falling edge of
+  TCK and drives it on ``host_tdo_o``, and the TDI lockup "adds one
+  additional cycle of latency".
+* ``hw/sys/dtp/doc/jtag.adoc`` "STAP Secondary Scan Path" for the STAP order
+  I/O, SMC debug, SEP debug, extra (``smu_boundary_regs.SMU_SEP_STAP_ORDER``),
+  one SIB per STAP.
 
-S1  Instruction gating. The iJTAG network is selected only by SELECT_IJTAG
-    or RUNBIST, and an IEEE 1687 SIB includes its host segment only while it
-    is open. Under SELECT_IJTAG all three SIBs are opened, and a scan with
-    them open has to assert every host select (the positive control) and
-    read the three enables back. IDCODE is then loaded, and from the
+The bench iJTAG cell is a one-bit ``prim_jtag_scan_reg`` on the host's scan
+control: it captures 0 at Capture-DR and shifts while its host select is set.
+The model below lays the iJTAG DR out from TDI as, for each SIB in order, its
+bit and, while it is open, that host's bench cell; it gives every expected
+TDO word, every expected host scan-out stream and the SIB state each Update-DR
+leaves.
+
+S1  Instruction gating. Under SELECT_IJTAG all three SIBs are opened, and a
+    scan with them open has to assert every host select (the positive
+    control) and return the model's word. IDCODE is then loaded, and from the
     Update-IR that loads it, over an IDCODE DR scan and the IR scan of a
     second IDCODE load, none of the three selects may assert. Back under
-    SELECT_IJTAG the SIBs still read back open, so they were open through the
-    IDCODE scan, and that scan's Update-DR closes them for S2.
+    SELECT_IJTAG the scan returns the open-SIB word again, so the SIBs were
+    open through IDCODE, and its Update-DR closes them.
 
-S2  Chain length, through the host loops and without them. Each SIB is one
-    scan cell, and an open SIB inserts its host segment on the TDO side of
-    its bit: the bit leaves on ``*_host_scan_out_o`` and comes back on
-    ``*_host_scan_in_i`` (JIU architecture page, "iJTAG Network"). The bench
-    binds each host's scan_in to its own scan_out net
-    (``tb/tb_wrapper_top.sv``, the dfd/dft/dft_secure scan loops), a segment
-    of no cells, so the expected delay is IJTAG_SIB_COUNT whether the SIBs
-    are open or closed. IEEE 1149.1 gives a DR of N cells N TCKs of shift
-    latency; the falling-edge retimer moves TDO within the bit period and is
-    not a cell. The open pass keeps all three SIBs open across every payload
-    shift, so each payload crosses the three host loops and the wrapper pins;
-    its first IJTAG_SIB_COUNT TDO bits are the captured enables, all 1. The
-    closed pass runs the same payloads with every SIB shut, the control in
-    which the host segments are out of the path and the captured enables are
-    0. With zero-cell loops the two passes have the same delay, so the open
-    pass is what proves the pins carry the shift: a loop that did not return
-    the bit would corrupt it there and nowhere else.
+S2  Chain length, through the host loops and without them. The open pass
+    keeps all three SIBs open across every payload shift: the DR is six cells
+    (three SIB bits and three bench cells), every payload returns six bits
+    late after the captured 0b101010, and each host's scan-out pin carries
+    the model's stream on every Shift-DR TCK. The closed pass repeats the
+    payloads with every SIB shut: three cells, three bits late after 0b000.
+    The two passes return different words, so a SIB that did not route its
+    host pins when open would fail the open pass.
 
-S3  SIB round trip. The last IJTAG_SIB_COUNT bits shifted in land in the
-    chain, Update-DR latches them as the SIB enables, and the next Capture-DR
-    reads them back, nearest-TDO SIB first -- so the readback names which SIB
-    was opened, and the matching host select asserts while that scan runs.
-    Each of the three is opened alone and then all three together, which is
-    also what separates the three boundary pin pairs from one another.
+S3  SIB round trip. Each SIB is opened alone, then all three, then none; the
+    next scan returns the model's word for that SIB state (an open SIB reads
+    back 1 and puts its bench cell after it), and the matching host select
+    asserts while that scan runs.
 
-S4  Secondary-TAP select. An unselected STAP drives no host TDO enable and
-    parks its host TMS at TMS-Hold, which reads 0 on every TCK of an IDCODE
-    scan after Test-Logic-Reset (the TMS-Hold reset value of the STAP 3DCR,
-    ``jtag_stap`` page, "3DCR Register"). Selecting the
-    I/O STAP over TAP_3DCR has to raise its TDO enable for exactly the
-    Shift-IR and Shift-DR TCKs of a scan (IEEE 1149.1 Section 4.5.1 drives
-    TDO only while shifting; IEEE 1838 runs the STAP through both scans) and
-    make its host TMS follow the primary TAP, while the extra STAP next to it
-    stays quiet -- that is what puts ``jtag_stap_io_host_tdi_i`` in the live
-    chain.
+S4  I/O STAP select. Unselected, it drives no host TDO enable and holds its
+    host TMS at TMS-Hold 0 on every TCK of an IDCODE scan. Selected over
+    TAP_3DCR, an IDCODE scan through the network is the PTAP register, the
+    TDO and TDI lockup pair of the I/O STAP across the bench's bare return
+    (two falling-edge stages in series, one TCK), and the four STAP SIBs: 37
+    cells. The scan shifts an 8-bit nonzero tail behind them, which returns
+    37 bits late above the IDCODE, the lockup bit and four SIB bits of 0; the
+    lockup pair holds at Capture-DR whatever it last held, so that bit is
+    masked. Its TDO enable covers exactly the IR and DR shift TCKs, its host
+    TMS follows the primary TAP on every TCK, the pad pin ``tb_stap_io_tdo``
+    carries the IDCODE bits LSB first on the first 32 Shift-DR TCKs and the
+    tail after, and the extra STAP stays quiet.
 
-S5  The extra STAP host, selected the same way (run before S4). The extra
-    STAP sits beside the I/O STAP in the SEP=1 chain and shares its select
-    rules: unselected it parks its host TMS at TMS-Hold, 0 on every TCK, and
-    drives no TDO enable; selected over TAP_3DCR its enable covers exactly the IR+DR TCKs
-    of a scan and its host TMS follows the primary TAP on every TCK, while
-    the I/O STAP stays quiet. The selection is written with Config-Hold clear
-    in both the PTAP and the STAP 3DCR, so the Test-Logic-Reset S4 starts
-    from returns the chain to its reset state (``jtag_stap`` page, "3DCR
-    Register", Config-Hold), which S4's own idle and "extra STAP stays
-    unselected" checks then read.
+S5  The extra STAP, the same way (run before S4). Its network IDCODE scan is
+    the PTAP register, the three SIBs of the STAPs ahead of it, its bare
+    return (no cell: no TDI lockup) and its own SIB: 36 cells, with the tail
+    36 bits late. The pad pin ``tb_stap_extra0_tdo`` carries the three SIB
+    captures (0), then the IDCODE bits, then the tail. The selection is written with
+    Config-Hold clear in the PTAP and the STAP 3DCR, so the Test-Logic-Reset
+    S4 starts from clears it (``jtag_stap`` page, "3DCR Register"), which
+    S4's idle and "extra STAP stays quiet" checks then read.
 
-Every checked DR shift also requires the PTAP TDO to be resolved on each
-TCK on which ``jtag_tdo_oen`` drives it, and the number of driven TCKs to
-cover the shift: the JTAG VIP maps an X or Z TDO to 0, so a readback that
-expects a 0 could not otherwise fail on an X.
+Every checked DR shift requires the PTAP TDO to be resolved on each TCK on
+which ``jtag_tdo_oen`` drives it, and the number of driven TCKs to cover the
+shift: the JTAG VIP maps an X or Z TDO to 0.
 
-Where the pages stop short -- the TDI-to-TDO direction of the SIB cascade,
-the ``jtag_scan_ctrl_t.select`` definition and the TAP states that assert
-``host_tdo_oen_o`` -- the expectation is the DV-owned rule above and the
-plan card records the gap.
+Where the pages stop short -- the ``jtag_scan_ctrl_t.select`` definition and
+the TAP states that assert ``host_tdo_oen_o`` -- the expectation is the
+DV-owned rule above and the plan card records the gap.
 """
 
 from __future__ import annotations
@@ -120,9 +119,7 @@ from seq_lib.smu_jtag_helpers import (
 
 DTP_IR_SELECT_IJTAG = dtp_ir_opcode("SELECT_IJTAG")
 
-# TDI-first SIB cascade of the JIU architecture page "iJTAG Network": DFT
-# secure, DFT non-secure, DFD. LSB-first, so the first bit shifted in reaches
-# the last SIB.
+# TDI-first SIB cascade of the JIU architecture page "iJTAG Network".
 IJTAG_SIB_ORDER = ("dft_secure", "dft", "dfd")
 IJTAG_SIB_COUNT = len(IJTAG_SIB_ORDER)
 IJTAG_SELECT_PIN = {
@@ -130,32 +127,90 @@ IJTAG_SELECT_PIN = {
     "dft": "tb_dft_select",
     "dfd": "tb_dfd_select",
 }
-# One scan cell per SIB and none in the closed loops; the IEEE 1149.1
-# falling-edge TDO retimer (PTAP architecture page "TDO Retiming") moves TDO
-# within the bit period and is not a cell.
-SIB_DELAY = IJTAG_SIB_COUNT
-DR_LEN = 12
-DR_MASK = (1 << DR_LEN) - 1
-PAYLOAD_LEN = DR_LEN - SIB_DELAY
+IJTAG_SCAN_OUT_PIN = {
+    "dft_secure": "tb_dft_secure_scan_out",
+    "dft": "tb_dft_scan_out",
+    "dfd": "tb_dfd_scan_out",
+}
+# Payload bits shifted beyond the chain in every S2 scan.
+PAYLOAD_LEN = 9
 PAYLOAD_MASK = (1 << PAYLOAD_LEN) - 1
 # Directed payloads, all nonzero: the JTAG VIP maps an X/Z TDO to 0, so an
 # all-zero expectation could not fail.
 PAYLOADS = (0xFF, 0x55, 0xAA, 0x01, 0x80)
+# The S1 and S3 scans: long enough for the six-cell open chain and a margin.
+DR_LEN = 12
 
 IDCODE_DR_WIDTH = 32
 STAP_OBSERVE_CYCLES = 2000
-# Every SIB open: the last IJTAG_SIB_COUNT bits of a DR shift land in the
-# SIBs, the last of all in the SIB nearest TDI.
-SIB_ALL_OPEN = ((1 << IJTAG_SIB_COUNT) - 1) << (DR_LEN - IJTAG_SIB_COUNT)
-SIB_ALL_READBACK = (1 << IJTAG_SIB_COUNT) - 1
+SHIFT_DR = 0x0010  # jtag_tap_pkg::tap_state_e SHIFT_DR
 
 # The STAP 3DCR TMS-Hold reset value (jtag_stap architecture page, "3DCR
 # Register"): the host TMS of an unselected STAP after Test-Logic-Reset.
 TMS_HOLD_RESET = 0
 
-# Shift-IR plus Shift-DR TCKs of one IDCODE scan: IEEE 1149.1 Section 4.5.1
-# drives TDO only while shifting, and the STAP runs through both scans.
-EXPECTED_STAP_OEN_TCKS = DTP_IR_WIDTH + IDCODE_DR_WIDTH
+# Network IDCODE DR with one STAP selected: PTAP register, the SIBs of the
+# STAPs ahead of it, the cells of its host return, its SIB and the SIBs behind
+# it. The bench returns each STAP host TDO on a bare net; the I/O STAP's TDO
+# and TDI lockups are two falling-edge stages in series, one TCK.
+STAP_RETURN_CELLS = {"io": 1, "extra0": 0}
+# Bits shifted in behind the network so they reach TDO and the pad: nonzero
+# and mixed, and short of the SIB cells, which take only zeros and stay shut.
+STAP_TAIL_LEN = 8
+STAP_TAIL = 0xA5
+STAP_TDO_PIN = {"io": "tb_stap_io_tdo", "extra0": "tb_stap_extra0_tdo"}
+STAP_OEN_PIN = {"io": "tb_stap_io_tdo_oen", "extra0": "tb_stap_extra0_tdo_oen"}
+STAP_TMS_PIN = {"io": "tb_stap_io_tms", "extra0": "tb_stap_extra0_tms"}
+STAP_CHECKER = {"io": "CHK-SMU-STAP-IO-SELECT", "extra0": "CHK-SMU-STAP-EXTRA-SELECT"}
+STAP_LABEL = {"io": "I/O", "extra0": "extra"}
+
+
+def ijtag_chain(opened: frozenset[str]) -> list[tuple[str, str]]:
+    """The iJTAG DR from TDI: each SIB bit, then its bench cell while it is open."""
+    chain: list[tuple[str, str]] = []
+    for name in IJTAG_SIB_ORDER:
+        chain.append(("sib", name))
+        if name in opened:
+            chain.append(("cell", name))
+    return chain
+
+
+def ijtag_word(opened: frozenset[str], open_next: frozenset[str], payload: int, width: int) -> int:
+    """A DR word of ``width`` bits that leaves ``open_next`` open after Update-DR.
+
+    The last bit shifted lands in the TDI-nearest cell, so the cell at TDI-first
+    index j takes word bit ``width - 1 - j``; ``payload`` fills the bits below.
+    """
+    chain = ijtag_chain(opened)
+    if payload >> (width - len(chain)):
+        raise AssertionError(f"payload 0x{payload:x} does not fit a {width}-bit scan")
+    word = payload
+    for j, (kind, name) in enumerate(chain):
+        if kind == "sib" and name in open_next:
+            word |= 1 << (width - 1 - j)
+    return word
+
+
+def ijtag_shift(
+    opened: frozenset[str], word: int, width: int
+) -> tuple[int, dict[str, list[int]], frozenset[str]]:
+    """Model one DR scan: (TDO word, per-host scan-out stream, SIBs open after it).
+
+    Capture-DR loads each SIB with its enable and each bench cell with 0. Each
+    stream entry is the host's SIB bit before one Shift-DR TCK.
+    """
+    chain = ijtag_chain(opened)
+    state = [1 if kind == "sib" and name in opened else 0 for kind, name in chain]
+    sib_at = {name: j for j, (kind, name) in enumerate(chain) if kind == "sib"}
+    tdo = 0
+    streams: dict[str, list[int]] = {name: [] for name in IJTAG_SIB_ORDER}
+    for k in range(width):
+        tdo |= state[-1] << k
+        for name, j in sib_at.items():
+            streams[name].append(state[j])
+        state = [(word >> k) & 1, *state[:-1]]
+    after = frozenset(name for name, j in sib_at.items() if state[j])
+    return tdo, streams, after
 
 
 class smu_dtp_scan_chain_boundary_seq:
@@ -167,6 +222,12 @@ class smu_dtp_scan_chain_boundary_seq:
         self.cfg = test.cfg
         self.log = test.logger
         self.sb = test.env.scoreboard
+        self.opened: frozenset[str] = frozenset()
+        self.tdo_driven = 0
+        self.tdo_unresolved = 0
+        self.fall_pins: tuple[str, ...] = ()
+        self.rise_pins: tuple[str, ...] = ()
+        self.samples: dict[str, list[int]] = {}
 
     def _bit(self, name: str) -> int:
         pin = getattr(self.dut, name, None)
@@ -177,23 +238,60 @@ class smu_dtp_scan_chain_boundary_seq:
             raise AssertionError(f"X/Z on {name}: {val}")
         return int(val) & 1
 
-    async def _watch_tdo(self) -> None:
-        """Count, per checked shift, the TCKs on which the PTAP drives TDO and the X/Z ones."""
+    def _state(self) -> int:
+        val = self.dut.jtag_ptap_state.value
+        if isinstance(val, int):
+            return val
+        if not val.is_resolvable:
+            raise AssertionError(f"X/Z on jtag_ptap_state: {val}")
+        return int(val)
+
+    async def _watch_tck(self) -> None:
+        """Per TCK: TDO resolvability, and the Shift-DR samples the current shift asks for.
+
+        ``fall_pins`` change on the rising edge, so they are read at each
+        falling edge in Shift-DR, the value the next rising edge shifts on.
+        ``rise_pins`` change on the falling edge, so they are read at the rising
+        edge that follows a falling edge in Shift-DR.
+        """
         prev_tck = self._bit("jtag_tck")
+        shift_pending = False
         while True:
             await RisingEdge(self.dut.clk_ref_i)
             tck = self._bit("jtag_tck")
-            if tck == 1 and prev_tck == 0 and self._bit("jtag_tdo_oen"):
-                self.tdo_driven += 1
-                if not self.dut.jtag_tdo.value.is_resolvable:
-                    self.tdo_unresolved += 1
+            if tck == 1 and prev_tck == 0:
+                if self._bit("jtag_tdo_oen"):
+                    self.tdo_driven += 1
+                    if not self.dut.jtag_tdo.value.is_resolvable:
+                        self.tdo_unresolved += 1
+                if shift_pending:
+                    for name in self.rise_pins:
+                        self.samples[name].append(self._bit(name))
+                shift_pending = False
+            elif tck == 0 and prev_tck == 1 and self._state() == SHIFT_DR:
+                shift_pending = True
+                for name in self.fall_pins:
+                    self.samples[name].append(self._bit(name))
             prev_tck = tck
 
-    async def _checked_shift_dr(self, word: int, width: int, label: str) -> int:
+    async def _checked_shift_dr(
+        self,
+        word: int,
+        width: int,
+        label: str,
+        *,
+        fall_pins: tuple[str, ...] = (),
+        rise_pins: tuple[str, ...] = (),
+    ) -> int:
         """A DR shift whose TDO is resolved on every driven TCK, ``width`` of them at least."""
         self.tdo_driven = 0
         self.tdo_unresolved = 0
-        captured = await self.jtag.shift_dr(word, width, back_to_rti=True)
+        self.fall_pins, self.rise_pins = fall_pins, rise_pins
+        self.samples = {name: [] for name in (*fall_pins, *rise_pins)}
+        try:
+            captured = await self.jtag.shift_dr(word, width, back_to_rti=True)
+        finally:
+            self.fall_pins, self.rise_pins = (), ()
         require_jtag_tdo_resolved(label)
         if self.tdo_unresolved or self.tdo_driven < width:
             raise AssertionError(
@@ -202,12 +300,21 @@ class smu_dtp_scan_chain_boundary_seq:
             )
         return int(captured)
 
-    async def _count_selected_tcks(self, cycles: int, pins: tuple[str, ...]) -> dict[str, int]:
-        """TCK rising edges seen, and how many of them each pin was high for.
+    async def _ijtag_scan(
+        self, open_next: frozenset[str], payload: int, width: int, label: str, *, pins=False
+    ) -> tuple[int, int, dict[str, list[int]]]:
+        """One SELECT_IJTAG DR scan from the current SIB state: (captured, expected, streams)."""
+        word = ijtag_word(self.opened, open_next, payload, width)
+        expected, streams, after = ijtag_shift(self.opened, word, width)
+        fall = tuple(IJTAG_SCAN_OUT_PIN[name] for name in IJTAG_SIB_ORDER) if pins else ()
+        captured = await self._checked_shift_dr(word, width, label, fall_pins=fall)
+        if after != open_next:
+            raise AssertionError(f"model leaves {sorted(after)} open, wanted {sorted(open_next)}")
+        self.opened = after
+        return captured & ((1 << width) - 1), expected, streams
 
-        Counted on jtag_tck, not on a design clock: the randomized clock
-        periods alias a sampler running on clk_ref_i.
-        """
+    async def _count_selected_tcks(self, cycles: int, pins: tuple[str, ...]) -> dict[str, int]:
+        """TCK rising edges seen, and how many of them each pin was high for."""
         counts = {name: 0 for name in pins}
         counts["tck_n"] = 0
         prev_tck = self._bit("jtag_tck")
@@ -229,9 +336,7 @@ class smu_dtp_scan_chain_boundary_seq:
         await self.jtag.reset_to_tlr()
         await self.jtag.goto_state(OcahJtagState.RUN_TEST_IDLE)
         await ClockCycles(dut.clk_smu_i, 8)
-        self.tdo_driven = 0
-        self.tdo_unresolved = 0
-        cocotb.start_soon(self._watch_tdo())
+        cocotb.start_soon(self._watch_tck())
         await self.jtag.shift_ir(DTP_IR_IDCODE)
         idcode = await self._checked_shift_dr(0, IDCODE_DR_WIDTH, "IDCODE")
         if idcode != DTP_DEFAULT_IDCODE:
@@ -240,24 +345,25 @@ class smu_dtp_scan_chain_boundary_seq:
         await self._ijtag_gating()
         await self._ijtag_chain_payload()
         await self._ijtag_sib_round_trip()
-        await self._stap_select_extra()
-        await self._stap_select()
+        await self._stap_select("extra0", config_hold=0)
+        await self._stap_select("io", config_hold=1)
 
     # ------------------------------------------------------------------
     # S1: the iJTAG hosts are gated by instruction, with every SIB open.
     # ------------------------------------------------------------------
     async def _ijtag_gating(self) -> None:
         pins = tuple(IJTAG_SELECT_PIN[name] for name in IJTAG_SIB_ORDER)
+        everything = frozenset(IJTAG_SIB_ORDER)
         await self.jtag.shift_ir(DTP_IR_SELECT_IJTAG)
-        await self._checked_shift_dr(SIB_ALL_OPEN, DR_LEN, "iJTAG SIB open")
+        await self._ijtag_scan(everything, 0, DR_LEN, "iJTAG SIB open")
 
         watcher = cocotb.start_soon(self._count_selected_tcks(STAP_OBSERVE_CYCLES, pins))
-        captured = await self._checked_shift_dr(SIB_ALL_OPEN, DR_LEN, "iJTAG SIB hold open")
+        captured, expected, _ = await self._ijtag_scan(everything, 0, DR_LEN, "iJTAG SIB hold open")
         opened = await watcher
         self.sb.expect_eq(
-            "Capture-DR reads all three SIBs open under SELECT_IJTAG",
-            captured & SIB_ALL_READBACK,
-            SIB_ALL_READBACK,
+            "SELECT_IJTAG scan with all three SIBs open returns the open-chain word",
+            captured,
+            expected,
             evidence="CHK-SMU-IJTAG-GATE",
         )
         for name in IJTAG_SIB_ORDER:
@@ -284,9 +390,7 @@ class smu_dtp_scan_chain_boundary_seq:
             evidence="CHK-SMU-IJTAG-GATE",
         )
         if counts["tck_n"] < DTP_IR_WIDTH + IDCODE_DR_WIDTH:
-            raise AssertionError(
-                f"IDCODE scan produced only {counts['tck_n']} TCKs; the window is too short"
-            )
+            raise AssertionError(f"IDCODE window saw only {counts['tck_n']} TCKs; it is too short")
         for name in IJTAG_SIB_ORDER:
             self.sb.expect_eq(
                 f"{name} iJTAG host stays unselected under IDCODE with its SIB open "
@@ -297,16 +401,16 @@ class smu_dtp_scan_chain_boundary_seq:
             )
 
         await self.jtag.shift_ir(DTP_IR_SELECT_IJTAG)
-        captured = await self._checked_shift_dr(0, DR_LEN, "iJTAG SIB close")
+        captured, expected, _ = await self._ijtag_scan(frozenset(), 0, DR_LEN, "iJTAG SIB close")
         self.sb.expect_eq(
-            "the SIBs are still open after the IDCODE scan",
-            captured & SIB_ALL_READBACK,
-            SIB_ALL_READBACK,
+            "the SIBs still return the open-chain word after the IDCODE scan",
+            captured,
+            expected,
             evidence="CHK-SMU-IJTAG-GATE",
         )
 
     # ------------------------------------------------------------------
-    # S2: the closed chain is IJTAG_SIB_COUNT scan cells long.
+    # S2: the chain through the open host loops, then without them.
     # ------------------------------------------------------------------
     async def _ijtag_chain_payload(self) -> None:
         await self.jtag.shift_ir(DTP_IR_SELECT_IJTAG)
@@ -324,49 +428,54 @@ class smu_dtp_scan_chain_boundary_seq:
             seed,
         )
         payloads = (*PAYLOADS, *randoms)
-        # Open pass: open all three SIBs, then keep their Update-DR bits set
-        # in every payload word so they stay open across each shift.
-        await self._checked_shift_dr(SIB_ALL_OPEN, DR_LEN, "iJTAG SIB open for S2")
-        await self._payload_pass(
-            payloads,
-            sib_bits=SIB_ALL_OPEN,
-            readback=SIB_ALL_READBACK,
-            label="all SIBs open, through the host loops",
-        )
-        # Closed pass: a closing shift first, whose capture still reads them open.
-        await self._checked_shift_dr(0, DR_LEN, "iJTAG SIB close for S2")
-        await self._payload_pass(payloads, sib_bits=0, readback=0, label="all SIBs closed")
+        everything = frozenset(IJTAG_SIB_ORDER)
+        await self._ijtag_scan(everything, 0, DR_LEN, "iJTAG SIB open for S2")
+        await self._payload_pass(payloads, everything, "all SIBs open, through the host loops")
+        await self._ijtag_scan(frozenset(), 0, DR_LEN, "iJTAG SIB close for S2")
+        await self._payload_pass(payloads, frozenset(), "all SIBs closed")
 
     async def _payload_pass(
-        self, payloads: tuple[int, ...], *, sib_bits: int, readback: int, label: str
+        self, payloads: tuple[int, ...], opened: frozenset[str], label: str
     ) -> None:
-        """Shift each payload once; TDO returns it SIB_DELAY bits late after the captured enables."""
-        compared = 0
+        cells = len(ijtag_chain(opened))
+        width = cells + PAYLOAD_LEN
+        pin_bits = 0
         for payload in payloads:
-            word = (payload & PAYLOAD_MASK) | sib_bits
-            captured = await self._checked_shift_dr(
-                word, DR_LEN, f"iJTAG DR payload 0x{payload:x} ({label})"
+            captured, expected, streams = await self._ijtag_scan(
+                opened,
+                payload & PAYLOAD_MASK,
+                width,
+                f"iJTAG DR payload 0x{payload:x} ({label})",
+                pins=bool(opened),
             )
-            expected = ((word << SIB_DELAY) | readback) & DR_MASK
-            if expected & ~((1 << SIB_DELAY) - 1) == 0:
-                raise AssertionError("all-zero payload expectation forbidden (VIP maps X/Z to 0)")
             self.sb.expect_eq(
-                f"iJTAG DR returns payload 0x{payload:x} {SIB_DELAY} bits late after the "
-                f"captured enables 0b{readback:03b} ({label})",
-                int(captured) & DR_MASK,
+                f"iJTAG DR returns payload 0x{payload:x} {cells} bits late after the "
+                f"captured 0b{expected & ((1 << cells) - 1):0{cells}b} ({label})",
+                captured,
                 expected,
                 evidence="CHK-SMU-IJTAG-CHAIN",
             )
-            compared += 1
-        self.sb.expect_eq(
-            f"iJTAG DR payload compares ({label})",
-            compared,
-            len(PAYLOADS) + 3,
-            evidence="CHK-SMU-IJTAG-CHAIN",
-        )
+            if opened:
+                for name in IJTAG_SIB_ORDER:
+                    pin = IJTAG_SCAN_OUT_PIN[name]
+                    self.sb.expect_eq(
+                        f"{pin} carries the {name} SIB bit on each of the {width} Shift-DR "
+                        f"TCKs of payload 0x{payload:x}",
+                        self.samples[pin],
+                        streams[name],
+                        evidence="CHK-SMU-IJTAG-CHAIN",
+                    )
+                    pin_bits += len(self.samples[pin])
+        if opened:
+            self.sb.expect_eq(
+                f"host scan-out samples over the open pass ({label})",
+                pin_bits,
+                len(payloads) * width * IJTAG_SIB_COUNT,
+                evidence="CHK-SMU-IJTAG-CHAIN",
+            )
 
     # ------------------------------------------------------------------
-    # S3: Update-DR latches the SIB enables and Capture-DR reads them back.
+    # S3: Update-DR latches the SIB enables and the next scan reads them back.
     # ------------------------------------------------------------------
     async def _ijtag_sib_round_trip(self) -> None:
         cases: list[tuple[str, tuple[str, ...]]] = [
@@ -378,27 +487,17 @@ class smu_dtp_scan_chain_boundary_seq:
         ]
         pins = tuple(IJTAG_SELECT_PIN[name] for name in IJTAG_SIB_ORDER)
         for label, opened in cases:
-            word = 0
-            # LSB-first: the last IJTAG_SIB_COUNT bits shifted in stop in the
-            # chain, the last one of all in the SIB nearest TDI.
-            for idx, name in enumerate(IJTAG_SIB_ORDER):
-                if name in opened:
-                    word |= 1 << (DR_LEN - 1 - idx)
-            await self.jtag.shift_dr(word, DR_LEN, back_to_rti=True)
+            target = frozenset(opened)
+            await self._ijtag_scan(target, 0, DR_LEN, f"iJTAG SIB set ({label})")
 
             watcher = cocotb.start_soon(self._count_selected_tcks(STAP_OBSERVE_CYCLES, pins))
-            captured = await self._checked_shift_dr(0, DR_LEN, f"iJTAG SIB capture ({label})")
+            captured, expected, _ = await self._ijtag_scan(
+                frozenset(), 0, DR_LEN, f"iJTAG SIB capture ({label})"
+            )
             counts = await watcher
-
-            # Capture-DR loads each SIB with its own enable; shifting out
-            # LSB-first puts the SIB nearest TDO first.
-            expected = 0
-            for idx, name in enumerate(IJTAG_SIB_ORDER):
-                if name in opened:
-                    expected |= 1 << (IJTAG_SIB_COUNT - 1 - idx)
             self.sb.expect_eq(
-                f"Capture-DR reads back the SIB enables ({label})",
-                int(captured) & ((1 << IJTAG_SIB_COUNT) - 1),
+                f"the scan after Update-DR returns the SIB enables and open cells ({label})",
+                captured,
                 expected,
                 evidence="CHK-SMU-IJTAG-SIB",
             )
@@ -420,93 +519,83 @@ class smu_dtp_scan_chain_boundary_seq:
                     )
 
     # ------------------------------------------------------------------
-    # S4: the I/O STAP host, selected over TAP_3DCR.
+    # S4 (I/O STAP) and S5 (extra STAP): select over TAP_3DCR.
     # ------------------------------------------------------------------
-    async def _stap_select(self) -> None:
+    async def _stap_select(self, name: str, *, config_hold: int) -> None:
+        checker = STAP_CHECKER[name]
+        who = STAP_LABEL[name]
+        other = "extra0" if name == "io" else "io"
         await self.jtag.reset_to_tlr()
         await self.jtag.goto_state(OcahJtagState.RUN_TEST_IDLE)
         for _ in range(8):
             await self.jtag.step_tms(0)
 
-        idle = await self._observe_stap()
+        idle, _, _ = await self._observe_stap(name, IDCODE_DR_WIDTH)
         self.sb.expect_eq(
-            "the I/O STAP drives no TDO enable while it is unselected",
-            idle["tb_stap_io_tdo_oen"],
+            f"the {who} STAP drives no TDO enable while it is unselected",
+            idle[STAP_OEN_PIN[name]],
             0,
-            evidence="CHK-SMU-STAP-IO-SELECT",
+            evidence=checker,
         )
         self.sb.expect_eq(
-            f"unselected I/O STAP host TMS holds TMS-Hold {TMS_HOLD_RESET} on every TCK "
-            f"of an IDCODE scan ({idle['tck_n']} TCKs, at least {EXPECTED_STAP_OEN_TCKS})",
-            (idle["tms_high"], idle["tck_n"] >= EXPECTED_STAP_OEN_TCKS),
+            f"unselected {who} STAP host TMS holds TMS-Hold {TMS_HOLD_RESET} on every TCK "
+            f"of an IDCODE scan ({idle['tck_n']} TCKs, at least "
+            f"{DTP_IR_WIDTH + IDCODE_DR_WIDTH})",
+            (idle["tms_high"], idle["tck_n"] >= DTP_IR_WIDTH + IDCODE_DR_WIDTH),
             (idle["tck_n"] if TMS_HOLD_RESET else 0, True),
-            evidence="CHK-SMU-STAP-IO-SELECT",
+            evidence=checker,
         )
 
-        await self._select_stap("io")
-        live = await self._observe_stap()
+        await self._select_stap(name, config_hold=config_hold)
+        ahead = SMU_SEP_STAP_ORDER.index(name)
+        sibs_from = len(SMU_SEP_STAP_ORDER) - ahead
+        returned = STAP_RETURN_CELLS[name]
+        cells = IDCODE_DR_WIDTH + ahead + returned + sibs_from
+        width = cells + STAP_TAIL_LEN
+        live, captured, pad = await self._observe_stap(name, width, STAP_TAIL)
+
+        below = cells - IDCODE_DR_WIDTH
+        lockup_mask = ((1 << returned) - 1) << sibs_from
         self.sb.expect_eq(
-            "the selected I/O STAP drives its TDO enable for the whole IR+DR scan",
-            live["tb_stap_io_tdo_oen"],
-            EXPECTED_STAP_OEN_TCKS,
-            evidence="CHK-SMU-STAP-IO-SELECT",
+            f"a {width}-bit network IDCODE scan with the {who} STAP selected returns "
+            f"{ahead + sibs_from} SIB bits of 0"
+            + (f", {returned} masked lockup bit" if returned else "")
+            + f", the IDCODE, then the {STAP_TAIL_LEN} tail bits 0x{STAP_TAIL:02x} "
+            f"{cells} bits late",
+            captured & ~lockup_mask & ((1 << width) - 1),
+            (DTP_DEFAULT_IDCODE << below) | (STAP_TAIL << cells),
+            evidence=checker,
+        )
+        expected_pad = (
+            [0] * ahead
+            + [(DTP_DEFAULT_IDCODE >> k) & 1 for k in range(IDCODE_DR_WIDTH)]
+            + [(STAP_TAIL >> k) & 1 for k in range(width - ahead - IDCODE_DR_WIDTH)]
         )
         self.sb.expect_eq(
-            "the selected I/O STAP host TMS follows the primary TAP on every TCK",
+            f"{STAP_TDO_PIN[name]} carries the STAP's client stream on each of the {width} "
+            f"Shift-DR TCKs: {ahead} SIB captures, the IDCODE LSB first, then the tail",
+            pad,
+            expected_pad,
+            evidence=checker,
+        )
+        self.sb.expect_eq(
+            f"the selected {who} STAP drives its TDO enable for exactly the "
+            f"{DTP_IR_WIDTH} + {width} IR and DR shift TCKs",
+            live[STAP_OEN_PIN[name]],
+            DTP_IR_WIDTH + width,
+            evidence=checker,
+        )
+        self.sb.expect_eq(
+            f"the selected {who} STAP host TMS follows the primary TAP on every TCK",
             live["tms_mismatch"],
             0,
-            evidence="CHK-SMU-STAP-IO-SELECT",
+            evidence=checker,
         )
         self.sb.expect_eq(
-            "the extra STAP beside it stays unselected",
-            live["tb_stap_extra0_tdo_oen"],
+            f"the {STAP_LABEL[other]} STAP beside it stays unselected",
+            live[STAP_OEN_PIN[other]],
             0,
-            evidence="CHK-SMU-STAP-IO-SELECT",
-        )
-
-    # ------------------------------------------------------------------
-    # S5: the extra STAP host, selected over TAP_3DCR without Config-Hold.
-    # ------------------------------------------------------------------
-    async def _stap_select_extra(self) -> None:
-        await self.jtag.reset_to_tlr()
-        await self.jtag.goto_state(OcahJtagState.RUN_TEST_IDLE)
-        for _ in range(8):
-            await self.jtag.step_tms(0)
-
-        idle = await self._observe_stap("tb_stap_extra0_tms")
-        self.sb.expect_eq(
-            "the extra STAP drives no TDO enable while it is unselected",
-            idle["tb_stap_extra0_tdo_oen"],
-            0,
-            evidence="CHK-SMU-STAP-EXTRA-SELECT",
-        )
-        self.sb.expect_eq(
-            f"unselected extra STAP host TMS holds TMS-Hold {TMS_HOLD_RESET} on every TCK "
-            f"of an IDCODE scan ({idle['tck_n']} TCKs, at least {EXPECTED_STAP_OEN_TCKS})",
-            (idle["tms_high"], idle["tck_n"] >= EXPECTED_STAP_OEN_TCKS),
-            (idle["tck_n"] if TMS_HOLD_RESET else 0, True),
-            evidence="CHK-SMU-STAP-EXTRA-SELECT",
-        )
-
-        await self._select_stap("extra0", config_hold=0)
-        live = await self._observe_stap("tb_stap_extra0_tms")
-        self.sb.expect_eq(
-            "the selected extra STAP drives its TDO enable for the whole IR+DR scan",
-            live["tb_stap_extra0_tdo_oen"],
-            EXPECTED_STAP_OEN_TCKS,
-            evidence="CHK-SMU-STAP-EXTRA-SELECT",
-        )
-        self.sb.expect_eq(
-            "the selected extra STAP host TMS follows the primary TAP on every TCK",
-            live["tms_mismatch"],
-            0,
-            evidence="CHK-SMU-STAP-EXTRA-SELECT",
-        )
-        self.sb.expect_eq(
-            "the I/O STAP beside it stays unselected",
-            live["tb_stap_io_tdo_oen"],
-            0,
-            evidence="CHK-SMU-STAP-EXTRA-SELECT",
+            evidence=checker,
         )
 
     async def _select_stap(self, name: str, config_hold: int = 1) -> None:
@@ -514,9 +603,8 @@ class smu_dtp_scan_chain_boundary_seq:
 
         The three DR scans run under one TAP_3DCR load. The last one writes
         the STAP 3DCR and closes the SIB of ``name`` again, and a later IR
-        load leaves the selection in place: S4 and S5 read it through the
-        IR+DR scan of IDCODE. ``config_hold`` is written to the PTAP and the
-        STAP 3DCR alike.
+        load leaves the selection in place: the network IDCODE scan reads it.
+        ``config_hold`` is written to the PTAP and the STAP 3DCR alike.
         """
         await self.jtag.shift_ir(DTP_IR_TAP_3DCR)
         await self.jtag.shift_dr(
@@ -536,17 +624,27 @@ class smu_dtp_scan_chain_boundary_seq:
         value, width = ptap_prefixed(stap_word, stap_width, config_hold=config_hold)
         await self.jtag.shift_dr(value, width, back_to_rti=True)
 
-    async def _observe_stap(self, tms_pin: str = "tb_stap_io_tms") -> dict[str, int]:
-        """One IDCODE IR+DR scan, watched at the two secondary-TAP hosts.
+    async def _observe_stap(
+        self, name: str, dr_width: int, word: int = 0
+    ) -> tuple[dict[str, int], int, list[int]]:
+        """An IDCODE IR scan and a ``dr_width`` DR scan, watched at both STAP hosts.
 
-        ``tms_mismatch`` counts the TCKs on which ``tms_pin`` differs from the
-        primary TAP's TMS.
+        Returns the per-pin TCK counts, the captured DR and the STAP pad TDO
+        on each Shift-DR TCK.
         """
-        pins = ("tb_stap_io_tdo_oen", "tb_stap_extra0_tdo_oen")
-        watcher = cocotb.start_soon(self._watch_stap(STAP_OBSERVE_CYCLES, pins, tms_pin))
+        pins = (STAP_OEN_PIN["io"], STAP_OEN_PIN["extra0"])
+        watcher = cocotb.start_soon(
+            self._watch_stap(2 * STAP_OBSERVE_CYCLES, pins, STAP_TMS_PIN[name])
+        )
         await self.jtag.shift_ir(DTP_IR_IDCODE)
-        await self.jtag.shift_dr(0, IDCODE_DR_WIDTH, back_to_rti=True)
-        return await watcher
+        captured = await self._checked_shift_dr(
+            word,
+            dr_width,
+            f"IDCODE through the {STAP_LABEL[name]} STAP",
+            rise_pins=(STAP_TDO_PIN[name],),
+        )
+        pad = list(self.samples[STAP_TDO_PIN[name]])
+        return await watcher, captured, pad
 
     async def _watch_stap(self, cycles: int, pins: tuple[str, ...], tms_pin: str) -> dict[str, int]:
         counts = {name: 0 for name in pins}
