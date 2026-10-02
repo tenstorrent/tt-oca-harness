@@ -291,11 +291,15 @@ foreach bit $uart_rx_cts_bits {
 # core2pad_o on the RX and CTS bits is tied to 1'b0 with the output driver
 # disabled; the pad still belongs to the UART slice, so it is stamped on
 # SMCCLK rather than left in the ck_feedthru group.
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5] -clock [get_clock $gpio_sys_clk] [smc_gpio_ports core2pad_o $uart_rx_cts_bits] -add_delay
+#
+# MCR.LINE_LOOPBACK runs a combinational arc from one bit's pad2core_i to the
+# next bit's core2pad_o. These inert sides take 45% so they cannot bind a pad
+# that also carries it.
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.45] -clock [get_clock $gpio_sys_clk] [smc_gpio_ports core2pad_o $uart_rx_cts_bits] -add_delay
 
 # The TX and RTS pads are outputs, so their pad2core_i side carries no traffic;
 # it stays on PERIPHERALCLK with the rest of the slice.
-set_input_delay [expr $clock_periods(PERIPHERALCLK_PERIOD)*0.5] -clock [get_clock PERIPHERALCLK] [smc_gpio_ports pad2core_i $uart_tx_rts_bits] -add_delay
+set_input_delay [expr $clock_periods(PERIPHERALCLK_PERIOD)*0.45] -clock [get_clock PERIPHERALCLK] [smc_gpio_ports pad2core_i $uart_tx_rts_bits] -add_delay
 
 ########################################################
 # I3C -- GPIO 27-36, 63-64
