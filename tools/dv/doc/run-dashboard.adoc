@@ -1501,7 +1501,17 @@ did not pass carries its `reason`. `id` is the CI run the archive came from,
 and is empty when the publisher recorded none.
 
 The overview shows `coverage_total_percent`. The block page shows
-`results[].coverage.effective_metrics`.
+`results[].coverage.effective_metrics`, one column per metric family. A
+column is headed by the family's `FAMILY_HEADINGS` entry in
+`doc/ui-supplemental/js/dashboard.js`, such as `FSM` for `fsm_state` or
+`Cover` for `user`, so that eight families fit the page column; a family it
+does not list is headed by its name. On a table whose series all ran on one
+tool, `TOOL_FAMILY_HEADINGS` replaces that heading where the tool's own
+reports use another name, such as `User` on Verilator.
+
+Percentages on the pages and on the badges share three colour bands, set by
+`PASS_AT` and `WARN_AT` in both `doc/ui-supplemental/js/dashboard.js` and
+`tools/doc/render_badges.py`. The two pairs must agree.
 
 === Charts
 
