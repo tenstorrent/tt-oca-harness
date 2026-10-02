@@ -1986,6 +1986,20 @@ module sep_uvm_top
         `SEP_DRBG.u_edn_axil_adapter.axil64_req_i.w_valid,
         `SEP_DRBG.u_edn_axil_adapter.axil64_req_i.aw_valid
     };
+    // Each DUT lane adapter's downstream request into its AXI-Lite-32 to
+    // TL-UL bridge: {ar_valid, aw_valid | w_valid}. Observation-only. An
+    // access the adapter refuses must leave both bits low on every cycle; no
+    // CSR shows a request that the bridge then answered without error.
+    assign drbg_csrng_fwd_o = {
+        `SEP_DRBG.u_csrng_axil_adapter.axil32_req_o.ar_valid,
+        `SEP_DRBG.u_csrng_axil_adapter.axil32_req_o.aw_valid
+            | `SEP_DRBG.u_csrng_axil_adapter.axil32_req_o.w_valid
+    };
+    assign drbg_edn_fwd_o = {
+        `SEP_DRBG.u_edn_axil_adapter.axil32_req_o.ar_valid,
+        `SEP_DRBG.u_edn_axil_adapter.axil32_req_o.aw_valid
+            | `SEP_DRBG.u_edn_axil_adapter.axil32_req_o.w_valid
+    };
 
     // ---------------------------------------------------------------------
     // Port-level arbitration vehicle: a TB-owned second instance of
@@ -2039,6 +2053,10 @@ module sep_uvm_top
     // access.
     assign tbadp_b_resp_o  = tbadp_rsp.b.resp;
     assign tbadp_r_resp_o  = tbadp_rsp.r.resp;
+    // The adapter's downstream request, as the AXI-Lite-32 responder sees it.
+    // A refused access must not drive it; a forwarded one must.
+    assign tbadp_fwd_o     = {tbadp_req32.ar_valid,
+                              tbadp_req32.aw_valid | tbadp_req32.w_valid};
 
     // Always-ready axil32 responder: every ready is an unconditional 1'b1.
     // Not gated on the peer channel's valid: cross-gating the

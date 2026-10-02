@@ -611,6 +611,22 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
+# Unsupported accesses at drbg_axil64_lane_adapter: a misaligned read and a
+# write whose strobe is not the addressed lane's must answer SLVERR and forward
+# nothing. The DUT's CSRNG and EDN adapters are reached over s_axi; the
+# TB-owned vehicle instance covers the strobe patterns one AXI transfer cannot
+# place at a DUT port.
+name = "sep_drbg_axil_adapter_refusal_test"
+module = "system.sep_drbg_axil_adapter_refusal_test"
+seed = 1
+reseed = 1
+timeout_sec = 3600
+tags = ["fabric", "axi", "protocol", "system", "trng", "drbg"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
 name = "sep_drbg_axil_concurrent_csrng_aw_then_ar_test"
 module = "system.sep_drbg_axil_concurrent_csrng_aw_then_ar_test"
 seed = 1

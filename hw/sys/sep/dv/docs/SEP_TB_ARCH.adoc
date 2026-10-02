@@ -171,9 +171,13 @@ Exceptions (a closed set):
   scoreboards that have no CSR mirror (entropy CHK chain, IRQ aggregate,
   `drbg_csrng_axil_chan_o` / `drbg_edn_axil_chan_o` at each DUT lane
   adapter's AXI-Lite-64 port — concurrent AW/W/AR observation has no CSR
-  mirror). The TB-owned `u_tbadp_vehicle` instance
-  is idle and held in reset unless a port-arbitration leaf releases it;
-  it is not a DUT XMR.
+  mirror; `drbg_csrng_fwd_o` / `drbg_edn_fwd_o` at each DUT lane adapter's
+  AXI-Lite-32 request — no CSR shows a request the bridge answered without
+  error). The TB-owned `u_tbadp_vehicle` instance
+  is idle and held in reset unless a vehicle leaf
+  (`sep_drbg_axil_adapter_port_arbitration_test`,
+  `sep_drbg_axil_adapter_refusal_test`) releases it; it and its
+  AXI-Lite-32 request probe `tbadp_fwd_o` are not DUT XMRs.
 * *Crypto reset-sequencer probes* — the per-domain gated resets, the
   `isolated_o` completion bits and the host `isolate_req_i` bits at the crypto
   AXI interconnect (`*_gated_rst_n_probe_o`, `*_isolated_probe_o`,

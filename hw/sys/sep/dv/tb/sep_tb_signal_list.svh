@@ -388,6 +388,10 @@
 // signature: the adapter has accepted nothing and no channel can retire.
 `SEP_TB_OUT(logic [5:0], drbg_csrng_axil_chan_o)  // CSRNG lane adapter port
 `SEP_TB_OUT(logic [5:0], drbg_edn_axil_chan_o)  // EDN lane adapter port
+// {ar_valid, aw_valid | w_valid} on each DUT lane adapter's AXI-Lite-32 side:
+// the adapter presents a request to its TL-UL bridge.
+`SEP_TB_OUT(logic [1:0], drbg_csrng_fwd_o)
+`SEP_TB_OUT(logic [1:0], drbg_edn_fwd_o)
 
 // Port-level arbitration vehicle for drbg_axil64_lane_adapter.
 //
@@ -421,6 +425,10 @@
 `SEP_TB_OUT(logic [63:0], tbadp_r_data_o)
 `SEP_TB_OUT(logic [1:0], tbadp_b_resp_o)  // BRESP: OKAY vs the unsupported-access SLVERR
 `SEP_TB_OUT(logic [1:0], tbadp_r_resp_o)  // RRESP: same, for the read leg
+// {ar_valid, aw_valid | w_valid} on the vehicle's AXI-Lite-32 side: the
+// adapter presents a downstream request. An unsupported access must leave both
+// bits low, because the adapter answers it itself and forwards nothing.
+`SEP_TB_OUT(logic [1:0], tbadp_fwd_o)
 `SEP_TB_OUT(logic, km_entropy_tvalid_o)  // CHK5: post-mux EDN->KM tvalid (entropy_muxed_req[0])
 `SEP_TB_OUT(logic [31:0], km_entropy_tdata_o)  // CHK5: post-mux EDN->KM tdata word
 `SEP_TB_OUT(logic, km_entropy_tready_o)  // CHK5: KM tready (entropy_muxed_rsp[0]) -> real handshake
