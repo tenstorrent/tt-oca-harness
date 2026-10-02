@@ -79,9 +79,9 @@ def plant_manifest_length(logger, buf: bytearray, slot: str, *, minor: int, leng
     )
     base = mm.slot_base(slot)
     assert bytes(buf[base : base + 4]) == mm.MANIFEST_MAGIC, (
-        f"{slot} magic is not OCAC, so OCA_FAIL_MAGIC would pre-empt the length check"
+        f"{slot} magic is not OCAC, so OCA_FAIL_MAGIC would preempt the length check"
     )
-    # The major stays valid so FORMAT_VERSION_MISMATCH cannot pre-empt the length check.
+    # The major stays valid so FORMAT_VERSION_MISMATCH cannot preempt the length check.
     if minor:
         mm.set_manifest_version(buf, slot, minor=minor)
     if length != body:

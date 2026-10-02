@@ -48,7 +48,7 @@ def plant_empty_image_list(logger, buf: bytearray, slot: str) -> bytes:
     )
     assert mm.manifest_length(buf, slot) == mm.MANIFEST_SIZE, (
         f"{slot} manifest_length is {mm.manifest_length(buf, slot)}, expected "
-        f"{mm.MANIFEST_SIZE}: MANIFEST_LENGTH would pre-empt the TOC arm"
+        f"{mm.MANIFEST_SIZE}: MANIFEST_LENGTH would preempt the TOC arm"
     )
     off, size = IMAGE_COUNT_FIELD
     golden = bytes(buf)

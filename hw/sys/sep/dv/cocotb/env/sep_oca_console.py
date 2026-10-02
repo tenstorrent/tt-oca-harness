@@ -315,7 +315,7 @@ def _selftest() -> int:
     except AssertionError:
         pass
     else:
-        raise AssertionError("an unparseable MANIFEST_ERR= was silently treated as no error")
+        raise AssertionError("an unparsable MANIFEST_ERR= was silently treated as no error")
     return 0
 
 

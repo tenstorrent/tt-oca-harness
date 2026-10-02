@@ -35,7 +35,7 @@ _PKCS1_FAIL = "RSA_PKCS1_FAIL"
 # OTBN engine failures refuse the signature with the same error code.
 _OTBN_ENGINE_FAILURES = ("RSA_OTBN_INIT_FAIL", "RSA_OTBN_LOAD_FAIL", "RSA_EXEC_FAIL")
 
-# Key-selection refusals that would pre-empt or mimic the RSA verdict.
+# Key-selection refusals that would preempt or mimic the RSA verdict.
 _OTHER_SIG_VERDICTS = (
     "PUBK_ALGO_UNSUPPORTED",
     "PUBK_SLOT_RESERVED",

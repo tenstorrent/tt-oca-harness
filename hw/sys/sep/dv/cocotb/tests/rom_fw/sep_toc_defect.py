@@ -292,7 +292,7 @@ def assert_reaches_payload(buf, slot: str) -> None:
     )
     assert mm.manifest_length(buf, slot) == mm.MANIFEST_SIZE, (
         f"{slot} manifest_length is {mm.manifest_length(buf, slot)}, expected "
-        f"{mm.MANIFEST_SIZE}: MANIFEST_LENGTH would pre-empt the TOC arm"
+        f"{mm.MANIFEST_SIZE}: MANIFEST_LENGTH would preempt the TOC arm"
     )
 
 

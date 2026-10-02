@@ -56,7 +56,7 @@ class sep_firmware_primary_manifest_major_version_invalid_test(sep_primary_fail_
             bytes(buf[mm.PRIMARY_MANIFEST_OFFSET : mm.PRIMARY_MANIFEST_OFFSET + 4])
             == mm.MANIFEST_MAGIC
         ), (
-            "primary magic is not OCAC, so OCA_FAIL_MAGIC would pre-empt "
+            "primary magic is not OCAC, so OCA_FAIL_MAGIC would preempt "
             "the version check and the asserted code would be wrong"
         )
         mm.set_manifest_version(buf, "primary", major=_BAD_MAJOR_VERSION)
