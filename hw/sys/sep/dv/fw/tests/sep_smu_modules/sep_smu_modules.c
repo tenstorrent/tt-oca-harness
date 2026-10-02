@@ -4,14 +4,10 @@
 /*
  * sep_smu_modules - SMU-level SEP module matrix smoke test.
  *
- * Exercises the module touch-points listed in the SEP testplan with
- * register/functional checks:
- *   - clock/reset/fabric/sram/bootrom
- *   - dma/wdt/aes/hmac/kmac/otbn
- *   - lcc(key lifecycle ctrl)/km mailbox/efuse
- *   - OpenTitan SPI host. No select steers it, so the image programs none.
- *
- * Completion is signaled by pass/fail loops for cocotb PC classification.
+ * Runs the module stages that the stage mask enables (AES, HMAC and KMAC) with
+ * known-answer checks. A failing stage parks the CPU in its own fail loop, so
+ * cocotb PC classification names the module that failed. A stage left out of
+ * the mask is compiled out together with its fail loop.
  */
 
 #include <stdint.h>
@@ -23,8 +19,6 @@
 #include "sep_aes_init.h"
 #include "sep_entropy.h"
 #include "aes_test_util.h"
-
-#define printf(...) ((void)0)
 
 #define HMAC_TIMEOUT_ITERS 1000000
 #define KMAC_TIMEOUT_ITERS 1000000
@@ -48,61 +42,6 @@ static void to_hex(const uint8_t *in, int n, char *out) {
 static int rw_check32(uint32_t addr, uint32_t val) {
     WRITE_REG(addr, val);
     return (READ_REG(addr) == val) ? 0 : -1;
-}
-
-static int stage_clock_reset(void) {
-    g_sink ^= READ_REG(SEP_TOP_SEP_CPU_CTRL_CLOCK_GATE_CTRL_BASE_ADDR);
-    g_sink ^= READ_REG(SEP_TOP_SEP_CPU_CTRL_REFERENCE_COUNTER_BASE_ADDR);
-    g_sink ^= READ_REG(SEP_TOP_SEP_CPU_CTRL_SEP_VERSION_ID_BASE_ADDR);
-
-    if (rw_check32(SEP_TOP_SEP_CPU_CTRL_SEP_SW_DEBUG_BASE_ADDR, 0x5A5AA5A5u) != 0) return -1;
-
-    uint32_t sw_reset_n = READ_REG(SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
-    g_sink ^= sw_reset_n;
-    return 0;
-}
-
-static int stage_fabric(void) {
-    if (rw_check32(SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_REGION_START_BASE_ADDR(0),
-                   0xC0000000u) != 0) {
-        return -1;
-    }
-    if (rw_check32(SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_REGION_END_BASE_ADDR(0),
-                   0xCFFFFFFFu) != 0) {
-        return -1;
-    }
-    if (rw_check32(SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(0),
-                   0x00000003u) != 0) {
-        return -1;
-    }
-    if (rw_check32(SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(0), 0x00000001u) != 0)
-        return -1;
-    if (rw_check32(SEP_TOP_STEE_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(0), 0x00000001u) !=
-        0)
-        return -1;
-
-    if (rw_check32(SEP_TOP_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0), 0x00000003u) != 0)
-        return -1;
-    if (rw_check32(SEP_TOP_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(0), 0x00000000u) != 0)
-        return -1;
-    if (rw_check32(SEP_TOP_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(0), 0xFFFFFFFFu) != 0) return -1;
-
-    if (rw_check32(SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0), 0x00000003u) != 0)
-        return -1;
-    if (rw_check32(SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(0), 0x00000000u) != 0)
-        return -1;
-    if (rw_check32(SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(0), 0xFFFFFFFFu) != 0) return -1;
-    return 0;
-}
-
-static int stage_sram_bootrom(void) {
-    volatile uint32_t *sram = (volatile uint32_t *)(uintptr_t)(SEP_TOP_SEP_SRAM_BASE_ADDR + 0x200u);
-    uint32_t pat = 0x1234ABCDu;
-    *sram = pat;
-    __asm__ volatile("fence" ::: "memory");
-    if (*sram != pat) return -1;
-
-    return 0;
 }
 
 static int stage_dma_regs(void) {
@@ -304,11 +243,7 @@ static int stage_kmac(void) {
 static int stage_efuse(void) {
     if (rw_check32(SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_BASE_ADDR, 0x00001234u) != 0)
         return -1;
-        /*
-         * EFUSE_TIMING_CTRL_7 exists only in register maps that generate the wide
-         * shim block; this map's shim block exposes only EFUSE_BANK_INIT_TIME, so
-         * the check is compiled only where the register exists.
-         */
+        /* The timing register exists only in some register maps. */
 #ifdef SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_7_BASE_ADDR
     if (rw_check32(SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_7_BASE_ADDR,
                    0x0000ABCDu) != 0)
@@ -376,12 +311,6 @@ __attribute__((used, noinline, noreturn)) void smu_sep_modules_fail_efuse_loop(v
     }
 }
 
-__attribute__((used, noinline, noreturn)) void smu_sep_modules_fail_spi_loop(void) {
-    while (1) {
-        __asm__ volatile("wfi");
-    }
-}
-
 int main(void) {
     const uint32_t stage_mask = (1u << 2) | /* AES  */
                                 (1u << 3) | /* HMAC */
@@ -408,5 +337,4 @@ int main(void) {
     if ((stage_mask & (1u << 5)) && stage_efuse() != 0) smu_sep_modules_fail_efuse_loop();
 
     smu_sep_modules_pass_loop();
-    smu_sep_modules_fail_loop();
 }

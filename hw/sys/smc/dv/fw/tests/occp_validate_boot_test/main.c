@@ -2,14 +2,13 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * Sends VALIDATE_AND_BOOT with a random manifest address inside the OCCP window. The ROM must
- * publish it in its SCRATCH_8 and set bit 1 of SCRATCH_9; the harness checks both against the
- * copy this firmware keeps in its own scratch 8.
+ * Sends VALIDATE_AND_BOOT with a random manifest address inside the OCCP window and records the
+ * address for the harness, which checks that the ROM hands the same address on to SEP, flags the
+ * manifest ready and then halts.
  */
 
 #include "occp_test_common.h"
 #include "smc_defines.h"
-#include <string.h>
 
 static void run_validate_boot_test(test_context_t *ctx) {
     simputs("=== Starting OCCP Validate and Boot Test ===\n");
@@ -72,6 +71,4 @@ int main(void) {
     while (1) {
         __asm__("wfi");
     }
-
-    return 0;
 }

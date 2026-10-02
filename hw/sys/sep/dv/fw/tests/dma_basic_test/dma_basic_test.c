@@ -1,35 +1,28 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// SEP Secure-DMA basic-breadth firmware test. Reference provenance:
-// uvm_tests/dma sep_dma_uvm_reg_rw / reg_reset / cfg_regwen / range_regwen /
-// addr_fixed / addr_wrap / addr_combo / mem_copy(width sweep) / err_opcode.
+// SEP Secure DMA basic test. The CPU drives the Secure DMA and checks its
+// register and copy-datapath contracts on bare sep; the copies are SRAM to SRAM
+// unless a check says otherwise.
 //
-// EL2 firmware drives the Secure DMA (sep_dma.h, base 0x1080_0000) over the CPU
-// LSU and proves the DMA CSR + copy-datapath basic contracts on bare sep. The
-// transfers are SRAM->SRAM (DMA master -> SEP local xbar -> SRAM). Distinct from
-// the DMA trio (dma_hash SHA-256 + SRAM->DCCM + IRQ; dma_cpu_contention
-// mid-flight BUSY + dual-master; spi_ot_dma_rx lsio handshake): DMA basic breadth adds the
-// CSR/REGWEN breadth + address-mode/width matrix + one opcode-error.
-//
-// main() returns the error count; start.S turns 0 -> PASS magic / non-zero ->
-// FAIL magic on the 0x8000_0000 mailbox. Every checker logs a positive PASS line
-// so the kept log is auditable (absence of FAIL is not evidence).
+// main() returns the error count; startup/crt0.s turns it into the PASS/FAIL
+// magic on the mailbox. Every checker logs a positive PASS line, because the
+// absence of a FAIL line is not evidence.
 //
 // Checks:
 //   CHK-RESET      : DMA config registers read their documented reset values.
-//   CHK-CFG-REGWEN : CFG_REGWEN auto-locks (0x9) while BUSY -> a config write is
-//                    rejected; unlocks (0x6) when idle -> the write then lands.
-//   CHK-RANGE-REGWEN: RANGE_VALID=0 gates a transfer (RANGE_VALID_ERROR); then a
-//                    full valid range is locked via RANGE_REGWEN rw0c (0x9) and a
-//                    range-register write is rejected (one-way until reset).
-//   CHK-COPY-MODE  : SRAM->SRAM data integrity per address mode with a per-mode
-//                    expected image + untouched-neighbor: INCR linear, FIXED-src
+//   CHK-RANGE-REGWEN: an invalid range gates a transfer, and a limit below the
+//                    base raises base_limit_error alone; then a full valid range
+//                    is locked, one-way until reset, and a range write is rejected.
+//   CHK-CFG-REGWEN : the config lock engages while BUSY, so a config write is
+//                    rejected; it releases when idle, and the write then lands.
+//   CHK-COPY-MODE  : data integrity per address mode with a per-mode expected
+//                    image and an untouched neighbor: INCR linear, FIXED-src
 //                    replicates, FIXED-dst overwrites one location, WRAP (chunk <
-//                    total) accumulates num_chunks copies.
+//                    total) accumulates one copy per chunk.
 //   CHK-WIDTH      : copy integrity for 1B/2B/4B transfer widths.
 //   CHK-DONE-RW1C  : STATUS.done observed -> W1C -> reads back 0 (polled status).
-//   CHK-ERR-OPCODE : invalid opcode 0xF -> ERROR_CODE.opcode_error + STATUS.error;
+//   CHK-ERR-OPCODE : an invalid opcode raises opcode_error alone and STATUS.error;
 //                    W1C clear; a subsequent good copy recovers.
 //   CHK-ERR-ADDR   : four misaligned descriptors raise the matching ERROR_CODE
 //                    bit exclusively; a subsequent good copy recovers.
@@ -40,9 +33,9 @@
 //   CHK-ICCM       : SRAM->ICCM->SRAM round trip through the DMA returns every
 //                    word over a sentinel pre-fill (every other copy here stays
 //                    in SRAM; the CPU cannot access ICCM as data).
-//   CHK-HOSTINTG   : a DMA-issued host command under dma_host_intg_inject_i
-//                    raises exclusive host_path_err; CLEAR returns STATUS 0;
-//                    a subsequent good copy recovers.
+//   CHK-HOSTINTG   : a DMA-issued host command while the testbench injects a
+//                    command integrity error raises exclusive host_path_err;
+//                    CLEAR returns STATUS 0; a subsequent good copy recovers.
 //   CHK-HOSTFABRIC : a DMA transfer whose destination is past the DMA CSR
 //                    window completes a fabric non-OKAY and raises exclusive
 //                    host_path_err with the inject pin low; CLEAR; recovery.
@@ -67,8 +60,8 @@
 // real 256 B copy completes in well under this many CSR-read iterations.
 #define POLL_ITERS 4000
 #define MAX_COPY_WORDS 8u
-// Bound between ARM and GO: inject must be high on the host a_valid
-// (tlul_cmd_intg_chk.err_o is gated on a_valid).
+// Delay after each console marker, so the testbench can switch the integrity
+// inject before the next host command; only a valid command is checked.
 #define HOSTINTG_ARM_SPIN 4000u
 
 // Scenario block. Layout: [0]=magic, [1]=src_off, [2]=dst_off, [3]=copy_bytes
@@ -526,10 +519,8 @@ static int chk_width(void) {
         uint32_t st = dma_run(src_base, dst_base, bytes, bytes, widths[w],
                               SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
                               SECURE_DMA__DST_CONFIG__INCREMENT_bm, SEP_DMA_OPCODE_COPY);
-        // Read the width back. Without this the three iterations are indistinguishable:
-        // 16 bytes is a whole multiple of 1, 2 and 4, so a TRANSFER_WIDTH that ignored
-        // writes and stayed at its 0x2 reset produced a byte-identical copy all three
-        // times and the check could not tell 1B from 4B.
+        // Read the width back: the copy alone cannot tell the widths apart, since
+        // a width register that ignored writes would still copy every byte.
         uint32_t wr_rb = rd(SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR) &
                          SECURE_DMA__TRANSFER_WIDTH__TRANSACTION_WIDTH_bm;
         if (wr_rb != widths[w]) {
@@ -603,14 +594,12 @@ static int chk_err_addr(void) {
         const char *name;
         uint32_t src, dst, width, want;
     } cells[] = {
-        // The RDL describes SRC_ADDR_LO / DST_ADDR_LO as "Must be aligned to the
-        // transfer width", so a 4-byte transfer demands addr[1:0] == 0 on each
-        // side and the misaligned side is the one that raises its error bit.
+        // Each address must be aligned to the transfer width, and the misaligned
+        // side raises its own error bit.
         {"src misaligned for 4B", src_base + 1u, dst_base, SEP_DMA_WIDTH_4B,
          SECURE_DMA__ERROR_CODE__SRC_ADDR_ERROR_bm},
         {"dst misaligned for 4B", src_base, dst_base + 2u, SEP_DMA_WIDTH_4B,
          SECURE_DMA__ERROR_CODE__DST_ADDR_ERROR_bm},
-        // 2-byte width demands bit 0 clear on both.
         {"src misaligned for 2B", src_base + 1u, dst_base, SEP_DMA_WIDTH_2B,
          SECURE_DMA__ERROR_CODE__SRC_ADDR_ERROR_bm},
         {"dst misaligned for 2B", src_base, dst_base + 1u, SEP_DMA_WIDTH_2B,
@@ -691,8 +680,7 @@ static int chk_err_opcode(void) {
                           SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
                           SECURE_DMA__DST_CONFIG__INCREMENT_bm, SEP_DMA_OPCODE_INVALID);
     uint32_t err = rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
-    // Exclusive: ONLY opcode_error must be set (no other ERROR_CODE bit), matching
-    // the reference suite err_opcode error-exclusivity check.
+    // Exclusive: only opcode_error may be set.
     if (!(st & SECURE_DMA__STATUS__ERROR_bm) || err != SECURE_DMA__ERROR_CODE__OPCODE_ERROR_bm) {
         sep_mbx_puts("FAIL: CHK-ERR-OPCODE invalid opcode did not set opcode_error "
                      "exclusively (status ");
@@ -765,14 +753,14 @@ static int chk_host_intg(void) {
     fill_src_words(nwords, snap);
     clear_dst_words(nwords + 1, SENT);
 
-    // Inject must be high before GO. err_o is a_valid-gated.
+    // The testbench raises the inject on this marker; it must be high before GO.
     sep_mbx_puts("CHK-HOSTINTG-ARM\n");
     for (volatile uint32_t i = 0; i < HOSTINTG_ARM_SPIN; i++) {
     }
 
-    // The engine must actually terminate. err_o is a_valid-gated, so a DMA that
-    // issues one command and then wedges still latches host_path_err: without
-    // this the liveness half of the leg goes unchecked.
+    // The engine must actually terminate: a DMA that issues one command and
+    // then wedges still latches host_path_err, so the error alone does not
+    // prove liveness.
     uint32_t st_intg = dma_run(src_base, dst_base, copy_bytes, copy_bytes, SEP_DMA_WIDTH_4B,
                                SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
                                SECURE_DMA__DST_CONFIG__INCREMENT_bm, SEP_DMA_OPCODE_COPY);
@@ -794,9 +782,8 @@ static int chk_host_intg(void) {
     for (volatile uint32_t i = 0; i < HOSTINTG_ARM_SPIN; i++) {
     }
 
-    // DMA_BUS_ERR_CLEAR is sw=w singlepulse and always reads 0, so reading it
-    // back proves nothing the DUT could fail. STATUS returning to 0 is the
-    // contract.
+    // The clear register always reads 0, so reading it back proves nothing;
+    // the status returning to 0 is the contract.
     wr(clear_addr, SEP_CPU_CTRL__DMA_BUS_ERR_CLEAR__CLR_bm);
     bus = rd(status_addr);
     if (bus != 0) {
@@ -851,8 +838,8 @@ static int chk_host_fabric(void) {
     const uint32_t host_bit = SEP_CPU_CTRL__DMA_BUS_ERR_STATUS__HOST_PATH_ERR_bm;
     const uint32_t status_addr = SEP_TOP_SEP_CPU_CTRL_DMA_BUS_ERR_STATUS_BASE_ADDR;
     const uint32_t clear_addr = SEP_TOP_SEP_CPU_CTRL_DMA_BUS_ERR_CLEAR_BASE_ADDR;
-    // First word past the DMA CSR xbar window. RANGE is locked 0..0xFFFFFFFF,
-    // so the engine issues the command; the xbar returns DECERR.
+    // First word past the DMA CSR window. The locked range covers every address,
+    // so the engine issues the command and the fabric returns a decode error.
     const uint32_t dead = SEP_TOP_SECURE_DMA_BASE_ADDR + SEP_TOP_SECURE_DMA_SIZE;
 
     uint32_t bus = rd(status_addr);
@@ -886,9 +873,8 @@ static int chk_host_fabric(void) {
         e++;
     }
 
-    // DMA_BUS_ERR_CLEAR is sw=w singlepulse and always reads 0, so reading it
-    // back proves nothing the DUT could fail. STATUS returning to 0 is the
-    // contract.
+    // The clear register always reads 0, so reading it back proves nothing;
+    // the status returning to 0 is the contract.
     wr(clear_addr, SEP_CPU_CTRL__DMA_BUS_ERR_CLEAR__CLR_bm);
     bus = rd(status_addr);
     if (bus != 0) {
@@ -935,11 +921,8 @@ static int chk_host_fabric(void) {
 }
 
 // ---- CHK-ERR-ASID: an unencoded ASID -> asid_error -> clear -> recovery ----
-// The legal ASID encodings are the DV-owned table in fw/drivers/sep_dma.h,
-// transcribed there from the IP register specification; SEP_DMA_ASID_INVALID is
-// outside that enumeration. The expected ERROR_CODE bit comes from the
-// generated register header, whose RDL describes ASID_ERROR as "The source or
-// destination ASID contains an invalid value.".
+// SEP_DMA_ASID_INVALID is outside the legal ASID encodings in drivers/sep_dma.h,
+// so it must raise asid_error.
 static int chk_err_asid(void) {
     int e = 0;
     const uint32_t SENT = 0xA5A5A5A5u;
@@ -952,7 +935,6 @@ static int chk_err_asid(void) {
         const char *name;
         uint32_t asid;
     } cells[] = {
-        // ADDR_SPACE_ID packs SRC_ASID in [3:0] and DST_ASID in [7:4].
         {"src asid unencoded", SEP_DMA_ASID_PAIR(ASID_BAD, SEP_DMA_ASID_OT)},
         {"dst asid unencoded", SEP_DMA_ASID_PAIR(SEP_DMA_ASID_OT, ASID_BAD)},
     };
@@ -1017,10 +999,9 @@ static int chk_err_asid(void) {
 }
 
 // ---- CHK-ERR-SIZE: an unencoded transfer width -> size_error -> recovery ----
-// fw/drivers/sep_dma.h is the DV-owned encoding table: TRANSFER_WIDTH is 1B/2B/4B
-// as 0/1/2 and SEP_DMA_WIDTH_INVALID (0x3) is outside it, which the header
-// already records as raising size_error. Distinct from CHK-ERR-ADDR, where the
-// width is legal and the address is not.
+// SEP_DMA_WIDTH_INVALID is outside the legal width encodings in
+// drivers/sep_dma.h, so it must raise size_error. Distinct from CHK-ERR-ADDR,
+// where the width is legal and the address is not.
 static int chk_err_size(void) {
     int e = 0;
     const uint32_t SENT = 0x5A5A5A5Au;
@@ -1082,7 +1063,7 @@ static int chk_err_size(void) {
 // every check above.
 //
 // The CPU cannot stand in as the witness here: a store to ICCM from the core
-// takes a store access fault (mcause 7) on this configuration, so the check
+// takes a store access fault on this configuration, so the check
 // cannot pre-fill or read back ICCM directly. Instead the DMA carries the data
 // out to ICCM and back to a second SRAM region, and the comparison is done
 // there. Only the DMA touches ICCM, which is what the check is about.
@@ -1103,7 +1084,7 @@ static int chk_iccm_copy(void) {
     uint32_t snap[MAX_COPY_WORDS];
     fill_src_words(nwords, snap);
 
-    // Return region, placed 0x80 clear of dst_base so it cannot collide with the
+    // Return region, placed clear of dst_base so it cannot collide with the
     // untouched-neighbour word the later checkers inspect at dst_base. main()
     // guarantees dst_base + 0x100 is still inside SRAM.
     const uint32_t ret_base = dst_base + 0x80u;
@@ -1179,7 +1160,7 @@ static int chk_iccm_copy(void) {
 int main(void) {
     int errors = 0;
 
-    sep_outbound_filter_init(); // open the 0x8000_0000 console window
+    sep_outbound_filter_init(); // open the console window
     sep_mbx_puts("SEP DMA basic test\n");
 
     if (g_dma_params[0] != DMA_PARAM_MAGIC) {

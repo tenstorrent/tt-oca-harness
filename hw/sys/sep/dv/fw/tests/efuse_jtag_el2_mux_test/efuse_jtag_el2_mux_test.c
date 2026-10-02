@@ -1,31 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// SEP eFuse JTAG-AXIL + EL2-CPU mux firmware test (OSS port of the reference suite
-// sep_efuse_jtag_el2_cpu_mux_test, EL2 side). The EL2 CPU continuously issues
-// eFuse-MMR read traffic through its host AXI path while, concurrently, the cocotb
-// side drives the DUT's real SEP-OTP JTAG AXI-Lite port (axil_sep_otp_jtag). Both
-// masters arbitrate at the eFuse interface controller's AXI-Lite mux
-// (efuse_interface_controller.u_axi_lite_mux) -- this is the "el2_cpu_mux"
-// coexistence the test proves.
+// SEP eFuse JTAG-AXIL and EL2-CPU mux coexistence test, CPU side. The CPU reads
+// eFuse MMRs through its host AXI path while the testbench drives the SEP-OTP
+// JTAG AXI-Lite port; both masters arbitrate at the eFuse interface
+// controller's AXI-Lite mux.
 //
-// EL2 steps:
-//   1. wait for real fuse-sense to complete (no +skip_fuse_sense);
-//   2. seed resetless RMA_SIP_TOKEN_I_0 with a distinct nonzero value and read it
-//      back before the concurrent window;
-//   3. publish CPU_READY to scratch-cold[0] so the cocotb side knows it may start
-//      the JTAG burst;
-//   4. loop forever, scoring two reads per pass so a path that returns nothing
-//      cannot pass: RMA_SIP_TOKEN_I_0 must keep the CPU seed, and
-//      EFUSE_INTERFACE_CTRL STATUS must still carry efuse_sense_done set.
-//      The CPU uses TOKEN_I_0, the JTAG side uses TOKEN_I_1/3/LAST, so they do
-//      not overlap. The CPU issues no eFuse writes during the concurrent window,
-//      so only the read channel is contended. The loop counter and error count go
-//      to scratch-cold so the observer can confirm the CPU keeps making progress
-//      during the JTAG burst.
-//
-// The EL2 runs as a live worker. Coexistence is the loop counter advancing
-// across the JTAG burst while the CPU-published error count stays zero.
+// The CPU waits for fuse sense, seeds a resetless token word and reads it back,
+// publishes CPU_READY, then loops. Each pass requires the token to keep the CPU
+// seed and the interface status to keep sense-done set, so a read path that
+// returns nothing cannot pass. The JTAG side uses other token words and the CPU
+// issues no eFuse writes in the loop, so only the read channel is contended.
+// Coexistence is the published loop counter advancing across the JTAG burst
+// while the published error count stays zero.
 
 #include <stdint.h>
 
@@ -69,7 +56,7 @@ int main(void) {
     uint32_t i = 0;
     uint32_t integ_err = 0;
     while (1) {
-        // CPU eFuse-MMR traffic through the mux (TOKEN_I_0; JTAG uses 1/3/LAST).
+        // CPU eFuse-MMR traffic through the mux; the JTAG side never uses this word.
         uint32_t rb = sep_efuse_rd(SEP_EFUSE_MMR0);
         if (rb != CPU_TOKEN_SEED) {
             integ_err++; // CPU path corrupted under contention
@@ -79,8 +66,8 @@ int main(void) {
         if ((st & SEP_EFUSE_SENSE_DONE) == 0u) {
             integ_err++; // CPU read path dead or returning zeros under contention
         }
-        // Publish progress (1..N) so the observer can prove the CPU advanced while
-        // the JTAG burst ran.
+        // Publish progress so the observer can prove the CPU advanced while the
+        // JTAG burst ran.
         i++;
         sep_scratch_wr(SCRATCH_COUNT, i);
         sep_scratch_wr(SCRATCH_ERR, integ_err);

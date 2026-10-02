@@ -4,13 +4,11 @@
 /*
  * sep_smu_otbn - SMU-level SEP OTBN CSR programming smoke test.
  *
- * Exercises benign OTBN CSR writes only; no IMEM/DMEM load or EXECUTE.
- *
- * OTBN lives at SEP_TOP_OTBN_BASE_ADDR in the SEP's own peripheral region,
- * so these accesses stay on the SEP-internal fabric and never reach the
- * outbound filter. INTR_ENABLE.done is sw=rw storage, so it is read back after
- * the write burst: a write dropped or absorbed by a default slave then returns
- * the wrong value and the image parks in the fail loop.
+ * Writes OTBN CSRs only; it loads no IMEM/DMEM and starts no execution. OTBN is
+ * in the SEP's own peripheral region, so these accesses stay on the SEP-internal
+ * fabric. The interrupt enable is plain read/write storage, so its readback
+ * catches a write that was dropped or absorbed by a default slave; a mismatch
+ * parks the CPU in the fail loop.
  */
 
 #include <stdint.h>
@@ -19,7 +17,7 @@
 #include "sep.h"
 #include "sep_outbound_filter.h"
 
-/* Written to INTR_ENABLE and required back from it; bit 0 is the only field. */
+/* Written to the interrupt enable and expected on readback. */
 #define OTBN_INTR_ENABLE_PROBE 0x1u
 
 static volatile int g_otbn_status;

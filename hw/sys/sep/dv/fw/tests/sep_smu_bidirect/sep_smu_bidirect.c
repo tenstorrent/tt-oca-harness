@@ -2,11 +2,9 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 #include <stdint.h>
-#include <stddef.h>
 
 #include "och_sep_common.h"
 #include "sep.h"
-#include "test_completion.h"
 
 #define XBAR_FILTER_START_ADDR 0x0000000040000000ULL
 #define XBAR_FILTER_END_ADDR 0x00000000800000FFULL
@@ -21,11 +19,8 @@
 #define FILTER_END_OFFSET 0x10u
 #define FILTER_STRIDE 0x20u
 
-/*
- * SEP->SMC address translation for the sep_ext_to_smc dedicated port (see
- * sep_smc_xbar.c for the derivation): SMC CPU_CTRL scratch[0] is at SMC-local
- * 0xC0039080, so SEP must target 0x40039080 to reach scratch[0].
- */
+/* SMC CPU_CTRL scratch registers as SEP addresses them through the dedicated
+ * SEP-to-SMC port, which translates them to the SMC-local alias. */
 #define SMC_XBAR_CPU_CTRL_SCRATCH8_ADDR 0x400390C0u
 #define SMC_XBAR_SCRATCH_STRIDE 0x8u
 #define SMC_XBAR_CPU_CTRL_SCRATCH12_ADDR 0x400390E0u
@@ -38,18 +33,15 @@
 #define SMC_TO_SEP_TIMEOUT_ITERS 1000000u
 
 /*
- * SMU xbar SEP aperture must cover 0x10802000 (cold scratch) for SMC->SEP
- * writes and readbacks. SEP_REGION_SIZE defaults to 0x01000000 which excludes
- * it; program 0x20000000 so [0, 0x20000000) covers the SEP local address
- * space without overlapping the default SMC aperture at [0x40000000,
- * 0x41000000).
+ * The SMU xbar SEP aperture must cover the SEP cold scratch for SMC-to-SEP
+ * writes and readbacks, and the reset size does not. This size covers the SEP
+ * local address space without overlapping the default SMC aperture.
  */
 #define SEP_APERTURE_SIZE 0x20000000ULL
 
 static volatile int g_xbar_status;
 
 static inline void program_sep_smu_aperture(void) {
-    /* 32-bit write (matches global_alias_remap_sanity). See interop fw. */
     WRITE_REG(SEP_TOP_SEP_CPU_CTRL_SEP_REGION_SIZE_BASE_ADDR, (uint32_t)SEP_APERTURE_SIZE);
     __asm__ volatile("fence iorw, iorw" ::: "memory");
 }

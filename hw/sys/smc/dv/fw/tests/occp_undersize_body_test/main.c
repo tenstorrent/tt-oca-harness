@@ -13,7 +13,6 @@ int main(void) {
     if (!initialize_interface(&ctx)) {
         simputs("FAIL: Interface initialization failed\n");
         test_fail(0);
-        return 0;
     }
 
     ctx.test_base_addr = OCCP_TEST_BASE_ADDR;
@@ -44,9 +43,4 @@ int main(void) {
     } else {
         test_fail(0);
     }
-
-    while (1) {
-        __asm__("wfi");
-    }
-    return 0;
 }
