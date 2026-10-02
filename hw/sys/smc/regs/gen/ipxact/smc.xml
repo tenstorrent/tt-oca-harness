@@ -1987,7 +1987,8 @@ Set to 1 for manufacturer-specific Command Code (cmd_code), otherwise 0</ipxact:
               <ipxact:description>Read or write type: [list]
 [*]0x0 - Commit Write
 [*]0x1 - Hold Write
-[*]0x2 - Read
+[*]0x2 - Reserved
+[*]0x3 - Read
 [/list]</ipxact:description>
               <ipxact:bitOffset>28</ipxact:bitOffset>
               <ipxact:resets>
@@ -2034,7 +2035,7 @@ this register causes the AVS response readback fifo pointer to advance.</ipxact:
    [*]0x4-0x7 - Manufacturer-specific  [/list]
 [*]AVSBus Status (cmd_code 0xe): 16-bits, encoded per AVS Spec
 [*]AVSBus Version (cmd_code 0xf): 4 bits encoded per AVS Spec, LSB-aligned
-[*]If master issued a write (rw!=0x2) in previous master subframe, this field is 0xffff
+[*]If master issued a write (rw!=0x3) in previous master subframe, this field is 0xffff
 [/list]</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>

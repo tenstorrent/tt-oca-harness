@@ -47,7 +47,7 @@ register, so software writes a command in wire order.
 |Preamble |[31:30] |2 |Fixed `2'b01`, inserted by hardware
 
 |Command Type |[29:28] |2 |`AVS_CMD.R_OR_W`: 0 = commit write, 1 = hold write,
-2 = read
+2 = reserved, 3 = read
 
 |Command Group |[27] |1 |`AVS_CMD.CMD_GRP`: 0 = standard, 1 =
 manufacturer-specific
