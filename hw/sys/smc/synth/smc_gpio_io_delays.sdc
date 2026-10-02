@@ -110,8 +110,13 @@ set i2c_bal_max      2000
 #          + t(SDA launch flop -> pad)
 #
 # Only the two hops are STA's to enforce; the cycle count is a property of the
-# target FSM and is set here so the hop budget follows from it. Measuring the
-# real turnaround needs a gate-level simulation, not a constraint.
+# target FSM and is set here so the hop budget follows from it.
+#
+# One cycle is the floor, and it holds only while the bus glitch filter is
+# disabled: the filter passes the edge combinationally at a zero delay count,
+# leaving the registered SDA output as the single cycle. A non-zero count adds
+# its own, and at this clock the budget then goes negative and no I/O
+# constraint can hold tSCO -- the branch below says so when it happens.
 set i3c_tsco        8000
 set i3c_tsco_cycles    1
 set i3c_tsco_hop_min   0
