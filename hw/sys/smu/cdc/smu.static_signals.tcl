@@ -8,7 +8,7 @@
 #
 # Only SMU top-PORT truth lives here. The subcomponent-internal stamps (u_smc boundary
 # pins like boot_stall_jtag_*, lc_state_i, spi_enable_i, and every SMC-internal CSR/sync
-# pin) come from the inherited smc_static_signals.tcl re-anchored via cdc_port_or_pin in
+# pin) come from the inherited smc.static_signals.tcl re-anchored via cdc_port_or_pin in
 # hw/sys/smu/cdc/smu.cdc_rdc.tcl.
 
 # will transition once to indicate status of POR DFX logic

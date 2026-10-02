@@ -6,7 +6,7 @@
 #
 # Only SMU top-PORT truth lives here; the subcomponent-internal pin stamps (e.g. the
 # u_smc jtag_reset_ctrl_i.* debug overrides) come from the inherited child files
-# (smc_case_analysis.tcl / sep_case_analysis.tcl re-anchored via cdc_port_or_pin) in
+# (smc.case_analysis.tcl / sep.case_analysis.tcl re-anchored via cdc_port_or_pin) in
 # hw/sys/smu/cdc/smu.cdc_rdc.tcl.
 
 # Pin to the same functional/non-scan values the blocks use (test_en_i/scan_rst_ni = 0).

@@ -235,7 +235,7 @@ set_rdc_define_assertion_sequence \
 # and smc.sv untouched. Chip integration confirms it asserts whenever PRIMARY asserts and never
 # on its own. VC accepts an assertion sequence for a reset pair in one direction only, so only
 # the PRIMARY -> TELEMETRY direction is declared; the co-assertion carries the
-# SMC_RDC_CORRUPT_TELEM_FIFO_STORAGE disposition in vcrdc/inputs/waivers/smc_waiver.tcl.
+# SMC_RDC_CORRUPT_TELEM_FIFO_STORAGE disposition in hw/sys/smc/rdc/smc.vcrdc.waiver.tcl.
 set_rdc_define_assertion_sequence \
     -from_reset {PRIMARY_RESET_N PRIMARY_RESET_N_SMC_CLK PRIMARY_RESET_N_REF_CLK PRIMARY_RESET_N_PERIPH_CLK} \
     -to_reset {TELEMETRY_RESET_N}

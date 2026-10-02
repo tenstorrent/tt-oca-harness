@@ -127,7 +127,7 @@ waive_violation -add {SMC_SETUP_ASYNCRESET_UNUSED_INDIRECT} -comment {Raw pad / 
 # through its prim_sync_reset chain, so a combinational hazard on the tree
 # cannot reach a flop reset pin unfiltered.
 
-waive_violation -add {SMC_AVS_SETUP_ASYNC_CLOCK_OVERWRITE_MUX_MODELING} -comment {Two -add generated clocks per shared AVS mux/divider node (logically exclusive groups); overwrite reports are inherent to that modeling (see vccdc smc_waiver.tcl).} -filter [apply_prefix {(OverWriteClock:ClkName =~ "AVS_*") OR (PrimaryClock:ClkName =~ "AVS_*")}] -app { rdc } -tag { SETUP_ASYNC_CLOCK_OVERWRITE } -user { nbetik } -timestamp { 16-09-2026 12:50:22 }
+waive_violation -add {SMC_AVS_SETUP_ASYNC_CLOCK_OVERWRITE_MUX_MODELING} -comment {Two -add generated clocks per shared AVS mux/divider node (logically exclusive groups); overwrite reports are inherent to that modeling.} -filter [apply_prefix {(OverWriteClock:ClkName =~ "AVS_*") OR (PrimaryClock:ClkName =~ "AVS_*")}] -app { rdc } -tag { SETUP_ASYNC_CLOCK_OVERWRITE } -user { nbetik } -timestamp { 16-09-2026 12:50:22 }
 
 # --- assertion sequences retained for documentation / parent reuse ---
 waive_violation -add {SMC_SETUP_RDC_CONSTRAINT_UNUSED_DOC_SEQUENCES} -comment {Reset-ordering declarations retained for documentation and SMU-level reuse; unused here because their crossings are pruned by other orderings.} -filter [apply_prefix {(ConstraintName == "set_rdc_define_assertion_sequence")}] -app { rdc } -tag { SETUP_RDC_CONSTRAINT_UNUSED } -user { nbetik } -timestamp { 16-09-2026 12:50:22 }
@@ -143,5 +143,5 @@ waive_violation -add {SMC_DFD_SETUP_RESET_DRIVING_NON_ASYNC_PIN_OBSERVATION} -co
 
 # scan_rst_ni is deliberately BOTH declared as a reset (SCAN_RESET_N, so the
 # tool models the pin's role and DFT-mode scenarios can activate it) and
-# case-pinned inactive by smc_case_analysis.tcl for the functional scenario.
+# case-pinned inactive by smc.case_analysis.tcl for the functional scenario.
 waive_violation -add {SMC_SETUP_MULTIPLE_CONSTRAINTS_SCAN_RESET} -comment {Intentional mode split: scan reset declared for role modeling, case-pinned inactive in the functional scenario.} -filter [apply_prefix {(InstanceName == "scan_rst_ni")}] -app { rdc } -tag { SETUP_MULTIPLE_CONSTRAINTS } -user { nbetik } -timestamp { 16-09-2026 12:50:22 }

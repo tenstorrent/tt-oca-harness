@@ -3,7 +3,7 @@
 #
 # tclint-disable line-length
 ################################################################################
-# cdc_constraints_dfd_debug_bus_mux.tcl
+# smc.dfd_debug_bus_mux.tcl
 #
 # CDC constraints for the DFD debug bus mux (`tt_debug_bus_mux`, instantiated as
 # `gen_dbm_l2[*]/u_debug_bus_mux_l2` and `gen_dbm_l3[*]/u_debug_bus_mux_l3` under

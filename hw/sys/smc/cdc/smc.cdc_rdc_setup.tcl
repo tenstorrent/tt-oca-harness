@@ -3,7 +3,7 @@
 #
 # tclint-disable line-length
 ################################################################################
-# smc_cdc_rdc_setup.tcl - SMC-specific CDC/RDC instance constraints
+# smc.cdc_rdc_setup.tcl - SMC-specific CDC/RDC instance constraints
 #
 # Block-specific, instance-level annotation for the SMC block in OCAH.
 # Shared type-level setup (synchronizer / IP / convergence config and the
@@ -13,9 +13,9 @@
 # `cdc/smc.cdc_rdc.tcl`).
 #
 # Companion files (vccdc only):
-#   - cdc_constraints_dfd_debug_bus_mux.tcl  (DBM IP-scoped)
-#   - cdc_constraints_smc.tcl                (SMC instance-level UDS)
-#   - dfd_top_cdc_waivers.tcl                (DFD IP waivers)
+#   - smc.dfd_debug_bus_mux.tcl            (DBM IP-scoped)
+#   - smc.cdc_constraints.tcl              (SMC instance-level UDS)
+#   - smc.vccdc.waiver.tcl, DFD section    (DFD IP waivers)
 ################################################################################
 
 puts "INFO: Loading SMC-specific CDC/RDC constraints"
@@ -91,7 +91,7 @@ if { [sizeof_collection $gray_avs_signals] > 0 } {
 }
 
 ################################################################################
-# avsbus_async_fifo SURGICAL CDC CONSTRAINTS
+# avsbus_async_fifo PER-INSTANCE CDC CONSTRAINTS
 ################################################################################
 # avsbus_async_fifo is architecturally identical to tt_async_fifo:
 # dual-clock FIFO with gray-coded pointers synchronized via prim_sync3
@@ -171,7 +171,7 @@ if { [sizeof_collection $avs_fifo_cells] > 0 } {
 }
 
 ################################################################################
-# prim_fifo_async SURGICAL CDC CONSTRAINTS
+# prim_fifo_async PER-INSTANCE CDC CONSTRAINTS
 ################################################################################
 # prim_fifo_async (vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_async.sv, TT delta applied via
 # vendor/lowRISC/opentitan/patches/prim_fifo_async_ptrdiff.patch) is the OpenTitan-style
@@ -192,7 +192,7 @@ if { [sizeof_collection $avs_fifo_cells] > 0 } {
 # Instances include:
 #   - u_smc_peripherals/u_telemetry_receiver_wrap/gen_telemetry_receivers[0..2]/
 #         u_at_req_fifo_async       (TELEMETRYCLK <-> SMCCLK, depth 8, 4 pointer bits)
-# Keeping the surgical pattern (rather than configure_ip_block) preserves
+# Keeping the per-instance pattern (rather than configure_ip_block) preserves
 # visibility into prim_flop_2sync chains for verification.
 #
 # The refclk counter's cnt_update_async_fifo (inside prim_refclk_count_w_cdc)
@@ -320,7 +320,7 @@ set_cdc_ignore_path \
 ################################################################################
 # The DBM observation lanes and the PeakRDL readback OR-trees combine independently
 # synchronized single-bit sources with no cross-bit coherency requirement. Their
-# per-bit synchronizer outputs are contributed in cdc_constraints_smc.tcl section 2;
+# per-bit synchronizer outputs are contributed in smc.cdc_constraints.tcl section 2;
 # the prim_fifo_async gray-pointer syncs above and the cnt_update_async_fifo syncs in
 # flows/cdc/cdc_rdc_setup.tcl join the same cumulative cdc_conv_ignore_among union.
 
@@ -329,7 +329,7 @@ set_cdc_ignore_path \
 ################################################################################
 # At the CPU PLIC register, all independently synchronized interrupt bits reconverge
 # there by construction, with no multi-bit coherency requirement (see
-# cdc_constraints_smc.tcl section 2). Suppress convergence AT that readback bus
+# smc.cdc_constraints.tcl section 2). Suppress convergence AT that readback bus
 set _plic_readback_nets [get_nets -quiet [cdc_inst {u_smc_cpu_wrapper/u_smc_cpu/u_digital_top/cbus/out_xbar/auto_anon_in_d_bits_data*}]]
 if { [sizeof_collection $_plic_readback_nets] > 0 } {
     cdc_conv_ignore_at [get_object_name $_plic_readback_nets]

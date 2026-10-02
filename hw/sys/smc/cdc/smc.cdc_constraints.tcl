@@ -3,15 +3,15 @@
 #
 # tclint-disable line-length
 ################################################################################
-# cdc_constraints_smc.tcl
+# smc.cdc_constraints.tcl
 #
 # Instance-level SMC CDC declarations (UDS, convergence fan-in) that reference SMC
-# hierarchy and do not belong to the DBM IP file cdc_constraints_dfd_debug_bus_mux.tcl.
+# hierarchy and do not belong to the DBM IP file smc.dfd_debug_bus_mux.tcl.
 #
 # Sourcing order in `cdc/smc.cdc_rdc.tcl`:
-#   1. flows/cdc/cdc_rdc_setup.tcl / smc_cdc_rdc_setup.tcl  (methodology + bulk fan-in)
-#   2. cdc_constraints_dfd_debug_bus_mux.tcl             (DBM-only)
-#   3. cdc_constraints_smc.tcl                           (this file)
+#   1. flows/cdc/cdc_rdc_setup.tcl, smc.cdc_rdc_setup.tcl  (methodology + bulk fan-in)
+#   2. smc.dfd_debug_bus_mux.tcl   (DBM-only)
+#   3. smc.cdc_constraints.tcl     (this file)
 #
 # Sections:
 #   1. AVS sdata serial sample chain as a User Defined Synchronizer (UDS)
