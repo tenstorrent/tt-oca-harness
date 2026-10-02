@@ -13,7 +13,6 @@ bool run_size_limit_tests(test_context_t *ctx) {
     simputs("=== I3C Transfer Size Limit Tests ===\n");
 
     const uint64_t limit_addr = ctx->test_base_addr + 0x700;
-    bool limit_test_pass = true;
 
     uint8_t sizes_to_test[] = {8, 16, 24, 32};
     for (size_t size_idx = 0; size_idx < sizeof(sizes_to_test) / sizeof(sizes_to_test[0]);
@@ -58,9 +57,7 @@ bool run_size_limit_tests(test_context_t *ctx) {
         }
     }
 
-    if (limit_test_pass) {
-        simputs("I3C Transfer limits: Tested various sizes\n");
-    }
+    simputs("I3C Transfer limits: Tested various sizes\n");
 
     return true;
 }

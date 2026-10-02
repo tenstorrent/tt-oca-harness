@@ -2,18 +2,18 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * PIC source 40 delivery for the token-comparator redundancy fault.
+ * PIC delivery of the token-comparator redundancy fault.
  *
- * The line is level-high and TOKEN_MATCH_FAULT is sw=r, so the handler
- * masks meie[40]. There is no W1C. The host injects the collapse on the
- * SEC_DISABLE comparator after this firmware publishes READY; firmware
- * then presents a token so the compare is in flight.
+ * The fault interrupt is a level that software cannot clear, so the handler
+ * masks the source instead. The host injects the fault on the secure-disable
+ * comparator after this firmware signals READY; firmware then presents a token
+ * so the compare is in flight.
  *
  * Checks:
- *   CHK-PIC-CLAIM  : ISR claim id == 40
- *   CHK-PIC-FAULT  : TOKEN_MATCH_FAULT secure-disable bit set
- *   CHK-PIC-MASK   : after mask, the ISR does not re-enter, and
- *                    source 40 is still pending at both ends of the quiet window
+ *   CHK-PIC-CLAIM  : the ISR claims the fault source
+ *   CHK-PIC-FAULT  : the secure-disable fault bit is set
+ *   CHK-PIC-MASK   : after masking, the ISR does not re-enter, and the source
+ *                    is still pending at both ends of the quiet window
  */
 
 #include <stdint.h>
@@ -104,9 +104,8 @@ int main(void) {
         errors++;
     } else {
         uint32_t before = g_isr_count;
-        /* TOKEN_MATCH_FAULT is software-read-only and clears only on reset.
-         * Sample meip at both ends of the quiet window so a request that
-         * drops during the window fails. */
+        /* The fault clears only on reset. Sample the pending state at both
+         * ends of the quiet window so a request that drops during it fails. */
         uint32_t pending_before = pic_source_pending(PIC_TOKEN_FAULT);
         for (i = 0; i < STORM_CHECK_ITERS; i++) {
             __asm__ volatile("nop");

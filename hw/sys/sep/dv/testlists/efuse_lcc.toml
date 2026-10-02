@@ -137,11 +137,14 @@ target = "lsu_stub_all_live"
 # FEAT_CTRL closed. The match is before sense-done: the reset stays held and
 # FEAT_CTRL opens. The override then releases that reset again, and clearing
 # it holds the reset. A LC_STATE shadow-map read in that window must return
-# AXI OKAY. The map gate input is tied off, so that read returns an error
-# and the leaf fails there. After sense, zero opens FEAT_CTRL; token=1
-# mismatches and restores fail-closed PROD.
-# Does not force sec_dis. Clearing the override resets the crypto engines
-# without isolation, so the crypto EDN request-hold checks are off.
+# AXI OKAY. The match stops the sense. A rst_ni pulse keeps the token
+# digest, so SEC_DIS stays active, sense stays stopped, the map stays open
+# and the override still releases the reset. token=1 drops SEC_DIS and a
+# second pulse runs a full sense, which must finish inside the stuck window.
+# After sense, zero opens FEAT_CTRL; token=1 mismatches and restores
+# fail-closed PROD. Does not force sec_dis. Clearing the override resets
+# the crypto engines without isolation, so the crypto EDN request-hold
+# checks are off.
 name = "sep_sec_dis_override_test"
 module = "efuse.sep_sec_dis_override_test"
 seed = 1
@@ -224,10 +227,10 @@ args = ["+km_rom_hex=km_rom_otp_id.parhex"]
 
 [[tests]]
 # SECURE_TM shadow-write lock. The field map marks LOCKS/LOCKS_SPARE, LC_STATE,
-# SIP_DIS and SYS_DIS SECURE_TM_LOCK, so a shadow write to them is refused while
+# SIP_DIS and SYS_DIS SecureTmLock, so a shadow write to them is refused while
 # the latched TEST_EN strap is high. Each field takes the same seeded payload
 # twice: strap low, where it must land, and strap high, where the value must not
-# move and the locked-field interrupt must pulse. A SECURE_TM_UNLOCK spare stays
+# move and the locked-field interrupt must pulse. A SecureTmUnlock spare stays
 # writable with the strap up, so the deny is the lock and not a dead write path.
 # Real fuse sense, LC_PROD, no_cpu.
 #

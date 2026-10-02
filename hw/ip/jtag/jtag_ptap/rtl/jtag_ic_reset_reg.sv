@@ -52,7 +52,7 @@ module jtag_ic_reset_reg
   //--------------------------------------------------------------------------
   // Local Parameters
   //--------------------------------------------------------------------------
-  localparam int unsigned RESET_ENABLE_CONTROL_WIDTH = 2 * NUM_IC_RESET_PORTS;
+  localparam int unsigned ResetEnableControlWidth = 2 * NUM_IC_RESET_PORTS;
 
   //--------------------------------------------------------------------------
   // Internal Signals
@@ -69,7 +69,7 @@ module jtag_ic_reset_reg
   // Reset enable/control register signals
   logic                                  reset_enable_control_scan_out;
   logic                                  rst_n_gate;
-  logic [RESET_ENABLE_CONTROL_WIDTH-1:0] reset_enable_control_data;
+  logic [ResetEnableControlWidth-1:0]    reset_enable_control_data;
 
   // Extracted control bits
   logic [NUM_IC_RESET_PORTS-1:0] reset_enable;
@@ -111,8 +111,8 @@ module jtag_ic_reset_reg
   // This register uses scan_ctrl_i.rst_n but reset is blocked when reset_hold=0
   // This comes first in the scan chain (closest to TDI)
   prim_jtag_scan_reg #(
-    .WIDTH(RESET_ENABLE_CONTROL_WIDTH),
-    .RESET_VAL({RESET_ENABLE_CONTROL_WIDTH{1'b1}}),
+    .WIDTH(ResetEnableControlWidth),
+    .RESET_VAL({ResetEnableControlWidth{1'b1}}),
     .jtag_scan_ctrl_t(jtag_scan_ctrl_t)
   ) u_reset_enable_control_scan_reg (
     .scan_ctrl_i   (reset_enable_control_scan_ctrl),
@@ -148,25 +148,23 @@ module jtag_ic_reset_reg
   //--------------------------------------------------------------------------
   // Extract Control Bits from Registers
   //--------------------------------------------------------------------------
-  generate
-    for (genvar i = 0; i < NUM_IC_RESET_PORTS; i++) begin : gen_reset_control
-      // Bit ordering in reset_enable_control_data:
-      // - Bit [2*i]: reset_enable[i] (closer to TDO)
-      // - Bit [2*i + 1]: reset_control[i] (further from TDO)
-      localparam int unsigned RESET_ENABLE_BIT = 2 * i;
-      localparam int unsigned RESET_CONTROL_BIT = 2 * i + 1;
+  for (genvar i = 0; i < NUM_IC_RESET_PORTS; i++) begin : gen_reset_control
+    // Bit ordering in reset_enable_control_data:
+    // - Bit [2*i]: reset_enable[i] (closer to TDO)
+    // - Bit [2*i + 1]: reset_control[i] (further from TDO)
+    localparam int unsigned ResetEnableBit = 2 * i;
+    localparam int unsigned ResetControlBit = 2 * i + 1;
 
-      assign reset_enable[i]  = reset_enable_control_data[RESET_ENABLE_BIT];
-      assign reset_control[i] = reset_enable_control_data[RESET_CONTROL_BIT];
+    assign reset_enable[i]  = reset_enable_control_data[ResetEnableBit];
+    assign reset_control[i] = reset_enable_control_data[ResetControlBit];
 
-      // Convert the IEEE §17 active-low `reset_enable` TDR field into
-      // the natural active-high override signal expected by downstream
-      // struct consumers: ic_reset_ovrd_o == 1 ⇔ JTAG is overriding.
-      // See the module header for a full explanation of the polarity.
-      assign ic_reset_ovrd_o[i]    = !reset_enable[i];
-      // `reset_control` is already active-low (match consumer `_n` resets).
-      assign ic_reset_ctrl_n_o[i]  = reset_control[i];
-    end
-  endgenerate
+    // Convert the IEEE §17 active-low `reset_enable` TDR field into
+    // the natural active-high override signal expected by downstream
+    // struct consumers: ic_reset_ovrd_o == 1 ⇔ JTAG is overriding.
+    // See the module header for a full explanation of the polarity.
+    assign ic_reset_ovrd_o[i]    = !reset_enable[i];
+    // `reset_control` is already active-low (match consumer `_n` resets).
+    assign ic_reset_ctrl_n_o[i]  = reset_control[i];
+  end
 
 endmodule : jtag_ic_reset_reg

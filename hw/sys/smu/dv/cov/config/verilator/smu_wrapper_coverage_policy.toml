@@ -28,7 +28,7 @@
 #
 #   smu_wrapper_cov_scope.vlt  `coverage_off` -> the point never enters the
 #                              database. Structural OUT, by source file.
-#   SepPresent                 the `g_sep` generate blocks described above.
+#   SEP_PRESENT                the `g_sep` generate blocks described above.
 #                              Structural OUT, by elaboration.
 #   [[holes]] here             the point exists and is not hit, carried with a
 #                              category, a rationale and an owner. Its

@@ -1256,7 +1256,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-AXI-FILTER-OKAY", "AXI_FILTER_OKAY", "after program window OKAY"),
     ],
     "smu_sys_in_filter_reprogram_shrink_test": [
-        ("CHK-AXI-FILTER-OKAY", "AXI_FILTER_OKAY", "shrink restores BlockByDefault"),
+        ("CHK-AXI-FILTER-OKAY", "AXI_FILTER_OKAY", "shrink restores BLOCK_BY_DEFAULT"),
     ],
     "smu_sys_in_filter_window_edge_test": [
         (
@@ -1398,13 +1398,12 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "telemetry stays released and clocked while primary/periph fall",
         ),
     ],
-    # CHK-SMU-SEC-TOKEN-S1 is logged by the body as an observation the card does not
-    # claim, so it is not a row here.
     "smu_composition_parameter_test": [
         (
             "CHK-SMU-SEC-TOKEN-S2",
             "CHK-SMU-SEC-TOKEN-S2",
-            "SEP_SEC_DISABLE_TOKEN is 256 bits at the wrapper and at smu and reaches smu unchanged",
+            "SEP_SEC_DISABLE_TOKEN is 256 bits at the SEP eFuse controller and is the digest "
+            "the bench binds in CFG",
         ),
         (
             "CHK-SMU-OTPAXI-SEP-S3",
@@ -1414,7 +1413,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SMU-NOSEP-S4",
             "CHK-SMU-NOSEP-S4",
-            "Cfg reaches smu unchanged and each consumer parameter is its specified default",
+            "CFG reaches smu unchanged and each consumer parameter is its specified default",
         ),
     ],
     "smu_reset_release_sync_test": [

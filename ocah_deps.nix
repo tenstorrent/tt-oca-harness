@@ -91,8 +91,8 @@ in {
       kroki
       # Build Tools
       gnumake
-      bender
-      verilator
+      bender-patched
+      verilator-patched
       sv-lang
       gcc
       ccache
@@ -107,6 +107,8 @@ in {
       # Synthesis
       pdk-ciel
       yosys
+      # Formal DV
+      sby
       # Libraries
       lz4
       zlib

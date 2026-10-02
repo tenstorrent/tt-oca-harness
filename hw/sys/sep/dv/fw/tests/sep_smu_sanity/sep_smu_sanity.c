@@ -2,33 +2,13 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * sep_smu_sanity — SMU-level SEP sanity test.
+ * sep_smu_sanity - SMU-level SEP sanity test.
  *
- * Purpose
- * -------
- *   Demonstrates that, with the real SEP RTL instantiated inside the SMU
- *   wrapper (compile_smu_chiplet, +define+SEP_RTL), the SEP CPU
- *   boots from its TCM and can correctly access several IP modules through
- *   the SEP local fabric.
- *
- * Modules exercised
- * -----------------
- *   1. CPU + STDOUT/printf path        — proves CPU boot + outbound filter
- *                                         + AXI fabric path to STDOUT mailbox
- *                                         (0x80000000) is functional.
- *   2. HMAC (SHA-256 KAT)              — feed "abc", verify against NIST
- *                                         known-answer vector.  Self-contained
- *                                         (no entropy needed).
- *   3. KMAC (SHA3-256 KAT, SW entropy) — feed "abc", verify against NIST
- *                                         known-answer vector.  Uses SW
- *                                         entropy_mode so it does not depend
- *                                         on EDN being available at SMU
- *                                         level.
- *
- * Pass criterion
- * --------------
- *   HMAC and KMAC stages succeed → test_pass(0) writes the 2-word magic
- *   sequence to STDOUT (0x80000000) which the cocotb test detects.
+ * With the real SEP RTL inside the SMU wrapper, shows that the SEP CPU boots
+ * from its TCM and reaches HMAC, KMAC and the STDOUT mailbox through the SEP
+ * local fabric. HMAC runs a SHA-256 known-answer check. KMAC runs a SHA3-256
+ * known-answer check in software entropy mode, so it does not need EDN. The
+ * verdict is the test_pass()/test_fail() magic-word handshake on STDOUT.
  */
 
 #include <stdint.h>
@@ -40,28 +20,15 @@
 #include "test_completion.h"
 
 /*
- * STDOUT usage
- * ------------
- * In the SMU testbench the cocotb monitor wakes on every AXI awvalid pulse on
- * the SEP ext_out interface and runs a Python coroutine to inspect the data,
- * so each printf() byte (an 8-bit AXI write) costs a VPI round trip.
- *
- * printf() is compiled out; completion is the 32-bit magic-word handshake from
- * test_completion.h (test_pass / test_fail). Failure stage IDs are 32-bit
- * stores to the SEP outbound STDOUT mailbox so they remain visible in
- * waveforms / sim.log without the per-byte overhead.
+ * Each byte store to STDOUT costs the SMU testbench a VPI round trip, so the
+ * image reports only 32-bit stage beacons and the magic-word handshake.
  */
-#define printf(...) ((void)0)
 #define STAGE_BEACON(stage_id) \
     do { \
         volatile uint32_t *__b = (volatile uint32_t *)(uintptr_t)STDOUT; \
         *__b = 0xB1B0B0B0u | ((uint32_t)(stage_id)&0xFu); \
         __asm__ volatile("fence" ::: "memory"); \
     } while (0)
-
-/* --------------------------------------------------------------------------
- * Helpers
- * ------------------------------------------------------------------------ */
 
 static inline uint32_t bswap32(uint32_t x) {
     return ((x & 0x000000FFu) << 24) | ((x & 0x0000FF00u) << 8) | ((x & 0x00FF0000u) >> 8) |
@@ -77,10 +44,6 @@ static void to_hex(const uint8_t *in, int n, char *out) {
     out[2 * n] = '\0';
 }
 
-/* --------------------------------------------------------------------------
- * Stage 1 — HMAC (SHA-256 KAT, "abc")
- * ------------------------------------------------------------------------ */
-
 #define HMAC_TIMEOUT_ITERS 1000000
 
 static int hmac_wait_done_or_idle(void) {
@@ -94,7 +57,6 @@ static int hmac_wait_done_or_idle(void) {
             return 0;
         }
     }
-    printf("    [HMAC] Timeout waiting for completion\n");
     return -1;
 }
 
@@ -113,7 +75,7 @@ static int hmac_sha256_abc(uint8_t digest[32]) {
     hmac__CMD_t cmd = {.f.hash_start = 1};
     WRITE_REG(SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
 
-    /* Feed "abc" — 3 bytes via byte stores so MSG_LENGTH bookkeeping is exact. */
+    /* Byte stores keep the hashed message length exact. */
     volatile uint8_t *fifo8 = (volatile uint8_t *)(uintptr_t)SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR;
     const char *msg = "abc";
     for (int i = 0; i < 3; i++) {
@@ -121,10 +83,7 @@ static int hmac_sha256_abc(uint8_t digest[32]) {
         hmac__STATUS_t s;
         do {
             s.w = READ_REG(SEP_TOP_HMAC_STATUS_BASE_ADDR);
-            if (++spins > 10000) {
-                printf("    [HMAC] FIFO full timeout\n");
-                return -1;
-            }
+            if (++spins > 10000) return -1;
         } while (s.f.fifo_full);
         *fifo8 = (uint8_t)msg[i];
     }
@@ -140,7 +99,6 @@ static int hmac_sha256_abc(uint8_t digest[32]) {
         ((uint32_t *)digest)[i] = bswap32(raw);
     }
 
-    /* Cleanup */
     cfg.w = READ_REG(SEP_TOP_HMAC_CFG_BASE_ADDR);
     cfg.f.sha_en = 0;
     WRITE_REG(SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
@@ -150,39 +108,21 @@ static int hmac_sha256_abc(uint8_t digest[32]) {
 }
 
 static int stage_hmac(void) {
-    printf("\n[Stage 2] HMAC SHA-256 KAT (\"abc\")\n");
-    printf("    HMAC base=0x%08x\n", SEP_TOP_HMAC_BASE_ADDR);
-
     /* NIST FIPS 180-4 KAT for SHA-256("abc"). */
     static const char *expected_hex =
         "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
 
     uint8_t digest[32];
-    if (hmac_sha256_abc(digest) != 0) {
-        printf("    FAIL: HMAC computation error\n");
-        return -1;
-    }
+    if (hmac_sha256_abc(digest) != 0) return -1;
 
     char got[65];
     to_hex(digest, 32, got);
-    printf("    digest  : %s\n", got);
-    printf("    expected: %s\n", expected_hex);
-
-    if (strcmp(got, expected_hex) != 0) {
-        printf("    FAIL: HMAC SHA-256 digest mismatch\n");
-        return -1;
-    }
-    printf("    PASS: HMAC SHA-256 digest matches NIST KAT\n");
+    if (strcmp(got, expected_hex) != 0) return -1;
     return 0;
 }
 
-/* --------------------------------------------------------------------------
- * Stage 2 — KMAC (SHA3-256 KAT, "abc"), software entropy mode
- * ------------------------------------------------------------------------ */
-
 #define KMAC_TIMEOUT_ITERS 1000000
 
-/* KMAC CMD codes (from sep_top_reg / hjson). */
 #define KMAC_CMD_START 29
 #define KMAC_CMD_PROCESS 46
 #define KMAC_CMD_DONE 22
@@ -197,7 +137,6 @@ static int kmac_wait_idle(void) {
         kmac__STATUS_t s = {.w = READ_REG(SEP_TOP_KMAC_STATUS_BASE_ADDR)};
         if (s.f.sha3_idle) return 0;
     }
-    printf("    [KMAC] Timeout waiting for idle\n");
     return -1;
 }
 
@@ -210,14 +149,13 @@ static int kmac_wait_done(void) {
             return 0;
         }
     }
-    printf("    [KMAC] Timeout waiting for done\n");
     return -1;
 }
 
 static int kmac_sha3_256_abc(uint32_t digest_be[8]) {
     if (kmac_wait_idle() != 0) return -1;
 
-    /* SHA3-256, SW entropy_mode (no EDN dependency). */
+    /* SHA3-256 with software entropy, so EDN is not needed. */
     kmac__CFG_SHADOWED_t cfg = {.w = 0};
     cfg.f.kmac_en = 0;
     cfg.f.mode = 0x0;         /* SHA3 */
@@ -229,7 +167,7 @@ static int kmac_sha3_256_abc(uint32_t digest_be[8]) {
     WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
 
-    /* SW-entropy handshake: set entropy_ready, then write 6 seed words. */
+    /* Software entropy: mark entropy ready, then supply the seed words. */
     cfg.f.entropy_ready = 1;
     WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
@@ -241,9 +179,8 @@ static int kmac_sha3_256_abc(uint32_t digest_be[8]) {
     cmd.f.cmd = KMAC_CMD_START;
     WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
-    /* Write "abc" — must use byte stores to the SAME word-aligned base:
-     * non-word-aligned byte stores get dropped by the 64→32 AXI DW converter,
-     * so use fifo8[0] for all three bytes. */
+    /* All three bytes go to one word-aligned address: the fabric width converter
+     * drops byte stores that are not word aligned. */
     {
         volatile uint8_t *fifo8 = (volatile uint8_t *)(uintptr_t)(SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR);
         fifo8[0] = 'a';
@@ -256,14 +193,14 @@ static int kmac_sha3_256_abc(uint32_t digest_be[8]) {
 
     if (kmac_wait_done() != 0) return -1;
 
-    /* Read both shares and XOR to get digest (masking compensation). */
+    /* The digest is the XOR of the two masked state shares. */
     uint32_t share0[8], share1[8];
     for (int i = 0; i < 8; i++) {
         share0[i] = READ_REG(SEP_TOP_KMAC_STATE_BASE_ADDR + (i * 4));
         share1[i] = READ_REG(SEP_TOP_KMAC_STATE_BASE_ADDR + 0x100 + (i * 4));
     }
 
-    /* state_endianness=0 → little-endian; convert to BE for KAT compare. */
+    /* The state is little-endian; the reference is big-endian. */
     for (int i = 0; i < 8; i++) {
         digest_be[i] = bswap32(share0[i] ^ share1[i]);
     }
@@ -274,51 +211,25 @@ static int kmac_sha3_256_abc(uint32_t digest_be[8]) {
 }
 
 static int stage_kmac(void) {
-    printf("\n[Stage 3] KMAC SHA3-256 KAT (\"abc\", SW entropy)\n");
-    printf("    KMAC base=0x%08x\n", SEP_TOP_KMAC_BASE_ADDR);
-
     uint32_t digest_be[8];
-    if (kmac_sha3_256_abc(digest_be) != 0) {
-        printf("    FAIL: KMAC computation error\n");
-        return -1;
-    }
-
-    printf("    digest  :");
-    for (int i = 0; i < 8; i++) printf(" %08x", digest_be[i]);
-    printf("\n    expected:");
-    for (int i = 0; i < 8; i++) printf(" %08x", sha3_256_abc_ref[i]);
-    printf("\n");
+    if (kmac_sha3_256_abc(digest_be) != 0) return -1;
 
     for (int i = 0; i < 8; i++) {
-        if (digest_be[i] != sha3_256_abc_ref[i]) {
-            printf("    FAIL: word %d mismatch\n", i);
-            return -1;
-        }
+        if (digest_be[i] != sha3_256_abc_ref[i]) return -1;
     }
-    printf("    PASS: KMAC SHA3-256 digest matches NIST KAT\n");
     return 0;
 }
 
 int main(void) {
-    /* The outbound window must be opened BEFORE the first STDOUT store. The
-     * SEP outbound filter is instantiated with BlockByDefault=1
-     * (sep_system_peripherals.sv), so an unmatched write is isolated and
-     * answered with an error, which the EL2 takes as a store access fault;
-     * crt0's _trap then jumps to _finish and the firmware dies before it can
-     * open the very window it needs.
-     *
-     * Beacon 0 therefore means "main entered AND the outbound window is open".
-     * Liveness earlier than that is covered by sep_smu_boot_health, whose
-     * evidence is SEP-local and needs no outbound path at all.
+    /* Open the outbound window before the first STDOUT store: the outbound
+     * filter blocks unmatched writes by default, and the resulting store fault
+     * kills the image before it can open the window. Beacon 0 therefore means
+     * main was entered and the window is open; earlier liveness is covered by
+     * sep_smu_boot_health, which needs no outbound path.
      */
     sep_outbound_filter_init();
     STAGE_BEACON(0);
     STAGE_BEACON(1);
-
-    printf("\n========================================\n");
-    printf("  SMU-level SEP Sanity Test\n");
-    printf("  (boot + HMAC + KMAC)\n");
-    printf("========================================\n");
 
     int errors = 0;
 
@@ -328,20 +239,13 @@ int main(void) {
     if (stage_kmac() != 0) errors++;
     STAGE_BEACON(4);
 
-    printf("\n========================================\n");
     if (errors == 0) {
-        printf("  RESULT: ALL STAGES PASSED\n");
-        printf("========================================\n");
         test_pass(0);
     } else {
-        printf("  RESULT: %d STAGE(S) FAILED\n", errors);
-        printf("========================================\n");
         test_fail(errors);
     }
 
-    /* Keep CPU alive after signaling completion. */
     while (1) {
         __asm__ volatile("wfi");
     }
-    return 0;
 }

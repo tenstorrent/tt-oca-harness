@@ -4,10 +4,11 @@
 
 The SMC, reference and peripheral clocks run at one period. `clk_rst.adoc`
 constrains `clk_periph_i` to 100 MHz or faster and states no other relation
-between the three input clocks, so this is a legal configuration the base
-test's period draw never produces. The leaf pins the
-periods to 10 / 10 / 10 ns (ref / smc / periph), confirms the
-relation by measuring each period, and drives register traffic into both sides of the
+between the three input clocks, so this is a legal configuration that the
+bench's default periods (ref / smc / periph 10 / 1.25 / 5 ns) never produce.
+The leaf pins the periods to 10 / 10 / 10 ns (ref / smc / periph), confirms
+the relation by measuring each period and counting edges across one
+ratio-collector window, and drives register traffic into both sides of the
 peripheral clock-domain crossing.
 
 Run:
@@ -28,6 +29,8 @@ from smc_base_test import smc_base_test
 REF_CLK_PERIOD_NS = 10
 SMC_CLK_PERIOD_NS = 10
 PERIPH_CLK_PERIOD_NS = 10
+# The cg_clk_ratio classes of the SMC and the peripheral clock against ref.
+RELATIONS = ("same", "same")
 
 
 @pyuvm.test()
@@ -52,7 +55,11 @@ class smc_clk_smc_equal_ref_test(smc_base_test):
         )
 
     async def run_scenario(self) -> None:
-        seq = smc_clk_ratio_test_seq("clk_ratio_seq")
+        seq = smc_clk_ratio_test_seq(
+            "clk_ratio_seq",
+            periods_ns=(REF_CLK_PERIOD_NS, SMC_CLK_PERIOD_NS, PERIPH_CLK_PERIOD_NS),
+            relations=RELATIONS,
+        )
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
         value_compares = self.env.scoreboard.sys_axi_value_checks_seen
         assert value_compares >= EXPECTED_VALUE_CHECKS, (

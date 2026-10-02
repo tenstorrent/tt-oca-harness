@@ -16,8 +16,10 @@ a window of ~20 SCL periods at each -- held for a contiguous span longer than
 any clock-low phase and through the window's final quarter while ACQ is full,
 absent throughout after the reset (the resolved SCL is reported, not required
 idle, since the controller may still be clocking) -- and reads the ACQ levels
-the image published (non-zero, then zero). The wire decoder must also have seen
-the 4-byte verify write acknowledged by the target.
+the image published (non-zero, then zero). The stretch has to outlast four of
+the controller's programmed clock-low phases, from the TIMING0.TLOW the image
+publishes. The last acknowledged write frame the wire decoder saw to the target
+has to be the verify write, byte for byte.
 
 Tokens: CHK-FW-I2C-ACQ-STRETCH-BOOT, CHK-FW-I2C-ACQ-STRETCH-SCL,
 CHK-FW-I2C-ACQ-RELEASE-SCL, CHK-FW-I2C-WIRE-TRAFFIC.
@@ -58,4 +60,4 @@ class smc_fw_i2c_acq_fifo_stretch_reset_test(smc_base_test):
         assert seq.stretch_ok and seq.release_ok, (
             f"SCL windows not both observed: stretch={seq.stretch_ok} release={seq.release_ok}"
         )
-        assert seq.wire_ok, "the wire floors were not graded"
+        assert seq.wire_ok, "the wire was not graded"

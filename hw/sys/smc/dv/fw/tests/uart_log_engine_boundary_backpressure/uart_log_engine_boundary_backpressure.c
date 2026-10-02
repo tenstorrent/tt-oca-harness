@@ -1,26 +1,17 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
-// smc_uart_log_engine_boundary_backpressure_test
-//
-// Boundary and backpressure cases for the log engine's effective transfer
-// length:
-//
-//   Scenario A — requested length terminates the fetch before slot capacity.
-//     A 16-byte slot and 8-byte request produce one fetch beat.
-//
-//   Scenario B — log-write under UART TX backpressure.
-//     uart_tx_ready_i = uart_16550 txrdy_o = !tx_fifo_thr_rvalid (DMA mode 0):
-//     it drops when the UART TX FIFO (depth 32) has data pending. The log_write
-//     FSM issues bytes far faster than the UART serialises them, so a log
-//     longer than the TX FIFO fills it and drives uart_tx_ready_i low while
-//     rdata_fifo still holds fetched data. A 0x400-byte region gives each slot
-//     64 bytes, so a 64-byte request exceeds the 32-byte TX FIFO.
-//
-//   Scenarios D and E — both FSMs terminate at the same effective length.
-//     D clamps a request to an aligned slot capacity. E rounds a
-//     non-word-aligned slot down to complete 8-byte fetch beats. Both verify
-//     the exact looped-back data and that no additional byte is transmitted.
+/**
+ * @brief UART Log Engine Boundary and Backpressure Test
+ *
+ * Verifies that the log engine of UART wrapper 0 transmits exactly the
+ * effective log length: the requested length when it fits in the slot, the
+ * slot capacity when the request is larger, and whole 8-byte words when the
+ * slot is not word aligned. It also checks that a log longer than the UART
+ * transmit FIFO arrives complete and in order under transmit backpressure.
+ * Each log entry must complete without a fetch or write error. The log region
+ * is split into 16 equal slots, so the region size sets the slot capacity.
+ */
 
 #include <stdint.h>
 
@@ -72,17 +63,18 @@
 
 #define LOG_BUFFER_BASE (SMC_TOP_SPM_MEMORY_BASE_ADDR + 0x40000u)
 
+// Enable the UART pads and set the fastest baud rate, 8N1 framing, internal loopback and FIFOs.
 static void setup_uart_8n1_fifo(void) {
-    write_reg(WRAP0_CTRL_REG, 1u);                    // padmux enable
-    write_reg(WRAP0_UART_BASE + UART_LCR_OFF, 0x80u); // DLAB=1
-    write_reg(WRAP0_UART_BASE + UART_RBR_OFF, 0x01u); // DLL=1 (fastest divisor)
-    write_reg(WRAP0_UART_BASE + UART_IER_OFF, 0x00u); // DLM=0
-    write_reg(WRAP0_UART_BASE + UART_LCR_OFF, 0x03u); // DLAB=0, 8 bits, 1 stop, no parity
-    write_reg(WRAP0_UART_BASE + UART_MCR_OFF, 0x10u); // MCR.LOOP=1 (TX drains internally)
-    write_reg(WRAP0_UART_BASE + UART_IIR_OFF, 0x01u); // FCR.FIFO_ENABLE=1 (TX FIFO depth [S6])
+    write_reg(WRAP0_CTRL_REG, 1u);
+    write_reg(WRAP0_UART_BASE + UART_LCR_OFF, 0x80u);
+    write_reg(WRAP0_UART_BASE + UART_RBR_OFF, 0x01u);
+    write_reg(WRAP0_UART_BASE + UART_IER_OFF, 0x00u);
+    write_reg(WRAP0_UART_BASE + UART_LCR_OFF, 0x03u);
+    write_reg(WRAP0_UART_BASE + UART_MCR_OFF, 0x10u);
+    write_reg(WRAP0_UART_BASE + UART_IIR_OFF, 0x01u);
 }
 
-// Poll LOG_CTRL[entry] until it hwclrs to 0 (engine finished writing the log).
+// Wait for the engine to clear the entry's length, which marks the log as written.
 static int wait_log_done(uint32_t ctrl_off, uint32_t timeout) {
     while (timeout > 0u) {
         if ((read_reg(WRAP0_LE_BASE + ctrl_off) & 0xFFFFu) == 0u) return 0;
@@ -113,8 +105,7 @@ static int read_uart_byte(uint8_t *value, uint32_t timeout) {
 static int reset_uart_fifos(void) {
     if (wait_uart_tx_empty(2000000u) != 0) return -1;
 
-    // FCR: FIFO enable, RX reset, TX reset. Drain through LSR.DR/RBR as a
-    // defensive check that no byte remains visible after the protocol reset.
+    // Reset both FIFOs, then drain any received byte still visible and fail if data remains.
     write_reg(WRAP0_UART_BASE + UART_IIR_OFF, 0x07u);
     for (uint32_t count = 0; count < 32u; count++) {
         if ((read_reg(WRAP0_UART_BASE + UART_LSR_OFF) & 0x1u) == 0u) return 0;
@@ -130,9 +121,9 @@ static int verify_uart_transfer(uint8_t first_value, uint32_t byte_count) {
         if (actual != (uint8_t)(first_value + index)) return -2;
     }
 
-    // LOG_CTRL clears when the final byte enters the UART, not when it leaves
-    // the serial shifter. TEMT is the UART protocol indication that every
-    // accepted byte has reached loopback RX; DR must then stay clear.
+    // The log entry completes when its last byte enters the UART, not when it leaves the
+    // transmitter. Once the transmitter is idle every byte has looped back, so no further received
+    // data may remain.
     if (wait_uart_tx_empty(2000000u) != 0) return -3;
     if ((read_reg(WRAP0_UART_BASE + UART_LSR_OFF) & 0x1u) != 0u) {
         (void)read_reg(WRAP0_UART_BASE + UART_RBR_OFF);
@@ -147,10 +138,10 @@ int main(void) {
     setup_uart_8n1_fifo();
 
     //--------------------------------------------------------------------------
-    // SCENARIO A — requested length terminates the fetch before slot capacity.
-    // region 0x100 → slot capacity=16; log_len=8 produces one fetch beat. The
-    // whole 16-byte slot carries a pattern so a transfer that ignored log_len
-    // and moved the slot shows up as a ninth byte.
+    // SCENARIO A — the requested length ends the transfer before the slot
+    // capacity. An 8-byte request comes from a 16-byte slot. The whole slot
+    // carries a pattern, so a transfer that ignored the requested length shows
+    // up as a ninth byte.
     //--------------------------------------------------------------------------
     info_msg_s(0, "scenario A: requested length terminates before slot capacity");
     {
@@ -158,13 +149,13 @@ int main(void) {
         for (int i = 0; i < 16; i++) buf[i] = (uint8_t)(0xA0u + i);
 
         write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
-        write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, 0x11u);  // clear stale
-        write_reg(WRAP0_LE_BASE + LE_REGION_SIZE_OFF, 0x100u); // slot = 0x100/16 = 16 B
+        write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, 0x11u);
+        write_reg(WRAP0_LE_BASE + LE_REGION_SIZE_OFF, 0x100u);
         write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF, LOG_BUFFER_BASE);
         write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF + 4, 0u);
         write_reg(WRAP0_LE_BASE + LE_WRITE_ADDR_OFF, WRAP0_UART_BASE + UART_RBR_OFF);
         write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);
-        write_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF, 8u); // 1 log word, < 16 B slot
+        write_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF, 8u);
 
         if (wait_log_done(LE_LOG_CTRL0_OFF, 200000u) != 0) {
             info_msg_s(0, "FAIL: scenario A: log not done (LOG_CTRL hwclr timeout)");
@@ -182,10 +173,10 @@ int main(void) {
     }
 
     //--------------------------------------------------------------------------
-    // SCENARIO B — log-write under UART TX backpressure. region 0x400 gives a
-    // 64-byte slot; log_len=64 is the longest transfer here, and uart_tx_ready_i
-    // is low whenever the TX FIFO holds data, so each fetched byte waits for the
-    // serialiser while more fetched data remains.
+    // SCENARIO B — log write under UART transmit backpressure. A 64-byte log
+    // from a 64-byte slot is twice the transmit FIFO depth. The engine writes
+    // bytes faster than the UART sends them, so the transmit FIFO fills and the
+    // engine has to wait while it still holds fetched data.
     //--------------------------------------------------------------------------
     info_msg_s(0, "scenario B: log-write under TX backpressure");
     {
@@ -194,18 +185,18 @@ int main(void) {
 
         write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
         write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, 0x11u);
-        write_reg(WRAP0_LE_BASE + LE_REGION_SIZE_OFF, 0x400u); // slot = 0x400/16 = 64 B
+        write_reg(WRAP0_LE_BASE + LE_REGION_SIZE_OFF, 0x400u);
         write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF, LOG_BUFFER_BASE);
         write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF + 4, 0u);
         write_reg(WRAP0_LE_BASE + LE_WRITE_ADDR_OFF, WRAP0_UART_BASE + UART_RBR_OFF);
         write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);
-        write_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF, 64u); // 8 log words, == 64 B slot
+        write_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF, 64u);
 
-        // Read the 64 bytes back as they arrive. The RX FIFO is 32 deep, so
-        // draining has to overlap the transfer; the TX FIFO still fills, because
-        // the engine refills it faster than the UART drains at baud. Every byte
-        // is compared, so a byte dropped while uart_tx_ready was low fails here.
-        // Each per-byte wait is bounded; expiry is a failure, never a pass.
+        // Read the 64 bytes back as they arrive. The receive FIFO is 32 deep,
+        // so draining has to overlap the transfer; the transmit FIFO still
+        // fills, because the engine refills it faster than the UART sends.
+        // Every byte is compared, so a byte dropped under backpressure fails
+        // here. Each per-byte wait is bounded; expiry is a failure, never a pass.
         for (uint32_t index = 0; index < 64u; index++) {
             uint8_t actual = 0u;
             if (read_uart_byte(&actual, 2000000u) != 0) {
@@ -238,9 +229,9 @@ int main(void) {
     }
 
     //--------------------------------------------------------------------------
-    // SCENARIO D — requested length above the slot size is clamped consistently
-    // by both FSMs. region 0x100 gives a 16-byte slot; log_len=24 must fetch and
-    // write exactly 16 bytes, complete, and hwclr LOG_CTRL.
+    // SCENARIO D — a requested length above the slot capacity is clamped. A
+    // 24-byte request from a 16-byte slot must transmit exactly 16 bytes and
+    // complete the log entry.
     //--------------------------------------------------------------------------
     info_msg_s(0, "scenario D: log length clamps to slot capacity");
     {
@@ -253,12 +244,12 @@ int main(void) {
         }
         write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
         write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, 0x11u);
-        write_reg(WRAP0_LE_BASE + LE_REGION_SIZE_OFF, 0x100u);          // slot = 16 B
-        write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF, LOG_BUFFER_BASE); // good fetch
+        write_reg(WRAP0_LE_BASE + LE_REGION_SIZE_OFF, 0x100u);
+        write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF, LOG_BUFFER_BASE);
         write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF + 4, 0u);
         write_reg(WRAP0_LE_BASE + LE_WRITE_ADDR_OFF, WRAP0_UART_BASE + UART_RBR_OFF);
         write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);
-        write_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF, 24u); // 24 B > 16 B slot -> see [G1]
+        write_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF, 24u);
 
         if (wait_log_done(LE_LOG_CTRL0_OFF, 200000u) != 0) {
             info_msg_s(0, "FAIL: scenario D: clamped log did not complete");
@@ -276,9 +267,10 @@ int main(void) {
     }
 
     //--------------------------------------------------------------------------
-    // SCENARIO E — a non-word-aligned 15-byte slot has one complete 8-byte
-    // fetch beat. log_len=15 is clamped to 8 so no fetch can cross the slot
-    // boundary and the writer cannot wait for the seven bytes never fetched.
+    // SCENARIO E — a slot that is not word aligned rounds down to whole 8-byte
+    // words. A 15-byte request from a 15-byte slot must transmit exactly
+    // 8 bytes, so no fetch crosses the slot boundary and the writer does not
+    // wait for bytes that are never fetched.
     //--------------------------------------------------------------------------
     info_msg_s(0, "scenario E: non-word-aligned slot rounds down to one beat");
     {
@@ -291,7 +283,7 @@ int main(void) {
         }
         write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
         write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, 0x11u);
-        write_reg(WRAP0_LE_BASE + LE_REGION_SIZE_OFF, 0xF0u); // 240 / 16 = 15 bytes/slot
+        write_reg(WRAP0_LE_BASE + LE_REGION_SIZE_OFF, 0xF0u);
         write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF, LOG_BUFFER_BASE);
         write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF + 4, 0u);
         write_reg(WRAP0_LE_BASE + LE_WRITE_ADDR_OFF, WRAP0_UART_BASE + UART_RBR_OFF);
@@ -313,13 +305,10 @@ int main(void) {
         write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
     }
 
-    // Cleanup
+    // Leave the UART out of loopback and disabled.
     write_reg(WRAP0_UART_BASE + UART_MCR_OFF, 0u);
     write_reg(WRAP0_CTRL_REG, 0u);
 
     info_msg_s(0, "smc_uart_log_engine_boundary_backpressure_test done");
     test_pass(0);
-
-    while (1) __asm__("wfi");
-    return 0;
 }

@@ -6,6 +6,18 @@
 
 === Configuration Parameters
 
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="efuse-configuration-parameters-table"></span>
+<span id="signal-interfaces"></span>
+<span id="clock-and-reset"></span>
+<span id="efuse-clock-and-reset-signals-table"></span>
+<span id="debug-and-status-signals"></span>
+<span id="efuse-debug-and-status-signals-table"></span>
+++++
+endif::backend-html5[]
+
 The OTP has a total storage capacity of 1 KB, organized as 256 words of 32 bits.
 
 ifdef::backend-html5[]
@@ -17,10 +29,27 @@ endif::backend-html5[]
 
 === Main AXI4-Lite Interfaces
 
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="smc-interface-functional-access"></span>
+<span id="efuse-functional-access-interface-table"></span>
+<span id="jtag-interface-debug-access"></span>
+<span id="efuse-jtag-access-interface-table"></span>
+++++
+endif::backend-html5[]
+
 The eFuse controller provides two AXI4-Lite interfaces for register access: functional
 access from the SMC and debug access from JTAG.
 
 === Fuse Bank Control Interface
+
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="efuse-bank-control-interface-table"></span>
+++++
+endif::backend-html5[]
 
 AXI4-Lite interface to the fuse bank control registers in the SHIM, carried on
 `fuse_bank_ctrl_req_o` and `fuse_bank_ctrl_resp_i` of types `efuse_axil_req_t` and
@@ -29,13 +58,27 @@ this interface.
 
 === Fuse Command Interface
 
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="efuse-command-interface-table"></span>
+++++
+endif::backend-html5[]
+
 Custom interface for SHIM state machine communication.
 
 === Security and Control Signals
 
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="efuse-security-and-control-signals-table"></span>
+++++
+endif::backend-html5[]
+
 The controller has no lifecycle-state input port. When `HAS_LC_STATE` is set, it takes the
 lifecycle state from the fuses: during fuse sensing it loads the low `LC_STATE_WIDTH` bits
-of shadow word `efuse_pkg::SHADOW_IDX_LC_STATE` and stores them differentially encoded in
+of shadow word `efuse_pkg::ShadowIdxLcState` and stores them differentially encoded in
 the shadow map. The shadow word index is fixed in `efuse_pkg`. `LC_STATE_BIT_POSITION` is
 used only by the guard, which derives the RMA SiP and chiplet token bit addresses from it as
 `LC_STATE_BIT_POSITION + 1` and `LC_STATE_BIT_POSITION + 2`.

@@ -50,7 +50,7 @@ Base-address, region-size, per-block clock-gating enable, and interrupt configur
 |===
 | Bits | Field | Access | Reset | Description
 | 63:32 | `Reserved` | - | - a| Reserved
-| 31:0 | `size` | RW | 0x1000000 a| Region size for SMC resources, sizing both the local alias window and the global aperture. Must be a non-zero power of two: the fabric derives its local-alias address mask as (size - 1), so any other value produces a discontiguous mask and misroutes accesses. Zero leaves no reachable local aperture. GLOBAL_BASE and LOCAL_BASE must be aligned to this size. Defaults to 16MB (0x100_0000); FW reprograms per chiplet spec.
+| 31:0 | `size` | RW | 0x1000000 a| Region size for SMC resources, sizing both the local alias window and the global aperture. Must be a non-zero power of two: the fabric derives its local-alias address mask as (size - 1), so any other value produces a discontiguous mask and misroutes accesses. Zero leaves no reachable local aperture. GLOBAL_BASE and LOCAL_BASE must be aligned to this size. Inbound accesses to a unit whose window extends past this size answer DECERR. Defaults to 16MB (0x100_0000); FW reprograms per chiplet spec.
 |===
 
 [#reg-{regmap-instance}-smc_base_config-CLOCK_GATE_CONTROL]
@@ -62,11 +62,11 @@ Base-address, region-size, per-block clock-gating enable, and interrupt configur
 | 63:30 | `Reserved` | - | - a| Reserved
 | 29:24 | `cg_hysteresis` | RW | 0x1F a| Clockgate cg_hysteresis
 | 23:14 | `Reserved` | - | - a| Reserved
-| 13 | `telemetry_cg_en` | RW | 0x0 a| Clock gate enable for telemetry
-| 12 | `uart_cg_en` | RW | 0x0 a| Clock gate enable for UART
-| 11 | `i2c_cg_en` | RW | 0x0 a| Clock gate enable for i2c
-| 10 | `avs_cg_en` | RW | 0x0 a| Clock gate enable for AVSBus
-| 9 | `i3c_cg_en` | RW | 0x0 a| Clock gate enable for i3c
+| 13 | `telemetry_cg_en` | RW | 0x0 a| Clock gate enable for telemetry. While set, the telemetry receiver clocks are stopped and every access to the SMC_TELEMETRY_RECEIVER_WRAP window answers SLVERR with read data 0xBADCAB1E.
+| 12 | `uart_cg_en` | RW | 0x0 a| Clock gate enable for UART. While set, the UART peripheral clock is stopped and every access to the SMC_UART_WRAP window answers SLVERR with read data 0xBADCAB1E.
+| 11 | `i2c_cg_en` | RW | 0x0 a| Clock gate enable for I2C. While set, the I2C peripheral clock is stopped and every access to the SMC_I2C_WRAP window answers SLVERR with read data 0xBADCAB1E.
+| 10 | `avs_cg_en` | RW | 0x0 a| Clock gate enable for AVSBus. While set, the AVSBus controller clocks are stopped and every access to the SMC_AVSBUS_CONTROLLER window answers SLVERR with read data 0xBADCAB1E.
+| 9 | `i3c_cg_en` | RW | 0x0 a| Clock gate enable for I3C. While set, the I3C peripheral clock is stopped and every access to the OCA_I3C_WRAP window answers SLVERR with read data 0xBADCAB1E.
 | 8 | `zeroer_cg_en` | RW | 0x0 a| Clock gate enable for axi zeroer
 | 7 | `output_fabric_cg_en` | RW | 0x0 a| Clock gate enable for address remapper register logic
 | 6 | `addr_remap_cg_en` | RW | 0x0 a| Clock gate enable for address remapper register logic

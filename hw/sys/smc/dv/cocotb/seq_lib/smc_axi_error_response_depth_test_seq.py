@@ -48,24 +48,22 @@ for _base in (LOCAL_BASE_RESET, GLOBAL_BASE_RESET):
     )
 
 # EXTERNAL_MANDATORY GPIO_CTRL is a DECERR probe: the OSS tree carries no GPIO
-# pad block behind that window (memmap.adoc lists it as technology-specific).
+# pad block behind that window (memmap.adoc lists it as technology-specific),
+# and the reference integration terminates it with an error slave.
 # OCA_I3C_WRAP is a real core and answers OKAY, so it is not a DECERR probe.
 _GPIO_CTRL0 = external_gpio_ctrl_addr(0)
 
-# Data expected alongside the error response. ``ERR_SLAVE_SIGNATURE`` is the
-# word the eFuse architecture document states for a blocked request, applied to
-# the ecam_region and above-aperture probes under the DV-owned assumption ``SmcCsrSeq``
-# declares; the GPIO_CTRL probe expects the all-zero word
-# ``csr_read_decerr_zero`` also expects, a DV-owned expectation that the
-# terminator returns no payload.
+# Data expected alongside the error response: ``ERR_SLAVE_SIGNATURE`` is the
+# word every error slave in the design returns, whether it is the fabric's
+# own (ecam_region and above-aperture probes) or the reference integration's
+# GPIO_CTRL terminator.
 ERR_SLAVE_SIGNATURE = SmcCsrSeq.ERR_SLAVE_SIGNATURE
-_GPIO_CTRL_ERR_DATA = 0x0
 
 # (name, addr, expected AXI resp, expected rdata)
 ERROR_PROBES: list[tuple[str, int, int, int]] = [
     ("UNIMPL_ECAM_REGION", _UNIMPL_ECAM, AXI_RESP_DECERR, ERR_SLAVE_SIGNATURE),
     ("ABOVE_APERTURE_WINDOW_CHECK", _ABOVE_APERTURE, AXI_RESP_DECERR, ERR_SLAVE_SIGNATURE),
-    ("GPIO_CTRL_ERR_SLAVE", _GPIO_CTRL0, AXI_RESP_DECERR, _GPIO_CTRL_ERR_DATA),
+    ("GPIO_CTRL_ERR_SLAVE", _GPIO_CTRL0, AXI_RESP_DECERR, ERR_SLAVE_SIGNATURE),
 ]
 
 

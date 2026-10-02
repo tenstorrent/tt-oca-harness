@@ -200,6 +200,14 @@ def selftest_scoreboard_flush_and_unpaired() -> None:
         scoreboard.flush_expected("flush") == 2,
         "flush_expected drops waiting expectations on every lane",
     )
+    scoreboard.push_expected("flush", 3, lane="a")
+    scoreboard.push_expected("flush", 4, lane="b")
+    check(
+        scoreboard.flush_expected("flush", lane="b") == 1,
+        "flush_expected with a lane drops only that lane",
+    )
+    scoreboard.push_observed("flush", 3, lane="a")
+    check(scoreboard.compare_count("flush") == 1, "the other lane pairs after a lane flush")
     scoreboard.push_observed("flush", 9)
     scoreboard.push_expected("flush", 9)
     scoreboard.check_phase()

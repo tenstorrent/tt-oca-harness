@@ -1,0 +1,362 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="1169" viewBox="0 0 1040 1169" role="img" aria-labelledby="title desc">
+<title id="title">SMC clock distribution: u_smc_cpu_wrapper and u_smc_peripherals</title>
+<desc id="desc">Clock distribution inside u_smc_cpu_wrapper and u_smc_peripherals. Six clocks enter on the left: clk_smc_i, clk_ref_i, clk_periph_i, clk_telemetry_i, smc_cpu_jtag_TCK_i and spi_clk_i. clk_smc_i and clk_ref_i run down trunks with one arrow into each of u_smc_cpu_wrapper and u_smc_peripherals. Each box is an RTL instance tinted with the colour of the clock that runs it; a box split into bands runs on several clocks. A clock gate is a tab coloured by the clock it gates, with its instance name in italics, and a dashed arrow runs from the gate to each instance its gated clock reaches. In u_smc_cpu_wrapper, u_refclk_counter in u_smc_cpu_ctrl_wrap counts clk_ref_i into clk_smc_i; in u_smc_cpu, u_debug_clock_gate clocks the debug module through the debug_clock port of u_digital_top, and smc_cpu_jtag_TCK_i clocks the JTAG DTM through debug_systemjtag_jtag_TCK. In u_smc_peripherals, u_smc_peripherals_cdc is drawn as one row per synchroniser or CDC instance, tinted with the source clock on its left half and the destination clock on its right half: the AVSBus, I2C, UART and I3C AXI-Lite CDCs and the clock-gate enable synchronisers cross from clk_smc_i into clk_periph_i, clk_ref_i or clk_telemetry_i; the log-engine AXI-Lite CDC, enable, interrupt and debug synchronisers cross from clk_periph_i into clk_smc_i; u_ndmreset_request_sync synchronises the asynchronous ndmreset_request_i into clk_smc_i. u_i2c_clk_periph_gater clocks u_i2c_wrap, u_uart_clk_periph_gater clocks u_uart_wrap, and u_i3c_clk_periph_gater clocks u_i3ccore_wrapper and leaves the SMC as gated_clk_periph_i3c_o. u_avs_clk_ref_gater drives the clk_ref_i port of u_avsbus_controller, reaching u_gate_refclk_en_sync and u_refclk_clkgate; u_avs_clk_periph_gater drives its clk_reg_i port, reaching u_axi_lite_to_apb, u_avsbus_controller_reg_inst and u_apbclk_clkgate. The two gated clocks meet in the glitch-free mux u_refclk_apbclk_mux; the test mux u_test_clkmux2_0 takes that on clk0_i and the test clock clk_test_i, connected to clk_periph_i, on clk1_i; then the divider u_clk_div and u_avs_bus_clkgate, leaving through u_smc_padring as avs_clock. u_tel_clk_smc_gater and u_tel_clk_telemetry_gater clock the two sides of u_telemetry_receiver_wrap. spi_clk_i passes through u_smc_padring to its pad.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="gs" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#5b6670"/></marker>
+<marker id="je" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="js" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#42759b"/></marker>
+<marker id="m-smu" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#103525"/></marker>
+<marker id="m-ref" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#2f7f79"/></marker>
+<marker id="m-per" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#937027"/></marker>
+<marker id="m-tel" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#664488"/></marker>
+<marker id="m-wdt" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#77736b"/></marker>
+<marker id="m-rosc" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<marker id="m-jtag" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="m-spi" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-slate" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-pg" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.h { font-size: 22px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.si { font-size: 13px; font-style: italic; fill: #484848; }
+.pmt { font-size: 12px; font-weight: bold; fill: #ffffff; }
+.pst { font-size: 12px; font-weight: bold; fill: #103525; }
+.pjt { font-size: 12px; font-weight: bold; fill: #1d4b6e; }
+.pct { font-size: 12px; font-weight: bold; fill: #1f5c57; }
+.pm { fill: #103525; stroke: #103525; stroke-width: 1.2; }
+.ps { fill: #ffffff; stroke: #103525; stroke-width: 1.2; }
+.pj { fill: #e8f3ff; stroke: #42759b; stroke-width: 1.2; }
+.pc { fill: #d9f0ee; stroke: #2f7f79; stroke-width: 1.2; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.network { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.future { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.nostroke { stroke: none; }
+.fut { fill: none; stroke-dasharray: 7 5; }
+.opt { stroke-dasharray: 7 5; }
+.hatch { fill: none; stroke: #103525; stroke-opacity: 0.16; stroke-width: 1.2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
+.axio { fill: none; stroke: #103525; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#as); marker-end: url(#ae); }
+.sig { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); marker-end: url(#ge); }
+.sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+.jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
+.jtagb { fill: none; stroke: #42759b; stroke-width: 1.8; marker-start: url(#js); marker-end: url(#je); }
+.sigplain { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+.n-smu { fill: none; stroke: #103525; stroke-width: 2.5; }
+.a-smu { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#m-smu); }
+.n-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; }
+.a-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; marker-end: url(#m-ref); }
+.n-per { fill: none; stroke: #937027; stroke-width: 1.8; }
+.a-per { fill: none; stroke: #937027; stroke-width: 1.8; marker-end: url(#m-per); }
+.n-tel { fill: none; stroke: #664488; stroke-width: 1.8; }
+.a-tel { fill: none; stroke: #664488; stroke-width: 1.8; marker-end: url(#m-tel); }
+.n-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; }
+.a-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; marker-end: url(#m-wdt); }
+.n-rosc { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-rosc { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-rosc); }
+.n-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; }
+.a-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#m-jtag); }
+.n-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-spi); }
+.n-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-slate); }
+.n-pg { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-pg { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-pg); }
+.bt { font-size: 14px; font-weight: bold; fill: #103525; }
+.leaf { stroke: #937027; stroke-width: 1.5; }
+.outl { fill: none; stroke: #937027; stroke-width: 1.5; }
+.outl2 { fill: none; stroke: #937027; stroke-width: 2; }
+.tabt { font-size: 11px; font-weight: bold; fill: #ffffff; }
+.g-smc { fill: none; stroke: #103525; stroke-width: 1.8; stroke-dasharray: 6 4; marker-end: url(#m-smu); }
+.g-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; stroke-dasharray: 6 4; marker-end: url(#m-ref); }
+.g-per { fill: none; stroke: #937027; stroke-width: 1.8; stroke-dasharray: 6 4; marker-end: url(#m-per); }
+.g-tel { fill: none; stroke: #664488; stroke-width: 1.8; stroke-dasharray: 6 4; marker-end: url(#m-tel); }
+.g-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; stroke-dasharray: 6 4; marker-end: url(#m-slate); }
+.gn-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; stroke-dasharray: 6 4; }
+.gn-per { fill: none; stroke: #937027; stroke-width: 1.8; stroke-dasharray: 6 4; }
+.gn-smc { fill: none; stroke: #103525; stroke-width: 1.8; stroke-dasharray: 6 4; }
+.gn-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; stroke-dasharray: 6 4; }
+.gn-tel { fill: none; stroke: #664488; stroke-width: 1.8; stroke-dasharray: 6 4; }
+.mx { font-size: 12px; fill: #484848; }
+.encl { fill: none; stroke: #937027; stroke-width: 1.5; stroke-dasharray: 7 5; }
+
+</style>
+</defs>
+<rect width="1040" height="1169" fill="#ffffff"/>
+<rect class="smu" x="190" y="14" width="814" height="1051.0" rx="8"/>
+<rect class="core" x="270" y="90" width="720" height="194" rx="6"/>
+<text class="s" x="14" y="38" text-anchor="start">clk_smc_i</text>
+<path class="n-smu" d="M17,44 L248,44"/>
+<text class="s" x="14" y="62" text-anchor="start">clk_ref_i</text>
+<path class="n-ref" d="M17,68 L228,68"/>
+<path class="a-smu" d="M248,110 L267,110"/>
+<circle cx="248" cy="110" r="4" fill="#103525"/>
+<path class="a-ref" d="M228,134 L267,134"/>
+<circle cx="228" cy="134" r="4" fill="#2f7f79"/>
+<text class="s" x="14" y="152" text-anchor="start">smc_cpu_jtag_TCK_i</text>
+<path class="a-jtag" d="M17,158 L223,158 M233,158 L243,158 M253,158 L267,158"/>
+<rect class="core" x="282" y="100" width="224" height="92" rx="6"/>
+<text class="bt" x="292" y="120" text-anchor="start">u_smc_cpu_ctrl_wrap</text>
+<rect x="290" y="130" width="208" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="290" y="130" width="208" height="22" rx="4"/>
+<text class="s" x="298" y="145.5" text-anchor="start">CSRs, watchdog, PC history</text>
+<rect x="291" y="157" width="103" height="20" rx="0" fill="#d2e8e5"/>
+<rect x="394" y="157" width="103" height="20" rx="0" fill="#e2efe6"/>
+<rect class="outl" x="290" y="156" width="208" height="22" rx="4"/>
+<text class="s" x="298" y="171.5" text-anchor="start">u_refclk_counter</text>
+<rect class="core" x="518" y="100" width="460" height="150" rx="6"/>
+<text class="bt" x="528" y="120" text-anchor="start">u_smc_cpu</text>
+<rect class="core" x="690" y="128" width="280" height="112" rx="6"/>
+<text class="bt" x="700" y="148" text-anchor="start">u_digital_top</text>
+<rect x="698" y="158" width="264" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="698" y="158" width="264" height="22" rx="4"/>
+<text class="s" x="706" y="173.5" text-anchor="start">Cores, caches, uncore</text>
+<rect x="698" y="184" width="264" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="698" y="184" width="264" height="22" rx="4"/>
+<text class="s" x="706" y="199.5" text-anchor="start">Debug module, debug_clock</text>
+<rect x="698" y="210" width="264" height="22" rx="4" fill="#e3eef8"/>
+<rect class="outl" x="698" y="210" width="264" height="22" rx="4"/>
+<text class="s" x="706" y="225.5" text-anchor="start">JTAG DTM, debug_systemjtag_jtag_TCK</text>
+<rect x="528" y="186" width="26" height="18" rx="3" fill="#103525"/>
+<text class="tabt" x="541" y="199" text-anchor="middle">CG</text>
+<text class="si" x="528" y="180" text-anchor="start">u_debug_clock_gate</text>
+<path class="g-smc" d="M554,195.0 L695,195.0"/>
+<text class="b" x="282" y="272" text-anchor="start">u_smc_cpu_wrapper</text>
+<path class="a-smu" d="M248,318 L267,318"/>
+<circle cx="248" cy="318" r="4" fill="#103525"/>
+<path class="a-ref" d="M228,342 L267,342"/>
+<circle cx="228" cy="342" r="4" fill="#2f7f79"/>
+<path class="n-smu" d="M248,44 L248,129 M248,139 L248,318"/>
+<path class="n-ref" d="M228,68 L228,342"/>
+<text class="s" x="14" y="360" text-anchor="start">clk_periph_i</text>
+<path class="a-per" d="M17,366 L267,366"/>
+<rect class="core" x="270" y="298" width="720" height="727.0" rx="6"/>
+<rect class="core" x="282" y="310" width="342" height="350" rx="6"/>
+<text class="bt" x="292" y="330" text-anchor="start">u_smc_peripherals_cdc</text>
+<rect x="291" y="343" width="162" height="20" rx="0" fill="#e2efe6"/>
+<rect x="453" y="343" width="162" height="20" rx="0" fill="#f6eacd"/>
+<rect class="outl" x="290" y="342" width="326" height="22" rx="4"/>
+<text class="s" x="298" y="357.5" text-anchor="start">u_{avsbus,i2c,uart,i3c}_axi_cdc</text>
+<text class="si" x="608" y="357.5" text-anchor="end">AXI-Lite</text>
+<rect x="291" y="369" width="162" height="20" rx="0" fill="#f6eacd"/>
+<rect x="453" y="369" width="162" height="20" rx="0" fill="#e2efe6"/>
+<rect class="outl" x="290" y="368" width="326" height="22" rx="4"/>
+<text class="s" x="298" y="383.5" text-anchor="start">u_log_engine_axi_cdc</text>
+<text class="si" x="608" y="383.5" text-anchor="end">log fetch</text>
+<rect x="291" y="395" width="162" height="20" rx="0" fill="#e2efe6"/>
+<rect x="453" y="395" width="162" height="20" rx="0" fill="#f6eacd"/>
+<rect class="outl" x="290" y="394" width="326" height="22" rx="4"/>
+<text class="s" x="298" y="409.5" text-anchor="start">u_{i2c,uart,i3c}_cg_en_sync</text>
+<text class="si" x="608" y="409.5" text-anchor="end">CG enables</text>
+<rect x="291" y="421" width="162" height="20" rx="0" fill="#e2efe6"/>
+<rect x="453" y="421" width="162" height="20" rx="0" fill="#f6eacd"/>
+<rect class="outl" x="290" y="420" width="326" height="22" rx="4"/>
+<text class="s" x="298" y="435.5" text-anchor="start">u_avs_cg_en_periph_sync</text>
+<text class="si" x="608" y="435.5" text-anchor="end">CG enable</text>
+<rect x="291" y="447" width="162" height="20" rx="0" fill="#e2efe6"/>
+<rect x="453" y="447" width="162" height="20" rx="0" fill="#d2e8e5"/>
+<rect class="outl" x="290" y="446" width="326" height="22" rx="4"/>
+<text class="s" x="298" y="461.5" text-anchor="start">u_avs_cg_en_ref_sync</text>
+<text class="si" x="608" y="461.5" text-anchor="end">CG enable</text>
+<rect x="291" y="473" width="162" height="20" rx="0" fill="#e2efe6"/>
+<rect x="453" y="473" width="162" height="20" rx="0" fill="#e8e0f1"/>
+<rect class="outl" x="290" y="472" width="326" height="22" rx="4"/>
+<text class="s" x="298" y="487.5" text-anchor="start">u_tel_cg_en_sync</text>
+<text class="si" x="608" y="487.5" text-anchor="end">CG enable</text>
+<rect x="291" y="499" width="162" height="20" rx="0" fill="#f6eacd"/>
+<rect x="453" y="499" width="162" height="20" rx="0" fill="#e2efe6"/>
+<rect class="outl" x="290" y="498" width="326" height="22" rx="4"/>
+<text class="s" x="298" y="513.5" text-anchor="start">u_{i2c,uart}_enable_sync</text>
+<text class="si" x="608" y="513.5" text-anchor="end">enables</text>
+<rect x="291" y="525" width="162" height="20" rx="0" fill="#f6eacd"/>
+<rect x="453" y="525" width="162" height="20" rx="0" fill="#e2efe6"/>
+<rect class="outl" x="290" y="524" width="326" height="22" rx="4"/>
+<text class="s" x="298" y="539.5" text-anchor="start">u_{i2c,i3c,avsbus}_irq_sync</text>
+<text class="si" x="608" y="539.5" text-anchor="end">interrupts</text>
+<rect x="291" y="551" width="162" height="20" rx="0" fill="#f6eacd"/>
+<rect x="453" y="551" width="162" height="20" rx="0" fill="#e2efe6"/>
+<rect class="outl" x="290" y="550" width="326" height="22" rx="4"/>
+<text class="s" x="298" y="565.5" text-anchor="start">u_uart_combined_irq_sync</text>
+<text class="si" x="608" y="565.5" text-anchor="end">interrupts</text>
+<rect x="291" y="577" width="162" height="20" rx="0" fill="#f6eacd"/>
+<rect x="453" y="577" width="162" height="20" rx="0" fill="#e2efe6"/>
+<rect class="outl" x="290" y="576" width="326" height="22" rx="4"/>
+<text class="s" x="298" y="591.5" text-anchor="start">u_i2c_debug_sync</text>
+<text class="si" x="608" y="591.5" text-anchor="end">debug bus</text>
+<rect x="291" y="603" width="162" height="20" rx="0" fill="#f6eacd"/>
+<rect x="453" y="603" width="162" height="20" rx="0" fill="#e2efe6"/>
+<rect class="outl" x="290" y="602" width="326" height="22" rx="4"/>
+<text class="s" x="298" y="617.5" text-anchor="start">u_avsbus_cur_state_debug_sync</text>
+<text class="si" x="608" y="617.5" text-anchor="end">AVSBus state</text>
+<rect x="291" y="629" width="162" height="20" rx="0" fill="#e6e6e6"/>
+<rect x="453" y="629" width="162" height="20" rx="0" fill="#e2efe6"/>
+<rect class="outl" x="290" y="628" width="326" height="22" rx="4"/>
+<text class="s" x="298" y="643.5" text-anchor="start">u_ndmreset_request_sync</text>
+<text class="si" x="608" y="643.5" text-anchor="end">async input</text>
+<rect x="637" y="311" width="113.333" height="38" rx="0" fill="#d2e8e5"/>
+<rect x="750.333" y="311" width="113.333" height="38" rx="0" fill="#e2efe6"/>
+<rect x="863.667" y="311" width="113.333" height="38" rx="0" fill="#f6eacd"/>
+<rect class="outl" x="636" y="310" width="342" height="40" rx="4"/>
+<text class="s" x="644" y="326.5" text-anchor="start">u_smc_reset_unit</text>
+<text class="s" x="644" y="342.5" text-anchor="start">reset synchronisers, FLR counters</text>
+<rect x="636" y="358" width="342" height="56" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="636" y="358" width="342" height="56" rx="4"/>
+<text class="s" x="644" y="382.5" text-anchor="start">u_smc_periph_axi_lite_xbar, u_system_timer_octs,</text>
+<text class="s" x="644" y="398.5" text-anchor="start">u_smc_efuse_wrapper, u_smc_misc_wrap</text>
+<text class="si" x="636" y="438" text-anchor="start">u_i2c_clk_periph_gater</text>
+<rect x="698" y="444" width="280" height="22" rx="4" fill="#f6eacd"/>
+<rect class="outl" x="698" y="444" width="280" height="22" rx="4"/>
+<text class="s" x="706" y="459.5" text-anchor="start">u_i2c_wrap, 3 × I2C</text>
+<rect x="636" y="446" width="26" height="18" rx="3" fill="#937027"/>
+<text class="tabt" x="649" y="459" text-anchor="middle">CG</text>
+<path class="g-per" d="M662,455.0 L695,455.0"/>
+<text class="si" x="636" y="488" text-anchor="start">u_uart_clk_periph_gater</text>
+<rect x="698" y="494" width="280" height="22" rx="4" fill="#f6eacd"/>
+<rect class="outl" x="698" y="494" width="280" height="22" rx="4"/>
+<text class="s" x="706" y="509.5" text-anchor="start">u_uart_wrap, 4 × UART</text>
+<rect x="636" y="496" width="26" height="18" rx="3" fill="#937027"/>
+<text class="tabt" x="649" y="509" text-anchor="middle">CG</text>
+<path class="g-per" d="M662,505.0 L695,505.0"/>
+<text class="si" x="636" y="538" text-anchor="start">u_i3c_clk_periph_gater</text>
+<rect x="698" y="544" width="280" height="22" rx="4" fill="#f6eacd"/>
+<rect class="outl" x="698" y="544" width="280" height="22" rx="4"/>
+<text class="s" x="706" y="559.5" text-anchor="start">u_i3ccore_wrapper, 6 × I3C</text>
+<rect x="636" y="546" width="26" height="18" rx="3" fill="#937027"/>
+<text class="tabt" x="649" y="559" text-anchor="middle">CG</text>
+<path class="g-per" d="M662,555.0 L695,555.0"/>
+<circle cx="676" cy="555" r="3.5" fill="#937027"/>
+<path class="g-per" d="M676,555.0 L676,588 L1030,588"/>
+<text class="s" x="976" y="581" text-anchor="end">gated_clk_periph_i3c_o</text>
+<rect class="core" x="452" y="678" width="526" height="196" rx="6"/>
+<text class="bt" x="462" y="698" text-anchor="start">u_avsbus_controller</text>
+<rect x="282" y="730" width="26" height="18" rx="3" fill="#2f7f79"/>
+<text class="tabt" x="295" y="743" text-anchor="middle">CG</text>
+<text class="si" x="282" y="724" text-anchor="start">u_avs_clk_ref_gater</text>
+<path class="gn-ref" d="M308,739 L534,739"/>
+<circle cx="534" cy="739" r="3.5" fill="#2f7f79"/>
+<rect x="282" y="800" width="26" height="18" rx="3" fill="#937027"/>
+<text class="tabt" x="295" y="813" text-anchor="middle">CG</text>
+<text class="si" x="282" y="794" text-anchor="start">u_avs_clk_periph_gater</text>
+<path class="gn-per" d="M308,809 L534,809"/>
+<circle cx="534" cy="809" r="3.5" fill="#937027"/>
+<text class="s" x="458" y="734" text-anchor="start">clk_ref_i</text>
+<text class="s" x="458" y="804" text-anchor="start">clk_reg_i</text>
+<path class="gn-ref" d="M534,725.0 L534,753.0"/>
+<path class="gn-per" d="M534,789.0 L534,826"/>
+<path class="g-ref" d="M534,725.0 L545,725.0"/>
+<path class="g-ref" d="M534,753.0 L545,753.0"/>
+<path class="g-per" d="M534,789.0 L545,789.0"/>
+<path class="g-per" d="M534,826 L545,826"/>
+<rect x="548" y="714" width="184" height="22" rx="4" fill="#d2e8e5"/>
+<rect class="outl" x="548" y="714" width="184" height="22" rx="4"/>
+<text class="s" x="556" y="729.5" text-anchor="start">u_gate_refclk_en_sync</text>
+<rect x="548" y="742" width="184" height="22" rx="4" fill="#d2e8e5"/>
+<rect class="outl" x="548" y="742" width="184" height="22" rx="4"/>
+<rect x="552" y="744" width="26" height="18" rx="3" fill="#2f7f79"/>
+<text class="tabt" x="565" y="757" text-anchor="middle">CG</text>
+<text class="si" x="584" y="757.5" text-anchor="start">u_refclk_clkgate</text>
+<rect x="548" y="778" width="184" height="22" rx="4" fill="#f6eacd"/>
+<rect class="outl" x="548" y="778" width="184" height="22" rx="4"/>
+<rect x="552" y="780" width="26" height="18" rx="3" fill="#937027"/>
+<text class="tabt" x="565" y="793" text-anchor="middle">CG</text>
+<text class="si" x="584" y="793.5" text-anchor="start">u_apbclk_clkgate</text>
+<rect x="548" y="806" width="184" height="40" rx="4" fill="#f6eacd"/>
+<rect class="outl" x="548" y="806" width="184" height="40" rx="4"/>
+<text class="s" x="556" y="822.5" text-anchor="start">u_axi_lite_to_apb,</text>
+<text class="s" x="556" y="838.5" text-anchor="start">u_avsbus_controller_reg_inst</text>
+<path class="fabric" d="M754,739.0 L782,753.0 L782,789.0 L754,803.0 Z"/>
+<text class="mx" x="762" y="757" text-anchor="middle">1</text>
+<text class="mx" x="762" y="793" text-anchor="middle">0</text>
+<path class="g-ref" d="M732,753.0 L751,753.0"/>
+<path class="g-per" d="M732,789.0 L751,789.0"/>
+<text class="si" x="750" y="731" text-anchor="start">u_refclk_apbclk_mux</text>
+<path class="fabric" d="M816,757.0 L844,771.0 L844,807.0 L816,821.0 Z"/>
+<text class="mx" x="824" y="775" text-anchor="middle">0</text>
+<text class="mx" x="824" y="811" text-anchor="middle">1</text>
+<path class="g-slate" d="M782,771.0 L813,771.0"/>
+<path class="a-per" d="M796,896 L796,807.0 L813,807.0"/>
+<text class="s" x="790" y="866" text-anchor="end">clk_test_i</text>
+<text class="s" x="790" y="894" text-anchor="end">clk_periph_i</text>
+<text class="si" x="804" y="751" text-anchor="start">u_test_clkmux2_0</text>
+<rect class="fabric" x="862" y="773" width="40" height="32" rx="4"/>
+<text class="t" x="882" y="794" text-anchor="middle">÷N</text>
+<path class="g-slate" d="M844,789.0 L859,789.0"/>
+<text class="si" x="882" y="821" text-anchor="middle">u_clk_div</text>
+<rect x="918" y="780" width="26" height="18" rx="3" fill="#5b6670"/>
+<text class="tabt" x="931" y="793" text-anchor="middle">CG</text>
+<path class="g-slate" d="M902,789.0 L915,789.0"/>
+<text class="si" x="958" y="839" text-anchor="end">u_avs_bus_clkgate</text>
+<path class="gn-slate" d="M944,789.0 L964,789.0 L964,874"/>
+<text class="s" x="956" y="866" text-anchor="end">avs_clock</text>
+<text class="s" x="14" y="908" text-anchor="start">spi_clk_i</text>
+<path class="n-spi" d="M17,914 L812,914"/>
+<path class="a-spi" d="M812,914 L812,927"/>
+<path class="g-slate" d="M964,874 L964,927"/>
+<rect x="754" y="930" width="224" height="40" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="754" y="930" width="224" height="40" rx="4"/>
+<text class="s" x="762" y="946.5" text-anchor="start">u_smc_padring</text>
+<text class="s" x="762" y="962.5" text-anchor="start">pads: spi_clk_i, avs_clock</text>
+<text class="s" x="14" y="1009" text-anchor="start">clk_telemetry_i</text>
+<path class="a-tel" d="M17,1015 L267,1015"/>
+<text class="si" x="282" y="942" text-anchor="start">u_tel_clk_smc_gater</text>
+<rect x="345" y="949" width="298" height="23" rx="0" fill="#e2efe6"/>
+<rect x="345" y="972" width="298" height="23" rx="0" fill="#e8e0f1"/>
+<rect class="outl" x="344" y="948" width="300" height="48" rx="4"/>
+<text class="s" x="352" y="963.5" text-anchor="start">u_telemetry_receiver_wrap</text>
+<rect x="282" y="950" width="26" height="18" rx="3" fill="#103525"/>
+<text class="tabt" x="295" y="963" text-anchor="middle">CG</text>
+<rect x="282" y="976" width="26" height="18" rx="3" fill="#664488"/>
+<text class="tabt" x="295" y="989" text-anchor="middle">CG</text>
+<path class="g-smc" d="M308,959.0 L341,959.0"/>
+<path class="g-tel" d="M308,985.0 L341,985.0"/>
+<text class="si" x="282" y="1010" text-anchor="start">u_tel_clk_telemetry_gater</text>
+<text class="b" x="978" y="1013" text-anchor="end">u_smc_peripherals</text>
+<text class="b" x="200" y="1053" text-anchor="start">smc</text>
+<path class="n-smu" d="M14,1091.0 L48,1091.0"/>
+<text class="s" x="56" y="1096" text-anchor="start">clk_smc_i</text>
+<path class="n-ref" d="M150,1091.0 L184,1091.0"/>
+<text class="s" x="192" y="1096" text-anchor="start">clk_ref_i</text>
+<path class="n-per" d="M276,1091.0 L310,1091.0"/>
+<text class="s" x="318" y="1096" text-anchor="start">clk_periph_i</text>
+<path class="n-tel" d="M416,1091.0 L450,1091.0"/>
+<text class="s" x="458" y="1096" text-anchor="start">clk_telemetry_i</text>
+<path class="n-jtag" d="M568,1091.0 L602,1091.0"/>
+<text class="s" x="610" y="1096" text-anchor="start">smc_cpu_jtag_TCK_i</text>
+<path class="n-spi" d="M752,1091.0 L786,1091.0"/>
+<text class="s" x="794" y="1096" text-anchor="start">spi_clk_i</text>
+<rect x="14" y="1110.0" width="18" height="18" fill="#e2efe6"/>
+<rect x="32" y="1110.0" width="18" height="18" fill="#d2e8e5"/>
+<rect x="50" y="1110.0" width="18" height="18" fill="#f6eacd"/>
+<rect x="68" y="1110.0" width="18" height="18" fill="#e8e0f1"/>
+<rect x="86" y="1110.0" width="18" height="18" fill="#e3eef8"/>
+<rect class="outl" x="14" y="1110" width="90" height="18" rx="3"/>
+<text class="s" x="112" y="1124" text-anchor="start">Logic tinted by its clock</text>
+<rect x="290" y="1110" width="26" height="18" rx="3" fill="#937027"/>
+<text class="tabt" x="303" y="1123" text-anchor="middle">CG</text>
+<text class="s" x="324" y="1124" text-anchor="start">Clock gate, coloured by the clock it gates</text>
+<path class="g-slate" d="M620,1119.0 L656,1119.0"/>
+<text class="s" x="664" y="1124" text-anchor="start">Gated or derived clock</text>
+<path class="sigplain" d="M846,1119.0 L886,1119.0 M866,1119.0 L866,1131.0"/>
+<circle cx="866" cy="1119" r="3.5" fill="#5b6670"/>
+<text class="s" x="896" y="1124" text-anchor="start">Fan-out</text>
+<rect x="15" y="1139" width="22" height="16" rx="0" fill="#e2efe6"/>
+<rect x="37" y="1139" width="22" height="16" rx="0" fill="#f6eacd"/>
+<rect class="outl" x="14" y="1138" width="46" height="18" rx="3"/>
+<text class="s" x="68" y="1152" text-anchor="start">Synchroniser: source clock left, destination right</text>
+<path class="fabric" d="M420,1137.0 L436,1143.0 L436,1151.0 L420,1157.0 Z"/>
+<text class="s" x="444" y="1152" text-anchor="start">Clock mux</text>
+<path class="sigplain" d="M620,1147.0 L656,1147.0 M638,1135.0 L638,1142.0 M638,1152.0 L638,1159.0"/>
+<text class="s" x="664" y="1152" text-anchor="start">Crossing, not connected</text>
+</svg>

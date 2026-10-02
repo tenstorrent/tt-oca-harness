@@ -13,7 +13,7 @@
 //   enforcement).
 // - Peripherals: every other address, via picorv32_axi_adapter to an AXI4-Lite master.
 //
-// With OCAH_KM_VROM defined, the virtual ROM window (VROM_BASE_ADDR to VROM_END_ADDR) is
+// With OCAH_KM_VROM defined, the virtual ROM window (VromBaseAddr to VromEndAddr) is
 // decoded to the vrom_mem_* nets instead, which complete an access only when the simulation
 // drives vrom_mem_ready. The define is simulation-only: elaboration fails when SYNTHESIS or
 // EMULATION is also defined. Without it the window is a peripheral address.
@@ -126,28 +126,28 @@ module picorv32_wrapper
   // - Bit 5: ABR ML-KEM shared key (level while IRQ_STATUS & IRQ_ENABLE)
   // MASKED_IRQ: 1 = always masked. Only bits 0-5 are used; mask 6-31.
   // LATCHED_IRQ: bits 0-2 latched; bits 3-5 level-sensitive.
-  localparam logic [31:0] PICORV32_MASKED_IRQ = 32'hFFFF_FFC0;
-  localparam logic [31:0] PICORV32_LATCHED_IRQ = 32'h0000_0007;
+  localparam logic [31:0] Picorv32MaskedIrq = 32'hFFFF_FFC0;
+  localparam logic [31:0] Picorv32LatchedIrq = 32'h0000_0007;
 
   // PicoRV32 boot address.
-  localparam logic [31:0] PICORV32_PROGADDR_RESET = km_intf_pkg::ROM_BASE_ADDR;
+  localparam logic [31:0] Picorv32ProgAddrReset = km_intf_pkg::RomBaseAddr;
 
   // Initial stack pointer (top of SRAM, word-aligned).
-  localparam logic [31:0] PICORV32_STACKADDR = km_intf_pkg::SRAM_END_ADDR - 3;
+  localparam logic [31:0] Picorv32StackAddr = km_intf_pkg::SramEndAddr - 3;
 
   // IRQ vector geometry.
-  localparam int unsigned PICORV32_IRQ_VECTOR_WIDTH = 32;
-  localparam int unsigned PICORV32_KMCSR_IRQ_BIT = 3;
-  localparam int unsigned PICORV32_MBOX_IRQ_BIT = 4;
-  localparam int unsigned PICORV32_ABR_SHAREDKEY_IRQ_BIT = 5;
+  localparam int unsigned Picorv32IrqVectorWidth = 32;
+  localparam int unsigned Picorv32KmcsrIrqBit = 3;
+  localparam int unsigned Picorv32MboxIrqBit = 4;
+  localparam int unsigned Picorv32AbrSharedKeyIrqBit = 5;
 
   // Local copies of address-map bounds for CPU memory routing.
-  localparam logic [31:0] ROM_BASE = km_intf_pkg::ROM_BASE_ADDR;
-  localparam logic [31:0] ROM_END = km_intf_pkg::ROM_END_ADDR;
-  localparam logic [31:0] SRAM_BASE = km_intf_pkg::SRAM_BASE_ADDR;
-  localparam logic [31:0] SRAM_END = km_intf_pkg::SRAM_END_ADDR;
-  localparam logic [31:0] VROM_BASE = km_intf_pkg::VROM_BASE_ADDR;
-  localparam logic [31:0] VROM_END = km_intf_pkg::VROM_END_ADDR;
+  localparam logic [31:0] RomBase = km_intf_pkg::RomBaseAddr;
+  localparam logic [31:0] RomEnd = km_intf_pkg::RomEndAddr;
+  localparam logic [31:0] SramBase = km_intf_pkg::SramBaseAddr;
+  localparam logic [31:0] SramEnd = km_intf_pkg::SramEndAddr;
+  localparam logic [31:0] VromBase = km_intf_pkg::VromBaseAddr;
+  localparam logic [31:0] VromEnd = km_intf_pkg::VromEndAddr;
 
   //=========================================================================
   // PicoRV32 Native Memory Interface Signals
@@ -184,7 +184,7 @@ module picorv32_wrapper
   logic        pcpi_ready;
 
   // EOI signal from PicoRV32 (active while ISR is executing)
-  logic [PICORV32_IRQ_VECTOR_WIDTH-1:0] eoi_vector;
+  logic [Picorv32IrqVectorWidth-1:0] eoi_vector;
 
   //=========================================================================
   // External IRQs — Level Connections
@@ -201,12 +201,12 @@ module picorv32_wrapper
   //   - Bit 4 (Mailbox): sustained while mailbox FIFO has inbound data
   //   - Bit 5 (ABR ML-KEM shared key): sustained while IRQ_STATUS & IRQ_ENABLE
 
-  logic [PICORV32_IRQ_VECTOR_WIDTH-1:0] irq_vector;
+  logic [Picorv32IrqVectorWidth-1:0] irq_vector;
   always_comb begin
     irq_vector = '0;
-    irq_vector[PICORV32_KMCSR_IRQ_BIT]         = irq_i;
-    irq_vector[PICORV32_MBOX_IRQ_BIT]          = mbox_irq_i;
-    irq_vector[PICORV32_ABR_SHAREDKEY_IRQ_BIT] = abr_sharedkey_irq_i;
+    irq_vector[Picorv32KmcsrIrqBit]         = irq_i;
+    irq_vector[Picorv32MboxIrqBit]          = mbox_irq_i;
+    irq_vector[Picorv32AbrSharedKeyIrqBit]  = abr_sharedkey_irq_i;
   end
 
   // Trace outputs from PicoRV32 (unused; connected to satisfy port list and avoid TFIPC)
@@ -239,10 +239,10 @@ module picorv32_wrapper
     .ENABLE_IRQ_TIMER    (1'b0),  // No internal timer
     .ENABLE_TRACE        (1'b0),  // No trace interface
     .REGS_INIT_ZERO      (1'b0),  // Disable GPR zero-init
-    .MASKED_IRQ          (PICORV32_MASKED_IRQ),
-    .LATCHED_IRQ         (PICORV32_LATCHED_IRQ),
-    .PROGADDR_RESET      (PICORV32_PROGADDR_RESET),
-    .STACKADDR           (PICORV32_STACKADDR)
+    .MASKED_IRQ          (Picorv32MaskedIrq),
+    .LATCHED_IRQ         (Picorv32LatchedIrq),
+    .PROGADDR_RESET      (Picorv32ProgAddrReset),
+    .STACKADDR           (Picorv32StackAddr)
   ) u_picorv32 (
     .clk                 (clk_i),
     .resetn              (rst_sync_ni),
@@ -309,14 +309,14 @@ module picorv32_wrapper
 
   // Determine if address is ROM, SRAM, virtual ROM, or peripheral
   logic is_rom_addr, is_sram_addr, is_vrom_addr, is_periph_addr;
-  assign is_rom_addr   = (mem_addr >= ROM_BASE)   && (mem_addr <= ROM_END);
-  assign is_sram_addr  = (mem_addr >= SRAM_BASE)  && (mem_addr <= SRAM_END);
+  assign is_rom_addr   = (mem_addr >= RomBase)   && (mem_addr <= RomEnd);
+  assign is_sram_addr  = (mem_addr >= SramBase)  && (mem_addr <= SramEnd);
   assign is_periph_addr = !is_rom_addr && !is_sram_addr && !is_vrom_addr;
 
   // Look-ahead address qualification
   logic is_la_rom_addr, is_la_sram_addr, is_la_vrom_addr;
-  assign is_la_rom_addr  = (mem_la_addr >= ROM_BASE)  && (mem_la_addr <= ROM_END);
-  assign is_la_sram_addr = (mem_la_addr >= SRAM_BASE) && (mem_la_addr <= SRAM_END);
+  assign is_la_rom_addr  = (mem_la_addr >= RomBase)  && (mem_la_addr <= RomEnd);
+  assign is_la_sram_addr = (mem_la_addr >= SramBase) && (mem_la_addr <= SramEnd);
 
   // The virtual ROM window completes an access only when the simulation drives
   // vrom_mem_ready, so an implementation or emulation build must not decode it.
@@ -338,8 +338,8 @@ module picorv32_wrapper
     );
   end
 `endif
-  assign is_vrom_addr    = (mem_addr >= VROM_BASE) && (mem_addr <= VROM_END);
-  assign is_la_vrom_addr = (mem_la_addr >= VROM_BASE) && (mem_la_addr <= VROM_END);
+  assign is_vrom_addr    = (mem_addr >= VromBase) && (mem_addr <= VromEnd);
+  assign is_la_vrom_addr = (mem_la_addr >= VromBase) && (mem_la_addr <= VromEnd);
 `else
   assign is_vrom_addr    = 1'b0;
   assign is_la_vrom_addr = 1'b0;
@@ -363,20 +363,20 @@ module picorv32_wrapper
   // the virtual ROM is executable in both modes and exempt from the lockout;
   // it exists only in simulation, so it carries no security requirement.
   //
-  // Region index: SRAM_LOCK_REGION_BYTES-sized regions within the SRAM.  The
+  // Region index: SramLockRegionBytes-sized regions within the SRAM.  The
   // SRAM base is naturally aligned to its own size, so the index is a plain
   // slice of the byte address, matching write_region in km_sram_interface.
-  localparam int unsigned SRAM_REGION_INDEX_W = $clog2(km_intf_pkg::SRAM_NUM_LOCK_REGIONS);
-  localparam int unsigned SRAM_REGION_LSB = $clog2(km_intf_pkg::SRAM_LOCK_REGION_BYTES);
+  localparam int unsigned SramRegionIndexW = $clog2(km_intf_pkg::SramNumLockRegions);
+  localparam int unsigned SramRegionLsb = $clog2(km_intf_pkg::SramLockRegionBytes);
 
   logic        committed_fetch;
   logic        exec_allowed;
   logic        sram_exec_allowed;
   logic        rom_lockout_q;
-  logic [SRAM_REGION_INDEX_W-1:0] fetch_region;
+  logic [SramRegionIndexW-1:0] fetch_region;
 
   assign committed_fetch = mem_valid && mem_instr && !(|mem_wstrb);
-  assign fetch_region    = mem_addr[SRAM_REGION_LSB + SRAM_REGION_INDEX_W - 1 : SRAM_REGION_LSB];
+  assign fetch_region    = mem_addr[SramRegionLsb + SramRegionIndexW - 1 : SramRegionLsb];
   assign sram_exec_allowed = is_sram_addr && sram_exec_mode_i && sram_lock_bits_i[fetch_region];
   assign exec_allowed      = (is_rom_addr && !rom_lockout_q)
                              || is_vrom_addr
@@ -471,10 +471,10 @@ module picorv32_wrapper
   // Hold the last completed read target so the selected data source stays stable after the
   // transfer. Whether the value itself remains valid is still determined by the target memory.
   typedef enum logic [1:0] {
-    MemRdataSelRom,
-    MemRdataSelSram,
-    MemRdataSelVrom,
-    MemRdataSelPeriph
+    MEM_RDATA_SEL_ROM,
+    MEM_RDATA_SEL_SRAM,
+    MEM_RDATA_SEL_VROM,
+    MEM_RDATA_SEL_PERIPH
   } mem_rdata_sel_e;
 
   logic          current_read_complete;
@@ -485,16 +485,16 @@ module picorv32_wrapper
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      mem_rdata_sel_q <= MemRdataSelRom;
+      mem_rdata_sel_q <= MEM_RDATA_SEL_ROM;
     end else if (current_read_complete) begin
       if (is_rom_addr) begin
-        mem_rdata_sel_q <= MemRdataSelRom;
+        mem_rdata_sel_q <= MEM_RDATA_SEL_ROM;
       end else if (is_sram_addr) begin
-        mem_rdata_sel_q <= MemRdataSelSram;
+        mem_rdata_sel_q <= MEM_RDATA_SEL_SRAM;
       end else if (is_vrom_addr) begin
-        mem_rdata_sel_q <= MemRdataSelVrom;
+        mem_rdata_sel_q <= MEM_RDATA_SEL_VROM;
       end else begin
-        mem_rdata_sel_q <= MemRdataSelPeriph;
+        mem_rdata_sel_q <= MEM_RDATA_SEL_PERIPH;
       end
     end
   end
@@ -502,13 +502,13 @@ module picorv32_wrapper
   always_comb begin
     if (current_read_complete) begin
       if (is_rom_addr) begin
-        mem_rdata_sel = MemRdataSelRom;
+        mem_rdata_sel = MEM_RDATA_SEL_ROM;
       end else if (is_sram_addr) begin
-        mem_rdata_sel = MemRdataSelSram;
+        mem_rdata_sel = MEM_RDATA_SEL_SRAM;
       end else if (is_vrom_addr) begin
-        mem_rdata_sel = MemRdataSelVrom;
+        mem_rdata_sel = MEM_RDATA_SEL_VROM;
       end else begin
-        mem_rdata_sel = MemRdataSelPeriph;
+        mem_rdata_sel = MEM_RDATA_SEL_PERIPH;
       end
     end else begin
       mem_rdata_sel = mem_rdata_sel_q;
@@ -522,10 +522,10 @@ module picorv32_wrapper
 
   always_comb begin
     unique case (mem_rdata_sel)
-      MemRdataSelRom:    mem_rdata = rom_mem_rdata_gated;
-      MemRdataSelSram:   mem_rdata = sram_mem_rdata;
-      MemRdataSelVrom:   mem_rdata = vrom_mem_rdata;
-      MemRdataSelPeriph: mem_rdata = axi_adapter_mem_rdata;
+      MEM_RDATA_SEL_ROM:    mem_rdata = rom_mem_rdata_gated;
+      MEM_RDATA_SEL_SRAM:   mem_rdata = sram_mem_rdata;
+      MEM_RDATA_SEL_VROM:   mem_rdata = vrom_mem_rdata;
+      MEM_RDATA_SEL_PERIPH: mem_rdata = axi_adapter_mem_rdata;
       default:           mem_rdata = axi_adapter_mem_rdata;
     endcase
   end
@@ -565,7 +565,7 @@ module picorv32_wrapper
 
   km_sram_interface #(
     .SRAM_ADDR_WIDTH(SRAM_ADDR_WIDTH),
-    .SRAM_NUM_LOCK_REGIONS(km_intf_pkg::SRAM_NUM_LOCK_REGIONS)
+    .SRAM_NUM_LOCK_REGIONS(km_intf_pkg::SramNumLockRegions)
   ) u_sram_if (
     .clk_i           (clk_i),
     .rst_ni          (rst_ni),

@@ -15,9 +15,10 @@ the completion wait rather than in the FIFO wait under test. rom_main() runs the
 region, so the FIFO fills almost at once and the word-aligned feed waits for
 credit.
 
-The ROM must print ``SHA_FIFO_TIMEOUT`` and ``ROM_HASH_COMPUTE_FAIL`` and halt on
-``ROM_ERR_ROM_HASH_MISMATCH`` with a FAIL verdict. A ROM whose FIFO wait is
-unbounded never reaches a verdict, and the run times out.
+The ROM must report ``SEP_MSG_HMAC_FIFO_TIMEOUT``, print ``SHA_FIFO_TIMEOUT`` and
+``ROM_HASH_COMPUTE_FAIL``, and halt on ``ROM_ERR_ROM_HASH_MISMATCH`` with a FAIL
+verdict. A ROM whose FIFO wait is unbounded never reaches a verdict, and the run
+times out.
 
 The terminal outcome is a halt before any manifest transport is chosen, so no SPI
 flash is attached and ``SepBootScoreboard`` is not used, as in
@@ -40,7 +41,7 @@ from sep_base_test import sep_base_test
 from sep_reg_meta import sym
 
 _SEP_ROOT = str(Path(__file__).resolve().parents[4])
-_FW_DIR = os.path.join(_SEP_ROOT, "bootrom", "prod", "build_ot")
+_FW_DIR = os.path.join(_SEP_ROOT, "bootrom", "prod", "build")
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 
 # Printed at the end of [S14], immediately before the [S17] self-hash.
@@ -49,6 +50,9 @@ _FIFO_TIMEOUT = "SHA_FIFO_TIMEOUT"
 _HASH_FAIL = "ROM_HASH_COMPUTE_FAIL"
 # ERROR + ROM_ERR_ROM_HASH_MISMATCH (0xF005); SEP_STATUS_ID is 1 for BL0.
 _STATUS_TERMINAL = 0x0F01_F005
+# WARN + SEP_MSG_HMAC_FIFO_TIMEOUT.
+SEP_MSG_HMAC_FIFO_TIMEOUT = 0x22A
+_STATUS_FIFO_TIMEOUT = 0x0801_0000 | SEP_MSG_HMAC_FIFO_TIMEOUT
 # Must NOT appear: the self-hash succeeding, and anything after it.
 _DOWNSTREAM_MARKERS = ("ROM_HASH_VERIFIED", ">>C9b_ICCM_CLR", "FUSE: SBOOT_DIS:", "MANIFEST_OK")
 
@@ -189,6 +193,22 @@ class sep_rom_hmac_fifo_stall_terminal_test(sep_base_test):
             f"{_HASH_FAIL} did not follow {_FIFO_TIMEOUT}. Console after the stall: {after_arm}"
         )
         self.logger.info("CHK-HMAC-STALL-TIMEOUT PASS: %s then %s", _FIFO_TIMEOUT, _HASH_FAIL)
+
+        # CHK-HMAC-STALL-STATUS: the timeout is on the status channel, ahead of the
+        # terminal status, where a release build can see it.
+        assert _STATUS_FIFO_TIMEOUT in status_seq, (
+            f"cold_scratch[1] never held 0x{_STATUS_FIFO_TIMEOUT:08x} "
+            f"(WARN + SEP_MSG_HMAC_FIFO_TIMEOUT); observed {status_hex}"
+        )
+        assert _STATUS_TERMINAL not in status_seq or status_seq.index(
+            _STATUS_FIFO_TIMEOUT
+        ) < status_seq.index(_STATUS_TERMINAL), (
+            f"SEP_MSG_HMAC_FIFO_TIMEOUT did not precede the terminal status in {status_hex}"
+        )
+        self.logger.info(
+            "CHK-HMAC-STALL-STATUS PASS: cold_scratch[1]=0x%08x before the terminal status",
+            _STATUS_FIFO_TIMEOUT,
+        )
 
         # CHK-HMAC-STALL-TERMINAL: the boot failed on the self-hash and stopped.
         assert not fw_pass, "ROM signalled PASS with the HMAC FIFO stalled"

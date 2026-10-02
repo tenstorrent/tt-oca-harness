@@ -32,7 +32,7 @@ if (Impl == abr_prim_pkg::ImplXilinx) begin : gen_xilinx
     );
 end else begin : gen_generic
     abr_prim_generic_buf #(
-      .Width(Width)
+      .WIDTH(Width)
     ) u_impl_generic (
       .*
     );

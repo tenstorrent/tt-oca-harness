@@ -36,16 +36,16 @@ module km_kpv_regfile #(
 );
 
   // Derived address geometry for the flat storage array.
-  localparam int unsigned NUM_ENTRIES = NUM_SLOTS * WORDS_PER_SLOT;
+  localparam int unsigned NumEntries = NUM_SLOTS * WORDS_PER_SLOT;
 
   // Storage array: NO RESET for security.
   // Power-up value is undefined/random.
-  logic [DATA_WIDTH-1:0] mem[NUM_ENTRIES];
+  logic [DATA_WIDTH-1:0] mem[NumEntries];
 
   always_ff @(posedge clk_i) begin
     if (wipe_i) begin
       // Bulk wipe: zero every entry
-      for (int unsigned i = 0; i < NUM_ENTRIES; i++) mem[i] <= '0;
+      for (int unsigned i = 0; i < NumEntries; i++) mem[i] <= '0;
     end else begin
       if (wr_a_en_i) mem[wr_a_addr_i] <= wr_a_data_i;
     end

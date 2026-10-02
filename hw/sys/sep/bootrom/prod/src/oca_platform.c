@@ -308,10 +308,7 @@ static oca_result_t plat_decrypt_payload(const oca_decrypt_input_t *in,
 // nothing here verifies a PQC signature, so authorizing one would hand a key to
 // a verifier that cannot check it.
 //
-// NOTE the addresses are the generated symbols, not the previous ROM's
-// CHIPLET_PUBK_REVOKE_BASE + 0x100 / + 0x120 arithmetic, which landed on
-// SPI_PHY_DLL_SLAVE and the middle of CHIPLET_PUBK_HASH0. That path was never
-// exercised -- only ROM slot 0 is used by any test -- so the bug sat latent.
+// The fuse-bank addresses are the generated SEP_TOP_SEP_EFUSE_MAP_* symbols.
 // The RDL's description text spans the full octets, [7:0] and [15:8]. This ROM
 // narrows each: the top two slots of both ROM octets are reserved, so the
 // classical band is [5:0] and the PQC band is [13:8]. The narrowing lives here

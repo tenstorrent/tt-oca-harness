@@ -23,14 +23,14 @@
 `include "ocah_fcov_macros.svh"
 
 module smu_lc_fcov #(
-  parameter bit SepPresent = 1'b1
+  parameter bit SEP_PRESENT = 1'b1
 ) (
   input wire clk_smu_i,
   input wire rst_cold_ni,
   input wire rst_primary_smc_clk_ni,
 
   // Lifecycle broadcast at the SMU boundary.
-  input wire [2*smc_pkg::LC_STATE_WIDTH-1:0] lc_state_i,
+  input wire [2*smc_pkg::LcStateWidth-1:0] lc_state_i,
   input wire [1:0] lcc_demote_state_1_i,
   input wire [1:0] lcc_demote_state_2_i,
 
@@ -68,20 +68,21 @@ module smu_lc_fcov #(
   // SEP=0 composition, only elaborated without SEP: the lifecycle broadcast at
   // its SEP-absent value, every SEP-facing output at its tie-off value when the
   // primary domain comes up, and the two configuration presets differing in
-  // nothing but the SEP parameter.
-  if (!SepPresent) begin : g_nosep
+  // nothing but the SEP field.
+  if (!SEP_PRESENT) begin : g_nosep
     wire lc_state_sep0_is_f0_e = primary_rose_e && (lc_state_i === LcStateSep0);
     wire sep_outputs_tied_off = (sep_global_base_i === '0) && (sep_region_size_i === '0)
         && (lcc_demote_state_1_i === 2'b00) && (lcc_demote_state_2_i === 2'b00)
         && (sep_fuse_sense_done_i === 1'b0) && (lc_state_i === LcStateSep0);
     wire nosep_sep_outputs_tied_off_e = primary_rose_e && sep_outputs_tied_off;
-    wire nosepcfg_fields_equal_defaultcfg_e =
-        primary_rose_e && (smu_pkg::NoSepCfg == smu_pkg::DefaultCfg);
+    wire nosepcfg_differs_only_in_sep_e = primary_rose_e
+        && ((smu_pkg::NoSepCfg ^ smu_pkg::DefaultCfg)
+            == smu_pkg::smu_cfg_t'{SEP: 1'b1, default: '0});
     `OCAH_FCOV_COVER(c_lc_state_sep0_is_f0, lc_state_sep0_is_f0_e, clk_smu_i, in_reset)
     `OCAH_FCOV_COVER(c_nosep_sep_outputs_tied_off, nosep_sep_outputs_tied_off_e, clk_smu_i,
                      in_reset)
-    `OCAH_FCOV_COVER(c_nosepcfg_fields_equal_defaultcfg, nosepcfg_fields_equal_defaultcfg_e,
-                     clk_smu_i, in_reset)
+    `OCAH_FCOV_COVER(c_nosepcfg_differs_only_in_sep, nosepcfg_differs_only_in_sep_e, clk_smu_i,
+                     in_reset)
   end
 
 `ifndef VERILATOR
@@ -98,7 +99,7 @@ module smu_lc_fcov #(
     cp_lc_state: coverpoint lc_state {
       bins sep0 = {LcStateSep0};
       bins other = default;
-      ignore_bins sep_present = {LcStateSep0} with (SepPresent);
+      ignore_bins sep_present = {LcStateSep0} with (SEP_PRESENT);
     }
     // Each demote output is a differential code: 2'b10 not demoted, 2'b01
     // demoted. 2'b00 and 2'b11 are not codes, and the demote register is

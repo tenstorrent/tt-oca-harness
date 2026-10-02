@@ -1,33 +1,26 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// SEP reset-controller + WDT sanity firmware test (OSS port combining the reference suite
-// sep_reset_ctrl_csr_test and wdt_sanity_test). Two phases, one EL2 boot:
+// SEP reset-controller and watchdog sanity test, in one CPU boot on bare `sep`.
 //
-// PHASE A -- reset controller (sep_reset_ctrl):
-//   * SW_RESET_N reads its reset default (km held; crypto/TRNG/ABR released).
-//   * For each released crypto IP (otbn/aes/hmac/kmac/abr) and the TRNG domain
-//     (esrc/csrng/edn): write a probe CSR, confirm it landed, pulse ONLY that IP's
-//     SW_RESET_N bit low->high, confirm the probe returned to its reset default
-//     -- proving the reset wire reached the IP -- and confirm the probe is
-//     writable again after the release.
-//   * SW_RESET_N is back at default afterwards.
-//   * A write + a read to the unmapped gap just past the reset_ctrl window each
-//     raise a D-bus error -> VeeR NMI; exactly 2 NMIs must be counted.
+// Phase A, reset controller:
+//   * the software reset register reads its reset default;
+//   * for each crypto IP (otbn/aes/hmac/kmac/abr) and the TRNG domain
+//     (esrc/csrng/edn), a pulse of only that IP's reset returns its probe
+//     register to its reset value, leaves a probe in another domain unchanged,
+//     and leaves the probe writable after the release;
+//   * the software reset register is back at its default afterwards;
+//   * a write and a read to the unmapped gap past the reset-controller window
+//     each raise a bus-error NMI; exactly two must be counted.
 //
-// PHASE B -- watchdog (wdt_sanity):
-//   * Arm the WDT; the bark fires the NMI (sep.sv nmi_int = intr_wdog_timer_bark).
-//   * 1st bark: the handler disables the WDT; main then sees the count frozen
-//     non-zero, pets it to 0, and confirms it stays 0 while disabled.
-//   * Re-enable: the 2nd bark fires; the firmware reports PASS and lets the WDT
-//     run on to BITE, whose reset request (wdt_timer_rst_req_o) the cocotb test
-//     observes.
+// Phase B, watchdog:
+//   * the first bark fires the NMI and the handler disables the watchdog; the
+//     count is then frozen non-zero, a pet clears it, and it stays 0;
+//   * after re-enable the second bark fires, and the watchdog runs on to bite,
+//     whose reset request the testbench checks.
 //
-// All paths are internal to bare `sep`. A unified NMI handler serves both NMI
-// sources, distinguished by the WDT bark status bit (Phase A has the WDT
-// disabled, Phase B sets the bark bit). Checks accumulate into `errors`; main()
-// returns it (start.S emits PASS/FAIL magic). Mirrors the reference suite checking; PASS is
-// signalled by returning from main (reference suite calls test_pass()).
+// One NMI handler serves both phases; the watchdog bark status tells the two
+// NMI sources apart.
 
 #include <stdint.h>
 #include <stddef.h>
@@ -98,9 +91,9 @@
 
 #define RESET_CTRL_BAD_ADDR (SEP_RESET_CTRL_SW_RESET_N + 0x8u) // unmapped gap
 
-// WDT thresholds in WDT-clock ticks. Small for Verilator throughput (clk_wdt_i is
-// ~1000x slower than the core clock); the bark->NMI and bite->reset mechanisms
-// are threshold-independent. Bite > bark so bark fires first.
+// WDT thresholds in WDT-clock ticks, small because the WDT clock is much slower
+// than the core clock; the bark->NMI and bite->reset paths do not depend on the
+// values. Bite > bark so the bark fires first.
 #define WDT_BARK_SIM 4u
 #define WDT_BITE_SIM 10u
 
@@ -120,8 +113,8 @@ void nmi_handler(void) {
         }
         // 2nd bark: leave the WDT enabled so it advances to BITE.
     } else {
-        // D-bus error NMI: read + unlock the captured error address so nmi_int
-        // deasserts (mdseac=0xFC0 capture, mdeau=0xBC0 unlock), then count it.
+        // D-bus error NMI: read and unlock the captured error address (mdseac,
+        // mdeau) so the NMI deasserts, then count it.
         uint32_t mdseac;
         __asm__ volatile("csrr %0, 0xFC0" : "=r"(mdseac));
         (void)mdseac;
@@ -131,20 +124,13 @@ void nmi_handler(void) {
     __asm__ volatile("fence" ::: "memory");
 }
 
-// One IP reset-wire check, both halves of CHK-SWRST-WIRE: write this IP's probe
-// and a neighbour domain's probe, pulse only this IP's reset bit, then require
-// this probe back at its reset default AND the neighbour probe unchanged. The
-// neighbour is what makes the pulse per-IP rather than global: without it a
-// reset network that pulsed every domain on any single-bit write would pass
-// identically. nb_addr must sit in a different SW_RESET_N domain from bit_mask
-// (esrc/csrng/edn all share SEP_SW_RESET_N_TRNG_BIT, so their neighbour is a
-// non-TRNG block).
-//
-// After the pulse the domain must be writable again: the probe write is
-// repeated and must read back write_val, which differs from the reset value,
-// so a domain left held in reset (reads its reset value, drops writes) fails.
-// A second pulse then returns the probe to its reset value, so the next check
-// starts from the reset state. Returns 1 on failure.
+// Checks one IP reset wire: write this IP's probe and a neighbour probe in
+// another reset domain, pulse only this IP's reset, then require this probe back
+// at its reset value and the neighbour unchanged, so a reset that hits every
+// domain fails. The probe write is then repeated and must read back, so a domain
+// left in reset fails; a second pulse returns the probe to its reset value for
+// the next check. nb_addr must be outside this IP's reset domain (esrc, csrng
+// and edn share the TRNG reset). Returns 1 on failure.
 static int check_reset_wire(const char *name, uint32_t bit_mask, uint32_t probe_addr,
                             uint32_t write_val, uint32_t expect_after_rst, const char *nb_name,
                             uint32_t nb_addr, uint32_t nb_val) {

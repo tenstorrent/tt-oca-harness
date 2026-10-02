@@ -26,7 +26,7 @@ granularity") and ``valid[63]`` ("if clear, they pass through with their
 address unchanged"). ``hw/sys/sep/doc/fabric.adoc`` states that the AP and
 STEE output remaps replace the address with the programmed region offset, so
 a valid region rewrites the address to
-``{offset[55:IdxStart], adjusted[IdxStart-1:0]}`` with IdxStart the region
+``{offset[55:IDX_START], adjusted[IDX_START-1:0]}`` with IDX_START the region
 granularity (``sep_outbound_remap_seq.IDX_START``).
 """
 

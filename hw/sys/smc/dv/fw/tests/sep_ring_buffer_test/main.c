@@ -4,55 +4,23 @@
 /*
  * SEP Ring Buffer Overflow/Underflow Test
  *
- * Tests SEP status ring buffer boundary conditions with cocotb driver.
- *
- * Test Scenarios:
- * 1. OVERFLOW: Write 600 entries (exceeds 512 capacity)
- *    - Verify newest 512 entries retained
- *    - Verify oldest 88 entries overwritten
- * 2. UNDERFLOW: Read from empty buffer
- *    - Verify returns 0
- *    - Verify no crashes
- * 3. EXACT_CAPACITY: Write exactly 512 entries
- *    - Verify all entries fit
- *    - Verify no overflow
- *
- * Specification Reference (smc_rom.adoc:1154):
- * "This ensures continuous operation without message loss due to buffer
- *  overflow, with newest entries automatically replacing the oldest when
- *  the buffer reaches capacity."
+ * Verifies that the target ROM's SEP status ring buffer answers one successful GET_SEP_STATUS
+ * for each entry it retains of those the testbench wrote, at most one less than its capacity,
+ * and that further reads report an empty buffer. The entry values are logged, not compared.
+ * The testbench selects the overflow or nominal case by the number of entries it writes.
  */
 
 #include "occp_test_common.h"
 #include "smc_defines.h"
 #include "smc_test.h"
 
-#include <string.h>
-
-/* Scratch register addresses */
-#define SMC_SCRATCH_10_ADDR (SMC_CPU_CTRL_SCRATCH_10__REG_ADDR)
-#define SMC_SCRATCH_12_ADDR (SMC_CPU_CTRL_SCRATCH_12__REG_ADDR)
-#define SMC_SCRATCH_5_ADDR (SMC_CPU_CTRL_SCRATCH_5__REG_ADDR)
-
-/* Coordination magic number */
+/* Value the testbench writes to scratch 10 once the entries are written */
 #define COCOTB_READY_MAGIC 0xC0C07B00
 
-/* Ring buffer size */
 #define SMC_RING_BUFFER_SIZE 512
 
-/* Status message format constants */
-#define SMC_STATUS_FW_ID_SEP_BL0 0x1
-#define SMC_STATUS_TYPE_STATUS 0x1
-#define SMC_STATUS_TYPE_WARNING 0x8
-#define SMC_STATUS_TYPE_ERROR 0xF
-
-/*
- * Wait for cocotb driver to signal that entries are ready.
- */
-static bool wait_for_cocotb_ready(test_context_t *ctx, uint32_t timeout_ms) {
-    (void)ctx;
-    (void)timeout_ms;
-
+/* Wait for the testbench to signal that the entries are written. */
+static bool wait_for_cocotb_ready(void) {
     uint32_t iterations = 0;
     uint32_t last_printed_value = 0;
 
@@ -82,12 +50,8 @@ static bool wait_for_cocotb_ready(test_context_t *ctx, uint32_t timeout_ms) {
     return false;
 }
 
-/*
- * Read number of entries written by cocotb from Scratch 12.
- */
-static uint32_t get_entry_count(test_context_t *ctx) {
-    (void)ctx;
-
+/* Read the number of entries the testbench wrote. */
+static uint32_t get_entry_count(void) {
     simputs("\n=== Reading Entry Count ===\n");
     uint32_t count = read_scratch(12);
 
@@ -97,11 +61,11 @@ static uint32_t get_entry_count(test_context_t *ctx) {
 }
 
 static bool read_and_validate_sep_status_buffer(test_context_t *ctx) {
-    uint32_t total_written = get_entry_count(ctx);
+    uint32_t total_written = get_entry_count();
     simputshex32("Total entries written: ", total_written);
 
     simputs("\n=== Reading Buffer Contents ===\n");
-    /* one entry always empty in the buffer, so capacity is one less than the total written */
+    /* The ring keeps one slot empty, so it retains at most SMC_RING_BUFFER_SIZE - 1 entries */
     for (uint32_t i = 0;
          i <
          (total_written > (SMC_RING_BUFFER_SIZE - 1) ? (SMC_RING_BUFFER_SIZE - 1) : total_written);
@@ -124,7 +88,7 @@ static bool read_and_validate_sep_status_buffer(test_context_t *ctx) {
 
     simputs("\n=== Verifying Buffer Empty ===\n");
     uint32_t status_after = 0;
-    /* give it a few underflow tries */
+    /* Every read past the last retained entry must report an empty buffer */
     for (int i = 0; i < 10; i++) {
         int result = occp_send_get_sep_status_command(ctx, ctx->slave_addr, &status_after);
 
@@ -141,25 +105,17 @@ static bool read_and_validate_sep_status_buffer(test_context_t *ctx) {
     return true;
 }
 
-/*
- * Finalize test results and report to cocotb.
- */
+/* Report the overall result via scratch registers. */
 static void finalize_test_results(test_context_t *ctx) {
-    uint32_t result_code;
-
     simputs("\n========================================\n");
     simputs("FINAL TEST RESULTS\n");
     simputs("========================================\n");
 
     if (ctx->overall_result) {
         simputs("\n*** ALL TESTS PASSED ***\n");
-        result_code = SMC_SCRATCHPAD_SIM_PASS_CODE;
-        (void)result_code;
         test_pass(0);
     } else {
         simputs("\n*** TESTS FAILED ***\n");
-        result_code = SMC_SCRATCHPAD_SIM_FAIL_CODE;
-        (void)result_code;
         test_fail(0);
     }
 }
@@ -182,7 +138,7 @@ int main(void) {
     ctx.test_upper_addr_bound = OCCP_TEST_BUFFER_SAFE_UPPER_ADDR;
     ctx.overall_result = true;
 
-    if (!wait_for_cocotb_ready(&ctx, 5000)) {
+    if (!wait_for_cocotb_ready()) {
         simputs("FAIL: Cocotb ready timeout\n");
         test_fail(0);
     }

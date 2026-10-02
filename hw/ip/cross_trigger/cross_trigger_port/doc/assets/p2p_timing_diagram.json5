@@ -28,7 +28,5 @@
     'G->H wire',
     'I<->J source domain',
   ],
-  head: { text: 'Point-to-point request / acknowledge handshake' },
-  foot: { text: 'Illustrative timing; delays are not to scale.' },
   config: { hscale: 1, marks: false },
 }

@@ -37,7 +37,7 @@ procedures; it does not require the plaintext token in the RTL database.
 |Token |Purpose |Expected digest
 |RMA_SIP_TOKEN |Authorize SiP RMA transitions |`RMA_SIP_TOKEN_DIGEST` in OTP
 |RMA_CHIPLET_TOKEN |Authorize chiplet RMA transitions |`RMA_CHIPLET_TOKEN_DIGEST` in OTP
-|SEC_DIS_TOKEN |Emergency lifecycle-control and fuse-sense bypass
+|SEC_DIS_TOKEN |Emergency debug access to a part whose fuse sensing fails
 |Hardware constant, independent of OTP
 |===
 
@@ -55,8 +55,12 @@ and expected digest must not enter scannable storage.
 
 RMA comparisons require both a valid computed digest and completed fuse sensing,
 because their expected values come from OTP shadows. SEC_DIS requires only a
-valid digest: its expected value is implemented in gates. This allows recovery
-when fuse sensing fails. SEC_DIS follows the feature-control rules in the
+valid digest: its expected value is implemented in gates, so a SEC_DIS match
+holds before fuse sensing completes. A match forces feature control on, stops
+fuse sensing, and opens eFuse shadow-map reads. It does not release SEP reset;
+use the IC_RESET `sep_reset_n` override. Present the SEC_DIS token only
+to a part whose fuse sensing fails, and apply a cold reset once the match is
+established. SEC_DIS follows the feature-control rules in the
 Lifecycle Controller chapter, with the metal-programmable enable also required.
 The design requirement is A0-only use and permanent removal by a metal-mask ECO
 in later A1/B0 revisions; this is not a software-disable mechanism. See
@@ -154,6 +158,16 @@ SEC_DIS has a separate bypass output qualified by the revision enable.
 [[sep-token-processing-figure]]
 .SEP token processing
 image::sep-token-processing.svg[alt="efuse_token_processing: three token lanes, each with its token array, SHA-256 engine and triple-redundant comparator, followed by the match flops, the sticky fault bits, the security-disable logic and the shadow map gate",width=100%,pdfwidth=100%]
+
+Each of the three rows in <<sep-token-processing-figure>> is one token lane,
+from its token array and go bit in `efuse_mmr_reg`, through its SHA-256 engine,
+to its comparator. The expected digests and `fuse_sense_done_i` are named at
+their point of use; both come from the eFuse shadow registers at the lower
+left. `fuse_sense_done_i` gates only the two RMA comparators. The comparators'
+match codes and the sticky fault bits are also readable in the
+`*_TOKEN_MATCH` and `TOKEN_MATCH_FAULT` status registers. The RMA_CHIPLET match
+line crosses the RMA_SIP fault line without connecting; the gap marks the
+crossing.
 
 [[post-token-matching-handling]]
 == Post Token Matching Handling

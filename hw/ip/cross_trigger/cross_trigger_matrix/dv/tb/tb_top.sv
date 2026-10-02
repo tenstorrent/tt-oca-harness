@@ -8,7 +8,7 @@
 // cross_trigger_port tb_tops). The shared AXI VIP's AXI4-Lite master binds
 // to the flattened axil_* ports via AxiLiteBus.from_prefix(dut, "axil"); the
 // adapter below repacks them into the pulp-platform req/resp structs the DUT
-// expects. The matrix geometry (NUM_CT_DST x NUM_CT_SRC) comes from the
+// expects. The matrix geometry (NumCtDst x NumCtSrc) comes from the
 // register-map-derived package localparams. Clock and reset are driven from
 // cocotb.
 
@@ -46,10 +46,10 @@ module cross_trigger_matrix_tb_top
   output wire [1:0]             axil_rresp,
 
   // Cross trigger destination inputs (sources for the matrix)
-  input  wire [NUM_CT_DST-1:0]  ct_dst,
+  input  wire [NumCtDst-1:0]  ct_dst,
 
   // Cross trigger source outputs (sinks for the matrix)
-  output wire [NUM_CT_SRC-1:0]  ct_src
+  output wire [NumCtSrc-1:0]  ct_src
 );
 
   ctm_axil_req_t  axil_req;

@@ -32,7 +32,7 @@ module sep_crypto #(
   parameter int unsigned SRAM_LATENCY = 1,    // Adams Bridge SRAM read latency in cycles.
   parameter int unsigned EXT_TRNG_NUM_AXIS = 3,  // Number of external TRNG AXI-Stream ports and
                                                  // entropy muxes; must equal
-                                                 // SEP_CRYPTO_EDN_ENDPOINT_COUNT (3).
+                                                 // SepCryptoEdnEndpointCount (3).
   parameter bit [255:0] SEP_SEC_DISABLE_TOKEN = 256'b0  // Netlist-embedded secure-disable token
                                                         // digest; replace at synthesis.
 ) (
@@ -98,7 +98,7 @@ module sep_crypto #(
                                                                   // eFuse token processing,
                                                                   // active-high; exported to the
                                                                   // SMC.
-  output logic [2*sep_pkg::LC_STATE_BIT_WIDTH-1:0]     lc_state_o,  // Differentially encoded lifecycle state from the eFuse shadow registers; exported
+  output logic [2*sep_pkg::LcStateBitWidth-1:0]     lc_state_o,     // Differentially encoded lifecycle state from the eFuse shadow registers; exported
                                                                     // to the SMC.
   output sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t feat_ctrl_o,  // Per-feature enable vector (1 = enabled) derived from the LC state, the SiP and
                                                                      // system disable fuses, and the DEMOTE registers; all ones while security is
@@ -278,14 +278,14 @@ module sep_crypto #(
   //   [8:7]   CSRNG  (2 alerts)
   //   [10:9]  EDN    (2 alerts)
 
-  localparam int unsigned NUM_CRYPTO_ALERTS = 11;
+  localparam int unsigned NumCryptoAlerts = 11;
 
-  prim_alert_pkg::alert_tx_t [NUM_CRYPTO_ALERTS-1:0] crypto_alert_tx;
-  prim_alert_pkg::alert_rx_t [NUM_CRYPTO_ALERTS-1:0] crypto_alert_rx;
-  logic [NUM_CRYPTO_ALERTS-1:0] crypto_alert_pulse;
-  logic [NUM_CRYPTO_ALERTS-1:0] crypto_alert_integ_fail;
+  prim_alert_pkg::alert_tx_t [NumCryptoAlerts-1:0] crypto_alert_tx;
+  prim_alert_pkg::alert_rx_t [NumCryptoAlerts-1:0] crypto_alert_rx;
+  logic [NumCryptoAlerts-1:0] crypto_alert_pulse;
+  logic [NumCryptoAlerts-1:0] crypto_alert_integ_fail;
 
-  for (genvar i = 0; i < NUM_CRYPTO_ALERTS; i++) begin : gen_alert_receivers
+  for (genvar i = 0; i < NumCryptoAlerts; i++) begin : gen_alert_receivers
     prim_alert_receiver #(
       .AsyncOn   (1'b0),
       .SkewCycles(1)
@@ -305,14 +305,14 @@ module sep_crypto #(
   assign crypto_alert_o = (|crypto_alert_pulse) | (|crypto_alert_integ_fail);
 
   // Native EDN wires: [0]=AES, [1]=KMAC, [2]=OTBN RND, [3]=OTBN URND — fed from mux1 via drbg_axis_edn_adapter
-  edn_pkg::edn_req_t [sep_crypto_pkg::SEP_CRYPTO_AXIS_EDN_CLIENT_COUNT-1:0] crypto_edn_req;
-  edn_pkg::edn_rsp_t [sep_crypto_pkg::SEP_CRYPTO_AXIS_EDN_CLIENT_COUNT-1:0] crypto_edn_rsp;
+  edn_pkg::edn_req_t [sep_crypto_pkg::SepCryptoAxisEdnClientCount-1:0] crypto_edn_req;
+  edn_pkg::edn_rsp_t [sep_crypto_pkg::SepCryptoAxisEdnClientCount-1:0] crypto_edn_rsp;
 
   // Native EDN wires for the entropy pool — fed from mux2 via drbg_axis_edn_adapter (N=1).
   // Packed [0:0] arrays so the adapter's NUM_ENDPOINTS-wide ports bind cleanly; index [0]
   // connects to the scalar entropy_pool_edn_req_i/rsp_o pool interface.
-  edn_pkg::edn_req_t [sep_crypto_pkg::SEP_CRYPTO_POOL_EDN_CLIENT_COUNT-1:0] pool_edn_req;
-  edn_pkg::edn_rsp_t [sep_crypto_pkg::SEP_CRYPTO_POOL_EDN_CLIENT_COUNT-1:0] pool_edn_rsp;
+  edn_pkg::edn_req_t [sep_crypto_pkg::SepCryptoPoolEdnClientCount-1:0] pool_edn_req;
+  edn_pkg::edn_rsp_t [sep_crypto_pkg::SepCryptoPoolEdnClientCount-1:0] pool_edn_rsp;
 
   //=========================================================================
   // External TRNG / DRBG Entropy Source Muxing
@@ -330,7 +330,7 @@ module sep_crypto #(
   drbg_pkg::drbg_axis_req_t [EXT_TRNG_NUM_AXIS-1:0] drbg_int_axis_req;
   drbg_pkg::drbg_axis_rsp_t [EXT_TRNG_NUM_AXIS-1:0] drbg_int_axis_rsp;
   logic trng_reset_active;
-  logic [sep_crypto_pkg::SEP_CRYPTO_AXIS_EDN_CLIENT_COUNT-1:0] crypto_edn_endpoint_cancel;
+  logic [sep_crypto_pkg::SepCryptoAxisEdnClientCount-1:0] crypto_edn_endpoint_cancel;
 
   // Muxed AXI-Stream outputs (one per mux)
   drbg_pkg::drbg_axis_req_t [EXT_TRNG_NUM_AXIS-1:0] entropy_muxed_req;
@@ -651,12 +651,12 @@ module sep_crypto #(
   //     now lives inside the CALIPTRA-only wrapper, so there is no OKAY
   //     responder here; use an AXI4-Lite err-slave (mirrors u_abr_axi_err_slv).
   prim_axi_lite_err_slv #(
-    .AXI_ADDR_WIDTH (km_intf_pkg::KM_AXI_ADDR_WIDTH),
-    .AXI_DATA_WIDTH (km_intf_pkg::KM_AXI_DATA_WIDTH),
+    .AXI_ADDR_WIDTH (km_intf_pkg::KmAxiAddrWidth),
+    .AXI_DATA_WIDTH (km_intf_pkg::KmAxiDataWidth),
     .axil_req_t     (km_intf_pkg::km_axil_req_t),
     .axil_resp_t    (km_intf_pkg::km_axil_resp_t),
     .RESP           (axi_pkg::RESP_DECERR),
-    .RESP_WIDTH     (km_intf_pkg::KM_AXI_DATA_WIDTH),
+    .RESP_WIDTH     (km_intf_pkg::KmAxiDataWidth),
     .RESP_DATA      (32'hBADCAB1E),
     .MAX_TRANS      (1)
   ) u_abr_key_err_slv (
@@ -801,7 +801,7 @@ module sep_crypto #(
   );
 
   sep_lifecycle_ctrl #(
-    .LC_STATE_WIDTH(sep_pkg::LC_STATE_BIT_WIDTH)
+    .LC_STATE_WIDTH(sep_pkg::LcStateBitWidth)
   ) u_sep_lifecycle_ctrl (
     .clk_i                (clk_i),
     .rst_ni               (rst_ni),
@@ -847,10 +847,10 @@ module sep_crypto #(
   assign km_otp_data.demotion_state_2 = lcc_demote_state_2_o;
 
   // Dual-rail encode every 256-bit KM-routed OTP field.
-  // OutputFlop=0: purely combinational encode (no pipeline latency).
+  // OUTPUT_FLOP=0: purely combinational encode (no pipeline latency).
   prim_diff_encode_multi #(
-    .Width      (256),
-    .OutputFlop (1'b0)
+    .WIDTH       (256),
+    .OUTPUT_FLOP (1'b0)
   ) u_chiplet_uid_enc (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),
@@ -859,8 +859,8 @@ module sep_crypto #(
   );
 
   prim_diff_encode_multi #(
-    .Width      (256),
-    .OutputFlop (1'b0)
+    .WIDTH       (256),
+    .OUTPUT_FLOP (1'b0)
   ) u_class_key_enc (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),
@@ -869,8 +869,8 @@ module sep_crypto #(
   );
 
   prim_diff_encode_multi #(
-    .Width      (256),
-    .OutputFlop (1'b0)
+    .WIDTH       (256),
+    .OUTPUT_FLOP (1'b0)
   ) u_sip_uid_enc (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),
@@ -879,8 +879,8 @@ module sep_crypto #(
   );
 
   prim_diff_encode_multi #(
-    .Width      (256),
-    .OutputFlop (1'b0)
+    .WIDTH       (256),
+    .OUTPUT_FLOP (1'b0)
   ) u_sys_uid_enc (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),
@@ -889,8 +889,8 @@ module sep_crypto #(
   );
 
   prim_diff_encode_multi #(
-    .Width      (256),
-    .OutputFlop (1'b0)
+    .WIDTH       (256),
+    .OUTPUT_FLOP (1'b0)
   ) u_sep_chiplet_id_enc (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),
@@ -899,8 +899,8 @@ module sep_crypto #(
   );
 
   prim_diff_encode_multi #(
-    .Width      (256),
-    .OutputFlop (1'b0)
+    .WIDTH       (256),
+    .OUTPUT_FLOP (1'b0)
   ) u_sep_sip_id_enc (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),
@@ -909,8 +909,8 @@ module sep_crypto #(
   );
 
   prim_diff_encode_multi #(
-    .Width      (256),
-    .OutputFlop (1'b0)
+    .WIDTH       (256),
+    .OUTPUT_FLOP (1'b0)
   ) u_sep_sys_id_enc (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),
@@ -974,7 +974,7 @@ module sep_crypto #(
   };
 
   drbg_axis_edn_adapter #(
-    .NUM_ENDPOINTS(sep_crypto_pkg::SEP_CRYPTO_AXIS_EDN_CLIENT_COUNT)
+    .NUM_ENDPOINTS(sep_crypto_pkg::SepCryptoAxisEdnClientCount)
   ) u_axis_edn_crypto_s3c_scan (
     .clk_i              (clk_i),
     .rst_ni             (rst_ni),
@@ -998,7 +998,7 @@ module sep_crypto #(
   assign entropy_pool_edn_rsp_o  = pool_edn_rsp[0];
 
   drbg_axis_edn_adapter #(
-    .NUM_ENDPOINTS(sep_crypto_pkg::SEP_CRYPTO_POOL_EDN_CLIENT_COUNT)
+    .NUM_ENDPOINTS(sep_crypto_pkg::SepCryptoPoolEdnClientCount)
   ) u_axis_edn_pool_s3c_scan (
     .clk_i              (clk_i),
     .rst_ni             (rst_ni),

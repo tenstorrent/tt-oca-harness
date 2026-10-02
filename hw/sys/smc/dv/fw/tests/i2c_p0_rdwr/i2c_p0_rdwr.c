@@ -2,36 +2,15 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /**
- * @file main.c
+ * @file i2c_p0_rdwr.c
  * @brief I2C P0 Read-Write Test - Internal I2C Communication
  *
- * =============================================================================
- * Test Configuration: I2C_0 Controller <-> I2C_1 Target
- * =============================================================================
- *
- * Approach: Configure I2C_0 as Controller (Master) and I2C_1 as Target (Slave)
- *           Use i2c_opentitan functions for write/read transactions
- *
- * Steps:
- *   1. Configure I2C_0 Controller settings (speed, address mode)
- *   2. Configure I2C_1 Target settings (address, FIFO thresholds)
- *   3. Write known data pattern from Controller to Target
- *   4. Read back data from Target to Controller
- *   5. Compare written and read data
- *
- * =============================================================================
- * Test Architecture: Two-Level I2C Control
- * =============================================================================
- *
- * LEVEL 1: Wrapper Control (0xC0009E00)
- *   - Controls GPIO pad multiplexing
- *   - Selects I2C mode (Controller/Target)
- *
- * LEVEL 2: IP Control (0xC0009000 + 0x200*idx)
- *   - OpenTitan I2C IP protocol layer
- *   - Handles timing, FIFO, interrupts, transactions
- *
- * =============================================================================
+ * Verifies a write and a register-style read between two internal instances,
+ * I2C_0 as controller and I2C_1 as target, at standard speed with 7-bit
+ * addressing. The target has no register model: firmware loads the read reply
+ * into the target, so the read checks the transfer, not that the written data
+ * was stored. Before the read, the test checks that the target is idle with
+ * its reply loaded, no events pending and its receive FIFO empty.
  */
 
 #include <stdint.h>
@@ -77,39 +56,12 @@ int main(void) {
     uint16_t read_value = 0;           // Data read back from register
     int ret;
 
-    /* Poll bound for this test's own proof-path waits, derived rather than
-     * inherited.
-     *
-     * I2C_TIMEOUT_DEFAULT is shared with the clock-stretching tests, which
-     * legitimately wait far longer than a plain transfer, so it is sized for
-     * them: at 200000 iterations it costs roughly 86 ms of simulated time to
-     * expire. This test's cocotb sequence gives up after 5 ms
-     * (smc_i2c_p0_rdwr.py, setup_timeout = 5_000_000 ns), so a wait bounded by
-     * the shared constant can only ever end as a bare harness timeout -- the
-     * firmware's own 0xBAD000xx line and last-state print never reach the log,
-     * which is the whole diagnostic value of having them.
-     *
-     * Derivation. Both waits below are single-MMIO-read polls (read STATUS,
-     * test one bit, increment): i2c_controller_wait_idle at
-     * i2c_opentitan.c:588-600 and the framed receive's loops at :1695-1700,
-     * :1717-1722. Such an iteration costs ~430 ns of simulated time, measured
-     * from two independent kept runs (a 10000-iteration STATUS drain that
-     * expired over 4.32 ms in smc_i2c_p1_dma_test, and a 2002-iteration
-     * 5-register loop over 3.68 ms in smc_i2c_rw_test, less the 141 ns/iteration
-     * bare-loop overhead measured in smc_i2c_smbus_model_test).
-     *
-     * The healthy Step 4 transaction is 5 bytes at 100 kHz and took 455 us in
-     * the kept run, i.e. ~1060 of these iterations. 4000 is ~3.8x that -- and
-     * because both the healthy iteration count and the expiry time scale with
-     * the same per-iteration cost, that 3.8x margin holds whatever the true
-     * cost turns out to be. At the measured 430 ns it expires after ~1.7 ms,
-     * leaving over 3 ms of the sequence's 5 ms budget for the firmware to print
-     * why and for the testbench to observe the failure. */
+    /* Poll bound for the write leg's waits. It covers the healthy transfer with
+     * about 4x margin and expires well inside the testbench's completion wait,
+     * so a failure prints its own diagnostics instead of ending in a testbench
+     * timeout. I2C_TIMEOUT_DEFAULT is sized for clock-stretching tests and
+     * expires too late for that. */
     const uint32_t I2C_RDWR_WAIT_BOUND = 4000;
-
-    //-------------//
-    // RESET & PLL //
-    //-------------//
 
     simputs("\n");
     simputs("################################################\n");
@@ -126,8 +78,7 @@ int main(void) {
     write_scratch(1, 0x00000011);
 
     //=========================================================================
-    // Step 2: LEVEL 1 - Wrapper Control Enable
-    //         Enable GPIO pad mux for both Controller and Target
+    // Step 2: Wrapper enable for both the controller and the target
     //=========================================================================
     write_scratch(1, 0x00000020);
     simputs("\nStep 2: LEVEL 1 - Wrapper Control Enable\n");
@@ -140,12 +91,11 @@ int main(void) {
     write_scratch(1, 0x00000021);
 
     //=========================================================================
-    // Step 3: LEVEL 2 - I2C IP Initialization
+    // Step 3: I2C IP Initialization
     //=========================================================================
     write_scratch(1, 0x00000030);
     simputs("\nStep 3: LEVEL 2 - I2C IP Initialization\n");
 
-    // Configure Controller timing
     i2c_timing_physical_t physical_params = {.speed = I2C_SPEED_STANDARD,
                                              .clock_period_nanos = 5,
                                              .sda_rise_nanos = 300,
@@ -155,13 +105,8 @@ int main(void) {
     i2c_timing_config_t computed_timing;
     ret = i2c_compute_timing_from_physical(&physical_params, &computed_timing);
     if (ret != I2C_OK) {
-        /* Do not fall back silently. The fallback reconfigured both instances
-         * from i2c_get_default_timing() while the banner below still asserted
-         * "Standard mode (100 kHz)", so a failed computation changed the
-         * configuration under test without changing the verdict -- and the
-         * fallback's own outcome was never inspected either. The computed
-         * timing is a precondition of every transfer this test makes, so a
-         * failure here is a test failure. */
+        /* Every transfer depends on the computed timing, so there is no
+         * fallback. */
         simputs("  ERROR: Physical timing computation failed, error code ");
         simputshex32("", (uint32_t)ret);
         simputs("\n");
@@ -169,7 +114,6 @@ int main(void) {
         test_fail(0);
     }
 
-    // Initialize Controller
     simputs("  Initializing I2C_0 Controller...\n");
     i2c_controller_config_t ctrlr_cfg = {.timing = computed_timing,
                                          .fifo = {.rx_thresh = I2C_DEFAULT_RX_THRESH,
@@ -187,11 +131,10 @@ int main(void) {
     }
     simputs("  Controller initialized successfully\n");
 
-    // Initialize Target
     simputs("  Initializing I2C_1 Target...\n");
     i2c_target_config_t tgt_cfg = {
         .address0 = TARGET_ADDR,
-        .mask0 = 0x7F, // Exact match
+        .mask0 = 0x7F,
         .address1 = 0,
         .mask1 = 0,
         .timing = computed_timing,
@@ -201,8 +144,7 @@ int main(void) {
                  .fmt_thresh = 0},
         .enable_interrupts = false,
         .ack_ctrl_mode = false,
-        .tx_stretch_ctrl =
-            false, // Automatic TX Stretch mode (hardware auto-manages, no SW intervention needed)
+        .tx_stretch_ctrl = false, // Target stretches the clock while its TX FIFO is empty
         .timeout_cycles = 0};
 
     ret = i2c_target_init(TARGET_IDX, &tgt_cfg);
@@ -215,7 +157,7 @@ int main(void) {
 
     write_scratch(1, 0x00000031);
 
-    // Enable ACQ START/STOP capture on the target.
+    // Log START and STOP in the target's receive FIFO
     uint32_t base = i2c_get_base(TARGET_IDX);
     i2c__CTRL_t ctrl = {.w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) -
                                               SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
@@ -228,7 +170,6 @@ int main(void) {
 
     //=========================================================================
     // Step 4: Write preset data from Controller to Target
-    //         Data: 0x5A5A, Register: 0x5A
     //=========================================================================
     write_scratch(1, 0x00000040);
     simputs("\nStep 4: Write Preset Data from Controller to Target\n");
@@ -242,15 +183,13 @@ int main(void) {
     simputshex32("", TARGET_ADDR);
     simputs("\n");
 
-    // Prepare write buffer: register address + data (2 bytes)
+    // Register address, then the data low byte and high byte
     uint8_t write_buffer[3];
-    write_buffer[0] = REG_ADDR;                // Register address
-    write_buffer[1] = TEST_DATA & 0xFF;        // Data low byte
-    write_buffer[2] = (TEST_DATA >> 8) & 0xFF; // Data high byte
+    write_buffer[0] = REG_ADDR;
+    write_buffer[1] = TEST_DATA & 0xFF;
+    write_buffer[2] = (TEST_DATA >> 8) & 0xFF;
 
-    // Controller write transaction (non-blocking to prevent ACQ FIFO overflow)
-    // For internal I2C communication, Target must receive immediately after Controller write
-    // to prevent ACQ FIFO overflow and SCL stretching
+    // Queue the write without waiting, so the target can receive it as it arrives
     simputs("  Controller sending write transaction (non-blocking)...\n");
     ret = i2c_controller_write_with_header_nonblock(CONTROLLER_IDX, TARGET_ADDR, write_buffer, 3);
     if (ret != I2C_OK) {
@@ -263,13 +202,10 @@ int main(void) {
 
     simputs("  Write command sent to FIFO\n");
 
-    // Target receive transaction immediately (without waiting for Controller idle)
-    // This prevents ACQ FIFO overflow which would cause SCL stretching and deadlock
+    // Receive on the target before waiting for the controller to finish
     simputs("  Target receiving transaction (immediate read)...\n");
     uint8_t recv_buffer[256];
     uint32_t received_len = 0;
-    /* Bounded by this test's own derived bound, not I2C_TIMEOUT_DEFAULT -- see
-     * I2C_RDWR_WAIT_BOUND above for why and how it was sized. */
     ret = i2c_target_receive_transaction(TARGET_IDX, recv_buffer, sizeof(recv_buffer),
                                          &received_len, I2C_RDWR_WAIT_BOUND);
     if (ret != I2C_OK) {
@@ -297,10 +233,8 @@ int main(void) {
         simputs("  ERROR: Wait for controller idle failed with error code ");
         simputshex32("", (uint32_t)ret);
         simputs("\n");
-        /* Last state at the moment the wait gave up. STATUS.HOSTIDLE reads 0
-         * forever after an unexpected NACK (the FSM parks in Idle with
-         * trans_started set, i2c_controller_fsm.sv:653-663), so
-         * CONTROLLER_EVENTS is what distinguishes that from a stalled bus. */
+        /* After an unexpected NACK the controller never reports idle; its
+         * events tell that apart from a stalled bus. */
         simputshex32("    Controller STATUS: ", i2c_get_status(CONTROLLER_IDX));
         simputs("\n");
         simputshex32("    Controller CONTROLLER_EVENTS: ",
@@ -317,7 +251,6 @@ int main(void) {
     simputshex32("  Target received ", received_len);
     simputs(" bytes\n");
 
-    // Verify received data
     simputs("  [VERIFY] Verifying received data:\n");
     simputs("    Expected length: 3 bytes\n");
     simputshex32("    Received length: ", received_len);
@@ -380,36 +313,27 @@ int main(void) {
     simputshex32("", TEST_DATA);
     simputs(" (correct)\n");
     simputs("  Write transaction completed successfully\n");
-    write_scratch(1, 0x00000041); // Signal to TB: Write complete
+    write_scratch(1, 0x00000041);
 
     //=========================================================================
     // Step 5: Prepare Target for read operation
-    //         Pre-load TX FIFO with data to be read
     //=========================================================================
     write_scratch(1, 0x00000050);
     simputs("\nStep 5: Prepare Target for Read Operation\n");
 
-    // Order that keeps unhandled_tx_stretch_event_i = 0 before the read request
-    // (i2c_target_fsm.sv stretch_tx term):
-    // 1. Pre-load TX FIFO FIRST
-    // 2. Clear TARGET_EVENTS (clears events from TX FIFO pre-load)
-    // 3. Reset ACQ FIFO
-    // 4. Verify ACQ FIFO is empty
-    // 5. Wait for Target to be idle
-    // This sequence ensures unhandled_tx_stretch_event_i = 0 before read request
+    /* The target stretches a read while its TX FIFO is empty, while it has
+     * unhandled events, or while its receive FIFO holds more than one entry.
+     * Load the reply first, then clear the events and reset the receive FIFO,
+     * in that order, and wait for the target to go idle. */
     simputs(
         "  Preparing Target for read transaction (correct sequence to clear stretch events)...\n");
 
-    // Step 1: Pre-load TX FIFO FIRST
-    // CRITICAL: Pre-load TX FIFO BEFORE read request arrives
-    // When Controller sends read request, Target FSM immediately reads from TX FIFO
-    // If TX FIFO is empty, Target sends 0xFF (default value)
     simputshex32("", TEST_DATA);
     simputs("\n");
 
     uint8_t tx_data[2];
-    tx_data[0] = TEST_DATA & 0xFF;        // Data low byte
-    tx_data[1] = (TEST_DATA >> 8) & 0xFF; // Data high byte
+    tx_data[0] = TEST_DATA & 0xFF;
+    tx_data[1] = (TEST_DATA >> 8) & 0xFF;
 
     uint32_t tx_bytes = i2c_target_transmit(TARGET_IDX, tx_data, 2);
     if (tx_bytes != 2) {
@@ -420,42 +344,24 @@ int main(void) {
 
     simputs("  Target TX FIFO pre-loaded with 2 bytes\n");
 
-    // Step 2: Clear TARGET_EVENTS AFTER TX FIFO pre-load
-    // CRITICAL: Pre-loading TX FIFO may generate TARGET_EVENTS
-    // These must be cleared to prevent unhandled_tx_stretch_event_i = 1
+    // Loading the TX FIFO can raise target events; clear them
     uint32_t target_events = i2c_get_target_events(TARGET_IDX);
     if (target_events != 0) {
         simputshex32("  Clearing unhandled TARGET_EVENTS: ", target_events);
         simputs("\n");
-        i2c_clear_target_events(TARGET_IDX, 0xFFFFFFFF); // Clear all events
+        i2c_clear_target_events(TARGET_IDX, 0xFFFFFFFF);
     }
-    /* Re-read and print what the register holds at this instant: an
-     * unconditional "cleared" line would assert a DUT state one line after a
-     * non-zero value was written away, and unhandled_tx_stretch_event_i is an
-     * internal RTL signal this firmware cannot see. */
+    /* Print the events as read back, not an assumed "cleared". */
     target_events = i2c_get_target_events(TARGET_IDX);
     simputshex32("  TARGET_EVENTS after clear (sampled): ", target_events);
     simputs("\n");
 
-    // Step 3: Reset ACQ FIFO to ensure it's empty before read request
-    // According to OpenTitan RTL, ACQ FIFO depth > 1 will trigger stretch_tx
-    // Reference: i2c_target_fsm.sv:666-667
-    i2c_reset_fifos(TARGET_IDX, false, false, false, true); // Reset ACQ FIFO only
+    i2c_reset_fifos(TARGET_IDX, false, false, false, true); // Receive FIFO only
     simputs("  ACQ FIFO reset using ACQRST\n");
 
-    /* Step 4: Verify ACQRST itself emptied the ACQ FIFO.
-     *
-     * Two things are established here rather than assumed. First,
-     * g_i2c_acq_reset_needed_drain says whether i2c_reset_fifos() had to repair
-     * the FIFO in software; if it did, "empty" would be the helper's doing and
-     * not the hardware's (i2c_reset_fifos() already fails the test in that case,
-     * so a non-zero value cannot reach this print -- it is recorded as evidence
-     * that the empty state below came from ACQRST).
-     *
-     * Second, a still-occupied ACQ FIFO is a testcase failure, not a warning
-     * followed by a software drain: that would hide exactly the class of RTL
-     * defect this step exists to catch, and on a target whose FIFO never drains
-     * could only end in the harness timeout. */
+    /* The hardware reset alone must empty the receive FIFO. The print records
+     * that the reset helper did not drain it in software; a FIFO still
+     * occupied fails the test rather than being drained here. */
     simputshex32("  ACQRST needed software repair (0 = hardware reset took): ",
                  g_i2c_acq_reset_needed_drain);
     simputs("\n");
@@ -476,9 +382,7 @@ int main(void) {
 
     write_scratch(1, 0x00000051);
 
-    // Step 5: Wait for Target to be idle before read request
-    // This ensures Target FSM is ready to handle the read transaction
-    // CRITICAL: Target must be in Idle state with SCL released (high) before read request
+    // The target must be idle, with SCL released, before the read request
     uint32_t target_base = i2c_get_base(TARGET_IDX);
     uint32_t idle_wait_count = 0;
     const uint32_t IDLE_WAIT_TIMEOUT = 10000;
@@ -487,7 +391,6 @@ int main(void) {
             .w = read_reg(target_base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
                                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
         if (status.f.TARGETIDLE) {
-            // Additional delay to ensure SCL is fully released
             for (volatile int i = 0; i < 500; i++)
                 ;
             break;
@@ -495,7 +398,7 @@ int main(void) {
         idle_wait_count++;
         if (idle_wait_count % 1000 == 0) {
             for (volatile int i = 0; i < 100; i++)
-                ; // Small delay
+                ;
         }
     }
     if (idle_wait_count >= IDLE_WAIT_TIMEOUT) {
@@ -506,10 +409,7 @@ int main(void) {
         simputs("  Target confirmed idle (SCL should be released)\n");
     }
 
-    /* Final check: the three preconditions Step 5 exists to establish, each
-     * sampled here and each able to fail. A non-zero TARGET_EVENTS at this point
-     * is a testcase failure, and the three quantities are printed as read at
-     * this instant rather than summarised as "all conditions satisfied". */
+    /* Sample and check each read precondition just before the read. */
     target_events = i2c_get_target_events(TARGET_IDX);
     uint32_t acq_level_pre_read = 0;
     i2c_target_get_fifo_status(TARGET_IDX, NULL, &acq_level_pre_read);
@@ -551,65 +451,45 @@ int main(void) {
     simputshex32("", REG_ADDR);
     simputs("\n");
 
-    // CRITICAL: For write-then-read sequence with OpenTitan I2C
-    // 1. Write phase: Controller sends register address -> Target ACQ FIFO
-    // 2. Target must process ACQ FIFO (drain register address entry)
-    // 3. Read phase: Controller reads data <- Target TX FIFO
-    //
-    // Use separate i2c_controller_write and i2c_controller_read calls !!!!
-    // to allow manual ACQ FIFO processing between phases
+    /* Separate write and read calls let the target consume the register
+     * address between the two phases. */
     uint8_t reg_addr_byte = REG_ADDR;
     uint8_t read_buffer[2];
 
-    // Start write phase (non-blocking): send register address
-    ret = i2c_controller_write(CONTROLLER_IDX, TARGET_ADDR, &reg_addr_byte, 1,
-                               false); // Write: register address (no STOP)
+    // Register address without STOP; the read follows with a repeated START
+    ret = i2c_controller_write(CONTROLLER_IDX, TARGET_ADDR, &reg_addr_byte, 1, false);
     if (ret != I2C_OK) {
         simputs("  ERROR: Controller write (register address) failed\n");
         write_scratch(0, 0xBAD00061);
         test_fail(0);
     }
 
-    // CRITICAL: Process ACQ FIFO entry (register address) from Target
-    // This ensures Target FSM properly handles the write phase before read phase
     simputs("  Processing register address from Target ACQ FIFO...\n");
     uint32_t acq_wait_count = 0;
     const uint32_t ACQ_WAIT_TIMEOUT = 10000;
     bool found_reg_addr = false;
 
-    /* Two independent bounds, because ACQ_WAIT_TIMEOUT alone was not one.
-     *
-     * acq_wait_count is incremented only on the ACQEMPTY branch below, so it
-     * bounds polls-while-empty and nothing else: the non-empty-but-not-DATA path
-     * consumed an entry, incremented no counter and left found_reg_addr false,
-     * so a target that keeps producing non-DATA entries kept this loop running
-     * to the harness timeout with no firmware diagnostic.
-     *
-     * acq_entries_read bounds the entries actually consumed. One I2C write phase
-     * of one byte can legitimately deposit a START entry and a DATA entry; the
-     * ACQ FIFO is 64 deep (smc_config_pkg::I2C_TARGET_RX_FIFO_DEPTH), so reading
-     * more than a full FIFO's worth without seeing the register address means
-     * the scan is not converging. */
+    /* Two bounds: acq_wait_count limits polls of an empty FIFO, and
+     * acq_entries_read limits entries consumed without finding the register
+     * address. Reading more than a full FIFO of entries means the scan is not
+     * converging. */
     uint32_t acq_entries_read = 0;
     const uint32_t ACQ_ENTRY_SCAN_LIMIT = I2C_TARGET_RX_FIFO_DEPTH;
 
-    // Wait for register address to appear in ACQ FIFO
-    // Need to skip START/RESTART signals and only read DATA signals
+    // Skip non-data entries; the first data entry must be the register address
     while (acq_wait_count < ACQ_WAIT_TIMEOUT && acq_entries_read < ACQ_ENTRY_SCAN_LIMIT &&
            !found_reg_addr) {
         i2c__STATUS_t status = {
             .w = read_reg(target_base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
                                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
         if (!status.f.ACQEMPTY) {
-            // Read ACQ FIFO entry
             i2c__ACQDATA_t acqdata = {
                 .w = read_reg(target_base + (SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR(0) -
                                              SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
             uint32_t signal = acqdata.f.SIGNAL;
             uint8_t abyte = (uint8_t)acqdata.f.ABYTE;
-            acq_entries_read++; // this branch consumes an entry -- bound it
+            acq_entries_read++;
 
-            // Skip START/RESTART; require exact register address on DATA
             if (signal == I2C_ACQ_SIGNAL_DATA) {
                 simputs("    Received ACQ DATA abyte: 0x");
                 simputshex32("", abyte);
@@ -628,13 +508,12 @@ int main(void) {
                 simputs(", abyte=0x");
                 simputshex32("", abyte);
                 simputs("\n");
-                // Continue to next ACQ entry
             }
         } else {
             acq_wait_count++;
             if (acq_wait_count % 1000 == 0) {
                 for (volatile int i = 0; i < 100; i++)
-                    ; // Small delay
+                    ;
             }
         }
     }
@@ -645,8 +524,7 @@ int main(void) {
         simputshex32("    Empty-FIFO polls: ", acq_wait_count);
         simputs("\n");
         if (acq_entries_read >= ACQ_ENTRY_SCAN_LIMIT) {
-            /* Distinct from the poll timeout: entries kept arriving, none of
-             * them was the register address. */
+            /* Entries kept arriving, but none was the register address. */
             simputs("    Cause: entry scan limit reached (ACQ FIFO depth)\n");
             write_scratch(0, 0xBAD00064);
         } else {
@@ -655,10 +533,8 @@ int main(void) {
         test_fail(0);
     }
 
-    // Now perform read phase
     simputs("  Starting read phase...\n");
-    ret = i2c_controller_read(CONTROLLER_IDX, TARGET_ADDR, read_buffer, 2,
-                              true); // Read: 2 bytes data (with STOP)
+    ret = i2c_controller_read(CONTROLLER_IDX, TARGET_ADDR, read_buffer, 2, true);
     if (ret != I2C_OK) {
         simputs("  ERROR: Controller read failed\n");
         write_scratch(0, 0xBAD00062);
@@ -719,7 +595,7 @@ int main(void) {
     write_scratch(1, 0x00000071);
 
     //=========================================================================
-    // Test Complete - Signal to testbench
+    // Test Complete
     //=========================================================================
     write_scratch(1, 0x00000090);
 
@@ -747,13 +623,4 @@ int main(void) {
     simputs("\n################################################\n");
 
     test_pass(0);
-
-    simputs("\n=== Test Complete ===\n");
-
-    // Infinite loop to keep CPU in WFI state after test completion
-    while (true) {
-        __asm__("wfi");
-    }
-
-    return 0;
 }

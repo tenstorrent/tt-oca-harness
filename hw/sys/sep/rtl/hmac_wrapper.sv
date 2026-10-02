@@ -63,14 +63,14 @@ module hmac_wrapper (
   // ============================================================================
 
   // OpenTitan HMAC has fixed BlockAw=13 (8KB internal address space)
-  localparam logic [31:0] HMAC_ADDR_MASK = 32'h0000_1FFF;  // 13 bits for AW=13
+  localparam logic [31:0] HmacAddrMask = 32'h0000_1FFF;  // 13 bits for AW=13
   // Extract lower 13 bits of system base address (from sep_top_reg.svh via sep_pkg)
-  localparam logic [31:0] HMAC_BASE_LOWER = sep_top_addrmap_pkg::SEP_TOP_HMAC_BASE_ADDR & HMAC_ADDR_MASK;
+  localparam logic [31:0] HmacBaseLower = sep_top_addrmap_pkg::SEP_TOP_HMAC_BASE_ADDR & HmacAddrMask;
 
   always_comb begin
     hmac_axil_req_masked = hmac_axil_req_i;
-    hmac_axil_req_masked.aw.addr = (hmac_axil_req_i.aw.addr - HMAC_BASE_LOWER) & HMAC_ADDR_MASK;
-    hmac_axil_req_masked.ar.addr = (hmac_axil_req_i.ar.addr - HMAC_BASE_LOWER) & HMAC_ADDR_MASK;
+    hmac_axil_req_masked.aw.addr = (hmac_axil_req_i.aw.addr - HmacBaseLower) & HmacAddrMask;
+    hmac_axil_req_masked.ar.addr = (hmac_axil_req_i.ar.addr - HmacBaseLower) & HmacAddrMask;
   end
 
   // ============================================================================
@@ -121,7 +121,7 @@ module hmac_wrapper (
   end
 
   // Instantiate the PeakRDL-generated HMAC key CSR register block
-  localparam int unsigned HMAC_KEY_CSR_ADDR_WIDTH = hmac_wrapper_key_reg_pkg::HMAC_WRAPPER_KEY_REG_MIN_ADDR_WIDTH; // 7
+  localparam int unsigned HmacKeyCsrAddrWidth = hmac_wrapper_key_reg_pkg::HMAC_WRAPPER_KEY_REG_MIN_ADDR_WIDTH; // 7
 
   hmac_wrapper_key_reg u_hmac_wrapper_key_reg (
     .clk       (clk_i),
@@ -129,7 +129,7 @@ module hmac_wrapper (
 
     // AW channel
     .s_axil_awvalid (hmac_key_axil_req_i.aw_valid),
-    .s_axil_awaddr  (hmac_key_axil_req_i.aw.addr[HMAC_KEY_CSR_ADDR_WIDTH-1:0]),
+    .s_axil_awaddr  (hmac_key_axil_req_i.aw.addr[HmacKeyCsrAddrWidth-1:0]),
     .s_axil_awprot  (hmac_key_axil_req_i.aw.prot),
     .s_axil_awready (hmac_key_axil_resp_o.aw_ready),
 
@@ -146,7 +146,7 @@ module hmac_wrapper (
 
     // AR channel
     .s_axil_arvalid (hmac_key_axil_req_i.ar_valid),
-    .s_axil_araddr  (hmac_key_axil_req_i.ar.addr[HMAC_KEY_CSR_ADDR_WIDTH-1:0]),
+    .s_axil_araddr  (hmac_key_axil_req_i.ar.addr[HmacKeyCsrAddrWidth-1:0]),
     .s_axil_arprot  (hmac_key_axil_req_i.ar.prot),
     .s_axil_arready (hmac_key_axil_resp_o.ar_ready),
 

@@ -1,24 +1,17 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
-// smc_uart_log_engine_decode_err_test
-//
-// Verify wrapper axi_lite_demux + prim_axi_lite_err_slv behavior on undefined
-// CSR addresses inside uart_log_engine_wrap_0. RTL configures the err slave to
-// return RESP_DECERR with RDATA = 0x_BADCAB1E. On the SMC CPU side, an
-// AXI4-Lite DECERR on a load returns the bus-data value directly (no fault),
-// so we read several gap addresses and confirm they all return 0x_BADCAB1E.
-//
-// SCOPE NOTE: only wrapper-level gap addresses (between sub-regions
-// CTRL/UART/LOG_ENGINE) route to the wrapper's `axi_lite_demux ->
-// prim_axi_lite_err_slv` and produce DECERR + 0xBADCAB1E. Addresses INSIDE a
-// sub-region's address range (e.g. 0xC000A220 between INTR_TEST and
-// LOG_CTRL_0) go to the PeakRDL-generated reg block, which is configured with
-// `decoded_err = '0` and returns OKAY+0 for undecoded offsets. Those are NOT
-// tested here.
-//
-// Failures call test_fail(0) (noreturn); raise_error + end_test is not reliable
-// under -flto with static inline helpers.
+/**
+ * @brief UART Log Engine Wrapper Decode Error Test
+ *
+ * Verifies that reads from the address gaps between the control, UART and
+ * log-engine regions of UART wrapper 0 return the wrapper's decode-error data
+ * pattern, that adjacent valid registers do not, and that writes to gaps
+ * complete and leave a valid register writable. A decode error on a CPU load
+ * returns the bus data without a fault, so each gap read returns the pattern.
+ * Undecoded offsets inside a region are served by that region's register
+ * block and are not tested.
+ */
 
 #include <stdint.h>
 
@@ -38,7 +31,7 @@ static void check_decerr_read(uint32_t addr) {
         info_msg_s(0, "FAIL: decerr read missing 0xBADCAB1E");
         info_msg_hex32_s(0, "  addr=", addr);
         info_msg_hex32_s(0, "  got =", got);
-        test_fail(0); // noreturn
+        test_fail(0);
     }
 }
 
@@ -47,30 +40,24 @@ static void check_valid_read_no_decerr(uint32_t addr) {
     if (got == BADCAB1E) {
         info_msg_s(0, "FAIL: valid addr unexpectedly returned 0xBADCAB1E");
         info_msg_hex32_s(0, "  addr=", addr);
-        test_fail(0); // noreturn
+        test_fail(0);
     }
 }
 
 int main(void) {
     info_msg_s(0, "smc_uart_log_engine_decode_err_test start");
 
-    // Disable wrapper CTRL and Log Engine to keep TB quiet
+    // Keep the UART and the log engine idle
     write_reg(WRAP0_CTRL_REG, 0u);
     write_reg(WRAP0_LE_BASE, 0u);
 
     //--------------------------------------------------------------------------
-    // Wrapper-level gap addresses (between sub-regions). These ARE routed to
-    // the wrapper's axi_lite_demux + prim_axi_lite_err_slv → DECERR.
-    //
-    // Layout per uart_log_engine_wrap.rdl:
-    //   CTRL_REG_MAP @ 0x000  (size 0x004 — one register)
-    //   UART_REG_MAP @ 0x100  (size 0x028 — RBR..ITR)
-    //   LOG_ENGINE   @ 0x200  (size 0x080 — CTRL..LOG_CTRL_15 at +0x7C)
+    // Gaps between the wrapper's sub-regions reach its decode-error responder.
     //--------------------------------------------------------------------------
-    check_decerr_read(WRAP0_CTRL_REG + 0x004u); // just past CTRL register
-    check_decerr_read(WRAP0_CTRL_REG + 0x0FCu); // just below UART base
-    check_decerr_read(WRAP0_CTRL_REG + 0x140u); // just past UART region end (0x128)
-    check_decerr_read(WRAP0_CTRL_REG + 0x1FCu); // just below LOG_ENGINE base
+    check_decerr_read(WRAP0_CTRL_REG + 0x004u); // just past the control register
+    check_decerr_read(WRAP0_CTRL_REG + 0x0FCu); // just below the UART region
+    check_decerr_read(WRAP0_CTRL_REG + 0x140u); // past the end of the UART region
+    check_decerr_read(WRAP0_CTRL_REG + 0x1FCu); // just below the log-engine region
 
     //--------------------------------------------------------------------------
     // Sanity: adjacent valid addresses still decode normally (no DECERR).
@@ -82,8 +69,8 @@ int main(void) {
     check_valid_read_no_decerr(WRAP0_LE_BASE + 0x7Cu);   // LE LOG_CTRL_15
 
     //--------------------------------------------------------------------------
-    // Write-side DECERR — confirm writes to gap addresses complete (no bus
-    // hang) and surrounding valid addresses still RW.
+    // Writes to gap addresses complete without a bus hang, and a valid register
+    // still reads back what is written.
     //--------------------------------------------------------------------------
     write_reg(WRAP0_CTRL_REG + 0x008u, 0xDEADBEEFu);
     write_reg(WRAP0_CTRL_REG + 0x150u, 0x12345678u);
@@ -96,8 +83,5 @@ int main(void) {
     write_reg(WRAP0_CTRL_REG, 0u);
 
     info_msg_s(0, "smc_uart_log_engine_decode_err_test done");
-    test_pass(0); // noreturn
-
-    while (1) __asm__("wfi");
-    return 0;
+    test_pass(0);
 }

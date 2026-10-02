@@ -6,15 +6,13 @@
 #include "smc_io.h"
 #include "smc_test.h"
 
-/* SPM window size per core for this perf loop (placeholder span,
- * intentionally smaller than the full SMC_TOP_SPM_MEMORY_SIZE). */
+/* Span whose quarter is the per-hart destination offset; smaller than the SPM. */
 #define SPM_TEST_WINDOW_SIZE 0x1000u
 
 int main(void) {
 
     int hartid = metal_cpu_get_current_hartid();
 
-    // large numbers performed by each core
     write_scratch(4 + hartid, 0x54045);
     for (int i = 0; i < 4096; i++) {
         write64_reg(SMC_TOP_SPM_MEMORY_BASE_ADDR + hartid * (SPM_TEST_WINDOW_SIZE / 4) + i * 8,
@@ -32,8 +30,6 @@ int main(void) {
     while (true) {
         __asm__("wfi");
     }
-
-    return 0;
 }
 
 int secondary_main(void) {

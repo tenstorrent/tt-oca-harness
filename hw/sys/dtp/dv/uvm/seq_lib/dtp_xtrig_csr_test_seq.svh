@@ -12,11 +12,13 @@
 //   ctp_csr_sweep    full-word CTP config and stretch patterns (all-ones and
 //                    inverted patterns drive the reserved bits, which read
 //                    back 0), every byte strobe over a nonzero base, a
-//                    STATUS write, and a preloaded neighbour that keeps its
-//                    words, on every CTP, then one routed stretched pulse
-//   ctm_csr_sweep    full-word CT_DST_SELECT patterns and every byte strobe
-//                    on every CTM source register, then two swept selects
-//                    routing a selected input and ignoring an unselected one
+//                    STATUS write, a write to the window's hole, and a
+//                    preloaded neighbour that keeps its words, on every CTP,
+//                    then one routed stretched pulse
+//   ctm_csr_sweep    full-word CT_DST_SELECT patterns, every byte strobe, and
+//                    a write to the slot's hole on every CTM source register,
+//                    then two swept selects routing a selected input and
+//                    ignoring an unselected one
 //   ctm_all_source_select  per-source select masks with neighbor
 //                    no-aliasing reads
 //   axi_channel_skew                       AW-first and W-first skewed
@@ -24,12 +26,15 @@
 //                    RREADY-hold read with data-stability evidence
 //   axi_channel_skew_demux_aw_lock_release two-outstanding skewed writes
 //                    judged against the crossbar demux state mirrors and
-//                    the bench AW stall and open-write counters, with
-//                    response order proven by distinguishable response codes
-//   axi_channel_skew_read_decode_backpressure two-outstanding unmapped
-//                    reads under an RREADY hold: the second AR waits behind
-//                    the open first read (bench open-read counters), both
-//                    return DECERR from the crossbar error subordinate
+//                    open-write counters behind the CSR port spill
+//                    registers, with response order proven by
+//                    distinguishable response codes
+//   axi_channel_skew_read_decode_backpressure two outstanding reads under
+//                    an RREADY hold, a CTP register and then an unmapped
+//                    word: the port's R spill register holds both responses,
+//                    the demux holds the second AR until the first response
+//                    passes it (demux open-read counters), and the reads
+//                    return OKAY with the written data and then DECERR
 
 class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
   `uvm_object_utils(dtp_xtrig_csr_test_seq)
@@ -55,17 +60,17 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
 
   // Accepted-path CSR accesses under an activity window: no internal-lane
   // request, CTP request or acknowledge enable, or CTP busy flop moves while
-  // an access is in flight, the crossbar's READY-low stall counters do not
-  // advance while its AWVALID and ARVALID counters do, and two routes
-  // afterwards, one wire-OR and one point-to-point, are the positive control
-  // that moves each of those observables. The pad levels and the receive
-  // pulses stay out of the window because they follow the polarity CSR the
-  // accesses write.
+  // an access is in flight, the crossbar demux's AW and AR stall counters do
+  // not advance while the port's AWVALID and ARVALID counters do, and two
+  // routes afterwards, one wire-OR and one point-to-point, are the positive
+  // control that moves each of those observables. The pad levels and the
+  // receive pulses stay out of the window because they follow the polarity
+  // CSR the accesses write.
   protected task run_reg_stall();
     bit [15:0] stretch = 16'($urandom);
     bit [31:0] select = $urandom_range(CtmSelectMask, 1);
-    bit [31:0] aw_stall0 = xtrig_pin("xtrig_axil_aw_stall_count");
-    bit [31:0] ar_stall0 = xtrig_pin("xtrig_axil_ar_stall_count");
+    bit [31:0] aw_stall0 = xtrig_pin("xtrig_demux_aw_stall_count");
+    bit [31:0] ar_stall0 = xtrig_pin("xtrig_demux_ar_stall_count");
     bit [31:0] awvalid0 = xtrig_pin("xtrig_axil_awvalid_count");
     bit [31:0] arvalid0 = xtrig_pin("xtrig_axil_arvalid_count");
     int unsigned ints[$], ctps[$];
@@ -89,12 +94,14 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
                      64'(window_activity[in_flight_signals[i]]), 64'd0, $sformatf(
                      "cycles=%0d", window_cycles));
     check_quiet("reg_stall_accepted");
+    // A single access never fills a spill register, so the port keeps its
+    // READY high and a regblock stall shows only at the demux behind it.
     check_evidence(ChkAxil, "regstall.aw_stall_count_delta", 64'(xtrig_pin(
-                   "xtrig_axil_aw_stall_count") - aw_stall0), 64'd0);
+                   "xtrig_demux_aw_stall_count") - aw_stall0), 64'd0);
     check_evidence(ChkAxil, "regstall.awvalid_count_advanced", 64'(xtrig_pin(
                    "xtrig_axil_awvalid_count") - awvalid0 > 0), 64'd1);
     check_evidence(ChkAxil, "regstall.ar_stall_count_delta", 64'(xtrig_pin(
-                   "xtrig_axil_ar_stall_count") - ar_stall0), 64'd0);
+                   "xtrig_demux_ar_stall_count") - ar_stall0), 64'd0);
     check_evidence(ChkAxil, "regstall.arvalid_count_advanced", 64'(xtrig_pin(
                    "xtrig_axil_arvalid_count") - arvalid0 > 0), 64'd1);
     // Positive control: a wire-OR route to a CTP and an internal CT and a
@@ -191,15 +198,16 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
     return pool[$urandom_range(pool.size()-1)];
   endfunction
 
-  // Full-word patterns, every byte strobe, a STATUS write, then the final
-  // words, on one CTP.
+  // Full-word patterns, every byte strobe, a STATUS write, the final words,
+  // then a hole write, on one CTP.
   protected task sweep_ctp_words(int unsigned ctp_idx, bit [31:0] config_patterns[$],
                                  bit [31:0] stretch_patterns[$], bit [31:0] final_config,
                                  bit [31:0] final_stretch);
     bit [63:0] config_addr = ctp_config_addr(ctp_idx);
     bit [63:0] stretch_addr = ctp_stretch_addr(ctp_idx);
     bit [3:0] strobes[4] = '{4'h1, 4'h2, 4'h4, 4'h8};
-    bit [31:0] old_cfg, new_cfg, old_stretch, new_stretch, status_before;
+    bit [31:0] old_cfg, new_cfg, old_stretch, new_stretch, status_before, observed;
+    string ctx = $sformatf("ctp=%0d", ctp_idx);
     foreach (config_patterns[pat_idx])
       write_read_check(config_addr, config_patterns[pat_idx],
                        config_patterns[pat_idx] & CtpConfigMask, 4'hF, FullWord, $sformatf(
@@ -231,13 +239,23 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
                      "ctp%0d.cfg_final", ctp_idx));
     write_read_check(stretch_addr, final_stretch, final_stretch, 4'hF, CtpStretchMask, $sformatf(
                      "ctp%0d.stretch_final", ctp_idx));
+    // The word past STRETCH_MULT is a hole: it reads 0 after an all-ones
+    // write, and the write leaves the window's registers on the final words.
+    write_read_check(ctp_hole_addr(ctp_idx), FullWord, 32'h0, 4'hF, FullWord, $sformatf(
+                     "ctp%0d.hole", ctp_idx));
+    csr_read(config_addr, observed, $sformatf("ctp%0d.hole_after.config", ctp_idx));
+    check_evidence(ChkCsr, $sformatf("ctp%0d.hole_no_alias.config", ctp_idx),
+                   64'(observed & CtpConfigMask), 64'(final_config & CtpConfigMask), ctx);
+    csr_read(stretch_addr, observed, $sformatf("ctp%0d.hole_after.stretch", ctp_idx));
+    check_evidence(ChkCsr, $sformatf("ctp%0d.hole_no_alias.stretch", ctp_idx),
+                   64'(observed & CtpStretchMask), 64'(final_stretch & CtpStretchMask), ctx);
   endtask
 
   protected task run_ctm_csr_sweep();
     bit [31:0] patterns[$];
     bit [31:0] random_mask = $urandom_range(CtmSelectMask, 1);
     bit [3:0] strobes[4] = '{4'h1, 4'h2, 4'h4, 4'h8};
-    bit [31:0] old_mask, new_mask;
+    bit [31:0] old_mask, new_mask, held, observed;
     int unsigned outputs[$];
     `uvm_info(get_type_name(), "CTM deterministic CSR byte-strobe and mask sweep", UVM_LOW)
     // Seeded per-pass extra pattern and byte-strobe payloads on top of the
@@ -266,11 +284,18 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
       foreach (strobes[s]) begin
         old_mask = $urandom() & CtmSelectMask;
         new_mask = $urandom();
+        held = apply_wstrb(old_mask, new_mask, strobes[s]) & CtmSelectMask;
         program_ctm_src(src_idx, old_mask);
-        write_read_check(ctm_config_addr(src_idx), new_mask, apply_wstrb(
-                         old_mask, new_mask, strobes[s]) & CtmSelectMask, strobes[s], FullWord,
-                         $sformatf("ctm%0d.wstrb%0h", src_idx, strobes[s]));
+        write_read_check(ctm_config_addr(src_idx), new_mask, held, strobes[s], FullWord, $sformatf(
+                         "ctm%0d.wstrb%0h", src_idx, strobes[s]));
       end
+      // The word past CT_SRC[src_idx] in its slot is a hole: it reads 0 after
+      // an all-ones write, and the write leaves the register on its last word.
+      write_read_check(ctm_hole_addr(src_idx), FullWord, 32'h0, 4'hF, FullWord, $sformatf(
+                       "ctm%0d.hole", src_idx));
+      csr_read(ctm_config_addr(src_idx), observed, $sformatf("ctm%0d.hole_after", src_idx));
+      check_evidence(ChkCsr, $sformatf("ctm%0d.hole_no_alias", src_idx), 64'(observed), 64'(held),
+                     $sformatf("src=%0d", src_idx));
     end
     `uvm_info(
         get_type_name(),
@@ -334,6 +359,7 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
     bit [63:0] addr = ctp_stretch_addr($urandom_range(XtrigNumCtp - 1));
     bit [15:0] d1, d2, d3;
     bit [31:0] observed, prior, w_stall_before, w_stall_delta;
+    bit [31:0] demux_w_stall_before, demux_w_stall_delta, spill_err_before, spill_err_delta;
     int unsigned aw_delay;
     ocah_axi_item res;
     `uvm_info(get_type_name(), "XTRIG manual AXI-Lite AW/W and RREADY skew", UVM_LOW)
@@ -354,17 +380,25 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
                    64'(d1));
     write_read_check(addr, 32'(d2), 32'(d2), 4'hF, CtpStretchMask, "axi_skew.normal_after_aw");
     w_stall_before = xtrig_pin("xtrig_axil_w_stall_count");
+    demux_w_stall_before = xtrig_pin("xtrig_demux_w_stall_count");
+    spill_err_before = xtrig_pin("xtrig_axil_spill_err_count");
     aw_delay = $urandom_range(7, 3);
     write_skewed_result(addr, 64'(d3), res, .aw_valid_delay(aw_delay),
                         .b_ready_delay($urandom_range(4, 1)));
     w_stall_delta = xtrig_pin("xtrig_axil_w_stall_count") - w_stall_before;
+    demux_w_stall_delta = xtrig_pin("xtrig_demux_w_stall_count") - demux_w_stall_before;
+    spill_err_delta = xtrig_pin("xtrig_axil_spill_err_count") - spill_err_before;
     check_evidence(ChkAxil, "axi_skew.w_before_aw.bresp", 64'(res.worst_resp()),
                    64'(OCAH_AXI_RESP_OKAY));
-    // The W beat waits with WREADY low until its AW arrives, so it stalls at
-    // least for the cycles the AW is held back, and the port's W stability
-    // rules see the stall.
-    check_evidence(ChkAxil, "axi_skew.w_before_aw.w_ready_low_seen", 64'(w_stall_delta >= aw_delay),
-                   64'd1, $sformatf("w_stall_cycles=%0d aw_delay=%0d", w_stall_delta, aw_delay));
+    // The CSR port's W spill register takes the early W beat with WREADY
+    // high. The demux behind it passes a W beat from the cycle after its AW
+    // enters the demux's W-select queue, so the beat stalls there for at least
+    // the AW delay plus one cycle.
+    check_evidence(ChkAxil, "axi_skew.w_before_aw.port_w_unstalled", 64'(w_stall_delta), 64'd0);
+    check_evidence(ChkAxil, "axi_skew.w_before_aw.w_ready_low_seen",
+                   64'(demux_w_stall_delta >= aw_delay + 1), 64'd1, $sformatf(
+                   "demux_w_stall_cycles=%0d aw_delay=%0d", demux_w_stall_delta, aw_delay));
+    check_evidence(ChkAxil, "axi_skew.w_before_aw.spill_contract", 64'(spill_err_delta), 64'd0);
     csr_read(addr, observed, "axi_skew.final_read");
     check_evidence(ChkAxil, "axi_skew.final_stretch", 64'(observed & CtpStretchMask), 64'(d3));
     read_hold_result(addr, $urandom_range(7, 3), res);
@@ -415,13 +449,15 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
   endtask
 
   // Two outstanding skewed writes judged against the demux state mirrors.
-  // The demux queues the first AW's port selection until its W passes
-  // (xtrig_demux_w_pending) and holds the second AW with AWREADY low
-  // meanwhile: the port's open-write counters see the second AW stall, and
-  // no AW accepted, while the first is owed its W. The AW lock flag, which
-  // needs a subordinate that refuses a presented AW, stays clear. Both
-  // responses must complete and the bench stall counter must agree with the
-  // VIP's AW observation.
+  // The CSR port's spill registers accept both AWs and both W beats with
+  // READY high. Behind them the demux queues the first AW's port selection
+  // until its W passes (xtrig_demux_w_pending) and holds the second AW
+  // meanwhile: the demux open-write counters see the second AW wait, and no
+  // AW admitted, while the first is owed its W. The AW lock flag, which needs
+  // a subordinate that refuses a presented AW, stays clear. Both responses
+  // must complete, every spill register's READY and VALID must match the
+  // beats it holds, and the port stall counter must agree with the VIP's AW
+  // observation.
   protected task run_write_pair(
       input bit [63:0] addr_a, input bit [31:0] data_a, input bit [63:0] addr_b,
       input bit [31:0] data_b, output ocah_axi_item first, output ocah_axi_item second,
@@ -431,7 +467,12 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
     bit [31:0] stall_before = xtrig_pin("xtrig_axil_aw_stall_count");
     bit [31:0] open_stall_before = xtrig_pin("xtrig_axil_aw_open_stall_count");
     bit [31:0] open_accept_before = xtrig_pin("xtrig_axil_aw_open_accept_count");
-    bit [31:0] stall_delta, open_stall_delta, open_accept_delta;
+    bit [31:0] spill_err_before = xtrig_pin("xtrig_axil_spill_err_count");
+    bit [31:0] w_full_before = xtrig_pin("xtrig_axil_w_spill_full_count");
+    bit [31:0] demux_open_stall_before = xtrig_pin("xtrig_demux_aw_open_stall_count");
+    bit [31:0] demux_open_accept_before = xtrig_pin("xtrig_demux_aw_open_accept_count");
+    bit [31:0] stall_delta, open_stall_delta, open_accept_delta, spill_err_delta, w_full_delta;
+    bit [31:0] demux_open_stall_delta, demux_open_accept_delta;
     start_activity_window_on(demux_signals);
     write_pair_skewed(addr_a, data_a, addr_b, data_b, first, second, aw_valid_delay, w_valid_delay,
                       b_ready_delay, check_response);
@@ -439,72 +480,118 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
     stall_delta = xtrig_pin("xtrig_axil_aw_stall_count") - stall_before;
     open_stall_delta = xtrig_pin("xtrig_axil_aw_open_stall_count") - open_stall_before;
     open_accept_delta = xtrig_pin("xtrig_axil_aw_open_accept_count") - open_accept_before;
+    spill_err_delta = xtrig_pin("xtrig_axil_spill_err_count") - spill_err_before;
+    w_full_delta = xtrig_pin("xtrig_axil_w_spill_full_count") - w_full_before;
+    demux_open_stall_delta = xtrig_pin("xtrig_demux_aw_open_stall_count") - demux_open_stall_before;
+    demux_open_accept_delta = xtrig_pin("xtrig_demux_aw_open_accept_count") - demux_open_accept_before;
     `uvm_info(get_type_name(),
               $sformatf(
-                  "%s aw_stall=%0d aw_stable=%0d w_pending_seen=%0d aw_lock_seen=%0d resp=%s/%s",
-                  label, first.ax_stall_cycles, first.ax_stable,
-                  window_activity["xtrig_demux_w_pending"], window_activity["xtrig_demux_aw_lock"],
-                  first.worst_resp().name(), second.worst_resp().name()), UVM_LOW)
+                  {"%s aw_stall=%0d aw_stable=%0d w_pending_seen=%0d aw_lock_seen=%0d resp=%s/%s ",
+                   "port_open_accept=%0d w_spill_full=%0d spill_err=%0d demux_open_stall=%0d ",
+                   "demux_open_accept=%0d"}, label, first.ax_stall_cycles, first.ax_stable,
+                    window_activity["xtrig_demux_w_pending"],
+                    window_activity["xtrig_demux_aw_lock"], first.worst_resp().name(),
+                    second.worst_resp().name(), open_accept_delta, w_full_delta, spill_err_delta,
+                    demux_open_stall_delta, demux_open_accept_delta), UVM_LOW)
     if (check_response) begin
       check_evidence(ChkAxil, {label, ".first_bresp"}, 64'(first.worst_resp()),
                      64'(OCAH_AXI_RESP_OKAY));
       check_evidence(ChkAxil, {label, ".second_bresp"}, 64'(second.worst_resp()),
                      64'(OCAH_AXI_RESP_OKAY));
     end
+    check_evidence(ChkAxil, {label, ".spill_contract"}, 64'(spill_err_delta), 64'd0);
+    // A W-first pair fills the W spill register with both W beats. In an
+    // AW-first pair the port accepts the second AW one cycle after the first,
+    // which counts as an acceptance while the first is open only when the
+    // first W beat trails its AW by two or more cycles.
+    if (aw_valid_delay > 0)
+      check_evidence(ChkAxil, {label, ".w_spill_holds_pair"}, 64'(w_full_delta > 0), 64'd1,
+                     $sformatf("w_full_cycles=%0d", w_full_delta));
+    else if (w_valid_delay >= 2)
+      check_evidence(ChkAxil, {label, ".port_second_aw_accepted"}, 64'(open_accept_delta), 64'd1,
+                     $sformatf("port_open_stall_cycles=%0d", open_stall_delta));
     check_evidence(ChkAwLock, {label, ".w_pending_engaged"},
                    64'(window_activity["xtrig_demux_w_pending"]), 64'd1);
     check_evidence(ChkAwLock, {label, ".w_pending_released"},
                    64'(window_last["xtrig_demux_w_pending"]), 64'd0);
     check_evidence(ChkAwLock, {label, ".aw_lock_clear"},
                    64'(window_activity["xtrig_demux_aw_lock"]), 64'd0);
-    check_evidence(ChkAwLock, {label, ".second_aw_held_while_w_open"}, 64'(open_stall_delta > 0),
-                   64'd1, $sformatf("open_stall_cycles=%0d", open_stall_delta));
-    check_evidence(ChkAwLock, {label, ".no_aw_accept_while_w_open"}, 64'(open_accept_delta), 64'd0);
+    check_evidence(ChkAwLock, {label, ".second_aw_held_while_w_open"},
+                   64'(demux_open_stall_delta > 0), 64'd1, $sformatf(
+                   "demux_open_stall_cycles=%0d", demux_open_stall_delta));
+    check_evidence(ChkAwLock, {label, ".no_aw_accept_while_w_open"}, 64'(demux_open_accept_delta),
+                   64'd0);
     check_evidence(ChkAwLock, {label, ".aw_stall_count"}, 64'(stall_delta),
                    64'(first.ax_stall_cycles));
   endtask
 
   protected task run_read_decode_backpressure();
-    int unsigned offs[$];
     bit [63:0] addr_a, addr_b;
-    int unsigned hold = $urandom_range(8, 4);
-    bit [31:0] stall_before = xtrig_pin("xtrig_axil_ar_stall_count");
-    bit [31:0] arvalid_before = xtrig_pin("xtrig_axil_arvalid_count");
-    bit [31:0] open_stall_before = xtrig_pin("xtrig_axil_ar_open_stall_count");
-    bit [31:0] open_accept_before = xtrig_pin("xtrig_axil_ar_open_accept_count");
+    bit [15:0] stretch;
+    int unsigned hold;
+    bit [31:0] stall_before, arvalid_before, open_stall_before, open_accept_before;
+    bit [31:0] spill_err_before, r_full_before, demux_open_stall_before, demux_open_accept_before;
     bit [31:0] stall_delta, arvalid_delta, open_stall_delta, open_accept_delta;
+    bit [31:0] spill_err_delta, r_full_delta, demux_open_stall_delta, demux_open_accept_delta;
     ocah_axi_item first, second;
     `uvm_info(get_type_name(), "XTRIG AXI-Lite read decode backpressure", UVM_LOW)
-    // Seeded per-pass unmapped offsets and RREADY hold width.
-    pick_distinct('h40, 2, offs);
-    offs.sort();
-    addr_a = XtrigUnmappedBase + offs[0] * 4;
-    addr_b = XtrigUnmappedBase + offs[1] * 4;
+    // Seeded per-pass CTP, STRETCH_MULT value, unmapped offset and RREADY hold
+    // width. The two reads target different subordinates: a CTP register, then
+    // an unmapped word.
+    addr_a = ctp_stretch_addr($urandom_range(XtrigNumCtp - 1));
+    addr_b = XtrigUnmappedBase + $urandom_range('h3F) * 4;
+    stretch = 16'($urandom_range(16'hFFFF, 1));
+    hold = $urandom_range(8, 4);
+    csr_write(addr_a, 32'(stretch), 4'hF, "read_decode.first.write");
+    stall_before = xtrig_pin("xtrig_axil_ar_stall_count");
+    arvalid_before = xtrig_pin("xtrig_axil_arvalid_count");
+    open_stall_before = xtrig_pin("xtrig_axil_ar_open_stall_count");
+    open_accept_before = xtrig_pin("xtrig_axil_ar_open_accept_count");
+    spill_err_before = xtrig_pin("xtrig_axil_spill_err_count");
+    r_full_before = xtrig_pin("xtrig_axil_r_spill_full_count");
+    demux_open_stall_before = xtrig_pin("xtrig_demux_ar_open_stall_count");
+    demux_open_accept_before = xtrig_pin("xtrig_demux_ar_open_accept_count");
     read_pair_hold(addr_a, addr_b, hold, first, second, .check_response(1'b0));
     stall_delta   = xtrig_pin("xtrig_axil_ar_stall_count") - stall_before;
     arvalid_delta = xtrig_pin("xtrig_axil_arvalid_count") - arvalid_before;
     open_stall_delta = xtrig_pin("xtrig_axil_ar_open_stall_count") - open_stall_before;
     open_accept_delta = xtrig_pin("xtrig_axil_ar_open_accept_count") - open_accept_before;
+    spill_err_delta = xtrig_pin("xtrig_axil_spill_err_count") - spill_err_before;
+    r_full_delta = xtrig_pin("xtrig_axil_r_spill_full_count") - r_full_before;
+    demux_open_stall_delta = xtrig_pin("xtrig_demux_ar_open_stall_count") - demux_open_stall_before;
+    demux_open_accept_delta = xtrig_pin("xtrig_demux_ar_open_accept_count") - demux_open_accept_before;
     `uvm_info(
         get_type_name(),
         $sformatf(
-            "unmapped pair a=0x%0h b=0x%0h hold=%0d resp=%s/%s data=0x%08h/0x%08h ar_stall=%0d ar_stable=%0d hold_stable=%0d",
-            addr_a, addr_b, hold, first.worst_resp().name(), second.worst_resp().name(),
-            first.first_data(), second.first_data(), first.ax_stall_cycles, first.ax_stable,
-            first.hold_stable), UVM_LOW)
-    // No subordinate decodes an unmapped address: AXI answers DECERR.
+            {"read pair a=0x%0h b=0x%0h hold=%0d resp=%s/%s data=0x%08h/0x%08h ar_stall=%0d ",
+             "ar_stable=%0d hold_stable=%0d port_open_accept=%0d r_spill_full=%0d spill_err=%0d ",
+             "demux_open_stall=%0d demux_open_accept=%0d"}, addr_a, addr_b, hold,
+              first.worst_resp().name(), second.worst_resp().name(), first.first_data(),
+              second.first_data(), first.ax_stall_cycles, first.ax_stable, first.hold_stable,
+              open_accept_delta, r_full_delta, spill_err_delta, demux_open_stall_delta,
+              demux_open_accept_delta), UVM_LOW)
+    // The first read returns the STRETCH_MULT word written before the pair.
+    // No subordinate decodes the unmapped second address: AXI answers DECERR.
     check_evidence(ChkAxil, "read_decode.first.resp", 64'(first.worst_resp()),
-                   64'(OCAH_AXI_RESP_DECERR));
+                   64'(OCAH_AXI_RESP_OKAY));
+    check_evidence(ChkAxil, "read_decode.first.data", 64'(first.first_data() & CtpStretchMask),
+                   64'(stretch));
     check_evidence(ChkAxil, "read_decode.second.resp", 64'(second.worst_resp()),
                    64'(OCAH_AXI_RESP_DECERR));
     check_evidence(ChkAxil, "read_decode.first.hold_stable", 64'(first.hold_stable), 64'd1);
-    // The crossbar admits one read in flight: the second AR stalls, and no AR
-    // is accepted, while the first is owed its R beat.
+    check_evidence(ChkAxil, "read_decode.spill_contract", 64'(spill_err_delta), 64'd0);
+    check_evidence(ChkAxil, "read_decode.port_second_ar_accepted", 64'(open_accept_delta), 64'd1,
+                   $sformatf("port_open_stall_cycles=%0d", open_stall_delta));
+    check_evidence(ChkAxil, "read_decode.r_spill_holds_pair", 64'(r_full_delta > 0), 64'd1,
+                   $sformatf("r_full_cycles=%0d", r_full_delta));
+    // The demux admits one read in flight. The two reads go to different
+    // subordinates, so the demux alone holds the second AR, and admits none,
+    // while the first read is owed its R beat.
     check_evidence(ChkArStall, "read_decode.second_ar_held_while_read_open",
-                   64'(open_stall_delta > 0), 64'd1, $sformatf(
-                   "open_stall_cycles=%0d", open_stall_delta));
-    check_evidence(ChkArStall, "read_decode.no_ar_accept_while_read_open", 64'(open_accept_delta),
-                   64'd0);
+                   64'(demux_open_stall_delta > 0), 64'd1, $sformatf(
+                   "demux_open_stall_cycles=%0d", demux_open_stall_delta));
+    check_evidence(ChkArStall, "read_decode.no_ar_accept_while_read_open",
+                   64'(demux_open_accept_delta), 64'd0);
     check_evidence(ChkArStall, "read_decode.ar_stall_count", 64'(stall_delta),
                    64'(first.ax_stall_cycles));
     check_evidence(ChkArStall, "read_decode.ar_accepted", 64'(arvalid_delta - stall_delta), 64'd2);

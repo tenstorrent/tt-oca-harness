@@ -4,23 +4,37 @@
 package:
   name: tt-oca-harness
   authors:
+    # Tenstorrent
     - "Noah Betik <nbetik@tenstorrent.com>"
     - "Nicole Boettcher <nboettcher@tenstorrent.com>"
+    - "Grace Chang <gchang@tenstorrent.com>"
     - "Frank Chen <fchen@tenstorrent.com>"
     - "Zhimin Chen <zhiminchen@tenstorrent.com>"
     - "Carlos Gewehr <cgewehr@tenstorrent.com>"
     - "Minshao Ho <minshaoho@tenstorrent.com>"
     - "Andrew Hsiao <ahsiao@tenstorrent.com>"
     - "Bruce Hsu <brucehsu@tenstorrent.com>"
+    - "Daniel Kim <danielkim@tenstorrent.com>"
     - "Henry Lai <yenhenglai@tenstorrent.com>"
     - "Leo Li <lizhili@tenstorrent.com>"
     - "Haohao Liao <hliao@tenstorrent.com>"
+    - "Calvin McCoy <cmccoy@tenstorrent.com>"
     - "Ben Melton <bmelton@tenstorrent.com>"
     - "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
     - "Kai Qin <kqin@tenstorrent.com>"
     - "Paul Scheidt <pscheidt@tenstorrent.com>"
     - "Adam Taback <ataback@tenstorrent.com>"
-    - "Grace Chang <gchang@tenstorrent.com>"
+    - "Nils Wistoff <nwistoff@tenstorrent.com>"
+    # lowRISC
+    - "Jay Alphey <jay.alphey@lowrisc.org>"
+    - "Tye Buckingham <tye.buckingham@lowrisc.org>"
+    - "Daniel Green <daniel.green@lowrisc.org>"
+    - "Martin Jackson <martin.jackson@lowrisc.org>"
+    - "Luís Marques <luismarques@lowrisc.org>"
+    - "James McCorrie <james.mccorrie@lowrisc.org>"
+    - "Colin McKellar <colin.mckellar@lowrisc.org>"
+    - "Rupert Swarbrick <rswarbrick@lowrisc.org>"
+    - "Alice Ziuziakowska <a.ziuziakowska@lowrisc.org>"
 
 # Path dependencies on the vendored trees (transitive pins in Bender.local).
 dependencies:
@@ -615,6 +629,9 @@ sources:
   - target: any(dtp, sep, smc, key_manager, uart, system_timer_octs, axi_hang_detector)
     files:
       - hw/common/ocah_prim/rtl/prim_axi_snoop.sv
+  - target: any(dtp, sep, smc, key_manager, uart, system_timer_octs, entropy_source)
+    files:
+      - hw/common/ocah_prim/rtl/prim_clkmux4.sv
   - target: any(dtp, sep, smc, key_manager, uart, system_timer_octs)
     files:
       - hw/common/ocah_prim/rtl/prim_ag_clk_mux.sv
@@ -631,6 +648,7 @@ sources:
       - hw/common/ocah_prim/rtl/prim_axi_lite_err_slv.sv
       - hw/common/ocah_prim/rtl/prim_axi_lite_to_apb_single.sv
       - hw/common/ocah_prim/rtl/prim_axi_user_override.sv
+      - hw/common/ocah_prim/rtl/prim_axil_access_gate.sv
       - hw/common/ocah_prim/rtl/prim_axil_addr_fixer.sv
       - hw/common/ocah_prim/rtl/prim_axil_prot_filter.sv
       - hw/common/ocah_prim/rtl/prim_bin2gray.sv
@@ -639,7 +657,6 @@ sources:
       - hw/common/ocah_prim/rtl/prim_clk_counter.sv
       - hw/common/ocah_prim/rtl/prim_clk_counter_fifo_sync.sv
       - hw/common/ocah_prim/rtl/prim_clk_gater_hysteresis.sv
-      - hw/common/ocah_prim/rtl/prim_clkmux4.sv
       - hw/common/ocah_prim/rtl/prim_diff_decode_multi.sv
       - hw/common/ocah_prim/rtl/prim_diff_encode_multi.sv
       - hw/common/ocah_prim/rtl/prim_fair_rr_arb.sv

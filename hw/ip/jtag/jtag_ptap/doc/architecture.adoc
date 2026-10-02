@@ -105,7 +105,7 @@ endif::backend-html5[]
 |When `TMP_ENABLE=1`
 
 |`jtag_ic_reset_reg`
-|IC_RESET control register (2*(NUM_SMC_IC_RESET+NUM_SEP_IC_RESET+NUM_EXT_IC_RESET)+1 bits)
+|IC_RESET control register (2*(NumSmcIcReset+NumSepIcReset+NumExtIcReset)+1 bits)
 |When any of `IC_RESET_SMC_ENABLE`, `IC_RESET_SEP_ENABLE`, `IC_RESET_EXT_ENABLE` is 1
 
 |`jtag_debug_ctrl_reg`
@@ -495,16 +495,17 @@ slices:
 
 Each slice's struct must contain `.ovrd` and `.val` sub-structs of identical
 width (checked via an elaboration-time assertion in `jtag_ptap`). Within
-`jtag_ic_reset_reg`, the override-enable and control bits remain interleaved as
-`{enable, control}` pairs per the JTAG specification; `jtag_ptap` packs the
-three struct slices into that interleaved bus and unpacks the outputs back into
-structured form. The TDR carries the SMC slice closest to TDI, then SEP, then
+`jtag_ic_reset_reg`, the reset-enable and reset-control bits are interleaved in
+IEEE 1149.1 §17 order: in each port's pair, `reset_enable` is nearer TDO and
+`reset_control` nearer TDI, so port _n_ occupies TDR bits `2*n+1` and `2*n+2`
+(<<ptap-ic-reset-fields-table>>). `jtag_ptap` packs the three struct slices into
+that interleaved bus and unpacks the outputs back into structured form. The TDR carries the SMC slice closest to TDI, then SEP, then
 the external slice, followed by the single `reset_hold` bit.
 
-The total length is `2 * (NUM_SMC_IC_RESET + NUM_SEP_IC_RESET +
-NUM_EXT_IC_RESET) + 1` bits, where each `NUM_*_IC_RESET` is half the width of
-its corresponding struct type when the matching enable parameter is set
-(otherwise 0).
+The total length is `2 * (NumSmcIcReset + NumSepIcReset + NumExtIcReset) + 1`
+bits. Each `Num*IcReset` is half the width of its slice's struct type,
+`+$bits(ic_reset_*_t) / 2+`, when the matching `+IC_RESET_*_ENABLE+` parameter is
+set, and 0 otherwise.
 
 <<ptap-ic-reset-fields-table>> defines the reset-control, reset-enable, and bypass
 fields in the IC_RESET TDR.
@@ -547,6 +548,13 @@ iJTAG network and the network return drives TDO.
 
 [[ptap-jtag2axi-support]]
 === JTAG2AXI Support
+
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="jtag2axi-support"></span>
+++++
+endif::backend-html5[]
 
 ==== *_JTAG2AXI_CAPS
 

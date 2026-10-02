@@ -10,7 +10,9 @@
 // interrupts, the gated I3C clock, and debug buses.
 //
 // EFUSE_SHIM_SIZE is the vendor eFuse shim CSR carve-out at the base of the opaque
-// smc_external window. Each peripheral clock-gate enable stops its clock when high.
+// smc_external window. Each peripheral clock-gate enable stops its clock when high and
+// steers that peripheral's crossbar leg into an error slave, so an access to a gated
+// peripheral completes with SLVERR and read data 0xBADCAB1E instead of stalling.
 
 module smc_peripherals #(
   parameter int unsigned MAX_TRANS = 2,  // Maximum outstanding transactions of the padring
@@ -39,13 +41,18 @@ module smc_peripherals #(
                                         // telemetry receivers' ATB FIFOs.
 
   input  logic i3c_cg_en_i,             // Stops the I3C peripheral clock when high;
-                                        // synchronized to the peripheral clock.
+                                        // synchronized to the peripheral clock. I3C
+                                        // accesses answer SLVERR while high.
   input  logic avs_cg_en_i,             // Stops the AVSBus controller peripheral and
-                                        // reference clocks when high.
-  input  logic i2c_cg_en_i,             // Stops the I2C peripheral clock when high.
-  input  logic uart_cg_en_i,            // Stops the UART peripheral clock when high.
+                                        // reference clocks when high. AVSBus accesses
+                                        // answer SLVERR while high.
+  input  logic i2c_cg_en_i,             // Stops the I2C peripheral clock when high. I2C
+                                        // accesses answer SLVERR while high.
+  input  logic uart_cg_en_i,            // Stops the UART peripheral clock when high. UART
+                                        // accesses answer SLVERR while high.
   input  logic tel_cg_en_i,             // Stops the telemetry receivers' gated SMC and
-                                        // telemetry clocks when high.
+                                        // telemetry clocks when high. Telemetry accesses
+                                        // answer SLVERR while high.
 
   input  smc_pkg::smc_axil_32_32_req_t  axil_peripherals_req_i,  // Request from the local
                                                                  // crossbar into the
@@ -76,18 +83,18 @@ module smc_peripherals #(
   output smc_pkg::smc_axil_32_32_resp_t axil_smc_otp_jtag_resp_o,  // Response to the JTAG
                                                                    // eFuse access path.
 
-  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] lsio_interface_select_o,  // LSIO select per pad
+  output logic [smc_pkg::NumGpioWraps-1:0] lsio_interface_select_o,    // LSIO select per pad
                                                                        // from the padring,
                                                                        // high where a
                                                                        // peripheral function
                                                                        // claims the pad.
-  input  logic [smc_pkg::NUM_GPIO_WRAPS-1:0] pad2core_i,  // Value received from each GPIO
+  input  logic [smc_pkg::NumGpioWraps-1:0] pad2core_i,    // Value received from each GPIO
                                                           // pad.
-  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] core2pad_o,  // Value driven onto each GPIO
+  output logic [smc_pkg::NumGpioWraps-1:0] core2pad_o,    // Value driven onto each GPIO
                                                           // pad.
-  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] pad2core_en_o,  // Input enable of each GPIO
+  output logic [smc_pkg::NumGpioWraps-1:0] pad2core_en_o,    // Input enable of each GPIO
                                                              // pad.
-  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] core2pad_en_o,  // Output enable of each GPIO
+  output logic [smc_pkg::NumGpioWraps-1:0] core2pad_en_o,    // Output enable of each GPIO
                                                              // pad.
 
   input  logic       spi_enable_i,      // Hands the SPI pads to the external SPI host,
@@ -125,23 +132,23 @@ module smc_peripherals #(
   output logic       spi_mem_rebar_ipad_o,  // Value sampled from the SPI DQS loopback
                                             // pad.
 
-  input  telemetry_receiver_pkg::telemetry_data_t [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0] telemetry_atdata_i,  // ATB trace data
+  input  telemetry_receiver_pkg::telemetry_data_t [smc_config_pkg::NumTelemetryReceivers-1:0] telemetry_atdata_i,    // ATB trace data
                                                                                                                      // per telemetry
                                                                                                                      // receiver.
-  input  telemetry_receiver_pkg::atb_id_t         [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0] telemetry_atid_i,  // ATB trace source
+  input  telemetry_receiver_pkg::atb_id_t         [smc_config_pkg::NumTelemetryReceivers-1:0] telemetry_atid_i,    // ATB trace source
                                                                                                                    // ID per receiver.
-  output logic                                    [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0] telemetry_atready_o,  // ATB ready from
+  output logic                                    [smc_config_pkg::NumTelemetryReceivers-1:0] telemetry_atready_o,    // ATB ready from
                                                                                                                       // each receiver.
-  input  logic                                    [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0] telemetry_atvalid_i,  // ATB data valid
+  input  logic                                    [smc_config_pkg::NumTelemetryReceivers-1:0] telemetry_atvalid_i,    // ATB data valid
                                                                                                                       // per receiver.
-  output logic                                    [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0] telemetry_afvalid_o,  // ATB flush
+  output logic                                    [smc_config_pkg::NumTelemetryReceivers-1:0] telemetry_afvalid_o,    // ATB flush
                                                                                                                       // request from
                                                                                                                       // each receiver.
-  input  logic                                    [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0] telemetry_afready_i,  // ATB flush
+  input  logic                                    [smc_config_pkg::NumTelemetryReceivers-1:0] telemetry_afready_i,    // ATB flush
                                                                                                                       // acknowledge per
                                                                                                                       // receiver.
 
-  input  logic [2*smc_pkg::LC_STATE_WIDTH-1:0] lc_state_i,  // Differentially encoded
+  input  logic [2*smc_pkg::LcStateWidth-1:0] lc_state_i,    // Differentially encoded
                                                             // lifecycle state, used by the
                                                             // eFuse JTAG access filter and
                                                             // reported in chip_config.
@@ -205,13 +212,13 @@ module smc_peripherals #(
                                                     // until fuse sensing completes unless
                                                     // sep_security_disable_i is set.
 
-  input  logic [smc_config_pkg::CPU_CLUSTER_COUNT-1:0] ndmreset_request_i,  // Asynchronous NDM reset
+  input  logic [smc_config_pkg::CpuClusterCount-1:0] ndmreset_request_i,    // Asynchronous NDM reset
                                                                             // request from each
                                                                             // external CPU cluster;
                                                                             // synchronized to the SMC
                                                                             // clock and raised as a
                                                                             // peripheral interrupt.
-  output logic [smc_config_pkg::CPU_CLUSTER_COUNT-1:0] ndmreset_process_o,  // Firmware response to
+  output logic [smc_config_pkg::CpuClusterCount-1:0] ndmreset_process_o,    // Firmware response to
                                                                             // each cluster's NDM
                                                                             // reset request, from the
                                                                             // NDMRESET_PROCESS
@@ -297,32 +304,32 @@ module smc_peripherals #(
                                                 // I2C, SEP watchdog, eFuse locked-field,
                                                 // GPIO and AXI hang sources.
 
-  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0]  gpio_interrupt_o,  // Per-GPIO interrupt from
+  output logic [smc_pkg::NumGpioWraps-1:0]  gpio_interrupt_o,    // Per-GPIO interrupt from
                                                                  // the padring, on the SMC
                                                                  // clock.
-  output logic [smc_config_pkg::NUM_UART-1:0] uart_interrupt_o,  // Per-UART interrupt on
+  output logic [smc_config_pkg::NumUart-1:0] uart_interrupt_o,   // Per-UART interrupt on
                                                                  // the peripheral clock,
                                                                  // without the error and
                                                                  // log-engine sources.
 
-  input  i3c_pkg::dat_mem_src_t [smc_config_pkg::NUM_I3C-1:0]  i3c_dat_mem_src_i,  // Read data from each
+  input  i3c_pkg::dat_mem_src_t [smc_config_pkg::NumI3c-1:0]  i3c_dat_mem_src_i,   // Read data from each
                                                                                    // I3C device address
                                                                                    // table memory.
-  output i3c_pkg::dat_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_dat_mem_sink_o,  // Request to each I3C
+  output i3c_pkg::dat_mem_sink_t [smc_config_pkg::NumI3c-1:0] i3c_dat_mem_sink_o,   // Request to each I3C
                                                                                     // device address table
                                                                                     // memory.
-  input  i3c_pkg::dct_mem_src_t [smc_config_pkg::NUM_I3C-1:0]  i3c_dct_mem_src_i,  // Read data from each
+  input  i3c_pkg::dct_mem_src_t [smc_config_pkg::NumI3c-1:0]  i3c_dct_mem_src_i,   // Read data from each
                                                                                    // I3C device
                                                                                    // characteristics table
                                                                                    // memory.
-  output i3c_pkg::dct_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_dct_mem_sink_o,  // Request to each I3C
+  output i3c_pkg::dct_mem_sink_t [smc_config_pkg::NumI3c-1:0] i3c_dct_mem_sink_o,   // Request to each I3C
                                                                                     // device
                                                                                     // characteristics table
                                                                                     // memory.
-  input  i3c_pkg::rlt_mem_src_t [smc_config_pkg::NUM_I3C-1:0]  i3c_rlt_mem_src_i,  // Read data from each
+  input  i3c_pkg::rlt_mem_src_t [smc_config_pkg::NumI3c-1:0]  i3c_rlt_mem_src_i,   // Read data from each
                                                                                    // I3C reverse-lookup
                                                                                    // table memory.
-  output i3c_pkg::rlt_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_rlt_mem_sink_o,  // Request to each I3C
+  output i3c_pkg::rlt_mem_sink_t [smc_config_pkg::NumI3c-1:0] i3c_rlt_mem_sink_o,   // Request to each I3C
                                                                                     // reverse-lookup table
                                                                                     // memory.
   output logic gated_clk_periph_i3c_o,  // Gated I3C peripheral clock (same domain as
@@ -331,14 +338,14 @@ module smc_peripherals #(
   output logic [16:0] avsbus_cur_state_debug_o,  // AVSBus controller state,
                                                  // synchronized to the SMC clock.
 
-  output logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0][3:0] telemetry_debug_o,  // telemetry receiver
+  output logic [smc_config_pkg::NumTelemetryReceivers-1:0][3:0] telemetry_debug_o,    // telemetry receiver
                                                                                       // debug (4 bits per;
                                                                                       // see
                                                                                       // telemetry_receiver.sv
                                                                                       // for field
                                                                                       // definitions).
 
-  output logic [smc_config_pkg::NUM_I2C-1:0][3:0] i2c_debug_o,  // I2C debug (4 bits per
+  output logic [smc_config_pkg::NumI2c-1:0][3:0] i2c_debug_o,   // I2C debug (4 bits per
                                                                 // I2C; see i2c_core.sv
                                                                 // for field definitions).
 
@@ -357,6 +364,18 @@ module smc_peripherals #(
   // AXI-Lite interface signals
   smc_pkg::smc_axil_32_32_req_t  axil_padring_req;
   smc_pkg::smc_axil_32_32_resp_t axil_padring_resp;
+
+  // Crossbar legs of the clock-gated peripherals, before their access gates
+  smc_pkg::smc_axil_32_32_req_t  axil_avsbus_controller_req_xbar;
+  smc_pkg::smc_axil_32_32_resp_t axil_avsbus_controller_resp_xbar;
+  smc_pkg::smc_axil_32_32_req_t  axil_i2c_req_xbar;
+  smc_pkg::smc_axil_32_32_resp_t axil_i2c_resp_xbar;
+  smc_pkg::smc_axil_32_32_req_t  axil_uart_req_xbar;
+  smc_pkg::smc_axil_32_32_resp_t axil_uart_resp_xbar;
+  smc_pkg::smc_axil_32_32_req_t  axil_telemetry_req_xbar;
+  smc_pkg::smc_axil_32_32_resp_t axil_telemetry_resp_xbar;
+  smc_pkg::smc_axil_32_32_req_t  axil_i3c_req_xbar;
+  smc_pkg::smc_axil_32_32_resp_t axil_i3c_resp_xbar;
 
   smc_pkg::smc_axil_32_32_req_t  axil_avsbus_controller_req_smc_clk;
   smc_pkg::smc_axil_32_32_resp_t axil_avsbus_controller_resp_smc_clk;
@@ -418,40 +437,40 @@ module smc_peripherals #(
   logic avs_gpio_enable;
 
   // I2C control signals
-  logic [smc_config_pkg::NUM_I2C-1:0] i2c_enable_smc_clk;
-  logic [smc_config_pkg::NUM_I2C-1:0] i2c_enable_periph_clk;
-  logic [smc_config_pkg::NUM_I2C-1:0] i2c_master_enable;
+  logic [smc_config_pkg::NumI2c-1:0] i2c_enable_smc_clk;
+  logic [smc_config_pkg::NumI2c-1:0] i2c_enable_periph_clk;
+  logic [smc_config_pkg::NumI2c-1:0] i2c_master_enable;
 
-  logic [smc_config_pkg::NUM_I2C-1:0] i2c_scl_o;
-  logic [smc_config_pkg::NUM_I2C-1:0] i2c_sda_o;
-  logic [smc_config_pkg::NUM_I2C-1:0] i2c_smbsus_no;
-  logic [smc_config_pkg::NUM_I2C-1:0] i2c_smbalert_no;
+  logic [smc_config_pkg::NumI2c-1:0] i2c_scl_o;
+  logic [smc_config_pkg::NumI2c-1:0] i2c_sda_o;
+  logic [smc_config_pkg::NumI2c-1:0] i2c_smbsus_no;
+  logic [smc_config_pkg::NumI2c-1:0] i2c_smbalert_no;
 
-  logic [smc_config_pkg::NUM_I2C-1:0] i2c_smbsus_ni;
-  logic [smc_config_pkg::NUM_I2C-1:0] i2c_smbalert_ni;
+  logic [smc_config_pkg::NumI2c-1:0] i2c_smbsus_ni;
+  logic [smc_config_pkg::NumI2c-1:0] i2c_smbalert_ni;
 
-  logic [smc_config_pkg::NUM_I2C-1:0] i2c_scl_i;
-  logic [smc_config_pkg::NUM_I2C-1:0] i2c_sda_i;
+  logic [smc_config_pkg::NumI2c-1:0] i2c_scl_i;
+  logic [smc_config_pkg::NumI2c-1:0] i2c_sda_i;
 
   // UART control signals
-  logic [smc_config_pkg::NUM_UART-1:0] uart_enable_smc_clk;
-  logic [smc_config_pkg::NUM_UART-1:0] uart_enable_periph_clk;
-  logic [smc_config_pkg::NUM_UART-1:0] uart_rx;
-  logic [smc_config_pkg::NUM_UART-1:0] uart_tx;
-  logic [smc_config_pkg::NUM_UART-1:0] uart_rts_n;
-  logic [smc_config_pkg::NUM_UART-1:0] uart_cts_n;
+  logic [smc_config_pkg::NumUart-1:0] uart_enable_smc_clk;
+  logic [smc_config_pkg::NumUart-1:0] uart_enable_periph_clk;
+  logic [smc_config_pkg::NumUart-1:0] uart_rx;
+  logic [smc_config_pkg::NumUart-1:0] uart_tx;
+  logic [smc_config_pkg::NumUart-1:0] uart_rts_n;
+  logic [smc_config_pkg::NumUart-1:0] uart_cts_n;
 
   // Clock gate enable signal from CDC
   logic i3c_cg_en_periph_clk;
 
   // I3C control signals
-  logic [smc_config_pkg::NUM_I3C-1:0] i3c_scl_to_pad;  // SCL output from I3C core
-  logic [smc_config_pkg::NUM_I3C-1:0] i3c_sda_to_pad;  // SDA output from I3C core
-  logic [smc_config_pkg::NUM_I3C-1:0] i3c_scl_oe_to_pad;  // SCL output enable
-  logic [smc_config_pkg::NUM_I3C-1:0] i3c_sda_oe_to_pad;  // SDA output enable
-  logic [smc_config_pkg::NUM_I3C-1:0] i3c_sel_od_pp_to_pad;  // Select open-drain (0) or push-pull (1)
-  logic [smc_config_pkg::NUM_I3C-1:0] i3c_scl_from_pad;  // SCL input to I3C core
-  logic [smc_config_pkg::NUM_I3C-1:0] i3c_sda_from_pad;  // SDA input to I3C core
+  logic [smc_config_pkg::NumI3c-1:0] i3c_scl_to_pad;  // SCL output from I3C core
+  logic [smc_config_pkg::NumI3c-1:0] i3c_sda_to_pad;  // SDA output from I3C core
+  logic [smc_config_pkg::NumI3c-1:0] i3c_scl_oe_to_pad;  // SCL output enable
+  logic [smc_config_pkg::NumI3c-1:0] i3c_sda_oe_to_pad;  // SDA output enable
+  logic [smc_config_pkg::NumI3c-1:0] i3c_sel_od_pp_to_pad;  // Select open-drain (0) or push-pull (1)
+  logic [smc_config_pkg::NumI3c-1:0] i3c_scl_from_pad;  // SCL input to I3C core
+  logic [smc_config_pkg::NumI3c-1:0] i3c_sda_from_pad;  // SDA input to I3C core
 
   // Boot Stall
   logic boot_stall_from_bp;
@@ -468,27 +487,27 @@ module smc_peripherals #(
   logic powergood_stable;
 
   // peripheral interrupts
-  logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0] telemetry_irq;
-  logic [smc_config_pkg::NUM_I3C-1:0] i3c_irqs_smc_clk, i3c_irqs_periph_clk;
-  logic [smc_config_pkg::NUM_UART-1:0] uart_err_periph_clk;
-  logic [smc_config_pkg::NUM_UART-1:0] uart_irq_periph_clk;
-  logic [smc_config_pkg::NUM_UART-1:0] log_engine_irq_periph_clk;
+  logic [smc_config_pkg::NumTelemetryReceivers-1:0] telemetry_irq;
+  logic [smc_config_pkg::NumI3c-1:0] i3c_irqs_smc_clk, i3c_irqs_periph_clk;
+  logic [smc_config_pkg::NumUart-1:0] uart_err_periph_clk;
+  logic [smc_config_pkg::NumUart-1:0] uart_irq_periph_clk;
+  logic [smc_config_pkg::NumUart-1:0]  log_engine_irq_periph_clk;
   logic                                avsbus_irq;
   logic                                avsbus_irq_smc_clk;
-  logic [smc_config_pkg::NUM_I2C-1:0] i2c_irqs_smc_clk, i2c_irqs_periph_clk;
+  logic [smc_config_pkg::NumI2c-1:0] i2c_irqs_smc_clk, i2c_irqs_periph_clk;
   logic                                locked_field_access_interrupt;
-  logic [smc_config_pkg::NUM_UART-1:0] uart_irq_combined_smc_clk;
-  logic [smc_pkg::NUM_GPIO_WRAPS-1:0]  gpio_interrupt;
+  logic [smc_config_pkg::NumUart-1:0]  uart_irq_combined_smc_clk;
+  logic [smc_pkg::NumGpioWraps-1:0]    gpio_interrupt;
 
   // SEP WDT reset synchronized to SMCCLK (for interrupt use only; raw signal still feeds reset_unit)
   logic rst_ext_wdt_smc_clk;
 
   // NDM reset request synchronized to SMCCLK
-  logic [smc_config_pkg::CPU_CLUSTER_COUNT-1:0] ndmreset_request_smc_clk;
+  logic [smc_config_pkg::CpuClusterCount-1:0] ndmreset_request_smc_clk;
 
   // debug signals
   logic [16:0]                             avsbus_cur_state_debug;
-  logic [smc_config_pkg::NUM_I2C-1:0][3:0] i2c_debug_periph_clk;
+  logic [smc_config_pkg::NumI2c-1:0][3:0]  i2c_debug_periph_clk;
 
   // System Timer OCTS signals
   logic timer_sync_load_primary;
@@ -515,28 +534,159 @@ module smc_peripherals #(
     // Output ports
     .gpio_req_o                       (axil_padring_req),
     .gpio_resp_i                      (axil_padring_resp),
-    .apb2avsbus_req_o                 (axil_avsbus_controller_req_smc_clk),
-    .apb2avsbus_resp_i                (axil_avsbus_controller_resp_smc_clk),
-    .i2c_req_o                        (axil_i2c_req_smc_clk),
-    .i2c_resp_i                       (axil_i2c_resp_smc_clk),
-    .uart_req_o                       (axil_uart_req_smc_clk),
-    .uart_resp_i                      (axil_uart_resp_smc_clk),
+    .apb2avsbus_req_o                 (axil_avsbus_controller_req_xbar),
+    .apb2avsbus_resp_i                (axil_avsbus_controller_resp_xbar),
+    .i2c_req_o                        (axil_i2c_req_xbar),
+    .i2c_resp_i                       (axil_i2c_resp_xbar),
+    .uart_req_o                       (axil_uart_req_xbar),
+    .uart_resp_i                      (axil_uart_resp_xbar),
     .efuse_req_o                      (axil_efuse_req),
     .efuse_resp_i                     (axil_efuse_resp),
-    .telemetry_req_o                  (axil_telemetry_req),
-    .telemetry_resp_i                 (axil_telemetry_resp),
+    .telemetry_req_o                  (axil_telemetry_req_xbar),
+    .telemetry_resp_i                 (axil_telemetry_resp_xbar),
     .system_timer_octs_req_o          (axil_system_timer_octs_req),
     .system_timer_octs_resp_i         (axil_system_timer_octs_resp),
     .dtp_csr_req_o                    (axil_dtp_csr_req),
     .dtp_csr_resp_i                   (axil_dtp_csr_resp_i),
-    .i3c_req_o                        (axil_i3c_req_smc_clk),
-    .i3c_resp_i                       (axil_i3c_resp_smc_clk),
+    .i3c_req_o                        (axil_i3c_req_xbar),
+    .i3c_resp_i                       (axil_i3c_resp_xbar),
     .reset_unit_req_o                 (axil_reset_unit_req),
     .reset_unit_resp_i                (axil_reset_unit_resp),
     .misc_req_o                       (axil_misc_req),
     .misc_resp_i                      (axil_misc_resp),
     .external_req_o                   (axil_external_req),
     .external_resp_i                  (axil_external_resp)
+  );
+
+  ///////////////////////////////////
+  // Clock-gated peripheral access //
+  ///////////////////////////////////
+
+  // Gated peripherals return SLVERR to prevent hangs upon attempted access
+
+  prim_axil_access_gate #(
+    .ADDR_WIDTH     (smc_pkg::SmcLocalAddrWidth),
+    .DATA_WIDTH     (smc_pkg::AxiLite32DataWidth),
+    .MAX_TRANS      (smc_periph_axi_lite_xbar_pkg::XbarCfg.MaxMstTrans),
+    .RESP           (axi_pkg::RESP_SLVERR),
+    .RESP_WIDTH     (smc_pkg::AxiLite32DataWidth),
+    .RESP_DATA      (32'hBADCAB1E),
+    .axil_req_t     (smc_pkg::smc_axil_32_32_req_t),
+    .axil_resp_t    (smc_pkg::smc_axil_32_32_resp_t),
+    .axil_aw_chan_t (smc_pkg::smc_axil_32_32_aw_chan_t),
+    .axil_w_chan_t  (smc_pkg::smc_axil_32_32_w_chan_t),
+    .axil_b_chan_t  (smc_pkg::smc_axil_32_32_b_chan_t),
+    .axil_ar_chan_t (smc_pkg::smc_axil_32_32_ar_chan_t),
+    .axil_r_chan_t  (smc_pkg::smc_axil_32_32_r_chan_t)
+  ) u_avsbus_access_gate (
+    .clk_i       (clk_smc_i),
+    .rst_ni      (rst_primary_smc_clk_no),
+    .test_en_i   (test_en_i),
+    .block_i     (avs_cg_en_i),
+    .axil_req_i  (axil_avsbus_controller_req_xbar),
+    .axil_resp_o (axil_avsbus_controller_resp_xbar),
+    .axil_req_o  (axil_avsbus_controller_req_smc_clk),
+    .axil_resp_i (axil_avsbus_controller_resp_smc_clk)
+  );
+
+  prim_axil_access_gate #(
+    .ADDR_WIDTH     (smc_pkg::SmcLocalAddrWidth),
+    .DATA_WIDTH     (smc_pkg::AxiLite32DataWidth),
+    .MAX_TRANS      (smc_periph_axi_lite_xbar_pkg::XbarCfg.MaxMstTrans),
+    .RESP           (axi_pkg::RESP_SLVERR),
+    .RESP_WIDTH     (smc_pkg::AxiLite32DataWidth),
+    .RESP_DATA      (32'hBADCAB1E),
+    .axil_req_t     (smc_pkg::smc_axil_32_32_req_t),
+    .axil_resp_t    (smc_pkg::smc_axil_32_32_resp_t),
+    .axil_aw_chan_t (smc_pkg::smc_axil_32_32_aw_chan_t),
+    .axil_w_chan_t  (smc_pkg::smc_axil_32_32_w_chan_t),
+    .axil_b_chan_t  (smc_pkg::smc_axil_32_32_b_chan_t),
+    .axil_ar_chan_t (smc_pkg::smc_axil_32_32_ar_chan_t),
+    .axil_r_chan_t  (smc_pkg::smc_axil_32_32_r_chan_t)
+  ) u_i2c_access_gate (
+    .clk_i       (clk_smc_i),
+    .rst_ni      (rst_primary_smc_clk_no),
+    .test_en_i   (test_en_i),
+    .block_i     (i2c_cg_en_i),
+    .axil_req_i  (axil_i2c_req_xbar),
+    .axil_resp_o (axil_i2c_resp_xbar),
+    .axil_req_o  (axil_i2c_req_smc_clk),
+    .axil_resp_i (axil_i2c_resp_smc_clk)
+  );
+
+  prim_axil_access_gate #(
+    .ADDR_WIDTH     (smc_pkg::SmcLocalAddrWidth),
+    .DATA_WIDTH     (smc_pkg::AxiLite32DataWidth),
+    .MAX_TRANS      (smc_periph_axi_lite_xbar_pkg::XbarCfg.MaxMstTrans),
+    .RESP           (axi_pkg::RESP_SLVERR),
+    .RESP_WIDTH     (smc_pkg::AxiLite32DataWidth),
+    .RESP_DATA      (32'hBADCAB1E),
+    .axil_req_t     (smc_pkg::smc_axil_32_32_req_t),
+    .axil_resp_t    (smc_pkg::smc_axil_32_32_resp_t),
+    .axil_aw_chan_t (smc_pkg::smc_axil_32_32_aw_chan_t),
+    .axil_w_chan_t  (smc_pkg::smc_axil_32_32_w_chan_t),
+    .axil_b_chan_t  (smc_pkg::smc_axil_32_32_b_chan_t),
+    .axil_ar_chan_t (smc_pkg::smc_axil_32_32_ar_chan_t),
+    .axil_r_chan_t  (smc_pkg::smc_axil_32_32_r_chan_t)
+  ) u_uart_access_gate (
+    .clk_i       (clk_smc_i),
+    .rst_ni      (rst_primary_smc_clk_no),
+    .test_en_i   (test_en_i),
+    .block_i     (uart_cg_en_i),
+    .axil_req_i  (axil_uart_req_xbar),
+    .axil_resp_o (axil_uart_resp_xbar),
+    .axil_req_o  (axil_uart_req_smc_clk),
+    .axil_resp_i (axil_uart_resp_smc_clk)
+  );
+
+  prim_axil_access_gate #(
+    .ADDR_WIDTH     (smc_pkg::SmcLocalAddrWidth),
+    .DATA_WIDTH     (smc_pkg::AxiLite32DataWidth),
+    .MAX_TRANS      (smc_periph_axi_lite_xbar_pkg::XbarCfg.MaxMstTrans),
+    .RESP           (axi_pkg::RESP_SLVERR),
+    .RESP_WIDTH     (smc_pkg::AxiLite32DataWidth),
+    .RESP_DATA      (32'hBADCAB1E),
+    .axil_req_t     (smc_pkg::smc_axil_32_32_req_t),
+    .axil_resp_t    (smc_pkg::smc_axil_32_32_resp_t),
+    .axil_aw_chan_t (smc_pkg::smc_axil_32_32_aw_chan_t),
+    .axil_w_chan_t  (smc_pkg::smc_axil_32_32_w_chan_t),
+    .axil_b_chan_t  (smc_pkg::smc_axil_32_32_b_chan_t),
+    .axil_ar_chan_t (smc_pkg::smc_axil_32_32_ar_chan_t),
+    .axil_r_chan_t  (smc_pkg::smc_axil_32_32_r_chan_t)
+  ) u_telemetry_access_gate (
+    .clk_i       (clk_smc_i),
+    .rst_ni      (rst_primary_smc_clk_no),
+    .test_en_i   (test_en_i),
+    .block_i     (tel_cg_en_i),
+    .axil_req_i  (axil_telemetry_req_xbar),
+    .axil_resp_o (axil_telemetry_resp_xbar),
+    .axil_req_o  (axil_telemetry_req),
+    .axil_resp_i (axil_telemetry_resp)
+  );
+
+  prim_axil_access_gate #(
+    .ADDR_WIDTH     (smc_pkg::SmcLocalAddrWidth),
+    .DATA_WIDTH     (smc_pkg::AxiLite32DataWidth),
+    .MAX_TRANS      (smc_periph_axi_lite_xbar_pkg::XbarCfg.MaxMstTrans),
+    .RESP           (axi_pkg::RESP_SLVERR),
+    .RESP_WIDTH     (smc_pkg::AxiLite32DataWidth),
+    .RESP_DATA      (32'hBADCAB1E),
+    .axil_req_t     (smc_pkg::smc_axil_32_32_req_t),
+    .axil_resp_t    (smc_pkg::smc_axil_32_32_resp_t),
+    .axil_aw_chan_t (smc_pkg::smc_axil_32_32_aw_chan_t),
+    .axil_w_chan_t  (smc_pkg::smc_axil_32_32_w_chan_t),
+    .axil_b_chan_t  (smc_pkg::smc_axil_32_32_b_chan_t),
+    .axil_ar_chan_t (smc_pkg::smc_axil_32_32_ar_chan_t),
+    .axil_r_chan_t  (smc_pkg::smc_axil_32_32_r_chan_t)
+  ) u_i3c_access_gate (
+    .clk_i       (clk_smc_i),
+    .rst_ni      (rst_primary_smc_clk_no),
+    .test_en_i   (test_en_i),
+    .block_i     (i3c_cg_en_i),
+    .axil_req_i  (axil_i3c_req_xbar),
+    .axil_resp_o (axil_i3c_resp_xbar),
+    .axil_req_o  (axil_i3c_req_smc_clk),
+    .axil_resp_i (axil_i3c_resp_smc_clk)
   );
 
   assign smc_external_req_o = axil_external_req;
@@ -639,11 +789,11 @@ module smc_peripherals #(
 
   // Protect against truncation from casts
   `OCAH_OT_ASSERT_INIT(PadringGpioBaseFits_A, smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_BASE_ADDR(0
-                       ) < (64'd1 << gpio_pkg::ADDR_WIDTH))
+                       ) < (64'd1 << gpio_pkg::AddrWidth))
 
   smc_padring #(
     .MAX_TRANS                  (MAX_TRANS), // threaded from smc_wrapper (was hardcoded 2)
-    .GPIO_INTF_BASE_ADDR        (gpio_pkg::ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_BASE_ADDR(0)))
+    .GPIO_INTF_BASE_ADDR        (gpio_pkg::AddrWidth'(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_BASE_ADDR(0)))
   ) u_smc_padring (
     .clk_i                      (clk_smc_i),
     .rst_primary_ni             (rst_primary_smc_clk_no),
@@ -761,8 +911,8 @@ module smc_peripherals #(
   );
 
   avsbus_controller #(
-    .COMMAND_FIFO_DEPTH         (smc_config_pkg::AVS_COMMAND_FIFO_DEPTH),
-    .READBACK_FIFO_DEPTH        (smc_config_pkg::AVS_READBACK_FIFO_DEPTH)
+    .COMMAND_FIFO_DEPTH         (smc_config_pkg::AvsCommandFifoDepth),
+    .READBACK_FIFO_DEPTH        (smc_config_pkg::AvsReadbackFifoDepth)
   ) u_avsbus_controller (
     .clk_reg_i                  (gated_clk_periph_avs),
     .clk_ref_i                  (gated_clk_ref_avs),
@@ -803,29 +953,29 @@ module smc_peripherals #(
 
   `OCAH_OT_ASSERT_INIT(
       I2cCtrlBaseFits_A,
-      smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_BASE_ADDR < (64'd1 << i2c_wrap_pkg::REG_ADDR_WIDTH))
+      smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_BASE_ADDR < (64'd1 << i2c_wrap_pkg::RegAddrWidth))
   `OCAH_OT_ASSERT_INIT(
       I2cCtrlSizeFits_A,
-      smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_SIZE < (64'd1 << i2c_wrap_pkg::REG_ADDR_WIDTH))
+      smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_SIZE < (64'd1 << i2c_wrap_pkg::RegAddrWidth))
   `OCAH_OT_ASSERT_INIT(I2c0BaseFits_A, smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0
-                       ) < (64'd1 << i2c_wrap_pkg::REG_ADDR_WIDTH))
+                       ) < (64'd1 << i2c_wrap_pkg::RegAddrWidth))
   `OCAH_OT_ASSERT_INIT(
       I2c0SizeFits_A,
-      smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_SIZE < (64'd1 << i2c_wrap_pkg::REG_ADDR_WIDTH))
+      smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_SIZE < (64'd1 << i2c_wrap_pkg::RegAddrWidth))
 
   i2c_wrap #(
-    .NUM_I2CS                 (smc_config_pkg::NUM_I2C),
-    .CONTROLLER_TX_FIFO_DEPTH (smc_config_pkg::I2C_CONTROLLER_TX_FIFO_DEPTH),
-    .CONTROLLER_RX_FIFO_DEPTH (smc_config_pkg::I2C_CONTROLLER_RX_FIFO_DEPTH),
-    .TARGET_TX_FIFO_DEPTH     (smc_config_pkg::I2C_TARGET_TX_FIFO_DEPTH),
-    .TARGET_RX_FIFO_DEPTH     (smc_config_pkg::I2C_TARGET_RX_FIFO_DEPTH),
-    .INPUT_DELAY_CYCLES       (smc_config_pkg::I2C_INPUT_DELAY_CYCLES),
+    .NUM_I2CS                 (smc_config_pkg::NumI2c),
+    .CONTROLLER_TX_FIFO_DEPTH (smc_config_pkg::I2cControllerTxFifoDepth),
+    .CONTROLLER_RX_FIFO_DEPTH (smc_config_pkg::I2cControllerRxFifoDepth),
+    .TARGET_TX_FIFO_DEPTH     (smc_config_pkg::I2cTargetTxFifoDepth),
+    .TARGET_RX_FIFO_DEPTH     (smc_config_pkg::I2cTargetRxFifoDepth),
+    .INPUT_DELAY_CYCLES       (smc_config_pkg::I2cInputDelayCycles),
 
-    .I2C_CTRL_REG_MAP_BASE_ADDR (i2c_wrap_pkg::REG_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_BASE_ADDR)),
-    .I2C_CTRL_REG_MAP_SIZE      (i2c_wrap_pkg::REG_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_SIZE)),
-    .I2C_0__REG_MAP_BASE_ADDR   (i2c_wrap_pkg::REG_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0))),
-    .I2C_0__REG_MAP_SIZE        (i2c_wrap_pkg::REG_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_SIZE)),
-    .I2C_INSTANCE_SPACING       (i2c_wrap_pkg::I2C_INSTANCE_SPACING)
+    .I2C_CTRL_REG_MAP_BASE_ADDR (i2c_wrap_pkg::RegAddrWidth'(smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_BASE_ADDR)),
+    .I2C_CTRL_REG_MAP_SIZE      (i2c_wrap_pkg::RegAddrWidth'(smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_SIZE)),
+    .I2C_0__REG_MAP_BASE_ADDR   (i2c_wrap_pkg::RegAddrWidth'(smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0))),
+    .I2C_0__REG_MAP_SIZE        (i2c_wrap_pkg::RegAddrWidth'(smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_SIZE)),
+    .I2C_INSTANCE_SPACING       (i2c_wrap_pkg::I2cInstanceSpacing)
   ) u_i2c_wrap (
     .clk_i                    (gated_clk_periph_i2c),
     .rst_ni                   (rst_primary_periph_clk_n),
@@ -870,49 +1020,49 @@ module smc_peripherals #(
 
   `OCAH_OT_ASSERT_INIT(UartLogEngineWrapBaseFits_A,
                        smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_BASE_ADDR(0
-                       ) < (64'd1 << uart_wrap_pkg::REG_ADDR_WIDTH))
+                       ) < (64'd1 << uart_wrap_pkg::RegAddrWidth))
   `OCAH_OT_ASSERT_INIT(
       UartLogEngineWrapSizeFits_A,
-      smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_SIZE < (64'd1 << uart_wrap_pkg::REG_ADDR_WIDTH))
+      smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_SIZE < (64'd1 << uart_wrap_pkg::RegAddrWidth))
   `OCAH_OT_ASSERT_INIT(
       UartBaseFits_A,
       smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0
-      ) < (64'd1 << uart_wrap_pkg::REG_ADDR_WIDTH))
+      ) < (64'd1 << uart_wrap_pkg::RegAddrWidth))
   `OCAH_OT_ASSERT_INIT(
       UartSizeFits_A,
-      smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_SIZE < (64'd1 << uart_wrap_pkg::REG_ADDR_WIDTH))
+      smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_SIZE < (64'd1 << uart_wrap_pkg::RegAddrWidth))
   `OCAH_OT_ASSERT_INIT(
       LogEngineBaseFits_A,
       smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0
-      ) < (64'd1 << uart_wrap_pkg::REG_ADDR_WIDTH))
+      ) < (64'd1 << uart_wrap_pkg::RegAddrWidth))
   `OCAH_OT_ASSERT_INIT(
       LogEngineSizeFits_A,
-      smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_SIZE < (64'd1 << uart_wrap_pkg::REG_ADDR_WIDTH))
+      smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_SIZE < (64'd1 << uart_wrap_pkg::RegAddrWidth))
   `OCAH_OT_ASSERT_INIT(
       UartLogEngineCtrlBaseFits_A,
       smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_BASE_ADDR(
-      0) < (64'd1 << uart_wrap_pkg::REG_ADDR_WIDTH))
+      0) < (64'd1 << uart_wrap_pkg::RegAddrWidth))
   `OCAH_OT_ASSERT_INIT(
       UartLogEngineCtrlSizeFits_A,
-      smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_SIZE < (64'd1 << uart_wrap_pkg::REG_ADDR_WIDTH))
+      smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_SIZE < (64'd1 << uart_wrap_pkg::RegAddrWidth))
 
   uart_wrap #(
-    .NUM_UARTS             (smc_config_pkg::NUM_UART),
-    .UART_TX_FIFO_DEPTH    (smc_config_pkg::UART_TX_FIFO_DEPTH),
-    .UART_RX_FIFO_DEPTH    (smc_config_pkg::UART_RX_FIFO_DEPTH),
-    .GEN_LOG_ENGINES       (smc_config_pkg::GEN_LOG_ENGINES),
-    .LOG_ENGINE_FIFO_DEPTH (smc_config_pkg::LOG_ENGINE_FIFO_DEPTH),
+    .NUM_UARTS             (smc_config_pkg::NumUart),
+    .UART_TX_FIFO_DEPTH    (smc_config_pkg::UartTxFifoDepth),
+    .UART_RX_FIFO_DEPTH    (smc_config_pkg::UartRxFifoDepth),
+    .GEN_LOG_ENGINES       (smc_config_pkg::GenLogEngines),
+    .LOG_ENGINE_FIFO_DEPTH (smc_config_pkg::LogEngineFifoDepth),
 
-    .UART_LOG_ENGINE_WRAP_0__REG_MAP_BASE_ADDR (uart_wrap_pkg::REG_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_BASE_ADDR(0))),
-    .UART_LOG_ENGINE_WRAP_0__REG_MAP_SIZE      (uart_wrap_pkg::REG_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_SIZE)),
-    .UART_LOG_ENGINE_WRAP_SPACING              (uart_wrap_pkg::UART_LOG_ENGINE_WRAP_SPACING),
+    .UART_LOG_ENGINE_WRAP_0__REG_MAP_BASE_ADDR (uart_wrap_pkg::RegAddrWidth'(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_BASE_ADDR(0))),
+    .UART_LOG_ENGINE_WRAP_0__REG_MAP_SIZE      (uart_wrap_pkg::RegAddrWidth'(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_SIZE)),
+    .UART_LOG_ENGINE_WRAP_SPACING              (uart_wrap_pkg::UartLogEngineWrapSpacing),
 
-    .UART_REG_MAP_BASE_ADDR                    (uart_wrap_pkg::REG_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0))),
-    .UART_REG_MAP_SIZE                         (uart_wrap_pkg::REG_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_SIZE)),
-    .LOG_ENGINE_REG_MAP_BASE_ADDR              (uart_wrap_pkg::REG_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))),
-    .LOG_ENGINE_REG_MAP_SIZE                   (uart_wrap_pkg::REG_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_SIZE)),
-    .UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR    (uart_wrap_pkg::REG_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_BASE_ADDR(0))),
-    .UART_LOG_ENGINE_CTRL_REG_MAP_SIZE         (uart_wrap_pkg::REG_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_SIZE))
+    .UART_REG_MAP_BASE_ADDR                    (uart_wrap_pkg::RegAddrWidth'(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0))),
+    .UART_REG_MAP_SIZE                         (uart_wrap_pkg::RegAddrWidth'(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_SIZE)),
+    .LOG_ENGINE_REG_MAP_BASE_ADDR              (uart_wrap_pkg::RegAddrWidth'(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))),
+    .LOG_ENGINE_REG_MAP_SIZE                   (uart_wrap_pkg::RegAddrWidth'(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_SIZE)),
+    .UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR    (uart_wrap_pkg::RegAddrWidth'(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_BASE_ADDR(0))),
+    .UART_LOG_ENGINE_CTRL_REG_MAP_SIZE         (uart_wrap_pkg::RegAddrWidth'(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_SIZE))
   ) u_uart_wrap (
     .clk_i                  (gated_clk_periph_uart),
     .rst_ni                 (rst_primary_periph_clk_n),
@@ -927,9 +1077,9 @@ module smc_peripherals #(
     .uart_tx_o              (uart_tx),
 
     .uart_cts_ni            (uart_cts_n),
-    .uart_dsr_ni            ({smc_config_pkg::NUM_UART{1'b1}}),
-    .uart_ri_ni             ({smc_config_pkg::NUM_UART{1'b1}}),
-    .uart_dcd_ni            ({smc_config_pkg::NUM_UART{1'b1}}),
+    .uart_dsr_ni            ({smc_config_pkg::NumUart{1'b1}}),
+    .uart_ri_ni             ({smc_config_pkg::NumUart{1'b1}}),
+    .uart_dcd_ni            ({smc_config_pkg::NumUart{1'b1}}),
 
     .uart_rts_no            (uart_rts_n),
     .uart_dtr_no            (/* UNUSED */),
@@ -972,18 +1122,18 @@ module smc_peripherals #(
   `OCAH_OT_ASSERT_INIT(
       TelemetryRxBaseFits_A,
       smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_BASE_ADDR(0
-      ) < (64'd1 << telemetry_receiver_wrap_pkg::REG_ADDR_WIDTH))
+      ) < (64'd1 << telemetry_receiver_wrap_pkg::RegAddrWidth))
   `OCAH_OT_ASSERT_INIT(
       TelemetryRxSizeFits_A,
-      smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_SIZE < (64'd1 << telemetry_receiver_wrap_pkg::REG_ADDR_WIDTH))
+      smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_SIZE < (64'd1 << telemetry_receiver_wrap_pkg::RegAddrWidth))
 
   telemetry_receiver_wrap #(
-    .NUM_TELEMETRY_RECEIVERS                            (smc_config_pkg::NUM_TELEMETRY_RECEIVERS),
-    .TELEMETRY_RECEIVER_BUFFER_DEPTH                    (smc_config_pkg::TELEMETRY_RECEIVER_BUFFER_DEPTH),
-    .TELEMETRY_RECEIVER_MAX_NUM_COUNTERS_PER_MESSAGE    (smc_config_pkg::TELEMETRY_RECEIVER_MAX_NUM_COUNTERS_PER_MESSAGE),
+    .NUM_TELEMETRY_RECEIVERS                            (smc_config_pkg::NumTelemetryReceivers),
+    .TELEMETRY_RECEIVER_BUFFER_DEPTH                    (smc_config_pkg::TelemetryReceiverBufferDepth),
+    .TELEMETRY_RECEIVER_MAX_NUM_COUNTERS_PER_MESSAGE    (smc_config_pkg::TelemetryReceiverMaxNumCountersPerMessage),
 
-    .TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR            (telemetry_receiver_wrap_pkg::REG_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_BASE_ADDR(0))),
-    .TELEMETRY_RECEIVER_0__REG_MAP_SIZE                 (telemetry_receiver_wrap_pkg::REG_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_SIZE))
+    .TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR            (telemetry_receiver_wrap_pkg::RegAddrWidth'(smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_BASE_ADDR(0))),
+    .TELEMETRY_RECEIVER_0__REG_MAP_SIZE                 (telemetry_receiver_wrap_pkg::RegAddrWidth'(smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_SIZE))
   ) u_telemetry_receiver_wrap (
     .clk_i                      (gated_clk_smc_tel),
     .rst_ni                     (rst_primary_smc_clk_no),
@@ -1024,7 +1174,7 @@ module smc_peripherals #(
 
   ext_boot_seq_done_qual u_ext_boot_seq_done_qual (
     .clk_i                    (clk_smc_i),
-    .rst_ni                   (rst_cold_ni),
+    .rst_ni                   (rst_cold_stable_smc_clk_n),
     .ext_boot_seq_done_i      (ext_boot_seq_done_i),
     .ext_boot_seq_done_qual_o (ext_boot_seq_done_qual)
   );
@@ -1167,16 +1317,16 @@ module smc_peripherals #(
   );
 
   i3ccore_wrapper #(
-    .NUM_I3C            (smc_config_pkg::NUM_I3C),
-    .I3C_REG_ADDR_WIDTH (i3ccore_wrap_pkg::I3C_REG_ADDR_WIDTH),
+    .NUM_I3C            (smc_config_pkg::NumI3c),
+    .I3C_REG_ADDR_WIDTH (i3ccore_wrap_pkg::I3cRegAddrWidth),
     .BASE_ADDR          (smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_BASE_ADDR),
-    .INSTANCE_SPACING   (i3ccore_wrap_pkg::I3C_INSTANCE_SPACING),
+    .INSTANCE_SPACING   (i3ccore_wrap_pkg::I3cInstanceSpacing),
 
     // I3C Core parameters
-    .DatAw              (i3c_pkg::DatAw),
-    .DctAw              (i3c_pkg::DctAw),
-    .CsrAddrWidth       (I3CCSR_pkg::I3CCSR_MIN_ADDR_WIDTH),
-    .CsrDataWidth       (I3CCSR_pkg::I3CCSR_DATA_WIDTH)
+    .DAT_AW             (i3c_pkg::DatAw),
+    .DCT_AW             (i3c_pkg::DctAw),
+    .CSR_ADDR_WIDTH     (I3CCSR_pkg::I3CCSR_MIN_ADDR_WIDTH),
+    .CSR_DATA_WIDTH     (I3CCSR_pkg::I3CCSR_DATA_WIDTH)
   ) u_i3ccore_wrapper (
     .clk_i              (gated_clk_periph_i3c),
     .rst_ni             (rst_primary_periph_clk_n),
@@ -1226,7 +1376,7 @@ module smc_peripherals #(
     .recovery_payload_available_o   (/* UNUSED */),
     .recovery_image_activated_o     (/* UNUSED */),
     .peripheral_reset_o             (/* UNUSED */),
-    .peripheral_reset_done_i        ({smc_config_pkg::NUM_I3C{1'b0}}),
+    .peripheral_reset_done_i        ({smc_config_pkg::NumI3c{1'b0}}),
     .escalated_reset_o              (/* UNUSED */),
 
     // DAT/DCT memory interfaces
@@ -1243,8 +1393,8 @@ module smc_peripherals #(
   ///////////////////
 
   smc_misc_wrap #(
-    .CHIP_ID                    (smc_config_pkg::CHIP_ID),
-    .LC_STATE_WIDTH             (2 * smc_pkg::LC_STATE_WIDTH)
+    .CHIP_ID                    (smc_config_pkg::ChipId),
+    .LC_STATE_WIDTH             (2 * smc_pkg::LcStateWidth)
   ) u_smc_misc_wrap (
     .clk_i                      (clk_smc_i),
     .rst_ni                     (rst_primary_smc_clk_no),
@@ -1334,8 +1484,8 @@ module smc_peripherals #(
     peripheral_interrupts_o[25:23]   = i2c_irqs_smc_clk;
     peripheral_interrupts_o[26]      = rst_ext_wdt_smc_clk; // synchronized active-high WDT reset assertion
     peripheral_interrupts_o[27]      = locked_field_access_interrupt;
-    peripheral_interrupts_o[28]      = |gpio_interrupt[smc_pkg::NUM_BONDED_GPIO/2-1:0];                     // OR-reduced across lower half of GPIO wraps; SW reads GPIO status regs to identify source
-    peripheral_interrupts_o[29]      = |gpio_interrupt[smc_pkg::NUM_BONDED_GPIO-1:smc_pkg::NUM_BONDED_GPIO/2]; // OR-reduced across upper half of GPIO wraps; SW reads GPIO status regs to identify source
+    peripheral_interrupts_o[28]      = |gpio_interrupt[smc_pkg::NumBondedGpio/2-1:0];                     // OR-reduced across lower half of GPIO wraps; SW reads GPIO status regs to identify source
+    peripheral_interrupts_o[29]      = |gpio_interrupt[smc_pkg::NumBondedGpio-1:smc_pkg::NumBondedGpio/2]; // OR-reduced across upper half of GPIO wraps; SW reads GPIO status regs to identify source
     peripheral_interrupts_o[30]      = axi_hang_irq_i; // OR of the three smc_base AXI hang detectors; SW reads HANG_DET_*_CTRL to identify the master
   end
 

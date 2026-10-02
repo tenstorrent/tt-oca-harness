@@ -4,9 +4,13 @@
 // Route system-peripherals AXI traffic to mailbox, system CSR, and SMN paths.
 //
 // Address rules are explicit integration apertures in AddrMap below:
-// 0x10A0_0000-0x10A0_FFFF to the mailbox, 0x10A1_0000-0x10A4_FFFF and 0x1080_2000-0x1080_20FF
-// to the system CSRs, every other address below 0x4000_0000 to smn_inbound_from_xbar, and
-// anything above to the axi_xbar DECERR responder. Both initiators reach every target.
+// 0x10A0_0000-0x10A0_FFFF to the mailbox, and each system-CSR register block's extent from
+// sep_top_addrmap_pkg to the system CSRs. Every other address in 0x10A1_0000-0x10A4_FFFF and
+// 0x1080_2000-0x1080_20FF, and anything at or above 0x4000_0000, gets the axi_xbar DECERR
+// responder; the rest of the space below 0x4000_0000 goes to smn_inbound_from_xbar. The
+// system_csr AXI-Lite converter answers every write error with SLVERR, so a refusal in those
+// windows has to come from this decode to read and write as DECERR. Both initiators reach
+// every target.
 // Initiators are full AXI4 64-bit. mailbox and system_csr targets are AXI4-Lite 64-bit;
 // smn_inbound_from_xbar stays full AXI4, with one more ID bit than the initiators.
 
@@ -39,7 +43,8 @@ module sep_system_peripherals_xbar
                                               // AXI-Lite.
   input  axi_lite64_resp_t mailbox_resp_i,    // Mailbox AXI-Lite response.
 
-  output axi_lite64_req_t  system_csr_req_o,  // Request for 0x10A1_0000-0x10A4_FFFF or
+  output axi_lite64_req_t  system_csr_req_o,  // Request for a system-CSR register block extent
+                                              // in 0x10A1_0000-0x10A4_FFFF or
                                               // 0x1080_2000-0x1080_20FF, converted to AXI-Lite.
   input  axi_lite64_resp_t system_csr_resp_i  // System CSR AXI-Lite response.
 );
@@ -62,10 +67,62 @@ module sep_system_peripherals_xbar
     '{idx: 0, start_addr: 56'h10a50000, end_addr: 57'h40000000},
     // mailbox.main: 0x10a00000 - 0x10a10000
     '{idx: 1, start_addr: 56'h10a00000, end_addr: 57'h10a10000},
-    // system_csr.main: 0x10a10000 - 0x10a50000
-    '{idx: 2, start_addr: 56'h10a10000, end_addr: 57'h10a50000},
-    // system_csr.scratch_region: 0x10802000 - 0x10802100
-    '{idx: 2, start_addr: 56'h10802000, end_addr: 57'h10802100}
+    // system_csr.local_master_alias_remap_ctrl: 0x10a10000 - 0x10a10200
+    '{
+      idx: 2,
+      start_addr: 56'(sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_BASE_ADDR(0)),
+      end_addr: 57'(sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_BASE_ADDR(0) +
+                    sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_TOTAL_SIZE)
+    },
+    // system_csr.ap_output_remap_ctrl: 0x10a10200 - 0x10a10280
+    '{
+      idx: 2,
+      start_addr: 56'(sep_top_addrmap_pkg::SEP_TOP_AP_OUTPUT_REMAP_CTRL_BASE_ADDR(0)),
+      end_addr: 57'(sep_top_addrmap_pkg::SEP_TOP_AP_OUTPUT_REMAP_CTRL_BASE_ADDR(0) +
+                    sep_top_addrmap_pkg::SEP_TOP_AP_OUTPUT_REMAP_CTRL_TOTAL_SIZE)
+    },
+    // system_csr.stee_output_remap_ctrl: 0x10a10300 - 0x10a10380
+    '{
+      idx: 2,
+      start_addr: 56'(sep_top_addrmap_pkg::SEP_TOP_STEE_OUTPUT_REMAP_CTRL_BASE_ADDR(0)),
+      end_addr: 57'(sep_top_addrmap_pkg::SEP_TOP_STEE_OUTPUT_REMAP_CTRL_BASE_ADDR(0) +
+                    sep_top_addrmap_pkg::SEP_TOP_STEE_OUTPUT_REMAP_CTRL_TOTAL_SIZE)
+    },
+    // system_csr.outbound_filter_ctrl: 0x10a20000 - 0x10a20400
+    '{
+      idx: 2,
+      start_addr: 56'(sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_BASE_ADDR(0)),
+      end_addr: 57'(sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_BASE_ADDR(0) +
+                    sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_TOTAL_SIZE)
+    },
+    // system_csr.inbound_filter_ctrl: 0x10a21000 - 0x10a21200
+    '{
+      idx: 2,
+      start_addr: 56'(sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0)),
+      end_addr: 57'(sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0) +
+                    sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_TOTAL_SIZE)
+    },
+    // system_csr.sep_cpu_ctrl: 0x10a30000 - 0x10a31008
+    '{
+      idx: 2,
+      start_addr: 56'(sep_top_addrmap_pkg::SEP_TOP_SEP_CPU_CTRL_BASE_ADDR),
+      end_addr: 57'(sep_top_addrmap_pkg::SEP_TOP_SEP_CPU_CTRL_BASE_ADDR +
+                    sep_top_addrmap_pkg::SEP_TOP_SEP_CPU_CTRL_SIZE)
+    },
+    // system_csr.sep_scratch_cold: 0x10802000 - 0x10802040
+    '{
+      idx: 2,
+      start_addr: 56'(sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_COLD_BASE_ADDR),
+      end_addr: 57'(sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_COLD_BASE_ADDR +
+                    sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_COLD_SIZE)
+    },
+    // system_csr.sep_scratch_warm: 0x10802080 - 0x108020c0
+    '{
+      idx: 2,
+      start_addr: 56'(sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WARM_BASE_ADDR),
+      end_addr: 57'(sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WARM_BASE_ADDR +
+                    sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WARM_SIZE)
+    }
   };
 
   // ===========================================================================

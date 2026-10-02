@@ -3,8 +3,8 @@
 
 // Route SEP local AXI traffic among CPU, DMA, debug, and subsystem targets.
 //
-// DMA and watchdog address bounds come from sep_top_addrmap_pkg; the remaining address
-// rules are explicit integration apertures in AddrMap below.
+// DMA, watchdog and SPI controller address bounds come from sep_top_addrmap_pkg; the
+// remaining address rules are explicit integration apertures in AddrMap below.
 // Initiator and target ports are AXI4 with 64-bit data; target IDs carry three more bits
 // than initiator IDs. Unmapped addresses and initiator-target pairs cleared in Connectivity
 // get DECERR.
@@ -77,7 +77,8 @@ module sep_local_axi_xbar
                                                        // 0x4000_0000-0xBFFF_FFFF.
   input  axi_out_resp_t sep_system_peripherals_resp_i,  // Response from sep_system_peripherals.
 
-  output axi_out_req_t  sep_io_req_o,         // Request for sep_io, 0x10B0_0000-0x10BF_FFFE.
+  output axi_out_req_t  sep_io_req_o,         // Request for the SPI controller register extent
+                                              // from sep_top_addrmap_pkg, to sep_io.
   input  axi_out_resp_t sep_io_resp_i,        // Response from sep_io.
 
   output axi_out_req_t  entropy_fifo_req_o,   // Request for the entropy pool,
@@ -177,11 +178,18 @@ module sep_local_axi_xbar
           start_addr: 32'h40000000,
           end_addr: 33'hc0000000
       },
-      // sep_io.main: 0x10b00000 - 0x10bfffff
+      // sep_io.main: spi_controller register extent, not the 1 MiB spec aperture --
+      // sep_io converts to AXI-Lite before its own decode and answers every write error
+      // with SLVERR, so the rest of the aperture is refused here to read and write DECERR.
       '{
           idx: 7,
-          start_addr: 32'h10b00000,
-          end_addr: 33'h10bfffff
+          start_addr: 32'(sep_top_addrmap_pkg::SEP_TOP_SPI_CONTROLLER_BASE_ADDR),
+          end_addr:
+          33'(
+          sep_top_addrmap_pkg::SEP_TOP_SPI_CONTROLLER_BASE_ADDR
+          +
+          sep_top_addrmap_pkg::SEP_TOP_SPI_CONTROLLER_SIZE
+          )
       },
       // entropy_fifo.main: 0x10950000 - 0x10960000
       '{

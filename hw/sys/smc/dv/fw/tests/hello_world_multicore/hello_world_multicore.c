@@ -16,21 +16,14 @@ static uint32_t checkin_count = 0;
 
 int main(void) {
     int hartid = metal_cpu_get_current_hartid();
-    int num_hearts = metal_cpu_get_num_harts();
-    write_scratch(1, num_hearts);
-    while (shared_counter < num_hearts - 1) {
+    int num_harts = metal_cpu_get_num_harts();
+    write_scratch(1, num_harts);
+    while (shared_counter < num_harts - 1) {
         write_scratch(1, checkin_count);
     }
 
     metal_lock_take(&mmio_lock);
     test_pass(hartid);
-    metal_lock_give(&mmio_lock);
-
-    while (true) {
-        __asm__("wfi");
-    }
-
-    return 0;
 }
 
 int other_main(int hartid) {
@@ -53,12 +46,10 @@ int secondary_main(void) {
 
         if (rc != 0) {
             test_fail(0);
-            return rc;
         }
 
-        /* Ensure that the lock is initialized before any readers of
-         * _start_other */
-        __asm__("fence rw,w"); /* Release semantics */
+        /* Publish the lock initialization before releasing the other harts */
+        __asm__("fence rw,w");
 
         _start_other = true;
 

@@ -6,8 +6,8 @@ no_cpu host-AXI. The pool fills from the native EDN endpoint after the
 shared entropy bring-up. Empty-pop SLVERR is taken only after at least one
 accepted pop. Bit [36] is observed high, then low, then high; bit [37] is
 the first fill-stall after ESRC disable plus EDN_ENABLE=False for
-StallThresh cycles with the pool not full. CHK-STALL-DURATION holds the same
-stall three times past StallThresh and requires [37] and the fill-stall cause
+STALL_THRESH cycles with the pool not full. CHK-STALL-DURATION holds the same
+stall three times past STALL_THRESH and requires [37] and the fill-stall cause
 to stay set. Drain-under-fill is not claimed.
 
 RANDCFG: extra accepted pops come from the run seed. Every seed walks the
@@ -410,13 +410,13 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         st_stall = await pool.status()
         fill_stall = pool_flag(st_stall, ST_FILL_STALL)
         assert fill_stall == 1 and await self._irq(IRQ_FILL_STALL) == 1, (
-            f"[37] not high after StallThresh (status=0x{st_stall:x} "
+            f"[37] not high after STALL_THRESH (status=0x{st_stall:x} "
             f"level={pool_level(st_stall)} fill_stall={fill_stall} "
             f"edn_req={self.rd(cocotb.top.pool_edn_req_o, allow_unknown=True)} "
             f"edn_ack={self.rd(cocotb.top.pool_edn_ack_o, allow_unknown=True)})"
         )
         self.logger.info(
-            "CHK-STALL-ASSERT PASS: [37]=1 after StallThresh=%d with pool not full (level=%d)",
+            "CHK-STALL-ASSERT PASS: [37]=1 after STALL_THRESH=%d with pool not full (level=%d)",
             STALL_THRESH,
             level_room,
         )
@@ -434,7 +434,7 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             st_stall,
         )
 
-        # The stall counter saturates at StallThresh and the flag clears only on
+        # The stall counter saturates at STALL_THRESH and the flag clears only on
         # forward progress, so holding the same
         # stall far past the threshold must leave [37] asserted. A counter that
         # wrapped, or a flag that self-cleared on saturation, would drop the
@@ -451,7 +451,7 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         )
         self.logger.info(
             "CHK-STALL-DURATION PASS: [37] still 1 and cause still 0x%x after "
-            "%d cycles, well past StallThresh=%d",
+            "%d cycles, well past STALL_THRESH=%d",
             cause_held,
             STALL_THRESH * 3,
             STALL_THRESH,

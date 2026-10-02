@@ -28,6 +28,13 @@ IEEE 1687-2014 (iJTAG) and IEEE 1838-2019 (3DIC).
 
 == Configuration Parameters
 
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="jiu-configuration-parameters-table"></span>
+++++
+endif::backend-html5[]
+
 The JIU is configured through the PTAP feature enables, the I/O, SMC debug and SEP
 debug STAP enables, the number of additional STAPs, the IDCODE and JTAG_CAPS values,
 and the JTAG2AXI pipeline depths.

@@ -21,6 +21,15 @@ ocah-lint-verilator-all:
 
 OCAH_PHONY += ocah-lint-verilator-all
 
+## Build every package in each (or BLOCK=-selected) block's filelist into a
+## Verilator model under --public-flat-rw, the flag cocotb's runner forces.
+## @param BLOCK=smu Optional block(s) to check (space-separated); omit for all
+.PHONY: ocah-lint-verilator-public-all
+ocah-lint-verilator-public-all:
+	$(call ocah_flow_run,ocah-lint-verilator-public)
+
+OCAH_PHONY += ocah-lint-verilator-public-all
+
 ifdef FLOW_DESIGN
 
 OCAH_LINT_VERILATOR_DIR := build/lint
@@ -36,6 +45,13 @@ OCAH_LINT_VERILATOR_TOP ?= $(FLOW_DESIGN)
 # does not. State the same defines explicitly in verilator's native form rather
 # than trying to reformat the shared variable.
 OCAH_LINT_VERILATOR_DEFINES := +define+SYNTHESIS=1
+
+OCAH_LINT_VERILATOR_FLAGS = -sv --language 1800-2023 \
+	--timing \
+	--timescale $(OCAH_FLOW_TIMESCALE) \
+	$(OCAH_LINT_VERILATOR_DEFINES) \
+	-Wno-fatal \
+	+define+ASSERTS_OFF
 
 ## Generate this block's bender filelist for verilator lint, without running verilator.
 .PHONY: ocah-lint-verilator-flist
@@ -55,18 +71,32 @@ ocah-lint-verilator-flist:
 .PHONY: ocah-lint-verilator
 ocah-lint-verilator: ocah-lint-verilator-flist
 	$(call ocah_require_host_tool,verilator,./scripts/docker-run.sh run-here make ocah-lint-verilator)
-	verilator --lint-only -sv --language 1800-2023 \
-		--timing \
-		--timescale $(OCAH_FLOW_TIMESCALE) \
+	verilator --lint-only $(OCAH_LINT_VERILATOR_FLAGS) \
 		--top-module $(OCAH_LINT_VERILATOR_TOP) \
-		$(OCAH_LINT_VERILATOR_DEFINES) \
 		-FI $(OCAH_VENDOR_DEFINES_SVH) \
 		$(OCAH_LINT_VERILATOR_EXTRA_FLAGS) \
-		-Wno-fatal \
-		+define+ASSERTS_OFF \
 		$(OCAH_LINT_VERILATOR_WAIVER_FILES) \
 		$(if $(VERILATOR_LINT_PATH),$(OCAH_LINT_VERILATOR_FILTER_PATHS)) \
 		-f $(OCAH_LINT_VERILATOR_FLIST)
+
+OCAH_LINT_VERILATOR_PUBLIC_DIR := $(OCAH_LINT_VERILATOR_DIR)/$(FLOW_DESIGN)_public_flat_rw
+
+# --public-flat-rw registers every package parameter by name, so an empty top
+# over the block's filelist builds each package registration the cocotb
+# benches compile while Verilator drops the uninstantiated modules. The
+# registrations fail in the C++ compile, hence --build.
+## Build this block's packages into a Verilator model under --public-flat-rw.
+.PHONY: ocah-lint-verilator-public
+ocah-lint-verilator-public: ocah-lint-verilator-flist
+	$(call ocah_require_host_tool,verilator,./scripts/docker-run.sh run-here make ocah-lint-verilator-public)
+	@mkdir -p $(OCAH_LINT_VERILATOR_PUBLIC_DIR)
+	@printf 'module ocah_public_flat_rw_top;\nendmodule\n' > $(OCAH_LINT_VERILATOR_PUBLIC_DIR)/top.sv
+	verilator --cc --build -j 0 --public-flat-rw $(OCAH_LINT_VERILATOR_FLAGS) \
+		--top-module ocah_public_flat_rw_top \
+		-Wno-lint -Wno-style \
+		-f $(OCAH_LINT_VERILATOR_FLIST) \
+		$(OCAH_LINT_VERILATOR_PUBLIC_DIR)/top.sv \
+		-Mdir $(OCAH_LINT_VERILATOR_PUBLIC_DIR)/obj
 
 endif
 

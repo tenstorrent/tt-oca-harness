@@ -37,7 +37,9 @@ from env.dtp_xtrig_types import (
     DtpCtmRefModel,
     apply_wstrb,
     ctm_config_addr,
+    ctm_hole_addr,
     ctp_config_addr,
+    ctp_hole_addr,
     ctp_mask,
     ctp_status_addr,
     ctp_stretch_addr,
@@ -162,18 +164,26 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
     CONFIG_RESET_SIGNALS = ("xtrig_ctp_req_out_dout", "xtrig_ctp_ack_out_dout", "xtrig_ctp_busy")
     # Crossbar demux state watched across a two-outstanding write.
     DEMUX_SIGNALS = ("xtrig_demux_aw_lock", "xtrig_demux_w_pending")
-    # CSR port counters judged as deltas across a two-outstanding write and
-    # a two-outstanding read.
+    # CSR port, spill-register and crossbar demux counters judged as deltas
+    # across a two-outstanding write and a two-outstanding read.
     AW_PAIR_COUNTERS = (
         "xtrig_axil_aw_stall_count",
         "xtrig_axil_aw_open_stall_count",
         "xtrig_axil_aw_open_accept_count",
+        "xtrig_axil_spill_err_count",
+        "xtrig_axil_w_spill_full_count",
+        "xtrig_demux_aw_open_stall_count",
+        "xtrig_demux_aw_open_accept_count",
     )
     AR_PAIR_COUNTERS = (
         "xtrig_axil_ar_stall_count",
         "xtrig_axil_arvalid_count",
         "xtrig_axil_ar_open_stall_count",
         "xtrig_axil_ar_open_accept_count",
+        "xtrig_axil_spill_err_count",
+        "xtrig_axil_r_spill_full_count",
+        "xtrig_demux_ar_open_stall_count",
+        "xtrig_demux_ar_open_accept_count",
     )
     # Cycles the window stays open after the last expected output, so a late
     # or stretched pulse on any port is inside it.
@@ -317,6 +327,12 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         if scenario_fn is None:
             raise ValueError(f"unknown XTRIG scenario {self.scenario}")
         await scenario_fn()
+        # Every CSR port spill register has kept READY and VALID matched to the
+        # beats it holds since the last system reset.
+        sample = await self.xtrig.sample()
+        self.check_evidence(
+            self.CHK_AXIL, "spill_contract_all", sample["xtrig_axil_spill_err_count"], 0
+        )
         # End-of-sequence enforcement: zero recorded checks or a missing
         # required evidence ID fails the pass — a silently skipped check net
         # cannot report PASS.
@@ -1849,7 +1865,7 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         final_config: int,
         final_stretch: int,
     ) -> None:
-        """Full-word patterns, every byte strobe, a STATUS write, then the final words, on one CTP."""
+        """Patterns, byte strobes, a STATUS write, the final words, then a hole write, on one CTP."""
         config = ctp_config_addr(ctp_idx)
         stretch = ctp_stretch_addr(ctp_idx)
         for pat_idx, word in enumerate(config_patterns):
@@ -1901,6 +1917,23 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             mask=XTRIG_CTP_STRETCH_MASK,
             label=f"ctp{ctp_idx}.stretch_final",
         )
+        # The word past STRETCH_MULT is a hole: it reads 0 after an all-ones
+        # write, and the write leaves the window's registers on the final words.
+        await self.write_read_check(
+            ctp_hole_addr(ctp_idx), FULL_WORD, 0, label=f"ctp{ctp_idx}.hole"
+        )
+        for name, addr, mask, expected in (
+            ("config", config, XTRIG_CTP_CONFIG_MASK, final_config),
+            ("stretch", stretch, XTRIG_CTP_STRETCH_MASK, final_stretch),
+        ):
+            observed = await self.csr_read(addr, label=f"ctp{ctp_idx}.hole_after.{name}")
+            self.check_evidence(
+                self.CHK_CSR,
+                f"ctp{ctp_idx}.hole_no_alias.{name}",
+                observed & mask,
+                expected & mask,
+                context=f"ctp={ctp_idx}",
+            )
 
     async def run_dst_port_sweep(self) -> None:
         self.log_banner("DTP XTRIG deterministic destination-port sweep")
@@ -1935,10 +1968,11 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         """Accepted-path CSR accesses under an activity window.
 
         No internal-lane request, CTP request or acknowledge enable, or CTP
-        busy flop moves while an access is in flight, the crossbar's READY-low
-        stall counters do not advance while its AWVALID and ARVALID counters
-        do, and two routes afterwards, one wire-OR and one point-to-point, are
-        the positive control that moves each of those observables.
+        busy flop moves while an access is in flight, the crossbar demux's AW
+        and AR stall counters do not advance while the port's AWVALID and
+        ARVALID counters do, and two routes afterwards, one wire-OR and one
+        point-to-point, are the positive control that moves each of those
+        observables.
         """
         self.require_pulse_mode_lanes("run_reg_stall")
         self.log_banner("DTP XTRIG accepted-path CSR access and stall rationale")
@@ -1982,12 +2016,14 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             )
         await self.check_quiet("reg_stall_accepted")
         sample = await self.sample_xtrig("accepted_path")
+        # A single access never fills a spill register, so the port keeps its
+        # READY high and a regblock stall shows only at the demux behind it.
         for channel in ("aw", "ar"):
             self.check_evidence(
                 self.CHK_AXIL,
                 f"regstall.{channel}_stall_count_delta",
-                sample[f"xtrig_axil_{channel}_stall_count"]
-                - before[f"xtrig_axil_{channel}_stall_count"],
+                sample[f"xtrig_demux_{channel}_stall_count"]
+                - before[f"xtrig_demux_{channel}_stall_count"],
                 0,
             )
             self.check_evidence(
@@ -2065,17 +2101,37 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             b_ready_delay=rng.randint(1, 4),
         )
         after = await self.sample_xtrig("axi_skew.w_before_aw.after")
-        w_stall_delta = after["xtrig_axil_w_stall_count"] - before["xtrig_axil_w_stall_count"]
+        delta = {
+            name: after[name] - before[name]
+            for name in (
+                "xtrig_axil_w_stall_count",
+                "xtrig_demux_w_stall_count",
+                "xtrig_axil_spill_err_count",
+            )
+        }
         self.check_evidence(self.CHK_AXIL, "axi_skew.w_before_aw.bresp", result.resp, self.AXI_OKAY)
-        # The W beat waits with WREADY low until its AW arrives, so it stalls
-        # at least for the cycles the AW is held back, and the port's W
-        # stability rules see the stall.
+        # The CSR port's W spill register takes the early W beat with WREADY
+        # high. The demux behind it passes a W beat from the cycle after its AW
+        # enters the demux's W-select queue, so the beat stalls there for at
+        # least the AW delay plus one cycle.
+        self.check_evidence(
+            self.CHK_AXIL,
+            "axi_skew.w_before_aw.port_w_unstalled",
+            delta["xtrig_axil_w_stall_count"],
+            0,
+        )
         self.check_evidence(
             self.CHK_AXIL,
             "axi_skew.w_before_aw.w_ready_low_seen",
-            int(w_stall_delta >= aw_delay),
+            int(delta["xtrig_demux_w_stall_count"] >= aw_delay + 1),
             1,
-            context=f"w_stall_cycles={w_stall_delta} aw_delay={aw_delay}",
+            context=f"demux_w_stall_cycles={delta['xtrig_demux_w_stall_count']} aw_delay={aw_delay}",
+        )
+        self.check_evidence(
+            self.CHK_AXIL,
+            "axi_skew.w_before_aw.spill_contract",
+            delta["xtrig_axil_spill_err_count"],
+            0,
         )
         observed = await self.csr_read(addr, label="axi_skew.final_read")
         self.check_evidence(
@@ -2159,12 +2215,14 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
     ):
         """Two outstanding skewed writes judged against the demux state mirrors.
 
-        The demux queues the first AW's port selection until its W passes
-        (``xtrig_demux_w_pending``) and holds the second AW with AWREADY low
-        meanwhile: the port's open-write counters see the second AW stall, and
-        no AW accepted, while the first is owed its W. The AW lock flag, which
+        The CSR port's spill registers accept both AWs and both W beats with
+        READY high. Behind them the demux queues the first AW's port selection
+        until its W passes (``xtrig_demux_w_pending``) and holds the second AW
+        meanwhile: the demux open-write counters see the second AW wait, and
+        no AW admitted, while the first is owed its W. The AW lock flag, which
         needs a subordinate that refuses a presented AW, stays clear. Both
-        responses must complete and the bench stall counter must agree with
+        responses must complete, every spill register's READY and VALID must
+        match the beats it holds, and the port stall counter must agree with
         the VIP's AW observation.
         """
         before = await self.sample_xtrig(f"{label}.before")
@@ -2182,8 +2240,11 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         )
         activity, _hold, last = await window.stop()
         after = await self.sample_xtrig(f"{label}.after")
+        delta = {name: after[name] - before[name] for name in self.AW_PAIR_COUNTERS}
         self.log.info(
-            "%s aw_stall=%d aw_stable=%s w_pending_seen=%d aw_lock_seen=%d resp=%d/%d",
+            "%s aw_stall=%d aw_stable=%s w_pending_seen=%d aw_lock_seen=%d resp=%d/%d "
+            "port_open_accept=%d w_spill_full=%d spill_err=%d demux_open_stall=%d "
+            "demux_open_accept=%d",
             label,
             result.aw_stall_cycles,
             result.aw_stable,
@@ -2191,6 +2252,11 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             activity["xtrig_demux_aw_lock"],
             result.first.resp,
             result.second.resp,
+            delta["xtrig_axil_aw_open_accept_count"],
+            delta["xtrig_axil_w_spill_full_count"],
+            delta["xtrig_axil_spill_err_count"],
+            delta["xtrig_demux_aw_open_stall_count"],
+            delta["xtrig_demux_aw_open_accept_count"],
         )
         if check_response:
             self.check_evidence(
@@ -2199,7 +2265,29 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             self.check_evidence(
                 self.CHK_AXIL, f"{label}.second_bresp", result.second.resp, self.AXI_OKAY
             )
-        delta = {name: after[name] - before[name] for name in self.AW_PAIR_COUNTERS}
+        self.check_evidence(
+            self.CHK_AXIL, f"{label}.spill_contract", delta["xtrig_axil_spill_err_count"], 0
+        )
+        # A W-first pair fills the W spill register with both W beats. In an
+        # AW-first pair the port accepts the second AW one cycle after the
+        # first, which counts as an acceptance while the first is open only
+        # when the first W beat trails its AW by two or more cycles.
+        if aw_valid_delay > 0:
+            self.check_evidence(
+                self.CHK_AXIL,
+                f"{label}.w_spill_holds_pair",
+                int(delta["xtrig_axil_w_spill_full_count"] > 0),
+                1,
+                context=f"w_full_cycles={delta['xtrig_axil_w_spill_full_count']}",
+            )
+        elif w_valid_delay >= 2:
+            self.check_evidence(
+                self.CHK_AXIL,
+                f"{label}.port_second_aw_accepted",
+                delta["xtrig_axil_aw_open_accept_count"],
+                1,
+                context=f"port_open_stall_cycles={delta['xtrig_axil_aw_open_stall_count']}",
+            )
         self.check_evidence(
             self.CHK_AW_LOCK, f"{label}.w_pending_engaged", activity["xtrig_demux_w_pending"], 1
         )
@@ -2212,14 +2300,14 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         self.check_evidence(
             self.CHK_AW_LOCK,
             f"{label}.second_aw_held_while_w_open",
-            int(delta["xtrig_axil_aw_open_stall_count"] > 0),
+            int(delta["xtrig_demux_aw_open_stall_count"] > 0),
             1,
-            context=f"open_stall_cycles={delta['xtrig_axil_aw_open_stall_count']}",
+            context=f"demux_open_stall_cycles={delta['xtrig_demux_aw_open_stall_count']}",
         )
         self.check_evidence(
             self.CHK_AW_LOCK,
             f"{label}.no_aw_accept_while_w_open",
-            delta["xtrig_axil_aw_open_accept_count"],
+            delta["xtrig_demux_aw_open_accept_count"],
             0,
         )
         self.check_evidence(
@@ -2232,17 +2320,23 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
 
     async def run_axi_channel_skew_read_decode_backpressure(self) -> None:
         self.log_banner("DTP XTRIG AXI-Lite read decode backpressure")
-        # Seeded per-pass unmapped offsets and RREADY hold width.
+        # Seeded per-pass CTP, STRETCH_MULT value, unmapped offset and RREADY
+        # hold width. The two reads target different subordinates: a CTP
+        # register, then an unmapped word.
         rng = self.rng("read_decode_backpressure")
-        offsets = sorted(rng.sample(range(0, 0x40), 2))
-        addr_a, addr_b = (XTRIG_UNMAPPED_BASE + offset * 4 for offset in offsets)
+        addr_a = ctp_stretch_addr(rng.randrange(XTRIG_NUM_CTP))
+        addr_b = XTRIG_UNMAPPED_BASE + rng.randrange(0, 0x40) * 4
+        stretch = rng.randrange(1, 1 << 16)
         hold = rng.randint(4, 8)
+        await self.csr_write(addr_a, stretch, label="read_decode.first.write")
         before = await self.sample_xtrig("read_decode.before")
         result = await self.axil.read_pair_hold_result(addr_a, addr_b, hold, check_response=False)
         after = await self.sample_xtrig("read_decode.after")
+        delta = {name: after[name] - before[name] for name in self.AR_PAIR_COUNTERS}
         self.log.info(
-            "unmapped pair a=0x%x b=0x%x hold=%d resp=%d/%d data=0x%08x/0x%08x ar_stall=%d "
-            "ar_stable=%s hold_stable=%s",
+            "read pair a=0x%x b=0x%x hold=%d resp=%d/%d data=0x%08x/0x%08x ar_stall=%d "
+            "ar_stable=%s hold_stable=%s port_open_accept=%d r_spill_full=%d spill_err=%d "
+            "demux_open_stall=%d demux_open_accept=%d",
             addr_a,
             addr_b,
             hold,
@@ -2253,30 +2347,61 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             result.ar_stall_cycles,
             result.ar_stable,
             result.first.hold_stable,
+            delta["xtrig_axil_ar_open_accept_count"],
+            delta["xtrig_axil_r_spill_full_count"],
+            delta["xtrig_axil_spill_err_count"],
+            delta["xtrig_demux_ar_open_stall_count"],
+            delta["xtrig_demux_ar_open_accept_count"],
         )
-        # No subordinate decodes an unmapped address: AXI answers DECERR.
-        for tag, read in (("first", result.first), ("second", result.second)):
-            self.check_evidence(
-                self.CHK_AXIL, f"read_decode.{tag}.resp", read.resp, self.AXI_DECERR
-            )
+        # The first read returns the STRETCH_MULT word written before the pair.
+        # No subordinate decodes the unmapped second address: AXI answers DECERR.
+        self.check_evidence(
+            self.CHK_AXIL, "read_decode.first.resp", result.first.resp, self.AXI_OKAY
+        )
+        self.check_evidence(
+            self.CHK_AXIL,
+            "read_decode.first.data",
+            result.first.data & XTRIG_CTP_STRETCH_MASK,
+            stretch,
+        )
+        self.check_evidence(
+            self.CHK_AXIL, "read_decode.second.resp", result.second.resp, self.AXI_DECERR
+        )
         self.check_evidence(
             self.CHK_AXIL, "read_decode.first.hold_stable", int(result.first.hold_stable), 1
         )
-        delta = {name: after[name] - before[name] for name in self.AR_PAIR_COUNTERS}
         stall_delta = delta["xtrig_axil_ar_stall_count"]
-        # The crossbar admits one read in flight: the second AR stalls, and no
-        # AR is accepted, while the first is owed its R beat.
+        self.check_evidence(
+            self.CHK_AXIL, "read_decode.spill_contract", delta["xtrig_axil_spill_err_count"], 0
+        )
+        self.check_evidence(
+            self.CHK_AXIL,
+            "read_decode.port_second_ar_accepted",
+            delta["xtrig_axil_ar_open_accept_count"],
+            1,
+            context=f"port_open_stall_cycles={delta['xtrig_axil_ar_open_stall_count']}",
+        )
+        self.check_evidence(
+            self.CHK_AXIL,
+            "read_decode.r_spill_holds_pair",
+            int(delta["xtrig_axil_r_spill_full_count"] > 0),
+            1,
+            context=f"r_full_cycles={delta['xtrig_axil_r_spill_full_count']}",
+        )
+        # The demux admits one read in flight. The two reads go to different
+        # subordinates, so the demux alone holds the second AR, and admits
+        # none, while the first read is owed its R beat.
         self.check_evidence(
             self.CHK_AR_STALL,
             "read_decode.second_ar_held_while_read_open",
-            int(delta["xtrig_axil_ar_open_stall_count"] > 0),
+            int(delta["xtrig_demux_ar_open_stall_count"] > 0),
             1,
-            context=f"open_stall_cycles={delta['xtrig_axil_ar_open_stall_count']}",
+            context=f"demux_open_stall_cycles={delta['xtrig_demux_ar_open_stall_count']}",
         )
         self.check_evidence(
             self.CHK_AR_STALL,
             "read_decode.no_ar_accept_while_read_open",
-            delta["xtrig_axil_ar_open_accept_count"],
+            delta["xtrig_demux_ar_open_accept_count"],
             0,
         )
         self.check_evidence(
@@ -2899,14 +3024,31 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             for wstrb in (0x1, 0x2, 0x4, 0x8):
                 old_mask = rng.getrandbits(32) & XTRIG_CTM_SELECT_MASK
                 new_mask = rng.getrandbits(32)
+                held = apply_wstrb(old_mask, new_mask, wstrb) & XTRIG_CTM_SELECT_MASK
                 await self.program_ctm_src(src_idx, old_mask)
                 await self.write_read_check(
                     ctm_config_addr(src_idx),
                     new_mask,
-                    apply_wstrb(old_mask, new_mask, wstrb) & XTRIG_CTM_SELECT_MASK,
+                    held,
                     wstrb=wstrb,
                     label=f"ctm{src_idx}.wstrb{wstrb:x}",
                 )
+            # The word past CT_SRC[src_idx] in its slot is a hole: it reads 0
+            # after an all-ones write, and the write leaves the register on its
+            # last word.
+            await self.write_read_check(
+                ctm_hole_addr(src_idx), FULL_WORD, 0, label=f"ctm{src_idx}.hole"
+            )
+            observed = await self.csr_read(
+                ctm_config_addr(src_idx), label=f"ctm{src_idx}.hole_after"
+            )
+            self.check_evidence(
+                self.CHK_CSR,
+                f"ctm{src_idx}.hole_no_alias",
+                observed,
+                held,
+                context=f"src={src_idx}",
+            )
         self.log_step(
             "route",
             "Two swept output registers route a selected input and ignore an unselected one",

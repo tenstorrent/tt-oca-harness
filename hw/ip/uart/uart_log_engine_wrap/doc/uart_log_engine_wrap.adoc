@@ -23,6 +23,13 @@ The features of this design include:
 [#sec-parameters]
 == Parameters and Ports
 
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="sec-input-and-output-ports"></span>
+++++
+endif::backend-html5[]
+
 ifdef::backend-html5[]
 The parameters and ports of `uart_log_engine_wrap` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/uart_log_engine_wrap/uart_log_engine_wrap.adoc[uart_log_engine_wrap].
 endif::backend-html5[]

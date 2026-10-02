@@ -44,6 +44,23 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force", "+km_rom_hex=km_rom_entropy.parhex"]
 
 [[tests]]
+# Closed read path, same module as sep_esrc_e2e_smoke_test (+esrc_fifo_closed).
+# FIFO_CTRL.ENABLE=0 from the ESRC configuration on, set before FIPS_LOCK. The
+# DRBG still seeds: CHK2 scores the FIFO input tap, CHK3/CHK4 the seed and
+# genbits. FIFO_STATUS LEVEL and WPTR stay at reset while seed words cross, and
+# FIFO_RDATA pops of the empty FIFO set FIFO_UNDERFLOW; under the lock a write
+# of ENABLE=1 is refused.
+name = "sep_esrc_e2e_fifo_closed_test"
+module = "system.sep_esrc_e2e_smoke_test"
+firmware = { name = "km_rom_entropy", mode = "km_rom_blob" }
+seed = 1
+timeout_sec = 1800
+tags = ["entropy", "crypto"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force", "+km_rom_hex=km_rom_entropy.parhex", "+esrc_fifo_closed"]
+
+[[tests]]
 # Shared HT_WATERMARK arming (not the ESRC->DRBG datapath). RANDCFG walks every
 # supported selector on MODULE_ENABLE; seed picks the illegal selector and the
 # low-mode fall. HEALTH_TEST_CTRL.ENABLE stays 0 on arming legs.
@@ -58,9 +75,11 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
 
 [[tests]]
-# ESRC FIPS_LOCK. RANDCFG walks every certified-configuration class every
-# seed; lock sequencing is directed. Write-0 leaves LOCK=1; hardware reset
-# clears it. Observe FIFO stays writable. +skip_fuse_sense.
+# ESRC FIPS_LOCK. RANDCFG walks every certified-configuration class and the
+# debug-pin mux every seed; lock sequencing is directed. Both observe-tap
+# enables are frozen under the lock, one held at 1 and one at 0, picked by the
+# seed. FIFO_CTRL.ENABLE is cleared before the lock and rejects a set under
+# it. Write-0 leaves LOCK=1; hardware reset clears it. +skip_fuse_sense.
 name = "sep_esrc_fips_lock_test"
 module = "crypto.sep_esrc_fips_lock_test"
 seed = 1
@@ -69,6 +88,7 @@ tags = ["entropy", "crypto", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
+
 
 [[tests]]
 # ESRC persistent-failure alert to PIC source 16, then W1C-clear. RAND-NONE.
@@ -215,7 +235,7 @@ args = ["+skip_fuse_sense", "+esrc_noise_force"]
 
 [[tests]]
 # Adams Bridge ML-DSA-87 keyGen NIST KAT on the ABR aperture
-# (sep_crypto_pkg::ABR_REG_MAP_BASE_ADDR). Software-written seed only.
+# (sep_crypto_pkg::AbrRegMapBaseAddr). Software-written seed only.
 # Public key matches the vendored ACVP vector; one seed-bit flip must
 # change the key. PIC [34] low / [35] high on completion. RANDCFG: masking
 # entropy and flip bit from the run seed. Sign/verify, ML-KEM, and the
@@ -313,10 +333,10 @@ args = ["+skip_fuse_sense"]
 # 64-bit writes land both words, WSTRB 0x0F / 0xF0 land one word and leave the
 # other, every partial-word strobe answers SLVERR with the register unchanged,
 # and a 64-bit beat with one whole and one partial word writes the whole word
-# and answers SLVERR. Past the register map (0xC018) a word access is OKAY,
-# reads 0 and moves no register; a partial-word write is SLVERR. RANDCFG: data
-# values and two dead words from the run seed; every size, offset and strobe is
-# walked. no_cpu; +skip_fuse_sense.
+# and answers SLVERR. Past the register map every access answers as the SEP
+# memory map states (the crypto demux refuses it) and moves no register.
+# RANDCFG: data values and two dead words from the run seed; every size, offset
+# and strobe is walked. no_cpu; +skip_fuse_sense.
 name = "sep_abr_access_size_test"
 module = "crypto.sep_abr_access_size_test"
 seed = 1

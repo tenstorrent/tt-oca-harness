@@ -96,6 +96,11 @@ Getting Started's `nav.adoc` groups its eight sub-pages into two labeled section
 The matching PDF structure achieves the same visual grouping via two `== ` group headings with `leveloffset=+1` applied to the includes underneath each, so the included 
 pages nest correctly one level below the group heading rather than becoming siblings of it.
 
+Home's `nav.adoc` carries a second, titled list (`.Guides`) that links to each book's start page, in the same order as the navbar's Guides menu, so the books are visible from the Home sidebar without scrolling the page.
+Below the theme's 1024px breakpoint the sidebar starts hidden, so Home's `index.adoc` also carries a `[.home-guides]` list under the intro paragraph; `extra.css` shows it as a card only at those widths and sets it to `display: none` above them.
+All three are hand-written lists, so a new book needs a line in each. The nav entries are `xref:` links, so a renamed or removed book fails the combined build rather than leaving a dead link.
+`extra.css` styles a titled list in the Home sidebar as an always-open section with a label, scoped by the `data-component="ocah-home"` attribute that the stock `nav.hbs` puts on `.nav-container`; other books' sidebars are unaffected.
+
 Below the navigation tree sits a collapsible panel (`.nav-panel-explore`, toggled via the `.context-bar` strip) — Antora's native book/version switcher. 
 It lists every component known to the combined playbook automatically, including Home; adding a new component to `content.sources` is the only thing needed to make it appear here, no additional code.
 

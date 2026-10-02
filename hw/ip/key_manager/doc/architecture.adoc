@@ -65,6 +65,12 @@ scan reset in `u_reset_conditioner` and drives the test inputs of `u_xbar` and
 
 == Parameters
 
+ifdef::backend-html5[]
+++++
+<span id="key-manager-parameters-table"></span>
+++++
+endif::backend-html5[]
+
 The Key Manager is configured through its ROM and SRAM sizes, the mailbox FIFO depth,
 the read-data behaviour of its memories, and the address of the eFuse controller.
 The main KM SRAM is 32 KB (8192 × 32-bit words), implemented with the scrambler macro
@@ -243,8 +249,8 @@ KM-mastered key path. Host-supplied material enters through mailbox commands;
 generated secret material is not returned through a direct host read path.
 The generated <<key-manager-memory-map>> defines the KM's allocated windows.
 
-<<key-manager-accelerator-key-path-figure>> marks secret-bearing storage in red
-and separates accelerator key delivery from the host-accessible data path.
+<<key-manager-accelerator-key-path-figure>> separates the key-delivery path
+on the top row from the host-accessible data path on the bottom row.
 This separation does not establish resistance to physical fault injection or
 side-channel attacks. Firmware's key-data CRC detects corruption; it is not
 a substitute for access control or a physical-attack guarantee.
@@ -793,11 +799,11 @@ consume it, so repeated debug reads are not fresh random samples.
 |`STATUS.TIMEOUT_ERR[2]` |Sticky timeout indication; write one to clear.
 |`STATUS.STREAM_ERR[3]` |Sticky stream-protocol error; write one to clear.
 |`STATUS.COUNT_BAD[15:8]` |Timeout/stream-error count, saturating at `0xFF`. Write nonzero to clear; zero has no effect.
-|`STATUS.COUNT_GOOD[31:16]` |Counts only reads completed through `StRespond`, excluding prefetched words, saturating at `0xFFFF`. Write nonzero to clear; zero has no effect.
+|`STATUS.COUNT_GOOD[31:16]` |Counts only reads completed through `ST_RESPOND`, excluding prefetched words, saturating at `0xFFFF`. Write nonzero to clear; zero has no effect.
 |`PREFETCH_DATA` |Read-only debug view; writes return SLVERR.
 |===
 
-Because prefetched reads bypass `StRespond`, `COUNT_GOOD` is not a total of
+Because prefetched reads bypass `ST_RESPOND`, `COUNT_GOOD` is not a total of
 all `DATA` reads when prefetch is enabled.
 
 === Errors and reset
@@ -826,12 +832,12 @@ their control state is not a guaranteed data scrub.
 .Key Manager DRBG sampler states
 |===
 |State |Active DATA-read behavior
-|`StIdle` |Returns an available prefetch without entering `StRespond`; otherwise enters `StRequest` for a pending read.
-|`StRequest` |Asserts `TREADY`. A full word advances to `StRespond`; partial data advances to `StByteAssembly`.
-|`StByteAssembly` |Keeps `TREADY` asserted and packs valid bytes until four are available.
-|`StRespond` |Completes the assembled read with OKAY and increments `COUNT_GOOD`; returns to idle.
-|`StTimeout` |Completes with SLVERR and zero data after the active wait budget expires; returns to idle.
-|`StStreamErr` |Completes with SLVERR and zero data after a detected withdrawal during request/assembly; returns to idle.
+|`ST_IDLE` |Returns an available prefetch without entering `ST_RESPOND`; otherwise enters `ST_REQUEST` for a pending read.
+|`ST_REQUEST` |Asserts `TREADY`. A full word advances to `ST_RESPOND`; partial data advances to `ST_BYTE_ASSEMBLY`.
+|`ST_BYTE_ASSEMBLY` |Keeps `TREADY` asserted and packs valid bytes until four are available.
+|`ST_RESPOND` |Completes the assembled read with OKAY and increments `COUNT_GOOD`; returns to idle.
+|`ST_TIMEOUT` |Completes with SLVERR and zero data after the active wait budget expires; returns to idle.
+|`ST_STREAM_ERR` |Completes with SLVERR and zero data after a detected withdrawal during request/assembly; returns to idle.
 |===
 
 A separate prefetch FSM uses the request/assembly states. It accepts beats

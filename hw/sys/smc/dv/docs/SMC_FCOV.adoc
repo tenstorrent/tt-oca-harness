@@ -323,9 +323,12 @@ serve the DMA, JTAG2AXI, log engine and CPU external-path managers
 |`smc_iso_fcov::cg_isolate_terms` |Software term set, nothing isolated |Each
 subsystem's isolation is the OR of the software, pin and FLR terms
 (`clk_rst.adoc`, Isolation Control Architecture)
-|`smc_clk_fcov::cg_clk_ratio` |SMC much faster, peripheral slower |The
-peripheral clock is slower than the reference only against the 8 ns
-reference, where the fastest SMC clock is twice the reference
+|`smc_clk_fcov::cg_clk_ratio` |SMC and peripheral stalled buckets
+|`clk_rst.adoc` defines no mode in which an input clock stops; the
+stalled-window cover points are in <<smc-fcov-phase2>>, and a clock the clock
+gates stop is the subject of `cg_clk_gate`. Every other bucket and every cell
+of `x_smc_periph` is graded: the default periods reach one cell and the
+`smc_clk_*` ratio leaves in the `clock` group pin one period set per other cell
 |`smc_clk_fcov::cg_clk_gate` |Clock held with the gate bypassed or the block
 busy |`cg_enable_i` low bypasses the gate and a busy block keeps its clock
 (`dma.adoc`, `zeroer.adoc`, Clock Gating)

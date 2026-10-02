@@ -381,8 +381,8 @@ module smc_cool_reset_wrap (
 
   // Counter for delaying rst_cool_n assertion
   prim_updown_counter #(
-    .Width(32),
-    .ResetValue(32'b0)
+    .WIDTH(32),
+    .RESET_VALUE(32'b0)
   ) u_flr_counter (
     .clk_i              (clk_ref_i),
     .rst_ni             (rst_cold_ref_ni),        // top level cold reset
@@ -466,8 +466,8 @@ module smc_cool_reset_wrap (
 
   // Counter for holding rst_cool_n active
   prim_updown_counter #(
-    .Width     (32),
-    .ResetValue(32'b0)
+    .WIDTH      (32),
+    .RESET_VALUE(32'b0)
   ) u_flr_reset_counter (
     .clk_i             (clk_ref_i),
     .rst_ni            (rst_cold_ref_ni),            // top level cold reset

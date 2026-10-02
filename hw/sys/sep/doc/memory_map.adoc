@@ -76,13 +76,24 @@ endif::backend-pdf[]
 defines them and their codes.
 
 The TRNG aperture is forwarded in full to an adopter-defined external IP. SEP
-does not decode offsets inside that window, so every access reaches the TRNG
-slave. Intra-aperture decode is an integrator constraint: an address that owns
-no register must return SLVERR and must not alias onto a live register. See the
-{sep-integrator-guide-ref}.
+does not decode offsets inside that window, so every access reaches the external
+TRNG slave. Intra-aperture decode is then an integrator constraint: when an
+adopter TRNG is connected, an address that owns no register must return an error
+and must not alias onto a live register. When no external TRNG is connected, the
+window is terminated with a DECERR slave; reads return DECERR, while writes
+return SLVERR because the AXI4-to-AXI-Lite conversion on the TRNG path forces an
+errored write response to SLVERR. Both refuse the access and never alias onto a
+live register. See the {sep-integrator-guide-ref}.
 
-The crypto region, 0x1090_0000 - 0x1094_FFFF (OTBN through ABR), accepts
-single-beat transactions only; see {sep-crypto-access-ref}.
+[[sep-register-single-beat]]
+== Single-Beat Register Access
+
+Register regions support single-beat transactions only. Bursts are supported
+into ICCM, DCCM, SRAM, the extension port and the outbound SMN windows. The
+fabric routes a burst on its first address only, so the later beats of a burst
+to a register region may be answered with errors or alias onto other
+registers. The crypto region, which spans OTBN through ABR in the generated
+memory map below, refuses bursts ({sep-crypto-access-ref}).
 
 == Units Unreachable from the Inbound Port
 
@@ -124,6 +135,7 @@ ifdef::backend-html5[]
 * xref:dma.adoc[Direct Memory Access (DMA)] — secure_dma.
 * xref:spi.adoc[Serial Peripheral Interface (SPI)] — spi_controller.
 * xref:cpu.adoc#dual-scratch-register-banks[CPU scratch banks] — sep_scratch.
+* xref:entropy_pool.adoc[Entropy Pool] — sep_entropy_pool.
 * xref:ip:entropy_source/doc/index.adoc[Entropy Source].
 * xref:ip:key_manager/doc/index.adoc[Key Manager] — controller, KPV, sampler, mailboxes and key wrappers.
 * xref:ip:efuse/doc/index.adoc[Shared eFuse IP] — eFuse MMR and interface registers.
@@ -140,7 +152,7 @@ endif::backend-pdf[]
 
 The SEP external-window model supplies the eFuse SHIM control register below.
 The `efuse_shim_ctrl` instance at offset `0x0` fixes where that block sits.
-`EFUSE_SHIM_SIZE` bytes from that base (`SEP_EFUSE_SHIM_SIZE` at the SMU,
+`EFUSE_SHIM_SIZE` bytes from that base (`CFG.SEP_EFUSE_SHIM_SIZE` at the SMU,
 default `0x4`) are routed to the eFuse controller, which forwards them
 unchanged on `efuse_bank_ctrl` to the adopter's SHIM rather than out the
 external port. An adopter external map must keep an `efuse_shim_ctrl`

@@ -56,7 +56,7 @@ bind jtag_ptap dtp_ir_props u_dtp_ir_props (
   .bsr_sel_i            (bsr_host_scan_ctrl_o.select),
   .ijtag_sel_i          (ijtag_host_scan_ctrl_o.select),
   .idcode_scan_i        (u_jtag_idcode_reg.u_idcode_scan_reg.scan_data),
-  .idcode_value_i       (u_jtag_idcode_reg.IDCODE_VALUE),
+  .idcode_value_i       (u_jtag_idcode_reg.IdcodeValue),
   .caps_scan_i          (u_jtag_caps_reg.u_caps_scan_reg.scan_data),
-  .caps_value_i         (u_jtag_caps_reg.CAPS_VALUE)
+  .caps_value_i         (u_jtag_caps_reg.CapsValue)
 );

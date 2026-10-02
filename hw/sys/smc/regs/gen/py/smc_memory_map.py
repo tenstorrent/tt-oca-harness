@@ -212,7 +212,7 @@ VIEWS = {
                 "stride": 0x0,
                 "hole_responses": (("", {"rresp": "OKAY", "rdata": 0x0, "bresp": "OKAY", "text": "OKAY, 0x0 / OKAY"}),),
                 "hole_notes": ("Offset 0xC holds the watchdog's countHi register, which this map does not list; a 32-bit write there locks the watchdog key again.",),
-                "past_response": {"rresp": "DECERR", "rdata": 0xCA11AB1EBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
+                "past_response": {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
                 "past_note": "",
             },
             {
@@ -227,7 +227,7 @@ VIEWS = {
                 "stride": 0x0,
                 "hole_responses": (("", {"rresp": "OKAY", "rdata": 0x0, "bresp": "OKAY", "text": "OKAY, 0x0 / OKAY"}),),
                 "hole_notes": ("Offset 0xC holds the watchdog's countHi register, which this map does not list; a 32-bit write there locks the watchdog key again.",),
-                "past_response": {"rresp": "DECERR", "rdata": 0xCA11AB1EBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
+                "past_response": {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
                 "past_note": "",
             },
             {
@@ -242,7 +242,7 @@ VIEWS = {
                 "stride": 0x0,
                 "hole_responses": (("", {"rresp": "OKAY", "rdata": 0x0, "bresp": "OKAY", "text": "OKAY, 0x0 / OKAY"}),),
                 "hole_notes": ("Offset 0xC holds the watchdog's countHi register, which this map does not list; a 32-bit write there locks the watchdog key again.",),
-                "past_response": {"rresp": "DECERR", "rdata": 0xCA11AB1EBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
+                "past_response": {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
                 "past_note": "",
             },
             {
@@ -257,7 +257,7 @@ VIEWS = {
                 "stride": 0x0,
                 "hole_responses": (("", {"rresp": "OKAY", "rdata": 0x0, "bresp": "OKAY", "text": "OKAY, 0x0 / OKAY"}),),
                 "hole_notes": ("Offset 0xC holds the watchdog's countHi register, which this map does not list; a 32-bit write there locks the watchdog key again.",),
-                "past_response": {"rresp": "DECERR", "rdata": 0xCA11AB1EBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
+                "past_response": {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
                 "past_note": "",
             },
             {
@@ -270,8 +270,8 @@ VIEWS = {
                 "occupied_size": 0x868,
                 "count": 1,
                 "stride": 0x0,
-                "hole_responses": (("", {"rresp": "DECERR", "rdata": 0xCA11AB1EBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"}),),
-                "hole_notes": ("The inbound port does not reach this unit, so every address in its aperture answers the same.",),
+                "hole_responses": (("", {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"}),),
+                "hole_notes": ("Only the harts of the CPU cluster reach this unit. An access from outside the cluster answers the same at every address in its aperture.",),
                 "past_response": None,
                 "past_note": "",
             },
@@ -452,7 +452,7 @@ VIEWS = {
                 "stride": 0x0,
                 "hole_responses": (("", {"rresp": "OKAY", "rdata": 0x0, "bresp": "OKAY", "text": "OKAY, 0x0 / OKAY"}),),
                 "hole_notes": (),
-                "past_response": {"rresp": "DECERR", "rdata": 0xCA11AB1EBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
+                "past_response": {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
                 "past_note": "",
             },
             {
@@ -467,7 +467,7 @@ VIEWS = {
                 "stride": 0x0,
                 "hole_responses": (("", {"rresp": "OKAY", "rdata": 0x0, "bresp": "OKAY", "text": "OKAY, 0x0 / OKAY"}),),
                 "hole_notes": (),
-                "past_response": {"rresp": "DECERR", "rdata": 0xCA11AB1EBADCAB1E, "bresp": "SLVERR", "text": "DECERR, 0xBADCAB1E / SLVERR"},
+                "past_response": {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "SLVERR", "text": "DECERR, 0xBADCAB1E / SLVERR"},
                 "past_note": "",
             },
             {
@@ -482,7 +482,7 @@ VIEWS = {
                 "stride": 0x20,
                 "hole_responses": (("between instances", {"rresp": "OKAY", "rdata": 0x0, "bresp": "OKAY", "text": "OKAY, 0x0 / OKAY"}),),
                 "hole_notes": (),
-                "past_response": {"rresp": "DECERR", "rdata": 0xCA11AB1EBADCAB1E, "bresp": "SLVERR", "text": "DECERR, 0xBADCAB1E / SLVERR"},
+                "past_response": {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "SLVERR", "text": "DECERR, 0xBADCAB1E / SLVERR"},
                 "past_note": "",
             },
             {
@@ -497,7 +497,7 @@ VIEWS = {
                 "stride": 0x8,
                 "hole_responses": (),
                 "hole_notes": (),
-                "past_response": {"rresp": "DECERR", "rdata": 0xCA11AB1EBADCAB1E, "bresp": "SLVERR", "text": "DECERR, 0xBADCAB1E / SLVERR"},
+                "past_response": {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "SLVERR", "text": "DECERR, 0xBADCAB1E / SLVERR"},
                 "past_note": "",
             },
             {
@@ -512,7 +512,7 @@ VIEWS = {
                 "stride": 0x8,
                 "hole_responses": (),
                 "hole_notes": (),
-                "past_response": {"rresp": "DECERR", "rdata": 0xCA11AB1EBADCAB1E, "bresp": "SLVERR", "text": "DECERR, 0xBADCAB1E / SLVERR"},
+                "past_response": {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "SLVERR", "text": "DECERR, 0xBADCAB1E / SLVERR"},
                 "past_note": "",
             },
             {
@@ -527,7 +527,7 @@ VIEWS = {
                 "stride": 0x20,
                 "hole_responses": (("between instances", {"rresp": "OKAY", "rdata": 0x0, "bresp": "OKAY", "text": "OKAY, 0x0 / OKAY"}),),
                 "hole_notes": (),
-                "past_response": {"rresp": "DECERR", "rdata": 0xCA11AB1EBADCAB1E, "bresp": "SLVERR", "text": "DECERR, 0xBADCAB1E / SLVERR"},
+                "past_response": {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "SLVERR", "text": "DECERR, 0xBADCAB1E / SLVERR"},
                 "past_note": "",
             },
             {
@@ -542,7 +542,7 @@ VIEWS = {
                 "stride": 0x20,
                 "hole_responses": (("between instances", {"rresp": "OKAY", "rdata": 0x0, "bresp": "OKAY", "text": "OKAY, 0x0 / OKAY"}),),
                 "hole_notes": (),
-                "past_response": {"rresp": "DECERR", "rdata": 0xCA11AB1EBADCAB1E, "bresp": "SLVERR", "text": "DECERR, 0xBADCAB1E / SLVERR"},
+                "past_response": {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "SLVERR", "text": "DECERR, 0xBADCAB1E / SLVERR"},
                 "past_note": "",
             },
             {
@@ -557,7 +557,7 @@ VIEWS = {
                 "stride": 0x0,
                 "hole_responses": (("between sub-blocks", {"rresp": "SLVERR", "rdata": 0x0, "bresp": "SLVERR", "text": "SLVERR, 0x0 / SLVERR"}),),
                 "hole_notes": (),
-                "past_response": {"rresp": "DECERR", "rdata": 0xCA11AB1EBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
+                "past_response": {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
                 "past_note": "",
             },
             {
@@ -572,7 +572,7 @@ VIEWS = {
                 "stride": 0x0,
                 "hole_responses": (("", {"rresp": "OKAY", "rdata": 0xFFFFFFFF, "bresp": "OKAY", "text": "OKAY, 0xFFFFFFFF / OKAY"}),),
                 "hole_notes": ("A read fetches the whole 8-byte word, so a read of 0x4C also reads NEXT_ID_0 at 0x48 and launches a transfer.",),
-                "past_response": {"rresp": "DECERR", "rdata": 0xCA11AB1EBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
+                "past_response": {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
                 "past_note": "",
             },
             {
@@ -587,7 +587,7 @@ VIEWS = {
                 "stride": 0x0,
                 "hole_responses": (),
                 "hole_notes": (),
-                "past_response": {"rresp": "DECERR", "rdata": 0xCA11AB1EBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
+                "past_response": {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
                 "past_note": "",
             },
             {
@@ -602,7 +602,7 @@ VIEWS = {
                 "stride": 0x0,
                 "hole_responses": (("", {"rresp": "OKAY", "rdata": 0x0, "bresp": "OKAY", "text": "OKAY, 0x0 / OKAY"}),),
                 "hole_notes": (),
-                "past_response": {"rresp": "DECERR", "rdata": 0xCA11AB1EBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
+                "past_response": {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
                 "past_note": "",
             },
             {
@@ -690,7 +690,7 @@ VIEWS = {
                 "occupied_size": 0x800000,
                 "count": 1,
                 "stride": 0x0,
-                "hole_responses": (("", {"rresp": "DECERR", "rdata": 0xCA11AB1EBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"}),),
+                "hole_responses": (("", {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"}),),
                 "hole_notes": ("No RTL decodes this aperture.",),
                 "past_response": None,
                 "past_note": "",
@@ -737,7 +737,7 @@ VIEWS = {
                 "stride": 0x0,
                 "hole_responses": (("", {"rresp": "OKAY", "rdata": 0x0, "bresp": "OKAY", "text": "OKAY, 0x0 / OKAY"}),),
                 "hole_notes": ("0x544, 0x102C and 0x202C are the upper halves of live 64-bit words, so a 64-bit read there returns live data.",),
-                "past_response": {"rresp": "DECERR", "rdata": 0xCA11AB1EBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
+                "past_response": {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
                 "past_note": "",
             },
             {
@@ -752,7 +752,7 @@ VIEWS = {
                 "stride": 0x0,
                 "hole_responses": (("", {"rresp": "OKAY", "rdata": 0x0, "bresp": "OKAY", "text": "OKAY, 0x0 / OKAY"}),),
                 "hole_notes": (),
-                "past_response": {"rresp": "DECERR", "rdata": 0xCA11AB1EBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
+                "past_response": {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
                 "past_note": "",
             },
             {
@@ -767,7 +767,7 @@ VIEWS = {
                 "stride": 0x0,
                 "hole_responses": (),
                 "hole_notes": (),
-                "past_response": {"rresp": "DECERR", "rdata": 0xCA11AB1EBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
+                "past_response": {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
                 "past_note": "",
             },
             {
@@ -782,7 +782,7 @@ VIEWS = {
                 "stride": 0x0,
                 "hole_responses": (),
                 "hole_notes": (),
-                "past_response": {"rresp": "DECERR", "rdata": 0xCA11AB1EBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
+                "past_response": {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
                 "past_note": "",
             },
             {
@@ -797,7 +797,7 @@ VIEWS = {
                 "stride": 0x0,
                 "hole_responses": (),
                 "hole_notes": (),
-                "past_response": {"rresp": "DECERR", "rdata": 0xCA11AB1EBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
+                "past_response": {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
                 "past_note": "",
             },
             {
@@ -812,7 +812,7 @@ VIEWS = {
                 "stride": 0x0,
                 "hole_responses": (),
                 "hole_notes": (),
-                "past_response": {"rresp": "DECERR", "rdata": 0xCA11AB1EBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
+                "past_response": {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
                 "past_note": "",
             },
             {
@@ -825,8 +825,8 @@ VIEWS = {
                 "occupied_size": 0x1000,
                 "count": 1,
                 "stride": 0x0,
-                "hole_responses": (("", {"rresp": "DECERR", "rdata": 0xCA11AB1EBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"}),),
-                "hole_notes": ("The inbound port does not reach this unit, so every address in its aperture answers the same.",),
+                "hole_responses": (("", {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"}),),
+                "hole_notes": ("Only the harts of the CPU cluster reach this unit. An access from outside the cluster answers the same at every address in its aperture.",),
                 "past_response": None,
                 "past_note": "",
             },

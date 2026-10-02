@@ -12,8 +12,8 @@
 module sep_lifecycle_ctrl #(
   parameter int unsigned LC_STATE_WIDTH    = 4,  // Lifecycle state encoding width; the state decode
                                                  // is written for 4.
-  localparam int unsigned DEMOTE_WIDTH     = 1,  // Demote field width.
-  localparam int unsigned DEMOTE_OUT_WIDTH = 2 * DEMOTE_WIDTH  // Duplicated demote output width.
+  localparam int unsigned DemoteWidth     = 1,   // Demote field width.
+  localparam int unsigned DemoteOutWidth  = 2 *  DemoteWidth  // Duplicated demote output width.
 ) (
   input logic clk_i,                          // System clock.
   input logic rst_ni,                         // Active-low reset.
@@ -35,11 +35,11 @@ module sep_lifecycle_ctrl #(
                                               // no functional consumer, provided for DFT insertion.
   output logic smc_fuse_dft_disable_o,        // Disables the SMC fuse DFT access path, active-high;
                                               // no functional consumer, provided for DFT insertion.
-  output logic [DEMOTE_OUT_WIDTH-1:0] lcc_demote_state_1_o,  // Differentially encoded
+  output logic [DemoteOutWidth-1:0] lcc_demote_state_1_o,    // Differentially encoded
                                                              // DEMOTE_1.demote register bit, which
                                                              // re-opens debug feature bits [23:0]
                                                              // in TEST_DEV and PROD.
-  output logic [DEMOTE_OUT_WIDTH-1:0] lcc_demote_state_2_o,  // Differentially encoded
+  output logic [DemoteOutWidth-1:0] lcc_demote_state_2_o,    // Differentially encoded
                                                              // DEMOTE_2.demote register bit, which
                                                              // re-opens debug feature bits [47:24]
                                                              // in TEST_DEV and PROD.
@@ -69,7 +69,7 @@ module sep_lifecycle_ctrl #(
 
   // Differential encode/decode for DEMOTE_1
   prim_diff_encode_multi #(
-    .Width(DEMOTE_WIDTH)
+    .WIDTH(DemoteWidth)
   ) u_demote_1_diff_enc (
     .clk_i,
     .rst_ni  (rst_ni),
@@ -79,7 +79,7 @@ module sep_lifecycle_ctrl #(
 
   // Differential encode/decode for DEMOTE_2
   prim_diff_encode_multi #(
-    .Width(DEMOTE_WIDTH)
+    .WIDTH(DemoteWidth)
   ) u_demote_2_diff_enc (
     .clk_i,
     .rst_ni  (rst_ni),
@@ -89,7 +89,7 @@ module sep_lifecycle_ctrl #(
 
   // Differential decode for LC_STATE
   prim_diff_decode_multi #(
-    .Width(LC_STATE_WIDTH)
+    .WIDTH(LC_STATE_WIDTH)
   ) u_lc_state_dec (
     .clk_i,
     .rst_ni  (rst_ni),
@@ -99,10 +99,10 @@ module sep_lifecycle_ctrl #(
   );
 
   // Demotion debug disable vector sub-groups
-  localparam int unsigned DBG_1_LSB = 0;
-  localparam int unsigned DBG_1_MSB = 23;
-  localparam int unsigned DBG_2_LSB = 24;
-  localparam int unsigned DBG_2_MSB = 47;
+  localparam int unsigned Dbg1Lsb = 0;
+  localparam int unsigned Dbg1Msb = 23;
+  localparam int unsigned Dbg2Lsb = 24;
+  localparam int unsigned Dbg2Msb = 47;
 
   sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t feat_ctrl;
   sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t feat_ctrl_sec_dis_ovrd;
@@ -120,10 +120,10 @@ module sep_lifecycle_ctrl #(
         4'b0000: begin  // TEST_DEV state
           feat_ctrl = ~(shadow_regs_i.fields.sip_dis | shadow_regs_i.fields.sys_dis);
           if (demote_reg_1.demote) begin
-            feat_ctrl[DBG_1_MSB:DBG_1_LSB] = '1;
+            feat_ctrl[Dbg1Msb:Dbg1Lsb] = '1;
           end
           if (demote_reg_2.demote) begin
-            feat_ctrl[DBG_2_MSB:DBG_2_LSB] = '1;
+            feat_ctrl[Dbg2Msb:Dbg2Lsb] = '1;
           end
         end
 
@@ -132,12 +132,12 @@ module sep_lifecycle_ctrl #(
           feat_ctrl.func_reserved = ~(shadow_regs_i.fields.sip_dis.func_reserved |
                                     shadow_regs_i.fields.sys_dis.func_reserved);
           if (demote_reg_1.demote) begin
-            feat_ctrl[DBG_1_MSB:DBG_1_LSB] = ~(shadow_regs_i.fields.sip_dis[DBG_1_MSB:DBG_1_LSB] |
-                                               shadow_regs_i.fields.sys_dis[DBG_1_MSB:DBG_1_LSB]);
+            feat_ctrl[Dbg1Msb:Dbg1Lsb] = ~(shadow_regs_i.fields.sip_dis[Dbg1Msb:Dbg1Lsb] |
+                                               shadow_regs_i.fields.sys_dis[Dbg1Msb:Dbg1Lsb]);
           end
           if (demote_reg_2.demote) begin
-            feat_ctrl[DBG_2_MSB:DBG_2_LSB] = ~(shadow_regs_i.fields.sip_dis[DBG_2_MSB:DBG_2_LSB] |
-                                               shadow_regs_i.fields.sys_dis[DBG_2_MSB:DBG_2_LSB]);
+            feat_ctrl[Dbg2Msb:Dbg2Lsb] = ~(shadow_regs_i.fields.sip_dis[Dbg2Msb:Dbg2Lsb] |
+                                               shadow_regs_i.fields.sys_dis[Dbg2Msb:Dbg2Lsb]);
           end
         end
 

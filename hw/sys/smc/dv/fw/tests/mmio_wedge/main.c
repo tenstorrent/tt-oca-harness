@@ -9,7 +9,8 @@
 
 #define MMIO_WEDGE_EXT_ADDR 0xB0000000ull
 
-/* Last cache line of the 1 MiB SPM, above this image, stacks, and heap. */
+/* Handshake words in the last cache line of SPM, above the image, stacks and
+ * heap, so they survive the CPU reset between the two boots. */
 #define PHASE_FLAG_ADDR (SMC_TOP_SPM_MEMORY_BASE_ADDR + SMC_TOP_SPM_MEMORY_SIZE - 0x40u)
 #define GO_FLAG_ADDR (PHASE_FLAG_ADDR + 8u)
 

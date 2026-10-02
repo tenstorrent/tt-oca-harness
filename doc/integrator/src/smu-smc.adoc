@@ -9,8 +9,13 @@ management, clock control, reset sequencing, and peripheral interface
 coordination. The `smc.sv` module exposes logic-level interfaces; all
 technology-specific components (PLLs, PVT sensors, eFuses, memory macros,
 GPIO padrings) are instantiated externally by the adopter. See the
-<<smu-module-variants,SMU Module Variants>> section for how the reference
-wrappers demonstrate this integration.
+ifdef::backend-html5[]
+  xref:smu-composition.adoc#smu-module-variants[SMU Module Variants]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+  _SMU Module Variants_
+endif::backend-pdf[]
+section for how the reference wrappers demonstrate this integration.
 
 For detailed architectural documentation about the SMC internal design, refer to
 `hw/sys/smc/doc/`. The public integration examples are
@@ -39,15 +44,21 @@ hierarchy.
 Reset domain overrides are delivered through a single typed input,
 `jtag_reset_ctrl_i` (`smc_pkg::jtag_smc_reset_ctrl_t`), which carries all
 SMC reset override enables and active-low values. The DTP drives this input
-through the JTAG IC_RESET mechanism (see <<smc-dtp-interconnection>>); most
-integrations leave all override enables deasserted.
+through the JTAG IC_RESET mechanism (see the
+ifdef::backend-html5[]
+xref:smu-composition.adoc#smc-dtp-interconnection[SMC-DTP Internal Interconnection]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+_SMC-DTP Internal Interconnection_
+endif::backend-pdf[]
+section); most integrations leave all override enables deasserted.
 
 [[smc-ndm-cluster-reset]]
 == External CPU cluster NDM reset
 
 Connect `smc_ndmreset_request_i[i]` to the NDM reset request from
 external CPU cluster `i`, and return `smc_ndmreset_process_o[i]` to
-that cluster. Set `CPU_CLUSTER_COUNT` in `smc_config_pkg` to the number
+that cluster. Set `CpuClusterCount` in `smc_config_pkg` to the number
 of clusters. This harness sets it to 4. The parameter sizes both ports,
 and `NDMRESET_CLUSTER_COUNT` reads that value back. The register fields
 stay 32 bits wide. Tie unused request inputs to 0.
@@ -82,8 +93,9 @@ Used by SMC CPU, firmware, and fabric.
 assigned to SMC.
 |=======================================================================
 
-The SMC fabric uses three registers in the CPU Control block
-(`0xC001_0000`) to distinguish local from remote addresses:
+The SMC routes bus transactions from inside the SMU to either be local
+(accessing something inside the SMC) or global. This routing is configured by
+three of the SMC base configuration registers:
 
 * `LOCAL_BASE` (read-only, fixed at `0xC000_0000`): The local alias
   base. Together with `REGION_SIZE`, this is the address space the SMC
@@ -97,6 +109,9 @@ The SMC fabric uses three registers in the CPU Control block
   SMC input fabric's local/global split as well as SMU-level routing and
   SEP-to-SMC decode. Firmware must not program it to zero, and must keep
   `LOCAL_BASE + REGION_SIZE` inside the 32-bit SMC-local address space.
+  SMC units whose window extends past `REGION_SIZE` answer `DECERR` to the SMU
+  and the SEP. At the reset value these are the PLIC, CLINT and bus-error units,
+  so firmware must widen `REGION_SIZE` to cover them before either accesses them.
 
 For full details on alias remapping and outbound routing, see the SMC
 Fabric documentation (`hw/sys/smc/doc/fabric.adoc`).
@@ -145,8 +160,8 @@ I2C, I3C, and SPI pins to external devices according to the function assignments
 in the GPIO table.
 
 The SMC padring drives one GPIO pad per `u_gpio_interface` instance, so the
-adopter must integrate `smc_pkg::NUM_GPIO_WRAPS` pads:
-`smc_pkg::NUM_BONDED_GPIO` bonded pads plus `smc_pkg::NUM_UNBONDED_GPIO`
+adopter must integrate `smc_pkg::NumGpioWraps` pads:
+`smc_pkg::NumBondedGpio` bonded pads plus `smc_pkg::NumUnbondedGpio`
 unbonded pads. If the adopter chooses to capture configuration straps from GPIO
 pads, this can only be done from the bonded pads. The pads for the SDA and SCL
 lines of I3C[1] must be unbonded for security when transmitting OCCP traffic.
@@ -173,7 +188,14 @@ ifdef::backend-pdf[]
 the _Cross-Trigger Port_ section of the Technical Reference Manual.
 endif::backend-pdf[]
 
-See <<xtrig-ctp-gpio-interface>> for the SMU-level ports.
+See
+ifdef::backend-html5[]
+xref:smu-composition.adoc#xtrig-ctp-gpio-interface[Cross Trigger Port GPIO Interface]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+_Cross Trigger Port GPIO Interface_
+endif::backend-pdf[]
+for the SMU-level ports.
 
 OCAH also requires a reference clock, a cold reset, and a powergood indication
 (`clk_ref_i`, `rst_cold_ni`, and `powergood_i` on `smu`). These must be driven,
@@ -218,14 +240,18 @@ in this range to `smc_external_req_o` except the eFuse SHIM range at its base
 (see <<smc-external-mandatory>>); the adopter decodes everything else. The
 generated SMC memory map reports the window as one opaque aperture.
 
-The window is split into two regions. Apart from the eFuse SHIM control block due to security reasons,
-hardware treats both identically -- the split is organizational only:
+The window is split into two regions. Apart from the eFuse SHIM control block
+needed for security reasons, hardware treats both identically -- the split is
+organizational only:
 
-* *Mandatory* (`BASE + 0x040_0000`): blocks every integration must implement.
-  OCAH specifications dictate their function, but their implementation, register
-  layout and placement within the region are technology- and vendor-specific.
-* *Supplementary* (`BASE + 0x040_4000`): additional memory-mapped devices the
-  adopter chooses to expose, plus the captured strap registers.
+* *Mandatory* (`BASE + 0x040_0000`):
+  Blocks every integration must implement. OCAH specifications dictate their
+  function, but their implementation, register layout and placement within the
+  region are technology- and vendor-specific.
+
+* *Supplementary* (`BASE + 0x040_4000`):
+  Any additional memory-mapped devices the adopter chooses to expose, plus the
+  captured strap registers.
 
 [[smc-external-mandatory]]
 ==== Mandatory Region
@@ -311,7 +337,7 @@ banks are never shared. Each controller also drives its own sense-done output
 to the `smu.sv` boundary, `smc_fuse_sense_done_o` and `sep_fuse_sense_done_o`,
 and holds the sensed bank in its own shadow registers.
 <<efuse-smu-instances-fig>> shows these connections. When the SMU is built with
-`SEP = 0`, only the SMC instance is needed.
+`CFG.SEP = 0`, only the SMC instance is needed.
 
 [[efuse-smu-instances-fig]]
 .eFuse connections at the smu.sv boundary
@@ -342,9 +368,9 @@ subsystem's external port as usual.
 [width="100%",cols="12%,30%,23%,35%",options="header"]
 |=======================================================================
 |Subsystem |Window base |Size parameter (SMU default) |Rest of the window
-|SMC |`smc_external` base, SMC-local `0xC040_0000` |`SMC_EFUSE_SHIM_SIZE` (`0x4`)
+|SMC |`smc_external` base, SMC-local `0xC040_0000` |`CFG.SMC_EFUSE_SHIM_SIZE` (`0x4`)
 |`smc_external_req_o` / `smc_external_resp_i`
-|SEP |`sep_external` base, SEP-local `0x2000_0000` |`SEP_EFUSE_SHIM_SIZE` (`0x4`)
+|SEP |`sep_external` base, SEP-local `0x2000_0000` |`CFG.SEP_EFUSE_SHIM_SIZE` (`0x4`)
 |`sep_external_req_o` / `sep_external_resp_i`
 |=======================================================================
 
@@ -451,13 +477,13 @@ drives the read `data` onto `efuse_shim_command_resp_i.data` and asserts
 that `valid` is high, advancing to the next eFuse word on each assertion.
 
 <<efuse-sense-timing-fig>> shows the stream for the 256-word bank. The sense FSM
-leaves `StRead` after one cycle and waits in `StWait`. Each `valid` strobe
+leaves `ST_READ` after one cycle and waits in `ST_WAIT`. Each `valid` strobe
 stores `data` into shadow word `words_received_q` and increments the count one
 cycle later. Gaps between strobes are allowed, as between cycles 2 and 4, and
 so are strobes on consecutive cycles, as in cycles 4 and 5, provided each
 cycle carries a new word. `data` is sampled only while `valid` is high. The
 strobe for word 255 (`NumShadowWords - 1`) stores the last word and moves the
-FSM to `StFinished` without incrementing. `fuse_sense_done` rises one cycle
+FSM to `ST_FINISHED` without incrementing. `fuse_sense_done` rises one cycle
 after that.
 
 [[efuse-sense-timing-fig]]
@@ -486,8 +512,14 @@ inside SEP.
 == Memory Subsystem Integration
 
 The SMC includes an embedded RISC-V CPU cluster with associated memory
-interfaces. See <<immutable-rom-fw-integration>> for the ROM FW integration
-contract.
+interfaces. See
+ifdef::backend-html5[]
+xref:smu-rom-fw.adoc#immutable-rom-fw-integration[Immutable ROM FW Integration]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+_Immutable ROM FW Integration_
+endif::backend-pdf[]
+for the ROM FW integration contract.
 
 [[smc-sram-cache-integration]]
 === SRAM and Cache Array Integration
@@ -518,7 +550,7 @@ CPU cluster can safely access SRAM arrays. Repair is required on every cold
 reset but can be bypassed during Function Level Reset (FLR) operations for
 faster recovery.
 
-**Control Signals:**
+=== Control Signals
 
 * `smc_fuse_sense_done_o`: eFuse controller output indicating fuse sensing
 completion.
@@ -534,13 +566,13 @@ completion.
   until external logic gives the go-ahead; required before the system can continue
   its boot sequence.
 
-**Repair Data:**
+=== Repair Data
 
 The SMC fuse map does not allocate storage for repair data. Your external memory
 repair controller must source it from wherever your manufacturing flow keeps it
 and apply it to SRAM arrays according to your memory architecture.
 
-**Status Monitoring:**
+=== Status Monitoring
 
 Repair completion and success are reported through
 `DFX_CTRL_STATUS.STATUS_SMU` at `0xC000_B800`. The `mem_repair_done` bit
@@ -549,7 +581,7 @@ successful repair. Both bits are set by the external repair controller. The SMC
 ROM FW monitors these bits during initialization to verify repair
 completion.
 
-**Bypass Configuration:**
+=== Bypass Configuration
 
 The `BYPASS_SRAM_REPAIR` configuration strap (`STRAPS_LO[13]`) is captured into
 the strap registers in the adopter peripheral window. Keep these three mechanisms distinct:
@@ -566,25 +598,25 @@ the strap registers in the adopter peripheral window. Keep these three mechanism
 Use bypass mode only when SRAM arrays are guaranteed defect-free, such as
 during development or with known-good components.
 
-**Integration Requirements:**
+=== Integration Requirements
 
-Provide an external memory repair controller that monitors `smc_fuse_sense_done_o`
-to initiate repair, respects `skip_mem_repair_o` for bypass control, reads
-repair data from eFuse shadow registers, applies repair configuration to SRAM
-arrays, asserts `ext_boot_seq_done_i` and updates DFT Control Status registers
-with completion status. The controller operates independently of the SMC core
-and must complete before the CPU cluster accesses SRAM.
+Provide an external memory repair controller that monitors
+`smc_fuse_sense_done_o` to initiate repair, respects `skip_mem_repair_o` for
+bypass control, reads repair data from eFuse shadow registers, applies repair
+configuration to SRAM arrays, asserts `ext_boot_seq_done_i` and updates
+`DFX_CTRL_STATUS` with completion status. The controller operates independently
+of the SMC core and must complete before the CPU cluster accesses SRAM.
 
 Note: For a standalone SEP, the adopter must synchronize `ext_boot_seq_done_i` to
 the system clock and ensure the signal is held until next cold reset.
 
-For direct access to the eFuse besides from the shim, i.e. from a DFT fuse controller,
-adopters must ensure the integrated logic will not interfere with accesses from the
-OCAH's efuse interface.
+For direct access to the eFuse not through the SHIM, i.e. from a DFT fuse
+controller, adopters must ensure the integrated logic will not interfere with
+accesses from the OCAH's efuse interface.
 
-During FLR operations, the isolation request path asserts `skip_mem_repair_o`
-to bypass repair for rapid reset sequences. Normal cold reset sequences always
-execute repair unless isolation is already asserted.
+The isolation request path asserts `skip_mem_repair_o` during Function Level
+Reset (FLR) operations to bypass repair for rapid reset sequences. Normal cold
+reset sequences always execute repair unless isolation is already asserted.
 
 == Interrupt Integration
 
@@ -605,14 +637,14 @@ endif::backend-pdf[]
 
 The SMC PLIC and CPU interrupt vector are internal. `sync_irq_o` is *not* the
 interrupt aggregate -- it is the software-controlled `SYNC_REG.sync` global
-synchronisation bit in the reset unit, unrelated to PLIC interrupt delivery.
+synchronization bit in the reset unit, unrelated to PLIC interrupt delivery.
 Do not connect an external interrupt controller to `sync_irq_o`.
 
 External interrupt sources visible to the adopter are `smc_ext_interrupts_i` (SMC
 external interrupt input vector, width `NUM_INT_TO_SMC`),
 `smc_ext_mailbox_interrupts_o` (outbound mailbox notifications, width
-`NUM_MAILBOXES`), `gpio_interrupt_o` (GPIO edge/level events, width
-`NUM_GPIO_WRAPS`), and `uart_interrupt_o` (UART TX/RX events, width `NUM_UART`).
+`NumMailboxes`), `gpio_interrupt_o` (GPIO edge/level events, width
+`NumGpioWraps`), and `uart_interrupt_o` (UART TX/RX events, width `NumUart`).
 Drive `smc_ext_interrupts_i` as an active-high level or as a pulse that stays
 high long enough to be sampled on `clk_smc`. The pin is three-flop
 synchronized; a short asynchronous pulse can be lost. There is no
@@ -655,14 +687,14 @@ testing (unless disabled), and system health checks. The `smc_init_mem_done_o`
 signal indicates completion of memory initialization if automatic SRAM zeroing
 is enabled.
 
-To support Function Level Reset (FLR), assert `cfg_flr_pf_active_i` to trigger
-a warm reset sequence. The SMC asserts `isolate_req_o` bits for the affected
+To support Function Level Reset (FLR), assert `cfg_flr_pf_active_i` to trigger a
+warm reset sequence. The SMC asserts `isolate_req_o` bits for the affected
 subsystem indices. The adopter's power controller drives `ss_reset_complete_i`
 high once the subsystem reset is complete; the SMC synchronizes this into the
-readable `SS_RESET_COMPLETE` register. Isolation remains asserted until cleared by software: SMC firmware must poll
-`SS_RESET_COMPLETE` and then write `ISOLATE_REQ_SMC_REG` to clear the FLR
-isolation latch. Do not assume isolation releases automatically on
-`ss_reset_complete_i`.
+readable `SS_RESET_COMPLETE` register. Isolation remains asserted until cleared
+by software: SMC firmware must poll `SS_RESET_COMPLETE` and then write
+`ISOLATE_REQ_SMC_REG` to clear the FLR isolation latch. Do not assume isolation
+releases automatically on `ss_reset_complete_i`.
 
 See `hw/top/smu_wrapper.sv` and `hw/top/smc_ip_integration.sv` for reference
 bring-up wiring examples covering clock, reset, strap, and peripheral connections.
@@ -695,7 +727,7 @@ default direction or decode configuration straps; use
 register descriptions (see <<smc-external-supplementary>>) for those.
 
 ifdef::backend-html5[]
-include::meta/ocah_gpio_table.adoc[]
+include::partial$meta/ocah_gpio_table.adoc[]
 endif::backend-html5[]
 ifdef::backend-pdf[]
 include::../meta/ocah_gpio_table.adoc[]
@@ -703,7 +735,7 @@ endif::backend-pdf[]
 
 For multi-chiplet systems, the `PRIMARY_CHIPLET` strap (`STRAPS_LO[25]`)
 determines whether the chiplet operates as primary or secondary. The primary
-chiplet's System Timer OCTS generates synchronization pulses
-(`timer_sync_load_o`, `timer_cnt_credit_o`) that secondary chiplets receive to
-maintain coherent timestamps across the system.
+chiplet's System Timer OCTS (Open Chiplet Time Synchronization) generates
+synchronization pulses (`timer_sync_load_o`, `timer_cnt_credit_o`) that
+secondary chiplets receive to maintain coherent timestamps across the system.
 

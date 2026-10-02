@@ -25,7 +25,7 @@ elaboration, so a regression pays one Verilator build and coverage merges across
 the whole selection. `smu_wrapper` is a registered
 alias of `smu` (`hw/common/dv/configs/duts.toml`), so the two names resolve to
 one config, one build cache and one identity; logs carry `DUT_TAG=WRAPPER`.
-The `SEP=0` composition (`smu #(.SEP(0))`: no crossbar, direct ID converters,
+The `SEP=0` composition (`smu #(.CFG(smu_pkg::NoSepCfg))`: no crossbar, direct ID converters,
 SEP aperture and lifecycle tie-offs) is not elaborated by this package; the
 names that need it, and the JTAG2AXI abort scenario, which needs an OTP
 interface that hangs, are catalogued in
@@ -77,7 +77,7 @@ from, and a value with no pin says so.
 
 | Tool | Version | Pinned in |
 |---|---|---|
-| Verilator | `v5.050`, built from source | `.github/actions/dv-run/action.yml`, `verilator-version` default |
+| Verilator | `v5.052`, built from source in CI and packaged in the `ocah-container` image | `.github/actions/dv-run/action.yml`, `verilator-version` default; `flake.lock` (nixpkgs) for the image |
 | Python | 3.11 in CI; `>=3.11,<3.14` accepted | `.github/actions/dv-run/action.yml`, `python-version` default; `pyproject.toml`, `requires-python` |
 | cocotb / pyuvm / cocotbext-axi | 2.0.1 / 4.0.1 / 0.1.28 | `uv.lock` (`dv` group); `run_dv.py` bootstraps this environment itself |
 | Bender | whatever `pulp-platform/pulp-actions/bender-install@v2.5.1` installs; no Bender version is pinned in this repository | `.github/actions/dv-run/action.yml` |
@@ -344,7 +344,7 @@ run (69), and the rest of `all` is the SEP firmware set.
 Every test entry of the testlist is in `all`, and every test module under
 `cocotb_wrapper/tests/` is enrolled. Names that cannot run or cannot pass on
 this bench -- among them the SEP=0 composition proofs, which need the
-`smu #(.SEP(0))` elaboration this package does not build -- are enrolled
+`smu #(.CFG(smu_pkg::NoSepCfg))` elaboration this package does not build -- are enrolled
 nowhere and have no module in the tree:
 `hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc` catalogues each with the
 condition it needs, and a body written for one of them is kept in git history

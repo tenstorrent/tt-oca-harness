@@ -197,18 +197,17 @@ See https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/sep/bootrom/p
 https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/sep/bootrom/prod/doc/index.adoc[`hw/sys/sep/bootrom/prod/doc/`] for
 the full target list, build variables, key provisioning, and boot flow.
 
-The ROM supports two SPI transports selected at build time by `BOOT_SPI_CONTROLLER_OT`; the unused driver is dropped by `--gc-sections` at link time.
-The open-source OpenTitan SPI host (`BOOT_SPI_CONTROLLER_OT=1`) is the recommended transport and the one to use from the open tree.
-A proprietary memory-mapped SPI controller (`BOOT_SPI_CONTROLLER_OT=0`) is also supported via the SEP extension port but is not available in the open tree.
-The flag defaults to `0` in the Makefile; the named targets `ot-toolchain-images` and `ot-pio-toolchain-images` set it to `1` for you.
+The ROM supports two flash transports selected at build time by `BOOT_SPI_CONTROLLER_OT`; the unused driver is dropped by `--gc-sections` at link time.
+The default (`BOOT_SPI_CONTROLLER_OT=1`) uses the OpenTitan SPI host, and `BOOT_OT_SPI_USE_PIO` selects its RX-drain method (secure DMA by default, or CPU-programmed I/O).
+`BOOT_SPI_CONTROLLER_OT=0` reads memory-mapped flash through the external XIP window; its controller driver is optional from the open tree's perspective and is supplied by an integrator through the weak hooks in `src/sep_spi.c`.
 
-The DV `sep` testbench has no SPI flash, so the ROM stubs SPI (`src/sep_spi.c`) and boots instead from the SMC-SRAM manifest path; `make oca-images` builds and packs the matching manifest+BL1 image (`build/smc_mem.hex`).
+The DV `sep` testbench has no SPI flash, so it boots instead from the SMC-SRAM manifest path: `oca-images` packs the non-secure boot-manifest image rebased to the SMC-SRAM base (`build/oca_smc_mem.hex`).
 
 The build splits into two halves so each can run in the correct environment:
 
-* `ot-toolchain-images` — RISC-V/picolibc compilation with the OpenTitan SPI host; use the container when `RISCV_TOOLCHAIN` is unset.
+* `toolchain-images` — RISC-V/picolibc compilation; use the container when `RISCV_TOOLCHAIN` is unset.
 * `key-digests` and `oca-images` — pure Python via `uv`, which the container carries; can run in the container or on the host.
-  `oca-images` is transport-agnostic: the same manifest+BL1 payload works with all three ROM variants, so no extra flags are needed after `ot-toolchain-images`.
+  `oca-images` is transport-agnostic: the same manifest+BL1 payload works with every ROM build profile, so no extra flags are needed after `toolchain-images`.
 
 The manifest-tool submodule must be initialized before running `oca-images`:
 
@@ -221,24 +220,23 @@ DV test manifest configs live under `configs/`; the corresponding test signing k
 `release_signing_keys/` and refuses to produce images anchored on test keys).
 
 ```bash
-# Recommended: compile with the OpenTitan SPI host (outputs to build_ot/):
+# OpenTitan SPI-host build (outputs to build/):
 # - Prefix with `scripts/docker-run.sh run-here` to run in the container
-make -C hw/sys/sep/bootrom/prod ot-toolchain-images
+make -C hw/sys/sep/bootrom/prod toolchain-images
 
 # Pack all OCA test images (signed, encrypted, per-ROM-key, and negative cases):
 make -C hw/sys/sep/bootrom/prod oca-images
 ```
 
-ROM images land under `build_ot/` (the OpenTitan variant's build directory):
+Outputs land under `hw/sys/sep/bootrom/prod/build/`:
 
 * `boot_rom.vmem` — 64-bit VMEM for the Boot ROM responder.
-* `boot_rom.itcm.hex` — ROM `.text` as ICCM-relative byte hex.
-* `boot_rom.dtcm.hex` — `.data`/`.bss` initial image as DCCM-relative byte hex.
+* `boot_rom.itcm.hex` — ROM read-only sections as ICCM-relative byte hex.
+* `boot_rom.dtcm.hex` — DCCM `.data`/`.bss` initial image as DCCM-relative byte hex.
+* `oca_*.bin` / `oca_*.spi_preload` — OCA boot-manifest images, one per validator path (`OCA_IMAGES` in the Makefile).
+* `oca_smc_mem.hex` — the non-secure image rebased to the SMC-SRAM base, for the DV testbench.
 
-Packed flash images from `oca-images` always land under `build/`, regardless of which ROM variant was compiled:
-
-* `smc_mem.hex` — packed manifest+BL1 image rebased to the SMC-SRAM base, for the DV testbench.
-* `secure_boot.spi_preload` / `encrypted_boot.spi_preload` — signed and AES-encrypted SPI flash preload images.
+The `pio-toolchain-images` target builds the CPU-PIO drain ROM into `build_pio/`; the packed images stay under `build/`.
 
 === KM application ROM
 
@@ -593,6 +591,11 @@ make lint-verilator-all BLOCK=smu \
   2>&1 | tee "$TMPDIR/verilator-smu-unwaived.log"
 ```
 
+cocotb's Verilator runner always passes `--public-flat-rw`, and some package
+parameters under it fail only in the generated C++, which lint never compiles.
+`make lint-verilator-public-all BLOCK=smu` builds the block's packages under
+the flag; CI runs it for `smu`, whose filelist includes SEP and SMC.
+
 ==== Style and Lint checking with Slang
 
 To run the slang linter on each `flow.mk` top, use the following command:
@@ -843,7 +846,8 @@ contributor enables the hook.
 
 `.github/workflows/lint.yml` runs `lint-sv-slang`, `lint-sv-verilator`,
 `lint-python`, `lint-python-mypy`, `format-c`, `lint-tcl`, `lint-spelling`,
-`lint-sv-comments`, `lint-yaml`, `lint-toml`, `lint-markdown`, `lint-make`, `lint-shell`,
+`lint-sv-comments`, `lint-sv-enums`, `lint-yaml`, `lint-toml`, `lint-markdown`,
+`lint-make`, `lint-shell`,
 `regen-regs`, and `vendor-diff` on pull requests and pushes to `main`
 (`lint-sv-verible` is temporarily disabled). Setup jobs share `bender`,
 Verilator, and reviewdog artifacts; jobs report through
@@ -867,7 +871,8 @@ Scheduled and manually dispatched pipelines always run in full.
 
 | `lint-sv-verilator`
 | `lint-sv-verilator/<block>` for `aou`, `dtp`, `sep`, `smc`, and `smu`
-| `make lint-verilator-all [BLOCK=<block>]`
+| `make lint-verilator-all [BLOCK=<block>]`, plus
+`make lint-verilator-public-all BLOCK=smu` on the `smu` row
 
 | `lint-sv-verible` (disabled in CI)
 | `lint-sv-verible`
@@ -900,6 +905,10 @@ Scheduled and manually dispatched pipelines always run in full.
 | `lint-sv-comments`
 | `lint-sv-comments`
 | `make ocah-lint-sv-comments`
+
+| `lint-sv-enums`
+| `lint-sv-enums`
+| `make ocah-lint-sv-enums`
 
 | `lint-yaml`
 | `lint-yaml`

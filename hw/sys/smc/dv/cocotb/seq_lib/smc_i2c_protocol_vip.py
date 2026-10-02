@@ -9,7 +9,7 @@ Open-drain pad model on ``tb_top.sv``:
 
 cocotbext-i2c Rising/FallingEdge waits on combinational OD nets miss updates on
 Verilator, so the DUT host NACKs, sets CONTROLLER_EVENTS.NACK, and freezes with
-SCL low (Idle + trans_started). This VIP avoids OD Edge waits so VCS and
+SCL low (IDLE + trans_started). This VIP avoids OD Edge waits so VCS and
 Verilator run the same bus proofs.
 """
 
