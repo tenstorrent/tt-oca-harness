@@ -9,7 +9,8 @@ alert threshold). A pre-lock write moves the field off reset so the
 post-lock reject is not a stuck register. Write-0 leaves LOCK=1.
 Reserved CTRL.RSVD0 is RAZ/WI before the lock and does not clear it after;
 rst_ni does. The advisory RCT/APT cutoffs track MIN_ENTROPY_H against an
-SP 800-90B oracle. BIW observe enable stays writable. Health-test ENABLE
+SP 800-90B oracle. The BIW observe enable is writable before the lock and
+frozen after it (CHK-OBS-ENABLE-LOCKED). Health-test ENABLE
 stays 0 so this vehicle does not trip the alert path.
 
 Accepted scope: class walk, not an invert of every swwel bit. Alert
@@ -31,7 +32,7 @@ from seq_lib.sep_esrc_fips_lock_seq import (
 
 @pyuvm.test()
 class sep_esrc_fips_lock_test(sep_base_test):
-    """Lock freezes certified config; observe FIFO and rst_ni still work."""
+    """Lock freezes certified config and the observe-tap enable; rst_ni clears it."""
 
     async def _check_pre(self, esrc: SepEsrcFipsLock, target) -> None:
         await esrc.write(target.addr, target.pre)
@@ -122,6 +123,15 @@ class sep_esrc_fips_lock_test(sep_base_test):
         h_target = next(t for t in cfg.targets if t.name == "MIN_ENTROPY_H")
         await esrc.write(h_target.addr, h_target.pre)
 
+        # Prove the observe-tap enable is writable before the lock, so the
+        # post-lock freeze below cannot pass on a stuck register.
+        await esrc.write_obs_enable(cfg.obs_enable)
+        got = await esrc.read_obs_enable()
+        assert got == cfg.obs_enable, (
+            f"CHK-OBS-PRE-LOCK FAIL: BIW_OBS_CTRL.RAW_ENABLE={got} before lock"
+        )
+        self.logger.info("CHK-OBS-PRE-LOCK PASS: BIW_OBS_CTRL.RAW_ENABLE=%d before lock", got)
+
         await esrc.set_lock()
         got = await esrc.read_lock()
         assert got == 1, f"CHK-LOCK-SET FAIL: FIPS_LOCK={got}"
@@ -135,10 +145,14 @@ class sep_esrc_fips_lock_test(sep_base_test):
         for target in cfg.targets:
             await self._check_post(esrc, target)
 
-        await esrc.write_obs_enable(cfg.obs_enable)
+        await esrc.write_obs_enable(0)
         got = await esrc.read_obs_enable()
-        assert got == cfg.obs_enable, f"CHK-OBS-ENABLE-WRITABLE FAIL: BIW_OBS_CTRL.RAW_ENABLE={got}"
-        self.logger.info("CHK-OBS-ENABLE-WRITABLE PASS: BIW_OBS_CTRL.RAW_ENABLE=%d under lock", got)
+        assert got == cfg.obs_enable, (
+            f"CHK-OBS-ENABLE-LOCKED FAIL: BIW_OBS_CTRL.RAW_ENABLE={got} accepted a clear under lock"
+        )
+        self.logger.info(
+            "CHK-OBS-ENABLE-LOCKED PASS: BIW_OBS_CTRL.RAW_ENABLE held %d under lock", got
+        )
 
         await esrc.poke_reserved_ctrl_bit()
         got = await esrc.read_lock()
