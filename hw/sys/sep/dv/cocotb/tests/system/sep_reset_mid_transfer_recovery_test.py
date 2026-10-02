@@ -45,7 +45,9 @@ Checks:
                    Sensing and Boot Sequencing) gives before sensing completes,
                    ``{~4'b1111, 4'b1111}``. The staged image differs from the
                    reset value in at least one word, so a shadow that keeps its
-                   value through the reset fails this check.
+                   value through the reset fails this check. At least one reset
+                   with sense-done low must find shadow words the partial sense
+                   wrote, or the check fails as vacuous.
   CHK-SENSE-RESTART  a reset that lands with sense-done low is followed by a
                    sense that completes, and the sensed shadow matches the
                    staged image (the base-class compare after sense-done). The
@@ -423,12 +425,19 @@ class sep_reset_mid_transfer_recovery_test(sep_base_test):
             )
             mid.append(await self._reset_and_check_clear(f"offset {k}, sense-done low"))
             await self._restarted_sense(f"sense after the reset at offset {k}")
+        written = [k for k, n in zip(offsets, mid) if n > 0]
+        assert written, (
+            f"CHK-SHADOW-CLEAR FAIL: vacuous: at none of the {len(offsets)} resets with "
+            f"sense-done low had the partial sense written a shadow word, so no reset "
+            f"was seen to clear a word the restarted sense had loaded"
+        )
         self.logger.info(
             "CHK-SHADOW-CLEAR PASS: at %d resets after a completed sense and %d with "
             "sense-done low, all %d shadow words read their reset value with rst_ni "
             "low (LC_STATE word 0x%08x); the staged image differs from reset in %d "
-            "words; the reset after a completed sense changed %d..%d words, the reset "
-            "with sense-done low changed %d..%d (most at offset %d)",
+            "words; the reset after a completed sense changed %d..%d words; at %d of "
+            "the resets with sense-done low the partial sense had written words that "
+            "the reset returned to reset, %d..%d words (most at offset %d)",
             len(full),
             len(mid),
             NUM_FUSE_WORDS,
@@ -436,6 +445,7 @@ class sep_reset_mid_transfer_recovery_test(sep_base_test):
             len(differ),
             min(full),
             max(full),
+            len(written),
             min(mid),
             max(mid),
             offsets[mid.index(max(mid))],

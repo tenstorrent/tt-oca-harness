@@ -5133,7 +5133,9 @@ the register export, except the LC_STATE word: it reads the INVALID hold
 (`{~4'b1111, 4'b1111}`) that `hw/sys/sep/doc/otp_fuse_controller.adoc` (Fuse
 Sensing and Boot Sequencing) gives before sensing completes. The staged image
 differs from the reset value in at least one word, so a shadow that keeps its
-value through the reset fails this check.
+value through the reset fails this check. At least one reset with sense-done
+low must find shadow words the partial sense wrote, or the check fails as
+vacuous.
 |CHK-SENSE-RESTART
 |A reset that lands with sense-done low is followed by a sense that completes,
 and the sensed shadow matches the staged image word for word. The shadow read
