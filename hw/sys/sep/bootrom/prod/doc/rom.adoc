@@ -3006,7 +3006,7 @@ The manifest module's codes are `OCA_BOOT_ERR_*` in `include/oca_boot.h`. `0x000
 validation-library verdict (`oca_result_t`) in the low byte; `0x000301xx` are the module's own
 failures, before or after the library runs. A failed storage read keeps a refused offset apart
 from a failed transfer. On the OpenTitan SPI build (`BOOT_SPI_CONTROLLER_OT=1`) a failed flash
-transfer and a failed DMA from SMC SRAM also differ; on the Cadence build every storage read is
+transfer and a failed DMA from SMC SRAM also differ; on the XIP build every storage read is
 a secure-DMA copy, so both report `OCA_BOOT_ERR_DMA`:
 
 [[tbl:oca_boot_err]]
@@ -3017,7 +3017,7 @@ a secure-DMA copy, so both report `OCA_BOOT_ERR_DMA`:
 |===
 |*Code* |*Value* |*Cause*
 |`OCA_BOOT_ERR_DMA` |`0x00030100` |A secure-DMA copy from storage (SMC SRAM, or the XIP window
-on the Cadence build) failed, timed out or was refused; the DMA reports `DMA_ERROR`,
+on the XIP build) failed, timed out or was refused; the DMA reports `DMA_ERROR`,
 `DMA_TIMEOUT` or `DMA_OUT_OF_RANGE`.
 |`OCA_BOOT_ERR_STAGE_OVERFLOW` |`0x00030101` |Manifest body and payload exceed SEP SRAM.
 |`OCA_BOOT_ERR_NO_BL1` |`0x00030102` |No BL1 image in the TOC.
@@ -3026,7 +3026,7 @@ regions, or the DMA copy of BL1 or its ICCM pad failed.
 |`OCA_BOOT_ERR_BL1_TOO_LARGE` |`0x00030104` |BL1 length implausible.
 |`OCA_BOOT_ERR_KEY_UNTRUSTED` |`0x00030105` |Reserved; this ROM does not return it.
 |`OCA_BOOT_ERR_READ_OUT_OF_BOUNDS` |`0x00030106` |A storage read was refused by the bounds gate
-(the boot slot on the OpenTitan build, the XIP window on the Cadence build); reported as
+(the boot slot on the OpenTitan build, the XIP window on the XIP build); reported as
 `IMAGE_OOB`.
 |`OCA_BOOT_ERR_FLASH_READ` |`0x00030107` |The OpenTitan SPI driver failed a read (OpenTitan
 build only); its `SPI_OT_*` code is reported as the status.
