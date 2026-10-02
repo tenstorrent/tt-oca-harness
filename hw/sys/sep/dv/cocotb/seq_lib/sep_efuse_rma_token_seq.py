@@ -25,9 +25,10 @@ from env.sep_spec_tables import agg_from_pic
 from pyuvm import uvm_sequence
 from sep_reg_meta import EFUSE_MMR, sym
 
-_RMA_SIP_TOKEN_I = sym("EFUSE_MMR_RMA_SIP_TOKEN_I_0__REG_ADDR")
-_RMA_CHIPLET_TOKEN_I = sym("EFUSE_MMR_RMA_CHIPLET_TOKEN_I_0__REG_ADDR")
-_SEC_DISABLE_TOKEN_I = sym("EFUSE_MMR_SEC_DISABLE_TOKEN_I_0__REG_ADDR")
+# The eight 32-bit token-input words of each token, word 0 first, by RDL symbol.
+_RMA_SIP_TOKEN_I = tuple(sym(f"EFUSE_MMR_RMA_SIP_TOKEN_I_{i}__REG_ADDR") for i in range(8))
+_RMA_CHIPLET_TOKEN_I = tuple(sym(f"EFUSE_MMR_RMA_CHIPLET_TOKEN_I_{i}__REG_ADDR") for i in range(8))
+_SEC_DISABLE_TOKEN_I = tuple(sym(f"EFUSE_MMR_SEC_DISABLE_TOKEN_I_{i}__REG_ADDR") for i in range(8))
 _TOKEN_EOP = sym("EFUSE_MMR_TOKEN_EOP_REG_ADDR")
 _RMA_SIP_TOKEN_MATCH = sym("EFUSE_MMR_RMA_SIP_TOKEN_MATCH_REG_ADDR")
 _RMA_CHIPLET_TOKEN_MATCH = sym("EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_REG_ADDR")
@@ -106,24 +107,24 @@ class SepRmaTokenMatchSeq(uvm_sequence):
 
     async def body(self) -> None:
         if self.kind == TOKEN_RMA_SIP:
-            token_base = _RMA_SIP_TOKEN_I
+            token_words = _RMA_SIP_TOKEN_I
             eop_value = EOP_RMA_SIP
             match_addr = _RMA_SIP_TOKEN_MATCH
             token_name = "RMA_SIP"
         elif self.kind == TOKEN_RMA_CHIPLET:
-            token_base = _RMA_CHIPLET_TOKEN_I
+            token_words = _RMA_CHIPLET_TOKEN_I
             eop_value = EOP_RMA_CHIPLET
             match_addr = _RMA_CHIPLET_TOKEN_MATCH
             token_name = "RMA_CHIPLET"
         else:
-            token_base = _SEC_DISABLE_TOKEN_I
+            token_words = _SEC_DISABLE_TOKEN_I
             eop_value = EOP_SEC_DISABLE
             match_addr = _SEC_DISABLE_TOKEN_MATCH
             token_name = "SEC_DISABLE"
 
-        for i in range(8):
+        for i, word_addr in enumerate(token_words):
             await self._write(
-                token_base + 4 * i,
+                word_addr,
                 (self.token >> (32 * i)) & 0xFFFF_FFFF,
                 "token_input",
             )
