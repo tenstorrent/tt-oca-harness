@@ -11,14 +11,16 @@ from __future__ import annotations
 from pathlib import Path
 
 import pyuvm
-
 from env import sep_manifest_mutate as mm
 from rom_fw import sep_use_ext_sram_base as ues
 from rom_fw.sep_primary_fail_backup_boot_base import sep_primary_fail_backup_boot_base
 
 _EFUSE_PRELOAD = (
-    Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads"
-    / "efuse_configurations" / "sep_efuse_lc_prod.toml"
+    Path(__file__).resolve().parents[3]
+    / "tb"
+    / "efuse_preloads"
+    / "efuse_configurations"
+    / "sep_efuse_lc_prod.toml"
 )
 
 _MANIFEST_ERR_BAD_MAGIC = 0x0003_0002
@@ -27,8 +29,7 @@ _REQUIRED, _FORBIDDEN = ues.sep_markers()
 
 
 @pyuvm.test()
-class sep_firmware_manifest_backup_use_ext_sram_enabled_test(
-        sep_primary_fail_backup_boot_base):
+class sep_firmware_manifest_backup_use_ext_sram_enabled_test(sep_primary_fail_backup_boot_base):
     """Primary refused on its identifier; the backup stages in SEP EXT SRAM."""
 
     efuse_preload = _EFUSE_PRELOAD
