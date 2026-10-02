@@ -16,7 +16,7 @@
 //     the cocotb test CSR ground truth for the trap PC to symbolize.
 //
 // Checks accumulate into `errors`; main() returns it (0 -> PASS magic via
-// start.S, non-zero -> FAIL).
+// startup/crt0.s, non-zero -> FAIL).
 
 #include <stdint.h>
 

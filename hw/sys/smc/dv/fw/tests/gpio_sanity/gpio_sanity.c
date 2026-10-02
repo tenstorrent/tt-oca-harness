@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 
+#include "metal/cpu.h"
 #include "smc_io.h"
 #include "smc_test.h"
 

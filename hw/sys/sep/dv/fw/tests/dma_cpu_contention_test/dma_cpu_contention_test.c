@@ -10,8 +10,8 @@
 // when the loop finishes; that mid-flight status sample proves the two streams
 // overlapped. The sizes stay small enough for the Verilator timeout.
 //
-// Checks (main() returns the error count; start.S turns it into the PASS/FAIL
-// magic on the mailbox):
+// Checks (main() returns the error count; startup/crt0.s turns it into the
+// PASS/FAIL magic on the mailbox):
 //   * overlap: the mid-flight status shows the DMA busy and not done;
 //   * the DMA reaches done with no error status and a zero error code;
 //   * the done status bits clear on write-1-to-clear in the polled path;

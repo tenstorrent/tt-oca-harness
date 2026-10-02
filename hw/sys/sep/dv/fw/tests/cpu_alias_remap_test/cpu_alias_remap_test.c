@@ -11,7 +11,8 @@
 // The test must run on the real CPU: the no_cpu AXI splice sits after the
 // remap, so a no_cpu driver would bypass it.
 //
-// Checks (main() returns the error count; start.S emits the PASS/FAIL magic):
+// Checks (main() returns the error count; startup/crt0.s emits the PASS/FAIL
+// magic):
 //   CHK-CSR       The window base CSR takes a non-reset value, then is restored.
 //   CHK-LSU-WR    An LSU write through the alias lands at the SRAM target.
 //   CHK-LSU-RD    An LSU read through the alias returns the SRAM target.

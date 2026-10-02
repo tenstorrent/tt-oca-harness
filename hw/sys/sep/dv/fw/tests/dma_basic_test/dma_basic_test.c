@@ -5,9 +5,9 @@
 // register and copy-datapath contracts on bare sep; the copies are SRAM to SRAM
 // unless a check says otherwise.
 //
-// main() returns the error count; start.S turns it into the PASS/FAIL magic on
-// the mailbox. Every checker logs a positive PASS line, because the absence of
-// a FAIL line is not evidence.
+// main() returns the error count; startup/crt0.s turns it into the PASS/FAIL
+// magic on the mailbox. Every checker logs a positive PASS line, because the
+// absence of a FAIL line is not evidence.
 //
 // Checks:
 //   CHK-RESET      : DMA config registers read their documented reset values.
